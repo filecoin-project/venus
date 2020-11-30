@@ -2,27 +2,29 @@ package node
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/submodule/blockservice"
+	"github.com/filecoin-project/venus/app/submodule/blockstore"
+	"github.com/filecoin-project/venus/app/submodule/chain"
+	config2 "github.com/filecoin-project/venus/app/submodule/config"
+	"github.com/filecoin-project/venus/app/submodule/discovery"
+	"github.com/filecoin-project/venus/app/submodule/messaging"
+	"github.com/filecoin-project/venus/app/submodule/network"
+	"github.com/filecoin-project/venus/app/submodule/proofverification"
+	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
+	"github.com/filecoin-project/venus/app/submodule/syncer"
+	"github.com/filecoin-project/venus/app/submodule/wallet"
+	"github.com/filecoin-project/venus/pkg/util"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/app/plumbing"
-	"github.com/filecoin-project/venus/app/plumbing/cfg"
-	"github.com/filecoin-project/venus/app/plumbing/cst"
-	"github.com/filecoin-project/venus/app/plumbing/dag"
-	"github.com/filecoin-project/venus/app/plumbing/msg"
-	"github.com/filecoin-project/venus/app/porcelain"
-	"github.com/filecoin-project/venus/app/submodule"
-	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/journal"
-	drandapi "github.com/filecoin-project/venus/pkg/protocol/drand"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
@@ -41,7 +43,6 @@ type Builder struct {
 	isRelay     bool
 	chainClock  clock.ChainEpochClock
 	genCid      cid.Cid
-	drand       beacon.Schedule
 }
 
 // BuilderOpt is an option for building a filecoin node.
@@ -103,14 +104,6 @@ func VerifierConfigOption(verifier ffiwrapper.Verifier) BuilderOpt {
 func ChainClockConfigOption(clk clock.ChainEpochClock) BuilderOpt {
 	return func(c *Builder) error {
 		c.chainClock = clk
-		return nil
-	}
-}
-
-// DrandConfigOption returns a function that sets the node's drand interface
-func DrandConfigOption(d beacon.Schedule) BuilderOpt {
-	return func(c *Builder) error {
-		c.drand = d
 		return nil
 	}
 }
@@ -177,13 +170,11 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	//
 	// Set default values on un-initialized fields
 	//
-
 	if b.repo == nil {
 		b.repo = repo.NewInMemoryRepo()
 	}
 
 	var err error
-
 	if b.journal == nil {
 		b.journal = journal.NewNoopJournal()
 	}
@@ -199,13 +190,13 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		OfflineMode: b.offlineMode,
 		Repo:        b.repo,
 	}
-
-	nd.Blockstore, err = submodule.NewBlockstoreSubmodule(ctx, b.repo)
+	nd.ConfigModule = config2.NewConfigModule(b.repo)
+	nd.Blockstore, err = blockstore.NewBlockstoreSubmodule(ctx, b.repo)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Blockstore")
 	}
 
-	nd.network, err = submodule.NewNetworkSubmodule(ctx, (*builder)(b), b.repo, &nd.Blockstore)
+	nd.network, err = network.NewNetworkSubmodule(ctx, (*builder)(b), b.repo, nd.Blockstore)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Network")
 	}
@@ -215,27 +206,16 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
-	nd.Blockservice, err = submodule.NewBlockserviceSubmodule(ctx, &nd.Blockstore, &nd.network)
+	nd.Blockservice, err = blockservice.NewBlockserviceSubmodule(ctx, nd.Blockstore, nd.network)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Blockservice")
 	}
 
-	nd.ProofVerification = submodule.NewProofVerificationSubmodule(b.verifier)
+	nd.ProofVerification = proofverification.NewProofVerificationSubmodule(b.verifier)
 
-	nd.chain, err = submodule.NewChainSubmodule((*builder)(b), b.repo, &nd.Blockstore, &nd.ProofVerification, b.drand)
+	nd.chain, err = chain.NewChainSubmodule((*builder)(b), b.repo, nd.Blockstore, nd.ProofVerification)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
-	}
-	if b.drand == nil {
-		genBlk, err := nd.chain.ChainReader.GetGenesisBlock(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to construct drand grpc")
-		}
-		dGRPC, err := beacon.DefaultDrandIfaceFromConfig(genBlk.Timestamp)
-		if err != nil {
-			return nil, err
-		}
-		b.drand = dGRPC
 	}
 
 	if b.chainClock == nil {
@@ -249,50 +229,49 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	nd.ChainClock = b.chainClock
 
-	nd.Discovery, err = submodule.NewDiscoverySubmodule(ctx, (*builder)(b), b.repo.Config().Bootstrap, &nd.network, nd.chain.ChainReader, nd.chain.MessageStore)
+	//todo chainge builder interface to read config
+	nd.discovery, err = discovery.NewDiscoverySubmodule(ctx, (*builder)(b), b.repo.Config().Bootstrap, nd.network, nd.chain.ChainReader, nd.chain.MessageStore)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.Discovery")
+		return nil, errors.Wrap(err, "failed to build node.discovery")
 	}
 
-	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.ProofVerification.ProofVerifier, nd.chain.CheckPoint)
+	nd.syncer, err = syncer.NewSyncerSubmodule(ctx, (*builder)(b), nd.Blockstore, nd.network, nd.discovery, nd.chain, nd.ProofVerification.ProofVerifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}
 
-	nd.Wallet, err = submodule.NewWalletSubmodule(ctx, b.repo, &nd.chain)
+	nd.Wallet, err = wallet.NewWalletSubmodule(ctx, nd.ConfigModule, b.repo, nd.chain)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Wallet")
 	}
 
-	nd.Messaging, err = submodule.NewMessagingSubmodule(ctx, (*builder)(b), b.repo, &nd.network, &nd.chain, &nd.Wallet, &nd.syncer)
+	nd.Messaging, err = messaging.NewMessagingSubmodule(ctx, (*builder)(b), b.repo, nd.network, nd.chain, nd.Blockstore, nd.Wallet, nd.syncer)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Messaging")
 	}
 
-	nd.StorageNetworking, err = submodule.NewStorgeNetworkingSubmodule(ctx, &nd.network)
+	nd.StorageNetworking, err = storagenetworking.NewStorgeNetworkingSubmodule(ctx, nd.network)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.StorageNetworking")
 	}
-
-	waiter := msg.NewWaiter(nd.chain.ChainReader, nd.chain.MessageStore, nd.Blockstore.Blockstore, nd.Blockstore.CborStore)
-
-	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
-		Chain:        nd.chain.State,
-		Fork:         nd.chain.Fork,
-		Sync:         cst.NewChainSyncProvider(nd.syncer.ChainSyncManager),
-		Config:       cfg.NewConfig(b.repo),
-		DAG:          dag.NewDAG(merkledag.NewDAGService(nd.Blockservice.Blockservice)),
-		Expected:     nd.syncer.Consensus,
-		MsgPool:      nd.Messaging.MsgPool,
-		MsgPreviewer: msg.NewPreviewer(nd.chain.ChainReader, nd.Blockstore.CborStore, nd.Blockstore.Blockstore, nd.chain.Processor),
-		MsgWaiter:    waiter,
-		Network:      nd.network.Network,
-		Outbox:       nd.Messaging.Outbox,
-		Wallet:       nd.Wallet.Wallet,
-	}))
-
-	nd.DrandAPI = drandapi.New(b.drand, nd.PorcelainAPI)
-
+	apiBuilder := util.NewBuiler()
+	apiBuilder.NameSpace("Filecoin")
+	err = apiBuilder.AddServices(nd.ConfigModule,
+		nd.Blockstore,
+		nd.network,
+		nd.Blockservice,
+		nd.discovery,
+		nd.chain,
+		nd.syncer,
+		nd.Wallet,
+		nd.Messaging,
+		nd.StorageNetworking,
+		nd.ProofVerification,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "add service failed ")
+	}
+	nd.jsonRPCService = apiBuilder.Build()
 	return nd, nil
 }
 
@@ -335,8 +314,4 @@ func (b builder) Libp2pOpts() []libp2p.Option {
 
 func (b builder) OfflineMode() bool {
 	return b.offlineMode
-}
-
-func (b builder) Drand() beacon.Schedule {
-	return b.drand
 }

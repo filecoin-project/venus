@@ -33,14 +33,14 @@ type Block struct {
 	Ticket Ticket `json:"ticket"`
 
 	// ElectionProof is the vrf proof giving this block's miner authoring rights
-	ElectionProof *crypto.ElectionProof
+	ElectionProof *crypto.ElectionProof `json:"electionProof"`
 
 	// BeaconEntries contain the verifiable oracle randomness used to elect
 	// this block's author leader
-	BeaconEntries []*BeaconEntry
+	BeaconEntries []*BeaconEntry `json:"beaconEntries"`
 
 	// WinPoStProof are the winning post proofs
-	WinPoStProof []PoStProof `json:"WinPoStProof"`
+	WinPoStProof []PoStProof `json:"winPoStProof"`
 
 	// Parents is the set of parents this block was based on. Typically one,
 	// but can be several in the case where there were multiple winning ticket-
@@ -53,19 +53,19 @@ type Block struct {
 	// Height is the chain height of this block.
 	Height abi.ChainEpoch `json:"height"`
 
-	// StateRoot is the CID of the root of the state tree after application of the messages in the parent tipset
+	// ParentStateRoot is the CID of the root of the state tree after application of the messages in the parent tipset
 	// to the parent tipset's state root.
-	StateRoot enccid.Cid `json:"stateRoot,omitempty"`
+	ParentStateRoot enccid.Cid `json:"parentStateRoot,omitempty"`
 
-	// MessageReceipts is a list of receipts corresponding to the application of the messages in the parent tipset
-	// to the parent tipset's state root (corresponding to this block's StateRoot).
-	MessageReceipts enccid.Cid `json:"messageReceipts,omitempty"`
+	// ParentMessageReceipts is a list of receipts corresponding to the application of the messages in the parent tipset
+	// to the parent tipset's state root (corresponding to this block's ParentStateRoot).
+	ParentMessageReceipts enccid.Cid `json:"parentMessageReceipts,omitempty"`
 
 	// Messages is the set of messages included in this block
 	Messages enccid.Cid `json:"messages,omitempty"`
 
 	// The aggregate signature of all BLS signed messages in the block
-	BLSAggregateSig *crypto.Signature `json:"blsAggregateSig"`
+	BLSAggregate *crypto.Signature `json:"BLSAggregate"`
 
 	// The timestamp, in seconds since the Unix epoch, at which this block was created.
 	Timestamp uint64 `json:"timestamp"`
@@ -74,9 +74,9 @@ type Block struct {
 	BlockSig *crypto.Signature `json:"blocksig"`
 
 	// ForkSignaling is extra data used by miners to communicate
-	ForkSignaling uint64
+	ForkSignaling uint64 `json:"forkSignaling"`
 
-	ParentBaseFee abi.TokenAmount
+	ParentBaseFee abi.TokenAmount `json:"parentBaseFee"`
 
 	cachedCid cid.Cid
 
@@ -163,21 +163,21 @@ func (b *Block) Equals(other *Block) bool {
 // signature creation and verification
 func (b *Block) SignatureData() []byte {
 	tmp := &Block{
-		Miner:           b.Miner,
-		Ticket:          b.Ticket,
-		ElectionProof:   b.ElectionProof,
-		Parents:         b.Parents,
-		ParentWeight:    b.ParentWeight,
-		Height:          b.Height,
-		Messages:        b.Messages,
-		StateRoot:       b.StateRoot,
-		MessageReceipts: b.MessageReceipts,
-		WinPoStProof:    b.WinPoStProof,
-		BeaconEntries:   b.BeaconEntries,
-		Timestamp:       b.Timestamp,
-		BLSAggregateSig: b.BLSAggregateSig,
-		ForkSignaling:   b.ForkSignaling,
-		ParentBaseFee:   b.ParentBaseFee,
+		Miner:                 b.Miner,
+		Ticket:                b.Ticket,
+		ElectionProof:         b.ElectionProof,
+		Parents:               b.Parents,
+		ParentWeight:          b.ParentWeight,
+		Height:                b.Height,
+		Messages:              b.Messages,
+		ParentStateRoot:       b.ParentStateRoot,
+		ParentMessageReceipts: b.ParentMessageReceipts,
+		WinPoStProof:          b.WinPoStProof,
+		BeaconEntries:         b.BeaconEntries,
+		Timestamp:             b.Timestamp,
+		BLSAggregate:          b.BLSAggregate,
+		ForkSignaling:         b.ForkSignaling,
+		ParentBaseFee:         b.ParentBaseFee,
 		// BlockSig omitted
 	}
 

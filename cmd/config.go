@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/filecoin-project/venus/app/node"
 	"strings"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -73,7 +74,7 @@ $ venus config bootstrap
 		cmds.StringArg("value", false, false, "Optionally, a value with which to set the config entry"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		api := GetPorcelainAPI(env)
+		api := env.(*node.Env).ConfigAPI
 		key := req.Arguments[0]
 		var value string
 

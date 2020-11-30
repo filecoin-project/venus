@@ -2,12 +2,12 @@ package chain_test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/util/test"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
-	ds "github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -36,19 +36,11 @@ func (cbor *CborBlockStore) PutBlocks(ctx context.Context, block []*block.Block)
 // genesis -> (link1blk1, link1blk2) -> (link2blk1, link2blk2, link2blk3) -> link3blk1 -> (null block) -> (null block) -> (link4blk1, link4blk2)
 
 // newChainStore creates a new chain store for tests.
-/*func newChainStore(r repo.Repo, genCid cid.Cid) *CborBlockStore {
-	dsstore := ds.NewMapDatastore()
-	tempBlock := bstore.NewBlockstore(dsstore)
-	cborStore := cbor.NewCborStore(tempBlock)
-	//return chain.NewStore(r.Datastore(), cborStore, tempBlock, chain.NewStatusReporter(), block.UndefTipSet.Key(), genCid)
-}*/
-func newChainStore(r repo.Repo, genCid cid.Cid) *CborBlockStore {
-	dsstore := ds.NewMapDatastore()
-	tempBlock := bstore.NewBlockstore(dsstore)
+func newChainStore(r repo.Repo, genTs *block.TipSet) *CborBlockStore {
+	tempBlock := bstore.NewBlockstore(r.Datastore())
 	cborStore := cborutil.NewIpldStore(tempBlock)
-
 	return &CborBlockStore{
-		Store:     chain.NewStore(r.Datastore(), cborStore, tempBlock, chain.NewStatusReporter(), genCid),
+		Store:     chain.NewStore(r.Datastore(), cborStore, tempBlock, chain.NewStatusReporter(), genTs.At(0).Cid()),
 		cborStore: cborStore,
 	}
 }
@@ -60,7 +52,7 @@ func requirePutTestChain(ctx context.Context, t *testing.T, cborStore *CborBlock
 	for _, ts := range tss {
 		tsas := &chain.TipSetMetadata{
 			TipSet:          ts,
-			TipSetStateRoot: ts.At(0).StateRoot.Cid,
+			TipSetStateRoot: ts.At(0).ParentStateRoot.Cid,
 			TipSetReceipts:  types.EmptyReceiptsCID,
 		}
 		requirePutBlocksToCborStore(t, cborStore.cborStore, tsas.TipSet.Blocks()...)
@@ -96,11 +88,11 @@ func TestPutTipSet(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genTS := builder.Genesis()
 	r := repo.NewInMemoryRepo()
-	cs := newChainStore(r, genTS.At(0).Cid())
+	cs := newChainStore(r, genTS)
 
 	genTsas := &chain.TipSetMetadata{
 		TipSet:          genTS,
-		TipSetStateRoot: genTS.At(0).StateRoot.Cid,
+		TipSetStateRoot: genTS.At(0).ParentStateRoot.Cid,
 		TipSetReceipts:  types.EmptyReceiptsCID,
 	}
 	err := cs.PutTipSetMetadata(ctx, genTsas)
@@ -115,7 +107,7 @@ func TestGetByKey(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genTS := builder.Genesis()
 	r := repo.NewInMemoryRepo()
-	cs := newChainStore(r, genTS.At(0).Cid())
+	cs := newChainStore(r, genTS)
 
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
@@ -147,11 +139,11 @@ func TestGetByKey(t *testing.T) {
 	assert.ObjectsAreEqualValues(link3, got3TS)
 	assert.ObjectsAreEqualValues(link4, got4TS)
 
-	assert.Equal(t, genTS.At(0).StateRoot.Cid, gotGTSSR)
-	assert.Equal(t, link1.At(0).StateRoot.Cid, got1TSSR)
-	assert.Equal(t, link2.At(0).StateRoot.Cid, got2TSSR)
-	assert.Equal(t, link3.At(0).StateRoot.Cid, got3TSSR)
-	assert.Equal(t, link4.At(0).StateRoot.Cid, got4TSSR)
+	assert.Equal(t, genTS.At(0).ParentStateRoot.Cid, gotGTSSR)
+	assert.Equal(t, link1.At(0).ParentStateRoot.Cid, got1TSSR)
+	assert.Equal(t, link2.At(0).ParentStateRoot.Cid, got2TSSR)
+	assert.Equal(t, link3.At(0).ParentStateRoot.Cid, got3TSSR)
+	assert.Equal(t, link4.At(0).ParentStateRoot.Cid, got4TSSR)
 }
 
 // Tipsets can be retrieved by parent key (all block cids of parents).
@@ -162,7 +154,7 @@ func TestGetByParent(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genTS := builder.Genesis()
 	r := repo.NewInMemoryRepo()
-	cs := newChainStore(r, genTS.At(0).Cid())
+	cs := newChainStore(r, genTS)
 
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
@@ -185,11 +177,11 @@ func TestGetByParent(t *testing.T) {
 	assert.ObjectsAreEqualValues(link3, got3[0].TipSet)
 	assert.ObjectsAreEqualValues(link4, got4[0].TipSet)
 
-	assert.Equal(t, genTS.At(0).StateRoot.Cid, gotG[0].TipSetStateRoot)
-	assert.Equal(t, link1.At(0).StateRoot.Cid, got1[0].TipSetStateRoot)
-	assert.Equal(t, link2.At(0).StateRoot.Cid, got2[0].TipSetStateRoot)
-	assert.Equal(t, link3.At(0).StateRoot.Cid, got3[0].TipSetStateRoot)
-	assert.Equal(t, link4.At(0).StateRoot.Cid, got4[0].TipSetStateRoot)
+	assert.Equal(t, genTS.At(0).ParentStateRoot.Cid, gotG[0].TipSetStateRoot)
+	assert.Equal(t, link1.At(0).ParentStateRoot.Cid, got1[0].TipSetStateRoot)
+	assert.Equal(t, link2.At(0).ParentStateRoot.Cid, got2[0].TipSetStateRoot)
+	assert.Equal(t, link3.At(0).ParentStateRoot.Cid, got3[0].TipSetStateRoot)
+	assert.Equal(t, link4.At(0).ParentStateRoot.Cid, got4[0].TipSetStateRoot)
 }
 
 func TestGetMultipleByParent(t *testing.T) {
@@ -199,7 +191,7 @@ func TestGetMultipleByParent(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genTS := builder.Genesis()
 	r := repo.NewInMemoryRepo()
-	cs := newChainStore(r, genTS.At(0).Cid())
+	cs := newChainStore(r, genTS)
 
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
@@ -225,7 +217,7 @@ func TestGetMultipleByParent(t *testing.T) {
 		if tsas.TipSet.Len() == 1 {
 			assert.ObjectsAreEqualValues(otherRoot1, tsas.TipSetStateRoot)
 		} else {
-			assert.ObjectsAreEqualValues(link1.At(0).StateRoot, tsas.TipSetStateRoot)
+			assert.ObjectsAreEqualValues(link1.At(0).ParentStateRoot, tsas.TipSetStateRoot)
 		}
 	}
 }
@@ -239,7 +231,7 @@ func TestSetGenesis(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genTS := builder.Genesis()
 	r := repo.NewInMemoryRepo()
-	cs := newChainStore(r, genTS.At(0).Cid())
+	cs := newChainStore(r, genTS)
 
 	require.Equal(t, genTS.At(0).Cid(), cs.GenesisCid())
 }
@@ -256,10 +248,10 @@ func TestHead(t *testing.T) {
 
 	builder := chain.NewBuilder(t, address.Undef)
 	genTS := builder.Genesis()
-	r := repo.NewInMemoryRepo()
+	r := builder.Repo()
 	sr := chain.NewStatusReporter()
-	bs := bstore.NewBlockstore(r.Datastore())
-	cborStore := cbor.NewCborStore(bs)
+	bs := builder.BlockStore()
+	cborStore := builder.Cstore()
 	cs := chain.NewStore(r.Datastore(), cborStore, bs, sr, genTS.At(0).Cid())
 	cboreStore := &CborBlockStore{
 		Store: chain.NewStore(r.Datastore(), cborStore, bs, sr, genTS.At(0).Cid()),
@@ -289,7 +281,7 @@ func TestHead(t *testing.T) {
 	assert.Equal(t, link1.Key(), sr.Status().ValidatedHead)
 }
 
-func assertEmptyCh(t *testing.T, ch <-chan interface{}) {
+func assertEmptyCh(t *testing.T, ch <-chan []*chain.HeadChange) {
 	select {
 	case <-ch:
 		assert.True(t, false)
@@ -301,21 +293,21 @@ func assertEmptyCh(t *testing.T, ch <-chan interface{}) {
 func TestHeadEvents(t *testing.T) {
 	tf.UnitTest(t)
 
+	ctx := context.Background()
 	builder := chain.NewBuilder(t, address.Undef)
 	genTS := builder.Genesis()
-	r := repo.NewInMemoryRepo()
-	chainStore := newChainStore(r, genTS.At(0).Cid())
-
+	chainStore := newChainStore(builder.Repo(), genTS)
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
 	link2 := builder.AppendOn(link1, 3)
 	link3 := builder.AppendOn(link2, 1)
 	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
-	ps := chainStore.HeadEvents()
-	chA := ps.Sub(chain.NewHeadTopic)
-	chB := ps.Sub(chain.NewHeadTopic)
 
 	assertSetHead(t, chainStore, genTS)
+
+	chA := chainStore.SubHeadChanges(ctx)
+	chB := chainStore.SubHeadChanges(ctx)
+	defer ctx.Done()
 	assertSetHead(t, chainStore, link1)
 	assertSetHead(t, chainStore, link2)
 	assertSetHead(t, chainStore, link3)
@@ -324,16 +316,25 @@ func TestHeadEvents(t *testing.T) {
 	assertSetHead(t, chainStore, link2)
 	assertSetHead(t, chainStore, link1)
 	assertSetHead(t, chainStore, genTS)
-	heads := []*block.TipSet{genTS, link1, link2, link3, link4, link3, link2, link1, genTS}
-
+	heads := []*block.TipSet{genTS, link1, link2, link3, link4, link4, link3, link2, link1, genTS}
+	types := []string{"apply", "apply", "apply", "apply", "apply", "revert", "revert", "revert", "revert"}
 	// Heads arrive in the expected order
+	// HCurrent
+	currentA := <-chA
+	test.Equal(t, currentA[0].Type, chain.HCCurrent)
+	test.Equal(t, currentA[0].Val, genTS)
+
+	currentB := <-chB
+	test.Equal(t, currentB[0].Type, chain.HCCurrent)
+	test.Equal(t, currentB[0].Val, genTS)
+
 	for i := 0; i < 9; i++ {
 		headA := <-chA
 		headB := <-chB
-		assert.Equal(t, headA, headB)
-		assert.Equal(t, headA, heads[i])
+		assert.Equal(t, headA[0].Type, types[i])
+		test.Equal(t, headA, headB)
+		test.Equal(t, headA[0].Val, heads[i])
 	}
-
 	// No extra notifications
 	assertEmptyCh(t, chA)
 	assertEmptyCh(t, chB)

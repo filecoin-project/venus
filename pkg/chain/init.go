@@ -31,8 +31,8 @@ func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst cbor.IpldS
 	// Persist the genesis tipset to the repo.
 	genTsas := &TipSetMetadata{
 		TipSet:          genTipSet,
-		TipSetStateRoot: genesis.StateRoot.Cid,
-		TipSetReceipts:  genesis.MessageReceipts.Cid,
+		TipSetStateRoot: genesis.ParentStateRoot.Cid,
+		TipSetReceipts:  genesis.ParentMessageReceipts.Cid,
 	}
 	if err = chainStore.PutTipSetMetadata(ctx, genTsas); err != nil {
 		return nil, errors.Wrap(err, "failed to put genesis block in chain store")

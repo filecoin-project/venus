@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/app/node"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/venus/pkg/message"
@@ -28,7 +29,7 @@ var outboxLsCmd = &cmds.Command{
 		Tagline: "List the queue(s) of sent but un-mined messages",
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("address", false, false, "Address of the queue to list (otherwise lists all)"),
+		cmds.StringArg("address", false, false, "RustFulAddress of the queue to list (otherwise lists all)"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addresses, err := queueAddressesFromArg(req, env, 0)
@@ -37,7 +38,7 @@ var outboxLsCmd = &cmds.Command{
 		}
 
 		for _, addr := range addresses {
-			msgs := GetPorcelainAPI(env).OutboxQueueLs(addr)
+			msgs := env.(*node.Env).MessagingAPI.OutboxQueueLs(addr)
 			err := re.Emit(OutboxLsResult{addr, msgs})
 			if err != nil {
 				return err
@@ -53,7 +54,7 @@ var outboxClearCmd = &cmds.Command{
 		Tagline: "Clear the queue(s) of sent messages",
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("address", false, false, "Address of the queue to clear (otherwise clears all)"),
+		cmds.StringArg("address", false, false, "RustFulAddress of the queue to clear (otherwise clears all)"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addresses, err := queueAddressesFromArg(req, env, 0)
@@ -62,7 +63,10 @@ var outboxClearCmd = &cmds.Command{
 		}
 
 		for _, addr := range addresses {
-			GetPorcelainAPI(env).OutboxQueueClear(req.Context, addr)
+			err = env.(*node.Env).MessagingAPI.OutboxQueueClear(req.Context, addr)
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	},
@@ -78,7 +82,7 @@ func queueAddressesFromArg(req *cmds.Request, env cmds.Environment, argIndex int
 		}
 		addresses = []address.Address{addr}
 	} else {
-		addresses = GetPorcelainAPI(env).OutboxQueues()
+		addresses = env.(*node.Env).MessagingAPI.OutboxQueues()
 	}
 	return addresses, nil
 }

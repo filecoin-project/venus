@@ -114,23 +114,23 @@ func Export(ctx context.Context, headTS *block.TipSet, cr carChainReader, mr car
 				filter[meta.BLSRoot.Cid] = true
 			}
 
-			// TODO(#3473) we can remove MessageReceipts from the exported file once addressed.
-			rect, err := mr.LoadReceipts(ctx, hdr.MessageReceipts.Cid)
+			// TODO(#3473) we can remove ParentMessageReceipts from the exported file once addressed.
+			rect, err := mr.LoadReceipts(ctx, hdr.ParentMessageReceipts.Cid)
 			if err != nil {
 				return err
 			}
 
-			if !filter[hdr.MessageReceipts.Cid] {
+			if !filter[hdr.ParentMessageReceipts.Cid] {
 				logCar.Debugf("writing message-receipt collection: %s", hdr.Messages)
 				if err := exportAMTReceipts(ctx, out, rect); err != nil {
 					return err
 				}
-				filter[hdr.MessageReceipts.Cid] = true
+				filter[hdr.ParentMessageReceipts.Cid] = true
 			}
 
 			if hdr.Height == 0 {
-				logCar.Debugf("writing state tree: %s", hdr.StateRoot)
-				stateRoots, err := sr.ChainStateTree(ctx, hdr.StateRoot.Cid)
+				logCar.Debugf("writing state tree: %s", hdr.ParentStateRoot)
+				stateRoots, err := sr.ChainStateTree(ctx, hdr.ParentStateRoot.Cid)
 				if err != nil {
 					return err
 				}

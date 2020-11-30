@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/filecoin-project/venus/app/node"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
@@ -20,7 +21,7 @@ var bootstrapCmd = &cmds.Command{
 
 var bootstrapLsCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		peers, err := GetPorcelainAPI(env).ConfigGet("bootstrap.addresses")
+		peers, err := env.(*node.Env).ConfigAPI.ConfigGet("bootstrap.addresses")
 		if err != nil {
 			return err
 		}

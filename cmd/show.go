@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"github.com/filecoin-project/venus/app/node"
+	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/types"
 
@@ -39,7 +41,7 @@ all other block properties will be included as well.`,
 			return err
 		}
 
-		block, err := GetPorcelainAPI(env).ChainGetFullBlock(req.Context, cid)
+		block, err := env.(*node.Env).ChainAPI.GetFullBlock(req.Context, cid)
 		if err != nil {
 			return err
 		}
@@ -65,7 +67,7 @@ all other block properties will be included as well.`,
 			return err
 		}
 
-		block, err := GetPorcelainAPI(env).ChainGetBlock(req.Context, cid)
+		block, err := env.(*node.Env).ChainAPI.ChainGetBlock(req.Context, cid)
 		if err != nil {
 			return err
 		}
@@ -73,11 +75,6 @@ all other block properties will be included as well.`,
 		return re.Emit(block)
 	},
 	Type: block.Block{},
-}
-
-type allMessages struct {
-	BLS  []*types.UnsignedMessage
-	SECP []*types.SignedMessage
 }
 
 var showMessagesCmd = &cmds.Command{
@@ -96,21 +93,21 @@ the filecoin block header.`,
 			return err
 		}
 
-		bls, secp, err := GetPorcelainAPI(env).ChainGetMessages(req.Context, cid)
+		bmsg, err := env.(*node.Env).ChainAPI.ChainGetMessages(req.Context, cid)
 		if err != nil {
 			return err
 		}
 
-		return re.Emit(&allMessages{BLS: bls, SECP: secp})
+		return re.Emit(bmsg)
 	},
-	Type: &allMessages{},
+	Type: &chain.BlockMessage{},
 }
 
 var showReceiptsCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Show a filecoin receipt collection by its CID",
 		ShortDescription: `Prints info for all receipts in a collection,
-at the given CID.  MessageReceipt collection CIDs are found in the "MessageReceipts"
+at the given CID.  MessageReceipt collection CIDs are found in the "ParentMessageReceipts"
 field of the filecoin block header.`,
 	},
 	Arguments: []cmds.Argument{
@@ -122,7 +119,7 @@ field of the filecoin block header.`,
 			return err
 		}
 
-		receipts, err := GetPorcelainAPI(env).ChainGetReceipts(req.Context, cid)
+		receipts, err := env.(*node.Env).ChainAPI.ChainGetReceipts(req.Context, cid)
 		if err != nil {
 			return err
 		}

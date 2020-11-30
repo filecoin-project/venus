@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/filecoin-project/venus/app/node"
 	"github.com/ipfs/go-ipfs-cmds"
 	"github.com/libp2p/go-libp2p-core/metrics"
 )
@@ -19,7 +20,7 @@ var statsBandwidthCmd = &cmds.Command{
 		Tagline: "View bandwidth usage metrics",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		bandwidthStats := GetPorcelainAPI(env).NetworkGetBandwidthStats()
+		bandwidthStats := env.(*node.Env).NetworkAPI.NetworkGetBandwidthStats()
 
 		return re.Emit(bandwidthStats)
 	},

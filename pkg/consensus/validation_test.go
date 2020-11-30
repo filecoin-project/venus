@@ -210,6 +210,6 @@ func (api *FakeIngestionValidatorAPI) GetActorAt(ctx context.Context, key block.
 	}, nil
 }
 
-func (api *FakeIngestionValidatorAPI) AccountStateView(baseKey block.TipSetKey, height abi.ChainEpoch) (state.AccountStateView, error) {
+func (api *FakeIngestionValidatorAPI) AccountStateView(baseKey block.TipSetKey) (state.AccountStateView, error) {
 	return &state.FakeStateView{}, nil
 }

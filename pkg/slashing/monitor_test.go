@@ -100,8 +100,8 @@ func TestFault(t *testing.T) {
 	parentBlock := &block.Block{Height: 42}
 	parentTipSet := block.RequireNewTipSet(t, parentBlock)
 
-	block1 := &block.Block{Miner: minerAddr1, Height: 43, StateRoot: enccid.NewCid(types.CidFromString(t, "some-state"))}
-	block2 := &block.Block{Miner: minerAddr1, Height: 43, StateRoot: enccid.NewCid(types.CidFromString(t, "some-other-state"))}
+	block1 := &block.Block{Miner: minerAddr1, Height: 43, ParentStateRoot: enccid.NewCid(types.CidFromString(t, "some-state"))}
+	block2 := &block.Block{Miner: minerAddr1, Height: 43, ParentStateRoot: enccid.NewCid(types.CidFromString(t, "some-other-state"))}
 
 	faultCh := make(chan ConsensusFault, 1)
 	cfd := NewConsensusFaultDetector(faultCh)

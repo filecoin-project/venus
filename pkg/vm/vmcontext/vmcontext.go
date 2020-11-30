@@ -169,7 +169,7 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 }
 
 // ApplyTipSetMessages implements interpreter.VMInterpreter
-func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, parentEpoch, epoch abi.ChainEpoch, cb ExecCallBack) ([]types.MessageReceipt, error) {
+func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.TipSet, parentEpoch, epoch abi.ChainEpoch, cb ExecCallBack) ([]types.MessageReceipt, error) {
 	tStart := time.Now()
 	var receipts []types.MessageReceipt
 	pstate, _ := vm.state.Flush(vm.context)
@@ -212,9 +212,9 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 	seenMsgs := make(map[cid.Cid]struct{})
 
 	// process messages on each block
-	for index, blk := range blocks {
+	for index, blkInfo := range blocks {
 		tStart = time.Now()
-		if blk.Miner.Protocol() != address.ID {
+		if blkInfo.Block.Miner.Protocol() != address.ID {
 			panic("precond failure: block miner address must be an IDAddress")
 		}
 
@@ -224,68 +224,24 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 		minerGasRewardTotal := big.Zero()
 
 		// Process BLS messages From the block
-		for _, m := range blk.BLSMessages {
+		for _, m := range append(blkInfo.BlsMessages, blkInfo.SecpkMessages...) {
 			// do not recompute already seen messages
-			mcid := msgCID(m)
+			mcid := msgCID(m.VMMessage())
 			if _, found := seenMsgs[mcid]; found {
 				continue
 			}
 
 			// apply message
-			ret := vm.applyMessage(m, m.ChainLength())
+			ret := vm.applyMessage(m.VMMessage(), m.ChainLength())
 			// accumulate result
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, ret.OutPuts.MinerPenalty)
 			minerGasRewardTotal = big.Add(minerGasRewardTotal, ret.OutPuts.MinerTip)
 			receipts = append(receipts, ret.Receipt)
 			if cb != nil {
-				if err := cb(mcid, VmMessageFromUnsignedMessage(m), ret); err != nil {
+				if err := cb(mcid, VmMessageFromUnsignedMessage(m.VMMessage()), ret); err != nil {
 					return nil, err
 				}
 			}
-			// flag msg as seen
-			seenMsgs[mcid] = struct{}{}
-
-			if vm.vmDebug {
-				rootCid, _ := vm.flush()
-				vmdebug.Debugf("message: %s  root: %s", mcid, rootCid)
-				msgGasOutput, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
-				vmdebug.Debug(string(msgGasOutput))
-
-				valuedTraces := []*types.GasTrace{}
-				for _, trace := range ret.GasTracker.ExecutionTrace.GasCharges {
-					if trace.TotalGas > 0 {
-						valuedTraces = append(valuedTraces, trace)
-					}
-				}
-				tracesBytes, _ := json.MarshalIndent(valuedTraces, "", "\t")
-				vmdebug.Debug(string(tracesBytes))
-			}
-		}
-
-		// Process SECP messages From the block
-		for _, sm := range blk.SECPMessages {
-			// do not recompute already seen messages
-			mcid, _ := sm.Cid()
-			if _, found := seenMsgs[mcid]; found {
-				continue
-			}
-
-			vmlog.Debugf("start To process secp message ", mcid)
-			m := sm.Message
-			// apply message
-			// Note: the on-chain size for SECP messages is different
-			ret := vm.applyMessage(&m, sm.ChainLength())
-
-			// accumulate result
-			minerPenaltyTotal = big.Add(minerPenaltyTotal, ret.OutPuts.MinerPenalty)
-			minerGasRewardTotal = big.Add(minerGasRewardTotal, ret.OutPuts.MinerTip)
-			receipts = append(receipts, ret.Receipt)
-			if cb != nil {
-				if err := cb(mcid, VmMessageFromUnsignedMessage(&m), ret); err != nil {
-					return nil, err
-				}
-			}
-
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
 
@@ -313,7 +269,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, 
 
 		// Pay block reward.
 		// Dragons: missing final protocol design on if/how To determine the nominal power
-		rewardMessage := makeBlockRewardMessage(blk.Miner, minerPenaltyTotal, minerGasRewardTotal, blk.WinCount)
+		rewardMessage := makeBlockRewardMessage(blkInfo.Block.Miner, minerPenaltyTotal, minerGasRewardTotal, blkInfo.Block.ElectionProof.WinCount)
 		ret, err := vm.applyImplicitMessage(rewardMessage)
 		if err != nil {
 			return nil, err

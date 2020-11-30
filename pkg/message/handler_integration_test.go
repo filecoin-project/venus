@@ -49,7 +49,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		outbox := message.NewOutbox(signer, &message.FakeValidator{}, queue, publisher, policy,
 			provider, provider, objournal, gp)
 
-		return message.NewHeadHandler(inbox, outbox, provider, root)
+		return message.NewHeadHandler(inbox, outbox, provider)
 	}
 
 	t.Run("test send after reverted message", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		left := provider.BuildOneOn(root, func(b *chain.BlockBuilder) {
 			b.AddMessages([]*types.SignedMessage{msg1}, []*types.UnsignedMessage{})
 		})
-		require.NoError(t, handler.HandleNewHead(ctx, left))
+		require.NoError(t, handler.HandleNewHead(ctx, nil, []*block.TipSet{left}))
 		assert.Equal(t, 0, len(outbox.Queue().List(sender))) // Gone from queue.
 		_, found = inbox.Pool().Get(mid1)
 		assert.False(t, found) // Gone from pool.
@@ -87,7 +87,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		right := provider.BuildOneOn(root, func(b *chain.BlockBuilder) {
 			// No messages.
 		})
-		require.NoError(t, handler.HandleNewHead(ctx, right))
+		require.NoError(t, handler.HandleNewHead(ctx, []*block.TipSet{left}, []*block.TipSet{right}))
 		assert.Equal(t, 1, len(outbox.Queue().List(sender))) // Message returns to queue.
 		_, found = inbox.Pool().Get(mid1)
 		assert.True(t, found) // Message returns to pool to be mined again.
@@ -121,7 +121,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		provider.SetHead(root.Key())
 
 		handler := makeHandler(provider, root)
-		err := handler.HandleNewHead(ctx, block.UndefTipSet)
+		err := handler.HandleNewHead(ctx, nil, nil)
 		assert.NoError(t, err)
 	})
 
@@ -131,7 +131,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		provider.SetHead(root.Key())
 
 		handler := makeHandler(provider, root)
-		err := handler.HandleNewHead(ctx, root)
+		err := handler.HandleNewHead(ctx, nil, []*block.TipSet{root})
 		assert.NoError(t, err)
 	})
 }

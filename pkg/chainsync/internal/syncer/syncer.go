@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
@@ -118,6 +117,7 @@ type ChainReaderWriter interface {
 }
 
 type messageStore interface {
+	LoadTipSetMessage(ctx context.Context, ts *block.TipSet) ([]block.BlockMessagesInfo, error)
 	LoadMetaMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
 	LoadReceipts(context.Context, cid.Cid) ([]types.MessageReceipt, error)
 	StoreReceipts(context.Context, []types.MessageReceipt) (cid.Cid, error)
@@ -145,7 +145,7 @@ type BlockValidator interface {
 type FullBlockValidator interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts *block.TipSet, secpMessages [][]*types.SignedMessage, blsMessages [][]*types.UnsignedMessage, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error)
+	RunStateTransition(ctx context.Context, ts *block.TipSet, blockMessageInfo []block.BlockMessagesInfo, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error)
 	// Todo add by force
 	ValidateMining(ctx context.Context, parent, ts *block.TipSet, parentWeight big.Int, parentReceiptRoot cid.Cid) error
 }
@@ -329,63 +329,14 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 	}
 
 	//gather message
-	var secpMessages [][]*types.SignedMessage
-	var blsMessages [][]*types.UnsignedMessage
-
-	applied := make(map[address.Address]uint64)
-	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
-		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
-		if _, ok := applied[m.From]; !ok {
-			applied[m.From] = m.CallSeqNum
-		}
-
-		if applied[m.From] != m.CallSeqNum {
-			return false, nil
-		}
-
-		applied[m.From]++
-
-		return true, nil
+	blockMessageInfo, err := syncer.messageProvider.LoadTipSetMessage(ctx, next)
+	if err != nil {
+		return xerrors.Errorf("failed to gather message in tipset %w", err)
 	}
-
-	for i := 0; i < next.Len(); i++ {
-		blk := next.At(i)
-		secpMsgs, blsMsgs, err := syncer.messageProvider.LoadMetaMessages(ctx, blk.Messages.Cid)
-		if err != nil {
-			return errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", next.Key(), blk.Messages, blk.Cid())
-		}
-
-		var blksecpMessages []*types.SignedMessage
-		var blkblsMessages []*types.UnsignedMessage
-
-		for _, msg := range blsMsgs {
-			b, err := selectMsg(msg)
-			if err != nil {
-				return xerrors.Errorf("failed to decide whether to select message for block: %w", err)
-			}
-			if b {
-				blkblsMessages = append(blkblsMessages, msg)
-			}
-		}
-
-		for _, msg := range secpMsgs {
-			b, err := selectMsg(&msg.Message)
-			if err != nil {
-				return xerrors.Errorf("failed to decide whether to select message for block: %w", err)
-			}
-			if b {
-				blksecpMessages = append(blksecpMessages, msg)
-			}
-		}
-
-		blsMessages = append(blsMessages, blkblsMessages)
-		secpMessages = append(secpMessages, blksecpMessages)
-	}
-
 	// Run a state transition to validate the tipset and compute
 	// a new state to add to the bsstore.
 	toProcessTime := time.Now()
-	root, receipts, err := syncer.fullValidator.RunStateTransition(ctx, next, secpMessages, blsMessages, parentStateRoot)
+	root, receipts, err := syncer.fullValidator.RunStateTransition(ctx, next, blockMessageInfo, parentStateRoot)
 	if err != nil {
 		return xerrors.Errorf("calc current tipset %s state failed %w", next.Key().String(), err)
 	}
@@ -888,8 +839,8 @@ func (syncer *Syncer) processTipSetSeg(ctx context.Context, segTipset []*block.T
 				if err != nil {
 					return err
 				}
-				if !ts.Key().Equals(syncer.checkPoint) {
-					err = syncer.stageIfHeaviest(ctx, ts)
+				if !wts.Key().Equals(syncer.checkPoint) {
+					err = syncer.stageIfHeaviest(ctx, wts)
 					if err != nil {
 						return err
 					}

@@ -25,9 +25,6 @@ type Storage = storage.VMStorage
 type SyscallsImpl = vmcontext.SyscallsImpl
 type SyscallsStateView = vmcontext.SyscallsStateView
 
-// BlockMessagesInfo contains messages for one block in a tipset.
-type BlockMessagesInfo = vmcontext.BlockMessagesInfo
-
 type ExecCallBack = vmcontext.ExecCallBack
 type VmMessage = vmcontext.VmMessage //nolint
 type FakeSyscalls = vmcontext.FakeSyscalls

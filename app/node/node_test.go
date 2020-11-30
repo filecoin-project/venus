@@ -102,8 +102,8 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		require.NoError(t, err)
 		nd, err := node.New(ctx, opts...)
 		require.NoError(t, err)
-		nd.Discovery.Bootstrapper.MinPeerThreshold = 2
-		nd.Discovery.Bootstrapper.Period = 10 * time.Millisecond
+		nd.Discovery().Bootstrapper.MinPeerThreshold = 2
+		nd.Discovery().Bootstrapper.Period = 10 * time.Millisecond
 		assert.NoError(t, nd.Start(ctx))
 		defer nd.Stop(ctx)
 
@@ -138,7 +138,9 @@ func TestNodeInit(t *testing.T) {
 
 	assert.NoError(t, nd.Start(ctx))
 
-	assert.NotEqual(t, 0, nd.PorcelainAPI.ChainHeadKey().Len())
+	ts, err := nd.Chain().API().ChainHead()
+	require.NoError(t, err)
+	assert.NotEqual(t, 0, ts.Len())
 	nd.Stop(ctx)
 }
 

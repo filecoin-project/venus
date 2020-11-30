@@ -948,7 +948,7 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, stored)
 
-		stored, err = bs.Has(ts.At(0).MessageReceipts.Cid)
+		stored, err = bs.Has(ts.At(0).ParentMessageReceipts.Cid)
 		require.NoError(t, err)
 		assert.False(t, stored)
 	}

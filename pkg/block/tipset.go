@@ -2,6 +2,7 @@ package block
 
 import (
 	"bytes"
+	"encoding/json"
 	"sort"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -206,6 +207,39 @@ func (ts *TipSet) IsChildOf(parent *TipSet) bool {
 		//  "parent", but many parts of the code rely on the tipset's
 		//  height for their processing logic at the moment to obviate it.
 		ts.EnsureHeight() > parent.EnsureHeight()
+}
+
+//this types just for marshal
+type expTipSet struct {
+	// This slice is wrapped in a struct to enforce immutability.
+	Blocks []*Block
+	// Key is computed at construction and cached.
+	Key TipSetKey
+}
+
+func (ts *TipSet) MarshalJSON() ([]byte, error) {
+	// why didnt i just export the fields? Because the struct has methods with the
+	// same names already
+	return json.Marshal(expTipSet{
+		Blocks: ts.blocks,
+		Key:    ts.key,
+	})
+}
+
+func (ts *TipSet) UnmarshalJSON(b []byte) error {
+	var ets expTipSet
+	if err := json.Unmarshal(b, &ets); err != nil {
+		return err
+	}
+
+	ots, err := NewTipSet(ets.Blocks...)
+	if err != nil {
+		return err
+	}
+
+	*ts = *ots
+
+	return nil
 }
 
 func CidArrsEqual(a, b []cid.Cid) bool {

@@ -123,7 +123,7 @@ func TestFSRepoRoundtrip(t *testing.T) {
 	defer RequireRemoveAll(t, container)
 
 	cfg := config.NewDefaultConfig()
-	cfg.API.Address = "foo" // testing that what we get back isnt just the default
+	cfg.API.RustFulAddress = "foo" // testing that what we get back isnt just the default
 
 	repoPath := path.Join(container, "repo")
 	assert.NoError(t, err, InitFSRepo(repoPath, 42, cfg))
@@ -154,7 +154,7 @@ func TestFSRepoReplaceAndSnapshotConfig(t *testing.T) {
 	repoPath := path.Join(container, "repo")
 
 	cfg := config.NewDefaultConfig()
-	cfg.API.Address = "foo"
+	cfg.API.RustFulAddress = "foo"
 	assert.NoError(t, err, InitFSRepo(repoPath, 42, cfg))
 
 	expSnpsht, err := ioutil.ReadFile(filepath.Join(repoPath, configFilename))
@@ -164,15 +164,15 @@ func TestFSRepoReplaceAndSnapshotConfig(t *testing.T) {
 	assert.NoError(t, err)
 
 	newCfg := config.NewDefaultConfig()
-	newCfg.API.Address = "bar"
+	newCfg.API.RustFulAddress = "bar"
 
 	assert.NoError(t, r1.ReplaceConfig(newCfg))
-	assert.Equal(t, "bar", r1.Config().API.Address)
+	assert.Equal(t, "bar", r1.Config().API.RustFulAddress)
 	assert.NoError(t, r1.Close())
 
 	r2, err := OpenFSRepo(repoPath, 42)
 	assert.NoError(t, err)
-	assert.Equal(t, "bar", r2.Config().API.Address)
+	assert.Equal(t, "bar", r2.Config().API.RustFulAddress)
 	assert.NoError(t, r2.Close())
 
 	// assert that a single snapshot was created when replacing the config
@@ -236,32 +236,33 @@ func TestRepoAPIFile(t *testing.T) {
 
 	t.Run("APIAddr returns last value written to API file", func(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
-			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
+			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234", "/ip4/127.0.0.1/tcp/1111")
 
-			addr := mustGetAPIAddr(t, r)
-			assert.Equal(t, "/ip4/127.0.0.1/tcp/1234", addr)
+			rpcAPI := mustGetAPIAddr(t, r)
+			assert.Equal(t, "/ip4/127.0.0.1/tcp/1234", rpcAPI.RustfulAPI)
+			assert.Equal(t, "/ip4/127.0.0.1/tcp/1111", rpcAPI.JsonrpcAPI)
 
-			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/4567")
+			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/4567", "/ip4/127.0.0.1/tcp/4301")
 
-			addr = mustGetAPIAddr(t, r)
-			assert.Equal(t, "/ip4/127.0.0.1/tcp/4567", addr)
+			rpcAPI = mustGetAPIAddr(t, r)
+			assert.Equal(t, "/ip4/127.0.0.1/tcp/4567", rpcAPI.RustfulAPI)
+			assert.Equal(t, "/ip4/127.0.0.1/tcp/4301", rpcAPI.JsonrpcAPI)
 		})
 	})
 
 	t.Run("SetAPIAddr is idempotent", func(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
-			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
+			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234", "/ip4/127.0.0.1/tcp/1111")
 
-			addr := mustGetAPIAddr(t, r)
-			assert.Equal(t, "/ip4/127.0.0.1/tcp/1234", addr)
+			rpcAPI := mustGetAPIAddr(t, r)
+			assert.Equal(t, "/ip4/127.0.0.1/tcp/1234", rpcAPI.RustfulAPI)
+			assert.Equal(t, "/ip4/127.0.0.1/tcp/1111", rpcAPI.JsonrpcAPI)
 
-			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
-			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
-			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
-			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
+			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234", "/ip4/127.0.0.1/tcp/1111")
 
-			addr = mustGetAPIAddr(t, r)
-			assert.Equal(t, "/ip4/127.0.0.1/tcp/1234", addr)
+			rpcAPI = mustGetAPIAddr(t, r)
+			assert.Equal(t, "/ip4/127.0.0.1/tcp/1234", rpcAPI.RustfulAPI)
+			assert.Equal(t, "/ip4/127.0.0.1/tcp/1111", rpcAPI.JsonrpcAPI)
 		})
 	})
 
@@ -269,30 +270,31 @@ func TestRepoAPIFile(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
 			addr, err := r.APIAddr()
 			assert.Error(t, err)
-			assert.Equal(t, "", addr)
+			assert.Equal(t, "", addr.RustfulAPI)
+			assert.Equal(t, "", addr.JsonrpcAPI)
 		})
 	})
 
 	t.Run("Close deletes API file", func(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
-			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
+			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234", "/ip4/127.0.0.1/tcp/1111")
 
-			info, err := os.Stat(filepath.Join(r.path, apiFile))
+			info, err := os.Stat(filepath.Join(r.path, rustAPIFile))
 			assert.NoError(t, err)
-			assert.Equal(t, apiFile, info.Name())
+			assert.Equal(t, rustAPIFile, info.Name())
 
 			require.NoError(t, r.Close())
 
-			_, err = os.Stat(filepath.Join(r.path, apiFile))
+			_, err = os.Stat(filepath.Join(r.path, rustAPIFile))
 			assert.Error(t, err)
 		})
 	})
 
 	t.Run("Close will succeed in spite of missing API file", func(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
-			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
+			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234", "/ip4/127.0.0.1/tcp/1111")
 
-			err := os.Remove(filepath.Join(r.path, apiFile))
+			err := os.Remove(filepath.Join(r.path, rustAPIFile))
 			assert.NoError(t, err)
 
 			assert.NoError(t, r.Close())
@@ -302,11 +304,11 @@ func TestRepoAPIFile(t *testing.T) {
 	t.Run("SetAPI fails if unable to create API file", func(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
 			// create a file with permission bits that prevent us from truncating
-			err := ioutil.WriteFile(filepath.Join(r.path, apiFile), []byte("/ip4/127.0.0.1/tcp/9999"), 0000)
+			err := ioutil.WriteFile(filepath.Join(r.path, rustAPIFile), []byte("/ip4/127.0.0.1/tcp/9999"), 0000)
 			assert.NoError(t, err)
 
 			// try to os.Create to same path - will see a failure
-			err = r.SetAPIAddr("/ip4/127.0.0.1/tcp/1234")
+			err = r.SetRustfulAPIAddr("/ip4/127.0.0.1/tcp/1234")
 			assert.Error(t, err)
 		})
 	})
@@ -357,15 +359,16 @@ func withFSRepo(t *testing.T, f func(*FSRepo)) {
 	f(r)
 }
 
-func mustGetAPIAddr(t *testing.T, r *FSRepo) string {
-	addr, err := r.APIAddr()
+func mustGetAPIAddr(t *testing.T, r *FSRepo) RpcAPI {
+	rpcAddr, err := r.APIAddr()
 	require.NoError(t, err)
 
-	return addr
+	return rpcAddr
 }
 
-func mustSetAPIAddr(t *testing.T, r *FSRepo, addr string) {
-	require.NoError(t, r.SetAPIAddr(addr))
+func mustSetAPIAddr(t *testing.T, r *FSRepo, rustfulAddr, jsonrpcAddr string) {
+	require.NoError(t, r.SetRustfulAPIAddr(rustfulAddr))
+	require.NoError(t, r.SetJsonrpcAPIAddr(jsonrpcAddr))
 }
 
 func ConfigExists(dir string) bool {

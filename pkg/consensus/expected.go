@@ -64,7 +64,7 @@ const AllowableClockDriftSecs = uint64(1)
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
-	ProcessTipSet(context.Context, state.Tree, *vm.Storage, *block.TipSet, *block.TipSet, []vm.BlockMessagesInfo, vm.VmOption) ([]types.MessageReceipt, error)
+	ProcessTipSet(context.Context, state.Tree, *vm.Storage, *block.TipSet, *block.TipSet, []block.BlockMessagesInfo, vm.VmOption) ([]types.MessageReceipt, error)
 	ProcessUnsignedMessage(context.Context, *types.UnsignedMessage, state.Tree, *vm.Storage, vm.VmOption) (*vm.Ret, error)
 }
 
@@ -216,8 +216,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage) 
 // in the tipset results in an error.
 func (c *Expected) RunStateTransition(ctx context.Context,
 	ts *block.TipSet,
-	secpMessages [][]*types.SignedMessage,
-	blsMessages [][]*types.UnsignedMessage,
+	blockMessageInfo []block.BlockMessagesInfo,
 	parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
@@ -230,7 +229,7 @@ func (c *Expected) RunStateTransition(ctx context.Context,
 	}
 
 	var newState state.Tree
-	newState, receipts, err = c.runMessages(ctx, priorState, vms, ts, blsMessages, secpMessages)
+	newState, receipts, err = c.runMessages(ctx, priorState, vms, ts, blockMessageInfo)
 	if err != nil {
 		return cid.Undef, []types.MessageReceipt{}, err
 	}
@@ -317,12 +316,12 @@ func (c *Expected) validateBlock(ctx context.Context,
 	if err != nil {
 		return xerrors.Errorf("get parent tipset state failed %s", err)
 	}
-	if !parentStateRoot.Equals(blk.StateRoot.Cid) {
+	if !parentStateRoot.Equals(blk.ParentStateRoot.Cid) {
 		return ErrStateRootMismatch
 	}
 
 	// confirm block receipts match parent receipts
-	if !parentReceiptRoot.Equals(blk.MessageReceipts.Cid) {
+	if !parentReceiptRoot.Equals(blk.ParentMessageReceipts.Cid) {
 		return ErrReceiptRootMismatch
 	}
 	if !parentWeight.Equals(blk.ParentWeight) {
@@ -354,7 +353,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 	})
 
 	baseFeeCheck := async.Err(func() error {
-		baseFee, err := c.messageStore.ComputeBaseFee(ctx, parent)
+		baseFee, err := c.ComputeBaseFee(ctx, parent)
 		if err != nil {
 			return xerrors.Errorf("computing base fee: %v", err)
 		}
@@ -427,6 +426,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 			merr = multierror.Append(merr, err)
 		}
 	}
+
 	if merr != nil {
 		mulErr := merr.(*multierror.Error)
 		mulErr.ErrorFormat = func(es []error) string {
@@ -449,6 +449,55 @@ func (c *Expected) validateBlock(ctx context.Context,
 	return nil
 }
 
+func (c *Expected) ComputeBaseFee(ctx context.Context, ts *block.TipSet) (abi.TokenAmount, error) {
+	zero := abi.NewTokenAmount(0)
+	baseHeight, err := ts.Height()
+	if err != nil {
+		return zero, err
+	}
+
+	if baseHeight > fork.UpgradeBreezeHeight && baseHeight < fork.UpgradeBreezeHeight+fork.BreezeGasTampingDuration {
+		return abi.NewTokenAmount(100), nil
+	}
+
+	// totalLimit is sum of GasLimits of unique messages in a tipset
+	totalLimit := int64(0)
+
+	seen := make(map[cid.Cid]struct{})
+
+	for _, b := range ts.Blocks() {
+		secpMsgs, blsMsgs, err := c.messageStore.LoadMetaMessages(ctx, b.Messages.Cid)
+		if err != nil {
+			return zero, xerrors.Errorf("error getting messages for: %s: %w", b.Cid(), err)
+		}
+
+		for _, m := range blsMsgs {
+			c, err := m.Cid()
+			if err != nil {
+				return zero, xerrors.Errorf("error getting cid for message: %v: %w", m, err)
+			}
+			if _, ok := seen[c]; !ok {
+				totalLimit += int64(m.GasLimit)
+				seen[c] = struct{}{}
+			}
+		}
+		for _, m := range secpMsgs {
+			c, err := m.Cid()
+			if err != nil {
+				return zero, xerrors.Errorf("error getting cid for signed message: %v: %w", m, err)
+			}
+			if _, ok := seen[c]; !ok {
+				totalLimit += int64(m.Message.GasLimit)
+				seen[c] = struct{}{}
+			}
+		}
+	}
+
+	parentBaseFee := ts.Blocks()[0].ParentBaseFee
+
+	return ComputeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks()), baseHeight), nil
+}
+
 var ErrTemporal = errors.New("temporal error")
 
 func blockSanityChecks(b *block.Block) error {
@@ -460,7 +509,7 @@ func blockSanityChecks(b *block.Block) error {
 		return xerrors.Errorf("block had nil signature")
 	}
 
-	if b.BLSAggregateSig == nil {
+	if b.BLSAggregate == nil {
 		return xerrors.Errorf("block had nil bls aggregate signature")
 	}
 
@@ -475,7 +524,7 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 	}
 	{
 		// Verify that the BLS signature aggregate is correct
-		if err := sigValidator.ValidateBLSMessageAggregate(ctx, blkblsMsgs, blk.BLSAggregateSig); err != nil {
+		if err := sigValidator.ValidateBLSMessageAggregate(ctx, blkblsMsgs, blk.BLSAggregate); err != nil {
 			return errors.Wrapf(err, "bls message verification failed for block %s", blk.Cid())
 		}
 
@@ -690,7 +739,7 @@ func (c *Expected) minerIsValid(ctx context.Context, maddr address.Address, base
 
 func (c *Expected) minerHasMinPower(ctx context.Context, addr address.Address, ts *block.TipSet) (bool, error) {
 	vms := vm.NewStorage(c.bstore)
-	sm, err := state.LoadState(ctx, vms, ts.Blocks()[0].StateRoot.Cid)
+	sm, err := state.LoadState(ctx, vms, ts.Blocks()[0].ParentStateRoot.Cid)
 	if err != nil {
 		return false, xerrors.Errorf("loading state: %v", err)
 	}
@@ -828,7 +877,7 @@ func (c *Expected) GetLookbackTipSetForRound(ctx context.Context, ts *block.TipS
 		return nil, cid.Undef, xerrors.Errorf("failed to resolve lookback tipset: %v", err)
 	}
 
-	return lbts, nextTs.Blocks()[0].StateRoot.Cid, nil
+	return lbts, nextTs.Blocks()[0].ParentStateRoot.Cid, nil
 }
 
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
@@ -954,29 +1003,7 @@ func (c *Expected) beaconBaseEntry(ctx context.Context, blk *block.Block) (*bloc
 // for the entire tipset. The output state must be flushed after calling to
 // guarantee that the state transitions propagate.
 // Messages that fail to apply are dropped on the floor (and no receipt is emitted).
-func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms *vm.Storage, ts *block.TipSet,
-	blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (state.Tree, []types.MessageReceipt, error) {
-	msgs := []vm.BlockMessagesInfo{}
-
-	// build message information per block
-	for i := 0; i < ts.Len(); i++ {
-		blk := ts.At(i)
-
-		messageCount := len(blsMessages[i]) + len(secpMessages[i])
-		if messageCount > block.BlockMessageLimit {
-			return nil, nil, errors.Errorf("Number of messages in block %s is %d which exceeds block message limit", blk.Cid(), messageCount)
-		}
-
-		msgInfo := vm.BlockMessagesInfo{
-			BLSMessages:  blsMessages[i],
-			SECPMessages: secpMessages[i],
-			Miner:        blk.Miner,
-			WinCount:     blk.ElectionProof.WinCount,
-		}
-
-		msgs = append(msgs, msgInfo)
-	}
-
+func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms *vm.Storage, ts *block.TipSet, blockMessageInfo []block.BlockMessagesInfo) (state.Tree, []types.MessageReceipt, error) {
 	// process tipset
 	var pts *block.TipSet
 	if ts.EnsureHeight() > 0 {
@@ -1011,7 +1038,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms *vm.Stora
 		Fork:              c.fork,
 		Epoch:             ts.At(0).Height,
 	}
-	receipts, err := c.processor.ProcessTipSet(ctx, st, vms, pts, ts, msgs, vmOption)
+	receipts, err := c.processor.ProcessTipSet(ctx, st, vms, pts, ts, blockMessageInfo, vmOption)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error validating tipset")
 	}
@@ -1051,4 +1078,38 @@ func (h *headRandomness) Randomness(ctx context.Context, tag acrypto.DomainSepar
 
 func (h *headRandomness) GetRandomnessFromBeacon(ctx context.Context, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	return h.chain.ChainGetRandomnessFromBeacon(ctx, h.head, tag, epoch, entropy)
+}
+
+func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch) abi.TokenAmount {
+	// deta := gasLimitUsed/noOfBlocks - constants.BlockGasTarget
+	// change := baseFee * deta / BlockGasTarget
+	// nextBaseFee = baseFee + change
+	// nextBaseFee = max(nextBaseFee, constants.MinimumBaseFee)
+
+	var delta int64
+	if epoch > fork.UpgradeSmokeHeight {
+		delta = gasLimitUsed / int64(noOfBlocks)
+		delta -= constants.BlockGasTarget
+	} else {
+		delta = constants.PackingEfficiencyDenom * gasLimitUsed / (int64(noOfBlocks) * constants.PackingEfficiencyNum)
+		delta -= constants.BlockGasTarget
+	}
+
+	// cap change at 12.5% (BaseFeeMaxChangeDenom) by capping delta
+	if delta > constants.BlockGasTarget {
+		delta = constants.BlockGasTarget
+	}
+	if delta < -constants.BlockGasTarget {
+		delta = -constants.BlockGasTarget
+	}
+
+	change := big.Mul(baseFee, big.NewInt(delta))
+	change = big.Div(change, big.NewInt(constants.BlockGasTarget))
+	change = big.Div(change, big.NewInt(constants.BaseFeeMaxChangeDenom))
+
+	nextBaseFee := big.Add(baseFee, change)
+	if big.Cmp(nextBaseFee, big.NewInt(constants.MinimumBaseFee)) < 0 {
+		nextBaseFee = big.NewInt(constants.MinimumBaseFee)
+	}
+	return nextBaseFee
 }

@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"fmt"
+	"github.com/filecoin-project/venus/app/node"
 
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -31,7 +31,7 @@ var mpoolLsCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		messageCount, _ := req.Options["wait-for-count"].(uint)
 
-		pending, err := GetPorcelainAPI(env).MessagePoolWait(req.Context, messageCount)
+		pending, err := env.(*node.Env).MessagingAPI.MessagePoolWait(req.Context, messageCount)
 		if err != nil {
 			return err
 		}
@@ -54,9 +54,9 @@ var mpoolShowCmd = &cmds.Command{
 			return errors.Wrap(err, "invalid message cid")
 		}
 
-		msg, ok := GetPorcelainAPI(env).MessagePoolGet(msgCid)
-		if !ok {
-			return fmt.Errorf("message %s not found in pool (already mined?)", msgCid)
+		msg, err := env.(*node.Env).MessagingAPI.MessagePoolGet(msgCid)
+		if err != nil {
+			return err
 		}
 		return re.Emit(msg)
 	},
@@ -76,7 +76,7 @@ var mpoolRemoveCmd = &cmds.Command{
 			return errors.Wrap(err, "invalid message cid")
 		}
 
-		GetPorcelainAPI(env).MessagePoolRemove(msgCid)
+		env.(*node.Env).MessagingAPI.MessagePoolRemove(msgCid)
 
 		return nil
 	},

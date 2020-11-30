@@ -60,20 +60,20 @@ type HelloProtocolHandler struct {
 	genesis cid.Cid
 
 	// peerDiscovered is called when new peers tell us about their chain
-	peerDiscovered peerDiscoveredCallback
+	peerDiscovered PeerDiscoveredCallback
 
 	//  is used to retrieve the current heaviest tipset
 	// for filling out our hello messages.
-	getHeaviestTipSet getTipSetFunc
+	getHeaviestTipSet GetTipSetFunc
 
 	networkName string
 
 	peerMgr fnet.IPeerMgr
 }
 
-type peerDiscoveredCallback func(ci *block.ChainInfo)
+type PeerDiscoveredCallback func(ci *block.ChainInfo)
 
-type getTipSetFunc func() (*block.TipSet, error)
+type GetTipSetFunc func() (*block.TipSet, error)
 
 // NewHelloProtocolHandler creates a new instance of the hello protocol `Handler` and registers it to
 // the given `host.Host`.
@@ -87,7 +87,7 @@ func NewHelloProtocolHandler(h host.Host, peerMgr fnet.IPeerMgr, gen cid.Cid, ne
 }
 
 // Register registers the handler with the network.
-func (h *HelloProtocolHandler) Register(peerDiscoveredCallback peerDiscoveredCallback, getHeaviestTipSet getTipSetFunc) {
+func (h *HelloProtocolHandler) Register(peerDiscoveredCallback PeerDiscoveredCallback, getHeaviestTipSet GetTipSetFunc) {
 	// register callbacks
 	h.peerDiscovered = peerDiscoveredCallback
 	h.getHeaviestTipSet = getHeaviestTipSet

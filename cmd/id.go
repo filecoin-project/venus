@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/app/node"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -28,8 +29,8 @@ var idCmd = &cmds.Command{
 		cmds.StringOption("format", "f", "Specify an output format"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		addrs := GetPorcelainAPI(env).NetworkGetPeerAddresses()
-		hostID := GetPorcelainAPI(env).NetworkGetPeerID()
+		addrs := env.(*node.Env).NetworkAPI.NetworkGetPeerAddresses()
+		hostID := env.(*node.Env).NetworkAPI.NetworkGetPeerID()
 
 		details := IDDetails{
 			Addresses: make([]ma.Multiaddr, len(addrs)),

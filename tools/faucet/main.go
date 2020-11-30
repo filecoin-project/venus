@@ -132,7 +132,7 @@ const form = `
 		<h1> What is your wallet address </h1>
 		<p> You can find this by running: </p>
 		<tt> venus address ls </tt>
-		<p> Address: </p>
+		<p> RustFulAddress: </p>
 		<form action="/tap" method="post">
 			<input type="text" name="target" size="30" />
 			<input type="submit" value="Submit" size="30" />

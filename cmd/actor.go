@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"github.com/filecoin-project/venus/app/node"
 	"io"
 
 	"github.com/filecoin-project/go-address"
@@ -31,7 +32,7 @@ var actorCmd = &cmds.Command{
 
 var actorLsCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		results, err := GetPorcelainAPI(env).ActorLs(req.Context)
+		results, err := env.(*node.Env).ChainAPI.ListActor(req.Context)
 		if err != nil {
 			return err
 		}

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/filecoin-project/venus/app/node"
 	"io"
 	"strconv"
 
@@ -120,7 +121,7 @@ func fromAddrOrDefault(req *cmds.Request, env cmds.Environment) (address.Address
 		return address.Undef, err
 	}
 	if addr.Empty() {
-		return GetPorcelainAPI(env).WalletDefaultAddress()
+		return env.(*node.Env).WalletAPI.WalletDefaultAddress()
 	}
 	return addr, nil
 }

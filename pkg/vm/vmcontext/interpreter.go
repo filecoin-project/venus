@@ -12,7 +12,7 @@ type VMInterpreter interface {
 	// ApplyTipSetMessages applies all the messages in a tipset.
 	//
 	// Note: any message processing error will be present as an `ExitCode` in the `MessageReceipt`.
-	ApplyTipSetMessages(blocks []BlockMessagesInfo, ts *block.TipSet, parentEpoch abi.ChainEpoch, epoch abi.ChainEpoch, cb ExecCallBack) ([]types.MessageReceipt, error)
+	ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.TipSet, parentEpoch abi.ChainEpoch, epoch abi.ChainEpoch, cb ExecCallBack) ([]types.MessageReceipt, error)
 	ContextStore() adt.Store
 	ApplyMessage(msg types.ChainMsg) *Ret
 }

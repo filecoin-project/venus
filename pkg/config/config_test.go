@@ -21,7 +21,7 @@ func TestDefaults(t *testing.T) {
 	cfg := NewDefaultConfig()
 
 	bs := []string{}
-	assert.Equal(t, "/ip4/127.0.0.1/tcp/3453", cfg.API.Address)
+	assert.Equal(t, "/ip4/127.0.0.1/tcp/3453", cfg.API.RustFulAddress)
 	assert.Equal(t, "/ip4/0.0.0.0/tcp/6000", cfg.Swarm.Address)
 	assert.Equal(t, bs, cfg.Bootstrap.Addresses)
 }
@@ -78,7 +78,7 @@ func TestConfigReadFileDefaults(t *testing.T) {
 		cfgpath, cleaner, err := createConfigFile(`
 		{
 			"api": {
-				"address": "/ip4/127.0.0.1/tcp/9999",
+				"rustfulAddress": "/ip4/127.0.0.1/tcp/9999",
 				"keyThatDoesntExit": false
 			},
 			"swarm": {
@@ -92,7 +92,7 @@ func TestConfigReadFileDefaults(t *testing.T) {
 		cfg, err := ReadFile(cfgpath)
 		assert.NoError(t, err)
 
-		assert.Equal(t, cfg.API.Address, "/ip4/127.0.0.1/tcp/9999")
+		assert.Equal(t, cfg.API.RustFulAddress, "/ip4/127.0.0.1/tcp/9999")
 		assert.Equal(t, cfg.Swarm.Address, "/ip4/0.0.0.0/tcp/6000")
 	})
 
@@ -100,7 +100,7 @@ func TestConfigReadFileDefaults(t *testing.T) {
 		cfgpath, cleaner, err := createConfigFile(`
 		{
 			"api": {
-				"address": "/ip4/127.0.0.1/tcp/9999",
+				"rustfulAddress": "/ip4/127.0.0.1/tcp/9999",
 				"keyThatDoesntExit'": false
 			}
 		}`)
@@ -111,7 +111,7 @@ func TestConfigReadFileDefaults(t *testing.T) {
 		cfg, err := ReadFile(cfgpath)
 		assert.NoError(t, err)
 
-		assert.Equal(t, cfg.API.Address, "/ip4/127.0.0.1/tcp/9999")
+		assert.Equal(t, cfg.API.RustFulAddress, "/ip4/127.0.0.1/tcp/9999")
 		assert.Equal(t, cfg.Swarm.Address, "/ip4/0.0.0.0/tcp/6000")
 	})
 
@@ -124,7 +124,7 @@ func TestConfigReadFileDefaults(t *testing.T) {
 		cfg, err := ReadFile(cfgpath)
 		assert.NoError(t, err)
 
-		assert.Equal(t, cfg.API.Address, "/ip4/127.0.0.1/tcp/3453")
+		assert.Equal(t, cfg.API.RustFulAddress, "/ip4/127.0.0.1/tcp/3453")
 		assert.Equal(t, cfg.Swarm.Address, "/ip4/0.0.0.0/tcp/6000")
 	})
 }
@@ -135,9 +135,9 @@ func TestConfigGet(t *testing.T) {
 	t.Run("valid gets", func(t *testing.T) {
 		cfg := NewDefaultConfig()
 
-		out, err := cfg.Get("api.address")
+		out, err := cfg.Get("api.rustfulAddress")
 		assert.NoError(t, err)
-		assert.Equal(t, cfg.API.Address, out)
+		assert.Equal(t, cfg.API.RustFulAddress, out)
 
 		out, err = cfg.Get("api.accessControlAllowOrigin")
 		assert.NoError(t, err)
@@ -158,11 +158,6 @@ func TestConfigGet(t *testing.T) {
 		out, err = cfg.Get("datastore.path")
 		assert.NoError(t, err)
 		assert.Equal(t, cfg.Datastore.Path, out)
-
-		// TODO we can test this as soon as we have bootstrap addresses.
-		// out, err = cfg.Get("bootstrap.addresses.0")
-		// assert.NoError(err)
-		// assert.Equal(cfg.Bootstrap.Addresses[0], out)
 	})
 
 	t.Run("invalid gets", func(t *testing.T) {
@@ -196,9 +191,9 @@ func TestConfigSet(t *testing.T) {
 		cfg := NewDefaultConfig()
 
 		// set string
-		err := cfg.Set("api.address", `"/ip4/127.9.9.9/tcp/0"`)
+		err := cfg.Set("api.rustfulAddress", `"/ip4/127.9.9.9/tcp/0"`)
 		assert.NoError(t, err)
-		assert.Equal(t, cfg.API.Address, "/ip4/127.9.9.9/tcp/0")
+		assert.Equal(t, cfg.API.RustFulAddress, "/ip4/127.9.9.9/tcp/0")
 
 		// set slice
 		err = cfg.Set("api.accessControlAllowOrigin", `["http://localroast:7854"]`)

@@ -18,7 +18,7 @@ var ErrNoGenesisMiner = errors.New("GenesisMiner not supported")
 // GenesisMiner contains the required information to setup a node as a genesis
 // node.
 type GenesisMiner struct {
-	// Address is the address of the miner on chain
+	// RustFulAddress is the address of the miner on chain
 	Address address.Address
 
 	// Owner is the private key of the wallet which is assoiated with the miner

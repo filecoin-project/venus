@@ -155,14 +155,14 @@ func TestMpoolRm(t *testing.T) {
 		).ReadStdoutTrimNewlines()
 
 		// wait for the pool to have the message
-		_, err := n.PorcelainAPI.MessagePoolWait(ctx, 1)
+		_, err := n.Messaging.API().MessagePoolWait(ctx, 1)
 		require.NoError(t, err)
 
 		// remove message in process so the following ls cannot race on lock
 		//  acquire
 		c, err := cid.Parse(msgCid)
 		require.NoError(t, err)
-		n.PorcelainAPI.MessagePoolRemove(c)
+		n.Messaging.API().MessagePoolRemove(c)
 
 		out := cmdClient.RunSuccess(ctx, "mpool", "ls").ReadStdoutTrimNewlines()
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/app/node"
 	"io"
 	"os"
 
@@ -34,9 +35,6 @@ const (
 
 	// OptionDrandConfigAddr is the init option for configuring drand to a given network address at init time
 	OptionDrandConfigAddr = "drand-config-addr"
-
-	// APIPrefix is the prefix for the http version of the api.
-	APIPrefix = "/api"
 
 	// OfflineMode tells us if we should try to connect this Filecoin node to the network
 	OfflineMode = "offline"
@@ -149,7 +147,7 @@ TOOL COMMANDS
 }
 
 // command object for the daemon
-var rootCmdDaemon = &cmds.Command{
+var RootCmdDaemon = &cmds.Command{
 	Subcommands: make(map[string]*cmds.Command),
 }
 
@@ -198,7 +196,7 @@ func init() {
 
 	for k, v := range rootSubcmdsDaemon {
 		RootCmd.Subcommands[k] = v
-		rootCmdDaemon.Subcommands[k] = v
+		RootCmdDaemon.Subcommands[k] = v
 	}
 }
 
@@ -215,7 +213,7 @@ func Run(ctx context.Context, args []string, stdin, stdout, stderr *os.File) (in
 }
 
 func buildEnv(ctx context.Context, _ *cmds.Request) (cmds.Environment, error) {
-	return NewClientEnv(ctx), nil
+	return node.NewClientEnv(ctx), nil
 }
 
 type executor struct {
@@ -228,7 +226,7 @@ func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.
 		return e.exec.Execute(req, re, env)
 	}
 
-	client := cmdhttp.NewClient(e.api, cmdhttp.ClientWithAPIPrefix(APIPrefix))
+	client := cmdhttp.NewClient(e.api, cmdhttp.ClientWithAPIPrefix(node.APIPrefix))
 
 	return client.Execute(req, re, env)
 }
@@ -274,10 +272,11 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		rawAddr, err = repo.APIAddrFromRepoPath(repoDir)
+		rpcAPI, err := repo.APIAddrFromRepoPath(repoDir)
 		if err != nil {
 			return "", errors.Wrap(err, "can't find API endpoint address in environment, command-line, or local repo (is the daemon running?)")
 		}
+		rawAddr = rpcAPI.RustfulAPI //NOTICE command only use rustful api
 	}
 
 	maddr, err := ma.NewMultiaddr(rawAddr)

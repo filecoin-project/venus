@@ -9,7 +9,7 @@ import (
 )
 
 //
-// Address-based signature validation
+// RustFulAddress-based signature validation
 //
 
 type Signature = crypto.Signature

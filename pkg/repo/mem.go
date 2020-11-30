@@ -14,14 +14,16 @@ import (
 // MemRepo is an in-memory implementation of the Repo interface.
 type MemRepo struct {
 	// lk guards the config
-	lk         sync.RWMutex
-	C          *config.Config
-	D          Datastore
-	Ks         keystore.Keystore
-	W          Datastore
-	Chain      Datastore
-	version    uint
-	apiAddress string
+	lk             sync.RWMutex
+	C              *config.Config
+	D              Datastore
+	Ks             keystore.Keystore
+	W              Datastore
+	Chain          Datastore
+	version        uint
+	jsonrpcAddress string
+	rustfulAddress string
+	token          []byte
 }
 
 var _ Repo = (*MemRepo)(nil)
@@ -38,7 +40,7 @@ func NewInMemoryRepo() *MemRepo {
 	}
 }
 
-// Config returns the configuration object.
+// ConfigModule returns the configuration object.
 func (mr *MemRepo) Config() *config.Config {
 	mr.lk.RLock()
 	defer mr.lk.RUnlock()
@@ -88,14 +90,30 @@ func (mr *MemRepo) Close() error {
 }
 
 // SetAPIAddr writes the address of the running API to memory.
-func (mr *MemRepo) SetAPIAddr(addr string) error {
-	mr.apiAddress = addr
+func (mr *MemRepo) SetJsonrpcAPIAddr(addr string) error {
+	mr.jsonrpcAddress = addr
+	return nil
+}
+
+// SetAPIAddr writes the address of the running API to memory.
+func (mr *MemRepo) SetRustfulAPIAddr(addr string) error {
+	mr.rustfulAddress = addr
 	return nil
 }
 
 // APIAddr reads the address of the running API from memory.
-func (mr *MemRepo) APIAddr() (string, error) {
-	return mr.apiAddress, nil
+func (mr *MemRepo) APIAddr() (RpcAPI, error) {
+	return RpcAPI{
+		RustfulAPI: mr.rustfulAddress,
+		JsonrpcAPI: mr.jsonrpcAddress,
+	}, nil
+}
+
+func (mr *MemRepo) SetAPIToken(token []byte) error {
+	if len(mr.token) == 0 {
+		mr.token = token
+	}
+	return nil
 }
 
 // Path returns the default path.

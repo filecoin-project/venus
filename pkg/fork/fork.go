@@ -364,10 +364,10 @@ func (fork *ChainFork) ParentState(ts *block.TipSet) cid.Cid {
 	if ts == nil {
 		tts, err := fork.cr.GetTipSet(fork.cr.Head())
 		if err == nil {
-			return tts.Blocks()[0].StateRoot.Cid
+			return tts.Blocks()[0].ParentStateRoot.Cid
 		}
 	} else {
-		return ts.Blocks()[0].StateRoot.Cid
+		return ts.Blocks()[0].ParentStateRoot.Cid
 	}
 
 	return cid.Undef
@@ -682,7 +682,7 @@ func resetGenesisMsigs0(ctx context.Context, sm *ChainFork, store adt0.Store, tr
 		return xerrors.Errorf("getting genesis tipset: %v", err)
 	}
 
-	genesisTree, err := sm.StateTree(ctx, gts.Blocks()[0].StateRoot.Cid)
+	genesisTree, err := sm.StateTree(ctx, gts.Blocks()[0].ParentStateRoot.Cid)
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %v", err)
 	}

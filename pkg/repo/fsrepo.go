@@ -25,7 +25,8 @@ import (
 
 const (
 	// apiFile is the filename containing the filecoin node's api address.
-	apiFile               = "api"
+	rustAPIFile           = "rustapi"
+	jsonrpcAPIFile        = "api"
 	configFilename        = "config.json"
 	tempConfigFilename    = ".config.json.temp"
 	lockFile              = "repo.lock"
@@ -38,6 +39,11 @@ const (
 )
 
 var log = logging.Logger("repo")
+
+type RpcAPI struct { //nolint
+	RustfulAPI string
+	JsonrpcAPI string
+}
 
 // FSRepo is a repo implementation backed by a filesystem.
 type FSRepo struct {
@@ -230,7 +236,7 @@ func (r *FSRepo) loadFromDisk() error {
 	return nil
 }
 
-// Config returns the configuration object.
+// ConfigModule returns the configuration object.
 func (r *FSRepo) Config() *config.Config {
 	r.lk.RLock()
 	defer r.lk.RUnlock()
@@ -336,7 +342,11 @@ func (r *FSRepo) removeFile(path string) error {
 }
 
 func (r *FSRepo) removeAPIFile() error {
-	return r.removeFile(filepath.Join(r.path, apiFile))
+	err := r.removeFile(filepath.Join(r.path, jsonrpcAPIFile))
+	if err != nil {
+		return err
+	}
+	return r.removeFile(filepath.Join(r.path, rustAPIFile))
 }
 
 // Tests whether a repo directory contains the expected config file.
@@ -531,8 +541,34 @@ func fileExists(file string) (bool, error) {
 
 // SetAPIAddr writes the address to the API file. SetAPIAddr expects parameter
 // `port` to be of the form `:<port>`.
-func (r *FSRepo) SetAPIAddr(maddr string) error {
-	f, err := os.Create(filepath.Join(r.path, apiFile))
+func (r *FSRepo) SetRustfulAPIAddr(maddr string) error {
+	f, err := os.Create(filepath.Join(r.path, rustAPIFile))
+	if err != nil {
+		return errors.Wrap(err, "could not create API file")
+	}
+
+	defer f.Close() // nolint: errcheck
+
+	_, err = f.WriteString(maddr)
+	if err != nil {
+		// If we encounter an error writing to the API file,
+		// delete the API file. The error encountered while
+		// deleting the API file will be returned (if one
+		// exists) instead of the write-error.
+		if err := r.removeAPIFile(); err != nil {
+			return errors.Wrap(err, "failed to remove API file")
+		}
+
+		return errors.Wrap(err, "failed to write to API file")
+	}
+
+	return nil
+}
+
+// SetAPIAddr writes the address to the API file. SetAPIAddr expects parameter
+// `port` to be of the form `:<port>`.
+func (r *FSRepo) SetJsonrpcAPIAddr(maddr string) error {
+	f, err := os.Create(filepath.Join(r.path, jsonrpcAPIFile))
 	if err != nil {
 		return errors.Wrap(err, "could not create API file")
 	}
@@ -566,12 +602,12 @@ func (r *FSRepo) JournalPath() string {
 }
 
 // APIAddrFromRepoPath returns the api addr from the filecoin repo
-func APIAddrFromRepoPath(repoPath string) (string, error) {
+func APIAddrFromRepoPath(repoPath string) (RpcAPI, error) {
 	repoPath, err := homedir.Expand(repoPath)
 	if err != nil {
-		return "", errors.Wrap(err, fmt.Sprintf("can't resolve local repo path %s", repoPath))
+		return RpcAPI{}, errors.Wrap(err, fmt.Sprintf("can't resolve local repo path %s", repoPath))
 	}
-	return apiAddrFromFile(filepath.Join(repoPath, apiFile))
+	return apiAddrFromFile(repoPath)
 }
 
 // APIAddrFromFile reads the address from the API file at the given path.
@@ -579,18 +615,32 @@ func APIAddrFromRepoPath(repoPath string) (string, error) {
 // This is a concurrent operation, meaning that any process may read this file.
 // Modifying this file, therefore, should use "mv" to replace the whole file
 // and avoid interleaved read/writes
-func apiAddrFromFile(apiFilePath string) (string, error) {
-	contents, err := ioutil.ReadFile(apiFilePath)
+func apiAddrFromFile(repoPath string) (RpcAPI, error) {
+	rustFile := filepath.Join(repoPath, rustAPIFile)
+	rustfulAPI, err := ioutil.ReadFile(rustFile)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to read API file")
+		return RpcAPI{}, errors.Wrap(err, "failed to read API file")
 	}
 
-	return string(contents), nil
+	jsonrpcFile := filepath.Join(repoPath, jsonrpcAPIFile)
+	jsonrpcAPI, err := ioutil.ReadFile(jsonrpcFile)
+	if err != nil {
+		return RpcAPI{}, errors.Wrap(err, "failed to read API file")
+	}
+
+	return RpcAPI{
+		RustfulAPI: string(rustfulAPI),
+		JsonrpcAPI: string(jsonrpcAPI),
+	}, nil
 }
 
 // APIAddr reads the FSRepo's api file and returns the api address
-func (r *FSRepo) APIAddr() (string, error) {
-	return apiAddrFromFile(filepath.Join(filepath.Clean(r.path), apiFile))
+func (r *FSRepo) APIAddr() (RpcAPI, error) {
+	return apiAddrFromFile(filepath.Clean(r.path))
+}
+
+func (r *FSRepo) SetAPIToken(token []byte) error {
+	return ioutil.WriteFile(filepath.Join(r.path, "token"), token, 0600)
 }
 
 func badgerOptions() *badgerds.Options {

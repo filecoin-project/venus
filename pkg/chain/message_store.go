@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	blocks "github.com/ipfs/go-block-format"
@@ -20,20 +19,18 @@ import (
 
 	bstore "github.com/filecoin-project/venus/pkg/fork/blockstore"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/encoding"
-	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
 // MessageProvider is an interface exposing the load methods of the
 // MessageStore.
 type MessageProvider interface {
+	LoadTipSetMessage(ctx context.Context, ts *block.TipSet) ([]block.BlockMessagesInfo, error)
 	LoadMetaMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
 	ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 	LoadUnsinedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error)
@@ -322,6 +319,62 @@ func (ms *MessageStore) LoadTxMeta(ctx context.Context, c cid.Cid) (types.TxMeta
 	return meta, nil
 }
 
+func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *block.TipSet) ([]block.BlockMessagesInfo, error) {
+	//gather message
+	applied := make(map[address.Address]uint64)
+	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
+		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
+		if _, ok := applied[m.From]; !ok {
+			applied[m.From] = m.CallSeqNum
+		}
+
+		if applied[m.From] != m.CallSeqNum {
+			return false, nil
+		}
+
+		applied[m.From]++
+
+		return true, nil
+	}
+	blockMsg := []block.BlockMessagesInfo{}
+	for i := 0; i < ts.Len(); i++ {
+		blk := ts.At(i)
+		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, blk.Messages.Cid)
+		if err != nil {
+			return nil, errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
+		}
+
+		var sBlsMsg []types.ChainMsg
+		var sSecpMsg []types.ChainMsg
+		for _, msg := range blsMsgs {
+			b, err := selectMsg(msg)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
+			}
+			if b {
+				sSecpMsg = append(sSecpMsg, msg)
+			}
+		}
+		for _, msg := range secpMsgs {
+			b, err := selectMsg(&msg.Message)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
+			}
+			if b {
+				sBlsMsg = append(sBlsMsg, msg)
+			}
+		}
+
+		blockMsg = append(blockMsg, block.BlockMessagesInfo{
+			BlsMessages:   sBlsMsg,
+			SecpkMessages: sSecpMsg,
+			Block:         blk,
+		})
+	}
+
+	return blockMsg, nil
+}
+
 func (ms *MessageStore) storeUnsignedMessages(messages []*types.UnsignedMessage) ([]cid.Cid, error) {
 	cids := make([]cid.Cid, len(messages))
 	var err error
@@ -410,89 +463,6 @@ func (ms *MessageStore) storeAMTCids(ctx context.Context, cids []cid.Cid) (cid.C
 		cidMarshallers[i] = &cidMarshaller
 	}
 	return amt.FromArray(ctx, as, cidMarshallers)
-}
-
-func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch) abi.TokenAmount {
-	// deta := gasLimitUsed/noOfBlocks - constants.BlockGasTarget
-	// change := baseFee * deta / BlockGasTarget
-	// nextBaseFee = baseFee + change
-	// nextBaseFee = max(nextBaseFee, constants.MinimumBaseFee)
-
-	var delta int64
-	if epoch > fork.UpgradeSmokeHeight {
-		delta = gasLimitUsed / int64(noOfBlocks)
-		delta -= constants.BlockGasTarget
-	} else {
-		delta = constants.PackingEfficiencyDenom * gasLimitUsed / (int64(noOfBlocks) * constants.PackingEfficiencyNum)
-		delta -= constants.BlockGasTarget
-	}
-
-	// cap change at 12.5% (BaseFeeMaxChangeDenom) by capping delta
-	if delta > constants.BlockGasTarget {
-		delta = constants.BlockGasTarget
-	}
-	if delta < -constants.BlockGasTarget {
-		delta = -constants.BlockGasTarget
-	}
-
-	change := big.Mul(baseFee, big.NewInt(delta))
-	change = big.Div(change, big.NewInt(constants.BlockGasTarget))
-	change = big.Div(change, big.NewInt(constants.BaseFeeMaxChangeDenom))
-
-	nextBaseFee := big.Add(baseFee, change)
-	if big.Cmp(nextBaseFee, big.NewInt(constants.MinimumBaseFee)) < 0 {
-		nextBaseFee = big.NewInt(constants.MinimumBaseFee)
-	}
-	return nextBaseFee
-}
-
-func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet) (abi.TokenAmount, error) {
-	zero := abi.NewTokenAmount(0)
-	baseHeight, err := ts.Height()
-	if err != nil {
-		return zero, err
-	}
-
-	if baseHeight > fork.UpgradeBreezeHeight && baseHeight < fork.UpgradeBreezeHeight+fork.BreezeGasTampingDuration {
-		return abi.NewTokenAmount(100), nil
-	}
-
-	// totalLimit is sum of GasLimits of unique messages in a tipset
-	totalLimit := int64(0)
-
-	seen := make(map[cid.Cid]struct{})
-
-	for _, b := range ts.Blocks() {
-		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, b.Messages.Cid)
-		if err != nil {
-			return zero, xerrors.Errorf("error getting messages for: %s: %w", b.Cid(), err)
-		}
-
-		for _, m := range blsMsgs {
-			c, err := m.Cid()
-			if err != nil {
-				return zero, xerrors.Errorf("error getting cid for message: %v: %w", m, err)
-			}
-			if _, ok := seen[c]; !ok {
-				totalLimit += int64(m.GasLimit)
-				seen[c] = struct{}{}
-			}
-		}
-		for _, m := range secpMsgs {
-			c, err := m.Cid()
-			if err != nil {
-				return zero, xerrors.Errorf("error getting cid for signed message: %v: %w", m, err)
-			}
-			if _, ok := seen[c]; !ok {
-				totalLimit += int64(m.Message.GasLimit)
-				seen[c] = struct{}{}
-			}
-		}
-	}
-
-	parentBaseFee := ts.Blocks()[0].ParentBaseFee
-
-	return ComputeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks()), baseHeight), nil
 }
 
 func GetReceiptRoot(receipts []types.MessageReceipt) (cid.Cid, error) {

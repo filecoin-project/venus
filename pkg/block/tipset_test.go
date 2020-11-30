@@ -2,6 +2,8 @@ package block_test
 
 import (
 	"bytes"
+	"encoding/json"
+	"github.com/filecoin-project/venus/pkg/util/test"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -36,14 +38,30 @@ func init() {
 
 func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWeight, timestamp uint64, msg string) *blk.Block {
 	return &blk.Block{
-		Ticket:          blk.Ticket{VRFProof: ticket},
-		Parents:         blk.NewTipSetKey(parentCid),
-		ParentWeight:    fbig.NewInt(int64(parentWeight)),
-		Height:          42 + abi.ChainEpoch(height),
-		Messages:        enccid.NewCid(cidGetter()),
-		StateRoot:       enccid.NewCid(cidGetter()),
-		MessageReceipts: enccid.NewCid(cidGetter()),
-		Timestamp:       timestamp,
+		Ticket:                blk.Ticket{VRFProof: ticket},
+		Parents:               blk.NewTipSetKey(parentCid),
+		ParentWeight:          fbig.NewInt(int64(parentWeight)),
+		Height:                42 + abi.ChainEpoch(height),
+		Messages:              enccid.NewCid(cidGetter()),
+		ParentStateRoot:       enccid.NewCid(cidGetter()),
+		ParentMessageReceipts: enccid.NewCid(cidGetter()),
+		Timestamp:             timestamp,
+	}
+}
+
+func TestTipsetJson(t *testing.T) {
+	tf.UnitTest(t)
+	b1, b2, b3 := makeTestBlocks(t)
+	ts := RequireNewTipSet(t, b3, b2, b1)
+	jsonBytes, err := json.Marshal(ts)
+	require.NoError(t, err)
+
+	unmarshalTs := &blk.TipSet{}
+	err = json.Unmarshal(jsonBytes, unmarshalTs)
+	require.NoError(t, err)
+	assert.Equal(t, unmarshalTs.Len(), ts.Len())
+	for i := 0; i < ts.Len(); i++ {
+		test.Equal(t, unmarshalTs.At(i), ts.At(i))
 	}
 }
 

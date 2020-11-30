@@ -100,7 +100,7 @@ Blockchain blocks are stored in block service blocks, but are not the same thing
                                           │                                           │
                           ┌───────────────┼───────────────┐    ┌──────────────────────┤
                           │               │               │    │                      │
-                          ▼               ▼               ▼    ▼                      │
+                          ▼               ▼               ▼    ▼                        │
                   ┌──────────────┬─────────────────┬─────────────┐                    │
          ┌───────▶│ Storage API  │  Retrieval API  │  Block API  │                    │
          │        ├──────────────┼─────────────────┼─────────────┤                    │

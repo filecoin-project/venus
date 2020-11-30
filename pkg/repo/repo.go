@@ -36,11 +36,17 @@ type Repo interface {
 	// ChainDatastore is a specific storage solution, only used to store already validated chain data.
 	ChainDatastore() Datastore
 
-	// SetAPIAddr sets the address of the running API.
-	SetAPIAddr(string) error
+	// SetJsonrpcAPIAddr sets the address of the running jsonrpc API.
+	SetJsonrpcAPIAddr(maddr string) error
+
+	// SetRustfulAPIAddr sets the address of the running rustful API.
+	SetRustfulAPIAddr(maddr string) error
 
 	// APIAddr returns the address of the running API.
-	APIAddr() (string, error)
+	APIAddr() (RpcAPI, error)
+
+	// SetAPIToken set api token
+	SetAPIToken(token []byte) error
 
 	// Version returns the current repo version.
 	Version() uint

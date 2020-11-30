@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/filecoin-project/venus/app/node"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -40,7 +41,7 @@ var swarmPeersCmd = &cmds.Command{
 		latency, _ := req.Options["latency"].(bool)
 		streams, _ := req.Options["streams"].(bool)
 
-		out, err := GetPorcelainAPI(env).NetworkPeers(req.Context, verbose, latency, streams)
+		out, err := env.(*node.Env).NetworkAPI.NetworkPeers(req.Context, verbose, latency, streams)
 		if err != nil {
 			return err
 		}
@@ -62,10 +63,10 @@ venus swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe
 `,
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("address", true, true, "Address of peer to connect to.").EnableStdin(),
+		cmds.StringArg("address", true, true, "RustFulAddress of peer to connect to.").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		results, err := GetPorcelainAPI(env).NetworkConnect(req.Context, req.Arguments)
+		results, err := env.(*node.Env).NetworkAPI.NetworkConnect(req.Context, req.Arguments)
 		if err != nil {
 			return err
 		}

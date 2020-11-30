@@ -60,7 +60,7 @@ func NewConfiguredProcessor(actors vm.ActorCodeLoader, syscalls vm.SyscallsImpl,
 }
 
 // ProcessTipSet computes the state transition specified by the messages in all blocks in a TipSet.
-func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms *vm.Storage, parent, ts *block.TipSet, msgs []vm.BlockMessagesInfo, vmOption vm.VmOption) (results []types.MessageReceipt, err error) {
+func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms *vm.Storage, parent, ts *block.TipSet, msgs []block.BlockMessagesInfo, vmOption vm.VmOption) (results []types.MessageReceipt, err error) {
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)

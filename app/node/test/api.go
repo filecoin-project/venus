@@ -41,10 +41,9 @@ func (a *NodeAPI) Node() *node.Node {
 // Returns a client proxy and a function to terminate the NodeAPI server.
 func (a *NodeAPI) Run(ctx context.Context) (client *Client, stop func()) {
 	ready := make(chan interface{})
-	terminate := make(chan os.Signal, 1)
-
+	ctx, cancel := context.WithCancel(ctx)
 	go func() {
-		err := cmd.RunAPIAndWait(ctx, a.node, a.node.Repo.Config().API, ready, terminate)
+		err := a.node.RunRPCAndWait(ctx, cmd.RootCmdDaemon, ready)
 		require.NoError(a.tb, err)
 	}()
 	<-ready
@@ -53,8 +52,8 @@ func (a *NodeAPI) Run(ctx context.Context) (client *Client, stop func()) {
 	require.NoError(a.tb, err)
 	require.NotEmpty(a.tb, addr, "empty API address")
 
-	return &Client{addr, a.tb}, func() {
-		close(terminate)
+	return &Client{addr.RustfulAPI, a.tb}, func() {
+		cancel()
 	}
 }
 
@@ -64,7 +63,7 @@ type Client struct {
 	tb      testing.TB
 }
 
-// Address returns the address string to which the client sends command RPCs.
+// RustFulAddress returns the address string to which the client sends command RPCs.
 func (c *Client) Address() string {
 	return c.address
 }

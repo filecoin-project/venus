@@ -142,5 +142,5 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 	for i := 0; i < numMiners; i++ {
 		retAddrs[i] = info.Miners[i].Address
 	}
-	return cst, retAddrs, genesis.StateRoot.Cid
+	return cst, retAddrs, genesis.ParentStateRoot.Cid
 }

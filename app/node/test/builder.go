@@ -17,7 +17,7 @@ import (
 // This is intended to replace use of GenNode and the various other node construction entry points
 // that end up there.
 // Note that (August 2019) there are two things called "config": the configuration read in from
-// file to the config.Config structure, and node.Config which is really just some dependency
+// file to the config.ConfigModule structure, and node.ConfigModule which is really just some dependency
 // injection. This builder avoids exposing the latter directly.
 type NodeBuilder struct {
 	// Initialisation function for the genesis block and state.
@@ -42,7 +42,8 @@ func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 			// The can be overridden by subsequent `withConfigChanges`.
 			node.ConfigOpt(func(c *config.Config) {
 				// Bind only locally, defer port selection until binding.
-				c.API.Address = "/ip4/127.0.0.1/tcp/0"
+				c.API.RustFulAddress = "/ip4/127.0.0.1/tcp/0"
+				c.API.JSONRPCAddress = "/ip4/127.0.0.1/tcp/0"
 				c.Swarm.Address = "/ip4/127.0.0.1/tcp/0"
 			}),
 			node.ConfigOpt(func(c *config.Config) {

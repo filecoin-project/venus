@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/app/node"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -53,7 +54,7 @@ var queryDhtCmd = &cmds.Command{
 		ctx, cancel := context.WithCancel(req.Context)
 		ctx, events := routing.RegisterForQueryEvents(ctx)
 
-		closestPeers, err := GetPorcelainAPI(env).NetworkGetClosestPeers(ctx, string(id))
+		closestPeers, err := env.(*node.Env).NetworkAPI.NetworkGetClosestPeers(ctx, string(id))
 		if err != nil {
 			cancel()
 			return err
@@ -106,7 +107,7 @@ var findProvidersDhtCmd = &cmds.Command{
 		ctx, cancel := context.WithTimeout(req.Context, time.Minute)
 		ctx, events := routing.RegisterForQueryEvents(ctx)
 
-		pchan := GetPorcelainAPI(env).NetworkFindProvidersAsync(ctx, c, numProviders)
+		pchan := env.(*node.Env).NetworkAPI.NetworkFindProvidersAsync(ctx, c, numProviders)
 
 		go func() {
 			defer cancel()
@@ -149,7 +150,7 @@ var findPeerDhtCmd = &cmds.Command{
 			return err
 		}
 
-		out, err := GetPorcelainAPI(env).NetworkFindPeer(req.Context, peerID)
+		out, err := env.(*node.Env).NetworkAPI.NetworkFindPeer(req.Context, peerID)
 		if err != nil {
 			return err
 		}
