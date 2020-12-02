@@ -57,7 +57,9 @@ jobs:
             sudo installer -pkg go1.14.4.darwin-amd64.pkg -target /
       - run:
           name: Install pkg-config
-          command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
+          command: |
+            HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
+            HOMEBREW_NO_AUTO_UPDATE=1 brew install hwloc
       - run: go version
       - run:
           name: Install Rust
