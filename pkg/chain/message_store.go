@@ -358,7 +358,7 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *block.TipSet)
 				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
 			}
 			if b {
-				sSecpMsg = append(sSecpMsg, msg)
+				sBlsMsg = append(sBlsMsg, msg)
 			}
 		}
 		for _, msg := range secpMsgs {
@@ -367,7 +367,7 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *block.TipSet)
 				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
 			}
 			if b {
-				sBlsMsg = append(sBlsMsg, msg)
+				sSecpMsg = append(sSecpMsg, msg)
 			}
 		}
 
