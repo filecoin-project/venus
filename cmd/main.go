@@ -317,11 +317,11 @@ func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.AttoFIL, types.Uni
 		return types.ZeroAttoFIL, types.ZeroAttoFIL, types.Zero, false, errors.New("gas-premium option is required")
 	}
 
-	feecap, ok := types.NewAttoFILFromFILString(feecapOption.(string))
+	feecap, ok := types.NewAttoFILFromString(feecapOption.(string), 10)
 	if !ok {
 		return types.ZeroAttoFIL, types.ZeroAttoFIL, types.NewGas(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
 	}
-	premium, ok := types.NewAttoFILFromFILString(premiumOption.(string))
+	premium, ok := types.NewAttoFILFromString(premiumOption.(string), 10)
 	if !ok {
 		return types.ZeroAttoFIL, types.ZeroAttoFIL, types.NewGas(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
 	}

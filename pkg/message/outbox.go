@@ -237,6 +237,7 @@ func sendSignedMsg(ctx context.Context, ob *Outbox, signed *types.SignedMessage,
 	pubErrCh := make(chan error)
 
 	go func() {
+		log.Info("publish message ", c)
 		err = ob.publisher.Publish(ctx, signed, height, bcast)
 		if err != nil {
 			log.Errorf("error: %s publishing message %s", err, c.String())
