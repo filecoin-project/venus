@@ -2,10 +2,8 @@ package consensus
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"sync"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
@@ -16,7 +14,8 @@ import (
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/fork"
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork/blockstore"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
@@ -38,46 +37,45 @@ type CirculatingSupply struct {
 	FilCirculating abi.TokenAmount
 }
 
-type genesisInfo struct {
-	genesisMsigs []msig0.State
-	// info about the Accounts in the genesis state
-	genesisActors      []genesisActor
-	genesisPledge      abi.TokenAmount
-	genesisMarketFunds abi.TokenAmount
-}
-
-type genesisActor struct {
-	addr    address.Address
-	initBal abi.TokenAmount
-}
-
 type CirculatingSupplyCalculator struct {
 	bstore        blockstore.Blockstore
 	genesisReader genesisReader
 
 	// info about the Accounts in the genesis state
-	preIgnitionGenInfos  *genesisInfo
-	postIgnitionGenInfos *genesisInfo
-	genesisMsigLk        sync.Mutex
+	preIgnitionVesting  []msig0.State
+	postIgnitionVesting []msig0.State
+	postCalicoVesting   []msig0.State
+
+	genesisPledge      abi.TokenAmount
+	genesisMarketFunds abi.TokenAmount
+
+	genesisMsigLk sync.Mutex
+	upgradeConfig *config.ForkUpgradeConfig
 }
 
-func NewCirculatingSupplyCalculator(bstore blockstore.Blockstore, genesisReader genesisReader) *CirculatingSupplyCalculator {
-	return &CirculatingSupplyCalculator{bstore: bstore, genesisReader: genesisReader}
+func NewCirculatingSupplyCalculator(bstore blockstore.Blockstore, genesisReader genesisReader, upgradeConfig *config.ForkUpgradeConfig) *CirculatingSupplyCalculator {
+	return &CirculatingSupplyCalculator{bstore: bstore, genesisReader: genesisReader, upgradeConfig: upgradeConfig}
 }
 
 func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st state.Tree) (CirculatingSupply, error) {
 	caculator.genesisMsigLk.Lock()
 	defer caculator.genesisMsigLk.Unlock()
-	if caculator.preIgnitionGenInfos == nil {
-		err := caculator.setupPreIgnitionGenesisActorsTestnet(ctx)
+	if caculator.preIgnitionVesting == nil || caculator.genesisPledge.IsZero() || caculator.genesisMarketFunds.IsZero() {
+		err := caculator.setupGenesisVestingSchedule(ctx)
 		if err != nil {
-			return CirculatingSupply{}, xerrors.Errorf("failed to setup pre-ignition genesis information: %v", err)
+			return CirculatingSupply{}, xerrors.Errorf("failed to setup pre-ignition vesting schedule: %v", err)
 		}
 	}
-	if caculator.postIgnitionGenInfos == nil {
-		err := caculator.setupPostIgnitionGenesisActors(ctx)
+	if caculator.postIgnitionVesting == nil {
+		err := caculator.setupPostIgnitionVesting(ctx)
 		if err != nil {
-			return CirculatingSupply{}, xerrors.Errorf("failed to setup post-ignition genesis information: %v", err)
+			return CirculatingSupply{}, xerrors.Errorf("failed to setup post-ignition vesting schedule: %v", err)
+		}
+	}
+	if caculator.postCalicoVesting == nil {
+		err := caculator.setupPostCalicoVesting(ctx)
+		if err != nil {
+			return CirculatingSupply{}, xerrors.Errorf("failed to setup post-calico vesting schedule: %v", err)
 		}
 	}
 
@@ -87,8 +85,8 @@ func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx c
 	}
 
 	filReserveDisbursed := big.Zero()
-	if height > fork.UpgradeActorsV2Height {
-		filReserveDisbursed, err = GetFilReserveDisbursed(ctx, st)
+	if height > caculator.upgradeConfig.UpgradeActorsV2Height {
+		filReserveDisbursed, err = caculator.GetFilReserveDisbursed(ctx, st)
 		if err != nil {
 			return CirculatingSupply{}, xerrors.Errorf("failed to calculate filReserveDisbursed: %v", err)
 		}
@@ -98,17 +96,14 @@ func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx c
 	if err != nil {
 		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filMined: %v", err)
 	}
-
 	filBurnt, err := GetFilBurnt(ctx, st)
 	if err != nil {
 		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %v", err)
 	}
-
 	filLocked, err := caculator.GetFilLocked(ctx, st)
 	if err != nil {
 		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %v", err)
 	}
-
 	ret := big.Add(filVested, filMined)
 	ret = big.Add(ret, filReserveDisbursed)
 	ret = big.Sub(ret, filBurnt)
@@ -127,130 +122,6 @@ func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx c
 	}, nil
 }
 
-func GetFilReserveDisbursed(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
-	ract, _, err := st.GetActor(ctx, builtin.ReserveAddress)
-	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to get reserve actor: %v", err)
-	}
-
-	// If money enters the reserve actor, this could lead to a negative term
-	return big.Sub(big.NewFromGo(constants.InitialFilReserved), ract.Balance), nil
-}
-
-// todo review
-func GetFilMined(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
-	ractor, _, err := st.GetActor(ctx, reward.Address)
-	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load reward actor state: %v", err)
-	}
-
-	rst, err := reward.Load(adt.WrapStore(ctx, st.GetStore()), ractor)
-	if err != nil {
-		return big.Zero(), err
-	}
-
-	return rst.TotalStoragePowerReward()
-}
-
-func getFilMarketLocked(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
-	act, found, err := st.GetActor(ctx, market.Address)
-	if !found || err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load market actor: %v", err)
-	}
-
-	mst, err := market.Load(adt.WrapStore(ctx, st.GetStore()), act)
-	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load market state: %v", err)
-	}
-	//var mst market.State
-	//if err := adt.WrapStore(ctx, st.GetStore()).Get(ctx, act.Head.Cid, &mst); err != nil {
-	//	return big.Zero(), xerrors.Errorf("failed to load reward state: %v", err)
-	//}
-
-	//fml := big.Add(mst.TotalClientLockedCollateral, mst.TotalProviderLockedCollateral)
-	//fml = big.Add(fml, mst.TotalClientStorageFee)
-	return mst.TotalLocked()
-}
-
-func getFilPowerLocked(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
-	pactor, _, err := st.GetActor(ctx, power.Address)
-	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load power actor: %v", err)
-	}
-
-	pst, err := power.Load(adt.WrapStore(ctx, st.GetStore()), pactor)
-	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load power state: %v", err)
-	}
-
-	return pst.TotalLocked()
-}
-
-func GetFilBurnt(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
-	burnt, found, err := st.GetActor(ctx, builtin.BurntFundsActorAddr)
-	if !found || err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load burnt actor: %v", err)
-	}
-
-	return burnt.Balance, nil
-}
-
-func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, height abi.ChainEpoch, st state.Tree) (abi.TokenAmount, error) {
-	vf := big.Zero()
-	if height <= fork.UpgradeIgnitionHeight {
-		for _, v := range caculator.preIgnitionGenInfos.genesisMsigs {
-			au := big.Sub(v.InitialBalance, v.AmountLocked(height))
-			vf = big.Add(vf, au)
-		}
-	} else {
-		for _, v := range caculator.postIgnitionGenInfos.genesisMsigs {
-			// In the pre-ignition logic, we simply called AmountLocked(height), assuming startEpoch was 0.
-			// The start epoch changed in the Ignition upgrade.
-			au := big.Sub(v.InitialBalance, v.AmountLocked(height-v.StartEpoch))
-			vf = big.Add(vf, au)
-		}
-	}
-
-	// there should not be any such accounts in testnet (and also none in mainnet?)
-	// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
-	for _, v := range caculator.preIgnitionGenInfos.genesisActors {
-		act, _, err := st.GetActor(ctx, v.addr)
-		if err != nil {
-			return big.Zero(), xerrors.Errorf("failed to get actor: %v", err)
-		}
-
-		diff := big.Sub(v.initBal, act.Balance)
-		if diff.GreaterThan(big.Zero()) {
-			vf = big.Add(vf, diff)
-		}
-	}
-
-	// After UpgradeActorsV2Height these funds are accounted for in GetFilReserveDisbursed
-	if height <= fork.UpgradeActorsV2Height {
-		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
-		vf = big.Add(vf, caculator.preIgnitionGenInfos.genesisPledge)
-		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
-		vf = big.Add(vf, caculator.preIgnitionGenInfos.genesisMarketFunds)
-	}
-
-	return vf, nil
-}
-
-func (caculator *CirculatingSupplyCalculator) GetFilLocked(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
-
-	filMarketLocked, err := getFilMarketLocked(ctx, st)
-	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %v", err)
-	}
-
-	filPowerLocked, err := getFilPowerLocked(ctx, st)
-	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to get filPowerLocked: %v", err)
-	}
-
-	return big.Add(filMarketLocked, filPowerLocked), nil
-}
-
 /*func (c *Expected) processBlock(ctx context.Context, ts *block.TipSet) (cid.Cid, []types.MessageReceipt, error) {
 	var secpMessages [][]*types.SignedMessage
 	var blsMessages [][]*types.UnsignedMessage
@@ -266,7 +137,7 @@ func (caculator *CirculatingSupplyCalculator) GetFilLocked(ctx context.Context, 
 	}
 
 	vms := vm.NewStorage(c.bstore)
-	priorState, err := state.LoadState(ctx, vms, ts.At(0).ParentStateRoot.Cid)
+	priorState, err := state.LoadState(ctx, vms, ts.At(0).StateRoot.Cid)
 	if err != nil {
 		return cid.Undef, []types.MessageReceipt{}, err
 	}
@@ -288,8 +159,9 @@ func (caculator *CirculatingSupplyCalculator) GetFilLocked(ctx context.Context, 
 	return root, receipts, err
 }
 */
-func (caculator *CirculatingSupplyCalculator) setupPreIgnitionGenesisActorsTestnet(ctx context.Context) error {
-	gi := genesisInfo{}
+
+// sets up information about the vesting schedule
+func (caculator *CirculatingSupplyCalculator) setupGenesisVestingSchedule(ctx context.Context) error {
 
 	gb, err := caculator.genesisReader.GetGenesisBlock(ctx)
 	if err != nil {
@@ -301,26 +173,24 @@ func (caculator *CirculatingSupplyCalculator) setupPreIgnitionGenesisActorsTestn
 		return xerrors.Errorf("getting genesis tipset: %v", err)
 	}
 
-	//st, _, err := c.processBlock(ctx, gts)
-	//if err != nil {
-	//	return xerrors.Errorf("getting genesis tipset state: %v", err)
-	//}
-
 	cst := cbornode.NewCborStore(caculator.bstore)
 	sTree, err := state.LoadState(ctx, cst, gts.At(0).ParentStateRoot.Cid)
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %v", err)
 	}
 
-	gi.genesisMarketFunds, err = getFilMarketLocked(ctx, sTree)
+	gmf, err := getFilMarketLocked(ctx, sTree)
 	if err != nil {
 		return xerrors.Errorf("setting up genesis market funds: %v", err)
 	}
 
-	gi.genesisPledge, err = getFilPowerLocked(ctx, sTree)
+	gp, err := getFilPowerLocked(ctx, sTree)
 	if err != nil {
 		return xerrors.Errorf("setting up genesis pledge: %v", err)
 	}
+
+	caculator.genesisMarketFunds = gmf
+	caculator.genesisPledge = gp
 
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 
@@ -346,58 +216,21 @@ func (caculator *CirculatingSupplyCalculator) setupPreIgnitionGenesisActorsTestn
 	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 
-	gi.genesisMsigs = make([]msig0.State, 0, len(totalsByEpoch))
+	caculator.preIgnitionVesting = make([]msig0.State, 0, len(totalsByEpoch))
 	for k, v := range totalsByEpoch {
 		ns := msig0.State{
 			InitialBalance: v,
 			UnlockDuration: k,
 			PendingTxns:    cid.Undef,
 		}
-		gi.genesisMsigs = append(gi.genesisMsigs, ns)
+		caculator.preIgnitionVesting = append(caculator.preIgnitionVesting, ns)
 	}
-
-	caculator.preIgnitionGenInfos = &gi
 
 	return nil
 }
 
-// sets up information about the actors in the genesis state, post the ignition fork
-func (caculator *CirculatingSupplyCalculator) setupPostIgnitionGenesisActors(ctx context.Context) error {
-
-	gi := genesisInfo{}
-
-	gb, err := caculator.genesisReader.GetGenesisBlock(ctx)
-	if err != nil {
-		return xerrors.Errorf("getting genesis block: %v", err)
-	}
-
-	gts, err := block.NewTipSet(gb)
-	if err != nil {
-		return xerrors.Errorf("getting genesis tipset: %v", err)
-	}
-
-	//st, _, err := sm.processBlock(ctx, gts)
-	//if err != nil {
-	//	return xerrors.Errorf("getting genesis tipset state: %v", err)
-	//}
-
-	cst := cbornode.NewCborStore(caculator.bstore)
-	sTree, err := state.LoadState(ctx, cst, gts.At(0).ParentStateRoot.Cid)
-	if err != nil {
-		return xerrors.Errorf("loading state tree: %v", err)
-	}
-
-	// Unnecessary, should be removed
-	gi.genesisMarketFunds, err = getFilMarketLocked(ctx, sTree)
-	if err != nil {
-		return xerrors.Errorf("setting up genesis market funds: %v", err)
-	}
-
-	// Unnecessary, should be removed
-	gi.genesisPledge, err = getFilPowerLocked(ctx, sTree)
-	if err != nil {
-		return xerrors.Errorf("setting up genesis pledge: %v", err)
-	}
+// sets up information about the vesting schedule post the ignition upgrade
+func (caculator *CirculatingSupplyCalculator) setupPostIgnitionVesting(ctx context.Context) error {
 
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 
@@ -423,7 +256,7 @@ func (caculator *CirculatingSupplyCalculator) setupPostIgnitionGenesisActors(ctx
 	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 
-	gi.genesisMsigs = make([]msig0.State, 0, len(totalsByEpoch))
+	caculator.postIgnitionVesting = make([]msig0.State, 0, len(totalsByEpoch))
 	for k, v := range totalsByEpoch {
 		ns := msig0.State{
 			// In the pre-ignition logic, we incorrectly set this value in Fil, not attoFil, an off-by-10^18 error
@@ -431,12 +264,171 @@ func (caculator *CirculatingSupplyCalculator) setupPostIgnitionGenesisActors(ctx
 			UnlockDuration: k,
 			PendingTxns:    cid.Undef,
 			// In the pre-ignition logic, the start epoch was 0. This changes in the fork logic of the Ignition upgrade itself.
-			StartEpoch: fork.UpgradeLiftoffHeight,
+			StartEpoch: caculator.upgradeConfig.UpgradeLiftoffHeight,
 		}
-		gi.genesisMsigs = append(gi.genesisMsigs, ns)
+		caculator.postIgnitionVesting = append(caculator.postIgnitionVesting, ns)
 	}
 
-	caculator.postIgnitionGenInfos = &gi
+	return nil
+}
+
+// sets up information about the vesting schedule post the calico upgrade
+func (caculator *CirculatingSupplyCalculator) setupPostCalicoVesting(ctx context.Context) error {
+
+	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
+
+	// 0 days
+	zeroDays := abi.ChainEpoch(0)
+	totalsByEpoch[zeroDays] = big.NewInt(10_632_000)
+
+	// 6 months
+	sixMonths := abi.ChainEpoch(183 * builtin.EpochsInDay)
+	totalsByEpoch[sixMonths] = big.NewInt(19_015_887)
+	totalsByEpoch[sixMonths] = big.Add(totalsByEpoch[sixMonths], big.NewInt(32_787_700))
+
+	// 1 year
+	oneYear := abi.ChainEpoch(365 * builtin.EpochsInDay)
+	totalsByEpoch[oneYear] = big.NewInt(22_421_712)
+	totalsByEpoch[oneYear] = big.Add(totalsByEpoch[oneYear], big.NewInt(9_400_000))
+
+	// 2 years
+	twoYears := abi.ChainEpoch(2 * 365 * builtin.EpochsInDay)
+	totalsByEpoch[twoYears] = big.NewInt(7_223_364)
+
+	// 3 years
+	threeYears := abi.ChainEpoch(3 * 365 * builtin.EpochsInDay)
+	totalsByEpoch[threeYears] = big.NewInt(87_637_883)
+	totalsByEpoch[threeYears] = big.Add(totalsByEpoch[threeYears], big.NewInt(898_958))
+
+	// 6 years
+	sixYears := abi.ChainEpoch(6 * 365 * builtin.EpochsInDay)
+	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
+	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
+	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(9_805_053))
+
+	caculator.postCalicoVesting = make([]msig0.State, 0, len(totalsByEpoch))
+	for k, v := range totalsByEpoch {
+		ns := msig0.State{
+			InitialBalance: big.Mul(v, big.NewInt(int64(constants.FilecoinPrecision))),
+			UnlockDuration: k,
+			PendingTxns:    cid.Undef,
+			StartEpoch:     caculator.upgradeConfig.UpgradeLiftoffHeight,
+		}
+		caculator.postCalicoVesting = append(caculator.postCalicoVesting, ns)
+	}
 
 	return nil
+}
+
+// GetVestedFunds returns all funds that have "left" actors that are in the genesis state:
+// - For Multisigs, it counts the actual amounts that have vested at the given epoch
+// - For Accounts, it counts max(currentBalance - genesisBalance, 0).
+func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, height abi.ChainEpoch, st state.Tree) (abi.TokenAmount, error) {
+	vf := big.Zero()
+	if height <= caculator.upgradeConfig.UpgradeIgnitionHeight {
+		for _, v := range caculator.preIgnitionVesting {
+			au := big.Sub(v.InitialBalance, v.AmountLocked(height))
+			vf = big.Add(vf, au)
+		}
+	} else if height <= caculator.upgradeConfig.UpgradeCalicoHeight {
+		for _, v := range caculator.postIgnitionVesting {
+			// In the pre-ignition logic, we simply called AmountLocked(height), assuming startEpoch was 0.
+			// The start epoch changed in the Ignition upgrade.
+			au := big.Sub(v.InitialBalance, v.AmountLocked(height-v.StartEpoch))
+			vf = big.Add(vf, au)
+		}
+	} else {
+		for _, v := range caculator.postCalicoVesting {
+			// In the pre-ignition logic, we simply called AmountLocked(height), assuming startEpoch was 0.
+			// The start epoch changed in the Ignition upgrade.
+			au := big.Sub(v.InitialBalance, v.AmountLocked(height-v.StartEpoch))
+			vf = big.Add(vf, au)
+		}
+	}
+
+	// After UpgradeActorsV2Height these funds are accounted for in GetFilReserveDisbursed
+	if height <= caculator.upgradeConfig.UpgradeActorsV2Height {
+		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
+		vf = big.Add(vf, caculator.genesisPledge)
+		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
+		vf = big.Add(vf, caculator.genesisMarketFunds)
+	}
+
+	return vf, nil
+}
+
+func (caculator *CirculatingSupplyCalculator) GetFilReserveDisbursed(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
+	ract, found, err := st.GetActor(ctx, builtin.ReserveAddress)
+	if !found || err != nil {
+		return big.Zero(), xerrors.Errorf("failed to get reserve actor: %v", err)
+	}
+
+	// If money enters the reserve actor, this could lead to a negative term
+	return big.Sub(big.NewFromGo(constants.InitialFilReserved), ract.Balance), nil
+}
+
+func GetFilMined(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
+	ractor, found, err := st.GetActor(ctx, reward.Address)
+	if !found || err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load reward actor state: %v", err)
+	}
+
+	rst, err := reward.Load(adt.WrapStore(ctx, st.GetStore()), ractor)
+	if err != nil {
+		return big.Zero(), err
+	}
+
+	return rst.TotalStoragePowerReward()
+}
+
+func GetFilBurnt(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
+	burnt, found, err := st.GetActor(ctx, builtin.BurntFundsActorAddr)
+	if !found || err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load burnt actor: %v", err)
+	}
+
+	return burnt.Balance, nil
+}
+
+func (caculator *CirculatingSupplyCalculator) GetFilLocked(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
+
+	filMarketLocked, err := getFilMarketLocked(ctx, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %v", err)
+	}
+
+	filPowerLocked, err := getFilPowerLocked(ctx, st)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to get filPowerLocked: %v", err)
+	}
+
+	return big.Add(filMarketLocked, filPowerLocked), nil
+}
+
+func getFilMarketLocked(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
+	act, found, err := st.GetActor(ctx, market.Address)
+	if !found || err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load market actor: %v", err)
+	}
+
+	mst, err := market.Load(adt.WrapStore(ctx, st.GetStore()), act)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load market state: %v", err)
+	}
+
+	return mst.TotalLocked()
+}
+
+func getFilPowerLocked(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
+	pactor, found, err := st.GetActor(ctx, power.Address)
+	if !found || err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load power actor: %v", err)
+	}
+
+	pst, err := power.Load(adt.WrapStore(ctx, st.GetStore()), pactor)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to load power state: %v", err)
+	}
+
+	return pst.TotalLocked()
 }

@@ -2,7 +2,9 @@ package state
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -140,7 +142,7 @@ func (v *FakeStateView) MinerClaimedPower(ctx context.Context, miner address.Add
 	return m.ClaimedRawPower, m.ClaimedQAPower, nil
 }
 
-func (v *FakeStateView) GetSectorsForWinningPoSt(ctx context.Context, pv ffiwrapper.Verifier, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
+func (v *FakeStateView) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
 	_, ok := v.Miners[maddr]
 	if !ok {
 		return nil, errors.Errorf("no miner %s", maddr)

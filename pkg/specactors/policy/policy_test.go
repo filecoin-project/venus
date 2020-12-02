@@ -1,10 +1,7 @@
 package policy
 
 import (
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -15,6 +12,9 @@ import (
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	paych2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
 	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
+	"github.com/stretchr/testify/require"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
 func TestSupportedProofTypes(t *testing.T) {
@@ -47,7 +47,7 @@ func TestSupportedProofTypes(t *testing.T) {
 // Tests assumptions about policies being the same between actor versions.
 func TestAssumptions(t *testing.T) {
 	tf.UnitTest(t)
-	require.EqualValues(t, miner0.SupportedProofTypes, miner2.SupportedProofTypes)
+	require.EqualValues(t, miner0.SupportedProofTypes, miner2.PreCommitSealProofTypesV0)
 	require.Equal(t, miner0.PreCommitChallengeDelay, miner2.PreCommitChallengeDelay)
 	require.Equal(t, miner0.MaxSectorExpirationExtension, miner2.MaxSectorExpirationExtension)
 	require.Equal(t, miner0.ChainFinality, miner2.ChainFinality)
@@ -61,10 +61,10 @@ func TestAssumptions(t *testing.T) {
 
 func TestPartitionSizes(t *testing.T) {
 	tf.UnitTest(t)
-	for p := range abi.PoStSealProofTypes {
-		sizeNew, err := builtin2.PoStProofWindowPoStPartitionSectors(p)
+	for _, p := range abi.SealProofInfos {
+		sizeNew, err := builtin2.PoStProofWindowPoStPartitionSectors(p.WindowPoStProof)
 		require.NoError(t, err)
-		sizeOld, err := builtin0.PoStProofWindowPoStPartitionSectors(p)
+		sizeOld, err := builtin0.PoStProofWindowPoStPartitionSectors(p.WindowPoStProof)
 		if err != nil {
 			// new proof type.
 			continue

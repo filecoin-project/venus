@@ -2,6 +2,12 @@ package chain
 
 import (
 	"context"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/venus/pkg/config"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	blocks "github.com/ipfs/go-block-format"
@@ -463,6 +469,89 @@ func (ms *MessageStore) storeAMTCids(ctx context.Context, cids []cid.Cid) (cid.C
 		cidMarshallers[i] = &cidMarshaller
 	}
 	return amt.FromArray(ctx, as, cidMarshallers)
+}
+
+func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch, upgrade *config.ForkUpgradeConfig) abi.TokenAmount {
+	// deta := gasLimitUsed/noOfBlocks - constants.BlockGasTarget
+	// change := baseFee * deta / BlockGasTarget
+	// nextBaseFee = baseFee + change
+	// nextBaseFee = max(nextBaseFee, constants.MinimumBaseFee)
+
+	var delta int64
+	if epoch > upgrade.UpgradeSmokeHeight {
+		delta = gasLimitUsed / int64(noOfBlocks)
+		delta -= constants.BlockGasTarget
+	} else {
+		delta = constants.PackingEfficiencyDenom * gasLimitUsed / (int64(noOfBlocks) * constants.PackingEfficiencyNum)
+		delta -= constants.BlockGasTarget
+	}
+
+	// cap change at 12.5% (BaseFeeMaxChangeDenom) by capping delta
+	if delta > constants.BlockGasTarget {
+		delta = constants.BlockGasTarget
+	}
+	if delta < -constants.BlockGasTarget {
+		delta = -constants.BlockGasTarget
+	}
+
+	change := big.Mul(baseFee, big.NewInt(delta))
+	change = big.Div(change, big.NewInt(constants.BlockGasTarget))
+	change = big.Div(change, big.NewInt(constants.BaseFeeMaxChangeDenom))
+
+	nextBaseFee := big.Add(baseFee, change)
+	if big.Cmp(nextBaseFee, big.NewInt(constants.MinimumBaseFee)) < 0 {
+		nextBaseFee = big.NewInt(constants.MinimumBaseFee)
+	}
+	return nextBaseFee
+}
+
+func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet, upgrade *config.ForkUpgradeConfig) (abi.TokenAmount, error) {
+	zero := abi.NewTokenAmount(0)
+	baseHeight, err := ts.Height()
+	if err != nil {
+		return zero, err
+	}
+
+	if baseHeight > upgrade.UpgradeBreezeHeight && baseHeight < upgrade.UpgradeBreezeHeight+upgrade.BreezeGasTampingDuration {
+		return abi.NewTokenAmount(100), nil
+	}
+
+	// totalLimit is sum of GasLimits of unique messages in a tipset
+	totalLimit := int64(0)
+
+	seen := make(map[cid.Cid]struct{})
+
+	for _, b := range ts.Blocks() {
+		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, b.Messages.Cid)
+		if err != nil {
+			return zero, xerrors.Errorf("error getting messages for: %s: %w", b.Cid(), err)
+		}
+
+		for _, m := range blsMsgs {
+			c, err := m.Cid()
+			if err != nil {
+				return zero, xerrors.Errorf("error getting cid for message: %v: %w", m, err)
+			}
+			if _, ok := seen[c]; !ok {
+				totalLimit += int64(m.GasLimit)
+				seen[c] = struct{}{}
+			}
+		}
+		for _, m := range secpMsgs {
+			c, err := m.Cid()
+			if err != nil {
+				return zero, xerrors.Errorf("error getting cid for signed message: %v: %w", m, err)
+			}
+			if _, ok := seen[c]; !ok {
+				totalLimit += int64(m.Message.GasLimit)
+				seen[c] = struct{}{}
+			}
+		}
+	}
+
+	parentBaseFee := ts.Blocks()[0].ParentBaseFee
+
+	return ComputeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks()), baseHeight, upgrade), nil
 }
 
 func GetReceiptRoot(receipts []types.MessageReceipt) (cid.Cid, error) {

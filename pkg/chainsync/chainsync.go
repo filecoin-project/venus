@@ -40,10 +40,9 @@ func NewManager(fv syncer.FullBlockValidator,
 	f syncer.Fetcher,
 	exchangeClient exchange.Client,
 	c clock.Clock,
-	checkPoint block.TipSetKey,
 	detector *slashing.ConsensusFaultDetector,
 	fork fork.IFork) (Manager, error) {
-	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, bsstore, f, exchangeClient, status.NewReporter(), c, detector, checkPoint, fork)
+	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, bsstore, f, exchangeClient, status.NewReporter(), c, detector, fork)
 	if err != nil {
 		return Manager{}, err
 	}

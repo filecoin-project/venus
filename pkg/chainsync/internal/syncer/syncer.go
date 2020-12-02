@@ -3,9 +3,10 @@ package syncer
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/util"
 	"sync"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/util"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -192,7 +193,6 @@ func NewSyncer(fv FullBlockValidator,
 	sr status.Reporter,
 	c clock.Clock,
 	fd faultDetector,
-	checkPoint block.TipSetKey,
 	fork fork.IFork) (*Syncer, error) {
 	return &Syncer{
 		fetcher:        f,
@@ -210,7 +210,6 @@ func NewSyncer(fv FullBlockValidator,
 		faultDetector:   fd,
 		reporter:        sr,
 		fork:            fork,
-		checkPoint:      checkPoint,
 	}, nil
 }
 
@@ -624,7 +623,7 @@ loop:
 			targetTip = tipset.EnsureParents()
 			count++
 			if count%500 == 0 {
-				fmt.Println("load from local db ", "Height:", tipset.EnsureHeight())
+				logSyncer.Info("load from local db ", "Height: ", tipset.EnsureHeight())
 			}
 			continue
 		}
@@ -1019,7 +1018,7 @@ func SegProcess(ts []*block.TipSet, cb func(ts []*block.TipSet) error) (err erro
 		}
 	}
 
-	fmt.Printf("Sync Process End,Remaining: %v, err: %v ...", len(ts), err)
+	logSyncer.Infof("Sync Process End,Remaining: %v, err: %v ...", len(ts), err)
 
 	return err
 }

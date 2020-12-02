@@ -2,6 +2,8 @@ package node
 
 import (
 	"context"
+	"time"
+
 	"github.com/filecoin-project/venus/app/submodule/blockservice"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/app/submodule/chain"
@@ -14,7 +16,6 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
 	"github.com/filecoin-project/venus/pkg/util"
-	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -120,19 +121,26 @@ func JournalConfigOption(jrl journal.Journal) BuilderOpt {
 // binary's specs actor dependency to change network parameters that live there
 func MonkeyPatchNetworkParamsOption(params *config.NetworkParamsConfig) BuilderOpt {
 	return func(c *Builder) error {
-		if params.ConsensusMinerMinPower > 0 {
-			policy.SetConsensusMinerMinPower(big.NewIntUnsigned(params.ConsensusMinerMinPower))
-		}
-		if len(params.ReplaceProofTypes) > 0 {
-			newSupportedTypes := make([]abi.RegisteredSealProof, len(params.ReplaceProofTypes))
-			for idx, proofType := range params.ReplaceProofTypes {
-				newSupportedTypes[idx] = abi.RegisteredSealProof(proofType)
-			}
-			// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
-			policy.SetSupportedProofTypes(newSupportedTypes...)
-		}
-
+		SetNetParams(params)
 		return nil
+	}
+}
+
+func SetNetParams(params *config.NetworkParamsConfig) {
+	if params.ConsensusMinerMinPower > 0 {
+		policy.SetConsensusMinerMinPower(big.NewIntUnsigned(params.ConsensusMinerMinPower))
+	}
+	if len(params.ReplaceProofTypes) > 0 {
+		newSupportedTypes := make([]abi.RegisteredSealProof, len(params.ReplaceProofTypes))
+		for idx, proofType := range params.ReplaceProofTypes {
+			newSupportedTypes[idx] = abi.RegisteredSealProof(proofType)
+		}
+		// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
+		policy.SetSupportedProofTypes(newSupportedTypes...)
+	}
+
+	if params.MinVerifiedDealSize > 0 {
+		policy.SetMinVerifiedDealSize(abi.NewStoragePower(params.MinVerifiedDealSize))
 	}
 }
 
