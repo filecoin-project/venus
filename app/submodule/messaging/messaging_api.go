@@ -103,13 +103,9 @@ func (messagingAPI *MessagingAPI) MessagePreview(ctx context.Context, from, to a
 // channel returned receives either nil or an error and is immediately closed after
 // the message is published to the network to signal that the publish is complete.
 func (messagingAPI *MessagingAPI) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, baseFee types.AttoFIL, gasPremium types.AttoFIL, gasLimit types.Unit, method abi.MethodNum, params interface{}) (cid.Cid, error) {
-	msgCid, pubCh, err := messagingAPI.messaging.Outbox.Send(ctx, from, to, value, baseFee, gasPremium, gasLimit, true, method, params)
+	msgCid, _, err := messagingAPI.messaging.Outbox.Send(ctx, from, to, value, baseFee, gasPremium, gasLimit, true, method, params)
 	if err != nil {
-		return cid.Undef, nil
-	}
-	err = <-pubCh
-	if err != nil {
-		return cid.Undef, nil
+		return cid.Undef, err
 	}
 	return msgCid, nil
 }
