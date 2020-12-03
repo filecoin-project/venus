@@ -2,6 +2,7 @@ package conformance
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/vm/gas"
 	gobig "math/big"
 
 	"github.com/filecoin-project/venus/app/node"
@@ -133,6 +134,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 			BaseFee:           big.NewFromGo(&tipset.BaseFee),
 			Fork:              chainFork,
 			Epoch:             execEpoch,
+			GasPriceSchedule:  gas.NewPricesSchedule(mainNetParams.Network.ForkUpgradeParam),
 		}
 	)
 	//flush data to blockstore
@@ -289,6 +291,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 			Fork:              chainFork,
 			ActorCodeLoader:   &coderLoader,
 			Epoch:             params.Epoch,
+			GasPriceSchedule:  gas.NewPricesSchedule(mainNetParams.Network.ForkUpgradeParam),
 		}
 	)
 	stateTree, err := state.LoadState(context.TODO(), ipldStore, params.Preroot)

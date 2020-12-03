@@ -328,7 +328,8 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 	//nolint
 	if !found {
 		// Charge gas now that easy checks are done
-		ctx.gasTank.Charge(gas.PricelistByEpoch(ctx.vm.CurrentEpoch()).OnCreateActor(), "CreateActor  address %s", target)
+
+		ctx.gasTank.Charge(ctx.vm.pricelist.OnCreateActor(), "CreateActor  address %s", target)
 		// actor does not exist, create an account actor
 		// - precond: address must be a pub-key
 		// - sent init actor a msg To create the new account

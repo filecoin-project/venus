@@ -27,6 +27,7 @@ type VmOption struct { //nolint
 	Fork                 fork.IFork
 	ActorCodeLoader      *dispatch.CodeLoader
 	Epoch                abi.ChainEpoch
+	GasPriceSchedule     *gas.PricesSchedule
 }
 
 type Ret struct {

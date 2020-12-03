@@ -3,6 +3,8 @@ package consensus_test
 import (
 	"context"
 	fbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"testing"
 	"time"
 
@@ -25,14 +27,14 @@ import (
 
 func TestBlockValidHeaderSemantic(t *testing.T) {
 	tf.UnitTest(t)
-
+	priceSched := gas.NewPricesSchedule(config.DefaultForkUpgradeParam)
 	blockTime := clock.DefaultEpochDuration
 	ts := time.Unix(1234567890, 0)
 	genTime := ts
 	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, clock.DefaultPropagationDelay, clock.NewFake(ts))
 	ctx := context.Background()
 
-	validator := consensus.NewDefaultBlockValidator(mclock, nil, nil)
+	validator := consensus.NewDefaultBlockValidator(mclock, nil, nil, priceSched)
 
 	t.Run("reject block with same height as parents", func(t *testing.T) {
 		// passes with valid height
@@ -53,7 +55,7 @@ func TestBlockValidHeaderSemantic(t *testing.T) {
 
 func TestBlockValidMessageSemantic(t *testing.T) {
 	tf.UnitTest(t)
-
+	priceSched := gas.NewPricesSchedule(config.DefaultForkUpgradeParam)
 	blockTime := clock.DefaultEpochDuration
 	ts := time.Unix(1234567890, 0)
 	genTime := ts
@@ -74,7 +76,8 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 			blsMessages: []*types.UnsignedMessage{msg1},
 		}, &fakeChainState{
 			err: blockstore.ErrNotFound,
-		})
+		},
+			priceSched)
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.Error(t, err)
@@ -91,7 +94,8 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 			blsMessages: []*types.UnsignedMessage{msg1},
 		}, &fakeChainState{
 			actor: actor,
-		})
+		},
+			priceSched)
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.Error(t, err)
@@ -103,7 +107,8 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 			blsMessages: []*types.UnsignedMessage{msg1, msg2, msg3},
 		}, &fakeChainState{
 			actor: newActor(t, 0, 2),
-		})
+		},
+			priceSched)
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.NoError(t, err)
@@ -114,7 +119,8 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 			secpMessages: []*types.SignedMessage{{Message: *msg1}, {Message: *msg2}, {Message: *msg3}},
 		}, &fakeChainState{
 			actor: newActor(t, 0, 2),
-		})
+		},
+			priceSched)
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.NoError(t, err)
@@ -125,7 +131,8 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 			blsMessages: []*types.UnsignedMessage{msg1, msg3, msg2},
 		}, &fakeChainState{
 			actor: newActor(t, 0, 2),
-		})
+		},
+			priceSched)
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.Error(t, err)
@@ -137,7 +144,8 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 			blsMessages: []*types.UnsignedMessage{msg1, msg3},
 		}, &fakeChainState{
 			actor: newActor(t, 0, 2),
-		})
+		},
+			priceSched)
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.Error(t, err)
@@ -149,7 +157,8 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 			blsMessages: []*types.UnsignedMessage{msg0},
 		}, &fakeChainState{
 			actor: newActor(t, 0, 2),
-		})
+		},
+			priceSched)
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.Error(t, err)
@@ -161,7 +170,8 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 			secpMessages: []*types.SignedMessage{{Message: *msg0}},
 		}, &fakeChainState{
 			actor: newActor(t, 0, 2),
-		})
+		},
+			priceSched)
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.Error(t, err)
@@ -173,7 +183,8 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 			blsMessages: []*types.UnsignedMessage{msg2},
 		}, &fakeChainState{
 			actor: newActor(t, 0, 2),
-		})
+		},
+			priceSched)
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.Error(t, err)
@@ -186,7 +197,8 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 			blsMessages:  []*types.UnsignedMessage{msg2},
 		}, &fakeChainState{
 			actor: newActor(t, 0, 2),
-		})
+		},
+			priceSched)
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.Error(t, err)
@@ -199,7 +211,8 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 			secpMessages: []*types.SignedMessage{{Message: *msg2}},
 		}, &fakeChainState{
 			actor: newActor(t, 0, 2),
-		})
+		},
+			priceSched)
 
 		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
 		require.NoError(t, err)
@@ -208,12 +221,12 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 
 func TestMismatchedTime(t *testing.T) {
 	tf.UnitTest(t)
-
+	priceSched := gas.NewPricesSchedule(config.DefaultForkUpgradeParam)
 	blockTime := clock.DefaultEpochDuration
 	genTime := time.Unix(1234567890, 1234567890%int64(time.Second))
 	fc := clock.NewFake(genTime)
 	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, clock.DefaultPropagationDelay, fc)
-	validator := consensus.NewDefaultBlockValidator(mclock, nil, nil)
+	validator := consensus.NewDefaultBlockValidator(mclock, nil, nil, priceSched)
 
 	fc.Advance(blockTime)
 
@@ -232,12 +245,12 @@ func TestMismatchedTime(t *testing.T) {
 
 func TestFutureEpoch(t *testing.T) {
 	tf.UnitTest(t)
-
+	priceSched := gas.NewPricesSchedule(config.DefaultForkUpgradeParam)
 	blockTime := clock.DefaultEpochDuration
 	genTime := time.Unix(1234567890, 1234567890%int64(time.Second))
 	fc := clock.NewFake(genTime)
 	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, clock.DefaultPropagationDelay, fc)
-	validator := consensus.NewDefaultBlockValidator(mclock, nil, nil)
+	validator := consensus.NewDefaultBlockValidator(mclock, nil, nil, priceSched)
 
 	// Fails in future epoch
 	c := &block.Block{Height: 1, Timestamp: uint64(genTime.Add(blockTime).Unix())}
@@ -248,7 +261,7 @@ func TestFutureEpoch(t *testing.T) {
 
 func TestBlockValidSyntax(t *testing.T) {
 	tf.UnitTest(t)
-
+	priceSched := gas.NewPricesSchedule(config.DefaultForkUpgradeParam)
 	blockTime := clock.DefaultEpochDuration
 	ts := time.Unix(1234567890, 0)
 	mclock := clock.NewFake(ts)
@@ -256,7 +269,7 @@ func TestBlockValidSyntax(t *testing.T) {
 	ctx := context.Background()
 	mclock.Advance(blockTime)
 
-	validator := consensus.NewDefaultBlockValidator(chainClock, nil, nil)
+	validator := consensus.NewDefaultBlockValidator(chainClock, nil, nil, priceSched)
 
 	validTs := uint64(mclock.Now().Unix())
 	validSt := e.NewCid(types.NewCidForTestGetter()())

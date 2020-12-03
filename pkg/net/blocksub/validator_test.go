@@ -3,6 +3,8 @@ package blocksub_test
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"testing"
 	"time"
 
@@ -55,7 +57,7 @@ func TestBlockTopicValidator(t *testing.T) {
 func TestBlockPubSubValidation(t *testing.T) {
 	tf.IntegrationTest(t)
 	ctx := context.Background()
-
+	priceSched := gas.NewPricesSchedule(config.DefaultForkUpgradeParam)
 	// setup a mock network and generate a host
 	mn := mocknet.New(ctx)
 	host1, err := mn.GenPeer()
@@ -70,7 +72,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 
 	// setup a block validator and a topic validator
 	chainClock := clock.NewChainClockFromClock(uint64(now.Unix()), blocktime, propDelay, mclock)
-	bv := consensus.NewDefaultBlockValidator(chainClock, nil, nil)
+	bv := consensus.NewDefaultBlockValidator(chainClock, nil, nil, priceSched)
 	btv := blocksub.NewBlockTopicValidator(bv)
 
 	// setup a floodsub instance on the host and register the topic validator

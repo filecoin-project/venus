@@ -75,8 +75,9 @@ type MessageSyntaxValidator interface {
 // DefaultBlockValidator implements the BlockValidator interface.
 type DefaultBlockValidator struct {
 	clock.ChainEpochClock
-	ms messageStore
-	cs chainState
+	ms               messageStore
+	cs               chainState
+	gasPriceSchedule *gas.PricesSchedule
 }
 
 // WrappedSyntaxValidator implements syntax validator interface
@@ -87,11 +88,12 @@ type WrappedSyntaxValidator struct {
 
 // NewDefaultBlockValidator returns a new DefaultBlockValidator. It uses `blkTime`
 // to validate blocks and uses the DefaultBlockValidationClock.
-func NewDefaultBlockValidator(c clock.ChainEpochClock, m messageStore, cs chainState) *DefaultBlockValidator {
+func NewDefaultBlockValidator(c clock.ChainEpochClock, m messageStore, cs chainState, gasPriceSchedule *gas.PricesSchedule) *DefaultBlockValidator {
 	return &DefaultBlockValidator{
-		ChainEpochClock: c,
-		ms:              m,
-		cs:              cs,
+		ChainEpochClock:  c,
+		ms:               m,
+		cs:               cs,
+		gasPriceSchedule: gasPriceSchedule,
 	}
 }
 
@@ -146,7 +148,7 @@ func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, c
 		return errors.Wrapf(err, "block validation failed loading message list %s for block %s", child.Messages, child.Cid())
 	}
 
-	pl := gas.PricelistByEpoch(child.Height)
+	pl := dv.gasPriceSchedule.PricelistByEpoch(child.Height)
 	var sumGasLimit int64
 	callSeqNums := make(map[address.Address]uint64)
 	checkMsg := func(msg types.ChainMsg) error {

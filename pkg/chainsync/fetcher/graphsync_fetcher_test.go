@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/fork/blockstore"
 	"github.com/filecoin-project/venus/pkg/util"
+	"github.com/filecoin-project/venus/pkg/vm/gas"
 	blocks "github.com/ipfs/go-block-format"
 	"io"
 	"reflect"
@@ -60,9 +62,10 @@ func init() {
 
 func TestGraphsyncFetcher(t *testing.T) {
 	tf.UnitTest(t)
+	priceSched := gas.NewPricesSchedule(config.DefaultForkUpgradeParam)
 	ctx := context.Background()
 	fc, chainClock := clock.NewFakeChain(1234567890, 5*time.Second, time.Second, time.Now().Unix())
-	bv := consensus.NewDefaultBlockValidator(chainClock, nil, nil)
+	bv := consensus.NewDefaultBlockValidator(chainClock, nil, nil, priceSched)
 	msgV := &consensus.FakeMessageValidator{}
 	syntax := consensus.WrappedSyntaxValidator{
 		BlockSyntaxValidator:   bv,
@@ -725,11 +728,12 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	tf.UnitTest(t)
+	priceSched := gas.NewPricesSchedule(config.DefaultForkUpgradeParam)
 	ctx := context.Background()
 	fc := clock.NewFake(time.Now())
 	genTime := uint64(1234567890)
 	chainClock := clock.NewChainClockFromClock(genTime, 5*time.Second, time.Second, fc)
-	bv := consensus.NewDefaultBlockValidator(chainClock, nil, nil)
+	bv := consensus.NewDefaultBlockValidator(chainClock, nil, nil, priceSched)
 	msgV := &consensus.FakeMessageValidator{}
 	syntax := consensus.WrappedSyntaxValidator{
 		BlockSyntaxValidator:   bv,
@@ -848,6 +852,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 	tf.IntegrationTest(t)
 	ctx := context.Background()
+	priceSched := gas.NewPricesSchedule(config.DefaultForkUpgradeParam)
 	// setup a chain
 	fc, chainClock := clock.NewFakeChain(1234567890, 5*time.Second, time.Second, time.Now().Unix())
 	builder := chain.NewBuilderWithDeps(t, address.Undef, &chain.FakeStateBuilder{}, chain.NewClockTimestamper(chainClock))
@@ -901,7 +906,7 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 
-	bv := consensus.NewDefaultBlockValidator(chainClock, nil, nil)
+	bv := consensus.NewDefaultBlockValidator(chainClock, nil, nil, priceSched)
 	msgV := &consensus.FakeMessageValidator{}
 	syntax := consensus.WrappedSyntaxValidator{BlockSyntaxValidator: bv,
 		MessageSyntaxValidator: msgV,

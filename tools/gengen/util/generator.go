@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"io"
 	mrand "math/rand"
 
@@ -96,9 +98,10 @@ func NewGenesisGenerator(vmStorage *vm.Storage) *GenesisGenerator {
 		NtwkVersionGetter: func(ctx context.Context, epoch abi.ChainEpoch) network.Version {
 			return network.Version6
 		},
-		Rnd:     &crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}},
-		BaseFee: abi.NewTokenAmount(InitialBaseFee),
-		Epoch:   0,
+		Rnd:              &crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}},
+		BaseFee:          abi.NewTokenAmount(InitialBaseFee),
+		Epoch:            0,
+		GasPriceSchedule: gas.NewPricesSchedule(config.DefaultForkUpgradeParam),
 	}
 	g.vm = vm.NewVM(g.stateTree, vmStorage, vmsupport.NewSyscalls(&vmsupport.NilFaultChecker{}, &proofs.FakeVerifier{}), vmOption).(genesis.VM)
 

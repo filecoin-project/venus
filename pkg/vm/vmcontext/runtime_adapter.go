@@ -267,7 +267,8 @@ func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
 	}
 
 	// Charge gas now that easy checks are done
-	a.ctx.gasTank.Charge(gas.PricelistByEpoch(a.ctx.vm.CurrentEpoch()).OnCreateActor(), "CreateActor code %s, address %s", codeID, addr)
+
+	a.ctx.gasTank.Charge(a.ctx.vm.pricelist.OnCreateActor(), "CreateActor code %s, address %s", codeID, addr)
 
 	newActor := &types.Actor{
 		// make this the right 'type' of actor

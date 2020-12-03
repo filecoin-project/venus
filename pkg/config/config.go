@@ -234,6 +234,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
+	defaultParams := *DefaultForkUpgradeParam
 	return &NetworkParamsConfig{
 		ConsensusMinerMinPower: 0, // 0 means don't override the value
 		ReplaceProofTypes: []int64{
@@ -243,7 +244,7 @@ func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 			int64(abi.RegisteredSealProof_StackedDrg64GiBV1),
 		},
 		DrandSchedule:    map[abi.ChainEpoch]DrandEnum{0: 5, -1: 1},
-		ForkUpgradeParam: DefaultForkUpgradeParam,
+		ForkUpgradeParam: &defaultParams,
 	}
 }
 
