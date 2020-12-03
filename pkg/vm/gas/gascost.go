@@ -10,11 +10,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 )
 
-const (
-	GasStorageMulti = 1000
-	GasComputeMulti = 1
-)
-
 type GasCharge struct { //nolint
 	Name  string
 	Extra interface{}
@@ -81,112 +76,119 @@ type Pricelist interface {
 	OnVerifyConsensusFault() GasCharge
 }
 
-var prices = map[abi.ChainEpoch]Pricelist{
-	abi.ChainEpoch(0): &pricelistV0{
-		computeGasMulti: 1,
-		storageGasMulti: 1000,
+type PricesSchedule struct {
+	prices map[abi.ChainEpoch]Pricelist
+}
 
-		onChainMessageComputeBase:    38863,
-		onChainMessageStorageBase:    36,
-		onChainMessageStoragePerByte: 1,
+func NewPricesSchedule(forkParams *config.ForkUpgradeConfig) *PricesSchedule {
+	var prices = map[abi.ChainEpoch]Pricelist{
+		abi.ChainEpoch(0): &pricelistV0{
+			computeGasMulti: 1,
+			storageGasMulti: 1000,
 
-		onChainReturnValuePerByte: 1,
+			onChainMessageComputeBase:    38863,
+			onChainMessageStorageBase:    36,
+			onChainMessageStoragePerByte: 1,
 
-		sendBase:                29233,
-		sendTransferFunds:       27500,
-		sendTransferOnlyPremium: 159672,
-		sendInvokeMethod:        -5377,
+			onChainReturnValuePerByte: 1,
 
-		ipldGetBase:    75242,
-		ipldPutBase:    84070,
-		ipldPutPerByte: 1,
+			sendBase:                29233,
+			sendTransferFunds:       27500,
+			sendTransferOnlyPremium: 159672,
+			sendInvokeMethod:        -5377,
 
-		createActorCompute: 1108454,
-		createActorStorage: 36 + 40,
-		deleteActor:        -(36 + 40), // -createActorStorage
+			ipldGetBase:    75242,
+			ipldPutBase:    84070,
+			ipldPutPerByte: 1,
 
-		verifySignature: map[crypto.SigType]int64{
-			crypto.SigTypeBLS:       16598605,
-			crypto.SigTypeSecp256k1: 1637292,
+			createActorCompute: 1108454,
+			createActorStorage: 36 + 40,
+			deleteActor:        -(36 + 40), // -createActorStorage
+
+			verifySignature: map[crypto.SigType]int64{
+				crypto.SigTypeBLS:       16598605,
+				crypto.SigTypeSecp256k1: 1637292,
+			},
+
+			hashingBase:                  31355,
+			computeUnsealedSectorCidBase: 98647,
+			verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
+			verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
+				abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
+					flat:  123861062,
+					scale: 9226981,
+				},
+				abi.RegisteredPoStProof_StackedDrgWindow32GiBV1: {
+					flat:  748593537,
+					scale: 85639,
+				},
+				abi.RegisteredPoStProof_StackedDrgWindow64GiBV1: {
+					flat:  748593537,
+					scale: 85639,
+				},
+			},
+			verifyPostDiscount:   true,
+			verifyConsensusFault: 495422,
 		},
+		forkParams.UpgradeCalicoHeight: &pricelistV0{
+			computeGasMulti: 1,
+			storageGasMulti: 1300,
 
-		hashingBase:                  31355,
-		computeUnsealedSectorCidBase: 98647,
-		verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
-		verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
-			abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
-				flat:  123861062,
-				scale: 9226981,
+			onChainMessageComputeBase:    38863,
+			onChainMessageStorageBase:    36,
+			onChainMessageStoragePerByte: 1,
+
+			onChainReturnValuePerByte: 1,
+
+			sendBase:                29233,
+			sendTransferFunds:       27500,
+			sendTransferOnlyPremium: 159672,
+			sendInvokeMethod:        -5377,
+
+			ipldGetBase:    114617,
+			ipldPutBase:    353640,
+			ipldPutPerByte: 1,
+
+			createActorCompute: 1108454,
+			createActorStorage: 36 + 40,
+			deleteActor:        -(36 + 40), // -createActorStorage
+
+			verifySignature: map[crypto.SigType]int64{
+				crypto.SigTypeBLS:       16598605,
+				crypto.SigTypeSecp256k1: 1637292,
 			},
-			abi.RegisteredPoStProof_StackedDrgWindow32GiBV1: {
-				flat:  748593537,
-				scale: 85639,
+
+			hashingBase:                  31355,
+			computeUnsealedSectorCidBase: 98647,
+			verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
+			verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
+				abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
+					flat:  117680921,
+					scale: 43780,
+				},
+				abi.RegisteredPoStProof_StackedDrgWindow32GiBV1: {
+					flat:  117680921,
+					scale: 43780,
+				},
+				abi.RegisteredPoStProof_StackedDrgWindow64GiBV1: {
+					flat:  117680921,
+					scale: 43780,
+				},
 			},
-			abi.RegisteredPoStProof_StackedDrgWindow64GiBV1: {
-				flat:  748593537,
-				scale: 85639,
-			},
+			verifyPostDiscount:   false,
+			verifyConsensusFault: 495422,
 		},
-		verifyPostDiscount:   true,
-		verifyConsensusFault: 495422,
-	},
-	config.DefaultForkUpgradeParam.UpgradeCalicoHeight: &pricelistV0{
-		computeGasMulti: 1,
-		storageGasMulti: 1300,
-
-		onChainMessageComputeBase:    38863,
-		onChainMessageStorageBase:    36,
-		onChainMessageStoragePerByte: 1,
-
-		onChainReturnValuePerByte: 1,
-
-		sendBase:                29233,
-		sendTransferFunds:       27500,
-		sendTransferOnlyPremium: 159672,
-		sendInvokeMethod:        -5377,
-
-		ipldGetBase:    114617,
-		ipldPutBase:    353640,
-		ipldPutPerByte: 1,
-
-		createActorCompute: 1108454,
-		createActorStorage: 36 + 40,
-		deleteActor:        -(36 + 40), // -createActorStorage
-
-		verifySignature: map[crypto.SigType]int64{
-			crypto.SigTypeBLS:       16598605,
-			crypto.SigTypeSecp256k1: 1637292,
-		},
-
-		hashingBase:                  31355,
-		computeUnsealedSectorCidBase: 98647,
-		verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
-		verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
-			abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
-				flat:  117680921,
-				scale: 43780,
-			},
-			abi.RegisteredPoStProof_StackedDrgWindow32GiBV1: {
-				flat:  117680921,
-				scale: 43780,
-			},
-			abi.RegisteredPoStProof_StackedDrgWindow64GiBV1: {
-				flat:  117680921,
-				scale: 43780,
-			},
-		},
-		verifyPostDiscount:   false,
-		verifyConsensusFault: 495422,
-	},
+	}
+	return &PricesSchedule{prices: prices}
 }
 
 // PricelistByEpoch finds the latest prices for the given epoch
-func PricelistByEpoch(epoch abi.ChainEpoch) Pricelist {
+func (schedule *PricesSchedule) PricelistByEpoch(epoch abi.ChainEpoch) Pricelist {
 	// since we are storing the prices as map or epoch to price
 	// we need to get the price with the highest epoch that is lower or equal to the `epoch` arg
 	bestEpoch := abi.ChainEpoch(0)
-	bestPrice := prices[bestEpoch]
-	for e, pl := range prices {
+	bestPrice := schedule.prices[bestEpoch]
+	for e, pl := range schedule.prices {
 		// if `e` happened after `bestEpoch` and `e` is earlier or equal to the target `epoch`
 		if e > bestEpoch && e <= epoch {
 			bestEpoch = e

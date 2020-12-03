@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -71,7 +72,8 @@ func NewSyncerSubmodule(ctx context.Context,
 	chn *chain2.ChainSubmodule,
 	postVerifier consensus.ProofVerifier) (*SyncerSubmodule, error) {
 	// setup validation
-	blkValid := consensus.NewDefaultBlockValidator(config.ChainClock(), chn.MessageStore, chn.State)
+	gasPriceSchedule := gas.NewPricesSchedule(config.Repo().Config().NetworkParams.ForkUpgradeParam)
+	blkValid := consensus.NewDefaultBlockValidator(config.ChainClock(), chn.MessageStore, chn.State, gasPriceSchedule)
 	msgValid := consensus.NewMessageSyntaxValidator()
 	syntax := consensus.WrappedSyntaxValidator{
 		BlockSyntaxValidator:   blkValid,
@@ -101,8 +103,21 @@ func NewSyncerSubmodule(ctx context.Context,
 	tickets := consensus.NewTicketMachine(sampler, chn.ChainReader)
 	stateViewer := consensus.AsDefaultStateViewer(state.NewViewer(blockstore.CborStore))
 
-	nodeConsensus := consensus.NewExpected(blockstore.CborStore, blockstore.Blockstore, chn.Processor, &stateViewer,
-		config.BlockTime(), tickets, postVerifier, chn.ChainReader, config.ChainClock(), chn.Drand, chn.State, chn.MessageStore, chn.Fork, config.Repo().Config().NetworkParams)
+	nodeConsensus := consensus.NewExpected(blockstore.CborStore,
+		blockstore.Blockstore,
+		chn.Processor,
+		&stateViewer,
+		config.BlockTime(),
+		tickets,
+		postVerifier,
+		chn.ChainReader,
+		config.ChainClock(),
+		chn.Drand,
+		chn.State,
+		chn.MessageStore,
+		chn.Fork,
+		config.Repo().Config().NetworkParams,
+		gasPriceSchedule)
 	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, &stateViewer)
 
 	// setup fecher
