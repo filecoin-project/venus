@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus/app/node"
 	"io"
 	"os"
+
+	"github.com/filecoin-project/venus/app/node"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-cmds/cli"
@@ -81,7 +82,7 @@ const (
 
 	Size = "size"
 
-	ImportFile = "importfile"
+	ImportSnapshot = "import-snapshot"
 )
 
 func init() {

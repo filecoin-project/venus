@@ -22,6 +22,7 @@ var daemonCmd = &cmds.Command{
 		cmds.BoolOption(OfflineMode, "start the node without networking"),
 		cmds.BoolOption(ELStdout),
 		cmds.BoolOption(IsRelay, "advertise and allow filecoin network traffic to be relayed through this node"),
+		cmds.StringOption(ImportSnapshot, "import chain state from a given chain export file or url"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		return daemonRun(req, re)
@@ -65,6 +66,14 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 
 	if isRelay, ok := req.Options[IsRelay].(bool); ok && isRelay {
 		opts = append(opts, node.IsRelay())
+	}
+	importPath, _ := req.Options[ImportSnapshot].(string)
+	if len(importPath) != 0 {
+		err := Import(rep, importPath)
+		if err != nil {
+			logInit.Errorf("failed to import snapshot, import path: %s, error: %s", importPath, err.Error())
+			return err
+		}
 	}
 
 	journal, err := journal.NewZapJournal(rep.JournalPath())
