@@ -675,7 +675,7 @@ func (vm *VM) CurrentEpoch() abi.ChainEpoch {
 
 func (vm *VM) SetCurrentEpoch(current abi.ChainEpoch) {
 	vm.currentEpoch = current
-	vm.pricelist = gas.PricelistByEpoch(current)
+	vm.pricelist = vm.vmOption.GasPriceSchedule.PricelistByEpoch(current)
 }
 
 func (vm *VM) NtwkVersion() network.Version {

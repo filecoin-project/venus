@@ -243,7 +243,7 @@ func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 			int64(abi.RegisteredSealProof_StackedDrg64GiBV1),
 		},
 		DrandSchedule:    map[abi.ChainEpoch]DrandEnum{0: 5, -1: 1},
-		ForkUpgradeParam: DefaultForkUpgradeParam,
+		ForkUpgradeParam: &(*DefaultForkUpgradeParam),
 	}
 }
 

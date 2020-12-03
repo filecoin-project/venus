@@ -133,6 +133,7 @@ type Expected struct {
 	drand                       beacon.Schedule
 	fork                        fork.IFork
 	config                      *config.NetworkParamsConfig
+	gasPirceSchedule            *gas.PricesSchedule
 	circulatingSupplyCalculator *CirculatingSupplyCalculator
 }
 
@@ -154,6 +155,7 @@ func NewExpected(cs cbor.IpldStore,
 	messageStore *chain.MessageStore,
 	fork fork.IFork,
 	config *config.NetworkParamsConfig,
+	gasPirceSchedule *gas.PricesSchedule,
 ) *Expected {
 	c := &Expected{
 		cstore:                      cs,
@@ -170,6 +172,7 @@ func NewExpected(cs cbor.IpldStore,
 		rnd:                         rnd,
 		fork:                        fork,
 		config:                      config,
+		gasPirceSchedule:            gasPirceSchedule,
 		circulatingSupplyCalculator: NewCirculatingSupplyCalculator(bs, chainState, config.ForkUpgradeParam),
 	}
 	return c
@@ -215,6 +218,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage) 
 		Rnd:               &rnd,
 		BaseFee:           ts.At(0).ParentBaseFee,
 		Epoch:             ts.At(0).Height,
+		GasPriceSchedule:  c.gasPirceSchedule,
 	}
 	return c.processor.ProcessUnsignedMessage(ctx, msg, priorState, vms, vmOption)
 }
@@ -552,7 +556,7 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 	}
 
 	baseHeight, _ := baseTs.Height()
-	pl := gas.PricelistByEpoch(baseHeight)
+	pl := c.gasPirceSchedule.PricelistByEpoch(baseHeight)
 	var sumGasLimit int64
 	checkMsg := func(msg types.ChainMsg) error {
 		m := msg.VMMessage()
@@ -1045,6 +1049,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms *vm.Stora
 		BaseFee:           ts.At(0).ParentBaseFee,
 		Fork:              c.fork,
 		Epoch:             ts.At(0).Height,
+		GasPriceSchedule:  c.gasPirceSchedule,
 	}
 	receipts, err := c.processor.ProcessTipSet(ctx, st, vms, pts, ts, blockMessageInfo, vmOption)
 	if err != nil {

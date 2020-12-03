@@ -354,6 +354,8 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 	/*dddd, _ := json.MarshalIndent(receipts, "", "\t")
 	ioutil.WriteFile("receipt.json", dddd, 0777)
 	*/
+	fmt.Printf("TipSet %d root:%s receipt:%s", next.EnsureHeight(), root, receiptCid)
+
 	logSyncer.Infow("Process Block ", "Height:", next.EnsureHeight(), " Root:", root, " receiptcid ", receiptCid, " time: ", time.Now().Sub(toProcessTime).Milliseconds())
 
 	err = syncer.chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{

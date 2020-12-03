@@ -213,6 +213,10 @@ func LoadState(ctx context.Context, cst cbor.IpldStore, c cid.Cid) (*State, erro
 }
 
 func (st *State) SetActor(ctx context.Context, addr ActorKey, act *types.Actor) error {
+	fmt.Println("SetActor: ", "Addr:", addr, " Head:", act.Head, " Balance:", act.Balance, " Nonce:", act.Nonce)
+	if act.Balance.Uint64() == 80678239464800 {
+		fmt.Print()
+	}
 	stateLog.Debugf("set actor addr:", addr.String(), " Balance:", act.Balance.String(), " Head:", act.Head, " Nonce:", act.Nonce)
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
