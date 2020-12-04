@@ -160,13 +160,14 @@ func TestRevertChange(t *testing.T) {
 	link2 := builder.AppendOn(link1, 1)
 	link3 := builder.AppendOn(link2, 1)
 
-	cs.SetHead(ctx, link3)
+	err := cs.SetHead(ctx, link3)
+	require.NoError(t, err)
 
 	link4 := builder.AppendOn(genesis, 2)
 	link5 := builder.AppendOn(link4, 2)
 	link6 := builder.AppendOn(link5, 2)
 
-	err := cs.SetHead(ctx, link6)
+	err = cs.SetHead(ctx, link6)
 	require.NoError(t, err)
 
 	ch := cs.SubHeadChanges(ctx)
