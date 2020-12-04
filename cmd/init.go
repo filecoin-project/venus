@@ -37,7 +37,7 @@ var initCmd = &cmds.Command{
 		cmds.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
 		cmds.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
 		cmds.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
-		cmds.StringOption(Network, "when set, populates config with network specific parameters"),
+		cmds.StringOption(Network, "when set, populates config with network specific parameters").WithDefault("testnetnet"),
 		cmds.StringOption(ImportFile, "path of file or HTTP(S) URL containing archive of the block DAG data"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
