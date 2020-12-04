@@ -183,3 +183,8 @@ func (b *Block) SignatureData() []byte {
 
 	return tmp.ToNode().RawData()
 }
+
+type MsgMeta struct {
+	BlsMessages   cid.Cid
+	SecpkMessages cid.Cid
+}

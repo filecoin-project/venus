@@ -734,6 +734,33 @@ func (v *View) ResolveToKeyAddr(ctx context.Context, address addr.Address) (addr
 	return aast.PubkeyAddress()
 }
 
+func (v *View) PreCommitInfo(ctx context.Context, maddr addr.Address, sid abi.SectorNumber) (*miner.SectorPreCommitOnChainInfo, error) {
+	mas, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %v", err)
+	}
+
+	return mas.GetPrecommittedSector(sid)
+}
+
+func (v *View) MinerSectorInfo(ctx context.Context, maddr addr.Address, sid abi.SectorNumber, ts *block.TipSet) (*miner.SectorOnChainInfo, error) {
+	mas, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %v", err)
+	}
+
+	return mas.GetSector(sid)
+}
+
+func (v *View) StateSectorPartition(ctx context.Context, maddr addr.Address, sectorNumber abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorLocation, error) {
+	mas, err := v.loadMinerActor(ctx, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %v", err)
+	}
+
+	return mas.FindSector(sectorNumber)
+}
+
 func (v *View) loadInitActor(ctx context.Context) (notinit.State, error) {
 	actr, err := v.loadActor(ctx, notinit.Address)
 	if err != nil {

@@ -2,6 +2,11 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/go-address"
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/venus/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/types"
+	lru "github.com/hashicorp/golang-lru"
 	"io"
 	"os"
 	"runtime/debug"
@@ -17,6 +22,7 @@ import (
 	"github.com/ipld/go-car"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/log"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -99,6 +105,15 @@ type Store struct {
 	stateAndBlockSource *ipldSource
 
 	bsstore blockstore.Blockstore
+
+	localbs blockstore.Blockstore
+
+	localviewer blockstore.Viewer
+
+	heaviestLk sync.Mutex
+	heaviest   *block.TipSet
+
+	mmCache *lru.ARCCache
 
 	// ds is the datastore for the chain's private metadata which consists
 	// of the tipset key to state root cid mapping, and the heaviest tipset
@@ -816,4 +831,332 @@ func (store *Store) GetCheckPoint() block.TipSetKey {
 // Stop stops all activities and cleans up.
 func (store *Store) Stop() {
 	store.headEvents.Shutdown()
+}
+
+func (store *Store) Store(ctx context.Context) adt.Store {
+	return ActorStore(ctx, store.bsstore)
+}
+
+func ActorStore(ctx context.Context, bs blockstore.Blockstore) adt.Store {
+	return adt.WrapStore(ctx, cbor.NewCborStore(bs))
+}
+
+//
+//func (cs *Store) GetChainRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+//	_, span := trace.StartSpan(ctx, "store.GetChainRandomness")
+//	defer span.End()
+//	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
+//
+//	ts, err := cs.LoadTipSet(block.NewTipSetKey(blks...))
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	if round > ts.Height() {
+//		return nil, xerrors.Errorf("cannot draw randomness from the future")
+//	}
+//
+//	searchHeight := round
+//	if searchHeight < 0 {
+//		searchHeight = 0
+//	}
+//
+//	randTs, err := cs.GetTipsetByHeight(ctx, searchHeight, ts, true)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	mtb := randTs.MinTicketBlock()
+//
+//	// if at (or just past -- for null epochs) appropriate epoch
+//	// or at genesis (works for negative epochs)
+//	return DrawRandomness(mtb.Ticket.VRFProof, pers, round, entropy)
+//}
+//
+//
+//func (cs *Store) LoadTipSet(tsk block.TipSetKey) (*block.TipSet, error) {
+//	v, err := cs.GetTipSet(tsk)
+//	if err == nil {
+//		return v, nil
+//	}
+//
+//	// Fetch tipset block headers from blockstore in parallel
+//	var eg errgroup.Group
+//	cids := tsk.ToSlice()
+//	blks := make([]*block.BlockHeader, len(cids))
+//	for i, c := range cids {
+//		i, c := i, c
+//		eg.Go(func() error {
+//			b, err := cs.bl(c)
+//			if err != nil {
+//				return xerrors.Errorf("get block %s: %w", c, err)
+//			}
+//
+//			blks[i] = b
+//			return nil
+//		})
+//	}
+//	err := eg.Wait()
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	ts, err := block.NewTipSet(blks)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return ts, nil
+//}
+
+func (store *Store) GetCMessage(c cid.Cid) (types.ChainMsg, error) {
+	m, err := store.GetMessage(c)
+	if err == nil {
+		return m, nil
+	}
+	if err != blockstore.ErrNotFound {
+		log.Warnf("GetCMessage: unexpected error getting unsigned message: %s", err)
+	}
+
+	return store.GetSignedMessage(c)
+}
+
+func (store *Store) GetMessage(c cid.Cid) (*types.UnsignedMessage, error) {
+	if store.localviewer == nil {
+		sb, err := store.bsstore.Get(c)
+		if err != nil {
+			log.Errorf("get message get failed: %s: %s", c, err)
+			return nil, err
+		}
+		return types.DecodeMessage(sb.RawData())
+	}
+
+	var msg *types.UnsignedMessage
+	err := store.localviewer.View(c, func(b []byte) (err error) {
+		msg, err = types.DecodeMessage(b)
+		return err
+	})
+	return msg, err
+}
+
+func (store *Store) GetSignedMessage(c cid.Cid) (*types.SignedMessage, error) {
+	if store.localviewer == nil {
+		sb, err := store.bsstore.Get(c)
+		if err != nil {
+			log.Errorf("get message get failed: %s: %s", c, err)
+			return nil, err
+		}
+		return types.DecodeSignedMessage(sb.RawData())
+	}
+
+	var msg *types.SignedMessage
+	err := store.localviewer.View(c, func(b []byte) (err error) {
+		msg, err = types.DecodeSignedMessage(b)
+		return err
+	})
+	return msg, err
+}
+
+func (store *Store) GetHeaviestTipSet() *block.TipSet {
+	store.heaviestLk.Lock()
+	defer store.heaviestLk.Unlock()
+	return store.heaviest
+}
+
+type BlockMessages struct {
+	Miner         address.Address
+	BlsMessages   []types.ChainMsg
+	SecpkMessages []types.ChainMsg
+	WinCount      int64
+}
+
+func (store *Store) MessagesForTipset(ts *block.TipSet) ([]types.ChainMsg, error) {
+	bmsgs, err := store.BlockMsgsForTipset(ts)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []types.ChainMsg
+	for _, bm := range bmsgs {
+		for _, blsm := range bm.BlsMessages {
+			out = append(out, blsm)
+		}
+
+		for _, secm := range bm.SecpkMessages {
+			out = append(out, secm)
+		}
+	}
+
+	return out, nil
+}
+
+func (store *Store) BlockMsgsForTipset(ts *block.TipSet) ([]BlockMessages, error) {
+	applied := make(map[address.Address]uint64)
+
+	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
+		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
+		if _, ok := applied[m.From]; !ok {
+			applied[m.From] = m.Nonce
+		}
+
+		if applied[m.From] != m.Nonce {
+			return false, nil
+		}
+
+		applied[m.From]++
+
+		return true, nil
+	}
+
+	var out []BlockMessages
+	for _, b := range ts.Blocks() {
+
+		bms, sms, err := store.MessagesForBlock(b)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get messages for block: %w", err)
+		}
+
+		bm := BlockMessages{
+			Miner:         b.Miner,
+			BlsMessages:   make([]types.ChainMsg, 0, len(bms)),
+			SecpkMessages: make([]types.ChainMsg, 0, len(sms)),
+			WinCount:      b.ElectionProof.WinCount,
+		}
+
+		for _, bmsg := range bms {
+			b, err := selectMsg(bmsg.VMMessage())
+			if err != nil {
+				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
+			}
+
+			if b {
+				bm.BlsMessages = append(bm.BlsMessages, bmsg)
+			}
+		}
+
+		for _, smsg := range sms {
+			b, err := selectMsg(smsg.VMMessage())
+			if err != nil {
+				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
+			}
+
+			if b {
+				bm.SecpkMessages = append(bm.SecpkMessages, smsg)
+			}
+		}
+
+		out = append(out, bm)
+	}
+
+	return out, nil
+}
+
+func (store *Store) MessagesForBlock(b *block.Block) ([]*types.UnsignedMessage, []*types.SignedMessage, error) {
+	blscids, secpkcids, err := store.ReadMsgMetaCids(b.Cid())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	blsmsgs, err := store.LoadMessagesFromCids(blscids)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("loading bls messages for block: %w", err)
+	}
+
+	secpkmsgs, err := store.LoadSignedMessagesFromCids(secpkcids)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("loading secpk messages for block: %w", err)
+	}
+
+	return blsmsgs, secpkmsgs, nil
+}
+
+func (store *Store) LoadMessagesFromCids(cids []cid.Cid) ([]*types.UnsignedMessage, error) {
+	msgs := make([]*types.UnsignedMessage, 0, len(cids))
+	for i, c := range cids {
+		m, err := store.GetMessage(c)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", c, i, err)
+		}
+
+		msgs = append(msgs, m)
+	}
+
+	return msgs, nil
+}
+
+func (store *Store) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.SignedMessage, error) {
+	msgs := make([]*types.SignedMessage, 0, len(cids))
+	for i, c := range cids {
+		m, err := store.GetSignedMessage(c)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", c, i, err)
+		}
+
+		msgs = append(msgs, m)
+	}
+
+	return msgs, nil
+}
+
+type mmCids struct {
+	bls   []cid.Cid
+	secpk []cid.Cid
+}
+
+func (store *Store) ReadMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error) {
+	o, ok := store.mmCache.Get(mmc)
+	if ok {
+		mmcids := o.(*mmCids)
+		return mmcids.bls, mmcids.secpk, nil
+	}
+
+	cst := cbor.NewCborStore(store.localbs)
+	var msgmeta block.MsgMeta
+	if err := cst.Get(context.TODO(), mmc, &msgmeta); err != nil {
+		return nil, nil, xerrors.Errorf("failed to load msgmeta (%s): %w", mmc, err)
+	}
+
+	blscids, err := store.readAMTCids(msgmeta.BlsMessages)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("loading bls message cids for block: %w", err)
+	}
+
+	secpkcids, err := store.readAMTCids(msgmeta.SecpkMessages)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("loading secpk message cids for block: %w", err)
+	}
+
+	store.mmCache.Add(mmc, &mmCids{
+		bls:   blscids,
+		secpk: secpkcids,
+	})
+
+	return blscids, secpkcids, nil
+}
+
+func (store *Store) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
+	ctx := context.TODO()
+	// block headers use adt0, for now.
+	a, err := blockadt.AsArray(store.Store(ctx), root)
+	if err != nil {
+		return nil, xerrors.Errorf("amt load: %w", err)
+	}
+
+	var (
+		cids    []cid.Cid
+		cborCid cbg.CborCid
+	)
+	if err := a.ForEach(&cborCid, func(i int64) error {
+		c := cid.Cid(cborCid)
+		cids = append(cids, c)
+		return nil
+	}); err != nil {
+		return nil, xerrors.Errorf("failed to traverse amt: %w", err)
+	}
+
+	if uint64(len(cids)) != a.Length() {
+		return nil, xerrors.Errorf("found %d cids, expected %d", len(cids), a.Length())
+	}
+
+	return cids, nil
 }

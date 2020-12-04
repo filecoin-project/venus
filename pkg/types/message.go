@@ -314,6 +314,15 @@ func DecodeMessage(b []byte) (*UnsignedMessage, error) {
 	return &msg, nil
 }
 
+func DecodeSignedMessage(data []byte) (*SignedMessage, error) {
+	var msg SignedMessage
+	if err := msg.UnmarshalCBOR(bytes.NewReader(data)); err != nil {
+		return nil, err
+	}
+
+	return &msg, nil
+}
+
 func NewGasFeeCap(price int64) AttoFIL {
 	return NewAttoFIL(big.NewInt(price))
 }

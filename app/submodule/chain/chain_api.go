@@ -4,12 +4,15 @@ import (
 	"context"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/ipfs/go-cid"
+
 	xerrors "github.com/pkg/errors"
 	"io"
 	"time"
@@ -194,4 +197,102 @@ func (chainAPI *ChainAPI) getNetworkName(ctx context.Context) (string, error) {
 // ChainExport exports the chain from `head` up to and including the genesis block to `out`
 func (chainAPI *ChainAPI) ChainExport(ctx context.Context, head block.TipSetKey, out io.Writer) error {
 	return chainAPI.chain.State.ChainExport(ctx, head, out)
+}
+
+func (chainAPI *ChainAPI) ChainGetRandomnessFromBeacon(ctx context.Context, key block.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return chainAPI.chain.State.ChainGetRandomnessFromBeacon(ctx, key, personalization, randEpoch, entropy)
+}
+
+func (chainAPI *ChainAPI) ChainReadObj(ctx context.Context, ocid cid.Cid) ([]byte, error) {
+	return chainAPI.chain.State.ReadObj(ctx, ocid)
+}
+
+func (chainAPI *ChainAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk block.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
+	view, err := chainAPI.chain.State.StateView(tsk)
+	if err != nil {
+		return miner.SectorPreCommitOnChainInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	pci, err := view.PreCommitInfo(ctx, maddr, n)
+	if err != nil {
+		return miner.SectorPreCommitOnChainInfo{}, err
+	} else if pci == nil {
+		return miner.SectorPreCommitOnChainInfo{}, xerrors.Errorf("precommit info is not exists")
+	}
+	return *pci, nil
+}
+
+func (chainAPI *ChainAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorOnChainInfo, error) {
+	ts, err := chainAPI.chain.ChainReader.GetTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	view, err := chainAPI.chain.State.StateView(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	return view.MinerSectorInfo(ctx, maddr, n, ts)
+}
+
+func (chainAPI *ChainAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorLocation, error) {
+	view, err := chainAPI.chain.State.StateView(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	return view.StateSectorPartition(ctx, maddr, sectorNumber, tsk)
+}
+
+func (chainAPI *ChainAPI) StateMinerSectorSize(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (abi.SectorSize, error) {
+	// TODO: update storage-fsm to just StateMinerSectorAllocated
+	mi, err := chainAPI.StateMinerInfo(ctx, maddr, tsk)
+	if err != nil {
+		return 0, err
+	}
+	return mi.SectorSize, nil
+}
+
+func (chainAPI *ChainAPI) StateMinerInfo(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (miner.MinerInfo, error) {
+	view, err := chainAPI.chain.State.StateView(tsk)
+	if err != nil {
+		return miner.MinerInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+	minfo, err := view.MinerInfo(ctx, maddr)
+	if err != nil {
+		return miner.MinerInfo{}, err
+	}
+	return *minfo, nil
+}
+
+func (chainAPI *ChainAPI) StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (address.Address, error) {
+	// TODO: update storage-fsm to just StateMinerInfo
+	mi, err := chainAPI.StateMinerInfo(ctx, maddr, tsk)
+	if err != nil {
+		return address.Undef, err
+	}
+	return mi.Worker, nil
+}
+
+func (chainAPI *ChainAPI) StateMinerSectorAllocated(ctx context.Context, maddr address.Address, s abi.SectorNumber, tsk block.TipSetKey) (bool, error) {
+	act, err := chainAPI.GetActor(ctx, maddr)
+	if err != nil {
+		return false, xerrors.Errorf("failed to load miner actor: %w", err)
+	}
+
+	mas, err := miner.Load(chainAPI.chain.ChainReader.Store(ctx), act)
+	if err != nil {
+		return false, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+	return mas.IsAllocated(s)
+}
+
+func (chainAPI *ChainAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk block.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	pts, err := chainAPI.chain.ChainReader.GetTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset key: %w", err)
+	}
+
+	return chain.DrawRandomness([]byte(pts.String()), personalization, randEpoch, entropy)
 }
