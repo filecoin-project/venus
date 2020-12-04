@@ -545,6 +545,10 @@ func (store *Store) SetHead(ctx context.Context, newTs *block.TipSet) error {
 	}
 	store.reporter.UpdateStatus(validateHead(newTs.Key()), validateHeight(h))
 
+	//todo wrap by go function
+	Reverse(added)
+	Reverse(dropped)
+
 	//do reorg
 	store.reorgCh <- reorg{
 		old: dropped,

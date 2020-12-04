@@ -871,13 +871,13 @@ func (syncer *Syncer) processTipSetSeg(ctx context.Context, segTipset []*block.T
 				if err != nil {
 					return err
 				}
-				err = syncer.SetStagedHead(ctx)
-				if err != nil {
-					return err
-				}
 			}
 		}
 		parent = ts
+	}
+	err = syncer.SetStagedHead(ctx)
+	if err != nil {
+		return err
 	}
 	return nil
 }
