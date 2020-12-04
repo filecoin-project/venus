@@ -3,8 +3,8 @@ package enccid_test
 import (
 	"testing"
 
-	cbor "github.com/fxamacker/cbor/v2"
-	cid "github.com/ipfs/go-cid"
+	"github.com/fxamacker/cbor/v2"
+	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

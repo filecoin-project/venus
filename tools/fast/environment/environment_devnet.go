@@ -14,7 +14,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-address"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	iptb "github.com/ipfs/iptb/testbed"
 

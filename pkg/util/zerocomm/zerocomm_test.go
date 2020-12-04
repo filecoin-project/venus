@@ -3,12 +3,13 @@ package zerocomm_test
 import (
 	"bytes"
 	"fmt"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"io"
 	"testing"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+
 	commcid "github.com/filecoin-project/go-fil-commcid"
-	abi "github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"

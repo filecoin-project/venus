@@ -3,7 +3,7 @@ package fast
 import (
 	"context"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 )
 
 // DagGet runs the `dag get` command against the filecoin process

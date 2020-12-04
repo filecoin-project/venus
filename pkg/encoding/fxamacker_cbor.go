@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"io"
 
-	cbor "github.com/fxamacker/cbor/v2"
+	"github.com/fxamacker/cbor/v2"
 )
 
 // FxamackerCborEncoder is an object encoder that encodes objects based on the CBOR standard.

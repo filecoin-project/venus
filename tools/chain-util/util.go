@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	cli "gopkg.in/urfave/cli.v2"
+	"gopkg.in/urfave/cli.v2"
 )
 
 type config struct {

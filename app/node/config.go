@@ -1,9 +1,9 @@
 package node
 
 import (
-	libp2p "github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
-	errors "github.com/pkg/errors"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/repo"
 )

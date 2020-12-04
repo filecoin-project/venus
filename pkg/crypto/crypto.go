@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	secp256k1 "github.com/ipsn/go-secp256k1"
+	"github.com/ipsn/go-secp256k1"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 )

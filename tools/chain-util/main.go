@@ -6,9 +6,9 @@ import (
 	"os"
 
 	logging "github.com/ipfs/go-log/v2"
-	cli "gopkg.in/urfave/cli.v2"
+	"gopkg.in/urfave/cli.v2"
 
-	export "github.com/filecoin-project/venus/tools/chain-util/pkg/export"
+	"github.com/filecoin-project/venus/tools/chain-util/pkg/export"
 )
 
 var log = logging.Logger("chain-util")
