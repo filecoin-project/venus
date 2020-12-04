@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/filecoin-project/venus/pkg/util/test"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -144,6 +145,51 @@ func TestGetByKey(t *testing.T) {
 	assert.Equal(t, link2.At(0).ParentStateRoot.Cid, got2TSSR)
 	assert.Equal(t, link3.At(0).ParentStateRoot.Cid, got3TSSR)
 	assert.Equal(t, link4.At(0).ParentStateRoot.Cid, got4TSSR)
+}
+
+// Tipsets can be retrieved by key (all block cids).
+func TestRevertChange(t *testing.T) {
+	tf.UnitTest(t)
+	ctx := context.TODO()
+	builder := chain.NewBuilder(t, address.Undef)
+	genTS := builder.Genesis()
+	cs := newChainStore(builder.Repo(), genTS)
+	genesis := builder.Genesis()
+
+	link1 := builder.AppendOn(genesis, 1)
+	link2 := builder.AppendOn(link1, 1)
+	link3 := builder.AppendOn(link2, 1)
+
+	cs.SetHead(ctx, link3)
+
+	link4 := builder.AppendOn(genesis, 2)
+	link5 := builder.AppendOn(link4, 2)
+	link6 := builder.AppendOn(link5, 2)
+
+	err := cs.SetHead(ctx, link6)
+	require.NoError(t, err)
+
+	ch := cs.SubHeadChanges(ctx)
+	currentA := <-ch
+	test.Equal(t, currentA[0].Type, chain.HCCurrent)
+	test.Equal(t, currentA[0].Val, link6)
+
+	time.Sleep(time.Second)
+	headChanges := <-ch
+
+	test.Equal(t, headChanges[0].Type, chain.HCRevert)
+	test.Equal(t, headChanges[0].Val, link1)
+	test.Equal(t, headChanges[1].Type, chain.HCRevert)
+	test.Equal(t, headChanges[1].Val, link2)
+	test.Equal(t, headChanges[2].Type, chain.HCRevert)
+	test.Equal(t, headChanges[2].Val, link3)
+
+	test.Equal(t, headChanges[3].Type, chain.HCApply)
+	test.Equal(t, headChanges[3].Val, link4)
+	test.Equal(t, headChanges[4].Type, chain.HCApply)
+	test.Equal(t, headChanges[4].Val, link5)
+	test.Equal(t, headChanges[5].Type, chain.HCApply)
+	test.Equal(t, headChanges[5].Val, link6)
 }
 
 // Tipsets can be retrieved by parent key (all block cids of parents).
