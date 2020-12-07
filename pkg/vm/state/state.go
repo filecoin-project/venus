@@ -283,6 +283,9 @@ func (st *State) GetActor(ctx context.Context, addr ActorKey) (*types.Actor, boo
 
 	snapAct, err := st.snaps.getActor(addr)
 	if err != nil {
+		if xerrors.Is(err, types.ErrActorNotFound) {
+			return nil, false, nil
+		}
 		return nil, false, err
 	}
 
