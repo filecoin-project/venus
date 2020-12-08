@@ -3,6 +3,8 @@ package message
 import (
 	"context"
 
+	"github.com/filecoin-project/venus/pkg/crypto"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
@@ -56,6 +58,10 @@ func (ib *Inbox) Add(ctx context.Context, msg *types.SignedMessage) (cid.Cid, er
 		return cid.Undef, err
 	}
 
+	if msg.Signature.Type == crypto.SigTypeBLS {
+		ib.pool.StoreBlsSig(msg)
+	}
+
 	return ib.pool.Add(ctx, msg, blockTime)
 }
 
@@ -77,12 +83,25 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []*block.
 	for _, tipset := range oldChain {
 		for i := 0; i < tipset.Len(); i++ {
 			block := tipset.At(i)
-			secpMsgs, _, err := ib.messageProvider.LoadMetaMessages(ctx, block.Messages.Cid)
+			secpMsgs, blsMsgs, err := ib.messageProvider.LoadMetaMessages(ctx, block.Messages.Cid)
 			if err != nil {
 				return err
 			}
 			for _, msg := range secpMsgs {
 				_, err = ib.pool.Add(ctx, msg, chainHeight)
+				if err != nil {
+					// Messages from the removed chain are frequently invalidated, e.g. because that
+					// same message is already mined on the new chain.
+					log.Debug(err)
+				}
+			}
+
+			for _, msg := range blsMsgs {
+				sigMsg := ib.pool.RecoverSig(msg)
+				if sigMsg == nil {
+					continue
+				}
+				_, err = ib.pool.Add(ctx, sigMsg, chainHeight)
 				if err != nil {
 					// Messages from the removed chain are frequently invalidated, e.g. because that
 					// same message is already mined on the new chain.
@@ -109,8 +128,7 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []*block.
 				removeCids = append(removeCids, cid)
 			}
 
-			for i, msg := range blsMsgs {
-				log.Info("i: ", i, " ", msg)
+			for _, msg := range blsMsgs {
 				cid, err := msg.Cid()
 				if err != nil {
 					return err

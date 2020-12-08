@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/journal"
 	"github.com/filecoin-project/venus/pkg/message"
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
@@ -52,7 +53,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		inbox := message.NewInbox(mpool, maxAge, provider, provider)
 		queue := message.NewQueue()
 		publisher := message.NewDefaultPublisher(&message.MockNetworkPublisher{}, mpool)
-		policy := message.NewMessageQueuePolicy(provider, maxAge)
+		policy := message.NewMessageQueuePolicy(provider, maxAge, mpool)
 		gp := message.NewGasPredictor("gasPredictor")
 		outbox := message.NewOutbox(signer, &message.FakeValidator{}, queue, publisher, policy,
 			provider, provider, objournal, gp)
@@ -147,7 +148,6 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		require.Equal(t, 1, len(outbox.Queue().List(sender2))) // Message is in the queue.
 		pub1Err := <-donePub1
 		assert.NoError(t, pub1Err)
-
 		msg1, found := inbox.Pool().Get(mid1)
 		require.True(t, found) // Message is in the pool.
 		assert.True(t, msg1.Equals(outbox.Queue().List(sender2)[0].Msg))
@@ -168,7 +168,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		require.NoError(t, handler.HandleNewHead(ctx, nil, []*block.TipSet{right}))
 		assert.Equal(t, 0, len(outbox.Queue().List(sender2))) // Message returns to queue.
 		_, found = inbox.Pool().Get(mid1)
-		assert.False(t, found) // Message not returns to pool to be mined again, since BLS message is missing its signature
+		assert.False(t, found) // Message not returns to pool to be mined again
 
 		// Send another message from the same account.
 		// First, send a message and expect to find it in the message queue and pool.
@@ -190,6 +190,52 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		restoredQueue := outbox.Queue().List(sender2)
 		assert.Equal(t, 1, len(restoredQueue))
 		assert.True(t, msg2.Equals(restoredQueue[0].Msg))
+	})
+
+	t.Run("test send after reverted bls message when add bls sig cache", func(t *testing.T) {
+		provider := message.NewFakeProvider(t)
+		root := provider.Genesis()
+		actor := types.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(0), cid.Undef)
+		provider.SetHeadAndActor(t, root.Key(), sender2, actor)
+		newSignedMessage := types.NewSignedMessageForTestGetter(signer2)
+		msg := newSignedMessage(0)
+		msg2 := newSignedMessage(0)
+
+		handler := makeHandler(provider, root, signer)
+		outbox := handler.Outbox
+		inbox := handler.Inbox
+		pool := handler.Inbox.Pool()
+
+		cid1, donePub1, err1 := outbox.SignedSend(ctx, msg, true)
+		assert.NoError(t, <-donePub1)
+		assert.NoError(t, err1)
+		_, found := inbox.Pool().Get(cid1)
+		assert.True(t, found)
+		restoredQueue := outbox.Queue().List(sender2)
+		assert.Equal(t, 1, len(restoredQueue))
+
+		// Receive the message in a block.
+		left := provider.BuildOneOn(root, func(b *chain.BlockBuilder) {
+			b.AddMessages([]*types.SignedMessage{}, []*types.UnsignedMessage{&msg.Message})
+			b.SetBlockSig(crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}})
+		})
+		left2 := provider.BuildOneOn(root, func(b *chain.BlockBuilder) {
+			b.AddMessages([]*types.SignedMessage{}, []*types.UnsignedMessage{&msg2.Message})
+			b.SetBlockSig(crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}})
+		})
+		err := handler.HandleNewHead(ctx, []*block.TipSet{left}, []*block.TipSet{left2})
+		assert.NoError(t, err)
+		_, found2 := inbox.Pool().Get(cid1)
+		assert.True(t, found2)
+		restoredQueue2 := outbox.Queue().List(sender2)
+		assert.Equal(t, 0, len(restoredQueue2))
+
+		// store bls sig
+		pool.StoreBlsSig(msg)
+		err3 := handler.HandleNewHead(ctx, []*block.TipSet{left}, []*block.TipSet{left2})
+		assert.NoError(t, err3)
+		restoredQueue3 := outbox.Queue().List(sender2)
+		assert.Equal(t, 1, len(restoredQueue3))
 	})
 
 	t.Run("ignores empty tipset", func(t *testing.T) {

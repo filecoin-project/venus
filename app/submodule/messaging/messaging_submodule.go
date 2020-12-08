@@ -2,6 +2,7 @@ package messaging
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chainModule "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/messaging/msg"
@@ -87,7 +88,7 @@ func NewMessagingSubmodule(ctx context.Context,
 	}
 
 	msgQueue := message.NewQueue()
-	outboxPolicy := message.NewMessageQueuePolicy(chain.MessageStore, message.OutboxMaxAgeRounds)
+	outboxPolicy := message.NewMessageQueuePolicy(chain.MessageStore, message.OutboxMaxAgeRounds, msgPool)
 	msgPublisher := message.NewDefaultPublisher(pubsub.NewTopic(topic), msgPool)
 	outbox := message.NewOutbox(wallet.Signer, msgSyntaxValidator, msgQueue, msgPublisher, outboxPolicy, chain.ChainReader, chain.State,
 		config.Journal().Topic("outbox"), syncer.Consensus)

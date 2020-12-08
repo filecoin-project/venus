@@ -42,3 +42,7 @@ func init() {
 
 	SetAddressNetwork(address.Mainnet)
 }
+
+// assuming 4000 messages per round, this lets us not lose any messages across a
+// 10 block reorg.
+const BlsSignatureCacheSize = 40000

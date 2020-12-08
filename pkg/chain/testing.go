@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"golang.org/x/xerrors"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -18,6 +17,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/cborutil"
@@ -469,6 +469,11 @@ func (bb *BlockBuilder) SetTimestamp(timestamp uint64) {
 // is mined.
 func (bb *BlockBuilder) IncHeight(nullBlocks abi.ChainEpoch) {
 	bb.block.Height += nullBlocks
+}
+
+// SetBlockSig set a new signature
+func (bb *BlockBuilder) SetBlockSig(signature crypto.Signature) {
+	bb.block.BlockSig = &signature
 }
 
 // AddMessages adds a message & receipt collection to the block.

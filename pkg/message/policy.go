@@ -50,12 +50,14 @@ type DefaultQueuePolicy struct {
 	messageProvider messageProvider
 	// Maximum difference in message stamp from current block height before expiring an address's queue
 	maxAgeRounds uint64
+
+	pool *Pool
 }
 
 // NewMessageQueuePolicy returns a new policy which removes mined messages from the queue and expires
 // messages older than `maxAgeTipsets` rounds.
-func NewMessageQueuePolicy(messages messageProvider, maxAge uint) *DefaultQueuePolicy {
-	return &DefaultQueuePolicy{messages, uint64(maxAge)}
+func NewMessageQueuePolicy(messages messageProvider, maxAge uint, pool *Pool) *DefaultQueuePolicy {
+	return &DefaultQueuePolicy{messages, uint64(maxAge), pool}
 }
 
 // HandleNewHead removes from the queue all messages that have now been mined in new blocks.
@@ -107,12 +109,23 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 	// Traverse these in descending height order.
 	for _, tipset := range oldTips {
 		for i := 0; i < tipset.Len(); i++ {
-			secpMsgs, _, err := p.messageProvider.LoadMetaMessages(ctx, tipset.At(i).Messages.Cid)
+			secpMsgs, blsMsgs, err := p.messageProvider.LoadMetaMessages(ctx, tipset.At(i).Messages.Cid)
 			if err != nil {
 				return err
 			}
 			for _, restoredMsg := range secpMsgs {
 				err := target.Requeue(ctx, restoredMsg, uint64(tipset.At(i).Height))
+				if err != nil {
+					return err
+				}
+			}
+
+			for _, restoredMsg := range blsMsgs {
+				sigMsg := p.pool.RecoverSig(restoredMsg)
+				if sigMsg == nil {
+					continue
+				}
+				err := target.Requeue(ctx, sigMsg, uint64(tipset.At(i).Height))
 				if err != nil {
 					return err
 				}
