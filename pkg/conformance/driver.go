@@ -2,8 +2,9 @@ package conformance
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/vm/gas"
 	gobig "math/big"
+
+	"github.com/filecoin-project/venus/pkg/vm/gas"
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
@@ -11,7 +12,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/consensus"
 	_ "github.com/filecoin-project/venus/pkg/consensus/lib/sigs/bls"  // enable bls signatures
 	_ "github.com/filecoin-project/venus/pkg/consensus/lib/sigs/secp" // enable secp signatures
 	"github.com/filecoin-project/venus/pkg/fork"
@@ -91,9 +91,10 @@ type ExecuteTipsetResult struct {
 func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset, execEpoch abi.ChainEpoch) (*ExecuteTipsetResult, error) {
 	ipldStore := cborutil.NewIpldStore(bs)
 	chainStatusReporter := chain.NewStatusReporter()
-
+	mainNetParams := networks.Mainnet()
+	node.SetNetParams(&mainNetParams.Network)
 	//chainstore
-	chainStore := chain.NewStore(chainDs, ipldStore, bs, chainStatusReporter, cid.Undef) //load genesis from car
+	chainStore := chain.NewStore(chainDs, ipldStore, bs, chainStatusReporter, mainNetParams.Network.ForkUpgradeParam, cid.Undef) //load genesis from car
 
 	//drand
 	/*genBlk, err := chainStore.GetGenesisBlock(context.TODO())
@@ -107,19 +108,17 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 	}*/
 
 	//chain fork
-	mainNetParams := networks.Mainnet()
-	node.SetNetParams(&mainNetParams.Network)
 	messageStore := chain.NewMessageStore(bs)
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, bs, register.DefaultActors, nil)
-	faultChecker := slashing.NewFaultChecker(chainState)
-	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
 	chainFork, err := fork.NewChainFork(chainState, ipldStore, bs, mainNetParams.Network.ForkUpgradeParam)
+	faultChecker := slashing.NewFaultChecker(chainState, chainFork)
+	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
 	if err != nil {
 		return nil, err
 	}
 	var (
 		vmStorage = vm.NewStorage(bs)
-		caculator = consensus.NewCirculatingSupplyCalculator(bs, chainStore, mainNetParams.Network.ForkUpgradeParam)
+		caculator = chain.NewCirculatingSupplyCalculator(bs, chainStore, mainNetParams.Network.ForkUpgradeParam)
 
 		vmOption = vm.VmOption{
 			CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
@@ -251,11 +250,13 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 	if params.Rand == nil {
 		params.Rand = NewFixedRand()
 	}
+	mainNetParams := networks.Mainnet()
+	node.SetNetParams(&mainNetParams.Network)
 	ipldStore := cborutil.NewIpldStore(bs)
 	chainStatusReporter := chain.NewStatusReporter()
 	chainDs := ds.NewMapDatastore() //just mock one
 	//chainstore
-	chainStore := chain.NewStore(chainDs, ipldStore, bs, chainStatusReporter, cid.Undef) //load genesis from car
+	chainStore := chain.NewStore(chainDs, ipldStore, bs, chainStatusReporter, mainNetParams.Network.ForkUpgradeParam, cid.Undef) //load genesis from car
 
 	//drand
 	/*	genBlk, err := chainStore.GetGenesisBlock(context.TODO())
@@ -269,13 +270,11 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		}*/
 
 	//chain fork
-	mainNetParams := networks.Mainnet()
-	node.SetNetParams(&mainNetParams.Network)
 	messageStore := chain.NewMessageStore(bs)
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, bs, coderLoader, nil)
-	faultChecker := slashing.NewFaultChecker(chainState)
-	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
 	chainFork, err := fork.NewChainFork(chainState, ipldStore, bs, mainNetParams.Network.ForkUpgradeParam)
+	faultChecker := slashing.NewFaultChecker(chainState, chainFork)
+	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
 	if err != nil {
 		return nil, cid.Undef, err
 	}

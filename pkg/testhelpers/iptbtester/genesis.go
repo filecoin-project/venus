@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/cmd"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/cmd"
 
 	"github.com/stretchr/testify/require"
 
@@ -131,7 +132,7 @@ func MustImportGenesisMiner(tn *TestNode, gi *GenesisInfo) {
 
 	tn.MustRunCmd(ctx, "venus", "wallet", "import", gi.KeyFile)
 
-	tn.MustRunCmd(ctx, "venus", "config", "wallet.defaultAddress", fmt.Sprintf("\"%s\"", gi.WalletAddress))
+	tn.MustRunCmd(ctx, "venus", "config", "walletModule.defaultAddress", fmt.Sprintf("\"%s\"", gi.WalletAddress))
 
 	// Get node id
 	id := idResult{}

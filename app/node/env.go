@@ -2,12 +2,14 @@ package node
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus/app/submodule/blockservice"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/discovery"
 	"github.com/filecoin-project/venus/app/submodule/messaging"
+	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/proofverification"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
@@ -31,6 +33,7 @@ type Env struct {
 	StorageNetworkingAPI *storagenetworking.StorageNetworkingAPI
 	SyncerAPI            *syncer.SyncerAPI
 	WalletAPI            *wallet.WalletAPI
+	MingingAPI           *mining.MiningAPI
 }
 
 var _ cmds.Environment = (*Env)(nil)

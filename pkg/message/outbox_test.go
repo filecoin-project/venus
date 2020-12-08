@@ -29,6 +29,7 @@ func newOutboxTestJournal(t *testing.T) journal.Writer {
 
 func TestOutbox(t *testing.T) {
 	tf.UnitTest(t)
+	var emptyParams []byte
 
 	var mpool = message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
@@ -44,7 +45,8 @@ func TestOutbox(t *testing.T) {
 		ob := message.NewOutbox(w, message.FakeValidator{RejectMessages: true}, queue, publisher,
 			message.NullPolicy{}, provider, provider, newOutboxTestJournal(t), gp)
 
-		cid, _, err := ob.Send(context.Background(), sender, sender, types.NewAttoFILFromFIL(2), types.NewGasFeeCap(0), types.NewGasPremium(0), types.NewGas(0), bcast, builtin.MethodSend, abi.Empty)
+		cid, _, err := ob.Send(context.Background(), sender, sender, types.NewAttoFILFromFIL(2),
+			types.NewGasFeeCap(0), types.NewGasPremium(0), types.NewGas(0), bcast, builtin.MethodSend, emptyParams)
 		assert.Errorf(t, err, "for testing")
 		assert.False(t, cid.Defined())
 	})
@@ -91,7 +93,7 @@ func TestOutbox(t *testing.T) {
 		}{{true, actr.Nonce, 1000}, {false, actr.Nonce + 1, 1000}}
 
 		for _, test := range testCases {
-			_, pubDone, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasFeeCap(0), types.NewGasPremium(0), types.NewGas(0), test.bcast, builtin.MethodSend, abi.Empty)
+			_, pubDone, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasFeeCap(0), types.NewGasPremium(0), types.NewGas(0), test.bcast, builtin.MethodSend, emptyParams)
 			require.NoError(t, err)
 			assert.ObjectsAreEqualValues(uint64(test.height), queue.List(sender)[0].Stamp)
 			require.NotNil(t, pubDone)
@@ -147,7 +149,7 @@ func TestOutbox(t *testing.T) {
 			defer wg.Done()
 			for i := 0; i < msgCount; i++ {
 				method := abi.MethodNum(batch*10000 + i)
-				_, _, err := s.Send(ctx, sender, toAddr, types.ZeroAttoFIL, types.NewGasFeeCap(0), types.NewGasPremium(0), types.NewGas(0), bcast, method, abi.Empty)
+				_, _, err := s.Send(ctx, sender, toAddr, types.ZeroAttoFIL, types.NewGasFeeCap(0), types.NewGasPremium(0), types.NewGas(0), bcast, method, emptyParams)
 				require.NoError(t, err)
 			}
 		}
@@ -191,7 +193,7 @@ func TestOutbox(t *testing.T) {
 
 		ob := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, message.NullPolicy{}, provider, provider, newOutboxTestJournal(t), gp)
 
-		_, _, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasFeeCap(0), types.NewGasPremium(0), types.NewGas(0), true, 0, abi.Empty)
+		_, _, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasFeeCap(0), types.NewGasPremium(0), types.NewGas(0), true, 0, emptyParams)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "account or empty")
 	})

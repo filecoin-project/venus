@@ -180,7 +180,7 @@ func (e *Devnet) GetFunds(ctx context.Context, p *fast.Filecoin) error {
 
 	e.log.Infof("GetFunds for process: %s", p.String())
 	var toAddr address.Address
-	if err := p.ConfigGet(ctx, "wallet.defaultAddress", &toAddr); err != nil {
+	if err := p.ConfigGet(ctx, "walletModule.defaultAddress", &toAddr); err != nil {
 		return err
 	}
 

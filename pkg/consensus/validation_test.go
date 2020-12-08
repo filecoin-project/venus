@@ -3,8 +3,9 @@ package consensus_test
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"testing"
+
+	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
@@ -100,7 +101,7 @@ func TestBLSSignatureValidationConfiguration(t *testing.T) {
 	signer.AddrKeyInfo[msg.From] = keys[0]
 	sig, err := signer.SignBytes(ctx, mmsgCid.Bytes(), msg.From)
 	require.NoError(t, err)
-	unsigned := &types.SignedMessage{Message: *msg, Signature: sig}
+	unsigned := &types.SignedMessage{Message: *msg, Signature: *sig}
 
 	actor := newActor(t, 1000, 0)
 

@@ -2,7 +2,9 @@ package wallet
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"golang.org/x/xerrors"
 	"reflect"
 	"sort"
 	"sync"
@@ -12,6 +14,8 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 )
+
+var ErrKeyInfoNotFound = fmt.Errorf("key info not found")
 
 // Wallet manages the locally stored addresses.
 type Wallet struct {
@@ -92,11 +96,11 @@ func (w *Wallet) Backends(kind reflect.Type) []Backend {
 
 // SignBytes cryptographically signs `data` using the private key corresponding to
 // address `addr`
-func (w *Wallet) SignBytes(data []byte, addr address.Address) (crypto.Signature, error) {
+func (w *Wallet) SignBytes(data []byte, addr address.Address) (*crypto.Signature, error) {
 	// Check that we are storing the address to sign for.
 	backend, err := w.Find(addr)
 	if err != nil {
-		return crypto.Signature{}, errors.Wrapf(err, "could not find address: %s", addr)
+		return nil, errors.Wrapf(err, "could not find address: %s", addr)
 	}
 	return backend.SignBytes(data, addr)
 }
@@ -190,4 +194,16 @@ func (w *Wallet) Export(addrs []address.Address) ([]*crypto.KeyInfo, error) {
 	}
 
 	return out, nil
+}
+
+func (w *Wallet) WalletSign(ctx context.Context, addr address.Address, msg []byte, meta MsgMeta) (*crypto.Signature, error) {
+	ki, err := w.Find(addr)
+	if err != nil {
+		return nil, err
+	}
+	if ki == nil {
+		return nil, xerrors.Errorf("signing using key '%s': %w", addr.String(), ErrKeyInfoNotFound)
+	}
+
+	return ki.SignBytes(msg, addr)
 }

@@ -185,7 +185,7 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 	b.tipStateCids[block.NewTipSetKey().String()] = nullState
 
 	b.genesis = b.BuildOrphaTipset(block.UndefTipSet, 1, nil)
-	b.store = NewStore(ds, cst, bs, NewStatusReporter(), b.genesis.At(0).Cid())
+	b.store = NewStore(ds, cst, bs, NewStatusReporter(), repo.Config().NetworkParams.ForkUpgradeParam, b.genesis.At(0).Cid())
 
 	for _, block := range b.genesis.Blocks() {
 		// add block to cstore

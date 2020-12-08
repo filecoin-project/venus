@@ -39,19 +39,18 @@ func NewFakeStateView(rawBytePower, qaPower abi.StoragePower, minerCount, minPow
 
 // FakeMinerState is fake state for a single miner.
 type FakeMinerState struct {
-	SectorConfiguration *MinerSectorConfiguration
-	Owner               address.Address
-	Worker              address.Address
-	PeerID              peer.ID
-	ProvingPeriodStart  abi.ChainEpoch
-	ProvingPeriodEnd    abi.ChainEpoch
-	PoStFailures        int
-	Sectors             []miner.SectorOnChainInfo
-	Deadlines           []*bitfield.BitField
-	ClaimedRawPower     abi.StoragePower
-	ClaimedQAPower      abi.StoragePower
-	PledgeRequirement   abi.TokenAmount
-	PledgeBalance       abi.TokenAmount
+	Owner              address.Address
+	Worker             address.Address
+	PeerID             peer.ID
+	ProvingPeriodStart abi.ChainEpoch
+	ProvingPeriodEnd   abi.ChainEpoch
+	PoStFailures       int
+	Sectors            []miner.SectorOnChainInfo
+	Deadlines          []*bitfield.BitField
+	ClaimedRawPower    abi.StoragePower
+	ClaimedQAPower     abi.StoragePower
+	PledgeRequirement  abi.TokenAmount
+	PledgeBalance      abi.TokenAmount
 }
 
 // FakeSectorInfo fakes a subset of sector onchain info
@@ -64,15 +63,6 @@ func (v *FakeStateView) InitNetworkName(_ context.Context) (string, error) {
 	return v.NetworkName, nil
 }
 
-// MinerSectorConfiguration reports a miner's sector size.
-func (v *FakeStateView) MinerSectorConfiguration(ctx context.Context, maddr address.Address) (*MinerSectorConfiguration, error) {
-	m, ok := v.Miners[maddr]
-	if !ok {
-		return nil, errors.Errorf("no miner %s", maddr)
-	}
-	return m.SectorConfiguration, nil
-}
-
 // MinerSectorCount reports the number of sectors a miner has pledged
 func (v *FakeStateView) MinerSectorCount(ctx context.Context, maddr address.Address) (uint64, error) {
 	m, ok := v.Miners[maddr]
@@ -83,38 +73,21 @@ func (v *FakeStateView) MinerSectorCount(ctx context.Context, maddr address.Addr
 	return uint64(len(m.Sectors)), nil
 }
 
-func (v *FakeStateView) MinerGetSector(_ context.Context, maddr address.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, bool, error) {
+func (v *FakeStateView) MinerSectorInfo(_ context.Context, maddr address.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, error) {
 	m, ok := v.Miners[maddr]
 	if !ok {
-		return nil, false, errors.Errorf("no miner %s", maddr)
+		return nil, errors.Errorf("no miner %s", maddr)
 	}
 	for _, s := range m.Sectors {
 		if s.SectorNumber == sectorNum {
-			return &s, true, nil
+			return &s, nil
 		}
 	}
-	return nil, false, nil
-}
-
-// MinerControlAddresses reports a miner's control addresses.
-func (v *FakeStateView) MinerControlAddresses(_ context.Context, maddr address.Address) (owner, worker address.Address, err error) {
-	m, ok := v.Miners[maddr]
-	if !ok {
-		return address.Undef, address.Undef, errors.Errorf("no miner %s", maddr)
-	}
-	return m.Owner, m.Worker, nil
+	return nil, nil
 }
 
 func (v *FakeStateView) MinerExists(_ context.Context, _ address.Address) (bool, error) {
 	return true, nil
-}
-
-func (v *FakeStateView) MinerPeerID(ctx context.Context, maddr address.Address) (peer.ID, error) {
-	m, ok := v.Miners[maddr]
-	if !ok {
-		return "", errors.Errorf("no miner %s", maddr)
-	}
-	return m.PeerID, nil
 }
 
 func (v *FakeStateView) MinerProvingPeriod(ctx context.Context, maddr address.Address) (start abi.ChainEpoch, end abi.ChainEpoch, failureCount int, err error) {
@@ -157,7 +130,7 @@ func (v *FakeStateView) MinerPledgeCollateral(_ context.Context, maddr address.A
 	return m.PledgeRequirement, m.PledgeBalance, nil
 }
 
-func (v *FakeStateView) MinerInfo(ctx context.Context, maddr address.Address) (*miner.MinerInfo, error) {
+func (v *FakeStateView) MinerInfo(ctx context.Context, maddr address.Address, nv network.Version) (*miner.MinerInfo, error) {
 	m, ok := v.Miners[maddr]
 	if !ok {
 		return nil, errors.Errorf("no miner %s", maddr)

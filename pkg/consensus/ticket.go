@@ -35,7 +35,7 @@ func NewTicketMachine(sampler ChainSampler, tipsetLoader tipsetLoader) *TicketMa
 	return &TicketMachine{sampler: sampler, tipsetLoader: tipsetLoader}
 }
 
-// MakeTicket creates a new ticket from a chain and target epoch by running a verifiable
+// MakeTicket creates a new ticket from a Chain and target epoch by running a verifiable
 // randomness function on the prior ticket.
 func (tm TicketMachine) MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, entry *block.BeaconEntry, newPeriod bool, worker address.Address, signer types.Signer) (block.Ticket, error) {
 	randomness, err := tm.ticketVRFRandomness(ctx, base, entry, newPeriod, miner, epoch)

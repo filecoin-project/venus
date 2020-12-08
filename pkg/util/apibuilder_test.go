@@ -2,15 +2,17 @@ package util
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
-	"github.com/filecoin-project/go-jsonrpc"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/filecoin-project/go-jsonrpc"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/stretchr/testify/require"
+	"gotest.tools/assert"
 )
 
 func TestWsBuilder(t *testing.T) {
@@ -27,7 +29,7 @@ func TestWsBuilder(t *testing.T) {
 		Test func() (string, error)
 	}
 
-	closer, err := jsonrpc.NewClient("ws://"+testServ.Listener.Addr().String(), nameSpace, &client, nil)
+	closer, err := jsonrpc.NewClient(context.Background(), "ws://"+testServ.Listener.Addr().String(), nameSpace, &client, nil)
 	require.NoError(t, err)
 	defer closer()
 

@@ -28,7 +28,7 @@ type walletRepo interface {
 func NewWalletSubmodule(ctx context.Context, cfg *config.ConfigModule, repo walletRepo, chain *chain.ChainSubmodule) (*WalletSubmodule, error) {
 	backend, err := wallet.NewDSBackend(repo.WalletDatastore())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to set up wallet backend")
+		return nil, errors.Wrap(err, "failed to set up walletModule backend")
 	}
 	fcWallet := wallet.New(backend)
 
@@ -41,5 +41,5 @@ func NewWalletSubmodule(ctx context.Context, cfg *config.ConfigModule, repo wall
 }
 
 func (wallet *WalletSubmodule) API() *WalletAPI {
-	return &WalletAPI{wallet: wallet}
+	return &WalletAPI{walletModule: wallet}
 }

@@ -2,6 +2,7 @@ package series
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-address"
 	files "github.com/ipfs/go-ipfs-files"
 
@@ -29,7 +30,7 @@ func SetupGenesisNode(ctx context.Context, node *fast.Filecoin, minerAddress add
 	if err != nil {
 		return err
 	}
-	if err := node.ConfigSet(ctx, "wallet.defaultAddress", wallet[0].String()); err != nil {
+	if err := node.ConfigSet(ctx, "walletModule.defaultAddress", wallet[0].String()); err != nil {
 		return err
 	}
 

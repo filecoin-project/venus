@@ -669,3 +669,7 @@ func badgerOptions() *badgerds.Options {
 	result.MaxTableSize = 64 << 21
 	return result
 }
+
+func (r *FSRepo) Repo() Repo {
+	return r
+}

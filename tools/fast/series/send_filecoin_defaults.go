@@ -13,7 +13,7 @@ import (
 // message to be received by the `to` node.
 func SendFilecoinDefaults(ctx context.Context, from, to *fast.Filecoin, value int) error {
 	var toAddr address.Address
-	if err := to.ConfigGet(ctx, "wallet.defaultAddress", &toAddr); err != nil {
+	if err := to.ConfigGet(ctx, "walletModule.defaultAddress", &toAddr); err != nil {
 		return err
 	}
 

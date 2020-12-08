@@ -98,7 +98,7 @@ func NewDefaultBlockValidator(c clock.ChainEpochClock, m messageStore, cs chainS
 }
 
 // NotFutureBlock errors if the block belongs to a future epoch according to
-// the chain clock.
+// the Chain clock.
 func (dv *DefaultBlockValidator) NotFutureBlock(b *block.Block) error {
 	now := uint64(dv.Now().Unix())
 	if b.Timestamp > now+AllowableClockDriftSecs {

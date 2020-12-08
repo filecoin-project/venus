@@ -195,7 +195,7 @@ func (v *DefaultMessageSyntaxValidator) validateMessageSyntaxShared(ctx context.
 		invGasPriceNegativeCt.Inc(ctx, 1)
 		return fmt.Errorf("negative gas price %s: %s", msg.GasFeeCap, msg)
 	}
-	// The minimum gas limit ensures the sender has enough balance to pay for inclusion of the message in the chain
+	// The minimum gas limit ensures the sender has enough balance to pay for inclusion of the message in the Chain
 	// *at all*. Without this, a message could hit out-of-gas but the sender pay nothing.
 	// NOTE(anorth): this check has been moved to execution time, and the miner is penalized for including
 	// such a message. We can probably remove this.

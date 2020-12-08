@@ -259,7 +259,7 @@ path = "mushroom-mushroom"}`
 		//err = cfg.Set("mining.defaultAddress", "fcqv3gmsd9gd7dqfe60d28euf4tx9v7929corrupt")
 		//assert.Contains(err.Error(), "invalid")
 
-		err = cfg.Set("wallet.defaultAddress", "corruptandtooshort")
+		err = cfg.Set("walletModule.defaultAddress", "corruptandtooshort")
 		assert.Contains(t, err.Error(), address.ErrUnknownNetwork.Error())
 	})
 

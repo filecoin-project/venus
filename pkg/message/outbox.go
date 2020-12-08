@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/journal"
 	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
@@ -93,13 +92,8 @@ func (ob *Outbox) Queue() *Queue {
 // Send marshals and sends a message, retaining it in the outbound message queue.
 // If bcast is true, the publisher broadcasts the message to the network at the current block height.
 func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value types.AttoFIL,
-	baseFee types.AttoFIL, gasPremium types.AttoFIL, gasLimit types.Unit, bcast bool, method abi.MethodNum, params interface{}) (out cid.Cid, pubErrCh chan error, err error) {
-	encodedParams, err := encoding.Encode(params)
-	if err != nil {
-		return cid.Undef, nil, errors.Wrap(err, "invalid params")
-	}
-
-	return ob.SendEncoded(ctx, from, to, value, baseFee, gasPremium, gasLimit, bcast, method, encodedParams)
+	baseFee types.AttoFIL, gasPremium types.AttoFIL, gasLimit types.Unit, bcast bool, method abi.MethodNum, params []byte) (out cid.Cid, pubErrCh chan error, err error) {
+	return ob.SendEncoded(ctx, from, to, value, baseFee, gasPremium, gasLimit, bcast, method, params)
 }
 
 // SendEncoded sends an encoded message, retaining it in the outbound message queue.

@@ -8,10 +8,13 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
 
+	chaincst "github.com/filecoin-project/venus/app/submodule/chain/cst"
+	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/vm/register"
 	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
@@ -22,6 +25,7 @@ type commonDeps struct {
 	messages   *chain.MessageStore
 	blockstore bstore.Blockstore
 	cst        cbor.IpldStore
+	chainState *chaincst.ChainStateReadWriter
 }
 
 func requiredCommonDeps(t *testing.T, gif genesis.InitFunc) *commonDeps { // nolint: deadcode
@@ -41,6 +45,11 @@ func requireCommonDepsWithGifAndBlockstore(t *testing.T, gif genesis.InitFunc, r
 	backend, err := wallet.NewDSBackend(r.WalletDatastore())
 	require.NoError(t, err)
 	wallet := wallet.New(backend)
+	genBlk, err := chainStore.GetGenesisBlock(context.TODO())
+	require.NoError(t, err)
+	drand, err := beacon.DrandConfigSchedule(genBlk.Timestamp, r.Config().NetworkParams.BlockDelay, r.Config().NetworkParams.DrandSchedule)
+	require.NoError(t, err)
+	chainState := chaincst.NewChainStateReadWriter(chainStore, messageStore, bs, register.DefaultActors, drand)
 
 	return &commonDeps{
 		repo:       r,
@@ -49,5 +58,6 @@ func requireCommonDepsWithGifAndBlockstore(t *testing.T, gif genesis.InitFunc, r
 		messages:   messageStore,
 		blockstore: bs,
 		cst:        cst,
+		chainState: chainState,
 	}
 }

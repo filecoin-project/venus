@@ -59,4 +59,7 @@ type Repo interface {
 
 	// Close shuts down the repo.
 	Close() error
+
+	// Repo return the repo
+	Repo() Repo
 }

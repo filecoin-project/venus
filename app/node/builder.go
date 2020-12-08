@@ -10,6 +10,7 @@ import (
 	config2 "github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/discovery"
 	"github.com/filecoin-project/venus/app/submodule/messaging"
+	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/proofverification"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
@@ -262,6 +263,8 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.StorageNetworking")
 	}
+	nd.mining = mining.NewMiningModule(b.repo, nd.chain, nd.Blockstore, nd.network, nd.syncer, *nd.Wallet, *nd.ProofVerification)
+
 	apiBuilder := util.NewBuiler()
 	apiBuilder.NameSpace("Filecoin")
 	err = apiBuilder.AddServices(nd.ConfigModule,
@@ -275,6 +278,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.Messaging,
 		nd.StorageNetworking,
 		nd.ProofVerification,
+		nd.mining,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "add service failed ")

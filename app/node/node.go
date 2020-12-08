@@ -3,6 +3,13 @@ package node
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"reflect"
+	"runtime"
+	"syscall"
+
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	fbig "github.com/filecoin-project/go-state-types/big"
@@ -12,6 +19,7 @@ import (
 	configModule "github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/discovery"
 	"github.com/filecoin-project/venus/app/submodule/messaging"
+	"github.com/filecoin-project/venus/app/submodule/mining"
 	network2 "github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/proofverification"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
@@ -34,12 +42,6 @@ import (
 	manet "github.com/multiformats/go-multiaddr-net" //nolint
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
-	"net/http"
-	"os"
-	"os/signal"
-	"reflect"
-	"runtime"
-	"syscall"
 )
 
 var log = logging.Logger("node") // nolint: deadcode
@@ -74,6 +76,7 @@ type Node struct {
 	//
 	chain  *chain2.ChainSubmodule
 	syncer *syncer2.SyncerSubmodule
+	mining *mining.MiningModule
 
 	//
 	// Supporting services
@@ -386,5 +389,6 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		StorageNetworkingAPI: node.StorageNetworking.API(),
 		SyncerAPI:            node.Syncer().API(),
 		WalletAPI:            node.Wallet.API(),
+		MingingAPI:           node.mining.API(),
 	}
 }

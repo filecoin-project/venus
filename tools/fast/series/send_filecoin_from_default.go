@@ -18,7 +18,7 @@ import (
 // been received by the targeted node of addr.
 func SendFilecoinFromDefault(ctx context.Context, node *fast.Filecoin, addr address.Address, value int) (cid.Cid, error) {
 	var walletAddr address.Address
-	if err := node.ConfigGet(ctx, "wallet.defaultAddress", &walletAddr); err != nil {
+	if err := node.ConfigGet(ctx, "walletModule.defaultAddress", &walletAddr); err != nil {
 		return cid.Undef, err
 	}
 

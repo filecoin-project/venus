@@ -16,11 +16,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/log"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
-
-	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt" // todo block headers use adt0
 
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/cborutil"
@@ -29,7 +26,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/chainsync/status"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/fork"
 	bstore "github.com/filecoin-project/venus/pkg/fork/blockstore"
 	"github.com/filecoin-project/venus/pkg/metrics"
@@ -146,7 +142,7 @@ type BlockValidator interface {
 type FullBlockValidator interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts *block.TipSet, blockMessageInfo []block.BlockMessagesInfo, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error)
+	RunStateTransition(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error)
 	// Todo add by force
 	ValidateMining(ctx context.Context, parent, ts *block.TipSet, parentWeight big.Int, parentReceiptRoot cid.Cid) error
 }
@@ -326,16 +322,10 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 			return xerrors.Errorf("validate mining failed %w", err)
 		}
 	}
-
-	//gather message
-	blockMessageInfo, err := syncer.messageProvider.LoadTipSetMessage(ctx, next)
-	if err != nil {
-		return xerrors.Errorf("failed to gather message in tipset %w", err)
-	}
 	// Run a state transition to validate the tipset and compute
 	// a new state to add to the bsstore.
 	toProcessTime := time.Now()
-	root, receipts, err := syncer.fullValidator.RunStateTransition(ctx, next, blockMessageInfo, parentStateRoot)
+	root, receipts, err := syncer.fullValidator.RunStateTransition(ctx, next, parentStateRoot)
 	if err != nil {
 		return xerrors.Errorf("calc current tipset %s state failed %w", next.Key().String(), err)
 	}
@@ -936,7 +926,7 @@ func zipTipSetAndMessages(bs blockstore.Blockstore, ts *block.TipSet, allbmsgs [
 			bmsgCids = append(bmsgCids, mCid)
 		}
 
-		mrcid, err := computeMsgMeta(bs, bmsgCids, smsgCids)
+		mrcid, err := chain.ComputeMsgMeta(bs, bmsgCids, smsgCids)
 		if err != nil {
 			return nil, err
 		}
@@ -955,49 +945,6 @@ func zipTipSetAndMessages(bs blockstore.Blockstore, ts *block.TipSet, allbmsgs [
 	}
 
 	return fts, nil
-}
-
-// computeMsgMeta computes the root CID of the combined arrays of message CIDs
-// of both types (BLS and Secpk).
-func computeMsgMeta(bs blockstore.Blockstore, bmsgCids, smsgCids []cid.Cid) (cid.Cid, error) {
-	// block headers use adt0
-	store := adt0.WrapStore(context.TODO(), cborutil.NewIpldStore(bs))
-	bmArr := adt0.MakeEmptyArray(store)
-	smArr := adt0.MakeEmptyArray(store)
-
-	for i, m := range bmsgCids {
-		c := cbg.CborCid(m)
-		if err := bmArr.Set(uint64(i), &c); err != nil {
-			return cid.Undef, err
-		}
-	}
-
-	for i, m := range smsgCids {
-		c := cbg.CborCid(m)
-		if err := smArr.Set(uint64(i), &c); err != nil {
-			return cid.Undef, err
-		}
-	}
-
-	bmroot, err := bmArr.Root()
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	smroot, err := smArr.Root()
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	mrcid, err := store.Put(store.Context(), &types.TxMeta{
-		BLSRoot:  enccid.NewCid(bmroot),
-		SecpRoot: enccid.NewCid(smroot),
-	})
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to put msgmeta: %w", err)
-	}
-
-	return mrcid, nil
 }
 
 const maxProcessLen = 32

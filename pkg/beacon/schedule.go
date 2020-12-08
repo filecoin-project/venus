@@ -27,7 +27,7 @@ func DrandConfigSchedule(genTimeStamp uint64, blockDelay uint64, drandSchedule m
 	for start, config := range drandSchedule {
 		bc, err := NewDrandBeacon(genTimeStamp, blockDelay, cfg.DrandConfigs[config])
 		if err != nil {
-			return nil, xerrors.Errorf("creating drand beacon: %s", err)
+			return nil, xerrors.Errorf("creating drand beacon: %v", err)
 		}
 		shd = append(shd, BeaconPoint{Start: start, Beacon: bc})
 	}

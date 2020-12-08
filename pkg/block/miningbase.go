@@ -7,12 +7,12 @@ import (
 )
 
 type MiningBaseInfo struct {
-	MinerPower      abi.StoragePower
-	NetworkPower    abi.StoragePower
-	Sectors         []builtin.SectorInfo
-	WorkerKey       address.Address
-	SectorSize      abi.SectorSize
-	PrevBeaconEntry BeaconEntry
-	BeaconEntries   []BeaconEntry
-	HasMinPower     bool
+	MinerPower        abi.StoragePower
+	NetworkPower      abi.StoragePower
+	Sectors           []builtin.SectorInfo
+	WorkerKey         address.Address
+	SectorSize        abi.SectorSize
+	PrevBeaconEntry   BeaconEntry
+	BeaconEntries     []BeaconEntry
+	EligibleForMining bool
 }

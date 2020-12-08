@@ -9,6 +9,9 @@ import (
 	"strings"
 	"time"
 
+	bstore "github.com/filecoin-project/venus/pkg/fork/blockstore"
+	"github.com/filecoin-project/venus/pkg/util"
+
 	"github.com/filecoin-project/venus/pkg/config"
 
 	"github.com/Gurpartap/async"
@@ -54,6 +57,7 @@ import (
 )
 
 var (
+	ErrExpensiveFork = errors.New("refusing explicit call due to state fork at epoch")
 	// ErrStateRootMismatch is returned when the computed state root doesn't match the expected result.
 	ErrStateRootMismatch = errors.New("blocks state root does not match computed result")
 	// ErrUnorderedTipSets is returned when weight and minticket are the same between two tipsets.
@@ -78,7 +82,7 @@ type TicketValidator interface {
 	IsValidTicket(ctx context.Context, base block.TipSetKey, entry *block.BeaconEntry, newPeriod bool, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket block.Ticket) error
 }
 
-// StateViewer provides views into the chain state.
+// StateViewer provides views into the Chain state.
 type StateViewer interface {
 	PowerStateView(root cid.Cid) appstate.PowerStateView
 	FaultStateView(root cid.Cid) appstate.FaultStateView
@@ -91,6 +95,7 @@ type chainReader interface {
 	GetGenesisBlock(ctx context.Context) (*block.Block, error)
 	GetLatestBeaconEntry(ts *block.TipSet) (*block.BeaconEntry, error)
 	GetTipSetByHeight(context.Context, *block.TipSet, abi.ChainEpoch, bool) (*block.TipSet, error)
+	GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st state.Tree) (chain.CirculatingSupply, error)
 }
 
 type Randness interface {
@@ -111,7 +116,7 @@ type Expected struct {
 	// accessing the power table.
 	bstore blockstore.Blockstore
 
-	// chainState is a reference to the current chain state
+	// chainState is a reference to the current Chain state
 	chainState chainReader
 
 	// processor is what we use to process messages and pay rewards
@@ -129,12 +134,11 @@ type Expected struct {
 
 	rnd Randness
 
-	clock                       clock.ChainEpochClock
-	drand                       beacon.Schedule
-	fork                        fork.IFork
-	config                      *config.NetworkParamsConfig
-	gasPirceSchedule            *gas.PricesSchedule
-	circulatingSupplyCalculator *CirculatingSupplyCalculator
+	clock            clock.ChainEpochClock
+	drand            beacon.Schedule
+	fork             fork.IFork
+	config           *config.NetworkParamsConfig
+	gasPirceSchedule *gas.PricesSchedule
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
@@ -158,22 +162,21 @@ func NewExpected(cs cbor.IpldStore,
 	gasPirceSchedule *gas.PricesSchedule,
 ) *Expected {
 	c := &Expected{
-		cstore:                      cs,
-		blockTime:                   bt,
-		bstore:                      bs,
-		processor:                   processor,
-		state:                       state,
-		TicketValidator:             tv,
-		proofVerifier:               pv,
-		chainState:                  chainState,
-		clock:                       clock,
-		drand:                       drand,
-		messageStore:                messageStore,
-		rnd:                         rnd,
-		fork:                        fork,
-		config:                      config,
-		gasPirceSchedule:            gasPirceSchedule,
-		circulatingSupplyCalculator: NewCirculatingSupplyCalculator(bs, chainState, config.ForkUpgradeParam),
+		cstore:           cs,
+		blockTime:        bt,
+		bstore:           bs,
+		processor:        processor,
+		state:            state,
+		TicketValidator:  tv,
+		proofVerifier:    pv,
+		chainState:       chainState,
+		clock:            clock,
+		drand:            drand,
+		messageStore:     messageStore,
+		rnd:              rnd,
+		fork:             fork,
+		config:           config,
+		gasPirceSchedule: gasPirceSchedule,
 	}
 	return c
 }
@@ -183,52 +186,11 @@ func (c *Expected) BlockTime() time.Duration {
 	return c.blockTime
 }
 
-func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (*vm.Ret, error) {
-	head := c.chainState.GetHead()
-	stateRoot, err := c.chainState.GetTipSetStateRoot(head)
-	if err != nil {
-		return nil, err
-	}
-
-	ts, err := c.chainState.GetTipSet(head)
-	if err != nil {
-		return nil, err
-	}
-
-	vms := vm.NewStorage(c.bstore)
-	priorState, err := state.LoadState(ctx, vms, stateRoot)
-	if err != nil {
-		return nil, err
-	}
-
-	rnd := headRandomness{
-		chain: c.rnd,
-		head:  ts.Key(),
-	}
-
-	vmOption := vm.VmOption{
-		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
-			dertail, err := c.circulatingSupplyCalculator.GetCirculatingSupplyDetailed(ctx, epoch, tree)
-			if err != nil {
-				return abi.TokenAmount{}, err
-			}
-			return dertail.FilCirculating, nil
-		},
-		NtwkVersionGetter: c.fork.GetNtwkVersion,
-		Rnd:               &rnd,
-		BaseFee:           ts.At(0).ParentBaseFee,
-		Epoch:             ts.At(0).Height,
-		GasPriceSchedule:  c.gasPirceSchedule,
-	}
-	return c.processor.ProcessUnsignedMessage(ctx, msg, priorState, vms, vmOption)
-}
-
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
 func (c *Expected) RunStateTransition(ctx context.Context,
 	ts *block.TipSet,
-	blockMessageInfo []block.BlockMessagesInfo,
 	parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
@@ -238,6 +200,12 @@ func (c *Expected) RunStateTransition(ctx context.Context,
 	priorState, err := state.LoadState(ctx, vms, parentStateRoot)
 	if err != nil {
 		return cid.Undef, []types.MessageReceipt{}, err
+	}
+
+	//gather message
+	blockMessageInfo, err := c.messageStore.LoadTipSetMessage(ctx, ts)
+	if err != nil {
+		return cid.Undef, []types.MessageReceipt{}, xerrors.Errorf("failed to gather message in tipset %v", err)
 	}
 
 	var newState state.Tree
@@ -571,12 +539,13 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 		secpMsgs[i] = m
 	}
 
-	bmroot, err := chain.GetChainMsgRoot(ctx, blsMsgs)
+	tmpStore := bstore.NewTemporary()
+	bmroot, err := chain.GetChainMsgRoot(ctx, tmpStore, blsMsgs)
 	if err != nil {
 		return xerrors.Errorf("get blsMsgs root failed: %v", err)
 	}
 
-	smroot, err := chain.GetChainMsgRoot(ctx, secpMsgs)
+	smroot, err := chain.GetChainMsgRoot(ctx, tmpStore, secpMsgs)
 	if err != nil {
 		return xerrors.Errorf("get secpMsgs root failed: %v", err)
 	}
@@ -593,6 +562,54 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 	}
 
 	return nil
+}
+
+// ValidateMsgMeta performs structural and content hash validation of the
+// messages within this block. If validation passes, it stores the messages in
+// the underlying IPLD block store.
+func (c *Expected) ValidateMsgMeta(fblk *block.FullBlock) error {
+	if msgc := len(fblk.BLSMessages) + len(fblk.SECPMessages); msgc > constants.BlockMessageLimit {
+		return xerrors.Errorf("block %s has too many messages (%d)", fblk.Header.Cid(), msgc)
+	}
+
+	// TODO: IMPORTANT(GARBAGE). These message puts and the msgmeta
+	// computation need to go into the 'temporary' side of the blockstore when
+	// we implement that
+
+	// We use a temporary bstore here to avoid writing intermediate pieces
+	// into the blockstore.
+	blockstore := bstore.NewTemporary()
+	var bcids, scids []cid.Cid
+
+	for _, m := range fblk.BLSMessages {
+		c, err := chain.PutMessage(blockstore, m)
+		if err != nil {
+			return xerrors.Errorf("putting bls message to blockstore after msgmeta computation: %w", err)
+		}
+		bcids = append(bcids, c)
+	}
+
+	for _, m := range fblk.SECPMessages {
+		c, err := chain.PutMessage(blockstore, m)
+		if err != nil {
+			return xerrors.Errorf("putting bls message to blockstore after msgmeta computation: %w", err)
+		}
+		scids = append(scids, c)
+	}
+
+	// Compute the root CID of the combined message trie.
+	smroot, err := chain.ComputeMsgMeta(blockstore, bcids, scids)
+	if err != nil {
+		return xerrors.Errorf("validating msgmeta, compute failed: %w", err)
+	}
+
+	// Check that the message trie root matches with what's in the block.
+	if fblk.Header.Messages.Cid != smroot {
+		return xerrors.Errorf("messages in full block did not match msgmeta root in header (%s != %s)", fblk.Header.Messages, smroot)
+	}
+
+	// Finally, flush
+	return util.CopyParticial(context.TODO(), blockstore, c.bstore, smroot)
 }
 
 func (c *Expected) VerifyWinningPoStProof(ctx context.Context, nv network.Version, blk *block.Block, prevBeacon *block.BeaconEntry, lbst cid.Cid) error {
@@ -801,6 +818,7 @@ func (c *Expected) MinerEligibleToMine(ctx context.Context, addr address.Address
 	return true, nil
 }
 
+//TODO think about a better position to impl this function
 func (c *Expected) GetLookbackTipSetForRound(ctx context.Context, ts *block.TipSet, round abi.ChainEpoch) (*block.TipSet, cid.Cid, error) {
 	var lbr abi.ChainEpoch
 	lb := policy.GetWinningPoStSectorSetLookback(c.fork.GetNtwkVersion(ctx, round))
@@ -843,6 +861,7 @@ func (c *Expected) GetLookbackTipSetForRound(ctx context.Context, ts *block.TipS
 	return lbts, nextTs.Blocks()[0].ParentStateRoot.Cid, nil
 }
 
+// todo to be a member function
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
 func GetMinerWorkerRaw(ctx context.Context, stateID cid.Cid, bstore blockstore.Blockstore, addr address.Address) (address.Address, error) {
 	vms := vm.NewStorage(bstore)
@@ -982,14 +1001,14 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms *vm.Stora
 		return st, []types.MessageReceipt{}, nil
 	}
 
-	rnd := headRandomness{
-		chain: c.rnd,
-		head:  ts.Key(),
+	rnd := HeadRandomness{
+		Chain: c.rnd,
+		Head:  ts.Key(),
 	}
 
 	vmOption := vm.VmOption{
 		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
-			dertail, err := c.circulatingSupplyCalculator.GetCirculatingSupplyDetailed(ctx, epoch, tree)
+			dertail, err := c.chainState.GetCirculatingSupplyDetailed(ctx, epoch, tree)
 			if err != nil {
 				return abi.TokenAmount{}, err
 			}
@@ -1030,16 +1049,16 @@ func (v *DefaultStateViewer) FaultStateView(root cid.Cid) appstate.FaultStateVie
 	return v.Viewer.StateView(root)
 }
 
-// A chain randomness source with a fixed head tipset key.
-type headRandomness struct {
-	chain ChainRandomness
-	head  block.TipSetKey
+// A Chain randomness source with a fixed Head tipset key.
+type HeadRandomness struct {
+	Chain ChainRandomness
+	Head  block.TipSetKey
 }
 
-func (h *headRandomness) Randomness(ctx context.Context, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return h.chain.SampleChainRandomness(ctx, h.head, tag, epoch, entropy)
+func (h *HeadRandomness) Randomness(ctx context.Context, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return h.Chain.SampleChainRandomness(ctx, h.Head, tag, epoch, entropy)
 }
 
-func (h *headRandomness) GetRandomnessFromBeacon(ctx context.Context, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return h.chain.ChainGetRandomnessFromBeacon(ctx, h.head, tag, epoch, entropy)
+func (h *HeadRandomness) GetRandomnessFromBeacon(ctx context.Context, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return h.Chain.ChainGetRandomnessFromBeacon(ctx, h.Head, tag, epoch, entropy)
 }

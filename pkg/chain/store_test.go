@@ -2,6 +2,7 @@ package chain_test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/util/test"
 	"testing"
 	"time"
@@ -41,7 +42,7 @@ func newChainStore(r repo.Repo, genTs *block.TipSet) *CborBlockStore {
 	tempBlock := bstore.NewBlockstore(r.Datastore())
 	cborStore := cborutil.NewIpldStore(tempBlock)
 	return &CborBlockStore{
-		Store:     chain.NewStore(r.Datastore(), cborStore, tempBlock, chain.NewStatusReporter(), genTs.At(0).Cid()),
+		Store:     chain.NewStore(r.Datastore(), cborStore, tempBlock, chain.NewStatusReporter(), config.DefaultForkUpgradeParam, genTs.At(0).Cid()),
 		cborStore: cborStore,
 	}
 }
@@ -299,9 +300,9 @@ func TestHead(t *testing.T) {
 	sr := chain.NewStatusReporter()
 	bs := builder.BlockStore()
 	cborStore := builder.Cstore()
-	cs := chain.NewStore(r.Datastore(), cborStore, bs, sr, genTS.At(0).Cid())
+	cs := chain.NewStore(r.Datastore(), cborStore, bs, sr, config.DefaultForkUpgradeParam, genTS.At(0).Cid())
 	cboreStore := &CborBlockStore{
-		Store: chain.NewStore(r.Datastore(), cborStore, bs, sr, genTS.At(0).Cid()),
+		Store: chain.NewStore(r.Datastore(), cborStore, bs, sr, config.DefaultForkUpgradeParam, genTS.At(0).Cid()),
 	}
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
@@ -415,7 +416,7 @@ func TestLoadAndReboot(t *testing.T) {
 	requirePutBlocksToCborStore(t, cst, link4.ToSlice()...)
 
 	cboreStore := &CborBlockStore{
-		Store:     chain.NewStore(ds, cst, bs, chain.NewStatusReporter(), genTS.At(0).Cid()),
+		Store:     chain.NewStore(ds, cst, bs, chain.NewStatusReporter(), config.DefaultForkUpgradeParam, genTS.At(0).Cid()),
 		cborStore: cst,
 	}
 	requirePutTestChain(ctx, t, cboreStore, link4.Key(), builder, 5)
@@ -426,7 +427,7 @@ func TestLoadAndReboot(t *testing.T) {
 
 	// rebuild chain with same datastore and cborstore
 	sr := chain.NewStatusReporter()
-	rebootChain := chain.NewStore(ds, cst, bs, sr, genTS.At(0).Cid())
+	rebootChain := chain.NewStore(ds, cst, bs, sr, config.DefaultForkUpgradeParam, genTS.At(0).Cid())
 	rebootCbore := &CborBlockStore{
 		Store: rebootChain,
 	}

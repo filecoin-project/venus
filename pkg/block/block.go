@@ -183,3 +183,7 @@ func (b *Block) SignatureData() []byte {
 
 	return tmp.ToNode().RawData()
 }
+
+func (b *Block) LastTicket() *Ticket {
+	return &b.Ticket
+}
