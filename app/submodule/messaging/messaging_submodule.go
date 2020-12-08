@@ -81,6 +81,7 @@ func NewMessagingSubmodule(ctx context.Context,
 	if err := network.Pubsub.RegisterTopicValidator(mtv.Topic(network.NetworkName), mtv.Validator(), mtv.Opts()...); err != nil {
 		return nil, errors.Wrap(err, "failed to register message validator")
 	}
+
 	topic, err := network.Pubsub.Join(msgsub.Topic(network.NetworkName))
 	if err != nil {
 		return nil, err

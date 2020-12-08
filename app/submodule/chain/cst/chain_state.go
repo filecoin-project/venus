@@ -3,6 +3,7 @@ package cst
 import (
 	"context"
 	"fmt"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"io"
 
 	"github.com/filecoin-project/go-address"
@@ -241,7 +242,7 @@ func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey block.Ti
 		return nil, err
 	}
 	if !found {
-		return nil, types.ErrNotFound
+		return nil, types.ErrActorNotFound
 	}
 	return actr, nil
 }
@@ -390,4 +391,8 @@ func (chn *ChainStateReadWriter) AccountStateView(key block.TipSetKey) (state.Ac
 
 func (chn *ChainStateReadWriter) FaultStateView(key block.TipSetKey) (slashing.FaultStateView, error) {
 	return chn.StateView(key)
+}
+
+func (chn *ChainStateReadWriter) Store(ctx context.Context) adt.Store {
+	return adt.WrapStore(ctx, cbor.NewCborStore(chn.bstore))
 }

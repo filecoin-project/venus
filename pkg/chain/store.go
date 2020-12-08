@@ -340,6 +340,11 @@ func (store *Store) DelTipSetMetadata(ctx context.Context, ts *block.TipSet) err
 	return nil
 }
 
+// GetBlock returns the block identified by `cid`.
+func (store *Store) GetBlock(blockId cid.Cid) (*block.Block, error) {
+	return store.stateAndBlockSource.GetBlock(context.TODO(), blockId)
+}
+
 // GetTipSet returns the tipset identified by `key`.
 func (store *Store) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	blks := []*block.Block{}

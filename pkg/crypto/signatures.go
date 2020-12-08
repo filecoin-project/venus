@@ -20,7 +20,7 @@ const (
 	SigTypeBLS       = crypto.SigTypeBLS
 )
 
-func Sign(data []byte, secretKey []byte, sigtype SigType) (Signature, error) {
+func Sign(data []byte, secretKey []byte, sigtype SigType) (*Signature, error) {
 	var signature []byte
 	var err error
 	if sigtype == SigTypeSecp256k1 {
@@ -31,7 +31,7 @@ func Sign(data []byte, secretKey []byte, sigtype SigType) (Signature, error) {
 	} else {
 		err = fmt.Errorf("unknown signature type %d", sigtype)
 	}
-	return Signature{
+	return &Signature{
 		Type: sigtype,
 		Data: signature,
 	}, err

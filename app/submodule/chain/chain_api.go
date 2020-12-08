@@ -64,7 +64,7 @@ func (chainAPI *ChainAPI) ProtocolParameters(ctx context.Context) (*ProtocolPara
 	}, nil
 }
 
-func (chainAPI *ChainAPI) ChainHead() (*block.TipSet, error) {
+func (chainAPI *ChainAPI) ChainHead(ctx context.Context) (*block.TipSet, error) {
 	headkey := chainAPI.chain.ChainReader.GetHead()
 	return chainAPI.chain.ChainReader.GetTipSet(headkey)
 }
@@ -193,5 +193,6 @@ func (chainAPI *ChainAPI) getNetworkName(ctx context.Context) (string, error) {
 //************Import**************//
 // ChainExport exports the chain from `head` up to and including the genesis block to `out`
 func (chainAPI *ChainAPI) ChainExport(ctx context.Context, head block.TipSetKey, out io.Writer) error {
+
 	return chainAPI.chain.State.ChainExport(ctx, head, out)
 }

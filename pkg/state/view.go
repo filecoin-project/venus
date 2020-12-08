@@ -362,7 +362,7 @@ func (v *View) MinerExists(ctx context.Context, maddr addr.Address) (bool, error
 	if err == nil {
 		return true, nil
 	}
-	if err == types.ErrNotFound {
+	if err == types.ErrActorNotFound {
 		return false, nil
 	}
 	return false, err
@@ -599,6 +599,41 @@ func (v *View) PowerNetworkTotal(ctx context.Context) (*NetworkPower, error) {
 	}, nil
 }
 
+func (v *View) GetPowerRaw(ctx context.Context, maddr addr.Address) (power.Claim, power.Claim, bool, error) {
+	act, err := v.loadActor(ctx, power.Address)
+	if err != nil {
+		return power.Claim{}, power.Claim{}, false, xerrors.Errorf("(get sset) failed to load power actor state: %w", err)
+	}
+
+	pas, err := power.Load(v.adtStore(ctx), act)
+	if err != nil {
+		return power.Claim{}, power.Claim{}, false, err
+	}
+
+	tpow, err := pas.TotalPower()
+	if err != nil {
+		return power.Claim{}, power.Claim{}, false, err
+	}
+
+	var mpow power.Claim
+	var minpow bool
+	if maddr != addr.Undef {
+		var found bool
+		mpow, found, err = pas.MinerPower(maddr)
+		if err != nil || !found {
+			// TODO: return an error when not found?
+			return power.Claim{}, power.Claim{}, false, err
+		}
+
+		minpow, err = pas.MinerNominalPowerMeetsConsensusMinimum(maddr)
+		if err != nil {
+			return power.Claim{}, power.Claim{}, false, err
+		}
+	}
+
+	return mpow, tpow, minpow, nil
+}
+
 // Returns the power of a miner's committed sectors.
 func (v *View) MinerClaimedPower(ctx context.Context, miner addr.Address) (raw, qa abi.StoragePower, err error) {
 	st, err := v.loadPowerActor(ctx)
@@ -811,7 +846,7 @@ func (v *View) loadActor(ctx context.Context, address addr.Address) (*types.Acto
 		return nil, err
 	}
 	if !found {
-		return nil, types.ErrNotFound
+		return nil, types.ErrActorNotFound
 	}
 
 	return actor, err

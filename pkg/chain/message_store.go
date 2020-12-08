@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt" // todo block headers use adt0
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -405,6 +406,11 @@ func (ms *MessageStore) storeSignedMessages(messages []*types.SignedMessage) ([]
 	return cids, nil
 }
 
+func (ms *MessageStore) StoreMessage(message types.ChainMsg) (cid.Cid, error) {
+	c, _, err := ms.storeBlock(message)
+	return c, err
+}
+
 // StoreTxMeta writes the secproot, blsroot block to the message store
 func (ms *MessageStore) StoreTxMeta(ctx context.Context, meta types.TxMeta) (cid.Cid, error) {
 	c, _, err := ms.storeBlock(meta)
@@ -573,7 +579,7 @@ func GetReceiptRoot(receipts []types.MessageReceipt) (cid.Cid, error) {
 	return amt.FromArray(context.TODO(), as, rawMarshallers)
 }
 
-func GetChainMsgRoot(ctx context.Context, messages []types.ChainMsg) (cid.Cid, error) {
+func GetChainMsgRoot(ctx context.Context, bs blockstore.Blockstore, messages []types.ChainMsg) (cid.Cid, error) {
 	tmpbs := bstore.NewTemporary()
 	tmpstore := blockadt.WrapStore(ctx, cbor.NewCborStore(tmpbs))
 
@@ -597,4 +603,47 @@ func GetChainMsgRoot(ctx context.Context, messages []types.ChainMsg) (cid.Cid, e
 	}
 
 	return arr.Root()
+}
+
+// computeMsgMeta computes the root CID of the combined arrays of message CIDs
+// of both types (BLS and Secpk).
+func ComputeMsgMeta(bs blockstore.Blockstore, bmsgCids, smsgCids []cid.Cid) (cid.Cid, error) {
+	// block headers use adt0
+	store := adt0.WrapStore(context.TODO(), cborutil.NewIpldStore(bs))
+	bmArr := adt0.MakeEmptyArray(store)
+	smArr := adt0.MakeEmptyArray(store)
+
+	for i, m := range bmsgCids {
+		c := cbg.CborCid(m)
+		if err := bmArr.Set(uint64(i), &c); err != nil {
+			return cid.Undef, err
+		}
+	}
+
+	for i, m := range smsgCids {
+		c := cbg.CborCid(m)
+		if err := smArr.Set(uint64(i), &c); err != nil {
+			return cid.Undef, err
+		}
+	}
+
+	bmroot, err := bmArr.Root()
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	smroot, err := smArr.Root()
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	mrcid, err := store.Put(store.Context(), &types.TxMeta{
+		BLSRoot:  enccid.NewCid(bmroot),
+		SecpRoot: enccid.NewCid(smroot),
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to put msgmeta: %w", err)
+	}
+
+	return mrcid, nil
 }

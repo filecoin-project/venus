@@ -11,6 +11,8 @@ package consensus
 // except for errors in the case the stores do not have a mapping.
 import (
 	"context"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -29,7 +31,7 @@ import (
 type Protocol interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateID`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts *block.TipSet, blkMessageInfo []block.BlockMessagesInfo, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error)
+	RunStateTransition(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error)
 
 	// BlockTime returns the block time used by the consensus protocol.
 	BlockTime() time.Duration
@@ -38,4 +40,10 @@ type Protocol interface {
 	CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (*vm.Ret, error)
 
 	ValidateMining(ctx context.Context, parent, ts *block.TipSet, parentWeight big.Int, parentReceiptRoot cid.Cid) error
+
+	ValidateMsgMeta(fblk *block.FullBlock) error
+
+	GetLookbackTipSetForRound(ctx context.Context, ts *block.TipSet, round abi.ChainEpoch) (*block.TipSet, cid.Cid, error)
+
+	MinerEligibleToMine(ctx context.Context, addr address.Address, parentStateRoot cid.Cid, parentHeight abi.ChainEpoch, lookbackTs *block.TipSet) (bool, error)
 }

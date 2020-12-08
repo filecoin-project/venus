@@ -147,10 +147,10 @@ func (backend *DSBackend) putKeyInfo(ki *crypto.KeyInfo) error {
 }
 
 // SignBytes cryptographically signs `data` using the private key `priv`.
-func (backend *DSBackend) SignBytes(data []byte, addr address.Address) (crypto.Signature, error) {
+func (backend *DSBackend) SignBytes(data []byte, addr address.Address) (*crypto.Signature, error) {
 	ki, err := backend.GetKeyInfo(addr)
 	if err != nil {
-		return crypto.Signature{}, err
+		return nil, err
 	}
 	return crypto.Sign(data, ki.PrivateKey, ki.SigType)
 }

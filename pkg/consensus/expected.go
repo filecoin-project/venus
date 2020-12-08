@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	bstore "github.com/filecoin-project/venus/pkg/fork/blockstore"
+	"github.com/filecoin-project/venus/pkg/util"
 	"os"
 	"strings"
 	"time"
@@ -228,7 +230,6 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage) 
 // in the tipset results in an error.
 func (c *Expected) RunStateTransition(ctx context.Context,
 	ts *block.TipSet,
-	blockMessageInfo []block.BlockMessagesInfo,
 	parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
@@ -238,6 +239,12 @@ func (c *Expected) RunStateTransition(ctx context.Context,
 	priorState, err := state.LoadState(ctx, vms, parentStateRoot)
 	if err != nil {
 		return cid.Undef, []types.MessageReceipt{}, err
+	}
+
+	//gather message
+	blockMessageInfo, err := c.messageStore.LoadTipSetMessage(ctx, ts)
+	if err != nil {
+		return cid.Undef, []types.MessageReceipt{}, xerrors.Errorf("failed to gather message in tipset %v", err)
 	}
 
 	var newState state.Tree
@@ -620,12 +627,13 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 		secpMsgs[i] = m
 	}
 
-	bmroot, err := chain.GetChainMsgRoot(ctx, blsMsgs)
+	tmpStore := bstore.NewTemporary()
+	bmroot, err := chain.GetChainMsgRoot(ctx, tmpStore, blsMsgs)
 	if err != nil {
 		return xerrors.Errorf("get blsMsgs root failed: %v", err)
 	}
 
-	smroot, err := chain.GetChainMsgRoot(ctx, secpMsgs)
+	smroot, err := chain.GetChainMsgRoot(ctx, tmpStore, secpMsgs)
 	if err != nil {
 		return xerrors.Errorf("get secpMsgs root failed: %v", err)
 	}
@@ -642,6 +650,54 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 	}
 
 	return nil
+}
+
+// ValidateMsgMeta performs structural and content hash validation of the
+// messages within this block. If validation passes, it stores the messages in
+// the underlying IPLD block store.
+func (c *Expected) ValidateMsgMeta(fblk *block.FullBlock) error {
+	if msgc := len(fblk.BLSMessages) + len(fblk.SECPMessages); msgc > constants.BlockMessageLimit {
+		return xerrors.Errorf("block %s has too many messages (%d)", fblk.Header.Cid(), msgc)
+	}
+
+	// TODO: IMPORTANT(GARBAGE). These message puts and the msgmeta
+	// computation need to go into the 'temporary' side of the blockstore when
+	// we implement that
+
+	// We use a temporary bstore here to avoid writing intermediate pieces
+	// into the blockstore.
+	blockstore := bstore.NewTemporary()
+	var bcids, scids []cid.Cid
+
+	for _, m := range fblk.BLSMessages {
+		c, err := chain.PutMessage(blockstore, m)
+		if err != nil {
+			return xerrors.Errorf("putting bls message to blockstore after msgmeta computation: %w", err)
+		}
+		bcids = append(bcids, c)
+	}
+
+	for _, m := range fblk.SECPMessages {
+		c, err := chain.PutMessage(blockstore, m)
+		if err != nil {
+			return xerrors.Errorf("putting bls message to blockstore after msgmeta computation: %w", err)
+		}
+		scids = append(scids, c)
+	}
+
+	// Compute the root CID of the combined message trie.
+	smroot, err := chain.ComputeMsgMeta(blockstore, bcids, scids)
+	if err != nil {
+		return xerrors.Errorf("validating msgmeta, compute failed: %w", err)
+	}
+
+	// Check that the message trie root matches with what's in the block.
+	if fblk.Header.Messages.Cid != smroot {
+		return xerrors.Errorf("messages in full block did not match msgmeta root in header (%s != %s)", fblk.Header.Messages, smroot)
+	}
+
+	// Finally, flush
+	return util.CopyParticial(context.TODO(), blockstore, c.bstore, smroot)
 }
 
 func (c *Expected) VerifyWinningPoStProof(ctx context.Context, nv network.Version, blk *block.Block, prevBeacon *block.BeaconEntry, lbst cid.Cid) error {
@@ -850,6 +906,7 @@ func (c *Expected) MinerEligibleToMine(ctx context.Context, addr address.Address
 	return true, nil
 }
 
+//TODO think about a better position to impl this function
 func (c *Expected) GetLookbackTipSetForRound(ctx context.Context, ts *block.TipSet, round abi.ChainEpoch) (*block.TipSet, cid.Cid, error) {
 	var lbr abi.ChainEpoch
 	lb := policy.GetWinningPoStSectorSetLookback(c.fork.GetNtwkVersion(ctx, round))
@@ -892,6 +949,7 @@ func (c *Expected) GetLookbackTipSetForRound(ctx context.Context, ts *block.TipS
 	return lbts, nextTs.Blocks()[0].ParentStateRoot.Cid, nil
 }
 
+// todo to be a member function
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
 func GetMinerWorkerRaw(ctx context.Context, stateID cid.Cid, bstore blockstore.Blockstore, addr address.Address) (address.Address, error) {
 	vms := vm.NewStorage(bstore)

@@ -64,6 +64,11 @@ func (s TipSetKey) Has(id cid.Cid) bool {
 	return idx < len(s.cids) && s.cids[idx].Equals(id)
 }
 
+// At returns the cid in specify position
+func (s TipSetKey) At(i int) cid.Cid {
+	return s.cids[i].Cid
+}
+
 // Len returns the number of items in the set.
 func (s TipSetKey) Len() int {
 	return len(s.cids)

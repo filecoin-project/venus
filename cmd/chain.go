@@ -40,7 +40,7 @@ var storeHeadCmd = &cmds.Command{
 		Tagline: "Get heaviest tipset info",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		head, err := env.(*node.Env).ChainAPI.ChainHead()
+		head, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
 		if err != nil {
 			return err
 		}
