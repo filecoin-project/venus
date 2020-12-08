@@ -75,7 +75,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet) (fbig.Int,
 		totalJ += b.ElectionProof.WinCount
 	}
 
-	eWeight := big.NewInt((log2P * WRatioNum))
+	eWeight := big.NewInt(log2P * WRatioNum)
 	eWeight = eWeight.Lsh(eWeight, 8)
 	eWeight = eWeight.Mul(eWeight, new(big.Int).SetInt64(totalJ))
 	eWeight = eWeight.Div(eWeight, big.NewInt(int64(uint64(constants.ExpectedLeadersPerEpoch)*WRatioDen)))

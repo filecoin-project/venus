@@ -3,12 +3,11 @@ package state
 import (
 	"context"
 
-	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/go-state-types/network"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
