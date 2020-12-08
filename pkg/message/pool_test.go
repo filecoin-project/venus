@@ -5,6 +5,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/filecoin-project/venus/pkg/crypto"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -234,4 +236,18 @@ func reqAdd(t *testing.T, p *message.Pool, height abi.ChainEpoch, msgs ...*types
 		_, err := p.Add(ctx, m, height)
 		require.NoError(t, err)
 	}
+}
+
+func TestBlsSingCache(t *testing.T) {
+	var kis = types.MustGenerateBLSKeyInfo(1, 0)
+	var signer = types.NewMockSigner(kis)
+	newSignedMessage := types.NewSignedMessageForTestGetter(signer)
+
+	pool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
+	msg := newSignedMessage(0)
+
+	assert.Equal(t, crypto.SigTypeBLS, msg.Signature.Type)
+	pool.StoreBlsSig(msg)
+	sigMsg := pool.RecoverSig(&msg.Message)
+	assert.NotNil(t, sigMsg)
 }

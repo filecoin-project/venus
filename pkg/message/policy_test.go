@@ -9,7 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/message"
+	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
 )
@@ -19,6 +21,8 @@ import (
 // validate the order of removals, so using a real queue is a bit easier.
 func TestMessageQueuePolicy(t *testing.T) {
 	tf.UnitTest(t)
+
+	var mpool = message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 	// Individual tests share a MessageMaker so not parallel (but quick)
 	ctx := context.Background()
@@ -38,7 +42,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 	t.Run("old block does nothing", func(t *testing.T) {
 		blocks := chain.NewBuilder(t, alice)
 		q := message.NewQueue()
-		policy := message.NewMessageQueuePolicy(blocks, 10)
+		policy := message.NewMessageQueuePolicy(blocks, 10, mpool)
 
 		fromAlice := mm.NewSignedMessage(alice, 1)
 		fromBob := mm.NewSignedMessage(bob, 1)
@@ -57,7 +61,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 	t.Run("chain truncation does nothing", func(t *testing.T) {
 		blocks := chain.NewBuilder(t, alice)
 		q := message.NewQueue()
-		policy := message.NewMessageQueuePolicy(blocks, 10)
+		policy := message.NewMessageQueuePolicy(blocks, 10, mpool)
 
 		fromAlice := mm.NewSignedMessage(alice, 1)
 		fromBob := mm.NewSignedMessage(bob, 1)
@@ -76,7 +80,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 	t.Run("removes mined messages", func(t *testing.T) {
 		blocks := chain.NewBuilder(t, alice)
 		q := message.NewQueue()
-		policy := message.NewMessageQueuePolicy(blocks, 10)
+		policy := message.NewMessageQueuePolicy(blocks, 10, mpool)
 
 		msgs := []*types.SignedMessage{
 			requireEnqueue(q, mm.NewSignedMessage(alice, 1), 100),
@@ -138,7 +142,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		blocks := chain.NewBuilder(t, alice)
 		messages := blocks
 		q := message.NewQueue()
-		policy := message.NewMessageQueuePolicy(messages, 10)
+		policy := message.NewMessageQueuePolicy(messages, 10, mpool)
 
 		msgs := []*types.SignedMessage{
 			requireEnqueue(q, mm.NewSignedMessage(alice, 1), 100),
@@ -176,7 +180,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		blocks := chain.NewBuilder(t, alice)
 		messages := blocks
 		q := message.NewQueue()
-		policy := message.NewMessageQueuePolicy(messages, 10)
+		policy := message.NewMessageQueuePolicy(messages, 10, mpool)
 
 		msgs := []*types.SignedMessage{
 			requireEnqueue(q, mm.NewSignedMessage(alice, 1), 100),

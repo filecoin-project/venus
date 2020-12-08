@@ -2,8 +2,9 @@ package message
 
 import (
 	"context"
-	"golang.org/x/xerrors"
 	"sync"
+
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"

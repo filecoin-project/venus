@@ -15,8 +15,10 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/clock"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/journal"
 	"github.com/filecoin-project/venus/pkg/message"
+	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
 )
@@ -27,6 +29,8 @@ func newOutboxTestJournal(t *testing.T) journal.Writer {
 
 func TestOutbox(t *testing.T) {
 	tf.UnitTest(t)
+
+	var mpool = message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 	t.Run("invalid message rejected", func(t *testing.T) {
 		w, _ := types.NewMockSignersAndKeyInfo(1)
@@ -73,7 +77,7 @@ func TestOutbox(t *testing.T) {
 			)
 		})
 		provider.SetHeadAndActor(t, head.Key(), sender, actr)
-		defaultPolicy := message.NewMessageQueuePolicy(provider, 10)
+		defaultPolicy := message.NewMessageQueuePolicy(provider, 10, mpool)
 
 		ob := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, defaultPolicy, provider, provider, newOutboxTestJournal(t), gp)
 
@@ -134,7 +138,7 @@ func TestOutbox(t *testing.T) {
 		actr.Nonce = 42
 
 		provider.SetHeadAndActor(t, head.Key(), sender, actr)
-		defaultPolicy := message.NewMessageQueuePolicy(provider, 10)
+		defaultPolicy := message.NewMessageQueuePolicy(provider, 10, mpool)
 
 		s := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, defaultPolicy, provider, provider, newOutboxTestJournal(t), gp)
 
