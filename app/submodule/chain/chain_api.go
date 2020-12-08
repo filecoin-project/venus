@@ -2,17 +2,24 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/pkg/state"
+	"io"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/ipfs/go-cid"
+	xerrors "github.com/pkg/errors"
+
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
-	"github.com/ipfs/go-cid"
-	xerrors "github.com/pkg/errors"
-	"io"
-	"time"
 )
 
 type BlockMessage struct {
@@ -190,8 +197,61 @@ func (chainAPI *ChainAPI) getNetworkName(ctx context.Context) (string, error) {
 	return view.InitNetworkName(ctx)
 }
 
+func (chainAPI *ChainAPI) StateMinerSectors(ctx context.Context, maddr address.Address, sid *bitfield.BitField, tsk block.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
+	viewer, err := chainAPI.chain.StateView(tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	return viewer.StateMinerSectors(ctx, maddr, sid, tsk)
+}
+
+func (chainAPI *ChainAPI) StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk block.TipSetKey) ([]state.Partition, error) {
+	viewer, err := chainAPI.chain.StateView(tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	return viewer.StateMinerPartitions(ctx, m, dlIdx)
+}
+
+func (chainAPI *ChainAPI) StateMinerInfo(ctx context.Context, actor address.Address, tsk block.TipSetKey) (miner.MinerInfo, error) {
+	nv, err := chainAPI.StateNetworkVersion(ctx, tsk)
+	if err != nil {
+		return miner.MinerInfo{}, err
+	}
+
+	viewer, err := chainAPI.chain.StateView(tsk)
+	if err != nil {
+		return miner.MinerInfo{}, err
+	}
+
+	info, err := viewer.MinerInfo(ctx, actor, nv)
+	if err != nil {
+		return miner.MinerInfo{}, err
+	}
+	return *info, nil
+}
+
 //************Import**************//
 // ChainExport exports the chain from `head` up to and including the genesis block to `out`
 func (chainAPI *ChainAPI) ChainExport(ctx context.Context, head block.TipSetKey, out io.Writer) error {
 	return chainAPI.chain.State.ChainExport(ctx, head, out)
+}
+
+func (chainAPI *ChainAPI) ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return chainAPI.chain.State.ChainGetRandomnessFromBeacon(ctx, tsk, personalization, randEpoch, entropy)
+}
+
+func (chainAPI *ChainAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk block.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return chainAPI.chain.State.ChainGetRandomnessFromBeacon(ctx, tsk, personalization, randEpoch, entropy)
+}
+
+func (chainAPI *ChainAPI) StateNetworkVersion(ctx context.Context, tsk block.TipSetKey) (network.Version, error) {
+	ts, err := chainAPI.ChainTipSet(tsk)
+	if err != nil {
+		return network.VersionMax, xerrors.Errorf("failed to load tipset for mining base: %v", err)
+	}
+
+	return chainAPI.chain.Fork.GetNtwkVersion(ctx, ts.EnsureHeight()), nil
 }

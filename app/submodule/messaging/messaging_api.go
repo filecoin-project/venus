@@ -131,3 +131,7 @@ func (messagingAPI *MessagingAPI) SignedMessageSend(ctx context.Context, smsg *t
 func (messagingAPI *MessagingAPI) MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback uint64, cb func(*block.Block, types.ChainMsg, *types.MessageReceipt) error) error {
 	return messagingAPI.messaging.Waiter.Wait(ctx, msgCid, confidence, lookback, cb)
 }
+
+func (messagingAPI *MessagingAPI) GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec, tsKey block.TipSetKey) (*types.UnsignedMessage, error) {
+	return messagingAPI.messaging.Outbox.GasEstimateMessageGas(ctx, msg, spec, tsKey)
+}

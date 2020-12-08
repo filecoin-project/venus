@@ -66,7 +66,7 @@ func (v *FakeStateView) InitNetworkName(_ context.Context) (string, error) {
 }
 
 // MinerSectorConfiguration reports a miner's sector size.
-func (v *FakeStateView) MinerSectorConfiguration(ctx context.Context, maddr address.Address) (*MinerSectorConfiguration, error) {
+func (v *FakeStateView) MinerSectorConfiguration(ctx context.Context, maddr address.Address, nv network.Version) (*MinerSectorConfiguration, error) {
 	m, ok := v.Miners[maddr]
 	if !ok {
 		return nil, errors.Errorf("no miner %s", maddr)

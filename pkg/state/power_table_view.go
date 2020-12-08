@@ -19,7 +19,7 @@ import (
 // This type isn't doing much that the state view doesn't already do, consider removing it.
 type PowerStateView interface {
 	AccountStateView
-	MinerSectorConfiguration(ctx context.Context, maddr addr.Address) (*MinerSectorConfiguration, error)
+	MinerSectorConfiguration(ctx context.Context, maddr addr.Address, nv network.Version) (*MinerSectorConfiguration, error)
 	MinerControlAddresses(ctx context.Context, maddr addr.Address) (owner, worker addr.Address, err error)
 	MinerGetSector(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, bool, error)
 	PowerNetworkTotal(ctx context.Context) (*NetworkPower, error)

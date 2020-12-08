@@ -200,5 +200,20 @@ func (ob *Outbox) GasEstimateMessageGas(ctx context.Context, msg *types.Unsigned
 		msg.GasFeeCap = feeCap
 	}
 
+	log.Infow("use office GasEstimateMessageGas retrun", "msg.method", msg.Method, "premium", msg.GasPremium, "limit", msg.GasLimit, "feeGap", msg.GasFeeCap, "totalFee", big.Mul(msg.GasFeeCap, big.NewInt(int64(msg.GasLimit))))
+
+	//if spec != nil && spec.Get().MaxFee != types.EmptyInt && types.BigCmp(spec.Get().MaxFee, types.NewInt(0)) > 0 {
+	//	log.Infow("use spec max fee", "from", msg.From.String(), "max fee", spec.Get().MaxFee)
+	//	messagepool.CapGasFee(m.GetMaxFee, msg, spec.Get().MaxFee)
+	//} else {
+	//	if types.BigCmp(m.Mpool.GetGasConfig().GasFeeGap, types.NewInt(0)) > 0 {
+	//		log.Infow("use lotus config", "from", msg.From.String(), "config fee", m.Mpool.GetGasConfig().GasFeeGap)
+	//		msg.GasFeeCap = m.Mpool.GetGasConfig().GasFeeGap
+	//	}
+	//}
+
+	c, _ := msg.Cid()
+	log.Infow("use config GasEstimateMessageGas", "msg.method", msg.Method, "premium", msg.GasPremium, "limit", msg.GasLimit, "feeGap", msg.GasFeeCap, "totalFee", big.Mul(msg.GasFeeCap, big.NewInt(int64(msg.GasLimit))), "cid", c.String())
+
 	return msg, nil
 }

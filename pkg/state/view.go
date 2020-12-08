@@ -3,17 +3,17 @@ package state
 import (
 	"context"
 
-	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/go-state-types/dline"
-	"github.com/filecoin-project/go-state-types/network"
+	addr "github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	xerrors "github.com/pkg/errors"
 
-	addr "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
@@ -110,14 +110,14 @@ func (v *View) AccountSignerAddress(ctx context.Context, a addr.Address) (addr.A
 
 // MinerControlAddresses returns the owner and worker addresses for a miner actor
 func (v *View) MinerControlAddresses(ctx context.Context, maddr addr.Address) (owner, worker addr.Address, err error) {
-	minerInfo, err := v.MinerInfo(ctx, maddr)
+	minerInfo, err := v.MinerInfo(ctx, maddr, network.Version0)
 	if err != nil {
 		return addr.Undef, addr.Undef, err
 	}
 	return minerInfo.Owner, minerInfo.Worker, nil
 }
 
-func (v *View) MinerInfo(ctx context.Context, maddr addr.Address) (*miner.MinerInfo, error) {
+func (v *View) MinerInfo(ctx context.Context, maddr addr.Address, nv network.Version) (*miner.MinerInfo, error) {
 	minerState, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
 		return nil, err
@@ -127,13 +127,17 @@ func (v *View) MinerInfo(ctx context.Context, maddr addr.Address) (*miner.MinerI
 	if err != nil {
 		return nil, err
 	}
+
+	if nv >= network.Version7 && minerInfo.SealProofType < abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
+		minerInfo.SealProofType += abi.RegisteredSealProof_StackedDrg2KiBV1_1
+	}
+
 	return &minerInfo, nil
-	// return minerState.GetInfo(v.adtStore(ctx))
 }
 
 // MinerPeerID returns the PeerID for a miner actor
-func (v *View) MinerPeerID(ctx context.Context, maddr addr.Address) (peer.ID, error) {
-	minerInfo, err := v.MinerInfo(ctx, maddr)
+func (v *View) MinerPeerID(ctx context.Context, maddr addr.Address, nv network.Version) (peer.ID, error) {
+	minerInfo, err := v.MinerInfo(ctx, maddr, nv)
 	if err != nil {
 		return "", err
 	}
@@ -148,8 +152,8 @@ type MinerSectorConfiguration struct {
 }
 
 // MinerSectorConfiguration returns the sector size for a miner actor
-func (v *View) MinerSectorConfiguration(ctx context.Context, maddr addr.Address) (*MinerSectorConfiguration, error) {
-	minerInfo, err := v.MinerInfo(ctx, maddr)
+func (v *View) MinerSectorConfiguration(ctx context.Context, maddr addr.Address, nv network.Version) (*MinerSectorConfiguration, error) {
+	minerInfo, err := v.MinerInfo(ctx, maddr, nv)
 	if err != nil {
 		return nil, err
 	}
@@ -671,26 +675,64 @@ func (v *View) StateMinerDeadlineForIdx(ctx context.Context, addr addr.Address, 
 	return mas.LoadDeadline(dlIdx)
 }
 
-func (v *View) StateMinerSectors(ctx context.Context, addr addr.Address, filter *bitfield.BitField, key block.TipSetKey) ([]*ChainSectorInfo, error) {
+func (v *View) StateMinerSectors(ctx context.Context, addr addr.Address, filter *bitfield.BitField, key block.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
 	mas, err := v.loadMinerActor(ctx, addr)
 	if err != nil {
 		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
 	}
 
-	siset, err := mas.LoadSectors(filter)
+	return mas.LoadSectors(filter)
+}
+
+func (v *View) StateMinerPartitions(ctx context.Context, maddr addr.Address, dlIdx uint64) ([]Partition, error) {
+	mas, err := v.loadMinerActor(ctx, maddr)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.WithMessage(err, "failed to load miner actor")
 	}
 
-	sset := make([]*ChainSectorInfo, len(siset))
-	for i, val := range siset {
-		sset[i] = &ChainSectorInfo{
-			Info: *val,
-			ID:   val.SectorNumber,
+	dl, err := mas.LoadDeadline(dlIdx)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load the deadline: %v", err)
+	}
+
+	var out []Partition
+	err = dl.ForEachPartition(func(_ uint64, part miner.Partition) error {
+		allSectors, err := part.AllSectors()
+		if err != nil {
+			return xerrors.Errorf("getting AllSectors: %v", err)
 		}
-	}
 
-	return sset, nil
+		faultySectors, err := part.FaultySectors()
+		if err != nil {
+			return xerrors.Errorf("getting FaultySectors: %v", err)
+		}
+
+		recoveringSectors, err := part.RecoveringSectors()
+		if err != nil {
+			return xerrors.Errorf("getting RecoveringSectors: %v", err)
+		}
+
+		liveSectors, err := part.LiveSectors()
+		if err != nil {
+			return xerrors.Errorf("getting LiveSectors: %v", err)
+		}
+
+		activeSectors, err := part.ActiveSectors()
+		if err != nil {
+			return xerrors.Errorf("getting ActiveSectors: %v", err)
+		}
+
+		out = append(out, Partition{
+			AllSectors:        allSectors,
+			FaultySectors:     faultySectors,
+			RecoveringSectors: recoveringSectors,
+			LiveSectors:       liveSectors,
+			ActiveSectors:     activeSectors,
+		})
+		return nil
+	})
+
+	return out, err
 }
 
 func (v *View) GetFilLocked(ctx context.Context, st vmstate.Tree) (abi.TokenAmount, error) {
