@@ -65,7 +65,7 @@ func NewChainSubmodule(config chainConfig,
 ) (*ChainSubmodule, error) {
 	// initialize chain store
 	chainStatusReporter := chain.NewStatusReporter()
-	chainStore := chain.NewStore(repo.ChainDatastore(), blockstore.CborStore, blockstore.Blockstore, chainStatusReporter, config.GenesisCid())
+	chainStore := chain.NewStore(repo.ChainDatastore(), blockstore.CborStore, blockstore.Blockstore, chainStatusReporter, repo.Config().NetworkParams.ForkUpgradeParam, config.GenesisCid())
 	//drand
 	genBlk, err := chainStore.GetGenesisBlock(context.TODO())
 	if err != nil {
@@ -105,15 +105,6 @@ func NewChainSubmodule(config chainConfig,
 // Start loads the chain from disk.
 func (chain *ChainSubmodule) Start(ctx context.Context) error {
 	return chain.ChainReader.Load(ctx)
-}
-
-// StateView loads the state view for a tipset, i.e. the state *after* the application of the tipset's messages.
-func (chain *ChainSubmodule) StateView(baseKey block.TipSetKey) (*appstate.View, error) {
-	view, err := chain.State.StateView(baseKey)
-	if err != nil {
-		return nil, err
-	}
-	return view, nil
 }
 
 func (chain *ChainSubmodule) API() *ChainAPI {

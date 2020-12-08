@@ -21,7 +21,7 @@ type PowerStateView interface {
 	AccountStateView
 	MinerSectorConfiguration(ctx context.Context, maddr addr.Address) (*MinerSectorConfiguration, error)
 	MinerControlAddresses(ctx context.Context, maddr addr.Address) (owner, worker addr.Address, err error)
-	MinerGetSector(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, bool, error)
+	MinerSectorInfo(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, error)
 	PowerNetworkTotal(ctx context.Context) (*NetworkPower, error)
 	MinerClaimedPower(ctx context.Context, miner addr.Address) (raw, qa abi.StoragePower, err error)
 	GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, st cid.Cid, maddr addr.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error)

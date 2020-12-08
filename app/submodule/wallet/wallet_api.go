@@ -19,7 +19,8 @@ type WalletAPI struct { //nolint
 
 // WalletBalance returns the current balance of the given walletModule address.
 func (walletAPI *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error) {
-	act, err := walletAPI.walletModule.Chain.API().GetActor(ctx, addr)
+	headkey := walletAPI.walletModule.Chain.State.Head()
+	act, err := walletAPI.walletModule.Chain.State.GetActorAt(ctx, headkey, addr)
 	if err == types.ErrActorNotFound {
 		return abi.NewTokenAmount(0), nil
 	} else if err != nil {
@@ -88,7 +89,7 @@ func (walletAPI *WalletAPI) WalletExport(addrs []address.Address) ([]*crypto.Key
 
 func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte, _ wallet.MsgMeta) (*crypto.Signature, error) {
 	head := walletAPI.walletModule.Chain.ChainReader.GetHead()
-	view, err := walletAPI.walletModule.Chain.StateView(head)
+	view, err := walletAPI.walletModule.Chain.State.StateView(head)
 	if err != nil {
 		return nil, err
 	}

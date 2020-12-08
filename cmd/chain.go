@@ -79,7 +79,8 @@ var storeLsCmd = &cmds.Command{
 		var err error
 		height, _ := req.Options["height"].(int64)
 		if height >= 0 {
-			ts, err := env.(*node.Env).ChainAPI.ChainGetTipSetByHeight(req.Context, nil, abi.ChainEpoch(height), true)
+			head, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
+			ts, err := env.(*node.Env).ChainAPI.ChainGetTipSetByHeight(req.Context, abi.ChainEpoch(height), head.Key())
 			if err != nil {
 				return err
 			}

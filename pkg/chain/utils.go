@@ -1,13 +1,14 @@
 package chain
 
 import (
+	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/fork/blockstore"
-	block "github.com/ipfs/go-block-format"
+	blockFormat "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 )
 
 type storable interface {
-	ToStorageBlock() (block.Block, error)
+	ToStorageBlock() (blockFormat.Block, error)
 }
 
 func PutMessage(bs blockstore.Blockstore, m storable) (cid.Cid, error) {
@@ -21,4 +22,13 @@ func PutMessage(bs blockstore.Blockstore, m storable) (cid.Cid, error) {
 	}
 
 	return b.Cid(), nil
+}
+
+// Reverse reverses the order of the slice `chain`.
+func Reverse(chain []*block.TipSet) {
+	// https://github.com/golang/go/wiki/SliceTricks#reversing
+	for i := len(chain)/2 - 1; i >= 0; i-- {
+		opp := len(chain) - 1 - i
+		chain[i], chain[opp] = chain[opp], chain[i]
+	}
 }

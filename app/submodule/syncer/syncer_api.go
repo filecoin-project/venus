@@ -5,7 +5,9 @@ import (
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chainsync/status"
+	"github.com/filecoin-project/venus/pkg/types"
 	xerrors "github.com/pkg/errors"
+	"time"
 )
 
 type SyncerAPI struct { //nolint
@@ -84,4 +86,25 @@ func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *block.Bloc
 	}
 
 	return syncerAPI.syncer.BlockTopic.Publish(ctx, b) //nolint:staticcheck
+}
+
+func (syncerAPI *SyncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*InvocResult, error) {
+	start := time.Now()
+	ret, err := syncerAPI.syncer.Consensus.Call(ctx, msg, ts)
+	var errs string
+	if err != nil {
+		errs = err.Error()
+	}
+	duration := time.Now().Sub(start)
+
+	mcid, _ := msg.Cid()
+	return &InvocResult{
+		MsgCid:         mcid,
+		Msg:            msg,
+		MsgRct:         &ret.Receipt,
+		ExecutionTrace: types.ExecutionTrace{},
+		Error:          errs,
+		Duration:       duration,
+	}, nil
+
 }

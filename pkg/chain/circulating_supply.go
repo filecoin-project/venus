@@ -1,7 +1,8 @@
-package consensus
+package chain
 
 import (
 	"context"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -16,7 +17,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/fork/blockstore"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"

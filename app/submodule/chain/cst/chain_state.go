@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/slashing"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
-	initactor "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/dag"
@@ -180,6 +179,15 @@ func (chn *ChainStateReadWriter) ReadObj(ctx context.Context, obj cid.Cid) ([]by
 	return blk.RawData(), nil
 }
 
+func (chn *ChainStateReadWriter) HasObj(ctx context.Context, obj cid.Cid) (bool, error) {
+	found, err := chn.bstore.Has(obj)
+	if err != nil {
+		return false, err
+	}
+
+	return found, nil
+}
+
 // GetMessages gets a message collection by CID returned as unsigned bls and signed secp
 func (chn *ChainStateReadWriter) GetMessages(ctx context.Context, metaCid cid.Cid) ([]*types.UnsignedMessage, []*types.SignedMessage, error) {
 	secp, bls, err := chn.messageProvider.LoadMetaMessages(ctx, metaCid)
@@ -213,11 +221,6 @@ func (chn *ChainStateReadWriter) ChainGetRandomnessFromBeacon(ctx context.Contex
 	}
 	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewRandomnessSamplerAtTipSet(chn.readWriter, genBlk.Ticket, tsk)}
 	return rnd.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy)
-}
-
-// GetActor returns an actor from the latest state on the chain
-func (chn *ChainStateReadWriter) GetActor(ctx context.Context, addr address.Address) (*types.Actor, error) {
-	return chn.GetActorAt(ctx, chn.readWriter.GetHead(), addr)
 }
 
 // GetTipSetStateRoot produces the state root for the provided tipset key.
@@ -269,28 +272,7 @@ func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, tipKey bl
 		return address.Undef, errors.Wrap(err, "failed to load latest state")
 	}
 
-	init, found, err := st.GetActor(ctx, initactor.Address)
-	if err != nil {
-		return address.Undef, err
-	}
-	if !found {
-		return address.Undef, errors.Wrapf(err, "no actor at address %s", addr)
-	}
-
-	state, err := initactor.Load(adt.WrapStore(ctx, chn.IpldStore), init)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	idAddress, found, err := state.ResolveAddress(addr)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	if !found {
-		return address.Undef, types.ErrActorNotFound
-	}
-	return idAddress, nil
+	return st.LookupID(vmstate.ActorKey(addr))
 }
 
 // LsActors returns a channel with actors from the latest state on the chain
@@ -318,8 +300,8 @@ func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAdd
 	if method == builtin.MethodSend {
 		return nil, ErrNoMethod
 	}
-
-	actor, err := chn.GetActor(ctx, actorAddr)
+	view, err := chn.ParentStateView(chn.Head())
+	actor, err := view.LoadActor(ctx, actorAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get actor")
 	} else if actor.Empty() {
@@ -383,6 +365,15 @@ func (chn *ChainStateReadWriter) StateView(key block.TipSetKey) (*state.View, er
 	}
 
 	return state.NewView(chn, root), nil
+}
+
+func (chn *ChainStateReadWriter) ParentStateView(key block.TipSetKey) (*state.View, error) {
+	ts, err := chn.readWriter.GetTipSet(key)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get tipset for %s", key.String())
+	}
+
+	return state.NewView(chn, ts.At(0).ParentStateRoot.Cid), nil
 }
 
 func (chn *ChainStateReadWriter) AccountStateView(key block.TipSetKey) (state.AccountStateView, error) {

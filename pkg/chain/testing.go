@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/config"
 	"golang.org/x/xerrors"
 	"testing"
 
@@ -185,7 +186,7 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 	b.tipStateCids[block.NewTipSetKey().String()] = nullState
 
 	b.genesis = b.BuildOrphaTipset(block.UndefTipSet, 1, nil)
-	b.store = NewStore(ds, cst, bs, NewStatusReporter(), b.genesis.At(0).Cid())
+	b.store = NewStore(ds, cst, bs, NewStatusReporter(), config.DefaultForkUpgradeParam, b.genesis.At(0).Cid())
 
 	for _, block := range b.genesis.Blocks() {
 		// add block to cstore
@@ -589,10 +590,15 @@ func (ct *ClockTimestamper) Stamp(height abi.ChainEpoch) uint64 {
 // FakeStateEvaluator is a syncStateEvaluator that delegates to the FakeStateBuilder.
 type FakeStateEvaluator struct {
 	FakeStateBuilder
+	MessageStore
 }
 
-func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *block.TipSet, blockmsg []block.BlockMessagesInfo, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
-	return e.ComputeState(parentStateRoot, blockmsg)
+func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
+	blockMsg, err := e.MessageStore.LoadTipSetMessage(ctx, ts)
+	if err != nil {
+		return cid.Undef, nil, err
+	}
+	return e.ComputeState(parentStateRoot, blockMsg)
 }
 
 func (e *FakeStateEvaluator) ValidateMining(ctx context.Context, parent, ts *block.TipSet, parentWeight big.Int, parentReceiptRoot cid.Cid) error {

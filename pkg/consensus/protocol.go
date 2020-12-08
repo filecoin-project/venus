@@ -37,12 +37,16 @@ type Protocol interface {
 	BlockTime() time.Duration
 
 	// CallWithGas
+
+	Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*vm.Ret, error)
 	CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (*vm.Ret, error)
 
+	//Validation
 	ValidateMining(ctx context.Context, parent, ts *block.TipSet, parentWeight big.Int, parentReceiptRoot cid.Cid) error
 
 	ValidateMsgMeta(fblk *block.FullBlock) error
 
+	//should remove
 	GetLookbackTipSetForRound(ctx context.Context, ts *block.TipSet, round abi.ChainEpoch) (*block.TipSet, cid.Cid, error)
 
 	MinerEligibleToMine(ctx context.Context, addr address.Address, parentStateRoot cid.Cid, parentHeight abi.ChainEpoch, lookbackTs *block.TipSet) (bool, error)

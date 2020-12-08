@@ -14,7 +14,6 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/vm"
 
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
@@ -197,10 +196,7 @@ var msgWaitCmd = &cmds.Command{
 		if err != nil {
 			return errors.Wrap(err, "invalid cid "+req.Arguments[0])
 		}
-
 		fmt.Printf("waiting for: %s\n", req.Arguments[0])
-
-		found := false
 
 		timeoutDuration, err := time.ParseDuration(req.Options["timeout"].(string))
 		if err != nil {
@@ -212,26 +208,23 @@ var msgWaitCmd = &cmds.Command{
 		ctx, cancel := context.WithTimeout(req.Context, timeoutDuration)
 		defer cancel()
 
-		err = env.(*node.Env).MessagingAPI.MessageWait(ctx, msgCid, confidence, lookback, func(blk *block.Block, msg types.ChainMsg, receipt *types.MessageReceipt) error {
-			found = true
-			sig, err := env.(*node.Env).ChainAPI.ActorGetSignature(req.Context, msg.VMMessage().To, msg.VMMessage().Method)
+		chainmsg, err := env.(*node.Env).MessagingAPI.MessageWait(ctx, msgCid, abi.ChainEpoch(confidence), abi.ChainEpoch(lookback))
+		if err != nil {
+			return err
+		}
+		if chainmsg != nil {
+			sig, err := env.(*node.Env).ChainAPI.ActorGetSignature(req.Context, chainmsg.Message.VMMessage().To, chainmsg.Message.VMMessage().Method)
 			if err != nil && err != cst.ErrNoMethod && err != cst.ErrNoActorImpl {
 				return errors.Wrap(err, "Couldn't get signature for message")
 			}
 
 			res := WaitResult{
-				Message: msg.VMMessage(),
-				Receipt: receipt,
+				Message: chainmsg.Message.VMMessage(),
+				Receipt: chainmsg.Receipt,
 				// Signature is required to decode the output.
 				Signature: sig,
 			}
 			re.Emit(&res) // nolint: errcheck
-
-			return nil
-		})
-
-		if err != nil && !found {
-			return err
 		}
 		return nil
 	},

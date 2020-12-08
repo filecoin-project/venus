@@ -84,17 +84,17 @@ func (v *FakeStateView) MinerSectorCount(ctx context.Context, maddr address.Addr
 	return uint64(len(m.Sectors)), nil
 }
 
-func (v *FakeStateView) MinerGetSector(_ context.Context, maddr address.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, bool, error) {
+func (v *FakeStateView) MinerSectorInfo(_ context.Context, maddr address.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, error) {
 	m, ok := v.Miners[maddr]
 	if !ok {
-		return nil, false, errors.Errorf("no miner %s", maddr)
+		return nil, errors.Errorf("no miner %s", maddr)
 	}
 	for _, s := range m.Sectors {
 		if s.SectorNumber == sectorNum {
-			return &s, true, nil
+			return &s, nil
 		}
 	}
-	return nil, false, nil
+	return nil, nil
 }
 
 // MinerControlAddresses reports a miner's control addresses.

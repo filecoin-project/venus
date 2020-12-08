@@ -2,6 +2,7 @@ package messaging
 
 import (
 	"context"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chainModule "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/messaging/msg"
@@ -16,6 +17,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/message"
 	"github.com/filecoin-project/venus/pkg/net/msgsub"
 	"github.com/filecoin-project/venus/pkg/net/pubsub"
+	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/vm/state"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
@@ -41,7 +44,8 @@ type MessagingSubmodule struct { //nolint
 	MsgPool   *message.Pool
 	MsgSigVal *consensus.MessageSignatureValidator
 
-	chainReader chainReader
+	chainReader  chainReader
+	messageStore *chain.MessageStore
 }
 
 type messagingConfig interface {
@@ -55,9 +59,15 @@ type messagingRepo interface {
 type chainReader interface {
 	chain.TipSetProvider
 	GetHead() block.TipSetKey
-	GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error)
-	SubHeadChanges(ctx context.Context) chan []*chain.HeadChange
-	SubscribeHeadChanges(f chain.ReorgNotifee)
+	GetTipSetReceiptsRoot(block.TipSetKey) (cid.Cid, error)
+	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
+	SubHeadChanges(context.Context) chan []*chain.HeadChange
+	SubscribeHeadChanges(chain.ReorgNotifee)
+}
+type stateReader interface {
+	ResolveAddressAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (address.Address, error)
+	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*types.Actor, error)
+	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
 }
 
 // NewMessagingSubmodule creates a new discovery submodule.
@@ -72,6 +82,7 @@ func NewMessagingSubmodule(ctx context.Context,
 ) (*MessagingSubmodule, error) {
 	msgSyntaxValidator := consensus.NewMessageSyntaxValidator()
 	msgSignatureValidator := consensus.NewMessageSignatureValidator(chain.State)
+
 	msgPool := message.NewPool(repo.Config().Mpool, msgSyntaxValidator)
 	inbox := message.NewInbox(msgPool, message.InboxMaxAgeTipsets, chain.ChainReader, chain.MessageStore)
 
@@ -93,7 +104,14 @@ func NewMessagingSubmodule(ctx context.Context,
 	outbox := message.NewOutbox(wallet.Signer, msgSyntaxValidator, msgQueue, msgPublisher, outboxPolicy, chain.ChainReader, chain.State,
 		config.Journal().Topic("outbox"), syncer.Consensus)
 
-	waiter := msg.NewWaiter(chain.ChainReader, chain.MessageStore, bsModule.Blockstore, bsModule.CborStore)
+	combineChainReader := struct {
+		stateReader
+		chainReader
+	}{
+		chain.State,
+		chain.ChainReader,
+	}
+	waiter := msg.NewWaiter(combineChainReader, chain.MessageStore, bsModule.Blockstore, bsModule.CborStore)
 	//todo use new api to replace
 	previewer := msg.NewPreviewer(chain.ChainReader, bsModule.CborStore, bsModule.Blockstore, chain.Processor)
 	return &MessagingSubmodule{
@@ -101,11 +119,12 @@ func NewMessagingSubmodule(ctx context.Context,
 		Outbox:       outbox,
 		MessageTopic: pubsub.NewTopic(topic),
 		// MessageSub: nil,
-		MsgPool:     msgPool,
-		MsgSigVal:   msgSignatureValidator,
-		chainReader: chain.ChainReader,
-		Waiter:      waiter,
-		Previewer:   previewer,
+		MsgPool:      msgPool,
+		MsgSigVal:    msgSignatureValidator,
+		chainReader:  chain.ChainReader,
+		Waiter:       waiter,
+		Previewer:    previewer,
+		messageStore: chain.MessageStore,
 	}, nil
 }
 

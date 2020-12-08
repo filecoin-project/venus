@@ -5,8 +5,9 @@ import (
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 )
 
-var DefaultConfidence uint64 = 5
-var DefaultMessageWaitLookback uint64 = 2 // in most cases, this should be enough to avoid races.
+const DefaultConfidence = abi.ChainEpoch(5)
+const DefaultMessageWaitLookback = abi.ChainEpoch(100) // in most cases, this should be enough to avoid races.
+const LookbackNoLimit = abi.ChainEpoch(-1)
 
 const BlockMessageLimit = 10000
 

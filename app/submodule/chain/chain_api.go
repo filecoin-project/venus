@@ -4,14 +4,14 @@ import (
 	"context"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
-	"io"
 	"time"
 )
 
@@ -79,31 +79,19 @@ func (chainAPI *ChainAPI) ChainSetHead(ctx context.Context, key block.TipSetKey)
 }
 
 // ChainTipSet returns the tipset at the given key
-func (chainAPI *ChainAPI) ChainTipSet(key block.TipSetKey) (*block.TipSet, error) {
+func (chainAPI *ChainAPI) ChainGetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	return chainAPI.chain.ChainReader.GetTipSet(key)
 }
 
 // ChainGetTipSetByHeight looks back for a tipset at the specified epoch.
 // If there are no blocks at the specified epoch, a tipset at an earlier epoch
 // will be returned.
-func (chainAPI *ChainAPI) ChainGetTipSetByHeight(ctx context.Context, ts *block.TipSet, height abi.ChainEpoch, prev bool) (*block.TipSet, error) {
-	return chainAPI.chain.ChainReader.GetTipSetByHeight(ctx, ts, height, prev)
-}
-
-func (chainAPI *ChainAPI) GetActor(ctx context.Context, addr address.Address) (*types.Actor, error) {
-	return chainAPI.chain.State.GetActor(ctx, addr)
-}
-
-// ActorGetSignature returns the signature of the given actor's given method.
-// The function signature is typically used to enable a caller to decode the
-// output of an actor method call (message).
-func (chainAPI *ChainAPI) ActorGetSignature(ctx context.Context, actorAddr address.Address, method abi.MethodNum) (vm.ActorMethodSignature, error) {
-	return chainAPI.chain.State.GetActorSignature(ctx, actorAddr, method)
-}
-
-// ActorLs returns a channel with actors from the latest state on the chain
-func (chainAPI *ChainAPI) ListActor(ctx context.Context) (map[address.Address]*types.Actor, error) {
-	return chainAPI.chain.State.LsActors(ctx)
+func (chainAPI *ChainAPI) ChainGetTipSetByHeight(ctx context.Context, height abi.ChainEpoch, tsk block.TipSetKey) (*block.TipSet, error) {
+	ts, err := chainAPI.chain.ChainReader.GetTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("fail to load tipset %v", err)
+	}
+	return chainAPI.chain.ChainReader.GetTipSetByHeight(ctx, ts, height, true)
 }
 
 // ChainGetBlock gets a block by CID
@@ -120,6 +108,36 @@ func (chainAPI *ChainAPI) ChainGetMessages(ctx context.Context, metaCid cid.Cid)
 		return nil, err
 	}
 	return bmsg, nil
+}
+
+func (chainAPI *ChainAPI) ChainGetBlockMessages(ctx context.Context, bid cid.Cid) (*BlockMessages, error) {
+	b, err := chainAPI.chain.ChainReader.GetBlock(bid)
+	if err != nil {
+		return nil, err
+	}
+
+	smsgs, bmsgs, err := chainAPI.chain.MessageStore.LoadMetaMessages(ctx, b.Messages.Cid)
+	if err != nil {
+		return nil, err
+	}
+
+	cids := make([]cid.Cid, len(bmsgs)+len(smsgs))
+
+	for i, m := range bmsgs {
+		mid, _ := m.Cid()
+		cids[i] = mid
+	}
+
+	for i, m := range smsgs {
+		mid, _ := m.Cid()
+		cids[i+len(bmsgs)] = mid
+	}
+
+	return &BlockMessages{
+		BlsMessages:   bmsgs,
+		SecpkMessages: smsgs,
+		Cids:          cids,
+	}, nil
 }
 
 // ChainGetReceipts gets a receipt collection by CID
@@ -145,7 +163,7 @@ func (chainAPI *ChainAPI) GetFullBlock(ctx context.Context, id cid.Cid) (*block.
 
 // ResolveToKeyAddr resolve user address to t0 address
 func (chainAPI *ChainAPI) ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *block.TipSet) (address.Address, error) {
-	viewer, err := chainAPI.chain.StateView(ts.Key())
+	viewer, err := chainAPI.chain.State.ParentStateView(ts.Key())
 	if err != nil {
 		return address.Undef, err
 	}
@@ -182,7 +200,7 @@ func (chainAPI *ChainAPI) VerifyEntry(parent, child *block.BeaconEntry, height a
 
 func (chainAPI *ChainAPI) getNetworkName(ctx context.Context) (string, error) {
 	headKey := chainAPI.chain.ChainReader.GetHead()
-	view, err := chainAPI.chain.StateView(headKey)
+	view, err := chainAPI.chain.State.ParentStateView(headKey)
 	if err != nil {
 		return "", err
 	}
@@ -190,9 +208,23 @@ func (chainAPI *ChainAPI) getNetworkName(ctx context.Context) (string, error) {
 	return view.InitNetworkName(ctx)
 }
 
-//************Import**************//
-// ChainExport exports the chain from `head` up to and including the genesis block to `out`
-func (chainAPI *ChainAPI) ChainExport(ctx context.Context, head block.TipSetKey, out io.Writer) error {
+func (chainAPI *ChainAPI) ChainGetRandomnessFromBeacon(ctx context.Context, key block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return chainAPI.chain.State.ChainGetRandomnessFromBeacon(ctx, key, personalization, randEpoch, entropy)
+}
 
-	return chainAPI.chain.State.ChainExport(ctx, head, out)
+func (chainAPI *ChainAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	pts, err := chainAPI.chain.ChainReader.GetTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset key: %w", err)
+	}
+
+	return chain.DrawRandomness([]byte(pts.String()), personalization, randEpoch, entropy)
+}
+
+func (chainAPI *ChainAPI) StateNetworkVersion(ctx context.Context, tsk block.TipSetKey) (network.Version, error) {
+	ts, err := chainAPI.chain.ChainReader.GetTipSet(tsk)
+	if err != nil {
+		return network.VersionMax, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+	return chainAPI.chain.Fork.GetNtwkVersion(ctx, ts.EnsureHeight()), nil
 }

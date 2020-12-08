@@ -118,7 +118,7 @@ func (v *View) MinerControlAddresses(ctx context.Context, maddr addr.Address) (o
 }
 
 func (v *View) MinerInfo(ctx context.Context, maddr addr.Address) (*miner.MinerInfo, error) {
-	minerState, err := v.loadMinerActor(ctx, maddr)
+	minerState, err := v.loadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func (v *View) MinerSectorConfiguration(ctx context.Context, maddr addr.Address)
 
 // MinerSectorCount counts all the on-chain sectors
 func (v *View) MinerSectorCount(ctx context.Context, maddr addr.Address) (uint64, error) {
-	minerState, err := v.loadMinerActor(ctx, maddr)
+	minerState, err := v.loadMinerState(ctx, maddr)
 	if err != nil {
 		return 0, err
 	}
@@ -176,22 +176,22 @@ func (v *View) MinerSectorCount(ctx context.Context, maddr addr.Address) (uint64
 }
 
 // Loads sector info from miner state.
-func (v *View) MinerGetSector(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, bool, error) {
-	minerState, err := v.loadMinerActor(ctx, maddr)
+func (v *View) MinerSectorInfo(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, error) {
+	minerState, err := v.loadMinerState(ctx, maddr)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	info, err := minerState.GetSector(sectorNum)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
-	return info, true, nil
+	return info, nil
 }
 
 func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, st cid.Cid, maddr addr.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
-	mas, err := v.LoadMinerActor(ctx, maddr)
+	mas, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor state: %s", err)
 	}
@@ -286,7 +286,7 @@ func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version,
 }
 
 func (v *View) GetPartsProving(ctx context.Context, maddr addr.Address) ([]bitfield.BitField, error) {
-	minerState, err := v.loadMinerActor(ctx, maddr)
+	minerState, err := v.loadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, err
 	}
@@ -322,9 +322,27 @@ func (v *View) GetPartsProving(ctx context.Context, maddr addr.Address) ([]bitfi
 	return partsProving, nil
 }
 
+func (v *View) PreCommitInfo(ctx context.Context, maddr addr.Address, sid abi.SectorNumber) (*miner.SectorPreCommitOnChainInfo, error) {
+	mas, err := v.loadMinerState(ctx, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
+	}
+
+	return mas.GetPrecommittedSector(sid)
+}
+
+func (v *View) StateSectorPartition(ctx context.Context, maddr addr.Address, sectorNumber abi.SectorNumber) (*miner.SectorLocation, error) {
+	mas, err := v.loadMinerState(ctx, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
+	}
+
+	return mas.FindSector(sectorNumber)
+}
+
 // MinerDeadlineInfo returns information relevant to the current proving deadline
 func (v *View) MinerDeadlineInfo(ctx context.Context, maddr addr.Address, epoch abi.ChainEpoch) (index uint64, open, close, challenge abi.ChainEpoch, _ error) {
-	minerState, err := v.loadMinerActor(ctx, maddr)
+	minerState, err := v.loadMinerState(ctx, maddr)
 	if err != nil {
 		return 0, 0, 0, 0, err
 	}
@@ -339,7 +357,7 @@ func (v *View) MinerDeadlineInfo(ctx context.Context, maddr addr.Address, epoch 
 
 // MinerSuccessfulPoSts counts how many successful window PoSts have been made this proving period so far.
 func (v *View) MinerSuccessfulPoSts(ctx context.Context, maddr addr.Address) (uint64, error) {
-	minerState, err := v.loadMinerActor(ctx, maddr)
+	minerState, err := v.loadMinerState(ctx, maddr)
 	if err != nil {
 		return 0, err
 	}
@@ -348,7 +366,7 @@ func (v *View) MinerSuccessfulPoSts(ctx context.Context, maddr addr.Address) (ui
 }
 
 func (v *View) MinerProvingPeriodStart(ctx context.Context, maddr addr.Address) (abi.ChainEpoch, error) {
-	minerState, err := v.loadMinerActor(ctx, maddr)
+	minerState, err := v.loadMinerState(ctx, maddr)
 	if err != nil {
 		return 0, err
 	}
@@ -358,7 +376,7 @@ func (v *View) MinerProvingPeriodStart(ctx context.Context, maddr addr.Address) 
 
 // MinerExists Returns true iff the miner exists.
 func (v *View) MinerExists(ctx context.Context, maddr addr.Address) (bool, error) {
-	_, err := v.loadMinerActor(ctx, maddr)
+	_, err := v.loadMinerState(ctx, maddr)
 	if err == nil {
 		return true, nil
 	}
@@ -370,7 +388,7 @@ func (v *View) MinerExists(ctx context.Context, maddr addr.Address) (bool, error
 
 // MinerFaults Returns all sector ids that are faults
 func (v *View) MinerFaults(ctx context.Context, maddr addr.Address) ([]uint64, error) {
-	minerState, err := v.loadMinerActor(ctx, maddr)
+	minerState, err := v.loadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, err
 	}
@@ -381,7 +399,7 @@ func (v *View) MinerFaults(ctx context.Context, maddr addr.Address) ([]uint64, e
 // MinerGetPrecommittedSector Looks up info for a miners precommitted sector.
 // NOTE: exposes on-chain structures directly for storage FSM API.
 func (v *View) MinerGetPrecommittedSector(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*miner.SectorPreCommitOnChainInfo, bool, error) {
-	minerState, err := v.loadMinerActor(ctx, maddr)
+	minerState, err := v.loadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, false, err
 	}
@@ -395,7 +413,7 @@ func (v *View) MinerGetPrecommittedSector(ctx context.Context, maddr addr.Addres
 
 // MarketEscrowBalance looks up a token amount in the escrow table for the given address
 func (v *View) MarketEscrowBalance(ctx context.Context, addr addr.Address) (found bool, amount abi.TokenAmount, err error) {
-	marketState, err := v.loadMarketActor(ctx)
+	marketState, err := v.loadMarketState(ctx)
 	if err != nil {
 		return false, abi.NewTokenAmount(0), err
 	}
@@ -415,7 +433,7 @@ func (v *View) MarketEscrowBalance(ctx context.Context, addr addr.Address) (foun
 
 // MarketComputeDataCommitment takes deal ids and uses associated commPs to compute commD for a sector that contains the deals
 func (v *View) MarketComputeDataCommitment(ctx context.Context, registeredProof abi.RegisteredSealProof, dealIDs []abi.DealID) (cid.Cid, error) {
-	marketState, err := v.loadMarketActor(ctx)
+	marketState, err := v.loadMarketState(ctx)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -446,7 +464,7 @@ func (v *View) MarketComputeDataCommitment(ctx context.Context, registeredProof 
 
 // NOTE: exposes on-chain structures directly for storage FSM interface.
 func (v *View) MarketDealProposal(ctx context.Context, dealID abi.DealID) (market.DealProposal, error) {
-	marketState, err := v.loadMarketActor(ctx)
+	marketState, err := v.loadMarketState(ctx)
 	if err != nil {
 		return market.DealProposal{}, err
 	}
@@ -470,7 +488,7 @@ func (v *View) MarketDealProposal(ctx context.Context, dealID abi.DealID) (marke
 
 // NOTE: exposes on-chain structures directly for storage FSM and market module interfaces.
 func (v *View) MarketDealState(ctx context.Context, dealID abi.DealID) (*market.DealState, bool, error) {
-	marketState, err := v.loadMarketActor(ctx)
+	marketState, err := v.loadMarketState(ctx)
 	if err != nil {
 		return nil, false, err
 	}
@@ -486,7 +504,7 @@ func (v *View) MarketDealState(ctx context.Context, dealID abi.DealID) (*market.
 // NOTE: exposes on-chain structures directly for market interface.
 // The callback receives a pointer to a transient object; take a copy or drop the reference outside the callback.
 func (v *View) MarketDealStatesForEach(ctx context.Context, f func(id abi.DealID, state *market.DealState) error) error {
-	marketState, err := v.loadMarketActor(ctx)
+	marketState, err := v.loadMarketState(ctx)
 	if err != nil {
 		return err
 	}
@@ -535,7 +553,7 @@ func (v *View) StateVerifiedClientStatus(ctx context.Context, addr addr.Address)
 }
 
 func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*MarketDeal, error) {
-	state, err := v.loadMarketActor(ctx)
+	state, err := v.loadMarketState(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -688,7 +706,7 @@ func (v *View) PaychActorParties(ctx context.Context, paychAddr addr.Address) (f
 }
 
 func (v *View) StateMinerProvingDeadline(ctx context.Context, addr addr.Address, ts *block.TipSet) (*dline.Info, error) {
-	mas, err := v.loadMinerActor(ctx, addr)
+	mas, err := v.loadMinerState(ctx, addr)
 	if err != nil {
 		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
 	}
@@ -698,7 +716,7 @@ func (v *View) StateMinerProvingDeadline(ctx context.Context, addr addr.Address,
 }
 
 func (v *View) StateMinerDeadlineForIdx(ctx context.Context, addr addr.Address, dlIdx uint64, key block.TipSetKey) (miner.Deadline, error) {
-	mas, err := v.loadMinerActor(ctx, addr)
+	mas, err := v.loadMinerState(ctx, addr)
 	if err != nil {
 		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
 	}
@@ -707,7 +725,7 @@ func (v *View) StateMinerDeadlineForIdx(ctx context.Context, addr addr.Address, 
 }
 
 func (v *View) StateMinerSectors(ctx context.Context, addr addr.Address, filter *bitfield.BitField, key block.TipSetKey) ([]*ChainSectorInfo, error) {
-	mas, err := v.loadMinerActor(ctx, addr)
+	mas, err := v.loadMinerState(ctx, addr)
 	if err != nil {
 		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
 	}
@@ -778,12 +796,16 @@ func (v *View) loadInitActor(ctx context.Context) (notinit.State, error) {
 	return notinit.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
-func (v *View) LoadMinerActor(ctx context.Context, address addr.Address) (miner.State, error) {
-	return v.loadMinerActor(ctx, address)
+func (v *View) LoadMinerState(ctx context.Context, maddr addr.Address) (miner.State, error) {
+	return v.loadMinerState(ctx, maddr)
 }
 
-func (v *View) loadMinerActor(ctx context.Context, address addr.Address) (miner.State, error) {
-	resolvedAddr, err := v.InitResolveAddress(ctx, address)
+func (v *View) LoadMarketState(ctx context.Context) (market.State, error) {
+	return v.loadMarketState(ctx)
+}
+
+func (v *View) loadMinerState(ctx context.Context, maddr addr.Address) (miner.State, error) {
+	resolvedAddr, err := v.InitResolveAddress(ctx, maddr)
 	if err != nil {
 		return nil, err
 	}
@@ -804,7 +826,7 @@ func (v *View) loadPowerActor(ctx context.Context) (power.State, error) {
 	return power.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
-func (v *View) loadRewardActor(ctx context.Context) (reward.State, error) {
+func (v *View) loadRewardState(ctx context.Context) (reward.State, error) {
 	actr, err := v.loadActor(ctx, reward.Address)
 	if err != nil {
 		return nil, err
@@ -813,7 +835,7 @@ func (v *View) loadRewardActor(ctx context.Context) (reward.State, error) {
 	return reward.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
-func (v *View) loadMarketActor(ctx context.Context) (market.State, error) {
+func (v *View) loadMarketState(ctx context.Context) (market.State, error) {
 	actr, err := v.loadActor(ctx, market.Address)
 	if err != nil {
 		return nil, err
