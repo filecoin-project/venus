@@ -56,8 +56,6 @@ var msgSendCmd = &cmds.Command{
 		feecapOption,
 		premiumOption,
 		limitOption,
-		previewOption,
-		// TODO: (per dignifiedquire) add an option to set the nonce and method explicitly
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		target, err := address.NewFromString(req.Arguments[0])
@@ -79,7 +77,7 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
-		feecap, premium, gasLimit, preview, err := parseGasOptions(req)
+		feecap, premium, gasLimit, err := parseGasOptions(req)
 		if err != nil {
 			return err
 		}
@@ -88,23 +86,6 @@ var msgSendCmd = &cmds.Command{
 		methodInput, ok := req.Options["method"].(uint64)
 		if ok {
 			methodID = abi.MethodNum(methodInput)
-		}
-
-		if preview {
-			usedGas, err := env.(*node.Env).MessagingAPI.MessagePreview(
-				req.Context,
-				fromAddr,
-				target,
-				methodID,
-			)
-			if err != nil {
-				return err
-			}
-			return re.Emit(&MessageSendResult{
-				Cid:     cid.Cid{},
-				GasUsed: usedGas,
-				Preview: true,
-			})
 		}
 
 		c, err := env.(*node.Env).MessagingAPI.MessageSend(

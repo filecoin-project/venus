@@ -66,19 +66,13 @@ func (messagingAPI *MessagingAPI) MessagePoolRemove(cid cid.Cid) {
 	messagingAPI.messaging.MsgPool.Remove(cid)
 }
 
-// MessagePreview previews the Gas cost of a message by running it locally on the client and
-// recording the amount of Gas used.
-func (messagingAPI *MessagingAPI) MessagePreview(ctx context.Context, from, to address.Address, method abi.MethodNum, params ...interface{}) (types.Unit, error) {
-	return messagingAPI.messaging.Previewer.Preview(ctx, from, to, method, params...)
-}
-
 // MessageSend sends a message. It uses the default from address if none is given and signs the
 // message using the wallet. This call "sends" in the sense that it enqueues the
 // message in the msg pool and broadcasts it to the network; it does not wait for the
 // message to go on chain. Note that no default from address is provided.  The error
 // channel returned receives either nil or an error and is immediately closed after
 // the message is published to the network to signal that the publish is complete.
-func (messagingAPI *MessagingAPI) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, baseFee types.AttoFIL, gasPremium types.AttoFIL, gasLimit types.Unit, method abi.MethodNum, params interface{}) (cid.Cid, error) {
+func (messagingAPI *MessagingAPI) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, baseFee types.AttoFIL, gasPremium types.AttoFIL, gasLimit types.Unit, method abi.MethodNum, params []byte) (cid.Cid, error) {
 	msgCid, _, err := messagingAPI.messaging.Outbox.Send(ctx, from, to, value, baseFee, gasPremium, gasLimit, true, method, params)
 	if err != nil {
 		return cid.Undef, err

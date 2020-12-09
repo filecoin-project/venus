@@ -7,8 +7,16 @@ import (
 	xerrors "github.com/pkg/errors"
 )
 
-func (chainAPI *ChainAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk block.TipSetKey) (address.Address, error) {
-	view, err := chainAPI.chain.State.StateView(tsk)
+type AccountAPI struct {
+	chain *ChainSubmodule
+}
+
+func NewAccountAPI(chain *ChainSubmodule) AccountAPI {
+	return AccountAPI{chain: chain}
+}
+
+func (accountAPI *AccountAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk block.TipSetKey) (address.Address, error) {
+	view, err := accountAPI.chain.State.StateView(tsk)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}

@@ -35,8 +35,7 @@ type MessagingSubmodule struct { //nolint
 	Outbox *message.Outbox
 
 	// Wait for confirm message
-	Waiter    *msg.Waiter
-	Previewer *msg.Previewer
+	Waiter *msg.Waiter
 	// Network Fields
 	MessageTopic *pubsub.Topic
 	MessageSub   pubsub.Subscription
@@ -112,8 +111,6 @@ func NewMessagingSubmodule(ctx context.Context,
 		chain.ChainReader,
 	}
 	waiter := msg.NewWaiter(combineChainReader, chain.MessageStore, bsModule.Blockstore, bsModule.CborStore)
-	//todo use new api to replace
-	previewer := msg.NewPreviewer(chain.ChainReader, bsModule.CborStore, bsModule.Blockstore, chain.Processor)
 	return &MessagingSubmodule{
 		Inbox:        inbox,
 		Outbox:       outbox,
@@ -123,7 +120,6 @@ func NewMessagingSubmodule(ctx context.Context,
 		MsgSigVal:    msgSignatureValidator,
 		chainReader:  chain.ChainReader,
 		Waiter:       waiter,
-		Previewer:    previewer,
 		messageStore: chain.MessageStore,
 	}, nil
 }

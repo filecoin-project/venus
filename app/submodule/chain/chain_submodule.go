@@ -108,5 +108,12 @@ func (chain *ChainSubmodule) Start(ctx context.Context) error {
 }
 
 func (chain *ChainSubmodule) API() *ChainAPI {
-	return &ChainAPI{chain: chain}
+	return &ChainAPI{
+		AccountAPI:    NewAccountAPI(chain),
+		ActorAPI:      NewActorAPI(chain),
+		BeaconAPI:     NewBeaconAPI(chain),
+		ChainInfoAPI:  NewChainInfoAPI(chain),
+		DbAPI:         NewDbAPI(chain),
+		MinerStateAPI: NewMinerStateAPI(chain),
+	}
 }

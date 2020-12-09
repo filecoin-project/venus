@@ -7,8 +7,16 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 )
 
-func (chainAPI *ChainAPI) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*block.BeaconEntry, error) {
-	b := chainAPI.chain.Drand.BeaconForEpoch(epoch)
+type BeaconAPI struct {
+	chain *ChainSubmodule
+}
+
+func NewBeaconAPI(chain *ChainSubmodule) BeaconAPI {
+	return BeaconAPI{chain: chain}
+}
+
+func (beaconAPI *BeaconAPI) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*block.BeaconEntry, error) {
+	b := beaconAPI.chain.Drand.BeaconForEpoch(epoch)
 	rr := b.MaxBeaconRoundForEpoch(epoch)
 	e := b.Entry(ctx, rr)
 

@@ -7,15 +7,23 @@ import (
 	"io"
 )
 
-func (chainAPI *ChainAPI) ChainReadObj(ctx context.Context, ocid cid.Cid) ([]byte, error) {
-	return chainAPI.chain.State.ReadObj(ctx, ocid)
+type DbAPI struct {
+	chain *ChainSubmodule
 }
 
-func (chainAPI *ChainAPI) ChainHasObj(ctx context.Context, ocid cid.Cid) (bool, error) {
-	return chainAPI.chain.State.HasObj(ctx, ocid)
+func NewDbAPI(chain *ChainSubmodule) DbAPI {
+	return DbAPI{chain: chain}
+}
+
+func (dbAPI *DbAPI) ChainReadObj(ctx context.Context, ocid cid.Cid) ([]byte, error) {
+	return dbAPI.chain.State.ReadObj(ctx, ocid)
+}
+
+func (dbAPI *DbAPI) ChainHasObj(ctx context.Context, ocid cid.Cid) (bool, error) {
+	return dbAPI.chain.State.HasObj(ctx, ocid)
 }
 
 // ChainExport exports the chain from `head` up to and including the genesis block to `out`
-func (chainAPI *ChainAPI) ChainExport(ctx context.Context, head block.TipSetKey, out io.Writer) error {
-	return chainAPI.chain.State.ChainExport(ctx, head, out)
+func (dbAPI *DbAPI) ChainExport(ctx context.Context, head block.TipSetKey, out io.Writer) error {
+	return dbAPI.chain.State.ChainExport(ctx, head, out)
 }

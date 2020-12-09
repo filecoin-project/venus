@@ -18,8 +18,16 @@ import (
 	xerrors "github.com/pkg/errors"
 )
 
-func (chainAPI *ChainAPI) StateMinerSectorAllocated(ctx context.Context, maddr address.Address, s abi.SectorNumber, tsk block.TipSetKey) (bool, error) {
-	view, err := chainAPI.chain.State.ParentStateView(tsk)
+type MinerStateAPI struct {
+	chain *ChainSubmodule
+}
+
+func NewMinerStateAPI(chain *ChainSubmodule) MinerStateAPI {
+	return MinerStateAPI{chain: chain}
+}
+
+func (minerStateAPI *MinerStateAPI) StateMinerSectorAllocated(ctx context.Context, maddr address.Address, s abi.SectorNumber, tsk block.TipSetKey) (bool, error) {
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
 	if err != nil {
 		return false, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -31,8 +39,8 @@ func (chainAPI *ChainAPI) StateMinerSectorAllocated(ctx context.Context, maddr a
 	return mas.IsAllocated(s)
 }
 
-func (chainAPI *ChainAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk block.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
-	view, err := chainAPI.chain.State.ParentStateView(tsk)
+func (minerStateAPI *MinerStateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk block.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
 	if err != nil {
 		return miner.SectorPreCommitOnChainInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -46,8 +54,8 @@ func (chainAPI *ChainAPI) StateSectorPreCommitInfo(ctx context.Context, maddr ad
 	return *pci, nil
 }
 
-func (chainAPI *ChainAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorOnChainInfo, error) {
-	view, err := chainAPI.chain.State.ParentStateView(tsk)
+func (minerStateAPI *MinerStateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorOnChainInfo, error) {
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -55,8 +63,8 @@ func (chainAPI *ChainAPI) StateSectorGetInfo(ctx context.Context, maddr address.
 	return view.MinerSectorInfo(ctx, maddr, n)
 }
 
-func (chainAPI *ChainAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorLocation, error) {
-	view, err := chainAPI.chain.State.ParentStateView(tsk)
+func (minerStateAPI *MinerStateAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorLocation, error) {
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -64,17 +72,17 @@ func (chainAPI *ChainAPI) StateSectorPartition(ctx context.Context, maddr addres
 	return view.StateSectorPartition(ctx, maddr, sectorNumber)
 }
 
-func (chainAPI *ChainAPI) StateMinerSectorSize(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (abi.SectorSize, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerSectorSize(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (abi.SectorSize, error) {
 	// TODO: update storage-fsm to just StateMinerSectorAllocated
-	mi, err := chainAPI.StateMinerInfo(ctx, maddr, tsk)
+	mi, err := minerStateAPI.StateMinerInfo(ctx, maddr, tsk)
 	if err != nil {
 		return 0, err
 	}
 	return mi.SectorSize, nil
 }
 
-func (chainAPI *ChainAPI) StateMinerInfo(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (miner.MinerInfo, error) {
-	view, err := chainAPI.chain.State.ParentStateView(tsk)
+func (minerStateAPI *MinerStateAPI) StateMinerInfo(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (miner.MinerInfo, error) {
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
 	if err != nil {
 		return miner.MinerInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -85,17 +93,17 @@ func (chainAPI *ChainAPI) StateMinerInfo(ctx context.Context, maddr address.Addr
 	return *minfo, nil
 }
 
-func (chainAPI *ChainAPI) StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (address.Address, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (address.Address, error) {
 	// TODO: update storage-fsm to just StateMinerInfo
-	mi, err := chainAPI.StateMinerInfo(ctx, maddr, tsk)
+	mi, err := minerStateAPI.StateMinerInfo(ctx, maddr, tsk)
 	if err != nil {
 		return address.Undef, err
 	}
 	return mi.Worker, nil
 }
 
-func (chainAPI *ChainAPI) StateMinerRecoveries(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (bitfield.BitField, error) {
-	view, err := chainAPI.chain.State.ParentStateView(tsk)
+func (minerStateAPI *MinerStateAPI) StateMinerRecoveries(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (bitfield.BitField, error) {
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
 	if err != nil {
 		return bitfield.BitField{}, xerrors.Errorf("loading view %s: %w", tsk, err)
 	}
@@ -108,8 +116,8 @@ func (chainAPI *ChainAPI) StateMinerRecoveries(ctx context.Context, maddr addres
 	return miner.AllPartSectors(mas, miner.Partition.RecoveringSectors)
 }
 
-func (chainAPI *ChainAPI) StateMinerFaults(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (bitfield.BitField, error) {
-	view, err := chainAPI.chain.State.ParentStateView(tsk)
+func (minerStateAPI *MinerStateAPI) StateMinerFaults(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (bitfield.BitField, error) {
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
 	if err != nil {
 		return bitfield.BitField{}, xerrors.Errorf("loading view %s: %w", tsk, err)
 	}
@@ -122,13 +130,13 @@ func (chainAPI *ChainAPI) StateMinerFaults(ctx context.Context, maddr address.Ad
 	return miner.AllPartSectors(mas, miner.Partition.FaultySectors)
 }
 
-func (chainAPI *ChainAPI) StateMinerProvingDeadline(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (*dline.Info, error) {
-	ts, err := chainAPI.chain.ChainReader.GetTipSet(tsk)
+func (minerStateAPI *MinerStateAPI) StateMinerProvingDeadline(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (*dline.Info, error) {
+	ts, err := minerStateAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	view, err := chainAPI.chain.State.ParentStateView(tsk)
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading view %s: %w", tsk, err)
 	}
@@ -145,8 +153,8 @@ func (chainAPI *ChainAPI) StateMinerProvingDeadline(ctx context.Context, maddr a
 	return di.NextNotElapsed(), nil
 }
 
-func (chainAPI *ChainAPI) StateMinerPartitions(ctx context.Context, maddr address.Address, dlIdx uint64, tsk block.TipSetKey) ([]Partition, error) {
-	view, err := chainAPI.chain.State.ParentStateView(tsk)
+func (minerStateAPI *MinerStateAPI) StateMinerPartitions(ctx context.Context, maddr address.Address, dlIdx uint64, tsk block.TipSetKey) ([]Partition, error) {
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading view %s: %w", tsk, err)
 	}
@@ -201,8 +209,8 @@ func (chainAPI *ChainAPI) StateMinerPartitions(ctx context.Context, maddr addres
 	return out, err
 }
 
-func (chainAPI *ChainAPI) StateMinerDeadlines(ctx context.Context, maddr address.Address, tsk block.TipSetKey) ([]Deadline, error) {
-	view, err := chainAPI.chain.State.ParentStateView(tsk)
+func (minerStateAPI *MinerStateAPI) StateMinerDeadlines(ctx context.Context, maddr address.Address, tsk block.TipSetKey) ([]Deadline, error) {
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading view %s: %w", tsk, err)
 	}
@@ -234,8 +242,8 @@ func (chainAPI *ChainAPI) StateMinerDeadlines(ctx context.Context, maddr address
 	return out, nil
 }
 
-func (chainAPI *ChainAPI) StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk block.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
-	view, err := chainAPI.chain.State.ParentStateView(tsk)
+func (minerStateAPI *MinerStateAPI) StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk block.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading view %s: %w", tsk, err)
 	}
@@ -248,8 +256,8 @@ func (chainAPI *ChainAPI) StateMinerSectors(ctx context.Context, maddr address.A
 	return mas.LoadSectors(sectorNos)
 }
 
-func (chainAPI *ChainAPI) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk block.TipSetKey) (*MarketDeal, error) {
-	view, err := chainAPI.chain.State.ParentStateView(tsk)
+func (minerStateAPI *MinerStateAPI) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk block.TipSetKey) (*MarketDeal, error) {
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading view %s: %w", tsk, err)
 	}
@@ -295,14 +303,14 @@ func (chainAPI *ChainAPI) StateMarketStorageDeal(ctx context.Context, dealID abi
 var initialPledgeNum = big.NewInt(110)
 var initialPledgeDen = big.NewInt(100)
 
-func (chainAPI *ChainAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk block.TipSetKey) (big.Int, error) {
-	store := chainAPI.chain.State.Store(ctx)
-	ts, err := chainAPI.chain.ChainReader.GetTipSet(tsk)
+func (minerStateAPI *MinerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk block.TipSetKey) (big.Int, error) {
+	store := minerStateAPI.chain.State.Store(ctx)
+	ts, err := minerStateAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return big.Int{}, err
 	}
 
-	root, err := chainAPI.chain.State.GetTipSetStateRoot(ctx, tsk)
+	root, err := minerStateAPI.chain.State.GetTipSetStateRoot(ctx, tsk)
 	if err != nil {
 		return big.Int{}, err
 	}
@@ -359,14 +367,14 @@ func (chainAPI *ChainAPI) StateMinerPreCommitDepositForPower(ctx context.Context
 	return big.Div(big.Mul(deposit, initialPledgeNum), initialPledgeDen), nil
 }
 
-func (chainAPI *ChainAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk block.TipSetKey) (big.Int, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk block.TipSetKey) (big.Int, error) {
 	// TODO: this repeats a lot of the previous function. Fix that.
-	ts, err := chainAPI.chain.ChainReader.GetTipSet(tsk)
+	ts, err := minerStateAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return big.Int{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	store := chainAPI.chain.State.Store(ctx)
+	store := minerStateAPI.chain.State.Store(ctx)
 	state, err := state.LoadState(ctx, store, ts.At(0).ParentStateRoot.Cid)
 	if err != nil {
 		return big.Int{}, xerrors.Errorf("loading state %s: %w", tsk, err)
@@ -417,7 +425,7 @@ func (chainAPI *ChainAPI) StateMinerInitialPledgeCollateral(ctx context.Context,
 		return big.Int{}, xerrors.Errorf("loading reward actor state: %w", err)
 	}
 
-	circSupply, err := chainAPI.StateVMCirculatingSupplyInternal(ctx, ts.Key())
+	circSupply, err := minerStateAPI.StateVMCirculatingSupplyInternal(ctx, ts.Key())
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting circulating supply: %w", err)
 	}
@@ -435,14 +443,14 @@ func (chainAPI *ChainAPI) StateMinerInitialPledgeCollateral(ctx context.Context,
 	return big.Div(big.Mul(initialPledge, initialPledgeNum), initialPledgeDen), nil
 }
 
-func (chainAPI *ChainAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk block.TipSetKey) (chain.CirculatingSupply, error) {
-	store := chainAPI.chain.State.Store(ctx)
-	ts, err := chainAPI.chain.ChainReader.GetTipSet(tsk)
+func (minerStateAPI *MinerStateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk block.TipSetKey) (chain.CirculatingSupply, error) {
+	store := minerStateAPI.chain.State.Store(ctx)
+	ts, err := minerStateAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return chain.CirculatingSupply{}, err
 	}
 
-	root, err := chainAPI.chain.State.GetTipSetStateRoot(ctx, tsk)
+	root, err := minerStateAPI.chain.State.GetTipSetStateRoot(ctx, tsk)
 	if err != nil {
 		return chain.CirculatingSupply{}, err
 	}
@@ -452,9 +460,9 @@ func (chainAPI *ChainAPI) StateVMCirculatingSupplyInternal(ctx context.Context, 
 		return chain.CirculatingSupply{}, err
 	}
 
-	return chainAPI.chain.ChainReader.GetCirculatingSupplyDetailed(ctx, ts.EnsureHeight(), sTree)
+	return minerStateAPI.chain.ChainReader.GetCirculatingSupplyDetailed(ctx, ts.EnsureHeight(), sTree)
 }
 
-func (chainAPI *ChainAPI) StateCirculatingSupply(ctx context.Context, tsk block.TipSetKey) (abi.TokenAmount, error) {
-	return chainAPI.chain.ChainReader.StateCirculatingSupply(ctx, tsk)
+func (minerStateAPI *MinerStateAPI) StateCirculatingSupply(ctx context.Context, tsk block.TipSetKey) (abi.TokenAmount, error) {
+	return minerStateAPI.chain.ChainReader.StateCirculatingSupply(ctx, tsk)
 }

@@ -78,7 +78,7 @@ func (walletAPI *WalletAPI) WalletNewAddress(protocol address.Protocol) (address
 }
 
 // WalletImport adds a given set of KeyInfos to the walletModule
-func (walletAPI *WalletAPI) WalletImport(kinfos ...*crypto.KeyInfo) ([]address.Address, error) {
+func (walletAPI *WalletAPI) WalletImport(kinfos []*crypto.KeyInfo) ([]address.Address, error) {
 	return walletAPI.walletModule.Wallet.Import(kinfos...)
 }
 
