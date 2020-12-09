@@ -83,7 +83,3 @@ func (v PowerTableView) WorkerAddr(ctx context.Context, mAddr addr.Address) (add
 func (v PowerTableView) SignerAddress(ctx context.Context, a addr.Address) (addr.Address, error) {
 	return v.state.AccountSignerAddress(ctx, a)
 }
-
-func (v PowerTableView) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, st cid.Cid, maddr addr.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
-	return v.state.GetSectorsForWinningPoSt(ctx, nv, pv, st, maddr, rand)
-}

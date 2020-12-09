@@ -461,55 +461,6 @@ func (c *Expected) validateBlock(ctx context.Context,
 	return nil
 }
 
-func (c *Expected) ComputeBaseFee(ctx context.Context, ts *block.TipSet) (abi.TokenAmount, error) {
-	zero := abi.NewTokenAmount(0)
-	baseHeight, err := ts.Height()
-	if err != nil {
-		return zero, err
-	}
-
-	if baseHeight > c.config.ForkUpgradeParam.UpgradeBreezeHeight && baseHeight < c.config.ForkUpgradeParam.UpgradeBreezeHeight+c.config.ForkUpgradeParam.BreezeGasTampingDuration {
-		return abi.NewTokenAmount(100), nil
-	}
-
-	// totalLimit is sum of GasLimits of unique messages in a tipset
-	totalLimit := int64(0)
-
-	seen := make(map[cid.Cid]struct{})
-
-	for _, b := range ts.Blocks() {
-		secpMsgs, blsMsgs, err := c.messageStore.LoadMetaMessages(ctx, b.Messages.Cid)
-		if err != nil {
-			return zero, xerrors.Errorf("error getting messages for: %s: %w", b.Cid(), err)
-		}
-
-		for _, m := range blsMsgs {
-			c, err := m.Cid()
-			if err != nil {
-				return zero, xerrors.Errorf("error getting cid for message: %v: %w", m, err)
-			}
-			if _, ok := seen[c]; !ok {
-				totalLimit += int64(m.GasLimit)
-				seen[c] = struct{}{}
-			}
-		}
-		for _, m := range secpMsgs {
-			c, err := m.Cid()
-			if err != nil {
-				return zero, xerrors.Errorf("error getting cid for signed message: %v: %w", m, err)
-			}
-			if _, ok := seen[c]; !ok {
-				totalLimit += int64(m.Message.GasLimit)
-				seen[c] = struct{}{}
-			}
-		}
-	}
-
-	parentBaseFee := ts.Blocks()[0].ParentBaseFee
-
-	return chain.ComputeNextBaseFee(parentBaseFee, totalLimit, len(ts.Blocks()), baseHeight, c.config.ForkUpgradeParam), nil
-}
-
 var ErrTemporal = errors.New("temporal error")
 
 func blockSanityChecks(b *block.Block) error {

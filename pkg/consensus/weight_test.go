@@ -2,9 +2,10 @@ package consensus_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/enccid"
-	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
