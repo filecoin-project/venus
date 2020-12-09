@@ -80,12 +80,13 @@ func NewChainSubmodule(config chainConfig,
 	actorState := appstate.NewTipSetStateViewer(chainStore, blockstore.CborStore)
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, register.DefaultActors, drand)
-	faultChecker := slashing.NewFaultChecker(chainState)
-	syscalls := vmsupport.NewSyscalls(faultChecker, verifier.ProofVerifier)
 	fork, err := fork.NewChainFork(chainState, blockstore.CborStore, blockstore.Blockstore, repo.Config().NetworkParams.ForkUpgradeParam)
 	if err != nil {
 		return nil, err
 	}
+	faultChecker := slashing.NewFaultChecker(chainState, fork)
+	syscalls := vmsupport.NewSyscalls(faultChecker, verifier.ProofVerifier)
+
 	processor := consensus.NewDefaultProcessor(syscalls, chainState)
 
 	return &ChainSubmodule{

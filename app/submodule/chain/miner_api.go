@@ -82,11 +82,18 @@ func (minerStateAPI *MinerStateAPI) StateMinerSectorSize(ctx context.Context, ma
 }
 
 func (minerStateAPI *MinerStateAPI) StateMinerInfo(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (miner.MinerInfo, error) {
-	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
+	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return miner.MinerInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	minfo, err := view.MinerInfo(ctx, maddr)
+
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
+	if err != nil {
+		return miner.MinerInfo{}, xerrors.Errorf("loading view %s: %w", tsk, err)
+	}
+
+	nv := minerStateAPI.chain.Fork.GetNtwkVersion(ctx, ts.EnsureHeight())
+	minfo, err := view.MinerInfo(ctx, maddr, nv)
 	if err != nil {
 		return miner.MinerInfo{}, err
 	}

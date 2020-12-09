@@ -19,8 +19,7 @@ import (
 // This type isn't doing much that the state view doesn't already do, consider removing it.
 type PowerStateView interface {
 	AccountStateView
-	MinerSectorConfiguration(ctx context.Context, maddr addr.Address) (*MinerSectorConfiguration, error)
-	MinerControlAddresses(ctx context.Context, maddr addr.Address) (owner, worker addr.Address, err error)
+	MinerInfo(ctx context.Context, maddr addr.Address, nv network.Version) (*miner.MinerInfo, error)
 	MinerSectorInfo(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, error)
 	PowerNetworkTotal(ctx context.Context) (*NetworkPower, error)
 	MinerClaimedPower(ctx context.Context, miner addr.Address) (raw, qa abi.StoragePower, err error)
@@ -74,9 +73,9 @@ func (v PowerTableView) MinerClaimedPower(ctx context.Context, mAddr addr.Addres
 }
 
 // WorkerAddr returns the worker address for a miner actor.
-func (v PowerTableView) WorkerAddr(ctx context.Context, mAddr addr.Address) (addr.Address, error) {
-	_, worker, err := v.state.MinerControlAddresses(ctx, mAddr)
-	return worker, err
+func (v PowerTableView) WorkerAddr(ctx context.Context, mAddr addr.Address, nv network.Version) (addr.Address, error) {
+	minerInfo, err := v.state.MinerInfo(ctx, mAddr, nv)
+	return minerInfo.Worker, err
 }
 
 // SignerAddress returns the public key address associated with the given address.

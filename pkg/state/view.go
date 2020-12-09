@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-core/peer"
 	xerrors "github.com/pkg/errors"
 
 	addr "github.com/filecoin-project/go-address"
@@ -108,16 +107,7 @@ func (v *View) AccountSignerAddress(ctx context.Context, a addr.Address) (addr.A
 	return accountActorState.PubkeyAddress()
 }
 
-// MinerControlAddresses returns the owner and worker addresses for a miner actor
-func (v *View) MinerControlAddresses(ctx context.Context, maddr addr.Address) (owner, worker addr.Address, err error) {
-	minerInfo, err := v.MinerInfo(ctx, maddr)
-	if err != nil {
-		return addr.Undef, addr.Undef, err
-	}
-	return minerInfo.Owner, minerInfo.Worker, nil
-}
-
-func (v *View) MinerInfo(ctx context.Context, maddr addr.Address) (*miner.MinerInfo, error) {
+func (v *View) MinerInfo(ctx context.Context, maddr addr.Address, nv network.Version) (*miner.MinerInfo, error) {
 	minerState, err := v.loadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, err
@@ -127,37 +117,13 @@ func (v *View) MinerInfo(ctx context.Context, maddr addr.Address) (*miner.MinerI
 	if err != nil {
 		return nil, err
 	}
+
+	if nv >= network.Version7 && minerInfo.SealProofType < abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
+		minerInfo.SealProofType += abi.RegisteredSealProof_StackedDrg2KiBV1_1
+	}
+
 	return &minerInfo, nil
 	// return minerState.GetInfo(v.adtStore(ctx))
-}
-
-// MinerPeerID returns the PeerID for a miner actor
-func (v *View) MinerPeerID(ctx context.Context, maddr addr.Address) (peer.ID, error) {
-	minerInfo, err := v.MinerInfo(ctx, maddr)
-	if err != nil {
-		return "", err
-	}
-
-	return *minerInfo.PeerId, nil
-}
-
-type MinerSectorConfiguration struct {
-	SealProofType              abi.RegisteredSealProof
-	SectorSize                 abi.SectorSize
-	WindowPoStPartitionSectors uint64
-}
-
-// MinerSectorConfiguration returns the sector size for a miner actor
-func (v *View) MinerSectorConfiguration(ctx context.Context, maddr addr.Address) (*MinerSectorConfiguration, error) {
-	minerInfo, err := v.MinerInfo(ctx, maddr)
-	if err != nil {
-		return nil, err
-	}
-	return &MinerSectorConfiguration{
-		SealProofType:              minerInfo.SealProofType,
-		SectorSize:                 minerInfo.SectorSize,
-		WindowPoStPartitionSectors: minerInfo.WindowPoStPartitionSectors,
-	}, nil
 }
 
 // MinerSectorCount counts all the on-chain sectors

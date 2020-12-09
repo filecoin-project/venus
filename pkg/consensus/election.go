@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/consensus/lib/sigs"
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 )
 
@@ -33,7 +32,6 @@ type ProofVerifier interface {
 }
 
 type SectorsStateView interface {
-	MinerSectorConfiguration(ctx context.Context, maddr address.Address) (*state.MinerSectorConfiguration, error)
 	MinerSectorInfo(ctx context.Context, maddr address.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, error)
 }
 
