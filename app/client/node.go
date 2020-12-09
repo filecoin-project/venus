@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus/app/paths"
 	"github.com/multiformats/go-multiaddr"
@@ -44,26 +45,26 @@ func getVenusClientInfo() (string, http.Header, error) {
 	return addr, headers, nil
 }
 
-func NewFullNode() (FullNode, jsonrpc.ClientCloser, error) {
+func NewFullNode(ctx context.Context) (FullNode, jsonrpc.ClientCloser, error) {
 	addr, headers, err := getVenusClientInfo()
 	if err != nil {
 		return FullNode{}, nil, err
 	}
 	node := FullNode{}
-	closer, err := jsonrpc.NewClient(addr, "Filecoin", &node, headers)
+	closer, err := jsonrpc.NewClient(ctx, addr, "Filecoin", &node, headers)
 	if err != nil {
 		return FullNode{}, nil, err
 	}
 	return node, closer, nil
 }
 
-func NewMiningAPINode() (MiningAPI, jsonrpc.ClientCloser, error) {
+func NewMiningAPINode(ctx context.Context) (MiningAPI, jsonrpc.ClientCloser, error) {
 	addr, headers, err := getVenusClientInfo()
 	if err != nil {
 		return MiningAPI{}, nil, err
 	}
 	node := MiningAPI{}
-	closer, err := jsonrpc.NewClient(addr, "Filecoin", &node, headers)
+	closer, err := jsonrpc.NewClient(ctx, addr, "Filecoin", &node, headers)
 	if err != nil {
 		return MiningAPI{}, nil, err
 	}
