@@ -8,8 +8,7 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/discovery"
-	"github.com/filecoin-project/venus/app/submodule/messaging"
-	"github.com/filecoin-project/venus/app/submodule/mining"
+	"github.com/filecoin-project/venus/app/submodule/mpool"
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/proofverification"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
@@ -27,13 +26,12 @@ type Env struct {
 	ChainAPI             *chain.ChainAPI
 	ConfigAPI            *config.ConfigAPI
 	DiscoveryAPI         *discovery.DiscoveryAPI
-	MessagingAPI         *messaging.MessagingAPI
 	NetworkAPI           *network.NetworkAPI
 	ProofVerificationAPI *proofverification.ProofVerificationApi
 	StorageNetworkingAPI *storagenetworking.StorageNetworkingAPI
 	SyncerAPI            *syncer.SyncerAPI
 	WalletAPI            *wallet.WalletAPI
-	MingingAPI           *mining.MiningAPI
+	MessagePoolAPI       *mpool.MessagePoolAPI
 }
 
 var _ cmds.Environment = (*Env)(nil)

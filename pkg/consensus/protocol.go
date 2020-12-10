@@ -39,7 +39,8 @@ type Protocol interface {
 	// CallWithGas
 
 	Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*vm.Ret, error)
-	CallWithGas(ctx context.Context, msg *types.UnsignedMessage) (*vm.Ret, error)
+
+	CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *block.TipSet) (*vm.Ret, error)
 
 	//Validation
 	ValidateMining(ctx context.Context, parent, ts *block.TipSet, parentWeight big.Int, parentReceiptRoot cid.Cid) error

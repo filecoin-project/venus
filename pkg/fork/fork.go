@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"math"
 
 	"github.com/filecoin-project/go-address"
@@ -45,6 +46,8 @@ import (
 )
 
 var log = logging.Logger("fork")
+
+var ErrExpensiveFork = errors.New("refusing explicit call due to state fork at epoch")
 
 // UpgradeFunc is a migration function run at every upgrade.
 //

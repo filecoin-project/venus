@@ -186,6 +186,90 @@ func (c *Expected) BlockTime() time.Duration {
 	return c.blockTime
 }
 
+func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *block.TipSet) (*vm.Ret, error) {
+	var (
+		err       error
+		stateRoot cid.Cid
+		height    abi.ChainEpoch
+	)
+	if ts == nil {
+		ts, err = c.chainState.GetTipSet(c.chainState.GetHead())
+		if err != nil {
+			return nil, err
+		}
+
+		// Search back till we find a height with no fork, or we reach the beginning.
+		// We need the _previous_ height to have no fork, because we'll
+		// run the fork logic in `sm.TipSetState`. We need the _current_
+		// height to have no fork, because we'll run it inside this
+		// function before executing the given message.
+		height, err = ts.Height()
+		if err != nil {
+			return nil, err
+		}
+		for height > 0 && (c.fork.HasExpensiveFork(ctx, height) || c.fork.HasExpensiveFork(ctx, height-1)) {
+			ts, err = c.chainState.GetTipSet(ts.EnsureParents())
+			if err != nil {
+				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
+			}
+		}
+
+		stateRoot, err = c.chainState.GetTipSetStateRoot(c.chainState.GetHead())
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		stateRoot, err = c.chainState.GetTipSetStateRoot(ts.Key())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// When we're not at the genesis block, make sure we don't have an expensive migration.
+	height, err = ts.Height()
+	if err != nil {
+		return nil, err
+	}
+	if height > 0 && (c.fork.HasExpensiveFork(ctx, height) || c.fork.HasExpensiveFork(ctx, height-1)) {
+		return nil, fork.ErrExpensiveFork
+	}
+
+	vms := vm.NewStorage(c.bstore)
+	priorState, err := state.LoadState(ctx, vms, stateRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	rnd := headRandomness{
+		chain: c.rnd,
+		head:  ts.Key(),
+	}
+
+	vmOption := vm.VmOption{
+		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
+			dertail, err := c.circulatingSupplyCalculator.GetCirculatingSupplyDetailed(ctx, epoch, tree)
+			if err != nil {
+				return abi.TokenAmount{}, err
+			}
+			return dertail.FilCirculating, nil
+		},
+		NtwkVersionGetter: c.fork.GetNtwkVersion,
+		Rnd:               &rnd,
+		BaseFee:           ts.At(0).ParentBaseFee,
+		Epoch:             height + 1,
+		GasPriceSchedule:  c.gasPirceSchedule,
+	}
+
+	for i, m := range priorMsgs {
+		_, err := c.processor.ProcessUnsignedMessage(ctx, m.VMMessage(), priorState, vms, vmOption)
+		if err != nil {
+			return nil, xerrors.Errorf("applying prior message (%d): %w", i, err)
+		}
+	}
+
+	return c.processor.ProcessUnsignedMessage(ctx, msg, priorState, vms, vmOption)
+}
+
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.

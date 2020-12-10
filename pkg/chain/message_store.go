@@ -42,7 +42,7 @@ type MessageProvider interface {
 	LoadTipSetMessage(ctx context.Context, ts *block.TipSet) ([]block.BlockMessagesInfo, error)
 	LoadMetaMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
 	ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
-	LoadUnsinedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error)
+	LoadUnsignedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error)
 	LoadSignedMessagesFromCids(secpCids []cid.Cid) ([]*types.SignedMessage, error)
 	LoadReceipts(context.Context, cid.Cid) ([]types.MessageReceipt, error)
 	LoadTxMeta(context.Context, cid.Cid) (types.TxMeta, error)
@@ -92,7 +92,7 @@ func (ms *MessageStore) LoadMetaMessages(ctx context.Context, metaCid cid.Cid) (
 	}
 
 	// load bls messages from cids
-	blsMsgs, err := ms.LoadUnsinedMessagesFromCids(blsCids)
+	blsMsgs, err := ms.LoadUnsignedMessagesFromCids(blsCids)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -156,7 +156,7 @@ func (ms *MessageStore) LoadSignedMessage(mid cid.Cid) (*types.SignedMessage, er
 	return message, nil
 }
 
-func (ms *MessageStore) LoadUnsinedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error) {
+func (ms *MessageStore) LoadUnsignedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error) {
 	blsMsgs := make([]*types.UnsignedMessage, len(blsCids))
 	for i, c := range blsCids {
 		message, err := ms.LoadUnsignedMessage(c)
@@ -360,6 +360,7 @@ func (ms *MessageStore) LoadTxMeta(ctx context.Context, c cid.Cid) (types.TxMeta
 func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *block.TipSet) ([]block.BlockMessagesInfo, error) {
 	//gather message
 	applied := make(map[address.Address]uint64)
+
 	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
 		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
 		if _, ok := applied[m.From]; !ok {
@@ -374,10 +375,11 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *block.TipSet)
 
 		return true, nil
 	}
+
 	blockMsg := []block.BlockMessagesInfo{}
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
-		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, blk.Messages.Cid)
+		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, blk.Messages.Cid) // Corresponding to  MessagesForBlock of lotus
 		if err != nil {
 			return nil, errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
 		}
@@ -411,6 +413,26 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *block.TipSet)
 	}
 
 	return blockMsg, nil
+}
+
+func (ms *MessageStore) MessagesForTipset(ts *block.TipSet) ([]types.ChainMsg, error) {
+	bmsgs, err := ms.LoadTipSetMessage(context.TODO(), ts)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []types.ChainMsg
+	for _, bm := range bmsgs {
+		for _, blsm := range bm.BlsMessages {
+			out = append(out, blsm)
+		}
+
+		for _, secm := range bm.SecpkMessages {
+			out = append(out, secm)
+		}
+	}
+
+	return out, nil
 }
 
 func (ms *MessageStore) storeUnsignedMessages(messages []*types.UnsignedMessage) ([]cid.Cid, error) {
@@ -549,7 +571,7 @@ func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet, up
 		return zero, err
 	}
 
-	if baseHeight > upgrade.UpgradeBreezeHeight && baseHeight < upgrade.UpgradeBreezeHeight+upgrade.BreezeGasTampingDuration {
+	if upgrade.UpgradeBreezeHeight > 0 && baseHeight > upgrade.UpgradeBreezeHeight && baseHeight < upgrade.UpgradeBreezeHeight+upgrade.BreezeGasTampingDuration {
 		return abi.NewTokenAmount(100), nil
 	}
 

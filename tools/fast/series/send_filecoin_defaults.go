@@ -2,6 +2,7 @@ package series
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 
@@ -22,9 +23,10 @@ func SendFilecoinDefaults(ctx context.Context, from, to *fast.Filecoin, value in
 		return err
 	}
 
-	if _, err := to.MessageWait(ctx, mcid); err != nil {
-		return err
-	}
+	fmt.Println(mcid)
+	//if _, err := to.MessageWait(ctx, mcid); err != nil {
+	//	return err
+	//}
 
 	return nil
 }

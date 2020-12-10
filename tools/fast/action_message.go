@@ -34,22 +34,3 @@ func (f *Filecoin) MessageSend(ctx context.Context, target address.Address, meth
 
 	return out.Cid, nil
 }
-
-// MessageWait runs the `message wait` command against the filecoin process.
-func (f *Filecoin) MessageWait(ctx context.Context, mcid cid.Cid, options ...ActionOption) (cmd.WaitResult, error) {
-	var out cmd.WaitResult
-
-	args := []string{"venus", "message", "wait"}
-
-	for _, option := range options {
-		args = append(args, option()...)
-	}
-
-	args = append(args, mcid.String())
-
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
-		return cmd.WaitResult{}, err
-	}
-
-	return out, nil
-}

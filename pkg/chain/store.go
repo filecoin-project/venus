@@ -24,6 +24,7 @@ import (
 
 	"github.com/cskr/pubsub"
 	"github.com/filecoin-project/go-state-types/abi"
+	ipfsblock "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -31,7 +32,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipld/go-car"
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/log"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -149,9 +149,8 @@ type Store struct {
 
 	chainIndex *ChainIndex
 
-	notifees []ReorgNotifee
-
-	reorgCh chan reorg
+	reorgCh        chan reorg
+	reorgNotifeeCh chan ReorgNotifee
 }
 
 // NewStore constructs a new default store.
@@ -175,7 +174,7 @@ func NewStore(ds repo.Datastore,
 		genesis:             genesisCid,
 		reporter:            sr,
 		chainIndex:          NewChainIndex(tipsetProvider.GetTipSet),
-		notifees:            []ReorgNotifee{},
+		reorgNotifeeCh:      make(chan ReorgNotifee),
 	}
 	store.circulatingSupplyCalculator = NewCirculatingSupplyCalculator(bsstore, store, forkConfig)
 
@@ -610,6 +609,9 @@ func (store *Store) reorgWorker(ctx context.Context) chan reorg {
 		defer log.Warn("reorgWorker quit")
 		for {
 			select {
+			case n := <-store.reorgNotifeeCh:
+				notifees = append(notifees, n)
+
 			case r := <-out:
 				var toremove map[int]struct{}
 				for i, hcf := range notifees {
@@ -689,7 +691,7 @@ func (store *Store) SubHeadChanges(ctx context.Context) chan []*HeadChange {
 }
 
 func (store *Store) SubscribeHeadChanges(f ReorgNotifee) {
-	store.notifees = append(store.notifees, f)
+	store.reorgNotifeeCh <- f
 }
 
 // ReadOnlyStateStore provides a read-only IPLD store for access to chain state.
@@ -957,4 +959,63 @@ func (store *Store) GetCheckPoint() block.TipSetKey {
 // Stop stops all activities and cleans up.
 func (store *Store) Stop() {
 	store.headEvents.Shutdown()
+}
+
+func (store *Store) ReorgOps(a, b *block.TipSet) ([]*block.TipSet, []*block.TipSet, error) {
+	return ReorgOps(store.GetTipSet, a, b)
+}
+
+func ReorgOps(lts func(block.TipSetKey) (*block.TipSet, error), a, b *block.TipSet) ([]*block.TipSet, []*block.TipSet, error) {
+	left := a
+	right := b
+
+	var leftChain, rightChain []*block.TipSet
+	for !left.Equals(right) {
+		lh, _ := left.Height()
+		rh, _ := right.Height()
+		if lh > rh {
+			leftChain = append(leftChain, left)
+			lKey, _ := left.Parents()
+			par, err := lts(lKey)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			left = par
+		} else {
+			rightChain = append(rightChain, right)
+			rKey, _ := right.Parents()
+			par, err := lts(rKey)
+			if err != nil {
+				log.Infof("failed to fetch right.Parents: %s", err)
+				return nil, nil, err
+			}
+
+			right = par
+		}
+	}
+
+	return leftChain, rightChain, nil
+
+}
+
+type storable interface {
+	ToStorageBlock() (ipfsblock.Block, error)
+}
+
+func PutMessage(bs blockstore.Blockstore, m storable) (cid.Cid, error) {
+	b, err := m.ToStorageBlock()
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	if err := bs.Put(b); err != nil {
+		return cid.Undef, err
+	}
+
+	return b.Cid(), nil
+}
+
+func (store *Store) PutMessage(m storable) (cid.Cid, error) {
+	return PutMessage(store.bsstore, m)
 }

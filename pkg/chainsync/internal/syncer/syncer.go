@@ -488,6 +488,13 @@ func (syncer *Syncer) widen(ctx context.Context, ts *block.TipSet) (*block.TipSe
 // to a chain bsstore.  Iff catchup is false then the syncer will set the head.
 func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, catchup bool) error {
 	logSyncer.Infof("HandleNewTipSet height: %v, catchup: %v", ci.Height, catchup)
+	for {
+		if syncer.staged != nil {
+			break
+		}
+		time.Sleep(time.Second * 2)
+	}
+
 	err := syncer.handleNewTipSet(ctx, ci)
 	if err != nil {
 		return err

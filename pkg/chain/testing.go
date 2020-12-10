@@ -779,8 +779,8 @@ func (f *Builder) StoreTxMeta(ctx context.Context, meta types.TxMeta) (cid.Cid, 
 	return f.mstore.StoreTxMeta(ctx, meta)
 }
 
-func (f *Builder) LoadUnsinedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error) {
-	return f.mstore.LoadUnsinedMessagesFromCids(blsCids)
+func (f *Builder) LoadUnsignedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error) {
+	return f.mstore.LoadUnsignedMessagesFromCids(blsCids)
 }
 
 func (f *Builder) LoadSignedMessagesFromCids(secpCids []cid.Cid) ([]*types.SignedMessage, error) {

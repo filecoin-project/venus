@@ -7,6 +7,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
@@ -19,7 +21,24 @@ type WalletAPI struct { //nolint
 	walletModule *WalletSubmodule
 }
 
-// WalletBalance returns the current balance of the given walletModule address.
+func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.UnsignedMessage) (*types.SignedMessage, error) {
+	mb, err := msg.ToStorageBlock()
+	if err != nil {
+		return nil, xerrors.Errorf("serializing message: %w", err)
+	}
+
+	sig, err := walletAPI.WalletSign(ctx, k, mb.Cid().Bytes())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to sign message: %w", err)
+	}
+
+	return &types.SignedMessage{
+		Message:   *msg,
+		Signature: *sig,
+	}, nil
+}
+
+// WalletBalance returns the current balance of the given wallet address.
 func (walletAPI *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error) {
 	headkey := walletAPI.walletModule.Chain.State.Head()
 	act, err := walletAPI.walletModule.Chain.State.GetActorAt(ctx, headkey, addr)
@@ -30,6 +49,11 @@ func (walletAPI *WalletAPI) WalletBalance(ctx context.Context, addr address.Addr
 	}
 
 	return act.Balance, nil
+}
+
+func (walletAPI *WalletAPI) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
+
+	return walletAPI.wallet.Wallet.HasAddress(addr), nil
 }
 
 // SetWalletDefaultAddress set the specified address as the default in the config.

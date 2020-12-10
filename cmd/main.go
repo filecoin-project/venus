@@ -127,7 +127,6 @@ ACTOR COMMANDS
 MESSAGE COMMANDS
   venus message                - Manage messages
   venus mpool                  - Manage the message pool
-  venus outbox                 - Manage the outbound message queue
 
 TOOL COMMANDS
   venus inspect                - Show info about the venus node
@@ -180,8 +179,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"message": msgCmd,
 	//"miner":            minerCmd,
 	//"mining":           miningCmd,
-	"mpool":    mpoolCmd,
-	"outbox":   outboxCmd,
+	//"mpool":    mpoolCmd,
 	"protocol": protocolCmd,
 	"show":     showCmd,
 	"stats":    statsCmd,

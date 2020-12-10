@@ -36,6 +36,9 @@ type Repo interface {
 	// ChainDatastore is a specific storage solution, only used to store already validated chain data.
 	ChainDatastore() Datastore
 
+	// MetaDatastore is a specific storage solution, only used to store mpool data.
+	MetaDatastore() Datastore
+
 	// SetJsonrpcAPIAddr sets the address of the running jsonrpc API.
 	SetJsonrpcAPIAddr(maddr string) error
 
