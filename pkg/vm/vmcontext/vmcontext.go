@@ -781,6 +781,7 @@ func (vm *VM) flush() (state.Root, error) {
 	if root, err := vm.state.Flush(vm.context); err != nil {
 		return cid.Undef, err
 	} else {
+		vm.store.Flush()
 		return root, nil
 	}
 }
