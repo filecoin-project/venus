@@ -18,6 +18,7 @@ func ConfigureProtocolVersions(network string) (*ProtocolVersionTable, error) {
 		Add("testnetnet", Protocol0, abi.ChainEpoch(0)).
 		Add("mainnet", Protocol0, abi.ChainEpoch(0)).
 		Add("localnet", Protocol0, abi.ChainEpoch(0)).
+		Add("calibrationnet", Protocol0, abi.ChainEpoch(0)).
 		Add(TEST, Protocol0, abi.ChainEpoch(0)).
 		Build()
 }

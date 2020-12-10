@@ -828,16 +828,19 @@ func (c *Expected) MinerEligibleToMine(ctx context.Context, addr address.Address
 	if claim, found, err := pstate.MinerPower(addr); err != nil {
 		return false, err
 	} else if !found {
-		return false, err
+		return false, nil
 	} else if claim.QualityAdjPower.LessThanEqual(big.Zero()) {
-		return false, err
+		logExpect.Infof("miner address:%v", addr.String())
+		logExpect.Warnf("miner quality adjust power:%v is less than zero", claim.QualityAdjPower)
+		return false, nil
 	}
 
 	// No fee debt.
 	if debt, err := mstate.FeeDebt(); err != nil {
 		return false, err
 	} else if !debt.IsZero() {
-		return false, err
+		logExpect.Warnf("the debt:%v is not zero", debt)
+		return false, nil
 	}
 
 	// No active consensus faults.

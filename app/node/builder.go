@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"time"
 
 	"github.com/filecoin-project/venus/app/submodule/blockservice"
@@ -141,6 +142,10 @@ func SetNetParams(params *config.NetworkParamsConfig) {
 
 	if params.MinVerifiedDealSize > 0 {
 		policy.SetMinVerifiedDealSize(abi.NewStoragePower(params.MinVerifiedDealSize))
+	}
+
+	if params.CurrentNetwork != byte(0) {
+		constants.SetAddressNetwork(params.CurrentNetwork)
 	}
 }
 
