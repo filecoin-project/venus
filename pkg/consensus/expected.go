@@ -323,14 +323,15 @@ func (c *Expected) validateBlock(ctx context.Context,
 	}
 
 	// confirm block state root matches parent state root
-	parentStateRoot, err := c.chainState.GetTipSetStateRoot(parent.Key())
+	rootAfterCalc, err := c.chainState.GetTipSetStateRoot(parent.Key())
 	if err != nil {
 		return xerrors.Errorf("get parent tipset state failed %s", err)
 	}
-	if !parentStateRoot.Equals(blk.ParentStateRoot.Cid) {
+	if !rootAfterCalc.Equals(blk.ParentStateRoot.Cid) {
 		return ErrStateRootMismatch
 	}
 
+	baseTsRoot := parent.At(0).ParentStateRoot.Cid
 	// confirm block receipts match parent receipts
 	if !parentReceiptRoot.Equals(blk.ParentMessageReceipts.Cid) {
 		return ErrReceiptRootMismatch
@@ -350,14 +351,14 @@ func (c *Expected) validateBlock(ctx context.Context,
 	}
 
 	msgsCheck := async.Err(func() error {
-		if err := c.checkBlockMessages(ctx, sigValidator, blk, parent, parentStateRoot); err != nil {
+		if err := c.checkBlockMessages(ctx, sigValidator, blk, parent); err != nil {
 			return xerrors.Errorf("block had invalid messages: %v", err)
 		}
 		return nil
 	})
 
 	minerCheck := async.Err(func() error {
-		if err := c.minerIsValid(ctx, blk.Miner, parentStateRoot); err != nil {
+		if err := c.minerIsValid(ctx, blk.Miner, baseTsRoot); err != nil {
 			return xerrors.Errorf("minerIsValid failed: %v", err)
 		}
 		return nil
@@ -529,7 +530,7 @@ func blockSanityChecks(b *block.Block) error {
 }
 
 // TODO: We should extract this somewhere else and make the message pool and miner use the same logic
-func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstate.SignatureValidator, blk *block.Block, baseTs *block.TipSet, stateRoot cid.Cid) error {
+func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstate.SignatureValidator, blk *block.Block, baseTs *block.TipSet) error {
 	blksecpMsgs, blkblsMsgs, err := c.messageStore.LoadMetaMessages(ctx, blk.Messages.Cid)
 	if err != nil {
 		return errors.Wrapf(err, "failed loading message list %s for block %s", blk.Messages, blk.Cid())
@@ -550,7 +551,7 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 
 	nonces := make(map[address.Address]uint64)
 	vms := vm.NewStorage(c.bstore)
-	st, err := state.LoadState(ctx, vms, stateRoot)
+	st, err := state.LoadState(ctx, vms, blk.ParentStateRoot.Cid)
 	if err != nil {
 		return xerrors.Errorf("loading state: %v", err)
 	}
