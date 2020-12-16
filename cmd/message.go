@@ -6,9 +6,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/chain"
 	"reflect"
 	"strconv"
+
+	"github.com/filecoin-project/venus/pkg/chain"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -27,7 +28,7 @@ var msgCmd = &cmds.Command{
 		Tagline: "Send and monitor messages",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"send":       msgSendCmd,
+		"send": msgSendCmd,
 	},
 }
 

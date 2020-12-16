@@ -7,8 +7,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 )
 
-
-
 // WrapHeadChangeCoalescer wraps a ReorgNotifee with a head change coalescer.
 // minDelay is the minimum coalesce delay; when a head change is first received, the coalescer will
 //  wait for that long to coalesce more head changes.

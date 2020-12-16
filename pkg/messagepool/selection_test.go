@@ -59,7 +59,7 @@ func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, g
 	}
 	return &types.SignedMessage{
 		Message:   *msg,
-		Signature: sig,
+		Signature: *sig,
 	}
 }
 
@@ -1417,7 +1417,7 @@ readLoop:
 			t.Fatal(err)
 		}
 
-		m.Signature = sig
+		m.Signature = *sig
 	}
 
 	mp, tma := makeTestMpool()

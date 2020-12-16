@@ -253,7 +253,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Wallet")
 	}
 
-	nd.Mpool, err = mpool.NewMpoolSubmodule((*builder)(b), nd.network, nd.chain, nd.syncer)
+	nd.Mpool, err = mpool.NewMpoolSubmodule((*builder)(b), nd.network, nd.chain, nd.syncer, nd.Blockstore, nd.Wallet)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Mpool")
 	}
@@ -277,6 +277,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.StorageNetworking,
 		nd.ProofVerification,
 		nd.mining,
+		nd.Mpool,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "add service failed ")

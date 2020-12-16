@@ -20,6 +20,7 @@ import (
 
 	chainApiTypes "github.com/filecoin-project/venus/app/submodule/chain"
 	mineApiTypes "github.com/filecoin-project/venus/app/submodule/mining"
+	"github.com/filecoin-project/venus/app/submodule/mpool"
 	syncApiTypes "github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -63,6 +64,9 @@ type FullNode struct {
 	GasEstimateMessageGas   func(context.Context, *types.UnsignedMessage, *types.MessageSendSpec, block.TipSetKey) (*types.UnsignedMessage, error)
 	GasEstimateFeeCap       func(context.Context, *types.UnsignedMessage, int64, block.TipSetKey) (big.Int, error)
 	GasEstimateGasPremium   func(context.Context, uint64, address.Address, int64, block.TipSetKey) (big.Int, error)
+	StateSearchMsg          func(context.Context, cid.Cid) (*mpool.MsgLookup, error)
+	StateWaitMsg            func(context.Context, cid.Cid, abi.ChainEpoch) (*mpool.MsgLookup, error)
+	StateGetReceipt         func(context.Context, cid.Cid, block.TipSetKey) (*types.MessageReceipt, error)
 
 	SyncerStatus             func() status.Status
 	ChainTipSetWeight        func(context.Context, block.TipSetKey) (big.Int, error)
@@ -222,6 +226,9 @@ type MessagePoolAPI struct {
 	GasEstimateMessageGas   func(context.Context, *types.UnsignedMessage, *types.MessageSendSpec, block.TipSetKey) (*types.UnsignedMessage, error)
 	GasEstimateFeeCap       func(context.Context, *types.UnsignedMessage, int64, block.TipSetKey) (big.Int, error)
 	GasEstimateGasPremium   func(context.Context, uint64, address.Address, int64, block.TipSetKey) (big.Int, error)
+	StateSearchMsg          func(context.Context, cid.Cid) (*mpool.MsgLookup, error)
+	StateWaitMsg            func(context.Context, cid.Cid, abi.ChainEpoch) (*mpool.MsgLookup, error)
+	StateGetReceipt         func(context.Context, cid.Cid, block.TipSetKey) (*types.MessageReceipt, error)
 }
 
 type ChainInfoAPI struct {

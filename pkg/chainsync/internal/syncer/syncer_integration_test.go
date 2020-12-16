@@ -35,7 +35,7 @@ func TestLoadFork(t *testing.T) {
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the bsstore, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{
-		MessageStore: *builder.Mstore(),
+		MessageStore: builder.Mstore(),
 	}
 	sel := &chain.FakeChainSelector{}
 	s, err := syncer.NewSyncer(eval, eval, sel, builder.Store(), builder.Mstore(), builder.BlockStore(), builder, builder, status.NewReporter(), clock.NewFake(time.Unix(1234567890, 0)), &noopFaultDetector{}, nil)

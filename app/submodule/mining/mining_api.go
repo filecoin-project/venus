@@ -24,7 +24,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
-type MiningAPI struct {
+type MiningAPI struct { //nolint
 	Ming *MiningModule
 }
 

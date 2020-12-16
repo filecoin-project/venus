@@ -74,7 +74,7 @@ func mkMessage(from, to address.Address, nonce uint64, w *wallet.Wallet) *types.
 	}
 	return &types.SignedMessage{
 		Message:   *msg,
-		Signature: sig,
+		Signature: *sig,
 	}
 }
 

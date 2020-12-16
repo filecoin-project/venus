@@ -594,9 +594,15 @@ func (ct *ClockTimestamper) Stamp(height abi.ChainEpoch) uint64 {
 // FakeStateEvaluator is a syncStateEvaluator that delegates to the FakeStateBuilder.
 type FakeStateEvaluator struct {
 	FakeStateBuilder
+	MessageStore *MessageStore
 }
 
-func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *block.TipSet, blockmsg []block.BlockMessagesInfo, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
+func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
+	blockmsg, err := e.MessageStore.LoadTipSetMessage(ctx, ts)
+	if err != nil {
+		return cid.Undef, nil, err
+	}
+
 	return e.ComputeState(parentStateRoot, blockmsg)
 }
 

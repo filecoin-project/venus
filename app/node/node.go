@@ -393,8 +393,8 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		SyncerAPI:            node.Syncer().API(),
 		WalletAPI:            node.Wallet.API(),
 		MingingAPI:           node.mining.API(),
+		MessagePoolAPI:       node.Mpool.API(),
 	}
-	env.MessagePoolAPI = node.Mpool.API(env.WalletAPI, env.ChainAPI)
 
 	return &env
 }
