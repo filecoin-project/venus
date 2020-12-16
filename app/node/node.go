@@ -130,7 +130,10 @@ func (node *Node) Start(ctx context.Context) error {
 		}
 
 		// Subscribe to the message pubsub topic to learn about messages to mine into blocks.
-
+		node.Mpool.MessageSub, err = node.pubsubscribe(syncCtx, node.Mpool.MessageTopic, node.processMessage)
+		if err != nil {
+			return err
+		}
 
 		if err := node.syncer.Start(syncCtx, node); err != nil {
 			return err
@@ -160,8 +163,11 @@ func (node *Node) cancelSubscriptions() {
 		node.syncer.BlockSub = nil
 	}
 
-	// stop message sub ???
-
+	// stop message sub
+	if node.Mpool.MessageSub != nil {
+		node.Mpool.MessageSub.Cancel()
+		node.Mpool.MessageSub = nil
+	}
 }
 
 // Stop initiates the shutdown of the node.

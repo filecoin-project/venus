@@ -32,7 +32,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
 	github.com/filecoin-project/go-state-types v0.0.0-20201102161440-c8033295a1fc
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/lotus v1.2.2 // indirect
+	github.com/filecoin-project/lotus v1.2.2
 	github.com/filecoin-project/specs-actors v0.9.13
 	github.com/filecoin-project/specs-actors/v2 v2.3.2
 	github.com/filecoin-project/test-vectors/schema v0.0.5
@@ -111,7 +111,6 @@ require (
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
-	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542 // indirect
 	go.opencensus.io v0.22.5
 	go.uber.org/zap v1.16.0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
