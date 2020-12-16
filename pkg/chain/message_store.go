@@ -3,16 +3,10 @@ package chain
 import (
 	"context"
 
-	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt" // todo block headers use adt0
-	"github.com/prometheus/common/log"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-
-	"github.com/filecoin-project/venus/pkg/config"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -22,17 +16,17 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	// named msgarray here to make it clear that these are the types used by
-	// messages, regardless of specs-actors version.
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
-
-	bstore "github.com/filecoin-project/venus/pkg/fork/blockstore"
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt" // todo block headers use adt0
 
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/cborutil"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/encoding"
+	// named msgarray here to make it clear that these are the types used by
+	// messages, regardless of specs-actors version.
+	bstore "github.com/filecoin-project/venus/pkg/fork/blockstore"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -634,9 +628,9 @@ func GetReceiptRoot(receipts []types.MessageReceipt) (cid.Cid, error) {
 
 func GetChainMsgRoot(ctx context.Context, bs blockstore.Blockstore, messages []types.ChainMsg) (cid.Cid, error) {
 	tmpbs := bstore.NewTemporary()
-	tmpstore := blockadt.WrapStore(ctx, cbor.NewCborStore(tmpbs))
+	tmpstore := adt0.WrapStore(ctx, cbor.NewCborStore(tmpbs))
 
-	arr := blockadt.MakeEmptyArray(tmpstore)
+	arr := adt0.MakeEmptyArray(tmpstore)
 
 	for i, m := range messages {
 		b, err := m.ToStorageBlock()

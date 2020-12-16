@@ -29,7 +29,7 @@ func (f Func) Method() string {
 }
 
 func main() {
-	pkgDir := "/Users/haoziyan/Desktop/code/github.com/simlecode/venus/app/submodule"
+	pkgDir := "app/submodule"
 	typeMap := map[string]string{
 		"Partition":      "chainApiTypes.Partition",
 		"Deadline":       "chainApiTypes.Deadline",
@@ -111,38 +111,37 @@ func generateCode(codelines map[string][]Func, fname string) error {
 	packages := `package client
 
 import (
-		"github.com/libp2p/go-libp2p-core/metrics"
-		"github.com/filecoin-project/venus/pkg/chainsync/status"
-		ipld "github.com/ipfs/go-ipld-format"
+		"context"
+		"io"
 		"time"
-		messageApiTypes "github.com/filecoin-project/venus/app/submodule/messaging"
-		syncApiTypes "github.com/filecoin-project/venus/app/submodule/syncer"
-		mineApiTypes "github.com/filecoin-project/venus/app/submodule/mining"
-		chainApiTypes "github.com/filecoin-project/venus/app/submodule/chain"
+
 		"github.com/filecoin-project/go-address"
 		"github.com/filecoin-project/go-bitfield"
 		"github.com/filecoin-project/go-state-types/abi"
-		fbig "github.com/filecoin-project/go-state-types/big"
+		"github.com/filecoin-project/go-state-types/big"
 		acrypto "github.com/filecoin-project/go-state-types/crypto"
 		"github.com/filecoin-project/go-state-types/dline"
 		"github.com/filecoin-project/go-state-types/network"
-		"github.com/filecoin-project/venus/app/submodule/messaging/msg"
+		"github.com/ipfs/go-cid"
+		ipld "github.com/ipfs/go-ipld-format"
+		"github.com/libp2p/go-libp2p-core/metrics"
+		"github.com/libp2p/go-libp2p-core/peer"
+		ma "github.com/multiformats/go-multiaddr"
+
+		chainApiTypes "github.com/filecoin-project/venus/app/submodule/chain"
+		mineApiTypes "github.com/filecoin-project/venus/app/submodule/mining"
+		"github.com/filecoin-project/venus/app/submodule/mpool"
+		syncApiTypes "github.com/filecoin-project/venus/app/submodule/syncer"
 		"github.com/filecoin-project/venus/pkg/beacon"
 		"github.com/filecoin-project/venus/pkg/block"
 		"github.com/filecoin-project/venus/pkg/chain"
+		"github.com/filecoin-project/venus/pkg/chainsync/status"
 		"github.com/filecoin-project/venus/pkg/crypto"
-		"github.com/filecoin-project/venus/pkg/message"
 		"github.com/filecoin-project/venus/pkg/net"
 		"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 		"github.com/filecoin-project/venus/pkg/types"
 		"github.com/filecoin-project/venus/pkg/vm"
 		"github.com/filecoin-project/venus/pkg/wallet"
-		"github.com/ipfs/go-cid"
-		"github.com/libp2p/go-libp2p-core/peer"
-		ma "github.com/multiformats/go-multiaddr"
-		"context"
-		"io"
-		"github.com/filecoin-project/go-state-types/big"
 )
 `
 	builder := strings.Builder{}

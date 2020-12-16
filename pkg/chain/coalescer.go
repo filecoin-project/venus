@@ -5,10 +5,9 @@ import (
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	logging "github.com/ipfs/go-log/v2"
 )
 
-var log = logging.Logger("chainstore")
+
 
 // WrapHeadChangeCoalescer wraps a ReorgNotifee with a head change coalescer.
 // minDelay is the minimum coalesce delay; when a head change is first received, the coalescer will

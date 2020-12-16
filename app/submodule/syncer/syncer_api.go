@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	fbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chainsync/status"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -20,10 +20,10 @@ func (syncerAPI *SyncerAPI) SyncerStatus() status.Status {
 	return syncerAPI.syncer.SyncProvider.Status()
 }
 
-func (syncerAPI *SyncerAPI) ChainTipSetWeight(ctx context.Context, tsk block.TipSetKey) (fbig.Int, error) {
+func (syncerAPI *SyncerAPI) ChainTipSetWeight(ctx context.Context, tsk block.TipSetKey) (big.Int, error) {
 	ts, err := syncerAPI.syncer.ChainModule.ChainReader.GetTipSet(tsk)
 	if err != nil {
-		return fbig.Int{}, err
+		return big.Int{}, err
 	}
 	return syncerAPI.syncer.ChainSelector.Weight(ctx, ts)
 }
@@ -47,7 +47,7 @@ func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *block.Bloc
 	}
 
 	// TODO: should we have some sort of fast path to adding a local block?
-	bmsgs, err := chainModule.MessageStore.LoadUnsinedMessagesFromCids(blk.BlsMessages)
+	bmsgs, err := chainModule.MessageStore.LoadUnsignedMessagesFromCids(blk.BlsMessages)
 	if err != nil {
 		return xerrors.Errorf("failed to load bls messages: %v", err)
 	}

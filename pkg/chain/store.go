@@ -7,24 +7,10 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
-	_init "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/multisig"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/verifreg"
-	"github.com/filecoin-project/venus/pkg/types"
-
 	"github.com/cskr/pubsub"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	ipfsblock "github.com/ipfs/go-block-format"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -37,10 +23,22 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/cborutil"
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin"
+	_init "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/multisig"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/verifreg"
+	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
@@ -55,7 +53,7 @@ const (
 // GenesisKey is the key at which the genesis Cid is written in the datastore.
 var GenesisKey = datastore.NewKey("/consensus/genesisCid")
 
-var logStore = logging.Logger("chain.store")
+var log = logging.Logger("chain.store")
 
 // HeadKey is the key at which the head tipset cid's are written in the datastore.
 var HeadKey = datastore.NewKey("/chain/heaviestTipSet")
@@ -184,7 +182,7 @@ func NewStore(ds repo.Datastore,
 	} else {
 		err = encoding.Decode(val, &store.checkPoint)
 	}
-	logStore.Infof("check point value: %v, error: %v", store.checkPoint, err)
+	log.Infof("check point value: %v, error: %v", store.checkPoint, err)
 
 	store.reorgCh = store.reorgWorker(context.TODO())
 	return store
@@ -233,7 +231,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	}
 
 	startHeight := headTs.At(0).Height
-	logStore.Infof("start loading chain at tipset: %s, height: %d", headTsKey.String(), startHeight)
+	log.Infof("start loading chain at tipset: %s, height: %d", headTsKey.String(), startHeight)
 	// Ensure we only produce 10 log messages regardless of the chain height.
 	logStatusEvery := startHeight / 10
 
@@ -253,7 +251,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 			return err
 		}
 		if logStatusEvery != 0 && (height%logStatusEvery) == 0 {
-			logStore.Infof("load tipset: %s, height: %v", startPoint.String(), height)
+			log.Infof("load tipset: %s, height: %v", startPoint.String(), height)
 		}
 
 		stateRoot, receipts, err := store.loadStateRootAndReceipts(startPoint)
@@ -275,7 +273,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		}
 	}
 
-	logStore.Infof("finished loading %d tipsets from %s", startHeight, headTs.String())
+	log.Infof("finished loading %d tipsets from %s", startHeight, headTs.String())
 
 	//todo just for test should remove if ok, 新创建节点会出问题?
 	/*	if checkPointTs == nil || headTs.EnsureHeight() > checkPointTs.EnsureHeight() {
@@ -518,12 +516,12 @@ func (store *Store) HasTipSetAndStatesWithParentsAndHeight(parentKey block.TipSe
 
 // SetHead sets the passed in tipset as the new head of this chain.
 func (store *Store) SetHead(ctx context.Context, newTs *block.TipSet) error {
-	logStore.Infof("SetHead %s", newTs.String())
+	log.Infof("SetHead %s", newTs.String())
 
 	// Add logging to debug sporadic test failure.
 	if !newTs.Defined() {
-		logStore.Errorf("publishing empty tipset")
-		logStore.Error(debug.Stack())
+		log.Errorf("publishing empty tipset")
+		log.Error(debug.Stack())
 	}
 
 	dropped, added, update, err := func() ([]*block.TipSet, []*block.TipSet, bool, error) {
@@ -701,7 +699,7 @@ func (store *Store) ReadOnlyStateStore() cborutil.ReadOnlyIpldStore {
 
 // writeHead writes the given cid set as head to disk.
 func (store *Store) writeHead(ctx context.Context, cids block.TipSetKey) error {
-	logStore.Debugf("WriteHead %s", cids.String())
+	log.Debugf("WriteHead %s", cids.String())
 	val, err := encoding.Encode(cids)
 	if err != nil {
 		return err
@@ -830,7 +828,7 @@ func (store *Store) SetCheckPoint(checkPoint block.TipSetKey) {
 
 // WriteCheckPoint writes the given cids to disk.
 func (store *Store) WriteCheckPoint(ctx context.Context, cids block.TipSetKey) error {
-	logStore.Infof("WriteCheckPoint %v", cids)
+	log.Infof("WriteCheckPoint %v", cids)
 	val, err := encoding.Encode(cids)
 	if err != nil {
 		return err
@@ -997,23 +995,6 @@ func ReorgOps(lts func(block.TipSetKey) (*block.TipSet, error), a, b *block.TipS
 
 	return leftChain, rightChain, nil
 
-}
-
-type storable interface {
-	ToStorageBlock() (ipfsblock.Block, error)
-}
-
-func PutMessage(bs blockstore.Blockstore, m storable) (cid.Cid, error) {
-	b, err := m.ToStorageBlock()
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	if err := bs.Put(b); err != nil {
-		return cid.Undef, err
-	}
-
-	return b.Cid(), nil
 }
 
 func (store *Store) PutMessage(m storable) (cid.Cid, error) {

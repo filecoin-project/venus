@@ -12,30 +12,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
-	xerrors "github.com/pkg/errors"
 )
 
 var ErrNoDefaultFromAddress = errors.New("unable to determine a default walletModule address")
 
 type WalletAPI struct { //nolint
 	walletModule *WalletSubmodule
-}
-
-func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.UnsignedMessage) (*types.SignedMessage, error) {
-	mb, err := msg.ToStorageBlock()
-	if err != nil {
-		return nil, xerrors.Errorf("serializing message: %w", err)
-	}
-
-	sig, err := walletAPI.WalletSign(ctx, k, mb.Cid().Bytes())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to sign message: %w", err)
-	}
-
-	return &types.SignedMessage{
-		Message:   *msg,
-		Signature: *sig,
-	}, nil
 }
 
 // WalletBalance returns the current balance of the given wallet address.
@@ -53,7 +35,7 @@ func (walletAPI *WalletAPI) WalletBalance(ctx context.Context, addr address.Addr
 
 func (walletAPI *WalletAPI) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
 
-	return walletAPI.wallet.Wallet.HasAddress(addr), nil
+	return walletAPI.walletModule.Wallet.HasAddress(addr), nil
 }
 
 // SetWalletDefaultAddress set the specified address as the default in the config.
@@ -131,4 +113,21 @@ func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, m
 	return walletAPI.walletModule.Wallet.WalletSign(ctx, keyAddr, msg, wallet.MsgMeta{
 		Type: wallet.MTUnknown,
 	})
+}
+
+func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.UnsignedMessage) (*types.SignedMessage, error) {
+	mb, err := msg.ToStorageBlock()
+	if err != nil {
+		return nil, xerrors.Errorf("serializing message: %w", err)
+	}
+
+	sig, err := walletAPI.WalletSign(ctx, k, mb.Cid().Bytes(), wallet.MsgMeta{})
+	if err != nil {
+		return nil, xerrors.Errorf("failed to sign message: %w", err)
+	}
+
+	return &types.SignedMessage{
+		Message:   *msg,
+		Signature: *sig,
+	}, nil
 }

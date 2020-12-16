@@ -10,12 +10,13 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	tbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/types"
+	pwallet "github.com/filecoin-project/venus/pkg/wallet"
 )
 
 type MessagePoolAPI struct {
@@ -41,7 +42,7 @@ func (a *MessagePoolAPI) MpoolSetConfig(ctx context.Context, cfg *messagepool.Mp
 }
 
 func (a *MessagePoolAPI) MpoolSelect(ctx context.Context, tsk block.TipSetKey, ticketQuality float64) ([]*types.SignedMessage, error) {
-	ts, err := a.chainAPI.ChainTipSet(tsk)
+	ts, err := a.chainAPI.ChainGetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -50,7 +51,7 @@ func (a *MessagePoolAPI) MpoolSelect(ctx context.Context, tsk block.TipSetKey, t
 }
 
 func (a *MessagePoolAPI) MpoolPending(ctx context.Context, tsk block.TipSetKey) ([]*types.SignedMessage, error) {
-	ts, err := a.chainAPI.ChainTipSet(tsk)
+	ts, err := a.chainAPI.ChainGetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -109,7 +110,7 @@ func (a *MessagePoolAPI) MpoolPending(ctx context.Context, tsk block.TipSetKey) 
 			return pending, nil
 		}
 
-		ts, err = a.chainAPI.ChainTipSet(ts.EnsureParents())
+		ts, err = a.chainAPI.ChainGetTipSet(ts.EnsureParents())
 		if err != nil {
 			return nil, xerrors.Errorf("loading parent tipset: %w", err)
 		}
@@ -195,7 +196,7 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Unsign
 			return nil, xerrors.Errorf("serializing message: %w", err)
 		}
 
-		sig, err := a.walletAPI.WalletSign(ctx, msg.From, mb.Cid().Bytes())
+		sig, err := a.walletAPI.WalletSign(ctx, msg.From, mb.Cid().Bytes(), pwallet.MsgMeta{})
 		if err != nil {
 			return nil, xerrors.Errorf("failed to sign message: %w", err)
 		}
@@ -287,10 +288,10 @@ func (a *MessagePoolAPI) GasEstimateMessageGas(ctx context.Context, msg *types.U
 	return a.mp.MPool.GasEstimateMessageGas(ctx, msg, spec, tsk)
 }
 
-func (a *MessagePoolAPI) GasEstimateFeeCap(ctx context.Context, msg *types.UnsignedMessage, maxqueueblks int64, tsk block.TipSetKey) (tbig.Int, error) {
+func (a *MessagePoolAPI) GasEstimateFeeCap(ctx context.Context, msg *types.UnsignedMessage, maxqueueblks int64, tsk block.TipSetKey) (big.Int, error) {
 	return a.mp.MPool.GasEstimateFeeCap(ctx, msg, maxqueueblks, tsk)
 }
 
-func (a *MessagePoolAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk block.TipSetKey) (tbig.Int, error) {
+func (a *MessagePoolAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk block.TipSetKey) (big.Int, error) {
 	return a.mp.MPool.GasEstimateGasPremium(ctx, nblocksincl, sender, gaslimit, tsk)
 }

@@ -10,14 +10,26 @@ import (
 	"runtime"
 	"syscall"
 
+	bserv "github.com/ipfs/go-blockservice"
+	cmds "github.com/ipfs/go-ipfs-cmds"
+	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p-core/host"
+	ma "github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr-net" //nolint
+	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	fbig "github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/venus/app/submodule/blockservice"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	configModule "github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/discovery"
+	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
 	network2 "github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/proofverification"
@@ -32,15 +44,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/net/pubsub"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/version"
-	bserv "github.com/ipfs/go-blockservice"
-	cmds "github.com/ipfs/go-ipfs-cmds"
-	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/host"
-	ma "github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net" //nolint
-	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("node") // nolint: deadcode

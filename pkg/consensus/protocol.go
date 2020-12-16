@@ -36,8 +36,6 @@ type Protocol interface {
 	// BlockTime returns the block time used by the consensus protocol.
 	BlockTime() time.Duration
 
-	// CallWithGas
-
 	Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*vm.Ret, error)
 
 	CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *block.TipSet) (*vm.Ret, error)

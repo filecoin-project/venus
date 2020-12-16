@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/submodule/mining"
 
 	"github.com/filecoin-project/venus/app/submodule/blockservice"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
@@ -31,6 +32,7 @@ type Env struct {
 	StorageNetworkingAPI *storagenetworking.StorageNetworkingAPI
 	SyncerAPI            *syncer.SyncerAPI
 	WalletAPI            *wallet.WalletAPI
+	MingingAPI           *mining.MiningAPI
 	MessagePoolAPI       *mpool.MessagePoolAPI
 }
 

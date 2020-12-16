@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	config2 "github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/discovery"
+	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/proofverification"

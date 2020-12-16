@@ -110,6 +110,15 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetTipSetByHeight(ctx context.Context, he
 	return chainInfoAPI.chain.ChainReader.GetTipSetByHeight(ctx, ts, height, true)
 }
 
+func (chainInfoAPI *ChainInfoAPI) GetActor(ctx context.Context, addr address.Address) (*types.Actor, error) {
+	head, err := chainInfoAPI.ChainHead(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return chainInfoAPI.chain.State.GetActorAt(ctx, head.Key(), addr)
+}
+
 // ChainGetBlock gets a block by CID
 func (chainInfoAPI *ChainInfoAPI) ChainGetBlock(ctx context.Context, id cid.Cid) (*block.Block, error) {
 	return chainInfoAPI.chain.State.GetBlock(ctx, id)
