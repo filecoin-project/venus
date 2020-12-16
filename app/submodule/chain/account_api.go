@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/block"
 	xerrors "github.com/pkg/errors"
@@ -18,7 +19,7 @@ func NewAccountAPI(chain *ChainSubmodule) AccountAPI {
 func (accountAPI *AccountAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk block.TipSetKey) (address.Address, error) {
 	view, err := accountAPI.chain.State.StateView(tsk)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return address.Undef, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
 
 	return view.ResolveToKeyAddr(ctx, addr)

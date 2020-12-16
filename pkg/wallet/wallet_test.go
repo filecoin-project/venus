@@ -2,8 +2,9 @@ package wallet_test
 
 import (
 	"bytes"
-	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
+
+	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-datastore"
@@ -93,13 +94,13 @@ func TestWalletBLSKeys(t *testing.T) {
 	})
 
 	t.Run("valid signatures verify", func(t *testing.T) {
-		err := crypto.ValidateSignature(data, addr, sig)
+		err := crypto.ValidateSignature(data, addr, *sig)
 		assert.NoError(t, err)
 	})
 
 	t.Run("invalid signatures do not verify", func(t *testing.T) {
 		notTheData := []byte("not the data")
-		err := crypto.ValidateSignature(notTheData, addr, sig)
+		err := crypto.ValidateSignature(notTheData, addr, *sig)
 		assert.Error(t, err)
 
 		notTheSig := crypto.Signature{
@@ -145,13 +146,13 @@ func TestSimpleSignAndVerify(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Log("verify signed content")
-	err = crypto.ValidateSignature(dataA, addr, sig)
+	err = crypto.ValidateSignature(dataA, addr, *sig)
 	assert.NoError(t, err)
 
 	// data that is unsigned
 	dataB := []byte("I AM UNSIGNED DATA!")
 	t.Log("verify fails for unsigned content")
-	err = crypto.ValidateSignature(dataB, addr, sig)
+	err = crypto.ValidateSignature(dataB, addr, *sig)
 	assert.Error(t, err)
 }
 

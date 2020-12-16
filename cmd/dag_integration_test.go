@@ -25,7 +25,7 @@ func TestDagDaemon(t *testing.T) {
 		n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
-		head, err := n.Chain().API().ChainHead()
+		head, err := n.Chain().API().ChainHead(context.Background())
 		require.NoError(t, err)
 		hb := head.Key().Iter().Value()
 		// get an IPLD node from the DAG by its CID

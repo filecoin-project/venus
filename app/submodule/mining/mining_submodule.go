@@ -1,4 +1,4 @@
-package minging
+package mining
 
 import (
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
@@ -26,4 +26,24 @@ type MiningModule struct {
 
 func (miningModule *MiningModule) API() *MiningAPI {
 	return &MiningAPI{Ming: miningModule}
+}
+
+func NewMiningModule(
+	conf miningConfig,
+	chainModule *chain2.ChainSubmodule,
+	blockStore *blockstore.BlockstoreSubmodule,
+	networkModule *network.NetworkSubmodule,
+	syncModule *syncer.SyncerSubmodule,
+	wallet wallet.WalletSubmodule,
+	proofVerification proofverification.ProofVerificationSubmodule,
+) *MiningModule {
+	return &MiningModule{
+		Config:            conf,
+		ChainModule:       chainModule,
+		BlockStore:        blockStore,
+		NetworkModule:     networkModule,
+		SyncModule:        syncModule,
+		Wallet:            wallet,
+		ProofVerification: proofVerification,
+	}
 }

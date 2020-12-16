@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/block"
@@ -21,7 +22,7 @@ func NewActorAPI(chain *ChainSubmodule) ActorAPI {
 func (actorAPI *ActorAPI) StateGetActor(ctx context.Context, actor address.Address, tsk block.TipSetKey) (*types.Actor, error) {
 	view, err := actorAPI.chain.State.StateView(tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
 	return view.LoadActor(ctx, actor)
 }

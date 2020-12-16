@@ -1,6 +1,6 @@
 package chain
 
-type ChainAPI struct {
+type ChainAPI struct { // nolint: golint
 	AccountAPI
 	ActorAPI
 	BeaconAPI

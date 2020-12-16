@@ -2,8 +2,9 @@ package conformance
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/vm/gas"
 	gobig "math/big"
+
+	"github.com/filecoin-project/venus/pkg/vm/gas"
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
@@ -109,9 +110,9 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 	//chain fork
 	messageStore := chain.NewMessageStore(bs)
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, bs, register.DefaultActors, nil)
-	faultChecker := slashing.NewFaultChecker(chainState)
-	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
 	chainFork, err := fork.NewChainFork(chainState, ipldStore, bs, mainNetParams.Network.ForkUpgradeParam)
+	faultChecker := slashing.NewFaultChecker(chainState, chainFork)
+	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
 	if err != nil {
 		return nil, err
 	}
@@ -271,9 +272,9 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 	//chain fork
 	messageStore := chain.NewMessageStore(bs)
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, bs, coderLoader, nil)
-	faultChecker := slashing.NewFaultChecker(chainState)
-	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
 	chainFork, err := fork.NewChainFork(chainState, ipldStore, bs, mainNetParams.Network.ForkUpgradeParam)
+	faultChecker := slashing.NewFaultChecker(chainState, chainFork)
+	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
 	if err != nil {
 		return nil, cid.Undef, err
 	}

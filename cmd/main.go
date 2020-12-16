@@ -305,7 +305,6 @@ func requiresDaemon(req *cmds.Request) bool {
 var feecapOption = cmds.StringOption("gas-feecap", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
 var premiumOption = cmds.StringOption("gas-premium", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
 var limitOption = cmds.Int64Option("gas-limit", "Maximum GasUnits this message is allowed to consume")
-var previewOption = cmds.BoolOption("preview", "Preview the Gas cost of this command without actually executing it")
 
 func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.AttoFIL, types.Unit, error) {
 	feecapOption := req.Options["gas-feecap"]

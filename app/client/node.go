@@ -2,13 +2,14 @@ package client
 
 import (
 	"context"
+	"io/ioutil"
+	"net/http"
+	"path"
+
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus/app/paths"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
-	"io/ioutil"
-	"net/http"
-	"path"
 )
 
 func getVenusClientInfo() (string, http.Header, error) {

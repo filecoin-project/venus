@@ -3,6 +3,8 @@ package wallet
 import (
 	"context"
 	"errors"
+	"strings"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/crypto"
@@ -21,7 +23,7 @@ type WalletAPI struct { //nolint
 func (walletAPI *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error) {
 	headkey := walletAPI.walletModule.Chain.State.Head()
 	act, err := walletAPI.walletModule.Chain.State.GetActorAt(ctx, headkey, addr)
-	if err == types.ErrActorNotFound {
+	if err != nil && strings.Contains(err.Error(), types.ErrActorNotFound.Error()) {
 		return abi.NewTokenAmount(0), nil
 	} else if err != nil {
 		return abi.NewTokenAmount(0), err
@@ -78,8 +80,12 @@ func (walletAPI *WalletAPI) WalletNewAddress(protocol address.Protocol) (address
 }
 
 // WalletImport adds a given set of KeyInfos to the walletModule
-func (walletAPI *WalletAPI) WalletImport(kinfos []*crypto.KeyInfo) ([]address.Address, error) {
-	return walletAPI.walletModule.Wallet.Import(kinfos...)
+func (walletAPI *WalletAPI) WalletImport(key *crypto.KeyInfo) (address.Address, error) {
+	addrs, err := walletAPI.walletModule.Wallet.Import(key)
+	if err != nil {
+		return address.Undef, err
+	}
+	return addrs[0], nil
 }
 
 // WalletExport returns the KeyInfos for the given walletModule addresses
@@ -96,7 +102,7 @@ func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, m
 
 	keyAddr, err := view.AccountSignerAddress(ctx, k)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to resolve ID address: %w", keyAddr)
+		return nil, xerrors.Errorf("failed to resolve ID address: %v", keyAddr)
 	}
 	return walletAPI.walletModule.Wallet.WalletSign(ctx, keyAddr, msg, wallet.MsgMeta{
 		Type: wallet.MTUnknown,

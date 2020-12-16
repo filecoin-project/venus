@@ -3,6 +3,7 @@ package util
 import (
 	"bytes"
 	"context"
+
 	"github.com/filecoin-project/venus/pkg/fork/blockstore"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -11,8 +12,6 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 )
-
-type vmFlushKey struct{}
 
 func CopyBlockstore(ctx context.Context, from, to blockstore.Blockstore) error {
 	ctx, span := trace.StartSpan(ctx, "copyBlockstore")
@@ -45,7 +44,7 @@ func linksForObj(blk block.Block, cb func(cid.Cid)) error {
 	case cid.DagCBOR:
 		err := cbg.ScanForLinks(bytes.NewReader(blk.RawData()), cb)
 		if err != nil {
-			return xerrors.Errorf("cbg.ScanForLinks: %w", err)
+			return xerrors.Errorf("cbg.ScanForLinks: %v", err)
 		}
 		return nil
 	case cid.Raw:
@@ -77,7 +76,7 @@ func CopyParticial(ctx context.Context, from, to blockstore.Blockstore, root cid
 		for b := range toFlush {
 			if err := to.PutMany(b); err != nil {
 				close(freeBufs)
-				errFlushChan <- xerrors.Errorf("batch put in copy: %w", err)
+				errFlushChan <- xerrors.Errorf("batch put in copy: %v", err)
 				return
 			}
 			freeBufs <- b[:0]
@@ -105,7 +104,7 @@ func CopyParticial(ctx context.Context, from, to blockstore.Blockstore, root cid
 	}
 
 	if err := copyRec(from, to, root, batchCp); err != nil {
-		return xerrors.Errorf("copyRec: %w", err)
+		return xerrors.Errorf("copyRec: %v", err)
 	}
 
 	if len(batch) > 0 {
@@ -132,7 +131,7 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) 
 
 	blk, err := from.Get(root)
 	if err != nil {
-		return xerrors.Errorf("get %s failed: %w", root, err)
+		return xerrors.Errorf("get %s failed: %v", root, err)
 	}
 
 	var lerr error
@@ -157,7 +156,7 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) 
 			// If we have an object, we already have its children, skip the object.
 			has, err := to.Has(link)
 			if err != nil {
-				lerr = xerrors.Errorf("has: %w", err)
+				lerr = xerrors.Errorf("has: %v", err)
 				return
 			}
 			if has {
@@ -171,14 +170,14 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) 
 		}
 	})
 	if err != nil {
-		return xerrors.Errorf("linksForObj (%x): %w", blk.RawData(), err)
+		return xerrors.Errorf("linksForObj (%x): %v", blk.RawData(), err)
 	}
 	if lerr != nil {
 		return lerr
 	}
 
 	if err := cp(blk); err != nil {
-		return xerrors.Errorf("copy: %w", err)
+		return xerrors.Errorf("copy: %v", err)
 	}
 	return nil
 }

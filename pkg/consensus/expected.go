@@ -5,11 +5,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	bstore "github.com/filecoin-project/venus/pkg/fork/blockstore"
-	"github.com/filecoin-project/venus/pkg/util"
 	"os"
 	"strings"
 	"time"
+
+	bstore "github.com/filecoin-project/venus/pkg/fork/blockstore"
+	"github.com/filecoin-project/venus/pkg/util"
 
 	"github.com/filecoin-project/venus/pkg/config"
 

@@ -291,7 +291,7 @@ func (v *View) GetPartsProving(ctx context.Context, maddr addr.Address) ([]bitfi
 func (v *View) PreCommitInfo(ctx context.Context, maddr addr.Address, sid abi.SectorNumber) (*miner.SectorPreCommitOnChainInfo, error) {
 	mas, err := v.loadMinerState(ctx, maddr)
 	if err != nil {
-		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
+		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %v", err)
 	}
 
 	return mas.GetPrecommittedSector(sid)
@@ -300,7 +300,7 @@ func (v *View) PreCommitInfo(ctx context.Context, maddr addr.Address, sid abi.Se
 func (v *View) StateSectorPartition(ctx context.Context, maddr addr.Address, sectorNumber abi.SectorNumber) (*miner.SectorLocation, error) {
 	mas, err := v.loadMinerState(ctx, maddr)
 	if err != nil {
-		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)
+		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %v", err)
 	}
 
 	return mas.FindSector(sectorNumber)
@@ -586,7 +586,7 @@ func (v *View) PowerNetworkTotal(ctx context.Context) (*NetworkPower, error) {
 func (v *View) GetPowerRaw(ctx context.Context, maddr addr.Address) (power.Claim, power.Claim, bool, error) {
 	act, err := v.loadActor(ctx, power.Address)
 	if err != nil {
-		return power.Claim{}, power.Claim{}, false, xerrors.Errorf("(get sset) failed to load power actor state: %w", err)
+		return power.Claim{}, power.Claim{}, false, xerrors.Errorf("(get sset) failed to load power actor state: %v", err)
 	}
 
 	pas, err := power.Load(v.adtStore(ctx), act)

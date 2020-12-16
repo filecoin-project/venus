@@ -2,6 +2,8 @@ package chain
 
 import (
 	"context"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
@@ -12,13 +14,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
-	"time"
 )
-
-type BlockMessage struct {
-	SecpMessages []*types.SignedMessage
-	BlsMessage   []*types.UnsignedMessage
-}
 
 type ChainInfoAPI struct { //nolint
 	chain *ChainSubmodule
@@ -104,6 +100,9 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetTipSet(key block.TipSetKey) (*block.Ti
 // If there are no blocks at the specified epoch, a tipset at an earlier epoch
 // will be returned.
 func (chainInfoAPI *ChainInfoAPI) ChainGetTipSetByHeight(ctx context.Context, height abi.ChainEpoch, tsk block.TipSetKey) (*block.TipSet, error) {
+	if tsk.Empty() {
+		tsk = chainInfoAPI.chain.ChainReader.GetHead()
+	}
 	ts, err := chainInfoAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("fail to load tipset %v", err)
@@ -116,17 +115,15 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetBlock(ctx context.Context, id cid.Cid)
 	return chainInfoAPI.chain.State.GetBlock(ctx, id)
 }
 
-// ChainGetMessages gets a message collection by CID
-func (chainInfoAPI *ChainInfoAPI) ChainGetMessages(ctx context.Context, metaCid cid.Cid) (*BlockMessage, error) {
-	bmsg := &BlockMessage{}
-	var err error
-	bmsg.BlsMessage, bmsg.SecpMessages, err = chainInfoAPI.chain.State.GetMessages(ctx, metaCid)
+func (chainInfoAPI *ChainInfoAPI) ChainGetMessage(ctx context.Context, msgID cid.Cid) (*types.UnsignedMessage, error) {
+	msg, err := chainInfoAPI.chain.MessageStore.LoadMessage(msgID)
 	if err != nil {
 		return nil, err
 	}
-	return bmsg, nil
+	return msg.VMMessage(), nil
 }
 
+// ChainGetMessages gets a message collection by CID
 func (chainInfoAPI *ChainInfoAPI) ChainGetBlockMessages(ctx context.Context, bid cid.Cid) (*BlockMessages, error) {
 	b, err := chainInfoAPI.chain.ChainReader.GetBlock(bid)
 	if err != nil {
@@ -230,18 +227,38 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetRandomnessFromBeacon(ctx context.Conte
 }
 
 func (chainInfoAPI *ChainInfoAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	pts, err := chainInfoAPI.chain.ChainReader.GetTipSet(tsk)
+	ts, err := chainInfoAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset key: %w", err)
+		return nil, xerrors.Errorf("loading tipset key: %v", err)
 	}
 
-	return chain.DrawRandomness([]byte(pts.String()), personalization, randEpoch, entropy)
+	h, err := ts.Height()
+	if err != nil {
+		return nil, xerrors.Errorf("not found tipset height: %v", ts)
+	}
+	if randEpoch > h {
+		return nil, xerrors.Errorf("cannot draw randomness from the future")
+	}
+
+	searchHeight := randEpoch
+	if searchHeight < 0 {
+		searchHeight = 0
+	}
+
+	randTs, err := chainInfoAPI.ChainGetTipSetByHeight(ctx, searchHeight, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	mtb := randTs.MinTicketBlock()
+
+	return chain.DrawRandomness(mtb.Ticket.VRFProof, personalization, randEpoch, entropy)
 }
 
 func (chainInfoAPI *ChainInfoAPI) StateNetworkVersion(ctx context.Context, tsk block.TipSetKey) (network.Version, error) {
 	ts, err := chainInfoAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
-		return network.VersionMax, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return network.VersionMax, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
 	return chainInfoAPI.chain.Fork.GetNtwkVersion(ctx, ts.EnsureHeight()), nil
 }

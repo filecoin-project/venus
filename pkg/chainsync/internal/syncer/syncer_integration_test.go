@@ -2,9 +2,11 @@ package syncer_test
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/config"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/block"
@@ -12,11 +14,10 @@ import (
 	"github.com/filecoin-project/venus/pkg/chainsync/internal/syncer"
 	"github.com/filecoin-project/venus/pkg/chainsync/status"
 	"github.com/filecoin-project/venus/pkg/clock"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/fork"
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // Syncer is capable of recovering from a fork reorg after the bsstore is loaded.
@@ -33,7 +34,9 @@ func TestLoadFork(t *testing.T) {
 
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the bsstore, to which the syncer must ensure to put blocks.
-	eval := &chain.FakeStateEvaluator{}
+	eval := &chain.FakeStateEvaluator{
+		MessageStore: *builder.Mstore(),
+	}
 	sel := &chain.FakeChainSelector{}
 	s, err := syncer.NewSyncer(eval, eval, sel, builder.Store(), builder.Mstore(), builder.BlockStore(), builder, builder, status.NewReporter(), clock.NewFake(time.Unix(1234567890, 0)), &noopFaultDetector{}, nil)
 	require.NoError(t, err)

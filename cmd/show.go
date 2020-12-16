@@ -93,14 +93,14 @@ the filecoin block header.`,
 			return err
 		}
 
-		bmsg, err := env.(*node.Env).ChainAPI.ChainGetMessages(req.Context, cid)
+		bmsg, err := env.(*node.Env).ChainAPI.ChainGetBlockMessages(req.Context, cid)
 		if err != nil {
 			return err
 		}
 
 		return re.Emit(bmsg)
 	},
-	Type: &chain.BlockMessage{},
+	Type: &chain.BlockMessages{},
 }
 
 var showReceiptsCmd = &cmds.Command{

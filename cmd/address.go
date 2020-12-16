@@ -1,14 +1,17 @@
 package cmd
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+
+	files "github.com/ipfs/go-ipfs-files"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
 	cmds "github.com/ipfs/go-ipfs-cmds"
-	files "github.com/ipfs/go-ipfs-files"
 )
 
 var walletCmd = &cmds.Command{
@@ -152,29 +155,19 @@ var walletImportCmd = &cmds.Command{
 			return fmt.Errorf("given file was not a files.File")
 		}
 
-		var wir *WalletSerializeResult
-		if err := json.NewDecoder(fi).Decode(&wir); err != nil {
+		var key crypto.KeyInfo
+		if err := json.NewDecoder(hex.NewDecoder(fi)).Decode(&key); err != nil {
 			return err
 		}
-		keyInfos := wir.KeyInfo
 
-		if len(keyInfos) == 0 {
-			return fmt.Errorf("no keys in wallet file")
-		}
-
-		addrs, err := env.(*node.Env).WalletAPI.WalletImport(keyInfos)
+		addr, err := env.(*node.Env).WalletAPI.WalletImport(&key)
 		if err != nil {
 			return err
 		}
 
-		var alr AddressLsResult
-		for _, addr := range addrs {
-			alr.Addresses = append(alr.Addresses, addr)
-		}
-
-		return re.Emit(&alr)
+		return re.Emit(&addr)
 	},
-	Type: &AddressLsResult{},
+	Type: &address.Address{},
 }
 
 var walletExportCmd = &cmds.Command{

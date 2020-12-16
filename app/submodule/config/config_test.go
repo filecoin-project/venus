@@ -1,16 +1,16 @@
 package config
 
 import (
-	repo2 "github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-
-	"github.com/filecoin-project/venus/pkg/config"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/venus/pkg/config"
+	repo2 "github.com/filecoin-project/venus/pkg/repo"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/pkg/types"
 )
 
 func TestConfigGet(t *testing.T) {
@@ -73,7 +73,7 @@ func TestConfigSet(t *testing.T) {
 		assert.Equal(t, ":1234", cfg.API.RustFulAddress)
 
 		testAddr := types.RequireIDAddress(t, 100).String()
-		err = cfgAPI.Set("wallet.defaultAddress", testAddr)
+		err = cfgAPI.Set("walletModule.defaultAddress", testAddr)
 		require.NoError(t, err)
 		assert.Equal(t, testAddr, cfg.Wallet.DefaultAddress.String())
 
@@ -110,7 +110,7 @@ func TestConfigSet(t *testing.T) {
 
 		// bad address
 		jsonBlobBadAddr := "f4cqnyc0muxjajygqavu645m8ja04vckk2kcorrupt"
-		err = cfgAPI.Set("wallet.defaultAddress", jsonBlobBadAddr)
+		err = cfgAPI.Set("walletModule.defaultAddress", jsonBlobBadAddr)
 		assert.EqualError(t, err, address.ErrUnknownProtocol.Error())
 	})
 

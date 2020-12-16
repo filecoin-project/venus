@@ -2,6 +2,11 @@ package chain
 
 import (
 	"context"
+	"io"
+	"os"
+	"runtime/debug"
+	"sync"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -16,10 +21,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/verifreg"
 	"github.com/filecoin-project/venus/pkg/types"
-	"io"
-	"os"
-	"runtime/debug"
-	"sync"
 
 	"github.com/cskr/pubsub"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -360,8 +361,8 @@ func (store *Store) DelTipSetMetadata(ctx context.Context, ts *block.TipSet) err
 }
 
 // GetBlock returns the block identified by `cid`.
-func (store *Store) GetBlock(blockId cid.Cid) (*block.Block, error) {
-	return store.stateAndBlockSource.GetBlock(context.TODO(), blockId)
+func (store *Store) GetBlock(blockID cid.Cid) (*block.Block, error) {
+	return store.stateAndBlockSource.GetBlock(context.TODO(), blockID)
 }
 
 // GetTipSet returns the tipset identified by `key`.

@@ -5,7 +5,7 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	dss "github.com/ipfs/go-datastore/sync"
-	"github.com/ipfs/go-ipfs-keystore"
+	keystore "github.com/ipfs/go-ipfs-keystore"
 
 	"github.com/filecoin-project/venus/app/paths"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -124,4 +124,9 @@ func (mr *MemRepo) Path() (string, error) {
 // JournalPath returns a string to satisfy the repo interface.
 func (mr *MemRepo) JournalPath() string {
 	return "in_memory_filecoin_journal_path"
+}
+
+// Repo return the repo
+func (mr *MemRepo) Repo() Repo {
+	return mr
 }

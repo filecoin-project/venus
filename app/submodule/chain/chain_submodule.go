@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/clock"
-
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/app/submodule/proofverification"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -72,7 +70,7 @@ func NewChainSubmodule(config chainConfig,
 		return nil, err
 	}
 
-	drand, err := beacon.DrandConfigSchedule(genBlk.Timestamp, uint64(clock.DefaultEpochDuration.Seconds()), repo.Config().NetworkParams.DrandSchedule)
+	drand, err := beacon.DrandConfigSchedule(genBlk.Timestamp, repo.Config().NetworkParams.BlockDelay, repo.Config().NetworkParams.DrandSchedule)
 	if err != nil {
 		return nil, err
 	}

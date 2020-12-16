@@ -3,6 +3,7 @@ package msg
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/block"
@@ -119,7 +120,7 @@ func (w *Waiter) findMessage(ctx context.Context, from *block.TipSet, m types.Ch
 		return nil, false, xerrors.Errorf("failed to load initital tipset")
 	}
 
-	mFromId, err := w.chainReader.ResolveAddressAt(ctx, from.Key(), m.VMMessage().From)
+	mFromID, err := w.chainReader.ResolveAddressAt(ctx, from.Key(), m.VMMessage().From)
 	if err != nil {
 		return nil, false, xerrors.Errorf("looking up From id address: %w", err)
 	}
@@ -151,7 +152,7 @@ func (w *Waiter) findMessage(ctx context.Context, from *block.TipSet, m types.Ch
 			return nil, false, xerrors.Errorf("failed to load tipset during msg wait searchback: %w", err)
 		}
 
-		act, err := w.chainReader.GetActorAt(ctx, pts.Key(), mFromId)
+		act, err := w.chainReader.GetActorAt(ctx, pts.Key(), mFromID)
 		actorNoExist := errors.Is(err, types.ErrActorNotFound)
 		if err != nil && !actorNoExist {
 			return nil, false, xerrors.Errorf("failed to load the actor: %w", err)
@@ -237,7 +238,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*chain.HeadChan
 						reverts[val.Val.Key().String()] = true
 					}
 				case chain.HCApply:
-					if candidateTs != nil && val.Val.EnsureHeight() >= candidateTs.EnsureHeight()+abi.ChainEpoch(confidence) {
+					if candidateTs != nil && val.Val.EnsureHeight() >= candidateTs.EnsureHeight()+confidence {
 						return candidateRcp, true, nil
 					}
 
@@ -259,7 +260,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*chain.HeadChan
 			// check if we found the message in the chain and that is hasn't been reverted since we started searching
 			if backRcp != nil && !reverts[backRcp.Ts.Key().String()] {
 				// if head is at or past confidence interval, return immediately
-				if heightOfHead >= backRcp.Ts.EnsureHeight()+abi.ChainEpoch(confidence) {
+				if heightOfHead >= backRcp.Ts.EnsureHeight()+confidence {
 					return backRcp, true, nil
 				}
 

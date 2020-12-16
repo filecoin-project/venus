@@ -2,55 +2,68 @@ package msg
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/block"
-	gengen "github.com/filecoin-project/venus/tools/gengen/util"
-
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/constants"
 	e "github.com/filecoin-project/venus/pkg/enccid"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/vm/state"
+	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 
 var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
 
 var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
 
-func testWaitHelp(wg *sync.WaitGroup, t *testing.T, waiter *Waiter, expectMsg *types.SignedMessage, expectError bool, cb func(*block.Block, types.ChainMsg, *types.MessageReceipt) error) {
-	expectCid, err := expectMsg.Cid()
-	if cb == nil {
-		cb = func(b *block.Block, msg types.ChainMsg,
-			rcp *types.MessageReceipt) error {
-			assert.True(t, types.SmsgCidsEqual(expectMsg, msg))
-			if wg != nil {
-				wg.Done()
-			}
-
-			return nil
-		}
-	}
+func testWaitHelp(wg *sync.WaitGroup, t *testing.T, waiter *Waiter, expectMsg *types.SignedMessage, expectError bool) {
+	_, err := expectMsg.Cid()
 	assert.NoError(t, err)
 
-	err = waiter.Wait(context.Background(), expectCid, constants.DefaultConfidence, constants.DefaultMessageWaitLookback, cb)
+	chainMessage, err := waiter.Wait(context.Background(), expectMsg, constants.DefaultConfidence, constants.DefaultMessageWaitLookback)
 	assert.Equal(t, expectError, err != nil)
+	assert.NotNil(t, chainMessage)
 }
 
 type smsgs []*types.SignedMessage
 type smsgsSet [][]*types.SignedMessage
 
+type chainReader interface {
+	chain.TipSetProvider
+	GetHead() block.TipSetKey
+	GetTipSetReceiptsRoot(block.TipSetKey) (cid.Cid, error)
+	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
+	SubHeadChanges(context.Context) chan []*chain.HeadChange
+	SubscribeHeadChanges(chain.ReorgNotifee)
+}
+type stateReader interface {
+	ResolveAddressAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (address.Address, error)
+	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*types.Actor, error)
+	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
+}
+
 func setupTest(t *testing.T) (cbor.IpldStore, *chain.Store, *chain.MessageStore, *Waiter) {
 	d := requiredCommonDeps(t, gengen.DefaultGenesis)
-	return d.cst, d.chainStore, d.messages, NewWaiter(d.chainStore, d.messages, d.blockstore, d.cst)
+
+	combineChainReader := struct {
+		stateReader
+		chainReader
+	}{
+		d.chainState,
+		d.chainStore,
+	}
+	return d.cst, d.chainStore, d.messages, NewWaiter(combineChainReader, d.messages, d.blockstore, d.cst)
 }
 
 func TestWait(t *testing.T) {
@@ -78,8 +91,8 @@ func testWaitExisting(ctx context.Context, t *testing.T, cst cbor.IpldStore, cha
 	}))
 	require.NoError(t, chainStore.SetHead(ctx, ts))
 
-	testWaitHelp(nil, t, waiter, m1, false, nil)
-	testWaitHelp(nil, t, waiter, m2, false, nil)
+	testWaitHelp(nil, t, waiter, m1, false)
+	testWaitHelp(nil, t, waiter, m2, false)
 }
 
 func testWaitNew(ctx context.Context, t *testing.T, cst cbor.IpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
@@ -105,8 +118,8 @@ func testWaitNew(ctx context.Context, t *testing.T, cst cbor.IpldStore, chainSto
 	time.Sleep(5 * time.Millisecond)
 
 	wg.Add(2)
-	go testWaitHelp(&wg, t, waiter, m3, false, nil)
-	go testWaitHelp(&wg, t, waiter, m4, false, nil)
+	go testWaitHelp(&wg, t, waiter, m3, false)
+	go testWaitHelp(&wg, t, waiter, m4, false)
 	wg.Wait()
 }
 
@@ -129,7 +142,7 @@ func testWaitError(ctx context.Context, t *testing.T, cst cbor.IpldStore, chainS
 	err = chainStore.SetHead(ctx, tss[len(tss)-1])
 	assert.Nil(t, err)
 
-	testWaitHelp(nil, t, waiter, m2, true, nil)
+	testWaitHelp(nil, t, waiter, m2, true)
 }
 
 func TestWaitRespectsContextCancel(t *testing.T) {
@@ -138,17 +151,12 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	_, _, _, waiter := setupTest(t)
 
-	failIfCalledCb := func(b *block.Block, msg types.ChainMsg,
-		rcp *types.MessageReceipt) error {
-		assert.Fail(t, "Should not be called -- message doesnt exist")
-		return nil
-	}
-
 	var err error
+	var chainMessage *ChainMessage
 	doneCh := make(chan struct{})
 	go func() {
 		defer close(doneCh)
-		err = waiter.Wait(ctx, types.CidFromString(t, "somecid"), constants.DefaultConfidence, constants.DefaultMessageWaitLookback, failIfCalledCb)
+		chainMessage, err = waiter.Wait(ctx, newSignedMessage(0), constants.DefaultConfidence, constants.DefaultMessageWaitLookback)
 	}()
 
 	cancel()
@@ -159,6 +167,7 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		assert.Fail(t, "Wait should have returned when context was canceled")
 	}
+	assert.Nil(t, chainMessage)
 }
 
 // NewChainWithMessages creates a chain of tipsets containing the given messages

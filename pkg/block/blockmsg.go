@@ -6,7 +6,7 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-type BlockMsg struct {
+type BlockMsg struct { // nolint: golint
 	Header        *Block
 	BlsMessages   []cid.Cid
 	SecpkMessages []cid.Cid
@@ -26,9 +26,10 @@ func (bm *BlockMsg) Cid() cid.Cid {
 }
 
 func (bm *BlockMsg) Serialize() ([]byte, error) {
-	if bytes, err := encoding.Encode(bm); err != nil {
+	bytes, err := encoding.Encode(bm)
+	if err != nil {
 		return nil, err
-	} else {
-		return bytes, nil
 	}
+	return bytes, nil
+
 }

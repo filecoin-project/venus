@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -63,13 +64,16 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *blo
 	if ts == nil {
 		tsKey := chainReader.GetHead()
 		ts, err = chainReader.GetTipSet(tsKey)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to find TipSet: %v %v", tsKey, err)
+		}
 
 		// Search back till we find a height with no fork, or we reach the beginning.
 		for ts.EnsureHeight() > 0 && fork.HasExpensiveFork(ctx, ts.EnsureHeight()-1) {
 			var err error
 			ts, err = chainReader.GetTipSet(ts.EnsureParents())
 			if err != nil {
-				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
+				return nil, xerrors.Errorf("failed to find a non-forking epoch: %v", err)
 			}
 		}
 	}

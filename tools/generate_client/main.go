@@ -5,12 +5,13 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"golang.org/x/tools/imports"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
 	"strings"
+
+	"golang.org/x/tools/imports"
 )
 
 type Func struct {
@@ -28,7 +29,7 @@ func (f Func) Method() string {
 }
 
 func main() {
-	pkgDir := "/Users/lijunlong/Desktop/workload/venus/app/submodule"
+	pkgDir := "/Users/haoziyan/Desktop/code/github.com/simlecode/venus/app/submodule"
 	typeMap := map[string]string{
 		"Partition":      "chainApiTypes.Partition",
 		"Deadline":       "chainApiTypes.Deadline",
@@ -69,7 +70,7 @@ func main() {
 					if !('A' <= function.Name[0] && function.Name[0] <= 'Z') {
 						continue
 					}
-					//parser arguements
+					// parser parameter
 					fieldList, err := joinFieldList(funcDecl.Type.Params, typeMap)
 					if err != nil {
 						log.Fatal(err)
@@ -99,7 +100,7 @@ func main() {
 		}
 	}
 
-	generateCode(codes, "./app/client/client.go")
+	_ = generateCode(codes, "./app/client/client.go")
 }
 
 func generateCode(codelines map[string][]Func, fname string) error {
@@ -116,7 +117,7 @@ import (
 		"time"
 		messageApiTypes "github.com/filecoin-project/venus/app/submodule/messaging"
 		syncApiTypes "github.com/filecoin-project/venus/app/submodule/syncer"
-		mineApiTypes "github.com/filecoin-project/venus/app/submodule/minging"
+		mineApiTypes "github.com/filecoin-project/venus/app/submodule/mining"
 		chainApiTypes "github.com/filecoin-project/venus/app/submodule/chain"
 		"github.com/filecoin-project/go-address"
 		"github.com/filecoin-project/go-bitfield"
@@ -136,12 +137,12 @@ import (
 		"github.com/filecoin-project/venus/pkg/types"
 		"github.com/filecoin-project/venus/pkg/vm"
 		"github.com/filecoin-project/venus/pkg/wallet"
-		cid "github.com/ipfs/go-cid/_rsrch/cidiface"
+		"github.com/ipfs/go-cid"
 		"github.com/libp2p/go-libp2p-core/peer"
 		ma "github.com/multiformats/go-multiaddr"
 		"context"
 		"io"
-		"math/big"
+		"github.com/filecoin-project/go-state-types/big"
 )
 `
 	builder := strings.Builder{}
@@ -164,8 +165,8 @@ import (
 		builder.WriteString("}\n\n")
 	}
 
-	fs.WriteString(builder.String())
-	fs.Close()
+	_, _ = fs.WriteString(builder.String())
+	_ = fs.Close()
 
 	options := &imports.Options{
 		TabWidth:  8,

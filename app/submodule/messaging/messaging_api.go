@@ -2,6 +2,8 @@ package messaging
 
 import (
 	"context"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/app/submodule/messaging/msg"
@@ -11,7 +13,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
-	"time"
 )
 
 var MsgNotfound = xerrors.New("message not found")
@@ -117,7 +118,7 @@ func (messagingAPI *MessagingAPI) StateSearchMsg(ctx context.Context, mCid cid.C
 	if err != nil {
 		return nil, err
 	}
-	msgResult, found, err := messagingAPI.messaging.Waiter.Find(ctx, chainMsg, constants.DefaultMessageWaitLookback, head)
+	msgResult, found, err := messagingAPI.messaging.Waiter.Find(ctx, chainMsg, constants.LookbackNoLimit, head)
 	if err != nil {
 		return nil, err
 	}

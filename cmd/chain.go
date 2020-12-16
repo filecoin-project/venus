@@ -2,8 +2,9 @@
 package cmd
 
 import (
-	"github.com/filecoin-project/venus/app/node"
 	"os"
+
+	"github.com/filecoin-project/venus/app/node"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -77,6 +78,9 @@ var storeLsCmd = &cmds.Command{
 		var err error
 		height, _ := req.Options["height"].(int64)
 		startTs, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
+		if err != nil {
+			return err
+		}
 		if height >= 0 {
 			startTs, err = env.(*node.Env).ChainAPI.ChainGetTipSetByHeight(req.Context, abi.ChainEpoch(height), startTs.Key())
 			if err != nil {
@@ -90,7 +94,7 @@ var storeLsCmd = &cmds.Command{
 		}
 
 		for _, tipset := range tipSetKeys {
-			if err := re.Emit(tipset.String()); err != nil {
+			if err := re.Emit(tipset.ToSlice()); err != nil {
 				return err
 			}
 		}

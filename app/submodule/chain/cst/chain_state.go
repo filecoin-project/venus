@@ -3,8 +3,9 @@ package cst
 import (
 	"context"
 	"fmt"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"io"
+
+	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -272,7 +273,7 @@ func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, tipKey bl
 		return address.Undef, errors.Wrap(err, "failed to load latest state")
 	}
 
-	return st.LookupID(vmstate.ActorKey(addr))
+	return st.LookupID(addr)
 }
 
 // LsActors returns a channel with actors from the latest state on the chain
@@ -301,6 +302,9 @@ func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAdd
 		return nil, ErrNoMethod
 	}
 	view, err := chn.ParentStateView(chn.Head())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get state view")
+	}
 	actor, err := view.LoadActor(ctx, actorAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get actor")
