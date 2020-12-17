@@ -229,7 +229,7 @@ func TestNoUncessesaryFetch(t *testing.T) {
 	// in the bsstore and linked to genesis.
 	emptyFetcher := chain.NewBuilder(t, address.Undef)
 	eval := &chain.FakeStateEvaluator{
-		MessageStore: *builder.Mstore(),
+		MessageStore: builder.Mstore(),
 	}
 	newSyncer, err := syncer.NewSyncer(eval,
 		eval,
@@ -551,7 +551,7 @@ func TestStoresMessageReceipts(t *testing.T) {
 func setup(ctx context.Context, t *testing.T) (*chain.Builder, *syncer.Syncer) {
 	builder := chain.NewBuilder(t, address.Undef)
 	eval := &chain.FakeStateEvaluator{
-		MessageStore: *builder.Mstore(),
+		MessageStore: builder.Mstore(),
 	}
 	return setupWithValidator(ctx, t, builder, eval, eval)
 }

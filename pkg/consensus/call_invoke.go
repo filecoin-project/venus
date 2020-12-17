@@ -41,7 +41,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 		for height > 0 && (c.fork.HasExpensiveFork(ctx, height) || c.fork.HasExpensiveFork(ctx, height-1)) {
 			ts, err = c.chainState.GetTipSet(ts.EnsureParents())
 			if err != nil {
-				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
+				return nil, xerrors.Errorf("failed to find a non-forking epoch: %s", err)
 			}
 		}
 
@@ -94,7 +94,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 	for i, m := range priorMsgs {
 		_, err := c.processor.ProcessUnsignedMessage(ctx, m.VMMessage(), priorState, vms, vmOption)
 		if err != nil {
-			return nil, xerrors.Errorf("applying prior message (%d): %w", i, err)
+			return nil, xerrors.Errorf("applying prior message (%d): %s", i, err)
 		}
 	}
 
@@ -142,7 +142,7 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *blo
 	// Run the (not expensive) migration.
 	bstate, err = c.fork.HandleStateForks(ctx, bstate, bheight-1, ts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to handle fork: %w", err)
+		return nil, fmt.Errorf("failed to handle fork: %s", err)
 	}
 
 	rnd := HeadRandomness{
