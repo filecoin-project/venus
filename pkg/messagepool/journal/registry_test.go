@@ -4,9 +4,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
 func TestDisabledEvents(t *testing.T) {
+	tf.UnitTest(t)
+
 	req := require.New(t)
 
 	test := func(dis DisabledEvents) func(*testing.T) {
@@ -44,6 +48,8 @@ func TestDisabledEvents(t *testing.T) {
 }
 
 func TestParseDisableEvents(t *testing.T) {
+	tf.UnitTest(t)
+
 	_, err := ParseDisabledEvents("system1:disabled1:failed,system1:disabled2")
 	require.Error(t, err)
 }

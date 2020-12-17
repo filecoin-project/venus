@@ -14,6 +14,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/enccid"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
 func mkAddress(i uint64) address.Address {
@@ -82,6 +84,8 @@ func mkTipSet(blks ...*block.Block) *block.TipSet {
 }
 
 func TestHeadChangeCoalescer(t *testing.T) {
+	tf.UnitTest(t)
+
 	notif := make(chan headChange, 1)
 	c := NewHeadChangeCoalescer(func(revert, apply []*block.TipSet) error {
 		notif <- headChange{apply: apply, revert: revert}

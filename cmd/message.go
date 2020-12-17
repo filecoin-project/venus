@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/chain"
 	"reflect"
 	"strconv"
 
@@ -18,8 +17,10 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/venus/app/node"
+	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/vm"
 )
 
 var msgCmd = &cmds.Command{
@@ -27,7 +28,7 @@ var msgCmd = &cmds.Command{
 		Tagline: "Send and monitor messages",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"send":       msgSendCmd,
+		"send": msgSendCmd,
 	},
 }
 
@@ -179,4 +180,11 @@ func decodeTypedParams(ctx context.Context, fapi *node.Env, to address.Address, 
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// WaitResult is the result of a message wait call.
+type WaitResult struct {
+	Message   *types.UnsignedMessage
+	Receipt   *types.MessageReceipt
+	Signature vm.ActorMethodSignature
 }

@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -270,4 +271,87 @@ func (chainInfoAPI *ChainInfoAPI) StateNetworkVersion(ctx context.Context, tsk b
 		return network.VersionMax, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
 	return chainInfoAPI.chain.Fork.GetNtwkVersion(ctx, ts.EnsureHeight()), nil
+}
+
+// MessageWait invokes the callback when a message with the given cid appears on chain.
+// It will find the message in both the case that it is already on chain and
+// the case that it appears in a newly mined block. An error is returned if one is
+// encountered or if the context is canceled. Otherwise, it waits forever for the message
+// to appear on chain.
+func (chainInfoAPI *ChainInfoAPI) MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*cst.ChainMessage, error) {
+	chainMsg, err := chainInfoAPI.chain.MessageStore.LoadMessage(msgCid)
+	if err != nil {
+		return nil, err
+	}
+	return chainInfoAPI.chain.Waiter.Wait(ctx, chainMsg, confidence, lookback)
+}
+
+func (chainInfoAPI *ChainInfoAPI) StateSearchMsg(ctx context.Context, mCid cid.Cid) (*cst.MsgLookup, error) {
+	chainMsg, err := chainInfoAPI.chain.MessageStore.LoadMessage(mCid)
+	if err != nil {
+		return nil, err
+	}
+	//todo add a api for head tipset directly
+	headKey := chainInfoAPI.chain.ChainReader.GetHead()
+	head, err := chainInfoAPI.chain.ChainReader.GetTipSet(headKey)
+	if err != nil {
+		return nil, err
+	}
+	msgResult, found, err := chainInfoAPI.chain.Waiter.Find(ctx, chainMsg, constants.LookbackNoLimit, head)
+	if err != nil {
+		return nil, err
+	}
+
+	if found {
+		return &cst.MsgLookup{
+			Message: mCid,
+			Receipt: *msgResult.Receipt,
+			TipSet:  msgResult.Ts.Key(),
+			Height:  msgResult.Ts.EnsureHeight(),
+		}, nil
+	}
+	return nil, nil
+}
+
+func (chainInfoAPI *ChainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error) {
+	chainMsg, err := chainInfoAPI.chain.MessageStore.LoadMessage(mCid)
+	if err != nil {
+		return nil, err
+	}
+	msgResult, err := chainInfoAPI.chain.Waiter.Wait(ctx, chainMsg, confidence, constants.LookbackNoLimit)
+	if err != nil {
+		return nil, err
+	}
+	if msgResult != nil {
+		return &cst.MsgLookup{
+			Message: mCid,
+			Receipt: *msgResult.Receipt,
+			TipSet:  msgResult.Ts.Key(),
+			Height:  msgResult.Ts.EnsureHeight(),
+		}, nil
+	}
+	return nil, nil
+}
+
+func (chainInfoAPI *ChainInfoAPI) StateGetReceipt(ctx context.Context, msg cid.Cid, tsk block.TipSetKey) (*types.MessageReceipt, error) {
+	chainMsg, err := chainInfoAPI.chain.MessageStore.LoadMessage(msg)
+	if err != nil {
+		return nil, err
+	}
+	//todo add a api for head tipset directly
+	headKey := chainInfoAPI.chain.ChainReader.GetHead()
+	head, err := chainInfoAPI.chain.ChainReader.GetTipSet(headKey)
+	if err != nil {
+		return nil, err
+	}
+
+	msgResult, found, err := chainInfoAPI.chain.Waiter.Find(ctx, chainMsg, constants.LookbackNoLimit, head)
+	if err != nil {
+		return nil, err
+	}
+
+	if found {
+		return msgResult.Receipt, nil
+	}
+	return nil, nil
 }

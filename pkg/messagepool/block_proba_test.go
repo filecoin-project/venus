@@ -5,9 +5,13 @@ import (
 	"math/rand"
 	"testing"
 	"time"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
 func TestBlockProbability(t *testing.T) {
+	tf.UnitTest(t)
+
 	mp := &MessagePool{}
 	bp := mp.blockProbabilities(1 - 0.15)
 	t.Logf("%+v\n", bp)
@@ -20,6 +24,8 @@ func TestBlockProbability(t *testing.T) {
 }
 
 func TestWinnerProba(t *testing.T) {
+	tf.UnitTest(t)
+
 	rand.Seed(time.Now().UnixNano())
 	const N = 1000000
 	winnerProba := noWinnersProb()

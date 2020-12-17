@@ -2,6 +2,7 @@ package messagepool
 
 import (
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,12 +15,14 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	tbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -28,6 +31,8 @@ import (
 
 	_ "github.com/filecoin-project/venus/pkg/consensus/lib/sigs/bls"
 	_ "github.com/filecoin-project/venus/pkg/consensus/lib/sigs/secp"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
 func init() {
@@ -45,28 +50,28 @@ func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, g
 		Value:      types.FromFil(0),
 		Nonce:      nonce,
 		GasLimit:   types.NewGas(gasLimit),
-		GasFeeCap:  types.NewAttoFILFromFIL(100 + gasPrice),
-		GasPremium: types.NewAttoFILFromFIL(gasPrice),
+		GasFeeCap:  tbig.NewInt(int64(100) + int64(gasPrice)),
+		GasPremium: tbig.NewInt(int64(gasPrice)),
 	}
 
 	c, err := msg.Cid()
 	if err != nil {
 		panic(err)
 	}
-	sig, err := w.SignBytes(c.Bytes(), from)
+	sig, err := w.WalletSign(context.TODO(), from, c.Bytes(), wallet.MsgMeta{})
 	if err != nil {
 		panic(err)
 	}
 	return &types.SignedMessage{
 		Message:   *msg,
-		Signature: sig,
+		Signature: *sig,
 	}
 }
 
 func makeTestMpool() (*MessagePool, *testMpoolAPI) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
-	mp, err := New(tma, ds, "test", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "test", nil, nil, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -75,6 +80,8 @@ func makeTestMpool() (*MessagePool, *testMpoolAPI) {
 }
 
 func TestMessageChains(t *testing.T) {
+	tf.UnitTest(t)
+
 	mp, tma := makeTestMpool()
 
 	// the actors
@@ -315,6 +322,8 @@ func TestMessageChains(t *testing.T) {
 }
 
 func TestMessageChainSkipping(t *testing.T) {
+	tf.UnitTest(t)
+
 	// regression test for chain skip bug
 
 	mp, tma := makeTestMpool()
@@ -391,6 +400,8 @@ func TestMessageChainSkipping(t *testing.T) {
 }
 
 func TestBasicMessageSelection(t *testing.T) {
+	tf.UnitTest(t)
+
 	oldMaxNonceGap := MaxNonceGap
 	MaxNonceGap = 1000
 	defer func() {
@@ -545,6 +556,8 @@ func TestBasicMessageSelection(t *testing.T) {
 }
 
 func TestMessageSelectionTrimming(t *testing.T) {
+	tf.UnitTest(t)
+
 	mp, tma := makeTestMpool()
 
 	// the actors
@@ -612,6 +625,8 @@ func TestMessageSelectionTrimming(t *testing.T) {
 }
 
 func TestPriorityMessageSelection(t *testing.T) {
+	tf.UnitTest(t)
+
 	mp, tma := makeTestMpool()
 
 	// the actors
@@ -695,6 +710,8 @@ func TestPriorityMessageSelection(t *testing.T) {
 }
 
 func TestPriorityMessageSelection2(t *testing.T) {
+	tf.UnitTest(t)
+
 	mp, tma := makeTestMpool()
 
 	// the actors
@@ -766,6 +783,8 @@ func TestPriorityMessageSelection2(t *testing.T) {
 }
 
 func TestPriorityMessageSelection3(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Skip("reenable after removing allow negative")
 
 	mp, tma := makeTestMpool()
@@ -866,6 +885,8 @@ func TestPriorityMessageSelection3(t *testing.T) {
 }
 
 func TestOptimalMessageSelection1(t *testing.T) {
+	tf.UnitTest(t)
+
 	// this test uses just a single actor sending messages with a low tq
 	// the chain depenent merging algorithm should pick messages from the actor
 	// from the start
@@ -936,6 +957,8 @@ func TestOptimalMessageSelection1(t *testing.T) {
 }
 
 func TestOptimalMessageSelection2(t *testing.T) {
+	tf.UnitTest(t)
+
 	// this test uses two actors sending messages to each other, with the first
 	// actor paying (much) higher gas premium than the second.
 	// We select with a low ticket quality; the chain depenent merging algorithm should pick
@@ -1019,6 +1042,8 @@ func TestOptimalMessageSelection2(t *testing.T) {
 }
 
 func TestOptimalMessageSelection3(t *testing.T) {
+	tf.UnitTest(t)
+
 	// this test uses 10 actors sending a block of messages to each other, with the the first
 	// actors paying higher gas premium than the subsequent actors.
 	// We select with a low ticket quality; the chain depenent merging algorithm should pick
@@ -1265,6 +1290,8 @@ func makeZipfPremiumDistribution(rng *rand.Rand) func() uint64 {
 }
 
 func TestCompetitiveMessageSelectionExp(t *testing.T) {
+	tf.UnitTest(t)
+
 	if testing.Short() {
 		t.Skip("skipping in short mode")
 	}
@@ -1288,6 +1315,8 @@ func TestCompetitiveMessageSelectionExp(t *testing.T) {
 }
 
 func TestCompetitiveMessageSelectionZipf(t *testing.T) {
+	tf.UnitTest(t)
+
 	var capacityBoost, rewardBoost, tqReward float64
 	seeds := []int64{1947, 1976, 2020, 2100, 10000, 143324, 432432, 131, 32, 45}
 	for _, seed := range seeds {
@@ -1308,6 +1337,8 @@ func TestCompetitiveMessageSelectionZipf(t *testing.T) {
 }
 
 func TestGasReward(t *testing.T) {
+	tf.UnitTest(t)
+
 	tests := []struct {
 		Premium   uint64
 		FeeCap    uint64
@@ -1339,7 +1370,14 @@ func TestGasReward(t *testing.T) {
 	}
 }
 
+type SignedMessage struct {
+	Message   types.UnsignedMessage
+	Signature crypto.Signature
+}
+
 func TestRealWorldSelection(t *testing.T) {
+	tf.UnitTest(t)
+
 	// load test-messages.json.gz and rewrite the messages so that
 	// 1) we map each real actor to a test actor so that we can sign the messages
 	// 2) adjust the nonces so that they start from 0
@@ -1360,11 +1398,16 @@ func TestRealWorldSelection(t *testing.T) {
 
 readLoop:
 	for {
-		m := new(types.SignedMessage)
+		m := new(SignedMessage)
 		err := dec.Decode(m)
 		switch err {
 		case nil:
-			msgs = append(msgs, m)
+			sm := types.SignedMessage{
+				Message:   m.Message,
+				Signature: m.Signature,
+			}
+			msgs = append(msgs, &sm)
+
 			nonce, ok := baseNonces[m.Message.From]
 			if !ok || m.Message.Nonce < nonce {
 				baseNonces[m.Message.From] = m.Message.Nonce
@@ -1393,7 +1436,7 @@ readLoop:
 			}
 			w := wallet.New(backend)
 
-			a, err := wallet.NewAddress(w, address.BLS)
+			a, err := wallet.NewAddress(w, address.SECP256K1)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1412,12 +1455,12 @@ readLoop:
 		m.Message.Nonce -= baseNonce
 
 		c, _ := m.Message.Cid()
-		sig, err := w.SignBytes(c.Bytes(), localActor)
+		sig, err := w.WalletSign(context.TODO(), localActor, c.Bytes(), wallet.MsgMeta{})
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		m.Signature = sig
+		m.Signature = *sig
 	}
 
 	mp, tma := makeTestMpool()

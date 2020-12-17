@@ -14,7 +14,7 @@ type miningConfig interface {
 	Repo() repo.Repo
 }
 
-type MiningModule struct {
+type MiningModule struct { //nolint
 	Config            miningConfig
 	ChainModule       *chain2.ChainSubmodule
 	BlockStore        *blockstore.BlockstoreSubmodule

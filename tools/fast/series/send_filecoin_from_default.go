@@ -2,7 +2,6 @@ package series
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
@@ -30,10 +29,9 @@ func SendFilecoinFromDefault(ctx context.Context, node *fast.Filecoin, addr addr
 
 	CtxMiningOnce(ctx)
 
-	fmt.Println(mcid)
-	//if _, err := to.MessageWait(ctx, mcid); err != nil {
-	//	return err
-	//}
+	if _, err := node.MessageWait(ctx, mcid); err != nil {
+		return cid.Undef, err
+	}
 
 	return mcid, nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/config"
 	"math"
 	stdbig "math/big"
 	"sort"
@@ -363,7 +364,7 @@ func (ms *msgSet) getRequiredFunds(nonce uint64) tbig.Int {
 	return tbig.Int{Int: requiredFunds}
 }
 
-func New(api Provider, ds repo.Datastore, netName string, gp gasPredictor, ap actorProvider, j journal.Journal) (*MessagePool, error) {
+func New(api Provider, ds repo.Datastore, forkParams *config.ForkUpgradeConfig, netName string, gp gasPredictor, ap actorProvider, j journal.Journal) (*MessagePool, error) {
 	cache, _ := lru.New2Q(constants.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(constants.VerifSigCacheSize)
 
@@ -402,6 +403,8 @@ func New(api Provider, ds repo.Datastore, netName string, gp gasPredictor, ap ac
 			evtTypeMpoolRepub:  j.RegisterEventType("mpool", "repub"),
 		},
 		journal: j,
+
+		gasPriceSchedule: gas.NewPricesSchedule(forkParams),
 	}
 
 	// enable initial prunes

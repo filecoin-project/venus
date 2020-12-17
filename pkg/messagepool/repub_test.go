@@ -1,8 +1,6 @@
 package messagepool
 
 import (
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/repo"
 	"testing"
 	"time"
 
@@ -10,11 +8,18 @@ import (
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
+	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/wallet"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
 func TestRepubMessages(t *testing.T) {
+	tf.UnitTest(t)
+
 	oldRepublishBatchDelay := RepublishBatchDelay
 	RepublishBatchDelay = time.Microsecond
 	defer func() {
@@ -24,7 +29,7 @@ func TestRepubMessages(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, "mptest", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

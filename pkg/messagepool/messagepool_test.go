@@ -16,6 +16,7 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/config"
 	_ "github.com/filecoin-project/venus/pkg/consensus/lib/sigs/bls"
 	_ "github.com/filecoin-project/venus/pkg/consensus/lib/sigs/secp"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -23,6 +24,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
 	"github.com/filecoin-project/venus/pkg/repo"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
 )
@@ -68,13 +70,13 @@ func mkMessage(from, to address.Address, nonce uint64, w *wallet.Wallet) *types.
 	if err != nil {
 		panic(err)
 	}
-	sig, err := w.SignBytes(c.Bytes(), from)
+	sig, err := w.WalletSign(context.TODO(), from, c.Bytes(), wallet.MsgMeta{})
 	if err != nil {
 		panic(err)
 	}
 	return &types.SignedMessage{
 		Message:   *msg,
-		Signature: sig,
+		Signature: *sig,
 	}
 }
 
@@ -301,6 +303,8 @@ func (tma *testMpoolAPI) ChainComputeBaseFee(ctx context.Context, ts *block.TipS
 }
 
 func assertNonce(t *testing.T, mp *MessagePool, addr address.Address, val uint64) {
+	tf.UnitTest(t)
+
 	t.Helper()
 	n, err := mp.GetNonce(addr)
 	if err != nil {
@@ -313,6 +317,8 @@ func assertNonce(t *testing.T, mp *MessagePool, addr address.Address, val uint64
 }
 
 func mustAdd(t *testing.T, mp *MessagePool, msg *types.SignedMessage) {
+	tf.UnitTest(t)
+
 	t.Helper()
 	if err := mp.Add(msg); err != nil {
 		t.Fatal(err)
@@ -320,6 +326,8 @@ func mustAdd(t *testing.T, mp *MessagePool, msg *types.SignedMessage) {
 }
 
 func TestMessagePool(t *testing.T) {
+	tf.UnitTest(t)
+
 	tma := newTestMpoolAPI()
 
 	r := repo.NewInMemoryRepo()
@@ -331,7 +339,7 @@ func TestMessagePool(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, "mptest", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -363,6 +371,8 @@ func TestMessagePool(t *testing.T) {
 }
 
 func TestMessagePoolMessagesInEachBlock(t *testing.T) {
+	tf.UnitTest(t)
+
 	tma := newTestMpoolAPI()
 
 	r := repo.NewInMemoryRepo()
@@ -374,7 +384,7 @@ func TestMessagePoolMessagesInEachBlock(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, "mptest", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -409,6 +419,8 @@ func TestMessagePoolMessagesInEachBlock(t *testing.T) {
 }
 
 func TestRevertMessages(t *testing.T) {
+	tf.UnitTest(t)
+
 	futureDebug = true
 	defer func() {
 		futureDebug = false
@@ -425,7 +437,7 @@ func TestRevertMessages(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, "mptest", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -473,6 +485,8 @@ func TestRevertMessages(t *testing.T) {
 }
 
 func TestPruningSimple(t *testing.T) {
+	tf.UnitTest(t)
+
 	oldMaxNonceGap := MaxNonceGap
 	MaxNonceGap = 1000
 	defer func() {
@@ -490,7 +504,7 @@ func TestPruningSimple(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, "mptest", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -531,10 +545,12 @@ func TestPruningSimple(t *testing.T) {
 }
 
 func TestLoadLocal(t *testing.T) {
+	tf.UnitTest(t)
+
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, "mptest", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -581,7 +597,7 @@ func TestLoadLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mp, err = New(tma, ds, "mptest", nil, nil, nil)
+	mp, err = New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -607,10 +623,12 @@ func TestLoadLocal(t *testing.T) {
 }
 
 func TestClearAll(t *testing.T) {
+	tf.UnitTest(t)
+
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, "mptest", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -665,10 +683,12 @@ func TestClearAll(t *testing.T) {
 }
 
 func TestClearNonLocal(t *testing.T) {
+	tf.UnitTest(t)
+
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, "mptest", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -730,10 +750,12 @@ func TestClearNonLocal(t *testing.T) {
 }
 
 func TestUpdates(t *testing.T) {
+	tf.UnitTest(t)
+
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, "mptest", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
