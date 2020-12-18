@@ -155,6 +155,13 @@ func (mp *MessagePool) GasEstimateGasPremium(
 }
 
 func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.UnsignedMessage, tsk block.TipSetKey) (int64, error) {
+	if tsk.Empty() {
+		ts, err := mp.api.ChainHead()
+		if err != nil {
+			return -1, xerrors.Errorf("getting head: %v", err)
+		}
+		tsk = ts.Key()
+	}
 	currTs, err := mp.api.ChainTipSet(tsk)
 	if err != nil {
 		return -1, xerrors.Errorf("getting tipset: %w", err)
@@ -175,6 +182,13 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Uns
 	for _, m := range pending {
 		priorMsgs = append(priorMsgs, m)
 	}
+
+	fromActor, err := mp.api.GetActorAfter(msg.From, currTs)
+	if err != nil {
+		return -1, xerrors.Errorf("getting actor: %v", err)
+	}
+
+	msg.Nonce = fromActor.Nonce
 
 	// Try calling until we find a height with no migration.
 	var res *vm.Ret
@@ -233,7 +247,7 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.Uns
 		msg.GasLimit = types.NewGas(int64(float64(gasLimit) * mp.GetConfig().GasLimitOverestimation))
 	}
 
-	if msg.GasPremium == tbig.Zero() || tbig.Cmp(msg.GasPremium, tbig.NewInt(0)) == 0 {
+	if msg.GasPremium.Nil() || tbig.Cmp(msg.GasPremium, tbig.NewInt(0)) == 0 {
 		gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, msg.From, int64(msg.GasLimit), block.TipSetKey{})
 		if err != nil {
 			return nil, xerrors.Errorf("estimating gas price: %w", err)
@@ -241,7 +255,7 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.Uns
 		msg.GasPremium = gasPremium
 	}
 
-	if msg.GasFeeCap == tbig.Zero() || tbig.Cmp(msg.GasFeeCap, tbig.NewInt(0)) == 0 {
+	if msg.GasFeeCap.Nil() || tbig.Cmp(msg.GasFeeCap, tbig.NewInt(0)) == 0 {
 		feeCap, err := mp.GasEstimateFeeCap(ctx, msg, 20, block.TipSetKey{})
 		if err != nil {
 			return nil, xerrors.Errorf("estimating fee cap: %w", err)

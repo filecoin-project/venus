@@ -13,6 +13,12 @@ type MpoolLocker struct {
 	lk sync.Mutex
 }
 
+func NewMpoolLocker() *MpoolLocker {
+	return &MpoolLocker{
+		lk: sync.Mutex{},
+	}
+}
+
 func (ml *MpoolLocker) TakeLock(ctx context.Context, a address.Address) (func(), error) {
 	ml.lk.Lock()
 	if ml.m == nil {

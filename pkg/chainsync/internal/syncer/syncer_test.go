@@ -535,6 +535,7 @@ func TestStoresMessageReceipts(t *testing.T) {
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", t1.Key(), heightFromTip(t, t1)), false))
 
 	receiptsCid, err := builder.Store().GetTipSetReceiptsRoot(t1.Key())
+
 	require.NoError(t, err)
 
 	receipts, err := builder.LoadReceipts(ctx, receiptsCid)

@@ -109,10 +109,11 @@ func (node *Node) Start(ctx context.Context) error {
 		return errors.Wrap(err, "failed to setup tracing")
 	}
 
-	err := node.chain.Start(ctx)
-	if err != nil {
-		return err
-	}
+	var err error
+	//err := node.chain.Start(ctx)
+	//if err != nil {
+	//	return err
+	//}
 
 	var syncCtx context.Context
 	syncCtx, node.syncer.CancelChainSync = context.WithCancel(context.Background())
@@ -393,8 +394,8 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		SyncerAPI:            node.Syncer().API(),
 		WalletAPI:            node.Wallet.API(),
 		MingingAPI:           node.mining.API(),
+		MessagePoolAPI:       node.Mpool.API(),
 	}
-	env.MessagePoolAPI = node.Mpool.API(env.WalletAPI, env.ChainAPI)
 
 	return &env
 }

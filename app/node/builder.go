@@ -2,8 +2,9 @@ package node
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -230,6 +231,10 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}
+	err = nd.chain.Start(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	if b.chainClock == nil {
 		// get the genesis block time from the chainsubmodule
@@ -258,7 +263,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Wallet")
 	}
 
-	nd.Mpool, err = mpool.NewMpoolSubmodule((*builder)(b), nd.network, nd.chain, nd.syncer)
+	nd.Mpool, err = mpool.NewMpoolSubmodule((*builder)(b), nd.network, nd.chain, nd.syncer, nd.Wallet)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Mpool")
 	}
@@ -282,6 +287,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.StorageNetworking,
 		nd.ProofVerification,
 		nd.mining,
+		nd.Mpool,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "add service failed ")

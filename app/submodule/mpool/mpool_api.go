@@ -11,8 +11,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/app/submodule/wallet"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -20,9 +18,6 @@ import (
 )
 
 type MessagePoolAPI struct {
-	walletAPI *wallet.WalletAPI
-	chainAPI  *chain.ChainAPI
-
 	pushLocks *messagepool.MpoolLocker
 	lk        sync.Mutex
 
@@ -42,7 +37,7 @@ func (a *MessagePoolAPI) MpoolSetConfig(ctx context.Context, cfg *messagepool.Mp
 }
 
 func (a *MessagePoolAPI) MpoolSelect(ctx context.Context, tsk block.TipSetKey, ticketQuality float64) ([]*types.SignedMessage, error) {
-	ts, err := a.chainAPI.ChainGetTipSet(tsk)
+	ts, err := a.mp.chain.API().ChainGetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -51,7 +46,7 @@ func (a *MessagePoolAPI) MpoolSelect(ctx context.Context, tsk block.TipSetKey, t
 }
 
 func (a *MessagePoolAPI) MpoolPending(ctx context.Context, tsk block.TipSetKey) ([]*types.SignedMessage, error) {
-	ts, err := a.chainAPI.ChainGetTipSet(tsk)
+	ts, err := a.mp.chain.API().ChainGetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -110,7 +105,7 @@ func (a *MessagePoolAPI) MpoolPending(ctx context.Context, tsk block.TipSetKey) 
 			return pending, nil
 		}
 
-		ts, err = a.chainAPI.ChainGetTipSet(ts.EnsureParents())
+		ts, err = a.mp.chain.API().ChainGetTipSet(ts.EnsureParents())
 		if err != nil {
 			return nil, xerrors.Errorf("loading parent tipset: %w", err)
 		}
@@ -130,7 +125,11 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Unsign
 	cp := *msg
 	msg = &cp
 	inMsg := *msg
-	fromA, err := a.chainAPI.ResolveToKeyAddr(ctx, msg.From, nil)
+	ts, err := a.mp.chain.API().ChainHead(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("getting tipset error: %v", err)
+	}
+	fromA, err := a.mp.chain.API().ResolveToKeyAddr(ctx, msg.From, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("getting key address: %w", err)
 	}
@@ -169,7 +168,7 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Unsign
 		msg.From = fromA
 	}
 
-	b, err := a.walletAPI.WalletBalance(ctx, msg.From)
+	b, err := a.mp.walletAPI.WalletBalance(ctx, msg.From)
 	if err != nil {
 		return nil, xerrors.Errorf("mpool push: getting origin balance: %w", err)
 	}
@@ -196,7 +195,7 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Unsign
 			return nil, xerrors.Errorf("serializing message: %w", err)
 		}
 
-		sig, err := a.walletAPI.WalletSign(ctx, msg.From, mb.Cid().Bytes(), pwallet.MsgMeta{})
+		sig, err := a.mp.walletAPI.WalletSign(ctx, msg.From, mb.Cid().Bytes(), pwallet.MsgMeta{})
 		if err != nil {
 			return nil, xerrors.Errorf("failed to sign message: %w", err)
 		}
