@@ -512,7 +512,7 @@ func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet, up
 		return zero, err
 	}
 
-	if baseHeight > upgrade.UpgradeBreezeHeight && baseHeight < upgrade.UpgradeBreezeHeight+upgrade.BreezeGasTampingDuration {
+	if upgrade.UpgradeBreezeHeight >= 0 && baseHeight > upgrade.UpgradeBreezeHeight && baseHeight < upgrade.UpgradeBreezeHeight+upgrade.BreezeGasTampingDuration {
 		return abi.NewTokenAmount(100), nil
 	}
 
