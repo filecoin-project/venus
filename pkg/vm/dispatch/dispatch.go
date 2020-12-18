@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"reflect"
 
@@ -31,7 +32,7 @@ type Dispatcher interface {
 	//
 	// - The `ctx` argument will be coerced to the type the method expects in its first argument.
 	// - If arg1 is `[]byte`, it will attempt to decode the value based on second argument in the target method.
-	Dispatch(method abi.MethodNum, ctx interface{}, arg1 interface{}) ([]byte, *ExcuteError)
+	Dispatch(method abi.MethodNum, nvk network.Version, ctx interface{}, arg1 interface{}) ([]byte, *ExcuteError)
 	// Signature is a helper function that returns the signature for a given method.
 	//
 	// Note: This is intended to be used by tests and tools.
@@ -51,7 +52,7 @@ type method interface {
 var _ Dispatcher = (*actorDispatcher)(nil)
 
 // Dispatch implements `Dispatcher`.
-func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, ctx interface{}, arg1 interface{}) ([]byte, *ExcuteError) {
+func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, nvk network.Version, ctx interface{}, arg1 interface{}) ([]byte, *ExcuteError) {
 	// get method signature
 	m, err := d.signature(methodNum)
 	if err != nil {
@@ -65,27 +66,38 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, ctx interface{}, arg
 	}
 
 	// Dragons: simplify this to arginterface
-	if arg1 == nil {
+	parserByte := func(raw []byte) *ExcuteError {
+		obj, err := m.ArgInterface(raw)
+		if err != nil {
+			ec := exitcode.ErrSerialization
+			if nvk < network.Version7 {
+				ec = 1
+			}
+			return NewExcuteError(ec, "fail to decode params")
+		}
+		args = append(args, reflect.ValueOf(obj))
+		return nil
+	}
+
+	switch t := arg1.(type) {
+	case nil:
 		args = append(args, m.ArgNil())
-	} else if raw, ok := arg1.([]byte); ok {
-		obj, err := m.ArgInterface(raw)
+	case []byte:
+		err := parserByte(t)
 		if err != nil {
-			return []byte{}, NewExcuteError(exitcode.SysErrSenderInvalid, "fail to decode params")
+			return []byte{}, err
 		}
-		args = append(args, reflect.ValueOf(obj))
-	} else if raw, ok := arg1.(runtime.CBORBytes); ok {
-		obj, err := m.ArgInterface(raw)
+	case builtin.CBORBytes:
+		err := parserByte(t)
 		if err != nil {
-			return []byte{}, NewExcuteError(exitcode.SysErrSenderInvalid, "fail to decode params")
+			return []byte{}, err
 		}
-		args = append(args, reflect.ValueOf(obj))
-	} else if raw, ok := arg1.(builtin.CBORBytes); ok {
-		obj, err := m.ArgInterface(raw)
+	case runtime.CBORBytes:
+		err := parserByte(t)
 		if err != nil {
-			return []byte{}, NewExcuteError(exitcode.SysErrSenderInvalid, "fail to decode params")
+			return []byte{}, err
 		}
-		args = append(args, reflect.ValueOf(obj))
-	} else {
+	default:
 		args = append(args, reflect.ValueOf(arg1))
 	}
 

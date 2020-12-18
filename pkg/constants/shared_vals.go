@@ -39,8 +39,6 @@ func init() {
 
 	InitialFilReserved = big.NewInt(int64(FilReserved))
 	InitialFilReserved = InitialFilReserved.Mul(InitialFilReserved, big.NewInt(int64(FilecoinPrecision)))
-
-	SetAddressNetwork(address.Mainnet)
 }
 
 // assuming 4000 messages per round, this lets us not lose any messages across a

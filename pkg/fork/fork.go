@@ -1139,7 +1139,7 @@ func (c *ChainFork) UpgradeLiftoff(ctx context.Context, sm *ChainFork, root cid.
 }
 
 func (c *ChainFork) UpgradeCalico(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
-	store := adt.WrapStore(ctx, sm.ipldstore)
+	store := ActorStore(ctx, c.bs)
 	var stateRoot vmstate.StateRoot
 	if err := store.Get(ctx, root, &stateRoot); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to decode state root: %v", err)

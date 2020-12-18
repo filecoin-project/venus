@@ -263,7 +263,7 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 	// dispatch
 	adapter := newRuntimeAdapter(ctx) //runtimeAdapter{ctx: ctx}
 	var extErr *dispatch.ExcuteError
-	ret, extErr = actorImpl.Dispatch(ctx.originMsg.Method, adapter, ctx.originMsg.Params)
+	ret, extErr = actorImpl.Dispatch(ctx.originMsg.Method, ctx.vm.NtwkVersion(), adapter, ctx.originMsg.Params)
 	if extErr != nil {
 		runtime.Abortf(extErr.ExitCode(), extErr.Error())
 	}

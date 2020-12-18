@@ -203,6 +203,7 @@ type NetworkParamsConfig struct {
 	BlockDelay             uint64
 	DrandSchedule          map[abi.ChainEpoch]DrandEnum
 	ForkUpgradeParam       *ForkUpgradeConfig
+	AdressNetwork          address.Network
 }
 
 type ForkUpgradeConfig struct {
