@@ -1,6 +1,7 @@
 package constants
 
 import (
+	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
@@ -44,3 +45,5 @@ func init() {
 // assuming 4000 messages per round, this lets us not lose any messages across a
 // 10 block reorg.
 const BlsSignatureCacheSize = 40000
+
+const Finality = policy.ChainFinality

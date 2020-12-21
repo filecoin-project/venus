@@ -108,6 +108,10 @@ func defaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 		Height:    upgradeHeight.UpgradePersianHeight,
 		Network:   network.Version8,
 		Migration: nil,
+	}, {
+		Height:    upgradeHeight.UpgradeOrangeHeight,
+		Network:   network.Version9,
+		Migration: nil,
 	}}
 
 	if upgradeHeight.UpgradeActorsV2Height == math.MaxInt64 { // disable actors upgrade
@@ -181,6 +185,7 @@ type chainReader interface {
 type IFork interface {
 	HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error)
 	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
+	GetForkUpgrade() *config.ForkUpgradeConfig
 }
 
 var _ = IFork((*ChainFork)(nil))
@@ -1174,4 +1179,11 @@ func (c *ChainFork) UpgradeCalico(ctx context.Context, sm *ChainFork, root cid.C
 	}
 
 	return newRoot, nil
+}
+
+func (c *ChainFork) GetForkUpgrade() *config.ForkUpgradeConfig {
+	if c == nil {
+		return nil
+	}
+	return c.forkUpgrade
 }
