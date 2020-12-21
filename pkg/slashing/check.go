@@ -9,6 +9,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 
+	"github.com/filecoin-project/venus/pkg/config"
+	"golang.org/x/xerrors"
+
 	runtime2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 	"github.com/pkg/errors"
 
@@ -52,6 +55,14 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 	innerErr = encoding.Decode(h2, &b2)
 	if innerErr != nil {
 		return nil, errors.Wrapf(innerErr, "failed to decode h2")
+	}
+
+	// workaround chain halt
+	if config.IsNearUpgrade(b1.Height, config.DefaultForkUpgradeParam.UpgradeOrangeHeight) {
+		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
+	}
+	if config.IsNearUpgrade(b2.Height, config.DefaultForkUpgradeParam.UpgradeOrangeHeight) {
+		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
 	}
 
 	// Block syntax is not validated. This implements the strictest check possible, and is also the simplest check

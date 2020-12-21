@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -218,6 +219,12 @@ type ForkUpgradeConfig struct {
 	BreezeGasTampingDuration abi.ChainEpoch
 	UpgradeCalicoHeight      abi.ChainEpoch
 	UpgradePersianHeight     abi.ChainEpoch
+	UpgradeOrangeHeight      abi.ChainEpoch
+	UpgradeClausHeight       abi.ChainEpoch
+}
+
+func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
+	return epoch > upgradeEpoch-constants.Finality && epoch < upgradeEpoch+constants.Finality
 }
 
 var DefaultForkUpgradeParam = &ForkUpgradeConfig{
@@ -232,6 +239,8 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeCalicoHeight:      265200,
 	UpgradePersianHeight:     265200 + 120*60,
 	UpgradeActorsV2Height:    138720,
+	UpgradeOrangeHeight:      336458,
+	UpgradeClausHeight:       343200,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {

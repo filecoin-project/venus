@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -568,10 +569,16 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 	if gasUsed < 0 {
 		gasUsed = 0
 	}
-	gasOutputs := gas.ComputeGasOutputs(gasUsed, int64(msg.GasLimit), vm.vmOption.BaseFee, msg.GasFeeCap, msg.GasPremium)
+
+	burn, err := vm.shouldBurn(msg, code)
+	if err != nil {
+		panic(xerrors.Errorf("deciding whether should burn failed: %w", err))
+	}
+
+	gasOutputs := gas.ComputeGasOutputs(gasUsed, int64(msg.GasLimit), vm.vmOption.BaseFee, msg.GasFeeCap, msg.GasPremium, burn)
 
 	if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder, gasOutputs.BaseFeeBurn); err != nil {
-		gas.ComputeGasOutputs(gasUsed, int64(msg.GasLimit), vm.vmOption.BaseFee, msg.GasFeeCap, msg.GasPremium)
+		gas.ComputeGasOutputs(gasUsed, int64(msg.GasLimit), vm.vmOption.BaseFee, msg.GasFeeCap, msg.GasPremium, burn)
 		panic(xerrors.Errorf("failed To burn base fee: %w", err))
 	}
 
@@ -605,6 +612,31 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 			GasUsed:     types.NewGas(gasUsed),
 		},
 	}
+}
+
+func (vm *VM) shouldBurn(msg *types.UnsignedMessage, errcode exitcode.ExitCode) (bool, error) {
+	// Check to see if we should burn funds. We avoid burning on successful
+	// window post. This won't catch _indirect_ window post calls, but this
+	// is the best we can get for now.
+
+	if vm.currentEpoch > vm.vmOption.Fork.GetForkUpgrade().UpgradeClausHeight && errcode == exitcode.Ok &&
+		msg.Method == miner.Methods.SubmitWindowedPoSt {
+		// Ok, we've checked the _method_, but we still need to check
+		// the target actor. It would be nice if we could just look at
+		// the trace, but I'm not sure if that's safe?
+		if toActor, _, err := vm.state.GetActor(vm.context, msg.To); err != nil {
+			// If the actor wasn't found, we probably deleted it or something. Move on.
+			if !xerrors.Is(err, types.ErrActorNotFound) {
+				// Otherwise, this should never fail and something is very wrong.
+				return false, xerrors.Errorf("failed to lookup target actor: %w", err)
+			}
+		} else if builtin.IsStorageMinerActor(toActor.Code.Cid) {
+			// Ok, this is a storage miner and we've processed a window post. Remove the burn.
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
 
 // transfer debits money From one account and credits it To another.
