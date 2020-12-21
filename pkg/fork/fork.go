@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"math"
 
 	"github.com/filecoin-project/go-address"
@@ -45,6 +46,8 @@ import (
 )
 
 var log = logging.Logger("fork")
+
+var ErrExpensiveFork = errors.New("refusing explicit call due to state fork at epoch")
 
 // UpgradeFunc is a migration function run at every upgrade.
 //
@@ -181,6 +184,7 @@ type chainReader interface {
 type IFork interface {
 	HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error)
 	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
+	HasExpensiveFork(ctx context.Context, height abi.ChainEpoch) bool
 }
 
 var _ = IFork((*ChainFork)(nil))
@@ -276,7 +280,7 @@ func (c *ChainFork) HandleStateForks(ctx context.Context, root cid.Cid, height a
 	return retCid, nil
 }
 
-func (c *ChainFork) hasExpensiveFork(ctx context.Context, height abi.ChainEpoch) bool {
+func (c *ChainFork) HasExpensiveFork(ctx context.Context, height abi.ChainEpoch) bool {
 	_, ok := c.expensiveUpgrades[height]
 	return ok
 }

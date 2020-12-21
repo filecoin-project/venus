@@ -44,7 +44,7 @@ func TestGenValidTicketChain(t *testing.T) {
 	rnd := consensus.FakeSampler{Seed: 0}
 	tm := consensus.NewTicketMachine(&rnd, loader)
 
-	// Grow the specified ticket chain without error
+	// Grow the specified ticket Chain without error
 	for i := 0; i < len(schedule.Addrs); i++ {
 		requireValidTicket(ctx, t, tm, head.Key(), abi.ChainEpoch(i), miner, schedule.Addrs[i], signer)
 	}

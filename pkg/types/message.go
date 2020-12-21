@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-state-types/abi"
-	specsbig "github.com/filecoin-project/go-state-types/big"
+	tbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/enccid"
@@ -61,7 +61,7 @@ var EmptyReceiptsCID cid.Cid
 var EmptyTxMetaCID cid.Cid
 
 func FromFil(i uint64) AttoFIL {
-	return specsbig.Mul(specsbig.NewInt(int64(i)), specsbig.NewInt(int64(FilecoinPrecision)))
+	return tbig.Mul(tbig.NewInt(int64(i)), tbig.NewInt(int64(FilecoinPrecision)))
 }
 
 func init() {
@@ -141,6 +141,10 @@ func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, me
 		Method:     method,
 		Params:     params,
 	}
+}
+
+func (msg *UnsignedMessage) RequiredFunds() tbig.Int {
+	return tbig.Mul(msg.GasFeeCap, tbig.NewInt(int64(msg.GasLimit)))
 }
 
 // Unmarshal a message from the given bytes.
@@ -260,7 +264,7 @@ func (msg *UnsignedMessage) ValidForBlockInclusion(minGas int64, version network
 		return xerrors.New("'Value' cannot be nil")
 	}
 
-	if msg.Value.LessThan(specsbig.Zero()) {
+	if msg.Value.LessThan(tbig.Zero()) {
 		return xerrors.New("'Value' field cannot be negative")
 	}
 
@@ -272,7 +276,7 @@ func (msg *UnsignedMessage) ValidForBlockInclusion(minGas int64, version network
 		return xerrors.New("'GasFeeCap' cannot be nil")
 	}
 
-	if msg.GasFeeCap.LessThan(specsbig.Zero()) {
+	if msg.GasFeeCap.LessThan(tbig.Zero()) {
 		return xerrors.New("'GasFeeCap' field cannot be negative")
 	}
 
@@ -280,7 +284,7 @@ func (msg *UnsignedMessage) ValidForBlockInclusion(minGas int64, version network
 		return xerrors.New("'GasPremium' cannot be nil")
 	}
 
-	if msg.GasPremium.LessThan(specsbig.Zero()) {
+	if msg.GasPremium.LessThan(tbig.Zero()) {
 		return xerrors.New("'GasPremium' field cannot be negative")
 	}
 

@@ -23,7 +23,7 @@ type Config struct {
 	NetworkParams *NetworkParamsConfig `json:"parameters"`
 	Observability *ObservabilityConfig `json:"observability"`
 	Swarm         *SwarmConfig         `json:"swarm"`
-	Wallet        *WalletConfig        `json:"wallet"`
+	Wallet        *WalletConfig        `json:"walletModule"`
 }
 
 // APIConfig holds all configuration options related to the api.

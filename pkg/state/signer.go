@@ -30,10 +30,10 @@ func NewSigner(viewer *TipSetStateViewer, chainHead chainHeadTracker, wallet *wa
 }
 
 // SignBytes creates a signature for the given data using either the given addr or its associated signing address
-func (s *Signer) SignBytes(ctx context.Context, data []byte, addr address.Address) (crypto.Signature, error) {
+func (s *Signer) SignBytes(ctx context.Context, data []byte, addr address.Address) (*crypto.Signature, error) {
 	signingAddr, err := s.signingAddress(ctx, addr)
 	if err != nil {
-		return crypto.Signature{}, err
+		return nil, err
 	}
 	return s.wallet.SignBytes(data, signingAddr)
 }

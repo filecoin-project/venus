@@ -14,7 +14,6 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-address"
-	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	iptb "github.com/ipfs/iptb/testbed"
 
@@ -180,7 +179,7 @@ func (e *Devnet) GetFunds(ctx context.Context, p *fast.Filecoin) error {
 
 	e.log.Infof("GetFunds for process: %s", p.String())
 	var toAddr address.Address
-	if err := p.ConfigGet(ctx, "wallet.defaultAddress", &toAddr); err != nil {
+	if err := p.ConfigGet(ctx, "walletModule.defaultAddress", &toAddr); err != nil {
 		return err
 	}
 
@@ -199,15 +198,15 @@ func (e *Devnet) GetFunds(ctx context.Context, p *fast.Filecoin) error {
 
 	switch resp.StatusCode {
 	case 200:
-		msgcid := resp.Header.Get("Message-Cid")
-		mcid, err := cid.Decode(msgcid)
-		if err != nil {
-			return err
-		}
-
-		if _, err := p.MessageWait(ctx, mcid); err != nil {
-			return err
-		}
+		//msgcid := resp.Header.Get("Message-Cid")
+		//mcid, err := cid.Decode(msgcid)
+		//if err != nil {
+		//	return err
+		//}
+		//
+		//if _, err := p.MessageWait(ctx, mcid); err != nil {
+		//	return err
+		//}
 		return nil
 	case 400:
 		return fmt.Errorf("Bad Request: %s", string(b))

@@ -185,7 +185,7 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 	b.tipStateCids[block.NewTipSetKey().String()] = nullState
 
 	b.genesis = b.BuildOrphaTipset(block.UndefTipSet, 1, nil)
-	b.store = NewStore(ds, cst, bs, NewStatusReporter(), b.genesis.At(0).Cid())
+	b.store = NewStore(ds, cst, bs, NewStatusReporter(), repo.Config().NetworkParams.ForkUpgradeParam, b.genesis.At(0).Cid())
 
 	for _, block := range b.genesis.Blocks() {
 		// add block to cstore
@@ -593,21 +593,24 @@ func (ct *ClockTimestamper) Stamp(height abi.ChainEpoch) uint64 {
 
 // FakeStateEvaluator is a syncStateEvaluator that delegates to the FakeStateBuilder.
 type FakeStateEvaluator struct {
+	MessageStore *MessageStore
 	FakeStateBuilder
 }
 
-func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *block.TipSet, blockmsg []block.BlockMessagesInfo, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
-	return e.ComputeState(parentStateRoot, blockmsg)
+// RunStateTransition delegates to StateBuilder.ComputeState
+func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
+	//gather message
+	blockMessageInfo, err := e.MessageStore.LoadTipSetMessage(ctx, ts)
+	if err != nil {
+		return cid.Undef, []types.MessageReceipt{}, xerrors.Errorf("failed to gather message in tipset %v", err)
+	}
+
+	return e.ComputeState(parentStateRoot, blockMessageInfo)
 }
 
 func (e *FakeStateEvaluator) ValidateMining(ctx context.Context, parent, ts *block.TipSet, parentWeight big.Int, parentReceiptRoot cid.Cid) error {
 	return nil
 }
-
-// RunStateTransition delegates to StateBuilder.ComputeState.
-//func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, parentWeight big.Int, stateID cid.Cid, receiptCid cid.Cid) (cid.Cid, []types.MessageReceipt, error) {
-//	return e.ComputeState(stateID, blsMessages, secpMessages)
-//}
 
 // ValidateHeaderSemantic is a stub that always returns no error
 func (e *FakeStateEvaluator) ValidateHeaderSemantic(_ context.Context, _ *block.Block, _ *block.TipSet) error {
@@ -779,8 +782,8 @@ func (f *Builder) StoreTxMeta(ctx context.Context, meta types.TxMeta) (cid.Cid, 
 	return f.mstore.StoreTxMeta(ctx, meta)
 }
 
-func (f *Builder) LoadUnsinedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error) {
-	return f.mstore.LoadUnsinedMessagesFromCids(blsCids)
+func (f *Builder) LoadUnsignedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error) {
+	return f.mstore.LoadUnsignedMessagesFromCids(blsCids)
 }
 
 func (f *Builder) LoadSignedMessagesFromCids(secpCids []cid.Cid) ([]*types.SignedMessage, error) {

@@ -16,7 +16,7 @@ type Backend interface {
 	HasAddress(addr address.Address) bool
 
 	// Sign cryptographically signs data with the private key associated with an address.
-	SignBytes(data []byte, addr address.Address) (crypto.Signature, error)
+	SignBytes(data []byte, addr address.Address) (*crypto.Signature, error)
 
 	// GetKeyInfo will return the keyinfo associated with address `addr`
 	// iff backend contains the addr.

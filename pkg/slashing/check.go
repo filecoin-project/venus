@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	addr "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/pkg/fork"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 
-	"github.com/filecoin-project/go-address"
 	runtime2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 	"github.com/pkg/errors"
 
@@ -16,7 +19,7 @@ import (
 
 type FaultStateView interface {
 	state.AccountStateView
-	MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error)
+	MinerInfo(ctx context.Context, maddr addr.Address, nv network.Version) (*miner.MinerInfo, error)
 }
 
 // Chain state required for checking consensus fault reports.
@@ -27,10 +30,11 @@ type chainReader interface {
 // Checks the validity of reported consensus faults.
 type ConsensusFaultChecker struct {
 	chain chainReader
+	fork  fork.IFork
 }
 
-func NewFaultChecker(chain chainReader) *ConsensusFaultChecker {
-	return &ConsensusFaultChecker{chain: chain}
+func NewFaultChecker(chain chainReader, fork fork.IFork) *ConsensusFaultChecker {
+	return &ConsensusFaultChecker{chain: chain, fork: fork}
 }
 
 // Checks the validity of a consensus fault reported by serialized block headers h1, h2, and optional
@@ -107,12 +111,13 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 	}
 
 	// Expensive validation: signatures.
-
-	err := verifyBlockSignature(ctx, view, b1)
+	b1Version := s.fork.GetNtwkVersion(ctx, b1.Height)
+	err := verifyBlockSignature(ctx, view, b1, b1Version)
 	if err != nil {
 		return nil, err
 	}
-	err = verifyBlockSignature(ctx, view, b2)
+	b2Version := s.fork.GetNtwkVersion(ctx, b2.Height)
+	err = verifyBlockSignature(ctx, view, b2, b2Version)
 	if err != nil {
 		return nil, err
 	}
@@ -121,15 +126,15 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 }
 
 // Checks whether a block header is correctly signed in the context of the parent state to which it refers.
-func verifyBlockSignature(ctx context.Context, view FaultStateView, blk block.Block) error {
-	_, worker, err := view.MinerControlAddresses(ctx, blk.Miner)
+func verifyBlockSignature(ctx context.Context, view FaultStateView, blk block.Block, nv network.Version) error {
+	minerInfo, err := view.MinerInfo(ctx, blk.Miner, nv)
 	if err != nil {
 		panic(errors.Wrapf(err, "failed to inspect miner addresses"))
 	}
 	if blk.BlockSig == nil {
 		return errors.Errorf("no consensus fault: block %s has nil signature", blk.Cid())
 	}
-	err = state.NewSignatureValidator(view).ValidateSignature(ctx, blk.SignatureData(), worker, *blk.BlockSig)
+	err = state.NewSignatureValidator(view).ValidateSignature(ctx, blk.SignatureData(), minerInfo.Worker, *blk.BlockSig)
 	if err != nil {
 		return errors.Wrapf(err, "no consensus fault: block %s signature invalid", blk.Cid())
 	}

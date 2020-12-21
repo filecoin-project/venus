@@ -145,7 +145,7 @@ func MakeFakeVRFProofForTest() []byte {
 ///// Sampler /////
 
 // FakeChainRandomness generates deterministic values that are a function of a seed and the provided
-// tag, epoch, and entropy (but *not* the chain head key).
+// tag, epoch, and entropy (but *not* the Chain Head key).
 type FakeChainRandomness struct {
 	Seed uint
 }

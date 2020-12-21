@@ -22,6 +22,7 @@ var DrandConfigs = map[DrandEnum]DrandConf{
 			"https://api.drand.sh",
 			"https://api2.drand.sh",
 			"https://api3.drand.sh",
+			"https://drand.cloudflare.com",
 		},
 		Relays: []string{
 			"/dnsaddr/api.drand.sh/",

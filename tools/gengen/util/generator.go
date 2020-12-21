@@ -677,7 +677,7 @@ func (g *GenesisGenerator) publishDeals(actorAddr, clientAddr address.Address, c
 
 		params.Deals = append(params.Deals, market.ClientDealProposal{
 			Proposal:        proposal,
-			ClientSignature: sig,
+			ClientSignature: *sig,
 		})
 	}
 

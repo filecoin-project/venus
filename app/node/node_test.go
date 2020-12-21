@@ -138,7 +138,7 @@ func TestNodeInit(t *testing.T) {
 
 	assert.NoError(t, nd.Start(ctx))
 
-	ts, err := nd.Chain().API().ChainHead()
+	ts, err := nd.Chain().API().ChainHead(ctx)
 	require.NoError(t, err)
 	assert.NotEqual(t, 0, ts.Len())
 	nd.Stop(ctx)

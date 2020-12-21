@@ -27,7 +27,7 @@ type ChainSelector struct {
 	state  StateViewer
 }
 
-// NewChainSelector is the constructor for chain selection module.
+// NewChainSelector is the constructor for Chain selection module.
 func NewChainSelector(cs cbor.IpldStore, state StateViewer) *ChainSelector {
 	return &ChainSelector{
 		cstore: cs,
@@ -44,7 +44,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet) (fbig.Int,
 	pStateID := ts.At(0).ParentStateRoot.Cid
 	// Retrieve parent weight.
 	if !pStateID.Defined() {
-		return fbig.Zero(), errors.New("undefined state passed to chain selector new weight")
+		return fbig.Zero(), errors.New("undefined state passed to Chain selector new weight")
 	}
 	//todo change view version
 	powerTableView := state.NewPowerTableView(c.state.PowerStateView(pStateID), c.state.FaultStateView(pStateID))

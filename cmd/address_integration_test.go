@@ -2,8 +2,8 @@ package cmd_test
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
-	"github.com/filecoin-project/venus/cmd"
 	"os"
 	"testing"
 
@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/node/test"
+	"github.com/filecoin-project/venus/cmd"
 	"github.com/filecoin-project/venus/fixtures/fortest"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
@@ -123,12 +124,13 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 		require.NoError(t, os.Remove("walletFileTest"))
 	}()
 
-	_, err = wf.WriteString(exportJSON)
+	keyInfo, err := json.Marshal(exportResult.KeyInfo[0])
+	require.NoError(t, err)
+	_, err = wf.WriteString(hex.EncodeToString(keyInfo))
 	require.NoError(t, err)
 	require.NoError(t, wf.Close())
 
-	var importResult cmd.AddressLsResult
+	var importResult address.Address
 	cmdClient.RunMarshaledJSON(ctx, &importResult, "wallet", "import", wf.Name())
-	assert.Len(t, importResult.Addresses, 1)
-	assert.Equal(t, lsResult.Addresses[0], importResult.Addresses[0])
+	assert.Equal(t, lsResult.Addresses[0], importResult)
 }

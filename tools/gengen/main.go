@@ -1,14 +1,14 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	flg "flag"
 	"fmt"
-	"github.com/filecoin-project/venus/cmd"
 	"os"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/tools/gengen/util"
+	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 
 func writeKey(ki *crypto.KeyInfo, name string, jsonout bool) error {
@@ -26,10 +26,10 @@ func writeKey(ki *crypto.KeyInfo, name string, jsonout bool) error {
 	}
 	defer fi.Close() // nolint: errcheck
 
-	var wir cmd.WalletSerializeResult
-	wir.KeyInfo = append(wir.KeyInfo, ki)
+	//var wir cmd.WalletSerializeResult
+	//wir.KeyInfo = append(wir.KeyInfo, ki)
 
-	return json.NewEncoder(fi).Encode(wir)
+	return json.NewEncoder(hex.NewEncoder(fi)).Encode(ki)
 }
 
 /* gengen takes as input a json encoded 'Genesis Config'

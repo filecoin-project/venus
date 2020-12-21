@@ -228,8 +228,11 @@ func TestNoUncessesaryFetch(t *testing.T) {
 	// A new syncer unable to fetch blocks from the network can handle a tipset that's already
 	// in the bsstore and linked to genesis.
 	emptyFetcher := chain.NewBuilder(t, address.Undef)
-	newSyncer, err := syncer.NewSyncer(&chain.FakeStateEvaluator{},
-		&chain.FakeStateEvaluator{},
+	eval := &chain.FakeStateEvaluator{
+		MessageStore: builder.Mstore(),
+	}
+	newSyncer, err := syncer.NewSyncer(eval,
+		eval,
 		&chain.FakeChainSelector{},
 		builder.Store(),
 		builder.Mstore(),
@@ -416,7 +419,7 @@ type poisonValidator struct {
 	fullFailureTS   uint64
 }
 
-func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *block.TipSet, blkMsgInfo []block.BlockMessagesInfo, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
+func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
 	stamp := ts.At(0).Timestamp
 	if pv.fullFailureTS == stamp {
 		return types.EmptyTxMetaCID, nil, errors.New("run state transition fails on poison timestamp")
@@ -451,7 +454,8 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	eval := newPoisonValidator(t, 98, 99)
-	builder, syncer := setupWithValidator(ctx, t, eval, eval)
+	builder := chain.NewBuilder(t, address.Undef)
+	builder, syncer := setupWithValidator(ctx, t, builder, eval, eval)
 	genesis := builder.RequireTipSet(builder.Store().GetHead())
 
 	// Build a chain with messages that will fail semantic header validation
@@ -531,6 +535,7 @@ func TestStoresMessageReceipts(t *testing.T) {
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", t1.Key(), heightFromTip(t, t1)), false))
 
 	receiptsCid, err := builder.Store().GetTipSetReceiptsRoot(t1.Key())
+
 	require.NoError(t, err)
 
 	receipts, err := builder.LoadReceipts(ctx, receiptsCid)
@@ -545,13 +550,14 @@ func TestStoresMessageReceipts(t *testing.T) {
 // Initializes a chain builder, bsstore and syncer.
 // The chain builder has a single genesis block, which is set as the head of the bsstore.
 func setup(ctx context.Context, t *testing.T) (*chain.Builder, *syncer.Syncer) {
-	eval := &chain.FakeStateEvaluator{}
-	return setupWithValidator(ctx, t, eval, eval)
+	builder := chain.NewBuilder(t, address.Undef)
+	eval := &chain.FakeStateEvaluator{
+		MessageStore: builder.Mstore(),
+	}
+	return setupWithValidator(ctx, t, builder, eval, eval)
 }
 
-func setupWithValidator(ctx context.Context, t *testing.T, fullVal syncer.FullBlockValidator, headerVal syncer.BlockValidator) (*chain.Builder, *syncer.Syncer) {
-	builder := chain.NewBuilder(t, address.Undef)
-
+func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builder, fullVal syncer.FullBlockValidator, headerVal syncer.BlockValidator) (*chain.Builder, *syncer.Syncer) {
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the bsstore, to which the syncer must ensure to put blocks.
 	sel := &chain.FakeChainSelector{}

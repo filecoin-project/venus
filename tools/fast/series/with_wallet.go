@@ -22,16 +22,16 @@ var ErrWithWalletRestoreFailed = errors.New("failed to restore default wallet af
 // could not be restored.
 func WithWallet(ctx context.Context, fc *fast.Filecoin, sessionWallet address.Address, sessionFn func(*fast.Filecoin) error) (err error) {
 	var beforeAddress address.Address
-	if err = fc.ConfigGet(ctx, "wallet.defaultAddress", &beforeAddress); err != nil {
+	if err = fc.ConfigGet(ctx, "walletModule.defaultAddress", &beforeAddress); err != nil {
 		return
 	}
 
-	if err = fc.ConfigSet(ctx, "wallet.defaultAddress", sessionWallet); err != nil {
+	if err = fc.ConfigSet(ctx, "walletModule.defaultAddress", sessionWallet); err != nil {
 		return
 	}
 
 	defer func() {
-		err = fc.ConfigSet(ctx, "wallet.defaultAddress", beforeAddress)
+		err = fc.ConfigSet(ctx, "walletModule.defaultAddress", beforeAddress)
 		if err != nil {
 			err = ErrWithWalletRestoreFailed
 		}

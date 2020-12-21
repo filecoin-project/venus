@@ -118,10 +118,10 @@ func MustGenerateKeyInfo(n int, seed byte) []crypto.KeyInfo {
 }
 
 // SignBytes cryptographically signs `data` using the RustFulAddress `addr`.
-func (ms MockSigner) SignBytes(_ context.Context, data []byte, addr address.Address) (crypto.Signature, error) {
+func (ms MockSigner) SignBytes(_ context.Context, data []byte, addr address.Address) (*crypto.Signature, error) {
 	ki, ok := ms.AddrKeyInfo[addr]
 	if !ok {
-		return crypto.Signature{}, errors.New("unknown address")
+		return nil, errors.New("unknown address")
 	}
 	return crypto.Sign(data, ki.Key(), ki.SigType)
 }
@@ -275,7 +275,7 @@ func NewSignedMsgs(n uint, ms MockSigner) []*SignedMessage {
 func SignMsgs(ms MockSigner, msgs []*UnsignedMessage) ([]*SignedMessage, error) {
 	var smsgs []*SignedMessage
 	for _, m := range msgs {
-		s, err := NewSignedMessage(context.TODO(), *m, &ms)
+		s, err := NewSignedMessage(context.TODO(), *m, ms)
 		if err != nil {
 			return nil, err
 		}

@@ -2,6 +2,7 @@ package vmcontext
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	goruntime "runtime"
 	"sync"
 
@@ -20,7 +21,7 @@ import (
 
 type SyscallsStateView interface {
 	state.AccountStateView
-	MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error)
+	MinerInfo(ctx context.Context, maddr address.Address, nv network.Version) (*miner.MinerInfo, error)
 	TotalFilCircSupply(height abi.ChainEpoch, st vmState.Tree) (abi.TokenAmount, error)
 	GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version
 }

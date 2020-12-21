@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/chainsync/slashfilter"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"time"
 
@@ -37,6 +38,9 @@ var log = logging.Logger("sync_moduel") // nolint: deadcode
 
 // SyncerSubmodule enhances the node with chain syncing capabilities
 type SyncerSubmodule struct { //nolint
+	ChainModule   *chain2.ChainSubmodule
+	NetworkModule *network.NetworkSubmodule
+
 	BlockTopic       *pubsub.Topic
 	BlockSub         pubsub.Subscription
 	ChainSelector    nodeChainSelector
@@ -45,6 +49,7 @@ type SyncerSubmodule struct { //nolint
 	ChainSyncManager *chainsync.Manager
 	Drand            beacon.Schedule
 	SyncProvider     ChainSyncProvider
+	SlashFilter      *slashfilter.SlashFilter
 	// cancelChainSync cancels the context for chain sync subscriptions and handlers.
 	CancelChainSync context.CancelFunc
 	// faultCh receives detected consensus faults
@@ -148,7 +153,10 @@ func NewSyncerSubmodule(ctx context.Context,
 	})
 
 	return &SyncerSubmodule{
-		BlockTopic: pubsub.NewTopic(topic),
+		ChainModule:   chn,
+		NetworkModule: network,
+		SlashFilter:   slashfilter.New(config.Repo().ChainDatastore()),
+		BlockTopic:    pubsub.NewTopic(topic),
 		// BlockSub: nil,
 		Consensus:        nodeConsensus,
 		ChainSelector:    nodeChainSelector,

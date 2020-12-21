@@ -2,21 +2,9 @@ package node
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"time"
 
-	"github.com/filecoin-project/venus/app/submodule/blockservice"
-	"github.com/filecoin-project/venus/app/submodule/blockstore"
-	"github.com/filecoin-project/venus/app/submodule/chain"
-	config2 "github.com/filecoin-project/venus/app/submodule/config"
-	"github.com/filecoin-project/venus/app/submodule/discovery"
-	"github.com/filecoin-project/venus/app/submodule/messaging"
-	"github.com/filecoin-project/venus/app/submodule/network"
-	"github.com/filecoin-project/venus/app/submodule/proofverification"
-	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
-	"github.com/filecoin-project/venus/app/submodule/syncer"
-	"github.com/filecoin-project/venus/app/submodule/wallet"
-	"github.com/filecoin-project/venus/pkg/util"
+	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -24,11 +12,24 @@ import (
 	"github.com/libp2p/go-libp2p"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/venus/app/submodule/blockservice"
+	"github.com/filecoin-project/venus/app/submodule/blockstore"
+	"github.com/filecoin-project/venus/app/submodule/chain"
+	config2 "github.com/filecoin-project/venus/app/submodule/config"
+	"github.com/filecoin-project/venus/app/submodule/discovery"
+	"github.com/filecoin-project/venus/app/submodule/mining"
+	"github.com/filecoin-project/venus/app/submodule/mpool"
+	"github.com/filecoin-project/venus/app/submodule/network"
+	"github.com/filecoin-project/venus/app/submodule/proofverification"
+	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
+	"github.com/filecoin-project/venus/app/submodule/syncer"
+	"github.com/filecoin-project/venus/app/submodule/wallet"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/journal"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/specactors/policy"
+	"github.com/filecoin-project/venus/pkg/util"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/version"
 )
@@ -230,6 +231,10 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}
+	err = nd.chain.Start(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	if b.chainClock == nil {
 		// get the genesis block time from the chainsubmodule
@@ -258,15 +263,17 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Wallet")
 	}
 
-	nd.Messaging, err = messaging.NewMessagingSubmodule(ctx, (*builder)(b), b.repo, nd.network, nd.chain, nd.Blockstore, nd.Wallet, nd.syncer)
+	nd.Mpool, err = mpool.NewMpoolSubmodule((*builder)(b), nd.network, nd.chain, nd.syncer, nd.Wallet)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.Messaging")
+		return nil, errors.Wrap(err, "failed to build node.Mpool")
 	}
 
 	nd.StorageNetworking, err = storagenetworking.NewStorgeNetworkingSubmodule(ctx, nd.network)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.StorageNetworking")
 	}
+	nd.mining = mining.NewMiningModule(b.repo, nd.chain, nd.Blockstore, nd.network, nd.syncer, *nd.Wallet, *nd.ProofVerification)
+
 	apiBuilder := util.NewBuiler()
 	apiBuilder.NameSpace("Filecoin")
 	err = apiBuilder.AddServices(nd.ConfigModule,
@@ -277,9 +284,10 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.chain,
 		nd.syncer,
 		nd.Wallet,
-		nd.Messaging,
 		nd.StorageNetworking,
 		nd.ProofVerification,
+		nd.mining,
+		nd.Mpool,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "add service failed ")

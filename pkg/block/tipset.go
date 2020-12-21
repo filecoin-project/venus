@@ -242,6 +242,20 @@ func (ts *TipSet) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+func (ts *TipSet) MinTicketBlock() *Block {
+	blks := ts.Blocks()
+
+	min := blks[0]
+
+	for _, b := range blks[1:] {
+		if b.LastTicket().Less(min.LastTicket()) {
+			min = b
+		}
+	}
+
+	return min
+}
+
 func CidArrsEqual(a, b []cid.Cid) bool {
 	if len(a) != len(b) {
 		return false

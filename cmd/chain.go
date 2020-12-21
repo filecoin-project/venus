@@ -2,8 +2,9 @@
 package cmd
 
 import (
-	"github.com/filecoin-project/venus/app/node"
 	"os"
+
+	"github.com/filecoin-project/venus/app/node"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -12,7 +13,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/chain"
 )
 
 var chainCmd = &cmds.Command{
@@ -40,7 +40,7 @@ var storeHeadCmd = &cmds.Command{
 		Tagline: "Get heaviest tipset info",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		head, err := env.(*node.Env).ChainAPI.ChainHead()
+		head, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
 		if err != nil {
 			return err
 		}
@@ -75,41 +75,27 @@ var storeLsCmd = &cmds.Command{
 			return nil
 		}
 
-		var iter *chain.TipsetIterator
 		var err error
 		height, _ := req.Options["height"].(int64)
+		startTs, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
+		if err != nil {
+			return err
+		}
 		if height >= 0 {
-			ts, err := env.(*node.Env).ChainAPI.ChainGetTipSetByHeight(req.Context, nil, abi.ChainEpoch(height), true)
-			if err != nil {
-				return err
-			}
-
-			iter, err = env.(*node.Env).ChainAPI.ChainLsWithHead(req.Context, ts.Key())
-			if err != nil {
-				return err
-			}
-		} else {
-			iter, err = env.(*node.Env).ChainAPI.ChainLs(req.Context)
+			startTs, err = env.(*node.Env).ChainAPI.ChainGetTipSetByHeight(req.Context, abi.ChainEpoch(height), startTs.Key())
 			if err != nil {
 				return err
 			}
 		}
 
-		var number uint = 0
-		for ; !iter.Complete(); err = iter.Next() {
-			if err != nil {
-				return err
-			}
-			if !iter.Value().Defined() {
-				panic("tipsets from this iterator should have at least one member")
-			}
-			if err := re.Emit(iter.Value().ToSlice()); err != nil {
-				return err
-			}
+		tipSetKeys, err := env.(*node.Env).ChainAPI.ChainList(req.Context, startTs.Key(), int(count))
+		if err != nil {
+			return err
+		}
 
-			number++
-			if number >= count {
-				break
+		for _, tipset := range tipSetKeys {
+			if err := re.Emit(tipset.ToSlice()); err != nil {
+				return err
 			}
 		}
 		return nil

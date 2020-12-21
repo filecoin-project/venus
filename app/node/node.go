@@ -3,15 +3,34 @@ package node
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"reflect"
+	"runtime"
+	"syscall"
+
+	bserv "github.com/ipfs/go-blockservice"
+	cmds "github.com/ipfs/go-ipfs-cmds"
+	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p-core/host"
+	ma "github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr-net" //nolint
+	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	fbig "github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/venus/app/submodule/blockservice"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	configModule "github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/discovery"
-	"github.com/filecoin-project/venus/app/submodule/messaging"
+	"github.com/filecoin-project/venus/app/submodule/mining"
+	"github.com/filecoin-project/venus/app/submodule/mpool"
 	network2 "github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/proofverification"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
@@ -25,21 +44,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/net/pubsub"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/version"
-	bserv "github.com/ipfs/go-blockservice"
-	cmds "github.com/ipfs/go-ipfs-cmds"
-	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/host"
-	ma "github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net" //nolint
-	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
-	"net/http"
-	"os"
-	"os/signal"
-	"reflect"
-	"runtime"
-	"syscall"
 )
 
 var log = logging.Logger("node") // nolint: deadcode
@@ -74,12 +78,13 @@ type Node struct {
 	//
 	chain  *chain2.ChainSubmodule
 	syncer *syncer2.SyncerSubmodule
+	mining *mining.MiningModule
 
 	//
 	// Supporting services
 	//
 	Wallet            *wallet.WalletSubmodule
-	Messaging         *messaging.MessagingSubmodule
+	Mpool             *mpool.MessagePoolSubmodule
 	StorageNetworking *storagenetworking.StorageNetworkingSubmodule
 	ProofVerification *proofverification.ProofVerificationSubmodule
 
@@ -104,12 +109,11 @@ func (node *Node) Start(ctx context.Context) error {
 		return errors.Wrap(err, "failed to setup tracing")
 	}
 
-	err := node.chain.Start(ctx)
-	if err != nil {
-		return err
-	}
-
-	go node.Messaging.Start(ctx) //nolint
+	var err error
+	//err := node.chain.Start(ctx)
+	//if err != nil {
+	//	return err
+	//}
 
 	var syncCtx context.Context
 	syncCtx, node.syncer.CancelChainSync = context.WithCancel(context.Background())
@@ -127,7 +131,7 @@ func (node *Node) Start(ctx context.Context) error {
 		}
 
 		// Subscribe to the message pubsub topic to learn about messages to mine into blocks.
-		node.Messaging.MessageSub, err = node.pubsubscribe(syncCtx, node.Messaging.MessageTopic, node.processMessage)
+		node.Mpool.MessageSub, err = node.pubsubscribe(syncCtx, node.Mpool.MessageTopic, node.processMessage)
 		if err != nil {
 			return err
 		}
@@ -160,9 +164,10 @@ func (node *Node) cancelSubscriptions() {
 		node.syncer.BlockSub = nil
 	}
 
-	if node.Messaging.MessageSub != nil {
-		node.Messaging.MessageSub.Cancel()
-		node.Messaging.MessageSub = nil
+	// stop message sub
+	if node.Mpool.MessageSub != nil {
+		node.Mpool.MessageSub.Cancel()
+		node.Mpool.MessageSub = nil
 	}
 }
 
@@ -170,6 +175,9 @@ func (node *Node) cancelSubscriptions() {
 func (node *Node) Stop(ctx context.Context) {
 	node.cancelSubscriptions()
 	node.chain.ChainReader.Stop()
+
+	// close mpool
+	node.Mpool.Close()
 
 	if err := node.Host().Close(); err != nil {
 		fmt.Printf("error closing host: %s\n", err)
@@ -372,7 +380,7 @@ func (node *Node) runJsonrpcAPI(ctx context.Context) (*http.Server, error) { //n
 }
 
 func (node *Node) createServerEnv(ctx context.Context) *Env {
-	return &Env{
+	env := Env{
 		ctx:                  ctx,
 		InspectorAPI:         NewInspectorAPI(node.Repo),
 		BlockServiceAPI:      node.Blockservice.API(),
@@ -380,11 +388,14 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		ChainAPI:             node.Chain().API(),
 		ConfigAPI:            node.ConfigModule.API(),
 		DiscoveryAPI:         node.Discovery().API(),
-		MessagingAPI:         node.Messaging.API(),
 		NetworkAPI:           node.Network().API(),
 		ProofVerificationAPI: node.ProofVerification.API(),
 		StorageNetworkingAPI: node.StorageNetworking.API(),
 		SyncerAPI:            node.Syncer().API(),
 		WalletAPI:            node.Wallet.API(),
+		MingingAPI:           node.mining.API(),
+		MessagePoolAPI:       node.Mpool.API(),
 	}
+
+	return &env
 }
