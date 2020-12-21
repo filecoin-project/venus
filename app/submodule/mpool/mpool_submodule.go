@@ -28,7 +28,9 @@ type MessagePoolSubmodule struct { //nolint
 	MessageTopic *pubsub.Topic
 	MessageSub   pubsub.Subscription
 
-	MPool *messagepool.MessagePool
+	MPool     *messagepool.MessagePool
+	chain     *chain.ChainSubmodule
+	walletAPI *wallet.WalletAPI
 }
 
 func OpenFilesystemJournal(lr repo.Repo) (journal.Journal, error) {
@@ -40,7 +42,12 @@ func OpenFilesystemJournal(lr repo.Repo) (journal.Journal, error) {
 	return jrnl, err
 }
 
-func NewMpoolSubmodule(cfg messagepoolConfig, network *network.NetworkSubmodule, chain *chain.ChainSubmodule, syncer *syncer.SyncerSubmodule) (*MessagePoolSubmodule, error) {
+func NewMpoolSubmodule(cfg messagepoolConfig,
+	network *network.NetworkSubmodule,
+	chain *chain.ChainSubmodule,
+	syncer *syncer.SyncerSubmodule,
+	wallet *wallet.WalletSubmodule,
+) (*MessagePoolSubmodule, error) {
 	mpp := messagepool.NewProvider(chain.ChainReader, chain.MessageStore, cfg.Repo().Config().NetworkParams, network.Pubsub)
 
 	j, err := OpenFilesystemJournal(cfg.Repo())
@@ -66,7 +73,12 @@ func NewMpoolSubmodule(cfg messagepoolConfig, network *network.NetworkSubmodule,
 		return nil, err
 	}
 
-	return &MessagePoolSubmodule{MPool: mp, MessageTopic: pubsub.NewTopic(topic)}, nil
+	return &MessagePoolSubmodule{
+		MPool:        mp,
+		MessageTopic: pubsub.NewTopic(topic),
+		chain:        chain,
+		walletAPI:    wallet.API(),
+	}, nil
 }
 
 func (mp *MessagePoolSubmodule) Close() {
@@ -76,6 +88,6 @@ func (mp *MessagePoolSubmodule) Close() {
 	}
 }
 
-func (mp *MessagePoolSubmodule) API(walletAPI *wallet.WalletAPI, chainAPI *chain.ChainAPI) *MessagePoolAPI {
-	return &MessagePoolAPI{walletAPI: walletAPI, chainAPI: chainAPI, mp: mp}
+func (mp *MessagePoolSubmodule) API() *MessagePoolAPI {
+	return &MessagePoolAPI{mp: mp}
 }
