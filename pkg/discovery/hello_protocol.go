@@ -1,9 +1,9 @@
 package discovery
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -17,9 +17,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/cborutil"
-	"github.com/filecoin-project/venus/pkg/enccid"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/metrics"
 )
 
@@ -33,17 +30,15 @@ var helloMsgErrCt = metrics.NewInt64Counter("hello_message_error", "Number of er
 
 // HelloMessage is the data structure of a single message in the hello protocol.
 type HelloMessage struct {
-	_                    struct{} `cbor:",toarray"`
 	HeaviestTipSetCids   block.TipSetKey
 	HeaviestTipSetHeight abi.ChainEpoch
 	HeaviestTipSetWeight fbig.Int
-	GenesisHash          enccid.Cid
+	GenesisHash          cid.Cid
 }
 
 // LatencyMessage is written in response to a hello message for measuring peer
 // latency.
 type LatencyMessage struct {
-	_        struct{} `cbor:",toarray"`
 	TArrival int64
 	TSent    int64
 }
@@ -170,7 +165,7 @@ func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 	}
 
 	return &HelloMessage{
-		GenesisHash:          enccid.NewCid(h.genesis),
+		GenesisHash:          h.genesis,
 		HeaviestTipSetCids:   heaviest.Key(),
 		HeaviestTipSetHeight: height,
 		HeaviestTipSetWeight: weight,
@@ -179,19 +174,14 @@ func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 
 func (h *HelloProtocolHandler) receiveHello(ctx context.Context, s net.Stream) (*HelloMessage, error) {
 	var hello HelloMessage
-	// Read cbor bytes from stream into hello message
-	mr := cborutil.NewMsgReader(s)
-	err := mr.ReadMsg(&hello)
+	err := hello.UnmarshalCBOR(s)
 	return &hello, err
+
 }
 
 func (h *HelloProtocolHandler) receiveLatency(ctx context.Context, s net.Stream) (*LatencyMessage, error) {
 	var latency LatencyMessage
-	rawLatency, err := ioutil.ReadAll(s)
-	if err != nil {
-		return nil, err
-	}
-	err = encoding.Decode(rawLatency, &latency)
+	err := latency.UnmarshalCBOR(s)
 	if err != nil {
 		return nil, err
 	}
@@ -204,15 +194,16 @@ func (h *HelloProtocolHandler) sendHello(s net.Stream) error {
 	if err != nil {
 		return err
 	}
-	msgRaw, err := encoding.Encode(msg)
+	buf := new(bytes.Buffer)
+	if err := msg.MarshalCBOR(buf); err != nil {
+		return err
+	}
+
+	n, err := s.Write(buf.Bytes())
 	if err != nil {
 		return err
 	}
-	n, err := s.Write(msgRaw)
-	if err != nil {
-		return err
-	}
-	if n != len(msgRaw) {
+	if n != buf.Len() {
 		return fmt.Errorf("could not write all hello message bytes")
 	}
 	return nil
@@ -220,15 +211,15 @@ func (h *HelloProtocolHandler) sendHello(s net.Stream) error {
 
 // responding to latency
 func (h *HelloProtocolHandler) sendLatency(msg *LatencyMessage, s net.Stream) error {
-	msgRaw, err := encoding.Encode(msg)
+	buf := new(bytes.Buffer)
+	if err := msg.MarshalCBOR(buf); err != nil {
+		return err
+	}
+	n, err := s.Write(buf.Bytes())
 	if err != nil {
 		return err
 	}
-	n, err := s.Write(msgRaw)
-	if err != nil {
-		return err
-	}
-	if n != len(msgRaw) {
+	if n != buf.Len() {
 		return fmt.Errorf("could not write all latency message bytes")
 	}
 	return nil

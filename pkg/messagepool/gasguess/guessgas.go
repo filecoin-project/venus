@@ -87,12 +87,12 @@ func GuessGasUsed(ctx context.Context, tsk block.TipSetKey, msg *types.SignedMes
 		return failedGuess(msg), xerrors.Errorf("could not lookup actor: %v", err)
 	}
 
-	guess, ok := Costs[CostKey{to.Code.Cid, msg.Message.Method}]
+	guess, ok := Costs[CostKey{to.Code, msg.Message.Method}]
 	if !ok {
 		return failedGuess(msg), xerrors.Errorf("unknown code-method combo")
 	}
-	if guess > int64(msg.Message.GasLimit) {
-		guess = int64(msg.Message.GasLimit)
+	if guess > msg.Message.GasLimit {
+		guess = msg.Message.GasLimit
 	}
 	return guess, nil
 }

@@ -24,10 +24,10 @@ type GasTracker struct { //nolint
 }
 
 // NewGasTracker initializes a new empty gas tracker
-func NewGasTracker(limit types2.Unit) *GasTracker {
+func NewGasTracker(limit int64) *GasTracker {
 	return &GasTracker{
 		GasUsed:      0,
-		GasAvailable: int64(limit),
+		GasAvailable: limit,
 	}
 }
 

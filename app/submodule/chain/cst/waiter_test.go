@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
-	e "github.com/filecoin-project/venus/pkg/enccid"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm/state"
@@ -90,8 +89,8 @@ func testWaitExisting(ctx context.Context, t *testing.T, cst cbor.IpldStore, cha
 	require.Equal(t, 1, ts.Len())
 	require.NoError(t, chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
-		TipSetStateRoot: ts.ToSlice()[0].ParentStateRoot.Cid,
-		TipSetReceipts:  ts.ToSlice()[0].ParentMessageReceipts.Cid,
+		TipSetStateRoot: ts.ToSlice()[0].ParentStateRoot,
+		TipSetReceipts:  ts.ToSlice()[0].ParentMessageReceipts,
 	}))
 	require.NoError(t, chainStore.SetHead(ctx, ts))
 
@@ -114,8 +113,8 @@ func testWaitNew(ctx context.Context, t *testing.T, cst cbor.IpldStore, chainSto
 	require.Equal(t, 1, ts.Len())
 	require.NoError(t, chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
-		TipSetStateRoot: ts.ToSlice()[0].ParentStateRoot.Cid,
-		TipSetReceipts:  ts.ToSlice()[0].ParentMessageReceipts.Cid,
+		TipSetStateRoot: ts.ToSlice()[0].ParentStateRoot,
+		TipSetReceipts:  ts.ToSlice()[0].ParentMessageReceipts,
 	}))
 	require.NoError(t, chainStore.SetHead(ctx, ts))
 
@@ -125,28 +124,6 @@ func testWaitNew(ctx context.Context, t *testing.T, cst cbor.IpldStore, chainSto
 	go testWaitHelp(&wg, t, waiter, m3, false)
 	go testWaitHelp(&wg, t, waiter, m4, false)
 	wg.Wait()
-}
-
-func TestWaitError(t *testing.T) {
-	tf.UnitTest(t)
-
-	ctx := context.Background()
-	cst, chainStore, msgStore, waiter := setupTest(t)
-
-	testWaitError(ctx, t, cst, chainStore, msgStore, waiter)
-}
-
-func testWaitError(ctx context.Context, t *testing.T, cst cbor.IpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
-	m1, m2, m3, m4 := newSignedMessage(1), newSignedMessage(2), newSignedMessage(3), newSignedMessage(4)
-	head := chainStore.GetHead()
-	headTipSet, err := chainStore.GetTipSet(head)
-	require.NoError(t, err)
-	tss := newChainWithMessages(cst, msgStore, headTipSet, smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
-	// set the head without putting the ancestor block in the chainStore.
-	err = chainStore.SetHead(ctx, tss[len(tss)-1])
-	assert.Nil(t, err)
-
-	testWaitHelp(nil, t, waiter, m2, true)
 }
 
 func TestWaitRespectsContextCancel(t *testing.T) {
@@ -184,7 +161,7 @@ func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, ro
 	parents := root
 	height := abi.ChainEpoch(0)
 	stateRootCidGetter := types.NewCidForTestGetter()
-
+	addrGetter := types.NewForTestGetter()
 	// only add root to the chain if it is not the zero-valued-tipset
 	if parents.Defined() {
 		for i := 0; i < parents.Len(); i++ {
@@ -210,10 +187,12 @@ func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, ro
 		// add a tipset with no messages and a single block to the chain
 		if len(tsMsgs) == 0 {
 			child := &block.Block{
+				Miner:                 addrGetter(),
 				Height:                height,
 				Parents:               parents.Key(),
-				Messages:              e.NewCid(emptyTxMeta),
-				ParentMessageReceipts: e.NewCid(emptyReceiptsCid),
+				Messages:              emptyTxMeta,
+				ParentMessageReceipts: emptyReceiptsCid,
+				ParentStateRoot:       stateRootCidGetter(),
 			}
 			mustPut(store, child)
 			blocks = append(blocks, child)
@@ -224,7 +203,7 @@ func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, ro
 				if err != nil {
 					panic(err)
 				}
-				receipts = append(receipts, types.MessageReceipt{ExitCode: 0, ReturnValue: c.Bytes(), GasUsed: types.Zero})
+				receipts = append(receipts, types.MessageReceipt{ExitCode: 0, ReturnValue: c.Bytes(), GasUsed: 0})
 			}
 			txMeta, err := msgStore.StoreMessages(context.Background(), msgs, []*types.UnsignedMessage{})
 			if err != nil {
@@ -232,10 +211,11 @@ func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, ro
 			}
 
 			child := &block.Block{
-				Messages:        e.NewCid(txMeta),
+				Miner:           addrGetter(),
+				Messages:        txMeta,
 				Parents:         parents.Key(),
 				Height:          height,
-				ParentStateRoot: e.NewCid(stateRootCidGetter()), // Differentiate all blocks
+				ParentStateRoot: stateRootCidGetter(), // Differentiate all blocks
 			}
 			blocks = append(blocks, child)
 		}
@@ -245,7 +225,7 @@ func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, ro
 		}
 
 		for _, blk := range blocks {
-			blk.ParentMessageReceipts = e.NewCid(receiptCid)
+			blk.ParentMessageReceipts = receiptCid
 			mustPut(store, blk)
 		}
 

@@ -3,12 +3,12 @@ package adt
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	typegen "github.com/whyrusleeping/cbor-gen"
 
@@ -16,7 +16,6 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 
-	"github.com/filecoin-project/venus/pkg/repo"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
@@ -298,8 +297,7 @@ func (t *TestDiffArray) Remove(key uint64, val *typegen.Deferred) error {
 
 func newContextStore() Store {
 	ctx := context.Background()
-	ds := repo.NewInMemoryRepo().ChainDatastore()
-	bs := bstore.NewBlockstore(ds)
+	bs := blockstoreutil.NewTemporarySync()
 	store := cbornode.NewCborStore(bs)
 	return WrapStore(ctx, store)
 }

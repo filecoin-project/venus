@@ -101,7 +101,7 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetTipSet(key block.TipSetKey) (*block.Ti
 // If there are no blocks at the specified epoch, a tipset at an earlier epoch
 // will be returned.
 func (chainInfoAPI *ChainInfoAPI) ChainGetTipSetByHeight(ctx context.Context, height abi.ChainEpoch, tsk block.TipSetKey) (*block.TipSet, error) {
-	if tsk.Empty() {
+	if tsk.IsEmpty() {
 		tsk = chainInfoAPI.chain.ChainReader.GetHead()
 	}
 	ts, err := chainInfoAPI.chain.ChainReader.GetTipSet(tsk)
@@ -140,7 +140,7 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetBlockMessages(ctx context.Context, bid
 		return nil, err
 	}
 
-	smsgs, bmsgs, err := chainInfoAPI.chain.MessageStore.LoadMetaMessages(ctx, b.Messages.Cid)
+	smsgs, bmsgs, err := chainInfoAPI.chain.MessageStore.LoadMetaMessages(ctx, b.Messages)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func (chainInfoAPI *ChainInfoAPI) GetFullBlock(ctx context.Context, id cid.Cid) 
 	if err != nil {
 		return nil, err
 	}
-	out.BLSMessages, out.SECPMessages, err = chainInfoAPI.chain.State.GetMessages(ctx, out.Header.Messages.Cid)
+	out.BLSMessages, out.SECPMessages, err = chainInfoAPI.chain.State.GetMessages(ctx, out.Header.Messages)
 	if err != nil {
 		return nil, err
 	}

@@ -65,9 +65,9 @@ var actorLsCmd = &cmds.Command{
 func makeActorView(act *types.Actor, addr address.Address) *ActorView {
 	return &ActorView{
 		Address: addr.String(),
-		Code:    act.Code.Cid,
+		Code:    act.Code,
 		Nonce:   act.Nonce,
 		Balance: act.Balance,
-		Head:    act.Head.Cid,
+		Head:    act.Head,
 	}
 }

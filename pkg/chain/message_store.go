@@ -1,12 +1,17 @@
 package chain
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	cbor2 "github.com/filecoin-project/go-state-types/cbor"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
+
+	"github.com/filecoin-project/venus/pkg/config"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -17,16 +22,10 @@ import (
 	"golang.org/x/xerrors"
 
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt" // todo block headers use adt0
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/cborutil"
-	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/enccid"
-	"github.com/filecoin-project/venus/pkg/encoding"
-	// named msgarray here to make it clear that these are the types used by
-	// messages, regardless of specs-actors version.
-	bstore "github.com/filecoin-project/venus/pkg/fork/blockstore"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -69,7 +68,7 @@ func (ms *MessageStore) LoadMetaMessages(ctx context.Context, metaCid cid.Cid) (
 		return nil, nil, err
 	}
 
-	secpCids, err := ms.loadAMTCids(ctx, meta.SecpRoot.Cid)
+	secpCids, err := ms.loadAMTCids(ctx, meta.SecpRoot)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -80,7 +79,7 @@ func (ms *MessageStore) LoadMetaMessages(ctx context.Context, metaCid cid.Cid) (
 		return nil, nil, err
 	}
 
-	blsCids, err := ms.loadAMTCids(ctx, meta.BLSRoot.Cid)
+	blsCids, err := ms.loadAMTCids(ctx, meta.BLSRoot)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -100,11 +99,11 @@ func (ms *MessageStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid
 		return nil, nil, err
 	}
 
-	secpCids, err := ms.loadAMTCids(ctx, meta.SecpRoot.Cid)
+	secpCids, err := ms.loadAMTCids(ctx, meta.SecpRoot)
 	if err != nil {
 		return nil, nil, err
 	}
-	blsCids, err := ms.loadAMTCids(ctx, meta.BLSRoot.Cid)
+	blsCids, err := ms.loadAMTCids(ctx, meta.BLSRoot)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -130,7 +129,7 @@ func (ms *MessageStore) LoadUnsignedMessage(mid cid.Cid) (*types.UnsignedMessage
 		return nil, errors.Wrapf(err, "failed to get bls message %s", mid)
 	}
 	message := &types.UnsignedMessage{}
-	if err := encoding.Decode(messageBlock.RawData(), message); err != nil {
+	if err := message.UnmarshalCBOR(bytes.NewReader(messageBlock.RawData())); err != nil {
 		return nil, errors.Wrapf(err, "could not decode bls message %s", mid)
 	}
 	return message, nil
@@ -143,7 +142,7 @@ func (ms *MessageStore) LoadSignedMessage(mid cid.Cid) (*types.SignedMessage, er
 	}
 
 	message := &types.SignedMessage{}
-	if err := encoding.Decode(messageBlock.RawData(), message); err != nil {
+	if err := message.UnmarshalCBOR(bytes.NewReader(messageBlock.RawData())); err != nil {
 		return nil, errors.Wrapf(err, "could not decode secp message %s", mid)
 	}
 
@@ -190,7 +189,7 @@ func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "could not store secp cids as AMT")
 	}
-	ret.SecpRoot = enccid.NewCid(secpRaw)
+	ret.SecpRoot = secpRaw
 
 	// store bls messages
 	blsCids, err := ms.storeUnsignedMessages(blsMessages)
@@ -201,7 +200,7 @@ func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "could not store bls cids as AMT")
 	}
-	ret.BLSRoot = enccid.NewCid(blsRaw)
+	ret.BLSRoot = blsRaw
 
 	return ms.StoreTxMeta(ctx, ret)
 }
@@ -230,7 +229,7 @@ func (ms *MessageStore) LoadTipSetMesssages(ctx context.Context, ts *block.TipSe
 
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
-		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, blk.Messages.Cid)
+		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, blk.Messages)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
 		}
@@ -277,7 +276,7 @@ func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]types.Me
 	receipts := make([]types.MessageReceipt, len(rawReceipts))
 	for i, raw := range rawReceipts {
 		receipt := types.MessageReceipt{}
-		if err := encoding.Decode(raw, &receipt); err != nil {
+		if err := receipt.UnmarshalCBOR(bytes.NewReader(raw)); err != nil {
 			return nil, errors.Wrapf(err, "could not decode receipt %s", c)
 		}
 		receipts[i] = receipt
@@ -290,16 +289,29 @@ func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]types.Me
 // this collection to ipld storage.  The cid of the collection is returned.
 func (ms *MessageStore) StoreReceipts(ctx context.Context, receipts []types.MessageReceipt) (cid.Cid, error) {
 	// store secp messages
-	rawReceipts, err := ms.storeMessageReceipts(receipts)
-	if err != nil {
-		return cid.Undef, errors.Wrap(err, "could not store secp messages")
+	rawReceipts := make([][]byte, len(receipts))
+	tmp := blockstoreutil.NewTemporary()
+	for i, rcpt := range receipts {
+		_, rcptBlock, err := ms.storeBlock(tmp, &rcpt)
+		if err != nil {
+			return cid.Undef, err
+		}
+		rawReceipts[i] = rcptBlock.RawData()
 	}
 
-	return ms.storeAMTRaw(ctx, rawReceipts)
+	reccid, err := ms.storeAMTRaw(ctx, tmp, rawReceipts)
+	if err != nil {
+		return cid.Undef, err
+	}
+	err = blockstoreutil.CopyBlockstore(ctx, tmp, ms.bs)
+	if err != nil {
+		return cid.Undef, err
+	}
+	return reccid, nil
 }
 
 func (ms *MessageStore) loadAMTCids(ctx context.Context, c cid.Cid) ([]cid.Cid, error) {
-	as := cborutil.NewIpldStore(ms.bs)
+	as := cbor.NewCborStore(ms.bs)
 	a, err := amt.LoadAMT(ctx, as, c)
 	if err != nil {
 		return []cid.Cid{}, err
@@ -319,7 +331,7 @@ func (ms *MessageStore) loadAMTCids(ctx context.Context, c cid.Cid) ([]cid.Cid, 
 }
 
 func (ms *MessageStore) loadAMTRaw(ctx context.Context, c cid.Cid) ([][]byte, error) {
-	as := cborutil.NewIpldStore(ms.bs)
+	as := cbor.NewCborStore(ms.bs)
 	a, err := amt.LoadAMT(ctx, as, c)
 	if err != nil {
 		return nil, err
@@ -345,7 +357,7 @@ func (ms *MessageStore) LoadTxMeta(ctx context.Context, c cid.Cid) (types.TxMeta
 	}
 
 	var meta types.TxMeta
-	if err := encoding.Decode(metaBlock.RawData(), &meta); err != nil {
+	if err := meta.UnmarshalCBOR(bytes.NewReader(metaBlock.RawData())); err != nil {
 		return types.TxMeta{}, errors.Wrapf(err, "could not decode tx meta %s", c)
 	}
 	return meta, nil
@@ -373,7 +385,7 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *block.TipSet)
 	blockMsg := []block.BlockMessagesInfo{}
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
-		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, blk.Messages.Cid) // Corresponding to  MessagesForBlock of lotus
+		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, blk.Messages) // Corresponding to  MessagesForBlock of lotus
 		if err != nil {
 			return nil, errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
 		}
@@ -433,7 +445,7 @@ func (ms *MessageStore) storeUnsignedMessages(messages []*types.UnsignedMessage)
 	cids := make([]cid.Cid, len(messages))
 	var err error
 	for i, msg := range messages {
-		cids[i], _, err = ms.storeBlock(msg)
+		cids[i], _, err = ms.storeBlock(ms.bs, msg)
 		if err != nil {
 			return nil, err
 		}
@@ -445,7 +457,7 @@ func (ms *MessageStore) storeSignedMessages(messages []*types.SignedMessage) ([]
 	cids := make([]cid.Cid, len(messages))
 	var err error
 	for i, msg := range messages {
-		cids[i], _, err = ms.storeBlock(msg)
+		cids[i], _, err = ms.storeBlock(ms.bs, msg)
 		if err != nil {
 			return nil, err
 		}
@@ -454,47 +466,36 @@ func (ms *MessageStore) storeSignedMessages(messages []*types.SignedMessage) ([]
 }
 
 func (ms *MessageStore) StoreMessage(message types.ChainMsg) (cid.Cid, error) {
-	c, _, err := ms.storeBlock(message)
+	c, _, err := ms.storeBlock(ms.bs, message)
 	return c, err
 }
 
 // StoreTxMeta writes the secproot, blsroot block to the message store
 func (ms *MessageStore) StoreTxMeta(ctx context.Context, meta types.TxMeta) (cid.Cid, error) {
-	c, _, err := ms.storeBlock(meta)
+	c, _, err := ms.storeBlock(ms.bs, &meta)
 	return c, err
 }
 
-func (ms *MessageStore) storeMessageReceipts(receipts []types.MessageReceipt) ([][]byte, error) {
-	rawReceipts := make([][]byte, len(receipts))
-	for i, rcpt := range receipts {
-		_, rcptBlock, err := ms.storeBlock(rcpt)
-		if err != nil {
-			return nil, err
-		}
-		rawReceipts[i] = rcptBlock.RawData()
-	}
-	return rawReceipts, nil
-}
-
-func (ms *MessageStore) storeBlock(data interface{}) (cid.Cid, blocks.Block, error) {
+func (ms *MessageStore) storeBlock(bs bstore.Blockstore, data cbor2.Marshaler) (cid.Cid, blocks.Block, error) {
 	sblk, err := MakeBlock(data)
 	if err != nil {
 		return cid.Undef, nil, err
 	}
 
-	if err := ms.bs.Put(sblk); err != nil {
+	if err := bs.Put(sblk); err != nil {
 		return cid.Undef, nil, err
 	}
 
 	return sblk.Cid(), sblk, nil
 }
 
-func MakeBlock(obj interface{}) (blocks.Block, error) {
-	data, err := encoding.Encode(obj)
+func MakeBlock(obj cbor2.Marshaler) (blocks.Block, error) {
+	buf := new(bytes.Buffer)
+	err := obj.MarshalCBOR(buf)
 	if err != nil {
 		return nil, err
 	}
-
+	data := buf.Bytes()
 	c, err := constants.DefaultCidBuilder.Sum(data)
 	if err != nil {
 		return nil, err
@@ -503,8 +504,8 @@ func MakeBlock(obj interface{}) (blocks.Block, error) {
 	return blocks.NewBlockWithCid(data, c)
 }
 
-func (ms *MessageStore) storeAMTRaw(ctx context.Context, bs [][]byte) (cid.Cid, error) {
-	as := cborutil.NewIpldStore(ms.bs)
+func (ms *MessageStore) storeAMTRaw(ctx context.Context, bsstore blockstore.Blockstore, bs [][]byte) (cid.Cid, error) {
+	as := cbor.NewCborStore(bsstore)
 
 	rawMarshallers := make([]cbg.CBORMarshaler, len(bs))
 	for i, raw := range bs {
@@ -514,7 +515,7 @@ func (ms *MessageStore) storeAMTRaw(ctx context.Context, bs [][]byte) (cid.Cid, 
 }
 
 func (ms *MessageStore) storeAMTCids(ctx context.Context, cids []cid.Cid) (cid.Cid, error) {
-	as := cborutil.NewIpldStore(ms.bs)
+	as := cbor.NewCborStore(ms.bs)
 
 	cidMarshallers := make([]cbg.CBORMarshaler, len(cids))
 	for i, c := range cids {
@@ -575,7 +576,7 @@ func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet, up
 	seen := make(map[cid.Cid]struct{})
 
 	for _, b := range ts.Blocks() {
-		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, b.Messages.Cid)
+		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, b.Messages)
 		if err != nil {
 			return zero, xerrors.Errorf("error getting messages for: %s: %w", b.Cid(), err)
 		}
@@ -586,7 +587,7 @@ func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet, up
 				return zero, xerrors.Errorf("error getting cid for message: %v: %w", m, err)
 			}
 			if _, ok := seen[c]; !ok {
-				totalLimit += int64(m.GasLimit)
+				totalLimit += m.GasLimit
 				seen[c] = struct{}{}
 			}
 		}
@@ -596,7 +597,7 @@ func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet, up
 				return zero, xerrors.Errorf("error getting cid for signed message: %v: %w", m, err)
 			}
 			if _, ok := seen[c]; !ok {
-				totalLimit += int64(m.Message.GasLimit)
+				totalLimit += m.Message.GasLimit
 				seen[c] = struct{}{}
 			}
 		}
@@ -611,14 +612,14 @@ func GetReceiptRoot(receipts []types.MessageReceipt) (cid.Cid, error) {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	rawReceipts := make([][]byte, len(receipts))
 	for i, rcpt := range receipts {
-		sblk, err := MakeBlock(rcpt)
+		sblk, err := MakeBlock(&rcpt)
 		if err != nil {
 			return cid.Undef, err
 		}
 		rawReceipts[i] = sblk.RawData()
 	}
 
-	as := cborutil.NewIpldStore(bs)
+	as := cbor.NewCborStore(bs)
 	rawMarshallers := make([]cbg.CBORMarshaler, len(rawReceipts))
 	for i, raw := range rawReceipts {
 		rawMarshallers[i] = &cbg.Deferred{Raw: raw}
@@ -656,7 +657,7 @@ func GetChainMsgRoot(ctx context.Context, bs blockstore.Blockstore, messages []t
 // of both types (BLS and Secpk).
 func ComputeMsgMeta(bs blockstore.Blockstore, bmsgCids, smsgCids []cid.Cid) (cid.Cid, error) {
 	// block headers use adt0
-	store := adt0.WrapStore(context.TODO(), cborutil.NewIpldStore(bs))
+	store := adt0.WrapStore(context.TODO(), cbor.NewCborStore(bs))
 	bmArr := adt0.MakeEmptyArray(store)
 	smArr := adt0.MakeEmptyArray(store)
 
@@ -685,8 +686,8 @@ func ComputeMsgMeta(bs blockstore.Blockstore, bmsgCids, smsgCids []cid.Cid) (cid
 	}
 
 	mrcid, err := store.Put(store.Context(), &types.TxMeta{
-		BLSRoot:  enccid.NewCid(bmroot),
-		SecpRoot: enccid.NewCid(smroot),
+		BLSRoot:  bmroot,
+		SecpRoot: smroot,
 	})
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to put msgmeta: %w", err)

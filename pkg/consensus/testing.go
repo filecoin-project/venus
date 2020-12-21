@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
 )
@@ -109,7 +108,7 @@ func MakeFakeTicketForTest() block.Ticket {
 	val := make([]byte, 65)
 	val[0] = 200
 	return block.Ticket{
-		VRFProof: crypto.VRFPi(val[:]),
+		VRFProof: block.VRFPi(val[:]),
 	}
 }
 

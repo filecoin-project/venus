@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	"time"
 
 	"go.opencensus.io/trace"
@@ -14,7 +15,6 @@ import (
 	inet "github.com/libp2p/go-libp2p-core/network"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -64,7 +64,7 @@ func (s *server) handleStream(stream inet.Stream) {
 	defer stream.Close() //nolint:errcheck
 
 	var req Request
-	if err := ReadCborRPC(bufio.NewReader(stream), &req); err != nil {
+	if err := cborutil.ReadCborRPC(bufio.NewReader(stream), &req); err != nil {
 		log.Warnf("failed to read block sync request: %s", err)
 		return
 	}
@@ -78,7 +78,7 @@ func (s *server) handleStream(stream inet.Stream) {
 	}
 
 	_ = stream.SetDeadline(time.Now().Add(WriteResDeadline))
-	if err := WriteCborRPC(stream, resp); err != nil {
+	if err := cborutil.WriteCborRPC(stream, resp); err != nil {
 		_ = stream.SetDeadline(time.Time{})
 		log.Warnw("failed to write back response for handle stream",
 			"err", err, "peer", stream.Conn().RemotePeer())
@@ -138,7 +138,7 @@ func validateRequest(ctx context.Context, req *Request) (*validatedRequest, *Res
 			ErrorMessage: "no cids in request",
 		}
 	}
-	validReq.head = block.NewTipSetKey(enccid.EncidToCidArr(req.Head)...)
+	validReq.head = block.NewTipSetKey(req.Head...)
 
 	// FIXME: Add as a defer at the start.
 	span.AddAttributes(
@@ -222,7 +222,7 @@ func GatherMessages(cr chainReader, mr messageStore, ts *block.TipSet) ([]*types
 
 	var blscids, secpkcids []cid.Cid
 	for _, block := range ts.Blocks() {
-		bc, sc, err := mr.ReadMsgMetaCids(context.TODO(), block.Messages.Cid)
+		bc, sc, err := mr.ReadMsgMetaCids(context.TODO(), block.Messages)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}

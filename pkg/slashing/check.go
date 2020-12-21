@@ -9,11 +9,13 @@ import (
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 
+	"github.com/filecoin-project/venus/pkg/config"
+	"golang.org/x/xerrors"
+
 	runtime2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/state"
 )
 
@@ -45,13 +47,22 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 	}
 
 	var b1, b2, b3 block.Block
-	innerErr := encoding.Decode(h1, &b1)
+	innerErr := b1.UnmarshalCBOR(bytes.NewReader(h1))
 	if innerErr != nil {
 		return nil, errors.Wrapf(innerErr, "failed to decode h1")
 	}
-	innerErr = encoding.Decode(h2, &b2)
+	innerErr = b2.UnmarshalCBOR(bytes.NewReader(h2))
 	if innerErr != nil {
 		return nil, errors.Wrapf(innerErr, "failed to decode h2")
+	}
+
+	// workaround chain halt
+	forkUpgrade := s.fork.GetForkUpgrade()
+	if config.IsNearUpgrade(b1.Height, forkUpgrade.UpgradeOrangeHeight) {
+		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
+	}
+	if config.IsNearUpgrade(b2.Height, forkUpgrade.UpgradeOrangeHeight) {
+		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
 	}
 
 	// Block syntax is not validated. This implements the strictest check possible, and is also the simplest check
@@ -93,7 +104,7 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 	// earlier one as a parent even though it could have.
 	// B3 must prove that the higher block (B2) could have been included in B1's tipset.
 	if len(extra) > 0 {
-		innerErr = encoding.Decode(extra, &b3)
+		innerErr = b3.UnmarshalCBOR(bytes.NewReader(extra))
 		if innerErr != nil {
 			return nil, errors.Wrapf(innerErr, "failed to decode extra")
 		}

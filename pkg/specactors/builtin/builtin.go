@@ -63,11 +63,11 @@ func RegisterActorState(code cid.Cid, loader ActorStateLoader) {
 }
 
 func Load(store adt.Store, act *types.Actor) (cbor.Marshaler, error) {
-	loader, found := ActorStateLoaders[act.Code.Cid]
+	loader, found := ActorStateLoaders[act.Code]
 	if !found {
 		return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 	}
-	return loader(store, act.Head.Cid)
+	return loader(store, act.Head)
 }
 
 func ActorNameByCode(c cid.Cid) string {

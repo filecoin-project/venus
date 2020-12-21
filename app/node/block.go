@@ -1,13 +1,13 @@
 package node
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/pkg/net/blocksub"
 	"github.com/filecoin-project/venus/pkg/net/pubsub"
@@ -25,7 +25,7 @@ func (node *Node) handleBlockSub(ctx context.Context, msg pubsub.Message) (err e
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
 	var payload blocksub.Payload
-	err = encoding.Decode(msg.GetData(), &payload)
+	err = payload.UnmarshalCBOR(bytes.NewReader(msg.GetData()))
 	if err != nil {
 		return errors.Wrapf(err, "failed to decode blocksub payload from source: %s, sender: %s", source, sender)
 	}

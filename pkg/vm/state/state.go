@@ -5,11 +5,9 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	fxamackercbor "github.com/fxamacker/cbor/v2"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -17,7 +15,6 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/enccid"
 	actors "github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	init_ "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
@@ -59,32 +56,12 @@ const (
 )
 
 type StateRoot struct { //nolint
-	_ struct{} `cbor:",toarray"`
 	// State tree version.
 	Version StateTreeVersion
 	// Actors tree. The structure depends on the state root version.
-	Actors enccid.Cid
+	Actors cid.Cid
 	// Info. The structure depends on the state root version.
-	Info enccid.Cid
-}
-
-// UnmarshalCBOR must implement cbg.Unmarshaller to insert this into a hamt.
-func (a *StateRoot) UnmarshalCBOR(r io.Reader) error {
-	bs, err := ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
-	return fxamackercbor.Unmarshal(bs, a)
-}
-
-// MarshalCBOR must implement cbg.Marshaller to insert this into a hamt.
-func (a *StateRoot) MarshalCBOR(w io.Writer) error {
-	bs, err := fxamackercbor.Marshal(a)
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(bs)
-	return err
+	Info cid.Cid
 }
 
 // TODO: version this.
@@ -182,7 +159,7 @@ func LoadState(ctx context.Context, cst cbor.IpldStore, c cid.Cid) (*State, erro
 	// Try loading as a new-style state-tree (version/actors tuple).
 	if err := cst.Get(context.TODO(), c, &root); err != nil {
 		// We failed to decode as the new version, must be an old version.
-		root.Actors = enccid.NewCid(c)
+		root.Actors = c
 		root.Version = StateTreeVersion0
 	}
 
@@ -190,7 +167,7 @@ func LoadState(ctx context.Context, cst cbor.IpldStore, c cid.Cid) (*State, erro
 	case StateTreeVersion0, StateTreeVersion1:
 		// Load the actual state-tree HAMT.
 		nd, err := adt.AsMap(
-			adt.WrapStore(context.TODO(), cst), root.Actors.Cid,
+			adt.WrapStore(context.TODO(), cst), root.Actors,
 			adtForSTVersion(root.Version),
 		)
 		if err != nil {
@@ -200,7 +177,7 @@ func LoadState(ctx context.Context, cst cbor.IpldStore, c cid.Cid) (*State, erro
 
 		s := &State{
 			root:    nd,
-			info:    root.Info.Cid,
+			info:    root.Info,
 			version: root.Version,
 			Store:   cst,
 			snaps:   newStateSnaps(),
@@ -362,7 +339,7 @@ func (st *State) Flush(ctx context.Context) (cid.Cid, error) {
 		return root, nil
 	}
 	// Otherwise, return a versioned tree.
-	return st.Store.Put(ctx, &StateRoot{Version: st.version, Actors: enccid.NewCid(root), Info: enccid.NewCid(st.info)})
+	return st.Store.Put(ctx, &StateRoot{Version: st.version, Actors: root, Info: st.info})
 }
 
 func (st *State) Snapshot(ctx context.Context) error {
@@ -397,7 +374,7 @@ func (st *State) RegisterNewAddress(addr ActorKey) (address.Address, error) {
 			return err
 		}
 
-		initact.Head = enccid.NewCid(ncid)
+		initact.Head = ncid
 		return nil
 	})
 	if err != nil {

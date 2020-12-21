@@ -165,7 +165,7 @@ func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey block.TipSetKey, f
 	var out []*block.TipSet
 	cur := tsKey
 	for {
-		res, err := f.GetBlocks(ctx, cur.ToSlice())
+		res, err := f.GetBlocks(ctx, cur.Cids())
 		if err != nil {
 			return nil, err
 		}

@@ -125,7 +125,7 @@ func (mp *MessagePool) GasEstimateGasPremium(
 		for _, msg := range msgs {
 			prices = append(prices, gasMeta{
 				price: msg.VMMessage().GasPremium,
-				limit: int64(msg.VMMessage().GasLimit),
+				limit: msg.VMMessage().GasLimit,
 			})
 		}
 
@@ -155,7 +155,7 @@ func (mp *MessagePool) GasEstimateGasPremium(
 }
 
 func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.UnsignedMessage, tsk block.TipSetKey) (int64, error) {
-	if tsk.Empty() {
+	if tsk.IsEmpty() {
 		ts, err := mp.api.ChainHead()
 		if err != nil {
 			return -1, xerrors.Errorf("getting head: %v", err)
@@ -224,18 +224,18 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Uns
 		_ = err
 		// somewhat ignore it as it can happen and we just want to detect
 		// an existing PaymentChannel actor
-		return int64(res.Receipt.GasUsed), nil
+		return res.Receipt.GasUsed, nil
 	}
 
-	if !builtin.IsPaymentChannelActor(act.Code.Cid) {
-		return int64(res.Receipt.GasUsed), nil
+	if !builtin.IsPaymentChannelActor(act.Code) {
+		return res.Receipt.GasUsed, nil
 	}
 	if msgIn.Method != paych.Methods.Collect {
-		return int64(res.Receipt.GasUsed), nil
+		return res.Receipt.GasUsed, nil
 	}
 
 	// return GasUsed without the refund for DestoryActor
-	return int64(res.Receipt.GasUsed) + 76e3, nil
+	return res.Receipt.GasUsed + 76e3, nil
 }
 
 func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec, _ block.TipSetKey) (*types.UnsignedMessage, error) {
@@ -244,11 +244,11 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.Uns
 		if err != nil {
 			return nil, xerrors.Errorf("estimating gas used: %w", err)
 		}
-		msg.GasLimit = types.NewGas(int64(float64(gasLimit) * mp.GetConfig().GasLimitOverestimation))
+		msg.GasLimit = int64(float64(gasLimit) * mp.GetConfig().GasLimitOverestimation)
 	}
 
 	if msg.GasPremium.Nil() || tbig.Cmp(msg.GasPremium, tbig.NewInt(0)) == 0 {
-		gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, msg.From, int64(msg.GasLimit), block.TipSetKey{})
+		gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, msg.From, msg.GasLimit, block.TipSetKey{})
 		if err != nil {
 			return nil, xerrors.Errorf("estimating gas price: %w", err)
 		}

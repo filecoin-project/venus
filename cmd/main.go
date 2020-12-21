@@ -304,36 +304,36 @@ var feecapOption = cmds.StringOption("gas-feecap", "Price (FIL e.g. 0.00013) to 
 var premiumOption = cmds.StringOption("gas-premium", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
 var limitOption = cmds.Int64Option("gas-limit", "Maximum GasUnits this message is allowed to consume")
 
-func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.AttoFIL, types.Unit, error) {
+func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.AttoFIL, int64, error) {
 	feecapOption := req.Options["gas-feecap"]
 	if feecapOption == nil {
-		return types.ZeroAttoFIL, types.ZeroAttoFIL, types.Zero, errors.New("gas-feecap option is required")
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, 0, errors.New("gas-feecap option is required")
 	}
 
 	premiumOption := req.Options["gas-premium"]
-	if feecapOption == nil {
-		return types.ZeroAttoFIL, types.ZeroAttoFIL, types.Zero, errors.New("gas-premium option is required")
+	if premiumOption == nil {
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, 0, errors.New("gas-premium option is required")
 	}
 
 	feecap, ok := types.NewAttoFILFromString(feecapOption.(string), 10)
 	if !ok {
-		return types.ZeroAttoFIL, types.ZeroAttoFIL, types.NewGas(0), errors.New("invalid gas price (specify FIL as a decimal number)")
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, 0, errors.New("invalid gas price (specify FIL as a decimal number)")
 	}
 	premium, ok := types.NewAttoFILFromString(premiumOption.(string), 10)
 	if !ok {
-		return types.ZeroAttoFIL, types.ZeroAttoFIL, types.NewGas(0), errors.New("invalid gas price (specify FIL as a decimal number)")
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, 0, errors.New("invalid gas price (specify FIL as a decimal number)")
 	}
 
 	limitOption := req.Options["gas-limit"]
 	if limitOption == nil {
-		return types.ZeroAttoFIL, types.ZeroAttoFIL, types.NewGas(0), errors.New("gas-limit option is required")
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, 0, errors.New("gas-limit option is required")
 	}
 
 	gasLimitInt, ok := limitOption.(int64)
 	if !ok {
 		msg := fmt.Sprintf("invalid gas limit: %s", limitOption)
-		return types.ZeroAttoFIL, types.ZeroAttoFIL, types.NewGas(0), errors.New(msg)
+		return types.ZeroAttoFIL, types.ZeroAttoFIL, 0, errors.New(msg)
 	}
 
-	return feecap, premium, types.NewGas(gasLimitInt), nil
+	return feecap, premium, gasLimitInt, nil
 }

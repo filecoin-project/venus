@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	cbor2 "github.com/filecoin-project/go-state-types/cbor"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -20,8 +21,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/enccid"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
 )
@@ -254,36 +253,37 @@ func validateBlockstoreImport(ctx context.Context, t *testing.T, start, stop blo
 	cur := start
 	for {
 		var parents block.TipSetKey
-		for _, c := range cur.ToSlice() {
+		for _, c := range cur.Cids() {
 			bsBlk, err := bstore.Get(c)
 			assert.NoError(t, err)
 			blk, err := block.DecodeBlock(bsBlk.RawData())
 			assert.NoError(t, err)
 
-			txMetaBlk, err := bstore.Get(blk.Messages.Cid)
+			txMetaBlk, err := bstore.Get(blk.Messages)
 			require.NoError(t, err)
 			var meta types.TxMeta
-			require.NoError(t, encoding.Decode(txMetaBlk.RawData(), &meta))
+			err = meta.UnmarshalCBOR(bytes.NewReader(txMetaBlk.RawData()))
+			require.NoError(t, err)
 
-			secpAMT, err := amt.LoadAMT(ctx, as, meta.SecpRoot.Cid)
+			secpAMT, err := amt.LoadAMT(ctx, as, meta.SecpRoot)
 			require.NoError(t, err)
 
 			var smsg types.SignedMessage
 			requireAMTDecoding(ctx, t, bstore, secpAMT, &smsg)
 
-			blsAMT, err := amt.LoadAMT(ctx, as, meta.BLSRoot.Cid)
+			blsAMT, err := amt.LoadAMT(ctx, as, meta.BLSRoot)
 			require.NoError(t, err)
 
 			var umsg types.UnsignedMessage
 			requireAMTDecoding(ctx, t, bstore, blsAMT, &umsg)
 
-			rectAMT, err := amt.LoadAMT(ctx, as, blk.ParentMessageReceipts.Cid)
+			rectAMT, err := amt.LoadAMT(ctx, as, blk.ParentMessageReceipts)
 			require.NoError(t, err)
 
 			var rect types.MessageReceipt
 			requireAMTDecoding(ctx, t, bstore, rectAMT, &rect)
 
-			if parents.Len() == 0 {
+			if len(parents.Cids()) == 0 {
 				parents = blk.Parents
 			} else {
 				assert.True(t, blk.Parents.Equals(parents), "malformed tipsets in imported chain")
@@ -299,18 +299,17 @@ func validateBlockstoreImport(ctx context.Context, t *testing.T, start, stop blo
 	}
 }
 
-func requireAMTDecoding(ctx context.Context, t *testing.T, bstore blockstore.Blockstore, root *amt.Root, dest interface{}) {
+func requireAMTDecoding(ctx context.Context, t *testing.T, bstore blockstore.Blockstore, root *amt.Root, dest cbor2.Unmarshaler) {
 	err := root.ForEach(ctx, func(_ uint64, d *typegen.Deferred) error {
-		var c enccid.Cid
-		if err := encoding.Decode(d.Raw, &c); err != nil {
+		var c typegen.CborCid
+		if err := c.UnmarshalCBOR(bytes.NewReader(d.Raw)); err != nil {
 			return err
 		}
-
-		b, err := bstore.Get(c.Cid)
+		b, err := bstore.Get(cid.Cid(c))
 		if err != nil {
 			return err
 		}
-		return encoding.Decode(b.RawData(), dest)
+		return dest.UnmarshalCBOR(bytes.NewReader(b.RawData()))
 	})
 	require.NoError(t, err)
 

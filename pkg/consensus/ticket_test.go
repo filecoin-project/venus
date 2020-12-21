@@ -2,6 +2,7 @@ package consensus_test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"testing"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
@@ -86,9 +87,11 @@ func requireAddress(t *testing.T, ki *crypto.KeyInfo) address.Address {
 }
 
 func mockBlock() *block.Block {
+	mockCid, _ := constants.DefaultCidBuilder.Sum([]byte("mock"))
 	return &block.Block{
+		Miner:         types.NewForTestGetter()(),
 		Ticket:        block.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-		ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
+		ElectionProof: &block.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
 		BeaconEntries: []*block.BeaconEntry{
 			{
 				Round: 5,
@@ -104,6 +107,9 @@ func mockBlock() *block.Block {
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x3},
 		},
+		ParentStateRoot:       mockCid,
+		ParentMessageReceipts: mockCid,
+		Messages:              mockCid,
 	}
 }
 

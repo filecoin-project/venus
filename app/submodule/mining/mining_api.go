@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/consensus/lib/sigs/bls"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -68,7 +67,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	act, err := view.LoadActor(ctx, maddr)
 	if xerrors.Is(err, types.ErrActorNotFound) {
 		//todo why
-		view = state.NewView(chainState, ts.At(0).ParentStateRoot.Cid)
+		view = state.NewView(chainState, ts.At(0).ParentStateRoot)
 		_, err := view.LoadActor(ctx, maddr)
 		if err != nil {
 			return nil, xerrors.Errorf("loading miner in current state: %v", err)
@@ -172,7 +171,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *BlockTempl
 		return nil, xerrors.Errorf("failed to load parent tipset: %v", err)
 	}
 
-	parentStateRoot := pts.Blocks()[0].ParentStateRoot.Cid
+	parentStateRoot := pts.Blocks()[0].ParentStateRoot
 	st, receipts, err := miningAPI.Ming.SyncModule.Consensus.RunStateTransition(ctx, pts, parentStateRoot)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset state: %v", err)
@@ -203,8 +202,8 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *BlockTempl
 		Height:                bt.Epoch,
 		Timestamp:             bt.Timestamp,
 		WinPoStProof:          bt.WinningPoStProof,
-		ParentStateRoot:       enccid.NewCid(st),
-		ParentMessageReceipts: enccid.NewCid(recpts),
+		ParentStateRoot:       st,
+		ParentMessageReceipts: recpts,
 	}
 
 	var blsMessages []*types.UnsignedMessage
@@ -239,7 +238,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *BlockTempl
 	if err != nil {
 		return nil, err
 	}
-	next.Messages = enccid.NewCid(mmcid)
+	next.Messages = mmcid
 
 	aggSig, err := aggregateSignatures(blsSigs)
 	if err != nil {
@@ -316,7 +315,7 @@ type BlockTemplate struct {
 	Miner            address.Address
 	Parents          block.TipSetKey
 	Ticket           block.Ticket
-	Eproof           *crypto.ElectionProof
+	Eproof           *block.ElectionProof
 	BeaconValues     []*block.BeaconEntry
 	Messages         []*types.SignedMessage
 	Epoch            abi.ChainEpoch

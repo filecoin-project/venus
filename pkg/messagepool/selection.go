@@ -701,7 +701,7 @@ func (*MessagePool) getGasReward(msg *types.SignedMessage, baseFee tbig.Int) *bi
 		maxPremium = msg.Message.GasPremium
 	}
 
-	gasReward := tbig.Mul(maxPremium, tbig.NewInt(int64(msg.Message.GasLimit)))
+	gasReward := tbig.Mul(maxPremium, tbig.NewInt(msg.Message.GasLimit))
 	return gasReward.Int
 }
 
@@ -767,11 +767,11 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 		curNonce++
 
 		minGas := mp.gasPriceSchedule.PricelistByEpoch(curHeight).OnChainMessage(m.ChainLength()).Total()
-		if int64(m.Message.GasLimit) < minGas {
+		if m.Message.GasLimit < minGas {
 			break
 		}
 
-		gasLimit += int64(m.Message.GasLimit)
+		gasLimit += m.Message.GasLimit
 		if gasLimit > constants.BlockGasLimit {
 			break
 		}
@@ -812,7 +812,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 		chain := new(msgChain)
 		chain.msgs = []*types.SignedMessage{m}
 		chain.gasReward = rewards[i]
-		chain.gasLimit = int64(m.Message.GasLimit)
+		chain.gasLimit = m.Message.GasLimit
 		chain.gasPerf = mp.getGasPerf(chain.gasReward, chain.gasLimit)
 		chain.valid = true
 		return chain
@@ -826,7 +826,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 		}
 
 		gasReward := new(big.Int).Add(curChain.gasReward, rewards[i])
-		gasLimit := curChain.gasLimit + int64(m.Message.GasLimit)
+		gasLimit := curChain.gasLimit + m.Message.GasLimit
 		gasPerf := mp.getGasPerf(gasReward, gasLimit)
 
 		// try to add the message to the current chain -- if it decreases the gasPerf, then make a
@@ -894,7 +894,7 @@ func (mc *msgChain) Trim(gasLimit int64, mp *MessagePool, baseFee tbig.Int, allo
 	for i >= 0 && (mc.gasLimit > gasLimit || (!allowNegative && mc.gasPerf < 0)) {
 		gasReward := mp.getGasReward(mc.msgs[i], baseFee)
 		mc.gasReward = new(big.Int).Sub(mc.gasReward, gasReward)
-		mc.gasLimit -= int64(mc.msgs[i].Message.GasLimit)
+		mc.gasLimit -= mc.msgs[i].Message.GasLimit
 		if mc.gasLimit > 0 {
 			mc.gasPerf = mp.getGasPerf(mc.gasReward, mc.gasLimit)
 			if mc.bp != 0 {

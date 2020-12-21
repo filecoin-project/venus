@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -38,8 +39,8 @@ var msgMaxValue = types.NewAttoFILFromFIL(2e9)
 
 // These gas cost values must match those in vm/gas.
 // TODO: Look up gas costs from the same place the VM gets them, keyed by epoch. https://github.com/filecoin-project/venus/issues/3955
-const onChainMessageBase = types.Unit(0)
-const onChainMessagePerByte = types.Unit(2)
+const onChainMessageBase = int64(0)
+const onChainMessagePerByte = int64(2)
 
 func init() {
 	dropNonAccountCt = metrics.NewInt64Counter("consensus/msg_non_account_sender", "Count of dropped messages with non-account sender")
@@ -87,7 +88,7 @@ func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.Uns
 	}
 
 	// Sender must be an account actor.
-	if !(builtin0.AccountActorCodeID.Equals(fromActor.Code.Cid)) && !(builtin2.AccountActorCodeID.Equals(fromActor.Code.Cid)) {
+	if !(builtin0.AccountActorCodeID.Equals(fromActor.Code)) && !(builtin2.AccountActorCodeID.Equals(fromActor.Code)) {
 		dropNonAccountCt.Inc(ctx, 1)
 		return fmt.Errorf("sender %s is non-account actor with code %s: %s", msg.From, fromActor.Code, msg)
 	}
@@ -116,7 +117,7 @@ func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.Uns
 // more value from the actor's balance.
 func canCoverGasLimit(msg *types.UnsignedMessage, actor *types.Actor) bool {
 	// balance >= (gasprice*gasLimit + value)
-	gascost := big.Mul(abi.NewTokenAmount(msg.GasFeeCap.Int.Int64()), abi.NewTokenAmount(int64(msg.GasLimit)))
+	gascost := big.Mul(abi.NewTokenAmount(msg.GasFeeCap.Int.Int64()), abi.NewTokenAmount(msg.GasLimit))
 	expense := big.Add(gascost, abi.NewTokenAmount(msg.Value.Int.Int64()))
 	return actor.Balance.GreaterThanEqual(expense)
 }
@@ -134,33 +135,35 @@ func (v *DefaultMessageSyntaxValidator) ValidateSignedMessageSyntax(ctx context.
 	msg := &smsg.Message
 	var msgLen int
 	if smsg.Signature.Type == crypto.SigTypeBLS {
-		enc, err := smsg.Message.Marshal()
+		buf := new(bytes.Buffer)
+		err := smsg.Message.MarshalCBOR(buf)
 		if err != nil {
 			return errors.Wrapf(err, "failed to calculate message size")
 		}
-		msgLen = len(enc)
+		msgLen = buf.Len()
 	} else {
-		enc, err := smsg.Marshal()
+		buf := new(bytes.Buffer)
+		err := smsg.MarshalCBOR(buf)
 		if err != nil {
 			return errors.Wrapf(err, "failed to calculate message size")
 		}
-		msgLen = len(enc)
+		msgLen = buf.Len()
 	}
-	return v.validateMessageSyntaxShared(ctx, msg, msgLen)
+	return v.validateMessageSyntaxShared(ctx, msg, int64(msgLen))
 }
 
 // ValidateUnsignedMessageSyntax validates unisigned message syntax and state-independent invariants.
 // Used for bls messages included in blocks.
 func (v *DefaultMessageSyntaxValidator) ValidateUnsignedMessageSyntax(ctx context.Context, msg *types.UnsignedMessage) error {
-	enc, err := msg.Marshal()
+	buf := new(bytes.Buffer)
+	err := msg.MarshalCBOR(buf)
 	if err != nil {
 		return errors.Wrapf(err, "failed to calculate message size")
 	}
-	msgLen := len(enc)
-	return v.validateMessageSyntaxShared(ctx, msg, msgLen)
+	return v.validateMessageSyntaxShared(ctx, msg, int64(buf.Len()))
 }
 
-func (v *DefaultMessageSyntaxValidator) validateMessageSyntaxShared(ctx context.Context, msg *types.UnsignedMessage, msgLen int) error {
+func (v *DefaultMessageSyntaxValidator) validateMessageSyntaxShared(ctx context.Context, msg *types.UnsignedMessage, msgLen int64) error {
 	if msg.Version != types.MessageVersion {
 		return fmt.Errorf("version %d, expected %d", msg.Version, types.MessageVersion)
 	}
@@ -199,7 +202,7 @@ func (v *DefaultMessageSyntaxValidator) validateMessageSyntaxShared(ctx context.
 	// *at all*. Without this, a message could hit out-of-gas but the sender pay nothing.
 	// NOTE(anorth): this check has been moved to execution time, and the miner is penalized for including
 	// such a message. We can probably remove this.
-	minMsgGas := onChainMessageBase + onChainMessagePerByte*types.Unit(msgLen)
+	minMsgGas := onChainMessageBase + onChainMessagePerByte*msgLen
 	if msg.GasLimit < minMsgGas {
 		invGasBelowMinimumCt.Inc(ctx, 1)
 		return fmt.Errorf("gas limit %d below minimum %d to cover message size: %s", msg.GasLimit, minMsgGas, msg)

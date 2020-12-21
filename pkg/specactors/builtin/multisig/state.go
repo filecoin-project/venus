@@ -27,11 +27,11 @@ func init() {
 }
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
-	switch act.Code.Cid {
+	switch act.Code {
 	case builtin0.MultisigActorCodeID:
-		return load0(store, act.Head.Cid)
+		return load0(store, act.Head)
 	case builtin2.MultisigActorCodeID:
-		return load2(store, act.Head.Cid)
+		return load2(store, act.Head)
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
