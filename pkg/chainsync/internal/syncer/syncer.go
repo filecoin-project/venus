@@ -649,6 +649,10 @@ loop:
 		}
 	}
 
+	if len(chainTipsets) == 0 {
+		return nil, xerrors.Errorf("sync chain store has no tipset %s", targetTip.String())
+	}
+
 	base := chainTipsets[len(chainTipsets)-1]
 	if base.Equals(knownTip) {
 		chainTipsets = chainTipsets[:len(chainTipsets)-1]
