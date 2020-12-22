@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"
+	"github.com/filecoin-project/venus/asset"
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -129,14 +131,27 @@ func (w *setWrapper) ConfigSet(dottedKey string, jsonString string) error {
 }
 
 func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (genesis.InitFunc, error) {
+	var (
+		source io.ReadCloser
+		err    error
+	)
+
 	if sourceName == "" {
-		return gengen.MakeGenesisFunc(), nil
+		// todo maybe devnet.car ???
+		bs, err := asset.Asset("_assets/car/devnet.car")
+		if err != nil {
+			return gengen.MakeGenesisFunc(), nil
+		}
+
+		source = ioutil.NopCloser(bytes.NewReader(bs))
+		// return gengen.MakeGenesisFunc(), nil
+	} else {
+		source, err = openGenesisSource(sourceName)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	source, err := openGenesisSource(sourceName)
-	if err != nil {
-		return nil, err
-	}
 	defer func() { _ = source.Close() }()
 
 	genesisBlk, err := extractGenesisBlock(source, rep)
