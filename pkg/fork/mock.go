@@ -32,5 +32,19 @@ func (mockFork *MockFork) HasExpensiveFork(ctx context.Context, height abi.Chain
 }
 
 func (mockFork *MockFork) GetForkUpgrade() *config.ForkUpgradeConfig {
-	return nil
+	return &config.ForkUpgradeConfig{
+		UpgradeSmokeHeight:       -1,
+		UpgradeBreezeHeight:      -1,
+		UpgradeIgnitionHeight:    -1,
+		UpgradeLiftoffHeight:     -1,
+		UpgradeActorsV2Height:    -1,
+		UpgradeRefuelHeight:      -1,
+		UpgradeTapeHeight:        -1,
+		UpgradeKumquatHeight:     -1,
+		BreezeGasTampingDuration: -1,
+		UpgradeCalicoHeight:      -1,
+		UpgradePersianHeight:     -1,
+		UpgradeOrangeHeight:      -1,
+		UpgradeClausHeight:       -1,
+	}
 }

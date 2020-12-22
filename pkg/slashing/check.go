@@ -58,10 +58,11 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 	}
 
 	// workaround chain halt
-	if config.IsNearUpgrade(b1.Height, config.DefaultForkUpgradeParam.UpgradeOrangeHeight) {
+	forkUpgrade := s.fork.GetForkUpgrade()
+	if config.IsNearUpgrade(b1.Height, forkUpgrade.UpgradeOrangeHeight) {
 		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
 	}
-	if config.IsNearUpgrade(b2.Height, config.DefaultForkUpgradeParam.UpgradeOrangeHeight) {
+	if config.IsNearUpgrade(b2.Height, forkUpgrade.UpgradeOrangeHeight) {
 		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
 	}
 

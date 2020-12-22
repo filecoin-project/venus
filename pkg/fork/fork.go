@@ -1186,8 +1186,5 @@ func (c *ChainFork) UpgradeCalico(ctx context.Context, sm *ChainFork, root cid.C
 }
 
 func (c *ChainFork) GetForkUpgrade() *config.ForkUpgradeConfig {
-	if c == nil {
-		return nil
-	}
 	return c.forkUpgrade
 }
