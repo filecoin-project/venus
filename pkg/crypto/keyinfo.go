@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/venus/pkg/encoding"
 )
 
 const (
@@ -65,16 +64,6 @@ func (ki *KeyInfo) UnmarshalJSON(data []byte) error {
 	ki.PrivateKey = k.PrivateKey
 
 	return nil
-}
-
-// Unmarshal decodes raw cbor bytes into KeyInfo.
-func (ki *KeyInfo) Unmarshal(b []byte) error {
-	return encoding.Decode(b, ki)
-}
-
-// Marshal KeyInfo into bytes.
-func (ki *KeyInfo) Marshal() ([]byte, error) {
-	return encoding.Encode(ki)
 }
 
 // Key returns the private key of KeyInfo

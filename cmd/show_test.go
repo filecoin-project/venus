@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/enccid"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -233,7 +232,7 @@ func mockBlock(t *testing.T) (*block.Block, error) {
 	b := &block.Block{
 		Miner:         types.NewForTestGetter()(),
 		Ticket:        block.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-		ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
+		ElectionProof: &block.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
 		Height:        2,
 		BeaconEntries: []*block.BeaconEntry{
 			{
@@ -241,11 +240,11 @@ func mockBlock(t *testing.T) (*block.Block, error) {
 				Data:  []byte{0x3},
 			},
 		},
-		Messages:              enccid.NewCid(types.CidFromString(t, "somecid")),
-		ParentMessageReceipts: enccid.NewCid(types.CidFromString(t, "somecid")),
+		Messages:              types.CidFromString(t, "somecid"),
+		ParentMessageReceipts: types.CidFromString(t, "somecid"),
 		Parents:               block.NewTipSetKey(types.CidFromString(t, "somecid")),
 		ParentWeight:          big.NewInt(1000),
-		ParentStateRoot:       enccid.NewCid(types.CidFromString(t, "somecid")),
+		ParentStateRoot:       types.CidFromString(t, "somecid"),
 		Timestamp:             1,
 		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,

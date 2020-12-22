@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensus/lib/sigs"
-	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 )
@@ -49,7 +48,7 @@ func DefaultProofVerifier() ffiwrapper.Verifier {
 }
 
 func IsRoundWinner(ctx context.Context, ts *block.TipSet, round abi.ChainEpoch,
-	miner address.Address, brand block.BeaconEntry, mbi *block.MiningBaseInfo, a MiningCheckAPI) (*crypto2.ElectionProof, error) {
+	miner address.Address, brand block.BeaconEntry, mbi *block.MiningBaseInfo, a MiningCheckAPI) (*block.ElectionProof, error) {
 
 	buf := new(bytes.Buffer)
 	if err := miner.MarshalCBOR(buf); err != nil {
@@ -66,7 +65,7 @@ func IsRoundWinner(ctx context.Context, ts *block.TipSet, round abi.ChainEpoch,
 		return nil, xerrors.Errorf("failed to compute VRF: %w", err)
 	}
 
-	ep := &crypto2.ElectionProof{VRFProof: vrfout}
+	ep := &block.ElectionProof{VRFProof: vrfout}
 	j := ep.ComputeWinCount(mbi.MinerPower, mbi.NetworkPower)
 	ep.WinCount = j
 	if j < 1 {

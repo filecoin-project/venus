@@ -10,7 +10,7 @@ import (
 
 func DiffDealProposals(pre, cur DealProposals) (*DealProposalChanges, error) {
 	results := new(DealProposalChanges)
-	if err := adt.DiffAdtArray(pre.array(), cur.array(), &marketProposalsDiffer{results, pre, cur}); err != nil {
+	if err := adt.DiffAdtArray(pre.ArrayValue(), cur.ArrayValue(), &marketProposalsDiffer{results, pre, cur}); err != nil {
 		return nil, fmt.Errorf("diffing deal states: %w", err)
 	}
 	return results, nil
@@ -46,7 +46,7 @@ func (d *marketProposalsDiffer) Remove(key uint64, val *cbg.Deferred) error {
 
 func DiffDealStates(pre, cur DealStates) (*DealStateChanges, error) {
 	results := new(DealStateChanges)
-	if err := adt.DiffAdtArray(pre.array(), cur.array(), &marketStatesDiffer{results, pre, cur}); err != nil {
+	if err := adt.DiffAdtArray(pre.ArrayValue(), cur.ArrayValue(), &marketStatesDiffer{results, pre, cur}); err != nil {
 		return nil, fmt.Errorf("diffing deal states: %w", err)
 	}
 	return results, nil

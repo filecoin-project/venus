@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -14,19 +15,14 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/encoding"
 )
 
 // SignedMessage contains a message and its signature
 // TODO do not export these fields as it increases the chances of producing a
 // `SignedMessage` with an empty signature.
 type SignedMessage struct {
-	// control field for encoding struct as an array
-	_ struct{} `cbor:",toarray"`
-
 	Message   UnsignedMessage  `json:"meteredMessage"`
 	Signature crypto.Signature `json:"signature"`
-	// Pay attention to Equals() if updating this struct.
 }
 
 // NewSignedMessage accepts a message `msg` and a signer `s`. NewSignedMessage returns a `SignedMessage` containing
@@ -50,16 +46,6 @@ func NewSignedMessage(ctx context.Context, msg UnsignedMessage, s Signer) (*Sign
 	}, nil
 }
 
-// Unmarshal a SignedMessage from the given bytes.
-func (smsg *SignedMessage) Unmarshal(b []byte) error {
-	return encoding.Decode(b, smsg)
-}
-
-// Marshal the SignedMessage into bytes.
-func (smsg *SignedMessage) Marshal() ([]byte, error) {
-	return encoding.Encode(smsg)
-}
-
 // Cid returns the canonical CID for the SignedMessage.
 func (smsg *SignedMessage) Cid() (cid.Cid, error) {
 	if smsg.Signature.Type == crypto.SigTypeBLS {
@@ -80,10 +66,12 @@ func (smsg *SignedMessage) ToNode() (ipld.Node, error) {
 		return smsg.Message.ToNode()
 	}
 
-	data, err := encoding.Encode(smsg)
+	buf := new(bytes.Buffer)
+	err := smsg.MarshalCBOR(buf)
 	if err != nil {
 		return nil, err
 	}
+	data := buf.Bytes()
 	c, err := constants.DefaultCidBuilder.Sum(data)
 	if err != nil {
 		return nil, err
@@ -122,11 +110,12 @@ func (smsg *SignedMessage) Equals(other *SignedMessage) bool {
 }
 
 func (smsg *SignedMessage) ChainLength() int {
-	ser, err := smsg.Marshal()
+	buf := new(bytes.Buffer)
+	err := smsg.MarshalCBOR(buf)
 	if err != nil {
 		panic(err)
 	}
-	return len(ser)
+	return buf.Len()
 }
 
 func (smsg *SignedMessage) ToStorageBlock() (blocks.Block, error) {
@@ -134,10 +123,12 @@ func (smsg *SignedMessage) ToStorageBlock() (blocks.Block, error) {
 		return smsg.Message.ToStorageBlock()
 	}
 
-	data, err := smsg.Marshal()
+	buf := new(bytes.Buffer)
+	err := smsg.MarshalCBOR(buf)
 	if err != nil {
 		return nil, err
 	}
+	data := buf.Bytes()
 
 	c, err := abi.CidBuilder.Sum(data)
 	if err != nil {

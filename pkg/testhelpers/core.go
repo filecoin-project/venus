@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
@@ -34,40 +33,6 @@ func RequireMakeStateTree(t *testing.T, cst cbor.IpldStore, acts map[address.Add
 	require.NoError(t, err)
 
 	return c, tree
-}
-
-// RequireNewMinerActor creates a new miner actor with the given owner, pledge, and collateral,
-// and requires that its steps succeed.
-func RequireNewMinerActor(ctx context.Context, t *testing.T, st state.State, vms vm.Storage, owner address.Address, pledge uint64, pid peer.ID, coll types.AttoFIL) (*types.Actor, address.Address) {
-	// Dragons: re-write using the new actor states structures directly
-
-	return nil, address.Undef
-}
-
-// RequireLookupActor converts the given address to an id address before looking up the actor in the state tree
-func RequireLookupActor(ctx context.Context, t *testing.T, st state.State, vms vm.Storage, actorAddr address.Address) (*types.Actor, address.Address) {
-	// Dragons: delete, nothing outside the vm should be concerned about actor id indexes
-
-	return nil, address.Undef
-}
-
-// RequireNewFakeActor instantiates and returns a new fake actor and requires
-// that its steps succeed.
-func RequireNewFakeActor(t *testing.T, vms vm.Storage, addr address.Address, codeCid cid.Cid) *types.Actor {
-	return RequireNewFakeActorWithTokens(t, vms, addr, codeCid, types.NewAttoFILFromFIL(100))
-}
-
-// RequireNewFakeActorWithTokens instantiates and returns a new fake actor and requires
-// that its steps succeed.
-func RequireNewFakeActorWithTokens(t *testing.T, vms vm.Storage, addr address.Address, codeCid cid.Cid, amt types.AttoFIL) *types.Actor {
-
-	return nil
-}
-
-// RequireNewInitActor instantiates and returns a new init actor
-func RequireNewInitActor(t *testing.T, vms vm.Storage) *types.Actor {
-
-	return nil
 }
 
 // RequireRandomPeerID returns a new libp2p peer ID or panics.

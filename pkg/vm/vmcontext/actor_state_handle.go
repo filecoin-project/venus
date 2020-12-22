@@ -81,17 +81,3 @@ func (h *actorStateHandle) StateTransaction(obj cbor.Er, f func()) {
 	// Record the expected stateView of obj
 	h.usedObjs[obj] = newCid
 }
-
-// Validate validates that the stateView was mutated properly.
-//
-// This Method is not part of the public API,
-// it is expected To be called by the runtime after each actor Method.
-func (h *actorStateHandle) Validate(cidFn func(interface{}) cid.Cid) {
-	for obj, head := range h.usedObjs {
-		// verify the obj has not changed
-		usedCid := cidFn(obj)
-		if usedCid != head {
-			runtime.Abortf(exitcode.SysErrorIllegalActor, "state mutated outside of Transaction() scope")
-		}
-	}
-}

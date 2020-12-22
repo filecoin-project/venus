@@ -3,21 +3,21 @@ package conformance
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/pkg/chain"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/test-vectors/schema"
-	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 )
 
 type ReplayingRand struct {
 	reporter Reporter
 	recorded schema.Randomness
-	fallback crypto2.RandomnessSource
+	fallback chain.RandomnessSource
 }
 
-var _ crypto2.RandomnessSource = (*ReplayingRand)(nil)
+var _ chain.RandomnessSource = (*ReplayingRand)(nil)
 
 // NewReplayingRand replays recorded randomness when requested, falling back to
 // fixed randomness if the value cannot be found; hence this is a safe

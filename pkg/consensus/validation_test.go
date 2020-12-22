@@ -18,7 +18,6 @@ import (
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/consensus"
-	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/state"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -56,7 +55,7 @@ func TestMessagePenaltyChecker(t *testing.T) {
 
 	t.Run("non-account actor fails", func(t *testing.T) {
 		badActor := newActor(t, 1000, 100)
-		badActor.Code = enccid.NewCid(types.CidFromString(t, "somecid"))
+		badActor.Code = types.CidFromString(t, "somecid")
 		msg := newMessage(t, alice, bob, 100, 5, 1, 0)
 		api := NewMockIngestionValidatorAPI()
 		api.ActorAddr = alice
@@ -93,7 +92,7 @@ func TestBLSSignatureValidationConfiguration(t *testing.T) {
 	from, err := address.NewBLSAddress(pubKey[:])
 	require.NoError(t, err)
 
-	msg := types.NewMeteredMessage(from, addresses[1], 0, types.ZeroAttoFIL, methodID, []byte("params"), types.NewGasFeeCap(1), types.NewGasPremium(1), types.NewGas(300))
+	msg := types.NewMeteredMessage(from, addresses[1], 0, types.ZeroAttoFIL, methodID, []byte("params"), types.NewGasFeeCap(1), types.NewGasPremium(1), 300)
 	mmsgCid, err := msg.Cid()
 	require.NoError(t, err)
 
@@ -160,7 +159,7 @@ func newActor(t *testing.T, balanceAF int, nonce uint64) *types.Actor {
 }
 
 func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF int,
-	gasPrice int64, gasLimit types.Unit) *types.UnsignedMessage {
+	gasPrice int64, gasLimit int64) *types.UnsignedMessage {
 	val, ok := types.NewAttoFILFromString(fmt.Sprintf("%d", valueAF), 10)
 	require.True(t, ok, "invalid attofil")
 	return types.NewMeteredMessage(
@@ -185,9 +184,8 @@ type FakeIngestionValidatorAPI struct {
 
 // NewMockIngestionValidatorAPI creates a new FakeIngestionValidatorAPI.
 func NewMockIngestionValidatorAPI() *FakeIngestionValidatorAPI {
-	block := &block.Block{
-		Height: 10,
-	}
+	block := mockBlock()
+	block.Height = 10
 	return &FakeIngestionValidatorAPI{
 		Actor: &types.Actor{},
 		Block: block,

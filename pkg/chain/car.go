@@ -12,7 +12,6 @@ import (
 	carutil "github.com/ipld/go-car/util"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -29,13 +28,6 @@ type carStateReader interface {
 	ChainStateTree(ctx context.Context, c cid.Cid) ([]format.Node, error)
 }
 
-// Fields need to stay lower case to match car's default refmt encoding as
-// refmt can't handle arbitrary casing.
-type carHeader struct {
-	Roots   block.TipSetKey `cbor:"roots"`
-	Version uint64          `cbor:"version"`
-}
-
 // Export will export a chain (all blocks and their messages) to the writer `out`.
 func Export(ctx context.Context, headTS *block.TipSet, cr carChainReader, mr carMessageReader, sr carStateReader, out io.Writer) error {
 	// ensure we don't duplicate writes to the car file. // e.g. only write EmptyMessageCID once.
@@ -47,20 +39,17 @@ func Export(ctx context.Context, headTS *block.TipSet, cr carChainReader, mr car
 	}
 
 	// Write the car header
-	ch := carHeader{
-		Roots:   headTS.Key(),
+	ch := car.CarHeader{
+		Roots:   headTS.Key().Cids(),
 		Version: 1,
-	}
-	chb, err := encoding.Encode(ch)
-	if err != nil {
-		return err
 	}
 
 	logCar.Debugf("car file chain head: %s", headTS.Key())
-	if err := carutil.LdWrite(out, chb); err != nil {
+	if err := car.WriteHeader(&ch, out); err != nil {
 		return err
 	}
 
+	var err error
 	iter := IterAncestors(ctx, cr, headTS)
 	// accumulate TipSets in descending order.
 	for ; !iter.Complete(); err = iter.Next() {
@@ -80,57 +69,57 @@ func Export(ctx context.Context, headTS *block.TipSet, cr carChainReader, mr car
 				filter[hdr.Cid()] = true
 			}
 
-			meta, err := mr.LoadTxMeta(ctx, hdr.Messages.Cid)
+			meta, err := mr.LoadTxMeta(ctx, hdr.Messages)
 			if err != nil {
 				return err
 			}
 
-			if !filter[hdr.Messages.Cid] {
+			if !filter[hdr.Messages] {
 				logCar.Debugf("writing txMeta: %s", hdr.Messages)
 				if err := exportTxMeta(ctx, out, meta); err != nil {
 					return err
 				}
-				filter[hdr.Messages.Cid] = true
+				filter[hdr.Messages] = true
 			}
 
-			secpMsgs, blsMsgs, err := mr.LoadMetaMessages(ctx, hdr.Messages.Cid)
+			secpMsgs, blsMsgs, err := mr.LoadMetaMessages(ctx, hdr.Messages)
 			if err != nil {
 				return err
 			}
 
-			if !filter[meta.SecpRoot.Cid] {
+			if !filter[meta.SecpRoot] {
 				logCar.Debugf("writing secp message collection: %s", hdr.Messages)
 				if err := exportAMTSignedMessages(ctx, out, secpMsgs); err != nil {
 					return err
 				}
-				filter[meta.SecpRoot.Cid] = true
+				filter[meta.SecpRoot] = true
 			}
 
-			if !filter[meta.BLSRoot.Cid] {
+			if !filter[meta.BLSRoot] {
 				logCar.Debugf("writing bls message collection: %s", hdr.Messages)
 				if err := exportAMTUnsignedMessages(ctx, out, blsMsgs); err != nil {
 					return err
 				}
-				filter[meta.BLSRoot.Cid] = true
+				filter[meta.BLSRoot] = true
 			}
 
 			// TODO(#3473) we can remove ParentMessageReceipts from the exported file once addressed.
-			rect, err := mr.LoadReceipts(ctx, hdr.ParentMessageReceipts.Cid)
+			rect, err := mr.LoadReceipts(ctx, hdr.ParentMessageReceipts)
 			if err != nil {
 				return err
 			}
 
-			if !filter[hdr.ParentMessageReceipts.Cid] {
+			if !filter[hdr.ParentMessageReceipts] {
 				logCar.Debugf("writing message-receipt collection: %s", hdr.Messages)
 				if err := exportAMTReceipts(ctx, out, rect); err != nil {
 					return err
 				}
-				filter[hdr.ParentMessageReceipts.Cid] = true
+				filter[hdr.ParentMessageReceipts] = true
 			}
 
 			if hdr.Height == 0 {
 				logCar.Debugf("writing state tree: %s", hdr.ParentStateRoot)
-				stateRoots, err := sr.ChainStateTree(ctx, hdr.ParentStateRoot.Cid)
+				stateRoots, err := sr.ChainStateTree(ctx, hdr.ParentStateRoot)
 				if err != nil {
 					return err
 				}

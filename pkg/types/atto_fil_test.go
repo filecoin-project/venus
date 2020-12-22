@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/json"
 	"math/big"
 	"math/rand"
@@ -8,7 +9,6 @@ import (
 	"time"
 
 	specsbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,9 +35,10 @@ func TestAttoFILCreation(t *testing.T) {
 	a := NewAttoFILFromFIL(123)
 	assert.IsType(t, AttoFIL{}, a)
 
-	ab, err := encoding.Encode(a)
+	buf := new(bytes.Buffer)
+	err := a.MarshalCBOR(buf)
 	require.NoError(t, err)
-	b, err := NewAttoFILFromBytes(ab)
+	b, err := NewAttoFILFromBytes(buf.Bytes())
 	require.NoError(t, err)
 	assert.Equal(t, a, b)
 
@@ -159,10 +160,11 @@ func TestAttoFILCborMarshaling(t *testing.T) {
 			preEncode := NewAttoFILFromFIL(rng.Uint64())
 			postDecode := AttoFIL{}
 
-			out, err := encoding.Encode(preEncode)
+			buf := new(bytes.Buffer)
+			err := preEncode.MarshalCBOR(buf)
 			assert.NoError(t, err)
 
-			err = encoding.Decode(out, &postDecode)
+			err = postDecode.UnmarshalCBOR(buf)
 			assert.NoError(t, err)
 
 			assert.True(t, preEncode.Equals(postDecode), "pre: %s post: %s", preEncode.String(), postDecode.String())
@@ -170,14 +172,15 @@ func TestAttoFILCborMarshaling(t *testing.T) {
 	})
 	t.Run("CBOR encodes zero val as ZeroAttoFIL", func(t *testing.T) {
 		var np AttoFIL
-
-		out, err := encoding.Encode(np)
+		buf := new(bytes.Buffer)
+		err := np.MarshalCBOR(buf)
 		assert.NoError(t, err)
 
-		out2, err := encoding.Encode(ZeroAttoFIL)
+		buf2 := new(bytes.Buffer)
+		err = ZeroAttoFIL.MarshalCBOR(buf2)
 		assert.NoError(t, err)
 
-		assert.Equal(t, out, out2)
+		assert.Equal(t, buf.Bytes(), buf2.Bytes())
 	})
 }
 

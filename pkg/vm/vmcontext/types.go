@@ -2,12 +2,13 @@ package vmcontext
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
@@ -22,12 +23,15 @@ type NtwkVersionGetter func(context.Context, abi.ChainEpoch) network.Version
 type VmOption struct { //nolint
 	CircSupplyCalculator CircSupplyCalculator
 	NtwkVersionGetter    NtwkVersionGetter
-	Rnd                  crypto.RandomnessSource
+	Rnd                  chain.RandomnessSource
 	BaseFee              abi.TokenAmount
 	Fork                 fork.IFork
 	ActorCodeLoader      *dispatch.CodeLoader
 	Epoch                abi.ChainEpoch
 	GasPriceSchedule     *gas.PricesSchedule
+	PRoot                cid.Cid
+	Bsstore              blockstoreutil.Blockstore
+	SysCallsImpl         SyscallsImpl
 }
 
 type Ret struct {

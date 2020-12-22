@@ -36,7 +36,7 @@ func (syncerAPI *SyncerAPI) ChainSyncHandleNewTipSet(ci *block.ChainInfo) error 
 func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *block.BlockMsg) error {
 	//todo many dot. how to get directly
 	chainModule := syncerAPI.syncer.ChainModule
-	parent, err := chainModule.ChainReader.GetBlock(blk.Header.Parents.At(0))
+	parent, err := chainModule.ChainReader.GetBlock(blk.Header.Parents.Cids()[0])
 	if err != nil {
 		return xerrors.Errorf("loading parent block: %v", err)
 	}

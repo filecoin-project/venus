@@ -1,6 +1,7 @@
 package messagepool
 
 import (
+	"bytes"
 	"context"
 	"sort"
 	"time"
@@ -107,7 +108,7 @@ LOOP:
 					chain.Invalidate()
 					continue LOOP
 				}
-				gasLimit -= int64(m.Message.GasLimit)
+				gasLimit -= m.Message.GasLimit
 				msgs = append(msgs, m)
 			}
 
@@ -130,12 +131,13 @@ LOOP:
 	count := 0
 	log.Infof("republishing %d messages", len(msgs))
 	for _, m := range msgs {
-		mb, err := m.Marshal()
+		buf := new(bytes.Buffer)
+		err := m.MarshalCBOR(buf)
 		if err != nil {
 			return xerrors.Errorf("cannot serialize message: %v", err)
 		}
 
-		err = mp.api.PubSubPublish(msgsub.Topic(mp.netName), mb)
+		err = mp.api.PubSubPublish(msgsub.Topic(mp.netName), buf.Bytes())
 		if err != nil {
 			return xerrors.Errorf("cannot publish: %v", err)
 		}

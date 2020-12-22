@@ -65,7 +65,7 @@ func (f *SlashFilter) MinedBlock(bh *block.Block, parentEpoch abi.ChainEpoch) er
 			}
 
 			var found bool
-			for _, c := range bh.Parents.ToSlice() {
+			for _, c := range bh.Parents.Cids() {
 				if c.Equals(parent) {
 					found = true
 				}

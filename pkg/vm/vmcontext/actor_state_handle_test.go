@@ -2,6 +2,7 @@ package vmcontext_test
 
 import (
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/util"
 	"io"
 	"testing"
 
@@ -10,25 +11,23 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/venus/pkg/encoding"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 )
-
-func init() {
-	encoding.RegisterIpldCborType(testActorStateHandleState{})
-}
 
 type testActorStateHandleState struct {
 	FieldA string
 }
 
+func (t *testActorStateHandleState) Clone(b interface{}) error { //nolint
+	newBoj := &testActorStateHandleState{}
+	newBoj.FieldA = t.FieldA
+	b = newBoj
+	return nil
+}
+
 func (t *testActorStateHandleState) MarshalCBOR(w io.Writer) error {
-	aux, err := encoding.Encode(t.FieldA)
-	if err != nil {
-		return err
-	}
-	if _, err := w.Write(aux); err != nil {
+	if _, err := w.Write([]byte(t.FieldA)); err != nil {
 		return err
 	}
 	return nil
@@ -40,9 +39,7 @@ func (t *testActorStateHandleState) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if err := encoding.Decode(bs[:n], &t.FieldA); err != nil {
-		return err
-	}
+	t.FieldA = string(bs[:n])
 	return nil
 }
 
@@ -50,7 +47,7 @@ func setup() testSetup {
 	initialstate := testActorStateHandleState{FieldA: "fakestate"}
 
 	store := vmcontext.NewTestStorage(&initialstate)
-	initialhead := store.CidOf(&initialstate)
+	initialhead, _ := util.MakeCid(&initialstate)
 	ctx := fakeActorStateHandleContext{
 		head:             initialhead,
 		store:            store,
@@ -58,11 +55,7 @@ func setup() testSetup {
 	}
 	h := vmcontext.NewActorStateHandle(&ctx)
 
-	cleanup := func() {
-		// the vmcontext is supposed To call validate after each actor Method
-		implH := h.(extendedStateHandle)
-		implH.Validate(func(obj interface{}) cid.Cid { return store.CidOf(obj) })
-	}
+	cleanup := func() {}
 
 	return testSetup{
 		initialstate: initialstate,
@@ -88,18 +81,6 @@ func TestActorStateHandle(t *testing.T) {
 		ts.h.StateReadonly(&out)
 
 		assert.Equal(t, out, ts.initialstate)
-	})
-
-	t.Run("abort on mutating a readonly", func(t *testing.T) {
-		defer mustPanic(t)
-
-		ts := setup()
-		defer ts.cleanup()
-
-		var out testActorStateHandleState
-		ts.h.StateReadonly(&out)
-
-		out.FieldA = "changed!"
 	})
 
 	t.Run("readonly multiple times", func(t *testing.T) {
@@ -171,23 +152,6 @@ func TestActorStateHandle(t *testing.T) {
 		assert.Equal(t, lastResult, ts.initialstate.FieldA)
 	})
 
-	t.Run("mutated after the transaction", func(t *testing.T) {
-		defer mustPanic(t)
-
-		ts := setup()
-		defer ts.cleanup()
-
-		var out testActorStateHandleState
-
-		lastResult := ""
-		ts.h.StateTransaction(&out, func() {
-			lastResult = "changed!"
-			out.FieldA = lastResult
-		})
-
-		out.FieldA = "changed again!"
-	})
-
 	t.Run("transaction double whammy", func(t *testing.T) {
 		ts := setup()
 		defer ts.cleanup()
@@ -223,24 +187,10 @@ func TestActorStateHandleNilState(t *testing.T) {
 
 		h := vmcontext.NewActorStateHandle(&ctx)
 
-		cleanup := func() {
-			// the vmcontext is supposed To call validate after each actor Method
-			implH := h.(extendedStateHandle)
-			implH.Validate(func(obj interface{}) cid.Cid { return store.CidOf(obj) })
-		}
+		cleanup := func() {}
 
 		return h, cleanup
 	}
-
-	t.Run("readonly on nil stateView is not allowed", func(t *testing.T) {
-		defer mustPanic(t)
-
-		h, cleanup := setup()
-		defer cleanup()
-
-		var out testActorStateHandleState
-		h.StateReadonly(&out)
-	})
 
 	t.Run("transaction on nil stateView", func(t *testing.T) {
 		h, cleanup := setup()
@@ -277,10 +227,6 @@ func TestActorStateHandleNilState(t *testing.T) {
 
 		h.StateTransaction(nil, func() {})
 	})
-}
-
-type extendedStateHandle interface {
-	Validate(func(interface{}) cid.Cid)
 }
 
 type fakeActorStateHandleContext struct {

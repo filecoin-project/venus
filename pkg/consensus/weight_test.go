@@ -2,10 +2,8 @@ package consensus_test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
-
-	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/enccid"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
@@ -26,18 +24,24 @@ func TestWeight(t *testing.T) {
 	fakeTree := state.NewFromString(t, "test-Weight-StateCid", cst)
 	fakeRoot, err := fakeTree.Flush(ctx)
 	require.NoError(t, err)
+	addrGetter := types.NewForTestGetter()
+	minerAddr := addrGetter()
 	// We only care about total power for the weight function
 	// Total is 16, so bitlen is 5, log2b is 4
 	viewer := makeStateViewer(fakeRoot, abi.NewStoragePower(16))
 	ticket := consensus.MakeFakeTicketForTest()
 	toWeigh := block.RequireNewTipSet(t, &block.Block{
+		Miner:        minerAddr,
 		ParentWeight: fbig.Zero(),
 		Ticket:       ticket,
-		ElectionProof: &crypto.ElectionProof{
+		ElectionProof: &block.ElectionProof{
 			WinCount: 1,
 		},
-		ParentStateRoot: enccid.NewCid(fakeRoot),
+		ParentStateRoot:       fakeRoot,
+		Messages:              types.EmptyMessagesCID,
+		ParentMessageReceipts: types.EmptyReceiptsCID,
 	})
+
 	sel := consensus.NewChainSelector(cst, &viewer)
 	//sel := consensus.NewChainSelector(cst, &viewer, types.CidFromString(t, "genesisCid"))
 
@@ -77,12 +81,15 @@ func TestWeight(t *testing.T) {
 	t.Run("non-zero parent weight", func(t *testing.T) {
 		parentWeight := fbig.NewInt(int64(49))
 		toWeighWithParent := block.RequireNewTipSet(t, &block.Block{
+			Miner:        minerAddr,
 			ParentWeight: parentWeight,
 			Ticket:       ticket,
-			ElectionProof: &crypto.ElectionProof{
+			ElectionProof: &block.ElectionProof{
 				WinCount: 1,
 			},
-			ParentStateRoot: enccid.NewCid(fakeRoot),
+			ParentStateRoot:       fakeRoot,
+			Messages:              types.EmptyMessagesCID,
+			ParentMessageReceipts: types.EmptyReceiptsCID,
 		})
 
 		// 49 + (4*256) + (4*1*1*256/2*5) = 1175
@@ -94,31 +101,40 @@ func TestWeight(t *testing.T) {
 	t.Run("many blocks", func(t *testing.T) {
 		toWeighThreeBlock := block.RequireNewTipSet(t,
 			&block.Block{
+				Miner:        minerAddr,
 				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
 				Timestamp:    0,
-				ElectionProof: &crypto.ElectionProof{
+				ElectionProof: &block.ElectionProof{
 					WinCount: 1,
 				},
-				ParentStateRoot: enccid.NewCid(fakeRoot),
+				ParentStateRoot:       fakeRoot,
+				Messages:              types.EmptyMessagesCID,
+				ParentMessageReceipts: types.EmptyReceiptsCID,
 			},
 			&block.Block{
+				Miner:        minerAddr,
 				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
 				Timestamp:    1,
-				ElectionProof: &crypto.ElectionProof{
+				ElectionProof: &block.ElectionProof{
 					WinCount: 1,
 				},
-				ParentStateRoot: enccid.NewCid(fakeRoot),
+				ParentStateRoot:       fakeRoot,
+				Messages:              types.EmptyMessagesCID,
+				ParentMessageReceipts: types.EmptyReceiptsCID,
 			},
 			&block.Block{
+				Miner:        minerAddr,
 				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
 				Timestamp:    2,
-				ElectionProof: &crypto.ElectionProof{
+				ElectionProof: &block.ElectionProof{
 					WinCount: 1,
 				},
-				ParentStateRoot: enccid.NewCid(fakeRoot),
+				ParentStateRoot:       fakeRoot,
+				Messages:              types.EmptyMessagesCID,
+				ParentMessageReceipts: types.EmptyReceiptsCID,
 			},
 		)
 		// 0 + (4*256) + (4*3*1*256/2*5) = 1331

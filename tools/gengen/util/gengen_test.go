@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/vm/storage"
 	. "github.com/filecoin-project/venus/tools/gengen/util"
 
 	"github.com/stretchr/testify/assert"
@@ -80,7 +79,7 @@ func TestGenGenDeterministic(t *testing.T) {
 	var info *RenderedGenInfo
 	for i := 0; i < 5; i++ {
 		bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
-		inf, err := GenGen(ctx, testConfig(t), storage.NewStorage(bstore))
+		inf, err := GenGen(ctx, testConfig(t), bstore)
 		assert.NoError(t, err)
 		if info == nil {
 			info = inf

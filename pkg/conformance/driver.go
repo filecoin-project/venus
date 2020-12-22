@@ -2,15 +2,15 @@ package conformance
 
 import (
 	"context"
-	gobig "math/big"
-
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	gobig "math/big"
+	"os"
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/chain"
 	_ "github.com/filecoin-project/venus/pkg/consensus/lib/sigs/bls"  // enable bls signatures
 	_ "github.com/filecoin-project/venus/pkg/consensus/lib/sigs/secp" // enable secp signatures
@@ -89,7 +89,7 @@ type ExecuteTipsetResult struct {
 // message results. The latter _include_ implicit messages, such as cron ticks
 // and reward withdrawal per miner.
 func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset, execEpoch abi.ChainEpoch) (*ExecuteTipsetResult, error) {
-	ipldStore := cborutil.NewIpldStore(bs)
+	ipldStore := cbor.NewCborStore(bs)
 	chainStatusReporter := chain.NewStatusReporter()
 	mainNetParams := networks.Mainnet()
 	node.SetNetParams(&mainNetParams.Network)
@@ -117,7 +117,6 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 		return nil, err
 	}
 	var (
-		vmStorage = vm.NewStorage(bs)
 		caculator = chain.NewCirculatingSupplyCalculator(bs, chainStore, mainNetParams.Network.ForkUpgradeParam)
 
 		vmOption = vm.VmOption{
@@ -134,24 +133,25 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 			Fork:              chainFork,
 			Epoch:             execEpoch,
 			GasPriceSchedule:  gas.NewPricesSchedule(mainNetParams.Network.ForkUpgradeParam),
+			PRoot:             preroot,
+			Bsstore:           bs,
+			SysCallsImpl:      syscalls,
 		}
 	)
-	//flush data to blockstore
-	defer vmStorage.Flush() //nolint
 
-	stateTree, err := state.LoadState(context.TODO(), ipldStore, preroot)
+	lvm, err := vm.NewVM(vmOption)
 	if err != nil {
 		return nil, err
 	}
-
-	lvm := vm.NewVM(stateTree, vmStorage, syscalls, vmOption)
+	//flush data to blockstore
+	defer lvm.Flush() //nolint
 
 	blocks := make([]block.BlockMessagesInfo, 0, len(tipset.Blocks))
 	for _, b := range tipset.Blocks {
 		sb := block.BlockMessagesInfo{
 			Block: &block.Block{
 				Miner: b.MinerAddr,
-				ElectionProof: &crypto2.ElectionProof{
+				ElectionProof: &block.ElectionProof{
 					WinCount: b.WinCount,
 				},
 			},
@@ -193,16 +193,12 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 		messages []*vm.VmMessage
 		results  []*vm.Ret
 	)
-	ts, _ := block.NewTipSet(refBlock(tipset.Blocks)...)
-	receipt, err := lvm.ApplyTipSetMessages(blocks, ts, parentEpoch, execEpoch, func(_ cid.Cid, msg vm.VmMessage, ret *vm.Ret) error {
+
+	postcid, receipt, err := lvm.ApplyTipSetMessages(blocks, nil, parentEpoch, execEpoch, func(_ cid.Cid, msg vm.VmMessage, ret *vm.Ret) error {
 		messages = append(messages, &msg)
 		results = append(results, ret)
 		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
-	postcid, err := stateTree.Flush(context.TODO())
 	if err != nil {
 		return nil, err
 	}
@@ -233,11 +229,16 @@ type ExecuteMessageParams struct {
 	CircSupply abi.TokenAmount
 	BaseFee    abi.TokenAmount
 
-	Rand crypto2.RandomnessSource
+	Rand chain.RandomnessSource
 }
 
 // ExecuteMessage executes a conformance test vector message in a temporary VM.
 func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageParams) (*vm.Ret, cid.Cid, error) {
+	if !d.vmFlush {
+		// do not flush the VM, just the state tree; this should be used with
+		// LOTUS_DISABLE_VM_BUF enabled, so writes will anyway be visible.
+		_ = os.Setenv("LOTUS_DISABLE_VM_BUF", "iknowitsabadidea")
+	}
 	actorBuilder := register.DefaultActorBuilder
 	// register the chaos actor if required by the vector.
 	if chaosOn, ok := d.selector["chaos_actor"]; ok && chaosOn == "true" {
@@ -252,7 +253,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 	}
 	mainNetParams := networks.Mainnet()
 	node.SetNetParams(&mainNetParams.Network)
-	ipldStore := cborutil.NewIpldStore(bs)
+	ipldStore := cbor.NewCborStore(bs)
 	chainStatusReporter := chain.NewStatusReporter()
 	chainDs := ds.NewMapDatastore() //just mock one
 	//chainstore
@@ -279,8 +280,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		return nil, cid.Undef, err
 	}
 	var (
-		vmStorage = vm.NewStorage(bs)
-		vmOption  = vm.VmOption{
+		vmOption = vm.VmOption{
 			CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
 				return params.CircSupply, nil
 			},
@@ -291,31 +291,32 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 			ActorCodeLoader:   &coderLoader,
 			Epoch:             params.Epoch,
 			GasPriceSchedule:  gas.NewPricesSchedule(mainNetParams.Network.ForkUpgradeParam),
+			PRoot:             params.Preroot,
+			Bsstore:           bs,
+			SysCallsImpl:      syscalls,
 		}
 	)
-	stateTree, err := state.LoadState(context.TODO(), ipldStore, params.Preroot)
+
+	lvm, err := vm.NewVM(vmOption)
 	if err != nil {
 		return nil, cid.Undef, err
 	}
 
-	lvm := vm.NewVM(stateTree, vmStorage, syscalls, vmOption)
 	ret := lvm.ApplyMessage(toChainMsg(params.Message))
 
 	var root cid.Cid
 	if d.vmFlush {
 		// flush the VM, committing the state tree changes and forcing a
 		// recursive copoy from the temporary blcokstore to the real blockstore.
-		root, err = stateTree.Flush(d.ctx)
+		root, err = lvm.Flush()
 		if err != nil {
 			return nil, cid.Undef, err
 		}
-		err = vmStorage.Flush()
 	} else {
-		root, err = stateTree.Flush(d.ctx)
+		root, err = lvm.StateTree().Flush(d.ctx)
 		if err != nil {
 			return nil, cid.Undef, err
 		}
-		err = vmStorage.Flush()
 	}
 
 	return ret, root, err
@@ -357,17 +358,4 @@ func CircSupplyOrDefault(circSupply *gobig.Int) abi.TokenAmount {
 		return DefaultCirculatingSupply
 	}
 	return big.NewFromGo(circSupply)
-}
-
-func refBlock(blocks []schema.Block) []*block.Block {
-	result := make([]*block.Block, len(blocks))
-	for index, b := range blocks {
-		result[index] = &block.Block{
-			Miner: b.MinerAddr,
-			ElectionProof: &crypto2.ElectionProof{
-				WinCount: b.WinCount,
-			},
-		}
-	}
-	return result
 }

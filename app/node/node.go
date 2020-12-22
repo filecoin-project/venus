@@ -37,13 +37,13 @@ import (
 	syncer2 "github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/net/pubsub"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/version"
+	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 var log = logging.Logger("node") // nolint: deadcode
@@ -229,7 +229,7 @@ func (node *Node) BlockService() bserv.BlockService {
 }
 
 // CborStore returns the nodes cborStore.
-func (node *Node) CborStore() *cborutil.IpldStore {
+func (node *Node) CborStore() cbor.IpldStore {
 	return node.Blockstore.CborStore
 }
 

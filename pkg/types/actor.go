@@ -2,17 +2,10 @@
 package types
 
 import (
-	"io"
-	"io/ioutil"
-
-	fxamackercbor "github.com/fxamacker/cbor/v2"
 	"github.com/ipfs/go-cid"
-
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-
-	"github.com/filecoin-project/venus/pkg/enccid"
 )
 
 var ErrActorNotFound = errors.New("actor not found")
@@ -37,12 +30,11 @@ const DefaultGasCost = 100
 //
 // Not safe for concurrent access.
 type Actor struct {
-	_ struct{} `cbor:",toarray"`
 	// Code is a CID of the VM code for this actor's implementation (or a constant for actors implemented in Go code).
 	// Code may be nil for an uninitialized actor (which exists because it has received a balance).
-	Code enccid.Cid
+	Code cid.Cid
 	// Head is the CID of the root of the actor's state tree.
-	Head enccid.Cid
+	Head cid.Cid
 	// Nonce is the number expected on the next message from this actor.
 	// Messages are processed in strict, contiguous order.
 	Nonce uint64
@@ -53,10 +45,10 @@ type Actor struct {
 // NewActor constructs a new actor.
 func NewActor(code cid.Cid, balance abi.TokenAmount, head cid.Cid) *Actor {
 	return &Actor{
-		Code:    enccid.NewCid(code),
+		Code:    code,
 		Nonce:   0,
 		Balance: balance,
-		Head:    enccid.NewCid(head),
+		Head:    head,
 	}
 }
 
@@ -68,23 +60,4 @@ func (a *Actor) Empty() bool {
 // IncrementSeqNum increments the seq number.
 func (a *Actor) IncrementSeqNum() {
 	a.Nonce = a.Nonce + 1
-}
-
-// UnmarshalCBOR must implement cbg.Unmarshaller to insert this into a hamt.
-func (a *Actor) UnmarshalCBOR(r io.Reader) error {
-	bs, err := ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
-	return fxamackercbor.Unmarshal(bs, a)
-}
-
-// MarshalCBOR must implement cbg.Marshaller to insert this into a hamt.
-func (a *Actor) MarshalCBOR(w io.Writer) error {
-	bs, err := fxamackercbor.Marshal(a)
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(bs)
-	return err
 }

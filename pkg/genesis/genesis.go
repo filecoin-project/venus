@@ -8,8 +8,6 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/specactors/adt"
-
 	"github.com/filecoin-project/venus/pkg/block"
 )
 
@@ -29,6 +27,5 @@ var Ticket = block.Ticket{
 // VM is the view into the VM used during genesis block creation.
 type VM interface {
 	ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (*vm.Ret, error)
-	ContextStore() adt.Store
-	TotalFilCircSupply(abi.ChainEpoch, state.Tree) (abi.TokenAmount, error)
+	Flush() (state.Root, error)
 }

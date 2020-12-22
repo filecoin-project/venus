@@ -6,7 +6,6 @@ import (
 )
 
 type PoStProof struct {
-	_          struct{} `cbor:",toarray"`
 	PoStProof  abi.RegisteredPoStProof
 	ProofBytes []byte
 }

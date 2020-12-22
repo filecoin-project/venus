@@ -2,19 +2,19 @@ package conformance
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/chain"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 )
 
 type fixedRand struct{}
 
-var _ crypto2.RandomnessSource = (*fixedRand)(nil)
+var _ chain.RandomnessSource = (*fixedRand)(nil)
 
 // NewFixedRand creates a test vm.Rand that always returns fixed bytes value
 // of utf-8 string 'i_am_random_____i_am_random_____'.
-func NewFixedRand() crypto2.RandomnessSource {
+func NewFixedRand() chain.RandomnessSource {
 	return &fixedRand{}
 }
 

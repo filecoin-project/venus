@@ -110,7 +110,6 @@ func NewSyncerSubmodule(ctx context.Context,
 
 	nodeConsensus := consensus.NewExpected(blockstore.CborStore,
 		blockstore.Blockstore,
-		chn.Processor,
 		&stateViewer,
 		config.BlockTime(),
 		tickets,
@@ -122,7 +121,9 @@ func NewSyncerSubmodule(ctx context.Context,
 		chn.MessageStore,
 		chn.Fork,
 		config.Repo().Config().NetworkParams,
-		gasPriceSchedule)
+		gasPriceSchedule,
+		postVerifier,
+	)
 	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, &stateViewer)
 
 	// setup fecher

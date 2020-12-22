@@ -2,6 +2,8 @@ package node
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"math/rand"
 	"testing"
 
@@ -18,8 +20,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/proofs"
-	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
@@ -37,10 +37,7 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 
 	mds := ds.NewMapDatastore()
 	bstore := blockstore.NewBlockstore(mds)
-	vmStorage := vm.NewStorage(bstore)
-	info, err := gengen.GenGen(context.TODO(), cfg, vmStorage)
-	require.NoError(t, err)
-	err = vmStorage.Flush()
+	info, err := gengen.GenGen(context.TODO(), cfg, bstore)
 	require.NoError(t, err)
 	return &ChainSeed{
 		info:   info,
@@ -50,20 +47,9 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 
 // GenesisInitFunc is a th.GenesisInitFunc using the chain seed
 func (cs *ChainSeed) GenesisInitFunc(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
-	keys, err := cs.bstore.AllKeysChan(context.TODO())
+	err := blockstoreutil.CopyBlockstore(context.TODO(), cs.bstore, bs)
 	if err != nil {
 		return nil, err
-	}
-
-	for k := range keys {
-		blk, err := cs.bstore.Get(k)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := bs.Put(blk); err != nil {
-			return nil, err
-		}
 	}
 
 	var blk block.Block
@@ -163,7 +149,7 @@ func ConnectNodes(t *testing.T, a, b *Node) {
 // FakeProofVerifierBuilderOpts returns default configuration for testing
 func FakeProofVerifierBuilderOpts() []BuilderOpt {
 	return []BuilderOpt{
-		VerifierConfigOption(&proofs.FakeVerifier{}),
+		VerifierConfigOption(&ffiwrapper.FakeVerifier{}),
 	}
 }
 

@@ -1,12 +1,8 @@
 package vm
 
 import (
-	"github.com/filecoin-project/venus/pkg/vm/register"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
-	"github.com/filecoin-project/venus/pkg/vm/state"
-	"github.com/filecoin-project/venus/pkg/vm/storage"
+	"github.com/filecoin-project/venus/pkg/vm/register"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 )
 
@@ -19,9 +15,6 @@ type Ret = vmcontext.Ret
 // Interpreter is the VM.
 type Interpreter = vmcontext.VMInterpreter
 
-// Storage is the raw storage for the VM.
-type Storage = storage.VMStorage
-
 type SyscallsImpl = vmcontext.SyscallsImpl
 type SyscallsStateView = vmcontext.SyscallsStateView
 
@@ -30,18 +23,12 @@ type VmMessage = vmcontext.VmMessage //nolint
 type FakeSyscalls = vmcontext.FakeSyscalls
 
 // NewVM creates a new VM interpreter.
-func NewVM(st state.Tree, store *storage.VMStorage, syscalls SyscallsImpl, option VmOption) Interpreter {
+func NewVM(option VmOption) (Interpreter, error) {
 	if option.ActorCodeLoader == nil {
 		option.ActorCodeLoader = &DefaultActors
 	}
 
-	vm := vmcontext.NewVM(option.ActorCodeLoader, store, st, syscalls, option)
-	return &vm
-}
-
-// NewStorage creates a new Storage for the VM.
-func NewStorage(bs blockstore.Blockstore) *Storage {
-	return storage.NewStorage(bs)
+	return vmcontext.NewVM(option.ActorCodeLoader, option)
 }
 
 // DefaultActors is a code loader with the built-in actors that come with the system.

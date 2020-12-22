@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	e "github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/state"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -35,16 +34,19 @@ func TestBlockValidHeaderSemantic(t *testing.T) {
 	ctx := context.Background()
 
 	validator := consensus.NewDefaultBlockValidator(mclock, nil, nil, priceSched)
+	addrGetter := types.NewForTestGetter()
+	minerAddr := addrGetter()
+	mockCid := types.CidFromString(t, "mock")
 
 	t.Run("reject block with same height as parents", func(t *testing.T) {
 		// passes with valid height
-		c := &block.Block{Height: 2, Timestamp: uint64(ts.Add(blockTime).Unix())}
-		p := &block.Block{Height: 1, Timestamp: uint64(ts.Unix())}
+		c := &block.Block{Miner: minerAddr, Messages: mockCid, ParentStateRoot: mockCid, ParentMessageReceipts: mockCid, Height: 2, Timestamp: uint64(ts.Add(blockTime).Unix())}
+		p := &block.Block{Miner: minerAddr, Messages: mockCid, ParentStateRoot: mockCid, ParentMessageReceipts: mockCid, Height: 1, Timestamp: uint64(ts.Unix())}
 		parents := consensus.RequireNewTipSet(require.New(t), p)
 		require.NoError(t, validator.ValidateHeaderSemantic(ctx, c, parents))
 
 		// invalidate parent by matching child height
-		p = &block.Block{Height: 2, Timestamp: uint64(ts.Unix())}
+		p = &block.Block{Miner: minerAddr, Messages: mockCid, ParentStateRoot: mockCid, ParentMessageReceipts: mockCid, Height: 2, Timestamp: uint64(ts.Unix())}
 		parents = consensus.RequireNewTipSet(require.New(t), p)
 
 		err := validator.ValidateHeaderSemantic(ctx, c, parents)
@@ -61,9 +63,12 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 	genTime := ts
 	mclock := clock.NewChainClockFromClock(uint64(genTime.Unix()), blockTime, clock.DefaultPropagationDelay, clock.NewFake(ts))
 	ctx := context.Background()
+	addrGetter := types.NewForTestGetter()
+	minerAddr := addrGetter()
+	mockCid := types.CidFromString(t, "mock")
 
-	c := &block.Block{Height: 2, Timestamp: uint64(ts.Add(blockTime).Unix())}
-	p := &block.Block{Height: 1, Timestamp: uint64(ts.Unix())}
+	c := &block.Block{Miner: minerAddr, Messages: mockCid, ParentStateRoot: mockCid, ParentMessageReceipts: mockCid, Height: 2, Timestamp: uint64(ts.Add(blockTime).Unix())}
+	p := &block.Block{Miner: minerAddr, Messages: mockCid, ParentStateRoot: mockCid, ParentMessageReceipts: mockCid, Height: 1, Timestamp: uint64(ts.Unix())}
 	parents := consensus.RequireNewTipSet(require.New(t), p)
 
 	msg0 := &types.UnsignedMessage{From: address.TestAddress, To: address.TestAddress2, Nonce: 1, Value: fbig.NewInt(0), GasFeeCap: fbig.NewInt(0), GasPremium: fbig.NewInt(0), GasLimit: 1000000}
@@ -88,7 +93,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 		actor := newActor(t, 0, 2)
 
 		// set invalid code
-		actor.Code = e.NewCid(builtin.RewardActorCodeID)
+		actor.Code = builtin.RewardActorCodeID
 
 		validator := consensus.NewDefaultBlockValidator(mclock, &fakeMsgSource{
 			blsMessages: []*types.UnsignedMessage{msg1},
@@ -261,6 +266,7 @@ func TestFutureEpoch(t *testing.T) {
 
 func TestBlockValidSyntax(t *testing.T) {
 	tf.UnitTest(t)
+	mockCid := types.CidFromString(t, "mock")
 	priceSched := gas.NewPricesSchedule(config.DefaultForkUpgradeParam)
 	blockTime := clock.DefaultEpochDuration
 	ts := time.Unix(1234567890, 0)
@@ -272,21 +278,23 @@ func TestBlockValidSyntax(t *testing.T) {
 	validator := consensus.NewDefaultBlockValidator(chainClock, nil, nil, priceSched)
 
 	validTs := uint64(mclock.Now().Unix())
-	validSt := e.NewCid(types.NewCidForTestGetter()())
+	validSt := types.NewCidForTestGetter()()
 	validAd := types.NewForTestGetter()()
 	validTi := block.Ticket{VRFProof: []byte{1}}
 	// create a valid block
 	blk := &block.Block{
-		Timestamp:       validTs,
-		ParentStateRoot: validSt,
-		Miner:           validAd,
-		Ticket:          validTi,
-		Height:          1,
+		Timestamp: validTs,
+		Miner:     validAd,
+		Ticket:    validTi,
+		Height:    1,
 
 		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x3},
 		},
+		ParentMessageReceipts: mockCid,
+		Messages:              mockCid,
+		ParentStateRoot:       mockCid,
 	}
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
@@ -300,14 +308,18 @@ func TestBlockValidSyntax(t *testing.T) {
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
 	// invalidate stateroot
-	blk.ParentStateRoot = e.NewCid(cid.Undef)
-	require.Error(t, validator.ValidateSyntax(ctx, blk))
+	blk.ParentStateRoot = cid.Undef
+	require.Panics(t, func() {
+		_ = validator.ValidateSyntax(ctx, blk)
+	})
 	blk.ParentStateRoot = validSt
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
 	// invalidate miner address
 	blk.Miner = address.Undef
-	require.Error(t, validator.ValidateSyntax(ctx, blk))
+	require.Panics(t, func() {
+		_ = validator.ValidateSyntax(ctx, blk)
+	})
 	blk.Miner = validAd
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
