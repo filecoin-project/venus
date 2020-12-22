@@ -6,7 +6,6 @@ require (
 	contrib.go.opencensus.io/exporter/jaeger v0.1.0
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
-	github.com/GeertJohan/go.rice v1.0.0
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/bluele/gcache v0.0.0-20190518031135-bc40bd653833
@@ -20,7 +19,6 @@ require (
 	github.com/docker/go-units v0.4.0
 	github.com/drand/drand v1.2.1
 	github.com/drand/kyber v1.1.4
-	github.com/exascience/pargo v1.1.0
 	github.com/fatih/color v1.9.0
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v0.0.5-0.20201103152444-f2023ef3f5bb
@@ -40,14 +38,11 @@ require (
 	github.com/filecoin-project/specs-actors v0.9.13
 	github.com/filecoin-project/specs-actors/v2 v2.3.3
 	github.com/filecoin-project/test-vectors/schema v0.0.5
-	github.com/fxamacker/cbor/v2 v2.2.0
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
 	github.com/go-errors/errors v1.0.1
 	github.com/go-kit/kit v0.10.0
-	github.com/golang/snappy v0.0.2-0.20190904063534-ff6b7dc882cf // indirect
 	github.com/golangci/golangci-lint v1.21.0
 	github.com/google/go-github v17.0.0+incompatible
-	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ipfs/go-bitswap v0.3.2
@@ -88,12 +83,10 @@ require (
 	github.com/libp2p/go-libp2p-crypto v0.1.0
 	github.com/libp2p/go-libp2p-kad-dht v0.11.0
 	github.com/libp2p/go-libp2p-mplex v0.3.0
-	github.com/libp2p/go-libp2p-noise v0.1.2 // indirect
 	github.com/libp2p/go-libp2p-peerstore v0.2.6
 	github.com/libp2p/go-libp2p-pubsub v0.4.0
 	github.com/libp2p/go-libp2p-swarm v0.3.1
 	github.com/libp2p/go-libp2p-yamux v0.4.1
-	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mattn/go-runewidth v0.0.8 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mitchellh/go-homedir v1.1.0
@@ -102,7 +95,6 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/multiformats/go-multiaddr-net v0.2.0
 	github.com/multiformats/go-multihash v0.0.14
-	github.com/onsi/ginkgo v1.14.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -117,14 +109,12 @@ require (
 	github.com/spf13/viper v1.5.0 // indirect
 	github.com/stretchr/testify v1.6.1
 	github.com/supranational/blst v0.1.1
-	github.com/urfave/cli/v2 v2.3.0
+	github.com/urfave/cli/v2 v2.3.0 // indirect
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200826160007-0b9f6c5fb163
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
-	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542 // indirect
 	go.opencensus.io v0.22.5
-	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.16.0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/mod v0.3.1-0.20200828183125-ce943fd02449 // indirect
@@ -136,7 +126,6 @@ require (
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	gotest.tools v2.2.0+incompatible
 	honnef.co/go/tools v0.0.1-2020.1.3 // indirect
-	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 
 )
 
