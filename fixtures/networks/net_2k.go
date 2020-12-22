@@ -32,6 +32,8 @@ func Net2k() *NetworkConf {
 				BreezeGasTampingDuration: 0,
 				UpgradeCalicoHeight:      20,
 				UpgradePersianHeight:     25,
+				UpgradeOrangeHeight:      27,
+				UpgradeClausHeight:       30,
 			},
 			DrandSchedule: map[abi.ChainEpoch]config.DrandEnum{0: 1},
 		},
