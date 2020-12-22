@@ -122,8 +122,8 @@ type _bintree_t struct { // nolint
 var _bintree = &_bintree_t{ // nolint
 	Func: nil,
 	Children: map[string]*_bintree_t{
-		"_assets/arch-diagram.monopic":         &_bintree_t{Func: assets_arch_diagram_monopic, Children: map[string]*_bintree_t{}},
-		"_assets/car/devnet.car":               &_bintree_t{Func: assets_car_devnet_car, Children: map[string]*_bintree_t{}},
-		"_assets/proof-params/parameters.json": &_bintree_t{Func: assets_proof_params_parameters_json, Children: map[string]*_bintree_t{}},
+		"_assets/arch-diagram.monopic":         {Func: assets_arch_diagram_monopic, Children: map[string]*_bintree_t{}},
+		"_assets/car/devnet.car":               {Func: assets_car_devnet_car, Children: map[string]*_bintree_t{}},
+		"_assets/proof-params/parameters.json": {Func: assets_proof_params_parameters_json, Children: map[string]*_bintree_t{}},
 	},
 }
