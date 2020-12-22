@@ -1,7 +1,6 @@
 package util
 
 import (
-	"fmt"
 	"github.com/filecoin-project/go-jsonrpc"
 	xerrors "github.com/pkg/errors"
 	"reflect"
@@ -64,7 +63,7 @@ func (builder *RPCBuilder) Build() *jsonrpc.RPCServer {
 	server := jsonrpc.NewServer()
 	for _, nameSpace := range builder.namespace {
 		for _, apiStruct := range builder.apiStruct {
-			fmt.Println(apiStruct)
+			//fmt.Println("JSON RPC register:", nameSpace)
 			server.Register(nameSpace, apiStruct)
 		}
 	}

@@ -71,12 +71,12 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.File
 
 	// Define a MessageWait function which will bet set on the context to provide
 	// a way to wait for a message to appear on the mining queue
-	var waitForMpool series.MpoolWaitFunc = func() {
-		_, err := genesis.MpoolLs(ctx, fast.AOWaitForCount(1))
-		require.NoError(t, err)
-	}
+	//var waitForMpool series.MpoolWaitFunc = func() {
+	//	_, err := genesis.MpoolLs(ctx, fast.AOWaitForCount(1))
+	//	require.NoError(t, err)
+	//}
 
-	ctx = series.SetCtxWaitForMpool(ctx, waitForMpool)
+	//ctx = series.SetCtxWaitForMpool(ctx, waitForMpool)
 	ctx = series.SetCtxSleepDelay(ctx, time.Second)
 
 	return ctx, &TestEnvironment{

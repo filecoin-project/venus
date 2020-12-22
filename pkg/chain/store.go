@@ -8,7 +8,9 @@ import (
 	"sync"
 
 	"github.com/cskr/pubsub"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -16,16 +18,27 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipld/go-car"
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/log"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/cborutil"
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin"
+	_init "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/multisig"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/verifreg"
+	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
@@ -40,7 +53,7 @@ const (
 // GenesisKey is the key at which the genesis Cid is written in the datastore.
 var GenesisKey = datastore.NewKey("/consensus/genesisCid")
 
-var logStore = logging.Logger("chain.store")
+var log = logging.Logger("chain.store")
 
 // HeadKey is the key at which the head tipset cid's are written in the datastore.
 var HeadKey = datastore.NewKey("/chain/heaviestTipSet")
@@ -103,7 +116,7 @@ type Store struct {
 	// ds is the datastore for the chain's private metadata which consists
 	// of the tipset key to state root cid mapping, and the heaviest tipset
 	// key.
-	ds repo.Datastore
+	ds repo.Datastore //chainstore
 
 	// genesis is the CID of the genesis block.
 	genesis cid.Cid
@@ -130,11 +143,12 @@ type Store struct {
 	// Reporter is used by the store to update the current status of the chain.
 	reporter Reporter
 
+	circulatingSupplyCalculator *CirculatingSupplyCalculator
+
 	chainIndex *ChainIndex
 
-	notifees []ReorgNotifee
-
-	reorgCh chan reorg
+	reorgCh        chan reorg
+	reorgNotifeeCh chan ReorgNotifee
 }
 
 // NewStore constructs a new default store.
@@ -142,10 +156,12 @@ func NewStore(ds repo.Datastore,
 	cst cbor.IpldStore,
 	bsstore blockstore.Blockstore,
 	sr Reporter,
+	forkConfig *config.ForkUpgradeConfig,
 	genesisCid cid.Cid,
 ) *Store {
 	ipldSource := newSource(cst)
 	tipsetProvider := TipSetProviderFromBlocks(context.TODO(), ipldSource)
+
 	store := &Store{
 		stateAndBlockSource: ipldSource,
 		ds:                  ds,
@@ -156,8 +172,9 @@ func NewStore(ds repo.Datastore,
 		genesis:             genesisCid,
 		reporter:            sr,
 		chainIndex:          NewChainIndex(tipsetProvider.GetTipSet),
-		notifees:            []ReorgNotifee{},
+		reorgNotifeeCh:      make(chan ReorgNotifee),
 	}
+	store.circulatingSupplyCalculator = NewCirculatingSupplyCalculator(bsstore, store, forkConfig)
 
 	val, err := store.ds.Get(CheckPoint)
 	if err != nil {
@@ -165,7 +182,7 @@ func NewStore(ds repo.Datastore,
 	} else {
 		err = encoding.Decode(val, &store.checkPoint)
 	}
-	logStore.Infof("check point value: %v, error: %v", store.checkPoint, err)
+	log.Infof("check point value: %v, error: %v", store.checkPoint, err)
 
 	store.reorgCh = store.reorgWorker(context.TODO())
 	return store
@@ -214,7 +231,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	}
 
 	startHeight := headTs.At(0).Height
-	logStore.Infof("start loading chain at tipset: %s, height: %d", headTsKey.String(), startHeight)
+	log.Infof("start loading chain at tipset: %s, height: %d", headTsKey.String(), startHeight)
 	// Ensure we only produce 10 log messages regardless of the chain height.
 	logStatusEvery := startHeight / 10
 
@@ -234,7 +251,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 			return err
 		}
 		if logStatusEvery != 0 && (height%logStatusEvery) == 0 {
-			logStore.Infof("load tipset: %s, height: %v", startPoint.String(), height)
+			log.Infof("load tipset: %s, height: %v", startPoint.String(), height)
 		}
 
 		stateRoot, receipts, err := store.loadStateRootAndReceipts(startPoint)
@@ -256,7 +273,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		}
 	}
 
-	logStore.Infof("finished loading %d tipsets from %s", startHeight, headTs.String())
+	log.Infof("finished loading %d tipsets from %s", startHeight, headTs.String())
 
 	//todo just for test should remove if ok, 新创建节点会出问题?
 	/*	if checkPointTs == nil || headTs.EnsureHeight() > checkPointTs.EnsureHeight() {
@@ -338,6 +355,11 @@ func (store *Store) DelTipSetMetadata(ctx context.Context, ts *block.TipSet) err
 	}
 
 	return nil
+}
+
+// GetBlock returns the block identified by `cid`.
+func (store *Store) GetBlock(blockID cid.Cid) (*block.Block, error) {
+	return store.stateAndBlockSource.GetBlock(context.TODO(), blockID)
 }
 
 // GetTipSet returns the tipset identified by `key`.
@@ -494,12 +516,12 @@ func (store *Store) HasTipSetAndStatesWithParentsAndHeight(parentKey block.TipSe
 
 // SetHead sets the passed in tipset as the new head of this chain.
 func (store *Store) SetHead(ctx context.Context, newTs *block.TipSet) error {
-	logStore.Infof("SetHead %s", newTs.String())
+	log.Infof("SetHead %s", newTs.String())
 
 	// Add logging to debug sporadic test failure.
 	if !newTs.Defined() {
-		logStore.Errorf("publishing empty tipset")
-		logStore.Error(debug.Stack())
+		log.Errorf("publishing empty tipset")
+		log.Error(debug.Stack())
 	}
 
 	dropped, added, update, err := func() ([]*block.TipSet, []*block.TipSet, bool, error) {
@@ -585,6 +607,9 @@ func (store *Store) reorgWorker(ctx context.Context) chan reorg {
 		defer log.Warn("reorgWorker quit")
 		for {
 			select {
+			case n := <-store.reorgNotifeeCh:
+				notifees = append(notifees, n)
+
 			case r := <-out:
 				var toremove map[int]struct{}
 				for i, hcf := range notifees {
@@ -664,7 +689,7 @@ func (store *Store) SubHeadChanges(ctx context.Context) chan []*HeadChange {
 }
 
 func (store *Store) SubscribeHeadChanges(f ReorgNotifee) {
-	store.notifees = append(store.notifees, f)
+	store.reorgNotifeeCh <- f
 }
 
 // ReadOnlyStateStore provides a read-only IPLD store for access to chain state.
@@ -674,7 +699,7 @@ func (store *Store) ReadOnlyStateStore() cborutil.ReadOnlyIpldStore {
 
 // writeHead writes the given cid set as head to disk.
 func (store *Store) writeHead(ctx context.Context, cids block.TipSetKey) error {
-	logStore.Debugf("WriteHead %s", cids.String())
+	log.Debugf("WriteHead %s", cids.String())
 	val, err := encoding.Encode(cids)
 	if err != nil {
 		return err
@@ -803,13 +828,125 @@ func (store *Store) SetCheckPoint(checkPoint block.TipSetKey) {
 
 // WriteCheckPoint writes the given cids to disk.
 func (store *Store) WriteCheckPoint(ctx context.Context, cids block.TipSetKey) error {
-	logStore.Infof("WriteCheckPoint %v", cids)
+	log.Infof("WriteCheckPoint %v", cids)
 	val, err := encoding.Encode(cids)
 	if err != nil {
 		return err
 	}
 
 	return store.ds.Put(CheckPoint, val)
+}
+
+func (store *Store) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st state.Tree) (CirculatingSupply, error) {
+	return store.circulatingSupplyCalculator.GetCirculatingSupplyDetailed(ctx, height, st)
+}
+
+func (store *Store) StateCirculatingSupply(ctx context.Context, tsk block.TipSetKey) (abi.TokenAmount, error) {
+	ts, err := store.GetTipSet(tsk)
+	if err != nil {
+		return abi.TokenAmount{}, err
+	}
+
+	root, err := store.GetTipSetStateRoot(tsk)
+	if err != nil {
+		return abi.TokenAmount{}, err
+	}
+
+	sTree, err := state.LoadState(ctx, store.stateAndBlockSource.cborStore, root)
+	if err != nil {
+		return abi.TokenAmount{}, err
+	}
+
+	return store.getCirculatingSupply(ctx, ts.EnsureHeight(), sTree)
+}
+
+func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st state.Tree) (abi.TokenAmount, error) {
+	adtStore := adt.WrapStore(ctx, store.stateAndBlockSource.cborStore)
+	circ := big.Zero()
+	unCirc := big.Zero()
+	err := st.ForEach(func(a address.Address, actor *types.Actor) error {
+		switch {
+		case actor.Balance.IsZero():
+			// Do nothing for zero-balance actors
+			break
+		case a == _init.Address ||
+			a == reward.Address ||
+			a == verifreg.Address ||
+			// The power actor itself should never receive funds
+			a == power.Address ||
+			a == builtin.SystemActorAddr ||
+			a == builtin.CronActorAddr ||
+			a == builtin.BurntFundsActorAddr ||
+			a == builtin.SaftAddress ||
+			a == builtin.ReserveAddress:
+
+			unCirc = big.Add(unCirc, actor.Balance)
+
+		case a == market.Address:
+			mst, err := market.Load(adtStore, actor)
+			if err != nil {
+				return err
+			}
+
+			lb, err := mst.TotalLocked()
+			if err != nil {
+				return err
+			}
+
+			circ = big.Add(circ, big.Sub(actor.Balance, lb))
+			unCirc = big.Add(unCirc, lb)
+
+		case builtin.IsAccountActor(actor.Code.Cid) || builtin.IsPaymentChannelActor(actor.Code.Cid):
+			circ = big.Add(circ, actor.Balance)
+
+		case builtin.IsStorageMinerActor(actor.Code.Cid):
+			mst, err := miner.Load(adtStore, actor)
+			if err != nil {
+				return err
+			}
+
+			ab, err := mst.AvailableBalance(actor.Balance)
+
+			if err == nil {
+				circ = big.Add(circ, ab)
+				unCirc = big.Add(unCirc, big.Sub(actor.Balance, ab))
+			} else {
+				// Assume any error is because the miner state is "broken" (lower actor balance than locked funds)
+				// In this case, the actor's entire balance is considered "uncirculating"
+				unCirc = big.Add(unCirc, actor.Balance)
+			}
+
+		case builtin.IsMultisigActor(actor.Code.Cid):
+			mst, err := multisig.Load(adtStore, actor)
+			if err != nil {
+				return err
+			}
+
+			lb, err := mst.LockedBalance(height)
+			if err != nil {
+				return err
+			}
+
+			ab := big.Sub(actor.Balance, lb)
+			circ = big.Add(circ, big.Max(ab, big.Zero()))
+			unCirc = big.Add(unCirc, big.Min(actor.Balance, lb))
+		default:
+			return xerrors.Errorf("unexpected actor: %s", a)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return abi.TokenAmount{}, err
+	}
+
+	total := big.Add(circ, unCirc)
+	if !total.Equals(crypto.TotalFilecoinInt) {
+		return abi.TokenAmount{}, xerrors.Errorf("total filecoin didn't add to expected amount: %s != %s", total, crypto.TotalFilecoinInt)
+	}
+
+	return circ, nil
 }
 
 // GetCheckPoint get the check point from store or disk.
@@ -820,4 +957,46 @@ func (store *Store) GetCheckPoint() block.TipSetKey {
 // Stop stops all activities and cleans up.
 func (store *Store) Stop() {
 	store.headEvents.Shutdown()
+}
+
+func (store *Store) ReorgOps(a, b *block.TipSet) ([]*block.TipSet, []*block.TipSet, error) {
+	return ReorgOps(store.GetTipSet, a, b)
+}
+
+func ReorgOps(lts func(block.TipSetKey) (*block.TipSet, error), a, b *block.TipSet) ([]*block.TipSet, []*block.TipSet, error) {
+	left := a
+	right := b
+
+	var leftChain, rightChain []*block.TipSet
+	for !left.Equals(right) {
+		lh, _ := left.Height()
+		rh, _ := right.Height()
+		if lh > rh {
+			leftChain = append(leftChain, left)
+			lKey, _ := left.Parents()
+			par, err := lts(lKey)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			left = par
+		} else {
+			rightChain = append(rightChain, right)
+			rKey, _ := right.Parents()
+			par, err := lts(rKey)
+			if err != nil {
+				log.Infof("failed to fetch right.Parents: %s", err)
+				return nil, nil, err
+			}
+
+			right = par
+		}
+	}
+
+	return leftChain, rightChain, nil
+
+}
+
+func (store *Store) PutMessage(m storable) (cid.Cid, error) {
+	return PutMessage(store.bsstore, m)
 }

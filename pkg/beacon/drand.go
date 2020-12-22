@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/block"
 	cfg "github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/constants"
 )
 
 type drandPeer struct {
@@ -56,6 +57,11 @@ type DrandBeacon struct {
 	localCache map[uint64]block.BeaconEntry
 }
 
+// DrandHTTPClient interface overrides the user agent used by drand
+type DrandHTTPClient interface {
+	SetUserAgent(string)
+}
+
 func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*DrandBeacon, error) {
 	drandChain, err := dchain.InfoFromJSON(bytes.NewReader([]byte(config.ChainInfoJSON)))
 	if err != nil {
@@ -71,6 +77,7 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 		if err != nil {
 			return nil, xerrors.Errorf("could not create http drand client: %w", err)
 		}
+		hc.(DrandHTTPClient).SetUserAgent("drand-client-lotus/" + constants.BuildVersion)
 		clients = append(clients, hc)
 
 	}
@@ -86,7 +93,7 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 
 	client, err := dclient.Wrap(clients, opts...)
 	if err != nil {
-		return nil, xerrors.Errorf("creating drand client")
+		return nil, xerrors.Errorf("creating drand client: %v", err)
 	}
 
 	db := &DrandBeacon{

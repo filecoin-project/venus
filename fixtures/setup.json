@@ -1,7 +1,7 @@
 {
   "seed": 4,
   "keysToGen": 5,
-  "importKeys": [{"privateKey":"E6U+Omo+atjscNO0oRJvZfdmK3lFl9wo0YcWDVhn6TY=","sigType":2}],
+  "importKeys": [{"privateKey":"E6U+Omo+atjscNO0oRJvZfdmK3lFl9wo0YcWDVhn6TY=","type":2}],
   "preallocatedFunds": [
     "1000000",
     "1000000",

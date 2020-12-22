@@ -5,7 +5,7 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	dss "github.com/ipfs/go-datastore/sync"
-	"github.com/ipfs/go-ipfs-keystore"
+	keystore "github.com/ipfs/go-ipfs-keystore"
 
 	"github.com/filecoin-project/venus/app/paths"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -20,6 +20,7 @@ type MemRepo struct {
 	Ks             keystore.Keystore
 	W              Datastore
 	Chain          Datastore
+	Meta           Datastore
 	version        uint
 	jsonrpcAddress string
 	rustfulAddress string
@@ -36,6 +37,7 @@ func NewInMemoryRepo() *MemRepo {
 		Ks:      keystore.MutexWrap(keystore.NewMemKeystore()),
 		W:       dss.MutexWrap(datastore.NewMapDatastore()),
 		Chain:   dss.MutexWrap(datastore.NewMapDatastore()),
+		Meta:    dss.MutexWrap(datastore.NewMapDatastore()),
 		version: Version,
 	}
 }
@@ -76,6 +78,11 @@ func (mr *MemRepo) WalletDatastore() Datastore {
 // ChainDatastore returns the chain datastore.
 func (mr *MemRepo) ChainDatastore() Datastore {
 	return mr.Chain
+}
+
+// ChainDatastore returns the chain datastore.
+func (mr *MemRepo) MetaDatastore() Datastore {
+	return mr.Meta
 }
 
 // Version returns the version of the repo.
@@ -124,4 +131,9 @@ func (mr *MemRepo) Path() (string, error) {
 // JournalPath returns a string to satisfy the repo interface.
 func (mr *MemRepo) JournalPath() string {
 	return "in_memory_filecoin_journal_path"
+}
+
+// Repo return the repo
+func (mr *MemRepo) Repo() Repo {
+	return mr
 }

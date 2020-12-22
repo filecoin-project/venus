@@ -25,7 +25,7 @@ type chainReader interface {
 type messageStore interface {
 	ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 
-	LoadUnsinedMessagesFromCids(cids []cid.Cid) ([]*types.UnsignedMessage, error)
+	LoadUnsignedMessagesFromCids(cids []cid.Cid) ([]*types.UnsignedMessage, error)
 	LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.SignedMessage, error)
 }
 
@@ -255,7 +255,7 @@ func GatherMessages(cr chainReader, mr messageStore, ts *block.TipSet) ([]*types
 		secpkincl = append(secpkincl, smi)
 	}
 
-	blsmsgs, err := mr.LoadUnsinedMessagesFromCids(blscids)
+	blsmsgs, err := mr.LoadUnsignedMessagesFromCids(blscids)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}

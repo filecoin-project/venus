@@ -68,6 +68,30 @@ func (vm *syscallsStateView) MinerControlAddresses(ctx context.Context, maddr ad
 	return minerInfo.Owner, minerInfo.Worker, nil
 }
 
+func (vm *syscallsStateView) MinerInfo(ctx context.Context, maddr address.Address, nv network.Version) (*miner.MinerInfo, error) {
+	accountActor, found, err := vm.state.GetActor(vm.context, maddr)
+	if err != nil {
+		return nil, errors.Wrapf(err, "miner resolution failed To find actor %s", maddr)
+	}
+	if !found {
+		return nil, fmt.Errorf("miner resolution found no such actor %s", maddr)
+	}
+
+	accountState, err := miner.Load(adt.WrapStore(vm.context, vm.ctx.gasIpld), accountActor)
+	if err != nil {
+		panic(fmt.Errorf("signer resolution failed To lost stateView for %s ", maddr))
+	}
+
+	minerInfo, err := accountState.Info()
+	if err != nil {
+		panic(fmt.Errorf("failed To get miner info %s ", maddr))
+	}
+
+	if nv >= network.Version7 && minerInfo.SealProofType < abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
+		minerInfo.SealProofType += abi.RegisteredSealProof_StackedDrg2KiBV1_1
+	}
+	return &minerInfo, nil
+}
 func (vm *syscallsStateView) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version {
 	return vm.vmOption.NtwkVersionGetter(ctx, ce)
 }

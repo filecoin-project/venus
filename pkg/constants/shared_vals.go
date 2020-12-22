@@ -47,3 +47,8 @@ func init() {
 const BlsSignatureCacheSize = 40000
 
 const Finality = policy.ChainFinality
+
+// Size of signature verification cache
+// 32k keeps the cache around 10MB in size, max
+const VerifSigCacheSize = 32000
+

@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"context"
-
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-state-types/abi"

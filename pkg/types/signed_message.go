@@ -46,7 +46,7 @@ func NewSignedMessage(ctx context.Context, msg UnsignedMessage, s Signer) (*Sign
 
 	return &SignedMessage{
 		Message:   msg,
-		Signature: sig,
+		Signature: *sig,
 	}, nil
 }
 

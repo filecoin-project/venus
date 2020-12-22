@@ -59,7 +59,7 @@ func TestSignMessageOk(t *testing.T) {
 		require.NoError(t, err)
 		smsg := &types.SignedMessage{
 			Message:   *msg,
-			Signature: sig,
+			Signature: *sig,
 		}
 
 		assert.NoError(t, v.ValidateMessageSignature(ctx, smsg))
@@ -88,7 +88,7 @@ func TestBadFrom(t *testing.T) {
 		require.NoError(t, err)
 		smsg := &types.SignedMessage{
 			Message:   *msg,
-			Signature: sig,
+			Signature: *sig,
 		}
 		assert.Error(t, v.ValidateMessageSignature(ctx, smsg))
 	})
@@ -108,7 +108,7 @@ func TestBadFrom(t *testing.T) {
 		require.NoError(t, err)
 		smsg := &types.SignedMessage{
 			Message:   *msg,
-			Signature: sig,
+			Signature: *sig,
 		}
 		assert.Error(t, v.ValidateMessageSignature(ctx, smsg))
 	})

@@ -30,3 +30,7 @@ func (mockFork *MockFork) GetNtwkVersion(ctx context.Context, height abi.ChainEp
 func (mockFork *MockFork) GetForkUpgrade() *config.ForkUpgradeConfig {
 	return nil
 }
+
+func (mockFork *MockFork) HasExpensiveFork(ctx context.Context, height abi.ChainEpoch) bool {
+	return false
+}
