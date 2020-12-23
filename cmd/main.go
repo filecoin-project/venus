@@ -311,7 +311,7 @@ func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.AttoFIL, types.Uni
 	}
 
 	premiumOption := req.Options["gas-premium"]
-	if feecapOption == nil {
+	if premiumOption == nil {
 		return types.ZeroAttoFIL, types.ZeroAttoFIL, types.Zero, errors.New("gas-premium option is required")
 	}
 
