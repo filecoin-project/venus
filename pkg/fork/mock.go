@@ -2,6 +2,7 @@ package fork
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/config"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
@@ -28,4 +29,22 @@ func (mockFork *MockFork) GetNtwkVersion(ctx context.Context, height abi.ChainEp
 
 func (mockFork *MockFork) HasExpensiveFork(ctx context.Context, height abi.ChainEpoch) bool {
 	return false
+}
+
+func (mockFork *MockFork) GetForkUpgrade() *config.ForkUpgradeConfig {
+	return &config.ForkUpgradeConfig{
+		UpgradeSmokeHeight:       -1,
+		UpgradeBreezeHeight:      -1,
+		UpgradeIgnitionHeight:    -1,
+		UpgradeLiftoffHeight:     -1,
+		UpgradeActorsV2Height:    -1,
+		UpgradeRefuelHeight:      -1,
+		UpgradeTapeHeight:        -1,
+		UpgradeKumquatHeight:     -1,
+		BreezeGasTampingDuration: -1,
+		UpgradeCalicoHeight:      -1,
+		UpgradePersianHeight:     -1,
+		UpgradeOrangeHeight:      -1,
+		UpgradeClausHeight:       -1,
+	}
 }

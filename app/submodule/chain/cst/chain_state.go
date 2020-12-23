@@ -319,7 +319,7 @@ func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAdd
 	}
 
 	signature, err := executable.Signature(method)
-	if err != nil {
+	if err != nil { //nolint
 		return nil, fmt.Errorf("missing export: %d", method)
 	}
 

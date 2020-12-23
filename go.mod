@@ -34,7 +34,7 @@ require (
 	github.com/filecoin-project/go-state-types v0.0.0-20201102161440-c8033295a1fc
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
 	github.com/filecoin-project/specs-actors v0.9.13
-	github.com/filecoin-project/specs-actors/v2 v2.3.2
+	github.com/filecoin-project/specs-actors/v2 v2.3.3
 	github.com/filecoin-project/test-vectors/schema v0.0.5
 	github.com/fxamacker/cbor/v2 v2.2.0
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
@@ -133,6 +133,10 @@ require (
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 
 )
+
+replace github.com/filecoin-project/venus => ./
+
+replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
 
 replace github.com/filecoin-project/filecoin-ffi => ./vendors/filecoin-ffi
 

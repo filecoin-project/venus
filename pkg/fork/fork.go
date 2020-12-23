@@ -111,6 +111,10 @@ func defaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 		Height:    upgradeHeight.UpgradePersianHeight,
 		Network:   network.Version8,
 		Migration: nil,
+	}, {
+		Height:    upgradeHeight.UpgradeOrangeHeight,
+		Network:   network.Version9,
+		Migration: nil,
 	}}
 
 	if upgradeHeight.UpgradeActorsV2Height == math.MaxInt64 { // disable actors upgrade
@@ -168,7 +172,7 @@ func (us UpgradeSchedule) Validate() error {
 			continue
 		}
 		if !(prev.Height <= curr.Height) {
-			return xerrors.Errorf("upgrade heights must be strictly increasing: upgrade %d was at height %d, followed by upgrade %d at height %d", i-1, prev.Height, i, curr.Height)
+			return xerrors.Errorf("upgrade heights must be strictly increasing: upgrade version %d was at height %d, followed by upgrade version %d at height %d", prev.Network, prev.Height, curr.Network, curr.Height)
 		}
 	}
 	return nil
@@ -185,6 +189,7 @@ type IFork interface {
 	HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error)
 	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
 	HasExpensiveFork(ctx context.Context, height abi.ChainEpoch) bool
+	GetForkUpgrade() *config.ForkUpgradeConfig
 }
 
 var _ = IFork((*ChainFork)(nil))
@@ -1178,4 +1183,8 @@ func (c *ChainFork) UpgradeCalico(ctx context.Context, sm *ChainFork, root cid.C
 	}
 
 	return newRoot, nil
+}
+
+func (c *ChainFork) GetForkUpgrade() *config.ForkUpgradeConfig {
+	return c.forkUpgrade
 }
