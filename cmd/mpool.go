@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/go-address"
@@ -19,7 +20,7 @@ var mpoolCmd = &cmds.Command{
 	},
 	Subcommands: map[string]*cmds.Command{
 		"pending": mpoolPending,
-		//"clear":    mpoolClear,
+		"clear":   mpoolClear,
 		//"sub":      mpoolSub,
 		//"stat":     mpoolStat,
 		//"replace":  mpoolReplaceCmd,
@@ -104,6 +105,33 @@ Get pending messages.
 				fmt.Println(string(out))
 			}
 		}
+
+		return nil
+	},
+	Type: net.SwarmConnInfos{},
+}
+
+var mpoolClear = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "clear",
+		ShortDescription: `
+"Clear all pending messages from the mpool (USE WITH CARE)"
+`,
+	},
+	Options: []cmds.Option{
+		cmds.BoolOption("local", "also clear local messages"),
+		cmds.BoolOption("really-do-it", "must be specified for the action to take effect"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		local, _ := req.Options["local"].(bool)
+		really, _ := req.Options["really-do-it"].(bool)
+
+		if !really {
+			//nolint:golint
+			return fmt.Errorf("--really-do-it must be specified for this action to have an effect; you have been warned")
+		}
+
+		return env.(*node.Env).MessagePoolAPI.MpoolClear(context.TODO(), local)
 
 		return nil
 	},
