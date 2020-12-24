@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/util"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -11,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	syncds "github.com/ipfs/go-datastore/sync"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -20,13 +20,9 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
 	"github.com/filecoin-project/venus/pkg/clock"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/enccid"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/types"
 )
@@ -76,7 +72,7 @@ func (f *Builder) LoadTipSetMessage(ctx context.Context, ts *block.TipSet) ([]bl
 	blockMsg := []block.BlockMessagesInfo{}
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
-		secpMsgs, blsMsgs, err := f.LoadMetaMessages(ctx, blk.Messages.Cid)
+		secpMsgs, blsMsgs, err := f.LoadMetaMessages(ctx, blk.Messages)
 		if err != nil {
 			return nil, errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
 		}
@@ -160,9 +156,9 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 	}
 
 	repo := repo.NewInMemoryRepo()
-	bs := blockstore.NewBlockstore(syncds.MutexWrap(repo.Datastore()))
+	bs := repo.Datastore()
 	ds := repo.ChainDatastore()
-	cst := cborutil.NewIpldStore(bs)
+	cst := cbor.NewCborStore(bs)
 
 	b := &Builder{
 		t:            t,
@@ -331,12 +327,12 @@ func (f *Builder) BuildOrphaTipset(parent *block.TipSet, width int, build func(b
 		b := &block.Block{
 			Ticket:                ticket,
 			Miner:                 f.minerAddress,
-			BeaconEntries:         []*block.BeaconEntry{},
+			BeaconEntries:         nil,
 			ParentWeight:          parentWeight,
 			Parents:               parent.Key(),
 			Height:                height,
-			Messages:              enccid.NewCid(types.EmptyTxMetaCID),
-			ParentMessageReceipts: enccid.NewCid(types.EmptyReceiptsCID),
+			Messages:              types.EmptyTxMetaCID,
+			ParentMessageReceipts: types.EmptyReceiptsCID,
 			BLSAggregate:          &emptyBLSSig,
 			// Omitted fields below
 			//ParentStateRoot:       stateRoot,
@@ -344,7 +340,7 @@ func (f *Builder) BuildOrphaTipset(parent *block.TipSet, width int, build func(b
 			//ForkSignaling:   forkSig,
 			Timestamp:     f.stamper.Stamp(height),
 			BlockSig:      &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
-			ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0c, 0x0d}, WinCount: int64(10)},
+			ElectionProof: &block.ElectionProof{VRFProof: []byte{0x0c, 0x0d}, WinCount: int64(10)},
 		}
 
 		if build != nil {
@@ -354,7 +350,7 @@ func (f *Builder) BuildOrphaTipset(parent *block.TipSet, width int, build func(b
 		// Compute state root for this block.
 		ctx := context.Background()
 		prevState := f.StateForKey(parent.Key())
-		smsgs, umsgs, err := f.mstore.LoadMetaMessages(ctx, b.Messages.Cid)
+		smsgs, umsgs, err := f.mstore.LoadMetaMessages(ctx, b.Messages)
 		require.NoError(f.t, err)
 
 		var sBlsMsg []types.ChainMsg
@@ -373,7 +369,7 @@ func (f *Builder) BuildOrphaTipset(parent *block.TipSet, width int, build func(b
 		}
 		stateRootRaw, _, err := f.stateBuilder.ComputeState(prevState, []block.BlockMessagesInfo{blkMsgInfo})
 		require.NoError(f.t, err)
-		b.ParentStateRoot = enccid.NewCid(stateRootRaw)
+		b.ParentStateRoot = stateRootRaw
 
 		blocks = append(blocks, b)
 	}
@@ -417,7 +413,7 @@ func (f *Builder) tipMessages(tip *block.TipSet) []block.BlockMessagesInfo {
 	ctx := context.Background()
 	var blockMessageInfos []block.BlockMessagesInfo
 	for i := 0; i < tip.Len(); i++ {
-		smsgs, blsMsg, err := f.mstore.LoadMetaMessages(ctx, tip.At(i).Messages.Cid)
+		smsgs, blsMsg, err := f.mstore.LoadMetaMessages(ctx, tip.At(i).Messages)
 		require.NoError(f.t, err)
 
 		var sBlsMsg []types.ChainMsg
@@ -457,7 +453,7 @@ type BlockBuilder struct {
 
 // SetTicket sets the block's ticket.
 func (bb *BlockBuilder) SetTicket(raw []byte) {
-	bb.block.Ticket = block.Ticket{VRFProof: crypto.VRFPi(raw)}
+	bb.block.Ticket = block.Ticket{VRFProof: block.VRFPi(raw)}
 }
 
 // SetTimestamp sets the block's timestamp.
@@ -483,12 +479,12 @@ func (bb *BlockBuilder) AddMessages(secpmsgs []*types.SignedMessage, blsMsgs []*
 	meta, err := bb.messages.StoreMessages(ctx, secpmsgs, blsMsgs)
 	require.NoError(bb.t, err)
 
-	bb.block.Messages = enccid.NewCid(meta)
+	bb.block.Messages = meta
 }
 
 // SetStateRoot sets the block's state root.
 func (bb *BlockBuilder) SetStateRoot(root cid.Cid) {
-	bb.block.ParentStateRoot = enccid.NewCid(root)
+	bb.block.ParentStateRoot = root
 }
 
 ///// state builder /////
@@ -523,7 +519,7 @@ func (FakeStateBuilder) ComputeState(prev cid.Cid, blockmsg []block.BlockMessage
 			receipts = append(receipts, types.MessageReceipt{
 				ExitCode:    0,
 				ReturnValue: mCId.Bytes(),
-				GasUsed:     types.NewGas(3),
+				GasUsed:     3,
 			})
 		}
 	}
@@ -533,7 +529,7 @@ func (FakeStateBuilder) ComputeState(prev cid.Cid, blockmsg []block.BlockMessage
 		return prev, receipts, nil
 	}
 
-	root, err := makeCid(inputs)
+	root, err := util.MakeCid(inputs)
 	if err != nil {
 		return cid.Undef, []types.MessageReceipt{}, err
 	}
@@ -675,10 +671,10 @@ func (f *Builder) GetBlocksByIds(ctx context.Context, cids []cid.Cid) ([]*block.
 func (f *Builder) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	ctx := context.Background()
 	var blocks []*block.Block
-	for it := key.Iter(); !it.Complete(); it.Next() {
+	for _, bid := range key.Cids() {
 		var blk block.Block
-		if err := f.cstore.Get(ctx, it.Value(), &blk); err != nil {
-			return nil, fmt.Errorf("no block %s", it.Value())
+		if err := f.cstore.Get(ctx, bid, &blk); err != nil {
+			return nil, fmt.Errorf("no block %s", bid)
 		}
 		blocks = append(blocks, &blk)
 	}
@@ -842,14 +838,4 @@ func (f *Builder) GetFullTipSet(ctx context.Context, peer peer.ID, tsk block.Tip
 
 func (f *Builder) AddPeer(peer peer.ID) {
 	return
-}
-
-///// Internals /////
-
-func makeCid(i interface{}) (cid.Cid, error) {
-	bytes, err := encoding.Encode(i)
-	if err != nil {
-		return cid.Undef, err
-	}
-	return constants.DefaultCidBuilder.Sum(bytes)
 }

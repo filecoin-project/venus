@@ -2,19 +2,17 @@ package state
 
 import (
 	"context"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/ipfs/go-cid"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/repo"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -25,8 +23,8 @@ func TestStatePutGet(t *testing.T) {
 
 	ctx := context.Background()
 
-	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
-	cst := cborutil.NewIpldStore(bs)
+	bs := repo.NewInMemoryRepo().Datastore()
+	cst := cbor.NewCborStore(bs)
 	tree, err := NewStateWithBuiltinActor(t, cst, StateTreeVersion1)
 	if err != nil {
 		t.Fatal(err)
@@ -76,8 +74,8 @@ func TestStatePutGet(t *testing.T) {
 func TestStateErrors(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
-	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
-	cst := cborutil.NewIpldStore(bs)
+	bs := repo.NewInMemoryRepo().Datastore()
+	cst := cbor.NewCborStore(bs)
 	tree, err := NewStateWithBuiltinActor(t, cst, StateTreeVersion1)
 	if err != nil {
 		t.Fatal(err)
@@ -97,15 +95,15 @@ func TestGetAllActors(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
-	cst := cborutil.NewIpldStore(bs)
+	bs := repo.NewInMemoryRepo().Datastore()
+	cst := cbor.NewCborStore(bs)
 	tree, err := NewStateWithBuiltinActor(t, cst, StateTreeVersion1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	addr := types.NewForTestGetter()()
 
-	newActor := types.Actor{Code: enccid.NewCid(builtin2.AccountActorCodeID), Nonce: 1234, Balance: abi.NewTokenAmount(123)}
+	newActor := types.Actor{Code: builtin2.AccountActorCodeID, Nonce: 1234, Balance: abi.NewTokenAmount(123)}
 	AddAccount(t, tree, cst, addr)
 	_, err = tree.Flush(ctx)
 	require.NoError(t, err)
@@ -129,8 +127,8 @@ func TestStateTreeConsistency(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
-	cst := cborutil.NewIpldStore(bs)
+	bs := repo.NewInMemoryRepo().Datastore()
+	cst := cbor.NewCborStore(bs)
 	tree, err := NewState(cst, StateTreeVersion1)
 	if err != nil {
 		t.Fatal(err)
@@ -153,8 +151,8 @@ func TestStateTreeConsistency(t *testing.T) {
 
 	for i, a := range addrs {
 		if err := tree.SetActor(ctx, a, &types.Actor{
-			Code:    enccid.NewCid(randomCid),
-			Head:    enccid.NewCid(randomCid),
+			Code:    randomCid,
+			Head:    randomCid,
 			Balance: abi.NewTokenAmount(int64(10000 + i)),
 			Nonce:   uint64(1000 - i),
 		}); err != nil {

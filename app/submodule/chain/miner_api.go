@@ -319,7 +319,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerPreCommitDepositForPower(ctx conte
 		return big.Int{}, err
 	}
 
-	sTree, err := state.LoadState(ctx, store, ts.At(0).ParentStateRoot.Cid)
+	sTree, err := state.LoadState(ctx, store, ts.At(0).ParentStateRoot)
 	if err != nil {
 		return big.Int{}, err
 	}
@@ -379,7 +379,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerInitialPledgeCollateral(ctx contex
 	}
 
 	store := minerStateAPI.chain.State.Store(ctx)
-	state, err := state.LoadState(ctx, store, ts.At(0).ParentStateRoot.Cid)
+	state, err := state.LoadState(ctx, store, ts.At(0).ParentStateRoot)
 	if err != nil {
 		return big.Int{}, xerrors.Errorf("loading state %s: %v", tsk, err)
 	}

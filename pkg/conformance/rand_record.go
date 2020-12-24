@@ -3,6 +3,7 @@ package conformance
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/chain"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -11,7 +12,6 @@ import (
 	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 )
 
 type chainReader interface {
@@ -31,7 +31,7 @@ type RecordingRand struct {
 	recorded schema.Randomness
 }
 
-var _ crypto2.RandomnessSource = (*RecordingRand)(nil)
+var _ chain.RandomnessSource = (*RecordingRand)(nil)
 
 // NewRecordingRand returns a vm.Rand implementation that proxies calls to a
 // full Lotus node via JSON-RPC, and records matching rules and responses so

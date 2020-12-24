@@ -29,7 +29,7 @@ func TestBootstrapperStartAndStop(t *testing.T) {
 
 	fakeHost := th.NewFakeHost()
 	fakeDialer := &th.FakeDialer{PeersImpl: nopPeers}
-	fakeRouter := offroute.NewOfflineRouter(repo.NewInMemoryRepo().Datastore(), blankValidator{})
+	fakeRouter := offroute.NewOfflineRouter(repo.NewInMemoryRepo().ChainDatastore(), blankValidator{})
 
 	// Check that Start() causes Bootstrap() to be periodically called and
 	// that canceling the context causes it to stop being called. Do this
@@ -69,7 +69,7 @@ func TestBootstrapperBootstrap(t *testing.T) {
 	t.Run("Doesn't connect if already have enough peers", func(t *testing.T) {
 		fakeHost := &th.FakeHost{ConnectImpl: panicConnect}
 		fakeDialer := &th.FakeDialer{PeersImpl: panicPeers}
-		fakeRouter := offroute.NewOfflineRouter(repo.NewInMemoryRepo().Datastore(), blankValidator{})
+		fakeRouter := offroute.NewOfflineRouter(repo.NewInMemoryRepo().ChainDatastore(), blankValidator{})
 		ctx := context.Background()
 
 		b := NewBootstrapper([]peer.AddrInfo{}, fakeHost, fakeDialer, fakeRouter, 1, time.Minute)
@@ -93,7 +93,7 @@ func TestBootstrapperBootstrap(t *testing.T) {
 		connectCount = 0
 		lk.Unlock()
 		fakeDialer := &th.FakeDialer{PeersImpl: panicPeers}
-		fakeRouter := offroute.NewOfflineRouter(repo.NewInMemoryRepo().Datastore(), blankValidator{})
+		fakeRouter := offroute.NewOfflineRouter(repo.NewInMemoryRepo().ChainDatastore(), blankValidator{})
 
 		bootstrapPeers := []peer.AddrInfo{
 			{ID: th.RequireRandomPeerID(t)},
@@ -115,7 +115,7 @@ func TestBootstrapperBootstrap(t *testing.T) {
 		connectCount = 0
 		lk.Unlock()
 		fakeDialer := &th.FakeDialer{PeersImpl: panicPeers}
-		fakeRouter := offroute.NewOfflineRouter(repo.NewInMemoryRepo().Datastore(), blankValidator{})
+		fakeRouter := offroute.NewOfflineRouter(repo.NewInMemoryRepo().ChainDatastore(), blankValidator{})
 
 		connectedPeerID := th.RequireRandomPeerID(t)
 		bootstrapPeers := []peer.AddrInfo{

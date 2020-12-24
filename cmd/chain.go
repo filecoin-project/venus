@@ -55,7 +55,7 @@ var storeHeadCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(&ChainHeadResult{Height: h, ParentWeight: pw, Cids: head.Key().ToSlice()})
+		return re.Emit(&ChainHeadResult{Height: h, ParentWeight: pw, Cids: head.Key().Cids()})
 	},
 	Type: &ChainHeadResult{},
 }
@@ -94,7 +94,7 @@ var storeLsCmd = &cmds.Command{
 		}
 
 		for _, tipset := range tipSetKeys {
-			if err := re.Emit(tipset.ToSlice()); err != nil {
+			if err := re.Emit(tipset.Cids()); err != nil {
 				return err
 			}
 		}

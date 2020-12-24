@@ -194,7 +194,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	}
 
 	// fetch genesis block id
-	b.genCid, err = readGenesisCid(b.repo.Datastore())
+	b.genCid, err = readGenesisCid(b.repo.ChainDatastore())
 	if err != nil {
 		return nil, err
 	}

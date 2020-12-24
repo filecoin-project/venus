@@ -49,7 +49,7 @@ func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, g
 		Method:     2,
 		Value:      types.FromFil(0),
 		Nonce:      nonce,
-		GasLimit:   types.NewGas(gasLimit),
+		GasLimit:   gasLimit,
 		GasFeeCap:  tbig.NewInt(int64(100) + int64(gasPrice)),
 		GasPremium: tbig.NewInt(int64(gasPrice)),
 	}
@@ -616,7 +616,7 @@ func TestMessageSelectionTrimming(t *testing.T) {
 
 	mGasLimit := int64(0)
 	for _, m := range msgs {
-		mGasLimit += int64(m.Message.GasLimit)
+		mGasLimit += m.Message.GasLimit
 	}
 	if mGasLimit > constants.BlockGasLimit {
 		t.Fatal("selected messages gas limit exceeds block gas limit!")
@@ -1495,7 +1495,7 @@ readLoop:
 
 	gasLimit := int64(0)
 	for _, m := range selected {
-		gasLimit += int64(m.Message.GasLimit)
+		gasLimit += m.Message.GasLimit
 	}
 	if gasLimit < minGasLimit {
 		t.Fatalf("failed to pack with tq=1.0; packed %d, minimum packing: %d", gasLimit, minGasLimit)
@@ -1509,7 +1509,7 @@ readLoop:
 
 	gasLimit = int64(0)
 	for _, m := range selected {
-		gasLimit += int64(m.Message.GasLimit)
+		gasLimit += m.Message.GasLimit
 	}
 	if gasLimit < minGasLimit {
 		t.Fatalf("failed to pack with tq=0.8; packed %d, minimum packing: %d", gasLimit, minGasLimit)
@@ -1523,7 +1523,7 @@ readLoop:
 
 	gasLimit = int64(0)
 	for _, m := range selected {
-		gasLimit += int64(m.Message.GasLimit)
+		gasLimit += m.Message.GasLimit
 	}
 	if gasLimit < minGasLimit {
 		t.Fatalf("failed to pack with tq=0.4; packed %d, minimum packing: %d", gasLimit, minGasLimit)
@@ -1537,7 +1537,7 @@ readLoop:
 
 	gasLimit = int64(0)
 	for _, m := range selected {
-		gasLimit += int64(m.Message.GasLimit)
+		gasLimit += m.Message.GasLimit
 	}
 	if gasLimit < minGasLimit {
 		t.Fatalf("failed to pack with tq=0.1; packed %d, minimum packing: %d", gasLimit, minGasLimit)
@@ -1551,7 +1551,7 @@ readLoop:
 
 	gasLimit = int64(0)
 	for _, m := range selected {
-		gasLimit += int64(m.Message.GasLimit)
+		gasLimit += m.Message.GasLimit
 	}
 	if gasLimit < minGasLimit {
 		t.Fatalf("failed to pack with tq=0.01; packed %d, minimum packing: %d", gasLimit, minGasLimit)

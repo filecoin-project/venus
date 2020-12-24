@@ -14,6 +14,10 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
+type SimpleParams struct {
+	Name string
+}
+
 // Actor is the interface all actors have to implement.
 type Actor interface {
 	// Exports has a list of method available on the actor.

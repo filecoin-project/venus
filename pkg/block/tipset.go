@@ -49,6 +49,7 @@ func NewTipSet(blocks ...*Block) (*TipSet, error) {
 	cids := make([]cid.Cid, len(blocks))
 
 	sorted := make([]*Block, len(blocks))
+	seen := make(map[cid.Cid]struct{})
 	for i, blk := range blocks {
 		if i > 0 { // Skip redundant checks for first block
 			if blk.Height != height {
@@ -61,6 +62,10 @@ func NewTipSet(blocks ...*Block) (*TipSet, error) {
 				return nil, errors.Errorf("Inconsistent block parent weights %d and %d", weight, blk.ParentWeight)
 			}
 		}
+		if _, ok := seen[blk.Cid()]; ok {
+			return nil, errors.New("duplicate block")
+		}
+		seen[blk.Cid()] = struct{}{}
 		sorted[i] = blk
 	}
 
@@ -77,10 +82,7 @@ func NewTipSet(blocks ...*Block) (*TipSet, error) {
 		cids[i] = blk.Cid()
 	}
 	// Duplicate blocks (CIDs) are rejected here, pass that error through.
-	key, err := NewTipSetKeyFromUnique(cids...)
-	if err != nil {
-		return nil, err
-	}
+	key := NewTipSetKey(cids...)
 	return &TipSet{sorted, key}, nil
 }
 
@@ -202,7 +204,7 @@ func (ts *TipSet) MinTimestamp() uint64 {
 }
 
 func (ts *TipSet) IsChildOf(parent *TipSet) bool {
-	return CidArrsEqual(ts.EnsureParents().ToSlice(), parent.key.ToSlice()) &&
+	return CidArrsEqual(ts.EnsureParents().Cids(), parent.key.Cids()) &&
 		// FIXME: The height check might go beyond what is meant by
 		//  "parent", but many parts of the code rely on the tipset's
 		//  height for their processing logic at the moment to obviate it.

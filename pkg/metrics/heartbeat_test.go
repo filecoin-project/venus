@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/enccid"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -194,8 +193,9 @@ func mustMakeTipset(t *testing.T, height abi.ChainEpoch) *block.TipSet {
 		Parents:               block.TipSetKey{},
 		ParentWeight:          fbig.Zero(),
 		Height:                height,
-		ParentMessageReceipts: enccid.NewCid(types.EmptyMessagesCID),
-		Messages:              enccid.NewCid(types.EmptyTxMetaCID),
+		ParentMessageReceipts: types.EmptyMessagesCID,
+		Messages:              types.EmptyTxMetaCID,
+		ParentStateRoot:       types.EmptyTxMetaCID,
 	})
 	if err != nil {
 		t.Fatal(err)

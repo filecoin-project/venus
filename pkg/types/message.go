@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	cbor2 "github.com/filecoin-project/go-state-types/cbor"
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
@@ -13,7 +14,8 @@ import (
 	tbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus/pkg/enccid"
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/crypto"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -23,11 +25,6 @@ import (
 	errPkg "github.com/pkg/errors"
 	typegen "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/venus/pkg/cborutil"
-	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/encoding"
 )
 
 const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
@@ -65,14 +62,14 @@ func FromFil(i uint64) AttoFIL {
 }
 
 func init() {
-	tmpCst := cborutil.NewIpldStore(blockstore.NewBlockstore(datastore.NewMapDatastore()))
+	tmpCst := cbor.NewCborStore(blockstore.NewBlockstore(datastore.NewMapDatastore()))
 	emptyAMTCid, err := amt.FromArray(context.Background(), tmpCst, []typegen.CBORMarshaler{})
 	if err != nil {
 		panic("could not create CID for empty AMT")
 	}
 	EmptyMessagesCID = emptyAMTCid
 	EmptyReceiptsCID = emptyAMTCid
-	EmptyTxMetaCID, err = tmpCst.Put(context.Background(), TxMeta{SecpRoot: enccid.NewCid(EmptyMessagesCID), BLSRoot: enccid.NewCid(EmptyMessagesCID)})
+	EmptyTxMetaCID, err = tmpCst.Put(context.Background(), &TxMeta{SecpRoot: EmptyMessagesCID, BLSRoot: EmptyMessagesCID})
 	if err != nil {
 		panic("could not create CID for empty TxMeta")
 	}
@@ -85,6 +82,8 @@ type ChainMsg interface {
 	ToStorageBlock() (blocks.Block, error)
 	// FIXME: This is the *message* length, this name is misleading.
 	ChainLength() int
+	cbor2.Marshaler
+	cbor2.Unmarshaler
 }
 
 var _ ChainMsg = &UnsignedMessage{}
@@ -92,10 +91,7 @@ var _ ChainMsg = &UnsignedMessage{}
 // UnsignedMessage is an exchange of information between two actors modeled
 // as a function call.
 type UnsignedMessage struct {
-	// control field for encoding struct as an array
-	_ struct{} `cbor:",toarray"`
-
-	Version int64 `json:"version"`
+	Version uint64 `json:"version"`
 
 	To   address.Address `json:"to"`
 	From address.Address `json:"from"`
@@ -106,7 +102,7 @@ type UnsignedMessage struct {
 
 	Value AttoFIL `json:"value"`
 
-	GasLimit   Unit    `json:"gasLimit"`
+	GasLimit   int64   `json:"gasLimit"`
 	GasFeeCap  AttoFIL `json:"gasFeeCap"`
 	GasPremium AttoFIL `json:"gasPremium"`
 
@@ -128,7 +124,7 @@ func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, m
 }
 
 // NewMeteredMessage adds gas price and gas limit to the message
-func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte, gasFeeCap, gasPremium AttoFIL, limit Unit) *UnsignedMessage {
+func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte, gasFeeCap, gasPremium AttoFIL, limit int64) *UnsignedMessage {
 	return &UnsignedMessage{
 		Version:    MessageVersion,
 		To:         to,
@@ -144,25 +140,17 @@ func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, me
 }
 
 func (msg *UnsignedMessage) RequiredFunds() tbig.Int {
-	return tbig.Mul(msg.GasFeeCap, tbig.NewInt(int64(msg.GasLimit)))
-}
-
-// Unmarshal a message from the given bytes.
-func (msg *UnsignedMessage) Unmarshal(b []byte) error {
-	return encoding.Decode(b, msg)
-}
-
-// Marshal the message into bytes.
-func (msg *UnsignedMessage) Marshal() ([]byte, error) {
-	return encoding.Encode(msg)
+	return tbig.Mul(msg.GasFeeCap, tbig.NewInt(msg.GasLimit))
 }
 
 // ToNode converts the Message to an IPLD node.
 func (msg *UnsignedMessage) ToNode() (ipld.Node, error) {
-	data, err := encoding.Encode(msg)
+	buf := new(bytes.Buffer)
+	err := msg.MarshalCBOR(buf)
 	if err != nil {
 		return nil, err
 	}
+	data := buf.Bytes()
 	c, err := constants.DefaultCidBuilder.Sum(data)
 	if err != nil {
 		return nil, err
@@ -218,11 +206,13 @@ func (msg *UnsignedMessage) Equals(other *UnsignedMessage) bool {
 }
 
 func (msg *UnsignedMessage) ChainLength() int {
-	ser, err := msg.Marshal()
+	buf := new(bytes.Buffer)
+	err := msg.MarshalCBOR(buf)
 	if err != nil {
 		panic(err)
 	}
-	return len(ser)
+
+	return buf.Len()
 }
 
 func (msg *UnsignedMessage) VMMessage() *UnsignedMessage {
@@ -230,11 +220,12 @@ func (msg *UnsignedMessage) VMMessage() *UnsignedMessage {
 }
 
 func (msg *UnsignedMessage) ToStorageBlock() (blocks.Block, error) {
-	data, err := msg.Marshal()
+	buf := new(bytes.Buffer)
+	err := msg.MarshalCBOR(buf)
 	if err != nil {
 		return nil, err
 	}
-
+	data := buf.Bytes()
 	c, err := abi.CidBuilder.Sum(data)
 	if err != nil {
 		return nil, err
@@ -297,7 +288,7 @@ func (msg *UnsignedMessage) ValidForBlockInclusion(minGas int64, version network
 	}
 
 	// since prices might vary with time, this is technically semantic validation
-	if int64(msg.GasLimit) < minGas {
+	if msg.GasLimit < minGas {
 		return xerrors.New("'GasLimit' field cannot be less than the cost of storing a message on chain")
 	}
 
@@ -307,7 +298,7 @@ func (msg *UnsignedMessage) ValidForBlockInclusion(minGas int64, version network
 func DecodeMessage(b []byte) (*UnsignedMessage, error) {
 	var msg UnsignedMessage
 
-	if err := encoding.Decode(b, &msg); err != nil {
+	if err := msg.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
 		return nil, err
 	}
 
@@ -328,9 +319,8 @@ func NewGasPremium(price int64) AttoFIL {
 
 // TxMeta tracks the merkleroots of both secp and bls messages separately
 type TxMeta struct {
-	_        struct{}   `cbor:",toarray"`
-	BLSRoot  enccid.Cid `json:"blsRoot"`
-	SecpRoot enccid.Cid `json:"secpRoot"`
+	BLSRoot  cid.Cid `json:"blsRoot"`
+	SecpRoot cid.Cid `json:"secpRoot"`
 }
 
 // String returns a readable printing string of TxMeta
@@ -340,15 +330,13 @@ func (m TxMeta) String() string {
 
 // MessageReceipt is what is returned by executing a message on the vm.
 type MessageReceipt struct {
-	// control field for encoding struct as an array
-	_           struct{}          `cbor:",toarray"`
 	ExitCode    exitcode.ExitCode `json:"exitCode"`
 	ReturnValue []byte            `json:"return"`
-	GasUsed     Unit              `json:"gasUsed"`
+	GasUsed     int64             `json:"gasUsed"`
 }
 
 // Failure returns with a non-zero exit code.
-func Failure(exitCode exitcode.ExitCode, gasAmount Unit) MessageReceipt {
+func Failure(exitCode exitcode.ExitCode, gasAmount int64) MessageReceipt {
 	return MessageReceipt{
 		ExitCode:    exitCode,
 		ReturnValue: []byte{},

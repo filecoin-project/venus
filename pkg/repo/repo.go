@@ -1,8 +1,8 @@
 package repo
 
 import (
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/ipfs/go-datastore"
-	ds "github.com/ipfs/go-datastore"
 	keystore "github.com/ipfs/go-ipfs-keystore"
 
 	"github.com/filecoin-project/venus/pkg/config"
@@ -26,7 +26,7 @@ type Repo interface {
 	ReplaceConfig(cfg *config.Config) error
 
 	// Datastore is a general storage solution for things like blocks.
-	Datastore() ds.Batching
+	Datastore() blockstoreutil.Blockstore
 
 	Keystore() keystore.Keystore
 

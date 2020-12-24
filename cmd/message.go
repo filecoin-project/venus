@@ -35,7 +35,7 @@ var msgCmd = &cmds.Command{
 // MessageSendResult is the return type for message send command
 type MessageSendResult struct {
 	Cid     cid.Cid
-	GasUsed types.Unit
+	GasUsed int64
 	Preview bool
 }
 
@@ -151,7 +151,7 @@ var msgSendCmd = &cmds.Command{
 
 		return re.Emit(&MessageSendResult{
 			Cid:     c,
-			GasUsed: types.NewGas(0),
+			GasUsed: 0,
 			Preview: false,
 		})
 	},
@@ -164,7 +164,7 @@ func decodeTypedParams(ctx context.Context, fapi *node.Env, to address.Address, 
 		return nil, err
 	}
 
-	methodMeta, found := chain.MethodsMap[act.Code.Cid][method]
+	methodMeta, found := chain.MethodsMap[act.Code][method]
 	if !found {
 		return nil, fmt.Errorf("method %d not found on actor %s", method, act.Code)
 	}

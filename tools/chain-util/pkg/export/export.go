@@ -1,6 +1,7 @@
 package export
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"path/filepath"
@@ -17,7 +18,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	plumbingDag "github.com/filecoin-project/venus/pkg/util/dag"
 )
 
@@ -82,8 +82,8 @@ func (ce *ChainExporter) Export(ctx context.Context) error {
 // GetTipSet gets the TipSet for a given TipSetKey from the ChainExporter blockstore.
 func (ce *ChainExporter) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	var blks []*block.Block
-	for it := key.Iter(); !it.Complete(); it.Next() {
-		bsBlk, err := ce.bstore.Get(it.Value())
+	for _, blkCid := range key.Cids() {
+		bsBlk, err := ce.bstore.Get(blkCid)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to load tipset %s", key.String())
 		}
@@ -107,12 +107,12 @@ func getDatastoreHeadTipSet(ds *badgerds.Datastore, bs blockstore.Blockstore) (b
 		return block.TipSet{}, errors.Wrap(err, "failed to read HeadKey")
 	}
 	var cids block.TipSetKey
-	err = encoding.Decode(bb, &cids)
+	err = cids.UnmarshalCBOR(bytes.NewReader(bb))
 	if err != nil {
 		return block.TipSet{}, errors.Wrap(err, "failed to cast headCids")
 	}
 	var blks []*block.Block
-	for _, c := range cids.ToSlice() {
+	for _, c := range cids.Cids() {
 		bsBlk, err := bs.Get(c)
 		if err != nil {
 			return block.TipSet{}, errors.Wrapf(err, "failed to read key %s from blockstore", c)

@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/pkg/beacon"
-	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -29,7 +28,7 @@ type commonDeps struct {
 
 func requiredCommonDeps(t *testing.T, gif genesis.InitFunc) *commonDeps { // nolint: deadcode
 	r := repo.NewInMemoryRepo()
-	bs := bstore.NewBlockstore(r.Datastore())
+	bs := r.Datastore()
 	return requireCommonDepsWithGifAndBlockstore(t, gif, r, bs)
 }
 
@@ -37,8 +36,8 @@ func requiredCommonDeps(t *testing.T, gif genesis.InitFunc) *commonDeps { // nol
 // need to set some actor state up ahead of time (actor state is ultimately found in the
 // block store).
 func requireCommonDepsWithGifAndBlockstore(t *testing.T, gif genesis.InitFunc, r repo.Repo, bs bstore.Blockstore) *commonDeps {
-	cst := cborutil.NewIpldStore(bs)
-	chainStore, err := chain.Init(context.Background(), r, bs, cst, gif)
+	cst := cbor.NewCborStore(bs)
+	chainStore, err := genesis.Init(context.Background(), r, bs, cst, gif)
 	require.NoError(t, err)
 	messageStore := chain.NewMessageStore(bs)
 	backend, err := wallet.NewDSBackend(r.WalletDatastore())

@@ -1,6 +1,7 @@
 package blocksub
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/ipfs/go-log/v2"
@@ -8,7 +9,6 @@ import (
 	"github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/venus/pkg/consensus"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/metrics"
 )
 
@@ -28,7 +28,7 @@ func NewBlockTopicValidator(bv consensus.BlockSyntaxValidator, opts ...pubsub.Va
 		opts: opts,
 		validator: func(ctx context.Context, p peer.ID, msg *pubsub.Message) bool {
 			var payload Payload
-			err := encoding.Decode(msg.GetData(), &payload)
+			err := payload.UnmarshalCBOR(bytes.NewReader(msg.GetData()))
 			if err != nil {
 				blockTopicLogger.Warnf("failed to decode blocksub payload from peer %s: %s", p.String(), err.Error())
 				mDecodeBlkFail.Inc(ctx, 1)

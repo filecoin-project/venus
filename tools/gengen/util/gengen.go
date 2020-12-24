@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/vm"
 )
 
 // CreateStorageMinerConfig holds configuration options used to create a storage
@@ -205,13 +204,7 @@ func MakeGenesisFunc(opts ...GenOption) genesis.InitFunc {
 				return nil, err
 			}
 		}
-		vmStorage := vm.NewStorage(bs)
-		ri, err := GenGen(ctx, genCfg, vmStorage)
-		if err != nil {
-			return nil, err
-		}
-
-		err = vmStorage.Flush()
+		ri, err := GenGen(ctx, genCfg, bs)
 		if err != nil {
 			return nil, err
 		}
@@ -230,8 +223,8 @@ func MakeGenesisFunc(opts ...GenOption) genesis.InitFunc {
 // the final genesis block.
 //
 // WARNING: Do not use maps in this code, they will make this code non deterministic.
-func GenGen(ctx context.Context, cfg *GenesisCfg, vmStorage *vm.Storage) (*RenderedGenInfo, error) {
-	generator := NewGenesisGenerator(vmStorage)
+func GenGen(ctx context.Context, cfg *GenesisCfg, bs blockstore.Blockstore) (*RenderedGenInfo, error) {
+	generator := NewGenesisGenerator(bs)
 	err := generator.Init(cfg)
 	if err != nil {
 		return nil, err
@@ -254,10 +247,6 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, vmStorage *vm.Storage) (*Rende
 		return nil, err
 	}
 
-	err = vmStorage.Flush()
-	if err != nil {
-		return nil, err
-	}
 	return &RenderedGenInfo{
 		Keys:       generator.keys,
 		GenesisCid: genCid,
@@ -272,12 +261,7 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (*RenderedGenInfo, error) {
 	bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
 	bstore = blockstore.NewIdStore(bstore)
 	dserv := dag.NewDAGService(bserv.New(bstore, offline.Exchange(bstore)))
-	vmStorage := vm.NewStorage(bstore)
-	info, err := GenGen(ctx, cfg, vmStorage)
-	if err != nil {
-		return nil, err
-	}
-	err = vmStorage.Flush()
+	info, err := GenGen(ctx, cfg, bstore)
 	if err != nil {
 		return nil, err
 	}

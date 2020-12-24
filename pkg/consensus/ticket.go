@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/pkg/chain"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -63,14 +63,10 @@ func (tm TicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey,
 }
 
 func (tm TicketMachine) ticketVRFRandomness(ctx context.Context, base block.TipSetKey, entry *block.BeaconEntry, bSmokeHeight bool, miner address.Address, epoch abi.ChainEpoch) (abi.Randomness, error) {
-	entropyBuf := bytes.Buffer{}
-	minerEntropy, err := encoding.Encode(miner)
+	entropyBuf := new(bytes.Buffer)
+	err := miner.MarshalCBOR(entropyBuf)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to encode miner entropy")
-	}
-	_, err = entropyBuf.Write(minerEntropy)
-	if err != nil {
-		return nil, err
 	}
 
 	if bSmokeHeight { // todo
@@ -84,5 +80,5 @@ func (tm TicketMachine) ticketVRFRandomness(ctx context.Context, base block.TipS
 		}
 	}
 	seed := blake2b.Sum256(entry.Data)
-	return crypto.BlendEntropy(acrypto.DomainSeparationTag_TicketProduction, seed[:], epoch, entropyBuf.Bytes())
+	return chain.BlendEntropy(acrypto.DomainSeparationTag_TicketProduction, seed[:], epoch, entropyBuf.Bytes())
 }

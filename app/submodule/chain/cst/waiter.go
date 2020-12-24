@@ -117,7 +117,7 @@ func (w *Waiter) findMessage(ctx context.Context, from *block.TipSet, m types.Ch
 	cur := from
 	curActor, err := w.chainReader.GetActorAt(ctx, cur.Key(), m.VMMessage().From)
 	if err != nil {
-		return nil, false, xerrors.Errorf("failed to load initital tipset")
+		return nil, false, xerrors.Errorf("failed to load from actor")
 	}
 
 	mFromID, err := w.chainReader.ResolveAddressAt(ctx, from.Key(), m.VMMessage().From)

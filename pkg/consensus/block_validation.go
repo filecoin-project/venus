@@ -143,7 +143,7 @@ func (dv *DefaultBlockValidator) validateMessage(msg *types.UnsignedMessage, exp
 
 // ValidateFullSemantic checks validation conditions on a block's messages that don't require message execution.
 func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, child *block.Block, parents block.TipSetKey) error {
-	secpMsgs, blsMsgs, err := dv.ms.LoadMetaMessages(ctx, child.Messages.Cid)
+	secpMsgs, blsMsgs, err := dv.ms.LoadMetaMessages(ctx, child.Messages)
 	if err != nil {
 		return errors.Wrapf(err, "block validation failed loading message list %s for block %s", child.Messages, child.Cid())
 	}
@@ -172,7 +172,7 @@ func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, c
 			return err
 		}
 
-		sumGasLimit += int64(m.GasLimit)
+		sumGasLimit += m.GasLimit
 		if sumGasLimit > constants.BlockGasLimit {
 			return xerrors.Errorf("block gas limit exceeded")
 		}
@@ -187,7 +187,7 @@ func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, c
 				return err
 			}
 
-			if !builtin.IsAccountActor(act.Code.Cid) {
+			if !builtin.IsAccountActor(act.Code) {
 				return xerrors.New("Sender must be an account actor")
 			}
 			callSeqNums[m.From] = act.Nonce

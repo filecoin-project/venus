@@ -1,27 +1,18 @@
 package dispatch
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
-	"github.com/filecoin-project/venus/pkg/encoding"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/stretchr/testify/assert"
 )
 
 type fakeActor struct{}
 
-type SimpleParams struct {
-	Name string
-}
-
 type SimpleReturn struct {
 	someValue uint64
-}
-
-func (*fakeActor) simpleMethod(ctx interface{}, params SimpleParams) SimpleReturn {
-	return SimpleReturn{someValue: 3}
 }
 
 func (*fakeActor) pointerParam(ctx interface{}, params *SimpleParams) SimpleReturn {
@@ -53,10 +44,11 @@ func TestArgInterface(t *testing.T) {
 	setup := func(method interface{}) (methodSignature, []byte) {
 		s := methodSignature{method: reflect.ValueOf(method)}
 
-		encodedParams, err := encoding.Encode(params)
+		buf := new(bytes.Buffer)
+		err := params.MarshalCBOR(buf)
 		assert.NoError(t, err)
 
-		return s, encodedParams
+		return s, buf.Bytes()
 	}
 
 	assertArgInterface := func(s methodSignature, encodedParams []byte) interface{} {
@@ -65,16 +57,6 @@ func TestArgInterface(t *testing.T) {
 		assert.NotNil(t, ret)
 		return ret
 	}
-
-	t.Run("simpleMethod", func(t *testing.T) {
-		s, encodedParams := setup(fa.simpleMethod)
-
-		ret := assertArgInterface(s, encodedParams)
-
-		v, ok := ret.(SimpleParams)
-		assert.True(t, ok)
-		assert.Equal(t, params.Name, v.Name)
-	})
 
 	t.Run("pointerParam", func(t *testing.T) {
 		s, encodedParams := setup(fa.pointerParam)

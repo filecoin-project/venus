@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -23,7 +24,6 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipld/go-car"
 
-	"github.com/filecoin-project/venus/pkg/fork/blockstore"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
 )
@@ -70,6 +70,11 @@ func ExecuteMessageVector(r Reporter, v string, vector *schema.TestVector, varia
 			r.Fatalf("fatal failure when executing message: %s", err)
 		}
 
+		for _, xx := range ret.GasTracker.ExecutionTrace.GasCharges {
+			if xx.TotalGas > 0 {
+				fmt.Println(xx)
+			}
+		}
 		// Assert that the receipt matches what the test vector expects.
 		AssertMsgResult(r, vector.Post.Receipts[i], ret, strconv.Itoa(i))
 	}
@@ -144,7 +149,7 @@ func AssertMsgResult(r Reporter, expected *schema.Receipt, actual *vm.Ret, label
 	if expected, actual := exitcode.ExitCode(expected.ExitCode), actual.Receipt.ExitCode; expected != actual {
 		r.Errorf("exit code of msg %s did not match; expected: %s, got: %s", label, expected, actual)
 	}
-	if expected, actual := expected.GasUsed, actual.Receipt.GasUsed; expected != int64(actual) {
+	if expected, actual := expected.GasUsed, actual.Receipt.GasUsed; expected != actual {
 		r.Errorf("gas used of msg %s did not match; expected: %d, got: %d", label, expected, actual)
 	}
 	if expected, actual := []byte(expected.ReturnValue), actual.Receipt.ReturnValue; !bytes.Equal(expected, actual) {
@@ -152,7 +157,7 @@ func AssertMsgResult(r Reporter, expected *schema.Receipt, actual *vm.Ret, label
 	}
 }
 
-func dumpThreeWayStateDiff(r Reporter, vector *schema.TestVector, bs blockstore.Blockstore, actual cid.Cid) {
+func dumpThreeWayStateDiff(r Reporter, vector *schema.TestVector, bs blockstoreutil.Blockstore, actual cid.Cid) {
 	// check if statediff exists; if not, skip.
 	if err := exec.Command("statediff", "--help").Run(); err != nil {
 		r.Log("could not dump 3-way state tree diff upon test failure: statediff command not found")
@@ -211,7 +216,7 @@ func dumpThreeWayStateDiff(r Reporter, vector *schema.TestVector, bs blockstore.
 
 // writeStateToTempCAR writes the provided roots to a temporary CAR that'll be
 // cleaned up via t.Cleanup(). It returns the full path of the temp file.
-func writeStateToTempCAR(bs blockstore.Blockstore, roots ...cid.Cid) (string, error) {
+func writeStateToTempCAR(bs blockstoreutil.Blockstore, roots ...cid.Cid) (string, error) {
 	tmp, err := ioutil.TempFile("", "lotus-tests-*.car")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file to dump CAR for diffing: %w", err)
@@ -246,9 +251,9 @@ func writeStateToTempCAR(bs blockstore.Blockstore, roots ...cid.Cid) (string, er
 	return tmp.Name(), nil
 }
 
-func LoadVectorCAR(vectorCAR schema.Base64EncodedBytes) (blockstore.Blockstore, error) {
+func LoadVectorCAR(vectorCAR schema.Base64EncodedBytes) (blockstoreutil.Blockstore, error) {
 	ds := ds.NewMapDatastore()
-	bs := blockstore.NewBlockstore(ds)
+	bs := blockstoreutil.NewBlockstore(ds)
 
 	// Read the base64-encoded CAR from the vector, and inflate the gzip.
 	buf := bytes.NewReader(vectorCAR)

@@ -32,7 +32,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -356,12 +355,13 @@ func requireBlockStorePut(t *testing.T, bs bstore.Blockstore, data format.Node) 
 
 func simpleBlock() *block.Block {
 	return &block.Block{
+		Miner:                 types.NewForTestGetter()(),
 		ParentWeight:          fbig.Zero(),
 		Parents:               block.NewTipSetKey(),
 		Height:                0,
-		ParentStateRoot:       enccid.NewCid(types.EmptyMessagesCID),
-		Messages:              enccid.NewCid(types.EmptyTxMetaCID),
-		ParentMessageReceipts: enccid.NewCid(types.EmptyReceiptsCID),
+		ParentStateRoot:       types.EmptyMessagesCID,
+		Messages:              types.EmptyTxMetaCID,
+		ParentMessageReceipts: types.EmptyReceiptsCID,
 		BlockSig:              &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
 		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 	}
@@ -382,7 +382,7 @@ func requireSimpleValidBlock(t *testing.T, nonce uint64, miner address.Address) 
 		MhLength: -1,
 	}.Sum(bytes)
 	require.NoError(t, err)
-	b.ParentStateRoot = enccid.NewCid(rawRoot)
+	b.ParentStateRoot = rawRoot
 	b.Miner = miner
 	return b
 }

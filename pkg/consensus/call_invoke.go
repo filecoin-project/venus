@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 	"fmt"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
@@ -65,12 +66,6 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 		return nil, fork.ErrExpensiveFork
 	}
 
-	vms := vm.NewStorage(c.bstore)
-	priorState, err := state.LoadState(ctx, vms, stateRoot)
-	if err != nil {
-		return nil, err
-	}
-
 	rnd := HeadRandomness{
 		Chain: c.rnd,
 		Head:  ts.Key(),
@@ -89,16 +84,19 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 		BaseFee:           ts.At(0).ParentBaseFee,
 		Epoch:             height + 1,
 		GasPriceSchedule:  c.gasPirceSchedule,
+		PRoot:             stateRoot,
+		Bsstore:           c.bstore,
+		SysCallsImpl:      c.syscallsImpl,
 	}
 
 	for i, m := range priorMsgs {
-		_, err := c.processor.ProcessUnsignedMessage(ctx, m.VMMessage(), priorState, vms, vmOption)
+		_, err := c.processor.ProcessUnsignedMessage(ctx, m.VMMessage(), vmOption)
 		if err != nil {
 			return nil, xerrors.Errorf("applying prior message (%d): %v", i, err)
 		}
 	}
 
-	return c.processor.ProcessUnsignedMessage(ctx, msg, priorState, vms, vmOption)
+	return c.processor.ProcessUnsignedMessage(ctx, msg, vmOption)
 }
 
 func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*vm.Ret, error) {
@@ -123,12 +121,7 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *blo
 			}
 		}
 	}
-	/*	vms := vm.NewStorage(c.bstore)
-		bstate, err := state.LoadState(ctx, vms, ts.At(0).ParentStateRoot.Cid)
-		if err != nil {
-			return nil, err
-		}*/
-	bstate := ts.At(0).ParentStateRoot.Cid
+	bstate := ts.At(0).ParentStateRoot
 	bheight := ts.EnsureHeight()
 
 	// If we have to run an expensive migration, and we're not at genesis,
@@ -154,8 +147,7 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *blo
 		msg.GasLimit = constants.BlockGasLimit
 	}
 
-	vms := vm.NewStorage(c.bstore)
-	st, err := state.LoadState(ctx, vms, bstate)
+	st, err := state.LoadState(ctx, cbor.NewCborStore(c.bstore), bstate)
 	if err != nil {
 		return nil, xerrors.Errorf("loading state: %v", err)
 	}
@@ -179,8 +171,12 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *blo
 		BaseFee:           ts.At(0).ParentBaseFee,
 		Epoch:             ts.At(0).Height,
 		GasPriceSchedule:  c.gasPirceSchedule,
+
+		PRoot:        ts.At(0).ParentStateRoot,
+		Bsstore:      c.bstore,
+		SysCallsImpl: c.syscallsImpl,
 	}
 
 	// TODO: maybe just use the invoker directly?
-	return c.processor.ProcessUnsignedMessage(ctx, msg, st, vms, vmOption)
+	return c.processor.ProcessUnsignedMessage(ctx, msg, vmOption)
 }

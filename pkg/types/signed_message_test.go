@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"context"
 	"reflect"
 	"testing"
@@ -31,13 +32,14 @@ func TestSignedMessageMarshal(t *testing.T) {
 
 	smsg := makeMessage(t, mockSigner, 42)
 
-	marshalled, err := smsg.Marshal()
+	marshalled := new(bytes.Buffer)
+	err := smsg.MarshalCBOR(marshalled)
 	assert.NoError(t, err)
 
 	smsgBack := SignedMessage{}
 	assert.False(t, smsg.Equals(&smsgBack))
 
-	err = smsgBack.Unmarshal(marshalled)
+	err = smsgBack.UnmarshalCBOR(marshalled)
 	assert.NoError(t, err)
 
 	assert.Equal(t, smsg.Message, smsgBack.Message)
@@ -88,13 +90,13 @@ func makeMessage(t *testing.T, signer MockSigner, nonce uint64) *SignedMessage {
 		[]byte("params"),
 		NewGasFeeCap(1000),
 		NewGasPremium(100),
-		NewGas(100))
+		100)
 	smsg, err := NewSignedMessage(context.TODO(), *msg, &signer)
 	require.NoError(t, err)
 
 	// This check requests that you add a non-zero value for new fields above,
 	// then update the field count below.
-	require.Equal(t, 3, reflect.TypeOf(*smsg).NumField())
+	require.Equal(t, 2, reflect.TypeOf(*smsg).NumField())
 
 	return smsg
 }

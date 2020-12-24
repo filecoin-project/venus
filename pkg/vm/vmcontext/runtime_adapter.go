@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-state-types/rt"
 	rtt "github.com/filecoin-project/go-state-types/rt"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
 )
@@ -49,7 +48,7 @@ type runtimeAdapter struct {
 
 func newRuntimeAdapter(ctx *invocationContext) *runtimeAdapter {
 	return &runtimeAdapter{ctx: ctx, syscalls: syscalls{
-		impl:      ctx.vm.syscalls,
+		impl:      ctx.vm.vmOption.SysCallsImpl,
 		ctx:       ctx.vm.context,
 		gasTank:   ctx.gasTank,
 		pricelist: ctx.vm.pricelist,
@@ -87,17 +86,17 @@ func (a *runtimeAdapter) StateCreate(obj cbor.Marshaler) {
 func (a *runtimeAdapter) stateCommit(oldh, newh cid.Cid) error {
 
 	// TODO: we can make this more efficient in the future...
-	act, found, err := a.ctx.vm.state.GetActor(a.Context(), a.Receiver())
+	act, found, err := a.ctx.vm.State.GetActor(a.Context(), a.Receiver())
 	if !found || err != nil {
 		return xerrors.Errorf("failed To get actor To commit stateView, %s", err)
 	}
 
-	if act.Head.Cid != oldh {
+	if act.Head != oldh {
 		return xerrors.Errorf("failed To update, inconsistent base reference, %s", err)
 	}
 
-	act.Head = enccid.NewCid(newh)
-	if err := a.ctx.vm.state.SetActor(a.Context(), a.Receiver(), act); err != nil {
+	act.Head = newh
+	if err := a.ctx.vm.State.SetActor(a.Context(), a.Receiver(), act); err != nil {
 		return xerrors.Errorf("failed To set actor in commit stateView, %s", err)
 	}
 
@@ -105,11 +104,11 @@ func (a *runtimeAdapter) stateCommit(oldh, newh cid.Cid) error {
 }
 
 func (a *runtimeAdapter) StateReadonly(obj cbor.Unmarshaler) {
-	act, found, err := a.ctx.vm.state.GetActor(a.Context(), a.Receiver())
+	act, found, err := a.ctx.vm.State.GetActor(a.Context(), a.Receiver())
 	if !found || err != nil {
 		a.Abortf(exitcode.SysErrorIllegalArgument, "failed To get actor for Readonly stateView: %s", err)
 	}
-	a.StoreGet(act.Head.Cid, obj)
+	a.StoreGet(act.Head, obj)
 }
 
 func (a *runtimeAdapter) StateTransaction(obj cbor.Er, f func()) {
@@ -117,11 +116,11 @@ func (a *runtimeAdapter) StateTransaction(obj cbor.Er, f func()) {
 		a.Abortf(exitcode.SysErrorIllegalActor, "Must not pass nil To Transaction()")
 	}
 
-	act, found, err := a.ctx.vm.state.GetActor(a.Context(), a.Receiver())
+	act, found, err := a.ctx.vm.State.GetActor(a.Context(), a.Receiver())
 	if !found || err != nil {
 		a.Abortf(exitcode.SysErrorIllegalActor, "failed To get actor for Transaction: %s", err)
 	}
-	baseState := act.Head.Cid
+	baseState := act.Head
 	a.StoreGet(baseState, obj)
 
 	a.ctx.allowSideEffects = false
@@ -227,14 +226,14 @@ func (a *runtimeAdapter) ResolveAddress(addr address.Address) (address.Address, 
 
 // GetActorCodeCID implements Runtime.
 func (a *runtimeAdapter) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) {
-	entry, found, err := a.ctx.vm.state.GetActor(a.Context(), addr)
+	entry, found, err := a.ctx.vm.State.GetActor(a.Context(), addr)
 	if !found {
 		return cid.Undef, false
 	}
 	if err != nil {
 		panic(err)
 	}
-	return entry.Code.Cid, true
+	return entry.Code, true
 }
 
 // Abortf implements Runtime.
@@ -258,7 +257,7 @@ func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
 	// Check existing address. If nothing there, create empty actor.
 	//
 	// Note: we are storing the actors by ActorID *address*
-	_, found, err := a.ctx.vm.state.GetActor(a.ctx.vm.context, addr)
+	_, found, err := a.ctx.vm.State.GetActor(a.ctx.vm.context, addr)
 	if err != nil {
 		panic(err)
 	}
@@ -272,12 +271,12 @@ func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
 
 	newActor := &types.Actor{
 		// make this the right 'type' of actor
-		Code:    enccid.NewCid(codeID),
+		Code:    codeID,
 		Balance: abi.NewTokenAmount(0),
-		Head:    enccid.NewCid(EmptyObjectCid),
+		Head:    EmptyObjectCid,
 		Nonce:   0,
 	}
-	if err := a.ctx.vm.state.SetActor(a.ctx.vm.context, addr, newActor); err != nil {
+	if err := a.ctx.vm.State.SetActor(a.ctx.vm.context, addr, newActor); err != nil {
 		panic(err)
 	}
 
@@ -290,7 +289,7 @@ func (a *runtimeAdapter) DeleteActor(beneficiary address.Address) {
 }
 
 func (a *runtimeAdapter) TotalFilCircSupply() abi.TokenAmount {
-	circSupply, err := a.stateView.TotalFilCircSupply(a.CurrEpoch(), a.ctx.vm.state)
+	circSupply, err := a.stateView.TotalFilCircSupply(a.CurrEpoch(), a.ctx.vm.State)
 	if err != nil {
 		runtime.Abortf(exitcode.ErrIllegalState, "failed To get total circ supply: %s", err)
 	}

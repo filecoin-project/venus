@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/chain"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -16,9 +17,6 @@ import (
 	ipfscbor "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/enccid"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/aerrors"
@@ -47,7 +45,7 @@ type invocationContext struct {
 	originMsg         VmMessage //msg not trasfer from and to address
 	msg               VmMessage // The message being processed
 	gasTank           *gas.GasTracker
-	randSource        crypto.RandomnessSource
+	randSource        chain.RandomnessSource
 	isCallerValidated bool
 	depth             uint64
 	allowSideEffects  bool
@@ -57,11 +55,10 @@ type invocationContext struct {
 
 type internalActorStateHandle interface {
 	specsruntime.StateHandle
-	Validate(func(interface{}) cid.Cid)
 }
 
 func newInvocationContext(rt *VM, gasIpld ipfscbor.IpldStore, topLevel *topLevelContext, msg VmMessage,
-	gasTank *gas.GasTracker, randSource crypto.RandomnessSource, parent *invocationContext) invocationContext {
+	gasTank *gas.GasTracker, randSource chain.RandomnessSource, parent *invocationContext) invocationContext {
 	orginMsg := msg
 	ctx := invocationContext{
 		vm:                rt,
@@ -121,7 +118,7 @@ func (shc *stateHandleContext) Create(obj cbor.Marshaler) cid.Cid {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "failed To construct actor stateView: already initialized")
 	}
 	c := shc.store().StorePut(obj)
-	actr.Head = enccid.NewCid(c)
+	actr.Head = c
 	shc.storeActor(actr)
 	return c
 }
@@ -130,7 +127,7 @@ func (shc *stateHandleContext) Load(obj cbor.Unmarshaler) cid.Cid {
 	// The actor must be loaded From store every time since the stateView may have changed via a different stateView handle
 	// (e.g. in a recursive call).
 	actr := shc.loadActor()
-	c := actr.Head.Cid
+	c := actr.Head
 	if !c.Defined() {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "failed To load undefined stateView, must construct first")
 	}
@@ -147,7 +144,7 @@ func (shc *stateHandleContext) Replace(expected cid.Cid, obj cbor.Marshaler) cid
 		panic(fmt.Errorf("unexpected prior stateView %s for actor %s, expected %s", actr.Head, shc.msg.To, expected))
 	}
 	c := shc.store().StorePut(obj)
-	actr.Head = enccid.NewCid(c)
+	actr.Head = c
 	shc.storeActor(actr)
 	return c
 }
@@ -157,7 +154,7 @@ func (shc *stateHandleContext) store() specsruntime.Store {
 }
 
 func (shc *stateHandleContext) loadActor() *types.Actor {
-	entry, found, err := shc.vm.state.GetActor(shc.vm.context, shc.originMsg.To)
+	entry, found, err := shc.vm.State.GetActor(shc.vm.context, shc.originMsg.To)
 	if err != nil {
 		panic(err)
 	}
@@ -168,7 +165,7 @@ func (shc *stateHandleContext) loadActor() *types.Actor {
 }
 
 func (shc *stateHandleContext) storeActor(actr *types.Actor) {
-	err := shc.vm.state.SetActor(shc.vm.context, shc.originMsg.To, actr)
+	err := shc.vm.State.SetActor(shc.vm.context, shc.originMsg.To, actr)
 	if err != nil {
 		panic(err)
 	}
@@ -251,11 +248,11 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 	}
 
 	// 5. load target actor code
-	toActor, found, err := ctx.vm.state.GetActor(ctx.vm.context, ctx.originMsg.To)
+	toActor, found, err := ctx.vm.State.GetActor(ctx.vm.context, ctx.originMsg.To)
 	if err != nil || !found {
 		panic(xerrors.Errorf("cannt find to actor %v", err))
 	}
-	actorImpl := ctx.vm.getActorImpl(toActor.Code.Cid, ctx.Runtime())
+	actorImpl := ctx.vm.getActorImpl(toActor.Code, ctx.Runtime())
 	// 6. create target stateView handle
 	stateHandle := newActorStateHandle((*stateHandleContext)(ctx))
 	ctx.stateHandle = &stateHandle
@@ -278,15 +275,6 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 		runtime.Abortf(exitcode.SysErrorIllegalActor, "Caller MUST be validated during Method execution")
 	}
 
-	// 2. validate stateView access
-	ctx.stateHandle.Validate(func(obj interface{}) cid.Cid {
-		id, err := ctx.vm.store.CidOf(obj)
-		if err != nil {
-			panic(err)
-		}
-		return id
-	})
-
 	// Reset To pre-invocation stateView
 	ctx.stateHandle = nil
 
@@ -301,7 +289,7 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 // Otherwise, this Method will abort execution.
 func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Actor, address.Address) {
 	// resolve the target address via the InitActor, and attempt To load stateView.
-	initActorEntry, found, err := ctx.vm.state.GetActor(ctx.vm.context, init_.Address)
+	initActorEntry, found, err := ctx.vm.State.GetActor(ctx.vm.context, init_.Address)
 	if err != nil {
 		panic(err)
 	}
@@ -313,7 +301,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 		return initActorEntry, target
 	}
 
-	// get init state
+	// get init State
 	state, err := init_.Load(ctx.vm.ContextStore(), initActorEntry)
 	if err != nil {
 		panic(err)
@@ -321,7 +309,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 
 	// lookup the ActorID based on the address
 
-	_, found, err = ctx.vm.state.GetActor(ctx.vm.context, target)
+	_, found, err = ctx.vm.State.GetActor(ctx.vm.context, target)
 	if err != nil {
 		panic(err)
 	}
@@ -333,7 +321,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 		// actor does not exist, create an account actor
 		// - precond: address must be a pub-key
 		// - sent init actor a msg To create the new account
-		targetIDAddr, err := ctx.vm.state.RegisterNewAddress(target)
+		targetIDAddr, err := ctx.vm.State.RegisterNewAddress(target)
 		if err != nil {
 			panic(err)
 		}
@@ -364,7 +352,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 		}
 
 		// load actor
-		targetActor, _, err := ctx.vm.state.GetActor(ctx.vm.context, target)
+		targetActor, _, err := ctx.vm.State.GetActor(ctx.vm.context, target)
 		if err != nil {
 			panic(err)
 		}
@@ -381,7 +369,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 		}
 
 		// load actor
-		targetActor, found, err := ctx.vm.state.GetActor(ctx.vm.context, targetIDAddr)
+		targetActor, found, err := ctx.vm.State.GetActor(ctx.vm.context, targetIDAddr)
 		if err != nil {
 			panic(err)
 		}
@@ -399,14 +387,14 @@ func (ctx *invocationContext) resolveToKeyAddr(addr address.Address) (address.Ad
 		return addr, nil
 	}
 
-	act, found, err := ctx.vm.state.GetActor(ctx.vm.context, addr)
+	act, found, err := ctx.vm.State.GetActor(ctx.vm.context, addr)
 	if !found || err != nil {
 		return address.Undef, xerrors.Errorf("failed to find actor: %s", addr)
 	}
 
 	aast, err := account.Load(adt.WrapStore(ctx.vm.context, ctx.vm.store), act)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to get account actor state for %s: %v", addr, err)
+		return address.Undef, xerrors.Errorf("failed to get account actor State for %s: %v", addr, err)
 	}
 
 	return aast.PubkeyAddress()
@@ -424,7 +412,7 @@ func (ctx *invocationContext) Runtime() runtime.Runtime {
 
 // Store implements runtime.Runtime.
 func (ctx *invocationContext) Store() specsruntime.Store {
-	return NewActorStorage(ctx.vm.context, ctx.vm.store, ctx.gasTank, ctx.vm.pricelist)
+	return NewActorStorage(ctx.vm.context, ctx.gasIpld, ctx.gasTank, ctx.vm.pricelist)
 }
 
 // Message implements runtime.InvocationContext.
@@ -443,7 +431,7 @@ func (ctx *invocationContext) ValidateCaller(pattern runtime.CallerPattern) {
 	ctx.isCallerValidated = true
 }
 
-// state implements runtime.InvocationContext.
+// State implements runtime.InvocationContext.
 func (ctx *invocationContext) State() specsruntime.StateHandle {
 	return ctx.stateHandle
 }
@@ -484,7 +472,7 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 
 /// Balance implements runtime.InvocationContext.
 func (ctx *invocationContext) Balance() abi.TokenAmount {
-	toActor, found, err := ctx.vm.state.GetActor(ctx.vm.context, ctx.originMsg.To)
+	toActor, found, err := ctx.vm.State.GetActor(ctx.vm.context, ctx.originMsg.To)
 	if err != nil {
 		panic(xerrors.Errorf("cannt find to actor %v", err))
 	}
@@ -500,26 +488,23 @@ func (ctx *invocationContext) Balance() abi.TokenAmount {
 var _ runtime.ExtendedInvocationContext = (*invocationContext)(nil)
 
 func (ctx *invocationContext) NewActorAddress() address.Address {
-	var buf bytes.Buffer
+	buf := new(bytes.Buffer)
 	origin, err := ctx.resolveToKeyAddr(ctx.topLevel.originatorStableAddress)
 	if err != nil {
 		panic(err)
 	}
-	b1, err := encoding.Encode(origin)
-	if err != nil {
-		panic(err)
-	}
-	_, err = buf.Write(b1)
+
+	err = origin.MarshalCBOR(buf)
 	if err != nil {
 		panic(err)
 	}
 
-	err = binary.Write(&buf, binary.BigEndian, ctx.topLevel.originatorCallSeq)
+	err = binary.Write(buf, binary.BigEndian, ctx.topLevel.originatorCallSeq)
 	if err != nil {
 		panic(err)
 	}
 
-	err = binary.Write(&buf, binary.BigEndian, ctx.topLevel.newActorAddressCount)
+	err = binary.Write(buf, binary.BigEndian, ctx.topLevel.newActorAddressCount)
 	if err != nil {
 		panic(err)
 	}
@@ -544,7 +529,7 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 
 	// Check existing address. If nothing there, create empty actor.
 	// Note: we are storing the actors by ActorID *address*
-	_, found, err := ctx.vm.state.GetActor(ctx.vm.context, addr)
+	_, found, err := ctx.vm.State.GetActor(ctx.vm.context, addr)
 	if err != nil {
 		panic(err)
 	}
@@ -554,12 +539,12 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 
 	newActor := &types.Actor{
 		// make this the right 'type' of actor
-		Code:    enccid.NewCid(codeID),
+		Code:    codeID,
 		Balance: abi.NewTokenAmount(0),
-		Head:    enccid.NewCid(EmptyObjectCid),
+		Head:    EmptyObjectCid,
 		Nonce:   0,
 	}
-	if err := ctx.vm.state.SetActor(ctx.vm.context, addr, newActor); err != nil {
+	if err := ctx.vm.State.SetActor(ctx.vm.context, addr, newActor); err != nil {
 		panic(err)
 	}
 
@@ -570,7 +555,7 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 	receiver := ctx.originMsg.To
 	ctx.gasTank.Charge(ctx.vm.pricelist.OnDeleteActor(), "DeleteActor %s", receiver)
-	receiverActor, found, err := ctx.vm.state.GetActor(ctx.vm.context, receiver)
+	receiverActor, found, err := ctx.vm.State.GetActor(ctx.vm.context, receiver)
 	if err != nil {
 		if xerrors.Is(err, types.ErrActorNotFound) {
 			runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to load actor in delete actor: %s", err)
@@ -600,7 +585,7 @@ func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 		ctx.vm.transfer(receiver, beneficiary, receiverActor.Balance)
 	}
 
-	if err := ctx.vm.state.DeleteActor(ctx.vm.context, receiver); err != nil {
+	if err := ctx.vm.State.DeleteActor(ctx.vm.context, receiver); err != nil {
 		panic(aerrors.Fatalf("failed to delete actor: %s", err))
 	}
 
@@ -620,11 +605,11 @@ type patternContext2 invocationContext
 var _ runtime.PatternContext = (*patternContext2)(nil)
 
 func (ctx *patternContext2) CallerCode() cid.Cid {
-	toActor, found, err := ctx.vm.state.GetActor(ctx.vm.context, ctx.originMsg.From)
+	toActor, found, err := ctx.vm.State.GetActor(ctx.vm.context, ctx.originMsg.From)
 	if err != nil || !found {
 		panic(xerrors.Errorf("cannt find to actor %v", err))
 	}
-	return toActor.Code.Cid
+	return toActor.Code
 }
 
 func (ctx *patternContext2) CallerAddr() address.Address {
