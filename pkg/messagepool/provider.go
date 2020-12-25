@@ -110,7 +110,7 @@ func (mpp *mpoolProvider) StateAccountKey(ctx context.Context, addr address.Addr
 }
 
 func (mpp *mpoolProvider) MessagesForBlock(h *block.Block) ([]*types.UnsignedMessage, []*types.SignedMessage, error) {
-	secpMsgs, blsMsgs, err := mpp.cms.LoadMetaMessages(context.TODO(), h.Messages.Cid)
+	secpMsgs, blsMsgs, err := mpp.cms.LoadMetaMessages(context.TODO(), h.Messages)
 	return blsMsgs, secpMsgs, err
 }
 

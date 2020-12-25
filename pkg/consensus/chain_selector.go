@@ -41,7 +41,7 @@ const WRatioDen = uint64(2)
 
 // Weight returns the EC weight of this TipSet as a filecoin big int.
 func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet) (fbig.Int, error) {
-	pStateID := ts.At(0).ParentStateRoot.Cid
+	pStateID := ts.At(0).ParentStateRoot
 	// Retrieve parent weight.
 	if !pStateID.Defined() {
 		return fbig.Zero(), errors.New("undefined state passed to Chain selector new weight")

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
@@ -37,14 +36,17 @@ func init() {
 }
 
 func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWeight, timestamp uint64, msg string) *blk.Block {
+	cidGetter := types.NewCidForTestGetter()
+	addrGetter := types.NewForTestGetter()
 	return &blk.Block{
+		Miner:                 addrGetter(),
 		Ticket:                blk.Ticket{VRFProof: ticket},
 		Parents:               blk.NewTipSetKey(parentCid),
 		ParentWeight:          fbig.NewInt(int64(parentWeight)),
 		Height:                42 + abi.ChainEpoch(height),
-		Messages:              enccid.NewCid(cidGetter()),
-		ParentStateRoot:       enccid.NewCid(cidGetter()),
-		ParentMessageReceipts: enccid.NewCid(cidGetter()),
+		Messages:              cidGetter(),
+		ParentStateRoot:       cidGetter(),
+		ParentMessageReceipts: cidGetter(),
 		Timestamp:             timestamp,
 	}
 }

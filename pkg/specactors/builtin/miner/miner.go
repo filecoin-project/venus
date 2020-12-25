@@ -42,11 +42,11 @@ var FaultDeclarationCutoff = miner0.FaultDeclarationCutoff
 const MinSectorExpiration = miner0.MinSectorExpiration
 
 func Load(store adt.Store, act *types.Actor) (st State, err error) {
-	switch act.Code.Cid {
+	switch act.Code {
 	case builtin0.StorageMinerActorCodeID:
-		return load0(store, act.Head.Cid)
+		return load0(store, act.Head)
 	case builtin2.StorageMinerActorCodeID:
-		return load2(store, act.Head.Cid)
+		return load2(store, act.Head)
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }

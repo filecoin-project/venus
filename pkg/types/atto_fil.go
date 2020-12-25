@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 	"strings"
@@ -8,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	specsabi "github.com/filecoin-project/go-state-types/abi"
 	specsbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/encoding"
 )
 
 var attoPower = 18
@@ -52,7 +52,7 @@ func NewAttoTokenFromToken(x uint64) abi.TokenAmount {
 // to the value of buf as the bytes of a big-endian unsigned integer.
 func NewAttoFILFromBytes(buf []byte) (AttoFIL, error) {
 	var af AttoFIL
-	err := encoding.Decode(buf, &af)
+	err := af.UnmarshalCBOR(bytes.NewReader(buf))
 	if err != nil {
 		return af, err
 	}

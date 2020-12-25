@@ -14,8 +14,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/slashing"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
@@ -151,7 +149,7 @@ func (chn *ChainStateReadWriter) Ls(ctx context.Context, key block.TipSetKey) (*
 		err error
 		ts  *block.TipSet
 	)
-	if key.Len() < 1 {
+	if len(key.Cids()) < 1 {
 		ts, err = chn.readWriter.GetTipSet(chn.readWriter.GetHead())
 	} else {
 		ts, err = chn.readWriter.GetTipSet(key)
@@ -211,7 +209,7 @@ func (chn *ChainStateReadWriter) SampleChainRandomness(ctx context.Context, tsk 
 		return nil, err
 	}
 
-	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewRandomnessSamplerAtTipSet(chn.readWriter, genBlk.Ticket, tsk)}
+	rnd := chain.ChainRandomnessSource{Sampler: chain.NewRandomnessSamplerAtTipSet(chn.readWriter, genBlk.Ticket, tsk)}
 	return rnd.Randomness(ctx, tag, epoch, entropy)
 }
 
@@ -220,7 +218,7 @@ func (chn *ChainStateReadWriter) ChainGetRandomnessFromBeacon(ctx context.Contex
 	if err != nil {
 		return nil, err
 	}
-	rnd := crypto.ChainRandomnessSource{Sampler: chain.NewRandomnessSamplerAtTipSet(chn.readWriter, genBlk.Ticket, tsk)}
+	rnd := chain.ChainRandomnessSource{Sampler: chain.NewRandomnessSamplerAtTipSet(chn.readWriter, genBlk.Ticket, tsk)}
 	return rnd.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy)
 }
 
@@ -249,21 +247,6 @@ func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey block.Ti
 		return nil, types.ErrActorNotFound
 	}
 	return actr, nil
-}
-
-// GetActorStateAt returns the root state of an actor at a given point in the chain (specified by tipset key)
-func (chn *ChainStateReadWriter) GetActorStateAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address, out interface{}) error {
-	act, err := chn.GetActorAt(ctx, tipKey, addr)
-	if err != nil {
-		return err
-	}
-
-	blk, err := chn.bstore.Get(act.Head.Cid)
-	if err != nil {
-		return err
-	}
-
-	return encoding.Decode(blk.RawData(), out)
 }
 
 // ResolveAddressAt resolves ID address for actor
@@ -313,7 +296,7 @@ func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAdd
 	}
 
 	// Dragons: this is broken, we need to ask the VM for the impl, it might need to apply migrations based on epoch
-	executable, err := chn.actors.GetUnsafeActorImpl(actor.Code.Cid)
+	executable, err := chn.actors.GetUnsafeActorImpl(actor.Code)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load actor code")
 	}
@@ -377,7 +360,7 @@ func (chn *ChainStateReadWriter) ParentStateView(key block.TipSetKey) (*state.Vi
 		return nil, errors.Wrapf(err, "failed to get tipset for %s", key.String())
 	}
 
-	return state.NewView(chn, ts.At(0).ParentStateRoot.Cid), nil
+	return state.NewView(chn, ts.At(0).ParentStateRoot), nil
 }
 
 func (chn *ChainStateReadWriter) AccountStateView(key block.TipSetKey) (state.AccountStateView, error) {

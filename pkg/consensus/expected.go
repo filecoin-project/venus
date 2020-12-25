@@ -5,14 +5,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/slashing"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
+	"github.com/filecoin-project/venus/pkg/vmsupport"
 	"os"
 	"strings"
 	"time"
-
-	bstore "github.com/filecoin-project/venus/pkg/fork/blockstore"
-	"github.com/filecoin-project/venus/pkg/util"
-
-	"github.com/filecoin-project/venus/pkg/config"
 
 	"github.com/Gurpartap/async"
 	"github.com/filecoin-project/go-address"
@@ -37,9 +38,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/fork"
-	"github.com/filecoin-project/venus/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/account"
@@ -73,8 +72,8 @@ const AllowableClockDriftSecs = uint64(1)
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
-	ProcessTipSet(context.Context, state.Tree, *vm.Storage, *block.TipSet, *block.TipSet, []block.BlockMessagesInfo, vm.VmOption) ([]types.MessageReceipt, error)
-	ProcessUnsignedMessage(context.Context, *types.UnsignedMessage, state.Tree, *vm.Storage, vm.VmOption) (*vm.Ret, error)
+	ProcessTipSet(context.Context, *block.TipSet, *block.TipSet, []block.BlockMessagesInfo, vm.VmOption) (cid.Cid, []types.MessageReceipt, error)
+	ProcessUnsignedMessage(context.Context, *types.UnsignedMessage, vm.VmOption) (*vm.Ret, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
@@ -134,11 +133,13 @@ type Expected struct {
 
 	rnd Randness
 
-	clock            clock.ChainEpochClock
-	drand            beacon.Schedule
-	fork             fork.IFork
-	config           *config.NetworkParamsConfig
-	gasPirceSchedule *gas.PricesSchedule
+	clock                       clock.ChainEpochClock
+	drand                       beacon.Schedule
+	fork                        fork.IFork
+	config                      *config.NetworkParamsConfig
+	gasPirceSchedule            *gas.PricesSchedule
+	circulatingSupplyCalculator *chain.CirculatingSupplyCalculator
+	syscallsImpl                vm.SyscallsImpl
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
@@ -147,7 +148,6 @@ var _ Protocol = (*Expected)(nil)
 // NewExpected is the constructor for the Expected consenus.Protocol module.
 func NewExpected(cs cbor.IpldStore,
 	bs blockstore.Blockstore,
-	processor Processor,
 	state StateViewer,
 	bt time.Duration,
 	tv TicketValidator,
@@ -160,12 +160,17 @@ func NewExpected(cs cbor.IpldStore,
 	fork fork.IFork,
 	config *config.NetworkParamsConfig,
 	gasPirceSchedule *gas.PricesSchedule,
+	proofVerifier ffiwrapper.Verifier,
 ) *Expected {
+	faultChecker := slashing.NewFaultChecker(chainState, fork)
+	syscalls := vmsupport.NewSyscalls(faultChecker, proofVerifier)
+	processor := NewDefaultProcessor(syscalls)
 	c := &Expected{
+		processor:        processor,
+		syscallsImpl:     syscalls,
 		cstore:           cs,
 		blockTime:        bt,
 		bstore:           bs,
-		processor:        processor,
 		state:            state,
 		TicketValidator:  tv,
 		proofVerifier:    pv,
@@ -177,6 +182,8 @@ func NewExpected(cs cbor.IpldStore,
 		fork:             fork,
 		config:           config,
 		gasPirceSchedule: gasPirceSchedule,
+		//todo get calculator from store
+		circulatingSupplyCalculator: chain.NewCirculatingSupplyCalculator(bs, chainState, config.ForkUpgradeParam),
 	}
 	return c
 }
@@ -191,38 +198,59 @@ func (c *Expected) BlockTime() time.Duration {
 // in the tipset results in an error.
 func (c *Expected) RunStateTransition(ctx context.Context,
 	ts *block.TipSet,
-	parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
+	parentStateRoot cid.Cid,
+) (cid.Cid, []types.MessageReceipt, error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
-	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	vms := vm.NewStorage(c.bstore)
-	priorState, err := state.LoadState(ctx, vms, parentStateRoot)
-	if err != nil {
-		return cid.Undef, []types.MessageReceipt{}, err
-	}
-
-	//gather message
 	blockMessageInfo, err := c.messageStore.LoadTipSetMessage(ctx, ts)
 	if err != nil {
-		return cid.Undef, []types.MessageReceipt{}, xerrors.Errorf("failed to gather message in tipset %v", err)
+		return cid.Undef, nil, nil
+	}
+	// process tipset
+	var pts *block.TipSet
+	if ts.EnsureHeight() > 0 {
+		parent, err := ts.Parents()
+		if err != nil {
+			return cid.Undef, nil, err
+		}
+		pts, err = c.chainState.GetTipSet(parent)
+		if err != nil {
+			return cid.Undef, nil, err
+		}
+	} else {
+		return cid.Undef, nil, nil
 	}
 
-	var newState state.Tree
-	newState, receipts, err = c.runMessages(ctx, priorState, vms, ts, blockMessageInfo)
-	if err != nil {
-		return cid.Undef, []types.MessageReceipt{}, err
-	}
-	err = vms.Flush()
-	if err != nil {
-		return cid.Undef, []types.MessageReceipt{}, err
+	rnd := HeadRandomness{
+		Chain: c.rnd,
+		Head:  ts.Key(),
 	}
 
-	root, err = newState.Flush(ctx)
-	if err != nil {
-		return cid.Undef, []types.MessageReceipt{}, err
+	vmOption := vm.VmOption{
+		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
+			dertail, err := c.chainState.GetCirculatingSupplyDetailed(ctx, epoch, tree)
+			if err != nil {
+				return abi.TokenAmount{}, err
+			}
+			return dertail.FilCirculating, nil
+		},
+		NtwkVersionGetter: c.fork.GetNtwkVersion,
+		Rnd:               &rnd,
+		BaseFee:           ts.At(0).ParentBaseFee,
+		Fork:              c.fork,
+		Epoch:             ts.At(0).Height,
+		GasPriceSchedule:  c.gasPirceSchedule,
+		Bsstore:           c.bstore,
+		PRoot:             parentStateRoot,
+		SysCallsImpl:      c.syscallsImpl,
 	}
-	return root, receipts, err
+	root, receipts, err := c.processor.ProcessTipSet(ctx, pts, ts, blockMessageInfo, vmOption)
+	if err != nil {
+		return cid.Undef, nil, errors.Wrap(err, "error validating tipset")
+	}
+
+	return root, receipts, nil
 }
 
 // validateMining checks validity of the ticket, proof, signature and miner
@@ -265,6 +293,15 @@ func (c *Expected) validateBlock(ctx context.Context,
 		logExpect.Infow("block validation", "took", time.Since(validationStart), "height", blk.Height, "age", time.Since(time.Unix(int64(blk.Timestamp), 0)))
 	}()
 
+	// confirm block state root matches parent state root
+	rootAfterCalc, err := c.chainState.GetTipSetStateRoot(parent.Key())
+	if err != nil {
+		return xerrors.Errorf("get parent tipset state failed %s", err)
+	}
+	if !rootAfterCalc.Equals(blk.ParentStateRoot) {
+		return ErrStateRootMismatch
+	}
+
 	// fast checks first
 	if err := blockSanityChecks(blk); err != nil {
 		return xerrors.Errorf("incoming header failed basic sanity checks: %v", err)
@@ -290,18 +327,8 @@ func (c *Expected) validateBlock(ctx context.Context,
 		return xerrors.Errorf("failed to get latest beacon entry: %s", err)
 	}
 
-	// confirm block state root matches parent state root
-	rootAfterCalc, err := c.chainState.GetTipSetStateRoot(parent.Key())
-	if err != nil {
-		return xerrors.Errorf("get parent tipset state failed %s", err)
-	}
-	if !rootAfterCalc.Equals(blk.ParentStateRoot.Cid) {
-		return ErrStateRootMismatch
-	}
-
-	baseTsRoot := parent.At(0).ParentStateRoot.Cid
 	// confirm block receipts match parent receipts
-	if !parentReceiptRoot.Equals(blk.ParentMessageReceipts.Cid) {
+	if !parentReceiptRoot.Equals(blk.ParentMessageReceipts) {
 		return ErrReceiptRootMismatch
 	}
 	if !parentWeight.Equals(blk.ParentWeight) {
@@ -326,7 +353,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 	})
 
 	minerCheck := async.Err(func() error {
-		if err := c.minerIsValid(ctx, blk.Miner, baseTsRoot); err != nil {
+		if err := c.minerIsValid(ctx, blk.Miner, blk.ParentStateRoot); err != nil {
 			return xerrors.Errorf("minerIsValid failed: %v", err)
 		}
 		return nil
@@ -376,7 +403,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 	})
 
 	winnerCheck := async.Err(func() error {
-		if err = c.ValidateBlockWinner(ctx, workerAddr, lbTs, lbStateRoot, parent, baseTsRoot, blk, prevBeacon); err != nil {
+		if err = c.ValidateBlockWinner(ctx, workerAddr, lbTs, lbStateRoot, parent, parent.At(0).ParentStateRoot, blk, prevBeacon); err != nil {
 			return err
 		}
 		return nil
@@ -450,7 +477,7 @@ func blockSanityChecks(b *block.Block) error {
 
 // TODO: We should extract this somewhere else and make the message pool and miner use the same logic
 func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstate.SignatureValidator, blk *block.Block, baseTs *block.TipSet) error {
-	blksecpMsgs, blkblsMsgs, err := c.messageStore.LoadMetaMessages(ctx, blk.Messages.Cid)
+	blksecpMsgs, blkblsMsgs, err := c.messageStore.LoadMetaMessages(ctx, blk.Messages)
 	if err != nil {
 		return errors.Wrapf(err, "failed loading message list %s for block %s", blk.Messages, blk.Cid())
 	}
@@ -469,8 +496,8 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 	}
 
 	nonces := make(map[address.Address]uint64)
-	vms := vm.NewStorage(c.bstore)
-	st, err := state.LoadState(ctx, vms, blk.ParentStateRoot.Cid)
+	vms := cbor.NewCborStore(c.bstore)
+	st, err := state.LoadState(ctx, vms, blk.ParentStateRoot)
 	if err != nil {
 		return xerrors.Errorf("loading state: %v", err)
 	}
@@ -489,7 +516,7 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 
 		// ValidForBlockInclusion checks if any single message does not exceed BlockGasLimit
 		// So below is overflow safe
-		sumGasLimit += int64(m.GasLimit)
+		sumGasLimit += m.GasLimit
 		if sumGasLimit > constants.BlockGasLimit {
 			return xerrors.Errorf("block gas limit exceeded")
 		}
@@ -507,7 +534,7 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 				return xerrors.Errorf("actor %s not found", m.From)
 			}
 
-			if !builtin.IsAccountActor(act.Code.Cid) {
+			if !builtin.IsAccountActor(act.Code) {
 				return xerrors.New("Sender must be an account actor")
 			}
 			nonces[m.From] = act.Nonce
@@ -551,14 +578,15 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 		return xerrors.Errorf("get secpMsgs root failed: %v", err)
 	}
 
-	b, err := chain.MakeBlock(&types.TxMeta{
-		BLSRoot:  enccid.NewCid(bmroot),
-		SecpRoot: enccid.NewCid(smroot),
-	})
+	txMeta := &types.TxMeta{
+		BLSRoot:  bmroot,
+		SecpRoot: smroot,
+	}
+	b, err := chain.MakeBlock(txMeta)
 	if err != nil {
 		return xerrors.Errorf("serialize tx meta failed: %v", err)
 	}
-	if blk.Messages.Cid != b.Cid() {
+	if blk.Messages != b.Cid() {
 		return fmt.Errorf("messages didnt match message root in header")
 	}
 
@@ -605,12 +633,12 @@ func (c *Expected) ValidateMsgMeta(fblk *block.FullBlock) error {
 	}
 
 	// Check that the message trie root matches with what's in the block.
-	if fblk.Header.Messages.Cid != smroot {
+	if fblk.Header.Messages != smroot {
 		return xerrors.Errorf("messages in full block did not match msgmeta root in header (%s != %s)", fblk.Header.Messages, smroot)
 	}
 
 	// Finally, flush
-	return util.CopyParticial(context.TODO(), blockstore, c.bstore, smroot)
+	return blockstoreutil.CopyParticial(context.TODO(), blockstore, c.bstore, smroot)
 }
 
 func (c *Expected) VerifyWinningPoStProof(ctx context.Context, nv network.Version, blk *block.Block, prevBeacon *block.BeaconEntry, lbst cid.Cid) error {
@@ -686,7 +714,7 @@ func (c *Expected) ValidateBlockBeacon(blk *block.Block, parentEpoch abi.ChainEp
 }
 
 func (c *Expected) minerIsValid(ctx context.Context, maddr address.Address, baseStateRoot cid.Cid) error {
-	vms := vm.NewStorage(c.bstore)
+	vms := cbor.NewCborStore(c.bstore)
 	sm, err := state.LoadState(ctx, vms, baseStateRoot)
 	if err != nil {
 		return xerrors.Errorf("loading state: %s", err)
@@ -719,8 +747,8 @@ func (c *Expected) minerIsValid(ctx context.Context, maddr address.Address, base
 }
 
 func (c *Expected) minerHasMinPower(ctx context.Context, addr address.Address, ts *block.TipSet) (bool, error) {
-	vms := vm.NewStorage(c.bstore)
-	sm, err := state.LoadState(ctx, vms, ts.Blocks()[0].ParentStateRoot.Cid)
+	vms := cbor.NewCborStore(c.bstore)
+	sm, err := state.LoadState(ctx, vms, ts.Blocks()[0].ParentStateRoot)
 	if err != nil {
 		return false, xerrors.Errorf("loading state: %v", err)
 	}
@@ -759,7 +787,7 @@ func (c *Expected) MinerEligibleToMine(ctx context.Context, addr address.Address
 	}
 
 	// Post actors v2, also check MinerEligibleForElection with base ts
-	vms := vm.NewStorage(c.bstore)
+	vms := cbor.NewCborStore(c.bstore)
 	sm, err := state.LoadState(ctx, vms, parentStateRoot)
 	if err != nil {
 		return false, xerrors.Errorf("loading state: %v", err)
@@ -862,13 +890,13 @@ func (c *Expected) GetLookbackTipSetForRound(ctx context.Context, ts *block.TipS
 		return nil, cid.Undef, xerrors.Errorf("failed to resolve lookback tipset: %v", err)
 	}
 
-	return lbts, nextTs.Blocks()[0].ParentStateRoot.Cid, nil
+	return lbts, nextTs.Blocks()[0].ParentStateRoot, nil
 }
 
 // todo to be a member function
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
 func GetMinerWorkerRaw(ctx context.Context, stateID cid.Cid, bstore blockstore.Blockstore, addr address.Address) (address.Address, error) {
-	vms := vm.NewStorage(bstore)
+	vms := cbor.NewCborStore(bstore)
 	state, err := state.LoadState(ctx, vms, stateID)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("loading state: %v", err)
@@ -981,56 +1009,6 @@ func (c *Expected) beaconBaseEntry(ctx context.Context, blk *block.Block) (*bloc
 		return nil, err
 	}
 	return chain.FindLatestDRAND(ctx, parent, c.chainState)
-}
-
-// runMessages applies the messages of all blocks within the input
-// tipset to the input base state.  Messages are extracted from tipset
-// blocks sorted by their ticket bytes and run as a single state transition
-// for the entire tipset. The output state must be flushed after calling to
-// guarantee that the state transitions propagate.
-// Messages that fail to apply are dropped on the floor (and no receipt is emitted).
-func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms *vm.Storage, ts *block.TipSet, blockMessageInfo []block.BlockMessagesInfo) (state.Tree, []types.MessageReceipt, error) {
-	// process tipset
-	var pts *block.TipSet
-	if ts.EnsureHeight() > 0 {
-		parent, err := ts.Parents()
-		if err != nil {
-			return nil, nil, err
-		}
-		pts, err = c.chainState.GetTipSet(parent)
-		if err != nil {
-			return nil, nil, err
-		}
-	} else {
-		return st, []types.MessageReceipt{}, nil
-	}
-
-	rnd := HeadRandomness{
-		Chain: c.rnd,
-		Head:  ts.Key(),
-	}
-
-	vmOption := vm.VmOption{
-		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
-			dertail, err := c.chainState.GetCirculatingSupplyDetailed(ctx, epoch, tree)
-			if err != nil {
-				return abi.TokenAmount{}, err
-			}
-			return dertail.FilCirculating, nil
-		},
-		NtwkVersionGetter: c.fork.GetNtwkVersion,
-		Rnd:               &rnd,
-		BaseFee:           ts.At(0).ParentBaseFee,
-		Fork:              c.fork,
-		Epoch:             ts.At(0).Height,
-		GasPriceSchedule:  c.gasPirceSchedule,
-	}
-	receipts, err := c.processor.ProcessTipSet(ctx, st, vms, pts, ts, blockMessageInfo, vmOption)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "error validating tipset")
-	}
-
-	return st, receipts, nil
 }
 
 // DefaultStateViewer a state viewer to the power state view interface.

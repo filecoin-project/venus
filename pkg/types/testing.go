@@ -173,7 +173,7 @@ func NewSignedMessageForTestGetter(ms MockSigner) func(uint64) *SignedMessage {
 			[]byte("params"),
 			ZeroAttoFIL,
 			ZeroAttoFIL,
-			Zero,
+			0,
 		)
 		smsg, err := NewSignedMessage(context.TODO(), *msg, &ms)
 		if err != nil {
@@ -261,7 +261,7 @@ func NewSignedMsgs(n uint, ms MockSigner) []*SignedMessage {
 		msg.Nonce = uint64(i)
 		msg.GasFeeCap = ZeroAttoFIL
 		msg.GasPremium = ZeroAttoFIL
-		msg.GasLimit = NewGas(0)
+		msg.GasLimit = 0
 		smsgs[i], err = NewSignedMessage(context.TODO(), *msg, ms)
 		if err != nil {
 			panic(err)

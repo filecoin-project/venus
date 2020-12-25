@@ -1,10 +1,15 @@
 package vmcontext
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+  
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
+	cbor "github.com/ipfs/go-ipld-cbor"
+  
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -19,18 +24,17 @@ import (
 
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/cron"
 	initActor "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
 	"github.com/filecoin-project/venus/pkg/vm/state"
-	"github.com/filecoin-project/venus/pkg/vm/storage"
 )
 
 const MaxCallDepth = 4096
@@ -42,15 +46,16 @@ var vmdebug = logging.Logger("vm.debug")
 type VM struct {
 	context    context.Context
 	actorImpls ActorImplLookup
-	store      *storage.VMStorage
-	state      state.Tree
+	bsstore    *blockstoreutil.BufferedBS
+	store      cbor.IpldStore
 
-	syscalls     SyscallsImpl
 	currentEpoch abi.ChainEpoch
 	pricelist    gas.Pricelist
 
 	vmDebug  bool // open debug or not
 	vmOption VmOption
+
+	State state.Tree
 }
 
 // ActorImplLookup provides access To upgradeable actor code.
@@ -73,22 +78,35 @@ var _ VMInterpreter = (*VM)(nil)
 
 // NewVM creates a new runtime for executing messages.
 // Dragons: change To take a root and the store, build the tree internally
-func NewVM(actorImpls ActorImplLookup,
-	store *storage.VMStorage,
-	st state.Tree,
-	syscalls SyscallsImpl,
-	vmOption VmOption,
-) VM {
-	return VM{
+func NewVM(actorImpls ActorImplLookup, vmOption VmOption) (*VM, error) {
+	buf := blockstoreutil.NewBufferedBstore(vmOption.Bsstore)
+	cst := cbor.NewCborStore(buf)
+	var st state.Tree
+	var err error
+	if vmOption.PRoot == cid.Undef {
+		//just for chain gen
+		st, err = state.NewState(cst, state.StateTreeVersion1)
+		if err != nil {
+			panic(xerrors.Errorf("create state error, should never come here"))
+		}
+	} else {
+		st, err = state.LoadState(context.Background(), cst, vmOption.PRoot)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	//store := storage.NewStorage(buf)
+	return &VM{
 		context:    context.Background(),
 		actorImpls: actorImpls,
-		store:      store,
-		state:      st,
-		syscalls:   syscalls,
+		bsstore:    buf,
+		store:      cst,
+		State:      st,
 		vmOption:   vmOption,
 		// loaded during execution
 		// currentEpoch: ..,
-	}
+	}, nil
 }
 
 // ApplyGenesisMessage forces the execution of a message in the vm actor.
@@ -117,7 +135,7 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 	}
 
 	// commit
-	if _, err := vm.flush(); err != nil {
+	if _, err := vm.Flush(); err != nil {
 		return nil, err
 	}
 
@@ -132,22 +150,13 @@ func (vm *VM) ContextStore() adt.Store {
 }
 
 func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
-	//r, err := vm.state.LookupID(addr)
-	//if err != nil {
-	//	if xerrors.Is(err, types.ErrActorNotFound) {
-	//		return address.Undef, false
-	//	}
-	//	panic(errors.Wrapf(err, "failed to resolve address %s", addr))
-	//}
-	//return r, true
-
 	// short-circuit if the address is already an ID address
 	if addr.Protocol() == address.ID {
 		return addr, true
 	}
 
 	// resolve the target address via the InitActor, and attempt To load stateView.
-	initActorEntry, found, err := vm.state.GetActor(vm.context, initActor.Address)
+	initActorEntry, found, err := vm.State.GetActor(vm.context, initActor.Address)
 	if err != nil {
 		panic(errors.Wrapf(err, "failed To load init actor"))
 	}
@@ -172,39 +181,39 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 }
 
 // ApplyTipSetMessages implements interpreter.VMInterpreter
-func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.TipSet, parentEpoch, epoch abi.ChainEpoch, cb ExecCallBack) ([]types.MessageReceipt, error) {
+func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.TipSet, parentEpoch, epoch abi.ChainEpoch, cb ExecCallBack) (cid.Cid, []types.MessageReceipt, error) {
 	tStart := time.Now()
 	var receipts []types.MessageReceipt
-	pstate, _ := vm.state.Flush(vm.context)
+	pstate, _ := vm.State.Flush(vm.context)
 	for i := parentEpoch; i < epoch; i++ {
 		if i > parentEpoch {
 			// run cron for null rounds if any
 			cronMessage := makeCronTickMessage()
 			ret, err := vm.applyImplicitMessage(cronMessage)
 			if err != nil {
-				return nil, err
+				return cid.Undef, nil, err
 			}
-			pstate, err = vm.flush()
+			pstate, err = vm.Flush()
 			if err != nil {
-				return nil, xerrors.Errorf("can not flush vm state To db %vs", err)
+				return cid.Undef, nil, xerrors.Errorf("can not Flush vm State To db %vs", err)
 			}
 			if cb != nil {
 				if err := cb(cid.Undef, cronMessage, ret); err != nil {
-					return nil, xerrors.Errorf("callback failed on cron message: %w", err)
+					return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
 				}
 			}
 		}
-		// handle state forks
-		// XXX: The state tree
+		// handle State forks
+		// XXX: The State tree
 		forkedCid, err := vm.vmOption.Fork.HandleStateForks(vm.context, pstate, i, ts)
 		if err != nil {
-			return nil, xerrors.Errorf("hand fork error: %v", err)
+			return cid.Undef, nil, xerrors.Errorf("hand fork error: %v", err)
 		}
 		vmlog.Debugf("after fork root: %s\n", forkedCid)
 		if pstate != forkedCid {
-			err = vm.state.At(forkedCid)
+			err = vm.State.At(forkedCid)
 			if err != nil {
-				return nil, xerrors.Errorf("load fork cid error: %v", err)
+				return cid.Undef, nil, xerrors.Errorf("load fork cid error: %v", err)
 			}
 		}
 		vm.SetCurrentEpoch(i + 1)
@@ -242,14 +251,14 @@ func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.Ti
 			receipts = append(receipts, ret.Receipt)
 			if cb != nil {
 				if err := cb(mcid, VmMessageFromUnsignedMessage(m.VMMessage()), ret); err != nil {
-					return nil, err
+					return cid.Undef, nil, err
 				}
 			}
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
 
 			if vm.vmDebug {
-				rootCid, _ := vm.flush()
+				rootCid, _ := vm.Flush()
 				vmdebug.Debugf("message: %s  root: %s", mcid, rootCid)
 				msgGasOutput, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
 				vmdebug.Debug(string(msgGasOutput))
@@ -266,7 +275,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.Ti
 		}
 
 		if vm.vmDebug {
-			root, _ := vm.state.Flush(context.TODO())
+			root, _ := vm.State.Flush(context.TODO())
 			vmdebug.Debugf("before reward: %d  root: %s\n", index, root)
 		}
 
@@ -275,16 +284,16 @@ func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.Ti
 		rewardMessage := makeBlockRewardMessage(blkInfo.Block.Miner, minerPenaltyTotal, minerGasRewardTotal, blkInfo.Block.ElectionProof.WinCount)
 		ret, err := vm.applyImplicitMessage(rewardMessage)
 		if err != nil {
-			return nil, err
+			return cid.Undef, nil, err
 		}
 		if cb != nil {
 			if err := cb(cid.Undef, rewardMessage, ret); err != nil {
-				return nil, xerrors.Errorf("callback failed on reward message: %w", err)
+				return cid.Undef, nil, xerrors.Errorf("callback failed on reward message: %w", err)
 			}
 		}
 
 		if vm.vmDebug {
-			root, _ := vm.state.Flush(context.TODO())
+			root, _ := vm.State.Flush(context.TODO())
 			vmdebug.Debugf("reward: %d  root: %s\n", index, root)
 		}
 		vmlog.Infof("process block %v time %v", index, time.Since(tStart).Milliseconds())
@@ -292,7 +301,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.Ti
 	}
 
 	if vm.vmDebug {
-		root, _ := vm.state.Flush(context.TODO())
+		root, _ := vm.State.Flush(context.TODO())
 		vmdebug.Debugf("before cron root: %s\n", root)
 	}
 
@@ -302,26 +311,27 @@ func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.Ti
 
 	ret, err := vm.applyImplicitMessage(cronMessage)
 	if err != nil {
-		return nil, err
+		return cid.Undef, nil, err
 	}
 	if cb != nil {
 		if err := cb(cid.Undef, cronMessage, ret); err != nil {
-			return nil, xerrors.Errorf("callback failed on cron message: %w", err)
+			return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
 		}
 	}
 
 	vmlog.Debugf("process tipset cron: %v\n", time.Now().Sub(tStart).Milliseconds())
 	if vm.vmDebug {
-		root, _ := vm.state.Flush(context.TODO())
+		root, _ := vm.State.Flush(context.TODO())
 		vmdebug.Debugf("after cron root: %s\n", root)
 	}
 
 	// commit stateView
-	if _, err := vm.flush(); err != nil {
-		return nil, err
+	root, err := vm.Flush()
+	if err != nil {
+		return cid.Undef, nil, err
 	}
-
-	return receipts, nil
+	//copy to db
+	return root, receipts, nil
 }
 
 // applyImplicitMessage applies messages automatically generated by the vm itself.
@@ -329,7 +339,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.Ti
 // This messages do not consume client gas and must not fail.
 func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 	// implicit messages gas is tracked separatly and not paid by the miner
-	gasTank := gas.NewGasTracker(types.SystemGasLimit)
+	gasTank := gas.NewGasTracker(constants.BlockGasLimit)
 
 	// the execution of the implicit messages is simpler than full external/actor-actor messages
 	// execution:
@@ -339,21 +349,21 @@ func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 	// 4. invoke message
 
 	// 1. load From actor
-	fromActor, found, err := vm.state.GetActor(vm.context, imsg.From)
+	fromActor, found, err := vm.State.GetActor(vm.context, imsg.From)
 	if err != nil {
 		return nil, err
 	}
 	if !found {
 		return nil, fmt.Errorf("implicit message `From` field actor not found, addr: %s", imsg.From)
 	}
-	originatorIsAccount := builtin.IsAccountActor(fromActor.Code.Cid)
+	originatorIsAccount := builtin.IsAccountActor(fromActor.Code)
 
 	// 2. increment seq number (only for account actors).
 	// The account actor distinction only makes a difference for genesis stateView construction via messages, where
 	// some messages are sent From non-account actors (e.g. fund transfers From the reward actor).
 	if originatorIsAccount {
 		fromActor.IncrementSeqNum()
-		if err := vm.state.SetActor(vm.context, imsg.From, fromActor); err != nil {
+		if err := vm.State.SetActor(vm.context, imsg.From, fromActor); err != nil {
 			return nil, err
 		}
 	}
@@ -365,13 +375,14 @@ func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 		newActorAddressCount:    0,
 	}
 
-	gasIpld := &GasChargeStorage{
-		context:   vm.context,
-		inner:     vm.store,
+	gasBsstore := &GasChargeBlockStore{
+		inner:     vm.bsstore,
 		pricelist: vm.pricelist,
 		gasTank:   gasTank,
 	}
-	ctx := newInvocationContext(vm, gasIpld, &topLevel, imsg, gasTank, vm.vmOption.Rnd, nil)
+	//	cst.Atlas = vm.store.Atlas // associate the atlas. //todo
+	cst := cbor.NewCborStore(gasBsstore)
+	ctx := newInvocationContext(vm, cst, &topLevel, imsg, gasTank, vm.vmOption.Rnd, nil)
 
 	// 4. invoke message
 	ret, code := ctx.invoke()
@@ -426,13 +437,13 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 		return &Ret{
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
-			Receipt:    types.Failure(exitcode.SysErrOutOfGas, types.Zero),
+			Receipt:    types.Failure(exitcode.SysErrOutOfGas, 0),
 		}
 	}
 
-	minerPenaltyAmount := big.Mul(vm.vmOption.BaseFee, msg.GasLimit.AsBigInt())
+	minerPenaltyAmount := big.Mul(vm.vmOption.BaseFee, big.NewInt(msg.GasLimit))
 
-	fromActor, found, err := vm.state.GetActor(vm.context, msg.From)
+	fromActor, found, err := vm.State.GetActor(vm.context, msg.From)
 	if err != nil {
 		panic(err)
 	}
@@ -443,18 +454,18 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 		return &Ret{
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
-			Receipt:    types.Failure(exitcode.SysErrSenderInvalid, types.Zero),
+			Receipt:    types.Failure(exitcode.SysErrSenderInvalid, 0),
 		}
 	}
 
-	if !builtin.IsAccountActor(fromActor.Code.Cid) /*!fromActor.Code.Equals(builtin.AccountActorCodeID)*/ {
+	if !builtin.IsAccountActor(fromActor.Code) /*!fromActor.Code.Equals(builtin.AccountActorCodeID)*/ {
 		// Execution error; sender is not an account.
 		gasOutputs := gas.ZeroGasOutputs()
 		gasOutputs.MinerPenalty = minerPenaltyAmount
 		return &Ret{
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
-			Receipt:    types.Failure(exitcode.SysErrSenderInvalid, types.Zero),
+			Receipt:    types.Failure(exitcode.SysErrSenderInvalid, 0),
 		}
 	}
 
@@ -466,7 +477,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 		return &Ret{
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
-			Receipt:    types.Failure(exitcode.SysErrSenderStateInvalid, types.Zero),
+			Receipt:    types.Failure(exitcode.SysErrSenderStateInvalid, 0),
 		}
 	}
 
@@ -480,7 +491,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 		return &Ret{
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
-			Receipt:    types.Failure(exitcode.SysErrSenderStateInvalid, types.Zero),
+			Receipt:    types.Failure(exitcode.SysErrSenderStateInvalid, 0),
 		}
 	}
 
@@ -490,7 +501,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 	}
 
 	// 5. Increment sender Nonce
-	if err = vm.state.MutateActor(msg.From, func(msgFromActor *types.Actor) error {
+	if err = vm.State.MutateActor(msg.From, func(msgFromActor *types.Actor) error {
 		msgFromActor.IncrementSeqNum()
 		return nil
 	}); err != nil {
@@ -526,16 +537,17 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 		Params: msg.Params,
 	}
 
-	gasIpld := &GasChargeStorage{
-		context:   vm.context,
-		inner:     vm.store,
+	// 2. build invocation context
+	gasBsstore := &GasChargeBlockStore{
+		inner:     vm.bsstore,
 		pricelist: vm.pricelist,
 		gasTank:   gasTank,
 	}
+	cst := cbor.NewCborStore(gasBsstore)
+	//	cst.Atlas = vm.store.Atlas // associate the atlas. //todo
 
-	// 2. build invocation context
 	//Note replace from and to address here
-	ctx := newInvocationContext(vm, gasIpld, &topLevel, imsg, gasTank, vm.vmOption.Rnd, nil)
+	ctx := newInvocationContext(vm, cst, &topLevel, imsg, gasTank, vm.vmOption.Rnd, nil)
 
 	// 3. invoke
 	ret, code := ctx.invoke()
@@ -609,7 +621,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 		Receipt: types.MessageReceipt{
 			ExitCode:    code,
 			ReturnValue: ret,
-			GasUsed:     types.NewGas(gasUsed),
+			GasUsed:     gasUsed,
 		},
 	}
 }
@@ -624,13 +636,13 @@ func (vm *VM) shouldBurn(msg *types.UnsignedMessage, errcode exitcode.ExitCode) 
 		// Ok, we've checked the _method_, but we still need to check
 		// the target actor. It would be nice if we could just look at
 		// the trace, but I'm not sure if that's safe?
-		if toActor, _, err := vm.state.GetActor(vm.context, msg.To); err != nil {
+		if toActor, _, err := vm.State.GetActor(vm.context, msg.To); err != nil {
 			// If the actor wasn't found, we probably deleted it or something. Move on.
 			if !xerrors.Is(err, types.ErrActorNotFound) {
 				// Otherwise, this should never fail and something is very wrong.
 				return false, xerrors.Errorf("failed to lookup target actor: %w", err)
 			}
-		} else if builtin.IsStorageMinerActor(toActor.Code.Cid) {
+		} else if builtin.IsStorageMinerActor(toActor.Code) {
 			// Ok, this is a storage miner and we've processed a window post. Remove the burn.
 			return false, nil
 		}
@@ -651,7 +663,7 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 	}
 
 	// retrieve debit account
-	fromActor, found, err := vm.state.GetActor(vm.context, debitFrom)
+	fromActor, found, err := vm.State.GetActor(vm.context, debitFrom)
 	if err != nil {
 		panic(err)
 	}
@@ -660,7 +672,7 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 	}
 
 	// retrieve credit account
-	toActor, found, err := vm.state.GetActor(vm.context, creditTo)
+	toActor, found, err := vm.State.GetActor(vm.context, creditTo)
 	if err != nil {
 		panic(err)
 	}
@@ -675,13 +687,13 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 
 	// debit funds
 	fromActor.Balance = big.Sub(fromActor.Balance, amount)
-	if err := vm.state.SetActor(vm.context, debitFrom, fromActor); err != nil {
+	if err := vm.State.SetActor(vm.context, debitFrom, fromActor); err != nil {
 		panic(err)
 	}
 
 	// credit funds
 	toActor.Balance = big.Add(toActor.Balance, amount)
-	if err := vm.state.SetActor(vm.context, creditTo, toActor); err != nil {
+	if err := vm.State.SetActor(vm.context, creditTo, toActor); err != nil {
 		panic(err)
 	}
 }
@@ -718,7 +730,7 @@ func (vm *VM) transferToGasHolder(addr address.Address, gasHolder *types.Actor, 
 	if amt.LessThan(big.NewInt(0)) {
 		return xerrors.Errorf("attempted To transfer negative Value To gas holder")
 	}
-	return vm.state.MutateActor(addr, func(a *types.Actor) error {
+	return vm.State.MutateActor(addr, func(a *types.Actor) error {
 		if err := deductFunds(a, amt); err != nil {
 			return err
 		}
@@ -736,7 +748,7 @@ func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *types.Actor
 		return nil
 	}
 
-	return vm.state.MutateActor(addr, func(a *types.Actor) error {
+	return vm.State.MutateActor(addr, func(a *types.Actor) error {
 		if err := deductFunds(gasHolder, amt); err != nil {
 			return err
 		}
@@ -745,8 +757,8 @@ func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *types.Actor
 	})
 }
 
-func (vm *VM) TotalFilCircSupply(height abi.ChainEpoch, stateTree state.Tree) (abi.TokenAmount, error) {
-	return vm.vmOption.CircSupplyCalculator(vm.context, height, stateTree)
+func (vm *VM) StateTree() state.Tree {
+	return vm.State
 }
 
 func deductFunds(act *types.Actor, amt abi.TokenAmount) error {
@@ -792,11 +804,11 @@ func (msg VmMessage) Receiver() address.Address {
 }
 
 func (vm *VM) revert() error {
-	return vm.state.Revert()
+	return vm.State.Revert()
 }
 
 func (vm *VM) snapshot() error {
-	err := vm.state.Snapshot(vm.context)
+	err := vm.State.Snapshot(vm.context)
 	if err != nil {
 		return err
 	}
@@ -804,16 +816,21 @@ func (vm *VM) snapshot() error {
 }
 
 func (vm *VM) clearSnapshot() {
-	vm.state.ClearSnapshot()
+	vm.State.ClearSnapshot()
 }
 
 //nolint
-func (vm *VM) flush() (state.Root, error) {
-	// flush all blocks out of the store
-	if root, err := vm.state.Flush(vm.context); err != nil {
+func (vm *VM) Flush() (state.Root, error) {
+	// Flush all blocks out of the store
+	if root, err := vm.State.Flush(vm.context); err != nil {
 		return cid.Undef, err
 	} else {
-		vm.store.Flush()
+		from := vm.bsstore
+		to := vm.bsstore.Read()
+
+		if err := blockstoreutil.CopyParticial(context.TODO(), from, to, root); err != nil {
+			return cid.Undef, xerrors.Errorf("copying tree: %w", err)
+		}
 		return root, nil
 	}
 }
@@ -837,7 +854,8 @@ func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount,
 		GasReward: gasReward,
 		WinCount:  winCount,
 	}
-	encoded, err := encoding.Encode(params)
+	buf := new(bytes.Buffer)
+	err := params.MarshalCBOR(buf)
 	if err != nil {
 		panic(fmt.Errorf("failed To encode built-in block reward. %s", err))
 	}
@@ -846,7 +864,7 @@ func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount,
 		To:     reward.Address,
 		Value:  big.Zero(),
 		Method: reward.Methods.AwardBlockReward,
-		Params: encoded,
+		Params: buf.Bytes(),
 	}
 }
 

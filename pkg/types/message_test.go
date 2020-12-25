@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 
@@ -23,20 +24,21 @@ func TestMessageMarshal(t *testing.T) {
 		[]byte("foobar"),
 		NewAttoFILFromFIL(3),
 		NewAttoFILFromFIL(3),
-		NewGas(4),
+		4,
 	)
 
 	// This check requests that you add a non-zero value for new fields above,
 	// then update the field count below.
-	require.Equal(t, 11, reflect.TypeOf(*msg).NumField())
+	require.Equal(t, 10, reflect.TypeOf(*msg).NumField())
 
-	marshalled, err := msg.Marshal()
+	buf := new(bytes.Buffer)
+	err := msg.MarshalCBOR(buf)
 	assert.NoError(t, err)
 
 	msgBack := UnsignedMessage{}
 	assert.False(t, msg.Equals(&msgBack))
 
-	err = msgBack.Unmarshal(marshalled)
+	err = msgBack.UnmarshalCBOR(buf)
 	assert.NoError(t, err)
 
 	assert.Equal(t, msg.Version, msgBack.Version)

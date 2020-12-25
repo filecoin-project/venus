@@ -1,6 +1,7 @@
 package node
 
 import (
+	"bytes"
 	"context"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 
@@ -14,7 +15,7 @@ import (
 
 func (node *Node) validateLocalMessage(ctx context.Context, msg pubsub.Message) error {
 	m := &types.SignedMessage{}
-	if err := m.Unmarshal(msg.GetData()); err != nil {
+	if err := m.UnmarshalCBOR(bytes.NewReader(msg.GetData())); err != nil {
 		return err
 	}
 
@@ -49,13 +50,13 @@ func (node *Node) processMessage(ctx context.Context, pubSubMsg pubsub.Message) 
 		return node.validateLocalMessage(ctx, pubSubMsg)
 	}
 
-	m := &types.SignedMessage{}
-	if err := m.Unmarshal(pubSubMsg.GetData()); err != nil {
+	unmarshaled := &types.SignedMessage{}
+	if err := unmarshaled.UnmarshalCBOR(bytes.NewReader(pubSubMsg.GetData())); err != nil {
 		return err
 	}
 
-	if err := node.Mpool.MPool.Add(m); err != nil {
-		log.Debugf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
+	if err := node.Mpool.MPool.Add(unmarshaled); err != nil {
+		log.Debugf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", unmarshaled.Message.From, unmarshaled.Message.To, unmarshaled.Message.Nonce, types.FIL(unmarshaled.Message.Value), err)
 		switch {
 		case xerrors.Is(err, messagepool.ErrSoftValidationFailure):
 			fallthrough

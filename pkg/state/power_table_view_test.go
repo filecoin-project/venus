@@ -2,25 +2,23 @@ package state_test
 
 import (
 	"context"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/state"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/vm"
 	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 
@@ -106,13 +104,12 @@ func TestTotalPowerUnaffectedBySlash(t *testing.T) {
 	assert.Equal(t, expected, total)
 }
 
-func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64, ownerKeys []crypto.KeyInfo) (*cborutil.IpldStore, []address.Address, cid.Cid) {
+func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64, ownerKeys []crypto.KeyInfo) (cbor.IpldStore, []address.Address, cid.Cid) {
 	//todo think a way to mock power directly
 	t.Skipf("skip it due to cant mock power directly ")
 	r := repo.NewInMemoryRepo()
-	bs := bstore.NewBlockstore(r.Datastore())
-	vmStorage := vm.NewStorage(bs)
-	cst := cborutil.NewIpldStore(bs)
+	bs := r.Datastore()
+	cst := cbor.NewCborStore(bs)
 
 	numMiners := len(ownerKeys)
 	minerConfigs := make([]*gengen.CreateStorageMinerConfig, numMiners)
@@ -133,7 +130,7 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 	require.NoError(t, gengen.NetworkName("ptvtest")(genCfg))
 	require.NoError(t, gengen.ImportKeys(ownerKeys, "1000000")(genCfg))
 
-	info, err := gengen.GenGen(ctx, genCfg, vmStorage)
+	info, err := gengen.GenGen(ctx, genCfg, bs)
 	require.NoError(t, err)
 
 	var genesis block.Block
@@ -142,5 +139,5 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 	for i := 0; i < numMiners; i++ {
 		retAddrs[i] = info.Miners[i].Address
 	}
-	return cst, retAddrs, genesis.ParentStateRoot.Cid
+	return cst, retAddrs, genesis.ParentStateRoot
 }

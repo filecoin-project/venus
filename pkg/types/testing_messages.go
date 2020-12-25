@@ -16,7 +16,7 @@ import (
 type MessageMaker struct {
 	DefaultGasFeeCap  AttoFIL
 	DefaultGasPremium AttoFIL
-	DefaultGasUnits   Unit
+	DefaultGasUnits   int64
 
 	signer *MockSigner
 	seq    uint
@@ -33,7 +33,7 @@ func NewMessageMaker(t *testing.T, keys []crypto.KeyInfo) *MessageMaker {
 		addresses[i] = addr
 	}
 
-	return &MessageMaker{ZeroAttoFIL, ZeroAttoFIL, Unit(0), &signer, 0, t}
+	return &MessageMaker{ZeroAttoFIL, ZeroAttoFIL, 0, &signer, 0, t}
 }
 
 // Addresses returns the addresses for which this maker can sign messages.

@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -22,6 +21,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
@@ -38,7 +38,7 @@ type CirculatingSupply struct {
 }
 
 type CirculatingSupplyCalculator struct {
-	bstore        blockstore.Blockstore
+	bstore        blockstoreutil.Blockstore
 	genesisReader genesisReader
 
 	// info about the Accounts in the genesis state
@@ -53,7 +53,7 @@ type CirculatingSupplyCalculator struct {
 	upgradeConfig *config.ForkUpgradeConfig
 }
 
-func NewCirculatingSupplyCalculator(bstore blockstore.Blockstore, genesisReader genesisReader, upgradeConfig *config.ForkUpgradeConfig) *CirculatingSupplyCalculator {
+func NewCirculatingSupplyCalculator(bstore blockstoreutil.Blockstore, genesisReader genesisReader, upgradeConfig *config.ForkUpgradeConfig) *CirculatingSupplyCalculator {
 	return &CirculatingSupplyCalculator{bstore: bstore, genesisReader: genesisReader, upgradeConfig: upgradeConfig}
 }
 
@@ -174,7 +174,7 @@ func (caculator *CirculatingSupplyCalculator) setupGenesisVestingSchedule(ctx co
 	}
 
 	cst := cbornode.NewCborStore(caculator.bstore)
-	sTree, err := state.LoadState(ctx, cst, gts.At(0).ParentStateRoot.Cid)
+	sTree, err := state.LoadState(ctx, cst, gts.At(0).ParentStateRoot)
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %v", err)
 	}

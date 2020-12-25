@@ -104,7 +104,7 @@ func NewChainSubmodule(config chainConfig,
 	faultChecker := slashing.NewFaultChecker(chainState, fork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, verifier.ProofVerifier)
 
-	processor := consensus.NewDefaultProcessor(syscalls, chainState)
+	processor := consensus.NewDefaultProcessor(syscalls)
 
 	combineChainReader := struct {
 		stateReader

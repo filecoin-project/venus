@@ -216,7 +216,7 @@ func openGenesisSource(sourceName string) (io.ReadCloser, error) {
 }
 
 func extractGenesisBlock(source io.ReadCloser, rep repo.Repo) (*block.Block, error) {
-	bs := blockstore.NewBlockstore(rep.Datastore())
+	bs := rep.Datastore()
 	ch, err := car.LoadCar(bs, source)
 	if err != nil {
 		return nil, err

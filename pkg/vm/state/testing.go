@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"github.com/filecoin-project/venus/pkg/enccid"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -54,8 +53,8 @@ func NewStateWithBuiltinActor(t *testing.T, store cbor.IpldStore, ver StateTreeV
 	initCodeID, err := store.Put(ctx, initState)
 	require.NoError(t, err)
 	initActor := &types.Actor{
-		Code:    enccid.NewCid(builtin0.InitActorCodeID),
-		Head:    enccid.NewCid(initCodeID),
+		Code:    builtin0.InitActorCodeID,
+		Head:    initCodeID,
 		Nonce:   0,
 		Balance: abi.TokenAmount{},
 	}
@@ -71,14 +70,14 @@ func AddAccount(t *testing.T, tree *State, store cbor.IpldStore, addr address.Ad
 	initActor, _, err := tree.GetActor(ctx, builtin0.InitActorAddr)
 	require.NoError(t, err)
 	initState := &init0.State{}
-	err = adtStore.Get(ctx, initActor.Head.Cid, initState)
+	err = adtStore.Get(ctx, initActor.Head, initState)
 	require.NoError(t, err)
 	//add a account for t3
 	idAddr, err := initState.MapAddressToNewID(adtStore, addr)
 	require.NoError(t, err)
 	newInitStateId, err := store.Put(ctx, initState) //nolint
 	require.NoError(t, err)
-	initActor.Head = enccid.NewCid(newInitStateId)
+	initActor.Head = newInitStateId
 	err = tree.SetActor(ctx, builtin0.InitActorAddr, initActor)
 	require.NoError(t, err)
 
@@ -87,8 +86,8 @@ func AddAccount(t *testing.T, tree *State, store cbor.IpldStore, addr address.Ad
 		panic(err)
 	}
 	accountActor := &types.Actor{
-		Code:    enccid.NewCid(builtin0.AccountActorCodeID),
-		Head:    enccid.NewCid(emptyObject),
+		Code:    builtin0.AccountActorCodeID,
+		Head:    emptyObject,
 		Nonce:   0,
 		Balance: abi.TokenAmount{},
 	}
@@ -102,8 +101,8 @@ func AddAccount(t *testing.T, tree *State, store cbor.IpldStore, addr address.Ad
 		panic(err)
 	}
 	addrActor := &types.Actor{
-		Code:    enccid.NewCid(builtin0.AccountActorCodeID),
-		Head:    enccid.NewCid(accountRoot),
+		Code:    builtin0.AccountActorCodeID,
+		Head:    accountRoot,
 		Nonce:   0,
 		Balance: abi.TokenAmount{},
 	}

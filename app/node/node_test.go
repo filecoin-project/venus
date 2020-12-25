@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"testing"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/node/test"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/proofs"
 	"github.com/filecoin-project/venus/pkg/repo"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	gengen "github.com/filecoin-project/venus/tools/gengen/util"
@@ -188,7 +188,7 @@ func TestNodeConfig(t *testing.T) {
 	tf.UnitTest(t)
 
 	// fake mining
-	verifier := &proofs.FakeVerifier{}
+	verifier := &ffiwrapper.FakeVerifier{}
 
 	configBlockTime := 99
 	configPropagationDelay := 20

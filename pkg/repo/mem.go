@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"sync"
 
 	"github.com/ipfs/go-datastore"
@@ -16,7 +17,7 @@ type MemRepo struct {
 	// lk guards the config
 	lk             sync.RWMutex
 	C              *config.Config
-	D              Datastore
+	D              blockstoreutil.Blockstore
 	Ks             keystore.Keystore
 	W              Datastore
 	Chain          Datastore
@@ -33,7 +34,7 @@ var _ Repo = (*MemRepo)(nil)
 func NewInMemoryRepo() *MemRepo {
 	return &MemRepo{
 		C:       config.NewDefaultConfig(),
-		D:       dss.MutexWrap(datastore.NewMapDatastore()),
+		D:       blockstoreutil.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore())),
 		Ks:      keystore.MutexWrap(keystore.NewMemKeystore()),
 		W:       dss.MutexWrap(datastore.NewMapDatastore()),
 		Chain:   dss.MutexWrap(datastore.NewMapDatastore()),
@@ -61,7 +62,7 @@ func (mr *MemRepo) ReplaceConfig(cfg *config.Config) error {
 }
 
 // Datastore returns the datastore.
-func (mr *MemRepo) Datastore() datastore.Batching {
+func (mr *MemRepo) Datastore() blockstoreutil.Blockstore {
 	return mr.D
 }
 

@@ -2,17 +2,17 @@ package vmcontext
 
 import (
 	"context"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/vm/storage"
 )
 
 // Dragons: see if we can reuse the `adt.AsStore` Method To construct this instead of re-writing it
 type contextStore struct {
 	context context.Context
-	store   *storage.VMStorage
+	store   cbornode.IpldStore
 }
 
 // implement adt.Store

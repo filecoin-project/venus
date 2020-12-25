@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	"io/ioutil"
 	"math/rand"
 	"time"
@@ -17,7 +18,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/net"
 )
 
@@ -197,7 +197,7 @@ func (c *client) processResponse(req *Request, res *Response, tipsets []*block.T
 		}
 
 		// Check that the returned head matches the one requested
-		if !block.CidArrsEqual(validRes.tipsets[0].Key().ToSlice(), enccid.EncidToCidArr(req.Head)) {
+		if !block.CidArrsEqual(validRes.tipsets[0].Key().Cids(), req.Head) {
 			return nil, xerrors.Errorf("returned chain head does not match request")
 		}
 
@@ -295,13 +295,13 @@ func (c *client) GetBlocks(ctx context.Context, tsk block.TipSetKey, count int) 
 	defer span.End()
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
-			trace.StringAttribute("tipset", fmt.Sprint(tsk.ToSlice())),
+			trace.StringAttribute("tipset", fmt.Sprint(tsk.Cids())),
 			trace.Int64Attribute("count", int64(count)),
 		)
 	}
 
 	req := &Request{
-		Head:    enccid.WrapCid(tsk.ToSlice()),
+		Head:    tsk.Cids(),
 		Length:  uint64(count),
 		Options: Headers,
 	}
@@ -319,7 +319,7 @@ func (c *client) GetFullTipSet(ctx context.Context, peer peer.ID, tsk block.TipS
 	// TODO: round robin through these peers on error
 
 	req := &Request{
-		Head:    enccid.WrapCid(tsk.ToSlice()),
+		Head:    tsk.Cids(),
 		Length:  1,
 		Options: Headers | Messages,
 	}
@@ -342,14 +342,14 @@ func (c *client) GetChainMessages(ctx context.Context, tipsets []*block.TipSet) 
 	ctx, span := trace.StartSpan(ctx, "GetChainMessages")
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
-			trace.StringAttribute("tipset", fmt.Sprint(head.Key().ToSlice())),
+			trace.StringAttribute("tipset", fmt.Sprint(head.Key().Cids())),
 			trace.Int64Attribute("count", int64(length)),
 		)
 	}
 	defer span.End()
 
 	req := &Request{
-		Head:    enccid.WrapCid(head.Key().ToSlice()),
+		Head:    head.Key().Cids(),
 		Length:  length,
 		Options: Messages,
 	}
@@ -416,7 +416,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 
 	// Write request.
 	_ = stream.SetWriteDeadline(time.Now().Add(WriteReqDeadline))
-	if err := WriteCborRPC(stream, req); err != nil {
+	if err := cborutil.WriteCborRPC(stream, req); err != nil {
 		_ = stream.SetWriteDeadline(time.Time{})
 		c.peerTracker.logFailure(peer, time.Since(connectionStart), req.Length)
 		// FIXME: Should we also remove peer here?
@@ -436,7 +436,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 	}
 
 	var res Response
-	err = ReadCborRPC(
+	err = cborutil.ReadCborRPC(
 		bytes.NewReader(respBytes),
 		//bufio.NewReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline)),
 		&res)

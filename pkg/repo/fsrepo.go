@@ -2,6 +2,8 @@ package repo
 
 import (
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"io"
 	"io/ioutil"
 	"os"
@@ -12,7 +14,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-multistore"
-	ds "github.com/ipfs/go-datastore"
 	badgerds "github.com/ipfs/go-ds-badger2"
 	lockfile "github.com/ipfs/go-fs-lock"
 	keystore "github.com/ipfs/go-ipfs-keystore"
@@ -57,7 +58,7 @@ type FSRepo struct {
 	lk  sync.RWMutex
 	cfg *config.Config
 
-	ds        Datastore
+	ds        *blockstoreutil.BadgerBlockstore
 	stagingDs Datastore
 	mds       *multistore.MultiStore
 	keystore  keystore.Keystore
@@ -290,7 +291,7 @@ func (r *FSRepo) SnapshotConfig(cfg *config.Config) error {
 }
 
 // Datastore returns the datastore.
-func (r *FSRepo) Datastore() ds.Batching {
+func (r *FSRepo) Datastore() blockstoreutil.Blockstore {
 	return r.ds
 }
 
@@ -412,7 +413,13 @@ func (r *FSRepo) readVersion() (uint, error) {
 func (r *FSRepo) openDatastore() error {
 	switch r.cfg.Datastore.Type {
 	case "badgerds":
-		ds, err := badgerds.NewDatastore(filepath.Join(r.path, r.cfg.Datastore.Path), badgerOptions())
+		path := filepath.Join(r.path, r.cfg.Datastore.Path)
+		opts, err := blockstoreutil.BadgerBlockstoreOptions(path, false)
+		if err != nil {
+			return err
+		}
+		opts.Prefix = bstore.BlockPrefix.String()
+		ds, err := blockstoreutil.Open(opts)
 		if err != nil {
 			return err
 		}

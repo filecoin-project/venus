@@ -1,6 +1,7 @@
 package messagepool
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -223,7 +224,7 @@ func CapGasFee(mff DefaultMaxFeeFunc, msg *types.UnsignedMessage, maxFee abi.Tok
 		maxFee = mf
 	}
 
-	gl := tbig.NewInt(int64(msg.GasLimit))
+	gl := tbig.NewInt(msg.GasLimit)
 	totalFee := tbig.Mul(msg.GasFeeCap, gl)
 
 	if totalFee.LessThanEqual(maxFee) {
@@ -485,10 +486,12 @@ func (mp *MessagePool) runLoop() {
 func (mp *MessagePool) addLocal(m *types.SignedMessage) error {
 	mp.localAddrs[m.Message.From] = struct{}{}
 
-	msgb, err := m.Marshal()
+	buf := new(bytes.Buffer)
+	err := m.MarshalCBOR(buf)
 	if err != nil {
 		return xerrors.Errorf("error serializing message: %v", err)
 	}
+	msgb := buf.Bytes()
 
 	c, _ := m.Cid()
 	if err := mp.localMsgs.Put(datastore.NewKey(string(c.Bytes())), msgb); err != nil {
@@ -572,12 +575,13 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 	mp.curTsLk.Unlock()
 
 	if publish {
-		msgb, err := m.Marshal()
+		buf := new(bytes.Buffer)
+		err := m.MarshalCBOR(buf)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("error serializing message: %v", err)
 		}
 
-		err = mp.api.PubSubPublish(msgsub.Topic(mp.netName), msgb)
+		err = mp.api.PubSubPublish(msgsub.Topic(mp.netName), buf.Bytes())
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("error publishing message: %v", err)
 		}
@@ -924,12 +928,13 @@ func (mp *MessagePool) PushUntrusted(m *types.SignedMessage) (cid.Cid, error) {
 	mp.curTsLk.Unlock()
 
 	if publish {
-		msgb, err := m.Marshal() // ???
+		buf := new(bytes.Buffer)
+		err := m.MarshalCBOR(buf)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("error serializing message: %v", err)
 		}
 
-		err = mp.api.PubSubPublish(msgsub.Topic(mp.netName), msgb)
+		err = mp.api.PubSubPublish(msgsub.Topic(mp.netName), buf.Bytes())
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("error publishing message: %v", err)
 		}
@@ -1364,7 +1369,7 @@ func (mp *MessagePool) loadLocal() error {
 		}
 
 		var sm types.SignedMessage
-		if err := sm.Unmarshal(r.Value); err != nil {
+		if err := sm.UnmarshalCBOR(bytes.NewReader(r.Value)); err != nil {
 			return xerrors.Errorf("unmarshaling local message: %v", err)
 		}
 

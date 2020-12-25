@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/minio/blake2b-simd"
 	xerrors "github.com/pkg/errors"
 )
@@ -46,7 +45,7 @@ func NewSampler(reader TipSetByHeight, genesisTicket block.Ticket) *Sampler {
 // should blend in some distinguishing value (such as the epoch itself) into a hash of this ticket.
 func (s *Sampler) SampleTicket(ctx context.Context, head block.TipSetKey, epoch abi.ChainEpoch) (block.Ticket, error) {
 	var ticket block.Ticket
-	if !head.Empty() {
+	if !head.IsEmpty() {
 		start, err := s.reader.GetTipSet(head)
 		if err != nil {
 			return block.Ticket{}, err
@@ -135,12 +134,12 @@ type RandomnessSamplerAtTipSet struct {
 	head    block.TipSetKey
 }
 
-func (s *RandomnessSamplerAtTipSet) Sample(ctx context.Context, epoch abi.ChainEpoch) (crypto.RandomSeed, error) {
+func (s *RandomnessSamplerAtTipSet) Sample(ctx context.Context, epoch abi.ChainEpoch) (RandomSeed, error) {
 	ticket, err := s.sampler.SampleTicket(ctx, s.head, epoch)
 	if err != nil {
 		return nil, err
 	}
-	return crypto.MakeRandomSeed(ticket.VRFProof)
+	return MakeRandomSeed(ticket.VRFProof)
 }
 
 func (s *RandomnessSamplerAtTipSet) GetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {

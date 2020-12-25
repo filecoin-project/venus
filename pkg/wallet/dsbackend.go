@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"bytes"
 	"crypto/rand"
 	"reflect"
 	"strings"
@@ -133,12 +134,13 @@ func (backend *DSBackend) putKeyInfo(ki *crypto.KeyInfo) error {
 	backend.lk.Lock()
 	defer backend.lk.Unlock()
 
-	kib, err := ki.Marshal()
+	buf := new(bytes.Buffer)
+	err = ki.MarshalCBOR(buf)
 	if err != nil {
 		return err
 	}
 
-	if err := backend.ds.Put(ds.NewKey(a.String()), kib); err != nil {
+	if err := backend.ds.Put(ds.NewKey(a.String()), buf.Bytes()); err != nil {
 		return errors.Wrap(err, "failed to store new address")
 	}
 
@@ -169,7 +171,7 @@ func (backend *DSBackend) GetKeyInfo(addr address.Address) (*crypto.KeyInfo, err
 	}
 
 	ki := &crypto.KeyInfo{}
-	if err := ki.Unmarshal(kib); err != nil {
+	if err := ki.UnmarshalCBOR(bytes.NewReader(kib)); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal keyinfo from backend")
 	}
 
