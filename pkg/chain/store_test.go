@@ -169,6 +169,7 @@ func TestRevertChange(t *testing.T) {
 	link6 := builder.AppendOn(link5, 2)
 
 	ch := cs.SubHeadChanges(ctx)
+
 	currentA := <-ch
 	test.Equal(t, currentA[0].Type, chain.HCCurrent)
 	test.Equal(t, currentA[0].Val, link3)
