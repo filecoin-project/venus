@@ -145,9 +145,7 @@ func SetNetParams(params *config.NetworkParamsConfig) {
 		policy.SetMinVerifiedDealSize(abi.NewStoragePower(params.MinVerifiedDealSize))
 	}
 
-	if params.AdressNetwork != byte(0) {
-		constants.SetAddressNetwork(params.AdressNetwork)
-	}
+	constants.SetAddressNetwork(params.AdressNetwork)
 }
 
 // MonkeyPatchSetProofTypeOption returns a function that sets package variable
