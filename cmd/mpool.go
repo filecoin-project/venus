@@ -15,6 +15,7 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"golang.org/x/xerrors"
 	stdbig "math/big"
+	"sort"
 )
 
 var mpoolCmd = &cmds.Command{
@@ -40,7 +41,150 @@ var mpoolStat = &cmds.Command{
 Get pending messages.
 `,
 	},
-	Options: []cmds.Option{},
+	Options: []cmds.Option{
+		cmds.BoolOption("local", "print stats for addresses in local wallet only"),
+		cmds.BoolOption("basefee-lookback", "number of blocks to look back for minimum basefee"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		local, _ := req.Options["local"].(bool)
+		basefee, _ := req.Options["basefee-lookback"].(int)
+
+		ctx := context.TODO()
+		ts, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting chain head: %w", err)
+		}
+		currBF := ts.Blocks()[0].ParentBaseFee
+		minBF := currBF
+		{
+			currTs := ts
+			for i := 0; i < basefee; i++ {
+				key, err := currTs.Parents()
+				if err != nil {
+					return xerrors.Errorf("get TipSetKey error: %w", err)
+				}
+				currTs, err = env.(*node.Env).ChainAPI.ChainGetTipSet(key)
+				if err != nil {
+					return xerrors.Errorf("walking chain: %w", err)
+				}
+				if newBF := currTs.Blocks()[0].ParentBaseFee; newBF.LessThan(minBF) {
+					minBF = newBF
+				}
+			}
+		}
+
+		var filter map[address.Address]struct{}
+		if local {
+			filter = map[address.Address]struct{}{}
+
+			addrss := env.(*node.Env).WalletAPI.WalletAddresses()
+
+			for _, a := range addrss {
+				filter[a] = struct{}{}
+			}
+		}
+
+		msgs, err := env.(*node.Env).MessagePoolAPI.MpoolPending(ctx, block.TipSetKey{})
+		if err != nil {
+			return err
+		}
+
+		type statBucket struct {
+			msgs map[uint64]*types.SignedMessage
+		}
+		type mpStat struct {
+			addr                 string
+			past, cur, future    uint64
+			belowCurr, belowPast uint64
+			gasLimit             big.Int
+		}
+
+		buckets := map[address.Address]*statBucket{}
+		for _, v := range msgs {
+			if filter != nil {
+				if _, has := filter[v.Message.From]; !has {
+					continue
+				}
+			}
+
+			bkt, ok := buckets[v.Message.From]
+			if !ok {
+				bkt = &statBucket{
+					msgs: map[uint64]*types.SignedMessage{},
+				}
+				buckets[v.Message.From] = bkt
+			}
+
+			bkt.msgs[v.Message.Nonce] = v
+		}
+
+		var out []mpStat
+
+		for a, bkt := range buckets {
+			act, err := env.(*node.Env).ChainAPI.StateGetActor(ctx, a, ts.Key())
+			if err != nil {
+				fmt.Printf("%s, err: %s\n", a, err)
+				continue
+			}
+
+			cur := act.Nonce
+			for {
+				_, ok := bkt.msgs[cur]
+				if !ok {
+					break
+				}
+				cur++
+			}
+
+			var s mpStat
+			s.addr = a.String()
+			s.gasLimit = big.Zero()
+
+			for _, m := range bkt.msgs {
+				if m.Message.Nonce < act.Nonce {
+					s.past++
+				} else if m.Message.Nonce > cur {
+					s.future++
+				} else {
+					s.cur++
+				}
+
+				if m.Message.GasFeeCap.LessThan(currBF) {
+					s.belowCurr++
+				}
+				if m.Message.GasFeeCap.LessThan(minBF) {
+					s.belowPast++
+				}
+
+				s.gasLimit = big.Add(s.gasLimit, types.NewInt(uint64(m.Message.GasLimit)))
+			}
+
+			out = append(out, s)
+		}
+
+		sort.Slice(out, func(i, j int) bool {
+			return out[i].addr < out[j].addr
+		})
+
+		var total mpStat
+		total.gasLimit = big.Zero()
+
+		for _, stat := range out {
+			total.past += stat.past
+			total.cur += stat.cur
+			total.future += stat.future
+			total.belowCurr += stat.belowCurr
+			total.belowPast += stat.belowPast
+			total.gasLimit = big.Add(total.gasLimit, stat.gasLimit)
+
+			re.Emit(fmt.Sprintf("%s: Nonce past: %d, cur: %d, future: %d; FeeCap cur: %d, min-%d: %d, gasLimit: %s\n", stat.addr, stat.past, stat.cur, stat.future, stat.belowCurr, basefee, stat.belowPast, stat.gasLimit))
+		}
+
+		re.Emit("-----")
+		re.Emit(fmt.Sprintf("total: Nonce past: %d, cur: %d, future: %d; FeeCap cur: %d, min-%d: %d, gasLimit: %s\n", total.past, total.cur, total.future, total.belowCurr, basefee, total.belowPast, total.gasLimit))
+
+		return nil
+	},
 }
 
 var mpoolPending = &cmds.Command{
