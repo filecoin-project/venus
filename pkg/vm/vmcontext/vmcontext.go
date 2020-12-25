@@ -5,11 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-  
+
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	cbor "github.com/ipfs/go-ipld-cbor"
-  
+
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -587,10 +587,10 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 		panic(xerrors.Errorf("deciding whether should burn failed: %w", err))
 	}
 
-	gasOutputs := gas.ComputeGasOutputs(gasUsed, int64(msg.GasLimit), vm.vmOption.BaseFee, msg.GasFeeCap, msg.GasPremium, burn)
+	gasOutputs := gas.ComputeGasOutputs(gasUsed, msg.GasLimit, vm.vmOption.BaseFee, msg.GasFeeCap, msg.GasPremium, burn)
 
 	if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder, gasOutputs.BaseFeeBurn); err != nil {
-		gas.ComputeGasOutputs(gasUsed, int64(msg.GasLimit), vm.vmOption.BaseFee, msg.GasFeeCap, msg.GasPremium, burn)
+		gas.ComputeGasOutputs(gasUsed, msg.GasLimit, vm.vmOption.BaseFee, msg.GasFeeCap, msg.GasPremium, burn)
 		panic(xerrors.Errorf("failed To burn base fee: %w", err))
 	}
 
