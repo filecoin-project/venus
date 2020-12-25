@@ -367,7 +367,7 @@ func (store *Store) GetBlock(blockID cid.Cid) (*block.Block, error) {
 // GetTipSet returns the tipset identified by `key`.
 func (store *Store) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	blks := []*block.Block{}
-	val, has := store.tsCache.Get(key.String())
+	val, has := store.tsCache.Get(key)
 	if has {
 		return val.(*block.TipSet), nil
 	}
@@ -384,7 +384,7 @@ func (store *Store) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	if err != nil {
 		return nil, err
 	}
-	store.tsCache.Add(key.String(), ts)
+	store.tsCache.Add(key, ts)
 	return ts, nil
 }
 

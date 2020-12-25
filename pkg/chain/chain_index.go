@@ -49,7 +49,7 @@ func (ci *ChainIndex) GetTipSetByHeight(_ context.Context, from *block.TipSet, t
 	cur := rounded.Key()
 	// cur := from.Key()
 	for {
-		cval, ok := ci.skipCache.Get(cur.String())
+		cval, ok := ci.skipCache.Get(cur)
 		if !ok {
 			fc, err := ci.fillCache(cur)
 			if err != nil {
@@ -112,7 +112,7 @@ func (ci *ChainIndex) fillCache(tsk block.TipSetKey) (*lbEntry, error) {
 		targetHeight: skipTarget.EnsureHeight(),
 		target:       skipTarget.Key(),
 	}
-	ci.skipCache.Add(tsk.String(), lbe)
+	ci.skipCache.Add(tsk, lbe)
 
 	return lbe, nil
 }
