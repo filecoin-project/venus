@@ -2,9 +2,10 @@ package cmd
 
 import (
 	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/venus/fixtures"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/venus/fixtures/asset"
 )
 
 var fetchCmd = &cmds.Command{
@@ -17,7 +18,11 @@ var fetchCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		// highest precedence is cmd line flag.
 		if size, ok := req.Options[Size].(uint64); ok {
-			if err := paramfetch.GetParams(req.Context, fixtures.ParametersJSON(), size); err != nil {
+			ps, err := asset.Asset("fixtures/_assets/proof-params/parameters.json")
+			if err != nil {
+				return err
+			}
+			if err := paramfetch.GetParams(req.Context, ps, size); err != nil {
 				return errors.Wrapf(err, "fetching proof parameters: %v", err)
 			}
 			return nil
