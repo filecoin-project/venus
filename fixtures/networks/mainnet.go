@@ -1,6 +1,7 @@
 package networks
 
 import (
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/venus/pkg/config"
@@ -54,6 +55,7 @@ func Mainnet() *NetworkConf {
 				UpgradeClausHeight:       343200,
 			},
 			DrandSchedule: map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
+			AdressNetwork: address.Mainnet,
 		},
 	}
 }

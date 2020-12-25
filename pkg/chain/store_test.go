@@ -355,6 +355,15 @@ func TestHeadEvents(t *testing.T) {
 
 	chA := chainStore.SubHeadChanges(ctx)
 	chB := chainStore.SubHeadChanges(ctx)
+	// HCurrent
+	currentA := <-chA
+	test.Equal(t, currentA[0].Type, chain.HCCurrent)
+	test.Equal(t, currentA[0].Val, genTS)
+
+	currentB := <-chB
+	test.Equal(t, currentB[0].Type, chain.HCCurrent)
+	test.Equal(t, currentB[0].Val, genTS)
+
 	defer ctx.Done()
 	assertSetHead(t, chainStore, link1)
 	assertSetHead(t, chainStore, link2)
@@ -367,15 +376,6 @@ func TestHeadEvents(t *testing.T) {
 	heads := []*block.TipSet{genTS, link1, link2, link3, link4, link4, link3, link2, link1, genTS}
 	types := []string{"apply", "apply", "apply", "apply", "apply", "revert", "revert", "revert", "revert"}
 	// Heads arrive in the expected order
-	// HCurrent
-	currentA := <-chA
-	test.Equal(t, currentA[0].Type, chain.HCCurrent)
-	test.Equal(t, currentA[0].Val, genTS)
-
-	currentB := <-chB
-	test.Equal(t, currentB[0].Type, chain.HCCurrent)
-	test.Equal(t, currentB[0].Val, genTS)
-
 	for i := 0; i < 9; i++ {
 		headA := <-chA
 		headB := <-chB

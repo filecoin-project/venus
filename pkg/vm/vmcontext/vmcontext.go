@@ -38,7 +38,6 @@ import (
 const MaxCallDepth = 4096
 
 var vmlog = logging.Logger("vm.context")
-var vmdebug = logging.Logger("vm.debug")
 
 // VM holds the stateView and executes messages over the stateView.
 type VM struct {
@@ -51,6 +50,7 @@ type VM struct {
 	pricelist    gas.Pricelist
 
 	vmDebug  bool // open debug or not
+	debugger *VMDebugMsg
 	vmOption VmOption
 
 	State state.Tree
@@ -105,6 +105,11 @@ func NewVM(actorImpls ActorImplLookup, vmOption VmOption) (*VM, error) {
 		// loaded during execution
 		// currentEpoch: ..,
 	}, nil
+}
+
+func (vm *VM) setDebugger() {
+	vm.debugger = NewVMDebugMsg()
+	vm.vmDebug = true
 }
 
 // ApplyGenesisMessage forces the execution of a message in the vm actor.
@@ -180,7 +185,7 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 
 // ApplyTipSetMessages implements interpreter.VMInterpreter
 func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.TipSet, parentEpoch, epoch abi.ChainEpoch, cb ExecCallBack) (cid.Cid, []types.MessageReceipt, error) {
-	tStart := time.Now()
+	toProcessTipset := time.Now()
 	var receipts []types.MessageReceipt
 	pstate, _ := vm.State.Flush(vm.context)
 	for i := parentEpoch; i < epoch; i++ {
@@ -216,14 +221,14 @@ func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.Ti
 		}
 		vm.SetCurrentEpoch(i + 1)
 	}
-	vmlog.Debugf("process tipset fork: %v\n", time.Now().Sub(tStart).Milliseconds())
+	vmlog.Debugf("process tipset fork: %v\n", time.Now().Sub(toProcessTipset).Milliseconds())
 	// create message tracker
 	// Note: the same message could have been included by more than one miner
 	seenMsgs := make(map[cid.Cid]struct{})
 
 	// process messages on each block
 	for index, blkInfo := range blocks {
-		tStart = time.Now()
+		toProcessBlock := time.Now()
 		if blkInfo.Block.Miner.Protocol() != address.ID {
 			panic("precond failure: block miner address must be an IDAddress")
 		}
@@ -257,9 +262,10 @@ func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.Ti
 
 			if vm.vmDebug {
 				rootCid, _ := vm.Flush()
-				vmdebug.Debugf("message: %s  root: %s", mcid, rootCid)
+
+				vm.debugger.Println("message:", mcid, "  root:", rootCid)
 				msgGasOutput, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
-				vmdebug.Debug(string(msgGasOutput))
+				vm.debugger.Println(string(msgGasOutput))
 
 				valuedTraces := []*types.GasTrace{}
 				for _, trace := range ret.GasTracker.ExecutionTrace.GasCharges {
@@ -268,13 +274,8 @@ func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.Ti
 					}
 				}
 				tracesBytes, _ := json.MarshalIndent(valuedTraces, "", "\t")
-				vmdebug.Debug(string(tracesBytes))
+				vm.debugger.Println(string(tracesBytes))
 			}
-		}
-
-		if vm.vmDebug {
-			root, _ := vm.State.Flush(context.TODO())
-			vmdebug.Debugf("before reward: %d  root: %s\n", index, root)
 		}
 
 		// Pay block reward.
@@ -292,19 +293,13 @@ func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.Ti
 
 		if vm.vmDebug {
 			root, _ := vm.State.Flush(context.TODO())
-			vmdebug.Debugf("reward: %d  root: %s\n", index, root)
+			vm.debugger.Println("reward: ", index, " root: ", root)
 		}
-		vmlog.Infof("process block %v time %v", index, time.Since(tStart).Milliseconds())
-
-	}
-
-	if vm.vmDebug {
-		root, _ := vm.State.Flush(context.TODO())
-		vmdebug.Debugf("before cron root: %s\n", root)
+		vmlog.Infof("process block %v time %v", index, time.Since(toProcessBlock).Milliseconds())
 	}
 
 	// cron tick
-	tStart = time.Now()
+	toProcessCron := time.Now()
 	cronMessage := makeCronTickMessage()
 
 	ret, err := vm.applyImplicitMessage(cronMessage)
@@ -317,12 +312,17 @@ func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.Ti
 		}
 	}
 
-	vmlog.Debugf("process tipset cron: %v\n", time.Now().Sub(tStart).Milliseconds())
+	vmlog.Infof("process cron: %v", time.Now().Sub(toProcessCron).Milliseconds())
 	if vm.vmDebug {
 		root, _ := vm.State.Flush(context.TODO())
-		vmdebug.Debugf("after cron root: %s\n", root)
+		vm.debugger.Printfln("after cron root: %s", root)
+
+		receipt, _ := json.MarshalIndent(receipts, "", "\t")
+		vm.debugger.Println(string(receipt))
+		vm.debugger.WriteToTerminal()
 	}
 
+	vmlog.Infof("process tipset %d: %v", epoch, time.Now().Sub(toProcessTipset).Milliseconds())
 	// commit stateView
 	root, err := vm.Flush()
 	if err != nil {
@@ -337,7 +337,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.Ti
 // This messages do not consume client gas and must not fail.
 func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 	// implicit messages gas is tracked separatly and not paid by the miner
-	gasTank := gas.NewGasTracker(constants.BlockGasLimit)
+	gasTank := gas.NewGasTracker(constants.BlockGasLimit * 10000)
 
 	// the execution of the implicit messages is simpler than full external/actor-actor messages
 	// execution:
