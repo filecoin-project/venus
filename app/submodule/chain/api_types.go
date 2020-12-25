@@ -1,12 +1,13 @@
 package chain
 
 import (
+	"time"
+
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
-	"time"
 )
 
 type Partition struct {
@@ -46,3 +47,5 @@ type MarketDeal struct {
 	Proposal market.DealProposal
 	State    market.DealState
 }
+
+type NetworkName string

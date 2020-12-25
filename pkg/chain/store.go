@@ -1011,3 +1011,9 @@ func ReorgOps(lts func(block.TipSetKey) (*block.TipSet, error), a, b *block.TipS
 func (store *Store) PutMessage(m storable) (cid.Cid, error) {
 	return PutMessage(store.bsstore, m)
 }
+
+func (store *Store) PutTipset(ctx context.Context, ts *block.TipSet) error {
+	_, err := store.stateAndBlockSource.cborStore.Put(ctx, ts)
+
+	return err
+}

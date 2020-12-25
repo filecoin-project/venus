@@ -3,13 +3,15 @@ package jwtauth
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/venus/pkg/repo"
 	jwt3 "github.com/gbrlsnchs/jwt/v3"
 	logging "github.com/ipfs/go-log"
 	acrypto "github.com/libp2p/go-libp2p-core/crypto"
 	xerrors "github.com/pkg/errors"
-	"strings"
+
+	"github.com/filecoin-project/venus/pkg/repo"
 )
 
 type APIAlg jwt3.HMACSHA
@@ -30,6 +32,10 @@ type JwtAuth struct {
 	jwtHmacSecret string
 	payload       JwtPayload
 	lr            repo.Repo
+}
+
+type JwtAuthAPI struct { //nolint
+	JwtAuth *JwtAuth
 }
 
 func NewJwtAuth(lr repo.Repo) (*JwtAuth, error) {
@@ -76,19 +82,23 @@ func (jwtAuth *JwtAuth) loadAPISecret() (*APIAlg, error) {
 	return (*APIAlg)(jwt3.NewHS256(raw)), nil
 }
 
-func (jwtAuth *JwtAuth) AuthVerify(ctx context.Context, token string) ([]auth.Permission, error) {
+func (jwtAuth *JwtAuth) API() *JwtAuthAPI {
+	return &JwtAuthAPI{JwtAuth: jwtAuth}
+}
+
+func (a *JwtAuthAPI) AuthVerify(ctx context.Context, token string) ([]auth.Permission, error) {
 	var payload JwtPayload
-	if _, err := jwt3.Verify([]byte(token), (*jwt3.HMACSHA)(jwtAuth.apiSecret), &payload); err != nil {
+	if _, err := jwt3.Verify([]byte(token), (*jwt3.HMACSHA)(a.JwtAuth.apiSecret), &payload); err != nil {
 		return nil, xerrors.Errorf("JWT Verification failed: %v", err)
 	}
 
 	return payload.Allow, nil
 }
 
-func (jwtAuth *JwtAuth) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error) {
+func (a *JwtAuthAPI) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error) {
 	p := JwtPayload{
 		Allow: perms, // TODO: consider checking validity
 	}
 
-	return jwt3.Sign(&p, (*jwt3.HMACSHA)(jwtAuth.apiSecret))
+	return jwt3.Sign(&p, (*jwt3.HMACSHA)(a.JwtAuth.apiSecret))
 }

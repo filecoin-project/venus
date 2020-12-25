@@ -1,6 +1,8 @@
 package mpool
 
 import (
+	"sync"
+
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
@@ -28,9 +30,9 @@ type MessagePoolSubmodule struct { //nolint
 	MessageTopic *pubsub.Topic
 	MessageSub   pubsub.Subscription
 
-	MPool     *messagepool.MessagePool
-	chain     *chain.ChainSubmodule
-	walletAPI *wallet.WalletAPI
+	MPool  *messagepool.MessagePool
+	chain  *chain.ChainSubmodule
+	wallet *wallet.WalletSubmodule
 }
 
 func OpenFilesystemJournal(lr repo.Repo) (journal.Journal, error) {
@@ -77,7 +79,7 @@ func NewMpoolSubmodule(cfg messagepoolConfig,
 		MPool:        mp,
 		MessageTopic: pubsub.NewTopic(topic),
 		chain:        chain,
-		walletAPI:    wallet.API(),
+		wallet:       wallet,
 	}, nil
 }
 
@@ -89,5 +91,9 @@ func (mp *MessagePoolSubmodule) Close() {
 }
 
 func (mp *MessagePoolSubmodule) API() *MessagePoolAPI {
-	return &MessagePoolAPI{mp: mp}
+	return &MessagePoolAPI{
+		pushLocks: messagepool.NewMpoolLocker(),
+		lk:        sync.Mutex{},
+		mp:        mp,
+	}
 }

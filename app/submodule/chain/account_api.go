@@ -17,6 +17,9 @@ func NewAccountAPI(chain *ChainSubmodule) AccountAPI {
 }
 
 func (accountAPI *AccountAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk block.TipSetKey) (address.Address, error) {
+	if tsk.IsEmpty() {
+		tsk = accountAPI.chain.State.Head()
+	}
 	view, err := accountAPI.chain.State.StateView(tsk)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("loading tipset %s: %v", tsk, err)

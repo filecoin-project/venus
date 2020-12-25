@@ -183,13 +183,6 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Uns
 		priorMsgs = append(priorMsgs, m)
 	}
 
-	fromActor, err := mp.api.GetActorAfter(msg.From, currTs)
-	if err != nil {
-		return -1, xerrors.Errorf("getting actor: %v", err)
-	}
-
-	msg.Nonce = fromActor.Nonce
-
 	// Try calling until we find a height with no migration.
 	var res *vm.Ret
 	for {

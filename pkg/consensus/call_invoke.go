@@ -10,6 +10,7 @@ import (
 	state2 "github.com/filecoin-project/venus/pkg/state"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"
@@ -185,6 +186,16 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *blo
 	if msg.GasLimit == 0 {
 		msg.GasLimit = constants.BlockGasLimit
 	}
+	if msg.GasFeeCap.Nil() {
+		msg.GasFeeCap = big.NewInt(0)
+	}
+	if msg.GasPremium.Nil() {
+		msg.GasPremium = big.NewInt(0)
+	}
+
+	if msg.Value.Nil() {
+		msg.Value = big.NewInt(0)
+	}
 
 	st, err := state.LoadState(ctx, cbor.NewCborStore(c.bstore), bstate)
 	if err != nil {
@@ -217,5 +228,5 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *blo
 	}
 
 	// TODO: maybe just use the invoker directly?
-	return c.processor.ProcessUnsignedMessage(ctx, msg, vmOption)
+	return c.processor.ProcessImplicitMessage(ctx, msg, vmOption)
 }

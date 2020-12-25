@@ -152,7 +152,12 @@ func (w *Waiter) findMessage(ctx context.Context, from *block.TipSet, m types.Ch
 			return nil, false, xerrors.Errorf("failed to load tipset during msg wait searchback: %w", err)
 		}
 
-		act, err := w.chainReader.GetActorAt(ctx, pts.Key(), mFromID)
+		grandParent, err := w.chainReader.GetTipSet(pts.EnsureParents())
+		if err != nil {
+			return nil, false, xerrors.Errorf("failed to load tipset during msg wait searchback: %w", err)
+		}
+
+		act, err := w.chainReader.GetActorAt(ctx, grandParent.Key(), mFromID)
 		actorNoExist := errors.Is(err, types.ErrActorNotFound)
 		if err != nil && !actorNoExist {
 			return nil, false, xerrors.Errorf("failed to load the actor: %w", err)
@@ -277,7 +282,11 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*chain.HeadChan
 }
 
 func (w *Waiter) receiptForTipset(ctx context.Context, ts *block.TipSet, msg types.ChainMsg) (*ChainMessage, bool, error) {
-	blockMessageInfos, err := w.messageProvider.LoadTipSetMessage(ctx, ts)
+	pts, err := w.chainReader.GetTipSet(ts.EnsureParents())
+	if err != nil {
+		return nil, false, err
+	}
+	blockMessageInfos, err := w.messageProvider.LoadTipSetMessage(ctx, pts)
 	if err != nil {
 		return nil, false, err
 	}
@@ -290,7 +299,7 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts *block.TipSet, msg typ
 				return nil, false, err
 			}
 			if expectedCid == msgCid {
-				recpt, err := w.receiptByIndex(ctx, ts.Key(), msgCid, blockMessageInfos)
+				recpt, err := w.receiptByIndex(ctx, pts.Key(), msgCid, blockMessageInfos)
 				if err != nil {
 					return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
 				}

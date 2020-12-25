@@ -93,6 +93,8 @@ type Node struct {
 	//
 	VersionTable *version.ProtocolVersionTable
 
+	JwtAuth *jwtauth.JwtAuth
+
 	//
 	// Jsonrpc
 	//
@@ -110,11 +112,6 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 
 	var err error
-	//err := node.chain.Start(ctx)
-	//if err != nil {
-	//	return err
-	//}
-
 	var syncCtx context.Context
 	syncCtx, node.syncer.CancelChainSync = context.WithCancel(context.Background())
 
@@ -337,10 +334,7 @@ func (node *Node) runRustfulAPI(ctx context.Context, rootCmdDaemon *cmds.Command
 
 func (node *Node) runJsonrpcAPI(ctx context.Context) (*http.Server, error) { //nolint
 	apiConfig := node.Repo.Config().API
-	jwtAuth, err := jwtauth.NewJwtAuth(node.Repo)
-	if err != nil {
-		return nil, xerrors.Errorf("read or generate jwt secrect error %s", err)
-	}
+	jwtAuth := node.JwtAuth.API()
 	ah := &auth.Handler{
 		Verify: jwtAuth.AuthVerify,
 		Next:   node.jsonRPCService.ServeHTTP,
