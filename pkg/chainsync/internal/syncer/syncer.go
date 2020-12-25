@@ -519,8 +519,11 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 		beInSyncing = false //reset to start new sync
 	}()
 
-	// If the store already has this tipset then the syncer is finished.
-	if syncer.chainStore.HasTipSetAndState(ctx, ci.Head) {
+	//If the store already has this tipset then the syncer is finished.
+	//if syncer.chainStore.HasTipSetAndState(ctx, ci.Head) {
+	//	return nil
+	//}
+	if ci.Head.Equals(syncer.staged.Key()) {
 		return nil
 	}
 
