@@ -25,12 +25,22 @@ var mpoolCmd = &cmds.Command{
 		"pending": mpoolPending,
 		"clear":   mpoolClear,
 		"sub":     mpoolSub,
-		//"stat":     mpoolStat,
+		"stat":    mpoolStat,
 		//"replace":  mpoolReplaceCmd,
 		//"find":     mpoolFindCmd,
 		"config":   mpoolConfig,
 		"gas-perf": mpoolGasPerfCmd,
 	},
+}
+
+var mpoolStat = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "print mpool state messages",
+		ShortDescription: `
+Get pending messages.
+`,
+	},
+	Options: []cmds.Option{},
 }
 
 var mpoolPending = &cmds.Command{
