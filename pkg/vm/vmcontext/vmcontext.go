@@ -822,10 +822,7 @@ func (vm *VM) Flush() (state.Root, error) {
 	if root, err := vm.State.Flush(vm.context); err != nil {
 		return cid.Undef, err
 	} else {
-		from := vm.bsstore
-		to := vm.bsstore.Read()
-
-		if err := blockstoreutil.CopyParticial(context.TODO(), from, to, root); err != nil {
+		if err := blockstoreutil.CopyBlockstore(context.TODO(), vm.bsstore.Write(), vm.bsstore.Read()); err != nil {
 			return cid.Undef, xerrors.Errorf("copying tree: %w", err)
 		}
 		return root, nil
