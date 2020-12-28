@@ -89,5 +89,6 @@ func (mp *MessagePoolSubmodule) Close() {
 }
 
 func (mp *MessagePoolSubmodule) API() *MessagePoolAPI {
-	return &MessagePoolAPI{mp: mp}
+	pushLocks := messagepool.NewMpoolLocker()
+	return &MessagePoolAPI{mp: mp, pushLocks: pushLocks}
 }
