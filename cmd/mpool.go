@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/messagepool"
-	"github.com/filecoin-project/venus/pkg/net"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -182,12 +181,9 @@ var mpoolReplaceCmd = &cmds.Command{
 
 		var found *types.SignedMessage
 		for _, p := range pending {
-			fmt.Println(p.Message.From.String())
-			fmt.Println(from.String())
 			if p.Message.From == from && p.Message.Nonce == nonce {
 				found = p
 				break
-
 			}
 		}
 
@@ -476,13 +472,12 @@ Get pending messages.
 			}
 
 			if cids {
+				cid, err := msg.Cid()
+				re.Emit(cid)
+				re.Emit(err)
 				fmt.Println(msg.Cid())
 			} else {
-				out, err := json.MarshalIndent(msg, "", "  ")
-				if err != nil {
-					return err
-				}
-				re.Emit(string(out))
+				re.Emit(msg)
 			}
 		}
 
@@ -512,7 +507,6 @@ Clear all pending messages from the mpool (USE WITH CARE)
 
 		return env.(*node.Env).MessagePoolAPI.MpoolClear(context.TODO(), local)
 	},
-	Type: net.SwarmConnInfos{},
 }
 
 var mpoolSub = &cmds.Command{
@@ -532,11 +526,7 @@ Subscribe to mpool changes
 		for {
 			select {
 			case update := <-sub:
-				out, err := json.MarshalIndent(update, "", "  ")
-				if err != nil {
-					return err
-				}
-				re.Emit(string(out))
+				re.Emit(update)
 			case <-ctx.Done():
 				return nil
 			}
@@ -566,12 +556,7 @@ get or set current mpool configuration
 				return err
 			}
 
-			bytes, err := json.Marshal(cfg)
-			if err != nil {
-				return err
-			}
-
-			re.Emit(string(bytes))
+			re.Emit(cfg)
 		} else {
 			cfg := new(messagepool.MpoolConfig)
 			bytes := []byte(req.Arguments[0])
@@ -659,7 +644,7 @@ Check gas performance of messages in mempool
 			gasReward := getGasReward(m)
 			gasPerf := getGasPerf(gasReward, m.Message.GasLimit)
 
-			re.Emit(fmt.Sprintf("%s\t%d\t%s\t%f\n", m.Message.From, m.Message.Nonce, gasReward, gasPerf))
+			re.Emit(fmt.Sprintf("%s   %d   %s  %f", m.Message.From, m.Message.Nonce, gasReward, gasPerf))
 		}
 
 		return nil
