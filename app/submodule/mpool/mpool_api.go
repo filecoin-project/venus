@@ -26,6 +26,11 @@ type MessagePoolAPI struct {
 	mp *MessagePoolSubmodule
 }
 
+func (a *MessagePoolAPI) MpoolPublish(ctx context.Context, addr address.Address) error {
+	return a.mp.MPool.PublishMsgForWallet(addr)
+
+}
+
 func (a *MessagePoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
 	return a.mp.MPool.Push(smsg)
 }
