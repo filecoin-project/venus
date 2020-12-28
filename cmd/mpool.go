@@ -5,17 +5,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/net"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"golang.org/x/xerrors"
 	stdbig "math/big"
 	"sort"
+	"strconv"
 )
 
 var mpoolCmd = &cmds.Command{
@@ -23,14 +27,233 @@ var mpoolCmd = &cmds.Command{
 		Tagline: "Manage message pool",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"pending": mpoolPending,
-		"clear":   mpoolClear,
-		"sub":     mpoolSub,
-		"stat":    mpoolStat,
-		//"replace":  mpoolReplaceCmd,
-		//"find":     mpoolFindCmd,
+		"pending":  mpoolPending,
+		"clear":    mpoolClear,
+		"sub":      mpoolSub,
+		"stat":     mpoolStat,
+		"replace":  mpoolReplaceCmd,
+		"find":     mpoolFindCmd,
 		"config":   mpoolConfig,
 		"gas-perf": mpoolGasPerfCmd,
+	},
+}
+
+var mpoolFindCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline:          "find",
+		ShortDescription: "find a message in the mempool",
+	},
+	Options: []cmds.Option{
+		cmds.StringOption("from", "search for messages with given 'from' address"),
+		cmds.StringOption("to", "search for messages with given 'to' address"),
+		cmds.Int64Option("method", "search for messages with given method"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		from, _ := req.Options["from"].(string)
+		to, _ := req.Options["to"].(string)
+		method, _ := req.Options["method"].(int64)
+
+		ctx := context.TODO()
+		pending, err := env.(*node.Env).MessagePoolAPI.MpoolPending(ctx, block.TipSetKey{})
+		if err != nil {
+			return err
+		}
+
+		var toFilter, fromFilter address.Address
+		if len(to) > 0 {
+			a, err := address.NewFromString(to)
+			if err != nil {
+				return fmt.Errorf("'to' address was invalid: %w", err)
+			}
+
+			toFilter = a
+		}
+
+		if len(from) > 0 {
+			a, err := address.NewFromString(from)
+			if err != nil {
+				return fmt.Errorf("'from' address was invalid: %w", err)
+			}
+
+			fromFilter = a
+		}
+
+		var methodFilter *abi.MethodNum
+		if method > 0 {
+			m := abi.MethodNum(method)
+			methodFilter = &m
+		}
+
+		var out []*types.SignedMessage
+		for _, m := range pending {
+			if toFilter != address.Undef && m.Message.To != toFilter {
+				continue
+			}
+
+			if fromFilter != address.Undef && m.Message.From != fromFilter {
+				continue
+			}
+
+			if methodFilter != nil && *methodFilter != m.Message.Method {
+				continue
+			}
+
+			out = append(out, m)
+		}
+
+		re.Emit(out)
+		return nil
+	},
+}
+
+var mpoolReplaceCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline:          "replace",
+		ShortDescription: "replace a message in the mempool",
+	},
+
+	Options: []cmds.Option{
+		cmds.BoolOption("auto", "automatically reprice the specified message"),
+		cmds.Int64Option("gas-limit", "gas price for new message"),
+		cmds.StringOption("gas-premium", "gas price for new message"),
+		cmds.StringOption("max-fee", "Spend up to X FIL for this message (applicable for auto mode)"),
+		cmds.StringOption("gas-feecap", "gas feecap for new message"),
+		cmds.StringOption("message-cid", "message-cid"),
+		cmds.StringOption("from", "message sender"),
+		cmds.StringOption("nonce", "message nonce"),
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("from nonce", false, true, "from nonce"),
+		cmds.StringArg("message-cid", false, true, "message-cid"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		auto, _ := req.Options["auto"].(bool)
+		gasFeecap, _ := req.Options["gas-feecap"].(string)
+		gasPremium, _ := req.Options["gas-premium"].(string)
+		gasLimit, _ := req.Options["gas-limit"].(int64)
+		maxFee, _ := req.Options["max-fee"].(string)
+		message_cid, _ := req.Options["message-cid"].(string)
+		froms, _ := req.Options["from"].(string)
+		nonces, _ := req.Options["nonce"].(string)
+
+		ctx := context.TODO()
+		var from address.Address
+		var nonce uint64
+
+		if len(message_cid) > 0 {
+			mcid, err := cid.Decode(message_cid)
+			if err != nil {
+				return err
+			}
+
+			msg, err := env.(*node.Env).ChainAPI.ChainGetMessage(ctx, mcid)
+			if err != nil {
+				return fmt.Errorf("could not find referenced message: %w", err)
+			}
+
+			from = msg.From
+			nonce = msg.Nonce
+		} else if len(froms) > 0 && len(nonces) > 0 {
+			f, err := address.NewFromString(froms)
+			if err != nil {
+				return err
+			}
+
+			n, err := strconv.ParseUint(nonces, 10, 64)
+			if err != nil {
+				return err
+			}
+
+			from = f
+			nonce = n
+		} else {
+			return xerrors.Errorf("replace a message in the mempool")
+		}
+
+		ts, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting chain head: %w", err)
+		}
+
+		pending, err := env.(*node.Env).MessagePoolAPI.MpoolPending(ctx, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		var found *types.SignedMessage
+		for _, p := range pending {
+			fmt.Println(p.Message.From.String())
+			fmt.Println(from.String())
+			if p.Message.From == from && p.Message.Nonce == nonce {
+				found = p
+				break
+
+			}
+		}
+
+		if found == nil {
+			return fmt.Errorf("no pending message found from %s with nonce %d", from, nonce)
+		}
+
+		msg := found.Message
+
+		if auto {
+			minRBF := messagepool.ComputeMinRBF(msg.GasPremium)
+
+			var mss *types.MessageSendSpec
+			if len(maxFee) > 0 {
+				maxFee, err := types.BigFromString(maxFee)
+				if err != nil {
+					return fmt.Errorf("parsing max-spend: %w", err)
+				}
+				mss = &types.MessageSendSpec{
+					MaxFee: maxFee,
+				}
+			}
+
+			// msg.GasLimit = 0 // TODO: need to fix the way we estimate gas limits to account for the messages already being in the mempool
+			msg.GasFeeCap = abi.NewTokenAmount(0)
+			msg.GasPremium = abi.NewTokenAmount(0)
+			retm, err := env.(*node.Env).MessagePoolAPI.GasEstimateMessageGas(ctx, &msg, mss, block.TipSetKey{})
+			if err != nil {
+				return fmt.Errorf("failed to estimate gas values: %w", err)
+			}
+
+			msg.GasPremium = big.Max(retm.GasPremium, minRBF)
+			msg.GasFeeCap = big.Max(retm.GasFeeCap, msg.GasPremium)
+
+			mff := func() (abi.TokenAmount, error) {
+				return abi.TokenAmount(config.DefaultDefaultMaxFee), nil
+			}
+
+			messagepool.CapGasFee(mff, &msg, mss.MaxFee)
+		} else {
+			if gasLimit > 0 {
+				msg.GasLimit = types.Unit(gasLimit)
+			}
+			msg.GasPremium, err = types.BigFromString(gasPremium)
+			if err != nil {
+				return fmt.Errorf("parsing gas-premium: %w", err)
+			}
+			// TODO: estimate fee cap here
+			msg.GasFeeCap, err = types.BigFromString(gasFeecap)
+			if err != nil {
+				return fmt.Errorf("parsing gas-feecap: %w", err)
+			}
+		}
+
+		smsg, err := env.(*node.Env).WalletAPI.WalletSignMessage(ctx, msg.From, &msg)
+		if err != nil {
+			return fmt.Errorf("failed to sign message: %w", err)
+		}
+
+		cid, err := env.(*node.Env).MessagePoolAPI.MpoolPush(ctx, smsg)
+		if err != nil {
+			return fmt.Errorf("failed to push new message to mempool: %w", err)
+		}
+
+		re.Emit(fmt.Sprintf("new message cid: %s", cid))
+		return nil
 	},
 }
 
@@ -43,7 +266,7 @@ Get pending messages.
 	},
 	Options: []cmds.Option{
 		cmds.BoolOption("local", "print stats for addresses in local wallet only"),
-		cmds.BoolOption("basefee-lookback", "number of blocks to look back for minimum basefee"),
+		cmds.Int64Option("basefee-lookback", "number of blocks to look back for minimum basefee"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		local, _ := req.Options["local"].(bool)
@@ -197,8 +420,8 @@ Get pending messages.
 	Options: []cmds.Option{
 		cmds.BoolOption("local", "print pending messages for addresses in local wallet only"),
 		cmds.BoolOption("cids", "only print cids of messages in output"),
-		cmds.BoolOption("to", "return messages to a given address"),
-		cmds.BoolOption("from", "return messages from a given address"),
+		cmds.StringOption("to", "return messages to a given address"),
+		cmds.StringOption("from", "return messages from a given address"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		local, _ := req.Options["local"].(bool)
@@ -265,7 +488,6 @@ Get pending messages.
 
 		return nil
 	},
-	Type: net.SwarmConnInfos{},
 }
 
 var mpoolClear = &cmds.Command{
@@ -322,7 +544,6 @@ Subscribe to mpool changes
 
 		return nil
 	},
-	Type: net.SwarmConnInfos{},
 }
 
 var mpoolConfig = &cmds.Command{
@@ -365,7 +586,6 @@ get or set current mpool configuration
 
 		return nil
 	},
-	Type: net.SwarmConnInfos{},
 }
 
 var mpoolGasPerfCmd = &cmds.Command{
@@ -444,5 +664,4 @@ Check gas performance of messages in mempool
 
 		return nil
 	},
-	Type: net.SwarmConnInfos{},
 }
