@@ -366,7 +366,7 @@ func (store *Store) GetBlock(blockID cid.Cid) (*block.Block, error) {
 
 // GetTipSet returns the tipset identified by `key`.
 func (store *Store) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
-	if key.Empty() {
+	if key.IsEmpty() {
 		key = store.GetHead()
 	}
 	blks := []*block.Block{}
