@@ -34,6 +34,46 @@ var mpoolCmd = &cmds.Command{
 		"find":     mpoolFindCmd,
 		"config":   mpoolConfig,
 		"gas-perf": mpoolGasPerfCmd,
+		"publish":  mpoolPublish,
+	},
+}
+
+var mpoolPublish = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline:          "publish",
+		ShortDescription: "publish pending messages",
+	},
+	Options: []cmds.Option{
+		cmds.StringOption("from", "optionally specify the wallet for publish message"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		from, _ := req.Options["from"].(string)
+
+		ctx := context.TODO()
+
+		var fromAddr address.Address
+		if from == "" {
+			defaddr, err := env.(*node.Env).WalletAPI.WalletDefaultAddress()
+			if err != nil {
+				return err
+			}
+
+			fromAddr = defaddr
+		} else {
+			addr, err := address.NewFromString(from)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = addr
+		}
+
+		err := env.(*node.Env).MessagePoolAPI.MpoolPublish(ctx, fromAddr)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	},
 }
 
@@ -475,7 +515,6 @@ Get pending messages.
 				cid, err := msg.Cid()
 				_ = re.Emit(cid)
 				_ = re.Emit(err)
-				fmt.Println(msg.Cid())
 			} else {
 				_ = re.Emit(msg)
 			}

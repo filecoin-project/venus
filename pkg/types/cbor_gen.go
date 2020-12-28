@@ -3,6 +3,7 @@
 package types
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 
@@ -216,6 +217,14 @@ func (t *SignedMessage) UnmarshalCBOR(r io.Reader) error {
 
 	}
 	return nil
+}
+
+func (sm *SignedMessage) Serialize() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	if err := sm.MarshalCBOR(buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 var lengthBufUnsignedMessage = []byte{138}

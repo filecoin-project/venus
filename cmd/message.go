@@ -53,7 +53,7 @@ var msgSendCmd = &cmds.Command{
 		feecapOption,
 		premiumOption,
 		limitOption,
-		cmds.Uint64Option("nonce", "specify the nonce to use").WithDefault(0),
+		cmds.Uint64Option("nonce", "specify the nonce to use"),
 		cmds.StringOption("params-json", "specify invocation parameters in json"),
 		cmds.StringOption("params-hex", "specify invocation parameters in hex"),
 	},
@@ -91,11 +91,9 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
-		env.(*node.Env).NetworkAPI.NetworkGetPeerAddresses()
-
 		var params []byte
 		rawPJ := req.Options["params-json"]
-		if rawVal != nil {
+		if rawPJ != nil {
 			decparams, err := decodeTypedParams(req.Context, env.(*node.Env), toAddr, methodID, rawPJ.(string))
 			if err != nil {
 				return fmt.Errorf("failed to decode json params: %s", err)
@@ -119,17 +117,24 @@ var msgSendCmd = &cmds.Command{
 			From:       fromAddr,
 			To:         toAddr,
 			Value:      val,
-			GasPremium: feecap,
-			GasFeeCap:  premium,
+			GasPremium: premium,
+			GasFeeCap:  feecap,
 			GasLimit:   gasLimit,
 			Method:     methodID,
 			Params:     params,
 		}
 
-		rawNonce := req.Options["nonce"]
+		nonceOption := req.Options["nonce"]
 		c := cid.Undef
-		if rawNonce != nil {
-			sm, err := env.(*node.Env).WalletAPI.WalletSignMessage(req.Context, fromAddr, msg)
+		if nonceOption != nil {
+			nonce, ok := nonceOption.(uint64)
+			if !ok {
+				msg := fmt.Sprintf("invalid gas limit: %s", nonceOption)
+				return errors.New(msg)
+			}
+			msg.Nonce = nonce
+
+			sm, err := env.(*node.Env).WalletAPI.WalletSignMessage(req.Context, msg.From, msg)
 			if err != nil {
 				return err
 			}
