@@ -31,7 +31,7 @@ func (vm *syscallsStateView) AccountSignerAddress(ctx context.Context, accountAd
 	if accountAddr.Protocol() == address.SECP256K1 || accountAddr.Protocol() == address.BLS {
 		return accountAddr, nil
 	}
-	accountActor, found, err := vm.state.GetActor(vm.context, accountAddr)
+	accountActor, found, err := vm.State.GetActor(vm.context, accountAddr)
 	if err != nil {
 		return address.Undef, errors.Wrapf(err, "signer resolution failed To find actor %s", accountAddr)
 	}
@@ -48,7 +48,7 @@ func (vm *syscallsStateView) AccountSignerAddress(ctx context.Context, accountAd
 }
 
 func (vm *syscallsStateView) MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error) {
-	accountActor, found, err := vm.state.GetActor(vm.context, maddr)
+	accountActor, found, err := vm.State.GetActor(vm.context, maddr)
 	if err != nil {
 		return address.Undef, address.Undef, errors.Wrapf(err, "miner resolution failed To find actor %s", maddr)
 	}
@@ -69,7 +69,7 @@ func (vm *syscallsStateView) MinerControlAddresses(ctx context.Context, maddr ad
 }
 
 func (vm *syscallsStateView) MinerInfo(ctx context.Context, maddr address.Address, nv network.Version) (*miner.MinerInfo, error) {
-	accountActor, found, err := vm.state.GetActor(vm.context, maddr)
+	accountActor, found, err := vm.State.GetActor(vm.context, maddr)
 	if err != nil {
 		return nil, errors.Wrapf(err, "miner resolution failed To find actor %s", maddr)
 	}

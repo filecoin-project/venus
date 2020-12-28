@@ -1,6 +1,7 @@
 package networks
 
 import (
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/venus/pkg/config"
@@ -32,8 +33,11 @@ func Net2k() *NetworkConf {
 				BreezeGasTampingDuration: 0,
 				UpgradeCalicoHeight:      20,
 				UpgradePersianHeight:     25,
+				UpgradeOrangeHeight:      27,
+				UpgradeClausHeight:       30,
 			},
 			DrandSchedule: map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			AdressNetwork: address.Testnet,
 		},
 	}
 }

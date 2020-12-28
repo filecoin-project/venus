@@ -21,7 +21,6 @@ import (
 	_ "github.com/filecoin-project/venus/pkg/consensus/lib/sigs/secp"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
 	"github.com/filecoin-project/venus/pkg/repo"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -90,7 +89,7 @@ func mkBlock(parents *block.TipSet, weightInc int64, ticketNonce uint64) *block.
 
 	pstateRoot := c
 	if parents != nil {
-		pstateRoot = parents.Blocks()[0].ParentStateRoot.Cid
+		pstateRoot = parents.Blocks()[0].ParentStateRoot
 	}
 
 	var height abi.ChainEpoch
@@ -110,20 +109,20 @@ func mkBlock(parents *block.TipSet, weightInc int64, ticketNonce uint64) *block.
 
 	return &block.Block{
 		Miner: addr,
-		ElectionProof: &crypto.ElectionProof{
+		ElectionProof: &block.ElectionProof{
 			VRFProof: []byte(fmt.Sprintf("====%d=====", ticketNonce)),
 		},
 		Ticket: block.Ticket{
 			VRFProof: []byte(fmt.Sprintf("====%d=====", ticketNonce)),
 		},
 		Parents:               tsKey,
-		ParentMessageReceipts: enccid.NewCid(c),
+		ParentMessageReceipts: c,
 		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
 		ParentWeight:          weight,
-		Messages:              enccid.NewCid(c),
+		Messages:              c,
 		Height:                height,
 		Timestamp:             timestamp,
-		ParentStateRoot:       enccid.NewCid(pstateRoot),
+		ParentStateRoot:       pstateRoot,
 		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
 		ParentBaseFee:         tbig.NewInt(int64(constants.MinimumBaseFee)),
 	}
@@ -249,7 +248,7 @@ func (tma *testMpoolAPI) GetActorAfter(addr address.Address, ts *block.TipSet) (
 	}
 
 	return &types.Actor{
-		Code:    enccid.NewCid(builtin2.StorageMarketActorCodeID),
+		Code:    builtin2.StorageMarketActorCodeID,
 		Nonce:   nonce,
 		Balance: balance,
 	}, nil

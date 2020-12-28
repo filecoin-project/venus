@@ -1,31 +1,36 @@
 package vmcontext
 
 import (
-	"context"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	xerrors "github.com/pkg/errors"
 )
 
-var _ cbor.IpldStore = (*GasChargeStorage)(nil)
+var _ cbor.IpldBlockstore = (*GasChargeBlockStore)(nil)
 
-// ActorStorage hides the storage methods From the actors and turns the errors into runtime panics.
-type GasChargeStorage struct {
-	context   context.Context
-	inner     vmStorage
-	pricelist gas.Pricelist
+type GasChargeBlockStore struct {
 	gasTank   *gas.GasTracker
+	pricelist gas.Pricelist
+	inner     cbor.IpldBlockstore
 }
 
-func (s *GasChargeStorage) Get(ctx context.Context, c cid.Cid, out interface{}) error {
-	//gas charge must check first
-	s.gasTank.Charge(s.pricelist.OnIpldGet(), "storage get %s bytes into %v", c, out)
-	_, err := s.inner.GetWithLen(s.context, c, out)
-	return err
+func (bs *GasChargeBlockStore) Get(c cid.Cid) (blocks.Block, error) {
+	bs.gasTank.Charge(bs.pricelist.OnIpldGet(), "storage get %s", c)
+
+	blk, err := bs.inner.Get(c)
+	if err != nil {
+		panic(xerrors.WithMessage(err, "failed to get block from blockstore"))
+	}
+	return blk, nil
 }
 
-func (s *GasChargeStorage) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
-	cid, ln, err := s.inner.PutWithLen(s.context, v)
-	s.gasTank.Charge(s.pricelist.OnIpldPut(ln), "storage put %s %d bytes into %v", cid, ln, v)
-	return cid, err
+func (bs *GasChargeBlockStore) Put(blk blocks.Block) error {
+	bs.gasTank.Charge(bs.pricelist.OnIpldPut(len(blk.RawData())), "%s storage put %d bytes", blk.Cid(), len(blk.RawData()))
+
+	if err := bs.inner.Put(blk); err != nil {
+		panic(xerrors.WithMessage(err, "failed to write data to disk"))
+	}
+	return nil
 }

@@ -33,11 +33,11 @@ var (
 )
 
 func Load(store adt.Store, act *types.Actor) (st State, err error) {
-	switch act.Code.Cid {
+	switch act.Code {
 	case builtin0.StorageMarketActorCodeID:
-		return load0(store, act.Head.Cid)
+		return load0(store, act.Head)
 	case builtin2.StorageMarketActorCodeID:
-		return load2(store, act.Head.Cid)
+		return load2(store, act.Head)
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
@@ -65,8 +65,7 @@ type BalanceTable interface {
 type DealStates interface {
 	ForEach(cb func(id abi.DealID, ds DealState) error) error
 	Get(id abi.DealID) (*DealState, bool, error)
-
-	array() adt.Array
+	ArrayValue() adt.Array
 	decode(*cbg.Deferred) (*DealState, error)
 }
 
@@ -74,7 +73,7 @@ type DealProposals interface {
 	ForEach(cb func(id abi.DealID, dp DealProposal) error) error
 	Get(id abi.DealID) (*DealProposal, bool, error)
 
-	array() adt.Array
+	ArrayValue() adt.Array
 	decode(*cbg.Deferred) (*DealProposal, error)
 }
 

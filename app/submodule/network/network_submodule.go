@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/repo"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -26,7 +27,6 @@ import (
 	"github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-cid"
-	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-graphsync"
 	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
@@ -89,7 +89,7 @@ type networkConfig interface {
 
 type networkRepo interface {
 	Config() *config.Config
-	Datastore() ds.Batching
+	ChainDatastore() repo.Datastore
 	Path() (string, error)
 }
 
@@ -113,7 +113,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 		makeDHT := func(h host.Host) (routing.Routing, error) {
 			mode := dht.ModeServer
 			opts := []dht.Option{dht.Mode(mode),
-				dht.Datastore(repo.Datastore()),
+				dht.Datastore(repo.ChainDatastore()),
 				dht.NamespacedValidator("v", validator),
 				dht.ProtocolPrefix(net.FilecoinDHT(networkName)),
 				dht.QueryFilter(dht.PublicQueryFilter),
@@ -156,7 +156,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 
 		go peerMgr.Run(ctx)
 	} else {
-		router = offroute.NewOfflineRouter(repo.Datastore(), validator)
+		router = offroute.NewOfflineRouter(repo.ChainDatastore(), validator)
 		peerHost = rhost.Wrap(NewNoopLibP2PHost(), router)
 		pubsubMessageSigning = false
 		peerMgr = &net.MockPeerMgr{}
@@ -198,9 +198,9 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	gsync := graphsyncimpl.New(ctx, graphsyncNetwork, loader, storer, graphsyncimpl.RejectAllRequestsByDefault())
 
 	//dataTransger
-	sc := storedcounter.New(repo.Datastore(), datastore.NewKey("/datatransfer/client/counter"))
+	sc := storedcounter.New(repo.ChainDatastore(), datastore.NewKey("/datatransfer/client/counter"))
 	dtNet := dtnet.NewFromLibp2pHost(peerHost)
-	dtDs := namespace.Wrap(repo.Datastore(), datastore.NewKey("/datatransfer/client/transfers"))
+	dtDs := namespace.Wrap(repo.ChainDatastore(), datastore.NewKey("/datatransfer/client/transfers"))
 	transport := dtgstransport.NewTransport(peerHost.ID(), gsync)
 
 	repoPath, err := repo.Path()
@@ -239,7 +239,7 @@ func retrieveNetworkName(ctx context.Context, genCid cid.Cid, cborStore cbor.Ipl
 		return "", errors.Wrapf(err, "failed to get block %s", genCid.String())
 	}
 
-	return appstate.NewView(cborStore, genesis.ParentStateRoot.Cid).InitNetworkName(ctx)
+	return appstate.NewView(cborStore, genesis.ParentStateRoot).InitNetworkName(ctx)
 }
 
 // buildHost determines if we are publically dialable.  If so use public

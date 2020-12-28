@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/venus/app/node/test"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
@@ -27,7 +26,7 @@ func TestDagDaemon(t *testing.T) {
 
 		head, err := n.Chain().API().ChainHead(context.Background())
 		require.NoError(t, err)
-		hb := head.Key().Iter().Value()
+		hb := head.Key().Cids()[0]
 		// get an IPLD node from the DAG by its CID
 		op := cmdClient.RunSuccess(ctx, "dag", "get", hb.String(), "--enc", "json")
 		result2 := op.ReadStdoutTrimNewlines()
@@ -38,7 +37,7 @@ func TestDagDaemon(t *testing.T) {
 		// CBOR decode the IPLD node's raw data into a Filecoin block
 
 		var actual block.Block
-		encoding.Decode(ipldnode.RawData(), &actual) // nolint: errcheck
+		actual.UnmarshalCBOR(bytes.NewReader(ipldnode.RawData())) // nolint: errcheck
 		// assert.NoError(err)
 		// TODO Enable ^^ and debug why Block.Miner isn't being de/encoded properly.
 

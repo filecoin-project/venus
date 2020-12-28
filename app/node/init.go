@@ -2,13 +2,11 @@ package node
 
 import (
 	"context"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	keystore "github.com/ipfs/go-ipfs-keystore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	acrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/pkg/cborutil"
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -60,9 +58,9 @@ func Init(ctx context.Context, r repo.Repo, gen genesis.InitFunc, opts ...InitOp
 		o(cfg)
 	}
 
-	bs := bstore.NewBlockstore(r.Datastore())
-	cst := cborutil.NewIpldStore(bs)
-	_, err := chain.Init(ctx, r, bs, cst, gen)
+	bs := r.Datastore()
+	cst := cbor.NewCborStore(bs)
+	_, err := genesis.Init(ctx, r, bs, cst, gen)
 	if err != nil {
 		return errors.Wrap(err, "Could not Init Node")
 	}

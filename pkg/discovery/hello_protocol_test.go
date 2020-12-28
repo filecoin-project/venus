@@ -2,6 +2,7 @@ package discovery_test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 	"time"
 
@@ -48,16 +49,20 @@ func TestHelloHandshake(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	addrGetter := types.NewForTestGetter()
+	minerAddr := addrGetter()
+	mockCid := types.CidFromString(t, "mock")
+
 	mn, err := mocknet.WithNPeers(ctx, 2)
 	require.NoError(t, err)
 
 	a := mn.Hosts()[0]
 	b := mn.Hosts()[1]
 
-	genesisA := &block.Block{}
+	genesisA := &block.Block{Miner: minerAddr, Messages: mockCid, ParentStateRoot: mockCid, ParentMessageReceipts: mockCid}
 
-	heavy1 := block.RequireNewTipSet(t, &block.Block{Height: 2, Ticket: block.Ticket{VRFProof: []byte{0}}})
-	heavy2 := block.RequireNewTipSet(t, &block.Block{Height: 3, Ticket: block.Ticket{VRFProof: []byte{1}}})
+	heavy1 := block.RequireNewTipSet(t, &block.Block{Miner: minerAddr, Messages: mockCid, ParentStateRoot: mockCid, ParentMessageReceipts: mockCid, Height: 2, Ticket: block.Ticket{VRFProof: []byte{0}}})
+	heavy2 := block.RequireNewTipSet(t, &block.Block{Miner: minerAddr, Messages: mockCid, ParentStateRoot: mockCid, ParentMessageReceipts: mockCid, Height: 3, Ticket: block.Ticket{VRFProof: []byte{1}}})
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -108,6 +113,10 @@ func TestHelloBadGenesis(t *testing.T) {
 	mn, err := mocknet.WithNPeers(ctx, 2)
 	assert.NoError(t, err)
 
+	addrGetter := types.NewForTestGetter()
+	minerAddr := addrGetter()
+	mockCid := types.CidFromString(t, "mock")
+
 	a := mn.Hosts()[0]
 	b := mn.Hosts()[1]
 
@@ -116,8 +125,8 @@ func TestHelloBadGenesis(t *testing.T) {
 	genesisA := builder.AppendBlockOn(block.UndefTipSet)
 	genesisB := builder.AppendBlockOn(block.UndefTipSet)
 
-	heavy1 := block.RequireNewTipSet(t, &block.Block{Height: 2, Ticket: block.Ticket{VRFProof: []byte{0}}})
-	heavy2 := block.RequireNewTipSet(t, &block.Block{Height: 3, Ticket: block.Ticket{VRFProof: []byte{1}}})
+	heavy1 := block.RequireNewTipSet(t, &block.Block{Miner: minerAddr, Messages: mockCid, ParentStateRoot: mockCid, ParentMessageReceipts: mockCid, Height: 2, Ticket: block.Ticket{VRFProof: []byte{0}}})
+	heavy2 := block.RequireNewTipSet(t, &block.Block{Miner: minerAddr, Messages: mockCid, ParentStateRoot: mockCid, ParentMessageReceipts: mockCid, Height: 3, Ticket: block.Ticket{VRFProof: []byte{1}}})
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}

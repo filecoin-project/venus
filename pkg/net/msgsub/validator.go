@@ -1,6 +1,7 @@
 package msgsub
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/ipfs/go-log/v2"
@@ -29,7 +30,7 @@ func NewMessageTopicValidator(syntaxVal consensus.MessageSyntaxValidator, sigVal
 		opts: opts,
 		validator: func(ctx context.Context, p peer.ID, msg *pubsub.Message) bool {
 			unmarshaled := &types.SignedMessage{}
-			if err := unmarshaled.Unmarshal(msg.GetData()); err != nil {
+			if err := unmarshaled.UnmarshalCBOR(bytes.NewReader(msg.GetData())); err != nil {
 				messageTopicLogger.Debugf("message from peer: %s failed to decode: %s", p.String(), err.Error())
 				mDecodeMsgFail.Inc(ctx, 1)
 				return false

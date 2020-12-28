@@ -1,6 +1,7 @@
 package constants
 
 import (
+	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
@@ -48,3 +49,4 @@ const BlsSignatureCacheSize = 40000
 // Size of signature verification cache
 // 32k keeps the cache around 10MB in size, max
 const VerifSigCacheSize = 32000
+const Finality = policy.ChainFinality

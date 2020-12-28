@@ -12,6 +12,8 @@ func main() {
 	lvl := os.Getenv("GO_FILECOIN_LOG_LEVEL")
 	if lvl == "" {
 		logging.SetAllLoggers(logging.LevelInfo)
+		logging.SetLogLevel("beacon", "error")       // nolint: errcheck
+		logging.SetLogLevel("peer-tracker", "error") // nolint: errcheck
 		logging.SetLogLevel("dht", "error")          // nolint: errcheck
 		logging.SetLogLevel("bitswap", "error")      // nolint: errcheck
 		logging.SetLogLevel("graphsync", "info")     // nolint: errcheck

@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"testing"
@@ -82,9 +83,10 @@ func TestBadFrom(t *testing.T) {
 
 		// Can't use NewSignedMessage constructor as it always signs with msg.From.
 		msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
-		bmsg, err := msg.Marshal()
+		buf := new(bytes.Buffer)
+		err = msg.MarshalCBOR(buf)
 		require.NoError(t, err)
-		sig, err := signer.SignBytes(ctx, bmsg, otherAddr) // sign with addr != msg.From
+		sig, err := signer.SignBytes(ctx, buf.Bytes(), otherAddr) // sign with addr != msg.From
 		require.NoError(t, err)
 		smsg := &types.SignedMessage{
 			Message:   *msg,
@@ -102,9 +104,10 @@ func TestBadFrom(t *testing.T) {
 
 		// Can't use NewSignedMessage constructor as it always signs with msg.From.
 		msg := types.NewMeteredMessage(idAddress, idAddress, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
-		bmsg, err := msg.Marshal()
+		buf := new(bytes.Buffer)
+		err = msg.MarshalCBOR(buf)
 		require.NoError(t, err)
-		sig, err := signer.SignBytes(ctx, bmsg, otherAddr) // sign with addr != msg.From (resolved)
+		sig, err := signer.SignBytes(ctx, buf.Bytes(), otherAddr) // sign with addr != msg.From (resolved)
 		require.NoError(t, err)
 		smsg := &types.SignedMessage{
 			Message:   *msg,

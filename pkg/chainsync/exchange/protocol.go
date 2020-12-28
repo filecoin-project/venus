@@ -1,13 +1,13 @@
 package exchange
 
 import (
+	"github.com/ipfs/go-cid"
 	"time"
 
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/types"
 )
@@ -45,13 +45,11 @@ const (
 
 // FIXME: Rename. Make private.
 type Request struct {
-	// control field for encoding struct as an array
-	_ struct{} `cbor:",toarray"`
 	// List of ordered CIDs comprising a `TipSetKey` from where to start
 	// fetching backwards.
 	// FIXME: Consider using `TipSetKey` now (introduced after the creation
 	//  of this protocol) instead of converting back and forth.
-	Head []enccid.Cid
+	Head []cid.Cid
 	// Number of block sets to fetch from `Head` (inclusive, should always
 	// be in the range `[1, MaxRequestLength]`).
 	Length uint64
@@ -95,8 +93,6 @@ func parseOptions(optfield uint64) *parsedOptions {
 
 // FIXME: Rename. Make private.
 type Response struct {
-	// control field for encoding struct as an array
-	_      struct{} `cbor:",toarray"`
 	Status status
 	// String that complements the error status when converting to an
 	// internal error (see `statusToError()`).
@@ -142,7 +138,6 @@ func (res *Response) statusToError() error {
 
 // FIXME: Rename.
 type BSTipSet struct {
-	_ struct{} `cbor:",toarray"`
 	// List of blocks belonging to a single tipset to which the
 	// `CompactedMessages` are linked.
 	Blocks   []*block.Block
@@ -162,7 +157,6 @@ type BSTipSet struct {
 // FIXME: The logic to decompress this structure should belong
 //  to itself, not to the consumer.
 type CompactedMessages struct {
-	_           struct{} `cbor:",toarray"`
 	Bls         []*types.UnsignedMessage
 	BlsIncludes [][]uint64
 

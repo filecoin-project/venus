@@ -1,17 +1,15 @@
 package block_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"testing"
 
-	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	blk "github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTipSetKey(t *testing.T) {
@@ -21,56 +19,6 @@ func TestTipSetKey(t *testing.T) {
 	c2, _ := cid.Parse("zDPWYqFD4b5HLFuPfhkjJJkfvm4r8KLi1V9e2ahJX6Ab16Ay24pK")
 	c3, _ := cid.Parse("zDPWYqFD4b5HLFuPfhkjJJkfvm4r8KLi1V9e2ahJX6Ab16Ay24pL")
 	c4, _ := cid.Parse("zDPWYqFD4b5HLFuPfhkjJJkfvm4r8KLi1V9e2ahJX6Ab16Ay24pM")
-
-	t.Run("empty", func(t *testing.T) {
-		s := blk.NewTipSetKey()
-		assert.True(t, s.Empty())
-		assert.Equal(t, 0, s.Len())
-
-		it := s.Iter()
-		assert.Equal(t, it.Value(), cid.Undef)
-		assert.False(t, it.Next())
-	})
-
-	t.Run("zero value is empty", func(t *testing.T) {
-		var s blk.TipSetKey
-		assert.True(t, s.Empty())
-		assert.Equal(t, 0, s.Len())
-
-		it := s.Iter()
-		assert.Equal(t, it.Value(), cid.Undef)
-		assert.False(t, it.Next())
-
-		assert.True(t, s.Equals(blk.NewTipSetKey()))
-
-		// Bytes must be equal in order to have equivalent CIDs
-		zeroBytes, err := encoding.Encode(s)
-		require.NoError(t, err)
-		emptyBytes, err := encoding.Encode(blk.NewTipSetKey())
-		require.NoError(t, err)
-		assert.Equal(t, zeroBytes, emptyBytes)
-	})
-
-	t.Run("order set by caller", func(t *testing.T) {
-		s1 := blk.NewTipSetKey(c1, c2, c3)
-		s2 := blk.NewTipSetKey(c3, c2, c1)
-		s3 := blk.NewTipSetKey(c3, c2, c1)
-
-		assert.False(t, s1.Equals(s2))
-		assert.True(t, s2.Equals(s3))
-
-		// Sorted order is not a defined property, but an important implementation detail to
-		// verify unless the implementation is changed.
-		assert.Equal(t, []cid.Cid{c1, c2, c3}, s1.ToSlice())
-		assert.Equal(t, []cid.Cid{c3, c2, c1}, s2.ToSlice())
-	})
-
-	t.Run("fails if unexpected duplicates", func(t *testing.T) {
-		_, e := blk.NewTipSetKeyFromUnique(c1, c2, c3)
-		assert.NoError(t, e)
-		_, e = blk.NewTipSetKeyFromUnique(c1, c1, c2, c3)
-		assert.Error(t, e)
-	})
 
 	t.Run("contains", func(t *testing.T) {
 		empty := blk.NewTipSetKey()
@@ -91,19 +39,6 @@ func TestTipSetKey(t *testing.T) {
 		assert.True(t, empty.ContainsAll(empty))
 		assert.False(t, empty.ContainsAll(s))
 	})
-
-	t.Run("iteration", func(t *testing.T) {
-		s := blk.NewTipSetKey(c3, c2, c1)
-		it := s.Iter()
-		assert.True(t, c3.Equals(it.Value()))
-		assert.True(t, it.Next())
-		assert.True(t, c2.Equals(it.Value()))
-		assert.True(t, it.Next())
-		assert.True(t, c1.Equals(it.Value()))
-		assert.False(t, it.Next())
-		assert.Equal(t, it.Value(), cid.Undef)
-		assert.True(t, it.Complete())
-	})
 }
 
 func TestTipSetKeyCborRoundtrip(t *testing.T) {
@@ -111,14 +46,15 @@ func TestTipSetKeyCborRoundtrip(t *testing.T) {
 
 	makeCid := types.NewCidForTestGetter()
 	exp := blk.NewTipSetKey(makeCid(), makeCid(), makeCid())
-	buf, err := encoding.Encode(exp)
+	buf := new(bytes.Buffer)
+	err := exp.MarshalCBOR(buf)
 	assert.NoError(t, err)
 
 	var act blk.TipSetKey
-	err = encoding.Decode(buf, &act)
+	err = act.UnmarshalCBOR(buf)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 3, act.Len())
+	assert.Equal(t, 3, len(act.Cids()))
 	assert.True(t, act.Equals(exp))
 }
 
@@ -135,6 +71,6 @@ func TestTipSetKeyJSONRoundtrip(t *testing.T) {
 	err = json.Unmarshal(buf, &act)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 3, act.Len())
+	assert.Equal(t, 3, len(act.Cids()))
 	assert.True(t, act.Equals(exp))
 }

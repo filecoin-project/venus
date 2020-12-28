@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"io"
 	mrand "math/rand"
@@ -35,10 +38,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/enccid"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/genesis"
-	"github.com/filecoin-project/venus/pkg/proofs"
 	gfcstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
@@ -67,45 +67,51 @@ var (
 type GenesisGenerator struct {
 	// actor state
 	stateTree state.Tree
-	store     *vm.Storage
+	store     blockstore.Blockstore
 	cst       cbor.IpldStore
 	vm        genesis.VM
-
+	vmOption  vm.VmOption
 	keys      []*crypto.KeyInfo // Keys for pre-alloc accounts
 	vrkey     *crypto.KeyInfo   // Key for verified registry root
 	pnrg      *mrand.Rand
-	chainRand crypto.ChainRandomnessSource
+	chainRand chain.ChainRandomnessSource
 	cfg       *GenesisCfg
 }
 
-func NewGenesisGenerator(vmStorage *vm.Storage) *GenesisGenerator {
+func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 	csc := func(context.Context, abi.ChainEpoch, state.Tree) (abi.TokenAmount, error) {
 		return big.Zero(), nil
 	}
+	cst := cbor.NewCborStore(bs)
+	syscallImpl := vmsupport.NewSyscalls(&vmsupport.NilFaultChecker{}, &ffiwrapper.FakeVerifier{})
+	chainRand := chain.ChainRandomnessSource{Sampler: &chain.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}}
 
-	g := GenesisGenerator{}
-	var err error
-	g.stateTree, err = state.NewState(vmStorage, state.StateTreeVersion1)
-	if err != nil {
-		panic(xerrors.Errorf("create state error, should never come here"))
-	}
-	g.store = vmStorage
-	g.cst = vmStorage
-
-	g.chainRand = crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}}
 	vmOption := vm.VmOption{
 		CircSupplyCalculator: csc,
 		NtwkVersionGetter: func(ctx context.Context, epoch abi.ChainEpoch) network.Version {
 			return network.Version6
 		},
-		Rnd:              &crypto.ChainRandomnessSource{Sampler: &crypto.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}},
+		Rnd:              &chain.ChainRandomnessSource{Sampler: &chain.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}},
 		BaseFee:          abi.NewTokenAmount(InitialBaseFee),
 		Epoch:            0,
 		GasPriceSchedule: gas.NewPricesSchedule(config.DefaultForkUpgradeParam),
+		Bsstore:          bs,
+		PRoot:            cid.Undef,
+		SysCallsImpl:     syscallImpl,
 	}
-	g.vm = vm.NewVM(g.stateTree, vmStorage, vmsupport.NewSyscalls(&vmsupport.NilFaultChecker{}, &proofs.FakeVerifier{}), vmOption).(genesis.VM)
+	vm, err := vm.NewVM(vmOption)
+	if err != nil {
+		panic(xerrors.Errorf("create state error, should never come here"))
+	}
 
-	return &g
+	return &GenesisGenerator{
+		stateTree: vm.StateTree(),
+		store:     bs,
+		cst:       cst,
+		chainRand: chainRand,
+		vm:        vm,
+		vmOption:  vmOption,
+	}
 }
 
 func (g *GenesisGenerator) Init(cfg *GenesisCfg) error {
@@ -136,14 +142,6 @@ func (g *GenesisGenerator) Init(cfg *GenesisCfg) error {
 	return nil
 }
 
-func (g *GenesisGenerator) flush(ctx context.Context) (cid.Cid, error) {
-	err := g.store.Flush()
-	if err != nil {
-		return cid.Undef, err
-	}
-	return g.stateTree.Flush(ctx)
-}
-
 func (g *GenesisGenerator) createSingletonActor(ctx context.Context, addr address.Address, codeCid cid.Cid, balance abi.TokenAmount, stateFn func() (interface{}, error)) (*types.Actor, error) {
 	if addr.Protocol() != address.ID {
 		return nil, fmt.Errorf("non-singleton actor would be missing from Init actor's address table")
@@ -152,16 +150,16 @@ func (g *GenesisGenerator) createSingletonActor(ctx context.Context, addr addres
 	if err != nil {
 		return nil, fmt.Errorf("failed to create state")
 	}
-	headCid, err := g.store.Put(context.Background(), state)
+	headCid, err := g.cst.Put(context.Background(), state)
 	if err != nil {
 		return nil, fmt.Errorf("failed to store state")
 	}
 
 	a := types.Actor{
-		Code:    enccid.NewCid(codeCid),
+		Code:    codeCid,
 		Nonce:   0,
 		Balance: balance,
-		Head:    enccid.NewCid(headCid),
+		Head:    headCid,
 	}
 	if err := g.stateTree.SetActor(ctx, addr, &a); err != nil {
 		return nil, fmt.Errorf("failed to create actor during genesis block creation")
@@ -183,7 +181,7 @@ func (g *GenesisGenerator) updateSingletonActor(ctx context.Context, addr addres
 	if err != nil {
 		return nil, fmt.Errorf("failed to create state")
 	}
-	headCid, err := g.store.Put(context.Background(), state)
+	headCid, err := g.cst.Put(context.Background(), state)
 	if err != nil {
 		return nil, fmt.Errorf("failed to store state")
 	}
@@ -192,7 +190,7 @@ func (g *GenesisGenerator) updateSingletonActor(ctx context.Context, addr addres
 		Code:    oldActor.Code,
 		Nonce:   0,
 		Balance: oldActor.Balance,
-		Head:    enccid.NewCid(headCid),
+		Head:    headCid,
 	}
 	if err := g.stateTree.SetActor(ctx, addr, &a); err != nil {
 		return nil, fmt.Errorf("failed to create actor during genesis block creation")
@@ -202,11 +200,11 @@ func (g *GenesisGenerator) updateSingletonActor(ctx context.Context, addr addres
 }
 
 func (g *GenesisGenerator) setupBuiltInActors(ctx context.Context) error {
-	emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore()).Root()
+	emptyMap, err := adt.MakeEmptyMap(adt.WrapStore(ctx, g.cst)).Root()
 	if err != nil {
 		return err
 	}
-	emptyArray, err := adt.MakeEmptyArray(g.vm.ContextStore()).Root()
+	emptyArray, err := adt.MakeEmptyArray(adt.WrapStore(ctx, g.cst)).Root()
 	if err != nil {
 		return err
 	}
@@ -226,7 +224,7 @@ func (g *GenesisGenerator) setupBuiltInActors(ctx context.Context) error {
 	}
 
 	_, err = g.createSingletonActor(ctx, builtin.InitActorAddr, builtin.InitActorCodeID, big.Zero(), func() (interface{}, error) {
-		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore()).Root()
+		emptyMap, err := adt.MakeEmptyMap(adt.WrapStore(ctx, g.cst)).Root()
 		if err != nil {
 			return nil, err
 		}
@@ -244,12 +242,12 @@ func (g *GenesisGenerator) setupBuiltInActors(ctx context.Context) error {
 	}
 
 	_, err = g.createSingletonActor(ctx, builtin.StoragePowerActorAddr, builtin.StoragePowerActorCodeID, big.Zero(), func() (interface{}, error) {
-		emptyMap, err := adt.MakeEmptyMap(g.vm.ContextStore()).Root()
+		emptyMap, err := adt.MakeEmptyMap(adt.WrapStore(ctx, g.cst)).Root()
 		if err != nil {
 			return nil, err
 		}
 
-		multiMap, err := adt.AsMultimap(g.vm.ContextStore(), emptyMap)
+		multiMap, err := adt.AsMultimap(adt.WrapStore(ctx, g.cst), emptyMap)
 		if err != nil {
 			return nil, err
 		}
@@ -265,7 +263,7 @@ func (g *GenesisGenerator) setupBuiltInActors(ctx context.Context) error {
 	}
 
 	_, err = g.createSingletonActor(ctx, builtin.StorageMarketActorAddr, builtin.StorageMarketActorCodeID, big.Zero(), func() (interface{}, error) {
-		emptyMSet, err := market.MakeEmptySetMultimap(g.vm.ContextStore()).Root()
+		emptyMSet, err := market.MakeEmptySetMultimap(adt.WrapStore(ctx, g.cst)).Root()
 		if err != nil {
 			return nil, err
 		}
@@ -325,7 +323,7 @@ func (g *GenesisGenerator) setupPrealloc() error {
 }
 
 func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
-	stateRoot, err := g.flush(ctx)
+	stateRoot, err := g.vm.Flush()
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -335,7 +333,7 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	meta := types.TxMeta{SecpRoot: enccid.NewCid(emptyAMTCid), BLSRoot: enccid.NewCid(emptyAMTCid)}
+	meta := &types.TxMeta{SecpRoot: emptyAMTCid, BLSRoot: emptyAMTCid}
 	metaCid, err := g.cst.Put(ctx, meta)
 	if err != nil {
 		return cid.Undef, err
@@ -345,13 +343,13 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 		Miner:                 builtin.SystemActorAddr,
 		Ticket:                genesis.Ticket,
 		BeaconEntries:         []*block.BeaconEntry{{Data: []byte{0xca, 0xfe, 0xfa, 0xce}}},
-		ElectionProof:         new(crypto.ElectionProof),
+		ElectionProof:         new(block.ElectionProof),
 		Parents:               block.NewTipSetKey(),
 		ParentWeight:          big.Zero(),
 		Height:                0,
-		ParentStateRoot:       enccid.NewCid(stateRoot),
-		ParentMessageReceipts: enccid.NewCid(emptyAMTCid),
-		Messages:              enccid.NewCid(metaCid),
+		ParentStateRoot:       stateRoot,
+		ParentMessageReceipts: emptyAMTCid,
+		Messages:              metaCid,
 		Timestamp:             g.cfg.Time,
 		ForkSignaling:         0,
 	}
@@ -461,7 +459,7 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 
 	_, err := g.updateSingletonActor(ctx, builtin.StoragePowerActorAddr, func(actor *types.Actor) (interface{}, error) {
 		var mState power.State
-		err := g.store.Get(ctx, actor.Head.Cid, &mState)
+		err := g.cst.Get(ctx, actor.Head, &mState)
 		if err != nil {
 			return nil, err
 		}
@@ -508,7 +506,7 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		// we've added fake power for this sector above, remove it now
 		_, err = g.updateSingletonActor(ctx, builtin.StoragePowerActorAddr, func(actor *types.Actor) (interface{}, error) {
 			var mState power.State
-			err = g.store.Get(ctx, actor.Head.Cid, &mState)
+			err = g.cst.Get(ctx, actor.Head, &mState)
 			if err != nil {
 				return nil, err
 			}
@@ -547,8 +545,9 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 
 		pledge = big.Add(pcd, pledge)
 
-		encodeParams, _ := encoding.Encode(params)
-		_, err = g.doExecValue(ctx, sector.miner, sector.owner, pledge, builtin.MethodsMiner.PreCommitSector, encodeParams)
+		buf := new(bytes.Buffer)
+		_ = params.MarshalCBOR(buf)
+		_, err = g.doExecValue(ctx, sector.miner, sector.owner, pledge, builtin.MethodsMiner.PreCommitSector, buf.Bytes())
 		if err != nil {
 			return nil, xerrors.Errorf("failed to confirm presealed sectors: %v", err)
 		}
@@ -557,8 +556,9 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		confirmParams := &builtin.ConfirmSectorProofsParams{
 			Sectors: []abi.SectorNumber{sector.comm.SectorNum},
 		}
-		encodeParams, _ = encoding.Encode(confirmParams)
-		_, err = g.doExecValue(ctx, sector.miner, builtin.StoragePowerActorAddr, big.Zero(), builtin.MethodsMiner.ConfirmSectorProofsValid, encodeParams)
+		buf = new(bytes.Buffer)
+		_ = confirmParams.MarshalCBOR(buf)
+		_, err = g.doExecValue(ctx, sector.miner, builtin.StoragePowerActorAddr, big.Zero(), builtin.MethodsMiner.ConfirmSectorProofsValid, buf.Bytes())
 		if err != nil {
 			return nil, xerrors.Errorf("failed to confirm presealed sectors: %v", err)
 		}
@@ -575,7 +575,7 @@ func (g *GenesisGenerator) loadMinerState(ctx context.Context, actorAddr address
 		return nil, fmt.Errorf("no such miner actor %s", actorAddr)
 	}
 	var mState miner.State
-	err = g.store.Get(ctx, mAct.Head.Cid, &mState)
+	err = g.cst.Get(ctx, mAct.Head, &mState)
 	if err != nil {
 		return nil, err
 	}
@@ -589,7 +589,7 @@ func (g *GenesisGenerator) createMiner(ctx context.Context, m *CreateStorageMine
 	}
 
 	// Resolve worker account's ID address.
-	stateRoot, err := g.flush(ctx)
+	stateRoot, err := g.vm.Flush()
 	if err != nil {
 		return address.Undef, address.Undef, err
 	}
@@ -666,11 +666,12 @@ func (g *GenesisGenerator) publishDeals(actorAddr, clientAddr address.Address, c
 			ProviderCollateral:   big.Zero(), // collateral should actually be good
 			ClientCollateral:     big.Zero(),
 		}
-		proposalBytes, err := encoding.Encode(&proposal)
+		buf := new(bytes.Buffer)
+		err := proposal.MarshalCBOR(buf)
 		if err != nil {
 			return nil, err
 		}
-		sig, err := crypto.Sign(proposalBytes, clientkey.PrivateKey, crypto.SigTypeBLS)
+		sig, err := crypto.Sign(buf.Bytes(), clientkey.PrivateKey, crypto.SigTypeBLS)
 		if err != nil {
 			return nil, err
 		}
@@ -728,7 +729,7 @@ func (g *GenesisGenerator) updatePower(ctx context.Context, minerAddr address.Ad
 		return big.Zero(), fmt.Errorf("state tree could not find power actor")
 	}
 	var powerState power.State
-	err = g.store.Get(ctx, powAct.Head.Cid, &powerState)
+	err = g.cst.Get(ctx, powAct.Head, &powerState)
 	if err != nil {
 		return big.Zero(), err
 	}
@@ -746,11 +747,11 @@ func (g *GenesisGenerator) updatePower(ctx context.Context, minerAddr address.Ad
 	powerState.TotalQualityAdjPower = big.Add(powerState.TotalQualityAdjPower, qaPower)
 
 	// Persist new state.
-	newPowCid, err := g.store.Put(ctx, &powerState)
+	newPowCid, err := g.cst.Put(ctx, &powerState)
 	if err != nil {
 		return big.Zero(), err
 	}
-	powAct.Head = enccid.NewCid(newPowCid)
+	powAct.Head = newPowCid
 	err = g.stateTree.SetActor(ctx, builtin.StoragePowerActorAddr, powAct)
 	if err != nil {
 		return big.Zero(), err
@@ -771,7 +772,7 @@ func (g *GenesisGenerator) putSector(ctx context.Context, sector *sectorCommitIn
 		return fmt.Errorf("mState tree could not find miner actor %s", sector.miner)
 	}
 	var mState miner.State
-	err = g.store.Get(ctx, mAct.Head.Cid, &mState)
+	err = g.cst.Get(ctx, mAct.Head, &mState)
 	if err != nil {
 		return err
 	}
@@ -795,11 +796,11 @@ func (g *GenesisGenerator) putSector(ctx context.Context, sector *sectorCommitIn
 	}
 
 	// Persist new state.
-	newMinerCid, err := g.store.Put(ctx, &mState)
+	newMinerCid, err := g.cst.Put(ctx, &mState)
 	if err != nil {
 		return err
 	}
-	mAct.Head = enccid.NewCid(newMinerCid)
+	mAct.Head = newMinerCid
 	err = g.stateTree.SetActor(ctx, sector.miner, mAct)
 	return err
 }
@@ -839,8 +840,8 @@ func (g *GenesisGenerator) dealWeight(ctx context.Context, maddr address.Address
 		SectorStart:  sectorStart,
 		SectorExpiry: sectorExpiry,
 	}
-
-	paramsBytes, err := encoding.Encode(params)
+	buf := new(bytes.Buffer)
+	err := params.MarshalCBOR(buf)
 	if err != nil {
 		return market.VerifyDealsForActivationReturn{}, err
 	}
@@ -849,7 +850,7 @@ func (g *GenesisGenerator) dealWeight(ctx context.Context, maddr address.Address
 		maddr,
 		abi.NewTokenAmount(0),
 		builtin.MethodsMarket.VerifyDealsForActivation,
-		paramsBytes,
+		buf.Bytes(),
 	)
 	if err != nil {
 		return market.VerifyDealsForActivationReturn{}, err
@@ -878,7 +879,7 @@ func (g *GenesisGenerator) currentEpochBlockReward(ctx context.Context, maddr ad
 }
 
 func (g *GenesisGenerator) circSupply(ctx context.Context, maddr address.Address) abi.TokenAmount {
-	supply, _ := g.vm.TotalFilCircSupply(0, g.stateTree)
+	supply, _ := g.vmOption.CircSupplyCalculator(ctx, 0, g.stateTree)
 	return supply
 }
 

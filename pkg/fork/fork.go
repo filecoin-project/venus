@@ -34,14 +34,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/enccid"
-	bstore "github.com/filecoin-project/venus/pkg/fork/blockstore"
-	"github.com/filecoin-project/venus/pkg/fork/bufbstore"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	init_ "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/multisig"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	vmstate "github.com/filecoin-project/venus/pkg/vm/state"
 )
 
@@ -56,7 +54,7 @@ var ErrExpensiveFork = errors.New("refusing explicit call due to state fork at e
 // - The height is the upgrade epoch height (already executed).
 // - The tipset is the tipset for the last non-null block before the upgrade. Do
 //   not assume that ts.Height() is the upgrade height.
-type UpgradeFunc func(ctx context.Context, sm *ChainFork, oldState cid.Cid, height abi.ChainEpoch, ts *block.TipSet) (newState cid.Cid, err error)
+type UpgradeFunc func(ctx context.Context, oldState cid.Cid, height abi.ChainEpoch, ts *block.TipSet) (newState cid.Cid, err error)
 
 type Upgrade struct {
 	Height    abi.ChainEpoch
@@ -110,6 +108,10 @@ func defaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 	}, {
 		Height:    upgradeHeight.UpgradePersianHeight,
 		Network:   network.Version8,
+		Migration: nil,
+	}, {
+		Height:    upgradeHeight.UpgradeOrangeHeight,
+		Network:   network.Version9,
 		Migration: nil,
 	}}
 
@@ -168,7 +170,7 @@ func (us UpgradeSchedule) Validate() error {
 			continue
 		}
 		if !(prev.Height <= curr.Height) {
-			return xerrors.Errorf("upgrade heights must be strictly increasing: upgrade %d was at height %d, followed by upgrade %d at height %d", i-1, prev.Height, i, curr.Height)
+			return xerrors.Errorf("upgrade heights must be strictly increasing: upgrade version %d was at height %d, followed by upgrade version %d at height %d", prev.Network, prev.Height, curr.Network, curr.Height)
 		}
 	}
 	return nil
@@ -185,6 +187,7 @@ type IFork interface {
 	HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error)
 	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
 	HasExpensiveFork(ctx context.Context, height abi.ChainEpoch) bool
+	GetForkUpgrade() *config.ForkUpgradeConfig
 }
 
 var _ = IFork((*ChainFork)(nil))
@@ -271,7 +274,7 @@ func (c *ChainFork) HandleStateForks(ctx context.Context, root cid.Cid, height a
 	var err error
 	migration, ok := c.stateMigrations[height]
 	if ok {
-		retCid, err = migration(ctx, c, root, height, ts)
+		retCid, err = migration(ctx, root, height, ts)
 		if err != nil {
 			return cid.Undef, err
 		}
@@ -335,16 +338,16 @@ func (c *ChainFork) ParentState(ts *block.TipSet) cid.Cid {
 	if ts == nil {
 		tts, err := c.cr.GetTipSet(c.cr.Head())
 		if err == nil {
-			return tts.Blocks()[0].ParentStateRoot.Cid
+			return tts.Blocks()[0].ParentStateRoot
 		}
 	} else {
-		return ts.Blocks()[0].ParentStateRoot.Cid
+		return ts.Blocks()[0].ParentStateRoot
 	}
 
 	return cid.Undef
 }
 
-func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
+func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
 	// Some initial parameters
 	FundsForMiners := types.FromFil(1_000_000)
 	LookbackEpoch := abi.ChainEpoch(32000)
@@ -369,17 +372,17 @@ func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork
 	}
 
 	// Grab lookback state for account checks
-	lbts, err := sm.cr.GetTipSetByHeight(ctx, ts, LookbackEpoch, false)
+	lbts, err := c.cr.GetTipSetByHeight(ctx, ts, LookbackEpoch, false)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to get tipset at lookback height: %v", err)
 	}
 
-	lbtree, err := sm.cr.GetTipSetState(ctx, lbts.EnsureParents())
+	lbtree, err := c.cr.GetTipSetState(ctx, lbts.EnsureParents())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("loading state tree failed: %v", err)
 	}
 
-	tree, err := sm.StateTree(ctx, root)
+	tree, err := c.StateTree(ctx, root)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting state tree: %v", err)
 	}
@@ -399,7 +402,7 @@ func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork
 
 	// Take all excess funds away, put them into the reserve account
 	err = tree.ForEach(func(addr address.Address, act *types.Actor) error {
-		switch act.Code.Cid {
+		switch act.Code {
 		case builtin0.AccountActorCodeID, builtin0.MultisigActorCodeID, builtin0.PaymentChannelActorCodeID:
 			sysAcc, err := isSystemAccount(addr)
 			if err != nil {
@@ -415,7 +418,7 @@ func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork
 			}
 		case builtin0.StorageMinerActorCodeID:
 			var st miner0.State
-			if err := sm.ipldstore.Get(ctx, act.Head.Cid, &st); err != nil {
+			if err := c.ipldstore.Get(ctx, act.Head, &st); err != nil {
 				return xerrors.Errorf("failed to load miner state: %v", err)
 			}
 
@@ -464,7 +467,7 @@ func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork
 		return cid.Undef, xerrors.New("did not find power actor")
 	}
 
-	if err := sm.ipldstore.Get(ctx, powAct.Head.Cid, &ps); err != nil {
+	if err := c.ipldstore.Get(ctx, powAct.Head, &ps); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to get power actor state: %v", err)
 	}
 
@@ -483,7 +486,7 @@ func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork
 			prevBalance = lbact.Balance
 		}
 
-		switch act.Code.Cid {
+		switch act.Code {
 		case builtin0.AccountActorCodeID, builtin0.MultisigActorCodeID, builtin0.PaymentChannelActorCodeID:
 			nbalance := big.Min(prevBalance, AccountCap)
 			if nbalance.Sign() != 0 {
@@ -495,16 +498,16 @@ func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork
 			}
 		case builtin0.StorageMinerActorCodeID:
 			var st miner0.State
-			if err := sm.ipldstore.Get(ctx, act.Head.Cid, &st); err != nil {
+			if err := c.ipldstore.Get(ctx, act.Head, &st); err != nil {
 				return xerrors.Errorf("failed to load miner state: %v", err)
 			}
 
 			var minfo miner0.MinerInfo
-			if err := sm.ipldstore.Get(ctx, st.Info, &minfo); err != nil {
+			if err := c.ipldstore.Get(ctx, st.Info, &minfo); err != nil {
 				return xerrors.Errorf("failed to get miner info: %v", err)
 			}
 
-			sectorsArr, err := adt0.AsArray(adt.WrapStore(ctx, sm.ipldstore), st.Sectors)
+			sectorsArr, err := adt0.AsArray(adt.WrapStore(ctx, c.ipldstore), st.Sectors)
 			if err != nil {
 				return xerrors.Errorf("failed to load sectors array: %v", err)
 			}
@@ -525,11 +528,11 @@ func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, sm *ChainFork
 			if err == nil {
 				if found {
 					var lbst miner0.State
-					if err := sm.ipldstore.Get(ctx, lbact.Head.Cid, &lbst); err != nil {
+					if err := c.ipldstore.Get(ctx, lbact.Head, &lbst); err != nil {
 						return xerrors.Errorf("failed to load miner state: %v", err)
 					}
 
-					lbsectors, err := adt0.AsArray(adt.WrapStore(ctx, sm.ipldstore), lbst.Sectors)
+					lbsectors, err := adt0.AsArray(adt.WrapStore(ctx, c.ipldstore), lbst.Sectors)
 					if err != nil {
 						return xerrors.Errorf("failed to load lb sectors array: %v", err)
 					}
@@ -632,7 +635,7 @@ func setNetworkName(ctx context.Context, store adt.Store, tree *vmstate.State, n
 	if err != nil {
 		return xerrors.Errorf("writing new init state: %v", err)
 	}
-	ia.Head = enccid.NewCid(c)
+	ia.Head = c
 
 	if err := tree.SetActor(ctx, builtin0.InitActorAddr, ia); err != nil {
 		return xerrors.Errorf("setting init actor: %v", err)
@@ -653,13 +656,13 @@ func resetGenesisMsigs0(ctx context.Context, sm *ChainFork, store adt0.Store, tr
 		return xerrors.Errorf("getting genesis tipset: %v", err)
 	}
 
-	genesisTree, err := sm.StateTree(ctx, gts.Blocks()[0].ParentStateRoot.Cid)
+	genesisTree, err := sm.StateTree(ctx, gts.Blocks()[0].ParentStateRoot)
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %v", err)
 	}
 
 	err = genesisTree.ForEach(func(addr address.Address, genesisActor *types.Actor) error {
-		if genesisActor.Code.Cid == builtin0.MultisigActorCodeID {
+		if genesisActor.Code == builtin0.MultisigActorCodeID {
 			currActor, find, err := tree.GetActor(ctx, addr)
 			if err != nil {
 				return xerrors.Errorf("loading actor: %v", err)
@@ -669,7 +672,7 @@ func resetGenesisMsigs0(ctx context.Context, sm *ChainFork, store adt0.Store, tr
 			}
 
 			var currState multisig0.State
-			if err := store.Get(ctx, currActor.Head.Cid, &currState); err != nil {
+			if err := store.Get(ctx, currActor.Head, &currState); err != nil {
 				return xerrors.Errorf("reading multisig state: %v", err)
 			}
 
@@ -679,7 +682,7 @@ func resetGenesisMsigs0(ctx context.Context, sm *ChainFork, store adt0.Store, tr
 			if err != nil {
 				return xerrors.Errorf("writing new multisig state: %v", err)
 			}
-			currActor.Head = enccid.NewCid(head)
+			currActor.Head = head
 
 			if err := tree.SetActor(ctx, addr, currActor); err != nil {
 				return xerrors.Errorf("setting multisig actor: %v", err)
@@ -782,8 +785,8 @@ func splitGenesisMultisig0(ctx context.Context, addr address.Address, store adt0
 	}
 
 	newActor := types.Actor{
-		Code:    enccid.NewCid(builtin0.MultisigActorCodeID),
-		Head:    enccid.NewCid(scid),
+		Code:    builtin0.MultisigActorCodeID,
+		Head:    scid,
 		Nonce:   0,
 		Balance: big.Zero(),
 	}
@@ -824,12 +827,12 @@ func resetMultisigVesting0(ctx context.Context, store adt0.Store, tree *vmstate.
 		return xerrors.Errorf("did not find actor: %s", addr.String())
 	}
 
-	if !builtin.IsMultisigActor(act.Code.Cid) {
+	if !builtin.IsMultisigActor(act.Code) {
 		return xerrors.Errorf("actor wasn't msig: %v", err)
 	}
 
 	var msigState multisig0.State
-	if err := store.Get(ctx, act.Head.Cid, &msigState); err != nil {
+	if err := store.Get(ctx, act.Head, &msigState); err != nil {
 		return xerrors.Errorf("reading multisig state: %v", err)
 	}
 
@@ -841,7 +844,7 @@ func resetMultisigVesting0(ctx context.Context, store adt0.Store, tree *vmstate.
 	if err != nil {
 		return xerrors.Errorf("writing new multisig state: %v", err)
 	}
-	act.Head = enccid.NewCid(head)
+	act.Head = head
 
 	if err := tree.SetActor(ctx, addr, act); err != nil {
 		return xerrors.Errorf("setting multisig actor: %v", err)
@@ -850,8 +853,8 @@ func resetMultisigVesting0(ctx context.Context, store adt0.Store, tree *vmstate.
 	return nil
 }
 
-func (c *ChainFork) UpgradeIgnition(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
-	store := adt.WrapStore(ctx, sm.ipldstore)
+func (c *ChainFork) UpgradeIgnition(ctx context.Context, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
+	store := adt.WrapStore(ctx, c.ipldstore)
 
 	if c.forkUpgrade.UpgradeLiftoffHeight <= epoch {
 		return cid.Undef, xerrors.Errorf("liftoff height must be beyond ignition height")
@@ -862,7 +865,7 @@ func (c *ChainFork) UpgradeIgnition(ctx context.Context, sm *ChainFork, root cid
 		return cid.Undef, xerrors.Errorf("migrating actors state: %v", err)
 	}
 
-	tree, err := sm.StateTree(ctx, nst)
+	tree, err := c.StateTree(ctx, nst)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting state tree: %v", err)
 	}
@@ -882,7 +885,7 @@ func (c *ChainFork) UpgradeIgnition(ctx context.Context, sm *ChainFork, root cid
 		return cid.Undef, xerrors.Errorf("second split address: %v", err)
 	}
 
-	err = resetGenesisMsigs0(ctx, sm, store, tree, c.forkUpgrade.UpgradeLiftoffHeight)
+	err = resetGenesisMsigs0(ctx, c, store, tree, c.forkUpgrade.UpgradeLiftoffHeight)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("resetting genesis msig start epochs: %v", err)
 	}
@@ -905,9 +908,9 @@ func (c *ChainFork) UpgradeIgnition(ctx context.Context, sm *ChainFork, root cid
 	return tree.Flush(ctx)
 }
 
-func (c *ChainFork) UpgradeRefuel(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
-	store := adt.WrapStore(ctx, sm.ipldstore)
-	tree, err := sm.StateTree(ctx, root)
+func (c *ChainFork) UpgradeRefuel(ctx context.Context, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
+	store := adt.WrapStore(ctx, c.ipldstore)
+	tree, err := c.StateTree(ctx, root)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting state tree: %v", err)
 	}
@@ -1078,8 +1081,8 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 	return nil
 }
 
-func (c *ChainFork) UpgradeActorsV2(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
-	buf := bufbstore.NewTieredBstore(sm.bs, bstore.NewTemporarySync())
+func (c *ChainFork) UpgradeActorsV2(ctx context.Context, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
+	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
 	store := ActorStore(ctx, buf)
 
 	info, err := store.Put(ctx, new(vmstate.StateInfo0))
@@ -1094,8 +1097,8 @@ func (c *ChainFork) UpgradeActorsV2(ctx context.Context, sm *ChainFork, root cid
 
 	newRoot, err := store.Put(ctx, &vmstate.StateRoot{
 		Version: vmstate.StateTreeVersion1,
-		Actors:  enccid.NewCid(newHamtRoot),
-		Info:    enccid.NewCid(info),
+		Actors:  newHamtRoot,
+		Info:    info,
 	})
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to persist new state root: %v", err)
@@ -1124,13 +1127,13 @@ func (c *ChainFork) UpgradeActorsV2(ctx context.Context, sm *ChainFork, root cid
 	return newRoot, nil
 }
 
-func (c *ChainFork) UpgradeLiftoff(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
-	tree, err := sm.StateTree(ctx, root)
+func (c *ChainFork) UpgradeLiftoff(ctx context.Context, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
+	tree, err := c.StateTree(ctx, root)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting state tree: %v", err)
 	}
 
-	err = setNetworkName(ctx, adt.WrapStore(ctx, sm.ipldstore), tree, "mainnet")
+	err = setNetworkName(ctx, adt.WrapStore(ctx, c.ipldstore), tree, "mainnet")
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("setting network name: %v", err)
 	}
@@ -1138,7 +1141,7 @@ func (c *ChainFork) UpgradeLiftoff(ctx context.Context, sm *ChainFork, root cid.
 	return tree.Flush(ctx)
 }
 
-func (c *ChainFork) UpgradeCalico(ctx context.Context, sm *ChainFork, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
+func (c *ChainFork) UpgradeCalico(ctx context.Context, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
 	store := ActorStore(ctx, c.bs)
 	var stateRoot vmstate.StateRoot
 	if err := store.Get(ctx, root, &stateRoot); err != nil {
@@ -1152,14 +1155,14 @@ func (c *ChainFork) UpgradeCalico(ctx context.Context, sm *ChainFork, root cid.C
 		)
 	}
 
-	newHamtRoot, err := nv7.MigrateStateTree(ctx, store, stateRoot.Actors.Cid, epoch, nv7.DefaultConfig())
+	newHamtRoot, err := nv7.MigrateStateTree(ctx, store, stateRoot.Actors, epoch, nv7.DefaultConfig())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("running nv7 migration: %v", err)
 	}
 
 	newRoot, err := store.Put(ctx, &vmstate.StateRoot{
 		Version: stateRoot.Version,
-		Actors:  enccid.NewCid(newHamtRoot),
+		Actors:  newHamtRoot,
 		Info:    stateRoot.Info,
 	})
 	if err != nil {
@@ -1178,4 +1181,8 @@ func (c *ChainFork) UpgradeCalico(ctx context.Context, sm *ChainFork, root cid.C
 	}
 
 	return newRoot, nil
+}
+
+func (c *ChainFork) GetForkUpgrade() *config.ForkUpgradeConfig {
+	return c.forkUpgrade
 }

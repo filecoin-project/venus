@@ -4,21 +4,19 @@ import (
 	"bufio"
 	"context"
 	"github.com/filecoin-project/venus/pkg/config"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"io"
 	"net/http"
 	"os"
 	"strings"
 
+	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	xerrors "github.com/pkg/errors"
 	"gopkg.in/cheggaaa/pb.v1"
-
-	"github.com/filecoin-project/venus/pkg/cborutil"
-	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/repo"
 )
 
 var logImport = logging.Logger("commands/import")
@@ -67,9 +65,9 @@ func importChain(r repo.Repo, fname string) error {
 	}
 
 	chainStatusReporter := chain.NewStatusReporter()
-	bs := blockstore.NewBlockstore(r.Datastore())
+	bs := r.Datastore()
 	// setup a ipldCbor on top of the local store
-	ipldCborStore := cborutil.NewIpldStore(bs)
+	ipldCborStore := cbor.NewCborStore(bs)
 	chainStore := chain.NewStore(r.ChainDatastore(), ipldCborStore, bs, chainStatusReporter, config.DefaultForkUpgradeParam, cid.Undef)
 
 	bufr := bufio.NewReaderSize(rd, 1<<20)

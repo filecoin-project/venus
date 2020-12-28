@@ -1,6 +1,7 @@
 package block
 
 import (
+	bytes2 "bytes"
 	"encoding/json"
 	"fmt"
 
@@ -14,18 +15,10 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/enccid"
-	"github.com/filecoin-project/venus/pkg/encoding"
 )
-
-// BlockMessageLimit is the maximum number of messages in a block
-const BlockMessageLimit = 10000
 
 // Block is a block in the blockchain.
 type Block struct {
-	// control field for encoding struct as an array
-	_ struct{} `cbor:",toarray"`
-
 	// Miner is the address of the miner actor that mined this block.
 	Miner address.Address `json:"miner"`
 
@@ -33,7 +26,7 @@ type Block struct {
 	Ticket Ticket `json:"ticket"`
 
 	// ElectionProof is the vrf proof giving this block's miner authoring rights
-	ElectionProof *crypto.ElectionProof `json:"electionProof"`
+	ElectionProof *ElectionProof `json:"electionProof"`
 
 	// BeaconEntries contain the verifiable oracle randomness used to elect
 	// this block's author leader
@@ -55,14 +48,14 @@ type Block struct {
 
 	// ParentStateRoot is the CID of the root of the state tree after application of the messages in the parent tipset
 	// to the parent tipset's state root.
-	ParentStateRoot enccid.Cid `json:"parentStateRoot,omitempty"`
+	ParentStateRoot cid.Cid `json:"parentStateRoot,omitempty"`
 
 	// ParentMessageReceipts is a list of receipts corresponding to the application of the messages in the parent tipset
 	// to the parent tipset's state root (corresponding to this block's ParentStateRoot).
-	ParentMessageReceipts enccid.Cid `json:"parentMessageReceipts,omitempty"`
+	ParentMessageReceipts cid.Cid `json:"parentMessageReceipts,omitempty"`
 
 	// Messages is the set of messages included in this block
-	Messages enccid.Cid `json:"messages,omitempty"`
+	Messages cid.Cid `json:"messages,omitempty"`
 
 	// The aggregate signature of all BLS signed messages in the block
 	BLSAggregate *crypto.Signature `json:"BLSAggregate"`
@@ -93,11 +86,12 @@ const IndexParentsField = 5
 func (b *Block) Cid() cid.Cid {
 	if b.cachedCid == cid.Undef {
 		if b.cachedBytes == nil {
-			bytes, err := encoding.Encode(b)
+			buf := new(bytes2.Buffer)
+			err := b.MarshalCBOR(buf)
 			if err != nil {
 				panic(err)
 			}
-			b.cachedBytes = bytes
+			b.cachedBytes = buf.Bytes()
 		}
 		c, err := constants.DefaultCidBuilder.Sum(b.cachedBytes)
 		if err != nil {
@@ -112,10 +106,12 @@ func (b *Block) Cid() cid.Cid {
 
 // ToNode converts the Block to an IPLD node.
 func (b *Block) ToNode() node.Node {
-	data, err := encoding.Encode(b)
+	buf := new(bytes2.Buffer)
+	err := b.MarshalCBOR(buf)
 	if err != nil {
 		panic(err)
 	}
+	data := buf.Bytes()
 	c, err := constants.DefaultCidBuilder.Sum(data)
 	if err != nil {
 		panic(err)
@@ -145,7 +141,7 @@ func (b *Block) String() string {
 // DecodeBlock decodes raw cbor bytes into a Block.
 func DecodeBlock(b []byte) (*Block, error) {
 	var out Block
-	if err := encoding.Decode(b, &out); err != nil {
+	if err := out.UnmarshalCBOR(bytes2.NewReader(b)); err != nil {
 		return nil, err
 	}
 

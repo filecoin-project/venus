@@ -1,6 +1,7 @@
 package blocksub_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -21,8 +22,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/enccid"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/net/blocksub"
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -92,16 +91,18 @@ func TestBlockPubSubValidation(t *testing.T) {
 	miner := types.NewForTestGetter()()
 
 	mclock.Advance(blocktime) // enter epoch 1
-
+	mockCid := types.CidFromString(t, "mock")
 	// create an invalid block
 	invalidBlk := &block.Block{
-		Height:          1,
-		Timestamp:       uint64(now.Add(time.Second * 60).Unix()), // invalid timestamp, 60 seconds in future
-		ParentStateRoot: enccid.NewCid(types.NewCidForTestGetter()()),
-		Miner:           miner,
-		Ticket:          block.Ticket{VRFProof: []byte{0}},
-		BlockSig:        &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
-		BLSAggregate:    &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
+		Height:                1,
+		Timestamp:             uint64(now.Add(time.Second * 60).Unix()), // invalid timestamp, 60 seconds in future
+		ParentStateRoot:       types.NewCidForTestGetter()(),
+		Miner:                 miner,
+		Ticket:                block.Ticket{VRFProof: []byte{0}},
+		BlockSig:              &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
+		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
+		ParentMessageReceipts: mockCid,
+		Messages:              mockCid,
 	}
 	// publish the invalid block
 	payload := blocksub.Payload{
@@ -109,8 +110,10 @@ func TestBlockPubSubValidation(t *testing.T) {
 		BLSMsgCids:  nil,
 		SECPMsgCids: nil,
 	}
-	payloadBytes, err := encoding.Encode(payload)
+	buf := new(bytes.Buffer)
+	err = payload.MarshalCBOR(buf)
 	require.NoError(t, err)
+	payloadBytes := buf.Bytes()
 	err = top1.Publish(ctx, payloadBytes)
 	assert.NoError(t, err)
 
@@ -120,13 +123,15 @@ func TestBlockPubSubValidation(t *testing.T) {
 	// create a valid block
 	validTime := chainClock.StartTimeOfEpoch(abi.ChainEpoch(1))
 	validBlk := &block.Block{
-		Height:          1,
-		Timestamp:       uint64(validTime.Unix()),
-		ParentStateRoot: enccid.NewCid(types.NewCidForTestGetter()()),
-		Miner:           miner,
-		Ticket:          block.Ticket{VRFProof: []byte{0}},
-		BlockSig:        &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
-		BLSAggregate:    &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
+		Height:                1,
+		Timestamp:             uint64(validTime.Unix()),
+		ParentStateRoot:       types.NewCidForTestGetter()(),
+		Miner:                 miner,
+		Ticket:                block.Ticket{VRFProof: []byte{0}},
+		BlockSig:              &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
+		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
+		ParentMessageReceipts: mockCid,
+		Messages:              mockCid,
 	}
 	// publish the invalid block
 	payload = blocksub.Payload{
@@ -134,8 +139,11 @@ func TestBlockPubSubValidation(t *testing.T) {
 		BLSMsgCids:  nil,
 		SECPMsgCids: nil,
 	}
-	payloadBytes, err = encoding.Encode(payload)
+
+	buf = new(bytes.Buffer)
+	err = payload.MarshalCBOR(buf)
 	require.NoError(t, err)
+	payloadBytes = buf.Bytes()
 	err = top1.Publish(ctx, payloadBytes)
 	assert.NoError(t, err)
 
@@ -156,7 +164,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 
 	// decode the block from pubsub
 	var receivedPayload blocksub.Payload
-	err = encoding.Decode(received.GetData(), &receivedPayload)
+	err = receivedPayload.UnmarshalCBOR(bytes.NewReader(received.GetData()))
 	require.NoError(t, err)
 
 	// assert this block is the valid one
@@ -170,11 +178,13 @@ func blkToPubSub(t *testing.T, blk *block.Block) *pubsub.Message {
 		BLSMsgCids:  nil,
 		SECPMsgCids: nil,
 	}
-	data, err := encoding.Encode(&payload)
+	buf := new(bytes.Buffer)
+	err := payload.MarshalCBOR(buf)
 	require.NoError(t, err)
+
 	return &pubsub.Message{
 		Message: &pubsubpb.Message{
-			Data: data,
+			Data: buf.Bytes(),
 		},
 	}
 }

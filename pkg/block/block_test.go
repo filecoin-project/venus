@@ -13,8 +13,6 @@ import (
 
 	blk "github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/enccid"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -47,10 +45,11 @@ func TestTriangleEncoding(t *testing.T) {
 		require.NoError(t, err)
 		types.AssertHaveSameCid(t, exp, &jsonRoundTrip)
 
-		ipldNodeOrig, err := encoding.Encode(jsonRoundTrip)
+		buf := new(bytes.Buffer)
+		err = jsonRoundTrip.MarshalCBOR(buf)
 		assert.NoError(t, err)
 		var cborJSONRoundTrip blk.Block
-		err = encoding.Decode(ipldNodeOrig, &cborJSONRoundTrip)
+		err = cborJSONRoundTrip.UnmarshalCBOR(buf)
 		assert.NoError(t, err)
 		types.AssertHaveSameCid(t, exp, &cborJSONRoundTrip)
 	}
@@ -69,7 +68,7 @@ func TestTriangleEncoding(t *testing.T) {
 		b := &blk.Block{
 			Miner:         newAddress(),
 			Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-			ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
+			ElectionProof: &blk.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
 			Height:        2,
 			BeaconEntries: []*blk.BeaconEntry{
 				{
@@ -77,11 +76,11 @@ func TestTriangleEncoding(t *testing.T) {
 					Data:  []byte{0x3},
 				},
 			},
-			Messages:              enccid.NewCid(types.CidFromString(t, "somecid")),
-			ParentMessageReceipts: enccid.NewCid(types.CidFromString(t, "somecid")),
+			Messages:              types.CidFromString(t, "somecid"),
+			ParentMessageReceipts: types.CidFromString(t, "somecid"),
 			Parents:               blk.NewTipSetKey(types.CidFromString(t, "somecid")),
 			ParentWeight:          fbig.NewInt(1000),
-			ParentStateRoot:       enccid.NewCid(types.CidFromString(t, "somecid")),
+			ParentStateRoot:       types.CidFromString(t, "somecid"),
 			Timestamp:             1,
 			BlockSig: &crypto.Signature{
 				Type: crypto.SigTypeBLS,
@@ -100,7 +99,7 @@ func TestTriangleEncoding(t *testing.T) {
 		// Also please add non zero fields to "b" and "diff" in TestSignatureData
 		// and add a new check that different values of the new field result in
 		// different output data.
-		require.Equal(t, 19, s.NumField()) // Note: this also counts private fields
+		require.Equal(t, 18, s.NumField()) // Note: this also counts private fields
 		testRoundTrip(t, b)
 	})
 }
@@ -108,7 +107,26 @@ func TestTriangleEncoding(t *testing.T) {
 func TestBlockString(t *testing.T) {
 	tf.UnitTest(t)
 
-	var b blk.Block
+	addrGetter := types.NewForTestGetter()
+	c1 := types.CidFromString(t, "a")
+	c2 := types.CidFromString(t, "b")
+	cM := types.CidFromString(t, "messages")
+	cR := types.CidFromString(t, "receipts")
+
+	b := &blk.Block{
+		Miner:                 addrGetter(),
+		Ticket:                blk.Ticket{VRFProof: []uint8{}},
+		Parents:               blk.NewTipSetKey(c1),
+		Height:                2,
+		ParentWeight:          fbig.Zero(),
+		Messages:              cM,
+		ParentStateRoot:       c2,
+		ParentMessageReceipts: cR,
+		BlockSig:              &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
+		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
+		ParentBaseFee:         abi.NewTokenAmount(1),
+	}
+
 	cid := b.Cid()
 
 	got := b.String()
@@ -128,13 +146,13 @@ func TestDecodeBlock(t *testing.T) {
 
 		before := &blk.Block{
 			Miner:                 addrGetter(),
-			Ticket:                blk.Ticket{VRFProof: []uint8{}},
+			Ticket:                blk.Ticket{VRFProof: nil},
 			Parents:               blk.NewTipSetKey(c1),
 			Height:                2,
 			ParentWeight:          fbig.Zero(),
-			Messages:              enccid.NewCid(cM),
-			ParentStateRoot:       enccid.NewCid(c2),
-			ParentMessageReceipts: enccid.NewCid(cR),
+			Messages:              cM,
+			ParentStateRoot:       c2,
+			ParentMessageReceipts: cR,
 			BlockSig:              &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
 			BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 			ParentBaseFee:         abi.NewTokenAmount(1),
@@ -149,13 +167,15 @@ func TestDecodeBlock(t *testing.T) {
 	t.Run("decode failure results in an error", func(t *testing.T) {
 		_, err := blk.DecodeBlock([]byte{1, 2, 3})
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "cbor: cannot unmarshal")
+		assert.Contains(t, err.Error(), "cbor input should be of type array")
 	})
 }
 
 func TestEquals(t *testing.T) {
 	tf.UnitTest(t)
-
+	addrGetter := types.NewForTestGetter()
+	minerAddr := addrGetter()
+	mockCid := types.CidFromString(t, "mock")
 	c1 := types.CidFromString(t, "a")
 	c2 := types.CidFromString(t, "b")
 
@@ -165,15 +185,15 @@ func TestEquals(t *testing.T) {
 	var h1 abi.ChainEpoch = 1
 	var h2 abi.ChainEpoch = 2
 
-	b1 := &blk.Block{Parents: blk.NewTipSetKey(c1), ParentStateRoot: enccid.NewCid(s1), Height: h1}
-	b2 := &blk.Block{Parents: blk.NewTipSetKey(c1), ParentStateRoot: enccid.NewCid(s1), Height: h1}
-	b3 := &blk.Block{Parents: blk.NewTipSetKey(c1), ParentStateRoot: enccid.NewCid(s2), Height: h1}
-	b4 := &blk.Block{Parents: blk.NewTipSetKey(c2), ParentStateRoot: enccid.NewCid(s1), Height: h1}
-	b5 := &blk.Block{Parents: blk.NewTipSetKey(c1), ParentStateRoot: enccid.NewCid(s1), Height: h2}
-	b6 := &blk.Block{Parents: blk.NewTipSetKey(c2), ParentStateRoot: enccid.NewCid(s1), Height: h2}
-	b7 := &blk.Block{Parents: blk.NewTipSetKey(c1), ParentStateRoot: enccid.NewCid(s2), Height: h2}
-	b8 := &blk.Block{Parents: blk.NewTipSetKey(c2), ParentStateRoot: enccid.NewCid(s2), Height: h1}
-	b9 := &blk.Block{Parents: blk.NewTipSetKey(c2), ParentStateRoot: enccid.NewCid(s2), Height: h2}
+	b1 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c1), ParentStateRoot: s1, Height: h1}
+	b2 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c1), ParentStateRoot: s1, Height: h1}
+	b3 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c1), ParentStateRoot: s2, Height: h1}
+	b4 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c2), ParentStateRoot: s1, Height: h1}
+	b5 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c1), ParentStateRoot: s1, Height: h2}
+	b6 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c2), ParentStateRoot: s1, Height: h2}
+	b7 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c1), ParentStateRoot: s2, Height: h2}
+	b8 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c2), ParentStateRoot: s2, Height: h1}
+	b9 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c2), ParentStateRoot: s2, Height: h2}
 	assert.True(t, b1.Equals(b1))
 	assert.True(t, b1.Equals(b2))
 	assert.False(t, b1.Equals(b3))
@@ -198,15 +218,16 @@ func TestEquals(t *testing.T) {
 func TestBlockJsonMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
-	var parent, child blk.Block
+	proot := types.CidFromString(t, "mock")
+	var child blk.Block
 	child.Miner = types.NewForTestGetter()()
 	child.Height = 1
 	child.ParentWeight = fbig.Zero()
-	child.Parents = blk.NewTipSetKey(parent.Cid())
-	child.ParentStateRoot = enccid.NewCid(parent.Cid())
+	child.Parents = blk.NewTipSetKey(proot)
+	child.ParentStateRoot = proot
 
-	child.Messages = enccid.NewCid(types.CidFromString(t, "somecid"))
-	child.ParentMessageReceipts = enccid.NewCid(types.CidFromString(t, "somecid"))
+	child.Messages = types.CidFromString(t, "somecid")
+	child.ParentMessageReceipts = types.CidFromString(t, "somecid")
 
 	child.ParentBaseFee = abi.NewTokenAmount(1)
 
@@ -215,7 +236,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 	str := string(marshalled)
 
 	assert.Contains(t, str, child.Miner.String())
-	assert.Contains(t, str, parent.Cid().String())
+	assert.Contains(t, str, proot.String())
 	assert.Contains(t, str, child.Messages.String())
 	assert.Contains(t, str, child.ParentMessageReceipts.String())
 
@@ -237,7 +258,7 @@ func TestSignatureData(t *testing.T) {
 	b := &blk.Block{
 		Miner:         newAddress(),
 		Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-		ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
+		ElectionProof: &blk.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
 		BeaconEntries: []*blk.BeaconEntry{
 			{
 				Round: 5,
@@ -245,12 +266,12 @@ func TestSignatureData(t *testing.T) {
 			},
 		},
 		Height:                2,
-		Messages:              enccid.NewCid(types.CidFromString(t, "somecid")),
-		ParentMessageReceipts: enccid.NewCid(types.CidFromString(t, "somecid")),
+		Messages:              types.CidFromString(t, "somecid"),
+		ParentMessageReceipts: types.CidFromString(t, "somecid"),
 		Parents:               blk.NewTipSetKey(types.CidFromString(t, "somecid")),
 		ParentWeight:          fbig.NewInt(1000),
 		ForkSignaling:         3,
-		ParentStateRoot:       enccid.NewCid(types.CidFromString(t, "somecid")),
+		ParentStateRoot:       types.CidFromString(t, "somecid"),
 		Timestamp:             1,
 		ParentBaseFee:         abi.NewTokenAmount(10),
 		WinPoStProof:          blk.FromAbiProofArr(posts),
@@ -265,7 +286,7 @@ func TestSignatureData(t *testing.T) {
 	diff := &blk.Block{
 		Miner:         newAddress(),
 		Ticket:        blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
-		ElectionProof: &crypto.ElectionProof{VRFProof: []byte{0x0c, 0x0d}},
+		ElectionProof: &blk.ElectionProof{VRFProof: []byte{0x0c, 0x0d}},
 		BeaconEntries: []*blk.BeaconEntry{
 			{
 				Round: 44,
@@ -273,12 +294,12 @@ func TestSignatureData(t *testing.T) {
 			},
 		},
 		Height:                3,
-		Messages:              enccid.NewCid(types.CidFromString(t, "someothercid")),
-		ParentMessageReceipts: enccid.NewCid(types.CidFromString(t, "someothercid")),
+		Messages:              types.CidFromString(t, "someothercid"),
+		ParentMessageReceipts: types.CidFromString(t, "someothercid"),
 		Parents:               blk.NewTipSetKey(types.CidFromString(t, "someothercid")),
 		ParentWeight:          fbig.NewInt(1001),
 		ForkSignaling:         2,
-		ParentStateRoot:       enccid.NewCid(types.CidFromString(t, "someothercid")),
+		ParentStateRoot:       types.CidFromString(t, "someothercid"),
 		Timestamp:             4,
 		ParentBaseFee:         abi.NewTokenAmount(20),
 		WinPoStProof:          blk.FromAbiProofArr(diffposts),

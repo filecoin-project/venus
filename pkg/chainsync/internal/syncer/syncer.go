@@ -3,10 +3,10 @@ package syncer
 import (
 	"context"
 	"fmt"
+	bstore "github.com/filecoin-project/lotus/lib/blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"sync"
 	"time"
-
-	"github.com/filecoin-project/venus/pkg/util"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -20,18 +20,17 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
 	"github.com/filecoin-project/venus/pkg/chainsync/status"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
-	bstore "github.com/filecoin-project/venus/pkg/fork/blockstore"
 	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 )
 
 // Syncer updates its chain.Store according to the methods of its
@@ -341,10 +340,6 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 	if err != nil {
 		return errors.Wrapf(err, "could not bsstore message rerceipts for tip set %s", next.String())
 	}
-	/*dddd, _ := json.MarshalIndent(receipts, "", "\t")
-	ioutil.WriteFile("receipt.json", dddd, 0777)
-	*/
-	fmt.Printf("TipSet %d root:%s receipt:%s", next.EnsureHeight(), root, receiptCid)
 
 	logSyncer.Infow("Process Block ", "Height:", next.EnsureHeight(), " Root:", root, " receiptcid ", receiptCid, " time: ", time.Now().Sub(toProcessTime).Milliseconds())
 
@@ -380,7 +375,7 @@ func (syncer *Syncer) ancestorsFromStore(ts *block.TipSet) (*block.TipSet, *bloc
 	if err != nil {
 		return nil, nil, err
 	}
-	if grandParentCids.Empty() { //todo genesis have parents ?
+	if grandParentCids.IsEmpty() { //todo genesis have parents ?
 		// parent == genesis ==> grandParent undef
 		return parent, nil, nil
 	}
@@ -599,7 +594,7 @@ func (syncer *Syncer) fetchChainBlocks(ctx context.Context, knownTip *block.TipS
 
 	var flushDb = func(saveTips []*block.TipSet) error {
 		bs := bstore.NewTemporary()
-		cborStore := cborutil.NewIpldStore(bs)
+		cborStore := cbor.NewCborStore(bs)
 		for _, tips := range saveTips {
 			for _, blk := range tips.Blocks() {
 				_, err := cborStore.Put(ctx, blk)
@@ -608,7 +603,7 @@ func (syncer *Syncer) fetchChainBlocks(ctx context.Context, knownTip *block.TipS
 				}
 			}
 		}
-		return util.CopyBlockstore(ctx, bs, syncer.bsstore)
+		return blockstoreutil.CopyBlockstore(ctx, bs, syncer.bsstore)
 	}
 
 	var windows = 500
@@ -768,7 +763,7 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*block.Ti
 	}
 	// fetch message from remote nodes
 	bs := bstore.NewTemporary()
-	cborStore := cborutil.NewIpldStore(bs)
+	cborStore := cbor.NewCborStore(bs)
 
 	messages, err := syncer.exchangeClient.GetChainMessages(ctx, leftChain)
 	if err != nil {
@@ -796,7 +791,7 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*block.Ti
 		}
 	}
 
-	err = util.CopyBlockstore(ctx, bs, syncer.bsstore)
+	err = blockstoreutil.CopyBlockstore(ctx, bs, syncer.bsstore)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failure fetching full blocks")
 	}
@@ -806,7 +801,7 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*block.Ti
 func (syncer *Syncer) getFullBlock(ctx context.Context, tipset *block.TipSet) (*block.FullTipSet, error) {
 	fullBlocks := make([]*block.FullBlock, tipset.Len())
 	for index, blk := range tipset.Blocks() {
-		secpMsg, blsMsg, err := syncer.messageProvider.LoadMetaMessages(ctx, blk.Messages.Cid)
+		secpMsg, blsMsg, err := syncer.messageProvider.LoadMetaMessages(ctx, blk.Messages)
 		if err != nil {
 			return nil, err
 		}
@@ -942,7 +937,7 @@ func zipTipSetAndMessages(bs blockstore.Blockstore, ts *block.TipSet, allbmsgs [
 			return nil, err
 		}
 
-		if b.Messages.Cid != mrcid {
+		if b.Messages != mrcid {
 			return nil, fmt.Errorf("messages didnt match message root in header for ts %s", ts.Key())
 		}
 

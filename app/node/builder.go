@@ -145,9 +145,7 @@ func SetNetParams(params *config.NetworkParamsConfig) {
 		policy.SetMinVerifiedDealSize(abi.NewStoragePower(params.MinVerifiedDealSize))
 	}
 
-	if params.AdressNetwork != byte(0) {
-		constants.SetAddressNetwork(params.AdressNetwork)
-	}
+	constants.SetAddressNetwork(params.AdressNetwork)
 }
 
 // MonkeyPatchSetProofTypeOption returns a function that sets package variable
@@ -194,7 +192,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	}
 
 	// fetch genesis block id
-	b.genCid, err = readGenesisCid(b.repo.Datastore())
+	b.genCid, err = readGenesisCid(b.repo.ChainDatastore())
 	if err != nil {
 		return nil, err
 	}

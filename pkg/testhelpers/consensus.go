@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/enccid"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -32,8 +31,8 @@ func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, sta
 		Parents:               baseTipSet.Key(),
 		ParentWeight:          types.Uint64ToBig(uint64(height * 10000)),
 		Height:                height,
-		ParentStateRoot:       enccid.NewCid(stateRootCid),
-		ParentMessageReceipts: enccid.NewCid(receiptRootCid),
+		ParentStateRoot:       stateRootCid,
+		ParentMessageReceipts: receiptRootCid,
 		BLSAggregate:          &emptyBLSSig,
 	}
 	sig, err := signer.SignBytes(context.TODO(), b.SignatureData(), minerWorker)

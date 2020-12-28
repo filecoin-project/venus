@@ -1,7 +1,9 @@
 package chain
 
 import (
+	"bytes"
 	"context"
+	lru "github.com/hashicorp/golang-lru"
 	"io"
 	"os"
 	"runtime/debug"
@@ -25,8 +27,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/enccid"
-	"github.com/filecoin-project/venus/pkg/encoding"
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
@@ -82,9 +82,9 @@ type ipldSource struct {
 	cborStore cbor.IpldStore
 }
 
-type tsState struct {
-	StateRoot enccid.Cid
-	Reciepts  enccid.Cid
+type TsState struct {
+	StateRoot cid.Cid
+	Reciepts  cid.Cid
 }
 
 func newSource(cst cbor.IpldStore) *ipldSource {
@@ -116,7 +116,7 @@ type Store struct {
 	// ds is the datastore for the chain's private metadata which consists
 	// of the tipset key to state root cid mapping, and the heaviest tipset
 	// key.
-	ds repo.Datastore //chainstore
+	ds *CacheDs
 
 	// genesis is the CID of the genesis block.
 	genesis cid.Cid
@@ -149,6 +149,8 @@ type Store struct {
 
 	reorgCh        chan reorg
 	reorgNotifeeCh chan ReorgNotifee
+
+	tsCache *lru.ARCCache
 }
 
 // NewStore constructs a new default store.
@@ -160,27 +162,28 @@ func NewStore(ds repo.Datastore,
 	genesisCid cid.Cid,
 ) *Store {
 	ipldSource := newSource(cst)
-	tipsetProvider := TipSetProviderFromBlocks(context.TODO(), ipldSource)
-
+	cacheDs := NewCacheDs(ds, true)
+	tsCache, _ := lru.NewARC(10000)
 	store := &Store{
 		stateAndBlockSource: ipldSource,
-		ds:                  ds,
+		ds:                  cacheDs,
 		bsstore:             bsstore,
 		headEvents:          pubsub.New(64),
 		tipIndex:            NewTipIndex(),
 		checkPoint:          block.UndefTipSet.Key(),
 		genesis:             genesisCid,
 		reporter:            sr,
-		chainIndex:          NewChainIndex(tipsetProvider.GetTipSet),
 		reorgNotifeeCh:      make(chan ReorgNotifee),
+		tsCache:             tsCache,
 	}
+	store.chainIndex = NewChainIndex(store.GetTipSet)
 	store.circulatingSupplyCalculator = NewCirculatingSupplyCalculator(bsstore, store, forkConfig)
 
 	val, err := store.ds.Get(CheckPoint)
 	if err != nil {
 		store.checkPoint = block.NewTipSetKey(genesisCid)
 	} else {
-		err = encoding.Decode(val, &store.checkPoint)
+		err = store.checkPoint.UnmarshalCBOR(bytes.NewReader(val))
 	}
 	log.Infof("check point value: %v, error: %v", store.checkPoint, err)
 
@@ -222,7 +225,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 
 	var checkPointTs *block.TipSet
 	loopBack := abi.ChainEpoch(0)
-	if !store.checkPoint.Empty() {
+	if !store.checkPoint.IsEmpty() {
 		checkPointTs, err = LoadTipSetBlocks(ctx, store.stateAndBlockSource, store.checkPoint)
 		if err != nil {
 			return errors.Wrap(err, "error loading head tipset")
@@ -236,7 +239,6 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	logStatusEvery := startHeight / 10
 
 	var startPoint *block.TipSet
-
 	// Provide tipsets directly from the block store, not from the tipset index which is
 	// being rebuilt by this traversal.
 	tipsetProvider := TipSetProviderFromBlocks(ctx, store.stateAndBlockSource)
@@ -250,6 +252,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		if err != nil {
 			return err
 		}
+
 		if logStatusEvery != 0 && (height%logStatusEvery) == 0 {
 			log.Infof("load tipset: %s, height: %v", startPoint.String(), height)
 		}
@@ -286,7 +289,6 @@ func (store *Store) Load(ctx context.Context) (err error) {
 			return err
 		}
 	}*/
-
 	// Set actual head.
 	return store.SetHead(ctx, headTs)
 }
@@ -294,18 +296,18 @@ func (store *Store) Load(ctx context.Context) (err error) {
 // loadHead loads the latest known head from disk.
 func (store *Store) loadHead() (block.TipSetKey, error) {
 	var emptyCidSet block.TipSetKey
-	bb, err := store.ds.Get(HeadKey)
+	tskBytes, err := store.ds.Get(HeadKey)
 	if err != nil {
 		return emptyCidSet, errors.Wrap(err, "failed to read HeadKey")
 	}
 
-	var cids block.TipSetKey
-	err = encoding.Decode(bb, &cids)
+	var tsk block.TipSetKey
+	err = tsk.UnmarshalCBOR(bytes.NewReader(tskBytes))
 	if err != nil {
 		return emptyCidSet, errors.Wrap(err, "failed to cast headCids")
 	}
 
-	return cids, nil
+	return tsk, nil
 }
 
 func (store *Store) loadStateRootAndReceipts(ts *block.TipSet) (cid.Cid, cid.Cid, error) {
@@ -314,18 +316,18 @@ func (store *Store) loadStateRootAndReceipts(ts *block.TipSet) (cid.Cid, cid.Cid
 		return cid.Undef, cid.Undef, err
 	}
 	key := datastore.NewKey(makeKey(ts.String(), h))
-	bb, err := store.ds.Get(key)
+	tsStateBytes, err := store.ds.Get(key)
 	if err != nil {
 		return cid.Undef, cid.Undef, errors.Wrapf(err, "failed to read tipset key %s", ts.String())
 	}
 
-	var metadata tsState
-	err = encoding.Decode(bb, &metadata)
+	var metadata TsState
+	err = metadata.UnmarshalCBOR(bytes.NewReader(tsStateBytes))
 	if err != nil {
 		return cid.Undef, cid.Undef, errors.Wrapf(err, "failed to decode tip set metadata %s", ts.String())
 	}
 
-	return metadata.StateRoot.Cid, metadata.Reciepts.Cid, nil
+	return metadata.StateRoot, metadata.Reciepts, nil
 }
 
 // PutTipSetMetadata persists the blocks of a tipset and the tipset index.
@@ -368,8 +370,12 @@ func (store *Store) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 		key = store.GetHead()
 	}
 	blks := []*block.Block{}
+	val, has := store.tsCache.Get(key)
+	if has {
+		return val.(*block.TipSet), nil
+	}
 
-	for _, id := range key.ToSlice() {
+	for _, id := range key.Cids() {
 		blk, err := store.stateAndBlockSource.GetBlock(context.TODO(), id)
 
 		if err != nil {
@@ -381,6 +387,7 @@ func (store *Store) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	if err != nil {
 		return nil, err
 	}
+	store.tsCache.Add(key, ts)
 	return ts, nil
 }
 
@@ -703,12 +710,13 @@ func (store *Store) ReadOnlyStateStore() cborutil.ReadOnlyIpldStore {
 // writeHead writes the given cid set as head to disk.
 func (store *Store) writeHead(ctx context.Context, cids block.TipSetKey) error {
 	log.Debugf("WriteHead %s", cids.String())
-	val, err := encoding.Encode(cids)
+	buf := new(bytes.Buffer)
+	err := cids.MarshalCBOR(buf)
 	if err != nil {
 		return err
 	}
 
-	return store.ds.Put(HeadKey, val)
+	return store.ds.Put(HeadKey, buf.Bytes())
 }
 
 // writeTipSetMetadata writes the tipset key and the state root id to the
@@ -722,22 +730,22 @@ func (store *Store) writeTipSetMetadata(tsm *TipSetMetadata) error {
 		return errors.New("attempting to write receipts cid.Undef")
 	}
 
-	metadata := tsState{
-		StateRoot: enccid.NewCid(tsm.TipSetStateRoot),
-		Reciepts:  enccid.NewCid(tsm.TipSetReceipts),
+	metadata := TsState{
+		StateRoot: tsm.TipSetStateRoot,
+		Reciepts:  tsm.TipSetReceipts,
 	}
-	val, err := encoding.Encode(metadata)
+	buf := new(bytes.Buffer)
+	err := metadata.MarshalCBOR(buf)
 	if err != nil {
 		return err
 	}
-
 	// datastore keeps key:stateRoot (k,v) pairs.
 	h, err := tsm.TipSet.Height()
 	if err != nil {
 		return err
 	}
 	key := datastore.NewKey(makeKey(tsm.TipSet.String(), h))
-	return store.ds.Put(key, val)
+	return store.ds.Put(key, buf.Bytes())
 }
 
 // deleteTipSetMetadata delete the state root id from the datastore for the tipset key.
@@ -769,7 +777,7 @@ func (store *Store) GenesisCid() cid.Cid {
 
 func (store *Store) GenesisRootCid() cid.Cid {
 	genesis, _ := store.stateAndBlockSource.GetBlock(context.TODO(), store.GenesisCid())
-	return genesis.ParentStateRoot.Cid
+	return genesis.ParentStateRoot
 }
 
 func (store *Store) Import(r io.Reader) (*block.TipSet, error) {
@@ -785,15 +793,15 @@ func (store *Store) Import(r io.Reader) (*block.TipSet, error) {
 
 	parent := root.EnsureParents()
 
-	log.Info("import height: ", root.EnsureHeight(), " root: ", root.At(0).ParentStateRoot.Cid, " parents: ", root.At(0).Parents)
+	log.Info("import height: ", root.EnsureHeight(), " root: ", root.At(0).ParentStateRoot, " parents: ", root.At(0).Parents)
 	parentTipset, err := store.GetTipSet(parent)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
 	}
 	err = store.PutTipSetMetadata(context.Background(), &TipSetMetadata{
-		TipSetStateRoot: root.At(0).ParentStateRoot.Cid,
+		TipSetStateRoot: root.At(0).ParentStateRoot,
 		TipSet:          parentTipset,
-		TipSetReceipts:  root.At(0).ParentMessageReceipts.Cid,
+		TipSetReceipts:  root.At(0).ParentMessageReceipts,
 	})
 	if err != nil {
 		return nil, err
@@ -813,9 +821,9 @@ func (store *Store) Import(r io.Reader) (*block.TipSet, error) {
 
 		//save fake root
 		err = store.PutTipSetMetadata(context.Background(), &TipSetMetadata{
-			TipSetStateRoot: curTipset.At(0).ParentStateRoot.Cid,
+			TipSetStateRoot: curTipset.At(0).ParentStateRoot,
 			TipSet:          curParentTipset,
-			TipSetReceipts:  curTipset.At(0).ParentMessageReceipts.Cid,
+			TipSetReceipts:  curTipset.At(0).ParentMessageReceipts,
 		})
 		if err != nil {
 			return nil, err
@@ -832,12 +840,12 @@ func (store *Store) SetCheckPoint(checkPoint block.TipSetKey) {
 // WriteCheckPoint writes the given cids to disk.
 func (store *Store) WriteCheckPoint(ctx context.Context, cids block.TipSetKey) error {
 	log.Infof("WriteCheckPoint %v", cids)
-	val, err := encoding.Encode(cids)
+	buf := new(bytes.Buffer)
+	err := cids.MarshalCBOR(buf)
 	if err != nil {
 		return err
 	}
-
-	return store.ds.Put(CheckPoint, val)
+	return store.ds.Put(CheckPoint, buf.Bytes())
 }
 
 func (store *Store) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st state.Tree) (CirculatingSupply, error) {
@@ -899,10 +907,10 @@ func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEp
 			circ = big.Add(circ, big.Sub(actor.Balance, lb))
 			unCirc = big.Add(unCirc, lb)
 
-		case builtin.IsAccountActor(actor.Code.Cid) || builtin.IsPaymentChannelActor(actor.Code.Cid):
+		case builtin.IsAccountActor(actor.Code) || builtin.IsPaymentChannelActor(actor.Code):
 			circ = big.Add(circ, actor.Balance)
 
-		case builtin.IsStorageMinerActor(actor.Code.Cid):
+		case builtin.IsStorageMinerActor(actor.Code):
 			mst, err := miner.Load(adtStore, actor)
 			if err != nil {
 				return err
@@ -919,7 +927,7 @@ func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEp
 				unCirc = big.Add(unCirc, actor.Balance)
 			}
 
-		case builtin.IsMultisigActor(actor.Code.Cid):
+		case builtin.IsMultisigActor(actor.Code):
 			mst, err := multisig.Load(adtStore, actor)
 			if err != nil {
 				return err

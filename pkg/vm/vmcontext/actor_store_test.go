@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/venus/pkg/config"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"io"
 	"testing"
 
 	cbor2 "github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	vmr "github.com/filecoin-project/venus/pkg/vm/runtime"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
@@ -23,7 +23,7 @@ import (
 
 func TestActorStore(t *testing.T) {
 	ctx := context.Background()
-	raw := vm.NewStorage(blockstore.NewBlockstore(datastore.NewMapDatastore()))
+	raw := cbor.NewCborStore(blockstore.NewBlockstore(datastore.NewMapDatastore()))
 	gasTank := gas.NewGasTracker(1e6)
 	priceSchedule := gas.NewPricesSchedule(config.DefaultForkUpgradeParam)
 	t.Run("abort on put serialization failure", func(t *testing.T) {
@@ -45,10 +45,7 @@ func TestActorStore(t *testing.T) {
 
 		var v2 typegen.CborCid
 		thrown = tryGet(store, c, &v2) // Attempt decode into wrong type
-		abort, ok := thrown.(vmr.ExecutionPanic)
-		assert.NotNil(t, thrown)
-		assert.True(t, ok, "expected abort")
-		assert.Equal(t, exitcode.ErrSerialization, abort.Code())
+		assert.Contains(t, thrown.(string), "failed To get object *typegen.CborCid ")
 	})
 
 	t.Run("panic on put storage failure", func(t *testing.T) {
@@ -95,18 +92,10 @@ func (c cannotCBOR) MarshalCBOR(w io.Writer) error {
 
 type brokenStorage struct{}
 
-func (s brokenStorage) GetWithLen(ctx context.Context, cid cid.Cid, obj interface{}) (int, error) {
-	panic("implement me")
+func (brokenStorage) Get(_ context.Context, _ cid.Cid, _ interface{}) error {
+	return fmt.Errorf("no")
 }
 
-func (s brokenStorage) PutWithLen(ctx context.Context, obj interface{}) (cid.Cid, int, error) {
-	panic("implement me")
-}
-
-func (brokenStorage) Get(_ context.Context, _ cid.Cid, _ interface{}) (int, error) {
-	return 0, fmt.Errorf("no")
-}
-
-func (brokenStorage) Put(_ context.Context, _ interface{}) (cid.Cid, int, error) {
-	return cid.Undef, 0, fmt.Errorf("no")
+func (brokenStorage) Put(_ context.Context, _ interface{}) (cid.Cid, error) {
+	return cid.Undef, fmt.Errorf("no")
 }

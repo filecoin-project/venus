@@ -52,7 +52,7 @@ func TestChainLs(t *testing.T) {
 		}
 
 		assert.Equal(t, 1, len(bs))
-		assert.True(t, bs[0][0].Parents.Empty())
+		assert.True(t, bs[0][0].Parents.IsEmpty())
 	})
 
 	t.Run("chain ls with chain of size 1 returns genesis block", func(t *testing.T) {
@@ -68,6 +68,6 @@ func TestChainLs(t *testing.T) {
 		err := json.Unmarshal([]byte(result), &b)
 		require.NoError(t, err)
 
-		assert.True(t, b[0].Parents.Empty())
+		assert.True(t, b[0].Parents.IsEmpty())
 	})
 }

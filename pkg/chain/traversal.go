@@ -66,8 +66,8 @@ type BlockProvider interface {
 // LoadTipSetBlocks loads all the blocks for a tipset from the store.
 func LoadTipSetBlocks(ctx context.Context, store BlockProvider, key block.TipSetKey) (*block.TipSet, error) {
 	var blocks []*block.Block
-	for it := key.Iter(); !it.Complete(); it.Next() {
-		blk, err := store.GetBlock(ctx, it.Value())
+	for _, bid := range key.Cids() {
+		blk, err := store.GetBlock(ctx, bid)
 		if err != nil {
 			return nil, err
 		}
