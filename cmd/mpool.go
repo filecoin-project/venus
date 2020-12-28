@@ -100,7 +100,7 @@ var mpoolFindCmd = &cmds.Command{
 			out = append(out, m)
 		}
 
-		re.Emit(out)
+		_ = re.Emit(out)
 		return nil
 	},
 }
@@ -131,7 +131,7 @@ var mpoolReplaceCmd = &cmds.Command{
 		gasPremium, _ := req.Options["gas-premium"].(string)
 		gasLimit, _ := req.Options["gas-limit"].(int64)
 		maxFee, _ := req.Options["max-fee"].(string)
-		message_cid, _ := req.Options["message-cid"].(string)
+		messageCid, _ := req.Options["message-cid"].(string)
 		froms, _ := req.Options["from"].(string)
 		nonces, _ := req.Options["nonce"].(string)
 
@@ -139,8 +139,8 @@ var mpoolReplaceCmd = &cmds.Command{
 		var from address.Address
 		var nonce uint64
 
-		if len(message_cid) > 0 {
-			mcid, err := cid.Decode(message_cid)
+		if len(messageCid) > 0 {
+			mcid, err := cid.Decode(messageCid)
 			if err != nil {
 				return err
 			}
@@ -225,7 +225,7 @@ var mpoolReplaceCmd = &cmds.Command{
 			messagepool.CapGasFee(mff, &msg, mss.MaxFee)
 		} else {
 			if gasLimit > 0 {
-				msg.GasLimit = types.Unit(gasLimit)
+				msg.GasLimit = gasLimit
 			}
 			msg.GasPremium, err = types.BigFromString(gasPremium)
 			if err != nil {
@@ -248,7 +248,7 @@ var mpoolReplaceCmd = &cmds.Command{
 			return fmt.Errorf("failed to push new message to mempool: %w", err)
 		}
 
-		re.Emit(fmt.Sprintf("new message cid: %s", cid))
+		_ = re.Emit(fmt.Sprintf("new message cid: %s", cid))
 		return nil
 	},
 }
@@ -396,11 +396,11 @@ Get pending messages.
 			total.belowPast += stat.belowPast
 			total.gasLimit = big.Add(total.gasLimit, stat.gasLimit)
 
-			re.Emit(fmt.Sprintf("%s: Nonce past: %d, cur: %d, future: %d; FeeCap cur: %d, min-%d: %d, gasLimit: %s\n", stat.addr, stat.past, stat.cur, stat.future, stat.belowCurr, basefee, stat.belowPast, stat.gasLimit))
+			_ = re.Emit(fmt.Sprintf("%s: Nonce past: %d, cur: %d, future: %d; FeeCap cur: %d, min-%d: %d, gasLimit: %s", stat.addr, stat.past, stat.cur, stat.future, stat.belowCurr, basefee, stat.belowPast, stat.gasLimit))
 		}
 
 		re.Emit("-----")
-		re.Emit(fmt.Sprintf("total: Nonce past: %d, cur: %d, future: %d; FeeCap cur: %d, min-%d: %d, gasLimit: %s\n", total.past, total.cur, total.future, total.belowCurr, basefee, total.belowPast, total.gasLimit))
+		re.Emit(fmt.Sprintf("total: Nonce past: %d, cur: %d, future: %d; FeeCap cur: %d, min-%d: %d, gasLimit: %s", total.past, total.cur, total.future, total.belowCurr, basefee, total.belowPast, total.gasLimit))
 
 		return nil
 	},
@@ -531,8 +531,6 @@ Subscribe to mpool changes
 				return nil
 			}
 		}
-
-		return nil
 	},
 }
 
@@ -631,7 +629,7 @@ Check gas performance of messages in mempool
 			return types.BigMul(maxPremium, types.NewInt(uint64(msg.Message.GasLimit)))
 		}
 
-		getGasPerf := func(gasReward big.Int, gasLimit types.Unit) float64 {
+		getGasPerf := func(gasReward big.Int, gasLimit int64) float64 {
 			// gasPerf = gasReward * build.BlockGasLimit / gasLimit
 			a := new(stdbig.Rat).SetInt(new(stdbig.Int).Mul(gasReward.Int, bigBlockGasLimit.Int))
 			b := stdbig.NewRat(1, int64(gasLimit))
