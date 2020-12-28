@@ -198,7 +198,7 @@ var mpoolReplaceCmd = &cmds.Command{
 
 			var mss *types.MessageSendSpec
 			if len(maxFee) > 0 {
-				maxFee, err := types.BigFromString(maxFee)
+				maxFee, err := big.FromString(maxFee)
 				if err != nil {
 					return fmt.Errorf("parsing max-spend: %w", err)
 				}
@@ -227,12 +227,12 @@ var mpoolReplaceCmd = &cmds.Command{
 			if gasLimit > 0 {
 				msg.GasLimit = gasLimit
 			}
-			msg.GasPremium, err = types.BigFromString(gasPremium)
+			msg.GasPremium, err = big.FromString(gasPremium)
 			if err != nil {
 				return fmt.Errorf("parsing gas-premium: %w", err)
 			}
 			// TODO: estimate fee cap here
-			msg.GasFeeCap, err = types.BigFromString(gasFeecap)
+			msg.GasFeeCap, err = big.FromString(gasFeecap)
 			if err != nil {
 				return fmt.Errorf("parsing gas-feecap: %w", err)
 			}
@@ -375,7 +375,7 @@ Get pending messages.
 					s.belowPast++
 				}
 
-				s.gasLimit = big.Add(s.gasLimit, types.NewInt(uint64(m.Message.GasLimit)))
+				s.gasLimit = big.Add(s.gasLimit, big.NewInt(m.Message.GasLimit))
 			}
 
 			out = append(out, s)
@@ -622,11 +622,11 @@ Check gas performance of messages in mempool
 		bigBlockGasLimit := big.NewInt(build.BlockGasLimit)
 
 		getGasReward := func(msg *types.SignedMessage) big.Int {
-			maxPremium := types.BigSub(msg.Message.GasFeeCap, baseFee)
-			if types.BigCmp(maxPremium, msg.Message.GasPremium) < 0 {
+			maxPremium := big.Sub(msg.Message.GasFeeCap, baseFee)
+			if big.Cmp(maxPremium, msg.Message.GasPremium) < 0 {
 				maxPremium = msg.Message.GasPremium
 			}
-			return types.BigMul(maxPremium, types.NewInt(uint64(msg.Message.GasLimit)))
+			return big.Mul(maxPremium, big.NewInt(msg.Message.GasLimit))
 		}
 
 		getGasPerf := func(gasReward big.Int, gasLimit int64) float64 {
