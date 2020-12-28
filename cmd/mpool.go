@@ -399,8 +399,8 @@ Get pending messages.
 			_ = re.Emit(fmt.Sprintf("%s: Nonce past: %d, cur: %d, future: %d; FeeCap cur: %d, min-%d: %d, gasLimit: %s", stat.addr, stat.past, stat.cur, stat.future, stat.belowCurr, basefee, stat.belowPast, stat.gasLimit))
 		}
 
-		re.Emit("-----")
-		re.Emit(fmt.Sprintf("total: Nonce past: %d, cur: %d, future: %d; FeeCap cur: %d, min-%d: %d, gasLimit: %s", total.past, total.cur, total.future, total.belowCurr, basefee, total.belowPast, total.gasLimit))
+		_ = re.Emit("-----")
+		_ = re.Emit(fmt.Sprintf("total: Nonce past: %d, cur: %d, future: %d; FeeCap cur: %d, min-%d: %d, gasLimit: %s", total.past, total.cur, total.future, total.belowCurr, basefee, total.belowPast, total.gasLimit))
 
 		return nil
 	},
@@ -473,11 +473,11 @@ Get pending messages.
 
 			if cids {
 				cid, err := msg.Cid()
-				re.Emit(cid)
-				re.Emit(err)
+				_ = re.Emit(cid)
+				_ = re.Emit(err)
 				fmt.Println(msg.Cid())
 			} else {
-				re.Emit(msg)
+				_ = re.Emit(msg)
 			}
 		}
 
@@ -526,7 +526,7 @@ Subscribe to mpool changes
 		for {
 			select {
 			case update := <-sub:
-				re.Emit(update)
+				_ = re.Emit(update)
 			case <-ctx.Done():
 				return nil
 			}
@@ -554,7 +554,7 @@ get or set current mpool configuration
 				return err
 			}
 
-			re.Emit(cfg)
+			_ = re.Emit(cfg)
 		} else {
 			cfg := new(messagepool.MpoolConfig)
 			bytes := []byte(req.Arguments[0])
@@ -632,7 +632,7 @@ Check gas performance of messages in mempool
 		getGasPerf := func(gasReward big.Int, gasLimit int64) float64 {
 			// gasPerf = gasReward * build.BlockGasLimit / gasLimit
 			a := new(stdbig.Rat).SetInt(new(stdbig.Int).Mul(gasReward.Int, bigBlockGasLimit.Int))
-			b := stdbig.NewRat(1, int64(gasLimit))
+			b := stdbig.NewRat(1, gasLimit)
 			c := new(stdbig.Rat).Mul(a, b)
 			r, _ := c.Float64()
 			return r
@@ -642,7 +642,7 @@ Check gas performance of messages in mempool
 			gasReward := getGasReward(m)
 			gasPerf := getGasPerf(gasReward, m.Message.GasLimit)
 
-			re.Emit(fmt.Sprintf("%s   %d   %s  %f", m.Message.From, m.Message.Nonce, gasReward, gasPerf))
+			_ = re.Emit(fmt.Sprintf("%s   %d   %s  %f", m.Message.From, m.Message.Nonce, gasReward, gasPerf))
 		}
 
 		return nil
