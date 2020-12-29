@@ -3,10 +3,15 @@ package consensus
 import (
 	"context"
 	"fmt"
-	cbor "github.com/ipfs/go-ipld-cbor"
+
+	"github.com/filecoin-project/go-address"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/venus/pkg/crypto"
+	state2 "github.com/filecoin-project/venus/pkg/state"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
@@ -66,6 +71,11 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 		return nil, fork.ErrExpensiveFork
 	}
 
+	priorState, err := state.LoadState(ctx, cbor.NewCborStore(c.bstore), stateRoot)
+	if err != nil {
+		return nil, err
+	}
+
 	rnd := HeadRandomness{
 		Chain: c.rnd,
 		Head:  ts.Key(),
@@ -87,6 +97,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 		PRoot:             stateRoot,
 		Bsstore:           c.bstore,
 		SysCallsImpl:      c.syscallsImpl,
+		Fork:              c.fork,
 	}
 
 	for i, m := range priorMsgs {
@@ -96,7 +107,35 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 		}
 	}
 
-	return c.processor.ProcessUnsignedMessage(ctx, msg, vmOption)
+	fromActor, found, err := priorState.GetActor(ctx, msg.VMMessage().From)
+	if err != nil {
+		return nil, xerrors.Errorf("get actor failed: %s", err)
+	}
+	if !found {
+		return nil, xerrors.New("actor not found")
+	}
+	msg.Nonce = fromActor.Nonce
+
+	viewer := state2.NewView(c.cstore, stateRoot)
+	fromKey, err := viewer.ResolveToKeyAddr(ctx, msg.VMMessage().From)
+	if err != nil {
+		return nil, err
+	}
+
+	var msgApply types.ChainMsg
+	switch fromKey.Protocol() {
+	case address.BLS:
+		msgApply = msg
+	case address.SECP256K1:
+		msgApply = &types.SignedMessage{
+			Message: *msg,
+			Signature: acrypto.Signature{
+				Type: crypto.SigTypeSecp256k1,
+				Data: make([]byte, 65),
+			},
+		}
+	}
+	return c.processor.ProcessUnsignedMessage(ctx, msgApply, vmOption)
 }
 
 func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*vm.Ret, error) {
@@ -171,10 +210,10 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *blo
 		BaseFee:           ts.At(0).ParentBaseFee,
 		Epoch:             ts.At(0).Height,
 		GasPriceSchedule:  c.gasPirceSchedule,
-
-		PRoot:        ts.At(0).ParentStateRoot,
-		Bsstore:      c.bstore,
-		SysCallsImpl: c.syscallsImpl,
+		Fork:              c.fork,
+		PRoot:             ts.At(0).ParentStateRoot,
+		Bsstore:           c.bstore,
+		SysCallsImpl:      c.syscallsImpl,
 	}
 
 	// TODO: maybe just use the invoker directly?
