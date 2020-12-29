@@ -20,6 +20,9 @@ func NewActorAPI(chain *ChainSubmodule) ActorAPI {
 }
 
 func (actorAPI *ActorAPI) StateGetActor(ctx context.Context, actor address.Address, tsk block.TipSetKey) (*types.Actor, error) {
+	if tsk.IsEmpty() {
+		tsk = actorAPI.chain.ChainReader.GetHead()
+	}
 	view, err := actorAPI.chain.State.StateView(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
