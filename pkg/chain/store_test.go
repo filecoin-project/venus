@@ -2,10 +2,11 @@ package chain_test
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/util/test"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/util/test"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -176,7 +177,7 @@ func TestRevertChange(t *testing.T) {
 	err = cs.SetHead(ctx, link6)
 	require.NoError(t, err)
 
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 5)
 	headChanges := <-ch
 
 	test.Equal(t, headChanges[0].Type, chain.HCRevert)
