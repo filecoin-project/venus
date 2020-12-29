@@ -5,15 +5,16 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
+	"strings"
+	"time"
+
 	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/slashing"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
-	"os"
-	"strings"
-	"time"
 
 	"github.com/Gurpartap/async"
 	"github.com/filecoin-project/go-address"
@@ -73,7 +74,7 @@ const AllowableClockDriftSecs = uint64(1)
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
 	ProcessTipSet(context.Context, *block.TipSet, *block.TipSet, []block.BlockMessagesInfo, vm.VmOption) (cid.Cid, []types.MessageReceipt, error)
-	ProcessUnsignedMessage(context.Context, *types.UnsignedMessage, vm.VmOption) (*vm.Ret, error)
+	ProcessUnsignedMessage(context.Context, types.ChainMsg, vm.VmOption) (*vm.Ret, error)
 }
 
 // TicketValidator validates that an input ticket is valid.

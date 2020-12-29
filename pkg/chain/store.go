@@ -3,11 +3,12 @@ package chain
 import (
 	"bytes"
 	"context"
-	lru "github.com/hashicorp/golang-lru"
 	"io"
 	"os"
 	"runtime/debug"
 	"sync"
+
+	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/cskr/pubsub"
 	"github.com/filecoin-project/go-address"
@@ -223,17 +224,16 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		return errors.Wrap(err, "error loading head tipset")
 	}
 
-	var checkPointTs *block.TipSet
 	loopBack := abi.ChainEpoch(0)
 	if !store.checkPoint.IsEmpty() {
-		checkPointTs, err = LoadTipSetBlocks(ctx, store.stateAndBlockSource, store.checkPoint)
+		_, err = LoadTipSetBlocks(ctx, store.stateAndBlockSource, store.checkPoint)
 		if err != nil {
 			return errors.Wrap(err, "error loading head tipset")
 		}
-		loopBack = checkPointTs.EnsureHeight() - 10
 	}
 
 	startHeight := headTs.At(0).Height
+	loopBack = startHeight - 1000
 	log.Infof("start loading chain at tipset: %s, height: %d", headTsKey.String(), startHeight)
 	// Ensure we only produce 10 log messages regardless of the chain height.
 	logStatusEvery := startHeight / 10

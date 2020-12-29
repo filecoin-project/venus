@@ -266,6 +266,9 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetRandomnessFromTickets(ctx context.Cont
 }
 
 func (chainInfoAPI *ChainInfoAPI) StateNetworkVersion(ctx context.Context, tsk block.TipSetKey) (network.Version, error) {
+	if tsk.IsEmpty() {
+		tsk = chainInfoAPI.chain.ChainReader.GetHead()
+	}
 	ts, err := chainInfoAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return network.VersionMax, xerrors.Errorf("loading tipset %s: %v", tsk, err)

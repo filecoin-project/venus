@@ -184,3 +184,7 @@ func (bs *BufferedBS) PutMany(blks []block.Block) error {
 func (bs *BufferedBS) Read() bstore.Blockstore {
 	return bs.read
 }
+
+func (bs *BufferedBS) Write() bstore.Blockstore {
+	return bs.write
+}
