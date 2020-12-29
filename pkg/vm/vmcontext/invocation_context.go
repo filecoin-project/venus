@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/chain"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -13,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/ipfs/go-cid"
 	ipfscbor "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"

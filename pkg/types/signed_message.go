@@ -110,8 +110,15 @@ func (smsg *SignedMessage) Equals(other *SignedMessage) bool {
 }
 
 func (smsg *SignedMessage) ChainLength() int {
+	var err error
 	buf := new(bytes.Buffer)
-	err := smsg.MarshalCBOR(buf)
+
+	if smsg.Signature.Type == crypto.SigTypeBLS {
+		// BLS chain message length doesn't include signature
+		err = smsg.Message.MarshalCBOR(buf)
+	} else {
+		err = smsg.MarshalCBOR(buf)
+	}
 	if err != nil {
 		panic(err)
 	}
