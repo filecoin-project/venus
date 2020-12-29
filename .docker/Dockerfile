@@ -1,5 +1,5 @@
 FROM golang:1.12.1-stretch AS builder
-MAINTAINER Filecoin Dev Team
+MAINTAINER Venus Dev Team
 
 RUN apt-get update && apt-get install -y ca-certificates file sudo clang jq
 RUN curl -sSf https://sh.rustup.rs | sh -s -- -y
@@ -39,14 +39,14 @@ RUN set -x \
 
 
 # Now comes the actual target image, which aims to be as small as possible.
-FROM busybox:1.30.1-glibc AS filecoin
-MAINTAINER Filecoin Dev Team
+FROM busybox:1.30.1-glibc AS venus
+MAINTAINER Venus Dev Team
 
 # Get the filecoin binary, entrypoint script, and TLS CAs from the build container.
 ENV SRC_DIR /go/src/github.com/filecoin-project/venus
 COPY --from=builder $SRC_DIR/tmp/filecoin-proof-parameters/* /tmp/filecoin-proof-parameters/
 COPY --from=builder $SRC_DIR/venus /usr/local/bin/venus
-COPY --from=builder $SRC_DIR/bin/container_daemon /usr/local/bin/start_filecoin
+COPY --from=builder $SRC_DIR/bin/container_daemon /usr/local/bin/start_venus
 COPY --from=builder $SRC_DIR/bin/devnet_start /usr/local/bin/devnet_start
 COPY --from=builder $SRC_DIR/bin/node_restart /usr/local/bin/node_restart
 COPY --from=builder $SRC_DIR/fixtures/ /data/
@@ -70,10 +70,10 @@ EXPOSE 6000
 EXPOSE 3453
 
 # Create the fs-repo directory and switch to a non-privileged user.
-ENV FILECOIN_PATH /data/filecoin
+ENV FILECOIN_PATH /data/venus
 RUN mkdir -p $FILECOIN_PATH \
-  && adduser -D -h $FILECOIN_PATH -u 1000 -G users filecoin \
-  && chown filecoin:users $FILECOIN_PATH
+  && adduser -D -h $FILECOIN_PATH -u 1000 -G users venus \
+  && chown venus:users $FILECOIN_PATH
 
 # Expose the fs-repo as a volume.
 # start_filecoin initializes an fs-repo if none is mounted.
@@ -81,7 +81,7 @@ RUN mkdir -p $FILECOIN_PATH \
 VOLUME $FILECOIN_PATH
 
 # There's an fs-repo, and initializes one if there isn't.
-ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/start_filecoin"]
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/start_venus"]
 
 # Execute the daemon subcommand by default
 CMD ["daemon"]

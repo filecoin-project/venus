@@ -401,44 +401,20 @@ jobs:
           steps:
             - get_staging_devnet_version
       - run:
-          name: build & push image - genesis file server
-          command: |
-            export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
-            docker build -f ./docker/Dockerfile.ci.genesis --label "version=$SHORT_GIT_SHA" -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:$SHORT_GIT_SHA --cache-from filecoin:all .
-            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:$SHORT_GIT_SHA
-            docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:latest
-            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:latest
-            if [[ ! -z "$FILECOIN_BINARY_VERSION" ]]; then
-              docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:${FILECOIN_BINARY_VERSION}
-              docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:${FILECOIN_BINARY_VERSION}
-            fi
-      - run:
-          name: build & push image - faucet
-          command: |
-            export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
-            docker build -f ./docker/Dockerfile.ci.faucet --label "version=$SHORT_GIT_SHA" -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA --cache-from filecoin:all .
-            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA
-            docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
-            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
-            if [[ ! -z "$FILECOIN_BINARY_VERSION" ]]; then
-              docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:${FILECOIN_BINARY_VERSION}
-              docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:${FILECOIN_BINARY_VERSION}
-            fi
-      - run:
-          name: build & push image - filecoin
+          name: build & push image - venus
           command: |
             export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
             export ARTIFACT_TAG="${CIRCLE_TAG:-$SHORT_GIT_SHA}"
             export FIL_PROOFS_PARAMETER_CACHE="./filecoin-proof-parameters"
             tar -xf "bundle/filecoin-$ARTIFACT_TAG-Linux.tar.gz"
             ./filecoin/paramcache
-            docker build -f ./docker/Dockerfile.ci.filecoin --label "version=$SHORT_GIT_SHA" -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA --cache-from filecoin:all .
-            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA
-            docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:latest
-            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:latest
+            docker build -f ./docker/Dockerfile.ci.filecoin --label "version=$SHORT_GIT_SHA" -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/venus:$SHORT_GIT_SHA --cache-from venus:all .
+            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/venus:$SHORT_GIT_SHA
+            docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/venus:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/venus:latest
+            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/venus:latest
             if [[ ! -z "$FILECOIN_BINARY_VERSION" ]]; then
-              docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:${FILECOIN_BINARY_VERSION}
-              docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:${FILECOIN_BINARY_VERSION}
+              docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/venus:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/venus:${FILECOIN_BINARY_VERSION}
+              docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/venus:${FILECOIN_BINARY_VERSION}
             fi
 
   trigger_nightly_devnet_deploy:

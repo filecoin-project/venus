@@ -1,24 +1,24 @@
-FROM busybox:1.30.1-glibc AS filecoin
-MAINTAINER Filecoin Dev Team
+FROM busybox:1.30.1-glibc AS Venus
+MAINTAINER Venus Dev Team
 
-# Get the filecoin binary, entrypoint script, and TLS CAs from the build container.
+# Get the venus binary, entrypoint script, and TLS CAs from the build container.
 ENV SRC_DIR /go/src/github.com/filecoin-project/venus
 COPY filecoin-proof-parameters /var/tmp/filecoin-proof-parameters
 COPY filecoin/venus /usr/local/bin/venus
-COPY bin/container_daemon /usr/local/bin/start_filecoin
+COPY bin/container_daemon /usr/local/bin/start_venus
 COPY bin/devnet_start /usr/local/bin/devnet_start
 COPY bin/node_restart /usr/local/bin/node_restart
 COPY fixtures/ /data/
 COPY tools/gengen/gengen /usr/local/bin/gengen
-COPY --from=filecoin:all /tmp/su-exec/su-exec /sbin/su-exec
-COPY --from=filecoin:all /tmp/tini /sbin/tini
-COPY --from=filecoin:all /etc/ssl/certs /etc/ssl/certs
+COPY --from=venus:all /tmp/su-exec/su-exec /sbin/su-exec
+COPY --from=venus:all /tmp/tini /sbin/tini
+COPY --from=venus:all /etc/ssl/certs /etc/ssl/certs
 
 # This shared lib (part of glibc) doesn't seem to be included with busybox.
-COPY --from=filecoin:all /lib/x86_64-linux-gnu/libdl-2.24.so /lib/libdl.so.2
-COPY --from=filecoin:all /lib/x86_64-linux-gnu/librt.so.1 /lib/librt.so.1
-COPY --from=filecoin:all /lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/libgcc_s.so.1
-COPY --from=filecoin:all /lib/x86_64-linux-gnu/libutil.so.1 /lib/libutil.so.1
+COPY --from=venus:all /lib/x86_64-linux-gnu/libdl-2.24.so /lib/libdl.so.2
+COPY --from=venus:all /lib/x86_64-linux-gnu/librt.so.1 /lib/librt.so.1
+COPY --from=venus:all /lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/libgcc_s.so.1
+COPY --from=venus:all /lib/x86_64-linux-gnu/libutil.so.1 /lib/libutil.so.1
 
 # need jq for parsing genesis output
 RUN wget -q -O /usr/local/bin/jq https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64 \
@@ -29,18 +29,18 @@ EXPOSE 6000
 EXPOSE 3453
 
 # Create the fs-repo directory and switch to a non-privileged user.
-ENV FILECOIN_PATH /data/filecoin
+ENV FILECOIN_PATH /data/venus
 RUN mkdir -p $FILECOIN_PATH \
-&& adduser -D -h $FILECOIN_PATH -u 1000 -G users filecoin \
-&& chown filecoin:users $FILECOIN_PATH
+&& adduser -D -h $FILECOIN_PATH -u 1000 -G users venus \
+&& chown venus:users $FILECOIN_PATH
 
 # Expose the fs-repo as a volume.
-# start_filecoin initializes an fs-repo if none is mounted.
+# start_venus initializes an fs-repo if none is mounted.
 # Important this happens after the USER directive so permission are correct.
 VOLUME $FILECOIN_PATH
 
 # There's an fs-repo, and initializes one if there isn't.
-ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/start_filecoin"]
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/start_venus"]
 
 # Execute the daemon subcommand by default
 CMD ["daemon"]
