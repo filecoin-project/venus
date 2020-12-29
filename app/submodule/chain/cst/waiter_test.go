@@ -1,32 +1,28 @@
 package cst
 
-//import (
-//	"context"
-//	"fmt"
-//	"sync"
-//	"testing"
-//	"time"
-//
-//	"github.com/filecoin-project/go-address"
-//	"github.com/filecoin-project/go-state-types/abi"
-//	"github.com/ipfs/go-cid"
-//	cbor "github.com/ipfs/go-ipld-cbor"
-//	"github.com/stretchr/testify/assert"
-//	"github.com/stretchr/testify/require"
-//
-//	"github.com/filecoin-project/venus/pkg/block"
-//	"github.com/filecoin-project/venus/pkg/chain"
-//	"github.com/filecoin-project/venus/pkg/constants"
-//	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-//	"github.com/filecoin-project/venus/pkg/types"
-//	"github.com/filecoin-project/venus/pkg/vm/state"
-//	gengen "github.com/filecoin-project/venus/tools/gengen/util"
-//)
-//
-//var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
-//
-//var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
-//
+import (
+	"context"
+	"fmt"
+	"testing"
+	"time"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/constants"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/vm/state"
+	gengen "github.com/filecoin-project/venus/tools/gengen/util"
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/stretchr/testify/assert"
+)
+
+var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
+
+var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
+
 //func testWaitHelp(wg *sync.WaitGroup, t *testing.T, waiter *Waiter, expectMsg *types.SignedMessage, expectError bool) {
 //	_, err := expectMsg.Cid()
 //	assert.NoError(t, err)
@@ -41,44 +37,44 @@ package cst
 //
 //type smsgs []*types.SignedMessage
 //type smsgsSet [][]*types.SignedMessage
-//
-//type chainReader interface {
-//	chain.TipSetProvider
-//	GetHead() block.TipSetKey
-//	GetTipSetReceiptsRoot(block.TipSetKey) (cid.Cid, error)
-//	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
-//	SubHeadChanges(context.Context) chan []*chain.HeadChange
-//	SubscribeHeadChanges(chain.ReorgNotifee)
-//}
-//type stateReader interface {
-//	ResolveAddressAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (address.Address, error)
-//	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*types.Actor, error)
-//	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
-//}
-//
-//func setupTest(t *testing.T) (cbor.IpldStore, *chain.Store, *chain.MessageStore, *Waiter) {
-//	d := requiredCommonDeps(t, gengen.DefaultGenesis)
-//
-//	combineChainReader := struct {
-//		stateReader
-//		chainReader
-//	}{
-//		d.chainState,
-//		d.chainStore,
-//	}
-//	return d.cst, d.chainStore, d.messages, NewWaiter(combineChainReader, d.messages, d.blockstore, d.cst)
-//}
-//
+
+type chainReader interface {
+	chain.TipSetProvider
+	GetHead() block.TipSetKey
+	GetTipSetReceiptsRoot(block.TipSetKey) (cid.Cid, error)
+	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
+	SubHeadChanges(context.Context) chan []*chain.HeadChange
+	SubscribeHeadChanges(chain.ReorgNotifee)
+}
+type stateReader interface {
+	ResolveAddressAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (address.Address, error)
+	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*types.Actor, error)
+	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
+}
+
+func setupTest(t *testing.T) (cbor.IpldStore, *chain.Store, *chain.MessageStore, *Waiter) {
+	d := requiredCommonDeps(t, gengen.DefaultGenesis)
+
+	combineChainReader := struct {
+		stateReader
+		chainReader
+	}{
+		d.chainState,
+		d.chainStore,
+	}
+	return d.cst, d.chainStore, d.messages, NewWaiter(combineChainReader, d.messages, d.blockstore, d.cst)
+}
+
 //func TestWait(t *testing.T) {
-//	//tf.UnitTest(t)
-//	//
-//	//ctx := context.Background()
-//	//cst, chainStore, msgStore, waiter := setupTest(t)
-//	//
-//	//testWaitExisting(ctx, t, cst, chainStore, msgStore, waiter)
-//	//testWaitNew(ctx, t, cst, chainStore, msgStore, waiter)
-//}
+//	tf.UnitTest(t)
 //
+//	ctx := context.Background()
+//	cst, chainStore, msgStore, waiter := setupTest(t)
+//
+//	testWaitExisting(ctx, t, cst, chainStore, msgStore, waiter)
+//	testWaitNew(ctx, t, cst, chainStore, msgStore, waiter)
+//}
+
 //func testWaitExisting(ctx context.Context, t *testing.T, cst cbor.IpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
 //	m1, m2 := newSignedMessage(0), newSignedMessage(1)
 //	head := chainStore.GetHead()
@@ -125,37 +121,37 @@ package cst
 //	go testWaitHelp(&wg, t, waiter, m4, false)
 //	wg.Wait()
 //}
-//
-//func TestWaitRespectsContextCancel(t *testing.T) {
-//	tf.UnitTest(t)
-//
-//	ctx, cancel := context.WithCancel(context.Background())
-//	_, _, _, waiter := setupTest(t)
-//
-//	var err error
-//	var chainMessage *ChainMessage
-//	doneCh := make(chan struct{})
-//	go func() {
-//		defer close(doneCh)
-//		chainMessage, err = waiter.Wait(ctx, newSignedMessage(0), constants.DefaultConfidence, constants.DefaultMessageWaitLookback)
-//	}()
-//
-//	cancel()
-//
-//	select {
-//	case <-doneCh:
-//		fmt.Println(err)
-//		//assert.Error(t, err)
-//	case <-time.After(2 * time.Second):
-//		assert.Fail(t, "Wait should have returned when context was canceled")
-//	}
-//	assert.Nil(t, chainMessage)
-//}
-//
-//// NewChainWithMessages creates a chain of tipsets containing the given messages
-//// and stores them in the given store.  Note the msg arguments are slices of
-//// slices of messages -- each slice of slices goes into a successive tipset,
-//// and each slice within this slice goes into a block of that tipset
+
+func TestWaitRespectsContextCancel(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	_, _, _, waiter := setupTest(t)
+
+	var err error
+	var chainMessage *ChainMessage
+	doneCh := make(chan struct{})
+	go func() {
+		defer close(doneCh)
+		chainMessage, err = waiter.Wait(ctx, newSignedMessage(0), constants.DefaultConfidence, constants.DefaultMessageWaitLookback)
+	}()
+
+	cancel()
+
+	select {
+	case <-doneCh:
+		fmt.Println(err)
+		//assert.Error(t, err)
+	case <-time.After(2 * time.Second):
+		assert.Fail(t, "Wait should have returned when context was canceled")
+	}
+	assert.Nil(t, chainMessage)
+}
+
+// NewChainWithMessages creates a chain of tipsets containing the given messages
+// and stores them in the given store.  Note the msg arguments are slices of
+// slices of messages -- each slice of slices goes into a successive tipset,
+// and each slice within this slice goes into a block of that tipset
 //func newChainWithMessages(store cbor.IpldStore, msgStore *chain.MessageStore, root *block.TipSet, msgSets ...[][]*types.SignedMessage) []*block.TipSet {
 //	var tipSets []*block.TipSet
 //	parents := root
@@ -240,8 +236,8 @@ package cst
 //
 //	return tipSets
 //}
-//
-//// mustPut stores the thingy in the store or panics if it cannot.
+
+// mustPut stores the thingy in the store or panics if it cannot.
 //func mustPut(store cbor.IpldStore, thingy interface{}) cid.Cid {
 //	c, err := store.Put(context.Background(), thingy)
 //	if err != nil {
