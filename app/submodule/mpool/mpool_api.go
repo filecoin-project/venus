@@ -185,7 +185,7 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Unsign
 		msg.From = fromA
 	}
 
-	b, err := a.mp.wallet.API().WalletBalance(ctx, msg.From)
+	b, err := a.mp.walletAPI.WalletBalance(ctx, msg.From)
 	if err != nil {
 		return nil, xerrors.Errorf("mpool push: getting origin balance: %w", err)
 	}
@@ -212,7 +212,7 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Unsign
 			return nil, xerrors.Errorf("serializing message: %w", err)
 		}
 
-		sig, err := a.mp.wallet.API().WalletSign(ctx, msg.From, mb.Cid().Bytes(), wallet.MsgMeta{})
+		sig, err := a.mp.walletAPI.WalletSign(ctx, msg.From, mb.Cid().Bytes(), wallet.MsgMeta{})
 		if err != nil {
 			return nil, xerrors.Errorf("failed to sign message: %w", err)
 		}
@@ -323,7 +323,7 @@ func (a *MessagePoolAPI) WalletSign(ctx context.Context, k address.Address, msg 
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ID address: %v", keyAddr)
 	}
-	return a.mp.wallet.API().WalletSign(ctx, keyAddr, msg, wallet.MsgMeta{
+	return a.mp.walletAPI.WalletSign(ctx, keyAddr, msg, wallet.MsgMeta{
 		Type: wallet.MTUnknown,
 	})
 }
