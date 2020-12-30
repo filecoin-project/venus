@@ -4,6 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/venus/pkg/jwtauth"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -271,6 +274,10 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.StorageNetworking")
 	}
 	nd.mining = mining.NewMiningModule(b.repo, nd.chain, nd.Blockstore, nd.network, nd.syncer, *nd.Wallet, *nd.ProofVerification)
+	nd.JwtAuth, err = jwtauth.NewJwtAuth(b.repo)
+	if err != nil {
+		return nil, xerrors.Errorf("read or generate jwt secrect error %s", err)
+	}
 
 	apiBuilder := util.NewBuiler()
 	apiBuilder.NameSpace("Filecoin")
@@ -286,6 +293,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.ProofVerification,
 		nd.mining,
 		nd.Mpool,
+		nd.JwtAuth,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "add service failed ")

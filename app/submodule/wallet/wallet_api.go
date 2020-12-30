@@ -66,7 +66,7 @@ func (walletAPI *WalletAPI) WalletAddresses() []address.Address {
 }
 
 // SetWalletDefaultAddress set the specified address as the default in the config.
-func (walletAPI *WalletAPI) SetWalletDefaultAddress(addr address.Address) error {
+func (walletAPI *WalletAPI) WalletSetDefault(_ context.Context, addr address.Address) error {
 	localAddrs := walletAPI.WalletAddresses()
 	for _, localAddr := range localAddrs {
 		if localAddr == addr {

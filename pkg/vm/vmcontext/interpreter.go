@@ -17,6 +17,7 @@ type VMInterpreter interface {
 	ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.TipSet, parentEpoch abi.ChainEpoch, epoch abi.ChainEpoch, cb ExecCallBack) (cid.Cid, []types.MessageReceipt, error)
 	ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (*Ret, error)
 	ApplyMessage(msg types.ChainMsg) *Ret
+	ApplyImplicitMessage(msg types.ChainMsg) (*Ret, error)
 
 	StateTree() state.Tree
 	Flush() (state.Root, error)

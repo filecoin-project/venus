@@ -2,6 +2,8 @@ package network
 
 import (
 	"context"
+
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/net"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/metrics"
@@ -51,4 +53,41 @@ func (networkAPI *NetworkAPI) NetworkConnect(ctx context.Context, addrs []string
 // NetworkPeers lists peers currently available on the network
 func (networkAPI *NetworkAPI) NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*net.SwarmConnInfos, error) {
 	return networkAPI.network.Network.Peers(ctx, verbose, latency, streams)
+}
+
+// Version provides various build-time information
+type Version struct {
+	Version string
+
+	// APIVersion is a binary encoded semver version of the remote implementing
+	// this api
+	//
+	// See APIVersion in build/version.go
+	APIVersion constants.Version
+
+	// TODO: git commit / os / genesis cid?
+
+	// Seconds
+	BlockDelay uint64
+}
+
+func (networkAPI *NetworkAPI) Version(context.Context) (Version, error) {
+	v, err := constants.VersionForType(constants.NodeMiner)
+	if err != nil {
+		return Version{}, err
+	}
+
+	return Version{
+		Version:    constants.UserVersion(),
+		APIVersion: v,
+
+		BlockDelay: constants.BlockDelaySecs,
+	}, nil
+}
+
+func (networkAPI *NetworkAPI) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
+	return peer.AddrInfo{
+		ID:    networkAPI.network.Host.ID(),
+		Addrs: networkAPI.network.Host.Addrs(),
+	}, nil
 }
