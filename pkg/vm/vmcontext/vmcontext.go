@@ -56,6 +56,20 @@ type VM struct {
 	State state.Tree
 }
 
+func (vm *VM) ApplyImplicitMessage(msg types.ChainMsg) (*Ret, error) {
+	unsignedMsg := msg.VMMessage()
+
+	imsg := VmMessage{
+		From:   unsignedMsg.From,
+		To:     unsignedMsg.To,
+		Value:  unsignedMsg.Value,
+		Method: unsignedMsg.Method,
+		Params: unsignedMsg.Params,
+	}
+	vm.SetCurrentEpoch(vm.vmOption.Epoch)
+	return vm.applyImplicitMessage(imsg)
+}
+
 // ActorImplLookup provides access To upgradeable actor code.
 type ActorImplLookup interface {
 	GetActorImpl(code cid.Cid, rt runtime.Runtime) (dispatch.Dispatcher, *dispatch.ExcuteError)

@@ -21,7 +21,7 @@ import (
 // TODO do not export these fields as it increases the chances of producing a
 // `SignedMessage` with an empty signature.
 type SignedMessage struct {
-	Message   UnsignedMessage  `json:"meteredMessage"`
+	Message   UnsignedMessage  `json:"message"`
 	Signature crypto.Signature `json:"signature"`
 }
 

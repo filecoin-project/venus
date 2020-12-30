@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -17,6 +18,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
+	state2 "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
@@ -84,6 +86,9 @@ func (minerStateAPI *MinerStateAPI) StateMinerSectorSize(ctx context.Context, ma
 }
 
 func (minerStateAPI *MinerStateAPI) StateMinerInfo(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (miner.MinerInfo, error) {
+	if tsk.IsEmpty() {
+		tsk = minerStateAPI.chain.ChainReader.GetHead()
+	}
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return miner.MinerInfo{}, xerrors.Errorf("loading tipset %s: %v", tsk, err)
@@ -140,6 +145,9 @@ func (minerStateAPI *MinerStateAPI) StateMinerFaults(ctx context.Context, maddr 
 }
 
 func (minerStateAPI *MinerStateAPI) StateMinerProvingDeadline(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (*dline.Info, error) {
+	if tsk.IsEmpty() {
+		tsk = minerStateAPI.chain.ChainReader.GetHead()
+	}
 	ts, err := minerStateAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
@@ -469,4 +477,86 @@ func (minerStateAPI *MinerStateAPI) StateVMCirculatingSupplyInternal(ctx context
 
 func (minerStateAPI *MinerStateAPI) StateCirculatingSupply(ctx context.Context, tsk block.TipSetKey) (abi.TokenAmount, error) {
 	return minerStateAPI.chain.ChainReader.StateCirculatingSupply(ctx, tsk)
+}
+
+func (minerStateAPI *MinerStateAPI) StateMarketDeals(ctx context.Context, tsk block.TipSetKey) (map[string]state2.MarketDeal, error) {
+	out := map[string]state2.MarketDeal{}
+
+	if tsk.IsEmpty() {
+		tsk = minerStateAPI.chain.ChainReader.GetHead()
+	}
+	ts, err := minerStateAPI.chain.ChainReader.GetTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
+	}
+
+	state, err := minerStateAPI.getMarketState(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	da, err := state.Proposals()
+	if err != nil {
+		return nil, err
+	}
+
+	sa, err := state.States()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := da.ForEach(func(dealID abi.DealID, d market.DealProposal) error {
+		s, found, err := sa.Get(dealID)
+		if err != nil {
+			return xerrors.Errorf("failed to get state for deal in proposals array: %v", err)
+		} else if !found {
+			s = market.EmptyDealState()
+		}
+		out[strconv.FormatInt(int64(dealID), 10)] = state2.MarketDeal{
+			Proposal: d,
+			State:    *s,
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (minerStateAPI *MinerStateAPI) getMarketState(ctx context.Context, ts *block.TipSet) (market.State, error) {
+	store := minerStateAPI.chain.State.Store(ctx)
+	sTree, err := state.LoadState(ctx, store, ts.At(0).ParentStateRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	act, found, err := sTree.GetActor(ctx, market.Address)
+	if err != nil {
+		return nil, err
+	} else if !found {
+		return nil, xerrors.New("not found market state")
+	}
+
+	actState, err := market.Load(store, act)
+	if err != nil {
+		return nil, err
+	}
+	return actState, nil
+}
+
+func (minerStateAPI *MinerStateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk block.TipSetKey) ([]*miner.SectorOnChainInfo, error) { // TODO: only used in cli
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
+	}
+
+	mas, err := view.LoadMinerState(ctx, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor state: %v", err)
+	}
+	activeSectors, err := miner.AllPartSectors(mas, miner.Partition.ActiveSectors)
+	if err != nil {
+		return nil, xerrors.Errorf("merge partition active sets: %v", err)
+	}
+	return mas.LoadSectors(&activeSectors)
 }

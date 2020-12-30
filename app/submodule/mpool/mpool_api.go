@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"sync"
 
+	"github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -14,7 +16,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/types"
-	pwallet "github.com/filecoin-project/venus/pkg/wallet"
+	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
 type MessagePoolAPI struct {
@@ -51,10 +53,20 @@ func (a *MessagePoolAPI) MpoolSelect(ctx context.Context, tsk block.TipSetKey, t
 }
 
 func (a *MessagePoolAPI) MpoolPending(ctx context.Context, tsk block.TipSetKey) ([]*types.SignedMessage, error) {
-	ts, err := a.mp.chain.API().ChainGetTipSet(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	var ts *block.TipSet
+	var err error
+	if tsk.IsEmpty() {
+		ts, err = a.mp.chain.API().ChainHead(ctx)
+		if err != nil {
+			return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		}
+	} else {
+		ts, err = a.mp.chain.API().ChainGetTipSet(tsk)
+		if err != nil {
+			return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		}
 	}
+
 	pending, mpts := a.mp.MPool.Pending()
 
 	haveCids := map[cid.Cid]struct{}{}
@@ -173,7 +185,7 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Unsign
 		msg.From = fromA
 	}
 
-	b, err := a.mp.walletAPI.WalletBalance(ctx, msg.From)
+	b, err := a.mp.wallet.API().WalletBalance(ctx, msg.From)
 	if err != nil {
 		return nil, xerrors.Errorf("mpool push: getting origin balance: %w", err)
 	}
@@ -200,7 +212,7 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Unsign
 			return nil, xerrors.Errorf("serializing message: %w", err)
 		}
 
-		sig, err := a.mp.walletAPI.WalletSign(ctx, msg.From, mb.Cid().Bytes(), pwallet.MsgMeta{})
+		sig, err := a.mp.wallet.API().WalletSign(ctx, msg.From, mb.Cid().Bytes(), wallet.MsgMeta{})
 		if err != nil {
 			return nil, xerrors.Errorf("failed to sign message: %w", err)
 		}
@@ -298,4 +310,20 @@ func (a *MessagePoolAPI) GasEstimateFeeCap(ctx context.Context, msg *types.Unsig
 
 func (a *MessagePoolAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk block.TipSetKey) (big.Int, error) {
 	return a.mp.MPool.GasEstimateGasPremium(ctx, nblocksincl, sender, gaslimit, tsk)
+}
+
+func (a *MessagePoolAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
+	head := a.mp.chain.ChainReader.GetHead()
+	view, err := a.mp.chain.State.StateView(head)
+	if err != nil {
+		return nil, err
+	}
+
+	keyAddr, err := view.AccountSignerAddress(ctx, k)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to resolve ID address: %v", keyAddr)
+	}
+	return a.mp.wallet.API().WalletSign(ctx, keyAddr, msg, wallet.MsgMeta{
+		Type: wallet.MTUnknown,
+	})
 }

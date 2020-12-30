@@ -18,9 +18,11 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	chainApiTypes "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	mineApiTypes "github.com/filecoin-project/venus/app/submodule/mining"
+	venusnetwork "github.com/filecoin-project/venus/app/submodule/network"
 	syncApiTypes "github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -29,6 +31,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/net"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
+	state2 "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/wallet"
@@ -39,7 +42,7 @@ type FullNode struct {
 	ChainTipSetWeight        func(context.Context, block.TipSetKey) (big.Int, error)
 	ChainSyncHandleNewTipSet func(*block.ChainInfo) error
 	SyncSubmitBlock          func(context.Context, *block.BlockMsg) error
-	StateCall                func(context.Context, *types.UnsignedMessage, *block.TipSet) (*syncApiTypes.InvocResult, error)
+	StateCall                func(context.Context, *types.UnsignedMessage, block.TipSetKey) (*syncApiTypes.InvocResult, error)
 
 	MpoolPush               func(context.Context, *types.SignedMessage) (cid.Cid, error)
 	MpoolGetConfig          func(context.Context) (*messagepool.MpoolConfig, error)
@@ -83,6 +86,8 @@ type FullNode struct {
 	StateMinerInitialPledgeCollateral  func(context.Context, address.Address, miner.SectorPreCommitInfo, block.TipSetKey) (big.Int, error)
 	StateVMCirculatingSupplyInternal   func(context.Context, block.TipSetKey) (chain.CirculatingSupply, error)
 	StateCirculatingSupply             func(context.Context, block.TipSetKey) (abi.TokenAmount, error)
+	StateMarketDeals                   func(ctx context.Context, tsk block.TipSetKey) (map[string]state2.MarketDeal, error)
+	StateMinerActiveSectors            func(ctx context.Context, maddr address.Address, tsk block.TipSetKey) ([]*miner.SectorOnChainInfo, error)
 
 	StateAccountKey func(context.Context, address.Address, block.TipSetKey) (address.Address, error)
 
@@ -101,6 +106,7 @@ type FullNode struct {
 	NetworkFindPeer           func(context.Context, peer.ID) (peer.AddrInfo, error)
 	NetworkConnect            func(context.Context, []string) (chan net.ConnectionResult, error)
 	NetworkPeers              func(context.Context, bool) (*net.SwarmConnInfos, error)
+	NetAddrsListen            func(context.Context) (peer.AddrInfo, error)
 
 	MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, block.TipSetKey) (*block.MiningBaseInfo, error)
 	MinerCreateBlock func(context.Context, *mineApiTypes.BlockTemplate) (*block.BlockMsg, error)
@@ -134,17 +140,18 @@ type FullNode struct {
 	StateSearchMsg                func(context.Context, cid.Cid) (*cst.MsgLookup, error)
 	StateWaitMsg                  func(context.Context, cid.Cid, abi.ChainEpoch) (*cst.MsgLookup, error)
 	StateGetReceipt               func(context.Context, cid.Cid, block.TipSetKey) (*types.MessageReceipt, error)
+	StateNetworkName              func(ctx context.Context) (chainApiTypes.NetworkName, error)
 
-	WalletBalance           func(context.Context, address.Address) (abi.TokenAmount, error)
-	WalletHas               func(context.Context, address.Address) (bool, error)
-	WalletDefaultAddress    func() (address.Address, error)
-	WalletAddresses         func() []address.Address
-	SetWalletDefaultAddress func(address.Address) error
-	WalletNewAddress        func(address.Protocol) (address.Address, error)
-	WalletImport            func(*crypto.KeyInfo) (address.Address, error)
-	WalletExport            func([]address.Address) ([]*crypto.KeyInfo, error)
-	WalletSign              func(context.Context, address.Address, []byte, wallet.MsgMeta) (*crypto.Signature, error)
-	WalletSignMessage       func(context.Context, address.Address, *types.UnsignedMessage) (*types.SignedMessage, error)
+	WalletBalance        func(context.Context, address.Address) (abi.TokenAmount, error)
+	WalletHas            func(context.Context, address.Address) (bool, error)
+	WalletDefaultAddress func() (address.Address, error)
+	WalletAddresses      func() []address.Address
+	WalletSetDefault     func(context.Context, address.Address) error
+	WalletNewAddress     func(address.Protocol) (address.Address, error)
+	WalletImport         func(*crypto.KeyInfo) (address.Address, error)
+	WalletExport         func([]address.Address) ([]*crypto.KeyInfo, error)
+	WalletSign           func(context.Context, address.Address, []byte, wallet.MsgMeta) (*crypto.Signature, error)
+	WalletSignMessage    func(context.Context, address.Address, *types.UnsignedMessage) (*types.SignedMessage, error)
 }
 
 type DbAPI struct {
@@ -162,7 +169,7 @@ type SyncerAPI struct {
 	ChainTipSetWeight        func(context.Context, block.TipSetKey) (big.Int, error)
 	ChainSyncHandleNewTipSet func(*block.ChainInfo) error
 	SyncSubmitBlock          func(context.Context, *block.BlockMsg) error
-	StateCall                func(context.Context, *types.UnsignedMessage, *block.TipSet) (*syncApiTypes.InvocResult, error)
+	StateCall                func(context.Context, *types.UnsignedMessage, block.TipSetKey) (*syncApiTypes.InvocResult, error)
 }
 
 type MessagePoolAPI struct {
@@ -217,6 +224,7 @@ type ChainInfoAPI struct {
 	StateSearchMsg                func(context.Context, cid.Cid) (*cst.MsgLookup, error)
 	StateWaitMsg                  func(context.Context, cid.Cid, abi.ChainEpoch) (*cst.MsgLookup, error)
 	StateGetReceipt               func(context.Context, cid.Cid, block.TipSetKey) (*types.MessageReceipt, error)
+	StateNetworkName              func(ctx context.Context) (chainApiTypes.NetworkName, error)
 }
 
 type MinerStateAPI struct {
@@ -238,6 +246,8 @@ type MinerStateAPI struct {
 	StateMinerInitialPledgeCollateral  func(context.Context, address.Address, miner.SectorPreCommitInfo, block.TipSetKey) (big.Int, error)
 	StateVMCirculatingSupplyInternal   func(context.Context, block.TipSetKey) (chain.CirculatingSupply, error)
 	StateCirculatingSupply             func(context.Context, block.TipSetKey) (abi.TokenAmount, error)
+	StateMarketDeals                   func(ctx context.Context, tsk block.TipSetKey) (map[string]state2.MarketDeal, error)
+	StateMinerActiveSectors            func(ctx context.Context, maddr address.Address, tsk block.TipSetKey) ([]*miner.SectorOnChainInfo, error)
 }
 
 type AccountAPI struct {
@@ -264,6 +274,8 @@ type NetworkAPI struct {
 	NetworkFindPeer           func(context.Context, peer.ID) (peer.AddrInfo, error)
 	NetworkConnect            func(context.Context, []string) (chan net.ConnectionResult, error)
 	NetworkPeers              func(context.Context, bool) (*net.SwarmConnInfos, error)
+	Version                   func(context.Context) (venusnetwork.Version, error)
+	NetAddrsListen            func(context.Context) (peer.AddrInfo, error)
 }
 
 type MiningAPI struct {
@@ -272,14 +284,19 @@ type MiningAPI struct {
 }
 
 type WalletAPI struct {
-	WalletBalance           func(context.Context, address.Address) (abi.TokenAmount, error)
-	WalletHas               func(context.Context, address.Address) (bool, error)
-	WalletDefaultAddress    func() (address.Address, error)
-	WalletAddresses         func() []address.Address
-	SetWalletDefaultAddress func(address.Address) error
-	WalletNewAddress        func(address.Protocol) (address.Address, error)
-	WalletImport            func(*crypto.KeyInfo) (address.Address, error)
-	WalletExport            func([]address.Address) ([]*crypto.KeyInfo, error)
-	WalletSign              func(context.Context, address.Address, []byte, wallet.MsgMeta) (*crypto.Signature, error)
-	WalletSignMessage       func(context.Context, address.Address, *types.UnsignedMessage) (*types.SignedMessage, error)
+	WalletBalance        func(context.Context, address.Address) (abi.TokenAmount, error)
+	WalletHas            func(context.Context, address.Address) (bool, error)
+	WalletDefaultAddress func() (address.Address, error)
+	WalletAddresses      func() []address.Address
+	WalletSetDefault     func(context.Context, address.Address) error
+	WalletNewAddress     func(address.Protocol) (address.Address, error)
+	WalletImport         func(*crypto.KeyInfo) (address.Address, error)
+	WalletExport         func([]address.Address) ([]*crypto.KeyInfo, error)
+	WalletSign           func(context.Context, address.Address, []byte, wallet.MsgMeta) (*crypto.Signature, error)
+	WalletSignMessage    func(context.Context, address.Address, *types.UnsignedMessage) (*types.SignedMessage, error)
+}
+
+type JwtAuthAPI struct {
+	AuthVerify func(ctx context.Context, token string) ([]auth.Permission, error)
+	AuthNew    func(ctx context.Context, perms []auth.Permission) ([]byte, error)
 }

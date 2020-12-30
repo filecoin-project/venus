@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -106,7 +107,7 @@ var setDefaultAddressCmd = &cmds.Command{
 			return err
 		}
 
-		err = env.(*node.Env).WalletAPI.SetWalletDefaultAddress(addr)
+		err = env.(*node.Env).WalletAPI.WalletSetDefault(context.TODO(), addr)
 		if err != nil {
 			return err
 		}

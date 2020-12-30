@@ -2,8 +2,9 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"time"
+
+	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -79,8 +80,8 @@ func (chainInfoAPI *ChainInfoAPI) ProtocolParameters(ctx context.Context) (*Prot
 }
 
 func (chainInfoAPI *ChainInfoAPI) ChainHead(ctx context.Context) (*block.TipSet, error) {
-	headkey := chainInfoAPI.chain.ChainReader.GetHead()
-	return chainInfoAPI.chain.ChainReader.GetTipSet(headkey)
+	headKey := chainInfoAPI.chain.ChainReader.GetHead()
+	return chainInfoAPI.chain.ChainReader.GetTipSet(headKey)
 }
 
 // ChainSetHead sets `key` as the new head of this chain iff it exists in the nodes chain store.
@@ -220,6 +221,12 @@ func (chainInfoAPI *ChainInfoAPI) GetEntry(ctx context.Context, height abi.Chain
 // VerifyEntry verifies that child is a valid entry if its parent is.
 func (chainInfoAPI *ChainInfoAPI) VerifyEntry(parent, child *block.BeaconEntry, height abi.ChainEpoch) bool {
 	return chainInfoAPI.chain.Drand.BeaconForEpoch(height).VerifyEntry(*parent, *child) != nil
+}
+
+func (chainInfoAPI *ChainInfoAPI) StateNetworkName(ctx context.Context) (NetworkName, error) {
+	networkName, err := chainInfoAPI.getNetworkName(ctx)
+
+	return NetworkName(networkName), err
 }
 
 func (chainInfoAPI *ChainInfoAPI) getNetworkName(ctx context.Context) (string, error) {

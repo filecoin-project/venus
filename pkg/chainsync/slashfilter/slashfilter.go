@@ -2,7 +2,6 @@ package slashfilter
 
 import (
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/block"
 
 	"golang.org/x/xerrors"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/pkg/block"
 )
 
 type SlashFilter struct {
