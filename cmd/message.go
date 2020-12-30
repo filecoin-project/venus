@@ -124,7 +124,7 @@ var msgSendCmd = &cmds.Command{
 			Params:     params,
 		}
 
-		nonceOption, ok := req.Options["nonce"]
+		nonceOption := req.Options["nonce"]
 		c := cid.Undef
 		if nonceOption != nil {
 			nonce, ok := nonceOption.(uint64)
