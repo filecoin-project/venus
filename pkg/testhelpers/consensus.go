@@ -130,17 +130,17 @@ func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *block.Block
 //}
 //
 //// ApplyTestMessageWithGas uses the FakeBlockRewarder but the default SignedMessageValidator
-//func ApplyTestMessageWithGas(actors vm.ActorCodeLoader, st state.State, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch, minerOwner address.RustFulAddress) (*consensus.ApplicationResult, error) {
+//func ApplyTestMessageWithGas(actors vm.ActorCodeLoader, st state.State, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch, minerOwner address.APIAddress) (*consensus.ApplicationResult, error) {
 //	applier := consensus.NewConfiguredProcessor(actors, &vm.FakeSyscalls{}, &consensus.FakeChainRandomness{})
 //	return newMessageApplier(msg, applier, st, store, bh, minerOwner, nil)
 //}
 //
-//func newMessageApplier(msg *types.UnsignedMessage, processor *consensus.DefaultProcessor, st state.State, vms vm.Storage, bh abi.ChainEpoch, minerOwner address.RustFulAddress, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
+//func newMessageApplier(msg *types.UnsignedMessage, processor *consensus.DefaultProcessor, st state.State, vms vm.Storage, bh abi.ChainEpoch, minerOwner address.APIAddress, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
 //	return nil, nil
 //}
 //
 //// CreateAndApplyTestMessageFrom wraps the given parameters in a message and calls ApplyTestMessage.
-//func CreateAndApplyTestMessageFrom(t *testing.T, st state.State, vms vm.Storage, from address.RustFulAddress, to address.RustFulAddress, val, bh uint64, method abi.MethodNum, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
+//func CreateAndApplyTestMessageFrom(t *testing.T, st state.State, vms vm.Storage, from address.APIAddress, to address.APIAddress, val, bh uint64, method abi.MethodNum, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
 //	t.Helper()
 //
 //	pdata, err := encoding.Encode(params)
@@ -153,7 +153,7 @@ func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *block.Block
 //
 //// CreateAndApplyTestMessage wraps the given parameters in a message and calls
 //// CreateAndApplyTestMessageFrom sending the message from address.TestAddress
-//func CreateAndApplyTestMessage(t *testing.T, st state.State, vms vm.Storage, to address.RustFulAddress, val, bh uint64, method abi.MethodNum, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
+//func CreateAndApplyTestMessage(t *testing.T, st state.State, vms vm.Storage, to address.APIAddress, val, bh uint64, method abi.MethodNum, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
 //	return CreateAndApplyTestMessageFrom(t, st, vms, address.TestAddress, to, val, bh, method, ancestors, params...)
 //}
 //

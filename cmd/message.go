@@ -44,12 +44,12 @@ var msgSendCmd = &cmds.Command{
 		Tagline: "Send a message", // This feels too generic...
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("target", true, false, "RustFulAddress of the actor to send the message to"),
+		cmds.StringArg("target", true, false, "address of the actor to send the message to"),
 		cmds.StringArg("method", false, false, "The method to invoke on the target actor"),
 	},
 	Options: []cmds.Option{
 		cmds.StringOption("value", "Value to send with message in FIL"),
-		cmds.StringOption("from", "RustFulAddress to send message from"),
+		cmds.StringOption("from", "address to send message from"),
 		feecapOption,
 		premiumOption,
 		limitOption,

@@ -56,12 +56,12 @@ func (mv *FakeMessageValidator) ValidateUnsignedMessageSyntax(ctx context.Contex
 
 // GenerateElectionProof returns a fake randomness
 // func (fem *FakeElectionMachine) GenerateElectionProof(_ context.Context, _ *block.BeaconEntry,
-// 	_ abi.ChainEpoch, _ address.RustFulAddress, _ address.RustFulAddress, _ types.Signer) (crypto.VRFPi, error) {
+// 	_ abi.ChainEpoch, _ address.APIAddress, _ address.APIAddress, _ types.Signer) (crypto.VRFPi, error) {
 // 	return MakeFakeVRFProofForTest(), nil
 // }
 
 // GenerateEPoSt returns a fake post proof
-//func (fem *FakeElectionMachine) GenerateWinningPoSt(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.RustFulAddress, sectors SectorsStateView) ([]block., error) {
+//func (fem *FakeElectionMachine) GenerateWinningPoSt(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.APIAddress, sectors SectorsStateView) ([]block., error) {
 //	return []block.PoStProof{{
 //		RegisteredProof: constants.DevRegisteredWinningPoStProof,
 //		ProofBytes:      []byte{0xe},
@@ -72,11 +72,11 @@ func (mv *FakeMessageValidator) ValidateUnsignedMessageSyntax(ctx context.Contex
 // 	return true
 // }
 
-// func (fem *FakeElectionMachine) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.RustFulAddress, _ address.RustFulAddress, _ crypto.VRFPi) error {
+// func (fem *FakeElectionMachine) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.APIAddress, _ address.APIAddress, _ crypto.VRFPi) error {
 // 	return nil
 // }
 
-//func (fem *FakeElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.RustFulAddress, sectors SectorsStateView) (bool, error) {
+//func (fem *FakeElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.APIAddress, sectors SectorsStateView) (bool, error) {
 //	return true, nil
 //}
 

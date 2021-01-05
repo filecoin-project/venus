@@ -29,8 +29,7 @@ type Config struct {
 
 // APIConfig holds all configuration options related to the api.
 type APIConfig struct {
-	RustFulAddress                string   `json:"rustfulAddress"`
-	JSONRPCAddress                string   `json:"jsonrpcAddress"`
+	APIAddress                    string   `json:"apiAddress"`
 	AccessControlAllowOrigin      []string `json:"accessControlAllowOrigin"`
 	AccessControlAllowCredentials bool     `json:"accessControlAllowCredentials"`
 	AccessControlAllowMethods     []string `json:"accessControlAllowMethods"`
@@ -38,8 +37,7 @@ type APIConfig struct {
 
 func newDefaultAPIConfig() *APIConfig {
 	return &APIConfig{
-		RustFulAddress: "/ip4/127.0.0.1/tcp/3453",
-		JSONRPCAddress: "/ip4/127.0.0.1/tcp/8712",
+		APIAddress: "/ip4/127.0.0.1/tcp/3453",
 		AccessControlAllowOrigin: []string{
 			"http://localhost:8080",
 			"https://localhost:8080",

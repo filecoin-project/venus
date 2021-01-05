@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,7 +15,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net" //nolint
 	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -202,14 +202,35 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 	signal.Notify(terminate, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(terminate)
 	// Signal that the sever has started and then wait for a signal to stop.
-
-	rustfulRpcServer, err := node.runRustfulAPI(ctx, rootCmdDaemon) //nolint
+	apiConfig := node.repo.Config()
+	maddr, err := ma.NewMultiaddr(apiConfig.API.APIAddress)
 	if err != nil {
 		return err
 	}
 
-	jsonrpcServer, err := node.runJsonrpcAPI(ctx)
+	// Listen on the configured address in order to bind the port number in case it has
+	// been configured as zero (i.e. OS-provided)
+	apiListener, err := manet.Listen(maddr) //nolint
 	if err != nil {
+		return err
+	}
+
+	netListener := manet.NetListener(apiListener)
+
+	rustfulRpcServer, err := node.runRustfulAPI(ctx, netListener, rootCmdDaemon) //nolint
+	if err != nil {
+		return err
+	}
+
+	jsonrpcServer, err := node.runJsonrpcAPI(ctx, netListener)
+	if err != nil {
+		return err
+	}
+
+	// Write the resolved API address to the repo
+	apiConfig.API.APIAddress = apiListener.Multiaddr().String()
+	if err := node.repo.SetAPIAddr(apiConfig.API.APIAddress); err != nil {
+		log.Error("Could not save API address to repo")
 		return err
 	}
 
@@ -233,7 +254,7 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 // The `ready` channel is closed when the server is running and its API address has been
 // saved to the node's repo.
 // A message sent to or closure of the `terminate` channel signals the server to stop.
-func (node *Node) runRustfulAPI(ctx context.Context, rootCmdDaemon *cmds.Command) (*http.Server, error) {
+func (node *Node) runRustfulAPI(ctx context.Context, lst net.Listener, rootCmdDaemon *cmds.Command) (*http.Server, error) {
 	servenv := node.createServerEnv(ctx)
 
 	apiConfig := node.repo.Config().API
@@ -242,18 +263,6 @@ func (node *Node) runRustfulAPI(ctx context.Context, rootCmdDaemon *cmds.Command
 	cfg.SetAllowedOrigins(apiConfig.AccessControlAllowOrigin...)
 	cfg.SetAllowedMethods(apiConfig.AccessControlAllowMethods...)
 	cfg.SetAllowCredentials(apiConfig.AccessControlAllowCredentials)
-
-	maddr, err := ma.NewMultiaddr(apiConfig.RustFulAddress)
-	if err != nil {
-		return nil, err
-	}
-
-	// Listen on the configured address in order to bind the port number in case it has
-	// been configured as zero (i.e. OS-provided)
-	apiListener, err := manet.Listen(maddr) //nolint
-	if err != nil {
-		return nil, err
-	}
 
 	handler := http.NewServeMux()
 	handler.Handle("/debug/pprof/", http.DefaultServeMux)
@@ -264,23 +273,15 @@ func (node *Node) runRustfulAPI(ctx context.Context, rootCmdDaemon *cmds.Command
 	}
 
 	go func() {
-		err := apiserv.Serve(manet.NetListener(apiListener)) //nolint
+		err := apiserv.Serve(lst) //nolint
 		if err != nil && err != http.ErrServerClosed {
 			return
 		}
 	}()
-
-	// Write the resolved API address to the repo
-	apiConfig.RustFulAddress = apiListener.Multiaddr().String()
-	if err := node.repo.SetRustfulAPIAddr(apiConfig.RustFulAddress); err != nil {
-		log.Error("Could not save API address to repo")
-		return nil, err
-	}
 	return apiserv, nil
 }
 
-func (node *Node) runJsonrpcAPI(ctx context.Context) (*http.Server, error) { //nolint
-	apiConfig := node.repo.Config().API
+func (node *Node) runJsonrpcAPI(ctx context.Context, lst net.Listener) (*http.Server, error) { //nolint
 	jwtAuth := node.jwtAuth.API()
 	ah := &auth.Handler{
 		Verify: jwtAuth.AuthVerify,
@@ -289,33 +290,16 @@ func (node *Node) runJsonrpcAPI(ctx context.Context) (*http.Server, error) { //n
 	handler := http.NewServeMux()
 	handler.Handle("/rpc/v0", ah)
 
-	maddr, err := ma.NewMultiaddr(apiConfig.JSONRPCAddress)
-	if err != nil {
-		return nil, err
-	}
-
-	lst, err := manet.Listen(maddr) //nolint
-	if err != nil {
-		return nil, xerrors.Errorf("could not listen: %w", err)
-	}
-
 	rpcServer := &http.Server{
 		Handler: handler,
 	}
 
 	go func() {
-		err := rpcServer.Serve(manet.NetListener(lst)) //nolint
+		err := rpcServer.Serve(lst) //nolint
 		if err != nil && err != http.ErrServerClosed {
 			return
 		}
 	}()
-
-	// Write the resolved API address to the repo
-	apiConfig.JSONRPCAddress = lst.Multiaddr().String()
-	if err := node.repo.SetJsonrpcAPIAddr(apiConfig.JSONRPCAddress); err != nil {
-		log.Warnf("Could not save API address to repo")
-		return nil, err
-	}
 
 	return rpcServer, nil
 }

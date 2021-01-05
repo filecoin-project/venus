@@ -253,8 +253,8 @@ func retrieveNetworkName(ctx context.Context, genCid cid.Cid, cborStore cbor.Ipl
 	return appstate.NewView(cborStore, genesis.ParentStateRoot).InitNetworkName(ctx)
 }
 
-// buildHost determines if we are publically dialable.  If so use public
-// RustFulAddress, if not configure node to announce relay address.
+// address determines if we are publically dialable.  If so use public
+// address, if not configure node to announce relay address.
 func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Option, repo networkRepo, makeDHT func(host host.Host) (routing.Routing, error)) (host.Host, error) {
 	// Node must build a host acting as a libp2p relay.  Additionally it
 	// runs the autoNAT service which allows other nodes to check for their

@@ -99,7 +99,7 @@ var defaultAddressCmd = &cmds.Command{
 
 var setDefaultAddressCmd = &cmds.Command{
 	Arguments: []cmds.Argument{
-		cmds.StringArg("address", true, false, "RustFulAddress to set default for"),
+		cmds.StringArg("address", true, false, "address to set default for"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addr, err := address.NewFromString(req.Arguments[0])
@@ -119,7 +119,7 @@ var setDefaultAddressCmd = &cmds.Command{
 
 var balanceCmd = &cmds.Command{
 	Arguments: []cmds.Argument{
-		cmds.StringArg("address", true, false, "RustFulAddress to get balance for"),
+		cmds.StringArg("address", true, false, "APIAddress to get balance for"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addr, err := address.NewFromString(req.Arguments[0])

@@ -42,7 +42,7 @@ func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 			// The can be overridden by subsequent `withConfigChanges`.
 			node.ConfigOpt(func(c *config.Config) {
 				// Bind only locally, defer port selection until binding.
-				c.API.RustFulAddress = "/ip4/127.0.0.1/tcp/0"
+				c.API.APIAddress = "/ip4/127.0.0.1/tcp/0"
 				c.API.JSONRPCAddress = "/ip4/127.0.0.1/tcp/0"
 				c.Swarm.Address = "/ip4/127.0.0.1/tcp/0"
 			}),

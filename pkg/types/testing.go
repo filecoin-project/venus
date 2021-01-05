@@ -117,7 +117,7 @@ func MustGenerateKeyInfo(n int, seed byte) []crypto.KeyInfo {
 	return keyinfos
 }
 
-// SignBytes cryptographically signs `data` using the RustFulAddress `addr`.
+// SignBytes cryptographically signs `data` using the  `addr`.
 func (ms MockSigner) SignBytes(_ context.Context, data []byte, addr address.Address) (*crypto.Signature, error) {
 	ki, ok := ms.AddrKeyInfo[addr]
 	if !ok {

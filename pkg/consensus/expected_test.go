@@ -254,7 +254,7 @@ package consensus_test
 //
 //// requireMakeNBlocks sets up 3 blocks with 3 owner actors and 3 miner actors and puts them in the state tree.
 //// the owner actors have associated mockSigners for signing blocks and tickets.
-//func requireMakeNBlocks(t *testing.T, n int, pTipSet block.TipSet, root cid.Cid, receiptRoot cid.Cid, minerAddrs []address.RustFulAddress, m2w map[address.RustFulAddress]address.RustFulAddress, signer types.Signer) []*block.Block {
+//func requireMakeNBlocks(t *testing.T, n int, pTipSet block.TipSet, root cid.Cid, receiptRoot cid.Cid, minerAddrs []address.APIAddress, m2w map[address.APIAddress]address.APIAddress, signer types.Signer) []*block.Block {
 //	require.True(t, n <= len(minerAddrs))
 //	blocks := make([]*block.Block, n)
 //	for i := 0; i < n; i++ {
@@ -263,12 +263,12 @@ package consensus_test
 //	return blocks
 //}
 //
-//func minerToWorkerFromAddrs(ctx context.Context, t *testing.T, tree state.state, vms vm.Storage, kis []crypto.KeyInfo) ([]address.RustFulAddress, map[address.RustFulAddress]address.RustFulAddress) {
-//	minerAddrs := make([]address.RustFulAddress, len(kis))
+//func minerToWorkerFromAddrs(ctx context.Context, t *testing.T, tree state.state, vms vm.Storage, kis []crypto.KeyInfo) ([]address.APIAddress, map[address.APIAddress]address.APIAddress) {
+//	minerAddrs := make([]address.APIAddress, len(kis))
 //	require.Equal(t, len(kis), len(minerAddrs))
-//	minerToWorker := make(map[address.RustFulAddress]address.RustFulAddress, len(kis))
+//	minerToWorker := make(map[address.APIAddress]address.APIAddress, len(kis))
 //	for i := 0; i < len(kis); i++ {
-//		addr, err := kis[i].RustFulAddress()
+//		addr, err := kis[i].APIAddress()
 //		require.NoError(t, err)
 //
 //		_, minerAddrs[i] = th.RequireNewMinerActor(ctx, t, tree, vms, addr, 10000, th.RequireRandomPeerID(t), types.ZeroAttoFIL)
@@ -278,14 +278,14 @@ package consensus_test
 //	return minerAddrs, minerToWorker
 //}
 //
-//func setTree(ctx context.Context, t *testing.T, kis []crypto.KeyInfo, cstore cbor.IpldStore, bstore blockstore.blockstore, inRoot cid.Cid) (cid.Cid, []address.RustFulAddress, map[address.RustFulAddress]address.RustFulAddress) {
+//func setTree(ctx context.Context, t *testing.T, kis []crypto.KeyInfo, cstore cbor.IpldStore, bstore blockstore.blockstore, inRoot cid.Cid) (cid.Cid, []address.APIAddress, map[address.APIAddress]address.APIAddress) {
 //	tree, err := state.LoadState(ctx, cstore, inRoot)
 //	require.NoError(t, err)
-//	miners := make([]address.RustFulAddress, len(kis))
-//	m2w := make(map[address.RustFulAddress]address.RustFulAddress, len(kis))
+//	miners := make([]address.APIAddress, len(kis))
+//	m2w := make(map[address.APIAddress]address.APIAddress, len(kis))
 //	vms := vm.NewStorage(bstore)
 //	for i, ki := range kis {
-//		workerAddr, err := ki.RustFulAddress()
+//		workerAddr, err := ki.APIAddress()
 //		require.NoError(t, err)
 //		_, minerAddr := th.RequireNewMinerActor(ctx, t, *tree, vms, workerAddr, 10000, th.RequireRandomPeerID(t), types.ZeroAttoFIL)
 //		miners[i] = minerAddr

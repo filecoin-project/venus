@@ -63,7 +63,7 @@ venus swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe
 `,
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("address", true, true, "RustFulAddress of peer to connect to.").EnableStdin(),
+		cmds.StringArg("address", true, true, "address of peer to connect to.").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		results, err := env.(*node.Env).NetworkAPI.NetworkConnect(req.Context, req.Arguments)

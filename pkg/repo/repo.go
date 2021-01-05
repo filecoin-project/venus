@@ -40,13 +40,10 @@ type Repo interface {
 	MetaDatastore() Datastore
 
 	// SetJsonrpcAPIAddr sets the address of the running jsonrpc API.
-	SetJsonrpcAPIAddr(maddr string) error
-
-	// SetRustfulAPIAddr sets the address of the running rustful API.
-	SetRustfulAPIAddr(maddr string) error
+	SetAPIAddr(maddr string) error
 
 	// APIAddr returns the address of the running API.
-	APIAddr() (RpcAPI, error)
+	APIAddr() (string, error)
 
 	// SetAPIToken set api token
 	SetAPIToken(token []byte) error

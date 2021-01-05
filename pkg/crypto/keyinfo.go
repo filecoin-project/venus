@@ -91,7 +91,7 @@ func (ki *KeyInfo) Equals(other *KeyInfo) bool {
 	return bytes.Equal(ki.PrivateKey, other.PrivateKey)
 }
 
-// RustFulAddress returns the address for this keyinfo
+// Address returns the address for this keyinfo
 func (ki *KeyInfo) Address() (address.Address, error) {
 	if ki.SigType == SigTypeBLS {
 		return address.NewBLSAddress(ki.PublicKey())

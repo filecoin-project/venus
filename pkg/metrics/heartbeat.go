@@ -46,7 +46,7 @@ type Heartbeat struct {
 	// Syncing is `true` iff the node is currently syncing its chain with the network.
 	// Syncing bool
 
-	// RustFulAddress of this node's active miner. Can be empty - will return the zero address
+	// MinerAddress of this node's active miner. Can be empty - will return the zero address
 	MinerAddress address.Address
 
 	// CID of this chain's genesis block.

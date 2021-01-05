@@ -15,17 +15,16 @@ import (
 // MemRepo is an in-memory implementation of the repo interface.
 type MemRepo struct {
 	// lk guards the config
-	lk             sync.RWMutex
-	C              *config.Config
-	D              blockstoreutil.Blockstore
-	Ks             keystore.Keystore
-	W              Datastore
-	Chain          Datastore
-	Meta           Datastore
-	version        uint
-	jsonrpcAddress string
-	rustfulAddress string
-	token          []byte
+	lk         sync.RWMutex
+	C          *config.Config
+	D          blockstoreutil.Blockstore
+	Ks         keystore.Keystore
+	W          Datastore
+	Chain      Datastore
+	Meta       Datastore
+	version    uint
+	apiAddress string
+	token      []byte
 }
 
 var _ Repo = (*MemRepo)(nil)
@@ -98,23 +97,14 @@ func (mr *MemRepo) Close() error {
 }
 
 // SetAPIAddr writes the address of the running API to memory.
-func (mr *MemRepo) SetJsonrpcAPIAddr(addr string) error {
-	mr.jsonrpcAddress = addr
-	return nil
-}
-
-// SetAPIAddr writes the address of the running API to memory.
-func (mr *MemRepo) SetRustfulAPIAddr(addr string) error {
-	mr.rustfulAddress = addr
+func (mr *MemRepo) SetAPIAddr(addr string) error {
+	mr.apiAddress = addr
 	return nil
 }
 
 // APIAddr reads the address of the running API from memory.
-func (mr *MemRepo) APIAddr() (RpcAPI, error) {
-	return RpcAPI{
-		RustfulAPI: mr.rustfulAddress,
-		JsonrpcAPI: mr.jsonrpcAddress,
-	}, nil
+func (mr *MemRepo) APIAddr() (string, error) {
+	return mr.apiAddress, nil
 }
 
 func (mr *MemRepo) SetAPIToken(token []byte) error {

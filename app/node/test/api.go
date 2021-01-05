@@ -52,7 +52,7 @@ func (a *NodeAPI) Run(ctx context.Context) (client *Client, stop func()) {
 	require.NoError(a.tb, err)
 	require.NotEmpty(a.tb, addr, "empty API address")
 
-	return &Client{addr.RustfulAPI, a.tb}, func() {
+	return &Client{addr, a.tb}, func() {
 		cancel()
 	}
 }
@@ -63,7 +63,7 @@ type Client struct {
 	tb      testing.TB
 }
 
-// RustFulAddress returns the address string to which the client sends command RPCs.
+// Address returns the address string to which the client sends command RPCs.
 func (c *Client) Address() string {
 	return c.address
 }

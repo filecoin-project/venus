@@ -68,9 +68,9 @@ func TestConfigSet(t *testing.T) {
 		assert.Equal(t, expected, cfg.Bootstrap)
 		assert.Equal(t, defaultCfg.Datastore, cfg.Datastore)
 
-		err = cfgAPI.Set("api.rustfulAddress", ":1234")
+		err = cfgAPI.Set("api.apiAddress", ":1234")
 		require.NoError(t, err)
-		assert.Equal(t, ":1234", cfg.API.RustFulAddress)
+		assert.Equal(t, ":1234", cfg.API.APIAddress)
 
 		testAddr := types.RequireIDAddress(t, 100).String()
 		err = cfgAPI.Set("walletModule.defaultAddress", testAddr)

@@ -39,12 +39,12 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 
 	// second highest precedence is env vars.
 	if envAPI := os.Getenv("FIL_API"); envAPI != "" {
-		config.API.RustFulAddress = envAPI
+		config.API.APIAddress = envAPI
 	}
 
 	// highest precedence is cmd line flag.
 	if flagAPI, ok := req.Options[OptionAPI].(string); ok && flagAPI != "" {
-		config.API.RustFulAddress = flagAPI
+		config.API.APIAddress = flagAPI
 	}
 
 	if swarmAddress, ok := req.Options[SwarmAddress].(string); ok && swarmAddress != "" {
@@ -115,8 +115,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	go func() {
 		<-ready
 		lines := []string{
-			fmt.Sprintf("Rust API server listening on %s\n", config.API.RustFulAddress),
-			fmt.Sprintf("JsonRpc API server listening on %s\n", config.API.JSONRPCAddress),
+			fmt.Sprintf("API server listening on %s\n", config.API.APIAddress),
 		}
 		_ = re.Emit(lines)
 	}()

@@ -276,7 +276,7 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 		if err != nil {
 			return "", errors.Wrap(err, "can't find API endpoint address in environment, command-line, or local repo (is the daemon running?)")
 		}
-		rawAddr = rpcAPI.RustfulAPI //NOTICE command only use rustful api
+		rawAddr = rpcAPI //NOTICE command only use api
 	}
 
 	maddr, err := ma.NewMultiaddr(rawAddr)
