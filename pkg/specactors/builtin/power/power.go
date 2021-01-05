@@ -71,3 +71,9 @@ func AddClaims(a Claim, b Claim) Claim {
 		QualityAdjPower: big.Add(a.QualityAdjPower, b.QualityAdjPower),
 	}
 }
+
+type MinerPower struct {
+	MinerPower  Claim
+	TotalPower  Claim
+	HasMinPower bool
+}

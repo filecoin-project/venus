@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -18,7 +17,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
-	state2 "github.com/filecoin-project/venus/pkg/state"
+	pstate "github.com/filecoin-project/venus/pkg/state"
+	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
@@ -86,9 +86,6 @@ func (minerStateAPI *MinerStateAPI) StateMinerSectorSize(ctx context.Context, ma
 }
 
 func (minerStateAPI *MinerStateAPI) StateMinerInfo(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (miner.MinerInfo, error) {
-	if tsk.IsEmpty() {
-		tsk = minerStateAPI.chain.ChainReader.GetHead()
-	}
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return miner.MinerInfo{}, xerrors.Errorf("loading tipset %s: %v", tsk, err)
@@ -479,69 +476,13 @@ func (minerStateAPI *MinerStateAPI) StateCirculatingSupply(ctx context.Context, 
 	return minerStateAPI.chain.ChainReader.StateCirculatingSupply(ctx, tsk)
 }
 
-func (minerStateAPI *MinerStateAPI) StateMarketDeals(ctx context.Context, tsk block.TipSetKey) (map[string]state2.MarketDeal, error) {
-	out := map[string]state2.MarketDeal{}
-
-	if tsk.IsEmpty() {
-		tsk = minerStateAPI.chain.ChainReader.GetHead()
-	}
-	ts, err := minerStateAPI.chain.ChainReader.GetTipSet(tsk)
+func (minerStateAPI *MinerStateAPI) StateMarketDeals(ctx context.Context, tsk block.TipSetKey) (map[string]pstate.MarketDeal, error) {
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
+		return nil, xerrors.Errorf("loading view %s: %v", tsk, err)
 	}
 
-	state, err := minerStateAPI.getMarketState(ctx, ts)
-	if err != nil {
-		return nil, err
-	}
-
-	da, err := state.Proposals()
-	if err != nil {
-		return nil, err
-	}
-
-	sa, err := state.States()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := da.ForEach(func(dealID abi.DealID, d market.DealProposal) error {
-		s, found, err := sa.Get(dealID)
-		if err != nil {
-			return xerrors.Errorf("failed to get state for deal in proposals array: %v", err)
-		} else if !found {
-			s = market.EmptyDealState()
-		}
-		out[strconv.FormatInt(int64(dealID), 10)] = state2.MarketDeal{
-			Proposal: d,
-			State:    *s,
-		}
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (minerStateAPI *MinerStateAPI) getMarketState(ctx context.Context, ts *block.TipSet) (market.State, error) {
-	store := minerStateAPI.chain.State.Store(ctx)
-	sTree, err := state.LoadState(ctx, store, ts.At(0).ParentStateRoot)
-	if err != nil {
-		return nil, err
-	}
-
-	act, found, err := sTree.GetActor(ctx, market.Address)
-	if err != nil {
-		return nil, err
-	} else if !found {
-		return nil, xerrors.New("not found market state")
-	}
-
-	actState, err := market.Load(store, act)
-	if err != nil {
-		return nil, err
-	}
-	return actState, nil
+	return view.StateMarketDeals(ctx, tsk)
 }
 
 func (minerStateAPI *MinerStateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk block.TipSetKey) ([]*miner.SectorOnChainInfo, error) { // TODO: only used in cli
@@ -550,13 +491,80 @@ func (minerStateAPI *MinerStateAPI) StateMinerActiveSectors(ctx context.Context,
 		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
 
-	mas, err := view.LoadMinerState(ctx, maddr)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to load miner actor state: %v", err)
+	return view.StateMinerActiveSectors(ctx, maddr, tsk)
+}
+
+func (minerStateAPI *MinerStateAPI) StateLookupID(ctx context.Context, addr address.Address, tsk block.TipSetKey) (address.Address, error) {
+	if tsk.IsEmpty() {
+		tsk = minerStateAPI.chain.ChainReader.GetHead()
 	}
-	activeSectors, err := miner.AllPartSectors(mas, miner.Partition.ActiveSectors)
+
+	state, err := minerStateAPI.chain.State.GetTipSetState(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("merge partition active sets: %v", err)
+		return address.Undef, xerrors.Errorf("load state tree: %v", err)
 	}
-	return mas.LoadSectors(&activeSectors)
+
+	return state.LookupID(addr)
+}
+
+func (minerStateAPI *MinerStateAPI) StateListMiners(ctx context.Context, tsk block.TipSetKey) ([]address.Address, error) {
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading view %s: %v", tsk, err)
+	}
+
+	return view.StateListMiners(ctx, tsk)
+}
+
+func (minerStateAPI *MinerStateAPI) StateListActors(ctx context.Context, tsk block.TipSetKey) ([]address.Address, error) {
+	if tsk.IsEmpty() {
+		tsk = minerStateAPI.chain.ChainReader.GetHead()
+	}
+	st, err := minerStateAPI.chain.ChainReader.GetTipSetState(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading state: %v", err)
+	}
+
+	var out []address.Address
+	err = st.ForEach(func(addr state.ActorKey, act *types.Actor) error {
+		out = append(out, addr)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
+func (minerStateAPI *MinerStateAPI) StateMinerPower(ctx context.Context, addr address.Address, tsk block.TipSetKey) (*power.MinerPower, error) {
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading view %s: %v", tsk, err)
+	}
+
+	return view.StateMinerPower(ctx, addr, tsk)
+}
+
+func (minerStateAPI *MinerStateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (big.Int, error) {
+	ts, err := minerStateAPI.chain.ChainReader.GetTipSet(tsk)
+	if err != nil {
+		return big.Int{}, xerrors.Wrapf(err, "failed to get tipset for %s", tsk.String())
+	}
+
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
+	if err != nil {
+		return big.Int{}, xerrors.Errorf("loading view %s: %v", tsk, err)
+	}
+
+	return view.StateMinerAvailableBalance(ctx, maddr, ts)
+}
+
+func (minerStateAPI *MinerStateAPI) StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorExpiration, error) {
+	view, err := minerStateAPI.chain.State.ParentStateView(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading view %s: %v", tsk, err)
+	}
+
+	return view.StateSectorExpiration(ctx, maddr, sectorNumber, tsk)
 }

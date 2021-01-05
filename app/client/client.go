@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/net"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
 	state2 "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
@@ -88,6 +89,12 @@ type FullNode struct {
 	StateCirculatingSupply             func(context.Context, block.TipSetKey) (abi.TokenAmount, error)
 	StateMarketDeals                   func(ctx context.Context, tsk block.TipSetKey) (map[string]state2.MarketDeal, error)
 	StateMinerActiveSectors            func(ctx context.Context, maddr address.Address, tsk block.TipSetKey) ([]*miner.SectorOnChainInfo, error)
+	StateLookupID                      func(ctx context.Context, addr address.Address, tsk block.TipSetKey) (address.Address, error)
+	StateListMiners                    func(ctx context.Context, tsk block.TipSetKey) ([]address.Address, error)
+	StateMinerPower                    func(ctx context.Context, addr address.Address, tsk block.TipSetKey) (*power.MinerPower, error)
+	StateMinerAvailableBalance         func(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (big.Int, error)
+	StateListActors                    func(ctx context.Context, tsk block.TipSetKey) ([]address.Address, error)
+	StateSectorExpiration              func(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorExpiration, error)
 
 	StateAccountKey func(context.Context, address.Address, block.TipSetKey) (address.Address, error)
 
@@ -248,6 +255,12 @@ type MinerStateAPI struct {
 	StateCirculatingSupply             func(context.Context, block.TipSetKey) (abi.TokenAmount, error)
 	StateMarketDeals                   func(ctx context.Context, tsk block.TipSetKey) (map[string]state2.MarketDeal, error)
 	StateMinerActiveSectors            func(ctx context.Context, maddr address.Address, tsk block.TipSetKey) ([]*miner.SectorOnChainInfo, error)
+	StateLookupID                      func(ctx context.Context, addr address.Address, tsk block.TipSetKey) (address.Address, error)
+	StateListMiners                    func(ctx context.Context, tsk block.TipSetKey) ([]address.Address, error)
+	StateMinerPower                    func(ctx context.Context, addr address.Address, tsk block.TipSetKey) (*power.MinerPower, error)
+	StateMinerAvailableBalance         func(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (big.Int, error)
+	StateListActors                    func(ctx context.Context, tsk block.TipSetKey) ([]address.Address, error)
+	StateSectorExpiration              func(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorExpiration, error)
 }
 
 type AccountAPI struct {

@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -678,7 +679,12 @@ func (v *View) StateMinerProvingDeadline(ctx context.Context, addr addr.Address,
 	}
 
 	height, _ := ts.Height()
-	return mas.DeadlineInfo(height)
+	di, err := mas.DeadlineInfo(height)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get deadline info: %v", err)
+	}
+
+	return di.NextNotElapsed(), nil
 }
 
 func (v *View) StateMinerDeadlineForIdx(ctx context.Context, addr addr.Address, dlIdx uint64, key block.TipSetKey) (miner.Deadline, error) {
@@ -710,6 +716,134 @@ func (v *View) StateMinerSectors(ctx context.Context, addr addr.Address, filter 
 	}
 
 	return sset, nil
+}
+
+func (v *View) StateSectorExpiration(ctx context.Context, maddr addr.Address, sectorNumber abi.SectorNumber, key block.TipSetKey) (*miner.SectorExpiration, error) {
+	mas, err := v.LoadMinerState(ctx, maddr)
+	if err != nil {
+		return nil, err
+	}
+	return mas.GetSectorExpiration(sectorNumber)
+}
+
+func (v *View) StateMinerAvailableBalance(ctx context.Context, maddr addr.Address, ts *block.TipSet) (big.Int, error) {
+	resolvedAddr, err := v.InitResolveAddress(ctx, maddr)
+	if err != nil {
+		return big.Int{}, err
+	}
+	actor, err := v.loadActor(ctx, resolvedAddr)
+	if err != nil {
+		return big.Int{}, err
+	}
+
+	mas, err := miner.Load(adt.WrapStore(context.TODO(), v.ipldStore), actor)
+	if err != nil {
+		return big.Int{}, xerrors.Errorf("failed to load miner actor state: %v", err)
+	}
+
+	height, _ := ts.Height()
+	vested, err := mas.VestedFunds(height)
+	if err != nil {
+		return big.Int{}, err
+	}
+
+	abal, err := mas.AvailableBalance(actor.Balance)
+	if err != nil {
+		return big.Int{}, err
+	}
+
+	return big.Add(abal, vested), nil
+}
+
+func (v *View) StateListMiners(ctx context.Context, tsk block.TipSetKey) ([]addr.Address, error) {
+	powState, err := v.loadPowerActor(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load power actor state: %v", err)
+	}
+
+	return powState.ListAllMiners()
+}
+
+func (v *View) StateMinerPower(ctx context.Context, maddr addr.Address, tsk block.TipSetKey) (*power.MinerPower, error) {
+	pas, err := v.loadPowerActor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	tpow, err := pas.TotalPower()
+	if err != nil {
+		return nil, err
+	}
+
+	var mpow power.Claim
+	var minpow bool
+	if maddr != addr.Undef {
+		var found bool
+		mpow, found, err = pas.MinerPower(maddr)
+		if err != nil || !found {
+			// TODO: return an error when not found?
+			return nil, err
+		}
+
+		minpow, err = pas.MinerNominalPowerMeetsConsensusMinimum(maddr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &power.MinerPower{
+		MinerPower:  mpow,
+		TotalPower:  tpow,
+		HasMinPower: minpow,
+	}, nil
+}
+
+func (v *View) StateMarketDeals(ctx context.Context, tsk block.TipSetKey) (map[string]MarketDeal, error) {
+	out := map[string]MarketDeal{}
+
+	state, err := v.loadMarketState(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	da, err := state.Proposals()
+	if err != nil {
+		return nil, err
+	}
+
+	sa, err := state.States()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := da.ForEach(func(dealID abi.DealID, d market.DealProposal) error {
+		s, found, err := sa.Get(dealID)
+		if err != nil {
+			return xerrors.Errorf("failed to get state for deal in proposals array: %v", err)
+		} else if !found {
+			s = market.EmptyDealState()
+		}
+		out[strconv.FormatInt(int64(dealID), 10)] = MarketDeal{
+			Proposal: d,
+			State:    *s,
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (v *View) StateMinerActiveSectors(ctx context.Context, maddr addr.Address, tsk block.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
+	mas, err := v.loadMinerState(ctx, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor state: %v", err)
+	}
+	activeSectors, err := miner.AllPartSectors(mas, miner.Partition.ActiveSectors)
+	if err != nil {
+		return nil, xerrors.Errorf("merge partition active sets: %v", err)
+	}
+	return mas.LoadSectors(&activeSectors)
 }
 
 func (v *View) GetFilLocked(ctx context.Context, st vmstate.Tree) (abi.TokenAmount, error) {
