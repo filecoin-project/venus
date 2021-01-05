@@ -137,7 +137,6 @@ func build() {
 	buildFilecoin()
 	buildGengen()
 	buildFaucet()
-	buildGenesisFileServer()
 	generateGenesis()
 	buildPrereleaseTool()
 }
@@ -146,7 +145,6 @@ func forcebuild() {
 	forceBuildFC()
 	buildGengen()
 	buildFaucet()
-	buildGenesisFileServer()
 	generateGenesis()
 	buildPrereleaseTool()
 }
@@ -253,12 +251,6 @@ func buildFaucet() {
 	log.Println("Building faucet...")
 
 	runCmd(cmd([]string{"go", "build", "-o", "./tools/faucet/faucet", "./tools/faucet/"}...))
-}
-
-func buildGenesisFileServer() {
-	log.Println("Building genesis file server...")
-
-	runCmd(cmd([]string{"go", "build", "-o", "./tools/genesis-file-server/genesis-file-server", "./tools/genesis-file-server/"}...))
 }
 
 func buildPrereleaseTool() {
