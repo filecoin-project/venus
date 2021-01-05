@@ -8,8 +8,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 )
 
-var loglogger = logging.Logger("commands/log")
-
 var logCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Interact with the daemon subsystems log output.",
@@ -52,7 +50,7 @@ var logLevelCmd = &cmds.Command{
 
    The system flag can be specified multiple times.
 
-   eg) log set-level --system chain debug
+   eg) log set-level --system chain --system pubsub debug
 
    Available Levels:
    debug

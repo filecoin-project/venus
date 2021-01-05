@@ -587,7 +587,7 @@ func tryAPICheck(td *TestDaemon) error {
 	}
 
 	url := fmt.Sprintf("http://%s/api/id", host)
-	resp, err := http.Get(url)
+	resp, err := http.Post(url, "application/json", strings.NewReader("{}"))
 	if err != nil {
 		return err
 	}
