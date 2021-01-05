@@ -10,8 +10,8 @@ import (
 )
 
 // create a basic new TestDaemon, with a miner and the KeyInfo it needs to sign
-// tickets and blocks. This does not set a DefaultAddress in the wallet; in this
-// case, node/init.go Init generates a new address in the wallet and sets it to
+// tickets and blocks. This does not set a DefaultAddress in the Wallet; in this
+// case, Init generates a new address in the wallet and sets it to
 // the default address.
 //nolint
 func makeTestDaemonWithMinerAndStart(t *testing.T) *th.TestDaemon {
