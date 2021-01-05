@@ -26,6 +26,10 @@ type MessagePoolAPI struct {
 	mp *MessagePoolSubmodule
 }
 
+func (a *MessagePoolAPI) DeleteByAdress(ctx context.Context, addr address.Address) error {
+	return a.mp.MPool.DeleteByAdress(addr)
+}
+
 func (a *MessagePoolAPI) MpoolPublish(ctx context.Context, addr address.Address) error {
 	return a.mp.MPool.PublishMsgForWallet(addr)
 
