@@ -90,6 +90,10 @@ type Node struct {
 	jsonRPCService *jsonrpc.RPCServer
 }
 
+func (node *Node) Chain() *chain2.ChainSubmodule {
+	return node.chain
+}
+
 func (node *Node) StorageNetworking() *storagenetworking.StorageNetworkingSubmodule {
 	return node.storageNetworking
 }

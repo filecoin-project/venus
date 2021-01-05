@@ -32,7 +32,7 @@ func TestAddressNewAndList(t *testing.T) {
 	addrs := make([]address.Address, 10)
 	var err error
 	for i := 0; i < 10; i++ {
-		addrs[i], err = n.wallet.API().WalletNewAddress(address.SECP256K1)
+		addrs[i], err = n.Wallet().API().WalletNewAddress(address.SECP256K1)
 		require.NoError(t, err)
 	}
 
@@ -52,7 +52,7 @@ func TestWalletBalance(t *testing.T) {
 
 	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
-	addr, err := n.wallet.API().WalletNewAddress(address.SECP256K1)
+	addr, err := n.Wallet().API().WalletNewAddress(address.SECP256K1)
 	require.NoError(t, err)
 
 	t.Log("[success] not found, zero")
