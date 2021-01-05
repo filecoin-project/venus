@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"reflect"
-	"runtime"
 	"syscall"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -34,7 +32,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"github.com/filecoin-project/venus/pkg/metrics"
-	"github.com/filecoin-project/venus/pkg/net/pubsub"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/version"
 )
@@ -147,101 +144,53 @@ func (node *Node) Start(ctx context.Context) error {
 		return errors.Wrap(err, "failed to setup tracing")
 	}
 
-	var err error
 	var syncCtx context.Context
 	syncCtx, node.syncer.CancelChainSync = context.WithCancel(context.Background())
 
 	if !node.offlineMode {
 		// Start node discovery
-		if err := node.discovery.Start(); err != nil {
-			return err
-		}
-
-		// Subscribe to block pubsub topic to learn about new chain heads.
-		node.syncer.BlockSub, err = node.pubsubscribe(syncCtx, node.syncer.BlockTopic, node.handleBlockSub)
-		if err != nil {
-			log.Error(err)
-		}
-
-		// Subscribe to the message pubsub topic to learn about messages to mine into blocks.
-		node.mpool.MessageSub, err = node.pubsubscribe(syncCtx, node.mpool.MessageTopic, node.processMessage)
+		err := node.discovery.Start()
 		if err != nil {
 			return err
 		}
 
-		if err := node.syncer.Start(syncCtx, node); err != nil {
+		//Start mpool module to receive new message
+		err = node.mpool.Start(syncCtx)
+		if err != nil {
+			return err
+		}
+
+		//starrt syncer module to receive new blocks and start sync to latest height
+		err = node.syncer.Start(syncCtx)
+		if err != nil {
 			return err
 		}
 	}
-
 	return nil
-}
-
-// Subscribes a handler function to a pubsub topic.
-func (node *Node) pubsubscribe(ctx context.Context, topic *pubsub.Topic, handler pubSubHandler) (pubsub.Subscription, error) {
-	sub, err := topic.Subscribe()
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to subscribe")
-	}
-	go node.handleSubscription(ctx, sub, handler)
-	return sub, nil
-}
-
-func (node *Node) cancelSubscriptions() {
-	if node.syncer.CancelChainSync != nil {
-		node.syncer.CancelChainSync()
-	}
-
-	if node.syncer.BlockSub != nil {
-		node.syncer.BlockSub.Cancel()
-		node.syncer.BlockSub = nil
-	}
-
-	// stop message sub
-	if node.mpool.MessageSub != nil {
-		node.mpool.MessageSub.Cancel()
-		node.mpool.MessageSub = nil
-	}
 }
 
 // Stop initiates the shutdown of the node.
 func (node *Node) Stop(ctx context.Context) {
-	node.cancelSubscriptions()
-	node.chain.ChainReader.Stop()
+	// stop mpool submodule
+	node.mpool.Stop(ctx)
 
-	// close mpool
-	node.mpool.Close()
+	//stop syncer submodule
+	node.syncer.Stop(ctx)
 
-	if err := node.network.Host.Close(); err != nil {
-		fmt.Printf("error closing host: %s\n", err)
-	}
+	//Stop discovery submodule
+	node.discovery.Stop()
+
+	//Stop network submodule
+	node.network.Stop(ctx)
+
+	//Stop chain submodule
+	node.chain.Stop(ctx)
 
 	if err := node.repo.Close(); err != nil {
 		fmt.Printf("error closing repo: %s\n", err)
 	}
 
-	node.discovery.Stop()
-
 	fmt.Println("stopping filecoin :(")
-}
-
-func (node *Node) handleSubscription(ctx context.Context, sub pubsub.Subscription, handler pubSubHandler) {
-	for {
-		received, err := sub.Next(ctx)
-		if err != nil {
-			if ctx.Err() != context.Canceled {
-				log.Errorf("error reading message from topic %s: %s", sub.Topic(), err)
-			}
-			return
-		}
-
-		if err := handler(ctx, received); err != nil {
-			handlerName := runtime.FuncForPC(reflect.ValueOf(handler).Pointer()).Name()
-			if err != context.Canceled {
-				log.Errorf("error in handler %s for topic %s: %s", handlerName, sub.Topic(), err)
-			}
-		}
-	}
 }
 
 func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command, ready chan interface{}) error {

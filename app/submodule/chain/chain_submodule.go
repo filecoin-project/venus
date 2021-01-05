@@ -135,6 +135,10 @@ func (chain *ChainSubmodule) Start(ctx context.Context) error {
 	return chain.ChainReader.Load(ctx)
 }
 
+func (chain *ChainSubmodule) Stop(ctx context.Context) {
+	chain.ChainReader.Stop()
+}
+
 func (chain *ChainSubmodule) API() *ChainAPI {
 	return &ChainAPI{
 		AccountAPI:    NewAccountAPI(chain),

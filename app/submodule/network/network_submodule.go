@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"fmt"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"os"
 	"path/filepath"
@@ -73,6 +74,16 @@ type NetworkSubmodule struct { //nolint
 	//data transfer
 	DataTransfer     datatransfer.Manager
 	DataTransferHost dtnet.DataTransferNetwork
+}
+
+func (network *NetworkSubmodule) API() *NetworkAPI {
+	return &NetworkAPI{network: network}
+}
+
+func (network *NetworkSubmodule) Stop(ctx context.Context) {
+	if err := network.Host.Close(); err != nil {
+		fmt.Printf("error closing host: %s\n", err)
+	}
 }
 
 type blankValidator struct{}
@@ -327,8 +338,4 @@ func makeSmuxTransportOption(mplexExp bool) libp2p.Option {
 	}
 
 	return libp2p.ChainOptions(opts...)
-}
-
-func (network *NetworkSubmodule) API() *NetworkAPI {
-	return &NetworkAPI{network: network}
 }
