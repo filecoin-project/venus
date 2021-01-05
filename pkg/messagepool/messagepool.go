@@ -442,6 +442,16 @@ func New(api Provider, ds repo.Datastore, forkParams *config.ForkUpgradeConfig, 
 	return mp, nil
 }
 
+func (mp *MessagePool) DeleteByAdress(address address.Address) error {
+	mp.lk.Lock()
+	defer mp.lk.Unlock()
+
+	if mp.pending != nil {
+		mp.pending[address] = nil
+	}
+	return nil
+}
+
 func (mp *MessagePool) PublishMsgForWallet(addr address.Address) error {
 	now := time.Now()
 	defer func() {

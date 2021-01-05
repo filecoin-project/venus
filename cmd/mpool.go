@@ -35,6 +35,37 @@ var mpoolCmd = &cmds.Command{
 		"config":   mpoolConfig,
 		"gas-perf": mpoolGasPerfCmd,
 		"publish":  mpoolPublish,
+		"delete":   mpoolDeleteAddress,
+	},
+}
+
+var mpoolDeleteAddress = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline:          "delete",
+		ShortDescription: "delete message by address",
+	},
+	Options: []cmds.Option{
+		cmds.StringOption("from", "optionally specify the wallet for publish message"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		ctx := context.TODO()
+
+		from, _ := req.Options["from"].(string)
+		if from == "" {
+			return xerrors.Errorf("address can`t be null")
+		}
+
+		addr, err := address.NewFromString(from)
+		if err != nil {
+			return err
+		}
+
+		err = env.(*node.Env).MessagePoolAPI.DeleteByAdress(ctx, addr)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	},
 }
 
