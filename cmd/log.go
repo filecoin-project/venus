@@ -8,8 +8,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 )
 
-var loglogger = logging.Logger("commands/log")
-
 var logCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Interact with the daemon subsystems log output.",
@@ -20,9 +18,9 @@ output of a running daemon.
 	},
 
 	Subcommands: map[string]*cmds.Command{
-		"level": logLevelCmd,
-		"ls":    logLsCmd,
-		"tail":  logTailCmd,
+		"set-level": logLevelCmd,
+		"list":      logLsCmd,
+		"tail":      logTailCmd,
 	},
 }
 
@@ -47,48 +45,51 @@ Outputs subsystems log output as it is generated.
 
 var logLevelCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Change the logging level.",
-		ShortDescription: `
-Change the verbosity of one or all subsystems log output. This does not affect
-the event log.
+		Tagline: "Set the logging level.",
+		ShortDescription: `Set the log level for logging systems:
+
+   The system flag can be specified multiple times.
+
+   eg) log set-level --system chain --system pubsub debug
+
+   Available Levels:
+   debug
+   info
+   warn
+   error
+   fatal
+   panic
 `,
 	},
 
 	Arguments: []cmds.Argument{
-		cmds.StringArg("level", true, false, `The log level, with 'debug' the most verbose and 'panic' the least verbose.
+		cmds.StringArg("set-level", true, false, `The log level, with 'debug' the most verbose and 'panic' the least verbose.
 			One of: debug, info, warning, error, fatal, panic.
 		`),
 	},
 
 	Options: []cmds.Option{
-		cmds.StringOption("subsystem", "The subsystem logging identifier"),
-		cmds.StringOption("expression", "Subsystem identifier by regular expression"),
+		cmds.StringsOption("system", "The system logging identifier"),
 	},
 
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 		level := strings.ToLower(req.Arguments[0])
 
 		var s string
-		if subsystem, ok := req.Options["subsystem"].(string); ok {
-			if err := logging.SetLogLevel(subsystem, level); err != nil {
-				return err
+		if system, ok := req.Options["system"].([]string); ok {
+			for _, v := range system {
+				if err := logging.SetLogLevel(v, level); err != nil {
+					return err
+				}
 			}
-			s = fmt.Sprintf("Changed log level of '%s' to '%s'", subsystem, level)
-			loglogger.Info(s)
-		} else if expression, ok := req.Options["expression"].(string); ok {
-			if err := logging.SetLogLevelRegex(expression, level); err != nil {
-				return err
-			}
-			s = fmt.Sprintf("Changed log level matching expression '%s' to '%s'", subsystem, level)
-			loglogger.Info(s)
+			s = fmt.Sprintf("Set log level of '%s' to '%s'", strings.Join(system, ","), level)
 		} else {
 			lvl, err := logging.LevelFromString(level)
 			if err != nil {
 				return err
 			}
 			logging.SetAllLoggers(lvl)
-			s = fmt.Sprintf("Changed log level of all subsystems to: %s", level)
-			loglogger.Info(s)
+			s = fmt.Sprintf("Set log level of all subsystems to: %s", level)
 		}
 
 		return cmds.EmitOnce(res, s)
@@ -100,7 +101,7 @@ var logLsCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "List the logging subsystems.",
 		ShortDescription: `
-'venus log ls' is a utility command used to list the logging
+'venus log list' is a utility command used to list the logging
 subsystems of a running daemon.
 `,
 	},
