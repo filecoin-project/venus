@@ -27,7 +27,7 @@ func TestNodeConstruct(t *testing.T) {
 	builder.WithGenesisInit(gengen.DefaultGenesis)
 	builder.WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...)
 	nd := builder.Build(ctx)
-	assert.NotNil(t, nd.Host)
+	assert.NotNil(t, nd.Network().Host)
 
 	nd.Stop(context.Background())
 }
@@ -43,11 +43,11 @@ func TestNodeNetworking(t *testing.T) {
 	nd1, nd2 := nds[0], nds[1]
 
 	pinfo := peer.AddrInfo{
-		ID:    nd2.Host().ID(),
-		Addrs: nd2.Host().Addrs(),
+		ID:    nd2.Network().Host.ID(),
+		Addrs: nd2.Network().Host.Addrs(),
 	}
 
-	err := nd1.Host().Connect(ctx, pinfo)
+	err := nd1.Network().Host.Connect(ctx, pinfo)
 	assert.NoError(t, err)
 
 	nd1.Stop(ctx)
@@ -87,8 +87,8 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		nd1, nd2 := nds[0], nds[1]
 
 		// Gotta be a better way to do this?
-		peer1 := fmt.Sprintf("%s/ipfs/%s", nd1.Host().Addrs()[0].String(), nd1.Host().ID().Pretty())
-		peer2 := fmt.Sprintf("%s/ipfs/%s", nd2.Host().Addrs()[0].String(), nd2.Host().ID().Pretty())
+		peer1 := fmt.Sprintf("%s/ipfs/%s", nd1.Network().Host.Addrs()[0].String(), nd1.Network().Host.ID().Pretty())
+		peer2 := fmt.Sprintf("%s/ipfs/%s", nd2.Network().Host.Addrs()[0].String(), nd2.Network().Host.ID().Pretty())
 
 		// Create a node with the nodes above as bootstrap nodes.
 		r := repo.NewInMemoryRepo()
@@ -111,8 +111,8 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		connected := false
 		// poll until we are connected, to avoid flaky tests
 		for i := 0; i <= 30; i++ {
-			l1 := len(nd.Host().Network().ConnsToPeer(nd1.Host().ID()))
-			l2 := len(nd.Host().Network().ConnsToPeer(nd2.Host().ID()))
+			l1 := len(nd.Network().Host.Network().ConnsToPeer(nd1.Network().Host.ID()))
+			l2 := len(nd.Network().Host.Network().ConnsToPeer(nd2.Network().Host.ID()))
 
 			connected = l1 == 1 && l2 == 1
 			if connected {
@@ -208,9 +208,9 @@ func TestNodeConfig(t *testing.T) {
 	builder.WithBuilderOpt(node.OfflineMode(true))
 
 	n := builder.Build(context.Background())
-	cfg := n.Repo.Config()
+	cfg := n.Repo().Config()
 
-	assert.Equal(t, true, n.OfflineMode)
+	assert.Equal(t, true, n.OfflineMode())
 	assert.Equal(t, &config.SwarmConfig{
 		Address: "/ip4/127.0.0.1/tcp/0",
 	}, cfg.Swarm)

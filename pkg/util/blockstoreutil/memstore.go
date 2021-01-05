@@ -62,7 +62,7 @@ func (m MemStore) PutMany(bs []blocks.Block) error {
 }
 
 // AllKeysChan returns a channel from which
-// the CIDs in the Blockstore can be read. It should respect
+// the CIDs in the blockstore can be read. It should respect
 // the given context, closing the channel if it becomes Done.
 func (m MemStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	ch := make(chan cid.Cid, len(m))

@@ -38,7 +38,7 @@ const (
 	// OptionDrandConfigAddr is the init option for configuring drand to a given network address at init time
 	OptionDrandConfigAddr = "drand-config-addr"
 
-	// OfflineMode tells us if we should try to connect this Filecoin node to the network
+	// offlineMode tells us if we should try to connect this Filecoin node to the network
 	OfflineMode = "offline"
 
 	//  MODE start venus in lite mode

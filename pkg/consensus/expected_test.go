@@ -245,7 +245,7 @@ package consensus_test
 //	return emptyBLSMessages, emptyMessages
 //}
 //
-//func setupCborBlockstore() (*cborutil.IpldStore, blockstore.Blockstore) {
+//func setupCborBlockstore() (*cborutil.IpldStore, blockstore.blockstore) {
 //	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 //	cis := cborutil.NewIpldStore(bs)
 //
@@ -278,7 +278,7 @@ package consensus_test
 //	return minerAddrs, minerToWorker
 //}
 //
-//func setTree(ctx context.Context, t *testing.T, kis []crypto.KeyInfo, cstore cbor.IpldStore, bstore blockstore.Blockstore, inRoot cid.Cid) (cid.Cid, []address.RustFulAddress, map[address.RustFulAddress]address.RustFulAddress) {
+//func setTree(ctx context.Context, t *testing.T, kis []crypto.KeyInfo, cstore cbor.IpldStore, bstore blockstore.blockstore, inRoot cid.Cid) (cid.Cid, []address.RustFulAddress, map[address.RustFulAddress]address.RustFulAddress) {
 //	tree, err := state.LoadState(ctx, cstore, inRoot)
 //	require.NoError(t, err)
 //	miners := make([]address.RustFulAddress, len(kis))

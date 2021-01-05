@@ -48,7 +48,7 @@ func (a *NodeAPI) Run(ctx context.Context) (client *Client, stop func()) {
 	}()
 	<-ready
 
-	addr, err := a.node.Repo.APIAddr()
+	addr, err := a.node.Repo().APIAddr()
 	require.NoError(a.tb, err)
 	require.NotEmpty(a.tb, addr, "empty API address")
 

@@ -17,7 +17,7 @@ import (
 // This is intended to replace use of GenNode and the various other node construction entry points
 // that end up there.
 // Note that (August 2019) there are two things called "config": the configuration read in from
-// file to the config.ConfigModule structure, and node.ConfigModule which is really just some dependency
+// file to the config.configModule structure, and node.configModule which is really just some dependency
 // injection. This builder avoids exposing the latter directly.
 type NodeBuilder struct {
 	// Initialisation function for the genesis block and state.

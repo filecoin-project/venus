@@ -1,7 +1,12 @@
 package syncer
 
 import (
+	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/pkg/metrics/tracing"
+	"go.opencensus.io/trace"
+	"reflect"
+	"runtime"
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/chainsync/slashfilter"
@@ -92,12 +97,6 @@ func NewSyncerSubmodule(ctx context.Context,
 		return nil, errors.Wrap(err, "failed to register block validator")
 	}
 
-	// setup topic.
-	topic, err := network.Pubsub.Join(blocksub.Topic(network.NetworkName))
-	if err != nil {
-		return nil, err
-	}
-
 	genBlk, err := chn.ChainReader.GetGenesisBlock(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to locate genesis block during node build")
@@ -158,23 +157,87 @@ func NewSyncerSubmodule(ctx context.Context,
 		ChainModule:   chn,
 		NetworkModule: network,
 		SlashFilter:   slashfilter.New(config.Repo().ChainDatastore()),
-		BlockTopic:    pubsub.NewTopic(topic),
 		// BlockSub: nil,
 		Consensus:        nodeConsensus,
 		ChainSelector:    nodeChainSelector,
 		ChainSyncManager: &chainSyncManager,
 		Drand:            chn.Drand,
 		SyncProvider:     *NewChainSyncProvider(&chainSyncManager),
-		// cancelChainSync: nil,
-		faultCh: faultCh,
+		faultCh:          faultCh,
 	}, nil
 }
 
-type syncerNode interface {
+func (syncer *SyncerSubmodule) handleIncommingBlocks(ctx context.Context, msg pubsub.Message) (err error) {
+	sender := msg.GetSender()
+	source := msg.GetSource()
+	// ignore messages from self
+	if sender == syncer.NetworkModule.Host.ID() || source == syncer.NetworkModule.Host.ID() {
+		return nil
+	}
+
+	ctx, span := trace.StartSpan(ctx, "Node.handleIncommingBlocks")
+	defer tracing.AddErrorEndSpan(ctx, span, &err)
+
+	var payload blocksub.Payload
+	err = payload.UnmarshalCBOR(bytes.NewReader(msg.GetData()))
+	if err != nil {
+		return errors.Wrapf(err, "failed to decode blocksub payload from source: %s, sender: %s", source, sender)
+	}
+
+	header := &payload.Header
+	span.AddAttributes(trace.StringAttribute("block", header.Cid().String()))
+	log.Infof("Received new block %s from peer %s", header.Cid(), sender)
+	log.Debugf("Received new block sender: %s source: %s, %s", sender, source, header)
+
+	// The block we went to all that effort decoding is dropped on the floor!
+	// Don't be too quick to change that, though: the syncer re-fetching the block
+	// is currently critical to reliable validation.
+	// See https://github.com/filecoin-project/venus/issues/2962
+	// TODO Implement principled trusting of ChainInfo's
+	// to address in #2674
+	chainInfo := block.NewChainInfo(source, sender, block.NewTipSetKey(header.Cid()), header.Height)
+	err = syncer.ChainSyncManager.BlockProposer().SendGossipBlock(chainInfo)
+	if err != nil {
+		return errors.Wrapf(err, "failed to notify syncer of new block, block: %s", header.Cid())
+	}
+
+	return nil
 }
 
 // Start starts the syncer submodule for a node.
-func (syncer *SyncerSubmodule) Start(ctx context.Context, _node syncerNode) error {
+func (syncer *SyncerSubmodule) Start(ctx context.Context) error {
+	// setup topic
+	topic, err := syncer.NetworkModule.Pubsub.Join(blocksub.Topic(syncer.NetworkModule.NetworkName))
+	if err != nil {
+		return err
+	}
+	syncer.BlockTopic = pubsub.NewTopic(topic)
+
+	syncer.BlockSub, err = syncer.BlockTopic.Subscribe()
+	if err != nil {
+		return errors.Wrapf(err, "failed to subscribe block topic")
+	}
+
+	//process incoming blocks
+	go func() {
+		for {
+			received, err := syncer.BlockSub.Next(ctx)
+			if err != nil {
+				if ctx.Err() != context.Canceled {
+					log.Errorf("error reading message from topic %s: %s", syncer.BlockSub.Topic(), err)
+				}
+				return
+			}
+
+			if err := syncer.handleIncommingBlocks(ctx, received); err != nil {
+				handlerName := runtime.FuncForPC(reflect.ValueOf(syncer.handleIncommingBlocks).Pointer()).Name()
+				if err != context.Canceled {
+					log.Errorf("error in handler %s for topic %s: %s", handlerName, syncer.BlockSub.Topic(), err)
+				}
+			}
+		}
+	}()
+
 	go func() {
 		for {
 			select {
@@ -186,9 +249,18 @@ func (syncer *SyncerSubmodule) Start(ctx context.Context, _node syncerNode) erro
 			}
 		}
 	}()
+
 	return syncer.ChainSyncManager.Start(ctx)
 }
 
+func (syncer *SyncerSubmodule) Stop(ctx context.Context) {
+	if syncer.CancelChainSync != nil {
+		syncer.CancelChainSync()
+	}
+	if syncer.BlockSub != nil {
+		syncer.BlockSub.Cancel()
+	}
+}
 func (syncer *SyncerSubmodule) API() *SyncerAPI {
 	return &SyncerAPI{syncer: syncer}
 }

@@ -4,10 +4,10 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/network"
-	"github.com/filecoin-project/venus/app/submodule/proofverification"
 	"github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 )
 
 type miningConfig interface {
@@ -15,13 +15,13 @@ type miningConfig interface {
 }
 
 type MiningModule struct { //nolint
-	Config            miningConfig
-	ChainModule       *chain2.ChainSubmodule
-	BlockStore        *blockstore.BlockstoreSubmodule
-	NetworkModule     *network.NetworkSubmodule
-	SyncModule        *syncer.SyncerSubmodule
-	Wallet            wallet.WalletSubmodule
-	ProofVerification proofverification.ProofVerificationSubmodule
+	Config        miningConfig
+	ChainModule   *chain2.ChainSubmodule
+	BlockStore    *blockstore.BlockstoreSubmodule
+	NetworkModule *network.NetworkSubmodule
+	SyncModule    *syncer.SyncerSubmodule
+	Wallet        wallet.WalletSubmodule
+	proofVerifier ffiwrapper.Verifier
 }
 
 func (miningModule *MiningModule) API() *MiningAPI {
@@ -35,15 +35,15 @@ func NewMiningModule(
 	networkModule *network.NetworkSubmodule,
 	syncModule *syncer.SyncerSubmodule,
 	wallet wallet.WalletSubmodule,
-	proofVerification proofverification.ProofVerificationSubmodule,
+	proofVerifier ffiwrapper.Verifier,
 ) *MiningModule {
 	return &MiningModule{
-		Config:            conf,
-		ChainModule:       chainModule,
-		BlockStore:        blockStore,
-		NetworkModule:     networkModule,
-		SyncModule:        syncModule,
-		Wallet:            wallet,
-		ProofVerification: proofVerification,
+		Config:        conf,
+		ChainModule:   chainModule,
+		BlockStore:    blockStore,
+		NetworkModule: networkModule,
+		SyncModule:    syncModule,
+		Wallet:        wallet,
+		proofVerifier: proofVerifier,
 	}
 }

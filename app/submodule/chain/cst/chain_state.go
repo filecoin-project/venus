@@ -3,6 +3,7 @@ package cst
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/util"
 	"io"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -12,7 +13,6 @@ import (
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/slashing"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
@@ -44,7 +44,7 @@ type chainReadWriter interface {
 	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
 	SetHead(context.Context, *block.TipSet) error
 	GetLatestBeaconEntry(ts *block.TipSet) (*block.BeaconEntry, error)
-	ReadOnlyStateStore() cborutil.ReadOnlyIpldStore
+	ReadOnlyStateStore() util.ReadOnlyIpldStore
 	SubHeadChanges(ctx context.Context) chan []*chain.HeadChange
 	GetTipSetByHeight(context.Context, *block.TipSet, abi.ChainEpoch, bool) (*block.TipSet, error)
 }
@@ -58,7 +58,7 @@ type ChainStateReadWriter struct {
 	bstore          blockstore.Blockstore // Provides chain blocks.
 	messageProvider chain.MessageProvider
 	actors          vm.ActorCodeLoader
-	cborutil.ReadOnlyIpldStore
+	util.ReadOnlyIpldStore
 }
 
 type carStore struct {
@@ -319,7 +319,7 @@ func (chn *ChainStateReadWriter) SetHead(ctx context.Context, key block.TipSetKe
 }
 
 // ReadOnlyStateStore returns a read-only state store.
-func (chn *ChainStateReadWriter) ReadOnlyStateStore() cborutil.ReadOnlyIpldStore {
+func (chn *ChainStateReadWriter) ReadOnlyStateStore() util.ReadOnlyIpldStore {
 	return chn.readWriter.ReadOnlyStateStore()
 }
 

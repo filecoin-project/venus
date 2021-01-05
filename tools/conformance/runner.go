@@ -36,7 +36,7 @@ func ExecuteMessageVector(r Reporter, v string, vector *schema.TestVector, varia
 		root      = vector.Pre.StateTree.RootCID
 	)
 
-	// Load the CAR into a new temporary Blockstore.
+	// Load the CAR into a new temporary blockstore.
 	bs, err := LoadVectorCAR(vector.CAR)
 	if err != nil {
 		r.Fatalf("failed to load the vector CAR: %w", err)
@@ -97,7 +97,7 @@ func ExecuteTipsetVector(r Reporter, v string, vector *schema.TestVector, varian
 		tmpds     = ds.NewMapDatastore()
 	)
 
-	// Load the vector CAR into a new temporary Blockstore.
+	// Load the vector CAR into a new temporary blockstore.
 	bs, err := LoadVectorCAR(vector.CAR)
 	if err != nil {
 		r.Fatalf("failed to load the vector CAR: %w", err)
@@ -263,7 +263,7 @@ func LoadVectorCAR(vectorCAR schema.Base64EncodedBytes) (blockstoreutil.Blocksto
 	}
 	defer r.Close() // nolint
 
-	// Load the CAR embedded in the test vector into the Blockstore.
+	// Load the CAR embedded in the test vector into the blockstore.
 	_, err = car.LoadCar(bs, r)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load state tree car from test vector: %s", err)

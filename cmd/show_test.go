@@ -182,7 +182,7 @@ func TestBlockDaemon(t *testing.T) {
 		mockBlk, err := mockBlock(t) //nolint
 		require.NoError(t, err)
 
-		from, err := n.Wallet.API().WalletDefaultAddress() // this should = fixtures.TestAddresses[0]
+		from, err := n.Wallet().API().WalletDefaultAddress() // this should = fixtures.TestAddresses[0]
 		require.NoError(t, err)
 		cmdClient.RunSuccess(ctx, "message", "send",
 			"--from", from.String(),

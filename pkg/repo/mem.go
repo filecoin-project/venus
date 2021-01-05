@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 )
 
-// MemRepo is an in-memory implementation of the Repo interface.
+// MemRepo is an in-memory implementation of the repo interface.
 type MemRepo struct {
 	// lk guards the config
 	lk             sync.RWMutex
@@ -43,7 +43,7 @@ func NewInMemoryRepo() *MemRepo {
 	}
 }
 
-// ConfigModule returns the configuration object.
+// configModule returns the configuration object.
 func (mr *MemRepo) Config() *config.Config {
 	mr.lk.RLock()
 	defer mr.lk.RUnlock()
@@ -134,7 +134,7 @@ func (mr *MemRepo) JournalPath() string {
 	return "in_memory_filecoin_journal_path"
 }
 
-// Repo return the repo
+// repo return the repo
 func (mr *MemRepo) Repo() Repo {
 	return mr
 }

@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
 	"github.com/filecoin-project/venus/app/submodule/network"
-	"github.com/filecoin-project/venus/app/submodule/proofverification"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
 	"github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
@@ -54,7 +53,7 @@ type Builder struct {
 // BuilderOpt is an option for building a filecoin node.
 type BuilderOpt func(*Builder) error
 
-// OfflineMode enables or disables offline mode.
+// offlineMode enables or disables offline mode.
 func OfflineMode(offlineMode bool) BuilderOpt {
 	return func(c *Builder) error {
 		c.offlineMode = offlineMode
@@ -202,16 +201,16 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	// create the node
 	nd := &Node{
-		OfflineMode: b.offlineMode,
-		Repo:        b.repo,
+		offlineMode: b.offlineMode,
+		repo:        b.repo,
 	}
-	nd.ConfigModule = config2.NewConfigModule(b.repo)
-	nd.Blockstore, err = blockstore.NewBlockstoreSubmodule(ctx, b.repo)
+	nd.configModule = config2.NewConfigModule(b.repo)
+	nd.blockstore, err = blockstore.NewBlockstoreSubmodule(ctx, b.repo)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.Blockstore")
+		return nil, errors.Wrap(err, "failed to build node.blockstore")
 	}
 
-	nd.network, err = network.NewNetworkSubmodule(ctx, (*builder)(b), b.repo, nd.Blockstore)
+	nd.network, err = network.NewNetworkSubmodule(ctx, (*builder)(b), b.repo, nd.blockstore)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Network")
 	}
@@ -221,14 +220,12 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
-	nd.Blockservice, err = blockservice.NewBlockserviceSubmodule(ctx, nd.Blockstore, nd.network)
+	nd.blockservice, err = blockservice.NewBlockserviceSubmodule(ctx, nd.blockstore, nd.network)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.Blockservice")
+		return nil, errors.Wrap(err, "failed to build node.blockservice")
 	}
 
-	nd.ProofVerification = proofverification.NewProofVerificationSubmodule(b.verifier)
-
-	nd.chain, err = chain.NewChainSubmodule((*builder)(b), b.repo, nd.Blockstore, nd.ProofVerification)
+	nd.chain, err = chain.NewChainSubmodule((*builder)(b), b.repo, nd.blockstore, b.verifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}
@@ -246,7 +243,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		b.chainClock = clock.NewChainClock(geneBlk.Timestamp, b.blockTime, b.propDelay)
 	}
 
-	nd.ChainClock = b.chainClock
+	nd.chainClock = b.chainClock
 
 	//todo chainge builder interface to read config
 	nd.discovery, err = discovery.NewDiscoverySubmodule(ctx, (*builder)(b), b.repo.Config().Bootstrap, nd.network, nd.chain.ChainReader, nd.chain.MessageStore)
@@ -254,46 +251,45 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.discovery")
 	}
 
-	nd.syncer, err = syncer.NewSyncerSubmodule(ctx, (*builder)(b), nd.Blockstore, nd.network, nd.discovery, nd.chain, nd.ProofVerification.ProofVerifier)
+	nd.syncer, err = syncer.NewSyncerSubmodule(ctx, (*builder)(b), nd.blockstore, nd.network, nd.discovery, nd.chain, b.verifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}
 
-	nd.Wallet, err = wallet.NewWalletSubmodule(ctx, nd.ConfigModule, b.repo, nd.chain)
+	nd.wallet, err = wallet.NewWalletSubmodule(ctx, nd.configModule, b.repo, nd.chain)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.Wallet")
+		return nil, errors.Wrap(err, "failed to build node.wallet")
 	}
 
-	nd.Mpool, err = mpool.NewMpoolSubmodule((*builder)(b), nd.network, nd.chain, nd.syncer, nd.Wallet)
+	nd.mpool, err = mpool.NewMpoolSubmodule((*builder)(b), nd.network, nd.chain, nd.syncer, nd.wallet)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.Mpool")
+		return nil, errors.Wrap(err, "failed to build node.mpool")
 	}
 
-	nd.StorageNetworking, err = storagenetworking.NewStorgeNetworkingSubmodule(ctx, nd.network)
+	nd.storageNetworking, err = storagenetworking.NewStorgeNetworkingSubmodule(ctx, nd.network)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.StorageNetworking")
+		return nil, errors.Wrap(err, "failed to build node.storageNetworking")
 	}
-	nd.mining = mining.NewMiningModule(b.repo, nd.chain, nd.Blockstore, nd.network, nd.syncer, *nd.Wallet, *nd.ProofVerification)
-	nd.JwtAuth, err = jwtauth.NewJwtAuth(b.repo)
+	nd.mining = mining.NewMiningModule(b.repo, nd.chain, nd.blockstore, nd.network, nd.syncer, *nd.wallet, b.verifier)
+	nd.jwtAuth, err = jwtauth.NewJwtAuth(b.repo)
 	if err != nil {
 		return nil, xerrors.Errorf("read or generate jwt secrect error %s", err)
 	}
 
 	apiBuilder := util.NewBuiler()
 	apiBuilder.NameSpace("Filecoin")
-	err = apiBuilder.AddServices(nd.ConfigModule,
-		nd.Blockstore,
+	err = apiBuilder.AddServices(nd.configModule,
+		nd.blockstore,
 		nd.network,
-		nd.Blockservice,
+		nd.blockservice,
 		nd.discovery,
 		nd.chain,
 		nd.syncer,
-		nd.Wallet,
-		nd.StorageNetworking,
-		nd.ProofVerification,
+		nd.wallet,
+		nd.storageNetworking,
 		nd.mining,
-		nd.Mpool,
-		nd.JwtAuth,
+		nd.mpool,
+		nd.jwtAuth,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "add service failed ")
@@ -302,7 +298,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	return nd, nil
 }
 
-// Repo returns the repo.
+// repo returns the repo.
 func (b Builder) Repo() repo.Repo {
 	return b.repo
 }

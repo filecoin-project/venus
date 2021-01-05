@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
-	_ "github.com/filecoin-project/venus/pkg/consensus/lib/sigs/bls"  // enable bls signatures
-	_ "github.com/filecoin-project/venus/pkg/consensus/lib/sigs/secp" // enable secp signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/bls"  // enable bls signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/secp" // enable secp signatures
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/slashing"
 	"github.com/filecoin-project/venus/pkg/vm"
@@ -26,10 +26,10 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/test-vectors/schema"
-	"github.com/filecoin-project/venus/pkg/conformance/chaos"
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
+	"github.com/filecoin-project/venus/tools/conformance/chaos"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"

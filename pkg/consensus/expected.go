@@ -52,8 +52,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/state"
 
-	_ "github.com/filecoin-project/venus/pkg/consensus/lib/sigs/bls"  // enable bls signatures
-	_ "github.com/filecoin-project/venus/pkg/consensus/lib/sigs/secp" // enable secp signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/bls"  // enable bls signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/secp" // enable secp signatures
 )
 
 var (

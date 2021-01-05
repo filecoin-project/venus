@@ -502,7 +502,7 @@ func (v *View) StateVerifiedClientStatus(ctx context.Context, addr addr.Address)
 		return abi.NewStoragePower(0), err
 	}
 
-	state, err := verifreg.Load(v.adtStore(ctx), act)
+	state, err := verifreg.Load(adt.WrapStore(ctx, v.ipldStore), act)
 	if err != nil {
 		return abi.NewStoragePower(0), err
 	}
@@ -590,7 +590,7 @@ func (v *View) GetPowerRaw(ctx context.Context, maddr addr.Address) (power.Claim
 		return power.Claim{}, power.Claim{}, false, xerrors.Errorf("(get sset) failed to load power actor state: %v", err)
 	}
 
-	pas, err := power.Load(v.adtStore(ctx), act)
+	pas, err := power.Load(adt.WrapStore(ctx, v.ipldStore), act)
 	if err != nil {
 		return power.Claim{}, power.Claim{}, false, err
 	}
@@ -974,10 +974,6 @@ func (v *View) loadActor(ctx context.Context, address addr.Address) (*types.Acto
 	return actor, err
 }
 
-func (v *View) adtStore(ctx context.Context) adt.Store {
-	return StoreFromCbor(ctx, v.ipldStore)
-}
-
 func getFilMarketLocked(ctx context.Context, ipldStore cbor.IpldStore, st vmstate.Tree) (abi.TokenAmount, error) {
 	mactor, found, err := st.GetActor(ctx, market.Address)
 	if !found || err != nil {
@@ -990,18 +986,4 @@ func getFilMarketLocked(ctx context.Context, ipldStore cbor.IpldStore, st vmstat
 	}
 
 	return mst.TotalLocked()
-}
-
-// StoreFromCbor wraps a cbor ipldStore for ADT access.
-func StoreFromCbor(ctx context.Context, ipldStore cbor.IpldStore) adt.Store {
-	return &cstore{ctx, ipldStore}
-}
-
-type cstore struct {
-	ctx context.Context
-	cbor.IpldStore
-}
-
-func (s *cstore) Context() context.Context {
-	return s.ctx
 }

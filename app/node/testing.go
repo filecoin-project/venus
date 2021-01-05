@@ -63,7 +63,7 @@ func (cs *ChainSeed) GenesisInitFunc(cst cbor.IpldStore, bs blockstore.Blockstor
 // GiveKey gives the given key to the given node
 func (cs *ChainSeed) GiveKey(t *testing.T, nd *Node, key int) address.Address {
 	t.Helper()
-	bcks := nd.Wallet.Wallet.Backends(wallet.DSBackendType)
+	bcks := nd.wallet.Wallet.Backends(wallet.DSBackendType)
 	require.Len(t, bcks, 1, "expected to get exactly one datastore backend")
 
 	dsb := bcks[0].(*wallet.DSBackend)
@@ -79,10 +79,10 @@ func (cs *ChainSeed) GiveKey(t *testing.T, nd *Node, key int) address.Address {
 // GiveMiner gives the specified miner to the node. Returns the address and the owner addresss
 func (cs *ChainSeed) GiveMiner(t *testing.T, nd *Node, which int) (address.Address, address.Address) {
 	t.Helper()
-	cfg := nd.Repo.Config()
+	cfg := nd.repo.Config()
 	m := cs.info.Miners[which]
 
-	require.NoError(t, nd.Repo.ReplaceConfig(cfg))
+	require.NoError(t, nd.repo.ReplaceConfig(cfg))
 
 	ownerAddr, err := cs.info.Keys[m.Owner].Address()
 	require.NoError(t, err)
@@ -136,11 +136,11 @@ func DefaultAddressConfigOpt(addr address.Address) ConfigOpt {
 func ConnectNodes(t *testing.T, a, b *Node) {
 	t.Helper()
 	pi := peer.AddrInfo{
-		ID:    b.Host().ID(),
-		Addrs: b.Host().Addrs(),
+		ID:    b.network.Host.ID(),
+		Addrs: b.network.Host.Addrs(),
 	}
 
-	err := a.Host().Connect(context.TODO(), pi)
+	err := a.network.Host.Connect(context.TODO(), pi)
 	if err != nil {
 		t.Fatal(err)
 	}
