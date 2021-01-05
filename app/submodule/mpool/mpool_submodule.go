@@ -188,7 +188,9 @@ func (mp *MessagePoolSubmodule) Stop(ctx context.Context) {
 	if err != nil {
 		log.Errorf("failed to close mpool: %s", err)
 	}
-	mp.MessageSub.Cancel()
+	if mp.MessageSub != nil {
+		mp.MessageSub.Cancel()
+	}
 }
 
 func (mp *MessagePoolSubmodule) API() *MessagePoolAPI {
