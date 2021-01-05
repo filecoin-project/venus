@@ -1,4 +1,4 @@
-package cborutil
+package util
 
 import (
 	"context"

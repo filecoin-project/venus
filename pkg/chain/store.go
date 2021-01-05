@@ -3,6 +3,7 @@ package chain
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/pkg/util"
 	"io"
 	"os"
 	"runtime/debug"
@@ -25,7 +26,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/cborutil"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
@@ -703,8 +703,8 @@ func (store *Store) SubscribeHeadChanges(f ReorgNotifee) {
 }
 
 // ReadOnlyStateStore provides a read-only IPLD store for access to chain state.
-func (store *Store) ReadOnlyStateStore() cborutil.ReadOnlyIpldStore {
-	return cborutil.ReadOnlyIpldStore{IpldStore: store.stateAndBlockSource.cborStore}
+func (store *Store) ReadOnlyStateStore() util.ReadOnlyIpldStore {
+	return util.ReadOnlyIpldStore{IpldStore: store.stateAndBlockSource.cborStore}
 }
 
 // writeHead writes the given cid set as head to disk.

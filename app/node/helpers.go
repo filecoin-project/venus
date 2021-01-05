@@ -1,7 +1,6 @@
 package node
 
 import (
-	"context"
 	"encoding/json"
 
 	"github.com/ipfs/go-cid"
@@ -9,10 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/net/pubsub"
 )
-
-type pubSubHandler func(ctx context.Context, msg pubsub.Message) error
 
 // readGenesisCid is a helper function that queries the provided datastore for
 // an entry with the genesisKey cid, returning if found.
