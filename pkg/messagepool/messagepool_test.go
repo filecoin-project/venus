@@ -17,10 +17,10 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/config"
-	_ "github.com/filecoin-project/venus/pkg/consensus/lib/sigs/bls"
-	_ "github.com/filecoin-project/venus/pkg/consensus/lib/sigs/secp"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
+	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/bls"
+	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/secp"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
 	"github.com/filecoin-project/venus/pkg/repo"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"

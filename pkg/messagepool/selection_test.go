@@ -29,8 +29,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
 
-	_ "github.com/filecoin-project/venus/pkg/consensus/lib/sigs/bls"
-	_ "github.com/filecoin-project/venus/pkg/consensus/lib/sigs/secp"
+	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/bls"
+	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/secp"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
