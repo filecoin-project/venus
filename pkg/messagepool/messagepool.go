@@ -445,11 +445,6 @@ func New(api Provider, ds repo.Datastore, forkParams *config.ForkUpgradeConfig, 
 func (mp *MessagePool) DeleteByAdress(address address.Address) error {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
-	for a := range mp.localAddrs {
-		if a == address {
-			return xerrors.Errorf("cann`t be local address")
-		}
-	}
 
 	if mp.pending != nil {
 		mp.pending[address] = nil
