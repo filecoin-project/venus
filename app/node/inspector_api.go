@@ -127,7 +127,7 @@ func (g *Inspector) Memory() (*MemoryInfo, error) {
 	}, nil
 }
 
-// ConfigModule return the current config values of the filecoin node.
+// configModule return the current config values of the filecoin node.
 func (g *Inspector) Config() *config.Config {
 	return g.repo.Config()
 }

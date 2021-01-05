@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// WalletSubmodule enhances the `Node` with a "Wallet" and FIL transfer capabilities.
+// WalletSubmodule enhances the `Node` with a "wallet" and FIL transfer capabilities.
 type WalletSubmodule struct { //nolint
 	Chain  *chain.ChainSubmodule
 	Wallet *wallet.Wallet

@@ -34,7 +34,7 @@ func (node *Node) validateLocalMessage(ctx context.Context, msg pubsub.Message) 
 		return xerrors.New("value-too-high")
 	}
 
-	if err := node.Mpool.MPool.VerifyMsgSig(m); err != nil {
+	if err := node.mpool.MPool.VerifyMsgSig(m); err != nil {
 		log.Warnf("signature verification failed for local message: %s", err)
 		return xerrors.Errorf("verify-sig: %s", err)
 	}
@@ -46,7 +46,7 @@ func (node *Node) processMessage(ctx context.Context, pubSubMsg pubsub.Message) 
 	sender := pubSubMsg.GetSender()
 
 	// ignore messages from self
-	if sender == node.Host().ID() {
+	if sender == node.network.Host.ID() {
 		return node.validateLocalMessage(ctx, pubSubMsg)
 	}
 
@@ -55,7 +55,7 @@ func (node *Node) processMessage(ctx context.Context, pubSubMsg pubsub.Message) 
 		return err
 	}
 
-	if err := node.Mpool.MPool.Add(unmarshaled); err != nil {
+	if err := node.mpool.MPool.Add(unmarshaled); err != nil {
 		log.Debugf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", unmarshaled.Message.From, unmarshaled.Message.To, unmarshaled.Message.Nonce, types.FIL(unmarshaled.Message.Value), err)
 		switch {
 		case xerrors.Is(err, messagepool.ErrSoftValidationFailure):

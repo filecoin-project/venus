@@ -11,13 +11,13 @@ import (
 //
 // TODO: split chain data from piece data (issue: https://github.com/filecoin-project/venus/issues/3481)
 // Note: at present:
-// - `Blockstore` is shared by chain/graphsync and piece/bitswap data
+// - `blockstore` is shared by chain/graphsync and piece/bitswap data
 // - `cborStore` is used for chain state and shared with piece data exchange for deals at the moment.
 type BlockstoreSubmodule struct { //nolint
-	// Blockstore is the un-networked blocks interface
+	// blockstore is the un-networked blocks interface
 	Blockstore bstore.Blockstore
 
-	// cborStore is a wrapper for a `cbor.IpldStore` that works on the local IPLD-Cbor objects stored in `Blockstore`.
+	// cborStore is a wrapper for a `cbor.IpldStore` that works on the local IPLD-Cbor objects stored in `blockstore`.
 	CborStore cbor.IpldStore
 }
 

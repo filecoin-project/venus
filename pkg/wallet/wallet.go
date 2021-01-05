@@ -17,7 +17,7 @@ import (
 
 var ErrKeyInfoNotFound = fmt.Errorf("key info not found")
 
-// Wallet manages the locally stored addresses.
+// wallet manages the locally stored addresses.
 type Wallet struct {
 	lk sync.Mutex
 

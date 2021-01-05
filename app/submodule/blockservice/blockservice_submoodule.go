@@ -16,7 +16,7 @@ import (
 // Note: at present:
 // - `BlockService` is shared by chain/graphsync and piece/bitswap data
 type BlockServiceSubmodule struct { //nolint
-	// Blockservice is a higher level interface for fetching data
+	// blockservice is a higher level interface for fetching data
 	Blockservice bserv.BlockService
 
 	Dag *dag.DAG

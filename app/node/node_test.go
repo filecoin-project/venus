@@ -208,9 +208,9 @@ func TestNodeConfig(t *testing.T) {
 	builder.WithBuilderOpt(node.OfflineMode(true))
 
 	n := builder.Build(context.Background())
-	cfg := n.Repo.Config()
+	cfg := n.repo.Config()
 
-	assert.Equal(t, true, n.OfflineMode)
+	assert.Equal(t, true, n.offlineMode)
 	assert.Equal(t, &config.SwarmConfig{
 		Address: "/ip4/127.0.0.1/tcp/0",
 	}, cfg.Swarm)

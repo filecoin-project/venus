@@ -56,12 +56,12 @@ func BadgerBlockstoreOptions(path string, readonly bool) (Options, error) {
 
 	opts := DefaultOptions(path)
 
-	// Due to legacy usage of blockstore.Blockstore, over a datastore, all
+	// Due to legacy usage of blockstore.blockstore, over a datastore, all
 	// blocks are prefixed with this namespace. In the future, this can go away,
 	// in order to shorten keys, but it'll require a migration.
 	opts.Prefix = ""
 
-	// Blockstore values are immutable; therefore we do not expect any
+	// blockstore values are immutable; therefore we do not expect any
 	// conflicts to emerge.
 	opts.DetectConflicts = false
 
@@ -114,7 +114,7 @@ const (
 	stateClosed
 )
 
-// Blockstore is a badger-backed IPLD blockstore.
+// blockstore is a badger-backed IPLD blockstore.
 //
 // NOTE: once Close() is called, methods will try their best to return
 // ErrBlockstoreClosed. This will guaranteed to happen for all subsequent
@@ -196,7 +196,7 @@ func (b *BadgerBlockstore) View(cid cid.Cid, fn func([]byte) error) error {
 	})
 }
 
-// Has implements Blockstore.Has.
+// Has implements blockstore.Has.
 func (b *BadgerBlockstore) Has(cid cid.Cid) (bool, error) {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return false, ErrBlockstoreClosed
@@ -224,7 +224,7 @@ func (b *BadgerBlockstore) Has(cid cid.Cid) (bool, error) {
 	}
 }
 
-// Get implements Blockstore.Get.
+// Get implements blockstore.Get.
 func (b *BadgerBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	if !cid.Defined() {
 		return nil, blockstore.ErrNotFound
@@ -267,7 +267,7 @@ func (b *BadgerBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	return blk, nil
 }
 
-// GetSize implements Blockstore.GetSize.
+// GetSize implements blockstore.GetSize.
 func (b *BadgerBlockstore) GetSize(cid cid.Cid) (int, error) {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return -1, ErrBlockstoreClosed
@@ -298,7 +298,7 @@ func (b *BadgerBlockstore) GetSize(cid cid.Cid) (int, error) {
 	return size, err
 }
 
-// Put implements Blockstore.Put.
+// Put implements blockstore.Put.
 func (b *BadgerBlockstore) Put(block blocks.Block) error {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return ErrBlockstoreClosed
@@ -322,7 +322,7 @@ func (b *BadgerBlockstore) Put(block blocks.Block) error {
 	return err
 }
 
-// PutMany implements Blockstore.PutMany.
+// PutMany implements blockstore.PutMany.
 func (b *BadgerBlockstore) PutMany(blks []blocks.Block) error {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return ErrBlockstoreClosed
@@ -356,7 +356,7 @@ func (b *BadgerBlockstore) PutMany(blks []blocks.Block) error {
 	return err
 }
 
-// DeleteBlock implements Blockstore.DeleteBlock.
+// DeleteBlock implements blockstore.DeleteBlock.
 func (b *BadgerBlockstore) DeleteBlock(cid cid.Cid) error {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return ErrBlockstoreClosed
@@ -372,7 +372,7 @@ func (b *BadgerBlockstore) DeleteBlock(cid cid.Cid) error {
 	})
 }
 
-// AllKeysChan implements Blockstore.AllKeysChan.
+// AllKeysChan implements blockstore.AllKeysChan.
 func (b *BadgerBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return nil, ErrBlockstoreClosed
@@ -416,7 +416,7 @@ func (b *BadgerBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, err
 	return ch, nil
 }
 
-// HashOnRead implements Blockstore.HashOnRead. It is not supported by this
+// HashOnRead implements blockstore.HashOnRead. It is not supported by this
 // blockstore.
 func (b *BadgerBlockstore) HashOnRead(_ bool) {
 	log.Warnf("called HashOnRead on badger blockstore; function not supported; ignoring")

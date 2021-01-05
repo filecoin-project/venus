@@ -19,7 +19,7 @@ type Datastore interface {
 	datastore.Batching
 }
 
-// Repo is a representation of all persistent data in a filecoin node.
+// repo is a representation of all persistent data in a filecoin node.
 type Repo interface {
 	Config() *config.Config
 	// ReplaceConfig replaces the current config, with the newly passed in one.
@@ -63,6 +63,6 @@ type Repo interface {
 	// Close shuts down the repo.
 	Close() error
 
-	// Repo return the repo
+	// repo return the repo
 	Repo() Repo
 }

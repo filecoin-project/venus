@@ -5,13 +5,13 @@ import (
 	"sync"
 )
 
-// ConfigModule is plumbing implementation for setting and retrieving values from local config.
+// configModule is plumbing implementation for setting and retrieving values from local config.
 type ConfigModule struct { //nolint
 	repo repo2.Repo
 	lock sync.Mutex
 }
 
-// NewConfig returns a new ConfigModule.
+// NewConfig returns a new configModule.
 func NewConfigModule(repo repo2.Repo) *ConfigModule {
 	return &ConfigModule{repo: repo}
 }

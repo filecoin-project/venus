@@ -49,7 +49,7 @@ func CreateBootstrapMiner(ctx context.Context, t *testing.T, seed *node.ChainSee
 		Build(ctx)
 
 	addr := seed.GiveKey(t, bootstrapMiner, 0)
-	err := bootstrapMiner.ConfigModule.API().ConfigSet("walletModule.defaultAddress", addr.String())
+	err := bootstrapMiner.configModule.API().ConfigSet("walletModule.defaultAddress", addr.String())
 	require.NoError(t, err)
 
 	_, _, err = initNodeGenesisMiner(ctx, t, bootstrapMiner, seed, genCfg.Miners[0].Owner)

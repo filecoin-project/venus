@@ -17,7 +17,7 @@ func (node *Node) handleBlockSub(ctx context.Context, msg pubsub.Message) (err e
 	sender := msg.GetSender()
 	source := msg.GetSource()
 	// ignore messages from self
-	if sender == node.Host().ID() || source == node.Host().ID() {
+	if sender == node.network.Host.ID() || source == node.network.Host.ID() {
 		return nil
 	}
 

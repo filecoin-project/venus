@@ -15,7 +15,7 @@ import (
 	"sync"
 )
 
-func WalkSnapshot(ctx context.Context, bs bstore.Blockstore, ts *block.TipSet, incRecentEpoch abi.ChainEpoch, inclRecentRoots abi.ChainEpoch) error {
+func WalkSnapshot(ctx context.Context, bs bstore.blockstore, ts *block.TipSet, incRecentEpoch abi.ChainEpoch, inclRecentRoots abi.ChainEpoch) error {
 	seen := NewSet()
 	walked := NewSet()
 	blocksToWalk := ts.Key().Cids()
@@ -86,7 +86,7 @@ func WalkSnapshot(ctx context.Context, bs bstore.Blockstore, ts *block.TipSet, i
 	return nil
 }
 
-func recurseLinks(bs bstore.Blockstore, walked *Set, root cid.Cid) ([]cid.Cid, error) {
+func recurseLinks(bs bstore.blockstore, walked *Set, root cid.Cid) ([]cid.Cid, error) {
 	if root.Prefix().Codec != cid.DagCBOR {
 		return []cid.Cid{root}, nil
 	}

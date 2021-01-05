@@ -10,11 +10,9 @@ import (
 	"runtime"
 	"syscall"
 
-	bserv "github.com/ipfs/go-blockservice"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/host"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net" //nolint
 	"github.com/pkg/errors"
@@ -22,8 +20,6 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	fbig "github.com/filecoin-project/go-state-types/big"
-
 	"github.com/filecoin-project/venus/app/submodule/blockservice"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
@@ -36,14 +32,12 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
 	syncer2 "github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/net/pubsub"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/version"
-	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 var log = logging.Logger("node") // nolint: deadcode
@@ -53,24 +47,24 @@ const APIPrefix = "/api"
 
 // Node represents a full Filecoin node.
 type Node struct {
-	// OfflineMode, when true, disables libp2p.
-	OfflineMode bool
+	// offlineMode, when true, disables libp2p.
+	offlineMode bool
 
-	// ChainClock is a chainClock used by the node for chain epoch.
-	ChainClock clock.ChainEpochClock
+	// chainClock is a chainClock used by the node for chain epoch.
+	chainClock clock.ChainEpochClock
 
-	// Repo is the repo this node was created with.
+	// repo is the repo this node was created with.
 	//
 	// It contains all persistent artifacts of the filecoin node.
-	Repo repo.Repo
+	repo repo.Repo
 
 	//
 	// Core services
 	//
-	ConfigModule *configModule.ConfigModule
-	Blockstore   *blockstore.BlockstoreSubmodule
+	configModule *configModule.ConfigModule
+	blockstore   *blockstore.BlockstoreSubmodule
+	blockservice *blockservice.BlockServiceSubmodule
 	network      *network2.NetworkSubmodule
-	Blockservice *blockservice.BlockServiceSubmodule
 	discovery    *discovery.DiscoverySubmodule
 
 	//
@@ -83,17 +77,17 @@ type Node struct {
 	//
 	// Supporting services
 	//
-	Wallet            *wallet.WalletSubmodule
-	Mpool             *mpool.MessagePoolSubmodule
-	StorageNetworking *storagenetworking.StorageNetworkingSubmodule
-	ProofVerification *proofverification.ProofVerificationSubmodule
+	wallet            *wallet.WalletSubmodule
+	mpool             *mpool.MessagePoolSubmodule
+	storageNetworking *storagenetworking.StorageNetworkingSubmodule
+	proofVerification *proofverification.ProofVerificationSubmodule
 
 	//
 	// Protocols
 	//
 	VersionTable *version.ProtocolVersionTable
 
-	JwtAuth *jwtauth.JwtAuth
+	jwtAuth *jwtauth.JwtAuth
 
 	//
 	// Jsonrpc
@@ -101,13 +95,61 @@ type Node struct {
 	jsonRPCService *jsonrpc.RPCServer
 }
 
+func (node *Node) ProofVerification() *proofverification.ProofVerificationSubmodule {
+	return node.proofVerification
+}
+
+func (node *Node) StorageNetworking() *storagenetworking.StorageNetworkingSubmodule {
+	return node.storageNetworking
+}
+
+func (node *Node) Mpool() *mpool.MessagePoolSubmodule {
+	return node.mpool
+}
+
+func (node *Node) Wallet() *wallet.WalletSubmodule {
+	return node.wallet
+}
+
+func (node *Node) Discovery() *discovery.DiscoverySubmodule {
+	return node.discovery
+}
+
+func (node *Node) Network() *network2.NetworkSubmodule {
+	return node.network
+}
+
+func (node *Node) Blockservice() *blockservice.BlockServiceSubmodule {
+	return node.blockservice
+}
+
+func (node *Node) Blockstore() *blockstore.BlockstoreSubmodule {
+	return node.blockstore
+}
+
+func (node *Node) ConfigModule() *configModule.ConfigModule {
+	return node.configModule
+}
+
+func (node *Node) Repo() repo.Repo {
+	return node.repo
+}
+
+func (node *Node) ChainClock() clock.ChainEpochClock {
+	return node.chainClock
+}
+
+func (node *Node) OfflineMode() bool {
+	return node.offlineMode
+}
+
 // Start boots up the node.
 func (node *Node) Start(ctx context.Context) error {
-	if err := metrics.RegisterPrometheusEndpoint(node.Repo.Config().Observability.Metrics); err != nil {
+	if err := metrics.RegisterPrometheusEndpoint(node.repo.Config().Observability.Metrics); err != nil {
 		return errors.Wrap(err, "failed to setup metrics")
 	}
 
-	if err := metrics.RegisterJaeger(node.network.Host.ID().Pretty(), node.Repo.Config().Observability.Tracing); err != nil {
+	if err := metrics.RegisterJaeger(node.network.Host.ID().Pretty(), node.repo.Config().Observability.Tracing); err != nil {
 		return errors.Wrap(err, "failed to setup tracing")
 	}
 
@@ -115,7 +157,7 @@ func (node *Node) Start(ctx context.Context) error {
 	var syncCtx context.Context
 	syncCtx, node.syncer.CancelChainSync = context.WithCancel(context.Background())
 
-	if !node.OfflineMode {
+	if !node.offlineMode {
 		// Start node discovery
 		if err := node.discovery.Start(); err != nil {
 			return err
@@ -128,7 +170,7 @@ func (node *Node) Start(ctx context.Context) error {
 		}
 
 		// Subscribe to the message pubsub topic to learn about messages to mine into blocks.
-		node.Mpool.MessageSub, err = node.pubsubscribe(syncCtx, node.Mpool.MessageTopic, node.processMessage)
+		node.mpool.MessageSub, err = node.pubsubscribe(syncCtx, node.mpool.MessageTopic, node.processMessage)
 		if err != nil {
 			return err
 		}
@@ -162,9 +204,9 @@ func (node *Node) cancelSubscriptions() {
 	}
 
 	// stop message sub
-	if node.Mpool.MessageSub != nil {
-		node.Mpool.MessageSub.Cancel()
-		node.Mpool.MessageSub = nil
+	if node.mpool.MessageSub != nil {
+		node.mpool.MessageSub.Cancel()
+		node.mpool.MessageSub = nil
 	}
 }
 
@@ -174,13 +216,13 @@ func (node *Node) Stop(ctx context.Context) {
 	node.chain.ChainReader.Stop()
 
 	// close mpool
-	node.Mpool.Close()
+	node.mpool.Close()
 
-	if err := node.Host().Close(); err != nil {
+	if err := node.network.Host.Close(); err != nil {
 		fmt.Printf("error closing host: %s\n", err)
 	}
 
-	if err := node.Repo.Close(); err != nil {
+	if err := node.repo.Close(); err != nil {
 		fmt.Printf("error closing repo: %s\n", err)
 	}
 
@@ -206,48 +248,6 @@ func (node *Node) handleSubscription(ctx context.Context, sub pubsub.Subscriptio
 			}
 		}
 	}
-}
-
-// getWeight is the default GetWeight function for the mining worker.
-func (node *Node) getWeight(ctx context.Context, ts *block.TipSet) (fbig.Int, error) {
-	return node.syncer.ChainSelector.Weight(ctx, ts)
-}
-
-// -- Accessors
-
-// Host returns the nodes host.
-func (node *Node) Host() host.Host {
-	return node.network.Host
-}
-
-// BlockService returns the nodes blockservice.
-func (node *Node) BlockService() bserv.BlockService {
-	return node.Blockservice.Blockservice
-}
-
-// CborStore returns the nodes cborStore.
-func (node *Node) CborStore() cbor.IpldStore {
-	return node.Blockstore.CborStore
-}
-
-// Chain returns the chain submodule.
-func (node *Node) Chain() *chain2.ChainSubmodule {
-	return node.chain
-}
-
-// Syncer returns the syncer submodule.
-func (node *Node) Syncer() *syncer2.SyncerSubmodule {
-	return node.syncer
-}
-
-// Discovery returns the discovery submodule.
-func (node *Node) Discovery() *discovery.DiscoverySubmodule {
-	return node.discovery
-}
-
-// Network returns the network submodule.
-func (node *Node) Network() *network2.NetworkSubmodule {
-	return node.network
 }
 
 func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command, ready chan interface{}) error {
@@ -289,7 +289,7 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 func (node *Node) runRustfulAPI(ctx context.Context, rootCmdDaemon *cmds.Command) (*http.Server, error) {
 	servenv := node.createServerEnv(ctx)
 
-	apiConfig := node.Repo.Config().API
+	apiConfig := node.repo.Config().API
 	cfg := cmdhttp.NewServerConfig()
 	cfg.APIPath = APIPrefix
 	cfg.SetAllowedOrigins(apiConfig.AccessControlAllowOrigin...)
@@ -325,7 +325,7 @@ func (node *Node) runRustfulAPI(ctx context.Context, rootCmdDaemon *cmds.Command
 
 	// Write the resolved API address to the repo
 	apiConfig.RustFulAddress = apiListener.Multiaddr().String()
-	if err := node.Repo.SetRustfulAPIAddr(apiConfig.RustFulAddress); err != nil {
+	if err := node.repo.SetRustfulAPIAddr(apiConfig.RustFulAddress); err != nil {
 		log.Error("Could not save API address to repo")
 		return nil, err
 	}
@@ -333,8 +333,8 @@ func (node *Node) runRustfulAPI(ctx context.Context, rootCmdDaemon *cmds.Command
 }
 
 func (node *Node) runJsonrpcAPI(ctx context.Context) (*http.Server, error) { //nolint
-	apiConfig := node.Repo.Config().API
-	jwtAuth := node.JwtAuth.API()
+	apiConfig := node.repo.Config().API
+	jwtAuth := node.jwtAuth.API()
 	ah := &auth.Handler{
 		Verify: jwtAuth.AuthVerify,
 		Next:   node.jsonRPCService.ServeHTTP,
@@ -365,7 +365,7 @@ func (node *Node) runJsonrpcAPI(ctx context.Context) (*http.Server, error) { //n
 
 	// Write the resolved API address to the repo
 	apiConfig.JSONRPCAddress = lst.Multiaddr().String()
-	if err := node.Repo.SetJsonrpcAPIAddr(apiConfig.JSONRPCAddress); err != nil {
+	if err := node.repo.SetJsonrpcAPIAddr(apiConfig.JSONRPCAddress); err != nil {
 		log.Warnf("Could not save API address to repo")
 		return nil, err
 	}
@@ -376,19 +376,19 @@ func (node *Node) runJsonrpcAPI(ctx context.Context) (*http.Server, error) { //n
 func (node *Node) createServerEnv(ctx context.Context) *Env {
 	env := Env{
 		ctx:                  ctx,
-		InspectorAPI:         NewInspectorAPI(node.Repo),
-		BlockServiceAPI:      node.Blockservice.API(),
-		BlockStoreAPI:        node.Blockstore.API(),
-		ChainAPI:             node.Chain().API(),
-		ConfigAPI:            node.ConfigModule.API(),
-		DiscoveryAPI:         node.Discovery().API(),
-		NetworkAPI:           node.Network().API(),
-		ProofVerificationAPI: node.ProofVerification.API(),
-		StorageNetworkingAPI: node.StorageNetworking.API(),
-		SyncerAPI:            node.Syncer().API(),
-		WalletAPI:            node.Wallet.API(),
+		InspectorAPI:         NewInspectorAPI(node.repo),
+		BlockServiceAPI:      node.blockservice.API(),
+		BlockStoreAPI:        node.blockstore.API(),
+		ChainAPI:             node.chain.API(),
+		ConfigAPI:            node.configModule.API(),
+		DiscoveryAPI:         node.discovery.API(),
+		NetworkAPI:           node.network.API(),
+		ProofVerificationAPI: node.proofVerification.API(),
+		StorageNetworkingAPI: node.storageNetworking.API(),
+		SyncerAPI:            node.syncer.API(),
+		WalletAPI:            node.wallet.API(),
 		MingingAPI:           node.mining.API(),
-		MessagePoolAPI:       node.Mpool.API(),
+		MessagePoolAPI:       node.mpool.API(),
 	}
 
 	return &env
