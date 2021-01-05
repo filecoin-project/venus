@@ -2,7 +2,7 @@ package state
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
-
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 )
@@ -35,4 +35,9 @@ type NetworkPower struct {
 	QualityAdjustedPower abi.StoragePower
 	MinerCount           int64
 	MinPowerMinerCount   int64
+}
+
+type MarketBalance struct {
+	Escrow big.Int
+	Locked big.Int
 }

@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/util/dag"
 	"github.com/filecoin-project/venus/pkg/vm"
 	vmstate "github.com/filecoin-project/venus/pkg/vm/state"
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -59,28 +58,6 @@ type ChainStateReadWriter struct {
 	messageProvider chain.MessageProvider
 	actors          vm.ActorCodeLoader
 	cborutil.ReadOnlyIpldStore
-}
-
-type carStore struct {
-	store blockstore.Blockstore
-}
-
-func newCarStore(bs blockstore.Blockstore) *carStore { //nolint
-	return &carStore{bs}
-}
-
-func (cs *carStore) Put(b blocks.Block) error {
-	return cs.store.Put(b)
-}
-
-type actorNotRegisteredError struct{} //nolint
-
-func (e actorNotRegisteredError) Error() string {
-	return "actor not registered"
-}
-
-func (e actorNotRegisteredError) ActorNotFound() bool {
-	return true
 }
 
 var (
@@ -131,6 +108,9 @@ func (chn *ChainStateReadWriter) GetGenesisBlock(ctx context.Context) (*block.Bl
 
 // GetTipSet returns the tipset at the given key
 func (chn *ChainStateReadWriter) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
+	if key.IsEmpty() {
+		key = chn.Head()
+	}
 	return chn.readWriter.GetTipSet(key)
 }
 

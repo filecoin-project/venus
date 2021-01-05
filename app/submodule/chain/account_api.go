@@ -22,7 +22,7 @@ func (accountAPI *AccountAPI) StateAccountKey(ctx context.Context, addr address.
 	}
 	view, err := accountAPI.chain.State.StateView(tsk)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("loading tipset %s: %v", tsk, err)
+		return address.Undef, xerrors.Errorf("loading state view %s: %v", tsk, err)
 	}
 
 	return view.ResolveToKeyAddr(ctx, addr)

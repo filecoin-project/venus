@@ -48,4 +48,9 @@ type MarketDeal struct {
 	State    market.DealState
 }
 
+type DealCollateralBounds struct {
+	Min abi.TokenAmount
+	Max abi.TokenAmount
+}
+
 type NetworkName string

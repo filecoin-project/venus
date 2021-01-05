@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/specactors/policy"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -567,4 +568,102 @@ func (minerStateAPI *MinerStateAPI) StateSectorExpiration(ctx context.Context, m
 	}
 
 	return view.StateSectorExpiration(ctx, maddr, sectorNumber, tsk)
+}
+
+var dealProviderCollateralNum = big.NewInt(110)
+var dealProviderCollateralDen = big.NewInt(100)
+
+func (minerStateAPI *MinerStateAPI) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk block.TipSetKey) (DealCollateralBounds, error) {
+	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
+	if err != nil {
+		return DealCollateralBounds{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+	view, err := minerStateAPI.chain.State.StateView(tsk)
+	if err != nil {
+		return DealCollateralBounds{}, xerrors.Errorf("loading view %s: %v", tsk, err)
+	}
+
+	pact, err := view.LoadActor(ctx, power.Address)
+	if err != nil {
+		return DealCollateralBounds{}, xerrors.Errorf("failed to load power actor: %w", err)
+	}
+
+	ract, err := view.LoadActor(ctx, reward.Address)
+	if err != nil {
+		return DealCollateralBounds{}, xerrors.Errorf("failed to load reward actor: %w", err)
+	}
+
+	pst, err := power.Load(minerStateAPI.chain.State.Store(ctx), pact)
+	if err != nil {
+		return DealCollateralBounds{}, xerrors.Errorf("failed to load power actor state: %w", err)
+	}
+
+	rst, err := reward.Load(minerStateAPI.chain.State.Store(ctx), ract)
+	if err != nil {
+		return DealCollateralBounds{}, xerrors.Errorf("failed to load reward actor state: %w", err)
+	}
+
+	tree, err := minerStateAPI.chain.ChainReader.GetTipSetState(ctx, ts.Key())
+	if err != nil {
+		return DealCollateralBounds{}, xerrors.Errorf("failed to load tipset state after ts %v: %w", ts, err)
+	}
+
+	circ, err := minerStateAPI.chain.ChainReader.GetCirculatingSupplyDetailed(ctx, ts.EnsureHeight(), tree)
+	if err != nil {
+		return DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %w", err)
+	}
+	powClaim, err := pst.TotalPower()
+	if err != nil {
+		return DealCollateralBounds{}, xerrors.Errorf("getting total power: %w", err)
+	}
+
+	rewPow, err := rst.ThisEpochBaselinePower()
+	if err != nil {
+		return DealCollateralBounds{}, xerrors.Errorf("getting reward baseline power: %w", err)
+	}
+
+	version := minerStateAPI.chain.Fork.GetNtwkVersion(ctx, ts.EnsureHeight())
+	min, max := policy.DealProviderCollateralBounds(size,
+		verified,
+		powClaim.RawBytePower,
+		powClaim.QualityAdjPower,
+		rewPow,
+		circ.FilCirculating,
+		version)
+	return DealCollateralBounds{
+		Min: big.Div(big.Mul(min, dealProviderCollateralNum), dealProviderCollateralDen),
+		Max: max,
+	}, nil
+}
+
+func (minerStateAPI *MinerStateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk block.TipSetKey) (*abi.StoragePower, error) {
+	pView, err := minerStateAPI.chain.State.ParentStateView(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading view %s: %v", tsk, err)
+	}
+
+	view, err := minerStateAPI.chain.State.StateView(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading view %s: %v", tsk, err)
+	}
+
+	vrs, err := view.LoadVerifregState(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load verified registry state: %w", err)
+	}
+
+	aid, err := pView.LookupID(ctx, addr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to look up aid of %s: %w", addr, err)
+	}
+
+	verified, dcap, err := vrs.VerifiedClientDataCap(aid)
+	if err != nil {
+		return nil, xerrors.Errorf("looking up verified client: %w", err)
+	}
+	if !verified {
+		return nil, nil
+	}
+
+	return &dcap, nil
 }
