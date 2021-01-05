@@ -28,7 +28,6 @@ type blockstoreRepo interface {
 // NewBlockstoreSubmodule creates a new block store submodule.
 func NewBlockstoreSubmodule(ctx context.Context, repo blockstoreRepo) (*BlockstoreSubmodule, error) {
 	// set up block store
-	//bs := bstore.NewBlockstore(repo.Datastore())
 	bs := repo.Datastore()
 	// setup a ipldCbor on top of the local store
 	ipldCborStore := cbor.NewCborStore(bs)
