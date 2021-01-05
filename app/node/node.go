@@ -215,7 +215,7 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 		return err
 	}
 
-	netListener := manet.NetListener(apiListener)
+	netListener := manet.NetListener(apiListener) //nolint
 
 	rustfulRpcServer, err := node.runRustfulAPI(ctx, netListener, rootCmdDaemon) //nolint
 	if err != nil {
