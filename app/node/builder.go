@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
 	"github.com/filecoin-project/venus/app/submodule/network"
-	"github.com/filecoin-project/venus/app/submodule/proofverification"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
 	"github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
@@ -226,9 +225,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.blockservice")
 	}
 
-	nd.proofVerification = proofverification.NewProofVerificationSubmodule(b.verifier)
-
-	nd.chain, err = chain.NewChainSubmodule((*builder)(b), b.repo, nd.blockstore, nd.proofVerification)
+	nd.chain, err = chain.NewChainSubmodule((*builder)(b), b.repo, nd.blockstore, b.verifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}
@@ -254,7 +251,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.discovery")
 	}
 
-	nd.syncer, err = syncer.NewSyncerSubmodule(ctx, (*builder)(b), nd.blockstore, nd.network, nd.discovery, nd.chain, nd.proofVerification.ProofVerifier)
+	nd.syncer, err = syncer.NewSyncerSubmodule(ctx, (*builder)(b), nd.blockstore, nd.network, nd.discovery, nd.chain, b.verifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}
@@ -273,7 +270,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.storageNetworking")
 	}
-	nd.mining = mining.NewMiningModule(b.repo, nd.chain, nd.blockstore, nd.network, nd.syncer, *nd.wallet, *nd.proofVerification)
+	nd.mining = mining.NewMiningModule(b.repo, nd.chain, nd.blockstore, nd.network, nd.syncer, *nd.wallet, b.verifier)
 	nd.jwtAuth, err = jwtauth.NewJwtAuth(b.repo)
 	if err != nil {
 		return nil, xerrors.Errorf("read or generate jwt secrect error %s", err)
@@ -290,7 +287,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.syncer,
 		nd.wallet,
 		nd.storageNetworking,
-		nd.proofVerification,
 		nd.mining,
 		nd.mpool,
 		nd.jwtAuth,

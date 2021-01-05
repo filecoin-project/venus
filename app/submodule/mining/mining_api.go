@@ -95,7 +95,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 
 	nv := miningAPI.Ming.ChainModule.Fork.GetNtwkVersion(ctx, ts.EnsureHeight())
 
-	pv := miningAPI.Ming.ProofVerification.ProofVerifier
+	pv := miningAPI.Ming.proofVerifier
 	sectors, err := view.GetSectorsForWinningPoSt(ctx, nv, pv, lbst, maddr, prand)
 	if err != nil {
 		return nil, xerrors.Errorf("getting winning post proving set: %v", err)

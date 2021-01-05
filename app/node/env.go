@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
 	"github.com/filecoin-project/venus/app/submodule/network"
-	"github.com/filecoin-project/venus/app/submodule/proofverification"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
 	"github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
@@ -29,7 +28,6 @@ type Env struct {
 	ConfigAPI            *config.ConfigAPI
 	DiscoveryAPI         *discovery.DiscoveryAPI
 	NetworkAPI           *network.NetworkAPI
-	ProofVerificationAPI *proofverification.ProofVerificationApi
 	StorageNetworkingAPI *storagenetworking.StorageNetworkingAPI
 	SyncerAPI            *syncer.SyncerAPI
 	WalletAPI            *wallet.WalletAPI

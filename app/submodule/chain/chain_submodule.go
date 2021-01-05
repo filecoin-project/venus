@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
-	"github.com/filecoin-project/venus/app/submodule/proofverification"
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -78,7 +78,7 @@ type stateReader interface {
 func NewChainSubmodule(config chainConfig,
 	repo chainRepo,
 	blockstore *blockstore.BlockstoreSubmodule,
-	verifier *proofverification.ProofVerificationSubmodule,
+	verifier ffiwrapper.Verifier,
 ) (*ChainSubmodule, error) {
 	// initialize chain store
 	chainStatusReporter := chain.NewStatusReporter()
@@ -102,7 +102,7 @@ func NewChainSubmodule(config chainConfig,
 		return nil, err
 	}
 	faultChecker := slashing.NewFaultChecker(chainState, fork)
-	syscalls := vmsupport.NewSyscalls(faultChecker, verifier.ProofVerifier)
+	syscalls := vmsupport.NewSyscalls(faultChecker, verifier)
 
 	processor := consensus.NewDefaultProcessor(syscalls)
 

@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
 	network2 "github.com/filecoin-project/venus/app/submodule/network"
-	"github.com/filecoin-project/venus/app/submodule/proofverification"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
 	syncer2 "github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
@@ -80,7 +79,6 @@ type Node struct {
 	wallet            *wallet.WalletSubmodule
 	mpool             *mpool.MessagePoolSubmodule
 	storageNetworking *storagenetworking.StorageNetworkingSubmodule
-	proofVerification *proofverification.ProofVerificationSubmodule
 
 	//
 	// Protocols
@@ -93,10 +91,6 @@ type Node struct {
 	// Jsonrpc
 	//
 	jsonRPCService *jsonrpc.RPCServer
-}
-
-func (node *Node) ProofVerification() *proofverification.ProofVerificationSubmodule {
-	return node.proofVerification
 }
 
 func (node *Node) StorageNetworking() *storagenetworking.StorageNetworkingSubmodule {
@@ -383,7 +377,6 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		ConfigAPI:            node.configModule.API(),
 		DiscoveryAPI:         node.discovery.API(),
 		NetworkAPI:           node.network.API(),
-		ProofVerificationAPI: node.proofVerification.API(),
 		StorageNetworkingAPI: node.storageNetworking.API(),
 		SyncerAPI:            node.syncer.API(),
 		WalletAPI:            node.wallet.API(),
