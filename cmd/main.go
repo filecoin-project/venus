@@ -185,6 +185,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"swarm":    swarmCmd,
 	"wallet":   walletCmd,
 	"version":  versionCmd,
+	"state":    stateCmd,
 }
 
 func init() {

@@ -3,12 +3,13 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"io/ioutil"
 	"os"
 	"reflect"
 	"regexp"
 	"strings"
+
+	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -196,29 +197,29 @@ func newDefaultMessagePoolConfig() *MessagePoolConfig {
 }
 
 type NetworkParamsConfig struct {
-	ConsensusMinerMinPower uint64 // uint64 goes up to 18 EiB
-	MinVerifiedDealSize    int64
-	ReplaceProofTypes      []int64
-	BlockDelay             uint64
-	DrandSchedule          map[abi.ChainEpoch]DrandEnum
-	ForkUpgradeParam       *ForkUpgradeConfig
-	AdressNetwork          address.Network
+	ConsensusMinerMinPower uint64                       `json:"consensusMinerMinPower"` // uint64 goes up to 18 EiB
+	MinVerifiedDealSize    int64                        `json:"minVerifiedDealSize"`
+	ReplaceProofTypes      []int64                      `json:"replaceProofTypes"`
+	BlockDelay             uint64                       `json:"blockDelay"`
+	DrandSchedule          map[abi.ChainEpoch]DrandEnum `json:"drandSchedule"`
+	ForkUpgradeParam       *ForkUpgradeConfig           `json:"forkUpgradeParam"`
+	AdressNetwork          address.Network              `json:"adressNetwork"`
 }
 
 type ForkUpgradeConfig struct {
-	UpgradeSmokeHeight       abi.ChainEpoch
-	UpgradeBreezeHeight      abi.ChainEpoch
-	UpgradeIgnitionHeight    abi.ChainEpoch
-	UpgradeLiftoffHeight     abi.ChainEpoch
-	UpgradeActorsV2Height    abi.ChainEpoch
-	UpgradeRefuelHeight      abi.ChainEpoch
-	UpgradeTapeHeight        abi.ChainEpoch
-	UpgradeKumquatHeight     abi.ChainEpoch
-	BreezeGasTampingDuration abi.ChainEpoch
-	UpgradeCalicoHeight      abi.ChainEpoch
-	UpgradePersianHeight     abi.ChainEpoch
-	UpgradeOrangeHeight      abi.ChainEpoch
-	UpgradeClausHeight       abi.ChainEpoch
+	UpgradeSmokeHeight       abi.ChainEpoch `json:"upgradeSmokeHeight"`
+	UpgradeBreezeHeight      abi.ChainEpoch `json:"upgradeBreezeHeight"`
+	UpgradeIgnitionHeight    abi.ChainEpoch `json:"upgradeIgnitionHeight"`
+	UpgradeLiftoffHeight     abi.ChainEpoch `json:"upgradeLiftoffHeight"`
+	UpgradeActorsV2Height    abi.ChainEpoch `json:"upgradeActorsV2Height"`
+	UpgradeRefuelHeight      abi.ChainEpoch `json:"upgradeRefuelHeight"`
+	UpgradeTapeHeight        abi.ChainEpoch `json:"upgradeTapeHeight"`
+	UpgradeKumquatHeight     abi.ChainEpoch `json:"upgradeKumquatHeight"`
+	BreezeGasTampingDuration abi.ChainEpoch `json:"breezeGasTampingDuration"`
+	UpgradeCalicoHeight      abi.ChainEpoch `json:"upgradeCalicoHeight"`
+	UpgradePersianHeight     abi.ChainEpoch `json:"upgradePersianHeight"`
+	UpgradeOrangeHeight      abi.ChainEpoch `json:"upgradeOrangeHeight"`
+	UpgradeClausHeight       abi.ChainEpoch `json:"upgradeClausHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
