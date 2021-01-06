@@ -98,6 +98,15 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetTipSet(key block.TipSetKey) (*block.Ti
 	return chainInfoAPI.chain.ChainReader.GetTipSet(key)
 }
 
+func (chainInfoAPI *ChainInfoAPI) ChainGetGenesis(ctx context.Context) (*block.TipSet, error) {
+	genb, err := chainInfoAPI.chain.ChainReader.GetGenesis()
+	if err != nil {
+		return nil, err
+	}
+
+	return block.NewTipSet(genb)
+}
+
 // ChainGetTipSetByHeight looks back for a tipset at the specified epoch.
 // If there are no blocks at the specified epoch, a tipset at an earlier epoch
 // will be returned.
@@ -132,6 +141,74 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetMessage(ctx context.Context, msgID cid
 		return nil, err
 	}
 	return msg.VMMessage(), nil
+}
+
+func (chainInfoAPI *ChainInfoAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]*types.UnsignedMessage, error) {
+	b, err := chainInfoAPI.chain.State.GetBlock(ctx, bcid)
+	if err != nil {
+		return nil, err
+	}
+
+	// genesis block has no parent messages...
+	if b.Height == 0 {
+		return nil, nil
+	}
+
+	// TODO: need to get the number of messages better than this
+	pts, err := chainInfoAPI.chain.ChainReader.GetTipSet(block.NewTipSetKey(b.Parents.Cids()...))
+	if err != nil {
+		return nil, err
+	}
+
+	cm, err := chainInfoAPI.chain.MessageStore.MessagesForTipset(pts)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []*types.UnsignedMessage
+	for _, m := range cm {
+		out = append(out, m.VMMessage())
+	}
+
+	return out, nil
+}
+
+func (chainInfoAPI *ChainInfoAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]types.MessageReceipt, error) {
+	b, err := chainInfoAPI.chain.State.GetBlock(ctx, bcid)
+	if err != nil {
+		return nil, err
+	}
+
+	if b.Height == 0 {
+		return nil, nil
+	}
+
+	// TODO: need to get the number of messages better than this
+	pts, err := chainInfoAPI.chain.ChainReader.GetTipSet(block.NewTipSetKey(b.Parents.Cids()...))
+	if err != nil {
+		return nil, err
+	}
+
+	cm, err := chainInfoAPI.chain.MessageStore.MessagesForTipset(pts)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []types.MessageReceipt
+	for i := 0; i < len(cm); i++ {
+		id, err := cm[i].Cid()
+		if err != nil {
+			return nil, err
+		}
+		r, err := chainInfoAPI.chain.State.GetReceipts(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+
+		out = append(out, r...)
+	}
+
+	return out, nil
 }
 
 // ChainGetMessages gets a message collection by CID

@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	dstore "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -357,6 +358,20 @@ func (store *Store) DelTipSetMetadata(ctx context.Context, ts *block.TipSet) err
 	}
 
 	return nil
+}
+
+func (store *Store) GetGenesis() (*block.Block, error) {
+	data, err := store.ds.Get(dstore.NewKey("0"))
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := cid.Cast(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return store.GetBlock(c)
 }
 
 // GetBlock returns the block identified by `cid`.

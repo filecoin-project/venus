@@ -46,6 +46,15 @@ func NewSignedMessage(ctx context.Context, msg UnsignedMessage, s Signer) (*Sign
 	}, nil
 }
 
+func DecodeSignedMessage(data []byte) (*SignedMessage, error) {
+	var msg SignedMessage
+	if err := msg.UnmarshalCBOR(bytes.NewReader(data)); err != nil {
+		return nil, err
+	}
+
+	return &msg, nil
+}
+
 // Cid returns the canonical CID for the SignedMessage.
 func (smsg *SignedMessage) Cid() (cid.Cid, error) {
 	if smsg.Signature.Type == crypto.SigTypeBLS {
