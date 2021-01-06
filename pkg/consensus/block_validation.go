@@ -31,10 +31,10 @@ type messageStore interface {
 }
 
 type chainState interface {
-	GetActorAt(context.Context, block.TipSetKey, address.Address) (*types.Actor, error)
+	GetActorAt(context.Context, *block.TipSet, address.Address) (*types.Actor, error)
 	GetTipSet(block.TipSetKey) (*block.TipSet, error)
-	GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error)
-	StateView(block.TipSetKey) (*state.View, error)
+	GetTipSetStateRoot(context.Context, *block.TipSet) (cid.Cid, error)
+	StateView(*block.TipSet) (*state.View, error)
 	GetBlock(context.Context, cid.Cid) (*block.Block, error)
 }
 
@@ -55,8 +55,8 @@ type SyntaxValidator interface {
 // BlockSemanticValidator defines an interface used to validate a blocks
 // semantics.
 type BlockSemanticValidator interface {
-	ValidateHeaderSemantic(ctx context.Context, child *block.Block, parents block.TipSet) error
-	ValidateMessagesSemantic(ctx context.Context, child *block.Block, parents block.TipSetKey) error
+	ValidateHeaderSemantic(ctx context.Context, child *block.Block, parents *block.TipSet) error
+	ValidateMessagesSemantic(ctx context.Context, child *block.Block, parents *block.TipSet) error
 }
 
 // BlockSyntaxValidator defines an interface used to validate a blocks
@@ -142,7 +142,7 @@ func (dv *DefaultBlockValidator) validateMessage(msg *types.UnsignedMessage, exp
 }
 
 // ValidateFullSemantic checks validation conditions on a block's messages that don't require message execution.
-func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, child *block.Block, parents block.TipSetKey) error {
+func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, child *block.Block, parents *block.TipSet) error {
 	secpMsgs, blsMsgs, err := dv.ms.LoadMetaMessages(ctx, child.Messages)
 	if err != nil {
 		return errors.Wrapf(err, "block validation failed loading message list %s for block %s", child.Messages, child.Cid())
@@ -215,7 +215,7 @@ func (dv *DefaultBlockValidator) ValidateMessagesSemantic(ctx context.Context, c
 	return nil
 }
 
-func (dv *DefaultBlockValidator) getAndValidateFromActor(ctx context.Context, msg *types.UnsignedMessage, parents block.TipSetKey) (*types.Actor, error) {
+func (dv *DefaultBlockValidator) getAndValidateFromActor(ctx context.Context, msg *types.UnsignedMessage, parents *block.TipSet) (*types.Actor, error) {
 	actor, err := dv.cs.GetActorAt(ctx, parents, msg.From)
 	if err != nil {
 		return nil, err

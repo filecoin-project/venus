@@ -192,15 +192,16 @@ func NewMockIngestionValidatorAPI() *FakeIngestionValidatorAPI {
 	}
 }
 
-func (api *FakeIngestionValidatorAPI) Head() block.TipSetKey {
-	return block.NewTipSetKey(api.Block.Cid())
+func (api *FakeIngestionValidatorAPI) Head() *block.TipSet {
+	ts, _ := block.NewTipSet(api.Block)
+	return ts
 }
 
 func (api *FakeIngestionValidatorAPI) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	return block.NewTipSet(api.Block)
 }
 
-func (api *FakeIngestionValidatorAPI) GetActorAt(ctx context.Context, key block.TipSetKey, a address.Address) (*types.Actor, error) {
+func (api *FakeIngestionValidatorAPI) GetActorAt(ctx context.Context, key *block.TipSet, a address.Address) (*types.Actor, error) {
 	if a == api.ActorAddr {
 		return api.Actor, nil
 	}
@@ -209,6 +210,6 @@ func (api *FakeIngestionValidatorAPI) GetActorAt(ctx context.Context, key block.
 	}, nil
 }
 
-func (api *FakeIngestionValidatorAPI) AccountStateView(baseKey block.TipSetKey) (state.AccountStateView, error) {
+func (api *FakeIngestionValidatorAPI) AccountStateView(baseKey *block.TipSet) (state.AccountStateView, error) {
 	return &state.FakeStateView{}, nil
 }

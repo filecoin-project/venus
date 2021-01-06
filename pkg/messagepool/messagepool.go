@@ -130,12 +130,12 @@ func init() {
 }
 
 type gasPredictor interface {
-	CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *block.TipSet) (*vm.Ret, error)
+	CallWithGas(context.Context, *types.UnsignedMessage, []types.ChainMsg, *block.TipSet) (*vm.Ret, error)
 }
 
 type actorProvider interface {
 	// GetActorAt returns the actor state defined by the chain up to some tipset
-	GetActorAt(ctx context.Context, tipset block.TipSetKey, addr address.Address) (*types.Actor, error)
+	GetActorAt(context.Context, *block.TipSet, address.Address) (*types.Actor, error)
 }
 
 type MessagePool struct {

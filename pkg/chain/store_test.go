@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/util/test"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
@@ -63,8 +62,8 @@ func requirePutTestChain(ctx context.Context, t *testing.T, cborStore *CborBlock
 	}
 }
 
-func requireGetTsasByParentAndHeight(t *testing.T, cborStore *CborBlockStore, pKey block.TipSetKey, h abi.ChainEpoch) []*chain.TipSetMetadata {
-	tsasSlice, err := cborStore.GetTipSetAndStatesByParentsAndHeight(pKey, h)
+func requireSiblingState(t *testing.T, cborStore *CborBlockStore, ts *block.TipSet) []*chain.TipSetMetadata {
+	tsasSlice, err := cborStore.GetSiblingState(ts)
 	require.NoError(t, err)
 	return tsasSlice
 }
@@ -123,19 +122,19 @@ func TestGetByKey(t *testing.T) {
 
 	// Check that we can get all tipsets by key
 	gotGTS := requireGetTipSet(ctx, t, cs, genTS.Key())
-	gotGTSSR := requireGetTipSetStateRoot(ctx, t, cs, genTS.Key())
+	gotGTSSR := requireGetTipSetStateRoot(ctx, t, cs, genTS)
 
 	got1TS := requireGetTipSet(ctx, t, cs, link1.Key())
-	got1TSSR := requireGetTipSetStateRoot(ctx, t, cs, link1.Key())
+	got1TSSR := requireGetTipSetStateRoot(ctx, t, cs, link1)
 
 	got2TS := requireGetTipSet(ctx, t, cs, link2.Key())
-	got2TSSR := requireGetTipSetStateRoot(ctx, t, cs, link2.Key())
+	got2TSSR := requireGetTipSetStateRoot(ctx, t, cs, link2)
 
 	got3TS := requireGetTipSet(ctx, t, cs, link3.Key())
-	got3TSSR := requireGetTipSetStateRoot(ctx, t, cs, link3.Key())
+	got3TSSR := requireGetTipSetStateRoot(ctx, t, cs, link3)
 
 	got4TS := requireGetTipSet(ctx, t, cs, link4.Key())
-	got4TSSR := requireGetTipSetStateRoot(ctx, t, cs, link4.Key())
+	got4TSSR := requireGetTipSetStateRoot(ctx, t, cs, link4)
 	assert.ObjectsAreEqualValues(genTS, gotGTS)
 	assert.ObjectsAreEqualValues(link1, got1TS)
 	assert.ObjectsAreEqualValues(link2, got2TS)
@@ -214,11 +213,11 @@ func TestGetByParent(t *testing.T) {
 	// Put the test chain to the store
 	requirePutTestChain(ctx, t, cs, link4.Key(), builder, 5)
 
-	gotG := requireGetTsasByParentAndHeight(t, cs, block.TipSetKey{}, 0)
-	got1 := requireGetTsasByParentAndHeight(t, cs, genTS.Key(), 1)
-	got2 := requireGetTsasByParentAndHeight(t, cs, link1.Key(), 2)
-	got3 := requireGetTsasByParentAndHeight(t, cs, link2.Key(), 3)
-	got4 := requireGetTsasByParentAndHeight(t, cs, link3.Key(), 6) // two null blocks in between 3 and 4!
+	gotG := requireSiblingState(t, cs, genTS)
+	got1 := requireSiblingState(t, cs, link1)
+	got2 := requireSiblingState(t, cs, link2)
+	got3 := requireSiblingState(t, cs, link3)
+	got4 := requireSiblingState(t, cs, link4) // two null blocks in between 3 and 4!
 
 	assert.ObjectsAreEqualValues(genTS, gotG[0].TipSet)
 	assert.ObjectsAreEqualValues(link1, got1[0].TipSet)
@@ -260,7 +259,7 @@ func TestGetMultipleByParent(t *testing.T) {
 		TipSetReceipts:  types.EmptyReceiptsCID,
 	}
 	require.NoError(t, cs.PutTipSetMetadata(ctx, newChildTsas))
-	gotNew1 := requireGetTsasByParentAndHeight(t, cs, genTS.Key(), 1)
+	gotNew1 := requireSiblingState(t, cs, otherLink1)
 	require.Equal(t, 2, len(gotNew1))
 	for _, tsas := range gotNew1 {
 		if tsas.TipSet.Len() == 1 {
@@ -312,7 +311,7 @@ func TestHead(t *testing.T) {
 	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
 
 	// Head starts as an empty cid set
-	assert.Equal(t, block.TipSetKey{}, cs.GetHead())
+	assert.Equal(t, block.UndefTipSet, cs.GetHead())
 
 	// Set Head
 	assertSetHead(t, cboreStore, genTS)
@@ -443,12 +442,12 @@ func TestLoadAndReboot(t *testing.T) {
 	assert.ObjectsAreEqualValues(link2, got2)
 
 	// Get another by parent key
-	got4 := requireGetTsasByParentAndHeight(t, rebootCbore, link3.Key(), 6)
+	got4 := requireSiblingState(t, rebootCbore, link4)
 	assert.Equal(t, 1, len(got4))
 	assert.ObjectsAreEqualValues(link4, got4[0].TipSet)
 
 	// Check the head
-	assert.Equal(t, link4.Key(), rebootChain.GetHead())
+	test.Equal(t, link4, rebootChain.GetHead())
 }
 
 func requireGetTipSet(ctx context.Context, t *testing.T, chainStore *CborBlockStore, key block.TipSetKey) *block.TipSet {
@@ -458,11 +457,11 @@ func requireGetTipSet(ctx context.Context, t *testing.T, chainStore *CborBlockSt
 }
 
 type tipSetStateRootGetter interface {
-	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
+	GetTipSetStateRoot(*block.TipSet) (cid.Cid, error)
 }
 
-func requireGetTipSetStateRoot(ctx context.Context, t *testing.T, chainStore tipSetStateRootGetter, key block.TipSetKey) cid.Cid {
-	stateCid, err := chainStore.GetTipSetStateRoot(key)
+func requireGetTipSetStateRoot(ctx context.Context, t *testing.T, chainStore tipSetStateRootGetter, ts *block.TipSet) cid.Cid {
+	stateCid, err := chainStore.GetTipSetStateRoot(ts)
 	require.NoError(t, err)
 	return stateCid
 }

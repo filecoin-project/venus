@@ -35,7 +35,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset for mining base: %v", err)
 	}
-	pt, err := chainState.GetTipSetStateRoot(ctx, tsk)
+	pt, err := chainState.GetTipSetStateRoot(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset root for mining base: %v", err)
 	}
@@ -115,7 +115,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 		return nil, err
 	}
 
-	st, err := miningAPI.Ming.ChainModule.State.StateView(ts.Key())
+	st, err := miningAPI.Ming.ChainModule.State.StateView(ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load latest state: %v", err)
 	}

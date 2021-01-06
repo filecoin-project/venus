@@ -10,7 +10,7 @@ import (
 )
 
 type chainHeadTracker interface {
-	GetHead() block.TipSetKey
+	GetHead() *block.TipSet
 }
 
 // Signer looks up non-signing addresses before signing
