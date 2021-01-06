@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -203,29 +202,41 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 	defer signal.Stop(terminate)
 	// Signal that the sever has started and then wait for a signal to stop.
 	apiConfig := node.repo.Config()
-	maddr, err := ma.NewMultiaddr(apiConfig.API.APIAddress)
+	mAddr, err := ma.NewMultiaddr(apiConfig.API.APIAddress)
 	if err != nil {
 		return err
 	}
 
 	// Listen on the configured address in order to bind the port number in case it has
 	// been configured as zero (i.e. OS-provided)
-	apiListener, err := manet.Listen(maddr) //nolint
+	apiListener, err := manet.Listen(mAddr) //nolint
 	if err != nil {
 		return err
 	}
 
 	netListener := manet.NetListener(apiListener) //nolint
 
-	rustfulRpcServer, err := node.runRustfulAPI(ctx, netListener, rootCmdDaemon) //nolint
+	handler := http.NewServeMux()
+	err = node.runRustfulAPI(ctx, handler, rootCmdDaemon) //nolint
 	if err != nil {
 		return err
 	}
 
-	jsonrpcServer, err := node.runJsonrpcAPI(ctx, netListener)
+	err = node.runJsonrpcAPI(ctx, handler)
 	if err != nil {
 		return err
 	}
+
+	apiserv := &http.Server{
+		Handler: handler,
+	}
+
+	go func() {
+		err := apiserv.Serve(netListener) //nolint
+		if err != nil && err != http.ErrServerClosed {
+			return
+		}
+	}()
 
 	// Write the resolved API address to the repo
 	apiConfig.API.APIAddress = apiListener.Multiaddr().String()
@@ -237,12 +248,7 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 	close(ready)
 	select {
 	case <-terminate:
-		err = rustfulRpcServer.Shutdown(ctx)
-		if err != nil {
-			return err
-		}
-
-		err = jsonrpcServer.Shutdown(ctx)
+		err = apiserv.Shutdown(ctx)
 		if err != nil {
 			return err
 		}
@@ -254,7 +260,7 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 // The `ready` channel is closed when the server is running and its API address has been
 // saved to the node's repo.
 // A message sent to or closure of the `terminate` channel signals the server to stop.
-func (node *Node) runRustfulAPI(ctx context.Context, lst net.Listener, rootCmdDaemon *cmds.Command) (*http.Server, error) {
+func (node *Node) runRustfulAPI(ctx context.Context, handler *http.ServeMux, rootCmdDaemon *cmds.Command) error {
 	servenv := node.createServerEnv(ctx)
 
 	apiConfig := node.repo.Config().API
@@ -264,44 +270,21 @@ func (node *Node) runRustfulAPI(ctx context.Context, lst net.Listener, rootCmdDa
 	cfg.SetAllowedMethods(apiConfig.AccessControlAllowMethods...)
 	cfg.SetAllowCredentials(apiConfig.AccessControlAllowCredentials)
 
-	handler := http.NewServeMux()
 	handler.Handle("/debug/pprof/", http.DefaultServeMux)
 	handler.Handle(APIPrefix+"/", cmdhttp.NewHandler(servenv, rootCmdDaemon, cfg))
 
-	apiserv := &http.Server{
-		Handler: handler,
-	}
-
-	go func() {
-		err := apiserv.Serve(lst) //nolint
-		if err != nil && err != http.ErrServerClosed {
-			return
-		}
-	}()
-	return apiserv, nil
+	return nil
 }
 
-func (node *Node) runJsonrpcAPI(ctx context.Context, lst net.Listener) (*http.Server, error) { //nolint
+func (node *Node) runJsonrpcAPI(ctx context.Context, handler *http.ServeMux) error { //nolint
 	jwtAuth := node.jwtAuth.API()
 	ah := &auth.Handler{
 		Verify: jwtAuth.AuthVerify,
 		Next:   node.jsonRPCService.ServeHTTP,
 	}
-	handler := http.NewServeMux()
 	handler.Handle("/rpc/v0", ah)
 
-	rpcServer := &http.Server{
-		Handler: handler,
-	}
-
-	go func() {
-		err := rpcServer.Serve(lst) //nolint
-		if err != nil && err != http.ErrServerClosed {
-			return
-		}
-	}()
-
-	return rpcServer, nil
+	return nil
 }
 
 func (node *Node) createServerEnv(ctx context.Context) *Env {
