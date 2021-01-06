@@ -11,7 +11,7 @@ import (
 // Abstracts over a store of blockchain state.
 type chainStateChainReader interface {
 	GetTipSet(block.TipSetKey) (*block.TipSet, error)
-	GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error)
+	GetTipSetStateRoot(*block.TipSet) (cid.Cid, error)
 	GenesisRootCid() cid.Cid
 }
 
@@ -29,10 +29,10 @@ func NewTipSetStateViewer(chainReader chainStateChainReader, cst cbor.IpldStore)
 }
 
 // StateView creates a state view after the application of a tipset's messages.
-func (cs TipSetStateViewer) StateView(baseKey block.TipSetKey) (*View, error) {
-	root, err := cs.chainReader.GetTipSetStateRoot(baseKey)
+func (cs TipSetStateViewer) StateView(ts *block.TipSet) (*View, error) {
+	root, err := cs.chainReader.GetTipSetStateRoot(ts)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get state root for %s", baseKey.String())
+		return nil, errors.Wrapf(err, "failed to get state root for %s", ts.Key().String())
 	}
 
 	return NewView(cs.cst, root), nil

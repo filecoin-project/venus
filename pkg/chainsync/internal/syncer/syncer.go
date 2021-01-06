@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -98,18 +97,17 @@ type Fetcher interface {
 
 // ChainReaderWriter reads and writes the chain bsstore.
 type ChainReaderWriter interface {
-	GetHead() block.TipSetKey
-	GetTipSet(tsKey block.TipSetKey) (*block.TipSet, error)
-	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
-	GetTipSetReceiptsRoot(tsKey block.TipSetKey) (cid.Cid, error)
-	HasTipSetAndState(ctx context.Context, tsKey block.TipSetKey) bool
-	PutTipSetMetadata(ctx context.Context, tsas *chain.TipSetMetadata) error
-	DelTipSetMetadata(ctx context.Context, ts *block.TipSet) error
-	SetHead(ctx context.Context, ts *block.TipSet) error
-	HasTipSetAndStatesWithParentsAndHeight(pTsKey block.TipSetKey, h abi.ChainEpoch) bool
-	GetTipSetAndStatesByParentsAndHeight(pTsKey block.TipSetKey, h abi.ChainEpoch) ([]*chain.TipSetMetadata, error)
-	GetLatestBeaconEntry(ts *block.TipSet) (*block.BeaconEntry, error)
-	GetGenesisBlock(ctx context.Context) (*block.Block, error)
+	GetHead() *block.TipSet
+	GetTipSet(block.TipSetKey) (*block.TipSet, error)
+	GetTipSetStateRoot(*block.TipSet) (cid.Cid, error)
+	GetTipSetReceiptsRoot(*block.TipSet) (cid.Cid, error)
+	HasTipSetAndState(context.Context, *block.TipSet) bool
+	PutTipSetMetadata(context.Context, *chain.TipSetMetadata) error
+	SetHead(context.Context, *block.TipSet) error
+	HasSiblingState(*block.TipSet) bool
+	GetSiblingState(*block.TipSet) ([]*chain.TipSetMetadata, error)
+	GetLatestBeaconEntry(*block.TipSet) (*block.BeaconEntry, error)
+	GetGenesisBlock(context.Context) (*block.Block, error)
 }
 
 type messageStore interface {
@@ -132,9 +130,9 @@ type ChainSelector interface {
 type BlockValidator interface {
 	// ValidateHeaderSemantic validates conditions on a block header that can be
 	// checked with the parent header but not parent state.
-	ValidateHeaderSemantic(ctx context.Context, header *block.Block, parents *block.TipSet) error
+	ValidateHeaderSemantic(context.Context, *block.Block, *block.TipSet) error
 	// ValidateMessagesSemantic validates a block's messages against parent state without applying the messages
-	ValidateMessagesSemantic(ctx context.Context, child *block.Block, parents block.TipSetKey) error
+	ValidateMessagesSemantic(context.Context, *block.Block, *block.TipSet) error
 }
 
 // FullBlockValidator does semantic validation on fullblocks.
@@ -211,11 +209,7 @@ func NewSyncer(fv FullBlockValidator,
 // InitStaged reads the head from the syncer's chain bsstore and sets the syncer's
 // staged field.  Used for initializing syncer.
 func (syncer *Syncer) InitStaged() error {
-	staged, err := syncer.chainStore.GetTipSet(syncer.chainStore.GetHead())
-	if err != nil {
-		return err
-	}
-	syncer.staged = staged
+	syncer.staged = syncer.chainStore.GetHead()
 	return nil
 }
 
@@ -227,10 +221,7 @@ func (syncer *Syncer) SetStagedHead(ctx context.Context) error {
 // fetchAndValidateHeaders fetches headers and runs semantic block validation
 // on the chain of fetched headers
 func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.ChainInfo) ([]*block.TipSet, error) {
-	head, err := syncer.chainStore.GetTipSet(syncer.chainStore.GetHead())
-	if err != nil {
-		return nil, err
-	}
+	head := syncer.chainStore.GetHead()
 	headHeight, err := head.Height()
 	if err != nil {
 		return nil, err
@@ -251,7 +242,11 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 		if err != nil {
 			return true, err
 		}
-		return syncer.chainStore.HasTipSetAndState(ctx, parentKey), nil
+		pTs, err := syncer.chainStore.GetTipSet(parentKey)
+		if err != nil {
+			return true, err
+		}
+		return syncer.chainStore.HasTipSetAndState(ctx, pTs), nil
 	})
 	if err != nil {
 		return nil, err
@@ -290,7 +285,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 	priorHeadKey := syncer.chainStore.GetHead()
 
 	// if tipset is already priorHeadKey, we've been here before. do nothing.
-	if priorHeadKey.Equals(next.Key()) {
+	if priorHeadKey.Equals(next) {
 		return nil
 	}
 
@@ -298,7 +293,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 	defer stopwatch.Stop(ctx)
 
 	// Lookup parent state and receipt root. It is guaranteed by the syncer that it is in the chainStore.
-	parentStateRoot, err := syncer.chainStore.GetTipSetStateRoot(parent.Key())
+	parentStateRoot, err := syncer.chainStore.GetTipSetStateRoot(parent)
 	if err != nil {
 		return xerrors.Errorf("get parent tipset state failed %w", err)
 	}
@@ -311,7 +306,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 			return xerrors.Errorf("calc parent weight failed %w", err)
 		}
 
-		parentReceiptRoot, err := syncer.chainStore.GetTipSetReceiptsRoot(parent.Key())
+		parentReceiptRoot, err := syncer.chainStore.GetTipSetReceiptsRoot(parent)
 		if err != nil {
 			return xerrors.Errorf("get parent tipset receipt failed %w", err)
 		}
@@ -423,19 +418,11 @@ func (syncer *Syncer) logReorg(ctx context.Context, curHead, newHead *block.TipS
 // TODO: this leaks EC abstractions into the syncer, we should think about this.
 func (syncer *Syncer) widen(ctx context.Context, ts *block.TipSet) (*block.TipSet, error) {
 	// Lookup tipsets with the same parents from the bsstore.
-	parentSet, err := ts.Parents()
-	if err != nil {
-		return nil, err
-	}
-	height, err := ts.Height()
-	if err != nil {
-		return nil, err
-	}
-	if !syncer.chainStore.HasTipSetAndStatesWithParentsAndHeight(parentSet, height) {
+	if !syncer.chainStore.HasSiblingState(ts) {
 		return nil, nil
 	}
 	//find current tipset base the same parent and height
-	candidates, err := syncer.chainStore.GetTipSetAndStatesByParentsAndHeight(parentSet, height)
+	candidates, err := syncer.chainStore.GetSiblingState(ts)
 	if err != nil {
 		return nil, err
 	}

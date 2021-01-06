@@ -100,9 +100,6 @@ func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *block.Bloc
 
 func (syncerAPI *SyncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMessage, tsk block.TipSetKey) (*InvocResult, error) {
 	start := time.Now()
-	if tsk.IsEmpty() {
-		tsk = syncerAPI.syncer.ChainModule.ChainReader.GetHead()
-	}
 	ts, err := syncerAPI.syncer.ChainModule.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)

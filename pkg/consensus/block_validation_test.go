@@ -84,7 +84,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 		},
 			priceSched)
 
-		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		err := validator.ValidateMessagesSemantic(ctx, c, parents)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "not found")
 	})
@@ -102,7 +102,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 		},
 			priceSched)
 
-		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		err := validator.ValidateMessagesSemantic(ctx, c, parents)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Sender must be an account actor")
 	})
@@ -115,7 +115,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 		},
 			priceSched)
 
-		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		err := validator.ValidateMessagesSemantic(ctx, c, parents)
 		require.NoError(t, err)
 	})
 
@@ -127,7 +127,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 		},
 			priceSched)
 
-		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		err := validator.ValidateMessagesSemantic(ctx, c, parents)
 		require.NoError(t, err)
 	})
 
@@ -139,7 +139,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 		},
 			priceSched)
 
-		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		err := validator.ValidateMessagesSemantic(ctx, c, parents)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "wrong nonce")
 	})
@@ -152,7 +152,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 		},
 			priceSched)
 
-		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		err := validator.ValidateMessagesSemantic(ctx, c, parents)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "wrong nonce")
 	})
@@ -165,7 +165,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 		},
 			priceSched)
 
-		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		err := validator.ValidateMessagesSemantic(ctx, c, parents)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "wrong nonce")
 	})
@@ -178,7 +178,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 		},
 			priceSched)
 
-		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		err := validator.ValidateMessagesSemantic(ctx, c, parents)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "wrong nonce")
 	})
@@ -191,7 +191,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 		},
 			priceSched)
 
-		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		err := validator.ValidateMessagesSemantic(ctx, c, parents)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "wrong nonce")
 	})
@@ -205,7 +205,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 		},
 			priceSched)
 
-		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		err := validator.ValidateMessagesSemantic(ctx, c, parents)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "wrong nonce")
 	})
@@ -219,7 +219,7 @@ func TestBlockValidMessageSemantic(t *testing.T) {
 		},
 			priceSched)
 
-		err := validator.ValidateMessagesSemantic(ctx, c, parents.Key())
+		err := validator.ValidateMessagesSemantic(ctx, c, parents)
 		require.NoError(t, err)
 	})
 }
@@ -349,7 +349,7 @@ type fakeChainState struct {
 	err   error
 }
 
-func (fcs *fakeChainState) GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*types.Actor, error) {
+func (fcs *fakeChainState) GetActorAt(ctx context.Context, ts *block.TipSet, addr address.Address) (*types.Actor, error) {
 	return fcs.actor, fcs.err
 }
 
@@ -357,11 +357,11 @@ func (fcs *fakeChainState) GetTipSet(block.TipSetKey) (*block.TipSet, error) {
 	return &block.TipSet{}, nil
 }
 
-func (fcs *fakeChainState) GetTipSetStateRoot(context.Context, block.TipSetKey) (cid.Cid, error) {
+func (fcs *fakeChainState) GetTipSetStateRoot(context.Context, *block.TipSet) (cid.Cid, error) {
 	return cid.Undef, nil
 }
 
-func (fcs *fakeChainState) StateView(block.TipSetKey) (*state.View, error) {
+func (fcs *fakeChainState) StateView(*block.TipSet) (*state.View, error) {
 	return nil, nil
 }
 
