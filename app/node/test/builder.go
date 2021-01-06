@@ -43,7 +43,6 @@ func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 			node.ConfigOpt(func(c *config.Config) {
 				// Bind only locally, defer port selection until binding.
 				c.API.APIAddress = "/ip4/127.0.0.1/tcp/0"
-				c.API.JSONRPCAddress = "/ip4/127.0.0.1/tcp/0"
 				c.Swarm.Address = "/ip4/127.0.0.1/tcp/0"
 			}),
 			node.ConfigOpt(func(c *config.Config) {

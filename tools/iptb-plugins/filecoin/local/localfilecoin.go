@@ -283,7 +283,7 @@ func (l *Localfilecoin) Stop(ctx context.Context) error {
 		if err != nil && !os.IsNotExist(err) {
 			panic(fmt.Errorf("error removing pid file for daemon at %s: %s", l.iptbPath, err))
 		}
-		err = os.Remove(filepath.Join(l.repoPath, "rustapi"))
+		err = os.Remove(filepath.Join(l.repoPath, "api"))
 		if err != nil && !os.IsNotExist(err) {
 			panic(fmt.Errorf("error removing API file for daemon at %s: %s", l.repoPath, err))
 		}
