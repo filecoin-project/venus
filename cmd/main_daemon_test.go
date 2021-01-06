@@ -22,7 +22,6 @@ func TestNoDaemonNoHang(t *testing.T) {
 	// rename the lock files to a safe place
 	repoDir := d.RepoDir()
 	require.NoError(t, os.Rename(path.Join(repoDir, "api"), path.Join(repoDir, "api.backup")))
-	require.NoError(t, os.Rename(path.Join(repoDir, "rustapi"), path.Join(repoDir, "rustapi.backup")))
 	require.NoError(t, os.Rename(path.Join(repoDir, "repo.lock"), path.Join(repoDir, "repo.lock.backup")))
 
 	// shut down the daemon
@@ -30,7 +29,6 @@ func TestNoDaemonNoHang(t *testing.T) {
 
 	// put the lock files back
 	require.NoError(t, os.Rename(path.Join(repoDir, "api.backup"), path.Join(repoDir, "api")))
-	require.NoError(t, os.Rename(path.Join(repoDir, "rustapi.backup"), path.Join(repoDir, "rustapi")))
 	require.NoError(t, os.Rename(path.Join(repoDir, "repo.lock.backup"), path.Join(repoDir, "repo.lock")))
 
 	// run actor ls with the old repo that still has the lock file, but no running daemon

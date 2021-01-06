@@ -87,7 +87,7 @@ func (td *TestDaemon) RepoDir() string {
 
 // CmdAddr returns the command address of the test daemon (if it is running).
 func (td *TestDaemon) CmdAddr() (ma.Multiaddr, error) {
-	str, err := ioutil.ReadFile(filepath.Join(td.RepoDir(), "rustapi"))
+	str, err := ioutil.ReadFile(filepath.Join(td.RepoDir(), "api"))
 	if err != nil {
 		return nil, err
 	}
