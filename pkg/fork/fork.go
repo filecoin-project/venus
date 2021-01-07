@@ -231,7 +231,6 @@ func NewChainFork(cr chainReader, ipldstore cbor.IpldStore, bs blockstore.Blocks
 	if err := us.Validate(); err != nil {
 		return nil, err
 	}
-	log.Infof("UpgradeSchedule: %v", us)
 
 	stateMigrations := make(map[abi.ChainEpoch]UpgradeFunc, len(us))
 	expensiveUpgrades := make(map[abi.ChainEpoch]struct{}, len(us))

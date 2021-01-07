@@ -53,7 +53,7 @@ const (
 	// SwarmAddress is the multiaddr for this Filecoin node
 	SwarmAddress = "swarmlisten"
 
-	// SwarmPublicRelayAddress is a public address that the filecoin node
+	// SwarmPublicRelayAddress is a public address that the venus node
 	// will listen on if it is operating as a relay.  We use this to specify
 	// the public ip:port of a relay node that is sitting behind a static
 	// NAT mapping.
@@ -103,7 +103,6 @@ var RootCmd = &cmds.Command{
 		Tagline: "A decentralized storage network",
 		Subcommands: `
 START RUNNING FILECOIN
-  venus init                   - Initialize a filecoin repo
   venus config <key> [<value>] - Get and set filecoin config values
   venus daemon                 - Start a long-running daemon process
   venus wallet                 - Manage your filecoin wallets
@@ -139,7 +138,7 @@ TOOL COMMANDS
 	},
 	Options: []cmds.Option{
 		cmds.StringOption(OptionAPI, "set the api port to use"),
-		cmds.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.filecoin/repo"),
+		cmds.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.venus/repo"),
 		cmds.StringOption(cmds.EncLong, cmds.EncShort, "The encoding type the output should be encoded with (pretty-json or json)").WithDefault("pretty-json"),
 		cmds.BoolOption("help", "Show the full command help text."),
 		cmds.BoolOption("h", "Show a short version of the command help text."),
@@ -156,7 +155,6 @@ var RootCmdDaemon = &cmds.Command{
 var rootSubcmdsLocal = map[string]*cmds.Command{
 	"daemon":  daemonCmd,
 	"fetch":   fetchCmd,
-	"init":    initCmd,
 	"version": versionCmd,
 	"leb128":  leb128Cmd,
 }

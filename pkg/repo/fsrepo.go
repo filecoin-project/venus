@@ -71,30 +71,24 @@ var _ Repo = (*FSRepo)(nil)
 // named with a timestamp and repo version number.
 // The link path must be empty prior. If the computed actual directory exists, it must be empty.
 func InitFSRepo(targetPath string, version uint, cfg *config.Config) error {
-	linkPath, err := homedir.Expand(targetPath)
+	repoPath, err := homedir.Expand(targetPath)
 	if err != nil {
 		return err
 	}
 
-	container, basename := filepath.Split(linkPath)
-	if container == "" { // path contained no separator
-		container = "./"
+	if repoPath == "" { // path contained no separator
+		repoPath = "./"
 	}
 
-	dirpath := container + MakeRepoDirName(basename, time.Now(), version, 0)
-
-	exists, err := fileExists(linkPath)
+	exists, err := fileExists(repoPath)
 	if err != nil {
-		return errors.Wrapf(err, "error inspecting repo symlink path %s", linkPath)
+		return errors.Wrapf(err, "error inspecting repo path %s", repoPath)
 	} else if exists {
-		return errors.Errorf("refusing to init repo symlink at %s, file exists", linkPath)
+		return errors.Errorf("repo at %s, file exists", repoPath)
 	}
 
 	// Create the actual directory and then the link to it.
-	if err = InitFSRepoDirect(dirpath, version, cfg); err != nil {
-		return err
-	}
-	if err = os.Symlink(dirpath, linkPath); err != nil {
+	if err = InitFSRepoDirect(repoPath, version, cfg); err != nil {
 		return err
 	}
 
@@ -132,6 +126,21 @@ func InitFSRepoDirect(targetPath string, version uint, cfg *config.Config) error
 		return errors.Wrap(err, "initializing data-transfer directory failed")
 	}
 	return nil
+}
+
+func Exists(repoPath string) (bool, error) {
+	_, err := os.Stat(filepath.Join(repoPath, walletDatastorePrefix))
+	notExist := os.IsNotExist(err)
+	if notExist {
+		err = nil
+
+		_, err = os.Stat(filepath.Join(repoPath, configFilename))
+		notExist = os.IsNotExist(err)
+		if notExist {
+			err = nil
+		}
+	}
+	return !notExist, err
 }
 
 // OpenFSRepo opens an initialized fsrepo, expecting a specific version.

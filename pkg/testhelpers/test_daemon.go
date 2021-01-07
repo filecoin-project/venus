@@ -700,34 +700,6 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 
 	repoDirFlag := fmt.Sprintf("--repodir=%s", td.RepoDir())
 
-	// build command options
-	initopts := []string{repoDirFlag}
-
-	if td.genesisFile != "" {
-		initopts = append(initopts, fmt.Sprintf("--genesisfile=%s", td.genesisFile))
-	}
-
-	if td.autoSealInterval != "" {
-		initopts = append(initopts, fmt.Sprintf("--auto-seal-interval-seconds=%s", td.autoSealInterval))
-	}
-
-	if len(td.networkName) > 0 {
-		initopts = append(initopts, fmt.Sprintf("--network=%s", td.networkName))
-	}
-
-	for _, arg := range td.initArgs {
-		initopts = append(initopts, arg)
-	}
-
-	if td.init {
-		t.Logf("run: venus init %s", initopts)
-		out, err := RunInit(td, initopts...)
-		if err != nil {
-			t.Log(string(out))
-			t.Fatal(err)
-		}
-	}
-
 	// Defer allocation of a command API port until listening. The node will write the
 	// listening address to the "api" file in the repo, from where we can read it when issuing commands.
 	cmdAddr := "/ip4/127.0.0.1/tcp/0"
@@ -737,6 +709,17 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", swarmAddr)
 
 	td.daemonArgs = []string{filecoinBin, "daemon", repoDirFlag, cmdAPIAddrFlag, swarmListenFlag}
+
+	if td.init {
+		t.Log("run: venus need init ...")
+		if td.genesisFile != "" {
+			td.daemonArgs = append(td.daemonArgs, fmt.Sprintf("--genesisfile=%s", td.genesisFile))
+		}
+
+		if len(td.networkName) > 0 {
+			td.daemonArgs = append(td.daemonArgs, fmt.Sprintf("--network=%s", td.networkName))
+		}
+	}
 
 	if td.isRelay {
 		td.daemonArgs = append(td.daemonArgs, "--is-relay")

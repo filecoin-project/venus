@@ -1,20 +1,48 @@
 package cmd_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	manet "github.com/multiformats/go-multiaddr-net" //nolint
 
+	"github.com/filecoin-project/venus/build/project"
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestDownloadGenesis(t *testing.T) {
+	tf.IntegrationTest(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	port, err := th.GetFreePort()
+	require.NoError(t, err)
+
+	err = exec.CommandContext(
+		ctx,
+		project.Root("tools/genesis-file-server/genesis-file-server"),
+		"--genesis-file-path",
+		project.Root("fixtures/test/genesis.car"),
+		"--port",
+		strconv.Itoa(port),
+	).Start()
+	require.NoError(t, err)
+
+	td := th.NewDaemon(t, th.GenesisFile(fmt.Sprintf("http://127.0.0.1:%d/genesis.car", port))).Start()
+
+	td.ShutdownSuccess()
+}
 
 func TestDaemonStartupMessage(t *testing.T) {
 	tf.IntegrationTest(t)

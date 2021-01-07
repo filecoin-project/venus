@@ -143,13 +143,10 @@ For a complete step-by-step tutorial, see [Getting Started](https://go.filecoin.
 
 ```sh
 # Remove any existing symlink to a repo directory
-rm ~/.filecoin
+rm ~/.venus
 
-# Initialize a new repository, downloading a genesis file and setting network parameters (in this case, for the Testnet network)
-./venus init --genesisfile=https://ipfs.io/ipfs/QmXZQeezX1x8uRQX9EUaYxnyivUpTfJqQTvszk3c8SnFPN/testnet.car --network=testnet
-
-# Start the daemon.  It will block until it connects to at least one bootstrap peer.
-./venus daemon
+# Initialize a new repository, Start the daemon.  It will block until it connects to at least one bootstrap peer.
+./venus daemon --genesisfile=*.car
 ```
 
 Your node should now be connected to some peers, and begin downloading and validating the blockchain.
