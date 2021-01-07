@@ -34,7 +34,7 @@ type transitionSyncer interface {
 
 // chainHeadState is the interface for determining the head of the chain
 type chainHeadState interface {
-	GetHead() block.TipSetKey
+	GetHead() *block.TipSet
 	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 }
 
@@ -308,10 +308,7 @@ func (gt *GapTransitioner) MaybeTransitionToCatchup(inCatchup bool, targets []Ta
 		return true, nil
 	}
 	// current head height
-	head, err := gt.headState.GetTipSet(gt.headState.GetHead())
-	if err != nil {
-		return false, err
-	}
+	head := gt.headState.GetHead()
 	headHeight, err := head.Height()
 	if err != nil {
 		return false, err

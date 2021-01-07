@@ -86,8 +86,7 @@ func NewDiscoverySubmodule(ctx context.Context,
 			bootStrapReady.Done()
 		}},
 		TipSetLoader: func() (*block.TipSet, error) {
-			head := chainStore.GetHead()
-			return chainStore.GetTipSet(head)
+			return chainStore.GetHead(), nil
 		},
 	}, nil
 }

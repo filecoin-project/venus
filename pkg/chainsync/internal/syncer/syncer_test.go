@@ -49,7 +49,7 @@ func TestMultiBlockTip(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder, syncer := setup(ctx, t)
-	genesis := builder.RequireTipSet(builder.Store().GetHead())
+	genesis := builder.Store().GetHead()
 
 	tip := builder.AppendOn(genesis, 2)
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", tip.Key(), heightFromTip(t, tip)), false))
@@ -63,7 +63,7 @@ func TestTipSetIncremental(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder, syncer := setup(ctx, t)
-	genesis := builder.RequireTipSet(builder.Store().GetHead())
+	genesis := builder.Store().GetHead()
 
 	t1 := builder.AppendOn(genesis, 1)
 
@@ -87,7 +87,7 @@ func TestChainIncremental(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder, syncer := setup(ctx, t)
-	genesis := builder.RequireTipSet(builder.Store().GetHead())
+	genesis := builder.Store().GetHead()
 
 	t1 := builder.AppendOn(genesis, 2)
 
@@ -122,7 +122,7 @@ func TestChainJump(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder, syncer := setup(ctx, t)
-	genesis := builder.RequireTipSet(builder.Store().GetHead())
+	genesis := builder.Store().GetHead()
 
 	t1 := builder.AppendOn(genesis, 2)
 	t2 := builder.AppendOn(t1, 3)
@@ -142,7 +142,7 @@ func TestIgnoreLightFork(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder, syncer := setup(ctx, t)
-	genesis := builder.RequireTipSet(builder.Store().GetHead())
+	genesis := builder.Store().GetHead()
 
 	forkbase := builder.AppendOn(genesis, 1)
 	forkHead := builder.AppendOn(forkbase, 1)
@@ -168,7 +168,7 @@ func TestAcceptHeavierFork(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder, syncer := setup(ctx, t)
-	genesis := builder.RequireTipSet(builder.Store().GetHead())
+	genesis := builder.Store().GetHead()
 
 	forkbase := builder.AppendOn(genesis, 1)
 
@@ -201,7 +201,7 @@ func TestRejectFinalityFork(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder, s := setup(ctx, t)
-	genesis := builder.RequireTipSet(builder.Store().GetHead())
+	genesis := builder.Store().GetHead()
 
 	head := builder.AppendManyOn(int(policy.ChainFinality+2), genesis)
 	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", head.Key(), heightFromTip(t, head)), false))
@@ -220,7 +220,7 @@ func TestNoUncessesaryFetch(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder, s := setup(ctx, t)
-	genesis := builder.RequireTipSet(builder.Store().GetHead())
+	genesis := builder.Store().GetHead()
 
 	head := builder.AppendManyOn(4, genesis)
 	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", head.Key(), heightFromTip(t, head)), false))
@@ -266,7 +266,7 @@ func TestSubsetParent(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder, s := setup(ctx, t)
-	genesis := builder.RequireTipSet(builder.Store().GetHead())
+	genesis := builder.Store().GetHead()
 
 	// Set up chain with {A1, A2} -> {B1, B2, B3}
 	tipA1A2 := builder.AppendOn(genesis, 2)
@@ -296,7 +296,7 @@ func TestWidenChainAncestor(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder, syncer := setup(ctx, t)
-	genesis := builder.RequireTipSet(builder.Store().GetHead())
+	genesis := builder.Store().GetHead()
 
 	link1 := builder.AppendOn(genesis, 2)
 	link2 := builder.AppendOn(link1, 3)
@@ -349,7 +349,7 @@ func TestHeaviestIsWidenedAncestor(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder, syncer := setup(ctx, t)
-	genesis := builder.RequireTipSet(builder.Store().GetHead())
+	genesis := builder.Store().GetHead()
 
 	link1 := builder.AppendOn(genesis, 2)
 	link2 := builder.AppendOn(link1, 3)
@@ -379,7 +379,7 @@ func TestBlocksNotATipSetRejected(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder, syncer := setup(ctx, t)
-	genesis := builder.RequireTipSet(builder.Store().GetHead())
+	genesis := builder.Store().GetHead()
 
 	b1 := builder.AppendBlockOn(genesis)
 	b2 := builder.AppendBlockOnBlocks(b1)
@@ -396,7 +396,7 @@ func TestBlockNotLinkedRejected(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder, syncer := setup(ctx, t)
-	genesis := builder.RequireTipSet(builder.Store().GetHead())
+	genesis := builder.Store().GetHead()
 
 	// Set up a parallel builder from which the syncer cannot fetch.
 	// The two builders are expected to produce exactly the same blocks from the same sequence
@@ -446,7 +446,7 @@ func (pv *poisonValidator) ValidateHeaderSemantic(_ context.Context, header *blo
 }
 
 // ValidateHeaderSemantic is a stub that always returns no error
-func (pv *poisonValidator) ValidateMessagesSemantic(_ context.Context, _ *block.Block, _ block.TipSetKey) error {
+func (pv *poisonValidator) ValidateMessagesSemantic(_ context.Context, _ *block.Block, _ *block.TipSet) error {
 	return nil
 }
 
@@ -456,7 +456,7 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 	eval := newPoisonValidator(t, 98, 99)
 	builder := chain.NewBuilder(t, address.Undef)
 	builder, syncer := setupWithValidator(ctx, t, builder, eval, eval)
-	genesis := builder.RequireTipSet(builder.Store().GetHead())
+	genesis := builder.Store().GetHead()
 
 	// Build a chain with messages that will fail semantic header validation
 	kis := types.MustGenerateKeyInfo(1, 42)
@@ -484,7 +484,7 @@ func TestSyncerStatus(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder, syncer := setup(ctx, t)
-	genesis := builder.RequireTipSet(builder.Store().GetHead())
+	genesis := builder.Store().GetHead()
 
 	// verify default status
 	s0 := syncer.Status()
@@ -524,7 +524,7 @@ func TestStoresMessageReceipts(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder, syncer := setup(ctx, t)
-	genesis := builder.RequireTipSet(builder.Store().GetHead())
+	genesis := builder.Store().GetHead()
 
 	keys := types.MustGenerateKeyInfo(1, 42)
 	mm := types.NewMessageMaker(t, keys)
@@ -534,7 +534,7 @@ func TestStoresMessageReceipts(t *testing.T) {
 	})
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", t1.Key(), heightFromTip(t, t1)), false))
 
-	receiptsCid, err := builder.Store().GetTipSetReceiptsRoot(t1.Key())
+	receiptsCid, err := builder.Store().GetTipSetReceiptsRoot(t1)
 
 	require.NoError(t, err)
 
@@ -582,10 +582,10 @@ func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builde
 
 // Sub-interface of the bsstore used for verification.
 type syncStoreReader interface {
-	GetHead() block.TipSetKey
+	GetHead() *block.TipSet
 	GetTipSet(block.TipSetKey) (*block.TipSet, error)
-	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
-	GetTipSetAndStatesByParentsAndHeight(block.TipSetKey, abi.ChainEpoch) ([]*chain.TipSetMetadata, error)
+	GetTipSetStateRoot(*block.TipSet) (cid.Cid, error)
+	GetSiblingState(*block.TipSet) ([]*chain.TipSetMetadata, error)
 }
 
 // Verifies that a tipset and associated state root are stored in the chain bsstore.
@@ -594,23 +594,18 @@ func verifyTip(t *testing.T, store syncStoreReader, tip *block.TipSet, stateRoot
 	require.NoError(t, err)
 	test.Equal(t, tip, foundTip)
 
-	foundState, err := store.GetTipSetStateRoot(tip.Key())
+	foundState, err := store.GetTipSetStateRoot(tip)
 	require.NoError(t, err)
 	test.Equal(t, stateRoot, foundState)
 
-	parent, err := tip.Parents()
-	assert.NoError(t, err)
-	h, err := tip.Height()
-	assert.NoError(t, err)
-	childTsasSlice, err := store.GetTipSetAndStatesByParentsAndHeight(parent, h)
+	childTsasSlice, err := store.GetSiblingState(tip)
 	assert.NoError(t, err)
 	assert.True(t, containsTipSet(childTsasSlice, tip))
 }
 
 // Verifies that the bsstore's head is as expected.
 func verifyHead(t *testing.T, store syncStoreReader, head *block.TipSet) {
-	headTipSet, err := store.GetTipSet(store.GetHead())
-	require.NoError(t, err)
+	headTipSet := store.GetHead()
 	test.Equal(t, head, headTipSet)
 }
 

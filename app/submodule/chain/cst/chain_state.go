@@ -37,13 +37,13 @@ var logStore = logging.Logger("plumbing/chain_store")
 
 type chainReadWriter interface {
 	GenesisRootCid() cid.Cid
-	GetHead() block.TipSetKey
+	GetHead() *block.TipSet
 	GetGenesisBlock(ctx context.Context) (*block.Block, error)
 	GetTipSet(block.TipSetKey) (*block.TipSet, error)
-	GetTipSetState(context.Context, block.TipSetKey) (vmstate.Tree, error)
-	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
+	GetTipSetState(context.Context, *block.TipSet) (vmstate.Tree, error)
+	GetTipSetStateRoot(*block.TipSet) (cid.Cid, error)
 	SetHead(context.Context, *block.TipSet) error
-	GetLatestBeaconEntry(ts *block.TipSet) (*block.BeaconEntry, error)
+	GetLatestBeaconEntry(*block.TipSet) (*block.BeaconEntry, error)
 	ReadOnlyStateStore() util.ReadOnlyIpldStore
 	SubHeadChanges(ctx context.Context) chan []*chain.HeadChange
 	GetTipSetByHeight(context.Context, *block.TipSet, abi.ChainEpoch, bool) (*block.TipSet, error)
@@ -106,7 +106,7 @@ func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider
 }
 
 // Head returns the head tipset
-func (chn *ChainStateReadWriter) Head() block.TipSetKey {
+func (chn *ChainStateReadWriter) Head() *block.TipSet {
 	return chn.readWriter.GetHead()
 }
 
@@ -116,12 +116,7 @@ func (chn *ChainStateReadWriter) ChainNotify(ctx context.Context) chan []*chain.
 }
 
 func (chn *ChainStateReadWriter) GetHeadHeight() (abi.ChainEpoch, error) {
-	ts, err := chn.GetTipSet(chn.Head())
-	if err != nil {
-		return 0, nil
-	}
-
-	return ts.Height()
+	return chn.Head().Height()
 }
 
 // GetGenesisBlock returns the genesis block
@@ -139,8 +134,8 @@ func (chn *ChainStateReadWriter) GetTipSetByHeight(ctx context.Context, ts *bloc
 	return chn.readWriter.GetTipSetByHeight(ctx, ts, h, prev)
 }
 
-func (chn *ChainStateReadWriter) GetTipSetState(ctx context.Context, tsKey block.TipSetKey) (vmstate.Tree, error) {
-	return chn.readWriter.GetTipSetState(ctx, tsKey)
+func (chn *ChainStateReadWriter) GetTipSetState(ctx context.Context, ts *block.TipSet) (vmstate.Tree, error) {
+	return chn.readWriter.GetTipSetState(ctx, ts)
 }
 
 // Ls returns an iterator over tipsets from head to genesis.
@@ -150,7 +145,7 @@ func (chn *ChainStateReadWriter) Ls(ctx context.Context, key block.TipSetKey) (*
 		ts  *block.TipSet
 	)
 	if len(key.Cids()) < 1 {
-		ts, err = chn.readWriter.GetTipSet(chn.readWriter.GetHead())
+		ts = chn.readWriter.GetHead()
 	} else {
 		ts, err = chn.readWriter.GetTipSet(key)
 	}
@@ -223,18 +218,18 @@ func (chn *ChainStateReadWriter) ChainGetRandomnessFromBeacon(ctx context.Contex
 }
 
 // GetTipSetStateRoot produces the state root for the provided tipset key.
-func (chn *ChainStateReadWriter) GetTipSetStateRoot(ctx context.Context, tipKey block.TipSetKey) (cid.Cid, error) {
-	return chn.readWriter.GetTipSetStateRoot(tipKey)
+func (chn *ChainStateReadWriter) GetTipSetStateRoot(ctx context.Context, ts *block.TipSet) (cid.Cid, error) {
+	return chn.readWriter.GetTipSetStateRoot(ts)
 }
 
 // GetActorAt returns an actor at a specified tipset key.
-func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*types.Actor, error) {
-	st, err := chn.readWriter.GetTipSetState(ctx, tipKey)
+func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, ts *block.TipSet, addr address.Address) (*types.Actor, error) {
+	st, err := chn.readWriter.GetTipSetState(ctx, ts)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load latest state")
 	}
 
-	idAddr, err := chn.ResolveAddressAt(ctx, tipKey, addr)
+	idAddr, err := chn.ResolveAddressAt(ctx, ts, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -250,8 +245,8 @@ func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey block.Ti
 }
 
 // ResolveAddressAt resolves ID address for actor
-func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (address.Address, error) {
-	st, err := chn.readWriter.GetTipSetState(ctx, tipKey)
+func (chn *ChainStateReadWriter) ResolveAddressAt(ctx context.Context, ts *block.TipSet, addr address.Address) (address.Address, error) {
+	st, err := chn.readWriter.GetTipSetState(ctx, ts)
 	if err != nil {
 		return address.Undef, errors.Wrap(err, "failed to load latest state")
 	}
@@ -284,6 +279,7 @@ func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAdd
 	if method == builtin.MethodSend {
 		return nil, ErrNoMethod
 	}
+
 	view, err := chn.ParentStateView(chn.Head())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get state view")
@@ -345,33 +341,25 @@ func (chn *ChainStateReadWriter) ChainStateTree(ctx context.Context, c cid.Cid) 
 	return dag.NewDAG(dserv).RecursiveGet(ctx, c)
 }
 
-func (chn *ChainStateReadWriter) StateView(key block.TipSetKey) (*state.View, error) {
-	root, err := chn.readWriter.GetTipSetStateRoot(key)
+func (chn *ChainStateReadWriter) StateView(ts *block.TipSet) (*state.View, error) {
+	root, err := chn.readWriter.GetTipSetStateRoot(ts)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get state root for %s", key.String())
+		return nil, errors.Wrapf(err, "failed to get state root for %s", ts.Key().String())
 	}
 
 	return state.NewView(chn, root), nil
 }
 
-func (chn *ChainStateReadWriter) ParentStateView(key block.TipSetKey) (*state.View, error) {
-	if key.IsEmpty() {
-		key = chn.readWriter.GetHead()
-	}
-	ts, err := chn.readWriter.GetTipSet(key)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get tipset for %s", key.String())
-	}
-
+func (chn *ChainStateReadWriter) ParentStateView(ts *block.TipSet) (*state.View, error) {
 	return state.NewView(chn, ts.At(0).ParentStateRoot), nil
 }
 
-func (chn *ChainStateReadWriter) AccountStateView(key block.TipSetKey) (state.AccountStateView, error) {
-	return chn.StateView(key)
+func (chn *ChainStateReadWriter) AccountStateView(ts *block.TipSet) (state.AccountStateView, error) {
+	return chn.StateView(ts)
 }
 
-func (chn *ChainStateReadWriter) FaultStateView(key block.TipSetKey) (slashing.FaultStateView, error) {
-	return chn.StateView(key)
+func (chn *ChainStateReadWriter) FaultStateView(ts *block.TipSet) (slashing.FaultStateView, error) {
+	return chn.StateView(ts)
 }
 
 func (chn *ChainStateReadWriter) Store(ctx context.Context) adt.Store {

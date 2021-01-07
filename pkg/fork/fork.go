@@ -177,11 +177,11 @@ func (us UpgradeSchedule) Validate() error {
 }
 
 type chainReader interface {
-	Head() block.TipSetKey
-	GetTipSet(tsKey block.TipSetKey) (*block.TipSet, error)
+	Head() *block.TipSet
+	GetTipSet(block.TipSetKey) (*block.TipSet, error)
 	GetTipSetByHeight(context.Context, *block.TipSet, abi.ChainEpoch, bool) (*block.TipSet, error)
-	GetTipSetState(context.Context, block.TipSetKey) (vmstate.Tree, error)
-	GetGenesisBlock(ctx context.Context) (*block.Block, error)
+	GetTipSetState(context.Context, *block.TipSet) (vmstate.Tree, error)
+	GetGenesisBlock(context.Context) (*block.Block, error)
 }
 type IFork interface {
 	HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error)
@@ -335,15 +335,10 @@ func doTransfer(tree vmstate.Tree, from, to address.Address, amt abi.TokenAmount
 
 func (c *ChainFork) ParentState(ts *block.TipSet) cid.Cid {
 	if ts == nil {
-		tts, err := c.cr.GetTipSet(c.cr.Head())
-		if err == nil {
-			return tts.Blocks()[0].ParentStateRoot
-		}
-	} else {
-		return ts.Blocks()[0].ParentStateRoot
+		tts := c.cr.Head()
+		return tts.Blocks()[0].ParentStateRoot
 	}
-
-	return cid.Undef
+	return ts.Blocks()[0].ParentStateRoot
 }
 
 func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
@@ -376,7 +371,12 @@ func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, root cid.Cid,
 		return cid.Undef, xerrors.Errorf("failed to get tipset at lookback height: %v", err)
 	}
 
-	lbtree, err := c.cr.GetTipSetState(ctx, lbts.EnsureParents())
+	pts, err := c.cr.GetTipSet(lbts.EnsureParents())
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to get tipset : %v", err)
+	}
+
+	lbtree, err := c.cr.GetTipSetState(ctx, pts)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("loading state tree failed: %v", err)
 	}

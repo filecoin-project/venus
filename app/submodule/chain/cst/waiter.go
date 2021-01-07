@@ -24,13 +24,13 @@ var log = logging.Logger("messageimpl")
 
 // Abstracts over a store of blockchain state.
 type waiterChainReader interface {
-	GetHead() block.TipSetKey
+	GetHead() *block.TipSet
 	GetTipSet(block.TipSetKey) (*block.TipSet, error)
-	ResolveAddressAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (address.Address, error)
-	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*types.Actor, error)
-	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
-	GetTipSetReceiptsRoot(block.TipSetKey) (cid.Cid, error)
-	SubHeadChanges(ctx context.Context) chan []*chain.HeadChange
+	ResolveAddressAt(context.Context, *block.TipSet, address.Address) (address.Address, error)
+	GetActorAt(context.Context, *block.TipSet, address.Address) (*types.Actor, error)
+	GetTipSetState(context.Context, *block.TipSet) (state.Tree, error)
+	GetTipSetReceiptsRoot(*block.TipSet) (cid.Cid, error)
+	SubHeadChanges(context.Context) chan []*chain.HeadChange
 }
 
 // Waiter waits for a message to appear on chain.
@@ -65,11 +65,7 @@ func NewWaiter(chainStore waiterChainReader, messages chain.MessageProvider, bs 
 // Find searches the blockchain history (but doesn't wait).
 func (w *Waiter) Find(ctx context.Context, msg types.ChainMsg, lookback abi.ChainEpoch, ts *block.TipSet) (*ChainMessage, bool, error) {
 	if ts == nil {
-		var err error
-		ts, err = w.chainReader.GetTipSet(w.chainReader.GetHead())
-		if err != nil {
-			return nil, false, err
-		}
+		ts = w.chainReader.GetHead()
 	}
 
 	return w.findMessage(ctx, ts, msg, lookback)
@@ -115,12 +111,12 @@ func (w *Waiter) findMessage(ctx context.Context, from *block.TipSet, m types.Ch
 	noLimit := lookback == constants.LookbackNoLimit
 
 	cur := from
-	curActor, err := w.chainReader.GetActorAt(ctx, cur.Key(), m.VMMessage().From)
+	curActor, err := w.chainReader.GetActorAt(ctx, cur, m.VMMessage().From)
 	if err != nil {
 		return nil, false, xerrors.Errorf("failed to load from actor")
 	}
 
-	mFromID, err := w.chainReader.ResolveAddressAt(ctx, from.Key(), m.VMMessage().From)
+	mFromID, err := w.chainReader.ResolveAddressAt(ctx, from, m.VMMessage().From)
 	if err != nil {
 		return nil, false, xerrors.Errorf("looking up From id address: %w", err)
 	}
@@ -157,7 +153,7 @@ func (w *Waiter) findMessage(ctx context.Context, from *block.TipSet, m types.Ch
 			return nil, false, xerrors.Errorf("failed to load tipset during msg wait searchback: %w", err)
 		}
 
-		act, err := w.chainReader.GetActorAt(ctx, grandParent.Key(), mFromID)
+		act, err := w.chainReader.GetActorAt(ctx, grandParent, mFromID)
 		actorNoExist := errors.Is(err, types.ErrActorNotFound)
 		if err != nil && !actorNoExist {
 			return nil, false, xerrors.Errorf("failed to load the actor: %w", err)
@@ -299,7 +295,7 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts *block.TipSet, msg typ
 				return nil, false, err
 			}
 			if expectedCid == msgCid {
-				recpt, err := w.receiptByIndex(ctx, pts.Key(), msgCid, blockMessageInfos)
+				recpt, err := w.receiptByIndex(ctx, pts, msgCid, blockMessageInfos)
 				if err != nil {
 					return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
 				}
@@ -311,8 +307,8 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts *block.TipSet, msg typ
 	return nil, false, nil
 }
 
-func (w *Waiter) receiptByIndex(ctx context.Context, tsKey block.TipSetKey, targetCid cid.Cid, blockMsgs []block.BlockMessagesInfo) (*types.MessageReceipt, error) {
-	receiptCid, err := w.chainReader.GetTipSetReceiptsRoot(tsKey)
+func (w *Waiter) receiptByIndex(ctx context.Context, ts *block.TipSet, targetCid cid.Cid, blockMsgs []block.BlockMessagesInfo) (*types.MessageReceipt, error) {
+	receiptCid, err := w.chainReader.GetTipSetReceiptsRoot(ts)
 	if err != nil {
 		return nil, err
 	}

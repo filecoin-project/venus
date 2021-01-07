@@ -80,8 +80,7 @@ func (chainInfoAPI *ChainInfoAPI) ProtocolParameters(ctx context.Context) (*Prot
 }
 
 func (chainInfoAPI *ChainInfoAPI) ChainHead(ctx context.Context) (*block.TipSet, error) {
-	headKey := chainInfoAPI.chain.ChainReader.GetHead()
-	return chainInfoAPI.chain.ChainReader.GetTipSet(headKey)
+	return chainInfoAPI.chain.ChainReader.GetHead(), nil
 }
 
 // ChainSetHead sets `key` as the new head of this chain iff it exists in the nodes chain store.
@@ -102,9 +101,6 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetTipSet(key block.TipSetKey) (*block.Ti
 // If there are no blocks at the specified epoch, a tipset at an earlier epoch
 // will be returned.
 func (chainInfoAPI *ChainInfoAPI) ChainGetTipSetByHeight(ctx context.Context, height abi.ChainEpoch, tsk block.TipSetKey) (*block.TipSet, error) {
-	if tsk.IsEmpty() {
-		tsk = chainInfoAPI.chain.ChainReader.GetHead()
-	}
 	ts, err := chainInfoAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("fail to load tipset %v", err)
@@ -118,7 +114,7 @@ func (chainInfoAPI *ChainInfoAPI) GetActor(ctx context.Context, addr address.Add
 		return nil, err
 	}
 
-	return chainInfoAPI.chain.State.GetActorAt(ctx, head.Key(), addr)
+	return chainInfoAPI.chain.State.GetActorAt(ctx, head, addr)
 }
 
 // ChainGetBlock gets a block by CID
@@ -188,7 +184,7 @@ func (chainInfoAPI *ChainInfoAPI) GetFullBlock(ctx context.Context, id cid.Cid) 
 
 // ResolveToKeyAddr resolve user address to t0 address
 func (chainInfoAPI *ChainInfoAPI) ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *block.TipSet) (address.Address, error) {
-	viewer, err := chainInfoAPI.chain.State.ParentStateView(ts.Key())
+	viewer, err := chainInfoAPI.chain.State.ParentStateView(ts)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -273,9 +269,6 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetRandomnessFromTickets(ctx context.Cont
 }
 
 func (chainInfoAPI *ChainInfoAPI) StateNetworkVersion(ctx context.Context, tsk block.TipSetKey) (network.Version, error) {
-	if tsk.IsEmpty() {
-		tsk = chainInfoAPI.chain.ChainReader.GetHead()
-	}
 	ts, err := chainInfoAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return network.VersionMax, xerrors.Errorf("loading tipset %s: %v", tsk, err)
@@ -302,11 +295,7 @@ func (chainInfoAPI *ChainInfoAPI) StateSearchMsg(ctx context.Context, mCid cid.C
 		return nil, err
 	}
 	//todo add a api for head tipset directly
-	headKey := chainInfoAPI.chain.ChainReader.GetHead()
-	head, err := chainInfoAPI.chain.ChainReader.GetTipSet(headKey)
-	if err != nil {
-		return nil, err
-	}
+	head := chainInfoAPI.chain.ChainReader.GetHead()
 	msgResult, found, err := chainInfoAPI.chain.Waiter.Find(ctx, chainMsg, constants.LookbackNoLimit, head)
 	if err != nil {
 		return nil, err
@@ -349,11 +338,7 @@ func (chainInfoAPI *ChainInfoAPI) StateGetReceipt(ctx context.Context, msg cid.C
 		return nil, err
 	}
 	//todo add a api for head tipset directly
-	headKey := chainInfoAPI.chain.ChainReader.GetHead()
-	head, err := chainInfoAPI.chain.ChainReader.GetTipSet(headKey)
-	if err != nil {
-		return nil, err
-	}
+	head := chainInfoAPI.chain.ChainReader.GetHead()
 
 	msgResult, found, err := chainInfoAPI.chain.Waiter.Find(ctx, chainMsg, constants.LookbackNoLimit, head)
 	if err != nil {

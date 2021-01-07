@@ -30,11 +30,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 		height    abi.ChainEpoch
 	)
 	if ts == nil {
-		ts, err = c.chainState.GetTipSet(c.chainState.GetHead())
-		if err != nil {
-			return nil, err
-		}
-
+		ts = c.chainState.GetHead()
 		// Search back till we find a height with no fork, or we reach the beginning.
 		// We need the _previous_ height to have no fork, because we'll
 		// run the fork logic in `sm.TipSetState`. We need the _current_
@@ -56,7 +52,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 			return nil, err
 		}
 	} else {
-		stateRoot, err = c.chainState.GetTipSetStateRoot(ts.Key())
+		stateRoot, err = c.chainState.GetTipSetStateRoot(ts)
 		if err != nil {
 			return nil, err
 		}
@@ -145,11 +141,7 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *blo
 	// If no tipset is provided, try to find one without a fork.
 	var err error
 	if ts == nil {
-		tsKey := chainReader.GetHead()
-		ts, err = chainReader.GetTipSet(tsKey)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to find TipSet: %v %v", tsKey, err)
-		}
+		ts = chainReader.GetHead()
 
 		// Search back till we find a height with no fork, or we reach the beginning.
 		for ts.EnsureHeight() > 0 && c.fork.HasExpensiveFork(ctx, ts.EnsureHeight()-1) {

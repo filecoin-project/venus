@@ -208,11 +208,7 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Uns
 	}
 
 	// Special case for PaymentChannel collect, which is deleting actor
-	tsKey, err := ts.Parents()
-	if err != nil {
-		return -1, err
-	}
-	act, err := mp.ap.GetActorAt(ctx, tsKey, msg.To)
+	act, err := mp.ap.GetActorAt(ctx, ts, msg.To)
 	if err != nil {
 		_ = err
 		// somewhat ignore it as it can happen and we just want to detect

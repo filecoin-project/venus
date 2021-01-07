@@ -61,14 +61,11 @@ func (mpp *mpoolProvider) SubscribeHeadChanges(cb func(rev, app []*block.TipSet)
 			HeadChangeCoalesceMaxDelay,
 			HeadChangeCoalesceMergeInterval,
 		))
-
-	ts, _ := mpp.sm.GetTipSet(mpp.sm.GetHead())
-	return ts
+	return mpp.sm.GetHead()
 }
 
 func (mpp *mpoolProvider) ChainHead() (*block.TipSet, error) {
-	headKey := mpp.sm.GetHead()
-	return mpp.sm.GetTipSet(headKey)
+	return mpp.sm.GetHead(), nil
 }
 
 func (mpp *mpoolProvider) ChainTipSet(key block.TipSetKey) (*block.TipSet, error) {
@@ -84,7 +81,7 @@ func (mpp *mpoolProvider) PubSubPublish(k string, v []byte) error {
 }
 
 func (mpp *mpoolProvider) GetActorAfter(addr address.Address, ts *block.TipSet) (*types.Actor, error) {
-	st, err := mpp.sm.GetTipSetState(context.TODO(), ts.Key())
+	st, err := mpp.sm.GetTipSetState(context.TODO(), ts)
 	if err != nil {
 		return nil, xerrors.Errorf("computing tipset state for GetActor: %v", err)
 	}
@@ -98,7 +95,7 @@ func (mpp *mpoolProvider) GetActorAfter(addr address.Address, ts *block.TipSet) 
 }
 
 func (mpp *mpoolProvider) StateAccountKey(ctx context.Context, addr address.Address, ts *block.TipSet) (address.Address, error) {
-	root, err := mpp.sm.GetTipSetStateRoot(ts.Key())
+	root, err := mpp.sm.GetTipSetStateRoot(ts)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to get state root for %s", ts.Key().String())
 	}

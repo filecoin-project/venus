@@ -82,8 +82,8 @@ func TestLoadFork(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, offlineSyncer.InitStaged())
 
-	assert.True(t, newStore.HasTipSetAndState(ctx, left.Key()))
-	assert.False(t, newStore.HasTipSetAndState(ctx, right.Key()))
+	assert.True(t, newStore.HasTipSetAndState(ctx, left))
+	assert.False(t, newStore.HasTipSetAndState(ctx, right))
 }
 
 type noopFaultDetector struct{}
