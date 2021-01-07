@@ -41,9 +41,6 @@ const (
 	// offlineMode tells us if we should try to connect this Filecoin node to the network
 	OfflineMode = "offline"
 
-	//  MODE start venus in lite mode
-	LiteNode = "lite"
-
 	// ELStdout tells the daemon to write event logs to stdout.
 	ELStdout = "elstdout"
 

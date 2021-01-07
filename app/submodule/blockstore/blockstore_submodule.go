@@ -2,7 +2,7 @@ package blockstore
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
@@ -22,7 +22,7 @@ type BlockstoreSubmodule struct { //nolint
 }
 
 type blockstoreRepo interface {
-	Datastore() blockstoreutil.Blockstore
+	Datastore() bstore.Blockstore
 }
 
 // NewBlockstoreSubmodule creates a new block store submodule.

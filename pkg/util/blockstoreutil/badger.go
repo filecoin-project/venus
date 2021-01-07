@@ -3,19 +3,19 @@ package blockstoreutil
 import (
 	"context"
 	"fmt"
-	"github.com/dgraph-io/badger/v2"
-	"github.com/dgraph-io/badger/v2/options"
-	"github.com/ipfs/go-datastore"
-	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/keytransform"
-	dshelp "github.com/ipfs/go-ipfs-ds-help"
-	"go.uber.org/zap"
 	"io"
 	"sync/atomic"
 
-	"github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v2/options"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	ds "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/keytransform"
+	"github.com/ipfs/go-ipfs-blockstore"
+	dshelp "github.com/ipfs/go-ipfs-ds-help"
+	"go.uber.org/zap"
 )
 
 var (

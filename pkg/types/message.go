@@ -5,17 +5,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	cbor2 "github.com/filecoin-project/go-state-types/cbor"
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-state-types/abi"
 	tbig "github.com/filecoin-project/go-state-types/big"
+	cbor2 "github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/crypto"
+	block "github.com/ipfs/go-block-format"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -25,6 +24,9 @@ import (
 	errPkg "github.com/pkg/errors"
 	typegen "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/crypto"
 )
 
 const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
@@ -326,6 +328,28 @@ type TxMeta struct {
 // String returns a readable printing string of TxMeta
 func (m TxMeta) String() string {
 	return fmt.Sprintf("secp: %s, bls: %s", m.SecpRoot.String(), m.BLSRoot.String())
+}
+
+func (m *TxMeta) Cid() cid.Cid {
+	b, err := m.ToStorageBlock()
+	if err != nil {
+		panic(err) // also maybe sketchy
+	}
+	return b.Cid()
+}
+
+func (m *TxMeta) ToStorageBlock() (block.Block, error) {
+	var buf bytes.Buffer
+	if err := m.MarshalCBOR(&buf); err != nil {
+		return nil, xerrors.Errorf("failed to marshal MsgMeta: %w", err)
+	}
+
+	c, err := abi.CidBuilder.Sum(buf.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
+	return block.NewBlockWithCid(buf.Bytes(), c)
 }
 
 // MessageReceipt is what is returned by executing a message on the vm.

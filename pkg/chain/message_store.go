@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	cbor2 "github.com/filecoin-project/go-state-types/cbor"
-	bstore "github.com/filecoin-project/lotus/lib/blockstore"
+	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 
 	"github.com/filecoin-project/venus/pkg/config"
 	blocks "github.com/ipfs/go-block-format"

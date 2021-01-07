@@ -21,7 +21,7 @@ var ExpectedLeadersPerEpoch = builtin0.ExpectedLeadersPerEpoch
 const BlockGasLimit = 10_000_000_000
 const BlockGasTarget = BlockGasLimit / 2
 const BaseFeeMaxChangeDenom = 8 // 12.5%
-// const InitialBaseFee = 100e6
+const InitialBaseFee = 100e6
 const MinimumBaseFee = 100
 const PackingEfficiencyNum = 4
 const PackingEfficiencyDenom = 5
@@ -34,3 +34,6 @@ var InsecurePoStValidation = false
 
 // the 'f' prefix doesn't matter
 var ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
+
+var DefaultDefaultMaxFee = MustParseFIL("0.007")
+var DefaultSimultaneousTransfers = uint64(20)

@@ -9,10 +9,9 @@ import (
 	"strings"
 	"time"
 
-	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/slashing"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
 
@@ -640,7 +639,7 @@ func (c *Expected) ValidateMsgMeta(fblk *block.FullBlock) error {
 	}
 
 	// Finally, flush
-	return blockstoreutil.CopyParticial(context.TODO(), blockstore, c.bstore, smroot)
+	return bstore.CopyParticial(context.TODO(), blockstore, c.bstore, smroot)
 }
 
 func (c *Expected) VerifyWinningPoStProof(ctx context.Context, nv network.Version, blk *block.Block, prevBeacon *block.BeaconEntry, lbst cid.Cid) error {

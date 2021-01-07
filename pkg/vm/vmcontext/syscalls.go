@@ -2,7 +2,6 @@ package vmcontext
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	goruntime "runtime"
 	"sync"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	vmState "github.com/filecoin-project/venus/pkg/vm/state"
@@ -33,6 +33,7 @@ type SyscallsImpl interface {
 	HashBlake2b(data []byte) [32]byte
 	ComputeUnsealedSectorCID(ctx context.Context, proof abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error)
 	VerifySeal(ctx context.Context, info proof.SealVerifyInfo) error
+	BatchVerifySeals(ctx context.Context, vis map[address.Address][]proof.SealVerifyInfo) (map[address.Address][]bool, error)
 	VerifyPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) error
 	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view SyscallsStateView) (*specsruntime.ConsensusFault, error)
 }
