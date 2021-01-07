@@ -49,7 +49,7 @@ type AddressLsResult struct {
 
 var addrsNewCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		protocolName := req.Options["type"].(string)
+		protocolName, _ := req.Options["type"].(string)
 		var protocol address.Protocol
 		switch protocolName {
 		case "secp256k1":

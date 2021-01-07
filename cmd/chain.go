@@ -2,14 +2,22 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/sirupsen/logrus"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 	"os"
+	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/filecoin-project/venus/app/node"
@@ -37,6 +45,7 @@ var chainCmd = &cmds.Command{
 		"getblock":   storeGetBlock,
 		"getmessage": storeGetMsgCmd,
 		"gasprice":   storeGasPriceCmd,
+		"decode":     storeDecodeCmd,
 	},
 }
 
@@ -232,8 +241,8 @@ var storeGetBlock = &cmds.Command{
 			return xerrors.Errorf("get block failed: %w", err)
 		}
 
-		raw := req.Options["raw"]
-		if raw != nil && raw.(bool) {
+		raw, _ := req.Options["raw"].(bool)
+		if raw {
 			_ = re.Emit(blk)
 			return nil
 		}
@@ -341,8 +350,8 @@ var storeSetHead = &cmds.Command{
 		var err error
 		ctx := context.TODO()
 
-		genesis := req.Options["genesis"].(bool)
-		epoch := req.Options["epoch"].(uint64)
+		genesis, _ := req.Options["genesis"].(bool)
+		epoch, _ := req.Options["epoch"].(uint64)
 
 		api := env.(*node.Env).ChainAPI
 		if genesis {
@@ -409,4 +418,157 @@ var storeGasPriceCmd = &cmds.Command{
 
 		return nil
 	},
+}
+
+var storeDecodeCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline:          "Decode message params",
+		ShortDescription: "Decode message params",
+	},
+	Options: []cmds.Option{
+		cmds.StringOption("tipset", "must set"),
+		cmds.StringOption("encode", "").WithDefault("base64"),
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("toAddr", true, false, ""),
+		cmds.StringArg("method", true, false, ""),
+		cmds.StringArg("params", true, false, ""),
+	},
+	Run: func(req *cmds.Request, rem cmds.ResponseEmitter, env cmds.Environment) error {
+		encode, _ := req.Options["encode"].(string)
+		tss, _ := req.Options["tipset"].(string)
+
+		ctx := context.TODO()
+
+		if len(req.Arguments) != 3 {
+			return fmt.Errorf("incorrect number of arguments")
+		}
+
+		to, err := address.NewFromString(req.Arguments[0])
+		if err != nil {
+			return xerrors.Errorf("parsing toAddr: %w", err)
+		}
+
+		method, err := strconv.ParseInt(req.Arguments[1], 10, 64)
+		if err != nil {
+			return xerrors.Errorf("parsing method id: %w", err)
+		}
+
+		var params []byte
+		switch encode {
+		case "base64":
+			params, err = base64.StdEncoding.DecodeString(req.Arguments[2])
+			if err != nil {
+				return xerrors.Errorf("decoding base64 value: %w", err)
+			}
+		case "hex":
+			params, err = hex.DecodeString(req.Arguments[2])
+			if err != nil {
+				return xerrors.Errorf("decoding hex value: %w", err)
+			}
+		default:
+			return xerrors.Errorf("unrecognized encoding: %s", encode)
+		}
+
+		api := env.(*node.Env).ChainAPI
+		ts := &block.TipSet{}
+		if tss != "" {
+			ts, err = ParseTipSetRef(ctx, api, tss)
+			if err != nil {
+				return err
+			}
+		}
+
+		act, err := api.StateGetActor(ctx, to, ts.Key())
+		if err != nil {
+			return xerrors.Errorf("getting actor: %w", err)
+		}
+
+		pstr, err := JsonParams(act.Code, abi.MethodNum(method), params)
+		if err != nil {
+			return err
+		}
+
+		_ = rem.Emit(pstr)
+
+		return nil
+	},
+}
+
+func ParseTipSetString(ts string) ([]cid.Cid, error) {
+	strs := strings.Split(ts, ",")
+
+	var cids []cid.Cid
+	for _, s := range strs {
+		c, err := cid.Parse(strings.TrimSpace(s))
+		if err != nil {
+			return nil, err
+		}
+		cids = append(cids, c)
+	}
+
+	return cids, nil
+}
+
+func ParseTipSetRef(ctx context.Context, api *chain.ChainAPI, tss string) (*block.TipSet, error) {
+	if tss[0] == '@' {
+		if tss == "@head" {
+			return api.ChainHead(ctx)
+		}
+
+		var h uint64
+		if _, err := fmt.Sscanf(tss, "@%d", &h); err != nil {
+			return nil, xerrors.Errorf("parsing height tipset ref: %w", err)
+		}
+
+		return api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(h), block.TipSetKey{})
+	}
+
+	cids, err := ParseTipSetString(tss)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(cids) == 0 {
+		return nil, nil
+	}
+
+	k := block.NewTipSetKey(cids...)
+	ts, err := api.ChainGetTipSet(k)
+	if err != nil {
+		return nil, err
+	}
+
+	return ts, nil
+}
+
+func JsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, error) {
+	p, err := GetParamType(code, method)
+	if err != nil {
+		return "", err
+	}
+
+	if err := p.UnmarshalCBOR(bytes.NewReader(params)); err != nil {
+		return "", err
+	}
+
+	b, err := json.MarshalIndent(p, "", "  ")
+	return string(b), err
+}
+
+type MethodMeta struct {
+	Name string
+
+	Params reflect.Type
+	Ret    reflect.Type
+}
+
+var MethodsMap = map[cid.Cid]map[abi.MethodNum]MethodMeta{}
+
+func GetParamType(actCode cid.Cid, method abi.MethodNum) (cbg.CBORUnmarshaler, error) {
+	m, found := MethodsMap[actCode][method]
+	if !found {
+		return nil, fmt.Errorf("unknown method %d for actor %s", method, actCode)
+	}
+	return reflect.New(m.Params.Elem()).Interface().(cbg.CBORUnmarshaler), nil
 }
