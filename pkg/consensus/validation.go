@@ -65,8 +65,8 @@ type MessagePenaltyChecker struct {
 
 // penaltyCheckerAPI allows the validator to access latest state
 type penaltyCheckerAPI interface {
-	Head() block.TipSetKey
-	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*types.Actor, error)
+	Head() *block.TipSet
+	GetActorAt(context.Context, *block.TipSet, address.Address) (*types.Actor, error)
 }
 
 func NewMessagePenaltyChecker(api penaltyCheckerAPI) *MessagePenaltyChecker {
@@ -217,9 +217,9 @@ type MessageSignatureValidator struct {
 
 // signatureValidatorAPI allows the validator to access state needed for signature checking
 type signatureValidatorAPI interface {
-	Head() block.TipSetKey
-	GetTipSet(key block.TipSetKey) (*block.TipSet, error)
-	AccountStateView(baseKey block.TipSetKey) (state.AccountStateView, error)
+	Head() *block.TipSet
+	GetTipSet(block.TipSetKey) (*block.TipSet, error)
+	AccountStateView(*block.TipSet) (state.AccountStateView, error)
 }
 
 func NewMessageSignatureValidator(api signatureValidatorAPI) *MessageSignatureValidator {

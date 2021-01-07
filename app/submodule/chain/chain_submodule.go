@@ -62,16 +62,16 @@ type chainConfig interface {
 
 type chainReader interface {
 	chain.TipSetProvider
-	GetHead() block.TipSetKey
-	GetTipSetReceiptsRoot(block.TipSetKey) (cid.Cid, error)
-	GetTipSetStateRoot(block.TipSetKey) (cid.Cid, error)
+	GetHead() *block.TipSet
+	GetTipSetReceiptsRoot(*block.TipSet) (cid.Cid, error)
+	GetTipSetStateRoot(*block.TipSet) (cid.Cid, error)
 	SubHeadChanges(context.Context) chan []*chain.HeadChange
 	SubscribeHeadChanges(chain.ReorgNotifee)
 }
 type stateReader interface {
-	ResolveAddressAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (address.Address, error)
-	GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*types.Actor, error)
-	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
+	ResolveAddressAt(context.Context, *block.TipSet, address.Address) (address.Address, error)
+	GetActorAt(context.Context, *block.TipSet, address.Address) (*types.Actor, error)
+	GetTipSetState(context.Context, *block.TipSet) (state.Tree, error)
 }
 
 // NewChainSubmodule creates a new chain submodule.

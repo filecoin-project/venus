@@ -482,7 +482,7 @@ A detailed overview of how Filecoin uses libp2p can be found in the [Networking 
 
 ## Filesystem storage
 
-The *repo*, aka `fsrepo`, is a directory stored on disk containing all necessary information to run a `venus daemon`, typically at `$HOME/.filecoin`. 
+The *repo*, aka `fsrepo`, is a directory stored on disk containing all necessary information to run a `venus daemon`, typically at `$HOME/.venus`. 
 The repo does not include client data stored by storage miners, which is held instead in the sector base. 
 The repo does include a JSON config file with preferences on how the daemon should operate, 
 several key value datastores holding data important to the internal services, 
@@ -490,14 +490,14 @@ and the keystore which holds private key data for encryption.
 
 ### JSON Config
 
-The JSON config file is stored at `$HOME/.filecoin/config.json`, and can be easily edited using the `venus config` command. 
+The JSON config file is stored at `$HOME/.venus/config.json`, and can be easily edited using the `venus config` command. 
 Users can also edit the file directly at their own peril.
 
 ### Datastores
 
 The key-value datastores in the repo include persisted data from a variety of systems within Filecoin. 
 Most of them hold CBOR encoded data keyed on CID, however this varies. 
-The key value stores include the badger, chain, deals, and wallet directories under `$HOME/.filecoin`.
+The key value stores include the badger, chain, deals, and wallet directories under `$HOME/.venus`.
 
 The purpose of these directories is:
 - _Badger_ is a general purpose datastore currently only holding the genesis key, but in the future, 
@@ -510,7 +510,7 @@ essentially who is storing what data, for what fee and which sectors have been s
 ### Keystore
 
 The keystore contains the binary encoded peer key for interacting securely over the network. 
-This data lives in a file at `$HOME/.filecoin/keystore/self`.
+This data lives in a file at `$HOME/.venus/keystore/self`.
 
 ## Testing
 

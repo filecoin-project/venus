@@ -18,7 +18,6 @@ type ChainIndex struct { //nolint
 
 	skipLength abi.ChainEpoch
 }
-type loadTipSetFunc func(block.TipSetKey) (*block.TipSet, error)
 
 func NewChainIndex(lts loadTipSetFunc) *ChainIndex {
 	sc, _ := lru.NewARC(DefaultChainIndexCacheSize)

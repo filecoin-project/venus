@@ -90,13 +90,13 @@ type StateViewer interface {
 }
 
 type chainReader interface {
-	GetTipSet(tsKey block.TipSetKey) (*block.TipSet, error)
-	GetHead() block.TipSetKey
-	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
-	GetGenesisBlock(ctx context.Context) (*block.Block, error)
-	GetLatestBeaconEntry(ts *block.TipSet) (*block.BeaconEntry, error)
+	GetTipSet(block.TipSetKey) (*block.TipSet, error)
+	GetHead() *block.TipSet
+	GetTipSetStateRoot(*block.TipSet) (cid.Cid, error)
+	GetGenesisBlock(context.Context) (*block.Block, error)
+	GetLatestBeaconEntry(*block.TipSet) (*block.BeaconEntry, error)
 	GetTipSetByHeight(context.Context, *block.TipSet, abi.ChainEpoch, bool) (*block.TipSet, error)
-	GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st state.Tree) (chain.CirculatingSupply, error)
+	GetCirculatingSupplyDetailed(context.Context, abi.ChainEpoch, state.Tree) (chain.CirculatingSupply, error)
 }
 
 type Randness interface {
@@ -262,7 +262,7 @@ func (c *Expected) ValidateMining(ctx context.Context,
 	parentWeight big.Int,
 	parentReceiptRoot cid.Cid) error {
 
-	parentStateRoot, err := c.chainState.GetTipSetStateRoot(parent.Key())
+	parentStateRoot, err := c.chainState.GetTipSetStateRoot(parent)
 	if err != nil {
 		return xerrors.Errorf("get parent tipset state failed %s", err)
 	}
@@ -296,7 +296,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 	}()
 
 	// confirm block state root matches parent state root
-	rootAfterCalc, err := c.chainState.GetTipSetStateRoot(parent.Key())
+	rootAfterCalc, err := c.chainState.GetTipSetStateRoot(parent)
 	if err != nil {
 		return xerrors.Errorf("get parent tipset state failed %s", err)
 	}
@@ -865,7 +865,7 @@ func (c *Expected) GetLookbackTipSetForRound(ctx context.Context, ts *block.TipS
 	if lbr >= h {
 		// This should never happen at this point, but may happen before
 		// network version 3 (where the lookback was only 10 blocks).
-		st, err := c.chainState.GetTipSetStateRoot(ts.Key())
+		st, err := c.chainState.GetTipSetStateRoot(ts)
 		if err != nil {
 			return nil, cid.Undef, err
 		}

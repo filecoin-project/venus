@@ -1,32 +1,126 @@
 package cmd
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
-	_ "net/http/pprof" // nolint: golint
+	"io"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
+
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cmds "github.com/ipfs/go-ipfs-cmds"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/ipld/go-car"
+	"github.com/libp2p/go-libp2p-core/crypto"
+	_ "net/http/pprof" // nolint: golint
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"
+	"github.com/filecoin-project/venus/fixtures/asset"
+	"github.com/filecoin-project/venus/fixtures/networks"
+	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/genesis"
 	"github.com/filecoin-project/venus/pkg/journal"
 	"github.com/filecoin-project/venus/pkg/repo"
-	cmds "github.com/ipfs/go-ipfs-cmds"
+	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
+
+var log = logging.Logger("daemon")
 
 var daemonCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Start a long-running daemon process",
+		Tagline: "Initialize a venus repo, Start a long-running daemon process",
 	},
 	Options: []cmds.Option{
 		cmds.StringOption(SwarmAddress, "multiaddress to listen on for filecoin network connections"),
 		cmds.StringOption(SwarmPublicRelayAddress, "public multiaddress for routing circuit relay traffic.  Necessary for relay nodes to provide this if they are not publically dialable"),
 		cmds.BoolOption(OfflineMode, "start the node without networking"),
 		cmds.BoolOption(ELStdout),
-		cmds.BoolOption(IsRelay, "advertise and allow filecoin network traffic to be relayed through this node"),
+		cmds.BoolOption(IsRelay, "advertise and allow venus network traffic to be relayed through this node"),
 		cmds.StringOption(ImportSnapshot, "import chain state from a given chain export file or url"),
+		cmds.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
+		cmds.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
+		cmds.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
+		cmds.StringOption(Network, "when set, populates config with network specific parameters").WithDefault("testnetnet"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		repoDir, _ := req.Options[OptionRepoDir].(string)
+		repoDir, err := paths.GetRepoPath(repoDir)
+		if err != nil {
+			return err
+		}
+
+		exist, err := repo.Exists(repoDir)
+		if err != nil {
+			return err
+		}
+		if !exist {
+			log.Infof("Initializing repo at '%s'", repoDir)
+
+			if err := re.Emit(repoDir); err != nil {
+				return err
+			}
+			if err := repo.InitFSRepo(repoDir, repo.Version, config.NewDefaultConfig()); err != nil {
+				return err
+			}
+
+			if err = initRun(req, re); err != nil {
+				return err
+			}
+		}
+
 		return daemonRun(req, re)
 	},
+}
+
+func initRun(req *cmds.Request, re cmds.ResponseEmitter) error {
+	rep, err := getRepo(req)
+	if err != nil {
+		return err
+	}
+
+	// The only error Close can return is that the repo has already been closed.
+	defer func() {
+		_ = rep.Close()
+	}()
+
+	genesisFileSource, _ := req.Options[GenesisFile].(string)
+	gif, err := loadGenesis(req.Context, rep, genesisFileSource)
+	if err != nil {
+		return err
+	}
+
+	peerKeyFile, _ := req.Options[PeerKeyFile].(string)
+	walletKeyFile, _ := req.Options[WalletKeyFile].(string)
+	initOpts, err := getNodeInitOpts(peerKeyFile, walletKeyFile)
+	if err != nil {
+		return err
+	}
+
+	cfg := rep.Config()
+	network, _ := req.Options[Network].(string)
+	if err := setConfigFromOptions(cfg, network); err != nil {
+		log.Errorf("Error setting config %s", err)
+		return err
+	}
+
+	if err := rep.ReplaceConfig(cfg); err != nil {
+		log.Errorf("Error replacing config %s", err)
+		return err
+	}
+
+	if err := node.Init(req.Context, rep, gif, initOpts...); err != nil {
+		log.Errorf("Error initializing node %s", err)
+		return err
+	}
+
+	return nil
 }
 
 func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
@@ -35,6 +129,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	if err != nil {
 		return err
 	}
+
 	config := rep.Config()
 
 	// second highest precedence is env vars.
@@ -71,7 +166,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	if len(importPath) != 0 {
 		err := Import(rep, importPath)
 		if err != nil {
-			logInit.Errorf("failed to import snapshot, import path: %s, error: %s", importPath, err.Error())
+			log.Errorf("failed to import snapshot, import path: %s, error: %s", importPath, err.Error())
 			return err
 		}
 	}
@@ -133,4 +228,149 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 		return nil, err
 	}
 	return repo.OpenFSRepo(repoDir, repo.Version)
+}
+
+func setConfigFromOptions(cfg *config.Config, network string) error {
+	// Setup specific config options.
+	var netcfg *networks.NetworkConf
+	switch network {
+	case "mainnet":
+		netcfg = networks.Mainnet()
+	case "testnetnet":
+		netcfg = networks.Testnet()
+	case "integrationnet":
+		netcfg = networks.IntegrationNet()
+	case "2k":
+		netcfg = networks.Net2k()
+	case "cali":
+		netcfg = networks.Calibration()
+	default:
+		return fmt.Errorf("unknown network name %s", network)
+	}
+
+	if netcfg != nil {
+		cfg.Bootstrap = &netcfg.Bootstrap
+		cfg.NetworkParams = &netcfg.Network
+	}
+
+	return nil
+}
+
+func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (genesis.InitFunc, error) {
+	var (
+		source io.ReadCloser
+		err    error
+	)
+
+	if sourceName == "" {
+		bs, err := asset.Asset("fixtures/_assets/car/devnet.car")
+		if err != nil {
+			return gengen.MakeGenesisFunc(), nil
+		}
+
+		source = ioutil.NopCloser(bytes.NewReader(bs))
+		// return gengen.MakeGenesisFunc(), nil
+	} else {
+		source, err = openGenesisSource(sourceName)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	defer func() { _ = source.Close() }()
+
+	genesisBlk, err := extractGenesisBlock(source, rep)
+	if err != nil {
+		return nil, err
+	}
+
+	gif := func(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+		return genesisBlk, err
+	}
+
+	return gif, nil
+
+}
+
+func getNodeInitOpts(peerKeyFile string, walletKeyFile string) ([]node.InitOpt, error) {
+	var initOpts []node.InitOpt
+	if peerKeyFile != "" {
+		data, err := ioutil.ReadFile(peerKeyFile)
+		if err != nil {
+			return nil, err
+		}
+		peerKey, err := crypto.UnmarshalPrivateKey(data)
+		if err != nil {
+			return nil, err
+		}
+		initOpts = append(initOpts, node.PeerKeyOpt(peerKey))
+	}
+
+	if walletKeyFile != "" {
+		f, err := os.Open(walletKeyFile)
+		if err != nil {
+			return nil, err
+		}
+
+		var wir *WalletSerializeResult
+		if err := json.NewDecoder(f).Decode(&wir); err != nil {
+			return nil, err
+		}
+
+		if len(wir.KeyInfo) > 0 {
+			initOpts = append(initOpts, node.DefaultKeyOpt(wir.KeyInfo[0]))
+		}
+
+		for _, k := range wir.KeyInfo[1:] {
+			initOpts = append(initOpts, node.ImportKeyOpt(k))
+		}
+	}
+
+	return initOpts, nil
+}
+
+func openGenesisSource(sourceName string) (io.ReadCloser, error) {
+	sourceURL, err := url.Parse(sourceName)
+	if err != nil {
+		return nil, fmt.Errorf("invalid filepath or URL for genesis file: %s", sourceURL)
+	}
+	var source io.ReadCloser
+	if sourceURL.Scheme == "http" || sourceURL.Scheme == "https" {
+		// NOTE: This code is temporary. It allows downloading a genesis block via HTTP(S) to be able to join a
+		// recently deployed staging devnet.
+		response, err := http.Get(sourceName)
+		if err != nil {
+			return nil, err
+		}
+		source = response.Body
+	} else if sourceURL.Scheme != "" {
+		return nil, fmt.Errorf("unsupported protocol for genesis file: %s", sourceURL.Scheme)
+	} else {
+		file, err := os.Open(sourceName)
+		if err != nil {
+			return nil, err
+		}
+		source = file
+	}
+	return source, nil
+}
+
+func extractGenesisBlock(source io.ReadCloser, rep repo.Repo) (*block.Block, error) {
+	bs := rep.Datastore()
+	ch, err := car.LoadCar(bs, source)
+	if err != nil {
+		return nil, err
+	}
+
+	// need to check if we are being handed a car file with a single genesis block or an entire chain.
+	bsBlk, err := bs.Get(ch.Roots[0])
+	if err != nil {
+		return nil, err
+	}
+	cur, err := block.DecodeBlock(bsBlk.RawData())
+	if err != nil {
+		return nil, err
+	}
+
+	return cur, nil
 }

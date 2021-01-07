@@ -614,7 +614,7 @@ func (e *FakeStateEvaluator) ValidateHeaderSemantic(_ context.Context, _ *block.
 }
 
 // ValidateHeaderSemantic is a stub that always returns no error
-func (e *FakeStateEvaluator) ValidateMessagesSemantic(_ context.Context, _ *block.Block, _ block.TipSetKey) error {
+func (e *FakeStateEvaluator) ValidateMessagesSemantic(_ context.Context, _ *block.Block, _ *block.TipSet) error {
 	return nil
 }
 

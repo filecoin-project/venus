@@ -3,6 +3,7 @@ package chain
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/util"
 	"io"
 	"os"
@@ -61,6 +62,8 @@ var log = logging.Logger("chain.store")
 var HeadKey = datastore.NewKey("/chain/heaviestTipSet")
 
 var ErrNotifeeDone = errors.New("notifee is done and should be removed")
+
+type loadTipSetFunc func(block.TipSetKey) (*block.TipSet, error)
 
 // ReorgNotifee represents a callback that gets called upon reorgs.
 type ReorgNotifee func(rev, app []*block.TipSet) error
@@ -140,7 +143,7 @@ type Store struct {
 	headEvents *pubsub.PubSub
 
 	// Tracks tipsets by height/parentset for use by expected consensus.
-	tipIndex *TipIndex
+	tipIndex *TipStateCache
 
 	// Reporter is used by the store to update the current status of the chain.
 	reporter Reporter
@@ -171,13 +174,15 @@ func NewStore(ds repo.Datastore,
 		ds:                  cacheDs,
 		bsstore:             bsstore,
 		headEvents:          pubsub.New(64),
-		tipIndex:            NewTipIndex(),
-		checkPoint:          block.UndefTipSet.Key(),
-		genesis:             genesisCid,
-		reporter:            sr,
-		reorgNotifeeCh:      make(chan ReorgNotifee),
-		tsCache:             tsCache,
+
+		checkPoint:     block.UndefTipSet.Key(),
+		genesis:        genesisCid,
+		reporter:       sr,
+		reorgNotifeeCh: make(chan ReorgNotifee),
+		tsCache:        tsCache,
 	}
+	//todo cycle reference , may think a better idea
+	store.tipIndex = NewTipStateCache(store)
 	store.chainIndex = NewChainIndex(store.GetTipSet)
 	store.circulatingSupplyCalculator = NewCirculatingSupplyCalculator(bsstore, store, forkConfig)
 
@@ -212,9 +217,6 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	ctx, span := trace.StartSpan(ctx, "Store.Load")
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	// Clear the tipset index.
-	store.tipIndex = NewTipIndex()
-
 	headTsKey, err := store.loadHead()
 	if err != nil {
 		return err
@@ -225,21 +227,10 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		return errors.Wrap(err, "error loading head tipset")
 	}
 
-	loopBack := abi.ChainEpoch(0)
-	if !store.checkPoint.IsEmpty() {
-		_, err = LoadTipSetBlocks(ctx, store.stateAndBlockSource, store.checkPoint)
-		if err != nil {
-			return errors.Wrap(err, "error loading head tipset")
-		}
-	}
+	latestHeight := headTs.At(0).Height
+	loopBack := latestHeight - policy.ChainFinality
+	log.Infof("start loading chain at tipset: %s, height: %d", headTsKey.String(), latestHeight)
 
-	startHeight := headTs.At(0).Height
-	loopBack = startHeight - 1000
-	log.Infof("start loading chain at tipset: %s, height: %d", headTsKey.String(), startHeight)
-	// Ensure we only produce 10 log messages regardless of the chain height.
-	logStatusEvery := startHeight / 10
-
-	var startPoint *block.TipSet
 	// Provide tipsets directly from the block store, not from the tipset index which is
 	// being rebuilt by this traversal.
 	tipsetProvider := TipSetProviderFromBlocks(ctx, store.stateAndBlockSource)
@@ -247,37 +238,24 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		if err != nil {
 			return err
 		}
-		startPoint = iterator.Value()
+		ts := iterator.Value()
 
-		height, err := startPoint.Height()
+		tipSetMetadata, err := store.LoadTipsetMetadata(ts)
 		if err != nil {
 			return err
 		}
 
-		if logStatusEvery != 0 && (height%logStatusEvery) == 0 {
-			log.Infof("load tipset: %s, height: %v", startPoint.String(), height)
-		}
-
-		stateRoot, receipts, err := store.loadStateRootAndReceipts(startPoint)
+		err = store.tipIndex.Put(tipSetMetadata)
 		if err != nil {
 			return err
 		}
 
-		err = store.PutTipSetMetadata(ctx, &TipSetMetadata{
-			TipSet:          startPoint,
-			TipSetStateRoot: stateRoot,
-			TipSetReceipts:  receipts,
-		})
-		if err != nil {
-			return err
-		}
-
-		if startPoint.EnsureHeight() <= loopBack {
+		if ts.EnsureHeight() <= loopBack {
 			break
 		}
 	}
 
-	log.Infof("finished loading %d tipsets from %s", startHeight, headTs.String())
+	log.Infof("finished loading %d tipsets from %s", latestHeight, headTs.String())
 
 	//todo just for test should remove if ok, 新创建节点会出问题?
 	/*	if checkPointTs == nil || headTs.EnsureHeight() > checkPointTs.EnsureHeight() {
@@ -311,24 +289,27 @@ func (store *Store) loadHead() (block.TipSetKey, error) {
 	return tsk, nil
 }
 
-func (store *Store) loadStateRootAndReceipts(ts *block.TipSet) (cid.Cid, cid.Cid, error) {
+func (store *Store) LoadTipsetMetadata(ts *block.TipSet) (*TipSetMetadata, error) {
 	h, err := ts.Height()
 	if err != nil {
-		return cid.Undef, cid.Undef, err
+		return nil, err
 	}
 	key := datastore.NewKey(makeKey(ts.String(), h))
 	tsStateBytes, err := store.ds.Get(key)
 	if err != nil {
-		return cid.Undef, cid.Undef, errors.Wrapf(err, "failed to read tipset key %s", ts.String())
+		return nil, errors.Wrapf(err, "failed to read tipset key %s", ts.String())
 	}
 
 	var metadata TsState
 	err = metadata.UnmarshalCBOR(bytes.NewReader(tsStateBytes))
 	if err != nil {
-		return cid.Undef, cid.Undef, errors.Wrapf(err, "failed to decode tip set metadata %s", ts.String())
+		return nil, errors.Wrapf(err, "failed to decode tip set metadata %s", ts.String())
 	}
-
-	return metadata.StateRoot, metadata.Reciepts, nil
+	return &TipSetMetadata{
+		TipSet:          ts,
+		TipSetStateRoot: metadata.StateRoot,
+		TipSetReceipts:  metadata.Reciepts,
+	}, nil
 }
 
 // PutTipSetMetadata persists the blocks of a tipset and the tipset index.
@@ -382,9 +363,9 @@ func (store *Store) GetBlock(blockID cid.Cid) (*block.Block, error) {
 // GetTipSet returns the tipset identified by `key`.
 func (store *Store) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	if key.IsEmpty() {
-		key = store.GetHead()
+		return store.GetHead(), nil
 	}
-	blks := []*block.Block{}
+	var blks []*block.Block
 	val, has := store.tsCache.Get(key)
 	if has {
 		return val.(*block.TipSet), nil
@@ -440,8 +421,8 @@ func (store *Store) GetTipSetByHeight(ctx context.Context, ts *block.TipSet, h a
 }
 
 // GetTipSetState returns the aggregate state of the tipset identified by `key`.
-func (store *Store) GetTipSetState(ctx context.Context, key block.TipSetKey) (state.Tree, error) {
-	stateCid, err := store.tipIndex.GetTipSetStateRoot(key)
+func (store *Store) GetTipSetState(ctx context.Context, ts *block.TipSet) (state.Tree, error) {
+	stateCid, err := store.tipIndex.GetTipSetStateRoot(ts)
 	if err != nil {
 		return nil, err
 	}
@@ -454,19 +435,19 @@ func (store *Store) GetGenesisBlock(ctx context.Context) (*block.Block, error) {
 }
 
 // GetTipSetStateRoot returns the aggregate state root CID of the tipset identified by `key`.
-func (store *Store) GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error) {
+func (store *Store) GetTipSetStateRoot(key *block.TipSet) (cid.Cid, error) {
 	return store.tipIndex.GetTipSetStateRoot(key)
 }
 
 // GetTipSetReceiptsRoot returns the root CID of the message receipts for the tipset identified by `key`.
-func (store *Store) GetTipSetReceiptsRoot(key block.TipSetKey) (cid.Cid, error) {
+func (store *Store) GetTipSetReceiptsRoot(key *block.TipSet) (cid.Cid, error) {
 	return store.tipIndex.GetTipSetReceiptsRoot(key)
 }
 
 // HasTipSetAndState returns true iff the default store's tipindex is indexing
 // the tipset identified by `key`.
-func (store *Store) HasTipSetAndState(ctx context.Context, key block.TipSetKey) bool {
-	return store.tipIndex.Has(key)
+func (store *Store) HasTipSetAndState(ctx context.Context, ts *block.TipSet) bool {
+	return store.tipIndex.Has(ts)
 }
 
 func (store *Store) GetLatestBeaconEntry(ts *block.TipSet) (*block.BeaconEntry, error) {
@@ -527,16 +508,16 @@ func (store *Store) walkBack(from *block.TipSet, to abi.ChainEpoch) (*block.TipS
 	}
 }
 
-// GetTipSetAndStatesByParentsAndHeight returns the the tipsets and states tracked by
+// GetSiblingState returns the the tipsets and states tracked by
 // the default store's tipIndex that have parents identified by `parentKey`.
-func (store *Store) GetTipSetAndStatesByParentsAndHeight(parentKey block.TipSetKey, h abi.ChainEpoch) ([]*TipSetMetadata, error) {
-	return store.tipIndex.GetByParentsAndHeight(parentKey, h)
+func (store *Store) GetSiblingState(ts *block.TipSet) ([]*TipSetMetadata, error) {
+	return store.tipIndex.GetSiblingState(ts)
 }
 
-// HasTipSetAndStatesWithParentsAndHeight returns true if the default store's tipindex
+// HasSiblingState returns true if the default store's tipindex
 // contains any tipset identified by `parentKey`.
-func (store *Store) HasTipSetAndStatesWithParentsAndHeight(parentKey block.TipSetKey, h abi.ChainEpoch) bool {
-	return store.tipIndex.HasByParentsAndHeight(parentKey, h)
+func (store *Store) HasSiblingState(ts *block.TipSet) bool {
+	return store.tipIndex.HasSiblingState(ts)
 }
 
 // SetHead sets the passed in tipset as the new head of this chain.
@@ -775,14 +756,14 @@ func (store *Store) deleteTipSetMetadata(ts *block.TipSet) error {
 }
 
 // GetHead returns the current head tipset cids.
-func (store *Store) GetHead() block.TipSetKey {
+func (store *Store) GetHead() *block.TipSet {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
 	if !store.head.Defined() {
-		return block.TipSetKey{}
+		return block.UndefTipSet
 	}
 
-	return store.head.Key()
+	return store.head
 }
 
 // GenesisCid returns the genesis cid of the chain tracked by the default store.
@@ -873,7 +854,7 @@ func (store *Store) StateCirculatingSupply(ctx context.Context, tsk block.TipSet
 		return abi.TokenAmount{}, err
 	}
 
-	root, err := store.GetTipSetStateRoot(tsk)
+	root, err := store.GetTipSetStateRoot(ts)
 	if err != nil {
 		return abi.TokenAmount{}, err
 	}
