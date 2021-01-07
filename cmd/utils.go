@@ -2,15 +2,19 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/filecoin-project/venus/app/node"
 	"io"
 	"strconv"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/hako/durafmt"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/venus/app/node"
+	"github.com/filecoin-project/venus/pkg/constants"
 )
 
 // SilentWriter writes to a stream, stopping after the first error and discarding output until
@@ -136,4 +140,21 @@ func cidsFromSlice(args []string) ([]cid.Cid, error) {
 		out[i] = c
 	}
 	return out, nil
+}
+
+func EpochTime(curr, e abi.ChainEpoch, blockDelay uint64) string {
+	// 2k net is different from mainnet block delay seconds
+	if blockDelay == 0 {
+		blockDelay = constants.BlockDelaySecs
+	}
+	switch {
+	case curr > e:
+		return fmt.Sprintf("%d (%s ago)", e, durafmt.Parse(time.Second*time.Duration(int64(blockDelay)*int64(curr-e))).LimitFirstN(2))
+	case curr == e:
+		return fmt.Sprintf("%d (now)", e)
+	case curr < e:
+		return fmt.Sprintf("%d (in %s)", e, durafmt.Parse(time.Second*time.Duration(int64(blockDelay)*int64(e-curr))).LimitFirstN(2))
+	}
+
+	panic("math broke")
 }
