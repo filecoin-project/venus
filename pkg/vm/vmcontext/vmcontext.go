@@ -336,8 +336,6 @@ func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.Ti
 		vm.debugger.Println(string(receipt))
 		vm.debugger.WriteToTerminal()
 	}
-
-	vmlog.Infof("process tipset %d: %v", epoch, time.Now().Sub(toProcessTipset).Milliseconds())
 	// commit stateView
 	root, err := vm.Flush()
 	if err != nil {

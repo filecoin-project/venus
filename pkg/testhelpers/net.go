@@ -237,7 +237,7 @@ func (f *TestExchange) GetChainMessages(ctx context.Context, tipsets []*block.Ti
 	panic("implement me")
 }
 
-func (f *TestExchange) GetFullTipSet(ctx context.Context, peer peer.ID, tsk block.TipSetKey) (*block.FullTipSet, error) {
+func (f *TestExchange) GetFullTipSet(ctx context.Context, peer []peer.ID, tsk block.TipSetKey) (*block.FullTipSet, error) {
 	panic("implement me")
 }
 

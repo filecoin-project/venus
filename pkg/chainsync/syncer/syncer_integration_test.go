@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/chainsync/internal/syncer"
 	"github.com/filecoin-project/venus/pkg/chainsync/status"
+	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/fork"
@@ -45,8 +45,8 @@ func TestLoadFork(t *testing.T) {
 	right := builder.AppendManyOn(3, base)
 
 	// Sync the two branches, which stores all blocks in the underlying stores.
-	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo("", "", left.Key(), heightFromTip(t, left)), false))
-	assert.Error(t, s.HandleNewTipSet(ctx, block.NewChainInfo("", "", right.Key(), heightFromTip(t, right)), false))
+	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo("", "", left)))
+	assert.Error(t, s.HandleNewTipSet(ctx, block.NewChainInfo("", "", right)))
 	verifyHead(t, builder.Store(), left)
 
 	// The syncer/bsstore assume that the fetcher populates the underlying block bsstore such that

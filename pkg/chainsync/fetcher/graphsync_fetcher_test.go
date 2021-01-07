@@ -110,9 +110,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 	err = blockstoreutil.CopyBlockstore(ctx, bs, genesisBs)
 	require.NoError(t, err)
 	msgStore := builder.Mstore()
-	doneAt := func(tsKey block.TipSetKey) func(*block.TipSet) (bool, error) {
+	doneAt := func(tsKey *block.TipSet) func(*block.TipSet) (bool, error) {
 		return func(ts *block.TipSet) (bool, error) {
-			if ts.Key().Equals(tsKey) {
+			if ts.Key().Equals(tsKey.Key()) {
 				return true, nil
 			}
 			return false, nil
@@ -149,9 +149,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	t.Run("happy path returns correct tipsets", func(t *testing.T) {
 		gen := builder.Genesis()
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
+		chain0 := block.NewChainInfo(pid0, pid0, final)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
 		err = blockstoreutil.CopyBlockstore(ctx, genesisBs, bakeBs)
@@ -161,7 +159,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.stubResponseWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
 
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bakeBs, syntax, fc, newFakePeerTracker(chain0))
-		done := doneAt(gen.Key())
+		done := doneAt(gen)
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		require.NoError(t, err, "the request completes successfully")
@@ -174,11 +172,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 	t.Run("initial request fails on a block but fallback peer succeeds", func(t *testing.T) {
 		gen := builder.Genesis()
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
-		chain1 := block.NewChainInfo(pid1, pid1, final.Key(), height)
-		chain2 := block.NewChainInfo(pid2, pid2, final.Key(), height)
+		chain0 := block.NewChainInfo(pid0, pid0, final)
+		chain1 := block.NewChainInfo(pid1, pid1, final)
+		chain2 := block.NewChainInfo(pid2, pid2, final)
 		pt := newFakePeerTracker(chain0, chain1, chain2)
 
 		pid0Loader := errorOnCidsLoader(loader, final.At(1).Cid(), final.At(2).Cid())
@@ -195,7 +191,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bakeBs, syntax, fc, pt)
 
-		done := doneAt(gen.Key())
+		done := doneAt(gen)
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		require.NoError(t, err, "the request completes successfully")
 		mgs.verifyReceivedRequestCount(7)
@@ -208,11 +204,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 	t.Run("initial request fails and no other peers succeed", func(t *testing.T) {
 		gen := builder.Genesis()
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
-		chain1 := block.NewChainInfo(pid1, pid1, final.Key(), height)
-		chain2 := block.NewChainInfo(pid2, pid2, final.Key(), height)
+		chain0 := block.NewChainInfo(pid0, pid0, final)
+		chain1 := block.NewChainInfo(pid1, pid1, final)
+		chain2 := block.NewChainInfo(pid2, pid2, final)
 		pt := newFakePeerTracker(chain0, chain1, chain2)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
@@ -226,7 +220,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bakeBs, syntax, fc, pt)
 
-		done := doneAt(gen.Key())
+		done := doneAt(gen)
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		mgs.verifyReceivedRequestCount(7)
@@ -238,9 +232,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	t.Run("requests fails because blocks are present but are missing messages", func(t *testing.T) {
 		gen := builder.Genesis()
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
+		chain0 := block.NewChainInfo(pid0, pid0, final)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
 		err = blockstoreutil.CopyBlockstore(ctx, genesisBs, bakeBs)
@@ -253,7 +245,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bakeBs, syntax, fc, newFakePeerTracker(chain0))
 
-		done := doneAt(gen.Key())
+		done := doneAt(gen)
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		mgs.verifyReceivedRequestCount(3)
 		mgs.verifyExpectations()
@@ -264,11 +256,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 	t.Run("partial response fail during recursive fetch recovers at fail point", func(t *testing.T) {
 		gen := builder.Genesis()
 		final := builder.BuildManyOn(5, gen, withMessageBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
-		chain1 := block.NewChainInfo(pid1, pid1, final.Key(), height)
-		chain2 := block.NewChainInfo(pid2, pid2, final.Key(), height)
+		chain0 := block.NewChainInfo(pid0, pid0, final)
+		chain1 := block.NewChainInfo(pid1, pid1, final)
+		chain2 := block.NewChainInfo(pid2, pid2, final)
 		pt := newFakePeerTracker(chain0, chain1, chain2)
 
 		blocks := make([]*block.Block, 4) // in fetch order
@@ -321,9 +311,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		multi := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		penultimate := builder.BuildManyOn(3, multi, withMessageBuilder)
 		final := builder.BuildOn(penultimate, 1, withMessageEachBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
+		chain0 := block.NewChainInfo(pid0, pid0, final)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
 		err = blockstoreutil.CopyBlockstore(ctx, genesisBs, bakeBs)
@@ -335,7 +323,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(4), errorInMultiBlockLoader, penultimate.At(0).Cid())
 
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bakeBs, syntax, fc, newFakePeerTracker(chain0))
-		done := doneAt(gen.Key())
+		done := doneAt(gen)
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		mgs.verifyReceivedRequestCount(3)
@@ -350,11 +338,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 		withMultiParent := builder.BuildOn(multi, 1, withMessageEachBuilder)
 		penultimate := builder.BuildManyOn(2, withMultiParent, withMessageBuilder)
 		final := builder.BuildOn(penultimate, 1, withMessageEachBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
-		chain1 := block.NewChainInfo(pid1, pid1, final.Key(), height)
-		chain2 := block.NewChainInfo(pid2, pid2, final.Key(), height)
+		chain0 := block.NewChainInfo(pid0, pid0, final)
+		chain1 := block.NewChainInfo(pid1, pid1, final)
+		chain2 := block.NewChainInfo(pid2, pid2, final)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
 		err = blockstoreutil.CopyBlockstore(ctx, genesisBs, bakeBs)
@@ -367,7 +353,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid1, recursiveSelector(4), loader, withMultiParent.At(0).Cid())
 
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bakeBs, syntax, fc, newFakePeerTracker(chain0, chain1, chain2))
-		done := doneAt(gen.Key())
+		done := doneAt(gen)
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		require.NoError(t, err, "the request completes successfully")
@@ -398,9 +384,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		recursive4middle := builder.BuildManyOn(3, recursive4stop, withMessageBuilder)
 		recursive1stop := builder.BuildManyOn(1, recursive4middle, withMessageBuilder)
 		final := builder.BuildOn(recursive1stop, 1, withMessageEachBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
+		chain0 := block.NewChainInfo(pid0, pid0, final)
 		nextKey := final.Key()
 
 		for i := 1; i <= 22; i++ {
@@ -423,7 +407,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 			}
 
 			fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bakeBs, syntax, fc, newFakePeerTracker(chain0))
-			done := doneAt(tipset.Key())
+			done := doneAt(tipset)
 
 			ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 			require.NoError(t, err, "the request completes successfully")
@@ -439,25 +423,6 @@ func TestGraphsyncFetcher(t *testing.T) {
 		}
 	})
 
-	t.Run("value returned with non block format", func(t *testing.T) {
-		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
-		err = blockstoreutil.CopyBlockstore(ctx, genesisBs, bakeBs)
-		require.NoError(t, err)
-		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
-
-		key := block.NewTipSetKey(notDecodableBlock.Cid())
-		chain0 := block.NewChainInfo(pid0, pid0, key, 0)
-		notDecodableLoader := simpleLoader([]format.Node{notDecodableBlock})
-		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, notDecodableBlock.Cid())
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bakeBs, syntax, fc, newFakePeerTracker(chain0))
-
-		done := doneAt(key)
-		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), fmt.Sprintf("fetched data (cid %s) was not a block", notDecodableBlock.Cid().String()))
-		require.Nil(t, ts)
-	})
-
 	t.Run("block returned with invalid syntax", func(t *testing.T) {
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
 		err = blockstoreutil.CopyBlockstore(ctx, genesisBs, bakeBs)
@@ -466,15 +431,15 @@ func TestGraphsyncFetcher(t *testing.T) {
 		blk := simpleBlock()
 		blk.Height = 1
 		blk.Timestamp = uint64(chainClock.StartTimeOfEpoch(blk.Height).Unix())
-		key := block.NewTipSetKey(blk.Cid())
-		chain0 := block.NewChainInfo(pid0, pid0, key, blk.Height)
+		ts, _ := block.NewTipSet(blk)
+		chain0 := block.NewChainInfo(pid0, pid0, ts)
 		invalidSyntaxLoader := simpleLoader([]format.Node{blk.ToNode()})
 		mgs.stubResponseWithLoader(pid0, layer1Selector, invalidSyntaxLoader, blk.Cid())
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bakeBs, syntax, fc, newFakePeerTracker(chain0))
-		done := doneAt(key)
-		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
+		done := doneAt(ts)
+		fetchedTs, err := fetcher.FetchTipSets(ctx, ts.Key(), pid0, done)
 		require.EqualError(t, err, fmt.Sprintf("invalid block %s: block %s has nil ticket", blk.Cid().String(), blk.Cid().String()))
-		require.Nil(t, ts)
+		require.Nil(t, fetchedTs)
 	})
 
 	t.Run("blocks present but messages don't decode", func(t *testing.T) {
@@ -490,8 +455,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 		blk := requireSimpleValidBlock(t, 3, addrGet())
 		blk.Messages = metaCid
 
-		key := block.NewTipSetKey(blk.Cid())
-		chain0 := block.NewChainInfo(pid0, pid0, key, blk.Height)
+		ts, _ := block.NewTipSet(blk)
+		chain0 := block.NewChainInfo(pid0, pid0, ts)
 		uMsg := types.NewMessageForTestGetter()()
 		nd, err := uMsg.ToNode()
 		require.NoError(t, err)
@@ -499,18 +464,16 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, blk.Cid())
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bakeBs, syntax, fc, newFakePeerTracker(chain0))
 
-		done := doneAt(key)
-		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
+		done := doneAt(ts)
+		fetchedTs, err := fetcher.FetchTipSets(ctx, ts.Key(), pid0, done)
 		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) could not be decoded as an AMT: cbor input had wrong number of fields", notDecodableBlock.Cid().String()))
-		require.Nil(t, ts)
+		require.Nil(t, fetchedTs)
 	})
 
 	t.Run("messages don't validate", func(t *testing.T) {
 		gen := builder.Genesis()
 		final := builder.BuildOn(gen, 1, withMessageEachBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
+		chain0 := block.NewChainInfo(pid0, pid0, final)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
 		err = blockstoreutil.CopyBlockstore(ctx, genesisBs, bakeBs)
@@ -522,7 +485,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 			validateMessagesError: fmt.Errorf("Everything Failed"),
 		}
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bakeBs, errorMv, fc, newFakePeerTracker(chain0))
-		done := doneAt(gen.Key())
+		done := doneAt(gen)
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		require.Nil(t, ts)
@@ -532,11 +495,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 	t.Run("hangup occurs during first layer fetch but recovers through fallback", func(t *testing.T) {
 		gen := builder.Genesis()
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
-		chain1 := block.NewChainInfo(pid1, pid1, final.Key(), height)
-		chain2 := block.NewChainInfo(pid2, pid2, final.Key(), height)
+		chain0 := block.NewChainInfo(pid0, pid0, final)
+		chain1 := block.NewChainInfo(pid1, pid1, final)
+		chain2 := block.NewChainInfo(pid2, pid2, final)
 		pt := newFakePeerTracker(chain0, chain1, chain2)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
@@ -551,7 +512,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid2, recursiveSelector(1), loader, final.At(0).Cid())
 
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bakeBs, syntax, fc, pt)
-		done := doneAt(gen.Key())
+		done := doneAt(gen)
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		require.NoError(t, err, "the request completes successfully")
@@ -565,11 +526,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 	t.Run("initial request hangs up and no other peers succeed", func(t *testing.T) {
 		gen := builder.Genesis()
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
-		chain1 := block.NewChainInfo(pid1, pid1, final.Key(), height)
-		chain2 := block.NewChainInfo(pid2, pid2, final.Key(), height)
+		chain0 := block.NewChainInfo(pid0, pid0, final)
+		chain1 := block.NewChainInfo(pid1, pid1, final)
+		chain2 := block.NewChainInfo(pid2, pid2, final)
 		pt := newFakePeerTracker(chain0, chain1, chain2)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
@@ -582,7 +541,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithHangupAfter(pid2, layer1Selector, loader, 0, final.At(1).Cid(), final.At(2).Cid())
 
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bakeBs, syntax, fc, pt)
-		done := doneAt(gen.Key())
+		done := doneAt(gen)
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 
 		mgs.verifyReceivedRequestCount(7)
@@ -594,11 +553,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 	t.Run("partial response hangs up during recursive fetch recovers at hang up point", func(t *testing.T) {
 		gen := builder.Genesis()
 		final := builder.BuildManyOn(5, gen, withMessageBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
-		chain1 := block.NewChainInfo(pid1, pid1, final.Key(), height)
-		chain2 := block.NewChainInfo(pid2, pid2, final.Key(), height)
+		chain0 := block.NewChainInfo(pid0, pid0, final)
+		chain1 := block.NewChainInfo(pid1, pid1, final)
+		chain2 := block.NewChainInfo(pid2, pid2, final)
 		pt := newFakePeerTracker(chain0, chain1, chain2)
 
 		blocks := make([]*block.Block, 4) // in fetch order
@@ -651,9 +608,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		multi := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		penultimate := builder.BuildManyOn(3, multi, withMessageBuilder)
 		final := builder.BuildOn(penultimate, 1, withMessageEachBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
+		chain0 := block.NewChainInfo(pid0, pid0, final)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
 		err = blockstoreutil.CopyBlockstore(ctx, genesisBs, bakeBs)
@@ -664,7 +619,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithHangupAfter(pid0, recursiveSelector(4), loader, 2*visitsPerBlock, penultimate.At(0).Cid())
 
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bakeBs, syntax, fc, newFakePeerTracker(chain0))
-		done := doneAt(gen.Key())
+		done := doneAt(gen)
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 
@@ -680,11 +635,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 		withMultiParent := builder.BuildOn(multi, 1, withMessageEachBuilder)
 		penultimate := builder.BuildManyOn(2, withMultiParent, withMessageBuilder)
 		final := builder.BuildOn(penultimate, 1, withMessageEachBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
-		chain1 := block.NewChainInfo(pid1, pid1, final.Key(), height)
-		chain2 := block.NewChainInfo(pid2, pid2, final.Key(), height)
+		chain0 := block.NewChainInfo(pid0, pid0, final)
+		chain1 := block.NewChainInfo(pid1, pid1, final)
+		chain2 := block.NewChainInfo(pid2, pid2, final)
 
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
 		err = blockstoreutil.CopyBlockstore(ctx, genesisBs, bakeBs)
@@ -696,7 +649,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid1, recursiveSelector(4), loader, withMultiParent.At(0).Cid())
 
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bakeBs, syntax, fc, newFakePeerTracker(chain0, chain1, chain2))
-		done := doneAt(gen.Key())
+		done := doneAt(gen)
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 
@@ -760,9 +713,9 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 		return s
 	}
 
-	doneAt := func(tsKey block.TipSetKey) func(*block.TipSet) (bool, error) {
+	doneAt := func(tsKey *block.TipSet) func(*block.TipSet) (bool, error) {
 		return func(ts *block.TipSet) (bool, error) {
-			if ts.Key().Equals(tsKey) {
+			if ts.Key().Equals(tsKey.Key()) {
 				return true, nil
 			}
 			return false, nil
@@ -793,9 +746,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 		err = blockstoreutil.CopyBlockstore(ctx, genesisBs, bakeBs)
 		require.NoError(t, err)
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
+		chain0 := block.NewChainInfo(pid0, pid0, final)
 
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		loader := successHeadersLoader(ctx, builder)
@@ -803,7 +754,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 		mgs.stubResponseWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
 
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bakeBs, syntax, fc, newFakePeerTracker(chain0))
-		done := doneAt(gen.Key())
+		done := doneAt(gen)
 
 		ts, err := fetcher.FetchTipSetHeaders(ctx, final.Key(), pid0, done)
 		require.NoError(t, err, "the request completes successfully")
@@ -824,8 +775,8 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 		require.NoError(t, err)
 		blk.Messages = metaCid
 		blk.Miner = types.NewForTestGetter()()
-		key := block.NewTipSetKey(blk.Cid())
-		chain0 := block.NewChainInfo(pid0, pid0, key, blk.Height)
+		ts, _ := block.NewTipSet(blk)
+		chain0 := block.NewChainInfo(pid0, pid0, ts)
 		uMsg := types.NewMessageForTestGetter()()
 		nd, err := uMsg.ToNode()
 		require.NoError(t, err)
@@ -833,12 +784,12 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, blk.Cid())
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bakeBs, syntax, fc, newFakePeerTracker(chain0))
 
-		done := doneAt(key)
-		ts, err := fetcher.FetchTipSetHeaders(ctx, key, pid0, done)
+		done := doneAt(ts)
+		fetchedTs, err := fetcher.FetchTipSetHeaders(ctx, ts.Key(), pid0, done)
 		assert.NoError(t, err)
-		require.Equal(t, 1, len(ts))
+		require.Equal(t, 1, len(fetchedTs))
 		assert.NoError(t, err)
-		assert.Equal(t, key, ts[0].Key())
+		assert.Equal(t, ts.Key(), fetchedTs[0].Key())
 	})
 }
 
@@ -902,7 +853,7 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 		MessageSyntaxValidator: msgV,
 	}
 	pt := discovery.NewPeerTracker(peer.ID(""))
-	pt.Track(block.NewChainInfo(host2.ID(), host2.ID(), block.TipSetKey{}, 0))
+	pt.Track(block.NewChainInfo(host2.ID(), host2.ID(), block.UndefTipSet))
 
 	localLoader := gsstoreutil.LoaderForBlockstore(bs)
 	localStorer := gsstoreutil.StorerForBlockstore(bs)
@@ -999,7 +950,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	}
 	fc := clock.NewFake(time.Now())
 	pt := discovery.NewPeerTracker(peer.ID(""))
-	pt.Track(block.NewChainInfo(host2.ID(), host2.ID(), block.TipSetKey{}, 0))
+	pt.Track(block.NewChainInfo(host2.ID(), host2.ID(), block.UndefTipSet))
 
 	localLoader := gsstoreutil.LoaderForBlockstore(bs)
 	localStorer := gsstoreutil.StorerForBlockstore(bs)

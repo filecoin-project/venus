@@ -17,7 +17,6 @@ import (
 
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 func TestPeerTrackerTracks(t *testing.T) {
@@ -29,10 +28,10 @@ func TestPeerTrackerTracks(t *testing.T) {
 	pid3 := th.RequireIntPeerID(t, 3)
 	pid7 := th.RequireIntPeerID(t, 7)
 
-	ci0 := block.NewChainInfo(pid0, pid0, block.NewTipSetKey(types.CidFromString(t, "somecid")), 6)
-	ci1 := block.NewChainInfo(pid1, pid1, block.NewTipSetKey(), 0)
-	ci3 := block.NewChainInfo(pid3, pid3, block.NewTipSetKey(), 0)
-	ci7 := block.NewChainInfo(pid7, pid7, block.NewTipSetKey(), 0)
+	ci0 := block.NewChainInfo(pid0, pid0, th.RequireTipsetWithHeight(t, 6))
+	ci1 := block.NewChainInfo(pid1, pid1, th.RequireTipsetWithHeight(t, 0))
+	ci3 := block.NewChainInfo(pid3, pid3, th.RequireTipsetWithHeight(t, 0))
+	ci7 := block.NewChainInfo(pid7, pid7, th.RequireTipsetWithHeight(t, 0))
 
 	tracker.Track(ci0)
 	tracker.Track(ci1)
@@ -55,10 +54,10 @@ func TestPeerTrackerSelectHead(t *testing.T) {
 	pid2 := th.RequireIntPeerID(t, 2)
 	pid3 := th.RequireIntPeerID(t, 3)
 
-	ci0 := block.NewChainInfo(pid0, pid0, block.NewTipSetKey(types.CidFromString(t, "somecid0")), 6)
-	ci1 := block.NewChainInfo(pid1, pid1, block.NewTipSetKey(types.CidFromString(t, "somecid1")), 10)
-	ci2 := block.NewChainInfo(pid2, pid2, block.NewTipSetKey(types.CidFromString(t, "somecid2")), 7)
-	ci3 := block.NewChainInfo(pid3, pid3, block.NewTipSetKey(types.CidFromString(t, "somecid3")), 9)
+	ci0 := block.NewChainInfo(pid0, pid0, th.RequireTipsetWithHeight(t, 6))
+	ci1 := block.NewChainInfo(pid1, pid1, th.RequireTipsetWithHeight(t, 10))
+	ci2 := block.NewChainInfo(pid2, pid2, th.RequireTipsetWithHeight(t, 7))
+	ci3 := block.NewChainInfo(pid3, pid3, th.RequireTipsetWithHeight(t, 9))
 
 	// trusting pid2 and pid3
 	tracker := discovery.NewPeerTracker(pid2, pid3)
@@ -82,10 +81,10 @@ func TestPeerTrackerRemove(t *testing.T) {
 	pid3 := th.RequireIntPeerID(t, 3)
 	pid7 := th.RequireIntPeerID(t, 7)
 
-	ci0 := block.NewChainInfo(pid0, pid0, block.NewTipSetKey(types.CidFromString(t, "somecid")), 6)
-	ci1 := block.NewChainInfo(pid1, pid1, block.NewTipSetKey(), 0)
-	ci3 := block.NewChainInfo(pid3, pid3, block.NewTipSetKey(), 0)
-	ci7 := block.NewChainInfo(pid7, pid7, block.NewTipSetKey(), 0)
+	ci0 := block.NewChainInfo(pid0, pid0, th.RequireTipsetWithHeight(t, 6))
+	ci1 := block.NewChainInfo(pid1, pid1, th.RequireTipsetWithHeight(t, 0))
+	ci3 := block.NewChainInfo(pid3, pid3, th.RequireTipsetWithHeight(t, 0))
+	ci7 := block.NewChainInfo(pid7, pid7, th.RequireTipsetWithHeight(t, 0))
 
 	tracker.Track(ci0)
 	tracker.Track(ci1)
@@ -120,8 +119,8 @@ func TestPeerTrackerNetworkDisconnect(t *testing.T) {
 	bID := b.ID()
 	cID := c.ID()
 
-	aCI := block.NewChainInfo(aID, aID, block.NewTipSetKey(), 0)
-	bCI := block.NewChainInfo(bID, bID, block.NewTipSetKey(), 0)
+	aCI := block.NewChainInfo(aID, aID, th.RequireTipsetWithHeight(t, 0))
+	bCI := block.NewChainInfo(bID, bID, th.RequireTipsetWithHeight(t, 0))
 
 	// self is the tracking node
 	// self tracks peers a and b

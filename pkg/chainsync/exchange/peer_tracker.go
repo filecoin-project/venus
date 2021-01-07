@@ -143,7 +143,7 @@ func (bpt *bsPeerTracker) logSuccess(p peer.ID, dur time.Duration, reqSize uint6
 	var pi *peerStats
 	var ok bool
 	if pi, ok = bpt.peers[p]; !ok {
-		log.Warnw("log success called on peer not in tracker", "peerid", p.String())
+		log.Debugf("log success called on peer not in tracker", "peerid", p.String())
 		return
 	}
 

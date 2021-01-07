@@ -1,7 +1,8 @@
-package node
+package test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"math/rand"
@@ -61,9 +62,9 @@ func (cs *ChainSeed) GenesisInitFunc(cst cbor.IpldStore, bs blockstore.Blockstor
 }
 
 // GiveKey gives the given key to the given node
-func (cs *ChainSeed) GiveKey(t *testing.T, nd *Node, key int) address.Address {
+func (cs *ChainSeed) GiveKey(t *testing.T, nd *node.Node, key int) address.Address {
 	t.Helper()
-	bcks := nd.wallet.Wallet.Backends(wallet.DSBackendType)
+	bcks := nd.Wallet().Wallet.Backends(wallet.DSBackendType)
 	require.Len(t, bcks, 1, "expected to get exactly one datastore backend")
 
 	dsb := bcks[0].(*wallet.DSBackend)
@@ -77,12 +78,12 @@ func (cs *ChainSeed) GiveKey(t *testing.T, nd *Node, key int) address.Address {
 }
 
 // GiveMiner gives the specified miner to the node. Returns the address and the owner addresss
-func (cs *ChainSeed) GiveMiner(t *testing.T, nd *Node, which int) (address.Address, address.Address) {
+func (cs *ChainSeed) GiveMiner(t *testing.T, nd *node.Node, which int) (address.Address, address.Address) {
 	t.Helper()
-	cfg := nd.repo.Config()
+	cfg := nd.Repo().Config()
 	m := cs.info.Miners[which]
 
-	require.NoError(t, nd.repo.ReplaceConfig(cfg))
+	require.NoError(t, nd.Repo().ReplaceConfig(cfg))
 
 	ownerAddr, err := cs.info.Keys[m.Owner].Address()
 	require.NoError(t, err)
@@ -103,21 +104,18 @@ func (cs *ChainSeed) Addr(t *testing.T, key int) address.Address {
 	return a
 }
 
-// ConfigOpt mutates a node config post initialization
-type ConfigOpt func(*config.Config)
-
 // MinerInitOpt is a node init option that imports the key for the miner's owner
-func (cs *ChainSeed) MinerInitOpt(which int) InitOpt {
+func (cs *ChainSeed) MinerInitOpt(which int) node.InitOpt {
 	kwhich := cs.info.Miners[which].Owner
 	kinfo := cs.info.Keys[kwhich]
-	return ImportKeyOpt(kinfo)
+	return node.ImportKeyOpt(kinfo)
 }
 
 // KeyInitOpt is a node init option that imports one of the chain seed's
 // keys to a node's wallet
-func (cs *ChainSeed) KeyInitOpt(which int) InitOpt {
+func (cs *ChainSeed) KeyInitOpt(which int) node.InitOpt {
 	kinfo := cs.info.Keys[which]
-	return ImportKeyOpt(kinfo)
+	return node.ImportKeyOpt(kinfo)
 }
 
 // FixtureChainSeed returns the genesis function that
@@ -126,35 +124,35 @@ func FixtureChainSeed(t *testing.T) *ChainSeed {
 }
 
 // DefaultAddressConfigOpt is a node config option setting the default address
-func DefaultAddressConfigOpt(addr address.Address) ConfigOpt {
+func DefaultAddressConfigOpt(addr address.Address) node.ConfigOpt {
 	return func(cfg *config.Config) {
 		cfg.Wallet.DefaultAddress = addr
 	}
 }
 
 // ConnectNodes connects two nodes together
-func ConnectNodes(t *testing.T, a, b *Node) {
+func ConnectNodes(t *testing.T, a, b *node.Node) {
 	t.Helper()
 	pi := peer.AddrInfo{
-		ID:    b.network.Host.ID(),
-		Addrs: b.network.Host.Addrs(),
+		ID:    b.Network().Host.ID(),
+		Addrs: b.Network().Host.Addrs(),
 	}
 
-	err := a.network.Host.Connect(context.TODO(), pi)
+	err := a.Network().Host.Connect(context.TODO(), pi)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 // FakeProofVerifierBuilderOpts returns default configuration for testing
-func FakeProofVerifierBuilderOpts() []BuilderOpt {
-	return []BuilderOpt{
-		VerifierConfigOption(&ffiwrapper.FakeVerifier{}),
+func FakeProofVerifierBuilderOpts() []node.BuilderOpt {
+	return []node.BuilderOpt{
+		node.VerifierConfigOption(&ffiwrapper.FakeVerifier{}),
 	}
 }
 
 // StartNodes starts some nodes, failing on any error.
-func StartNodes(t *testing.T, nds []*Node) {
+func StartNodes(t *testing.T, nds []*node.Node) {
 	t.Helper()
 	for _, nd := range nds {
 		if err := nd.Start(context.Background()); err != nil {
@@ -164,7 +162,7 @@ func StartNodes(t *testing.T, nds []*Node) {
 }
 
 // StopNodes initiates shutdown of some nodes.
-func StopNodes(nds []*Node) {
+func StopNodes(nds []*node.Node) {
 	for _, nd := range nds {
 		nd.Stop(context.Background())
 	}

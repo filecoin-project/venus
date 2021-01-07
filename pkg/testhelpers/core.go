@@ -3,6 +3,11 @@ package testhelpers
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/go-state-types/abi"
+	fbig "github.com/filecoin-project/go-state-types/big"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/venus/pkg/block"
+	"math/rand"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -58,4 +63,39 @@ func (v *MockMessagePoolValidator) ValidateSignedMessageSyntax(ctx context.Conte
 		return nil
 	}
 	return errors.New("mock validation error")
+}
+
+// RequireTipset is a helper that constructs a tipset
+func RequireTipset(t *testing.T) *block.TipSet {
+	return RequireTipsetWithHeight(t, abi.ChainEpoch(rand.Int()))
+}
+
+func RequireTipsetWithHeight(t *testing.T, height abi.ChainEpoch) *block.TipSet {
+	newAddress := types.NewForTestGetter()
+	blk := &block.Block{
+		Miner:         newAddress(),
+		Ticket:        block.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
+		ElectionProof: &block.ElectionProof{VRFProof: []byte{0x0c, 0x0d}},
+		BeaconEntries: []*block.BeaconEntry{
+			{
+				Round: 44,
+				Data:  []byte{0xc0},
+			},
+		},
+		Height:                height,
+		Messages:              types.CidFromString(t, "someothercid"),
+		ParentMessageReceipts: types.CidFromString(t, "someothercid"),
+		Parents:               block.NewTipSetKey(types.CidFromString(t, "someothercid")),
+		ParentWeight:          fbig.NewInt(1),
+		ForkSignaling:         2,
+		ParentStateRoot:       types.CidFromString(t, "someothercid"),
+		Timestamp:             4,
+		ParentBaseFee:         abi.NewTokenAmount(20),
+		BlockSig: &acrypto.Signature{
+			Type: acrypto.SigTypeBLS,
+			Data: []byte{0x4},
+		},
+	}
+	b, _ := block.NewTipSet(blk)
+	return b
 }

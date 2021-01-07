@@ -2,7 +2,6 @@ package discovery_test
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -32,7 +30,7 @@ type mockHelloCallback struct {
 }
 
 func (msb *mockHelloCallback) HelloCallback(ci *block.ChainInfo) {
-	msb.Called(ci.Sender, ci.Head, ci.Height)
+	msb.Called(ci.Sender, ci.Head.Key())
 }
 
 type mockHeaviestGetter struct {
@@ -49,20 +47,19 @@ func TestHelloHandshake(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	addrGetter := types.NewForTestGetter()
-	minerAddr := addrGetter()
-	mockCid := types.CidFromString(t, "mock")
-
 	mn, err := mocknet.WithNPeers(ctx, 2)
 	require.NoError(t, err)
 
 	a := mn.Hosts()[0]
 	b := mn.Hosts()[1]
 
-	genesisA := &block.Block{Miner: minerAddr, Messages: mockCid, ParentStateRoot: mockCid, ParentMessageReceipts: mockCid}
+	builder := chain.NewBuilder(t, address.Undef)
 
-	heavy1 := block.RequireNewTipSet(t, &block.Block{Miner: minerAddr, Messages: mockCid, ParentStateRoot: mockCid, ParentMessageReceipts: mockCid, Height: 2, Ticket: block.Ticket{VRFProof: []byte{0}}})
-	heavy2 := block.RequireNewTipSet(t, &block.Block{Miner: minerAddr, Messages: mockCid, ParentStateRoot: mockCid, ParentMessageReceipts: mockCid, Height: 3, Ticket: block.Ticket{VRFProof: []byte{1}}})
+	genesisA := builder.Genesis()
+	store := builder.Store()
+	mstore := builder.Mstore()
+	heavy1 := builder.AppendOn(genesisA, 1)
+	heavy2 := builder.AppendOn(heavy1, 1)
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -71,11 +68,11 @@ func TestHelloHandshake(t *testing.T) {
 	aPeerMgr, err := mockPeerMgr(ctx, t, a)
 	require.NoError(t, err)
 
-	discovery.NewHelloProtocolHandler(a, aPeerMgr, genesisA.Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
-	discovery.NewHelloProtocolHandler(b, aPeerMgr, genesisA.Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
+	discovery.NewHelloProtocolHandler(a, aPeerMgr, nil, store, mstore, genesisA.Blocks()[0].Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
+	discovery.NewHelloProtocolHandler(b, aPeerMgr, nil, store, mstore, genesisA.Blocks()[0].Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
 
-	msc1.On("HelloCallback", b.ID(), heavy2.Key(), abi.ChainEpoch(3)).Return()
-	msc2.On("HelloCallback", a.ID(), heavy1.Key(), abi.ChainEpoch(2)).Return()
+	msc1.On("HelloCallback", b.ID(), heavy2.Key()).Return()
+	msc2.On("HelloCallback", a.ID(), heavy1.Key()).Return()
 
 	require.NoError(t, mn.LinkAll())
 	require.NoError(t, mn.ConnectAllButSelf())
@@ -113,20 +110,18 @@ func TestHelloBadGenesis(t *testing.T) {
 	mn, err := mocknet.WithNPeers(ctx, 2)
 	assert.NoError(t, err)
 
-	addrGetter := types.NewForTestGetter()
-	minerAddr := addrGetter()
-	mockCid := types.CidFromString(t, "mock")
-
 	a := mn.Hosts()[0]
 	b := mn.Hosts()[1]
 
 	builder := chain.NewBuilder(t, address.Undef)
+	store := builder.Store()
+	mstore := builder.Mstore()
 
-	genesisA := builder.AppendBlockOn(block.UndefTipSet)
-	genesisB := builder.AppendBlockOn(block.UndefTipSet)
+	genesisA := builder.AppendOn(block.UndefTipSet, 1)
+	genesisB := builder.AppendOn(block.UndefTipSet, 1)
 
-	heavy1 := block.RequireNewTipSet(t, &block.Block{Miner: minerAddr, Messages: mockCid, ParentStateRoot: mockCid, ParentMessageReceipts: mockCid, Height: 2, Ticket: block.Ticket{VRFProof: []byte{0}}})
-	heavy2 := block.RequireNewTipSet(t, &block.Block{Miner: minerAddr, Messages: mockCid, ParentStateRoot: mockCid, ParentMessageReceipts: mockCid, Height: 3, Ticket: block.Ticket{VRFProof: []byte{1}}})
+	heavy1 := builder.AppendOn(genesisA, 1)
+	heavy2 := builder.AppendOn(heavy1, 1)
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -135,8 +130,8 @@ func TestHelloBadGenesis(t *testing.T) {
 	peerMgr, err := mockPeerMgr(ctx, t, a)
 	require.NoError(t, err)
 
-	discovery.NewHelloProtocolHandler(a, peerMgr, genesisA.Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
-	discovery.NewHelloProtocolHandler(b, peerMgr, genesisB.Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
+	discovery.NewHelloProtocolHandler(a, peerMgr, nil, store, mstore, genesisA.Blocks()[0].Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
+	discovery.NewHelloProtocolHandler(b, peerMgr, nil, store, mstore, genesisB.Blocks()[0].Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
 
 	msc1.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 	msc2.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
@@ -163,6 +158,8 @@ func TestHelloMultiBlock(t *testing.T) {
 	b := mn.Hosts()[1]
 
 	builder := chain.NewBuilder(t, address.Undef)
+	store := builder.Store()
+	mstore := builder.Mstore()
 
 	genesisTipset := builder.Genesis()
 	assert.Equal(t, 1, genesisTipset.Len())
@@ -178,11 +175,11 @@ func TestHelloMultiBlock(t *testing.T) {
 	peerMgr, err := mockPeerMgr(ctx, t, a)
 	require.NoError(t, err)
 
-	discovery.NewHelloProtocolHandler(a, peerMgr, genesisTipset.At(0).Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
-	discovery.NewHelloProtocolHandler(b, peerMgr, genesisTipset.At(0).Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
+	discovery.NewHelloProtocolHandler(a, peerMgr, nil, store, mstore, genesisTipset.At(0).Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
+	discovery.NewHelloProtocolHandler(b, peerMgr, nil, store, mstore, genesisTipset.At(0).Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
 
-	msc1.On("HelloCallback", b.ID(), heavy2.Key(), abi.ChainEpoch(3)).Return()
-	msc2.On("HelloCallback", a.ID(), heavy1.Key(), abi.ChainEpoch(2)).Return()
+	msc1.On("HelloCallback", b.ID(), heavy2.Key()).Return()
+	msc2.On("HelloCallback", a.ID(), heavy1.Key()).Return()
 
 	assert.NoError(t, mn.LinkAll())
 	assert.NoError(t, mn.ConnectAllButSelf())

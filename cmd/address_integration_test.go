@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/node/test"
 	"github.com/filecoin-project/venus/cmd"
 	"github.com/filecoin-project/venus/fixtures/fortest"
@@ -47,7 +46,7 @@ func TestWalletBalance(t *testing.T) {
 	ctx := context.Background()
 
 	builder := test.NewNodeBuilder(t)
-	cs := node.FixtureChainSeed(t)
+	cs := test.FixtureChainSeed(t)
 	builder.WithGenesisInit(cs.GenesisInitFunc)
 
 	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
@@ -76,7 +75,7 @@ func TestWalletLoadFromFile(t *testing.T) {
 	ctx := context.Background()
 
 	builder := test.NewNodeBuilder(t)
-	cs := node.FixtureChainSeed(t)
+	cs := test.FixtureChainSeed(t)
 	builder.WithGenesisInit(cs.GenesisInitFunc)
 
 	_, cmdClient, done := builder.BuildAndStartAPI(ctx)

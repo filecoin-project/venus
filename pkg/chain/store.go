@@ -3,6 +3,8 @@ package chain
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/pkg/specactors/policy"
+	"github.com/filecoin-project/venus/pkg/util"
 	"io"
 	"os"
 	"runtime/debug"
@@ -38,9 +40,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/verifreg"
-	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/util"
 	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
@@ -80,32 +80,9 @@ type HeadChange struct {
 // CheckPoint is the key which the check-point written in the datastore.
 var CheckPoint = datastore.NewKey("/chain/checkPoint")
 
-type ipldSource struct {
-	// cst is a store allowing access
-	// (un)marshalling and interop with go-ipld-hamt.
-	cborStore cbor.IpldStore
-}
-
 type TsState struct {
 	StateRoot cid.Cid
 	Reciepts  cid.Cid
-}
-
-func newSource(cst cbor.IpldStore) *ipldSource {
-	return &ipldSource{
-		cborStore: cst,
-	}
-}
-
-// GetBlock retrieves a filecoin block by cid from the IPLD store.
-func (source *ipldSource) GetBlock(ctx context.Context, c cid.Cid) (*block.Block, error) {
-	var block block.Block
-
-	err := source.cborStore.Get(ctx, c, &block)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get block %s", c.String())
-	}
-	return &block, nil
 }
 
 // Store is a generic implementation of the Store interface.
@@ -113,7 +90,7 @@ func (source *ipldSource) GetBlock(ctx context.Context, c cid.Cid) (*block.Block
 type Store struct {
 	// ipldSource is a wrapper around ipld storage.  It is used
 	// for reading filecoin block and state objects kept by the node.
-	stateAndBlockSource *ipldSource
+	stateAndBlockSource cbor.IpldStore
 
 	bsstore blockstore.Blockstore
 
@@ -165,11 +142,10 @@ func NewStore(ds repo.Datastore,
 	forkConfig *config.ForkUpgradeConfig,
 	genesisCid cid.Cid,
 ) *Store {
-	ipldSource := newSource(cst)
 	cacheDs := NewCacheDs(ds, true)
 	tsCache, _ := lru.NewARC(10000)
 	store := &Store{
-		stateAndBlockSource: ipldSource,
+		stateAndBlockSource: cst,
 		ds:                  cacheDs,
 		bsstore:             bsstore,
 		headEvents:          pubsub.New(64),
@@ -221,7 +197,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		return err
 	}
 
-	headTs, err := LoadTipSetBlocks(ctx, store.stateAndBlockSource, headTsKey)
+	headTs, err := LoadTipSetBlocks(ctx, store, headTsKey)
 	if err != nil {
 		return errors.Wrap(err, "error loading head tipset")
 	}
@@ -232,7 +208,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 
 	// Provide tipsets directly from the block store, not from the tipset index which is
 	// being rebuilt by this traversal.
-	tipsetProvider := TipSetProviderFromBlocks(ctx, store.stateAndBlockSource)
+	tipsetProvider := TipSetProviderFromBlocks(ctx, store)
 	for iterator := IterAncestors(ctx, tipsetProvider, headTs); !iterator.Complete(); err = iterator.Next() {
 		if err != nil {
 			return err
@@ -327,8 +303,18 @@ func (store *Store) PutTipSetMetadata(ctx context.Context, tsm *TipSetMetadata) 
 }
 
 // GetBlock returns the block identified by `cid`.
-func (store *Store) GetBlock(blockID cid.Cid) (*block.Block, error) {
-	return store.stateAndBlockSource.GetBlock(context.TODO(), blockID)
+func (store *Store) GetBlock(ctx context.Context, blockID cid.Cid) (*block.Block, error) {
+	var block block.Block
+	err := store.stateAndBlockSource.Get(ctx, blockID, &block)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get block %s", blockID.String())
+	}
+	return &block, nil
+}
+
+// GetBlock returns the block identified by `cid`.
+func (store *Store) PutObject(ctx context.Context, obj interface{}) (cid.Cid, error) {
+	return store.stateAndBlockSource.Put(ctx, obj)
 }
 
 // GetTipSet returns the tipset identified by `key`.
@@ -343,7 +329,7 @@ func (store *Store) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	}
 
 	for _, id := range key.Cids() {
-		blk, err := store.stateAndBlockSource.GetBlock(context.TODO(), id)
+		blk, err := store.GetBlock(context.TODO(), id)
 
 		if err != nil {
 			return nil, err
@@ -397,12 +383,12 @@ func (store *Store) GetTipSetState(ctx context.Context, ts *block.TipSet) (state
 	if err != nil {
 		return nil, err
 	}
-	return state.LoadState(ctx, store.stateAndBlockSource.cborStore, stateCid)
+	return state.LoadState(ctx, store.stateAndBlockSource, stateCid)
 }
 
 // GetGenesisBlock returns the genesis block held by the chain store.
 func (store *Store) GetGenesisBlock(ctx context.Context) (*block.Block, error) {
-	return store.stateAndBlockSource.GetBlock(ctx, store.GenesisCid())
+	return store.GetBlock(ctx, store.GenesisCid())
 }
 
 // GetTipSetStateRoot returns the aggregate state root CID of the tipset identified by `key`.
@@ -493,7 +479,7 @@ func (store *Store) HasSiblingState(ts *block.TipSet) bool {
 
 // SetHead sets the passed in tipset as the new head of this chain.
 func (store *Store) SetHead(ctx context.Context, newTs *block.TipSet) error {
-	log.Infof("SetHead %s", newTs.String())
+	log.Infof("SetHead %s %d", newTs.String(), newTs.EnsureHeight())
 
 	// Add logging to debug sporadic test failure.
 	if !newTs.Defined() {
@@ -671,7 +657,7 @@ func (store *Store) SubscribeHeadChanges(f ReorgNotifee) {
 
 // ReadOnlyStateStore provides a read-only IPLD store for access to chain state.
 func (store *Store) ReadOnlyStateStore() util.ReadOnlyIpldStore {
-	return util.ReadOnlyIpldStore{IpldStore: store.stateAndBlockSource.cborStore}
+	return util.ReadOnlyIpldStore{IpldStore: store.stateAndBlockSource}
 }
 
 // writeHead writes the given cid set as head to disk.
@@ -743,7 +729,7 @@ func (store *Store) GenesisCid() cid.Cid {
 }
 
 func (store *Store) GenesisRootCid() cid.Cid {
-	genesis, _ := store.stateAndBlockSource.GetBlock(context.TODO(), store.GenesisCid())
+	genesis, _ := store.GetBlock(context.TODO(), store.GenesisCid())
 	return genesis.ParentStateRoot
 }
 
@@ -830,7 +816,7 @@ func (store *Store) StateCirculatingSupply(ctx context.Context, tsk block.TipSet
 		return abi.TokenAmount{}, err
 	}
 
-	sTree, err := state.LoadState(ctx, store.stateAndBlockSource.cborStore, root)
+	sTree, err := state.LoadState(ctx, store.stateAndBlockSource, root)
 	if err != nil {
 		return abi.TokenAmount{}, err
 	}
@@ -839,7 +825,7 @@ func (store *Store) StateCirculatingSupply(ctx context.Context, tsk block.TipSet
 }
 
 func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st state.Tree) (abi.TokenAmount, error) {
-	adtStore := adt.WrapStore(ctx, store.stateAndBlockSource.cborStore)
+	adtStore := adt.WrapStore(ctx, store.stateAndBlockSource)
 	circ := big.Zero()
 	unCirc := big.Zero()
 	err := st.ForEach(func(a address.Address, actor *types.Actor) error {
@@ -977,12 +963,6 @@ func ReorgOps(lts func(block.TipSetKey) (*block.TipSet, error), a, b *block.TipS
 
 func (store *Store) PutMessage(m storable) (cid.Cid, error) {
 	return PutMessage(store.bsstore, m)
-}
-
-func (store *Store) PutTipset(ctx context.Context, ts *block.TipSet) error {
-	_, err := store.stateAndBlockSource.cborStore.Put(ctx, ts)
-
-	return err
 }
 
 func (cs *Store) Blockstore() blockstore.Blockstore { // nolint

@@ -2,11 +2,9 @@ package status
 
 import (
 	"fmt"
-	"sync"
-
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/block"
 	logging "github.com/ipfs/go-log/v2"
+	"sync"
 )
 
 // Reporter defines an interface to updating and reporting the status of the blockchain.
@@ -18,9 +16,7 @@ type Reporter interface {
 // Status defines a structure used to represent the state of a chain store and syncer.
 type Status struct {
 	// They head of the chain currently being fetched/validated, or undef if none.
-	SyncingHead block.TipSetKey
-	// The height of SyncingHead.
-	SyncingHeight abi.ChainEpoch
+	SyncingHead *block.TipSet
 	// Whether SyncingTip is trusted as a head far away from the validated head.
 	SyncingTrusted bool
 	// Unix time at which syncing of chain at SyncingHead began, zero if valdation hasn't started.
@@ -31,9 +27,7 @@ type Status struct {
 	SyncingFetchComplete bool
 
 	// The key of the tipset currently being fetched
-	FetchingHead block.TipSetKey
-	// The height of FetchingHead
-	FetchingHeight abi.ChainEpoch
+	FetchingHead *block.TipSet
 }
 
 type reporter struct {
@@ -56,14 +50,12 @@ func NewReporter() Reporter {
 // NewDefaultChainStatus returns a ChainStaus with the default empty values.
 func NewDefaultChainStatus() *Status {
 	return &Status{
-		SyncingHead:          block.TipSetKey{},
-		SyncingHeight:        0,
+		SyncingHead:          block.UndefTipSet,
 		SyncingTrusted:       false,
 		SyncingStarted:       0,
 		SyncingComplete:      true,
 		SyncingFetchComplete: true,
-		FetchingHead:         block.TipSetKey{},
-		FetchingHeight:       0,
+		FetchingHead:         block.UndefTipSet,
 	}
 }
 
@@ -71,8 +63,13 @@ func NewDefaultChainStatus() *Status {
 func (s Status) String() string {
 	return fmt.Sprintf("syncingStarted=%d, syncingHead=%s, syncingHeight=%d, syncingTrusted=%t, syncingComplete=%t syncingFetchComplete=%t fetchingHead=%s, fetchingHeight=%d",
 		s.SyncingStarted,
-		s.SyncingHead, s.SyncingHeight, s.SyncingTrusted, s.SyncingComplete, s.SyncingFetchComplete,
-		s.FetchingHead, s.FetchingHeight)
+		s.SyncingHead.Key(),
+		s.SyncingHead.EnsureHeight(),
+		s.SyncingTrusted,
+		s.SyncingComplete,
+		s.SyncingFetchComplete,
+		s.FetchingHead.Key(),
+		s.FetchingHead.EnsureHeight())
 }
 
 // UpdateStatus updates the status heald by StatusReporter.
@@ -95,16 +92,9 @@ func (sr *reporter) Status() Status {
 //
 
 // SyncHead updates the head.
-func SyncHead(u block.TipSetKey) UpdateFn {
+func SyncHead(u *block.TipSet) UpdateFn {
 	return func(s *Status) {
 		s.SyncingHead = u
-	}
-}
-
-// SyncHeight updates the head.
-func SyncHeight(u abi.ChainEpoch) UpdateFn {
-	return func(s *Status) {
-		s.SyncingHeight = u
 	}
 }
 
@@ -141,15 +131,8 @@ func SyncFetchComplete(u bool) UpdateFn {
 //
 
 // FetchHead gets the the head.
-func FetchHead(u block.TipSetKey) UpdateFn {
+func FetchHead(u *block.TipSet) UpdateFn {
 	return func(s *Status) {
 		s.FetchingHead = u
-	}
-}
-
-// FetchHeight gets the height.
-func FetchHeight(u abi.ChainEpoch) UpdateFn {
-	return func(s *Status) {
-		s.FetchingHeight = u
 	}
 }

@@ -8,11 +8,9 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
-	"github.com/libp2p/go-libp2p-core/peer"
-
-	"github.com/filecoin-project/venus/pkg/block"
 )
 
 var chainCmd = &cmds.Command{
@@ -25,7 +23,6 @@ var chainCmd = &cmds.Command{
 		"ls":       storeLsCmd,
 		"status":   storeStatusCmd,
 		"set-head": storeSetHeadCmd,
-		"sync":     storeSyncCmd,
 	},
 }
 
@@ -103,17 +100,48 @@ var storeLsCmd = &cmds.Command{
 	Type: []block.Block{},
 }
 
+type SyncTarget struct {
+	TargetTs block.TipSetKey
+	Height   abi.ChainEpoch
+	State    string
+}
+
+type SyncStatus struct {
+	Target []SyncTarget
+}
+
 var storeStatusCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Show status of chain sync operation.",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		syncStatus := env.(*node.Env).SyncerAPI.SyncerStatus()
+		syncStatus := &SyncStatus{}
+		//TODO give each target a status
+		//syncStatus.Status = env.(*node.Env).SyncerAPI.SyncerStatus()
+		targets := env.(*node.Env).SyncerAPI.SyncerTracker().Buckets()
+		for _, t := range targets {
+			if t.InSyncing {
+				syncStatus.Target = append(syncStatus.Target, SyncTarget{
+					TargetTs: t.Head.Key(),
+					Height:   t.Head.EnsureHeight(),
+					State:    "Syncing",
+				})
+			} else {
+				syncStatus.Target = append(syncStatus.Target, SyncTarget{
+					TargetTs: t.Head.Key(),
+					Height:   t.Head.EnsureHeight(),
+					State:    "Wait",
+				})
+			}
+
+		}
+
 		if err := re.Emit(syncStatus); err != nil {
 			return err
 		}
 		return nil
 	},
+	Type: SyncStatus{},
 }
 
 var storeSetHeadCmd = &cmds.Command{
@@ -130,37 +158,6 @@ var storeSetHeadCmd = &cmds.Command{
 		}
 		maybeNewHead := block.NewTipSetKey(headCids...)
 		return env.(*node.Env).ChainAPI.ChainSetHead(req.Context, maybeNewHead)
-	},
-}
-
-var storeSyncCmd = &cmds.Command{
-	Helptext: cmds.HelpText{
-		Tagline: "Instruct the chain syncer to sync a specific chain head, going to network if required.",
-	},
-	Arguments: []cmds.Argument{
-		cmds.StringArg("peerid", true, false, "Base58-encoded libp2p peer ID to sync from"),
-		cmds.StringArg("cids", true, true, "CID's of the blocks of the tipset to sync."),
-	},
-	Options: []cmds.Option{},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		syncPid, err := peer.Decode(req.Arguments[0])
-		if err != nil {
-			return err
-		}
-
-		syncCids, err := cidsFromSlice(req.Arguments[1:])
-		if err != nil {
-			return err
-		}
-
-		syncKey := block.NewTipSetKey(syncCids...)
-		ci := &block.ChainInfo{
-			Source: syncPid,
-			Sender: syncPid,
-			Height: 0, // only checked when trusted is false.
-			Head:   syncKey,
-		}
-		return env.(*node.Env).SyncerAPI.ChainSyncHandleNewTipSet(ci)
 	},
 }
 

@@ -175,7 +175,7 @@ func (mp *MessagePoolSubmodule) Start(ctx context.Context) error {
 			if err := mp.handleIncomingMessage(ctx, received); err != nil {
 				handlerName := runtime.FuncForPC(reflect.ValueOf(mp.handleIncomingMessage).Pointer()).Name()
 				if err != context.Canceled {
-					log.Errorf("error in handler %s for topic %s: %s", handlerName, mp.MessageSub.Topic(), err)
+					log.Debugf("error in handler %s for topic %s: %s", handlerName, mp.MessageSub.Topic(), err)
 				}
 			}
 		}

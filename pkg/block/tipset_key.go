@@ -163,7 +163,7 @@ func (tipsetKey TipSetKey) MarshalCBOR(w io.Writer) error {
 // We can assume that the relative order of members of one key is
 // maintained in the other since we assume that all ids are sorted
 // by corresponding block ticket value.
-func (tipsetKey *TipSetKey) ContainsAll(other TipSetKey) bool {
+func (tipsetKey TipSetKey) ContainsAll(other TipSetKey) bool {
 	// Since we assume the ids must have the same relative sorting we can
 	// perform one pass over this set, advancing the other index whenever the
 	// values match.
