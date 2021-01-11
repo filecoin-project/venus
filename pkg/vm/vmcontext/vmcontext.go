@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"reflect"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -368,17 +369,17 @@ func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 	if !found {
 		return nil, fmt.Errorf("implicit message `From` field actor not found, addr: %s", imsg.From)
 	}
-	originatorIsAccount := builtin.IsAccountActor(fromActor.Code)
+	//originatorIsAccount := builtin.IsAccountActor(fromActor.Code)
 
 	// 2. increment seq number (only for account actors).
 	// The account actor distinction only makes a difference for genesis stateView construction via messages, where
 	// some messages are sent From non-account actors (e.g. fund transfers From the reward actor).
-	if originatorIsAccount {
-		fromActor.IncrementSeqNum()
-		if err := vm.State.SetActor(vm.context, imsg.From, fromActor); err != nil {
-			return nil, err
-		}
-	}
+	//if originatorIsAccount {
+	//	fromActor.IncrementSeqNum()
+	//	if err := vm.State.SetActor(vm.context, imsg.From, fromActor); err != nil {
+	//		return nil, err
+	//	}
+	//}
 
 	// 3. build context
 	topLevel := topLevelContext{
@@ -417,6 +418,41 @@ func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 func (vm *VM) ApplyMessage(msg types.ChainMsg) *Ret {
 	ret := vm.applyMessage(msg.VMMessage(), msg.ChainLength())
 	return ret
+}
+
+// MutateState usage: MutateState(ctx, idAddr, func(cst cbor.IpldStore, st *ActorStateType) error {...})
+func (vm *VM) MutateState(ctx context.Context, addr address.Address, fn interface{}) error {
+	act, find, err := vm.State.GetActor(ctx, addr)
+	if err != nil {
+		return xerrors.Errorf("actor not found: %w", err)
+	}
+
+	if !find {
+		return xerrors.New("actor not found")
+	}
+
+	st := reflect.New(reflect.TypeOf(fn).In(1).Elem())
+	if err := vm.store.Get(ctx, act.Head, st.Interface()); err != nil {
+		return xerrors.Errorf("read actor head: %w", err)
+	}
+
+	out := reflect.ValueOf(fn).Call([]reflect.Value{reflect.ValueOf(vm.store), st})
+	if !out[0].IsNil() && out[0].Interface().(error) != nil {
+		return out[0].Interface().(error)
+	}
+
+	head, err := vm.store.Put(ctx, st.Interface())
+	if err != nil {
+		return xerrors.Errorf("put new actor head: %w", err)
+	}
+
+	act.Head = head
+
+	if err := vm.State.SetActor(ctx, addr, act); err != nil {
+		return xerrors.Errorf("set actor: %w", err)
+	}
+
+	return nil
 }
 
 // applyMessage applies the message To the current stateView.

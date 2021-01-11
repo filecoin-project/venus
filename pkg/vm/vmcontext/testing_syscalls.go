@@ -33,6 +33,10 @@ func (f FakeSyscalls) VerifySeal(ctx context.Context, info proof.SealVerifyInfo)
 	panic("implement me")
 }
 
+func (f FakeSyscalls) BatchVerifySeals(ctx context.Context, vis map[address.Address][]proof.SealVerifyInfo) (map[address.Address][]bool, error) {
+	panic("implement me")
+}
+
 func (f FakeSyscalls) VerifyWinningPoSt(ctx context.Context, info proof.WinningPoStVerifyInfo) error {
 	panic("implement me")
 }

@@ -4,21 +4,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strconv"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/messagepool"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"golang.org/x/xerrors"
 	stdbig "math/big"
-	"sort"
-	"strconv"
+
+	"github.com/filecoin-project/venus/app/node"
+	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/messagepool"
+	"github.com/filecoin-project/venus/pkg/types"
 )
 
 var mpoolCmd = &cmds.Command{
@@ -290,7 +291,7 @@ var mpoolReplaceCmd = &cmds.Command{
 			msg.GasFeeCap = big.Max(retm.GasFeeCap, msg.GasPremium)
 
 			mff := func() (abi.TokenAmount, error) {
-				return abi.TokenAmount(config.DefaultDefaultMaxFee), nil
+				return constants.DefaultDefaultMaxFee, nil
 			}
 
 			messagepool.CapGasFee(mff, &msg, mss.MaxFee)
@@ -689,7 +690,7 @@ Check gas performance of messages in mempool
 
 		baseFee := ts.Blocks()[0].ParentBaseFee
 
-		bigBlockGasLimit := big.NewInt(build.BlockGasLimit)
+		bigBlockGasLimit := big.NewInt(constants.BlockGasLimit)
 
 		getGasReward := func(msg *types.SignedMessage) big.Int {
 			maxPremium := big.Sub(msg.Message.GasFeeCap, baseFee)
@@ -700,7 +701,7 @@ Check gas performance of messages in mempool
 		}
 
 		getGasPerf := func(gasReward big.Int, gasLimit int64) float64 {
-			// gasPerf = gasReward * build.BlockGasLimit / gasLimit
+			// gasPerf = gasReward * constants.BlockGasLimit / gasLimit
 			a := new(stdbig.Rat).SetInt(new(stdbig.Int).Mul(gasReward.Int, bigBlockGasLimit.Int))
 			b := stdbig.NewRat(1, gasLimit)
 			c := new(stdbig.Rat).Mul(a, b)

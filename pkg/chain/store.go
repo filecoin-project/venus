@@ -3,8 +3,6 @@ package chain
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/venus/pkg/specactors/policy"
-	"github.com/filecoin-project/venus/pkg/util"
 	"io"
 	"os"
 	"runtime/debug"
@@ -40,7 +38,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/verifreg"
+	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/util"
 	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
@@ -983,4 +983,8 @@ func (store *Store) PutTipset(ctx context.Context, ts *block.TipSet) error {
 	_, err := store.stateAndBlockSource.cborStore.Put(ctx, ts)
 
 	return err
+}
+
+func (cs *Store) Blockstore() blockstore.Blockstore { // nolint
+	return cs.bsstore
 }

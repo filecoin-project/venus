@@ -4,11 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/lotus/lib/blockstore"
-	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
-	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"io"
 	mrand "math/rand"
 
@@ -37,11 +32,16 @@ import (
 	mh "github.com/multiformats/go-multihash"
 
 	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	gfcstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
+	blockstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/vm"
+	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/state"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
 )

@@ -7,37 +7,35 @@ import (
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-
-	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 var log = logging.Logger("bufbs")
 
 type BufferedBS struct {
-	read  bstore.Blockstore
-	write bstore.Blockstore
+	read  Blockstore
+	write Blockstore
 
-	readviewer  bstore.Viewer
-	writeviewer bstore.Viewer
+	readviewer  Viewer
+	writeviewer Viewer
 }
 
-func NewBufferedBstore(base bstore.Blockstore) *BufferedBS {
-	var buf bstore.Blockstore
+func NewBufferedBstore(base Blockstore) *BufferedBS {
+	var buf Blockstore
 	if os.Getenv("LOTUS_DISABLE_VM_BUF") == "iknowitsabadidea" {
 		log.Warn("VM BLOCKSTORE BUFFERING IS DISABLED")
 		buf = base
 	} else {
-		buf = bstore.NewTemporary()
+		buf = NewTemporary()
 	}
 
 	bs := &BufferedBS{
 		read:  base,
 		write: buf,
 	}
-	if v, ok := base.(bstore.Viewer); ok {
+	if v, ok := base.(Viewer); ok {
 		bs.readviewer = v
 	}
-	if v, ok := buf.(bstore.Viewer); ok {
+	if v, ok := buf.(Viewer); ok {
 		bs.writeviewer = v
 	}
 	if (bs.writeviewer == nil) != (bs.readviewer == nil) {
@@ -46,15 +44,15 @@ func NewBufferedBstore(base bstore.Blockstore) *BufferedBS {
 	return bs
 }
 
-func NewTieredBstore(r bstore.Blockstore, w bstore.Blockstore) *BufferedBS {
+func NewTieredBstore(r Blockstore, w Blockstore) *BufferedBS {
 	return &BufferedBS{
 		read:  r,
 		write: w,
 	}
 }
 
-var _ bstore.Blockstore = (*BufferedBS)(nil)
-var _ bstore.Viewer = (*BufferedBS)(nil)
+var _ Blockstore = (*BufferedBS)(nil)
+var _ Viewer = (*BufferedBS)(nil)
 
 func (bs *BufferedBS) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	a, err := bs.read.AllKeysChan(ctx)
@@ -118,7 +116,7 @@ func (bs *BufferedBS) View(c cid.Cid, callback func([]byte) error) error {
 	}
 
 	// both stores are viewable.
-	if err := bs.writeviewer.View(c, callback); err == bstore.ErrNotFound {
+	if err := bs.writeviewer.View(c, callback); err == ErrNotFound {
 		// not found in write blockstore; fall through.
 	} else {
 		return err // propagate errors, or nil, i.e. found.
@@ -128,7 +126,7 @@ func (bs *BufferedBS) View(c cid.Cid, callback func([]byte) error) error {
 
 func (bs *BufferedBS) Get(c cid.Cid) (block.Block, error) {
 	if out, err := bs.write.Get(c); err != nil {
-		if err != bstore.ErrNotFound {
+		if err != ErrNotFound {
 			return nil, err
 		}
 	} else {
@@ -140,7 +138,7 @@ func (bs *BufferedBS) Get(c cid.Cid) (block.Block, error) {
 
 func (bs *BufferedBS) GetSize(c cid.Cid) (int, error) {
 	s, err := bs.read.GetSize(c)
-	if err == bstore.ErrNotFound || s == 0 {
+	if err == ErrNotFound || s == 0 {
 		return bs.write.GetSize(c)
 	}
 
@@ -181,10 +179,10 @@ func (bs *BufferedBS) PutMany(blks []block.Block) error {
 	return bs.write.PutMany(blks)
 }
 
-func (bs *BufferedBS) Read() bstore.Blockstore {
+func (bs *BufferedBS) Read() Blockstore {
 	return bs.read
 }
 
-func (bs *BufferedBS) Write() bstore.Blockstore {
+func (bs *BufferedBS) Write() Blockstore {
 	return bs.write
 }

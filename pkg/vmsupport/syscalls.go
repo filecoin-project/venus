@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	goruntime "runtime"
+	"sync"
 
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
@@ -19,6 +22,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/vm"
 )
+
+var log = logging.Logger("vmsupport")
 
 type faultChecker interface {
 	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view slashing.FaultStateView) (*runtime.ConsensusFault, error)
@@ -63,6 +68,40 @@ func (s *Syscalls) VerifySeal(_ context.Context, info proof.SealVerifyInfo) erro
 		return fmt.Errorf("seal invalid")
 	}
 	return nil
+}
+
+var BatchSealVerifyParallelism = 2 * goruntime.NumCPU()
+
+func (s *Syscalls) BatchVerifySeals(ctx context.Context, vis map[address.Address][]proof.SealVerifyInfo) (map[address.Address][]bool, error) {
+	out := make(map[address.Address][]bool)
+
+	sema := make(chan struct{}, BatchSealVerifyParallelism)
+
+	var wg sync.WaitGroup
+	for addr, seals := range vis {
+		results := make([]bool, len(seals))
+		out[addr] = results
+
+		for i, seal := range seals {
+			wg.Add(1)
+			go func(ma address.Address, ix int, svi proof.SealVerifyInfo, res []bool) {
+				defer wg.Done()
+				sema <- struct{}{}
+
+				if err := s.VerifySeal(ctx, svi); err != nil {
+					log.Warnw("seal verify in batch failed", "miner", ma, "index", ix, "err", err)
+					res[ix] = false
+				} else {
+					res[ix] = true
+				}
+
+				<-sema
+			}(addr, i, seal, results)
+		}
+	}
+	wg.Wait()
+
+	return out, nil
 }
 
 func (s *Syscalls) VerifyPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) error {

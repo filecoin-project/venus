@@ -3,7 +3,7 @@ package syncer
 import (
 	"context"
 	"fmt"
-	bstore "github.com/filecoin-project/lotus/lib/blockstore"
+	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"sync"
 	"time"
