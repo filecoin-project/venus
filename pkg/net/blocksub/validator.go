@@ -6,8 +6,9 @@ import (
 
 	"github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-pubsub"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
+	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/metrics"
 )
@@ -27,15 +28,15 @@ func NewBlockTopicValidator(bv consensus.BlockSyntaxValidator, opts ...pubsub.Va
 	return &BlockTopicValidator{
 		opts: opts,
 		validator: func(ctx context.Context, p peer.ID, msg *pubsub.Message) bool {
-			var payload Payload
-			err := payload.UnmarshalCBOR(bytes.NewReader(msg.GetData()))
+			var bm block.BlockMsg
+			err := bm.UnmarshalCBOR(bytes.NewReader(msg.GetData()))
 			if err != nil {
 				blockTopicLogger.Warnf("failed to decode blocksub payload from peer %s: %s", p.String(), err.Error())
 				mDecodeBlkFail.Inc(ctx, 1)
 				return false
 			}
-			if err := bv.ValidateSyntax(ctx, &payload.Header); err != nil {
-				blockTopicLogger.Warnf("failed to validate block %s from peer %s: %s", payload.Header.Cid().String(), p.String(), err.Error())
+			if err := bv.ValidateSyntax(ctx, bm.Header); err != nil {
+				blockTopicLogger.Warnf("failed to validate block %s from peer %s: %s", bm.Header.Cid().String(), p.String(), err.Error())
 				mInvalidBlk.Inc(ctx, 1)
 				return false
 			}
