@@ -2,7 +2,6 @@ package discovery
 
 import (
 	"context"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -98,11 +97,6 @@ func (b *Bootstrapper) Stop() {
 // has fallen below b.MinPeerThreshold it will attempt to connect to
 // a random subset of its bootstrap peers.
 func (b *Bootstrapper) bootstrap(currentPeers []peer.ID) {
-	peersNeeded := b.MinPeerThreshold - len(currentPeers)
-	if peersNeeded < 1 {
-		return
-	}
-
 	ctx, cancel := context.WithTimeout(b.ctx, b.ConnectionTimeout)
 	var wg sync.WaitGroup
 	defer func() {
@@ -112,9 +106,8 @@ func (b *Bootstrapper) bootstrap(currentPeers []peer.ID) {
 		cancel()
 	}()
 
-	peersAttempted := 0
-	for _, i := range rand.Perm(len(b.bootstrapPeers)) {
-		pinfo := b.bootstrapPeers[i]
+	for _, bootstrappPeer := range b.bootstrapPeers {
+		pinfo := bootstrappPeer
 		// Don't try to connect to an already connected peer.
 		if hasPID(currentPeers, pinfo.ID) {
 			continue
@@ -125,12 +118,9 @@ func (b *Bootstrapper) bootstrap(currentPeers []peer.ID) {
 			if err := b.h.Connect(ctx, pinfo); err != nil {
 				logBootstrap.Errorf("got error trying to connect to bootstrap node %+v: %s", pinfo, err.Error())
 			}
+			b.h.ConnManager().TagPeer(pinfo.ID, "boot-strap", 1000)
 			wg.Done()
 		}()
-		peersAttempted++
-		if peersAttempted == peersNeeded {
-			return
-		}
 	}
 	logBootstrap.Warnf("not enough bootstrap nodes to maintain %d connections (current connections: %d)", b.MinPeerThreshold, len(currentPeers))
 }

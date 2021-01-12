@@ -127,8 +127,7 @@ func (c *client) doRequest(
 		// Process and validate response.
 		validRes, err := c.processResponse(req, res, tipsets)
 		if err != nil {
-			exchangeClientLogger.Warnf("processing peer %s response failed: %s",
-				peer.String(), err)
+			exchangeClientLogger.Warnf("processing peer %s response failed: %s", peer.String(), err)
 			continue
 		}
 

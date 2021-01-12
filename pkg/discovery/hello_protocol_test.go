@@ -139,7 +139,7 @@ func TestHelloBadGenesis(t *testing.T) {
 	require.NoError(t, mn.LinkAll())
 	require.NoError(t, mn.ConnectAllButSelf())
 
-	time.Sleep(time.Millisecond * 50)
+	time.Sleep(time.Second)
 
 	msc1.AssertNumberOfCalls(t, "HelloCallback", 0)
 	msc2.AssertNumberOfCalls(t, "HelloCallback", 0)
@@ -184,7 +184,7 @@ func TestHelloMultiBlock(t *testing.T) {
 	assert.NoError(t, mn.LinkAll())
 	assert.NoError(t, mn.ConnectAllButSelf())
 
-	time.Sleep(time.Millisecond * 50)
+	time.Sleep(time.Second * 5)
 
 	msc1.AssertExpectations(t)
 	msc2.AssertExpectations(t)
