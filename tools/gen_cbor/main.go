@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/chainsync/fetcher"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/discovery"
-	"github.com/filecoin-project/venus/pkg/net/blocksub"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/state"
@@ -40,12 +39,6 @@ func main() {
 
 	if err := gen.WriteTupleEncodersToFile("./pkg/chainsync/fetcher/cbor_gen.go", "fetcher",
 		fetcher.NotDecodable{},
-	); err != nil {
-		panic(err)
-	}
-
-	if err := gen.WriteTupleEncodersToFile("./pkg/net/blocksub/cbor_gen.go", "blocksub",
-		blocksub.Payload{},
 	); err != nil {
 		panic(err)
 	}

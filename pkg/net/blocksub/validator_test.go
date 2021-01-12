@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/vm/gas"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -105,13 +106,13 @@ func TestBlockPubSubValidation(t *testing.T) {
 		Messages:              mockCid,
 	}
 	// publish the invalid block
-	payload := blocksub.Payload{
-		Header:      *invalidBlk,
-		BLSMsgCids:  nil,
-		SECPMsgCids: nil,
+	bm := block.BlockMsg{
+		Header:        invalidBlk,
+		BlsMessages:   nil,
+		SecpkMessages: nil,
 	}
 	buf := new(bytes.Buffer)
-	err = payload.MarshalCBOR(buf)
+	err = bm.MarshalCBOR(buf)
 	require.NoError(t, err)
 	payloadBytes := buf.Bytes()
 	err = top1.Publish(ctx, payloadBytes)
@@ -134,14 +135,14 @@ func TestBlockPubSubValidation(t *testing.T) {
 		Messages:              mockCid,
 	}
 	// publish the invalid block
-	payload = blocksub.Payload{
-		Header:      *validBlk,
-		BLSMsgCids:  nil,
-		SECPMsgCids: nil,
+	bm = block.BlockMsg{
+		Header:        validBlk,
+		BlsMessages:   nil,
+		SecpkMessages: nil,
 	}
 
 	buf = new(bytes.Buffer)
-	err = payload.MarshalCBOR(buf)
+	err = bm.MarshalCBOR(buf)
 	require.NoError(t, err)
 	payloadBytes = buf.Bytes()
 	err = top1.Publish(ctx, payloadBytes)
@@ -163,23 +164,23 @@ func TestBlockPubSubValidation(t *testing.T) {
 	assert.NoError(t, err, "Receieved an invalid block over pubsub, seee issue #3285 for help debugging")
 
 	// decode the block from pubsub
-	var receivedPayload blocksub.Payload
-	err = receivedPayload.UnmarshalCBOR(bytes.NewReader(received.GetData()))
+	var receivedBlockMsg block.BlockMsg
+	err = receivedBlockMsg.UnmarshalCBOR(bytes.NewReader(received.GetData()))
 	require.NoError(t, err)
 
 	// assert this block is the valid one
-	assert.Equal(t, validBlk.Cid().String(), receivedPayload.Header.Cid().String())
+	assert.Equal(t, validBlk.Cid().String(), receivedBlockMsg.Header.Cid().String())
 }
 
 // convert a types.Block to a pubsub message
 func blkToPubSub(t *testing.T, blk *block.Block) *pubsub.Message {
-	payload := blocksub.Payload{
-		Header:      *blk,
-		BLSMsgCids:  nil,
-		SECPMsgCids: nil,
+	bm := block.BlockMsg{
+		Header:        blk,
+		BlsMessages:   nil,
+		SecpkMessages: nil,
 	}
 	buf := new(bytes.Buffer)
-	err := payload.MarshalCBOR(buf)
+	err := bm.MarshalCBOR(buf)
 	require.NoError(t, err)
 
 	return &pubsub.Message{

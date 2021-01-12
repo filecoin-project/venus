@@ -3,11 +3,12 @@ package syncer
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/venus/pkg/metrics/tracing"
-	"go.opencensus.io/trace"
 	"reflect"
 	"runtime"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/metrics/tracing"
+	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/venus/pkg/chainsync/slashfilter"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
@@ -178,13 +179,13 @@ func (syncer *SyncerSubmodule) handleIncommingBlocks(ctx context.Context, msg pu
 	ctx, span := trace.StartSpan(ctx, "Node.handleIncommingBlocks")
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	var payload blocksub.Payload
-	err = payload.UnmarshalCBOR(bytes.NewReader(msg.GetData()))
+	var bm block.BlockMsg
+	err = bm.UnmarshalCBOR(bytes.NewReader(msg.GetData()))
 	if err != nil {
 		return errors.Wrapf(err, "failed to decode blocksub payload from source: %s, sender: %s", source, sender)
 	}
 
-	header := &payload.Header
+	header := bm.Header
 	span.AddAttributes(trace.StringAttribute("block", header.Cid().String()))
 	log.Infof("Received new block %s from peer %s", header.Cid(), sender)
 	log.Debugf("Received new block sender: %s source: %s, %s", sender, source, header)
