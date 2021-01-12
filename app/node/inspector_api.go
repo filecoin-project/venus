@@ -1,6 +1,7 @@
 package node
 
 import (
+	"fmt"
 	"github.com/filecoin-project/venus/build/flags"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -134,5 +135,5 @@ func (g *Inspector) Config() *config.Config {
 
 // FilecoinVersion returns the version of venus.
 func (g *Inspector) FilecoinVersion() string {
-	return flags.GitCommit
+	return fmt.Sprintf("%s %s", flags.GitTag, flags.GitCommit)
 }
