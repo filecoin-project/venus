@@ -93,9 +93,9 @@ func (c *client) doRequest(
 	var selectPeers []peer.ID
 	if singlePeer != nil {
 		selectPeers = append(selectPeers, singlePeer...)
+	} else {
+		selectPeers = c.getShuffledPeers()
 	}
-	appendPeers := c.getShuffledPeers()
-	selectPeers = append(selectPeers, appendPeers...)
 	if len(selectPeers) == 0 {
 		return nil, xerrors.Errorf("no peers available")
 	}
