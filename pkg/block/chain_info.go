@@ -3,7 +3,6 @@ package block
 import (
 	"fmt"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
@@ -13,24 +12,22 @@ type ChainInfo struct {
 	Source peer.ID
 	// The peer that sent us the TipSetKey message.
 	Sender peer.ID
-	Head   TipSetKey
-	Height abi.ChainEpoch
+	Head   *TipSet
 }
 
 // NewChainInfo creates a chain info from a peer id a head tipset key and a
 // chain height.
-func NewChainInfo(source peer.ID, sender peer.ID, head TipSetKey, height abi.ChainEpoch) *ChainInfo {
+func NewChainInfo(source peer.ID, sender peer.ID, head *TipSet) *ChainInfo {
 	return &ChainInfo{
 		Source: source,
 		Sender: sender,
 		Head:   head,
-		Height: height,
 	}
 }
 
 // Returns a human-readable string representation of a chain info
 func (i *ChainInfo) String() string {
-	return fmt.Sprintf("{source=%s sender:%s height=%d head=%s}", i.Source, i.Sender, i.Height, i.Head)
+	return fmt.Sprintf("{source=%s sender:%s height=%d head=%s}", i.Source, i.Sender, i.Head.EnsureHeight(), i.Head.Key())
 }
 
 // CISlice is for sorting chain infos

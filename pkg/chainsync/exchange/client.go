@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	cborutil "github.com/filecoin-project/go-cbor-util"
+	logging "github.com/ipfs/go-log"
 	"io/ioutil"
 	"math/rand"
 	"time"
@@ -20,6 +21,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/net"
 )
+
+var exchangeClientLogger = logging.Logger("exchange.client")
 
 // client implements exchange.Client, using the libp2p ChainExchange protocol
 // as the fetching mechanism.
@@ -64,7 +67,7 @@ func NewClient(host host.Host, pmgr net.IPeerMgr) Client {
 func (c *client) doRequest(
 	ctx context.Context,
 	req *Request,
-	singlePeer *peer.ID,
+	singlePeer []peer.ID,
 	// In the `GetChainMessages` case, we won't request the headers but we still
 	// need them to check the integrity of the `CompactedMessages` in the response
 	// so the tipset blocks need to be provided by the caller.
@@ -74,10 +77,12 @@ func (c *client) doRequest(
 	if req.Length == 0 {
 		return nil, xerrors.Errorf("invalid request of length 0")
 	}
+
 	if req.Length > MaxRequestLength {
 		return nil, xerrors.Errorf("request length (%d) above maximum (%d)",
 			req.Length, MaxRequestLength)
 	}
+
 	if req.Options == 0 {
 		return nil, xerrors.Errorf("request with no options set")
 	}
@@ -85,14 +90,14 @@ func (c *client) doRequest(
 	// Generate the list of peers to be queried, either the
 	// `singlePeer` indicated or all peers available (sorted
 	// by an internal peer tracker with some randomness injected).
-	var peers []peer.ID
+	var selectPeers []peer.ID
 	if singlePeer != nil {
-		peers = []peer.ID{*singlePeer}
+		selectPeers = append(selectPeers, singlePeer...)
 	} else {
-		peers = c.getShuffledPeers()
-		if len(peers) == 0 {
-			return nil, xerrors.Errorf("no peers available")
-		}
+		selectPeers = c.getShuffledPeers()
+	}
+	if len(selectPeers) == 0 {
+		return nil, xerrors.Errorf("no peers available")
 	}
 
 	// Try the request for each peer in the list,
@@ -102,7 +107,7 @@ func (c *client) doRequest(
 	globalTime := time.Now()
 	// Global time used to track what is the expected time we will need to get
 	// a response if a client fails us.
-	for _, peer := range peers {
+	for _, peer := range selectPeers {
 		select {
 		case <-ctx.Done():
 			return nil, xerrors.Errorf("context cancelled: %w", ctx.Err())
@@ -113,7 +118,7 @@ func (c *client) doRequest(
 		res, err := c.sendRequestToPeer(ctx, peer, req)
 		if err != nil {
 			if !xerrors.Is(err, network.ErrNoConn) {
-				log.Warnf("could not send request to peer %s: %s",
+				exchangeClientLogger.Warnf("could not send request to peer %s: %s",
 					peer.String(), err)
 			}
 			continue
@@ -122,8 +127,7 @@ func (c *client) doRequest(
 		// Process and validate response.
 		validRes, err := c.processResponse(req, res, tipsets)
 		if err != nil {
-			log.Warnf("processing peer %s response failed: %s",
-				peer.String(), err)
+			exchangeClientLogger.Warnf("processing peer %s response failed: %s", peer.String(), err)
 			continue
 		}
 
@@ -132,11 +136,7 @@ func (c *client) doRequest(
 		return validRes, nil
 	}
 
-	errString := "doRequest failed for all peers"
-	if singlePeer != nil {
-		errString = fmt.Sprintf("doRequest failed for single peer %s", *singlePeer)
-	}
-	return nil, xerrors.Errorf(errString)
+	return nil, xerrors.Errorf("doRequest failed for all peers")
 }
 
 // Process and validate response. Check the status, the integrity of the
@@ -315,7 +315,7 @@ func (c *client) GetBlocks(ctx context.Context, tsk block.TipSetKey, count int) 
 }
 
 // GetFullTipSet implements Client.GetFullTipSet(). Refer to the godocs there.
-func (c *client) GetFullTipSet(ctx context.Context, peer peer.ID, tsk block.TipSetKey) (*block.FullTipSet, error) {
+func (c *client) GetFullTipSet(ctx context.Context, peers []peer.ID, tsk block.TipSetKey) (*block.FullTipSet, error) {
 	// TODO: round robin through these peers on error
 
 	req := &Request{
@@ -324,7 +324,7 @@ func (c *client) GetFullTipSet(ctx context.Context, peer peer.ID, tsk block.TipS
 		Options: Headers | Messages,
 	}
 
-	validRes, err := c.doRequest(ctx, req, &peer, nil)
+	validRes, err := c.doRequest(ctx, req, peers, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -392,8 +392,9 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 		return nil, xerrors.Errorf("failed to get protocols for peer: %w", err)
 	}
 	if len(supported) == 0 || (supported[0] != BlockSyncProtocolID && supported[0] != ChainExchangeProtocolID) {
-		return nil, xerrors.Errorf("peer %s does not support protocols %s",
-			peer, []string{BlockSyncProtocolID, ChainExchangeProtocolID})
+		c.RemovePeer(peer)
+		c.host.ConnManager().TagPeer(peer, "no match protocol", -2000)
+		return nil, xerrors.Errorf("peer %s does not support protocols %s", peer, []string{BlockSyncProtocolID, ChainExchangeProtocolID})
 	}
 
 	connectionStart := time.Now()

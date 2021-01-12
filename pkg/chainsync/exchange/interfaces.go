@@ -29,7 +29,7 @@ type Client interface {
 
 	// GetFullTipSet fetches a full tipset from a given peer. If successful,
 	// the fetched object contains block headers and all messages in full form.
-	GetFullTipSet(ctx context.Context, peer peer.ID, tsk block.TipSetKey) (*block.FullTipSet, error)
+	GetFullTipSet(ctx context.Context, peer []peer.ID, tsk block.TipSetKey) (*block.FullTipSet, error)
 
 	// AddPeer adds a peer to the pool of peers that the Client requests
 	// data from.

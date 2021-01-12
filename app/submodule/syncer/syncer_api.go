@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/chainsync/dispatcher"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -16,6 +17,11 @@ var syncAPILog = logging.Logger("syncAPI")
 
 type SyncerAPI struct { //nolint
 	syncer *SyncerSubmodule
+}
+
+// SyncerStatus returns the current status of the active or last active chain sync operation.
+func (syncerAPI *SyncerAPI) SyncerTracker() *dispatcher.TargetTracker {
+	return syncerAPI.syncer.ChainSyncManager.BlockProposer().SyncTracker()
 }
 
 // SyncerStatus returns the current status of the active or last active chain sync operation.
@@ -39,7 +45,7 @@ func (syncerAPI *SyncerAPI) ChainSyncHandleNewTipSet(ci *block.ChainInfo) error 
 func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *block.BlockMsg) error {
 	//todo many dot. how to get directly
 	chainModule := syncerAPI.syncer.ChainModule
-	parent, err := chainModule.ChainReader.GetBlock(blk.Header.Parents.Cids()[0])
+	parent, err := chainModule.ChainReader.GetBlock(ctx, blk.Header.Parents.Cids()[0])
 	if err != nil {
 		return xerrors.Errorf("loading parent block: %v", err)
 	}
@@ -74,16 +80,12 @@ func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *block.Bloc
 		return xerrors.Errorf("somehow failed to make a tipset out of a single block: %v", err)
 	}
 
-	if err := chainModule.ChainReader.PutTipset(ctx, ts); err != nil {
+	if _, err := chainModule.ChainReader.PutObject(ctx, blk.Header); err != nil {
 		return err
 	}
 	localPeer := syncerAPI.syncer.NetworkModule.Network.GetPeerID()
-	if err := syncerAPI.syncer.SyncProvider.HandleNewTipSet(&block.ChainInfo{
-		Source: localPeer,
-		Sender: localPeer,
-		Head:   ts.Key(),
-		Height: ts.EnsureHeight(),
-	}); err != nil {
+	ci := block.NewChainInfo(localPeer, localPeer, ts)
+	if err := syncerAPI.syncer.SyncProvider.HandleNewTipSet(ci); err != nil {
 		return xerrors.Errorf("sync to submitted block failed: %v", err)
 	}
 
@@ -120,5 +122,4 @@ func (syncerAPI *SyncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMe
 		ExecutionTrace: types.ExecutionTrace{},
 		Duration:       duration,
 	}, nil
-
 }

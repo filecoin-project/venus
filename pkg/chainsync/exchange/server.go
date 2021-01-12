@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	cborutil "github.com/filecoin-project/go-cbor-util"
+	logging "github.com/ipfs/go-log"
 	"time"
 
 	"go.opencensus.io/trace"
@@ -17,6 +18,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/types"
 )
+
+var exchangeServerLog = logging.Logger("exchange.server")
 
 type chainReader interface {
 	GetTipSet(block.TipSetKey) (*block.TipSet, error)
@@ -65,22 +68,22 @@ func (s *server) handleStream(stream inet.Stream) {
 
 	var req Request
 	if err := cborutil.ReadCborRPC(bufio.NewReader(stream), &req); err != nil {
-		log.Warnf("failed to read block sync request: %s", err)
+		exchangeServerLog.Warnf("failed to read block sync request: %s", err)
 		return
 	}
-	log.Infow("block sync request",
-		"start", req.Head, "len", req.Length)
+	fmt.Println(stream.Conn().RemotePeer())
+	exchangeServerLog.Infow("block sync request", "start", req.Head, "len", req.Length)
 
 	resp, err := s.processRequest(ctx, &req)
 	if err != nil {
-		log.Warn("failed to process request: ", err)
+		exchangeServerLog.Warn("failed to process request: ", err)
 		return
 	}
 
 	_ = stream.SetDeadline(time.Now().Add(WriteResDeadline))
 	if err := cborutil.WriteCborRPC(stream, resp); err != nil {
 		_ = stream.SetDeadline(time.Time{})
-		log.Warnw("failed to write back response for handle stream",
+		exchangeServerLog.Warnw("failed to write back response for handle stream",
 			"err", err, "peer", stream.Conn().RemotePeer())
 		return
 	}
@@ -156,7 +159,7 @@ func (s *server) serviceRequest(ctx context.Context, req *validatedRequest) (*Re
 
 	chain, err := collectChainSegment(s.cr, s.mr, req)
 	if err != nil {
-		log.Warn("block sync request: collectChainSegment failed: ", err)
+		exchangeServerLog.Warn("block sync request: collectChainSegment failed: ", err)
 		return &Response{
 			Status:       InternalError,
 			ErrorMessage: err.Error(),

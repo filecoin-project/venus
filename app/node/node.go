@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/config"
 	"net/http"
 	"os"
 	"os/signal"
@@ -36,6 +37,9 @@ import (
 )
 
 var log = logging.Logger("node") // nolint: deadcode
+
+// ConfigOpt mutates a node config post initialization
+type ConfigOpt func(*config.Config)
 
 // APIPrefix is the prefix for the http version of the api.
 const APIPrefix = "/api"

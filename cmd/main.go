@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/filecoin-project/go-state-types/big"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-cmds/cli"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
@@ -17,7 +16,6 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/types"
 )
@@ -303,7 +301,7 @@ var limitOption = cmds.Int64Option("gas-limit", "Maximum GasUnits this message i
 
 func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.AttoFIL, int64, error) {
 	var (
-		feecap      = big.NewInt(int64(constants.MinimumBaseFee))
+		feecap      = types.ZeroAttoFIL
 		premium     = types.ZeroAttoFIL
 		ok          = false
 		gasLimitInt = int64(0)

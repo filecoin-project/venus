@@ -832,7 +832,7 @@ func (f *Builder) GetChainMessages(ctx context.Context, tipsets []*block.TipSet)
 	return result, nil
 }
 
-func (f *Builder) GetFullTipSet(ctx context.Context, peer peer.ID, tsk block.TipSetKey) (*block.FullTipSet, error) {
+func (f *Builder) GetFullTipSet(ctx context.Context, peer []peer.ID, tsk block.TipSetKey) (*block.FullTipSet, error) {
 	panic("implement me")
 }
 

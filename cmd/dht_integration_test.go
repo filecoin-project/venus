@@ -4,11 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
-	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/node/test"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDhtFindPeer(t *testing.T) {
@@ -25,7 +23,7 @@ func TestDhtFindPeer(t *testing.T) {
 	n2 := builder2.BuildAndStart(ctx)
 	defer n2.Stop(ctx)
 
-	node.ConnectNodes(t, n1, n2)
+	test.ConnectNodes(t, n1, n2)
 
 	n2Id := n2.Network().API().NetworkGetPeerID()
 	findpeerOutput := cmdClient.RunSuccess(ctx, "dht", "findpeer", n2Id.String()).ReadStdoutTrimNewlines()

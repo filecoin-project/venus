@@ -132,7 +132,7 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetMessage(ctx context.Context, msgID cid
 
 // ChainGetMessages gets a message collection by CID
 func (chainInfoAPI *ChainInfoAPI) ChainGetBlockMessages(ctx context.Context, bid cid.Cid) (*BlockMessages, error) {
-	b, err := chainInfoAPI.chain.ChainReader.GetBlock(bid)
+	b, err := chainInfoAPI.chain.ChainReader.GetBlock(ctx, bid)
 	if err != nil {
 		return nil, err
 	}

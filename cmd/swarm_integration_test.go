@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/node/test"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
@@ -20,7 +19,7 @@ func TestSwarmConnectPeersValid(t *testing.T) {
 	n2 := builder.BuildAndStart(ctx)
 	defer n2.Stop(ctx)
 
-	node.ConnectNodes(t, n1, n2)
+	test.ConnectNodes(t, n1, n2)
 }
 
 func TestSwarmConnectPeersInvalid(t *testing.T) {

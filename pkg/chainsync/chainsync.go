@@ -7,10 +7,10 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/chainsync/dispatcher"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
-	"github.com/filecoin-project/venus/pkg/chainsync/internal/dispatcher"
-	"github.com/filecoin-project/venus/pkg/chainsync/internal/syncer"
 	"github.com/filecoin-project/venus/pkg/chainsync/status"
+	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/slashing"
@@ -18,6 +18,7 @@ import (
 
 // BlockProposer allows callers to propose new blocks for inclusion in the chain.
 type BlockProposer interface {
+	SyncTracker() *dispatcher.TargetTracker
 	SendHello(ci *block.ChainInfo) error
 	SendOwnBlock(ci *block.ChainInfo) error
 	SendGossipBlock(ci *block.ChainInfo) error
@@ -46,8 +47,7 @@ func NewManager(fv syncer.FullBlockValidator,
 	if err != nil {
 		return Manager{}, err
 	}
-	gapTransitioner := dispatcher.NewGapTransitioner(s, syncer)
-	dispatcher := dispatcher.NewDispatcher(syncer, gapTransitioner)
+	dispatcher := dispatcher.NewDispatcher(syncer)
 	return Manager{
 		syncer:     syncer,
 		dispatcher: dispatcher,
