@@ -1,6 +1,8 @@
 package block
 
 import (
+	"bytes"
+
 	"github.com/ipfs/go-cid"
 )
 
@@ -15,11 +17,10 @@ func (bm *BlockMsg) Cid() cid.Cid {
 }
 
 func (bm *BlockMsg) Serialize() ([]byte, error) {
-	/*bytes, err := encoding.Encode(bm)
-	if err != nil {
+	buf := new(bytes.Buffer)
+	if err := bm.MarshalCBOR(buf); err != nil {
 		return nil, err
 	}
-	return bytes, nil*/
-	return nil, nil
 
+	return buf.Bytes(), nil
 }

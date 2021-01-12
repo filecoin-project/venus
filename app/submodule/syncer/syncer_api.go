@@ -93,7 +93,9 @@ func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *block.Bloc
 	}
 	go func() {
 		err = syncerAPI.syncer.BlockTopic.Publish(ctx, b) //nolint:staticcheck
-		syncAPILog.Warnf("publish failed: %s, %v", blk.Cid(), err)
+		if err != nil {
+			syncAPILog.Warnf("publish failed: %s, %v", blk.Cid(), err)
+		}
 	}()
 	return nil
 }
