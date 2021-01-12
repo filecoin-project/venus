@@ -96,19 +96,6 @@ func runCmd(c command) {
 	}
 }
 
-func runCapture(name string) string {
-	args := strings.Split(name, " ")
-	cmd := exec.Command(args[0], args[1:]...) // #nosec
-	log.Println(name)
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatalf("Command '%s' failed: %s\n", name, err)
-	}
-
-	return strings.Trim(string(output), lineBreak)
-}
-
 // deps installs all dependencies
 func deps() {
 	runCmd(cmd("pkg-config --version"))
@@ -231,7 +218,8 @@ func generateGenesis() {
 func flags() string {
 	return fmt.Sprintf("-ldflags=github.com/filecoin-project/venus=\"%s\"", strings.Join([]string{
 		fmt.Sprintf("-X github.com/filecoin-project/venus/build/flags.GitRoot=%s", helpers.GetGitRoot()),
-		fmt.Sprintf("-X github.com/filecoin-project/venus/build/flags.GitCommit=%s", getCommitSha()),
+		fmt.Sprintf("-X github.com/filecoin-project/venus/build/flags.GitCommit=%s", helpers.GetCommitSha()),
+		fmt.Sprintf("-X github.com/filecoin-project/venus/build/flags.GitTag=%s", helpers.GetLastTag()),
 	}, " "))
 }
 
@@ -337,8 +325,4 @@ func main() {
 	default:
 		log.Fatalf("Unknown command: %s\n", cmd)
 	}
-}
-
-func getCommitSha() string {
-	return runCapture("git log -n 1 --format=%H")
 }

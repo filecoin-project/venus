@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/venus/build/flags"
@@ -17,7 +18,7 @@ var versionCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		return re.Emit(&versionInfo{
-			Commit: flags.GitCommit,
+			Commit: fmt.Sprintf("%s %s", flags.GitTag, flags.GitCommit),
 		})
 	},
 	Type: versionInfo{},

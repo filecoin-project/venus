@@ -20,12 +20,12 @@ func TestVersion(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	commit := getCodeCommit(t)
-
+	tag := getLastTag(t)
 	verOut, err := exec.Command(th.MustGetFilecoinBinary(), "version").Output()
 	require.NoError(t, err)
 
 	version := string(verOut)
-	assert.Exactly(t, fmt.Sprintf("{\n\t\"Commit\": \"%s\"\n}\n", commit), version)
+	assert.Exactly(t, fmt.Sprintf("{\n\t\"Commit\": \"%s %s\"\n}\n", tag, commit), version)
 }
 
 func TestVersionOverHttp(t *testing.T) {
@@ -48,7 +48,8 @@ func TestVersionOverHttp(t *testing.T) {
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
 	commit := strings.Trim(getCodeCommit(t), "\n ")
-	expected := fmt.Sprintf("{\"Commit\":\"%s\"}\n", commit)
+	tag := getLastTag(t)
+	expected := fmt.Sprintf("{\"Commit\":\"%s %s\"}\n", tag, commit)
 
 	defer res.Body.Close() // nolint: errcheck
 	body, err := ioutil.ReadAll(res.Body)
@@ -60,6 +61,20 @@ func getCodeCommit(t *testing.T) string {
 	var gitOut []byte
 	var err error
 	gitArgs := []string{"rev-parse", "--verify", "HEAD"}
+	if gitOut, err = exec.Command("git", gitArgs...).Output(); err != nil {
+		assert.NoError(t, err)
+	}
+	return strings.TrimSpace(string(gitOut))
+}
+
+func getLastTag(t *testing.T) string {
+	var gitOut []byte
+	var err error
+	gitArgs := []string{"rev-list", "--tags", "--max-count=1"}
+	if gitOut, err = exec.Command("git", gitArgs...).Output(); err != nil {
+		assert.NoError(t, err)
+	}
+	gitArgs = []string{"describe", "--tags", strings.TrimSpace(string(gitOut))}
 	if gitOut, err = exec.Command("git", gitArgs...).Output(); err != nil {
 		assert.NoError(t, err)
 	}
