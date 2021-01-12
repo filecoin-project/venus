@@ -3,11 +3,9 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/fatih/color"
 	"github.com/filecoin-project/go-address"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -22,7 +20,7 @@ import (
 
 var minerProvingCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Interact with actors. Actors are built-in smart contracts.",
+		Tagline: "View proving information.",
 	},
 	Subcommands: map[string]*cmds.Command{
 		"info":      provingInfoCmd,
@@ -54,7 +52,7 @@ var provingInfoCmd = &cmds.Command{
 		chainAPI := env.(*node.Env).ChainAPI
 		head, err := chainAPI.ChainHead(ctx)
 		if err != nil {
-			return xerrors.Errorf("getting chain head: %w", err)
+			return xerrors.Errorf("getting chain head: %v", err)
 		}
 
 		mact, err := chainAPI.StateGetActor(ctx, maddr, head.Key())
@@ -62,7 +60,7 @@ var provingInfoCmd = &cmds.Command{
 			return err
 		}
 
-		stor := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(&env.(*node.Env).ChainAPI.DbAPI)))
+		stor := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(env.(*node.Env).ChainAPI)))
 
 		mas, err := miner.Load(stor, mact)
 		if err != nil {
@@ -71,11 +69,12 @@ var provingInfoCmd = &cmds.Command{
 
 		cd, err := chainAPI.StateMinerProvingDeadline(ctx, maddr, head.Key())
 		if err != nil {
-			return xerrors.Errorf("getting miner info: %w", err)
+			return xerrors.Errorf("getting miner info: %v", err)
 		}
 
-		var r []string
-		r = append(r, fmt.Sprintf("Miner: %s", maddr))
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
+		writer.Printf("Miner: %s\n", maddr)
 
 		proving := uint64(0)
 		faults := uint64(0)
@@ -114,7 +113,7 @@ var provingInfoCmd = &cmds.Command{
 				return nil
 			})
 		}); err != nil {
-			return xerrors.Errorf("walking miner deadlines and partitions: %w", err)
+			return xerrors.Errorf("walking miner deadlines and partitions: %v", err)
 		}
 
 		var faultPerc float64
@@ -122,25 +121,25 @@ var provingInfoCmd = &cmds.Command{
 			faultPerc = float64(faults*10000/proving) / 100
 		}
 
-		r = append(r, fmt.Sprintf("Current Epoch:           %d", cd.CurrentEpoch))
+		writer.Printf("Current Epoch:           %d\n", cd.CurrentEpoch)
 
-		r = append(r, fmt.Sprintf("Proving Period Boundary: %d", cd.PeriodStart%cd.WPoStProvingPeriod),
-			fmt.Sprintf("Proving Period Start:    %s", EpochTime(cd.CurrentEpoch, cd.PeriodStart, blockDelay)),
-			fmt.Sprintf("Next Period Start:       %s", EpochTime(cd.CurrentEpoch, cd.PeriodStart+cd.WPoStProvingPeriod, blockDelay)))
+		writer.Printf("Proving Period Boundary: %d\n", cd.PeriodStart%cd.WPoStProvingPeriod)
+		writer.Printf("Proving Period Start:    %s\n", EpochTime(cd.CurrentEpoch, cd.PeriodStart, blockDelay))
+		writer.Printf("Next Period Start:       %s\n", EpochTime(cd.CurrentEpoch, cd.PeriodStart+cd.WPoStProvingPeriod, blockDelay))
 
-		r = append(r, fmt.Sprintf("Faults:      %d (%.2f%%)", faults, faultPerc),
-			fmt.Sprintf("Recovering:  %d", recovering))
+		writer.Println()
+		writer.Printf("Faults:      %d (%.2f%%)\n", faults, faultPerc)
+		writer.Printf("Recovering:  %d\n", recovering)
 
-		r = append(r, fmt.Sprintf("Deadline Index:       %d", cd.Index),
-			fmt.Sprintf("Deadline Sectors:     %d", curDeadlineSectors),
-			fmt.Sprintf("Deadline Open:        %s", EpochTime(cd.CurrentEpoch, cd.Open, blockDelay)),
-			fmt.Sprintf("Deadline Close:       %s", EpochTime(cd.CurrentEpoch, cd.Close, blockDelay)),
-			fmt.Sprintf("Deadline Challenge:   %s", EpochTime(cd.CurrentEpoch, cd.Challenge, blockDelay)),
-			fmt.Sprintf("Deadline FaultCutoff: %s", EpochTime(cd.CurrentEpoch, cd.FaultCutoff, blockDelay)))
+		writer.Printf("Deadline Index:       %d\n", cd.Index)
+		writer.Printf("Deadline Sectors:     %d\n", curDeadlineSectors)
+		writer.Printf("Deadline Open:        %s\n", EpochTime(cd.CurrentEpoch, cd.Open, blockDelay))
+		writer.Printf("Deadline Close:       %s\n", EpochTime(cd.CurrentEpoch, cd.Close, blockDelay))
+		writer.Printf("Deadline Challenge:   %s\n", EpochTime(cd.CurrentEpoch, cd.Challenge, blockDelay))
+		writer.Printf("Deadline FaultCutoff: %s\n", EpochTime(cd.CurrentEpoch, cd.FaultCutoff, blockDelay))
 
-		return doEmit(re, r)
+		return re.Emit(buf)
 	},
-	Type: nil,
 }
 
 var provingDeadlinesCmd = &cmds.Command{
@@ -156,7 +155,7 @@ var provingDeadlinesCmd = &cmds.Command{
 			return err
 		}
 		ctx := req.Context
-		api := env.(node.Env).ChainAPI
+		api := env.(*node.Env).ChainAPI
 
 		deadlines, err := api.StateMinerDeadlines(ctx, maddr, block.EmptyTSK)
 		if err != nil {
@@ -169,7 +168,8 @@ var provingDeadlinesCmd = &cmds.Command{
 		}
 
 		buf := new(bytes.Buffer)
-		buf.WriteString(fmt.Sprintf("Miner: %s\n", maddr))
+		writer := NewSilentWriter(buf)
+		writer.Printf("Miner: %s\n", maddr)
 		tw := tabwriter.NewWriter(buf, 2, 4, 2, ' ', 0)
 		_, _ = fmt.Fprintln(tw, "deadline\tpartitions\tsectors (faults)\tproven partitions")
 
@@ -209,9 +209,12 @@ var provingDeadlinesCmd = &cmds.Command{
 			}
 			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d)\t%d%s\n", dlIdx, len(partitions), sectors, faults, provenPartitions, cur)
 		}
-		return re.Emit(buf.String())
+		if err := tw.Flush(); err != nil {
+			return err
+		}
+
+		return re.Emit(buf)
 	},
-	Type: nil,
 }
 
 var provingDeadlineInfoCmd = &cmds.Command{
@@ -231,7 +234,7 @@ var provingDeadlineInfoCmd = &cmds.Command{
 			return err
 		}
 		ctx := req.Context
-		api := env.(node.Env).ChainAPI
+		api := env.(*node.Env).ChainAPI
 
 		dlIdx, err := strconv.ParseUint(req.Arguments[1], 10, 64)
 		if err != nil {
@@ -258,11 +261,13 @@ var provingDeadlineInfoCmd = &cmds.Command{
 			return err
 		}
 
-		var r []string
-		r = append(r, fmt.Sprintf("Deadline Index:           %d", dlIdx),
-			fmt.Sprintf("Partitions:               %d", len(partitions)),
-			fmt.Sprintf("Proven Partitions:        %d", provenPartitions),
-			fmt.Sprintf("Current:                  %t", di.Index == dlIdx))
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
+
+		writer.Printf("Deadline Index:           %d\n", dlIdx)
+		writer.Printf("Partitions:               %d\n", len(partitions))
+		writer.Printf("Proven Partitions:        %d\n", provenPartitions)
+		writer.Printf("Current:                  %t\n\n", di.Index == dlIdx)
 
 		for pIdx, partition := range partitions {
 			sectorCount, err := partition.AllSectors.Count()
@@ -285,13 +290,13 @@ var provingDeadlineInfoCmd = &cmds.Command{
 				return err
 			}
 
-			r = append(r, fmt.Sprintf("Partition Index:          %d", pIdx),
-				fmt.Sprintf("Sectors:                  %d", sectorCount),
-				fmt.Sprintf("Sector Numbers:           %v", sectorNumbers),
-				fmt.Sprintf("Faults:                   %d", faultsCount),
-				fmt.Sprintf("Faulty Sectors:           %d", fn))
+			writer.Printf("Partition Index:          %d\n", pIdx)
+			writer.Printf("Sectors:                  %d\n", sectorCount)
+			writer.Printf("Sector Numbers:           %v\n", sectorNumbers)
+			writer.Printf("Faults:                   %d\n", faultsCount)
+			writer.Printf("Faulty Sectors:           %d\n", fn)
 		}
-		return re.Emit(r)
+		return re.Emit(buf)
 	},
 }
 
@@ -310,7 +315,7 @@ var provingFaultsCmd = &cmds.Command{
 
 		ctx := req.Context
 		api := env.(*node.Env).ChainAPI
-		stor := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(&env.(*node.Env).ChainAPI.DbAPI)))
+		stor := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(api)))
 
 		mact, err := api.StateGetActor(ctx, maddr, block.EmptyTSK)
 		if err != nil {
@@ -323,10 +328,11 @@ var provingFaultsCmd = &cmds.Command{
 		}
 
 		buf := new(bytes.Buffer)
-		buf.WriteString(fmt.Sprintf("Miner: %s\n", color.BlueString("%s", maddr)))
+		writer := NewSilentWriter(buf)
+		writer.Printf("Miner: %s\n", maddr)
 
-		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "deadline\tpartition\tsectors")
+		tw := tabwriter.NewWriter(buf, 2, 4, 2, ' ', 0)
+		_, _ = fmt.Fprintln(tw, "deadline\tpartition\tsectors") // nolint
 		err = mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
 			return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
 				faults, err := part.FaultySectors()
@@ -342,6 +348,10 @@ var provingFaultsCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		return re.Emit(buf.String())
+		if err := tw.Flush(); err != nil {
+			return err
+		}
+
+		return re.Emit(buf)
 	},
 }

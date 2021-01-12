@@ -9,7 +9,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
-type ChainIO interface {
+type ChainIO interface { //nolint
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 }

@@ -706,7 +706,7 @@ func (minerStateAPI *MinerStateAPI) StateMarketBalance(ctx context.Context, addr
 	}
 	out.Escrow, err = et.Get(addr)
 	if err != nil {
-		return MarketBalance{}, xerrors.Errorf("getting escrow balance: %w", err)
+		return MarketBalance{}, xerrors.Errorf("getting escrow balance: %v", err)
 	}
 
 	lt, err := mstate.LockedTable()
@@ -715,7 +715,7 @@ func (minerStateAPI *MinerStateAPI) StateMarketBalance(ctx context.Context, addr
 	}
 	out.Locked, err = lt.Get(addr)
 	if err != nil {
-		return MarketBalance{}, xerrors.Errorf("getting locked balance: %w", err)
+		return MarketBalance{}, xerrors.Errorf("getting locked balance: %v", err)
 	}
 
 	return out, nil

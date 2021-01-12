@@ -1,36 +1,202 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
-	"github.com/fatih/color"
+	"github.com/docker/go-units"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/api/apibstore"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/lib/blockstore"
-	"github.com/filecoin-project/lotus/lib/bufbstore"
+	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/node"
+	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
+	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 )
+
+var minerCmdLog = logging.Logger("miner.cmd")
 
 var minerCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Interact with actors. Actors are built-in smart contracts.",
 	},
 	Subcommands: map[string]*cmds.Command{
+		"new":     newMinerCmd,
 		"info":    minerInfoCmd,
+		"actor":   minerActorCmd,
 		"proving": minerProvingCmd,
 	},
+}
+
+var newMinerCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Create a new miner.",
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("owner", true, false, "owner key to use"),
+	},
+	Options: []cmds.Option{
+		cmds.StringOption("worker", "worker key to use (overrides --create-worker-key)"),
+		cmds.BoolOption("create-worker-key", "Create separate worker key"),
+		cmds.StringOption("from", "Select which address to send actor creation message from"),
+		cmds.StringOption("gas-premium", "Set gas premium for initialization messages in AttoFIL").WithDefault("0"),
+		cmds.StringOption("sector-size", "specify sector size to use").WithDefault(units.BytesSize(float64(policy.GetDefaultSectorSize()))),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		ctx := req.Context
+
+		owner, err := address.NewFromString(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		sectorSize, _ := req.Options["sector-size"].(string)
+		ssize, err := units.RAMInBytes(sectorSize)
+		if err != nil {
+			return fmt.Errorf("failed to parse sector size: %v", err)
+		}
+
+		gp, _ := req.Options["gas-premium"].(string)
+		gasPrice, err := crypto.BigFromString(gp)
+		if err != nil {
+			return xerrors.Errorf("failed to parse gas-price flag: %s", err)
+		}
+
+		worker := owner
+		workerAddr, _ := req.Options["worker-address"].(string)
+		createWorkerKey, _ := req.Options["create-worker-key"].(bool)
+		if workerAddr != "" {
+			worker, err = address.NewFromString(workerAddr)
+		} else if createWorkerKey { // TODO: Do we need to force this if owner is Secpk?
+			worker, err = env.(*node.Env).WalletAPI.WalletNewAddress(address.BLS)
+		}
+		if err != nil {
+			return err
+		}
+
+		// make sure the worker account exists on chain
+		_, err = env.(*node.Env).ChainAPI.StateLookupID(ctx, worker, block.EmptyTSK)
+		if err != nil {
+			signed, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.UnsignedMessage{
+				From:  owner,
+				To:    worker,
+				Value: big.NewInt(0),
+			}, nil)
+			if err != nil {
+				return xerrors.Errorf("push worker init: %v", err)
+			}
+
+			cid, err := signed.Cid()
+			if err != nil {
+				return err
+			}
+
+			minerCmdLog.Infof("Initializing worker account %s, message: %s", worker, cid)
+			minerCmdLog.Infof("Waiting for confirmation")
+			_ = re.Emit("Initializing worker account " + worker.String() + ", message: " + cid.String())
+
+			mw, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, cid, constants.MessageConfidence)
+			if err != nil {
+				return xerrors.Errorf("waiting for worker init: %v", err)
+			}
+			if mw.Receipt.ExitCode != 0 {
+				return xerrors.Errorf("initializing worker account failed: exit code %d", mw.Receipt.ExitCode)
+			}
+		}
+
+		nv, err := env.(*node.Env).ChainAPI.StateNetworkVersion(ctx, block.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("getting network version: %v", err)
+		}
+
+		spt, err := miner.SealProofTypeFromSectorSize(abi.SectorSize(ssize), nv)
+		if err != nil {
+			return xerrors.Errorf("getting seal proof type: %v", err)
+		}
+
+		params, err := specactors.SerializeParams(&power2.CreateMinerParams{
+			Owner:         owner,
+			Worker:        worker,
+			SealProofType: spt,
+			Peer:          abi.PeerID(env.(*node.Env).NetworkAPI.NetworkGetPeerID()),
+		})
+		if err != nil {
+			return err
+		}
+
+		minerCmdLog.Info("peer id: ", env.(*node.Env).NetworkAPI.NetworkGetPeerID())
+
+		sender := owner
+		fromstr, _ := req.Options["from"].(string)
+		if len(fromstr) != 0 {
+			faddr, err := address.NewFromString(fromstr)
+			if err != nil {
+				return fmt.Errorf("could not parse from address: %v", err)
+			}
+			sender = faddr
+		}
+
+		createStorageMinerMsg := &types.UnsignedMessage{
+			To:    power.Address,
+			From:  sender,
+			Value: big.Zero(),
+
+			Method: power.Methods.CreateMiner,
+			Params: params,
+
+			GasLimit:   0,
+			GasPremium: gasPrice,
+		}
+
+		signed, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, createStorageMinerMsg, nil)
+		if err != nil {
+			return xerrors.Errorf("pushing createMiner message: %w", err)
+		}
+
+		cid, err := signed.Cid()
+		if err != nil {
+			return err
+		}
+
+		minerCmdLog.Infof("Pushed CreateMiner message: %s", cid)
+		minerCmdLog.Infof("Waiting for confirmation")
+		_ = re.Emit("Pushed CreateMiner message: " + cid.String())
+
+		mw, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, cid, constants.MessageConfidence)
+		if err != nil {
+			return xerrors.Errorf("waiting for createMiner message: %v", err)
+		}
+
+		if mw.Receipt.ExitCode != 0 {
+			return xerrors.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode)
+		}
+
+		var retval power2.CreateMinerReturn
+		if err := retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.ReturnValue)); err != nil {
+			return err
+		}
+
+		s := fmt.Sprintf("New miners address is: %s (%s)", retval.IDAddress, retval.RobustAddress)
+		minerCmdLog.Info(s)
+
+		return re.Emit(s)
+	},
+	Type: "",
 }
 
 var minerInfoCmd = &cmds.Command{
@@ -48,11 +214,9 @@ var minerInfoCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
+
 		ctx := req.Context
 		api := env.(*node.Env).ChainAPI
-		var r []string
-
-		r = append(r, "Chain: ")
 
 		blockDelay, err := blockDelay(env.(*node.Env).ConfigAPI)
 		if err != nil {
@@ -64,35 +228,27 @@ var minerInfoCmd = &cmds.Command{
 			return err
 		}
 
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
+		var chainSyncStr string
 		switch {
 		case time.Now().Unix()-int64(head.MinTimestamp()) < int64(blockDelay*3/2): // within 1.5 epochs
-			r = append(r, fmt.Sprintf("[%s]", color.GreenString("sync ok")))
+			chainSyncStr = "[Chain: sync ok]"
 		case time.Now().Unix()-int64(head.MinTimestamp()) < int64(blockDelay*5): // within 5 epochs
-			r = append(r, fmt.Sprintf("[%s]", color.YellowString("sync slow (%s behind)", time.Now().Sub(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second))))
+			chainSyncStr = fmt.Sprintf("[Chain: sync slow (%s behind)]", time.Now().Sub(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second))
 		default:
-			r = append(r, fmt.Sprintf("[%s]", color.RedString("sync behind! (%s behind)", time.Now().Sub(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second))))
+			chainSyncStr = fmt.Sprintf("[Chain: sync behind! (%s behind)]", time.Now().Sub(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second))
 		}
 
 		basefee := head.MinTicketBlock().ParentBaseFee
-		gasCol := []color.Attribute{color.FgBlue}
-		switch {
-		case basefee.GreaterThan(big.NewInt(7000_000_000)): // 7 nFIL
-			gasCol = []color.Attribute{color.BgRed, color.FgBlack}
-		case basefee.GreaterThan(big.NewInt(3000_000_000)): // 3 nFIL
-			gasCol = []color.Attribute{color.FgRed}
-		case basefee.GreaterThan(big.NewInt(750_000_000)): // 750 uFIL
-			gasCol = []color.Attribute{color.FgYellow}
-		case basefee.GreaterThan(big.NewInt(100_000_000)): // 100 uFIL
-			gasCol = []color.Attribute{color.FgGreen}
-		}
-		r = append(r, fmt.Sprintf(" [basefee %s]", color.New(gasCol...).Sprint(types.FIL(basefee).Short())))
+		writer.Printf("%s [basefee %s]\n", chainSyncStr, types.FIL(basefee).Short())
 
 		mact, err := api.StateGetActor(ctx, maddr, block.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		tbs := bufbstore.NewTieredBstore(apibstore.NewAPIBlockstore(api), blockstore.NewTemporary())
+		tbs := blockstoreutil.NewTieredBstore(chain.NewAPIBlockstore(api), blockstoreutil.NewTemporary())
 		mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
 		if err != nil {
 			return err
@@ -105,7 +261,7 @@ var minerInfoCmd = &cmds.Command{
 		}
 
 		ssize := crypto.SizeStr(big.NewInt(int64(mi.SectorSize)))
-		r = append(r, fmt.Sprintf("Miner: %s (%s sectors)", color.BlueString("%s", maddr), ssize))
+		writer.Printf("Miner: %s (%s sectors)\n", maddr, ssize)
 
 		pow, err := api.StateMinerPower(ctx, maddr, block.EmptyTSK)
 		if err != nil {
@@ -115,15 +271,15 @@ var minerInfoCmd = &cmds.Command{
 		rpercI := big.Div(big.Mul(pow.MinerPower.RawBytePower, big.NewInt(1000000)), pow.TotalPower.RawBytePower)
 		qpercI := big.Div(big.Mul(pow.MinerPower.QualityAdjPower, big.NewInt(1000000)), pow.TotalPower.QualityAdjPower)
 
-		r = append(r, fmt.Sprintf("Power: %s / %s (%0.4f%%)",
-			color.GreenString(crypto.DeciStr(pow.MinerPower.QualityAdjPower)),
+		writer.Printf("Power: %s / %s (%0.4f%%)\n",
+			crypto.DeciStr(pow.MinerPower.QualityAdjPower),
 			crypto.DeciStr(pow.TotalPower.QualityAdjPower),
-			float64(qpercI.Int64())/10000))
+			float64(qpercI.Int64())/10000)
 
-		r = append(r, fmt.Sprintf("\tRaw: %s / %s (%0.4f%%)",
-			color.BlueString(crypto.SizeStr(pow.MinerPower.RawBytePower)),
+		writer.Printf("Raw: %s / %s (%0.4f%%)\n",
+			crypto.SizeStr(pow.MinerPower.RawBytePower),
 			crypto.SizeStr(pow.TotalPower.RawBytePower),
-			float64(rpercI.Int64())/10000))
+			float64(rpercI.Int64())/10000)
 
 		secCounts, err := api.StateMinerSectorCount(ctx, maddr, block.EmptyTSK)
 		if err != nil {
@@ -132,22 +288,22 @@ var minerInfoCmd = &cmds.Command{
 
 		proving := secCounts.Active + secCounts.Faulty
 		nfaults := secCounts.Faulty
-		r = append(r, fmt.Sprintf("\tCommitted: %s\n", crypto.SizeStr(big.Mul(big.NewInt(int64(secCounts.Live)), big.NewInt(int64(mi.SectorSize))))))
+		writer.Printf("\tCommitted: %s\n", crypto.SizeStr(big.Mul(big.NewInt(int64(secCounts.Live)), big.NewInt(int64(mi.SectorSize)))))
 		if nfaults == 0 {
-			r = append(r, fmt.Sprintf("\tProving: %s\n", crypto.SizeStr(big.Mul(big.NewInt(int64(proving)), big.NewInt(int64(mi.SectorSize))))))
+			writer.Printf("\tProving: %s\n", crypto.SizeStr(big.Mul(big.NewInt(int64(proving)), big.NewInt(int64(mi.SectorSize)))))
 		} else {
 			var faultyPercentage float64
 			if secCounts.Live != 0 {
 				faultyPercentage = float64(10000*nfaults/secCounts.Live) / 100.
 			}
-			r = append(r, fmt.Sprintf("\tProving: %s (%s Faulty, %.2f%%)",
+			writer.Printf("Proving: %s (%s Faulty, %.2f%%)\n",
 				crypto.SizeStr(big.Mul(big.NewInt(int64(proving)), big.NewInt(int64(mi.SectorSize)))),
 				crypto.SizeStr(big.Mul(big.NewInt(int64(nfaults)), big.NewInt(int64(mi.SectorSize)))),
-				faultyPercentage))
+				faultyPercentage)
 		}
 
 		if !pow.HasMinPower {
-			r = append(r, "Below minimum power threshold, no blocks will be won")
+			writer.Println("Below minimum power threshold, no blocks will be won")
 		} else {
 			expWinChance := float64(big.Mul(qpercI, big.NewInt(int64(block.BlocksPerEpoch))).Int64()) / 1000000
 			if expWinChance > 0 {
@@ -157,38 +313,11 @@ var minerInfoCmd = &cmds.Command{
 				winRate := time.Duration(float64(time.Second*time.Duration(blockDelay)) / expWinChance)
 				winPerDay := float64(time.Hour*24) / float64(winRate)
 
-				r = append(r, fmt.Sprintf("Expected block win rate: %.4f/day (every %s)", winPerDay, winRate.Truncate(time.Second)))
+				writer.Printf("Expected block win rate: %.4f/day (every %s)\n", winPerDay, winRate.Truncate(time.Second))
 			}
 		}
 
-		//deals, err := nodeApi.MarketListIncompleteDeals(ctx)
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//var nactiveDeals, nVerifDeals, ndeals uint64
-		//var activeDealBytes, activeVerifDealBytes, dealBytes abi.PaddedPieceSize
-		//for _, deal := range deals {
-		//	if deal.State == storagemarket.StorageDealError {
-		//		continue
-		//	}
-		//
-		//	ndeals++
-		//	dealBytes += deal.Proposal.PieceSize
-		//
-		//	if deal.State == storagemarket.StorageDealActive {
-		//		nactiveDeals++
-		//		activeDealBytes += deal.Proposal.PieceSize
-		//
-		//		if deal.Proposal.VerifiedDeal {
-		//			nVerifDeals++
-		//			activeVerifDealBytes += deal.Proposal.PieceSize
-		//		}
-		//	}
-		//}
-
-		//r = append(r, fmt.Sprintf("Deals: %d, %s", ndeals, crypto.SizeStr(big.NewInt(int64(dealBytes)))),
-		//	fmt.Sprintf("\tActive: %d, %s (Verified: %d, %s)", nactiveDeals, crypto.SizeStr(big.NewInt(int64(activeDealBytes))), nVerifDeals, crypto.SizeStr(big.NewInt(int64(activeVerifDealBytes)))))
+		writer.Println()
 
 		spendable := big.Zero()
 
@@ -204,11 +333,11 @@ var minerInfoCmd = &cmds.Command{
 		}
 		spendable = big.Add(spendable, availBalance)
 
-		r = append(r, fmt.Sprintf("Miner Balance:    %s\n", color.YellowString("%s", types.FIL(mact.Balance).Short())),
-			fmt.Sprintf("      PreCommit:  %s\n", types.FIL(lockedFunds.PreCommitDeposits).Short()),
-			fmt.Sprintf("      Pledge:     %s\n", types.FIL(lockedFunds.InitialPledgeRequirement).Short()),
-			fmt.Sprintf("      Vesting:    %s\n", types.FIL(lockedFunds.VestingFunds).Short()),
-			color.GreenString("      Available:  %s", types.FIL(availBalance).Short()))
+		writer.Printf("Miner Balance:    %s\n", types.FIL(mact.Balance).Short())
+		writer.Printf("      PreCommit:  %s\n", types.FIL(lockedFunds.PreCommitDeposits).Short())
+		writer.Printf("      Pledge:     %s\n", types.FIL(lockedFunds.InitialPledgeRequirement).Short())
+		writer.Printf("      Vesting:    %s\n", types.FIL(lockedFunds.VestingFunds).Short())
+		writer.Printf("      Available:  %s\n", types.FIL(availBalance).Short())
 
 		mb, err := api.StateMarketBalance(ctx, maddr, block.EmptyTSK)
 		if err != nil {
@@ -216,16 +345,16 @@ var minerInfoCmd = &cmds.Command{
 		}
 		spendable = big.Add(spendable, big.Sub(mb.Escrow, mb.Locked))
 
-		r = append(r, fmt.Sprintf("Market Balance:   %s\n", types.FIL(mb.Escrow).Short()),
-			fmt.Sprintf("       Locked:    %s\n", types.FIL(mb.Locked).Short()),
-			color.GreenString("       Available: %s\n", types.FIL(big.Sub(mb.Escrow, mb.Locked)).Short()))
+		writer.Printf("Market Balance:   %s\n", types.FIL(mb.Escrow).Short())
+		writer.Printf("       Locked:    %s\n", types.FIL(mb.Locked).Short())
+		writer.Printf("       Available: %s\n", types.FIL(big.Sub(mb.Escrow, mb.Locked)).Short())
 
 		wb, err := env.(*node.Env).WalletAPI.WalletBalance(ctx, mi.Worker)
 		if err != nil {
 			return xerrors.Errorf("getting worker balance: %w", err)
 		}
 		spendable = big.Add(spendable, wb)
-		r = append(r, color.CyanString("Worker Balance:   %s", types.FIL(wb).Short()))
+		writer.Printf("Worker Balance:   %s\n", types.FIL(wb).Short())
 		if len(mi.ControlAddresses) > 0 {
 			cbsum := big.Zero()
 			for _, ca := range mi.ControlAddresses {
@@ -237,79 +366,14 @@ var minerInfoCmd = &cmds.Command{
 			}
 			spendable = big.Add(spendable, cbsum)
 
-			r = append(r, fmt.Sprintf("       Control:   %s\n", types.FIL(cbsum).Short()))
+			writer.Printf("       Control:   %s\n", types.FIL(cbsum).Short())
 		}
-		r = append(r, fmt.Sprintf("Total Spendable:  %s\n", color.YellowString(types.FIL(spendable).Short())))
-
-		// TODO:
-		//if ok := req.Options["hide-sectors-info"].(bool); ok {
-		//	r = append(r, "Sectors:")
-		//	err = sectorsInfo(ctx, nodeApi)
-		//	if err != nil {
-		//		return err
-		//	}
-		//}
+		writer.Printf("Total Spendable:  %s\n", types.FIL(spendable).Short())
 
 		// TODO: grab actr state / info
 		//  * Sealed sectors (count / bytes)
 		//  * Power
 
-		return doEmit(re, r)
+		return re.Emit(buf)
 	},
-	Type: nil,
-}
-
-type stateMeta struct {
-	i     int
-	col   color.Attribute
-	state sealing.SectorState
-}
-
-var stateOrder = map[sealing.SectorState]stateMeta{}
-var stateList = []stateMeta{
-	{col: 39, state: "Total"},
-	{col: color.FgGreen, state: sealing.Proving},
-
-	{col: color.FgBlue, state: sealing.Empty},
-	{col: color.FgBlue, state: sealing.WaitDeals},
-
-	{col: color.FgRed, state: sealing.UndefinedSectorState},
-	{col: color.FgYellow, state: sealing.Packing},
-	{col: color.FgYellow, state: sealing.GetTicket},
-	{col: color.FgYellow, state: sealing.PreCommit1},
-	{col: color.FgYellow, state: sealing.PreCommit2},
-	{col: color.FgYellow, state: sealing.PreCommitting},
-	{col: color.FgYellow, state: sealing.PreCommitWait},
-	{col: color.FgYellow, state: sealing.WaitSeed},
-	{col: color.FgYellow, state: sealing.Committing},
-	{col: color.FgYellow, state: sealing.SubmitCommit},
-	{col: color.FgYellow, state: sealing.CommitWait},
-	{col: color.FgYellow, state: sealing.FinalizeSector},
-
-	{col: color.FgCyan, state: sealing.Removing},
-	{col: color.FgCyan, state: sealing.Removed},
-
-	{col: color.FgRed, state: sealing.FailedUnrecoverable},
-	{col: color.FgRed, state: sealing.SealPreCommit1Failed},
-	{col: color.FgRed, state: sealing.SealPreCommit2Failed},
-	{col: color.FgRed, state: sealing.PreCommitFailed},
-	{col: color.FgRed, state: sealing.ComputeProofFailed},
-	{col: color.FgRed, state: sealing.CommitFailed},
-	{col: color.FgRed, state: sealing.PackingFailed},
-	{col: color.FgRed, state: sealing.FinalizeFailed},
-	{col: color.FgRed, state: sealing.Faulty},
-	{col: color.FgRed, state: sealing.FaultReported},
-	{col: color.FgRed, state: sealing.FaultedFinal},
-	{col: color.FgRed, state: sealing.RemoveFailed},
-	{col: color.FgRed, state: sealing.DealsExpired},
-	{col: color.FgRed, state: sealing.RecoverDealIDs},
-}
-
-func init() {
-	for i, state := range stateList {
-		stateOrder[state.state] = stateMeta{
-			i:   i,
-			col: state.col,
-		}
-	}
 }
