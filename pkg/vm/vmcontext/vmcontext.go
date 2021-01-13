@@ -262,7 +262,10 @@ func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.Ti
 			}
 
 			// apply message
-			ret := vm.applyMessage(m.VMMessage(), m.ChainLength())
+			ret, err := vm.applyMessage(m.VMMessage(), m.ChainLength())
+			if err != nil {
+				return cid.Undef, nil, xerrors.Errorf("execute message error %s : %v", mcid, err)
+			}
 			// accumulate result
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, ret.OutPuts.MinerPenalty)
 			minerGasRewardTotal = big.Add(minerGasRewardTotal, ret.OutPuts.MinerTip)
@@ -413,9 +416,8 @@ func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 }
 
 // todo estimate gasLimit
-func (vm *VM) ApplyMessage(msg types.ChainMsg) *Ret {
-	ret := vm.applyMessage(msg.VMMessage(), msg.ChainLength())
-	return ret
+func (vm *VM) ApplyMessage(msg types.ChainMsg) (*Ret, error) {
+	return vm.applyMessage(msg.VMMessage(), msg.ChainLength())
 }
 
 // MutateState usage: MutateState(ctx, idAddr, func(cst cbor.IpldStore, st *ActorStateType) error {...})
@@ -454,7 +456,7 @@ func (vm *VM) MutateState(ctx context.Context, addr address.Address, fn interfac
 }
 
 // applyMessage applies the message To the current stateView.
-func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret {
+func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret, error) {
 	vm.SetCurrentEpoch(vm.vmOption.Epoch)
 	// This Method does not actually execute the message itself,
 	// but rather deals with the pre/post processing of a message.
@@ -484,14 +486,14 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
 			Receipt:    types.Failure(exitcode.SysErrOutOfGas, 0),
-		}
+		}, nil
 	}
 
 	minerPenaltyAmount := big.Mul(vm.vmOption.BaseFee, big.NewInt(msg.GasLimit))
 
 	fromActor, found, err := vm.State.GetActor(vm.context, msg.From)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	if !found {
 		// Execution error; sender does not exist at time of message execution.
@@ -501,7 +503,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
 			Receipt:    types.Failure(exitcode.SysErrSenderInvalid, 0),
-		}
+		}, nil
 	}
 
 	if !builtin.IsAccountActor(fromActor.Code) /*!fromActor.Code.Equals(builtin.AccountActorCodeID)*/ {
@@ -512,7 +514,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
 			Receipt:    types.Failure(exitcode.SysErrSenderInvalid, 0),
-		}
+		}, nil
 	}
 
 	// 3. make sure this is the right message order for fromActor
@@ -524,7 +526,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
 			Receipt:    types.Failure(exitcode.SysErrSenderStateInvalid, 0),
-		}
+		}, nil
 	}
 
 	// 4. Check sender balance (gas + Value being sent)
@@ -538,12 +540,12 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
 			Receipt:    types.Failure(exitcode.SysErrSenderStateInvalid, 0),
-		}
+		}, nil
 	}
 
 	gasHolder := &types.Actor{Balance: big.NewInt(0)}
 	if err := vm.transferToGasHolder(msg.From, gasHolder, gasLimitCost); err != nil {
-		panic(xerrors.Errorf("failed To withdraw gas funds: %w", err))
+		return nil, xerrors.Errorf("failed To withdraw gas funds: %w", err)
 	}
 
 	// 5. Increment sender Nonce
@@ -551,7 +553,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 		msgFromActor.IncrementSeqNum()
 		return nil
 	}); err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	// 7. snapshot stateView
@@ -560,7 +562,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 	// - sender balance withheld
 	err = vm.snapshot()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer vm.clearSnapshot()
 
@@ -618,7 +620,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 	// proceed From a nested call failure.
 	if code != exitcode.Ok {
 		if err := vm.revert(); err != nil {
-			panic(err)
+			return nil, err
 		}
 	}
 
@@ -630,36 +632,33 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 
 	burn, err := vm.shouldBurn(msg, code)
 	if err != nil {
-		panic(xerrors.Errorf("deciding whether should burn failed: %w", err))
+		return nil, xerrors.Errorf("deciding whether should burn failed: %w", err)
 	}
 
 	gasOutputs := gas.ComputeGasOutputs(gasUsed, msg.GasLimit, vm.vmOption.BaseFee, msg.GasFeeCap, msg.GasPremium, burn)
 
 	if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder, gasOutputs.BaseFeeBurn); err != nil {
-		panic(xerrors.Errorf("failed To burn base fee: %w", err))
+		return nil, xerrors.Errorf("failed To burn base fee: %w", err)
 	}
 
 	if err := vm.transferFromGasHolder(reward.Address, gasHolder, gasOutputs.MinerTip); err != nil {
-		panic(xerrors.Errorf("failed To give miner gas reward: %w", err))
+		return nil, xerrors.Errorf("failed To give miner gas reward: %w", err)
 	}
 
 	if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder, gasOutputs.OverEstimationBurn); err != nil {
-		panic(xerrors.Errorf("failed To burn overestimation fee: %w", err))
+		return nil, xerrors.Errorf("failed To burn overestimation fee: %w", err)
 	}
 
 	// refund unused gas
 	if err := vm.transferFromGasHolder(msg.From, gasHolder, gasOutputs.Refund); err != nil {
-		panic(xerrors.Errorf("failed To refund gas: %w", err))
+		return nil, xerrors.Errorf("failed To refund gas: %w", err)
 	}
 
 	if big.Cmp(big.NewInt(0), gasHolder.Balance) != 0 {
-		panic(xerrors.Errorf("gas handling math is wrong"))
+		return nil, xerrors.Errorf("gas handling math is wrong")
 	}
 
 	// 3. Success!
-	if ret == nil {
-		ret = []byte{} //todo cbor marshal cant diff nil and []byte  should be fix in encoding
-	}
 	return &Ret{
 		GasTracker: gasTank,
 		OutPuts:    gasOutputs,
@@ -668,7 +667,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) *Ret 
 			ReturnValue: ret,
 			GasUsed:     gasUsed,
 		},
-	}
+	}, nil
 }
 
 func (vm *VM) shouldBurn(msg *types.UnsignedMessage, errcode exitcode.ExitCode) (bool, error) {
