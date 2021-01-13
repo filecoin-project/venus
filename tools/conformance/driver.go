@@ -302,7 +302,10 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		return nil, cid.Undef, err
 	}
 
-	ret := lvm.ApplyMessage(toChainMsg(params.Message))
+	ret, err := lvm.ApplyMessage(toChainMsg(params.Message))
+	if err != nil {
+		return nil, cid.Undef, err
+	}
 
 	var root cid.Cid
 	if d.vmFlush {
