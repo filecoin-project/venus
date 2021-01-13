@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/filecoin-project/venus/pkg/crypto"
 	"os"
 	"testing"
 
@@ -113,8 +114,10 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	require.Len(t, lsResult.Addresses, 1)
 
 	exportJSON := cmdClient.RunSuccess(ctx, "wallet", "export", lsResult.Addresses[0].String()).ReadStdout()
-	var exportResult cmd.WalletSerializeResult
-	err := json.Unmarshal([]byte(exportJSON), &exportResult)
+	data, err := hex.DecodeString(exportJSON)
+	require.NoError(t, err)
+	var exportResult crypto.KeyInfo
+	err = json.Unmarshal(data, &exportResult)
 	require.NoError(t, err)
 
 	wf, err := os.Create("walletFileTest")
@@ -123,7 +126,7 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 		require.NoError(t, os.Remove("walletFileTest"))
 	}()
 
-	keyInfo, err := json.Marshal(exportResult.KeyInfo[0])
+	keyInfo, err := json.Marshal(exportResult)
 	require.NoError(t, err)
 	_, err = wf.WriteString(hex.EncodeToString(keyInfo))
 	require.NoError(t, err)

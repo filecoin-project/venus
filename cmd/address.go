@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -165,7 +166,7 @@ var walletImportCmd = &cmds.Command{
 
 var walletExportCmd = &cmds.Command{
 	Arguments: []cmds.Argument{
-		cmds.StringArg("addresses", true, true, "Addresses of keys to export").EnableStdin(),
+		cmds.StringArg("addr", true, true, "address of keys to export").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addrs := make([]address.Address, len(req.Arguments))
@@ -181,11 +182,10 @@ var walletExportCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-
-		var klr WalletSerializeResult
-		klr.KeyInfo = append(klr.KeyInfo, kis...)
-
-		return re.Emit(klr)
+		data, err := json.Marshal(kis[0])
+		if err != nil {
+			return err
+		}
+		return re.Emit(bytes.NewBufferString(hex.EncodeToString(data)))
 	},
-	Type: &WalletSerializeResult{},
 }

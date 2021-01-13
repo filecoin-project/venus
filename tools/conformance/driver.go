@@ -310,7 +310,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 	var root cid.Cid
 	if d.vmFlush {
 		// flush the VM, committing the state tree changes and forcing a
-		// recursive copoy from the temporary blcokstore to the real blockstore.
+		// recursive copy from the temporary blcokstore to the real blockstore.
 		root, err = lvm.Flush()
 		if err != nil {
 			return nil, cid.Undef, err
