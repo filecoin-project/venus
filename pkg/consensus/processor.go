@@ -97,8 +97,8 @@ func (p *DefaultProcessor) ProcessUnsignedMessage(ctx context.Context, msg types
 	if err != nil {
 		return nil, err
 	}
-	ret = v.ApplyMessage(msg)
-	return ret, nil
+
+	return v.ApplyMessage(msg)
 }
 
 func (p *DefaultProcessor) ProcessImplicitMessage(ctx context.Context, msg *types.UnsignedMessage, vmOption vm.VmOption) (ret *vm.Ret, err error) {

@@ -18,7 +18,7 @@ type VMInterpreter interface {
 	// Note: any message processing error will be present as an `ExitCode` in the `MessageReceipt`.
 	ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.TipSet, parentEpoch abi.ChainEpoch, epoch abi.ChainEpoch, cb ExecCallBack) (cid.Cid, []types.MessageReceipt, error)
 	ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (*Ret, error)
-	ApplyMessage(msg types.ChainMsg) *Ret
+	ApplyMessage(msg types.ChainMsg) (*Ret, error)
 	ApplyImplicitMessage(msg types.ChainMsg) (*Ret, error)
 
 	StateTree() state.Tree
