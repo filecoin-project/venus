@@ -5,14 +5,16 @@ import (
 	"bytes"
 	"os"
 	"strconv"
+	"time"
 
-	"github.com/filecoin-project/venus/app/node"
-
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
+
+	"github.com/filecoin-project/venus/app/node"
+	"github.com/filecoin-project/venus/pkg/block"
 )
 
 var chainCmd = &cmds.Command{
@@ -32,6 +34,7 @@ type ChainHeadResult struct {
 	Height       abi.ChainEpoch
 	ParentWeight big.Int
 	Cids         []cid.Cid
+	Timestamp    string
 }
 
 var storeHeadCmd = &cmds.Command{
@@ -54,9 +57,22 @@ var storeHeadCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(&ChainHeadResult{Height: h, ParentWeight: pw, Cids: head.Key().Cids()})
+		strTt := time.Unix(int64(head.MinTimestamp()), 0).Format("2006-01-02 15:04:05")
+
+		return re.Emit(&ChainHeadResult{Height: h, ParentWeight: pw, Cids: head.Key().Cids(), Timestamp: strTt})
 	},
 	Type: &ChainHeadResult{},
+}
+
+type BlockResult struct {
+	Cid   cid.Cid
+	Miner address.Address
+}
+
+type ChainLsResult struct {
+	Height    abi.ChainEpoch
+	Timestamp string
+	Blocks    []BlockResult
 }
 
 var storeLsCmd = &cmds.Command{
@@ -92,14 +108,35 @@ var storeLsCmd = &cmds.Command{
 			return err
 		}
 
-		for _, tipset := range tipSetKeys {
-			if err := re.Emit(tipset.Cids()); err != nil {
+		res := make([]ChainLsResult, 0)
+		for _, key := range tipSetKeys {
+			tp, err := env.(*node.Env).ChainAPI.ChainGetTipSet(key)
+			if err != nil {
 				return err
 			}
+
+			h, err := tp.Height()
+			if err != nil {
+				return err
+			}
+
+			strTt := time.Unix(int64(tp.MinTimestamp()), 0).Format("2006-01-02 15:04:05")
+
+			blks := make([]BlockResult, len(tp.Blocks()))
+			for idx, blk := range tp.Blocks() {
+				blks[idx] = BlockResult{Cid: blk.Cid(), Miner: blk.Miner}
+			}
+
+			lsRes := ChainLsResult{Height: h, Timestamp: strTt, Blocks: blks}
+			res = append(res, lsRes)
+		}
+
+		if err := re.Emit(res); err != nil {
+			return err
 		}
 		return nil
 	},
-	Type: []block.Block{},
+	Type: []ChainLsResult{},
 }
 
 type SyncTarget struct {
