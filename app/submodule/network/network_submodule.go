@@ -188,11 +188,11 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 		// Gossipsubv1.1 configuration
 		libp2pps.WithFloodPublish(true),
 
-		//  校验 buffer 队列, 32 -> 10K
+		//  ?? buffer ??, 32 -> 10K
 		libp2pps.WithValidateQueueSize(10 << 10),
-		// 校验 worker 数量, 1x cpu -> 2x cpu
+		// ?? worker ??, 1x cpu -> 2x cpu
 		libp2pps.WithValidateWorkers(runtime.NumCPU() * 2),
-		// 校验 goroutine 数量阈值 8K -> 16K
+		// ?? goroutine ???? 8K -> 16K
 		libp2pps.WithValidateThrottle(16 << 10),
 
 		libp2pps.WithMessageSigning(pubsubMessageSigning),
@@ -306,7 +306,7 @@ func (networkSubmodule *NetworkSubmodule) fetchCids(
 		return nil, fmt.Errorf("duplicate CIDs in fetchCids input")
 	}
 
-	var msgBlocks []blocks.Block
+	msgBlocks := make([]blocks.Block, len(cids))
 	srv := bserv.New(networkSubmodule.blockstore, networkSubmodule.Bitswap)
 	for block := range srv.GetBlocks(ctx, cids) {
 		ix, ok := cidIndex[block.Cid()]

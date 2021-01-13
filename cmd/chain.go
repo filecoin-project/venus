@@ -2,7 +2,9 @@
 package cmd
 
 import (
+	"bytes"
 	"os"
+	"strconv"
 
 	"github.com/filecoin-project/venus/app/node"
 
@@ -115,33 +117,26 @@ var storeStatusCmd = &cmds.Command{
 		Tagline: "Show status of chain sync operation.",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		syncStatus := &SyncStatus{}
 		//TODO give each target a status
 		//syncStatus.Status = env.(*node.Env).SyncerAPI.SyncerStatus()
 		targets := env.(*node.Env).SyncerAPI.SyncerTracker().Buckets()
-		for _, t := range targets {
+		w := bytes.NewBufferString("")
+		writer := NewSilentWriter(w)
+		for index, t := range targets {
+			writer.Println("Target:", strconv.Itoa(index+1))
+			writer.Println("\tHeight:", strconv.FormatUint(uint64(t.Head.EnsureHeight()), 10))
+			writer.Println("\tTipSet:", t.Head.Key().String())
 			if t.InSyncing {
-				syncStatus.Target = append(syncStatus.Target, SyncTarget{
-					TargetTs: t.Head.Key(),
-					Height:   t.Head.EnsureHeight(),
-					State:    "Syncing",
-				})
+				writer.Println("\tStatus:Syncing")
 			} else {
-				syncStatus.Target = append(syncStatus.Target, SyncTarget{
-					TargetTs: t.Head.Key(),
-					Height:   t.Head.EnsureHeight(),
-					State:    "Wait",
-				})
+				writer.Println("\tStatus:Wait")
 			}
-
 		}
-
-		if err := re.Emit(syncStatus); err != nil {
+		if err := re.Emit(w); err != nil {
 			return err
 		}
 		return nil
 	},
-	Type: SyncStatus{},
 }
 
 var storeSetHeadCmd = &cmds.Command{

@@ -65,6 +65,14 @@ func (sw *SilentWriter) WriteString(str string) bool {
 	return sw.err == nil
 }
 
+// WriteString writes with io.WriteString and returns true if there was no error.
+func (sw *SilentWriter) WriteStringln(str string) bool {
+	if sw.err == nil {
+		_, sw.err = io.WriteString(sw.w, str+"\n")
+	}
+	return sw.err == nil
+}
+
 // Print writes with fmt.Fprint and returns true if there was no error.
 func (sw *SilentWriter) Print(a ...interface{}) bool {
 	if sw.err == nil {

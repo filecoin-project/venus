@@ -519,6 +519,10 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 		if wts.Defined() {
 			syncerTs = wts
 		}
+		_, err = syncer.fetchSegMessage(ctx, []*block.TipSet{syncerTs})
+		if err != nil {
+			return err
+		}
 		err = syncer.syncOne(ctx, parent, syncerTs)
 		if err != nil {
 			return err
