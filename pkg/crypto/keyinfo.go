@@ -66,6 +66,19 @@ func (ki *KeyInfo) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (ki *KeyInfo) MarshalJSON() ([]byte, error) {
+	k := keyInfo{}
+	k.PrivateKey = ki.PrivateKey
+	if ki.SigType == crypto.SigTypeBLS {
+		k.SigType = stBLS
+	} else if ki.SigType == crypto.SigTypeSecp256k1 {
+		k.SigType = stSecp256k1
+	} else {
+		return nil, fmt.Errorf("unsupport keystore types  %T", k.SigType)
+	}
+	return json.Marshal(k)
+}
+
 // Key returns the private key of KeyInfo
 func (ki *KeyInfo) Key() []byte {
 	return ki.PrivateKey
