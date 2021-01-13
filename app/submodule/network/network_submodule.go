@@ -1,9 +1,14 @@
 package network
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	blocks "github.com/ipfs/go-block-format"
+	bserv "github.com/ipfs/go-blockservice"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -70,18 +75,19 @@ type NetworkSubmodule struct { //nolint
 
 	GraphExchange graphsync.GraphExchange
 
-	PeerMgr net.IPeerMgr
+	blockstore blockstoreutil.Blockstore
+	PeerMgr    net.IPeerMgr
 	//data transfer
 	DataTransfer     datatransfer.Manager
 	DataTransferHost dtnet.DataTransferNetwork
 }
 
-func (network *NetworkSubmodule) API() *NetworkAPI {
-	return &NetworkAPI{network: network}
+func (networkSubmodule *NetworkSubmodule) API() *NetworkAPI {
+	return &NetworkAPI{network: networkSubmodule}
 }
 
-func (network *NetworkSubmodule) Stop(ctx context.Context) {
-	if err := network.Host.Close(); err != nil {
+func (networkSubmodule *NetworkSubmodule) Stop(ctx context.Context) {
+	if err := networkSubmodule.Host.Close(); err != nil {
 		fmt.Printf("error closing host: %s\n", err)
 	}
 }
@@ -240,7 +246,91 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 		DataTransfer:     dt,
 		DataTransferHost: dtNet,
 		PeerMgr:          peerMgr,
+		blockstore:       blockstore.Blockstore,
 	}, nil
+}
+
+func (networkSubmodule *NetworkSubmodule) FetchMessagesByCids(
+	ctx context.Context,
+	cids []cid.Cid,
+) ([]*types.UnsignedMessage, error) {
+	out := make([]*types.UnsignedMessage, len(cids))
+	blks, err := networkSubmodule.fetchCids(ctx, cids)
+	if err != nil {
+		return nil, err
+	}
+	for index, blk := range blks {
+		var msg types.UnsignedMessage
+		err := msg.UnmarshalCBOR(bytes.NewReader(blk.RawData()))
+		if err != nil {
+			return nil, err
+		}
+		out[index] = &msg
+	}
+	return out, nil
+}
+
+func (networkSubmodule *NetworkSubmodule) FetchSignedMessagesByCids(
+	ctx context.Context,
+	cids []cid.Cid,
+) ([]*types.SignedMessage, error) {
+	out := make([]*types.SignedMessage, len(cids))
+	blks, err := networkSubmodule.fetchCids(ctx, cids)
+	if err != nil {
+		return nil, err
+	}
+	for index, blk := range blks {
+		var msg types.SignedMessage
+		err := msg.UnmarshalCBOR(bytes.NewReader(blk.RawData()))
+		if err != nil {
+			return nil, err
+		}
+		out[index] = &msg
+	}
+	return out, nil
+}
+
+func (networkSubmodule *NetworkSubmodule) fetchCids(
+	ctx context.Context,
+	cids []cid.Cid,
+) ([]blocks.Block, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	cidIndex := make(map[cid.Cid]int)
+	for i, c := range cids {
+		cidIndex[c] = i
+	}
+
+	if len(cids) != len(cidIndex) {
+		return nil, fmt.Errorf("duplicate CIDs in fetchCids input")
+	}
+
+	var msgBlocks []blocks.Block
+	srv := bserv.New(networkSubmodule.blockstore, networkSubmodule.Bitswap)
+	for block := range srv.GetBlocks(ctx, cids) {
+		ix, ok := cidIndex[block.Cid()]
+		if !ok {
+			// Ignore duplicate/unexpected blocks. This shouldn't
+			// happen, but we can be safe.
+			networkLogger.Errorw("received duplicate/unexpected block when syncing", "cid", block.Cid())
+			continue
+		}
+
+		// Record that we've received the block.
+		delete(cidIndex, block.Cid())
+		msgBlocks[ix] = block
+	}
+
+	if len(cidIndex) > 0 {
+		err := ctx.Err()
+		if err == nil {
+			err = fmt.Errorf("failed to fetch %d messages for unknown reasons", len(cidIndex))
+		}
+		return nil, err
+	}
+
+	return msgBlocks, nil
 }
 
 func retrieveNetworkName(ctx context.Context, genCid cid.Cid, cborStore cbor.IpldStore) (string, error) {
