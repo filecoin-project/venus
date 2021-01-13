@@ -42,6 +42,7 @@ var log = logging.Logger("sync.module") // nolint: deadcode
 
 // SyncerSubmodule enhances the node with chain syncing capabilities
 type SyncerSubmodule struct { //nolint
+	BlockstoreModule   *blockstore.BlockstoreSubmodule
 	ChainModule        *chain2.ChainSubmodule
 	NetworkModule      *network.NetworkSubmodule
 	DiscoverySubmodule *discovery.DiscoverySubmodule
@@ -153,6 +154,7 @@ func NewSyncerSubmodule(ctx context.Context,
 	})
 
 	return &SyncerSubmodule{
+		BlockstoreModule:   blockstore,
 		ChainModule:        chn,
 		NetworkModule:      network,
 		DiscoverySubmodule: discovery,
@@ -187,32 +189,21 @@ func (syncer *SyncerSubmodule) handleIncommingBlocks(ctx context.Context, msg pu
 	log.Infof("Received new block %s height %d from peer %s", header.Cid(), header.Height, sender)
 
 	go func() {
-		ts, _ := block.NewTipSet(header)
-		_, err = syncer.loadLocalFullTipset(ctx, ts.Key())
+		_, err := syncer.NetworkModule.FetchMessagesByCids(ctx, bm.BlsMessages)
 		if err != nil {
-			fullTipSet, err := syncer.DiscoverySubmodule.ExchangeClient.GetFullTipSet(ctx, []peer.ID{sender, source}, ts.Key())
-			if err == nil {
-				for _, b := range fullTipSet.Blocks {
-					_, err = syncer.ChainModule.ChainReader.PutObject(ctx, b.Header)
-					if err != nil {
-						log.Errorf("fail to save block to tipset %v", err)
-						return
-					}
-					_, err = syncer.ChainModule.MessageStore.StoreMessages(ctx, b.SECPMessages, b.BLSMessages)
-					if err != nil {
-						log.Errorf("fail to save block to tipset %v", err)
-						return
-					}
-				}
-				syncer.NetworkModule.Host.ConnManager().TagPeer(sender, "blkprop", 50)
-			} else {
-				syncer.NetworkModule.Host.ConnManager().TagPeer(sender, "blkprop", -100)
-			}
-		}
-		if err != nil {
-			log.Errorf("failed to fetch full tipset %v", err)
+			log.Errorf("failed to fetch all bls messages for block received over pubusb: %s; source: %s", err, source)
 			return
 		}
+
+		_, err = syncer.NetworkModule.FetchSignedMessagesByCids(ctx, bm.SecpkMessages)
+		if err != nil {
+			log.Errorf("failed to fetch all secpk messages for block received over pubusb: %s; source: %s", err, source)
+			return
+		}
+
+		syncer.NetworkModule.Host.ConnManager().TagPeer(sender, "new-block", 20)
+		log.Infof("fetch message success at %s", bm.Header.Cid())
+		ts, _ := block.NewTipSet(header)
 		chainInfo := block.NewChainInfo(source, sender, ts)
 		err = syncer.ChainSyncManager.BlockProposer().SendGossipBlock(chainInfo)
 		if err != nil {
