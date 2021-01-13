@@ -642,7 +642,7 @@ var actorControlSet = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		writer.Println("Message CID: %s" + cid.String())
+		writer.Println("Message CID: " + cid.String())
 
 		return re.Emit(buf)
 	},

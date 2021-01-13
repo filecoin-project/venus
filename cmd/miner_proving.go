@@ -332,7 +332,7 @@ var provingFaultsCmd = &cmds.Command{
 		writer.Printf("Miner: %s\n", maddr)
 
 		tw := tabwriter.NewWriter(buf, 2, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "deadline\tpartition\tsectors") // nolint
+		_, _ = fmt.Fprintln(tw, "deadline\tpartition\tsectors")
 		err = mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
 			return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
 				faults, err := part.FaultySectors()
