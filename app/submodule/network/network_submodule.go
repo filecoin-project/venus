@@ -188,11 +188,11 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 		// Gossipsubv1.1 configuration
 		libp2pps.WithFloodPublish(true),
 
-		//  ?? buffer ??, 32 -> 10K
+		//  buffer, 32 -> 10K
 		libp2pps.WithValidateQueueSize(10 << 10),
-		// ?? worker ??, 1x cpu -> 2x cpu
+		//  worker, 1x cpu -> 2x cpu
 		libp2pps.WithValidateWorkers(runtime.NumCPU() * 2),
-		// ?? goroutine ???? 8K -> 16K
+		//  goroutine, 8K -> 16K
 		libp2pps.WithValidateThrottle(16 << 10),
 
 		libp2pps.WithMessageSigning(pubsubMessageSigning),
