@@ -5,9 +5,12 @@ import (
 	"testing"
 
 	"github.com/fatih/color"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
 func TestTableWriter(t *testing.T) {
+	tf.UnitTest(t)
 	tw := New(Col("C1"), Col("X"), Col("C333"), NewLineCol("Thing"))
 	tw.Write(map[string]interface{}{
 		"C1":   "234",
