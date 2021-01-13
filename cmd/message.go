@@ -23,15 +23,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm"
 )
 
-var msgCmd = &cmds.Command{
-	Helptext: cmds.HelpText{
-		Tagline: "Send and monitor messages",
-	},
-	Subcommands: map[string]*cmds.Command{
-		"send": msgSendCmd,
-	},
-}
-
 // MessageSendResult is the return type for message send command
 type MessageSendResult struct {
 	Cid     cid.Cid

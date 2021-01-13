@@ -20,17 +20,9 @@ var walletCmd = &cmds.Command{
 		Tagline: "Manage your filecoin wallets",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"balance": balanceCmd,
-		"import":  walletImportCmd,
-		"export":  walletExportCmd,
-	},
-}
-
-var addrsCmd = &cmds.Command{
-	Helptext: cmds.HelpText{
-		Tagline: "Interact with addresses",
-	},
-	Subcommands: map[string]*cmds.Command{
+		"balance":     balanceCmd,
+		"import":      walletImportCmd,
+		"export":      walletExportCmd,
 		"ls":          addrsLsCmd,
 		"new":         addrsNewCmd,
 		"default":     defaultAddressCmd,
