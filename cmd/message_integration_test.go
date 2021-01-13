@@ -37,7 +37,7 @@ func TestMessageSend(t *testing.T) {
 	cmdClient.RunFail(
 		ctx,
 		address.ErrUnknownNetwork.Error(),
-		"message", "send",
+		"send",
 		"--from", from.String(),
 		"--gas-price", "0", "--gas-limit", "300",
 		"--value=10", "xyz",
@@ -46,7 +46,7 @@ func TestMessageSend(t *testing.T) {
 	t.Log("[success] with from")
 	cmdClient.RunSuccess(
 		ctx,
-		"message", "send",
+		"send",
 		"--from", from.String(),
 		"--gas-price", "1",
 		"--gas-limit", "300",
@@ -56,7 +56,7 @@ func TestMessageSend(t *testing.T) {
 	t.Log("[success] with from and int value")
 	cmdClient.RunSuccess(
 		ctx,
-		"message", "send",
+		"send",
 		"--from", from.String(),
 		"--gas-price", "1",
 		"--gas-limit", "300",
@@ -67,7 +67,7 @@ func TestMessageSend(t *testing.T) {
 	t.Log("[success] with from and decimal value")
 	cmdClient.RunSuccess(
 		ctx,
-		"message", "send",
+		"send",
 		"--from", from.String(),
 		"--gas-price", "1",
 		"--gas-limit", "300",
@@ -95,7 +95,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 		cmdClient.RunFail(
 			ctx,
 			"block gas limit",
-			"message", "send",
+			"send",
 			"--gas-price", "1", "--gas-limit", doubleTheBlockGasLimit,
 			"--value=10", fortest.TestAddresses[1].String(),
 		)

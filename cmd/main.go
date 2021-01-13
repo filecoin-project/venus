@@ -101,7 +101,6 @@ START RUNNING FILECOIN
   venus config <key> [<value>] - Get and set filecoin config values
   venus daemon                 - Start a long-running daemon process
   venus wallet                 - Manage your filecoin wallets
-  venus address                - Interact with addresses
 
 VIEW DATA STRUCTURES
   venus chain                  - Inspect the filecoin blockchain
@@ -109,18 +108,14 @@ VIEW DATA STRUCTURES
   venus show                   - Get human-readable representations of filecoin objects
 
 NETWORK COMMANDS
-  venus bootstrap              - Interact with bootstrap addresses
-  venus dht                    - Interact with the dht
-  venus id                     - Show info about the network peers
   venus swarm                  - Interact with the swarm
-  venus stats                  - Monitor statistics on your network usage
-  venus drand random           - retrieve drand randomness
+  venus drand           	   - retrieve drand randomness
 
 ACTOR COMMANDS
   venus actor                  - Interact with actors. Actors are built-in smart contracts
 
 MESSAGE COMMANDS
-  venus message                - Manage messages
+  venus send                  - Send message
   venus mpool                  - Manage the message pool
 
 TOOL COMMANDS
@@ -156,27 +151,18 @@ var rootSubcmdsLocal = map[string]*cmds.Command{
 
 // all top level commands, available on daemon. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
-	"actor":     actorCmd,
-	"address":   addrsCmd,
-	"bootstrap": bootstrapCmd,
-	"chain":     chainCmd,
-	"config":    configCmd,
-	//"client":           clientCmd,
-	"drand": drandCmd,
-	"dag":   dagCmd,
-	//"deals":            dealsCmd,
-	"dht":     dhtCmd,
-	"id":      idCmd,
-	"inspect": inspectCmd,
-	"leb128":  leb128Cmd,
-	"log":     logCmd,
-	"message": msgCmd,
-	//"miner":            minerCmd,
-	//"mining":           miningCmd,
+	"actor":    actorCmd,
+	"chain":    chainCmd,
+	"config":   configCmd,
+	"drand":    drandCmd,
+	"dag":      dagCmd,
+	"inspect":  inspectCmd,
+	"leb128":   leb128Cmd,
+	"log":      logCmd,
+	"send":     msgSendCmd,
 	"mpool":    mpoolCmd,
 	"protocol": protocolCmd,
 	"show":     showCmd,
-	"stats":    statsCmd,
 	"swarm":    swarmCmd,
 	"wallet":   walletCmd,
 	"version":  versionCmd,

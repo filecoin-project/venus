@@ -11,7 +11,7 @@ import (
 // AddressNew runs the address new command against the filecoin process.
 func (f *Filecoin) AddressNew(ctx context.Context) (address.Address, error) {
 	var newAddress address.Address
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &newAddress, "venus", "address", "new"); err != nil {
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &newAddress, "venus", "wallet", "new"); err != nil {
 		return address.Undef, err
 	}
 	return newAddress, nil
@@ -21,7 +21,7 @@ func (f *Filecoin) AddressNew(ctx context.Context) (address.Address, error) {
 func (f *Filecoin) AddressLs(ctx context.Context) ([]address.Address, error) {
 	// the command returns an AddressListResult
 	var alr cmd.AddressLsResult
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &alr, "venus", "address", "ls"); err != nil {
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &alr, "venus", "wallet", "ls"); err != nil {
 		return nil, err
 	}
 	return alr.Addresses, nil
@@ -30,7 +30,7 @@ func (f *Filecoin) AddressLs(ctx context.Context) ([]address.Address, error) {
 // AddressLookup runs the address lookup command against the filecoin process.
 func (f *Filecoin) AddressLookup(ctx context.Context, addr address.Address) (peer.ID, error) {
 	var ownerPeer peer.ID
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &ownerPeer, "venus", "address", "lookup", addr.String()); err != nil {
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &ownerPeer, "venus", "state", "lookup", addr.String()); err != nil {
 		return "", err
 	}
 	return ownerPeer, nil

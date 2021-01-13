@@ -35,7 +35,7 @@ func TestAddressNewAndList(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	list := cmdClient.RunSuccess(ctx, "address", "ls").ReadStdout()
+	list := cmdClient.RunSuccess(ctx, "wallet", "ls").ReadStdout()
 	for _, addr := range addrs {
 		assert.Contains(t, list, addr.String())
 	}
@@ -65,7 +65,7 @@ func TestWalletBalance(t *testing.T) {
 
 	t.Log("[success] newly generated one")
 	var addrNew cmd.AddressResult
-	cmdClient.RunMarshaledJSON(ctx, &addrNew, "address", "new")
+	cmdClient.RunMarshaledJSON(ctx, &addrNew, "wallet", "new")
 	cmdClient.RunMarshaledJSON(ctx, &balance, "wallet", "balance", addrNew.Address.String())
 	assert.Equal(t, "0", balance.String())
 }
@@ -86,7 +86,7 @@ func TestWalletLoadFromFile(t *testing.T) {
 	}
 
 	var addrs cmd.AddressLsResult
-	cmdClient.RunMarshaledJSON(ctx, &addrs, "address", "ls")
+	cmdClient.RunMarshaledJSON(ctx, &addrs, "wallet", "ls")
 
 	for _, addr := range fortest.TestAddresses {
 		// assert we loaded the test address from the file
@@ -109,7 +109,7 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	defer done()
 
 	var lsResult cmd.AddressLsResult
-	cmdClient.RunMarshaledJSON(ctx, &lsResult, "address", "ls")
+	cmdClient.RunMarshaledJSON(ctx, &lsResult, "wallet", "ls")
 	require.Len(t, lsResult.Addresses, 1)
 
 	exportJSON := cmdClient.RunSuccess(ctx, "wallet", "export", lsResult.Addresses[0].String()).ReadStdout()
