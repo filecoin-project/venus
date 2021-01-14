@@ -45,7 +45,6 @@ func TestLoadFork(t *testing.T) {
 	right := builder.AppendManyOn(3, base)
 
 	leftTarget := &types.Target{
-		InSyncing: false,
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
@@ -54,7 +53,6 @@ func TestLoadFork(t *testing.T) {
 		ChainInfo: *block.NewChainInfo("", "", left),
 	}
 	rightTarget := &types.Target{
-		InSyncing: false,
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},

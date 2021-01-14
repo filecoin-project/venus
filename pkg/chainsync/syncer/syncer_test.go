@@ -51,7 +51,6 @@ func TestMultiBlockTip(t *testing.T) {
 
 	tip := builder.AppendOn(genesis, 2)
 	target := &syncTypes.Target{
-		InSyncing: false,
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
@@ -265,7 +264,6 @@ func TestAcceptHeavierFork(t *testing.T) {
 	fork3 := builder.AppendOn(fork2, 1)
 
 	main4Target := &syncTypes.Target{
-		InSyncing: false,
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
@@ -280,7 +278,6 @@ func TestAcceptHeavierFork(t *testing.T) {
 
 	// Heavier fork updates head3
 	fork3Target := &syncTypes.Target{
-		InSyncing: false,
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
@@ -304,7 +301,6 @@ func TestRejectFinalityFork(t *testing.T) {
 
 	head := builder.AppendManyOn(int(policy.ChainFinality+2), genesis)
 	target := &syncTypes.Target{
-		InSyncing: false,
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
@@ -322,7 +318,6 @@ func TestRejectFinalityFork(t *testing.T) {
 	})
 	forkFinalityHead := builder.AppendManyOn(int(policy.ChainFinality), forkFinalityBase)
 	forkHeadTarget := &syncTypes.Target{
-		InSyncing: false,
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
@@ -341,7 +336,6 @@ func TestNoUncessesaryFetch(t *testing.T) {
 
 	head := builder.AppendManyOn(4, genesis)
 	target := &syncTypes.Target{
-		InSyncing: false,
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
@@ -372,7 +366,6 @@ func TestNoUncessesaryFetch(t *testing.T) {
 	require.NoError(t, newSyncer.InitStaged())
 
 	target2 := &syncTypes.Target{
-		InSyncing: false,
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
@@ -408,7 +401,6 @@ func TestSubsetParent(t *testing.T) {
 	tipA1A2 := builder.AppendOn(genesis, 2)
 	tipB1B2B3 := builder.AppendOn(tipA1A2, 3)
 	target1 := &syncTypes.Target{
-		InSyncing: false,
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
@@ -424,7 +416,6 @@ func TestSubsetParent(t *testing.T) {
 	tipC1C2 := builder.AppendOn(tipB1B2, 2)
 
 	target2 := &syncTypes.Target{
-		InSyncing: false,
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
@@ -440,7 +431,6 @@ func TestSubsetParent(t *testing.T) {
 	tipD1OnC1 := builder.AppendOn(tipC1, 1)
 
 	target3 := &syncTypes.Target{
-		InSyncing: false,
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
@@ -453,7 +443,6 @@ func TestSubsetParent(t *testing.T) {
 	// A full parent also works fine: {C1, C2} -> D1
 	tipD1OnC1C2 := builder.AppendOn(tipC1C2, 1)
 	target4 := &syncTypes.Target{
-		InSyncing: false,
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
@@ -480,7 +469,6 @@ func TestBlockNotLinkedRejected(t *testing.T) {
 	// The syncer fails to fetch this block so cannot sync it.
 	b1 := shadowBuilder.AppendOn(genesis, 1)
 	target1 := &syncTypes.Target{
-		InSyncing: false,
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
@@ -493,7 +481,6 @@ func TestBlockNotLinkedRejected(t *testing.T) {
 	// Make the same block available from the syncer's builder
 	builder.AppendBlockOn(genesis)
 	target2 := &syncTypes.Target{
-		InSyncing: false,
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
@@ -566,7 +553,6 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 
 	// Set up a fresh builder without any of this data
 	target1 := &syncTypes.Target{
-		InSyncing: false,
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
@@ -593,7 +579,6 @@ func TestStoresMessageReceipts(t *testing.T) {
 	})
 
 	target1 := &syncTypes.Target{
-		InSyncing: false,
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
