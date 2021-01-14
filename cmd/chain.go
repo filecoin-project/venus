@@ -3,6 +3,7 @@ package cmd
 
 import (
 	"bytes"
+	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	"os"
 	"strconv"
 	"time"
@@ -156,19 +157,56 @@ var storeStatusCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		//TODO give each target a status
 		//syncStatus.Status = env.(*node.Env).SyncerAPI.SyncerStatus()
-		targets := env.(*node.Env).SyncerAPI.SyncerTracker().Buckets()
+		tracker := env.(*node.Env).SyncerAPI.SyncerTracker()
+		targets := tracker.Buckets()
 		w := bytes.NewBufferString("")
 		writer := NewSilentWriter(w)
 		for index, t := range targets {
-			writer.Println("Target:", strconv.Itoa(index+1))
-			writer.Println("\tHeight:", strconv.FormatUint(uint64(t.Head.EnsureHeight()), 10))
-			writer.Println("\tTipSet:", t.Head.Key().String())
-			if t.InSyncing {
+			writer.Println("SyncTarget:", strconv.Itoa(index+1))
+			writer.Println("\tBase:", t.Base.EnsureHeight(), t.Base.Key().String())
+
+			writer.Println("\tTarget:", t.Head.EnsureHeight(), t.Head.Key().String())
+
+			if t.Current != nil {
+				writer.Println("\tCurrent:", t.Current.EnsureHeight(), t.Current.Key().String())
+			} else {
+				writer.Println("\tCurrent:")
+			}
+
+			if t.State != syncTypes.StageIdle {
 				writer.Println("\tStatus:Syncing")
 			} else {
 				writer.Println("\tStatus:Wait")
 			}
+			writer.Println("\tErr:", t.Err)
+			writer.Println()
 		}
+		history := tracker.History()
+		count := len(targets)
+		for target := history.Front(); target != nil; target = target.Next() {
+			t := target.Value.(*syncTypes.Target)
+			writer.Println("SyncTarget:", strconv.Itoa(count+1))
+			writer.Println("\tBase:", t.Base.EnsureHeight(), t.Base.Key().String())
+
+			writer.Println("\tTarget:", t.Head.EnsureHeight(), t.Head.Key().String())
+
+			if t.Current != nil {
+				writer.Println("\tCurrent:", t.Current.EnsureHeight(), t.Current.Key().String())
+			} else {
+				writer.Println("\tCurrent:")
+			}
+
+			if t.State != syncTypes.StageIdle {
+				writer.Println("\tStatus:Syncing")
+			} else {
+				writer.Println("\tStatus:Wait")
+			}
+
+			writer.Println("\tErr:", t.Err)
+			count++
+			writer.Println()
+		}
+
 		if err := re.Emit(w); err != nil {
 			return err
 		}

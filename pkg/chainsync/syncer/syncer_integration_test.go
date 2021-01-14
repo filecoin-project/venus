@@ -2,6 +2,7 @@ package syncer_test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/chainsync/types"
 	"testing"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/chainsync/status"
 	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -36,7 +36,7 @@ func TestLoadFork(t *testing.T) {
 	// *not* as the bsstore, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{MessageStore: builder.Mstore()}
 	sel := &chain.FakeChainSelector{}
-	s, err := syncer.NewSyncer(eval, eval, sel, builder.Store(), builder.Mstore(), builder.BlockStore(), builder, builder, status.NewReporter(), clock.NewFake(time.Unix(1234567890, 0)), &noopFaultDetector{}, nil)
+	s, err := syncer.NewSyncer(eval, eval, sel, builder.Store(), builder.Mstore(), builder.BlockStore(), builder, builder, clock.NewFake(time.Unix(1234567890, 0)), &noopFaultDetector{}, nil)
 	require.NoError(t, err)
 	require.NoError(t, s.InitStaged())
 
@@ -44,9 +44,25 @@ func TestLoadFork(t *testing.T) {
 	left := builder.AppendManyOn(4, base)
 	right := builder.AppendManyOn(3, base)
 
+	leftTarget := &types.Target{
+		Base:      nil,
+		Current:   nil,
+		Start:     time.Time{},
+		End:       time.Time{},
+		Err:       nil,
+		ChainInfo: *block.NewChainInfo("", "", left),
+	}
+	rightTarget := &types.Target{
+		Base:      nil,
+		Current:   nil,
+		Start:     time.Time{},
+		End:       time.Time{},
+		Err:       nil,
+		ChainInfo: *block.NewChainInfo("", "", right),
+	}
 	// Sync the two branches, which stores all blocks in the underlying stores.
-	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo("", "", left)))
-	assert.Error(t, s.HandleNewTipSet(ctx, block.NewChainInfo("", "", right)))
+	assert.NoError(t, s.HandleNewTipSet(ctx, leftTarget))
+	assert.Error(t, s.HandleNewTipSet(ctx, rightTarget))
 	verifyHead(t, builder.Store(), left)
 
 	// The syncer/bsstore assume that the fetcher populates the underlying block bsstore such that
@@ -75,7 +91,6 @@ func TestLoadFork(t *testing.T) {
 		builder.BlockStore(),
 		fakeFetcher,
 		builder,
-		status.NewReporter(),
 		clock.NewFake(time.Unix(1234567890, 0)),
 		&noopFaultDetector{},
 		fork.NewMockFork())

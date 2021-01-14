@@ -17,13 +17,13 @@ import (
 func TestActorDaemon(t *testing.T) {
 	tf.IntegrationTest(t)
 	ctx := context.Background()
-	t.Run("actor ls --enc json returns NDJSON containing all actors in the state tree", func(t *testing.T) {
+	t.Run("state ls --enc json returns NDJSON containing all actors in the state tree", func(t *testing.T) {
 		builder := test.NewNodeBuilder(t)
 
 		_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
-		op1 := cmdClient.RunSuccess(ctx, "actor", "ls", "--enc", "json")
+		op1 := cmdClient.RunSuccess(ctx, "state", "list-actor", "--enc", "json")
 		result1 := op1.ReadStdoutTrimNewlines()
 
 		var avs []cmd.ActorView

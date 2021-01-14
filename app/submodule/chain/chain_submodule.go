@@ -115,7 +115,7 @@ func NewChainSubmodule(config chainConfig,
 	}
 	waiter := cst.NewWaiter(combineChainReader, messageStore, blockstore.Blockstore, blockstore.CborStore)
 
-	return &ChainSubmodule{
+	store := &ChainSubmodule{
 		ChainReader:    chainStore,
 		MessageStore:   messageStore,
 		ActorState:     actorState,
@@ -127,12 +127,17 @@ func NewChainSubmodule(config chainConfig,
 		config:         config,
 		Waiter:         waiter,
 		CheckPoint:     chainStore.GetCheckPoint(),
-	}, nil
+	}
+	err = store.ChainReader.Load(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	return store, nil
 }
 
 // Start loads the chain from disk.
 func (chain *ChainSubmodule) Start(ctx context.Context) error {
-	return chain.ChainReader.Load(ctx)
+	return nil
 }
 
 func (chain *ChainSubmodule) Stop(ctx context.Context) {

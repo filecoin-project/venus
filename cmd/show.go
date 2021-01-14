@@ -17,6 +17,7 @@ var showCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
 		"block":    showBlockCmd,
 		"header":   showHeaderCmd,
+		"message":  showMessageCmd,
 		"messages": showMessagesCmd,
 		"receipts": showReceiptsCmd,
 	},
@@ -75,6 +76,29 @@ all other block properties will be included as well.`,
 		return re.Emit(block)
 	},
 	Type: block.Block{},
+}
+
+var showMessageCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Show a filecoin message by its CID",
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cid", true, false, "CID of block to show"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		cid, err := cid.Decode(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		msg, err := env.(*node.Env).ChainAPI.ChainGetMessage(req.Context, cid)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(msg)
+	},
+	Type: types.UnsignedMessage{},
 }
 
 var showMessagesCmd = &cmds.Command{

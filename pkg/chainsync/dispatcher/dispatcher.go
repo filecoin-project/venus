@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/chainsync/types"
 	"runtime/debug"
 	"time"
 
@@ -13,16 +14,16 @@ import (
 
 var log = logging.Logger("chainsync.dispatcher")
 
-// DefaultInQueueSize is the size of the channel used for receiving targets from producers.
+// DefaultInQueueSize is the bucketSize of the channel used for receiving targets from producers.
 const DefaultInQueueSize = 5
 
-// DefaultWorkQueueSize is the size of the work queue
-const DefaultWorkQueueSize = 20
+// DefaultWorkQueueSize is the bucketSize of the work queue
+const DefaultWorkQueueSize = 5
 
 // dispatchSyncer is the interface of the logic syncing incoming chains
 type dispatchSyncer interface {
 	Staged() *block.TipSet
-	HandleNewTipSet(context.Context, *block.ChainInfo) error
+	HandleNewTipSet(context.Context, *types.Target) error
 }
 
 // NewDispatcher creates a new syncing dispatcher with default queue sizes.
@@ -33,18 +34,18 @@ func NewDispatcher(catchupSyncer dispatchSyncer) *Dispatcher {
 // NewDispatcherWithSizes creates a new syncing dispatcher.
 func NewDispatcherWithSizes(syncer dispatchSyncer, workQueueSize, inQueueSize int) *Dispatcher {
 	return &Dispatcher{
-		workTracker:  NewTargetTracker(workQueueSize),
+		workTracker:  types.NewTargetTracker(workQueueSize),
 		syncer:       syncer,
-		incoming:     make(chan *Target, inQueueSize),
+		incoming:     make(chan *types.Target, inQueueSize),
 		control:      make(chan interface{}, 1),
-		registeredCb: func(t *Target, err error) {},
+		registeredCb: func(t *types.Target, err error) {},
 	}
 }
 
 // cbMessage registers a user callback to be fired following every successful
 // sync.
 type cbMessage struct {
-	cb func(*Target, error)
+	cb func(*types.Target, error)
 }
 
 // Dispatcher receives, sorts and dispatches targets to the catchupSyncer to control
@@ -61,16 +62,16 @@ type cbMessage struct {
 type Dispatcher struct {
 	// workTracker is a priority queue of target chain heads that should be
 	// synced
-	workTracker *TargetTracker
+	workTracker *types.TargetTracker
 	// incoming is the queue of incoming sync targets to the dispatcher.
-	incoming chan *Target
+	incoming chan *types.Target
 	// syncer is used for dispatching sync targets for chain heads to sync
 	// local chain state to these targets.
 	syncer dispatchSyncer
 
 	// registeredCb is a callback registered over the control channel.  It
 	// is called after every successful sync.
-	registeredCb func(*Target, error)
+	registeredCb func(*types.Target, error)
 	// control is a queue of control messages not yet processed.
 	control chan interface{}
 
@@ -79,7 +80,7 @@ type Dispatcher struct {
 }
 
 // SendOwnBlock handles chain info from a node's own mining system
-func (d *Dispatcher) SyncTracker() *TargetTracker {
+func (d *Dispatcher) SyncTracker() *types.TargetTracker {
 	return d.workTracker
 }
 
@@ -99,7 +100,11 @@ func (d *Dispatcher) SendGossipBlock(ci *block.ChainInfo) error {
 }
 
 func (d *Dispatcher) addTracker(ci *block.ChainInfo) error {
-	d.incoming <- &Target{ChainInfo: *ci}
+	d.incoming <- &types.Target{
+		ChainInfo: *ci,
+		Base:      d.syncer.Staged(),
+		Start:     time.Now(),
+	}
 	return nil
 }
 
@@ -145,7 +150,7 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 				syncTarget, popped := d.workTracker.Select()
 				if popped {
 					// Do work
-					err := d.syncer.HandleNewTipSet(syncingCtx, &syncTarget.ChainInfo)
+					err := d.syncer.HandleNewTipSet(syncingCtx, syncTarget)
 					d.workTracker.Remove(syncTarget)
 					if err != nil {
 						log.Debugf("failed sync of %v at %d  %s", syncTarget.Head.Key(), syncTarget.Head.EnsureHeight(), err)
@@ -160,7 +165,7 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 
 // RegisterCallback registers a callback on the dispatcher that
 // will fire after every successful target sync.
-func (d *Dispatcher) RegisterCallback(cb func(*Target, error)) {
+func (d *Dispatcher) RegisterCallback(cb func(*types.Target, error)) {
 	d.control <- cbMessage{cb: cb}
 }
 
@@ -169,7 +174,7 @@ func (d *Dispatcher) RegisterCallback(cb func(*Target, error)) {
 func (d *Dispatcher) WaiterForTarget(waitKey block.TipSetKey) func() error {
 	processed := moresync.NewLatch(1)
 	var syncErr error
-	d.RegisterCallback(func(t *Target, err error) {
+	d.RegisterCallback(func(t *types.Target, err error) {
 		if t.ChainInfo.Head.Key().Equals(waitKey) {
 			syncErr = err
 			processed.Done()

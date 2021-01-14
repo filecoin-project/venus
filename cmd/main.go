@@ -111,12 +111,24 @@ NETWORK COMMANDS
   venus swarm                  - Interact with the swarm
   venus drand           	   - retrieve drand randomness
 
-ACTOR COMMANDS
-  venus actor                  - Interact with actors. Actors are built-in smart contracts
-
 MESSAGE COMMANDS
-  venus send                  - Send message
+  venus send                   - Send message
   venus mpool                  - Manage the message pool
+
+State COMMANDS
+  venus wait-msg               - Wait for a message to appear on chain
+  venus search-msg             - Search to see whether a message has appeared on chain
+  venus power                  - Query network or miner power
+  venus sectors                - Query the sector set of a miner
+  venus active-sectors         - Query the active sector set of a miner
+  venus sector                 - Get miner sector info
+  venus get-actor              - Print actor information
+  venus lookup                 - Find corresponding ID address
+  venus sector-size            - Look up miners sector size
+  venus get-deal               - View on-chain deal info
+  venus miner-info             - Retrieve miner information
+  venus network-version        - MReturns the network version
+  venus list-actor             - list all actors
 
 TOOL COMMANDS
   venus inspect                - Show info about the venus node
@@ -151,7 +163,6 @@ var rootSubcmdsLocal = map[string]*cmds.Command{
 
 // all top level commands, available on daemon. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
-	"actor":    actorCmd,
 	"chain":    chainCmd,
 	"config":   configCmd,
 	"drand":    drandCmd,
