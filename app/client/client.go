@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	types2 "github.com/filecoin-project/venus/pkg/chainsync/types"
 	"io"
 	"time"
 
@@ -26,7 +27,6 @@ import (
 	syncApiTypes "github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/chainsync/status"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/net"
@@ -39,7 +39,7 @@ import (
 )
 
 type FullNode struct {
-	SyncerStatus             func() status.Status
+	SyncerStatus             func() types2.Status
 	ChainTipSetWeight        func(context.Context, block.TipSetKey) (big.Int, error)
 	ChainSyncHandleNewTipSet func(*block.ChainInfo) error
 	SyncSubmitBlock          func(context.Context, *block.BlockMsg) error
@@ -174,7 +174,7 @@ type BeaconAPI struct {
 }
 
 type SyncerAPI struct {
-	SyncerStatus             func() status.Status
+	SyncerStatus             func() types2.Status
 	ChainTipSetWeight        func(context.Context, block.TipSetKey) (big.Int, error)
 	ChainSyncHandleNewTipSet func(*block.ChainInfo) error
 	SyncSubmitBlock          func(context.Context, *block.BlockMsg) error

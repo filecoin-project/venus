@@ -4,6 +4,7 @@ import (
 	"context"
 	fbig "github.com/filecoin-project/go-state-types/big"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"sort"
 	"testing"
@@ -24,10 +25,10 @@ type mockSyncer struct {
 }
 
 func (fs *mockSyncer) Staged() *block.TipSet {
-	panic("implement me")
+	return block.UndefTipSet
 }
 
-func (fs *mockSyncer) HandleNewTipSet(_ context.Context, ci *block.ChainInfo) error {
+func (fs *mockSyncer) HandleNewTipSet(_ context.Context, ci *syncTypes.Target) error {
 	fs.headsCalled = append(fs.headsCalled, ci.Head)
 	return nil
 }
@@ -54,7 +55,7 @@ func TestDispatchStartHappy(t *testing.T) {
 
 	// set up a blocking channel and register to unblock after 5 synced
 	allDone := moresync.NewLatch(5)
-	testDispatch.RegisterCallback(func(t *dispatcher.Target, _ error) {
+	testDispatch.RegisterCallback(func(t *syncTypes.Target, _ error) {
 		allDone.Done()
 	})
 
@@ -87,7 +88,7 @@ func TestDispatcherDropsWhenFull(t *testing.T) {
 	testDispatch := dispatcher.NewDispatcherWithSizes(s, testWorkSize, testBufferSize)
 
 	finished := moresync.NewLatch(1)
-	testDispatch.RegisterCallback(func(target *dispatcher.Target, _ error) {
+	testDispatch.RegisterCallback(func(target *syncTypes.Target, _ error) {
 		// Fail if the work that should be dropped gets processed
 		assert.False(t, target.Head.EnsureHeight() == 100)
 		assert.False(t, target.Head.EnsureHeight() == 101)
@@ -113,13 +114,13 @@ func TestDispatcherDropsWhenFull(t *testing.T) {
 
 func TestQueueHappy(t *testing.T) {
 	tf.UnitTest(t)
-	testQ := dispatcher.NewTargetTracker(20)
+	testQ := syncTypes.NewTargetTracker(20)
 
 	// Add syncRequests out of order
-	sR0 := &dispatcher.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 0, 1001))}
-	sR1 := &dispatcher.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 1, 1001))}
-	sR2 := &dispatcher.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 2, 1001))}
-	sR47 := &dispatcher.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 47, 1001))}
+	sR0 := &syncTypes.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 0, 1001))}
+	sR1 := &syncTypes.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 1, 1001))}
+	sR2 := &syncTypes.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 2, 1001))}
+	sR47 := &syncTypes.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 47, 1001))}
 
 	testQ.Add(sR2)
 	testQ.Add(sR47)
@@ -137,11 +138,11 @@ func TestQueueHappy(t *testing.T) {
 
 func TestQueueDuplicates(t *testing.T) {
 	tf.UnitTest(t)
-	testQ := dispatcher.NewTargetTracker(20)
+	testQ := syncTypes.NewTargetTracker(20)
 
 	// Add syncRequests with same height
-	sR0 := &dispatcher.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 0, 1001))}
-	sR0dup := &dispatcher.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 0, 1001))}
+	sR0 := &syncTypes.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 0, 1001))}
+	sR0dup := &syncTypes.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 0, 1001))}
 
 	testQ.Add(sR0)
 	testQ.Add(sR0dup)
@@ -163,9 +164,9 @@ func TestQueueDuplicates(t *testing.T) {
 
 func TestQueueEmptyPopErrors(t *testing.T) {
 	tf.UnitTest(t)
-	testQ := dispatcher.NewTargetTracker(20)
-	sR0 := &dispatcher.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 0, 1002))}
-	sR47 := &dispatcher.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 47, 1001))}
+	testQ := syncTypes.NewTargetTracker(20)
+	sR0 := &syncTypes.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 0, 1002))}
+	sR47 := &syncTypes.Target{ChainInfo: *(chainInfoWithHeightAndWeight(t, 47, 1001))}
 
 	// Add 2
 	testQ.Add(sR47)
@@ -187,7 +188,7 @@ func TestQueueEmptyPopErrors(t *testing.T) {
 }
 
 // requirePop is a helper requiring that pop does not error
-func requirePop(t *testing.T, q *dispatcher.TargetTracker) *dispatcher.Target {
+func requirePop(t *testing.T, q *syncTypes.TargetTracker) *syncTypes.Target {
 	req, popped := q.Select()
 	require.True(t, popped)
 	return req

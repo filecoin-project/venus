@@ -3,6 +3,7 @@ package syncer
 import (
 	"context"
 	"fmt"
+	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"sync"
@@ -21,7 +22,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
-	"github.com/filecoin-project/venus/pkg/chainsync/status"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
@@ -54,7 +54,7 @@ type Syncer struct {
 	fetcher        Fetcher
 	exchangeClient exchange.Client
 	// BadTipSetCache is used to filter out collections of invalid blocks.
-	badTipSets *BadTipSetCache
+	badTipSets *syncTypes.BadTipSetCache
 
 	// Evaluates tipset messages and stores the resulting states.
 	fullValidator FullBlockValidator
@@ -73,9 +73,6 @@ type Syncer struct {
 
 	// faultDetector is used to manage information about potential consensus faults
 	faultDetector
-
-	// Reporter is used by the syncer to update the current status of the chain.
-	reporter status.Reporter
 
 	bsstore    blockstore.Blockstore
 	checkPoint block.TipSetKey
@@ -183,16 +180,13 @@ func NewSyncer(fv FullBlockValidator,
 	bsstore blockstore.Blockstore,
 	f Fetcher,
 	exchangeClient exchange.Client,
-	sr status.Reporter,
 	c clock.Clock,
 	fd faultDetector,
 	fork fork.IFork) (*Syncer, error) {
 	return &Syncer{
-		fetcher:        f,
-		exchangeClient: exchangeClient,
-		badTipSets: &BadTipSetCache{
-			bad: make(map[string]struct{}),
-		},
+		fetcher:         f,
+		exchangeClient:  exchangeClient,
+		badTipSets:      syncTypes.NewBadTipSetCache(),
 		fullValidator:   fv,
 		blockValidator:  hv,
 		chainSelector:   cs,
@@ -201,7 +195,6 @@ func NewSyncer(fv FullBlockValidator,
 		messageProvider: m,
 		clock:           c,
 		faultDetector:   fd,
-		reporter:        sr,
 		fork:            fork,
 	}, nil
 }
@@ -470,36 +463,25 @@ func (syncer *Syncer) widen(ctx context.Context, ts *block.TipSet) (*block.TipSe
 
 // HandleNewTipSet validates and syncs the chain rooted at the provided tipset
 // to a chain bsstore.  Iff catchup is false then the syncer will set the head.
-func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo) error {
-	return syncer.handleNewTipSet(ctx, ci)
-}
-
-// handleNewTipSet extends the Syncer's chain bsstore with the given tipset if
-// the chain is a valid extension.  It stages new heaviest tipsets for later
-// setting the chain head
-func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) (err error) {
-	logSyncer.Infof("Begin fetch and sync of chain with head %v from %s at height %v", ci.Head.Key(), ci.Sender.String(), ci.Head.EnsureHeight())
+func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Target) (err error) {
 	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipSet")
-	span.AddAttributes(trace.StringAttribute("tipset", ci.Head.String()))
-	defer tracing.AddErrorEndSpan(ctx, span, &err)
+	span.AddAttributes(trace.StringAttribute("tipset", target.Head.String()))
+	defer func() {
+		target.Err = err
+		tracing.AddErrorEndSpan(ctx, span, &err)
+	}()
+	logSyncer.Infof("Begin fetch and sync of chain with head %v from %s at height %v", target.Head.Key(), target.Sender.String(), target.Head.EnsureHeight())
 
 	//If the store already has this tipset then the syncer is finished.
-	if ci.Head.At(0).ParentWeight.LessThan(syncer.staged.At(0).ParentWeight) {
+	if target.Head.At(0).ParentWeight.LessThan(syncer.staged.At(0).ParentWeight) {
 		return xerrors.New("do not sync to a target with less weight")
 	}
 
-	if syncer.chainStore.HasTipSetAndState(ctx, ci.Head) || ci.Head.Key().Equals(syncer.staged.Key()) {
+	if syncer.chainStore.HasTipSetAndState(ctx, target.Head) || target.Head.Key().Equals(syncer.staged.Key()) {
 		return xerrors.New("do not sync to a target has synced before")
 	}
 
-	syncer.reporter.UpdateStatus(status.SyncingStarted(syncer.clock.Now().Unix()), status.SyncHead(ci.Head), status.FetchHead(ci.Head), status.SyncComplete(false))
-	defer syncer.reporter.UpdateStatus(status.SyncComplete(true))
-
-	syncer.reporter.UpdateStatus(func(s *status.Status) {
-		s.FetchingHead = ci.Head
-	})
-
-	tipsets, err := syncer.fetchChainBlocks(ctx, syncer.staged, ci.Head.Key())
+	tipsets, err := syncer.fetchChainBlocks(ctx, syncer.staged, target.Head.Key())
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
@@ -527,6 +509,7 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 		if err != nil {
 			return err
 		}
+		target.Current = syncerTs
 
 		if !syncerTs.Key().Equals(syncer.checkPoint) {
 			err = syncer.stageIfHeaviest(ctx, syncerTs)
@@ -561,7 +544,7 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 			logSyncer.Infof("start to process message segement %d-%d", startTip, emdTipset)
 			defer logSyncer.Infof("finish to process message segement %d-%d", startTip, emdTipset)
 			var processErr error
-			parent, processErr = syncer.processTipSetSegment(ctx, parent, segTipset)
+			parent, processErr = syncer.processTipSetSegment(ctx, target, parent, segTipset)
 			if processErr != nil {
 				errProcessChan <- processErr
 				return
@@ -581,7 +564,6 @@ func (syncer *Syncer) handleNewTipSet(ctx context.Context, ci *block.ChainInfo) 
 	default:
 		return nil
 	}
-
 }
 
 func (syncer *Syncer) fetchChainBlocks(ctx context.Context, knownTip *block.TipSet, targetTip block.TipSetKey) ([]*block.TipSet, error) {
@@ -809,7 +791,7 @@ func (syncer *Syncer) getFullBlock(ctx context.Context, tipset *block.TipSet) (*
 	return block.NewFullTipSet(fullBlocks), nil
 }
 
-func (syncer *Syncer) processTipSetSegment(ctx context.Context, parent *block.TipSet, segTipset []*block.TipSet) (*block.TipSet, error) {
+func (syncer *Syncer) processTipSetSegment(ctx context.Context, target *syncTypes.Target, parent *block.TipSet, segTipset []*block.TipSet) (*block.TipSet, error) {
 	for i, ts := range segTipset {
 		err := syncer.syncOne(ctx, parent, ts)
 		if err != nil {
@@ -829,6 +811,7 @@ func (syncer *Syncer) processTipSetSegment(ctx context.Context, parent *block.Ti
 			}
 		}
 		parent = ts
+		target.Current = ts
 	}
 	return parent, nil
 }
@@ -849,11 +832,6 @@ func (syncer *Syncer) stageIfHeaviest(ctx context.Context, candidate *block.TipS
 	}
 
 	return nil
-}
-
-// Status returns the current syncer status.
-func (syncer *Syncer) Status() status.Status {
-	return syncer.reporter.Status()
 }
 
 // TODO: this function effectively accepts unchecked input from the network,

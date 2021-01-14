@@ -229,10 +229,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}
-	err = nd.chain.Start(ctx)
-	if err != nil {
-		return nil, err
-	}
 
 	if b.chainClock == nil {
 		// get the genesis block time from the chainsubmodule

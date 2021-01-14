@@ -1,18 +1,25 @@
-package dispatcher
+package types
 
 import (
+	"container/list"
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/ipfs/go-cid"
 	"sort"
 	"sync"
+	"time"
 )
 
 // Target tracks a logical request of the syncing subsystem to run a
 // syncing job against given inputs.
 type Target struct {
+	State   SyncStateStage
+	Base    *block.TipSet
+	Current *block.TipSet
+	Start   time.Time
+	End     time.Time
+	Err     error
 	block.ChainInfo
-	InSyncing bool
 }
 
 // TargetTracker orders dispatcher syncRequests by the underlying `TargetBuckets`'s
@@ -24,21 +31,25 @@ type Target struct {
 // It wraps the `TargetBuckets` to prevent panics during
 // normal operation.
 type TargetTracker struct {
-	size      int
-	q         TargetBuckets
-	targetSet map[string]*Target
-	lowWeight fbig.Int
-	lk        sync.Mutex
+	bucketSize  int
+	historySize int
+	q           TargetBuckets
+	history     *list.List
+	targetSet   map[string]*Target
+	lowWeight   fbig.Int
+	lk          sync.Mutex
 }
 
 // NewTargetTracker returns a new target queue.
 func NewTargetTracker(size int) *TargetTracker {
 	return &TargetTracker{
-		size:      size,
-		q:         make(TargetBuckets, 0),
-		targetSet: make(map[string]*Target),
-		lk:        sync.Mutex{},
-		lowWeight: fbig.NewInt(0),
+		bucketSize:  size,
+		historySize: 5,
+		history:     list.New(),
+		q:           make(TargetBuckets, 0),
+		targetSet:   make(map[string]*Target),
+		lk:          sync.Mutex{},
+		lowWeight:   fbig.NewInt(0),
 	}
 }
 
@@ -55,12 +66,24 @@ func (tq *TargetTracker) Add(t *Target) {
 	if !ok {
 		return
 	}
-	if len(tq.q) <= tq.size {
+	if len(tq.q) <= tq.bucketSize {
 		tq.q = append(tq.q, t)
 	} else {
-		last := tq.q[len(tq.q)-1]
-		delete(tq.targetSet, last.ChainInfo.Head.String())
-		tq.q[len(tq.q)-1] = t
+		//replace last idle task because of less weight
+		var lastIdleIndex int
+		var lastIdleTarget *Target
+		for index, target := range tq.q {
+			if target.State == StageIdle {
+				lastIdleTarget = target
+				lastIdleIndex = index
+			}
+		}
+		if lastIdleTarget == nil {
+			return
+		}
+
+		delete(tq.targetSet, lastIdleTarget.ChainInfo.Head.String())
+		tq.q[lastIdleIndex] = t
 	}
 	tq.targetSet[t.ChainInfo.Head.String()] = t
 	sort.Slice(tq.q, func(i, j int) bool {
@@ -131,7 +154,7 @@ func (tq *TargetTracker) Select() (*Target, bool) {
 	}
 	var toSyncTarget *Target
 	for _, target := range tq.q {
-		if !target.InSyncing {
+		if target.State == StageIdle {
 			toSyncTarget = target
 			break
 		}
@@ -140,7 +163,7 @@ func (tq *TargetTracker) Select() (*Target, bool) {
 	if toSyncTarget == nil {
 		return nil, false
 	}
-	toSyncTarget.InSyncing = true
+	toSyncTarget.State = StateInSyncing
 	return toSyncTarget, true
 }
 
@@ -153,8 +176,20 @@ func (tq *TargetTracker) Remove(t *Target) {
 			break
 		}
 	}
+
+	t.End = time.Now()
+	if tq.history.Len() > tq.historySize {
+		tq.history.Remove(tq.history.Front())
+	}
+	tq.history.PushBack(t)
 	popKey := t.ChainInfo.Head.String()
 	delete(tq.targetSet, popKey)
+}
+
+func (tq *TargetTracker) History() *list.List {
+	tq.lk.Lock()
+	defer tq.lk.Unlock()
+	return tq.history
 }
 
 // Len returns the number of targets in the queue.

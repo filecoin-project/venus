@@ -2,6 +2,7 @@ package chainsync
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/chainsync/types"
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/dispatcher"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
-	"github.com/filecoin-project/venus/pkg/chainsync/status"
 	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/fork"
@@ -18,7 +18,7 @@ import (
 
 // BlockProposer allows callers to propose new blocks for inclusion in the chain.
 type BlockProposer interface {
-	SyncTracker() *dispatcher.TargetTracker
+	SyncTracker() *types.TargetTracker
 	SendHello(ci *block.ChainInfo) error
 	SendOwnBlock(ci *block.ChainInfo) error
 	SendGossipBlock(ci *block.ChainInfo) error
@@ -43,11 +43,17 @@ func NewManager(fv syncer.FullBlockValidator,
 	c clock.Clock,
 	detector *slashing.ConsensusFaultDetector,
 	fork fork.IFork) (Manager, error) {
-	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, bsstore, f, exchangeClient, status.NewReporter(), c, detector, fork)
+	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, bsstore, f, exchangeClient, c, detector, fork)
 	if err != nil {
 		return Manager{}, err
 	}
+
 	dispatcher := dispatcher.NewDispatcher(syncer)
+	err = syncer.InitStaged()
+	if err != nil {
+		return Manager{}, err
+	}
+
 	return Manager{
 		syncer:     syncer,
 		dispatcher: dispatcher,
@@ -57,15 +63,10 @@ func NewManager(fv syncer.FullBlockValidator,
 // Start starts the chain sync manager.
 func (m *Manager) Start(ctx context.Context) error {
 	m.dispatcher.Start(ctx)
-	return m.syncer.InitStaged()
+	return nil
 }
 
 // BlockProposer returns the block proposer.
 func (m *Manager) BlockProposer() BlockProposer {
 	return m.dispatcher
-}
-
-// Status returns the block proposer.
-func (m *Manager) Status() status.Status {
-	return m.syncer.Status()
 }

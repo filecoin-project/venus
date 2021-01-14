@@ -221,6 +221,8 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 	netListener := manet.NetListener(apiListener) //nolint
 
 	handler := http.NewServeMux()
+	handler.Handle("/debug/pprof/", http.DefaultServeMux)
+
 	err = node.runRustfulAPI(ctx, handler, rootCmdDaemon) //nolint
 	if err != nil {
 		return err
@@ -274,9 +276,7 @@ func (node *Node) runRustfulAPI(ctx context.Context, handler *http.ServeMux, roo
 	cfg.SetAllowedMethods(apiConfig.AccessControlAllowMethods...)
 	cfg.SetAllowCredentials(apiConfig.AccessControlAllowCredentials)
 
-	handler.Handle("/debug/pprof/", http.DefaultServeMux)
 	handler.Handle(APIPrefix+"/", cmdhttp.NewHandler(servenv, rootCmdDaemon, cfg))
-
 	return nil
 }
 
@@ -286,8 +286,8 @@ func (node *Node) runJsonrpcAPI(ctx context.Context, handler *http.ServeMux) err
 		Verify: jwtAuth.AuthVerify,
 		Next:   node.jsonRPCService.ServeHTTP,
 	}
-	handler.Handle("/rpc/v0", ah)
 
+	handler.Handle("/rpc/v0", ah)
 	return nil
 }
 

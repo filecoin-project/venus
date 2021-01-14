@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
 
 	"github.com/filecoin-project/go-address"
@@ -22,6 +24,15 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
+// ActorView represents a generic way to represent details about any actor to the user.
+type ActorView struct {
+	Address string        `json:"address"`
+	Code    cid.Cid       `json:"code,omitempty"`
+	Nonce   uint64        `json:"nonce"`
+	Balance types.AttoFIL `json:"balance"`
+	Head    cid.Cid       `json:"head,omitempty"`
+}
+
 var stateCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Interact with and query venus chain state",
@@ -39,6 +50,7 @@ var stateCmd = &cmds.Command{
 		"get-deal":        stateGetDealSetCmd,
 		"miner-info":      stateMinerInfo,
 		"network-version": stateNtwkVersionCmd,
+		"list-actor":      stateListActorCmd,
 	},
 }
 
@@ -539,4 +551,49 @@ var stateNtwkVersionCmd = &cmds.Command{
 		return re.Emit(fmt.Sprintf("Network Version: %d", nv))
 	},
 	Type: "",
+}
+
+var stateListActorCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "list all actors",
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		results, err := env.(*node.Env).ChainAPI.ListActor(req.Context)
+		if err != nil {
+			return err
+		}
+
+		for addr, actor := range results {
+			output := makeActorView(actor, addr)
+			if err := re.Emit(output); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+	Type: &ActorView{},
+	Encoders: cmds.EncoderMap{
+		cmds.JSON: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *ActorView) error {
+			marshaled, err := json.Marshal(a)
+			if err != nil {
+				return err
+			}
+			_, err = w.Write(marshaled)
+			if err != nil {
+				return err
+			}
+			_, err = w.Write([]byte("\n"))
+			return err
+		}),
+	},
+}
+
+func makeActorView(act *types.Actor, addr address.Address) *ActorView {
+	return &ActorView{
+		Address: addr.String(),
+		Code:    act.Code,
+		Nonce:   act.Nonce,
+		Balance: act.Balance,
+		Head:    act.Head,
+	}
 }

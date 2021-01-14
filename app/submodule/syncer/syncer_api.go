@@ -2,12 +2,11 @@ package syncer
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/chainsync/dispatcher"
+	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/chainsync/status"
 	"github.com/filecoin-project/venus/pkg/types"
 	logging "github.com/ipfs/go-log/v2"
 	xerrors "github.com/pkg/errors"
@@ -20,13 +19,8 @@ type SyncerAPI struct { //nolint
 }
 
 // SyncerStatus returns the current status of the active or last active chain sync operation.
-func (syncerAPI *SyncerAPI) SyncerTracker() *dispatcher.TargetTracker {
+func (syncerAPI *SyncerAPI) SyncerTracker() *syncTypes.TargetTracker {
 	return syncerAPI.syncer.ChainSyncManager.BlockProposer().SyncTracker()
-}
-
-// SyncerStatus returns the current status of the active or last active chain sync operation.
-func (syncerAPI *SyncerAPI) SyncerStatus() status.Status {
-	return syncerAPI.syncer.SyncProvider.Status()
 }
 
 func (syncerAPI *SyncerAPI) ChainTipSetWeight(ctx context.Context, tsk block.TipSetKey) (big.Int, error) {
@@ -122,4 +116,52 @@ func (syncerAPI *SyncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMe
 		ExecutionTrace: types.ExecutionTrace{},
 		Duration:       duration,
 	}, nil
+}
+
+//SyncState just compatible code lotus
+func (syncerAPI *SyncerAPI) SyncState(ctx context.Context) (*SyncState, error) {
+	tracker := syncerAPI.syncer.ChainSyncManager.BlockProposer().SyncTracker()
+	tracker.History()
+
+	syncState := &SyncState{
+		VMApplied: 0,
+	}
+
+	count := 0
+	toActiveSync := func(t *syncTypes.Target) ActiveSync {
+		currentHeight := t.Base.EnsureHeight()
+		if t.Current != nil {
+			currentHeight = t.Current.EnsureHeight()
+		}
+
+		msg := ""
+		if t.Err != nil {
+			msg = t.Err.Error()
+		}
+		count++
+		return ActiveSync{
+			WorkerID: uint64(count),
+			Base:     t.Base,
+			Target:   t.Head,
+			Stage:    StageSyncComplete,
+			Height:   currentHeight,
+			Start:    t.Start,
+			End:      t.End,
+			Message:  msg,
+		}
+	}
+	//current
+	for _, t := range tracker.Buckets() {
+		if t.State != syncTypes.StageIdle {
+			activeSync := toActiveSync(t)
+			syncState.ActiveSyncs = append(syncState.ActiveSyncs, activeSync)
+		}
+	}
+	//history
+	history := tracker.History()
+	for target := history.Front(); target != nil; {
+		activeSync := toActiveSync(target.Value.(*syncTypes.Target))
+		syncState.ActiveSyncs = append(syncState.ActiveSyncs, activeSync)
+	}
+	return syncState, nil
 }
