@@ -64,7 +64,7 @@ func TestGenGenLoading(t *testing.T) {
 	td := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
 	defer td.ShutdownSuccess()
 
-	o := td.Run("actor", "ls").AssertSuccess()
+	o := td.Run("state", "ls").AssertSuccess()
 
 	stdout := o.ReadStdout()
 	assert.Contains(t, stdout, builtin2.StoragePowerActorCodeID.String())
