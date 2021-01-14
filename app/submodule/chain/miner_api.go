@@ -630,3 +630,94 @@ func (minerStateAPI *MinerStateAPI) StateSectorExpiration(ctx context.Context, m
 
 	return view.StateSectorExpiration(ctx, maddr, sectorNumber, tsk)
 }
+
+func (minerStateAPI *MinerStateAPI) StateMinerSectorCount(ctx context.Context, addr address.Address, tsk block.TipSetKey) (MinerSectors, error) {
+	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
+	if err != nil {
+		return MinerSectors{}, xerrors.Errorf("failed to get tipset %v", err)
+	}
+
+	view, err := minerStateAPI.chain.State.ParentStateView(ts)
+	if err != nil {
+		return MinerSectors{}, xerrors.Errorf("loading view %s: %v", tsk, err)
+	}
+
+	mas, err := view.LoadMinerState(ctx, addr)
+	if err != nil {
+		return MinerSectors{}, err
+	}
+	var activeCount, liveCount, faultyCount uint64
+	if err := mas.ForEachDeadline(func(_ uint64, dl miner.Deadline) error {
+		return dl.ForEachPartition(func(_ uint64, part miner.Partition) error {
+			if active, err := part.ActiveSectors(); err != nil {
+				return err
+			} else if count, err := active.Count(); err != nil {
+				return err
+			} else {
+				activeCount += count
+			}
+			if live, err := part.LiveSectors(); err != nil {
+				return err
+			} else if count, err := live.Count(); err != nil {
+				return err
+			} else {
+				liveCount += count
+			}
+			if faulty, err := part.FaultySectors(); err != nil {
+				return err
+			} else if count, err := faulty.Count(); err != nil {
+				return err
+			} else {
+				faultyCount += count
+			}
+			return nil
+		})
+	}); err != nil {
+		return MinerSectors{}, err
+	}
+	return MinerSectors{Live: liveCount, Active: activeCount, Faulty: faultyCount}, nil
+}
+
+func (minerStateAPI *MinerStateAPI) StateMarketBalance(ctx context.Context, addr address.Address, tsk block.TipSetKey) (MarketBalance, error) {
+	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
+	if err != nil {
+		return MarketBalance{}, xerrors.Errorf("loading tipset %s: %v", tsk, err)
+	}
+	view, err := minerStateAPI.chain.State.ParentStateView(ts)
+	if err != nil {
+		return MarketBalance{}, xerrors.Errorf("loading view %s: %v", tsk, err)
+	}
+
+	mstate, err := view.LoadMarketState(ctx)
+	if err != nil {
+		return MarketBalance{}, err
+	}
+
+	addr, err = view.LookupID(ctx, addr)
+	if err != nil {
+		return MarketBalance{}, err
+	}
+
+	var out MarketBalance
+
+	et, err := mstate.EscrowTable()
+	if err != nil {
+		return MarketBalance{}, err
+	}
+	out.Escrow, err = et.Get(addr)
+	if err != nil {
+		return MarketBalance{}, xerrors.Errorf("getting escrow balance: %v", err)
+	}
+
+	lt, err := mstate.LockedTable()
+	if err != nil {
+		return MarketBalance{}, err
+	}
+	out.Locked, err = lt.Get(addr)
+	if err != nil {
+		return MarketBalance{}, xerrors.Errorf("getting locked balance: %v", err)
+	}
+
+	return out, nil
+
+}

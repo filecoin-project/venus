@@ -987,3 +987,12 @@ func getFilMarketLocked(ctx context.Context, ipldStore cbor.IpldStore, st vmstat
 
 	return mst.TotalLocked()
 }
+
+func (v *View) LookupID(ctx context.Context, address addr.Address) (addr.Address, error) {
+	sTree, err := vmstate.LoadState(ctx, v.ipldStore, v.root)
+	if err != nil {
+		return addr.Address{}, err
+	}
+
+	return sTree.LookupID(address)
+}

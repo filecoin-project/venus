@@ -95,6 +95,8 @@ type FullNode struct {
 	StateMinerAvailableBalance         func(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (big.Int, error)
 	StateListActors                    func(ctx context.Context, tsk block.TipSetKey) ([]address.Address, error)
 	StateSectorExpiration              func(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorExpiration, error)
+	StateMinerSectorCount              func(ctx context.Context, addr address.Address, tsk block.TipSetKey) (chainApiTypes.MinerSectors, error)
+	StateMarketBalance                 func(ctx context.Context, addr address.Address, tsk block.TipSetKey) (chainApiTypes.MarketBalance, error)
 
 	StateAccountKey func(context.Context, address.Address, block.TipSetKey) (address.Address, error)
 
@@ -261,6 +263,8 @@ type MinerStateAPI struct {
 	StateMinerAvailableBalance         func(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (big.Int, error)
 	StateListActors                    func(ctx context.Context, tsk block.TipSetKey) ([]address.Address, error)
 	StateSectorExpiration              func(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorExpiration, error)
+	StateMinerSectorCount              func(ctx context.Context, addr address.Address, tsk block.TipSetKey) (chainApiTypes.MinerSectors, error)
+	StateMarketBalance                 func(ctx context.Context, addr address.Address, tsk block.TipSetKey) (chainApiTypes.MarketBalance, error)
 }
 
 type AccountAPI struct {
