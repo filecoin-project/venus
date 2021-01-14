@@ -8,7 +8,7 @@ import (
 
 // ActorLs runs the `actor ls` command against the filecoin process.
 func (f *Filecoin) ActorLs(ctx context.Context) ([]cmd.ActorView, error) {
-	args := []string{"venus", "state", "ls"}
+	args := []string{"venus", "state", "list-actor"}
 
 	dec, err := f.RunCmdLDJSONWithStdin(ctx, nil, args...)
 	if err != nil {

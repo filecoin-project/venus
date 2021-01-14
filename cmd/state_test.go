@@ -23,7 +23,7 @@ func TestActorDaemon(t *testing.T) {
 		_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 		defer done()
 
-		op1 := cmdClient.RunSuccess(ctx, "state", "ls", "--enc", "json")
+		op1 := cmdClient.RunSuccess(ctx, "state", "list-actor", "--enc", "json")
 		result1 := op1.ReadStdoutTrimNewlines()
 
 		var avs []cmd.ActorView
