@@ -163,18 +163,14 @@ var storeStatusCmd = &cmds.Command{
 		writer := NewSilentWriter(w)
 		for index, t := range targets {
 			writer.Println("SyncTarget:", strconv.Itoa(index+1))
-			writer.Println("\tBase:", t.Base.Key().String())
-			writer.Println("\tBase Height:", t.Base.EnsureHeight())
+			writer.Println("\tBase:", t.Base.EnsureHeight(), t.Base.Key().String())
 
-			writer.Println("\tTarget:", t.Head.Key().String())
-			writer.Println("\tTarget Height:", strconv.FormatUint(uint64(t.Head.EnsureHeight()), 10))
+			writer.Println("\tTarget:", t.Head.EnsureHeight(), t.Head.Key().String())
 
 			if t.Current != nil {
-				writer.Println("\tCurrent:", t.Current.Key().String())
-				writer.Println("\tCurrent Height:", strconv.FormatUint(uint64(t.Current.EnsureHeight()), 10))
+				writer.Println("\tCurrent:", t.Current.EnsureHeight(), t.Current.Key().String())
 			} else {
 				writer.Println("\tCurrent:")
-				writer.Println("\tCurrent Height:")
 			}
 
 			if t.State != syncTypes.StageIdle {
@@ -189,18 +185,14 @@ var storeStatusCmd = &cmds.Command{
 		for target := history.Front(); target != nil; target = target.Next() {
 			t := target.Value.(*syncTypes.Target)
 			writer.Println("SyncTarget:", strconv.Itoa(count+1))
-			writer.Println("\tBase:", t.Base.Key().String())
-			writer.Println("\tBase Height:", t.Base.EnsureHeight())
+			writer.Println("\tBase:", t.Base.EnsureHeight(), t.Base.Key().String())
 
-			writer.Println("\tTarget:", t.Head.Key().String())
-			writer.Println("\tTarget Height:", strconv.FormatUint(uint64(t.Head.EnsureHeight()), 10))
+			writer.Println("\tTarget:", t.Head.EnsureHeight(), t.Head.Key().String())
 
 			if t.Current != nil {
-				writer.Println("\tCurrent:", t.Current.Key().String())
-				writer.Println("\tCurrent Height:", strconv.FormatUint(uint64(t.Current.EnsureHeight()), 10))
+				writer.Println("\tCurrent:", t.Current.EnsureHeight(), t.Current.Key().String())
 			} else {
 				writer.Println("\tCurrent:")
-				writer.Println("\tCurrent Height:")
 			}
 
 			if t.State != syncTypes.StageIdle {
