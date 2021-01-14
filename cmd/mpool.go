@@ -182,71 +182,66 @@ var mpoolReplaceCmd = &cmds.Command{
 		Tagline:          "replace",
 		ShortDescription: "replace a message in the mempool",
 	},
-
-	Options: []cmds.Option{
-		cmds.BoolOption("auto", "automatically reprice the specified message"),
-		cmds.Int64Option("gas-limit", "gas price for new message"),
-		cmds.StringOption("gas-premium", "gas price for new message"),
-		cmds.StringOption("max-fee", "Spend up to X FIL for this message (applicable for auto mode)"),
-		cmds.StringOption("gas-feecap", "gas feecap for new message"),
-		cmds.StringOption("message-cid", "message-cid"),
-		cmds.StringOption("from", "message sender"),
-		cmds.StringOption("nonce", "message nonce"),
-	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("from nonce", false, true, "from nonce"),
+		cmds.StringArg("from", false, true, "from"),
+		cmds.StringArg("nonce", false, true, "nonce"),
 		cmds.StringArg("message-cid", false, true, "message-cid"),
 	},
+	Options: []cmds.Option{
+		feecapOption,
+		premiumOption,
+		limitOption,
+		cmds.BoolOption("auto", "automatically reprice the specified message"),
+		cmds.StringOption("max-fee", "Spend up to X FIL for this message (applicable for auto mode)"),
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		auto, _ := req.Options["auto"].(bool)
-		gasFeecap, _ := req.Options["gas-feecap"].(string)
-		gasPremium, _ := req.Options["gas-premium"].(string)
-		gasLimit, _ := req.Options["gas-limit"].(int64)
-		maxFee, _ := req.Options["max-fee"].(string)
-		messageCid, _ := req.Options["message-cid"].(string)
-		froms, _ := req.Options["from"].(string)
-		nonces, _ := req.Options["nonce"].(string)
+		feecap, premium, gasLimit, err := parseGasOptions(req)
+		if err != nil {
+			return err
+		}
 
-		ctx := context.TODO()
+		auto, _ := req.Options["auto"].(bool)
+		maxFee, _ := req.Options["max-fee"].(string)
+
 		var from address.Address
 		var nonce uint64
-
-		if len(messageCid) > 0 {
-			mcid, err := cid.Decode(messageCid)
+		switch len(req.Arguments) {
+		case 1:
+			mcid, err := cid.Decode(req.Arguments[0])
 			if err != nil {
 				return err
 			}
 
-			msg, err := env.(*node.Env).ChainAPI.ChainGetMessage(ctx, mcid)
+			msg, err := env.(*node.Env).ChainAPI.ChainGetMessage(req.Context, mcid)
 			if err != nil {
 				return fmt.Errorf("could not find referenced message: %w", err)
 			}
 
 			from = msg.From
 			nonce = msg.Nonce
-		} else if len(froms) > 0 && len(nonces) > 0 {
-			f, err := address.NewFromString(froms)
+		case 2:
+			f, err := address.NewFromString(req.Arguments[0])
 			if err != nil {
 				return err
 			}
 
-			n, err := strconv.ParseUint(nonces, 10, 64)
+			n, err := strconv.ParseUint(req.Arguments[1], 10, 64)
 			if err != nil {
 				return err
 			}
 
 			from = f
 			nonce = n
-		} else {
-			return xerrors.Errorf("replace a message in the mempool")
+		default:
+			return xerrors.New("command syntax error")
 		}
 
-		ts, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
+		ts, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
 		if err != nil {
 			return xerrors.Errorf("getting chain head: %w", err)
 		}
 
-		pending, err := env.(*node.Env).MessagePoolAPI.MpoolPending(ctx, ts.Key())
+		pending, err := env.(*node.Env).MessagePoolAPI.MpoolPending(req.Context, ts.Key())
 		if err != nil {
 			return err
 		}
@@ -265,6 +260,17 @@ var mpoolReplaceCmd = &cmds.Command{
 
 		msg := found.Message
 
+		//msg := types.Message{
+		//	From:       from,
+		//	To:         from,
+		//	Method:     2,
+		//	Value:      types.FromFil(0),
+		//	Nonce:      nonce,
+		//	GasLimit:   100000000,
+		//	GasFeeCap:  types.NewInt(100 + 4000000000),
+		//	GasPremium: types.NewInt(5000000000),
+		//}
+
 		if auto {
 			minRBF := messagepool.ComputeMinRBF(msg.GasPremium)
 
@@ -282,7 +288,7 @@ var mpoolReplaceCmd = &cmds.Command{
 			// msg.GasLimit = 0 // TODO: need to fix the way we estimate gas limits to account for the messages already being in the mempool
 			msg.GasFeeCap = abi.NewTokenAmount(0)
 			msg.GasPremium = abi.NewTokenAmount(0)
-			retm, err := env.(*node.Env).MessagePoolAPI.GasEstimateMessageGas(ctx, &msg, mss, block.TipSetKey{})
+			retm, err := env.(*node.Env).MessagePoolAPI.GasEstimateMessageGas(req.Context, &msg, mss, block.TipSetKey{})
 			if err != nil {
 				return fmt.Errorf("failed to estimate gas values: %w", err)
 			}
@@ -294,28 +300,38 @@ var mpoolReplaceCmd = &cmds.Command{
 				return constants.DefaultDefaultMaxFee, nil
 			}
 
-			messagepool.CapGasFee(mff, &msg, mss.MaxFee)
+			var maxFee abi.TokenAmount
+			if !mss.MaxFee.Nil() {
+				maxFee = mss.MaxFee
+			}
+			messagepool.CapGasFee(mff, &msg, maxFee)
 		} else {
+			msg.GasFeeCap = abi.NewTokenAmount(0)
+			msg.GasPremium = abi.NewTokenAmount(0)
+			newMsg, err := env.(*node.Env).MessagePoolAPI.GasEstimateMessageGas(req.Context, &msg, nil, block.TipSetKey{})
+			if err != nil {
+				return fmt.Errorf("failed to estimate gas values: %w", err)
+			}
+
+			msg = *newMsg
 			if gasLimit > 0 {
 				msg.GasLimit = gasLimit
 			}
-			msg.GasPremium, err = big.FromString(gasPremium)
-			if err != nil {
-				return fmt.Errorf("parsing gas-premium: %w", err)
+
+			if err == nil && premium.Int64() != 0 {
+				msg.GasPremium = premium
 			}
+
 			// TODO: estimate fee cap here
-			msg.GasFeeCap, err = big.FromString(gasFeecap)
-			if err != nil {
-				return fmt.Errorf("parsing gas-feecap: %w", err)
-			}
+			msg.GasFeeCap = feecap
 		}
 
-		smsg, err := env.(*node.Env).WalletAPI.WalletSignMessage(ctx, msg.From, &msg)
+		smsg, err := env.(*node.Env).WalletAPI.WalletSignMessage(req.Context, msg.From, &msg)
 		if err != nil {
 			return fmt.Errorf("failed to sign message: %w", err)
 		}
 
-		cid, err := env.(*node.Env).MessagePoolAPI.MpoolPush(ctx, smsg)
+		cid, err := env.(*node.Env).MessagePoolAPI.MpoolPush(req.Context, smsg)
 		if err != nil {
 			return fmt.Errorf("failed to push new message to mempool: %w", err)
 		}
@@ -607,36 +623,32 @@ Subscribe to mpool changes
 
 var mpoolConfig = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "config",
-		ShortDescription: `
-get or set current mpool configuration
-`,
+		Tagline:          "config",
+		ShortDescription: "get or set current mpool configuration",
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cfg", false, false, "config"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		ctx := context.TODO()
 
-		if len(req.Arguments) > 1 {
-			return xerrors.Errorf("get or set current mpool configuration")
-		}
-
-		if len(req.Arguments) == 0 {
-			cfg, err := env.(*node.Env).MessagePoolAPI.MpoolGetConfig(ctx)
-			if err != nil {
-				return err
-			}
-
-			_ = re.Emit(cfg)
-		} else {
+		if len(req.Arguments) > 0 {
 			cfg := new(messagepool.MpoolConfig)
-			bytes := []byte(req.Arguments[0])
 
-			err := json.Unmarshal(bytes, cfg)
+			paras := req.Arguments[0]
+			err := json.Unmarshal([]byte(paras), cfg)
 			if err != nil {
 				return err
 			}
 
 			return env.(*node.Env).MessagePoolAPI.MpoolSetConfig(ctx, cfg)
 		}
+
+		cfg, err := env.(*node.Env).MessagePoolAPI.MpoolGetConfig(ctx)
+		if err != nil {
+			return err
+		}
+		_ = re.Emit(cfg)
 
 		return nil
 	},
