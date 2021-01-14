@@ -178,6 +178,7 @@ var storeStatusCmd = &cmds.Command{
 			} else {
 				writer.Println("\tStatus:Wait")
 			}
+			writer.Println("\tErr:", t.Err)
 			writer.Println()
 		}
 		history := tracker.History()
@@ -201,7 +202,7 @@ var storeStatusCmd = &cmds.Command{
 				writer.Println("\tStatus:Wait")
 			}
 
-			writer.Println("\tErr:", t.Head.Key().String())
+			writer.Println("\tErr:", t.Err)
 			count++
 			writer.Println()
 		}

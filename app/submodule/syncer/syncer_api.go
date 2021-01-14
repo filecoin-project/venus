@@ -159,7 +159,7 @@ func (syncerAPI *SyncerAPI) SyncState(ctx context.Context) (*SyncState, error) {
 	}
 	//history
 	history := tracker.History()
-	for target := history.Front(); target != nil; {
+	for target := history.Front(); target != nil; target = target.Next() {
 		activeSync := toActiveSync(target.Value.(*syncTypes.Target))
 		syncState.ActiveSyncs = append(syncState.ActiveSyncs, activeSync)
 	}
