@@ -143,7 +143,7 @@ For a complete step-by-step tutorial, see [Getting Started](https://go.filecoin.
 
 ```sh
 # Remove any existing symlink to a repo directory
-rm ~/.venus
+rm -rf ~/.venus
 
 # Initialize a new repository, Start the daemon.  It will block until it connects to at least one bootstrap peer.
 ./venus daemon --genesisfile=*.car
@@ -155,7 +155,7 @@ Open a new terminal to interact with your node:
 
 ```sh
 # Print the node's connection information
-./venus id
+./venus swarm id
 
 # Show chain sync status
 ./venus chain status

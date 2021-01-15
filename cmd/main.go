@@ -109,7 +109,7 @@ VIEW DATA STRUCTURES
 
 NETWORK COMMANDS
   venus swarm                  - Interact with the swarm
-  venus drand           	   - retrieve drand randomness
+  venus drand                  - retrieve drand randomness
 
 MESSAGE COMMANDS
   venus send                   - Send message
