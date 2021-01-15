@@ -70,7 +70,7 @@ git clone https://github.com/filecoin-project/venus.git /path/to/filecoin-projec
 
 #### Install Go
 
-The build process for venus requires [Go](https://golang.org/doc/install) >= v1.15
+The build process for venus requires [Go](https://golang.org/doc/install) >= v1.15.5
 
 > Installing Go for the first time? We recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.
 
@@ -146,7 +146,8 @@ For a complete step-by-step tutorial, see [Getting Started](https://go.filecoin.
 rm -rf ~/.venus
 
 # Initialize a new repository, Start the daemon.  It will block until it connects to at least one bootstrap peer.
-./venus daemon --genesisfile=*.car
+./venus daemon                   #mainnet
+./venus daemon --network cali    #calibration
 ```
 
 Your node should now be connected to some peers, and begin downloading and validating the blockchain.
