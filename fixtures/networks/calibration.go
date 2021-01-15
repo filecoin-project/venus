@@ -39,6 +39,7 @@ func Calibration() *NetworkConf {
 				UpgradeCalicoHeight:      92000,
 				UpgradePersianHeight:     92000 + (120 * 60),
 				UpgradeClausHeight:       161386,
+				UpgradeOrangeHeight:      -1,
 			},
 			DrandSchedule: map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AdressNetwork: address.Testnet,
