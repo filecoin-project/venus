@@ -146,7 +146,8 @@ For a complete step-by-step tutorial, see [Getting Started](https://go.filecoin.
 rm -rf ~/.venus
 
 # Initialize a new repository, Start the daemon.  It will block until it connects to at least one bootstrap peer.
-./venus daemon
+./venus daemon                   #mainnet
+./venus daemon --network cali    #calibration
 ```
 
 Your node should now be connected to some peers, and begin downloading and validating the blockchain.
