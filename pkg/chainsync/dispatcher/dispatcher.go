@@ -158,6 +158,9 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 					d.syncTargetCount++
 					d.registeredCb(syncTarget, err)
 				}
+			case <-syncingCtx.Done():
+				log.Info("context done")
+				return
 			}
 		}
 	}()

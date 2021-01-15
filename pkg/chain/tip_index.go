@@ -70,6 +70,13 @@ func NewTipStateCache(loader TipLoader) *TipStateCache {
 func (ti *TipStateCache) Put(tsas *TipSetMetadata) error {
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
+	return ti.put(tsas)
+}
+
+// Put adds an entry to both of TipStateCache's internal indexes.
+// After this call the input TipSetMetadata can be looked up by the ID of
+// the tipset, or the tipset's parent.
+func (ti *TipStateCache) put(tsas *TipSetMetadata) error {
 	tsKey := tsas.TipSet.String()
 	// Update tsasByID
 	ti.tsasByID.Set(tsKey, tsas, timeExpire)
@@ -105,7 +112,7 @@ func (ti *TipStateCache) Get(ts *block.TipSet) (*TipSetMetadata, error) {
 			return nil, xerrors.New("state not exit")
 		}
 
-		err = ti.Put(tipSetMetadata)
+		err = ti.put(tipSetMetadata)
 		if err != nil {
 			return nil, xerrors.New("failed to update tipstate")
 		}
