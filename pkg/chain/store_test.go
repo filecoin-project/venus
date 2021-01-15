@@ -176,7 +176,7 @@ func TestRevertChange(t *testing.T) {
 	err = cs.SetHead(ctx, link6)
 	require.NoError(t, err)
 
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second)
 	headChanges := <-ch
 
 	test.Equal(t, headChanges[0].Type, chain.HCRevert)
