@@ -38,7 +38,6 @@ func TestLoadFork(t *testing.T) {
 	sel := &chain.FakeChainSelector{}
 	s, err := syncer.NewSyncer(eval, eval, sel, builder.Store(), builder.Mstore(), builder.BlockStore(), builder, builder, clock.NewFake(time.Unix(1234567890, 0)), &noopFaultDetector{}, nil)
 	require.NoError(t, err)
-	require.NoError(t, s.InitStaged())
 
 	base := builder.AppendManyOn(3, genesis)
 	left := builder.AppendManyOn(4, base)
@@ -83,7 +82,7 @@ func TestLoadFork(t *testing.T) {
 	newStore.SetCheckPoint(genesis.Key())
 	require.NoError(t, newStore.Load(ctx))
 	fakeFetcher := th.NewTestFetcher()
-	offlineSyncer, err := syncer.NewSyncer(eval,
+	_, err = syncer.NewSyncer(eval,
 		eval,
 		sel,
 		newStore,
@@ -95,7 +94,6 @@ func TestLoadFork(t *testing.T) {
 		&noopFaultDetector{},
 		fork.NewMockFork())
 	require.NoError(t, err)
-	require.NoError(t, offlineSyncer.InitStaged())
 
 	assert.True(t, newStore.HasTipSetAndState(ctx, left))
 	assert.False(t, newStore.HasTipSetAndState(ctx, right))

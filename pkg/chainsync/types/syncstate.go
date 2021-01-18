@@ -10,7 +10,6 @@ const (
 	StateInSyncing
 	StageSyncComplete
 	StageSyncErrored
-	StageFetchingMessages
 )
 
 func (v SyncStateStage) String() string {
@@ -23,8 +22,6 @@ func (v SyncStateStage) String() string {
 		return "complete"
 	case StageSyncErrored:
 		return "error"
-	case StageFetchingMessages:
-		return "fetching messages"
 	default:
 		return fmt.Sprintf("<unknown: %d>", v)
 	}

@@ -24,7 +24,7 @@ type mockSyncer struct {
 	headsCalled []*block.TipSet
 }
 
-func (fs *mockSyncer) Staged() *block.TipSet {
+func (fs *mockSyncer) Head() *block.TipSet {
 	return block.UndefTipSet
 }
 
@@ -154,12 +154,7 @@ func TestQueueDuplicates(t *testing.T) {
 	first := requirePop(t, testQ)
 	assert.Equal(t, abi.ChainEpoch(0), first.ChainInfo.Head.EnsureHeight())
 	testQ.Remove(first)
-	// Now if we push the duplicate it goes back on
-	testQ.Add(sR0dup)
-	assert.Equal(t, 1, testQ.Len())
 
-	second := requirePop(t, testQ)
-	assert.Equal(t, abi.ChainEpoch(0), second.ChainInfo.Head.EnsureHeight())
 }
 
 func TestQueueEmptyPopErrors(t *testing.T) {

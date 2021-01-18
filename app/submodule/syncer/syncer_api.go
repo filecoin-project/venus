@@ -23,6 +23,11 @@ func (syncerAPI *SyncerAPI) SyncerTracker() *syncTypes.TargetTracker {
 	return syncerAPI.syncer.ChainSyncManager.BlockProposer().SyncTracker()
 }
 
+// SyncerStatus returns the current status of the active or last active chain sync operation.
+func (syncerAPI *SyncerAPI) SetConcurrent(concurrent int64) {
+	syncerAPI.syncer.ChainSyncManager.BlockProposer().SetConcurrent(concurrent)
+}
+
 func (syncerAPI *SyncerAPI) ChainTipSetWeight(ctx context.Context, tsk block.TipSetKey) (big.Int, error) {
 	ts, err := syncerAPI.syncer.ChainModule.ChainReader.GetTipSet(tsk)
 	if err != nil {
@@ -139,29 +144,44 @@ func (syncerAPI *SyncerAPI) SyncState(ctx context.Context) (*SyncState, error) {
 			msg = t.Err.Error()
 		}
 		count++
-		return ActiveSync{
+
+		activeSync := ActiveSync{
 			WorkerID: uint64(count),
 			Base:     t.Base,
 			Target:   t.Head,
-			Stage:    StageSyncComplete,
 			Height:   currentHeight,
 			Start:    t.Start,
 			End:      t.End,
 			Message:  msg,
 		}
+
+		switch t.State {
+		case syncTypes.StageIdle:
+			activeSync.Stage = StageIdle
+		case syncTypes.StageSyncErrored:
+			activeSync.Stage = StageSyncErrored
+		case syncTypes.StageSyncComplete:
+			activeSync.Stage = StageSyncComplete
+		case syncTypes.StateInSyncing:
+			activeSync.Stage = StageMessages
+		}
+
+		return activeSync
 	}
 	//current
 	for _, t := range tracker.Buckets() {
-		if t.State != syncTypes.StageIdle {
+		if t.State != syncTypes.StageSyncErrored {
 			activeSync := toActiveSync(t)
 			syncState.ActiveSyncs = append(syncState.ActiveSyncs, activeSync)
 		}
 	}
 	//history
-	history := tracker.History()
-	for target := history.Front(); target != nil; target = target.Next() {
-		activeSync := toActiveSync(target.Value.(*syncTypes.Target))
-		syncState.ActiveSyncs = append(syncState.ActiveSyncs, activeSync)
+	for _, t := range tracker.History() {
+		if t.State != syncTypes.StageSyncErrored {
+			activeSync := toActiveSync(t)
+			syncState.ActiveSyncs = append(syncState.ActiveSyncs, activeSync)
+		}
 	}
+
 	return syncState, nil
 }
