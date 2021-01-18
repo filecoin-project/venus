@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/venus/app/node/test"
 	"github.com/filecoin-project/venus/cmd"
-	"github.com/filecoin-project/venus/pkg/block"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
@@ -42,9 +41,9 @@ func TestChainLs(t *testing.T) {
 		defer apiDone()
 
 		result2 := cmdClient.RunSuccess(ctx, "chain", "ls", "--enc", "json").ReadStdoutTrimNewlines()
-		var bs [][]block.Block
+		var bs [][]cmd.ChainLsResult
 		for _, line := range bytes.Split([]byte(result2), []byte{'\n'}) {
-			var b []block.Block
+			var b []cmd.ChainLsResult
 			err := json.Unmarshal(line, &b)
 			require.NoError(t, err)
 			bs = append(bs, b)
@@ -52,7 +51,6 @@ func TestChainLs(t *testing.T) {
 		}
 
 		assert.Equal(t, 1, len(bs))
-		assert.True(t, bs[0][0].Parents.IsEmpty())
 	})
 
 	t.Run("chain ls with chain of size 1 returns genesis block", func(t *testing.T) {
@@ -64,10 +62,8 @@ func TestChainLs(t *testing.T) {
 		op := cmdClient.RunSuccess(ctx, "chain", "ls", "--enc", "json")
 		result := op.ReadStdoutTrimNewlines()
 
-		var b []block.Block
+		var b []cmd.ChainLsResult
 		err := json.Unmarshal([]byte(result), &b)
 		require.NoError(t, err)
-
-		assert.True(t, b[0].Parents.IsEmpty())
 	})
 }

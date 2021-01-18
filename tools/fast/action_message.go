@@ -16,7 +16,7 @@ import (
 func (f *Filecoin) MessageSend(ctx context.Context, target address.Address, method abi.MethodNum, options ...ActionOption) (cid.Cid, error) {
 	var out cmd.MessageSendResult
 
-	args := []string{"venus", "message", "send"}
+	args := []string{"venus", "send"}
 
 	for _, option := range options {
 		args = append(args, option()...)

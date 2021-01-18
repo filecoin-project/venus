@@ -2,16 +2,19 @@
 package cmd
 
 import (
+	"bytes"
+	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	"os"
+	"strconv"
+	"time"
 
-	"github.com/filecoin-project/venus/app/node"
-
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
-	"github.com/libp2p/go-libp2p-core/peer"
 
+	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/block"
 )
 
@@ -25,7 +28,6 @@ var chainCmd = &cmds.Command{
 		"ls":       storeLsCmd,
 		"status":   storeStatusCmd,
 		"set-head": storeSetHeadCmd,
-		"sync":     storeSyncCmd,
 	},
 }
 
@@ -33,6 +35,7 @@ type ChainHeadResult struct {
 	Height       abi.ChainEpoch
 	ParentWeight big.Int
 	Cids         []cid.Cid
+	Timestamp    string
 }
 
 var storeHeadCmd = &cmds.Command{
@@ -55,9 +58,22 @@ var storeHeadCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(&ChainHeadResult{Height: h, ParentWeight: pw, Cids: head.Key().Cids()})
+		strTt := time.Unix(int64(head.MinTimestamp()), 0).Format("2006-01-02 15:04:05")
+
+		return re.Emit(&ChainHeadResult{Height: h, ParentWeight: pw, Cids: head.Key().Cids(), Timestamp: strTt})
 	},
 	Type: &ChainHeadResult{},
+}
+
+type BlockResult struct {
+	Cid   cid.Cid
+	Miner address.Address
+}
+
+type ChainLsResult struct {
+	Height    abi.ChainEpoch
+	Timestamp string
+	Blocks    []BlockResult
 }
 
 var storeLsCmd = &cmds.Command{
@@ -93,14 +109,45 @@ var storeLsCmd = &cmds.Command{
 			return err
 		}
 
-		for _, tipset := range tipSetKeys {
-			if err := re.Emit(tipset.Cids()); err != nil {
+		res := make([]ChainLsResult, 0)
+		for _, key := range tipSetKeys {
+			tp, err := env.(*node.Env).ChainAPI.ChainGetTipSet(key)
+			if err != nil {
 				return err
 			}
+
+			h, err := tp.Height()
+			if err != nil {
+				return err
+			}
+
+			strTt := time.Unix(int64(tp.MinTimestamp()), 0).Format("2006-01-02 15:04:05")
+
+			blks := make([]BlockResult, len(tp.Blocks()))
+			for idx, blk := range tp.Blocks() {
+				blks[idx] = BlockResult{Cid: blk.Cid(), Miner: blk.Miner}
+			}
+
+			lsRes := ChainLsResult{Height: h, Timestamp: strTt, Blocks: blks}
+			res = append(res, lsRes)
+		}
+
+		if err := re.Emit(res); err != nil {
+			return err
 		}
 		return nil
 	},
-	Type: []block.Block{},
+	Type: []ChainLsResult{},
+}
+
+type SyncTarget struct {
+	TargetTs block.TipSetKey
+	Height   abi.ChainEpoch
+	State    string
+}
+
+type SyncStatus struct {
+	Target []SyncTarget
 }
 
 var storeStatusCmd = &cmds.Command{
@@ -108,8 +155,59 @@ var storeStatusCmd = &cmds.Command{
 		Tagline: "Show status of chain sync operation.",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		syncStatus := env.(*node.Env).SyncerAPI.SyncerStatus()
-		if err := re.Emit(syncStatus); err != nil {
+		//TODO give each target a status
+		//syncStatus.Status = env.(*node.Env).SyncerAPI.SyncerStatus()
+		tracker := env.(*node.Env).SyncerAPI.SyncerTracker()
+		targets := tracker.Buckets()
+		w := bytes.NewBufferString("")
+		writer := NewSilentWriter(w)
+		for index, t := range targets {
+			writer.Println("SyncTarget:", strconv.Itoa(index+1))
+			writer.Println("\tBase:", t.Base.EnsureHeight(), t.Base.Key().String())
+
+			writer.Println("\tTarget:", t.Head.EnsureHeight(), t.Head.Key().String())
+
+			if t.Current != nil {
+				writer.Println("\tCurrent:", t.Current.EnsureHeight(), t.Current.Key().String())
+			} else {
+				writer.Println("\tCurrent:")
+			}
+
+			if t.State != syncTypes.StageIdle {
+				writer.Println("\tStatus:Syncing")
+			} else {
+				writer.Println("\tStatus:Wait")
+			}
+			writer.Println("\tErr:", t.Err)
+			writer.Println()
+		}
+		history := tracker.History()
+		count := len(targets)
+		for target := history.Front(); target != nil; target = target.Next() {
+			t := target.Value.(*syncTypes.Target)
+			writer.Println("SyncTarget:", strconv.Itoa(count+1))
+			writer.Println("\tBase:", t.Base.EnsureHeight(), t.Base.Key().String())
+
+			writer.Println("\tTarget:", t.Head.EnsureHeight(), t.Head.Key().String())
+
+			if t.Current != nil {
+				writer.Println("\tCurrent:", t.Current.EnsureHeight(), t.Current.Key().String())
+			} else {
+				writer.Println("\tCurrent:")
+			}
+
+			if t.State != syncTypes.StageIdle {
+				writer.Println("\tStatus:Syncing")
+			} else {
+				writer.Println("\tStatus:Wait")
+			}
+
+			writer.Println("\tErr:", t.Err)
+			count++
+			writer.Println()
+		}
+
+		if err := re.Emit(w); err != nil {
 			return err
 		}
 		return nil
@@ -130,37 +228,6 @@ var storeSetHeadCmd = &cmds.Command{
 		}
 		maybeNewHead := block.NewTipSetKey(headCids...)
 		return env.(*node.Env).ChainAPI.ChainSetHead(req.Context, maybeNewHead)
-	},
-}
-
-var storeSyncCmd = &cmds.Command{
-	Helptext: cmds.HelpText{
-		Tagline: "Instruct the chain syncer to sync a specific chain head, going to network if required.",
-	},
-	Arguments: []cmds.Argument{
-		cmds.StringArg("peerid", true, false, "Base58-encoded libp2p peer ID to sync from"),
-		cmds.StringArg("cids", true, true, "CID's of the blocks of the tipset to sync."),
-	},
-	Options: []cmds.Option{},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		syncPid, err := peer.Decode(req.Arguments[0])
-		if err != nil {
-			return err
-		}
-
-		syncCids, err := cidsFromSlice(req.Arguments[1:])
-		if err != nil {
-			return err
-		}
-
-		syncKey := block.NewTipSetKey(syncCids...)
-		ci := &block.ChainInfo{
-			Source: syncPid,
-			Sender: syncPid,
-			Height: 0, // only checked when trusted is false.
-			Head:   syncKey,
-		}
-		return env.(*node.Env).SyncerAPI.ChainSyncHandleNewTipSet(ci)
 	},
 }
 

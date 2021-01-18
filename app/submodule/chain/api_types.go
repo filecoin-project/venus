@@ -3,6 +3,8 @@ package chain
 import (
 	"time"
 
+	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
@@ -49,3 +51,17 @@ type MarketDeal struct {
 }
 
 type NetworkName string
+
+type MinerSectors struct {
+	// Live sectors that should be proven.
+	Live uint64
+	// Sectors actively contributing to power.
+	Active uint64
+	// Sectors with failed proofs.
+	Faulty uint64
+}
+
+type MarketBalance struct {
+	Escrow big.Int
+	Locked big.Int
+}

@@ -214,6 +214,16 @@ func ComputeMinRBF(curPrem abi.TokenAmount) abi.TokenAmount {
 }
 
 func CapGasFee(mff DefaultMaxFeeFunc, msg *types.UnsignedMessage, maxFee abi.TokenAmount) {
+	if maxFee.Int == nil || maxFee.Equals(big.Zero()) {
+		mf, err := mff()
+		if err != nil {
+			log.Errorf("failed to get default max gas fee: %+v", err)
+			mf = big.Zero()
+		}
+
+		maxFee = mf
+	}
+
 	if maxFee.Equals(big.Zero()) {
 		mf, err := mff()
 		if err != nil {
@@ -224,8 +234,8 @@ func CapGasFee(mff DefaultMaxFeeFunc, msg *types.UnsignedMessage, maxFee abi.Tok
 		maxFee = mf
 	}
 
-	gl := tbig.NewInt(msg.GasLimit)
-	totalFee := tbig.Mul(msg.GasFeeCap, gl)
+	gl := big.NewInt(msg.GasLimit)
+	totalFee := big.Mul(msg.GasFeeCap, gl)
 
 	if totalFee.LessThanEqual(maxFee) {
 		return

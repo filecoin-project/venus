@@ -15,7 +15,7 @@ func Calibration() *NetworkConf {
 				"/dns4/bootstrap-2.calibration.fildev.network/tcp/1347/p2p/12D3KooWJRSTnzABB6MYYEBbSTT52phQntVD1PpRTMh1xt9mh6yH",
 				"/dns4/bootstrap-3.calibration.fildev.network/tcp/1347/p2p/12D3KooWQLi3kY6HnMYLUtwCe26zWMdNhniFgHVNn1DioQc7NiWv",
 			},
-			MinPeerThreshold: 4,
+			MinPeerThreshold: 0,
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
@@ -39,6 +39,7 @@ func Calibration() *NetworkConf {
 				UpgradeCalicoHeight:      92000,
 				UpgradePersianHeight:     92000 + (120 * 60),
 				UpgradeClausHeight:       161386,
+				UpgradeOrangeHeight:      -1,
 			},
 			DrandSchedule: map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AdressNetwork: address.Testnet,

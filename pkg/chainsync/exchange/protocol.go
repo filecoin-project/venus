@@ -4,15 +4,14 @@ import (
 	"github.com/ipfs/go-cid"
 	"time"
 
-	logging "github.com/ipfs/go-log"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/types"
+	logging "github.com/ipfs/go-log"
+	"golang.org/x/xerrors"
 )
 
-var log = logging.Logger("chainxchg")
+var log = logging.Logger("exchange")
 
 const (
 	// BlockSyncProtocolID is the protocol ID of the former blocksync protocol.

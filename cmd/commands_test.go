@@ -3,7 +3,6 @@ package cmd_test
 import (
 	"testing"
 
-	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/node/test"
 	"github.com/filecoin-project/venus/fixtures/fortest"
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
@@ -24,7 +23,7 @@ func makeTestDaemonWithMinerAndStart(t *testing.T) *th.TestDaemon {
 
 func buildWithMiner(t *testing.T, builder *test.NodeBuilder) {
 	// bundle together common init options for node test state
-	cs := node.FixtureChainSeed(t)
+	cs := test.FixtureChainSeed(t)
 	builder.WithGenesisInit(cs.GenesisInitFunc)
 	//builder.WithConfig(cs.MinerConfigOpt(0))
 	builder.WithInitOpt(cs.MinerInitOpt(0))

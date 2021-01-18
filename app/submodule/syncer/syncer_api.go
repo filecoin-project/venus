@@ -2,11 +2,11 @@ package syncer
 
 import (
 	"context"
+	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/chainsync/status"
 	"github.com/filecoin-project/venus/pkg/types"
 	logging "github.com/ipfs/go-log/v2"
 	xerrors "github.com/pkg/errors"
@@ -19,8 +19,8 @@ type SyncerAPI struct { //nolint
 }
 
 // SyncerStatus returns the current status of the active or last active chain sync operation.
-func (syncerAPI *SyncerAPI) SyncerStatus() status.Status {
-	return syncerAPI.syncer.SyncProvider.Status()
+func (syncerAPI *SyncerAPI) SyncerTracker() *syncTypes.TargetTracker {
+	return syncerAPI.syncer.ChainSyncManager.BlockProposer().SyncTracker()
 }
 
 func (syncerAPI *SyncerAPI) ChainTipSetWeight(ctx context.Context, tsk block.TipSetKey) (big.Int, error) {
@@ -39,7 +39,7 @@ func (syncerAPI *SyncerAPI) ChainSyncHandleNewTipSet(ci *block.ChainInfo) error 
 func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *block.BlockMsg) error {
 	//todo many dot. how to get directly
 	chainModule := syncerAPI.syncer.ChainModule
-	parent, err := chainModule.ChainReader.GetBlock(blk.Header.Parents.Cids()[0])
+	parent, err := chainModule.ChainReader.GetBlock(ctx, blk.Header.Parents.Cids()[0])
 	if err != nil {
 		return xerrors.Errorf("loading parent block: %v", err)
 	}
@@ -74,16 +74,12 @@ func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *block.Bloc
 		return xerrors.Errorf("somehow failed to make a tipset out of a single block: %v", err)
 	}
 
-	if err := chainModule.ChainReader.PutTipset(ctx, ts); err != nil {
+	if _, err := chainModule.ChainReader.PutObject(ctx, blk.Header); err != nil {
 		return err
 	}
 	localPeer := syncerAPI.syncer.NetworkModule.Network.GetPeerID()
-	if err := syncerAPI.syncer.SyncProvider.HandleNewTipSet(&block.ChainInfo{
-		Source: localPeer,
-		Sender: localPeer,
-		Head:   ts.Key(),
-		Height: ts.EnsureHeight(),
-	}); err != nil {
+	ci := block.NewChainInfo(localPeer, localPeer, ts)
+	if err := syncerAPI.syncer.SyncProvider.HandleNewTipSet(ci); err != nil {
 		return xerrors.Errorf("sync to submitted block failed: %v", err)
 	}
 
@@ -120,5 +116,52 @@ func (syncerAPI *SyncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMe
 		ExecutionTrace: types.ExecutionTrace{},
 		Duration:       duration,
 	}, nil
+}
 
+//SyncState just compatible code lotus
+func (syncerAPI *SyncerAPI) SyncState(ctx context.Context) (*SyncState, error) {
+	tracker := syncerAPI.syncer.ChainSyncManager.BlockProposer().SyncTracker()
+	tracker.History()
+
+	syncState := &SyncState{
+		VMApplied: 0,
+	}
+
+	count := 0
+	toActiveSync := func(t *syncTypes.Target) ActiveSync {
+		currentHeight := t.Base.EnsureHeight()
+		if t.Current != nil {
+			currentHeight = t.Current.EnsureHeight()
+		}
+
+		msg := ""
+		if t.Err != nil {
+			msg = t.Err.Error()
+		}
+		count++
+		return ActiveSync{
+			WorkerID: uint64(count),
+			Base:     t.Base,
+			Target:   t.Head,
+			Stage:    StageSyncComplete,
+			Height:   currentHeight,
+			Start:    t.Start,
+			End:      t.End,
+			Message:  msg,
+		}
+	}
+	//current
+	for _, t := range tracker.Buckets() {
+		if t.State != syncTypes.StageIdle {
+			activeSync := toActiveSync(t)
+			syncState.ActiveSyncs = append(syncState.ActiveSyncs, activeSync)
+		}
+	}
+	//history
+	history := tracker.History()
+	for target := history.Front(); target != nil; target = target.Next() {
+		activeSync := toActiveSync(target.Value.(*syncTypes.Target))
+		syncState.ActiveSyncs = append(syncState.ActiveSyncs, activeSync)
+	}
+	return syncState, nil
 }

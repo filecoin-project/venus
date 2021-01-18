@@ -187,7 +187,7 @@ func (td *TestDaemon) RunFail(err string, args ...string) *CmdOutput {
 
 // GetID returns the id of the daemon.
 func (td *TestDaemon) GetID() string {
-	out := td.RunSuccess("id")
+	out := td.RunSuccess("swarm", "id")
 	var parsed map[string]interface{}
 	require.NoError(td.test, json.Unmarshal([]byte(out.ReadStdout()), &parsed))
 
@@ -196,7 +196,7 @@ func (td *TestDaemon) GetID() string {
 
 // GetAddresses returns all of the addresses of the daemon.
 func (td *TestDaemon) GetAddresses() []string {
-	out := td.RunSuccess("id")
+	out := td.RunSuccess("swarm", "id")
 	var parsed map[string]interface{}
 	require.NoError(td.test, json.Unmarshal([]byte(out.ReadStdout()), &parsed))
 	adders := parsed["Addresses"].([]interface{})
@@ -475,7 +475,7 @@ func (td *TestDaemon) WaitForMessageRequireSuccess(msgCid cid.Cid) *types.Messag
 //     `venus address new`
 func (td *TestDaemon) CreateAddress() string {
 	td.test.Helper()
-	outNew := td.RunSuccess("address", "new")
+	outNew := td.RunSuccess("wallet", "new")
 	addr := strings.Trim(outNew.ReadStdout(), "\n")
 	require.NotEmpty(td.test, addr)
 	return addr
@@ -571,7 +571,7 @@ func (td *TestDaemon) MakeMoney(rewards int, peers ...*TestDaemon) {
 
 // GetDefaultAddress returns the default sender address for this daemon.
 func (td *TestDaemon) GetDefaultAddress() string {
-	addrs := td.RunSuccess("address", "default")
+	addrs := td.RunSuccess("wallet", "default")
 	return addrs.ReadStdout()
 }
 
@@ -586,7 +586,7 @@ func tryAPICheck(td *TestDaemon) error {
 		return err
 	}
 
-	url := fmt.Sprintf("http://%s/api/id", host)
+	url := fmt.Sprintf("http://%s/api/swarm/id", host)
 	resp, err := http.Post(url, "application/json", strings.NewReader("{}"))
 	if err != nil {
 		return err

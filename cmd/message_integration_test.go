@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/node/test"
 	"github.com/filecoin-project/venus/fixtures/fortest"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -22,9 +21,9 @@ func TestMessageSend(t *testing.T) {
 	builder := test.NewNodeBuilder(t)
 	defaultAddr := fortest.TestAddresses[0]
 
-	cs := node.FixtureChainSeed(t)
+	cs := test.FixtureChainSeed(t)
 	builder.WithGenesisInit(cs.GenesisInitFunc)
-	builder.WithConfig(node.DefaultAddressConfigOpt(defaultAddr))
+	builder.WithConfig(test.DefaultAddressConfigOpt(defaultAddr))
 	builder.WithInitOpt(cs.KeyInitOpt(1))
 	builder.WithInitOpt(cs.KeyInitOpt(0))
 
@@ -38,7 +37,7 @@ func TestMessageSend(t *testing.T) {
 	cmdClient.RunFail(
 		ctx,
 		address.ErrUnknownNetwork.Error(),
-		"message", "send",
+		"send",
 		"--from", from.String(),
 		"--gas-price", "0", "--gas-limit", "300",
 		"--value=10", "xyz",
@@ -47,7 +46,7 @@ func TestMessageSend(t *testing.T) {
 	t.Log("[success] with from")
 	cmdClient.RunSuccess(
 		ctx,
-		"message", "send",
+		"send",
 		"--from", from.String(),
 		"--gas-price", "1",
 		"--gas-limit", "300",
@@ -57,7 +56,7 @@ func TestMessageSend(t *testing.T) {
 	t.Log("[success] with from and int value")
 	cmdClient.RunSuccess(
 		ctx,
-		"message", "send",
+		"send",
 		"--from", from.String(),
 		"--gas-price", "1",
 		"--gas-limit", "300",
@@ -68,7 +67,7 @@ func TestMessageSend(t *testing.T) {
 	t.Log("[success] with from and decimal value")
 	cmdClient.RunSuccess(
 		ctx,
-		"message", "send",
+		"send",
 		"--from", from.String(),
 		"--gas-price", "1",
 		"--gas-limit", "300",
@@ -86,7 +85,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 	defaultAddr := fortest.TestAddresses[0]
 
 	buildWithMiner(t, builder)
-	builder.WithConfig(node.DefaultAddressConfigOpt(defaultAddr))
+	builder.WithConfig(test.DefaultAddressConfigOpt(defaultAddr))
 	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
@@ -96,7 +95,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 		cmdClient.RunFail(
 			ctx,
 			"block gas limit",
-			"message", "send",
+			"send",
 			"--gas-price", "1", "--gas-limit", doubleTheBlockGasLimit,
 			"--value=10", fortest.TestAddresses[1].String(),
 		)

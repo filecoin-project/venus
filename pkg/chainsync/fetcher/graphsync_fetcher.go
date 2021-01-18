@@ -24,7 +24,7 @@ import (
 	typegen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/chainsync/internal/syncer"
+	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/types"

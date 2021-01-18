@@ -2,17 +2,14 @@ package chain_test
 
 import (
 	"context"
-	"testing"
-	"time"
-
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/util/test"
-
-	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
 
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -175,10 +172,12 @@ func TestRevertChange(t *testing.T) {
 
 	err = cs.SetHead(ctx, link6)
 	require.NoError(t, err)
-
-	time.Sleep(time.Second * 5)
 	headChanges := <-ch
 
+	if len(headChanges) == 1 {
+		//maybe link3, if link3 fetch next
+		headChanges = <-ch
+	}
 	test.Equal(t, headChanges[0].Type, chain.HCRevert)
 	test.Equal(t, headChanges[0].Val, link1)
 	test.Equal(t, headChanges[1].Type, chain.HCRevert)
@@ -434,7 +433,6 @@ func TestLoadAndReboot(t *testing.T) {
 
 	err := rebootChain.Load(ctx)
 	assert.NoError(t, err)
-	assert.Equal(t, link4.Key(), sr.Status().ValidatedHead)
 
 	// Check that chain store has index
 	// Get a tipset and state by key

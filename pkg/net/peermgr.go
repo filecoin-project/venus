@@ -19,8 +19,8 @@ import (
 var log = logging.Logger("peermgr")
 
 const (
-	MaxFilPeers = 32
-	MinFilPeers = 12
+	MaxFilPeers = 320
+	MinFilPeers = 128
 )
 
 type IPeerMgr interface {

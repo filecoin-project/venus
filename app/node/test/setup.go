@@ -20,7 +20,7 @@ import (
 
 const blockTime = builtin.EpochDurationSeconds * time.Second
 
-func CreateBootstrapSetup(t *testing.T) (*node.ChainSeed, *gengen.GenesisCfg, clock.ChainEpochClock) {
+func CreateBootstrapSetup(t *testing.T) (*ChainSeed, *gengen.GenesisCfg, clock.ChainEpochClock) {
 	// set up paths and fake clock.
 	genTime := int64(1000000000)
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
@@ -33,17 +33,17 @@ func CreateBootstrapSetup(t *testing.T) (*node.ChainSeed, *gengen.GenesisCfg, cl
 		Owner:         5,
 		SealProofType: constants.DevSealProofType,
 	})
-	seed := node.MakeChainSeed(t, genCfg)
+	seed := MakeChainSeed(t, genCfg)
 	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, propDelay, fakeClock)
 
 	return seed, genCfg, chainClock
 }
 
-func CreateBootstrapMiner(ctx context.Context, t *testing.T, seed *node.ChainSeed, chainClock clock.ChainEpochClock, genCfg *gengen.GenesisCfg) *node.Node {
+func CreateBootstrapMiner(ctx context.Context, t *testing.T, seed *ChainSeed, chainClock clock.ChainEpochClock, genCfg *gengen.GenesisCfg) *node.Node {
 	// create bootstrap miner
 	bootstrapMiner := NewNodeBuilder(t).
 		WithGenesisInit(seed.GenesisInitFunc).
-		WithBuilderOpt(node.FakeProofVerifierBuilderOpts()...).
+		WithBuilderOpt(FakeProofVerifierBuilderOpts()...).
 		WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
 		WithBuilderOpt(node.MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
 		Build(ctx)
@@ -60,7 +60,7 @@ func CreateBootstrapMiner(ctx context.Context, t *testing.T, seed *node.ChainSee
 	return bootstrapMiner
 }
 
-func initNodeGenesisMiner(ctx context.Context, t *testing.T, nd *node.Node, seed *node.ChainSeed, minerIdx int) (address.Address, address.Address, error) {
+func initNodeGenesisMiner(ctx context.Context, t *testing.T, nd *node.Node, seed *ChainSeed, minerIdx int) (address.Address, address.Address, error) {
 	seed.GiveKey(t, nd, minerIdx)
 	miner, owner := seed.GiveMiner(t, nd, 0)
 

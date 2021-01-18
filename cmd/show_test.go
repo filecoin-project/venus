@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/block"
 
-	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/node/test"
 	"github.com/filecoin-project/venus/fixtures/fortest"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -165,13 +164,13 @@ func TestBlockDaemon(t *testing.T) {
 	})
 
 	t.Run("show messages", func(t *testing.T) {
-		cs := node.FixtureChainSeed(t)
+		cs := test.FixtureChainSeed(t)
 		defaultAddr := fortest.TestAddresses[0]
 		ctx := context.Background()
 		builder := test.NewNodeBuilder(t)
 		builder.WithGenesisInit(cs.GenesisInitFunc)
 		//builder.WithConfig(cs.MinerConfigOpt(0))
-		builder.WithConfig(node.DefaultAddressConfigOpt(defaultAddr))
+		builder.WithConfig(test.DefaultAddressConfigOpt(defaultAddr))
 		builder.WithInitOpt(cs.KeyInitOpt(1))
 		builder.WithInitOpt(cs.KeyInitOpt(0))
 

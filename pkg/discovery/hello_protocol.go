@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -13,7 +17,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	net "github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/venus/pkg/block"
@@ -63,7 +66,10 @@ type HelloProtocolHandler struct {
 
 	networkName string
 
-	peerMgr fnet.IPeerMgr
+	peerMgr      fnet.IPeerMgr
+	exchange     exchange.Client
+	chainStore   *chain.Store
+	messageStore *chain.MessageStore
 }
 
 type PeerDiscoveredCallback func(ci *block.ChainInfo)
@@ -72,12 +78,21 @@ type GetTipSetFunc func() (*block.TipSet, error)
 
 // NewHelloProtocolHandler creates a new instance of the hello protocol `Handler` and registers it to
 // the given `host.Host`.
-func NewHelloProtocolHandler(h host.Host, peerMgr fnet.IPeerMgr, gen cid.Cid, networkName string) *HelloProtocolHandler {
+func NewHelloProtocolHandler(h host.Host,
+	peerMgr fnet.IPeerMgr,
+	exchange exchange.Client,
+	chainStore *chain.Store,
+	messageStore *chain.MessageStore,
+	gen cid.Cid,
+	networkName string) *HelloProtocolHandler {
 	return &HelloProtocolHandler{
-		host:        h,
-		genesis:     gen,
-		networkName: networkName,
-		peerMgr:     peerMgr,
+		host:         h,
+		genesis:      gen,
+		networkName:  networkName,
+		peerMgr:      peerMgr,
+		exchange:     exchange,
+		chainStore:   chainStore,
+		messageStore: messageStore,
 	}
 }
 
@@ -96,7 +111,10 @@ func (h *HelloProtocolHandler) Register(peerDiscoveredCallback PeerDiscoveredCal
 
 func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	defer s.Close() // nolint: errcheck
-	ctx := context.Background()
+	timeout := time.Duration(constants.BlockDelaySecs) * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
 	hello, err := h.receiveHello(ctx, s)
 	if err != nil {
 		helloMsgErrCt.Inc(ctx, 1)
@@ -110,45 +128,90 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 
 	// process the hello message
 	from := s.Conn().RemotePeer()
-	ci, err := h.processHelloMessage(from, hello)
-	switch {
-	// no error
-	case err == nil:
-		// notify the local node of the new `block.ChainInfo`
-		h.peerMgr.AddFilecoinPeer(from)
-		h.peerDiscovered(ci)
-	// processing errors
-	case err == ErrBadGenesis:
+	if !hello.GenesisHash.Equals(h.genesis) {
 		log.Debugf("peer genesis cid: %s does not match ours: %s, disconnecting from peer: %s", &hello.GenesisHash, h.genesis, from)
 		genesisErrCt.Inc(context.Background(), 1)
 		_ = s.Conn().Close()
 		return
-	default:
-		// Note: we do not know why it failed, but we do not wish to shut down all protocols because of it
-		log.Error(err)
 	}
 
-	// Send the latendy message
-	latencyMsg.TSent = time.Now().UnixNano()
-	err = h.sendLatency(latencyMsg, s)
+	go func() {
+		// Send the latendy message
+		latencyMsg.TSent = time.Now().UnixNano()
+		err = h.sendLatency(latencyMsg, s)
+		if err != nil {
+			log.Error(err)
+		}
+	}()
+
+	protos, err := h.host.Peerstore().GetProtocols(s.Conn().RemotePeer())
 	if err != nil {
-		log.Error(err)
+		log.Warnf("got error from peerstore.GetProtocols: %s", err)
+	}
+	if len(protos) == 0 {
+		log.Warn("other peer hasnt completed libp2p identify, waiting a bit")
+		// TODO: this better
+		time.Sleep(time.Millisecond * 300)
 	}
 
+	fullTipSet, err := h.loadLocalFullTipset(ctx, hello.HeaviestTipSetCids)
+	if err != nil {
+		fullTipSet, err = h.exchange.GetFullTipSet(ctx, []peer.ID{from}, hello.HeaviestTipSetCids) //nolint
+		if err == nil {
+			for _, b := range fullTipSet.Blocks {
+				_, err = h.chainStore.PutObject(ctx, b.Header)
+				if err != nil {
+					log.Errorf("fail to save block to tipset")
+					return
+				}
+				_, err = h.messageStore.StoreMessages(ctx, b.SECPMessages, b.BLSMessages)
+				if err != nil {
+					log.Errorf("fail to save block to tipset")
+					return
+				}
+			}
+		}
+
+		h.host.ConnManager().TagPeer(from, "new-block", 40)
+	}
+	if err != nil {
+		log.Warnf("failed to get tipset message from peer %s", from)
+		return
+	}
+
+	// notify the local node of the new `block.ChainInfo`
+	h.peerMgr.AddFilecoinPeer(from)
+	ci := block.NewChainInfo(from, from, fullTipSet.TipSet())
+	h.peerDiscovered(ci)
 	return
+}
+
+func (h *HelloProtocolHandler) loadLocalFullTipset(ctx context.Context, tsk block.TipSetKey) (*block.FullTipSet, error) {
+	ts, err := h.chainStore.GetTipSet(tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	fts := &block.FullTipSet{}
+	for _, b := range ts.Blocks() {
+		smsgs, bmsgs, err := h.messageStore.LoadMetaMessages(ctx, b.Messages)
+		if err != nil {
+			return nil, err
+		}
+
+		fb := &block.FullBlock{
+			Header:       b,
+			BLSMessages:  bmsgs,
+			SECPMessages: smsgs,
+		}
+		fts.Blocks = append(fts.Blocks, fb)
+	}
+
+	return fts, nil
 }
 
 // ErrBadGenesis is the error returned when a mismatch in genesis blocks happens.
 var ErrBadGenesis = fmt.Errorf("bad genesis block")
-
-func (h *HelloProtocolHandler) processHelloMessage(from peer.ID, msg *HelloMessage) (*block.ChainInfo, error) {
-	if !msg.GenesisHash.Equals(h.genesis) {
-		return nil, ErrBadGenesis
-	}
-
-	// Note: both the sender and the source are the sender for the hello messages
-	return block.NewChainInfo(from, from, msg.HeaviestTipSetCids, msg.HeaviestTipSetHeight), nil
-}
 
 func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 	heaviest, err := h.getHeaviestTipSet()

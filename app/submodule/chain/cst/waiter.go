@@ -287,23 +287,30 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts *block.TipSet, msg typ
 		return nil, false, err
 	}
 	expectedCid, _ := msg.Cid()
-
+	expectedNonce := msg.VMMessage().Nonce
+	expectedFrom := msg.VMMessage().From
 	for _, bms := range blockMessageInfos {
 		for _, msg := range append(bms.BlsMessages, bms.SecpkMessages...) {
 			msgCid, err := msg.Cid()
 			if err != nil {
 				return nil, false, err
 			}
-			if expectedCid == msgCid {
-				recpt, err := w.receiptByIndex(ctx, pts, msgCid, blockMessageInfos)
-				if err != nil {
-					return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
+			if msg.VMMessage().From == expectedFrom { // cheaper to just check origin first
+				if msg.VMMessage().Nonce == expectedNonce {
+					if expectedCid != msgCid {
+						log.Warnw("found message with equal nonce and call params but different CID",
+							"wanted", expectedCid, "found", msgCid, "nonce", expectedNonce, "from", expectedFrom)
+					}
+					recpt, err := w.receiptByIndex(ctx, pts, msgCid, blockMessageInfos)
+					if err != nil {
+						return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
+					}
+					return &ChainMessage{ts, msg, bms.Block, recpt}, true, nil
 				}
-				return &ChainMessage{ts, msg, bms.Block, recpt}, true, nil
 			}
 		}
-
 	}
+
 	return nil, false, nil
 }
 

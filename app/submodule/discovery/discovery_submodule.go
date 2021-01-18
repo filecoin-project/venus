@@ -32,8 +32,8 @@ type DiscoverySubmodule struct { //nolint
 	// HelloHandler handle peer connections for the "hello" protocol.
 	HelloHandler *discovery.HelloProtocolHandler
 	// HelloHandler handle peer connections for the "hello" protocol.
-	ExchangeHandler exchange.Server
-
+	ExchangeHandler        exchange.Server
+	ExchangeClient         exchange.Client
 	host                   host.Host
 	PeerDiscoveryCallbacks []discovery.PeerDiscoveredCallback
 	TipSetLoader           discovery.GetTipSetFunc
@@ -66,6 +66,7 @@ func NewDiscoverySubmodule(ctx context.Context,
 
 	minPeerThreshold := bsConfig.MinPeerThreshold
 
+	exchangeClient := exchange.NewClient(network.Host, network.PeerMgr)
 	// create a bootstrapper
 	bootstrapper := discovery.NewBootstrapper(bpi, network.Host, network.Host.Network(), network.Router, minPeerThreshold, period)
 
@@ -79,10 +80,10 @@ func NewDiscoverySubmodule(ctx context.Context,
 		Bootstrapper:    bootstrapper,
 		BootstrapReady:  bootStrapReady,
 		PeerTracker:     peerTracker,
-		HelloHandler:    discovery.NewHelloProtocolHandler(network.Host, network.PeerMgr, config.GenesisCid(), network.NetworkName),
+		ExchangeClient:  exchangeClient,
+		HelloHandler:    discovery.NewHelloProtocolHandler(network.Host, network.PeerMgr, exchangeClient, chainStore, messageStore, config.GenesisCid(), network.NetworkName),
 		ExchangeHandler: exchange.NewServer(chainStore, messageStore, network.Host),
-		PeerDiscoveryCallbacks: []discovery.PeerDiscoveredCallback{func(ci *block.ChainInfo) {
-			peerTracker.Track(ci)
+		PeerDiscoveryCallbacks: []discovery.PeerDiscoveredCallback{func(msg *block.ChainInfo) {
 			bootStrapReady.Done()
 		}},
 		TipSetLoader: func() (*block.TipSet, error) {

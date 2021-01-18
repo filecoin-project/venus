@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/filecoin-project/go-state-types/big"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-cmds/cli"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
@@ -17,7 +16,6 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/types"
 )
@@ -103,7 +101,6 @@ START RUNNING FILECOIN
   venus config <key> [<value>] - Get and set filecoin config values
   venus daemon                 - Start a long-running daemon process
   venus wallet                 - Manage your filecoin wallets
-  venus address                - Interact with addresses
 
 VIEW DATA STRUCTURES
   venus chain                  - Inspect the filecoin blockchain
@@ -111,19 +108,27 @@ VIEW DATA STRUCTURES
   venus show                   - Get human-readable representations of filecoin objects
 
 NETWORK COMMANDS
-  venus bootstrap              - Interact with bootstrap addresses
-  venus dht                    - Interact with the dht
-  venus id                     - Show info about the network peers
   venus swarm                  - Interact with the swarm
-  venus stats                  - Monitor statistics on your network usage
-  venus drand random           - retrieve drand randomness
-
-ACTOR COMMANDS
-  venus actor                  - Interact with actors. Actors are built-in smart contracts
+  venus drand                  - retrieve drand randomness
 
 MESSAGE COMMANDS
-  venus message                - Manage messages
+  venus send                   - Send message
   venus mpool                  - Manage the message pool
+
+State COMMANDS
+  venus wait-msg               - Wait for a message to appear on chain
+  venus search-msg             - Search to see whether a message has appeared on chain
+  venus power                  - Query network or miner power
+  venus sectors                - Query the sector set of a miner
+  venus active-sectors         - Query the active sector set of a miner
+  venus sector                 - Get miner sector info
+  venus get-actor              - Print actor information
+  venus lookup                 - Find corresponding ID address
+  venus sector-size            - Look up miners sector size
+  venus get-deal               - View on-chain deal info
+  venus miner-info             - Retrieve miner information
+  venus network-version        - MReturns the network version
+  venus list-actor             - list all actors
 
 TOOL COMMANDS
   venus inspect                - Show info about the venus node
@@ -158,31 +163,22 @@ var rootSubcmdsLocal = map[string]*cmds.Command{
 
 // all top level commands, available on daemon. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
-	"actor":     actorCmd,
-	"address":   addrsCmd,
-	"bootstrap": bootstrapCmd,
-	"chain":     chainCmd,
-	"config":    configCmd,
-	//"client":           clientCmd,
-	"drand": drandCmd,
-	"dag":   dagCmd,
-	//"deals":            dealsCmd,
-	"dht":     dhtCmd,
-	"id":      idCmd,
-	"inspect": inspectCmd,
-	"leb128":  leb128Cmd,
-	"log":     logCmd,
-	"message": msgCmd,
-	//"miner":            minerCmd,
-	//"mining":           miningCmd,
+	"chain":    chainCmd,
+	"config":   configCmd,
+	"drand":    drandCmd,
+	"dag":      dagCmd,
+	"inspect":  inspectCmd,
+	"leb128":   leb128Cmd,
+	"log":      logCmd,
+	"send":     msgSendCmd,
 	"mpool":    mpoolCmd,
 	"protocol": protocolCmd,
 	"show":     showCmd,
-	"stats":    statsCmd,
 	"swarm":    swarmCmd,
 	"wallet":   walletCmd,
 	"version":  versionCmd,
 	"state":    stateCmd,
+	"miner":    minerCmd,
 }
 
 func init() {
@@ -303,7 +299,7 @@ var limitOption = cmds.Int64Option("gas-limit", "Maximum GasUnits this message i
 
 func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.AttoFIL, int64, error) {
 	var (
-		feecap      = big.NewInt(int64(constants.MinimumBaseFee))
+		feecap      = types.ZeroAttoFIL
 		premium     = types.ZeroAttoFIL
 		ok          = false
 		gasLimitInt = int64(0)

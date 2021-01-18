@@ -1,4 +1,4 @@
-package syncer
+package types
 
 import (
 	"sync"
@@ -15,6 +15,12 @@ import (
 type BadTipSetCache struct {
 	mu  sync.Mutex
 	bad map[string]struct{}
+}
+
+func NewBadTipSetCache() *BadTipSetCache {
+	return &BadTipSetCache{
+		bad: make(map[string]struct{}),
+	}
 }
 
 // AddChain adds the chain of tipsets to the BadTipSetCache.  For now it just

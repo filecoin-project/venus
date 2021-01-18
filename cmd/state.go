@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
 
 	"github.com/filecoin-project/go-address"
@@ -21,6 +24,15 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
+// ActorView represents a generic way to represent details about any actor to the user.
+type ActorView struct {
+	Address string        `json:"address"`
+	Code    cid.Cid       `json:"code,omitempty"`
+	Nonce   uint64        `json:"nonce"`
+	Balance types.AttoFIL `json:"balance"`
+	Head    cid.Cid       `json:"head,omitempty"`
+}
+
 var stateCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Interact with and query venus chain state",
@@ -38,6 +50,7 @@ var stateCmd = &cmds.Command{
 		"get-deal":        stateGetDealSetCmd,
 		"miner-info":      stateMinerInfo,
 		"network-version": stateNtwkVersionCmd,
+		"list-actor":      stateListActorCmd,
 	},
 }
 
@@ -59,25 +72,16 @@ var stateWaitMsgCmd = &cmds.Command{
 			return err
 		}
 
-		r := make([]string, 0, 4)
-		r = append(r, fmt.Sprintf("message was executed in tipset: %s", mw.TipSet.Cids()),
-			fmt.Sprintf("Exit Code: %d", mw.Receipt.ExitCode),
-			fmt.Sprintf("Gas Used: %d", mw.Receipt.GasUsed),
-			fmt.Sprintf("Return: %x", mw.Receipt.ReturnValue))
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
 
-		return doEmit(re, r)
+		writer.Printf("message was executed in tipset: %s\n", mw.TipSet.Cids())
+		writer.Printf("Exit Code: %d\n", mw.Receipt.ExitCode)
+		writer.Printf("Gas Used: %d\n", mw.Receipt.GasUsed)
+		writer.Printf("Return: %x\n", mw.Receipt.ReturnValue)
+
+		return re.Emit(buf)
 	},
-	Type: "",
-}
-
-func doEmit(re cmds.ResponseEmitter, r []string) error {
-	for v := range r {
-		if err := re.Emit(v); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 var stateSearchMsgCmd = &cmds.Command{
@@ -98,19 +102,19 @@ var stateSearchMsgCmd = &cmds.Command{
 			return err
 		}
 
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
 		if mw != nil {
-			r := make([]string, 0, 4)
-			r = append(r, fmt.Sprintf("message was executed in tipset: %s", mw.TipSet.Cids()),
-				fmt.Sprintf("Exit Code: %d", mw.Receipt.ExitCode),
-				fmt.Sprintf("Gas Used: %d", mw.Receipt.GasUsed),
-				fmt.Sprintf("Return: %x", mw.Receipt.ReturnValue))
-
-			return doEmit(re, r)
+			writer.Printf("message was executed in tipset: %s", mw.TipSet.Cids())
+			writer.Printf("\nExit Code: %d", mw.Receipt.ExitCode)
+			writer.Printf("\nGas Used: %d", mw.Receipt.GasUsed)
+			writer.Printf("\nReturn: %x", mw.Receipt.ReturnValue)
+		} else {
+			writer.Print("message was not found on chain")
 		}
 
-		return re.Emit("message was not found on chain")
+		return re.Emit(buf)
 	},
-	Type: "",
 }
 
 var statePowerCmd = &cmds.Command{
@@ -141,16 +145,20 @@ var statePowerCmd = &cmds.Command{
 			return err
 		}
 
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
 		tp := power.TotalPower
 		if len(req.Arguments) == 1 {
 			mp := power.MinerPower
 			percI := big.Div(big.Mul(mp.QualityAdjPower, big.NewInt(1000000)), tp.QualityAdjPower)
-			return re.Emit(fmt.Sprintf("%s(%s) / %s(%s) ~= %0.4f%"+
-				"%", mp.QualityAdjPower.String(), crypto.SizeStr(mp.QualityAdjPower), tp.QualityAdjPower.String(), crypto.SizeStr(tp.QualityAdjPower), float64(percI.Int64())/10000))
+			writer.Printf("%s(%s) / %s(%s) ~= %0.4f%"+
+				"%\n", mp.QualityAdjPower.String(), crypto.SizeStr(mp.QualityAdjPower), tp.QualityAdjPower.String(), crypto.SizeStr(tp.QualityAdjPower), float64(percI.Int64())/10000)
+		} else {
+			writer.Printf("%s(%s)\n", tp.QualityAdjPower.String(), crypto.SizeStr(tp.QualityAdjPower))
 		}
-		return re.Emit(fmt.Sprintf("%s(%s)", tp.QualityAdjPower.String(), crypto.SizeStr(tp.QualityAdjPower)))
+
+		return re.Emit(buf)
 	},
-	Type: "",
 }
 
 var stateSectorsCmd = &cmds.Command{
@@ -176,15 +184,14 @@ var stateSectorsCmd = &cmds.Command{
 			return err
 		}
 
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
 		for _, s := range sectors {
-			if err := re.Emit(fmt.Sprintf("%d: %x", s.SectorNumber, s.SealedCID)); err != nil {
-				return err
-			}
+			writer.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
 		}
 
-		return nil
+		return re.Emit(buf)
 	},
-	Type: "",
 }
 
 var stateActiveSectorsCmd = &cmds.Command{
@@ -210,15 +217,14 @@ var stateActiveSectorsCmd = &cmds.Command{
 			return err
 		}
 
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
 		for _, s := range sectors {
-			if err := re.Emit(fmt.Sprintf("%d: %x", s.SectorNumber, s.SealedCID)); err != nil {
-				return err
-			}
+			writer.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
 		}
 
-		return nil
+		return re.Emit(buf)
 	},
-	Type: "",
 }
 
 var stateSectorCmd = &cmds.Command{
@@ -262,30 +268,34 @@ var stateSectorCmd = &cmds.Command{
 		}
 
 		height, _ := ts.Height()
-		r := make([]string, 0, 13)
-		r = append(r, fmt.Sprint("SectorNumber: ", si.SectorNumber),
-			fmt.Sprint("SealProof: ", si.SealProof),
-			fmt.Sprint("SealedCID: ", si.SealedCID),
-			fmt.Sprint("DealIDs: ", si.DealIDs),
-			fmt.Sprint("Activation: ", EpochTime(height, si.Activation, blockDelay),
-				fmt.Sprint("Expiration: ", EpochTime(height, si.Expiration, blockDelay)),
-				fmt.Sprint("DealWeight: ", si.DealWeight),
-				fmt.Sprint("VerifiedDealWeight: ", si.VerifiedDealWeight),
-				fmt.Sprint("InitialPledge: ", types.FIL(si.InitialPledge)),
-				fmt.Sprint("ExpectedDayReward: ", types.FIL(si.ExpectedDayReward)),
-				fmt.Sprint("ExpectedStoragePledge: ", types.FIL(si.ExpectedStoragePledge))))
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
+
+		writer.Println("SectorNumber: ", si.SectorNumber)
+		writer.Println("SealProof: ", si.SealProof)
+		writer.Println("SealedCID: ", si.SealedCID)
+		writer.Println("DealIDs: ", si.DealIDs)
+		writer.Println()
+		writer.Println("Activation: ", EpochTime(height, si.Activation, blockDelay))
+		writer.Println("Expiration: ", EpochTime(height, si.Expiration, blockDelay))
+		writer.Println()
+		writer.Println("DealWeight: ", si.DealWeight)
+		writer.Println("VerifiedDealWeight: ", si.VerifiedDealWeight)
+		writer.Println("InitialPledge: ", types.FIL(si.InitialPledge))
+		writer.Println("ExpectedDayReward: ", types.FIL(si.ExpectedDayReward))
+		writer.Println("ExpectedStoragePledge: ", types.FIL(si.ExpectedStoragePledge))
+		writer.Println()
 
 		sp, err := env.(*node.Env).ChainAPI.StateSectorPartition(req.Context, maddr, abi.SectorNumber(sid), ts.Key())
 		if err != nil {
 			return err
 		}
 
-		r = append(r, fmt.Sprint("Deadline: ", sp.Deadline),
-			fmt.Sprint("Partition: ", sp.Partition))
+		writer.Println("Deadline: ", sp.Deadline)
+		writer.Println("Partition: ", sp.Partition)
 
-		return doEmit(re, r)
+		return re.Emit(buf)
 	},
-	Type: "",
 }
 
 func blockDelay(a *config.ConfigAPI) (uint64, error) {
@@ -467,26 +477,31 @@ var stateMinerInfo = &cmds.Command{
 		if err != nil {
 			return xerrors.Errorf("getting miner available balance: %w", err)
 		}
-		r := make([]string, 0, 0)
-		r = append(r, fmt.Sprintf("Available Balance: %s", types.FIL(availableBalance)),
-			fmt.Sprintf("Owner: %s", mi.Owner),
-			fmt.Sprintf("Worker: %s", mi.Worker))
+
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
+
+		writer.Printf("Available Balance: %s\n", types.FIL(availableBalance))
+		writer.Printf("Owner:\t%s\n", mi.Owner)
+		writer.Printf("Worker:\t%s\n", mi.Worker)
 		for i, controlAddress := range mi.ControlAddresses {
-			r = append(r, fmt.Sprintf("Control %d: %s", i, controlAddress))
+			writer.Printf("Control %d: \t%s\n", i, controlAddress)
 		}
 
-		r = append(r, fmt.Sprintf("PeerID: %s", mi.PeerId))
-		addrs := ""
+		writer.Printf("PeerID:\t%s\n", mi.PeerId)
+		writer.Printf("Multiaddrs:\t")
+
 		for _, addr := range mi.Multiaddrs {
 			a, err := multiaddr.NewMultiaddrBytes(addr)
 			if err != nil {
-				return xerrors.Errorf("undecodable listen address: %w", err)
+				return xerrors.Errorf("undecodable listen address: %v", err)
 			}
-			addrs += fmt.Sprintf("%s ", a)
+			writer.Printf("%s ", a)
 		}
-		r = append(r, fmt.Sprintf("Multiaddrs: %s", addrs),
-			fmt.Sprintf("Consensus Fault End: %d", mi.ConsensusFaultElapsed),
-			fmt.Sprintf("SectorSize:%s (%d)", crypto.SizeStr(big.NewInt(int64(mi.SectorSize))), mi.SectorSize))
+		writer.Println()
+		writer.Printf("Consensus Fault End:\t%d\n", mi.ConsensusFaultElapsed)
+
+		writer.Printf("SectorSize:\t%s (%d)\n", crypto.SizeStr(big.NewInt(int64(mi.SectorSize))), mi.SectorSize)
 		pow, err := env.(*node.Env).ChainAPI.StateMinerPower(req.Context, addr, ts.Key())
 		if err != nil {
 			return err
@@ -495,26 +510,27 @@ var stateMinerInfo = &cmds.Command{
 		rpercI := big.Div(big.Mul(pow.MinerPower.RawBytePower, big.NewInt(1000000)), pow.TotalPower.RawBytePower)
 		qpercI := big.Div(big.Mul(pow.MinerPower.QualityAdjPower, big.NewInt(1000000)), pow.TotalPower.QualityAdjPower)
 
-		r = append(r, fmt.Sprintf("Byte Power:   %s / %s (%0.4f%%)",
+		writer.Printf("Byte Power:   %s / %s (%0.4f%%)\n",
 			crypto.SizeStr(pow.MinerPower.RawBytePower),
 			crypto.SizeStr(pow.TotalPower.RawBytePower),
-			float64(rpercI.Int64())/10000))
+			float64(rpercI.Int64())/10000)
 
-		r = append(r, fmt.Sprintf("Actual Power: %s / %s (%0.4f%%)",
+		writer.Printf("Actual Power: %s / %s (%0.4f%%)\n",
 			crypto.DeciStr(pow.MinerPower.QualityAdjPower),
 			crypto.DeciStr(pow.TotalPower.QualityAdjPower),
-			float64(qpercI.Int64())/10000))
+			float64(qpercI.Int64())/10000)
+
+		writer.Println()
 
 		cd, err := env.(*node.Env).ChainAPI.StateMinerProvingDeadline(req.Context, addr, ts.Key())
 		if err != nil {
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
-		r = append(r, fmt.Sprintf("Proving Period Start:%s", EpochTime(cd.CurrentEpoch, cd.PeriodStart, blockDelay)))
+		writer.Printf("Proving Period Start:\t%s\n", EpochTime(cd.CurrentEpoch, cd.PeriodStart, blockDelay))
 
-		return doEmit(re, r)
+		return re.Emit(buf)
 	},
-	Type: "",
 }
 
 var stateNtwkVersionCmd = &cmds.Command{
@@ -535,4 +551,49 @@ var stateNtwkVersionCmd = &cmds.Command{
 		return re.Emit(fmt.Sprintf("Network Version: %d", nv))
 	},
 	Type: "",
+}
+
+var stateListActorCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "list all actors",
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		results, err := env.(*node.Env).ChainAPI.ListActor(req.Context)
+		if err != nil {
+			return err
+		}
+
+		for addr, actor := range results {
+			output := makeActorView(actor, addr)
+			if err := re.Emit(output); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+	Type: &ActorView{},
+	Encoders: cmds.EncoderMap{
+		cmds.JSON: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *ActorView) error {
+			marshaled, err := json.Marshal(a)
+			if err != nil {
+				return err
+			}
+			_, err = w.Write(marshaled)
+			if err != nil {
+				return err
+			}
+			_, err = w.Write([]byte("\n"))
+			return err
+		}),
+	},
+}
+
+func makeActorView(act *types.Actor, addr address.Address) *ActorView {
+	return &ActorView{
+		Address: addr.String(),
+		Code:    act.Code,
+		Nonce:   act.Nonce,
+		Balance: act.Balance,
+		Head:    act.Head,
+	}
 }

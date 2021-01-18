@@ -26,6 +26,7 @@ import (
 )
 
 var _ host.Host = &FakeHost{}
+var _ connmgr.ConnManager = &FakeCMgr{}
 
 // FakeHost is a test host.Host
 type FakeHost struct {
@@ -35,14 +36,18 @@ type FakeHost struct {
 // NewFakeHost constructs a FakeHost with no other parameters needed
 func NewFakeHost() host.Host {
 	nopfunc := func(_ context.Context, _ peer.AddrInfo) error { return nil }
-	return &FakeHost{ConnectImpl: nopfunc}
+	return &FakeHost{
+		ConnectImpl: nopfunc,
+	}
 }
 
 // minimal implementation of host.Host interface
 
-func (fh *FakeHost) Addrs() []ma.Multiaddr            { panic("not implemented") } // nolint: golint
-func (fh *FakeHost) Close() error                     { panic("not implemented") } // nolint: golint
-func (fh *FakeHost) ConnManager() connmgr.ConnManager { panic("not implemented") } // nolint: golint
+func (fh *FakeHost) Addrs() []ma.Multiaddr { panic("not implemented") } // nolint: golint
+func (fh *FakeHost) Close() error          { panic("not implemented") } // nolint: golint
+func (fh *FakeHost) ConnManager() connmgr.ConnManager {
+	return &FakeCMgr{}
+} // nolint: golint
 func (fh *FakeHost) Connect(ctx context.Context, pi peer.AddrInfo) error { // nolint: golint
 	return fh.ConnectImpl(ctx, pi)
 }
@@ -55,6 +60,49 @@ func (fh *FakeHost) RemoveStreamHandler(protocol.ID)                  { panic("n
 func (fh *FakeHost) SetStreamHandler(protocol.ID, inet.StreamHandler) { panic("not implemented") } // nolint: golint
 func (fh *FakeHost) SetStreamHandlerMatch(protocol.ID, func(string) bool, inet.StreamHandler) { // nolint: golint
 	panic("not implemented")
+}
+
+type FakeCMgr struct {
+}
+
+func (f FakeCMgr) TagPeer(id peer.ID, s string, i int) {
+	return
+}
+
+func (f FakeCMgr) UntagPeer(p peer.ID, tag string) {
+	return
+}
+
+func (f FakeCMgr) UpsertTag(p peer.ID, tag string, upsert func(int) int) {
+	return
+}
+
+func (f FakeCMgr) GetTagInfo(p peer.ID) *connmgr.TagInfo {
+	panic("implement me")
+}
+
+func (f FakeCMgr) TrimOpenConns(ctx context.Context) {
+	panic("implement me")
+}
+
+func (f FakeCMgr) Notifee() inet.Notifiee {
+	panic("implement me")
+}
+
+func (f FakeCMgr) Protect(id peer.ID, tag string) {
+	panic("implement me")
+}
+
+func (f FakeCMgr) Unprotect(id peer.ID, tag string) (protected bool) {
+	panic("implement me")
+}
+
+func (f FakeCMgr) IsProtected(id peer.ID, tag string) (protected bool) {
+	panic("implement me")
+}
+
+func (f FakeCMgr) Close() error {
+	panic("implement me")
 }
 
 // NewStream is required for the host.Host interface; returns a new FakeStream.
@@ -237,7 +285,7 @@ func (f *TestExchange) GetChainMessages(ctx context.Context, tipsets []*block.Ti
 	panic("implement me")
 }
 
-func (f *TestExchange) GetFullTipSet(ctx context.Context, peer peer.ID, tsk block.TipSetKey) (*block.FullTipSet, error) {
+func (f *TestExchange) GetFullTipSet(ctx context.Context, peer []peer.ID, tsk block.TipSetKey) (*block.FullTipSet, error) {
 	panic("implement me")
 }
 

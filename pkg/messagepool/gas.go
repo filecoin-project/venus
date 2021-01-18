@@ -40,11 +40,11 @@ func (mp *MessagePool) GasEstimateFeeCap(
 	parentBaseFee := ts.Blocks()[0].ParentBaseFee
 	increaseFactor := math.Pow(1.+1./float64(constants.BaseFeeMaxChangeDenom), float64(maxqueueblks))
 
-	feeInFuture := tbig.Mul(parentBaseFee, tbig.NewInt(int64(increaseFactor*(1<<8))))
-	out := tbig.Div(feeInFuture, tbig.NewInt(1<<8))
+	feeInFuture := big.Mul(parentBaseFee, big.NewInt(int64(increaseFactor*(1<<8))))
+	out := big.Div(feeInFuture, big.NewInt(1<<8))
 
-	if msg.GasPremium != tbig.Zero() {
-		out = tbig.Add(out, msg.GasPremium)
+	if !msg.GasPremium.Nil() && big.Cmp(msg.GasPremium, big.NewInt(0)) != 0 {
+		out = big.Add(out, msg.GasPremium)
 	}
 
 	return out, nil
@@ -252,7 +252,11 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.Uns
 		msg.GasFeeCap = feeCap
 	}
 
-	CapGasFee(mp.GetMaxFee, msg, spec.Get().MaxFee)
+	var maxFee abi.TokenAmount
+	if spec != nil && !spec.MaxFee.Nil() {
+		maxFee = spec.MaxFee
+	}
+	CapGasFee(mp.GetMaxFee, msg, maxFee)
 
 	return msg, nil
 }

@@ -83,7 +83,7 @@ func TestDaemonCORS(t *testing.T) {
 		_, host, err := manet.DialArgs(maddr) //nolint
 		assert.NoError(t, err)
 
-		url := fmt.Sprintf("http://%s/api/id", host)
+		url := fmt.Sprintf("http://%s/api/swarm/id", host)
 		req, err := http.NewRequest("POST", url, nil)
 		assert.NoError(t, err)
 		req.Header.Add("Origin", "http://localhost:8080")
@@ -123,7 +123,7 @@ func TestDaemonCORS(t *testing.T) {
 		_, host, err := manet.DialArgs(maddr) //nolint
 		assert.NoError(t, err)
 
-		url := fmt.Sprintf("http://%s/api/id", host)
+		url := fmt.Sprintf("http://%s/api/swarm/id", host)
 		req, err := http.NewRequest("POST", url, nil)
 		assert.NoError(t, err)
 		req.Header.Add("Origin", "http://disallowed.origin")

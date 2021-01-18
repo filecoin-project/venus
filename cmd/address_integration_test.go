@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/filecoin-project/venus/pkg/crypto"
 	"os"
 	"testing"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/node/test"
 	"github.com/filecoin-project/venus/cmd"
 	"github.com/filecoin-project/venus/fixtures/fortest"
@@ -36,7 +36,7 @@ func TestAddressNewAndList(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	list := cmdClient.RunSuccess(ctx, "address", "ls").ReadStdout()
+	list := cmdClient.RunSuccess(ctx, "wallet", "ls").ReadStdout()
 	for _, addr := range addrs {
 		assert.Contains(t, list, addr.String())
 	}
@@ -47,7 +47,7 @@ func TestWalletBalance(t *testing.T) {
 	ctx := context.Background()
 
 	builder := test.NewNodeBuilder(t)
-	cs := node.FixtureChainSeed(t)
+	cs := test.FixtureChainSeed(t)
 	builder.WithGenesisInit(cs.GenesisInitFunc)
 
 	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
@@ -66,7 +66,7 @@ func TestWalletBalance(t *testing.T) {
 
 	t.Log("[success] newly generated one")
 	var addrNew cmd.AddressResult
-	cmdClient.RunMarshaledJSON(ctx, &addrNew, "address", "new")
+	cmdClient.RunMarshaledJSON(ctx, &addrNew, "wallet", "new")
 	cmdClient.RunMarshaledJSON(ctx, &balance, "wallet", "balance", addrNew.Address.String())
 	assert.Equal(t, "0", balance.String())
 }
@@ -76,7 +76,7 @@ func TestWalletLoadFromFile(t *testing.T) {
 	ctx := context.Background()
 
 	builder := test.NewNodeBuilder(t)
-	cs := node.FixtureChainSeed(t)
+	cs := test.FixtureChainSeed(t)
 	builder.WithGenesisInit(cs.GenesisInitFunc)
 
 	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
@@ -87,7 +87,7 @@ func TestWalletLoadFromFile(t *testing.T) {
 	}
 
 	var addrs cmd.AddressLsResult
-	cmdClient.RunMarshaledJSON(ctx, &addrs, "address", "ls")
+	cmdClient.RunMarshaledJSON(ctx, &addrs, "wallet", "ls")
 
 	for _, addr := range fortest.TestAddresses {
 		// assert we loaded the test address from the file
@@ -110,12 +110,14 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	defer done()
 
 	var lsResult cmd.AddressLsResult
-	cmdClient.RunMarshaledJSON(ctx, &lsResult, "address", "ls")
+	cmdClient.RunMarshaledJSON(ctx, &lsResult, "wallet", "ls")
 	require.Len(t, lsResult.Addresses, 1)
 
 	exportJSON := cmdClient.RunSuccess(ctx, "wallet", "export", lsResult.Addresses[0].String()).ReadStdout()
-	var exportResult cmd.WalletSerializeResult
-	err := json.Unmarshal([]byte(exportJSON), &exportResult)
+	data, err := hex.DecodeString(exportJSON)
+	require.NoError(t, err)
+	var exportResult crypto.KeyInfo
+	err = json.Unmarshal(data, &exportResult)
 	require.NoError(t, err)
 
 	wf, err := os.Create("walletFileTest")
@@ -124,7 +126,7 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 		require.NoError(t, os.Remove("walletFileTest"))
 	}()
 
-	keyInfo, err := json.Marshal(exportResult.KeyInfo[0])
+	keyInfo, err := json.Marshal(exportResult)
 	require.NoError(t, err)
 	_, err = wf.WriteString(hex.EncodeToString(keyInfo))
 	require.NoError(t, err)
