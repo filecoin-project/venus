@@ -480,11 +480,11 @@ func (store *Store) HasSiblingState(ts *block.TipSet) bool {
 // SetHead sets the passed in tipset as the new head of this chain.
 func (store *Store) SetHead(ctx context.Context, newTs *block.TipSet) error {
 	log.Infof("SetHead %s %d", newTs.String(), newTs.EnsureHeight())
-
 	// Add logging to debug sporadic test failure.
 	if !newTs.Defined() {
 		log.Errorf("publishing empty tipset")
 		log.Error(debug.Stack())
+		return nil
 	}
 
 	dropped, added, update, err := func() ([]*block.TipSet, []*block.TipSet, bool, error) {
