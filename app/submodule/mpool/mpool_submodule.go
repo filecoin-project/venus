@@ -3,26 +3,46 @@ package mpool
 import (
 	"bytes"
 	"context"
+	"os"
+	"reflect"
+	"runtime"
+	"strconv"
+	"time"
+
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/types"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
-	"reflect"
-	"runtime"
 
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
+	"github.com/filecoin-project/venus/pkg/block"
+	chainpkg "github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensus"
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/messagepool/journal"
 	"github.com/filecoin-project/venus/pkg/net/msgsub"
 	"github.com/filecoin-project/venus/pkg/net/pubsub"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/types"
 )
+
+var pubsubMsgsSyncEpochs = 10
+
+func init() {
+	if s := os.Getenv("VENUS_MSGS_SYNC_EPOCHS"); s != "" {
+		val, err := strconv.Atoi(s)
+		if err != nil {
+			log.Errorf("failed to parse LOTUS_MSGS_SYNC_EPOCHS: %s", err)
+			return
+		}
+		pubsubMsgsSyncEpochs = val
+	}
+}
 
 var log = logging.Logger("mpool")
 
@@ -155,32 +175,72 @@ func (mp *MessagePoolSubmodule) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	subscribe := func() {
+		mp.MessageTopic = pubsub.NewTopic(topic)
+		mp.MessageSub, err = mp.MessageTopic.Subscribe()
+		if err != nil {
+			panic(errors.Wrapf(err, "failed to subscribe, topic: %s", topic))
+		}
 
-	mp.MessageTopic = pubsub.NewTopic(topic)
-	mp.MessageSub, err = mp.MessageTopic.Subscribe()
-	if err != nil {
-		return errors.Wrapf(err, "failed to subscribe")
+		go func() {
+			for {
+				received, err := mp.MessageSub.Next(ctx)
+				if err != nil {
+					if ctx.Err() != context.Canceled {
+						log.Errorf("error reading message from topic %s: %s", mp.MessageTopic, err)
+					}
+					return
+				}
+
+				if err := mp.handleIncomingMessage(ctx, received); err != nil {
+					handlerName := runtime.FuncForPC(reflect.ValueOf(mp.handleIncomingMessage).Pointer()).Name()
+					if err != context.Canceled {
+						log.Debugf("error in handler %s for topic %s: %s", handlerName, mp.MessageSub.Topic(), err)
+					}
+				}
+			}
+		}()
+	}
+	// wait until we are synced within 10 epochs
+	go mp.waitForSync(pubsubMsgsSyncEpochs, subscribe)
+
+	return nil
+}
+
+func (mp *MessagePoolSubmodule) waitForSync(epochs int, subscribe func()) {
+	nearsync := time.Duration(epochs*int(constants.BlockDelaySecs)) * time.Second
+
+	// early check, are we synced at start up?
+	ts := mp.chain.ChainReader.GetHead()
+	timestamp := ts.MinTimestamp()
+	timestampTime := time.Unix(int64(timestamp), 0)
+	if constants.Clock.Since(timestampTime) < nearsync {
+		subscribe()
+		return
 	}
 
-	go func() {
-		for {
-			received, err := mp.MessageSub.Next(ctx)
-			if err != nil {
-				if ctx.Err() != context.Canceled {
-					log.Errorf("error reading message from topic %s: %s", mp.MessageTopic, err)
-				}
-				return
-			}
+	// we are not synced, subscribe to head changes and wait for sync
+	mp.chain.ChainReader.SubscribeHeadChanges(func(rev, app []*block.TipSet) error {
+		if len(app) == 0 {
+			return nil
+		}
 
-			if err := mp.handleIncomingMessage(ctx, received); err != nil {
-				handlerName := runtime.FuncForPC(reflect.ValueOf(mp.handleIncomingMessage).Pointer()).Name()
-				if err != context.Canceled {
-					log.Debugf("error in handler %s for topic %s: %s", handlerName, mp.MessageSub.Topic(), err)
-				}
+		latest := app[0].MinTimestamp()
+		for _, ts := range app[1:] {
+			timestamp := ts.MinTimestamp()
+			if timestamp > latest {
+				latest = timestamp
 			}
 		}
-	}()
-	return nil
+
+		latestTime := time.Unix(int64(latest), 0)
+		if constants.Clock.Since(latestTime) < nearsync {
+			subscribe()
+			return chainpkg.ErrNotifeeDone
+		}
+
+		return nil
+	})
 }
 
 func (mp *MessagePoolSubmodule) Stop(ctx context.Context) {

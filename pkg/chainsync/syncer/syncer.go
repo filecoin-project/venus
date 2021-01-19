@@ -3,11 +3,12 @@ package syncer
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"sync"
-	"time"
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
@@ -208,7 +209,6 @@ func NewSyncer(fv FullBlockValidator,
 // ensure head is not modified by another goroutine during run.
 func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) error {
 	priorHeadKey := syncer.chainStore.GetHead()
-
 	// if tipset is already priorHeadKey, we've been here before. do nothing.
 	if priorHeadKey.Equals(next) {
 		return nil

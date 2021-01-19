@@ -65,3 +65,8 @@ type MarketBalance struct {
 	Escrow big.Int
 	Locked big.Int
 }
+
+type Message struct {
+	Cid     cid.Cid
+	Message *types.UnsignedMessage
+}

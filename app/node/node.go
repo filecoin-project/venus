@@ -3,11 +3,12 @@ package node
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/config"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/filecoin-project/venus/pkg/config"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
@@ -161,14 +162,14 @@ func (node *Node) Start(ctx context.Context) error {
 			return err
 		}
 
-		//Start mpool module to receive new message
-		err = node.mpool.Start(syncCtx)
+		//start syncer module to receive new blocks and start sync to latest height
+		err = node.syncer.Start(syncCtx)
 		if err != nil {
 			return err
 		}
 
-		//starrt syncer module to receive new blocks and start sync to latest height
-		err = node.syncer.Start(syncCtx)
+		//Start mpool module to receive new message
+		err = node.mpool.Start(syncCtx)
 		if err != nil {
 			return err
 		}
