@@ -520,7 +520,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, ts *block.TipSet
 
 func (sm *StateManager) parentState(ts *block.TipSet) cid.Cid {
 	if ts == nil {
-		ts = sm.cs.GetHeaviestTipSet()
+		ts = sm.cs.GetHead()
 	}
 	return ts.Blocks()[0].ParentStateRoot
 }
@@ -541,7 +541,7 @@ func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Ad
 	}
 
 	if ts == nil {
-		ts = sm.cs.GetHeaviestTipSet()
+		ts = sm.cs.GetHead()
 	}
 
 	st, _, err := sm.TipSetState(ctx, ts)
@@ -716,7 +716,7 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, mcid cid.Cid) (*bl
 		return nil, nil, cid.Undef, fmt.Errorf("failed to load message: %w", err)
 	}
 
-	head := sm.cs.GetHeaviestTipSet()
+	head := sm.cs.GetHead()
 
 	r, foundMsg, err := sm.tipsetExecutedMessage(head, mcid, msg.VMMessage())
 	if err != nil {
@@ -863,7 +863,7 @@ func (sm *StateManager) tipsetExecutedMessage(ts *block.TipSet, msg cid.Cid, vmm
 
 func (sm *StateManager) ListAllActors(ctx context.Context, ts *block.TipSet) ([]address.Address, error) {
 	if ts == nil {
-		ts = sm.cs.GetHeaviestTipSet()
+		ts = sm.cs.GetHead()
 	}
 	st, _, err := sm.TipSetState(ctx, ts)
 	if err != nil {
