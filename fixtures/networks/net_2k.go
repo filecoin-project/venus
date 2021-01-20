@@ -37,6 +37,7 @@ func Net2k() *NetworkConf {
 
 				BreezeGasTampingDuration: 0,
 				UpgradeClausHeight:       30,
+				UpgradeActorsV3Height:    35,
 			},
 			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork: address.Testnet,
