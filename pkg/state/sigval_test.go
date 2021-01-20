@@ -41,7 +41,7 @@ func TestSignMessageOk(t *testing.T) {
 
 	t.Run("no resolution", func(t *testing.T) {
 		v := NewSignatureValidator(&fakeStateView{}) // No resolution needed.
-		msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
+		msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
 		smsg, err := types.NewSignedMessage(ctx, *msg, ms)
 		require.NoError(t, err)
 		assert.NoError(t, v.ValidateMessageSignature(ctx, smsg))
@@ -53,7 +53,7 @@ func TestSignMessageOk(t *testing.T) {
 			idAddress: keyAddr,
 		}}
 		v := NewSignatureValidator(state)
-		msg := types.NewMeteredMessage(idAddress, idAddress, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
+		msg := types.NewMeteredMessage(idAddress, idAddress, 1, types.ZeroFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
 		msgCid, err := msg.Cid()
 		require.NoError(t, err)
 		sig, err := ms.SignBytes(ctx, msgCid.Bytes(), keyAddr)
@@ -82,7 +82,7 @@ func TestBadFrom(t *testing.T) {
 		v := NewSignatureValidator(&fakeStateView{})
 
 		// Can't use NewSignedMessage constructor as it always signs with msg.From.
-		msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
+		msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
 		buf := new(bytes.Buffer)
 		err = msg.MarshalCBOR(buf)
 		require.NoError(t, err)
@@ -103,7 +103,7 @@ func TestBadFrom(t *testing.T) {
 		v := NewSignatureValidator(state)
 
 		// Can't use NewSignedMessage constructor as it always signs with msg.From.
-		msg := types.NewMeteredMessage(idAddress, idAddress, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
+		msg := types.NewMeteredMessage(idAddress, idAddress, 1, types.ZeroFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
 		buf := new(bytes.Buffer)
 		err = msg.MarshalCBOR(buf)
 		require.NoError(t, err)
@@ -127,7 +127,7 @@ func TestSignedMessageBadSignature(t *testing.T) {
 	require.NoError(t, err)
 
 	v := NewSignatureValidator(&fakeStateView{}) // no resolution needed
-	msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
+	msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
 	smsg, err := types.NewSignedMessage(ctx, *msg, signer)
 	require.NoError(t, err)
 
@@ -147,7 +147,7 @@ func TestSignedMessageCorrupted(t *testing.T) {
 	require.NoError(t, err)
 
 	v := NewSignatureValidator(&fakeStateView{}) // no resolution needed
-	msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroAttoFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
+	msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
 	smsg, err := types.NewSignedMessage(ctx, *msg, signer)
 	require.NoError(t, err)
 

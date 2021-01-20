@@ -2,14 +2,14 @@ package chain
 
 import (
 	"context"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"time"
-
-	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -64,12 +64,14 @@ func (chainInfoAPI *ChainInfoAPI) ProtocolParameters(ctx context.Context) (*Prot
 		return nil, xerrors.Wrap(err, "could not retrieve network name")
 	}
 
-	sectorSizes := []abi.SectorSize{constants.DevSectorSize, constants.FiveHundredTwelveMiBSectorSize}
-
 	var supportedSectors []SectorInfo
-	for _, sectorSize := range sectorSizes {
-		maxUserBytes := abi.PaddedPieceSize(sectorSize).Unpadded()
-		supportedSectors = append(supportedSectors, SectorInfo{sectorSize, maxUserBytes})
+	for proof := range miner0.SupportedProofTypes {
+		size, err := proof.SectorSize()
+		if err != nil {
+			return nil, xerrors.Wrap(err, "could not retrieve network name")
+		}
+		maxUserBytes := abi.PaddedPieceSize(size).Unpadded()
+		supportedSectors = append(supportedSectors, SectorInfo{size, maxUserBytes})
 	}
 
 	return &ProtocolParams{

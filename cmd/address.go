@@ -201,9 +201,9 @@ var balanceCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		return re.Emit(balance)
+
+		return re.Emit(bytes.NewBufferString((types.FIL)(balance).String()))
 	},
-	Type: &types.AttoFIL{},
 }
 
 // WalletSerializeResult is the type wallet export and import return and expect.

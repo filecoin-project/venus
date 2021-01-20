@@ -126,7 +126,7 @@ var historyCmd = &cmds.Command{
 			} else {
 				writer.Println("\tCurrent:")
 			}
-
+			writer.Println("\tTime:", t.End.Sub(t.Start).Milliseconds())
 			writer.Println("\tStatus:", t.State.String())
 			writer.Println("\tErr:", t.Err)
 			writer.Println()

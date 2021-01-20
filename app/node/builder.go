@@ -2,9 +2,8 @@ package node
 
 import (
 	"context"
-	"time"
-
 	"github.com/filecoin-project/venus/pkg/constants"
+	"time"
 
 	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"golang.org/x/xerrors"

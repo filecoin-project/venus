@@ -3,13 +3,12 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"io/ioutil"
 	"os"
 	"reflect"
 	"regexp"
 	"strings"
-
-	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"

@@ -32,10 +32,6 @@ func NewChainSelector(cs cbor.IpldStore, state StateViewer) *ChainSelector {
 	}
 }
 
-// todo gather const variable
-const WRatioNum = int64(1)
-const WRatioDen = uint64(2)
-
 // Weight returns the EC weight of this TipSet as a filecoin big int.
 func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet) (fbig.Int, error) {
 	pStateID := ts.At(0).ParentStateRoot
@@ -72,10 +68,10 @@ func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet) (fbig.Int,
 		totalJ += b.ElectionProof.WinCount
 	}
 
-	eWeight := big.NewInt(log2P * WRatioNum)
+	eWeight := big.NewInt(log2P * constants.WRatioNum)
 	eWeight = eWeight.Lsh(eWeight, 8)
 	eWeight = eWeight.Mul(eWeight, new(big.Int).SetInt64(totalJ))
-	eWeight = eWeight.Div(eWeight, big.NewInt(int64(uint64(constants.ExpectedLeadersPerEpoch)*WRatioDen)))
+	eWeight = eWeight.Div(eWeight, big.NewInt(int64(uint64(constants.ExpectedLeadersPerEpoch)*constants.WRatioDen)))
 
 	out = out.Add(out, eWeight)
 

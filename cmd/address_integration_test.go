@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -58,19 +57,18 @@ func TestWalletBalance(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Log("[success] not found, zero")
-	var balance abi.TokenAmount
-	cmdClient.RunMarshaledJSON(ctx, &balance, "wallet", "balance", addr.String())
-	assert.Equal(t, "0", balance.String())
+	balance := cmdClient.RunSuccess(ctx, "wallet", "balance", addr.String()).ReadStdout()
+	assert.Equal(t, "0 FIL", balance)
 
 	t.Log("[success] balance 1394000000000000000000000000")
-	cmdClient.RunMarshaledJSON(ctx, &balance, "wallet", "balance", builtin.RewardActorAddr.String())
-	assert.Equal(t, "1394000000000000000000000000", balance.String())
+	balance = cmdClient.RunSuccess(ctx, "wallet", "balance", builtin.RewardActorAddr.String()).ReadStdout()
+	assert.Equal(t, "1394000000 FIL", balance)
 
 	t.Log("[success] newly generated one")
 	var addrNew cmd.AddressResult
 	cmdClient.RunSuccessFirstLine(ctx, "wallet", "new")
-	cmdClient.RunMarshaledJSON(ctx, &balance, "wallet", "balance", addrNew.Address.String())
-	assert.Equal(t, "0", balance.String())
+	balance = cmdClient.RunSuccess(ctx, "wallet", "balance", addrNew.Address.String()).ReadStdout()
+	assert.Equal(t, "0 FIL", balance)
 }
 
 func TestWalletLoadFromFile(t *testing.T) {
@@ -95,9 +93,8 @@ func TestWalletLoadFromFile(t *testing.T) {
 	}
 
 	// assert default amount of funds were allocated to address during genesis
-	var balance abi.TokenAmount
-	cmdClient.RunMarshaledJSON(ctx, &balance, "wallet", "balance", fortest.TestAddresses[0].String())
-	assert.Equal(t, "1000000000000000000000000", balance.String())
+	balance := cmdClient.RunSuccess(ctx, "wallet", "balance", fortest.TestAddresses[0].String()).ReadStdout()
+	assert.Equal(t, "1000000 FIL", balance)
 }
 
 func TestWalletExportImportRoundTrip(t *testing.T) {
