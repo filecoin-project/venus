@@ -57,8 +57,8 @@ func Testnet() *NetworkConf {
 				UpgradeOrangeHeight:      336458,
 				UpgradeClausHeight:       343200,
 			},
-			DrandSchedule: map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
-			AdressNetwork: address.Mainnet,
+			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
+			AddressNetwork: address.Mainnet,
 		},
 	}
 }
