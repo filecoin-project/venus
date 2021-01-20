@@ -2,6 +2,7 @@ package paychmgr
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -14,9 +15,8 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	tutils2 "github.com/filecoin-project/specs-actors/v2/support/testing"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
-	paychmock "github.com/filecoin-project/lotus/chain/actors/builtin/paych/mock"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
+	paychmock "github.com/filecoin-project/venus/pkg/specactors/builtin/paych/mock"
 )
 
 // TestPaychAddVoucherAfterAddFunds tests adding a voucher to a channel with
@@ -74,7 +74,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 
 	// Create a voucher in a different lane with an amount that exceeds the
 	// channel balance
-	excessAmt := types.NewInt(5)
+	excessAmt := big.NewInt(5)
 	voucher = paych.SignedVoucher{Amount: excessAmt, Lane: 2}
 	res, err = mgr.CreateVoucher(ctx, ch, voucher)
 	require.NoError(t, err)
@@ -89,7 +89,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 	mock.receiveMsgResponse(addFundsMsgCid, types.MessageReceipt{ExitCode: 0})
 
 	// Update actor test case balance to reflect added funds
-	act.Balance = types.BigAdd(createAmt, excessAmt)
+	act.Balance = big.Add(createAmt, excessAmt)
 
 	// Wait for add funds confirmation to be processed by manager
 	_, err = mgr.GetPaychWaitReady(ctx, addFundsMsgCid)

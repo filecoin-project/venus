@@ -3,7 +3,10 @@ package paychmgr
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -12,9 +15,8 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/lib/sigs"
+	api "github.com/filecoin-project/venus/app/submodule/paych"
+	"github.com/filecoin-project/venus/pkg/crypto/sigs"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 	"github.com/filecoin-project/venus/pkg/types"
 )
@@ -63,7 +65,7 @@ func (sm *mockStateManager) setPaychState(a address.Address, actor *types.Actor,
 	sm.paychState[a] = mockPchState{actor, state}
 }
 
-func (sm *mockStateManager) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+func (sm *mockStateManager) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *block.TipSet) (address.Address, error) {
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 	keyAddr, ok := sm.accountState[addr]
@@ -73,7 +75,7 @@ func (sm *mockStateManager) ResolveToKeyAddress(ctx context.Context, addr addres
 	return keyAddr, nil
 }
 
-func (sm *mockStateManager) GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error) {
+func (sm *mockStateManager) GetPaychState(ctx context.Context, addr address.Address, ts *block.TipSet) (*types.Actor, paych.State, error) {
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 	info, ok := sm.paychState[addr]
@@ -133,7 +135,7 @@ func newMockPaychAPI() *mockPaychAPI {
 	}
 }
 
-func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, confidence uint64) (*api.MsgLookup, error) {
+func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error) {
 	pchapi.lk.Lock()
 
 	response := make(chan types.MessageReceipt)
@@ -145,14 +147,14 @@ func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, conf
 		}()
 
 		delete(pchapi.waitingResponses, mcid)
-		return &api.MsgLookup{Receipt: response.receipt}, nil
+		return &cst.MsgLookup{Receipt: response.receipt}, nil
 	}
 
 	pchapi.waitingCalls[mcid] = &waitingCall{response: response}
 	pchapi.lk.Unlock()
 
 	receipt := <-response
-	return &api.MsgLookup{Receipt: receipt}, nil
+	return &cst.MsgLookup{Receipt: receipt}, nil
 }
 
 func (pchapi *mockPaychAPI) receiveMsgResponse(mcid cid.Cid, receipt types.MessageReceipt) {
@@ -189,12 +191,13 @@ func (pchapi *mockPaychAPI) close() {
 	}
 }
 
-func (pchapi *mockPaychAPI) MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *api.MessageSendSpec) (*types.SignedMessage, error) {
+func (pchapi *mockPaychAPI) MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
 	pchapi.lk.Lock()
 	defer pchapi.lk.Unlock()
 
 	smsg := &types.SignedMessage{Message: *msg}
-	pchapi.messages[smsg.Cid()] = smsg
+	smsgCid,_:=smsg.Cid()
+	pchapi.messages[smsgCid] = smsg
 	return smsg, nil
 }
 
@@ -246,5 +249,5 @@ func (pchapi *mockPaychAPI) addSigningKey(key []byte) {
 }
 
 func (pchapi *mockPaychAPI) StateNetworkVersion(ctx context.Context, tsk block.TipSetKey) (network.Version, error) {
-	return build.NewestNetworkVersion, nil
+	return constants.NewestNetworkVersion, nil
 }

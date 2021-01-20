@@ -18,10 +18,10 @@ import (
 	paych2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
-	"github.com/filecoin-project/lotus/api"
-	paychmock "github.com/filecoin-project/lotus/chain/actors/builtin/paych/mock"
-	"github.com/filecoin-project/lotus/lib/sigs"
+	api "github.com/filecoin-project/venus/app/submodule/paych"
+	"github.com/filecoin-project/venus/pkg/crypto/sigs"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
+	paychmock "github.com/filecoin-project/venus/pkg/specactors/builtin/paych/mock"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 

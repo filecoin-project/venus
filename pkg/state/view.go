@@ -896,6 +896,17 @@ func (v *View) loadInitActor(ctx context.Context) (notinit.State, error) {
 	return notinit.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
+func (v *View)LoadPaychState(ctx context.Context,address addr.Address)(paychActor.State,error){
+	return v.loadPaychState(ctx,address)
+}
+func (v *View)loadPaychState(ctx context.Context,address addr.Address)(paychActor.State,error) {
+	actr, err := v.loadActor(ctx, address)
+	if err != nil {
+		return nil, err
+	}
+	return paychActor.Load(adt.WrapStore(context.TODO(), v.ipldStore), actr)
+}
+
 func (v *View) LoadMinerState(ctx context.Context, maddr addr.Address) (miner.State, error) {
 	return v.loadMinerState(ctx, maddr)
 }

@@ -3,6 +3,7 @@ package constants
 import (
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	"math"
 )
 
 const DefaultConfidence = abi.ChainEpoch(5)
@@ -37,3 +38,6 @@ var ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
 var DefaultDefaultMaxFee = MustParseFIL("0.007")
 var DefaultSimultaneousTransfers = uint64(20)
+
+const NoTimeout = math.MaxInt64
+const NoHeight = abi.ChainEpoch(-1)

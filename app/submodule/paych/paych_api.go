@@ -32,7 +32,11 @@ type ChannelAvailableFunds struct {
 	// and in the local datastore
 	VoucherReedeemedAmt big.Int
 }
-
+const (
+	PCHUndef PCHDir = iota
+	PCHInbound
+	PCHOutbound
+)
 // VoucherCreateResult is the response to calling PaychVoucherCreate
 type VoucherCreateResult struct {
 	// Voucher that was created, or nil if there was an error or if there
@@ -42,21 +46,22 @@ type VoucherCreateResult struct {
 	// in order to be able to create the voucher
 	Shortfall big.Int
 }
-
-type MsgLookup struct {
-	Message   cid.Cid // Can be different than requested, in case it was replaced, but only gas values changed
-	Receipt   types.MessageReceipt
-	ReturnDec interface{}
-	TipSet    block.TipSetKey
-	Height    abi.ChainEpoch
+type HeadChange struct {
+	Type string
+	Val  *block.TipSet
 }
 
+type PCHDir int
+type PaychStatus struct {
+	ControlAddr address.Address
+	Direction   PCHDir
+}
 type InvocResult struct {
 	MsgCid         cid.Cid
 	Msg            *types.UnsignedMessage
 	MsgRct         *types.MessageReceipt
-	GasCost        MsgGasCost
-	ExecutionTrace types.ExecutionTrace
+	GasCost        *MsgGasCost
+	ExecutionTrace *types.ExecutionTrace
 	Error          string
 	Duration       time.Duration
 }

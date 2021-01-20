@@ -3,7 +3,10 @@ package paychmgr
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/app/submodule/chain"
+	"github.com/filecoin-project/venus/app/submodule/chain/cst"
+	"github.com/filecoin-project/venus/app/submodule/mpool"
+	"github.com/filecoin-project/venus/pkg/consensus"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -14,47 +17,15 @@ import (
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus/app/submodule/mpool"
 	api "github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/types"
-
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/node/impl/full"
 )
 
 var log = logging.Logger("paych")
 
 var errProofNotSupported = errors.New("payment channel proof parameter is not supported")
-
-// PaychAPI is used by dependency injection to pass the consituent APIs to NewManager()
-type PaychAPI struct {
-	fx.In
-	full.MpoolAPI
-	full.StateAPI
-}
-
-// stateManagerAPI defines the methods needed from StateManager
-type stateManagerAPI interface {
-	ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *block.TipSet) (address.Address, error)
-	GetPaychState(ctx context.Context, addr address.Address, ts *block.TipSet) (*types.Actor, paych.State, error)
-	Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*api.InvocResult, error)
-}
-
-// paychAPI defines the API methods needed by the payment channel manager
-type paychAPI interface {
-	StateAccountKey(context.Context, address.Address, block.TipSetKey) (address.Address, error)
-	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence abi.ChainEpoch) (*api.MsgLookup, error)
-	MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, maxFee *types.MessageSendSpec) (*types.SignedMessage, error)
-	WalletHas(ctx context.Context, addr address.Address) (bool, error)
-	WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error)
-	StateNetworkVersion(context.Context, block.TipSetKey) (network.Version, error)
-}
 
 // managerAPI defines all methods needed by the manager
 type managerAPI interface {
@@ -64,7 +35,7 @@ type managerAPI interface {
 
 // managerAPIImpl is used to create a composite that implements managerAPI
 type managerAPIImpl struct {
-	stmgr.StateManagerAPI
+	stateManagerAPI
 	paychAPI
 }
 
@@ -80,15 +51,26 @@ type Manager struct {
 	lk       sync.RWMutex
 	channels map[string]*channelAccessor
 }
+type ManagerParams struct {
+	*mpool.MessagePoolAPI
+	*chain.ChainInfoAPI
+	*chain.AccountAPI
+	*cst.ChainStateReadWriter
+	consensus.Protocol
+	*Store
+}
 
-func NewManager(ctx context.Context, sm stmgr.StateManagerAPI, pchstore *Store, api PaychAPI) *Manager {
+func NewManager(ctx context.Context, params *ManagerParams) *Manager {
 	ctx, shutdown := context.WithCancel(ctx)
 
-	impl := &managerAPIImpl{StateManagerAPI: sm, paychAPI: &api}
+	impl := &managerAPIImpl{
+		stateManagerAPI:newStateMangerAPI(params.ChainStateReadWriter,params.Protocol),
+		paychAPI:newPaychAPI(params.MessagePoolAPI,params.ChainInfoAPI, params.AccountAPI),
+	}
 	return &Manager{
 		ctx:      ctx,
 		shutdown: shutdown,
-		store:    pchstore,
+		store:    params.Store,
 		sa:       &stateAccessor{sm: impl},
 		channels: make(map[string]*channelAccessor),
 		pchapi:   impl,
@@ -96,10 +78,10 @@ func NewManager(ctx context.Context, sm stmgr.StateManagerAPI, pchstore *Store, 
 }
 
 // newManager is used by the tests to supply mocks
-func newManager(pchstore *Store, pchapi managerAPI) (*Manager, error) {
+func newManager(pchStore *Store,pchapi managerAPI) (*Manager, error) {
 	pm := &Manager{
-		store:    pchstore,
-		sa:       &stateAccessor{sm: pchapi},
+		store:   pchStore,
+		sa:       &stateAccessor{sm:pchapi },
 		channels: make(map[string]*channelAccessor),
 		pchapi:   pchapi,
 	}

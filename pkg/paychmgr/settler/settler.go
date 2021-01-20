@@ -2,9 +2,12 @@ package settler
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/submodule/chain/cst"
+	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"sync"
 
-	"github.com/filecoin-project/lotus/paychmgr"
+	"github.com/filecoin-project/venus/pkg/paychmgr"
 
 	"go.uber.org/fx"
 
@@ -14,21 +17,16 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
-	"github.com/filecoin-project/lotus/chain/events"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/impl/full"
-	payapi "github.com/filecoin-project/lotus/node/impl/paych"
+	api "github.com/filecoin-project/venus/app/submodule/paych"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
+	"github.com/filecoin-project/venus/pkg/types"
+
 )
 
 var log = logging.Logger("payment-channel-settler")
 
 // API are the dependencies need to run the payment channel settler
 type API struct {
-	fx.In
-
 	full.ChainAPI
 	full.StateAPI
 	payapi.PaychAPI
@@ -40,7 +38,7 @@ type settlerAPI interface {
 	PaychVoucherCheckSpendable(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)
 	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)
 	PaychVoucherSubmit(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*api.MsgLookup, error)
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error)
 }
 
 type paymentChannelSettler struct {
@@ -55,7 +53,7 @@ func SettlePaymentChannels(lc fx.Lifecycle, api API) error {
 		OnStart: func(ctx context.Context) error {
 			pcs := newPaymentChannelSettler(ctx, &api)
 			ev := events.NewEvents(ctx, &api)
-			return ev.Called(pcs.check, pcs.messageHandler, pcs.revertHandler, int(build.MessageConfidence+1), events.NoTimeout, pcs.matcher)
+			return ev.Called(pcs.check, pcs.messageHandler, pcs.revertHandler, int(constants.MessageConfidence+1), constants.NoTimeout, pcs.matcher)
 		},
 	})
 	return nil
@@ -68,11 +66,11 @@ func newPaymentChannelSettler(ctx context.Context, api settlerAPI) *paymentChann
 	}
 }
 
-func (pcs *paymentChannelSettler) check(ts *types.TipSet) (done bool, more bool, err error) {
+func (pcs *paymentChannelSettler) check(ts *block.TipSet) (done bool, more bool, err error) {
 	return false, true, nil
 }
 
-func (pcs *paymentChannelSettler) messageHandler(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error) {
+func (pcs *paymentChannelSettler) messageHandler(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *block.TipSet, curH abi.ChainEpoch) (more bool, err error) {
 	// Ignore unsuccessful settle messages
 	if rec.ExitCode != 0 {
 		return true, nil
@@ -91,7 +89,7 @@ func (pcs *paymentChannelSettler) messageHandler(msg *types.Message, rec *types.
 		}
 		go func(voucher *paych.SignedVoucher, submitMessageCID cid.Cid) {
 			defer wg.Done()
-			msgLookup, err := pcs.api.StateWaitMsg(pcs.ctx, submitMessageCID, build.MessageConfidence)
+			msgLookup, err := pcs.api.StateWaitMsg(pcs.ctx, submitMessageCID, constants.MessageConfidence)
 			if err != nil {
 				log.Errorf("submitting voucher: %s", err.Error())
 			}
@@ -104,11 +102,11 @@ func (pcs *paymentChannelSettler) messageHandler(msg *types.Message, rec *types.
 	return true, nil
 }
 
-func (pcs *paymentChannelSettler) revertHandler(ctx context.Context, ts *types.TipSet) error {
+func (pcs *paymentChannelSettler) revertHandler(ctx context.Context, ts *block.TipSet) error {
 	return nil
 }
 
-func (pcs *paymentChannelSettler) matcher(msg *types.Message) (matched bool, err error) {
+func (pcs *paymentChannelSettler) matcher(msg *types.UnsignedMessage) (matched bool, err error) {
 	// Check if this is a settle payment channel message
 	if msg.Method != paych.Methods.Settle {
 		return false, nil

@@ -421,7 +421,6 @@ func (ca *channelAccessor) waitPaychCreateMsg(channelID string, mcid cid.Cid) er
 		log.Errorf("wait msg: %w", err)
 		return err
 	}
-
 	// If channel creation failed
 	if mwait.Receipt.ExitCode != 0 {
 		ca.lk.Lock()

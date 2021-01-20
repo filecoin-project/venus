@@ -19,9 +19,9 @@ import (
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
-	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
-	paychmock "github.com/filecoin-project/lotus/chain/actors/builtin/paych/mock"
+	lotusinit "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
+	paychmock "github.com/filecoin-project/venus/pkg/specactors/builtin/paych/mock"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -474,7 +474,7 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 	// Send success add funds response
 	mock2.receiveMsgResponse(mcid2, types.MessageReceipt{
 		ExitCode: 0,
-		Return:   []byte{},
+		ReturnValue:   []byte{},
 	})
 
 	_, err = mgr2.GetPaychWaitReady(ctx, mcid2)
@@ -542,7 +542,7 @@ func TestPaychGetWait(t *testing.T) {
 		// 6. Send add funds response
 		addFundsResponse := types.MessageReceipt{
 			ExitCode:   0,
-			ReturnVaue: []byte{},
+			ReturnValue: []byte{},
 		}
 		mock.receiveMsgResponse(addFundsMsgCid, addFundsResponse)
 	}()
