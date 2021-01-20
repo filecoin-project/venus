@@ -3,7 +3,6 @@ package miner
 import (
 	"bytes"
 	"errors"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -133,12 +132,11 @@ func (s *state2) FaultsSectors() ([]uint64, error) {
 			return err
 		}
 
-		var partition miner.Partition
+		var partition miner2.Partition
 		return partitions.ForEach(&partition, func(i int64) error {
 			out, err = bitfield.MergeBitFields(out, partition.Faults)
 			return err
 		})
-		return nil
 	}); err != nil {
 		return []uint64{}, err
 	}
@@ -281,34 +279,6 @@ func (s *state2) LoadDeadline(idx uint64) (Deadline, error) {
 	return &deadline2{*dl, s.store}, nil
 }
 
-// todo review
-func (s *state2) SuccessfulPoSts() (uint64, error) {
-	dls, err := s.State.LoadDeadlines(s.store)
-	if err != nil {
-		return 0, err
-	}
-
-	count := uint64(0)
-	err = dls.ForEach(s.store, func(i uint64, dl *miner2.Deadline) error {
-		dCount, err := dl.PostSubmissions.Count()
-		if err != nil {
-			return err
-		}
-		count += dCount
-		return nil
-	})
-	if err != nil {
-		return 0, err
-	}
-
-	return count, nil
-}
-
-// todo review
-func (s *state2) GetProvingPeriodStart() abi.ChainEpoch {
-	return s.ProvingPeriodStart
-}
-
 func (s *state2) ForEachDeadline(cb func(uint64, Deadline) error) error {
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {
@@ -333,6 +303,14 @@ func (s *state2) DeadlinesChanged(other State) (bool, error) {
 	return !s.State.Deadlines.Equals(other2.Deadlines), nil
 }
 
+func (s *state2) MinerInfoChanged(other State) (bool, error) {
+	other0, ok := other.(*state2)
+	if !ok {
+		// treat an upgrade as a change, always
+		return true, nil
+	}
+	return !s.State.Info.Equals(other0.State.Info), nil
+}
 func (s *state2) Info() (MinerInfo, error) {
 	info, err := s.State.GetInfo(s.store)
 	if err != nil {
@@ -342,6 +320,10 @@ func (s *state2) Info() (MinerInfo, error) {
 	var pid *peer.ID
 	if peerID, err := peer.IDFromBytes(info.PeerId); err == nil {
 		pid = &peerID
+	}
+	wpp, err := info.SealProofType.RegisteredWindowPoStProof()
+	if err != nil {
+		return MinerInfo{}, err
 	}
 
 	mi := MinerInfo{
@@ -354,7 +336,7 @@ func (s *state2) Info() (MinerInfo, error) {
 
 		PeerId:                     pid,
 		Multiaddrs:                 info.Multiaddrs,
-		SealProofType:              info.SealProofType,
+		WindowPoStProofType:        wpp,
 		SectorSize:                 info.SectorSize,
 		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
 		ConsensusFaultElapsed:      info.ConsensusFaultElapsed,
@@ -433,7 +415,7 @@ func (d *deadline2) PartitionsChanged(other Deadline) (bool, error) {
 	return !d.Deadline.Partitions.Equals(other2.Deadline.Partitions), nil
 }
 
-func (d *deadline2) PostSubmissions() (bitfield.BitField, error) {
+func (d *deadline2) PartitionsPoSted() (bitfield.BitField, error) {
 	return d.Deadline.PostSubmissions, nil
 }
 

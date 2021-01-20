@@ -114,17 +114,12 @@ func (v *View) MinerInfo(ctx context.Context, maddr addr.Address, nv network.Ver
 		return nil, err
 	}
 
-	minerInfo, err := minerState.Info()
+	info, err := minerState.Info()
 	if err != nil {
 		return nil, err
 	}
 
-	if nv >= network.Version7 && minerInfo.SealProofType < abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
-		minerInfo.SealProofType += abi.RegisteredSealProof_StackedDrg2KiBV1_1
-	}
-
-	return &minerInfo, nil
-	// return minerState.GetInfo(v.adtStore(ctx))
+	return &info, nil
 }
 
 // MinerSectorCount counts all the on-chain sectors
@@ -162,8 +157,6 @@ func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version,
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor state: %s", err)
 	}
-
-	// TODO (!!): Actor Update: Make this active sectors
 
 	var provingSectors bitfield.BitField
 	if nv < network.Version7 {
@@ -203,17 +196,17 @@ func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version,
 		return nil, xerrors.Errorf("getting miner info: %s", err)
 	}
 
-	wpt, err := info.SealProofType.RegisteredWinningPoStProof()
-	if err != nil {
-		return nil, xerrors.Errorf("getting window proof type: %s", err)
-	}
-
 	mid, err := addr.IDFromAddress(maddr)
 	if err != nil {
 		return nil, xerrors.Errorf("getting miner ID: %s", err)
 	}
 
-	ids, err := pv.GenerateWinningPoStSectorChallenge(ctx, wpt, abi.ActorID(mid), rand, numProvSect)
+	proofType, err := miner.WinningPoStProofTypeFromWindowPoStProofType(nv, info.WindowPoStProofType)
+	if err != nil {
+		return nil, xerrors.Errorf("determining winning post proof type: %v", err)
+	}
+
+	ids, err := pv.GenerateWinningPoStSectorChallenge(ctx, proofType, abi.ActorID(mid), rand, numProvSect)
 	if err != nil {
 		return nil, xerrors.Errorf("generating winning post challenges: %s", err)
 	}
@@ -320,25 +313,6 @@ func (v *View) MinerDeadlineInfo(ctx context.Context, maddr addr.Address, epoch 
 	}
 
 	return deadlineInfo.Index, deadlineInfo.Open, deadlineInfo.Close, deadlineInfo.Challenge, nil
-}
-
-// MinerSuccessfulPoSts counts how many successful window PoSts have been made this proving period so far.
-func (v *View) MinerSuccessfulPoSts(ctx context.Context, maddr addr.Address) (uint64, error) {
-	minerState, err := v.loadMinerState(ctx, maddr)
-	if err != nil {
-		return 0, err
-	}
-
-	return minerState.SuccessfulPoSts()
-}
-
-func (v *View) MinerProvingPeriodStart(ctx context.Context, maddr addr.Address) (abi.ChainEpoch, error) {
-	minerState, err := v.loadMinerState(ctx, maddr)
-	if err != nil {
-		return 0, err
-	}
-
-	return minerState.GetProvingPeriodStart(), nil
 }
 
 // MinerExists Returns true iff the miner exists.

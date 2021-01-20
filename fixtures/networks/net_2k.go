@@ -35,6 +35,7 @@ func Net2k() *NetworkConf {
 				UpgradePersianHeight:     25,
 				UpgradeOrangeHeight:      27,
 				UpgradeClausHeight:       30,
+				UpgradeActorsV3Height:    35,
 			},
 			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork: address.Testnet,

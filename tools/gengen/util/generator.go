@@ -48,9 +48,6 @@ import (
 
 const InitialBaseFee = 100e6
 
-// TODO: review add bu force
-// TODO: make a list/schedule of these.
-
 type cstore struct {
 	ctx context.Context
 	cbor.IpldStore
