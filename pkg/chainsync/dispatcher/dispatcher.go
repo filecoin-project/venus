@@ -167,33 +167,38 @@ func (d *Dispatcher) SetConcurrent(number int64) {
 }
 
 func (d *Dispatcher) syncWorker(ctx context.Context) {
-	ticker := time.NewTicker(time.Millisecond * 50)
+	ticker := time.NewTicker(time.Millisecond * 500)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
-			syncTarget, popped := d.workTracker.Select()
-			if popped {
-				// Do work
-				d.lk.Lock()
-				if d.conCurrent.Get() < d.maxCount {
-					syncTarget.State = types.StateInSyncing
-					ctx, cancel := context.WithCancel(ctx)
-					d.cancelControler.PushBack(cancel)
-					d.conCurrent.Add(1)
+			for { //avoid to sleep 25 millisecond
+				syncTarget, popped := d.workTracker.Select()
+				if popped {
+					// Do work
+					d.lk.Lock()
+					if d.conCurrent.Get() < d.maxCount {
+						syncTarget.State = types.StateInSyncing
+						ctx, cancel := context.WithCancel(ctx)
+						d.cancelControler.PushBack(cancel)
+						d.conCurrent.Add(1)
 
-					go func() {
-						err := d.syncer.HandleNewTipSet(ctx, syncTarget)
-						d.workTracker.Remove(syncTarget)
-						if err != nil {
-							log.Debugf("failed sync of %v at %d  %s", syncTarget.Head.Key(), syncTarget.Head.EnsureHeight(), err)
-						}
-						d.registeredCb(syncTarget, err)
-						d.conCurrent.Add(-1)
-					}()
+						go func() {
+							err := d.syncer.HandleNewTipSet(ctx, syncTarget)
+							d.workTracker.Remove(syncTarget)
+							if err != nil {
+								log.Debugf("failed sync of %v at %d  %s", syncTarget.Head.Key(), syncTarget.Head.EnsureHeight(), err)
+							}
+							d.registeredCb(syncTarget, err)
+							d.conCurrent.Add(-1)
+						}()
+					}
+					d.lk.Unlock()
+				} else {
+					break
 				}
-				d.lk.Unlock()
 			}
+
 		case <-ctx.Done():
 			log.Info("context done")
 			return

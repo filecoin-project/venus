@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	lru "github.com/hashicorp/golang-lru"
 	"os"
 	"strings"
 	"time"
@@ -130,6 +131,8 @@ type Expected struct {
 	// postVerifier verifies PoSt proofs and associated data
 	proofVerifier ProofVerifier
 
+	validateBlkCache *lru.ARCCache
+
 	messageStore *chain.MessageStore
 
 	rnd Randness
@@ -166,6 +169,7 @@ func NewExpected(cs cbor.IpldStore,
 	faultChecker := slashing.NewFaultChecker(chainState, fork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, proofVerifier)
 	processor := NewDefaultProcessor(syscalls)
+	validateBlkCache, _ := lru.NewARC(4096)
 	c := &Expected{
 		processor:        processor,
 		syscallsImpl:     syscalls,
@@ -177,6 +181,7 @@ func NewExpected(cs cbor.IpldStore,
 		proofVerifier:    pv,
 		chainState:       chainState,
 		clock:            clock,
+		validateBlkCache: validateBlkCache,
 		drand:            drand,
 		messageStore:     messageStore,
 		rnd:              rnd,
@@ -288,6 +293,9 @@ func (c *Expected) validateBlock(ctx context.Context,
 	blk *block.Block,
 	parentWeight big.Int,
 	parentReceiptRoot cid.Cid) (err error) {
+	if _, ok := c.validateBlkCache.Get(blk.Cid().String()); ok {
+		return nil
+	}
 
 	validationStart := time.Now()
 	defer func() {
@@ -454,7 +462,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 		}
 		return mulErr
 	}
-
+	c.validateBlkCache.Add(blk.Cid().String(), struct{}{})
 	return nil
 }
 

@@ -24,7 +24,23 @@ type Target struct {
 }
 
 func (target *Target) IsNeibor(t *Target) bool {
-	return target.Key() == t.Key()
+	if target.Head.EnsureHeight() != t.Head.EnsureHeight() {
+		return false
+	}
+
+	targetWeight, _ := target.Head.ParentWeight()
+	weightIn, _ := target.Head.ParentWeight()
+	if !targetWeight.Equals(weightIn) {
+		return false
+	}
+
+	for _, bid := range t.Head.Key().Cids() {
+		if !t.Head.Key().Has(bid) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (target *Target) Key() string {
@@ -80,37 +96,40 @@ func (tq *TargetTracker) Add(t *Target) bool {
 		return false
 	}
 
-	if len(tq.q) <= tq.bucketSize {
-		tq.q = append(tq.q, t)
-	} else {
-		//replace last idle task because of less weight
-		var replaceIndex int
-		var replaceTarget *Target
-		//try to replace neibor
-		for index, target := range tq.q {
-			if target.IsNeibor(t) && target.State == StageIdle {
-				replaceTarget = target
-				replaceIndex = index
+	//replace last idle task because of less weight
+	var replaceIndex int
+	var replaceTarget *Target
+	//try to replace neibor
+	for i := len(tq.q) - 1; i > -1; i-- {
+		if tq.q[i].IsNeibor(t) && tq.q[i].State == StageIdle {
+			replaceTarget = tq.q[i]
+			replaceIndex = i
+			break
+		}
+	}
+
+	if replaceTarget == nil {
+		//replace a idle
+		for i := len(tq.q) - 1; i > -1; i-- {
+			if tq.q[i].State == StageIdle {
+				replaceTarget = tq.q[i]
+				replaceIndex = i
+				break
 			}
 		}
+	}
 
-		if replaceTarget == nil {
-			//replace a idle
-			for index, target := range tq.q {
-				if target.State == StageIdle {
-					replaceTarget = target
-					replaceIndex = index
-				}
-			}
-		}
-
-		if replaceTarget == nil {
+	if replaceTarget == nil {
+		if len(tq.q) <= tq.bucketSize {
+			tq.q = append(tq.q, t)
+		} else {
 			return false
 		}
-
+	} else {
 		delete(tq.targetSet, replaceTarget.ChainInfo.Head.String())
 		tq.q[replaceIndex] = t
 	}
+
 	tq.targetSet[t.ChainInfo.Head.String()] = t
 	sortTarget(tq.q)
 	//update lowweight
