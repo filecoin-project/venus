@@ -2,6 +2,8 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"time"
 
@@ -10,9 +12,12 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/node"
+	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/types"
 )
 
 var chainCmd = &cmds.Command{
@@ -20,10 +25,11 @@ var chainCmd = &cmds.Command{
 		Tagline: "Inspect the filecoin blockchain",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"export":   storeExportCmd,
-		"head":     storeHeadCmd,
-		"ls":       storeLsCmd,
-		"set-head": storeSetHeadCmd,
+		"export":   chainExportCmd,
+		"head":     chainHeadCmd,
+		"ls":       chainLsCmd,
+		"set-head": chainSetHeadCmd,
+		"getblock": chainGetBlockCmd,
 	},
 }
 
@@ -34,7 +40,7 @@ type ChainHeadResult struct {
 	Timestamp    string
 }
 
-var storeHeadCmd = &cmds.Command{
+var chainHeadCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Get heaviest tipset info",
 	},
@@ -72,7 +78,7 @@ type ChainLsResult struct {
 	Blocks    []BlockResult
 }
 
-var storeLsCmd = &cmds.Command{
+var chainLsCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline:          "List blocks in the blockchain",
 		ShortDescription: `Provides a list of blocks in order from head to genesis. By default, only CIDs are returned for each block.`,
@@ -136,7 +142,7 @@ var storeLsCmd = &cmds.Command{
 	Type: []ChainLsResult{},
 }
 
-var storeSetHeadCmd = &cmds.Command{
+var chainSetHeadCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Set the chain head to a specific tipset key.",
 	},
@@ -153,7 +159,7 @@ var storeSetHeadCmd = &cmds.Command{
 	},
 }
 
-var storeExportCmd = &cmds.Command{
+var chainExportCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Export the chain store to a car file.",
 	},
@@ -179,4 +185,88 @@ var storeExportCmd = &cmds.Command{
 		}
 		return nil
 	},
+}
+
+var chainGetBlockCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Get a block and print its details.",
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cid", true, true, "CID of the block to show."),
+	},
+	Options: []cmds.Option{
+		cmds.BoolOption("raw", "print just the raw block header"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		bcid, err := cid.Decode(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		ctx := req.Context
+		blk, err := env.(*node.Env).ChainAPI.ChainGetBlock(ctx, bcid)
+		if err != nil {
+			return xerrors.Errorf("get block failed: %w", err)
+		}
+
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
+
+		if _, ok := req.Options["raw"].(bool); ok {
+			out, err := json.MarshalIndent(blk, "", "  ")
+			if err != nil {
+				return err
+			}
+
+			_ = writer.Write(out)
+
+			return re.Emit(buf)
+		}
+
+		msgs, err := env.(*node.Env).ChainAPI.ChainGetBlockMessages(ctx, bcid)
+		if err != nil {
+			return xerrors.Errorf("failed to get messages: %v", err)
+		}
+
+		pmsgs, err := env.(*node.Env).ChainAPI.ChainGetParentMessages(ctx, bcid)
+		if err != nil {
+			return xerrors.Errorf("failed to get parent messages: %v", err)
+		}
+
+		recpts, err := env.(*node.Env).ChainAPI.ChainGetParentReceipts(ctx, bcid)
+		if err != nil {
+			log.Warn(err)
+		}
+
+		cblock := struct {
+			block.Block
+			BlsMessages    []*types.UnsignedMessage
+			SecpkMessages  []*types.SignedMessage
+			ParentReceipts []*types.MessageReceipt
+			ParentMessages []cid.Cid
+		}{}
+
+		cblock.Block = *blk
+		cblock.BlsMessages = msgs.BlsMessages
+		cblock.SecpkMessages = msgs.SecpkMessages
+		cblock.ParentReceipts = recpts
+		cblock.ParentMessages = apiMsgCids(pmsgs)
+
+		out, err := json.MarshalIndent(cblock, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		_ = writer.Write(out)
+
+		return re.Emit(buf)
+	},
+}
+
+func apiMsgCids(in []chain.Message) []cid.Cid {
+	out := make([]cid.Cid, len(in))
+	for k, v := range in {
+		out[k] = v.Cid
+	}
+	return out
 }

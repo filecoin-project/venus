@@ -830,7 +830,7 @@ func (mp *MessagePool) addLoaded(m *types.SignedMessage) error {
 	}
 
 	if snonce > m.Message.Nonce {
-		return xerrors.Errorf("minimum expected nonce is %d: %v", snonce, ErrNonceTooLow)
+		return xerrors.Errorf("minimum expected nonce is %d: %w", snonce, ErrNonceTooLow)
 	}
 
 	_, err = mp.verifyMsgBeforeAdd(m, curTs, true)

@@ -46,8 +46,8 @@ require (
 	github.com/golang/snappy v0.0.2-0.20190904063534-ff6b7dc882cf // indirect
 	github.com/golangci/golangci-lint v1.21.0
 	github.com/google/go-github v17.0.0+incompatible
-	github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026
 	github.com/google/go-querystring v1.0.0 // indirect
+	github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ipfs/go-bitswap v0.3.2
@@ -115,6 +115,7 @@ require (
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.5.0 // indirect
+	github.com/streadway/handy v0.0.0-20190108123426-d5acb3125c2a
 	github.com/stretchr/testify v1.6.1
 	github.com/supranational/blst v0.1.1
 	github.com/urfave/cli/v2 v2.3.0 // indirect

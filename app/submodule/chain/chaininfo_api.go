@@ -182,6 +182,77 @@ func (chainInfoAPI *ChainInfoAPI) GetFullBlock(ctx context.Context, id cid.Cid) 
 	return &out, nil
 }
 
+func (chainInfoAPI *ChainInfoAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]Message, error) {
+	b, err := chainInfoAPI.ChainGetBlock(ctx, bcid)
+	if err != nil {
+		return nil, err
+	}
+
+	// genesis block has no parent messages...
+	if b.Height == 0 {
+		return nil, nil
+	}
+
+	// TODO: need to get the number of messages better than this
+	pts, err := chainInfoAPI.chain.ChainReader.GetTipSet(block.NewTipSetKey(b.Parents.Cids()...))
+	if err != nil {
+		return nil, err
+	}
+
+	cm, err := chainInfoAPI.chain.MessageStore.MessagesForTipset(pts)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []Message
+	for _, m := range cm {
+		cid, err := m.Cid()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, Message{
+			Cid:     cid,
+			Message: m.VMMessage(),
+		})
+	}
+
+	return out, nil
+}
+
+func (chainInfoAPI *ChainInfoAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error) {
+	b, err := chainInfoAPI.ChainGetBlock(ctx, bcid)
+	if err != nil {
+		return nil, err
+	}
+
+	if b.Height == 0 {
+		return nil, nil
+	}
+
+	// TODO: need to get the number of messages better than this
+	pts, err := chainInfoAPI.chain.ChainReader.GetTipSet(block.NewTipSetKey(b.Parents.Cids()...))
+	if err != nil {
+		return nil, err
+	}
+
+	cm, err := chainInfoAPI.chain.MessageStore.MessagesForTipset(pts)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []*types.MessageReceipt
+	for i := 0; i < len(cm); i++ {
+		r, err := chainInfoAPI.chain.ChainReader.GetParentReceipt(b, i)
+		if err != nil {
+			return nil, err
+		}
+
+		out = append(out, r)
+	}
+
+	return out, nil
+}
+
 // ResolveToKeyAddr resolve user address to t0 address
 func (chainInfoAPI *ChainInfoAPI) ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *block.TipSet) (address.Address, error) {
 	viewer, err := chainInfoAPI.chain.State.ParentStateView(ts)
