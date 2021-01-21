@@ -293,14 +293,14 @@ func (c *Expected) validateBlock(ctx context.Context,
 	blk *block.Block,
 	parentWeight big.Int,
 	parentReceiptRoot cid.Cid) (err error) {
+	validationStart := time.Now()
+	defer func() {
+		logExpect.Infow("block validation", "Cid", blk.Cid(), "took", time.Since(validationStart), "height", blk.Height, "age", time.Since(time.Unix(int64(blk.Timestamp), 0)), "Err", err)
+	}()
+
 	if _, ok := c.validateBlkCache.Get(blk.Cid().String()); ok {
 		return nil
 	}
-
-	validationStart := time.Now()
-	defer func() {
-		logExpect.Infow("block validation", "took", time.Since(validationStart), "height", blk.Height, "age", time.Since(time.Unix(int64(blk.Timestamp), 0)))
-	}()
 
 	// confirm block state root matches parent state root
 	rootAfterCalc, err := c.chainState.GetTipSetStateRoot(parent)
@@ -340,6 +340,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 	if !parentReceiptRoot.Equals(blk.ParentMessageReceipts) {
 		return ErrReceiptRootMismatch
 	}
+
 	if !parentWeight.Equals(blk.ParentWeight) {
 		return errors.Errorf("block %s has invalid parent weight %d expected %d", blk.Cid().String(), blk.ParentWeight, parentWeight)
 	}
