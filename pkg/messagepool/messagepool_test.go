@@ -12,6 +12,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/stretchr/testify/assert"
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
@@ -324,18 +325,7 @@ func mustAdd(t *testing.T, mp *MessagePool, msg *types.SignedMessage) {
 	}
 }
 
-func TestMessagePool(t *testing.T) {
-	tf.UnitTest(t)
-
-	tma := newTestMpoolAPI()
-
-	r := repo.NewInMemoryRepo()
-	backend, err := wallet.NewDSBackend(r.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w := wallet.New(backend)
-
+func newWalletAndMpool(t *testing.T, tma *testMpoolAPI) (*wallet.Wallet, *MessagePool) {
 	ds := datastore.NewMapDatastore()
 
 	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
@@ -343,9 +333,34 @@ func TestMessagePool(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	return newWallet(t), mp
+}
+
+func newWallet(t *testing.T) *wallet.Wallet {
+	r := repo.NewInMemoryRepo()
+	backend, err := wallet.NewDSBackend(r.WalletDatastore(), r.Config().Wallet.PassphraseConfig)
+	assert.NoError(t, err)
+
+	w := wallet.New(backend)
+	err = w.SetPassword(wallet.TestPassword)
+	assert.NoError(t, err)
+	err = w.UnLocked(wallet.TestPassword)
+	assert.NoError(t, err)
+
+	return w
+}
+
+func TestMessagePool(t *testing.T) {
+	tf.UnitTest(t)
+
+	tma := newTestMpoolAPI()
+
+	w, mp := newWalletAndMpool(t, tma)
+
 	a := tma.nextBlock()
 
-	sender, err := wallet.NewAddress(w, address.SECP256K1)
+	sender, err := w.NewAddress(address.SECP256K1)
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -374,23 +389,11 @@ func TestMessagePoolMessagesInEachBlock(t *testing.T) {
 
 	tma := newTestMpoolAPI()
 
-	r := repo.NewInMemoryRepo()
-	backend, err := wallet.NewDSBackend(r.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w := wallet.New(backend)
-
-	ds := datastore.NewMapDatastore()
-
-	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	w, mp := newWalletAndMpool(t, tma)
 
 	a := tma.nextBlock()
 
-	sender, err := wallet.NewAddress(w, address.BLS)
+	sender, err := w.NewAddress(address.BLS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -427,24 +430,12 @@ func TestRevertMessages(t *testing.T) {
 
 	tma := newTestMpoolAPI()
 
-	r := repo.NewInMemoryRepo()
-	backend, err := wallet.NewDSBackend(r.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w := wallet.New(backend)
-
-	ds := datastore.NewMapDatastore()
-
-	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	w, mp := newWalletAndMpool(t, tma)
 
 	a := tma.nextBlock()
 	b := tma.nextBlock()
 
-	sender, err := wallet.NewAddress(w, address.BLS)
+	sender, err := w.NewAddress(address.BLS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -494,24 +485,12 @@ func TestPruningSimple(t *testing.T) {
 
 	tma := newTestMpoolAPI()
 
-	r := repo.NewInMemoryRepo()
-	backend, err := wallet.NewDSBackend(r.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w := wallet.New(backend)
-
-	ds := datastore.NewMapDatastore()
-
-	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	w, mp := newWalletAndMpool(t, tma)
 
 	a := tma.nextBlock()
 	tma.applyBlock(t, a)
 
-	sender, err := wallet.NewAddress(w, address.BLS)
+	sender, err := w.NewAddress(address.BLS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -555,26 +534,15 @@ func TestLoadLocal(t *testing.T) {
 	}
 
 	// the actors
-	r1 := repo.NewInMemoryRepo()
-	backend1, err := wallet.NewDSBackend(r1.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w1 := wallet.New(backend1)
+	w1 := newWallet(t)
+	a1, err := w1.NewAddress(address.SECP256K1)
 
-	a1, err := wallet.NewAddress(w1, address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	r2 := repo.NewInMemoryRepo()
-	backend2, err := wallet.NewDSBackend(r2.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w2 := wallet.New(backend2)
-
-	a2, err := wallet.NewAddress(w2, address.SECP256K1)
+	w2 := newWallet(t)
+	a2, err := w2.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -633,26 +601,14 @@ func TestClearAll(t *testing.T) {
 	}
 
 	// the actors
-	r1 := repo.NewInMemoryRepo()
-	backend1, err := wallet.NewDSBackend(r1.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w1 := wallet.New(backend1)
-
-	a1, err := wallet.NewAddress(w1, address.SECP256K1)
+	w1 := newWallet(t)
+	a1, err := w1.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	r2 := repo.NewInMemoryRepo()
-	backend2, err := wallet.NewDSBackend(r2.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w2 := wallet.New(backend2)
-
-	a2, err := wallet.NewAddress(w2, address.SECP256K1)
+	w2 := newWallet(t)
+	a2, err := w2.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -693,26 +649,14 @@ func TestClearNonLocal(t *testing.T) {
 	}
 
 	// the actors
-	r1 := repo.NewInMemoryRepo()
-	backend1, err := wallet.NewDSBackend(r1.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w1 := wallet.New(backend1)
-
-	a1, err := wallet.NewAddress(w1, address.SECP256K1)
+	w1 := newWallet(t)
+	a1, err := w1.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	r2 := repo.NewInMemoryRepo()
-	backend2, err := wallet.NewDSBackend(r2.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w2 := wallet.New(backend2)
-
-	a2, err := wallet.NewAddress(w2, address.SECP256K1)
+	w2 := newWallet(t)
+	a2, err := w2.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -760,26 +704,14 @@ func TestUpdates(t *testing.T) {
 	}
 
 	// the actors
-	r1 := repo.NewInMemoryRepo()
-	backend1, err := wallet.NewDSBackend(r1.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w1 := wallet.New(backend1)
-
-	a1, err := wallet.NewAddress(w1, address.SECP256K1)
+	w1 := newWallet(t)
+	a1, err := w1.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	r2 := repo.NewInMemoryRepo()
-	backend2, err := wallet.NewDSBackend(r2.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w2 := wallet.New(backend2)
-
-	a2, err := wallet.NewAddress(w2, address.SECP256K1)
+	w2 := newWallet(t)
+	a2, err := w2.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}

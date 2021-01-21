@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"time"
 
 	"github.com/docker/go-units"
@@ -19,6 +18,7 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
@@ -83,7 +83,12 @@ var newMinerCmd = &cmds.Command{
 		if workerAddr != "" {
 			worker, err = address.NewFromString(workerAddr)
 		} else if createWorkerKey { // TODO: Do we need to force this if owner is Secpk?
-			worker, err = env.(*node.Env).WalletAPI.WalletNewAddress(address.BLS)
+			if !env.(*node.Env).WalletAPI.HavePassword(ctx) {
+				return errWalletLocked
+			}
+			if worker, err = env.(*node.Env).WalletAPI.WalletNewAddress(address.BLS); err != nil {
+				return err
+			}
 		}
 		if err != nil {
 			return err
