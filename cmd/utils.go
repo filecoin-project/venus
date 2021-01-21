@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strconv"
@@ -165,4 +166,12 @@ func EpochTime(curr, e abi.ChainEpoch, blockDelay uint64) string {
 	}
 
 	panic("math broke")
+}
+
+func printOneString(re cmds.ResponseEmitter, str string) error {
+	buf := new(bytes.Buffer)
+	writer := NewSilentWriter(buf)
+	writer.Println(str)
+
+	return re.Emit(buf)
 }

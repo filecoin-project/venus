@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/filecoin-project/venus/pkg/crypto"
 	"os"
+	"strings"
 	"testing"
+
+	"github.com/filecoin-project/venus/pkg/crypto"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -66,7 +68,7 @@ func TestWalletBalance(t *testing.T) {
 
 	t.Log("[success] newly generated one")
 	var addrNew cmd.AddressResult
-	cmdClient.RunMarshaledJSON(ctx, &addrNew, "wallet", "new")
+	cmdClient.RunSuccessFirstLine(ctx, "wallet", "new")
 	cmdClient.RunMarshaledJSON(ctx, &balance, "wallet", "balance", addrNew.Address.String())
 	assert.Equal(t, "0", balance.String())
 }
@@ -86,12 +88,10 @@ func TestWalletLoadFromFile(t *testing.T) {
 		cmdClient.RunSuccess(ctx, "wallet", "import", p)
 	}
 
-	var addrs cmd.AddressLsResult
-	cmdClient.RunMarshaledJSON(ctx, &addrs, "wallet", "ls")
-
+	list := cmdClient.RunSuccess(ctx, "wallet", "ls").ReadStdout()
 	for _, addr := range fortest.TestAddresses {
 		// assert we loaded the test address from the file
-		assert.Contains(t, addrs.Addresses, addr)
+		assert.Contains(t, list, addr.String())
 	}
 
 	// assert default amount of funds were allocated to address during genesis
@@ -109,11 +109,16 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
-	var lsResult cmd.AddressLsResult
-	cmdClient.RunMarshaledJSON(ctx, &lsResult, "wallet", "ls")
-	require.Len(t, lsResult.Addresses, 1)
+	// ./venus wallet ls
+	// eg:
+	// Address                                                                                 Balance  Nonce  Default
+	// t3wzm53n4ui4zdgwenf7jflrtsejgpsus7rswlkvbffxhdpkixpzfzidbvinrpnjx7dgvs72ilsnpiu7yjhela  0 FIL    0      X
+	result := cmdClient.RunSuccessLines(ctx, "wallet", "ls")
+	require.Len(t, result, 2) // include the header `Address Balance  Nonce  Default`
 
-	exportJSON := cmdClient.RunSuccess(ctx, "wallet", "export", lsResult.Addresses[0].String()).ReadStdout()
+	resultAddr := strings.Split(result[1], " ")[0]
+
+	exportJSON := cmdClient.RunSuccess(ctx, "wallet", "export", resultAddr).ReadStdoutTrimNewlines()
 	data, err := hex.DecodeString(exportJSON)
 	require.NoError(t, err)
 	var exportResult crypto.KeyInfo
@@ -132,7 +137,6 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, wf.Close())
 
-	var importResult address.Address
-	cmdClient.RunMarshaledJSON(ctx, &importResult, "wallet", "import", wf.Name())
-	assert.Equal(t, lsResult.Addresses[0], importResult)
+	importResult := cmdClient.RunSuccessFirstLine(ctx, "wallet", "import", wf.Name())
+	assert.Equal(t, resultAddr, importResult)
 }

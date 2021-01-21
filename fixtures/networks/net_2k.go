@@ -36,8 +36,8 @@ func Net2k() *NetworkConf {
 				UpgradeOrangeHeight:      27,
 				UpgradeClausHeight:       30,
 			},
-			DrandSchedule: map[abi.ChainEpoch]config.DrandEnum{0: 1},
-			AdressNetwork: address.Testnet,
+			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			AddressNetwork: address.Testnet,
 		},
 	}
 }

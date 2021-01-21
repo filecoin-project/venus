@@ -32,8 +32,8 @@ func IntegrationNet() *NetworkConf {
 				UpgradeActorsV2Height:    138720,
 				UpgradeOrangeHeight:      336458,
 			},
-			DrandSchedule: map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
-			AdressNetwork: address.Testnet,
+			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
+			AddressNetwork: address.Testnet,
 		},
 	}
 }
