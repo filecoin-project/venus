@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/filecoin-project/venus/cmd"
 	logging "github.com/ipfs/go-log"
+	_ "net/http/pprof"
 	"os"
 )
 
