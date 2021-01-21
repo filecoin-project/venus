@@ -18,11 +18,11 @@ import (
 
 // BlockProposer allows callers to propose new blocks for inclusion in the chain.
 type BlockProposer interface {
+	SetConcurrent(number int64)
 	SyncTracker() *types.TargetTracker
 	SendHello(ci *block.ChainInfo) error
 	SendOwnBlock(ci *block.ChainInfo) error
 	SendGossipBlock(ci *block.ChainInfo) error
-	WaiterForTarget(wk block.TipSetKey) func() error
 }
 
 // Manager sync the chain.
@@ -49,10 +49,6 @@ func NewManager(fv syncer.FullBlockValidator,
 	}
 
 	dispatcher := dispatcher.NewDispatcher(syncer)
-	err = syncer.InitStaged()
-	if err != nil {
-		return Manager{}, err
-	}
 
 	return Manager{
 		syncer:     syncer,

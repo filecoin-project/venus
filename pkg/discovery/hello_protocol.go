@@ -171,7 +171,6 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 				}
 			}
 		}
-
 		h.host.ConnManager().TagPeer(from, "new-block", 40)
 	}
 	if err != nil {

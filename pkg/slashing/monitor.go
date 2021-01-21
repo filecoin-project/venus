@@ -3,6 +3,7 @@ package slashing
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"sync"
 
 	"github.com/filecoin-project/venus/pkg/block"
 )
@@ -14,6 +15,7 @@ type ConsensusFaultDetector struct {
 	minerIndex map[address.Address]map[abi.ChainEpoch]*block.Block
 	// sender sends messages on behalf of the slasher
 	faultCh chan ConsensusFault
+	lk      sync.Mutex
 }
 
 // ConsensusFault is the information needed to submit a consensus fault
@@ -43,6 +45,8 @@ func (detector *ConsensusFaultDetector) CheckBlock(b *block.Block, p *block.TipS
 	earliest := parentHeight + 1
 
 	// Find per-miner index
+	detector.lk.Lock()
+	defer detector.lk.Unlock()
 	blockByEpoch, tracked := detector.minerIndex[b.Miner]
 	if !tracked {
 		blockByEpoch = make(map[abi.ChainEpoch]*block.Block)

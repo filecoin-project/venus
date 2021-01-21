@@ -104,6 +104,7 @@ START RUNNING FILECOIN
 
 VIEW DATA STRUCTURES
   venus chain                  - Inspect the filecoin blockchain
+  venus sync 				   - Inspect the filecoin Sync
   venus dag                    - Interact with IPLD DAG objects
   venus show                   - Get human-readable representations of filecoin objects
 
@@ -164,6 +165,7 @@ var rootSubcmdsLocal = map[string]*cmds.Command{
 // all top level commands, available on daemon. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"chain":    chainCmd,
+	"sync":     syncCmd,
 	"config":   configCmd,
 	"drand":    drandCmd,
 	"dag":      dagCmd,
