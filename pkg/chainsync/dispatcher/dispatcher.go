@@ -187,7 +187,7 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 							err := d.syncer.HandleNewTipSet(ctx, syncTarget)
 							d.workTracker.Remove(syncTarget)
 							if err != nil {
-								log.Debugf("failed sync of %v at %d  %s", syncTarget.Head.Key(), syncTarget.Head.EnsureHeight(), err)
+								log.Infof("failed sync of %v at %d  %s", syncTarget.Head.Key(), syncTarget.Head.EnsureHeight(), err)
 							}
 							d.registeredCb(syncTarget, err)
 							d.conCurrent.Add(-1)
