@@ -3,11 +3,12 @@ package dispatcher
 import (
 	"container/list"
 	"context"
-	"github.com/filecoin-project/venus/pkg/chainsync/types"
-	"github.com/streadway/handy/atomic"
 	"runtime/debug"
 	"sync"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/chainsync/types"
+	"github.com/streadway/handy/atomic"
 
 	logging "github.com/ipfs/go-log/v2"
 
@@ -141,7 +142,7 @@ func (d *Dispatcher) processIncoming(ctx context.Context) {
 		case target := <-d.incoming:
 			// Sort new targets by putting on work queue.
 			if d.workTracker.Add(target) {
-				log.Infof("received  height %d Blocks: %d %s current work len %d  incoming len: %v", target.Head.Len(), target.Head.Key(), target.Head.EnsureHeight(), d.workTracker.Len(), len(d.incoming))
+				log.Infof("received height %d Blocks: %d %s current work len %d", target.Head.EnsureHeight(), target.Head.Len(), target.Head.Key(), d.workTracker.Len())
 			}
 		}
 	}
