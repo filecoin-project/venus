@@ -2,11 +2,13 @@ package state
 
 import (
 	"context"
+	test "github.com/filecoin-project/venus/pkg/events/state/mock"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/types"
+	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"testing"
 
-	test "github.com/filecoin-project/lotus/chain/events/state/mock"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-bitfield"
 
@@ -23,9 +25,6 @@ import (
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/types"
-	bstore "github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 var dummyCid cid.Cid

@@ -2,21 +2,25 @@ package state
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/app/submodule/chain"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/specactors/adt"
+	init_ "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
+	"github.com/filecoin-project/venus/pkg/types"
+
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/lotus/api/apibstore"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
-	"github.com/filecoin-project/lotus/chain/types"
+
+
+
 )
 
 // UserData is the data returned from the DiffTipSetKeyFunc
@@ -24,7 +28,7 @@ type UserData interface{}
 
 // ChainAPI abstracts out calls made by this class to external APIs
 type ChainAPI interface {
-	apibstore.ChainIO
+	chain.ChainIO
 	StateGetActor(ctx context.Context, actor address.Address, tsk block.TipSetKey) (*types.Actor, error)
 }
 
@@ -37,7 +41,7 @@ type StatePredicates struct {
 func NewStatePredicates(api ChainAPI) *StatePredicates {
 	return &StatePredicates{
 		api: api,
-		cst: cbor.NewCborStore(apibstore.NewAPIBlockstore(api)),
+		cst: cbor.NewCborStore(chain.NewAPIBlockstore(api)),
 	}
 }
 

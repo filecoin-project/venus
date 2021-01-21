@@ -31,5 +31,5 @@ func (a *fastAPI) StateGetActor(ctx context.Context, actor address.Address, tsk 
 		return nil, err
 	}
 
-	return a.FastChainApiAPI.StateGetActor(ctx, actor, ts.Parents())
+	return a.FastChainApiAPI.StateGetActor(ctx, actor, ts.EnsureParents())
 }

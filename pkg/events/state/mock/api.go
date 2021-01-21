@@ -2,11 +2,14 @@ package test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
+	blockstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+
+	"github.com/filecoin-project/venus/pkg/block"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/blockstore"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
@@ -15,14 +18,14 @@ type MockAPI struct {
 	bs blockstore.Blockstore
 
 	lk                  sync.Mutex
-	ts                  map[types.TipSetKey]*types.Actor
+	ts                  map[block.TipSetKey]*types.Actor
 	stateGetActorCalled int
 }
 
 func NewMockAPI(bs blockstore.Blockstore) *MockAPI {
 	return &MockAPI{
 		bs: bs,
-		ts: make(map[types.TipSetKey]*types.Actor),
+		ts: make(map[block.TipSetKey]*types.Actor),
 	}
 }
 
@@ -39,7 +42,7 @@ func (m *MockAPI) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
 	return blk.RawData(), nil
 }
 
-func (m *MockAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
+func (m *MockAPI) StateGetActor(ctx context.Context, actor address.Address, tsk block.TipSetKey) (*types.Actor, error) {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
@@ -61,7 +64,7 @@ func (m *MockAPI) ResetCallCounts() {
 	m.stateGetActorCalled = 0
 }
 
-func (m *MockAPI) SetActor(tsk types.TipSetKey, act *types.Actor) {
+func (m *MockAPI) SetActor(tsk block.TipSetKey, act *types.Actor) {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 

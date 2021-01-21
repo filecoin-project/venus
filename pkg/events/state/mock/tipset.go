@@ -3,7 +3,7 @@ package test
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/ipfs/go-cid"
 )
 
@@ -13,8 +13,8 @@ func init() {
 	dummyCid, _ = cid.Parse("bafkqaaa")
 }
 
-func MockTipset(minerAddr address.Address, timestamp uint64) (*types.TipSet, error) {
-	return types.NewTipSet([]*types.BlockHeader{{
+func MockTipset(minerAddr address.Address, timestamp uint64) (*block.TipSet, error) {
+	return block.NewTipSet([]*block.Block{{
 		Miner:                 minerAddr,
 		Height:                5,
 		ParentStateRoot:       dummyCid,
@@ -23,5 +23,5 @@ func MockTipset(minerAddr address.Address, timestamp uint64) (*types.TipSet, err
 		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS},
 		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS},
 		Timestamp:             timestamp,
-	}})
+	}}...)
 }
