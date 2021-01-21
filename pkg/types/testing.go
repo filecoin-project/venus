@@ -168,11 +168,11 @@ func NewSignedMessageForTestGetter(ms MockSigner) func(uint64) *SignedMessage {
 			ms.Addresses[0], // from needs to be an address from the signer
 			newAddr,
 			nonce,
-			ZeroAttoFIL,
+			ZeroFIL,
 			0,
 			[]byte("params"),
-			ZeroAttoFIL,
-			ZeroAttoFIL,
+			ZeroFIL,
+			ZeroFIL,
 			0,
 		)
 		smsg, err := NewSignedMessage(context.TODO(), *msg, &ms)
@@ -229,7 +229,7 @@ func NewMessageForTestGetter() func() *UnsignedMessage {
 			from,
 			to,
 			0,
-			ZeroAttoFIL,
+			ZeroFIL,
 			abi.MethodNum(10000+i),
 			nil)
 	}
@@ -259,8 +259,8 @@ func NewSignedMsgs(n uint, ms MockSigner) []*SignedMessage {
 		msg := newMsg()
 		msg.From = ms.Addresses[0]
 		msg.Nonce = uint64(i)
-		msg.GasFeeCap = ZeroAttoFIL
-		msg.GasPremium = ZeroAttoFIL
+		msg.GasFeeCap = ZeroFIL
+		msg.GasPremium = ZeroFIL
 		msg.GasLimit = 0
 		smsgs[i], err = NewSignedMessage(context.TODO(), *msg, ms)
 		if err != nil {

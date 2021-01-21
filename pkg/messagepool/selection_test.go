@@ -47,7 +47,7 @@ func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, g
 		From:       from,
 		To:         to,
 		Method:     2,
-		Value:      types.FromFil(0),
+		Value:      types.NewAttoFILFromFIL(0),
 		Nonce:      nonce,
 		GasLimit:   gasLimit,
 		GasFeeCap:  tbig.NewInt(int64(100) + int64(gasPrice)),

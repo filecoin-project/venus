@@ -2,6 +2,7 @@ package genesis
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -9,7 +10,6 @@ import (
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 )

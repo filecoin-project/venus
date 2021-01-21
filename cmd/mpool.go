@@ -297,7 +297,7 @@ var mpoolReplaceCmd = &cmds.Command{
 			msg.GasFeeCap = big.Max(retm.GasFeeCap, msg.GasPremium)
 
 			mff := func() (abi.TokenAmount, error) {
-				return constants.DefaultDefaultMaxFee, nil
+				return abi.TokenAmount{Int: types.DefaultDefaultMaxFee.Int}, nil
 			}
 
 			var maxFee abi.TokenAmount

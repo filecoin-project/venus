@@ -2,6 +2,7 @@ package fast
 
 import (
 	"context"
+	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/cmd"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"strings"
@@ -42,10 +43,10 @@ func (f *Filecoin) AddressLookup(ctx context.Context, addr address.Address) (pee
 }
 
 // WalletBalance run the wallet balance command against the filecoin process.
-func (f *Filecoin) WalletBalance(ctx context.Context, addr address.Address) (types.AttoFIL, error) {
-	var balance types.AttoFIL
+func (f *Filecoin) WalletBalance(ctx context.Context, addr address.Address) (fbig.Int, error) {
+	var balance fbig.Int
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &balance, "venus", "wallet", "balance", addr.String()); err != nil {
-		return types.ZeroAttoFIL, err
+		return types.ZeroFIL, err
 	}
 	return balance, nil
 }

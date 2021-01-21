@@ -6,52 +6,28 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	specsabi "github.com/filecoin-project/go-state-types/abi"
 	specsbig "github.com/filecoin-project/go-state-types/big"
 )
 
 var attoPower = 18
 var tenToTheEighteen = specsbig.Exp(specsbig.NewInt(10), specsbig.NewInt(18))
 
-// ZeroAttoFIL is the zero value for an AttoFIL, exported for consistency in construction of AttoFILs
-var ZeroAttoFIL = specsbig.Zero()
-
-// AttoFIL represents a signed multi-precision integer quantity of
-// attofilecoin (atto is metric for 10**-18). The zero value for
-// AttoFIL represents the value 0.
-//
-// Reasons for embedding a big.Int instead of *big.Int:
-//   - We don't have check for nil in every method that does calculations.
-//   - Serialization "symmetry" when serializing AttoFIL{}.
-type AttoFIL = specsabi.TokenAmount
-
 // NewAttoFIL allocates and returns a new AttoFIL set to x.
-func NewAttoFIL(x *big.Int) AttoFIL {
+func NewAttoFIL(x *big.Int) specsbig.Int {
 	return specsbig.Int{Int: x}
 }
 
 // NewAttoFILFromFIL returns a new AttoFIL representing a quantity
 // of attofilecoin equal to x filecoin.
-func NewAttoFILFromFIL(x uint64) AttoFIL {
+func NewAttoFILFromFIL(x uint64) specsbig.Int {
 	xAsBigInt := specsbig.NewIntUnsigned(x)
 	return specsbig.Mul(xAsBigInt, tenToTheEighteen)
 }
 
-var tenToTheEighteenTokens = specsbig.Exp(specsbig.NewInt(10), specsbig.NewInt(18))
-
-// NewAttoTokenFromToken should be moved when we cleanup the types
-// Dragons: clean up and likely move to specs-actors
-func NewAttoTokenFromToken(x uint64) abi.TokenAmount {
-	xAsBigInt := abi.NewTokenAmount(0)
-	xAsBigInt.SetUint64(x)
-	return specsbig.Mul(xAsBigInt, tenToTheEighteenTokens)
-}
-
 // NewAttoFILFromBytes allocates and returns a new AttoFIL set
 // to the value of buf as the bytes of a big-endian unsigned integer.
-func NewAttoFILFromBytes(buf []byte) (AttoFIL, error) {
-	var af AttoFIL
+func NewAttoFILFromBytes(buf []byte) (specsbig.Int, error) {
+	var af specsbig.Int
 	err := af.UnmarshalCBOR(bytes.NewReader(buf))
 	if err != nil {
 		return af, err
@@ -61,7 +37,7 @@ func NewAttoFILFromBytes(buf []byte) (AttoFIL, error) {
 
 // NewAttoFILFromFILString allocates a new AttoFIL set to the value of s filecoin,
 // interpreted as a decimal in base 10, and returns it and a boolean indicating success.
-func NewAttoFILFromFILString(s string) (AttoFIL, bool) {
+func NewAttoFILFromFILString(s string) (specsbig.Int, bool) {
 	splitNumber := strings.Split(s, ".")
 	// If '.' is absent from string, add an empty string to become the decimal part
 	if len(splitNumber) == 1 {
@@ -71,7 +47,7 @@ func NewAttoFILFromFILString(s string) (AttoFIL, bool) {
 	decPart := splitNumber[1]
 	// A decimal part longer than 18 digits should be an error
 	if len(decPart) > attoPower || len(splitNumber) > 2 {
-		return ZeroAttoFIL, false
+		return ZeroFIL, false
 	}
 	// The decimal is right padded with 0's if it less than 18 digits long
 	for len(decPart) < attoPower {
@@ -83,7 +59,7 @@ func NewAttoFILFromFILString(s string) (AttoFIL, bool) {
 
 // NewAttoFILFromString allocates a new AttoFIL set to the value of s attofilecoin,
 // interpreted in the given base, and returns it and a boolean indicating success.
-func NewAttoFILFromString(s string, base int) (AttoFIL, bool) {
+func NewAttoFILFromString(s string, base int) (specsbig.Int, bool) {
 	out := specsbig.NewInt(0)
 	_, isErr := out.Int.SetString(s, base)
 	return out, isErr

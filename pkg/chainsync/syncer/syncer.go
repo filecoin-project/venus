@@ -261,7 +261,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 		return errors.Wrapf(err, "could not bsstore message rerceipts for tip set %s", next.String())
 	}
 
-	logSyncer.Infow("Process TipSet ", "Height:", next.EnsureHeight(), " Root:", root, " receiptcid ", receiptCid, " time: ", time.Now().Sub(toProcessTime).Milliseconds())
+	logSyncer.Infow("Process TipSet ", "Height:", next.EnsureHeight(), "Blocks", next.Len(), " Root:", root, " receiptcid ", receiptCid, " time: ", time.Now().Sub(toProcessTime).Milliseconds())
 
 	err = syncer.chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          next,

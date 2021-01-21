@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"math"
 
 	"github.com/filecoin-project/go-address"
@@ -33,7 +34,6 @@ import (
 	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv7"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	init_ "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
@@ -343,11 +343,11 @@ func (c *ChainFork) ParentState(ts *block.TipSet) cid.Cid {
 
 func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
 	// Some initial parameters
-	FundsForMiners := types.FromFil(1_000_000)
+	FundsForMiners := types.NewAttoFILFromFIL(1_000_000)
 	LookbackEpoch := abi.ChainEpoch(32000)
-	AccountCap := types.FromFil(0)
-	BaseMinerBalance := types.FromFil(20)
-	DesiredReimbursementBalance := types.FromFil(5_000_000)
+	AccountCap := types.NewAttoFILFromFIL(0)
+	BaseMinerBalance := types.NewAttoFILFromFIL(20)
+	DesiredReimbursementBalance := types.NewAttoFILFromFIL(5_000_000)
 
 	isSystemAccount := func(addr address.Address) (bool, error) {
 		id, err := address.IDFromAddress(addr)
@@ -604,7 +604,7 @@ func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, root cid.Cid,
 		return cid.Undef, xerrors.Errorf("checking final state balance failed: %v", err)
 	}
 
-	exp := types.FromFil(constants.FilBase)
+	exp := types.NewAttoFILFromFIL(constants.FilBase)
 	if !exp.Equals(total) {
 		return cid.Undef, xerrors.Errorf("resultant state tree account balance was not correct: %s", total)
 	}
