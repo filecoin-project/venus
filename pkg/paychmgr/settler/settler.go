@@ -2,64 +2,39 @@ package settler
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/events"
 	"sync"
 
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 
-	"go.uber.org/fx"
-
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-
-	api "github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 	"github.com/filecoin-project/venus/pkg/types"
-
 )
 
 var log = logging.Logger("payment-channel-settler")
 
-// API are the dependencies need to run the payment channel settler
 type API struct {
-	full.ChainAPI
-	full.StateAPI
-	payapi.PaychAPI
+	events.EventAPI
+	SettlerAPI
 }
-
-type settlerAPI interface {
-	PaychList(context.Context) ([]address.Address, error)
-	PaychStatus(context.Context, address.Address) (*api.PaychStatus, error)
-	PaychVoucherCheckSpendable(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)
-	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)
-	PaychVoucherSubmit(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (cid.Cid, error)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error)
+type PaymentChannelSettler interface {
+	check(ts *block.TipSet) (done bool, more bool, err error)
+	messageHandler(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *block.TipSet, curH abi.ChainEpoch) (more bool, err error)
+	revertHandler(ctx context.Context, ts *block.TipSet) error
+	matcher(msg *types.UnsignedMessage) (matched bool, err error)
 }
-
 type paymentChannelSettler struct {
 	ctx context.Context
-	api settlerAPI
+	api SettlerAPI
 }
 
-// SettlePaymentChannels checks the chain for events related to payment channels settling and
-// submits any vouchers for inbound channels tracked for this node
-func SettlePaymentChannels(lc fx.Lifecycle, api API) error {
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			pcs := newPaymentChannelSettler(ctx, &api)
-			ev := events.NewEvents(ctx, &api)
-			return ev.Called(pcs.check, pcs.messageHandler, pcs.revertHandler, int(constants.MessageConfidence+1), constants.NoTimeout, pcs.matcher)
-		},
-	})
-	return nil
-}
 
-func newPaymentChannelSettler(ctx context.Context, api settlerAPI) *paymentChannelSettler {
+func NewPaymentChannelSettler(ctx context.Context, api SettlerAPI) PaymentChannelSettler {
 	return &paymentChannelSettler{
 		ctx: ctx,
 		api: api,
@@ -123,7 +98,7 @@ func (pcs *paymentChannelSettler) matcher(msg *types.UnsignedMessage) (matched b
 			if err != nil {
 				return false, err
 			}
-			if status.Direction == api.PCHInbound {
+			if status.Direction == types.PCHInbound {
 				return true, nil
 			}
 		}

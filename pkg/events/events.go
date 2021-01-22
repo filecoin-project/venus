@@ -2,8 +2,6 @@ package events
 
 import (
 	"context"
-	api2 "github.com/filecoin-project/venus/app/submodule/chain"
-	api "github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -11,12 +9,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 var log = logging.Logger("events")
@@ -35,19 +29,9 @@ type heightHandler struct {
 	revert RevertHandler
 }
 
-type eventAPI interface {
-	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
-	ChainGetBlockMessages(context.Context, cid.Cid) (*api2.BlockMessages, error)
-	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, block.TipSetKey) (*block.TipSet, error)
-	ChainHead(context.Context) (*block.TipSet, error)
-	StateGetReceipt(context.Context, cid.Cid, block.TipSetKey) (*types.MessageReceipt, error)
-	ChainGetTipSet(context.Context, block.TipSetKey) (*block.TipSet, error)
-
-	StateGetActor(ctx context.Context, actor address.Address, tsk block.TipSetKey) (*types.Actor, error) // optional / for CalledMsg
-}
 
 type Events struct {
-	api eventAPI
+	api EventAPI
 
 	tsc *tipSetCache
 	lk  sync.Mutex
@@ -59,7 +43,7 @@ type Events struct {
 	*hcEvents
 }
 
-func NewEvents(ctx context.Context, api eventAPI) *Events {
+func NewEvents(ctx context.Context, api EventAPI) *Events {
 	gcConfidence := 2 * constants.ForkLengthThreshold
 
 	tsc := newTSCache(gcConfidence, api)
@@ -120,7 +104,7 @@ func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 		return xerrors.Errorf("listenHeadChanges ChainNotify call failed: %w", err)
 	}
 
-	var cur []*api.HeadChange
+	var cur []*chain.HeadChange
 	var ok bool
 
 	// Wait for first tipset or bail

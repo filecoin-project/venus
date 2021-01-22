@@ -13,11 +13,9 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
-	"go.uber.org/fx"
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	api "github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 
 	"github.com/filecoin-project/venus/pkg/block"
@@ -26,6 +24,40 @@ import (
 var log = logging.Logger("paych")
 
 var errProofNotSupported = errors.New("payment channel proof parameter is not supported")
+
+
+type ChannelAvailableFunds struct {
+	// Channel is the address of the channel
+	Channel *address.Address
+	// From is the from address of the channel (channel creator)
+	From address.Address
+	// To is the to address of the channel
+	To address.Address
+	// ConfirmedAmt is the amount of funds that have been confirmed on-chain
+	// for the channel
+	ConfirmedAmt big.Int
+	// PendingAmt is the amount of funds that are pending confirmation on-chain
+	PendingAmt big.Int
+	// PendingWaitSentinel can be used with PaychGetWaitReady to wait for
+	// confirmation of pending funds
+	PendingWaitSentinel *cid.Cid
+	// QueuedAmt is the amount that is queued up behind a pending request
+	QueuedAmt big.Int
+	// VoucherRedeemedAmt is the amount that is redeemed by vouchers on-chain
+	// and in the local datastore
+	VoucherReedeemedAmt big.Int
+}
+
+// VoucherCreateResult is the response to calling PaychVoucherCreate
+type VoucherCreateResult struct {
+	// Voucher that was created, or nil if there was an error or if there
+	// were insufficient funds in the channel
+	Voucher *paych.SignedVoucher
+	// Shortfall is the additional amount that would be needed in the channel
+	// in order to be able to create the voucher
+	Shortfall big.Int
+}
+
 
 // managerAPI defines all methods needed by the manager
 type managerAPI interface {
@@ -88,17 +120,6 @@ func newManager(pchStore *Store,pchapi managerAPI) (*Manager, error) {
 	return pm, pm.Start()
 }
 
-// HandleManager is called by dependency injection to set up hooks
-func HandleManager(lc fx.Lifecycle, pm *Manager) {
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			return pm.Start()
-		},
-		OnStop: func(context.Context) error {
-			return pm.Stop()
-		},
-	})
-}
 
 // Start restarts tracking of any messages that were sent to chain.
 func (pm *Manager) Start() error {
@@ -120,7 +141,7 @@ func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt b
 	return chanAccessor.getPaych(ctx, amt)
 }
 
-func (pm *Manager) AvailableFunds(ch address.Address) (*api.ChannelAvailableFunds, error) {
+func (pm *Manager) AvailableFunds(ch address.Address) (*ChannelAvailableFunds, error) {
 	ca, err := pm.accessorByAddress(ch)
 	if err != nil {
 		return nil, err
@@ -134,7 +155,7 @@ func (pm *Manager) AvailableFunds(ch address.Address) (*api.ChannelAvailableFund
 	return ca.availableFunds(ci.ChannelID)
 }
 
-func (pm *Manager) AvailableFundsByFromTo(from address.Address, to address.Address) (*api.ChannelAvailableFunds, error) {
+func (pm *Manager) AvailableFundsByFromTo(from address.Address, to address.Address) (*ChannelAvailableFunds, error) {
 	ca, err := pm.accessorByFromTo(from, to)
 	if err != nil {
 		return nil, err
@@ -146,7 +167,7 @@ func (pm *Manager) AvailableFundsByFromTo(from address.Address, to address.Addre
 		// return an empty ChannelAvailableFunds, so that clients can check
 		// for the existence of a channel between from / to without getting
 		// an error.
-		return &api.ChannelAvailableFunds{
+		return &ChannelAvailableFunds{
 			Channel:             nil,
 			From:                from,
 			To:                  to,
@@ -205,7 +226,7 @@ func (pm *Manager) GetChannelInfo(addr address.Address) (*ChannelInfo, error) {
 	return ca.getChannelInfo(addr)
 }
 
-func (pm *Manager) CreateVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*api.VoucherCreateResult, error) {
+func (pm *Manager) CreateVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*VoucherCreateResult, error) {
 	ca, err := pm.accessorByAddress(ch)
 	if err != nil {
 		return nil, err

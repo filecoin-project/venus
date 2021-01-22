@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
-	api "github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/pkg/crypto/sigs"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -42,7 +41,7 @@ type mockStateManager struct {
 	lk           sync.Mutex
 	accountState map[address.Address]address.Address
 	paychState   map[address.Address]mockPchState
-	response     *api.InvocResult
+	response     *types.InvocResult
 	lastCall     *types.UnsignedMessage
 }
 
@@ -85,7 +84,7 @@ func (sm *mockStateManager) GetPaychState(ctx context.Context, addr address.Addr
 	return info.actor, info.state, nil
 }
 
-func (sm *mockStateManager) setCallResponse(response *api.InvocResult) {
+func (sm *mockStateManager) setCallResponse(response *types.InvocResult) {
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 
@@ -99,7 +98,7 @@ func (sm *mockStateManager) getLastCall() *types.UnsignedMessage {
 	return sm.lastCall
 }
 
-func (sm *mockStateManager) Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*api.InvocResult, error) {
+func (sm *mockStateManager) Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*types.InvocResult, error) {
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 

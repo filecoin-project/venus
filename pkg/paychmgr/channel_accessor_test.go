@@ -18,7 +18,6 @@ import (
 	paych2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
-	api "github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/pkg/crypto/sigs"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 	paychmock "github.com/filecoin-project/venus/pkg/specactors/builtin/paych/mock"
@@ -542,7 +541,7 @@ func TestBestSpendable(t *testing.T) {
 
 	// Return success exit code from calls to check if voucher is spendable
 	bsapi := newMockBestSpendableAPI(s.mgr)
-	s.mock.setCallResponse(&api.InvocResult{
+	s.mock.setCallResponse(&types.InvocResult{
 		MsgRct: &types.MessageReceipt{
 			ExitCode: 0,
 		},
@@ -604,7 +603,7 @@ func TestCheckSpendable(t *testing.T) {
 
 	// Return success exit code from VM call, which indicates that voucher is
 	// spendable
-	successResponse := &api.InvocResult{
+	successResponse := &types.InvocResult{
 		MsgRct: &types.MessageReceipt{
 			ExitCode: 0,
 		},
@@ -625,7 +624,7 @@ func TestCheckSpendable(t *testing.T) {
 	require.Equal(t, secret, p.Secret)
 
 	// Check that if VM call returns non-success exit code, spendable is false
-	s.mock.setCallResponse(&api.InvocResult{
+	s.mock.setCallResponse(&types.InvocResult{
 		MsgRct: &types.MessageReceipt{
 			ExitCode: 1,
 		},

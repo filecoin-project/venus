@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	api2 "github.com/filecoin-project/venus/app/submodule/chain"
-	api "github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -114,25 +113,25 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents block.TipSetKey, h abi.ChainEpoc
 	return ts
 }
 
-func (fcs *fakeCS) ChainNotify(context.Context) (<-chan []*api.HeadChange, error) {
-	out := make(chan []*api.HeadChange, 1)
+func (fcs *fakeCS) ChainNotify(context.Context) (<-chan []*chain.HeadChange, error) {
+	out := make(chan []*chain.HeadChange, 1)
 	best, err := fcs.tsc.best()
 	if err != nil {
 		return nil, err
 	}
-	out <- []*api.HeadChange{{Type: chain.HCCurrent, Val: best}}
+	out <- []*chain.HeadChange{{Type: chain.HCCurrent, Val: best}}
 
 	fcs.sub = func(rev, app []*block.TipSet) {
-		notif := make([]*api.HeadChange, len(rev)+len(app))
+		notif := make([]*chain.HeadChange, len(rev)+len(app))
 
 		for i, r := range rev {
-			notif[i] = &api.HeadChange{
+			notif[i] = &chain.HeadChange{
 				Type: chain.HCRevert,
 				Val:  r,
 			}
 		}
 		for i, r := range app {
-			notif[i+len(rev)] = &api.HeadChange{
+			notif[i+len(rev)] = &chain.HeadChange{
 				Type: chain.HCApply,
 				Val:  r,
 			}
@@ -231,7 +230,7 @@ func (fcs *fakeCS) notifDone() {
 	fcs.sync.Unlock()
 }
 
-var _ eventAPI = &fakeCS{}
+var _ EventAPI = &fakeCS{}
 
 func TestAt(t *testing.T) {
 	fcs := &fakeCS{

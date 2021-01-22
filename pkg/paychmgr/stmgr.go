@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
-	api "github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
@@ -17,7 +16,7 @@ import (
 type stateManagerAPI interface {
 	ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *block.TipSet) (address.Address, error)
 	GetPaychState(ctx context.Context, addr address.Address, ts *block.TipSet) (*types.Actor, paych.State, error)
-	Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*api.InvocResult, error)
+	Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*types.InvocResult, error)
 }
 
 
@@ -37,7 +36,7 @@ func (o *stmgr) ResolveToKeyAddress(ctx context.Context, addr address.Address, t
 	return o.cState.ResolveAddressAt(ctx, ts, addr)
 }
 
-func (o *stmgr)Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*api.InvocResult, error){
+func (o *stmgr)Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*types.InvocResult, error){
 	timeStart:=time.Now()
 	msgCid ,err := msg.Cid()
 	if err!=nil{
@@ -47,7 +46,7 @@ func (o *stmgr)Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.T
 	if err!=nil{
 		return nil, err
 	}
-	return &api.InvocResult{
+	return &types.InvocResult{
 		MsgCid:         msgCid,
 		Msg:            msg,
 		MsgRct:         &ret.Receipt,
