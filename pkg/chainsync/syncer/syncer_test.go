@@ -63,43 +63,6 @@ func TestMultiBlockTip(t *testing.T) {
 	verifyHead(t, builder.Store(), tip)
 }
 
-func TestTipSetIncremental(t *testing.T) {
-	tf.UnitTest(t)
-	ctx := context.Background()
-	builder, syncer := setup(ctx, t)
-	genesis := builder.Store().GetHead()
-
-	t1 := builder.AppendOn(genesis, 1)
-
-	t2 := builder.AppendOn(genesis, 1)
-	target := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", t1),
-	}
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, target))
-
-	verifyTip(t, builder.Store(), t1, builder.StateForKey(t1.Key()))
-	verifyHead(t, builder.Store(), t1)
-
-	target2 := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", t2),
-	}
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, target2))
-
-	merged := block.RequireNewTipSet(t, t1.At(0), t2.At(0))
-	verifyTip(t, builder.Store(), merged, builder.StateForKey(merged.Key()))
-	verifyHead(t, builder.Store(), merged)
-}
-
 func TestChainIncremental(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()

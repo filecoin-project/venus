@@ -274,37 +274,6 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 	return nil
 }
 
-// ancestorsFromStore returns the parent and grandparent tipsets of `ts`
-func (syncer *Syncer) ancestorsFromStore(ts *block.TipSet) (*block.TipSet, *block.TipSet, error) {
-	parentCids, err := ts.Parents()
-	if err != nil {
-		return nil, nil, err
-	}
-	parent, err := syncer.chainStore.GetTipSet(parentCids)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if parent.EnsureHeight() == 0 {
-		// parent == genesis ==>
-		return parent, nil, nil
-	}
-
-	grandParentCids, err := parent.Parents()
-	if err != nil {
-		return nil, nil, err
-	}
-	if grandParentCids.IsEmpty() { //todo genesis have parents ?
-		// parent == genesis ==> grandParent undef
-		return parent, nil, nil
-	}
-	grandParent, err := syncer.chainStore.GetTipSet(grandParentCids)
-	if err != nil {
-		return nil, nil, err
-	}
-	return parent, grandParent, nil
-}
-
 // widen computes a tipset implied by the input tipset and the bsstore that
 // could potentially be the heaviest tipset. In the context of EC, widen
 // returns the union of the input tipset and the biggest tipset with the same
@@ -390,49 +359,18 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Tar
 		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
 
-	logSyncer.Infof("fetch & validate header success at %v %s ...", tipsets[0].EnsureHeight(), tipsets[0].Key())
-	parent, _, err := syncer.ancestorsFromStore(tipsets[0])
-	if err != nil {
-		return err
-	}
-
-	if len(tipsets) == 1 {
-		return syncer.syncTip(ctx, target, parent, tipsets)
-	}
-
-	return syncer.syncSegement(ctx, target, parent, tipsets)
+	logSyncer.Infof("fetch header success at %v %s ...", tipsets[0].EnsureHeight(), tipsets[0].Key())
+	return syncer.syncSegement(ctx, target, tipsets)
 }
 
-func (syncer *Syncer) syncTip(ctx context.Context, target *syncTypes.Target, parent *block.TipSet, tipsets []*block.TipSet) error {
-	//merge new block into current tipset in bsstore
-	wts, err := syncer.widen(ctx, tipsets[0])
-	if err != nil {
-		return xerrors.Errorf("widen tipset %d error %w", tipsets[0].EnsureHeight(), err)
-	}
-	syncerTs := tipsets[0]
-	if wts.Defined() {
-		syncerTs = wts
-	}
-	_, err = syncer.fetchSegMessage(ctx, []*block.TipSet{syncerTs})
+func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target, tipsets []*block.TipSet) error {
+	parent, err := syncer.chainStore.GetTipSet(tipsets[0].EnsureParents())
 	if err != nil {
 		return err
 	}
-	err = syncer.syncOne(ctx, parent, syncerTs)
-	if err != nil {
-		return err
-	}
-	target.Current = syncerTs
 
-	if !syncerTs.Key().Equals(syncer.checkPoint) {
-		return syncer.SetHead(ctx, syncerTs)
-	}
-	return nil
-}
-
-func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target, parent *block.TipSet, tipsets []*block.TipSet) error {
 	errProcessChan := make(chan error, 1)
 	errProcessChan <- nil //init
-	var err error
 	var wg sync.WaitGroup
 	//todo  write a pipline segment processor function
 	if err = RangeProcess(tipsets, func(segTipset []*block.TipSet) error {

@@ -3,12 +3,11 @@ package node
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/config"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/filecoin-project/venus/pkg/config"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
@@ -220,10 +219,8 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 	}
 
 	netListener := manet.NetListener(apiListener) //nolint
-
 	handler := http.NewServeMux()
 	handler.Handle("/debug/pprof/", http.DefaultServeMux)
-
 	err = node.runRustfulAPI(ctx, handler, rootCmdDaemon) //nolint
 	if err != nil {
 		return err

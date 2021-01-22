@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	lru "github.com/hashicorp/golang-lru"
 	"os"
 	"strings"
 	"time"
@@ -130,6 +131,8 @@ type Expected struct {
 	// postVerifier verifies PoSt proofs and associated data
 	proofVerifier ProofVerifier
 
+	validateBlkCache *lru.ARCCache
+
 	messageStore *chain.MessageStore
 
 	rnd Randness
@@ -166,6 +169,7 @@ func NewExpected(cs cbor.IpldStore,
 	faultChecker := slashing.NewFaultChecker(chainState, fork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, proofVerifier)
 	processor := NewDefaultProcessor(syscalls)
+	validateBlkCache, _ := lru.NewARC(4096)
 	c := &Expected{
 		processor:        processor,
 		syscallsImpl:     syscalls,
@@ -177,6 +181,7 @@ func NewExpected(cs cbor.IpldStore,
 		proofVerifier:    pv,
 		chainState:       chainState,
 		clock:            clock,
+		validateBlkCache: validateBlkCache,
 		drand:            drand,
 		messageStore:     messageStore,
 		rnd:              rnd,
@@ -288,11 +293,14 @@ func (c *Expected) validateBlock(ctx context.Context,
 	blk *block.Block,
 	parentWeight big.Int,
 	parentReceiptRoot cid.Cid) (err error) {
-
 	validationStart := time.Now()
 	defer func() {
-		logExpect.Infow("block validation", "took", time.Since(validationStart), "height", blk.Height, "age", time.Since(time.Unix(int64(blk.Timestamp), 0)))
+		logExpect.Infow("block validation", "Cid", blk.Cid(), "took", time.Since(validationStart), "height", blk.Height, "age", time.Since(time.Unix(int64(blk.Timestamp), 0)), "Err", err)
 	}()
+
+	if _, ok := c.validateBlkCache.Get(blk.Cid().String()); ok {
+		return nil
+	}
 
 	// confirm block state root matches parent state root
 	rootAfterCalc, err := c.chainState.GetTipSetStateRoot(parent)
@@ -332,6 +340,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 	if !parentReceiptRoot.Equals(blk.ParentMessageReceipts) {
 		return ErrReceiptRootMismatch
 	}
+
 	if !parentWeight.Equals(blk.ParentWeight) {
 		return errors.Errorf("block %s has invalid parent weight %d expected %d", blk.Cid().String(), blk.ParentWeight, parentWeight)
 	}
@@ -454,7 +463,7 @@ func (c *Expected) validateBlock(ctx context.Context,
 		}
 		return mulErr
 	}
-
+	c.validateBlkCache.Add(blk.Cid().String(), struct{}{})
 	return nil
 }
 
