@@ -41,8 +41,8 @@ func Calibration() *NetworkConf {
 				UpgradeClausHeight:       161386,
 				UpgradeOrangeHeight:      -1,
 			},
-			DrandSchedule: map[abi.ChainEpoch]config.DrandEnum{0: 1},
-			AdressNetwork: address.Testnet,
+			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			AddressNetwork: address.Testnet,
 		},
 	}
 }

@@ -5,12 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	specsbig "github.com/filecoin-project/go-state-types/big"
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-state-types/abi"
-	tbig "github.com/filecoin-project/go-state-types/big"
 	cbor2 "github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
@@ -29,7 +29,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 )
 
-const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
+var DefaultDefaultMaxFee = MustParseFIL("0.007")
 
 type MessageSendSpec struct {
 	MaxFee abi.TokenAmount
@@ -37,7 +37,7 @@ type MessageSendSpec struct {
 
 var DefaultMessageSendSpec = MessageSendSpec{
 	// MaxFee of 0.1FIL
-	MaxFee: abi.NewTokenAmount(int64(FilecoinPrecision) / 10),
+	MaxFee: abi.NewTokenAmount(int64(constants.FilecoinPrecision) / 10),
 }
 
 func (ms *MessageSendSpec) Get() MessageSendSpec {
@@ -58,10 +58,6 @@ var EmptyReceiptsCID cid.Cid
 
 // EmptyTxMetaCID is the cid of a TxMeta wrapping empty cids
 var EmptyTxMetaCID cid.Cid
-
-func FromFil(i uint64) AttoFIL {
-	return tbig.Mul(tbig.NewInt(int64(i)), tbig.NewInt(int64(FilecoinPrecision)))
-}
 
 func init() {
 	tmpCst := cbor.NewCborStore(blockstore.NewBlockstore(datastore.NewMapDatastore()))
@@ -102,18 +98,18 @@ type UnsignedMessage struct {
 	// This prevents replay attacks.
 	Nonce uint64 `json:"nonce"`
 
-	Value AttoFIL `json:"value"`
+	Value abi.TokenAmount `json:"value"`
 
-	GasLimit   int64   `json:"gasLimit"`
-	GasFeeCap  AttoFIL `json:"gasFeeCap"`
-	GasPremium AttoFIL `json:"gasPremium"`
+	GasLimit   int64           `json:"gasLimit"`
+	GasFeeCap  abi.TokenAmount `json:"gasFeeCap"`
+	GasPremium abi.TokenAmount `json:"gasPremium"`
 
 	Method abi.MethodNum `json:"method"`
 	Params []byte        `json:"params"`
 }
 
 // NewUnsignedMessage creates a new message.
-func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte) *UnsignedMessage {
+func NewUnsignedMessage(from, to address.Address, nonce uint64, value abi.TokenAmount, method abi.MethodNum, params []byte) *UnsignedMessage {
 	return &UnsignedMessage{
 		Version: MessageVersion,
 		To:      to,
@@ -126,7 +122,7 @@ func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, m
 }
 
 // NewMeteredMessage adds gas price and gas limit to the message
-func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method abi.MethodNum, params []byte, gasFeeCap, gasPremium AttoFIL, limit int64) *UnsignedMessage {
+func NewMeteredMessage(from, to address.Address, nonce uint64, value abi.TokenAmount, method abi.MethodNum, params []byte, gasFeeCap, gasPremium abi.TokenAmount, limit int64) *UnsignedMessage {
 	return &UnsignedMessage{
 		Version:    MessageVersion,
 		To:         to,
@@ -141,8 +137,8 @@ func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, me
 	}
 }
 
-func (msg *UnsignedMessage) RequiredFunds() tbig.Int {
-	return tbig.Mul(msg.GasFeeCap, tbig.NewInt(msg.GasLimit))
+func (msg *UnsignedMessage) RequiredFunds() abi.TokenAmount {
+	return specsbig.Mul(msg.GasFeeCap, specsbig.NewInt(msg.GasLimit))
 }
 
 // ToNode converts the Message to an IPLD node.
@@ -245,7 +241,7 @@ func (msg *UnsignedMessage) ValidForBlockInclusion(minGas int64, version network
 		return xerrors.New("'To' address cannot be empty")
 	}
 
-	if msg.To == constants.ZeroAddress && version >= network.Version7 {
+	if msg.To == ZeroAddress && version >= network.Version7 {
 		return xerrors.New("invalid 'To' address")
 	}
 
@@ -257,7 +253,7 @@ func (msg *UnsignedMessage) ValidForBlockInclusion(minGas int64, version network
 		return xerrors.New("'Value' cannot be nil")
 	}
 
-	if msg.Value.LessThan(tbig.Zero()) {
+	if msg.Value.LessThan(ZeroFIL) {
 		return xerrors.New("'Value' field cannot be negative")
 	}
 
@@ -269,7 +265,7 @@ func (msg *UnsignedMessage) ValidForBlockInclusion(minGas int64, version network
 		return xerrors.New("'GasFeeCap' cannot be nil")
 	}
 
-	if msg.GasFeeCap.LessThan(tbig.Zero()) {
+	if msg.GasFeeCap.LessThan(specsbig.Zero()) {
 		return xerrors.New("'GasFeeCap' field cannot be negative")
 	}
 
@@ -277,7 +273,7 @@ func (msg *UnsignedMessage) ValidForBlockInclusion(minGas int64, version network
 		return xerrors.New("'GasPremium' cannot be nil")
 	}
 
-	if msg.GasPremium.LessThan(tbig.Zero()) {
+	if msg.GasPremium.LessThan(specsbig.Zero()) {
 		return xerrors.New("'GasPremium' field cannot be negative")
 	}
 
@@ -311,11 +307,11 @@ func DecodeMessage(b []byte) (*UnsignedMessage, error) {
 	return &msg, nil
 }
 
-func NewGasFeeCap(price int64) AttoFIL {
+func NewGasFeeCap(price int64) abi.TokenAmount {
 	return NewAttoFIL(big.NewInt(price))
 }
 
-func NewGasPremium(price int64) AttoFIL {
+func NewGasPremium(price int64) abi.TokenAmount {
 	return NewAttoFIL(big.NewInt(price))
 }
 

@@ -3,19 +3,17 @@ package chain
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/venus/pkg/specactors/policy"
-	"github.com/filecoin-project/venus/pkg/util"
 	"io"
 	"os"
 	"runtime/debug"
 	"sync"
 
-	lru "github.com/hashicorp/golang-lru"
-
 	"github.com/cskr/pubsub"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -40,7 +38,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/verifreg"
+	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/util"
 	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
@@ -480,11 +480,11 @@ func (store *Store) HasSiblingState(ts *block.TipSet) bool {
 // SetHead sets the passed in tipset as the new head of this chain.
 func (store *Store) SetHead(ctx context.Context, newTs *block.TipSet) error {
 	log.Infof("SetHead %s %d", newTs.String(), newTs.EnsureHeight())
-
 	// Add logging to debug sporadic test failure.
 	if !newTs.Defined() {
 		log.Errorf("publishing empty tipset")
 		log.Error(debug.Stack())
+		return nil
 	}
 
 	dropped, added, update, err := func() ([]*block.TipSet, []*block.TipSet, bool, error) {
@@ -965,6 +965,24 @@ func (store *Store) PutMessage(m storable) (cid.Cid, error) {
 	return PutMessage(store.bsstore, m)
 }
 
-func (cs *Store) Blockstore() blockstore.Blockstore { // nolint
-	return cs.bsstore
+func (store *Store) Blockstore() blockstore.Blockstore { // nolint
+	return store.bsstore
+}
+
+func (store *Store) GetParentReceipt(b *block.Block, i int) (*types.MessageReceipt, error) {
+	ctx := context.TODO()
+	// block headers use adt0, for now.
+	a, err := blockadt.AsArray(adt.WrapStore(ctx, store.stateAndBlockSource), b.ParentMessageReceipts)
+	if err != nil {
+		return nil, xerrors.Errorf("amt load: %w", err)
+	}
+
+	var r types.MessageReceipt
+	if found, err := a.Get(uint64(i), &r); err != nil {
+		return nil, err
+	} else if !found {
+		return nil, xerrors.Errorf("failed to find receipt %d", i)
+	}
+
+	return &r, nil
 }

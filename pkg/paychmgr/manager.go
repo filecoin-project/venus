@@ -101,7 +101,7 @@ func NewManager(ctx context.Context, params *ManagerParams) *Manager {
 	return &Manager{
 		ctx:      ctx,
 		shutdown: shutdown,
-		store:    NewStore(params.Datastore),
+		store:    &Store{params.Datastore},
 		sa:       &stateAccessor{sm: impl},
 		channels: make(map[string]*channelAccessor),
 		pchapi:   impl,

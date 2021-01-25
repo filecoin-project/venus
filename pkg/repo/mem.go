@@ -40,6 +40,8 @@ func NewInMemoryRepo() *MemRepo {
 		W:       dss.MutexWrap(datastore.NewMapDatastore()),
 		Chain:   dss.MutexWrap(datastore.NewMapDatastore()),
 		Meta:    dss.MutexWrap(datastore.NewMapDatastore()),
+		Paych:   dss.MutexWrap(datastore.NewMapDatastore()),
+		Market:  dss.MutexWrap(datastore.NewMapDatastore()),
 		version: Version,
 	}
 }
@@ -84,11 +86,12 @@ func (mr *MemRepo) ChainDatastore() Datastore {
 
 // ChainDatastore returns the chain datastore.
 func (mr *MemRepo) PaychDatastore() Datastore {
-	return mr.Meta
+	return mr.Paych
 }
+
 // ChainDatastore returns the chain datastore.
 func (mr *MemRepo) MarketDatastore() Datastore {
-	return mr.Chain
+	return mr.Market
 }
 
 // ChainDatastore returns the chain datastore.

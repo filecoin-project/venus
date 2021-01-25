@@ -3,13 +3,12 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"io/ioutil"
 	"os"
 	"reflect"
 	"regexp"
 	"strings"
-
-	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -203,7 +202,7 @@ type NetworkParamsConfig struct {
 	BlockDelay             uint64                       `json:"blockDelay"`
 	DrandSchedule          map[abi.ChainEpoch]DrandEnum `json:"drandSchedule"`
 	ForkUpgradeParam       *ForkUpgradeConfig           `json:"forkUpgradeParam"`
-	AdressNetwork          address.Network              `json:"adressNetwork"`
+	AddressNetwork         address.Network              `json:"addressNetwork"`
 }
 
 type ForkUpgradeConfig struct {

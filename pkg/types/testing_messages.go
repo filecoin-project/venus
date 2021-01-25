@@ -3,6 +3,7 @@ package types
 import (
 	"context"
 	"fmt"
+	specsbig "github.com/filecoin-project/go-state-types/big"
 	"testing"
 
 	address "github.com/filecoin-project/go-address"
@@ -14,8 +15,8 @@ import (
 
 // MessageMaker creates unique, signed messages for use in tests.
 type MessageMaker struct {
-	DefaultGasFeeCap  AttoFIL
-	DefaultGasPremium AttoFIL
+	DefaultGasFeeCap  specsbig.Int
+	DefaultGasPremium specsbig.Int
 	DefaultGasUnits   int64
 
 	signer *MockSigner
@@ -33,7 +34,7 @@ func NewMessageMaker(t *testing.T, keys []crypto.KeyInfo) *MessageMaker {
 		addresses[i] = addr
 	}
 
-	return &MessageMaker{ZeroAttoFIL, ZeroAttoFIL, 0, &signer, 0, t}
+	return &MessageMaker{ZeroFIL, ZeroFIL, 0, &signer, 0, t}
 }
 
 // Addresses returns the addresses for which this maker can sign messages.
@@ -56,7 +57,7 @@ func (mm *MessageMaker) NewUnsignedMessage(from address.Address, nonce uint64) *
 		from,
 		to,
 		nonce,
-		ZeroAttoFIL,
+		ZeroFIL,
 		abi.MethodNum(9000+seq),
 		[]byte("params"),
 		mm.DefaultGasFeeCap,

@@ -28,7 +28,7 @@ type Store struct {
 	ds datastore.Datastore
 }
 
-
+// for test
 func NewStore(ds repo.Datastore) *Store {
 	dsTmp := namespace.Wrap(ds, datastore.NewKey("/paych/"))
 	return &Store{

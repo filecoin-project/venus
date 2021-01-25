@@ -39,7 +39,6 @@ func TestOneBlock(t *testing.T) {
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target))
 
 	verifyTip(t, builder.Store(), t1, t1.At(0).ParentStateRoot)
-	require.NoError(t, syncer.SetStagedHead(ctx))
 	verifyHead(t, builder.Store(), t1)
 }
 
@@ -61,47 +60,7 @@ func TestMultiBlockTip(t *testing.T) {
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target))
 
 	verifyTip(t, builder.Store(), tip, builder.StateForKey(tip.Key()))
-	require.NoError(t, syncer.SetStagedHead(ctx))
 	verifyHead(t, builder.Store(), tip)
-}
-
-func TestTipSetIncremental(t *testing.T) {
-	tf.UnitTest(t)
-	ctx := context.Background()
-	builder, syncer := setup(ctx, t)
-	genesis := builder.Store().GetHead()
-
-	t1 := builder.AppendOn(genesis, 1)
-
-	t2 := builder.AppendOn(genesis, 1)
-	target := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", t1),
-	}
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, target))
-
-	verifyTip(t, builder.Store(), t1, builder.StateForKey(t1.Key()))
-	require.NoError(t, syncer.SetStagedHead(ctx))
-	verifyHead(t, builder.Store(), t1)
-
-	target2 := &syncTypes.Target{
-		Base:      nil,
-		Current:   nil,
-		Start:     time.Time{},
-		End:       time.Time{},
-		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", t2),
-	}
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, target2))
-
-	merged := block.RequireNewTipSet(t, t1.At(0), t2.At(0))
-	verifyTip(t, builder.Store(), merged, builder.StateForKey(merged.Key()))
-	require.NoError(t, syncer.SetStagedHead(ctx))
-	verifyHead(t, builder.Store(), merged)
 }
 
 func TestChainIncremental(t *testing.T) {
@@ -154,22 +113,18 @@ func TestChainIncremental(t *testing.T) {
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target1))
 	verifyTip(t, builder.Store(), t1, builder.StateForKey(t1.Key()))
-	require.NoError(t, syncer.SetStagedHead(ctx))
 	verifyHead(t, builder.Store(), t1)
 
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target2))
 	verifyTip(t, builder.Store(), t2, builder.StateForKey(t2.Key()))
-	require.NoError(t, syncer.SetStagedHead(ctx))
 	verifyHead(t, builder.Store(), t2)
 
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target3))
 	verifyTip(t, builder.Store(), t3, builder.StateForKey(t3.Key()))
-	require.NoError(t, syncer.SetStagedHead(ctx))
 	verifyHead(t, builder.Store(), t3)
 
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target4))
 	verifyTip(t, builder.Store(), t4, builder.StateForKey(t4.Key()))
-	require.NoError(t, syncer.SetStagedHead(ctx))
 	verifyHead(t, builder.Store(), t4)
 }
 
@@ -197,7 +152,6 @@ func TestChainJump(t *testing.T) {
 	verifyTip(t, builder.Store(), t2, builder.StateForKey(t2.Key()))
 	verifyTip(t, builder.Store(), t3, builder.StateForKey(t3.Key()))
 	verifyTip(t, builder.Store(), t4, builder.StateForKey(t4.Key()))
-	require.NoError(t, syncer.SetStagedHead(ctx))
 	verifyHead(t, builder.Store(), t4)
 }
 
@@ -226,7 +180,6 @@ func TestIgnoreLightFork(t *testing.T) {
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target4))
 	verifyTip(t, builder.Store(), t4, builder.StateForKey(t4.Key()))
-	require.NoError(t, syncer.SetStagedHead(ctx))
 	verifyHead(t, builder.Store(), t4)
 
 	// Lighter fork is processed but not change head.
@@ -240,7 +193,6 @@ func TestIgnoreLightFork(t *testing.T) {
 		ChainInfo: *block.NewChainInfo("", "", forkHead),
 	}
 	assert.Error(t, syncer.HandleNewTipSet(ctx, forkHeadTarget))
-	require.NoError(t, syncer.SetStagedHead(ctx))
 	verifyHead(t, builder.Store(), t4)
 }
 
@@ -273,7 +225,6 @@ func TestAcceptHeavierFork(t *testing.T) {
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, main4Target))
 	verifyTip(t, builder.Store(), main4, builder.StateForKey(main4.Key()))
-	require.NoError(t, syncer.SetStagedHead(ctx))
 	verifyHead(t, builder.Store(), main4)
 
 	// Heavier fork updates head3
@@ -289,7 +240,6 @@ func TestAcceptHeavierFork(t *testing.T) {
 	verifyTip(t, builder.Store(), fork1, builder.StateForKey(fork1.Key()))
 	verifyTip(t, builder.Store(), fork2, builder.StateForKey(fork2.Key()))
 	verifyTip(t, builder.Store(), fork3, builder.StateForKey(fork3.Key()))
-	require.NoError(t, syncer.SetStagedHead(ctx))
 	verifyHead(t, builder.Store(), fork3)
 }
 
@@ -363,7 +313,6 @@ func TestNoUncessesaryFetch(t *testing.T) {
 		&noopFaultDetector{},
 		fork.NewMockFork())
 	require.NoError(t, err)
-	require.NoError(t, newSyncer.InitStaged())
 
 	target2 := &syncTypes.Target{
 		Base:      nil,
@@ -626,7 +575,6 @@ func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builde
 		clock.NewFake(time.Unix(1234567890, 0)),
 		&noopFaultDetector{}, fork.NewMockFork())
 	require.NoError(t, err)
-	require.NoError(t, syncer.InitStaged())
 
 	return builder, syncer
 }

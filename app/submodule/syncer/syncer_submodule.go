@@ -187,9 +187,12 @@ func (syncer *SyncerSubmodule) handleIncommingBlocks(ctx context.Context, msg pu
 	header := bm.Header
 	span.AddAttributes(trace.StringAttribute("block", header.Cid().String()))
 	log.Infof("Received new block %s height %d from peer %s", header.Cid(), header.Height, sender)
-
+	_, err = syncer.ChainModule.ChainReader.PutObject(ctx, bm.Header)
+	if err != nil {
+		log.Errorf("failed to save block %s", err)
+	}
 	go func() {
-		_, err := syncer.NetworkModule.FetchMessagesByCids(ctx, bm.BlsMessages)
+		_, err = syncer.NetworkModule.FetchMessagesByCids(ctx, bm.BlsMessages)
 		if err != nil {
 			log.Errorf("failed to fetch all bls messages for block received over pubusb: %s; source: %s", err, source)
 			return

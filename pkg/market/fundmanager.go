@@ -51,7 +51,7 @@ func NewFundManager(p *FundManagerParams) *FundManager {
 		ctx:         ctx,
 		shutdown:    cancel,
 		api:         fmgrapi,
-		str:         newStore(p.Datastore),
+		str:         &Store{p.Datastore},
 		fundedAddrs: make(map[address.Address]*fundedAddress),
 	}
 }

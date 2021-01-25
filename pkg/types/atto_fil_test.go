@@ -1,17 +1,11 @@
 package types
 
 import (
-	"bytes"
-	"encoding/json"
-	"math/big"
-	"math/rand"
-	"testing"
-	"time"
-
 	specsbig "github.com/filecoin-project/go-state-types/big"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"math/big"
+	"testing"
 )
 
 func BigIntFromString(s string) big.Int {
@@ -29,34 +23,11 @@ func TestFILToAttoFIL(t *testing.T) {
 	assert.True(t, NewAttoFIL(v).Equals(x))
 }
 
-func TestAttoFILCreation(t *testing.T) {
-	tf.UnitTest(t)
-
-	a := NewAttoFILFromFIL(123)
-	assert.IsType(t, AttoFIL{}, a)
-
-	buf := new(bytes.Buffer)
-	err := a.MarshalCBOR(buf)
-	require.NoError(t, err)
-	b, err := NewAttoFILFromBytes(buf.Bytes())
-	require.NoError(t, err)
-	assert.Equal(t, a, b)
-
-	as := a.String()
-	assert.Equal(t, as, "123000000000000000000")
-	c, ok := NewAttoFILFromString(as, 10)
-	assert.True(t, ok)
-	assert.Equal(t, a, c)
-
-	_, ok = NewAttoFILFromFILString("asdf")
-	assert.False(t, ok)
-}
-
 func TestZeroAttoFIL(t *testing.T) {
 	tf.UnitTest(t)
 
 	z := NewAttoFILFromFIL(0)
-	assert.True(t, ZeroAttoFIL.Equals(z))
+	assert.True(t, ZeroFIL.Equals(z))
 }
 
 func TestAttoFILComparison(t *testing.T) {
@@ -81,12 +52,12 @@ func TestAttoFILComparison(t *testing.T) {
 		assert.True(t, a.LessThanEqual(b))
 	})
 
-	t.Run("treats ZeroAttoFIL as zero", func(t *testing.T) {
-		d := specsbig.Sub(ZeroAttoFIL, a)
+	t.Run("treats ZeroFIL as zero", func(t *testing.T) {
+		d := specsbig.Sub(ZeroFIL, a)
 		zeroValue := NewAttoFILFromFIL(0)
 
-		assert.True(t, zeroValue.Equals(ZeroAttoFIL))
-		assert.True(t, ZeroAttoFIL.Equals(zeroValue))
+		assert.True(t, zeroValue.Equals(ZeroFIL))
+		assert.True(t, ZeroFIL.Equals(zeroValue))
 		assert.True(t, d.LessThan(zeroValue))
 		assert.True(t, zeroValue.GreaterThan(d))
 		assert.True(t, c.GreaterThan(zeroValue))
@@ -116,9 +87,9 @@ func TestAttoFILAddition(t *testing.T) {
 		assert.Equal(t, bStr, b.String())
 	})
 
-	t.Run("treats ZeroAttoFIL as zero", func(t *testing.T) {
-		assert.True(t, specsbig.Add(ZeroAttoFIL, a).Equals(a))
-		assert.True(t, specsbig.Add(a, ZeroAttoFIL).Equals(a))
+	t.Run("treats ZeroFIL as zero", func(t *testing.T) {
+		assert.True(t, specsbig.Add(ZeroFIL, a).Equals(a))
+		assert.True(t, specsbig.Add(a, ZeroFIL).Equals(a))
 	})
 }
 
@@ -144,89 +115,9 @@ func TestAttoFILSubtraction(t *testing.T) {
 		assert.Equal(t, bStr, b.String())
 	})
 
-	t.Run("treats ZeroAttoFIL as zero", func(t *testing.T) {
-		assert.True(t, specsbig.Sub(a, ZeroAttoFIL).Equals(a))
-		assert.True(t, specsbig.Sub(ZeroAttoFIL, ZeroAttoFIL).Equals(ZeroAttoFIL))
-	})
-}
-
-func TestAttoFILCborMarshaling(t *testing.T) {
-	tf.UnitTest(t)
-
-	t.Run("CBOR decode(encode(AttoFIL)) == identity(AttoFIL)", func(t *testing.T) {
-		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-		for i := 0; i < 100; i++ {
-			preEncode := NewAttoFILFromFIL(rng.Uint64())
-			postDecode := AttoFIL{}
-
-			buf := new(bytes.Buffer)
-			err := preEncode.MarshalCBOR(buf)
-			assert.NoError(t, err)
-
-			err = postDecode.UnmarshalCBOR(buf)
-			assert.NoError(t, err)
-
-			assert.True(t, preEncode.Equals(postDecode), "pre: %s post: %s", preEncode.String(), postDecode.String())
-		}
-	})
-	t.Run("CBOR encodes zero val as ZeroAttoFIL", func(t *testing.T) {
-		var np AttoFIL
-		buf := new(bytes.Buffer)
-		err := np.MarshalCBOR(buf)
-		assert.NoError(t, err)
-
-		buf2 := new(bytes.Buffer)
-		err = ZeroAttoFIL.MarshalCBOR(buf2)
-		assert.NoError(t, err)
-
-		assert.Equal(t, buf.Bytes(), buf2.Bytes())
-	})
-}
-
-func TestAttoFILJsonMarshaling(t *testing.T) {
-	tf.UnitTest(t)
-
-	t.Run("JSON unmarshal(marshal(AttoFIL)) == identity(AttoFIL)", func(t *testing.T) {
-		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-		for i := 0; i < 100; i++ {
-			toBeMarshaled := NewAttoFILFromFIL(rng.Uint64())
-
-			marshaled, err := json.Marshal(toBeMarshaled)
-			assert.NoError(t, err)
-
-			var unmarshaled AttoFIL
-			err = json.Unmarshal(marshaled, &unmarshaled)
-			assert.NoError(t, err)
-
-			assert.True(t, toBeMarshaled.Equals(unmarshaled), "should be equal - toBeMarshaled: %s unmarshaled: %s)", toBeMarshaled.String(), unmarshaled.String())
-		}
-	})
-
-	t.Run("unmarshal(marshal(AttoFIL)) == AttoFIL for decimal FIL", func(t *testing.T) {
-		toBeMarshaled, _ := NewAttoFILFromFILString("912129289198393.123456789012345678")
-
-		marshaled, err := json.Marshal(toBeMarshaled)
-		assert.NoError(t, err)
-
-		var unmarshaled AttoFIL
-		err = json.Unmarshal(marshaled, &unmarshaled)
-		assert.NoError(t, err)
-
-		assert.True(t, toBeMarshaled.Equals(unmarshaled), "should be equal - toBeMarshaled: %s unmarshaled: %s)", toBeMarshaled.String(), unmarshaled.String())
-	})
-
-	t.Run("cannot JSON marshall nil as *AttoFIL", func(t *testing.T) {
-		var np *AttoFIL
-
-		out, err := json.Marshal(np)
-		assert.NoError(t, err)
-
-		out2, err := json.Marshal(ZeroAttoFIL)
-		assert.NoError(t, err)
-
-		assert.NotEqual(t, out, out2)
+	t.Run("treats ZeroFIL as zero", func(t *testing.T) {
+		assert.True(t, specsbig.Sub(a, ZeroFIL).Equals(a))
+		assert.True(t, specsbig.Sub(ZeroFIL, ZeroFIL).Equals(ZeroFIL))
 	})
 }
 
@@ -239,7 +130,7 @@ func TestAttoFILIsZero(t *testing.T) {
 
 	t.Run("returns true if zero token", func(t *testing.T) {
 		assert.True(t, z.IsZero())
-		assert.True(t, ZeroAttoFIL.IsZero())
+		assert.True(t, ZeroFIL.IsZero())
 	})
 
 	t.Run("returns false if greater than zero token", func(t *testing.T) {

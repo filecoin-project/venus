@@ -33,10 +33,6 @@ const PropagationDelaySecs = uint64(6)
 
 var InsecurePoStValidation = false
 
-// the 'f' prefix doesn't matter
-var ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
-
-var DefaultDefaultMaxFee = MustParseFIL("0.007")
 var DefaultSimultaneousTransfers = uint64(20)
 
 const NoTimeout = math.MaxInt64

@@ -18,6 +18,7 @@ type Store struct {
 	ds datastore.Batching
 }
 
+// for test
 func newStore(ds repo.Datastore) *Store {
 	ds = namespace.Wrap(ds, datastore.NewKey("/fundmgr/"))
 	return &Store{

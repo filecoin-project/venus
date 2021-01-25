@@ -167,14 +167,14 @@ func (node *Node) Start(ctx context.Context) error {
 			return err
 		}
 
-		//Start mpool module to receive new message
-		err = node.mpool.Start(syncCtx)
+		//start syncer module to receive new blocks and start sync to latest height
+		err = node.syncer.Start(syncCtx)
 		if err != nil {
 			return err
 		}
 
-		//starrt syncer module to receive new blocks and start sync to latest height
-		err = node.syncer.Start(syncCtx)
+		//Start mpool module to receive new message
+		err = node.mpool.Start(syncCtx)
 		if err != nil {
 			return err
 		}
@@ -242,10 +242,8 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 	}
 
 	netListener := manet.NetListener(apiListener) //nolint
-
 	handler := http.NewServeMux()
 	handler.Handle("/debug/pprof/", http.DefaultServeMux)
-
 	err = node.runRustfulAPI(ctx, handler, rootCmdDaemon) //nolint
 	if err != nil {
 		return err

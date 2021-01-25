@@ -1,15 +1,18 @@
 package dispatcher
 
 import (
+	"container/list"
 	"context"
-	"github.com/filecoin-project/venus/pkg/chainsync/types"
 	"runtime/debug"
+	"sync"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/chainsync/types"
+	"github.com/streadway/handy/atomic"
 
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/util/moresync"
 )
 
 var log = logging.Logger("chainsync.dispatcher")
@@ -18,11 +21,11 @@ var log = logging.Logger("chainsync.dispatcher")
 const DefaultInQueueSize = 5
 
 // DefaultWorkQueueSize is the bucketSize of the work queue
-const DefaultWorkQueueSize = 5
+const DefaultWorkQueueSize = 15
 
 // dispatchSyncer is the interface of the logic syncing incoming chains
 type dispatchSyncer interface {
-	Staged() *block.TipSet
+	Head() *block.TipSet
 	HandleNewTipSet(context.Context, *types.Target) error
 }
 
@@ -34,11 +37,13 @@ func NewDispatcher(catchupSyncer dispatchSyncer) *Dispatcher {
 // NewDispatcherWithSizes creates a new syncing dispatcher.
 func NewDispatcherWithSizes(syncer dispatchSyncer, workQueueSize, inQueueSize int) *Dispatcher {
 	return &Dispatcher{
-		workTracker:  types.NewTargetTracker(workQueueSize),
-		syncer:       syncer,
-		incoming:     make(chan *types.Target, inQueueSize),
-		control:      make(chan interface{}, 1),
-		registeredCb: func(t *types.Target, err error) {},
+		workTracker:     types.NewTargetTracker(workQueueSize),
+		syncer:          syncer,
+		incoming:        make(chan *types.Target, inQueueSize),
+		control:         make(chan interface{}, 1),
+		registeredCb:    func(t *types.Target, err error) {},
+		cancelControler: list.New(),
+		maxCount:        3,
 	}
 }
 
@@ -75,8 +80,10 @@ type Dispatcher struct {
 	// control is a queue of control messages not yet processed.
 	control chan interface{}
 
-	// syncTargetCount counts the number of successful syncs.
-	syncTargetCount uint64
+	cancelControler *list.List
+	lk              sync.Mutex
+	conCurrent      atomic.Int
+	maxCount        int64
 }
 
 // SendOwnBlock handles chain info from a node's own mining system
@@ -102,7 +109,7 @@ func (d *Dispatcher) SendGossipBlock(ci *block.ChainInfo) error {
 func (d *Dispatcher) addTracker(ci *block.ChainInfo) error {
 	d.incoming <- &types.Target{
 		ChainInfo: *ci,
-		Base:      d.syncer.Staged(),
+		Base:      d.syncer.Head(),
 		Start:     time.Now(),
 	}
 	return nil
@@ -110,60 +117,93 @@ func (d *Dispatcher) addTracker(ci *block.ChainInfo) error {
 
 // Start launches the business logic for the syncing subsystem.
 func (d *Dispatcher) Start(syncingCtx context.Context) {
-	go func() {
-		defer func() {
-			log.Error("exiting")
-			if r := recover(); r != nil {
-				log.Errorf("panic: %v", r)
-				debug.PrintStack()
-			}
-		}()
+	go d.processIncoming(syncingCtx)
 
-		for {
-			// Handle shutdown
-			select {
-			case <-syncingCtx.Done():
-				log.Info("context done")
-				return
-			case ctrl := <-d.control:
-				log.Infof("processing control: %v", ctrl)
-				d.processCtrl(ctrl)
-			default:
-			}
-
-			// Handle incoming targets
-			select {
-			case target := <-d.incoming:
-				// Sort new targets by putting on work queue.
-				d.workTracker.Add(target)
-				log.Infof("received %s height %d current work len %d  incoming len: %v", target.Head.Key(), target.Head.EnsureHeight(), d.workTracker.Len(), len(d.incoming))
-			}
+	go d.syncWorker(syncingCtx)
+}
+func (d *Dispatcher) processIncoming(ctx context.Context) {
+	defer func() {
+		log.Info("exiting sync dispatcher")
+		if r := recover(); r != nil {
+			log.Errorf("panic: %v", r)
+			debug.PrintStack()
 		}
 	}()
 
-	go func() {
-		ticker := time.NewTicker(time.Millisecond * 50)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
+	for {
+		// Handle shutdown
+		select {
+		case <-ctx.Done():
+			log.Info("context done")
+			return
+		case ctrl := <-d.control:
+			log.Infof("processing control: %v", ctrl)
+			d.processCtrl(ctrl)
+		case target := <-d.incoming:
+			// Sort new targets by putting on work queue.
+			if d.workTracker.Add(target) {
+				log.Infof("received height %d Blocks: %d  %s current work len %d  incoming len: %d",
+					target.Head.EnsureHeight(), target.Head.Len(), target.Head.Key(), d.workTracker.Len(), len(d.incoming))
+			}
+		}
+	}
+}
+
+func (d *Dispatcher) SetConcurrent(number int64) {
+	d.lk.Lock()
+	defer d.lk.Unlock()
+	d.maxCount = number
+	diff := d.conCurrent.Get() - d.maxCount
+	if diff > 0 {
+		ele := d.cancelControler.Back()
+		for ele != nil && diff > 0 {
+			ele.Value.(context.CancelFunc)()
+			preEle := ele.Prev()
+			d.cancelControler.Remove(ele)
+			ele = preEle
+			diff--
+		}
+	}
+}
+
+func (d *Dispatcher) syncWorker(ctx context.Context) {
+	ticker := time.NewTicker(time.Millisecond * 500)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			for { //avoid to sleep 25 millisecond
 				syncTarget, popped := d.workTracker.Select()
 				if popped {
 					// Do work
-					err := d.syncer.HandleNewTipSet(syncingCtx, syncTarget)
-					d.workTracker.Remove(syncTarget)
-					if err != nil {
-						log.Debugf("failed sync of %v at %d  %s", syncTarget.Head.Key(), syncTarget.Head.EnsureHeight(), err)
+					d.lk.Lock()
+					if d.conCurrent.Get() < d.maxCount {
+						syncTarget.State = types.StateInSyncing
+						ctx, cancel := context.WithCancel(ctx)
+						d.cancelControler.PushBack(cancel)
+						d.conCurrent.Add(1)
+
+						go func() {
+							err := d.syncer.HandleNewTipSet(ctx, syncTarget)
+							d.workTracker.Remove(syncTarget)
+							if err != nil {
+								log.Infof("failed sync of %v at %d  %s", syncTarget.Head.Key(), syncTarget.Head.EnsureHeight(), err)
+							}
+							d.registeredCb(syncTarget, err)
+							d.conCurrent.Add(-1)
+						}()
 					}
-					d.syncTargetCount++
-					d.registeredCb(syncTarget, err)
+					d.lk.Unlock()
+				} else {
+					break
 				}
-			case <-syncingCtx.Done():
-				log.Info("context done")
-				return
 			}
+
+		case <-ctx.Done():
+			log.Info("context done")
+			return
 		}
-	}()
+	}
 }
 
 // RegisterCallback registers a callback on the dispatcher that
@@ -172,22 +212,6 @@ func (d *Dispatcher) RegisterCallback(cb func(*types.Target, error)) {
 	d.control <- cbMessage{cb: cb}
 }
 
-// WaiterForTarget returns a function that will block until the dispatcher
-// processes the given target and returns the error produced by that targer
-func (d *Dispatcher) WaiterForTarget(waitKey block.TipSetKey) func() error {
-	processed := moresync.NewLatch(1)
-	var syncErr error
-	d.RegisterCallback(func(t *types.Target, err error) {
-		if t.ChainInfo.Head.Key().Equals(waitKey) {
-			syncErr = err
-			processed.Done()
-		}
-	})
-	return func() error {
-		processed.Wait()
-		return syncErr
-	}
-}
 func (d *Dispatcher) processCtrl(ctrlMsg interface{}) {
 	// processCtrl takes a control message, determines its type, and performs the
 	// specified action.

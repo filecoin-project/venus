@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	fbig "github.com/filecoin-project/go-state-types/big"
 	"io"
 	"os"
 
@@ -104,6 +105,7 @@ START RUNNING FILECOIN
 
 VIEW DATA STRUCTURES
   venus chain                  - Inspect the filecoin blockchain
+  venus sync 				   - Inspect the filecoin Sync
   venus dag                    - Interact with IPLD DAG objects
   venus show                   - Get human-readable representations of filecoin objects
 
@@ -164,6 +166,7 @@ var rootSubcmdsLocal = map[string]*cmds.Command{
 // all top level commands, available on daemon. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"chain":    chainCmd,
+	"sync":     syncCmd,
 	"config":   configCmd,
 	"drand":    drandCmd,
 	"dag":      dagCmd,
@@ -297,10 +300,10 @@ var feecapOption = cmds.StringOption("gas-feecap", "Price (FIL e.g. 0.00013) to 
 var premiumOption = cmds.StringOption("gas-premium", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
 var limitOption = cmds.Int64Option("gas-limit", "Maximum GasUnits this message is allowed to consume")
 
-func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.AttoFIL, int64, error) {
+func parseGasOptions(req *cmds.Request) (fbig.Int, fbig.Int, int64, error) {
 	var (
-		feecap      = types.ZeroAttoFIL
-		premium     = types.ZeroAttoFIL
+		feecap      = types.ZeroFIL
+		premium     = types.ZeroFIL
 		ok          = false
 		gasLimitInt = int64(0)
 	)
@@ -309,7 +312,7 @@ func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.AttoFIL, int64, er
 	if feecapOption != nil {
 		feecap, ok = types.NewAttoFILFromString(feecapOption.(string), 10)
 		if !ok {
-			return types.ZeroAttoFIL, types.ZeroAttoFIL, 0, errors.New("invalid gas price (specify FIL as a decimal number)")
+			return types.ZeroFIL, types.ZeroFIL, 0, errors.New("invalid gas price (specify FIL as a decimal number)")
 		}
 	}
 
@@ -317,7 +320,7 @@ func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.AttoFIL, int64, er
 	if premiumOption != nil {
 		premium, ok = types.NewAttoFILFromString(premiumOption.(string), 10)
 		if !ok {
-			return types.ZeroAttoFIL, types.ZeroAttoFIL, 0, errors.New("invalid gas price (specify FIL as a decimal number)")
+			return types.ZeroFIL, types.ZeroFIL, 0, errors.New("invalid gas price (specify FIL as a decimal number)")
 		}
 	}
 
@@ -326,7 +329,7 @@ func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.AttoFIL, int64, er
 		gasLimitInt, ok = limitOption.(int64)
 		if !ok {
 			msg := fmt.Sprintf("invalid gas limit: %s", limitOption)
-			return types.ZeroAttoFIL, types.ZeroAttoFIL, 0, errors.New(msg)
+			return types.ZeroFIL, types.ZeroFIL, 0, errors.New(msg)
 		}
 	}
 

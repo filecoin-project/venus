@@ -190,7 +190,7 @@ func (v *DefaultMessageSyntaxValidator) validateMessageSyntaxShared(ctx context.
 	// The spec calls for validating a non-negative method num, but by the
 	// time it's decoded into a uint64 the check is already passed
 
-	if msg.GasFeeCap.LessThan(types.ZeroAttoFIL) {
+	if msg.GasFeeCap.LessThan(types.ZeroFIL) {
 		invGasPriceNegativeCt.Inc(ctx, 1)
 		return fmt.Errorf("negative gas price %s: %s", msg.GasFeeCap, msg)
 	}

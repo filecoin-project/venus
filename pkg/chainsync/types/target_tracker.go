@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/ipfs/go-cid"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -20,6 +21,34 @@ type Target struct {
 	End     time.Time
 	Err     error
 	block.ChainInfo
+}
+
+func (target *Target) IsNeibor(t *Target) bool {
+	if target.Head.EnsureHeight() != t.Head.EnsureHeight() {
+		return false
+	}
+
+	targetWeight, _ := target.Head.ParentWeight()
+	weightIn, _ := target.Head.ParentWeight()
+	if !targetWeight.Equals(weightIn) {
+		return false
+	}
+
+	for _, bid := range t.Head.Key().Cids() {
+		if !t.Head.Key().Has(bid) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (target *Target) Key() string {
+	weightIn, _ := target.Head.ParentWeight()
+	return weightIn.String() +
+		strconv.FormatInt(int64(target.Head.EnsureHeight()), 10) +
+		target.Head.EnsureParents().String()
+
 }
 
 // TargetTracker orders dispatcher syncRequests by the underlying `TargetBuckets`'s
@@ -44,7 +73,7 @@ type TargetTracker struct {
 func NewTargetTracker(size int) *TargetTracker {
 	return &TargetTracker{
 		bucketSize:  size,
-		historySize: 5,
+		historySize: 10,
 		history:     list.New(),
 		q:           make(TargetBuckets, 0),
 		targetSet:   make(map[string]*Target),
@@ -54,46 +83,95 @@ func NewTargetTracker(size int) *TargetTracker {
 }
 
 // Add adds a sync target to the target queue.
-func (tq *TargetTracker) Add(t *Target) {
+func (tq *TargetTracker) Add(t *Target) bool {
 	tq.lk.Lock()
 	defer tq.lk.Unlock()
 	//do not sync less weight
 	if t.Head.At(0).ParentWeight.LessThan(tq.lowWeight) {
-		return
+		return false
 	}
 
 	t, ok := tq.widen(t)
 	if !ok {
-		return
+		return false
 	}
-	if len(tq.q) <= tq.bucketSize {
-		tq.q = append(tq.q, t)
-	} else {
-		//replace last idle task because of less weight
-		var lastIdleIndex int
-		var lastIdleTarget *Target
-		for index, target := range tq.q {
-			if target.State == StageIdle {
-				lastIdleTarget = target
-				lastIdleIndex = index
+
+	//replace last idle task because of less weight
+	var replaceIndex int
+	var replaceTarget *Target
+	//try to replace neibor
+	for i := len(tq.q) - 1; i > -1; i-- {
+		if tq.q[i].IsNeibor(t) && tq.q[i].State == StageIdle {
+			replaceTarget = tq.q[i]
+			replaceIndex = i
+			break
+		}
+	}
+
+	if replaceTarget == nil {
+		//replace a idle
+		for i := len(tq.q) - 1; i > -1; i-- {
+			if tq.q[i].State == StageIdle {
+				replaceTarget = tq.q[i]
+				replaceIndex = i
+				break
 			}
 		}
-		if lastIdleTarget == nil {
-			return
-		}
-
-		delete(tq.targetSet, lastIdleTarget.ChainInfo.Head.String())
-		tq.q[lastIdleIndex] = t
 	}
+
+	if replaceTarget == nil {
+		if len(tq.q) <= tq.bucketSize {
+			tq.q = append(tq.q, t)
+		} else {
+			return false
+		}
+	} else {
+		delete(tq.targetSet, replaceTarget.ChainInfo.Head.String())
+		tq.q[replaceIndex] = t
+	}
+
 	tq.targetSet[t.ChainInfo.Head.String()] = t
-	sort.Slice(tq.q, func(i, j int) bool {
-		weightI, _ := tq.q[i].Head.ParentWeight()
-		weightJ, _ := tq.q[j].Head.ParentWeight()
-		return weightI.GreaterThan(weightJ)
-	})
+	sortTarget(tq.q)
 	//update lowweight
 	tq.lowWeight = tq.q[len(tq.q)-1].Head.At(0).ParentWeight
-	return
+	return true
+}
+
+//sort by weight and than sort by block number in ts
+func sortTarget(target TargetBuckets) {
+	//group key
+	groups := make(map[string][]*Target)
+	var keys []fbig.Int
+	for _, t := range target {
+		weight, _ := t.Head.ParentWeight()
+		if _, ok := groups[weight.String()]; ok {
+			groups[weight.String()] = append(groups[weight.String()], t)
+		} else {
+			groups[weight.String()] = []*Target{t}
+			keys = append(keys, weight)
+		}
+	}
+
+	//sort group
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i].GreaterThan(keys[j])
+	})
+
+	for _, key := range keys {
+		inGroup := groups[key.String()]
+		sort.Slice(inGroup, func(i, j int) bool {
+			return inGroup[i].Head.Len() > inGroup[j].Head.Len()
+		})
+	}
+
+	//sort
+	count := 0
+	for _, key := range keys {
+		for _, t := range groups[key.String()] {
+			target[count] = t
+			count++
+		}
+	}
 }
 
 func (tq *TargetTracker) widen(t *Target) (*Target, bool) {
@@ -109,13 +187,9 @@ func (tq *TargetTracker) widen(t *Target) (*Target, bool) {
 		}
 	}
 
-	inWeight, _ := t.Head.ParentWeight()
 	sameWeightBlks := make(map[cid.Cid]*block.Block)
 	for _, val := range tq.targetSet {
-		weight, _ := val.Head.ParentWeight()
-		if inWeight.Equals(weight) &&
-			val.Head.EnsureHeight() == t.Head.EnsureHeight() &&
-			val.Head.EnsureParents() == t.Head.EnsureParents() {
+		if val.IsNeibor(t) {
 			for _, blk := range val.Head.Blocks() {
 				bid := blk.Cid()
 				if !t.Head.Key().Has(bid) {
@@ -163,7 +237,6 @@ func (tq *TargetTracker) Select() (*Target, bool) {
 	if toSyncTarget == nil {
 		return nil, false
 	}
-	toSyncTarget.State = StateInSyncing
 	return toSyncTarget, true
 }
 
@@ -176,20 +249,23 @@ func (tq *TargetTracker) Remove(t *Target) {
 			break
 		}
 	}
-
 	t.End = time.Now()
 	if tq.history.Len() > tq.historySize {
-		tq.history.Remove(tq.history.Front())
+		tq.history.Remove(tq.history.Front()) //remove olddest
+		popKey := tq.history.Front().Value.(*Target).ChainInfo.Head.String()
+		delete(tq.targetSet, popKey)
 	}
 	tq.history.PushBack(t)
-	popKey := t.ChainInfo.Head.String()
-	delete(tq.targetSet, popKey)
 }
 
-func (tq *TargetTracker) History() *list.List {
+func (tq *TargetTracker) History() []*Target {
 	tq.lk.Lock()
 	defer tq.lk.Unlock()
-	return tq.history
+	var targets []*Target
+	for target := tq.history.Front(); target != nil; target = target.Next() {
+		targets = append(targets, target.Value.(*Target))
+	}
+	return targets
 }
 
 // Len returns the number of targets in the queue.

@@ -6,14 +6,18 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-
-	files "github.com/ipfs/go-ipfs-files"
+	"strings"
 
 	"github.com/filecoin-project/go-address"
+	cmds "github.com/ipfs/go-ipfs-cmds"
+	files "github.com/ipfs/go-ipfs-files"
+
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/app/node"
+	"github.com/filecoin-project/venus/cmd/tablewriter"
+	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
-	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
 var walletCmd = &cmds.Command{
@@ -52,30 +56,105 @@ var addrsNewCmd = &cmds.Command{
 		default:
 			return fmt.Errorf("unrecognized address protocol %s", protocolName)
 		}
+
 		addr, err := env.(*node.Env).WalletAPI.WalletNewAddress(protocol)
 		if err != nil {
 			return err
 		}
-		return re.Emit(&AddressResult{addr})
+
+		return printOneString(re, addr.String())
 	},
 	Options: []cmds.Option{
-		cmds.StringOption("type", "The type of address to create: bls or secp256k1 (default)").WithDefault("secp256k1"),
+		cmds.StringOption("type", "The type of address to create: bls (default) or secp256k1").WithDefault("bls"),
 	},
-	Type: &AddressResult{},
 }
 
 var addrsLsCmd = &cmds.Command{
+	Options: []cmds.Option{
+		cmds.BoolOption("addr-only", "Only print addresses"),
+		cmds.BoolOption("id", "Output ID addresses"),
+		cmds.BoolOption("market", "Output market balances"),
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		addrs := env.(*node.Env).WalletAPI.WalletAddresses()
+		api := env.(*node.Env)
+		ctx := req.Context
 
-		var alr AddressLsResult
+		addrs := api.WalletAPI.WalletAddresses()
+
+		// Assume an error means no default key is set
+		def, _ := api.WalletAPI.WalletDefaultAddress()
+
+		buf := new(bytes.Buffer)
+		tw := tablewriter.New(
+			tablewriter.Col("Address"),
+			tablewriter.Col("ID"),
+			tablewriter.Col("Balance"),
+			tablewriter.Col("Market(Avail)"),
+			tablewriter.Col("Market(Locked)"),
+			tablewriter.Col("Nonce"),
+			tablewriter.Col("Default"),
+			tablewriter.NewLineCol("Error"))
+
+		addrOnly := false
+		if _, ok := req.Options["addr-only"]; ok {
+			addrOnly = true
+		}
 		for _, addr := range addrs {
-			alr.Addresses = append(alr.Addresses, addr)
+			if addrOnly {
+				writer := NewSilentWriter(buf)
+				writer.WriteStringln(addr.String())
+			} else {
+				a, err := api.ChainAPI.StateGetActor(ctx, addr, block.EmptyTSK)
+				if err != nil {
+					if !strings.Contains(err.Error(), "actor not found") {
+						tw.Write(map[string]interface{}{
+							"Address": addr,
+							"Error":   err,
+						})
+						continue
+					}
+
+					a = &types.Actor{
+						Balance: big.Zero(),
+					}
+				}
+
+				row := map[string]interface{}{
+					"Address": addr,
+					"Balance": types.FIL(a.Balance),
+					"Nonce":   a.Nonce,
+				}
+				if addr == def {
+					row["Default"] = "X"
+				}
+
+				if _, ok := req.Options["id"]; ok {
+					id, err := api.ChainAPI.StateLookupID(ctx, addr, block.EmptyTSK)
+					if err != nil {
+						row["ID"] = "n/a"
+					} else {
+						row["ID"] = id
+					}
+				}
+
+				if _, ok := req.Options["market"]; ok {
+					mbal, err := api.ChainAPI.StateMarketBalance(ctx, addr, block.EmptyTSK)
+					if err == nil {
+						row["Market(Avail)"] = types.FIL(crypto.BigSub(mbal.Escrow, mbal.Locked))
+						row["Market(Locked)"] = types.FIL(mbal.Locked)
+					}
+				}
+
+				tw.Write(row)
+			}
 		}
 
-		return re.Emit(&alr)
+		if !addrOnly {
+			_ = tw.Flush(buf)
+		}
+
+		return re.Emit(buf)
 	},
-	Type: &AddressLsResult{},
 }
 
 var defaultAddressCmd = &cmds.Command{
@@ -85,9 +164,8 @@ var defaultAddressCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(&AddressResult{addr})
+		return printOneString(re, addr.String())
 	},
-	Type: &AddressResult{},
 }
 
 var setDefaultAddressCmd = &cmds.Command{
@@ -105,9 +183,8 @@ var setDefaultAddressCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(&AddressResult{addr})
+		return printOneString(re, addr.String())
 	},
-	Type: &AddressResult{},
 }
 
 var balanceCmd = &cmds.Command{
@@ -124,9 +201,9 @@ var balanceCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		return re.Emit(balance)
+
+		return re.Emit(bytes.NewBufferString((types.FIL)(balance).String()))
 	},
-	Type: &types.AttoFIL{},
 }
 
 // WalletSerializeResult is the type wallet export and import return and expect.
@@ -159,9 +236,8 @@ var walletImportCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(&addr)
+		return printOneString(re, addr.String())
 	},
-	Type: &address.Address{},
 }
 
 var walletExportCmd = &cmds.Command{
@@ -186,6 +262,6 @@ var walletExportCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		return re.Emit(bytes.NewBufferString(hex.EncodeToString(data)))
+		return printOneString(re, hex.EncodeToString(data))
 	},
 }

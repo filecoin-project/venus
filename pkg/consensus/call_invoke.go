@@ -97,7 +97,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 	}
 
 	for i, m := range priorMsgs {
-		_, err := c.processor.ProcessUnsignedMessage(ctx, m.VMMessage(), vmOption)
+		_, err := c.processor.ProcessMessage(ctx, m, vmOption)
 		if err != nil {
 			return nil, xerrors.Errorf("applying prior message (%d): %v", i, err)
 		}
@@ -131,7 +131,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 			},
 		}
 	}
-	return c.processor.ProcessUnsignedMessage(ctx, msgApply, vmOption)
+	return c.processor.ProcessMessage(ctx, msgApply, vmOption)
 }
 
 func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*vm.Ret, error) {
@@ -209,5 +209,5 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *blo
 	}
 
 	// TODO: maybe just use the invoker directly?
-	return c.processor.ProcessUnsignedMessage(ctx, msg, vmOption)
+	return c.processor.ProcessMessage(ctx, msg, vmOption)
 }

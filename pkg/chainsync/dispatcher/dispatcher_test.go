@@ -17,14 +17,13 @@ import (
 	"github.com/filecoin-project/venus/pkg/chainsync/dispatcher"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/util/moresync"
 )
 
 type mockSyncer struct {
 	headsCalled []*block.TipSet
 }
 
-func (fs *mockSyncer) Staged() *block.TipSet {
+func (fs *mockSyncer) Head() *block.TipSet {
 	return block.UndefTipSet
 }
 
@@ -54,18 +53,19 @@ func TestDispatchStartHappy(t *testing.T) {
 	testDispatch.Start(context.Background())
 
 	// set up a blocking channel and register to unblock after 5 synced
-	allDone := moresync.NewLatch(5)
+	waitCh := make(chan struct{})
 	testDispatch.RegisterCallback(func(t *syncTypes.Target, _ error) {
-		allDone.Done()
+		waitCh <- struct{}{}
 	})
 
 	// receive requests before Start() to test deterministic order
-	go func() {
-		for _, ci := range cis {
+	for _, ci := range cis {
+		go func() {
 			assert.NoError(t, testDispatch.SendHello(ci))
-		}
-	}()
-	allDone.Wait()
+		}()
+		<-waitCh
+	}
+
 	sort.Slice(cis, func(i, j int) bool {
 		weigtI, _ := cis[i].Head.ParentWeight()
 		weigtJ, _ := cis[j].Head.ParentWeight()
@@ -73,43 +73,18 @@ func TestDispatchStartHappy(t *testing.T) {
 	})
 	// check that the mockSyncer synced in order
 	require.Equal(t, 5, len(s.headsCalled))
-	for i := range cis {
-		assert.Equal(t, cis[i].Head.EnsureHeight(), s.headsCalled[i].EnsureHeight())
-	}
-}
-
-func TestDispatcherDropsWhenFull(t *testing.T) {
-	tf.UnitTest(t)
-	s := &mockSyncer{
-		headsCalled: make([]*block.TipSet, 0),
-	}
-	testWorkSize := 20
-	testBufferSize := 30
-	testDispatch := dispatcher.NewDispatcherWithSizes(s, testWorkSize, testBufferSize)
-
-	finished := moresync.NewLatch(1)
-	testDispatch.RegisterCallback(func(target *syncTypes.Target, _ error) {
-		// Fail if the work that should be dropped gets processed
-		assert.False(t, target.Head.EnsureHeight() == 100)
-		assert.False(t, target.Head.EnsureHeight() == 101)
-		assert.False(t, target.Head.EnsureHeight() == 102)
-		if target.Head.EnsureHeight() == 0 {
-			// 0 has lowest priority of non-dropped
-			finished.Done()
+	for _, ci := range cis {
+		found := false
+		for _, call := range s.headsCalled {
+			if call.EnsureHeight() == ci.Head.EnsureHeight() {
+				found = true
+				break
+			}
 		}
-	})
-	for j := 0; j < testWorkSize; j++ {
-		ci := chainInfoWithHeightAndWeight(t, j, 1001)
-		assert.NoError(t, testDispatch.SendHello(ci))
+		if !found {
+			t.Errorf("block %d not found", ci.Head.EnsureHeight())
+		}
 	}
-	// Should be dropped
-	assert.NoError(t, testDispatch.SendHello(chainInfoWithHeightAndWeight(t, 100, 1001)))
-	assert.NoError(t, testDispatch.SendHello(chainInfoWithHeightAndWeight(t, 101, 1001)))
-	assert.NoError(t, testDispatch.SendHello(chainInfoWithHeightAndWeight(t, 102, 1001)))
-
-	testDispatch.Start(context.Background())
-
-	finished.Wait()
 }
 
 func TestQueueHappy(t *testing.T) {
@@ -127,7 +102,7 @@ func TestQueueHappy(t *testing.T) {
 	testQ.Add(sR0)
 	testQ.Add(sR1)
 
-	assert.Equal(t, 4, testQ.Len())
+	assert.Equal(t, 1, testQ.Len())
 
 	// Pop in order
 	out0 := requirePop(t, testQ)
@@ -154,12 +129,7 @@ func TestQueueDuplicates(t *testing.T) {
 	first := requirePop(t, testQ)
 	assert.Equal(t, abi.ChainEpoch(0), first.ChainInfo.Head.EnsureHeight())
 	testQ.Remove(first)
-	// Now if we push the duplicate it goes back on
-	testQ.Add(sR0dup)
-	assert.Equal(t, 1, testQ.Len())
 
-	second := requirePop(t, testQ)
-	assert.Equal(t, abi.ChainEpoch(0), second.ChainInfo.Head.EnsureHeight())
 }
 
 func TestQueueEmptyPopErrors(t *testing.T) {
@@ -173,18 +143,10 @@ func TestQueueEmptyPopErrors(t *testing.T) {
 	testQ.Add(sR0)
 
 	// Pop 3
-	assert.Equal(t, 2, testQ.Len())
+	assert.Equal(t, 1, testQ.Len())
 	first := requirePop(t, testQ)
 	testQ.Remove(first)
-	assert.Equal(t, 1, testQ.Len())
-
-	second := requirePop(t, testQ)
-	testQ.Remove(second)
 	assert.Equal(t, 0, testQ.Len())
-
-	_, popped := testQ.Select()
-	assert.False(t, popped)
-
 }
 
 // requirePop is a helper requiring that pop does not error

@@ -3,16 +3,19 @@ package types
 import (
 	"encoding"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"math/big"
 	"strings"
 
-	big2 "github.com/filecoin-project/go-state-types/big"
+	specsbig "github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 )
 
-type FIL big2.Int
+// ZeroFIL is the zero value for an AttoFIL, exported for consistency in construction of AttoFILs
+var ZeroFIL = specsbig.Zero()
+
+type FIL specsbig.Int
 
 func (f FIL) String() string {
 	return f.Unitless() + " FIL"

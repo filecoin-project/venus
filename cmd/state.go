@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"io"
 	"strconv"
 
@@ -18,7 +19,6 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/config"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -26,11 +26,11 @@ import (
 
 // ActorView represents a generic way to represent details about any actor to the user.
 type ActorView struct {
-	Address string        `json:"address"`
-	Code    cid.Cid       `json:"code,omitempty"`
-	Nonce   uint64        `json:"nonce"`
-	Balance types.AttoFIL `json:"balance"`
-	Head    cid.Cid       `json:"head,omitempty"`
+	Address string          `json:"address"`
+	Code    cid.Cid         `json:"code,omitempty"`
+	Nonce   uint64          `json:"nonce"`
+	Balance abi.TokenAmount `json:"balance"`
+	Head    cid.Cid         `json:"head,omitempty"`
 }
 
 var stateCmd = &cmds.Command{

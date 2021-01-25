@@ -2,14 +2,14 @@ package chain
 
 import (
 	"context"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"time"
-
-	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -64,12 +64,14 @@ func (chainInfoAPI *ChainInfoAPI) ProtocolParameters(ctx context.Context) (*Prot
 		return nil, xerrors.Wrap(err, "could not retrieve network name")
 	}
 
-	sectorSizes := []abi.SectorSize{constants.DevSectorSize, constants.FiveHundredTwelveMiBSectorSize}
-
 	var supportedSectors []SectorInfo
-	for _, sectorSize := range sectorSizes {
-		maxUserBytes := abi.PaddedPieceSize(sectorSize).Unpadded()
-		supportedSectors = append(supportedSectors, SectorInfo{sectorSize, maxUserBytes})
+	for proof := range miner0.SupportedProofTypes {
+		size, err := proof.SectorSize()
+		if err != nil {
+			return nil, xerrors.Wrap(err, "could not retrieve network name")
+		}
+		maxUserBytes := abi.PaddedPieceSize(size).Unpadded()
+		supportedSectors = append(supportedSectors, SectorInfo{size, maxUserBytes})
 	}
 
 	return &ProtocolParams{
@@ -180,6 +182,77 @@ func (chainInfoAPI *ChainInfoAPI) GetFullBlock(ctx context.Context, id cid.Cid) 
 	}
 
 	return &out, nil
+}
+
+func (chainInfoAPI *ChainInfoAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]Message, error) {
+	b, err := chainInfoAPI.ChainGetBlock(ctx, bcid)
+	if err != nil {
+		return nil, err
+	}
+
+	// genesis block has no parent messages...
+	if b.Height == 0 {
+		return nil, nil
+	}
+
+	// TODO: need to get the number of messages better than this
+	pts, err := chainInfoAPI.chain.ChainReader.GetTipSet(block.NewTipSetKey(b.Parents.Cids()...))
+	if err != nil {
+		return nil, err
+	}
+
+	cm, err := chainInfoAPI.chain.MessageStore.MessagesForTipset(pts)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []Message
+	for _, m := range cm {
+		cid, err := m.Cid()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, Message{
+			Cid:     cid,
+			Message: m.VMMessage(),
+		})
+	}
+
+	return out, nil
+}
+
+func (chainInfoAPI *ChainInfoAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error) {
+	b, err := chainInfoAPI.ChainGetBlock(ctx, bcid)
+	if err != nil {
+		return nil, err
+	}
+
+	if b.Height == 0 {
+		return nil, nil
+	}
+
+	// TODO: need to get the number of messages better than this
+	pts, err := chainInfoAPI.chain.ChainReader.GetTipSet(block.NewTipSetKey(b.Parents.Cids()...))
+	if err != nil {
+		return nil, err
+	}
+
+	cm, err := chainInfoAPI.chain.MessageStore.MessagesForTipset(pts)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []*types.MessageReceipt
+	for i := 0; i < len(cm); i++ {
+		r, err := chainInfoAPI.chain.ChainReader.GetParentReceipt(b, i)
+		if err != nil {
+			return nil, err
+		}
+
+		out = append(out, r)
+	}
+
+	return out, nil
 }
 
 // ResolveToKeyAddr resolve user address to t0 address
