@@ -116,7 +116,7 @@ func (b *Bootstrapper) bootstrap(currentPeers []peer.ID) {
 		wg.Add(1)
 		go func() {
 			if err := b.h.Connect(ctx, pinfo); err != nil {
-				logBootstrap.Warnf("got error trying to connect to bootstrap node %+v: %s", pinfo, err.Error())
+				logBootstrap.Debugf("got error trying to connect to bootstrap node %+v: %s", pinfo, err.Error())
 			}
 			b.h.ConnManager().TagPeer(pinfo.ID, "boot-strap", 1000)
 			wg.Done()

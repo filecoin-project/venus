@@ -49,37 +49,6 @@ func (mv *FakeMessageValidator) ValidateUnsignedMessageSyntax(ctx context.Contex
 	return nil
 }
 
-// FakeElectionMachine generates fake election proofs and verifies all proofs
-//type FakeElectionMachine struct{}
-
-// var _ ElectionValidator = new(FakeElectionMachine)
-
-// GenerateElectionProof returns a fake randomness
-// func (fem *FakeElectionMachine) GenerateElectionProof(_ context.Context, _ *block.BeaconEntry,
-// 	_ abi.ChainEpoch, _ address.APIAddress, _ address.APIAddress, _ types.Signer) (crypto.VRFPi, error) {
-// 	return MakeFakeVRFProofForTest(), nil
-// }
-
-// GenerateEPoSt returns a fake post proof
-//func (fem *FakeElectionMachine) GenerateWinningPoSt(ctx context.Context, entry *drand.Entry, epoch abi.ChainEpoch, ep postgenerator.PoStGenerator, maddr address.APIAddress, sectors SectorsStateView) ([]block., error) {
-//	return []block.PoStProof{{
-//		RegisteredProof: constants.DevRegisteredWinningPoStProof,
-//		ProofBytes:      []byte{0xe},
-//	}}, nil
-//}
-
-// func (fem *FakeElectionMachine) IsWinner(challengeTicket []byte, minerPower, networkPower abi.StoragePower) bool {
-// 	return true
-// }
-
-// func (fem *FakeElectionMachine) VerifyElectionProof(_ context.Context, _ *drand.Entry, _ abi.ChainEpoch, _ address.APIAddress, _ address.APIAddress, _ crypto.VRFPi) error {
-// 	return nil
-// }
-
-//func (fem *FakeElectionMachine) VerifyWinningPoSt(ctx context.Context, ep EPoStVerifier, seedEntry *drand.Entry, epoch abi.ChainEpoch, proofs []block.PoStProof, mIDAddr address.APIAddress, sectors SectorsStateView) (bool, error) {
-//	return true, nil
-//}
-
 // FakeTicketMachine generates fake tickets and verifies all tickets
 type FakeTicketMachine struct{}
 

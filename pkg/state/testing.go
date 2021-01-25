@@ -142,6 +142,14 @@ func (v *FakeStateView) MinerInfo(ctx context.Context, maddr address.Address, nv
 	}, nil
 }
 
+func (v *FakeStateView) GetMinerWorkerRaw(ctx context.Context, maddr address.Address) (address.Address, error) {
+	m, ok := v.Miners[maddr]
+	if !ok {
+		return address.Undef, errors.Errorf("no miner %s", maddr)
+	}
+	return m.Worker, nil
+}
+
 func NewBitField() *bitfield.BitField {
 	bit := bitfield.New()
 	return &bit

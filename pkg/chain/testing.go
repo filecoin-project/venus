@@ -599,17 +599,7 @@ func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *block.T
 	return e.ComputeState(parentStateRoot, blockMessageInfo)
 }
 
-func (e *FakeStateEvaluator) ValidateMining(ctx context.Context, parent, ts *block.TipSet, parentWeight big.Int, parentReceiptRoot cid.Cid) error {
-	return nil
-}
-
-// ValidateHeaderSemantic is a stub that always returns no error
-func (e *FakeStateEvaluator) ValidateHeaderSemantic(_ context.Context, _ *block.Block, _ *block.TipSet) error {
-	return nil
-}
-
-// ValidateHeaderSemantic is a stub that always returns no error
-func (e *FakeStateEvaluator) ValidateMessagesSemantic(_ context.Context, _ *block.Block, _ *block.TipSet) error {
+func (e *FakeStateEvaluator) ValidateFullBlock(ctx context.Context, blk *block.Block) error {
 	return nil
 }
 

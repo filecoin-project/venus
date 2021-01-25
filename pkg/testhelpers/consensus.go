@@ -77,26 +77,19 @@ func (fbv *FakeBlockValidator) ValidateReceiptsSyntax(ctx context.Context, recei
 
 // StubBlockValidator is a mockable block validator.
 type StubBlockValidator struct {
-	syntaxStubs   map[cid.Cid]error
-	semanticStubs map[cid.Cid]error
+	syntaxStubs map[cid.Cid]error
 }
 
 // NewStubBlockValidator creates a StubBlockValidator that allows errors to configured
 // for blocks passed to the Validate* methods.
 func NewStubBlockValidator() *StubBlockValidator {
 	return &StubBlockValidator{
-		syntaxStubs:   make(map[cid.Cid]error),
-		semanticStubs: make(map[cid.Cid]error),
+		syntaxStubs: make(map[cid.Cid]error),
 	}
 }
 
-// ValidateHeaderSemantic returns nil or error for stubbed block `child`.
-func (mbv *StubBlockValidator) ValidateSemantic(ctx context.Context, child *block.Block, parents *block.TipSet, _ uint64) error {
-	return mbv.semanticStubs[child.Cid()]
-}
-
 // ValidateSyntax return nil or error for stubbed block `blk`.
-func (mbv *StubBlockValidator) ValidateSyntax(ctx context.Context, blk *block.Block) error {
+func (mbv *StubBlockValidator) ValidateBlockHeader(ctx context.Context, blk *block.Block) error {
 	return mbv.syntaxStubs[blk.Cid()]
 }
 
@@ -104,10 +97,4 @@ func (mbv *StubBlockValidator) ValidateSyntax(ctx context.Context, blk *block.Bl
 // on the with the given block.
 func (mbv *StubBlockValidator) StubSyntaxValidationForBlock(blk *block.Block, err error) {
 	mbv.syntaxStubs[blk.Cid()] = err
-}
-
-// StubSemanticValidationForBlock stubs an error when the ValidateHeaderSemantic is called
-// on the with the given child block.
-func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *block.Block, err error) {
-	mbv.semanticStubs[child.Cid()] = err
 }

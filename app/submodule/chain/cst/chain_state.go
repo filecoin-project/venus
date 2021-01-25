@@ -3,6 +3,7 @@ package cst
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/util"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -42,6 +43,7 @@ type chainReadWriter interface {
 	ReadOnlyStateStore() util.ReadOnlyIpldStore
 	SubHeadChanges(ctx context.Context) chan []*chain.HeadChange
 	GetTipSetByHeight(context.Context, *block.TipSet, abi.ChainEpoch, bool) (*block.TipSet, error)
+	GetLookbackTipSetForRound(ctx context.Context, ts *block.TipSet, round abi.ChainEpoch, version network.Version) (*block.TipSet, cid.Cid, error)
 }
 
 // ChainStateReadWriter composes a:
