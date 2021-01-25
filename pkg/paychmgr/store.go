@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-
+	"github.com/filecoin-project/venus/pkg/repo"
 	"golang.org/x/xerrors"
 
 	"github.com/google/uuid"
@@ -25,10 +25,11 @@ import (
 var ErrChannelNotTracked = errors.New("channel not tracked")
 
 type Store struct {
-	ds datastore.Batching
+	ds datastore.Datastore
 }
 
-func NewStore(ds datastore.Datastore) *Store {
+
+func NewStore(ds repo.Datastore) *Store {
 	dsTmp := namespace.Wrap(ds, datastore.NewKey("/paych/"))
 	return &Store{
 		ds: dsTmp,

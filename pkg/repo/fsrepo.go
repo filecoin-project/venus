@@ -59,7 +59,8 @@ type FSRepo struct {
 	walletDs  Datastore
 	chainDs   Datastore
 	metaDs    Datastore
-
+	marketDs  Datastore
+	paychDs   Datastore
 	// lockfile is the file system lock to prevent others from opening the same repo.
 	lockfile io.Closer
 }
@@ -310,6 +311,14 @@ func (r *FSRepo) ChainDatastore() Datastore {
 
 func (r *FSRepo) MetaDatastore() Datastore {
 	return r.metaDs
+}
+
+func (r *FSRepo) MarketDatastore() Datastore {
+	return r.marketDs
+}
+
+func (r *FSRepo) PaychDatastore() Datastore {
+	return r.paychDs
 }
 
 // Version returns the version of the repo

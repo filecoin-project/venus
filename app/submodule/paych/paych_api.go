@@ -38,6 +38,11 @@ type PaychAPI interface {
 type paychAPI struct {
 	paychMgr *paychmgr.Manager
 }
+
+func newPaychAPI(p *paychmgr.Manager) PaychAPI {
+	return &paychAPI{p}
+}
+
 type PaymentInfo struct {
 	Channel      address.Address
 	WaitSentinel cid.Cid
@@ -58,10 +63,6 @@ type VoucherSpec struct {
 type ChannelInfo struct {
 	Channel      address.Address
 	WaitSentinel cid.Cid
-}
-
-func NewPaychAPI(p *paychmgr.Manager) PaychAPI {
-	return &paychAPI{p}
 }
 
 func (a *paychAPI) PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*ChannelInfo, error) {

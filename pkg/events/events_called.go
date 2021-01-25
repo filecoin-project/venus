@@ -521,8 +521,8 @@ func (me *messageEvents) messagesForTs(ts *block.TipSet, consume func(message *t
 		}
 
 		for _, m := range msgs.BlsMessages {
-			mcid,err:= m.Cid()
-			if err!=nil{
+			mcid, err := m.Cid()
+			if err != nil {
 				continue
 			}
 			_, ok := seen[mcid]
@@ -535,8 +535,8 @@ func (me *messageEvents) messagesForTs(ts *block.TipSet, consume func(message *t
 		}
 
 		for _, m := range msgs.SecpkMessages {
-			mMcid,err := m.Message.Cid()
-			if err!=nil{
+			mMcid, err := m.Message.Cid()
+			if err != nil {
 				continue
 			}
 			_, ok := seen[mMcid]
@@ -591,8 +591,8 @@ func (me *messageEvents) Called(check CheckFunc, msgHnd MsgHandler, rev RevertHa
 		if data != nil && !ok {
 			panic("expected msg")
 		}
-		msgCid,err:= msg.Cid()
-		if err!=nil{
+		msgCid, err := msg.Cid()
+		if err != nil {
 			return false, err
 		}
 		rec, err := me.cs.StateGetReceipt(me.ctx, msgCid, ts.Key())

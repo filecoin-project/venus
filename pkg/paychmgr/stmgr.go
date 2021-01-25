@@ -19,16 +19,15 @@ type stateManagerAPI interface {
 	Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*types.InvocResult, error)
 }
 
-
 type stmgr struct {
 	cState *cst.ChainStateReadWriter
-	cnsns        consensus.Protocol
+	cnsns  consensus.Protocol
 }
 
-func newStateMangerAPI(cState *cst.ChainStateReadWriter,cnsns   consensus.Protocol) stateManagerAPI {
+func newStateMangerAPI(cState *cst.ChainStateReadWriter, cnsns consensus.Protocol) stateManagerAPI {
 	return &stmgr{
-		cState:cState,
-		cnsns:cnsns,
+		cState: cState,
+		cnsns:  cnsns,
 	}
 }
 
@@ -36,14 +35,14 @@ func (o *stmgr) ResolveToKeyAddress(ctx context.Context, addr address.Address, t
 	return o.cState.ResolveAddressAt(ctx, ts, addr)
 }
 
-func (o *stmgr)Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*types.InvocResult, error){
-	timeStart:=time.Now()
-	msgCid ,err := msg.Cid()
-	if err!=nil{
+func (o *stmgr) Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*types.InvocResult, error) {
+	timeStart := time.Now()
+	msgCid, err := msg.Cid()
+	if err != nil {
 		return nil, err
 	}
-	ret,err :=o.cnsns.Call(ctx,msg,ts)
-	if err!=nil{
+	ret, err := o.cnsns.Call(ctx, msg, ts)
+	if err != nil {
 		return nil, err
 	}
 	return &types.InvocResult{
@@ -54,23 +53,22 @@ func (o *stmgr)Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.T
 		Duration:       time.Now().Sub(timeStart),
 	}, nil
 }
-func (o *stmgr)GetPaychState(ctx context.Context, addr address.Address, ts *block.TipSet) (*types.Actor, paych.State, error){
-	if ts==nil{
-		return nil,nil,errors.New("tipset if nil")
+func (o *stmgr) GetPaychState(ctx context.Context, addr address.Address, ts *block.TipSet) (*types.Actor, paych.State, error) {
+	if ts == nil {
+		return nil, nil, errors.New("tipset if nil")
 	}
-	act,err := o.cState.GetActorAt(ctx,ts,addr)
+	act, err := o.cState.GetActorAt(ctx, ts, addr)
 	if err != nil {
 		return nil, nil, err
 	}
-	view,err:= o.cState.ParentStateView(ts)
+	view, err := o.cState.ParentStateView(ts)
 	if err != nil {
 		return nil, nil, err
 	}
-	actState,err := view.LoadPaychState(ctx,addr)
+	actState, err := view.LoadPaychState(ctx, addr)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return act, actState, nil
 }
-

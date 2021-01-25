@@ -44,15 +44,15 @@ func (tsc *tipSetCache) add(ts *block.TipSet) error {
 			return xerrors.Errorf("tipSetCache.add: expected new tipset height to be at least %d, was %d", tsc.cache[tsc.start].EnsureHeight()+1, ts.EnsureHeight())
 		}
 	}
-	tsH,err := ts.Height()
-	if err!=nil{
+	tsH, err := ts.Height()
+	if err != nil {
 		return err
 	}
 	nextH := tsH
 
 	if tsc.len > 0 {
-		tssH,err:=tsc.cache[tsc.start].Height()
-		if err!=nil{
+		tssH, err := tsc.cache[tsc.start].Height()
+		if err != nil {
 			return err
 		}
 		nextH = tssH + 1

@@ -2,6 +2,8 @@ package node
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/submodule/market"
+	"github.com/filecoin-project/venus/app/submodule/paych"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
@@ -33,6 +35,9 @@ type Env struct {
 	WalletAPI            *wallet.WalletAPI
 	MingingAPI           *mining.MiningAPI
 	MessagePoolAPI       *mpool.MessagePoolAPI
+
+	MarketAPI market.MarketAPI
+	PaychAPI paych.PaychAPI
 }
 
 var _ cmds.Environment = (*Env)(nil)

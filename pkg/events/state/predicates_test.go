@@ -9,7 +9,6 @@ import (
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"testing"
 
-
 	"github.com/filecoin-project/go-bitfield"
 
 	"github.com/ipfs/go-cid"
@@ -24,7 +23,6 @@ import (
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
-
 )
 
 var dummyCid cid.Cid

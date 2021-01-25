@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/pkg/block"
 )
+
 // fundManagerAPI is the specific methods called by the FundManager
 // (used by the tests)
 type fundManagerAPI interface {
@@ -26,7 +27,7 @@ type fmgr struct {
 	*chain.MinerStateAPI
 }
 
-func NewFundmanagerAPI(p *FundManagerParams)fundManagerAPI{
+func NewFundmanagerAPI(p *FundManagerParams) fundManagerAPI {
 	return &fmgr{
 		p.MessagePoolAPI,
 		p.ChainInfoAPI,
@@ -34,14 +35,14 @@ func NewFundmanagerAPI(p *FundManagerParams)fundManagerAPI{
 	}
 }
 
-func (o *fmgr)MpoolPushMessage(ctx context.Context,msg *types.UnsignedMessage,spec *types.MessageSendSpec) (*types.SignedMessage, error){
-	return o.MessagePoolAPI.MpoolPushMessage(ctx,msg,spec)
+func (o *fmgr) MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
+	return o.MessagePoolAPI.MpoolPushMessage(ctx, msg, spec)
 }
 
-func (o *fmgr)StateMarketBalance(ctx context.Context,address address.Address,tsk block.TipSetKey) (chain.MarketBalance, error){
-	return o.MinerStateAPI.StateMarketBalance(ctx,address,tsk)
+func (o *fmgr) StateMarketBalance(ctx context.Context, address address.Address, tsk block.TipSetKey) (chain.MarketBalance, error) {
+	return o.MinerStateAPI.StateMarketBalance(ctx, address, tsk)
 }
 
-func (o *fmgr)StateWaitMsg(ctx context.Context, c cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error){
-	return o.ChainInfoAPI.StateWaitMsg(ctx,c,confidence)
+func (o *fmgr) StateWaitMsg(ctx context.Context, c cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error) {
+	return o.ChainInfoAPI.StateWaitMsg(ctx, c, confidence)
 }

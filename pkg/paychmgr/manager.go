@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
 	"github.com/filecoin-project/venus/pkg/consensus"
+	"github.com/filecoin-project/venus/pkg/repo"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -24,7 +25,6 @@ import (
 var log = logging.Logger("paych")
 
 var errProofNotSupported = errors.New("payment channel proof parameter is not supported")
-
 
 type ChannelAvailableFunds struct {
 	// Channel is the address of the channel
@@ -58,7 +58,6 @@ type VoucherCreateResult struct {
 	Shortfall big.Int
 }
 
-
 // managerAPI defines all methods needed by the manager
 type managerAPI interface {
 	stateManagerAPI
@@ -89,20 +88,20 @@ type ManagerParams struct {
 	*chain.AccountAPI
 	*cst.ChainStateReadWriter
 	consensus.Protocol
-	*Store
+	repo.Datastore
 }
 
 func NewManager(ctx context.Context, params *ManagerParams) *Manager {
 	ctx, shutdown := context.WithCancel(ctx)
 
 	impl := &managerAPIImpl{
-		stateManagerAPI:newStateMangerAPI(params.ChainStateReadWriter,params.Protocol),
-		paychAPI:newPaychAPI(params.MessagePoolAPI,params.ChainInfoAPI, params.AccountAPI),
+		stateManagerAPI: newStateMangerAPI(params.ChainStateReadWriter, params.Protocol),
+		paychAPI:        newPaychAPI(params.MessagePoolAPI, params.ChainInfoAPI, params.AccountAPI),
 	}
 	return &Manager{
 		ctx:      ctx,
 		shutdown: shutdown,
-		store:    params.Store,
+		store:    NewStore(params.Datastore),
 		sa:       &stateAccessor{sm: impl},
 		channels: make(map[string]*channelAccessor),
 		pchapi:   impl,
@@ -110,16 +109,15 @@ func NewManager(ctx context.Context, params *ManagerParams) *Manager {
 }
 
 // newManager is used by the tests to supply mocks
-func newManager(pchStore *Store,pchapi managerAPI) (*Manager, error) {
+func newManager(pchStore *Store, pchapi managerAPI) (*Manager, error) {
 	pm := &Manager{
-		store:   pchStore,
-		sa:       &stateAccessor{sm:pchapi },
+		store:    pchStore,
+		sa:       &stateAccessor{sm: pchapi},
 		channels: make(map[string]*channelAccessor),
 		pchapi:   pchapi,
 	}
 	return pm, pm.Start()
 }
-
 
 // Start restarts tracking of any messages that were sent to chain.
 func (pm *Manager) Start() error {
@@ -127,9 +125,8 @@ func (pm *Manager) Start() error {
 }
 
 // Stop shuts down any processes used by the manager
-func (pm *Manager) Stop() error {
+func (pm *Manager) Stop() {
 	pm.shutdown()
-	return nil
 }
 
 func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt big.Int) (address.Address, cid.Cid, error) {

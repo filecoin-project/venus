@@ -9,11 +9,11 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 var log = logging.Logger("payment-channel-settler")
@@ -32,7 +32,6 @@ type paymentChannelSettler struct {
 	ctx context.Context
 	api SettlerAPI
 }
-
 
 func NewPaymentChannelSettler(ctx context.Context, api SettlerAPI) PaymentChannelSettler {
 	return &paymentChannelSettler{

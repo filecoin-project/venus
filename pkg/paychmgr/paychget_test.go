@@ -473,8 +473,8 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 
 	// Send success add funds response
 	mock2.receiveMsgResponse(mcid2, types.MessageReceipt{
-		ExitCode: 0,
-		ReturnValue:   []byte{},
+		ExitCode:    0,
+		ReturnValue: []byte{},
 	})
 
 	_, err = mgr2.GetPaychWaitReady(ctx, mcid2)
@@ -541,7 +541,7 @@ func TestPaychGetWait(t *testing.T) {
 	go func() {
 		// 6. Send add funds response
 		addFundsResponse := types.MessageReceipt{
-			ExitCode:   0,
+			ExitCode:    0,
 			ReturnValue: []byte{},
 		}
 		mock.receiveMsgResponse(addFundsMsgCid, addFundsResponse)

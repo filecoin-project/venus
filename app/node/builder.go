@@ -2,6 +2,9 @@ package node
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/submodule/market"
+	"github.com/filecoin-project/venus/app/submodule/paych"
+	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/jwtauth"
@@ -34,6 +37,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/util"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/version"
+
+	market2 "github.com/filecoin-project/venus/pkg/market"
 )
 
 // Builder is a helper to aid in the construction of a filecoin node.
@@ -272,6 +277,26 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, xerrors.Errorf("read or generate jwt secrect error %s", err)
 	}
 
+	chainAPI := nd.chain.API()
+	ciapi := chainAPI.ChainInfoAPI
+	aaip:= chainAPI.AccountAPI
+	minerapi :=chainAPI.MinerStateAPI
+	nd.paych = paych.NewPaychSubmodule(ctx,&paychmgr.ManagerParams{
+		nd.mpool.API(),
+		&ciapi,
+		&aaip,
+		nd.chain.State,
+		nd.syncer.Consensus,
+		b.repo.PaychDatastore(),
+	})
+
+	nd.market = market.NewMarketModule(nd.mpool.API(),&market2.FundManagerParams{
+		nd.mpool.API(),
+		&ciapi,
+		&minerapi,
+		b.repo.MarketDatastore(),
+	})
+
 	apiBuilder := util.NewBuiler()
 	apiBuilder.NameSpace("Filecoin")
 	err = apiBuilder.AddServices(nd.configModule,
@@ -286,6 +311,8 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.mining,
 		nd.mpool,
 		nd.jwtAuth,
+		nd.paych,
+		nd.market,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "add service failed ")

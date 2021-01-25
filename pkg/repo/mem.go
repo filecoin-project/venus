@@ -22,6 +22,8 @@ type MemRepo struct {
 	W          Datastore
 	Chain      Datastore
 	Meta       Datastore
+	Paych      Datastore
+	Market     Datastore
 	version    uint
 	apiAddress string
 	token      []byte
@@ -77,6 +79,15 @@ func (mr *MemRepo) WalletDatastore() Datastore {
 
 // ChainDatastore returns the chain datastore.
 func (mr *MemRepo) ChainDatastore() Datastore {
+	return mr.Chain
+}
+
+// ChainDatastore returns the chain datastore.
+func (mr *MemRepo) PaychDatastore() Datastore {
+	return mr.Meta
+}
+// ChainDatastore returns the chain datastore.
+func (mr *MemRepo) MarketDatastore() Datastore {
 	return mr.Chain
 }
 

@@ -25,8 +25,8 @@ type marketAPI struct {
 	fmgr *market.FundManager
 }
 
-func NewMarketAPI(mp *mpool.MessagePoolAPI,fmgr *market.FundManager)MarketAPI{
-	return &marketAPI{mp,fmgr}
+func newMarketAPI(mp *mpool.MessagePoolAPI, fmgr *market.FundManager) MarketAPI {
+	return &marketAPI{mp, fmgr}
 }
 func (a *marketAPI) MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt big.Int) (cid.Cid, error) {
 	params, err := specactors.SerializeParams(&addr)

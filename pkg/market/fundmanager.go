@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -25,13 +26,11 @@ import (
 
 var log = logging.Logger("market_adapter")
 
-
-
 type FundManagerParams struct {
 	*mpool.MessagePoolAPI
 	*chain.ChainInfoAPI
 	*chain.MinerStateAPI
-	ds datastore.Batching
+	repo.Datastore
 }
 
 // FundManager keeps track of funds in a set of addresses
@@ -46,13 +45,13 @@ type FundManager struct {
 }
 
 func NewFundManager(p *FundManagerParams) *FundManager {
-	fmgrapi:=NewFundmanagerAPI(p)
+	fmgrapi := NewFundmanagerAPI(p)
 	ctx, cancel := context.WithCancel(context.Background())
 	return &FundManager{
 		ctx:         ctx,
 		shutdown:    cancel,
 		api:         fmgrapi,
-		str:         newStore(p.ds),
+		str:         newStore(p.Datastore),
 		fundedAddrs: make(map[address.Address]*fundedAddress),
 	}
 }

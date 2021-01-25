@@ -22,9 +22,9 @@ func (me *messageEvents) CheckMsg(ctx context.Context, smsg types.ChainMsg, hnd 
 		if msg.Nonce >= fa.Nonce {
 			return false, true, nil
 		}
-		svcid ,err := smsg.VMMessage().Cid()
-		if err!=nil{
-			return  false, true, err
+		svcid, err := smsg.VMMessage().Cid()
+		if err != nil {
+			return false, true, err
 		}
 		rec, err := me.cs.StateGetReceipt(ctx, svcid, ts.Key())
 		if err != nil {
@@ -40,7 +40,7 @@ func (me *messageEvents) CheckMsg(ctx context.Context, smsg types.ChainMsg, hnd 
 func (me *messageEvents) MatchMsg(inmsg *types.UnsignedMessage) MsgMatchFunc {
 	return func(msg *types.UnsignedMessage) (matched bool, err error) {
 		if msg.From == inmsg.From && msg.Nonce == inmsg.Nonce && !inmsg.Equals(msg) {
-			cidTmp ,_:=inmsg.Cid()
+			cidTmp, _ := inmsg.Cid()
 			return false, xerrors.Errorf("matching msg %s from %s, nonce %d: got duplicate origin/nonce msg %d", cidTmp, inmsg.From, inmsg.Nonce, msg.Nonce)
 		}
 

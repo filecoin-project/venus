@@ -29,7 +29,6 @@ type heightHandler struct {
 	revert RevertHandler
 }
 
-
 type Events struct {
 	api EventAPI
 

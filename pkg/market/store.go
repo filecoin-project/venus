@@ -2,6 +2,7 @@ package market
 
 import (
 	"bytes"
+	"github.com/filecoin-project/venus/pkg/repo"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-datastore"
@@ -17,7 +18,7 @@ type Store struct {
 	ds datastore.Batching
 }
 
-func newStore(ds datastore.Batching) *Store {
+func newStore(ds repo.Datastore) *Store {
 	ds = namespace.Wrap(ds, datastore.NewKey("/fundmgr/"))
 	return &Store{
 		ds: ds,
