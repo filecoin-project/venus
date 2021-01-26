@@ -99,11 +99,13 @@ func (s *state0) ListAllMiners() ([]address.Address, error) {
 
 	return miners, nil
 }
+
 func (s *state0) ForEachClaim(cb func(miner address.Address, claim Claim) error) error {
 	claims, err := adt0.AsMap(s.store, s.Claims)
 	if err != nil {
 		return err
 	}
+
 	var claim power0.Claim
 	return claims.ForEach(&claim, func(k string) error {
 		a, err := address.NewFromBytes([]byte(k))
@@ -116,6 +118,7 @@ func (s *state0) ForEachClaim(cb func(miner address.Address, claim Claim) error)
 		})
 	})
 }
+
 func (s *state0) ClaimsChanged(other State) (bool, error) {
 	other0, ok := other.(*state0)
 	if !ok {
@@ -124,9 +127,11 @@ func (s *state0) ClaimsChanged(other State) (bool, error) {
 	}
 	return !s.State.Claims.Equals(other0.State.Claims), nil
 }
+
 func (s *state0) claims() (adt.Map, error) {
 	return adt0.AsMap(s.store, s.Claims)
 }
+
 func (s *state0) decodeClaim(val *cbg.Deferred) (Claim, error) {
 	var ci power0.Claim
 	if err := ci.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
@@ -134,6 +139,7 @@ func (s *state0) decodeClaim(val *cbg.Deferred) (Claim, error) {
 	}
 	return fromV0Claim(ci), nil
 }
+
 func fromV0Claim(v0 power0.Claim) Claim {
 	return (Claim)(v0)
 }

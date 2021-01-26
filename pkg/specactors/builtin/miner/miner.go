@@ -23,6 +23,7 @@ import (
 
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
 )
 
 func init() {
@@ -75,7 +76,6 @@ type State interface {
 	LockedFunds() (LockedFunds, error)
 	FeeDebt() (abi.TokenAmount, error)
 
-	SectorArray() (adt.Array, error)
 	GetSector(abi.SectorNumber) (*SectorOnChainInfo, error)
 	FindSector(abi.SectorNumber) (*SectorLocation, error)
 	GetSectorExpiration(abi.SectorNumber) (*SectorExpiration, error)
@@ -93,7 +93,6 @@ type State interface {
 	MinerInfoChanged(State) (bool, error)
 
 	DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error)
-	FaultsSectors() ([]uint64, error)
 
 	// Diff helpers. Used by Diff* functions internally.
 	sectors() (adt.Array, error)
@@ -108,6 +107,7 @@ type Deadline interface {
 	PartitionsPoSted() (bitfield.BitField, error)
 
 	PartitionsChanged(Deadline) (bool, error)
+	DisputableProofCount() (uint64, error)
 }
 
 type Partition interface {
@@ -151,6 +151,7 @@ type DeclareFaultsParams = miner0.DeclareFaultsParams
 type DeclareFaultsRecoveredParams = miner0.DeclareFaultsRecoveredParams
 type SubmitWindowedPoStParams = miner0.SubmitWindowedPoStParams
 type ProveCommitSectorParams = miner0.ProveCommitSectorParams
+type DisputeWindowedPoStParams = miner3.DisputeWindowedPoStParams
 
 func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.RegisteredPoStProof) (abi.RegisteredSealProof, error) {
 	// We added support for the new proofs in network version 7, and removed support for the old
@@ -171,6 +172,7 @@ func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.Re
 			return -1, xerrors.Errorf("unrecognized window post type: %d", proof)
 		}
 	}
+
 	switch proof {
 	case abi.RegisteredPoStProof_StackedDrgWindow2KiBV1:
 		return abi.RegisteredSealProof_StackedDrg2KiBV1_1, nil
@@ -186,6 +188,7 @@ func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.Re
 		return -1, xerrors.Errorf("unrecognized window post type: %d", proof)
 	}
 }
+
 func WinningPoStProofTypeFromWindowPoStProofType(nver network.Version, proof abi.RegisteredPoStProof) (abi.RegisteredPoStProof, error) {
 	switch proof {
 	case abi.RegisteredPoStProof_StackedDrgWindow2KiBV1:
@@ -221,11 +224,13 @@ func (mi MinerInfo) IsController(addr address.Address) bool {
 	if addr == mi.Owner || addr == mi.Worker {
 		return true
 	}
+
 	for _, ca := range mi.ControlAddresses {
 		if addr == ca {
 			return true
 		}
 	}
+
 	return false
 }
 

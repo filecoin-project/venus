@@ -51,7 +51,8 @@ type chainConfig interface {
 }
 
 // NewChainSubmodule creates a new chain submodule.
-func NewChainSubmodule(config chainConfig,
+func NewChainSubmodule(ctx context.Context,
+	config chainConfig,
 	repo chainRepo,
 	blockstore *blockstore.BlockstoreSubmodule,
 	verifier ffiwrapper.Verifier,
@@ -71,7 +72,7 @@ func NewChainSubmodule(config chainConfig,
 	}
 
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)
-	fork, err := fork.NewChainFork(chainStore, blockstore.CborStore, blockstore.Blockstore, repo.Config().NetworkParams.ForkUpgradeParam)
+	fork, err := fork.NewChainFork(ctx, chainStore, blockstore.CborStore, blockstore.Blockstore, repo.Config().NetworkParams.ForkUpgradeParam)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +103,7 @@ func NewChainSubmodule(config chainConfig,
 
 // Start loads the chain from disk.
 func (chain *ChainSubmodule) Start(ctx context.Context) error {
-	return nil
+	return chain.Fork.Start(ctx)
 }
 
 func (chain *ChainSubmodule) Stop(ctx context.Context) {

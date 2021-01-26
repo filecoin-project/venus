@@ -8,16 +8,18 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
-	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	smoothing2 "github.com/filecoin-project/specs-actors/v2/actors/util/smoothing"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+	
+	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"	
+	smoothing2 "github.com/filecoin-project/specs-actors/v2/actors/util/smoothing"
 	smoothing3 "github.com/filecoin-project/specs-actors/v3/actors/util/smoothing"
 
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/types"
+	
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	proof0 "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 )
 
 var SystemActorAddr = builtin0.SystemActorAddr
@@ -26,6 +28,10 @@ var CronActorAddr = builtin0.CronActorAddr
 var SaftAddress = makeAddress("t0122")
 var ReserveAddress = makeAddress("t090")
 var RootVerifierAddress = makeAddress("t080")
+
+var (
+	ExpectedLeadersPerEpoch = builtin0.ExpectedLeadersPerEpoch
+)
 
 const (
 	EpochDurationSeconds = builtin0.EpochDurationSeconds
@@ -56,6 +62,7 @@ func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, 
 func FromV2FilterEstimate(v2 smoothing2.FilterEstimate) FilterEstimate {
 	return (FilterEstimate)(v2)
 }
+
 func FromV3FilterEstimate(v3 smoothing3.FilterEstimate) FilterEstimate {
 	return (FilterEstimate)(v3)
 }
