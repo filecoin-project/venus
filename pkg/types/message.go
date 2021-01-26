@@ -2,14 +2,12 @@ package types
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	specsbig "github.com/filecoin-project/go-state-types/big"
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-state-types/abi"
 	cbor2 "github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -17,12 +15,9 @@ import (
 	block "github.com/ipfs/go-block-format"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
 	errPkg "github.com/pkg/errors"
-	typegen "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -49,29 +44,6 @@ func (ms *MessageSendSpec) Get() MessageSendSpec {
 }
 
 const MessageVersion = 0
-
-// EmptyMessagesCID is the cid of an empty collection of messages.
-var EmptyMessagesCID cid.Cid
-
-// EmptyReceiptsCID is the cid of an empty collection of receipts.
-var EmptyReceiptsCID cid.Cid
-
-// EmptyTxMetaCID is the cid of a TxMeta wrapping empty cids
-var EmptyTxMetaCID cid.Cid
-
-func init() {
-	tmpCst := cbor.NewCborStore(blockstore.NewBlockstore(datastore.NewMapDatastore()))
-	emptyAMTCid, err := amt.FromArray(context.Background(), tmpCst, []typegen.CBORMarshaler{})
-	if err != nil {
-		panic("could not create CID for empty AMT")
-	}
-	EmptyMessagesCID = emptyAMTCid
-	EmptyReceiptsCID = emptyAMTCid
-	EmptyTxMetaCID, err = tmpCst.Put(context.Background(), &TxMeta{SecpRoot: EmptyMessagesCID, BLSRoot: EmptyMessagesCID})
-	if err != nil {
-		panic("could not create CID for empty TxMeta")
-	}
-}
 
 //
 type ChainMsg interface {

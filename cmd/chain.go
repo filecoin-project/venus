@@ -4,7 +4,6 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
-	"os"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -25,7 +24,6 @@ var chainCmd = &cmds.Command{
 		Tagline: "Inspect the filecoin blockchain",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"export":   chainExportCmd,
 		"head":     chainHeadCmd,
 		"ls":       chainLsCmd,
 		"set-head": chainSetHeadCmd,
@@ -156,34 +154,6 @@ var chainSetHeadCmd = &cmds.Command{
 		}
 		maybeNewHead := block.NewTipSetKey(headCids...)
 		return env.(*node.Env).ChainAPI.ChainSetHead(req.Context, maybeNewHead)
-	},
-}
-
-var chainExportCmd = &cmds.Command{
-	Helptext: cmds.HelpText{
-		Tagline: "Export the chain store to a car file.",
-	},
-	Arguments: []cmds.Argument{
-		cmds.StringArg("file", true, false, "File to export chain data to."),
-		cmds.StringArg("cids", true, true, "CID's of the blocks of the tipset to export from."),
-	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		f, err := os.Create(req.Arguments[0])
-		if err != nil {
-			return err
-		}
-		defer func() { _ = f.Close() }()
-
-		expCids, err := cidsFromSlice(req.Arguments[1:])
-		if err != nil {
-			return err
-		}
-		expKey := block.NewTipSetKey(expCids...)
-
-		if err := env.(*node.Env).ChainAPI.ChainExport(req.Context, expKey, f); err != nil {
-			return err
-		}
-		return nil
 	},
 }
 

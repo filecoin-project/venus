@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/testhelpers"
 	"github.com/filecoin-project/venus/pkg/util"
 	"testing"
 
@@ -331,8 +332,8 @@ func (f *Builder) BuildOrphaTipset(parent *block.TipSet, width int, build func(b
 			ParentWeight:          parentWeight,
 			Parents:               parent.Key(),
 			Height:                height,
-			Messages:              types.EmptyTxMetaCID,
-			ParentMessageReceipts: types.EmptyReceiptsCID,
+			Messages:              testhelpers.EmptyTxMetaCID,
+			ParentMessageReceipts: testhelpers.EmptyReceiptsCID,
 			BLSAggregate:          &emptyBLSSig,
 			// Omitted fields below
 			//ParentStateRoot:       stateRoot,
