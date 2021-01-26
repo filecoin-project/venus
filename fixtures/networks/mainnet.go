@@ -3,6 +3,7 @@ package networks
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	"github.com/filecoin-project/venus/pkg/config"
 )
@@ -40,20 +41,24 @@ func Mainnet() *NetworkConf {
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 10 << 40,
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
-				UpgradeBreezeHeight:      41280,
+				UpgradeBreezeHeight:   41280,
+				UpgradeSmokeHeight:    51000,
+				UpgradeIgnitionHeight: 94000,
+				UpgradeRefuelHeight:   130800,
+				UpgradeActorsV2Height: 138720,
+				UpgradeTapeHeight:     140760,
+				UpgradeLiftoffHeight:  148888,
+				// This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
+				// Miners, clients, developers, custodians all need time to prepare.
+				// We still have upgrades and state changes to do, but can happen after signaling timing here.
+				UpgradeKumquatHeight:  170000,
+				UpgradeCalicoHeight:   265200,
+				UpgradePersianHeight:  265200 + (builtin2.EpochsInHour * 60),
+				UpgradeOrangeHeight:   336458,
+				UpgradeActorsV3Height: -1, // ToDo
+
 				BreezeGasTampingDuration: 120,
-				UpgradeSmokeHeight:       51000,
-				UpgradeIgnitionHeight:    94000,
-				UpgradeRefuelHeight:      130800,
-				UpgradeTapeHeight:        140760,
-				UpgradeLiftoffHeight:     148888,
-				UpgradeKumquatHeight:     170000,
-				UpgradeCalicoHeight:      265200,
-				UpgradePersianHeight:     265200 + 120*60,
-				UpgradeActorsV2Height:    138720,
-				UpgradeOrangeHeight:      336458,
-				UpgradeClausHeight:       343200,
-				UpgradeActorsV3Height:    -1, // TODO
+				UpgradeClausHeight:       343200, // 2020-12-22T02:00:00Z
 			},
 			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
 			AddressNetwork: address.Mainnet,
