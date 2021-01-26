@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
