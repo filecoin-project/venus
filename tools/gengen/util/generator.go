@@ -324,9 +324,6 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 	}
 	// define empty cid and ensure empty components exist in blockstore
 	emptyAMT := adt.MakeEmptyArray(adt.WrapStore(ctx, g.cst))
-	if err != nil {
-		return cid.Undef, err
-	}
 	emptyAMTCid, err := emptyAMT.Root()
 	if err != nil {
 		return cid.Undef, err
