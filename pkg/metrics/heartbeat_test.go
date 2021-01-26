@@ -193,9 +193,9 @@ func mustMakeTipset(t *testing.T, height abi.ChainEpoch) *block.TipSet {
 		Parents:               block.TipSetKey{},
 		ParentWeight:          fbig.Zero(),
 		Height:                height,
-		ParentMessageReceipts: types.EmptyMessagesCID,
-		Messages:              types.EmptyTxMetaCID,
-		ParentStateRoot:       types.EmptyTxMetaCID,
+		ParentMessageReceipts: emptycid.EmptyMessagesCID,
+		Messages:              emptycid.EmptyTxMetaCID,
+		ParentStateRoot:       emptycid.EmptyTxMetaCID,
 	})
 	if err != nil {
 		t.Fatal(err)

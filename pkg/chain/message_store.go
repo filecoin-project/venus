@@ -3,6 +3,7 @@ package chain
 import (
 	"bytes"
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -283,6 +284,7 @@ func (ms *MessageStore) LoadTipSetMesssages(ctx context.Context, ts *block.TipSe
 // storage and returns the slice implied by the collection
 func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]types.MessageReceipt, error) {
 	as := cbor.NewCborStore(ms.bs)
+	fmt.Println(c.String())
 	a, err := adt.AsArray(adt.WrapStore(ctx, as), c)
 	if err != nil {
 		return nil, err
@@ -313,7 +315,12 @@ func (ms *MessageStore) StoreReceipts(ctx context.Context, receipts []types.Mess
 		}
 	}
 
-	err := blockstoreutil.CopyBlockstore(ctx, tmp, ms.bs)
+	root, err := rectarr.Root()
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	err = blockstoreutil.CopyParticial(ctx, tmp, ms.bs, root)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -336,7 +343,7 @@ func (ms *MessageStore) loadAMTCids(ctx context.Context, c cid.Cid) ([]cid.Cid, 
 			return nil, xerrors.Errorf("failed to find receipt %d", i)
 		}
 
-		cids[i] = c
+		cids[i] = cid.Cid(oc)
 	}
 
 	return cids, nil
