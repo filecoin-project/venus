@@ -3,7 +3,6 @@ package adt
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,6 +16,7 @@ import (
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 )
 
 func TestDiffAdtArray(t *testing.T) {

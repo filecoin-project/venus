@@ -6,12 +6,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"math"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/go-state-types/rt"
 	ipfsblock "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -24,6 +24,8 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/migration/nv3"
 	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv4"
+	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv7"
+	"github.com/filecoin-project/specs-actors/v3/actors/migration/nv10"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -31,7 +33,6 @@ import (
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv7"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
@@ -64,6 +65,21 @@ type Upgrade struct {
 }
 
 type UpgradeSchedule []Upgrade
+
+type migrationLogger struct{}
+
+func (ml migrationLogger) Log(level rt.LogLevel, msg string, args ...interface{}) {
+	switch level {
+	case rt.DEBUG:
+		log.Debugf(msg, args...)
+	case rt.INFO:
+		log.Infof(msg, args...)
+	case rt.WARN:
+		log.Warnf(msg, args...)
+	case rt.ERROR:
+		log.Errorf(msg, args...)
+	}
+}
 
 func defaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConfig) UpgradeSchedule {
 	var us UpgradeSchedule
@@ -113,31 +129,36 @@ func defaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 		Height:    upgradeHeight.UpgradeOrangeHeight,
 		Network:   network.Version9,
 		Migration: nil,
+	}, {
+		Height:    upgradeHeight.UpgradeActorsV3Height,
+		Network:   network.Version10,
+		Migration: cf.UpgradeActorsV3,
+		Expensive: true,
 	}}
 
-	if upgradeHeight.UpgradeActorsV2Height == math.MaxInt64 { // disable actors upgrade
-		updates = []Upgrade{{
-			Height:    upgradeHeight.UpgradeBreezeHeight,
-			Network:   network.Version1,
-			Migration: cf.UpgradeFaucetBurnRecovery,
-		}, {
-			Height:    upgradeHeight.UpgradeSmokeHeight,
-			Network:   network.Version2,
-			Migration: nil,
-		}, {
-			Height:    upgradeHeight.UpgradeIgnitionHeight,
-			Network:   network.Version3,
-			Migration: cf.UpgradeIgnition,
-		}, {
-			Height:    upgradeHeight.UpgradeRefuelHeight,
-			Network:   network.Version3,
-			Migration: cf.UpgradeRefuel,
-		}, {
-			Height:    upgradeHeight.UpgradeLiftoffHeight,
-			Network:   network.Version3,
-			Migration: cf.UpgradeLiftoff,
-		}}
-	}
+	//if upgradeHeight.UpgradeActorsV2Height == math.MaxInt64 { // disable actors upgrade
+	//	updates = []Upgrade{{
+	//		Height:    upgradeHeight.UpgradeBreezeHeight,
+	//		Network:   network.Version1,
+	//		Migration: cf.UpgradeFaucetBurnRecovery,
+	//	}, {
+	//		Height:    upgradeHeight.UpgradeSmokeHeight,
+	//		Network:   network.Version2,
+	//		Migration: nil,
+	//	}, {
+	//		Height:    upgradeHeight.UpgradeIgnitionHeight,
+	//		Network:   network.Version3,
+	//		Migration: cf.UpgradeIgnition,
+	//	}, {
+	//		Height:    upgradeHeight.UpgradeRefuelHeight,
+	//		Network:   network.Version3,
+	//		Migration: cf.UpgradeRefuel,
+	//	}, {
+	//		Height:    upgradeHeight.UpgradeLiftoffHeight,
+	//		Network:   network.Version3,
+	//		Migration: cf.UpgradeLiftoff,
+	//	}}
+	//}
 
 	for _, u := range updates {
 		if u.Height < 0 {
@@ -1177,6 +1198,73 @@ func (c *ChainFork) UpgradeCalico(ctx context.Context, root cid.Cid, epoch abi.C
 		return cid.Undef, xerrors.Errorf("state-root mismatch: %s != %s", newRoot, newRoot2)
 	} else if _, _, err := newSm.GetActor(ctx, builtin0.InitActorAddr); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to load init actor after upgrade: %v", err)
+	}
+
+	return newRoot, nil
+}
+
+func (c *ChainFork) UpgradeActorsV3(ctx context.Context, root cid.Cid, epoch abi.ChainEpoch, ts *block.TipSet) (cid.Cid, error) {
+	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
+	store := ActorStore(ctx, buf)
+
+	// Load the state root.
+
+	var stateRoot vmstate.StateRoot
+	if err := store.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to decode state root: %v", err)
+	}
+
+	if stateRoot.Version != vmstate.StateTreeVersion1 {
+		return cid.Undef, xerrors.Errorf(
+			"expected state root version 1 for actors v3 upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	// Perform the migration
+
+	// TODO: store this somewhere and pre-migrate
+	cache := nv10.NewMemMigrationCache()
+	// TODO: tune this.
+	config := nv10.Config{MaxWorkers: 1}
+	newHamtRoot, err := nv10.MigrateStateTree(ctx, store, stateRoot.Actors, epoch, config, migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("upgrading to actors v2: %v", err)
+	}
+
+	// Persist the result.
+
+	newRoot, err := store.Put(ctx, &vmstate.StateRoot{
+		Version: vmstate.StateTreeVersion2,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to persist new state root: %v", err)
+	}
+
+	// Check the result.
+
+	// perform some basic sanity checks to make sure everything still works.
+	if newSm, err := vmstate.LoadState(ctx, store, newRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("state tree sanity load failed: %v", err)
+	} else if newRoot2, err := newSm.Flush(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("state tree sanity flush failed: %v", err)
+	} else if newRoot2 != newRoot {
+		return cid.Undef, xerrors.Errorf("state-root mismatch: %s != %s", newRoot, newRoot2)
+	} else if _, _, err := newSm.GetActor(ctx, init_.Address); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load init actor after upgrade: %v", err)
+	}
+
+	// Persist the new tree.
+
+	{
+		from := buf
+		to := buf.Read()
+
+		if err := Copy(ctx, from, to, newRoot); err != nil {
+			return cid.Undef, xerrors.Errorf("copying migrated tree: %v", err)
+		}
 	}
 
 	return newRoot, nil

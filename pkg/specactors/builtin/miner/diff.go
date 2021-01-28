@@ -2,8 +2,9 @@ package miner
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	
+	"github.com/filecoin-project/venus/pkg/specactors/adt"
 )
 
 func DiffPreCommits(pre, cur State) (*PreCommitChanges, error) {

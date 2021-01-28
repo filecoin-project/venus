@@ -2,6 +2,7 @@ package consensus_test
 
 import (
 	"context"
+	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 
@@ -38,8 +39,8 @@ func TestWeight(t *testing.T) {
 			WinCount: 1,
 		},
 		ParentStateRoot:       fakeRoot,
-		Messages:              types.EmptyMessagesCID,
-		ParentMessageReceipts: types.EmptyReceiptsCID,
+		Messages:              emptycid.EmptyMessagesCID,
+		ParentMessageReceipts: emptycid.EmptyReceiptsCID,
 	})
 
 	sel := consensus.NewChainSelector(cst, &viewer)
@@ -88,8 +89,8 @@ func TestWeight(t *testing.T) {
 				WinCount: 1,
 			},
 			ParentStateRoot:       fakeRoot,
-			Messages:              types.EmptyMessagesCID,
-			ParentMessageReceipts: types.EmptyReceiptsCID,
+			Messages:              emptycid.EmptyMessagesCID,
+			ParentMessageReceipts: emptycid.EmptyReceiptsCID,
 		})
 
 		// 49 + (4*256) + (4*1*1*256/2*5) = 1175
@@ -109,8 +110,8 @@ func TestWeight(t *testing.T) {
 					WinCount: 1,
 				},
 				ParentStateRoot:       fakeRoot,
-				Messages:              types.EmptyMessagesCID,
-				ParentMessageReceipts: types.EmptyReceiptsCID,
+				Messages:              emptycid.EmptyMessagesCID,
+				ParentMessageReceipts: emptycid.EmptyReceiptsCID,
 			},
 			&block.Block{
 				Miner:        minerAddr,
@@ -121,8 +122,8 @@ func TestWeight(t *testing.T) {
 					WinCount: 1,
 				},
 				ParentStateRoot:       fakeRoot,
-				Messages:              types.EmptyMessagesCID,
-				ParentMessageReceipts: types.EmptyReceiptsCID,
+				Messages:              emptycid.EmptyMessagesCID,
+				ParentMessageReceipts: emptycid.EmptyReceiptsCID,
 			},
 			&block.Block{
 				Miner:        minerAddr,
@@ -133,8 +134,8 @@ func TestWeight(t *testing.T) {
 					WinCount: 1,
 				},
 				ParentStateRoot:       fakeRoot,
-				Messages:              types.EmptyMessagesCID,
-				ParentMessageReceipts: types.EmptyReceiptsCID,
+				Messages:              emptycid.EmptyMessagesCID,
+				ParentMessageReceipts: emptycid.EmptyReceiptsCID,
 			},
 		)
 		// 0 + (4*256) + (4*3*1*256/2*5) = 1331

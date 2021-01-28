@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 	"github.com/filecoin-project/venus/pkg/util"
 	"testing"
 
@@ -288,12 +289,6 @@ func (f *Builder) Build(parent *block.TipSet, width int, build func(b *BlockBuil
 	// Compute and remember state for the tipset.
 	stateRoot, _ := f.ComputeState(tip)
 	f.tipStateCids[tip.Key().String()] = stateRoot
-	/*	tipsetMeta := &TipSetMetadata{
-			TipSetStateRoot: stateRoot,
-			TipSet:          tip,
-			TipSetReceipts:  types.EmptyReceiptsCID,
-		}
-		require.NoError(f.t, f.store.PutTipSetMetadata(context.TODO(), tipsetMeta))*/
 	return tip
 }
 
@@ -331,8 +326,8 @@ func (f *Builder) BuildOrphaTipset(parent *block.TipSet, width int, build func(b
 			ParentWeight:          parentWeight,
 			Parents:               parent.Key(),
 			Height:                height,
-			Messages:              types.EmptyTxMetaCID,
-			ParentMessageReceipts: types.EmptyReceiptsCID,
+			Messages:              emptycid.EmptyTxMetaCID,
+			ParentMessageReceipts: emptycid.EmptyReceiptsCID,
 			BLSAggregate:          &emptyBLSSig,
 			// Omitted fields below
 			//ParentStateRoot:       stateRoot,

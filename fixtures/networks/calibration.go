@@ -27,19 +27,22 @@ func Calibration() *NetworkConf {
 				int64(abi.RegisteredSealProof_StackedDrg64GiBV1),
 			},
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
-				UpgradeBreezeHeight:      -1,
+				UpgradeBreezeHeight:   -1,
+				UpgradeSmokeHeight:    -2,
+				UpgradeIgnitionHeight: -3,
+				UpgradeRefuelHeight:   -4,
+				UpgradeActorsV2Height: 30,
+				UpgradeTapeHeight:     60,
+				UpgradeLiftoffHeight:  -5,
+				UpgradeKumquatHeight:  90,
+				UpgradeCalicoHeight:   92000,
+				UpgradePersianHeight:  92000 + (120 * 60),
+				UpgradeOrangeHeight:   250666, // 2021-01-17T19:00:00Z
+				UpgradeActorsV3Height: 278026, // 2021-01-27T07:00:00Z
+
 				BreezeGasTampingDuration: 120,
-				UpgradeSmokeHeight:       -2,
-				UpgradeIgnitionHeight:    -3,
-				UpgradeRefuelHeight:      -4,
-				UpgradeTapeHeight:        60,
-				UpgradeLiftoffHeight:     -5,
-				UpgradeKumquatHeight:     90,
-				UpgradeActorsV2Height:    30,
-				UpgradeCalicoHeight:      92000,
-				UpgradePersianHeight:     92000 + (120 * 60),
-				UpgradeClausHeight:       161386,
-				UpgradeOrangeHeight:      -1,
+				UpgradeClausHeight:       161386, // 2020-12-17T19:00:00Z
+
 			},
 			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork: address.Testnet,
