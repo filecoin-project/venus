@@ -194,6 +194,13 @@ type MessagePool struct {
 	GetMaxFee DefaultMaxFeeFunc
 }
 
+func newDefaultMaxFeeFunc() DefaultMaxFeeFunc {
+	return func() (out abi.TokenAmount, err error) {
+		out = abi.TokenAmount{Int: types.DefaultDefaultMaxFee.Int}
+		return
+	}
+}
+
 type msgSet struct {
 	msgs          map[uint64]*types.SignedMessage
 	nextNonce     uint64
@@ -417,6 +424,7 @@ func New(api Provider, ds repo.Datastore, forkParams *config.ForkUpgradeConfig, 
 		journal: j,
 
 		gasPriceSchedule: gas.NewPricesSchedule(forkParams),
+		GetMaxFee: newDefaultMaxFeeFunc(),
 	}
 
 	// enable initial prunes

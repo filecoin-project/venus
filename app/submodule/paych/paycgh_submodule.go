@@ -14,6 +14,7 @@ func NewPaychSubmodule(ctx context.Context, params *paychmgr.ManagerParams) *Pay
 	return &PaychSubmodule{mgr}
 }
 func (ps *PaychSubmodule) Start() error {
+
 	return ps.pmgr.Start()
 }
 func (ps *PaychSubmodule) Stop() {

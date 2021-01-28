@@ -228,7 +228,6 @@ func (pm *Manager) CreateVoucher(ctx context.Context, ch address.Address, vouche
 	if err != nil {
 		return nil, err
 	}
-
 	return ca.createVoucher(ctx, ch, voucher)
 }
 

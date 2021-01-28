@@ -60,7 +60,10 @@ var addFundsCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		re.Emit(chanInfo.Channel.String())
+		chAddr, err := env.(*node.Env).PaychAPI.PaychGetWaitReady(req.Context, chanInfo.WaitSentinel)
+		if err := re.Emit(chAddr.String()); err != nil {
+			return err
+		}
 		return nil
 	},
 }
@@ -95,19 +98,6 @@ var voucherCmd = &cmds.Command{
 		"list":           voucherListCmd,
 		"best-spendable": voucherBestSpendableCmd,
 		"submit":         voucherSubmitCmd,
-	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		addrs, err := env.(*node.Env).PaychAPI.PaychList(req.Context)
-		if err != nil {
-			return err
-		}
-		buf := bytes.NewBuffer(nil)
-		for _, addr := range addrs {
-			buf.WriteString(addr.String())
-			buf.WriteString("\n")
-		}
-		re.Emit(buf.String())
-		return nil
 	},
 }
 
@@ -208,9 +198,6 @@ var collectCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		if err != nil {
-			return err
-		}
 		mwait, err := env.(*node.Env).ChainAPI.StateWaitMsg(req.Context, mcid, constants.MessageConfidence)
 		if err != nil {
 			return err
@@ -235,27 +222,38 @@ var voucherCreateCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		chanAddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
+			re.Emit("channel address format error")
 			return err
 		}
 		amtFil, err := types.ParseFIL(req.Arguments[1])
 		if err != nil {
+			re.Emit("amount format error")
 			return err
 		}
 		lane, err := strconv.ParseUint(req.Arguments[2], 10, 64)
 		if err != nil {
+			re.Emit("lane format error")
 			return err
 		}
+		fmt.Println("😀😀😀1")
 		res, err := env.(*node.Env).PaychAPI.PaychVoucherCreate(req.Context, chanAddr, big.NewFromGo(amtFil.Int), lane)
 		if err != nil {
+			re.Emit(err)
 			return err
 		}
+		fmt.Println("😀😀😀2")
 		if res.Voucher == nil {
-			return xerrors.Errorf("Could not create voucher: insufficient funds in channel, shortfall: %d", res.Shortfall)
+			err = xerrors.Errorf("Could not create voucher: insufficient funds in channel, shortfall: %d", res.Shortfall)
+			re.Emit(err)
+			return err
 		}
+		fmt.Println("😀😀😀3")
 		enc, err := encodedString(res.Voucher)
 		if err != nil {
+			re.Emit(err)
 			return err
 		}
+		fmt.Println("😀😀😀4")
 		re.Emit(enc)
 		return nil
 	},

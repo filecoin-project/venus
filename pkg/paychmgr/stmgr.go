@@ -2,13 +2,13 @@ package paychmgr
 
 import (
 	"context"
-	"errors"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 	"github.com/filecoin-project/venus/pkg/types"
+	"golang.org/x/xerrors"
 	"time"
 )
 
@@ -32,6 +32,16 @@ func newStateMangerAPI(cState *cst.ChainStateReadWriter, cnsns consensus.Protoco
 }
 
 func (o *stmgr) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *block.TipSet) (address.Address, error) {
+	switch addr.Protocol() {
+	case address.BLS, address.SECP256K1:
+		return addr, nil
+	case address.Actor:
+		return address.Undef, xerrors.New("cannot resolve actor address to key address")
+	default:
+	}
+	if ts == nil {
+		ts = o.cState.Head()
+	}
 	return o.cState.ResolveAddressAt(ctx, ts, addr)
 }
 
@@ -55,7 +65,7 @@ func (o *stmgr) Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.
 }
 func (o *stmgr) GetPaychState(ctx context.Context, addr address.Address, ts *block.TipSet) (*types.Actor, paych.State, error) {
 	if ts == nil {
-		return nil, nil, errors.New("tipset if nil")
+		ts = o.cState.Head()
 	}
 	act, err := o.cState.GetActorAt(ctx, ts, addr)
 	if err != nil {
@@ -69,6 +79,5 @@ func (o *stmgr) GetPaychState(ctx context.Context, addr address.Address, ts *blo
 	if err != nil {
 		return nil, nil, err
 	}
-
 	return act, actState, nil
 }
