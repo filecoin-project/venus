@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/venus/pkg/config"
+	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	blocks "github.com/ipfs/go-block-format"
@@ -444,7 +445,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 	t.Run("blocks present but messages don't decode", func(t *testing.T) {
 		//put msg to bs first
-		metaCid, err := msgStore.StoreTxMeta(ctx, types.TxMeta{SecpRoot: notDecodableBlock.Cid(), BLSRoot: types.EmptyMessagesCID})
+		metaCid, err := msgStore.StoreTxMeta(ctx, types.TxMeta{SecpRoot: notDecodableBlock.Cid(), BLSRoot: emptycid.EmptyMessagesCID})
 		require.NoError(t, err)
 		//copy a bs to bakebs contains genesis block and msg
 		bakeBs := bstore.NewBlockstore(datastore.NewMapDatastore())
@@ -771,7 +772,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 		require.NoError(t, err)
 		mgs := newMockableGraphsync(ctx, bakeBs, fc, t)
 		blk := requireSimpleValidBlock(t, 3, address.Undef)
-		metaCid, err := builder.StoreTxMeta(ctx, types.TxMeta{SecpRoot: notDecodableBlock.Cid(), BLSRoot: types.EmptyMessagesCID})
+		metaCid, err := builder.StoreTxMeta(ctx, types.TxMeta{SecpRoot: notDecodableBlock.Cid(), BLSRoot: emptycid.EmptyMessagesCID})
 		require.NoError(t, err)
 		blk.Messages = metaCid
 		blk.Miner = types.NewForTestGetter()()

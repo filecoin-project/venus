@@ -1,7 +1,6 @@
 package aerrors_test
 
 import (
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -9,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/xerrors"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
 func TestFatalError(t *testing.T) {

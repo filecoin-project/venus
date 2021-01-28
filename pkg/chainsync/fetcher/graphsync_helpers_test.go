@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 	"io"
 	"reflect"
 	"testing"
@@ -359,9 +360,9 @@ func simpleBlock() *block.Block {
 		ParentWeight:          fbig.Zero(),
 		Parents:               block.NewTipSetKey(),
 		Height:                0,
-		ParentStateRoot:       types.EmptyMessagesCID,
-		Messages:              types.EmptyTxMetaCID,
-		ParentMessageReceipts: types.EmptyReceiptsCID,
+		ParentStateRoot:       emptycid.EmptyMessagesCID,
+		Messages:              emptycid.EmptyTxMetaCID,
+		ParentMessageReceipts: emptycid.EmptyReceiptsCID,
 		BlockSig:              &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
 		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte{}},
 	}

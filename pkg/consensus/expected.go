@@ -577,13 +577,12 @@ func (c *Expected) checkBlockMessages(ctx context.Context, sigValidator *appstat
 		secpMsgs[i] = m
 	}
 
-	tmpStore := bstore.NewTemporary()
-	bmroot, err := chain.GetChainMsgRoot(ctx, tmpStore, blsMsgs)
+	bmroot, err := chain.GetChainMsgRoot(ctx, blsMsgs)
 	if err != nil {
 		return xerrors.Errorf("get blsMsgs root failed: %v", err)
 	}
 
-	smroot, err := chain.GetChainMsgRoot(ctx, tmpStore, secpMsgs)
+	smroot, err := chain.GetChainMsgRoot(ctx, secpMsgs)
 	if err != nil {
 		return xerrors.Errorf("get secpMsgs root failed: %v", err)
 	}

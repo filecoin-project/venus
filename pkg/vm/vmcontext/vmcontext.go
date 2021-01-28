@@ -109,7 +109,6 @@ func NewVM(actorImpls ActorImplLookup, vmOption VmOption) (*VM, error) {
 		}
 	}
 
-	//store := storage.NewStorage(buf)
 	return &VM{
 		context:    context.Background(),
 		actorImpls: actorImpls,

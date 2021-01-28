@@ -3,6 +3,7 @@ package syncer_test
 import (
 	"context"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
+	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 	"testing"
 	"time"
 
@@ -448,9 +449,9 @@ type poisonValidator struct {
 func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
 	stamp := ts.At(0).Timestamp
 	if pv.fullFailureTS == stamp {
-		return types.EmptyTxMetaCID, nil, errors.New("run state transition fails on poison timestamp")
+		return emptycid.EmptyTxMetaCID, nil, errors.New("run state transition fails on poison timestamp")
 	}
-	return types.EmptyTxMetaCID, nil, nil
+	return emptycid.EmptyTxMetaCID, nil, nil
 }
 
 func (pv *poisonValidator) ValidateMining(ctx context.Context, parent, ts *block.TipSet, parentWeight big.Int, parentReceiptRoot cid.Cid) error {

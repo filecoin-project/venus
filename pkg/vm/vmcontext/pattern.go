@@ -2,9 +2,10 @@ package vmcontext
 
 import (
 	"github.com/filecoin-project/go-address"
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
-	"github.com/ipfs/go-cid"
 )
 
 // IsAccountActor pattern checks if the caller is an account actor.
@@ -22,7 +23,7 @@ type IsAInitActor struct{}
 
 // IsMatch returns "True" if the patterns matches
 func (IsAInitActor) IsMatch(ctx runtime.PatternContext) bool {
-	return builtin.IsInittActor(ctx.CallerCode())
+	return builtin.IsInitActor(ctx.CallerCode())
 }
 
 // Any patterns always passses.

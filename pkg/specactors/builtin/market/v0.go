@@ -5,10 +5,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -155,7 +155,7 @@ func (s *dealStates0) decode(val *cbg.Deferred) (*DealState, error) {
 	return &ds, nil
 }
 
-func (s *dealStates0) ArrayValue() adt.Array {
+func (s *dealStates0) array() adt.Array {
 	return s.Array
 }
 
@@ -196,7 +196,7 @@ func (s *dealProposals0) decode(val *cbg.Deferred) (*DealProposal, error) {
 	return &dp, nil
 }
 
-func (s *dealProposals0) ArrayValue() adt.Array {
+func (s *dealProposals0) array() adt.Array {
 	return s.Array
 }
 

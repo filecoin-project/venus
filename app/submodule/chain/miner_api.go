@@ -271,7 +271,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerDeadlines(ctx context.Context, mad
 
 	out := make([]Deadline, deadlines)
 	if err := mas.ForEachDeadline(func(i uint64, dl miner.Deadline) error {
-		ps, err := dl.PostSubmissions()
+		ps, err := dl.PartitionsPoSted()
 		if err != nil {
 			return err
 		}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/config"
+	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 	"github.com/filecoin-project/venus/pkg/util/test"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -52,7 +53,7 @@ func requirePutTestChain(ctx context.Context, t *testing.T, cborStore *CborBlock
 		tsas := &chain.TipSetMetadata{
 			TipSet:          ts,
 			TipSetStateRoot: ts.At(0).ParentStateRoot,
-			TipSetReceipts:  types.EmptyReceiptsCID,
+			TipSetReceipts:  emptycid.EmptyReceiptsCID,
 		}
 		requirePutBlocksToCborStore(t, cborStore.cborStore, tsas.TipSet.Blocks()...)
 		require.NoError(t, cborStore.PutTipSetMetadata(ctx, tsas))
@@ -92,7 +93,7 @@ func TestPutTipSet(t *testing.T) {
 	genTsas := &chain.TipSetMetadata{
 		TipSet:          genTS,
 		TipSetStateRoot: genTS.At(0).ParentStateRoot,
-		TipSetReceipts:  types.EmptyReceiptsCID,
+		TipSetReceipts:  emptycid.EmptyReceiptsCID,
 	}
 	err := cs.PutTipSetMetadata(ctx, genTsas)
 	assert.NoError(t, err)
@@ -255,7 +256,7 @@ func TestGetMultipleByParent(t *testing.T) {
 	newChildTsas := &chain.TipSetMetadata{
 		TipSet:          otherLink1,
 		TipSetStateRoot: otherRoot1,
-		TipSetReceipts:  types.EmptyReceiptsCID,
+		TipSetReceipts:  emptycid.EmptyReceiptsCID,
 	}
 	require.NoError(t, cs.PutTipSetMetadata(ctx, newChildTsas))
 	gotNew1 := requireSiblingState(t, cs, otherLink1)
