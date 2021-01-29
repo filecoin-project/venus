@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/app/submodule/market"
 	"github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/pkg/config"
 	"net/http"
@@ -83,7 +82,7 @@ type Node struct {
 	storageNetworking *storagenetworking.StorageNetworkingSubmodule
 
 	// paychannel and market
-	market *market.MarketSubmodule
+	//market *market.MarketSubmodule
 	paych  *paych.PaychSubmodule
 
 	//
@@ -184,10 +183,10 @@ func (node *Node) Start(ctx context.Context) error {
 			return err
 		}
 
-		err = node.market.Start()
+		/*err = node.market.Start()
 		if err != nil {
 			return err
-		}
+		}*/
 
 	}
 	return nil
@@ -214,7 +213,7 @@ func (node *Node) Stop(ctx context.Context) {
 	node.paych.Stop()
 
 	//Stop market submodule
-	node.market.Stop()
+	//node.market.Stop()
 
 	if err := node.repo.Close(); err != nil {
 		fmt.Printf("error closing repo: %s\n", err)
@@ -328,7 +327,7 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		MingingAPI:           node.mining.API(),
 		MessagePoolAPI:       node.mpool.API(),
 		PaychAPI:             node.paych.API(),
-		MarketAPI:            node.market.API(),
+		//MarketAPI:            node.market.API(),
 	}
 
 	return &env
