@@ -415,13 +415,14 @@ func TestBlockNotLinkedRejected(t *testing.T) {
 
 	// The syncer fails to fetch this block so cannot sync it.
 	b1 := shadowBuilder.AppendOn(genesis, 1)
+	b2 := shadowBuilder.AppendOn(b1, 1)
 	target1 := &syncTypes.Target{
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", b1),
+		ChainInfo: *block.NewChainInfo("", "", b2),
 	}
 	assert.Error(t, syncer.HandleNewTipSet(ctx, target1))
 
