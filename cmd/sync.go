@@ -96,26 +96,6 @@ var storeStatusCmd = &cmds.Command{
 			count++
 		}
 
-		history := tracker.History()
-		writer.Println("History:")
-		for _, t := range history {
-			writer.Println("SyncTarget:", strconv.Itoa(count))
-			writer.Println("\tBase:", t.Base.EnsureHeight(), t.Base.Key().String())
-
-			writer.Println("\tTarget:", t.Head.EnsureHeight(), t.Head.Key().String())
-
-			if t.Current != nil {
-				writer.Println("\tCurrent:", t.Current.EnsureHeight(), t.Current.Key().String())
-			} else {
-				writer.Println("\tCurrent:")
-			}
-
-			writer.Println("\tStatus:", t.State.String())
-			writer.Println("\tErr:", t.Err)
-			writer.Println()
-			count++
-		}
-
 		if err := re.Emit(w); err != nil {
 			return err
 		}

@@ -94,6 +94,20 @@ func (v *View) InitResolveAddress(ctx context.Context, a addr.Address) (addr.Add
 	return rAddr, nil
 }
 
+// ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
+func (v *View) GetMinerWorkerRaw(ctx context.Context, maddr addr.Address) (addr.Address, error) {
+	minerState, err := v.loadMinerState(ctx, maddr)
+	if err != nil {
+		return addr.Undef, err
+	}
+
+	minerInfo, err := minerState.Info()
+	if err != nil {
+		return addr.Undef, err
+	}
+	return v.ResolveToKeyAddr(ctx, minerInfo.Worker)
+}
+
 // Returns public key address if id address is given
 func (v *View) AccountSignerAddress(ctx context.Context, a addr.Address) (addr.Address, error) {
 	if a.Protocol() == addr.SECP256K1 || a.Protocol() == addr.BLS {

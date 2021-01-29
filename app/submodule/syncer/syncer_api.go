@@ -70,7 +70,7 @@ func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *block.Bloc
 		SECPMessages: smsgs,
 	}
 
-	if err := syncerAPI.syncer.Consensus.ValidateMsgMeta(fb); err != nil {
+	if err := syncerAPI.syncer.BlockValidator.ValidateMsgMeta(fb); err != nil {
 		return xerrors.Errorf("provided messages did not match block: %v", err)
 	}
 

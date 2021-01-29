@@ -11,11 +11,8 @@ package consensus
 // except for errors in the case the stores do not have a mapping.
 import (
 	"context"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/pkg/block"
@@ -39,14 +36,4 @@ type Protocol interface {
 	Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*vm.Ret, error)
 
 	CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *block.TipSet) (*vm.Ret, error)
-
-	//Validation
-	ValidateMining(ctx context.Context, parent, ts *block.TipSet, parentWeight big.Int, parentReceiptRoot cid.Cid) error
-
-	ValidateMsgMeta(fblk *block.FullBlock) error
-
-	//should remove
-	GetLookbackTipSetForRound(ctx context.Context, ts *block.TipSet, round abi.ChainEpoch) (*block.TipSet, cid.Cid, error)
-
-	MinerEligibleToMine(ctx context.Context, addr address.Address, parentStateRoot cid.Cid, parentHeight abi.ChainEpoch, lookbackTs *block.TipSet) (bool, error)
 }

@@ -25,7 +25,7 @@ type MessageTopicValidator struct {
 
 // NewMessageTopicValidator returns a MessageTopicValidator using the input
 // signature and syntax validators.
-func NewMessageTopicValidator(syntaxVal consensus.MessageSyntaxValidator, sigVal *consensus.MessageSignatureValidator, opts ...pubsub.ValidatorOpt) *MessageTopicValidator {
+func NewMessageTopicValidator(syntaxVal *consensus.DefaultMessageSyntaxValidator, sigVal *consensus.MessageSignatureValidator, opts ...pubsub.ValidatorOpt) *MessageTopicValidator {
 	return &MessageTopicValidator{
 		opts: opts,
 		validator: func(ctx context.Context, p peer.ID, msg *pubsub.Message) bool {

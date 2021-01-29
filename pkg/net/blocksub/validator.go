@@ -3,13 +3,11 @@ package blocksub
 import (
 	"bytes"
 	"context"
-
 	"github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/metrics"
 )
 
@@ -23,8 +21,12 @@ type BlockTopicValidator struct {
 	opts      []pubsub.ValidatorOpt
 }
 
+type BlockHeaderValidator interface {
+	ValidateBlockHeader(ctx context.Context, blk *block.Block) error
+}
+
 // NewBlockTopicValidator retruns a BlockTopicValidator using `bv` for message validation
-func NewBlockTopicValidator(bv consensus.BlockSyntaxValidator, opts ...pubsub.ValidatorOpt) *BlockTopicValidator {
+func NewBlockTopicValidator(bv BlockHeaderValidator, opts ...pubsub.ValidatorOpt) *BlockTopicValidator {
 	return &BlockTopicValidator{
 		opts: opts,
 		validator: func(ctx context.Context, p peer.ID, msg *pubsub.Message) bool {
@@ -35,7 +37,8 @@ func NewBlockTopicValidator(bv consensus.BlockSyntaxValidator, opts ...pubsub.Va
 				mDecodeBlkFail.Inc(ctx, 1)
 				return false
 			}
-			if err := bv.ValidateSyntax(ctx, bm.Header); err != nil {
+			//todo validate block
+			if err := bv.ValidateBlockHeader(ctx, bm.Header); err != nil {
 				blockTopicLogger.Warnf("failed to validate block %s from peer %s: %s", bm.Header.Cid().String(), p.String(), err.Error())
 				mInvalidBlk.Inc(ctx, 1)
 				return false
