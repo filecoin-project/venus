@@ -61,6 +61,9 @@ var addFundsCmd = &cmds.Command{
 			return err
 		}
 		chAddr, err := env.(*node.Env).PaychAPI.PaychGetWaitReady(req.Context, chanInfo.WaitSentinel)
+		if err != nil {
+			return err
+		}
 		if err := re.Emit(chAddr); err != nil {
 			return err
 		}

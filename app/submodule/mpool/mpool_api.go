@@ -332,6 +332,6 @@ func (a *MessagePoolAPI) WalletSign(ctx context.Context, k address.Address, msg 
 	})
 }
 
-func (a *MessagePoolAPI)WalletHas(ctx context.Context, addr address.Address) (bool, error) {
-	return a.mp.walletAPI.WalletHas(ctx,addr)
+func (a *MessagePoolAPI) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
+	return a.mp.walletAPI.WalletHas(ctx, addr)
 }

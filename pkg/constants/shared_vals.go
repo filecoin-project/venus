@@ -47,8 +47,10 @@ func init() {
 // assuming 4000 messages per round, this lets us not lose any messages across a
 // 10 block reorg.
 const BlsSignatureCacheSize = 40000
+
 // Epochs
 const ForkLengthThreshold = Finality
+
 // Size of signature verification cache
 // 32k keeps the cache around 10MB in size, max
 const VerifSigCacheSize = 32000

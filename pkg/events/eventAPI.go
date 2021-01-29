@@ -27,6 +27,7 @@ type event struct {
 	*chain.ChainAPI
 }
 
+//nolint
 func newEventAPI(cia *chain.ChainInfoAPI, ca *chain.ChainAPI) EventAPI {
 	return &event{cia, ca}
 }

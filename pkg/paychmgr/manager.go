@@ -83,25 +83,25 @@ type Manager struct {
 	channels map[string]*channelAccessor
 }
 type ManagerParams struct {
-	*mpool.MessagePoolAPI
-	*chain.ChainInfoAPI
-	*chain.AccountAPI
-	*cst.ChainStateReadWriter
-	consensus.Protocol
-	repo.Datastore
+	MPoolAPI *mpool.MessagePoolAPI
+	ChainInfoAPI *chain.ChainInfoAPI
+	AccountAPI *chain.AccountAPI
+	CState *cst.ChainStateReadWriter
+	Protocol consensus.Protocol
+	DS repo.Datastore
 }
 
 func NewManager(ctx context.Context, params *ManagerParams) *Manager {
 	ctx, shutdown := context.WithCancel(ctx)
 
 	impl := &managerAPIImpl{
-		stateManagerAPI: newStateMangerAPI(params.ChainStateReadWriter, params.Protocol),
-		paychAPI:        newPaychAPI(params.MessagePoolAPI, params.ChainInfoAPI, params.AccountAPI),
+		stateManagerAPI: newStateMangerAPI(params.CState, params.Protocol),
+		paychAPI:        newPaychAPI(params.MPoolAPI, params.ChainInfoAPI, params.AccountAPI),
 	}
 	return &Manager{
 		ctx:      ctx,
 		shutdown: shutdown,
-		store:    &Store{params.Datastore},
+		store:    &Store{params.DS},
 		sa:       &stateAccessor{sm: impl},
 		channels: make(map[string]*channelAccessor),
 		pchapi:   impl,
