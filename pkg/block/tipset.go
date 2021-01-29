@@ -114,10 +114,6 @@ func (ts *TipSet) Key() TipSetKey {
 	return ts.key
 }
 
-func (ts *TipSet) Cids() []cid.Cid {
-	return ts.Cids()
-}
-
 // ToSlice returns an ordered slice of pointers to the tipset's blocks.
 func (ts *TipSet) ToSlice() []*Block {
 	slice := make([]*Block, len(ts.blocks))

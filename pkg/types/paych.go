@@ -12,11 +12,13 @@ type PaychStatus struct {
 	Direction   PCHDir
 }
 type PCHDir int
+
 const (
 	PCHUndef PCHDir = iota
 	PCHInbound
 	PCHOutbound
 )
+
 type InvocResult struct {
 	MsgCid         cid.Cid
 	Msg            *UnsignedMessage

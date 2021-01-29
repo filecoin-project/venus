@@ -83,12 +83,12 @@ type Manager struct {
 	channels map[string]*channelAccessor
 }
 type ManagerParams struct {
-	MPoolAPI *mpool.MessagePoolAPI
+	MPoolAPI     *mpool.MessagePoolAPI
 	ChainInfoAPI *chain.ChainInfoAPI
-	AccountAPI *chain.AccountAPI
-	CState *cst.ChainStateReadWriter
-	Protocol consensus.Protocol
-	DS repo.Datastore
+	AccountAPI   *chain.AccountAPI
+	CState       *cst.ChainStateReadWriter
+	Protocol     consensus.Protocol
+	DS           repo.Datastore
 }
 
 func NewManager(ctx context.Context, params *ManagerParams) *Manager {

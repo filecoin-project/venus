@@ -5,16 +5,16 @@ import (
 	"github.com/filecoin-project/venus/pkg/market"
 )
 
-type MarketSubmodule struct {
+type MarketSubmodule struct {//nolint
 	*mpool.MessagePoolAPI
 	fmgr *market.FundManager
 }
 
-func NewMarketModule(mpapi *mpool.MessagePoolAPI, params *market.FundManagerParams) *MarketSubmodule {
+func NewMarketModule(mpapi *mpool.MessagePoolAPI, params *market.FundManagerParams) *MarketSubmodule {//nolint
 	fmgr := market.NewFundManager(params)
 	return &MarketSubmodule{mpapi, fmgr}
 }
-func (mm *MarketSubmodule) API() MarketAPI {
+func (mm *MarketSubmodule) API() Market {
 	return newMarketAPI(mm.MessagePoolAPI, mm.fmgr)
 }
 

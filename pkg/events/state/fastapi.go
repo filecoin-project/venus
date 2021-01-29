@@ -8,27 +8,27 @@ import (
 	"github.com/filecoin-project/go-address"
 )
 
-type FastChainApiAPI interface {
+type FastChainAPI interface {
 	ChainAPI
 
 	ChainGetTipSet(context.Context, block.TipSetKey) (*block.TipSet, error)
 }
 
 type fastAPI struct {
-	FastChainApiAPI
+	FastChainAPI
 }
 
-func WrapFastAPI(api FastChainApiAPI) ChainAPI {
+func WrapFastAPI(api FastChainAPI) ChainAPI {
 	return &fastAPI{
 		api,
 	}
 }
 
 func (a *fastAPI) StateGetActor(ctx context.Context, actor address.Address, tsk block.TipSetKey) (*types.Actor, error) {
-	ts, err := a.FastChainApiAPI.ChainGetTipSet(ctx, tsk)
+	ts, err := a.FastChainAPI.ChainGetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, err
 	}
 
-	return a.FastChainApiAPI.StateGetActor(ctx, actor, ts.EnsureParents())
+	return a.FastChainAPI.StateGetActor(ctx, actor, ts.EnsureParents())
 }

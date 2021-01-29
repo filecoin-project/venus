@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-address"
 )
 
-type MarketAPI interface {
+type Market interface {
 	MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt big.Int) (cid.Cid, error)
 	MarketGetReserved(ctx context.Context, addr address.Address) (big.Int, error)
 	MarketReserveFunds(ctx context.Context, wallet address.Address, addr address.Address, amt big.Int) (cid.Cid, error)
@@ -25,7 +25,7 @@ type marketAPI struct {
 	fmgr *market.FundManager
 }
 
-func newMarketAPI(mp *mpool.MessagePoolAPI, fmgr *market.FundManager) MarketAPI {
+func newMarketAPI(mp *mpool.MessagePoolAPI, fmgr *market.FundManager) Market {
 	return &marketAPI{mp, fmgr}
 }
 func (a *marketAPI) MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt big.Int) (cid.Cid, error) {

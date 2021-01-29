@@ -424,7 +424,7 @@ func New(api Provider, ds repo.Datastore, forkParams *config.ForkUpgradeConfig, 
 		journal: j,
 
 		gasPriceSchedule: gas.NewPricesSchedule(forkParams),
-		GetMaxFee: newDefaultMaxFeeFunc(),
+		GetMaxFee:        newDefaultMaxFeeFunc(),
 	}
 
 	// enable initial prunes

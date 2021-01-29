@@ -20,7 +20,7 @@ var log = logging.Logger("payment-channel-settler")
 
 type API struct {
 	events.EventAPI
-	SettlerAPI
+	Settler
 }
 type PaymentChannelSettler interface {
 	check(ts *block.TipSet) (done bool, more bool, err error)
@@ -30,10 +30,10 @@ type PaymentChannelSettler interface {
 }
 type paymentChannelSettler struct {
 	ctx context.Context
-	api SettlerAPI
+	api Settler
 }
 
-func NewPaymentChannelSettler(ctx context.Context, api SettlerAPI) PaymentChannelSettler {
+func NewPaymentChannelSettler(ctx context.Context, api Settler) PaymentChannelSettler {
 	return &paymentChannelSettler{
 		ctx: ctx,
 		api: api,

@@ -5,7 +5,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 )
 
-type PaychSubmodule struct {
+type PaychSubmodule struct {//nolint
 	pmgr *paychmgr.Manager
 }
 
@@ -13,13 +13,15 @@ func NewPaychSubmodule(ctx context.Context, params *paychmgr.ManagerParams) *Pay
 	mgr := paychmgr.NewManager(ctx, params)
 	return &PaychSubmodule{mgr}
 }
-func (ps *PaychSubmodule) Start() error {
 
+func (ps *PaychSubmodule) Start() error {
 	return ps.pmgr.Start()
 }
+
 func (ps *PaychSubmodule) Stop() {
 	ps.pmgr.Stop()
 }
-func (ps *PaychSubmodule) API() PaychAPI {
+
+func (ps *PaychSubmodule) API() PaychanAPI {
 	return newPaychAPI(ps.pmgr)
 }

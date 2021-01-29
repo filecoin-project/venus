@@ -37,7 +37,7 @@ type FundManagerParams struct {
 type FundManager struct {
 	ctx      context.Context
 	shutdown context.CancelFunc
-	api      fundManagerAPI
+	api      fundManager
 	str      *Store
 
 	lk          sync.Mutex
@@ -45,7 +45,7 @@ type FundManager struct {
 }
 
 func NewFundManager(p *FundManagerParams) *FundManager {
-	fmgrapi := NewFundmanagerAPI(p)
+	fmgrapi := newFundmanager(p)
 	ctx, cancel := context.WithCancel(context.Background())
 	return &FundManager{
 		ctx:         ctx,
@@ -57,7 +57,7 @@ func NewFundManager(p *FundManagerParams) *FundManager {
 }
 
 // newFundManager is used by the tests
-func newFundManager(api fundManagerAPI, ds datastore.Batching) *FundManager {
+func newFundManager(api fundManager, ds datastore.Batching) *FundManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &FundManager{
 		ctx:         ctx,
@@ -645,7 +645,7 @@ func (frp *fundRequest) Completed() bool {
 
 // fundManagerEnvironment simplifies some API calls
 type fundManagerEnvironment struct {
-	api fundManagerAPI
+	api fundManager
 }
 
 func (env *fundManagerEnvironment) AvailableFunds(ctx context.Context, addr address.Address) (abi.TokenAmount, error) {

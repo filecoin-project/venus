@@ -195,7 +195,6 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("😍",from,from.String())
 	// verify voucher signature
 	vb, err := sv.SigningBytes()
 	if err != nil {

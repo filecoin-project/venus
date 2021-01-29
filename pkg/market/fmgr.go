@@ -15,28 +15,30 @@ import (
 
 // fundManagerAPI is the specific methods called by the FundManager
 // (used by the tests)
-type fundManagerAPI interface {
+type fundManager interface {
 	MpoolPushMessage(context.Context, *types.UnsignedMessage, *types.MessageSendSpec) (*types.SignedMessage, error)
 	StateMarketBalance(context.Context, address.Address, block.TipSetKey) (chain.MarketBalance, error)
 	StateWaitMsg(ctx context.Context, c cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error)
 }
 
 type fmgr struct {
-	*mpool.MessagePoolAPI
-	*chain.ChainInfoAPI
-	*chain.MinerStateAPI
+	MPoolAPI      *mpool.MessagePoolAPI
+	ChainInfoAPI  *chain.ChainInfoAPI
+	MinerStateAPI *chain.MinerStateAPI
 }
 
-func NewFundmanagerAPI(p *FundManagerParams) fundManagerAPI {
-	return &fmgr{
-		p.MessagePoolAPI,
-		p.ChainInfoAPI,
-		p.MinerStateAPI,
+func newFundmanager(p *FundManagerParams) fundManager {
+	fmAPI := &fmgr{
+		MPoolAPI:      p.MessagePoolAPI,
+		ChainInfoAPI:  p.ChainInfoAPI,
+		MinerStateAPI: p.MinerStateAPI,
 	}
+
+	return fmAPI
 }
 
 func (o *fmgr) MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
-	return o.MessagePoolAPI.MpoolPushMessage(ctx, msg, spec)
+	return o.MPoolAPI.MpoolPushMessage(ctx, msg, spec)
 }
 
 func (o *fmgr) StateMarketBalance(ctx context.Context, address address.Address, tsk block.TipSetKey) (chain.MarketBalance, error) {

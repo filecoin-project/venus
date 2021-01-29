@@ -6,49 +6,48 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
-	api "github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 )
 
-type SettlerAPI interface {
+type Settler interface {
 	PaychList(context.Context) ([]address.Address, error)
-	PaychStatus(ctx context.Context, pch address.Address) (*api.PaychStatus, error)
+	PaychStatus(ctx context.Context, pch address.Address) (*types.PaychStatus, error)
 	PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error)
 	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)
 	PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error)
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error)
 }
 
-type settlerAPI struct {
+type settler struct {
 	mgr   *paychmgr.Manager
 	ciAPI *chain.ChainInfoAPI
 }
 
-func NewSetterAPI(mgr *paychmgr.Manager, chainInfoAPI *chain.ChainInfoAPI) SettlerAPI {
-	return &settlerAPI{mgr, chainInfoAPI}
+func NewSetter(mgr *paychmgr.Manager, chainInfoAPI *chain.ChainInfoAPI) Settler {
+	return &settler{mgr, chainInfoAPI}
 }
 
-func (o *settlerAPI) PaychList(context.Context) ([]address.Address, error) {
+func (o *settler) PaychList(context.Context) ([]address.Address, error) {
 	return o.mgr.ListChannels()
 }
 
-func (o *settlerAPI) PaychStatus(ctx context.Context, pch address.Address) (*api.PaychStatus, error) {
+func (o *settler) PaychStatus(ctx context.Context, pch address.Address) (*types.PaychStatus, error) {
 	ci, err := o.mgr.GetChannelInfo(pch)
 	if err != nil {
 		return nil, err
 	}
-	return &api.PaychStatus{
+	return &types.PaychStatus{
 		ControlAddr: ci.Control,
 		Direction:   types.PCHDir(ci.Direction),
 	}, nil
 }
-func (o *settlerAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+func (o *settler) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
 	return o.mgr.CheckVoucherSpendable(ctx, ch, sv, secret, proof)
 }
-func (o *settlerAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) {
+func (o *settler) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) {
 	vi, err := o.mgr.ListVouchers(ctx, pch)
 	if err != nil {
 		return nil, err
@@ -60,9 +59,9 @@ func (o *settlerAPI) PaychVoucherList(ctx context.Context, pch address.Address) 
 	}
 	return out, nil
 }
-func (o *settlerAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
+func (o *settler) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
 	return o.mgr.SubmitVoucher(ctx, ch, sv, secret, proof)
 }
-func (o *settlerAPI) StateWaitMsg(ctx context.Context, cid cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error) {
+func (o *settler) StateWaitMsg(ctx context.Context, cid cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error) {
 	return o.ciAPI.StateWaitMsg(ctx, cid, confidence)
 }

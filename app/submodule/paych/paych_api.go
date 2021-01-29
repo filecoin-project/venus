@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-address"
 )
 
-type PaychAPI interface {
+type PaychanAPI interface {
 	PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*ChannelInfo, error)
 	PaychAvailableFunds(ctx context.Context, ch address.Address) (*paychmgr.ChannelAvailableFunds, error)
 	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*paychmgr.ChannelAvailableFunds, error)
@@ -24,7 +24,7 @@ type PaychAPI interface {
 	PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error)
 	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error)
 	PaychList(ctx context.Context) ([]address.Address, error)
-	PaychStatus(ctx context.Context, pch address.Address) (*PaychStatus, error)
+	PaychStatus(ctx context.Context, pch address.Address) (*types.PaychStatus, error)
 	PaychSettle(ctx context.Context, addr address.Address) (cid.Cid, error)
 	PaychCollect(ctx context.Context, addr address.Address) (cid.Cid, error)
 	PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) error
@@ -39,7 +39,7 @@ type paychAPI struct {
 	paychMgr *paychmgr.Manager
 }
 
-func newPaychAPI(p *paychmgr.Manager) PaychAPI {
+func newPaychAPI(p *paychmgr.Manager) PaychanAPI {
 	return &paychAPI{p}
 }
 
@@ -48,10 +48,7 @@ type PaymentInfo struct {
 	WaitSentinel cid.Cid
 	Vouchers     []*paych.SignedVoucher
 }
-type PaychStatus struct {
-	ControlAddr address.Address
-	Direction   types.PCHDir
-}
+
 type VoucherSpec struct {
 	Amount      big.Int
 	TimeLockMin abi.ChainEpoch
@@ -141,12 +138,12 @@ func (a *paychAPI) PaychList(ctx context.Context) ([]address.Address, error) {
 	return a.paychMgr.ListChannels()
 }
 
-func (a *paychAPI) PaychStatus(ctx context.Context, pch address.Address) (*PaychStatus, error) {
+func (a *paychAPI) PaychStatus(ctx context.Context, pch address.Address) (*types.PaychStatus, error) {
 	ci, err := a.paychMgr.GetChannelInfo(pch)
 	if err != nil {
 		return nil, err
 	}
-	return &PaychStatus{
+	return &types.PaychStatus{
 		ControlAddr: ci.Control,
 		Direction:   types.PCHDir(ci.Direction),
 	}, nil

@@ -28,7 +28,7 @@ type ChainAPI interface {
 }
 
 // StatePredicates has common predicates for responding to state changes
-type StatePredicates struct {
+type StatePredicates struct {//nolint
 	api ChainAPI
 	cst *cbor.BasicIpldStore
 }

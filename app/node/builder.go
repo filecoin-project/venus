@@ -285,7 +285,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		Protocol:     nd.syncer.Consensus,
 		DS:           b.repo.PaychDatastore(),
 	}
-	nd.paych = paych.NewPaychSubmodule(ctx, mgrps)
+	nd.paychan = paych.NewPaychSubmodule(ctx, mgrps)
 
 	/*nd.market = market.NewMarketModule(nd.mpool.API(),&market2.FundManagerParams{
 		nd.mpool.API(),
@@ -308,7 +308,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.mining,
 		nd.mpool,
 		nd.jwtAuth,
-		nd.paych,
+		nd.paychan,
 		//nd.market,
 	)
 	if err != nil {

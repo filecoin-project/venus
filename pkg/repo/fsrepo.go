@@ -61,7 +61,7 @@ type FSRepo struct {
 	walletDs  Datastore
 	chainDs   Datastore
 	metaDs    Datastore
-	marketDs  Datastore
+	//marketDs  Datastore
 	paychDs   Datastore
 	// lockfile is the file system lock to prevent others from opening the same repo.
 	lockfile io.Closer
@@ -254,9 +254,9 @@ func (r *FSRepo) loadFromDisk() error {
 		return errors.Wrap(err, "failed to open paych datastore")
 	}
 
-	if err := r.openMarketDataStore(); err != nil {
+	/*if err := r.openMarketDataStore(); err != nil {
 		return errors.Wrap(err, "failed to open market datastore")
-	}
+	}*/
 	return nil
 }
 
@@ -322,9 +322,9 @@ func (r *FSRepo) MetaDatastore() Datastore {
 	return r.metaDs
 }
 
-func (r *FSRepo) MarketDatastore() Datastore {
+/*func (r *FSRepo) MarketDatastore() Datastore {
 	return r.marketDs
-}
+}*/
 
 func (r *FSRepo) PaychDatastore() Datastore {
 	return r.paychDs
@@ -366,18 +366,17 @@ func (r *FSRepo) Close() error {
 		return errors.Wrap(err, "failed to close stagingDs datastore")
 	}
 
-	if err := r.paychDs.Close();err!=nil{
+	if err := r.paychDs.Close(); err != nil {
 		return errors.Wrap(err, "failed to close paych datastore")
 	}
 
-	if err := r.marketDs.Close();err!=nil{
+	/*if err := r.marketDs.Close(); err != nil {
 		return errors.Wrap(err, "failed to close market datastore")
-	}
+	}*/
 
 	if err := r.removeAPIFile(); err != nil {
 		return errors.Wrap(err, "error removing API file")
 	}
-
 
 	return r.lockfile.Close()
 }
@@ -499,14 +498,14 @@ func (r *FSRepo) openPaychDataStore() error {
 	}
 	return nil
 }
-func (r *FSRepo) openMarketDataStore() error {
+/*func (r *FSRepo) openMarketDataStore() error {
 	var err error
 	r.marketDs, err = badgerds.NewDatastore(filepath.Join(r.path, marketDatastoreProfix), badgerOptions())
 	if err != nil {
 		return err
 	}
 	return nil
-}
+}*/
 func (r *FSRepo) openWalletDatastore() error {
 	// TODO: read wallet datastore info from config, use that to open it up
 	ds, err := badgerds.NewDatastore(filepath.Join(r.path, walletDatastorePrefix), badgerOptions())

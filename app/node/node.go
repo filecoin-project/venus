@@ -83,7 +83,7 @@ type Node struct {
 
 	// paychannel and market
 	//market *market.MarketSubmodule
-	paych *paych.PaychSubmodule
+	paychan *paych.PaychSubmodule
 
 	//
 	// Protocols
@@ -178,7 +178,7 @@ func (node *Node) Start(ctx context.Context) error {
 			return err
 		}
 
-		err = node.paych.Start()
+		err = node.paychan.Start()
 		if err != nil {
 			return err
 		}
@@ -210,7 +210,7 @@ func (node *Node) Stop(ctx context.Context) {
 	node.chain.Stop(ctx)
 
 	//Stop paychannel submodule
-	node.paych.Stop()
+	node.paychan.Stop()
 
 	//Stop market submodule
 	//node.market.Stop()
@@ -326,7 +326,7 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		WalletAPI:            node.wallet.API(),
 		MingingAPI:           node.mining.API(),
 		MessagePoolAPI:       node.mpool.API(),
-		PaychAPI:             node.paych.API(),
+		PaychAPI:             node.paychan.API(),
 		//MarketAPI:            node.market.API(),
 	}
 

@@ -207,10 +207,9 @@ func TestFundManagerReserveByWallet(t *testing.T) {
 	s := setup(t)
 	defer s.fm.Stop()
 
-
 	walletAddrA, err := wallet.NewAddress(s.wllt, address.SECP256K1)
 	require.NoError(t, err)
-	walletAddrB, err :=  wallet.NewAddress(s.wllt, address.SECP256K1)
+	walletAddrB, err := wallet.NewAddress(s.wllt, address.SECP256K1)
 	require.NoError(t, err)
 
 	// Wait until all the reservation requests are queued up
@@ -692,12 +691,12 @@ func newMockFundManagerAPI(wallet address.Address) *mockFundManagerAPI {
 	}
 }
 
-func (mapi *mockFundManagerAPI)MpoolPushMessage(ctx context.Context,msg *types.UnsignedMessage,spec *types.MessageSendSpec) (*types.SignedMessage, error) {
+func (mapi *mockFundManagerAPI) MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
 	mapi.lk.Lock()
 	defer mapi.lk.Unlock()
 
 	smsg := &types.SignedMessage{Message: *msg}
-	smsgCid,_:=smsg.Cid()
+	smsgCid, _ := smsg.Cid()
 	mapi.sentMsgs[smsgCid] = &sentMsg{msg: smsg, ready: make(chan struct{})}
 
 	return smsg, nil
@@ -767,7 +766,7 @@ func (mapi *mockFundManagerAPI) completeMsg(msgCid cid.Cid) {
 	}
 }
 
-func (mapi *mockFundManagerAPI) StateMarketBalance(ctx context.Context,address address.Address,tsk block.TipSetKey) (chain.MarketBalance, error){
+func (mapi *mockFundManagerAPI) StateMarketBalance(ctx context.Context, address address.Address, tsk block.TipSetKey) (chain.MarketBalance, error) {
 	mapi.lk.Lock()
 	defer mapi.lk.Unlock()
 
@@ -800,12 +799,12 @@ func (mapi *mockFundManagerAPI) publish(addr address.Address, amt abi.TokenAmoun
 	mapi.escrow[addr] = escrow
 }
 
-func (mapi *mockFundManagerAPI)StateWaitMsg(ctx context.Context, c cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error) {
+func (mapi *mockFundManagerAPI) StateWaitMsg(ctx context.Context, c cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error) {
 	res := &cst.MsgLookup{
 		Message: c,
 		Receipt: types.MessageReceipt{
-			ExitCode: 0,
-			ReturnValue:   nil,
+			ExitCode:    0,
+			ReturnValue: nil,
 		},
 	}
 	ready := make(chan struct{})

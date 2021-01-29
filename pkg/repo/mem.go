@@ -23,7 +23,7 @@ type MemRepo struct {
 	Chain      Datastore
 	Meta       Datastore
 	Paych      Datastore
-	Market     Datastore
+	//Market     Datastore
 	version    uint
 	apiAddress string
 	token      []byte
@@ -41,7 +41,7 @@ func NewInMemoryRepo() *MemRepo {
 		Chain:   dss.MutexWrap(datastore.NewMapDatastore()),
 		Meta:    dss.MutexWrap(datastore.NewMapDatastore()),
 		Paych:   dss.MutexWrap(datastore.NewMapDatastore()),
-		Market:  dss.MutexWrap(datastore.NewMapDatastore()),
+		//Market:  dss.MutexWrap(datastore.NewMapDatastore()),
 		version: Version,
 	}
 }
@@ -89,11 +89,11 @@ func (mr *MemRepo) PaychDatastore() Datastore {
 	return mr.Paych
 }
 
-// ChainDatastore returns the chain datastore.
+/*// ChainDatastore returns the chain datastore.
 func (mr *MemRepo) MarketDatastore() Datastore {
 	return mr.Market
 }
-
+*/
 // ChainDatastore returns the chain datastore.
 func (mr *MemRepo) MetaDatastore() Datastore {
 	return mr.Meta
