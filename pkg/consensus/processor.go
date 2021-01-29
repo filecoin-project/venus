@@ -7,7 +7,6 @@ import (
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -29,11 +28,6 @@ type ApplyMessageResult struct {
 	ApplicationResult        // Application-level result, if error is nil.
 	Failure            error // Failure to apply the message
 	FailureIsPermanent bool  // Whether failure is permanent, has no chance of succeeding later.
-}
-
-type ChainRandomness interface {
-	SampleChainRandomness(ctx context.Context, head block.TipSetKey, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
-	ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 }
 
 // DefaultProcessor handles all block processing.

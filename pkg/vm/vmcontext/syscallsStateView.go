@@ -87,9 +87,6 @@ func (vm *syscallsStateView) MinerInfo(ctx context.Context, maddr address.Addres
 		panic(fmt.Errorf("failed To get miner info %s ", maddr))
 	}
 
-	if nv >= network.Version7 && minerInfo.SealProofType < abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
-		minerInfo.SealProofType += abi.RegisteredSealProof_StackedDrg2KiBV1_1
-	}
 	return &minerInfo, nil
 }
 func (vm *syscallsStateView) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version {

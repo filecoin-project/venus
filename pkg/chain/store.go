@@ -3,6 +3,7 @@ package chain
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/go-state-types/network"
 	"io"
 	"os"
 	"runtime/debug"
@@ -985,4 +986,47 @@ func (store *Store) GetParentReceipt(b *block.Block, i int) (*types.MessageRecei
 	}
 
 	return &r, nil
+}
+
+func (store *Store) GetLookbackTipSetForRound(ctx context.Context, ts *block.TipSet, round abi.ChainEpoch, version network.Version) (*block.TipSet, cid.Cid, error) {
+	var lbr abi.ChainEpoch
+
+	lb := policy.GetWinningPoStSectorSetLookback(version)
+	if round > lb {
+		lbr = round - lb
+	}
+
+	// more null blocks than our lookback
+	h, _ := ts.Height()
+	if lbr >= h {
+		// This should never happen at this point, but may happen before
+		// network version 3 (where the lookback was only 10 blocks).
+		st, err := store.GetTipSetStateRoot(ts)
+		if err != nil {
+			return nil, cid.Undef, err
+		}
+		return ts, st, nil
+	}
+
+	// Get the tipset after the lookback tipset, or the next non-null one.
+	nextTs, err := store.GetTipSetByHeight(ctx, ts, lbr+1, false)
+	if err != nil {
+		return nil, cid.Undef, xerrors.Errorf("failed to get lookback tipset+1: %v", err)
+	}
+
+	nextTh, _ := nextTs.Height()
+	if lbr > nextTh {
+		return nil, cid.Undef, xerrors.Errorf("failed to find non-null tipset %s (%d) which is known to exist, found %s (%d)", ts.Key(), h, nextTs.Key(), nextTh)
+	}
+
+	pKey, err := nextTs.Parents()
+	if err != nil {
+		return nil, cid.Undef, err
+	}
+	lbts, err := store.GetTipSet(pKey)
+	if err != nil {
+		return nil, cid.Undef, xerrors.Errorf("failed to resolve lookback tipset: %v", err)
+	}
+
+	return lbts, nextTs.Blocks()[0].ParentStateRoot, nil
 }

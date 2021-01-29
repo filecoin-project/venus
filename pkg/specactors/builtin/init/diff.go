@@ -2,12 +2,12 @@ package init
 
 import (
 	"bytes"
-	"github.com/filecoin-project/venus/pkg/specactors/adt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	typegen "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/venus/pkg/specactors/adt"
 )
 
 func DiffAddressMap(pre, cur State) (*AddressMapChanges, error) {

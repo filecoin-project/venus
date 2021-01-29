@@ -3,9 +3,8 @@ package cst
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/util"
-	"io"
-
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
@@ -28,12 +27,9 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	format "github.com/ipfs/go-ipld-format"
-	logging "github.com/ipfs/go-log/v2"
 	merkdag "github.com/ipfs/go-merkledag"
 	"github.com/pkg/errors"
 )
-
-var logStore = logging.Logger("plumbing/chain_store")
 
 type chainReadWriter interface {
 	GenesisRootCid() cid.Cid
@@ -47,6 +43,7 @@ type chainReadWriter interface {
 	ReadOnlyStateStore() util.ReadOnlyIpldStore
 	SubHeadChanges(ctx context.Context) chan []*chain.HeadChange
 	GetTipSetByHeight(context.Context, *block.TipSet, abi.ChainEpoch, bool) (*block.TipSet, error)
+	GetLookbackTipSetForRound(ctx context.Context, ts *block.TipSet, round abi.ChainEpoch, version network.Version) (*block.TipSet, cid.Cid, error)
 }
 
 // ChainStateReadWriter composes a:
@@ -317,20 +314,6 @@ func (chn *ChainStateReadWriter) SetHead(ctx context.Context, key block.TipSetKe
 // ReadOnlyStateStore returns a read-only state store.
 func (chn *ChainStateReadWriter) ReadOnlyStateStore() util.ReadOnlyIpldStore {
 	return chn.readWriter.ReadOnlyStateStore()
-}
-
-// ChainExport exports the chain from `head` up to and including the genesis block to `out`
-func (chn *ChainStateReadWriter) ChainExport(ctx context.Context, head block.TipSetKey, out io.Writer) error {
-	headTS, err := chn.GetTipSet(head)
-	if err != nil {
-		return err
-	}
-	logStore.Infof("starting CAR file export: %s", head.String())
-	if err := chain.Export(ctx, headTS, chn.readWriter, chn.messageProvider, chn, out); err != nil {
-		return err
-	}
-	logStore.Infof("exported CAR file with head: %s", head.String())
-	return nil
 }
 
 // ChainStateTree returns the state tree as a slice of IPLD nodes at the passed stateroot cid `c`.

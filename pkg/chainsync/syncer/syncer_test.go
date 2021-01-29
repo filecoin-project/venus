@@ -3,11 +3,11 @@ package syncer_test
 import (
 	"context"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
+	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
@@ -297,7 +297,6 @@ func TestNoUncessesaryFetch(t *testing.T) {
 
 	// A new syncer unable to fetch blocks from the network can handle a tipset that's already
 	// in the bsstore and linked to genesis.
-	emptyFetcher := chain.NewBuilder(t, address.Undef)
 	eval := &chain.FakeStateEvaluator{
 		MessageStore: builder.Mstore(),
 	}
@@ -308,7 +307,6 @@ func TestNoUncessesaryFetch(t *testing.T) {
 		builder.Mstore(),
 		builder.BlockStore(),
 		builder,
-		emptyFetcher,
 		clock.NewFake(time.Unix(1234567890, 0)),
 		&noopFaultDetector{},
 		fork.NewMockFork())
@@ -417,13 +415,14 @@ func TestBlockNotLinkedRejected(t *testing.T) {
 
 	// The syncer fails to fetch this block so cannot sync it.
 	b1 := shadowBuilder.AppendOn(genesis, 1)
+	b2 := shadowBuilder.AppendOn(b1, 1)
 	target1 := &syncTypes.Target{
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", b1),
+		ChainInfo: *block.NewChainInfo("", "", b2),
 	}
 	assert.Error(t, syncer.HandleNewTipSet(ctx, target1))
 
@@ -448,13 +447,13 @@ type poisonValidator struct {
 func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
 	stamp := ts.At(0).Timestamp
 	if pv.fullFailureTS == stamp {
-		return types.EmptyTxMetaCID, nil, errors.New("run state transition fails on poison timestamp")
+		return emptycid.EmptyTxMetaCID, nil, errors.New("run state transition fails on poison timestamp")
 	}
-	return types.EmptyTxMetaCID, nil, nil
+	return emptycid.EmptyTxMetaCID, nil, nil
 }
 
-func (pv *poisonValidator) ValidateMining(ctx context.Context, parent, ts *block.TipSet, parentWeight big.Int, parentReceiptRoot cid.Cid) error {
-	if pv.headerFailureTS == ts.At(0).Timestamp {
+func (pv *poisonValidator) ValidateFullBlock(ctx context.Context, blk *block.Block) error {
+	if pv.headerFailureTS == blk.Timestamp {
 		return errors.New("val semantic fails on poison timestamp")
 	}
 	return nil
@@ -560,7 +559,7 @@ func setup(ctx context.Context, t *testing.T) (*chain.Builder, *syncer.Syncer) {
 	return setupWithValidator(ctx, t, builder, eval, eval)
 }
 
-func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builder, fullVal syncer.FullBlockValidator, headerVal syncer.BlockValidator) (*chain.Builder, *syncer.Syncer) {
+func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builder, fullVal syncer.StateProcessor, headerVal syncer.BlockValidator) (*chain.Builder, *syncer.Syncer) {
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the bsstore, to which the syncer must ensure to put blocks.
 	sel := &chain.FakeChainSelector{}
@@ -570,7 +569,6 @@ func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builde
 		builder.Store(),
 		builder.Mstore(),
 		builder.BlockStore(),
-		builder,
 		builder,
 		clock.NewFake(time.Unix(1234567890, 0)),
 		&noopFaultDetector{}, fork.NewMockFork())

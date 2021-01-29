@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/crypto/sigs/bls"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
@@ -28,7 +27,6 @@ type MiningAPI struct { //nolint
 }
 
 func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk block.TipSetKey) (*block.MiningBaseInfo, error) {
-	consensusService := miningAPI.Ming.SyncModule.Consensus
 	chainStore := miningAPI.Ming.ChainModule.ChainReader
 	chainState := miningAPI.Ming.ChainModule.State
 	ts, err := chainStore.GetTipSet(tsk)
@@ -57,8 +55,8 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	if len(entries) > 0 {
 		rbase = entries[len(entries)-1]
 	}
-
-	lbts, lbst, err := miningAPI.Ming.SyncModule.Consensus.GetLookbackTipSetForRound(ctx, ts, round)
+	version := miningAPI.Ming.ChainModule.Fork.GetNtwkVersion(ctx, round)
+	lbts, lbst, err := miningAPI.Ming.ChainModule.ChainReader.GetLookbackTipSetForRound(ctx, ts, round, version)
 	if err != nil {
 		return nil, xerrors.Errorf("getting lookback miner actor state: %v", err)
 	}
@@ -125,7 +123,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	}
 
 	// TODO: Not ideal performance...This method reloads miner and power state (already looked up here and in GetPowerRaw)
-	eligible, err := consensusService.MinerEligibleToMine(ctx, maddr, pt, ts.EnsureHeight(), lbts)
+	eligible, err := miningAPI.Ming.SyncModule.BlockValidator.MinerEligibleToMine(ctx, maddr, pt, ts.EnsureHeight(), lbts)
 	if err != nil {
 		return nil, xerrors.Errorf("determining miner eligibility: %v", err)
 	}
@@ -181,13 +179,14 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *BlockTempl
 	if err != nil {
 		return nil, xerrors.Errorf("failed to save receipt: %v", err)
 	}
-
-	_, lbst, err := miningAPI.Ming.SyncModule.Consensus.GetLookbackTipSetForRound(ctx, pts, bt.Epoch)
+	version := miningAPI.Ming.ChainModule.Fork.GetNtwkVersion(ctx, bt.Epoch)
+	_, lbst, err := miningAPI.Ming.ChainModule.ChainReader.GetLookbackTipSetForRound(ctx, pts, bt.Epoch, version)
 	if err != nil {
 		return nil, xerrors.Errorf("getting lookback miner actor state: %v", err)
 	}
 
-	worker, err := consensus.GetMinerWorkerRaw(ctx, lbst, miningAPI.Ming.BlockStore.Blockstore, bt.Miner)
+	viewer := state.NewView(miningAPI.Ming.BlockStore.CborStore, lbst)
+	worker, err := viewer.GetMinerWorkerRaw(ctx, bt.Miner)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get miner worker: %v", err)
 	}

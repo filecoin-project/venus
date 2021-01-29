@@ -3,6 +3,7 @@ package chainsync
 import (
 	"context"
 	"github.com/filecoin-project/venus/pkg/chainsync/types"
+	"github.com/filecoin-project/venus/pkg/consensus"
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
@@ -32,18 +33,17 @@ type Manager struct {
 }
 
 // NewManager creates a new chain sync manager.
-func NewManager(fv syncer.FullBlockValidator,
-	hv syncer.BlockValidator,
+func NewManager(fv syncer.StateProcessor,
+	hv *consensus.BlockValidator,
 	cs syncer.ChainSelector,
 	s syncer.ChainReaderWriter,
 	m *chain.MessageStore,
 	bsstore blockstore.Blockstore,
-	f syncer.Fetcher,
 	exchangeClient exchange.Client,
 	c clock.Clock,
 	detector *slashing.ConsensusFaultDetector,
 	fork fork.IFork) (Manager, error) {
-	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, bsstore, f, exchangeClient, c, detector, fork)
+	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, bsstore, exchangeClient, c, detector, fork)
 	if err != nil {
 		return Manager{}, err
 	}

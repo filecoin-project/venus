@@ -77,26 +77,19 @@ func (fbv *FakeBlockValidator) ValidateReceiptsSyntax(ctx context.Context, recei
 
 // StubBlockValidator is a mockable block validator.
 type StubBlockValidator struct {
-	syntaxStubs   map[cid.Cid]error
-	semanticStubs map[cid.Cid]error
+	syntaxStubs map[cid.Cid]error
 }
 
 // NewStubBlockValidator creates a StubBlockValidator that allows errors to configured
 // for blocks passed to the Validate* methods.
 func NewStubBlockValidator() *StubBlockValidator {
 	return &StubBlockValidator{
-		syntaxStubs:   make(map[cid.Cid]error),
-		semanticStubs: make(map[cid.Cid]error),
+		syntaxStubs: make(map[cid.Cid]error),
 	}
 }
 
-// ValidateHeaderSemantic returns nil or error for stubbed block `child`.
-func (mbv *StubBlockValidator) ValidateSemantic(ctx context.Context, child *block.Block, parents *block.TipSet, _ uint64) error {
-	return mbv.semanticStubs[child.Cid()]
-}
-
 // ValidateSyntax return nil or error for stubbed block `blk`.
-func (mbv *StubBlockValidator) ValidateSyntax(ctx context.Context, blk *block.Block) error {
+func (mbv *StubBlockValidator) ValidateBlockHeader(ctx context.Context, blk *block.Block) error {
 	return mbv.syntaxStubs[blk.Cid()]
 }
 
@@ -105,67 +98,3 @@ func (mbv *StubBlockValidator) ValidateSyntax(ctx context.Context, blk *block.Bl
 func (mbv *StubBlockValidator) StubSyntaxValidationForBlock(blk *block.Block, err error) {
 	mbv.syntaxStubs[blk.Cid()] = err
 }
-
-// StubSemanticValidationForBlock stubs an error when the ValidateHeaderSemantic is called
-// on the with the given child block.
-func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *block.Block, err error) {
-	mbv.semanticStubs[child.Cid()] = err
-}
-
-//
-//// NewFakeProcessor creates a processor with a test validator and test rewarder
-//func NewFakeProcessor() *consensus.DefaultProcessor {
-//	return consensus.NewConfiguredProcessor(vm.DefaultActors, &vm.FakeSyscalls{}, &consensus.FakeChainRandomness{})
-//}
-//
-//// ApplyTestMessage sends a message directly to the vm, bypassing message
-//// validation
-//func ApplyTestMessage(st state.State, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch) (*consensus.ApplicationResult, error) {
-//	return applyTestMessageWithAncestors(vm.DefaultActors, st, store, msg, bh, nil)
-//}
-//
-//// ApplyTestMessageWithActors sends a message directly to the vm with a given set of builtin actors
-//func ApplyTestMessageWithActors(actors vm.ActorCodeLoader, st state.State, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch) (*consensus.ApplicationResult, error) {
-//	return applyTestMessageWithAncestors(actors, st, store, msg, bh, nil)
-//}
-//
-//// ApplyTestMessageWithGas uses the FakeBlockRewarder but the default SignedMessageValidator
-//func ApplyTestMessageWithGas(actors vm.ActorCodeLoader, st state.State, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch, minerOwner address.APIAddress) (*consensus.ApplicationResult, error) {
-//	applier := consensus.NewConfiguredProcessor(actors, &vm.FakeSyscalls{}, &consensus.FakeChainRandomness{})
-//	return newMessageApplier(msg, applier, st, store, bh, minerOwner, nil)
-//}
-//
-//func newMessageApplier(msg *types.UnsignedMessage, processor *consensus.DefaultProcessor, st state.State, vms vm.Storage, bh abi.ChainEpoch, minerOwner address.APIAddress, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
-//	return nil, nil
-//}
-//
-//// CreateAndApplyTestMessageFrom wraps the given parameters in a message and calls ApplyTestMessage.
-//func CreateAndApplyTestMessageFrom(t *testing.T, st state.State, vms vm.Storage, from address.APIAddress, to address.APIAddress, val, bh uint64, method abi.MethodNum, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
-//	t.Helper()
-//
-//	pdata, err := encoding.Encode(params)
-//	if err != nil {
-//		panic(err)
-//	}
-//	msg := types.NewUnsignedMessage(from, to, 0, types.NewAttoFILFromFIL(val), method, pdata)
-//	return applyTestMessageWithAncestors(vm.DefaultActors, st, vms, msg, abi.ChainEpoch(bh), ancestors)
-//}
-//
-//// CreateAndApplyTestMessage wraps the given parameters in a message and calls
-//// CreateAndApplyTestMessageFrom sending the message from address.TestAddress
-//func CreateAndApplyTestMessage(t *testing.T, st state.State, vms vm.Storage, to address.APIAddress, val, bh uint64, method abi.MethodNum, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
-//	return CreateAndApplyTestMessageFrom(t, st, vms, address.TestAddress, to, val, bh, method, ancestors, params...)
-//}
-//
-//func applyTestMessageWithAncestors(actors vm.ActorCodeLoader, st state.State, store vm.Storage, msg *types.UnsignedMessage, bh abi.ChainEpoch, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
-//	msg.GasFeeCap = types.NewGasFeeCap(1)
-//	msg.GasPremium = types.NewGasPremium(1)
-//	msg.GasLimit = types.NewGas(300)
-//
-//	ta := newTestApplier(actors)
-//	return newMessageApplier(msg, ta, st, store, bh, address.Undef, ancestors)
-//}
-//
-//func newTestApplier(actors vm.ActorCodeLoader) *consensus.DefaultProcessor {
-//	return consensus.NewConfiguredProcessor(actors, &vm.FakeSyscalls{}, &consensus.FakeChainRandomness{})
-//}

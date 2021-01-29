@@ -20,15 +20,12 @@ import (
 
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-graphsync"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync"
-	"github.com/filecoin-project/venus/pkg/chainsync/fetcher"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/net/blocksub"
@@ -56,6 +53,7 @@ type SyncerSubmodule struct { //nolint
 	Drand            beacon.Schedule
 	SyncProvider     ChainSyncProvider
 	SlashFilter      *slashfilter.SlashFilter
+	BlockValidator   *consensus.BlockValidator
 	// cancelChainSync cancels the context for chain sync subscriptions and handlers.
 	CancelChainSync context.CancelFunc
 	// faultCh receives detected consensus faults
@@ -84,18 +82,6 @@ func NewSyncerSubmodule(ctx context.Context,
 	postVerifier consensus.ProofVerifier) (*SyncerSubmodule, error) {
 	// setup validation
 	gasPriceSchedule := gas.NewPricesSchedule(config.Repo().Config().NetworkParams.ForkUpgradeParam)
-	blkValid := consensus.NewDefaultBlockValidator(config.ChainClock(), chn.MessageStore, chn.State, gasPriceSchedule)
-	msgValid := consensus.NewMessageSyntaxValidator()
-	syntax := consensus.WrappedSyntaxValidator{
-		BlockSyntaxValidator:   blkValid,
-		MessageSyntaxValidator: msgValid,
-	}
-
-	// register block validation on pubsub
-	btv := blocksub.NewBlockTopicValidator(blkValid)
-	if err := network.Pubsub.RegisterTopicValidator(btv.Topic(network.NetworkName), btv.Validator(), btv.Opts()...); err != nil {
-		return nil, errors.Wrap(err, "failed to register block validator")
-	}
 
 	genBlk, err := chn.ChainReader.GetGenesisBlock(ctx)
 	if err != nil {
@@ -107,40 +93,43 @@ func NewSyncerSubmodule(ctx context.Context,
 	sampler := chain.NewSampler(chn.ChainReader, genBlk.Ticket)
 	tickets := consensus.NewTicketMachine(sampler, chn.ChainReader)
 	stateViewer := consensus.AsDefaultStateViewer(state.NewViewer(blockstore.CborStore))
+	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, &stateViewer)
 
+	blkValid := consensus.NewBlockValidator(tickets,
+		blockstore.Blockstore,
+		chn.MessageStore,
+		chn.Drand,
+		blockstore.CborStore,
+		postVerifier,
+		&stateViewer,
+		chn.ChainReader,
+		nodeChainSelector,
+		chn.Fork,
+		config.Repo().Config().NetworkParams,
+		gasPriceSchedule,
+	)
+	// register block validation on pubsub
+	btv := blocksub.NewBlockTopicValidator(blkValid)
+	if err := network.Pubsub.RegisterTopicValidator(btv.Topic(network.NetworkName), btv.Validator(), btv.Opts()...); err != nil {
+		return nil, errors.Wrap(err, "failed to register block validator")
+	}
 	nodeConsensus := consensus.NewExpected(blockstore.CborStore,
 		blockstore.Blockstore,
-		&stateViewer,
 		config.BlockTime(),
-		tickets,
-		postVerifier,
 		chn.ChainReader,
-		config.ChainClock(),
-		chn.Drand,
 		chn.State,
 		chn.MessageStore,
 		chn.Fork,
 		config.Repo().Config().NetworkParams,
 		gasPriceSchedule,
 		postVerifier,
+		blkValid,
 	)
-	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, &stateViewer)
-
-	// setup fecher
-	network.GraphExchange.RegisterIncomingRequestHook(func(p peer.ID, requestData graphsync.RequestData, hookActions graphsync.IncomingRequestHookActions) {
-		_, has := requestData.Extension(fetcher.ChainsyncProtocolExtension)
-		if has {
-			// TODO: Don't just validate every request with the extension -- support only known selectors
-			// TODO: use separate block store for the chain (supported in GraphSync)
-			hookActions.ValidateRequest()
-		}
-	})
-	fetcher := fetcher.NewGraphSyncFetcher(ctx, network.GraphExchange, blockstore.Blockstore, syntax, config.ChainClock(), discovery.PeerTracker)
 
 	faultCh := make(chan slashing.ConsensusFault)
 	faultDetector := slashing.NewConsensusFaultDetector(faultCh)
 
-	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, blockstore.Blockstore, fetcher, discovery.ExchangeClient, config.ChainClock(), faultDetector, chn.Fork)
+	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, blockstore.Blockstore, discovery.ExchangeClient, config.ChainClock(), faultDetector, chn.Fork)
 	if err != nil {
 		return nil, err
 	}
@@ -165,6 +154,7 @@ func NewSyncerSubmodule(ctx context.Context,
 		Drand:              chn.Drand,
 		SyncProvider:       *NewChainSyncProvider(&chainSyncManager),
 		faultCh:            faultCh,
+		BlockValidator:     blkValid,
 	}, nil
 }
 

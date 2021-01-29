@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/crypto"
+	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -135,7 +136,7 @@ func TestBlockDaemon(t *testing.T) {
 		_, err := mockBlock(t)
 		require.NoError(t, err)
 
-		emptyMessagesLine := cmdClient.RunSuccessFirstLine(ctx, "show", "messages", types.EmptyMessagesCID.String(), "--enc", "json")
+		emptyMessagesLine := cmdClient.RunSuccessFirstLine(ctx, "show", "messages", emptycid.EmptyMessagesCID.String(), "--enc", "json")
 
 		var messageCollection []*types.SignedMessage
 		require.NoError(t, json.Unmarshal([]byte(emptyMessagesLine), &messageCollection))
@@ -155,7 +156,7 @@ func TestBlockDaemon(t *testing.T) {
 		_, err := mockBlock(t)
 		require.NoError(t, err)
 
-		emptyReceiptsLine := cmdClient.RunSuccessFirstLine(ctx, "show", "receipts", types.EmptyReceiptsCID.String(), "--enc", "json")
+		emptyReceiptsLine := cmdClient.RunSuccessFirstLine(ctx, "show", "receipts", emptycid.EmptyReceiptsCID.String(), "--enc", "json")
 
 		var receipts []Receipt
 		require.NoError(t, json.Unmarshal([]byte(emptyReceiptsLine), &receipts))

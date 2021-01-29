@@ -46,6 +46,7 @@ func (l Loc) Show() bool {
 		"reflect.",
 		"github.com/filecoin-project/lotus/chain/vm.(*Invoker).transform",
 		"github.com/filecoin-project/go-amt-ipld/",
+		"github.com/filecoin-project/go-amt-ipld/v2",
 	}
 	for _, pre := range ignorePrefix {
 		if strings.HasPrefix(l.Function, pre) {

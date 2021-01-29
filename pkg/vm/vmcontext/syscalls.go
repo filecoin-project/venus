@@ -88,7 +88,7 @@ func (sys syscalls) BatchVerifySeals(vis map[address.Address][]proof.SealVerifyI
 	out := make(map[address.Address][]bool)
 
 	sema := make(chan struct{}, BatchSealVerifyParallelism)
-
+	vmlog.Info("BatchVerifySeals miners:", len(vis))
 	var wg sync.WaitGroup
 	for addr, seals := range vis {
 		results := make([]bool, len(seals))
@@ -112,6 +112,6 @@ func (sys syscalls) BatchVerifySeals(vis map[address.Address][]proof.SealVerifyI
 		}
 	}
 	wg.Wait()
-
+	vmlog.Info("BatchVerifySeals Result miners:", len(out))
 	return out, nil
 }
