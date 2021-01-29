@@ -65,7 +65,7 @@ var rbfDenomBig = big.NewInt(RbfDenom)
 
 const RbfDenom = 256
 
-var RepublishInterval = time.Duration(10*constants.BlockDelaySecs+constants.PropagationDelaySecs) * time.Second
+var RepublishInterval = time.Duration(10*constants.MainNetBlockDelaySecs+constants.PropagationDelaySecs) * time.Second
 
 var minimumBaseFee = big.NewInt(int64(constants.MinimumBaseFee))
 var baseFeeLowerBoundFactor = big.NewInt(10)

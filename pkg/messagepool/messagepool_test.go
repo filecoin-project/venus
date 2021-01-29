@@ -102,7 +102,7 @@ func mkBlock(parents *block.TipSet, weightInc int64, ticketNonce uint64) *block.
 			panic(err)
 		}
 		height = height + 1
-		timestamp = parents.MinTimestamp() + constants.BlockDelaySecs
+		timestamp = parents.MinTimestamp() + constants.MainNetBlockDelaySecs
 		weight = tbig.Add(parents.Blocks()[0].ParentWeight, weight)
 		tsKey = parents.Key()
 	}

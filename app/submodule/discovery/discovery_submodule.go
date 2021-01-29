@@ -45,26 +45,26 @@ type discoveryConfig interface {
 
 // NewDiscoverySubmodule creates a new discovery submodule.
 func NewDiscoverySubmodule(ctx context.Context,
-	config discoveryConfig,
-	bsConfig *config.BootstrapConfig,
+	genesiGetter discoveryConfig,
+	config *config.Config,
 	network *network.NetworkSubmodule,
 	chainStore *chain.Store,
 	messageStore *chain.MessageStore,
 ) (*DiscoverySubmodule, error) {
-	periodStr := bsConfig.Period
+	periodStr := config.Bootstrap.Period
 	period, err := time.ParseDuration(periodStr)
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't parse bootstrap period %s", periodStr)
 	}
 
 	// bootstrapper maintains connections to some subset of addresses
-	ba := bsConfig.Addresses
+	ba := config.Bootstrap.Addresses
 	bpi, err := net.PeerAddrsToAddrInfo(ba)
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't parse bootstrap addresses [%s]", ba)
 	}
 
-	minPeerThreshold := bsConfig.MinPeerThreshold
+	minPeerThreshold := config.Bootstrap.MinPeerThreshold
 
 	exchangeClient := exchange.NewClient(network.Host, network.PeerMgr)
 	// create a bootstrapper
@@ -81,7 +81,7 @@ func NewDiscoverySubmodule(ctx context.Context,
 		BootstrapReady:  bootStrapReady,
 		PeerTracker:     peerTracker,
 		ExchangeClient:  exchangeClient,
-		HelloHandler:    discovery.NewHelloProtocolHandler(network.Host, network.PeerMgr, exchangeClient, chainStore, messageStore, config.GenesisCid(), network.NetworkName),
+		HelloHandler:    discovery.NewHelloProtocolHandler(network.Host, network.PeerMgr, exchangeClient, chainStore, messageStore, genesiGetter.GenesisCid(), time.Duration(config.NetworkParams.BlockDelay)*time.Second),
 		ExchangeHandler: exchange.NewServer(chainStore, messageStore, network.Host),
 		PeerDiscoveryCallbacks: []discovery.PeerDiscoveredCallback{func(msg *block.ChainInfo) {
 			bootStrapReady.Done()
