@@ -61,7 +61,7 @@ var addFundsCmd = &cmds.Command{
 			return err
 		}
 		chAddr, err := env.(*node.Env).PaychAPI.PaychGetWaitReady(req.Context, chanInfo.WaitSentinel)
-		if err := re.Emit(chAddr.String()); err != nil {
+		if err := re.Emit(chAddr); err != nil {
 			return err
 		}
 		return nil
@@ -77,12 +77,9 @@ var listCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		buf := bytes.NewBuffer(nil)
-		for _, addr := range addrs {
-			buf.WriteString(addr.String())
-			buf.WriteString("\n")
+		if err := re.Emit(addrs); err != nil {
+			return err
 		}
-		re.Emit(buf.String())
 		return nil
 	},
 }
@@ -128,7 +125,9 @@ var settleCmd = &cmds.Command{
 		if mwait.Receipt.ExitCode != 0 {
 			return xerrors.Errorf("settle message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
-		re.Emit(fmt.Sprintf("Settled channel %s\n", chanAddr))
+		if err := re.Emit(fmt.Sprintf("Settled channel %s", chanAddr)); err != nil {
+			return err
+		}
 		return nil
 	},
 }
@@ -149,9 +148,12 @@ var statusCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
+		//re.Emit(av)
 		w := bytes.NewBuffer(nil)
 		paychStatus(w, av)
-		re.Emit(w.String())
+		if err := re.Emit(w); err != nil {
+			return err
+		}
 		return nil
 	},
 }
@@ -178,7 +180,9 @@ var sbftCmd = &cmds.Command{
 		}
 		w := bytes.NewBuffer(nil)
 		paychStatus(w, av)
-		re.Emit(w.String())
+		if err := re.Emit(w); err != nil {
+			return err
+		}
 		return nil
 	},
 }
@@ -205,7 +209,10 @@ var collectCmd = &cmds.Command{
 		if mwait.Receipt.ExitCode != 0 {
 			return xerrors.Errorf("collect message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
-		re.Emit(fmt.Sprintf("Collected funds for channel %s\n", chanAddr))
+
+		if err := re.Emit(fmt.Sprintf("Collected funds for channel %s", chanAddr)); err != nil {
+			return err
+		}
 		return nil
 	},
 }
@@ -222,39 +229,31 @@ var voucherCreateCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		chanAddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
-			re.Emit("channel address format error")
 			return err
 		}
 		amtFil, err := types.ParseFIL(req.Arguments[1])
 		if err != nil {
-			re.Emit("amount format error")
 			return err
 		}
 		lane, err := strconv.ParseUint(req.Arguments[2], 10, 64)
 		if err != nil {
-			re.Emit("lane format error")
 			return err
 		}
-		fmt.Println("😀😀😀1")
 		res, err := env.(*node.Env).PaychAPI.PaychVoucherCreate(req.Context, chanAddr, big.NewFromGo(amtFil.Int), lane)
 		if err != nil {
-			re.Emit(err)
 			return err
 		}
-		fmt.Println("😀😀😀2")
 		if res.Voucher == nil {
-			err = xerrors.Errorf("Could not create voucher: insufficient funds in channel, shortfall: %d", res.Shortfall)
-			re.Emit(err)
-			return err
+			return xerrors.Errorf("Could not create voucher: insufficient funds in channel, shortfall: %d", res.Shortfall)
 		}
-		fmt.Println("😀😀😀3")
 		enc, err := encodedString(res.Voucher)
 		if err != nil {
-			re.Emit(err)
 			return err
 		}
-		fmt.Println("😀😀😀4")
-		re.Emit(enc)
+
+		if err := re.Emit(enc); err != nil {
+			return err
+		}
 		return nil
 	},
 }
@@ -280,7 +279,9 @@ var voucherCheckCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		re.Emit("voucher is valid")
+		if err := re.Emit("voucher is valid"); err != nil {
+			return err
+		}
 		return nil
 	},
 }
@@ -306,7 +307,9 @@ var voucherAddCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		re.Emit("add voucher successfully")
+		if err := re.Emit("add voucher successfully"); err != nil {
+			return err
+		}
 		return nil
 	},
 }
@@ -333,10 +336,12 @@ var voucherListCmd = &cmds.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(buff, "Lane %d, Nonce %d: %s, voucher: %s", v.Lane, v.Nonce, v.Amount.String(), str)
-			fmt.Fprintln(buff)
+			fmt.Fprintf(buff, "Lane %d, Nonce %d: %s, voucher: %s\n", v.Lane, v.Nonce, v.Amount.String(), str)
 		}
-		re.Emit(buff.String())
+
+		if err := re.Emit(buff); err != nil {
+			return err
+		}
 		return nil
 	},
 }
@@ -368,10 +373,11 @@ var voucherBestSpendableCmd = &cmds.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(buff, "Lane %d, Nonce %d: %s, voucher: %s", v.Lane, v.Nonce, v.Amount.String(), str)
-			fmt.Fprintln(buff)
+			fmt.Fprintf(buff, "Lane %d, Nonce %d: %s, voucher: %s\n", v.Lane, v.Nonce, v.Amount.String(), str)
 		}
-		re.Emit(buff.String())
+		if err := re.Emit(buff); err != nil {
+			return err
+		}
 		return nil
 	},
 }
@@ -403,7 +409,9 @@ var voucherSubmitCmd = &cmds.Command{
 		if mwait.Receipt.ExitCode != 0 {
 			return xerrors.Errorf("message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
-		re.Emit("channel updated successfully")
+		if err := re.Emit("channel updated successfully"); err != nil {
+			return err
+		}
 		return nil
 	},
 }
@@ -445,7 +453,6 @@ func paychStatus(writer io.Writer, avail *paychmgr.ChannelAvailableFunds) {
 	} else {
 		fmt.Fprint(writer, "Channel exists\n")
 	}
-
 	nameValues := [][]string{
 		{"Channel", avail.Channel.String()},
 		{"From", avail.From.String()},

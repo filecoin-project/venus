@@ -105,7 +105,6 @@ func (ti *TipStateCache) put(tsas *TipSetMetadata) error {
 func (ti *TipStateCache) Get(ts *block.TipSet) (*TipSetMetadata, error) {
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
-	fmt.Println("😅 ",ts,ti.tsasByID)
 	tsas, ok := ti.tsasByID.Get(ts.String())
 	if !ok {
 		tipSetMetadata, err := ti.loader.LoadTipsetMetadata(ts)

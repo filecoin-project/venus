@@ -178,10 +178,23 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *blo
 		msg.GasLimit = constants.BlockGasLimit
 	}
 
+	if msg.GasFeeCap == types.EmptyTokenAmount {
+		msg.GasFeeCap = abi.NewTokenAmount(0)
+	}
+
+	if msg.GasPremium == types.EmptyTokenAmount {
+		msg.GasPremium = abi.NewTokenAmount(0)
+	}
+
+	if msg.Value == types.EmptyTokenAmount {
+		msg.Value = abi.NewTokenAmount(0)
+	}
+
 	st, err := state.LoadState(ctx, cbor.NewCborStore(c.bstore), bstate)
 	if err != nil {
 		return nil, xerrors.Errorf("loading state: %v", err)
 	}
+
 	fromActor, found, err := st.GetActor(ctx, msg.From)
 	if err != nil || !found {
 		return nil, xerrors.Errorf("call raw get actor: %s", err)

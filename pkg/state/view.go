@@ -896,14 +896,10 @@ func (v *View) loadInitActor(ctx context.Context) (notinit.State, error) {
 	return notinit.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
-func (v *View)LoadPaychState(ctx context.Context,address addr.Address)(paychActor.State,error){
-	return v.loadPaychState(ctx,address)
+func (v *View)LoadPaychState(ctx context.Context,actr *types.Actor)(paychActor.State,error){
+	return v.loadPaychState(ctx,actr)
 }
-func (v *View)loadPaychState(ctx context.Context,address addr.Address)(paychActor.State,error) {
-	actr, err := v.loadActor(ctx, address)
-	if err != nil {
-		return nil, err
-	}
+func (v *View)loadPaychState(ctx context.Context,actr *types.Actor)(paychActor.State,error) {
 	return paychActor.Load(adt.WrapStore(context.TODO(), v.ipldStore), actr)
 }
 

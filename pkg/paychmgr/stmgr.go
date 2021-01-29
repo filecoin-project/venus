@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/consensus"
+	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 	"github.com/filecoin-project/venus/pkg/types"
 	"golang.org/x/xerrors"
@@ -22,6 +23,7 @@ type stateManagerAPI interface {
 type stmgr struct {
 	cState *cst.ChainStateReadWriter
 	cnsns  consensus.Protocol
+	fork.IFork
 }
 
 func newStateMangerAPI(cState *cst.ChainStateReadWriter, cnsns consensus.Protocol) stateManagerAPI {
@@ -42,7 +44,11 @@ func (o *stmgr) ResolveToKeyAddress(ctx context.Context, addr address.Address, t
 	if ts == nil {
 		ts = o.cState.Head()
 	}
-	return o.cState.ResolveAddressAt(ctx, ts, addr)
+	view, err := o.cState.StateView(ts)
+	if err != nil {
+		return address.Undef, err
+	}
+	return view.ResolveToKeyAddr(ctx, addr)
 }
 
 func (o *stmgr) Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*types.InvocResult, error) {
@@ -67,15 +73,15 @@ func (o *stmgr) GetPaychState(ctx context.Context, addr address.Address, ts *blo
 	if ts == nil {
 		ts = o.cState.Head()
 	}
-	act, err := o.cState.GetActorAt(ctx, ts, addr)
-	if err != nil {
-		return nil, nil, err
-	}
 	view, err := o.cState.ParentStateView(ts)
 	if err != nil {
 		return nil, nil, err
 	}
-	actState, err := view.LoadPaychState(ctx, addr)
+	act, err := view.LoadActor(ctx, addr)
+	if err != nil {
+		return nil, nil, err
+	}
+	actState, err := view.LoadPaychState(ctx, act)
 	if err != nil {
 		return nil, nil, err
 	}

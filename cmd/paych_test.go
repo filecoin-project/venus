@@ -37,5 +37,5 @@ func TestEncodedString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, str,"i1UB6g8OoDmykaDwj9F54FVqjDJ3wNMBGGRYIFByb2Zlc3JYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYg0IAaAJEAQIDBAEBQgAKGQPogPY")
+	assert.Equal(t, str, "i1UB6g8OoDmykaDwj9F54FVqjDJ3wNMBGGRYIFByb2Zlc3JYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYg0IAaAJEAQIDBAEBQgAKGQPogPY")
 }

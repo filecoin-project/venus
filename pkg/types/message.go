@@ -59,6 +59,8 @@ var EmptyReceiptsCID cid.Cid
 // EmptyTxMetaCID is the cid of a TxMeta wrapping empty cids
 var EmptyTxMetaCID cid.Cid
 
+var EmptyTokenAmount = abi.TokenAmount{}
+
 func init() {
 	tmpCst := cbor.NewCborStore(blockstore.NewBlockstore(datastore.NewMapDatastore()))
 	emptyAMTCid, err := amt.FromArray(context.Background(), tmpCst, []typegen.CBORMarshaler{})
