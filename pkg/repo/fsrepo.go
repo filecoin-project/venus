@@ -35,7 +35,7 @@ const (
 	chainDatastorePrefix  = "chain"
 	metaDatastorePrefix   = "metadata"
 	paychDatastorePrefix  = "paych"
-	marketDatastoreProfix = "market"
+	//marketDatastoreProfix = "market"
 	// dealsDatastorePrefix   = "deals"
 	snapshotStorePrefix    = "snapshots"
 	snapshotFilenamePrefix = "snapshot"
@@ -62,7 +62,7 @@ type FSRepo struct {
 	chainDs   Datastore
 	metaDs    Datastore
 	//marketDs  Datastore
-	paychDs   Datastore
+	paychDs Datastore
 	// lockfile is the file system lock to prevent others from opening the same repo.
 	lockfile io.Closer
 }
@@ -498,6 +498,7 @@ func (r *FSRepo) openPaychDataStore() error {
 	}
 	return nil
 }
+
 /*func (r *FSRepo) openMarketDataStore() error {
 	var err error
 	r.marketDs, err = badgerds.NewDatastore(filepath.Join(r.path, marketDatastoreProfix), badgerOptions())
