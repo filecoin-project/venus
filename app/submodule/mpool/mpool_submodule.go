@@ -3,6 +3,7 @@ package mpool
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/pkg/config"
 	"os"
 	"reflect"
 	"runtime"
@@ -56,10 +57,11 @@ type MessagePoolSubmodule struct { //nolint
 	MessageTopic *pubsub.Topic
 	MessageSub   pubsub.Subscription
 
-	MPool     *messagepool.MessagePool
-	chain     *chain.ChainSubmodule
-	network   *network.NetworkSubmodule
-	walletAPI *wallet.WalletAPI
+	MPool      *messagepool.MessagePool
+	chain      *chain.ChainSubmodule
+	network    *network.NetworkSubmodule
+	walletAPI  *wallet.WalletAPI
+	networkCfg *config.NetworkParamsConfig
 }
 
 func OpenFilesystemJournal(lr repo.Repo) (journal.Journal, error) {
@@ -76,6 +78,7 @@ func NewMpoolSubmodule(cfg messagepoolConfig,
 	chain *chain.ChainSubmodule,
 	syncer *syncer.SyncerSubmodule,
 	wallet *wallet.WalletSubmodule,
+	networkCfg *config.NetworkParamsConfig,
 ) (*MessagePoolSubmodule, error) {
 	mpp := messagepool.NewProvider(chain.ChainReader, chain.MessageStore, cfg.Repo().Config().NetworkParams, network.Pubsub)
 
@@ -99,10 +102,11 @@ func NewMpoolSubmodule(cfg messagepoolConfig,
 	}
 
 	return &MessagePoolSubmodule{
-		MPool:     mp,
-		chain:     chain,
-		walletAPI: wallet.API(),
-		network:   network,
+		MPool:      mp,
+		chain:      chain,
+		walletAPI:  wallet.API(),
+		network:    network,
+		networkCfg: networkCfg,
 	}, nil
 }
 
@@ -208,7 +212,7 @@ func (mp *MessagePoolSubmodule) Start(ctx context.Context) error {
 }
 
 func (mp *MessagePoolSubmodule) waitForSync(epochs int, subscribe func()) {
-	nearsync := time.Duration(epochs*int(constants.BlockDelaySecs)) * time.Second
+	nearsync := time.Duration(epochs*int(mp.networkCfg.BlockDelay)) * time.Second
 
 	// early check, are we synced at start up?
 	ts := mp.chain.ChainReader.GetHead()

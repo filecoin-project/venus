@@ -90,12 +90,6 @@ First install componets
 sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm; sudo yum install -y git gcc bzr jq pkgconfig clang llvm mesa-libGL-devel opencl-headers ocl-icd ocl-icd-devel hwloc-devel
 ```
 
-Load all the Git submodules.
-
-```sh
-git submodule update --init --recursive
-```
-
 Initialize build dependencies.
 
 ```sh
