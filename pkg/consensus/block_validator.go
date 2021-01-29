@@ -97,7 +97,7 @@ func NewBlockValidator(tv TicketValidator,
 	}
 }
 
-func (bv *BlockValidator) ValidateBlockHeader(ctx context.Context, blk *block.Block) error {
+func (bv *BlockValidator) ValidateBlockHeader(ctx context.Context, blk *block.Block) (err error) {
 	validationStart := time.Now()
 	defer func() {
 		logExpect.Debugw("block validation header", "Cid", blk.Cid(), "took", time.Since(validationStart), "height", blk.Height, "age", time.Since(time.Unix(int64(blk.Timestamp), 0)), "Err", err)
