@@ -277,14 +277,15 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	ciapi := chainAPI.ChainInfoAPI
 	aaip := chainAPI.AccountAPI
 
-	nd.paych = paych.NewPaychSubmodule(ctx, &paychmgr.ManagerParams{
+	mgrps := &paychmgr.ManagerParams{
 		MPoolAPI:     nd.mpool.API(),
 		ChainInfoAPI: &ciapi,
 		AccountAPI:   &aaip,
 		CState:       nd.chain.State,
 		Protocol:     nd.syncer.Consensus,
 		DS:           b.repo.PaychDatastore(),
-	})
+	}
+	nd.paych = paych.NewPaychSubmodule(ctx, mgrps)
 
 	/*nd.market = market.NewMarketModule(nd.mpool.API(),&market2.FundManagerParams{
 		nd.mpool.API(),

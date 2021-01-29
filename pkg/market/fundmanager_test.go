@@ -630,16 +630,16 @@ func setup(t *testing.T) *scaffold {
 	}
 
 	acctAddr := tutils.NewActorAddr(t, "addr")
-	mockApi := newMockFundManagerAPI(walletAddr)
+	mockAPI := newMockFundManagerAPI(walletAddr)
 	dstore := ds_sync.MutexWrap(ds)
-	fm := newFundManager(mockApi, dstore)
+	fm := newFundManager(mockAPI, dstore)
 	return &scaffold{
 		ctx:        ctx,
 		ds:         dstore,
 		wllt:       wllt,
 		walletAddr: walletAddr,
 		acctAddr:   acctAddr,
-		mockAPI:    mockApi,
+		mockAPI:    mockAPI,
 		fm:         fm,
 	}
 }

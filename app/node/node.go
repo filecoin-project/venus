@@ -83,7 +83,7 @@ type Node struct {
 
 	// paychannel and market
 	//market *market.MarketSubmodule
-	paych  *paych.PaychSubmodule
+	paych *paych.PaychSubmodule
 
 	//
 	// Protocols
