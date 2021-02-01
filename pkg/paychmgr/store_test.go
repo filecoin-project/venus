@@ -1,6 +1,7 @@
 package paychmgr
 
 import (
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -12,6 +13,7 @@ import (
 )
 
 func TestStore(t *testing.T) {
+	tf.UnitTest(t)
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 	addrs, err := store.ListChannels()
 	require.NoError(t, err)

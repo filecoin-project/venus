@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"github.com/filecoin-project/venus/pkg/block"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -13,6 +14,7 @@ import (
 )
 
 func TestTsCache(t *testing.T) {
+	tf.UnitTest(t)
 	tsc := newTSCache(50, &tsCacheAPIFailOnStorageCall{t: t})
 
 	h := abi.ChainEpoch(75)
@@ -159,6 +161,7 @@ func (tc *tsCacheAPIStorageCallCounter) ChainHead(ctx context.Context) (*block.T
 }
 
 func TestTsCacheEmpty(t *testing.T) {
+	tf.UnitTest(t)
 	// Calling best on an empty cache should just call out to the chain API
 	callCounter := &tsCacheAPIStorageCallCounter{t: t}
 	tsc := newTSCache(50, callCounter)

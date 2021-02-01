@@ -2,6 +2,7 @@ package paychmgr
 
 import (
 	"context"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 
@@ -23,6 +24,7 @@ import (
 // insufficient funds, then adding funds to the channel, then adding the
 // voucher again
 func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
+	tf.UnitTest(t)
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 

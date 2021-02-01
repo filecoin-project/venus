@@ -1,6 +1,7 @@
 package paychmgr
 
 import (
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -15,6 +16,7 @@ func testCids() []cid.Cid {
 }
 
 func TestMsgListener(t *testing.T) {
+	tf.UnitTest(t)
 	ml := newMsgListeners()
 
 	done := false
@@ -33,6 +35,7 @@ func TestMsgListener(t *testing.T) {
 }
 
 func TestMsgListenerNilErr(t *testing.T) {
+	tf.UnitTest(t)
 	ml := newMsgListeners()
 
 	done := false
@@ -50,6 +53,7 @@ func TestMsgListenerNilErr(t *testing.T) {
 }
 
 func TestMsgListenerUnsub(t *testing.T) {
+	tf.UnitTest(t)
 	ml := newMsgListeners()
 
 	done := false
@@ -72,6 +76,7 @@ func TestMsgListenerUnsub(t *testing.T) {
 }
 
 func TestMsgListenerMulti(t *testing.T) {
+	tf.UnitTest(t)
 	ml := newMsgListeners()
 
 	count := 0

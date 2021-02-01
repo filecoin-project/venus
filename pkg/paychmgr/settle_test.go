@@ -2,6 +2,7 @@ package paychmgr
 
 import (
 	"context"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -14,6 +15,7 @@ import (
 )
 
 func TestPaychSettle(t *testing.T) {
+	tf.UnitTest(t)
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 

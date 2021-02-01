@@ -5,6 +5,7 @@ import (
 	test "github.com/filecoin-project/venus/pkg/events/state/mock"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"testing"
@@ -32,6 +33,7 @@ func init() {
 }
 
 func TestMarketPredicates(t *testing.T) {
+	tf.UnitTest(t)
 	ctx := context.Background()
 	bs := bstore.NewTemporarySync()
 	store := adt2.WrapStore(ctx, cbornode.NewCborStore(bs))
@@ -330,6 +332,7 @@ func TestMarketPredicates(t *testing.T) {
 }
 
 func TestMinerSectorChange(t *testing.T) {
+	tf.UnitTest(t)
 	ctx := context.Background()
 	bs := bstore.NewTemporarySync()
 	store := adt2.WrapStore(ctx, cbornode.NewCborStore(bs))

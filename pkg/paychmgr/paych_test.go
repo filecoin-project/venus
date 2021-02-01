@@ -3,6 +3,7 @@ package paychmgr
 import (
 	"bytes"
 	"context"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -25,6 +26,7 @@ import (
 )
 
 func TestCheckVoucherValid(t *testing.T) {
+	tf.UnitTest(t)
 	ctx := context.Background()
 
 	fromKeyPrivate, fromKeyPublic := testGenerateKeyPair(t)
@@ -229,6 +231,7 @@ func TestCheckVoucherValid(t *testing.T) {
 }
 
 func TestCreateVoucher(t *testing.T) {
+	tf.UnitTest(t)
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
@@ -294,6 +297,7 @@ func TestCreateVoucher(t *testing.T) {
 }
 
 func TestAddVoucherDelta(t *testing.T) {
+	tf.UnitTest(t)
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
@@ -336,6 +340,7 @@ func TestAddVoucherDelta(t *testing.T) {
 }
 
 func TestAddVoucherNextLane(t *testing.T) {
+	tf.UnitTest(t)
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
@@ -386,6 +391,7 @@ func TestAddVoucherNextLane(t *testing.T) {
 }
 
 func TestAllocateLane(t *testing.T) {
+	tf.UnitTest(t)
 	// Set up a manager with a single payment channel
 	s := testSetupMgrWithChannel(t)
 
@@ -401,6 +407,7 @@ func TestAllocateLane(t *testing.T) {
 }
 
 func TestAllocateLaneWithExistingLaneState(t *testing.T) {
+	tf.UnitTest(t)
 	ctx := context.Background()
 
 	fromKeyPrivate, fromKeyPublic := testGenerateKeyPair(t)
@@ -450,6 +457,7 @@ func TestAllocateLaneWithExistingLaneState(t *testing.T) {
 }
 
 func TestAddVoucherInboundWalletKey(t *testing.T) {
+	tf.UnitTest(t)
 	ctx := context.Background()
 
 	fromKeyPrivate, fromKeyPublic := testGenerateKeyPair(t)
@@ -505,6 +513,7 @@ func TestAddVoucherInboundWalletKey(t *testing.T) {
 }
 
 func TestBestSpendable(t *testing.T) {
+	tf.UnitTest(t)
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
@@ -585,6 +594,7 @@ func TestBestSpendable(t *testing.T) {
 }
 
 func TestCheckSpendable(t *testing.T) {
+	tf.UnitTest(t)
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
@@ -649,6 +659,7 @@ func TestCheckSpendable(t *testing.T) {
 }
 
 func TestSubmitVoucher(t *testing.T) {
+	tf.UnitTest(t)
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel

@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
 
 	"sync"
@@ -233,6 +234,7 @@ func (fcs *fakeCS) notifDone() {
 var _ EventAPI = &fakeCS{}
 
 func TestAt(t *testing.T) {
+	tf.UnitTest(t)
 	fcs := &fakeCS{
 		t:   t,
 		h:   1,
@@ -298,6 +300,7 @@ func TestAt(t *testing.T) {
 }
 
 func TestAtDoubleTrigger(t *testing.T) {
+	tf.UnitTest(t)
 	fcs := &fakeCS{
 		t:   t,
 		h:   1,
@@ -340,6 +343,7 @@ func TestAtDoubleTrigger(t *testing.T) {
 }
 
 func TestAtNullTrigger(t *testing.T) {
+	tf.UnitTest(t)
 	fcs := &fakeCS{
 		t:   t,
 		h:   1,
@@ -374,6 +378,7 @@ func TestAtNullTrigger(t *testing.T) {
 }
 
 func TestAtNullConf(t *testing.T) {
+	tf.UnitTest(t)
 	fcs := &fakeCS{
 		t:   t,
 		h:   1,
@@ -413,6 +418,7 @@ func TestAtNullConf(t *testing.T) {
 }
 
 func TestAtStart(t *testing.T) {
+	tf.UnitTest(t)
 	fcs := &fakeCS{
 		t:   t,
 		h:   1,
@@ -447,6 +453,7 @@ func TestAtStart(t *testing.T) {
 }
 
 func TestAtStartConfidence(t *testing.T) {
+	tf.UnitTest(t)
 	fcs := &fakeCS{
 		t:   t,
 		h:   1,
@@ -477,6 +484,7 @@ func TestAtStartConfidence(t *testing.T) {
 }
 
 func TestAtChained(t *testing.T) {
+	tf.UnitTest(t)
 	fcs := &fakeCS{
 		t:   t,
 		h:   1,
@@ -511,6 +519,7 @@ func TestAtChained(t *testing.T) {
 }
 
 func TestAtChainedConfidence(t *testing.T) {
+	tf.UnitTest(t)
 	fcs := &fakeCS{
 		t:   t,
 		h:   1,
@@ -545,6 +554,7 @@ func TestAtChainedConfidence(t *testing.T) {
 }
 
 func TestAtChainedConfidenceNull(t *testing.T) {
+	tf.UnitTest(t)
 	fcs := &fakeCS{
 		t:   t,
 		h:   1,
@@ -580,6 +590,7 @@ func matchAddrMethod(to address.Address, m abi.MethodNum) func(msg *types.Unsign
 }
 
 func TestCalled(t *testing.T) {
+	tf.UnitTest(t)
 	fcs := &fakeCS{
 		t: t,
 		h: 1,
@@ -792,6 +803,7 @@ func TestCalled(t *testing.T) {
 }
 
 func TestCalledTimeout(t *testing.T) {
+	tf.UnitTest(t)
 	fcs := &fakeCS{
 		t: t,
 		h: 1,
@@ -866,6 +878,7 @@ func TestCalledTimeout(t *testing.T) {
 }
 
 func TestCalledOrder(t *testing.T) {
+	tf.UnitTest(t)
 	fcs := &fakeCS{
 		t: t,
 		h: 1,
@@ -929,6 +942,7 @@ func TestCalledOrder(t *testing.T) {
 }
 
 func TestCalledNull(t *testing.T) {
+	tf.UnitTest(t)
 	fcs := &fakeCS{
 		t: t,
 		h: 1,
@@ -994,6 +1008,7 @@ func TestCalledNull(t *testing.T) {
 }
 
 func TestRemoveTriggersOnMessage(t *testing.T) {
+	tf.UnitTest(t)
 	fcs := &fakeCS{
 		t: t,
 		h: 1,
@@ -1084,6 +1099,7 @@ type testStateChange struct {
 }
 
 func TestStateChanged(t *testing.T) {
+	tf.UnitTest(t)
 	fcs := &fakeCS{
 		t: t,
 		h: 1,
@@ -1172,6 +1188,7 @@ func TestStateChanged(t *testing.T) {
 }
 
 func TestStateChangedRevert(t *testing.T) {
+	tf.UnitTest(t)
 	fcs := &fakeCS{
 		t: t,
 		h: 1,
@@ -1250,6 +1267,7 @@ func TestStateChangedRevert(t *testing.T) {
 }
 
 func TestStateChangedTimeout(t *testing.T) {
+	tf.UnitTest(t)
 	fcs := &fakeCS{
 		t: t,
 		h: 1,
