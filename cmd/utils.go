@@ -15,7 +15,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/pkg/constants"
 )
 
 // SilentWriter writes to a stream, stopping after the first error and discarding output until
@@ -152,10 +151,6 @@ func cidsFromSlice(args []string) ([]cid.Cid, error) {
 }
 
 func EpochTime(curr, e abi.ChainEpoch, blockDelay uint64) string {
-	// 2k net is different from mainnet block delay seconds
-	if blockDelay == 0 {
-		blockDelay = constants.BlockDelaySecs
-	}
 	switch {
 	case curr > e:
 		return fmt.Sprintf("%d (%s ago)", e, durafmt.Parse(time.Second*time.Duration(int64(blockDelay)*int64(curr-e))).LimitFirstN(2))

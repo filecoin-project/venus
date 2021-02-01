@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"time"
 
@@ -64,7 +63,8 @@ type HelloProtocolHandler struct {
 	// for filling out our hello messages.
 	getHeaviestTipSet GetTipSetFunc
 
-	networkName string
+	//helloTimeOut is block delay
+	helloTimeOut time.Duration
 
 	peerMgr      fnet.IPeerMgr
 	exchange     exchange.Client
@@ -84,15 +84,16 @@ func NewHelloProtocolHandler(h host.Host,
 	chainStore *chain.Store,
 	messageStore *chain.MessageStore,
 	gen cid.Cid,
-	networkName string) *HelloProtocolHandler {
+	helloTimeOut time.Duration,
+) *HelloProtocolHandler {
 	return &HelloProtocolHandler{
 		host:         h,
 		genesis:      gen,
-		networkName:  networkName,
 		peerMgr:      peerMgr,
 		exchange:     exchange,
 		chainStore:   chainStore,
 		messageStore: messageStore,
+		helloTimeOut: helloTimeOut,
 	}
 }
 
@@ -111,8 +112,7 @@ func (h *HelloProtocolHandler) Register(peerDiscoveredCallback PeerDiscoveredCal
 
 func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	defer s.Close() // nolint: errcheck
-	timeout := time.Duration(constants.BlockDelaySecs) * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), h.helloTimeOut)
 	defer cancel()
 
 	hello, err := h.receiveHello(ctx, s)

@@ -243,7 +243,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.chainClock = b.chainClock
 
 	//todo chainge builder interface to read config
-	nd.discovery, err = discovery.NewDiscoverySubmodule(ctx, (*builder)(b), b.repo.Config().Bootstrap, nd.network, nd.chain.ChainReader, nd.chain.MessageStore)
+	nd.discovery, err = discovery.NewDiscoverySubmodule(ctx, (*builder)(b), b.repo.Config(), nd.network, nd.chain.ChainReader, nd.chain.MessageStore)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.discovery")
 	}
@@ -258,7 +258,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.wallet")
 	}
 
-	nd.mpool, err = mpool.NewMpoolSubmodule((*builder)(b), nd.network, nd.chain, nd.syncer, nd.wallet)
+	nd.mpool, err = mpool.NewMpoolSubmodule((*builder)(b), nd.network, nd.chain, nd.syncer, nd.wallet, b.repo.Config().NetworkParams)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.mpool")
 	}
