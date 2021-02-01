@@ -5,7 +5,6 @@ package crypto
 import (
 	"fmt"
 	"io"
-	"math"
 
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	cbg "github.com/whyrusleeping/cbor-gen"

@@ -28,7 +28,7 @@ func main() {
 	); err != nil {
 		panic(err)
 	}
-	
+
 	if err := gen.WriteTupleEncodersToFile("./pkg/types/cbor_gen.go", "types",
 		types.MessageReceipt{},
 		types.SignedMessage{},
