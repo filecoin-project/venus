@@ -6,13 +6,29 @@ import (
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/discovery"
+	"github.com/filecoin-project/venus/pkg/market"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/state"
+	"github.com/filecoin-project/venus/pkg/paychmgr"
 	gen "github.com/whyrusleeping/cbor-gen"
 )
 
 func main() {
+	if err := gen.WriteTupleEncodersToFile("./pkg/paychmgr/cbor_gen.go", "paychmgr",
+		paychmgr.VoucherInfo{},
+		paychmgr.ChannelInfo{},
+		paychmgr.MsgInfo{},
+	); err != nil {
+		panic(err)
+	}
+
+	if err := gen.WriteTupleEncodersToFile("./pkg/market/cbor_gen.go", "market",
+		market.FundedAddressState{},
+	); err != nil {
+		panic(err)
+	}
+	
 	if err := gen.WriteTupleEncodersToFile("./pkg/types/cbor_gen.go", "types",
 		types.MessageReceipt{},
 		types.SignedMessage{},
