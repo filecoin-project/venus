@@ -19,7 +19,7 @@ import (
 var log = logging.Logger("payment-channel-settler")
 
 type API struct {
-	events.EventAPI
+	events.IEvent
 	Settler
 }
 type PaymentChannelSettler interface {
