@@ -37,7 +37,7 @@ type Env struct {
 	MessagePoolAPI       *mpool.MessagePoolAPI
 
 	MarketAPI market.IMarket
-	PaychAPI paych.IPaychan
+	PaychAPI  paych.IPaychan
 }
 
 var _ cmds.Environment = (*Env)(nil)

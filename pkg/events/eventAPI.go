@@ -22,7 +22,7 @@ type IEvent interface {
 	StateGetActor(ctx context.Context, actor address.Address, tsk block.TipSetKey) (*types.Actor, error) // optional / for CalledMsg
 }
 
-type event struct {
+type event struct { //notlint
 	chain.IChain
 }
 
