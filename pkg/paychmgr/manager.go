@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -60,13 +60,13 @@ type VoucherCreateResult struct {
 
 // managerAPI defines all methods needed by the manager
 type managerAPI interface {
-	stateManagerAPI
+	statemanger.IStateManager
 	paychAPI
 }
 
 // managerAPIImpl is used to create a composite that implements managerAPI
 type managerAPIImpl struct {
-	stateManagerAPI
+	statemanger.IStateManager
 	paychAPI
 }
 
@@ -83,20 +83,18 @@ type Manager struct {
 	channels map[string]*channelAccessor
 }
 type ManagerParams struct {
-	MPoolAPI     *mpool.MessagePoolAPI
-	ChainInfoAPI *chain.ChainInfoAPI
-	AccountAPI   *chain.AccountAPI
-	CState       *cst.ChainStateReadWriter
-	Protocol     consensus.Protocol
-	DS           repo.Datastore
+	MPoolAPI mpool.IMessagePool
+	ChainAPI chain.IChain
+	Protocol consensus.Protocol
+	DS       repo.Datastore
+	SM statemanger.IStateManager
 }
 
 func NewManager(ctx context.Context, params *ManagerParams) *Manager {
 	ctx, shutdown := context.WithCancel(ctx)
-
 	impl := &managerAPIImpl{
-		stateManagerAPI: newStateMangerAPI(params.CState, params.Protocol),
-		paychAPI:        newPaychAPI(params.MPoolAPI, params.ChainInfoAPI, params.AccountAPI),
+		IStateManager: params.SM,
+		paychAPI:      newPaychAPI(params.MPoolAPI, params.ChainAPI),
 	}
 	return &Manager{
 		ctx:      ctx,

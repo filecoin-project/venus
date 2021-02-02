@@ -22,16 +22,16 @@ type fundManager interface {
 }
 
 type fmgr struct {
-	MPoolAPI      *mpool.MessagePoolAPI
-	ChainInfoAPI  *chain.ChainInfoAPI
-	MinerStateAPI *chain.MinerStateAPI
+	MPoolAPI      mpool.IMessagePool
+	ChainInfoAPI  chain.IChainInfo
+	MinerStateAPI chain.IMinerState
 }
 
 func newFundmanager(p *FundManagerParams) fundManager {
 	fmAPI := &fmgr{
-		MPoolAPI:      p.MessagePoolAPI,
-		ChainInfoAPI:  p.ChainInfoAPI,
-		MinerStateAPI: p.MinerStateAPI,
+		MPoolAPI:      p.MP,
+		ChainInfoAPI:  p.CI,
+		MinerStateAPI: p.MS,
 	}
 
 	return fmAPI

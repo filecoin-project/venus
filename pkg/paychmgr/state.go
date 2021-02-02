@@ -2,6 +2,7 @@ package paychmgr
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 
 	"github.com/filecoin-project/go-address"
 
@@ -10,7 +11,7 @@ import (
 )
 
 type stateAccessor struct {
-	sm stateManagerAPI
+	sm statemanger.IStateManager
 }
 
 func (ca *stateAccessor) loadPaychActorState(ctx context.Context, ch address.Address) (*types.Actor, paych.State, error) {

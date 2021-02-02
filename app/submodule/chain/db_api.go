@@ -4,7 +4,10 @@ import (
 	"context"
 	"github.com/ipfs/go-cid"
 )
-
+type IDB interface {
+	ChainReadObj(ctx context.Context, ocid cid.Cid) ([]byte, error)
+	ChainHasObj(ctx context.Context, ocid cid.Cid) (bool, error)
+}
 type DbAPI struct {
 	chain *ChainSubmodule
 }

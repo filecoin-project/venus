@@ -8,3 +8,12 @@ type ChainAPI struct { // nolint: golint
 	DbAPI
 	MinerStateAPI
 }
+
+type IChain interface {
+	IAccount
+	IActor
+	IBeacon
+	IDB
+	IMinerState
+	IChainInfo
+}

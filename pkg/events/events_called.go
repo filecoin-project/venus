@@ -67,7 +67,7 @@ type queuedEvent struct {
 // Manages chain head change events, which may be forward (new tipset added to
 // chain) or backward (chain branch discarded in favour of heavier branch)
 type hcEvents struct {
-	cs           EventAPI
+	cs           IEvent
 	tsc          *tipSetCache
 	ctx          context.Context
 	gcConfidence uint64
@@ -94,7 +94,7 @@ type hcEvents struct {
 	watcherEvents
 }
 
-func newHCEvents(ctx context.Context, cs EventAPI, tsc *tipSetCache, gcConfidence uint64) *hcEvents {
+func newHCEvents(ctx context.Context, cs IEvent, tsc *tipSetCache, gcConfidence uint64) *hcEvents {
 	e := hcEvents{
 		ctx:          ctx,
 		cs:           cs,
@@ -354,14 +354,14 @@ type headChangeAPI interface {
 // watcherEvents watches for a state change
 type watcherEvents struct {
 	ctx   context.Context
-	cs    EventAPI
+	cs    IEvent
 	hcAPI headChangeAPI
 
 	lk       sync.RWMutex
 	matchers map[triggerID]StateMatchFunc
 }
 
-func newWatcherEvents(ctx context.Context, hcAPI headChangeAPI, cs EventAPI) watcherEvents {
+func newWatcherEvents(ctx context.Context, hcAPI headChangeAPI, cs IEvent) watcherEvents {
 	return watcherEvents{
 		ctx:      ctx,
 		cs:       cs,
@@ -456,14 +456,14 @@ func (we *watcherEvents) StateChanged(check CheckFunc, scHnd StateChangeHandler,
 // messageEvents watches for message calls to actors
 type messageEvents struct {
 	ctx   context.Context
-	cs    EventAPI
+	cs    IEvent
 	hcAPI headChangeAPI
 
 	lk       sync.RWMutex
 	matchers map[triggerID]MsgMatchFunc
 }
 
-func newMessageEvents(ctx context.Context, hcAPI headChangeAPI, cs EventAPI) messageEvents {
+func newMessageEvents(ctx context.Context, hcAPI headChangeAPI, cs IEvent) messageEvents {
 	return messageEvents{
 		ctx:      ctx,
 		cs:       cs,
@@ -474,7 +474,7 @@ func newMessageEvents(ctx context.Context, hcAPI headChangeAPI, cs EventAPI) mes
 
 // Check if there are any new actor calls
 func (me *messageEvents) checkNewCalls(ts *block.TipSet) (map[triggerID]eventData, error) {
-	pts, err := me.cs.ChainGetTipSet(me.ctx, ts.EnsureParents()) // we actually care about messages in the parent tipset here
+	pts, err := me.cs.ChainGetTipSet(ts.EnsureParents()) // we actually care about messages in the parent tipset here
 	if err != nil {
 		log.Errorf("getting parent tipset in checkNewCalls: %s", err)
 		return nil, err

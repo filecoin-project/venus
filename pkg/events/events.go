@@ -30,7 +30,7 @@ type heightHandler struct {
 }
 
 type Events struct {
-	api EventAPI
+	api IEvent
 
 	tsc *tipSetCache
 	lk  sync.Mutex
@@ -42,7 +42,7 @@ type Events struct {
 	*hcEvents
 }
 
-func NewEvents(ctx context.Context, api EventAPI) *Events {
+func NewEvents(ctx context.Context, api IEvent) *Events {
 	gcConfidence := 2 * constants.ForkLengthThreshold
 
 	tsc := newTSCache(gcConfidence, api)
@@ -97,12 +97,7 @@ func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	notifs, err := e.api.ChainNotify(ctx)
-	if err != nil {
-		// Retry is handled by caller
-		return xerrors.Errorf("listenHeadChanges ChainNotify call failed: %w", err)
-	}
-
+	notifs := e.api.ChainNotify(ctx)
 	var cur []*chain.HeadChange
 	var ok bool
 

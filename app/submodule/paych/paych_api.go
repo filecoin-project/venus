@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-address"
 )
 
-type PaychanAPI interface {
+type IPaychan interface {
 	PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*ChannelInfo, error)
 	PaychAvailableFunds(ctx context.Context, ch address.Address) (*paychmgr.ChannelAvailableFunds, error)
 	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*paychmgr.ChannelAvailableFunds, error)
@@ -39,7 +39,7 @@ type paychAPI struct {
 	paychMgr *paychmgr.Manager
 }
 
-func newPaychAPI(p *paychmgr.Manager) PaychanAPI {
+func newPaychAPI(p *paychmgr.Manager) IPaychan {
 	return &paychAPI{p}
 }
 

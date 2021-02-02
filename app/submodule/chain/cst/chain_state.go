@@ -31,6 +31,38 @@ import (
 	"github.com/pkg/errors"
 )
 
+type IChainReadWriter interface {
+	Head() *block.TipSet
+	ChainNotify(ctx context.Context) chan []*chain.HeadChange
+	GetHeadHeight() (abi.ChainEpoch, error)
+	GetGenesisBlock(ctx context.Context) (*block.Block, error)
+	GetTipSet(key block.TipSetKey) (*block.TipSet, error)
+	GetTipSetByHeight(ctx context.Context, ts *block.TipSet, h abi.ChainEpoch, prev bool) (*block.TipSet, error)
+	GetTipSetState(ctx context.Context, ts *block.TipSet) (vmstate.Tree, error)
+	Ls(ctx context.Context, key block.TipSetKey) (*chain.TipsetIterator, error)
+	GetBlock(ctx context.Context, id cid.Cid) (*block.Block, error)
+	ReadObj(ctx context.Context, obj cid.Cid) ([]byte, error)
+	HasObj(ctx context.Context, obj cid.Cid) (bool, error)
+	GetMessages(ctx context.Context, metaCid cid.Cid) ([]*types.UnsignedMessage, []*types.SignedMessage, error)
+	GetReceipts(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error)
+	SampleChainRandomness(ctx context.Context, tsk block.TipSetKey, tag acrypto.DomainSeparationTag,
+		epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	GetTipSetStateRoot(ctx context.Context, ts *block.TipSet) (cid.Cid, error)
+	GetActorAt(ctx context.Context, ts *block.TipSet, addr address.Address) (*types.Actor, error)
+	ResolveAddressAt(ctx context.Context, ts *block.TipSet, addr address.Address) (address.Address, error)
+	LsActors(ctx context.Context) (map[address.Address]*types.Actor, error)
+	GetActorSignature(ctx context.Context, actorAddr address.Address, method abi.MethodNum) (vm.ActorMethodSignature, error)
+	SetHead(ctx context.Context, key block.TipSetKey) error
+	ReadOnlyStateStore() util.ReadOnlyIpldStore
+	ChainStateTree(ctx context.Context, c cid.Cid) ([]format.Node, error)
+	StateView(ts *block.TipSet) (*state.View, error)
+	ParentStateView(ts *block.TipSet) (*state.View, error)
+	AccountStateView(ts *block.TipSet) (state.AccountStateView, error)
+	FaultStateView(ts *block.TipSet) (slashing.FaultStateView, error)
+	Store(ctx context.Context) adt.Store
+}
+
 type chainReadWriter interface {
 	GenesisRootCid() cid.Cid
 	GetHead() *block.TipSet

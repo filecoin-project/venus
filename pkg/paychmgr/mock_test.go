@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -23,6 +24,10 @@ import (
 type mockManagerAPI struct {
 	*mockStateManager
 	*mockPaychAPI
+}
+
+func (m mockManagerAPI) GetMarketState(ctx context.Context, ts *block.TipSet) (market.State, error) {
+	return nil, nil
 }
 
 func newMockManagerAPI() *mockManagerAPI {

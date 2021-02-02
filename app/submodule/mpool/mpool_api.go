@@ -19,6 +19,30 @@ import (
 	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
+type IMessagePool interface {
+	DeleteByAdress(ctx context.Context, addr address.Address) error
+	MpoolPublish(ctx context.Context, addr address.Address) error
+	MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error)
+	MpoolGetConfig(context.Context) (*messagepool.MpoolConfig, error)
+	MpoolSetConfig(ctx context.Context, cfg *messagepool.MpoolConfig) error
+	MpoolSelect(ctx context.Context, tsk block.TipSetKey, ticketQuality float64) ([]*types.SignedMessage, error)
+	MpoolPending(ctx context.Context, tsk block.TipSetKey) ([]*types.SignedMessage, error)
+	MpoolClear(ctx context.Context, local bool) error
+	MpoolPushUntrusted(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error)
+	MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (*types.SignedMessage, error)
+	MpoolBatchPush(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error)
+	MpoolBatchPushUntrusted(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error)
+	MpoolBatchPushMessage(ctx context.Context, msgs []*types.UnsignedMessage, spec *types.MessageSendSpec) ([]*types.SignedMessage, error)
+	MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error)
+	MpoolSub(ctx context.Context) (<-chan messagepool.MpoolUpdate, error)
+	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
+	GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec, tsk block.TipSetKey) (*types.UnsignedMessage, error)
+	GasEstimateFeeCap(ctx context.Context, msg *types.UnsignedMessage, maxqueueblks int64, tsk block.TipSetKey) (big.Int, error)
+	GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk block.TipSetKey) (big.Int, error)
+	WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error)
+	WalletHas(ctx context.Context, addr address.Address) (bool, error)
+}
+
 type MessagePoolAPI struct {
 	pushLocks *messagepool.MpoolLocker
 	lk        sync.Mutex

@@ -96,6 +96,7 @@ type FullNode struct {
 	StateSectorExpiration              func(context.Context, address.Address, abi.SectorNumber, block.TipSetKey) (*miner.SectorExpiration, error)
 	StateMinerSectorCount              func(context.Context, address.Address, block.TipSetKey) (chainApiTypes.MinerSectors, error)
 	StateMarketBalance                 func(context.Context, address.Address, block.TipSetKey) (chainApiTypes.MarketBalance, error)
+	StateMarketParticipants            func(ctx context.Context, tsk block.TipSetKey) (map[string]chainApiTypes.MarketBalance, error)
 
 	ConfigSet func(string, string) error
 	ConfigGet func(string) (interface{}, error)
@@ -219,6 +220,7 @@ type MinerStateAPI struct {
 	StateSectorExpiration              func(context.Context, address.Address, abi.SectorNumber, block.TipSetKey) (*miner.SectorExpiration, error)
 	StateMinerSectorCount              func(context.Context, address.Address, block.TipSetKey) (chainApiTypes.MinerSectors, error)
 	StateMarketBalance                 func(context.Context, address.Address, block.TipSetKey) (chainApiTypes.MarketBalance, error)
+	StateMarketParticipants            func(ctx context.Context, tsk block.TipSetKey) (map[string]chainApiTypes.MarketBalance, error)
 }
 
 type ConfigAPI struct {

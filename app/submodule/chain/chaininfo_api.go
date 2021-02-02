@@ -18,6 +18,43 @@ import (
 	xerrors "github.com/pkg/errors"
 )
 
+type IChainInfo interface {
+	BlockTime() time.Duration
+
+	ChainList(ctx context.Context, tsKey block.TipSetKey, count int) ([]block.TipSetKey, error)
+	ChainHead(ctx context.Context) (*block.TipSet, error)
+	ChainSetHead(ctx context.Context, key block.TipSetKey) error
+	ChainGetTipSet(key block.TipSetKey) (*block.TipSet, error)
+	ChainGetTipSetByHeight(ctx context.Context, height abi.ChainEpoch, tsk block.TipSetKey) (*block.TipSet, error)
+	ChainGetRandomnessFromBeacon(ctx context.Context, key block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainGetRandomnessFromTickets(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainGetBlock(ctx context.Context, id cid.Cid) (*block.Block, error)
+	ChainGetMessage(ctx context.Context, msgID cid.Cid) (*types.UnsignedMessage, error)
+	ChainGetBlockMessages(ctx context.Context, bid cid.Cid) (*BlockMessages, error)
+	ChainGetReceipts(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error)
+	ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]Message, error)
+	ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error)
+	ChainNotify(ctx context.Context) chan []*chain.HeadChange
+
+	GetFullBlock(ctx context.Context, id cid.Cid) (*block.FullBlock, error)
+	GetActor(ctx context.Context, addr address.Address) (*types.Actor, error)
+	GetEntry(ctx context.Context, height abi.ChainEpoch, round uint64) (*block.BeaconEntry, error)
+
+	MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*cst.ChainMessage, error)
+	
+	ProtocolParameters(ctx context.Context) (*ProtocolParams, error)
+
+	ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *block.TipSet) (address.Address, error)
+
+	StateNetworkName(ctx context.Context) (NetworkName, error)
+	StateSearchMsg(ctx context.Context, mCid cid.Cid) (*cst.MsgLookup, error)
+	StateWaitMsg(ctx context.Context, mCid cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error)
+	StateGetReceipt(ctx context.Context, msg cid.Cid, tsk block.TipSetKey) (*types.MessageReceipt, error)
+	StateNetworkVersion(ctx context.Context, tsk block.TipSetKey) (network.Version, error)
+
+	VerifyEntry(parent, child *block.BeaconEntry, height abi.ChainEpoch) bool
+}
+
 type ChainInfoAPI struct { //nolint
 	chain *ChainSubmodule
 }

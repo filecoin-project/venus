@@ -25,13 +25,13 @@ type paychAPI interface {
 }
 
 type pcAPI struct {
-	mpAPI        *mpool.MessagePoolAPI
-	chainInfoAPI *chain.ChainInfoAPI
-	accountAPI   *chain.AccountAPI
+	mpAPI        mpool.IMessagePool
+	chainInfoAPI chain.IChainInfo
+	accountAPI   chain.IAccount
 }
 
-func newPaychAPI(mpAPI *mpool.MessagePoolAPI, chainInfoAPI *chain.ChainInfoAPI, accountAPI *chain.AccountAPI) paychAPI {
-	return &pcAPI{mpAPI: mpAPI, chainInfoAPI: chainInfoAPI, accountAPI: accountAPI}
+func newPaychAPI(mpAPI mpool.IMessagePool, c chain.IChain) paychAPI {
+	return &pcAPI{mpAPI: mpAPI, chainInfoAPI: c, accountAPI: c}
 }
 
 func (o *pcAPI) StateAccountKey(ctx context.Context, address address.Address, tsk block.TipSetKey) (address.Address, error) {

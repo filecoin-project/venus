@@ -2,68 +2,62 @@ package market
 
 import (
 	"context"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/app/submodule/mpool"
-	"github.com/filecoin-project/venus/pkg/market"
-	"github.com/filecoin-project/venus/pkg/specactors"
-	bimarket "github.com/filecoin-project/venus/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/ipfs/go-cid"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/app/submodule/chain"
+	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/statemanger"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 )
 
-type Market interface {
-	MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt big.Int) (cid.Cid, error)
-	MarketGetReserved(ctx context.Context, addr address.Address) (big.Int, error)
-	MarketReserveFunds(ctx context.Context, wallet address.Address, addr address.Address, amt big.Int) (cid.Cid, error)
-	MarketReleaseFunds(ctx context.Context, addr address.Address, amt big.Int) error
-	MarketWithdraw(ctx context.Context, wallet, addr address.Address, amt big.Int) (cid.Cid, error)
+type IMarket interface {
+	StateMarketParticipants(ctx context.Context, tsk block.TipSetKey) (map[string]chain.MarketBalance, error)
 }
 type marketAPI struct {
-	*mpool.MessagePoolAPI
-	fmgr *market.FundManager
+	chain chain.IChain
+	stmgr statemanger.IStateManager
 }
 
-func newMarketAPI(mp *mpool.MessagePoolAPI, fmgr *market.FundManager) Market {
-	return &marketAPI{mp, fmgr}
+func newMarketAPI(c chain.IChain, stmgr statemanger.IStateManager) IMarket {
+	return &marketAPI{c, stmgr}
 }
-func (a *marketAPI) MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt big.Int) (cid.Cid, error) {
-	params, err := specactors.SerializeParams(&addr)
+
+func (m *marketAPI) StateMarketParticipants(ctx context.Context, tsk block.TipSetKey) (map[string]chain.MarketBalance, error) {
+	out := map[string]chain.MarketBalance{}
+	ts, err := m.chain.ChainGetTipSet(tsk)
 	if err != nil {
-		return cid.Undef, err
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	smsg, aerr := a.MpoolPushMessage(ctx, &types.UnsignedMessage{
-		To:     bimarket.Address,
-		From:   wallet,
-		Value:  amt,
-		Method: bimarket.Methods.AddBalance,
-		Params: params,
-	}, nil)
-
-	if aerr != nil {
-		return cid.Undef, aerr
+	state, err := m.stmgr.GetMarketState(ctx, ts)
+	if err != nil {
+		return nil, err
 	}
-	smsgCid, aerr := smsg.Cid()
-	if aerr != nil {
-		return cid.Undef, aerr
+	escrow, err := state.EscrowTable()
+	if err != nil {
+		return nil, err
 	}
-	return smsgCid, nil
-}
+	locked, err := state.LockedTable()
+	if err != nil {
+		return nil, err
+	}
 
-func (a *marketAPI) MarketGetReserved(ctx context.Context, addr address.Address) (big.Int, error) {
-	return a.fmgr.GetReserved(addr), nil
-}
+	err = escrow.ForEach(func(a address.Address, es abi.TokenAmount) error {
 
-func (a *marketAPI) MarketReserveFunds(ctx context.Context, wallet address.Address, addr address.Address, amt big.Int) (cid.Cid, error) {
-	return a.fmgr.Reserve(ctx, wallet, addr, amt)
-}
+		lk, err := locked.Get(a)
+		if err != nil {
+			return err
+		}
 
-func (a *marketAPI) MarketReleaseFunds(ctx context.Context, addr address.Address, amt big.Int) error {
-	return a.fmgr.Release(addr, amt)
-}
-
-func (a *marketAPI) MarketWithdraw(ctx context.Context, wallet, addr address.Address, amt big.Int) (cid.Cid, error) {
-	return a.fmgr.Withdraw(ctx, wallet, addr, amt)
+		out[a.String()] = chain.MarketBalance{
+			Escrow: es,
+			Locked: lk,
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }

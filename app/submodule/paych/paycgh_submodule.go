@@ -22,6 +22,6 @@ func (ps *PaychSubmodule) Stop() {
 	ps.pmgr.Stop()
 }
 
-func (ps *PaychSubmodule) API() PaychanAPI {
+func (ps *PaychSubmodule) API() IPaychan {
 	return newPaychAPI(ps.pmgr)
 }

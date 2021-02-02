@@ -7,6 +7,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/block"
 )
 
+type IBeacon interface {
+	BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*block.BeaconEntry, error)
+}
 type BeaconAPI struct {
 	chain *ChainSubmodule
 }

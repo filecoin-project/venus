@@ -8,6 +8,9 @@ import (
 	xerrors "github.com/pkg/errors"
 )
 
+type IAccount interface {
+	StateAccountKey(ctx context.Context, addr address.Address, tsk block.TipSetKey) (address.Address, error)
+}
 type AccountAPI struct {
 	chain *ChainSubmodule
 }

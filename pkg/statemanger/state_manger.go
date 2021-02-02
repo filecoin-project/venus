@@ -1,4 +1,4 @@
-package paychmgr
+package statemanger
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/consensus"
-	"github.com/filecoin-project/venus/pkg/fork"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 	"github.com/filecoin-project/venus/pkg/types"
 	"golang.org/x/xerrors"
@@ -14,22 +14,22 @@ import (
 )
 
 // stateManagerAPI defines the methods needed from StateManager
-type stateManagerAPI interface {
+type IStateManager interface {
 	ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *block.TipSet) (address.Address, error)
 	GetPaychState(ctx context.Context, addr address.Address, ts *block.TipSet) (*types.Actor, paych.State, error)
 	Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*types.InvocResult, error)
+	GetMarketState(ctx context.Context, ts *block.TipSet) (market.State, error)
 }
 
 type stmgr struct {
-	cState *cst.ChainStateReadWriter
-	cnsns  consensus.Protocol
-	fork.IFork
+	crw cst.IChainReadWriter
+	cp  consensus.Protocol
 }
 
-func newStateMangerAPI(cState *cst.ChainStateReadWriter, cnsns consensus.Protocol) stateManagerAPI {
+func NewStateMangerAPI(crw cst.IChainReadWriter, cp consensus.Protocol) IStateManager {
 	return &stmgr{
-		cState: cState,
-		cnsns:  cnsns,
+		crw: crw,
+		cp:  cp,
 	}
 }
 
@@ -42,9 +42,9 @@ func (o *stmgr) ResolveToKeyAddress(ctx context.Context, addr address.Address, t
 	default:
 	}
 	if ts == nil {
-		ts = o.cState.Head()
+		ts = o.crw.Head()
 	}
-	view, err := o.cState.StateView(ts)
+	view, err := o.crw.StateView(ts)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -57,7 +57,7 @@ func (o *stmgr) Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.
 	if err != nil {
 		return nil, err
 	}
-	ret, err := o.cnsns.Call(ctx, msg, ts)
+	ret, err := o.cp.Call(ctx, msg, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -71,9 +71,9 @@ func (o *stmgr) Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.
 }
 func (o *stmgr) GetPaychState(ctx context.Context, addr address.Address, ts *block.TipSet) (*types.Actor, paych.State, error) {
 	if ts == nil {
-		ts = o.cState.Head()
+		ts = o.crw.Head()
 	}
-	view, err := o.cState.ParentStateView(ts)
+	view, err := o.crw.ParentStateView(ts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -86,4 +86,18 @@ func (o *stmgr) GetPaychState(ctx context.Context, addr address.Address, ts *blo
 		return nil, nil, err
 	}
 	return act, actState, nil
+}
+func (o *stmgr) GetMarketState(ctx context.Context, ts *block.TipSet) (market.State, error) {
+	if ts == nil {
+		ts = o.crw.Head()
+	}
+	view, err := o.crw.ParentStateView(ts)
+	if err != nil {
+		return nil, err
+	}
+	actState, err := view.LoadMarketState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return actState, nil
 }

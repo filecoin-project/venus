@@ -52,7 +52,7 @@ func (fcs *fakeCS) ChainHead(ctx context.Context) (*block.TipSet, error) {
 	panic("implement me")
 }
 
-func (fcs *fakeCS) ChainGetTipSet(ctx context.Context, key block.TipSetKey) (*block.TipSet, error) {
+func (fcs *fakeCS) ChainGetTipSet(key block.TipSetKey) (*block.TipSet, error) {
 	return fcs.tipsets[key], nil
 }
 
@@ -114,11 +114,11 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents block.TipSetKey, h abi.ChainEpoc
 	return ts
 }
 
-func (fcs *fakeCS) ChainNotify(context.Context) (<-chan []*chain.HeadChange, error) {
+func (fcs *fakeCS) ChainNotify(context.Context) chan []*chain.HeadChange {
 	out := make(chan []*chain.HeadChange, 1)
 	best, err := fcs.tsc.best()
 	if err != nil {
-		return nil, err
+		return nil
 	}
 	out <- []*chain.HeadChange{{Type: chain.HCCurrent, Val: best}}
 
@@ -141,7 +141,7 @@ func (fcs *fakeCS) ChainNotify(context.Context) (<-chan []*chain.HeadChange, err
 		out <- notif
 	}
 
-	return out, nil
+	return out
 }
 
 func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*api2.BlockMessages, error) {
@@ -231,7 +231,7 @@ func (fcs *fakeCS) notifDone() {
 	fcs.sync.Unlock()
 }
 
-var _ EventAPI = &fakeCS{}
+var _ IEvent = &fakeCS{}
 
 func TestAt(t *testing.T) {
 	tf.UnitTest(t)

@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/app/submodule/market"
 	"github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/pkg/config"
 	"net/http"
@@ -82,7 +83,7 @@ type Node struct {
 	storageNetworking *storagenetworking.StorageNetworkingSubmodule
 
 	// paychannel and market
-	//market *market.MarketSubmodule
+	market  *market.MarketSubmodule
 	paychan *paych.PaychSubmodule
 
 	//
@@ -327,7 +328,7 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		MingingAPI:           node.mining.API(),
 		MessagePoolAPI:       node.mpool.API(),
 		PaychAPI:             node.paychan.API(),
-		//MarketAPI:            node.market.API(),
+		MarketAPI:            node.market.API(),
 	}
 
 	return &env

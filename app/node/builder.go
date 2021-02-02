@@ -2,9 +2,11 @@ package node
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/submodule/market"
 	"github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/jwtauth"
@@ -273,26 +275,16 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, xerrors.Errorf("read or generate jwt secrect error %s", err)
 	}
 
-	chainAPI := nd.chain.API()
-	ciapi := chainAPI.ChainInfoAPI
-	aaip := chainAPI.AccountAPI
-
+	stmgr := statemanger.NewStateMangerAPI(nd.chain.State, nd.syncer.Consensus)
 	mgrps := &paychmgr.ManagerParams{
-		MPoolAPI:     nd.mpool.API(),
-		ChainInfoAPI: &ciapi,
-		AccountAPI:   &aaip,
-		CState:       nd.chain.State,
-		Protocol:     nd.syncer.Consensus,
-		DS:           b.repo.PaychDatastore(),
+		MPoolAPI: nd.mpool.API(),
+		ChainAPI: nd.chain.API(),
+		Protocol: nd.syncer.Consensus,
+		SM:       stmgr,
+		DS:       b.repo.PaychDatastore(),
 	}
 	nd.paychan = paych.NewPaychSubmodule(ctx, mgrps)
-
-	/*nd.market = market.NewMarketModule(nd.mpool.API(),&market2.FundManagerParams{
-		nd.mpool.API(),
-		&ciapi,
-		&minerapi,
-		b.repo.MarketDatastore(),
-	})*/
+	nd.market = market.NewMarketModule(nd.chain.API(), stmgr)
 
 	apiBuilder := util.NewBuiler()
 	apiBuilder.NameSpace("Filecoin")
@@ -309,7 +301,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.mpool,
 		nd.jwtAuth,
 		nd.paychan,
-		//nd.market,
+		nd.market,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "add service failed ")

@@ -27,10 +27,10 @@ import (
 var log = logging.Logger("market_adapter")
 
 type FundManagerParams struct {
-	*mpool.MessagePoolAPI
-	*chain.ChainInfoAPI
-	*chain.MinerStateAPI
-	repo.Datastore
+	MP mpool.IMessagePool
+	CI chain.IChainInfo
+	MS chain.IMinerState
+	DS repo.Datastore
 }
 
 // FundManager keeps track of funds in a set of addresses
@@ -51,7 +51,7 @@ func NewFundManager(p *FundManagerParams) *FundManager {
 		ctx:         ctx,
 		shutdown:    cancel,
 		api:         fmgrapi,
-		str:         &Store{p.Datastore},
+		str:         &Store{p.DS},
 		fundedAddrs: make(map[address.Address]*fundedAddress),
 	}
 }
