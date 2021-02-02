@@ -87,7 +87,7 @@ type ManagerParams struct {
 	ChainAPI chain.IChain
 	Protocol consensus.Protocol
 	DS       repo.Datastore
-	SM statemanger.IStateManager
+	SM       statemanger.IStateManager
 }
 
 func NewManager(ctx context.Context, params *ManagerParams) *Manager {
