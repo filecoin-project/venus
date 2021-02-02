@@ -27,12 +27,12 @@ import (
 
 // ChainSubmodule enhances the `Node` with chain capabilities.
 type ChainSubmodule struct { //nolint
-	ChainReader  *chain.Store
-	MessageStore *chain.MessageStore
-	State        *cst.ChainStateReadWriter
-	Sampler      *chain.Sampler
-	ActorState   *appstate.TipSetStateViewer
-	Processor    *consensus.DefaultProcessor
+	ChainReader    *chain.Store
+	MessageStore   *chain.MessageStore
+	State          *cst.ChainStateReadWriter
+	Sampler        *chain.Sampler
+	ActorState     *appstate.TipSetStateViewer
+	Processor      *consensus.DefaultProcessor
 	StatusReporter *chain.StatusReporter
 
 	Fork fork.IFork

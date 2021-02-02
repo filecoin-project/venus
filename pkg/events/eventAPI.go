@@ -26,6 +26,6 @@ type event struct {
 	chain.IChain
 }
 
-func newEventAPI(ca chain.IChain) IEvent {
+func newEventAPI(ca chain.IChain) IEvent { //notlint
 	return ca
 }

@@ -41,7 +41,7 @@ type IChainInfo interface {
 	GetEntry(ctx context.Context, height abi.ChainEpoch, round uint64) (*block.BeaconEntry, error)
 
 	MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*cst.ChainMessage, error)
-	
+
 	ProtocolParameters(ctx context.Context) (*ProtocolParams, error)
 
 	ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *block.TipSet) (address.Address, error)
