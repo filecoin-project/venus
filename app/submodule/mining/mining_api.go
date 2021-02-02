@@ -170,15 +170,11 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *BlockTempl
 	}
 
 	parentStateRoot := pts.Blocks()[0].ParentStateRoot
-	st, receipts, err := miningAPI.Ming.SyncModule.Consensus.RunStateTransition(ctx, pts, parentStateRoot)
+	st, receiptCid, err := miningAPI.Ming.SyncModule.Consensus.RunStateTransition(ctx, pts, parentStateRoot)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset state: %v", err)
 	}
 
-	recpts, err := messageStore.StoreReceipts(ctx, receipts)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to save receipt: %v", err)
-	}
 	version := miningAPI.Ming.ChainModule.Fork.GetNtwkVersion(ctx, bt.Epoch)
 	_, lbst, err := miningAPI.Ming.ChainModule.ChainReader.GetLookbackTipSetForRound(ctx, pts, bt.Epoch, version)
 	if err != nil {
@@ -202,7 +198,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *BlockTempl
 		Timestamp:             bt.Timestamp,
 		WinPoStProof:          bt.WinningPoStProof,
 		ParentStateRoot:       st,
-		ParentMessageReceipts: recpts,
+		ParentMessageReceipts: receiptCid,
 	}
 
 	var blsMessages []*types.UnsignedMessage

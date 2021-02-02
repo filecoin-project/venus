@@ -2,10 +2,11 @@ package syncer_test
 
 import (
 	"context"
-	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
-	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 	"testing"
 	"time"
+
+	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
+	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/block"
@@ -444,12 +445,12 @@ type poisonValidator struct {
 	fullFailureTS   uint64
 }
 
-func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
+func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid) (cid.Cid, cid.Cid, error) {
 	stamp := ts.At(0).Timestamp
 	if pv.fullFailureTS == stamp {
-		return emptycid.EmptyTxMetaCID, nil, errors.New("run state transition fails on poison timestamp")
+		return emptycid.EmptyTxMetaCID, emptycid.EmptyTxMetaCID, errors.New("run state transition fails on poison timestamp")
 	}
-	return emptycid.EmptyTxMetaCID, nil, nil
+	return emptycid.EmptyTxMetaCID, emptycid.EmptyTxMetaCID, nil
 }
 
 func (pv *poisonValidator) ValidateFullBlock(ctx context.Context, blk *block.Block) error {

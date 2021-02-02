@@ -5,6 +5,8 @@ import (
 	"context"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
@@ -178,27 +180,33 @@ func (c *Expected) BlockTime() time.Duration {
 func (c *Expected) RunStateTransition(ctx context.Context,
 	ts *block.TipSet,
 	parentStateRoot cid.Cid,
-) (cid.Cid, []types.MessageReceipt, error) {
+) (cid.Cid, cid.Cid, error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 
 	blockMessageInfo, err := c.messageStore.LoadTipSetMessage(ctx, ts)
 	if err != nil {
-		return cid.Undef, nil, nil
+		return cid.Undef, cid.Undef, nil
 	}
 	// process tipset
 	var pts *block.TipSet
-	if ts.EnsureHeight() > 0 {
+	if ts.EnsureHeight() == 0 {
+		// NB: This is here because the process that executes blocks requires that the
+		// block miner reference a valid miner in the state tree. Unless we create some
+		// magical genesis miner, this won't work properly, so we short circuit here
+		// This avoids the question of 'who gets paid the genesis block reward'
+		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
+	} else if ts.EnsureHeight() > 0 {
 		parent, err := ts.Parents()
 		if err != nil {
-			return cid.Undef, nil, err
+			return cid.Undef, cid.Undef, err
 		}
 		pts, err = c.chainState.GetTipSet(parent)
 		if err != nil {
-			return cid.Undef, nil, err
+			return cid.Undef, cid.Undef, err
 		}
 	} else {
-		return cid.Undef, nil, nil
+		return cid.Undef, cid.Undef, nil
 	}
 
 	rnd := HeadRandomness{
@@ -226,8 +234,13 @@ func (c *Expected) RunStateTransition(ctx context.Context,
 	}
 	root, receipts, err := c.processor.ProcessTipSet(ctx, pts, ts, blockMessageInfo, vmOption)
 	if err != nil {
-		return cid.Undef, nil, errors.Wrap(err, "error validating tipset")
+		return cid.Undef, cid.Undef, errors.Wrap(err, "error validating tipset")
 	}
 
-	return root, receipts, nil
+	receiptCid, err := c.messageStore.StoreReceipts(ctx, receipts)
+	if err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("failed to save receipt: %v", err)
+	}
+
+	return root, receiptCid, nil
 }
