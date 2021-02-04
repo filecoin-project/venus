@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
-	"github.com/filecoin-project/venus/pkg/block"
 	chainpkg "github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -225,7 +224,7 @@ func (mp *MessagePoolSubmodule) waitForSync(epochs int, subscribe func()) {
 	}
 
 	// we are not synced, subscribe to head changes and wait for sync
-	mp.chain.ChainReader.SubscribeHeadChanges(func(rev, app []*block.TipSet) error {
+	mp.chain.ChainReader.SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
 		if len(app) == 0 {
 			return nil
 		}

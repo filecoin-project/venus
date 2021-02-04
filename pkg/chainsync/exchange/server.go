@@ -15,14 +15,13 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
 var exchangeServerLog = logging.Logger("exchange.server")
 
 type chainReader interface {
-	GetTipSet(block.TipSetKey) (*block.TipSet, error)
+	GetTipSet(types.TipSetKey) (*types.TipSet, error)
 }
 
 type messageStore interface {
@@ -141,7 +140,7 @@ func validateRequest(ctx context.Context, req *Request) (*validatedRequest, *Res
 			ErrorMessage: "no cids in request",
 		}
 	}
-	validReq.head = block.NewTipSetKey(req.Head...)
+	validReq.head = types.NewTipSetKey(req.Head...)
 
 	// FIXME: Add as a defer at the start.
 	span.AddAttributes(
@@ -218,7 +217,7 @@ func collectChainSegment(cr chainReader, mr messageStore, req *validatedRequest)
 	}
 }
 
-func GatherMessages(cr chainReader, mr messageStore, ts *block.TipSet) ([]*types.UnsignedMessage, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
+func GatherMessages(cr chainReader, mr messageStore, ts *types.TipSet) ([]*types.UnsignedMessage, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
 	blsmsgmap := make(map[cid.Cid]uint64)
 	secpkmsgmap := make(map[cid.Cid]uint64)
 	var secpkincl, blsincl [][]uint64

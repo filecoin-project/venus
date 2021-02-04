@@ -3,6 +3,8 @@ package mining
 import (
 	"bytes"
 	"context"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"os"
 
 	"github.com/filecoin-project/go-address"
@@ -12,7 +14,6 @@ import (
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/beacon"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/crypto/sigs/bls"
@@ -26,7 +27,7 @@ type MiningAPI struct { //nolint
 	Ming *MiningModule
 }
 
-func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk block.TipSetKey) (*block.MiningBaseInfo, error) {
+func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk types.TipSetKey) (*MiningBaseInfo, error) {
 	chainStore := miningAPI.Ming.ChainModule.ChainReader
 	chainState := miningAPI.Ming.ChainModule.State
 	ts, err := chainStore.GetTipSet(tsk)
@@ -43,7 +44,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 			return nil, xerrors.Errorf("failed to get latest beacon entry: %v", err)
 		}
 
-		prev = &block.BeaconEntry{}
+		prev = &types.BeaconEntry{}
 	}
 
 	entries, err := beacon.BeaconEntriesForBlock(ctx, miningAPI.Ming.ChainModule.Drand, round, ts.EnsureHeight(), *prev)
@@ -128,7 +129,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 		return nil, xerrors.Errorf("determining miner eligibility: %v", err)
 	}
 
-	return &block.MiningBaseInfo{
+	return &MiningBaseInfo{
 		MinerPower:        mpow.QualityAdjPower,
 		NetworkPower:      tpow.QualityAdjPower,
 		Sectors:           sectors,
@@ -140,13 +141,13 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	}, nil
 }
 
-func (miningAPI *MiningAPI) MinerCreateBlock(ctx context.Context, bt *BlockTemplate) (*block.BlockMsg, error) {
+func (miningAPI *MiningAPI) MinerCreateBlock(ctx context.Context, bt *BlockTemplate) (*types.BlockMsg, error) {
 	fblk, err := miningAPI.minerCreateBlock(ctx, bt)
 	if err != nil {
 		return nil, err
 	}
 
-	var out block.BlockMsg
+	var out types.BlockMsg
 	out.Header = fblk.Header
 	for _, msg := range fblk.BLSMessages {
 		mcid, _ := msg.Cid()
@@ -160,7 +161,7 @@ func (miningAPI *MiningAPI) MinerCreateBlock(ctx context.Context, bt *BlockTempl
 	return &out, nil
 }
 
-func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *BlockTemplate) (*block.FullBlock, error) {
+func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *BlockTemplate) (*types.FullBlock, error) {
 	chainStore := miningAPI.Ming.ChainModule.ChainReader
 	messageStore := miningAPI.Ming.ChainModule.MessageStore
 	cfg := miningAPI.Ming.Config.Repo().Config()
@@ -187,7 +188,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *BlockTempl
 		return nil, xerrors.Errorf("failed to get miner worker: %v", err)
 	}
 
-	next := &block.Block{
+	next := &types.BlockHeader{
 		Miner:         bt.Miner,
 		Parents:       bt.Parents,
 		Ticket:        bt.Ticket,
@@ -264,7 +265,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *BlockTempl
 
 	next.BlockSig = sig
 
-	fullBlock := &block.FullBlock{
+	fullBlock := &types.FullBlock{
 		Header:       next,
 		BLSMessages:  blsMessages,
 		SECPMessages: secpkMessages,
@@ -308,12 +309,23 @@ func aggregateSignatures(sigs []crypto.Signature) (*crypto.Signature, error) {
 
 type BlockTemplate struct {
 	Miner            address.Address
-	Parents          block.TipSetKey
-	Ticket           block.Ticket
-	Eproof           *block.ElectionProof
-	BeaconValues     []*block.BeaconEntry
+	Parents          types.TipSetKey
+	Ticket           types.Ticket
+	Eproof           *types.ElectionProof
+	BeaconValues     []*types.BeaconEntry
 	Messages         []*types.SignedMessage
 	Epoch            abi.ChainEpoch
 	Timestamp        uint64
-	WinningPoStProof []block.PoStProof
+	WinningPoStProof []proof2.PoStProof
+}
+
+type MiningBaseInfo struct {
+	MinerPower        abi.StoragePower
+	NetworkPower      abi.StoragePower
+	Sectors           []builtin.SectorInfo
+	WorkerKey         address.Address
+	SectorSize        abi.SectorSize
+	PrevBeaconEntry   types.BeaconEntry
+	BeaconEntries     []types.BeaconEntry
+	EligibleForMining bool
 }

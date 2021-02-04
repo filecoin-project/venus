@@ -3,6 +3,7 @@ package syncer
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
 	"go.opencensus.io/trace"
 	"reflect"
 	"runtime"
@@ -23,7 +24,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/beacon"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync"
 	"github.com/filecoin-project/venus/pkg/clock"
@@ -68,8 +68,8 @@ type syncerConfig interface {
 }
 
 type nodeChainSelector interface {
-	Weight(context.Context, *block.TipSet) (fbig.Int, error)
-	IsHeavier(ctx context.Context, a, b *block.TipSet) (bool, error)
+	Weight(context.Context, *types.TipSet) (fbig.Int, error)
+	IsHeavier(ctx context.Context, a, b *types.TipSet) (bool, error)
 }
 
 // NewSyncerSubmodule creates a new chain submodule.
@@ -134,7 +134,7 @@ func NewSyncerSubmodule(ctx context.Context,
 		return nil, err
 	}
 
-	discovery.PeerDiscoveryCallbacks = append(discovery.PeerDiscoveryCallbacks, func(ci *block.ChainInfo) {
+	discovery.PeerDiscoveryCallbacks = append(discovery.PeerDiscoveryCallbacks, func(ci *types.ChainInfo) {
 		err := chainSyncManager.BlockProposer().SendHello(ci)
 		if err != nil {
 			log.Errorf("error receiving chain info from hello %s: %s", ci, err)
@@ -168,7 +168,7 @@ func (syncer *SyncerSubmodule) handleIncommingBlocks(ctx context.Context, msg pu
 
 	ctx, span := trace.StartSpan(ctx, "Node.handleIncommingBlocks")
 
-	var bm block.BlockMsg
+	var bm types.BlockMsg
 	err := bm.UnmarshalCBOR(bytes.NewReader(msg.GetData()))
 	if err != nil {
 		return errors.Wrapf(err, "failed to decode blocksub payload from source: %s, sender: %s", source, sender)
@@ -196,8 +196,8 @@ func (syncer *SyncerSubmodule) handleIncommingBlocks(ctx context.Context, msg pu
 
 		syncer.NetworkModule.Host.ConnManager().TagPeer(sender, "new-block", 20)
 		log.Infof("fetch message success at %s", bm.Header.Cid())
-		ts, _ := block.NewTipSet(header)
-		chainInfo := block.NewChainInfo(source, sender, ts)
+		ts, _ := types.NewTipSet(header)
+		chainInfo := types.NewChainInfo(source, sender, ts)
 		err = syncer.ChainSyncManager.BlockProposer().SendGossipBlock(chainInfo)
 		if err != nil {
 			log.Errorf("failed to notify syncer of new block, block: %s", err)
@@ -206,20 +206,20 @@ func (syncer *SyncerSubmodule) handleIncommingBlocks(ctx context.Context, msg pu
 	return nil
 }
 
-func (syncer *SyncerSubmodule) loadLocalFullTipset(ctx context.Context, tsk block.TipSetKey) (*block.FullTipSet, error) {
+func (syncer *SyncerSubmodule) loadLocalFullTipset(ctx context.Context, tsk types.TipSetKey) (*types.FullTipSet, error) {
 	ts, err := syncer.ChainModule.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return nil, err
 	}
 
-	fts := &block.FullTipSet{}
+	fts := &types.FullTipSet{}
 	for _, b := range ts.Blocks() {
 		smsgs, bmsgs, err := syncer.ChainModule.MessageStore.LoadMetaMessages(ctx, b.Messages)
 		if err != nil {
 			return nil, err
 		}
 
-		fb := &block.FullBlock{
+		fb := &types.FullBlock{
 			Header:       b,
 			BLSMessages:  bmsgs,
 			SECPMessages: smsgs,

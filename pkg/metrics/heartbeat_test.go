@@ -21,7 +21,6 @@ import (
 	net "github.com/libp2p/go-libp2p-core/network"
 	ma "github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/metrics"
@@ -92,7 +91,7 @@ func TestHeartbeatConnectSuccess(t *testing.T) {
 			ReconnectPeriod: "10s",
 			Nickname:        "BobHoblaw",
 		},
-		func() (block.TipSet, error) {
+		func() (types.TipSet, error) {
 			tipSet := chain.NewBuilder(t, address.Undef).Genesis()
 			return *tipSet, nil
 		},
@@ -121,7 +120,7 @@ func TestHeartbeatConnectFailure(t *testing.T) {
 			ReconnectPeriod: "10s",
 			Nickname:        "BobHoblaw",
 		},
-		func() (block.TipSet, error) {
+		func() (types.TipSet, error) {
 			tipSet := chain.NewBuilder(t, address.Undef).Genesis()
 			return *tipSet, nil
 		},
@@ -173,7 +172,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 			ReconnectPeriod: "1s",
 			Nickname:        "BobHoblaw",
 		},
-		func() (block.TipSet, error) {
+		func() (types.TipSet, error) {
 			return *expTs, nil
 		},
 		metrics.WithMinerAddressGetter(func() address.Address {
@@ -187,11 +186,11 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 	assert.Error(t, runCtx.Err(), context.Canceled.Error())
 }
 
-func mustMakeTipset(t *testing.T, height abi.ChainEpoch) *block.TipSet {
-	ts, err := block.NewTipSet(&block.Block{
+func mustMakeTipset(t *testing.T, height abi.ChainEpoch) *types.TipSet {
+	ts, err := types.NewTipSet(&types.BlockHeader{
 		Miner:                 types.NewForTestGetter()(),
-		Ticket:                block.Ticket{VRFProof: []byte{0}},
-		Parents:               block.TipSetKey{},
+		Ticket:                types.Ticket{VRFProof: []byte{0}},
+		Parents:               types.TipSetKey{},
 		ParentWeight:          fbig.Zero(),
 		Height:                height,
 		ParentMessageReceipts: emptycid.EmptyMessagesCID,

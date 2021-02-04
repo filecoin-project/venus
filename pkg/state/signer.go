@@ -2,15 +2,15 @@ package state
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
 type chainHeadTracker interface {
-	GetHead() *block.TipSet
+	GetHead() *types.TipSet
 }
 
 // Signer looks up non-signing addresses before signing

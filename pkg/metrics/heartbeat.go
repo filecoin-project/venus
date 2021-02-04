@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
 	"time"
 
@@ -15,8 +16,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	ma "github.com/multiformats/go-multiaddr"
-
-	"github.com/filecoin-project/venus/pkg/block"
 
 	"github.com/ipfs/go-cid"
 
@@ -60,7 +59,7 @@ type HeartbeatService struct {
 	Config     *config.HeartbeatConfig
 
 	// A function that returns the heaviest tipset
-	HeadGetter func() (block.TipSet, error)
+	HeadGetter func() (types.TipSet, error)
 
 	// A function that returns the miner's address
 	MinerAddressGetter func() address.Address
@@ -84,7 +83,7 @@ func defaultMinerAddressGetter() address.Address {
 }
 
 // NewHeartbeatService returns a HeartbeatService
-func NewHeartbeatService(h host.Host, genesisCID cid.Cid, hbc *config.HeartbeatConfig, hg func() (block.TipSet, error), options ...HeartbeatServiceOption) *HeartbeatService {
+func NewHeartbeatService(h host.Host, genesisCID cid.Cid, hbc *config.HeartbeatConfig, hg func() (types.TipSet, error), options ...HeartbeatServiceOption) *HeartbeatService {
 	srv := &HeartbeatService{
 		Host:               h,
 		GenesisCID:         genesisCID,

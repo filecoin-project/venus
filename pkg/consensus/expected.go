@@ -21,7 +21,6 @@ import (
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/fork"
 	appstate "github.com/filecoin-project/venus/pkg/state"
@@ -51,14 +50,14 @@ const AllowableClockDriftSecs = uint64(1)
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
-	ProcessTipSet(context.Context, *block.TipSet, *block.TipSet, []block.BlockMessagesInfo, vm.VmOption) (cid.Cid, []types.MessageReceipt, error)
+	ProcessTipSet(context.Context, *types.TipSet, *types.TipSet, []types.BlockMessagesInfo, vm.VmOption) (cid.Cid, []types.MessageReceipt, error)
 	ProcessMessage(context.Context, types.ChainMsg, vm.VmOption) (*vm.Ret, error)
 	ProcessImplicitMessage(context.Context, *types.UnsignedMessage, vm.VmOption) (*vm.Ret, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
 type TicketValidator interface {
-	IsValidTicket(ctx context.Context, base block.TipSetKey, entry *block.BeaconEntry, newPeriod bool, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket block.Ticket) error
+	IsValidTicket(ctx context.Context, base types.TipSetKey, entry *types.BeaconEntry, newPeriod bool, epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket types.Ticket) error
 }
 
 // Todo Delete view just use state.Viewer
@@ -89,15 +88,15 @@ type StateViewer interface {
 }
 
 type chainReader interface {
-	GetTipSet(block.TipSetKey) (*block.TipSet, error)
-	GetHead() *block.TipSet
-	GetTipSetStateRoot(*block.TipSet) (cid.Cid, error)
-	GetTipSetReceiptsRoot(*block.TipSet) (cid.Cid, error)
-	GetGenesisBlock(context.Context) (*block.Block, error)
-	GetLatestBeaconEntry(*block.TipSet) (*block.BeaconEntry, error)
-	GetTipSetByHeight(context.Context, *block.TipSet, abi.ChainEpoch, bool) (*block.TipSet, error)
+	GetTipSet(types.TipSetKey) (*types.TipSet, error)
+	GetHead() *types.TipSet
+	GetTipSetStateRoot(*types.TipSet) (cid.Cid, error)
+	GetTipSetReceiptsRoot(*types.TipSet) (cid.Cid, error)
+	GetGenesisBlock(context.Context) (*types.BlockHeader, error)
+	GetLatestBeaconEntry(*types.TipSet) (*types.BeaconEntry, error)
+	GetTipSetByHeight(context.Context, *types.TipSet, abi.ChainEpoch, bool) (*types.TipSet, error)
 	GetCirculatingSupplyDetailed(context.Context, abi.ChainEpoch, state.Tree) (chain.CirculatingSupply, error)
-	GetLookbackTipSetForRound(ctx context.Context, ts *block.TipSet, round abi.ChainEpoch, version network.Version) (*block.TipSet, cid.Cid, error)
+	GetLookbackTipSetForRound(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch, version network.Version) (*types.TipSet, cid.Cid, error)
 }
 
 // Expected implements expected consensus.
@@ -178,7 +177,7 @@ func (c *Expected) BlockTime() time.Duration {
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
 func (c *Expected) RunStateTransition(ctx context.Context,
-	ts *block.TipSet,
+	ts *types.TipSet,
 	parentStateRoot cid.Cid,
 ) (cid.Cid, cid.Cid, error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
@@ -189,7 +188,7 @@ func (c *Expected) RunStateTransition(ctx context.Context,
 		return cid.Undef, cid.Undef, nil
 	}
 	// process tipset
-	var pts *block.TipSet
+	var pts *types.TipSet
 	if ts.EnsureHeight() == 0 {
 		// NB: This is here because the process that executes blocks requires that the
 		// block miner reference a valid miner in the state tree. Unless we create some

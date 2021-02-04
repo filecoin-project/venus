@@ -2,9 +2,9 @@ package events
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
 	"time"
 
@@ -17,8 +17,8 @@ var log = logging.Logger("events")
 
 // HeightHandler `curH`-`ts.Height` = `confidence`
 type (
-	HeightHandler func(ctx context.Context, ts *block.TipSet, curH abi.ChainEpoch) error
-	RevertHandler func(ctx context.Context, ts *block.TipSet) error
+	HeightHandler func(ctx context.Context, ts *types.TipSet, curH abi.ChainEpoch) error
+	RevertHandler func(ctx context.Context, ts *types.TipSet) error
 )
 
 type heightHandler struct {
@@ -130,7 +130,7 @@ func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 	})
 
 	for notif := range notifs {
-		var rev, app []*block.TipSet
+		var rev, app []*types.TipSet
 		for _, notif := range notif {
 			switch notif.Type {
 			case chain.HCRevert:
@@ -155,7 +155,7 @@ func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 	return nil
 }
 
-func (e *Events) headChange(rev, app []*block.TipSet) error {
+func (e *Events) headChange(rev, app []*types.TipSet) error {
 	if len(app) == 0 {
 		return xerrors.New("events.headChange expected at least one applied tipset")
 	}

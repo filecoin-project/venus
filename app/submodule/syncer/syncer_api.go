@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/types"
 	logging "github.com/ipfs/go-log/v2"
 	xerrors "github.com/pkg/errors"
@@ -28,7 +27,7 @@ func (syncerAPI *SyncerAPI) SetConcurrent(concurrent int64) {
 	syncerAPI.syncer.ChainSyncManager.BlockProposer().SetConcurrent(concurrent)
 }
 
-func (syncerAPI *SyncerAPI) ChainTipSetWeight(ctx context.Context, tsk block.TipSetKey) (big.Int, error) {
+func (syncerAPI *SyncerAPI) ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey) (big.Int, error) {
 	ts, err := syncerAPI.syncer.ChainModule.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return big.Int{}, err
@@ -37,11 +36,11 @@ func (syncerAPI *SyncerAPI) ChainTipSetWeight(ctx context.Context, tsk block.Tip
 }
 
 // ChainSyncHandleNewTipSet submits a chain head to the syncer for processing.
-func (syncerAPI *SyncerAPI) ChainSyncHandleNewTipSet(ci *block.ChainInfo) error {
+func (syncerAPI *SyncerAPI) ChainSyncHandleNewTipSet(ci *types.ChainInfo) error {
 	return syncerAPI.syncer.SyncProvider.HandleNewTipSet(ci)
 }
 
-func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *block.BlockMsg) error {
+func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
 	//todo many dot. how to get directly
 	chainModule := syncerAPI.syncer.ChainModule
 	parent, err := chainModule.ChainReader.GetBlock(ctx, blk.Header.Parents.Cids()[0])
@@ -64,7 +63,7 @@ func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *block.Bloc
 		return xerrors.Errorf("failed to load secpk message: %v", err)
 	}
 
-	fb := &block.FullBlock{
+	fb := &types.FullBlock{
 		Header:       blk.Header,
 		BLSMessages:  bmsgs,
 		SECPMessages: smsgs,
@@ -74,7 +73,7 @@ func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *block.Bloc
 		return xerrors.Errorf("provided messages did not match block: %v", err)
 	}
 
-	ts, err := block.NewTipSet(blk.Header)
+	ts, err := types.NewTipSet(blk.Header)
 	if err != nil {
 		return xerrors.Errorf("somehow failed to make a tipset out of a single block: %v", err)
 	}
@@ -83,7 +82,7 @@ func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *block.Bloc
 		return err
 	}
 	localPeer := syncerAPI.syncer.NetworkModule.Network.GetPeerID()
-	ci := block.NewChainInfo(localPeer, localPeer, ts)
+	ci := types.NewChainInfo(localPeer, localPeer, ts)
 	if err := syncerAPI.syncer.SyncProvider.HandleNewTipSet(ci); err != nil {
 		return xerrors.Errorf("sync to submitted block failed: %v", err)
 	}
@@ -101,7 +100,7 @@ func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *block.Bloc
 	return nil
 }
 
-func (syncerAPI *SyncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMessage, tsk block.TipSetKey) (*InvocResult, error) {
+func (syncerAPI *SyncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMessage, tsk types.TipSetKey) (*InvocResult, error) {
 	start := time.Now()
 	ts, err := syncerAPI.syncer.ChainModule.ChainReader.GetTipSet(tsk)
 	if err != nil {

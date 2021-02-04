@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	init_ "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
@@ -24,11 +23,11 @@ type UserData interface{}
 // ChainAPI abstracts out calls made by this class to external APIs
 type ChainAPI interface {
 	chain.ChainIO
-	StateGetActor(ctx context.Context, actor address.Address, tsk block.TipSetKey) (*types.Actor, error)
+	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 }
 
 // StatePredicates has common predicates for responding to state changes
-type StatePredicates struct {//nolint
+type StatePredicates struct { //nolint
 	api ChainAPI
 	cst *cbor.BasicIpldStore
 }
@@ -44,13 +43,13 @@ func NewStatePredicates(api ChainAPI) *StatePredicates {
 // - changed: was there a change
 // - user: user-defined data representing the state change
 // - err
-type DiffTipSetKeyFunc func(ctx context.Context, oldState, newState block.TipSetKey) (changed bool, user UserData, err error)
+type DiffTipSetKeyFunc func(ctx context.Context, oldState, newState types.TipSetKey) (changed bool, user UserData, err error)
 
 type DiffActorStateFunc func(ctx context.Context, oldActorState *types.Actor, newActorState *types.Actor) (changed bool, user UserData, err error)
 
 // OnActorStateChanged calls diffStateFunc when the state changes for the given actor
 func (sp *StatePredicates) OnActorStateChanged(addr address.Address, diffStateFunc DiffActorStateFunc) DiffTipSetKeyFunc {
-	return func(ctx context.Context, oldState, newState block.TipSetKey) (changed bool, user UserData, err error) {
+	return func(ctx context.Context, oldState, newState types.TipSetKey) (changed bool, user UserData, err error) {
 		oldActor, err := sp.api.StateGetActor(ctx, addr, oldState)
 		if err != nil {
 			return false, nil, err

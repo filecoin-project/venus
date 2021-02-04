@@ -10,14 +10,13 @@ import (
 
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
-	"github.com/filecoin-project/venus/pkg/block"
 )
 
 // fundManagerAPI is the specific methods called by the FundManager
 // (used by the tests)
 type fundManager interface {
 	MpoolPushMessage(context.Context, *types.UnsignedMessage, *types.MessageSendSpec) (*types.SignedMessage, error)
-	StateMarketBalance(context.Context, address.Address, block.TipSetKey) (chain.MarketBalance, error)
+	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (chain.MarketBalance, error)
 	StateWaitMsg(ctx context.Context, c cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error)
 }
 
@@ -41,7 +40,7 @@ func (o *fmgr) MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage,
 	return o.MPoolAPI.MpoolPushMessage(ctx, msg, spec)
 }
 
-func (o *fmgr) StateMarketBalance(ctx context.Context, address address.Address, tsk block.TipSetKey) (chain.MarketBalance, error) {
+func (o *fmgr) StateMarketBalance(ctx context.Context, address address.Address, tsk types.TipSetKey) (chain.MarketBalance, error) {
 	return o.MinerStateAPI.StateMarketBalance(ctx, address, tsk)
 }
 

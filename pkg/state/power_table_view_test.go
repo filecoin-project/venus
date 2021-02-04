@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -133,7 +132,7 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 	info, err := gengen.GenGen(ctx, genCfg, bs)
 	require.NoError(t, err)
 
-	var genesis block.Block
+	var genesis types.BlockHeader
 	require.NoError(t, cst.Get(ctx, info.GenesisCid, &genesis))
 	retAddrs := make([]address.Address, numMiners)
 	for i := 0; i < numMiners; i++ {

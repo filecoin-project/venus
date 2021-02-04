@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/cmd/tablewriter"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
 )
@@ -116,7 +115,7 @@ var addrsLsCmd = &cmds.Command{
 				writer := NewSilentWriter(buf)
 				writer.WriteStringln(addr.String())
 			} else {
-				a, err := api.ChainAPI.StateGetActor(ctx, addr, block.EmptyTSK)
+				a, err := api.ChainAPI.StateGetActor(ctx, addr, types.EmptyTSK)
 				if err != nil {
 					if !strings.Contains(err.Error(), "actor not found") {
 						tw.Write(map[string]interface{}{
@@ -141,7 +140,7 @@ var addrsLsCmd = &cmds.Command{
 				}
 
 				if _, ok := req.Options["id"]; ok {
-					id, err := api.ChainAPI.StateLookupID(ctx, addr, block.EmptyTSK)
+					id, err := api.ChainAPI.StateLookupID(ctx, addr, types.EmptyTSK)
 					if err != nil {
 						row["ID"] = "n/a"
 					} else {
@@ -150,7 +149,7 @@ var addrsLsCmd = &cmds.Command{
 				}
 
 				if _, ok := req.Options["market"]; ok {
-					mbal, err := api.ChainAPI.StateMarketBalance(ctx, addr, block.EmptyTSK)
+					mbal, err := api.ChainAPI.StateMarketBalance(ctx, addr, types.EmptyTSK)
 					if err == nil {
 						row["Market(Avail)"] = types.FIL(crypto.BigSub(mbal.Escrow, mbal.Locked))
 						row["Market(Locked)"] = types.FIL(mbal.Locked)

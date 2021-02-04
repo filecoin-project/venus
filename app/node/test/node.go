@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
 	"math/rand"
 	"testing"
 
@@ -19,7 +20,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/fixtures/fortest"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/wallet"
@@ -48,13 +48,13 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 }
 
 // GenesisInitFunc is a th.GenesisInitFunc using the chain seed
-func (cs *ChainSeed) GenesisInitFunc(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+func (cs *ChainSeed) GenesisInitFunc(cst cbor.IpldStore, bs blockstore.Blockstore) (*types.BlockHeader, error) {
 	err := blockstoreutil.CopyBlockstore(context.TODO(), cs.bstore, bs)
 	if err != nil {
 		return nil, err
 	}
 
-	var blk block.Block
+	var blk types.BlockHeader
 	if err := cst.Get(context.TODO(), cs.info.GenesisCid, &blk); err != nil {
 		return nil, err
 	}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/types"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -26,7 +27,6 @@ import (
 	"github.com/filecoin-project/venus/app/paths"
 	"github.com/filecoin-project/venus/fixtures/asset"
 	"github.com/filecoin-project/venus/fixtures/networks"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	"github.com/filecoin-project/venus/pkg/journal"
@@ -306,7 +306,7 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (genesis
 		return nil, err
 	}
 
-	gif := func(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+	gif := func(cst cbor.IpldStore, bs blockstore.Blockstore) (*types.BlockHeader, error) {
 		return genesisBlk, err
 	}
 
@@ -377,7 +377,7 @@ func openGenesisSource(sourceName string) (io.ReadCloser, error) {
 	return source, nil
 }
 
-func extractGenesisBlock(source io.ReadCloser, rep repo.Repo) (*block.Block, error) {
+func extractGenesisBlock(source io.ReadCloser, rep repo.Repo) (*types.BlockHeader, error) {
 	bs := rep.Datastore()
 	ch, err := car.LoadCar(bs, source)
 	if err != nil {
@@ -389,7 +389,7 @@ func extractGenesisBlock(source io.ReadCloser, rep repo.Repo) (*block.Block, err
 	if err != nil {
 		return nil, err
 	}
-	cur, err := block.DecodeBlock(bsBlk.RawData())
+	cur, err := types.DecodeBlock(bsBlk.RawData())
 	if err != nil {
 		return nil, err
 	}

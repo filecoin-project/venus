@@ -2,19 +2,18 @@ package beacon
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/venus/pkg/block"
 )
 
 var log = logging.Logger("beacon")
 
 type Response struct {
-	Entry block.BeaconEntry
+	Entry types.BeaconEntry
 	Err   error
 }
 
@@ -29,11 +28,11 @@ type BeaconPoint struct { //nolint
 // been posted on chain.
 type RandomBeacon interface {
 	Entry(context.Context, uint64) <-chan Response
-	VerifyEntry(block.BeaconEntry, block.BeaconEntry) error
+	VerifyEntry(types.BeaconEntry, types.BeaconEntry) error
 	MaxBeaconRoundForEpoch(abi.ChainEpoch) uint64
 }
 
-func ValidateBlockValues(bSchedule Schedule, h *block.Block, parentEpoch abi.ChainEpoch, prevEntry *block.BeaconEntry) error {
+func ValidateBlockValues(bSchedule Schedule, h *types.BlockHeader, parentEpoch abi.ChainEpoch, prevEntry *types.BeaconEntry) error {
 	{
 		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
 		currBeacon := bSchedule.BeaconForEpoch(h.Height)
@@ -79,14 +78,14 @@ func ValidateBlockValues(bSchedule Schedule, h *block.Block, parentEpoch abi.Cha
 	return nil
 }
 
-func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, epoch abi.ChainEpoch, parentEpoch abi.ChainEpoch, prev block.BeaconEntry) ([]block.BeaconEntry, error) { //nolint
+func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, epoch abi.ChainEpoch, parentEpoch abi.ChainEpoch, prev types.BeaconEntry) ([]types.BeaconEntry, error) { //nolint
 	{
 		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
 		currBeacon := bSchedule.BeaconForEpoch(epoch)
 		if parentBeacon != currBeacon {
 			// Fork logic
 			round := currBeacon.MaxBeaconRoundForEpoch(epoch)
-			out := make([]block.BeaconEntry, 2)
+			out := make([]types.BeaconEntry, 2)
 			rch := currBeacon.Entry(ctx, round-1)
 			res := <-rch
 			if res.Err != nil {
@@ -118,7 +117,7 @@ func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, epoch abi.Ch
 	}
 
 	cur := maxRound
-	var out []block.BeaconEntry
+	var out []types.BeaconEntry
 	for cur > prev.Round {
 		rch := beacon.Entry(ctx, cur)
 		select {
@@ -139,7 +138,7 @@ func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, epoch abi.Ch
 	return out, nil
 }
 
-func reverse(arr []block.BeaconEntry) {
+func reverse(arr []types.BeaconEntry) {
 	for i := 0; i < len(arr)/2; i++ {
 		arr[i], arr[len(arr)-(1+i)] = arr[len(arr)-(1+i)], arr[i]
 	}

@@ -12,7 +12,6 @@ import (
 	tbig "github.com/filecoin-project/go-state-types/big"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -44,7 +43,7 @@ type msgChain struct {
 	prev         *msgChain
 }
 
-func (mp *MessagePool) SelectMessages(ts *block.TipSet, tq float64) (msgs []*types.SignedMessage, err error) {
+func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) (msgs []*types.SignedMessage, err error) {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
@@ -71,7 +70,7 @@ func (mp *MessagePool) SelectMessages(ts *block.TipSet, tq float64) (msgs []*typ
 	return msgs, nil
 }
 
-func (mp *MessagePool) selectMessagesOptimal(curTs, ts *block.TipSet, tq float64) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
 	start := time.Now()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
@@ -399,7 +398,7 @@ tailLoop:
 	return result, nil
 }
 
-func (mp *MessagePool) selectMessagesGreedy(curTs, ts *block.TipSet) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) selectMessagesGreedy(curTs, ts *types.TipSet) ([]*types.SignedMessage, error) {
 	start := time.Now()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
@@ -539,7 +538,7 @@ tailLoop:
 	return result, nil
 }
 
-func (mp *MessagePool) selectPriorityMessages(pending map[address.Address]map[uint64]*types.SignedMessage, baseFee tbig.Int, ts *block.TipSet) ([]*types.SignedMessage, int64) {
+func (mp *MessagePool) selectPriorityMessages(pending map[address.Address]map[uint64]*types.SignedMessage, baseFee tbig.Int, ts *types.TipSet) ([]*types.SignedMessage, int64) {
 	start := time.Now()
 	defer func() {
 		if dt := time.Since(start); dt > time.Millisecond {
@@ -648,7 +647,7 @@ tailLoop:
 	return result, gasLimit
 }
 
-func (mp *MessagePool) getPendingMessages(curTs, ts *block.TipSet) (map[address.Address]map[uint64]*types.SignedMessage, error) {
+func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.Address]map[uint64]*types.SignedMessage, error) {
 	start := time.Now()
 
 	result := make(map[address.Address]map[uint64]*types.SignedMessage)
@@ -714,7 +713,7 @@ func (*MessagePool) getGasPerf(gasReward *big.Int, gasLimit int64) float64 {
 	return r
 }
 
-func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint64]*types.SignedMessage, baseFee tbig.Int, ts *block.TipSet) []*msgChain {
+func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint64]*types.SignedMessage, baseFee tbig.Int, ts *types.TipSet) []*msgChain {
 	// collect all messages
 	msgs := make([]*types.SignedMessage, 0, len(mset))
 	for _, m := range mset {

@@ -3,6 +3,7 @@ package chain_test
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -83,7 +84,7 @@ func TestCollectTipSetsOfHeightAtLeast(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 15
-	head := builder.AppendManyOn(chainLen, block.UndefTipSet)
+	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
 
 	stopHeight := abi.ChainEpoch(4)
 	iterator := chain.IterAncestors(ctx, builder, head)
@@ -105,7 +106,7 @@ func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 25
-	head := builder.AppendManyOn(chainLen, block.UndefTipSet)
+	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
 
 	stopHeight := abi.ChainEpoch(0)
 	iterator := chain.IterAncestors(ctx, builder, head)

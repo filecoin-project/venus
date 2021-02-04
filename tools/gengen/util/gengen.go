@@ -17,7 +17,6 @@ import (
 	dag "github.com/ipfs/go-merkledag"
 	car "github.com/ipld/go-car"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -192,7 +191,7 @@ var defaultGenTimeOpt = GenTime(123456789)
 func MakeGenesisFunc(opts ...GenOption) genesis.InitFunc {
 	// Dragons: GenesisInitFunc should take in only a blockstore to remove the hidden
 	// assumption that cst and bs are backed by the same storage.
-	return func(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+	return func(cst cbor.IpldStore, bs blockstore.Blockstore) (*types.BlockHeader, error) {
 		ctx := context.Background()
 		genCfg := &GenesisCfg{}
 		err := defaultGenTimeOpt(genCfg)
@@ -209,7 +208,7 @@ func MakeGenesisFunc(opts ...GenOption) genesis.InitFunc {
 			return nil, err
 		}
 
-		var b block.Block
+		var b types.BlockHeader
 		err = cst.Get(ctx, ri.GenesisCid, &b)
 		if err != nil {
 			return nil, err

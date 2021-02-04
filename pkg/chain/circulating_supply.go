@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -14,7 +15,6 @@ import (
 	// Used for genesis.
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
@@ -26,7 +26,7 @@ import (
 )
 
 type genesisReader interface {
-	GetGenesisBlock(ctx context.Context) (*block.Block, error)
+	GetGenesisBlock(ctx context.Context) (*types.BlockHeader, error)
 }
 
 type CirculatingSupply struct {
@@ -168,7 +168,7 @@ func (caculator *CirculatingSupplyCalculator) setupGenesisVestingSchedule(ctx co
 		return xerrors.Errorf("getting genesis block: %v", err)
 	}
 
-	gts, err := block.NewTipSet(gb)
+	gts, err := types.NewTipSet(gb)
 	if err != nil {
 		return xerrors.Errorf("getting genesis tipset: %v", err)
 	}

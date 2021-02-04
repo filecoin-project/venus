@@ -369,3 +369,11 @@ func NewForTestGetter() func() address.Address {
 		return newAddr
 	}
 }
+
+// RequireNewTipSet instantiates and returns a new tipset of the given blocks
+// and requires that the setup validation succeed.
+func RequireNewTipSet(t *testing.T, blks ...*BlockHeader) *TipSet {
+	ts, err := NewTipSet(blks...)
+	require.NoError(t, err)
+	return ts
+}

@@ -1,8 +1,9 @@
-package block_test
+package types_test
 
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/filecoin-project/venus/pkg/types"
 	"reflect"
 	"testing"
 
@@ -11,22 +12,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	blk "github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 func TestTriangleEncoding(t *testing.T) {
 	tf.UnitTest(t)
 
 	// We want to be sure that:
-	//      Block => json => Block
+	//      BlockHeader => json => BlockHeader
 	// yields exactly the same thing as:
-	//      Block => IPLD node => CBOR => IPLD node => json => IPLD node => Block (!)
-	// because we want the output encoding of a Block directly from memory
-	// (first case) to be exactly the same as the output encoding of a Block from
+	//      BlockHeader => IPLD node => CBOR => IPLD node => json => IPLD node => BlockHeader (!)
+	// because we want the output encoding of a BlockHeader directly from memory
+	// (first case) to be exactly the same as the output encoding of a BlockHeader from
 	// storage (second case). WTF you might say, and you would not be wrong. The
 	// use case is machine-parsing command output. For example dag_daemon_test
 	// dumps the block from memory as json (first case). It then dag gets
@@ -35,52 +34,52 @@ func TestTriangleEncoding(t *testing.T) {
 	// into a block (second half of the second case). I don't claim this is ideal,
 	// see: https://github.com/filecoin-project/venus/issues/599
 
-	newAddress := types.NewForTestGetter()
+	newAddress := NewForTestGetter()
 
-	testRoundTrip := func(t *testing.T, exp *blk.Block) {
+	testRoundTrip := func(t *testing.T, exp *types.BlockHeader) {
 		jb, err := json.Marshal(exp)
 		require.NoError(t, err)
-		var jsonRoundTrip blk.Block
+		var jsonRoundTrip types.BlockHeader
 		err = json.Unmarshal(jb, &jsonRoundTrip)
 		require.NoError(t, err)
-		types.AssertHaveSameCid(t, exp, &jsonRoundTrip)
+		AssertHaveSameCid(t, exp, &jsonRoundTrip)
 
 		buf := new(bytes.Buffer)
 		err = jsonRoundTrip.MarshalCBOR(buf)
 		assert.NoError(t, err)
-		var cborJSONRoundTrip blk.Block
+		var cborJSONRoundTrip types.BlockHeader
 		err = cborJSONRoundTrip.UnmarshalCBOR(buf)
 		assert.NoError(t, err)
-		types.AssertHaveSameCid(t, exp, &cborJSONRoundTrip)
+		AssertHaveSameCid(t, exp, &cborJSONRoundTrip)
 	}
 
 	// // TODO: to make this test pass.
 	// // This will fail with output: "varints malformed, could not reach the end"
 	// //     which is from go-varint package, need to check.
 	// t.Run("encoding block with zero fields works", func(t *testing.T) {
-	// 	testRoundTrip(t, &blk.Block{})
+	// 	testRoundTrip(t, &blk.BlockHeader{})
 	// })
 
 	t.Run("encoding block with nonzero fields works", func(t *testing.T) {
 		// We should ensure that every field is set -- zero values might
 		// pass when non-zero values do not due to nil/null encoding.
 		// posts := []blk.PoStProof{blk.NewPoStProof(constants.DevRegisteredWinningPoStProof, []byte{0x07})}
-		b := &blk.Block{
+		b := &types.BlockHeader{
 			Miner:         newAddress(),
-			Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-			ElectionProof: &blk.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
+			Ticket:        types.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
+			ElectionProof: &types.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
 			Height:        2,
-			BeaconEntries: []*blk.BeaconEntry{
+			BeaconEntries: []*types.BeaconEntry{
 				{
 					Round: 1,
 					Data:  []byte{0x3},
 				},
 			},
-			Messages:              types.CidFromString(t, "somecid"),
-			ParentMessageReceipts: types.CidFromString(t, "somecid"),
-			Parents:               blk.NewTipSetKey(types.CidFromString(t, "somecid")),
+			Messages:              CidFromString(t, "somecid"),
+			ParentMessageReceipts: CidFromString(t, "somecid"),
+			Parents:               types.NewTipSetKey(CidFromString(t, "somecid")),
 			ParentWeight:          fbig.NewInt(1000),
-			ParentStateRoot:       types.CidFromString(t, "somecid"),
+			ParentStateRoot:       CidFromString(t, "somecid"),
 			Timestamp:             1,
 			BlockSig: &crypto.Signature{
 				Type: crypto.SigTypeBLS,
@@ -107,16 +106,16 @@ func TestTriangleEncoding(t *testing.T) {
 func TestBlockString(t *testing.T) {
 	tf.UnitTest(t)
 
-	addrGetter := types.NewForTestGetter()
-	c1 := types.CidFromString(t, "a")
-	c2 := types.CidFromString(t, "b")
-	cM := types.CidFromString(t, "messages")
-	cR := types.CidFromString(t, "receipts")
+	addrGetter := NewForTestGetter()
+	c1 := CidFromString(t, "a")
+	c2 := CidFromString(t, "b")
+	cM := CidFromString(t, "messages")
+	cR := CidFromString(t, "receipts")
 
-	b := &blk.Block{
+	b := &types.BlockHeader{
 		Miner:                 addrGetter(),
-		Ticket:                blk.Ticket{VRFProof: []uint8{}},
-		Parents:               blk.NewTipSetKey(c1),
+		Ticket:                types.Ticket{VRFProof: []uint8{}},
+		Parents:               types.NewTipSetKey(c1),
 		Height:                2,
 		ParentWeight:          fbig.Zero(),
 		Messages:              cM,
@@ -137,17 +136,17 @@ func TestDecodeBlock(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("successfully decodes raw bytes to a Filecoin block", func(t *testing.T) {
-		addrGetter := types.NewForTestGetter()
+		addrGetter := NewForTestGetter()
 
-		c1 := types.CidFromString(t, "a")
-		c2 := types.CidFromString(t, "b")
-		cM := types.CidFromString(t, "messages")
-		cR := types.CidFromString(t, "receipts")
+		c1 := CidFromString(t, "a")
+		c2 := CidFromString(t, "b")
+		cM := CidFromString(t, "messages")
+		cR := CidFromString(t, "receipts")
 
-		before := &blk.Block{
+		before := &types.BlockHeader{
 			Miner:                 addrGetter(),
-			Ticket:                blk.Ticket{VRFProof: nil},
-			Parents:               blk.NewTipSetKey(c1),
+			Ticket:                types.Ticket{VRFProof: nil},
+			Parents:               types.NewTipSetKey(c1),
 			Height:                2,
 			ParentWeight:          fbig.Zero(),
 			Messages:              cM,
@@ -158,14 +157,14 @@ func TestDecodeBlock(t *testing.T) {
 			ParentBaseFee:         abi.NewTokenAmount(1),
 		}
 
-		after, err := blk.DecodeBlock(before.ToNode().RawData())
+		after, err := types.DecodeBlock(before.ToNode().RawData())
 		require.NoError(t, err)
 		assert.Equal(t, after.Cid(), before.Cid())
 		assert.Equal(t, before, after)
 	})
 
 	t.Run("decode failure results in an error", func(t *testing.T) {
-		_, err := blk.DecodeBlock([]byte{1, 2, 3})
+		_, err := types.DecodeBlock([]byte{1, 2, 3})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "cbor input should be of type array")
 	})
@@ -173,27 +172,27 @@ func TestDecodeBlock(t *testing.T) {
 
 func TestEquals(t *testing.T) {
 	tf.UnitTest(t)
-	addrGetter := types.NewForTestGetter()
+	addrGetter := NewForTestGetter()
 	minerAddr := addrGetter()
-	mockCid := types.CidFromString(t, "mock")
-	c1 := types.CidFromString(t, "a")
-	c2 := types.CidFromString(t, "b")
+	mockCid := CidFromString(t, "mock")
+	c1 := CidFromString(t, "a")
+	c2 := CidFromString(t, "b")
 
-	s1 := types.CidFromString(t, "state1")
-	s2 := types.CidFromString(t, "state2")
+	s1 := CidFromString(t, "state1")
+	s2 := CidFromString(t, "state2")
 
 	var h1 abi.ChainEpoch = 1
 	var h2 abi.ChainEpoch = 2
 
-	b1 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c1), ParentStateRoot: s1, Height: h1}
-	b2 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c1), ParentStateRoot: s1, Height: h1}
-	b3 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c1), ParentStateRoot: s2, Height: h1}
-	b4 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c2), ParentStateRoot: s1, Height: h1}
-	b5 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c1), ParentStateRoot: s1, Height: h2}
-	b6 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c2), ParentStateRoot: s1, Height: h2}
-	b7 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c1), ParentStateRoot: s2, Height: h2}
-	b8 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c2), ParentStateRoot: s2, Height: h1}
-	b9 := &blk.Block{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: blk.NewTipSetKey(c2), ParentStateRoot: s2, Height: h2}
+	b1 := &types.BlockHeader{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: types.NewTipSetKey(c1), ParentStateRoot: s1, Height: h1}
+	b2 := &types.BlockHeader{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: types.NewTipSetKey(c1), ParentStateRoot: s1, Height: h1}
+	b3 := &types.BlockHeader{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: types.NewTipSetKey(c1), ParentStateRoot: s2, Height: h1}
+	b4 := &types.BlockHeader{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: types.NewTipSetKey(c2), ParentStateRoot: s1, Height: h1}
+	b5 := &types.BlockHeader{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: types.NewTipSetKey(c1), ParentStateRoot: s1, Height: h2}
+	b6 := &types.BlockHeader{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: types.NewTipSetKey(c2), ParentStateRoot: s1, Height: h2}
+	b7 := &types.BlockHeader{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: types.NewTipSetKey(c1), ParentStateRoot: s2, Height: h2}
+	b8 := &types.BlockHeader{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: types.NewTipSetKey(c2), ParentStateRoot: s2, Height: h1}
+	b9 := &types.BlockHeader{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: types.NewTipSetKey(c2), ParentStateRoot: s2, Height: h2}
 	assert.True(t, b1.Equals(b1))
 	assert.True(t, b1.Equals(b2))
 	assert.False(t, b1.Equals(b3))
@@ -218,16 +217,16 @@ func TestEquals(t *testing.T) {
 func TestBlockJsonMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
-	proot := types.CidFromString(t, "mock")
-	var child blk.Block
-	child.Miner = types.NewForTestGetter()()
+	proot := CidFromString(t, "mock")
+	var child types.BlockHeader
+	child.Miner = NewForTestGetter()()
 	child.Height = 1
 	child.ParentWeight = fbig.Zero()
-	child.Parents = blk.NewTipSetKey(proot)
+	child.Parents = types.NewTipSetKey(proot)
 	child.ParentStateRoot = proot
 
-	child.Messages = types.CidFromString(t, "somecid")
-	child.ParentMessageReceipts = types.CidFromString(t, "somecid")
+	child.Messages = CidFromString(t, "somecid")
+	child.ParentMessageReceipts = CidFromString(t, "somecid")
 
 	child.ParentBaseFee = abi.NewTokenAmount(1)
 
@@ -241,40 +240,40 @@ func TestBlockJsonMarshal(t *testing.T) {
 	assert.Contains(t, str, child.ParentMessageReceipts.String())
 
 	// marshal/unmarshal symmetry
-	var unmarshalled blk.Block
+	var unmarshalled types.BlockHeader
 	e2 := json.Unmarshal(marshalled, &unmarshalled)
 	assert.NoError(t, e2)
 
 	assert.Equal(t, child, unmarshalled)
-	types.AssertHaveSameCid(t, &child, &unmarshalled)
+	AssertHaveSameCid(t, &child, &unmarshalled)
 	assert.True(t, child.Equals(&unmarshalled))
 }
 
 func TestSignatureData(t *testing.T) {
 	tf.UnitTest(t)
-	newAddress := types.NewForTestGetter()
+	newAddress := NewForTestGetter()
 	posts := []builtin.PoStProof{{PoStProof: abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, ProofBytes: []byte{0x07}}}
 
-	b := &blk.Block{
+	b := &types.BlockHeader{
 		Miner:         newAddress(),
-		Ticket:        blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-		ElectionProof: &blk.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
-		BeaconEntries: []*blk.BeaconEntry{
+		Ticket:        types.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
+		ElectionProof: &types.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
+		BeaconEntries: []*types.BeaconEntry{
 			{
 				Round: 5,
 				Data:  []byte{0x0c},
 			},
 		},
 		Height:                2,
-		Messages:              types.CidFromString(t, "somecid"),
-		ParentMessageReceipts: types.CidFromString(t, "somecid"),
-		Parents:               blk.NewTipSetKey(types.CidFromString(t, "somecid")),
+		Messages:              CidFromString(t, "somecid"),
+		ParentMessageReceipts: CidFromString(t, "somecid"),
+		Parents:               types.NewTipSetKey(CidFromString(t, "somecid")),
 		ParentWeight:          fbig.NewInt(1000),
 		ForkSignaling:         3,
-		ParentStateRoot:       types.CidFromString(t, "somecid"),
+		ParentStateRoot:       CidFromString(t, "somecid"),
 		Timestamp:             1,
 		ParentBaseFee:         abi.NewTokenAmount(10),
-		WinPoStProof:          blk.FromAbiProofArr(posts),
+		WinPoStProof:          types.FromAbiProofArr(posts),
 		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x3},
@@ -283,26 +282,26 @@ func TestSignatureData(t *testing.T) {
 
 	diffposts := []builtin.PoStProof{{PoStProof: abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, ProofBytes: []byte{0x07, 0x08}}}
 
-	diff := &blk.Block{
+	diff := &types.BlockHeader{
 		Miner:         newAddress(),
-		Ticket:        blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
-		ElectionProof: &blk.ElectionProof{VRFProof: []byte{0x0c, 0x0d}},
-		BeaconEntries: []*blk.BeaconEntry{
+		Ticket:        types.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
+		ElectionProof: &types.ElectionProof{VRFProof: []byte{0x0c, 0x0d}},
+		BeaconEntries: []*types.BeaconEntry{
 			{
 				Round: 44,
 				Data:  []byte{0xc0},
 			},
 		},
 		Height:                3,
-		Messages:              types.CidFromString(t, "someothercid"),
-		ParentMessageReceipts: types.CidFromString(t, "someothercid"),
-		Parents:               blk.NewTipSetKey(types.CidFromString(t, "someothercid")),
+		Messages:              CidFromString(t, "someothercid"),
+		ParentMessageReceipts: CidFromString(t, "someothercid"),
+		Parents:               types.NewTipSetKey(CidFromString(t, "someothercid")),
 		ParentWeight:          fbig.NewInt(1001),
 		ForkSignaling:         2,
-		ParentStateRoot:       types.CidFromString(t, "someothercid"),
+		ParentStateRoot:       CidFromString(t, "someothercid"),
 		Timestamp:             4,
 		ParentBaseFee:         abi.NewTokenAmount(20),
-		WinPoStProof:          blk.FromAbiProofArr(diffposts),
+		WinPoStProof:          types.FromAbiProofArr(diffposts),
 		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,
 			Data: []byte{0x4},

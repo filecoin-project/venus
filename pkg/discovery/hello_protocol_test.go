@@ -2,6 +2,7 @@ package discovery_test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 	"time"
 
@@ -18,7 +19,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/discovery"
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
@@ -29,15 +29,15 @@ type mockHelloCallback struct {
 	mock.Mock
 }
 
-func (msb *mockHelloCallback) HelloCallback(ci *block.ChainInfo) {
+func (msb *mockHelloCallback) HelloCallback(ci *types.ChainInfo) {
 	msb.Called(ci.Sender, ci.Head.Key())
 }
 
 type mockHeaviestGetter struct {
-	heaviest *block.TipSet
+	heaviest *types.TipSet
 }
 
-func (mhg *mockHeaviestGetter) getHeaviestTipSet() (*block.TipSet, error) {
+func (mhg *mockHeaviestGetter) getHeaviestTipSet() (*types.TipSet, error) {
 	return mhg.heaviest, nil
 }
 
@@ -117,8 +117,8 @@ func TestHelloBadGenesis(t *testing.T) {
 	store := builder.Store()
 	mstore := builder.Mstore()
 
-	genesisA := builder.AppendOn(block.UndefTipSet, 1)
-	genesisB := builder.AppendOn(block.UndefTipSet, 1)
+	genesisA := builder.AppendOn(types.UndefTipSet, 1)
+	genesisB := builder.AppendOn(types.UndefTipSet, 1)
 
 	heavy1 := builder.AppendOn(genesisA, 1)
 	heavy2 := builder.AppendOn(heavy1, 1)

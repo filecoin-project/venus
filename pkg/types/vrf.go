@@ -1,4 +1,4 @@
-package block
+package types
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"

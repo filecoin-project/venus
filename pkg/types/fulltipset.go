@@ -1,4 +1,4 @@
-package block
+package types
 
 import (
 	"github.com/ipfs/go-cid"
@@ -39,7 +39,7 @@ func (fts *FullTipSet) TipSet() *TipSet {
 		return fts.tipset
 	}
 
-	var headers []*Block
+	var headers []*BlockHeader
 	for _, b := range fts.Blocks {
 		headers = append(headers, b.Header)
 	}

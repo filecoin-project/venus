@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
 	"github.com/filecoin-project/venus/pkg/crypto"
@@ -80,12 +79,12 @@ func main() {
 	}
 
 	if err := gen.WriteTupleEncodersToFile("./pkg/block/cbor_gen.go", "block",
-		block.BeaconEntry{},
-		block.Block{},
-		block.Ticket{},
-		block.ElectionProof{},
-		block.PoStProof{},
-		block.BlockMsg{},
+		types.BeaconEntry{},
+		types.BlockHeader{},
+		types.Ticket{},
+		types.ElectionProof{},
+		types.PoStProof{},
+		types.BlockMsg{},
 		/*
 			types.ExpTipSet{},
 

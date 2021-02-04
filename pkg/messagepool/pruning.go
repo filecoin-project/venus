@@ -9,7 +9,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -38,7 +37,7 @@ func (mp *MessagePool) pruneExcessMessages() error {
 	}
 }
 
-func (mp *MessagePool) pruneMessages(ctx context.Context, ts *block.TipSet) error {
+func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) error {
 	start := time.Now()
 	defer func() {
 		log.Infof("message pruning took %s", time.Since(start))

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	api2 "github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -43,42 +42,42 @@ type fakeCS struct {
 
 	sync sync.Mutex
 
-	tipsets map[block.TipSetKey]*block.TipSet
+	tipsets map[types.TipSetKey]*types.TipSet
 
-	sub func(rev, app []*block.TipSet)
+	sub func(rev, app []*types.TipSet)
 }
 
-func (fcs *fakeCS) ChainHead(ctx context.Context) (*block.TipSet, error) {
+func (fcs *fakeCS) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	panic("implement me")
 }
 
-func (fcs *fakeCS) ChainGetTipSet(key block.TipSetKey) (*block.TipSet, error) {
+func (fcs *fakeCS) ChainGetTipSet(key types.TipSetKey) (*types.TipSet, error) {
 	return fcs.tipsets[key], nil
 }
 
-func (fcs *fakeCS) StateGetReceipt(context.Context, cid.Cid, block.TipSetKey) (*types.MessageReceipt, error) {
+func (fcs *fakeCS) StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error) {
 	return nil, nil
 }
 
-func (fcs *fakeCS) StateGetActor(ctx context.Context, actor address.Address, tsk block.TipSetKey) (*types.Actor, error) {
+func (fcs *fakeCS) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
 	panic("Not Implemented")
 }
 
-func (fcs *fakeCS) ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, block.TipSetKey) (*block.TipSet, error) {
+func (fcs *fakeCS) ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error) {
 	panic("Not Implemented")
 }
 
-func (fcs *fakeCS) makeTs(t *testing.T, parents block.TipSetKey, h abi.ChainEpoch, msgcid cid.Cid) *block.TipSet {
+func (fcs *fakeCS) makeTs(t *testing.T, parents types.TipSetKey, h abi.ChainEpoch, msgcid cid.Cid) *types.TipSet {
 	a, _ := address.NewFromString("t00")
 	b, _ := address.NewFromString("t02")
-	var ts, err = block.NewTipSet([]*block.Block{
+	var ts, err = types.NewTipSet([]*types.BlockHeader{
 		{
 			Height: h,
 			Miner:  a,
 
 			Parents: parents,
 
-			Ticket: block.Ticket{VRFProof: []byte{byte(h % 2)}},
+			Ticket: types.Ticket{VRFProof: []byte{byte(h % 2)}},
 
 			ParentStateRoot:       dummyCid,
 			Messages:              msgcid,
@@ -93,7 +92,7 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents block.TipSetKey, h abi.ChainEpoc
 
 			Parents: parents,
 
-			Ticket: block.Ticket{VRFProof: []byte{byte((h + 1) % 2)}},
+			Ticket: types.Ticket{VRFProof: []byte{byte((h + 1) % 2)}},
 
 			ParentStateRoot:       dummyCid,
 			Messages:              msgcid,
@@ -105,7 +104,7 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents block.TipSetKey, h abi.ChainEpoc
 	}...)
 
 	if fcs.tipsets == nil {
-		fcs.tipsets = map[block.TipSetKey]*block.TipSet{}
+		fcs.tipsets = map[types.TipSetKey]*types.TipSet{}
 	}
 	fcs.tipsets[ts.Key()] = ts
 
@@ -122,7 +121,7 @@ func (fcs *fakeCS) ChainNotify(context.Context) chan []*chain.HeadChange {
 	}
 	out <- []*chain.HeadChange{{Type: chain.HCCurrent, Val: best}}
 
-	fcs.sub = func(rev, app []*block.TipSet) {
+	fcs.sub = func(rev, app []*types.TipSet) {
 		notif := make([]*chain.HeadChange, len(rev)+len(app))
 
 		for i, r := range rev {
@@ -182,7 +181,7 @@ func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid, nulls ...int) { /
 		nullm[v] = struct{}{}
 	}
 
-	var revs []*block.TipSet
+	var revs []*types.TipSet
 	for i := 0; i < rev; i++ {
 		ts, err := fcs.tsc.best()
 		require.NoError(fcs.t, err)
@@ -194,7 +193,7 @@ func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid, nulls ...int) { /
 		fcs.h--
 	}
 
-	var apps []*block.TipSet
+	var apps []*types.TipSet
 	for i := 0; i < app; i++ {
 		fcs.h++
 
@@ -240,19 +239,19 @@ func TestAt(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(_ context.Context, ts *block.TipSet, curH abi.ChainEpoch) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
 		require.Equal(t, 5, int(ts.EnsureHeight()))
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -306,19 +305,19 @@ func TestAtDoubleTrigger(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(_ context.Context, ts *block.TipSet, curH abi.ChainEpoch) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
 		require.Equal(t, 5, int(ts.EnsureHeight()))
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -349,19 +348,19 @@ func TestAtNullTrigger(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(_ context.Context, ts *block.TipSet, curH abi.ChainEpoch) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
 		require.Equal(t, abi.ChainEpoch(6), ts.EnsureHeight())
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -384,19 +383,19 @@ func TestAtNullConf(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(_ context.Context, ts *block.TipSet, curH abi.ChainEpoch) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
 		require.Equal(t, 5, int(ts.EnsureHeight()))
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -424,7 +423,7 @@ func TestAtStart(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -433,12 +432,12 @@ func TestAtStart(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(_ context.Context, ts *block.TipSet, curH abi.ChainEpoch) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
 		require.Equal(t, 5, int(ts.EnsureHeight()))
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -459,7 +458,7 @@ func TestAtStartConfidence(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -468,12 +467,12 @@ func TestAtStartConfidence(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(_ context.Context, ts *block.TipSet, curH abi.ChainEpoch) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
 		require.Equal(t, 5, int(ts.EnsureHeight()))
 		require.Equal(t, 11, int(curH))
 		applied = true
 		return nil
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -490,23 +489,23 @@ func TestAtChained(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(_ context.Context, ts *block.TipSet, curH abi.ChainEpoch) error {
-		return events.ChainAt(func(_ context.Context, ts *block.TipSet, curH abi.ChainEpoch) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
+		return events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
 			require.Equal(t, 10, int(ts.EnsureHeight()))
 			applied = true
 			return nil
-		}, func(_ context.Context, ts *block.TipSet) error {
+		}, func(_ context.Context, ts *types.TipSet) error {
 			reverted = true
 			return nil
 		}, 3, 10)
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -525,7 +524,7 @@ func TestAtChainedConfidence(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -534,16 +533,16 @@ func TestAtChainedConfidence(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(_ context.Context, ts *block.TipSet, curH abi.ChainEpoch) error {
-		return events.ChainAt(func(_ context.Context, ts *block.TipSet, curH abi.ChainEpoch) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
+		return events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
 			require.Equal(t, 10, int(ts.EnsureHeight()))
 			applied = true
 			return nil
-		}, func(_ context.Context, ts *block.TipSet) error {
+		}, func(_ context.Context, ts *types.TipSet) error {
 			reverted = true
 			return nil
 		}, 3, 10)
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -560,7 +559,7 @@ func TestAtChainedConfidenceNull(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -569,11 +568,11 @@ func TestAtChainedConfidenceNull(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(_ context.Context, ts *block.TipSet, curH abi.ChainEpoch) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
 		applied = true
 		require.Equal(t, 6, int(ts.EnsureHeight()))
 		return nil
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -599,7 +598,7 @@ func TestCalled(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -609,19 +608,19 @@ func TestCalled(t *testing.T) {
 	more := true
 	var applied, reverted bool
 	var appliedMsg *types.UnsignedMessage
-	var appliedTs *block.TipSet
+	var appliedTs *types.TipSet
 	var appliedH abi.ChainEpoch
 
-	err = events.Called(func(ts *block.TipSet) (d bool, m bool, e error) {
+	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
-	}, func(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *block.TipSet, curH abi.ChainEpoch) (bool, error) {
+	}, func(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (bool, error) {
 		require.Equal(t, false, applied)
 		applied = true
 		appliedMsg = msg
 		appliedTs = ts
 		appliedH = curH
 		return more, nil
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 20, matchAddrMethod(t0123, 5))
@@ -812,7 +811,7 @@ func TestCalledTimeout(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -821,15 +820,15 @@ func TestCalledTimeout(t *testing.T) {
 
 	called := false
 
-	err = events.Called(func(ts *block.TipSet) (d bool, m bool, e error) {
+	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
-	}, func(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *block.TipSet, curH abi.ChainEpoch) (bool, error) {
+	}, func(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (bool, error) {
 		called = true
 		require.Nil(t, msg)
 		require.Equal(t, abi.ChainEpoch(20), ts.EnsureHeight())
 		require.Equal(t, abi.ChainEpoch(23), curH)
 		return false, nil
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		t.Fatal("revert on timeout")
 		return nil
 	}, 3, 20, matchAddrMethod(t0123, 5))
@@ -852,19 +851,19 @@ func TestCalledTimeout(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events = NewEvents(context.Background(), fcs)
 
-	err = events.Called(func(ts *block.TipSet) (d bool, m bool, e error) {
+	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return true, true, nil
-	}, func(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *block.TipSet, curH abi.ChainEpoch) (bool, error) {
+	}, func(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (bool, error) {
 		called = true
 		require.Nil(t, msg)
 		require.Equal(t, abi.ChainEpoch(20), ts.EnsureHeight())
 		require.Equal(t, abi.ChainEpoch(23), curH)
 		return false, nil
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		t.Fatal("revert on timeout")
 		return nil
 	}, 3, 20, matchAddrMethod(t0123, 5))
@@ -887,7 +886,7 @@ func TestCalledOrder(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -896,9 +895,9 @@ func TestCalledOrder(t *testing.T) {
 
 	at := 0
 
-	err = events.Called(func(ts *block.TipSet) (d bool, m bool, e error) {
+	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
-	}, func(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *block.TipSet, curH abi.ChainEpoch) (bool, error) {
+	}, func(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (bool, error) {
 		switch at {
 		case 0:
 			require.Equal(t, uint64(1), msg.Nonce)
@@ -911,7 +910,7 @@ func TestCalledOrder(t *testing.T) {
 		}
 		at++
 		return true, nil
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		switch at {
 		case 2:
 			require.Equal(t, abi.ChainEpoch(5), ts.EnsureHeight())
@@ -951,7 +950,7 @@ func TestCalledNull(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -961,13 +960,13 @@ func TestCalledNull(t *testing.T) {
 	more := true
 	var applied, reverted bool
 
-	err = events.Called(func(ts *block.TipSet) (d bool, m bool, e error) {
+	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
-	}, func(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *block.TipSet, curH abi.ChainEpoch) (bool, error) {
+	}, func(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (bool, error) {
 		require.Equal(t, false, applied)
 		applied = true
 		return more, nil
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 20, matchAddrMethod(t0123, 5))
@@ -1017,7 +1016,7 @@ func TestRemoveTriggersOnMessage(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -1027,13 +1026,13 @@ func TestRemoveTriggersOnMessage(t *testing.T) {
 	more := true
 	var applied, reverted bool
 
-	err = events.Called(func(ts *block.TipSet) (d bool, m bool, e error) {
+	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
-	}, func(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *block.TipSet, curH abi.ChainEpoch) (bool, error) {
+	}, func(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (bool, error) {
 		require.Equal(t, false, applied)
 		applied = true
 		return more, nil
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 20, matchAddrMethod(t0123, 5))
@@ -1108,24 +1107,24 @@ func TestStateChanged(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
 	more := true
 	var applied, reverted bool
 	var appliedData StateChange
-	var appliedOldTs *block.TipSet
-	var appliedNewTs *block.TipSet
+	var appliedOldTs *types.TipSet
+	var appliedNewTs *types.TipSet
 	var appliedH abi.ChainEpoch
 	var matchData StateChange
 
 	confidence := 3
 	timeout := abi.ChainEpoch(20)
 
-	err := events.StateChanged(func(ts *block.TipSet) (d bool, m bool, e error) {
+	err := events.StateChanged(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
-	}, func(oldTs, newTs *block.TipSet, data StateChange, curH abi.ChainEpoch) (bool, error) {
+	}, func(oldTs, newTs *types.TipSet, data StateChange, curH abi.ChainEpoch) (bool, error) {
 		require.Equal(t, false, applied)
 		applied = true
 		appliedData = data
@@ -1133,10 +1132,10 @@ func TestStateChanged(t *testing.T) {
 		appliedNewTs = newTs
 		appliedH = curH
 		return more, nil
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
-	}, confidence, timeout, func(oldTs, newTs *block.TipSet) (bool, StateChange, error) {
+	}, confidence, timeout, func(oldTs, newTs *types.TipSet) (bool, StateChange, error) {
 		if matchData == nil {
 			return false, matchData, nil
 		}
@@ -1197,7 +1196,7 @@ func TestStateChangedRevert(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -1208,16 +1207,16 @@ func TestStateChangedRevert(t *testing.T) {
 	confidence := 1
 	timeout := abi.ChainEpoch(20)
 
-	err := events.StateChanged(func(ts *block.TipSet) (d bool, m bool, e error) {
+	err := events.StateChanged(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
-	}, func(oldTs, newTs *block.TipSet, data StateChange, curH abi.ChainEpoch) (bool, error) {
+	}, func(oldTs, newTs *types.TipSet, data StateChange, curH abi.ChainEpoch) (bool, error) {
 		require.Equal(t, false, applied)
 		applied = true
 		return more, nil
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
-	}, confidence, timeout, func(oldTs, newTs *block.TipSet) (bool, StateChange, error) {
+	}, confidence, timeout, func(oldTs, newTs *types.TipSet) (bool, StateChange, error) {
 		if matchData == nil {
 			return false, matchData, nil
 		}
@@ -1276,24 +1275,24 @@ func TestStateChangedTimeout(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
 	called := false
 
-	err := events.StateChanged(func(ts *block.TipSet) (d bool, m bool, e error) {
+	err := events.StateChanged(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
-	}, func(oldTs, newTs *block.TipSet, data StateChange, curH abi.ChainEpoch) (bool, error) {
+	}, func(oldTs, newTs *types.TipSet, data StateChange, curH abi.ChainEpoch) (bool, error) {
 		called = true
 		require.Nil(t, data)
 		require.Equal(t, abi.ChainEpoch(20), newTs.EnsureHeight())
 		require.Equal(t, abi.ChainEpoch(23), curH)
 		return false, nil
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		t.Fatal("revert on timeout")
 		return nil
-	}, 3, 20, func(oldTs, newTs *block.TipSet) (bool, StateChange, error) {
+	}, 3, 20, func(oldTs, newTs *types.TipSet) (bool, StateChange, error) {
 		return false, nil, nil
 	})
 
@@ -1316,22 +1315,22 @@ func TestStateChangedTimeout(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, block.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
 
 	events = NewEvents(context.Background(), fcs)
 
-	err = events.StateChanged(func(ts *block.TipSet) (d bool, m bool, e error) {
+	err = events.StateChanged(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return true, true, nil
-	}, func(oldTs, newTs *block.TipSet, data StateChange, curH abi.ChainEpoch) (bool, error) {
+	}, func(oldTs, newTs *types.TipSet, data StateChange, curH abi.ChainEpoch) (bool, error) {
 		called = true
 		require.Nil(t, data)
 		require.Equal(t, abi.ChainEpoch(20), newTs.EnsureHeight())
 		require.Equal(t, abi.ChainEpoch(23), curH)
 		return false, nil
-	}, func(_ context.Context, ts *block.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		t.Fatal("revert on timeout")
 		return nil
-	}, 3, 20, func(oldTs, newTs *block.TipSet) (bool, StateChange, error) {
+	}, 3, 20, func(oldTs, newTs *types.TipSet) (bool, StateChange, error) {
 		return false, nil, nil
 	})
 	require.NoError(t, err)

@@ -1,17 +1,15 @@
-package block
+package types
 
 import (
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 // FullBlock carries a block header and the message and receipt collections
 // referenced from the header.
 type FullBlock struct {
-	Header       *Block
-	BLSMessages  []*types.UnsignedMessage
-	SECPMessages []*types.SignedMessage
+	Header       *BlockHeader
+	BLSMessages  []*UnsignedMessage
+	SECPMessages []*SignedMessage
 }
 
 // Cid returns the FullBlock's header's Cid

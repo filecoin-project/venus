@@ -23,7 +23,6 @@ import (
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -48,7 +47,7 @@ const MaxAccounts = MinerStart - AccountStart
 var log = logging.Logger("gen/genesis")
 
 type GenesisBootstrap struct { //nolint
-	Genesis *block.Block
+	Genesis *types.BlockHeader
 }
 
 /*
@@ -546,7 +545,7 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs blockstore.Blocksto
 
 	tickBuf := make([]byte, 32)
 	_, _ = rand.Read(tickBuf)
-	genesisticket := block.Ticket{
+	genesisticket := types.Ticket{
 		VRFProof: tickBuf,
 	}
 
@@ -572,10 +571,10 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs blockstore.Blocksto
 		return nil, xerrors.Errorf("failed writing filecoin genesis block to blockstore: %w", err)
 	}
 
-	b := &block.Block{
+	b := &types.BlockHeader{
 		Miner:                 builtin0.SystemActorAddr,
 		Ticket:                genesisticket,
-		Parents:               block.NewTipSetKey(filecoinGenesisCid),
+		Parents:               types.NewTipSetKey(filecoinGenesisCid),
 		Height:                0,
 		ParentWeight:          big.Zero(),
 		ParentStateRoot:       stateroot,
@@ -584,8 +583,8 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs blockstore.Blocksto
 		BLSAggregate:          nil,
 		BlockSig:              nil,
 		Timestamp:             template.Timestamp,
-		ElectionProof:         new(block.ElectionProof),
-		BeaconEntries: []*block.BeaconEntry{
+		ElectionProof:         new(types.ElectionProof),
+		BeaconEntries: []*types.BeaconEntry{
 			{
 				Round: 0,
 				Data:  make([]byte, 32),

@@ -1,4 +1,4 @@
-package block
+package types
 
 import (
 	"bytes"
@@ -20,7 +20,7 @@ import (
 // a tipset "key".
 type TipSet struct {
 	// This slice is wrapped in a struct to enforce immutability.
-	blocks []*Block
+	blocks []*BlockHeader
 	// Key is computed at construction and cached.
 	key TipSetKey
 }
@@ -37,7 +37,7 @@ var UndefTipSet = &TipSet{}
 
 // NewTipSet builds a new TipSet from a collection of blocks.
 // The blocks must be distinct (different CIDs), have the same height, and same parent set.
-func NewTipSet(blocks ...*Block) (*TipSet, error) {
+func NewTipSet(blocks ...*BlockHeader) (*TipSet, error) {
 	if len(blocks) == 0 {
 		return nil, errNoBlocks
 	}
@@ -48,7 +48,7 @@ func NewTipSet(blocks ...*Block) (*TipSet, error) {
 	weight := first.ParentWeight
 	cids := make([]cid.Cid, len(blocks))
 
-	sorted := make([]*Block, len(blocks))
+	sorted := make([]*BlockHeader, len(blocks))
 	seen := make(map[cid.Cid]struct{})
 	for i, blk := range blocks {
 		if i > 0 { // Skip redundant checks for first block
@@ -105,7 +105,7 @@ func (ts *TipSet) Len() int {
 
 // At returns the i'th block in the tipset.
 // An index outside the half-open range [0, Len()) will panic.
-func (ts *TipSet) At(i int) *Block {
+func (ts *TipSet) At(i int) *BlockHeader {
 	return ts.blocks[i]
 }
 
@@ -115,8 +115,8 @@ func (ts *TipSet) Key() TipSetKey {
 }
 
 // ToSlice returns an ordered slice of pointers to the tipset's blocks.
-func (ts *TipSet) ToSlice() []*Block {
-	slice := make([]*Block, len(ts.blocks))
+func (ts *TipSet) ToSlice() []*BlockHeader {
+	slice := make([]*BlockHeader, len(ts.blocks))
 	copy(slice, ts.blocks)
 	return slice
 }
@@ -192,7 +192,7 @@ func (ts TipSet) String() string {
 	return ts.Key().String()
 }
 
-func (ts *TipSet) Blocks() []*Block {
+func (ts *TipSet) Blocks() []*BlockHeader {
 	return ts.blocks
 }
 
@@ -217,7 +217,7 @@ func (ts *TipSet) IsChildOf(parent *TipSet) bool {
 //this types just for marshal
 type expTipSet struct {
 	// This slice is wrapped in a struct to enforce immutability.
-	Blocks []*Block
+	Blocks []*BlockHeader
 	// Key is computed at construction and cached.
 	Key TipSetKey
 }
@@ -247,7 +247,7 @@ func (ts *TipSet) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (ts *TipSet) MinTicketBlock() *Block {
+func (ts *TipSet) MinTicketBlock() *BlockHeader {
 	blks := ts.Blocks()
 
 	min := blks[0]

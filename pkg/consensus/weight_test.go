@@ -31,11 +31,11 @@ func TestWeight(t *testing.T) {
 	// Total is 16, so bitlen is 5, log2b is 4
 	viewer := makeStateViewer(fakeRoot, abi.NewStoragePower(16))
 	ticket := consensus.MakeFakeTicketForTest()
-	toWeigh := block.RequireNewTipSet(t, &block.Block{
+	toWeigh := block.RequireNewTipSet(t, &types.BlockHeader{
 		Miner:        minerAddr,
 		ParentWeight: fbig.Zero(),
 		Ticket:       ticket,
-		ElectionProof: &block.ElectionProof{
+		ElectionProof: &types.ElectionProof{
 			WinCount: 1,
 		},
 		ParentStateRoot:       fakeRoot,
@@ -81,11 +81,11 @@ func TestWeight(t *testing.T) {
 
 	t.Run("non-zero parent weight", func(t *testing.T) {
 		parentWeight := fbig.NewInt(int64(49))
-		toWeighWithParent := block.RequireNewTipSet(t, &block.Block{
+		toWeighWithParent := block.RequireNewTipSet(t, &types.BlockHeader{
 			Miner:        minerAddr,
 			ParentWeight: parentWeight,
 			Ticket:       ticket,
-			ElectionProof: &block.ElectionProof{
+			ElectionProof: &types.ElectionProof{
 				WinCount: 1,
 			},
 			ParentStateRoot:       fakeRoot,
@@ -101,36 +101,36 @@ func TestWeight(t *testing.T) {
 
 	t.Run("many blocks", func(t *testing.T) {
 		toWeighThreeBlock := block.RequireNewTipSet(t,
-			&block.Block{
+			&types.BlockHeader{
 				Miner:        minerAddr,
 				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
 				Timestamp:    0,
-				ElectionProof: &block.ElectionProof{
+				ElectionProof: &types.ElectionProof{
 					WinCount: 1,
 				},
 				ParentStateRoot:       fakeRoot,
 				Messages:              emptycid.EmptyMessagesCID,
 				ParentMessageReceipts: emptycid.EmptyReceiptsCID,
 			},
-			&block.Block{
+			&types.BlockHeader{
 				Miner:        minerAddr,
 				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
 				Timestamp:    1,
-				ElectionProof: &block.ElectionProof{
+				ElectionProof: &types.ElectionProof{
 					WinCount: 1,
 				},
 				ParentStateRoot:       fakeRoot,
 				Messages:              emptycid.EmptyMessagesCID,
 				ParentMessageReceipts: emptycid.EmptyReceiptsCID,
 			},
-			&block.Block{
+			&types.BlockHeader{
 				Miner:        minerAddr,
 				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
 				Timestamp:    2,
-				ElectionProof: &block.ElectionProof{
+				ElectionProof: &types.ElectionProof{
 					WinCount: 1,
 				},
 				ParentStateRoot:       fakeRoot,

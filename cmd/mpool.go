@@ -16,7 +16,6 @@ import (
 	stdbig "math/big"
 
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -125,7 +124,7 @@ var mpoolFindCmd = &cmds.Command{
 		method, _ := req.Options["method"].(int64)
 
 		ctx := context.TODO()
-		pending, err := env.(*node.Env).MessagePoolAPI.MpoolPending(ctx, block.TipSetKey{})
+		pending, err := env.(*node.Env).MessagePoolAPI.MpoolPending(ctx, types.TipSetKey{})
 		if err != nil {
 			return err
 		}
@@ -288,7 +287,7 @@ var mpoolReplaceCmd = &cmds.Command{
 			// msg.GasLimit = 0 // TODO: need to fix the way we estimate gas limits to account for the messages already being in the mempool
 			msg.GasFeeCap = abi.NewTokenAmount(0)
 			msg.GasPremium = abi.NewTokenAmount(0)
-			retm, err := env.(*node.Env).MessagePoolAPI.GasEstimateMessageGas(req.Context, &msg, mss, block.TipSetKey{})
+			retm, err := env.(*node.Env).MessagePoolAPI.GasEstimateMessageGas(req.Context, &msg, mss, types.TipSetKey{})
 			if err != nil {
 				return fmt.Errorf("failed to estimate gas values: %w", err)
 			}
@@ -308,7 +307,7 @@ var mpoolReplaceCmd = &cmds.Command{
 		} else {
 			msg.GasFeeCap = abi.NewTokenAmount(0)
 			msg.GasPremium = abi.NewTokenAmount(0)
-			newMsg, err := env.(*node.Env).MessagePoolAPI.GasEstimateMessageGas(req.Context, &msg, nil, block.TipSetKey{})
+			newMsg, err := env.(*node.Env).MessagePoolAPI.GasEstimateMessageGas(req.Context, &msg, nil, types.TipSetKey{})
 			if err != nil {
 				return fmt.Errorf("failed to estimate gas values: %w", err)
 			}
@@ -391,7 +390,7 @@ Get pending messages.
 			}
 		}
 
-		msgs, err := env.(*node.Env).MessagePoolAPI.MpoolPending(ctx, block.TipSetKey{})
+		msgs, err := env.(*node.Env).MessagePoolAPI.MpoolPending(ctx, types.TipSetKey{})
 		if err != nil {
 			return err
 		}
@@ -540,7 +539,7 @@ Get pending messages.
 			}
 		}
 
-		msgs, err := env.(*node.Env).MessagePoolAPI.MpoolPending(req.Context, block.TipSetKey{})
+		msgs, err := env.(*node.Env).MessagePoolAPI.MpoolPending(req.Context, types.TipSetKey{})
 
 		if err != nil {
 			return err
@@ -669,7 +668,7 @@ Check gas performance of messages in mempool
 
 		ctx := context.TODO()
 
-		msgs, err := env.(*node.Env).MessagePoolAPI.MpoolPending(ctx, block.TipSetKey{})
+		msgs, err := env.(*node.Env).MessagePoolAPI.MpoolPending(ctx, types.TipSetKey{})
 		if err != nil {
 			return err
 		}

@@ -3,7 +3,7 @@ package types
 import (
 	"container/list"
 	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 	"sort"
 	"strconv"
@@ -15,12 +15,12 @@ import (
 // syncing job against given inputs.
 type Target struct {
 	State   SyncStateStage
-	Base    *block.TipSet
-	Current *block.TipSet
+	Base    *types.TipSet
+	Current *types.TipSet
 	Start   time.Time
 	End     time.Time
 	Err     error
-	block.ChainInfo
+	types.ChainInfo
 }
 
 func (target *Target) IsNeibor(t *Target) bool {
@@ -187,7 +187,7 @@ func (tq *TargetTracker) widen(t *Target) (*Target, bool) {
 		}
 	}
 
-	sameWeightBlks := make(map[cid.Cid]*block.Block)
+	sameWeightBlks := make(map[cid.Cid]*types.BlockHeader)
 	for _, val := range tq.targetSet {
 		if val.IsNeibor(t) {
 			for _, blk := range val.Head.Blocks() {
@@ -210,7 +210,7 @@ func (tq *TargetTracker) widen(t *Target) (*Target, bool) {
 		blks = append(blks, blk)
 	}
 
-	newHead, err := block.NewTipSet(blks...)
+	newHead, err := types.NewTipSet(blks...)
 	if err != nil {
 		return nil, false
 	}

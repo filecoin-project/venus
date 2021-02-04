@@ -1,8 +1,8 @@
 package syncer
 
 import (
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chainsync"
+	"github.com/filecoin-project/venus/pkg/types"
 )
 
 type chainSync interface {
@@ -25,6 +25,6 @@ func NewChainSyncProvider(chainSyncer chainSync) *ChainSyncProvider {
 // represent a valid extension. It limits the length of new chains it will
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
-func (chs *ChainSyncProvider) HandleNewTipSet(ci *block.ChainInfo) error {
+func (chs *ChainSyncProvider) HandleNewTipSet(ci *types.ChainInfo) error {
 	return chs.sync.BlockProposer().SendOwnBlock(ci)
 }

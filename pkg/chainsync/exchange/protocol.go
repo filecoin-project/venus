@@ -4,7 +4,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/types"
 	logging "github.com/ipfs/go-log"
@@ -59,7 +58,7 @@ type Request struct {
 
 // `Request` processed and validated to query the tipsets needed.
 type validatedRequest struct {
-	head    block.TipSetKey
+	head    types.TipSetKey
 	length  uint64
 	options *parsedOptions
 }
@@ -139,7 +138,7 @@ func (res *Response) statusToError() error {
 type BSTipSet struct {
 	// List of blocks belonging to a single tipset to which the
 	// `CompactedMessages` are linked.
-	Blocks   []*block.Block
+	Blocks   []*types.BlockHeader
 	Messages *CompactedMessages
 }
 
@@ -166,7 +165,7 @@ type CompactedMessages struct {
 // Response that has been validated according to the protocol
 // and can be safely accessed.
 type validatedResponse struct {
-	tipsets []*block.TipSet
+	tipsets []*types.TipSet
 	// List of all messages per tipset (grouped by tipset,
 	// not by block, hence a single index like `tipsets`).
 	messages []*CompactedMessages
@@ -174,7 +173,7 @@ type validatedResponse struct {
 
 // Decompress messages and form full tipsets with them. The headers
 // need to have been requested as well.
-func (res *validatedResponse) toFullTipSets() []*block.FullTipSet {
+func (res *validatedResponse) toFullTipSets() []*types.FullTipSet {
 	if len(res.tipsets) == 0 || len(res.tipsets) != len(res.messages) {
 		// This decompression can only be done if both headers and
 		// messages are returned in the response. (The second check
@@ -182,12 +181,12 @@ func (res *validatedResponse) toFullTipSets() []*block.FullTipSet {
 		// added here just for completeness.)
 		return nil
 	}
-	ftsList := make([]*block.FullTipSet, len(res.tipsets))
+	ftsList := make([]*types.FullTipSet, len(res.tipsets))
 	for tipsetIdx := range res.tipsets {
-		fts := &block.FullTipSet{} // FIXME: We should use the `NewFullTipSet` API.
+		fts := &types.FullTipSet{} // FIXME: We should use the `NewFullTipSet` API.
 		msgs := res.messages[tipsetIdx]
 		for blockIdx, b := range res.tipsets[tipsetIdx].Blocks() {
-			fb := &block.FullBlock{
+			fb := &types.FullBlock{
 				Header: b,
 			}
 

@@ -2,7 +2,7 @@ package events
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -25,7 +25,7 @@ type heightEvents struct {
 	ctx context.Context
 }
 
-func (e *heightEvents) headChangeAt(rev, app []*block.TipSet) error {
+func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 	ctx, span := trace.StartSpan(e.ctx, "events.HeightHeadChange")
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("endHeight", int64(app[0].EnsureHeight())))
@@ -38,7 +38,7 @@ func (e *heightEvents) headChangeAt(rev, app []*block.TipSet) error {
 		// TODO: log error if h below gcconfidence
 		// revert height-based triggers
 
-		revert := func(h abi.ChainEpoch, ts *block.TipSet) {
+		revert := func(h abi.ChainEpoch, ts *types.TipSet) {
 			for _, tid := range e.htHeights[h] {
 				ctx, span := trace.StartSpan(ctx, "events.HeightRevert")
 
@@ -86,7 +86,7 @@ func (e *heightEvents) headChangeAt(rev, app []*block.TipSet) error {
 
 		// height triggers
 
-		apply := func(h abi.ChainEpoch, ts *block.TipSet) error {
+		apply := func(h abi.ChainEpoch, ts *types.TipSet) error {
 			for _, tid := range e.htTriggerHeights[h] {
 				hnd := e.heightTriggers[tid]
 				if hnd.called {

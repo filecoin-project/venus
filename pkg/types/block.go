@@ -1,13 +1,13 @@
-package block
+package types
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -17,8 +17,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 )
 
-// Block is a block in the blockchain.
-type Block struct {
+// BlockHeader is a block in the blockchain.
+type BlockHeader struct {
 	// Miner is the address of the miner actor that mined this block.
 	Miner address.Address `json:"miner"`
 
@@ -33,7 +33,7 @@ type Block struct {
 	BeaconEntries []*BeaconEntry `json:"beaconEntries"`
 
 	// WinPoStProof are the winning post proofs
-	WinPoStProof []PoStProof `json:"winPoStProof"`
+	WinPoStProof []proof2.PoStProof `json:"winPoStProof"`
 
 	// Parents is the set of parents this block was based on. Typically one,
 	// but can be several in the case where there were multiple winning ticket-
@@ -83,7 +83,7 @@ const IndexMessagesField = 10
 const IndexParentsField = 5
 
 // Cid returns the content id of this block.
-func (b *Block) Cid() cid.Cid {
+func (b *BlockHeader) Cid() cid.Cid {
 	if b.cachedCid == cid.Undef {
 		if b.cachedBytes == nil {
 			buf := new(bytes.Buffer)
@@ -104,8 +104,8 @@ func (b *Block) Cid() cid.Cid {
 	return b.cachedCid
 }
 
-// ToNode converts the Block to an IPLD node.
-func (b *Block) ToNode() node.Node {
+// ToNode converts the BlockHeader to an IPLD node.
+func (b *BlockHeader) ToNode() node.Node {
 	buf := new(bytes.Buffer)
 	err := b.MarshalCBOR(buf)
 	if err != nil {
@@ -128,19 +128,19 @@ func (b *Block) ToNode() node.Node {
 	return n
 }
 
-func (b *Block) String() string {
-	errStr := "(error encoding Block)"
+func (b *BlockHeader) String() string {
+	errStr := "(error encoding BlockHeader)"
 	c := b.Cid()
 	js, err := json.MarshalIndent(b, "", "  ")
 	if err != nil {
 		return errStr
 	}
-	return fmt.Sprintf("Block cid=[%v]: %s", c, string(js))
+	return fmt.Sprintf("BlockHeader cid=[%v]: %s", c, string(js))
 }
 
-// DecodeBlock decodes raw cbor bytes into a Block.
-func DecodeBlock(b []byte) (*Block, error) {
-	var out Block
+// DecodeBlock decodes raw cbor bytes into a BlockHeader.
+func DecodeBlock(b []byte) (*BlockHeader, error) {
+	var out BlockHeader
 	if err := out.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
 		return nil, err
 	}
@@ -150,15 +150,15 @@ func DecodeBlock(b []byte) (*Block, error) {
 	return &out, nil
 }
 
-// Equals returns true if the Block is equal to other.
-func (b *Block) Equals(other *Block) bool {
+// Equals returns true if the BlockHeader is equal to other.
+func (b *BlockHeader) Equals(other *BlockHeader) bool {
 	return b.Cid().Equals(other.Cid())
 }
 
 // SignatureData returns the block's bytes with a null signature field for
 // signature creation and verification
-func (b *Block) SignatureData() []byte {
-	tmp := &Block{
+func (b *BlockHeader) SignatureData() []byte {
+	tmp := &BlockHeader{
 		Miner:                 b.Miner,
 		Ticket:                b.Ticket,
 		ElectionProof:         b.ElectionProof,
@@ -180,7 +180,7 @@ func (b *Block) SignatureData() []byte {
 	return tmp.ToNode().RawData()
 }
 
-func (b *Block) Serialize() ([]byte, error) {
+func (b *BlockHeader) Serialize() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	if err := b.MarshalCBOR(buf); err != nil {
 		return nil, err
@@ -189,7 +189,7 @@ func (b *Block) Serialize() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (b *Block) ToStorageBlock() (blocks.Block, error) {
+func (b *BlockHeader) ToStorageBlock() (blocks.Block, error) {
 	data, err := b.Serialize()
 	if err != nil {
 		return nil, err
@@ -203,6 +203,6 @@ func (b *Block) ToStorageBlock() (blocks.Block, error) {
 	return blocks.NewBlockWithCid(data, c)
 }
 
-func (b *Block) LastTicket() *Ticket {
+func (b *BlockHeader) LastTicket() *Ticket {
 	return &b.Ticket
 }

@@ -2,6 +2,7 @@ package chain
 
 import (
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	tbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -24,7 +24,7 @@ func mkAddress(i uint64) address.Address {
 	return a
 }
 
-func mkBlock(parents *block.TipSet, weightInc int64, ticketNonce uint64) *block.Block {
+func mkBlock(parents *types.TipSet, weightInc int64, ticketNonce uint64) *types.BlockHeader {
 	addr := mkAddress(123561)
 
 	c, err := cid.Decode("bafyreicmaj5hhoy5mgqvamfhgexxyergw7hdeshizghodwkjg6qmpoco7i")
@@ -38,7 +38,7 @@ func mkBlock(parents *block.TipSet, weightInc int64, ticketNonce uint64) *block.
 	}
 
 	var height abi.ChainEpoch
-	var tsKey block.TipSetKey
+	var tsKey types.TipSetKey
 	weight := tbig.NewInt(weightInc)
 	var timestamp uint64
 	if parents != nil {
@@ -52,12 +52,12 @@ func mkBlock(parents *block.TipSet, weightInc int64, ticketNonce uint64) *block.
 		tsKey = parents.Key()
 	}
 
-	return &block.Block{
+	return &types.BlockHeader{
 		Miner: addr,
-		ElectionProof: &block.ElectionProof{
+		ElectionProof: &types.ElectionProof{
 			VRFProof: []byte(fmt.Sprintf("====%d=====", ticketNonce)),
 		},
-		Ticket: block.Ticket{
+		Ticket: types.Ticket{
 			VRFProof: []byte(fmt.Sprintf("====%d=====", ticketNonce)),
 		},
 		Parents:               tsKey,
@@ -73,8 +73,8 @@ func mkBlock(parents *block.TipSet, weightInc int64, ticketNonce uint64) *block.
 	}
 }
 
-func mkTipSet(blks ...*block.Block) *block.TipSet {
-	ts, err := block.NewTipSet(blks...)
+func mkTipSet(blks ...*types.BlockHeader) *types.TipSet {
+	ts, err := types.NewTipSet(blks...)
 	if err != nil {
 		panic(err)
 	}
@@ -85,7 +85,7 @@ func TestHeadChangeCoalescer(t *testing.T) {
 	tf.UnitTest(t)
 
 	notif := make(chan headChange, 1)
-	c := NewHeadChangeCoalescer(func(revert, apply []*block.TipSet) error {
+	c := NewHeadChangeCoalescer(func(revert, apply []*types.TipSet) error {
 		notif <- headChange{apply: apply, revert: revert}
 		return nil
 	},
@@ -109,10 +109,10 @@ func TestHeadChangeCoalescer(t *testing.T) {
 	bE := mkBlock(root, 1, 5)
 	tABCDE := mkTipSet(bA, bB, bC, bD, bE)
 
-	c.HeadChange(nil, []*block.TipSet{tA})                      //nolint
-	c.HeadChange(nil, []*block.TipSet{tB})                      //nolint
-	c.HeadChange([]*block.TipSet{tA, tB}, []*block.TipSet{tAB}) //nolint
-	c.HeadChange([]*block.TipSet{tAB}, []*block.TipSet{tABC})   //nolint
+	c.HeadChange(nil, []*types.TipSet{tA})                      //nolint
+	c.HeadChange(nil, []*types.TipSet{tB})                      //nolint
+	c.HeadChange([]*types.TipSet{tA, tB}, []*types.TipSet{tAB}) //nolint
+	c.HeadChange([]*types.TipSet{tAB}, []*types.TipSet{tABC})   //nolint
 
 	change := <-notif
 
@@ -126,8 +126,8 @@ func TestHeadChangeCoalescer(t *testing.T) {
 		t.Fatalf("expected to apply tABC")
 	}
 
-	c.HeadChange([]*block.TipSet{tABC}, []*block.TipSet{tABCD})   //nolint
-	c.HeadChange([]*block.TipSet{tABCD}, []*block.TipSet{tABCDE}) //nolint
+	c.HeadChange([]*types.TipSet{tABC}, []*types.TipSet{tABCD})   //nolint
+	c.HeadChange([]*types.TipSet{tABCD}, []*types.TipSet{tABCDE}) //nolint
 
 	change = <-notif
 

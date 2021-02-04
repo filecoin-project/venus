@@ -1,9 +1,8 @@
 package types
 
 import (
+	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
-
-	"github.com/filecoin-project/venus/pkg/block"
 )
 
 // BadTipSetCache keeps track of bad tipsets that the syncer should not try to
@@ -26,7 +25,7 @@ func NewBadTipSetCache() *BadTipSetCache {
 // AddChain adds the chain of tipsets to the BadTipSetCache.  For now it just
 // does the simplest thing and adds all blocks of the chain to the cache.
 // TODO: might want to cache a random subset once cache size is limited.
-func (cache *BadTipSetCache) AddChain(chain []*block.TipSet) {
+func (cache *BadTipSetCache) AddChain(chain []*types.TipSet) {
 	for _, ts := range chain {
 		cache.Add(ts.String())
 	}

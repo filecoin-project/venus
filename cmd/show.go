@@ -3,7 +3,6 @@ package cmd
 import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/ipfs/go-cid"
@@ -49,7 +48,7 @@ all other block properties will be included as well.`,
 
 		return re.Emit(block)
 	},
-	Type: block.FullBlock{},
+	Type: types.FullBlock{},
 }
 
 var showHeaderCmd = &cmds.Command{
@@ -75,7 +74,7 @@ all other block properties will be included as well.`,
 
 		return re.Emit(block)
 	},
-	Type: block.Block{},
+	Type: types.BlockHeader{},
 }
 
 var showMessageCmd = &cmds.Command{

@@ -3,21 +3,21 @@ package chain
 import (
 	"context"
 	"encoding/binary"
+	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/minio/blake2b-simd"
 	xerrors "github.com/pkg/errors"
 )
 
 type TipSetByHeight interface {
-	GetTipSet(key block.TipSetKey) (*block.TipSet, error)
-	GetTipSetByHeight(ctx context.Context, ts *block.TipSet, h abi.ChainEpoch, prev bool) (*block.TipSet, error)
+	GetTipSet(key types.TipSetKey) (*types.TipSet, error)
+	GetTipSetByHeight(ctx context.Context, ts *types.TipSet, h abi.ChainEpoch, prev bool) (*types.TipSet, error)
 }
 
 // Creates a new sampler for the chain identified by `head`.
-func NewRandomnessSamplerAtTipSet(reader TipSetByHeight, genesisTicket block.Ticket, head block.TipSetKey) *RandomnessSamplerAtTipSet {
+func NewRandomnessSamplerAtTipSet(reader TipSetByHeight, genesisTicket types.Ticket, head types.TipSetKey) *RandomnessSamplerAtTipSet {
 	return &RandomnessSamplerAtTipSet{
 		sampler: NewSampler(reader, genesisTicket),
 		head:    head,
@@ -30,10 +30,10 @@ func NewRandomnessSamplerAtTipSet(reader TipSetByHeight, genesisTicket block.Tic
 // indexed by epoch could speed up repeated samples from the same chain.
 type Sampler struct {
 	reader        TipSetByHeight
-	genesisTicket block.Ticket
+	genesisTicket types.Ticket
 }
 
-func NewSampler(reader TipSetByHeight, genesisTicket block.Ticket) *Sampler {
+func NewSampler(reader TipSetByHeight, genesisTicket types.Ticket) *Sampler {
 	return &Sampler{reader, genesisTicket}
 }
 
@@ -43,16 +43,16 @@ func NewSampler(reader TipSetByHeight, genesisTicket block.Ticket) *Sampler {
 // Note that this may produce the same value for different, neighbouring epochs when the epoch references a round
 // in which no blocks were produced (an empty tipset or "null block"). A caller desiring a unique see for each epoch
 // should blend in some distinguishing value (such as the epoch itself) into a hash of this ticket.
-func (s *Sampler) SampleTicket(ctx context.Context, head block.TipSetKey, epoch abi.ChainEpoch) (block.Ticket, error) {
-	var ticket block.Ticket
+func (s *Sampler) SampleTicket(ctx context.Context, head types.TipSetKey, epoch abi.ChainEpoch) (types.Ticket, error) {
+	var ticket types.Ticket
 	if !head.IsEmpty() {
 		start, err := s.reader.GetTipSet(head)
 		if err != nil {
-			return block.Ticket{}, err
+			return types.Ticket{}, err
 		}
 
 		if epoch > start.EnsureHeight() {
-			return block.Ticket{}, xerrors.Errorf("cannot draw randomness from the future")
+			return types.Ticket{}, xerrors.Errorf("cannot draw randomness from the future")
 		}
 
 		searchHeight := epoch
@@ -65,7 +65,7 @@ func (s *Sampler) SampleTicket(ctx context.Context, head block.TipSetKey, epoch 
 		// It's also not an error for the requested epoch to be negative.
 		tip, err := s.reader.GetTipSetByHeight(ctx, start, searchHeight, true)
 		if err != nil {
-			return block.Ticket{}, err
+			return types.Ticket{}, err
 		}
 		ticket = tip.MinTicket()
 	} else {
@@ -76,7 +76,7 @@ func (s *Sampler) SampleTicket(ctx context.Context, head block.TipSetKey, epoch 
 	return ticket, nil
 }
 
-func (s *Sampler) SampleRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (s *Sampler) SampleRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	ts, err := s.reader.GetTipSet(tsk)
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ func DrawRandomness(rbase []byte, pers acrypto.DomainSeparationTag, round abi.Ch
 
 type RandomnessSamplerAtTipSet struct {
 	sampler *Sampler
-	head    block.TipSetKey
+	head    types.TipSetKey
 }
 
 func (s *RandomnessSamplerAtTipSet) Sample(ctx context.Context, epoch abi.ChainEpoch) (RandomSeed, error) {

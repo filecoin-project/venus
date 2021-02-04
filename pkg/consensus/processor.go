@@ -7,7 +7,6 @@ import (
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/pkg/types"
 
@@ -53,8 +52,8 @@ func NewConfiguredProcessor(actors vm.ActorCodeLoader, syscalls vm.SyscallsImpl)
 
 // ProcessTipSet computes the state transition specified by the messages in all blocks in a TipSet.
 func (p *DefaultProcessor) ProcessTipSet(ctx context.Context,
-	parent, ts *block.TipSet,
-	msgs []block.BlockMessagesInfo,
+	parent, ts *types.TipSet,
+	msgs []types.BlockMessagesInfo,
 	vmOption vm.VmOption,
 ) (cid.Cid, []types.MessageReceipt, error) {
 	_, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")

@@ -3,7 +3,6 @@ package syncer
 import (
 	"fmt"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 	"time"
@@ -70,8 +69,8 @@ func (v SyncStateStage) String() string {
 
 type ActiveSync struct {
 	WorkerID uint64
-	Base     *block.TipSet
-	Target   *block.TipSet
+	Base     *types.TipSet
+	Target   *types.TipSet
 
 	Stage  SyncStateStage
 	Height abi.ChainEpoch
