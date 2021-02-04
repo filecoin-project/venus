@@ -319,7 +319,7 @@ type BlockTemplate struct {
 	WinningPoStProof []proof2.PoStProof
 }
 
-type MiningBaseInfo struct {
+type MiningBaseInfo struct { //nolint
 	MinerPower        abi.StoragePower
 	NetworkPower      abi.StoragePower
 	Sectors           []builtin.SectorInfo
