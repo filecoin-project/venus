@@ -11,6 +11,11 @@ import (
 	xerrors "github.com/pkg/errors"
 )
 
+type IActor interface {
+	StateGetActor(ctx context.Context, actor address.Address, tsk block.TipSetKey) (*types.Actor, error)
+	ActorGetSignature(ctx context.Context, actorAddr address.Address, method abi.MethodNum) (vm.ActorMethodSignature, error)
+	ListActor(ctx context.Context) (map[address.Address]*types.Actor, error)
+}
 type ActorAPI struct {
 	chain *ChainSubmodule
 }

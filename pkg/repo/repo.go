@@ -39,6 +39,9 @@ type Repo interface {
 	// MetaDatastore is a specific storage solution, only used to store mpool data.
 	MetaDatastore() Datastore
 
+	//MarketDatastore() Datastore
+
+	PaychDatastore() Datastore
 	// SetJsonrpcAPIAddr sets the address of the running jsonrpc API.
 	SetAPIAddr(maddr string) error
 

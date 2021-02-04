@@ -145,6 +145,14 @@ func (smsg *SignedMessage) ToStorageBlock() (blocks.Block, error) {
 	return blocks.NewBlockWithCid(data, c)
 }
 
+func (smsg *SignedMessage) Serialize() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	if err := smsg.MarshalCBOR(buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 func (smsg *SignedMessage) VMMessage() *UnsignedMessage {
 	return &smsg.Message
 }

@@ -34,6 +34,8 @@ const (
 	walletDatastorePrefix = "wallet"
 	chainDatastorePrefix  = "chain"
 	metaDatastorePrefix   = "metadata"
+	paychDatastorePrefix  = "paych"
+	//marketDatastoreProfix = "market"
 	// dealsDatastorePrefix   = "deals"
 	snapshotStorePrefix    = "snapshots"
 	snapshotFilenamePrefix = "snapshot"
@@ -59,7 +61,8 @@ type FSRepo struct {
 	walletDs  Datastore
 	chainDs   Datastore
 	metaDs    Datastore
-
+	//marketDs  Datastore
+	paychDs Datastore
 	// lockfile is the file system lock to prevent others from opening the same repo.
 	lockfile io.Closer
 }
@@ -247,6 +250,13 @@ func (r *FSRepo) loadFromDisk() error {
 		return errors.Wrap(err, "failed to open staging datastore")
 	}
 
+	if err := r.openPaychDataStore(); err != nil {
+		return errors.Wrap(err, "failed to open paych datastore")
+	}
+
+	/*if err := r.openMarketDataStore(); err != nil {
+		return errors.Wrap(err, "failed to open market datastore")
+	}*/
 	return nil
 }
 
@@ -312,6 +322,14 @@ func (r *FSRepo) MetaDatastore() Datastore {
 	return r.metaDs
 }
 
+/*func (r *FSRepo) MarketDatastore() Datastore {
+	return r.marketDs
+}*/
+
+func (r *FSRepo) PaychDatastore() Datastore {
+	return r.paychDs
+}
+
 // Version returns the version of the repo
 func (r *FSRepo) Version() uint {
 	return r.version
@@ -347,6 +365,14 @@ func (r *FSRepo) Close() error {
 	if err := r.stagingDs.Close(); err != nil {
 		return errors.Wrap(err, "failed to close stagingDs datastore")
 	}
+
+	if err := r.paychDs.Close(); err != nil {
+		return errors.Wrap(err, "failed to close paych datastore")
+	}
+
+	/*if err := r.marketDs.Close(); err != nil {
+		return errors.Wrap(err, "failed to close market datastore")
+	}*/
 
 	if err := r.removeAPIFile(); err != nil {
 		return errors.Wrap(err, "error removing API file")
@@ -464,7 +490,23 @@ func (r *FSRepo) openMetaDatastore() error {
 
 	return nil
 }
+func (r *FSRepo) openPaychDataStore() error {
+	var err error
+	r.paychDs, err = badgerds.NewDatastore(filepath.Join(r.path, paychDatastorePrefix), badgerOptions())
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
+/*func (r *FSRepo) openMarketDataStore() error {
+	var err error
+	r.marketDs, err = badgerds.NewDatastore(filepath.Join(r.path, marketDatastoreProfix), badgerOptions())
+	if err != nil {
+		return err
+	}
+	return nil
+}*/
 func (r *FSRepo) openWalletDatastore() error {
 	// TODO: read wallet datastore info from config, use that to open it up
 	ds, err := badgerds.NewDatastore(filepath.Join(r.path, walletDatastorePrefix), badgerOptions())

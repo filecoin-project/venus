@@ -14,6 +14,19 @@ import (
 	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
+type IWallet interface {
+	WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error)
+	WalletHas(ctx context.Context, addr address.Address) (bool, error)
+	WalletDefaultAddress() (address.Address, error)
+	WalletAddresses() []address.Address
+	WalletSetDefault(_ context.Context, addr address.Address) error
+	WalletNewAddress(protocol address.Protocol) (address.Address, error)
+	WalletImport(key *crypto.KeyInfo) (address.Address, error)
+	WalletExport(addrs []address.Address) ([]*crypto.KeyInfo, error)
+	WalletSign(ctx context.Context, k address.Address, msg []byte, _ wallet.MsgMeta) (*crypto.Signature, error)
+	WalletSignMessage(ctx context.Context, k address.Address, msg *types.UnsignedMessage) (*types.SignedMessage, error)
+}
+
 var ErrNoDefaultFromAddress = errors.New("unable to determine a default walletModule address")
 
 type WalletAPI struct { //nolint

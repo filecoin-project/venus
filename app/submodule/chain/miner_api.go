@@ -22,6 +22,37 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
+type IMinerState interface {
+	StateMinerSectorAllocated(ctx context.Context, maddr address.Address, s abi.SectorNumber, tsk block.TipSetKey) (bool, error)
+	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk block.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
+	StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorOnChainInfo, error)
+	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorLocation, error)
+	StateMinerSectorSize(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (abi.SectorSize, error)
+	StateMinerInfo(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (miner.MinerInfo, error)
+	StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (address.Address, error)
+	StateMinerRecoveries(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (bitfield.BitField, error)
+	StateMinerFaults(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (bitfield.BitField, error)
+	StateMinerProvingDeadline(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (*dline.Info, error)
+	StateMinerPartitions(ctx context.Context, maddr address.Address, dlIdx uint64, tsk block.TipSetKey) ([]Partition, error)
+	StateMinerDeadlines(ctx context.Context, maddr address.Address, tsk block.TipSetKey) ([]Deadline, error)
+	StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk block.TipSetKey) ([]*miner.SectorOnChainInfo, error)
+	StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk block.TipSetKey) (*MarketDeal, error)
+	StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk block.TipSetKey) (big.Int, error)
+	StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk block.TipSetKey) (big.Int, error)
+	StateVMCirculatingSupplyInternal(ctx context.Context, tsk block.TipSetKey) (chain.CirculatingSupply, error)
+	StateCirculatingSupply(ctx context.Context, tsk block.TipSetKey) (abi.TokenAmount, error)
+	StateMarketDeals(ctx context.Context, tsk block.TipSetKey) (map[string]pstate.MarketDeal, error)
+	StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk block.TipSetKey) ([]*miner.SectorOnChainInfo, error)
+	StateLookupID(ctx context.Context, addr address.Address, tsk block.TipSetKey) (address.Address, error)
+	StateListMiners(ctx context.Context, tsk block.TipSetKey) ([]address.Address, error)
+	StateListActors(ctx context.Context, tsk block.TipSetKey) ([]address.Address, error)
+	StateMinerPower(ctx context.Context, addr address.Address, tsk block.TipSetKey) (*power.MinerPower, error)
+	StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (big.Int, error)
+	StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorExpiration, error)
+	StateMinerSectorCount(ctx context.Context, addr address.Address, tsk block.TipSetKey) (MinerSectors, error)
+	StateMarketBalance(ctx context.Context, addr address.Address, tsk block.TipSetKey) (MarketBalance, error)
+}
+
 type MinerStateAPI struct {
 	chain *ChainSubmodule
 }

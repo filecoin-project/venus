@@ -78,6 +78,7 @@ func (s *state2) Remove(addrs ...address.Address) (err error) {
 	s.State.AddressMap = amr
 	return nil
 }
+
 func (s *state2) addressMap() (adt.Map, error) {
 	return adt2.AsMap(s.store, s.AddressMap)
 }

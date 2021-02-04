@@ -261,7 +261,6 @@ func (st *State) LookupID(addr ActorKey) (address.Address, error) {
 	if addr.Protocol() == address.ID {
 		return addr, nil
 	}
-
 	resa, ok := st.snaps.resolveAddress(addr)
 	if ok {
 		return resa, nil
@@ -270,7 +269,6 @@ func (st *State) LookupID(addr ActorKey) (address.Address, error) {
 	if err != nil {
 		return a, err
 	}
-
 	st.snaps.cacheResolveAddress(addr, a)
 
 	return a, nil

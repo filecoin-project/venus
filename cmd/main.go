@@ -132,6 +132,9 @@ State COMMANDS
   venus network-version        - MReturns the network version
   venus list-actor             - list all actors
 
+Paych COMMANDS 
+  venus paych                  - Manage payment channels
+
 TOOL COMMANDS
   venus inspect                - Show info about the venus node
   venus leb128                 - Leb128 cli encode/decode
@@ -182,6 +185,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"version":  versionCmd,
 	"state":    stateCmd,
 	"miner":    minerCmd,
+	"paych":    paychCmd,
 }
 
 func init() {

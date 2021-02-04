@@ -45,6 +45,8 @@ func (ms *MessageSendSpec) Get() MessageSendSpec {
 
 const MessageVersion = 0
 
+var EmptyTokenAmount = abi.TokenAmount{}
+
 //
 type ChainMsg interface {
 	Cid() (cid.Cid, error)
