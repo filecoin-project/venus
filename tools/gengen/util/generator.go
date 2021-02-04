@@ -111,13 +111,17 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 
 func (g *GenesisGenerator) Init(cfg *GenesisCfg) error {
 	g.pnrg = mrand.New(mrand.NewSource(cfg.Seed))
-
+	fmt.Println("🍏🍏",cfg.Seed)
 	keys, err := genKeys(cfg.KeysToGen, g.pnrg)
 	if err != nil {
 		return err
 	}
 	keys = append(keys, cfg.ImportKeys...)
 	g.keys = keys
+	for _,v:=range g.keys{
+		addr ,_:=v.Address()
+		fmt.Println("🍏🍏🍏", addr.String())
+	}
 
 	vrKey, err := crypto.NewSecpKeyFromSeed(g.pnrg)
 	if err != nil {
