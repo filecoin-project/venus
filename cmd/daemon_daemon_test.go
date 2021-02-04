@@ -38,7 +38,6 @@ func TestDownloadGenesis(t *testing.T) {
 		strconv.Itoa(port),
 	).Start()
 	require.NoError(t, err)
-
 	td := th.NewDaemon(t, th.GenesisFile(fmt.Sprintf("http://127.0.0.1:%d/genesis.car", port))).Start()
 
 	td.ShutdownSuccess()

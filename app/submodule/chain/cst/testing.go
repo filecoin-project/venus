@@ -40,7 +40,8 @@ func requireCommonDepsWithGifAndBlockstore(t *testing.T, gif genesis.InitFunc, r
 	chainStore, err := genesis.Init(context.Background(), r, bs, cst, gif)
 	require.NoError(t, err)
 	messageStore := chain.NewMessageStore(bs)
-	backend, err := wallet.NewDSBackend(r.WalletDatastore())
+
+	backend, err := wallet.NewDSBackend(r.WalletDatastore(), r.Config().Wallet.PassphraseConfig)
 	require.NoError(t, err)
 	wallet := wallet.New(backend)
 	genBlk, err := chainStore.GetGenesisBlock(context.TODO())

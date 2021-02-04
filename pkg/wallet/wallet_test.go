@@ -1,10 +1,8 @@
-package wallet_test
+package wallet
 
 import (
 	"bytes"
 	"testing"
-
-	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-datastore"
@@ -12,24 +10,36 @@ import (
 	"github.com/stretchr/testify/require"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/wallet"
+	"github.com/filecoin-project/venus/pkg/types"
 )
+
+func newWalletAndDSBackend(t *testing.T) (*Wallet, *DSBackend) {
+	t.Log("create a backend")
+	ds := datastore.NewMapDatastore()
+	fs, err := NewDSBackend(ds, config.DefaultPassphraseConfig())
+	assert.NoError(t, err)
+
+	err = fs.SetPassword(TestPassword)
+	assert.NoError(t, err)
+	err = fs.UnLocked(TestPassword)
+	assert.NoError(t, err)
+
+	t.Log("create a wallet with a single backend")
+	w := New(fs)
+
+	t.Log("check backends")
+	assert.Len(t, w.Backends(DSBackendType), 1)
+
+	return w, fs
+}
 
 func TestWalletSimple(t *testing.T) {
 	tf.UnitTest(t)
 
-	t.Log("create a backend")
-	ds := datastore.NewMapDatastore()
-	fs, err := wallet.NewDSBackend(ds)
-	assert.NoError(t, err)
-
-	t.Log("create a wallet with a single backend")
-	w := wallet.New(fs)
-
-	t.Log("check backends")
-	assert.Len(t, w.Backends(wallet.DSBackendType), 1)
+	w, fs := newWalletAndDSBackend(t)
 
 	t.Log("create a new address in the backend")
 	addr, err := fs.NewAddress(address.SECP256K1)
@@ -71,12 +81,9 @@ func TestWalletSimple(t *testing.T) {
 func TestWalletBLSKeys(t *testing.T) {
 	tf.UnitTest(t)
 
-	ds := datastore.NewMapDatastore()
-	wb, err := wallet.NewDSBackend(ds)
-	require.NoError(t, err)
-	w := wallet.New(wb)
+	w, wb := newWalletAndDSBackend(t)
 
-	addr, err := wallet.NewAddress(w, address.BLS)
+	addr, err := w.NewAddress(address.BLS)
 	require.NoError(t, err)
 
 	data := []byte("data to be signed")
@@ -116,16 +123,7 @@ func TestWalletBLSKeys(t *testing.T) {
 func TestSimpleSignAndVerify(t *testing.T) {
 	tf.UnitTest(t)
 
-	t.Log("create a backend")
-	ds := datastore.NewMapDatastore()
-	fs, err := wallet.NewDSBackend(ds)
-	assert.NoError(t, err)
-
-	t.Log("create a wallet with a single backend")
-	w := wallet.New(fs)
-
-	t.Log("check backends")
-	assert.Len(t, w.Backends(wallet.DSBackendType), 1)
+	w, fs := newWalletAndDSBackend(t)
 
 	t.Log("create a new address in the backend")
 	addr, err := fs.NewAddress(address.SECP256K1)
@@ -159,22 +157,8 @@ func TestSimpleSignAndVerify(t *testing.T) {
 func TestSignErrorCases(t *testing.T) {
 	tf.UnitTest(t)
 
-	t.Log("create 2 backends")
-	ds1 := datastore.NewMapDatastore()
-	fs1, err := wallet.NewDSBackend(ds1)
-	assert.NoError(t, err)
-
-	ds2 := datastore.NewMapDatastore()
-	fs2, err := wallet.NewDSBackend(ds2)
-	assert.NoError(t, err)
-
-	t.Log("create 2 wallets each with a backend")
-	w1 := wallet.New(fs1)
-	w2 := wallet.New(fs2)
-
-	t.Log("check backends")
-	assert.Len(t, w1.Backends(wallet.DSBackendType), 1)
-	assert.Len(t, w2.Backends(wallet.DSBackendType), 1)
+	w1, fs1 := newWalletAndDSBackend(t)
+	_, fs2 := newWalletAndDSBackend(t)
 
 	t.Log("create a new address each backend")
 	addr1, err := fs1.NewAddress(address.SECP256K1)
