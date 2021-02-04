@@ -1,8 +1,9 @@
 go-filecoin
 venus
-venus
 !cmd/venus
 !app/venus
+devgen.car
+localnet.json
 
 .task
 .idea

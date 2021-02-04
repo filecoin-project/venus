@@ -15,6 +15,7 @@ import (
 //
 // "go made me do it"
 type rootFunc func() (adt.Map, error)
+
 // Assumes that the bitwidth for v3 HAMTs is the DefaultHamtBitwidth
 func getDataCap(store adt.Store, ver specactors.Version, root rootFunc, addr address.Address) (bool, abi.StoragePower, error) {
 	if addr.Protocol() != address.ID {

@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"testing"
+
 	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 	"github.com/filecoin-project/venus/pkg/util"
-	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -589,14 +590,22 @@ type FakeStateEvaluator struct {
 }
 
 // RunStateTransition delegates to StateBuilder.ComputeState
-func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
+func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid) (cid.Cid, cid.Cid, error) {
 	//gather message
 	blockMessageInfo, err := e.MessageStore.LoadTipSetMessage(ctx, ts)
 	if err != nil {
-		return cid.Undef, []types.MessageReceipt{}, xerrors.Errorf("failed to gather message in tipset %v", err)
+		return cid.Undef, cid.Undef, xerrors.Errorf("failed to gather message in tipset %v", err)
+	}
+	root, receipts, err := e.ComputeState(parentStateRoot, blockMessageInfo)
+	if err != nil {
+		return cid.Undef, cid.Undef, errors.Wrap(err, "error compute state")
 	}
 
-	return e.ComputeState(parentStateRoot, blockMessageInfo)
+	receiptCid, err := e.MessageStore.StoreReceipts(ctx, receipts)
+	if err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("failed to save receipt: %v", err)
+	}
+	return root, receiptCid, nil
 }
 
 func (e *FakeStateEvaluator) ValidateFullBlock(ctx context.Context, blk *block.Block) error {

@@ -383,7 +383,14 @@ func (ms *msgSet) getRequiredFunds(nonce uint64) tbig.Int {
 	return tbig.Int{Int: requiredFunds}
 }
 
-func New(api Provider, ds repo.Datastore, forkParams *config.ForkUpgradeConfig, netName string, gp gasPredictor, ap actorProvider, j journal.Journal) (*MessagePool, error) {
+func New(api Provider,
+	ds repo.Datastore,
+	forkParams *config.ForkUpgradeConfig,
+	netName string,
+	gp gasPredictor,
+	ap actorProvider,
+	j journal.Journal,
+) (*MessagePool, error) {
 	cache, _ := lru.New2Q(constants.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(constants.VerifSigCacheSize)
 

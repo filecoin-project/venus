@@ -2,20 +2,18 @@ package fr32_test
 
 import (
 	"bytes"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"io"
 	"io/ioutil"
 	"os"
 	"testing"
 
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
-	"github.com/filecoin-project/venus/pkg/util/fr32"
-
 	ffi "github.com/filecoin-project/filecoin-ffi"
-
+	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/stretchr/testify/require"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/pkg/util/fr32"
 )
 
 func TestWriteTwoPcs(t *testing.T) {
@@ -31,7 +29,7 @@ func TestWriteTwoPcs(t *testing.T) {
 		buf := bytes.Repeat([]byte{0xab * byte(i)}, int(paddedSize.Unpadded()))
 		rawBytes = append(rawBytes, buf...)
 
-		rf, w, _ := ffiwrapper.ToReadableFile(bytes.NewReader(buf), int64(len(buf)))
+		rf, w, _ := commpffi.ToReadableFile(bytes.NewReader(buf), int64(len(buf)))
 
 		_, _, _, err := ffi.WriteWithAlignment(abi.RegisteredSealProof_StackedDrg32GiBV1, rf, abi.UnpaddedPieceSize(len(buf)), tf, nil)
 		if err != nil {
