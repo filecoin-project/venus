@@ -801,7 +801,7 @@ commands:
     steps:
       - run:
           name: generate filecoin-ffi checksum (used as key for Groth parameters)
-          command: git rev-parse @:./vendors/filecoin-ffi > /tmp/filecoin-ffi-checksum.txt
+          command: git rev-parse @:./extern/filecoin-ffi > /tmp/filecoin-ffi-checksum.txt
   trigger_infra_build:
     parameters:
       branch:

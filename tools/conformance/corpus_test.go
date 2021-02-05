@@ -32,7 +32,7 @@ const (
 	//
 	// When running this test, the corpus root can be overridden through the
 	// -conformance.corpus CLI flag to run an alternate corpus.
-	defaultCorpusRoot = "../../vendors/test-vectors/corpus"
+	defaultCorpusRoot = "../../extern/test-vectors/corpus"
 )
 
 // ignore is a set of paths relative to root to skip.
