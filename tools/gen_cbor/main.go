@@ -34,6 +34,11 @@ func main() {
 		types.UnsignedMessage{},
 		types.TxMeta{},
 		types.Actor{},
+		types.BeaconEntry{},
+		types.BlockHeader{},
+		types.Ticket{},
+		types.ElectionProof{},
+		types.BlockMsg{},
 	); err != nil {
 		panic(err)
 	}
@@ -74,25 +79,6 @@ func main() {
 
 	if err := gen.WriteTupleEncodersToFile("./pkg/chain/cbor_gen.go", "chain",
 		chain.TsState{},
-	); err != nil {
-		panic(err)
-	}
-
-	if err := gen.WriteTupleEncodersToFile("./pkg/block/cbor_gen.go", "block",
-		types.BeaconEntry{},
-		types.BlockHeader{},
-		types.Ticket{},
-		types.ElectionProof{},
-		types.PoStProof{},
-		types.BlockMsg{},
-		/*
-			types.ExpTipSet{},
-
-			types.StateRoot{},
-			types.StateInfo0{},
-
-		*/
-
 	); err != nil {
 		panic(err)
 	}
