@@ -4,6 +4,7 @@ import (
 	"context"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	pstate "github.com/filecoin-project/venus/pkg/state"
+	cid "github.com/ipfs/go-cid/_rsrch/cidiface"
 	"io"
 	"time"
 
@@ -161,7 +162,7 @@ type FullNode struct {
 
 	BeaconGetEntry func(context.Context, abi.ChainEpoch) (*types.BeaconEntry, error)
 
-	MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*types.MiningBaseInfo, error)
+	MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error)
 	MinerCreateBlock func(context.Context, *mineApiTypes.BlockTemplate) (*types.BlockMsg, error)
 }
 
@@ -180,7 +181,7 @@ type BeaconAPI struct {
 }
 
 type MiningAPI struct {
-	MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*types.MiningBaseInfo, error)
+	MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error)
 	MinerCreateBlock func(context.Context, *mineApiTypes.BlockTemplate) (*types.BlockMsg, error)
 }
 
