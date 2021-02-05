@@ -4,7 +4,7 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-// FullBlock carries a block header and the message and receipt collections
+// FullBlock carries a newBlock header and the message and receipt collections
 // referenced from the header.
 type FullBlock struct {
 	Header       *BlockHeader

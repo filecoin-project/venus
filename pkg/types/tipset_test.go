@@ -32,7 +32,7 @@ func init() {
 	mockSignerForTest, _ = NewMockSignersAndKeyInfo(2)
 }
 
-func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWeight, timestamp uint64, msg string) *BlockHeader {
+func newBlock(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWeight, timestamp uint64, msg string) *BlockHeader {
 	cidGetter := NewCidForTestGetter()
 	addrGetter := NewForTestGetter()
 	return &BlockHeader{
@@ -79,8 +79,8 @@ func TestTipSet(t *testing.T) {
 	})
 
 	t.Run("order breaks ties with CID", func(t *testing.T) {
-		b1 := block(t, []byte{1}, 1, cid1, parentWeight, 1, "1")
-		b2 := block(t, []byte{1}, 1, cid1, parentWeight, 2, "2")
+		b1 := newBlock(t, []byte{1}, 1, cid1, parentWeight, 1, "1")
+		b2 := newBlock(t, []byte{1}, 1, cid1, parentWeight, 2, "2")
 
 		ts := RequireNewTipSet(t, b1, b2)
 		if bytes.Compare(b1.Cid().Bytes(), b2.Cid().Bytes()) < 0 {
@@ -176,7 +176,7 @@ func TestTipSet(t *testing.T) {
 		assert.Contains(t, err.Error(), "no blocks for tipset")
 	})
 
-	t.Run("duplicate block fails new tipset", func(t *testing.T) {
+	t.Run("duplicate newBlock fails new tipset", func(t *testing.T) {
 		b1, b2, b3 = makeTestBlocks(t)
 		ts, err := NewTipSet(b1, b2, b1)
 		assert.Error(t, err)
@@ -209,20 +209,12 @@ func TestTipSet(t *testing.T) {
 }
 
 func makeTestBlocks(t *testing.T) (*BlockHeader, *BlockHeader, *BlockHeader) {
-	b1 := block(t, []byte{2}, 1, cid1, parentWeight, 1, "1")
-	b2 := block(t, []byte{3}, 1, cid1, parentWeight, 2, "2")
-	b3 := block(t, []byte{1}, 1, cid1, parentWeight, 3, "3")
+	b1 := newBlock(t, []byte{2}, 1, cid1, parentWeight, 1, "1")
+	b2 := newBlock(t, []byte{3}, 1, cid1, parentWeight, 2, "2")
+	b3 := newBlock(t, []byte{1}, 1, cid1, parentWeight, 3, "3")
 
 	// The tickets are constructed such that their digests are ordered.
 	require.True(t, b1.Ticket.Compare(&b2.Ticket) < 0)
 	require.True(t, b2.Ticket.Compare(&b3.Ticket) < 0)
 	return b1, b2, b3
-}
-
-// RequireNewTipSet instantiates and returns a new tipset of the given blocks
-// and requires that the setup validation succeed.
-func RequireNewTipSet(t *testing.T, blks ...*BlockHeader) *TipSet {
-	ts, err := NewTipSet(blks...)
-	require.NoError(t, err)
-	return ts
 }

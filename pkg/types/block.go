@@ -17,25 +17,25 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 )
 
-// BlockHeader is a block in the blockchain.
+// BlockHeader is a newBlock in the blockchain.
 type BlockHeader struct {
-	// Miner is the address of the miner actor that mined this block.
+	// Miner is the address of the miner actor that mined this newBlock.
 	Miner address.Address `json:"miner"`
 
-	// Ticket is the ticket submitted with this block.
+	// Ticket is the ticket submitted with this newBlock.
 	Ticket Ticket `json:"ticket"`
 
-	// ElectionProof is the vrf proof giving this block's miner authoring rights
+	// ElectionProof is the vrf proof giving this newBlock's miner authoring rights
 	ElectionProof *ElectionProof `json:"electionProof"`
 
 	// BeaconEntries contain the verifiable oracle randomness used to elect
-	// this block's author leader
+	// this newBlock's author leader
 	BeaconEntries []*BeaconEntry `json:"beaconEntries"`
 
 	// WinPoStProof are the winning post proofs
 	WinPoStProof []proof2.PoStProof `json:"winPoStProof"`
 
-	// Parents is the set of parents this block was based on. Typically one,
+	// Parents is the set of parents this newBlock was based on. Typically one,
 	// but can be several in the case where there were multiple winning ticket-
 	// holders for an epoch.
 	Parents TipSetKey `json:"parents"`
@@ -43,7 +43,7 @@ type BlockHeader struct {
 	// ParentWeight is the aggregate chain weight of the parent set.
 	ParentWeight fbig.Int `json:"parentWeight"`
 
-	// Height is the chain height of this block.
+	// Height is the chain height of this newBlock.
 	Height abi.ChainEpoch `json:"height"`
 
 	// ParentStateRoot is the CID of the root of the state tree after application of the messages in the parent tipset
@@ -51,19 +51,19 @@ type BlockHeader struct {
 	ParentStateRoot cid.Cid `json:"parentStateRoot,omitempty"`
 
 	// ParentMessageReceipts is a list of receipts corresponding to the application of the messages in the parent tipset
-	// to the parent tipset's state root (corresponding to this block's ParentStateRoot).
+	// to the parent tipset's state root (corresponding to this newBlock's ParentStateRoot).
 	ParentMessageReceipts cid.Cid `json:"parentMessageReceipts,omitempty"`
 
-	// Messages is the set of messages included in this block
+	// Messages is the set of messages included in this newBlock
 	Messages cid.Cid `json:"messages,omitempty"`
 
-	// The aggregate signature of all BLS signed messages in the block
+	// The aggregate signature of all BLS signed messages in the newBlock
 	BLSAggregate *crypto.Signature `json:"BLSAggregate"`
 
-	// The timestamp, in seconds since the Unix epoch, at which this block was created.
+	// The timestamp, in seconds since the Unix epoch, at which this newBlock was created.
 	Timestamp uint64 `json:"timestamp"`
 
-	// The signature of the miner's worker key over the block
+	// The signature of the miner's worker key over the newBlock
 	BlockSig *crypto.Signature `json:"blocksig"`
 
 	// ForkSignaling is extra data used by miners to communicate
@@ -76,13 +76,13 @@ type BlockHeader struct {
 	cachedBytes []byte
 }
 
-// IndexMessagesField is the message field position in the encoded block
+// IndexMessagesField is the message field position in the encoded newBlock
 const IndexMessagesField = 10
 
-// IndexParentsField is the parents field position in the encoded block
+// IndexParentsField is the parents field position in the encoded newBlock
 const IndexParentsField = 5
 
-// Cid returns the content id of this block.
+// Cid returns the content id of this newBlock.
 func (b *BlockHeader) Cid() cid.Cid {
 	if b.cachedCid == cid.Undef {
 		if b.cachedBytes == nil {
@@ -155,7 +155,7 @@ func (b *BlockHeader) Equals(other *BlockHeader) bool {
 	return b.Cid().Equals(other.Cid())
 }
 
-// SignatureData returns the block's bytes with a null signature field for
+// SignatureData returns the newBlock's bytes with a null signature field for
 // signature creation and verification
 func (b *BlockHeader) SignatureData() []byte {
 	tmp := &BlockHeader{

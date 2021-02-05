@@ -743,17 +743,17 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Ticket (block.Ticket) (struct)
+	// t.Ticket (newBlock.Ticket) (struct)
 	if err := t.Ticket.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.ElectionProof (block.ElectionProof) (struct)
+	// t.ElectionProof (newBlock.ElectionProof) (struct)
 	if err := t.ElectionProof.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.BeaconEntries ([]*block.BeaconEntry) (slice)
+	// t.BeaconEntries ([]*newBlock.BeaconEntry) (slice)
 	if len(t.BeaconEntries) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.BeaconEntries was too long")
 	}
@@ -767,7 +767,7 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.WinPoStProof ([]block.PoStProof) (slice)
+	// t.WinPoStProof ([]newBlock.PoStProof) (slice)
 	if len(t.WinPoStProof) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.WinPoStProof was too long")
 	}
@@ -781,7 +781,7 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.Parents (block.TipSetKey) (struct)
+	// t.Parents (newBlock.TipSetKey) (struct)
 	if err := t.Parents.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -876,7 +876,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.Ticket (block.Ticket) (struct)
+	// t.Ticket (newBlock.Ticket) (struct)
 
 	{
 
@@ -885,7 +885,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.ElectionProof (block.ElectionProof) (struct)
+	// t.ElectionProof (newBlock.ElectionProof) (struct)
 
 	{
 
@@ -904,7 +904,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.BeaconEntries ([]*block.BeaconEntry) (slice)
+	// t.BeaconEntries ([]*newBlock.BeaconEntry) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -933,7 +933,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		t.BeaconEntries[i] = &v
 	}
 
-	// t.WinPoStProof ([]block.PoStProof) (slice)
+	// t.WinPoStProof ([]newBlock.PoStProof) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -962,7 +962,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		t.WinPoStProof[i] = v
 	}
 
-	// t.Parents (block.TipSetKey) (struct)
+	// t.Parents (newBlock.TipSetKey) (struct)
 
 	{
 
@@ -1132,7 +1132,7 @@ func (t *Ticket) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.VRFProof (block.VRFPi) (slice)
+	// t.VRFProof (newBlock.VRFPi) (slice)
 	if len(t.VRFProof) > cbg.ByteArrayMaxLen {
 		return xerrors.Errorf("Byte array in field t.VRFProof was too long")
 	}
@@ -1165,7 +1165,7 @@ func (t *Ticket) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.VRFProof (block.VRFPi) (slice)
+	// t.VRFProof (newBlock.VRFPi) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -1213,7 +1213,7 @@ func (t *ElectionProof) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.VRFProof (block.VRFPi) (slice)
+	// t.VRFProof (newBlock.VRFPi) (slice)
 	if len(t.VRFProof) > cbg.ByteArrayMaxLen {
 		return xerrors.Errorf("Byte array in field t.VRFProof was too long")
 	}
@@ -1271,7 +1271,7 @@ func (t *ElectionProof) UnmarshalCBOR(r io.Reader) error {
 
 		t.WinCount = int64(extraI)
 	}
-	// t.VRFProof (block.VRFPi) (slice)
+	// t.VRFProof (newBlock.VRFPi) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -1308,7 +1308,7 @@ func (t *BlockMsg) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.Header (block.BlockHeader) (struct)
+	// t.Header (newBlock.BlockHeader) (struct)
 	if err := t.Header.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -1361,7 +1361,7 @@ func (t *BlockMsg) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Header (block.BlockHeader) (struct)
+	// t.Header (newBlock.BlockHeader) (struct)
 
 	{
 

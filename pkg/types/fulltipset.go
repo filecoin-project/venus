@@ -31,7 +31,7 @@ func (fts *FullTipSet) Cids() []cid.Cid {
 	return cids
 }
 
-// TipSet returns a narrower view of this FullTipSet elliding the block
+// TipSet returns a narrower view of this FullTipSet elliding the newBlock
 // messages.
 func (fts *FullTipSet) TipSet() *TipSet {
 	if fts.tipset != nil {

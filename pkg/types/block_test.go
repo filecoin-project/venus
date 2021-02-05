@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"encoding/json"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	"reflect"
 	"testing"
 
@@ -12,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
+
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
@@ -27,10 +28,10 @@ func TestTriangleEncoding(t *testing.T) {
 	// (first case) to be exactly the same as the output encoding of a BlockHeader from
 	// storage (second case). WTF you might say, and you would not be wrong. The
 	// use case is machine-parsing command output. For example dag_daemon_test
-	// dumps the block from memory as json (first case). It then dag gets
-	// the block by cid which yeilds a json-encoded ipld node (first half of
+	// dumps the newBlock from memory as json (first case). It then dag gets
+	// the newBlock by cid which yeilds a json-encoded ipld node (first half of
 	// the second case). It json decodes this ipld node and then decodes the node
-	// into a block (second half of the second case). I don't claim this is ideal,
+	// into a newBlock (second half of the second case). I don't claim this is ideal,
 	// see: https://github.com/filecoin-project/venus/issues/599
 
 	newAddress := NewForTestGetter()
@@ -55,11 +56,11 @@ func TestTriangleEncoding(t *testing.T) {
 	// // TODO: to make this test pass.
 	// // This will fail with output: "varints malformed, could not reach the end"
 	// //     which is from go-varint package, need to check.
-	// t.Run("encoding block with zero fields works", func(t *testing.T) {
+	// t.Run("encoding newBlock with zero fields works", func(t *testing.T) {
 	// 	testRoundTrip(t, &blk.BlockHeader{})
 	// })
 
-	t.Run("encoding block with nonzero fields works", func(t *testing.T) {
+	t.Run("encoding newBlock with nonzero fields works", func(t *testing.T) {
 		// We should ensure that every field is set -- zero values might
 		// pass when non-zero values do not due to nil/null encoding.
 		// posts := []blk.PoStProof{blk.NewPoStProof(constants.DevRegisteredWinningPoStProof, []byte{0x07})}
@@ -134,7 +135,7 @@ func TestBlockString(t *testing.T) {
 func TestDecodeBlock(t *testing.T) {
 	tf.UnitTest(t)
 
-	t.Run("successfully decodes raw bytes to a Filecoin block", func(t *testing.T) {
+	t.Run("successfully decodes raw bytes to a Filecoin newBlock", func(t *testing.T) {
 		addrGetter := NewForTestGetter()
 
 		c1 := CidFromString(t, "a")
@@ -251,7 +252,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 func TestSignatureData(t *testing.T) {
 	tf.UnitTest(t)
 	newAddress := NewForTestGetter()
-	posts := []builtin.PoStProof{{PoStProof: abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, ProofBytes: []byte{0x07}}}
+	posts := []proof2.PoStProof{{PoStProof: abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, ProofBytes: []byte{0x07}}}
 
 	b := &BlockHeader{
 		Miner:         newAddress(),
@@ -279,7 +280,7 @@ func TestSignatureData(t *testing.T) {
 		},
 	}
 
-	diffposts := []builtin.PoStProof{{PoStProof: abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, ProofBytes: []byte{0x07, 0x08}}}
+	diffposts := []proof2.PoStProof{{PoStProof: abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, ProofBytes: []byte{0x07, 0x08}}}
 
 	diff := &BlockHeader{
 		Miner:         newAddress(),
