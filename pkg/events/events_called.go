@@ -473,7 +473,7 @@ func newMessageEvents(ctx context.Context, hcAPI headChangeAPI, cs IEvent) messa
 
 // Check if there are any new actor calls
 func (me *messageEvents) checkNewCalls(ts *types.TipSet) (map[triggerID]eventData, error) {
-	pts, err := me.cs.ChainGetTipSet(ts.Parents()) // we actually care about messages in the parent tipset here
+	pts, err := me.cs.ChainGetTipSet(context.Background(), ts.Parents()) // we actually care about messages in the parent tipset here
 	if err != nil {
 		log.Errorf("getting parent tipset in checkNewCalls: %s", err)
 		return nil, err
@@ -520,10 +520,7 @@ func (me *messageEvents) messagesForTs(ts *types.TipSet, consume func(message *t
 		}
 
 		for _, m := range msgs.BlsMessages {
-			mcid, err := m.Cid()
-			if err != nil {
-				continue
-			}
+			mcid := m.Cid()
 			_, ok := seen[mcid]
 			if ok {
 				continue
@@ -534,10 +531,7 @@ func (me *messageEvents) messagesForTs(ts *types.TipSet, consume func(message *t
 		}
 
 		for _, m := range msgs.SecpkMessages {
-			mMcid, err := m.Message.Cid()
-			if err != nil {
-				continue
-			}
+			mMcid := m.Message.Cid()
 			_, ok := seen[mMcid]
 			if ok {
 				continue
@@ -590,11 +584,7 @@ func (me *messageEvents) Called(check CheckFunc, msgHnd MsgHandler, rev RevertHa
 		if data != nil && !ok {
 			panic("expected msg")
 		}
-		msgCid, err := msg.Cid()
-		if err != nil {
-			return false, err
-		}
-		rec, err := me.cs.StateGetReceipt(me.ctx, msgCid, ts.Key())
+		rec, err := me.cs.StateGetReceipt(me.ctx, msg.Cid(), ts.Key())
 		if err != nil {
 			return false, err
 		}

@@ -97,7 +97,10 @@ func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	notifs := e.api.ChainNotify(ctx)
+	notifs, err := e.api.ChainNotify(ctx)
+	if err != nil {
+		return err
+	}
 	var cur []*chain.HeadChange
 	var ok bool
 

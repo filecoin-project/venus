@@ -51,7 +51,7 @@ func (fcs *fakeCS) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	panic("implement me")
 }
 
-func (fcs *fakeCS) ChainGetTipSet(key types.TipSetKey) (*types.TipSet, error) {
+func (fcs *fakeCS) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
 	return fcs.tipsets[key], nil
 }
 
