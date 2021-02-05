@@ -33,7 +33,7 @@ import (
 type IChainReadWriter interface {
 	Head() *types.TipSet
 	ChainNotify(ctx context.Context) chan []*chain.HeadChange
-	GetHeadHeight() (abi.ChainEpoch, error)
+	GetHeadHeight() abi.ChainEpoch
 	GetGenesisBlock(ctx context.Context) (*types.BlockHeader, error)
 	GetTipSet(key types.TipSetKey) (*types.TipSet, error)
 	GetTipSetByHeight(ctx context.Context, ts *types.TipSet, h abi.ChainEpoch, prev bool) (*types.TipSet, error)
@@ -143,7 +143,7 @@ func (chn *ChainStateReadWriter) ChainNotify(ctx context.Context) chan []*chain.
 	return chn.readWriter.SubHeadChanges(ctx)
 }
 
-func (chn *ChainStateReadWriter) GetHeadHeight() (abi.ChainEpoch, error) {
+func (chn *ChainStateReadWriter) GetHeadHeight() abi.ChainEpoch {
 	return chn.Head().Height()
 }
 

@@ -40,21 +40,15 @@ func (tsc *tipSetCache) add(ts *types.TipSet) error {
 	tsc.mu.Lock()
 	defer tsc.mu.Unlock()
 	if tsc.len > 0 {
-		if tsc.cache[tsc.start].EnsureHeight() >= ts.EnsureHeight() {
-			return xerrors.Errorf("tipSetCache.add: expected new tipset height to be at least %d, was %d", tsc.cache[tsc.start].EnsureHeight()+1, ts.EnsureHeight())
+		if tsc.cache[tsc.start].Height() >= ts.Height() {
+			return xerrors.Errorf("tipSetCache.add: expected new tipset height to be at least %d, was %d", tsc.cache[tsc.start].Height()+1, ts.Height())
 		}
 	}
-	tsH, err := ts.Height()
-	if err != nil {
-		return err
-	}
+	tsH := ts.Height()
 	nextH := tsH
 
 	if tsc.len > 0 {
-		tssH, err := tsc.cache[tsc.start].Height()
-		if err != nil {
-			return err
-		}
+		tssH := tsc.cache[tsc.start].Height()
 		nextH = tssH + 1
 	}
 
@@ -122,10 +116,7 @@ func (tsc *tipSetCache) get(height abi.ChainEpoch) (*types.TipSet, error) {
 		return tsc.storage.ChainGetTipSetByHeight(context.TODO(), height, types.EmptyTSK)
 	}
 
-	headH, err := tsc.cache[tsc.start].Height()
-	if err != nil {
-		return nil, err
-	}
+	headH := tsc.cache[tsc.start].Height()
 	if height > headH {
 		tsc.mu.RUnlock()
 		return nil, xerrors.Errorf("tipSetCache.get: requested tipset not in cache (req: %d, cache head: %d)", height, headH)
@@ -139,13 +130,10 @@ func (tsc *tipSetCache) get(height abi.ChainEpoch) (*types.TipSet, error) {
 			break
 		}
 	}
-	tailH, err := tail.Height()
-	if err != nil {
-		return nil, err
-	}
+	tailH := tail.Height()
 	if height < tailH {
 		tsc.mu.RUnlock()
-		log.Warnf("tipSetCache.get: requested tipset not in cache, requesting from storage (h=%d; tail=%d;)", height, tail.EnsureHeight())
+		log.Warnf("tipSetCache.get: requested tipset not in cache, requesting from storage (h=%d; tail=%d;)", height, tail.Height())
 		return tsc.storage.ChainGetTipSetByHeight(context.TODO(), height, tail.Key())
 	}
 

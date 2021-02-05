@@ -65,10 +65,7 @@ func mkMessage(from, to address.Address, nonce uint64, w *wallet.Wallet) *types.
 		GasPremium: tbig.NewInt(1),
 	}
 
-	c, err := msg.Cid()
-	if err != nil {
-		panic(err)
-	}
+	c := msg.Cid()
 	sig, err := w.WalletSign(context.TODO(), from, c.Bytes(), wallet.MsgMeta{})
 	if err != nil {
 		panic(err)
@@ -97,10 +94,7 @@ func mkBlock(parents *types.TipSet, weightInc int64, ticketNonce uint64) *types.
 	weight := tbig.NewInt(weightInc)
 	var timestamp uint64
 	if parents != nil {
-		height, err = parents.Height()
-		if err != nil {
-			panic(err)
-		}
+		height = parents.Height()
 		height = height + 1
 		timestamp = parents.MinTimestamp() + constants.MainNetBlockDelaySecs
 		weight = tbig.Add(parents.Blocks()[0].ParentWeight, weight)
@@ -574,7 +568,7 @@ func TestLoadLocal(t *testing.T) {
 	}
 
 	for _, m := range pmsgs {
-		c, _ := m.Cid()
+		c := m.Cid()
 		_, ok := msgs[c]
 		if !ok {
 			t.Fatal("unknown message")

@@ -65,7 +65,7 @@ func findMessageInBlockSlice(ctx context.Context, node *fast.Filecoin, blks []ty
 
 			if found {
 				blockCid := blk.Cid()
-				msgCid, _ := msg.Cid()
+				msgCid := msg.Cid()
 
 				return &MsgInfo{
 					BlockCid: blockCid,

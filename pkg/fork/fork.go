@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/filecoin-project/go-address"
@@ -391,7 +392,7 @@ func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, root cid.Cid,
 		return cid.Undef, xerrors.Errorf("failed to get tipset at lookback height: %v", err)
 	}
 
-	pts, err := c.cr.GetTipSet(lbts.EnsureParents())
+	pts, err := c.cr.GetTipSet(lbts.Parents())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to get tipset : %v", err)
 	}
@@ -952,10 +953,6 @@ func (c *ChainFork) UpgradeRefuel(ctx context.Context, root cid.Cid, epoch abi.C
 	return tree.Flush(ctx)
 }
 
-func ActorStore(ctx context.Context, bs blockstore.Blockstore) adt.Store {
-	return adt.WrapStore(ctx, cbor.NewCborStore(bs))
-}
-
 func linksForObj(blk ipfsblock.Block, cb func(cid.Cid)) error {
 	switch blk.Cid().Prefix().Codec {
 	case cid.DagCBOR:
@@ -1102,7 +1099,7 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 
 func (c *ChainFork) UpgradeActorsV2(ctx context.Context, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
-	store := ActorStore(ctx, buf)
+	store := chain.ActorStore(ctx, buf)
 
 	info, err := store.Put(ctx, new(vmstate.StateInfo0))
 	if err != nil {
@@ -1161,7 +1158,7 @@ func (c *ChainFork) UpgradeLiftoff(ctx context.Context, root cid.Cid, epoch abi.
 }
 
 func (c *ChainFork) UpgradeCalico(ctx context.Context, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
-	store := ActorStore(ctx, c.bs)
+	store := chain.ActorStore(ctx, c.bs)
 	var stateRoot vmstate.StateRoot
 	if err := store.Get(ctx, root, &stateRoot); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to decode state root: %v", err)
@@ -1204,7 +1201,7 @@ func (c *ChainFork) UpgradeCalico(ctx context.Context, root cid.Cid, epoch abi.C
 
 func (c *ChainFork) UpgradeActorsV3(ctx context.Context, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
-	store := ActorStore(ctx, buf)
+	store := chain.ActorStore(ctx, buf)
 
 	// Load the state root.
 

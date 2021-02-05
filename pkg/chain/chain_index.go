@@ -36,7 +36,7 @@ type lbEntry struct {
 }
 
 func (ci *ChainIndex) GetTipSetByHeight(_ context.Context, from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
-	if from.EnsureHeight()-to <= ci.skipLength {
+	if from.Height()-to <= ci.skipLength {
 		return ci.walkBack(from, to)
 	}
 
@@ -58,7 +58,7 @@ func (ci *ChainIndex) GetTipSetByHeight(_ context.Context, from *types.TipSet, t
 		}
 
 		lbe := cval.(*lbEntry)
-		if lbe.ts.EnsureHeight() == to || lbe.parentHeight < to {
+		if lbe.ts.Height() == to || lbe.parentHeight < to {
 			return lbe.ts, nil
 		} else if to > lbe.targetHeight {
 			return ci.walkBack(lbe.ts, to)
@@ -78,7 +78,7 @@ func (ci *ChainIndex) fillCache(tsk types.TipSetKey) (*lbEntry, error) {
 		return nil, err
 	}
 
-	if ts.EnsureHeight() == 0 {
+	if ts.Height() == 0 {
 		return &lbEntry{
 			ts:           ts,
 			parentHeight: 0,
@@ -86,9 +86,9 @@ func (ci *ChainIndex) fillCache(tsk types.TipSetKey) (*lbEntry, error) {
 	}
 
 	// will either be equal to ts.Height, or at least > ts.Parent.Height()
-	rheight := ci.roundHeight(ts.EnsureHeight())
+	rheight := ci.roundHeight(ts.Height())
 
-	parent, err := ci.loadTipSet(ts.EnsureParents())
+	parent, err := ci.loadTipSet(ts.Parents())
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (ci *ChainIndex) fillCache(tsk types.TipSetKey) (*lbEntry, error) {
 	rheight -= ci.skipLength
 
 	var skipTarget *types.TipSet
-	if parent.EnsureHeight() < rheight {
+	if parent.Height() < rheight {
 		skipTarget = parent
 	} else {
 		skipTarget, err = ci.walkBack(parent, rheight)
@@ -107,8 +107,8 @@ func (ci *ChainIndex) fillCache(tsk types.TipSetKey) (*lbEntry, error) {
 
 	lbe := &lbEntry{
 		ts:           ts,
-		parentHeight: parent.EnsureHeight(),
-		targetHeight: skipTarget.EnsureHeight(),
+		parentHeight: parent.Height(),
+		targetHeight: skipTarget.Height(),
 		target:       skipTarget.Key(),
 	}
 	ci.skipCache.Add(tsk, lbe)
@@ -122,7 +122,7 @@ func (ci *ChainIndex) roundHeight(h abi.ChainEpoch) abi.ChainEpoch {
 }
 
 func (ci *ChainIndex) roundDown(ts *types.TipSet) (*types.TipSet, error) {
-	target := ci.roundHeight(ts.EnsureHeight())
+	target := ci.roundHeight(ts.Height())
 
 	rounded, err := ci.walkBack(ts, target)
 	if err != nil {
@@ -133,28 +133,28 @@ func (ci *ChainIndex) roundDown(ts *types.TipSet) (*types.TipSet, error) {
 }
 
 func (ci *ChainIndex) walkBack(from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
-	if to > from.EnsureHeight() {
+	if to > from.Height() {
 		return nil, xerrors.Errorf("looking for tipset with height greater than start point")
 	}
 
-	if to == from.EnsureHeight() {
+	if to == from.Height() {
 		return from, nil
 	}
 
 	ts := from
 
 	for {
-		pts, err := ci.loadTipSet(ts.EnsureParents())
+		pts, err := ci.loadTipSet(ts.Parents())
 		if err != nil {
 			return nil, err
 		}
 
-		if to > pts.EnsureHeight() {
+		if to > pts.Height() {
 			// in case pts is lower than the epoch we're looking for (null blocks)
 			// return a tipset above that height
 			return ts, nil
 		}
-		if to == pts.EnsureHeight() {
+		if to == pts.Height() {
 			return pts, nil
 		}
 

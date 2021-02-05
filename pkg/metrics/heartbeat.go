@@ -206,10 +206,8 @@ func (hbs *HeartbeatService) Beat(ctx context.Context) Heartbeat {
 		log.Errorf("unable to fetch chain head: %s", err)
 	}
 	tipset := ts.Key().String()
-	height, err := ts.Height()
-	if err != nil {
-		log.Warnf("heartbeat service failed to get chain height: %s", err)
-	}
+	height := ts.Height()
+
 	addr := hbs.MinerAddressGetter()
 	return Heartbeat{
 		Head:         tipset,

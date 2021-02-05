@@ -199,7 +199,7 @@ func (pchapi *mockPaychAPI) MpoolPushMessage(ctx context.Context, msg *types.Uns
 	defer pchapi.lk.Unlock()
 
 	smsg := &types.SignedMessage{Message: *msg}
-	smsgCid, _ := smsg.Cid()
+	smsgCid := smsg.Cid()
 	pchapi.messages[smsgCid] = smsg
 	return smsg, nil
 }

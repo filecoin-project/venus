@@ -17,7 +17,6 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
-	errPkg "github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -49,7 +48,7 @@ var EmptyTokenAmount = abi.TokenAmount{}
 
 //
 type ChainMsg interface {
-	Cid() (cid.Cid, error)
+	Cid() cid.Cid
 	VMMessage() *UnsignedMessage
 	ToStorageBlock() (blocks.Block, error)
 	// FIXME: This is the *message* length, this name is misleading.
@@ -59,6 +58,8 @@ type ChainMsg interface {
 }
 
 var _ ChainMsg = &UnsignedMessage{}
+
+type Message = UnsignedMessage
 
 // UnsignedMessage is an exchange of information between two actors modeled
 // as a function call.
@@ -142,21 +143,18 @@ func (msg *UnsignedMessage) ToNode() (ipld.Node, error) {
 
 // Cid returns the canonical CID for the message.
 // TODO: can we avoid returning an error?
-func (msg *UnsignedMessage) Cid() (cid.Cid, error) {
+func (msg *UnsignedMessage) Cid() cid.Cid {
 	obj, err := msg.ToNode()
 	if err != nil {
-		return cid.Undef, errPkg.Wrap(err, "failed to marshal to cbor")
+		panic(fmt.Sprintf("failed to marshal to marshal unsigned message:%s", err))
 	}
 
-	return obj.Cid(), nil
+	return obj.Cid()
 }
 
 func (msg *UnsignedMessage) String() string {
 	errStr := "(error encoding Message)"
-	cid, err := msg.Cid()
-	if err != nil {
-		return errStr
-	}
+	cid := msg.Cid()
 	js, err := json.MarshalIndent(msg, "", "  ")
 	if err != nil {
 		return errStr

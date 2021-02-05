@@ -217,14 +217,8 @@ func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	height, err := heaviest.Height()
-	if err != nil {
-		return nil, err
-	}
-	weight, err := heaviest.ParentWeight()
-	if err != nil {
-		return nil, err
-	}
+	height := heaviest.Height()
+	weight := heaviest.ParentWeight()
 
 	return &HelloMessage{
 		GenesisHash:          h.genesis,

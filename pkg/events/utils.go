@@ -29,7 +29,7 @@ func (me *messageEvents) CheckMsg(ctx context.Context, smsg types.ChainMsg, hnd 
 			return false, true, xerrors.Errorf("getting receipt in CheckMsg: %w", err)
 		}
 
-		more, err = hnd(msg, rec, ts, ts.EnsureHeight())
+		more, err = hnd(msg, rec, ts, ts.Height())
 
 		return true, more, err
 	}

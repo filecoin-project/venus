@@ -54,10 +54,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts *types.TipSet) (fbig.Int,
 		return fbig.Zero(), xerrors.Errorf("All power in the net is gone. You network might be disconnected, or the net is dead!")
 	}
 
-	weight, err := ts.ParentWeight()
-	if err != nil {
-		return fbig.NewInt(0), err
-	}
+	weight := ts.ParentWeight()
 	var out = new(big.Int).Set(weight.Int)
 	out.Add(out, big.NewInt(log2P<<8))
 

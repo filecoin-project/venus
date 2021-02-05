@@ -43,14 +43,12 @@ func (it *TipsetIterator) Next() error {
 	case <-it.ctx.Done():
 		return it.ctx.Err()
 	default:
-		if it.value.EnsureHeight() == 0 {
+		if it.value.Height() == 0 {
 			it.value = &types.TipSet{}
 		} else {
-			parentKey, err := it.value.Parents()
-			if err == nil {
-				it.value, err = it.store.GetTipSet(parentKey)
-				return err
-			}
+			var err error
+			parentKey := it.value.Parents()
+			it.value, err = it.store.GetTipSet(parentKey)
 			return err
 		}
 		return nil
@@ -103,10 +101,7 @@ func CollectTipsToCommonAncestor(ctx context.Context, store TipSetProvider, oldH
 	if err != nil {
 		return
 	}
-	commonHeight, err := commonAncestor.Height()
-	if err != nil {
-		return
-	}
+	commonHeight := commonAncestor.Height()
 
 	// Refresh iterators modified by FindCommonAncestors
 	oldIter = IterAncestors(ctx, store, oldHead)
@@ -133,14 +128,8 @@ func FindCommonAncestor(leftIter, rightIter *TipsetIterator) (*types.TipSet, err
 		left := leftIter.Value()
 		right := rightIter.Value()
 
-		leftHeight, err := left.Height()
-		if err != nil {
-			return nil, err
-		}
-		rightHeight, err := right.Height()
-		if err != nil {
-			return nil, err
-		}
+		leftHeight := left.Height()
+		rightHeight := right.Height()
 
 		// Found common ancestor.
 		if left.Equals(right) {
@@ -175,10 +164,7 @@ func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator
 		if err != nil {
 			return nil, err
 		}
-		h, err = iterator.Value().Height()
-		if err != nil {
-			return nil, err
-		}
+		h = iterator.Value().Height()
 		if h < minHeight {
 			return ret, nil
 		}
@@ -202,10 +188,7 @@ func FindTipsetAtEpoch(ctx context.Context, start *types.TipSet, epoch abi.Chain
 			return
 		}
 		ts = iterator.Value()
-		h, err = ts.Height()
-		if err != nil {
-			return
-		}
+		h = ts.Height()
 		if h <= searchHeight {
 			break
 		}

@@ -98,19 +98,18 @@ func (a *MessagePoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) 
 
 	haveCids := map[cid.Cid]struct{}{}
 	for _, m := range pending {
-		mc, _ := m.Cid()
-		haveCids[mc] = struct{}{}
+		haveCids[m.Cid()] = struct{}{}
 	}
 
-	mptsH, _ := mpts.Height()
-	tsH, _ := ts.Height()
+	mptsH := mpts.Height()
+	tsH := ts.Height()
 	if ts == nil || mptsH > tsH {
 		return pending, nil
 	}
 
 	for {
-		mptsH, _ = mpts.Height()
-		tsH, _ = ts.Height()
+		mptsH = mpts.Height()
+		tsH = ts.Height()
 		if mptsH == tsH {
 			if mpts.Equals(ts) {
 				return pending, nil
@@ -123,8 +122,7 @@ func (a *MessagePoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) 
 			}
 
 			for _, m := range have {
-				mc, _ := m.Cid()
-				haveCids[mc] = struct{}{}
+				haveCids[m.Cid()] = struct{}{}
 			}
 		}
 
@@ -134,7 +132,7 @@ func (a *MessagePoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) 
 		}
 
 		for _, m := range msgs {
-			mc, _ := m.Cid()
+			mc := m.Cid()
 			if _, ok := haveCids[mc]; ok {
 				continue
 			}
@@ -143,13 +141,13 @@ func (a *MessagePoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) 
 			pending = append(pending, m)
 		}
 
-		mptsH, _ = mpts.Height()
-		tsH, _ = ts.Height()
+		mptsH = mpts.Height()
+		tsH = ts.Height()
 		if mptsH >= tsH {
 			return pending, nil
 		}
 
-		ts, err = a.mp.chain.API().ChainGetTipSet(ts.EnsureParents())
+		ts, err = a.mp.chain.API().ChainGetTipSet(ts.Parents())
 		if err != nil {
 			return nil, xerrors.Errorf("loading parent tipset: %w", err)
 		}
@@ -324,7 +322,7 @@ func (a *MessagePoolAPI) SendMsg(ctx context.Context, from, to address.Address, 
 		return cid.Undef, err
 	}
 
-	return smsg.Cid()
+	return smsg.Cid(), nil
 }
 
 func (a *MessagePoolAPI) GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec, tsk types.TipSetKey) (*types.UnsignedMessage, error) {

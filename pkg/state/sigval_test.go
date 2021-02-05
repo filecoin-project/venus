@@ -54,8 +54,7 @@ func TestSignMessageOk(t *testing.T) {
 		}}
 		v := NewSignatureValidator(state)
 		msg := types.NewMeteredMessage(idAddress, idAddress, 1, types.ZeroFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
-		msgCid, err := msg.Cid()
-		require.NoError(t, err)
+		msgCid := msg.Cid()
 		sig, err := ms.SignBytes(ctx, msgCid.Bytes(), keyAddr)
 		require.NoError(t, err)
 		smsg := &types.SignedMessage{

@@ -142,7 +142,7 @@ func (d *Dispatcher) processIncoming(ctx context.Context) {
 			// Sort new targets by putting on work queue.
 			if d.workTracker.Add(target) {
 				log.Infof("received height %d Blocks: %d  %s current work len %d  incoming len: %d",
-					target.Head.EnsureHeight(), target.Head.Len(), target.Head.Key(), d.workTracker.Len(), len(d.incoming))
+					target.Head.Height(), target.Head.Len(), target.Head.Key(), d.workTracker.Len(), len(d.incoming))
 			}
 		}
 	}
@@ -186,7 +186,7 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 							err := d.syncer.HandleNewTipSet(ctx, syncTarget)
 							d.workTracker.Remove(syncTarget)
 							if err != nil {
-								log.Infof("failed sync of %v at %d  %s", syncTarget.Head.Key(), syncTarget.Head.EnsureHeight(), err)
+								log.Infof("failed sync of %v at %d  %s", syncTarget.Head.Key(), syncTarget.Head.Height(), err)
 							}
 							d.registeredCb(syncTarget, err)
 							d.conCurrent.Add(-1)

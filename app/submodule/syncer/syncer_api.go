@@ -112,7 +112,7 @@ func (syncerAPI *SyncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMe
 	}
 	duration := time.Now().Sub(start)
 
-	mcid, _ := msg.Cid()
+	mcid := msg.Cid()
 	return &InvocResult{
 		MsgCid:         mcid,
 		Msg:            msg,
@@ -133,9 +133,9 @@ func (syncerAPI *SyncerAPI) SyncState(ctx context.Context) (*SyncState, error) {
 
 	count := 0
 	toActiveSync := func(t *syncTypes.Target) ActiveSync {
-		currentHeight := t.Base.EnsureHeight()
+		currentHeight := t.Base.Height()
 		if t.Current != nil {
-			currentHeight = t.Current.EnsureHeight()
+			currentHeight = t.Current.Height()
 		}
 
 		msg := ""

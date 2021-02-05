@@ -183,13 +183,11 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetBlockMessages(ctx context.Context, bid
 	cids := make([]cid.Cid, len(bmsgs)+len(smsgs))
 
 	for i, m := range bmsgs {
-		mid, _ := m.Cid()
-		cids[i] = mid
+		cids[i] = m.Cid()
 	}
 
 	for i, m := range smsgs {
-		mid, _ := m.Cid()
-		cids[i+len(bmsgs)] = mid
+		cids[i+len(bmsgs)] = m.Cid()
 	}
 
 	return &BlockMessages{
@@ -244,12 +242,8 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetParentMessages(ctx context.Context, bc
 
 	var out []Message
 	for _, m := range cm {
-		cid, err := m.Cid()
-		if err != nil {
-			return nil, err
-		}
 		out = append(out, Message{
-			Cid:     cid,
+			Cid:     m.Cid(),
 			Message: m.VMMessage(),
 		})
 	}
@@ -354,10 +348,7 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetRandomnessFromTickets(ctx context.Cont
 		return nil, xerrors.Errorf("loading tipset key: %v", err)
 	}
 
-	h, err := ts.Height()
-	if err != nil {
-		return nil, xerrors.Errorf("not found tipset height: %v", ts)
-	}
+	h := ts.Height()
 	if randEpoch > h {
 		return nil, xerrors.Errorf("cannot draw randomness from the future")
 	}
@@ -382,7 +373,7 @@ func (chainInfoAPI *ChainInfoAPI) StateNetworkVersion(ctx context.Context, tsk t
 	if err != nil {
 		return network.VersionMax, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
-	return chainInfoAPI.chain.Fork.GetNtwkVersion(ctx, ts.EnsureHeight()), nil
+	return chainInfoAPI.chain.Fork.GetNtwkVersion(ctx, ts.Height()), nil
 }
 
 // MessageWait invokes the callback when a message with the given cid appears on chain.
@@ -415,7 +406,7 @@ func (chainInfoAPI *ChainInfoAPI) StateSearchMsg(ctx context.Context, mCid cid.C
 			Message: mCid,
 			Receipt: *msgResult.Receipt,
 			TipSet:  msgResult.Ts.Key(),
-			Height:  msgResult.Ts.EnsureHeight(),
+			Height:  msgResult.Ts.Height(),
 		}, nil
 	}
 	return nil, nil
@@ -435,7 +426,7 @@ func (chainInfoAPI *ChainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid
 			Message: mCid,
 			Receipt: *msgResult.Receipt,
 			TipSet:  msgResult.Ts.Key(),
-			Height:  msgResult.Ts.EnsureHeight(),
+			Height:  msgResult.Ts.Height(),
 		}, nil
 	}
 	return nil, nil

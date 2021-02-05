@@ -500,10 +500,7 @@ func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks 
 
 func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet, upgrade *config.ForkUpgradeConfig) (abi.TokenAmount, error) {
 	zero := abi.NewTokenAmount(0)
-	baseHeight, err := ts.Height()
-	if err != nil {
-		return zero, err
-	}
+	baseHeight := ts.Height()
 
 	if upgrade.UpgradeBreezeHeight >= 0 && baseHeight > upgrade.UpgradeBreezeHeight && baseHeight < upgrade.UpgradeBreezeHeight+upgrade.BreezeGasTampingDuration {
 		return abi.NewTokenAmount(100), nil
@@ -521,20 +518,14 @@ func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet, up
 		}
 
 		for _, m := range blsMsgs {
-			c, err := m.Cid()
-			if err != nil {
-				return zero, xerrors.Errorf("error getting cid for message: %v: %w", m, err)
-			}
+			c := m.Cid()
 			if _, ok := seen[c]; !ok {
 				totalLimit += m.GasLimit
 				seen[c] = struct{}{}
 			}
 		}
 		for _, m := range secpMsgs {
-			c, err := m.Cid()
-			if err != nil {
-				return zero, xerrors.Errorf("error getting cid for signed message: %v: %w", m, err)
-			}
+			c := m.Cid()
 			if _, ok := seen[c]; !ok {
 				totalLimit += m.Message.GasLimit
 				seen[c] = struct{}{}

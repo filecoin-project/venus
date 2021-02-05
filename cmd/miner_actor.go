@@ -101,12 +101,7 @@ var actorSetAddrsCmd = &cmds.Command{
 			return err
 		}
 
-		cid, _ := smsg.Cid()
-		if err != nil {
-			return err
-		}
-
-		return re.Emit(fmt.Sprintf("Requested multiaddrs change in message %s", cid))
+		return re.Emit(fmt.Sprintf("Requested multiaddrs change in message %s", smsg.Cid()))
 	},
 	Type: "",
 }
@@ -157,13 +152,7 @@ var actorSetPeeridCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-
-		cid, _ := smsg.Cid()
-		if err != nil {
-			return err
-		}
-
-		return re.Emit(fmt.Sprintf("Requested peerid change in message %s", cid))
+		return re.Emit(fmt.Sprintf("Requested peerid change in message %s", smsg.Cid()))
 	},
 	Type: "",
 }
@@ -223,12 +212,7 @@ var actorWithdrawCmd = &cmds.Command{
 			return err
 		}
 
-		cid, _ := smsg.Cid()
-		if err != nil {
-			return err
-		}
-
-		return re.Emit(fmt.Sprintf("Requested rewards withdrawal in message %s", cid))
+		return re.Emit(fmt.Sprintf("Requested rewards withdrawal in message %s", smsg.Cid()))
 	},
 	Type: "",
 }
@@ -316,12 +300,7 @@ var actorRepayDebtCmd = &cmds.Command{
 			return err
 		}
 
-		cid, _ := smsg.Cid()
-		if err != nil {
-			return err
-		}
-
-		return re.Emit(fmt.Sprintf("Sent repay debt message %s", cid))
+		return re.Emit(fmt.Sprintf("Sent repay debt message %s", smsg.Cid()))
 	},
 	Type: "",
 }
@@ -381,10 +360,7 @@ var actorSetOwnerCmd = &cmds.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		cid, err := smsg.Cid()
-		if err != nil {
-			return err
-		}
+		cid := smsg.Cid()
 		_ = re.Emit("Propose Message CID: " + cid.String())
 
 		// wait for it to get mined into a block
@@ -410,10 +386,7 @@ var actorSetOwnerCmd = &cmds.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		cid, err = smsg.Cid()
-		if err != nil {
-			return err
-		}
+		cid = smsg.Cid()
 		_ = re.Emit("Approve Message CID: " + cid.String())
 
 		// wait for it to get mined into a block
@@ -427,9 +400,7 @@ var actorSetOwnerCmd = &cmds.Command{
 			_ = re.Emit(fmt.Sprintf("Approve owner change failed, exitcode: %d", wait.Receipt.ExitCode))
 			return err
 		}
-		cid, _ = smsg.Cid()
-
-		return re.Emit(fmt.Sprintf("Requested rewards withdrawal in message %s", cid))
+		return re.Emit(fmt.Sprintf("Requested rewards withdrawal in message %s", smsg.Cid()))
 	},
 	Type: "",
 }
@@ -637,11 +608,7 @@ var actorControlSet = &cmds.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		cid, err := smsg.Cid()
-		if err != nil {
-			return err
-		}
-		writer.Println("Message CID: " + cid.String())
+		writer.Println("Message CID: " + smsg.Cid().String())
 
 		return re.Emit(buf)
 	},
@@ -717,10 +684,7 @@ var actorProposeChangeWorker = &cmds.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		cid, err := smsg.Cid()
-		if err != nil {
-			return err
-		}
+		cid := smsg.Cid()
 		_ = re.Emit("Propose Message CID: " + cid.String())
 
 		// wait for it to get mined into a block
@@ -799,7 +763,7 @@ var actorConfirmChangeWorker = &cmds.Command{
 			return xerrors.Errorf("failed to get the chain head: %w", err)
 		}
 
-		height, _ := head.Height()
+		height := head.Height()
 		if height < mi.WorkerChangeEpoch {
 			return xerrors.Errorf("worker key change cannot be confirmed until %d, current height is %d", mi.WorkerChangeEpoch, height)
 		}
@@ -818,10 +782,7 @@ var actorConfirmChangeWorker = &cmds.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		cid, err := smsg.Cid()
-		if err != nil {
-			return err
-		}
+		cid := smsg.Cid()
 		_ = re.Emit("Confirm Message CID: " + cid.String())
 
 		// wait for it to get mined into a block
@@ -844,9 +805,7 @@ var actorConfirmChangeWorker = &cmds.Command{
 			return fmt.Errorf("confirmed worker address change not reflected on chain: expected '%s', found '%s'", newAddr, mi.Worker)
 		}
 
-		cid, _ = smsg.Cid()
-
-		return re.Emit(fmt.Sprintf("Requested peerid change in message %s", cid))
+		return re.Emit(fmt.Sprintf("Requested peerid change in message %s", smsg.Cid()))
 	},
 	Type: "",
 }

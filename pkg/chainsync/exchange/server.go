@@ -209,11 +209,11 @@ func collectChainSegment(cr chainReader, mr messageStore, req *validatedRequest)
 
 		// If we collected the length requested or if we reached the
 		// start (genesis), then stop.
-		if uint64(len(bstips)) >= req.length || ts.EnsureHeight() == 0 {
+		if uint64(len(bstips)) >= req.length || ts.Height() == 0 {
 			return bstips, nil
 		}
 
-		cur = ts.EnsureParents()
+		cur = ts.Parents()
 	}
 }
 

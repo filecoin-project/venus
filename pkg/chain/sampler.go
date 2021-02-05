@@ -51,7 +51,7 @@ func (s *Sampler) SampleTicket(ctx context.Context, head types.TipSetKey, epoch 
 			return types.Ticket{}, err
 		}
 
-		if epoch > start.EnsureHeight() {
+		if epoch > start.Height() {
 			return types.Ticket{}, xerrors.Errorf("cannot draw randomness from the future")
 		}
 
@@ -82,7 +82,7 @@ func (s *Sampler) SampleRandomnessFromBeacon(ctx context.Context, tsk types.TipS
 		return nil, err
 	}
 
-	if randEpoch > ts.EnsureHeight() {
+	if randEpoch > ts.Height() {
 		return nil, xerrors.Errorf("cannot draw randomness from the future")
 	}
 

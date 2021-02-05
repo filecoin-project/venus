@@ -392,8 +392,7 @@ func (f *Builder) GetBlockstoreValue(ctx context.Context, c cid.Cid) (blocks.Blo
 
 // ComputeState computes the state for a tipset from its parent state.
 func (f *Builder) ComputeState(tip *types.TipSet) (cid.Cid, []types.MessageReceipt) {
-	parentKey, err := tip.Parents()
-	require.NoError(f.t, err)
+	parentKey := tip.Parents()
 	// Load the state of the parent tipset and compute the required state (recursively).
 	prev := f.StateForKey(parentKey)
 	blockMsgInfo := f.tipMessages(tip)
@@ -506,10 +505,7 @@ func (FakeStateBuilder) ComputeState(prev cid.Cid, blockmsg []types.BlockMessage
 	inputs := []cid.Cid{prev}
 	for _, blockMessages := range blockmsg {
 		for _, msg := range append(blockMessages.BlsMessages, blockMessages.SecpkMessages...) {
-			mCId, err := msg.Cid()
-			if err != nil {
-				return cid.Undef, []types.MessageReceipt{}, err
-			}
+			mCId := msg.Cid()
 			inputs = append(inputs, mCId)
 			receipts = append(receipts, types.MessageReceipt{
 				ExitCode:    0,
@@ -535,11 +531,7 @@ func (FakeStateBuilder) ComputeState(prev cid.Cid, blockmsg []types.BlockMessage
 func (FakeStateBuilder) Weigh(context context.Context, tip *types.TipSet) (big.Int, error) {
 	parentWeight := big.Zero()
 	if tip.Defined() {
-		var err error
-		parentWeight, err = tip.ParentWeight()
-		if err != nil {
-			return big.Zero(), err
-		}
+		parentWeight = tip.ParentWeight()
 	}
 
 	return big.Add(parentWeight, big.NewInt(int64(tip.Len()))), nil
@@ -690,10 +682,7 @@ func (f *Builder) FetchTipSets(ctx context.Context, key types.TipSetKey, from pe
 		if ok {
 			break
 		}
-		key, err = tip.Parents()
-		if err != nil {
-			return nil, err
-		}
+		key = tip.Parents()
 	}
 	return tips, nil
 }
@@ -716,13 +705,13 @@ func (f *Builder) GetTipSetByHeight(ctx context.Context, ts *types.TipSet, h abi
 	if !ts.Defined() {
 		return ts, nil
 	}
-	if epoch, _ := ts.Height(); epoch == h {
+	if epoch := ts.Height(); epoch == h {
 		return ts, nil
 	}
 
 	for {
-		ts = f.RequireTipSet(ts.EnsureParents())
-		height := ts.EnsureHeight()
+		ts = f.RequireTipSet(ts.Parents())
+		height := ts.Height()
 		if height >= 0 && height == h {
 			return ts, nil
 		} else if height < h {
@@ -741,12 +730,10 @@ func (f *Builder) RequireTipSet(key types.TipSetKey) *types.TipSet {
 // RequireTipSets returns a chain of tipsets from key, which must exist and be long enough.
 func (f *Builder) RequireTipSets(head types.TipSetKey, count int) []*types.TipSet {
 	var tips []*types.TipSet
-	var err error
 	for i := 0; i < count; i++ {
 		tip := f.RequireTipSet(head)
 		tips = append(tips, tip)
-		head, err = tip.Parents()
-		require.NoError(f.t, err)
+		head = tip.Parents()
 	}
 	return tips
 }
@@ -796,10 +783,10 @@ func (f *Builder) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int)
 	}
 	result := []*types.TipSet{ts}
 	for i := 1; i < count; i++ {
-		if ts.EnsureHeight() == 0 {
+		if ts.Height() == 0 {
 			break
 		}
-		ts, err = f.GetTipSet(ts.EnsureParents())
+		ts, err = f.GetTipSet(ts.Parents())
 		if err != nil {
 			return nil, err
 		}

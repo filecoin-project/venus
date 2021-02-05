@@ -85,6 +85,10 @@ type TsState struct {
 	Reciepts  cid.Cid
 }
 
+func ActorStore(ctx context.Context, bs blockstore.Blockstore) adt.Store {
+	return adt.WrapStore(ctx, cbor.NewCborStore(bs))
+}
+
 // Store is a generic implementation of the Store interface.
 // It works(tm) for now.
 type Store struct {
@@ -225,7 +229,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 			return err
 		}
 
-		if ts.EnsureHeight() <= loopBack {
+		if ts.Height() <= loopBack {
 			break
 		}
 	}
@@ -233,7 +237,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	log.Infof("finished loading %d tipsets from %s", latestHeight, headTs.String())
 
 	//todo just for test should remove if ok, 新创建节点会出问题?
-	/*	if checkPointTs == nil || headTs.EnsureHeight() > checkPointTs.EnsureHeight() {
+	/*	if checkPointTs == nil || headTs.Height() > checkPointTs.Height() {
 		p, err := headTs.Parents()
 		if err != nil {
 			return err
@@ -265,10 +269,7 @@ func (store *Store) loadHead() (types.TipSetKey, error) {
 }
 
 func (store *Store) LoadTipsetMetadata(ts *types.TipSet) (*TipSetMetadata, error) {
-	h, err := ts.Height()
-	if err != nil {
-		return nil, err
-	}
+	h := ts.Height()
 	key := datastore.NewKey(makeKey(ts.String(), h))
 	tsStateBytes, err := store.ds.Get(key)
 	if err != nil {
@@ -349,11 +350,11 @@ func (store *Store) GetTipSetByHeight(ctx context.Context, ts *types.TipSet, h a
 		ts = store.head
 	}
 
-	if h > ts.EnsureHeight() {
+	if h > ts.Height() {
 		return nil, xerrors.Errorf("looking for tipset with height greater than start point")
 	}
 
-	if h == ts.EnsureHeight() {
+	if h == ts.Height() {
 		return ts, nil
 	}
 
@@ -362,7 +363,7 @@ func (store *Store) GetTipSetByHeight(ctx context.Context, ts *types.TipSet, h a
 		return nil, err
 	}
 
-	if lbts.EnsureHeight() < h {
+	if lbts.Height() < h {
 		log.Warnf("chain index returned the wrong tipset at height %d, using slow retrieval", h)
 		lbts, err = store.chainIndex.GetTipsetByHeightWithoutCache(ts, h)
 		if err != nil {
@@ -370,11 +371,11 @@ func (store *Store) GetTipSetByHeight(ctx context.Context, ts *types.TipSet, h a
 		}
 	}
 
-	if lbts.EnsureHeight() == h || !prev {
+	if lbts.Height() == h || !prev {
 		return lbts, nil
 	}
 
-	return store.GetTipSet(lbts.EnsureParents())
+	return store.GetTipSet(lbts.Parents())
 }
 
 // GetTipSetState returns the aggregate state of the tipset identified by `key`.
@@ -415,11 +416,11 @@ func (store *Store) GetLatestBeaconEntry(ts *types.TipSet) (*types.BeaconEntry, 
 			return cbe[len(cbe)-1], nil
 		}
 
-		if cur.EnsureHeight() == 0 {
+		if cur.Height() == 0 {
 			return nil, xerrors.Errorf("made it back to genesis block without finding beacon entry")
 		}
 
-		next, err := store.GetTipSet(cur.EnsureParents())
+		next, err := store.GetTipSet(cur.Parents())
 		if err != nil {
 			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
 		}
@@ -436,28 +437,28 @@ func (store *Store) GetLatestBeaconEntry(ts *types.TipSet) (*types.BeaconEntry, 
 }
 
 func (store *Store) walkBack(from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
-	if to > from.EnsureHeight() {
+	if to > from.Height() {
 		return nil, xerrors.Errorf("looking for tipset with height greater than start point")
 	}
 
-	if to == from.EnsureHeight() {
+	if to == from.Height() {
 		return from, nil
 	}
 
 	ts := from
 
 	for {
-		pts, err := store.GetTipSet(ts.EnsureParents())
+		pts, err := store.GetTipSet(ts.Parents())
 		if err != nil {
 			return nil, err
 		}
 
-		if to > pts.EnsureHeight() {
+		if to > pts.Height() {
 			// in case pts is lower than the epoch we're looking for (null blocks)
 			// return a tipset above that height
 			return ts, nil
 		}
-		if to == pts.EnsureHeight() {
+		if to == pts.Height() {
 			return pts, nil
 		}
 
@@ -479,7 +480,7 @@ func (store *Store) HasSiblingState(ts *types.TipSet) bool {
 
 // SetHead sets the passed in tipset as the new head of this chain.
 func (store *Store) SetHead(ctx context.Context, newTs *types.TipSet) error {
-	log.Infof("SetHead %s %d", newTs.String(), newTs.EnsureHeight())
+	log.Infof("SetHead %s %d", newTs.String(), newTs.Height())
 	// Add logging to debug sporadic test failure.
 	if !newTs.Defined() {
 		log.Errorf("publishing empty tipset")
@@ -524,10 +525,7 @@ func (store *Store) SetHead(ctx context.Context, newTs *types.TipSet) error {
 		return nil
 	}
 
-	h, err := newTs.Height()
-	if err != nil {
-		return err
-	}
+	h := newTs.Height()
 	store.reporter.UpdateStatus(validateHead(newTs.Key()), validateHeight(h))
 
 	//todo wrap by go function
@@ -693,20 +691,14 @@ func (store *Store) writeTipSetMetadata(tsm *TipSetMetadata) error {
 		return err
 	}
 	// datastore keeps key:stateRoot (k,v) pairs.
-	h, err := tsm.TipSet.Height()
-	if err != nil {
-		return err
-	}
+	h := tsm.TipSet.Height()
 	key := datastore.NewKey(makeKey(tsm.TipSet.String(), h))
 	return store.ds.Put(key, buf.Bytes())
 }
 
 // deleteTipSetMetadata delete the state root id from the datastore for the tipset key.
 func (store *Store) deleteTipSetMetadata(ts *types.TipSet) error {
-	h, err := ts.Height()
-	if err != nil {
-		return err
-	}
+	h := ts.Height()
 
 	key := datastore.NewKey(makeKey(ts.String(), h))
 	return store.ds.Delete(key)
@@ -744,9 +736,9 @@ func (store *Store) Import(r io.Reader) (*types.TipSet, error) {
 		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
 	}
 
-	parent := root.EnsureParents()
+	parent := root.Parents()
 
-	log.Info("import height: ", root.EnsureHeight(), " root: ", root.At(0).ParentStateRoot, " parents: ", root.At(0).Parents)
+	log.Info("import height: ", root.Height(), " root: ", root.At(0).ParentStateRoot, " parents: ", root.At(0).Parents)
 	parentTipset, err := store.GetTipSet(parent)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
@@ -762,13 +754,13 @@ func (store *Store) Import(r io.Reader) (*types.TipSet, error) {
 	loopBack := 900
 	curTipset := parentTipset
 	for i := 0; i < loopBack; i++ {
-		curTipsetKey := curTipset.EnsureParents()
+		curTipsetKey := curTipset.Parents()
 		curParentTipset, err := store.GetTipSet(curTipsetKey)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
 		}
 
-		if curParentTipset.EnsureHeight() == 0 {
+		if curParentTipset.Height() == 0 {
 			break
 		}
 
@@ -821,7 +813,7 @@ func (store *Store) StateCirculatingSupply(ctx context.Context, tsk types.TipSet
 		return abi.TokenAmount{}, err
 	}
 
-	return store.getCirculatingSupply(ctx, ts.EnsureHeight(), sTree)
+	return store.getCirculatingSupply(ctx, ts.Height(), sTree)
 }
 
 func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st state.Tree) (abi.TokenAmount, error) {
@@ -933,11 +925,11 @@ func ReorgOps(lts func(types.TipSetKey) (*types.TipSet, error), a, b *types.TipS
 
 	var leftChain, rightChain []*types.TipSet
 	for !left.Equals(right) {
-		lh, _ := left.Height()
-		rh, _ := right.Height()
+		lh := left.Height()
+		rh := right.Height()
 		if lh > rh {
 			leftChain = append(leftChain, left)
-			lKey, _ := left.Parents()
+			lKey := left.Parents()
 			par, err := lts(lKey)
 			if err != nil {
 				return nil, nil, err
@@ -946,7 +938,7 @@ func ReorgOps(lts func(types.TipSetKey) (*types.TipSet, error), a, b *types.TipS
 			left = par
 		} else {
 			rightChain = append(rightChain, right)
-			rKey, _ := right.Parents()
+			rKey := right.Parents()
 			par, err := lts(rKey)
 			if err != nil {
 				log.Infof("failed to fetch right.Parents: %s", err)
@@ -996,7 +988,7 @@ func (store *Store) GetLookbackTipSetForRound(ctx context.Context, ts *types.Tip
 	}
 
 	// more null blocks than our lookback
-	h, _ := ts.Height()
+	h := ts.Height()
 	if lbr >= h {
 		// This should never happen at this point, but may happen before
 		// network version 3 (where the lookback was only 10 blocks).
@@ -1013,15 +1005,12 @@ func (store *Store) GetLookbackTipSetForRound(ctx context.Context, ts *types.Tip
 		return nil, cid.Undef, xerrors.Errorf("failed to get lookback tipset+1: %v", err)
 	}
 
-	nextTh, _ := nextTs.Height()
+	nextTh := nextTs.Height()
 	if lbr > nextTh {
 		return nil, cid.Undef, xerrors.Errorf("failed to find non-null tipset %s (%d) which is known to exist, found %s (%d)", ts.Key(), h, nextTs.Key(), nextTh)
 	}
 
-	pKey, err := nextTs.Parents()
-	if err != nil {
-		return nil, cid.Undef, err
-	}
+	pKey := nextTs.Parents()
 	lbts, err := store.GetTipSet(pKey)
 	if err != nil {
 		return nil, cid.Undef, xerrors.Errorf("failed to resolve lookback tipset: %v", err)

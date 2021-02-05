@@ -119,10 +119,7 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 		return chains[i].Before(chains[j])
 	})
 
-	curHeight, err := curTs.Height()
-	if err != nil {
-		return nil, xerrors.Errorf("get height: %v", err)
-	}
+	curHeight := curTs.Height()
 	if !allowNegativeChains(curHeight) && len(chains) != 0 && chains[0].gasPerf < 0 {
 		log.Warnw("all messages in mpool have non-positive gas performance", "bestGasPerf", chains[0].gasPerf)
 		return result, nil
@@ -447,10 +444,7 @@ func (mp *MessagePool) selectMessagesGreedy(curTs, ts *types.TipSet) ([]*types.S
 		return chains[i].Before(chains[j])
 	})
 
-	curHeight, err := curTs.Height()
-	if err != nil {
-		return nil, xerrors.Errorf("get height: %v", err)
-	}
+	curHeight := curTs.Height()
 	if !allowNegativeChains(curHeight) && len(chains) != 0 && chains[0].gasPerf < 0 {
 		log.Warnw("all messages in mpool have non-positive gas performance", "bestGasPerf", chains[0].gasPerf)
 		return result, nil
@@ -573,10 +567,7 @@ func (mp *MessagePool) selectPriorityMessages(pending map[address.Address]map[ui
 		return chains[i].Before(chains[j])
 	})
 
-	curHeight, err := ts.Height()
-	if err != nil {
-		return nil, gasLimit
-	}
+	curHeight := ts.Height()
 	if !allowNegativeChains(curHeight) && len(chains) != 0 && chains[0].gasPerf < 0 {
 		log.Warnw("all priority messages in mpool have negative gas performance", "bestGasPerf", chains[0].gasPerf)
 		return nil, gasLimit
@@ -659,8 +650,8 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 
 	// are we in sync?
 	inSync := false
-	curHeight, _ := curTs.Height()
-	tsHeight, _ := ts.Height()
+	curHeight := curTs.Height()
+	tsHeight := ts.Height()
 	if curHeight == tsHeight && curTs.Equals(ts) {
 		inSync = true
 	}
@@ -738,12 +729,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 		return nil
 	}
 
-	curHeight, err := ts.Height()
-	if err != nil {
-		log.Errorf("get height err: %v", actor, err)
-		return nil
-	}
-
+	curHeight := ts.Height()
 	curNonce := a.Nonce
 	balance := a.Balance.Int
 	gasLimit := int64(0)

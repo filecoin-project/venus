@@ -105,10 +105,7 @@ var newMinerCmd = &cmds.Command{
 				return xerrors.Errorf("push worker init: %v", err)
 			}
 
-			cid, err := signed.Cid()
-			if err != nil {
-				return err
-			}
+			cid := signed.Cid()
 
 			minerCmdLog.Infof("Initializing worker account %s, message: %s", worker, cid)
 			minerCmdLog.Infof("Waiting for confirmation")
@@ -172,11 +169,7 @@ var newMinerCmd = &cmds.Command{
 			return xerrors.Errorf("pushing createMiner message: %w", err)
 		}
 
-		cid, err := signed.Cid()
-		if err != nil {
-			return err
-		}
-
+		cid := signed.Cid()
 		minerCmdLog.Infof("Pushed CreateMiner message: %s", cid)
 		minerCmdLog.Infof("Waiting for confirmation")
 		_ = re.Emit("Pushed CreateMiner message: " + cid.String())
