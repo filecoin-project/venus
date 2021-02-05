@@ -278,6 +278,11 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*chain.HeadChan
 }
 
 func (w *Waiter) receiptForTipset(ctx context.Context, ts *block.TipSet, msg types.ChainMsg) (*ChainMessage, bool, error) {
+	// The genesis block
+	if ts.EnsureHeight() == 0 {
+		return nil, false, nil
+	}
+
 	pts, err := w.chainReader.GetTipSet(ts.EnsureParents())
 	if err != nil {
 		return nil, false, err

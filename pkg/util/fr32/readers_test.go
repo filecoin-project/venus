@@ -2,14 +2,13 @@ package fr32_test
 
 import (
 	"bytes"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"io/ioutil"
 	"testing"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-state-types/abi"
-
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/util/fr32"
 )
 

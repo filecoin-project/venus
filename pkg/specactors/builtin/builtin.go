@@ -104,7 +104,7 @@ func IsAccountActor(c cid.Cid) bool {
 func IsInitActor(c cid.Cid) bool {
 	return c == builtin0.InitActorCodeID ||
 		c == builtin2.InitActorCodeID ||
-		c== builtin3.InitActorCodeID
+		c == builtin3.InitActorCodeID
 }
 
 func IsStorageMinerActor(c cid.Cid) bool {

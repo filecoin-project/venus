@@ -23,9 +23,10 @@ require (
 	github.com/fatih/color v1.9.0
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v0.0.5-0.20201103152444-f2023ef3f5bb
-	github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20201006184820-924ee87a1349
+	github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20201006184820-924ee87a1349 // indirect
 	github.com/filecoin-project/go-bitfield v0.2.3-0.20201110211213-fe2c1862e816
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
+	github.com/filecoin-project/go-commp-utils v0.0.0-20201119054358-b88f7a96a434
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v1.2.3
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20201016201715-d41df56b4f6a
@@ -38,18 +39,19 @@ require (
 	github.com/filecoin-project/specs-actors v0.9.13
 	github.com/filecoin-project/specs-actors/v2 v2.3.4
 	github.com/filecoin-project/specs-actors/v3 v3.0.1-0.20210122191213-c7ea99141c44
+	github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506
 	github.com/filecoin-project/test-vectors/schema v0.0.5
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
 	github.com/go-errors/errors v1.0.1
 	github.com/go-kit/kit v0.10.0
 	github.com/golangci/golangci-lint v1.21.0
 	github.com/google/go-github v17.0.0+incompatible
-	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/google/uuid v1.1.2
 	github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
+	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
 	github.com/ipfs/go-bitswap v0.3.2
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.4
@@ -77,7 +79,6 @@ require (
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/iptb v1.4.0
 	github.com/ipld/go-car v0.1.1-0.20201119040415-11b6074b6d4d
-	github.com/ipld/go-ipld-prime v0.5.1-0.20201021195245-109253e8a018
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/jbenet/goprocess v0.1.4
 	github.com/jstemmer/go-junit-report v0.9.1
@@ -103,6 +104,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible
+	github.com/pborman/uuid v1.2.0
 	github.com/pelletier/go-toml v1.6.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
@@ -122,6 +124,7 @@ require (
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	go.opencensus.io v0.22.5
 	go.uber.org/zap v1.16.0
+	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/mod v0.3.1-0.20200828183125-ce943fd02449 // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
@@ -129,7 +132,6 @@ require (
 	golang.org/x/tools v0.0.0-20201112185108-eeaa07dd7696
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
-	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	gotest.tools v2.2.0+incompatible
 	honnef.co/go/tools v0.0.1-2020.1.3 // indirect
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect

@@ -3,9 +3,10 @@ package syncer
 import (
 	"context"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
@@ -71,7 +72,7 @@ func init() {
 type StateProcessor interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error)
+	RunStateTransition(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipt cid.Cid, err error)
 }
 
 type BlockValidator interface {
@@ -211,7 +212,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 	// Run a state transition to validate the tipset and compute
 	// a new state to add to the bsstore.
 	toProcessTime := time.Now()
-	root, receipts, err := syncer.stateProcessor.RunStateTransition(ctx, next, parentStateRoot)
+	root, receiptCid, err := syncer.stateProcessor.RunStateTransition(ctx, next, parentStateRoot)
 	if err != nil {
 		return xerrors.Errorf("calc current tipset %s state failed %w", next.Key().String(), err)
 	}
@@ -221,11 +222,6 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 		if err != nil {
 			return err
 		}
-	}
-
-	receiptCid, err := syncer.messageProvider.StoreReceipts(ctx, receipts)
-	if err != nil {
-		return errors.Wrapf(err, "could not bsstore message rerceipts for tip set %s", next.String())
 	}
 
 	logSyncer.Infow("Process TipSet ", "Height:", next.EnsureHeight(), "Blocks", next.Len(), " Root:", root, " receiptcid ", receiptCid, " time: ", time.Now().Sub(toProcessTime).Milliseconds())

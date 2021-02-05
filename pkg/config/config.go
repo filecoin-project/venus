@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -13,6 +12,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/venus/pkg/constants"
+)
+
+const (
+	scryptN = 1 << 15
+	scryptP = 1
 )
 
 // Config is an in memory representation of the filecoin configuration file
@@ -101,12 +107,26 @@ func newDefaultBootstrapConfig() *BootstrapConfig {
 
 // WalletConfig holds all configuration options related to the wallet.
 type WalletConfig struct {
-	DefaultAddress address.Address `json:"defaultAddress,omitempty"`
+	DefaultAddress   address.Address  `json:"defaultAddress,omitempty"`
+	PassphraseConfig PassphraseConfig `json:"passphraseConfig,omitempty"`
+}
+
+type PassphraseConfig struct {
+	ScryptN int `json:"scryptN"`
+	ScryptP int `json:"scryptP"`
 }
 
 func newDefaultWalletConfig() *WalletConfig {
 	return &WalletConfig{
-		DefaultAddress: address.Undef,
+		DefaultAddress:   address.Undef,
+		PassphraseConfig: DefaultPassphraseConfig(),
+	}
+}
+
+func DefaultPassphraseConfig() PassphraseConfig {
+	return PassphraseConfig{
+		ScryptN: scryptN,
+		ScryptP: scryptP,
 	}
 }
 

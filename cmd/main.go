@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	fbig "github.com/filecoin-project/go-state-types/big"
 	"io"
 	"os"
+
+	fbig "github.com/filecoin-project/go-state-types/big"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-cmds/cli"
@@ -141,6 +142,7 @@ TOOL COMMANDS
   venus log                    - Interact with the daemon event log output
   venus protocol               - Show protocol parameter details
   venus version                - Show venus version information
+  venus seed                   - Seal sectors for genesis miner
 `,
 	},
 	Options: []cmds.Option{
@@ -164,6 +166,7 @@ var rootSubcmdsLocal = map[string]*cmds.Command{
 	"fetch":   fetchCmd,
 	"version": versionCmd,
 	"leb128":  leb128Cmd,
+	"seed":    seedCmd,
 }
 
 // all top level commands, available on daemon. set during init() to avoid configuration loops.

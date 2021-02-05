@@ -2,7 +2,6 @@ package ffiwrapper
 
 import (
 	"encoding/binary"
-	"github.com/filecoin-project/venus/pkg/util/fsutil"
 	"io"
 	"os"
 	"syscall"
@@ -12,6 +11,9 @@ import (
 
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/venus/pkg/util/fsutil"
+	"github.com/filecoin-project/venus/pkg/util/storiface"
 )
 
 const veryLargeRle = 1 << 20
@@ -55,7 +57,6 @@ func writeTrailer(maxPieceSize int64, w *os.File, r rlepluslazy.RunIterator) err
 	return w.Truncate(maxPieceSize + int64(rb) + 4)
 }
 
-//nolint
 func createPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialFile, error) {
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644) // nolint
 	if err != nil {
@@ -176,7 +177,7 @@ func (pf *partialFile) Close() error {
 	return pf.file.Close()
 }
 
-func (pf *partialFile) Writer(offset PaddedByteIndex, size abi.PaddedPieceSize) (io.Writer, error) {
+func (pf *partialFile) Writer(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) (io.Writer, error) {
 	if _, err := pf.file.Seek(int64(offset), io.SeekStart); err != nil {
 		return nil, xerrors.Errorf("seek piece start: %w", err)
 	}
@@ -205,7 +206,7 @@ func (pf *partialFile) Writer(offset PaddedByteIndex, size abi.PaddedPieceSize) 
 	return pf.file, nil
 }
 
-func (pf *partialFile) MarkAllocated(offset PaddedByteIndex, size abi.PaddedPieceSize) error {
+func (pf *partialFile) MarkAllocated(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) error {
 	have, err := pf.allocated.RunIterator()
 	if err != nil {
 		return err
@@ -223,7 +224,7 @@ func (pf *partialFile) MarkAllocated(offset PaddedByteIndex, size abi.PaddedPiec
 	return nil
 }
 
-func (pf *partialFile) Free(offset PaddedByteIndex, size abi.PaddedPieceSize) error {
+func (pf *partialFile) Free(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) error {
 	have, err := pf.allocated.RunIterator()
 	if err != nil {
 		return err
@@ -245,7 +246,7 @@ func (pf *partialFile) Free(offset PaddedByteIndex, size abi.PaddedPieceSize) er
 	return nil
 }
 
-func (pf *partialFile) Reader(offset PaddedByteIndex, size abi.PaddedPieceSize) (*os.File, error) {
+func (pf *partialFile) Reader(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) (*os.File, error) {
 	if _, err := pf.file.Seek(int64(offset), io.SeekStart); err != nil {
 		return nil, xerrors.Errorf("seek piece start: %w", err)
 	}
@@ -278,7 +279,7 @@ func (pf *partialFile) Allocated() (rlepluslazy.RunIterator, error) {
 	return pf.allocated.RunIterator()
 }
 
-func (pf *partialFile) HasAllocated(offset UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
+func (pf *partialFile) HasAllocated(offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
 	have, err := pf.Allocated()
 	if err != nil {
 		return false, err
@@ -297,7 +298,7 @@ func (pf *partialFile) HasAllocated(offset UnpaddedByteIndex, size abi.UnpaddedP
 	return abi.PaddedPieceSize(uc) == size.Padded(), nil
 }
 
-func pieceRun(offset PaddedByteIndex, size abi.PaddedPieceSize) rlepluslazy.RunIterator {
+func pieceRun(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) rlepluslazy.RunIterator {
 	var runs []rlepluslazy.Run
 	if offset > 0 {
 		runs = append(runs, rlepluslazy.Run{

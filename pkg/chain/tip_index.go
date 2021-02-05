@@ -2,14 +2,15 @@ package chain
 
 import (
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/ipfs/go-cid"
 	tcache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
-	"sync"
-	"time"
 )
 
 var (
@@ -117,7 +118,7 @@ func (ti *TipStateCache) Get(ts *block.TipSet) (*TipSetMetadata, error) {
 			return nil, xerrors.New("failed to update tipstate")
 		}
 
-		return nil, ErrNotFound
+		return tipSetMetadata, nil
 	}
 	return tsas.(*TipSetMetadata), nil
 }
