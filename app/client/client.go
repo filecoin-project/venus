@@ -162,7 +162,7 @@ type FullNode struct {
 
 	BeaconGetEntry func(context.Context, abi.ChainEpoch) (*types.BeaconEntry, error)
 
-	MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error)
+	MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*mineApiTypes.MiningBaseInfo, error)
 	MinerCreateBlock func(context.Context, *mineApiTypes.BlockTemplate) (*types.BlockMsg, error)
 }
 
@@ -181,7 +181,7 @@ type BeaconAPI struct {
 }
 
 type MiningAPI struct {
-	MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error)
+	MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*mineApiTypes.MiningBaseInfo, error)
 	MinerCreateBlock func(context.Context, *mineApiTypes.BlockTemplate) (*types.BlockMsg, error)
 }
 
