@@ -28,8 +28,6 @@ type TipSet struct {
 var (
 	// errNoBlocks is returned from the tipset constructor when given no blocks.
 	errNoBlocks = errors.New("no blocks for tipset")
-	// errUndefTipSet is returned from tipset methods invoked on an undefined tipset.
-	errUndefTipSet = errors.New("undefined tipset")
 )
 
 // UndefTipSet is a singleton representing a nil or undefined tipset.
@@ -141,6 +139,7 @@ func (ts *TipSet) Cids() []cid.Cid {
 		for _, b := range ts.blocks {
 			cids = append(cids, b.Cid())
 		}
+		return cids
 	}
 	return []cid.Cid{}
 }
