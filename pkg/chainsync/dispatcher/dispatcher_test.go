@@ -4,8 +4,8 @@ import (
 	"context"
 	fbig "github.com/filecoin-project/go-state-types/big"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"sort"
 	"testing"
 
@@ -160,7 +160,7 @@ func requirePop(t *testing.T, q *syncTypes.TargetTracker) *syncTypes.Target {
 // the height is that integer.
 func chainInfoWithHeightAndWeight(t *testing.T, h int, weight int64) *types.ChainInfo {
 	newAddress := types.NewForTestGetter()
-	posts := []builtin.PoStProof{{PoStProof: abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, ProofBytes: []byte{0x07}}}
+	posts := []proof2.PoStProof{{PoStProof: abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, ProofBytes: []byte{0x07}}}
 	blk := &types.BlockHeader{
 		Miner:         newAddress(),
 		Ticket:        types.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
@@ -180,7 +180,7 @@ func chainInfoWithHeightAndWeight(t *testing.T, h int, weight int64) *types.Chai
 		ParentStateRoot:       types.CidFromString(t, "someothercid"),
 		Timestamp:             4,
 		ParentBaseFee:         abi.NewTokenAmount(20),
-		WinPoStProof:          types.FromAbiProofArr(posts),
+		WinPoStProof:          posts,
 		BlockSig: &acrypto.Signature{
 			Type: acrypto.SigTypeBLS,
 			Data: []byte{0x4},

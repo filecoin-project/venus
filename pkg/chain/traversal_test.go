@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
@@ -30,9 +29,9 @@ func TestIterAncestors(t *testing.T) {
 		b12 := store.AppendBlockOnBlocks(root)
 		b21 := store.AppendBlockOnBlocks(b11, b12)
 
-		t0 := block.RequireNewTipSet(t, root)
-		t1 := block.RequireNewTipSet(t, b11, b12)
-		t2 := block.RequireNewTipSet(t, b21)
+		t0 := types.RequireNewTipSet(t, root)
+		t1 := types.RequireNewTipSet(t, b11, b12)
+		t2 := types.RequireNewTipSet(t, b21)
 
 		it := chain.IterAncestors(ctx, store, t2)
 		assert.False(t, it.Complete())
@@ -59,9 +58,9 @@ func TestIterAncestors(t *testing.T) {
 		b12 := store.AppendBlockOnBlocks(root)
 		b21 := store.AppendBlockOnBlocks(b11, b12)
 
-		block.RequireNewTipSet(t, root)
-		t1 := block.RequireNewTipSet(t, b11, b12)
-		t2 := block.RequireNewTipSet(t, b21)
+		types.RequireNewTipSet(t, root)
+		t1 := types.RequireNewTipSet(t, b11, b12)
+		t2 := types.RequireNewTipSet(t, b21)
 
 		it := chain.IterAncestors(ctx, store, t2)
 		assert.False(t, it.Complete())

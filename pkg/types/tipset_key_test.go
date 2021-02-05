@@ -3,7 +3,6 @@ package types
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -20,8 +19,8 @@ func TestTipSetKey(t *testing.T) {
 	c4, _ := cid.Parse("zDPWYqFD4b5HLFuPfhkjJJkfvm4r8KLi1V9e2ahJX6Ab16Ay24pM")
 
 	t.Run("contains", func(t *testing.T) {
-		empty := types.NewTipSetKey()
-		s := types.NewTipSetKey(c1, c2, c3)
+		empty := NewTipSetKey()
+		s := NewTipSetKey(c1, c2, c3)
 
 		assert.False(t, empty.Has(c1))
 		assert.True(t, s.Has(c1))
@@ -30,10 +29,10 @@ func TestTipSetKey(t *testing.T) {
 		assert.False(t, s.Has(c4))
 
 		assert.True(t, s.ContainsAll(empty))
-		assert.True(t, s.ContainsAll(types.NewTipSetKey(c1)))
+		assert.True(t, s.ContainsAll(NewTipSetKey(c1)))
 		assert.True(t, s.ContainsAll(s))
-		assert.False(t, s.ContainsAll(types.NewTipSetKey(c4)))
-		assert.False(t, s.ContainsAll(types.NewTipSetKey(c1, c4)))
+		assert.False(t, s.ContainsAll(NewTipSetKey(c4)))
+		assert.False(t, s.ContainsAll(NewTipSetKey(c1, c4)))
 
 		assert.True(t, empty.ContainsAll(empty))
 		assert.False(t, empty.ContainsAll(s))
@@ -44,12 +43,12 @@ func TestTipSetKeyCborRoundtrip(t *testing.T) {
 	tf.UnitTest(t)
 
 	makeCid := NewCidForTestGetter()
-	exp := types.NewTipSetKey(makeCid(), makeCid(), makeCid())
+	exp := NewTipSetKey(makeCid(), makeCid(), makeCid())
 	buf := new(bytes.Buffer)
 	err := exp.MarshalCBOR(buf)
 	assert.NoError(t, err)
 
-	var act types.TipSetKey
+	var act TipSetKey
 	err = act.UnmarshalCBOR(buf)
 	assert.NoError(t, err)
 
@@ -61,12 +60,12 @@ func TestTipSetKeyJSONRoundtrip(t *testing.T) {
 	tf.UnitTest(t)
 
 	makeCid := NewCidForTestGetter()
-	exp := types.NewTipSetKey(makeCid(), makeCid(), makeCid())
+	exp := NewTipSetKey(makeCid(), makeCid(), makeCid())
 
 	buf, err := json.Marshal(exp)
 	assert.NoError(t, err)
 
-	var act types.TipSetKey
+	var act TipSetKey
 	err = json.Unmarshal(buf, &act)
 	assert.NoError(t, err)
 

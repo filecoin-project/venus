@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
@@ -91,7 +90,7 @@ func getSubsetOldNewCommon(ctx context.Context, t *testing.T, builder *chain.Bui
 	block1 := builder.AppendBlockOnBlocks(commonHead)
 	block2 := builder.AppendBlockOnBlocks(commonHead)
 
-	oldHead := block.RequireNewTipSet(t, block1)
-	superset := block.RequireNewTipSet(t, block1, block2)
-	return oldHead, superset, block.RequireNewTipSet(t, commonHead)
+	oldHead := types.RequireNewTipSet(t, block1)
+	superset := types.RequireNewTipSet(t, block1, block2)
+	return oldHead, superset, types.RequireNewTipSet(t, commonHead)
 }

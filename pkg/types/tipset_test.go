@@ -3,7 +3,6 @@ package types
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/test"
 	"testing"
 
@@ -33,13 +32,13 @@ func init() {
 	mockSignerForTest, _ = NewMockSignersAndKeyInfo(2)
 }
 
-func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWeight, timestamp uint64, msg string) *types.BlockHeader {
+func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWeight, timestamp uint64, msg string) *BlockHeader {
 	cidGetter := NewCidForTestGetter()
 	addrGetter := NewForTestGetter()
-	return &types.BlockHeader{
+	return &BlockHeader{
 		Miner:                 addrGetter(),
-		Ticket:                types.Ticket{VRFProof: ticket},
-		Parents:               types.NewTipSetKey(parentCid),
+		Ticket:                Ticket{VRFProof: ticket},
+		Parents:               NewTipSetKey(parentCid),
 		ParentWeight:          fbig.NewInt(int64(parentWeight)),
 		Height:                42 + abi.ChainEpoch(height),
 		Messages:              cidGetter(),
@@ -56,7 +55,7 @@ func TestTipsetJson(t *testing.T) {
 	jsonBytes, err := json.Marshal(ts)
 	require.NoError(t, err)
 
-	unmarshalTs := &types.TipSet{}
+	unmarshalTs := &TipSet{}
 	err = json.Unmarshal(jsonBytes, unmarshalTs)
 	require.NoError(t, err)
 	assert.Equal(t, unmarshalTs.Len(), ts.Len())
@@ -76,7 +75,7 @@ func TestTipSet(t *testing.T) {
 		assert.Equal(t, b1, ts.At(0))
 		assert.Equal(t, b2, ts.At(1))
 		assert.Equal(t, b3, ts.At(2))
-		assert.Equal(t, []*types.BlockHeader{b1, b2, b3}, ts.ToSlice())
+		assert.Equal(t, []*BlockHeader{b1, b2, b3}, ts.ToSlice())
 	})
 
 	t.Run("order breaks ties with CID", func(t *testing.T) {
@@ -85,9 +84,9 @@ func TestTipSet(t *testing.T) {
 
 		ts := RequireNewTipSet(t, b1, b2)
 		if bytes.Compare(b1.Cid().Bytes(), b2.Cid().Bytes()) < 0 {
-			assert.Equal(t, []*types.BlockHeader{b1, b2}, ts.ToSlice())
+			assert.Equal(t, []*BlockHeader{b1, b2}, ts.ToSlice())
 		} else {
-			assert.Equal(t, []*types.BlockHeader{b2, b1}, ts.ToSlice())
+			assert.Equal(t, []*BlockHeader{b2, b1}, ts.ToSlice())
 		}
 	})
 
@@ -102,9 +101,9 @@ func TestTipSet(t *testing.T) {
 	})
 
 	t.Run("key", func(t *testing.T) {
-		assert.Equal(t, types.NewTipSetKey(b1.Cid()), RequireNewTipSet(t, b1).Key())
+		assert.Equal(t, NewTipSetKey(b1.Cid()), RequireNewTipSet(t, b1).Key())
 		// sorted ticket order is b1, b2, b3
-		assert.Equal(t, types.NewTipSetKey(b1.Cid(), b2.Cid(), b3.Cid()),
+		assert.Equal(t, NewTipSetKey(b1.Cid(), b2.Cid(), b3.Cid()),
 			RequireNewTipSet(t, b2, b3, b1).Key())
 	})
 
@@ -150,16 +149,16 @@ func TestTipSet(t *testing.T) {
 	})
 
 	t.Run("slice", func(t *testing.T) {
-		assert.Equal(t, []*types.BlockHeader{b1}, RequireNewTipSet(t, b1).ToSlice())
+		assert.Equal(t, []*BlockHeader{b1}, RequireNewTipSet(t, b1).ToSlice())
 
 		ts := RequireNewTipSet(t, b3, b2, b1) // Presented in reverse order
 		slice := ts.ToSlice()
-		assert.Equal(t, []*types.BlockHeader{b1, b2, b3}, slice)
+		assert.Equal(t, []*BlockHeader{b1, b2, b3}, slice)
 
 		slice[1] = b1
 		slice[2] = b2
 		assert.NotEqual(t, slice, ts.ToSlice())
-		assert.Equal(t, []*types.BlockHeader{b1, b2, b3}, ts.ToSlice()) // tipset is immutable
+		assert.Equal(t, []*BlockHeader{b1, b2, b3}, ts.ToSlice()) // tipset is immutable
 	})
 
 	t.Run("string", func(t *testing.T) {
@@ -167,19 +166,19 @@ func TestTipSet(t *testing.T) {
 		// datastore key and depends on the format exactly.
 		assert.Equal(t, "{ "+b1.Cid().String()+" }", RequireNewTipSet(t, b1).String())
 
-		expected := types.NewTipSetKey(b1.Cid(), b2.Cid(), b3.Cid()).String()
+		expected := NewTipSetKey(b1.Cid(), b2.Cid(), b3.Cid()).String()
 		assert.Equal(t, expected, RequireNewTipSet(t, b3, b2, b1).String())
 	})
 
 	t.Run("empty new tipset fails", func(t *testing.T) {
-		_, err := types.NewTipSet()
+		_, err := NewTipSet()
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "no blocks for tipset")
 	})
 
 	t.Run("duplicate block fails new tipset", func(t *testing.T) {
 		b1, b2, b3 = makeTestBlocks(t)
-		ts, err := types.NewTipSet(b1, b2, b1)
+		ts, err := NewTipSet(b1, b2, b1)
 		assert.Error(t, err)
 		assert.False(t, ts.Defined())
 	})
@@ -187,15 +186,15 @@ func TestTipSet(t *testing.T) {
 	t.Run("mismatched height fails new tipset", func(t *testing.T) {
 		b1, b2, b3 = makeTestBlocks(t)
 		b1.Height = 3
-		ts, err := types.NewTipSet(b1, b2, b3)
+		ts, err := NewTipSet(b1, b2, b3)
 		assert.Error(t, err)
 		assert.False(t, ts.Defined())
 	})
 
 	t.Run("mismatched parents fails new tipset", func(t *testing.T) {
 		b1, b2, b3 = makeTestBlocks(t)
-		b1.Parents = types.NewTipSetKey(cid1, cid2)
-		ts, err := types.NewTipSet(b1, b2, b3)
+		b1.Parents = NewTipSetKey(cid1, cid2)
+		ts, err := NewTipSet(b1, b2, b3)
 		assert.Error(t, err)
 		assert.False(t, ts.Defined())
 	})
@@ -203,13 +202,13 @@ func TestTipSet(t *testing.T) {
 	t.Run("mismatched parent weight fails new tipset", func(t *testing.T) {
 		b1, b2, b3 = makeTestBlocks(t)
 		b1.ParentWeight = fbig.NewInt(3000)
-		ts, err := types.NewTipSet(b1, b2, b3)
+		ts, err := NewTipSet(b1, b2, b3)
 		assert.Error(t, err)
 		assert.False(t, ts.Defined())
 	})
 }
 
-func makeTestBlocks(t *testing.T) (*types.BlockHeader, *types.BlockHeader, *types.BlockHeader) {
+func makeTestBlocks(t *testing.T) (*BlockHeader, *BlockHeader, *BlockHeader) {
 	b1 := block(t, []byte{2}, 1, cid1, parentWeight, 1, "1")
 	b2 := block(t, []byte{3}, 1, cid1, parentWeight, 2, "2")
 	b3 := block(t, []byte{1}, 1, cid1, parentWeight, 3, "3")
@@ -222,8 +221,8 @@ func makeTestBlocks(t *testing.T) (*types.BlockHeader, *types.BlockHeader, *type
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
-func RequireNewTipSet(t *testing.T, blks ...*types.BlockHeader) *types.TipSet {
-	ts, err := types.NewTipSet(blks...)
+func RequireNewTipSet(t *testing.T, blks ...*BlockHeader) *TipSet {
+	ts, err := NewTipSet(blks...)
 	require.NoError(t, err)
 	return ts
 }

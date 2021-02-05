@@ -9,7 +9,6 @@ import (
 	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
 	"github.com/filecoin-project/venus/pkg/clock"
@@ -360,7 +359,7 @@ func TestSubsetParent(t *testing.T) {
 
 	// Sync one tipset with a parent equal to a subset of an existing
 	// tipset in the bsstore: {B1, B2} -> {C1, C2}
-	tipB1B2 := block.RequireNewTipSet(t, tipB1B2B3.At(0), tipB1B2B3.At(1))
+	tipB1B2 := types.RequireNewTipSet(t, tipB1B2B3.At(0), tipB1B2B3.At(1))
 	tipC1C2 := builder.AppendOn(tipB1B2, 2)
 
 	target2 := &syncTypes.Target{
@@ -375,7 +374,7 @@ func TestSubsetParent(t *testing.T) {
 
 	// Sync another tipset with a parent equal to a subset of the tipset
 	// just synced: C1 -> D1
-	tipC1 := block.RequireNewTipSet(t, tipC1C2.At(0))
+	tipC1 := types.RequireNewTipSet(t, tipC1C2.At(0))
 	tipD1OnC1 := builder.AppendOn(tipC1, 1)
 
 	target3 := &syncTypes.Target{

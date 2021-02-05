@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	appstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/vm/state"
@@ -31,7 +30,7 @@ func TestWeight(t *testing.T) {
 	// Total is 16, so bitlen is 5, log2b is 4
 	viewer := makeStateViewer(fakeRoot, abi.NewStoragePower(16))
 	ticket := consensus.MakeFakeTicketForTest()
-	toWeigh := block.RequireNewTipSet(t, &types.BlockHeader{
+	toWeigh := types.RequireNewTipSet(t, &types.BlockHeader{
 		Miner:        minerAddr,
 		ParentWeight: fbig.Zero(),
 		Ticket:       ticket,
@@ -81,7 +80,7 @@ func TestWeight(t *testing.T) {
 
 	t.Run("non-zero parent weight", func(t *testing.T) {
 		parentWeight := fbig.NewInt(int64(49))
-		toWeighWithParent := block.RequireNewTipSet(t, &types.BlockHeader{
+		toWeighWithParent := types.RequireNewTipSet(t, &types.BlockHeader{
 			Miner:        minerAddr,
 			ParentWeight: parentWeight,
 			Ticket:       ticket,
@@ -100,7 +99,7 @@ func TestWeight(t *testing.T) {
 	})
 
 	t.Run("many blocks", func(t *testing.T) {
-		toWeighThreeBlock := block.RequireNewTipSet(t,
+		toWeighThreeBlock := types.RequireNewTipSet(t,
 			&types.BlockHeader{
 				Miner:        minerAddr,
 				ParentWeight: fbig.Zero(),
