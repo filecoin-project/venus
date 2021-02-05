@@ -241,7 +241,7 @@ func (backend *DSBackend) Locked(password string) error {
 		return nil
 	}
 
-	if backend.password != password {
+	if backend.password != "" && backend.password != password {
 		return ErrInvalidPassword
 	}
 
@@ -263,7 +263,7 @@ func (backend *DSBackend) UnLocked(password string) error {
 		return nil
 	}
 
-	if backend.password != password {
+	if backend.password != "" && backend.password != password {
 		return ErrInvalidPassword
 	}
 
