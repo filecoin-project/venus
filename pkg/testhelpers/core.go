@@ -6,7 +6,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/venus/pkg/block"
 	"math/rand"
 	"testing"
 
@@ -66,17 +65,17 @@ func (v *MockMessagePoolValidator) ValidateSignedMessageSyntax(ctx context.Conte
 }
 
 // RequireTipset is a helper that constructs a tipset
-func RequireTipset(t *testing.T) *block.TipSet {
+func RequireTipset(t *testing.T) *types.TipSet {
 	return RequireTipsetWithHeight(t, abi.ChainEpoch(rand.Int()))
 }
 
-func RequireTipsetWithHeight(t *testing.T, height abi.ChainEpoch) *block.TipSet {
+func RequireTipsetWithHeight(t *testing.T, height abi.ChainEpoch) *types.TipSet {
 	newAddress := types.NewForTestGetter()
-	blk := &block.Block{
+	blk := &types.BlockHeader{
 		Miner:         newAddress(),
-		Ticket:        block.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
-		ElectionProof: &block.ElectionProof{VRFProof: []byte{0x0c, 0x0d}},
-		BeaconEntries: []*block.BeaconEntry{
+		Ticket:        types.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
+		ElectionProof: &types.ElectionProof{VRFProof: []byte{0x0c, 0x0d}},
+		BeaconEntries: []*types.BeaconEntry{
 			{
 				Round: 44,
 				Data:  []byte{0xc0},
@@ -85,7 +84,7 @@ func RequireTipsetWithHeight(t *testing.T, height abi.ChainEpoch) *block.TipSet 
 		Height:                height,
 		Messages:              types.CidFromString(t, "someothercid"),
 		ParentMessageReceipts: types.CidFromString(t, "someothercid"),
-		Parents:               block.NewTipSetKey(types.CidFromString(t, "someothercid")),
+		Parents:               types.NewTipSetKey(types.CidFromString(t, "someothercid")),
 		ParentWeight:          fbig.NewInt(1),
 		ForkSignaling:         2,
 		ParentStateRoot:       types.CidFromString(t, "someothercid"),
@@ -96,6 +95,6 @@ func RequireTipsetWithHeight(t *testing.T, height abi.ChainEpoch) *block.TipSet 
 			Data: []byte{0x4},
 		},
 	}
-	b, _ := block.NewTipSet(blk)
+	b, _ := types.NewTipSet(blk)
 	return b
 }

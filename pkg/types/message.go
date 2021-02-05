@@ -256,7 +256,7 @@ func (msg *UnsignedMessage) ValidForBlockInclusion(minGas int64, version network
 	}
 
 	if msg.GasLimit > constants.BlockGasLimit {
-		return xerrors.New("'GasLimit' field cannot be greater than a block's gas limit")
+		return xerrors.New("'GasLimit' field cannot be greater than a newBlock's gas limit")
 	}
 
 	// since prices might vary with time, this is technically semantic validation

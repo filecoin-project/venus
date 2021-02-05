@@ -2,8 +2,6 @@ package events
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/block"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/types"
@@ -12,7 +10,7 @@ import (
 func (me *messageEvents) CheckMsg(ctx context.Context, smsg types.ChainMsg, hnd MsgHandler) CheckFunc {
 	msg := smsg.VMMessage()
 
-	return func(ts *block.TipSet) (done bool, more bool, err error) {
+	return func(ts *types.TipSet) (done bool, more bool, err error) {
 		fa, err := me.cs.StateGetActor(ctx, msg.From, ts.Key())
 		if err != nil {
 			return false, true, err

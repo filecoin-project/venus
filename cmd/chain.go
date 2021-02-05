@@ -15,7 +15,6 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -152,7 +151,7 @@ var chainSetHeadCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		maybeNewHead := block.NewTipSetKey(headCids...)
+		maybeNewHead := types.NewTipSetKey(headCids...)
 		return env.(*node.Env).ChainAPI.ChainSetHead(req.Context, maybeNewHead)
 	},
 }
@@ -209,14 +208,14 @@ var chainGetBlockCmd = &cmds.Command{
 		}
 
 		cblock := struct {
-			block.Block
+			types.BlockHeader
 			BlsMessages    []*types.UnsignedMessage
 			SecpkMessages  []*types.SignedMessage
 			ParentReceipts []*types.MessageReceipt
 			ParentMessages []cid.Cid
 		}{}
 
-		cblock.Block = *blk
+		cblock.BlockHeader = *blk
 		cblock.BlsMessages = msgs.BlsMessages
 		cblock.SecpkMessages = msgs.SecpkMessages
 		cblock.ParentReceipts = recpts

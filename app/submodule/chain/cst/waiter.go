@@ -6,7 +6,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -24,12 +23,12 @@ var log = logging.Logger("messageimpl")
 
 // Abstracts over a store of blockchain state.
 type waiterChainReader interface {
-	GetHead() *block.TipSet
-	GetTipSet(block.TipSetKey) (*block.TipSet, error)
-	ResolveAddressAt(context.Context, *block.TipSet, address.Address) (address.Address, error)
-	GetActorAt(context.Context, *block.TipSet, address.Address) (*types.Actor, error)
-	GetTipSetState(context.Context, *block.TipSet) (state.Tree, error)
-	GetTipSetReceiptsRoot(*block.TipSet) (cid.Cid, error)
+	GetHead() *types.TipSet
+	GetTipSet(types.TipSetKey) (*types.TipSet, error)
+	ResolveAddressAt(context.Context, *types.TipSet, address.Address) (address.Address, error)
+	GetActorAt(context.Context, *types.TipSet, address.Address) (*types.Actor, error)
+	GetTipSetState(context.Context, *types.TipSet) (state.Tree, error)
+	GetTipSetReceiptsRoot(*types.TipSet) (cid.Cid, error)
 	SubHeadChanges(context.Context) chan []*chain.HeadChange
 }
 
@@ -43,9 +42,9 @@ type Waiter struct {
 
 // ChainMessage is an on-chain message with its block and receipt.
 type ChainMessage struct {
-	Ts      *block.TipSet
+	Ts      *types.TipSet
 	Message types.ChainMsg
-	Block   *block.Block
+	Block   *types.BlockHeader
 	Receipt *types.MessageReceipt
 }
 
@@ -63,7 +62,7 @@ func NewWaiter(chainStore waiterChainReader, messages chain.MessageProvider, bs 
 }
 
 // Find searches the blockchain history (but doesn't wait).
-func (w *Waiter) Find(ctx context.Context, msg types.ChainMsg, lookback abi.ChainEpoch, ts *block.TipSet) (*ChainMessage, bool, error) {
+func (w *Waiter) Find(ctx context.Context, msg types.ChainMsg, lookback abi.ChainEpoch, ts *types.TipSet) (*ChainMessage, bool, error) {
 	if ts == nil {
 		ts = w.chainReader.GetHead()
 	}
@@ -106,7 +105,7 @@ func (w *Waiter) Wait(ctx context.Context, msg types.ChainMsg, confidence abi.Ch
 // block and receipt, when it is found. Returns the found message/block or nil
 // if now block with the given CID exists in the chain.
 // The lookback parameter is the number of tipsets in the past this method will check before giving up.
-func (w *Waiter) findMessage(ctx context.Context, from *block.TipSet, m types.ChainMsg, lookback abi.ChainEpoch) (*ChainMessage, bool, error) {
+func (w *Waiter) findMessage(ctx context.Context, from *types.TipSet, m types.ChainMsg, lookback abi.ChainEpoch) (*ChainMessage, bool, error) {
 	limitHeight := from.EnsureHeight() - lookback
 	noLimit := lookback == constants.LookbackNoLimit
 
@@ -217,7 +216,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*chain.HeadChan
 		}
 	}()
 
-	var candidateTs *block.TipSet
+	var candidateTs *types.TipSet
 	var candidateRcp *ChainMessage
 	heightOfHead := currentHead.EnsureHeight()
 	reverts := map[string]bool{}
@@ -277,7 +276,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*chain.HeadChan
 	}
 }
 
-func (w *Waiter) receiptForTipset(ctx context.Context, ts *block.TipSet, msg types.ChainMsg) (*ChainMessage, bool, error) {
+func (w *Waiter) receiptForTipset(ctx context.Context, ts *types.TipSet, msg types.ChainMsg) (*ChainMessage, bool, error) {
 	// The genesis block
 	if ts.EnsureHeight() == 0 {
 		return nil, false, nil
@@ -319,7 +318,7 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts *block.TipSet, msg typ
 	return nil, false, nil
 }
 
-func (w *Waiter) receiptByIndex(ctx context.Context, ts *block.TipSet, targetCid cid.Cid, blockMsgs []block.BlockMessagesInfo) (*types.MessageReceipt, error) {
+func (w *Waiter) receiptByIndex(ctx context.Context, ts *types.TipSet, targetCid cid.Cid, blockMsgs []types.BlockMessagesInfo) (*types.MessageReceipt, error) {
 	receiptCid, err := w.chainReader.GetTipSetReceiptsRoot(ts)
 	if err != nil {
 		return nil, err

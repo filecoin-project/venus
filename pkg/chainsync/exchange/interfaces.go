@@ -2,8 +2,8 @@ package exchange
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
@@ -21,15 +21,15 @@ type Client interface {
 	// GetBlocks fetches block headers from the network, from the provided
 	// tipset *backwards*, returning as many tipsets as the count parameter,
 	// or less.
-	GetBlocks(ctx context.Context, tsk block.TipSetKey, count int) ([]*block.TipSet, error)
+	GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) ([]*types.TipSet, error)
 
 	// GetChainMessages fetches messages from the network, starting from the first provided tipset
 	// and returning messages from as many tipsets as requested or less.
-	GetChainMessages(ctx context.Context, tipsets []*block.TipSet) ([]*CompactedMessages, error)
+	GetChainMessages(ctx context.Context, tipsets []*types.TipSet) ([]*CompactedMessages, error)
 
 	// GetFullTipSet fetches a full tipset from a given peer. If successful,
 	// the fetched object contains block headers and all messages in full form.
-	GetFullTipSet(ctx context.Context, peer []peer.ID, tsk block.TipSetKey) (*block.FullTipSet, error)
+	GetFullTipSet(ctx context.Context, peer []peer.ID, tsk types.TipSetKey) (*types.FullTipSet, error)
 
 	// AddPeer adds a peer to the pool of peers that the Client requests
 	// data from.

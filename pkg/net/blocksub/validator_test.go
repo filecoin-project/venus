@@ -5,13 +5,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/pkg/types"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pubsubpb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/net/blocksub"
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
@@ -43,9 +43,9 @@ func TestBlockTopicValidator(t *testing.T) {
 	assert.False(t, validator(ctx, pid1, nonBlkPubSubMsg()))
 }
 
-// convert a types.Block to a pubsub message
-func blkToPubSub(t *testing.T, blk *block.Block) *pubsub.Message {
-	bm := block.BlockMsg{
+// convert a types.BlockHeader to a pubsub message
+func blkToPubSub(t *testing.T, blk *types.BlockHeader) *pubsub.Message {
+	bm := types.BlockMsg{
 		Header:        blk,
 		BlsMessages:   nil,
 		SecpkMessages: nil,
@@ -61,7 +61,7 @@ func blkToPubSub(t *testing.T, blk *block.Block) *pubsub.Message {
 	}
 }
 
-// returns a pubsub message that will not decode to a types.Block
+// returns a pubsub message that will not decode to a types.BlockHeader
 func nonBlkPubSubMsg() *pubsub.Message {
 	pbm := &pubsubpb.Message{
 		Data: []byte("meow"),

@@ -3,6 +3,7 @@ package syncer_test
 import (
 	"context"
 	"github.com/filecoin-project/venus/pkg/chainsync/types"
+	types2 "github.com/filecoin-project/venus/pkg/types"
 	"testing"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
 	"github.com/filecoin-project/venus/pkg/clock"
@@ -48,7 +48,7 @@ func TestLoadFork(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", left),
+		ChainInfo: *types2.NewChainInfo("", "", left),
 	}
 	rightTarget := &types.Target{
 		Base:      nil,
@@ -56,7 +56,7 @@ func TestLoadFork(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", right),
+		ChainInfo: *types2.NewChainInfo("", "", right),
 	}
 	// Sync the two branches, which stores all blocks in the underlying stores.
 	assert.NoError(t, s.HandleNewTipSet(ctx, leftTarget))
@@ -66,7 +66,7 @@ func TestLoadFork(t *testing.T) {
 	// The syncer/bsstore assume that the fetcher populates the underlying block bsstore such that
 	// tipsets can be reconstructed. The chain builder used for testing doesn't do that, so do
 	// it manually here.
-	for _, tip := range []*block.TipSet{left, right} {
+	for _, tip := range []*types2.TipSet{left, right} {
 		for itr := chain.IterAncestors(ctx, builder, tip); !itr.Complete(); require.NoError(t, itr.Next()) {
 			for _, block := range itr.Value().ToSlice() {
 				_, err := builder.Cstore().Put(ctx, block)
@@ -98,6 +98,6 @@ func TestLoadFork(t *testing.T) {
 
 type noopFaultDetector struct{}
 
-func (fd *noopFaultDetector) CheckBlock(_ *block.Block, _ *block.TipSet) error {
+func (fd *noopFaultDetector) CheckBlock(_ *types2.BlockHeader, _ *types2.TipSet) error {
 	return nil
 }

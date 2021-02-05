@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/state"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -177,7 +176,7 @@ func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF in
 
 // FakeIngestionValidatorAPI provides a latest state
 type FakeIngestionValidatorAPI struct {
-	Block     *block.Block
+	Block     *types.BlockHeader
 	ActorAddr address.Address
 	Actor     *types.Actor
 }
@@ -192,16 +191,16 @@ func NewMockIngestionValidatorAPI() *FakeIngestionValidatorAPI {
 	}
 }
 
-func (api *FakeIngestionValidatorAPI) Head() *block.TipSet {
-	ts, _ := block.NewTipSet(api.Block)
+func (api *FakeIngestionValidatorAPI) Head() *types.TipSet {
+	ts, _ := types.NewTipSet(api.Block)
 	return ts
 }
 
-func (api *FakeIngestionValidatorAPI) GetTipSet(key block.TipSetKey) (*block.TipSet, error) {
-	return block.NewTipSet(api.Block)
+func (api *FakeIngestionValidatorAPI) GetTipSet(key types.TipSetKey) (*types.TipSet, error) {
+	return types.NewTipSet(api.Block)
 }
 
-func (api *FakeIngestionValidatorAPI) GetActorAt(ctx context.Context, key *block.TipSet, a address.Address) (*types.Actor, error) {
+func (api *FakeIngestionValidatorAPI) GetActorAt(ctx context.Context, key *types.TipSet, a address.Address) (*types.Actor, error) {
 	if a == api.ActorAddr {
 		return api.Actor, nil
 	}
@@ -210,6 +209,6 @@ func (api *FakeIngestionValidatorAPI) GetActorAt(ctx context.Context, key *block
 	}, nil
 }
 
-func (api *FakeIngestionValidatorAPI) AccountStateView(baseKey *block.TipSet) (state.AccountStateView, error) {
+func (api *FakeIngestionValidatorAPI) AccountStateView(baseKey *types.TipSet) (state.AccountStateView, error) {
 	return &state.FakeStateView{}, nil
 }

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 	"math/rand"
@@ -25,7 +25,7 @@ type ChainSampler interface { //nolint
 // A sampler for use when computing genesis state (the state that the genesis block points to as parent state).
 // There is no chain to sample a seed from.
 type GenesisSampler struct {
-	VRFProof block.VRFPi
+	VRFProof types.VRFPi
 }
 
 func (g *GenesisSampler) Sample(_ context.Context, epoch abi.ChainEpoch) (RandomSeed, error) {
@@ -44,7 +44,7 @@ func (g *GenesisSampler) GetRandomnessFromBeacon(ctx context.Context, personaliz
 
 // Computes a random seed from raw ticket bytes.
 // A randomness seed is the VRF digest of the minimum ticket of the tipset at or before the requested epoch
-func MakeRandomSeed(rawVRFProof block.VRFPi) (RandomSeed, error) {
+func MakeRandomSeed(rawVRFProof types.VRFPi) (RandomSeed, error) {
 	digest := rawVRFProof.Digest()
 	return digest[:], nil
 }

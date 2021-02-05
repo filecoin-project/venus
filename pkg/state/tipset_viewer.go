@@ -1,17 +1,16 @@
 package state
 
 import (
+	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/venus/pkg/block"
 )
 
 // Abstracts over a store of blockchain state.
 type chainStateChainReader interface {
-	GetTipSet(block.TipSetKey) (*block.TipSet, error)
-	GetTipSetStateRoot(*block.TipSet) (cid.Cid, error)
+	GetTipSet(types.TipSetKey) (*types.TipSet, error)
+	GetTipSetStateRoot(*types.TipSet) (cid.Cid, error)
 	GenesisRootCid() cid.Cid
 }
 
@@ -29,7 +28,7 @@ func NewTipSetStateViewer(chainReader chainStateChainReader, cst cbor.IpldStore)
 }
 
 // StateView creates a state view after the application of a tipset's messages.
-func (cs TipSetStateViewer) StateView(ts *block.TipSet) (*View, error) {
+func (cs TipSetStateViewer) StateView(ts *types.TipSet) (*View, error) {
 	root, err := cs.chainReader.GetTipSetStateRoot(ts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get state root for %s", ts.Key().String())

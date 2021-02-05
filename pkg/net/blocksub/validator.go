@@ -3,11 +3,11 @@ package blocksub
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/metrics"
 )
 
@@ -22,7 +22,7 @@ type BlockTopicValidator struct {
 }
 
 type BlockHeaderValidator interface {
-	ValidateBlockHeader(ctx context.Context, blk *block.Block) error
+	ValidateBlockHeader(ctx context.Context, blk *types.BlockHeader) error
 }
 
 // NewBlockTopicValidator retruns a BlockTopicValidator using `bv` for message validation
@@ -30,7 +30,7 @@ func NewBlockTopicValidator(bv BlockHeaderValidator, opts ...pubsub.ValidatorOpt
 	return &BlockTopicValidator{
 		opts: opts,
 		validator: func(ctx context.Context, p peer.ID, msg *pubsub.Message) bool {
-			var bm block.BlockMsg
+			var bm types.BlockMsg
 			err := bm.UnmarshalCBOR(bytes.NewReader(msg.GetData()))
 			if err != nil {
 				blockTopicLogger.Warnf("failed to decode blocksub payload from peer %s: %s", p.String(), err.Error())

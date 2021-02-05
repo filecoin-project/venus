@@ -2,7 +2,6 @@ package settler
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/events"
 	"sync"
@@ -23,9 +22,9 @@ type API struct {
 	Settler
 }
 type PaymentChannelSettler interface {
-	check(ts *block.TipSet) (done bool, more bool, err error)
-	messageHandler(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *block.TipSet, curH abi.ChainEpoch) (more bool, err error)
-	revertHandler(ctx context.Context, ts *block.TipSet) error
+	check(ts *types.TipSet) (done bool, more bool, err error)
+	messageHandler(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error)
+	revertHandler(ctx context.Context, ts *types.TipSet) error
 	matcher(msg *types.UnsignedMessage) (matched bool, err error)
 }
 type paymentChannelSettler struct {
@@ -40,11 +39,11 @@ func NewPaymentChannelSettler(ctx context.Context, api Settler) PaymentChannelSe
 	}
 }
 
-func (pcs *paymentChannelSettler) check(ts *block.TipSet) (done bool, more bool, err error) {
+func (pcs *paymentChannelSettler) check(ts *types.TipSet) (done bool, more bool, err error) {
 	return false, true, nil
 }
 
-func (pcs *paymentChannelSettler) messageHandler(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *block.TipSet, curH abi.ChainEpoch) (more bool, err error) {
+func (pcs *paymentChannelSettler) messageHandler(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error) {
 	// Ignore unsuccessful settle messages
 	if rec.ExitCode != 0 {
 		return true, nil
@@ -76,7 +75,7 @@ func (pcs *paymentChannelSettler) messageHandler(msg *types.UnsignedMessage, rec
 	return true, nil
 }
 
-func (pcs *paymentChannelSettler) revertHandler(ctx context.Context, ts *block.TipSet) error {
+func (pcs *paymentChannelSettler) revertHandler(ctx context.Context, ts *types.TipSet) error {
 	return nil
 }
 

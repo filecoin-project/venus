@@ -4,15 +4,15 @@ import (
 	"context"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/statemanger"
+	"github.com/filecoin-project/venus/pkg/types"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 )
 
 type IMarket interface {
-	StateMarketParticipants(ctx context.Context, tsk block.TipSetKey) (map[string]chain.MarketBalance, error)
+	StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]chain.MarketBalance, error)
 }
 type marketAPI struct {
 	chain chain.IChain
@@ -23,7 +23,7 @@ func newMarketAPI(c chain.IChain, stmgr statemanger.IStateManager) IMarket {
 	return &marketAPI{c, stmgr}
 }
 
-func (m *marketAPI) StateMarketParticipants(ctx context.Context, tsk block.TipSetKey) (map[string]chain.MarketBalance, error) {
+func (m *marketAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]chain.MarketBalance, error) {
 	out := map[string]chain.MarketBalance{}
 	ts, err := m.chain.ChainGetTipSet(tsk)
 	if err != nil {

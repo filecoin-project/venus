@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
@@ -15,10 +14,10 @@ import (
 
 // stateManagerAPI defines the methods needed from StateManager
 type IStateManager interface {
-	ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *block.TipSet) (address.Address, error)
-	GetPaychState(ctx context.Context, addr address.Address, ts *block.TipSet) (*types.Actor, paych.State, error)
-	Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*types.InvocResult, error)
-	GetMarketState(ctx context.Context, ts *block.TipSet) (market.State, error)
+	ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
+	GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error)
+	Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*types.InvocResult, error)
+	GetMarketState(ctx context.Context, ts *types.TipSet) (market.State, error)
 }
 
 type stmgr struct {
@@ -33,7 +32,7 @@ func NewStateMangerAPI(crw cst.IChainReadWriter, cp consensus.Protocol) IStateMa
 	}
 }
 
-func (o *stmgr) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *block.TipSet) (address.Address, error) {
+func (o *stmgr) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	switch addr.Protocol() {
 	case address.BLS, address.SECP256K1:
 		return addr, nil
@@ -51,7 +50,7 @@ func (o *stmgr) ResolveToKeyAddress(ctx context.Context, addr address.Address, t
 	return view.ResolveToKeyAddr(ctx, addr)
 }
 
-func (o *stmgr) Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*types.InvocResult, error) {
+func (o *stmgr) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*types.InvocResult, error) {
 	timeStart := time.Now()
 	msgCid, err := msg.Cid()
 	if err != nil {
@@ -69,7 +68,7 @@ func (o *stmgr) Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.
 		Duration:       time.Now().Sub(timeStart),
 	}, nil
 }
-func (o *stmgr) GetPaychState(ctx context.Context, addr address.Address, ts *block.TipSet) (*types.Actor, paych.State, error) {
+func (o *stmgr) GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error) {
 	if ts == nil {
 		ts = o.crw.Head()
 	}
@@ -87,7 +86,7 @@ func (o *stmgr) GetPaychState(ctx context.Context, addr address.Address, ts *blo
 	}
 	return act, actState, nil
 }
-func (o *stmgr) GetMarketState(ctx context.Context, ts *block.TipSet) (market.State, error) {
+func (o *stmgr) GetMarketState(ctx context.Context, ts *types.TipSet) (market.State, error) {
 	if ts == nil {
 		ts = o.crw.Head()
 	}

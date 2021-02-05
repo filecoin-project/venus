@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/types"
 
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/repo"
 )
 
@@ -23,7 +23,7 @@ func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst cbor.IpldS
 	if err != nil {
 		return nil, err
 	}
-	genTipSet, err := block.NewTipSet(genesis)
+	genTipSet, err := types.NewTipSet(genesis)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate genesis block")
 	}

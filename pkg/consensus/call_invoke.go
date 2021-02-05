@@ -15,7 +15,6 @@ import (
 	xerrors "github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -23,7 +22,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
-func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *block.TipSet) (*vm.Ret, error) {
+func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *types.TipSet) (*vm.Ret, error) {
 	var (
 		err       error
 		stateRoot cid.Cid
@@ -134,7 +133,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 	return c.processor.ProcessMessage(ctx, msgApply, vmOption)
 }
 
-func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*vm.Ret, error) {
+func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*vm.Ret, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.Call")
 	defer span.End()
 	chainReader := c.chainState

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -40,16 +39,16 @@ var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
 
 type chainReader interface {
 	chain.TipSetProvider
-	GetHead() *block.TipSet
-	GetTipSetReceiptsRoot(*block.TipSet) (cid.Cid, error)
-	GetTipSetStateRoot(*block.TipSet) (cid.Cid, error)
+	GetHead() *types.TipSet
+	GetTipSetReceiptsRoot(*types.TipSet) (cid.Cid, error)
+	GetTipSetStateRoot(*types.TipSet) (cid.Cid, error)
 	SubHeadChanges(context.Context) chan []*chain.HeadChange
 	SubscribeHeadChanges(chain.ReorgNotifee)
 }
 type stateReader interface {
-	ResolveAddressAt(context.Context, *block.TipSet, address.Address) (address.Address, error)
-	GetActorAt(context.Context, *block.TipSet, address.Address) (*types.Actor, error)
-	GetTipSetState(context.Context, *block.TipSet) (state.Tree, error)
+	ResolveAddressAt(context.Context, *types.TipSet, address.Address) (address.Address, error)
+	GetActorAt(context.Context, *types.TipSet, address.Address) (*types.Actor, error)
+	GetTipSetState(context.Context, *types.TipSet) (state.Tree, error)
 }
 
 func setupTest(t *testing.T) (cbor.IpldStore, *chain.Store, *chain.MessageStore, *Waiter) {
@@ -177,12 +176,12 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 //	}
 //
 //	for _, tsMsgs := range msgSets {
-//		var blocks []*block.Block
+//		var blocks []*block.BlockHeader
 //		var receipts []types.MessageReceipt
 //		// If a message set does not contain a slice of messages then
 //		// add a tipset with no messages and a single block to the chain
 //		if len(tsMsgs) == 0 {
-//			child := &block.Block{
+//			child := &block.BlockHeader{
 //				Miner:                 addrGetter(),
 //				Height:                height,
 //				Parents:               parents.Key(),
@@ -206,7 +205,7 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 //				panic(err)
 //			}
 //
-//			child := &block.Block{
+//			child := &block.BlockHeader{
 //				Miner:           addrGetter(),
 //				Messages:        txMeta,
 //				Parents:         parents.Key(),

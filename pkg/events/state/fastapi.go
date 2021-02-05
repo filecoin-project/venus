@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-address"
@@ -10,7 +9,7 @@ import (
 
 type FastChainAPI interface {
 	ChainAPI
-	ChainGetTipSet(block.TipSetKey) (*block.TipSet, error)
+	ChainGetTipSet(types.TipSetKey) (*types.TipSet, error)
 }
 
 type fastAPI struct {
@@ -23,7 +22,7 @@ func WrapFastAPI(api FastChainAPI) ChainAPI {
 	}
 }
 
-func (a *fastAPI) StateGetActor(ctx context.Context, actor address.Address, tsk block.TipSetKey) (*types.Actor, error) {
+func (a *fastAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
 	ts, err := a.FastChainAPI.ChainGetTipSet(tsk)
 	if err != nil {
 		return nil, err

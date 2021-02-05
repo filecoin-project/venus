@@ -29,7 +29,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/build/project"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/types"
 )
@@ -505,7 +504,7 @@ func (td *TestDaemon) MustHaveChainHeadBy(wait time.Duration, peers []*TestDaemo
 	for _, blk := range expHeadBlks {
 		expHeadCids = append(expHeadCids, blk.Cid())
 	}
-	expHeadKey := block.NewTipSetKey(expHeadCids...)
+	expHeadKey := types.NewTipSetKey(expHeadCids...)
 
 	for _, p := range peers {
 		wg.Add(1)
@@ -516,7 +515,7 @@ func (td *TestDaemon) MustHaveChainHeadBy(wait time.Duration, peers []*TestDaemo
 				for _, blk := range actHeadBlks {
 					actHeadCids = append(actHeadCids, blk.Cid())
 				}
-				actHeadKey := block.NewTipSetKey(actHeadCids...)
+				actHeadKey := types.NewTipSetKey(actHeadCids...)
 				if expHeadKey.Equals(actHeadKey) {
 					wg.Done()
 					return
@@ -540,19 +539,19 @@ func (td *TestDaemon) MustHaveChainHeadBy(wait time.Duration, peers []*TestDaemo
 }
 
 // GetChainHead returns the blocks in the head tipset from `td`
-func (td *TestDaemon) GetChainHead() []block.Block {
+func (td *TestDaemon) GetChainHead() []types.BlockHeader {
 	out := td.RunSuccess("chain", "ls", "--enc=json")
 	bc := td.MustUnmarshalChain(out.ReadStdout())
 	return bc[0]
 }
 
 // MustUnmarshalChain unmarshals the chain from `input` into a slice of blocks
-func (td *TestDaemon) MustUnmarshalChain(input string) [][]block.Block {
+func (td *TestDaemon) MustUnmarshalChain(input string) [][]types.BlockHeader {
 	chain := strings.Trim(input, "\n")
-	var bs [][]block.Block
+	var bs [][]types.BlockHeader
 
 	for _, line := range bytes.Split([]byte(chain), []byte{'\n'}) {
-		var b []block.Block
+		var b []types.BlockHeader
 		if err := json.Unmarshal(line, &b); err != nil {
 			td.test.Fatal(err)
 		}

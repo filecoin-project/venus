@@ -4,20 +4,19 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/test-vectors/schema"
-
-	"github.com/filecoin-project/venus/pkg/block"
 )
 
 type chainReader interface {
-	GetHead() (*block.TipSet, error)
-	ChainGetRandomnessFromTickets(ctx context.Context, tsk block.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
-	ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	GetHead() (*types.TipSet, error)
+	ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 }
 type RecordingRand struct {
 	reporter    Reporter
@@ -26,7 +25,7 @@ type RecordingRand struct {
 	// can be removed when https://github.com/filecoin-project/lotus/issues/4223
 	// is fixed.
 	once     sync.Once
-	head     block.TipSetKey
+	head     types.TipSetKey
 	lk       sync.Mutex
 	recorded schema.Randomness
 }

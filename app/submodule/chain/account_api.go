@@ -2,14 +2,14 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/block"
 	xerrors "github.com/pkg/errors"
 )
 
 type IAccount interface {
-	StateAccountKey(ctx context.Context, addr address.Address, tsk block.TipSetKey) (address.Address, error)
+	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 }
 type AccountAPI struct {
 	chain *ChainSubmodule
@@ -19,7 +19,7 @@ func NewAccountAPI(chain *ChainSubmodule) AccountAPI {
 	return AccountAPI{chain: chain}
 }
 
-func (accountAPI *AccountAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk block.TipSetKey) (address.Address, error) {
+func (accountAPI *AccountAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
 	ts, err := accountAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("loading tipset %s: %v", tsk, err)

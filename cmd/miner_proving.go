@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/types"
 	"strconv"
 	"text/tabwriter"
 
@@ -13,7 +14,6 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 )
@@ -157,12 +157,12 @@ var provingDeadlinesCmd = &cmds.Command{
 		ctx := req.Context
 		api := env.(*node.Env).ChainAPI
 
-		deadlines, err := api.StateMinerDeadlines(ctx, maddr, block.EmptyTSK)
+		deadlines, err := api.StateMinerDeadlines(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting deadlines: %w", err)
 		}
 
-		di, err := api.StateMinerProvingDeadline(ctx, maddr, block.EmptyTSK)
+		di, err := api.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting deadlines: %w", err)
 		}
@@ -174,7 +174,7 @@ var provingDeadlinesCmd = &cmds.Command{
 		_, _ = fmt.Fprintln(tw, "deadline\tpartitions\tsectors (faults)\tproven partitions")
 
 		for dlIdx, deadline := range deadlines {
-			partitions, err := api.StateMinerPartitions(ctx, maddr, uint64(dlIdx), block.EmptyTSK)
+			partitions, err := api.StateMinerPartitions(ctx, maddr, uint64(dlIdx), types.EmptyTSK)
 			if err != nil {
 				return xerrors.Errorf("getting partitions for deadline %d: %w", dlIdx, err)
 			}
@@ -241,17 +241,17 @@ var provingDeadlineInfoCmd = &cmds.Command{
 			return xerrors.Errorf("could not parse deadline index: %w", err)
 		}
 
-		deadlines, err := api.StateMinerDeadlines(ctx, maddr, block.EmptyTSK)
+		deadlines, err := api.StateMinerDeadlines(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting deadlines: %w", err)
 		}
 
-		di, err := api.StateMinerProvingDeadline(ctx, maddr, block.EmptyTSK)
+		di, err := api.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting deadlines: %w", err)
 		}
 
-		partitions, err := api.StateMinerPartitions(ctx, maddr, dlIdx, block.EmptyTSK)
+		partitions, err := api.StateMinerPartitions(ctx, maddr, dlIdx, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting partitions for deadline %d: %w", dlIdx, err)
 		}
@@ -317,7 +317,7 @@ var provingFaultsCmd = &cmds.Command{
 		api := env.(*node.Env).ChainAPI
 		stor := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(api)))
 
-		mact, err := api.StateGetActor(ctx, maddr, block.EmptyTSK)
+		mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}

@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/types"
 )
 
 type IBeacon interface {
-	BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*block.BeaconEntry, error)
+	BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error)
 }
 type BeaconAPI struct {
 	chain *ChainSubmodule
@@ -18,7 +18,7 @@ func NewBeaconAPI(chain *ChainSubmodule) BeaconAPI {
 	return BeaconAPI{chain: chain}
 }
 
-func (beaconAPI *BeaconAPI) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*block.BeaconEntry, error) {
+func (beaconAPI *BeaconAPI) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
 	b := beaconAPI.chain.Drand.BeaconForEpoch(epoch)
 	rr := b.MaxBeaconRoundForEpoch(epoch)
 	e := b.Entry(ctx, rr)

@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"testing"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/repo"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -24,7 +23,7 @@ type CborBlockStore struct {
 	cborStore cbor.IpldStore
 }
 
-func (cbor *CborBlockStore) PutBlocks(ctx context.Context, blocks []*block.Block) {
+func (cbor *CborBlockStore) PutBlocks(ctx context.Context, blocks []*types.BlockHeader) {
 	for _, blk := range blocks {
 		_, _ = cbor.cborStore.Put(ctx, blk)
 	}
@@ -36,7 +35,7 @@ func (cbor *CborBlockStore) PutBlocks(ctx context.Context, blocks []*block.Block
 // genesis -> (link1blk1, link1blk2) -> (link2blk1, link2blk2, link2blk3) -> link3blk1 -> (null block) -> (null block) -> (link4blk1, link4blk2)
 
 // newChainStore creates a new chain store for tests.
-func newChainStore(r repo.Repo, genTs *block.TipSet) *CborBlockStore {
+func newChainStore(r repo.Repo, genTs *types.TipSet) *CborBlockStore {
 	tempBlock := r.Datastore()
 	cborStore := cbor.NewCborStore(tempBlock)
 	return &CborBlockStore{
@@ -47,7 +46,7 @@ func newChainStore(r repo.Repo, genTs *block.TipSet) *CborBlockStore {
 
 // requirePutTestChain puts the count tipsets preceding head in the source to
 // the input chain store.
-func requirePutTestChain(ctx context.Context, t *testing.T, cborStore *CborBlockStore, head block.TipSetKey, source *chain.Builder, count int) {
+func requirePutTestChain(ctx context.Context, t *testing.T, cborStore *CborBlockStore, head types.TipSetKey, source *chain.Builder, count int) {
 	tss := source.RequireTipSets(head, count)
 	for _, ts := range tss {
 		tsas := &chain.TipSetMetadata{
@@ -60,18 +59,18 @@ func requirePutTestChain(ctx context.Context, t *testing.T, cborStore *CborBlock
 	}
 }
 
-func requireSiblingState(t *testing.T, cborStore *CborBlockStore, ts *block.TipSet) []*chain.TipSetMetadata {
+func requireSiblingState(t *testing.T, cborStore *CborBlockStore, ts *types.TipSet) []*chain.TipSetMetadata {
 	tsasSlice, err := cborStore.GetSiblingState(ts)
 	require.NoError(t, err)
 	return tsasSlice
 }
 
 type HeadAndTipsetGetter interface {
-	GetHead() block.TipSetKey
-	GetTipSet(block.TipSetKey) (block.TipSet, error)
+	GetHead() types.TipSetKey
+	GetTipSet(types.TipSetKey) (types.TipSet, error)
 }
 
-func requirePutBlocksToCborStore(t *testing.T, cst cbor.IpldStore, blocks ...*block.Block) {
+func requirePutBlocksToCborStore(t *testing.T, cst cbor.IpldStore, blocks ...*types.BlockHeader) {
 	for _, block := range blocks {
 		_, err := cst.Put(context.Background(), block)
 		require.NoError(t, err)
@@ -284,7 +283,7 @@ func TestSetGenesis(t *testing.T) {
 	require.Equal(t, genTS.At(0).Cid(), cs.GenesisCid())
 }
 
-func assertSetHead(t *testing.T, cborStore *CborBlockStore, ts *block.TipSet) {
+func assertSetHead(t *testing.T, cborStore *CborBlockStore, ts *types.TipSet) {
 	ctx := context.Background()
 	err := cborStore.SetHead(ctx, ts)
 	assert.NoError(t, err)
@@ -311,7 +310,7 @@ func TestHead(t *testing.T) {
 	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
 
 	// Head starts as an empty cid set
-	assert.Equal(t, block.UndefTipSet, cs.GetHead())
+	assert.Equal(t, types.UndefTipSet, cs.GetHead())
 
 	// Set Head
 	assertSetHead(t, cboreStore, genTS)
@@ -373,7 +372,7 @@ func TestHeadEvents(t *testing.T) {
 	assertSetHead(t, chainStore, link2)
 	assertSetHead(t, chainStore, link1)
 	assertSetHead(t, chainStore, genTS)
-	heads := []*block.TipSet{genTS, link1, link2, link3, link4, link4, link3, link2, link1, genTS}
+	heads := []*types.TipSet{genTS, link1, link2, link3, link4, link4, link3, link2, link1, genTS}
 	types := []string{"apply", "apply", "apply", "apply", "apply", "revert", "revert", "revert", "revert"}
 	// Heads arrive in the expected order
 	for i := 0; i < 9; i++ {
@@ -449,17 +448,17 @@ func TestLoadAndReboot(t *testing.T) {
 	test.Equal(t, link4, rebootChain.GetHead())
 }
 
-func requireGetTipSet(ctx context.Context, t *testing.T, chainStore *CborBlockStore, key block.TipSetKey) *block.TipSet {
+func requireGetTipSet(ctx context.Context, t *testing.T, chainStore *CborBlockStore, key types.TipSetKey) *types.TipSet {
 	ts, err := chainStore.GetTipSet(key)
 	require.NoError(t, err)
 	return ts
 }
 
 type tipSetStateRootGetter interface {
-	GetTipSetStateRoot(*block.TipSet) (cid.Cid, error)
+	GetTipSetStateRoot(*types.TipSet) (cid.Cid, error)
 }
 
-func requireGetTipSetStateRoot(ctx context.Context, t *testing.T, chainStore tipSetStateRootGetter, ts *block.TipSet) cid.Cid {
+func requireGetTipSetStateRoot(ctx context.Context, t *testing.T, chainStore tipSetStateRootGetter, ts *types.TipSet) cid.Cid {
 	stateCid, err := chainStore.GetTipSetStateRoot(ts)
 	require.NoError(t, err)
 	return stateCid

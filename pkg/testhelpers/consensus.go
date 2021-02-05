@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -18,14 +17,14 @@ import (
 
 // RequireSignedTestBlockFromTipSet creates a block with a valid signature by
 // the passed in miner work and a Miner field set to the minerAddr.
-func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, stateRootCid cid.Cid, receiptRootCid cid.Cid, height abi.ChainEpoch, minerAddr address.Address, minerWorker address.Address, signer types.Signer) *block.Block {
+func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet types.TipSet, stateRootCid cid.Cid, receiptRootCid cid.Cid, height abi.ChainEpoch, minerAddr address.Address, minerWorker address.Address, signer types.Signer) *types.BlockHeader {
 	ticket := consensus.MakeFakeTicketForTest()
 	emptyBLSSig := crypto.Signature{
 		Type: crypto.SigTypeBLS,
 		Data: (*bls.Aggregate([]bls.Signature{}))[:],
 	}
 
-	b := &block.Block{
+	b := &types.BlockHeader{
 		Miner:                 minerAddr,
 		Ticket:                ticket,
 		Parents:               baseTipSet.Key(),
@@ -51,12 +50,12 @@ func NewFakeBlockValidator() *FakeBlockValidator {
 }
 
 // ValidateHeaderSemantic does nothing.
-func (fbv *FakeBlockValidator) ValidateHeaderSemantic(ctx context.Context, child *block.Block, parents block.TipSet) error {
+func (fbv *FakeBlockValidator) ValidateHeaderSemantic(ctx context.Context, child *types.BlockHeader, parents types.TipSet) error {
 	return nil
 }
 
 // ValidateSyntax does nothing.
-func (fbv *FakeBlockValidator) ValidateSyntax(ctx context.Context, blk *block.Block) error {
+func (fbv *FakeBlockValidator) ValidateSyntax(ctx context.Context, blk *types.BlockHeader) error {
 	return nil
 }
 
@@ -89,12 +88,12 @@ func NewStubBlockValidator() *StubBlockValidator {
 }
 
 // ValidateSyntax return nil or error for stubbed block `blk`.
-func (mbv *StubBlockValidator) ValidateBlockHeader(ctx context.Context, blk *block.Block) error {
+func (mbv *StubBlockValidator) ValidateBlockHeader(ctx context.Context, blk *types.BlockHeader) error {
 	return mbv.syntaxStubs[blk.Cid()]
 }
 
 // StubSyntaxValidationForBlock stubs an error when the ValidateSyntax is called
 // on the with the given block.
-func (mbv *StubBlockValidator) StubSyntaxValidationForBlock(blk *block.Block, err error) {
+func (mbv *StubBlockValidator) StubSyntaxValidationForBlock(blk *types.BlockHeader, err error) {
 	mbv.syntaxStubs[blk.Cid()] = err
 }

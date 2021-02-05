@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
@@ -30,7 +29,7 @@ func (mp *MessagePool) GasEstimateFeeCap(
 	ctx context.Context,
 	msg *types.UnsignedMessage,
 	maxqueueblks int64,
-	tsk block.TipSetKey,
+	tsk types.TipSetKey,
 ) (tbig.Int, error) {
 	ts, err := mp.api.ChainHead()
 	if err != nil {
@@ -84,7 +83,7 @@ func (mp *MessagePool) GasEstimateGasPremium(
 	nblocksincl uint64,
 	sender address.Address,
 	gaslimit int64,
-	_ block.TipSetKey,
+	_ types.TipSetKey,
 ) (tbig.Int, error) {
 	if nblocksincl == 0 {
 		nblocksincl = 1
@@ -154,7 +153,7 @@ func (mp *MessagePool) GasEstimateGasPremium(
 	return premium, nil
 }
 
-func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.UnsignedMessage, tsk block.TipSetKey) (int64, error) {
+func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.UnsignedMessage, tsk types.TipSetKey) (int64, error) {
 	if tsk.IsEmpty() {
 		ts, err := mp.api.ChainHead()
 		if err != nil {
@@ -227,9 +226,9 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Uns
 	return res.Receipt.GasUsed + 76e3, nil
 }
 
-func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec, _ block.TipSetKey) (*types.UnsignedMessage, error) {
+func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec, _ types.TipSetKey) (*types.UnsignedMessage, error) {
 	if msg.GasLimit == 0 {
-		gasLimit, err := mp.GasEstimateGasLimit(ctx, msg, block.TipSetKey{})
+		gasLimit, err := mp.GasEstimateGasLimit(ctx, msg, types.TipSetKey{})
 		if err != nil {
 			return nil, xerrors.Errorf("estimating gas used: %w", err)
 		}
@@ -237,7 +236,7 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.Uns
 	}
 
 	if msg.GasPremium.Nil() || tbig.Cmp(msg.GasPremium, tbig.NewInt(0)) == 0 {
-		gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, msg.From, msg.GasLimit, block.TipSetKey{})
+		gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, msg.From, msg.GasLimit, types.TipSetKey{})
 		if err != nil {
 			return nil, xerrors.Errorf("estimating gas price: %w", err)
 		}
@@ -245,7 +244,7 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.Uns
 	}
 
 	if msg.GasFeeCap.Nil() || tbig.Cmp(msg.GasFeeCap, tbig.NewInt(0)) == 0 {
-		feeCap, err := mp.GasEstimateFeeCap(ctx, msg, 20, block.TipSetKey{})
+		feeCap, err := mp.GasEstimateFeeCap(ctx, msg, 20, types.TipSetKey{})
 		if err != nil {
 			return nil, xerrors.Errorf("estimating fee cap: %w", err)
 		}

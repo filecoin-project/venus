@@ -3,6 +3,7 @@ package beacon
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/block"
 	cfg "github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 )
@@ -54,7 +54,7 @@ type DrandBeacon struct {
 	filRoundTime uint64
 
 	cacheLk    sync.Mutex
-	localCache map[uint64]block.BeaconEntry
+	localCache map[uint64]types.BeaconEntry
 }
 
 // DrandHTTPClient interface overrides the user agent used by drand
@@ -98,7 +98,7 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 
 	db := &DrandBeacon{
 		client:     client,
-		localCache: make(map[uint64]block.BeaconEntry),
+		localCache: make(map[uint64]types.BeaconEntry),
 	}
 
 	db.pubkey = drandChain.PublicKey
@@ -140,13 +140,13 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan Response 
 
 	return out
 }
-func (db *DrandBeacon) cacheValue(e block.BeaconEntry) {
+func (db *DrandBeacon) cacheValue(e types.BeaconEntry) {
 	db.cacheLk.Lock()
 	defer db.cacheLk.Unlock()
 	db.localCache[e.Round] = e
 }
 
-func (db *DrandBeacon) getCachedValue(round uint64) *block.BeaconEntry {
+func (db *DrandBeacon) getCachedValue(round uint64) *types.BeaconEntry {
 	db.cacheLk.Lock()
 	defer db.cacheLk.Unlock()
 	v, ok := db.localCache[round]
@@ -156,7 +156,7 @@ func (db *DrandBeacon) getCachedValue(round uint64) *block.BeaconEntry {
 	return &v
 }
 
-func (db *DrandBeacon) VerifyEntry(curr block.BeaconEntry, prev block.BeaconEntry) error {
+func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntry) error {
 	if prev.Round == 0 {
 		// TODO handle genesis better
 		return nil

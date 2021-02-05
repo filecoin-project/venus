@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
 )
@@ -32,7 +31,7 @@ import (
 // MessageProvider is an interface exposing the load methods of the
 // MessageStore.
 type MessageProvider interface {
-	LoadTipSetMessage(ctx context.Context, ts *block.TipSet) ([]block.BlockMessagesInfo, error)
+	LoadTipSetMessage(ctx context.Context, ts *types.TipSet) ([]types.BlockMessagesInfo, error)
 	LoadMetaMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
 	ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 	LoadUnsignedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error)
@@ -222,7 +221,7 @@ func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types
 }
 
 //load message from tipset NOTICE skip message with the same nonce
-func (ms *MessageStore) LoadTipSetMesssages(ctx context.Context, ts *block.TipSet) ([][]*types.SignedMessage, [][]*types.UnsignedMessage, error) {
+func (ms *MessageStore) LoadTipSetMesssages(ctx context.Context, ts *types.TipSet) ([][]*types.SignedMessage, [][]*types.UnsignedMessage, error) {
 	var secpMessages [][]*types.SignedMessage
 	var blsMessages [][]*types.UnsignedMessage
 
@@ -363,7 +362,7 @@ func (ms *MessageStore) LoadTxMeta(ctx context.Context, c cid.Cid) (types.TxMeta
 	return meta, nil
 }
 
-func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *block.TipSet) ([]block.BlockMessagesInfo, error) {
+func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet) ([]types.BlockMessagesInfo, error) {
 	//gather message
 	applied := make(map[address.Address]uint64)
 
@@ -382,7 +381,7 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *block.TipSet)
 		return true, nil
 	}
 
-	blockMsg := []block.BlockMessagesInfo{}
+	blockMsg := []types.BlockMessagesInfo{}
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
 		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, blk.Messages) // Corresponding to  MessagesForBlock of lotus
@@ -411,7 +410,7 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *block.TipSet)
 			}
 		}
 
-		blockMsg = append(blockMsg, block.BlockMessagesInfo{
+		blockMsg = append(blockMsg, types.BlockMessagesInfo{
 			BlsMessages:   sBlsMsg,
 			SecpkMessages: sSecpMsg,
 			Block:         blk,
@@ -421,7 +420,7 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *block.TipSet)
 	return blockMsg, nil
 }
 
-func (ms *MessageStore) MessagesForTipset(ts *block.TipSet) ([]types.ChainMsg, error) {
+func (ms *MessageStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
 	bmsgs, err := ms.LoadTipSetMessage(context.TODO(), ts)
 	if err != nil {
 		return nil, err
@@ -499,7 +498,7 @@ func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks 
 	return nextBaseFee
 }
 
-func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *block.TipSet, upgrade *config.ForkUpgradeConfig) (abi.TokenAmount, error) {
+func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet, upgrade *config.ForkUpgradeConfig) (abi.TokenAmount, error) {
 	zero := abi.NewTokenAmount(0)
 	baseHeight, err := ts.Height()
 	if err != nil {

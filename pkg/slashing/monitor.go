@@ -3,16 +3,15 @@ package slashing
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
-
-	"github.com/filecoin-project/venus/pkg/block"
 )
 
 // ConsensusFaultDetector detects consensus faults -- misbehavior conditions where a single
 // party produces multiple blocks at the same time.
 type ConsensusFaultDetector struct {
 	// minerIndex tracks witnessed blocks by miner address and epoch
-	minerIndex map[address.Address]map[abi.ChainEpoch]*block.Block
+	minerIndex map[address.Address]map[abi.ChainEpoch]*types.BlockHeader
 	// sender sends messages on behalf of the slasher
 	faultCh chan ConsensusFault
 	lk      sync.Mutex
@@ -22,13 +21,13 @@ type ConsensusFaultDetector struct {
 type ConsensusFault struct {
 	// Block1 and Block2 are two distinct blocks from an overlapping interval
 	// signed by the same miner
-	Block1, Block2 *block.Block
+	Block1, Block2 *types.BlockHeader
 }
 
 // NewConsensusFaultDetector returns a fault detector given a fault channel
 func NewConsensusFaultDetector(faultCh chan ConsensusFault) *ConsensusFaultDetector {
 	return &ConsensusFaultDetector{
-		minerIndex: make(map[address.Address]map[abi.ChainEpoch]*block.Block),
+		minerIndex: make(map[address.Address]map[abi.ChainEpoch]*types.BlockHeader),
 		faultCh:    faultCh,
 	}
 
@@ -36,7 +35,7 @@ func NewConsensusFaultDetector(faultCh chan ConsensusFault) *ConsensusFaultDetec
 
 // CheckBlock records a new block and checks for faults
 // Preconditions: the signature is already checked and p is the parent
-func (detector *ConsensusFaultDetector) CheckBlock(b *block.Block, p *block.TipSet) error {
+func (detector *ConsensusFaultDetector) CheckBlock(b *types.BlockHeader, p *types.TipSet) error {
 	latest := b.Height
 	parentHeight, err := p.Height()
 	if err != nil {
@@ -49,7 +48,7 @@ func (detector *ConsensusFaultDetector) CheckBlock(b *block.Block, p *block.TipS
 	defer detector.lk.Unlock()
 	blockByEpoch, tracked := detector.minerIndex[b.Miner]
 	if !tracked {
-		blockByEpoch = make(map[abi.ChainEpoch]*block.Block)
+		blockByEpoch = make(map[abi.ChainEpoch]*types.BlockHeader)
 		detector.minerIndex[b.Miner] = blockByEpoch
 	}
 

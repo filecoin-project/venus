@@ -5,7 +5,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 )
 
-type PaychSubmodule struct {//nolint
+type PaychSubmodule struct { //nolint
 	pmgr *paychmgr.Manager
 }
 

@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/pkg/beacon"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/consensus"
@@ -37,7 +36,7 @@ type ChainSubmodule struct { //nolint
 
 	Fork fork.IFork
 
-	CheckPoint block.TipSetKey
+	CheckPoint types.TipSetKey
 	Drand      beacon.Schedule
 
 	config chainConfig
@@ -60,16 +59,16 @@ type chainConfig interface {
 
 type chainReader interface {
 	chain.TipSetProvider
-	GetHead() *block.TipSet
-	GetTipSetReceiptsRoot(*block.TipSet) (cid.Cid, error)
-	GetTipSetStateRoot(*block.TipSet) (cid.Cid, error)
+	GetHead() *types.TipSet
+	GetTipSetReceiptsRoot(*types.TipSet) (cid.Cid, error)
+	GetTipSetStateRoot(*types.TipSet) (cid.Cid, error)
 	SubHeadChanges(context.Context) chan []*chain.HeadChange
 	SubscribeHeadChanges(chain.ReorgNotifee)
 }
 type stateReader interface {
-	ResolveAddressAt(context.Context, *block.TipSet, address.Address) (address.Address, error)
-	GetActorAt(context.Context, *block.TipSet, address.Address) (*types.Actor, error)
-	GetTipSetState(context.Context, *block.TipSet) (state.Tree, error)
+	ResolveAddressAt(context.Context, *types.TipSet, address.Address) (address.Address, error)
+	GetActorAt(context.Context, *types.TipSet, address.Address) (*types.Actor, error)
+	GetTipSetState(context.Context, *types.TipSet) (state.Tree, error)
 }
 
 // NewChainSubmodule creates a new chain submodule.

@@ -3,7 +3,6 @@ package chain
 import (
 	"testing"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/stretchr/testify/assert"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -19,14 +18,14 @@ func TestStatus(t *testing.T) {
 
 	// single update
 	cidFn := types.NewCidForTestGetter()
-	t0 := block.NewTipSetKey(cidFn())
+	t0 := types.NewTipSetKey(cidFn())
 	sr.UpdateStatus(validateHead(t0))
 	assert.Equal(t, t0, sr.Status().ValidatedHead)
 
 	// multi update
-	t1 := block.NewTipSetKey(cidFn())
-	t2 := block.NewTipSetKey(cidFn())
-	t3 := block.NewTipSetKey(cidFn())
+	t1 := types.NewTipSetKey(cidFn())
+	t2 := types.NewTipSetKey(cidFn())
+	t3 := types.NewTipSetKey(cidFn())
 	expStatus := Status{
 		ValidatedHead:        t1,
 		ValidatedHeadHeight:  1,

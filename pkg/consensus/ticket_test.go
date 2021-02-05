@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 
@@ -23,7 +22,7 @@ import (
 func TestGenValidTicketChain(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
-	head, _ := block.NewTipSet(mockBlock()) // Tipset key is unused by fake randomness
+	head, _ := types.NewTipSet(mockBlock()) // Tipset key is unused by fake randomness
 	loader := newMockTipsetLoader(head)
 
 	// Interleave 3 signers
@@ -51,9 +50,9 @@ func TestGenValidTicketChain(t *testing.T) {
 	}
 }
 
-func requireValidTicket(ctx context.Context, t *testing.T, tm *consensus.TicketMachine, head block.TipSetKey, epoch abi.ChainEpoch,
+func requireValidTicket(ctx context.Context, t *testing.T, tm *consensus.TicketMachine, head types.TipSetKey, epoch abi.ChainEpoch,
 	miner, worker address.Address, signer types.Signer) {
-	electionEntry := &block.BeaconEntry{}
+	electionEntry := &types.BeaconEntry{}
 	newPeriod := false
 	ticket, err := tm.MakeTicket(ctx, head, epoch, miner, electionEntry, newPeriod, worker, signer)
 	require.NoError(t, err)
@@ -64,7 +63,7 @@ func requireValidTicket(ctx context.Context, t *testing.T, tm *consensus.TicketM
 
 func TestNextTicketFailsWithInvalidSigner(t *testing.T) {
 	ctx := context.Background()
-	head, _ := block.NewTipSet(mockBlock()) // Tipset key is unused by fake randomness
+	head, _ := types.NewTipSet(mockBlock()) // Tipset key is unused by fake randomness
 	loader := newMockTipsetLoader(head)
 	miner, err := address.NewIDAddress(uint64(1))
 	require.NoError(t, err)
@@ -73,7 +72,7 @@ func TestNextTicketFailsWithInvalidSigner(t *testing.T) {
 	badAddr := types.RequireIDAddress(t, 100)
 	rnd := consensus.FakeSampler{Seed: 0}
 	tm := consensus.NewTicketMachine(&rnd, loader)
-	electionEntry := &block.BeaconEntry{}
+	electionEntry := &types.BeaconEntry{}
 	newPeriod := false
 	badTicket, err := tm.MakeTicket(ctx, head.Key(), abi.ChainEpoch(1), miner, electionEntry, newPeriod, badAddr, signer)
 	assert.Error(t, err)
@@ -86,13 +85,13 @@ func requireAddress(t *testing.T, ki *crypto.KeyInfo) address.Address {
 	return addr
 }
 
-func mockBlock() *block.Block {
+func mockBlock() *types.BlockHeader {
 	mockCid, _ := constants.DefaultCidBuilder.Sum([]byte("mock"))
-	return &block.Block{
+	return &types.BlockHeader{
 		Miner:         types.NewForTestGetter()(),
-		Ticket:        block.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-		ElectionProof: &block.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
-		BeaconEntries: []*block.BeaconEntry{
+		Ticket:        types.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
+		ElectionProof: &types.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
+		BeaconEntries: []*types.BeaconEntry{
 			{
 				Round: 5,
 				Data:  []byte{0x0c},
@@ -114,13 +113,13 @@ func mockBlock() *block.Block {
 }
 
 type mockTipsetLoader struct {
-	tsk *block.TipSet
+	tsk *types.TipSet
 }
 
-func newMockTipsetLoader(tsk *block.TipSet) *mockTipsetLoader {
+func newMockTipsetLoader(tsk *types.TipSet) *mockTipsetLoader {
 	return &mockTipsetLoader{tsk: tsk}
 }
 
-func (m *mockTipsetLoader) GetTipSet(tsk block.TipSetKey) (*block.TipSet, error) {
+func (m *mockTipsetLoader) GetTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
 	return m.tsk, nil
 }

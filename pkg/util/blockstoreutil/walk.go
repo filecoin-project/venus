@@ -29,7 +29,7 @@ func WalkSnapshot(ctx context.Context, bs bstore.blockstore, ts *block.TipSet, i
 			return xerrors.Errorf("getting block: %w", err)
 		}
 
-		var b block.Block
+		var b block.BlockHeader
 		if err := b.UnmarshalCBOR(bytes.NewReader(data.RawData())); err != nil {
 			return xerrors.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
 		}

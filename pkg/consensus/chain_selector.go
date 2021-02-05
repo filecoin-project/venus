@@ -7,12 +7,12 @@ import (
 	"context"
 	"errors"
 	fbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"
 	"math/big"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/state"
 	vmstate "github.com/filecoin-project/venus/pkg/vm/state"
@@ -33,7 +33,7 @@ func NewChainSelector(cs cbor.IpldStore, state StateViewer) *ChainSelector {
 }
 
 // Weight returns the EC weight of this TipSet as a filecoin big int.
-func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet) (fbig.Int, error) {
+func (c *ChainSelector) Weight(ctx context.Context, ts *types.TipSet) (fbig.Int, error) {
 	pStateID := ts.At(0).ParentStateRoot
 	// Retrieve parent weight.
 	if !pStateID.Defined() {
@@ -81,7 +81,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts *block.TipSet) (fbig.Int,
 // IsHeavier returns true if tipset a is heavier than tipset b, and false
 // vice versa.  In the rare case where two tipsets have the same weight ties
 // are broken by taking the tipset with more blocks.
-func (c *ChainSelector) IsHeavier(ctx context.Context, a, b *block.TipSet) (bool, error) {
+func (c *ChainSelector) IsHeavier(ctx context.Context, a, b *types.TipSet) (bool, error) {
 	aW, err := c.Weight(ctx, a)
 	if err != nil {
 		return false, err
