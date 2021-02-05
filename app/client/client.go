@@ -4,7 +4,6 @@ import (
 	"context"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	pstate "github.com/filecoin-project/venus/pkg/state"
-	cid "github.com/ipfs/go-cid/_rsrch/cidiface"
 	"io"
 	"time"
 
