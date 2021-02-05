@@ -55,8 +55,8 @@ var msgSendCmd = &cmds.Command{
 		}
 
 		methodID := builtin.MethodSend
-		if len(req.Arguments) > 1 {
-			tm, err := strconv.ParseUint(req.Arguments[0], 10, 64)
+		if len(req.Arguments) > 2 {
+			tm, err := strconv.ParseUint(req.Arguments[1], 10, 64)
 			if err != nil {
 				return err
 			}
