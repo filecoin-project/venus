@@ -3,36 +3,32 @@ package syncer
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/venus/pkg/types"
-	"go.opencensus.io/trace"
 	"reflect"
 	"runtime"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/chainsync/slashfilter"
-	"github.com/filecoin-project/venus/pkg/vm/gas"
-
-	"github.com/filecoin-project/venus/pkg/repo"
+	fbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/pkg/errors"
+	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/discovery"
 	"github.com/filecoin-project/venus/app/submodule/network"
-
-	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/ipfs/go-cid"
-	"github.com/pkg/errors"
-
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync"
+	"github.com/filecoin-project/venus/pkg/chainsync/slashfilter"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/net/blocksub"
 	"github.com/filecoin-project/venus/pkg/net/pubsub"
-	"github.com/filecoin-project/venus/pkg/slashing"
+	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/state"
-	logging "github.com/ipfs/go-log/v2"
+	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/vm/gas"
 )
 
 var log = logging.Logger("sync.module") // nolint: deadcode
@@ -48,7 +44,6 @@ type SyncerSubmodule struct { //nolint
 	BlockSub         pubsub.Subscription
 	ChainSelector    nodeChainSelector
 	Consensus        consensus.Protocol
-	FaultDetector    slashing.ConsensusFaultDetector
 	ChainSyncManager *chainsync.Manager
 	Drand            beacon.Schedule
 	SyncProvider     ChainSyncProvider
@@ -56,8 +51,6 @@ type SyncerSubmodule struct { //nolint
 	BlockValidator   *consensus.BlockValidator
 	// cancelChainSync cancels the context for chain sync subscriptions and handlers.
 	CancelChainSync context.CancelFunc
-	// faultCh receives detected consensus faults
-	faultCh chan slashing.ConsensusFault
 }
 
 type syncerConfig interface {
@@ -126,10 +119,7 @@ func NewSyncerSubmodule(ctx context.Context,
 		blkValid,
 	)
 
-	faultCh := make(chan slashing.ConsensusFault)
-	faultDetector := slashing.NewConsensusFaultDetector(faultCh)
-
-	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, blockstore.Blockstore, discovery.ExchangeClient, config.ChainClock(), faultDetector, chn.Fork)
+	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, blockstore.Blockstore, discovery.ExchangeClient, config.ChainClock(), chn.Fork)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +143,6 @@ func NewSyncerSubmodule(ctx context.Context,
 		ChainSyncManager:   &chainSyncManager,
 		Drand:              chn.Drand,
 		SyncProvider:       *NewChainSyncProvider(&chainSyncManager),
-		faultCh:            faultCh,
 		BlockValidator:     blkValid,
 	}, nil
 }
@@ -260,18 +249,6 @@ func (syncer *SyncerSubmodule) Start(ctx context.Context) error {
 				if err != context.Canceled {
 					log.Debugf("error in handler %s for topic %s: %s", handlerName, syncer.BlockSub.Topic(), err)
 				}
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-syncer.faultCh:
-				// TODO #3690 connect this up to a slasher that sends messages
-				// to outbound queue to carry out penalization
 			}
 		}
 	}()

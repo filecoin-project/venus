@@ -2,6 +2,7 @@ package chainsync
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus/pkg/chainsync/types"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	types2 "github.com/filecoin-project/venus/pkg/types"
@@ -14,7 +15,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/fork"
-	"github.com/filecoin-project/venus/pkg/slashing"
 )
 
 // BlockProposer allows callers to propose new blocks for inclusion in the chain.
@@ -41,9 +41,8 @@ func NewManager(fv syncer.StateProcessor,
 	bsstore blockstore.Blockstore,
 	exchangeClient exchange.Client,
 	c clock.Clock,
-	detector *slashing.ConsensusFaultDetector,
 	fork fork.IFork) (Manager, error) {
-	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, bsstore, exchangeClient, c, detector, fork)
+	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, bsstore, exchangeClient, c, fork)
 	if err != nil {
 		return Manager{}, err
 	}
