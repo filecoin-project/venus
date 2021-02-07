@@ -1,4 +1,4 @@
-package cst
+package chain
 
 import (
 	"context"
@@ -10,38 +10,40 @@ import (
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
-var log = logging.Logger("messageimpl")
+type MsgLookup struct {
+	Message   cid.Cid // Can be different than requested, in case it was replaced, but only gas values changed
+	Receipt   types.MessageReceipt
+	ReturnDec interface{}
+	TipSet    types.TipSetKey
+	Height    abi.ChainEpoch
+}
 
 // Abstracts over a store of blockchain state.
 type waiterChainReader interface {
 	GetHead() *types.TipSet
 	GetTipSet(types.TipSetKey) (*types.TipSet, error)
-	ResolveAddressAt(context.Context, *types.TipSet, address.Address) (address.Address, error)
+	LookupID(context.Context, *types.TipSet, address.Address) (address.Address, error)
 	GetActorAt(context.Context, *types.TipSet, address.Address) (*types.Actor, error)
-	GetTipSetState(context.Context, *types.TipSet) (state.Tree, error)
 	GetTipSetReceiptsRoot(*types.TipSet) (cid.Cid, error)
-	SubHeadChanges(context.Context) chan []*chain.HeadChange
+	SubHeadChanges(context.Context) chan []*HeadChange
 }
 
 // Waiter waits for a message to appear on chain.
 type Waiter struct {
 	chainReader     waiterChainReader
-	messageProvider chain.MessageProvider
+	messageProvider MessageProvider
 	cst             cbor.IpldStore
 	bs              bstore.Blockstore
 }
 
 // ChainMessage is an on-chain message with its block and receipt.
-type ChainMessage struct {
+type ChainMessage struct {  //nolint
 	Ts      *types.TipSet
 	Message types.ChainMsg
 	Block   *types.BlockHeader
@@ -52,7 +54,7 @@ type ChainMessage struct {
 type WaitPredicate func(msg *types.UnsignedMessage, msgCid cid.Cid) bool
 
 // NewWaiter returns a new Waiter.
-func NewWaiter(chainStore waiterChainReader, messages chain.MessageProvider, bs bstore.Blockstore, cst cbor.IpldStore) *Waiter {
+func NewWaiter(chainStore waiterChainReader, messages MessageProvider, bs bstore.Blockstore, cst cbor.IpldStore) *Waiter {
 	return &Waiter{
 		chainReader:     chainStore,
 		cst:             cst,
@@ -115,7 +117,7 @@ func (w *Waiter) findMessage(ctx context.Context, from *types.TipSet, m types.Ch
 		return nil, false, xerrors.Errorf("failed to load from actor")
 	}
 
-	mFromID, err := w.chainReader.ResolveAddressAt(ctx, from, m.VMMessage().From)
+	mFromID, err := w.chainReader.LookupID(ctx, from, m.VMMessage().From)
 	if err != nil {
 		return nil, false, xerrors.Errorf("looking up From id address: %w", err)
 	}
@@ -179,7 +181,7 @@ func (w *Waiter) findMessage(ctx context.Context, from *types.TipSet, m types.Ch
 // the message, block and receipt, when it is found. Reads until the channel is
 // closed or the context done. Returns the found message/block (or nil if the
 // channel closed without finding it), whether it was found, or an error.
-func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*chain.HeadChange, msg types.ChainMsg, confidence abi.ChainEpoch, lookbackLimit abi.ChainEpoch) (*ChainMessage, bool, error) {
+func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*HeadChange, msg types.ChainMsg, confidence abi.ChainEpoch, lookbackLimit abi.ChainEpoch) (*ChainMessage, bool, error) {
 	current, ok := <-ch
 	if !ok {
 		return nil, false, fmt.Errorf("SubHeadChanges stream was invalid")
@@ -189,7 +191,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*chain.HeadChan
 		return nil, false, fmt.Errorf("SubHeadChanges first entry should have been one item")
 	}
 
-	if current[0].Type != chain.HCCurrent {
+	if current[0].Type != HCCurrent {
 		return nil, false, fmt.Errorf("expected current head on SHC stream (got %s)", current[0].Type)
 	}
 
@@ -229,7 +231,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*chain.HeadChan
 			}
 			for _, val := range notif {
 				switch val.Type {
-				case chain.HCRevert:
+				case HCRevert:
 					if val.Val.Equals(candidateTs) {
 						candidateTs = nil
 						candidateRcp = nil
@@ -237,7 +239,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*chain.HeadChan
 					if backSearchWait != nil {
 						reverts[val.Val.Key().String()] = true
 					}
-				case chain.HCApply:
+				case HCApply:
 					if candidateTs != nil && val.Val.Height() >= candidateTs.Height()+confidence {
 						return candidateRcp, true, nil
 					}

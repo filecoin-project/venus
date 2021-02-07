@@ -3,7 +3,9 @@ package chain
 import (
 	"bytes"
 	"context"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/pkg/state"
 	"io"
 	"os"
 	"runtime/debug"
@@ -39,9 +41,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/verifreg"
 	"github.com/filecoin-project/venus/pkg/specactors/policy"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
 // HeadChangeTopic is the topic used to publish new heads.
@@ -51,6 +53,15 @@ const (
 	HCApply         = "apply"
 	HCCurrent       = "current"
 )
+
+// ErrNoMethod is returned by Get when there is no method signature (eg, transfer).
+var ErrNoMethod = errors.New("no method")
+
+// ErrNoActorImpl is returned by Get when the actor implementation doesn't exist, eg
+// the actor address is an empty actor, an address that has received a transfer of FIL
+// but hasn't yet been upgraded to an account actor. (The actor implementation might
+// also genuinely be missing, which is not expected.)
+var ErrNoActorImpl = errors.New("no actor implementation")
 
 // GenesisKey is the key at which the genesis Cid is written in the datastore.
 var GenesisKey = datastore.NewKey("/consensus/genesisCid")
@@ -303,6 +314,22 @@ func (store *Store) PutTipSetMetadata(ctx context.Context, tsm *TipSetMetadata) 
 	return nil
 }
 
+// Ls returns an iterator over tipsets from head to genesis.
+func (store *Store) Ls(ctx context.Context, fromTs *types.TipSet, count int) ([]*types.TipSet, error) {
+	tipsets := []*types.TipSet{fromTs}
+	fromKey := fromTs.Parents()
+	for i := 0; i < count-1; i++ {
+		ts, err := store.GetTipSet(fromKey)
+		if err != nil {
+			return nil, err
+		}
+		tipsets = append(tipsets, ts)
+		fromKey = ts.Parents()
+	}
+	types.ReverseTipSet(tipsets)
+	return tipsets, nil
+}
+
 // GetBlock returns the block identified by `cid`.
 func (store *Store) GetBlock(ctx context.Context, blockID cid.Cid) (*types.BlockHeader, error) {
 	var block types.BlockHeader
@@ -379,12 +406,15 @@ func (store *Store) GetTipSetByHeight(ctx context.Context, ts *types.TipSet, h a
 }
 
 // GetTipSetState returns the aggregate state of the tipset identified by `key`.
-func (store *Store) GetTipSetState(ctx context.Context, ts *types.TipSet) (state.Tree, error) {
+func (store *Store) GetTipSetState(ctx context.Context, ts *types.TipSet) (tree.Tree, error) {
+	if ts == nil {
+		ts = store.head
+	}
 	stateCid, err := store.tipIndex.GetTipSetStateRoot(ts)
 	if err != nil {
 		return nil, err
 	}
-	return state.LoadState(ctx, store.stateAndBlockSource, stateCid)
+	return tree.LoadState(ctx, store.stateAndBlockSource, stateCid)
 }
 
 // GetGenesisBlock returns the genesis block held by the chain store.
@@ -793,7 +823,7 @@ func (store *Store) WriteCheckPoint(ctx context.Context, cids types.TipSetKey) e
 	return store.ds.Put(CheckPoint, buf.Bytes())
 }
 
-func (store *Store) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st state.Tree) (CirculatingSupply, error) {
+func (store *Store) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (CirculatingSupply, error) {
 	return store.circulatingSupplyCalculator.GetCirculatingSupplyDetailed(ctx, height, st)
 }
 
@@ -808,7 +838,7 @@ func (store *Store) StateCirculatingSupply(ctx context.Context, tsk types.TipSet
 		return abi.TokenAmount{}, err
 	}
 
-	sTree, err := state.LoadState(ctx, store.stateAndBlockSource, root)
+	sTree, err := tree.LoadState(ctx, store.stateAndBlockSource, root)
 	if err != nil {
 		return abi.TokenAmount{}, err
 	}
@@ -816,7 +846,7 @@ func (store *Store) StateCirculatingSupply(ctx context.Context, tsk types.TipSet
 	return store.getCirculatingSupply(ctx, ts.Height(), sTree)
 }
 
-func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st state.Tree) (abi.TokenAmount, error) {
+func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (abi.TokenAmount, error) {
 	adtStore := adt.WrapStore(ctx, store.stateAndBlockSource)
 	circ := big.Zero()
 	unCirc := big.Zero()
@@ -1017,4 +1047,119 @@ func (store *Store) GetLookbackTipSetForRound(ctx context.Context, ts *types.Tip
 	}
 
 	return lbts, nextTs.Blocks()[0].ParentStateRoot, nil
+}
+
+// Randomness
+// SampleChainRandomness computes randomness seeded by a ticket from the chain `head` at `sampleHeight`.
+func (store *Store) SampleChainRandomness(ctx context.Context, tsk types.TipSetKey, tag acrypto.DomainSeparationTag,
+	epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	genBlk, err := store.GetGenesisBlock(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	rnd := ChainRandomnessSource{Sampler: NewRandomnessSamplerAtTipSet(store, genBlk.Ticket, tsk)}
+	return rnd.GetRandomnessFromTickets(ctx, tag, epoch, entropy)
+}
+
+func (store *Store) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	genBlk, err := store.GetGenesisBlock(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rnd := ChainRandomnessSource{Sampler: NewRandomnessSamplerAtTipSet(store, genBlk.Ticket, tsk)}
+	return rnd.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy)
+}
+
+//Actor
+
+// LsActors returns a channel with actors from the latest state on the chain
+func (store *Store) LsActors(ctx context.Context) (map[address.Address]*types.Actor, error) {
+	st, err := store.GetTipSetState(ctx, store.head)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[address.Address]*types.Actor)
+	err = st.ForEach(func(key address.Address, a *types.Actor) error {
+		result[key] = a
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// GetActorAt returns an actor at a specified tipset key.
+func (store *Store) GetActorAt(ctx context.Context, ts *types.TipSet, addr address.Address) (*types.Actor, error) {
+	st, err := store.GetTipSetState(ctx, ts)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load latest state")
+	}
+
+	idAddr, err := store.LookupID(ctx, ts, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	actr, found, err := st.GetActor(ctx, idAddr)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, types.ErrActorNotFound
+	}
+	return actr, nil
+}
+
+// LookupID resolves ID address for actor
+func (store *Store) LookupID(ctx context.Context, ts *types.TipSet, addr address.Address) (address.Address, error) {
+	st, err := store.GetTipSetState(ctx, ts)
+	if err != nil {
+		return address.Undef, errors.Wrap(err, "failed to load latest state")
+	}
+
+	return st.LookupID(addr)
+}
+
+func (store *Store) ResolveToKeyAddr(ctx context.Context, ts *types.TipSet, addr address.Address) (address.Address, error) {
+	st, err := store.StateView(ts)
+	if err != nil {
+		return address.Undef, errors.Wrap(err, "failed to load latest state")
+	}
+
+	return st.ResolveToKeyAddr(ctx, addr)
+}
+
+func (store *Store) StateView(ts *types.TipSet) (*state.View, error) {
+	if ts == nil {
+		ts = store.head
+	}
+	root, err := store.GetTipSetStateRoot(ts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get state root for %s", ts.Key().String())
+	}
+
+	return state.NewView(store.stateAndBlockSource, root), nil
+}
+
+func (store *Store) AccountView(ts *types.TipSet) (state.AccountView, error) {
+	if ts == nil {
+		ts = store.head
+	}
+	root, err := store.GetTipSetStateRoot(ts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get state root for %s", ts.Key().String())
+	}
+
+	return state.NewView(store.stateAndBlockSource, root), nil
+}
+
+func (store *Store) ParentStateView(ts *types.TipSet) (*state.View, error) {
+	return state.NewView(store.stateAndBlockSource, ts.At(0).ParentStateRoot), nil
+}
+
+func (store *Store) Store(ctx context.Context) adt.Store {
+	return adt.WrapStore(ctx, cbor.NewCborStore(store.bsstore))
 }

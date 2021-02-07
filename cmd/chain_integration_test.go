@@ -1,7 +1,6 @@
 package cmd_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"testing"
@@ -41,16 +40,10 @@ func TestChainLs(t *testing.T) {
 		defer apiDone()
 
 		result2 := cmdClient.RunSuccess(ctx, "chain", "ls", "--enc", "json").ReadStdoutTrimNewlines()
-		var bs [][]cmd.ChainLsResult
-		for _, line := range bytes.Split([]byte(result2), []byte{'\n'}) {
-			var b []cmd.ChainLsResult
-			err := json.Unmarshal(line, &b)
-			require.NoError(t, err)
-			bs = append(bs, b)
-			require.Equal(t, 1, len(b))
-		}
-
-		assert.Equal(t, 1, len(bs))
+		var b []cmd.ChainLsResult
+		err := json.Unmarshal([]byte(result2), &b)
+		require.NoError(t, err)
+		require.Equal(t, 10, len(b))
 	})
 
 	t.Run("chain ls with chain of size 1 returns genesis block", func(t *testing.T) {

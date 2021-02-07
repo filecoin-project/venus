@@ -255,7 +255,7 @@ var actorRepayDebtCmd = &cmds.Command{
 				return err
 			}
 
-			store := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(env.(*node.Env).ChainAPI)))
+			store := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
 
 			mst, err := miner.Load(store, mact)
 			if err != nil {

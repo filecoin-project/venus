@@ -1,4 +1,4 @@
-package state
+package tree
 
 import (
 	"github.com/filecoin-project/go-address"

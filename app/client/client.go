@@ -21,7 +21,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 
 	chainApiTypes "github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	mineApiTypes "github.com/filecoin-project/venus/app/submodule/mining"
 	syncApiTypes "github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -62,9 +61,9 @@ type FullNode struct {
 	ChainGetRandomnessFromBeacon  func(context.Context, types.TipSetKey, acrypto.DomainSeparationTag, abi.ChainEpoch, []byte) (abi.Randomness, error)
 	ChainGetRandomnessFromTickets func(context.Context, types.TipSetKey, acrypto.DomainSeparationTag, abi.ChainEpoch, []byte) (abi.Randomness, error)
 	StateNetworkVersion           func(context.Context, types.TipSetKey) (network.Version, error)
-	MessageWait                   func(context.Context, cid.Cid, abi.ChainEpoch) (*cst.ChainMessage, error)
-	StateSearchMsg                func(context.Context, cid.Cid) (*cst.MsgLookup, error)
-	StateWaitMsg                  func(context.Context, cid.Cid, abi.ChainEpoch) (*cst.MsgLookup, error)
+	MessageWait                   func(context.Context, cid.Cid, abi.ChainEpoch) (*chain.ChainMessage, error)
+	StateSearchMsg                func(context.Context, cid.Cid) (*chain.MsgLookup, error)
+	StateWaitMsg                  func(context.Context, cid.Cid, abi.ChainEpoch) (*chain.MsgLookup, error)
 	StateGetReceipt               func(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
 
 	StateMinerSectorAllocated          func(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (bool, error)
@@ -314,8 +313,8 @@ type ChainInfoAPI struct {
 	ChainGetRandomnessFromBeacon  func(context.Context, types.TipSetKey, acrypto.DomainSeparationTag, abi.ChainEpoch, []byte) (abi.Randomness, error)
 	ChainGetRandomnessFromTickets func(context.Context, types.TipSetKey, acrypto.DomainSeparationTag, abi.ChainEpoch, []byte) (abi.Randomness, error)
 	StateNetworkVersion           func(context.Context, types.TipSetKey) (network.Version, error)
-	MessageWait                   func(context.Context, cid.Cid, abi.ChainEpoch) (*cst.ChainMessage, error)
-	StateSearchMsg                func(context.Context, cid.Cid) (*cst.MsgLookup, error)
-	StateWaitMsg                  func(context.Context, cid.Cid, abi.ChainEpoch) (*cst.MsgLookup, error)
+	MessageWait                   func(context.Context, cid.Cid, abi.ChainEpoch) (*chain.ChainMessage, error)
+	StateSearchMsg                func(context.Context, cid.Cid) (*chain.MsgLookup, error)
+	StateWaitMsg                  func(context.Context, cid.Cid, abi.ChainEpoch) (*chain.MsgLookup, error)
 	StateGetReceipt               func(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
 }

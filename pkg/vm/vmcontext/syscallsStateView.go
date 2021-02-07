@@ -3,14 +3,13 @@ package vmcontext
 import (
 	"context"
 	"fmt"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/account"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/vm/state"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/pkg/errors"
 )
 
@@ -26,7 +25,7 @@ func newSyscallsStateView(ctx *invocationContext, VM *VM) *syscallsStateView {
 	return &syscallsStateView{ctx: ctx, VM: VM}
 }
 
-func (vm *syscallsStateView) AccountSignerAddress(ctx context.Context, accountAddr address.Address) (address.Address, error) {
+func (vm *syscallsStateView) ResolveToKeyAddr(ctx context.Context, accountAddr address.Address) (address.Address, error) {
 	// Short-circuit when given a pubkey address.
 	if accountAddr.Protocol() == address.SECP256K1 || accountAddr.Protocol() == address.BLS {
 		return accountAddr, nil
@@ -93,6 +92,6 @@ func (vm *syscallsStateView) GetNtwkVersion(ctx context.Context, ce abi.ChainEpo
 	return vm.vmOption.NtwkVersionGetter(ctx, ce)
 }
 
-func (vm *syscallsStateView) TotalFilCircSupply(height abi.ChainEpoch, st state.Tree) (abi.TokenAmount, error) {
+func (vm *syscallsStateView) TotalFilCircSupply(height abi.ChainEpoch, st tree.Tree) (abi.TokenAmount, error) {
 	return vm.vmOption.CircSupplyCalculator(context.TODO(), height, st)
 }

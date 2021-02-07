@@ -3,7 +3,7 @@ package statemanger
 import (
 	"context"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/app/submodule/chain/cst"
+	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
@@ -21,11 +21,11 @@ type IStateManager interface {
 }
 
 type stmgr struct {
-	crw cst.IChainReadWriter
+	crw *chain.Store
 	cp  consensus.Protocol
 }
 
-func NewStateMangerAPI(crw cst.IChainReadWriter, cp consensus.Protocol) IStateManager {
+func NewStateMangerAPI(crw *chain.Store, cp consensus.Protocol) IStateManager {
 	return &stmgr{
 		crw: crw,
 		cp:  cp,
@@ -41,7 +41,7 @@ func (o *stmgr) ResolveToKeyAddress(ctx context.Context, addr address.Address, t
 	default:
 	}
 	if ts == nil {
-		ts = o.crw.Head()
+		ts = o.crw.GetHead()
 	}
 	view, err := o.crw.StateView(ts)
 	if err != nil {
@@ -66,7 +66,7 @@ func (o *stmgr) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.
 }
 func (o *stmgr) GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error) {
 	if ts == nil {
-		ts = o.crw.Head()
+		ts = o.crw.GetHead()
 	}
 	view, err := o.crw.ParentStateView(ts)
 	if err != nil {
@@ -84,7 +84,7 @@ func (o *stmgr) GetPaychState(ctx context.Context, addr address.Address, ts *typ
 }
 func (o *stmgr) GetMarketState(ctx context.Context, ts *types.TipSet) (market.State, error) {
 	if ts == nil {
-		ts = o.crw.Head()
+		ts = o.crw.GetHead()
 	}
 	view, err := o.crw.ParentStateView(ts)
 	if err != nil {

@@ -339,12 +339,12 @@ func (a *MessagePoolAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl 
 
 func (a *MessagePoolAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
 	head := a.mp.chain.ChainReader.GetHead()
-	view, err := a.mp.chain.State.StateView(head)
+	view, err := a.mp.chain.ChainReader.StateView(head)
 	if err != nil {
 		return nil, err
 	}
 
-	keyAddr, err := view.AccountSignerAddress(ctx, k)
+	keyAddr, err := view.ResolveToKeyAddr(ctx, k)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ID address: %v", keyAddr)
 	}

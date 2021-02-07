@@ -2,36 +2,38 @@ package state
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/types"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
-type chainHeadTracker interface {
+type AccountView interface {
+	ResolveToKeyAddr(ctx context.Context, address address.Address) (address.Address, error)
+}
+
+type tipSignerView interface {
 	GetHead() *types.TipSet
+	ResolveToKeyAddr(ctx context.Context, ts *types.TipSet, address address.Address) (address.Address, error)
 }
 
 // Signer looks up non-signing addresses before signing
 type Signer struct {
-	viewer    *TipSetStateViewer
-	chainHead chainHeadTracker
-	wallet    *wallet.Wallet
+	wallet     *wallet.Wallet
+	signerView AccountView
 }
 
 // NewSigner creates a new signer
-func NewSigner(viewer *TipSetStateViewer, chainHead chainHeadTracker, wallet *wallet.Wallet) *Signer {
+func NewSigner(signerView AccountView, wallet *wallet.Wallet) *Signer {
 	return &Signer{
-		viewer:    viewer,
-		chainHead: chainHead,
-		wallet:    wallet,
+		signerView: signerView,
+		wallet:     wallet,
 	}
 }
 
 // SignBytes creates a signature for the given data using either the given addr or its associated signing address
 func (s *Signer) SignBytes(ctx context.Context, data []byte, addr address.Address) (*crypto.Signature, error) {
-	signingAddr, err := s.signingAddress(ctx, addr)
+	signingAddr, err := s.signerView.ResolveToKeyAddr(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -40,22 +42,22 @@ func (s *Signer) SignBytes(ctx context.Context, data []byte, addr address.Addres
 
 // HasAddress returns whether this signer can sign with the given address
 func (s *Signer) HasAddress(ctx context.Context, addr address.Address) (bool, error) {
-	signingAddr, err := s.signingAddress(ctx, addr)
+	signingAddr, err := s.signerView.ResolveToKeyAddr(ctx, addr)
 	if err != nil {
 		return false, err
 	}
 	return s.wallet.HasAddress(signingAddr), nil
 }
 
-func (s *Signer) signingAddress(ctx context.Context, addr address.Address) (address.Address, error) {
-	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
-		// address is already a signing address. return it
-		return addr, nil
-	}
+type HeadSignView struct {
+	tipSignerView
+}
 
-	view, err := s.viewer.StateView(s.chainHead.GetHead())
-	if err != nil {
-		return address.Undef, err
-	}
-	return view.AccountSignerAddress(ctx, addr)
+func NewHeadSignView(tipSignerView tipSignerView) *HeadSignView {
+	return &HeadSignView{tipSignerView: tipSignerView}
+}
+
+func (headSignView *HeadSignView) ResolveToKeyAddr(ctx context.Context, addr address.Address) (address.Address, error) {
+	head := headSignView.GetHead()
+	return headSignView.tipSignerView.ResolveToKeyAddr(ctx, head, addr) //nil will use latest
 }

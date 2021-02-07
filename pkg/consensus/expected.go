@@ -24,10 +24,10 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/fork"
 	appstate "github.com/filecoin-project/venus/pkg/state"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/bls"  // enable bls signatures
 	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/secp" // enable secp signatures
@@ -95,7 +95,7 @@ type chainReader interface {
 	GetGenesisBlock(context.Context) (*types.BlockHeader, error)
 	GetLatestBeaconEntry(*types.TipSet) (*types.BeaconEntry, error)
 	GetTipSetByHeight(context.Context, *types.TipSet, abi.ChainEpoch, bool) (*types.TipSet, error)
-	GetCirculatingSupplyDetailed(context.Context, abi.ChainEpoch, state.Tree) (chain.CirculatingSupply, error)
+	GetCirculatingSupplyDetailed(context.Context, abi.ChainEpoch, tree.Tree) (chain.CirculatingSupply, error)
 	GetLookbackTipSetForRound(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch, version network.Version) (*types.TipSet, cid.Cid, error)
 }
 
@@ -211,7 +211,7 @@ func (c *Expected) RunStateTransition(ctx context.Context,
 	}
 
 	vmOption := vm.VmOption{
-		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
+		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 			dertail, err := c.chainState.GetCirculatingSupplyDetailed(ctx, epoch, tree)
 			if err != nil {
 				return abi.TokenAmount{}, err

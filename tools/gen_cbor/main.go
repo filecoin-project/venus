@@ -7,9 +7,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/discovery"
 	"github.com/filecoin-project/venus/pkg/market"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 	gen "github.com/whyrusleeping/cbor-gen"
 )
 
@@ -63,7 +63,7 @@ func main() {
 	}
 
 	if err := gen.WriteTupleEncodersToFile("./pkg/vm/state/cbor_gen.go", "state",
-		state.StateRoot{},
+		tree.StateRoot{},
 	); err != nil {
 		panic(err)
 	}

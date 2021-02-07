@@ -20,12 +20,12 @@ func NewAccountAPI(chain *ChainSubmodule) AccountAPI {
 }
 
 func (accountAPI *AccountAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
-	ts, err := accountAPI.chain.State.GetTipSet(tsk)
+	ts, err := accountAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
 
-	view, err := accountAPI.chain.State.StateView(ts)
+	view, err := accountAPI.chain.ChainReader.StateView(ts)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}

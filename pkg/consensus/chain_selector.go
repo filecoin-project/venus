@@ -15,7 +15,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/state"
-	vmstate "github.com/filecoin-project/venus/pkg/vm/state"
+	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
 )
 
 // ChainSelector weighs and compares chains.

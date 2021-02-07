@@ -5,11 +5,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"time"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
-	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -17,10 +15,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/slashing"
-	appstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/vm/register"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
 )
 
@@ -28,9 +23,7 @@ import (
 type ChainSubmodule struct { //nolint
 	ChainReader    *chain.Store
 	MessageStore   *chain.MessageStore
-	State          *cst.ChainStateReadWriter
 	Sampler        *chain.Sampler
-	ActorState     *appstate.TipSetStateViewer
 	Processor      *consensus.DefaultProcessor
 	StatusReporter *chain.StatusReporter
 
@@ -42,7 +35,7 @@ type ChainSubmodule struct { //nolint
 	config chainConfig
 
 	// Wait for confirm message
-	Waiter *cst.Waiter
+	Waiter *chain.Waiter
 }
 
 // xxx go back to using an interface here
@@ -55,20 +48,6 @@ type chainConfig interface {
 	GenesisCid() cid.Cid
 	BlockTime() time.Duration
 	Repo() repo.Repo
-}
-
-type chainReader interface {
-	chain.TipSetProvider
-	GetHead() *types.TipSet
-	GetTipSetReceiptsRoot(*types.TipSet) (cid.Cid, error)
-	GetTipSetStateRoot(*types.TipSet) (cid.Cid, error)
-	SubHeadChanges(context.Context) chan []*chain.HeadChange
-	SubscribeHeadChanges(chain.ReorgNotifee)
-}
-type stateReader interface {
-	ResolveAddressAt(context.Context, *types.TipSet, address.Address) (address.Address, error)
-	GetActorAt(context.Context, *types.TipSet, address.Address) (*types.Actor, error)
-	GetTipSetState(context.Context, *types.TipSet) (state.Tree, error)
 }
 
 // NewChainSubmodule creates a new chain submodule.
@@ -91,32 +70,21 @@ func NewChainSubmodule(config chainConfig,
 		return nil, err
 	}
 
-	actorState := appstate.NewTipSetStateViewer(chainStore, blockstore.CborStore)
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)
-	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, register.DefaultActors, drand)
-	fork, err := fork.NewChainFork(chainState, blockstore.CborStore, blockstore.Blockstore, repo.Config().NetworkParams.ForkUpgradeParam)
+	fork, err := fork.NewChainFork(chainStore, blockstore.CborStore, blockstore.Blockstore, repo.Config().NetworkParams.ForkUpgradeParam)
 	if err != nil {
 		return nil, err
 	}
-	faultChecker := slashing.NewFaultChecker(chainState, fork)
+	faultChecker := slashing.NewFaultChecker(chainStore, fork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, verifier)
 
 	processor := consensus.NewDefaultProcessor(syscalls)
 
-	combineChainReader := struct {
-		stateReader
-		chainReader
-	}{
-		chainState,
-		chainStore,
-	}
-	waiter := cst.NewWaiter(combineChainReader, messageStore, blockstore.Blockstore, blockstore.CborStore)
+	waiter := chain.NewWaiter(chainStore, messageStore, blockstore.Blockstore, blockstore.CborStore)
 
 	store := &ChainSubmodule{
 		ChainReader:    chainStore,
 		MessageStore:   messageStore,
-		ActorState:     actorState,
-		State:          chainState,
 		Processor:      processor,
 		StatusReporter: chainStatusReporter,
 		Fork:           fork,
@@ -147,7 +115,6 @@ func (chain *ChainSubmodule) API() *ChainAPI {
 		ActorAPI:      NewActorAPI(chain),
 		BeaconAPI:     NewBeaconAPI(chain),
 		ChainInfoAPI:  NewChainInfoAPI(chain),
-		DbAPI:         NewDbAPI(chain),
 		MinerStateAPI: NewMinerStateAPI(chain),
 	}
 }

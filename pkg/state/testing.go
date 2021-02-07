@@ -98,10 +98,6 @@ func (v *FakeStateView) MinerProvingPeriod(ctx context.Context, maddr address.Ad
 	return m.ProvingPeriodStart, m.ProvingPeriodEnd, m.PoStFailures, nil
 }
 
-func (v *FakeStateView) AccountSignerAddress(ctx context.Context, a address.Address) (address.Address, error) {
-	return a, nil
-}
-
 func (v *FakeStateView) PowerNetworkTotal(_ context.Context) (*NetworkPower, error) {
 	return v.Power, nil
 }
@@ -148,6 +144,10 @@ func (v *FakeStateView) GetMinerWorkerRaw(ctx context.Context, maddr address.Add
 		return address.Undef, errors.Errorf("no miner %s", maddr)
 	}
 	return m.Worker, nil
+}
+
+func (v *FakeStateView) ResolveToKeyAddr(ctx context.Context, addr address.Address) (address.Address, error) {
+	return addr, nil
 }
 
 func NewBitField() *bitfield.BitField {

@@ -9,7 +9,6 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 )
 
 // fundManagerAPI is the specific methods called by the FundManager
@@ -17,7 +16,7 @@ import (
 type fundManager interface {
 	MpoolPushMessage(context.Context, *types.UnsignedMessage, *types.MessageSendSpec) (*types.SignedMessage, error)
 	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (chain.MarketBalance, error)
-	StateWaitMsg(ctx context.Context, c cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error)
+	StateWaitMsg(ctx context.Context, c cid.Cid, confidence abi.ChainEpoch) (*chain.MsgLookup, error)
 }
 
 type fmgr struct {
@@ -44,6 +43,6 @@ func (o *fmgr) StateMarketBalance(ctx context.Context, address address.Address, 
 	return o.MinerStateAPI.StateMarketBalance(ctx, address, tsk)
 }
 
-func (o *fmgr) StateWaitMsg(ctx context.Context, c cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error) {
+func (o *fmgr) StateWaitMsg(ctx context.Context, c cid.Cid, confidence abi.ChainEpoch) (*chain.MsgLookup, error) {
 	return o.ChainInfoAPI.StateWaitMsg(ctx, c, confidence)
 }
