@@ -2,9 +2,8 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
 	"time"
-
-	"github.com/filecoin-project/venus/pkg/block"
 )
 
 // WrapHeadChangeCoalescer wraps a ReorgNotifee with a head change coalescer.
@@ -30,12 +29,12 @@ type HeadChangeCoalescer struct {
 
 	eventq chan headChange
 
-	revert []*block.TipSet
-	apply  []*block.TipSet
+	revert []*types.TipSet
+	apply  []*types.TipSet
 }
 
 type headChange struct {
-	revert, apply []*block.TipSet
+	revert, apply []*types.TipSet
 }
 
 // NewHeadChangeCoalescer creates a HeadChangeCoalescer.
@@ -55,7 +54,7 @@ func NewHeadChangeCoalescer(fn ReorgNotifee, minDelay, maxDelay, mergeInterval t
 
 // HeadChange is the ReorgNotifee callback for the stateful coalescer; it receives an incoming
 // head change and schedules dispatch of a coalesced head change in the background.
-func (c *HeadChangeCoalescer) HeadChange(revert, apply []*block.TipSet) error {
+func (c *HeadChangeCoalescer) HeadChange(revert, apply []*types.TipSet) error {
 	select {
 	case c.eventq <- headChange{revert: revert, apply: apply}:
 		return nil
@@ -128,7 +127,7 @@ func (c *HeadChangeCoalescer) background(minDelay, maxDelay, mergeInterval time.
 	}
 }
 
-func (c *HeadChangeCoalescer) coalesce(revert, apply []*block.TipSet) {
+func (c *HeadChangeCoalescer) coalesce(revert, apply []*types.TipSet) {
 	// newly reverted tipsets cancel out with pending applys.
 	// similarly, newly applied tipsets cancel out with pending reverts.
 
@@ -157,7 +156,7 @@ func (c *HeadChangeCoalescer) coalesce(revert, apply []*block.TipSet) {
 	// coalesced revert set
 	// - pending reverts are cancelled by incoming applys
 	// - incoming reverts are cancelled by pending applys
-	newRevert := make([]*block.TipSet, 0, len(c.revert)+len(revert))
+	newRevert := make([]*types.TipSet, 0, len(c.revert)+len(revert))
 	for _, ts := range c.revert {
 		_, cancel := applying[ts.Key().String()]
 		if cancel {
@@ -179,7 +178,7 @@ func (c *HeadChangeCoalescer) coalesce(revert, apply []*block.TipSet) {
 	// coalesced apply set
 	// - pending applys are cancelled by incoming reverts
 	// - incoming applys are cancelled by pending reverts
-	newApply := make([]*block.TipSet, 0, len(c.apply)+len(apply))
+	newApply := make([]*types.TipSet, 0, len(c.apply)+len(apply))
 	for _, ts := range c.apply {
 		_, cancel := reverting[ts.Key().String()]
 		if cancel {

@@ -23,7 +23,6 @@ import (
 	"golang.org/x/xerrors"
 
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/cron"
@@ -199,7 +198,7 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 }
 
 // ApplyTipSetMessages implements interpreter.VMInterpreter
-func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.TipSet, parentEpoch, epoch abi.ChainEpoch, cb ExecCallBack) (cid.Cid, []types.MessageReceipt, error) {
+func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.TipSet, parentEpoch, epoch abi.ChainEpoch, cb ExecCallBack) (cid.Cid, []types.MessageReceipt, error) {
 	toProcessTipset := time.Now()
 	var receipts []types.MessageReceipt
 	pstate, _ := vm.State.Flush(vm.context)
@@ -256,7 +255,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.Ti
 		// Process BLS messages From the block
 		for _, m := range append(blkInfo.BlsMessages, blkInfo.SecpkMessages...) {
 			// do not recompute already seen messages
-			mcid := msgCID(m.VMMessage())
+			mcid := m.VMMessage().Cid()
 			if _, found := seenMsgs[mcid]; found {
 				continue
 			}
@@ -879,14 +878,6 @@ func (vm *VM) Flush() (state.Root, error) {
 //
 // utils
 //
-
-func msgCID(msg *types.UnsignedMessage) cid.Cid {
-	c, err := msg.Cid()
-	if err != nil {
-		panic(fmt.Sprintf("failed To compute message CID: %v; %+v", err, msg))
-	}
-	return c
-}
 
 func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount, gasReward abi.TokenAmount, winCount int64) VmMessage {
 	params := &reward.AwardBlockRewardParams{

@@ -3,13 +3,12 @@ package sigs
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/venus/pkg/block"
 )
 
 // Sign takes in signature type, private key and message. Returns a signature for that message.
@@ -68,7 +67,7 @@ func ToPublic(sigType crypto.SigType, pk []byte) ([]byte, error) {
 	return sv.ToPublic(pk)
 }
 
-func CheckBlockSignature(ctx context.Context, blk *block.Block, worker address.Address) error {
+func CheckBlockSignature(ctx context.Context, blk *types.BlockHeader, worker address.Address) error {
 	// todo change by force
 	_, span := trace.StartSpan(ctx, "checkBlockSignature")
 	defer span.End()

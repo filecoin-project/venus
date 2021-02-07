@@ -11,7 +11,6 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
-	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
@@ -30,10 +29,7 @@ type SignedMessage struct {
 // NOTE: this method can only sign message with From being a public-key type address, not an ID address.
 // We should deprecate this and move to more explicit signing via an address resolver.
 func NewSignedMessage(ctx context.Context, msg UnsignedMessage, s Signer) (*SignedMessage, error) {
-	msgCid, err := msg.Cid()
-	if err != nil {
-		return nil, err
-	}
+	msgCid := msg.Cid()
 
 	sig, err := s.SignBytes(ctx, msgCid.Bytes(), msg.From)
 	if err != nil {
@@ -47,17 +43,17 @@ func NewSignedMessage(ctx context.Context, msg UnsignedMessage, s Signer) (*Sign
 }
 
 // Cid returns the canonical CID for the SignedMessage.
-func (smsg *SignedMessage) Cid() (cid.Cid, error) {
+func (smsg *SignedMessage) Cid() cid.Cid {
 	if smsg.Signature.Type == crypto.SigTypeBLS {
 		return smsg.Message.Cid()
 	}
 
 	obj, err := smsg.ToNode()
 	if err != nil {
-		return cid.Undef, errors.Wrap(err, "failed to marshal to cbor")
+		panic(fmt.Sprintf("failed to marshal to marshal message:%s", err))
 	}
 
-	return obj.Cid(), nil
+	return obj.Cid()
 }
 
 // ToNode converts the SignedMessage to an IPLD node.
@@ -92,10 +88,7 @@ func (smsg *SignedMessage) ToNode() (ipld.Node, error) {
 
 func (smsg *SignedMessage) String() string {
 	errStr := "(error encoding SignedMessage)"
-	cid, err := smsg.Cid()
-	if err != nil {
-		return errStr
-	}
+	cid := smsg.Cid()
 	js, err := json.MarshalIndent(smsg, "", "  ")
 	if err != nil {
 		return errStr

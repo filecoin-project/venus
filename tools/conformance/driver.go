@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/fixtures/networks"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/bls"  // enable bls signatures
 	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/secp" // enable secp signatures
@@ -146,12 +145,12 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 	//flush data to blockstore
 	defer lvm.Flush() //nolint
 
-	blocks := make([]block.BlockMessagesInfo, 0, len(tipset.Blocks))
+	blocks := make([]types.BlockMessagesInfo, 0, len(tipset.Blocks))
 	for _, b := range tipset.Blocks {
-		sb := block.BlockMessagesInfo{
-			Block: &block.Block{
+		sb := types.BlockMessagesInfo{
+			Block: &types.BlockHeader{
 				Miner: b.MinerAddr,
-				ElectionProof: &block.ElectionProof{
+				ElectionProof: &types.ElectionProof{
 					WinCount: b.WinCount,
 				},
 			},

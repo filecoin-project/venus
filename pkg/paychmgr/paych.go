@@ -3,7 +3,7 @@ package paychmgr
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -82,7 +82,7 @@ func newChannelAccessor(pm *Manager, from address.Address, to address.Address) *
 }
 
 func (ca *channelAccessor) messageBuilder(ctx context.Context, from address.Address) (paych.MessageBuilder, error) {
-	nwVersion, err := ca.api.StateNetworkVersion(ctx, block.EmptyTSK)
+	nwVersion, err := ca.api.StateNetworkVersion(ctx, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
@@ -437,7 +437,7 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 	if err != nil {
 		return cid.Undef, err
 	}
-	return smsg.Cid()
+	return smsg.Cid(), nil
 }
 
 func (ca *channelAccessor) allocateLane(ch address.Address) (uint64, error) {
@@ -585,7 +585,7 @@ func (ca *channelAccessor) settle(ctx context.Context, ch address.Address) (cid.
 	if err != nil {
 		log.Errorf("Error marking channel as settled: %s", err)
 	}
-	return smgs.Cid()
+	return smgs.Cid(), nil
 }
 
 func (ca *channelAccessor) collect(ctx context.Context, ch address.Address) (cid.Cid, error) {
@@ -611,5 +611,5 @@ func (ca *channelAccessor) collect(ctx context.Context, ch address.Address) (cid
 	if err != nil {
 		return cid.Undef, err
 	}
-	return smsg.Cid()
+	return smsg.Cid(), nil
 }

@@ -25,7 +25,6 @@ import (
 	logging "github.com/ipfs/go-log"
 
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/discovery"
 	"github.com/filecoin-project/venus/pkg/net"
@@ -334,7 +333,7 @@ func (networkSubmodule *NetworkSubmodule) fetchCids(
 }
 
 func retrieveNetworkName(ctx context.Context, genCid cid.Cid, cborStore cbor.IpldStore) (string, error) {
-	var genesis block.Block
+	var genesis types.BlockHeader
 	err := cborStore.Get(ctx, genCid, &genesis)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get block %s", genCid.String())

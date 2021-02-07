@@ -1,4 +1,4 @@
-package block
+package types
 
 import (
 	"bytes"
@@ -16,11 +16,11 @@ import (
 // ToSlice() (which involves a shallow copy) or efficiently by index with At().
 // TipSet is a lightweight value type; passing by pointer is usually unnecessary.
 //
-// Canonical tipset block ordering does not match the order of CIDs in a TipSetKey used as
+// Canonical tipset newBlock ordering does not match the order of CIDs in a TipSetKey used as
 // a tipset "key".
 type TipSet struct {
 	// This slice is wrapped in a struct to enforce immutability.
-	blocks []*Block
+	blocks []*BlockHeader
 	// Key is computed at construction and cached.
 	key TipSetKey
 }
@@ -28,8 +28,6 @@ type TipSet struct {
 var (
 	// errNoBlocks is returned from the tipset constructor when given no blocks.
 	errNoBlocks = errors.New("no blocks for tipset")
-	// errUndefTipSet is returned from tipset methods invoked on an undefined tipset.
-	errUndefTipSet = errors.New("undefined tipset")
 )
 
 // UndefTipSet is a singleton representing a nil or undefined tipset.
@@ -37,7 +35,7 @@ var UndefTipSet = &TipSet{}
 
 // NewTipSet builds a new TipSet from a collection of blocks.
 // The blocks must be distinct (different CIDs), have the same height, and same parent set.
-func NewTipSet(blocks ...*Block) (*TipSet, error) {
+func NewTipSet(blocks ...*BlockHeader) (*TipSet, error) {
 	if len(blocks) == 0 {
 		return nil, errNoBlocks
 	}
@@ -48,22 +46,22 @@ func NewTipSet(blocks ...*Block) (*TipSet, error) {
 	weight := first.ParentWeight
 	cids := make([]cid.Cid, len(blocks))
 
-	sorted := make([]*Block, len(blocks))
+	sorted := make([]*BlockHeader, len(blocks))
 	seen := make(map[cid.Cid]struct{})
 	for i, blk := range blocks {
-		if i > 0 { // Skip redundant checks for first block
+		if i > 0 { // Skip redundant checks for first newBlock
 			if blk.Height != height {
-				return nil, errors.Errorf("Inconsistent block heights %d and %d", height, blk.Height)
+				return nil, errors.Errorf("Inconsistent newBlock heights %d and %d", height, blk.Height)
 			}
 			if !blk.Parents.Equals(parents) {
-				return nil, errors.Errorf("Inconsistent block parents %s and %s", parents.String(), blk.Parents.String())
+				return nil, errors.Errorf("Inconsistent newBlock parents %s and %s", parents.String(), blk.Parents.String())
 			}
 			if !blk.ParentWeight.Equals(weight) {
-				return nil, errors.Errorf("Inconsistent block parent weights %d and %d", weight, blk.ParentWeight)
+				return nil, errors.Errorf("Inconsistent newBlock parent weights %d and %d", weight, blk.ParentWeight)
 			}
 		}
 		if _, ok := seen[blk.Cid()]; ok {
-			return nil, errors.New("duplicate block")
+			return nil, errors.New("duplicate newBlock")
 		}
 		seen[blk.Cid()] = struct{}{}
 		sorted[i] = blk
@@ -73,7 +71,7 @@ func NewTipSet(blocks ...*Block) (*TipSet, error) {
 	sort.Slice(sorted, func(i, j int) bool {
 		cmp := sorted[i].Ticket.Compare(&sorted[j].Ticket)
 		if cmp == 0 {
-			// Break ticket ties with the block CIDs, which are distinct.
+			// Break ticket ties with the newBlock CIDs, which are distinct.
 			cmp = bytes.Compare(sorted[i].Cid().Bytes(), sorted[j].Cid().Bytes())
 		}
 		return cmp < 0
@@ -103,9 +101,9 @@ func (ts *TipSet) Len() int {
 	return len(ts.blocks)
 }
 
-// At returns the i'th block in the tipset.
+// At returns the i'th newBlock in the tipset.
 // An index outside the half-open range [0, Len()) will panic.
-func (ts *TipSet) At(i int) *Block {
+func (ts *TipSet) At(i int) *BlockHeader {
 	return ts.blocks[i]
 }
 
@@ -115,8 +113,8 @@ func (ts *TipSet) Key() TipSetKey {
 }
 
 // ToSlice returns an ordered slice of pointers to the tipset's blocks.
-func (ts *TipSet) ToSlice() []*Block {
-	slice := make([]*Block, len(ts.blocks))
+func (ts *TipSet) ToSlice() []*BlockHeader {
+	slice := make([]*BlockHeader, len(ts.blocks))
 	copy(slice, ts.blocks)
 	return slice
 }
@@ -135,16 +133,19 @@ func (ts *TipSet) MinTicket() Ticket {
 	return min.Ticket
 }
 
-// Height returns the height of a tipset.
-func (ts *TipSet) Height() (abi.ChainEpoch, error) {
-	if len(ts.blocks) == 0 {
-		return 0, errUndefTipSet
+func (ts *TipSet) Cids() []cid.Cid {
+	var cids []cid.Cid
+	if ts.Defined() {
+		for _, b := range ts.blocks {
+			cids = append(cids, b.Cid())
+		}
+		return cids
 	}
-	return ts.blocks[0].Height, nil
+	return []cid.Cid{}
 }
 
 // Height returns the height of a tipset.
-func (ts *TipSet) EnsureHeight() abi.ChainEpoch {
+func (ts *TipSet) Height() abi.ChainEpoch {
 	if ts.Defined() {
 		return ts.blocks[0].Height
 	}
@@ -152,27 +153,23 @@ func (ts *TipSet) EnsureHeight() abi.ChainEpoch {
 }
 
 // Parents returns the CIDs of the parents of the blocks in the tipset.
-func (ts *TipSet) Parents() (TipSetKey, error) {
-	if len(ts.blocks) == 0 {
-		return TipSetKey{}, errUndefTipSet
+func (ts *TipSet) Parents() TipSetKey {
+	if ts.Defined() {
+		return ts.blocks[0].Parents
 	}
-	return ts.blocks[0].Parents, nil
-}
-
-func (ts *TipSet) EnsureParents() TipSetKey {
-	return ts.blocks[0].Parents
+	return TipSetKey{}
 }
 
 // ParentWeight returns the tipset's ParentWeight in fixed point form.
-func (ts *TipSet) ParentWeight() (fbig.Int, error) {
-	if len(ts.blocks) == 0 {
-		return fbig.Zero(), errUndefTipSet
+func (ts *TipSet) ParentWeight() fbig.Int {
+	if ts.Defined() {
+		return ts.blocks[0].ParentWeight
 	}
-	return ts.blocks[0].ParentWeight, nil
+	return fbig.Zero()
 }
 
 // Equals tests whether the tipset contains the same blocks as another.
-// Equality is not tested deeply: two tipsets are considered equal if their keys (ordered block CIDs) are equal.
+// Equality is not tested deeply: two tipsets are considered equal if their keys (ordered newBlock CIDs) are equal.
 func (ts *TipSet) Equals(ts2 *TipSet) bool {
 	if ts == nil && ts2 == nil {
 		return true
@@ -192,7 +189,7 @@ func (ts TipSet) String() string {
 	return ts.Key().String()
 }
 
-func (ts *TipSet) Blocks() []*Block {
+func (ts *TipSet) Blocks() []*BlockHeader {
 	return ts.blocks
 }
 
@@ -207,17 +204,17 @@ func (ts *TipSet) MinTimestamp() uint64 {
 }
 
 func (ts *TipSet) IsChildOf(parent *TipSet) bool {
-	return CidArrsEqual(ts.EnsureParents().Cids(), parent.key.Cids()) &&
+	return CidArrsEqual(ts.Parents().Cids(), parent.key.Cids()) &&
 		// FIXME: The height check might go beyond what is meant by
 		//  "parent", but many parts of the code rely on the tipset's
 		//  height for their processing logic at the moment to obviate it.
-		ts.EnsureHeight() > parent.EnsureHeight()
+		ts.Height() > parent.Height()
 }
 
 //this types just for marshal
 type expTipSet struct {
 	// This slice is wrapped in a struct to enforce immutability.
-	Blocks []*Block
+	Blocks []*BlockHeader
 	// Key is computed at construction and cached.
 	Key TipSetKey
 }
@@ -247,7 +244,7 @@ func (ts *TipSet) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (ts *TipSet) MinTicketBlock() *Block {
+func (ts *TipSet) MinTicketBlock() *BlockHeader {
 	blks := ts.Blocks()
 
 	min := blks[0]

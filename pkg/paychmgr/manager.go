@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/statemanger"
+	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -18,8 +19,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
-
-	"github.com/filecoin-project/venus/pkg/block"
 )
 
 var log = logging.Logger("paych")
@@ -327,7 +326,7 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 
 	// Check that channel To address is in wallet
 	to := stateCi.Control // Inbound channel so To addr is Control (this node)
-	toKey, err := pm.pchapi.StateAccountKey(ctx, to, block.EmptyTSK)
+	toKey, err := pm.pchapi.StateAccountKey(ctx, to, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}

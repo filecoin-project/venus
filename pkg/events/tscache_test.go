@@ -2,8 +2,8 @@ package events
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/block"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -22,7 +22,7 @@ func TestTsCache(t *testing.T) {
 	a, _ := address.NewFromString("t00")
 
 	add := func() {
-		ts, err := block.NewTipSet([]*block.Block{{
+		ts, err := types.NewTipSet([]*types.BlockHeader{{
 			Miner:                 a,
 			Height:                h,
 			ParentStateRoot:       dummyCid,
@@ -63,13 +63,13 @@ type tsCacheAPIFailOnStorageCall struct {
 	t *testing.T
 }
 
-func (tc *tsCacheAPIFailOnStorageCall) ChainGetTipSetByHeight(ctx context.Context, epoch abi.ChainEpoch, key block.TipSetKey) (*block.TipSet, error) {
+func (tc *tsCacheAPIFailOnStorageCall) ChainGetTipSetByHeight(ctx context.Context, epoch abi.ChainEpoch, key types.TipSetKey) (*types.TipSet, error) {
 	tc.t.Fatal("storage call")
-	return &block.TipSet{}, nil
+	return &types.TipSet{}, nil
 }
-func (tc *tsCacheAPIFailOnStorageCall) ChainHead(ctx context.Context) (*block.TipSet, error) {
+func (tc *tsCacheAPIFailOnStorageCall) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	tc.t.Fatal("storage call")
-	return &block.TipSet{}, nil
+	return &types.TipSet{}, nil
 }
 
 func TestTsCacheNulls(t *testing.T) {
@@ -79,7 +79,7 @@ func TestTsCacheNulls(t *testing.T) {
 
 	a, _ := address.NewFromString("t00")
 	add := func() {
-		ts, err := block.NewTipSet([]*block.Block{{
+		ts, err := types.NewTipSet([]*types.BlockHeader{{
 			Miner:                 a,
 			Height:                h,
 			ParentStateRoot:       dummyCid,
@@ -107,15 +107,15 @@ func TestTsCacheNulls(t *testing.T) {
 
 	best, err := tsc.best()
 	require.NoError(t, err)
-	require.Equal(t, h-1, best.EnsureHeight())
+	require.Equal(t, h-1, best.Height())
 
 	ts, err := tsc.get(h - 1)
 	require.NoError(t, err)
-	require.Equal(t, h-1, ts.EnsureHeight())
+	require.Equal(t, h-1, ts.Height())
 
 	ts, err = tsc.get(h - 2)
 	require.NoError(t, err)
-	require.Equal(t, h-2, ts.EnsureHeight())
+	require.Equal(t, h-2, ts.Height())
 
 	ts, err = tsc.get(h - 3)
 	require.NoError(t, err)
@@ -123,7 +123,7 @@ func TestTsCacheNulls(t *testing.T) {
 
 	ts, err = tsc.get(h - 8)
 	require.NoError(t, err)
-	require.Equal(t, h-8, ts.EnsureHeight())
+	require.Equal(t, h-8, ts.Height())
 
 	best, err = tsc.best()
 	require.NoError(t, err)
@@ -135,14 +135,14 @@ func TestTsCacheNulls(t *testing.T) {
 
 	best, err = tsc.best()
 	require.NoError(t, err)
-	require.Equal(t, h-8, best.EnsureHeight())
+	require.Equal(t, h-8, best.Height())
 
 	h += 50
 	add()
 
 	ts, err = tsc.get(h - 1)
 	require.NoError(t, err)
-	require.Equal(t, h-1, ts.EnsureHeight())
+	require.Equal(t, h-1, ts.Height())
 }
 
 type tsCacheAPIStorageCallCounter struct {
@@ -151,13 +151,13 @@ type tsCacheAPIStorageCallCounter struct {
 	chainHead              int
 }
 
-func (tc *tsCacheAPIStorageCallCounter) ChainGetTipSetByHeight(ctx context.Context, epoch abi.ChainEpoch, key block.TipSetKey) (*block.TipSet, error) {
+func (tc *tsCacheAPIStorageCallCounter) ChainGetTipSetByHeight(ctx context.Context, epoch abi.ChainEpoch, key types.TipSetKey) (*types.TipSet, error) {
 	tc.chainGetTipSetByHeight++
-	return &block.TipSet{}, nil
+	return &types.TipSet{}, nil
 }
-func (tc *tsCacheAPIStorageCallCounter) ChainHead(ctx context.Context) (*block.TipSet, error) {
+func (tc *tsCacheAPIStorageCallCounter) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	tc.chainHead++
-	return &block.TipSet{}, nil
+	return &types.TipSet{}, nil
 }
 
 func TestTsCacheEmpty(t *testing.T) {

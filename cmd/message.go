@@ -55,8 +55,8 @@ var msgSendCmd = &cmds.Command{
 		}
 
 		methodID := builtin.MethodSend
-		if len(req.Arguments) > 1 {
-			tm, err := strconv.ParseUint(req.Arguments[0], 10, 64)
+		if len(req.Arguments) > 2 {
+			tm, err := strconv.ParseUint(req.Arguments[1], 10, 64)
 			if err != nil {
 				return err
 			}
@@ -134,15 +134,13 @@ var msgSendCmd = &cmds.Command{
 			if err != nil {
 				return err
 			}
-			c, _ = sm.Cid()
 			fmt.Println(sm.Cid())
 		} else {
 			sm, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(req.Context, msg, nil)
 			if err != nil {
 				return err
 			}
-			c, _ = sm.Cid()
-			fmt.Println(c)
+			fmt.Println(sm.Cid())
 		}
 
 		return re.Emit(&MessageSendResult{

@@ -2,7 +2,7 @@ package events
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -25,10 +25,10 @@ type heightEvents struct {
 	ctx context.Context
 }
 
-func (e *heightEvents) headChangeAt(rev, app []*block.TipSet) error {
+func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 	ctx, span := trace.StartSpan(e.ctx, "events.HeightHeadChange")
 	defer span.End()
-	span.AddAttributes(trace.Int64Attribute("endHeight", int64(app[0].EnsureHeight())))
+	span.AddAttributes(trace.Int64Attribute("endHeight", int64(app[0].Height())))
 	span.AddAttributes(trace.Int64Attribute("reverts", int64(len(rev))))
 	span.AddAttributes(trace.Int64Attribute("applies", int64(len(app))))
 
@@ -38,7 +38,7 @@ func (e *heightEvents) headChangeAt(rev, app []*block.TipSet) error {
 		// TODO: log error if h below gcconfidence
 		// revert height-based triggers
 
-		revert := func(h abi.ChainEpoch, ts *block.TipSet) {
+		revert := func(h abi.ChainEpoch, ts *types.TipSet) {
 			for _, tid := range e.htHeights[h] {
 				ctx, span := trace.StartSpan(ctx, "events.HeightRevert")
 
@@ -55,9 +55,9 @@ func (e *heightEvents) headChangeAt(rev, app []*block.TipSet) error {
 				}
 			}
 		}
-		revert(ts.EnsureHeight(), ts)
+		revert(ts.Height(), ts)
 
-		subh := ts.EnsureHeight() - 1
+		subh := ts.Height() - 1
 		for {
 			cts, err := e.tsc.get(subh)
 			if err != nil {
@@ -86,7 +86,7 @@ func (e *heightEvents) headChangeAt(rev, app []*block.TipSet) error {
 
 		// height triggers
 
-		apply := func(h abi.ChainEpoch, ts *block.TipSet) error {
+		apply := func(h abi.ChainEpoch, ts *types.TipSet) error {
 			for _, tid := range e.htTriggerHeights[h] {
 				hnd := e.heightTriggers[tid]
 				if hnd.called {
@@ -110,16 +110,16 @@ func (e *heightEvents) headChangeAt(rev, app []*block.TipSet) error {
 				span.End()
 
 				if err != nil {
-					log.Errorf("chain trigger (@H %d, called @ %d) failed: %+v", triggerH, ts.EnsureHeight(), err)
+					log.Errorf("chain trigger (@H %d, called @ %d) failed: %+v", triggerH, ts.Height(), err)
 				}
 			}
 			return nil
 		}
 
-		if err := apply(ts.EnsureHeight(), ts); err != nil {
+		if err := apply(ts.Height(), ts); err != nil {
 			return err
 		}
-		subh := ts.EnsureHeight() - 1
+		subh := ts.Height() - 1
 		for {
 			cts, err := e.tsc.get(subh)
 			if err != nil {
@@ -156,7 +156,7 @@ func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence 
 		return xerrors.Errorf("error getting best tipset: %w", err)
 	}
 
-	bestH := best.EnsureHeight()
+	bestH := best.Height()
 	if bestH >= h+abi.ChainEpoch(confidence) {
 		ts, err := e.tsc.getNonNull(h)
 		if err != nil {
@@ -180,7 +180,7 @@ func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence 
 			e.lk.Unlock()
 			return xerrors.Errorf("error getting best tipset: %w", err)
 		}
-		bestH = best.EnsureHeight()
+		bestH = best.Height()
 	}
 
 	defer e.lk.Unlock()

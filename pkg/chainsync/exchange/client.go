@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/venus/pkg/types"
 	logging "github.com/ipfs/go-log"
 	"io/ioutil"
 	"math/rand"
@@ -18,7 +19,6 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/net"
 )
 
@@ -71,7 +71,7 @@ func (c *client) doRequest(
 	// In the `GetChainMessages` case, we won't request the headers but we still
 	// need them to check the integrity of the `CompactedMessages` in the response
 	// so the tipset blocks need to be provided by the caller.
-	tipsets []*block.TipSet,
+	tipsets []*types.TipSet,
 ) (*validatedResponse, error) {
 	// Validate request.
 	if req.Length == 0 {
@@ -148,7 +148,7 @@ func (c *client) doRequest(
 // errors. Peer penalization should happen here then, before returning, so
 // we can apply the correct penalties depending on the cause of the error.
 // FIXME: Add the `peer` as argument once we implement penalties.
-func (c *client) processResponse(req *Request, res *Response, tipsets []*block.TipSet) (*validatedResponse, error) {
+func (c *client) processResponse(req *Request, res *Response, tipsets []*types.TipSet) (*validatedResponse, error) {
 	err := res.statusToError()
 	if err != nil {
 		return nil, xerrors.Errorf("status error: %s", err)
@@ -178,7 +178,7 @@ func (c *client) processResponse(req *Request, res *Response, tipsets []*block.T
 	validRes := &validatedResponse{}
 	if options.IncludeHeaders {
 		// Check for valid block sets and extract them into `TipSet`s.
-		validRes.tipsets = make([]*block.TipSet, resLength)
+		validRes.tipsets = make([]*types.TipSet, resLength)
 		for i := 0; i < resLength; i++ {
 			if res.Chain[i] == nil {
 				return nil, xerrors.Errorf("response with nil tipset in pos %d", i)
@@ -190,14 +190,14 @@ func (c *client) processResponse(req *Request, res *Response, tipsets []*block.T
 				}
 			}
 
-			validRes.tipsets[i], err = block.NewTipSet(res.Chain[i].Blocks...)
+			validRes.tipsets[i], err = types.NewTipSet(res.Chain[i].Blocks...)
 			if err != nil {
 				return nil, xerrors.Errorf("invalid tipset blocks at height (head - %d): %w", i, err)
 			}
 		}
 
 		// Check that the returned head matches the one requested
-		if !block.CidArrsEqual(validRes.tipsets[0].Key().Cids(), req.Head) {
+		if !types.CidArrsEqual(validRes.tipsets[0].Key().Cids(), req.Head) {
 			return nil, xerrors.Errorf("returned chain head does not match request")
 		}
 
@@ -290,7 +290,7 @@ func (c *client) validateCompressedIndices(chain []*BSTipSet) error {
 }
 
 // GetBlocks implements Client.GetBlocks(). Refer to the godocs there.
-func (c *client) GetBlocks(ctx context.Context, tsk block.TipSetKey, count int) ([]*block.TipSet, error) {
+func (c *client) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) ([]*types.TipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "bsync.GetBlocks")
 	defer span.End()
 	if span.IsRecordingEvents() {
@@ -315,7 +315,7 @@ func (c *client) GetBlocks(ctx context.Context, tsk block.TipSetKey, count int) 
 }
 
 // GetFullTipSet implements Client.GetFullTipSet(). Refer to the godocs there.
-func (c *client) GetFullTipSet(ctx context.Context, peers []peer.ID, tsk block.TipSetKey) (*block.FullTipSet, error) {
+func (c *client) GetFullTipSet(ctx context.Context, peers []peer.ID, tsk types.TipSetKey) (*types.FullTipSet, error) {
 	// TODO: round robin through these peers on error
 
 	req := &Request{
@@ -335,7 +335,7 @@ func (c *client) GetFullTipSet(ctx context.Context, peers []peer.ID, tsk block.T
 }
 
 // GetChainMessages implements Client.GetChainMessages(). Refer to the godocs there.
-func (c *client) GetChainMessages(ctx context.Context, tipsets []*block.TipSet) ([]*CompactedMessages, error) {
+func (c *client) GetChainMessages(ctx context.Context, tipsets []*types.TipSet) ([]*CompactedMessages, error) {
 	head := tipsets[0]
 	length := uint64(len(tipsets))
 

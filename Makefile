@@ -11,6 +11,6 @@ iptb:
 
 clean:
 	rm ./venus
-	rm -rf ./vendors/fil-blst
-	rm -rf ./vendors/filecoin-ffi
-	rm -rf ./vendors/test-vectors
+	rm -rf ./extern/fil-blst
+	rm -rf ./extern/filecoin-ffi
+	rm -rf ./extern/test-vectors

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
 	"github.com/filecoin-project/venus/pkg/crypto"
@@ -35,6 +34,11 @@ func main() {
 		types.UnsignedMessage{},
 		types.TxMeta{},
 		types.Actor{},
+		types.BeaconEntry{},
+		types.BlockHeader{},
+		types.Ticket{},
+		types.ElectionProof{},
+		types.BlockMsg{},
 	); err != nil {
 		panic(err)
 	}
@@ -75,25 +79,6 @@ func main() {
 
 	if err := gen.WriteTupleEncodersToFile("./pkg/chain/cbor_gen.go", "chain",
 		chain.TsState{},
-	); err != nil {
-		panic(err)
-	}
-
-	if err := gen.WriteTupleEncodersToFile("./pkg/block/cbor_gen.go", "block",
-		block.BeaconEntry{},
-		block.Block{},
-		block.Ticket{},
-		block.ElectionProof{},
-		block.PoStProof{},
-		block.BlockMsg{},
-		/*
-			types.ExpTipSet{},
-
-			types.StateRoot{},
-			types.StateInfo0{},
-
-		*/
-
 	); err != nil {
 		panic(err)
 	}

@@ -34,11 +34,7 @@ func (v *SignatureValidator) ValidateSignature(ctx context.Context, data []byte,
 }
 
 func (v *SignatureValidator) ValidateMessageSignature(ctx context.Context, msg *types.SignedMessage) error {
-	mCid, err := msg.Message.Cid()
-	if err != nil {
-		return errors.Wrapf(err, "failed to take cid of message to check signature")
-	}
-
+	mCid := msg.Message.Cid()
 	return v.ValidateSignature(ctx, mCid.Bytes(), msg.Message.From, msg.Signature)
 }
 
@@ -62,10 +58,7 @@ func (v *SignatureValidator) ValidateBLSMessageAggregate(ctx context.Context, ms
 			return errors.Wrapf(err, "failed to load signer address for %v", msg.From)
 		}
 		pubKeys = append(pubKeys, signerAddress.Payload())
-		mCid, err := msg.Cid()
-		if err != nil {
-			return err
-		}
+		mCid := msg.Cid()
 		encodedMsgCids = append(encodedMsgCids, mCid.Bytes())
 	}
 

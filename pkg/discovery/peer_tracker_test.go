@@ -2,13 +2,13 @@ package discovery_test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/test"
 	"github.com/libp2p/go-libp2p-core/network"
 	"sort"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/discovery"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
@@ -28,10 +28,10 @@ func TestPeerTrackerTracks(t *testing.T) {
 	pid3 := th.RequireIntPeerID(t, 3)
 	pid7 := th.RequireIntPeerID(t, 7)
 
-	ci0 := block.NewChainInfo(pid0, pid0, th.RequireTipsetWithHeight(t, 6))
-	ci1 := block.NewChainInfo(pid1, pid1, th.RequireTipsetWithHeight(t, 0))
-	ci3 := block.NewChainInfo(pid3, pid3, th.RequireTipsetWithHeight(t, 0))
-	ci7 := block.NewChainInfo(pid7, pid7, th.RequireTipsetWithHeight(t, 0))
+	ci0 := types.NewChainInfo(pid0, pid0, th.RequireTipsetWithHeight(t, 6))
+	ci1 := types.NewChainInfo(pid1, pid1, th.RequireTipsetWithHeight(t, 0))
+	ci3 := types.NewChainInfo(pid3, pid3, th.RequireTipsetWithHeight(t, 0))
+	ci7 := types.NewChainInfo(pid7, pid7, th.RequireTipsetWithHeight(t, 0))
 
 	tracker.Track(ci0)
 	tracker.Track(ci1)
@@ -39,9 +39,9 @@ func TestPeerTrackerTracks(t *testing.T) {
 	tracker.Track(ci7)
 
 	tracked := tracker.List()
-	sort.Sort(block.CISlice(tracked))
-	expected := []*block.ChainInfo{ci0, ci1, ci3, ci7}
-	sort.Sort(block.CISlice(expected))
+	sort.Sort(types.CISlice(tracked))
+	expected := []*types.ChainInfo{ci0, ci1, ci3, ci7}
+	sort.Sort(types.CISlice(expected))
 	assert.Equal(t, expected, tracked)
 
 }
@@ -54,10 +54,10 @@ func TestPeerTrackerSelectHead(t *testing.T) {
 	pid2 := th.RequireIntPeerID(t, 2)
 	pid3 := th.RequireIntPeerID(t, 3)
 
-	ci0 := block.NewChainInfo(pid0, pid0, th.RequireTipsetWithHeight(t, 6))
-	ci1 := block.NewChainInfo(pid1, pid1, th.RequireTipsetWithHeight(t, 10))
-	ci2 := block.NewChainInfo(pid2, pid2, th.RequireTipsetWithHeight(t, 7))
-	ci3 := block.NewChainInfo(pid3, pid3, th.RequireTipsetWithHeight(t, 9))
+	ci0 := types.NewChainInfo(pid0, pid0, th.RequireTipsetWithHeight(t, 6))
+	ci1 := types.NewChainInfo(pid1, pid1, th.RequireTipsetWithHeight(t, 10))
+	ci2 := types.NewChainInfo(pid2, pid2, th.RequireTipsetWithHeight(t, 7))
+	ci3 := types.NewChainInfo(pid3, pid3, th.RequireTipsetWithHeight(t, 9))
 
 	// trusting pid2 and pid3
 	tracker := discovery.NewPeerTracker(pid2, pid3)
@@ -81,10 +81,10 @@ func TestPeerTrackerRemove(t *testing.T) {
 	pid3 := th.RequireIntPeerID(t, 3)
 	pid7 := th.RequireIntPeerID(t, 7)
 
-	ci0 := block.NewChainInfo(pid0, pid0, th.RequireTipsetWithHeight(t, 6))
-	ci1 := block.NewChainInfo(pid1, pid1, th.RequireTipsetWithHeight(t, 0))
-	ci3 := block.NewChainInfo(pid3, pid3, th.RequireTipsetWithHeight(t, 0))
-	ci7 := block.NewChainInfo(pid7, pid7, th.RequireTipsetWithHeight(t, 0))
+	ci0 := types.NewChainInfo(pid0, pid0, th.RequireTipsetWithHeight(t, 6))
+	ci1 := types.NewChainInfo(pid1, pid1, th.RequireTipsetWithHeight(t, 0))
+	ci3 := types.NewChainInfo(pid3, pid3, th.RequireTipsetWithHeight(t, 0))
+	ci7 := types.NewChainInfo(pid7, pid7, th.RequireTipsetWithHeight(t, 0))
 
 	tracker.Track(ci0)
 	tracker.Track(ci1)
@@ -96,7 +96,7 @@ func TestPeerTrackerRemove(t *testing.T) {
 	tracker.Remove(pid7)
 
 	tracked := tracker.List()
-	expected := []*block.ChainInfo{ci0}
+	expected := []*types.ChainInfo{ci0}
 	assert.Equal(t, expected, tracked)
 }
 
@@ -119,8 +119,8 @@ func TestPeerTrackerNetworkDisconnect(t *testing.T) {
 	bID := b.ID()
 	cID := c.ID()
 
-	aCI := block.NewChainInfo(aID, aID, th.RequireTipsetWithHeight(t, 0))
-	bCI := block.NewChainInfo(bID, bID, th.RequireTipsetWithHeight(t, 0))
+	aCI := types.NewChainInfo(aID, aID, th.RequireTipsetWithHeight(t, 0))
+	bCI := types.NewChainInfo(bID, bID, th.RequireTipsetWithHeight(t, 0))
 
 	// self is the tracking node
 	// self tracks peers a and b
@@ -155,5 +155,5 @@ func TestPeerTrackerNetworkDisconnect(t *testing.T) {
 
 	time.Sleep(time.Second)
 	tracked := tracker.List()
-	test.Equal(t, []*block.ChainInfo{bCI}, tracked)
+	test.Equal(t, []*types.ChainInfo{bCI}, tracked)
 }

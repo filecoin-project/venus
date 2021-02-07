@@ -11,8 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus/pkg/block"
-
 	"github.com/filecoin-project/venus/app/node/test"
 	"github.com/filecoin-project/venus/fixtures/fortest"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -48,7 +46,7 @@ func TestBlockDaemon(t *testing.T) {
 		// get the mined block by its CID
 		output := cmdClient.RunSuccess(ctx, "show", "block", blkCid.String()).ReadStdoutTrimNewlines()
 
-		assert.Contains(t, output, "Block Details")
+		assert.Contains(t, output, "BlockHeader Details")
 		assert.Contains(t, output, "Weight: 0")
 		assert.Contains(t, output, "Height: 1")
 		assert.Contains(t, output, "Timestamp:  ")
@@ -70,7 +68,7 @@ func TestBlockDaemon(t *testing.T) {
 		// get the mined block by its CID
 		output := cmdClient.RunSuccess(ctx, "show", "block", "--messages", mockBlk.Cid().String()).ReadStdoutTrimNewlines()
 
-		assert.Contains(t, output, "Block Details")
+		assert.Contains(t, output, "BlockHeader Details")
 		assert.Contains(t, output, "Weight: 0")
 		assert.Contains(t, output, "Height: 1")
 		assert.Contains(t, output, "Timestamp:  ")
@@ -92,7 +90,7 @@ func TestBlockDaemon(t *testing.T) {
 
 		// get the mined block by its CID
 		blockGetLine := cmdClient.RunSuccessFirstLine(ctx, "show", "block", mockBlk.Cid().String(), "--enc", "json")
-		var blockGetBlock block.FullBlock
+		var blockGetBlock types.FullBlock
 		require.NoError(t, json.Unmarshal([]byte(blockGetLine), &blockGetBlock))
 
 		// ensure that we were returned the correct block
@@ -116,7 +114,7 @@ func TestBlockDaemon(t *testing.T) {
 		// get the mined block by its CID
 		headerGetLine := cmdClient.RunSuccessFirstLine(ctx, "show", "header", mockBlk.Cid().String(), "--enc", "json")
 
-		var headerGetBlock block.Block
+		var headerGetBlock types.BlockHeader
 		require.NoError(t, json.Unmarshal([]byte(headerGetLine), &headerGetBlock))
 
 		// ensure that we were returned the correct block
@@ -213,7 +211,7 @@ func TestBlockDaemon(t *testing.T) {
 
 		// Full block checks out
 		blockGetLine := cmdClient.RunSuccessFirstLine(ctx, "show", "block", mockBlk.Cid().String(), "--enc", "json")
-		var blockGetBlock block.FullBlock
+		var blockGetBlock types.FullBlock
 		require.NoError(t, json.Unmarshal([]byte(blockGetLine), &blockGetBlock))
 
 		assert.Equal(t, 3, len(blockGetBlock.SECPMessages))
@@ -228,13 +226,13 @@ func TestBlockDaemon(t *testing.T) {
 	})
 }
 
-func mockBlock(t *testing.T) (*block.Block, error) {
-	b := &block.Block{
+func mockBlock(t *testing.T) (*types.BlockHeader, error) {
+	b := &types.BlockHeader{
 		Miner:         types.NewForTestGetter()(),
-		Ticket:        block.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
-		ElectionProof: &block.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
+		Ticket:        types.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
+		ElectionProof: &types.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
 		Height:        2,
-		BeaconEntries: []*block.BeaconEntry{
+		BeaconEntries: []*types.BeaconEntry{
 			{
 				Round: 1,
 				Data:  []byte{0x3},
@@ -242,7 +240,7 @@ func mockBlock(t *testing.T) (*block.Block, error) {
 		},
 		Messages:              types.CidFromString(t, "somecid"),
 		ParentMessageReceipts: types.CidFromString(t, "somecid"),
-		Parents:               block.NewTipSetKey(types.CidFromString(t, "somecid")),
+		Parents:               types.NewTipSetKey(types.CidFromString(t, "somecid")),
 		ParentWeight:          big.NewInt(1000),
 		ParentStateRoot:       types.CidFromString(t, "somecid"),
 		Timestamp:             1,

@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	xerrors "github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
@@ -23,34 +22,34 @@ import (
 )
 
 type IMinerState interface {
-	StateMinerSectorAllocated(ctx context.Context, maddr address.Address, s abi.SectorNumber, tsk block.TipSetKey) (bool, error)
-	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk block.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
-	StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorOnChainInfo, error)
-	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorLocation, error)
-	StateMinerSectorSize(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (abi.SectorSize, error)
-	StateMinerInfo(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (miner.MinerInfo, error)
-	StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (address.Address, error)
-	StateMinerRecoveries(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (bitfield.BitField, error)
-	StateMinerFaults(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (bitfield.BitField, error)
-	StateMinerProvingDeadline(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (*dline.Info, error)
-	StateMinerPartitions(ctx context.Context, maddr address.Address, dlIdx uint64, tsk block.TipSetKey) ([]Partition, error)
-	StateMinerDeadlines(ctx context.Context, maddr address.Address, tsk block.TipSetKey) ([]Deadline, error)
-	StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk block.TipSetKey) ([]*miner.SectorOnChainInfo, error)
-	StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk block.TipSetKey) (*MarketDeal, error)
-	StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk block.TipSetKey) (big.Int, error)
-	StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk block.TipSetKey) (big.Int, error)
-	StateVMCirculatingSupplyInternal(ctx context.Context, tsk block.TipSetKey) (chain.CirculatingSupply, error)
-	StateCirculatingSupply(ctx context.Context, tsk block.TipSetKey) (abi.TokenAmount, error)
-	StateMarketDeals(ctx context.Context, tsk block.TipSetKey) (map[string]pstate.MarketDeal, error)
-	StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk block.TipSetKey) ([]*miner.SectorOnChainInfo, error)
-	StateLookupID(ctx context.Context, addr address.Address, tsk block.TipSetKey) (address.Address, error)
-	StateListMiners(ctx context.Context, tsk block.TipSetKey) ([]address.Address, error)
-	StateListActors(ctx context.Context, tsk block.TipSetKey) ([]address.Address, error)
-	StateMinerPower(ctx context.Context, addr address.Address, tsk block.TipSetKey) (*power.MinerPower, error)
-	StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (big.Int, error)
-	StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorExpiration, error)
-	StateMinerSectorCount(ctx context.Context, addr address.Address, tsk block.TipSetKey) (MinerSectors, error)
-	StateMarketBalance(ctx context.Context, addr address.Address, tsk block.TipSetKey) (MarketBalance, error)
+	StateMinerSectorAllocated(ctx context.Context, maddr address.Address, s abi.SectorNumber, tsk types.TipSetKey) (bool, error)
+	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
+	StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error)
+	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorLocation, error)
+	StateMinerSectorSize(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (abi.SectorSize, error)
+	StateMinerInfo(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (miner.MinerInfo, error)
+	StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (address.Address, error)
+	StateMinerRecoveries(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (bitfield.BitField, error)
+	StateMinerFaults(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (bitfield.BitField, error)
+	StateMinerProvingDeadline(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (*dline.Info, error)
+	StateMinerPartitions(ctx context.Context, maddr address.Address, dlIdx uint64, tsk types.TipSetKey) ([]Partition, error)
+	StateMinerDeadlines(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]Deadline, error)
+	StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
+	StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*MarketDeal, error)
+	StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error)
+	StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error)
+	StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (chain.CirculatingSupply, error)
+	StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error)
+	StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]pstate.MarketDeal, error)
+	StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
+	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
+	StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)
+	StateListActors(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)
+	StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*power.MinerPower, error)
+	StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (big.Int, error)
+	StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorExpiration, error)
+	StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (MinerSectors, error)
+	StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (MarketBalance, error)
 }
 
 type MinerStateAPI struct {
@@ -61,7 +60,7 @@ func NewMinerStateAPI(chain *ChainSubmodule) MinerStateAPI {
 	return MinerStateAPI{chain: chain}
 }
 
-func (minerStateAPI *MinerStateAPI) StateMinerSectorAllocated(ctx context.Context, maddr address.Address, s abi.SectorNumber, tsk block.TipSetKey) (bool, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerSectorAllocated(ctx context.Context, maddr address.Address, s abi.SectorNumber, tsk types.TipSetKey) (bool, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return false, xerrors.Errorf("failed to get tipset %v", err)
@@ -79,7 +78,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerSectorAllocated(ctx context.Contex
 	return mas.IsAllocated(s)
 }
 
-func (minerStateAPI *MinerStateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk block.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
+func (minerStateAPI *MinerStateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return miner.SectorPreCommitOnChainInfo{}, xerrors.Errorf("failed to get tipset %v", err)
@@ -98,7 +97,7 @@ func (minerStateAPI *MinerStateAPI) StateSectorPreCommitInfo(ctx context.Context
 	return *pci, nil
 }
 
-func (minerStateAPI *MinerStateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorOnChainInfo, error) {
+func (minerStateAPI *MinerStateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset %v", err)
@@ -111,7 +110,7 @@ func (minerStateAPI *MinerStateAPI) StateSectorGetInfo(ctx context.Context, madd
 	return view.MinerSectorInfo(ctx, maddr, n)
 }
 
-func (minerStateAPI *MinerStateAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorLocation, error) {
+func (minerStateAPI *MinerStateAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorLocation, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset %v", err)
@@ -124,7 +123,7 @@ func (minerStateAPI *MinerStateAPI) StateSectorPartition(ctx context.Context, ma
 	return view.StateSectorPartition(ctx, maddr, sectorNumber)
 }
 
-func (minerStateAPI *MinerStateAPI) StateMinerSectorSize(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (abi.SectorSize, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerSectorSize(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (abi.SectorSize, error) {
 	// TODO: update storage-fsm to just StateMinerSectorAllocated
 	mi, err := minerStateAPI.StateMinerInfo(ctx, maddr, tsk)
 	if err != nil {
@@ -133,7 +132,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerSectorSize(ctx context.Context, ma
 	return mi.SectorSize, nil
 }
 
-func (minerStateAPI *MinerStateAPI) StateMinerInfo(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (miner.MinerInfo, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerInfo(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return miner.MinerInfo{}, xerrors.Errorf("loading tipset %s: %v", tsk, err)
@@ -144,7 +143,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerInfo(ctx context.Context, maddr ad
 		return miner.MinerInfo{}, xerrors.Errorf("loading view %s: %v", tsk, err)
 	}
 
-	nv := minerStateAPI.chain.Fork.GetNtwkVersion(ctx, ts.EnsureHeight())
+	nv := minerStateAPI.chain.Fork.GetNtwkVersion(ctx, ts.Height())
 	minfo, err := view.MinerInfo(ctx, maddr, nv)
 	if err != nil {
 		return miner.MinerInfo{}, err
@@ -152,7 +151,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerInfo(ctx context.Context, maddr ad
 	return *minfo, nil
 }
 
-func (minerStateAPI *MinerStateAPI) StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (address.Address, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (address.Address, error) {
 	// TODO: update storage-fsm to just StateMinerInfo
 	mi, err := minerStateAPI.StateMinerInfo(ctx, maddr, tsk)
 	if err != nil {
@@ -161,7 +160,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerWorkerAddress(ctx context.Context,
 	return mi.Worker, nil
 }
 
-func (minerStateAPI *MinerStateAPI) StateMinerRecoveries(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (bitfield.BitField, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerRecoveries(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (bitfield.BitField, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return bitfield.BitField{}, xerrors.Errorf("failed to get tipset %v", err)
@@ -179,7 +178,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerRecoveries(ctx context.Context, ma
 	return miner.AllPartSectors(mas, miner.Partition.RecoveringSectors)
 }
 
-func (minerStateAPI *MinerStateAPI) StateMinerFaults(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (bitfield.BitField, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerFaults(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (bitfield.BitField, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return bitfield.BitField{}, xerrors.Errorf("failed to get tipset %v", err)
@@ -197,7 +196,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerFaults(ctx context.Context, maddr 
 	return miner.AllPartSectors(mas, miner.Partition.FaultySectors)
 }
 
-func (minerStateAPI *MinerStateAPI) StateMinerProvingDeadline(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (*dline.Info, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerProvingDeadline(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (*dline.Info, error) {
 	ts, err := minerStateAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
@@ -212,7 +211,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerProvingDeadline(ctx context.Contex
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor state: %v", err)
 	}
-	di, err := mas.DeadlineInfo(ts.EnsureHeight())
+	di, err := mas.DeadlineInfo(ts.Height())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get deadline info: %v", err)
 	}
@@ -220,7 +219,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerProvingDeadline(ctx context.Contex
 	return di.NextNotElapsed(), nil
 }
 
-func (minerStateAPI *MinerStateAPI) StateMinerPartitions(ctx context.Context, maddr address.Address, dlIdx uint64, tsk block.TipSetKey) ([]Partition, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerPartitions(ctx context.Context, maddr address.Address, dlIdx uint64, tsk types.TipSetKey) ([]Partition, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset %v", err)
@@ -280,7 +279,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerPartitions(ctx context.Context, ma
 	return out, err
 }
 
-func (minerStateAPI *MinerStateAPI) StateMinerDeadlines(ctx context.Context, maddr address.Address, tsk block.TipSetKey) ([]Deadline, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerDeadlines(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]Deadline, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset %v", err)
@@ -317,7 +316,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerDeadlines(ctx context.Context, mad
 	return out, nil
 }
 
-func (minerStateAPI *MinerStateAPI) StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk block.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset %v", err)
@@ -335,7 +334,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerSectors(ctx context.Context, maddr
 	return mas.LoadSectors(sectorNos)
 }
 
-func (minerStateAPI *MinerStateAPI) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk block.TipSetKey) (*MarketDeal, error) {
+func (minerStateAPI *MinerStateAPI) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*MarketDeal, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset %v", err)
@@ -386,7 +385,7 @@ func (minerStateAPI *MinerStateAPI) StateMarketStorageDeal(ctx context.Context, 
 var initialPledgeNum = big.NewInt(110)
 var initialPledgeDen = big.NewInt(100)
 
-func (minerStateAPI *MinerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk block.TipSetKey) (big.Int, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error) {
 	store := minerStateAPI.chain.State.Store(ctx)
 	ts, err := minerStateAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
@@ -408,11 +407,11 @@ func (minerStateAPI *MinerStateAPI) StateMinerPreCommitDepositForPower(ctx conte
 		return big.Int{}, xerrors.Errorf("loading market actor %s: %v", maddr, err)
 	} else if s, err := market.Load(store, act); err != nil {
 		return big.Int{}, xerrors.Errorf("loading market actor state %s: %v", maddr, err)
-	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.EnsureHeight(), pci.Expiration); err != nil {
+	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
 		return big.Int{}, xerrors.Errorf("verifying deals for activation: %v", err)
 	} else {
 		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
-		duration := pci.Expiration - ts.EnsureHeight()
+		duration := pci.Expiration - ts.Height()
 		sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
 	}
 
@@ -445,7 +444,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerPreCommitDepositForPower(ctx conte
 	return big.Div(big.Mul(deposit, initialPledgeNum), initialPledgeDen), nil
 }
 
-func (minerStateAPI *MinerStateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk block.TipSetKey) (big.Int, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error) {
 	// TODO: this repeats a lot of the previous function. Fix that.
 	ts, err := minerStateAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
@@ -468,11 +467,11 @@ func (minerStateAPI *MinerStateAPI) StateMinerInitialPledgeCollateral(ctx contex
 		return big.Int{}, xerrors.Errorf("loading miner actor %s: %v", maddr, err)
 	} else if s, err := market.Load(store, act); err != nil {
 		return big.Int{}, xerrors.Errorf("loading market actor state %s: %v", maddr, err)
-	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.EnsureHeight(), pci.Expiration); err != nil {
+	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
 		return big.Int{}, xerrors.Errorf("verifying deals for activation: %v", err)
 	} else {
 		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
-		duration := pci.Expiration - ts.EnsureHeight()
+		duration := pci.Expiration - ts.Height()
 		sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
 	}
 
@@ -521,7 +520,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerInitialPledgeCollateral(ctx contex
 	return big.Div(big.Mul(initialPledge, initialPledgeNum), initialPledgeDen), nil
 }
 
-func (minerStateAPI *MinerStateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk block.TipSetKey) (chain.CirculatingSupply, error) {
+func (minerStateAPI *MinerStateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (chain.CirculatingSupply, error) {
 	store := minerStateAPI.chain.State.Store(ctx)
 	ts, err := minerStateAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
@@ -538,14 +537,14 @@ func (minerStateAPI *MinerStateAPI) StateVMCirculatingSupplyInternal(ctx context
 		return chain.CirculatingSupply{}, err
 	}
 
-	return minerStateAPI.chain.ChainReader.GetCirculatingSupplyDetailed(ctx, ts.EnsureHeight(), sTree)
+	return minerStateAPI.chain.ChainReader.GetCirculatingSupplyDetailed(ctx, ts.Height(), sTree)
 }
 
-func (minerStateAPI *MinerStateAPI) StateCirculatingSupply(ctx context.Context, tsk block.TipSetKey) (abi.TokenAmount, error) {
+func (minerStateAPI *MinerStateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error) {
 	return minerStateAPI.chain.ChainReader.StateCirculatingSupply(ctx, tsk)
 }
 
-func (minerStateAPI *MinerStateAPI) StateMarketDeals(ctx context.Context, tsk block.TipSetKey) (map[string]pstate.MarketDeal, error) {
+func (minerStateAPI *MinerStateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]pstate.MarketDeal, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset %v", err)
@@ -558,7 +557,7 @@ func (minerStateAPI *MinerStateAPI) StateMarketDeals(ctx context.Context, tsk bl
 	return view.StateMarketDeals(ctx, tsk)
 }
 
-func (minerStateAPI *MinerStateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk block.TipSetKey) ([]*miner.SectorOnChainInfo, error) { // TODO: only used in cli
+func (minerStateAPI *MinerStateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error) { // TODO: only used in cli
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset %v", err)
@@ -571,7 +570,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerActiveSectors(ctx context.Context,
 	return view.StateMinerActiveSectors(ctx, maddr, tsk)
 }
 
-func (minerStateAPI *MinerStateAPI) StateLookupID(ctx context.Context, addr address.Address, tsk block.TipSetKey) (address.Address, error) {
+func (minerStateAPI *MinerStateAPI) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to get tipset %v", err)
@@ -585,7 +584,7 @@ func (minerStateAPI *MinerStateAPI) StateLookupID(ctx context.Context, addr addr
 	return state.LookupID(addr)
 }
 
-func (minerStateAPI *MinerStateAPI) StateListMiners(ctx context.Context, tsk block.TipSetKey) ([]address.Address, error) {
+func (minerStateAPI *MinerStateAPI) StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset %v", err)
@@ -598,7 +597,7 @@ func (minerStateAPI *MinerStateAPI) StateListMiners(ctx context.Context, tsk blo
 	return view.StateListMiners(ctx, tsk)
 }
 
-func (minerStateAPI *MinerStateAPI) StateListActors(ctx context.Context, tsk block.TipSetKey) ([]address.Address, error) {
+func (minerStateAPI *MinerStateAPI) StateListActors(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset %v", err)
@@ -620,7 +619,7 @@ func (minerStateAPI *MinerStateAPI) StateListActors(ctx context.Context, tsk blo
 	return out, nil
 }
 
-func (minerStateAPI *MinerStateAPI) StateMinerPower(ctx context.Context, addr address.Address, tsk block.TipSetKey) (*power.MinerPower, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*power.MinerPower, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset %v", err)
@@ -634,7 +633,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerPower(ctx context.Context, addr ad
 	return view.StateMinerPower(ctx, addr, tsk)
 }
 
-func (minerStateAPI *MinerStateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tsk block.TipSetKey) (big.Int, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (big.Int, error) {
 	ts, err := minerStateAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return big.Int{}, xerrors.Wrapf(err, "failed to get tipset for %s", tsk.String())
@@ -648,7 +647,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerAvailableBalance(ctx context.Conte
 	return view.StateMinerAvailableBalance(ctx, maddr, ts)
 }
 
-func (minerStateAPI *MinerStateAPI) StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk block.TipSetKey) (*miner.SectorExpiration, error) {
+func (minerStateAPI *MinerStateAPI) StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorExpiration, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset %v", err)
@@ -662,7 +661,7 @@ func (minerStateAPI *MinerStateAPI) StateSectorExpiration(ctx context.Context, m
 	return view.StateSectorExpiration(ctx, maddr, sectorNumber, tsk)
 }
 
-func (minerStateAPI *MinerStateAPI) StateMinerSectorCount(ctx context.Context, addr address.Address, tsk block.TipSetKey) (MinerSectors, error) {
+func (minerStateAPI *MinerStateAPI) StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (MinerSectors, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return MinerSectors{}, xerrors.Errorf("failed to get tipset %v", err)
@@ -709,7 +708,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerSectorCount(ctx context.Context, a
 	return MinerSectors{Live: liveCount, Active: activeCount, Faulty: faultyCount}, nil
 }
 
-func (minerStateAPI *MinerStateAPI) StateMarketBalance(ctx context.Context, addr address.Address, tsk block.TipSetKey) (MarketBalance, error) {
+func (minerStateAPI *MinerStateAPI) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (MarketBalance, error) {
 	ts, err := minerStateAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return MarketBalance{}, xerrors.Errorf("loading tipset %s: %v", tsk, err)

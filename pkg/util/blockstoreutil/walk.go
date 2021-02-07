@@ -29,14 +29,14 @@ func WalkSnapshot(ctx context.Context, bs bstore.blockstore, ts *block.TipSet, i
 			return xerrors.Errorf("getting block: %w", err)
 		}
 
-		var b block.Block
+		var b block.BlockHeader
 		if err := b.UnmarshalCBOR(bytes.NewReader(data.RawData())); err != nil {
 			return xerrors.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
 		}
 
 		var cids []cid.Cid
 		fmt.Println("Height:", b.Height)
-		if b.Height > 0 && b.Height > ts.EnsureHeight()-incRecentEpoch {
+		if b.Height > 0 && b.Height > ts.Height()-incRecentEpoch {
 			for _, p := range b.Parents.Cids() {
 				blocksToWalk = append(blocksToWalk, p)
 			}
@@ -47,7 +47,7 @@ func WalkSnapshot(ctx context.Context, bs bstore.blockstore, ts *block.TipSet, i
 
 		out := cids
 
-		if b.Height == 0 || b.Height > ts.EnsureHeight()-inclRecentRoots {
+		if b.Height == 0 || b.Height > ts.Height()-inclRecentRoots {
 			if walked.Visit(b.ParentStateRoot) {
 				cids, err := recurseLinks(bs, walked, b.ParentStateRoot)
 				if err != nil {

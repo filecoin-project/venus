@@ -1,4 +1,4 @@
-package block
+package types
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 )
 
 type BlockMsg struct { // nolint: golint
-	Header        *Block
+	Header        *BlockHeader
 	BlsMessages   []cid.Cid
 	SecpkMessages []cid.Cid
 }

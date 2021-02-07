@@ -17,7 +17,6 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/specactors"
@@ -95,7 +94,7 @@ var newMinerCmd = &cmds.Command{
 		}
 
 		// make sure the worker account exists on chain
-		_, err = env.(*node.Env).ChainAPI.StateLookupID(ctx, worker, block.EmptyTSK)
+		_, err = env.(*node.Env).ChainAPI.StateLookupID(ctx, worker, types.EmptyTSK)
 		if err != nil {
 			signed, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.UnsignedMessage{
 				From:  owner,
@@ -106,10 +105,7 @@ var newMinerCmd = &cmds.Command{
 				return xerrors.Errorf("push worker init: %v", err)
 			}
 
-			cid, err := signed.Cid()
-			if err != nil {
-				return err
-			}
+			cid := signed.Cid()
 
 			minerCmdLog.Infof("Initializing worker account %s, message: %s", worker, cid)
 			minerCmdLog.Infof("Waiting for confirmation")
@@ -124,7 +120,7 @@ var newMinerCmd = &cmds.Command{
 			}
 		}
 
-		nv, err := env.(*node.Env).ChainAPI.StateNetworkVersion(ctx, block.EmptyTSK)
+		nv, err := env.(*node.Env).ChainAPI.StateNetworkVersion(ctx, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting network version: %v", err)
 		}
@@ -173,11 +169,7 @@ var newMinerCmd = &cmds.Command{
 			return xerrors.Errorf("pushing createMiner message: %w", err)
 		}
 
-		cid, err := signed.Cid()
-		if err != nil {
-			return err
-		}
-
+		cid := signed.Cid()
 		minerCmdLog.Infof("Pushed CreateMiner message: %s", cid)
 		minerCmdLog.Infof("Waiting for confirmation")
 		_ = re.Emit("Pushed CreateMiner message: " + cid.String())
@@ -248,7 +240,7 @@ var minerInfoCmd = &cmds.Command{
 		basefee := head.MinTicketBlock().ParentBaseFee
 		writer.Printf("%s [basefee %s]\n", chainSyncStr, types.FIL(basefee).Short())
 
-		mact, err := api.StateGetActor(ctx, maddr, block.EmptyTSK)
+		mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -260,7 +252,7 @@ var minerInfoCmd = &cmds.Command{
 		}
 
 		// Sector size
-		mi, err := api.StateMinerInfo(ctx, maddr, block.EmptyTSK)
+		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -268,7 +260,7 @@ var minerInfoCmd = &cmds.Command{
 		ssize := crypto.SizeStr(big.NewInt(int64(mi.SectorSize)))
 		writer.Printf("Miner: %s (%s sectors)\n", maddr, ssize)
 
-		pow, err := api.StateMinerPower(ctx, maddr, block.EmptyTSK)
+		pow, err := api.StateMinerPower(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -286,7 +278,7 @@ var minerInfoCmd = &cmds.Command{
 			crypto.SizeStr(pow.TotalPower.RawBytePower),
 			float64(rpercI.Int64())/10000)
 
-		secCounts, err := api.StateMinerSectorCount(ctx, maddr, block.EmptyTSK)
+		secCounts, err := api.StateMinerSectorCount(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -310,7 +302,7 @@ var minerInfoCmd = &cmds.Command{
 		if !pow.HasMinPower {
 			writer.Println("Below minimum power threshold, no blocks will be won")
 		} else {
-			expWinChance := float64(big.Mul(qpercI, big.NewInt(int64(block.BlocksPerEpoch))).Int64()) / 1000000
+			expWinChance := float64(big.Mul(qpercI, big.NewInt(int64(types.BlocksPerEpoch))).Int64()) / 1000000
 			if expWinChance > 0 {
 				if expWinChance > 1 {
 					expWinChance = 1
@@ -344,7 +336,7 @@ var minerInfoCmd = &cmds.Command{
 		writer.Printf("      Vesting:    %s\n", types.FIL(lockedFunds.VestingFunds).Short())
 		writer.Printf("      Available:  %s\n", types.FIL(availBalance).Short())
 
-		mb, err := api.StateMarketBalance(ctx, maddr, block.EmptyTSK)
+		mb, err := api.StateMarketBalance(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting market balance: %w", err)
 		}

@@ -6,7 +6,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -649,7 +648,7 @@ type fundManagerEnvironment struct {
 }
 
 func (env *fundManagerEnvironment) AvailableFunds(ctx context.Context, addr address.Address) (abi.TokenAmount, error) {
-	bal, err := env.api.StateMarketBalance(ctx, addr, block.EmptyTSK)
+	bal, err := env.api.StateMarketBalance(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return abi.NewTokenAmount(0), err
 	}
@@ -679,11 +678,7 @@ func (env *fundManagerEnvironment) AddFunds(
 	if aerr != nil {
 		return cid.Undef, aerr
 	}
-	smsgCid, aerr := smsg.Cid()
-	if aerr != nil {
-		return cid.Undef, aerr
-	}
-	return smsgCid, nil
+	return smsg.Cid(), nil
 }
 
 func (env *fundManagerEnvironment) WithdrawFunds(
@@ -711,11 +706,7 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 	if aerr != nil {
 		return cid.Undef, aerr
 	}
-	smsgCid, aerr := smsg.Cid()
-	if aerr != nil {
-		return cid.Undef, aerr
-	}
-	return smsgCid, nil
+	return smsg.Cid(), nil
 }
 
 func (env *fundManagerEnvironment) WaitMsg(ctx context.Context, c cid.Cid) error {

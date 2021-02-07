@@ -1,4 +1,4 @@
-package block
+package types
 
 type BeaconEntry struct {
 	Round uint64

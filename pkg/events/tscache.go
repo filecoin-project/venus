@@ -2,7 +2,7 @@ package events
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -10,8 +10,8 @@ import (
 )
 
 type tsCacheAPI interface {
-	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, block.TipSetKey) (*block.TipSet, error)
-	ChainHead(context.Context) (*block.TipSet, error)
+	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
+	ChainHead(context.Context) (*types.TipSet, error)
 }
 
 // tipSetCache implements a simple ring-buffer cache to keep track of recent
@@ -19,7 +19,7 @@ type tsCacheAPI interface {
 type tipSetCache struct {
 	mu sync.RWMutex
 
-	cache []*block.TipSet
+	cache []*types.TipSet
 	start int
 	len   int
 
@@ -28,7 +28,7 @@ type tipSetCache struct {
 
 func newTSCache(cap abi.ChainEpoch, storage tsCacheAPI) *tipSetCache {
 	return &tipSetCache{
-		cache: make([]*block.TipSet, cap),
+		cache: make([]*types.TipSet, cap),
 		start: 0,
 		len:   0,
 
@@ -36,25 +36,19 @@ func newTSCache(cap abi.ChainEpoch, storage tsCacheAPI) *tipSetCache {
 	}
 }
 
-func (tsc *tipSetCache) add(ts *block.TipSet) error {
+func (tsc *tipSetCache) add(ts *types.TipSet) error {
 	tsc.mu.Lock()
 	defer tsc.mu.Unlock()
 	if tsc.len > 0 {
-		if tsc.cache[tsc.start].EnsureHeight() >= ts.EnsureHeight() {
-			return xerrors.Errorf("tipSetCache.add: expected new tipset height to be at least %d, was %d", tsc.cache[tsc.start].EnsureHeight()+1, ts.EnsureHeight())
+		if tsc.cache[tsc.start].Height() >= ts.Height() {
+			return xerrors.Errorf("tipSetCache.add: expected new tipset height to be at least %d, was %d", tsc.cache[tsc.start].Height()+1, ts.Height())
 		}
 	}
-	tsH, err := ts.Height()
-	if err != nil {
-		return err
-	}
+	tsH := ts.Height()
 	nextH := tsH
 
 	if tsc.len > 0 {
-		tssH, err := tsc.cache[tsc.start].Height()
-		if err != nil {
-			return err
-		}
+		tssH := tsc.cache[tsc.start].Height()
 		nextH = tssH + 1
 	}
 
@@ -76,14 +70,14 @@ func (tsc *tipSetCache) add(ts *block.TipSet) error {
 	return nil
 }
 
-func (tsc *tipSetCache) revert(ts *block.TipSet) error {
+func (tsc *tipSetCache) revert(ts *types.TipSet) error {
 	tsc.mu.Lock()
 	defer tsc.mu.Unlock()
 
 	return tsc.revertUnlocked(ts)
 }
 
-func (tsc *tipSetCache) revertUnlocked(ts *block.TipSet) error {
+func (tsc *tipSetCache) revertUnlocked(ts *types.TipSet) error {
 	if tsc.len == 0 {
 		return nil // this can happen, and it's fine
 	}
@@ -100,7 +94,7 @@ func (tsc *tipSetCache) revertUnlocked(ts *block.TipSet) error {
 	return nil
 }
 
-func (tsc *tipSetCache) getNonNull(height abi.ChainEpoch) (*block.TipSet, error) {
+func (tsc *tipSetCache) getNonNull(height abi.ChainEpoch) (*types.TipSet, error) {
 	for {
 		ts, err := tsc.get(height)
 		if err != nil {
@@ -113,39 +107,33 @@ func (tsc *tipSetCache) getNonNull(height abi.ChainEpoch) (*block.TipSet, error)
 	}
 }
 
-func (tsc *tipSetCache) get(height abi.ChainEpoch) (*block.TipSet, error) {
+func (tsc *tipSetCache) get(height abi.ChainEpoch) (*types.TipSet, error) {
 	tsc.mu.RLock()
 
 	if tsc.len == 0 {
 		tsc.mu.RUnlock()
 		log.Warnf("tipSetCache.get: cache is empty, requesting from storage (h=%d)", height)
-		return tsc.storage.ChainGetTipSetByHeight(context.TODO(), height, block.EmptyTSK)
+		return tsc.storage.ChainGetTipSetByHeight(context.TODO(), height, types.EmptyTSK)
 	}
 
-	headH, err := tsc.cache[tsc.start].Height()
-	if err != nil {
-		return nil, err
-	}
+	headH := tsc.cache[tsc.start].Height()
 	if height > headH {
 		tsc.mu.RUnlock()
 		return nil, xerrors.Errorf("tipSetCache.get: requested tipset not in cache (req: %d, cache head: %d)", height, headH)
 	}
 
 	clen := len(tsc.cache)
-	var tail *block.TipSet
+	var tail *types.TipSet
 	for i := 1; i <= tsc.len; i++ {
 		tail = tsc.cache[normalModulo(tsc.start-tsc.len+i, clen)]
 		if tail != nil {
 			break
 		}
 	}
-	tailH, err := tail.Height()
-	if err != nil {
-		return nil, err
-	}
+	tailH := tail.Height()
 	if height < tailH {
 		tsc.mu.RUnlock()
-		log.Warnf("tipSetCache.get: requested tipset not in cache, requesting from storage (h=%d; tail=%d;)", height, tail.EnsureHeight())
+		log.Warnf("tipSetCache.get: requested tipset not in cache, requesting from storage (h=%d; tail=%d;)", height, tail.Height())
 		return tsc.storage.ChainGetTipSetByHeight(context.TODO(), height, tail.Key())
 	}
 
@@ -154,7 +142,7 @@ func (tsc *tipSetCache) get(height abi.ChainEpoch) (*block.TipSet, error) {
 	return ts, nil
 }
 
-func (tsc *tipSetCache) best() (*block.TipSet, error) {
+func (tsc *tipSetCache) best() (*types.TipSet, error) {
 	tsc.mu.RLock()
 	best := tsc.cache[tsc.start]
 	tsc.mu.RUnlock()

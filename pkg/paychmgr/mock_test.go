@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"sync"
@@ -26,7 +25,7 @@ type mockManagerAPI struct {
 	*mockPaychAPI
 }
 
-func (m mockManagerAPI) GetMarketState(ctx context.Context, ts *block.TipSet) (market.State, error) {
+func (m mockManagerAPI) GetMarketState(ctx context.Context, ts *types.TipSet) (market.State, error) {
 	return nil, nil
 }
 
@@ -69,7 +68,7 @@ func (sm *mockStateManager) setPaychState(a address.Address, actor *types.Actor,
 	sm.paychState[a] = mockPchState{actor, state}
 }
 
-func (sm *mockStateManager) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *block.TipSet) (address.Address, error) {
+func (sm *mockStateManager) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 	keyAddr, ok := sm.accountState[addr]
@@ -79,7 +78,7 @@ func (sm *mockStateManager) ResolveToKeyAddress(ctx context.Context, addr addres
 	return keyAddr, nil
 }
 
-func (sm *mockStateManager) GetPaychState(ctx context.Context, addr address.Address, ts *block.TipSet) (*types.Actor, paych.State, error) {
+func (sm *mockStateManager) GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error) {
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 	info, ok := sm.paychState[addr]
@@ -103,7 +102,7 @@ func (sm *mockStateManager) getLastCall() *types.UnsignedMessage {
 	return sm.lastCall
 }
 
-func (sm *mockStateManager) Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*types.InvocResult, error) {
+func (sm *mockStateManager) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*types.InvocResult, error) {
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 
@@ -200,7 +199,7 @@ func (pchapi *mockPaychAPI) MpoolPushMessage(ctx context.Context, msg *types.Uns
 	defer pchapi.lk.Unlock()
 
 	smsg := &types.SignedMessage{Message: *msg}
-	smsgCid, _ := smsg.Cid()
+	smsgCid := smsg.Cid()
 	pchapi.messages[smsgCid] = smsg
 	return smsg, nil
 }
@@ -219,7 +218,7 @@ func (pchapi *mockPaychAPI) pushedMessageCount() int {
 	return len(pchapi.messages)
 }
 
-func (pchapi *mockPaychAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk block.TipSetKey) (address.Address, error) {
+func (pchapi *mockPaychAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
 	return addr, nil
 }
 
@@ -252,6 +251,6 @@ func (pchapi *mockPaychAPI) addSigningKey(key []byte) {
 	pchapi.signingKey = key
 }
 
-func (pchapi *mockPaychAPI) StateNetworkVersion(ctx context.Context, tsk block.TipSetKey) (network.Version, error) {
+func (pchapi *mockPaychAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
 	return constants.NewestNetworkVersion, nil
 }

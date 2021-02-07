@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/tools/fast"
 	"github.com/ipfs/go-cid"
@@ -33,7 +32,7 @@ func WaitForChainMessage(ctx context.Context, node *fast.Filecoin, fn MsgSearchF
 			}
 
 			for dec.More() {
-				var blks []block.Block
+				var blks []types.BlockHeader
 				err := dec.Decode(&blks)
 				if err != nil {
 					if err == io.EOF {
@@ -51,7 +50,7 @@ func WaitForChainMessage(ctx context.Context, node *fast.Filecoin, fn MsgSearchF
 	}
 }
 
-func findMessageInBlockSlice(ctx context.Context, node *fast.Filecoin, blks []block.Block, fn MsgSearchFn) (*MsgInfo, error) {
+func findMessageInBlockSlice(ctx context.Context, node *fast.Filecoin, blks []types.BlockHeader, fn MsgSearchFn) (*MsgInfo, error) {
 	for _, blk := range blks {
 		msgs, err := node.ShowMessages(ctx, blk.Messages)
 		if err != nil {
@@ -66,7 +65,7 @@ func findMessageInBlockSlice(ctx context.Context, node *fast.Filecoin, blks []bl
 
 			if found {
 				blockCid := blk.Cid()
-				msgCid, _ := msg.Cid()
+				msgCid := msg.Cid()
 
 				return &MsgInfo{
 					BlockCid: blockCid,

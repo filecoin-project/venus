@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/chain/cst"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-datastore"
@@ -704,7 +703,7 @@ func (mapi *mockFundManagerAPI) MpoolPushMessage(ctx context.Context, msg *types
 	defer mapi.lk.Unlock()
 
 	smsg := &types.SignedMessage{Message: *msg}
-	smsgCid, _ := smsg.Cid()
+	smsgCid := smsg.Cid()
 	mapi.sentMsgs[smsgCid] = &sentMsg{msg: smsg, ready: make(chan struct{})}
 
 	return smsg, nil
@@ -774,7 +773,7 @@ func (mapi *mockFundManagerAPI) completeMsg(msgCid cid.Cid) {
 	}
 }
 
-func (mapi *mockFundManagerAPI) StateMarketBalance(ctx context.Context, address address.Address, tsk block.TipSetKey) (chain.MarketBalance, error) {
+func (mapi *mockFundManagerAPI) StateMarketBalance(ctx context.Context, address address.Address, tsk types.TipSetKey) (chain.MarketBalance, error) {
 	mapi.lk.Lock()
 	defer mapi.lk.Unlock()
 

@@ -4,8 +4,8 @@ import (
 	"context"
 	fbig "github.com/filecoin-project/go-state-types/big"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"sort"
 	"testing"
 
@@ -13,18 +13,17 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chainsync/dispatcher"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
 type mockSyncer struct {
-	headsCalled []*block.TipSet
+	headsCalled []*types.TipSet
 }
 
-func (fs *mockSyncer) Head() *block.TipSet {
-	return block.UndefTipSet
+func (fs *mockSyncer) Head() *types.TipSet {
+	return types.UndefTipSet
 }
 
 func (fs *mockSyncer) HandleNewTipSet(_ context.Context, ci *syncTypes.Target) error {
@@ -35,11 +34,11 @@ func (fs *mockSyncer) HandleNewTipSet(_ context.Context, ci *syncTypes.Target) e
 func TestDispatchStartHappy(t *testing.T) {
 	tf.UnitTest(t)
 	s := &mockSyncer{
-		headsCalled: make([]*block.TipSet, 0),
+		headsCalled: make([]*types.TipSet, 0),
 	}
 	testDispatch := dispatcher.NewDispatcher(s)
 
-	cis := []*block.ChainInfo{
+	cis := []*types.ChainInfo{
 		// We need to put these in priority order to avoid a race.
 		// If we send 0 before 42, it is possible the dispatcher will
 		// pick up 0 and start processing before it sees 42.
@@ -67,8 +66,8 @@ func TestDispatchStartHappy(t *testing.T) {
 	}
 
 	sort.Slice(cis, func(i, j int) bool {
-		weigtI, _ := cis[i].Head.ParentWeight()
-		weigtJ, _ := cis[j].Head.ParentWeight()
+		weigtI := cis[i].Head.ParentWeight()
+		weigtJ := cis[j].Head.ParentWeight()
 		return weigtI.GreaterThan(weigtJ)
 	})
 	// check that the mockSyncer synced in order
@@ -76,13 +75,13 @@ func TestDispatchStartHappy(t *testing.T) {
 	for _, ci := range cis {
 		found := false
 		for _, call := range s.headsCalled {
-			if call.EnsureHeight() == ci.Head.EnsureHeight() {
+			if call.Height() == ci.Head.Height() {
 				found = true
 				break
 			}
 		}
 		if !found {
-			t.Errorf("block %d not found", ci.Head.EnsureHeight())
+			t.Errorf("block %d not found", ci.Head.Height())
 		}
 	}
 }
@@ -107,7 +106,7 @@ func TestQueueHappy(t *testing.T) {
 	// Pop in order
 	out0 := requirePop(t, testQ)
 
-	weight, _ := out0.ChainInfo.Head.ParentWeight()
+	weight := out0.ChainInfo.Head.ParentWeight()
 	assert.Equal(t, int64(1001), weight.Int.Int64())
 }
 
@@ -127,7 +126,7 @@ func TestQueueDuplicates(t *testing.T) {
 
 	// Pop
 	first := requirePop(t, testQ)
-	assert.Equal(t, abi.ChainEpoch(0), first.ChainInfo.Head.EnsureHeight())
+	assert.Equal(t, abi.ChainEpoch(0), first.ChainInfo.Head.Height())
 	testQ.Remove(first)
 
 }
@@ -159,14 +158,14 @@ func requirePop(t *testing.T, q *syncTypes.TargetTracker) *syncTypes.Target {
 // chainInfoWithHeightAndWeight is a helper that constructs a unique chain info off of
 // an int. The tipset key is a faked cid from the string of that integer and
 // the height is that integer.
-func chainInfoWithHeightAndWeight(t *testing.T, h int, weight int64) *block.ChainInfo {
+func chainInfoWithHeightAndWeight(t *testing.T, h int, weight int64) *types.ChainInfo {
 	newAddress := types.NewForTestGetter()
-	posts := []builtin.PoStProof{{PoStProof: abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, ProofBytes: []byte{0x07}}}
-	blk := &block.Block{
+	posts := []proof2.PoStProof{{PoStProof: abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, ProofBytes: []byte{0x07}}}
+	blk := &types.BlockHeader{
 		Miner:         newAddress(),
-		Ticket:        block.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
-		ElectionProof: &block.ElectionProof{VRFProof: []byte{0x0c, 0x0d}},
-		BeaconEntries: []*block.BeaconEntry{
+		Ticket:        types.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
+		ElectionProof: &types.ElectionProof{VRFProof: []byte{0x0c, 0x0d}},
+		BeaconEntries: []*types.BeaconEntry{
 			{
 				Round: 44,
 				Data:  []byte{0xc0},
@@ -175,20 +174,20 @@ func chainInfoWithHeightAndWeight(t *testing.T, h int, weight int64) *block.Chai
 		Height:                abi.ChainEpoch(h),
 		Messages:              types.CidFromString(t, "someothercid"),
 		ParentMessageReceipts: types.CidFromString(t, "someothercid"),
-		Parents:               block.NewTipSetKey(types.CidFromString(t, "someothercid")),
+		Parents:               types.NewTipSetKey(types.CidFromString(t, "someothercid")),
 		ParentWeight:          fbig.NewInt(weight),
 		ForkSignaling:         2,
 		ParentStateRoot:       types.CidFromString(t, "someothercid"),
 		Timestamp:             4,
 		ParentBaseFee:         abi.NewTokenAmount(20),
-		WinPoStProof:          block.FromAbiProofArr(posts),
+		WinPoStProof:          posts,
 		BlockSig: &acrypto.Signature{
 			Type: acrypto.SigTypeBLS,
 			Data: []byte{0x4},
 		},
 	}
-	b, _ := block.NewTipSet(blk)
-	return &block.ChainInfo{
+	b, _ := types.NewTipSet(blk)
+	return &types.ChainInfo{
 		Head: b,
 	}
 }

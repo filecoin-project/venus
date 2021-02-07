@@ -29,7 +29,6 @@ import (
 	mh "github.com/multiformats/go-multihash"
 	xerrors "github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
@@ -333,12 +332,12 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	geneblk := &block.Block{
+	geneblk := &types.BlockHeader{
 		Miner:                 builtin.SystemActorAddr,
 		Ticket:                genesis.Ticket,
-		BeaconEntries:         []*block.BeaconEntry{{Data: []byte{0xca, 0xfe, 0xfa, 0xce}}},
-		ElectionProof:         new(block.ElectionProof),
-		Parents:               block.NewTipSetKey(),
+		BeaconEntries:         []*types.BeaconEntry{{Data: []byte{0xca, 0xfe, 0xfa, 0xce}}},
+		ElectionProof:         new(types.ElectionProof),
+		Parents:               types.NewTipSetKey(),
 		ParentWeight:          big.Zero(),
 		Height:                0,
 		ParentStateRoot:       stateRoot,

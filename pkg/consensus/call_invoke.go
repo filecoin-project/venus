@@ -15,7 +15,6 @@ import (
 	xerrors "github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -23,7 +22,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
-func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *block.TipSet) (*vm.Ret, error) {
+func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *types.TipSet) (*vm.Ret, error) {
 	var (
 		err       error
 		stateRoot cid.Cid
@@ -36,12 +35,9 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 		// run the fork logic in `sm.TipSetState`. We need the _current_
 		// height to have no fork, because we'll run it inside this
 		// function before executing the given message.
-		height, err = ts.Height()
-		if err != nil {
-			return nil, err
-		}
+		height = ts.Height()
 		for height > 0 && (c.fork.HasExpensiveFork(ctx, height) || c.fork.HasExpensiveFork(ctx, height-1)) {
-			ts, err = c.chainState.GetTipSet(ts.EnsureParents())
+			ts, err = c.chainState.GetTipSet(ts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("failed to find a non-forking epoch: %v", err)
 			}
@@ -59,10 +55,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 	}
 
 	// When we're not at the genesis block, make sure we don't have an expensive migration.
-	height, err = ts.Height()
-	if err != nil {
-		return nil, err
-	}
+	height = ts.Height()
 	if height > 0 && (c.fork.HasExpensiveFork(ctx, height) || c.fork.HasExpensiveFork(ctx, height-1)) {
 		return nil, fork.ErrExpensiveFork
 	}
@@ -134,7 +127,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 	return c.processor.ProcessMessage(ctx, msgApply, vmOption)
 }
 
-func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*vm.Ret, error) {
+func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*vm.Ret, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.Call")
 	defer span.End()
 	chainReader := c.chainState
@@ -144,16 +137,16 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *blo
 		ts = chainReader.GetHead()
 
 		// Search back till we find a height with no fork, or we reach the beginning.
-		for ts.EnsureHeight() > 0 && c.fork.HasExpensiveFork(ctx, ts.EnsureHeight()-1) {
+		for ts.Height() > 0 && c.fork.HasExpensiveFork(ctx, ts.Height()-1) {
 			var err error
-			ts, err = chainReader.GetTipSet(ts.EnsureParents())
+			ts, err = chainReader.GetTipSet(ts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("failed to find a non-forking epoch: %v", err)
 			}
 		}
 	}
 	bstate := ts.At(0).ParentStateRoot
-	bheight := ts.EnsureHeight()
+	bheight := ts.Height()
 
 	// If we have to run an expensive migration, and we're not at genesis,
 	// return an error because the migration will take too long.

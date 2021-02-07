@@ -12,7 +12,7 @@ cp ../venus filecoin/
 chmod +x filecoin/venus
 
 # proof params data
-cp ../vendors/go-sectorbuilder/paramcache filecoin/
+cp ../extern/go-sectorbuilder/paramcache filecoin/
 chmod +x filecoin/paramcache
 
 tar -zcvf "filecoin-$RELEASE_TAG-`uname`.tar.gz" filecoin

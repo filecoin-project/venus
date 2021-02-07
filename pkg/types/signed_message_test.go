@@ -20,9 +20,7 @@ func TestSignedMessageString(t *testing.T) {
 	tf.UnitTest(t)
 
 	smsg := makeMessage(t, mockSigner, 42)
-	cid, err := smsg.Cid()
-	require.NoError(t, err)
-
+	cid := smsg.Cid()
 	got := smsg.String()
 	assert.Contains(t, got, cid.String())
 }
@@ -53,10 +51,8 @@ func TestSignedMessageCid(t *testing.T) {
 	smsg1 := makeMessage(t, mockSigner, 41)
 	smsg2 := makeMessage(t, mockSigner, 42)
 
-	c1, err := smsg1.Cid()
-	assert.NoError(t, err)
-	c2, err := smsg2.Cid()
-	assert.NoError(t, err)
+	c1 := smsg1.Cid()
+	c2 := smsg2.Cid()
 
 	assert.NotEqual(t, c1.String(), c2.String())
 
@@ -67,9 +63,7 @@ func TestSignedMessageCidToNode(t *testing.T) {
 
 	smsg := makeMessage(t, mockSigner, 41)
 
-	c, err := smsg.Cid()
-	require.NoError(t, err)
-
+	c := smsg.Cid()
 	n, err := smsg.ToNode()
 	require.NoError(t, err)
 

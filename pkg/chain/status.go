@@ -2,10 +2,10 @@ package chain
 
 import (
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/block"
 	logging "github.com/ipfs/go-log/v2"
 )
 
@@ -48,12 +48,12 @@ func NewStatusReporter() *StatusReporter {
 // Status defines a structure used to represent the state of a chain store and syncer.
 type Status struct {
 	// The heaviest TipSet that has been fully validated.
-	ValidatedHead block.TipSetKey
+	ValidatedHead types.TipSetKey
 	// The height of ValidatedHead.
 	ValidatedHeadHeight abi.ChainEpoch
 
 	// They head of the chain currently being fetched/validated, or undef if none.
-	SyncingHead block.TipSetKey
+	SyncingHead types.TipSetKey
 	// The height of SyncingHead.
 	SyncingHeight uint64
 	// Whether SyncingTip is trusted as a head far away from the validated head.
@@ -66,7 +66,7 @@ type Status struct {
 	SyncingFetchComplete bool
 
 	// The key of the tipset currently being fetched
-	FetchingHead block.TipSetKey
+	FetchingHead types.TipSetKey
 	// The height of FetchingHead
 	FetchingHeight uint64
 }
@@ -74,15 +74,15 @@ type Status struct {
 // NewDefaultChainStatus returns a ChainStaus with the default empty values.
 func newDefaultChainStatus() *Status {
 	return &Status{
-		ValidatedHead:        block.TipSetKey{},
+		ValidatedHead:        types.TipSetKey{},
 		ValidatedHeadHeight:  0,
-		SyncingHead:          block.TipSetKey{},
+		SyncingHead:          types.TipSetKey{},
 		SyncingHeight:        0,
 		SyncingTrusted:       false,
 		SyncingStarted:       0,
 		SyncingComplete:      true,
 		SyncingFetchComplete: true,
-		FetchingHead:         block.TipSetKey{},
+		FetchingHead:         types.TipSetKey{},
 		FetchingHeight:       0,
 	}
 }
@@ -101,7 +101,7 @@ type StatusUpdates func(*Status)
 //
 // Validation Updates
 //
-func validateHead(u block.TipSetKey) StatusUpdates {
+func validateHead(u types.TipSetKey) StatusUpdates {
 	return func(s *Status) {
 		s.ValidatedHead = u
 	}
@@ -117,7 +117,7 @@ func validateHeight(u abi.ChainEpoch) StatusUpdates {
 // Syncing Updates
 //
 
-func syncHead(u block.TipSetKey) StatusUpdates {
+func syncHead(u types.TipSetKey) StatusUpdates {
 	return func(s *Status) {
 		s.SyncingHead = u
 	}
@@ -157,7 +157,7 @@ func syncFetchComplete(u bool) StatusUpdates {
 // Fetching Updates
 //
 
-func fetchHead(u block.TipSetKey) StatusUpdates {
+func fetchHead(u types.TipSetKey) StatusUpdates {
 	return func(s *Status) {
 		s.FetchingHead = u
 	}

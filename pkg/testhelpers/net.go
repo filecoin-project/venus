@@ -5,10 +5,10 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/connmgr"
@@ -191,26 +191,26 @@ func RequireIntPeerID(t *testing.T, i int64) peer.ID {
 // for adding blocks to the source.  It is used to implement an object that
 // behaves like Fetcher but does not go to the network for use in tests.
 type TestFetcher struct {
-	sourceBlocks map[string]*block.Block // sourceBlocks maps block cid strings to blocks.
+	sourceBlocks map[string]*types.BlockHeader // sourceBlocks maps block cid strings to blocks.
 }
 
 // NewTestFetcher returns a TestFetcher with no source blocks.
 func NewTestFetcher() *TestFetcher {
 	return &TestFetcher{
-		sourceBlocks: make(map[string]*block.Block),
+		sourceBlocks: make(map[string]*types.BlockHeader),
 	}
 }
 
 // AddSourceBlocks adds the input blocks to the fetcher source.
-func (f *TestFetcher) AddSourceBlocks(blocks ...*block.Block) {
+func (f *TestFetcher) AddSourceBlocks(blocks ...*types.BlockHeader) {
 	for _, block := range blocks {
 		f.sourceBlocks[block.Cid().String()] = block
 	}
 }
 
 // FetchTipSets fetchs the tipset at `tsKey` from the network using the fetchers `sourceBlocks`.
-func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey block.TipSetKey, from peer.ID, done func(t *block.TipSet) (bool, error)) ([]*block.TipSet, error) {
-	var out []*block.TipSet
+func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, from peer.ID, done func(t *types.TipSet) (bool, error)) ([]*types.TipSet, error) {
+	var out []*types.TipSet
 	cur := tsKey
 	for {
 		res, err := f.GetBlocks(ctx, cur.Cids())
@@ -218,7 +218,7 @@ func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey block.TipSetKey, f
 			return nil, err
 		}
 
-		ts, err := block.NewTipSet(res...)
+		ts, err := types.NewTipSet(res...)
 		if err != nil {
 			return nil, err
 		}
@@ -232,24 +232,20 @@ func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey block.TipSetKey, f
 			break
 		}
 
-		cur, err = ts.Parents()
-		if err != nil {
-			return nil, err
-		}
-
+		cur = ts.Parents()
 	}
 
 	return out, nil
 }
 
 // FetchTipSetHeaders fetches the tipset at `tsKey` but not messages
-func (f *TestFetcher) FetchTipSetHeaders(ctx context.Context, tsKey block.TipSetKey, from peer.ID, done func(t *block.TipSet) (bool, error)) ([]*block.TipSet, error) {
+func (f *TestFetcher) FetchTipSetHeaders(ctx context.Context, tsKey types.TipSetKey, from peer.ID, done func(t *types.TipSet) (bool, error)) ([]*types.TipSet, error) {
 	return f.FetchTipSets(ctx, tsKey, from, done)
 }
 
 // GetBlocks returns any blocks in the source with matching cids.
-func (f *TestFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*block.Block, error) {
-	var ret []*block.Block
+func (f *TestFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*types.BlockHeader, error) {
+	var ret []*types.BlockHeader
 	for _, c := range cids {
 		if block, ok := f.sourceBlocks[c.String()]; ok {
 			ret = append(ret, block)
@@ -262,30 +258,30 @@ func (f *TestFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*block.B
 
 func NewTestExchange() *TestExchange {
 	return &TestExchange{
-		sourceBlocks: make(map[string]*block.Block),
+		sourceBlocks: make(map[string]*types.BlockHeader),
 	}
 }
 
 // AddSourceBlocks adds the input blocks to the fetcher source.
-func (f *TestExchange) AddSourceBlocks(blocks ...*block.Block) {
+func (f *TestExchange) AddSourceBlocks(blocks ...*types.BlockHeader) {
 	for _, block := range blocks {
 		f.sourceBlocks[block.Cid().String()] = block
 	}
 }
 
 type TestExchange struct {
-	sourceBlocks map[string]*block.Block // s
+	sourceBlocks map[string]*types.BlockHeader // s
 }
 
-func (f *TestExchange) GetBlocks(ctx context.Context, tsk block.TipSetKey, count int) ([]*block.TipSet, error) {
+func (f *TestExchange) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) ([]*types.TipSet, error) {
 	panic("implement me")
 }
 
-func (f *TestExchange) GetChainMessages(ctx context.Context, tipsets []*block.TipSet) ([]*exchange.CompactedMessages, error) {
+func (f *TestExchange) GetChainMessages(ctx context.Context, tipsets []*types.TipSet) ([]*exchange.CompactedMessages, error) {
 	panic("implement me")
 }
 
-func (f *TestExchange) GetFullTipSet(ctx context.Context, peer []peer.ID, tsk block.TipSetKey) (*block.FullTipSet, error) {
+func (f *TestExchange) GetFullTipSet(ctx context.Context, peer []peer.ID, tsk types.TipSetKey) (*types.FullTipSet, error) {
 	panic("implement me")
 }
 

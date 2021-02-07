@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 
-	block "github.com/filecoin-project/venus/pkg/block"
 	types "github.com/filecoin-project/venus/pkg/types"
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -554,7 +553,7 @@ func (t *BSTipSet) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.Blocks ([]*block.Block) (slice)
+	// t.Blocks ([]*block.BlockHeader) (slice)
 	if len(t.Blocks) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.Blocks was too long")
 	}
@@ -593,7 +592,7 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Blocks ([]*block.Block) (slice)
+	// t.Blocks ([]*block.BlockHeader) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -609,12 +608,12 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 	}
 
 	if extra > 0 {
-		t.Blocks = make([]*block.Block, extra)
+		t.Blocks = make([]*types.BlockHeader, extra)
 	}
 
 	for i := 0; i < int(extra); i++ {
 
-		var v block.Block
+		var v types.BlockHeader
 		if err := v.UnmarshalCBOR(br); err != nil {
 			return err
 		}

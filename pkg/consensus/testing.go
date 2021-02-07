@@ -10,15 +10,14 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
-func RequireNewTipSet(require *require.Assertions, blks ...*block.Block) *block.TipSet {
-	ts, err := block.NewTipSet(blks...)
+func RequireNewTipSet(require *require.Assertions, blks ...*types.BlockHeader) *types.TipSet {
+	ts, err := types.NewTipSet(blks...)
 	require.NoError(err)
 	return ts
 }
@@ -53,13 +52,13 @@ func (mv *FakeMessageValidator) ValidateUnsignedMessageSyntax(ctx context.Contex
 type FakeTicketMachine struct{}
 
 // MakeTicket returns a fake ticket
-func (ftm *FakeTicketMachine) MakeTicket(ctx context.Context, base block.TipSetKey, epoch abi.ChainEpoch, miner address.Address, entry *block.BeaconEntry, newPeriod bool, worker address.Address, signer types.Signer) (block.Ticket, error) {
+func (ftm *FakeTicketMachine) MakeTicket(ctx context.Context, base types.TipSetKey, epoch abi.ChainEpoch, miner address.Address, entry *types.BeaconEntry, newPeriod bool, worker address.Address, signer types.Signer) (types.Ticket, error) {
 	return MakeFakeTicketForTest(), nil
 }
 
 // IsValidTicket always returns true
-func (ftm *FakeTicketMachine) IsValidTicket(ctx context.Context, base block.TipSetKey, entry *block.BeaconEntry, newPeriod bool,
-	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket block.Ticket) error {
+func (ftm *FakeTicketMachine) IsValidTicket(ctx context.Context, base types.TipSetKey, entry *types.BeaconEntry, newPeriod bool,
+	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket types.Ticket) error {
 	return nil
 }
 
@@ -67,17 +66,17 @@ func (ftm *FakeTicketMachine) IsValidTicket(ctx context.Context, base block.TipS
 type FailingTicketValidator struct{}
 
 // IsValidTicket always returns false
-func (ftv *FailingTicketValidator) IsValidTicket(ctx context.Context, base block.TipSetKey, entry *block.BeaconEntry, newPeriod bool,
-	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket block.Ticket) error {
+func (ftv *FailingTicketValidator) IsValidTicket(ctx context.Context, base types.TipSetKey, entry *types.BeaconEntry, newPeriod bool,
+	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket types.Ticket) error {
 	return fmt.Errorf("invalid ticket")
 }
 
 // MakeFakeTicketForTest creates a fake ticket
-func MakeFakeTicketForTest() block.Ticket {
+func MakeFakeTicketForTest() types.Ticket {
 	val := make([]byte, 65)
 	val[0] = 200
-	return block.Ticket{
-		VRFProof: block.VRFPi(val[:]),
+	return types.Ticket{
+		VRFProof: types.VRFPi(val[:]),
 	}
 }
 
@@ -118,11 +117,11 @@ type FakeChainRandomness struct {
 	Seed uint
 }
 
-func (s *FakeChainRandomness) SampleChainRandomness(_ context.Context, _ block.TipSetKey, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (s *FakeChainRandomness) SampleChainRandomness(_ context.Context, _ types.TipSetKey, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	return []byte(fmt.Sprintf("s=%d,e=%d,t=%d,p=%s", s.Seed, epoch, tag, string(entropy))), nil
 }
 
-func (s *FakeChainRandomness) ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (s *FakeChainRandomness) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	return []byte(""), nil
 }
 
@@ -130,8 +129,8 @@ type FakeSampler struct {
 	Seed uint
 }
 
-func (s *FakeSampler) SampleTicket(_ context.Context, _ block.TipSetKey, epoch abi.ChainEpoch) (block.Ticket, error) {
-	return block.Ticket{
+func (s *FakeSampler) SampleTicket(_ context.Context, _ types.TipSetKey, epoch abi.ChainEpoch) (types.Ticket, error) {
+	return types.Ticket{
 		VRFProof: []byte(fmt.Sprintf("s=%d,e=%d", s.Seed, epoch)),
 	}, nil
 }

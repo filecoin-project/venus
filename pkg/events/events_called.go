@@ -2,7 +2,6 @@ package events
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/block"
 	"math"
 	"sync"
 
@@ -31,7 +30,7 @@ type eventData interface{}
 // `prevTs` is the previous tipset, eg the "from" tipset for a state change.
 // `ts` is the event tipset, eg the tipset in which the `msg` is included.
 // `curH`-`ts.Height` = `confidence`
-type EventHandler func(data eventData, prevTs, ts *block.TipSet, curH abi.ChainEpoch) (more bool, err error)
+type EventHandler func(data eventData, prevTs, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error)
 
 // CheckFunc is used for atomicity guarantees. If the condition the callbacks
 // wait for has already happened in tipset `ts`
@@ -39,7 +38,7 @@ type EventHandler func(data eventData, prevTs, ts *block.TipSet, curH abi.ChainE
 // If `done` is true, timeout won't be triggered
 // If `more` is false, no messages will be sent to EventHandler (RevertHandler
 //  may still be called)
-type CheckFunc func(ts *block.TipSet) (done bool, more bool, err error)
+type CheckFunc func(ts *types.TipSet) (done bool, more bool, err error)
 
 // Keep track of information for an event handler
 type handlerInfo struct {
@@ -72,7 +71,7 @@ type hcEvents struct {
 	ctx          context.Context
 	gcConfidence uint64
 
-	lastTs *block.TipSet
+	lastTs *types.TipSet
 
 	lk sync.Mutex
 
@@ -115,7 +114,7 @@ func newHCEvents(ctx context.Context, cs IEvent, tsc *tipSetCache, gcConfidence 
 
 // Called when there is a change to the head with tipsets to be
 // reverted / applied
-func (e *hcEvents) processHeadChangeEvent(rev, app []*block.TipSet) error {
+func (e *hcEvents) processHeadChangeEvent(rev, app []*types.TipSet) error {
 	e.lk.Lock()
 	defer e.lk.Unlock()
 
@@ -147,7 +146,7 @@ func (e *hcEvents) processHeadChangeEvent(rev, app []*block.TipSet) error {
 			e.queueForConfidence(tid, data, nil, ts)
 		}
 
-		for at := e.lastTs.EnsureHeight(); at <= ts.EnsureHeight(); at++ {
+		for at := e.lastTs.Height(); at <= ts.Height(); at++ {
 			// Apply any queued events and timeouts that were targeted at the
 			// current chain height
 			e.applyWithConfidence(ts, at)
@@ -161,14 +160,14 @@ func (e *hcEvents) processHeadChangeEvent(rev, app []*block.TipSet) error {
 	return nil
 }
 
-func (e *hcEvents) handleReverts(ts *block.TipSet) {
-	reverts, ok := e.revertQueue[ts.EnsureHeight()]
+func (e *hcEvents) handleReverts(ts *types.TipSet) {
+	reverts, ok := e.revertQueue[ts.Height()]
 	if !ok {
 		return // nothing to do
 	}
 
 	for _, triggerH := range reverts {
-		toRevert := e.confQueue[triggerH][ts.EnsureHeight()]
+		toRevert := e.confQueue[triggerH][ts.Height()]
 		for _, event := range toRevert {
 			if !event.called {
 				continue // event wasn't apply()-ied yet
@@ -177,24 +176,24 @@ func (e *hcEvents) handleReverts(ts *block.TipSet) {
 			trigger := e.triggers[event.trigger]
 
 			if err := trigger.revert(e.ctx, ts); err != nil {
-				log.Errorf("reverting chain trigger (@H %d, triggered @ %d) failed: %s", ts.EnsureHeight(), triggerH, err)
+				log.Errorf("reverting chain trigger (@H %d, triggered @ %d) failed: %s", ts.Height(), triggerH, err)
 			}
 		}
-		delete(e.confQueue[triggerH], ts.EnsureHeight())
+		delete(e.confQueue[triggerH], ts.Height())
 	}
-	delete(e.revertQueue, ts.EnsureHeight())
+	delete(e.revertQueue, ts.Height())
 }
 
 // Queue up events until the chain has reached a height that reflects the
 // desired confidence
-func (e *hcEvents) queueForConfidence(trigID uint64, data eventData, prevTs, ts *block.TipSet) {
+func (e *hcEvents) queueForConfidence(trigID uint64, data eventData, prevTs, ts *types.TipSet) {
 	trigger := e.triggers[trigID]
 
 	prevH := NoHeight
 	if prevTs != nil {
-		prevH = prevTs.EnsureHeight()
+		prevH = prevTs.Height()
 	}
-	appliedH := ts.EnsureHeight()
+	appliedH := ts.Height()
 
 	triggerH := appliedH + abi.ChainEpoch(trigger.confidence)
 
@@ -215,7 +214,7 @@ func (e *hcEvents) queueForConfidence(trigID uint64, data eventData, prevTs, ts 
 }
 
 // Apply any events that were waiting for this chain height for confidence
-func (e *hcEvents) applyWithConfidence(ts *block.TipSet, height abi.ChainEpoch) {
+func (e *hcEvents) applyWithConfidence(ts *types.TipSet, height abi.ChainEpoch) {
 	byOrigH, ok := e.confQueue[height]
 	if !ok {
 		return // no triggers at this height
@@ -239,7 +238,7 @@ func (e *hcEvents) applyWithConfidence(ts *block.TipSet, height abi.ChainEpoch) 
 
 			// Previous tipset - this is relevant for example in a state change
 			// from one tipset to another
-			var prevTs *block.TipSet
+			var prevTs *types.TipSet
 			if event.prevH != NoHeight {
 				prevTs, err = e.tsc.get(event.prevH)
 				if err != nil {
@@ -267,8 +266,8 @@ func (e *hcEvents) applyWithConfidence(ts *block.TipSet, height abi.ChainEpoch) 
 }
 
 // Apply any timeouts that expire at this height
-func (e *hcEvents) applyTimeouts(ts *block.TipSet) {
-	triggers, ok := e.timeouts[ts.EnsureHeight()]
+func (e *hcEvents) applyTimeouts(ts *types.TipSet) {
+	triggers, ok := e.timeouts[ts.Height()]
 	if !ok {
 		return // nothing to do
 	}
@@ -282,14 +281,14 @@ func (e *hcEvents) applyTimeouts(ts *block.TipSet) {
 			continue
 		}
 
-		timeoutTs, err := e.tsc.get(ts.EnsureHeight() - abi.ChainEpoch(trigger.confidence))
+		timeoutTs, err := e.tsc.get(ts.Height() - abi.ChainEpoch(trigger.confidence))
 		if err != nil {
-			log.Errorf("events: applyTimeouts didn't find tipset for event; wanted %d; current %d", ts.EnsureHeight()-abi.ChainEpoch(trigger.confidence), ts.EnsureHeight())
+			log.Errorf("events: applyTimeouts didn't find tipset for event; wanted %d; current %d", ts.Height()-abi.ChainEpoch(trigger.confidence), ts.Height())
 		}
 
-		more, err := trigger.handle(nil, nil, timeoutTs, ts.EnsureHeight())
+		more, err := trigger.handle(nil, nil, timeoutTs, ts.Height())
 		if err != nil {
-			log.Errorf("chain trigger (call @H %d, called @ %d) failed: %s", timeoutTs.EnsureHeight(), ts.EnsureHeight(), err)
+			log.Errorf("chain trigger (call @H %d, called @ %d) failed: %s", timeoutTs.Height(), ts.Height(), err)
 			continue // don't revert failed calls
 		}
 
@@ -314,7 +313,7 @@ func (e *hcEvents) onHeadChanged(check CheckFunc, hnd EventHandler, rev RevertHa
 	}
 	done, more, err := check(ts)
 	if err != nil {
-		return 0, xerrors.Errorf("called check error (h: %d): %w", ts.EnsureHeight(), err)
+		return 0, xerrors.Errorf("called check error (h: %d): %w", ts.Height(), err)
 	}
 	if done {
 		timeout = NoTimeout
@@ -372,7 +371,7 @@ func newWatcherEvents(ctx context.Context, hcAPI headChangeAPI, cs IEvent) watch
 
 // Run each of the matchers against the previous and current state to see if
 // there's a change
-func (we *watcherEvents) checkStateChanges(oldState, newState *block.TipSet) map[triggerID]eventData {
+func (we *watcherEvents) checkStateChanges(oldState, newState *types.TipSet) map[triggerID]eventData {
 	we.lk.RLock()
 	defer we.lk.RUnlock()
 
@@ -399,9 +398,9 @@ type StateChange interface{}
 // `newTs` is the state "to" tipset
 // `states` is the change in state
 // `curH`-`ts.Height` = `confidence`
-type StateChangeHandler func(oldTs, newTs *block.TipSet, states StateChange, curH abi.ChainEpoch) (more bool, err error)
+type StateChangeHandler func(oldTs, newTs *types.TipSet, states StateChange, curH abi.ChainEpoch) (more bool, err error)
 
-type StateMatchFunc func(oldTs, newTs *block.TipSet) (bool, StateChange, error)
+type StateMatchFunc func(oldTs, newTs *types.TipSet) (bool, StateChange, error)
 
 // StateChanged registers a callback which is triggered when a specified state
 // change occurs or a timeout is reached.
@@ -432,7 +431,7 @@ type StateMatchFunc func(oldTs, newTs *block.TipSet) (bool, StateChange, error)
 //   the state change is queued up until the confidence interval has elapsed (and
 //   `StateChangeHandler` is called)
 func (we *watcherEvents) StateChanged(check CheckFunc, scHnd StateChangeHandler, rev RevertHandler, confidence int, timeout abi.ChainEpoch, mf StateMatchFunc) error {
-	hnd := func(data eventData, prevTs, ts *block.TipSet, height abi.ChainEpoch) (bool, error) {
+	hnd := func(data eventData, prevTs, ts *types.TipSet, height abi.ChainEpoch) (bool, error) {
 		states, ok := data.(StateChange)
 		if data != nil && !ok {
 			panic("expected StateChange")
@@ -473,8 +472,8 @@ func newMessageEvents(ctx context.Context, hcAPI headChangeAPI, cs IEvent) messa
 }
 
 // Check if there are any new actor calls
-func (me *messageEvents) checkNewCalls(ts *block.TipSet) (map[triggerID]eventData, error) {
-	pts, err := me.cs.ChainGetTipSet(ts.EnsureParents()) // we actually care about messages in the parent tipset here
+func (me *messageEvents) checkNewCalls(ts *types.TipSet) (map[triggerID]eventData, error) {
+	pts, err := me.cs.ChainGetTipSet(context.Background(), ts.Parents()) // we actually care about messages in the parent tipset here
 	if err != nil {
 		log.Errorf("getting parent tipset in checkNewCalls: %s", err)
 		return nil, err
@@ -508,23 +507,20 @@ func (me *messageEvents) checkNewCalls(ts *block.TipSet) (map[triggerID]eventDat
 }
 
 // Get the messages in a tipset
-func (me *messageEvents) messagesForTs(ts *block.TipSet, consume func(message *types.UnsignedMessage)) {
+func (me *messageEvents) messagesForTs(ts *types.TipSet, consume func(message *types.UnsignedMessage)) {
 	seen := map[cid.Cid]struct{}{}
 
 	for _, tsb := range ts.Blocks() {
 
 		msgs, err := me.cs.ChainGetBlockMessages(context.TODO(), tsb.Cid())
 		if err != nil {
-			log.Errorf("messagesForTs MessagesForBlock failed (ts.H=%d, Bcid:%s, B.Mcid:%s): %s", ts.EnsureHeight(), tsb.Cid(), tsb.Messages, err)
+			log.Errorf("messagesForTs MessagesForBlock failed (ts.H=%d, Bcid:%s, B.Mcid:%s): %s", ts.Height(), tsb.Cid(), tsb.Messages, err)
 			// this is quite bad, but probably better than missing all the other updates
 			continue
 		}
 
 		for _, m := range msgs.BlsMessages {
-			mcid, err := m.Cid()
-			if err != nil {
-				continue
-			}
+			mcid := m.Cid()
 			_, ok := seen[mcid]
 			if ok {
 				continue
@@ -535,10 +531,7 @@ func (me *messageEvents) messagesForTs(ts *block.TipSet, consume func(message *t
 		}
 
 		for _, m := range msgs.SecpkMessages {
-			mMcid, err := m.Message.Cid()
-			if err != nil {
-				continue
-			}
+			mMcid := m.Message.Cid()
 			_, ok := seen[mMcid]
 			if ok {
 				continue
@@ -553,7 +546,7 @@ func (me *messageEvents) messagesForTs(ts *block.TipSet, consume func(message *t
 // MsgHandler arguments:
 // `ts` is the tipset, in which the `msg` is included.
 // `curH`-`ts.Height` = `confidence`
-type MsgHandler func(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *block.TipSet, curH abi.ChainEpoch) (more bool, err error)
+type MsgHandler func(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error)
 
 type MsgMatchFunc func(msg *types.UnsignedMessage) (matched bool, err error)
 
@@ -586,16 +579,12 @@ type MsgMatchFunc func(msg *types.UnsignedMessage) (matched bool, err error)
 //   message is queued up until the confidence interval has elapsed (and
 //   `MsgHandler` is called)
 func (me *messageEvents) Called(check CheckFunc, msgHnd MsgHandler, rev RevertHandler, confidence int, timeout abi.ChainEpoch, mf MsgMatchFunc) error {
-	hnd := func(data eventData, prevTs, ts *block.TipSet, height abi.ChainEpoch) (bool, error) {
+	hnd := func(data eventData, prevTs, ts *types.TipSet, height abi.ChainEpoch) (bool, error) {
 		msg, ok := data.(*types.UnsignedMessage)
 		if data != nil && !ok {
 			panic("expected msg")
 		}
-		msgCid, err := msg.Cid()
-		if err != nil {
-			return false, err
-		}
-		rec, err := me.cs.StateGetReceipt(me.ctx, msgCid, ts.Key())
+		rec, err := me.cs.StateGetReceipt(me.ctx, msg.Cid(), ts.Key())
 		if err != nil {
 			return false, err
 		}

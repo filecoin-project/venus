@@ -3,13 +3,13 @@ package cmd_test
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/app/node/test"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
@@ -36,10 +36,10 @@ func TestDagDaemon(t *testing.T) {
 
 		// CBOR decode the IPLD node's raw data into a Filecoin block
 
-		var actual block.Block
+		var actual types.BlockHeader
 		actual.UnmarshalCBOR(bytes.NewReader(ipldnode.RawData())) // nolint: errcheck
 		// assert.NoError(err)
-		// TODO Enable ^^ and debug why Block.Miner isn't being de/encoded properly.
+		// TODO Enable ^^ and debug why BlockHeader.Miner isn't being de/encoded properly.
 
 		// CIDs should be equal
 

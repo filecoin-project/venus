@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	"github.com/filecoin-project/venus/pkg/beacon"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -98,7 +97,7 @@ func NewBlockValidator(tv TicketValidator,
 	}
 }
 
-func (bv *BlockValidator) ValidateBlockHeader(ctx context.Context, blk *block.Block) (err error) {
+func (bv *BlockValidator) ValidateBlockHeader(ctx context.Context, blk *types.BlockHeader) (err error) {
 	validationStart := time.Now()
 	defer func() {
 		logExpect.Debugw("block validation header", "Cid", blk.Cid(), "took", time.Since(validationStart), "height", blk.Height, "age", time.Since(time.Unix(int64(blk.Timestamp), 0)), "Err", err)
@@ -106,7 +105,7 @@ func (bv *BlockValidator) ValidateBlockHeader(ctx context.Context, blk *block.Bl
 	return bv.validateBlock(ctx, blk)
 }
 
-func (bv *BlockValidator) ValidateFullBlock(ctx context.Context, blk *block.Block) (err error) {
+func (bv *BlockValidator) ValidateFullBlock(ctx context.Context, blk *types.BlockHeader) (err error) {
 	validationStart := time.Now()
 	defer func() {
 		logExpect.Infow("block validation", "Cid", blk.Cid(), "took", time.Since(validationStart), "height", blk.Height, "age", time.Since(time.Unix(int64(blk.Timestamp), 0)), "Err", err)
@@ -134,7 +133,7 @@ func (bv *BlockValidator) ValidateFullBlock(ctx context.Context, blk *block.Bloc
 	return err
 }
 
-func (bv *BlockValidator) validateBlock(ctx context.Context, blk *block.Block) error {
+func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHeader) error {
 	if _, ok := bv.validateHeaderCache.Get(blk.Cid()); ok {
 		return nil
 	}
@@ -164,7 +163,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *block.Block) e
 		return xerrors.Errorf("incoming header failed basic sanity checks: %w", err)
 	}
 
-	baseHeight, _ := parent.Height()
+	baseHeight := parent.Height()
 	nulls := blk.Height - (baseHeight + 1)
 	if tgtTs := parent.MinTimestamp() + bv.config.BlockDelay*uint64(nulls+1); blk.Timestamp != tgtTs {
 		return xerrors.Errorf("block has wrong timestamp: %d != %d", blk.Timestamp, tgtTs)
@@ -231,7 +230,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *block.Block) e
 	})
 
 	beaconValuesCheck := async.Err(func() error {
-		parentHeight, _ := parent.Height()
+		parentHeight := parent.Height()
 		if err = bv.ValidateBlockBeacon(blk, parentHeight, prevBeacon); err != nil {
 			return err
 		}
@@ -342,14 +341,14 @@ func (bv *BlockValidator) minerIsValid(ctx context.Context, maddr address.Addres
 	return nil
 }
 
-func (bv *BlockValidator) ValidateBlockBeacon(blk *block.Block, parentEpoch abi.ChainEpoch, prevEntry *block.BeaconEntry) error {
+func (bv *BlockValidator) ValidateBlockBeacon(blk *types.BlockHeader, parentEpoch abi.ChainEpoch, prevEntry *types.BeaconEntry) error {
 	if os.Getenv("VENUS_IGNORE_DRAND") == "_yes_" {
 		return nil
 	}
 	return beacon.ValidateBlockValues(bv.drand, blk, parentEpoch, prevEntry)
 }
 
-func (bv *BlockValidator) beaconBaseEntry(ctx context.Context, blk *block.Block) (*block.BeaconEntry, error) {
+func (bv *BlockValidator) beaconBaseEntry(ctx context.Context, blk *types.BlockHeader) (*types.BeaconEntry, error) {
 	if len(blk.BeaconEntries) > 0 {
 		return blk.BeaconEntries[len(blk.BeaconEntries)-1], nil
 	}
@@ -361,13 +360,13 @@ func (bv *BlockValidator) beaconBaseEntry(ctx context.Context, blk *block.Block)
 	return chain.FindLatestDRAND(ctx, parent, bv.chainState)
 }
 
-func (bv *BlockValidator) ValidateBlockWinner(ctx context.Context, waddr address.Address, lbTs *block.TipSet, lbRoot cid.Cid, baseTs *block.TipSet, baseRoot cid.Cid,
-	blk *block.Block, prevEntry *block.BeaconEntry) error {
+func (bv *BlockValidator) ValidateBlockWinner(ctx context.Context, waddr address.Address, lbTs *types.TipSet, lbRoot cid.Cid, baseTs *types.TipSet, baseRoot cid.Cid,
+	blk *types.BlockHeader, prevEntry *types.BeaconEntry) error {
 	if blk.ElectionProof.WinCount < 1 {
 		return xerrors.Errorf("block is not claiming to be a winner")
 	}
 
-	baseHeight, _ := baseTs.Height()
+	baseHeight := baseTs.Height()
 	eligible, err := bv.MinerEligibleToMine(ctx, blk.Miner, baseRoot, baseHeight, lbTs)
 	if err != nil {
 		return xerrors.Errorf("determining if miner has min power failed: %v", err)
@@ -418,7 +417,7 @@ func (bv *BlockValidator) ValidateBlockWinner(ctx context.Context, waddr address
 	return nil
 }
 
-func (bv *BlockValidator) MinerEligibleToMine(ctx context.Context, addr address.Address, parentStateRoot cid.Cid, parentHeight abi.ChainEpoch, lookbackTs *block.TipSet) (bool, error) {
+func (bv *BlockValidator) MinerEligibleToMine(ctx context.Context, addr address.Address, parentStateRoot cid.Cid, parentHeight abi.ChainEpoch, lookbackTs *types.TipSet) (bool, error) {
 	hmp, err := bv.minerHasMinPower(ctx, addr, lookbackTs)
 
 	// TODO: We're blurring the lines between a "runtime network version" and a "Lotus upgrade epoch", is that unavoidable?
@@ -498,7 +497,7 @@ func (bv *BlockValidator) MinerEligibleToMine(ctx context.Context, addr address.
 	return true, nil
 }
 
-func (bv *BlockValidator) minerHasMinPower(ctx context.Context, addr address.Address, ts *block.TipSet) (bool, error) {
+func (bv *BlockValidator) minerHasMinPower(ctx context.Context, addr address.Address, ts *types.TipSet) (bool, error) {
 	vms := cbor.NewCborStore(bv.bstore)
 	sm, err := state.LoadState(ctx, vms, ts.Blocks()[0].ParentStateRoot)
 	if err != nil {
@@ -522,7 +521,7 @@ func (bv *BlockValidator) minerHasMinPower(ctx context.Context, addr address.Add
 	return ps.MinerNominalPowerMeetsConsensusMinimum(addr)
 }
 
-func (bv *BlockValidator) VerifyWinningPoStProof(ctx context.Context, nv network.Version, blk *block.Block, prevBeacon *block.BeaconEntry, lbst cid.Cid) error {
+func (bv *BlockValidator) VerifyWinningPoStProof(ctx context.Context, nv network.Version, blk *types.BlockHeader, prevBeacon *types.BeaconEntry, lbst cid.Cid) error {
 	if constants.InsecurePoStValidation {
 		if len(blk.WinPoStProof) == 0 {
 			return xerrors.Errorf("[INSECURE-POST-VALIDATION] No winning post proof given")
@@ -589,7 +588,7 @@ func (bv *BlockValidator) VerifyWinningPoStProof(ctx context.Context, nv network
 }
 
 // TODO: We should extract this somewhere else and make the message pool and miner use the same logic
-func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *appstate.SignatureValidator, blk *block.Block, baseTs *block.TipSet) (err error) {
+func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *appstate.SignatureValidator, blk *types.BlockHeader, baseTs *types.TipSet) (err error) {
 	blksecpMsgs, blkblsMsgs, err := bv.messageStore.LoadMetaMessages(ctx, blk.Messages)
 	if err != nil {
 		return xerrors.Errorf("failed loading message list %s for block %s %v", blk.Messages, blk.Cid(), err)
@@ -616,7 +615,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 		return xerrors.Errorf("loading state: %v", err)
 	}
 
-	baseHeight, _ := baseTs.Height()
+	baseHeight := baseTs.Height()
 	pl := bv.gasPirceSchedule.PricelistByEpoch(baseHeight)
 	var sumGasLimit int64
 	checkMsg := func(msg types.ChainMsg) error {
@@ -708,7 +707,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 // ValidateMsgMeta performs structural and content hash validation of the
 // messages within this block. If validation passes, it stores the messages in
 // the underlying IPLD block store.
-func (bv *BlockValidator) ValidateMsgMeta(fblk *block.FullBlock) error {
+func (bv *BlockValidator) ValidateMsgMeta(fblk *types.FullBlock) error {
 	if msgc := len(fblk.BLSMessages) + len(fblk.SECPMessages); msgc > constants.BlockMessageLimit {
 		return xerrors.Errorf("block %s has too many messages (%d)", fblk.Header.Cid(), msgc)
 	}
@@ -753,7 +752,7 @@ func (bv *BlockValidator) ValidateMsgMeta(fblk *block.FullBlock) error {
 	return bstore.CopyParticial(context.TODO(), blockstore, bv.bstore, smroot)
 }
 
-func blockSanityChecks(b *block.Block) error {
+func blockSanityChecks(b *types.BlockHeader) error {
 	if b.ElectionProof == nil {
 		return xerrors.Errorf("block cannot have nil election proof")
 	}

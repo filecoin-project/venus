@@ -4,10 +4,10 @@ import (
 	"context"
 	"github.com/filecoin-project/venus/pkg/chainsync/types"
 	"github.com/filecoin-project/venus/pkg/consensus"
+	types2 "github.com/filecoin-project/venus/pkg/types"
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/dispatcher"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
@@ -21,9 +21,9 @@ import (
 type BlockProposer interface {
 	SetConcurrent(number int64)
 	SyncTracker() *types.TargetTracker
-	SendHello(ci *block.ChainInfo) error
-	SendOwnBlock(ci *block.ChainInfo) error
-	SendGossipBlock(ci *block.ChainInfo) error
+	SendHello(ci *types2.ChainInfo) error
+	SendOwnBlock(ci *types2.ChainInfo) error
+	SendGossipBlock(ci *types2.ChainInfo) error
 }
 
 // Manager sync the chain.

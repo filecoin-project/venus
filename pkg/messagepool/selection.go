@@ -12,7 +12,6 @@ import (
 	tbig "github.com/filecoin-project/go-state-types/big"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -44,7 +43,7 @@ type msgChain struct {
 	prev         *msgChain
 }
 
-func (mp *MessagePool) SelectMessages(ts *block.TipSet, tq float64) (msgs []*types.SignedMessage, err error) {
+func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) (msgs []*types.SignedMessage, err error) {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
@@ -71,7 +70,7 @@ func (mp *MessagePool) SelectMessages(ts *block.TipSet, tq float64) (msgs []*typ
 	return msgs, nil
 }
 
-func (mp *MessagePool) selectMessagesOptimal(curTs, ts *block.TipSet, tq float64) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
 	start := time.Now()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
@@ -120,10 +119,7 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *block.TipSet, tq float64
 		return chains[i].Before(chains[j])
 	})
 
-	curHeight, err := curTs.Height()
-	if err != nil {
-		return nil, xerrors.Errorf("get height: %v", err)
-	}
+	curHeight := curTs.Height()
 	if !allowNegativeChains(curHeight) && len(chains) != 0 && chains[0].gasPerf < 0 {
 		log.Warnw("all messages in mpool have non-positive gas performance", "bestGasPerf", chains[0].gasPerf)
 		return result, nil
@@ -399,7 +395,7 @@ tailLoop:
 	return result, nil
 }
 
-func (mp *MessagePool) selectMessagesGreedy(curTs, ts *block.TipSet) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) selectMessagesGreedy(curTs, ts *types.TipSet) ([]*types.SignedMessage, error) {
 	start := time.Now()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
@@ -448,10 +444,7 @@ func (mp *MessagePool) selectMessagesGreedy(curTs, ts *block.TipSet) ([]*types.S
 		return chains[i].Before(chains[j])
 	})
 
-	curHeight, err := curTs.Height()
-	if err != nil {
-		return nil, xerrors.Errorf("get height: %v", err)
-	}
+	curHeight := curTs.Height()
 	if !allowNegativeChains(curHeight) && len(chains) != 0 && chains[0].gasPerf < 0 {
 		log.Warnw("all messages in mpool have non-positive gas performance", "bestGasPerf", chains[0].gasPerf)
 		return result, nil
@@ -539,7 +532,7 @@ tailLoop:
 	return result, nil
 }
 
-func (mp *MessagePool) selectPriorityMessages(pending map[address.Address]map[uint64]*types.SignedMessage, baseFee tbig.Int, ts *block.TipSet) ([]*types.SignedMessage, int64) {
+func (mp *MessagePool) selectPriorityMessages(pending map[address.Address]map[uint64]*types.SignedMessage, baseFee tbig.Int, ts *types.TipSet) ([]*types.SignedMessage, int64) {
 	start := time.Now()
 	defer func() {
 		if dt := time.Since(start); dt > time.Millisecond {
@@ -574,10 +567,7 @@ func (mp *MessagePool) selectPriorityMessages(pending map[address.Address]map[ui
 		return chains[i].Before(chains[j])
 	})
 
-	curHeight, err := ts.Height()
-	if err != nil {
-		return nil, gasLimit
-	}
+	curHeight := ts.Height()
 	if !allowNegativeChains(curHeight) && len(chains) != 0 && chains[0].gasPerf < 0 {
 		log.Warnw("all priority messages in mpool have negative gas performance", "bestGasPerf", chains[0].gasPerf)
 		return nil, gasLimit
@@ -648,7 +638,7 @@ tailLoop:
 	return result, gasLimit
 }
 
-func (mp *MessagePool) getPendingMessages(curTs, ts *block.TipSet) (map[address.Address]map[uint64]*types.SignedMessage, error) {
+func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.Address]map[uint64]*types.SignedMessage, error) {
 	start := time.Now()
 
 	result := make(map[address.Address]map[uint64]*types.SignedMessage)
@@ -660,8 +650,8 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *block.TipSet) (map[address.
 
 	// are we in sync?
 	inSync := false
-	curHeight, _ := curTs.Height()
-	tsHeight, _ := ts.Height()
+	curHeight := curTs.Height()
+	tsHeight := ts.Height()
 	if curHeight == tsHeight && curTs.Equals(ts) {
 		inSync = true
 	}
@@ -714,7 +704,7 @@ func (*MessagePool) getGasPerf(gasReward *big.Int, gasLimit int64) float64 {
 	return r
 }
 
-func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint64]*types.SignedMessage, baseFee tbig.Int, ts *block.TipSet) []*msgChain {
+func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint64]*types.SignedMessage, baseFee tbig.Int, ts *types.TipSet) []*msgChain {
 	// collect all messages
 	msgs := make([]*types.SignedMessage, 0, len(mset))
 	for _, m := range mset {
@@ -739,12 +729,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 		return nil
 	}
 
-	curHeight, err := ts.Height()
-	if err != nil {
-		log.Errorf("get height err: %v", actor, err)
-		return nil
-	}
-
+	curHeight := ts.Height()
 	curNonce := a.Nonce
 	balance := a.Balance.Int
 	gasLimit := int64(0)

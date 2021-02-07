@@ -5,14 +5,13 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
 	xerrors "github.com/pkg/errors"
 )
 
 type IActor interface {
-	StateGetActor(ctx context.Context, actor address.Address, tsk block.TipSetKey) (*types.Actor, error)
+	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	ActorGetSignature(ctx context.Context, actorAddr address.Address, method abi.MethodNum) (vm.ActorMethodSignature, error)
 	ListActor(ctx context.Context) (map[address.Address]*types.Actor, error)
 }
@@ -24,7 +23,7 @@ func NewActorAPI(chain *ChainSubmodule) ActorAPI {
 	return ActorAPI{chain: chain}
 }
 
-func (actorAPI *ActorAPI) StateGetActor(ctx context.Context, actor address.Address, tsk block.TipSetKey) (*types.Actor, error) {
+func (actorAPI *ActorAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
 	ts, err := actorAPI.chain.State.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)

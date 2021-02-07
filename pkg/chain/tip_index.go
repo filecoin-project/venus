@@ -2,11 +2,11 @@ package chain
 
 import (
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/ipfs/go-cid"
 	tcache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
@@ -27,15 +27,15 @@ type TipSetMetadata struct {
 	TipSetStateRoot cid.Cid
 
 	// TipSet is the set of blocks that forms the tip set
-	TipSet *block.TipSet
+	TipSet *types.TipSet
 
 	// TipSetReceipts receipts from all message contained within this tipset
 	TipSetReceipts cid.Cid
 }
 
 type TipLoader interface {
-	GetTipSet(key block.TipSetKey) (*block.TipSet, error)
-	LoadTipsetMetadata(ts *block.TipSet) (*TipSetMetadata, error)
+	GetTipSet(key types.TipSetKey) (*types.TipSet, error)
+	LoadTipsetMetadata(ts *types.TipSet) (*TipSetMetadata, error)
 }
 
 // TipStateCache tracks tipsets and their states by tipset block ids and parent
@@ -83,15 +83,9 @@ func (ti *TipStateCache) put(tsas *TipSetMetadata) error {
 	ti.tsasByID.Set(tsKey, tsas, timeExpire)
 
 	// Update tsasByParents
-	pSet, err := tsas.TipSet.Parents()
-	if err != nil {
-		return err
-	}
+	pSet := tsas.TipSet.Parents()
 	pKey := pSet.String()
-	h, err := tsas.TipSet.Height()
-	if err != nil {
-		return err
-	}
+	h := tsas.TipSet.Height()
 	key := makeKey(pKey, h)
 	tsasByID, ok := ti.tsasByParentsAndHeight.Get(key)
 	if !ok {
@@ -103,7 +97,7 @@ func (ti *TipStateCache) put(tsas *TipSetMetadata) error {
 }
 
 // Get returns the tipset given by the input ID and its state.
-func (ti *TipStateCache) Get(ts *block.TipSet) (*TipSetMetadata, error) {
+func (ti *TipStateCache) Get(ts *types.TipSet) (*TipSetMetadata, error) {
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
 	tsas, ok := ti.tsasByID.Get(ts.String())
@@ -124,7 +118,7 @@ func (ti *TipStateCache) Get(ts *block.TipSet) (*TipSetMetadata, error) {
 }
 
 // GetTipSetStateRoot returns the tipsetStateRoot from func (ti *TipStateCache) Get(tsKey string).
-func (ti *TipStateCache) GetTipSetStateRoot(ts *block.TipSet) (cid.Cid, error) {
+func (ti *TipStateCache) GetTipSetStateRoot(ts *types.TipSet) (cid.Cid, error) {
 	tsas, err := ti.Get(ts)
 	if err != nil {
 		return cid.Cid{}, err
@@ -133,7 +127,7 @@ func (ti *TipStateCache) GetTipSetStateRoot(ts *block.TipSet) (cid.Cid, error) {
 }
 
 // GetTipSetReceiptsRoot returns the tipsetReceipts from func (ti *TipStateCache) Get(tsKey string).
-func (ti *TipStateCache) GetTipSetReceiptsRoot(ts *block.TipSet) (cid.Cid, error) {
+func (ti *TipStateCache) GetTipSetReceiptsRoot(ts *types.TipSet) (cid.Cid, error) {
 	tsas, err := ti.Get(ts)
 	if err != nil {
 		return cid.Cid{}, err
@@ -143,19 +137,19 @@ func (ti *TipStateCache) GetTipSetReceiptsRoot(ts *block.TipSet) (cid.Cid, error
 
 // Has returns true iff the tipset with the input ID is stored in
 // the TipStateCache.
-func (ti *TipStateCache) Has(ts *block.TipSet) bool {
+func (ti *TipStateCache) Has(ts *types.TipSet) bool {
 	_, err := ti.Get(ts)
 	return err == nil
 }
 
 // GetSiblingState returns the all tipsets and states stored in the TipStateCache
 // such that the parent ID of these tipsets equals the input.
-func (ti *TipStateCache) GetSiblingState(ts *block.TipSet) ([]*TipSetMetadata, error) {
-	pTs, err := ti.loader.GetTipSet(ts.EnsureParents())
+func (ti *TipStateCache) GetSiblingState(ts *types.TipSet) ([]*TipSetMetadata, error) {
+	pTs, err := ti.loader.GetTipSet(ts.Parents())
 	if err != nil {
 		return nil, err
 	}
-	pKey := makeKey(pTs.Key().String(), ts.EnsureHeight())
+	pKey := makeKey(pTs.Key().String(), ts.Height())
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
 	tsasByID, ok := ti.tsasByParentsAndHeight.Get(pKey)
@@ -172,13 +166,13 @@ func (ti *TipStateCache) GetSiblingState(ts *block.TipSet) ([]*TipSetMetadata, e
 // HasSiblingState returns true iff there exist tipsets, and states,
 // tracked in the TipStateCache such that the parent ID of these tipsets equals the
 // input.
-func (ti *TipStateCache) HasSiblingState(ts *block.TipSet) bool {
-	pTs, err := ti.loader.GetTipSet(ts.EnsureParents())
+func (ti *TipStateCache) HasSiblingState(ts *types.TipSet) bool {
+	pTs, err := ti.loader.GetTipSet(ts.Parents())
 	if err != nil {
 		return false
 	}
 
-	pKey := makeKey(pTs.Key().String(), ts.EnsureHeight())
+	pKey := makeKey(pTs.Key().String(), ts.Height())
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
 	_, ok := ti.tsasByParentsAndHeight.Get(pKey)

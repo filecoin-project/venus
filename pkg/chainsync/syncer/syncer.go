@@ -21,7 +21,6 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
 	"github.com/filecoin-project/venus/pkg/clock"
@@ -72,36 +71,36 @@ func init() {
 type StateProcessor interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipt cid.Cid, err error)
+	RunStateTransition(ctx context.Context, ts *types.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipt cid.Cid, err error)
 }
 
 type BlockValidator interface {
-	ValidateFullBlock(ctx context.Context, blk *block.Block) error
+	ValidateFullBlock(ctx context.Context, blk *types.BlockHeader) error
 }
 
 // faultDetector tracks data for detecting consensus faults and emits faults
 // upon detection.
 type faultDetector interface {
-	CheckBlock(b *block.Block, p *block.TipSet) error
+	CheckBlock(b *types.BlockHeader, p *types.TipSet) error
 }
 
 // ChainReaderWriter reads and writes the chain bsstore.
 type ChainReaderWriter interface {
-	GetHead() *block.TipSet
-	GetTipSet(block.TipSetKey) (*block.TipSet, error)
-	GetTipSetStateRoot(*block.TipSet) (cid.Cid, error)
-	GetTipSetReceiptsRoot(*block.TipSet) (cid.Cid, error)
-	HasTipSetAndState(context.Context, *block.TipSet) bool
+	GetHead() *types.TipSet
+	GetTipSet(types.TipSetKey) (*types.TipSet, error)
+	GetTipSetStateRoot(*types.TipSet) (cid.Cid, error)
+	GetTipSetReceiptsRoot(*types.TipSet) (cid.Cid, error)
+	HasTipSetAndState(context.Context, *types.TipSet) bool
 	PutTipSetMetadata(context.Context, *chain.TipSetMetadata) error
-	SetHead(context.Context, *block.TipSet) error
-	HasSiblingState(*block.TipSet) bool
-	GetSiblingState(*block.TipSet) ([]*chain.TipSetMetadata, error)
-	GetLatestBeaconEntry(*block.TipSet) (*block.BeaconEntry, error)
-	GetGenesisBlock(context.Context) (*block.Block, error)
+	SetHead(context.Context, *types.TipSet) error
+	HasSiblingState(*types.TipSet) bool
+	GetSiblingState(*types.TipSet) ([]*chain.TipSetMetadata, error)
+	GetLatestBeaconEntry(*types.TipSet) (*types.BeaconEntry, error)
+	GetGenesisBlock(context.Context) (*types.BlockHeader, error)
 }
 
 type messageStore interface {
-	LoadTipSetMessage(ctx context.Context, ts *block.TipSet) ([]block.BlockMessagesInfo, error)
+	LoadTipSetMessage(ctx context.Context, ts *types.TipSet) ([]types.BlockMessagesInfo, error)
 	LoadMetaMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
 	LoadReceipts(context.Context, cid.Cid) ([]types.MessageReceipt, error)
 	StoreReceipts(context.Context, []types.MessageReceipt) (cid.Cid, error)
@@ -111,9 +110,9 @@ type messageStore interface {
 type ChainSelector interface {
 	// IsHeavier returns true if tipset a is heavier than tipset b and false if
 	// tipset b is heavier than tipset a.
-	IsHeavier(ctx context.Context, a, b *block.TipSet) (bool, error)
+	IsHeavier(ctx context.Context, a, b *types.TipSet) (bool, error)
 	// Weight returns the weight of a tipset after the upgrade to version 1
-	Weight(ctx context.Context, ts *block.TipSet) (big.Int, error)
+	Weight(ctx context.Context, ts *types.TipSet) (big.Int, error)
 }
 
 type Syncer struct {
@@ -139,7 +138,7 @@ type Syncer struct {
 	faultDetector
 
 	bsstore    blockstore.Blockstore
-	checkPoint block.TipSetKey
+	checkPoint types.TipSetKey
 
 	fork fork.IFork
 }
@@ -179,7 +178,7 @@ func NewSyncer(fv StateProcessor,
 //
 // Precondition: the caller of syncOne must hold the syncer's lock (syncer.mu) to
 // ensure head is not modified by another goroutine during run.
-func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) error {
+func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) error {
 	priorHeadKey := syncer.chainStore.GetHead()
 	// if tipset is already priorHeadKey, we've been here before. do nothing.
 	if priorHeadKey.Equals(next) {
@@ -224,7 +223,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 		}
 	}
 
-	logSyncer.Infow("Process TipSet ", "Height:", next.EnsureHeight(), "Blocks", next.Len(), " Root:", root, " receiptcid ", receiptCid, " time: ", time.Now().Sub(toProcessTime).Milliseconds())
+	logSyncer.Infow("Process TipSet ", "Height:", next.Height(), "Blocks", next.Len(), " Root:", root, " receiptcid ", receiptCid, " time: ", time.Now().Sub(toProcessTime).Milliseconds())
 
 	err = syncer.chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          next,
@@ -242,7 +241,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *block.TipSet) e
 // returns the union of the input tipset and the biggest tipset with the same
 // parents from the bsstore.
 // TODO: this leaks EC abstractions into the syncer, we should think about this.
-func (syncer *Syncer) widen(ctx context.Context, ts *block.TipSet) (*block.TipSet, error) {
+func (syncer *Syncer) widen(ctx context.Context, ts *types.TipSet) (*types.TipSet, error) {
 	// Lookup tipsets with the same parents from the bsstore.
 	if !syncer.chainStore.HasSiblingState(ts) {
 		return nil, nil
@@ -265,7 +264,7 @@ func (syncer *Syncer) widen(ctx context.Context, ts *block.TipSet) (*block.TipSe
 	}
 
 	// Form a new tipset from the union of ts and the largest in the bsstore, de-duped.
-	var blockSlice []*block.Block
+	var blockSlice []*types.BlockHeader
 	blockCids := make(map[cid.Cid]struct{})
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
@@ -279,7 +278,7 @@ func (syncer *Syncer) widen(ctx context.Context, ts *block.TipSet) (*block.TipSe
 			blockCids[blk.Cid()] = struct{}{}
 		}
 	}
-	wts, err := block.NewTipSet(blockSlice...)
+	wts, err := types.NewTipSet(blockSlice...)
 	if err != nil {
 		return nil, err
 	}
@@ -306,7 +305,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Tar
 		}
 		tracing.AddErrorEndSpan(ctx, span, &err)
 	}()
-	logSyncer.Infof("Begin fetch and sync of chain with head %v from %s at height %v", target.Head.Key(), target.Sender.String(), target.Head.EnsureHeight())
+	logSyncer.Infof("Begin fetch and sync of chain with head %v from %s at height %v", target.Head.Key(), target.Sender.String(), target.Head.Height())
 	head := syncer.chainStore.GetHead()
 	//If the store already has this tipset then the syncer is finished.
 	if target.Head.At(0).ParentWeight.LessThan(head.At(0).ParentWeight) {
@@ -322,12 +321,12 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Tar
 		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
 
-	logSyncer.Infof("fetch header success at %v %s ...", tipsets[0].EnsureHeight(), tipsets[0].Key())
+	logSyncer.Infof("fetch header success at %v %s ...", tipsets[0].Height(), tipsets[0].Key())
 	return syncer.syncSegement(ctx, target, tipsets)
 }
 
-func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target, tipsets []*block.TipSet) error {
-	parent, err := syncer.chainStore.GetTipSet(tipsets[0].EnsureParents())
+func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target, tipsets []*types.TipSet) error {
+	parent, err := syncer.chainStore.GetTipSet(tipsets[0].Parents())
 	if err != nil {
 		return err
 	}
@@ -336,10 +335,10 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 	errProcessChan <- nil //init
 	var wg sync.WaitGroup
 	//todo  write a pipline segment processor function
-	if err = RangeProcess(tipsets, func(segTipset []*block.TipSet) error {
+	if err = RangeProcess(tipsets, func(segTipset []*types.TipSet) error {
 		// fetch messages
-		startTip := segTipset[0].EnsureHeight()
-		emdTipset := segTipset[len(segTipset)-1].EnsureHeight()
+		startTip := segTipset[0].Height()
+		emdTipset := segTipset[len(segTipset)-1].Height()
 		logSyncer.Infof("start to fetch message segement %d-%d", startTip, emdTipset)
 		_, err := syncer.fetchSegMessage(ctx, segTipset)
 		if err != nil {
@@ -385,9 +384,9 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 	}
 }
 
-func (syncer *Syncer) fetchChainBlocks(ctx context.Context, knownTip *block.TipSet, targetTip *block.TipSet) ([]*block.TipSet, error) {
-	chainTipsets := []*block.TipSet{targetTip}
-	var flushDb = func(saveTips []*block.TipSet) error {
+func (syncer *Syncer) fetchChainBlocks(ctx context.Context, knownTip *types.TipSet, targetTip *types.TipSet) ([]*types.TipSet, error) {
+	chainTipsets := []*types.TipSet{targetTip}
+	var flushDb = func(saveTips []*types.TipSet) error {
 		bs := bstore.NewTemporary()
 		cborStore := cbor.NewCborStore(bs)
 		for _, tips := range saveTips {
@@ -401,27 +400,27 @@ func (syncer *Syncer) fetchChainBlocks(ctx context.Context, knownTip *block.TipS
 		return blockstoreutil.CopyBlockstore(ctx, bs, syncer.bsstore)
 	}
 
-	untilHeight := knownTip.EnsureHeight()
+	untilHeight := knownTip.Height()
 	count := 0
 loop:
-	for chainTipsets[len(chainTipsets)-1].EnsureHeight() > untilHeight {
-		tipSet, err := syncer.chainStore.GetTipSet(targetTip.EnsureParents())
+	for chainTipsets[len(chainTipsets)-1].Height() > untilHeight {
+		tipSet, err := syncer.chainStore.GetTipSet(targetTip.Parents())
 		if err == nil {
 			chainTipsets = append(chainTipsets, tipSet)
 			targetTip = tipSet
 			count++
 			if count%500 == 0 {
-				logSyncer.Info("load from local db ", "Height: ", tipSet.EnsureHeight())
+				logSyncer.Info("load from local db ", "Height: ", tipSet.Height())
 			}
 			continue
 		}
 
-		windows := targetTip.EnsureHeight() - untilHeight
+		windows := targetTip.Height() - untilHeight
 		if windows > 500 {
 			windows = 500
 		}
 
-		fetchHeaders, err := syncer.exchangeClient.GetBlocks(ctx, targetTip.EnsureParents(), int(windows))
+		fetchHeaders, err := syncer.exchangeClient.GetBlocks(ctx, targetTip.Parents(), int(windows))
 		if err != nil {
 			return nil, err
 		}
@@ -430,12 +429,12 @@ loop:
 			break loop
 		}
 
-		logSyncer.Infof("fetch blocks %d height from %d-%d", len(fetchHeaders), fetchHeaders[0].EnsureHeight(), fetchHeaders[len(fetchHeaders)-1].EnsureHeight())
+		logSyncer.Infof("fetch blocks %d height from %d-%d", len(fetchHeaders), fetchHeaders[0].Height(), fetchHeaders[len(fetchHeaders)-1].Height())
 		if err = flushDb(fetchHeaders); err != nil {
 			return nil, err
 		}
 		for _, b := range fetchHeaders {
-			if b.EnsureHeight() < untilHeight {
+			if b.Height() < untilHeight {
 				break loop
 			}
 			chainTipsets = append(chainTipsets, b)
@@ -454,7 +453,7 @@ loop:
 		return chainTipsets, nil
 	}
 
-	knownParent, err := syncer.chainStore.GetTipSet(knownTip.EnsureParents())
+	knownParent, err := syncer.chainStore.GetTipSet(knownTip.Parents())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load next local tipset: %w", err)
 	}
@@ -485,10 +484,10 @@ loop:
 	return chainTipsets, nil
 }
 
-func (syncer *Syncer) syncFork(ctx context.Context, incoming *block.TipSet, known *block.TipSet) ([]*block.TipSet, error) {
+func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, known *types.TipSet) ([]*types.TipSet, error) {
 	// TODO: Does this mean we always ask for ForkLengthThreshold blocks from the network, even if we just need, like, 2?
 	// Would it not be better to ask in smaller chunks, given that an ~ForkLengthThreshold is very rare?
-	tips, err := syncer.exchangeClient.GetBlocks(ctx, incoming.EnsureParents(), int(policy.ChainFinality))
+	tips, err := syncer.exchangeClient.GetBlocks(ctx, incoming.Parents(), int(policy.ChainFinality))
 	if err != nil {
 		return nil, err
 	}
@@ -498,13 +497,13 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *block.TipSet, know
 		return nil, err
 	}
 
-	nts, err := syncer.chainStore.GetTipSet(known.EnsureParents())
+	nts, err := syncer.chainStore.GetTipSet(known.Parents())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load next local tipset: %w", err)
 	}
 
 	for cur := 0; cur < len(tips); {
-		if nts.EnsureHeight() == 0 {
+		if nts.Height() == 0 {
 			if !gensisiBlock.Equals(nts.At(0)) {
 				return nil, xerrors.Errorf("somehow synced chain that linked back to a different genesis (bad genesis: %s)", nts.Key())
 			}
@@ -515,10 +514,10 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *block.TipSet, know
 			return tips[:cur], nil
 		}
 
-		if nts.EnsureHeight() < tips[cur].EnsureHeight() {
+		if nts.Height() < tips[cur].Height() {
 			cur++
 		} else {
-			nts, err = syncer.chainStore.GetTipSet(nts.EnsureParents())
+			nts, err = syncer.chainStore.GetTipSet(nts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("loading next local tipset: %w", err)
 			}
@@ -528,20 +527,20 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *block.TipSet, know
 	return nil, ErrForkTooLong
 }
 
-func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*block.TipSet) ([]*block.FullTipSet, error) {
+func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*types.TipSet) ([]*types.FullTipSet, error) {
 	//get message from local bsstore
 	if len(segTipset) == 0 {
-		return []*block.FullTipSet{}, nil
+		return []*types.FullTipSet{}, nil
 	}
 
 	chain.Reverse(segTipset)
 	defer chain.Reverse(segTipset)
 
-	fullTipSets := make([]*block.FullTipSet, len(segTipset))
-	defer block.ReverseFullBlock(fullTipSets)
+	fullTipSets := make([]*types.FullTipSet, len(segTipset))
+	defer types.ReverseFullBlock(fullTipSets)
 
-	var leftChain []*block.TipSet
-	var letFullChain []*block.FullTipSet
+	var leftChain []*types.TipSet
+	var letFullChain []*types.FullTipSet
 	for index, tip := range segTipset {
 		fullTipset, err := syncer.getFullBlock(ctx, tip)
 		if err != nil {
@@ -592,23 +591,23 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*block.Ti
 	return fullTipSets, nil
 }
 
-func (syncer *Syncer) getFullBlock(ctx context.Context, tipset *block.TipSet) (*block.FullTipSet, error) {
-	fullBlocks := make([]*block.FullBlock, tipset.Len())
+func (syncer *Syncer) getFullBlock(ctx context.Context, tipset *types.TipSet) (*types.FullTipSet, error) {
+	fullBlocks := make([]*types.FullBlock, tipset.Len())
 	for index, blk := range tipset.Blocks() {
 		secpMsg, blsMsg, err := syncer.messageProvider.LoadMetaMessages(ctx, blk.Messages)
 		if err != nil {
 			return nil, err
 		}
-		fullBlocks[index] = &block.FullBlock{
+		fullBlocks[index] = &types.FullBlock{
 			Header:       blk,
 			BLSMessages:  blsMsg,
 			SECPMessages: secpMsg,
 		}
 	}
-	return block.NewFullTipSet(fullBlocks), nil
+	return types.NewFullTipSet(fullBlocks), nil
 }
 
-func (syncer *Syncer) processTipSetSegment(ctx context.Context, target *syncTypes.Target, parent *block.TipSet, segTipset []*block.TipSet) (*block.TipSet, error) {
+func (syncer *Syncer) processTipSetSegment(ctx context.Context, target *syncTypes.Target, parent *types.TipSet, segTipset []*types.TipSet) (*types.TipSet, error) {
 	for i, ts := range segTipset {
 		err := syncer.syncOne(ctx, parent, ts)
 		if err != nil {
@@ -626,11 +625,11 @@ func (syncer *Syncer) processTipSetSegment(ctx context.Context, target *syncType
 	return parent, nil
 }
 
-func (syncer *Syncer) Head() *block.TipSet {
+func (syncer *Syncer) Head() *types.TipSet {
 	return syncer.chainStore.GetHead()
 }
 
-func (syncer *Syncer) SetHead(ctx context.Context, ts *block.TipSet) error {
+func (syncer *Syncer) SetHead(ctx context.Context, ts *types.TipSet) error {
 	syncer.headLock.Lock()
 	defer syncer.headLock.Unlock()
 	head := syncer.chainStore.GetHead()
@@ -650,12 +649,12 @@ func (syncer *Syncer) SetHead(ctx context.Context, ts *block.TipSet) error {
 // either validate it here, or ensure that its validated elsewhere (maybe make
 // sure the blocksync code checks it?)
 // maybe this code should actually live in blocksync??
-func zipTipSetAndMessages(bs blockstore.Blockstore, ts *block.TipSet, allbmsgs []*types.UnsignedMessage, allsmsgs []*types.SignedMessage, bmi, smi [][]uint64) (*block.FullTipSet, error) {
+func zipTipSetAndMessages(bs blockstore.Blockstore, ts *types.TipSet, allbmsgs []*types.UnsignedMessage, allsmsgs []*types.SignedMessage, bmi, smi [][]uint64) (*types.FullTipSet, error) {
 	if len(ts.Blocks()) != len(smi) || len(ts.Blocks()) != len(bmi) {
 		return nil, fmt.Errorf("msgincl length didnt match tipset size")
 	}
 
-	fts := &block.FullTipSet{}
+	fts := &types.FullTipSet{}
 	for bi, b := range ts.Blocks() {
 		if msgc := len(bmi[bi]) + len(smi[bi]); msgc > constants.BlockMessageLimit {
 			return nil, fmt.Errorf("block %q has too many messages (%d)", b.Cid(), msgc)
@@ -665,7 +664,7 @@ func zipTipSetAndMessages(bs blockstore.Blockstore, ts *block.TipSet, allbmsgs [
 		var smsgCids []cid.Cid
 		for _, m := range smi[bi] {
 			smsgs = append(smsgs, allsmsgs[m])
-			mCid, _ := allsmsgs[m].Cid()
+			mCid := allsmsgs[m].Cid()
 			smsgCids = append(smsgCids, mCid)
 		}
 
@@ -673,7 +672,7 @@ func zipTipSetAndMessages(bs blockstore.Blockstore, ts *block.TipSet, allbmsgs [
 		var bmsgCids []cid.Cid
 		for _, m := range bmi[bi] {
 			bmsgs = append(bmsgs, allbmsgs[m])
-			mCid, _ := allbmsgs[m].Cid()
+			mCid := allbmsgs[m].Cid()
 			bmsgCids = append(bmsgCids, mCid)
 		}
 
@@ -686,7 +685,7 @@ func zipTipSetAndMessages(bs blockstore.Blockstore, ts *block.TipSet, allbmsgs [
 			return nil, fmt.Errorf("messages didnt match message root in header for ts %s", ts.Key())
 		}
 
-		fb := &block.FullBlock{
+		fb := &types.FullBlock{
 			Header:       b,
 			BLSMessages:  bmsgs,
 			SECPMessages: smsgs,
@@ -700,7 +699,7 @@ func zipTipSetAndMessages(bs blockstore.Blockstore, ts *block.TipSet, allbmsgs [
 
 const maxProcessLen = 32
 
-func RangeProcess(ts []*block.TipSet, cb func(ts []*block.TipSet) error) (err error) {
+func RangeProcess(ts []*types.TipSet, cb func(ts []*types.TipSet) error) (err error) {
 	for {
 		if len(ts) == 0 {
 			break
