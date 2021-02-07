@@ -113,11 +113,11 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents types.TipSetKey, h abi.ChainEpoc
 	return ts
 }
 
-func (fcs *fakeCS) ChainNotify(context.Context) chan []*chain.HeadChange {
+func (fcs *fakeCS) ChainNotify(context.Context) (<-chan []*chain.HeadChange, error) {
 	out := make(chan []*chain.HeadChange, 1)
 	best, err := fcs.tsc.best()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	out <- []*chain.HeadChange{{Type: chain.HCCurrent, Val: best}}
 
@@ -140,7 +140,7 @@ func (fcs *fakeCS) ChainNotify(context.Context) chan []*chain.HeadChange {
 		out <- notif
 	}
 
-	return out
+	return out, nil
 }
 
 func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*api2.BlockMessages, error) {
