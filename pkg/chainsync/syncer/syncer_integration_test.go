@@ -2,10 +2,11 @@ package syncer_test
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/chainsync/types"
-	types2 "github.com/filecoin-project/venus/pkg/types"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/chainsync/types"
+	types2 "github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,7 +36,7 @@ func TestLoadFork(t *testing.T) {
 	// *not* as the bsstore, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{MessageStore: builder.Mstore()}
 	sel := &chain.FakeChainSelector{}
-	s, err := syncer.NewSyncer(eval, eval, sel, builder.Store(), builder.Mstore(), builder.BlockStore(), builder, clock.NewFake(time.Unix(1234567890, 0)), &noopFaultDetector{}, nil)
+	s, err := syncer.NewSyncer(eval, eval, sel, builder.Store(), builder.Mstore(), builder.BlockStore(), builder, clock.NewFake(time.Unix(1234567890, 0)), nil)
 	require.NoError(t, err)
 
 	base := builder.AppendManyOn(3, genesis)
@@ -88,16 +89,9 @@ func TestLoadFork(t *testing.T) {
 		builder.BlockStore(),
 		builder,
 		clock.NewFake(time.Unix(1234567890, 0)),
-		&noopFaultDetector{},
 		fork.NewMockFork())
 	require.NoError(t, err)
 
 	assert.True(t, newStore.HasTipSetAndState(ctx, left))
 	assert.False(t, newStore.HasTipSetAndState(ctx, right))
-}
-
-type noopFaultDetector struct{}
-
-func (fd *noopFaultDetector) CheckBlock(_ *types2.BlockHeader, _ *types2.TipSet) error {
-	return nil
 }

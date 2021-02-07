@@ -308,7 +308,6 @@ func TestNoUncessesaryFetch(t *testing.T) {
 		builder.BlockStore(),
 		builder,
 		clock.NewFake(time.Unix(1234567890, 0)),
-		&noopFaultDetector{},
 		fork.NewMockFork())
 	require.NoError(t, err)
 
@@ -571,7 +570,7 @@ func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builde
 		builder.BlockStore(),
 		builder,
 		clock.NewFake(time.Unix(1234567890, 0)),
-		&noopFaultDetector{}, fork.NewMockFork())
+		fork.NewMockFork())
 	require.NoError(t, err)
 
 	return builder, syncer

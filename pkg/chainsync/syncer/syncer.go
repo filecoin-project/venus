@@ -78,12 +78,6 @@ type BlockValidator interface {
 	ValidateFullBlock(ctx context.Context, blk *types.BlockHeader) error
 }
 
-// faultDetector tracks data for detecting consensus faults and emits faults
-// upon detection.
-type faultDetector interface {
-	CheckBlock(b *types.BlockHeader, p *types.TipSet) error
-}
-
 // ChainReaderWriter reads and writes the chain bsstore.
 type ChainReaderWriter interface {
 	GetHead() *types.TipSet
@@ -134,9 +128,6 @@ type Syncer struct {
 	clock    clock.Clock
 	headLock sync.Mutex
 
-	// faultDetector is used to manage information about potential consensus faults
-	faultDetector
-
 	bsstore    blockstore.Blockstore
 	checkPoint types.TipSetKey
 
@@ -153,7 +144,6 @@ func NewSyncer(fv StateProcessor,
 	bsstore blockstore.Blockstore,
 	exchangeClient exchange.Client,
 	c clock.Clock,
-	fd faultDetector,
 	fork fork.IFork) (*Syncer, error) {
 	return &Syncer{
 		exchangeClient:  exchangeClient,
@@ -165,7 +155,6 @@ func NewSyncer(fv StateProcessor,
 		chainStore:      s,
 		messageProvider: m,
 		clock:           c,
-		faultDetector:   fd,
 		fork:            fork,
 	}, nil
 }
@@ -214,13 +203,6 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 	root, receiptCid, err := syncer.stateProcessor.RunStateTransition(ctx, next, parentStateRoot)
 	if err != nil {
 		return xerrors.Errorf("calc current tipset %s state failed %w", next.Key().String(), err)
-	}
-
-	for i := 0; i < next.Len(); i++ {
-		err = syncer.faultDetector.CheckBlock(next.At(i), parent)
-		if err != nil {
-			return err
-		}
 	}
 
 	logSyncer.Infow("Process TipSet ", "Height:", next.Height(), "Blocks", next.Len(), " Root:", root, " receiptcid ", receiptCid, " time: ", time.Now().Sub(toProcessTime).Milliseconds())
