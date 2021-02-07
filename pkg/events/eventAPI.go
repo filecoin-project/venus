@@ -11,12 +11,12 @@ import (
 )
 
 type IEvent interface {
-	ChainNotify(context.Context) chan []*chain2.HeadChange
+	ChainNotify(context.Context) (<-chan []*chain2.HeadChange, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*chain.BlockMessages, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	ChainHead(context.Context) (*types.TipSet, error)
 	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
-	ChainGetTipSet(types.TipSetKey) (*types.TipSet, error)
+	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) // optional / for CalledMsg
 }

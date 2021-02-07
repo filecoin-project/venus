@@ -232,11 +232,7 @@ func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, f
 			break
 		}
 
-		cur, err = ts.Parents()
-		if err != nil {
-			return nil, err
-		}
-
+		cur = ts.Parents()
 	}
 
 	return out, nil

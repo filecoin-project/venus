@@ -77,7 +77,7 @@ func (mp *MessagePool) republishPendingMessages() error {
 	gasLimit := int64(constants.BlockGasLimit)
 	minGas := int64(gasguess.MinGas)
 	var msgs []*types.SignedMessage
-	height, _ := ts.Height()
+	height := ts.Height()
 
 LOOP:
 	for i := 0; i < len(chains); {
@@ -155,8 +155,7 @@ LOOP:
 		mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolRepub], func() interface{} {
 			msgsEv := make([]MessagePoolEvtMessage, 0, len(msgs))
 			for _, m := range msgs {
-				mc, _ := m.Cid()
-				msgsEv = append(msgsEv, MessagePoolEvtMessage{UnsignedMessage: m.Message, CID: mc})
+				msgsEv = append(msgsEv, MessagePoolEvtMessage{UnsignedMessage: m.Message, CID: m.Cid()})
 			}
 			return MessagePoolEvt{
 				Action:   "repub",
@@ -168,8 +167,7 @@ LOOP:
 	// track most recently republished messages
 	republished := make(map[cid.Cid]struct{})
 	for _, m := range msgs[:count] {
-		c, _ := m.Cid()
-		republished[c] = struct{}{}
+		republished[m.Cid()] = struct{}{}
 	}
 
 	mp.lk.Lock()

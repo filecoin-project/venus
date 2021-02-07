@@ -79,8 +79,7 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 
 		// not a protected actor, track the messages and create chains
 		for _, m := range mset {
-			mc, _ := m.Message.Cid()
-			pruneMsgs[mc] = m
+			pruneMsgs[m.Message.Cid()] = m
 		}
 		actorChains := mp.createMessageChains(actor, mset, baseFeeLowerBound, ts)
 		chains = append(chains, actorChains...)
@@ -97,8 +96,7 @@ keepLoop:
 	for _, chain := range chains {
 		for _, m := range chain.msgs {
 			if keepCount < loWaterMark {
-				mc, _ := m.Message.Cid()
-				delete(pruneMsgs, mc)
+				delete(pruneMsgs, m.Message.Cid())
 				keepCount++
 			} else {
 				break keepLoop

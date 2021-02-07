@@ -107,15 +107,15 @@ func TestTsCacheNulls(t *testing.T) {
 
 	best, err := tsc.best()
 	require.NoError(t, err)
-	require.Equal(t, h-1, best.EnsureHeight())
+	require.Equal(t, h-1, best.Height())
 
 	ts, err := tsc.get(h - 1)
 	require.NoError(t, err)
-	require.Equal(t, h-1, ts.EnsureHeight())
+	require.Equal(t, h-1, ts.Height())
 
 	ts, err = tsc.get(h - 2)
 	require.NoError(t, err)
-	require.Equal(t, h-2, ts.EnsureHeight())
+	require.Equal(t, h-2, ts.Height())
 
 	ts, err = tsc.get(h - 3)
 	require.NoError(t, err)
@@ -123,7 +123,7 @@ func TestTsCacheNulls(t *testing.T) {
 
 	ts, err = tsc.get(h - 8)
 	require.NoError(t, err)
-	require.Equal(t, h-8, ts.EnsureHeight())
+	require.Equal(t, h-8, ts.Height())
 
 	best, err = tsc.best()
 	require.NoError(t, err)
@@ -135,14 +135,14 @@ func TestTsCacheNulls(t *testing.T) {
 
 	best, err = tsc.best()
 	require.NoError(t, err)
-	require.Equal(t, h-8, best.EnsureHeight())
+	require.Equal(t, h-8, best.Height())
 
 	h += 50
 	add()
 
 	ts, err = tsc.get(h - 1)
 	require.NoError(t, err)
-	require.Equal(t, h-1, ts.EnsureHeight())
+	require.Equal(t, h-1, ts.Height())
 }
 
 type tsCacheAPIStorageCallCounter struct {

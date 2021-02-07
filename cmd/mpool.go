@@ -365,10 +365,7 @@ Get pending messages.
 		{
 			currTs := ts
 			for i := 0; i < basefee; i++ {
-				key, err := currTs.Parents()
-				if err != nil {
-					return xerrors.Errorf("get TipSetKey error: %w", err)
-				}
+				key := currTs.Parents()
 				currTs, err = env.(*node.Env).ChainAPI.ChainGetTipSet(key)
 				if err != nil {
 					return xerrors.Errorf("walking chain: %w", err)
@@ -559,8 +556,7 @@ Get pending messages.
 			}
 
 			if cids {
-				cid, err := msg.Cid()
-				_ = re.Emit(cid)
+				_ = re.Emit(msg.Cid())
 				_ = re.Emit(err)
 			} else {
 				_ = re.Emit(msg)

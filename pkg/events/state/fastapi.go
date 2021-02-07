@@ -27,5 +27,5 @@ func (a *fastAPI) StateGetActor(ctx context.Context, actor address.Address, tsk 
 	if err != nil {
 		return nil, err
 	}
-	return a.FastChainAPI.StateGetActor(ctx, actor, ts.EnsureParents())
+	return a.FastChainAPI.StateGetActor(ctx, actor, ts.Parents())
 }

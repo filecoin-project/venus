@@ -255,7 +255,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 		// Process BLS messages From the block
 		for _, m := range append(blkInfo.BlsMessages, blkInfo.SecpkMessages...) {
 			// do not recompute already seen messages
-			mcid := msgCID(m.VMMessage())
+			mcid := m.VMMessage().Cid()
 			if _, found := seenMsgs[mcid]; found {
 				continue
 			}
@@ -878,14 +878,6 @@ func (vm *VM) Flush() (state.Root, error) {
 //
 // utils
 //
-
-func msgCID(msg *types.UnsignedMessage) cid.Cid {
-	c, err := msg.Cid()
-	if err != nil {
-		panic(fmt.Sprintf("failed To compute message CID: %v; %+v", err, msg))
-	}
-	return c
-}
 
 func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount, gasReward abi.TokenAmount, winCount int64) VmMessage {
 	params := &reward.AwardBlockRewardParams{

@@ -76,10 +76,8 @@ func TestMessageCid(t *testing.T) {
 		nil,
 	)
 
-	c1, err := msg1.Cid()
-	assert.NoError(t, err)
-	c2, err := msg2.Cid()
-	assert.NoError(t, err)
+	c1 := msg1.Cid()
+	c2 := msg2.Cid()
 
 	assert.NotEqual(t, c1.String(), c2.String())
 }
@@ -98,9 +96,7 @@ func TestMessageString(t *testing.T) {
 		nil,
 	)
 
-	cid, err := msg.Cid()
-	require.NoError(t, err)
-
+	cid := msg.Cid()
 	got := msg.String()
 	assert.Contains(t, got, cid.String())
 }

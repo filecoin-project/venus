@@ -28,8 +28,6 @@ type TipSet struct {
 var (
 	// errNoBlocks is returned from the tipset constructor when given no blocks.
 	errNoBlocks = errors.New("no blocks for tipset")
-	// errUndefTipSet is returned from tipset methods invoked on an undefined tipset.
-	errUndefTipSet = errors.New("undefined tipset")
 )
 
 // UndefTipSet is a singleton representing a nil or undefined tipset.
@@ -135,16 +133,19 @@ func (ts *TipSet) MinTicket() Ticket {
 	return min.Ticket
 }
 
-// Height returns the height of a tipset.
-func (ts *TipSet) Height() (abi.ChainEpoch, error) {
-	if len(ts.blocks) == 0 {
-		return 0, errUndefTipSet
+func (ts *TipSet) Cids() []cid.Cid {
+	var cids []cid.Cid
+	if ts.Defined() {
+		for _, b := range ts.blocks {
+			cids = append(cids, b.Cid())
+		}
+		return cids
 	}
-	return ts.blocks[0].Height, nil
+	return []cid.Cid{}
 }
 
 // Height returns the height of a tipset.
-func (ts *TipSet) EnsureHeight() abi.ChainEpoch {
+func (ts *TipSet) Height() abi.ChainEpoch {
 	if ts.Defined() {
 		return ts.blocks[0].Height
 	}
@@ -152,23 +153,19 @@ func (ts *TipSet) EnsureHeight() abi.ChainEpoch {
 }
 
 // Parents returns the CIDs of the parents of the blocks in the tipset.
-func (ts *TipSet) Parents() (TipSetKey, error) {
-	if len(ts.blocks) == 0 {
-		return TipSetKey{}, errUndefTipSet
+func (ts *TipSet) Parents() TipSetKey {
+	if ts.Defined() {
+		return ts.blocks[0].Parents
 	}
-	return ts.blocks[0].Parents, nil
-}
-
-func (ts *TipSet) EnsureParents() TipSetKey {
-	return ts.blocks[0].Parents
+	return TipSetKey{}
 }
 
 // ParentWeight returns the tipset's ParentWeight in fixed point form.
-func (ts *TipSet) ParentWeight() (fbig.Int, error) {
-	if len(ts.blocks) == 0 {
-		return fbig.Zero(), errUndefTipSet
+func (ts *TipSet) ParentWeight() fbig.Int {
+	if ts.Defined() {
+		return ts.blocks[0].ParentWeight
 	}
-	return ts.blocks[0].ParentWeight, nil
+	return fbig.Zero()
 }
 
 // Equals tests whether the tipset contains the same blocks as another.
@@ -207,11 +204,11 @@ func (ts *TipSet) MinTimestamp() uint64 {
 }
 
 func (ts *TipSet) IsChildOf(parent *TipSet) bool {
-	return CidArrsEqual(ts.EnsureParents().Cids(), parent.key.Cids()) &&
+	return CidArrsEqual(ts.Parents().Cids(), parent.key.Cids()) &&
 		// FIXME: The height check might go beyond what is meant by
 		//  "parent", but many parts of the code rely on the tipset's
 		//  height for their processing logic at the moment to obviate it.
-		ts.EnsureHeight() > parent.EnsureHeight()
+		ts.Height() > parent.Height()
 }
 
 //this types just for marshal

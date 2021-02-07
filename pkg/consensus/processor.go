@@ -59,17 +59,10 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context,
 	_, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 
-	epoch, err := ts.Height()
-	if err != nil {
-		return cid.Undef, nil, err
-	}
-
+	epoch := ts.Height()
 	var parentEpoch abi.ChainEpoch
 	if parent.Defined() {
-		parentEpoch, err = parent.Height()
-		if err != nil {
-			return cid.Undef, nil, err
-		}
+		parentEpoch = parent.Height()
 	}
 
 	v, err := vm.NewVM(vmOption)

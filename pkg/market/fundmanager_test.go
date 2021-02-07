@@ -706,7 +706,7 @@ func (mapi *mockFundManagerAPI) MpoolPushMessage(ctx context.Context, msg *types
 	defer mapi.lk.Unlock()
 
 	smsg := &types.SignedMessage{Message: *msg}
-	smsgCid, _ := smsg.Cid()
+	smsgCid := smsg.Cid()
 	mapi.sentMsgs[smsgCid] = &sentMsg{msg: smsg, ready: make(chan struct{})}
 
 	return smsg, nil

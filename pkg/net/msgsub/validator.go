@@ -36,13 +36,13 @@ func NewMessageTopicValidator(syntaxVal *consensus.DefaultMessageSyntaxValidator
 				return false
 			}
 			if err := syntaxVal.ValidateSignedMessageSyntax(ctx, unmarshaled); err != nil {
-				mCid, _ := unmarshaled.Cid()
+				mCid := unmarshaled.Cid()
 				messageTopicLogger.Debugf("message %s from peer: %s failed to syntax validate: %s", mCid.String(), p.String(), err.Error())
 				mInvalidMsg.Inc(ctx, 1)
 				return false
 			}
 			if err := sigVal.Validate(ctx, unmarshaled); err != nil {
-				mCid, _ := unmarshaled.Cid()
+				mCid := unmarshaled.Cid()
 				messageTopicLogger.Debugf("message %s from peer: %s failed to signature validate: %s", mCid.String(), p.String(), err.Error())
 				mInvalidMsg.Inc(ctx, 1)
 				return false

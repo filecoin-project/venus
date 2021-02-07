@@ -52,16 +52,12 @@ func (o *stmgr) ResolveToKeyAddress(ctx context.Context, addr address.Address, t
 
 func (o *stmgr) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*types.InvocResult, error) {
 	timeStart := time.Now()
-	msgCid, err := msg.Cid()
-	if err != nil {
-		return nil, err
-	}
 	ret, err := o.cp.Call(ctx, msg, ts)
 	if err != nil {
 		return nil, err
 	}
 	return &types.InvocResult{
-		MsgCid:         msgCid,
+		MsgCid:         msg.Cid(),
 		Msg:            msg,
 		MsgRct:         &ret.Receipt,
 		ExecutionTrace: &ret.GasTracker.ExecutionTrace,

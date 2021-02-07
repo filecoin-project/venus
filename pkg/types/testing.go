@@ -284,34 +284,6 @@ func SignMsgs(ms MockSigner, msgs []*UnsignedMessage) ([]*SignedMessage, error) 
 	return smsgs, nil
 }
 
-// MsgCidsEqual returns true if the message cids are equal. It panics if
-// it can't get their cid.
-func MsgCidsEqual(m1, m2 *UnsignedMessage) bool {
-	m1Cid, err := m1.Cid()
-	if err != nil {
-		panic(err)
-	}
-	m2Cid, err := m2.Cid()
-	if err != nil {
-		panic(err)
-	}
-	return m1Cid.Equals(m2Cid)
-}
-
-// SmsgCidsEqual returns true if the SignedMessage cids are equal. It panics if
-// it can't get their cid.
-func SmsgCidsEqual(m1, m2 ChainMsg) bool {
-	m1Cid, err := m1.Cid()
-	if err != nil {
-		panic(err)
-	}
-	m2Cid, err := m2.Cid()
-	if err != nil {
-		panic(err)
-	}
-	return m1Cid.Equals(m2Cid)
-}
-
 // NewMsgsWithAddrs returns a slice of `n` messages who's `From` field's are pulled
 // from `a`. This method should be used when the addresses returned are to be signed
 // at a later point.

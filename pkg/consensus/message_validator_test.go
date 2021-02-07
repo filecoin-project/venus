@@ -92,8 +92,7 @@ func TestBLSSignatureValidationConfiguration(t *testing.T) {
 	require.NoError(t, err)
 
 	msg := types.NewMeteredMessage(from, addresses[1], 0, types.ZeroFIL, methodID, []byte("params"), types.NewGasFeeCap(1), types.NewGasPremium(1), 300)
-	mmsgCid, err := msg.Cid()
-	require.NoError(t, err)
+	mmsgCid := msg.Cid()
 
 	var signer = types.NewMockSigner(keys)
 	signer.AddrKeyInfo[msg.From] = keys[0]

@@ -134,15 +134,13 @@ var msgSendCmd = &cmds.Command{
 			if err != nil {
 				return err
 			}
-			c, _ = sm.Cid()
 			fmt.Println(sm.Cid())
 		} else {
 			sm, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(req.Context, msg, nil)
 			if err != nil {
 				return err
 			}
-			c, _ = sm.Cid()
-			fmt.Println(c)
+			fmt.Println(sm.Cid())
 		}
 
 		return re.Emit(&MessageSendResult{

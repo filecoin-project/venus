@@ -163,7 +163,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 		return xerrors.Errorf("incoming header failed basic sanity checks: %w", err)
 	}
 
-	baseHeight, _ := parent.Height()
+	baseHeight := parent.Height()
 	nulls := blk.Height - (baseHeight + 1)
 	if tgtTs := parent.MinTimestamp() + bv.config.BlockDelay*uint64(nulls+1); blk.Timestamp != tgtTs {
 		return xerrors.Errorf("block has wrong timestamp: %d != %d", blk.Timestamp, tgtTs)
@@ -230,7 +230,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	})
 
 	beaconValuesCheck := async.Err(func() error {
-		parentHeight, _ := parent.Height()
+		parentHeight := parent.Height()
 		if err = bv.ValidateBlockBeacon(blk, parentHeight, prevBeacon); err != nil {
 			return err
 		}
@@ -366,7 +366,7 @@ func (bv *BlockValidator) ValidateBlockWinner(ctx context.Context, waddr address
 		return xerrors.Errorf("block is not claiming to be a winner")
 	}
 
-	baseHeight, _ := baseTs.Height()
+	baseHeight := baseTs.Height()
 	eligible, err := bv.MinerEligibleToMine(ctx, blk.Miner, baseRoot, baseHeight, lbTs)
 	if err != nil {
 		return xerrors.Errorf("determining if miner has min power failed: %v", err)
@@ -615,7 +615,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 		return xerrors.Errorf("loading state: %v", err)
 	}
 
-	baseHeight, _ := baseTs.Height()
+	baseHeight := baseTs.Height()
 	pl := bv.gasPirceSchedule.PricelistByEpoch(baseHeight)
 	var sumGasLimit int64
 	checkMsg := func(msg types.ChainMsg) error {

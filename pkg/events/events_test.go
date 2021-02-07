@@ -51,7 +51,7 @@ func (fcs *fakeCS) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	panic("implement me")
 }
 
-func (fcs *fakeCS) ChainGetTipSet(key types.TipSetKey) (*types.TipSet, error) {
+func (fcs *fakeCS) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
 	return fcs.tipsets[key], nil
 }
 
@@ -113,11 +113,11 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents types.TipSetKey, h abi.ChainEpoc
 	return ts
 }
 
-func (fcs *fakeCS) ChainNotify(context.Context) chan []*chain.HeadChange {
+func (fcs *fakeCS) ChainNotify(context.Context) (<-chan []*chain.HeadChange, error) {
 	out := make(chan []*chain.HeadChange, 1)
 	best, err := fcs.tsc.best()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	out <- []*chain.HeadChange{{Type: chain.HCCurrent, Val: best}}
 
@@ -140,7 +140,7 @@ func (fcs *fakeCS) ChainNotify(context.Context) chan []*chain.HeadChange {
 		out <- notif
 	}
 
-	return out
+	return out, nil
 }
 
 func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*api2.BlockMessages, error) {
@@ -186,7 +186,7 @@ func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid, nulls ...int) { /
 		ts, err := fcs.tsc.best()
 		require.NoError(fcs.t, err)
 
-		if _, ok := nullm[int(ts.EnsureHeight())]; !ok {
+		if _, ok := nullm[int(ts.Height())]; !ok {
 			revs = append(revs, ts)
 			require.NoError(fcs.t, fcs.tsc.revert(ts))
 		}
@@ -247,7 +247,7 @@ func TestAt(t *testing.T) {
 	var reverted bool
 
 	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
-		require.Equal(t, 5, int(ts.EnsureHeight()))
+		require.Equal(t, 5, int(ts.Height()))
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
@@ -313,7 +313,7 @@ func TestAtDoubleTrigger(t *testing.T) {
 	var reverted bool
 
 	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
-		require.Equal(t, 5, int(ts.EnsureHeight()))
+		require.Equal(t, 5, int(ts.Height()))
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
@@ -356,7 +356,7 @@ func TestAtNullTrigger(t *testing.T) {
 	var reverted bool
 
 	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
-		require.Equal(t, abi.ChainEpoch(6), ts.EnsureHeight())
+		require.Equal(t, abi.ChainEpoch(6), ts.Height())
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
@@ -391,7 +391,7 @@ func TestAtNullConf(t *testing.T) {
 	var reverted bool
 
 	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
-		require.Equal(t, 5, int(ts.EnsureHeight()))
+		require.Equal(t, 5, int(ts.Height()))
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
@@ -433,7 +433,7 @@ func TestAtStart(t *testing.T) {
 	var reverted bool
 
 	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
-		require.Equal(t, 5, int(ts.EnsureHeight()))
+		require.Equal(t, 5, int(ts.Height()))
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
@@ -468,7 +468,7 @@ func TestAtStartConfidence(t *testing.T) {
 	var reverted bool
 
 	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
-		require.Equal(t, 5, int(ts.EnsureHeight()))
+		require.Equal(t, 5, int(ts.Height()))
 		require.Equal(t, 11, int(curH))
 		applied = true
 		return nil
@@ -498,7 +498,7 @@ func TestAtChained(t *testing.T) {
 
 	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
 		return events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
-			require.Equal(t, 10, int(ts.EnsureHeight()))
+			require.Equal(t, 10, int(ts.Height()))
 			applied = true
 			return nil
 		}, func(_ context.Context, ts *types.TipSet) error {
@@ -535,7 +535,7 @@ func TestAtChainedConfidence(t *testing.T) {
 
 	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
 		return events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
-			require.Equal(t, 10, int(ts.EnsureHeight()))
+			require.Equal(t, 10, int(ts.Height()))
 			applied = true
 			return nil
 		}, func(_ context.Context, ts *types.TipSet) error {
@@ -570,7 +570,7 @@ func TestAtChainedConfidenceNull(t *testing.T) {
 
 	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
 		applied = true
-		require.Equal(t, 6, int(ts.EnsureHeight()))
+		require.Equal(t, 6, int(ts.Height()))
 		return nil
 	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
@@ -659,7 +659,7 @@ func TestCalled(t *testing.T) {
 	require.Equal(t, false, applied)
 	require.Equal(t, false, reverted)
 
-	require.Equal(t, abi.ChainEpoch(7), appliedTs.EnsureHeight())
+	require.Equal(t, abi.ChainEpoch(7), appliedTs.Height())
 	require.Equal(t, "bafkqaaa", appliedTs.Blocks()[0].Messages.String())
 	require.Equal(t, abi.ChainEpoch(10), appliedH)
 	require.Equal(t, t0123, appliedMsg.To)
@@ -703,7 +703,7 @@ func TestCalled(t *testing.T) {
 	require.Equal(t, false, reverted)
 	applied = false
 
-	require.Equal(t, abi.ChainEpoch(9), appliedTs.EnsureHeight())
+	require.Equal(t, abi.ChainEpoch(9), appliedTs.Height())
 	require.Equal(t, "bafkqaaa", appliedTs.Blocks()[0].Messages.String())
 	require.Equal(t, abi.ChainEpoch(12), appliedH)
 	require.Equal(t, t0123, appliedMsg.To)
@@ -724,7 +724,7 @@ func TestCalled(t *testing.T) {
 	reverted = false
 	applied = false
 
-	require.Equal(t, abi.ChainEpoch(7), appliedTs.EnsureHeight())
+	require.Equal(t, abi.ChainEpoch(7), appliedTs.Height())
 	require.Equal(t, "bafkqaaa", appliedTs.Blocks()[0].Messages.String())
 	require.Equal(t, abi.ChainEpoch(10), appliedH)
 	require.Equal(t, t0123, appliedMsg.To)
@@ -825,7 +825,7 @@ func TestCalledTimeout(t *testing.T) {
 	}, func(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (bool, error) {
 		called = true
 		require.Nil(t, msg)
-		require.Equal(t, abi.ChainEpoch(20), ts.EnsureHeight())
+		require.Equal(t, abi.ChainEpoch(20), ts.Height())
 		require.Equal(t, abi.ChainEpoch(23), curH)
 		return false, nil
 	}, func(_ context.Context, ts *types.TipSet) error {
@@ -860,7 +860,7 @@ func TestCalledTimeout(t *testing.T) {
 	}, func(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (bool, error) {
 		called = true
 		require.Nil(t, msg)
-		require.Equal(t, abi.ChainEpoch(20), ts.EnsureHeight())
+		require.Equal(t, abi.ChainEpoch(20), ts.Height())
 		require.Equal(t, abi.ChainEpoch(23), curH)
 		return false, nil
 	}, func(_ context.Context, ts *types.TipSet) error {
@@ -901,10 +901,10 @@ func TestCalledOrder(t *testing.T) {
 		switch at {
 		case 0:
 			require.Equal(t, uint64(1), msg.Nonce)
-			require.Equal(t, abi.ChainEpoch(4), ts.EnsureHeight())
+			require.Equal(t, abi.ChainEpoch(4), ts.Height())
 		case 1:
 			require.Equal(t, uint64(2), msg.Nonce)
-			require.Equal(t, abi.ChainEpoch(5), ts.EnsureHeight())
+			require.Equal(t, abi.ChainEpoch(5), ts.Height())
 		default:
 			t.Fatal("apply should only get called twice, at: ", at)
 		}
@@ -913,9 +913,9 @@ func TestCalledOrder(t *testing.T) {
 	}, func(_ context.Context, ts *types.TipSet) error {
 		switch at {
 		case 2:
-			require.Equal(t, abi.ChainEpoch(5), ts.EnsureHeight())
+			require.Equal(t, abi.ChainEpoch(5), ts.Height())
 		case 3:
-			require.Equal(t, abi.ChainEpoch(4), ts.EnsureHeight())
+			require.Equal(t, abi.ChainEpoch(4), ts.Height())
 		default:
 			t.Fatal("revert should only get called twice, at: ", at)
 		}
@@ -1174,8 +1174,8 @@ func TestStateChanged(t *testing.T) {
 	require.Equal(t, false, reverted)
 
 	// Change happens from 5 -> 6
-	require.Equal(t, abi.ChainEpoch(5), appliedOldTs.EnsureHeight())
-	require.Equal(t, abi.ChainEpoch(6), appliedNewTs.EnsureHeight())
+	require.Equal(t, abi.ChainEpoch(5), appliedOldTs.Height())
+	require.Equal(t, abi.ChainEpoch(6), appliedNewTs.Height())
 
 	// Actually applied (with confidence) at 9
 	require.Equal(t, abi.ChainEpoch(9), appliedH)
@@ -1286,7 +1286,7 @@ func TestStateChangedTimeout(t *testing.T) {
 	}, func(oldTs, newTs *types.TipSet, data StateChange, curH abi.ChainEpoch) (bool, error) {
 		called = true
 		require.Nil(t, data)
-		require.Equal(t, abi.ChainEpoch(20), newTs.EnsureHeight())
+		require.Equal(t, abi.ChainEpoch(20), newTs.Height())
 		require.Equal(t, abi.ChainEpoch(23), curH)
 		return false, nil
 	}, func(_ context.Context, ts *types.TipSet) error {
@@ -1324,7 +1324,7 @@ func TestStateChangedTimeout(t *testing.T) {
 	}, func(oldTs, newTs *types.TipSet, data StateChange, curH abi.ChainEpoch) (bool, error) {
 		called = true
 		require.Nil(t, data)
-		require.Equal(t, abi.ChainEpoch(20), newTs.EnsureHeight())
+		require.Equal(t, abi.ChainEpoch(20), newTs.Height())
 		require.Equal(t, abi.ChainEpoch(23), curH)
 		return false, nil
 	}, func(_ context.Context, ts *types.TipSet) error {

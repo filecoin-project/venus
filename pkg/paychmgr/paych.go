@@ -437,7 +437,7 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 	if err != nil {
 		return cid.Undef, err
 	}
-	return smsg.Cid()
+	return smsg.Cid(), nil
 }
 
 func (ca *channelAccessor) allocateLane(ch address.Address) (uint64, error) {
@@ -585,7 +585,7 @@ func (ca *channelAccessor) settle(ctx context.Context, ch address.Address) (cid.
 	if err != nil {
 		log.Errorf("Error marking channel as settled: %s", err)
 	}
-	return smgs.Cid()
+	return smgs.Cid(), nil
 }
 
 func (ca *channelAccessor) collect(ctx context.Context, ch address.Address) (cid.Cid, error) {
@@ -611,5 +611,5 @@ func (ca *channelAccessor) collect(ctx context.Context, ch address.Address) (cid
 	if err != nil {
 		return cid.Undef, err
 	}
-	return smsg.Cid()
+	return smsg.Cid(), nil
 }

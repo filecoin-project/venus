@@ -390,10 +390,7 @@ func (ca *channelAccessor) createPaych(ctx context.Context, amt big.Int) (cid.Ci
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("initializing paych actor: %w", err)
 	}
-	mcid, err := smsg.Cid()
-	if err != nil {
-		return cid.Undef, err
-	}
+	mcid := smsg.Cid()
 	// Create a new channel in the store
 	ci, err := ca.store.CreateChannel(ca.from, ca.to, mcid, amt)
 	if err != nil {
@@ -473,10 +470,7 @@ func (ca *channelAccessor) addFunds(ctx context.Context, channelInfo *ChannelInf
 	if err != nil {
 		return nil, err
 	}
-	mcid, err := smsg.Cid()
-	if err != nil {
-		return nil, err
-	}
+	mcid := smsg.Cid()
 	// Store the add funds message CID on the channel
 	ca.mutateChannelInfo(channelInfo.ChannelID, func(ci *ChannelInfo) {
 		ci.PendingAmount = amt

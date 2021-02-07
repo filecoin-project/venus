@@ -24,12 +24,12 @@ type Target struct {
 }
 
 func (target *Target) IsNeibor(t *Target) bool {
-	if target.Head.EnsureHeight() != t.Head.EnsureHeight() {
+	if target.Head.Height() != t.Head.Height() {
 		return false
 	}
 
-	targetWeight, _ := target.Head.ParentWeight()
-	weightIn, _ := target.Head.ParentWeight()
+	targetWeight := target.Head.ParentWeight()
+	weightIn := target.Head.ParentWeight()
 	if !targetWeight.Equals(weightIn) {
 		return false
 	}
@@ -44,10 +44,10 @@ func (target *Target) IsNeibor(t *Target) bool {
 }
 
 func (target *Target) Key() string {
-	weightIn, _ := target.Head.ParentWeight()
+	weightIn := target.Head.ParentWeight()
 	return weightIn.String() +
-		strconv.FormatInt(int64(target.Head.EnsureHeight()), 10) +
-		target.Head.EnsureParents().String()
+		strconv.FormatInt(int64(target.Head.Height()), 10) +
+		target.Head.Parents().String()
 
 }
 
@@ -143,7 +143,7 @@ func sortTarget(target TargetBuckets) {
 	groups := make(map[string][]*Target)
 	var keys []fbig.Int
 	for _, t := range target {
-		weight, _ := t.Head.ParentWeight()
+		weight := t.Head.ParentWeight()
 		if _, ok := groups[weight.String()]; ok {
 			groups[weight.String()] = append(groups[weight.String()], t)
 		} else {
@@ -293,8 +293,8 @@ func (rq TargetBuckets) Len() int { return len(rq) }
 
 func (rq TargetBuckets) Less(i, j int) bool {
 	// We want Pop to give us the weight priority so we use greater than
-	weightI, _ := rq[i].Head.ParentWeight()
-	weightJ, _ := rq[j].Head.ParentWeight()
+	weightI := rq[i].Head.ParentWeight()
+	weightJ := rq[j].Head.ParentWeight()
 	return weightI.GreaterThan(weightJ)
 }
 

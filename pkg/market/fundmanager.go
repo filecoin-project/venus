@@ -678,11 +678,7 @@ func (env *fundManagerEnvironment) AddFunds(
 	if aerr != nil {
 		return cid.Undef, aerr
 	}
-	smsgCid, aerr := smsg.Cid()
-	if aerr != nil {
-		return cid.Undef, aerr
-	}
-	return smsgCid, nil
+	return smsg.Cid(), nil
 }
 
 func (env *fundManagerEnvironment) WithdrawFunds(
@@ -710,11 +706,7 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 	if aerr != nil {
 		return cid.Undef, aerr
 	}
-	smsgCid, aerr := smsg.Cid()
-	if aerr != nil {
-		return cid.Undef, aerr
-	}
-	return smsgCid, nil
+	return smsg.Cid(), nil
 }
 
 func (env *fundManagerEnvironment) WaitMsg(ctx context.Context, c cid.Cid) error {

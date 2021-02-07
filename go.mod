@@ -90,7 +90,7 @@ require (
 	github.com/libp2p/go-libp2p-kad-dht v0.11.0
 	github.com/libp2p/go-libp2p-mplex v0.3.0
 	github.com/libp2p/go-libp2p-peerstore v0.2.6
-	github.com/libp2p/go-libp2p-pubsub v0.4.0
+	github.com/libp2p/go-libp2p-pubsub v0.4.1
 	github.com/libp2p/go-libp2p-swarm v0.3.1
 	github.com/libp2p/go-libp2p-yamux v0.4.1
 	github.com/mattn/go-runewidth v0.0.8 // indirect
@@ -140,7 +140,7 @@ require (
 
 replace github.com/filecoin-project/venus => ./
 
-replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
+replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.21.0
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 

@@ -47,7 +47,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 		prev = &types.BeaconEntry{}
 	}
 
-	entries, err := beacon.BeaconEntriesForBlock(ctx, miningAPI.Ming.ChainModule.Drand, round, ts.EnsureHeight(), *prev)
+	entries, err := beacon.BeaconEntriesForBlock(ctx, miningAPI.Ming.ChainModule.Drand, round, ts.Height(), *prev)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 		return nil, xerrors.Errorf("failed to get randomness for winning post: %v", err)
 	}
 
-	nv := miningAPI.Ming.ChainModule.Fork.GetNtwkVersion(ctx, ts.EnsureHeight())
+	nv := miningAPI.Ming.ChainModule.Fork.GetNtwkVersion(ctx, ts.Height())
 
 	pv := miningAPI.Ming.proofVerifier
 	sectors, err := view.GetSectorsForWinningPoSt(ctx, nv, pv, lbst, maddr, prand)
@@ -124,7 +124,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	}
 
 	// TODO: Not ideal performance...This method reloads miner and power state (already looked up here and in GetPowerRaw)
-	eligible, err := miningAPI.Ming.SyncModule.BlockValidator.MinerEligibleToMine(ctx, maddr, pt, ts.EnsureHeight(), lbts)
+	eligible, err := miningAPI.Ming.SyncModule.BlockValidator.MinerEligibleToMine(ctx, maddr, pt, ts.Height(), lbts)
 	if err != nil {
 		return nil, xerrors.Errorf("determining miner eligibility: %v", err)
 	}
@@ -150,12 +150,10 @@ func (miningAPI *MiningAPI) MinerCreateBlock(ctx context.Context, bt *BlockTempl
 	var out types.BlockMsg
 	out.Header = fblk.Header
 	for _, msg := range fblk.BLSMessages {
-		mcid, _ := msg.Cid()
-		out.BlsMessages = append(out.BlsMessages, mcid)
+		out.BlsMessages = append(out.BlsMessages, msg.Cid())
 	}
 	for _, msg := range fblk.SECPMessages {
-		mcid, _ := msg.Cid()
-		out.SecpkMessages = append(out.SecpkMessages, mcid)
+		out.SecpkMessages = append(out.SecpkMessages, msg.Cid())
 	}
 
 	return &out, nil

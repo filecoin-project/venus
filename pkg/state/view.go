@@ -665,7 +665,7 @@ func (v *View) StateMinerProvingDeadline(ctx context.Context, addr addr.Address,
 		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
 	}
 
-	height, _ := ts.Height()
+	height := ts.Height()
 	di, err := mas.DeadlineInfo(height)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get deadline info: %v", err)
@@ -728,7 +728,7 @@ func (v *View) StateMinerAvailableBalance(ctx context.Context, maddr addr.Addres
 		return big.Int{}, xerrors.Errorf("failed to load miner actor state: %v", err)
 	}
 
-	height, _ := ts.Height()
+	height := ts.Height()
 	vested, err := mas.VestedFunds(height)
 	if err != nil {
 		return big.Int{}, err

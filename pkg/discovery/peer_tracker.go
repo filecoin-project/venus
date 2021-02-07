@@ -48,7 +48,7 @@ func (tracker *PeerTracker) SelectHead() (*types.ChainInfo, error) {
 	if len(heads) == 0 {
 		return nil, errors.New("no peers tracked")
 	}
-	sort.Slice(heads, func(i, j int) bool { return heads[i].Head.EnsureHeight() > heads[j].Head.EnsureHeight() })
+	sort.Slice(heads, func(i, j int) bool { return heads[i].Head.Height() > heads[j].Head.Height() })
 	return heads[0], nil
 }
 

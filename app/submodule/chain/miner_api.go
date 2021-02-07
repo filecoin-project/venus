@@ -143,7 +143,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerInfo(ctx context.Context, maddr ad
 		return miner.MinerInfo{}, xerrors.Errorf("loading view %s: %v", tsk, err)
 	}
 
-	nv := minerStateAPI.chain.Fork.GetNtwkVersion(ctx, ts.EnsureHeight())
+	nv := minerStateAPI.chain.Fork.GetNtwkVersion(ctx, ts.Height())
 	minfo, err := view.MinerInfo(ctx, maddr, nv)
 	if err != nil {
 		return miner.MinerInfo{}, err
@@ -211,7 +211,7 @@ func (minerStateAPI *MinerStateAPI) StateMinerProvingDeadline(ctx context.Contex
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor state: %v", err)
 	}
-	di, err := mas.DeadlineInfo(ts.EnsureHeight())
+	di, err := mas.DeadlineInfo(ts.Height())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get deadline info: %v", err)
 	}
@@ -407,11 +407,11 @@ func (minerStateAPI *MinerStateAPI) StateMinerPreCommitDepositForPower(ctx conte
 		return big.Int{}, xerrors.Errorf("loading market actor %s: %v", maddr, err)
 	} else if s, err := market.Load(store, act); err != nil {
 		return big.Int{}, xerrors.Errorf("loading market actor state %s: %v", maddr, err)
-	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.EnsureHeight(), pci.Expiration); err != nil {
+	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
 		return big.Int{}, xerrors.Errorf("verifying deals for activation: %v", err)
 	} else {
 		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
-		duration := pci.Expiration - ts.EnsureHeight()
+		duration := pci.Expiration - ts.Height()
 		sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
 	}
 
@@ -467,11 +467,11 @@ func (minerStateAPI *MinerStateAPI) StateMinerInitialPledgeCollateral(ctx contex
 		return big.Int{}, xerrors.Errorf("loading miner actor %s: %v", maddr, err)
 	} else if s, err := market.Load(store, act); err != nil {
 		return big.Int{}, xerrors.Errorf("loading market actor state %s: %v", maddr, err)
-	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.EnsureHeight(), pci.Expiration); err != nil {
+	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
 		return big.Int{}, xerrors.Errorf("verifying deals for activation: %v", err)
 	} else {
 		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
-		duration := pci.Expiration - ts.EnsureHeight()
+		duration := pci.Expiration - ts.Height()
 		sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
 	}
 
@@ -537,7 +537,7 @@ func (minerStateAPI *MinerStateAPI) StateVMCirculatingSupplyInternal(ctx context
 		return chain.CirculatingSupply{}, err
 	}
 
-	return minerStateAPI.chain.ChainReader.GetCirculatingSupplyDetailed(ctx, ts.EnsureHeight(), sTree)
+	return minerStateAPI.chain.ChainReader.GetCirculatingSupplyDetailed(ctx, ts.Height(), sTree)
 }
 
 func (minerStateAPI *MinerStateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error) {

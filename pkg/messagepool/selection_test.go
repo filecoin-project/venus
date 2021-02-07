@@ -53,10 +53,7 @@ func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, g
 		GasPremium: tbig.NewInt(int64(gasPrice)),
 	}
 
-	c, err := msg.Cid()
-	if err != nil {
-		panic(err)
-	}
+	c := msg.Cid()
 	sig, err := w.WalletSign(context.TODO(), from, c.Bytes(), wallet.MsgMeta{})
 	if err != nil {
 		panic(err)
@@ -1100,7 +1097,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 			}
 
 			for _, m := range msgs {
-				c, _ := m.Cid()
+				c := m.Cid()
 				optMsgs[c] = m
 			}
 		}
@@ -1330,7 +1327,7 @@ readLoop:
 		m.Message.From = localActor
 		m.Message.Nonce -= baseNonce
 
-		c, _ := m.Message.Cid()
+		c := m.Message.Cid()
 		sig, err := w.WalletSign(context.TODO(), localActor, c.Bytes(), wallet.MsgMeta{})
 		if err != nil {
 			t.Fatal(err)

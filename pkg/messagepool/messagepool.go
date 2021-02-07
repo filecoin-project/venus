@@ -284,14 +284,8 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 			return false, xerrors.Errorf("rejecting replace by fee because of nonce gap (Nonce: %d, nextNonce: %d): %v", m.Message.Nonce, nextNonce, ErrNonceGap)
 		}
 
-		mc, err := m.Cid()
-		if err != nil {
-			return false, err
-		}
-		exmsc, err := exms.Cid()
-		if err != nil {
-			return false, err
-		}
+		mc := m.Cid()
+		exmsc := exms.Cid()
 		if mc != exmsc {
 			// check if RBF passes
 			minPrice := ComputeMinRBF(exms.Message.GasPremium)
@@ -569,7 +563,7 @@ func (mp *MessagePool) addLocal(m *types.SignedMessage) error {
 	}
 	msgb := buf.Bytes()
 
-	c, _ := m.Cid()
+	c := m.Cid()
 	if err := mp.localMsgs.Put(datastore.NewKey(string(c.Bytes())), msgb); err != nil {
 		return xerrors.Errorf("persisting local message: %v", err)
 	}
@@ -588,7 +582,7 @@ func (mp *MessagePool) addLocal(m *types.SignedMessage) error {
 // For non local messages, if the message cannot be included in the next 20 blocks it returns
 // a (soft) validation error.
 func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.TipSet, local bool) (bool, error) {
-	epoch, _ := curTs.Height()
+	epoch := curTs.Height()
 	minGas := mp.gasPriceSchedule.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
 
 	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total(), constants.NewestNetworkVersion); err != nil {
@@ -663,7 +657,7 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 		}
 	}
 
-	return m.Cid()
+	return m.Cid(), nil
 }
 
 func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
@@ -717,11 +711,7 @@ func (mp *MessagePool) Add(m *types.SignedMessage) error {
 }
 
 func sigCacheKey(m *types.SignedMessage) (string, error) {
-	c, err := m.Cid()
-	if err != nil {
-		return "", err
-	}
-
+	c := m.Cid()
 	switch m.Signature.Type {
 	case crypto.SigTypeBLS:
 		if len(m.Signature.Data) < 90 {
@@ -748,10 +738,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 		return nil
 	}
 
-	c, err := m.Message.Cid()
-	if err != nil {
-		return err
-	}
+	c := m.Message.Cid()
 	if err := sigs.Verify(&m.Signature, m.Message.From, c.Bytes()); err != nil {
 		return err
 	}
@@ -869,11 +856,7 @@ func (mp *MessagePool) addSkipChecks(m *types.SignedMessage) error {
 func (mp *MessagePool) addLocked(m *types.SignedMessage, strict, untrusted bool) error {
 	log.Debugf("mpooladd: %s %d", m.Message.From, m.Message.Nonce)
 	if m.Signature.Type == crypto.SigTypeBLS {
-		c, err := m.Cid()
-		if err != nil {
-			return err
-		}
-		mp.blsSigCache.Add(c, m.Signature)
+		mp.blsSigCache.Add(m.Cid(), m.Signature)
 	}
 
 	if _, err := mp.api.PutMessage(m); err != nil {
@@ -920,7 +903,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, strict, untrusted bool)
 	}, localUpdates)
 
 	mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolAdd], func() interface{} {
-		mc, _ := m.Cid()
+		mc := m.Cid()
 		return MessagePoolEvt{
 			Action:   "add",
 			Messages: []MessagePoolEvtMessage{{UnsignedMessage: m.Message, CID: mc}},
@@ -1016,7 +999,7 @@ func (mp *MessagePool) PushUntrusted(m *types.SignedMessage) (cid.Cid, error) {
 		}
 	}
 
-	return m.Cid()
+	return m.Cid(), nil
 }
 
 func (mp *MessagePool) Remove(from address.Address, nonce uint64, applied bool) {
@@ -1039,10 +1022,9 @@ func (mp *MessagePool) remove(from address.Address, nonce uint64, applied bool) 
 		}, localUpdates)
 
 		mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
-			mc, _ := m.Cid()
 			return MessagePoolEvt{
 				Action:   "remove",
-				Messages: []MessagePoolEvtMessage{{UnsignedMessage: m.Message, CID: mc}}}
+				Messages: []MessagePoolEvtMessage{{UnsignedMessage: m.Message, CID: m.Cid()}}}
 		})
 
 		mp.currentSize--
@@ -1147,13 +1129,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 	var merr error
 
 	for _, ts := range revert {
-		tsKey, err := ts.Parents()
-		if err != nil {
-			log.Errorf("error get tipset parent key: %s", err)
-			merr = multierror.Append(merr, err)
-			continue
-		}
-
+		tsKey := ts.Parents()
 		pts, err := mp.api.LoadTipSet(tsKey)
 		if err != nil {
 			log.Errorf("error loading reverted tipset parent: %s", err)
@@ -1189,14 +1165,12 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 
 			for _, msg := range smsgs {
 				rm(msg.Message.From, msg.Message.Nonce)
-				c, _ := msg.Cid()
-				maybeRepub(c)
+				maybeRepub(msg.Cid())
 			}
 
 			for _, msg := range bmsgs {
 				rm(msg.From, msg.Nonce)
-				c, _ := msg.Cid()
-				maybeRepub(c)
+				maybeRepub(msg.Cid())
 			}
 		}
 	}
@@ -1264,13 +1238,12 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 
 			if ff != math.MaxUint64 {
 				m := bkt.msgs[ff]
-				mc, _ := m.Cid()
+				mc := m.Cid()
 
 				// cmsg can be nil if no messages from the current nonce are in the mpool
 				ccid := "nil"
 				if cmsg != nil {
-					c, _ := cmsg.Cid()
-					ccid = c.String()
+					ccid = cmsg.Cid().String()
 				}
 
 				log.Debugw("Nonce gap",
@@ -1373,8 +1346,7 @@ func (mp *MessagePool) MessagesForBlocks(blks []*types.BlockHeader) ([]*types.Si
 			if smsg != nil {
 				out = append(out, smsg)
 			} else {
-				mc, _ := msg.Cid()
-				log.Debugf("could not recover signature for bls message %s", mc)
+				log.Debugf("could not recover signature for bls message %s", msg.Cid())
 			}
 		}
 	}
@@ -1383,12 +1355,7 @@ func (mp *MessagePool) MessagesForBlocks(blks []*types.BlockHeader) ([]*types.Si
 }
 
 func (mp *MessagePool) RecoverSig(msg *types.UnsignedMessage) *types.SignedMessage {
-	c, err := msg.Cid()
-	if err != nil {
-		log.Errorf("failed to get msg cid: %v", err)
-		return nil
-	}
-	val, ok := mp.blsSigCache.Get(c)
+	val, ok := mp.blsSigCache.Get(msg.Cid())
 	if !ok {
 		return nil
 	}
@@ -1477,8 +1444,7 @@ func (mp *MessagePool) Clear(local bool) {
 			}
 
 			for _, m := range mset.msgs {
-				c, _ := m.Cid()
-				err := mp.localMsgs.Delete(datastore.NewKey(string(c.Bytes())))
+				err := mp.localMsgs.Delete(datastore.NewKey(string(m.Cid().Bytes())))
 				if err != nil {
 					log.Warnf("error deleting local message: %s", err)
 				}

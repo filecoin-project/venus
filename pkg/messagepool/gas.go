@@ -98,18 +98,12 @@ func (mp *MessagePool) GasEstimateGasPremium(
 	}
 
 	for i := uint64(0); i < nblocksincl*2; i++ {
-		h, err := ts.Height()
-		if err != nil {
-			return tbig.Int{}, err
-		}
+		h := ts.Height()
 		if h == 0 {
 			break // genesis
 		}
 
-		tsPKey, err := ts.Parents()
-		if err != nil {
-			return tbig.Int{}, err
-		}
+		tsPKey := ts.Parents()
 		pts, err := mp.api.ChainTipSet(tsPKey)
 		if err != nil {
 			return tbig.Int{}, err
@@ -190,10 +184,7 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Uns
 			break
 		}
 
-		tsKey, err := ts.Parents()
-		if err != nil {
-			return -1, err
-		}
+		tsKey := ts.Parents()
 		ts, err = mp.api.ChainTipSet(tsKey)
 		if err != nil {
 			return -1, xerrors.Errorf("getting parent tipset: %w", err)

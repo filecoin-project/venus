@@ -37,10 +37,7 @@ func NewConsensusFaultDetector(faultCh chan ConsensusFault) *ConsensusFaultDetec
 // Preconditions: the signature is already checked and p is the parent
 func (detector *ConsensusFaultDetector) CheckBlock(b *types.BlockHeader, p *types.TipSet) error {
 	latest := b.Height
-	parentHeight, err := p.Height()
-	if err != nil {
-		return err
-	}
+	parentHeight := p.Height()
 	earliest := parentHeight + 1
 
 	// Find per-miner index

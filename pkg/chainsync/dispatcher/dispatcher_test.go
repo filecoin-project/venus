@@ -66,8 +66,8 @@ func TestDispatchStartHappy(t *testing.T) {
 	}
 
 	sort.Slice(cis, func(i, j int) bool {
-		weigtI, _ := cis[i].Head.ParentWeight()
-		weigtJ, _ := cis[j].Head.ParentWeight()
+		weigtI := cis[i].Head.ParentWeight()
+		weigtJ := cis[j].Head.ParentWeight()
 		return weigtI.GreaterThan(weigtJ)
 	})
 	// check that the mockSyncer synced in order
@@ -75,13 +75,13 @@ func TestDispatchStartHappy(t *testing.T) {
 	for _, ci := range cis {
 		found := false
 		for _, call := range s.headsCalled {
-			if call.EnsureHeight() == ci.Head.EnsureHeight() {
+			if call.Height() == ci.Head.Height() {
 				found = true
 				break
 			}
 		}
 		if !found {
-			t.Errorf("block %d not found", ci.Head.EnsureHeight())
+			t.Errorf("block %d not found", ci.Head.Height())
 		}
 	}
 }
@@ -106,7 +106,7 @@ func TestQueueHappy(t *testing.T) {
 	// Pop in order
 	out0 := requirePop(t, testQ)
 
-	weight, _ := out0.ChainInfo.Head.ParentWeight()
+	weight := out0.ChainInfo.Head.ParentWeight()
 	assert.Equal(t, int64(1001), weight.Int.Int64())
 }
 
@@ -126,7 +126,7 @@ func TestQueueDuplicates(t *testing.T) {
 
 	// Pop
 	first := requirePop(t, testQ)
-	assert.Equal(t, abi.ChainEpoch(0), first.ChainInfo.Head.EnsureHeight())
+	assert.Equal(t, abi.ChainEpoch(0), first.ChainInfo.Head.Height())
 	testQ.Remove(first)
 
 }
