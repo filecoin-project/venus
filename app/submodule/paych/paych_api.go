@@ -63,8 +63,10 @@ type ChannelInfo struct {
 }
 
 type ChannelAvailableFunds = paychmgr.ChannelAvailableFunds
+
 type VoucherCreateResult = paychmgr.VoucherCreateResult
-type PaychStatus = types.PaychStatus
+
+type PaychStatus = types.PaychStatus //nolint
 
 func (a *paychAPI) PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*ChannelInfo, error) {
 	ch, mcid, err := a.paychMgr.GetPaych(ctx, from, to, amt)
