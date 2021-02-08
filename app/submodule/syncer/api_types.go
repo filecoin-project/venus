@@ -29,6 +29,11 @@ type InvocResult struct {
 	Duration       time.Duration
 }
 
+type ComputeStateOutput struct {
+	Root  cid.Cid
+	Trace []*InvocResult
+}
+
 type SyncState struct {
 	ActiveSyncs []ActiveSync
 
