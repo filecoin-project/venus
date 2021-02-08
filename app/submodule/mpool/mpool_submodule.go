@@ -86,7 +86,7 @@ func NewMpoolSubmodule(cfg messagepoolConfig,
 	if err != nil {
 		return nil, err
 	}
-	mp, err := messagepool.New(mpp, cfg.Repo().MetaDatastore(), cfg.Repo().Config().NetworkParams.ForkUpgradeParam, network.NetworkName, syncer.Consensus, chain.State, j)
+	mp, err := messagepool.New(mpp, cfg.Repo().MetaDatastore(), cfg.Repo().Config().NetworkParams.ForkUpgradeParam, network.NetworkName, syncer.Consensus, chain.ChainReader, j)
 	if err != nil {
 		return nil, xerrors.Errorf("constructing mpool: %s", err)
 	}
@@ -94,7 +94,7 @@ func NewMpoolSubmodule(cfg messagepoolConfig,
 	// setup messaging topic.
 	// register block validation on pubsub
 	msgSyntaxValidator := consensus.NewMessageSyntaxValidator()
-	msgSignatureValidator := consensus.NewMessageSignatureValidator(chain.State)
+	msgSignatureValidator := consensus.NewMessageSignatureValidator(chain.ChainReader)
 
 	mtv := msgsub.NewMessageTopicValidator(msgSyntaxValidator, msgSignatureValidator)
 	if err := network.Pubsub.RegisterTopicValidator(mtv.Topic(network.NetworkName), mtv.Validator(), mtv.Opts()...); err != nil {

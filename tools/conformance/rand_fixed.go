@@ -18,7 +18,7 @@ func NewFixedRand() chain.RandomnessSource {
 	return &fixedRand{}
 }
 
-func (r *fixedRand) Randomness(_ context.Context, _ crypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) (abi.Randomness, error) {
+func (r *fixedRand) GetRandomnessFromTickets(_ context.Context, _ crypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) (abi.Randomness, error) {
 	return []byte("i_am_random_____i_am_random_____"), nil // 32 bytes.
 }
 

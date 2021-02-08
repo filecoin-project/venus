@@ -274,7 +274,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, xerrors.Errorf("read or generate jwt secrect error %s", err)
 	}
 
-	stmgr := statemanger.NewStateMangerAPI(nd.chain.State, nd.syncer.Consensus)
+	stmgr := statemanger.NewStateMangerAPI(nd.chain.ChainReader, nd.syncer.Consensus)
 	mgrps := &paychmgr.ManagerParams{
 		MPoolAPI: nd.mpool.API(),
 		ChainAPI: nd.chain.API(),

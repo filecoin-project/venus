@@ -18,7 +18,7 @@ type HeadRandomness struct {
 	Head  types.TipSetKey
 }
 
-func (h *HeadRandomness) Randomness(ctx context.Context, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (h *HeadRandomness) GetRandomnessFromTickets(ctx context.Context, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	return h.Chain.SampleChainRandomness(ctx, h.Head, tag, epoch, entropy)
 }
 

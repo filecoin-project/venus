@@ -14,13 +14,12 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/state"
+	vmState "github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
-	vmState "github.com/filecoin-project/venus/pkg/vm/state"
 )
 
 type SyscallsStateView interface {
-	state.AccountStateView
+	ResolveToKeyAddr(ctx context.Context, address address.Address) (address.Address, error)
 	MinerInfo(ctx context.Context, maddr address.Address, nv network.Version) (*miner.MinerInfo, error)
 	TotalFilCircSupply(height abi.ChainEpoch, st vmState.Tree) (abi.TokenAmount, error)
 	GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version

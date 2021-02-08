@@ -35,10 +35,10 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/slashing"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
 )
 
@@ -66,7 +66,7 @@ func mkFakedSigSyscalls(sys vmcontext.SyscallsImpl) vmcontext.SyscallsImpl {
 }
 
 func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, miners []Miner, para *config.ForkUpgradeConfig) (cid.Cid, error) {
-	csc := func(context.Context, abi.ChainEpoch, state.Tree) (abi.TokenAmount, error) {
+	csc := func(context.Context, abi.ChainEpoch, tree.Tree) (abi.TokenAmount, error) {
 		return big.Zero(), nil
 	}
 
@@ -363,7 +363,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 // TODO: copied from actors test harness, deduplicate or remove from here
 type fakeRand struct{}
 
-func (fr *fakeRand) Randomness(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (fr *fakeRand) GetRandomnessFromTickets(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(epoch * 1000))).Read(out) //nolint
 	return out, nil

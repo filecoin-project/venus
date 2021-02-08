@@ -29,12 +29,11 @@ type MiningAPI struct { //nolint
 
 func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk types.TipSetKey) (*MiningBaseInfo, error) {
 	chainStore := miningAPI.Ming.ChainModule.ChainReader
-	chainState := miningAPI.Ming.ChainModule.State
 	ts, err := chainStore.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset for mining base: %v", err)
 	}
-	pt, err := chainState.GetTipSetStateRoot(ctx, ts)
+	pt, err := chainStore.GetTipSetStateRoot(ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset root for mining base: %v", err)
 	}
@@ -62,11 +61,11 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 		return nil, xerrors.Errorf("getting lookback miner actor state: %v", err)
 	}
 
-	view := state.NewView(chainState, lbst)
+	view := state.NewView(chainStore.Store(ctx), lbst)
 	act, err := view.LoadActor(ctx, maddr)
 	if xerrors.Is(err, types.ErrActorNotFound) {
 		//todo why
-		view = state.NewView(chainState, ts.At(0).ParentStateRoot)
+		view = state.NewView(chainStore.Store(ctx), ts.At(0).ParentStateRoot)
 		_, err := view.LoadActor(ctx, maddr)
 		if err != nil {
 			return nil, xerrors.Errorf("loading miner in current state: %v", err)
@@ -77,7 +76,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor: %v", err)
 	}
-	mas, err := miner.Load(chainState.Store(ctx), act)
+	mas, err := miner.Load(chainStore.Store(ctx), act)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor state: %v", err)
 	}
@@ -114,7 +113,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 		return nil, err
 	}
 
-	st, err := miningAPI.Ming.ChainModule.State.StateView(ts)
+	st, err := miningAPI.Ming.ChainModule.ChainReader.StateView(ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load latest state: %v", err)
 	}

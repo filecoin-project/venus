@@ -28,9 +28,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/gen"
 	genesis2 "github.com/filecoin-project/venus/pkg/gen/genesis"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
 var glog = logging.Logger("genesis")
@@ -51,7 +51,7 @@ var Ticket = types.Ticket{
 // VM is the view into the VM used during genesis block creation.
 type VM interface {
 	ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (*vm.Ret, error)
-	Flush() (state.Root, error)
+	Flush() (tree.Root, error)
 }
 
 func MakeGenesis(ctx context.Context, rep repo.Repo, outFile, genesisTemplate string, para *config.ForkUpgradeConfig) InitFunc {

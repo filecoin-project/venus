@@ -39,9 +39,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	init_ "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/multisig"
+	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	vmstate "github.com/filecoin-project/venus/pkg/vm/state"
 )
 
 var log = logging.Logger("fork")
@@ -198,7 +198,7 @@ func (us UpgradeSchedule) Validate() error {
 }
 
 type chainReader interface {
-	Head() *types.TipSet
+	GetHead() *types.TipSet
 	GetTipSet(types.TipSetKey) (*types.TipSet, error)
 	GetTipSetByHeight(context.Context, *types.TipSet, abi.ChainEpoch, bool) (*types.TipSet, error)
 	GetTipSetState(context.Context, *types.TipSet) (vmstate.Tree, error)
@@ -356,7 +356,7 @@ func doTransfer(tree vmstate.Tree, from, to address.Address, amt abi.TokenAmount
 
 func (c *ChainFork) ParentState(ts *types.TipSet) cid.Cid {
 	if ts == nil {
-		tts := c.cr.Head()
+		tts := c.cr.GetHead()
 		return tts.Blocks()[0].ParentStateRoot
 	}
 	return ts.Blocks()[0].ParentStateRoot

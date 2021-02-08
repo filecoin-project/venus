@@ -15,15 +15,15 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
 // RequireMakeStateTree takes a map of addresses to actors and stores them on
 // the state tree, requiring that all its steps succeed.
-func RequireMakeStateTree(t *testing.T, cst cbor.IpldStore, acts map[address.Address]*types.Actor) (cid.Cid, *state.State) {
+func RequireMakeStateTree(t *testing.T, cst cbor.IpldStore, acts map[address.Address]*types.Actor) (cid.Cid, *tree.State) {
 	ctx := context.Background()
-	tree, err := state.NewState(cst, state.StateTreeVersion0)
+	tree, err := tree.NewState(cst, tree.StateTreeVersion0)
 	if err != nil {
 		t.Fatal(err)
 	}

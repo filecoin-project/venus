@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	addr "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
@@ -20,8 +20,8 @@ import (
 )
 
 type FaultStateView interface {
-	state.AccountStateView
-	MinerInfo(ctx context.Context, maddr addr.Address, nv network.Version) (*miner.MinerInfo, error)
+	ResolveToKeyAddr(ctx context.Context, address address.Address) (address.Address, error)
+	MinerInfo(ctx context.Context, maddr address.Address, nv network.Version) (*miner.MinerInfo, error)
 }
 
 // Chain state required for checking consensus fault reports.

@@ -213,6 +213,7 @@ var minerInfoCmd = &cmds.Command{
 		}
 
 		ctx := req.Context
+		blockstoreAPI := env.(*node.Env).BlockStoreAPI
 		api := env.(*node.Env).ChainAPI
 
 		blockDelay, err := blockDelay(env.(*node.Env).ConfigAPI)
@@ -245,7 +246,7 @@ var minerInfoCmd = &cmds.Command{
 			return err
 		}
 
-		tbs := blockstoreutil.NewTieredBstore(chain.NewAPIBlockstore(api), blockstoreutil.NewTemporary())
+		tbs := blockstoreutil.NewTieredBstore(chain.NewAPIBlockstore(blockstoreAPI), blockstoreutil.NewTemporary())
 		mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
 		if err != nil {
 			return err

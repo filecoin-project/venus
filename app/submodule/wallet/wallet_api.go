@@ -35,8 +35,8 @@ type WalletAPI struct { //nolint
 
 // WalletBalance returns the current balance of the given wallet address.
 func (walletAPI *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error) {
-	headkey := walletAPI.walletModule.Chain.State.Head()
-	act, err := walletAPI.walletModule.Chain.State.GetActorAt(ctx, headkey, addr)
+	headkey := walletAPI.walletModule.Chain.ChainReader.GetHead()
+	act, err := walletAPI.walletModule.Chain.ChainReader.GetActorAt(ctx, headkey, addr)
 	if err != nil && strings.Contains(err.Error(), types.ErrActorNotFound.Error()) {
 		return abi.NewTokenAmount(0), nil
 	} else if err != nil {
@@ -114,12 +114,12 @@ func (walletAPI *WalletAPI) WalletExport(addr address.Address, password string) 
 
 func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte, _ wallet.MsgMeta) (*crypto.Signature, error) {
 	head := walletAPI.walletModule.Chain.ChainReader.GetHead()
-	view, err := walletAPI.walletModule.Chain.State.StateView(head)
+	view, err := walletAPI.walletModule.Chain.ChainReader.StateView(head)
 	if err != nil {
 		return nil, err
 	}
 
-	keyAddr, err := view.AccountSignerAddress(ctx, k)
+	keyAddr, err := view.ResolveToKeyAddr(ctx, k)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ID address: %v", keyAddr)
 	}

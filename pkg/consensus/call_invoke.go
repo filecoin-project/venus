@@ -17,9 +17,9 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
 func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *types.TipSet) (*vm.Ret, error) {
@@ -60,7 +60,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 		return nil, fork.ErrExpensiveFork
 	}
 
-	priorState, err := state.LoadState(ctx, cbor.NewCborStore(c.bstore), stateRoot)
+	priorState, err := tree.LoadState(ctx, cbor.NewCborStore(c.bstore), stateRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 	}
 
 	vmOption := vm.VmOption{
-		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
+		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 			dertail, err := c.chainState.GetCirculatingSupplyDetailed(ctx, epoch, tree)
 			if err != nil {
 				return abi.TokenAmount{}, err
@@ -183,7 +183,7 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *typ
 		msg.Value = abi.NewTokenAmount(0)
 	}
 
-	st, err := state.LoadState(ctx, cbor.NewCborStore(c.bstore), bstate)
+	st, err := tree.LoadState(ctx, cbor.NewCborStore(c.bstore), bstate)
 	if err != nil {
 		return nil, xerrors.Errorf("loading state: %v", err)
 	}
@@ -196,7 +196,7 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *typ
 	msg.Nonce = fromActor.Nonce
 
 	vmOption := vm.VmOption{
-		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
+		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 			dertail, err := chainReader.GetCirculatingSupplyDetailed(ctx, epoch, tree)
 			if err != nil {
 				return abi.TokenAmount{}, err

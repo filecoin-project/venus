@@ -24,9 +24,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/verifreg"
+	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
-	vmstate "github.com/filecoin-project/venus/pkg/vm/state"
 )
 
 // Viewer builds state views from state root CIDs.
@@ -105,20 +105,6 @@ func (v *View) GetMinerWorkerRaw(ctx context.Context, maddr addr.Address) (addr.
 		return addr.Undef, err
 	}
 	return v.ResolveToKeyAddr(ctx, minerInfo.Worker)
-}
-
-// Returns public key address if id address is given
-func (v *View) AccountSignerAddress(ctx context.Context, a addr.Address) (addr.Address, error) {
-	if a.Protocol() == addr.SECP256K1 || a.Protocol() == addr.BLS {
-		return a, nil
-	}
-
-	accountActorState, err := v.loadAccountActor(ctx, a)
-	if err != nil {
-		return addr.Undef, err
-	}
-
-	return accountActorState.PubkeyAddress()
 }
 
 func (v *View) MinerInfo(ctx context.Context, maddr addr.Address, nv network.Version) (*miner.MinerInfo, error) {
@@ -886,6 +872,7 @@ func (v *View) loadInitActor(ctx context.Context) (notinit.State, error) {
 func (v *View) LoadPaychState(ctx context.Context, actr *types.Actor) (paychActor.State, error) {
 	return v.loadPaychState(ctx, actr)
 }
+
 func (v *View) loadPaychState(ctx context.Context, actr *types.Actor) (paychActor.State, error) {
 	return paychActor.Load(adt.WrapStore(context.TODO(), v.ipldStore), actr)
 }

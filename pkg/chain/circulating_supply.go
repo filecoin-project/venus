@@ -21,8 +21,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
 type genesisReader interface {
@@ -57,7 +57,7 @@ func NewCirculatingSupplyCalculator(bstore blockstoreutil.Blockstore, genesisRea
 	return &CirculatingSupplyCalculator{bstore: bstore, genesisReader: genesisReader, upgradeConfig: upgradeConfig}
 }
 
-func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st state.Tree) (CirculatingSupply, error) {
+func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (CirculatingSupply, error) {
 	caculator.genesisMsigLk.Lock()
 	defer caculator.genesisMsigLk.Unlock()
 	if caculator.preIgnitionVesting == nil || caculator.genesisPledge.IsZero() || caculator.genesisMarketFunds.IsZero() {
@@ -174,7 +174,7 @@ func (caculator *CirculatingSupplyCalculator) setupGenesisVestingSchedule(ctx co
 	}
 
 	cst := cbornode.NewCborStore(caculator.bstore)
-	sTree, err := state.LoadState(ctx, cst, gts.At(0).ParentStateRoot)
+	sTree, err := tree.LoadState(ctx, cst, gts.At(0).ParentStateRoot)
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %v", err)
 	}
@@ -323,7 +323,7 @@ func (caculator *CirculatingSupplyCalculator) setupPostCalicoVesting(ctx context
 // GetVestedFunds returns all funds that have "left" actors that are in the genesis state:
 // - For Multisigs, it counts the actual amounts that have vested at the given epoch
 // - For Accounts, it counts max(currentBalance - genesisBalance, 0).
-func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, height abi.ChainEpoch, st state.Tree) (abi.TokenAmount, error) {
+func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (abi.TokenAmount, error) {
 	vf := big.Zero()
 	if height <= caculator.upgradeConfig.UpgradeIgnitionHeight {
 		for _, v := range caculator.preIgnitionVesting {
@@ -357,7 +357,7 @@ func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, 
 	return vf, nil
 }
 
-func (caculator *CirculatingSupplyCalculator) GetFilReserveDisbursed(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
+func (caculator *CirculatingSupplyCalculator) GetFilReserveDisbursed(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	ract, found, err := st.GetActor(ctx, builtin.ReserveAddress)
 	if !found || err != nil {
 		return big.Zero(), xerrors.Errorf("failed to get reserve actor: %v", err)
@@ -367,7 +367,7 @@ func (caculator *CirculatingSupplyCalculator) GetFilReserveDisbursed(ctx context
 	return big.Sub(big.NewFromGo(constants.InitialFilReserved), ract.Balance), nil
 }
 
-func GetFilMined(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
+func GetFilMined(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	ractor, found, err := st.GetActor(ctx, reward.Address)
 	if !found || err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load reward actor state: %v", err)
@@ -381,7 +381,7 @@ func GetFilMined(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
 	return rst.TotalStoragePowerReward()
 }
 
-func GetFilBurnt(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
+func GetFilBurnt(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	burnt, found, err := st.GetActor(ctx, builtin.BurntFundsActorAddr)
 	if !found || err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load burnt actor: %v", err)
@@ -390,7 +390,7 @@ func GetFilBurnt(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
 	return burnt.Balance, nil
 }
 
-func (caculator *CirculatingSupplyCalculator) GetFilLocked(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
+func (caculator *CirculatingSupplyCalculator) GetFilLocked(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 
 	filMarketLocked, err := getFilMarketLocked(ctx, st)
 	if err != nil {
@@ -405,7 +405,7 @@ func (caculator *CirculatingSupplyCalculator) GetFilLocked(ctx context.Context, 
 	return big.Add(filMarketLocked, filPowerLocked), nil
 }
 
-func getFilMarketLocked(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
+func getFilMarketLocked(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	act, found, err := st.GetActor(ctx, market.Address)
 	if !found || err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load market actor: %v", err)
@@ -419,7 +419,7 @@ func getFilMarketLocked(ctx context.Context, st state.Tree) (abi.TokenAmount, er
 	return mst.TotalLocked()
 }
 
-func getFilPowerLocked(ctx context.Context, st state.Tree) (abi.TokenAmount, error) {
+func getFilPowerLocked(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	pactor, found, err := st.GetActor(ctx, power.Address)
 	if !found || err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load power actor: %v", err)

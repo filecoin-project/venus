@@ -15,13 +15,13 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/consensus"
 	appstate "github.com/filecoin-project/venus/pkg/state"
-	"github.com/filecoin-project/venus/pkg/vm/state"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 )
 
 func TestWeight(t *testing.T) {
 	cst := cbor.NewMemCborStore()
 	ctx := context.Background()
-	fakeTree := state.NewFromString(t, "test-Weight-StateCid", cst)
+	fakeTree := tree.NewFromString(t, "test-Weight-StateCid", cst)
 	fakeRoot, err := fakeTree.Flush(ctx)
 	require.NoError(t, err)
 	addrGetter := types.NewForTestGetter()
