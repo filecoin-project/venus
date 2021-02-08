@@ -43,7 +43,7 @@ type Waiter struct {
 }
 
 // ChainMessage is an on-chain message with its block and receipt.
-type ChainMessage struct {  //nolint
+type ChainMessage struct { //nolint
 	Ts      *types.TipSet
 	Message types.ChainMsg
 	Block   *types.BlockHeader
