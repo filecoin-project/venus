@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/filecoin-project/go-address"
@@ -265,8 +266,7 @@ var walletExportCmd = &cmds.Command{
 		if len(req.Arguments) == 2 && len(req.Arguments[1]) != 0 {
 			return nil
 		}
-		fmt.Println("Password: ")
-		pw, err := gopass.GetPasswdMasked()
+		pw, err := gopass.GetPasswdPrompt("Password:", true, os.Stdin, os.Stdout)
 		if err != nil {
 			return err
 		}
@@ -304,8 +304,7 @@ var setWalletPassword = &cmds.Command{
 		cmds.StringArg("password", false, false, "Password to be locked"),
 	},
 	PreRun: func(req *cmds.Request, env cmds.Environment) error {
-		fmt.Println("Password: ")
-		pw, err := gopass.GetPasswdMasked()
+		pw, err := gopass.GetPasswdPrompt("Password:", true, os.Stdin, os.Stdout)
 		if err != nil {
 			return err
 		}
@@ -334,8 +333,7 @@ var lockedCmd = &cmds.Command{
 		cmds.StringArg("password", false, false, "Password to be locked"),
 	},
 	PreRun: func(req *cmds.Request, env cmds.Environment) error {
-		fmt.Println("Password: ")
-		pw, err := gopass.GetPasswdMasked()
+		pw, err := gopass.GetPasswdPrompt("Password:", true, os.Stdin, os.Stdout)
 		if err != nil {
 			return err
 		}
@@ -364,8 +362,7 @@ var unlockedCmd = &cmds.Command{
 		cmds.StringArg("password", false, false, "Password to be locked"),
 	},
 	PreRun: func(req *cmds.Request, env cmds.Environment) error {
-		fmt.Println("Password: ")
-		pw, err := gopass.GetPasswdMasked()
+		pw, err := gopass.GetPasswdPrompt("Password:", true, os.Stdin, os.Stdout)
 		if err != nil {
 			return err
 		}
