@@ -157,10 +157,6 @@ func (walletAPI *WalletAPI) UnLocked(ctx context.Context, password string) error
 	return walletAPI.walletModule.Wallet.UnLocked(password)
 }
 
-func (walletAPI *WalletAPI) UnLockedList(ctx context.Context) ([]address.Address, error) {
-	return walletAPI.walletModule.Wallet.UnLockedList()
-}
-
 func (walletAPI *WalletAPI) SetPassword(Context context.Context, password string) error {
 	return walletAPI.walletModule.Wallet.SetPassword(password)
 }

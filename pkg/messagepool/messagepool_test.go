@@ -337,8 +337,6 @@ func newWallet(t *testing.T) *wallet.Wallet {
 	w := wallet.New(backend)
 	err = w.SetPassword(wallet.TestPassword)
 	assert.NoError(t, err)
-	err = w.UnLocked(wallet.TestPassword)
-	assert.NoError(t, err)
 
 	return w
 }
@@ -353,7 +351,6 @@ func TestMessagePool(t *testing.T) {
 	a := tma.nextBlock()
 
 	sender, err := w.NewAddress(address.SECP256K1)
-
 	if err != nil {
 		t.Fatal(err)
 	}
