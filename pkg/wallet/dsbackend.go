@@ -241,7 +241,9 @@ func (backend *DSBackend) Locked(password string) error {
 		return nil
 	}
 
-	if backend.password != "" && backend.password != password {
+	hashPasswd := string(keccak256([]byte(password)))
+
+	if backend.password != "" && backend.password != hashPasswd {
 		return ErrInvalidPassword
 	}
 
@@ -250,9 +252,6 @@ func (backend *DSBackend) Locked(password string) error {
 		delete(backend.unLocked, addr)
 	}
 	backend.lk.Unlock()
-
-	// remove password
-	backend.clearPassword()
 	backend.state = lock
 
 	return nil
@@ -263,12 +262,14 @@ func (backend *DSBackend) UnLocked(password string) error {
 		return nil
 	}
 
-	if backend.password != "" && backend.password != password {
+	hashPasswd := string(keccak256([]byte(password)))
+
+	if backend.password != "" && backend.password != hashPasswd {
 		return ErrInvalidPassword
 	}
 
 	for _, addr := range backend.Addresses() {
-		ki, err := backend.GetKeyInfoPassphrase(addr, password)
+		ki, err := backend.GetKeyInfoPassphrase(addr, hashPasswd)
 		if err != nil {
 			return err
 		}
@@ -282,36 +283,26 @@ func (backend *DSBackend) UnLocked(password string) error {
 	return nil
 }
 
-func (backend *DSBackend) UnLockedList() ([]address.Address, error) {
-	backend.lk.RLock()
-	defer backend.lk.RUnlock()
-
-	addrs := make([]address.Address, 0, len(backend.unLocked))
-	for addr := range backend.unLocked {
-		addrs = append(addrs, addr)
-	}
-
-	return addrs, nil
-}
-
 func (backend *DSBackend) SetPassword(password string) error {
 	if backend.password != "" {
 		return ErrRepeatPassword
 	}
 
+	hashPasswd := string(keccak256([]byte(password)))
+
 	if len(backend.Addresses()) == 0 {
-		backend.setPassword(password)
+		backend.setPassword(hashPasswd)
 		return nil
 	}
 
 	for _, addr := range backend.Addresses() {
-		_, err := backend.GetKeyInfoPassphrase(addr, password)
+		_, err := backend.GetKeyInfoPassphrase(addr, hashPasswd)
 		if err != nil {
 			return err
 		}
 	}
 
-	backend.setPassword(password)
+	backend.setPassword(hashPasswd)
 
 	return nil
 }

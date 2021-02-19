@@ -27,7 +27,6 @@ type Backend interface {
 	//
 	Locked(string) error
 	UnLocked(string) error
-	UnLockedList() ([]address.Address, error)
 }
 
 // Importer is a specialization of a wallet backend that can import

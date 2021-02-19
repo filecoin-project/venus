@@ -181,7 +181,7 @@ func (w *Wallet) Export(addr address.Address, password string) (*crypto.KeyInfo,
 		return nil, err
 	}
 
-	ki, err := bck.GetKeyInfoPassphrase(addr, password)
+	ki, err := bck.GetKeyInfoPassphrase(addr, string(keccak256([]byte(password))))
 	if err != nil {
 		return nil, err
 	}
@@ -236,15 +236,6 @@ func (w *Wallet) UnLocked(password string) error {
 		return err
 	}
 	return backend.UnLocked(password)
-}
-
-func (w *Wallet) UnLockedList() ([]address.Address, error) {
-	backend, err := w.DSBacked()
-	if err != nil {
-		return []address.Address{}, err
-	}
-
-	return backend.UnLockedList()
 }
 
 func (w *Wallet) SetPassword(password string) error {
