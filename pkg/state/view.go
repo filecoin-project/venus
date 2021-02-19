@@ -121,21 +121,6 @@ func (v *View) MinerInfo(ctx context.Context, maddr addr.Address, nv network.Ver
 	return &info, nil
 }
 
-// MinerSectorCount counts all the on-chain sectors
-func (v *View) MinerSectorCount(ctx context.Context, maddr addr.Address) (uint64, error) {
-	minerState, err := v.loadMinerState(ctx, maddr)
-	if err != nil {
-		return 0, err
-	}
-
-	sc, err := minerState.SectorArray()
-	if err != nil {
-		return 0, err
-	}
-
-	return sc.Length(), nil
-}
-
 // Loads sector info from miner state.
 func (v *View) MinerSectorInfo(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, error) {
 	minerState, err := v.loadMinerState(ctx, maddr)
@@ -324,16 +309,6 @@ func (v *View) MinerExists(ctx context.Context, maddr addr.Address) (bool, error
 		return false, nil
 	}
 	return false, err
-}
-
-// MinerFaults Returns all sector ids that are faults
-func (v *View) MinerFaults(ctx context.Context, maddr addr.Address) ([]uint64, error) {
-	minerState, err := v.loadMinerState(ctx, maddr)
-	if err != nil {
-		return nil, err
-	}
-
-	return minerState.FaultsSectors()
 }
 
 // MinerGetPrecommittedSector Looks up info for a miners precommitted sector.

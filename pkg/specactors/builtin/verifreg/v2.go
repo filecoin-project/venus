@@ -47,9 +47,11 @@ func (s *state2) ForEachVerifier(cb func(addr address.Address, dcap abi.StorageP
 func (s *state2) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
 	return forEachCap(s.store, specactors.Version2, s.verifiedClients, cb)
 }
+
 func (s *state2) verifiedClients() (adt.Map, error) {
 	return adt2.AsMap(s.store, s.VerifiedClients)
 }
+
 func (s *state2) verifiers() (adt.Map, error) {
 	return adt2.AsMap(s.store, s.Verifiers)
 }

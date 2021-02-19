@@ -323,6 +323,7 @@ func (ms *MessageStore) StoreReceipts(ctx context.Context, receipts []types.Mess
 	if err != nil {
 		return cid.Undef, err
 	}
+
 	return rectarr.Root()
 }
 

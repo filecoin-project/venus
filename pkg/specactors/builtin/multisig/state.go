@@ -55,6 +55,7 @@ type State interface {
 
 	ForEachPendingTxn(func(id int64, txn Transaction) error) error
 	PendingTxnChanged(State) (bool, error)
+
 	transactions() (adt.Map, error)
 	decodeTransaction(val *cbg.Deferred) (Transaction, error)
 }
