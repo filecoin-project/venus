@@ -25,7 +25,7 @@ require (
 	github.com/filecoin-project/go-address v0.0.5
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20201006184820-924ee87a1349 // indirect
 	github.com/filecoin-project/go-bitfield v0.2.4
-	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
+	github.com/filecoin-project/go-cbor-util v0.0.0-20201016124514-d0bbec7bfcc4
 	github.com/filecoin-project/go-commp-utils v0.0.0-20201119054358-b88f7a96a434
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v1.2.7
@@ -52,6 +52,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
+	github.com/ipfs-force-community/venus-wallet v0.0.0-20210220083650-3000ff08b3e9 // indirect
 	github.com/ipfs/go-bitswap v0.3.2
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.4
@@ -113,10 +114,9 @@ require (
 	github.com/raulk/clock v1.1.0
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
-	github.com/spf13/viper v1.5.0 // indirect
 	github.com/streadway/handy v0.0.0-20190108123426-d5acb3125c2a
 	github.com/stretchr/testify v1.7.0
-	github.com/supranational/blst v0.1.1
+	github.com/supranational/blst v0.3.2
 	github.com/urfave/cli/v2 v2.3.0 // indirect
 	github.com/whyrusleeping/cbor-gen v0.0.0-20210118024343-169e9d70c0c2
 	github.com/whyrusleeping/go-logging v0.0.1
@@ -135,7 +135,6 @@ require (
 	gotest.tools v2.2.0+incompatible
 	honnef.co/go/tools v0.0.1-2020.1.3 // indirect
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
-
 )
 
 replace github.com/filecoin-project/venus => ./
