@@ -307,6 +307,14 @@ var setWalletPassword = &cmds.Command{
 		if err != nil {
 			return err
 		}
+		pw2, err := gopass.GetPasswdPrompt("Enter Password again:", true, os.Stdin, os.Stdout)
+		if err != nil {
+			return err
+		}
+		if !bytes.Equal(pw, pw2) {
+			return errors.New("the input passwords are inconsistent")
+		}
+
 		req.Arguments = []string{string(pw)}
 
 		return nil

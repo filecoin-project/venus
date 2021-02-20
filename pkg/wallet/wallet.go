@@ -181,7 +181,7 @@ func (w *Wallet) Export(addr address.Address, password string) (*crypto.KeyInfo,
 		return nil, err
 	}
 
-	ki, err := bck.GetKeyInfoPassphrase(addr, string(keccak256([]byte(password))))
+	ki, err := bck.GetKeyInfoPassphrase(addr, keccak256([]byte(password)))
 	if err != nil {
 		return nil, err
 	}

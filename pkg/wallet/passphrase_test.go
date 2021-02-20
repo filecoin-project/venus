@@ -41,10 +41,10 @@ func TestEncrypKeyAndDecryptKey(t *testing.T) {
 		KeyInfo: ki,
 	}
 
-	b, err := encryptKey(key, TestPassword, config.DefaultPassphraseConfig().ScryptN, config.DefaultPassphraseConfig().ScryptP)
+	b, err := encryptKey(key, []byte(TestPassword), config.DefaultPassphraseConfig().ScryptN, config.DefaultPassphraseConfig().ScryptP)
 	assert.NoError(t, err)
 
-	key2, err := decryptKey(b, TestPassword)
+	key2, err := decryptKey(b, []byte(TestPassword))
 	assert.NoError(t, err)
 
 	assert.Equal(t, key, key2)

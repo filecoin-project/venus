@@ -2,13 +2,14 @@ package types
 
 import (
 	"container/list"
-	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/ipfs/go-cid"
 	"sort"
 	"strconv"
 	"sync"
 	"time"
+
+	fbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/ipfs/go-cid"
 )
 
 // Target tracks a logical request of the syncing subsystem to run a
@@ -34,7 +35,7 @@ func (target *Target) IsNeibor(t *Target) bool {
 		return false
 	}
 
-	for _, bid := range t.Head.Key().Cids() {
+	for _, bid := range target.Head.Key().Cids() {
 		if !t.Head.Key().Has(bid) {
 			return false
 		}
