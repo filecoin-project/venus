@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
 	"io"
 	"io/ioutil"
@@ -257,14 +258,19 @@ func setConfigFromOptions(cfg *config.Config, network string) error {
 	var netcfg *networks.NetworkConf
 	switch network {
 	case "mainnet":
+		constants.BuildType |= constants.BuildMainnet
 		netcfg = networks.Mainnet()
 	case "testnetnet":
+		constants.BuildType |= constants.BuildMainnet
 		netcfg = networks.Testnet()
 	case "integrationnet":
+		constants.BuildType |= constants.BuildDebug
 		netcfg = networks.IntegrationNet()
 	case "2k":
+		constants.BuildType |= constants.Build2k
 		netcfg = networks.Net2k()
 	case "cali":
+		constants.BuildType |= constants.BuildCalibnet
 		netcfg = networks.Calibration()
 	default:
 		return fmt.Errorf("unknown network name %s", network)
