@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/filecoin-project/go-address"
@@ -37,7 +38,6 @@ var walletCmd = &cmds.Command{
 		"set-default":  setDefaultAddressCmd,
 		"lock":         lockedCmd,
 		"unlock":       unlockedCmd,
-		"unlock-list":  unlockedListCmd,
 		"set-password": setWalletPassword,
 	},
 }
@@ -265,8 +265,7 @@ var walletExportCmd = &cmds.Command{
 		if len(req.Arguments) == 2 && len(req.Arguments[1]) != 0 {
 			return nil
 		}
-		fmt.Println("Password: ")
-		pw, err := gopass.GetPasswdMasked()
+		pw, err := gopass.GetPasswdPrompt("Password:", true, os.Stdin, os.Stdout)
 		if err != nil {
 			return err
 		}
@@ -304,8 +303,7 @@ var setWalletPassword = &cmds.Command{
 		cmds.StringArg("password", false, false, "Password to be locked"),
 	},
 	PreRun: func(req *cmds.Request, env cmds.Environment) error {
-		fmt.Println("Password: ")
-		pw, err := gopass.GetPasswdMasked()
+		pw, err := gopass.GetPasswdPrompt("Password:", true, os.Stdin, os.Stdout)
 		if err != nil {
 			return err
 		}
@@ -319,6 +317,9 @@ var setWalletPassword = &cmds.Command{
 		}
 
 		pw := req.Arguments[0]
+		if len(pw) == 0 {
+			return re.Emit("Do not enter an empty string")
+		}
 
 		err := env.(*node.Env).WalletAPI.SetPassword(req.Context, pw)
 		if err != nil {
@@ -334,8 +335,7 @@ var lockedCmd = &cmds.Command{
 		cmds.StringArg("password", false, false, "Password to be locked"),
 	},
 	PreRun: func(req *cmds.Request, env cmds.Environment) error {
-		fmt.Println("Password: ")
-		pw, err := gopass.GetPasswdMasked()
+		pw, err := gopass.GetPasswdPrompt("Password:", true, os.Stdin, os.Stdout)
 		if err != nil {
 			return err
 		}
@@ -346,6 +346,9 @@ var lockedCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 1 {
 			return re.Emit("A parameter is required.")
+		}
+		if env.(*node.Env).WalletAPI.IsLocked(req.Context) {
+			return re.Emit("It's already locked")
 		}
 
 		pw := req.Arguments[0]
@@ -364,8 +367,7 @@ var unlockedCmd = &cmds.Command{
 		cmds.StringArg("password", false, false, "Password to be locked"),
 	},
 	PreRun: func(req *cmds.Request, env cmds.Environment) error {
-		fmt.Println("Password: ")
-		pw, err := gopass.GetPasswdMasked()
+		pw, err := gopass.GetPasswdPrompt("Password:", true, os.Stdin, os.Stdout)
 		if err != nil {
 			return err
 		}
@@ -377,6 +379,10 @@ var unlockedCmd = &cmds.Command{
 		if len(req.Arguments) != 1 {
 			return re.Emit("A parameter is required.")
 		}
+		if !env.(*node.Env).WalletAPI.IsLocked(req.Context) {
+			return re.Emit("It's already unlocked")
+		}
+
 		pw := req.Arguments[0]
 
 		err := env.(*node.Env).WalletAPI.UnLocked(req.Context, pw)
@@ -385,22 +391,5 @@ var unlockedCmd = &cmds.Command{
 		}
 
 		return re.Emit("unlocked success")
-	},
-}
-
-var unlockedListCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		addrs, err := env.(*node.Env).WalletAPI.UnLockedList(req.Context)
-		if err != nil {
-			return err
-		}
-
-		for _, addr := range addrs {
-			if err := printOneString(re, addr.String()); err != nil {
-				return err
-			}
-		}
-
-		return nil
 	},
 }

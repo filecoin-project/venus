@@ -190,7 +190,7 @@ func NewMockIngestionValidatorAPI() *FakeIngestionValidatorAPI {
 	}
 }
 
-func (api *FakeIngestionValidatorAPI) Head() *types.TipSet {
+func (api *FakeIngestionValidatorAPI) GetHead() *types.TipSet {
 	ts, _ := types.NewTipSet(api.Block)
 	return ts
 }
@@ -208,6 +208,6 @@ func (api *FakeIngestionValidatorAPI) GetActorAt(ctx context.Context, key *types
 	}, nil
 }
 
-func (api *FakeIngestionValidatorAPI) AccountStateView(baseKey *types.TipSet) (state.AccountStateView, error) {
+func (api *FakeIngestionValidatorAPI) AccountView(ts *types.TipSet) (state.AccountView, error) {
 	return &state.FakeStateView{}, nil
 }

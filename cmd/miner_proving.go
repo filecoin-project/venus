@@ -60,7 +60,7 @@ var provingInfoCmd = &cmds.Command{
 			return err
 		}
 
-		stor := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(env.(*node.Env).ChainAPI)))
+		stor := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
 
 		mas, err := miner.Load(stor, mact)
 		if err != nil {
@@ -315,7 +315,8 @@ var provingFaultsCmd = &cmds.Command{
 
 		ctx := req.Context
 		api := env.(*node.Env).ChainAPI
-		stor := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(api)))
+		bstoreAPI := env.(*node.Env).BlockStoreAPI
+		stor := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(bstoreAPI)))
 
 		mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
 		if err != nil {

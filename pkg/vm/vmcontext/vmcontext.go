@@ -28,12 +28,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/cron"
 	initActor "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
 const MaxCallDepth = 4096
@@ -54,7 +54,7 @@ type VM struct {
 	debugger *VMDebugMsg
 	vmOption VmOption
 
-	State state.Tree
+	State tree.Tree
 }
 
 func (vm *VM) ApplyImplicitMessage(msg types.ChainMsg) (*Ret, error) {
@@ -94,16 +94,16 @@ var _ VMInterpreter = (*VM)(nil)
 func NewVM(actorImpls ActorImplLookup, vmOption VmOption) (*VM, error) {
 	buf := blockstoreutil.NewBufferedBstore(vmOption.Bsstore)
 	cst := cbor.NewCborStore(buf)
-	var st state.Tree
+	var st tree.Tree
 	var err error
 	if vmOption.PRoot == cid.Undef {
 		//just for chain gen
-		st, err = state.NewState(cst, state.StateTreeVersion1)
+		st, err = tree.NewState(cst, tree.StateTreeVersion1)
 		if err != nil {
 			panic(xerrors.Errorf("create state error, should never come here"))
 		}
 	} else {
-		st, err = state.LoadState(context.Background(), cst, vmOption.PRoot)
+		st, err = tree.LoadState(context.Background(), cst, vmOption.PRoot)
 		if err != nil {
 			return nil, err
 		}
@@ -800,7 +800,7 @@ func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *types.Actor
 	})
 }
 
-func (vm *VM) StateTree() state.Tree {
+func (vm *VM) StateTree() tree.Tree {
 	return vm.State
 }
 
@@ -863,7 +863,7 @@ func (vm *VM) clearSnapshot() {
 }
 
 //nolint
-func (vm *VM) Flush() (state.Root, error) {
+func (vm *VM) Flush() (tree.Root, error) {
 	// Flush all blocks out of the store
 	if root, err := vm.State.Flush(vm.context); err != nil {
 		return cid.Undef, err

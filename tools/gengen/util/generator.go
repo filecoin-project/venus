@@ -34,12 +34,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	gfcstate "github.com/filecoin-project/venus/pkg/state"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
 	blockstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
 )
 
@@ -60,7 +60,7 @@ var (
 
 type GenesisGenerator struct {
 	// actor state
-	stateTree state.Tree
+	stateTree tree.Tree
 	store     blockstore.Blockstore
 	cst       cbor.IpldStore
 	vm        genesis.VM
@@ -73,7 +73,7 @@ type GenesisGenerator struct {
 }
 
 func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
-	csc := func(context.Context, abi.ChainEpoch, state.Tree) (abi.TokenAmount, error) {
+	csc := func(context.Context, abi.ChainEpoch, tree.Tree) (abi.TokenAmount, error) {
 		return big.Zero(), nil
 	}
 	cst := cbor.NewCborStore(bs)

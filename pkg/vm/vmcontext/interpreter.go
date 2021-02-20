@@ -5,8 +5,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 	"github.com/ipfs/go-cid"
 )
 
@@ -20,8 +20,8 @@ type VMInterpreter interface {
 	ApplyMessage(msg types.ChainMsg) (*Ret, error)
 	ApplyImplicitMessage(msg types.ChainMsg) (*Ret, error)
 
-	StateTree() state.Tree
-	Flush() (state.Root, error)
+	StateTree() tree.Tree
+	Flush() (tree.Root, error)
 
 	MutateState(ctx context.Context, addr address.Address, fn interface{}) error
 }

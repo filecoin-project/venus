@@ -64,7 +64,7 @@ type MessagePenaltyChecker struct {
 
 // penaltyCheckerAPI allows the validator to access latest state
 type penaltyCheckerAPI interface {
-	Head() *types.TipSet
+	GetHead() *types.TipSet
 	GetActorAt(context.Context, *types.TipSet, address.Address) (*types.Actor, error)
 }
 
@@ -77,7 +77,7 @@ func NewMessagePenaltyChecker(api penaltyCheckerAPI) *MessagePenaltyChecker {
 // PenaltyCheck checks that a message is semantically valid for processing without
 // causing miner penality.  It treats any miner penalty condition as an error.
 func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.UnsignedMessage) error {
-	fromActor, err := v.api.GetActorAt(ctx, v.api.Head(), msg.From)
+	fromActor, err := v.api.GetActorAt(ctx, v.api.GetHead(), msg.From)
 	if err != nil {
 		return err
 	}
@@ -216,9 +216,9 @@ type MessageSignatureValidator struct {
 
 // signatureValidatorAPI allows the validator to access state needed for signature checking
 type signatureValidatorAPI interface {
-	Head() *types.TipSet
+	GetHead() *types.TipSet
 	GetTipSet(types.TipSetKey) (*types.TipSet, error)
-	AccountStateView(*types.TipSet) (state.AccountStateView, error)
+	AccountView(ts *types.TipSet) (state.AccountView, error)
 }
 
 func NewMessageSignatureValidator(api signatureValidatorAPI) *MessageSignatureValidator {
@@ -230,8 +230,8 @@ func NewMessageSignatureValidator(api signatureValidatorAPI) *MessageSignatureVa
 // Validate validates the signed message signature. Errors probably mean the
 //  validation failed, but possibly indicate a failure to retrieve state.
 func (v *MessageSignatureValidator) Validate(ctx context.Context, smsg *types.SignedMessage) error {
-	head := v.api.Head()
-	view, err := v.api.AccountStateView(head)
+	head := v.api.GetHead()
+	view, err := v.api.AccountView(head)
 	if err != nil {
 		return errors.Wrapf(err, "failed to load state at %v", head)
 	}

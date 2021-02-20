@@ -24,9 +24,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/verifreg"
+	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
-	vmstate "github.com/filecoin-project/venus/pkg/vm/state"
 )
 
 // Viewer builds state views from state root CIDs.
@@ -107,20 +107,6 @@ func (v *View) GetMinerWorkerRaw(ctx context.Context, maddr addr.Address) (addr.
 	return v.ResolveToKeyAddr(ctx, minerInfo.Worker)
 }
 
-// Returns public key address if id address is given
-func (v *View) AccountSignerAddress(ctx context.Context, a addr.Address) (addr.Address, error) {
-	if a.Protocol() == addr.SECP256K1 || a.Protocol() == addr.BLS {
-		return a, nil
-	}
-
-	accountActorState, err := v.loadAccountActor(ctx, a)
-	if err != nil {
-		return addr.Undef, err
-	}
-
-	return accountActorState.PubkeyAddress()
-}
-
 func (v *View) MinerInfo(ctx context.Context, maddr addr.Address, nv network.Version) (*miner.MinerInfo, error) {
 	minerState, err := v.loadMinerState(ctx, maddr)
 	if err != nil {
@@ -133,21 +119,6 @@ func (v *View) MinerInfo(ctx context.Context, maddr addr.Address, nv network.Ver
 	}
 
 	return &info, nil
-}
-
-// MinerSectorCount counts all the on-chain sectors
-func (v *View) MinerSectorCount(ctx context.Context, maddr addr.Address) (uint64, error) {
-	minerState, err := v.loadMinerState(ctx, maddr)
-	if err != nil {
-		return 0, err
-	}
-
-	sc, err := minerState.SectorArray()
-	if err != nil {
-		return 0, err
-	}
-
-	return sc.Length(), nil
 }
 
 // Loads sector info from miner state.
@@ -338,16 +309,6 @@ func (v *View) MinerExists(ctx context.Context, maddr addr.Address) (bool, error
 		return false, nil
 	}
 	return false, err
-}
-
-// MinerFaults Returns all sector ids that are faults
-func (v *View) MinerFaults(ctx context.Context, maddr addr.Address) ([]uint64, error) {
-	minerState, err := v.loadMinerState(ctx, maddr)
-	if err != nil {
-		return nil, err
-	}
-
-	return minerState.FaultsSectors()
 }
 
 // MinerGetPrecommittedSector Looks up info for a miners precommitted sector.
@@ -886,6 +847,7 @@ func (v *View) loadInitActor(ctx context.Context) (notinit.State, error) {
 func (v *View) LoadPaychState(ctx context.Context, actr *types.Actor) (paychActor.State, error) {
 	return v.loadPaychState(ctx, actr)
 }
+
 func (v *View) loadPaychState(ctx context.Context, actr *types.Actor) (paychActor.State, error) {
 	return paychActor.Load(adt.WrapStore(context.TODO(), v.ipldStore), actr)
 }

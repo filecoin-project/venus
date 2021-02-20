@@ -311,6 +311,7 @@ func (s *state2) MinerInfoChanged(other State) (bool, error) {
 	}
 	return !s.State.Info.Equals(other0.State.Info), nil
 }
+
 func (s *state2) Info() (MinerInfo, error) {
 	info, err := s.State.GetInfo(s.store)
 	if err != nil {
@@ -321,6 +322,7 @@ func (s *state2) Info() (MinerInfo, error) {
 	if peerID, err := peer.IDFromBytes(info.PeerId); err == nil {
 		pid = &peerID
 	}
+
 	wpp, err := info.SealProofType.RegisteredWindowPoStProof()
 	if err != nil {
 		return MinerInfo{}, err
@@ -417,6 +419,11 @@ func (d *deadline2) PartitionsChanged(other Deadline) (bool, error) {
 
 func (d *deadline2) PartitionsPoSted() (bitfield.BitField, error) {
 	return d.Deadline.PostSubmissions, nil
+}
+
+func (d *deadline2) DisputableProofCount() (uint64, error) {
+	// field doesn't exist until v3
+	return 0, nil
 }
 
 func (p *partition2) AllSectors() (bitfield.BitField, error) {

@@ -109,12 +109,10 @@ func generateCode(codelines map[string][]Func, fname string) error {
 		return err
 	}
 	packages := `package client
-
 import (
 		"context"
 		"io"
 		"time"
-
 		"github.com/filecoin-project/go-address"
 		"github.com/filecoin-project/go-bitfield"
 		"github.com/filecoin-project/go-state-types/abi"
@@ -127,13 +125,11 @@ import (
 		"github.com/libp2p/go-libp2p-core/metrics"
 		"github.com/libp2p/go-libp2p-core/peer"
 		ma "github.com/multiformats/go-multiaddr"
-
 		chainApiTypes "github.com/filecoin-project/venus/app/submodule/chain"
 		mineApiTypes "github.com/filecoin-project/venus/app/submodule/mining"
 		"github.com/filecoin-project/venus/app/submodule/mpool"
 		syncApiTypes "github.com/filecoin-project/venus/app/submodule/syncer"
 		"github.com/filecoin-project/venus/pkg/beacon"
-		"github.com/filecoin-project/venus/pkg/block"
 		"github.com/filecoin-project/venus/pkg/chain"
 		"github.com/filecoin-project/venus/pkg/chainsync/status"
 		"github.com/filecoin-project/venus/pkg/crypto"

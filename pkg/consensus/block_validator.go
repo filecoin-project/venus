@@ -27,10 +27,10 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
 	appstate "github.com/filecoin-project/venus/pkg/state"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 	"github.com/hashicorp/go-multierror"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
@@ -310,7 +310,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 
 func (bv *BlockValidator) minerIsValid(ctx context.Context, maddr address.Address, baseStateRoot cid.Cid) error {
 	vms := cbor.NewCborStore(bv.bstore)
-	sm, err := state.LoadState(ctx, vms, baseStateRoot)
+	sm, err := tree.LoadState(ctx, vms, baseStateRoot)
 	if err != nil {
 		return xerrors.Errorf("loading state: %w", err)
 	}
@@ -435,7 +435,7 @@ func (bv *BlockValidator) MinerEligibleToMine(ctx context.Context, addr address.
 
 	// Post actors v2, also check MinerEligibleForElection with base ts
 	vms := cbor.NewCborStore(bv.bstore)
-	sm, err := state.LoadState(ctx, vms, parentStateRoot)
+	sm, err := tree.LoadState(ctx, vms, parentStateRoot)
 	if err != nil {
 		return false, xerrors.Errorf("loading state: %v", err)
 	}
@@ -499,7 +499,7 @@ func (bv *BlockValidator) MinerEligibleToMine(ctx context.Context, addr address.
 
 func (bv *BlockValidator) minerHasMinPower(ctx context.Context, addr address.Address, ts *types.TipSet) (bool, error) {
 	vms := cbor.NewCborStore(bv.bstore)
-	sm, err := state.LoadState(ctx, vms, ts.Blocks()[0].ParentStateRoot)
+	sm, err := tree.LoadState(ctx, vms, ts.Blocks()[0].ParentStateRoot)
 	if err != nil {
 		return false, xerrors.Errorf("loading state: %v", err)
 	}
@@ -610,7 +610,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 
 	nonces := make(map[address.Address]uint64)
 	vms := cbor.NewCborStore(bv.bstore)
-	st, err := state.LoadState(ctx, vms, blk.ParentStateRoot)
+	st, err := tree.LoadState(ctx, vms, blk.ParentStateRoot)
 	if err != nil {
 		return xerrors.Errorf("loading state: %v", err)
 	}

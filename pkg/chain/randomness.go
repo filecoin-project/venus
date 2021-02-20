@@ -49,11 +49,11 @@ func MakeRandomSeed(rawVRFProof types.VRFPi) (RandomSeed, error) {
 	return digest[:], nil
 }
 
-///// Randomness derivation /////
+///// GetRandomnessFromTickets derivation /////
 
 // RandomnessSource provides randomness to actors.
 type RandomnessSource interface {
-	Randomness(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	GetRandomnessFromTickets(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 }
 
@@ -62,7 +62,7 @@ type ChainRandomnessSource struct { //nolint
 	Sampler ChainSampler
 }
 
-func (c *ChainRandomnessSource) Randomness(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (c *ChainRandomnessSource) GetRandomnessFromTickets(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	seed, err := c.Sampler.Sample(ctx, epoch)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to sample chain for randomness")

@@ -40,12 +40,12 @@ func NewWalletSubmodule(ctx context.Context,
 		return nil, errors.Wrap(err, "failed to set up walletModule backend")
 	}
 	fcWallet := wallet.New(backend)
-
+	headSigner := state.NewHeadSignView(chain.ChainReader)
 	return &WalletSubmodule{
 		Config: cfg,
 		Chain:  chain,
 		Wallet: fcWallet,
-		Signer: state.NewSigner(chain.ActorState, chain.ChainReader, fcWallet),
+		Signer: state.NewSigner(headSigner, fcWallet),
 	}, nil
 }
 

@@ -47,7 +47,7 @@ func (r *RecordingRand) loadHead() {
 	r.head = head.Key()
 }
 
-func (r *RecordingRand) Randomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (r *RecordingRand) GetRandomnessFromTickets(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	r.once.Do(r.loadHead)
 	ret, err := r.chainReader.ChainGetRandomnessFromTickets(ctx, r.head, pers, round, entropy)
 	if err != nil {

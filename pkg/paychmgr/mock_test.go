@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/app/submodule/chain/cst"
+	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"sync"
@@ -138,9 +138,8 @@ func newMockPaychAPI() *mockPaychAPI {
 	}
 }
 
-func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error) {
+func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, confidence abi.ChainEpoch) (*chain.MsgLookup, error) {
 	pchapi.lk.Lock()
-
 	response := make(chan types.MessageReceipt)
 
 	if response, ok := pchapi.waitingResponses[mcid]; ok {
@@ -150,14 +149,14 @@ func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, conf
 		}()
 
 		delete(pchapi.waitingResponses, mcid)
-		return &cst.MsgLookup{Receipt: response.receipt}, nil
+		return &chain.MsgLookup{Receipt: response.receipt}, nil
 	}
 
 	pchapi.waitingCalls[mcid] = &waitingCall{response: response}
 	pchapi.lk.Unlock()
 
 	receipt := <-response
-	return &cst.MsgLookup{Receipt: receipt}, nil
+	return &chain.MsgLookup{Receipt: receipt}, nil
 }
 
 func (pchapi *mockPaychAPI) receiveMsgResponse(mcid cid.Cid, receipt types.MessageReceipt) {

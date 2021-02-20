@@ -19,7 +19,7 @@ type fakeStateView struct {
 	keys map[address.Address]address.Address
 }
 
-func (f *fakeStateView) AccountSignerAddress(_ context.Context, a address.Address) (address.Address, error) {
+func (f *fakeStateView) ResolveToKeyAddr(_ context.Context, a address.Address) (address.Address, error) {
 	if a.Protocol() == address.SECP256K1 || a.Protocol() == address.BLS {
 		return a, nil
 	}

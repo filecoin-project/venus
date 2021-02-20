@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -39,15 +38,15 @@ type IChainInfo interface {
 	GetActor(ctx context.Context, addr address.Address) (*types.Actor, error)
 	GetEntry(ctx context.Context, height abi.ChainEpoch, round uint64) (*types.BeaconEntry, error)
 
-	MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*cst.ChainMessage, error)
+	MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*chain.ChainMessage, error)
 
 	ProtocolParameters(ctx context.Context) (*ProtocolParams, error)
 
 	ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 
 	StateNetworkName(ctx context.Context) (NetworkName, error)
-	StateSearchMsg(ctx context.Context, mCid cid.Cid) (*cst.MsgLookup, error)
-	StateWaitMsg(ctx context.Context, mCid cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error)
+	StateSearchMsg(ctx context.Context, mCid cid.Cid) (*MsgLookup, error)
+	StateWaitMsg(ctx context.Context, mCid cid.Cid, confidence abi.ChainEpoch) (*MsgLookup, error)
 	StateGetReceipt(ctx context.Context, msg cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error)
 	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
 
@@ -70,27 +69,19 @@ func (chainInfoAPI *ChainInfoAPI) BlockTime() time.Duration {
 
 // ChainLs returns an iterator of tipsets from specified head by tsKey to genesis
 func (chainInfoAPI *ChainInfoAPI) ChainList(ctx context.Context, tsKey types.TipSetKey, count int) ([]types.TipSetKey, error) {
-	iter, err := chainInfoAPI.chain.State.Ls(ctx, tsKey)
+	fromTs, err := chainInfoAPI.chain.ChainReader.GetTipSet(tsKey)
+	if err != nil {
+		return nil, xerrors.Wrap(err, "could not retrieve network name")
+	}
+	tipset, err := chainInfoAPI.chain.ChainReader.Ls(ctx, fromTs, count)
 	if err != nil {
 		return nil, err
 	}
-
-	var tipSets []types.TipSetKey
-	var number int
-	for ; !iter.Complete(); err = iter.Next() {
-		if err != nil {
-			return nil, err
-		}
-		if !iter.Value().Defined() {
-			panic("tipsets from this iterator should have at least one member")
-		}
-		tipSets = append(tipSets, iter.Value().Key())
-		number++
-		if number >= count {
-			break
-		}
+	tipsetKey := make([]types.TipSetKey, len(tipset))
+	for i, ts := range tipset {
+		tipsetKey[i] = ts.Key()
 	}
-	return tipSets, nil
+	return tipsetKey, nil
 }
 
 // ProtocolParameters return chain parameters
@@ -152,12 +143,12 @@ func (chainInfoAPI *ChainInfoAPI) GetActor(ctx context.Context, addr address.Add
 		return nil, err
 	}
 
-	return chainInfoAPI.chain.State.GetActorAt(ctx, head, addr)
+	return chainInfoAPI.chain.ChainReader.GetActorAt(ctx, head, addr)
 }
 
 // ChainGetBlock gets a block by CID
 func (chainInfoAPI *ChainInfoAPI) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.BlockHeader, error) {
-	return chainInfoAPI.chain.State.GetBlock(ctx, id)
+	return chainInfoAPI.chain.ChainReader.GetBlock(ctx, id)
 }
 
 func (chainInfoAPI *ChainInfoAPI) ChainGetMessage(ctx context.Context, msgID cid.Cid) (*types.UnsignedMessage, error) {
@@ -199,18 +190,18 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetBlockMessages(ctx context.Context, bid
 
 // ChainGetReceipts gets a receipt collection by CID
 func (chainInfoAPI *ChainInfoAPI) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error) {
-	return chainInfoAPI.chain.State.GetReceipts(ctx, id)
+	return chainInfoAPI.chain.MessageStore.LoadReceipts(ctx, id)
 }
 
 func (chainInfoAPI *ChainInfoAPI) GetFullBlock(ctx context.Context, id cid.Cid) (*types.FullBlock, error) {
 	var out types.FullBlock
 	var err error
 
-	out.Header, err = chainInfoAPI.chain.State.GetBlock(ctx, id)
+	out.Header, err = chainInfoAPI.chain.ChainReader.GetBlock(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	out.BLSMessages, out.SECPMessages, err = chainInfoAPI.chain.State.GetMessages(ctx, out.Header.Messages)
+	out.SECPMessages, out.BLSMessages, err = chainInfoAPI.chain.MessageStore.LoadMetaMessages(ctx, out.Header.Messages)
 	if err != nil {
 		return nil, err
 	}
@@ -287,7 +278,7 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetParentReceipts(ctx context.Context, bc
 
 // ResolveToKeyAddr resolve user address to t0 address
 func (chainInfoAPI *ChainInfoAPI) ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
-	viewer, err := chainInfoAPI.chain.State.ParentStateView(ts)
+	viewer, err := chainInfoAPI.chain.ChainReader.ParentStateView(ts)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -297,7 +288,7 @@ func (chainInfoAPI *ChainInfoAPI) ResolveToKeyAddr(ctx context.Context, addr add
 //************Drand****************//
 // ChainNotify subscribe to chain head change event
 func (chainInfoAPI *ChainInfoAPI) ChainNotify(ctx context.Context) chan []*chain.HeadChange {
-	return chainInfoAPI.chain.State.ChainNotify(ctx)
+	return chainInfoAPI.chain.ChainReader.SubHeadChanges(ctx)
 }
 
 //************Drand****************//
@@ -330,7 +321,7 @@ func (chainInfoAPI *ChainInfoAPI) StateNetworkName(ctx context.Context) (Network
 
 func (chainInfoAPI *ChainInfoAPI) getNetworkName(ctx context.Context) (string, error) {
 	headKey := chainInfoAPI.chain.ChainReader.GetHead()
-	view, err := chainInfoAPI.chain.State.ParentStateView(headKey)
+	view, err := chainInfoAPI.chain.ChainReader.ParentStateView(headKey)
 	if err != nil {
 		return "", err
 	}
@@ -339,7 +330,7 @@ func (chainInfoAPI *ChainInfoAPI) getNetworkName(ctx context.Context) (string, e
 }
 
 func (chainInfoAPI *ChainInfoAPI) ChainGetRandomnessFromBeacon(ctx context.Context, key types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return chainInfoAPI.chain.State.ChainGetRandomnessFromBeacon(ctx, key, personalization, randEpoch, entropy)
+	return chainInfoAPI.chain.ChainReader.ChainGetRandomnessFromBeacon(ctx, key, personalization, randEpoch, entropy)
 }
 
 func (chainInfoAPI *ChainInfoAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
@@ -381,7 +372,7 @@ func (chainInfoAPI *ChainInfoAPI) StateNetworkVersion(ctx context.Context, tsk t
 // the case that it appears in a newly mined block. An error is returned if one is
 // encountered or if the context is canceled. Otherwise, it waits forever for the message
 // to appear on chain.
-func (chainInfoAPI *ChainInfoAPI) MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*cst.ChainMessage, error) {
+func (chainInfoAPI *ChainInfoAPI) MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*chain.ChainMessage, error) {
 	chainMsg, err := chainInfoAPI.chain.MessageStore.LoadMessage(msgCid)
 	if err != nil {
 		return nil, err
@@ -389,7 +380,7 @@ func (chainInfoAPI *ChainInfoAPI) MessageWait(ctx context.Context, msgCid cid.Ci
 	return chainInfoAPI.chain.Waiter.Wait(ctx, chainMsg, confidence, lookback)
 }
 
-func (chainInfoAPI *ChainInfoAPI) StateSearchMsg(ctx context.Context, mCid cid.Cid) (*cst.MsgLookup, error) {
+func (chainInfoAPI *ChainInfoAPI) StateSearchMsg(ctx context.Context, mCid cid.Cid) (*MsgLookup, error) {
 	chainMsg, err := chainInfoAPI.chain.MessageStore.LoadMessage(mCid)
 	if err != nil {
 		return nil, err
@@ -402,7 +393,7 @@ func (chainInfoAPI *ChainInfoAPI) StateSearchMsg(ctx context.Context, mCid cid.C
 	}
 
 	if found {
-		return &cst.MsgLookup{
+		return &MsgLookup{
 			Message: mCid,
 			Receipt: *msgResult.Receipt,
 			TipSet:  msgResult.Ts.Key(),
@@ -412,7 +403,7 @@ func (chainInfoAPI *ChainInfoAPI) StateSearchMsg(ctx context.Context, mCid cid.C
 	return nil, nil
 }
 
-func (chainInfoAPI *ChainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confidence abi.ChainEpoch) (*cst.MsgLookup, error) {
+func (chainInfoAPI *ChainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confidence abi.ChainEpoch) (*MsgLookup, error) {
 	chainMsg, err := chainInfoAPI.chain.MessageStore.LoadMessage(mCid)
 	if err != nil {
 		return nil, err
@@ -422,7 +413,7 @@ func (chainInfoAPI *ChainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid
 		return nil, err
 	}
 	if msgResult != nil {
-		return &cst.MsgLookup{
+		return &MsgLookup{
 			Message: mCid,
 			Receipt: *msgResult.Receipt,
 			TipSet:  msgResult.Ts.Key(),
