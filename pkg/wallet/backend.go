@@ -22,7 +22,7 @@ type Backend interface {
 	// iff backend contains the addr.
 	GetKeyInfo(address.Address) (*crypto.KeyInfo, error)
 
-	GetKeyInfoPassphrase(address.Address, string) (*crypto.KeyInfo, error)
+	GetKeyInfoPassphrase(address.Address, []byte) (*crypto.KeyInfo, error)
 
 	//
 	Locked(string) error

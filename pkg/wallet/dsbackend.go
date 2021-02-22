@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"bytes"
 	"crypto/rand"
 	"reflect"
 	"strings"
@@ -41,7 +42,7 @@ type DSBackend struct {
 
 	PassphraseConf config.PassphraseConfig
 
-	password string
+	password []byte
 
 	state int
 }
@@ -198,7 +199,7 @@ func (backend *DSBackend) GetKeyInfo(addr address.Address) (*crypto.KeyInfo, err
 	return key.KeyInfo, nil
 }
 
-func (backend *DSBackend) GetKeyInfoPassphrase(addr address.Address, password string) (*crypto.KeyInfo, error) {
+func (backend *DSBackend) GetKeyInfoPassphrase(addr address.Address, password []byte) (*crypto.KeyInfo, error) {
 	if !backend.HasAddress(addr) {
 		return nil, errors.New("backend does not contain address")
 	}
@@ -211,7 +212,7 @@ func (backend *DSBackend) GetKeyInfoPassphrase(addr address.Address, password st
 	return key.KeyInfo, nil
 }
 
-func (backend *DSBackend) getKey(addr address.Address, password string) (*Key, error) {
+func (backend *DSBackend) getKey(addr address.Address, password []byte) (*Key, error) {
 	b, err := backend.ds.Get(ds.NewKey(addr.String()))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch private key from backend")
@@ -220,7 +221,7 @@ func (backend *DSBackend) getKey(addr address.Address, password string) (*Key, e
 	return decryptKey(b, password)
 }
 
-func (backend *DSBackend) setPassword(password string) {
+func (backend *DSBackend) setPassword(password []byte) {
 	backend.lk.Lock()
 	defer backend.lk.Unlock()
 	backend.password = password
@@ -229,7 +230,7 @@ func (backend *DSBackend) setPassword(password string) {
 func (backend *DSBackend) clearPassword() {
 	backend.lk.Lock()
 	defer backend.lk.Unlock()
-	backend.password = ""
+	backend.password = []byte{}
 }
 
 func (backend *DSBackend) IsLocked() bool {
@@ -241,9 +242,9 @@ func (backend *DSBackend) Locked(password string) error {
 		return nil
 	}
 
-	hashPasswd := string(keccak256([]byte(password)))
+	hashPasswd := keccak256([]byte(password))
 
-	if backend.password != "" && backend.password != hashPasswd {
+	if len(backend.password) != 0 && !bytes.Equal(backend.password, hashPasswd) {
 		return ErrInvalidPassword
 	}
 
@@ -262,9 +263,9 @@ func (backend *DSBackend) UnLocked(password string) error {
 		return nil
 	}
 
-	hashPasswd := string(keccak256([]byte(password)))
+	hashPasswd := keccak256([]byte(password))
 
-	if backend.password != "" && backend.password != hashPasswd {
+	if len(backend.password) != 0 && !bytes.Equal(backend.password, hashPasswd) {
 		return ErrInvalidPassword
 	}
 
@@ -284,11 +285,11 @@ func (backend *DSBackend) UnLocked(password string) error {
 }
 
 func (backend *DSBackend) SetPassword(password string) error {
-	if backend.password != "" {
+	if len(backend.password) != 0 {
 		return ErrRepeatPassword
 	}
 
-	hashPasswd := string(keccak256([]byte(password)))
+	hashPasswd := keccak256([]byte(password))
 
 	if len(backend.Addresses()) == 0 {
 		backend.setPassword(hashPasswd)
@@ -308,5 +309,5 @@ func (backend *DSBackend) SetPassword(password string) error {
 }
 
 func (backend *DSBackend) HavePassword() bool {
-	return backend.password != ""
+	return len(backend.password) != 0
 }

@@ -30,12 +30,12 @@ var ErrDecrypt = errors.New("could not decrypt key with given password")
 
 // EncryptKey encrypts a key using the specified scrypt parameters into a json
 // blob that can be decrypted later on.
-func encryptKey(key *Key, auth string, scryptN, scryptP int) ([]byte, error) {
+func encryptKey(key *Key, auth []byte, scryptN, scryptP int) ([]byte, error) {
 	kBytes, err := json.Marshal(key)
 	if err != nil {
 		return nil, err
 	}
-	cryptoStruct, err := encryptData(kBytes, []byte(auth), scryptN, scryptP)
+	cryptoStruct, err := encryptData(kBytes, auth, scryptN, scryptP)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func aesCTRXOR(key, inText, iv []byte) ([]byte, error) {
 }
 
 // decryptKey decrypts a key from a json blob, returning the Key.
-func decryptKey(keyjson []byte, auth string) (*Key, error) {
+func decryptKey(keyjson, auth []byte) (*Key, error) {
 	var (
 		keyBytes []byte
 		err      error
@@ -130,7 +130,7 @@ func decryptKey(keyjson []byte, auth string) (*Key, error) {
 	return key, nil
 }
 
-func decryptData(cryptoJSON CryptoJSON, auth string) ([]byte, error) {
+func decryptData(cryptoJSON CryptoJSON, auth []byte) ([]byte, error) {
 	if cryptoJSON.Cipher != "aes-128-ctr" {
 		return nil, fmt.Errorf("cipher not supported: %v", cryptoJSON.Cipher)
 	}
@@ -167,8 +167,7 @@ func decryptData(cryptoJSON CryptoJSON, auth string) ([]byte, error) {
 	return plainText, err
 }
 
-func getKDFKey(cryptoJSON CryptoJSON, auth string) ([]byte, error) {
-	authArray := []byte(auth)
+func getKDFKey(cryptoJSON CryptoJSON, auth []byte) ([]byte, error) {
 	salt, err := hex.DecodeString(cryptoJSON.KDFParams["salt"].(string))
 	if err != nil {
 		return nil, err
@@ -179,7 +178,7 @@ func getKDFKey(cryptoJSON CryptoJSON, auth string) ([]byte, error) {
 		n := ensureInt(cryptoJSON.KDFParams["n"])
 		r := ensureInt(cryptoJSON.KDFParams["r"])
 		p := ensureInt(cryptoJSON.KDFParams["p"])
-		return scrypt.Key(authArray, salt, n, r, p, dkLen)
+		return scrypt.Key(auth, salt, n, r, p, dkLen)
 
 	} else if cryptoJSON.KDF == "pbkdf2" {
 		c := ensureInt(cryptoJSON.KDFParams["c"])
@@ -187,7 +186,7 @@ func getKDFKey(cryptoJSON CryptoJSON, auth string) ([]byte, error) {
 		if prf != "hmac-sha256" {
 			return nil, fmt.Errorf("unsupported PBKDF2 PRF: %s", prf)
 		}
-		key := pbkdf2.Key(authArray, salt, c, dkLen, sha256.New)
+		key := pbkdf2.Key(auth, salt, c, dkLen, sha256.New)
 		return key, nil
 	}
 
