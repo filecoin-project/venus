@@ -3,6 +3,7 @@ package cmd_test
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,31 +33,16 @@ func TestChainLs(t *testing.T) {
 	tf.IntegrationTest(t)
 	ctx := context.Background()
 
-	t.Run("chain ls with json encoding returns the whole chain as json", func(t *testing.T) {
+	t.Run("chain ls returns the specified number of tipsets modified by the count", func(t *testing.T) {
 		seed, cfg, chainClk := test.CreateBootstrapSetup(t)
 		n := test.CreateBootstrapMiner(ctx, t, seed, chainClk, cfg)
 
 		cmdClient, apiDone := test.RunNodeAPI(ctx, n, t)
 		defer apiDone()
 
-		result2 := cmdClient.RunSuccess(ctx, "chain", "ls", "--enc", "json").ReadStdoutTrimNewlines()
-		var b []cmd.ChainLsResult
-		err := json.Unmarshal([]byte(result2), &b)
-		require.NoError(t, err)
-		require.Equal(t, 10, len(b))
-	})
+		result2 := cmdClient.RunSuccess(ctx, "chain", "ls", "--count", "2").ReadStdoutTrimNewlines()
 
-	t.Run("chain ls with chain of size 1 returns genesis block", func(t *testing.T) {
-		builder := test.NewNodeBuilder(t)
-
-		_, cmdClient, done := builder.BuildAndStartAPI(ctx)
-		defer done()
-
-		op := cmdClient.RunSuccess(ctx, "chain", "ls", "--enc", "json")
-		result := op.ReadStdoutTrimNewlines()
-
-		var b []cmd.ChainLsResult
-		err := json.Unmarshal([]byte(result), &b)
-		require.NoError(t, err)
+		rows := strings.Count(result2, "\n")
+		require.Equal(t, rows, 1)
 	})
 }
