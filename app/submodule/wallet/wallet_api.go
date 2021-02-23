@@ -3,6 +3,8 @@ package wallet
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/venus/app/submodule/wallet/remotewallet"
+	"github.com/ipfs-force-community/venus-wallet/core"
 	"strings"
 
 	"github.com/filecoin-project/go-address"
@@ -14,16 +16,18 @@ import (
 	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
+var _ IWallet = &WalletAPI{}
+
 type IWallet interface {
-	WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error)
+	WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error) //not exists in remote
 	WalletHas(ctx context.Context, addr address.Address) (bool, error)
-	WalletDefaultAddress() (address.Address, error)
+	WalletDefaultAddress() (address.Address, error) //not exists in remote
 	WalletAddresses() []address.Address
-	WalletSetDefault(_ context.Context, addr address.Address) error
+	WalletSetDefault(_ context.Context, addr address.Address) error //not exists in remote
 	WalletNewAddress(protocol address.Protocol) (address.Address, error)
 	WalletImport(key *crypto.KeyInfo) (address.Address, error)
-	WalletExport(addrs []address.Address) ([]*crypto.KeyInfo, error)
-	WalletSign(ctx context.Context, k address.Address, msg []byte, _ wallet.MsgMeta) (*crypto.Signature, error)
+	WalletExport(addr address.Address, password string) (*crypto.KeyInfo, error)
+	WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error)
 	WalletSignMessage(ctx context.Context, k address.Address, msg *types.UnsignedMessage) (*types.SignedMessage, error)
 }
 
@@ -31,6 +35,8 @@ var ErrNoDefaultFromAddress = errors.New("unable to determine a default walletMo
 
 type WalletAPI struct { //nolint
 	walletModule *WalletSubmodule
+	remote       *remotewallet.RemoteWallet
+	isRemote     bool
 }
 
 // WalletBalance returns the current balance of the given wallet address.
@@ -47,7 +53,9 @@ func (walletAPI *WalletAPI) WalletBalance(ctx context.Context, addr address.Addr
 }
 
 func (walletAPI *WalletAPI) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
-
+	if walletAPI.isRemote {
+		return walletAPI.remote.WalletHas(ctx, addr)
+	}
 	return walletAPI.walletModule.Wallet.HasAddress(addr), nil
 }
 
@@ -75,6 +83,13 @@ func (walletAPI *WalletAPI) WalletDefaultAddress() (address.Address, error) {
 
 // WalletAddresses gets addresses from the walletModule
 func (walletAPI *WalletAPI) WalletAddresses() []address.Address {
+	if walletAPI.isRemote {
+		wallets, err := walletAPI.remote.WalletList(context.Background())
+		if err != nil {
+			return make([]address.Address, 0)
+		}
+		return wallets
+	}
 	return walletAPI.walletModule.Wallet.Addresses()
 }
 
@@ -95,11 +110,18 @@ func (walletAPI *WalletAPI) WalletSetDefault(_ context.Context, addr address.Add
 
 // WalletNewAddress generates a new walletModule address
 func (walletAPI *WalletAPI) WalletNewAddress(protocol address.Protocol) (address.Address, error) {
+	if walletAPI.isRemote {
+		return walletAPI.remote.WalletNew(context.Background(), remotewallet.GetKeyType(protocol))
+	}
 	return walletAPI.walletModule.Wallet.NewAddress(protocol)
 }
 
 // WalletImport adds a given set of KeyInfos to the walletModule
 func (walletAPI *WalletAPI) WalletImport(key *crypto.KeyInfo) (address.Address, error) {
+	if walletAPI.isRemote {
+		return walletAPI.remote.WalletImport(context.Background(), remotewallet.ConvertRemoteKeyInfo(key))
+	}
+
 	addr, err := walletAPI.walletModule.Wallet.Import(key)
 	if err != nil {
 		return address.Undef, err
@@ -109,10 +131,18 @@ func (walletAPI *WalletAPI) WalletImport(key *crypto.KeyInfo) (address.Address, 
 
 // WalletExport returns the KeyInfos for the given walletModule addresses
 func (walletAPI *WalletAPI) WalletExport(addr address.Address, password string) (*crypto.KeyInfo, error) {
+	if walletAPI.isRemote {
+		// todo: Implement password logic in the future
+		key, err := walletAPI.remote.WalletExport(context.Background(), addr)
+		if err != nil {
+			return nil, err
+		}
+		return remotewallet.ConvertLocalKeyInfo(key), nil
+	}
 	return walletAPI.walletModule.Wallet.Export(addr, password)
 }
 
-func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte, _ wallet.MsgMeta) (*crypto.Signature, error) {
+func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error) {
 	head := walletAPI.walletModule.Chain.ChainReader.GetHead()
 	view, err := walletAPI.walletModule.Chain.ChainReader.StateView(head)
 	if err != nil {
@@ -123,9 +153,11 @@ func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, m
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ID address: %v", keyAddr)
 	}
-	return walletAPI.walletModule.Wallet.WalletSign(ctx, keyAddr, msg, wallet.MsgMeta{
-		Type: wallet.MTUnknown,
-	})
+
+	if walletAPI.isRemote {
+		return walletAPI.remote.WalletSign(ctx, keyAddr, msg, meta)
+	}
+	return walletAPI.walletModule.Wallet.WalletSign(ctx, keyAddr, msg, meta)
 }
 
 func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.UnsignedMessage) (*types.SignedMessage, error) {
@@ -134,14 +166,14 @@ func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Add
 		return nil, xerrors.Errorf("serializing message: %w", err)
 	}
 
-	sig, err := walletAPI.WalletSign(ctx, k, mb.Cid().Bytes(), wallet.MsgMeta{})
+	sign, err := walletAPI.WalletSign(ctx, k, mb.Cid().Bytes(), wallet.MsgMeta{Type: core.MTChainMsg})
 	if err != nil {
 		return nil, xerrors.Errorf("failed to sign message: %w", err)
 	}
 
 	return &types.SignedMessage{
 		Message:   *msg,
-		Signature: *sig,
+		Signature: *sign,
 	}, nil
 }
 

@@ -1,8 +1,11 @@
 package wallet
 
-type MsgType string
+import "github.com/ipfs-force-community/venus-wallet/core"
 
-const (
+//type MsgType string
+type MsgType = core.MsgType
+
+/*const (
 	MTUnknown = "unknown"
 
 	// Signing message CID. MsgMeta.Extra contains raw cbor message bytes
@@ -16,11 +19,13 @@ const (
 
 	// TODO: Deals, Vouchers, VRF
 )
+*/
+type MsgMeta = core.MsgMeta
 
-type MsgMeta struct {
+/*type MsgMeta struct {
 	Type MsgType
 
 	// Additional data related to what is signed. Should be verifiable with the
 	// signed bytes (e.g. CID(Extra).Bytes() == toSign)
 	Extra []byte
-}
+}*/

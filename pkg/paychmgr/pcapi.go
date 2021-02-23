@@ -45,6 +45,7 @@ func (o *pcAPI) WalletHas(ctx context.Context, addr address.Address) (bool, erro
 	return o.mpAPI.WalletHas(ctx, addr)
 }
 func (o *pcAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
+	//wallet.MsgMeta{Type: core.MTSignedVoucher}
 	return o.mpAPI.WalletSign(ctx, k, msg)
 }
 func (o *pcAPI) StateNetworkVersion(ctx context.Context, ts types.TipSetKey) (network.Version, error) {

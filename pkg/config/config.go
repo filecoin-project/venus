@@ -109,6 +109,8 @@ func newDefaultBootstrapConfig() *BootstrapConfig {
 type WalletConfig struct {
 	DefaultAddress   address.Address  `json:"defaultAddress,omitempty"`
 	PassphraseConfig PassphraseConfig `json:"passphraseConfig,omitempty"`
+	RemoteEnable     bool             `json:"remoteEnable"`
+	RemoteBackend    string           `json:"remoteBackend"`
 }
 
 type PassphraseConfig struct {

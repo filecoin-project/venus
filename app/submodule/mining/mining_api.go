@@ -5,6 +5,7 @@ import (
 	"context"
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
+	"github.com/ipfs-force-community/venus-wallet/core"
 	"os"
 
 	"github.com/filecoin-project/go-address"
@@ -254,7 +255,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *BlockTempl
 
 	nosigbytes := next.SignatureData()
 	sig, err := miningAPI.Ming.Wallet.API().WalletSign(ctx, worker, nosigbytes, wallet.MsgMeta{
-		Type: wallet.MTBlock,
+		Type: core.MTBlock,
 	})
 	if err != nil {
 		return nil, xerrors.Errorf("failed to sign new block: %v", err)
