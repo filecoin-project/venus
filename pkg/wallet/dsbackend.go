@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
@@ -19,7 +21,9 @@ import (
 )
 
 const (
-	lock = iota
+	undetermined = iota
+
+	lock
 	unlock
 )
 
@@ -77,6 +81,7 @@ func NewDSBackend(ds repo.Datastore, passphraseCfg config.PassphraseConfig) (*DS
 		cache:          addrCache,
 		PassphraseConf: passphraseCfg,
 		unLocked:       make(map[address.Address]*crypto.KeyInfo),
+		state:          undetermined,
 	}, nil
 }
 
@@ -233,13 +238,9 @@ func (backend *DSBackend) clearPassword() {
 	backend.password = []byte{}
 }
 
-func (backend *DSBackend) IsLocked() bool {
-	return backend.state == lock
-}
-
 func (backend *DSBackend) Locked(password string) error {
-	if backend.IsLocked() {
-		return nil
+	if backend.state == lock {
+		return xerrors.Errorf("already locked")
 	}
 
 	hashPasswd := keccak256([]byte(password))
@@ -248,25 +249,39 @@ func (backend *DSBackend) Locked(password string) error {
 		return ErrInvalidPassword
 	}
 
-	backend.lk.Lock()
-	for addr := range backend.unLocked {
-		delete(backend.unLocked, addr)
+	if len(backend.Addresses()) == 0 {
+		return xerrors.Errorf("no address need lock")
 	}
-	backend.lk.Unlock()
+
+	for _, addr := range backend.Addresses() {
+		_, err := backend.GetKeyInfoPassphrase(addr, hashPasswd)
+		if err != nil {
+			return err
+		}
+
+		backend.lk.Lock()
+		delete(backend.unLocked, addr)
+		backend.lk.Unlock()
+	}
+
 	backend.state = lock
 
 	return nil
 }
 
 func (backend *DSBackend) UnLocked(password string) error {
-	if !backend.IsLocked() {
-		return nil
+	if backend.state == unlock {
+		return xerrors.Errorf("already unlocked")
 	}
 
 	hashPasswd := keccak256([]byte(password))
 
 	if len(backend.password) != 0 && !bytes.Equal(backend.password, hashPasswd) {
 		return ErrInvalidPassword
+	}
+
+	if len(backend.Addresses()) == 0 {
+		return xerrors.Errorf("no address need unlock")
 	}
 
 	for _, addr := range backend.Addresses() {

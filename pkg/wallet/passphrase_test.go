@@ -26,8 +26,6 @@ func TestEncrypKeyAndDecryptKey(t *testing.T) {
 	w := New(fs)
 	err = w.SetPassword(TestPassword)
 	assert.NoError(t, err)
-	err = w.UnLocked(TestPassword)
-	assert.NoError(t, err)
 
 	ki, err := w.NewKeyInfo()
 	assert.NoError(t, err)
