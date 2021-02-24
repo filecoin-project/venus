@@ -30,7 +30,7 @@ func IntegrationNet() *NetworkConf {
 				UpgradeCalicoHeight:   265200,
 				UpgradePersianHeight:  265200 + (120 * 60),
 				UpgradeOrangeHeight:   336458,
-				UpgradeActorsV3Height: -1, // ToDo
+				UpgradeActorsV3Height: 550321,
 
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       343200,
