@@ -215,5 +215,5 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *typ
 	}
 
 	// TODO: maybe just use the invoker directly?
-	return c.processor.ProcessMessage(ctx, msg, vmOption)
+	return c.processor.ProcessImplicitMessage(ctx, msg, vmOption)
 }
