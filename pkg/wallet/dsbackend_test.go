@@ -25,8 +25,6 @@ func TestDSBackendSimple(t *testing.T) {
 	assert.NoError(t, err)
 
 	_ = fs.SetPassword(TestPassword)
-	err = fs.UnLocked(TestPassword)
-	assert.NoError(t, err)
 
 	t.Log("empty address list on empty datastore")
 	assert.Len(t, fs.Addresses(), 0)
@@ -57,8 +55,6 @@ func TestDSBackendKeyPairMatchAddress(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = fs.SetPassword(TestPassword)
-	assert.NoError(t, err)
-	err = fs.UnLocked(TestPassword)
 	assert.NoError(t, err)
 
 	t.Log("can create new address")
@@ -92,8 +88,6 @@ func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
 
 	err = fs1.SetPassword(TestPassword)
 	assert.NoError(t, err)
-	err = fs1.UnLocked(TestPassword)
-	assert.NoError(t, err)
 
 	ds2 := datastore.NewMapDatastore()
 	defer func() {
@@ -103,8 +97,6 @@ func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = fs2.SetPassword(TestPassword)
-	assert.NoError(t, err)
-	err = fs2.UnLocked(TestPassword)
 	assert.NoError(t, err)
 
 	t.Log("can create new address in fs1")
@@ -140,8 +132,6 @@ func TestDSBackendParallel(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = fs.SetPassword(TestPassword)
-	assert.NoError(t, err)
-	err = fs.UnLocked(TestPassword)
 	assert.NoError(t, err)
 
 	var wg sync.WaitGroup

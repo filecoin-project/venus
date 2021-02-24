@@ -355,9 +355,6 @@ var lockedCmd = &cmds.Command{
 		if len(req.Arguments) != 1 {
 			return re.Emit("A parameter is required.")
 		}
-		if env.(*node.Env).WalletAPI.IsLocked(req.Context) {
-			return re.Emit("It's already locked")
-		}
 
 		pw := req.Arguments[0]
 
@@ -386,9 +383,6 @@ var unlockedCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 1 {
 			return re.Emit("A parameter is required.")
-		}
-		if !env.(*node.Env).WalletAPI.IsLocked(req.Context) {
-			return re.Emit("It's already unlocked")
 		}
 
 		pw := req.Arguments[0]

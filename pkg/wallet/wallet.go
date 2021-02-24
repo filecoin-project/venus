@@ -210,17 +210,6 @@ func (w *Wallet) DSBacked() (*DSBackend, error) {
 	return (backends[0]).(*DSBackend), nil
 }
 
-// IsLocked return wallet is locked. true is locked.
-func (w *Wallet) IsLocked() bool {
-	backend, err := w.DSBacked()
-	if err != nil {
-		walletLog.Errorf("get DSBacked failed: %v", err)
-		return false
-	}
-
-	return backend.IsLocked()
-}
-
 func (w *Wallet) Locked(password string) error {
 	backend, err := w.DSBacked()
 	if err != nil {

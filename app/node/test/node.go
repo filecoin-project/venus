@@ -2,9 +2,10 @@ package test
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/types"
 	"math/rand"
 	"testing"
+
+	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
@@ -70,8 +71,6 @@ func (cs *ChainSeed) GiveKey(t *testing.T, nd *node.Node, key int) address.Addre
 
 	dsb := bcks[0].(*wallet.DSBackend)
 	_ = dsb.SetPassword(wallet.TestPassword)
-	err := dsb.UnLocked(wallet.TestPassword)
-	require.NoError(t, err)
 	kinfo := cs.info.Keys[key]
 	require.NoError(t, dsb.ImportKey(kinfo))
 
