@@ -2,6 +2,7 @@ package testhelpers
 
 import (
 	"context"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -88,8 +89,11 @@ func NewStubBlockValidator() *StubBlockValidator {
 }
 
 // ValidateSyntax return nil or error for stubbed block `blk`.
-func (mbv *StubBlockValidator) ValidateBlockHeader(ctx context.Context, blk *types.BlockHeader) error {
-	return mbv.syntaxStubs[blk.Cid()]
+func (mbv *StubBlockValidator) ValidateBlockMsg(ctx context.Context, blk *types.BlockMsg) pubsub.ValidationResult {
+	if mbv.syntaxStubs[blk.Header.Cid()] == nil {
+		return pubsub.ValidationAccept
+	}
+	return pubsub.ValidationReject
 }
 
 // StubSyntaxValidationForBlock stubs an error when the ValidateSyntax is called
