@@ -40,9 +40,8 @@ func TestChainLs(t *testing.T) {
 		cmdClient, apiDone := test.RunNodeAPI(ctx, n, t)
 		defer apiDone()
 
-		result2 := cmdClient.RunSuccess(ctx, "chain", "ls", "--count", "2").ReadStdoutTrimNewlines()
-
-		rows := strings.Count(result2, "\n")
-		require.Equal(t, rows, 1)
+		result := cmdClient.RunSuccess(ctx, "chain", "ls", "--count", "2").ReadStdoutTrimNewlines()
+		rows := strings.Count(result, "\n")
+		require.Equal(t, rows, 0)
 	})
 }

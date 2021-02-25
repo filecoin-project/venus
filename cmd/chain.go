@@ -85,18 +85,23 @@ var chainLsCmd = &cmds.Command{
 		}
 
 		var err error
-		height, _ := req.Options["height"].(int64)
+
 		startTs, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
 		if err != nil {
 			return err
 		}
-		if height >= 0 {
+
+		height, _ := req.Options["height"].(int64)
+		if height >= 0 && abi.ChainEpoch(height) < startTs.Height() {
 			startTs, err = env.(*node.Env).ChainAPI.ChainGetTipSetByHeight(req.Context, abi.ChainEpoch(height), startTs.Key())
 			if err != nil {
 				return err
 			}
 		}
 
+		if abi.ChainEpoch(count) > startTs.Height()+1 {
+			count = uint(startTs.Height() + 1)
+		}
 		tipSetKeys, err := env.(*node.Env).ChainAPI.ChainList(req.Context, startTs.Key(), int(count))
 		if err != nil {
 			return err
