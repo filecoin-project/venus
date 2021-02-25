@@ -299,11 +299,7 @@ var mpoolReplaceCmd = &cmds.Command{
 				return abi.TokenAmount{Int: types.DefaultDefaultMaxFee.Int}, nil
 			}
 
-			var maxFee abi.TokenAmount
-			if !mss.MaxFee.Nil() {
-				maxFee = mss.MaxFee
-			}
-			messagepool.CapGasFee(mff, &msg, maxFee)
+			messagepool.CapGasFee(mff, &msg, mss)
 		} else {
 			msg.GasFeeCap = abi.NewTokenAmount(0)
 			msg.GasPremium = abi.NewTokenAmount(0)
