@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/fixtures/asset"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
 	"io"
@@ -26,7 +27,6 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"
-	"github.com/filecoin-project/venus/fixtures/asset"
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/genesis"
@@ -120,7 +120,7 @@ func initRun(req *cmds.Request) error {
 		genesisFunc = genesis.MakeGenesis(req.Context, rep, mkGen, preTp.(string), cfg.NetworkParams.ForkUpgradeParam)
 	} else {
 		genesisFileSource, _ := req.Options[GenesisFile].(string)
-		genesisFunc, err = loadGenesis(req.Context, rep, genesisFileSource)
+		genesisFunc, err = loadGenesis(req.Context, rep, genesisFileSource, network)
 		if err != nil {
 			return err
 		}
@@ -284,16 +284,25 @@ func setConfigFromOptions(cfg *config.Config, network string) error {
 	return nil
 }
 
-func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (genesis.InitFunc, error) {
+func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string, network string) (genesis.InitFunc, error) {
 	var (
 		source io.ReadCloser
 		err    error
 	)
 
 	if sourceName == "" {
-		bs, err := asset.Asset("fixtures/_assets/car/devnet.car")
-		if err != nil {
-			return gengen.MakeGenesisFunc(), nil
+		var bs []byte
+		switch network {
+		case "cali":
+			bs, err = asset.Asset("fixtures/_assets/car/calibnet.car")
+			if err != nil {
+				return gengen.MakeGenesisFunc(), nil
+			}
+		default:
+			bs, err = asset.Asset("fixtures/_assets/car/devnet.car")
+			if err != nil {
+				return gengen.MakeGenesisFunc(), nil
+			}
 		}
 
 		source = ioutil.NopCloser(bytes.NewReader(bs))

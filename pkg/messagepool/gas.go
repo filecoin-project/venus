@@ -217,7 +217,7 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Uns
 	return res.Receipt.GasUsed + 76e3, nil
 }
 
-func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec, _ types.TipSetKey) (*types.UnsignedMessage, error) {
+func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *types.MessageSendSpec, _ types.TipSetKey) (*types.Message, error) {
 	if msg.GasLimit == 0 {
 		gasLimit, err := mp.GasEstimateGasLimit(ctx, msg, types.TipSetKey{})
 		if err != nil {
@@ -226,7 +226,7 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.Uns
 		msg.GasLimit = int64(float64(gasLimit) * mp.GetConfig().GasLimitOverestimation)
 	}
 
-	if msg.GasPremium.Nil() || tbig.Cmp(msg.GasPremium, tbig.NewInt(0)) == 0 {
+	if msg.GasPremium == types.EmptyInt || types.BigCmp(msg.GasPremium, types.NewInt(0)) == 0 {
 		gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, msg.From, msg.GasLimit, types.TipSetKey{})
 		if err != nil {
 			return nil, xerrors.Errorf("estimating gas price: %w", err)
@@ -234,19 +234,15 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.Uns
 		msg.GasPremium = gasPremium
 	}
 
-	if msg.GasFeeCap.Nil() || tbig.Cmp(msg.GasFeeCap, tbig.NewInt(0)) == 0 {
-		feeCap, err := mp.GasEstimateFeeCap(ctx, msg, 20, types.TipSetKey{})
+	if msg.GasFeeCap == types.EmptyInt || types.BigCmp(msg.GasFeeCap, types.NewInt(0)) == 0 {
+		feeCap, err := mp.GasEstimateFeeCap(ctx, msg, 20, types.EmptyTSK)
 		if err != nil {
 			return nil, xerrors.Errorf("estimating fee cap: %w", err)
 		}
 		msg.GasFeeCap = feeCap
 	}
 
-	var maxFee abi.TokenAmount
-	if spec != nil && !spec.MaxFee.Nil() {
-		maxFee = spec.MaxFee
-	}
-	CapGasFee(mp.GetMaxFee, msg, maxFee)
+	CapGasFee(mp.GetMaxFee, msg, spec)
 
 	return msg, nil
 }
