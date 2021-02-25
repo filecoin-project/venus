@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/venus/fixtures/asset"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -86,6 +88,15 @@ var daemonCmd = &cmds.Command{
 			}
 		}
 
+		//fetch verify key
+		ps, err := asset.Asset("fixtures/_assets/proof-params/parameters.json")
+		if err != nil {
+			return err
+		}
+
+		if err := paramfetch.GetParams(req.Context, ps, 0); err != nil {
+			return errors.Wrapf(err, "fetching proof parameters: %v", err)
+		}
 		return daemonRun(req, re)
 	},
 }
