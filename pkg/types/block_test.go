@@ -98,7 +98,7 @@ func TestTriangleEncoding(t *testing.T) {
 		// Also please add non zero fields to "b" and "diff" in TestSignatureData
 		// and add a new check that different values of the new field result in
 		// different output data.
-		require.Equal(t, 18, s.NumField()) // Note: this also counts private fields
+		require.Equal(t, 19, s.NumField()) // Note: this also counts private fields
 		testRoundTrip(t, b)
 	})
 }
