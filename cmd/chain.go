@@ -4,6 +4,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -84,48 +85,52 @@ var chainLsCmd = &cmds.Command{
 		}
 
 		var err error
-		height, _ := req.Options["height"].(int64)
+
 		startTs, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
 		if err != nil {
 			return err
 		}
-		if height >= 0 {
+
+		height, _ := req.Options["height"].(int64)
+		if height >= 0 && abi.ChainEpoch(height) < startTs.Height() {
 			startTs, err = env.(*node.Env).ChainAPI.ChainGetTipSetByHeight(req.Context, abi.ChainEpoch(height), startTs.Key())
 			if err != nil {
 				return err
 			}
 		}
 
+		if abi.ChainEpoch(count) > startTs.Height()+1 {
+			count = uint(startTs.Height() + 1)
+		}
 		tipSetKeys, err := env.(*node.Env).ChainAPI.ChainList(req.Context, startTs.Key(), int(count))
 		if err != nil {
 			return err
 		}
 
-		res := make([]ChainLsResult, 0)
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
+		tpInfoStr := ""
 		for _, key := range tipSetKeys {
 			tp, err := env.(*node.Env).ChainAPI.ChainGetTipSet(key)
 			if err != nil {
 				return err
 			}
 
-			h := tp.Height()
 			strTt := time.Unix(int64(tp.MinTimestamp()), 0).Format("2006-01-02 15:04:05")
 
-			blks := make([]BlockResult, len(tp.Blocks()))
-			for idx, blk := range tp.Blocks() {
-				blks[idx] = BlockResult{Cid: blk.Cid(), Miner: blk.Miner}
+			oneTpInfoStr := fmt.Sprintf("%v: (%s) [ ", tp.Height(), strTt)
+			for _, blk := range tp.Blocks() {
+				oneTpInfoStr += fmt.Sprintf("%s: %s,", blk.Cid().String(), blk.Miner)
 			}
+			oneTpInfoStr += " ]"
 
-			lsRes := ChainLsResult{Height: h, Timestamp: strTt, Blocks: blks}
-			res = append(res, lsRes)
+			tpInfoStr += oneTpInfoStr + "\n"
 		}
 
-		if err := re.Emit(res); err != nil {
-			return err
-		}
-		return nil
+		writer.WriteString(tpInfoStr)
+
+		return re.Emit(buf)
 	},
-	Type: []ChainLsResult{},
 }
 
 var chainSetHeadCmd = &cmds.Command{

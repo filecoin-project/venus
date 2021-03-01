@@ -181,7 +181,7 @@ func (w *Wallet) Export(addr address.Address, password string) (*crypto.KeyInfo,
 		return nil, err
 	}
 
-	ki, err := bck.GetKeyInfoPassphrase(addr, string(keccak256([]byte(password))))
+	ki, err := bck.GetKeyInfoPassphrase(addr, keccak256([]byte(password)))
 	if err != nil {
 		return nil, err
 	}
@@ -208,17 +208,6 @@ func (w *Wallet) DSBacked() (*DSBackend, error) {
 	}
 
 	return (backends[0]).(*DSBackend), nil
-}
-
-// IsLocked return wallet is locked. true is locked.
-func (w *Wallet) IsLocked() bool {
-	backend, err := w.DSBacked()
-	if err != nil {
-		walletLog.Errorf("get DSBacked failed: %v", err)
-		return false
-	}
-
-	return backend.IsLocked()
 }
 
 func (w *Wallet) Locked(password string) error {

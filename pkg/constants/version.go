@@ -6,6 +6,16 @@ import (
 	"github.com/filecoin-project/venus/build/flags"
 )
 
+var BuildType int
+
+const (
+	BuildDefault  = 0
+	BuildMainnet  = 0x1
+	Build2k       = 0x2
+	BuildDebug    = 0x3
+	BuildCalibnet = 0x4
+)
+
 // BuildVersion is the local build version, set by build system
 const BuildVersion = "1.2.2"
 

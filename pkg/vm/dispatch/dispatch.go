@@ -3,10 +3,13 @@ package dispatch
 import (
 	"bytes"
 	"fmt"
+	"reflect"
+
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	"reflect"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -91,7 +94,12 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, nvk network.Version,
 		if err != nil {
 			return []byte{}, err
 		}
-	case builtin.CBORBytes:
+	case builtin2.CBORBytes:
+		err := parserByte(t)
+		if err != nil {
+			return []byte{}, err
+		}
+	case builtin3.CBORBytes:
 		err := parserByte(t)
 		if err != nil {
 			return []byte{}, err

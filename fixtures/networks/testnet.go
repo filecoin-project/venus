@@ -55,7 +55,7 @@ func Testnet() *NetworkConf {
 				UpgradeCalicoHeight:   265200,
 				UpgradePersianHeight:  265200 + (builtin2.EpochsInHour * 60),
 				UpgradeOrangeHeight:   336458,
-				UpgradeActorsV3Height: 999999999, // ToDo
+				UpgradeActorsV3Height: 550321, // 2021-03-04T00:00:30Z
 
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       343200, // 2020-12-22T02:00:00Z

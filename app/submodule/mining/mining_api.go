@@ -3,6 +3,7 @@ package mining
 import (
 	"bytes"
 	"context"
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/ipfs-force-community/venus-wallet/core"
@@ -17,7 +18,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/crypto/sigs/bls"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -273,35 +273,29 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *BlockTempl
 }
 
 func aggregateSignatures(sigs []crypto.Signature) (*crypto.Signature, error) {
-	sigsS := make([][]byte, len(sigs))
+	sigsS := make([]ffi.Signature, len(sigs))
 	for i := 0; i < len(sigs); i++ {
-		sigsS[i] = sigs[i].Data
+		copy(sigsS[i][:], sigs[i].Data[:ffi.SignatureBytes])
 	}
 
-	aggregator := new(bls.AggregateSignature).AggregateCompressed(sigsS)
-	if aggregator == nil {
+	aggSig := ffi.Aggregate(sigsS)
+	if aggSig == nil {
 		if len(sigs) > 0 {
 			return nil, xerrors.Errorf("bls.Aggregate returned nil with %d signatures", len(sigs))
 		}
+
+		zeroSig := ffi.CreateZeroSignature()
 
 		// Note: for blst this condition should not happen - nil should not
 		// be returned
 		return &crypto.Signature{
 			Type: crypto.SigTypeBLS,
-			Data: new(bls.Signature).Compress(),
+			Data: zeroSig[:],
 		}, nil
 	}
-	aggSigAff := aggregator.ToAffine()
-	if aggSigAff == nil {
-		return &crypto.Signature{
-			Type: crypto.SigTypeBLS,
-			Data: new(bls.Signature).Compress(),
-		}, nil
-	}
-	aggSig := aggSigAff.Compress()
 	return &crypto.Signature{
 		Type: crypto.SigTypeBLS,
-		Data: aggSig,
+		Data: aggSig[:],
 	}, nil
 }
 

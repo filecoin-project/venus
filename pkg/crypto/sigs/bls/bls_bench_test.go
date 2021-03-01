@@ -23,6 +23,7 @@ func BenchmarkBLSSign(b *testing.B) {
 }
 
 func BenchmarkBLSVerify(b *testing.B) {
+	tf.BenchUnitTest(b)
 	signer := blsSigner{}
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()

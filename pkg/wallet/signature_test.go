@@ -34,8 +34,6 @@ func requireSignerAddr(t *testing.T) (*DSBackend, address.Address) {
 	addr, err := fs.NewAddress(address.SECP256K1)
 	require.NoError(t, err)
 
-	err = fs.UnLocked(TestPassword)
-	assert.NoError(t, err)
 	return fs, addr
 }
 

@@ -307,6 +307,14 @@ var setWalletPassword = &cmds.Command{
 		if err != nil {
 			return err
 		}
+		pw2, err := gopass.GetPasswdPrompt("Enter Password again:", true, os.Stdin, os.Stdout)
+		if err != nil {
+			return err
+		}
+		if !bytes.Equal(pw, pw2) {
+			return errors.New("the input passwords are inconsistent")
+		}
+
 		req.Arguments = []string{string(pw)}
 
 		return nil
@@ -347,9 +355,6 @@ var lockedCmd = &cmds.Command{
 		if len(req.Arguments) != 1 {
 			return re.Emit("A parameter is required.")
 		}
-		if env.(*node.Env).WalletAPI.IsLocked(req.Context) {
-			return re.Emit("It's already locked")
-		}
 
 		pw := req.Arguments[0]
 
@@ -378,9 +383,6 @@ var unlockedCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 1 {
 			return re.Emit("A parameter is required.")
-		}
-		if !env.(*node.Env).WalletAPI.IsLocked(req.Context) {
-			return re.Emit("It's already unlocked")
 		}
 
 		pw := req.Arguments[0]

@@ -55,8 +55,7 @@ func TestWalletBalance(t *testing.T) {
 	defer done()
 	err := n.Wallet().API().SetPassword(ctx, wallet.TestPassword)
 	require.NoError(t, err)
-	err = n.Wallet().API().UnLocked(ctx, wallet.TestPassword)
-	require.NoError(t, err)
+
 	addr, err := n.Wallet().API().WalletNewAddress(address.SECP256K1)
 	require.NoError(t, err)
 
@@ -88,8 +87,6 @@ func TestWalletLoadFromFile(t *testing.T) {
 
 	err := n.Wallet().API().SetPassword(ctx, wallet.TestPassword)
 	require.NoError(t, err)
-	err = n.Wallet().API().UnLocked(ctx, wallet.TestPassword)
-	require.NoError(t, err)
 
 	for _, p := range fortest.KeyFilePaths() {
 		cmdClient.RunSuccess(ctx, "wallet", "import", p)
@@ -103,7 +100,7 @@ func TestWalletLoadFromFile(t *testing.T) {
 
 	// assert default amount of funds were allocated to address during genesis
 	balance := cmdClient.RunSuccess(ctx, "wallet", "balance", fortest.TestAddresses[0].String()).ReadStdout()
-	assert.Equal(t, "0 FIL\n", balance)
+	assert.Equal(t, "1000000 FIL\n", balance)
 }
 
 func TestWalletExportImportRoundTrip(t *testing.T) {
@@ -116,8 +113,6 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	defer done()
 
 	err := n.Wallet().API().SetPassword(ctx, wallet.TestPassword)
-	require.NoError(t, err)
-	err = n.Wallet().API().UnLocked(ctx, wallet.TestPassword)
 	require.NoError(t, err)
 
 	addr, err := n.Wallet().API().WalletNewAddress(address.SECP256K1)

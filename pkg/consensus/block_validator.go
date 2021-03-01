@@ -5,6 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/venus/pkg/crypto/sigs"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/prometheus/common/log"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"os"
 	"strings"
 	"time"
@@ -40,6 +45,8 @@ import (
 )
 
 var ErrTemporal = errors.New("temporal error")
+var ErrSoftFailure = errors.New("soft validation failure")
+var ErrInsufficientPower = errors.New("incoming block's miner does not have minimum power")
 
 type BlockValidator struct {
 	// TicketValidator validates ticket generation
@@ -61,8 +68,7 @@ type BlockValidator struct {
 	config           *config.NetworkParamsConfig
 	gasPirceSchedule *gas.PricesSchedule
 
-	validateBlockCache  *lru.ARCCache
-	validateHeaderCache *lru.ARCCache
+	validateBlockCache *lru.ARCCache
 }
 
 func NewBlockValidator(tv TicketValidator,
@@ -78,31 +84,30 @@ func NewBlockValidator(tv TicketValidator,
 	config *config.NetworkParamsConfig,
 	gasPirceSchedule *gas.PricesSchedule) *BlockValidator {
 	validateBlockCache, _ := lru.NewARC(2048)
-	validateHeaderCache, _ := lru.NewARC(2048)
 	return &BlockValidator{
-		tv:                  tv,
-		bstore:              bstore,
-		messageStore:        messageStore,
-		drand:               drand,
-		cstore:              cstore,
-		proofVerifier:       proofVerifier,
-		state:               state,
-		chainState:          chainState,
-		chainSelector:       chainSelector,
-		fork:                fork,
-		config:              config,
-		gasPirceSchedule:    gasPirceSchedule,
-		validateBlockCache:  validateBlockCache,
-		validateHeaderCache: validateHeaderCache,
+		tv:                 tv,
+		bstore:             bstore,
+		messageStore:       messageStore,
+		drand:              drand,
+		cstore:             cstore,
+		proofVerifier:      proofVerifier,
+		state:              state,
+		chainState:         chainState,
+		chainSelector:      chainSelector,
+		fork:               fork,
+		config:             config,
+		gasPirceSchedule:   gasPirceSchedule,
+		validateBlockCache: validateBlockCache,
 	}
 }
 
-func (bv *BlockValidator) ValidateBlockHeader(ctx context.Context, blk *types.BlockHeader) (err error) {
+func (bv *BlockValidator) ValidateBlockMsg(ctx context.Context, blk *types.BlockMsg) pubsub.ValidationResult {
 	validationStart := time.Now()
 	defer func() {
-		logExpect.Debugw("block validation header", "Cid", blk.Cid(), "took", time.Since(validationStart), "height", blk.Height, "age", time.Since(time.Unix(int64(blk.Timestamp), 0)), "Err", err)
+		logExpect.Debugw("block validation header", "Cid", blk.Cid(), "took", time.Since(validationStart), "height", blk.Header.Height, "age", time.Since(time.Unix(int64(blk.Header.Timestamp), 0)))
 	}()
-	return bv.validateBlock(ctx, blk)
+
+	return bv.validateBlockMsg(ctx, blk)
 }
 
 func (bv *BlockValidator) ValidateFullBlock(ctx context.Context, blk *types.BlockHeader) (err error) {
@@ -116,16 +121,6 @@ func (bv *BlockValidator) ValidateFullBlock(ctx context.Context, blk *types.Bloc
 	}
 
 	err = bv.validateBlock(ctx, blk)
-	//validate message
-	parent, err := bv.chainState.GetTipSet(blk.Parents)
-	if err != nil {
-		return xerrors.Errorf("load parent tipset failed %w", err)
-	}
-	keyStateView := bv.state.PowerStateView(blk.ParentStateRoot)
-	sigValidator := appstate.NewSignatureValidator(keyStateView)
-	if err := bv.checkBlockMessages(ctx, sigValidator, blk, parent); err != nil {
-		return xerrors.Errorf("block had invalid messages: %w", err)
-	}
 
 	if err == nil {
 		bv.validateBlockCache.Add(blk.Cid(), struct{}{})
@@ -134,10 +129,6 @@ func (bv *BlockValidator) ValidateFullBlock(ctx context.Context, blk *types.Bloc
 }
 
 func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHeader) error {
-	if _, ok := bv.validateHeaderCache.Get(blk.Cid()); ok {
-		return nil
-	}
-
 	parent, err := bv.chainState.GetTipSet(blk.Parents)
 	if err != nil {
 		return xerrors.Errorf("load parent tipset failed %w", err)
@@ -266,6 +257,15 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 		return nil
 	})
 
+	msgsCheck := async.Err(func() error {
+		keyStateView := bv.state.PowerStateView(blk.ParentStateRoot)
+		sigValidator := appstate.NewSignatureValidator(keyStateView)
+		if err := bv.checkBlockMessages(ctx, sigValidator, blk, parent); err != nil {
+			return xerrors.Errorf("block had invalid messages: %w", err)
+		}
+		return nil
+	})
+
 	await := []async.ErrorFuture{
 		minerCheck,
 		tktsCheck,
@@ -274,6 +274,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 		wproofCheck,
 		winnerCheck,
 		baseFeeCheck,
+		msgsCheck,
 	}
 
 	var merr error
@@ -301,11 +302,130 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 		}
 		return mulErr
 	}
-
-	if err == nil {
-		bv.validateHeaderCache.Add(blk.Cid(), struct{}{})
-	}
 	return nil
+}
+
+func (bv *BlockValidator) validateBlockMsg(ctx context.Context, blk *types.BlockMsg) pubsub.ValidationResult {
+	// validate the block meta: the Message CID in the header must match the included messages
+	err := bv.validateMsgMeta(ctx, blk)
+	if err != nil {
+		logExpect.Warnf("error validating message metadata: %s", err)
+		return pubsub.ValidationReject
+	}
+
+	// we want to ensure that it is a block from a known miner; we reject blocks from unknown miners
+	// to prevent spam attacks.
+	// the logic works as follows: we lookup the miner in the chain for its key.
+	// if we can find it then it's a known miner and we can validate the signature.
+	// if we can't find it, we check whether we are (near) synced in the chain.
+	// if we are not synced we cannot validate the block and we must ignore it.
+	// if we are synced and the miner is unknown, then the block is rejcected.
+	key, err := bv.checkPowerAndGetWorkerKey(ctx, blk.Header)
+	if err != nil {
+		if err != ErrSoftFailure {
+			logExpect.Errorf("received block from unknown miner or miner that doesn't meet min power over pubsub; rejecting message")
+			return pubsub.ValidationReject
+		}
+
+		logExpect.Errorf("cannot validate block message; unknown miner or miner that doesn't meet min power in unsynced chain")
+		return pubsub.ValidationIgnore
+	}
+
+	err = sigs.CheckBlockSignature(ctx, blk.Header, key)
+	if err != nil {
+		logExpect.Errorf("block signature verification failed: %s", err)
+		return pubsub.ValidationReject
+	}
+
+	if blk.Header.ElectionProof.WinCount < 1 {
+		logExpect.Errorf("block is not claiming to be winning")
+		return pubsub.ValidationReject
+	}
+
+	return pubsub.ValidationAccept
+}
+
+func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockMsg) error {
+	// TODO there has to be a simpler way to do this without the blockstore dance
+	// block headers use adt0
+	store := blockadt.WrapStore(ctx, cbor.NewCborStore(bstore.NewTemporary()))
+	bmArr := blockadt.MakeEmptyArray(store)
+	smArr := blockadt.MakeEmptyArray(store)
+
+	for i, m := range msg.BlsMessages {
+		c := cbg.CborCid(m)
+		if err := bmArr.Set(uint64(i), &c); err != nil {
+			return err
+		}
+	}
+
+	for i, m := range msg.SecpkMessages {
+		c := cbg.CborCid(m)
+		if err := smArr.Set(uint64(i), &c); err != nil {
+			return err
+		}
+	}
+
+	bmroot, err := bmArr.Root()
+	if err != nil {
+		return err
+	}
+
+	smroot, err := smArr.Root()
+	if err != nil {
+		return err
+	}
+
+	mrcid, err := store.Put(store.Context(), &types.TxMeta{
+		BLSRoot:  bmroot,
+		SecpRoot: smroot,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if msg.Header.Messages != mrcid {
+		return fmt.Errorf("messages didn't match root cid in header")
+	}
+
+	return nil
+}
+
+func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *types.BlockHeader) (address.Address, error) {
+	// we check that the miner met the minimum power at the lookback tipset
+
+	baseTs := bv.chainState.GetHead()
+	version := bv.fork.GetNtwkVersion(ctx, bh.Height)
+	lbts, lbst, err := bv.chainState.GetLookbackTipSetForRound(ctx, baseTs, bh.Height, version)
+	if err != nil {
+		log.Warnf("failed to load lookback tipset for incoming block: %s", err)
+		return address.Undef, ErrSoftFailure
+	}
+
+	powerStateView := bv.state.PowerStateView(lbst)
+	key, err := powerStateView.GetMinerWorkerRaw(ctx, bh.Miner)
+	if err != nil {
+		log.Warnf("failed to resolve worker key for miner %s: %s", bh.Miner, err)
+		return address.Undef, ErrSoftFailure
+	}
+
+	// NOTE: we check to see if the miner was eligible in the lookback
+	// tipset - 1 for historical reasons. DO NOT use the lookback state
+	// returned by GetLookbackTipSetForRound.
+
+	eligible, err := bv.MinerEligibleToMine(ctx, bh.Miner, baseTs.At(0).ParentStateRoot, baseTs.Height(), lbts)
+	if err != nil {
+		log.Warnf("failed to determine if incoming block's miner has minimum power: %s", err)
+		return address.Undef, ErrSoftFailure
+	}
+
+	if !eligible {
+		log.Warnf("incoming block's miner is ineligible")
+		return address.Undef, ErrInsufficientPower
+	}
+
+	return key, nil
 }
 
 func (bv *BlockValidator) minerIsValid(ctx context.Context, maddr address.Address, baseStateRoot cid.Cid) error {

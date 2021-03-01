@@ -1408,6 +1408,51 @@ func (c *ChainFork) UpgradeCalico(ctx context.Context, cache MigrationCache, roo
 	return newRoot, nil
 }
 
+func terminateActor(ctx context.Context, tree *vmstate.State, addr address.Address, epoch abi.ChainEpoch) error {
+	a, found, err := tree.GetActor(context.TODO(), addr)
+	if err != nil {
+		return xerrors.Errorf("failed to get actor to delete: %v", err)
+	}
+	if !found {
+		return types.ErrActorNotFound
+	}
+
+	if err := doTransfer(tree, addr, builtin.BurntFundsActorAddr, a.Balance); err != nil {
+		return xerrors.Errorf("transferring terminated actor's balance: %v", err)
+	}
+
+	err = tree.DeleteActor(ctx, addr)
+	if err != nil {
+		return xerrors.Errorf("deleting actor from tree: %v", err)
+	}
+
+	ia, found, err := tree.GetActor(ctx, init_.Address)
+	if err != nil {
+		return xerrors.Errorf("loading init actor: %v", err)
+	}
+	if !found {
+		return types.ErrActorNotFound
+	}
+
+	ias, err := init_.Load(&vmstate.AdtStore{IpldStore: tree.Store}, ia)
+	if err != nil {
+		return xerrors.Errorf("loading init actor state: %v", err)
+	}
+
+	if err := ias.Remove(addr); err != nil {
+		return xerrors.Errorf("deleting entry from address map: %v", err)
+	}
+
+	nih, err := tree.Store.Put(ctx, ias)
+	if err != nil {
+		return xerrors.Errorf("writing new init actor state: %v", err)
+	}
+
+	ia.Head = nih
+
+	return tree.SetActor(ctx, init_.Address, ia)
+}
+
 func (c *ChainFork) UpgradeActorsV3(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	// Use all the CPUs except 3.
 	workerCount := runtime.NumCPU() - 3
@@ -1426,16 +1471,21 @@ func (c *ChainFork) UpgradeActorsV3(ctx context.Context, cache MigrationCache, r
 		return cid.Undef, xerrors.Errorf("migrating actors v3 state: %v", err)
 	}
 
-	// perform some basic sanity checks to make sure everything still works.
-	store := chain.ActorStore(ctx, c.bs)
-	if newSm, err := vmstate.LoadState(ctx, store, newRoot); err != nil {
-		return cid.Undef, xerrors.Errorf("state tree sanity load failed: %v", err)
-	} else if newRoot2, err := newSm.Flush(ctx); err != nil {
-		return cid.Undef, xerrors.Errorf("state tree sanity flush failed: %v", err)
-	} else if newRoot2 != newRoot {
-		return cid.Undef, xerrors.Errorf("state-root mismatch: %s != %s", newRoot, newRoot2)
-	} else if _, _, err := newSm.GetActor(ctx, init_.Address); err != nil {
-		return cid.Undef, xerrors.Errorf("failed to load init actor after upgrade: %v", err)
+	tree, err := c.StateTree(ctx, root)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("getting state tree: %v", err)
+	}
+
+	if constants.BuildType == constants.BuildMainnet {
+		err := terminateActor(ctx, tree, types.ZeroAddress, epoch)
+		if err != nil && !xerrors.Is(err, types.ErrActorNotFound) {
+			return cid.Undef, xerrors.Errorf("deleting zero bls actor: %v", err)
+		}
+
+		newRoot, err = tree.Flush(ctx)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("flushing state tree: %v", err)
+		}
 	}
 
 	return newRoot, nil
@@ -1508,3 +1558,20 @@ func (c *ChainFork) upgradeActorsV3Common(
 func (c *ChainFork) GetForkUpgrade() *config.ForkUpgradeConfig {
 	return c.forkUpgrade
 }
+
+//func makeFakeMsg(from address.Address, to address.Address, amt abi.TokenAmount, nonce uint64) *types.Message {
+//	return &types.Message{
+//		From:  from,
+//		To:    to,
+//		Value: amt,
+//		Nonce: nonce,
+//	}
+//}
+//
+//func makeFakeRct() *types.MessageReceipt {
+//	return &types.MessageReceipt{
+//		ExitCode:    0,
+//		ReturnValue: nil,
+//		GasUsed:     0,
+//	}
+//}

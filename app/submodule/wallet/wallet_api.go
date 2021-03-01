@@ -177,10 +177,6 @@ func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Add
 	}, nil
 }
 
-func (walletAPI *WalletAPI) IsLocked(ctx context.Context) bool {
-	return walletAPI.walletModule.Wallet.IsLocked()
-}
-
 func (walletAPI *WalletAPI) Locked(ctx context.Context, password string) error {
 	return walletAPI.walletModule.Wallet.Locked(password)
 }

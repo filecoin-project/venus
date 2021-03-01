@@ -74,6 +74,8 @@ type BlockHeader struct {
 	cachedCid cid.Cid
 
 	cachedBytes []byte
+
+	validated bool // internal, true if the signature has been validated
 }
 
 // IndexMessagesField is the message field position in the encoded newBlock
@@ -205,4 +207,12 @@ func (b *BlockHeader) ToStorageBlock() (blocks.Block, error) {
 
 func (b *BlockHeader) LastTicket() *Ticket {
 	return &b.Ticket
+}
+
+func (b *BlockHeader) SetValidated() {
+	b.validated = true
+}
+
+func (b *BlockHeader) IsValidated() bool {
+	return b.validated
 }
