@@ -143,6 +143,7 @@ TOOL COMMANDS
   venus protocol               - Show protocol parameter details
   venus version                - Show venus version information
   venus seed                   - Seal sectors for genesis miner
+  venus fetch-params           - Fetch proving parameters
 `,
 	},
 	Options: []cmds.Option{
@@ -162,11 +163,12 @@ var RootCmdDaemon = &cmds.Command{
 
 // all top level commands, not available to daemon
 var rootSubcmdsLocal = map[string]*cmds.Command{
-	"daemon":  daemonCmd,
-	"fetch":   fetchCmd,
-	"version": versionCmd,
-	"leb128":  leb128Cmd,
-	"seed":    seedCmd,
+	"daemon":       daemonCmd,
+	"fetch":        fetchCmd,
+	"version":      versionCmd,
+	"leb128":       leb128Cmd,
+	"seed":         seedCmd,
+	"fetch-params": fetchParamCmd,
 }
 
 // all top level commands, available on daemon. set during init() to avoid configuration loops.
