@@ -29,12 +29,13 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v1.2.7
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20201016201715-d41df56b4f6a
-	github.com/filecoin-project/go-jsonrpc v0.1.2
+	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
 	github.com/filecoin-project/go-state-types v0.1.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
+	github.com/filecoin-project/lotus v1.5.0 // indirect
 	github.com/filecoin-project/specs-actors v0.9.13
 	github.com/filecoin-project/specs-actors/v2 v2.3.4
 	github.com/filecoin-project/specs-actors/v3 v3.0.3
@@ -113,10 +114,10 @@ require (
 	github.com/streadway/handy v0.0.0-20190108123426-d5acb3125c2a
 	github.com/stretchr/testify v1.7.0
 	github.com/supranational/blst v0.3.2
-	github.com/whyrusleeping/cbor-gen v0.0.0-20210118024343-169e9d70c0c2
+	github.com/whyrusleeping/cbor-gen v0.0.0-20210219115102-f37d292932f2
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
-	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
+	github.com/whyrusleeping/pubsub v0.0.0-20190708150250-92bcb0691325
 	go.opencensus.io v0.22.5
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a

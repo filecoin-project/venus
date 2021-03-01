@@ -11,6 +11,9 @@ import (
 type IAccount interface {
 	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 }
+
+var _ IAccount = &AccountAPI{}
+
 type AccountAPI struct {
 	chain *ChainSubmodule
 }

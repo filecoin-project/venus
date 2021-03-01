@@ -43,6 +43,8 @@ type IMessagePool interface {
 	WalletHas(ctx context.Context, addr address.Address) (bool, error)
 }
 
+var _ IMessagePool = &MessagePoolAPI{}
+
 type MessagePoolAPI struct {
 	pushLocks *messagepool.MpoolLocker
 	lk        sync.Mutex

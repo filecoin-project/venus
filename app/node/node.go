@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/app/submodule/multisig"
 	"net/http"
 	"os"
 	"os/signal"
@@ -79,6 +80,7 @@ type Node struct {
 	// Supporting services
 	//
 	wallet            *wallet.WalletSubmodule
+	multiSig          *multisig.MultiSigSubmodule
 	mpool             *mpool.MessagePoolSubmodule
 	storageNetworking *storagenetworking.StorageNetworkingSubmodule
 
@@ -113,6 +115,10 @@ func (node *Node) Mpool() *mpool.MessagePoolSubmodule {
 
 func (node *Node) Wallet() *wallet.WalletSubmodule {
 	return node.wallet
+}
+
+func (node *Node) MultiSig() *multisig.MultiSigSubmodule {
+	return node.multiSig
 }
 
 func (node *Node) Discovery() *discovery.DiscoverySubmodule {

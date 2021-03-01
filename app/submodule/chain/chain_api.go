@@ -8,6 +8,8 @@ type ChainAPI struct { // nolint: golint
 	MinerStateAPI
 }
 
+var _ IChain = &ChainAPI{}
+
 type IChain interface {
 	IAccount
 	IActor

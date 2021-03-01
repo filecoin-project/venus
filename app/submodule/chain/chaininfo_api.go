@@ -53,6 +53,8 @@ type IChainInfo interface {
 	VerifyEntry(parent, child *types.BeaconEntry, height abi.ChainEpoch) bool
 }
 
+var _ IChainInfo = &ChainInfoAPI{}
+
 type ChainInfoAPI struct { //nolint
 	chain *ChainSubmodule
 }
