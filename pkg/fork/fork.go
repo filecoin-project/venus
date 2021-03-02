@@ -1471,7 +1471,7 @@ func (c *ChainFork) UpgradeActorsV3(ctx context.Context, cache MigrationCache, r
 		return cid.Undef, xerrors.Errorf("migrating actors v3 state: %v", err)
 	}
 
-	tree, err := c.StateTree(ctx, root)
+	tree, err := c.StateTree(ctx, newRoot)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting state tree: %v", err)
 	}
