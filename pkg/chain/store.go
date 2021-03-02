@@ -774,6 +774,9 @@ func (store *Store) Import(r io.Reader) (*types.TipSet, error) {
 		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
 	}
 	err = store.PutTipSetMetadata(context.Background(), &TipSetMetadata{
+		// TODO: Special logic
+		// The difference between Lotus and Venus is that Venus has to rewind one block height of data
+		// so the TipSetStateRoot is the current StateRoot,not the ParentStateRoot
 		TipSetStateRoot: root.At(0).ParentStateRoot,
 		TipSet:          parentTipset,
 		TipSetReceipts:  root.At(0).ParentMessageReceipts,

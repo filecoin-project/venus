@@ -275,7 +275,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, xerrors.Errorf("read or generate jwt secrect error %s", err)
 	}
 
-	nd.multiSig = multisig.NewMultiSigSubmodule(nd.chain.API(), nd.mpool.API())
+	nd.multiSig = multisig.NewMultiSigSubmodule(nd.chain.API(), nd.mpool.API(), nd.chain.ChainReader)
 
 	stmgr := statemanger.NewStateMangerAPI(nd.chain.ChainReader, nd.syncer.Consensus)
 	mgrps := &paychmgr.ManagerParams{

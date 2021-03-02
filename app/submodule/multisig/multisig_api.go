@@ -6,8 +6,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
-	"github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/app/submodule/mpool"
 	"github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/multisig"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -28,15 +26,13 @@ type IMultiSig interface {
 	MsigApproveTxnHash(ctx context.Context, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error)
 	MsigCancel(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error)
 	MsigRemoveSigner(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (cid.Cid, error)
-	msigApproveOrCancelSimple(ctx context.Context, operation MsigProposeResponse, msig address.Address, txID uint64, src address.Address) (cid.Cid, error)
-	msigApproveOrCancelTxnHash(ctx context.Context, operation MsigProposeResponse, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error)
+	MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)
 }
 
 var _ IMultiSig = &multiSig{}
 
 type multiSig struct {
-	state chain.IChain
-	mpool mpool.IMessagePool
+	*MultiSigSubmodule
 }
 type MsigProposeResponse int
 
@@ -45,10 +41,9 @@ const (
 	MsigCancel
 )
 
-func newMultiSig(chainState chain.IChain, msgPool mpool.IMessagePool) IMultiSig {
+func newMultiSig(m *MultiSigSubmodule) IMultiSig {
 	return &multiSig{
-		state: chainState,
-		mpool: msgPool,
+		MultiSigSubmodule: m,
 	}
 }
 func (a *multiSig) messageBuilder(ctx context.Context, from address.Address) (multisig.MessageBuilder, error) {
@@ -175,6 +170,47 @@ func (a *multiSig) MsigRemoveSigner(ctx context.Context, msig address.Address, p
 	}
 
 	return a.MsigPropose(ctx, msig, msig, types.NewInt(0), proposer, uint64(multisig.Methods.RemoveSigner), enc)
+}
+
+func (a *multiSig) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
+	startTs, err := a.state.ChainGetTipSet(start)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading start tipset %s: %w", start, err)
+	}
+
+	endTs, err := a.state.ChainGetTipSet(end)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading end tipset %s: %w", end, err)
+	}
+
+	if startTs.Height() > endTs.Height() {
+		return types.EmptyInt, xerrors.Errorf("start tipset %d is after end tipset %d", startTs.Height(), endTs.Height())
+	} else if startTs.Height() == endTs.Height() {
+		return big.Zero(), nil
+	}
+
+	//LoadActor(ctx, addr, endTs)
+	act, err := a.state.GetParentStateRootActor(ctx, endTs, addr)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor at end epoch: %w", err)
+	}
+
+	msas, err := multisig.Load(a.store.Store(ctx), act)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state: %w", err)
+	}
+
+	startLk, err := msas.LockedBalance(startTs.Height())
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to compute locked balance at start height: %w", err)
+	}
+
+	endLk, err := msas.LockedBalance(endTs.Height())
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to compute locked balance at end height: %w", err)
+	}
+
+	return types.BigSub(startLk, endLk), nil
 }
 
 func (a *multiSig) msigApproveOrCancelSimple(ctx context.Context, operation MsigProposeResponse, msig address.Address, txID uint64, src address.Address) (cid.Cid, error) {

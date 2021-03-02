@@ -103,6 +103,7 @@ START RUNNING FILECOIN
   venus config <key> [<value>] - Get and set filecoin config values
   venus daemon                 - Start a long-running daemon process
   venus wallet                 - Manage your filecoin wallets
+  venus msig                   - Interact with a multisig wallet
 
 VIEW DATA STRUCTURES
   venus chain                  - Inspect the filecoin blockchain
@@ -191,6 +192,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"state":    stateCmd,
 	"miner":    minerCmd,
 	"paych":    paychCmd,
+	"msig":     multisigCmd,
 }
 
 func init() {

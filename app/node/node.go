@@ -335,6 +335,7 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		MessagePoolAPI:       node.mpool.API(),
 		PaychAPI:             node.paychan.API(),
 		MarketAPI:            node.market.API(),
+		MultiSigAPI:          node.multiSig.API(),
 	}
 
 	return &env

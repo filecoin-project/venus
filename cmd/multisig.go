@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/chain/actors"
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 	"github.com/filecoin-project/venus/app/node"
@@ -18,12 +17,14 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/multisig"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 	"text/tabwriter"
 )
 
@@ -35,33 +36,47 @@ var multisigCmd = &cmds.Command{
 		cmds.Int64Option("number of block confirmations to wait for").WithDefault(int64(constants.MessageConfidence)),
 	},
 	Subcommands: map[string]*cmds.Command{
-		"create":         msigCreateCmd,
-		"inspect":        msigInspectCmd,
-		"propose":        msigProposeCmd,
-		"propose-remove": msigRemoveProposeCmd,
+		"create":            msigCreateCmd,
+		"inspect":           msigInspectCmd,
+		"propose":           msigProposeCmd,
+		"propose-remove":    msigRemoveProposeCmd,
+		"approve":           msigApproveCmd,
+		"add-propose":       msigAddProposeCmd,
+		"add-approve":       msigAddApproveCmd,
+		"add-cancel":        msigAddCancelCmd,
+		"swap-propose":      msigSwapProposeCmd,
+		"swap-approve":      msigSwapApproveCmd,
+		"swap-cancel":       msigSwapCancelCmd,
+		"lock-propose":      msigLockProposeCmd,
+		"lock-approve":      msigLockApproveCmd,
+		"lock-cancel":       msigLockCancelCmd,
+		"vested":            msigVestedCmd,
+		"propose-threshold": msigProposeThresholdCmd,
 	},
 }
 
 var msigCreateCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Create a new multisig wallet",
+		Usage:   "[address1 address2 ...]",
 	},
 	Options: []cmds.Option{
-		cmds.Uint64Option("required", "number of required approvals (uses number of signers provided if omitted)"),
+		cmds.Uint64Option("required", "number of required approvals (uses number of signers provided if omitted)").WithDefault(0),
 		cmds.StringOption("value", "initial funds to give to multisig").WithDefault("0"),
 		cmds.Uint64Option("duration", "length of the period over which funds unlock").WithDefault(0),
-		cmds.StringOption("from", "account to send the create message from").WithDefault("0"),
+		cmds.StringOption("from", "account to send the create message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("address1 address2 ...", true, false, "Multiple wallets used for aggregation"),
+		cmds.StringArg("addresses", true, false, "approving addresses,Ps:'addr1 addr2 ...'"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) < 1 {
 			return fmt.Errorf("multisigs must have at least one signer")
 		}
-
+		addrStr := req.Arguments[0]
+		addrArr := strings.Split(addrStr, ",")
 		var addrs []address.Address
-		for _, a := range req.Arguments {
+		for _, a := range addrArr {
 			addr, err := address.NewFromString(a)
 			if err != nil {
 				return err
@@ -71,7 +86,8 @@ var msigCreateCmd = &cmds.Command{
 
 		// get the address we're going to use to create the multisig (can be one of the above, as long as they have funds)
 		var sendAddr address.Address
-		if send, _ := req.Options["from"].(string); send == "" {
+		send := reqStringOption(req, "from")
+		if send == "" {
 			defaddr, err := env.(*node.Env).WalletAPI.WalletDefaultAddress()
 			if err != nil {
 				return err
@@ -84,31 +100,25 @@ var msigCreateCmd = &cmds.Command{
 			}
 			sendAddr = addr
 		}
-		val, _ := req.Options["value"].(string)
+		val := reqStringOption(req, "value")
 		filval, err := types.ParseFIL(val)
 		if err != nil {
 			return err
 		}
-
 		intVal := types.BigInt(filval)
 
-		required, _ := req.Options["required"].(uint64)
-		if required == 0 {
-			required = uint64(len(addrs))
-		}
+		required := reqUint64Option(req, "required")
 
-		duration, _ := req.Options["duration"].(uint64)
+		duration := reqUint64Option(req, "duration")
 		d := abi.ChainEpoch(duration)
-
 		gp := types.NewInt(1)
 
 		msgCid, err := env.(*node.Env).MultiSigAPI.MsigCreate(req.Context, required, addrs, d, intVal, sendAddr, gp)
 		if err != nil {
 			return err
 		}
-		confidence := reqConfidence(req)
 		// wait for it to get mined into a block
-		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(req.Context, msgCid, confidence)
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(req.Context, msgCid, reqConfidence(req))
 		if err != nil {
 			return err
 		}
@@ -131,6 +141,7 @@ var msigCreateCmd = &cmds.Command{
 var msigInspectCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Inspect a multisig wallet",
+		Usage:   "[address]",
 	},
 	Options: []cmds.Option{
 		cmds.BoolOption("vesting", "Include vesting details)"),
@@ -176,7 +187,7 @@ var msigInspectCmd = &cmds.Command{
 		fmt.Fprintf(cliw, "Balance: %s\n", types.FIL(act.Balance))
 		fmt.Fprintf(cliw, "Spendable: %s\n", types.FIL(types.BigSub(act.Balance, locked)))
 
-		vesting, _ := req.Options["vesting"].(bool)
+		vesting := reqBoolOption(req, "vesting")
 		if vesting {
 			ib, err := mstate.InitialBalance()
 			if err != nil {
@@ -228,7 +239,7 @@ var msigInspectCmd = &cmds.Command{
 			return xerrors.Errorf("reading pending transactions: %w", err)
 		}
 
-		decParams, _ := req.Options["decode-params"].(bool)
+		decParams := reqBoolOption(req, "decode-params")
 		fmt.Fprintln(cliw, "Transactions: ", len(pending))
 		if len(pending) > 0 {
 			var txids []int64
@@ -393,8 +404,8 @@ var msigRemoveProposeCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the propose message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("multisigAddress", false, false, "params to include in the proposed message"),
-		cmds.StringArg("signer", false, false, "params to include in the proposed message"),
+		cmds.StringArg("multisigAddress", false, false, "multisig address"),
+		cmds.StringArg("signer", false, false, "a wallet address of the multisig"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 2 {
@@ -415,7 +426,7 @@ var msigRemoveProposeCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		dt := req.Options["decrease-threshold"].(bool)
+		dt := reqBoolOption(req, "decrease-threshold")
 		msgCid, err := env.(*node.Env).MultiSigAPI.MsigRemoveSigner(ctx, msig, from, addr, dt)
 		if err != nil {
 			return err
@@ -437,7 +448,118 @@ var msigRemoveProposeCmd = &cmds.Command{
 		if err != nil {
 			return xerrors.Errorf("decoding proposal return: %w", err)
 		}
-		fmt.Printf("TxnID: %d", ret.TxnID)
+		re.Emit(fmt.Sprintf("TxnID: %d", ret.TxnID))
+		return nil
+	},
+}
+
+var msigApproveCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Approve a multisig message",
+		Usage:   "<multisigAddress messageId> [proposerAddress destination value [methodId methodParams]]",
+	},
+	Options: []cmds.Option{
+		cmds.StringOption("from", "account to send the approve message from"),
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("multisigAddress", false, false, "multisig address"),
+		cmds.StringArg("messageId", false, false, "proposed transaction ID"),
+		cmds.StringArg("proposerAddress", false, false, "proposer address"),
+		cmds.StringArg("destination", false, false, "recipient address"),
+		cmds.StringArg("value", false, false, "value to transfer"),
+		cmds.StringArg("methodId", false, false, "method to call in the proposed message"),
+		cmds.StringArg("methodParams", false, false, "params to include in the proposed message"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		argLen := len(req.Arguments)
+		if argLen < 2 {
+			return fmt.Errorf("must pass at least multisig address and message ID")
+		}
+
+		if argLen > 2 && argLen < 5 {
+			return fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value>")
+		}
+
+		if argLen > 5 && argLen != 7 {
+			return fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value> [ <method> <params> ]")
+		}
+
+		ctx := ReqContext(req.Context)
+
+		msig, err := address.NewFromString(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		txid, err := strconv.ParseUint(req.Arguments[1], 10, 64)
+		if err != nil {
+			return err
+		}
+
+		from, err := reqFromWithDefault(req, env)
+		if err != nil {
+			return err
+		}
+		var msgCid cid.Cid
+		if argLen == 2 {
+			msgCid, err = env.(*node.Env).MultiSigAPI.MsigApprove(ctx, msig, txid, from)
+			if err != nil {
+				return err
+			}
+		} else {
+			proposer, err := address.NewFromString(req.Arguments[2])
+			if err != nil {
+				return err
+			}
+
+			if proposer.Protocol() != address.ID {
+				proposer, err = env.(*node.Env).ChainAPI.StateLookupID(ctx, proposer, types.EmptyTSK)
+				if err != nil {
+					return err
+				}
+			}
+
+			dest, err := address.NewFromString(req.Arguments[3])
+			if err != nil {
+				return err
+			}
+
+			value, err := types.ParseFIL(req.Arguments[4])
+			if err != nil {
+				return err
+			}
+
+			var method uint64
+			var params []byte
+			if argLen == 7 {
+				m, err := strconv.ParseUint(req.Arguments[5], 10, 64)
+				if err != nil {
+					return err
+				}
+				method = m
+
+				p, err := hex.DecodeString(req.Arguments[6])
+				if err != nil {
+					return err
+				}
+				params = p
+			}
+
+			msgCid, err = env.(*node.Env).MultiSigAPI.MsigApproveTxnHash(ctx, msig, txid, proposer, dest, types.BigInt(value), from, method, params)
+			if err != nil {
+				return err
+			}
+		}
+
+		re.Emit(fmt.Sprintf("sent approval in message: %s", msgCid))
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("approve returned exit %d", wait.Receipt.ExitCode)
+		}
 
 		return nil
 	},
@@ -453,8 +575,8 @@ var msigAddProposeCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the propose message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("multisigAddress", false, false, "params to include in the proposed message"),
-		cmds.StringArg("signer", false, false, "params to include in the proposed message"),
+		cmds.StringArg("multisigAddress", false, false, "multisig address"),
+		cmds.StringArg("signer", false, false, "a wallet address of the multisig"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 2 {
@@ -499,14 +621,14 @@ var msigAddApproveCmd = &cmds.Command{
 		Usage:   "[multisigAddress proposerAddress txId newAddress increaseThreshold]",
 	},
 	Options: []cmds.Option{
-		cmds.StringOption("from", "account to send the propose message from)"),
+		cmds.StringOption("from", "account to send the approve message from)"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("multisigAddress", false, false, "params to include in the proposed message"),
-		cmds.StringArg("proposerAddress", false, false, "params to include in the proposed message"),
-		cmds.StringArg("txId", false, false, "params to include in the proposed message"),
-		cmds.StringArg("newAddress", false, false, "params to include in the proposed message"),
-		cmds.StringArg("increaseThreshold", false, false, "params to include in the proposed message"),
+		cmds.StringArg("multisigAddress", false, false, "multisig address"),
+		cmds.StringArg("proposerAddress", false, false, "sender address of the approve msg"),
+		cmds.StringArg("txId", false, false, "proposed message ID"),
+		cmds.StringArg("newAddress", false, false, "new signer"),
+		cmds.StringArg("increaseThreshold", false, false, "whether the number of required signers should be increased"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 5 {
@@ -547,8 +669,7 @@ var msigAddApproveCmd = &cmds.Command{
 			return err
 		}
 
-		fmt.Println("sent add approval in message: ", msgCid)
-
+		re.Emit(fmt.Sprintf("sent add approval in message: %s ", msgCid))
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
 			return err
@@ -568,13 +689,13 @@ var msigAddCancelCmd = &cmds.Command{
 		Usage:   "[multisigAddress txId newAddress increaseThreshold]",
 	},
 	Options: []cmds.Option{
-		cmds.StringOption("from", "account to send the propose message from"),
+		cmds.StringOption("from", "account to send the approve message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("multisigAddress", false, false, "params to include in the proposed message"),
-		cmds.StringArg("txId", false, false, "params to include in the proposed message"),
-		cmds.StringArg("newAddress", false, false, "params to include in the proposed message"),
-		cmds.StringArg("increaseThreshold", false, false, "params to include in the proposed message"),
+		cmds.StringArg("multisigAddress", false, false, "multisig address"),
+		cmds.StringArg("txId", false, false, "proposed message ID"),
+		cmds.StringArg("newAddress", false, false, "new signer"),
+		cmds.StringArg("increaseThreshold", false, false, "whether the number of required signers should be increased"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 
@@ -612,9 +733,8 @@ var msigAddCancelCmd = &cmds.Command{
 			return err
 		}
 
-		fmt.Println("sent add cancellation in message: ", msgCid)
-
-		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req)))
+		re.Emit(fmt.Sprintf("sent add cancellation in message: %s ", msgCid))
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
 			return err
 		}
@@ -635,7 +755,9 @@ var msigSwapProposeCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the propose message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("methodParams", false, false, "params to include in the proposed message"),
+		cmds.StringArg("multisigAddress", false, false, "multisig address"),
+		cmds.StringArg("oldAddress", false, false, "sender address of the cancel msg"),
+		cmds.StringArg("newAddress", false, false, "new signer"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 3 {
@@ -667,7 +789,7 @@ var msigSwapProposeCmd = &cmds.Command{
 			return err
 		}
 
-		fmt.Println("sent swap proposal in message: ", msgCid)
+		re.Emit(fmt.Sprintf("sent swap proposal in message: %s ", msgCid))
 
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
@@ -688,10 +810,14 @@ var msigSwapApproveCmd = &cmds.Command{
 		Usage:   "[multisigAddress proposerAddress txId oldAddress newAddress]",
 	},
 	Options: []cmds.Option{
-		cmds.StringOption("from", "account to send the propose message from"),
+		cmds.StringOption("from", "account to send the approve message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("methodParams", false, false, "params to include in the proposed message"),
+		cmds.StringArg("multisigAddress", false, false, "multisig address"),
+		cmds.StringArg("proposerAddress", false, false, "sender address of the approve msg"),
+		cmds.StringArg("txId", false, false, "proposed message ID"),
+		cmds.StringArg("oldAddress", false, false, "old signer"),
+		cmds.StringArg("newAddress", false, false, "new signer"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 5 {
@@ -732,7 +858,7 @@ var msigSwapApproveCmd = &cmds.Command{
 			return err
 		}
 
-		fmt.Println("sent swap approval in message: ", msgCid)
+		re.Emit(fmt.Sprintf("sent swap approval in message: %s ", msgCid))
 
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
@@ -753,10 +879,13 @@ var msigSwapCancelCmd = &cmds.Command{
 		Usage:   "[multisigAddress txId oldAddress newAddress]",
 	},
 	Options: []cmds.Option{
-		cmds.StringOption("from", "account to send the propose message from"),
+		cmds.StringOption("from", "account to send the approve message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("methodParams", false, false, "params to include in the proposed message"),
+		cmds.StringArg("multisigAddress", false, false, "multisig address"),
+		cmds.StringArg("txId", false, false, "proposed message ID"),
+		cmds.StringArg("oldAddress", false, false, "old signer"),
+		cmds.StringArg("newAddress", false, false, "new signer"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 4 {
@@ -792,7 +921,7 @@ var msigSwapCancelCmd = &cmds.Command{
 			return err
 		}
 
-		fmt.Println("sent swap cancellation in message: ", msgCid)
+		re.Emit(fmt.Sprintf("sent swap cancellation in message: %s ", msgCid))
 
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
@@ -816,7 +945,10 @@ var msigLockProposeCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the propose message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("methodParams", false, false, "params to include in the proposed message"),
+		cmds.StringArg("multisigAddress", false, false, "multisig address"),
+		cmds.StringArg("startEpoch", false, false, "start epoch"),
+		cmds.StringArg("unlockDuration", false, false, "the locked block period"),
+		cmds.StringArg("amount", false, false, "amount of FIL"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 4 {
@@ -862,7 +994,7 @@ var msigLockProposeCmd = &cmds.Command{
 			return err
 		}
 
-		fmt.Println("sent lock proposal in message: ", msgCid)
+		re.Emit(fmt.Sprintf("sent lock proposal in message: %s ", msgCid))
 
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
@@ -886,7 +1018,12 @@ var msigLockApproveCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the propose message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("methodParams", false, false, "params to include in the proposed message"),
+		cmds.StringArg("multisigAddress", false, false, "multisig address"),
+		cmds.StringArg("proposerAddress", false, false, "proposed address"),
+		cmds.StringArg("txId", false, false, "proposed message ID"),
+		cmds.StringArg("startEpoch", false, false, "start epoch"),
+		cmds.StringArg("unlockDuration", false, false, "the locked block period"),
+		cmds.StringArg("amount", false, false, "amount of FIL"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 6 {
@@ -944,7 +1081,7 @@ var msigLockApproveCmd = &cmds.Command{
 			return err
 		}
 
-		fmt.Println("sent lock approval in message: ", msgCid)
+		re.Emit(fmt.Sprintf("sent lock approval in message: %s ", msgCid))
 
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
@@ -968,7 +1105,11 @@ var msigLockCancelCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the propose message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("methodParams", false, false, "params to include in the proposed message"),
+		cmds.StringArg("multisigAddress", false, false, "multisig address"),
+		cmds.StringArg("txId", false, false, "proposed transaction ID"),
+		cmds.StringArg("startEpoch", false, false, "start epoch"),
+		cmds.StringArg("unlockDuration", false, false, "the locked block period"),
+		cmds.StringArg("amount", false, false, "amount of FIL"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 6 {
@@ -1006,7 +1147,7 @@ var msigLockCancelCmd = &cmds.Command{
 			return err
 		}
 
-		params, actErr := actors.SerializeParams(&msig2.LockBalanceParams{
+		params, actErr := specactors.SerializeParams(&msig2.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
 			Amount:         abi.NewTokenAmount(amount.Int64()),
@@ -1021,7 +1162,7 @@ var msigLockCancelCmd = &cmds.Command{
 			return err
 		}
 
-		fmt.Println("sent lock cancellation in message: ", msgCid)
+		re.Emit(fmt.Sprintf("sent lock cancellation in message: %s ", msgCid))
 
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
@@ -1046,7 +1187,7 @@ var msigVestedCmd = &cmds.Command{
 		cmds.Int64Option("end-epoch", "end epoch to measure vesting at").WithDefault(0),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("methodParams", false, false, "params to include in the proposed message"),
+		cmds.StringArg("multisigAddress", true, false, "multisig address"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 1 {
@@ -1059,119 +1200,91 @@ var msigVestedCmd = &cmds.Command{
 			return err
 		}
 
-		start, err := env.(*node.Env).ChainAPI.ChainGetTipSetByHeight(ctx, reqChainEpochOption(req,"start-epoch"), types.EmptyTSK)
+		start, err := env.(*node.Env).ChainAPI.ChainGetTipSetByHeight(ctx, reqChainEpochOption(req, "start-epoch"), types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
 		var end *types.TipSet
-		endEpoch := reqChainEpochOption(req,"end-epoch")
-		if endEpoch< 0 {
-			end, err = LoadTipSet(ctx, cctx, api)
+		endEpoch := reqChainEpochOption(req, "end-epoch")
+		if endEpoch < 0 {
+			end, err = reqTipSetOption(req, env)
 			if err != nil {
 				return err
 			}
 		} else {
-			end, err = env.(*node.Env).ChainAPI.ChainGetTipSetByHeight(ctx, endEpoch , types.EmptyTSK)
+			end, err = env.(*node.Env).ChainAPI.ChainGetTipSetByHeight(ctx, endEpoch, types.EmptyTSK)
 			if err != nil {
 				return err
 			}
 		}
 
-		ret, err := env.(*node.Env).MsigGetVested(ctx, msig, start.Key(), end.Key())
+		ret, err := env.(*node.Env).MultiSigAPI.MsigGetVested(ctx, msig, start.Key(), end.Key())
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Vested: %s between %d and %d\n", types.FIL(ret), start.Height(), end.Height())
-
+		re.Emit(fmt.Sprintf("Vested: %s between %d and %d", types.FIL(ret), start.Height(), end.Height()))
 		return nil
 	},
 }
 
 var msigProposeThresholdCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Propose a multisig transaction",
-		Usage:   "[multisigAddress destinationAddress value <methodId methodParams> (optional)]",
+		Tagline: "Propose setting a different signing threshold on the account",
+		Usage:   "<multisigAddress newM>",
 	},
 	Options: []cmds.Option{
-		cmds.StringOption("from", "account to send the propose message from)"),
+		cmds.StringOption("from", "account to send the proposal from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("methodParams", false, false, "params to include in the proposed message"),
+		cmds.StringArg("multisigAddress", false, false, "multisig address"),
+		cmds.StringArg("newM", false, false, "number of signature required"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		&cli.Command{
-			Name:      "propose-threshold",
-			Usage:     "Propose setting a different signing threshold on the account",
-			ArgsUsage: "<multisigAddress newM>",
-			Flags: []cli.Flag{
-				&cli.StringFlag{
-					Name:  "from",
-					Usage: "account to send the proposal from",
-				},
-			},
-			Action: func(cctx *cli.Context) error {
-				if cctx.Args().Len() != 2 {
-					return ShowHelp(cctx, fmt.Errorf("must pass multisig address and new threshold value"))
-				}
-
-				api, closer, err := GetFullNodeAPI(cctx)
-				if err != nil {
-					return err
-				}
-				defer closer()
-				ctx := ReqContext(cctx)
-
-				msig, err := address.NewFromString(cctx.Args().Get(0))
-				if err != nil {
-					return err
-				}
-
-				newM, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
-				if err != nil {
-					return err
-				}
-
-				var from address.Address
-				if cctx.IsSet("from") {
-					f, err := address.NewFromString(cctx.String("from"))
-					if err != nil {
-						return err
-					}
-					from = f
-				} else {
-					defaddr, err := api.WalletDefaultAddress(ctx)
-					if err != nil {
-						return err
-					}
-					from = defaddr
-				}
-
-				params, actErr := actors.SerializeParams(&msig2.ChangeNumApprovalsThresholdParams{
-					NewThreshold: newM,
-				})
-
-				if actErr != nil {
-					return actErr
-				}
-
-				msgCid, err := api.MsigPropose(ctx, msig, msig, types.NewInt(0), from, uint64(multisig.Methods.ChangeNumApprovalsThreshold), params)
-				if err != nil {
-					return fmt.Errorf("failed to propose change of threshold: %w", err)
-				}
-
-				fmt.Println("sent change threshold proposal in message: ", msgCid)
-
-				wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
-				if err != nil {
-					return err
-				}
-
-				if wait.Receipt.ExitCode != 0 {
-					return fmt.Errorf("change threshold proposal returned exit %d", wait.Receipt.ExitCode)
-				}
-
-				return nil
-			},
+		if len(req.Arguments) != 2 {
+			return fmt.Errorf("must pass multisig address and new threshold value")
 		}
+		ctx := ReqContext(req.Context)
+
+		msig, err := address.NewFromString(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		newM, err := strconv.ParseUint(req.Arguments[1], 10, 64)
+		if err != nil {
+			return err
+		}
+
+		from, err := reqFromWithDefault(req, env)
+		if err != nil {
+			return err
+		}
+
+		params, actErr := specactors.SerializeParams(&msig2.ChangeNumApprovalsThresholdParams{
+			NewThreshold: newM,
+		})
+
+		if actErr != nil {
+			return actErr
+		}
+
+		msgCid, err := env.(*node.Env).MultiSigAPI.MsigPropose(ctx, msig, msig, types.NewInt(0), from, uint64(multisig.Methods.ChangeNumApprovalsThreshold), params)
+		if err != nil {
+			return fmt.Errorf("failed to propose change of threshold: %w", err)
+		}
+
+		re.Emit(fmt.Sprintf("sent change threshold proposal in messag: %s ", msgCid))
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("change threshold proposal returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
