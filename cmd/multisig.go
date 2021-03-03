@@ -132,9 +132,8 @@ var msigCreateCmd = &cmds.Command{
 		if err := execreturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.ReturnValue)); err != nil {
 			return err
 		}
-		re.Emit(fmt.Sprintf("Created new multisig: %s %s", execreturn.IDAddress, execreturn.RobustAddress))
 		// TODO: maybe register this somewhere
-		return nil
+		return re.Emit(fmt.Sprintf("Created new multisig: %s %s", execreturn.IDAddress, execreturn.RobustAddress))
 	},
 }
 
@@ -289,8 +288,7 @@ var msigInspectCmd = &cmds.Command{
 				return xerrors.Errorf("flushing output: %+v", err)
 			}
 		}
-		re.Emit(cliw)
-		return nil
+		return re.Emit(cliw)
 	},
 }
 
@@ -310,7 +308,6 @@ var msigProposeCmd = &cmds.Command{
 		cmds.StringArg("methodParams", false, false, "params to include in the proposed message"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		//ArgsUsage: "[multisigAddress destinationAddress value <methodId methodParams> (optional)]",
 		reqLen := len(req.Arguments)
 		if reqLen < 3 {
 			return fmt.Errorf("must pass at least multisig address, destination, and value")
@@ -369,8 +366,9 @@ var msigProposeCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
+		buf := new(bytes.Buffer)
 
-		fmt.Println("send proposal in message: ", msgCid)
+		fmt.Fprintln(buf, "send proposal in message: ", msgCid)
 		confidence := reqConfidence(req)
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, confidence)
 		if err != nil {
@@ -384,13 +382,14 @@ var msigProposeCmd = &cmds.Command{
 		if err := retval.UnmarshalCBOR(bytes.NewReader(wait.Receipt.ReturnValue)); err != nil {
 			return fmt.Errorf("failed to unmarshal propose return value: %w", err)
 		}
-		fmt.Printf("Transaction ID: %d\n", retval.TxnID)
+		fmt.Fprintf(buf, "Transaction ID: %d\n", retval.TxnID)
+
 		if retval.Applied {
-			fmt.Printf("Transaction was executed during propose\n")
-			fmt.Printf("Exit Code: %d\n", retval.Code)
-			fmt.Printf("Return Value: %x\n", retval.Ret)
+			fmt.Fprintf(buf, "Transaction was executed during propose\n")
+			fmt.Fprintf(buf, "Exit Code: %d\n", retval.Code)
+			fmt.Fprintf(buf, "Return Value: %x\n", retval.Ret)
 		}
-		return nil
+		return re.Emit(buf)
 	},
 }
 
@@ -448,8 +447,7 @@ var msigRemoveProposeCmd = &cmds.Command{
 		if err != nil {
 			return xerrors.Errorf("decoding proposal return: %w", err)
 		}
-		re.Emit(fmt.Sprintf("TxnID: %d", ret.TxnID))
-		return nil
+		return re.Emit(fmt.Sprintf("TxnID: %d", ret.TxnID))
 	},
 }
 
@@ -462,11 +460,11 @@ var msigApproveCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the approve message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("multisigAddress", false, false, "multisig address"),
-		cmds.StringArg("messageId", false, false, "proposed transaction ID"),
-		cmds.StringArg("proposerAddress", false, false, "proposer address"),
-		cmds.StringArg("destination", false, false, "recipient address"),
-		cmds.StringArg("value", false, false, "value to transfer"),
+		cmds.StringArg("multisigAddress", true, false, "multisig address"),
+		cmds.StringArg("messageId", true, false, "proposed transaction ID"),
+		cmds.StringArg("proposerAddress", true, false, "proposer address"),
+		cmds.StringArg("destination", true, false, "recipient address"),
+		cmds.StringArg("value", true, false, "value to transfer"),
 		cmds.StringArg("methodId", false, false, "method to call in the proposed message"),
 		cmds.StringArg("methodParams", false, false, "params to include in the proposed message"),
 	},
@@ -550,18 +548,14 @@ var msigApproveCmd = &cmds.Command{
 				return err
 			}
 		}
-
-		re.Emit(fmt.Sprintf("sent approval in message: %s", msgCid))
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
 			return err
 		}
-
 		if wait.Receipt.ExitCode != 0 {
 			return fmt.Errorf("approve returned exit %d", wait.Receipt.ExitCode)
 		}
-
-		return nil
+		return re.Emit(fmt.Sprintf("sent approval in message: %s", msgCid))
 	},
 }
 
@@ -610,8 +604,7 @@ var msigAddProposeCmd = &cmds.Command{
 		if wait.Receipt.ExitCode != 0 {
 			return fmt.Errorf("add proposal returned exit %d", wait.Receipt.ExitCode)
 		}
-		re.Emit(fmt.Sprint("sent add proposal in message: ", msgCid))
-		return nil
+		return re.Emit(fmt.Sprint("sent add proposal in message: ", msgCid))
 	},
 }
 
@@ -624,11 +617,11 @@ var msigAddApproveCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the approve message from)"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("multisigAddress", false, false, "multisig address"),
-		cmds.StringArg("proposerAddress", false, false, "sender address of the approve msg"),
-		cmds.StringArg("txId", false, false, "proposed message ID"),
-		cmds.StringArg("newAddress", false, false, "new signer"),
-		cmds.StringArg("increaseThreshold", false, false, "whether the number of required signers should be increased"),
+		cmds.StringArg("multisigAddress", true, false, "multisig address"),
+		cmds.StringArg("proposerAddress", true, false, "sender address of the approve msg"),
+		cmds.StringArg("txId", true, false, "proposed message ID"),
+		cmds.StringArg("newAddress", true, false, "new signer"),
+		cmds.StringArg("increaseThreshold", true, false, "whether the number of required signers should be increased"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 5 {
@@ -669,7 +662,6 @@ var msigAddApproveCmd = &cmds.Command{
 			return err
 		}
 
-		re.Emit(fmt.Sprintf("sent add approval in message: %s ", msgCid))
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
 			return err
@@ -679,7 +671,7 @@ var msigAddApproveCmd = &cmds.Command{
 			return fmt.Errorf("add approval returned exit %d", wait.Receipt.ExitCode)
 		}
 
-		return nil
+		return re.Emit(fmt.Sprintf("sent add approval in message: %s ", msgCid))
 	},
 }
 
@@ -692,10 +684,10 @@ var msigAddCancelCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the approve message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("multisigAddress", false, false, "multisig address"),
-		cmds.StringArg("txId", false, false, "proposed message ID"),
-		cmds.StringArg("newAddress", false, false, "new signer"),
-		cmds.StringArg("increaseThreshold", false, false, "whether the number of required signers should be increased"),
+		cmds.StringArg("multisigAddress", true, false, "multisig address"),
+		cmds.StringArg("txId", true, false, "proposed message ID"),
+		cmds.StringArg("newAddress", true, false, "new signer"),
+		cmds.StringArg("increaseThreshold", true, false, "whether the number of required signers should be increased"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 
@@ -733,7 +725,6 @@ var msigAddCancelCmd = &cmds.Command{
 			return err
 		}
 
-		re.Emit(fmt.Sprintf("sent add cancellation in message: %s ", msgCid))
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
 			return err
@@ -742,7 +733,7 @@ var msigAddCancelCmd = &cmds.Command{
 		if wait.Receipt.ExitCode != 0 {
 			return fmt.Errorf("add cancellation returned exit %d", wait.Receipt.ExitCode)
 		}
-		return nil
+		return re.Emit(fmt.Sprintf("sent add cancellation in message: %s", msgCid))
 	},
 }
 
@@ -789,8 +780,6 @@ var msigSwapProposeCmd = &cmds.Command{
 			return err
 		}
 
-		re.Emit(fmt.Sprintf("sent swap proposal in message: %s ", msgCid))
-
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
 			return err
@@ -800,7 +789,7 @@ var msigSwapProposeCmd = &cmds.Command{
 			return fmt.Errorf("swap proposal returned exit %d", wait.Receipt.ExitCode)
 		}
 
-		return nil
+		return re.Emit(fmt.Sprintf("sent swap proposal in message: %s ", msgCid))
 	},
 }
 
@@ -858,8 +847,6 @@ var msigSwapApproveCmd = &cmds.Command{
 			return err
 		}
 
-		re.Emit(fmt.Sprintf("sent swap approval in message: %s ", msgCid))
-
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
 			return err
@@ -869,7 +856,7 @@ var msigSwapApproveCmd = &cmds.Command{
 			return fmt.Errorf("swap approval returned exit %d", wait.Receipt.ExitCode)
 		}
 
-		return nil
+		return re.Emit(fmt.Sprintf("sent swap approval in message: %s ", msgCid))
 	},
 }
 
@@ -921,8 +908,6 @@ var msigSwapCancelCmd = &cmds.Command{
 			return err
 		}
 
-		re.Emit(fmt.Sprintf("sent swap cancellation in message: %s ", msgCid))
-
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
 			return err
@@ -932,7 +917,7 @@ var msigSwapCancelCmd = &cmds.Command{
 			return fmt.Errorf("swap cancellation returned exit %d", wait.Receipt.ExitCode)
 		}
 
-		return nil
+		return re.Emit(fmt.Sprintf("sent swap cancellation in message: %s ", msgCid))
 	},
 }
 
@@ -994,8 +979,6 @@ var msigLockProposeCmd = &cmds.Command{
 			return err
 		}
 
-		re.Emit(fmt.Sprintf("sent lock proposal in message: %s ", msgCid))
-
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
 			return err
@@ -1005,7 +988,7 @@ var msigLockProposeCmd = &cmds.Command{
 			return fmt.Errorf("lock proposal returned exit %d", wait.Receipt.ExitCode)
 		}
 
-		return nil
+		return re.Emit(fmt.Sprintf("sent lock proposal in message: %s ", msgCid))
 	},
 }
 
@@ -1081,8 +1064,6 @@ var msigLockApproveCmd = &cmds.Command{
 			return err
 		}
 
-		re.Emit(fmt.Sprintf("sent lock approval in message: %s ", msgCid))
-
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
 			return err
@@ -1092,7 +1073,7 @@ var msigLockApproveCmd = &cmds.Command{
 			return fmt.Errorf("lock approval returned exit %d", wait.Receipt.ExitCode)
 		}
 
-		return nil
+		return re.Emit(fmt.Sprintf("sent lock approval in message: %s ", msgCid))
 	},
 }
 
@@ -1162,8 +1143,6 @@ var msigLockCancelCmd = &cmds.Command{
 			return err
 		}
 
-		re.Emit(fmt.Sprintf("sent lock cancellation in message: %s ", msgCid))
-
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
 			return err
@@ -1173,7 +1152,7 @@ var msigLockCancelCmd = &cmds.Command{
 			return fmt.Errorf("lock cancellation returned exit %d", wait.Receipt.ExitCode)
 		}
 
-		return nil
+		return re.Emit(fmt.Sprintf("sent lock cancellation in message: %s ", msgCid))
 	},
 }
 
@@ -1184,31 +1163,33 @@ var msigVestedCmd = &cmds.Command{
 	},
 	Options: []cmds.Option{
 		cmds.Int64Option("start-epoch", "start epoch to measure vesting from").WithDefault(0),
-		cmds.Int64Option("end-epoch", "end epoch to measure vesting at").WithDefault(0),
+		cmds.Int64Option("end-epoch", "end epoch to measure vesting at").WithDefault(-1),
 	},
 	Arguments: []cmds.Argument{
 		cmds.StringArg("multisigAddress", true, false, "multisig address"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		/*defer func() {
+			if err := recover(); err != nil {
+				re.Emit(err)
+			}
+		}()*/
 		if len(req.Arguments) != 1 {
 			return fmt.Errorf("must pass multisig address")
 		}
 		ctx := ReqContext(req.Context)
-
 		msig, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			return err
 		}
-
 		start, err := env.(*node.Env).ChainAPI.ChainGetTipSetByHeight(ctx, reqChainEpochOption(req, "start-epoch"), types.EmptyTSK)
 		if err != nil {
 			return err
 		}
-
 		var end *types.TipSet
 		endEpoch := reqChainEpochOption(req, "end-epoch")
 		if endEpoch < 0 {
-			end, err = reqTipSetOption(req, env)
+			end = env.(*node.Env).ChainAPI.ChainReader.GetHead()
 			if err != nil {
 				return err
 			}
@@ -1223,9 +1204,7 @@ var msigVestedCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-
-		re.Emit(fmt.Sprintf("Vested: %s between %d and %d", types.FIL(ret), start.Height(), end.Height()))
-		return nil
+		return re.Emit(fmt.Sprintf("Vested: %s between %d and %d", types.FIL(ret), start.Height(), end.Height()))
 	},
 }
 
@@ -1274,8 +1253,6 @@ var msigProposeThresholdCmd = &cmds.Command{
 		if err != nil {
 			return fmt.Errorf("failed to propose change of threshold: %w", err)
 		}
-
-		re.Emit(fmt.Sprintf("sent change threshold proposal in messag: %s ", msgCid))
 		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
 		if err != nil {
 			return err
@@ -1285,6 +1262,6 @@ var msigProposeThresholdCmd = &cmds.Command{
 			return fmt.Errorf("change threshold proposal returned exit %d", wait.Receipt.ExitCode)
 		}
 
-		return nil
+		return re.Emit(fmt.Sprintf("sent change threshold proposal in messag: %s ", msgCid))
 	},
 }

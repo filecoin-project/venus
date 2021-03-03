@@ -62,7 +62,7 @@ func reqStringOption(req *cmds.Request, cmd string) string {
 func reqChainEpochOption(req *cmds.Request, cmd string) abi.ChainEpoch {
 	v, ok := req.Options[cmd]
 	if ok {
-		return v.(abi.ChainEpoch)
+		return abi.ChainEpoch(v.(int64))
 	}
 	return 0
 }
