@@ -5,11 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/venus/fixtures/asset"
-	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -29,11 +24,14 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"
+	"github.com/filecoin-project/venus/fixtures/asset"
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	"github.com/filecoin-project/venus/pkg/journal"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/types"
 	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 
@@ -63,6 +61,12 @@ var daemonCmd = &cmds.Command{
 		cmds.StringOption(Network, "when set, populates config with network specific parameters").WithDefault("testnetnet"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		network, _ := req.Options[Network].(string)
+		if err := constants.SetBuildType(network); err != nil {
+			log.Errorf("Error setting BuildType %s", err)
+			return err
+		}
+
 		repoDir, _ := req.Options[OptionRepoDir].(string)
 		repoDir, err := paths.GetRepoPath(repoDir)
 		if err != nil {
@@ -88,15 +92,6 @@ var daemonCmd = &cmds.Command{
 			}
 		}
 
-		//fetch verify key
-		ps, err := asset.Asset("fixtures/_assets/proof-params/parameters.json")
-		if err != nil {
-			return err
-		}
-
-		if err := paramfetch.GetParams(req.Context, ps, 0); err != nil {
-			return errors.Wrapf(err, "fetching proof parameters: %v", err)
-		}
 		return daemonRun(req, re)
 	},
 }
@@ -269,19 +264,14 @@ func setConfigFromOptions(cfg *config.Config, network string) error {
 	var netcfg *networks.NetworkConf
 	switch network {
 	case "mainnet":
-		constants.BuildType |= constants.BuildMainnet
 		netcfg = networks.Mainnet()
 	case "testnetnet":
-		constants.BuildType |= constants.BuildMainnet
 		netcfg = networks.Testnet()
 	case "integrationnet":
-		constants.BuildType |= constants.BuildDebug
 		netcfg = networks.IntegrationNet()
 	case "2k":
-		constants.BuildType |= constants.Build2k
 		netcfg = networks.Net2k()
 	case "cali":
-		constants.BuildType |= constants.BuildCalibnet
 		netcfg = networks.Calibration()
 	default:
 		return fmt.Errorf("unknown network name %s", network)

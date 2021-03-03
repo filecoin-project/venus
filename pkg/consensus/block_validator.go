@@ -147,7 +147,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 		return xerrors.Errorf("get parent tipset state failed %w", err)
 	}
 	if !rootAfterCalc.Equals(blk.ParentStateRoot) {
-		return ErrStateRootMismatch
+		return xerrors.Errorf("%w (%s != %s)", ErrStateRootMismatch, rootAfterCalc, blk.ParentStateRoot)
 	}
 
 	if err := blockSanityChecks(blk); err != nil {

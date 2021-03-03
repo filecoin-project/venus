@@ -1,6 +1,7 @@
 package constants
 
 import (
+	"fmt"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/build/flags"
@@ -15,6 +16,25 @@ const (
 	BuildDebug    = 0x3
 	BuildCalibnet = 0x4
 )
+
+func SetBuildType(network string) error {
+	switch network {
+	case "mainnet":
+		BuildType = BuildMainnet
+	case "testnetnet":
+		BuildType = BuildMainnet
+	case "integrationnet":
+		BuildType |= BuildDebug
+	case "2k":
+		BuildType |= Build2k
+	case "cali":
+		BuildType = BuildCalibnet
+	default:
+		return fmt.Errorf("unknown network name %s", network)
+	}
+
+	return nil
+}
 
 // BuildVersion is the local build version, set by build system
 const BuildVersion = "1.2.2"
@@ -56,7 +76,7 @@ func VersionForType(nodeType NodeType) (Version, error) {
 
 // semver versions of the rpc api exposed
 var (
-	FullAPIVersion   = newVer(1, 0, 0)
-	MinerAPIVersion  = newVer(1, 1, 0)
+	FullAPIVersion   = newVer(1, 1, 0)
+	MinerAPIVersion  = newVer(1, 0, 1)
 	WorkerAPIVersion = newVer(1, 0, 0)
 )
