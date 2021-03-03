@@ -148,12 +148,12 @@ func (chainInfoAPI *ChainInfoAPI) GetActor(ctx context.Context, addr address.Add
 	return chainInfoAPI.chain.ChainReader.GetActorAt(ctx, head, addr)
 }
 
-// get the ts ParentStateRoot actor
-func (ChainInfoAPI *ChainInfoAPI) GetParentStateRootActor(ctx context.Context, ts *types.TipSet, addr address.Address) (*types.Actor, error) {
+// GetParentStateRootActor get the ts ParentStateRoot actor
+func (chainInfoAPI *ChainInfoAPI) GetParentStateRootActor(ctx context.Context, ts *types.TipSet, addr address.Address) (*types.Actor, error) {
 	if ts == nil {
-		ts = ChainInfoAPI.chain.ChainReader.GetHead()
+		ts = chainInfoAPI.chain.ChainReader.GetHead()
 	}
-	v, err := ChainInfoAPI.chain.ChainReader.ParentStateView(ts)
+	v, err := chainInfoAPI.chain.ChainReader.ParentStateView(ts)
 	if err != nil {
 		return nil, err
 	}

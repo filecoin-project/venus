@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus/pkg/config"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/stretchr/testify/assert"

@@ -124,7 +124,6 @@ var msigCreateCmd = &cmds.Command{
 		}
 		// check it executed successfully
 		if wait.Receipt.ExitCode != 0 {
-			re.Emit("actor creation failed!")
 			return err
 		}
 		// get address of newly created miner
@@ -168,7 +167,7 @@ var msigInspectCmd = &cmds.Command{
 			return err
 		}
 
-		ownId, err := env.(*node.Env).ChainAPI.StateLookupID(req.Context, maddr, types.EmptyTSK)
+		ownId, err := env.(*node.Env).ChainAPI.StateLookupID(req.Context, maddr, types.EmptyTSK) //nolint
 		if err != nil {
 			return err
 		}
