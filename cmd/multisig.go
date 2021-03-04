@@ -446,7 +446,10 @@ var msigRemoveProposeCmd = &cmds.Command{
 		if err != nil {
 			return xerrors.Errorf("decoding proposal return: %w", err)
 		}
-		return re.Emit(fmt.Sprintf("TxnID: %d", ret.TxnID))
+		cliw := new(bytes.Buffer)
+		fmt.Fprintf(cliw, "sent remove threshold proposal in message: %s\n", msgCid)
+		fmt.Fprintf(cliw, "TxnID: %d\n", ret.TxnID)
+		return re.Emit(cliw)
 	},
 }
 
@@ -461,9 +464,9 @@ var msigApproveCmd = &cmds.Command{
 	Arguments: []cmds.Argument{
 		cmds.StringArg("multisigAddress", true, false, "multisig address"),
 		cmds.StringArg("messageId", true, false, "proposed transaction ID"),
-		cmds.StringArg("proposerAddress", true, false, "proposer address"),
-		cmds.StringArg("destination", true, false, "recipient address"),
-		cmds.StringArg("value", true, false, "value to transfer"),
+		cmds.StringArg("proposerAddress", false, false, "proposer address"),
+		cmds.StringArg("destination", false, false, "recipient address"),
+		cmds.StringArg("value", false, false, "value to transfer"),
 		cmds.StringArg("methodId", false, false, "method to call in the proposed message"),
 		cmds.StringArg("methodParams", false, false, "params to include in the proposed message"),
 	},
@@ -603,7 +606,16 @@ var msigAddProposeCmd = &cmds.Command{
 		if wait.Receipt.ExitCode != 0 {
 			return fmt.Errorf("add proposal returned exit %d", wait.Receipt.ExitCode)
 		}
-		return re.Emit(fmt.Sprint("sent add proposal in message: ", msgCid))
+
+		var ret multisig.ProposeReturn
+		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.ReturnValue))
+		if err != nil {
+			return xerrors.Errorf("decoding proposal return: %w", err)
+		}
+		cliw := new(bytes.Buffer)
+		fmt.Fprintf(cliw, "sent add threshold proposal in message: %s\n", msgCid)
+		fmt.Fprintf(cliw, "TxnID: %d\n", ret.TxnID)
+		return re.Emit(cliw)
 	},
 }
 
@@ -670,7 +682,7 @@ var msigAddApproveCmd = &cmds.Command{
 			return fmt.Errorf("add approval returned exit %d", wait.Receipt.ExitCode)
 		}
 
-		return re.Emit(fmt.Sprintf("sent add approval in message: %s ", msgCid))
+		return re.Emit(fmt.Sprintf("sent add approval in message: %s", msgCid))
 	},
 }
 
@@ -787,8 +799,15 @@ var msigSwapProposeCmd = &cmds.Command{
 		if wait.Receipt.ExitCode != 0 {
 			return fmt.Errorf("swap proposal returned exit %d", wait.Receipt.ExitCode)
 		}
-
-		return re.Emit(fmt.Sprintf("sent swap proposal in message: %s ", msgCid))
+		var ret multisig.ProposeReturn
+		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.ReturnValue))
+		if err != nil {
+			return xerrors.Errorf("decoding proposal return: %w", err)
+		}
+		cliw := new(bytes.Buffer)
+		fmt.Fprintf(cliw, "sent swap threshold proposal in message: %s\n", msgCid)
+		fmt.Fprintf(cliw, "TxnID: %d\n", ret.TxnID)
+		return re.Emit(cliw)
 	},
 }
 
@@ -855,7 +874,7 @@ var msigSwapApproveCmd = &cmds.Command{
 			return fmt.Errorf("swap approval returned exit %d", wait.Receipt.ExitCode)
 		}
 
-		return re.Emit(fmt.Sprintf("sent swap approval in message: %s ", msgCid))
+		return re.Emit(fmt.Sprintf("sent swap approval in message: %s", msgCid))
 	},
 }
 
@@ -916,7 +935,7 @@ var msigSwapCancelCmd = &cmds.Command{
 			return fmt.Errorf("swap cancellation returned exit %d", wait.Receipt.ExitCode)
 		}
 
-		return re.Emit(fmt.Sprintf("sent swap cancellation in message: %s ", msgCid))
+		return re.Emit(fmt.Sprintf("sent swap cancellation in message: %s", msgCid))
 	},
 }
 
@@ -929,10 +948,10 @@ var msigLockProposeCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the propose message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("multisigAddress", false, false, "multisig address"),
-		cmds.StringArg("startEpoch", false, false, "start epoch"),
-		cmds.StringArg("unlockDuration", false, false, "the locked block period"),
-		cmds.StringArg("amount", false, false, "amount of FIL"),
+		cmds.StringArg("multisigAddress", true, false, "multisig address"),
+		cmds.StringArg("startEpoch", true, false, "start epoch"),
+		cmds.StringArg("unlockDuration", true, false, "the locked block period"),
+		cmds.StringArg("amount", true, false, "amount of FIL"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 4 {
@@ -972,7 +991,6 @@ var msigLockProposeCmd = &cmds.Command{
 		if actErr != nil {
 			return actErr
 		}
-
 		msgCid, err := env.(*node.Env).MultiSigAPI.MsigPropose(ctx, msig, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
 		if err != nil {
 			return err
@@ -986,8 +1004,15 @@ var msigLockProposeCmd = &cmds.Command{
 		if wait.Receipt.ExitCode != 0 {
 			return fmt.Errorf("lock proposal returned exit %d", wait.Receipt.ExitCode)
 		}
-
-		return re.Emit(fmt.Sprintf("sent lock proposal in message: %s ", msgCid))
+		var ret multisig.ProposeReturn
+		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.ReturnValue))
+		if err != nil {
+			return xerrors.Errorf("decoding proposal return: %w", err)
+		}
+		cliw := new(bytes.Buffer)
+		fmt.Fprintf(cliw, "sent lock threshold proposal in message: %s\n", msgCid)
+		fmt.Fprintf(cliw, "TxnID: %d\n", ret.TxnID)
+		return re.Emit(cliw)
 	},
 }
 
@@ -1051,7 +1076,7 @@ var msigLockApproveCmd = &cmds.Command{
 		params, actErr := specactors.SerializeParams(&msig2.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
-			Amount:         abi.NewTokenAmount(amount.Int64()),
+			Amount:         big.Int(amount),
 		})
 
 		if actErr != nil {
@@ -1071,8 +1096,8 @@ var msigLockApproveCmd = &cmds.Command{
 		if wait.Receipt.ExitCode != 0 {
 			return fmt.Errorf("lock approval returned exit %d", wait.Receipt.ExitCode)
 		}
-
-		return re.Emit(fmt.Sprintf("sent lock approval in message: %s ", msgCid))
+		re.Emit(hex.EncodeToString(params))
+		return re.Emit(fmt.Sprintf("sent lock approval in message: %s", msgCid))
 	},
 }
 
@@ -1085,14 +1110,14 @@ var msigLockCancelCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the propose message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("multisigAddress", false, false, "multisig address"),
-		cmds.StringArg("txId", false, false, "proposed transaction ID"),
-		cmds.StringArg("startEpoch", false, false, "start epoch"),
-		cmds.StringArg("unlockDuration", false, false, "the locked block period"),
-		cmds.StringArg("amount", false, false, "amount of FIL"),
+		cmds.StringArg("multisigAddress", true, false, "multisig address"),
+		cmds.StringArg("txId", true, false, "proposed transaction ID"),
+		cmds.StringArg("startEpoch", true, false, "start epoch"),
+		cmds.StringArg("unlockDuration", true, false, "the locked block period"),
+		cmds.StringArg("amount", true, false, "amount of FIL"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		if len(req.Arguments) != 6 {
+		if len(req.Arguments) != 5 {
 			return fmt.Errorf("must pass multisig address, tx id, start epoch, unlock duration, and amount")
 		}
 		ctx := ReqContext(req.Context)
@@ -1130,9 +1155,8 @@ var msigLockCancelCmd = &cmds.Command{
 		params, actErr := specactors.SerializeParams(&msig2.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
-			Amount:         abi.NewTokenAmount(amount.Int64()),
+			Amount:         big.Int(amount),
 		})
-
 		if actErr != nil {
 			return actErr
 		}
@@ -1151,7 +1175,7 @@ var msigLockCancelCmd = &cmds.Command{
 			return fmt.Errorf("lock cancellation returned exit %d", wait.Receipt.ExitCode)
 		}
 
-		return re.Emit(fmt.Sprintf("sent lock cancellation in message: %s ", msgCid))
+		return re.Emit(fmt.Sprintf("sent lock cancellation in message: %s", msgCid))
 	},
 }
 
@@ -1260,7 +1284,14 @@ var msigProposeThresholdCmd = &cmds.Command{
 		if wait.Receipt.ExitCode != 0 {
 			return fmt.Errorf("change threshold proposal returned exit %d", wait.Receipt.ExitCode)
 		}
-
-		return re.Emit(fmt.Sprintf("sent change threshold proposal in messag: %s ", msgCid))
+		var ret multisig.ProposeReturn
+		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.ReturnValue))
+		if err != nil {
+			return xerrors.Errorf("decoding proposal return: %w", err)
+		}
+		cliw := new(bytes.Buffer)
+		fmt.Fprintf(cliw, "sent change threshold proposal in message: %s\n", msgCid)
+		fmt.Fprintf(cliw, "TxnID: %d\n", ret.TxnID)
+		return re.Emit(cliw)
 	},
 }
