@@ -25,7 +25,8 @@ type IMessagePool interface {
 	MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error)
 	MpoolGetConfig(context.Context) (*messagepool.MpoolConfig, error)
 	MpoolSetConfig(ctx context.Context, cfg *messagepool.MpoolConfig) error
-	MpoolSelect(ctx context.Context, tsk types.TipSetKey, ticketQuality float64) ([]*types.SignedMessage, error)
+	MpoolSelect(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error)
+	MpoolSelects(context.Context, types.TipSetKey, []float64) ([][]*types.SignedMessage, error)
 	MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error)
 	MpoolClear(ctx context.Context, local bool) error
 	MpoolPushUntrusted(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error)
@@ -80,6 +81,15 @@ func (a *MessagePoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey, t
 	}
 
 	return a.mp.MPool.SelectMessages(ts, ticketQuality)
+}
+
+func (a *MessagePoolAPI) MpoolSelects(ctx context.Context, tsk types.TipSetKey, ticketQualitys []float64) ([][]*types.SignedMessage, error) {
+	ts, err := a.mp.chain.API().ChainGetTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	return a.mp.MPool.MultipleSelectMessages(ts, ticketQualitys)
 }
 
 func (a *MessagePoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {

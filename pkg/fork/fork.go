@@ -1492,6 +1492,7 @@ func (c *ChainFork) UpgradeActorsV3(ctx context.Context, cache MigrationCache, r
 }
 
 func (c *ChainFork) PreUpgradeActorsV3(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
+	log.Info("PreUpgradeActorsV3 ......")
 	// Use half the CPUs for pre-migration, but leave at least 3.
 	workerCount := runtime.NumCPU()
 	if workerCount <= 4 {
