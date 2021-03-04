@@ -1096,7 +1096,6 @@ var msigLockApproveCmd = &cmds.Command{
 		if wait.Receipt.ExitCode != 0 {
 			return fmt.Errorf("lock approval returned exit %d", wait.Receipt.ExitCode)
 		}
-		re.Emit(hex.EncodeToString(params))
 		return re.Emit(fmt.Sprintf("sent lock approval in message: %s", msgCid))
 	},
 }
