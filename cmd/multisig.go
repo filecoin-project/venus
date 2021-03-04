@@ -805,7 +805,7 @@ var msigSwapProposeCmd = &cmds.Command{
 			return xerrors.Errorf("decoding proposal return: %w", err)
 		}
 		cliw := new(bytes.Buffer)
-		fmt.Fprintf(cliw, "sent swap threshold proposal in message: %s\n", msgCid)
+		fmt.Fprintf(cliw, "sent swap singer proposal in message: %s\n", msgCid)
 		fmt.Fprintf(cliw, "TxnID: %d\n", ret.TxnID)
 		return re.Emit(cliw)
 	},
