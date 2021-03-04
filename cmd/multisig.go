@@ -447,7 +447,7 @@ var msigRemoveProposeCmd = &cmds.Command{
 			return xerrors.Errorf("decoding proposal return: %w", err)
 		}
 		cliw := new(bytes.Buffer)
-		fmt.Fprintf(cliw, "sent remove threshold proposal in message: %s\n", msgCid)
+		fmt.Fprintf(cliw, "sent remove singer proposal in message: %s\n", msgCid)
 		fmt.Fprintf(cliw, "TxnID: %d\n", ret.TxnID)
 		return re.Emit(cliw)
 	},
@@ -613,7 +613,7 @@ var msigAddProposeCmd = &cmds.Command{
 			return xerrors.Errorf("decoding proposal return: %w", err)
 		}
 		cliw := new(bytes.Buffer)
-		fmt.Fprintf(cliw, "sent add threshold proposal in message: %s\n", msgCid)
+		fmt.Fprintf(cliw, "sent add singer proposal in message: %s\n", msgCid)
 		fmt.Fprintf(cliw, "TxnID: %d\n", ret.TxnID)
 		return re.Emit(cliw)
 	},
@@ -1010,7 +1010,7 @@ var msigLockProposeCmd = &cmds.Command{
 			return xerrors.Errorf("decoding proposal return: %w", err)
 		}
 		cliw := new(bytes.Buffer)
-		fmt.Fprintf(cliw, "sent lock threshold proposal in message: %s\n", msgCid)
+		fmt.Fprintf(cliw, "sent lock balance proposal in message: %s\n", msgCid)
 		fmt.Fprintf(cliw, "TxnID: %d\n", ret.TxnID)
 		return re.Emit(cliw)
 	},
