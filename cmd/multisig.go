@@ -402,8 +402,8 @@ var msigRemoveProposeCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the propose message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("multisigAddress", false, false, "multisig address"),
-		cmds.StringArg("signer", false, false, "a wallet address of the multisig"),
+		cmds.StringArg("multisigAddress", true, false, "multisig address"),
+		cmds.StringArg("signer", true, false, "a wallet address of the multisig"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 2 {
@@ -571,8 +571,8 @@ var msigAddProposeCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the propose message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("multisigAddress", false, false, "multisig address"),
-		cmds.StringArg("signer", false, false, "a wallet address of the multisig"),
+		cmds.StringArg("multisigAddress", true, false, "multisig address"),
+		cmds.StringArg("signer", true, false, "a wallet address of the multisig"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 2 {
@@ -757,9 +757,9 @@ var msigSwapProposeCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the propose message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("multisigAddress", false, false, "multisig address"),
-		cmds.StringArg("oldAddress", false, false, "sender address of the cancel msg"),
-		cmds.StringArg("newAddress", false, false, "new signer"),
+		cmds.StringArg("multisigAddress", true, false, "multisig address"),
+		cmds.StringArg("oldAddress", true, false, "sender address of the cancel msg"),
+		cmds.StringArg("newAddress", true, false, "new signer"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 3 {
@@ -820,11 +820,11 @@ var msigSwapApproveCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the approve message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("multisigAddress", false, false, "multisig address"),
-		cmds.StringArg("proposerAddress", false, false, "sender address of the approve msg"),
-		cmds.StringArg("txId", false, false, "proposed message ID"),
-		cmds.StringArg("oldAddress", false, false, "old signer"),
-		cmds.StringArg("newAddress", false, false, "new signer"),
+		cmds.StringArg("multisigAddress", true, false, "multisig address"),
+		cmds.StringArg("proposerAddress", true, false, "sender address of the approve msg"),
+		cmds.StringArg("txId", true, false, "proposed message ID"),
+		cmds.StringArg("oldAddress", true, false, "old signer"),
+		cmds.StringArg("newAddress", true, false, "new signer"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 5 {
@@ -887,10 +887,10 @@ var msigSwapCancelCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the approve message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("multisigAddress", false, false, "multisig address"),
-		cmds.StringArg("txId", false, false, "proposed message ID"),
-		cmds.StringArg("oldAddress", false, false, "old signer"),
-		cmds.StringArg("newAddress", false, false, "new signer"),
+		cmds.StringArg("multisigAddress", true, false, "multisig address"),
+		cmds.StringArg("txId", true, false, "proposed message ID"),
+		cmds.StringArg("oldAddress", true, false, "old signer"),
+		cmds.StringArg("newAddress", true, false, "new signer"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 4 {
@@ -1025,12 +1025,12 @@ var msigLockApproveCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the propose message from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("multisigAddress", false, false, "multisig address"),
-		cmds.StringArg("proposerAddress", false, false, "proposed address"),
-		cmds.StringArg("txId", false, false, "proposed message ID"),
-		cmds.StringArg("startEpoch", false, false, "start epoch"),
-		cmds.StringArg("unlockDuration", false, false, "the locked block period"),
-		cmds.StringArg("amount", false, false, "amount of FIL"),
+		cmds.StringArg("multisigAddress", true, false, "multisig address"),
+		cmds.StringArg("proposerAddress", true, false, "proposed address"),
+		cmds.StringArg("txId", true, false, "proposed message ID"),
+		cmds.StringArg("startEpoch", true, false, "start epoch"),
+		cmds.StringArg("unlockDuration", true, false, "the locked block period"),
+		cmds.StringArg("amount", true, false, "amount of FIL"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 6 {
@@ -1239,8 +1239,8 @@ var msigProposeThresholdCmd = &cmds.Command{
 		cmds.StringOption("from", "account to send the proposal from"),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("multisigAddress", false, false, "multisig address"),
-		cmds.StringArg("newM", false, false, "number of signature required"),
+		cmds.StringArg("multisigAddress", true, false, "multisig address"),
+		cmds.StringArg("newM", true, false, "number of signature required"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 2 {
