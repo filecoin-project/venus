@@ -238,8 +238,7 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Unsign
 		if err != nil {
 			return nil, xerrors.Errorf("serializing message: %w", err)
 		}
-
-		sig, err := a.mp.walletAPI.WalletSign(ctx, msg.From, mb.Cid().Bytes(), wallet.MsgMeta{Type: core.MTChainMsg})
+		sig, err := a.mp.walletAPI.WalletSign(ctx, msg.From, mb.Cid().Bytes(), wallet.MsgMeta{Type: core.MTChainMsg, Extra: mb.RawData()})
 		if err != nil {
 			return nil, xerrors.Errorf("failed to sign message: %w", err)
 		}
