@@ -95,7 +95,6 @@ func TestWalletLoadFromFile(t *testing.T) {
 	list := cmdClient.RunSuccess(ctx, "wallet", "ls").ReadStdout()
 	for _, addr := range fortest.TestAddresses {
 		// assert we loaded the test address from the file
-		t.Log("🍎🍎🍎", addr.String())
 		assert.Contains(t, list, addr.String())
 	}
 

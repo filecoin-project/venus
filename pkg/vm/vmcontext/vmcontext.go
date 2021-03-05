@@ -463,7 +463,6 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 
 	// initiate gas tracking
 	gasTank := gas.NewGasTracker(msg.GasLimit)
-
 	// pre-send
 	// 1. charge for message existence
 	// 2. load sender actor

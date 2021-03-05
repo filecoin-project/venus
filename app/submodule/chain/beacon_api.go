@@ -10,6 +10,9 @@ import (
 type IBeacon interface {
 	BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error)
 }
+
+var _ IBeacon = &BeaconAPI{}
+
 type BeaconAPI struct {
 	chain *ChainSubmodule
 }

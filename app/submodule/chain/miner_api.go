@@ -52,6 +52,8 @@ type IMinerState interface {
 	StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (MarketBalance, error)
 }
 
+var _ IMinerState = &MinerStateAPI{}
+
 type MinerStateAPI struct {
 	*ChainSubmodule
 }

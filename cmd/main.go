@@ -103,6 +103,7 @@ START RUNNING FILECOIN
   venus config <key> [<value>] - Get and set filecoin config values
   venus daemon                 - Start a long-running daemon process
   venus wallet                 - Manage your filecoin wallets
+  venus msig                   - Interact with a multisig wallet
 
 VIEW DATA STRUCTURES
   venus chain                  - Inspect the filecoin blockchain
@@ -143,6 +144,7 @@ TOOL COMMANDS
   venus protocol               - Show protocol parameter details
   venus version                - Show venus version information
   venus seed                   - Seal sectors for genesis miner
+  venus fetch-params           - Fetch proving parameters
 `,
 	},
 	Options: []cmds.Option{
@@ -162,11 +164,12 @@ var RootCmdDaemon = &cmds.Command{
 
 // all top level commands, not available to daemon
 var rootSubcmdsLocal = map[string]*cmds.Command{
-	"daemon":  daemonCmd,
-	"fetch":   fetchCmd,
-	"version": versionCmd,
-	"leb128":  leb128Cmd,
-	"seed":    seedCmd,
+	"daemon":       daemonCmd,
+	"fetch":        fetchCmd,
+	"version":      versionCmd,
+	"leb128":       leb128Cmd,
+	"seed":         seedCmd,
+	"fetch-params": fetchParamCmd,
 }
 
 // all top level commands, available on daemon. set during init() to avoid configuration loops.
@@ -189,6 +192,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"state":    stateCmd,
 	"miner":    minerCmd,
 	"paych":    paychCmd,
+	"msig":     multisigCmd,
 }
 
 func init() {

@@ -3,6 +3,7 @@ package mpool
 import (
 	"context"
 	"encoding/json"
+	"github.com/ipfs-force-community/venus-wallet/core"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -41,6 +42,8 @@ type IMessagePool interface {
 	WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error)
 	WalletHas(ctx context.Context, addr address.Address) (bool, error)
 }
+
+var _ IMessagePool = &MessagePoolAPI{}
 
 type MessagePoolAPI struct {
 	pushLocks *messagepool.MpoolLocker
@@ -231,13 +234,12 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Unsign
 
 		// Sign the message with the nonce
 		msg.Nonce = nonce
-
 		mb, err := msg.ToStorageBlock()
 		if err != nil {
 			return nil, xerrors.Errorf("serializing message: %w", err)
 		}
 
-		sig, err := a.mp.walletAPI.WalletSign(ctx, msg.From, mb.Cid().Bytes(), wallet.MsgMeta{})
+		sig, err := a.mp.walletAPI.WalletSign(ctx, msg.From, mb.Cid().Bytes(), wallet.MsgMeta{Type: core.MTChainMsg})
 		if err != nil {
 			return nil, xerrors.Errorf("failed to sign message: %w", err)
 		}
@@ -348,9 +350,15 @@ func (a *MessagePoolAPI) WalletSign(ctx context.Context, k address.Address, msg 
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ID address: %v", keyAddr)
 	}
-	return a.mp.walletAPI.WalletSign(ctx, keyAddr, msg, wallet.MsgMeta{
-		Type: wallet.MTUnknown,
-	})
+	/*var meta wallet.MsgMeta
+	if len(metas) > 0 {
+		meta = metas[0]
+	} else {*/
+	meta := wallet.MsgMeta{
+		Type: core.MTUnknown,
+	}
+	//}
+	return a.mp.walletAPI.WalletSign(ctx, keyAddr, msg, meta)
 }
 
 func (a *MessagePoolAPI) WalletHas(ctx context.Context, addr address.Address) (bool, error) {

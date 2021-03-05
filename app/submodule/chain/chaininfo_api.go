@@ -36,6 +36,7 @@ type IChainInfo interface {
 
 	GetFullBlock(ctx context.Context, id cid.Cid) (*types.FullBlock, error)
 	GetActor(ctx context.Context, addr address.Address) (*types.Actor, error)
+	GetParentStateRootActor(ctx context.Context, ts *types.TipSet, addr address.Address) (*types.Actor, error)
 	GetEntry(ctx context.Context, height abi.ChainEpoch, round uint64) (*types.BeaconEntry, error)
 
 	MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*chain.ChainMessage, error)
@@ -52,6 +53,8 @@ type IChainInfo interface {
 
 	VerifyEntry(parent, child *types.BeaconEntry, height abi.ChainEpoch) bool
 }
+
+var _ IChainInfo = &ChainInfoAPI{}
 
 type ChainInfoAPI struct { //nolint
 	chain *ChainSubmodule
@@ -142,8 +145,23 @@ func (chainInfoAPI *ChainInfoAPI) GetActor(ctx context.Context, addr address.Add
 	if err != nil {
 		return nil, err
 	}
-
 	return chainInfoAPI.chain.ChainReader.GetActorAt(ctx, head, addr)
+}
+
+// GetParentStateRootActor get the ts ParentStateRoot actor
+func (chainInfoAPI *ChainInfoAPI) GetParentStateRootActor(ctx context.Context, ts *types.TipSet, addr address.Address) (*types.Actor, error) {
+	if ts == nil {
+		ts = chainInfoAPI.chain.ChainReader.GetHead()
+	}
+	v, err := chainInfoAPI.chain.ChainReader.ParentStateView(ts)
+	if err != nil {
+		return nil, err
+	}
+	act, err := v.LoadActor(ctx, addr)
+	if err != nil {
+		return nil, err
+	}
+	return act, nil
 }
 
 // ChainGetBlock gets a block by CID

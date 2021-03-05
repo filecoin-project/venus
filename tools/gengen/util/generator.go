@@ -116,7 +116,6 @@ func (g *GenesisGenerator) Init(cfg *GenesisCfg) error {
 	}
 	keys = append(keys, cfg.ImportKeys...)
 	g.keys = keys
-
 	vrKey, err := crypto.NewSecpKeyFromSeed(g.pnrg)
 	if err != nil {
 		return err

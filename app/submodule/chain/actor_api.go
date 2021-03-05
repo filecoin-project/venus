@@ -12,6 +12,9 @@ type IActor interface {
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	ListActor(ctx context.Context) (map[address.Address]*types.Actor, error)
 }
+
+var _ IActor = &ActorAPI{}
+
 type ActorAPI struct {
 	chain *ChainSubmodule
 }

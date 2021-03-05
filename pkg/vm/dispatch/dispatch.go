@@ -135,13 +135,13 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, nvk network.Version,
 	case cbor.Marshaler:
 		buf := new(bytes.Buffer)
 		if err := ret.MarshalCBOR(buf); err != nil {
-			return []byte{}, NewExcuteError(2, "failed to marshal response to cbor err:%v", err)
+			return []byte{}, NewExcuteError(exitcode.SysErrSenderStateInvalid, "failed to marshal response to cbor err:%v", err)
 		}
 		return buf.Bytes(), nil
 	case nil:
 		return []byte{}, nil
 	default:
-		return []byte{}, NewExcuteError(3, "could not determine type for response from call")
+		return []byte{}, NewExcuteError(exitcode.SysErrInvalidMethod, "could not determine type for response from call")
 	}
 }
 

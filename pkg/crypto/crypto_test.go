@@ -19,7 +19,7 @@ func TestGenerateSecpKey(t *testing.T) {
 	ki, err := crypto.NewSecpKeyFromSeed(bytes.NewReader(token))
 	assert.NoError(t, err)
 	sk := ki.PrivateKey
-
+	t.Logf("%x", sk)
 	assert.Equal(t, len(sk), 32)
 
 	msg := make([]byte, 32)
@@ -31,7 +31,7 @@ func TestGenerateSecpKey(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, len(digest), 65)
 	pk := crypto.PublicKeyForSecpSecretKey(sk)
-
+	t.Logf("%x", pk)
 	// valid signature
 	assert.True(t, crypto.VerifySecp(pk, msg, digest))
 
@@ -67,7 +67,8 @@ func TestGenerateSecpKey(t *testing.T) {
 func TestBLSSigning(t *testing.T) {
 	privateKey := bls.PrivateKeyGenerate()
 	data := []byte("data to be signed")
-
+	t.Logf("%x", privateKey)
+	t.Logf("%x", bls.PrivateKeyPublicKey(privateKey))
 	signature, err := crypto.SignBLS(privateKey[:], data)
 	require.NoError(t, err)
 
