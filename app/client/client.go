@@ -112,6 +112,7 @@ type FullNode struct {
 	MpoolGetConfig          func(context.Context) (*messagepool.MpoolConfig, error)
 	MpoolSetConfig          func(context.Context, *messagepool.MpoolConfig) error
 	MpoolSelect             func(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error)
+	MpoolSelects            func(context.Context, types.TipSetKey, []float64) ([][]*types.SignedMessage, error)
 	MpoolPending            func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error)
 	MpoolClear              func(context.Context, bool) error
 	MpoolPushUntrusted      func(context.Context, *types.SignedMessage) (cid.Cid, error)
@@ -242,6 +243,7 @@ type MessagePoolAPI struct {
 	MpoolGetConfig          func(context.Context) (*messagepool.MpoolConfig, error)
 	MpoolSetConfig          func(context.Context, *messagepool.MpoolConfig) error
 	MpoolSelect             func(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error)
+	MpoolSelects            func(context.Context, types.TipSetKey, []float64) ([][]*types.SignedMessage, error)
 	MpoolPending            func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error)
 	MpoolClear              func(context.Context, bool) error
 	MpoolPushUntrusted      func(context.Context, *types.SignedMessage) (cid.Cid, error)
