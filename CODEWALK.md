@@ -4,9 +4,9 @@
  -->
 # Go-filecoin code overview
 
-This document provides a high level tour of the venus implementation of the Filecoin protocols in Go.
+This document provides a high level tour of the venus implementation of the Venus protocols in Go.
 
-This document assumes a reasonable level of knowledge about the Filecoin system and protocols, which are not re-explained here. 
+This document assumes a reasonable level of knowledge about the Venus system and protocols, which are not re-explained here. 
 It is complemented by specs (link forthcoming) that describe the key concepts implemented here.
 
 **Table of contents**
@@ -25,18 +25,12 @@ It is complemented by specs (link forthcoming) that describe the key concepts im
 - [A tour of the code](#a-tour-of-the-code)
   - [History–the Node object](#historythe-node-object)
   - [Core services](#core-services)
-  - [Plumbing & porcelain](#plumbing--porcelain)
   - [Commands](#commands)
-  - [Protocols](#protocols)
-      - [Protocol Mining APIs](#protocol-mining-apis)
   - [Actors](#actors)
   - [The state tree](#the-state-tree)
   - [Messages and state transitions](#messages-and-state-transitions)
   - [Consensus](#consensus)
-  - [Storage protocol](#storage-protocol)
-  - [Retrieval](#retrieval)
   - [Entry point](#entry-point)
-- [Sector builder & proofs](#sector-builder--proofs)
   - [Building and distribution.](#building-and-distribution)
   - [Groth parameters](#groth-parameters)
   - [Proof mode configuration](#proof-mode-configuration)
@@ -50,11 +44,8 @@ It is complemented by specs (link forthcoming) that describe the key concepts im
       - [Unit Tests (`-unit`)](#unit-tests--unit)
       - [Integration Tests (`-integration`)](#integration-tests--integration)
       - [Functional Tests (`-functional`)](#functional-tests--functional)
-      - [Sector Builder Tests (`-sectorbuilder`)](#sector-builder-tests--sectorbuilder)
 - [Dependencies](#dependencies)
 - [Patterns](#patterns)
-  - [Plumbing and porcelain](#plumbing-and-porcelain)
-  - [Consumer-defined interfaces](#consumer-defined-interfaces)
   - [Observability](#observability)
     - [Metrics](#metrics)
     - [Tracing](#tracing)
@@ -65,11 +56,10 @@ It is complemented by specs (link forthcoming) that describe the key concepts im
 
 The venus implementations is the result of combined research and development effort.
 The protocol spec and architecture evolved from a prototype, and is the result of iterating towards our goals. 
-Go-filecoin is a work in progress.
 We are still working on clarifying the architecture and propagating good patterns throughout the code.
 Please bear with us, and we’d love your help.
 
-Filecoin borrows a lot from the [IPFS](https://ipfs.io/) project, including some patterns, tooling, and packages. 
+Venus borrows a lot from the [IPFS](https://ipfs.io/) project, including some patterns, tooling, and packages. 
 Some benefits of this include:
 
 - the projects encode data in the same way ([IPLD](https://ipld.io/), 
@@ -81,7 +71,7 @@ Other patterns, we've evolving for our needs:
 - go-ipfs relies heavily on shell-based integration testing; we aim to rely heavily on unit testing and Go-based integration tests.
 - The go-ipfs package structure involves a deep hierarchy of dependent implementations; 
 we're moving towards a more Go-idiomatic approach with narrow interfaces defined in consuming packages (see [Patterns](#patterns).
-- The term "block" is heavily overloaded: a blockchain block ([`types/block.go`](https://github.com/filecoin-project/venus/tree/master/types/block.go)), 
+- The term "block" is heavily overloaded: a blockchain block ([`types/block.go`](https://github.com/filecoin-project/venus/tree/master/pkg/types/block.go)), 
 but also content-id-addressed blocks in the block service. 
 Blockchain blocks are stored in block service blocks, but are not the same thing.
 
@@ -112,10 +102,10 @@ Internal │        │   Protocol   │    Protocol     │  Protocol   │  �
          │                │               │               │         │                 │
          │                ▼               ▼               ▼         │                 ▼
          │          ┌───────────────────────────────────────────┐   │  ┌─────────────┬──────────────┐
-         │          │                                           │   │  │             │              │
-         │          │                 Core API                  │   │  │  Porcelain  │   Plumbing   │
-         └─────────▶│                                           │   └─▶├─────────────┘              │
-                    │                                           │      │                            │
+         │          │                                           │   │  │                         
+         │          │                 Core API                  │   │  │        Client API 
+         └─────────▶│                                           │   └─▶             
+                    │                                           │      │                            
                     └───────────────────────────────────────────┘      └────────────────────────────┘
                                           │                                           │
                    ┌─────────────────┬────┴──────────────┬────────────────┬───────────┴─────┐
@@ -132,23 +122,13 @@ Internal │        │   Protocol   │    Protocol     │  Protocol   │  �
 
 ### History–the Node object
 
-The `Node` ([`node/`](https://github.com/filecoin-project/venus/tree/master/node)) object is the "server". 
+The `Node` ([`node/`](https://github.com/filecoin-project/venus/tree/master/app/node)) object is the "server". 
 It contains much of the core protocol implementation and plumbing. 
-As an accident of history it has become something of a god-object, which we are working to resolve. 
-The `Node` object is difficult to unit test due to its many dependencies and complicated set-up. 
-We are [moving away from this pattern](https://github.com/filecoin-project/venus/issues/1469#issuecomment-451619821),
-and expect the Node object to be reduced to a glorified constructor over time.
 
-The [`api`](https://github.com/filecoin-project/venus/tree/master/api) package contains the API of all the 
+The [`api`](https://github.com/filecoin-project/venus/tree/master/app/client) package contains the API of all the 
 core building blocks upon which the protocols are implemented. 
 The implementation of this API is the `Node`. 
-We are migrating away from this `api` package to the plumbing package, see below.
 
-The [`protocol`](https://github.com/filecoin-project/venus/tree/master/protocol) package contains much of the application-level protocol code. 
-The protocols are implemented in terms of the plumbing & porcelain APIs (see below).
-Currently the hello, retrieval and storage protocols are implemented here. 
-Block mining should move here (from the [`mining`](https://github.com/filecoin-project/venus/tree/master/mining) top-level package and `Node` internals). 
-Chain syncing may move here too.
 
 ### Core services
 
@@ -170,32 +150,16 @@ Services include (not exhaustive):
 - Block service: content-addressed key value store that stores IPLD data, including blockchain blocks as well as the state tree (it’s poorly named).
 - Wallet: manages keys.
 
-### Plumbing & porcelain
-
-The [`plumbing`](https://github.com/filecoin-project/venus/tree/master/plumbing) & 
-[`porcelain`](https://github.com/filecoin-project/venus/tree/master/porcelain) packages are 
-the API for most non-protocol commands. 
-
-__Plumbing__ is the set of public apis required to implement all user-, tool-, and some protocol-level features. 
-Plumbing implementations depend on the core services they need, but not on the `Node`.
-Plumbing is intended to be fairly thin, routing requests and data between core components. 
-Plumbing implementations are often tested with real implementations of the core services they use, but can also be tested with fakes and mocks.
-
-__Porcelain__ implementations are convenience compositions of plumbing. 
-They depend only on the plumbing API, and can coordinate a sequence of actions. 
-Porcelain is ephemeral; the lifecycle is the duration of a single porcelain call: something calls into it, it does its thing, and then returns. 
-Porcelain implementations are ideally tested with fakes of the plumbing they use, but can also use full implementations. 
-
 ### Commands
 
 The `venus` binary can run in two different modes, either as a long-running daemon exposing a JSON/HTTP RPC API, 
 or as a command-line interface which interprets and routes requests as RPCs to a daemon. 
-In typical usage, you start the daemon with `venus daemon` then use the same binary to issue commands like `venus wallet addrs`, 
+In typical usage, you start the daemon with `venus daemon` then use the same binary to issue commands like `venus wallet ls`, 
 which are transmitted to the daemon over the HTTP API.
 
 The commands package uses the [go-ipfs command library](https://github.com/ipfs/go-ipfs-cmds) and defines commands as both CLI and JSON entry points.
 
-[Commands](https://github.com/filecoin-project/venus/tree/master/commands) implement user- and tool-facing functionality. 
+[Commands](https://github.com/filecoin-project/venus/tree/master/cmd) implement user- and tool-facing functionality. 
 Command implementations should be very, very small. 
 With no logic of their own, they should call just into a single plumbing or porcelain method (never into core APIs directly). 
 The go-ipfs command library introduces some boilerplate which we can reduce with some effort in the future. 
@@ -203,34 +167,6 @@ Right now, some of the command implementations call into the node; this should c
 
 Tests for commands are generally end-to-end "daemon tests" that exercise CLI. 
 They start some nodes and interact with them through shell commands. 
-
-### Protocols
-
-[Protocols](https://github.com/filecoin-project/venus/tree/master/protocol) embody 
-"application-level" functionality. They are persistent; they keep running without active user/tool activity. 
-Protocols interact with the network. 
-Protocols depend on `plumbing` and `porcelain` for their implementation, as well some "private" core APIs (at present, many still depend on the `Node` object).
-
-Protocols drive changes in, but do not own, core state. 
-For example, the chain sync protocol drives updates to the chain store (a core service), but the sync protocol does not own the chain data.
-However, protocols may maintain their own non-core, protocol-specific datastores (e.g. unconfirmed deals). 
-
-Application-level protocol implementations include:
-
-- Storage protocol: the mechanism by which clients make deals with miners, transfer data for storage, and then miners prove storage.
-- Block mining protocol: the protocol for block mining and consensus. 
-Miners who are storing data participate in creating new blocks. 
-Miners win elections in proportion to storage committed. 
-This block mining is spread through a few places in the code. 
-Much in mining package, but also a bunch in the node implementation.
-- Chain protocol: protocol for exchange of mined blocks
-
-##### Protocol Mining APIs
-The [`storage`](https://github.com/filecoin-project/venus/tree/master/protocol/storage/),
-[`retrieval`](https://github.com/filecoin-project/venus/tree/master/protocol/retrieval/)
-and [`block`](https://github.com/filecoin-project/venus/tree/master/protocol/mining/) packages now house their own APIs. These are the new interfaces for all mining commands, but not miner creation. These Protocol APIs provide a the new interface for the Network layer of venus.  Protocol APIs also consume Plumbing and Porcelain APIs. They are ephemeral, like the Porcelain API. Note also that the MiningOnce command uses `BlockMiningAPI` to create its own block mining worker, which lasts only for the time it takes to mine and post a new block.
-
-
 
 More detail on the individual protocols is coming soon.
 
@@ -242,7 +178,7 @@ It is expected that other implementations will match the behaviour of the Go act
 An ABI describes how inputs and outputs to the VM are encoded. 
 Future work will replace this implementation with a "real" VM.
 
-The [Actor](https://github.com/filecoin-project/venus/blob/master/actor/actor.go) struct is the base implementation of actors, with fields common to all of them.
+The [Actor](https://github.com/filecoin-project/venus/blob/master/pkg/types/actor.go) struct is the base implementation of actors, with fields common to all of them.
 
 - `Code` is a CID identifying the actor code, but since these actors are implemented in Go, is actually some fixed bytes acting as an identifier. 
 This identifier selects the kind of actor implementation when a message is sent to its address.
@@ -256,38 +192,24 @@ A storage miner actor exists for each miner in the Filesystem network.
 Their structs share the same code CID so they have the same behavior, but have distinct head state CIDs and balance. 
 Each actor instance exists at an address in the state tree. An address is the hash of the actor’s public key.
 
-The [account](https://github.com/filecoin-project/venus/blob/master/actor/builtin/account) actor doesn’t have any special behavior or state other than a balance. 
-Everyone who wants to send messages (transactions) has an account actor, and it is from this actor’s address that they send messages.
-
-Every storage miner has an instance of a [miner](https://github.com/filecoin-project/venus/blob/master/actor/builtin/miner) actor. 
-The miner actor plays a role in the storage protocol, for example it pledges space and collateral for storage, posts proofs of storage, etc. 
-A miner actor’s state is located in the state tree at its address; the value found there is an Actor structure. 
-The head CID in the actor structure points to that miner’s state instance (encoded).
-
-Other built-in actors include the [payment broker](https://github.com/filecoin-project/venus/blob/master/actor/builtin/paymentbroken), 
-which provides a mechanism for off-chain payments via payment channels, 
-and the [storage market](https://github.com/filecoin-project/venus/blob/master/actor/storagemarket), 
-which starts miners and tracks total storage (aka "power"). 
-These are both singletons.
-
 Actors declare a list of exported methods with ABI types. 
 Method implementations typically load the state tree, perform some query or mutation, then return a value or an error. 
 
 ### The state tree
 
-Blockchain state is represented in the [state tree](https://github.com/filecoin-project/venus/blob/master/state/tree.go), 
+Blockchain state is represented in the [state tree](https://github.com/filecoin-project/venus/blob/master/pkg/state/tree/state.go), 
 which contains the state of all actors. 
 The state tree is a map of address to (encoded) actor structs. 
 The state tree interface exposes getting and setting actors at addresses, and iterating actors. 
 The underlying data structure is a [Hash array-mapped trie](https://en.wikipedia.org/wiki/Hash_array_mapped_trie). 
 A HAMT is also often used to store actor state, eg when the actor wants to store a large map.
 
-The canonical binary encoding used by Filecoin is [CBOR](http://cbor.io/). In Go, structs are CBOR-encoded by reflection. 
+The canonical binary encoding used by Venus is [CBOR](http://cbor.io/). In Go, structs are CBOR-encoded by reflection. 
 The ABI uses a separate inner encoding, which is manual. 
 
 ### Messages and state transitions
 
-Filecoin state transitions are driven by messages sent to actors; these are our "transactions". 
+Venus state transitions are driven by messages sent to actors; these are our "transactions". 
 A message is a method invocation on an actor. 
 A message has sender and recipient addresses, and optional parameters such as an amount of filecoin to transfer, a method name, and parameters.
 
@@ -300,7 +222,7 @@ One invokes a method on an actor by sending it a message.
 To send a message the message is created, signed, added to your local node’s message pool broadcast on the network to other nodes, 
 which will add it to their message pool too. 
 Some node will then mine a block and possibly include your message. 
-In Filecoin, it is essential to remember that sending the message does not mean it has gone on chain or that its outcome has been reflected in the state tree. 
+In Venus, it is essential to remember that sending the message does not mean it has gone on chain or that its outcome has been reflected in the state tree. 
 Sending means the message is available to be mined into a block. 
 You must wait for the message to be included in a block to see its effect.
 
@@ -309,19 +231,19 @@ These messages are executed locally against a read only version of the state tre
 They never leave the node, they are not broadcast. 
 The plumbing API exposes `MessageSend` and `MessageQuery` for these two cases. 
 
-The [processor](https://github.com/filecoin-project/venus/blob/master/consensus/processor.go) is the 
+The [processor](https://github.com/filecoin-project/venus/blob/master/pkg/consensus/processor.go) is the 
 entry point for making and validating state transitions represented by the messages. 
 It is modelled Ethereum’s message processing system. 
 The processor manages the application of messages to the state tree from the prior block/s. 
 It loads the actor from which a message came, check signatures, 
 then loads the actor and state to which a message is addressed and passes the message to the VM for execution. 
 
-The [vm](https://github.com/filecoin-project/venus/blob/master/vm) package has the low level detail of calling actor methods. 
-A [VM context](https://github.com/filecoin-project/venus/blob/master/vm/context.go) defines the world visible from an actor implementation while executing, 
+The [vm](https://github.com/filecoin-project/venus/blob/master/pkg/vm) package has the low level detail of calling actor methods. 
+A [VM context](https://github.com/filecoin-project/venus/blob/master/pkg/vm/context.go) defines the world visible from an actor implementation while executing.
 
 ### Consensus
 
-Filecoin uses a consensus algorithm called [expected consensus](https://github.com/filecoin-project/venus/blob/master/consensus/expected.go). 
+Venus uses a consensus algorithm called [expected consensus](https://github.com/filecoin-project/venus/blob/master/pkg/consensus/expected.go). 
 Unlike proof-of-work schemes, expected-consensus is a proof-of-stake model, where probability of mining a block in each round (30 seconds) 
 is proportional to amount of storage a miner has committed to the network. 
 Each round, miners are elected through a probabilistic but private mechanism akin to rolling independent, private, but verifiable dice. 
@@ -330,58 +252,12 @@ If a miner is elected, they have the right to mine a block in that round.
 
 Given the probabilistic nature of mining new blocks, more than one block may be mined in any given round. 
 Hence, a new block might have more than one parent block. 
-The parents form a set, which we call a [tipset](https://github.com/filecoin-project/venus/blob/master/consensus/tipset.go). 
+The parents form a set, which we call a [tipset](https://github.com/filecoin-project/venus/blob/master/pkg/types/tipset.go). 
 All the blocks in a tipset are at the same height and share the same parents. 
 Tipsets contain one or more blocks. 
 A null block count indicates the absence of any blocks mined in a previous round. 
 Subsequent blocks are built upon *all* of the tipset; 
 there is a canonical ordering of the messages in a tipset defining a new consensus state, not directly referenced from any of the tipset’s blocks.
-
-### Storage protocol
-The storage protocol is mechanism by which clients make deals directly with storage miners to store their data, implemented in [`protocol/storage`](https://github.com/filecoin-project/venus/blob/master/protocol/storage).
-
-A storage miner ([protocol/storage/miner.go](https://github.com/filecoin-project/venus/blob/master/protocol/storage/miner.go)) advertises storage with an on-chain ask, 
-which specifies an asking price and storage capacity at that price. 
-Clients discover asks by iterating miner actors’ on-chain state. 
-A client wishing to take an ask creates a deal proposal. 
-A proposal references a specific unit of data, termed a piece, which has a CID (hash of the bytes). 
-A piece must fit inside a single sector (see below) as defined by network parameters.
-
-A storage client ([protocol/storage/client.go](https://github.com/filecoin-project/venus/blob/master/protocol/storage/client.go)) connects directly to a miner to propose a deal, 
-using a libp2p peer id embedded in the on-chain storage miner actor data. 
-An off-chain lookup service maps peer ids to concrete addresses, in the form of multiaddr, using a [libp2p distributed hash table](https://github.com/filecoin-project/venus/blob/master/networking.md) (DHT). 
-A client also creates a payment channel so the miner can be paid over time for storing the piece. 
-The miner responds with acceptance or otherwise.
-
-When proposing a deal, a client loads the piece data into its [IPFS block service](https://github.com/ipfs/go-blockservice). 
-This advertises the availability of the data to the network, making it available to miners. 
-A miner accepting a deal pulls the data from the client (or any other host) using the IPFS block service [bitswap protocol](https://github.com/ipfs/specs/tree/master/bitswap).
-
-A miner packs pieces from many clients into a sector, which is then sealed with a proof of replication (aka commitment). 
-Sealing is a computationally intensive process that can take tens of minutes. 
-A client polls the miner directly for deal status to monitor the piece being received, staged in a sector, the sector sealed, and the proof posted to the blockchain. 
-Once the sector commitment is on chain, the client can observe it directly. 
-A miner periodically computes proofs for all sealed sectors and posts on chain. 
-There is no on-chain mapping of pieces to sectors; a client must keep track of its own pieces.
-
-Note that the mechanisms for communication of deals and state are not specified in the protocol, except the format of messages and the eventual on-chain commitment. 
-Other mechanisms may be used.
-
-The storage [client commands](https://github.com/filecoin-project/venus/blob/master/commands/client.go) interface to a `venus` daemon in the same way as other node [commands](#commands). 
-Right now, a client must be running a full node, but that’s not in-principle necessary. 
-Future reorganisation will allow the extraction of a thin client binary. 
-
-Data preparation is entirely the responsibility of the client, including breaking it up into appropriate chunks (<= sector size), compressing, 
-encrypting, adding error-correcting codes, and replicating widely enough to achieve redundancy goals. 
-In the future, we will build a client library which handles many of these tasks for a user. 
-We also plan support for "repair miners", to whom responsibility can be delegated for monitoring and repairing faults.
-
-### Retrieval
-Retrieval mining is not necessarily linked to storage mining, although in practise we expect all storage miners to also run retrieval miners. 
-Retrieval miners serve requests to fetch content, and are not much more than a big cache and some logic to find missing pieces.
-
-The retrieval protocol and implementation are not yet fully developed. 
-At present (early 2019), retrieval is not charged for, and always causes unsealing of a sector.
 
 ### Entry point
 
@@ -390,45 +266,6 @@ The node starts up all the components, connects them as needed, and waits.
 Protocols (goroutines) communicate through custom channels. 
 This architecture needs more thought, but we are considering moving more inter-module communication to use iterators (c.f. those in Java). 
 An event bus might also be a good pattern for some cases, though.
-
-## Sector builder & proofs
-A storage mining node commits to storage by cryptographically proving that it has stored a sector, a process known as sealing. 
-Proof of replication, or PoRep, is an operation which generates a unique copy (sealed sector) of a sector's original data, a SNARK proof, 
-and a set of commitments identifying the sealed sector and linking it to the corresponding unsealed sector. 
-The commitSector message, posted to the blockchain, includes these commitments (CommR, CommRStar, CommD) and the SNARK proof.
-
-A storage miner continually computes proofs over their sealed sectors and periodically posts a summary of their proofs on chain. 
-When a miner commits their first sector to the network (with `commitSector` message included in some block), a "proving period" begins. 
-A proving period is a window of time (a fixed number of blocks) in which the miner must generate a  "proof of space-time", or PoSt, 
-in order to demonstrate to the network that they have not lost the sector which they have committed. 
-If the miner does not get a `submitPoSt` message included in a block during a proving period, it may be penalised ("slashed").
-
-Storage and proofs are administered by the [sector builder](https://github.com/filecoin-project/venus/tree/master/proofs/sectorbuilder). 
-Most of the sector builder is implemented in Rust and invoked via a [FFI](https://github.com/filecoin-project/venus/blob/master/proofs/interface.go). 
-This code includes functionality to:
-- write (and "preprocess") user piece-bytes to disk,
-- schedule seal (proof-of-replication) jobs,
-- schedule proof-of-spacetime generation jobs,
-- schedule unseal (retrieval) jobs,
-- verify proof-of-spacetime and proof-of-replication-verification,
-- map between replica commitment and sealed sector-bytes,
-- map between piece key (CID of user piece) and sealed sector-bytes.
-
-The Go `SectorBuilder` interface corresponds closely to the rust `SectorBuilder` struct. 
-Rust code is invoked directly (in-process) via Cgo. The sector builder’s lifecycle (in Rust) is controlled by venus. 
-Cgo functions like `C.CBytes` are used to move bytes across Cgo from Go to Rust; 
-Go allocates in the Rust heap through Cgo and then provides Rust with pointers from which it can reconstitute arrays, structs, and so forth.
-
-Sectors and sealed sectors (aka replicas) are just flat files on disk. 
-Sealing a sector is a destructive operation on the sector. 
-The process of sealing yields metadata such as the proof/commitment, which is stored is a separate metadata store, not within the replica file.
-
-We intend the sector builder interface to represent a service, abstracting away both policy (e.g. sector packing, scheduling of PoSt calculation) and implementation details. 
-In the future, we would like to able to interface to it via IPC/RPC as well as FFI. 
-
-The sector builder and proofs code is written in Rust partly to ease use of the [Bellman zk-SNARK library](https://github.com/zkcrypto/bellman). 
-The PoRep and PoSt code is under active development. 
-PoRep is integrated with venus, while the PoST implementation and integration is still in progress (March 2019).
 
 ### Building and distribution.
 The Rust code responsible for sectors and proofs is in the [rust-fil-proofs](https://github.com/filecoin-project/rust-fil-proofs) repo. 
@@ -451,7 +288,7 @@ The build or tarball contains:
 
 ### Groth parameters
 The proving algorithms rely on a large binary parameter file known as the Groth parameters. 
-This file is stored in a cache directory, typically `/tmp/filecoin-proof-parameters`. 
+This file is stored in a cache directory, typically `/var/tmp/filecoin-proof-parameters`. 
 When proofs code changes, the params may need to change.
 
 The `paramcache` program populates the Groth parameter directory by generating the parameters, a slow process (10s of minutes). 
@@ -461,7 +298,7 @@ The CIDs of the parameter files thus published must be pinned (made continuously
 The `paramfetch` program fetches params to local cache directory from IPFS gateway. 
 The `install-rust-proofs.sh` script fetches or generates these Groth parameters as necessary when building `deps`.
 
-Groth parameters in `/tmp/filecoin-proof-parameters` are accessed at venus runtime.
+Groth parameters in `/var/tmp/filecoin-proof-parameters` are accessed at venus runtime.
 The parameters are identified by the `parameters.json` file from fil-rust-proofs, which includes a checksum.
 
 ### Proof mode configuration
@@ -472,13 +309,13 @@ The `genesis.car` in `fixtures/test/` is configured to use test proofs mode.
 
 ## Networking
 
-Filecoin relies on [libp2p](https://libp2p.io/) for its networking needs.
+Venus relies on [libp2p](https://libp2p.io/) for its networking needs.
 
 libp2p is a modular networking stack for the peer-to-peer era. It offers building blocks to tackle requirements such as
-peer discovery, transport switching, multiplexing, content routing, NAT traversal, pubsub, circuit relay, etc., most of which Filecoin uses.
+peer discovery, transport switching, multiplexing, content routing, NAT traversal, pubsub, circuit relay, etc., most of which Venus uses.
 Developers can compose these blocks easily to build the networking layer behind their P2P system.
 
-A detailed overview of how Filecoin uses libp2p can be found in the [Networking doc](networking.md).
+A detailed overview of how Venus uses libp2p can be found in the [Networking doc](networking.md).
 
 ## Filesystem storage
 
@@ -495,7 +332,7 @@ Users can also edit the file directly at their own peril.
 
 ### Datastores
 
-The key-value datastores in the repo include persisted data from a variety of systems within Filecoin. 
+The key-value datastores in the repo include persisted data from a variety of systems within venus. 
 Most of them hold CBOR encoded data keyed on CID, however this varies. 
 The key value stores include the badger, chain, deals, and wallet directories under `$HOME/.venus`.
 
@@ -503,9 +340,7 @@ The purpose of these directories is:
 - _Badger_ is a general purpose datastore currently only holding the genesis key, but in the future, 
 almost all our datastores should be merged into this one.
 - _Chain_ is where the local copy of the blockchain is stored.
-- _Deals_ is where the miner and client store persisted information on open deals for data storage, 
-essentially who is storing what data, for what fee and which sectors have been sealed.
-- _Wallet_ is where the user’s Filecoin wallet information is stored.
+- _Wallet_ is where the user’s Venus wallet information is stored.
 
 ### Keystore
 
@@ -519,45 +354,30 @@ unit tests, in-process integration tests, "daemon" integration tests, and a coup
 
 Many parts of code have good unit tests. 
 We’d like all parts to have unit tests, but in some places it hasn’t been possible where prototype code omitted testability features. 
-Functionality on the `Node` object is a prime example, which we are [moving away from](#plumbing-and-porcelain). 
 
 Historically there has been a prevalence of integration-type testing. 
 Relying only on integration tests can make it hard to verify small changes to internals. 
 We’re driving towards both wide unit test coverage, with integration tests to verifying end-to-end behaviour.
 
-There are two patterns for unit tests. 
-In plumbing and low level components, many tests use real dependencies (or at least in-memory versions of them). 
-For higher level components like porcelain or protocols, where dependencies are more complex to set up, 
-we often use fake implementations of just those parts of the plumbing that are required. 
-It is a goal to have both unit tests (with fakes or real deps), as well as higher level integration-style tests. 
-
 Code generally uses simple manual dependency injection. 
 A component that takes a large number of deps at construction can have them factored into a struct.
-A module should often (re-)declare a narrow subset of the interfaces it depends on (see [Consumer-defined interfaces](#consumer-defined-interfaces))), in canonical Go style. 
 
-Some [node integration tests](https://github.com/filecoin-project/venus/blob/master/node/node_test.go) start one or more full nodes in-process. 
+Some [node integration tests](https://github.com/filecoin-project/venus/blob/master/app/node/test/node.go) start one or more full nodes in-process. 
 This is useful for fine-grained control over the node being tested. 
 Setup for these tests is a bit difficult and we aim to make it much easier to instantiate and test full nodes in-process.
 
 Daemon tests are end-to-end integration tests that exercise the command interface of the `venus` binary. 
 These execute separate `venus` processes and drive them via the command line. 
-These tests are mostly under the [`commands`](https://github.com/filecoin-project/venus/blob/master/commands) package, 
-and use [TestDaemon](https://github.com/filecoin-project/venus/blob/master/testhelpers/commands.go). 
-Because the test and the daemon being tested are in separate processes, getting access to the daemon process’s output streams or attaching a debugger is tricky; 
-see comments in [createNewProcess][(https://github.com/filecoin-project/venus/blob/726e6705860ddfc8ca4e55bc3610ad2230a95c0c/testhelpers/commands.go#L849)
-
-In daemon tests it is important to remember that messages do not have any effect on chain state until they are mined into a block. 
-Preparing an actor in order to receive messages and mutate state requires some delicate network set-up, mining messages into a block to create the actor before it can receive messages. 
-See `MineOnce` in [`mining/scheduler`](https://github.com/filecoin-project/venus/blob/master/mining/scheduler.go) which synchronously performs a round of block mining and then stops, pushing the test state forward.
+These tests are mostly under the [`commands`](https://github.com/filecoin-project/venus/blob/master/cmd) package, 
 
 The `functional-tests` directory contains some Go and Bash scripts which perform complicated multi-node tests on our continuous build. 
 These are not daemon tests, but run separately.
 
 Some packages have a `testing.go` file with helpers for setting up tests involving that package’s types. 
-The [`types/testing.go`](https://github.com/filecoin-project/venus/blob/master/types/testing.go) file has some more generally useful constructors. 
-There is also a top-level [`testhelpers`](https://github.com/filecoin-project/venus/blob/master/testhelpers) package with higher level helpers, often used by daemon tests.
+The [`types/testing.go`](https://github.com/filecoin-project/venus/blob/master/pkg/types/testing.go) file has some more generally useful constructors. 
+There is also a top-level [`testhelpers`](https://github.com/filecoin-project/venus/blob/master/pkg/testhelpers) package with higher level helpers, often used by daemon tests.
 
-We’re in process of creating the Filecoin Automation and Systems Toolkit (FAST) [library](https://github.com/filecoin-project/venus/tree/master/tools/fast). 
+We’re in process of creating the venus Automation and Systems Toolkit (FAST) [library](https://github.com/filecoin-project/venus/tree/master/tools/fast). 
 The goal of this is to unify duplicated code paths which bootstrap and drive `venus` daemons for daemon tests, functional tests, 
 and network deployment verification, providing a common library for filecoin automation in Go. 
 
@@ -584,11 +404,6 @@ By default functional tests are disabled when issuing the `go test` command.
 To enable pass `-functional`.
 A functional test is an extensive multi-node orchestration or resource-intensive test that may take minutes to run.
 
-##### Sector Builder Tests (`-sectorbuilder`)
-By default sectorbuilder tests are disabled when issuing the `go test` command.
-To enable pass `-sectorbuilder`.
-A sectorbuilder test is a resource-intensive test that may take minutes to run.
-
 ## Dependencies
 
 Dependencies in venus are managed as go modules, go's new dependency system.
@@ -599,61 +414,19 @@ If you've cloned venus into your GOPATH, you may need to set the `GO111MODULES` 
 
 The project makes heavy use of or is moving towards a few key design patterns, explained here.
 
-### Plumbing and porcelain
-
-The _plumbing and porcelain_ pattern is [borrowed from Git](https://git-scm.com/book/en/v2/Git-Internals-Plumbing-and-Porcelain).
-Plumbing and porcelain form the API to the internal [core services](#core-services), and will replace the `api` package.
-
-*Plumbing* is the small set of public building blocks of queries and operations that protocols, clients and humans want to use with a Filecoin node. 
-These are things like `MessageSend`, `GetHead`, `GetBlockTime`, etc. 
-By fundamental, we mean that it doesn't make sense to expose anything lower level. 
-The bar for adding new plumbing is high. 
-It is very important, for testing and sanity, that plumbing methods be implemented in terms of their narrowest actual dependencies on core services,
-and that they not depend on Node or another god object.
-
-The plumbing API is defined by its implementation in [plumbing/api.go](https://github.com/filecoin-project/venus/blob/master/plumbing/api.go).
-Consumers of plumbing (re-)define the subset of plumbing on which they depend, which is an idiomatic Go pattern (see below).
-Implementations of plumbing live in their own concisely named packages under [plumbing](https://github.com/filecoin-project/venus/tree/master/plumbing).
-
-*Porcelain* are calls on top of the plumbing API.
-A porcelain call is a useful composition of plumbing calls and is implemented in terms of calls to plumbing. 
-An example of a porcelain call is `CreateMiner == MessageSend + MessageWait + ConfigUpdate`. 
-The bar is low for creation of porcelain calls. 
-Porcelain calls should define the subset of the plumbing interface on which they depend for ease of testing.
-
-Porcelain lives in a single [porcelain](https://github.com/filecoin-project/venus/blob/master/porcelain/) package. 
-Porcelain calls are free functions that take the plumbing interface as an argument. 
-The call defines the subset of the plumbing interface that it needs, which can be easily faked in testing.
-
-We are in the [process of refactoring](https://github.com/filecoin-project/venus/issues/1469) all protocols to depend only on porcelain, 
-plumbing and other core APIs, instead of on the Node.
-
-### Consumer-defined interfaces
-
-Go interfaces generally belong in the package that *uses* values of the interface type, not the package that implements those values. 
-This embraces [Postel's law](https://en.wikipedia.org/wiki/Robustness_principle), 
-reducing direct dependencies between packages and making them easier to test. 
-It isolates small changes to small parts of the code.
-
-Note that this is quite different to the more common pattern in object-oriented languages, where interfaces are defined near their implementations.
-Our implementation of [plumbing and porcelain](#plumbing-and-porcelain) embraces this pattern, and we are adopting it more broadly.
-
-This idiom is unfortunately hidden away in a [wiki page about code review](https://github.com/golang/go/wiki/CodeReviewComments#interfaces).
-See also Dave Cheney on [SOLID Go Design](https://dave.cheney.net/2016/08/20/solid-go-design).
-
 ### Observability
 
 venus uses [Opencensus-go](https://github.com/census-instrumentation/opencensus-go) for stats collection and distributed tracing instrumentation.
-Stats are exported for consumption via [Prometheus](https://prometheus.io/) and traces are exported for consumption via [Jaeger](https://www.jaegertracing.io/docs/1.11/).
+Stats are exported for consumption via [Prometheus](https://prometheus.io/).
 
 #### Metrics
 
 venus can be configured to collect and export metrics to Prometheus via the `MetricsConfig`.
-The details of this can be found inside the [`config/`](https://godoc.org/github.com/filecoin-project/venus/internal/pkg/config#ObservabilityConfig) package.
+The details of this can be found inside the [`config/`](https://pkg.go.dev/github.com/filecoin-project/venus/pkg/config#ObservabilityConfig) package.
 To view metrics from your filecoin node using the default configuration options set the `prometheusEnabled` value to `true`, start the filecoin daemon, then visit `localhost:9400/metrics` in your web-browser. 
 
 #### Tracing
 
 venus can be configured to collect and export traces to Jaeger via the `TraceConfig`.
-The details of this can be found inside the [`config/`](https://godoc.org/github.com/filecoin-project/venus/internal/pkg/config#ObservabilityConfig) package.
-To collect traces from your filecoin node using the default configuration options set the `jaegerTracingEnabled` value to `true`, start the filecoin daemon, then follow the [Jaeger Getting](https://www.jaegertracing.io/docs/1.11/getting-started/#all-in-one) started guide.
+The details of this can be found inside the [`config/`](https://pkg.go.dev/github.com/filecoin-project/venus/pkg/config#ObservabilityConfig) package.
+To collect traces from your venus node using the default configuration options set the `jaegerTracingEnabled` value to `true`, start the venus daemon, then follow the [Jaeger Getting](https://www.jaegertracing.io/docs/1.11/getting-started/#all-in-one) started guide.
