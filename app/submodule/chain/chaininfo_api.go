@@ -296,6 +296,9 @@ func (chainInfoAPI *ChainInfoAPI) ChainGetParentReceipts(ctx context.Context, bc
 
 // ResolveToKeyAddr resolve user address to t0 address
 func (chainInfoAPI *ChainInfoAPI) ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+	if ts == nil {
+		ts = chainInfoAPI.chain.ChainReader.GetHead()
+	}
 	viewer, err := chainInfoAPI.chain.ChainReader.ParentStateView(ts)
 	if err != nil {
 		return address.Undef, err
