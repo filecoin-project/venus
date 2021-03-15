@@ -71,19 +71,22 @@ func (b *Bootstrapper) Start(ctx context.Context) {
 	b.ctx, b.cancel = context.WithCancel(ctx)
 	b.ticker = time.NewTicker(b.Period)
 
-	b.Bootstrap(nil) //boot first
-	go func() {
-		defer b.ticker.Stop()
+	b.Bootstrap(nil) // boot first
 
-		for {
-			select {
-			case <-b.ctx.Done():
-				return
-			case <-b.ticker.C:
-				b.Bootstrap(b.d.Peers())
-			}
-		}
-	}()
+	// following commented logical was replaced by `PeerManager`
+
+	// go func() {
+	// 	defer b.ticker.Stop()
+	//
+	// 	for {
+	// 		select {
+	// 		case <-b.ctx.Done():
+	// 			return
+	// 		case <-b.ticker.C:
+	// 			b.Bootstrap(b.d.Peers())
+	// 		}
+	// 	}
+	// }()
 }
 
 // Stop stops the Bootstrapper.

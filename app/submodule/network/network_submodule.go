@@ -37,7 +37,6 @@ import (
 	gsnet "github.com/ipfs/go-graphsync/network"
 	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
-	offroute "github.com/ipfs/go-ipfs-routing/offline"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p"
 	circuit "github.com/libp2p/go-libp2p-circuit"
@@ -49,7 +48,6 @@ import (
 	mplex "github.com/libp2p/go-libp2p-mplex"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	yamux "github.com/libp2p/go-libp2p-yamux"
-	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 )
@@ -125,58 +123,60 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	validator := blankValidator{}
 	var pubsubMessageSigning bool
 	var peerMgr net.IPeerMgr
-	if !config.OfflineMode() {
-		makeDHT := func(h host.Host) (routing.Routing, error) {
-			mode := dht.ModeServer
-			opts := []dht.Option{dht.Mode(mode),
-				dht.Datastore(repo.ChainDatastore()),
-				dht.NamespacedValidator("v", validator),
-				dht.ProtocolPrefix(net.FilecoinDHT(networkName)),
-				dht.QueryFilter(dht.PublicQueryFilter),
-				dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
-				dht.DisableProviders(),
-				dht.DisableValues()}
-			r, err := dht.New(
-				ctx, h, opts...,
-			)
+	// if !config.OfflineMode() {
+	makeDHT := func(h host.Host) (routing.Routing, error) {
+		mode := dht.ModeServer
+		opts := []dht.Option{dht.Mode(mode),
+			dht.Datastore(repo.ChainDatastore()),
+			dht.NamespacedValidator("v", validator),
+			dht.ProtocolPrefix(net.FilecoinDHT(networkName)),
+			dht.QueryFilter(dht.PublicQueryFilter),
+			dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
+			dht.DisableProviders(),
+			dht.DisableValues()}
+		r, err := dht.New(
+			ctx, h, opts...,
+		)
 
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to setup routing")
-			}
-			router = r
-			return r, err
-		}
-
-		var err error
-		peerHost, err = buildHost(ctx, config, libP2pOpts, repo, makeDHT)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to setup routing")
 		}
-		// require message signing in online mode when we have priv key
-		pubsubMessageSigning = true
-
-		//peer manager
-		bootNodes, err := net.ParseAddresses(ctx, repo.Config().Bootstrap.Addresses)
-		if err != nil {
-			return nil, err
-		}
-		period, err := time.ParseDuration(repo.Config().Bootstrap.Period)
-		if err != nil {
-			return nil, err
-		}
-
-		peerMgr, err = net.NewPeerMgr(peerHost, router.(*dht.IpfsDHT), period, bootNodes)
-		if err != nil {
-			return nil, err
-		}
-
-		go peerMgr.Run(ctx)
-	} else {
-		router = offroute.NewOfflineRouter(repo.ChainDatastore(), validator)
-		peerHost = rhost.Wrap(NewNoopLibP2PHost(), router)
-		pubsubMessageSigning = false
-		peerMgr = &net.MockPeerMgr{}
+		router = r
+		return r, err
 	}
+
+	peerHost, err = buildHost(ctx, config, libP2pOpts, repo, makeDHT)
+	if err != nil {
+		return nil, err
+	}
+	// require message signing in online mode when we have priv key
+	pubsubMessageSigning = true
+
+	// peer manager
+	bootNodes, err := net.ParseAddresses(ctx, repo.Config().Bootstrap.Addresses)
+	if err != nil {
+		return nil, err
+	}
+	period, err := time.ParseDuration(repo.Config().Bootstrap.Period)
+	if err != nil {
+		return nil, err
+	}
+
+	peerMgr, err = net.NewPeerMgr(peerHost, router.(*dht.IpfsDHT), period, bootNodes)
+	if err != nil {
+		return nil, err
+	}
+
+	// do NOT start `peerMgr` in `offline` mode
+	if !config.OfflineMode() {
+		go peerMgr.Run(ctx)
+	}
+	// } else {
+	// 	router = offroute.NewOfflineRouter(repo.ChainDatastore(), validator)
+	// 	peerHost = rhost.Wrap(NewNoopLibP2PHost(), router)
+	// 	pubsubMessageSigning = false
+	// 	peerMgr = &net.MockPeerMgr{}
+	// }
 
 	// Set up libp2p network
 	// The gossipsub heartbeat timeout needs to be set sufficiently low
