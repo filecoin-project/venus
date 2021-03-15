@@ -243,3 +243,12 @@ func (w *Wallet) HavePassword() bool {
 	}
 	return backend.HavePassword()
 }
+
+func (w *Wallet) WalletState() int {
+	backend, err := w.DSBacked()
+	if err != nil {
+		walletLog.Errorf("get DSBacked failed: %v", err)
+		return undetermined
+	}
+	return backend.WalletState()
+}

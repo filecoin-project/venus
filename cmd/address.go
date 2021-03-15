@@ -20,9 +20,11 @@ import (
 	"github.com/filecoin-project/venus/cmd/tablewriter"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
-var errWalletLocked = errors.New("the wallet is missing password, please use command `venus wallet set-password` to set password")
+var errMissPassword = errors.New("the wallet is missing password, please use command `venus wallet set-password` to set password")
+var errWalletLocked = errors.New("the wallet is locked, please use command `venus wallet unlock` to unlock")
 
 var walletCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
@@ -68,6 +70,9 @@ var addrsNewCmd = &cmds.Command{
 		}
 
 		if !env.(*node.Env).WalletAPI.HavePassword(req.Context) {
+			return errMissPassword
+		}
+		if env.(*node.Env).WalletAPI.WalletState(req.Context) == wallet.Lock {
 			return errWalletLocked
 		}
 
@@ -184,6 +189,9 @@ var setDefaultAddressCmd = &cmds.Command{
 		cmds.StringArg("address", true, false, "address to set default for"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		if env.(*node.Env).WalletAPI.WalletState(req.Context) == wallet.Lock {
+			return errWalletLocked
+		}
 		addr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			return err
@@ -228,6 +236,9 @@ var walletImportCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if !env.(*node.Env).WalletAPI.HavePassword(req.Context) {
+			return errMissPassword
+		}
+		if env.(*node.Env).WalletAPI.WalletState(req.Context) == wallet.Lock {
 			return errWalletLocked
 		}
 		iter := req.Files.Entries()
@@ -275,6 +286,9 @@ var walletExportCmd = &cmds.Command{
 		return nil
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		if env.(*node.Env).WalletAPI.WalletState(req.Context) == wallet.Lock {
+			return errWalletLocked
+		}
 		if len(req.Arguments) != 2 {
 			return re.Emit("Two parameter is required.")
 		}

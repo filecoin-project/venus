@@ -3,8 +3,9 @@ package mpool
 import (
 	"context"
 	"encoding/json"
-	"github.com/ipfs-force-community/venus-wallet/core"
 	"sync"
+
+	"github.com/ipfs-force-community/venus-wallet/core"
 
 	"github.com/filecoin-project/go-state-types/crypto"
 
@@ -180,11 +181,7 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Unsign
 	cp := *msg
 	msg = &cp
 	inMsg := *msg
-	ts, err := a.mp.chain.API().ChainHead(ctx)
-	if err != nil {
-		return nil, xerrors.Errorf("getting tipset error: %v", err)
-	}
-	fromA, err := a.mp.chain.API().ResolveToKeyAddr(ctx, msg.From, ts)
+	fromA, err := a.mp.chain.API().ResolveToKeyAddr(ctx, msg.From, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("getting key address: %w", err)
 	}

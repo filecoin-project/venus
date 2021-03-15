@@ -27,6 +27,7 @@ type Backend interface {
 	//
 	Locked(string) error
 	UnLocked(string) error
+	WalletState() int
 }
 
 // Importer is a specialization of a wallet backend that can import

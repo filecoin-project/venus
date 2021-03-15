@@ -23,8 +23,8 @@ import (
 const (
 	undetermined = iota
 
-	lock
-	unlock
+	Lock
+	Unlock
 )
 
 var ErrInvalidPassword = errors.New("password matching failed")
@@ -239,7 +239,7 @@ func (backend *DSBackend) clearPassword() {
 }
 
 func (backend *DSBackend) Locked(password string) error {
-	if backend.state == lock {
+	if backend.state == Lock {
 		return xerrors.Errorf("already locked")
 	}
 
@@ -264,13 +264,13 @@ func (backend *DSBackend) Locked(password string) error {
 		backend.lk.Unlock()
 	}
 
-	backend.state = lock
+	backend.state = Lock
 
 	return nil
 }
 
 func (backend *DSBackend) UnLocked(password string) error {
-	if backend.state == unlock {
+	if backend.state == Unlock {
 		return xerrors.Errorf("already unlocked")
 	}
 
@@ -294,7 +294,7 @@ func (backend *DSBackend) UnLocked(password string) error {
 		backend.unLocked[addr] = ki
 		backend.lk.Unlock()
 	}
-	backend.state = unlock
+	backend.state = Unlock
 
 	return nil
 }
@@ -318,6 +318,10 @@ func (backend *DSBackend) SetPassword(password string) error {
 		}
 	}
 
+	if backend.state != Lock {
+		backend.state = Unlock
+	}
+
 	backend.setPassword(hashPasswd)
 
 	return nil
@@ -325,4 +329,8 @@ func (backend *DSBackend) SetPassword(password string) error {
 
 func (backend *DSBackend) HavePassword() bool {
 	return len(backend.password) != 0
+}
+
+func (backend *DSBackend) WalletState() int {
+	return backend.state
 }
