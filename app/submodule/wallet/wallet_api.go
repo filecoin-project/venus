@@ -3,9 +3,10 @@ package wallet
 import (
 	"context"
 	"errors"
+	"strings"
+
 	"github.com/filecoin-project/venus/app/submodule/wallet/remotewallet"
 	"github.com/ipfs-force-community/venus-wallet/core"
-	"strings"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -191,4 +192,8 @@ func (walletAPI *WalletAPI) SetPassword(Context context.Context, password string
 
 func (walletAPI *WalletAPI) HavePassword(Context context.Context) bool {
 	return walletAPI.walletModule.Wallet.HavePassword()
+}
+
+func (walletAPI *WalletAPI) WalletState(Context context.Context) int {
+	return walletAPI.walletModule.Wallet.WalletState()
 }

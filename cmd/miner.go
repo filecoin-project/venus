@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
 var minerCmdLog = logging.Logger("miner.cmd")
@@ -83,6 +84,9 @@ var newMinerCmd = &cmds.Command{
 			worker, err = address.NewFromString(workerAddr)
 		} else if createWorkerKey { // TODO: Do we need to force this if owner is Secpk?
 			if !env.(*node.Env).WalletAPI.HavePassword(ctx) {
+				return errMissPassword
+			}
+			if env.(*node.Env).WalletAPI.WalletState(req.Context) == wallet.Lock {
 				return errWalletLocked
 			}
 			if worker, err = env.(*node.Env).WalletAPI.WalletNewAddress(address.BLS); err != nil {
