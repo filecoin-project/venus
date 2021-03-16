@@ -46,7 +46,7 @@ func TestBootstrapperStartAndStop(t *testing.T) {
 		lk.Lock()
 		defer lk.Unlock()
 		callCount++
-		if callCount == 3 {
+		if callCount == 1 {
 
 			// If b.Period is configured to be a too small, b.ticker will tick
 			// again before the context's done-channel sees a value. This
@@ -60,7 +60,7 @@ func TestBootstrapperStartAndStop(t *testing.T) {
 
 	lk.Lock()
 	defer lk.Unlock()
-	assert.Equal(t, 3, callCount)
+	assert.Equal(t, 1, callCount)
 }
 
 func TestBootstrapperBootstrap(t *testing.T) {
