@@ -29,18 +29,22 @@ func (target *Target) IsNeibor(t *Target) bool {
 		return false
 	}
 
-	targetWeight := target.Head.ParentWeight()
+	targetWeight := t.Head.ParentWeight()
 	weightIn := target.Head.ParentWeight()
 	if !targetWeight.Equals(weightIn) {
 		return false
 	}
 
-	for _, bid := range target.Head.Key().Cids() {
-		if !t.Head.Key().Has(bid) {
-			return false
-		}
+	if !target.Head.Parents().Equals(t.Head.Parents()) {
+		return false
 	}
 
+	/*	for _, bid := range target.Head.Key().Cids() {
+			if !t.Head.Key().Has(bid) {
+				return false
+			}
+		}
+	*/
 	return true
 }
 
