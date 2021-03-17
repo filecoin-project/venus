@@ -166,36 +166,34 @@ func (node *Node) Start(ctx context.Context) error {
 	var syncCtx context.Context
 	syncCtx, node.syncer.CancelChainSync = context.WithCancel(context.Background())
 
-	if !node.offlineMode {
-		// Start node discovery
-		err := node.discovery.Start()
-		if err != nil {
-			return err
-		}
-
-		//start syncer module to receive new blocks and start sync to latest height
-		err = node.syncer.Start(syncCtx)
-		if err != nil {
-			return err
-		}
-
-		//Start mpool module to receive new message
-		err = node.mpool.Start(syncCtx)
-		if err != nil {
-			return err
-		}
-
-		err = node.paychan.Start()
-		if err != nil {
-			return err
-		}
-
-		/*err = node.market.Start()
-		if err != nil {
-			return err
-		}*/
-
+	// Start node discovery
+	err := node.discovery.Start(node.offlineMode)
+	if err != nil {
+		return err
 	}
+
+	//start syncer module to receive new blocks and start sync to latest height
+	err = node.syncer.Start(syncCtx)
+	if err != nil {
+		return err
+	}
+
+	//Start mpool module to receive new message
+	err = node.mpool.Start(syncCtx)
+	if err != nil {
+		return err
+	}
+
+	err = node.paychan.Start()
+	if err != nil {
+		return err
+	}
+
+	/*err = node.market.Start()
+	if err != nil {
+		return err
+	}*/
+
 	return nil
 }
 
