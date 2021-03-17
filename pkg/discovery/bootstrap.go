@@ -41,7 +41,8 @@ type Bootstrapper struct {
 	Bootstrap func([]peer.ID)
 
 	// Bookkeeping
-	ticker        *time.Ticker
+	/* never use `ticker` again */
+	// ticker        *time.Ticker
 	ctx           context.Context
 	cancel        context.CancelFunc
 	filecoinPeers *moresync.Latch
@@ -69,21 +70,24 @@ func NewBootstrapper(bootstrapPeers []peer.AddrInfo, h host.Host, d inet.Dialer,
 // Start starts the Bootstrapper bootstrapping. Cancel `ctx` or call Stop() to stop it.
 func (b *Bootstrapper) Start(ctx context.Context) {
 	b.ctx, b.cancel = context.WithCancel(ctx)
-	b.ticker = time.NewTicker(b.Period)
+	b.Bootstrap(nil) // boot first
 
-	b.Bootstrap(nil) //boot first
-	go func() {
-		defer b.ticker.Stop()
+	// does't need a ticker anymore
+	// b.ticker = time.NewTicker(b.Period)
 
-		for {
-			select {
-			case <-b.ctx.Done():
-				return
-			case <-b.ticker.C:
-				b.Bootstrap(b.d.Peers())
-			}
-		}
-	}()
+	/* following commented logical was replaced by `PeerManager` */
+	// go func() {
+	// 	defer b.ticker.Stop()
+	//
+	// 	for {
+	// 		select {
+	// 		case <-b.ctx.Done():
+	// 			return
+	// 		case <-b.ticker.C:
+	// 			b.Bootstrap(b.d.Peers())
+	// 		}
+	// 	}
+	// }()
 }
 
 // Stop stops the Bootstrapper.

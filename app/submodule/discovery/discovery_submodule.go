@@ -94,7 +94,7 @@ func NewDiscoverySubmodule(ctx context.Context,
 
 // Start starts the discovery submodule for a node.  It blocks until bootstrap
 // satisfies the configured security conditions.
-func (discovery *DiscoverySubmodule) Start() error {
+func (discovery *DiscoverySubmodule) Start(offline bool) error {
 	// Register peer tracker disconnect function with network.
 	discovery.PeerTracker.RegisterDisconnect(discovery.host.Network())
 
@@ -108,14 +108,16 @@ func (discovery *DiscoverySubmodule) Start() error {
 	// Register the "hello" protocol with the network
 	discovery.HelloHandler.Register(peerDiscoveredCallback, discovery.TipSetLoader)
 
-	// Start bootstrapper.
-	discovery.Bootstrapper.Start(context.Background())
-
 	//registre exchange protocol
 	discovery.ExchangeHandler.Register()
 
-	// Wait for bootstrap to be sufficient connected
-	discovery.BootstrapReady.Wait()
+	// Start bootstrapper.
+	if !offline {
+		discovery.Bootstrapper.Start(context.Background())
+		// Wait for bootstrap to be sufficient connected
+		discovery.BootstrapReady.Wait()
+	}
+
 	return nil
 }
 
