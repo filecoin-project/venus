@@ -105,7 +105,7 @@ func init() {
 			return nil, err
 		}
 
-		swarmaddr, err := multiaddr.NewMultiaddr("/ip4/0.0.0.0/tcp/6000")
+		swarmaddr, err := multiaddr.NewMultiaddr("/ip4/0.0.0.0/tcp/0")
 		if err != nil {
 			return nil, err
 		}

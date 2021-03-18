@@ -69,6 +69,10 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
+		if methodID == builtin.MethodSend && fromAddr.String() == toAddr.String() {
+			return errors.New("self-transfer is not allowed")
+		}
+
 		feecap, premium, gasLimit, err := parseGasOptions(req)
 		if err != nil {
 			return err
