@@ -22,7 +22,7 @@ func TestDefaults(t *testing.T) {
 
 	bs := []string{}
 	assert.Equal(t, "/ip4/127.0.0.1/tcp/3453", cfg.API.APIAddress)
-	assert.Equal(t, "/ip4/0.0.0.0/tcp/6000", cfg.Swarm.Address)
+	assert.Equal(t, "/ip4/0.0.0.0/tcp/0", cfg.Swarm.Address)
 	assert.Equal(t, bs, cfg.Bootstrap.Addresses)
 }
 
@@ -93,7 +93,7 @@ func TestConfigReadFileDefaults(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, cfg.API.APIAddress, "/ip4/127.0.0.1/tcp/9999")
-		assert.Equal(t, cfg.Swarm.Address, "/ip4/0.0.0.0/tcp/6000")
+		assert.Equal(t, cfg.Swarm.Address, "/ip4/0.0.0.0/tcp/0")
 	})
 
 	t.Run("missing one section", func(t *testing.T) {
@@ -112,7 +112,7 @@ func TestConfigReadFileDefaults(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, cfg.API.APIAddress, "/ip4/127.0.0.1/tcp/9999")
-		assert.Equal(t, cfg.Swarm.Address, "/ip4/0.0.0.0/tcp/6000")
+		assert.Equal(t, cfg.Swarm.Address, "/ip4/0.0.0.0/tcp/0")
 	})
 
 	t.Run("empty file", func(t *testing.T) {
@@ -125,7 +125,7 @@ func TestConfigReadFileDefaults(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, cfg.API.APIAddress, "/ip4/127.0.0.1/tcp/3453")
-		assert.Equal(t, cfg.Swarm.Address, "/ip4/0.0.0.0/tcp/6000")
+		assert.Equal(t, cfg.Swarm.Address, "/ip4/0.0.0.0/tcp/0")
 	})
 }
 
