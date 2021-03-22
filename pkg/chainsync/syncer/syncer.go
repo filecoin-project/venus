@@ -420,6 +420,7 @@ loop:
 				break loop
 			}
 			chainTipsets = append(chainTipsets, b)
+			targetTip = b
 		}
 	}
 

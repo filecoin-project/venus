@@ -62,8 +62,9 @@ func Mainnet() *NetworkConf {
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       343200, // 2020-12-22T02:00:00Z
 			},
-			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
-			AddressNetwork: address.Mainnet,
+			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
+			AddressNetwork:          address.Mainnet,
+			PreCommitChallengeDelay: abi.ChainEpoch(150),
 		},
 	}
 }

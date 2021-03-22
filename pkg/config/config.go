@@ -218,14 +218,15 @@ func newDefaultMessagePoolConfig() *MessagePoolConfig {
 }
 
 type NetworkParamsConfig struct {
-	NetworkType            int                          `json:"networkType"`
-	ConsensusMinerMinPower uint64                       `json:"consensusMinerMinPower"` // uint64 goes up to 18 EiB
-	MinVerifiedDealSize    int64                        `json:"minVerifiedDealSize"`
-	ReplaceProofTypes      []int64                      `json:"replaceProofTypes"`
-	BlockDelay             uint64                       `json:"blockDelay"`
-	DrandSchedule          map[abi.ChainEpoch]DrandEnum `json:"drandSchedule"`
-	ForkUpgradeParam       *ForkUpgradeConfig           `json:"forkUpgradeParam"`
-	AddressNetwork         address.Network              `json:"addressNetwork"`
+	NetworkType             int                          `json:"networkType"`
+	ConsensusMinerMinPower  uint64                       `json:"consensusMinerMinPower"` // uint64 goes up to 18 EiB
+	MinVerifiedDealSize     int64                        `json:"minVerifiedDealSize"`
+	ReplaceProofTypes       []abi.RegisteredSealProof    `json:"replaceProofTypes"`
+	BlockDelay              uint64                       `json:"blockDelay"`
+	DrandSchedule           map[abi.ChainEpoch]DrandEnum `json:"drandSchedule"`
+	ForkUpgradeParam        *ForkUpgradeConfig           `json:"forkUpgradeParam"`
+	AddressNetwork          address.Network              `json:"addressNetwork"`
+	PreCommitChallengeDelay abi.ChainEpoch               `json:"preCommitChallengeDelay"`
 }
 
 type ForkUpgradeConfig struct {
@@ -270,11 +271,11 @@ func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 	defaultParams := *DefaultForkUpgradeParam
 	return &NetworkParamsConfig{
 		ConsensusMinerMinPower: 0, // 0 means don't override the value
-		ReplaceProofTypes: []int64{
-			int64(abi.RegisteredSealProof_StackedDrg2KiBV1),
-			int64(abi.RegisteredSealProof_StackedDrg512MiBV1),
-			int64(abi.RegisteredSealProof_StackedDrg32GiBV1),
-			int64(abi.RegisteredSealProof_StackedDrg64GiBV1),
+		ReplaceProofTypes: []abi.RegisteredSealProof{
+			abi.RegisteredSealProof_StackedDrg2KiBV1,
+			abi.RegisteredSealProof_StackedDrg512MiBV1,
+			abi.RegisteredSealProof_StackedDrg32GiBV1,
+			abi.RegisteredSealProof_StackedDrg64GiBV1,
 		},
 		DrandSchedule:    map[abi.ChainEpoch]DrandEnum{0: 5, -1: 1},
 		ForkUpgradeParam: &defaultParams,

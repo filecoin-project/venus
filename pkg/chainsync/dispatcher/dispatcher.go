@@ -42,7 +42,7 @@ func NewDispatcherWithSizes(syncer dispatchSyncer, workQueueSize, inQueueSize in
 		control:         make(chan interface{}, 1),
 		registeredCb:    func(t *types.Target, err error) {},
 		cancelControler: list.New(),
-		maxCount:        3,
+		maxCount:        1,
 	}
 }
 
