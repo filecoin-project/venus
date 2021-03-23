@@ -23,9 +23,9 @@ func Calibration() *NetworkConf {
 			NetworkType:            constants.NetworkCalibnet,
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 32 << 30,
-			ReplaceProofTypes: []int64{
-				int64(abi.RegisteredSealProof_StackedDrg32GiBV1),
-				int64(abi.RegisteredSealProof_StackedDrg64GiBV1),
+			ReplaceProofTypes: []abi.RegisteredSealProof{
+				abi.RegisteredSealProof_StackedDrg32GiBV1,
+				abi.RegisteredSealProof_StackedDrg64GiBV1,
 			},
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
 				UpgradeBreezeHeight:   -1,
@@ -44,8 +44,9 @@ func Calibration() *NetworkConf {
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       250,
 			},
-			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 1},
-			AddressNetwork: address.Testnet,
+			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			AddressNetwork:          address.Testnet,
+			PreCommitChallengeDelay: abi.ChainEpoch(150),
 		},
 	}
 }

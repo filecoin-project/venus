@@ -1369,6 +1369,10 @@ func (c *ChainFork) UpgradeLiftoff(ctx context.Context, cache MigrationCache, ro
 }
 
 func (c *ChainFork) UpgradeCalico(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	if c.networkType != constants.NetworkMainnet {
+		return root, nil
+	}
+
 	store := chain.ActorStore(ctx, c.bs)
 	var stateRoot vmstate.StateRoot
 	if err := store.Get(ctx, root, &stateRoot); err != nil {

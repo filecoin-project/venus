@@ -36,7 +36,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/version"
 )
 
 var log = logging.Logger("node") // nolint: deadcode
@@ -89,9 +88,8 @@ type Node struct {
 	paychan *paych.PaychSubmodule
 
 	//
-	// Protocols
+	//auth
 	//
-	VersionTable *version.ProtocolVersionTable
 
 	jwtAuth *jwtauth.JwtAuth
 

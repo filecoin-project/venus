@@ -20,8 +20,8 @@ func Net2k() *NetworkConf {
 			BlockDelay:             4,
 			ConsensusMinerMinPower: 2048,
 			MinVerifiedDealSize:    256,
-			ReplaceProofTypes: []int64{
-				int64(abi.RegisteredSealProof_StackedDrg2KiBV1),
+			ReplaceProofTypes: []abi.RegisteredSealProof{
+				abi.RegisteredSealProof_StackedDrg2KiBV1,
 			},
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
 				UpgradeBreezeHeight:   -1,
@@ -40,8 +40,9 @@ func Net2k() *NetworkConf {
 				BreezeGasTampingDuration: 0,
 				UpgradeClausHeight:       30,
 			},
-			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 1},
-			AddressNetwork: address.Testnet,
+			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			AddressNetwork:          address.Testnet,
+			PreCommitChallengeDelay: abi.ChainEpoch(150),
 		},
 	}
 }
