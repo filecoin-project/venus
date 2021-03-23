@@ -36,7 +36,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/util"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
-	"github.com/filecoin-project/venus/pkg/version"
 )
 
 // Builder is a helper to aid in the construction of a filecoin node.
@@ -140,7 +139,7 @@ func SetNetParams(params *config.NetworkParamsConfig) {
 	if len(params.ReplaceProofTypes) > 0 {
 		newSupportedTypes := make([]abi.RegisteredSealProof, len(params.ReplaceProofTypes))
 		for idx, proofType := range params.ReplaceProofTypes {
-			newSupportedTypes[idx] = abi.RegisteredSealProof(proofType)
+			newSupportedTypes[idx] = proofType
 		}
 		// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
 		policy.SetSupportedProofTypes(newSupportedTypes...)
@@ -148,6 +147,10 @@ func SetNetParams(params *config.NetworkParamsConfig) {
 
 	if params.MinVerifiedDealSize > 0 {
 		policy.SetMinVerifiedDealSize(abi.NewStoragePower(params.MinVerifiedDealSize))
+	}
+
+	if params.PreCommitChallengeDelay > 0 {
+		policy.SetPreCommitChallengeDelay(params.PreCommitChallengeDelay)
 	}
 
 	constants.SetAddressNetwork(params.AddressNetwork)
@@ -216,11 +219,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.network, err = network.NewNetworkSubmodule(ctx, (*builder)(b), b.repo, nd.blockstore)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Network")
-	}
-
-	nd.VersionTable, err = version.ConfigureProtocolVersions(nd.network.NetworkName)
-	if err != nil {
-		return nil, err
 	}
 
 	nd.blockservice, err = blockservice.NewBlockserviceSubmodule(ctx, nd.blockstore, nd.network)

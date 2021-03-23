@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/fixtures/asset"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -24,7 +25,6 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"
-	"github.com/filecoin-project/venus/fixtures/asset"
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/genesis"
@@ -258,6 +258,8 @@ func setConfigFromOptions(cfg *config.Config, network string) error {
 	switch network {
 	case "mainnet":
 		netcfg = networks.Mainnet()
+	case "nerpa":
+		netcfg = networks.NerpaNet()
 	case "testnetnet":
 		netcfg = networks.Testnet()
 	case "integrationnet":
@@ -286,19 +288,18 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string, network 
 
 	if sourceName == "" {
 		var bs []byte
+		var err error
 		switch network {
+		case "nerpa":
+			bs, err = asset.Asset("fixtures/_assets/car/nerpanet.car")
 		case "cali":
 			bs, err = asset.Asset("fixtures/_assets/car/calibnet.car")
-			if err != nil {
-				return gengen.MakeGenesisFunc(), nil
-			}
 		default:
 			bs, err = asset.Asset("fixtures/_assets/car/devnet.car")
-			if err != nil {
-				return gengen.MakeGenesisFunc(), nil
-			}
 		}
-
+		if err != nil {
+			return gengen.MakeGenesisFunc(), nil
+		}
 		source = ioutil.NopCloser(bytes.NewReader(bs))
 		// return gengen.MakeGenesisFunc(), nil
 	} else {

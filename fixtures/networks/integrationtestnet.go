@@ -35,8 +35,9 @@ func IntegrationNet() *NetworkConf {
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       343200,
 			},
-			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
-			AddressNetwork: address.Testnet,
+			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
+			AddressNetwork:          address.Testnet,
+			PreCommitChallengeDelay: abi.ChainEpoch(150),
 		},
 	}
 }
