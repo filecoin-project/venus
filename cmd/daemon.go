@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/venus/fixtures/asset"
 	"io"
 	"io/ioutil"
@@ -64,6 +65,14 @@ var daemonCmd = &cmds.Command{
 		repoDir, err := paths.GetRepoPath(repoDir)
 		if err != nil {
 			return err
+		}
+
+		ps, err := asset.Asset("fixtures/_assets/proof-params/parameters.json")
+		if err != nil {
+			return err
+		}
+		if err := paramfetch.GetParams(req.Context, ps, 0); err != nil {
+			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
 		exist, err := repo.Exists(repoDir)
