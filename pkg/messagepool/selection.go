@@ -75,6 +75,9 @@ func deleteSelectedMessages(pending map[address.Address]map[uint64]*types.Signed
 		if mset, ok := pending[msg.Message.From]; ok {
 			if _, ok := mset[msg.Message.Nonce]; ok {
 				delete(mset, msg.Message.Nonce)
+				if len(mset) <= 0 {
+					delete(pending, msg.Message.From)
+				}
 			}
 		}
 	}
@@ -99,9 +102,8 @@ func (mp *MessagePool) MultipleSelectMessages(ts *types.TipSet, tqs []float64) (
 
 	msgss = make([][]*types.SignedMessage, len(tqs))
 	var msgs []*types.SignedMessage
-	idx := 0
-	tq := 0.0
-	for idx, tq = range tqs {
+
+	for idx, tq := range tqs {
 		if len(pending) == 0 {
 			break
 		}
@@ -127,8 +129,10 @@ func (mp *MessagePool) MultipleSelectMessages(ts *types.TipSet, tqs []float64) (
 	}
 
 	// if no message is selected for a block, msgss[0] is filled by default
-	for i := idx + 1; i < len(msgss); i++ {
-		msgss[i] = msgss[0]
+	for i := 1; i < len(msgss); i++ {
+		if len(msgss[i]) == 0 {
+			msgss[i] = msgss[0]
+		}
 	}
 
 	return msgss, nil
