@@ -2,9 +2,13 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -169,4 +173,24 @@ func printOneString(re cmds.ResponseEmitter, str string) error {
 	writer.Println(str)
 
 	return re.Emit(buf)
+}
+
+func ReqContext(cctx context.Context) context.Context {
+	var (
+		ctx  context.Context
+		done context.CancelFunc
+	)
+	if cctx != nil {
+		ctx = cctx
+	} else {
+		ctx = context.Background()
+	}
+	ctx, done = context.WithCancel(ctx)
+	sigChan := make(chan os.Signal, 2)
+	go func() {
+		<-sigChan
+		done()
+	}()
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
+	return ctx
 }
