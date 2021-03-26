@@ -218,6 +218,7 @@ func newDefaultMessagePoolConfig() *MessagePoolConfig {
 }
 
 type NetworkParamsConfig struct {
+	DevNet                  bool                         `json:"devNet"`
 	NetworkType             int                          `json:"networkType"`
 	ConsensusMinerMinPower  uint64                       `json:"consensusMinerMinPower"` // uint64 goes up to 18 EiB
 	MinVerifiedDealSize     int64                        `json:"minVerifiedDealSize"`
