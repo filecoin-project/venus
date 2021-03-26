@@ -112,9 +112,15 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	bandwidthTracker := p2pmetrics.NewBandwidthCounter()
 	libP2pOpts := append(config.Libp2pOpts(), libp2p.BandwidthReporter(bandwidthTracker), makeSmuxTransportOption(true))
 
-	networkName, err := retrieveNetworkName(ctx, config.GenesisCid(), blockstore.CborStore)
-	if err != nil {
-		return nil, err
+	var networkName string
+	var err error
+	if repo.Config().NetworkParams.DevNet {
+		networkName = "testnetnet"
+	} else {
+		networkName, err = retrieveNetworkName(ctx, config.GenesisCid(), blockstore.CborStore)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// set up host

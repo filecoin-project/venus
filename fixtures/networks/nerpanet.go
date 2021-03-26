@@ -21,6 +21,7 @@ func NerpaNet() *NetworkConf {
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
+			DevNet: true,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
 				abi.RegisteredSealProof_StackedDrg32GiBV1,
