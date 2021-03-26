@@ -39,6 +39,7 @@ func Testnet() *NetworkConf {
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
+			DevNet:                 false,
 			NetworkType:            constants.NetworkMainnet,
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 10 << 40,

@@ -33,6 +33,7 @@ func Mainnet() *NetworkConf {
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
+			DevNet: false,
 			//ReplaceProofTypes: []int64{
 			//	int64(abi.RegisteredSealProof_StackedDrg8MiBV1),
 			//	int64(abi.RegisteredSealProof_StackedDrg512MiBV1),
