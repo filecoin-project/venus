@@ -20,7 +20,7 @@ func TestEncrypKeyAndDecryptKey(t *testing.T) {
 		require.NoError(t, ds.Close())
 	}()
 
-	fs, err := NewDSBackend(ds, config.DefaultPassphraseConfig())
+	fs, err := NewDSBackend(ds, config.DefaultPassphraseConfig(), "")
 	assert.NoError(t, err)
 
 	w := New(fs)

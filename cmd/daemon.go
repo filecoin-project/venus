@@ -5,13 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/venus/fixtures/asset"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
+
+	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/venus/fixtures/asset"
 
 	"golang.org/x/xerrors"
 
@@ -59,6 +60,7 @@ var daemonCmd = &cmds.Command{
 		cmds.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
 		cmds.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
 		cmds.StringOption(Network, "when set, populates config with network specific parameters").WithDefault("testnetnet"),
+		cmds.StringOption(Password, "set wallet password"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
@@ -200,6 +202,10 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 			log.Errorf("failed to import snapshot, import path: %s, error: %s", importPath, err.Error())
 			return err
 		}
+	}
+
+	if password, _ := req.Options[Password].(string); len(password) > 0 {
+		opts = append(opts, node.SetPassword(password))
 	}
 
 	journal, err := journal.NewZapJournal(rep.JournalPath())

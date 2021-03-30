@@ -331,7 +331,7 @@ func newWalletAndMpool(t *testing.T, tma *testMpoolAPI) (*wallet.Wallet, *Messag
 
 func newWallet(t *testing.T) *wallet.Wallet {
 	r := repo.NewInMemoryRepo()
-	backend, err := wallet.NewDSBackend(r.WalletDatastore(), r.Config().Wallet.PassphraseConfig)
+	backend, err := wallet.NewDSBackend(r.WalletDatastore(), r.Config().Wallet.PassphraseConfig, "")
 	assert.NoError(t, err)
 
 	w := wallet.New(backend)
