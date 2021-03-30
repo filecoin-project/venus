@@ -83,7 +83,7 @@ var newMinerCmd = &cmds.Command{
 		if workerAddr != "" {
 			worker, err = address.NewFromString(workerAddr)
 		} else if createWorkerKey { // TODO: Do we need to force this if owner is Secpk?
-			if !env.(*node.Env).WalletAPI.HavePassword(ctx) {
+			if !env.(*node.Env).WalletAPI.HasPassword(ctx) {
 				return errMissPassword
 			}
 			if env.(*node.Env).WalletAPI.WalletState(req.Context) == wallet.Lock {

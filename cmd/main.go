@@ -81,6 +81,9 @@ const (
 	Size = "size"
 
 	ImportSnapshot = "import-snapshot"
+
+	// wallet password
+	Password = "password"
 )
 
 func init() {

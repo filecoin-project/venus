@@ -3,6 +3,7 @@ package market
 import (
 	"bytes"
 	"context"
+
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/config"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -626,7 +627,7 @@ func setup(t *testing.T) *scaffold {
 	ctx := context.Background()
 	t.Log("create a backend")
 	ds := datastore.NewMapDatastore()
-	fs, err := wallet.NewDSBackend(ds, config.DefaultPassphraseConfig())
+	fs, err := wallet.NewDSBackend(ds, config.DefaultPassphraseConfig(), "")
 	assert.NoError(t, err)
 	t.Log("create a wallet with a single backend")
 	wllt := wallet.New(fs)

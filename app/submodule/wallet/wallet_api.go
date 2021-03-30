@@ -190,8 +190,11 @@ func (walletAPI *WalletAPI) SetPassword(Context context.Context, password string
 	return walletAPI.walletModule.Wallet.SetPassword(password)
 }
 
-func (walletAPI *WalletAPI) HavePassword(Context context.Context) bool {
-	return walletAPI.walletModule.Wallet.HavePassword()
+func (walletAPI *WalletAPI) HasPassword(Context context.Context) bool {
+	if walletAPI.isRemote {
+		return true
+	}
+	return walletAPI.walletModule.Wallet.HasPassword()
 }
 
 func (walletAPI *WalletAPI) WalletState(Context context.Context) int {

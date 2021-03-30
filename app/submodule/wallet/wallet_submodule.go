@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/wallet/remotewallet"
@@ -36,12 +37,13 @@ type walletRepo interface {
 func NewWalletSubmodule(ctx context.Context,
 	cfg *config.ConfigModule,
 	repo walletRepo,
-	chain *chain.ChainSubmodule) (*WalletSubmodule, error) {
+	chain *chain.ChainSubmodule,
+	password string) (*WalletSubmodule, error) {
 	passphraseCfg, err := getPassphraseConfig(cfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get passphrase config")
 	}
-	backend, err := wallet.NewDSBackend(repo.WalletDatastore(), passphraseCfg)
+	backend, err := wallet.NewDSBackend(repo.WalletDatastore(), passphraseCfg, password)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set up walletModule backend")
 	}
