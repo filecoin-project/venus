@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -31,6 +32,7 @@ type Config struct {
 	Observability *ObservabilityConfig `json:"observability"`
 	Swarm         *SwarmConfig         `json:"swarm"`
 	Wallet        *WalletConfig        `json:"walletModule"`
+	SlashFilterDs *SlashFilterDsConfig `json:"slashFilter"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -283,6 +285,30 @@ func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 	}
 }
 
+type MySQLConfig struct {
+	User            string        `json:"user"`
+	Password        string        `json:"password"`
+	Host            string        `json:"host"`
+	Port            uint          `json:"port"`
+	DbName          string        `json:"dbName"`
+	MaxOpenConn     int           `json:"maxOpenConn"`     // 100
+	MaxIdleConn     int           `json:"maxIdleConn"`     // 10
+	ConnMaxLifeTime time.Duration `json:"connMaxLifeTime"` // minuter: 60
+	Debug           bool          `json:"debug"`
+}
+
+type SlashFilterDsConfig struct {
+	Type  string      `json:"type"`
+	MySQL MySQLConfig `json:"mysql"`
+}
+
+func newDefaultSlashFilterDsConfig() *SlashFilterDsConfig {
+	return &SlashFilterDsConfig{
+		Type:  "local",
+		MySQL: MySQLConfig{},
+	}
+}
+
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
@@ -295,6 +321,7 @@ func NewDefaultConfig() *Config {
 		Observability: newDefaultObservabilityConfig(),
 		Swarm:         newDefaultSwarmConfig(),
 		Wallet:        newDefaultWalletConfig(),
+		SlashFilterDs: newDefaultSlashFilterDsConfig(),
 	}
 }
 

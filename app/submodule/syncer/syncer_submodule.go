@@ -9,6 +9,7 @@ import (
 
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
+	ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
@@ -132,12 +133,24 @@ func NewSyncerSubmodule(ctx context.Context,
 		}
 	})
 
+	var (
+		slashFilter ds.Batching
+	)
+	if config.Repo().Config().SlashFilterDs.Type == "local" {
+		slashFilter = config.Repo().ChainDatastore()
+	} else {
+		slashFilter, err = slashfilter.InitMysqlRepo(config.Repo().Config().SlashFilterDs.MySQL)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &SyncerSubmodule{
 		BlockstoreModule:   blockstore,
 		ChainModule:        chn,
 		NetworkModule:      network,
 		DiscoverySubmodule: discovery,
-		SlashFilter:        slashfilter.New(config.Repo().ChainDatastore()),
+		SlashFilter:        slashfilter.New(slashFilter),
 		Consensus:          nodeConsensus,
 		ChainSelector:      nodeChainSelector,
 		ChainSyncManager:   &chainSyncManager,
