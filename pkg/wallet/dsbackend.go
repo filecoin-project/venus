@@ -84,7 +84,9 @@ func NewDSBackend(ds repo.Datastore, passphraseCfg config.PassphraseConfig, pass
 		state:          undetermined,
 	}
 	if len(password) != 0 {
-		backend.SetPassword(password)
+		if err := backend.SetPassword(password); err != nil {
+			return nil, err
+		}
 	}
 
 	return backend, nil
