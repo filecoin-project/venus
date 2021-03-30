@@ -235,13 +235,13 @@ func (w *Wallet) SetPassword(password string) error {
 	return backend.SetPassword(password)
 }
 
-func (w *Wallet) HavePassword() bool {
+func (w *Wallet) HasPassword() bool {
 	backend, err := w.DSBacked()
 	if err != nil {
 		walletLog.Errorf("get DSBacked failed: %v", err)
 		return false
 	}
-	return backend.HavePassword()
+	return backend.HasPassword()
 }
 
 func (w *Wallet) WalletState() int {

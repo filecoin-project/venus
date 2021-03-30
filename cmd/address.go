@@ -69,7 +69,7 @@ var addrsNewCmd = &cmds.Command{
 			return fmt.Errorf("unrecognized address protocol %s", protocolName)
 		}
 
-		if !env.(*node.Env).WalletAPI.HavePassword(req.Context) {
+		if !env.(*node.Env).WalletAPI.HasPassword(req.Context) {
 			return errMissPassword
 		}
 		if env.(*node.Env).WalletAPI.WalletState(req.Context) == wallet.Lock {
@@ -235,7 +235,7 @@ var walletImportCmd = &cmds.Command{
 		cmds.FileArg("walletFile", true, false, "File containing wallet data to import").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		if !env.(*node.Env).WalletAPI.HavePassword(req.Context) {
+		if !env.(*node.Env).WalletAPI.HasPassword(req.Context) {
 			return errMissPassword
 		}
 		if env.(*node.Env).WalletAPI.WalletState(req.Context) == wallet.Lock {
@@ -348,7 +348,8 @@ var setWalletPassword = &cmds.Command{
 			return err
 		}
 
-		return re.Emit("Password set successfully")
+		return printOneString(re, "Password set successfully \n"+
+			"You must REMEMBER your password! Without the password, it's impossible to decrypt the key!")
 	},
 }
 

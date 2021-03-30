@@ -2,8 +2,9 @@ package node
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/multisig"
 	"time"
+
+	"github.com/filecoin-project/venus/app/submodule/multisig"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -50,6 +51,7 @@ type Builder struct {
 	isRelay     bool
 	chainClock  clock.ChainEpochClock
 	genCid      cid.Cid
+	password    string
 }
 
 // BuilderOpt is an option for building a filecoin node.
@@ -83,6 +85,14 @@ func BlockTime(blockTime time.Duration) BuilderOpt {
 func PropagationDelay(propDelay time.Duration) BuilderOpt {
 	return func(c *Builder) error {
 		c.propDelay = propDelay
+		return nil
+	}
+}
+
+// SetPassword set wallet password
+func SetPassword(password string) BuilderOpt {
+	return func(c *Builder) error {
+		c.password = password
 		return nil
 	}
 }
@@ -253,7 +263,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}
 
-	nd.wallet, err = wallet.NewWalletSubmodule(ctx, nd.configModule, b.repo, nd.chain)
+	nd.wallet, err = wallet.NewWalletSubmodule(ctx, nd.configModule, b.repo, nd.chain, b.password)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.wallet")
 	}

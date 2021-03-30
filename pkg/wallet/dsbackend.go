@@ -54,7 +54,7 @@ type DSBackend struct {
 var _ Backend = (*DSBackend)(nil)
 
 // NewDSBackend constructs a new backend using the passed in datastore.
-func NewDSBackend(ds repo.Datastore, passphraseCfg config.PassphraseConfig) (*DSBackend, error) {
+func NewDSBackend(ds repo.Datastore, passphraseCfg config.PassphraseConfig, password string) (*DSBackend, error) {
 	result, err := ds.Query(dsq.Query{
 		KeysOnly: true,
 	})
@@ -76,13 +76,20 @@ func NewDSBackend(ds repo.Datastore, passphraseCfg config.PassphraseConfig) (*DS
 		addrCache[parsedAddr] = struct{}{}
 	}
 
-	return &DSBackend{
+	backend := &DSBackend{
 		ds:             ds,
 		cache:          addrCache,
 		PassphraseConf: passphraseCfg,
 		unLocked:       make(map[address.Address]*crypto.KeyInfo),
 		state:          undetermined,
-	}, nil
+	}
+	if len(password) != 0 {
+		if err := backend.SetPassword(password); err != nil {
+			return nil, err
+		}
+	}
+
+	return backend, nil
 }
 
 // ImportKey loads the address in `ai` and KeyInfo `ki` into the backend
@@ -312,13 +319,15 @@ func (backend *DSBackend) SetPassword(password string) error {
 	}
 
 	for _, addr := range backend.Addresses() {
-		_, err := backend.GetKeyInfoPassphrase(addr, hashPasswd)
+		ki, err := backend.GetKeyInfoPassphrase(addr, hashPasswd)
 		if err != nil {
 			return err
 		}
+		backend.lk.Lock()
+		backend.unLocked[addr] = ki
+		backend.lk.Unlock()
 	}
-
-	if backend.state != Lock {
+	if backend.state == undetermined {
 		backend.state = Unlock
 	}
 
@@ -327,7 +336,7 @@ func (backend *DSBackend) SetPassword(password string) error {
 	return nil
 }
 
-func (backend *DSBackend) HavePassword() bool {
+func (backend *DSBackend) HasPassword() bool {
 	return len(backend.password) != 0
 }
 

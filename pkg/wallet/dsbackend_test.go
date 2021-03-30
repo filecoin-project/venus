@@ -21,7 +21,7 @@ func TestDSBackendSimple(t *testing.T) {
 		require.NoError(t, ds.Close())
 	}()
 
-	fs, err := NewDSBackend(ds, config.DefaultPassphraseConfig())
+	fs, err := NewDSBackend(ds, config.DefaultPassphraseConfig(), "")
 	assert.NoError(t, err)
 
 	_ = fs.SetPassword(TestPassword)
@@ -37,7 +37,7 @@ func TestDSBackendSimple(t *testing.T) {
 	assert.True(t, fs.HasAddress(addr))
 
 	t.Log("address is stored in repo, and back when loading fresh in a new backend")
-	fs2, err := NewDSBackend(ds, config.DefaultPassphraseConfig())
+	fs2, err := NewDSBackend(ds, config.DefaultPassphraseConfig(), "")
 	assert.NoError(t, err)
 
 	assert.True(t, fs2.HasAddress(addr))
@@ -51,7 +51,7 @@ func TestDSBackendKeyPairMatchAddress(t *testing.T) {
 		require.NoError(t, ds.Close())
 	}()
 
-	fs, err := NewDSBackend(ds, config.DefaultPassphraseConfig())
+	fs, err := NewDSBackend(ds, config.DefaultPassphraseConfig(), "")
 	assert.NoError(t, err)
 
 	err = fs.SetPassword(TestPassword)
@@ -83,7 +83,7 @@ func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
 	defer func() {
 		require.NoError(t, ds1.Close())
 	}()
-	fs1, err := NewDSBackend(ds1, config.DefaultPassphraseConfig())
+	fs1, err := NewDSBackend(ds1, config.DefaultPassphraseConfig(), "")
 	assert.NoError(t, err)
 
 	err = fs1.SetPassword(TestPassword)
@@ -93,7 +93,7 @@ func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
 	defer func() {
 		require.NoError(t, ds2.Close())
 	}()
-	fs2, err := NewDSBackend(ds2, config.DefaultPassphraseConfig())
+	fs2, err := NewDSBackend(ds2, config.DefaultPassphraseConfig(), "")
 	assert.NoError(t, err)
 
 	err = fs2.SetPassword(TestPassword)
@@ -128,7 +128,7 @@ func TestDSBackendParallel(t *testing.T) {
 		require.NoError(t, ds.Close())
 	}()
 
-	fs, err := NewDSBackend(ds, config.DefaultPassphraseConfig())
+	fs, err := NewDSBackend(ds, config.DefaultPassphraseConfig(), "")
 	assert.NoError(t, err)
 
 	err = fs.SetPassword(TestPassword)
