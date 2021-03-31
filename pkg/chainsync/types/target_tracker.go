@@ -10,7 +10,10 @@ import (
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 )
+
+var log = logging.Logger("chainsync.target")
 
 // Target tracks a logical request of the syncing subsystem to run a
 // syncing job against given inputs.
@@ -38,14 +41,11 @@ func (target *Target) IsNeibor(t *Target) bool {
 	if !target.Head.Parents().Equals(t.Head.Parents()) {
 		return false
 	}
-
-	/*	for _, bid := range target.Head.Key().Cids() {
-			if !t.Head.Key().Has(bid) {
-				return false
-			}
-		}
-	*/
 	return true
+}
+
+func (target *Target) HasChild(t *Target) bool {
+	return target.Head.Key().ContainsAll(t.Head.Key())
 }
 
 func (target *Target) Key() string {
@@ -104,21 +104,23 @@ func (tq *TargetTracker) Add(t *Target) bool {
 	//replace last idle task because of less weight
 	var replaceIndex int
 	var replaceTarget *Target
-	//try to replace neibor
+	//try to replace a idea child target
 	for i := len(tq.q) - 1; i > -1; i-- {
-		if tq.q[i].IsNeibor(t) && tq.q[i].State == StageIdle {
+		if t.HasChild(tq.q[i]) && tq.q[i].State == StageIdle {
 			replaceTarget = tq.q[i]
 			replaceIndex = i
+			log.Info("%s replace a child target at %d", t.Head.String(), i)
 			break
 		}
 	}
 
 	if replaceTarget == nil {
-		//replace a idle
+		//replace a least weight idle
 		for i := len(tq.q) - 1; i > -1; i-- {
 			if tq.q[i].State == StageIdle {
 				replaceTarget = tq.q[i]
 				replaceIndex = i
+				log.Info("%s replace a idle target at %d", t.Head.String(), i)
 				break
 			}
 		}

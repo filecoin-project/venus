@@ -165,6 +165,12 @@ func (d *Dispatcher) SetConcurrent(number int64) {
 	}
 }
 
+func (d *Dispatcher) Concurrent() int64 {
+	d.lk.Lock()
+	defer d.lk.Unlock()
+	return d.maxCount
+}
+
 func (d *Dispatcher) syncWorker(ctx context.Context) {
 	ticker := time.NewTicker(time.Millisecond * 500)
 	defer ticker.Stop()

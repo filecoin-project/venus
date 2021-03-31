@@ -20,6 +20,7 @@ import (
 // BlockProposer allows callers to propose new blocks for inclusion in the chain.
 type BlockProposer interface {
 	SetConcurrent(number int64)
+	Concurrent() int64
 	SyncTracker() *types.TargetTracker
 	SendHello(ci *types2.ChainInfo) error
 	SendOwnBlock(ci *types2.ChainInfo) error
