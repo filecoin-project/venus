@@ -109,7 +109,7 @@ func (tq *TargetTracker) Add(t *Target) bool {
 		if t.HasChild(tq.q[i]) && tq.q[i].State == StageIdle {
 			replaceTarget = tq.q[i]
 			replaceIndex = i
-			log.Info("%s replace a child target at %d", t.Head.String(), i)
+			log.Infof("%s replace a child target at %d", t.Head.String(), i)
 			break
 		}
 	}
@@ -120,7 +120,7 @@ func (tq *TargetTracker) Add(t *Target) bool {
 			if tq.q[i].State == StageIdle {
 				replaceTarget = tq.q[i]
 				replaceIndex = i
-				log.Info("%s replace a idle target at %d", t.Head.String(), i)
+				log.Infof("%s replace a idle target at %d", t.Head.String(), i)
 				break
 			}
 		}
