@@ -17,9 +17,21 @@ var syncCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
 		"status":         storeStatusCmd,
 		"history":        historyCmd,
+		"concurrent":     getConcurrent,
 		"set-concurrent": setConcurrent,
 	},
 }
+
+var getConcurrent = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "get concurrent of sync thread",
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		concurrent := env.(*node.Env).SyncerAPI.Concurrent()
+		return printOneString(re, strconv.Itoa(int(concurrent)))
+	},
+}
+
 var setConcurrent = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "set concurrent of sync thread",

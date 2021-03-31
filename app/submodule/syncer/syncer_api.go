@@ -27,6 +27,11 @@ func (syncerAPI *SyncerAPI) SetConcurrent(concurrent int64) {
 	syncerAPI.syncer.ChainSyncManager.BlockProposer().SetConcurrent(concurrent)
 }
 
+// SyncerStatus returns the current status of the active or last active chain sync operation.
+func (syncerAPI *SyncerAPI) Concurrent() int64 {
+	return syncerAPI.syncer.ChainSyncManager.BlockProposer().Concurrent()
+}
+
 func (syncerAPI *SyncerAPI) ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey) (big.Int, error) {
 	ts, err := syncerAPI.syncer.ChainModule.ChainReader.GetTipSet(tsk)
 	if err != nil {
