@@ -128,11 +128,14 @@ func (tq *TargetTracker) Add(t *Target) bool {
 
 	if replaceTarget == nil {
 		if len(tq.q) <= tq.bucketSize {
+			//append to last slot
 			tq.q = append(tq.q, t)
 		} else {
+			//return if target queue is full
 			return false
 		}
 	} else {
+
 		delete(tq.targetSet, replaceTarget.ChainInfo.Head.String())
 		tq.q[replaceIndex] = t
 	}
@@ -194,6 +197,7 @@ func (tq *TargetTracker) widen(t *Target) (*Target, bool) {
 		}
 	}
 
+	//collect neibor block in queue include history
 	sameWeightBlks := make(map[cid.Cid]*types.BlockHeader)
 	for _, val := range tq.targetSet {
 		if val.IsNeibor(t) {
