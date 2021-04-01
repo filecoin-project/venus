@@ -774,6 +774,7 @@ commands:
             trap "go run github.com/jstemmer/go-junit-report < test-results/go-test-suite/go-test.out > test-results/go-test-suite/go-test-report.xml" EXIT
             export TEST_PACKAGES="$(go list ./... | circleci tests split)"
 
+            go mod download
             # Parallelism and timeout set to support medium-class containers, for builds on forked repos.
             go run ./build test -cover -coverprofile coverage.out -covermode=atomic -timeout=30m -parallel=4 -functional=<< parameters.functional >>  -integration=<< parameters.integration >> -unit=<< parameters.unit >> -v 2>&1 | tee test-results/go-test-suite/go-test.out
             mkdir -p /tmp/artifacts
