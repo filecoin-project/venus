@@ -37,6 +37,7 @@ type Config struct {
 
 // APIConfig holds all configuration options related to the api.
 type APIConfig struct {
+	VenusAuthUrl                  string   `json:"venusAuthUrl"`
 	APIAddress                    string   `json:"apiAddress"`
 	AccessControlAllowOrigin      []string `json:"accessControlAllowOrigin"`
 	AccessControlAllowCredentials bool     `json:"accessControlAllowCredentials"`

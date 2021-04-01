@@ -214,7 +214,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	// create the node
 	nd := &Node{
 		offlineMode: b.offlineMode,

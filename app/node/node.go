@@ -3,7 +3,9 @@ package node
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/app/node/venusauth"
 	"github.com/filecoin-project/venus/app/submodule/multisig"
+	"github.com/ipfs-force-community/venus-auth/cmd/jwtclient"
 	"net/http"
 	"os"
 	"os/signal"
@@ -48,6 +50,7 @@ const APIPrefix = "/api"
 
 // Node represents a full Filecoin node.
 type Node struct {
+
 	// offlineMode, when true, disables libp2p.
 	offlineMode bool
 
@@ -88,7 +91,7 @@ type Node struct {
 	paychan *paych.PaychSubmodule
 
 	//
-	//auth
+	//venusauth
 	//
 
 	jwtAuth *jwtauth.JwtAuth
@@ -299,17 +302,37 @@ func (node *Node) runRustfulAPI(ctx context.Context, handler *http.ServeMux, roo
 	cfg.SetAllowedMethods(apiConfig.AccessControlAllowMethods...)
 	cfg.SetAllowCredentials(apiConfig.AccessControlAllowCredentials)
 
-	handler.Handle(APIPrefix+"/", cmdhttp.NewHandler(servenv, rootCmdDaemon, cfg))
+	h := cmdhttp.NewHandler(servenv, rootCmdDaemon, cfg)
+
+	venusAuthUrl := node.repo.Config().API.VenusAuthUrl
+	if venusAuthUrl == "" {
+		jwtCli := jwtclient.NewJWTClient(venusAuthUrl)
+		wapper := &venusauth.HandlerWrapper{
+			Verify: jwtCli.Verify,
+		}
+		h = wapper.Wrapper(h)
+	}
+	handler.Handle(APIPrefix+"/", h)
 	return nil
 }
 
 func (node *Node) runJsonrpcAPI(ctx context.Context, handler *http.ServeMux) error { //nolint
-	jwtAuth := node.jwtAuth.API()
-	ah := &auth.Handler{
-		Verify: jwtAuth.AuthVerify,
-		Next:   node.jsonRPCService.ServeHTTP,
+	var ah http.Handler
+	venusAuthUrl := node.repo.Config().API.VenusAuthUrl
+	log.Info("venus auth url ", venusAuthUrl)
+	if venusAuthUrl == "" {
+		jwtAuth := node.jwtAuth.API()
+		ah = &auth.Handler{
+			Verify: jwtAuth.AuthVerify,
+			Next:   node.jsonRPCService.ServeHTTP,
+		}
+	} else {
+		jwtCli := jwtclient.NewJWTClient(venusAuthUrl)
+		ah = &venusauth.Handler{
+			Verify: jwtCli.Verify,
+			Next:   node.jsonRPCService.ServeHTTP,
+		}
 	}
-
 	handler.Handle("/rpc/v0", ah)
 	return nil
 }

@@ -40,7 +40,7 @@ type JwtAuthAPI struct { //nolint
 
 func NewJwtAuth(lr repo.Repo) (*JwtAuth, error) {
 	jwtAuth := &JwtAuth{
-		jwtSecetName:  "auth-jwt-private",
+		jwtSecetName:  "venusauth-jwt-private",
 		jwtHmacSecret: "jwt-hmac-secret",
 		lr:            lr,
 		payload:       JwtPayload{Allow: []auth.Permission{"all"}},

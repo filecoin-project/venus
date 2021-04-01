@@ -48,7 +48,7 @@ func encryptKey(key *Key, auth []byte, scryptN, scryptP int) ([]byte, error) {
 	return json.Marshal(encryptedKey)
 }
 
-// encryptData encrypts the data given as 'data' with the password 'auth'.
+// encryptData encrypts the data given as 'data' with the password 'venusauth'.
 func encryptData(data, auth []byte, scryptN, scryptP int) (CryptoJSON, error) {
 	salt := make([]byte, 32)
 	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
