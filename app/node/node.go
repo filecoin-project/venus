@@ -304,7 +304,7 @@ func (node *Node) runRustfulAPI(ctx context.Context, handler *http.ServeMux, roo
 
 	h := cmdhttp.NewHandler(servenv, rootCmdDaemon, cfg)
 
-	venusAuthUrl := node.repo.Config().API.VenusAuthUrl
+	venusAuthUrl := node.repo.Config().API.VenusAuthURL
 	if venusAuthUrl == "" {
 		jwtCli := jwtclient.NewJWTClient(venusAuthUrl)
 		wapper := &venusauth.HandlerWrapper{
@@ -318,7 +318,7 @@ func (node *Node) runRustfulAPI(ctx context.Context, handler *http.ServeMux, roo
 
 func (node *Node) runJsonrpcAPI(ctx context.Context, handler *http.ServeMux) error { //nolint
 	var ah http.Handler
-	venusAuthUrl := node.repo.Config().API.VenusAuthUrl
+	venusAuthUrl := node.repo.Config().API.VenusAuthURL
 	log.Info("venus auth url ", venusAuthUrl)
 	if venusAuthUrl == "" {
 		jwtAuth := node.jwtAuth.API()
