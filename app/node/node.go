@@ -304,9 +304,9 @@ func (node *Node) runRustfulAPI(ctx context.Context, handler *http.ServeMux, roo
 
 	h := cmdhttp.NewHandler(servenv, rootCmdDaemon, cfg)
 
-	venusAuthUrl := node.repo.Config().API.VenusAuthURL
-	if venusAuthUrl == "" {
-		jwtCli := jwtclient.NewJWTClient(venusAuthUrl)
+	venusAuthURL := node.repo.Config().API.VenusAuthURL
+	if venusAuthURL == "" {
+		jwtCli := jwtclient.NewJWTClient(venusAuthURL)
 		wapper := &venusauth.HandlerWrapper{
 			Verify: jwtCli.Verify,
 		}
