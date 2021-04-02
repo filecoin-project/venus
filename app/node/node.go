@@ -318,16 +318,16 @@ func (node *Node) runRustfulAPI(ctx context.Context, handler *http.ServeMux, roo
 
 func (node *Node) runJsonrpcAPI(ctx context.Context, handler *http.ServeMux) error { //nolint
 	var ah http.Handler
-	venusAuthUrl := node.repo.Config().API.VenusAuthURL
-	log.Info("venus auth url ", venusAuthUrl)
-	if venusAuthUrl == "" {
+	venusAuthURL := node.repo.Config().API.VenusAuthURL
+	log.Info("venus auth url ", venusAuthURL)
+	if venusAuthURL == "" {
 		jwtAuth := node.jwtAuth.API()
 		ah = &auth.Handler{
 			Verify: jwtAuth.AuthVerify,
 			Next:   node.jsonRPCService.ServeHTTP,
 		}
 	} else {
-		jwtCli := jwtclient.NewJWTClient(venusAuthUrl)
+		jwtCli := jwtclient.NewJWTClient(venusAuthURL)
 		ah = &venusauth.Handler{
 			Verify: jwtCli.Verify,
 			Next:   node.jsonRPCService.ServeHTTP,

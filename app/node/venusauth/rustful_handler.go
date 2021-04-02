@@ -47,5 +47,5 @@ func (h *HandlerWrapper) auth(w http.ResponseWriter, r *http.Request) {
 			ctx = core.WithPerm(ctx, res.Perm)
 		}
 	}
-	r = r.WithContext(ctx)
+	r = r.WithContext(ctx) //nolint
 }

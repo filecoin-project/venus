@@ -11,10 +11,6 @@ import (
 
 var log = logging.Logger("venusauth")
 
-type permKey int
-
-var permCtxKey permKey
-
 type Handler struct {
 	Verify func(spanId, serviceName, preHost, host, token string) (*auth.VerifyResponse, error)
 	Next   http.HandlerFunc
