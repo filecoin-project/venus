@@ -45,7 +45,6 @@ require (
 	github.com/go-kit/kit v0.10.0
 	github.com/golang/snappy v0.0.2-0.20190904063534-ff6b7dc882cf // indirect
 	github.com/golangci/golangci-lint v1.21.0
-	github.com/google/go-cmp v0.5.2 // indirect
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/uuid v1.1.2
 	github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026
@@ -53,7 +52,8 @@ require (
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
-	github.com/ipfs-force-community/venus-wallet v0.0.0-20210222095647-d0fab90dc77f
+	github.com/ipfs-force-community/venus-auth v0.0.0-20210401093821-d73c83e45b94
+	github.com/ipfs-force-community/venus-wallet v0.0.0-20210331090924-7e6c4e807cd1
 	github.com/ipfs/go-bitswap v0.3.2
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.1.4
@@ -61,7 +61,7 @@ require (
 	github.com/ipfs/go-datastore v0.4.5
 	github.com/ipfs/go-ds-badger2 v0.1.1-0.20200708190120-187fc06f714e
 	github.com/ipfs/go-fs-lock v0.0.6
-	github.com/ipfs/go-graphsync v0.5.2
+	github.com/ipfs/go-graphsync v0.6.0
 	github.com/ipfs/go-ipfs-blockstore v1.0.3
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-cmdkit v0.0.1
@@ -111,8 +111,8 @@ require (
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
-	github.com/prometheus/client_golang v1.6.0
-	github.com/prometheus/common v0.10.0
+	github.com/prometheus/client_golang v1.10.0
+	github.com/prometheus/common v0.18.0
 	github.com/raulk/clock v1.1.0
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/streadway/handy v0.0.0-20190108123426-d5acb3125c2a
@@ -123,7 +123,7 @@ require (
 	github.com/whyrusleeping/pubsub v0.0.0-20190708150250-92bcb0691325
 	go.opencensus.io v0.22.5
 	go.uber.org/zap v1.16.0
-	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
+	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	golang.org/x/tools v0.0.0-20201112185108-eeaa07dd7696
