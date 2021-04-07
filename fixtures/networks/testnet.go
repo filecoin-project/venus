@@ -54,11 +54,12 @@ func Testnet() *NetworkConf {
 				// This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
 				// Miners, clients, developers, custodians all need time to prepare.
 				// We still have upgrades and state changes to do, but can happen after signaling timing here.
-				UpgradeKumquatHeight:  170000,
-				UpgradeCalicoHeight:   265200,
-				UpgradePersianHeight:  265200 + (builtin2.EpochsInHour * 60),
-				UpgradeOrangeHeight:   336458,
-				UpgradeActorsV3Height: 550321, // 2021-03-04T00:00:30Z
+				UpgradeKumquatHeight:   170000,
+				UpgradeCalicoHeight:    265200,
+				UpgradePersianHeight:   265200 + (builtin2.EpochsInHour * 60),
+				UpgradeOrangeHeight:    336458,
+				UpgradeActorsV3Height:  550321, // 2021-03-04T00:00:30Z
+				UpgradeNorwegianHeight: 665280, // 2021-04-12T22:00:00Z
 
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       343200, // 2020-12-22T02:00:00Z

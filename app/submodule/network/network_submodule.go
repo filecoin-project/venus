@@ -18,7 +18,6 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
-	"github.com/filecoin-project/go-storedcounter"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -220,7 +219,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	gsync := graphsyncimpl.New(ctx, graphsyncNetwork, loader, storer, graphsyncimpl.RejectAllRequestsByDefault())
 
 	//dataTransger
-	sc := storedcounter.New(repo.ChainDatastore(), datastore.NewKey("/datatransfer/client/counter"))
+	//sc := storedcounter.New(repo.ChainDatastore(), datastore.NewKey("/datatransfer/client/counter"))
 	dtNet := dtnet.NewFromLibp2pHost(peerHost)
 	dtDs := namespace.Wrap(repo.ChainDatastore(), datastore.NewKey("/datatransfer/client/transfers"))
 	transport := dtgstransport.NewTransport(peerHost.ID(), gsync)
@@ -232,7 +231,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 
 	dirPath := filepath.Join(repoPath, "data-transfer")
 	_ = os.MkdirAll(dirPath, 0777) //todo fix for test
-	dt, err := dtimpl.NewDataTransfer(dtDs, dirPath, dtNet, transport, sc)
+	dt, err := dtimpl.NewDataTransfer(dtDs, dirPath, dtNet, transport)
 	if err != nil {
 		return nil, err
 	}

@@ -26,9 +26,10 @@ import (
 )
 
 const (
-	ChainFinality          = miner3.ChainFinality
-	SealRandomnessLookback = ChainFinality
-	PaychSettleDelay       = paych3.SettleDelay
+	ChainFinality                  = miner3.ChainFinality
+	SealRandomnessLookback         = ChainFinality
+	PaychSettleDelay               = paych3.SettleDelay
+	MaxPreCommitRandomnessLookback = builtin3.EpochsInDay + SealRandomnessLookback
 )
 
 // SetSupportedProofTypes sets supported proof types, across all actor versions.
@@ -133,8 +134,12 @@ func DealProviderCollateralBounds(
 	case specactors.Version3:
 		return market3.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil)
 	default:
-		panic("unsupported network version")
+		panic("unsupported actors version")
 	}
+}
+
+func DealDurationBounds(pieceSize abi.PaddedPieceSize) (min, max abi.ChainEpoch) {
+	return market2.DealDurationBounds(pieceSize)
 }
 
 // Sets the challenge window and scales the proving period to match (such that
@@ -191,4 +196,39 @@ func GetDefaultSectorSize() abi.SectorSize {
 	})
 
 	return szs[0]
+}
+
+func GetSectorMaxLifetime(proof abi.RegisteredSealProof, nwVer network.Version) abi.ChainEpoch {
+	if nwVer <= network.Version10 {
+		return builtin3.SealProofPoliciesV0[proof].SectorMaxLifetime
+	}
+
+	return builtin3.SealProofPoliciesV11[proof].SectorMaxLifetime
+}
+
+func GetAddressedSectorsMax(nwVer network.Version) int {
+	switch specactors.VersionForNetwork(nwVer) {
+	case specactors.Version0:
+		return miner0.AddressedSectorsMax
+	case specactors.Version2:
+		return miner2.AddressedSectorsMax
+	case specactors.Version3:
+		return miner3.AddressedSectorsMax
+	default:
+		panic("unsupported network version")
+	}
+}
+
+func GetDeclarationsMax(nwVer network.Version) int {
+	switch specactors.VersionForNetwork(nwVer) {
+	case specactors.Version0:
+		// TODO: Should we instead panic here since the concept doesn't exist yet?
+		return miner0.AddressedPartitionsMax
+	case specactors.Version2:
+		return miner2.DeclarationsMax
+	case specactors.Version3:
+		return miner3.DeclarationsMax
+	default:
+		panic("unsupported network version")
+	}
 }
