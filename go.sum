@@ -609,6 +609,8 @@ github.com/ipfs-force-community/venus-auth v0.0.0-20210401054506-b04131a384d2 h1
 github.com/ipfs-force-community/venus-auth v0.0.0-20210401054506-b04131a384d2/go.mod h1:wNe4D6oTBXMu1LnjNpKb9Qi9TleDNzixD07x5mIa2nc=
 github.com/ipfs-force-community/venus-auth v0.0.0-20210401093821-d73c83e45b94 h1:oXI1WZsNJu45TFCDuI/h7zvpPqiH0s64mbnTBa6xmMM=
 github.com/ipfs-force-community/venus-auth v0.0.0-20210401093821-d73c83e45b94/go.mod h1:wNe4D6oTBXMu1LnjNpKb9Qi9TleDNzixD07x5mIa2nc=
+github.com/ipfs-force-community/venus-auth v0.0.0-20210407071408-4f035dd71a22 h1:zZP2d9blQ5OURKPrt5YHqp8+k2tSt0b5tOaWLl7lF9I=
+github.com/ipfs-force-community/venus-auth v0.0.0-20210407071408-4f035dd71a22/go.mod h1:owpJTRdllM0/eJOgGdsAFBVZ+9AVjGdg6fQuCYAujMU=
 github.com/ipfs-force-community/venus-wallet v0.0.0-20210222095647-d0fab90dc77f h1:MUUy6wc4Wu8xG4+Bv4tgbAskoX+nGaN/tzFU0rWRPok=
 github.com/ipfs-force-community/venus-wallet v0.0.0-20210222095647-d0fab90dc77f/go.mod h1:7pzkUzgqrHOQQSewIwvCuDzahMFJgaqx3pkLt/5yyI8=
 github.com/ipfs-force-community/venus-wallet v0.0.0-20210331090924-7e6c4e807cd1 h1:u5vERtaTiYbdoxdMtKJh1Eax57KTNKKc8W+YsEAFbt0=
