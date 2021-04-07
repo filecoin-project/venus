@@ -24,26 +24,27 @@ func NewCustomServe(node *Node) *CustomServe {
 			Verify: jwtAuth.AuthVerify,
 			Next:   node.jsonRPCService.ServeHTTP,
 		}
+		cs.restfulHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		})
+
 	} else {
 		log.Info("venus auth handler")
-		ah = &venusauth.Handler{
+		vah := &venusauth.Handler{
 			Verify: node.jwtCli.Verify,
 			Next:   node.jsonRPCService.ServeHTTP,
 		}
+		cs.restfulHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			vah.Auth(w, r)
+		})
+		ah = vah
 	}
 	cs.rpcHandler = cs.Wrapper(ah)
-	cs.restfulHandler = cs.Wrapper2(ah.ServeHTTP)
+
 	return cs
 }
 
 func (cs *CustomServe) Wrapper(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handler.ServeHTTP(w, r)
-	})
-}
-
-func (cs *CustomServe) Wrapper2(hf http.HandlerFunc) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hf.ServeHTTP(w, r)
 	})
 }
