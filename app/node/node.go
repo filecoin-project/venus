@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/app/node/venusauth"
 	"github.com/filecoin-project/venus/app/submodule/multisig"
 	"github.com/ipfs-force-community/venus-auth/cmd/jwtclient"
 	"net/http"
