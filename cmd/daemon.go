@@ -54,6 +54,7 @@ var daemonCmd = &cmds.Command{
 		cmds.StringOption(SwarmPublicRelayAddress, "public multiaddress for routing circuit relay traffic.  Necessary for relay nodes to provide this if they are not publically dialable"),
 		cmds.BoolOption(OfflineMode, "start the node without networking"),
 		cmds.BoolOption(ELStdout),
+		cmds.StringOption(AuthServiceURL, "venus auth service URL"),
 		cmds.BoolOption(IsRelay, "advertise and allow venus network traffic to be relayed through this node"),
 		cmds.StringOption(ImportSnapshot, "import chain state from a given chain export file or url"),
 		cmds.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
@@ -68,7 +69,6 @@ var daemonCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-
 		ps, err := asset.Asset("fixtures/_assets/proof-params/parameters.json")
 		if err != nil {
 			return err
@@ -105,12 +105,10 @@ func initRun(req *cmds.Request) error {
 	if err != nil {
 		return err
 	}
-
 	// The only error Close can return is that the repo has already been closed.
 	defer func() {
 		_ = rep.Close()
 	}()
-
 	var genesisFunc genesis.InitFunc
 	cfg := rep.Config()
 	network, _ := req.Options[Network].(string)
@@ -118,7 +116,6 @@ func initRun(req *cmds.Request) error {
 		log.Errorf("Error setting config %s", err)
 		return err
 	}
-
 	// genesis node
 	if mkGen, ok := req.Options[makeGenFlag].(string); ok {
 		preTp := req.Options[preTemplateFlag]
@@ -135,9 +132,13 @@ func initRun(req *cmds.Request) error {
 			return err
 		}
 	}
+	if authServiceURL, ok := req.Options[AuthServiceURL].(string); ok && len(authServiceURL) > 0 {
+		cfg.API.VenusAuthURL = authServiceURL
+	}
 
 	peerKeyFile, _ := req.Options[PeerKeyFile].(string)
 	walletKeyFile, _ := req.Options[WalletKeyFile].(string)
+
 	initOpts, err := getNodeInitOpts(peerKeyFile, walletKeyFile)
 	if err != nil {
 		return err
@@ -206,6 +207,10 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 
 	if password, _ := req.Options[Password].(string); len(password) > 0 {
 		opts = append(opts, node.SetPassword(password))
+	}
+
+	if authURL, ok := req.Options[AuthServiceURL].(string); ok && len(authURL) > 0 {
+		opts = append(opts, node.SetAuthURL(authURL))
 	}
 
 	journal, err := journal.NewZapJournal(rep.JournalPath())

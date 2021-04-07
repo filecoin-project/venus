@@ -84,6 +84,8 @@ const (
 
 	// wallet password
 	Password = "password"
+
+	AuthServiceURL = "authURL"
 )
 
 func init() {

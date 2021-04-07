@@ -3,7 +3,6 @@ package node
 import (
 	orginalAuth "github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/venus/app/node/venusauth"
-	"github.com/ipfs-force-community/venus-auth/cmd/jwtclient"
 	"net/http"
 )
 
@@ -17,19 +16,18 @@ func NewCustomServe(node *Node) *CustomServe {
 	cs := &CustomServe{
 		ServeMux: http.NewServeMux(),
 	}
-	venusAuthURL := node.repo.Config().API.VenusAuthURL
-	log.Info("venus auth url ", venusAuthURL)
 	var ah http.Handler
-	if venusAuthURL == "" {
+	if node.jwtCli == nil {
+		log.Info("local jwt handler")
 		jwtAuth := node.jwtAuth.API()
 		ah = &orginalAuth.Handler{
 			Verify: jwtAuth.AuthVerify,
 			Next:   node.jsonRPCService.ServeHTTP,
 		}
 	} else {
-		jwtCli := jwtclient.NewJWTClient(venusAuthURL)
+		log.Info("venus auth handler")
 		ah = &venusauth.Handler{
-			Verify: jwtCli.Verify,
+			Verify: node.jwtCli.Verify,
 			Next:   node.jsonRPCService.ServeHTTP,
 		}
 	}

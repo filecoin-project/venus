@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/venus/app/submodule/multisig"
+	"github.com/ipfs-force-community/venus-auth/cmd/jwtclient"
 	"net/http"
 	"os"
 	"os/signal"
@@ -97,6 +98,8 @@ type Node struct {
 	// Jsonrpc
 	//
 	jsonRPCService *jsonrpc.RPCServer
+
+	jwtCli *jwtclient.JWTClient
 }
 
 func (node *Node) Chain() *chain2.ChainSubmodule {

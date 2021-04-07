@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"github.com/ipfs-force-community/venus-auth/cmd/jwtclient"
 	"time"
 
 	"github.com/filecoin-project/venus/app/submodule/multisig"
@@ -52,6 +53,7 @@ type Builder struct {
 	chainClock  clock.ChainEpochClock
 	genCid      cid.Cid
 	password    string
+	authURL     string
 }
 
 // BuilderOpt is an option for building a filecoin node.
@@ -93,6 +95,14 @@ func PropagationDelay(propDelay time.Duration) BuilderOpt {
 func SetPassword(password string) BuilderOpt {
 	return func(c *Builder) error {
 		c.password = password
+		return nil
+	}
+}
+
+// SetAuthURL set venus auth service URL
+func SetAuthURL(url string) BuilderOpt {
+	return func(c *Builder) error {
+		c.authURL = url
 		return nil
 	}
 }
@@ -316,6 +326,15 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "add service failed ")
 	}
 	nd.jsonRPCService = apiBuilder.Build()
+	authURL := ""
+	if len(b.repo.Config().API.VenusAuthURL) > 0 {
+		authURL = b.repo.Config().API.VenusAuthURL
+	} else if len(b.authURL) > 0 {
+		authURL = b.authURL
+	}
+	if len(authURL) > 0 {
+		nd.jwtCli = jwtclient.NewJWTClient(authURL)
+	}
 	return nd, nil
 }
 
