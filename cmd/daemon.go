@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/migration"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -87,7 +88,7 @@ var daemonCmd = &cmds.Command{
 			if err := re.Emit(repoDir); err != nil {
 				return err
 			}
-			if err := repo.InitFSRepo(repoDir, repo.Version, config.NewDefaultConfig()); err != nil {
+			if err := repo.InitFSRepo(repoDir, repo.LatestVersion, config.NewDefaultConfig()); err != nil {
 				return err
 			}
 
@@ -269,7 +270,11 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return repo.OpenFSRepo(repoDir, repo.Version)
+	err = migration.TryToMigrate(repoDir)
+	if err != nil {
+		return nil, err
+	}
+	return repo.OpenFSRepo(repoDir, repo.LatestVersion)
 }
 
 func setConfigFromOptions(cfg *config.Config, network string) error {

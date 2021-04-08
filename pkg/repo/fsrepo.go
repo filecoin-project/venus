@@ -24,6 +24,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 )
 
+// Version is the version of repo schema that this code understands.
+const LatestVersion uint = 3
+
 const (
 	// apiFile is the filename containing the filecoin node's api address.
 	apiFile               = "api"
@@ -219,7 +222,7 @@ func (r *FSRepo) loadFromDisk() error {
 	}
 
 	if localVersion > r.version {
-		return fmt.Errorf("binary needs update to handle repo version, got %d expected %d. Update binary to latest release", localVersion, Version)
+		return fmt.Errorf("binary needs update to handle repo version, got %d expected %d. Update binary to latest release", localVersion, LatestVersion)
 	}
 
 	if err := r.loadConfig(); err != nil {
@@ -422,17 +425,7 @@ func (r *FSRepo) loadConfig() error {
 
 // readVersion reads the repo's version file (but does not change r.version).
 func (r *FSRepo) readVersion() (uint, error) {
-	content, err := ReadVersion(r.path)
-	if err != nil {
-		return 0, err
-	}
-
-	version, err := strconv.Atoi(content)
-	if err != nil {
-		return 0, errors.New("corrupt version file: version is not an integer")
-	}
-
-	return uint(version), nil
+	return ReadVersion(r.path)
 }
 
 func (r *FSRepo) openDatastore() error {
@@ -541,12 +534,17 @@ func WriteVersion(p string, version uint) error {
 
 // ReadVersion returns the unparsed (string) version
 // from the version file in the specified repo.
-func ReadVersion(repoPath string) (string, error) {
+func ReadVersion(repoPath string) (uint, error) {
 	file, err := ioutil.ReadFile(filepath.Join(repoPath, versionFilename))
 	if err != nil {
-		return "", err
+		return 0, err
 	}
-	return strings.Trim(string(file), "\n"), nil
+	verStr := strings.Trim(string(file), "\n")
+	version, err := strconv.ParseUint(verStr, 32, 10)
+	if err != nil {
+		return 0, err
+	}
+	return uint(version), nil
 }
 
 func initConfig(p string, cfg *config.Config) error {

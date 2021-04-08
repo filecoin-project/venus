@@ -96,7 +96,7 @@ func TestFSRepoOpen(t *testing.T) {
 		assert.NoError(t, WriteVersion(repoPath, 99))
 
 		_, err = OpenFSRepo(repoPath, 1)
-		expected := fmt.Sprintf("binary needs update to handle repo version, got 99 expected %d. Update binary to latest release", Version)
+		expected := fmt.Sprintf("binary needs update to handle repo version, got 99 expected %d. Update binary to latest release", LatestVersion)
 		assert.EqualError(t, err, expected)
 	})
 

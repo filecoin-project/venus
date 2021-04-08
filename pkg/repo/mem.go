@@ -42,7 +42,7 @@ func NewInMemoryRepo() *MemRepo {
 		Meta:  dss.MutexWrap(datastore.NewMapDatastore()),
 		Paych: dss.MutexWrap(datastore.NewMapDatastore()),
 		//Market:  dss.MutexWrap(datastore.NewMapDatastore()),
-		version: Version,
+		version: LatestVersion,
 	}
 }
 
