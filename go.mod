@@ -52,7 +52,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
-	github.com/ipfs-force-community/venus-auth v0.0.0-20210401093821-d73c83e45b94
+	github.com/ipfs-force-community/venus-auth v0.0.0-20210407071408-4f035dd71a22
 	github.com/ipfs-force-community/venus-wallet v0.0.0-20210331090924-7e6c4e807cd1
 	github.com/ipfs/go-bitswap v0.3.2
 	github.com/ipfs/go-block-format v0.0.3
