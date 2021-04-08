@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/venus/app/submodule/multisig"
-	"github.com/ipfs-force-community/venus-auth/cmd/jwtclient"
 	"net/http"
 	"os"
 	"os/signal"
@@ -89,17 +88,11 @@ type Node struct {
 	paychan *paych.PaychSubmodule
 
 	//
-	//venusauth
-	//
-
-	jwtAuth *jwtauth.JwtAuth
-
-	//
 	// Jsonrpc
 	//
 	jsonRPCService *jsonrpc.RPCServer
 
-	jwtCli *jwtclient.JWTClient
+	jwtCli jwtauth.IJwtAuthClient
 }
 
 func (node *Node) Chain() *chain2.ChainSubmodule {
@@ -247,21 +240,20 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 	}
 
 	netListener := manet.NetListener(apiListener) //nolint
-	handler := NewCustomServe(node)
-
-	handler.Handle("/debug/pprof/", http.DefaultServeMux)
+	handler := http.NewServeMux()
 	err = node.runRestfulAPI(ctx, handler, rootCmdDaemon) //nolint
 	if err != nil {
 		return err
 	}
-
 	err = node.runJsonrpcAPI(ctx, handler)
 	if err != nil {
 		return err
 	}
 
+	authMux := jwtauth.NewAuthMux(node.jwtCli, handler)
+	authMux.TrustHandle("/debug/pprof/", http.DefaultServeMux)
 	apiserv := &http.Server{
-		Handler: handler,
+		Handler: authMux,
 	}
 
 	go func() {
@@ -293,7 +285,7 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 // The `ready` channel is closed when the server is running and its API address has been
 // saved to the node's repo.
 // A message sent to or closure of the `terminate` channel signals the server to stop.
-func (node *Node) runRestfulAPI(ctx context.Context, handler *CustomServe, rootCmdDaemon *cmds.Command) error {
+func (node *Node) runRestfulAPI(ctx context.Context, handler *http.ServeMux, rootCmdDaemon *cmds.Command) error {
 	servenv := node.createServerEnv(ctx)
 
 	apiConfig := node.repo.Config().API
@@ -303,16 +295,12 @@ func (node *Node) runRestfulAPI(ctx context.Context, handler *CustomServe, rootC
 	cfg.SetAllowedMethods(apiConfig.AccessControlAllowMethods...)
 	cfg.SetAllowCredentials(apiConfig.AccessControlAllowCredentials)
 
-	h := cmdhttp.NewHandler(servenv, rootCmdDaemon, cfg)
-	handler.Handle(APIPrefix+"/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		handler.restfulHandler.ServeHTTP(w, r)
-		h.ServeHTTP(w, r)
-	}))
+	handler.Handle(APIPrefix+"/", cmdhttp.NewHandler(servenv, rootCmdDaemon, cfg))
 	return nil
 }
 
-func (node *Node) runJsonrpcAPI(ctx context.Context, handler *CustomServe) error { //nolint
-	handler.Handle("/rpc/v0", handler.rpcHandler)
+func (node *Node) runJsonrpcAPI(ctx context.Context, handler *http.ServeMux) error { //nolint
+	handler.Handle("/rpc/v0", node.jsonRPCService)
 	return nil
 }
 

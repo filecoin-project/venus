@@ -2,18 +2,13 @@ package node
 
 import (
 	"context"
-	"github.com/ipfs-force-community/venus-auth/cmd/jwtclient"
+	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"time"
 
 	"github.com/filecoin-project/venus/app/submodule/multisig"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p"
-	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/venus/app/submodule/blockservice"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/app/submodule/chain"
@@ -31,13 +26,15 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/journal"
-	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/util"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p"
+	"github.com/pkg/errors"
 )
 
 // Builder is a helper to aid in the construction of a filecoin node.
@@ -287,10 +284,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.storageNetworking")
 	}
 	nd.mining = mining.NewMiningModule(b.repo, nd.chain, nd.blockstore, nd.network, nd.syncer, *nd.wallet, b.verifier)
-	nd.jwtAuth, err = jwtauth.NewJwtAuth(b.repo)
-	if err != nil {
-		return nil, xerrors.Errorf("read or generate jwt secrect error %s", err)
-	}
 
 	nd.multiSig = multisig.NewMultiSigSubmodule(nd.chain.API(), nd.mpool.API(), nd.chain.ChainReader)
 
@@ -305,6 +298,23 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.paychan = paych.NewPaychSubmodule(ctx, mgrps)
 	nd.market = market.NewMarketModule(nd.chain.API(), stmgr)
 
+	//auth
+	authURL := ""
+	if len(b.repo.Config().API.VenusAuthURL) > 0 {
+		authURL = b.repo.Config().API.VenusAuthURL
+	} else if len(b.authURL) > 0 {
+		authURL = b.authURL
+	}
+	if len(authURL) > 0 {
+		nd.jwtCli = jwtauth.NewRemoteAuth(authURL)
+	} else {
+		client, err := jwtauth.NewJwtAuth(b.repo)
+		if err != nil {
+			return nil, err
+		}
+		nd.jwtCli = client
+	}
+
 	apiBuilder := util.NewBuiler()
 	apiBuilder.NameSpace("Filecoin")
 	err = apiBuilder.AddServices(nd.configModule,
@@ -318,23 +328,14 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.storageNetworking,
 		nd.mining,
 		nd.mpool,
-		nd.jwtAuth,
 		nd.paychan,
 		nd.market,
+		nd.jwtCli,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "add service failed ")
 	}
 	nd.jsonRPCService = apiBuilder.Build()
-	authURL := ""
-	if len(b.repo.Config().API.VenusAuthURL) > 0 {
-		authURL = b.repo.Config().API.VenusAuthURL
-	} else if len(b.authURL) > 0 {
-		authURL = b.authURL
-	}
-	if len(authURL) > 0 {
-		nd.jwtCli = jwtclient.NewJWTClient(authURL)
-	}
 	return nd, nil
 }
 
