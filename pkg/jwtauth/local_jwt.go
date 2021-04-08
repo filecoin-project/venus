@@ -27,13 +27,13 @@ type JwtPayload struct {
 }
 
 type IJwtAuthAPI interface {
-	Verify(ctx context.Context, spanId, serviceName, preHost, host, token string) ([]auth.Permission, error)
+	Verify(ctx context.Context, spanID, serviceName, preHost, host, token string) ([]auth.Permission, error)
 	AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error)
 }
 
 type IJwtAuthClient interface {
 	API() IJwtAuthAPI
-	Verify(ctx context.Context, spanId, serviceName, preHost, host, token string) ([]auth.Permission, error)
+	Verify(ctx context.Context, spanID, serviceName, preHost, host, token string) ([]auth.Permission, error)
 }
 
 type JwtAuth struct {
@@ -88,7 +88,7 @@ func (jwtAuth *JwtAuth) loadAPISecret() (*APIAlg, error) {
 	return (*APIAlg)(jwt3.NewHS256(raw)), nil
 }
 
-func (jwtAuth *JwtAuth) Verify(ctx context.Context, spanId, serviceName, preHost, host, token string) ([]auth.Permission, error) {
+func (jwtAuth *JwtAuth) Verify(ctx context.Context, spanID, serviceName, preHost, host, token string) ([]auth.Permission, error) {
 	var payload JwtPayload
 	if _, err := jwt3.Verify([]byte(token), (*jwt3.HMACSHA)(jwtAuth.apiSecret), &payload); err != nil {
 		return nil, xerrors.Errorf("JWT Verification failed: %v", err)
@@ -105,7 +105,7 @@ func (jwtAuth *JwtAuth) API() IJwtAuthAPI {
 	return &JwtAuthAPI{JwtAuth: jwtAuth}
 }
 
-func (a *JwtAuthAPI) Verify(ctx context.Context, spanId, serviceName, preHost, host, token string) ([]auth.Permission, error) {
+func (a *JwtAuthAPI) Verify(ctx context.Context, spanID, serviceName, preHost, host, token string) ([]auth.Permission, error) {
 	var payload JwtPayload
 	if _, err := jwt3.Verify([]byte(token), (*jwt3.HMACSHA)(a.JwtAuth.apiSecret), &payload); err != nil {
 		return nil, xerrors.Errorf("JWT Verification failed: %v", err)

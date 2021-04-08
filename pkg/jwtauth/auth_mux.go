@@ -35,7 +35,7 @@ func (authMux *AuthMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	token := r.Header.Get("Authorization")
 	// if other nodes on the same PC, the permission check will passes directly
-	if r.RemoteAddr[:len("127.0.0.1")] != "127.0.0.1" {
+	if strings.Split(r.RemoteAddr, ":")[0] == "127.0.0.1" {
 		ctx = core.WithPerm(ctx, core.PermAdmin)
 	} else {
 		if token == "" {
