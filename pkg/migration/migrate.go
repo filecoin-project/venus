@@ -12,14 +12,12 @@ type UpgradeFunc func(string) error
 
 type versionInfo struct {
 	version uint
-	message string
 	upgrade UpgradeFunc
 }
 
 var versionMap = []versionInfo{
 	{
 		version: 3,
-		message: "version 3 for a config filed named apiAuthUrl",
 		upgrade: Version3Upgrade,
 	},
 }
@@ -44,7 +42,7 @@ func TryToMigrate(repoPath string) error {
 	return nil
 }
 
-//Version 3 add a auth url config
+//Version3Upgrade 3 for a config filed named apiAuthUrl
 func Version3Upgrade(repoPath string) error {
 	fsrRepo, err := repo.OpenFSRepo(repoPath, 2)
 	if err != nil {
@@ -68,6 +66,9 @@ func Version3Upgrade(repoPath string) error {
 	if err != nil {
 		return err
 	}
-	fsrRepo.Close()
+	err = fsrRepo.Close()
+	if err != nil {
+		return err
+	}
 	return repo.WriteVersion(repoPath, 3)
 }
