@@ -540,7 +540,7 @@ func ReadVersion(repoPath string) (uint, error) {
 		return 0, err
 	}
 	verStr := strings.Trim(string(file), "\n")
-	version, err := strconv.ParseUint(verStr, 32, 10)
+	version, err := strconv.ParseUint(verStr, 10, 32)
 	if err != nil {
 		return 0, err
 	}

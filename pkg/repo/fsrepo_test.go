@@ -111,7 +111,7 @@ func TestFSRepoOpen(t *testing.T) {
 		assert.NoError(t, ioutil.WriteFile(filepath.Join(repoPath, versionFilename), []byte("v.8"), 0644))
 
 		_, err = OpenFSRepo(repoPath, 1)
-		assert.EqualError(t, err, "failed to read version: corrupt version file: version is not an integer")
+		assert.EqualError(t, err, "failed to read version: strconv.ParseUint: parsing \"v.8\": invalid syntax")
 	})
 }
 
