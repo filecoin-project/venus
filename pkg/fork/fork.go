@@ -201,6 +201,10 @@ func defaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			StopWithin:      5,
 		}},
 		Expensive: true,
+	}, {
+		Height:    upgradeHeight.UpgradeNorwegianHeight,
+		Network:   network.Version11,
+		Migration: nil,
 	}}
 
 	for _, u := range updates {

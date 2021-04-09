@@ -48,6 +48,7 @@ func NerpaNet() *NetworkConf {
 				UpgradeActorsV3Height:    600,
 				BreezeGasTampingDuration: 0,
 				UpgradeClausHeight:       250, // 2020-12-22T02:00:00Z
+				UpgradeNorwegianHeight:   999999,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandMainnet},
 			AddressNetwork:          address.Mainnet,
