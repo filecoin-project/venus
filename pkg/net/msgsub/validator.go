@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/ipfs/go-log/v2"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-pubsub"
 
@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
-var messageTopicLogger = log.Logger("net/message_validator")
+var messageTopicLogger = logging.Logger("net/message_validator")
 var mDecodeMsgFail = metrics.NewInt64Counter("net/pubsub_message_decode_failure", "Number of messages that fail to decode seen on message pubsub channel")
 var mInvalidMsg = metrics.NewInt64Counter("net/pubsub_invalid_message", "Number of messages that fail syntax validation seen on message pubsub channel")
 
