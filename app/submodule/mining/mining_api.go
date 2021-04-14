@@ -3,21 +3,23 @@ package mining
 import (
 	"bytes"
 	"context"
-	ffi "github.com/filecoin-project/filecoin-ffi"
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
-	"github.com/ipfs-force-community/venus-wallet/core"
 	"os"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
+
+	"github.com/ipfs-force-community/venus-wallet/core"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-state-types/abi"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -253,15 +255,22 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *BlockTempl
 	}
 	next.ParentBaseFee = baseFee
 
-	nosigbytes := next.SignatureData()
-	sig, err := miningAPI.Ming.Wallet.API().WalletSign(ctx, worker, nosigbytes, wallet.MsgMeta{
-		Type: core.MTBlock,
-	})
+	bHas, err := miningAPI.Ming.Wallet.API().WalletHas(ctx, worker)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to sign new block: %v", err)
+		return nil, xerrors.Errorf("find wallet: %v", err)
 	}
 
-	next.BlockSig = sig
+	if bHas {
+		nosigbytes := next.SignatureData()
+		sig, err := miningAPI.Ming.Wallet.API().WalletSign(ctx, worker, nosigbytes, wallet.MsgMeta{
+			Type: core.MTBlock,
+		})
+		if err != nil {
+			return nil, xerrors.Errorf("failed to sign new block: %v", err)
+		}
+
+		next.BlockSig = sig
+	}
 
 	fullBlock := &types.FullBlock{
 		Header:       next,
