@@ -66,7 +66,7 @@ func mkMessage(from, to address.Address, nonce uint64, w *wallet.Wallet) *types.
 	}
 
 	c := msg.Cid()
-	sig, err := w.WalletSign(context.TODO(), from, c.Bytes(), wallet.MsgMeta{})
+	sig, err := w.WalletSign(from, c.Bytes(), wallet.MsgMeta{})
 	if err != nil {
 		panic(err)
 	}
