@@ -19,7 +19,8 @@ const TestPassword = "test-password"
 var ErrKeyInfoNotFound = fmt.Errorf("key info not found")
 var walletLog = logging.Logger("wallet")
 
-// WalletIntersection,
+// WalletIntersection
+// nolint
 type WalletIntersection interface {
 	HasAddress(a address.Address) bool
 	Addresses() []address.Address
