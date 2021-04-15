@@ -52,7 +52,7 @@ func (walletAPI *WalletAPI) WalletBalance(ctx context.Context, addr address.Addr
 }
 
 func (walletAPI *WalletAPI) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
-	return walletAPI.adapter.HasAddress(ctx, addr), nil
+	return walletAPI.adapter.HasAddress(addr), nil
 }
 
 // SetWalletDefaultAddress set the specified address as the default in the config.
@@ -126,7 +126,7 @@ func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, m
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ID address: %v", keyAddr)
 	}
-	return walletAPI.adapter.WalletSign(ctx, keyAddr, msg, meta)
+	return walletAPI.adapter.WalletSign(keyAddr, msg, meta)
 }
 
 func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.UnsignedMessage) (*types.SignedMessage, error) {

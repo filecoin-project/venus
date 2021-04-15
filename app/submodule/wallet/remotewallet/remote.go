@@ -49,8 +49,8 @@ func SetupRemoteWallet(info string) (locWallet.WalletIntersection, error) {
 	}, nil
 }
 
-func (w *remoteWallet) HasAddress(ctx context.Context, addr address.Address) bool {
-	exist, err := w.IWallet.WalletHas(ctx, addr)
+func (w *remoteWallet) HasAddress(addr address.Address) bool {
+	exist, err := w.IWallet.WalletHas(context.Background(), addr)
 	if err != nil {
 		return false
 	}
@@ -72,6 +72,6 @@ func (w *remoteWallet) Export(addr address.Address, password string) (*crypto.Ke
 	return ConvertLocalKeyInfo(key), nil
 }
 
-func (w *remoteWallet) WalletSign(ctx context.Context, keyAddr address.Address, msg []byte, meta locWallet.MsgMeta) (*crypto.Signature, error) {
-	return w.IWallet.WalletSign(ctx, keyAddr, msg, meta)
+func (w *remoteWallet) WalletSign(keyAddr address.Address, msg []byte, meta locWallet.MsgMeta) (*crypto.Signature, error) {
+	return w.IWallet.WalletSign(context.Background(), keyAddr, msg, meta)
 }

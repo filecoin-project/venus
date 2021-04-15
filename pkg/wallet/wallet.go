@@ -2,7 +2,6 @@ package wallet
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -22,12 +21,12 @@ var walletLog = logging.Logger("wallet")
 
 // WalletIntersection,
 type WalletIntersection interface {
-	HasAddress(ctx context.Context, a address.Address) bool
+	HasAddress(a address.Address) bool
 	Addresses() []address.Address
 	NewAddress(p address.Protocol) (address.Address, error)
 	Import(ki *crypto.KeyInfo) (address.Address, error)
 	Export(addr address.Address, password string) (*crypto.KeyInfo, error)
-	WalletSign(ctx context.Context, keyAddr address.Address, msg []byte, meta MsgMeta) (*crypto.Signature, error)
+	WalletSign(keyAddr address.Address, msg []byte, meta MsgMeta) (*crypto.Signature, error)
 	HasPassword() bool
 }
 
@@ -57,7 +56,7 @@ func New(backends ...Backend) *Wallet {
 
 // HasAddress checks if the given address is stored.
 // Safe for concurrent access.
-func (w *Wallet) HasAddress(ctx context.Context, a address.Address) bool {
+func (w *Wallet) HasAddress(a address.Address) bool {
 	_, err := w.Find(a)
 	return err == nil
 }
@@ -202,7 +201,7 @@ func (w *Wallet) Export(addr address.Address, password string) (*crypto.KeyInfo,
 	return ki, nil
 }
 
-func (w *Wallet) WalletSign(ctx context.Context, addr address.Address, msg []byte, meta MsgMeta) (*crypto.Signature, error) {
+func (w *Wallet) WalletSign(addr address.Address, msg []byte, meta MsgMeta) (*crypto.Signature, error) {
 	ki, err := w.Find(addr)
 	if err != nil {
 		return nil, err

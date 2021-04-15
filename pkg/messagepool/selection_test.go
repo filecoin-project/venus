@@ -2,7 +2,6 @@ package messagepool
 
 import (
 	"compress/gzip"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -54,7 +53,7 @@ func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, g
 	}
 
 	c := msg.Cid()
-	sig, err := w.WalletSign(context.TODO(), from, c.Bytes(), wallet.MsgMeta{})
+	sig, err := w.WalletSign(from, c.Bytes(), wallet.MsgMeta{})
 	if err != nil {
 		panic(err)
 	}
@@ -1328,7 +1327,7 @@ readLoop:
 		m.Message.Nonce -= baseNonce
 
 		c := m.Message.Cid()
-		sig, err := w.WalletSign(context.TODO(), localActor, c.Bytes(), wallet.MsgMeta{})
+		sig, err := w.WalletSign(localActor, c.Bytes(), wallet.MsgMeta{})
 		if err != nil {
 			t.Fatal(err)
 		}
