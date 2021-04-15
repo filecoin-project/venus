@@ -46,7 +46,7 @@ func (s *Signer) HasAddress(ctx context.Context, addr address.Address) (bool, er
 	if err != nil {
 		return false, err
 	}
-	return s.wallet.HasAddress(signingAddr), nil
+	return s.wallet.HasAddress(ctx, signingAddr), nil
 }
 
 type HeadSignView struct {

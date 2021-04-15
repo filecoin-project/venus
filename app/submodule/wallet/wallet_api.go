@@ -5,7 +5,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/filecoin-project/venus/app/submodule/wallet/remotewallet"
 	"github.com/ipfs-force-community/venus-wallet/core"
 
 	"github.com/filecoin-project/go-address"
@@ -20,15 +19,15 @@ import (
 var _ IWallet = &WalletAPI{}
 
 type IWallet interface {
-	WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error) //not exists in remote
+	WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error)
+	WalletExport(addr address.Address, password string) (*crypto.KeyInfo, error)
+	WalletImport(key *crypto.KeyInfo) (address.Address, error)
 	WalletHas(ctx context.Context, addr address.Address) (bool, error)
-	WalletDefaultAddress() (address.Address, error) //not exists in remote
+	WalletNewAddress(protocol address.Protocol) (address.Address, error)
+	WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error) //not exists in remote
+	WalletDefaultAddress() (address.Address, error)                                   //not exists in remote
 	WalletAddresses() []address.Address
 	WalletSetDefault(_ context.Context, addr address.Address) error //not exists in remote
-	WalletNewAddress(protocol address.Protocol) (address.Address, error)
-	WalletImport(key *crypto.KeyInfo) (address.Address, error)
-	WalletExport(addr address.Address, password string) (*crypto.KeyInfo, error)
-	WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error)
 	WalletSignMessage(ctx context.Context, k address.Address, msg *types.UnsignedMessage) (*types.SignedMessage, error)
 }
 
@@ -36,8 +35,7 @@ var ErrNoDefaultFromAddress = errors.New("unable to determine a default walletMo
 
 type WalletAPI struct { //nolint
 	walletModule *WalletSubmodule
-	remote       *remotewallet.RemoteWallet
-	isRemote     bool
+	adapter      wallet.WalletIntersection
 }
 
 // WalletBalance returns the current balance of the given wallet address.
@@ -54,10 +52,7 @@ func (walletAPI *WalletAPI) WalletBalance(ctx context.Context, addr address.Addr
 }
 
 func (walletAPI *WalletAPI) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
-	if walletAPI.isRemote {
-		return walletAPI.remote.WalletHas(ctx, addr)
-	}
-	return walletAPI.walletModule.Wallet.HasAddress(addr), nil
+	return walletAPI.adapter.HasAddress(ctx, addr), nil
 }
 
 // SetWalletDefaultAddress set the specified address as the default in the config.
@@ -84,14 +79,7 @@ func (walletAPI *WalletAPI) WalletDefaultAddress() (address.Address, error) {
 
 // WalletAddresses gets addresses from the walletModule
 func (walletAPI *WalletAPI) WalletAddresses() []address.Address {
-	if walletAPI.isRemote {
-		wallets, err := walletAPI.remote.WalletList(context.Background())
-		if err != nil {
-			return make([]address.Address, 0)
-		}
-		return wallets
-	}
-	return walletAPI.walletModule.Wallet.Addresses()
+	return walletAPI.adapter.Addresses()
 }
 
 // SetWalletDefaultAddress set the specified address as the default in the config.
@@ -111,19 +99,12 @@ func (walletAPI *WalletAPI) WalletSetDefault(_ context.Context, addr address.Add
 
 // WalletNewAddress generates a new walletModule address
 func (walletAPI *WalletAPI) WalletNewAddress(protocol address.Protocol) (address.Address, error) {
-	if walletAPI.isRemote {
-		return walletAPI.remote.WalletNew(context.Background(), remotewallet.GetKeyType(protocol))
-	}
-	return walletAPI.walletModule.Wallet.NewAddress(protocol)
+	return walletAPI.adapter.NewAddress(protocol)
 }
 
 // WalletImport adds a given set of KeyInfos to the walletModule
 func (walletAPI *WalletAPI) WalletImport(key *crypto.KeyInfo) (address.Address, error) {
-	if walletAPI.isRemote {
-		return walletAPI.remote.WalletImport(context.Background(), remotewallet.ConvertRemoteKeyInfo(key))
-	}
-
-	addr, err := walletAPI.walletModule.Wallet.Import(key)
+	addr, err := walletAPI.adapter.Import(key)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -132,15 +113,7 @@ func (walletAPI *WalletAPI) WalletImport(key *crypto.KeyInfo) (address.Address, 
 
 // WalletExport returns the KeyInfos for the given walletModule addresses
 func (walletAPI *WalletAPI) WalletExport(addr address.Address, password string) (*crypto.KeyInfo, error) {
-	if walletAPI.isRemote {
-		// todo: Implement password logic in the future
-		key, err := walletAPI.remote.WalletExport(context.Background(), addr)
-		if err != nil {
-			return nil, err
-		}
-		return remotewallet.ConvertLocalKeyInfo(key), nil
-	}
-	return walletAPI.walletModule.Wallet.Export(addr, password)
+	return walletAPI.adapter.Export(addr, password)
 }
 
 func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error) {
@@ -149,16 +122,11 @@ func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, m
 	if err != nil {
 		return nil, err
 	}
-
 	keyAddr, err := view.ResolveToKeyAddr(ctx, k)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ID address: %v", keyAddr)
 	}
-
-	if walletAPI.isRemote {
-		return walletAPI.remote.WalletSign(ctx, keyAddr, msg, meta)
-	}
-	return walletAPI.walletModule.Wallet.WalletSign(ctx, keyAddr, msg, meta)
+	return walletAPI.adapter.WalletSign(ctx, keyAddr, msg, meta)
 }
 
 func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.UnsignedMessage) (*types.SignedMessage, error) {
@@ -191,10 +159,7 @@ func (walletAPI *WalletAPI) SetPassword(Context context.Context, password string
 }
 
 func (walletAPI *WalletAPI) HasPassword(Context context.Context) bool {
-	if walletAPI.isRemote {
-		return true
-	}
-	return walletAPI.walletModule.Wallet.HasPassword()
+	return walletAPI.adapter.HasPassword()
 }
 
 func (walletAPI *WalletAPI) WalletState(Context context.Context) int {

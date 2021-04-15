@@ -2,18 +2,35 @@ package remotewallet
 
 import (
 	"context"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/pkg/crypto"
+	locWallet "github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/ipfs-force-community/venus-wallet/api/remotecli"
 	"github.com/ipfs-force-community/venus-wallet/api/remotecli/httpparse"
 	"github.com/ipfs-force-community/venus-wallet/storage/wallet"
 	"golang.org/x/xerrors"
 )
 
-type RemoteWallet struct {
+var _ locWallet.WalletIntersection = &remoteWallet{}
+
+type remoteWallet struct {
 	wallet.IWallet
 	Cancel func()
 }
 
-func SetupRemoteWallet(info string) (*RemoteWallet, error) {
+func (w *remoteWallet) Addresses() []address.Address {
+	wallets, err := w.IWallet.WalletList(context.Background())
+	if err != nil {
+		return make([]address.Address, 0)
+	}
+	return wallets
+}
+
+func (w *remoteWallet) HasPassword() bool {
+	return true
+}
+
+func SetupRemoteWallet(info string) (locWallet.WalletIntersection, error) {
 	ai, err := httpparse.ParseApiInfo(info)
 	if err != nil {
 		return nil, err
@@ -26,15 +43,35 @@ func SetupRemoteWallet(info string) (*RemoteWallet, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("creating jsonrpc client: %w", err)
 	}
-	return &RemoteWallet{
+	return &remoteWallet{
 		IWallet: wapi,
 		Cancel:  closer,
 	}, nil
 }
 
-func (w *RemoteWallet) Get() wallet.IWallet {
-	if w == nil {
-		return nil
+func (w *remoteWallet) HasAddress(ctx context.Context, addr address.Address) bool {
+	exist, err := w.IWallet.WalletHas(ctx, addr)
+	if err != nil {
+		return false
 	}
-	return w
+	return exist
+}
+func (w *remoteWallet) NewAddress(protocol address.Protocol) (address.Address, error) {
+	return w.IWallet.WalletNew(context.Background(), GetKeyType(protocol))
+}
+
+func (w *remoteWallet) Import(key *crypto.KeyInfo) (address.Address, error) {
+	return w.IWallet.WalletImport(context.Background(), ConvertRemoteKeyInfo(key))
+}
+
+func (w *remoteWallet) Export(addr address.Address, password string) (*crypto.KeyInfo, error) {
+	key, err := w.IWallet.WalletExport(context.Background(), addr)
+	if err != nil {
+		return nil, err
+	}
+	return ConvertLocalKeyInfo(key), nil
+}
+
+func (w *remoteWallet) WalletSign(ctx context.Context, keyAddr address.Address, msg []byte, meta locWallet.MsgMeta) (*crypto.Signature, error) {
+	return w.IWallet.WalletSign(ctx, keyAddr, msg, meta)
 }
