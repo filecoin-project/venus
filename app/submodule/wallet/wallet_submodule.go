@@ -21,11 +21,11 @@ var log = logging.Logger("wallet")
 
 // WalletSubmodule enhances the `Node` with a "wallet" and FIL transfer capabilities.
 type WalletSubmodule struct { //nolint
-	Chain        *chain.ChainSubmodule
-	Wallet       *wallet.Wallet
-	RemoteWallet *remotewallet.RemoteWallet
-	Signer       types.Signer
-	Config       *config.ConfigModule
+	Chain   *chain.ChainSubmodule
+	Wallet  *wallet.Wallet
+	adapter wallet.WalletIntersection
+	Signer  types.Signer
+	Config  *config.ConfigModule
 }
 
 type walletRepo interface {
@@ -50,31 +50,32 @@ func NewWalletSubmodule(ctx context.Context,
 	fcWallet := wallet.New(backend)
 	headSigner := state.NewHeadSignView(chain.ChainReader)
 
-	var reWallet *remotewallet.RemoteWallet
+	var adapter wallet.WalletIntersection
 	if repo.Config().Wallet.RemoteEnable {
 		if repo.Config().Wallet.RemoteBackend == core.StringEmpty {
 			return nil, errors.New("remote backend is empty")
 		}
-		reWallet, err = remotewallet.SetupRemoteWallet(repo.Config().Wallet.RemoteBackend)
+		adapter, err = remotewallet.SetupRemoteWallet(repo.Config().Wallet.RemoteBackend)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to set up remote wallet")
 		}
 		log.Info("remote wallet set up")
+	} else {
+		adapter = fcWallet
 	}
 	return &WalletSubmodule{
-		Config:       cfg,
-		Chain:        chain,
-		Wallet:       fcWallet,
-		RemoteWallet: reWallet,
-		Signer:       state.NewSigner(headSigner, fcWallet),
+		Config:  cfg,
+		Chain:   chain,
+		Wallet:  fcWallet,
+		adapter: adapter,
+		Signer:  state.NewSigner(headSigner, fcWallet),
 	}, nil
 }
 
 func (wallet *WalletSubmodule) API() *WalletAPI {
 	return &WalletAPI{
 		walletModule: wallet,
-		isRemote:     wallet.RemoteWallet != nil,
-		remote:       wallet.RemoteWallet,
+		adapter:      wallet.adapter,
 	}
 }
 
