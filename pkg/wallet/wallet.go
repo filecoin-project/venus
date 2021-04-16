@@ -2,7 +2,6 @@ package wallet
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -19,6 +18,20 @@ const TestPassword = "test-password"
 
 var ErrKeyInfoNotFound = fmt.Errorf("key info not found")
 var walletLog = logging.Logger("wallet")
+
+// WalletIntersection
+// nolint
+type WalletIntersection interface {
+	HasAddress(a address.Address) bool
+	Addresses() []address.Address
+	NewAddress(p address.Protocol) (address.Address, error)
+	Import(ki *crypto.KeyInfo) (address.Address, error)
+	Export(addr address.Address, password string) (*crypto.KeyInfo, error)
+	WalletSign(keyAddr address.Address, msg []byte, meta MsgMeta) (*crypto.Signature, error)
+	HasPassword() bool
+}
+
+var _ WalletIntersection = &Wallet{}
 
 // wallet manages the locally stored addresses.
 type Wallet struct {
@@ -189,7 +202,7 @@ func (w *Wallet) Export(addr address.Address, password string) (*crypto.KeyInfo,
 	return ki, nil
 }
 
-func (w *Wallet) WalletSign(ctx context.Context, addr address.Address, msg []byte, meta MsgMeta) (*crypto.Signature, error) {
+func (w *Wallet) WalletSign(addr address.Address, msg []byte, meta MsgMeta) (*crypto.Signature, error) {
 	ki, err := w.Find(addr)
 	if err != nil {
 		return nil, err
