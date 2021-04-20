@@ -13,19 +13,23 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
-type SlashFilter struct {
+type ISlashFilter interface {
+	MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error
+}
+
+type LocalSlashFilter struct {
 	byEpoch   ds.Datastore // double-fork mining faults, parent-grinding fault
 	byParents ds.Datastore // time-offset mining faults
 }
 
-func New(dstore ds.Batching) *SlashFilter {
-	return &SlashFilter{
+func NewLocalSlashFilter(dstore ds.Batching) ISlashFilter {
+	return &LocalSlashFilter{
 		byEpoch:   namespace.Wrap(dstore, ds.NewKey("/slashfilter/epoch")),
 		byParents: namespace.Wrap(dstore, ds.NewKey("/slashfilter/parents")),
 	}
 }
 
-func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
+func (f *LocalSlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
 	epochKey := ds.NewKey(fmt.Sprintf("/%s/%d", bh.Miner, bh.Height))
 	{
 		// double-fork mining (2 blocks at one epoch)
