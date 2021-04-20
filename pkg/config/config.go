@@ -290,15 +290,11 @@ func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 }
 
 type MySQLConfig struct {
-	User            string        `json:"user"`
-	Password        string        `json:"password"`
-	Host            string        `json:"host"`
-	Port            uint          `json:"port"`
-	DbName          string        `json:"dbName"`
-	MaxOpenConn     int           `json:"maxOpenConn"`     // 100
-	MaxIdleConn     int           `json:"maxIdleConn"`     // 10
-	ConnMaxLifeTime time.Duration `json:"connMaxLifeTime"` // minuter: 60
-	Debug           bool          `json:"debug"`
+	ConnectionString string        `json:"connectionString"`
+	MaxOpenConn      int           `json:"maxOpenConn"`     // 100
+	MaxIdleConn      int           `json:"maxIdleConn"`     // 10
+	ConnMaxLifeTime  time.Duration `json:"connMaxLifeTime"` // minuter: 60
+	Debug            bool          `json:"debug"`
 }
 
 type SlashFilterDsConfig struct {

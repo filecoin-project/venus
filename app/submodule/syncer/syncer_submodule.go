@@ -9,7 +9,6 @@ import (
 
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
-	ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
@@ -48,7 +47,7 @@ type SyncerSubmodule struct { //nolint
 	ChainSyncManager *chainsync.Manager
 	Drand            beacon.Schedule
 	SyncProvider     ChainSyncProvider
-	SlashFilter      *slashfilter.SlashFilter
+	SlashFilter      slashfilter.ISlashFilter
 	BlockValidator   *consensus.BlockValidator
 	// cancelChainSync cancels the context for chain sync subscriptions and handlers.
 	CancelChainSync context.CancelFunc
@@ -134,12 +133,12 @@ func NewSyncerSubmodule(ctx context.Context,
 	})
 
 	var (
-		slashFilter ds.Batching
+		slashFilter slashfilter.ISlashFilter
 	)
 	if config.Repo().Config().SlashFilterDs.Type == "local" {
-		slashFilter = config.Repo().ChainDatastore()
+		slashFilter = slashfilter.NewLocalSlashFilter(config.Repo().ChainDatastore())
 	} else {
-		slashFilter, err = slashfilter.InitMysqlRepo(config.Repo().Config().SlashFilterDs.MySQL)
+		slashFilter, err = slashfilter.NewMysqlSlashFilter(config.Repo().Config().SlashFilterDs.MySQL)
 		if err != nil {
 			return nil, err
 		}
@@ -150,7 +149,7 @@ func NewSyncerSubmodule(ctx context.Context,
 		ChainModule:        chn,
 		NetworkModule:      network,
 		DiscoverySubmodule: discovery,
-		SlashFilter:        slashfilter.New(slashFilter),
+		SlashFilter:        slashFilter,
 		Consensus:          nodeConsensus,
 		ChainSelector:      nodeChainSelector,
 		ChainSyncManager:   &chainSyncManager,
