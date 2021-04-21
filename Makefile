@@ -1,3 +1,6 @@
+export CGO_CFLAGS_ALLOW=-D__BLST_PORTABLE__
+export CGO_CFLAGS=-D__BLST_PORTABLE__
+
 all:
 	go run ./build/*.go build
 
