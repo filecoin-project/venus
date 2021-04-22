@@ -126,6 +126,7 @@ type FullNode struct {
 	GasEstimateMessageGas   func(context.Context, *types.UnsignedMessage, *types.MessageSendSpec, types.TipSetKey) (*types.UnsignedMessage, error)
 	GasEstimateFeeCap       func(context.Context, *types.UnsignedMessage, int64, types.TipSetKey) (big.Int, error)
 	GasEstimateGasPremium   func(context.Context, uint64, address.Address, int64, types.TipSetKey) (big.Int, error)
+	GasEstimateGasLimit     func(ctx context.Context, msgIn *types.UnsignedMessage, tsk types.TipSetKey) (int64, error)
 	WalletSign              func(context.Context, address.Address, []byte) (*crypto.Signature, error)
 
 	NetworkGetBandwidthStats  func() metrics.Stats
