@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 )
 
-var DefaultDefaultMaxFee = MustParseFIL("0.007")
+var DefaultDefaultMaxFee = MustParseFIL("1") // 0.007
 
 type MessageSendSpec struct {
 	MaxFee abi.TokenAmount
