@@ -130,7 +130,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	var peerMgr net.IPeerMgr
 	// if !config.OfflineMode() {
 	makeDHT := func(h host.Host) (routing.Routing, error) {
-		mode := dht.ModeServer
+		mode := dht.ModeAuto
 		opts := []dht.Option{dht.Mode(mode),
 			dht.Datastore(repo.ChainDatastore()),
 			dht.NamespacedValidator("v", validator),

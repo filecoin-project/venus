@@ -127,7 +127,7 @@ func (tq *TargetTracker) Add(t *Target) bool {
 	}
 
 	if replaceTarget == nil {
-		if len(tq.q) <= tq.bucketSize {
+		if len(tq.q) < tq.bucketSize {
 			//append to last slot
 			tq.q = append(tq.q, t)
 		} else {
