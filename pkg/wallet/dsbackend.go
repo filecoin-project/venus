@@ -239,38 +239,25 @@ func (backend *DSBackend) setPassword(password []byte) {
 	backend.password = password
 }
 
-func (backend *DSBackend) clearPassword() {
+func (backend *DSBackend) removePassword() {
 	backend.lk.Lock()
 	defer backend.lk.Unlock()
 	backend.password = []byte{}
 }
 
-func (backend *DSBackend) Locked(password string) error {
+func (backend *DSBackend) Locked() error {
 	if backend.state == Lock {
 		return xerrors.Errorf("already locked")
 	}
 
-	hashPasswd := keccak256([]byte(password))
-
-	if len(backend.password) != 0 && !bytes.Equal(backend.password, hashPasswd) {
-		return ErrInvalidPassword
-	}
-
-	if len(backend.Addresses()) == 0 {
-		return xerrors.Errorf("no address need lock")
-	}
-
+	// remove cache
 	for _, addr := range backend.Addresses() {
-		_, err := backend.GetKeyInfoPassphrase(addr, hashPasswd)
-		if err != nil {
-			return err
-		}
-
 		backend.lk.Lock()
 		delete(backend.unLocked, addr)
 		backend.lk.Unlock()
 	}
 
+	backend.removePassword()
 	backend.state = Lock
 
 	return nil
