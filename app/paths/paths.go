@@ -6,11 +6,11 @@ import (
 )
 
 // node repo path defaults
-const filPathVar = "FIL_PATH"
+const filPathVar = "VENUS_PATH"
 const defaultRepoDir = "~/.venus"
 
 // GetRepoPath returns the path of the venus repo from a potential override
-// string, the FIL_PATH environment variable and a default of ~/.venus/repo.
+// string, the VENUS_PATH environment variable and a default of ~/.venus/repo.
 func GetRepoPath(override string) (string, error) {
 	// override is first precedence
 	if override != "" {

@@ -127,6 +127,7 @@ func (discovery *DiscoverySubmodule) Stop() {
 	discovery.Bootstrapper.Stop()
 }
 
+//API create a discovery api implement
 func (discovery *DiscoverySubmodule) API() apiface.IDiscovery {
 	return &discoveryAPI{discovery: discovery}
 }

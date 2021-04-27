@@ -410,16 +410,16 @@ func (l *Localfilecoin) Connect(ctx context.Context, n testbedi.Core) error {
 	return err
 }
 
-// Shell starts a user shell in the context of a node setting FIL_PATH to ensure calls to
+// Shell starts a user shell in the context of a node setting VENUS_PATH to ensure calls to
 // venus will be ran agasint the target node. Stderr, stdout will be set to os.Stderr
 // and os.Stdout. If env TTY is set, it will be used for stdin, otherwise os.Stdin will be used.
 //
-// If FIL_PATH is already set, an error will be returned.
+// If VENUS_PATH is already set, an error will be returned.
 //
 // The shell environment will have the follow variables set in the shell for the user.
 //
 // NODE0-NODE# - set to the PeerID for each value in ns passed.
-// FIL_PATH    - The value is set to the directory for the Filecoin node.
+// VENUS_PATH    - The value is set to the directory for the Filecoin node.
 // FIL_PID     - The value is set to the pid for the Filecoin daemon
 // FIL_BINARY  - The value is set to the path of the binary used for running the Filecoin daemon.
 // PATH        - The users PATH will be updated to include a location that contains the FIL_BINARY.
@@ -432,9 +432,9 @@ func (l *Localfilecoin) Shell(ctx context.Context, ns []testbedi.Core) error {
 		return fmt.Errorf("no shell found")
 	}
 
-	if len(os.Getenv("FIL_PATH")) != 0 {
-		// If the users shell sets FIL_PATH, it will just be overridden by the shell again
-		return fmt.Errorf("shell has FIL_PATH set, please unset before trying to use iptb shell")
+	if len(os.Getenv("VENUS_PATH")) != 0 {
+		// If the users shell sets VENUS_PATH, it will just be overridden by the shell again
+		return fmt.Errorf("shell has VENUS_PATH set, please unset before trying to use iptb shell")
 	}
 
 	nenvs, err := l.env()

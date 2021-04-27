@@ -29,6 +29,7 @@ type genesisReader interface {
 	GetGenesisBlock(ctx context.Context) (*types.BlockHeader, error)
 }
 
+//CirculatingSupply circulation information, including mining, public offering, private placement, release, combustion, mortgage, circulation,
 type CirculatingSupply struct {
 	FilVested      abi.TokenAmount
 	FilMined       abi.TokenAmount
@@ -37,6 +38,7 @@ type CirculatingSupply struct {
 	FilCirculating abi.TokenAmount
 }
 
+//CirculatingSupplyCalculator used to calculate the funds at a specific block height
 type CirculatingSupplyCalculator struct {
 	bstore        blockstoreutil.Blockstore
 	genesisReader genesisReader
@@ -53,13 +55,16 @@ type CirculatingSupplyCalculator struct {
 	upgradeConfig *config.ForkUpgradeConfig
 }
 
+//NewCirculatingSupplyCalculator create new  circulating supply calculator
 func NewCirculatingSupplyCalculator(bstore blockstoreutil.Blockstore, genesisReader genesisReader, upgradeConfig *config.ForkUpgradeConfig) *CirculatingSupplyCalculator {
 	return &CirculatingSupplyCalculator{bstore: bstore, genesisReader: genesisReader, upgradeConfig: upgradeConfig}
 }
 
+//GetCirculatingSupplyDetailed query contract and calculate circulation status at specific height and tree state
 func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (CirculatingSupply, error) {
 	caculator.genesisMsigLk.Lock()
 	defer caculator.genesisMsigLk.Unlock()
+	//setup genesis asset information
 	if caculator.preIgnitionVesting == nil || caculator.genesisPledge.IsZero() || caculator.genesisMarketFunds.IsZero() {
 		err := caculator.setupGenesisVestingSchedule(ctx)
 		if err != nil {
@@ -367,6 +372,7 @@ func (caculator *CirculatingSupplyCalculator) GetFilReserveDisbursed(ctx context
 	return big.Sub(big.NewFromGo(constants.InitialFilReserved), ract.Balance), nil
 }
 
+//GetFilMined query reward contract to get amount of mined fil
 func GetFilMined(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	ractor, found, err := st.GetActor(ctx, reward.Address)
 	if !found || err != nil {
@@ -381,6 +387,7 @@ func GetFilMined(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	return rst.TotalStoragePowerReward()
 }
 
+//GetFilBurnt query burnt contract to get amount of burnt fil
 func GetFilBurnt(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	burnt, found, err := st.GetActor(ctx, builtin.BurntFundsActorAddr)
 	if !found || err != nil {
@@ -390,6 +397,7 @@ func GetFilBurnt(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	return burnt.Balance, nil
 }
 
+//GetFilLocked query the market contract and power contract to get the amount of locked fils
 func (caculator *CirculatingSupplyCalculator) GetFilLocked(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 
 	filMarketLocked, err := getFilMarketLocked(ctx, st)

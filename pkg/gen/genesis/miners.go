@@ -34,8 +34,8 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/consensusfault"
 	"github.com/filecoin-project/venus/pkg/fork"
-	"github.com/filecoin-project/venus/pkg/slashing"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/vm"
@@ -91,7 +91,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 		return constants.ActorUpgradeNetworkVersion - 1 // genesis requires actors v0.
 	}
 
-	faultChecker := slashing.NewFaultChecker(cs, fork.NewMockFork())
+	faultChecker := consensusfault.NewFaultChecker(cs, fork.NewMockFork())
 	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
 	gasPirceSchedule := gas.NewPricesSchedule(para)
 	vmopt := vm.VmOption{

@@ -17,8 +17,6 @@ import (
 )
 
 // SignedMessage contains a message and its signature
-// TODO do not export these fields as it increases the chances of producing a
-// `SignedMessage` with an empty signature.
 type SignedMessage struct {
 	Message   UnsignedMessage  `json:"message"`
 	Signature crypto.Signature `json:"signature"`
@@ -86,6 +84,7 @@ func (smsg *SignedMessage) ToNode() (ipld.Node, error) {
 
 }
 
+// String return message json string
 func (smsg *SignedMessage) String() string {
 	errStr := "(error encoding SignedMessage)"
 	cid := smsg.Cid()
@@ -102,6 +101,7 @@ func (smsg *SignedMessage) Equals(other *SignedMessage) bool {
 		smsg.Signature.Equals(&other.Signature)
 }
 
+//ChainLength return length of message binary
 func (smsg *SignedMessage) ChainLength() int {
 	var err error
 	buf := new(bytes.Buffer)
@@ -118,6 +118,7 @@ func (smsg *SignedMessage) ChainLength() int {
 	return buf.Len()
 }
 
+// ToStorageBlock return db block of message binary
 func (smsg *SignedMessage) ToStorageBlock() (blocks.Block, error) {
 	if smsg.Signature.Type == crypto.SigTypeBLS {
 		return smsg.Message.ToStorageBlock()
@@ -138,6 +139,7 @@ func (smsg *SignedMessage) ToStorageBlock() (blocks.Block, error) {
 	return blocks.NewBlockWithCid(data, c)
 }
 
+// Serialize return message binary
 func (smsg *SignedMessage) Serialize() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	if err := smsg.MarshalCBOR(buf); err != nil {

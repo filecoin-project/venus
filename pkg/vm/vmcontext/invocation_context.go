@@ -446,8 +446,6 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 	}
 	// prepare
 	// 1. alias fromActor
-	// 2. build internal message
-
 	from := ctx.msg.To
 
 	// 2. build internal message
@@ -459,9 +457,9 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 		Params: params,
 	}
 
-	// 1. build new context
+	// 3. build new context
 	newCtx := newInvocationContext(ctx.vm, ctx.gasIpld, ctx.topLevel, newMsg, ctx.gasTank, ctx.randSource, ctx)
-	// 2. invoke
+	// 4. invoke
 	ret, code := newCtx.invoke()
 	if code == 0 {
 		_ = ctx.gasTank.TryCharge(gasOnActorExec)
@@ -476,7 +474,7 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 func (ctx *invocationContext) Balance() abi.TokenAmount {
 	toActor, found, err := ctx.vm.State.GetActor(ctx.vm.context, ctx.originMsg.To)
 	if err != nil {
-		panic(xerrors.Errorf("cannt find to actor %v", err))
+		panic(xerrors.Errorf("cannot find to actor %v", err))
 	}
 	if !found {
 		return abi.NewTokenAmount(0)
@@ -489,6 +487,9 @@ func (ctx *invocationContext) Balance() abi.TokenAmount {
 //
 var _ runtime.ExtendedInvocationContext = (*invocationContext)(nil)
 
+// NextActorAddress predicts the address of the next actor created by this address.
+//
+// Code is adapted from vm.Runtime#NewActorAddress()
 func (ctx *invocationContext) NewActorAddress() address.Address {
 	buf := new(bytes.Buffer)
 	origin, err := ctx.resolveToKeyAddr(ctx.topLevel.originatorStableAddress)
@@ -519,9 +520,6 @@ func (ctx *invocationContext) NewActorAddress() address.Address {
 }
 
 // CreateActor implements runtime.ExtendedInvocationContext.
-// Creating an account is divided into two situations:
-//       case1: create based on message receive , the gas fee is deducted first.
-//       case2: create From spec actors, check first, and deduct gas fee
 func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) {
 	if addr == address.Undef && ctx.vm.NtwkVersion() >= network.Version7 {
 		runtime.Abortf(exitcode.SysErrorIllegalArgument, "CreateActor with Undef address")

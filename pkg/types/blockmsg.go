@@ -12,10 +12,12 @@ type BlockMsg struct { // nolint: golint
 	SecpkMessages []cid.Cid
 }
 
+// Cid return block cid
 func (bm *BlockMsg) Cid() cid.Cid {
 	return bm.Header.Cid()
 }
 
+// Serialize return blockmsg binary
 func (bm *BlockMsg) Serialize() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	if err := bm.MarshalCBOR(buf); err != nil {

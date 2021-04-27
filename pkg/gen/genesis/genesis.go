@@ -25,11 +25,11 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/consensusfault"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto/sigs"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/slashing"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -406,7 +406,7 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 	verifNeeds := make(map[address.Address]abi.PaddedPieceSize)
 	var sum abi.PaddedPieceSize
 
-	faultChecker := slashing.NewFaultChecker(cs, fork.NewMockFork())
+	faultChecker := consensusfault.NewFaultChecker(cs, fork.NewMockFork())
 	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
 
 	genesisNetworkVersion := func(context.Context, abi.ChainEpoch) network.Version { // TODO: Get from build/
@@ -509,8 +509,7 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs blockstore.Blocksto
 	}
 
 	// temp chainstore
-	chainStatusReporter := chain.NewStatusReporter()
-	cs := chain.NewStore(rep.ChainDatastore(), cbor.NewCborStore(bs), bs, chainStatusReporter, para, cid.Undef)
+	cs := chain.NewStore(rep.ChainDatastore(), cbor.NewCborStore(bs), bs, para, cid.Undef)
 
 	// Verify PreSealed Data
 	stateroot, err = VerifyPreSealedData(ctx, cs, stateroot, template, keyIDs, para)

@@ -17,8 +17,8 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/minio/blake2b-simd"
 
+	"github.com/filecoin-project/venus/pkg/consensusfault"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/slashing"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/vm"
 )
@@ -26,7 +26,7 @@ import (
 var log = logging.Logger("vmsupport")
 
 type faultChecker interface {
-	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view slashing.FaultStateView) (*runtime.ConsensusFault, error)
+	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view consensusfault.FaultStateView) (*runtime.ConsensusFault, error)
 }
 
 // Syscalls contains the concrete implementation of VM system calls, including connection to
@@ -48,18 +48,23 @@ func NewSyscalls(faultChecker faultChecker, verifier ffiwrapper.Verifier) *Sysca
 	}
 }
 
+// VerifySignature Verifies that a signature is valid for an address and plaintext.
 func (s *Syscalls) VerifySignature(ctx context.Context, view vm.SyscallsStateView, signature crypto.Signature, signer address.Address, plaintext []byte) error {
 	return state.NewSignatureValidator(view).ValidateSignature(ctx, plaintext, signer, signature)
 }
 
+// HashBlake2b Hashes input data using blake2b with 256 bit output.
 func (s *Syscalls) HashBlake2b(data []byte) [32]byte {
 	return blake2b.Sum256(data)
 }
 
+//ComputeUnsealedSectorCID Computes an unsealed sector CID (CommD) from its constituent piece CIDs (CommPs) and sizes.
 func (s *Syscalls) ComputeUnsealedSectorCID(_ context.Context, proof abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	return ffiwrapper.GenerateUnsealedCID(proof, pieces)
 }
 
+// VerifySeal returns true if the sealing operation from which its inputs were
+// derived was valid, and false if not.
 func (s *Syscalls) VerifySeal(_ context.Context, info proof.SealVerifyInfo) error {
 	ok, err := s.verifier.VerifySeal(info)
 	if err != nil {
@@ -72,6 +77,7 @@ func (s *Syscalls) VerifySeal(_ context.Context, info proof.SealVerifyInfo) erro
 
 var BatchSealVerifyParallelism = 2 * goruntime.NumCPU()
 
+//BatchVerifySeals batch verify windows post
 func (s *Syscalls) BatchVerifySeals(ctx context.Context, vis map[address.Address][]proof.SealVerifyInfo) (map[address.Address][]bool, error) {
 	out := make(map[address.Address][]bool)
 
@@ -104,6 +110,7 @@ func (s *Syscalls) BatchVerifySeals(ctx context.Context, vis map[address.Address
 	return out, nil
 }
 
+//VerifyPoSt verify windows post
 func (s *Syscalls) VerifyPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) error {
 	ok, err := s.verifier.VerifyWindowPoSt(ctx, info)
 	if err != nil {
@@ -115,6 +122,16 @@ func (s *Syscalls) VerifyPoSt(ctx context.Context, info proof.WindowPoStVerifyIn
 	return nil
 }
 
+// Verifies that two block headers provide proof of a consensus fault:
+// - both headers mined by the same actor
+// - headers are different
+// - first header is of the same or lower epoch as the second
+// - at least one of the headers appears in the current chain at or after epoch `earliest`
+// - the headers provide evidence of a fault (see the spec for the different fault types).
+// The parameters are all serialized block headers. The third "extra" parameter is consulted only for
+// the "parent grinding fault", in which case it must be the sibling of h1 (same parent tipset) and one of the
+// blocks in the parent of h2 (i.e. h2's grandparent).
+// Returns nil and an error if the headers don't prove a fault.
 func (s *Syscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view vm.SyscallsStateView) (*runtime.ConsensusFault, error) {
 	return s.faultChecker.VerifyConsensusFault(ctx, h1, h2, extra, view)
 }

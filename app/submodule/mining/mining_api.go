@@ -32,6 +32,7 @@ type MiningAPI struct { //nolint
 	Ming *MiningModule
 }
 
+//MinerGetBaseInfo get current miner information
 func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk types.TipSetKey) (*apitypes.MiningBaseInfo, error) {
 	chainStore := miningAPI.Ming.ChainModule.ChainReader
 	ts, err := chainStore.GetTipSet(tsk)
@@ -99,7 +100,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	nv := miningAPI.Ming.ChainModule.Fork.GetNtwkVersion(ctx, ts.Height())
 
 	pv := miningAPI.Ming.proofVerifier
-	sectors, err := view.GetSectorsForWinningPoSt(ctx, nv, pv, lbst, maddr, prand)
+	sectors, err := view.GetSectorsForWinningPoSt(ctx, nv, pv, maddr, prand)
 	if err != nil {
 		return nil, xerrors.Errorf("getting winning post proving set: %v", err)
 	}
@@ -108,7 +109,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 		return nil, nil
 	}
 
-	mpow, tpow, _, err := view.GetPowerRaw(ctx, maddr)
+	power, err := view.StateMinerPower(ctx, maddr, ts.Key())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get power: %v", err)
 	}
@@ -134,8 +135,8 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	}
 
 	return &apitypes.MiningBaseInfo{
-		MinerPower:        mpow.QualityAdjPower,
-		NetworkPower:      tpow.QualityAdjPower,
+		MinerPower:        power.MinerPower.QualityAdjPower,
+		NetworkPower:      power.TotalPower.QualityAdjPower,
 		Sectors:           sectors,
 		WorkerKey:         worker,
 		SectorSize:        info.SectorSize,
@@ -145,6 +146,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	}, nil
 }
 
+//MinerCreateBlock create block base on template
 func (miningAPI *MiningAPI) MinerCreateBlock(ctx context.Context, bt *apitypes.BlockTemplate) (*types.BlockMsg, error) {
 	fblk, err := miningAPI.minerCreateBlock(ctx, bt)
 	if err != nil {

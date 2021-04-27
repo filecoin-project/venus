@@ -22,7 +22,6 @@ type ChainEpochClock interface {
 	EpochRangeAtTimestamp(t uint64) (abi.ChainEpoch, abi.ChainEpoch)
 	StartTimeOfEpoch(e abi.ChainEpoch) time.Time
 	WaitForEpoch(ctx context.Context, e abi.ChainEpoch)
-	WaitForEpochPropDelay(ctx context.Context, e abi.ChainEpoch)
 	WaitNextEpoch(ctx context.Context) abi.ChainEpoch
 	Clock
 }
@@ -33,27 +32,22 @@ type chainClock struct {
 	genesisTime time.Time
 	// The fixed time length of the epoch window
 	epochDuration time.Duration
-	// propDelay is the time between the start of the epoch and the start
-	// of mining for the subsequent epoch. This delay provides time for
-	// blocks from the previous epoch to arrive.
-	propDelay time.Duration
 
 	Clock
 }
 
 // NewChainClock returns a ChainEpochClock wrapping a default clock.Clock
-func NewChainClock(genesisTime uint64, blockTime time.Duration, propDelay time.Duration) ChainEpochClock {
-	return NewChainClockFromClock(genesisTime, blockTime, propDelay, NewSystemClock())
+func NewChainClock(genesisTime uint64, blockTime time.Duration) ChainEpochClock {
+	return NewChainClockFromClock(genesisTime, blockTime, NewSystemClock())
 }
 
 // NewChainClockFromClock returns a ChainEpochClock wrapping the provided
 // clock.Clock
-func NewChainClockFromClock(genesisSeconds uint64, blockTime time.Duration, propDelay time.Duration, c Clock) ChainEpochClock {
+func NewChainClockFromClock(genesisSeconds uint64, blockTime time.Duration, c Clock) ChainEpochClock {
 	gt := time.Unix(int64(genesisSeconds), 0)
 	return &chainClock{
 		genesisTime:   gt,
 		epochDuration: blockTime,
-		propDelay:     propDelay,
 		Clock:         c,
 	}
 }
@@ -100,11 +94,6 @@ func (cc *chainClock) WaitNextEpoch(ctx context.Context) abi.ChainEpoch {
 // WaitForEpoch returns when an epoch is due to start, or ctx is done.
 func (cc *chainClock) WaitForEpoch(ctx context.Context, e abi.ChainEpoch) {
 	cc.waitForEpochOffset(ctx, e, 0)
-}
-
-// WaitForEpochPropDelay returns propDelay time after the start of the epoch, or when ctx is done.
-func (cc *chainClock) WaitForEpochPropDelay(ctx context.Context, e abi.ChainEpoch) {
-	cc.waitForEpochOffset(ctx, e, cc.propDelay)
 }
 
 // waitNextEpochOffset returns when time is offset past the start of the epoch, or ctx is done.

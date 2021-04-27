@@ -63,7 +63,7 @@ var mpoolDeleteAddress = &cmds.Command{
 			return err
 		}
 
-		err = env.(*node.Env).MessagePoolAPI.DeleteByAdress(ctx, addr)
+		err = env.(*node.Env).MessagePoolAPI.MpoolDeleteByAdress(ctx, addr)
 		if err != nil {
 			return err
 		}

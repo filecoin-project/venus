@@ -3,7 +3,6 @@ package apiface
 import (
 	"context"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -12,7 +11,7 @@ import (
 
 type IMessagePool interface {
 	// Rule[perm:read]
-	DeleteByAdress(ctx context.Context, addr address.Address) error
+	MpoolDeleteByAdress(ctx context.Context, addr address.Address) error
 	// Rule[perm:read]
 	MpoolPublishByAddr(context.Context, address.Address) error
 	// Rule[perm:read]
@@ -45,8 +44,6 @@ type IMessagePool interface {
 	MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error)
 	// Rule[perm:read]
 	MpoolSub(ctx context.Context) (<-chan messagepool.MpoolUpdate, error)
-	// Rule[perm:read]
-	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	// Rule[perm:read]
 	GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec, tsk types.TipSetKey) (*types.UnsignedMessage, error)
 	// Rule[perm:read]

@@ -11,8 +11,6 @@ package consensus
 // except for errors in the case the stores do not have a mapping.
 import (
 	"context"
-	"time"
-
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/pkg/types"
@@ -29,10 +27,9 @@ type Protocol interface {
 	// prior `stateID`.  It returns an error if the transition is invalid.
 	RunStateTransition(ctx context.Context, ts *types.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipt cid.Cid, err error)
 
-	// BlockTime returns the block time used by the consensus protocol.
-	BlockTime() time.Duration
-
+	// Call compute message result of specify message
 	Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*vm.Ret, error)
 
+	// CallWithGas compute message result of specify message base on messages in mpool
 	CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *types.TipSet) (*vm.Ret, error)
 }

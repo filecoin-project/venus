@@ -226,6 +226,7 @@ func (backend *DSBackend) GetKeyInfo(addr address.Address) (*crypto.KeyInfo, err
 	return key.KeyInfo, nil
 }
 
+//GetKeyInfoPassphrase get private private key from wallet, get encrypt byte from db and decrypto it with password
 func (backend *DSBackend) GetKeyInfoPassphrase(addr address.Address, password []byte) (*crypto.KeyInfo, error) {
 	defer func() {
 		for i := range password {
@@ -273,6 +274,7 @@ func (backend *DSBackend) LockWallet() error {
 	return nil
 }
 
+//UnLockWallet unlock wallet with password, decrypt local key in db and save to protected memory
 func (backend *DSBackend) UnLockWallet(password []byte) error {
 	defer func() {
 		for i := range password {
@@ -302,6 +304,7 @@ func (backend *DSBackend) UnLockWallet(password []byte) error {
 	return nil
 }
 
+//SetPassword set password for wallet , and wallet used this password to encrypt private key
 func (backend *DSBackend) SetPassword(password []byte) error {
 	if backend.password != nil {
 		return ErrRepeatPassword
@@ -325,10 +328,12 @@ func (backend *DSBackend) SetPassword(password []byte) error {
 	return nil
 }
 
+//HasPassword return whether the password has been set in the wallet
 func (backend *DSBackend) HasPassword() bool {
 	return backend.password != nil
 }
 
+//WalletState return wallet state(lock/unlock)
 func (backend *DSBackend) WalletState() int {
 	return backend.state
 }

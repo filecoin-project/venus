@@ -12,6 +12,7 @@ import (
 
 var log = logging.Logger("venusauth")
 
+//AuthMux used with jsonrpc library to verify whether the request is legal
 type AuthMux struct {
 	mux    *http.ServeMux
 	jwtCli IJwtAuthClient
@@ -23,10 +24,13 @@ func NewAuthMux(jwtCli IJwtAuthClient, serveMux *http.ServeMux) *AuthMux {
 	return &AuthMux{mux: serveMux, jwtCli: jwtCli, trustHandle: make(map[string]http.Handler)}
 }
 
+//TrustHandle for requests that can be accessed directly
 func (authMux *AuthMux) TrustHandle(pattern string, handler http.Handler) {
 	authMux.trustHandle[pattern] = handler
 }
 
+//ServeHTTP used to verify that the token is legal, but skip local request to allow request from cmds
+//todo should mixed local verify and venus-auth verify. first check local and than check remote auth
 func (authMux *AuthMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if handle, ok := authMux.trustHandle[r.RequestURI]; ok {
 		handle.ServeHTTP(w, r)
@@ -38,7 +42,7 @@ func (authMux *AuthMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// if other nodes on the same PC, the permission check will passes directly
 	// NOTE: local api support auth already,
 	// localhost is released only so that the current historical version can be used without the token
-	// TODO:When used in general, simply remove the if
+	// TODO: remove this check， every request should be checkout
 	if strings.Split(r.RemoteAddr, ":")[0] == "127.0.0.1" {
 		ctx = core.WithPerm(ctx, core.PermAdmin)
 		ctx = ipfsHttp.WithPerm(ctx, core.PermArr)

@@ -73,6 +73,7 @@ type StateProcessor interface {
 	RunStateTransition(ctx context.Context, ts *types.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipt cid.Cid, err error)
 }
 
+//BlockValidator used to validate full block
 type BlockValidator interface {
 	ValidateFullBlock(ctx context.Context, blk *types.BlockHeader) error
 }
@@ -92,6 +93,7 @@ type ChainReaderWriter interface {
 	GetGenesisBlock(context.Context) (*types.BlockHeader, error)
 }
 
+//messageStore used to save and load message from db
 type messageStore interface {
 	LoadTipSetMessage(ctx context.Context, ts *types.TipSet) ([]types.BlockMessagesInfo, error)
 	LoadMetaMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
@@ -108,6 +110,9 @@ type ChainSelector interface {
 	Weight(ctx context.Context, ts *types.TipSet) (big.Int, error)
 }
 
+//Syncer used to synchronize the block from the specified target, including acquiring the relevant block data and message data,
+//verifying the block machine messages one by one and calculating them, checking the weight of the target after the calculation,
+//and check whether it can become the latest tipset
 type Syncer struct {
 	exchangeClient exchange.Client
 	// BadTipSetCache is used to filter out collections of invalid blocks.
@@ -163,9 +168,7 @@ func NewSyncer(fv StateProcessor,
 // in order to validate the tipset.  In the case the input tipset is valid,
 // syncOne calls into consensus to check its weight, and then updates the head
 // of the bsstore if this tipset is the heaviest.
-//
-// Precondition: the caller of syncOne must hold the syncer's lock (syncer.mu) to
-// ensure head is not modified by another goroutine during run.
+//todo mark bad-block
 func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) error {
 	priorHeadKey := syncer.chainStore.GetHead()
 	// if tipset is already priorHeadKey, we've been here before. do nothing.
@@ -317,7 +320,7 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 	errProcessChan <- nil //init
 	var wg sync.WaitGroup
 	//todo  write a pipline segment processor function
-	if err = RangeProcess(tipsets, func(segTipset []*types.TipSet) error {
+	if err = rangeProcess(tipsets, func(segTipset []*types.TipSet) error {
 		// fetch messages
 		startTip := segTipset[0].Height()
 		emdTipset := segTipset[len(segTipset)-1].Height()
@@ -366,6 +369,11 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 	}
 }
 
+//fetchChainBlocks get the block data, from targettip to knowntip.
+// if local db has the block used that block
+// if local db not exist, get block from network(libp2p),
+// if there is a fork, get the common root tipset of knowntip and targettip, and return the block data from root tipset to targettip
+// local(···->A->B) + incoming(C->D->E)  => ···->A->B->C->D->E
 func (syncer *Syncer) fetchChainBlocks(ctx context.Context, knownTip *types.TipSet, targetTip *types.TipSet) ([]*types.TipSet, error) {
 	chainTipsets := []*types.TipSet{targetTip}
 	var flushDB = func(saveTips []*types.TipSet) error {
@@ -467,6 +475,17 @@ loop:
 	return chainTipsets, nil
 }
 
+// syncFork tries to obtain the chain fragment that links a fork into a common
+// ancestor in our view of the chain.
+//
+// If the fork is too long (build.ForkLengthThreshold), or would cause us to diverge from the checkpoint (ErrForkCheckpoint),
+// we add the entire subchain to the denylist. Else, we find the common ancestor, and add the missing chain
+// fragment until the fork point to the returned []TipSet.
+//
+//		D->E-F(targetTip）
+//	A						 => D->E>F
+//		B-C(knownTip)
+//
 func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, known *types.TipSet) ([]*types.TipSet, error) {
 	// TODO: Does this mean we always ask for ForkLengthThreshold blocks from the network, even if we just need, like, 2?
 	// Would it not be better to ask in smaller chunks, given that an ~ForkLengthThreshold is very rare?
@@ -510,6 +529,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 	return nil, ErrForkTooLong
 }
 
+//fetchSegMessage get message in tipset
 func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*types.TipSet) ([]*types.FullTipSet, error) {
 	//get message from local bsstore
 	if len(segTipset) == 0 {
@@ -574,6 +594,7 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*types.Ti
 	return fullTipSets, nil
 }
 
+//getFullBlock get full block from message store
 func (syncer *Syncer) getFullBlock(ctx context.Context, tipset *types.TipSet) (*types.FullTipSet, error) {
 	fullBlocks := make([]*types.FullBlock, tipset.Len())
 	for index, blk := range tipset.Blocks() {
@@ -590,6 +611,7 @@ func (syncer *Syncer) getFullBlock(ctx context.Context, tipset *types.TipSet) (*
 	return types.NewFullTipSet(fullBlocks), nil
 }
 
+//processTipSetSegment process a batch of tipset in turn，
 func (syncer *Syncer) processTipSetSegment(ctx context.Context, target *syncTypes.Target, parent *types.TipSet, segTipset []*types.TipSet) (*types.TipSet, error) {
 	for i, ts := range segTipset {
 		err := syncer.syncOne(ctx, parent, ts)
@@ -608,10 +630,13 @@ func (syncer *Syncer) processTipSetSegment(ctx context.Context, target *syncType
 	return parent, nil
 }
 
+//Head get latest head from chain store
 func (syncer *Syncer) Head() *types.TipSet {
 	return syncer.chainStore.GetHead()
 }
 
+//SetHead try to sethead after complete tipset syncing,
+// if the current target weight is heavier than chain store. change a new head
 func (syncer *Syncer) SetHead(ctx context.Context, ts *types.TipSet) error {
 	syncer.headLock.Lock()
 	defer syncer.headLock.Unlock()
@@ -682,7 +707,7 @@ func zipTipSetAndMessages(bs blockstore.Blockstore, ts *types.TipSet, allbmsgs [
 
 const maxProcessLen = 32
 
-func RangeProcess(ts []*types.TipSet, cb func(ts []*types.TipSet) error) (err error) {
+func rangeProcess(ts []*types.TipSet, cb func(ts []*types.TipSet) error) (err error) {
 	for {
 		if len(ts) == 0 {
 			break

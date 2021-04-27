@@ -12,9 +12,6 @@ import (
 )
 
 // BlockServiceSubmodule enhances the `Node` with networked key/value fetching capabilities.
-//
-// TODO: split chain data from piece data (issue: https://github.com/filecoin-project/venus/issues/3481)
-// Note: at present:
 // - `BlockService` is shared by chain/graphsync and piece/bitswap data
 type BlockServiceSubmodule struct { //nolint
 	// blockservice is a higher level interface for fetching data

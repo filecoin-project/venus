@@ -22,6 +22,7 @@ var versionMap = []versionInfo{
 	},
 }
 
+//TryToMigrate used to migrate data(db,config,file,etc) in local repo
 func TryToMigrate(repoPath string) error {
 	localVersion, err := repo.ReadVersion(repoPath)
 	if err != nil {

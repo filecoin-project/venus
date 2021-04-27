@@ -38,6 +38,7 @@ func (sa *syncerAPI) Concurrent(ctx context.Context) int64 {
 	return sa.syncer.ChainSyncManager.BlockProposer().Concurrent()
 }
 
+// ChainTipSetWeight computes weight for the specified tipset.
 func (sa *syncerAPI) ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey) (big.Int, error) {
 	ts, err := sa.syncer.ChainModule.ChainReader.GetTipSet(tsk)
 	if err != nil {
@@ -51,6 +52,8 @@ func (sa *syncerAPI) ChainSyncHandleNewTipSet(ctx context.Context, ci *types.Cha
 	return sa.syncer.SyncProvider.HandleNewTipSet(ci)
 }
 
+// SyncSubmitBlock can be used to submit a newly created block to the.
+// network through this node
 func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
 	//todo many dot. how to get directly
 	chainModule := sa.syncer.ChainModule
@@ -111,6 +114,16 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 	return nil
 }
 
+// MethodGroup: State
+// The State methods are used to query, inspect, and interact with chain state.
+// Most methods take a TipSetKey as a parameter. The state looked up is the parent state of the tipset.
+// A nil TipSetKey can be provided as a param, this will cause the heaviest tipset in the chain to be used.
+
+// StateCall runs the given message and returns its result without any persisted changes.
+//
+// StateCall applies the message to the tipset's parent state. The
+// message is not applied on-top-of the messages in the passed-in
+// tipset.
 func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMessage, tsk types.TipSetKey) (*apitypes.InvocResult, error) {
 	start := time.Now()
 	ts, err := sa.syncer.ChainModule.ChainReader.GetTipSet(tsk)

@@ -33,7 +33,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/basicfs"
-	"github.com/filecoin-project/venus/pkg/util/stores"
 	"github.com/filecoin-project/venus/pkg/util/storiface"
 )
 
@@ -135,8 +134,8 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 	}
 
 	{
-		b, err := json.MarshalIndent(&stores.LocalStorageMeta{
-			ID:       stores.ID(uuid.New().String()),
+		b, err := json.MarshalIndent(&LocalStorageMeta{
+			ID:       ID(uuid.New().String()),
 			Weight:   0, // read-only
 			CanSeal:  false,
 			CanStore: false,

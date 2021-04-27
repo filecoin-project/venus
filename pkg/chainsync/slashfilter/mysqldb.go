@@ -20,6 +20,7 @@ type MysqlSlashFilter struct {
 	_db *gorm.DB
 }
 
+//MinedBlock record mined block
 type MinedBlock struct {
 	ParentEpoch int64  `gorm:"column:parent_epoch;type:bigint(20);NOT NULL"`
 	ParentKey   string `gorm:"column:parent_key;type:varchar(256);NOT NULL"`
@@ -29,6 +30,7 @@ type MinedBlock struct {
 	Cid   string `gorm:"column:cid;type:varchar(256);NOT NULL"`
 }
 
+//NewMysqlSlashFilter create a new slash filter base on  mysql database
 func NewMysqlSlashFilter(cfg config.MySQLConfig) (ISlashFilter, error) {
 	db, err := gorm.Open(mysql.Open(cfg.ConnectionString))
 	if err != nil {
@@ -61,6 +63,7 @@ func NewMysqlSlashFilter(cfg config.MySQLConfig) (ISlashFilter, error) {
 	}, nil
 }
 
+//checkSameHeightFault check whether the miner mined multi block on the same height
 func (f *MysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) error {
 	var bk MinedBlock
 	err := f._db.Model(&MinedBlock{}).Take(&bk, "miner=? and epoch=?", bh.Miner.String(), bh.Height).Error
@@ -81,6 +84,7 @@ func (f *MysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) error {
 
 }
 
+//checkSameParentFault check whether the miner mined block on the same parent
 func (f *MysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) error {
 	var bk MinedBlock
 	err := f._db.Model(&MinedBlock{}).Take(&bk, "miner=? and parent_key=?", bh.Miner.String(), bh.Parents.String()).Error
@@ -101,6 +105,7 @@ func (f *MysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) error {
 
 }
 
+//MinedBlock check whether the block mined is slash
 func (f *MysqlSlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
 	if err := f.checkSameHeightFault(bh); err != nil {
 		return err

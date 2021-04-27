@@ -8,8 +8,6 @@ import (
 )
 
 // BlockstoreSubmodule enhances the `Node` with local key/value storing capabilities.
-//
-// TODO: split chain data from piece data (issue: https://github.com/filecoin-project/venus/issues/3481)
 // Note: at present:
 // - `blockstore` is shared by chain/graphsync and piece/bitswap data
 // - `cborStore` is used for chain state and shared with piece data exchange for deals at the moment.

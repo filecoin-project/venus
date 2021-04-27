@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
+// CheckMsg convenience function for checking and matching messages
 func (me *messageEvents) CheckMsg(ctx context.Context, smsg types.ChainMsg, hnd MsgHandler) CheckFunc {
 	msg := smsg.VMMessage()
 
@@ -32,6 +33,7 @@ func (me *messageEvents) CheckMsg(ctx context.Context, smsg types.ChainMsg, hnd 
 	}
 }
 
+//MatchMsg check that a specific message is in a block message
 func (me *messageEvents) MatchMsg(inmsg *types.UnsignedMessage) MsgMatchFunc {
 	return func(msg *types.UnsignedMessage) (matched bool, err error) {
 		if msg.From == inmsg.From && msg.Nonce == inmsg.Nonce && !inmsg.Equals(msg) {

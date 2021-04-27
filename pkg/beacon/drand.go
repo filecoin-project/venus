@@ -48,6 +48,7 @@ type DrandHTTPClient interface {
 	SetUserAgent(string)
 }
 
+//NewDrandBeacon create new beacon client from config, genesis block time and block delay
 func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*DrandBeacon, error) {
 	drandChain, err := dchain.InfoFromJSON(bytes.NewReader([]byte(config.ChainInfoJSON)))
 	if err != nil {
@@ -100,6 +101,7 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 	return db, nil
 }
 
+//Entry get a beacon value of specify block height,
 func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan Response {
 	out := make(chan Response, 1)
 	if round != 0 {
@@ -164,6 +166,7 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 	return err
 }
 
+// MaxBeaconRoundForEpoch get the turn of beacon chain corresponding to chain height
 func (db *DrandBeacon) MaxBeaconRoundForEpoch(filEpoch abi.ChainEpoch) uint64 {
 	// TODO: sometimes the genesis time for filecoin is zero and this goes negative
 	latestTS := ((uint64(filEpoch) * db.filRoundTime) + db.filGenTime) - db.filRoundTime

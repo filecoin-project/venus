@@ -34,6 +34,7 @@ type IJwtAuthClient interface {
 	Verify(ctx context.Context, spanID, serviceName, preHost, host, token string) ([]auth.Permission, error)
 }
 
+//JwtAuth auth through local token
 type JwtAuth struct {
 	apiSecret     *APIAlg
 	jwtSecetName  string
@@ -87,6 +88,7 @@ func (jwtAuth *JwtAuth) loadAPISecret() (*APIAlg, error) {
 	return (*APIAlg)(jwt3.NewHS256(sk)), nil
 }
 
+//Verify verify token from request
 func (jwtAuth *JwtAuth) Verify(ctx context.Context, spanID, serviceName, preHost, host, token string) ([]auth.Permission, error) {
 	var payload JwtPayload
 	if _, err := jwt3.Verify([]byte(token), (*jwt3.HMACSHA)(jwtAuth.apiSecret), &payload); err != nil {
@@ -99,10 +101,13 @@ type JwtAuthAPI struct { //nolint
 	JwtAuth *JwtAuth
 }
 
+//API jwt for token api
+//todo remove auth new api, because not secure for remote mod
 func (jwtAuth *JwtAuth) API() apiface.IJwtAuthAPI {
 	return &JwtAuthAPI{JwtAuth: jwtAuth}
 }
 
+//Verify check the token is valid or not
 func (a *JwtAuthAPI) Verify(ctx context.Context, spanID, serviceName, preHost, host, token string) ([]auth.Permission, error) {
 	var payload JwtPayload
 	if _, err := jwt3.Verify([]byte(token), (*jwt3.HMACSHA)(a.JwtAuth.apiSecret), &payload); err != nil {
@@ -112,6 +117,7 @@ func (a *JwtAuthAPI) Verify(ctx context.Context, spanID, serviceName, preHost, h
 	return payload.Allow, nil
 }
 
+//AuthNew create new token with specify permission for access venus
 func (a *JwtAuthAPI) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error) {
 	p := JwtPayload{
 		Allow: perms, // TODO: consider checking validity

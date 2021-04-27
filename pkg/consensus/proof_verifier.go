@@ -23,8 +23,10 @@ type ProofVerifier interface {
 	GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error)
 }
 
+// SignFunc common interface for sign
 type SignFunc func(context.Context, address.Address, []byte) (*crypto.Signature, error)
 
+// VerifyVRF checkout block vrf value
 func VerifyVRF(ctx context.Context, worker address.Address, vrfBase, vrfproof []byte) error {
 	_, span := trace.StartSpan(ctx, "VerifyVRF")
 	defer span.End()
@@ -41,6 +43,7 @@ func VerifyVRF(ctx context.Context, worker address.Address, vrfBase, vrfproof []
 	return nil
 }
 
+//VerifyElectionPoStVRF verify election post value in block
 func VerifyElectionPoStVRF(ctx context.Context, worker address.Address, rand []byte, evrf []byte) error {
 	if constants.InsecurePoStValidation {
 		return nil

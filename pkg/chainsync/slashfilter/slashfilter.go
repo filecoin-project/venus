@@ -13,15 +13,18 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
+//ISlashFilter used to detect whether the miner mined a invalidated block , support local db and mysql storage
 type ISlashFilter interface {
 	MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error
 }
 
+//LocalSlashFilter use badger db to save mined block for detect slash consensus block
 type LocalSlashFilter struct {
 	byEpoch   ds.Datastore // double-fork mining faults, parent-grinding fault
 	byParents ds.Datastore // time-offset mining faults
 }
 
+//NewLocalSlashFilter create a slash filter base on badger db
 func NewLocalSlashFilter(dstore ds.Batching) ISlashFilter {
 	return &LocalSlashFilter{
 		byEpoch:   namespace.Wrap(dstore, ds.NewKey("/slashfilter/epoch")),
@@ -29,6 +32,7 @@ func NewLocalSlashFilter(dstore ds.Batching) ISlashFilter {
 	}
 }
 
+//MinedBlock check whether the block mined is slash
 func (f *LocalSlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
 	epochKey := ds.NewKey(fmt.Sprintf("/%s/%d", bh.Miner, bh.Height))
 	{

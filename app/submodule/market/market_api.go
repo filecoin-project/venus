@@ -21,6 +21,7 @@ func newMarketAPI(c apiface.IChain, stmgr statemanger.IStateManager) apiface.IMa
 	return &marketAPI{c, stmgr}
 }
 
+// StateMarketParticipants returns the Escrow and Locked balances of every participant in the Storage Market
 func (m *marketAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]apitypes.MarketBalance, error) {
 	out := map[string]apitypes.MarketBalance{}
 	ts, err := m.chain.ChainGetTipSet(ctx, tsk)
