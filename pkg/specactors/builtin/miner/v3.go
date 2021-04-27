@@ -118,33 +118,6 @@ func (s *state3) NumLiveSectors() (uint64, error) {
 	return total, nil
 }
 
-// todo review
-func (s *state3) FaultsSectors() ([]uint64, error) {
-	out := bitfield.New()
-
-	dls, err := s.State.LoadDeadlines(s.store)
-	if err != nil {
-		return []uint64{}, err
-	}
-
-	if err := dls.ForEach(s.store, func(dlIdx uint64, dl *miner3.Deadline) error {
-		partitions, err := dl.PartitionsArray(s.store)
-		if err != nil {
-			return err
-		}
-
-		var partition miner3.Partition
-		return partitions.ForEach(&partition, func(i int64) error {
-			out, err = bitfield.MergeBitFields(out, partition.Faults)
-			return err
-		})
-	}); err != nil {
-		return []uint64{}, err
-	}
-
-	return out.All(bitfield.MaxEncodedSize)
-}
-
 // GetSectorExpiration returns the effective expiration of the given sector.
 //
 // If the sector does not expire early, the Early expiration field is 0.
@@ -352,8 +325,8 @@ func (s *state3) DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error) {
 	return s.State.DeadlineInfo(epoch), nil
 }
 
-func (s *state3) SectorArray() (adt.Array, error) {
-	return adt3.AsArray(s.store, s.Sectors, miner3.SectorsAmtBitwidth)
+func (s *state3) DeadlineCronActive() (bool, error) {
+	return true, nil // always active in this version
 }
 
 func (s *state3) sectors() (adt.Array, error) {

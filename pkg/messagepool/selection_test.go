@@ -1223,9 +1223,9 @@ func TestGasReward(t *testing.T) {
 		GasReward int64
 	}{
 		{Premium: 100, FeeCap: 200, BaseFee: 100, GasReward: 100},
-		{Premium: 100, FeeCap: 200, BaseFee: 210, GasReward: -10},
+		{Premium: 100, FeeCap: 200, BaseFee: 210, GasReward: -10 * 3},
 		{Premium: 200, FeeCap: 250, BaseFee: 210, GasReward: 40},
-		{Premium: 200, FeeCap: 250, BaseFee: 2000, GasReward: -1750},
+		{Premium: 200, FeeCap: 250, BaseFee: 2000, GasReward: -1750 * 3},
 	}
 
 	mp := new(MessagePool)
