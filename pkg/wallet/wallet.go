@@ -202,6 +202,7 @@ func (w *Wallet) Export(addr address.Address, password string) (*crypto.KeyInfo,
 	return ki, nil
 }
 
+//WalletSign used to sign message with private key
 func (w *Wallet) WalletSign(addr address.Address, msg []byte, meta MsgMeta) (*crypto.Signature, error) {
 	ki, err := w.Find(addr)
 	if err != nil {
@@ -214,6 +215,8 @@ func (w *Wallet) WalletSign(addr address.Address, msg []byte, meta MsgMeta) (*cr
 	return ki.SignBytes(msg, addr)
 }
 
+//DSBacked return the first wallet backend
+//todo support multi wallet backend
 func (w *Wallet) DSBacked() (*DSBackend, error) {
 	backends := w.Backends(DSBackendType)
 	if len(backends) == 0 {
@@ -223,6 +226,7 @@ func (w *Wallet) DSBacked() (*DSBackend, error) {
 	return (backends[0]).(*DSBackend), nil
 }
 
+//LockWallet lock lock wallet
 func (w *Wallet) LockWallet() error {
 	backend, err := w.DSBacked()
 	if err != nil {
@@ -232,6 +236,7 @@ func (w *Wallet) LockWallet() error {
 	return backend.LockWallet()
 }
 
+//UnLockWallet unlock local wallet with password
 func (w *Wallet) UnLockWallet(password string) error {
 	backend, err := w.DSBacked()
 	if err != nil {
@@ -240,6 +245,7 @@ func (w *Wallet) UnLockWallet(password string) error {
 	return backend.UnLockWallet(password)
 }
 
+//SetPassword
 func (w *Wallet) SetPassword(password string) error {
 	backend, err := w.DSBacked()
 	if err != nil {
@@ -248,6 +254,7 @@ func (w *Wallet) SetPassword(password string) error {
 	return backend.SetPassword(password)
 }
 
+//HasPassword return whether the password has been set in the wallet
 func (w *Wallet) HasPassword() bool {
 	backend, err := w.DSBacked()
 	if err != nil {
@@ -257,6 +264,7 @@ func (w *Wallet) HasPassword() bool {
 	return backend.HasPassword()
 }
 
+//WalletState return wallet state(lock/unlock)
 func (w *Wallet) WalletState() int {
 	backend, err := w.DSBacked()
 	if err != nil {

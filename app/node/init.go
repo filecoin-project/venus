@@ -3,7 +3,7 @@ package node
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/pkg/fskeystore"
+	"github.com/filecoin-project/venus/pkg/repo/fskeystore"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	acrypto "github.com/libp2p/go-libp2p-core/crypto"

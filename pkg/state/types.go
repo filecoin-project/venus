@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 )
 
+//todo move types to package types
 type ChainSectorInfo struct {
 	Info miner.SectorOnChainInfo
 	ID   abi.SectorNumber

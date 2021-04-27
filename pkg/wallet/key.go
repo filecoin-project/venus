@@ -15,6 +15,7 @@ const (
 	version = 3
 )
 
+//Key private key info
 type Key struct {
 	ID uuid.UUID // Version 4 "random" for unique id not derived from key data
 	// to simplify lookups we also store the address

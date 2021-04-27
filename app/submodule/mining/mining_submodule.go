@@ -15,6 +15,7 @@ type miningConfig interface {
 	Repo() repo.Repo
 }
 
+// MiningModule enhances the `Node` with miner capabilities.
 type MiningModule struct { //nolint
 	Config        miningConfig
 	ChainModule   *chain2.ChainSubmodule
@@ -25,10 +26,12 @@ type MiningModule struct { //nolint
 	proofVerifier ffiwrapper.Verifier
 }
 
+//API create new miningAPi implement
 func (miningModule *MiningModule) API() apiface.IMining {
 	return &MiningAPI{Ming: miningModule}
 }
 
+//NewMiningModule create new mining module
 func NewMiningModule(
 	conf miningConfig,
 	chainModule *chain2.ChainSubmodule,

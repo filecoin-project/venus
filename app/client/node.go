@@ -2,37 +2,16 @@ package client
 
 import (
 	"context"
-	"io/ioutil"
-	"net/http"
-	"path"
-
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/venus/app/paths"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
+	"net/http"
 )
 
-func getVenusClientInfo() (string, http.Header, error) {
-	repoPath, err := paths.GetRepoPath("")
-	if err != nil {
-		return "", nil, err
-	}
-
-	tokePath := path.Join(repoPath, "token")
-	rpcPath := path.Join(repoPath, "api")
-
-	tokenBytes, err := ioutil.ReadFile(tokePath)
-	if err != nil {
-		return "", nil, err
-	}
-	rpcBytes, err := ioutil.ReadFile(rpcPath)
-	if err != nil {
-		return "", nil, err
-	}
-
+func getVenusClientInfo(api, token string) (string, http.Header, error) {
 	headers := http.Header{}
-	headers.Add("Authorization", "Bearer "+string(tokenBytes))
-	apima, err := multiaddr.NewMultiaddr(string(rpcBytes))
+	headers.Add("Authorization", "Bearer "+token)
+	apima, err := multiaddr.NewMultiaddr(api)
 	if err != nil {
 		return "", nil, err
 	}
@@ -46,8 +25,11 @@ func getVenusClientInfo() (string, http.Header, error) {
 	return addr, headers, nil
 }
 
-func NewFullNode(ctx context.Context) (FullNodeStruct, jsonrpc.ClientCloser, error) {
-	addr, headers, err := getVenusClientInfo()
+//NewFullNode It is used to construct a full node access client.
+//The API can be obtained from ~ /. Venus / API file, read from ~ /. Venus / token in local JWT mode,
+//and obtained from Venus auth service in central authorization mode.
+func NewFullNode(ctx context.Context, url, token string) (FullNodeStruct, jsonrpc.ClientCloser, error) {
+	addr, headers, err := getVenusClientInfo(url, token)
 	if err != nil {
 		return FullNodeStruct{}, nil, err
 	}
@@ -55,19 +37,6 @@ func NewFullNode(ctx context.Context) (FullNodeStruct, jsonrpc.ClientCloser, err
 	closer, err := jsonrpc.NewClient(ctx, addr, "Filecoin", &node, headers)
 	if err != nil {
 		return FullNodeStruct{}, nil, err
-	}
-	return node, closer, nil
-}
-
-func NewMiningAPINode(ctx context.Context) (IMiningStruct, jsonrpc.ClientCloser, error) {
-	addr, headers, err := getVenusClientInfo()
-	if err != nil {
-		return IMiningStruct{}, nil, err
-	}
-	node := IMiningStruct{}
-	closer, err := jsonrpc.NewClient(ctx, addr, "Filecoin", &node, headers)
-	if err != nil {
-		return IMiningStruct{}, nil, err
 	}
 	return node, closer, nil
 }

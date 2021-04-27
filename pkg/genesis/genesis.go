@@ -54,6 +54,7 @@ type VM interface {
 	Flush() (tree.Root, error)
 }
 
+//MakeGenesis return a func to construct a genesis block
 func MakeGenesis(ctx context.Context, rep repo.Repo, outFile, genesisTemplate string, para *config.ForkUpgradeConfig) InitFunc {
 	return func(_ cbor.IpldStore, bs blockstore.Blockstore) (*types.BlockHeader, error) {
 		glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")

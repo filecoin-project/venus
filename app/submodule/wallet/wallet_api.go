@@ -40,6 +40,7 @@ func (walletAPI *WalletAPI) WalletBalance(ctx context.Context, addr address.Addr
 	return act.Balance, nil
 }
 
+// WalletHas indicates whether the given address is in the wallet.
 func (walletAPI *WalletAPI) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
 	return walletAPI.adapter.HasAddress(addr), nil
 }
@@ -105,6 +106,7 @@ func (walletAPI *WalletAPI) WalletExport(addr address.Address, password string) 
 	return walletAPI.adapter.Export(addr, password)
 }
 
+// WalletSign signs the given bytes using the given address.
 func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error) {
 	head := walletAPI.walletModule.Chain.ChainReader.GetHead()
 	view, err := walletAPI.walletModule.Chain.ChainReader.StateView(head)
@@ -118,6 +120,7 @@ func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, m
 	return walletAPI.adapter.WalletSign(keyAddr, msg, meta)
 }
 
+// WalletSignMessage signs the given message using the given address.
 func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.UnsignedMessage) (*types.SignedMessage, error) {
 	mb, err := msg.ToStorageBlock()
 	if err != nil {
@@ -135,22 +138,27 @@ func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Add
 	}, nil
 }
 
+//LockWallet lock wallet
 func (walletAPI *WalletAPI) LockWallet(ctx context.Context) error {
 	return walletAPI.walletModule.Wallet.LockWallet()
 }
 
+//UnLockWallet unlock wallet
 func (walletAPI *WalletAPI) UnLockWallet(ctx context.Context, password string) error {
 	return walletAPI.walletModule.Wallet.UnLockWallet(password)
 }
 
+//SetPassword set wallet password
 func (walletAPI *WalletAPI) SetPassword(Context context.Context, password string) error {
 	return walletAPI.walletModule.Wallet.SetPassword(password)
 }
 
+//HasPassword return whether the wallet has password
 func (walletAPI *WalletAPI) HasPassword(Context context.Context) bool {
 	return walletAPI.adapter.HasPassword()
 }
 
+//WalletState return wallet state
 func (walletAPI *WalletAPI) WalletState(Context context.Context) int {
 	return walletAPI.walletModule.Wallet.WalletState()
 }

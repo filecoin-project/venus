@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/filecoin-project/venus/pkg/fskeystore"
+	"github.com/filecoin-project/venus/pkg/repo/fskeystore"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 
 	"github.com/ipfs/go-datastore"

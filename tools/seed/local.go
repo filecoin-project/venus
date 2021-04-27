@@ -1,4 +1,4 @@
-package stores
+package seed
 
 // LocalStorageMeta [path]/sectorstore.json
 type LocalStorageMeta struct {

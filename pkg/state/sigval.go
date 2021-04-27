@@ -21,6 +21,7 @@ func NewSignatureValidator(signerView AccountView) *SignatureValidator {
 	return &SignatureValidator{signerView: signerView}
 }
 
+//ValidateSignature check the signature is valid or not
 func (v *SignatureValidator) ValidateSignature(ctx context.Context, data []byte, signer address.Address, sig crypto.Signature) error {
 	signerAddress, err := v.signerView.ResolveToKeyAddr(ctx, signer)
 	if err != nil {
@@ -29,11 +30,13 @@ func (v *SignatureValidator) ValidateSignature(ctx context.Context, data []byte,
 	return crypto.ValidateSignature(data, signerAddress, sig)
 }
 
+//ValidateSignature check the signature of message is valid or not. first get the cid of message and than checkout signature of messager cid and address
 func (v *SignatureValidator) ValidateMessageSignature(ctx context.Context, msg *types.SignedMessage) error {
 	mCid := msg.Message.Cid()
 	return v.ValidateSignature(ctx, mCid.Bytes(), msg.Message.From, msg.Signature)
 }
 
+//ValidateBLSMessageAggregate validate bls aggregate message
 func (v *SignatureValidator) ValidateBLSMessageAggregate(ctx context.Context, msgs []*types.UnsignedMessage, sig *crypto.Signature) error {
 	if sig == nil {
 		if len(msgs) > 0 {

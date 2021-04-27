@@ -73,7 +73,6 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, nvk network.Version,
 		ec = 1
 	}
 
-	// Dragons: simplify this to arginterface
 	parserByte := func(raw []byte) *ExcuteError {
 		obj, err := m.ArgInterface(raw)
 		if err != nil {
@@ -107,11 +106,6 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, nvk network.Version,
 	// invoke the method
 	out := m.method.Call(args)
 
-	// Note: we only support single objects being returned
-	/*if len(out) > 1 {  todo nocheck and lotus nocheck too
-		return nil, fmt.Errorf("actor method returned more than one object. method: %d, code: %s", methodNum, d.code)
-	}*/
-
 	// method returns unit
 	// Note: we need to check for `IsNill()` here because Go doesnt work if you do `== nil` on the interface
 	if len(out) == 0 || (out[0].Kind() != reflect.Struct && out[0].IsNil()) {
@@ -121,7 +115,7 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, nvk network.Version,
 	switch ret := out[0].Interface().(type) {
 	case []byte:
 		return ret, nil
-	case *abi.EmptyValue:
+	case *abi.EmptyValue: //todo remove this code abi.EmptyValue is cbor.Marshaler
 		return []byte{}, nil
 	case cbor.Marshaler:
 		buf := new(bytes.Buffer)
@@ -158,6 +152,7 @@ func (d *actorDispatcher) Signature(methodNum abi.MethodNum) (MethodSignature, *
 	return d.signature(methodNum)
 }
 
+//ExcuteError error in vm excute
 type ExcuteError struct {
 	code exitcode.ExitCode
 	msg  string

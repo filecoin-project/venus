@@ -1,8 +1,6 @@
 package types
 
 import (
-	"bytes"
-	"fmt"
 	"math/big"
 	"strings"
 
@@ -22,17 +20,6 @@ func NewAttoFIL(x *big.Int) specsbig.Int {
 func NewAttoFILFromFIL(x uint64) specsbig.Int {
 	xAsBigInt := specsbig.NewIntUnsigned(x)
 	return specsbig.Mul(xAsBigInt, tenToTheEighteen)
-}
-
-// NewAttoFILFromBytes allocates and returns a new AttoFIL set
-// to the value of buf as the bytes of a big-endian unsigned integer.
-func NewAttoFILFromBytes(buf []byte) (specsbig.Int, error) {
-	var af specsbig.Int
-	err := af.UnmarshalCBOR(bytes.NewReader(buf))
-	if err != nil {
-		return af, err
-	}
-	return af, nil
 }
 
 // NewAttoFILFromFILString allocates a new AttoFIL set to the value of s filecoin,
@@ -63,18 +50,4 @@ func NewAttoFILFromString(s string, base int) (specsbig.Int, bool) {
 	out := specsbig.NewInt(0)
 	_, isErr := out.Int.SetString(s, base)
 	return out, isErr
-}
-
-// BigToUint64 converts a big Int to a uint64.  It will error if
-// the Int is too big to fit into 64 bits or is negative
-func BigToUint64(bi specsbig.Int) (uint64, error) {
-	if !bi.Int.IsUint64() {
-		return 0, fmt.Errorf("int: %s could not be represented as uint64", bi.String())
-	}
-	return bi.Uint64(), nil
-}
-
-// Uint64ToBig converts a uint64 to a big Int.  Precodition: don't overflow int64.
-func Uint64ToBig(u uint64) specsbig.Int {
-	return specsbig.NewInt(int64(u))
 }

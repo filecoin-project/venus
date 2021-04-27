@@ -26,12 +26,14 @@ type chainInfoAPI struct { //nolint
 	chain *ChainSubmodule
 }
 
+//NewChainInfoAPI new chain info api
 func NewChainInfoAPI(chain *ChainSubmodule) apiface.IChainInfo {
 	return &chainInfoAPI{chain: chain}
 }
 
 //todo think which module should this api belong
 // BlockTime returns the block time used by the consensus protocol.
+// BlockTime returns the block time
 func (cia *chainInfoAPI) BlockTime(ctx context.Context) time.Duration {
 	return cia.chain.config.BlockTime()
 }
@@ -106,6 +108,7 @@ func (cia *chainInfoAPI) ChainGetTipSetByHeight(ctx context.Context, height abi.
 	return cia.chain.ChainReader.GetTipSetByHeight(ctx, ts, height, true)
 }
 
+// GetParentStateRootActor get the ts ParentStateRoot actor
 func (cia *chainInfoAPI) GetActor(ctx context.Context, addr address.Address) (*types.Actor, error) {
 	head, err := cia.ChainHead(ctx)
 	if err != nil {
@@ -135,6 +138,8 @@ func (cia *chainInfoAPI) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.
 	return cia.chain.ChainReader.GetBlock(ctx, id)
 }
 
+// ChainGetMessage reads a message referenced by the specified CID from the
+// chain blockstore.
 func (cia *chainInfoAPI) ChainGetMessage(ctx context.Context, msgID cid.Cid) (*types.UnsignedMessage, error) {
 	msg, err := cia.chain.MessageStore.LoadMessage(msgID)
 	if err != nil {
@@ -177,6 +182,7 @@ func (cia *chainInfoAPI) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]ty
 	return cia.chain.MessageStore.LoadReceipts(ctx, id)
 }
 
+// ChainGetFullBlock gets full block(include message) by cid
 func (cia *chainInfoAPI) GetFullBlock(ctx context.Context, id cid.Cid) (*types.FullBlock, error) {
 	var out types.FullBlock
 	var err error
@@ -193,6 +199,8 @@ func (cia *chainInfoAPI) GetFullBlock(ctx context.Context, id cid.Cid) (*types.F
 	return &out, nil
 }
 
+// ChainGetParentMessages returns messages stored in parent tipset of the
+// specified block.
 func (cia *chainInfoAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]apitypes.Message, error) {
 	b, err := cia.ChainGetBlock(ctx, bcid)
 	if err != nil {
@@ -226,6 +234,8 @@ func (cia *chainInfoAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Ci
 	return out, nil
 }
 
+// ChainGetParentReceipts returns receipts for messages in parent tipset of
+// the specified block.
 func (cia *chainInfoAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error) {
 	b, err := cia.ChainGetBlock(ctx, bcid)
 	if err != nil {
@@ -300,6 +310,7 @@ func (cia *chainInfoAPI) VerifyEntry(parent, child *types.BeaconEntry, height ab
 	return cia.chain.Drand.BeaconForEpoch(height).VerifyEntry(*parent, *child) != nil
 }
 
+// StateNetworkName returns the name of the network the node is synced to
 func (cia *chainInfoAPI) StateNetworkName(ctx context.Context) (apitypes.NetworkName, error) {
 	networkName, err := cia.getNetworkName(ctx)
 
@@ -316,10 +327,12 @@ func (cia *chainInfoAPI) getNetworkName(ctx context.Context) (string, error) {
 	return view.InitNetworkName(ctx)
 }
 
+// ChainGetRandomnessFromBeacon is used to sample the beacon for randomness.
 func (cia *chainInfoAPI) ChainGetRandomnessFromBeacon(ctx context.Context, key types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	return cia.chain.ChainReader.ChainGetRandomnessFromBeacon(ctx, key, personalization, randEpoch, entropy)
 }
 
+// ChainGetRandomnessFromTickets is used to sample the chain for randomness.
 func (cia *chainInfoAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	ts, err := cia.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
@@ -346,6 +359,7 @@ func (cia *chainInfoAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk 
 	return chain.DrawRandomness(mtb.Ticket.VRFProof, personalization, randEpoch, entropy)
 }
 
+// StateNetworkVersion returns the network version at the given tipset
 func (cia *chainInfoAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
 	ts, err := cia.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
@@ -367,6 +381,7 @@ func (cia *chainInfoAPI) MessageWait(ctx context.Context, msgCid cid.Cid, confid
 	return cia.chain.Waiter.Wait(ctx, chainMsg, confidence, lookback)
 }
 
+// StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
 func (cia *chainInfoAPI) StateSearchMsg(ctx context.Context, mCid cid.Cid) (*apitypes.MsgLookup, error) {
 	chainMsg, err := cia.chain.MessageStore.LoadMessage(mCid)
 	if err != nil {
@@ -390,6 +405,8 @@ func (cia *chainInfoAPI) StateSearchMsg(ctx context.Context, mCid cid.Cid) (*api
 	return nil, nil
 }
 
+// StateWaitMsg looks back in the chain for a message. If not found, it blocks until the
+// message arrives on chain, and gets to the indicated confidence depth.
 func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confidence abi.ChainEpoch) (*apitypes.MsgLookup, error) {
 	chainMsg, err := cia.chain.MessageStore.LoadMessage(mCid)
 	if err != nil {
@@ -410,6 +427,7 @@ func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confide
 	return nil, nil
 }
 
+// StateGetReceipt returns the message receipt for the given message
 func (cia *chainInfoAPI) StateGetReceipt(ctx context.Context, msg cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error) {
 	chainMsg, err := cia.chain.MessageStore.LoadMessage(msg)
 	if err != nil {

@@ -164,7 +164,7 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 //
 // This type of store is used To access some internal actor stateView.
 func (vm *VM) ContextStore() adt.Store {
-	return &contextStore{context: vm.context, store: vm.store}
+	return adt.WrapStore(vm.context, vm.store)
 }
 
 func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
@@ -278,6 +278,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
 
+			//write debug messager
 			if vm.vmDebug {
 				rootCid, _ := vm.Flush()
 
@@ -285,7 +286,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 				msgGasOutput, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
 				vm.debugger.Println(string(msgGasOutput))
 
-				valuedTraces := []*types.GasTrace{}
+				var valuedTraces []*types.GasTrace
 				for _, trace := range ret.GasTracker.ExecutionTrace.GasCharges {
 					if trace.TotalGas > 0 {
 						valuedTraces = append(valuedTraces, trace)
@@ -358,9 +359,8 @@ func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 	// the execution of the implicit messages is simpler than full external/actor-actor messages
 	// execution:
 	// 1. load From actor
-	// 2. increment seqnumber (only for accounts)
-	// 3. build new context
-	// 4. invoke message
+	// 2. build new context
+	// 3. invoke message
 
 	// 1. load From actor
 	fromActor, found, err := vm.State.GetActor(vm.context, imsg.From)
@@ -370,19 +370,7 @@ func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 	if !found {
 		return nil, fmt.Errorf("implicit message `From` field actor not found, addr: %s", imsg.From)
 	}
-	//originatorIsAccount := builtin.IsAccountActor(fromActor.Code)
-
-	// 2. increment seq number (only for account actors).
-	// The account actor distinction only makes a difference for genesis stateView construction via messages, where
-	// some messages are sent From non-account actors (e.g. fund transfers From the reward actor).
-	//if originatorIsAccount {
-	//	fromActor.IncrementSeqNum()
-	//	if err := vm.State.SetActor(vm.context, imsg.From, fromActor); err != nil {
-	//		return nil, err
-	//	}
-	//}
-
-	// 3. build context
+	// 2. build context
 	topLevel := topLevelContext{
 		originatorStableAddress: imsg.From,
 		originatorCallSeq:       fromActor.Nonce, // Implied Nonce is that of the actor before incrementing.
@@ -394,11 +382,10 @@ func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 		pricelist: vm.pricelist,
 		gasTank:   gasTank,
 	}
-	//	cst.Atlas = vm.store.Atlas // associate the atlas. //todo
 	cst := cbor.NewCborStore(gasBsstore)
 	ctx := newInvocationContext(vm, cst, &topLevel, imsg, gasTank, vm.vmOption.Rnd, nil)
 
-	// 4. invoke message
+	// 3. invoke message
 	ret, code := ctx.invoke()
 	if code.IsError() {
 		return nil, fmt.Errorf("invalid exit code %d during implicit message execution: From %s, To %s, Method %d, Value %s, Params %v",
@@ -468,7 +455,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 	// 1. charge for message existence
 	// 2. load sender actor
 	// 3. check message seq number
-	// 4. check if _sender_ has enough funds
+	// 4. check sender gas fee is enough
 	// 5. increment message seq number
 	// 6. withheld maximum gas From _sender_
 	// 7. snapshot stateView
@@ -484,12 +471,13 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 		return &Ret{
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
-			Receipt:    types.Failure(exitcode.SysErrOutOfGas, 0),
+			Receipt:    Failure(exitcode.SysErrOutOfGas, 0),
 		}, nil
 	}
 
 	minerPenaltyAmount := big.Mul(vm.vmOption.BaseFee, big.NewInt(msg.GasLimit))
 
+	//2. load sender actor and check send whether to be an account
 	fromActor, found, err := vm.State.GetActor(vm.context, msg.From)
 	if err != nil {
 		return nil, err
@@ -501,7 +489,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 		return &Ret{
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
-			Receipt:    types.Failure(exitcode.SysErrSenderInvalid, 0),
+			Receipt:    Failure(exitcode.SysErrSenderInvalid, 0),
 		}, nil
 	}
 
@@ -512,7 +500,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 		return &Ret{
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
-			Receipt:    types.Failure(exitcode.SysErrSenderInvalid, 0),
+			Receipt:    Failure(exitcode.SysErrSenderInvalid, 0),
 		}, nil
 	}
 
@@ -524,13 +512,12 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 		return &Ret{
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
-			Receipt:    types.Failure(exitcode.SysErrSenderStateInvalid, 0),
+			Receipt:    Failure(exitcode.SysErrSenderStateInvalid, 0),
 		}, nil
 	}
 
-	// 4. Check sender balance (gas + Value being sent)
+	// 4. Check sender gas fee is enough
 	gasLimitCost := big.Mul(big.NewIntUnsigned(uint64(msg.GasLimit)), msg.GasFeeCap)
-	//totalCost := big.Add(msg.Value, gasLimitCost) todo no Value check?
 	if fromActor.Balance.LessThan(gasLimitCost) {
 		// Execution error; sender does not have sufficient funds To pay for the gas limit.
 		gasOutputs := gas.ZeroGasOutputs()
@@ -538,7 +525,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 		return &Ret{
 			GasTracker: gasTank,
 			OutPuts:    gasOutputs,
-			Receipt:    types.Failure(exitcode.SysErrSenderStateInvalid, 0),
+			Receipt:    Failure(exitcode.SysErrSenderStateInvalid, 0),
 		}, nil
 	}
 
@@ -547,7 +534,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 		return nil, xerrors.Errorf("failed To withdraw gas funds: %w", err)
 	}
 
-	// 5. Increment sender Nonce
+	// 5. increment sender Nonce
 	if err = vm.State.MutateActor(msg.From, func(msgFromActor *types.Actor) error {
 		msgFromActor.IncrementSeqNum()
 		return nil

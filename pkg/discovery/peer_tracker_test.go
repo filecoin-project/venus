@@ -5,7 +5,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/test"
 	"github.com/libp2p/go-libp2p-core/network"
-	"sort"
 	"testing"
 	"time"
 
@@ -18,33 +17,6 @@ import (
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
-
-func TestPeerTrackerTracks(t *testing.T) {
-	tf.UnitTest(t)
-
-	tracker := discovery.NewPeerTracker(peer.ID(""))
-	pid0 := th.RequireIntPeerID(t, 0)
-	pid1 := th.RequireIntPeerID(t, 1)
-	pid3 := th.RequireIntPeerID(t, 3)
-	pid7 := th.RequireIntPeerID(t, 7)
-
-	ci0 := types.NewChainInfo(pid0, pid0, th.RequireTipsetWithHeight(t, 6))
-	ci1 := types.NewChainInfo(pid1, pid1, th.RequireTipsetWithHeight(t, 0))
-	ci3 := types.NewChainInfo(pid3, pid3, th.RequireTipsetWithHeight(t, 0))
-	ci7 := types.NewChainInfo(pid7, pid7, th.RequireTipsetWithHeight(t, 0))
-
-	tracker.Track(ci0)
-	tracker.Track(ci1)
-	tracker.Track(ci3)
-	tracker.Track(ci7)
-
-	tracked := tracker.List()
-	sort.Sort(types.CISlice(tracked))
-	expected := []*types.ChainInfo{ci0, ci1, ci3, ci7}
-	sort.Sort(types.CISlice(expected))
-	assert.Equal(t, expected, tracked)
-
-}
 
 func TestPeerTrackerSelectHead(t *testing.T) {
 	tf.UnitTest(t)

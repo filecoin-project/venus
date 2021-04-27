@@ -5,11 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -55,70 +51,6 @@ func init() {
 	invGasBelowMinimumCt = metrics.NewInt64Counter("consensus/msg_gaslimit_min", "Count of")
 	invNegativeValueCt = metrics.NewInt64Counter("consensus/msg_value_negative", "Count of invalid negative messages with negative value")
 	invGasAboveBlockLimitCt = metrics.NewInt64Counter("consensus/msg_gaslimit_max", "Count of invalid messages with gas above block limit")
-}
-
-// MessageSelectionChecker checks for miner penalties on signed messages
-type MessagePenaltyChecker struct {
-	api penaltyCheckerAPI
-}
-
-// penaltyCheckerAPI allows the validator to access latest state
-type penaltyCheckerAPI interface {
-	GetHead() *types.TipSet
-	GetActorAt(context.Context, *types.TipSet, address.Address) (*types.Actor, error)
-}
-
-func NewMessagePenaltyChecker(api penaltyCheckerAPI) *MessagePenaltyChecker {
-	return &MessagePenaltyChecker{
-		api: api,
-	}
-}
-
-// PenaltyCheck checks that a message is semantically valid for processing without
-// causing miner penality.  It treats any miner penalty condition as an error.
-func (v *MessagePenaltyChecker) PenaltyCheck(ctx context.Context, msg *types.UnsignedMessage) error {
-	fromActor, err := v.api.GetActorAt(ctx, v.api.GetHead(), msg.From)
-	if err != nil {
-		return err
-	}
-	// Sender should not be an empty actor
-	if fromActor == nil || fromActor.Empty() {
-		return fmt.Errorf("sender %s is missing/empty: %s", msg.From, msg)
-	}
-
-	// Sender must be an account actor.
-	if !(builtin0.AccountActorCodeID.Equals(fromActor.Code)) && !(builtin2.AccountActorCodeID.Equals(fromActor.Code)) {
-		dropNonAccountCt.Inc(ctx, 1)
-		return fmt.Errorf("sender %s is non-account actor with code %s: %s", msg.From, fromActor.Code, msg)
-	}
-
-	// Avoid processing messages for actors that cannot pay.
-	if !canCoverGasLimit(msg, fromActor) {
-		dropInsufficientGasCt.Inc(ctx, 1)
-		return fmt.Errorf("insufficient funds from sender %s to cover value and gas cost: %s ", msg.From, msg)
-	}
-
-	if msg.Nonce < fromActor.Nonce {
-		dropNonceTooLowCt.Inc(ctx, 1)
-		return fmt.Errorf("nonce %d lower than expected %d: %s", msg.Nonce, fromActor.Nonce, msg)
-	}
-
-	if msg.Nonce > fromActor.Nonce {
-		dropNonceTooHighCt.Inc(ctx, 1)
-		return fmt.Errorf("nonce %d greater than expected: %d: %s", msg.Nonce, fromActor.Nonce, msg)
-	}
-
-	return nil
-}
-
-// Check's whether the maximum gas charge + message value is within the actor's balance.
-// Note that this is an imperfect test, since nested messages invoked by this one may transfer
-// more value from the actor's balance.
-func canCoverGasLimit(msg *types.UnsignedMessage, actor *types.Actor) bool {
-	// balance >= (gasprice*gasLimit + value)
-	gascost := big.Mul(abi.NewTokenAmount(msg.GasFeeCap.Int.Int64()), abi.NewTokenAmount(msg.GasLimit))
-	expense := big.Add(gascost, abi.NewTokenAmount(msg.Value.Int.Int64()))
-	return actor.Balance.GreaterThanEqual(expense)
 }
 
 // DefaultMessageSyntaxValidator checks basic conditions independent of current state

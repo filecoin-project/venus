@@ -28,7 +28,7 @@ func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst cbor.IpldS
 		return nil, errors.Wrap(err, "failed to generate genesis block")
 	}
 	//todo give fork params
-	chainStore := chain.NewStore(r.ChainDatastore(), cst, bs, chain.NewStatusReporter(), config.DefaultForkUpgradeParam, genesis.Cid())
+	chainStore := chain.NewStore(r.ChainDatastore(), cst, bs, config.DefaultForkUpgradeParam, genesis.Cid())
 
 	// Persist the genesis tipset to the repo.
 	genTsas := &chain.TipSetMetadata{

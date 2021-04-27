@@ -57,7 +57,7 @@ func (l *Localfilecoin) env() ([]string, error) {
 	pathList := filepath.SplitList(currPath)
 	pathList = append([]string{filepath.Dir(l.binPath)}, pathList...)
 	newPath := strings.Join(pathList, string(filepath.ListSeparator))
-	envs = filecoin.UpdateOrAppendEnv(envs, "FIL_PATH", l.repoPath)
+	envs = filecoin.UpdateOrAppendEnv(envs, "VENUS_PATH", l.repoPath)
 	envs = filecoin.UpdateOrAppendEnv(envs, "GO_FILECOIN_LOG_LEVEL", l.logLevel)
 	envs = filecoin.UpdateOrAppendEnv(envs, "GO_FILECOIN_LOG_JSON", l.logJSON)
 	envs = filecoin.UpdateOrAppendEnv(envs, "RUST_LOG", "info")

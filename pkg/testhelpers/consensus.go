@@ -2,6 +2,7 @@ package testhelpers
 
 import (
 	"context"
+	fbig "github.com/filecoin-project/go-state-types/big"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"testing"
 
@@ -29,7 +30,7 @@ func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet types.TipSet, sta
 		Miner:                 minerAddr,
 		Ticket:                ticket,
 		Parents:               baseTipSet.Key(),
-		ParentWeight:          types.Uint64ToBig(uint64(height * 10000)),
+		ParentWeight:          fbig.NewInt(int64(height * 10000)),
 		Height:                height,
 		ParentStateRoot:       stateRootCid,
 		ParentMessageReceipts: receiptRootCid,

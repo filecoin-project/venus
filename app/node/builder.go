@@ -79,14 +79,6 @@ func BlockTime(blockTime time.Duration) BuilderOpt {
 	}
 }
 
-// PropagationDelay sets the time the node needs to wait for blocks to arrive before mining.
-func PropagationDelay(propDelay time.Duration) BuilderOpt {
-	return func(c *Builder) error {
-		c.propDelay = propDelay
-		return nil
-	}
-}
-
 // SetPassword set wallet password
 func SetPassword(password string) BuilderOpt {
 	return func(c *Builder) error {
@@ -188,7 +180,6 @@ func New(ctx context.Context, opts ...BuilderOpt) (*Node, error) {
 	n := &Builder{
 		offlineMode: false,
 		blockTime:   clock.DefaultEpochDuration,
-		propDelay:   clock.DefaultPropagationDelay,
 		verifier:    ffiwrapper.ProofVerifier,
 	}
 	// apply builder options
@@ -252,7 +243,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		b.chainClock = clock.NewChainClock(geneBlk.Timestamp, b.blockTime, b.propDelay)
+		b.chainClock = clock.NewChainClock(geneBlk.Timestamp, b.blockTime)
 	}
 
 	nd.chainClock = b.chainClock
@@ -348,34 +339,42 @@ func (b Builder) Repo() repo.Repo {
 
 type builder Builder
 
+//GenesisCid read genesis block cid
 func (b builder) GenesisCid() cid.Cid {
 	return b.genCid
 }
 
+//BlockTime get chain block time
 func (b builder) BlockTime() time.Duration {
 	return b.blockTime
 }
 
+//Repo get home data repo
 func (b builder) Repo() repo.Repo {
 	return b.repo
 }
 
+//IsRelay get whether the p2p network support replay
 func (b builder) IsRelay() bool {
 	return b.isRelay
 }
 
+//ChainClock get chain clock
 func (b builder) ChainClock() clock.ChainEpochClock {
 	return b.chainClock
 }
 
+//Journal get journal to record event
 func (b builder) Journal() journal.Journal {
 	return b.journal
 }
 
+//Libp2pOpts get libp2p option
 func (b builder) Libp2pOpts() []libp2p.Option {
 	return b.libp2pOpts
 }
 
+//OfflineMode get the p2p network mode
 func (b builder) OfflineMode() bool {
 	return b.offlineMode
 }

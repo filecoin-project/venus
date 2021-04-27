@@ -34,7 +34,7 @@ type TipSetMetadata struct {
 	TipSetReceipts cid.Cid
 }
 
-type TipLoader interface {
+type tipLoader interface {
 	GetTipSet(key types.TipSetKey) (*types.TipSet, error)
 	LoadTipsetMetadata(ts *types.TipSet) (*TipSetMetadata, error)
 }
@@ -49,7 +49,7 @@ type TipStateCache struct {
 	// tsasByID allows lookup of recorded TipSetAndStates by TipSet ID.
 	tsasByID *tcache.Cache
 
-	loader TipLoader
+	loader tipLoader
 }
 
 const (
@@ -58,7 +58,7 @@ const (
 )
 
 // NewTipStateCache is the TipStateCache constructor.
-func NewTipStateCache(loader TipLoader) *TipStateCache {
+func NewTipStateCache(loader tipLoader) *TipStateCache {
 	return &TipStateCache{
 		tsasByParentsAndHeight: tcache.New(timeExpire, cleanInterval),
 		tsasByID:               tcache.New(timeExpire, cleanInterval),

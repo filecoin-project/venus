@@ -498,7 +498,7 @@ func (mp *MessagePool) PublishMsgForWallet(addr address.Address) error {
 
 	log.Infof("mpool has [%v] msg for [%s], will republish ...", len(out), addr.String())
 
-	// 开始广播消息
+	// start to broadcast message through libp2p
 	for _, msg := range out {
 		msgb, err := msg.Serialize()
 		if err != nil {

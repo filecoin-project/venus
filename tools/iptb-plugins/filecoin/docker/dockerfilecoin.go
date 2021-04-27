@@ -388,7 +388,7 @@ func (l *Dockerfilecoin) Connect(ctx context.Context, n testbedi.Core) error {
 func (l *Dockerfilecoin) env() ([]string, error) {
 	envs := os.Environ()
 
-	envs = filecoin.UpdateOrAppendEnv(envs, "FIL_PATH", "/data/filecoin")
+	envs = filecoin.UpdateOrAppendEnv(envs, "VENUS_PATH", "/data/filecoin")
 	envs = filecoin.UpdateOrAppendEnv(envs, "GO_FILECOIN_LOG_LEVEL", l.logLevel)
 	envs = filecoin.UpdateOrAppendEnv(envs, "GO_FILECOIN_LOG_JSON", l.logJSON)
 

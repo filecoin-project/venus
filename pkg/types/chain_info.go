@@ -29,16 +29,3 @@ func NewChainInfo(source peer.ID, sender peer.ID, head *TipSet) *ChainInfo {
 func (i *ChainInfo) String() string {
 	return fmt.Sprintf("{source=%s sender:%s height=%d head=%s}", i.Source, i.Sender, i.Head.Height(), i.Head.Key())
 }
-
-// CISlice is for sorting chain infos
-type CISlice []*ChainInfo
-
-// Len returns the number of chain infos in the slice.
-func (cis CISlice) Len() int { return len(cis) }
-
-// Swap swaps chain infos.
-func (cis CISlice) Swap(i, j int) { cis[i], cis[j] = cis[j], cis[i] }
-
-// Less compares chain infos on peer ID.  There should only ever be one chain
-// info per peer in a CISlice.
-func (cis CISlice) Less(i, j int) bool { return string(cis[i].Source) < string(cis[j].Source) }

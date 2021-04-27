@@ -220,6 +220,7 @@ func (node *Node) Stop(ctx context.Context) {
 	}
 }
 
+//RunRPCAndWait start rpc server and listen to signal to exit
 func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command, ready chan interface{}) error {
 	var terminate = make(chan os.Signal, 1)
 	signal.Notify(terminate, os.Interrupt, syscall.SIGTERM)
@@ -297,11 +298,13 @@ func (node *Node) runRestfulAPI(ctx context.Context, handler *http.ServeMux, roo
 	return nil
 }
 
+//runJsonrpcAPI bind jsonrpc handle
 func (node *Node) runJsonrpcAPI(ctx context.Context, handler *http.ServeMux) error { //nolint
 	handler.Handle("/rpc/v0", node.jsonRPCService)
 	return nil
 }
 
+//createServerEnv create server for cmd server env
 func (node *Node) createServerEnv(ctx context.Context) *Env {
 	env := Env{
 		ctx:                  ctx,

@@ -110,7 +110,7 @@ func (v *FakeStateView) MinerClaimedPower(ctx context.Context, miner address.Add
 	return m.ClaimedRawPower, m.ClaimedQAPower, nil
 }
 
-func (v *FakeStateView) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
+func (v *FakeStateView) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
 	_, ok := v.Miners[maddr]
 	if !ok {
 		return nil, errors.Errorf("no miner %s", maddr)
@@ -148,9 +148,4 @@ func (v *FakeStateView) GetMinerWorkerRaw(ctx context.Context, maddr address.Add
 
 func (v *FakeStateView) ResolveToKeyAddr(ctx context.Context, addr address.Address) (address.Address, error) {
 	return addr, nil
-}
-
-func NewBitField() *bitfield.BitField {
-	bit := bitfield.New()
-	return &bit
 }

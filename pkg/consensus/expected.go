@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/slashing"
+	"github.com/filecoin-project/venus/pkg/consensusfault"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
 	"github.com/ipfs/go-cid"
@@ -101,7 +101,6 @@ type chainReader interface {
 
 // Expected implements expected consensus.
 type Expected struct {
-
 	// cstore is used for loading state trees during message running.
 	cstore cbor.IpldStore
 
@@ -110,25 +109,31 @@ type Expected struct {
 	// accessing the power table.
 	bstore blockstore.Blockstore
 
+	// message store for message read/write
+	messageStore *chain.MessageStore
+
 	// chainState is a reference to the current Chain state
 	chainState chainReader
 
 	// processor is what we use to process messages and pay rewards
 	processor Processor
 
-	blockTime time.Duration
-
-	messageStore *chain.MessageStore
-
+	// calculate chain randomness ticket/beacon
 	rnd ChainRandomness
 
+	// fork for vm process and block validator
 	fork fork.IFork
 
+	// gas price for vm
 	gasPirceSchedule *gas.PricesSchedule
 
+	// circulate supply calculator for vm
 	circulatingSupplyCalculator *chain.CirculatingSupplyCalculator
-	syscallsImpl                vm.SyscallsImpl
 
+	// systemcall for vm
+	syscallsImpl vm.SyscallsImpl
+
+	// block validator before process tipset
 	blockValidator *BlockValidator
 }
 
@@ -148,14 +153,13 @@ func NewExpected(cs cbor.IpldStore,
 	proofVerifier ffiwrapper.Verifier,
 	blockValidator *BlockValidator,
 ) *Expected {
-	faultChecker := slashing.NewFaultChecker(chainState, fork)
+	faultChecker := consensusfault.NewFaultChecker(chainState, fork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, proofVerifier)
 	processor := NewDefaultProcessor(syscalls)
 	c := &Expected{
 		processor:                   processor,
 		syscallsImpl:                syscalls,
 		cstore:                      cs,
-		blockTime:                   bt,
 		bstore:                      bs,
 		chainState:                  chainState,
 		messageStore:                messageStore,
@@ -166,11 +170,6 @@ func NewExpected(cs cbor.IpldStore,
 		circulatingSupplyCalculator: chain.NewCirculatingSupplyCalculator(bs, chainState, config.ForkUpgradeParam),
 	}
 	return c
-}
-
-// BlockTime returns the block time used by the consensus protocol.
-func (c *Expected) BlockTime() time.Duration {
-	return c.blockTime
 }
 
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.

@@ -78,12 +78,6 @@ type BlockHeader struct {
 	validated bool // internal, true if the signature has been validated
 }
 
-// IndexMessagesField is the message field position in the encoded newBlock
-const IndexMessagesField = 10
-
-// IndexParentsField is the parents field position in the encoded newBlock
-const IndexParentsField = 5
-
 // Cid returns the content id of this newBlock.
 func (b *BlockHeader) Cid() cid.Cid {
 	if b.cachedCid == cid.Undef {
@@ -182,6 +176,7 @@ func (b *BlockHeader) SignatureData() []byte {
 	return tmp.ToNode().RawData()
 }
 
+// Serialize serialize blockheader to binary
 func (b *BlockHeader) Serialize() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	if err := b.MarshalCBOR(buf); err != nil {
@@ -191,6 +186,7 @@ func (b *BlockHeader) Serialize() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// ToStorageBlock convert blockheader to data block with cid
 func (b *BlockHeader) ToStorageBlock() (blocks.Block, error) {
 	data, err := b.Serialize()
 	if err != nil {
@@ -205,14 +201,17 @@ func (b *BlockHeader) ToStorageBlock() (blocks.Block, error) {
 	return blocks.NewBlockWithCid(data, c)
 }
 
+// LastTicket get ticket in block
 func (b *BlockHeader) LastTicket() *Ticket {
 	return &b.Ticket
 }
 
+// SetValidated set block signature is valid after checkout blocksig
 func (b *BlockHeader) SetValidated() {
 	b.validated = true
 }
 
+// IsValidated check whether block signature is valid from memory
 func (b *BlockHeader) IsValidated() bool {
 	return b.validated
 }

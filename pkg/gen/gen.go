@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/gen/genesis"
 )
 
+//CarWalkFunc get each child node under the node (nd)
 func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
 	for _, link := range nd.Links() {
 		pref := link.Cid.Prefix()

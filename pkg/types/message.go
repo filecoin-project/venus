@@ -334,15 +334,6 @@ type MessageReceipt struct {
 	GasUsed     int64             `json:"gasUsed"`
 }
 
-// Failure returns with a non-zero exit code.
-func Failure(exitCode exitcode.ExitCode, gasAmount int64) MessageReceipt {
-	return MessageReceipt{
-		ExitCode:    exitCode,
-		ReturnValue: []byte{},
-		GasUsed:     gasAmount,
-	}
-}
-
 func (r *MessageReceipt) String() string {
 	errStr := "(error encoding MessageReceipt)"
 

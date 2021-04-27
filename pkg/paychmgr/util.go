@@ -13,6 +13,7 @@ type BestSpendableAPI interface {
 	PaychVoucherCheckSpendable(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)
 }
 
+//BestSpendableByLane return spendable  voucher in channel address
 func BestSpendableByLane(ctx context.Context, api BestSpendableAPI, ch address.Address) (map[uint64]*paych.SignedVoucher, error) {
 	vouchers, err := api.PaychVoucherList(ctx, ch)
 	if err != nil {

@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm"
 )
 
+//CallWithGas used to estimate message gaslimit, for each incoming message ,should execute after priorMsg in mpool
 func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *types.TipSet) (*vm.Ret, error) {
 	var (
 		err       error
@@ -127,6 +128,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 	return c.processor.ProcessMessage(ctx, msgApply, vmOption)
 }
 
+//Call used for api invoke to compute a msg base on specify tipset, if the tipset is null, use latest tipset in db
 func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*vm.Ret, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.Call")
 	defer span.End()
