@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	scryptN = 1 << 15
+	scryptN = 1 << 21
 	scryptP = 1
 )
 

@@ -2,8 +2,9 @@ package repo
 
 import (
 	"errors"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"sync"
+
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 
 	"github.com/ipfs/go-datastore"
 	dss "github.com/ipfs/go-datastore/sync"
@@ -34,8 +35,12 @@ var _ Repo = (*MemRepo)(nil)
 
 // NewInMemoryRepo makes a new instance of MemRepo
 func NewInMemoryRepo() *MemRepo {
+	defConfig := config.NewDefaultConfig()
+	// Reduce the time it takes to encrypt wallet password, default ScryptN is 1 << 21
+	// for test
+	defConfig.Wallet.PassphraseConfig.ScryptN = 1 << 15
 	return &MemRepo{
-		C:     config.NewDefaultConfig(),
+		C:     defConfig,
 		D:     blockstoreutil.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore())),
 		Ks:    keystore.MutexWrap(keystore.NewMemKeystore()),
 		W:     dss.MutexWrap(datastore.NewMapDatastore()),
