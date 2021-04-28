@@ -2,10 +2,11 @@ package types
 
 import (
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"math/big"
 
 	big2 "github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/venus/pkg/constants"
 )
 
 const BigIntMaxSerializedLen = 128 // is this big enough? or too big?

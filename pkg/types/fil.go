@@ -3,13 +3,12 @@ package types
 import (
 	"encoding"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"math/big"
 	"strings"
 
 	specsbig "github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/constants"
 )
 
 // ZeroFIL is the zero value for an AttoFIL, exported for consistency in construction of AttoFILs
@@ -32,12 +31,12 @@ func (f FIL) Unitless() string {
 var unitPrefixes = []string{"a", "f", "p", "n", "μ", "m"}
 
 func (f FIL) Short() string {
-	n := crypto.BigInt(f)
+	n := BigInt(f)
 
 	dn := uint64(1)
 	var prefix string
 	for _, p := range unitPrefixes {
-		if n.LessThan(crypto.NewInt(dn * 1000)) {
+		if n.LessThan(NewInt(dn * 1000)) {
 			prefix = p
 			break
 		}

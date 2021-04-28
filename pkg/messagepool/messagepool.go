@@ -32,7 +32,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
-	vcrypto "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/crypto/sigs"
 	"github.com/filecoin-project/venus/pkg/messagepool/journal"
 	"github.com/filecoin-project/venus/pkg/net/msgsub"
@@ -694,7 +693,7 @@ func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 		return ErrInvalidToAddr
 	}
 
-	if !m.Message.Value.LessThan(vcrypto.TotalFilecoinInt) {
+	if !m.Message.Value.LessThan(types.TotalFilecoinInt) {
 		return ErrMessageValueTooHigh
 	}
 

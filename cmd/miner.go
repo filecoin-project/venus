@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
@@ -72,7 +71,7 @@ var newMinerCmd = &cmds.Command{
 		}
 
 		gp, _ := req.Options["gas-premium"].(string)
-		gasPrice, err := crypto.BigFromString(gp)
+		gasPrice, err := types.BigFromString(gp)
 		if err != nil {
 			return xerrors.Errorf("failed to parse gas-price flag: %s", err)
 		}
@@ -262,7 +261,7 @@ var minerInfoCmd = &cmds.Command{
 			return err
 		}
 
-		ssize := crypto.SizeStr(big.NewInt(int64(mi.SectorSize)))
+		ssize := types.SizeStr(big.NewInt(int64(mi.SectorSize)))
 		writer.Printf("Miner: %s (%s sectors)\n", maddr, ssize)
 
 		pow, err := api.StateMinerPower(ctx, maddr, types.EmptyTSK)
@@ -274,13 +273,13 @@ var minerInfoCmd = &cmds.Command{
 		qpercI := big.Div(big.Mul(pow.MinerPower.QualityAdjPower, big.NewInt(1000000)), pow.TotalPower.QualityAdjPower)
 
 		writer.Printf("Power: %s / %s (%0.4f%%)\n",
-			crypto.DeciStr(pow.MinerPower.QualityAdjPower),
-			crypto.DeciStr(pow.TotalPower.QualityAdjPower),
+			types.DeciStr(pow.MinerPower.QualityAdjPower),
+			types.DeciStr(pow.TotalPower.QualityAdjPower),
 			float64(qpercI.Int64())/10000)
 
 		writer.Printf("Raw: %s / %s (%0.4f%%)\n",
-			crypto.SizeStr(pow.MinerPower.RawBytePower),
-			crypto.SizeStr(pow.TotalPower.RawBytePower),
+			types.SizeStr(pow.MinerPower.RawBytePower),
+			types.SizeStr(pow.TotalPower.RawBytePower),
 			float64(rpercI.Int64())/10000)
 
 		secCounts, err := api.StateMinerSectorCount(ctx, maddr, types.EmptyTSK)
@@ -290,17 +289,17 @@ var minerInfoCmd = &cmds.Command{
 
 		proving := secCounts.Active + secCounts.Faulty
 		nfaults := secCounts.Faulty
-		writer.Printf("\tCommitted: %s\n", crypto.SizeStr(big.Mul(big.NewInt(int64(secCounts.Live)), big.NewInt(int64(mi.SectorSize)))))
+		writer.Printf("\tCommitted: %s\n", types.SizeStr(big.Mul(big.NewInt(int64(secCounts.Live)), big.NewInt(int64(mi.SectorSize)))))
 		if nfaults == 0 {
-			writer.Printf("\tProving: %s\n", crypto.SizeStr(big.Mul(big.NewInt(int64(proving)), big.NewInt(int64(mi.SectorSize)))))
+			writer.Printf("\tProving: %s\n", types.SizeStr(big.Mul(big.NewInt(int64(proving)), big.NewInt(int64(mi.SectorSize)))))
 		} else {
 			var faultyPercentage float64
 			if secCounts.Live != 0 {
 				faultyPercentage = float64(10000*nfaults/secCounts.Live) / 100.
 			}
 			writer.Printf("Proving: %s (%s Faulty, %.2f%%)\n",
-				crypto.SizeStr(big.Mul(big.NewInt(int64(proving)), big.NewInt(int64(mi.SectorSize)))),
-				crypto.SizeStr(big.Mul(big.NewInt(int64(nfaults)), big.NewInt(int64(mi.SectorSize)))),
+				types.SizeStr(big.Mul(big.NewInt(int64(proving)), big.NewInt(int64(mi.SectorSize)))),
+				types.SizeStr(big.Mul(big.NewInt(int64(nfaults)), big.NewInt(int64(mi.SectorSize)))),
 				faultyPercentage)
 		}
 

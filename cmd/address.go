@@ -156,7 +156,7 @@ var addrsLsCmd = &cmds.Command{
 				if _, ok := req.Options["market"]; ok {
 					mbal, err := api.ChainAPI.StateMarketBalance(ctx, addr, types.EmptyTSK)
 					if err == nil {
-						row["Market(Avail)"] = types.FIL(crypto.BigSub(mbal.Escrow, mbal.Locked))
+						row["Market(Avail)"] = types.FIL(types.BigSub(mbal.Escrow, mbal.Locked))
 						row["Market(Locked)"] = types.FIL(mbal.Locked)
 					}
 				}

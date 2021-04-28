@@ -20,7 +20,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/crypto"
 )
 
 type MessageSendSpec struct {
@@ -227,7 +226,7 @@ func (msg *UnsignedMessage) ValidForBlockInclusion(minGas int64, version network
 		return xerrors.New("'Value' field cannot be negative")
 	}
 
-	if msg.Value.GreaterThan(crypto.TotalFilecoinInt) {
+	if msg.Value.GreaterThan(TotalFilecoinInt) {
 		return xerrors.New("'Value' field cannot be greater than total filecoin supply")
 	}
 
