@@ -8,15 +8,12 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	jwt3 "github.com/gbrlsnchs/jwt/v3"
-	logging "github.com/ipfs/go-log"
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/repo"
 )
 
 type APIAlg jwt3.HMACSHA
-
-var jwtLog = logging.Logger("jwt")
 
 var (
 	ErrKeyInfoNotFound = fmt.Errorf("key info not found")
@@ -62,6 +59,9 @@ func NewJwtAuth(lr repo.Repo) (*JwtAuth, error) {
 func (jwtAuth *JwtAuth) loadAPISecret() (*APIAlg, error) {
 	setAPIToken := func() error {
 		secret, err := hex.DecodeString(jwtAuth.lr.Config().Jwt.Secret)
+		if err != nil {
+			return err
+		}
 		cliToken, err := jwt3.Sign(&jwtAuth.payload, jwt3.NewHS256(secret))
 		if err != nil {
 			return err
