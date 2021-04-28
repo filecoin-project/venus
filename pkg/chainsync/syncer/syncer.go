@@ -546,6 +546,10 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*types.Ti
 		return nil, err
 	}
 
+	if len(messages) != len(leftChain) {
+		return nil, xerrors.Errorf("message len %d not match tipset len %d", len(messages), len(leftChain))
+	}
+
 	for index, tip := range leftChain {
 		fts, err := zipTipSetAndMessages(bs, tip, messages[index].Bls, messages[index].Secpk, messages[index].BlsIncludes, messages[index].SecpkIncludes)
 		if err != nil {
