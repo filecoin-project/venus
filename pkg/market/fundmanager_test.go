@@ -627,7 +627,7 @@ func setup(t *testing.T) *scaffold {
 	ctx := context.Background()
 	t.Log("create a backend")
 	ds := datastore.NewMapDatastore()
-	fs, err := wallet.NewDSBackend(ds, config.DefaultPassphraseConfig(), "")
+	fs, err := wallet.NewDSBackend(ds, config.TestPassphraseConfig(), "")
 	assert.NoError(t, err)
 	t.Log("create a wallet with a single backend")
 	wllt := wallet.New(fs)

@@ -139,6 +139,13 @@ func DefaultPassphraseConfig() PassphraseConfig {
 	}
 }
 
+func TestPassphraseConfig() PassphraseConfig {
+	return PassphraseConfig{
+		ScryptN: 1 << 15,
+		ScryptP: scryptP,
+	}
+}
+
 // DrandConfig holds all configuration options related to pulling randomness from Drand servers
 type DrandConfig struct {
 	StartTimeUnix int64 `json:"startTimeUnix"`

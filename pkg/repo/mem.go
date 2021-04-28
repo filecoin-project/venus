@@ -38,7 +38,7 @@ func NewInMemoryRepo() *MemRepo {
 	defConfig := config.NewDefaultConfig()
 	// Reduce the time it takes to encrypt wallet password, default ScryptN is 1 << 21
 	// for test
-	defConfig.Wallet.PassphraseConfig.ScryptN = 1 << 15
+	defConfig.Wallet.PassphraseConfig = config.TestPassphraseConfig()
 	return &MemRepo{
 		C:     defConfig,
 		D:     blockstoreutil.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore())),
