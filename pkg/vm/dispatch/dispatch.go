@@ -7,6 +7,7 @@ import (
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
@@ -100,6 +101,11 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, nvk network.Version,
 			return []byte{}, err
 		}
 	case builtin3.CBORBytes:
+		err := parserByte(t)
+		if err != nil {
+			return []byte{}, err
+		}
+	case builtin4.CBORBytes:
 		err := parserByte(t)
 		if err != nil {
 			return []byte{}, err
