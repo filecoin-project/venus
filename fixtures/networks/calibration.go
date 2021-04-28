@@ -42,6 +42,7 @@ func Calibration() *NetworkConf {
 				UpgradeOrangeHeight:    300,
 				UpgradeActorsV3Height:  600,
 				UpgradeNorwegianHeight: 114000,
+				UpgradeActorsV4Height:  193789,
 
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       250,

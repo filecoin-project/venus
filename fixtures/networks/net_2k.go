@@ -37,6 +37,7 @@ func Net2k() *NetworkConf {
 				UpgradeOrangeHeight:    27,
 				UpgradeActorsV3Height:  35,
 				UpgradeNorwegianHeight: 40,
+				UpgradeActorsV4Height:  45,
 
 				BreezeGasTampingDuration: 0,
 				UpgradeClausHeight:       30,

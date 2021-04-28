@@ -5,11 +5,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/types"
 
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -32,9 +32,8 @@ type state0 struct {
 }
 
 func (s *state0) TotalLocked() (abi.TokenAmount, error) {
-	fml := big.Add(s.TotalClientLockedCollateral, s.TotalProviderLockedCollateral)
-	fml = big.Add(fml, s.TotalClientStorageFee)
-
+	fml := types.BigAdd(s.TotalClientLockedCollateral, s.TotalProviderLockedCollateral)
+	fml = types.BigAdd(fml, s.TotalClientStorageFee)
 	return fml, nil
 }
 
@@ -104,10 +103,6 @@ func (s *state0) VerifyDealsForActivation(
 	minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
 ) (weight, verifiedWeight abi.DealWeight, err error) {
 	return market0.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
-}
-
-func (s *state0) NextID() (abi.DealID, error) {
-	return s.State.NextID, nil
 }
 
 type balanceTable0 struct {

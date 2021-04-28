@@ -32,6 +32,7 @@ func IntegrationNet() *NetworkConf {
 				UpgradeOrangeHeight:    336458,
 				UpgradeActorsV3Height:  550321,
 				UpgradeNorwegianHeight: 665280,
+				UpgradeActorsV4Height:  712320,
 
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       343200,

@@ -186,6 +186,7 @@ type MessagePool struct {
 	evtTypes [3]journal.EventType
 	journal  journal.Journal
 
+	forkParams       *config.ForkUpgradeConfig
 	gasPriceSchedule *gas.PricesSchedule
 
 	gp        gasPredictor
@@ -424,8 +425,8 @@ func New(api Provider,
 			evtTypeMpoolRemove: j.RegisterEventType("mpool", "remove"),
 			evtTypeMpoolRepub:  j.RegisterEventType("mpool", "repub"),
 		},
-		journal: j,
-
+		journal:          j,
+		forkParams:       forkParams,
 		gasPriceSchedule: gas.NewPricesSchedule(forkParams),
 		GetMaxFee:        newDefaultMaxFeeFunc(),
 	}
