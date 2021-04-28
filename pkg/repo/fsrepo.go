@@ -2,8 +2,6 @@ package repo
 
 import (
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"io"
 	"io/ioutil"
 	"os"
@@ -12,6 +10,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-multistore"
 	badgerds "github.com/ipfs/go-ds-badger2"

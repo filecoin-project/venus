@@ -1,8 +1,11 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -33,6 +36,7 @@ type Config struct {
 	Swarm         *SwarmConfig         `json:"swarm"`
 	Wallet        *WalletConfig        `json:"walletModule"`
 	SlashFilterDs *SlashFilterDsConfig `json:"slashFilter"`
+	Jwt           *JwtConfig           `json:"jwt"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -311,6 +315,22 @@ func newDefaultSlashFilterDsConfig() *SlashFilterDsConfig {
 	}
 }
 
+type JwtConfig struct {
+	Secret string `json:"secret"`
+}
+
+func newDefaultJwtConfig() *JwtConfig {
+	secret := make([]byte, 32)
+	if _, err := io.ReadFull(rand.Reader, secret); err != nil {
+		panic("reading from crypto/rand failed: " + err.Error())
+	}
+
+	jwtCfg := &JwtConfig{}
+	jwtCfg.Secret = hex.EncodeToString(secret)
+
+	return jwtCfg
+}
+
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
@@ -324,6 +344,7 @@ func NewDefaultConfig() *Config {
 		Swarm:         newDefaultSwarmConfig(),
 		Wallet:        newDefaultWalletConfig(),
 		SlashFilterDs: newDefaultSlashFilterDsConfig(),
+		Jwt:           newDefaultJwtConfig(),
 	}
 }
 

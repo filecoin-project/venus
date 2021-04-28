@@ -2,13 +2,13 @@ package jwtauth
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"strings"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	jwt3 "github.com/gbrlsnchs/jwt/v3"
 	logging "github.com/ipfs/go-log"
-	acrypto "github.com/libp2p/go-libp2p-core/crypto"
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -60,25 +60,34 @@ func NewJwtAuth(lr repo.Repo) (*JwtAuth, error) {
 }
 
 func (jwtAuth *JwtAuth) loadAPISecret() (*APIAlg, error) {
-	pk, err := jwtAuth.lr.Keystore().Get(jwtAuth.jwtHmacSecret)
-	//todo use custome keystore to replace
-	if err != nil && strings.Contains(err.Error(), "no key by the given name was found") {
-		jwtLog.Warn("Generating new API secret")
-
-		pk, _, err = acrypto.GenerateKeyPair(acrypto.RSA, 2048)
+	setAPIToken := func() error {
+		secret, err := hex.DecodeString(jwtAuth.lr.Config().Jwt.Secret)
+		cliToken, err := jwt3.Sign(&jwtAuth.payload, jwt3.NewHS256(secret))
 		if err != nil {
-			return nil, xerrors.Wrap(err, "failed to create peer key")
-		}
-		if err := jwtAuth.lr.Keystore().Put(jwtAuth.jwtHmacSecret, pk); err != nil {
-			return nil, xerrors.Wrap(err, "failed to store private key")
-		}
-		raw, _ := pk.Raw()
-		cliToken, err := jwt3.Sign(&jwtAuth.payload, jwt3.NewHS256(raw))
-		if err != nil {
-			return nil, err
+			return err
 		}
 
 		if err := jwtAuth.lr.SetAPIToken(cliToken); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if len(jwtAuth.lr.Config().Jwt.Secret) != 0 {
+		secret, err := hex.DecodeString(jwtAuth.lr.Config().Jwt.Secret)
+		if err != nil {
+			return nil, err
+		}
+		if err := setAPIToken(); err != nil {
+			return nil, err
+		}
+		return (*APIAlg)(jwt3.NewHS256(secret)), nil
+	}
+
+	pk, err := jwtAuth.lr.Keystore().Get(jwtAuth.jwtHmacSecret)
+	//todo use custome keystore to replace
+	if err != nil && strings.Contains(err.Error(), "no key by the given name was found") {
+		if err := setAPIToken(); err != nil {
 			return nil, err
 		}
 	} else if err != nil {
