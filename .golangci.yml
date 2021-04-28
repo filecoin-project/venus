@@ -1,17 +1,20 @@
 linters:
   disable-all: true
   enable:
-    - vet
     - gofmt
+    - govet
+    - goimports
     - misspell
     - goconst
     - golint
     - errcheck
+    - gosec
     - unconvert
     - staticcheck
     - varcheck
     - structcheck
     - deadcode
+    - scopelint
 
 issues:
   exclude-use-default: false
