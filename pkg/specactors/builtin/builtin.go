@@ -1,19 +1,22 @@
 package builtin
 
 import (
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/cbor"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/cbor"
 
 	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
 	smoothing2 "github.com/filecoin-project/specs-actors/v2/actors/util/smoothing"
 	smoothing3 "github.com/filecoin-project/specs-actors/v3/actors/util/smoothing"
+	smoothing4 "github.com/filecoin-project/specs-actors/v4/actors/util/smoothing"
 
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -40,8 +43,8 @@ const (
 )
 
 const (
-	MethodSend        = builtin3.MethodSend
-	MethodConstructor = builtin3.MethodConstructor
+	MethodSend        = builtin4.MethodSend
+	MethodConstructor = builtin4.MethodConstructor
 )
 
 // These are all just type aliases across actor versions 0, 2, & 3. In the future, that might change
@@ -65,6 +68,10 @@ func FromV2FilterEstimate(v2 smoothing2.FilterEstimate) FilterEstimate {
 
 func FromV3FilterEstimate(v3 smoothing3.FilterEstimate) FilterEstimate {
 	return (FilterEstimate)(v3)
+}
+
+func FromV4FilterEstimate(v4 smoothing4.FilterEstimate) FilterEstimate {
+	return (FilterEstimate)(v4)
 }
 
 type ActorStateLoader func(store adt.Store, root cid.Cid) (cbor.Marshaler, error)
@@ -91,6 +98,8 @@ func ActorNameByCode(c cid.Cid) string {
 		return builtin2.ActorNameByCode(c)
 	case builtin3.IsBuiltinActor(c):
 		return builtin3.ActorNameByCode(c)
+	case builtin4.IsBuiltinActor(c):
+		return builtin4.ActorNameByCode(c)
 	default:
 		return "<unknown>"
 	}
@@ -99,38 +108,43 @@ func ActorNameByCode(c cid.Cid) string {
 func IsBuiltinActor(c cid.Cid) bool {
 	return builtin0.IsBuiltinActor(c) ||
 		builtin2.IsBuiltinActor(c) ||
-		builtin3.IsBuiltinActor(c)
+		builtin3.IsBuiltinActor(c) ||
+		builtin4.IsBuiltinActor(c)
 }
 
 func IsAccountActor(c cid.Cid) bool {
 	return c == builtin0.AccountActorCodeID ||
 		c == builtin2.AccountActorCodeID ||
-		c == builtin3.AccountActorCodeID
+		c == builtin3.AccountActorCodeID ||
+		c == builtin4.AccountActorCodeID
 }
 
 func IsInitActor(c cid.Cid) bool {
 	return c == builtin0.InitActorCodeID ||
 		c == builtin2.InitActorCodeID ||
-		c == builtin3.InitActorCodeID
+		c == builtin3.InitActorCodeID ||
+		c == builtin4.InitActorCodeID
 }
 
 func IsStorageMinerActor(c cid.Cid) bool {
 	return c == builtin0.StorageMinerActorCodeID ||
 		c == builtin2.StorageMinerActorCodeID ||
-		c == builtin3.StorageMinerActorCodeID
+		c == builtin3.StorageMinerActorCodeID ||
+		c == builtin4.StorageMinerActorCodeID
 }
 
 func IsMultisigActor(c cid.Cid) bool {
 	return c == builtin0.MultisigActorCodeID ||
 		c == builtin2.MultisigActorCodeID ||
-		c == builtin3.MultisigActorCodeID
-
+		c == builtin3.MultisigActorCodeID ||
+		c == builtin4.MultisigActorCodeID
 }
 
 func IsPaymentChannelActor(c cid.Cid) bool {
 	return c == builtin0.PaymentChannelActorCodeID ||
 		c == builtin2.PaymentChannelActorCodeID ||
-		c == builtin3.PaymentChannelActorCodeID
+		c == builtin3.PaymentChannelActorCodeID ||
+		c == builtin4.PaymentChannelActorCodeID
 }
 
 func makeAddress(addr string) address.Address {

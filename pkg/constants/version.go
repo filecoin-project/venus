@@ -5,7 +5,7 @@ import (
 )
 
 // BuildVersion is the local build version, set by build system
-const BuildVersion = "0.9.1"
+const BuildVersion = "0.9.5"
 
 func UserVersion() string {
 	return BuildVersion + flags.GitCommit
@@ -17,17 +17,7 @@ func newVer(major, minor, patch uint8) Version {
 	return Version(uint32(major)<<16 | uint32(minor)<<8 | uint32(patch))
 }
 
-type NodeType int
-
-const (
-	NodeUnknown NodeType = iota
-
-	NodeFull
-	NodeMiner
-	NodeWorker
-)
-
 // semver versions of the rpc api exposed
 var (
-	FullAPIVersion = newVer(1, 1, 0)
+	FullAPIVersion = newVer(1, 2, 0)
 )

@@ -250,6 +250,7 @@ type ForkUpgradeConfig struct {
 	UpgradeClausHeight       abi.ChainEpoch `json:"upgradeClausHeight"`
 	UpgradeActorsV3Height    abi.ChainEpoch `json:"upgradeActorsV3Height"`
 	UpgradeNorwegianHeight   abi.ChainEpoch `json:"upgradeNorwegianHeight"`
+	UpgradeActorsV4Height    abi.ChainEpoch `json:"upgradeActorsV4Height"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -272,6 +273,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeClausHeight:       343200,
 	UpgradeActorsV3Height:    -1,
 	UpgradeNorwegianHeight:   -1,
+	UpgradeActorsV4Height:    -1,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {

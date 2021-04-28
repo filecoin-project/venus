@@ -33,7 +33,5 @@ const PropagationDelaySecs = uint64(6)
 
 var InsecurePoStValidation = false
 
-var DefaultSimultaneousTransfers = uint64(20)
-
 const NoTimeout = math.MaxInt64
 const NoHeight = abi.ChainEpoch(-1)
