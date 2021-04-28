@@ -135,12 +135,12 @@ func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Add
 	}, nil
 }
 
-func (walletAPI *WalletAPI) Locked(ctx context.Context) error {
-	return walletAPI.walletModule.Wallet.Locked()
+func (walletAPI *WalletAPI) LockWallet(ctx context.Context) error {
+	return walletAPI.walletModule.Wallet.LockWallet()
 }
 
-func (walletAPI *WalletAPI) UnLocked(ctx context.Context, password string) error {
-	return walletAPI.walletModule.Wallet.UnLocked(password)
+func (walletAPI *WalletAPI) UnLockWallet(ctx context.Context, password string) error {
+	return walletAPI.walletModule.Wallet.UnLockWallet(password)
 }
 
 func (walletAPI *WalletAPI) SetPassword(Context context.Context, password string) error {

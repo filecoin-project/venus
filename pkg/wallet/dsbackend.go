@@ -245,7 +245,7 @@ func (backend *DSBackend) removePassword() {
 	backend.password = []byte{}
 }
 
-func (backend *DSBackend) Locked() error {
+func (backend *DSBackend) LockWallet() error {
 	if backend.state == Lock {
 		return xerrors.Errorf("already locked")
 	}
@@ -263,7 +263,7 @@ func (backend *DSBackend) Locked() error {
 	return nil
 }
 
-func (backend *DSBackend) UnLocked(password string) error {
+func (backend *DSBackend) UnLockWallet(password string) error {
 	if backend.state == Unlock {
 		return xerrors.Errorf("already unlocked")
 	}
