@@ -44,22 +44,22 @@ func (authMux *AuthMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				token = "Bearer " + token
 			}
 		}
-		if token != "" {
-			if !strings.HasPrefix(token, "Bearer ") {
-				log.Warn("missing Bearer prefix in venusauth header")
-				w.WriteHeader(401)
-				return
-			}
 
-			token = strings.TrimPrefix(token, "Bearer ")
-			res, err := authMux.jwtCli.Verify(r.Context(), util.MacAddr(), "venus", r.RemoteAddr, r.Host, token)
-			if err != nil {
-				log.Warnf("JWT Verification failed (originating from %s): %s", r.RemoteAddr, err)
-				w.WriteHeader(401)
-				return
-			}
-			ctx = auth.WithPerm(ctx, res)
+		if !strings.HasPrefix(token, "Bearer ") {
+			log.Warn("missing Bearer prefix in venusauth header")
+			w.WriteHeader(401)
+			return
 		}
+
+		token = strings.TrimPrefix(token, "Bearer ")
+		res, err := authMux.jwtCli.Verify(r.Context(), util.MacAddr(), "venus", r.RemoteAddr, r.Host, token)
+		if err != nil {
+			log.Warnf("JWT Verification failed (originating from %s): %s", r.RemoteAddr, err)
+			w.WriteHeader(401)
+			return
+		}
+		ctx = auth.WithPerm(ctx, res)
+
 	}
 	*r = *(r.WithContext(ctx))
 	authMux.mux.ServeHTTP(w, r)
