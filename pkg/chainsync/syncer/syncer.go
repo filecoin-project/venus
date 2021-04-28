@@ -523,12 +523,12 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*types.Ti
 	defer types.ReverseFullBlock(fullTipSets)
 
 	var leftChain []*types.TipSet
-	var letFullChain []*types.FullTipSet
+	var leftFullChain []*types.FullTipSet
 	for index, tip := range segTipset {
 		fullTipset, err := syncer.getFullBlock(ctx, tip)
 		if err != nil {
 			leftChain = segTipset[index:]
-			letFullChain = fullTipSets[index:]
+			leftFullChain = fullTipSets[index:]
 			break
 		}
 		fullTipSets[index] = fullTipset
@@ -551,7 +551,7 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*types.Ti
 		if err != nil {
 			return nil, xerrors.Errorf("message processing failed: %w", err)
 		}
-		letFullChain[index] = fts
+		leftFullChain[index] = fts
 
 		//save message
 		for _, m := range messages[index].Bls {
