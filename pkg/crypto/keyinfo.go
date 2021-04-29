@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/filecoin-project/go-state-types/crypto"
+	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/pkg/errors"
-
+	"github.com/awnumar/memguard"
 	bls "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/crypto"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -18,10 +20,17 @@ const (
 	stSecp256k1 = "secp256k1"
 )
 
+var log = logging.Logger("keyinfo")
+
+func init() {
+	// Safely terminate in case of an interrupt signal
+	memguard.CatchInterrupt()
+}
+
 // KeyInfo is a key and its type used for signing.
 type KeyInfo struct {
 	// Private key.
-	PrivateKey []byte `json:"privateKey"`
+	PrivateKey *memguard.Enclave `json:"privateKey"`
 	// Cryptographic system used to generate private key.
 	SigType SigType `json:"type"`
 }
@@ -61,27 +70,45 @@ func (ki *KeyInfo) UnmarshalJSON(data []byte) error {
 	default:
 		return fmt.Errorf("unknown sig type: %T", k.SigType)
 	}
-	ki.PrivateKey = k.PrivateKey
+	ki.SetPrivateKey(k.PrivateKey)
 
 	return nil
 }
 
-func (ki *KeyInfo) MarshalJSON() ([]byte, error) {
-	k := keyInfo{}
-	k.PrivateKey = ki.PrivateKey
-	if ki.SigType == crypto.SigTypeBLS {
-		k.SigType = stBLS
-	} else if ki.SigType == crypto.SigTypeSecp256k1 {
-		k.SigType = stSecp256k1
-	} else {
-		return nil, fmt.Errorf("unsupport keystore types  %T", k.SigType)
-	}
-	return json.Marshal(k)
+func (ki KeyInfo) MarshalJSON() ([]byte, error) {
+	var err error
+	var b []byte
+	err = ki.UsePrivateKey(func(privateKey []byte) error {
+		k := keyInfo{}
+		k.PrivateKey = privateKey
+		if ki.SigType == crypto.SigTypeBLS {
+			k.SigType = stBLS
+		} else if ki.SigType == crypto.SigTypeSecp256k1 {
+			k.SigType = stSecp256k1
+		} else {
+			return fmt.Errorf("unsupport keystore types  %T", k.SigType)
+		}
+		b, err = json.Marshal(k)
+		return err
+	})
+
+	return b, err
 }
 
 // Key returns the private key of KeyInfo
+// This method makes the key escape from memguard's protection, so use caution
 func (ki *KeyInfo) Key() []byte {
-	return ki.PrivateKey
+	var pk []byte
+	err := ki.UsePrivateKey(func(privateKey []byte) error {
+		pk = make([]byte, len(privateKey))
+		copy(pk, privateKey[:])
+		return nil
+	})
+	if err != nil {
+		log.Errorf("got private key failed %v", err)
+		return []byte{}
+	}
+	return pk
 }
 
 // Type returns the type of curve used to generate the private key
@@ -101,31 +128,70 @@ func (ki *KeyInfo) Equals(other *KeyInfo) bool {
 		return false
 	}
 
-	return bytes.Equal(ki.PrivateKey, other.PrivateKey)
+	pk, err := ki.PrivateKey.Open()
+	if err != nil {
+		return false
+	}
+	defer pk.Destroy()
+
+	otherPK, err := other.PrivateKey.Open()
+	if err != nil {
+		return false
+	}
+	defer otherPK.Destroy()
+
+	return bytes.Equal(pk.Bytes(), otherPK.Bytes())
 }
 
 // Address returns the address for this keyinfo
 func (ki *KeyInfo) Address() (address.Address, error) {
+	pubKey, err := ki.PublicKey()
+	if err != nil {
+		return address.Undef, err
+	}
 	if ki.SigType == SigTypeBLS {
-		return address.NewBLSAddress(ki.PublicKey())
+		return address.NewBLSAddress(pubKey)
 	}
 	if ki.SigType == SigTypeSecp256k1 {
-		return address.NewSecp256k1Address(ki.PublicKey())
+		return address.NewSecp256k1Address(pubKey)
 	}
 	return address.Undef, errors.Errorf("can not generate address for unknown crypto system: %d", ki.SigType)
 }
 
 // Returns the public key part as uncompressed bytes.
-func (ki *KeyInfo) PublicKey() []byte {
-	if ki.SigType == SigTypeBLS {
-		var blsPrivateKey bls.PrivateKey
-		copy(blsPrivateKey[:], ki.PrivateKey)
-		publicKey := bls.PrivateKeyPublicKey(blsPrivateKey)
+func (ki *KeyInfo) PublicKey() ([]byte, error) {
+	var pubKey []byte
+	err := ki.UsePrivateKey(func(privateKey []byte) error {
+		switch ki.SigType {
+		case SigTypeBLS:
+			var blsPrivateKey bls.PrivateKey
+			copy(blsPrivateKey[:], privateKey)
+			publicKey := bls.PrivateKeyPublicKey(blsPrivateKey)
 
-		return publicKey[:]
+			pubKey = publicKey[:]
+			return nil
+		case SigTypeSecp256k1:
+			pubKey = PublicKeyForSecpSecretKey(privateKey)
+			return nil
+		default:
+			return xerrors.Errorf("unexpected signature type %v", ki.SigType)
+		}
+	})
+
+	return pubKey, err
+}
+
+func (ki *KeyInfo) UsePrivateKey(f func([]byte) error) error {
+	buf, err := ki.PrivateKey.Open()
+	if err != nil {
+		return err
 	}
-	if ki.SigType == SigTypeSecp256k1 {
-		return PublicKeyForSecpSecretKey(ki.PrivateKey)
-	}
-	return []byte{}
+	defer buf.Destroy()
+
+	return f(buf.Bytes())
+}
+
+func (ki *KeyInfo) SetPrivateKey(privateKey []byte) {
+	// will wipes privateKey with zeroes
+	ki.PrivateKey = memguard.NewEnclave(privateKey)
 }

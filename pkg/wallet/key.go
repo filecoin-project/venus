@@ -1,7 +1,6 @@
 package wallet
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
 
@@ -50,15 +49,14 @@ type cipherParams struct {
 }
 
 func (k *Key) MarshalJSON() (j []byte, err error) {
-	buf := new(bytes.Buffer)
-	err = k.KeyInfo.MarshalCBOR(buf)
+	kiBytes, err := json.Marshal(k.KeyInfo)
 	if err != nil {
 		return nil, err
 	}
 
 	jStruct := plainKey{
 		hex.EncodeToString([]byte(k.Address.String())),
-		hex.EncodeToString(buf.Bytes()),
+		hex.EncodeToString(kiBytes),
 		k.ID.String(),
 		version,
 	}
@@ -91,7 +89,7 @@ func (k *Key) UnmarshalJSON(j []byte) (err error) {
 	if err != nil {
 		return err
 	}
-	err = k.KeyInfo.UnmarshalCBOR(bytes.NewReader(kiBytes))
+	err = json.Unmarshal(kiBytes, k.KeyInfo)
 	if err != nil {
 		return err
 	}

@@ -34,9 +34,9 @@ type IWallet interface {
 	// Rule[perm:admin]
 	LockWallet(ctx context.Context) error
 	// Rule[perm:admin]
-	UnLockWallet(ctx context.Context, password string) error
+	UnLockWallet(ctx context.Context, password []byte) error
 	// Rule[perm:admin]
-	SetPassword(Context context.Context, password string) error
+	SetPassword(Context context.Context, password []byte) error
 	// Rule[perm:admin]
 	HasPassword(Context context.Context) bool
 	// Rule[perm:admin]

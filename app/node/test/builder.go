@@ -5,6 +5,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"testing"
 
+	"github.com/filecoin-project/venus/pkg/wallet"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/app/node"
@@ -50,8 +52,10 @@ func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 				c.Bootstrap.MinPeerThreshold = 0
 			}),
 		},
-		builderOpts: []node.BuilderOpt{},
-		tb:          tb,
+		builderOpts: []node.BuilderOpt{
+			node.SetWalletPassword(wallet.TestPassword),
+		},
+		tb: tb,
 	}
 }
 

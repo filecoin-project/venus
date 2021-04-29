@@ -19,10 +19,7 @@ import (
 func newWalletAndDSBackend(t *testing.T) (*Wallet, *DSBackend) {
 	t.Log("create a backend")
 	ds := datastore.NewMapDatastore()
-	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), "")
-	assert.NoError(t, err)
-
-	err = fs.SetPassword(TestPassword)
+	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
 	t.Log("create a wallet with a single backend")

@@ -215,7 +215,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	}
 
 	if password, _ := req.Options[Password].(string); len(password) > 0 {
-		opts = append(opts, node.SetPassword(password))
+		opts = append(opts, node.SetWalletPassword([]byte(password)))
 	}
 
 	if authURL, ok := req.Options[AuthServiceURL].(string); ok && len(authURL) > 0 {

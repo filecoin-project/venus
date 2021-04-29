@@ -348,7 +348,7 @@ var setWalletPassword = &cmds.Command{
 			return re.Emit("Do not enter an empty string")
 		}
 
-		err := env.(*node.Env).WalletAPI.SetPassword(req.Context, pw)
+		err := env.(*node.Env).WalletAPI.SetPassword(req.Context, []byte(pw))
 		if err != nil {
 			return err
 		}
@@ -392,7 +392,7 @@ var unlockedCmd = &cmds.Command{
 
 		pw := req.Arguments[0]
 
-		err := env.(*node.Env).WalletAPI.UnLockWallet(req.Context, pw)
+		err := env.(*node.Env).WalletAPI.UnLockWallet(req.Context, []byte(pw))
 		if err != nil {
 			return err
 		}

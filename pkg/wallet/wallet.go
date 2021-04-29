@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 )
 
-const TestPassword = "test-password"
+var TestPassword = []byte("test-password")
 
 var ErrKeyInfoNotFound = fmt.Errorf("key info not found")
 var walletLog = logging.Logger("wallet")
@@ -138,7 +138,7 @@ func (w *Wallet) GetPubKeyForAddress(addr address.Address) ([]byte, error) {
 		return nil, err
 	}
 
-	return info.PublicKey(), nil
+	return info.PublicKey()
 }
 
 // NewKeyInfo creates a new KeyInfo struct in the wallet backend and returns it
@@ -194,7 +194,7 @@ func (w *Wallet) Export(addr address.Address, password string) (*crypto.KeyInfo,
 		return nil, err
 	}
 
-	ki, err := bck.GetKeyInfoPassphrase(addr, keccak256([]byte(password)))
+	ki, err := bck.GetKeyInfoPassphrase(addr, []byte(password))
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +232,7 @@ func (w *Wallet) LockWallet() error {
 	return backend.LockWallet()
 }
 
-func (w *Wallet) UnLockWallet(password string) error {
+func (w *Wallet) UnLockWallet(password []byte) error {
 	backend, err := w.DSBacked()
 	if err != nil {
 		return err
@@ -240,7 +240,7 @@ func (w *Wallet) UnLockWallet(password string) error {
 	return backend.UnLockWallet(password)
 }
 
-func (w *Wallet) SetPassword(password string) error {
+func (w *Wallet) SetPassword(password []byte) error {
 	backend, err := w.DSBacked()
 	if err != nil {
 		return err
