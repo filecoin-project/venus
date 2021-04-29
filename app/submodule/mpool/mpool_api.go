@@ -342,6 +342,10 @@ func (a *MessagePoolAPI) GasEstimateFeeCap(ctx context.Context, msg *types.Unsig
 	return a.mp.MPool.GasEstimateFeeCap(ctx, msg, maxqueueblks, tsk)
 }
 
+func (a *MessagePoolAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.UnsignedMessage, tsk types.TipSetKey) (int64, error) {
+	return a.mp.MPool.GasEstimateGasLimit(ctx, msgIn, tsk)
+}
+
 func (a *MessagePoolAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (big.Int, error) {
 	return a.mp.MPool.GasEstimateGasPremium(ctx, nblocksincl, sender, gaslimit, tsk)
 }
