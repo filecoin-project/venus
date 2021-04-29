@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -143,6 +144,15 @@ func initRun(req *cmds.Request) error {
 	initOpts, err := getNodeInitOpts(peerKeyFile, walletKeyFile)
 	if err != nil {
 		return err
+	}
+
+	if len(cfg.Jwt.Secret) == 0 {
+		secret, err := config.GenerateJwtSecret()
+		if err != nil {
+			return err
+		}
+
+		cfg.Jwt.Secret = hex.EncodeToString(secret)
 	}
 
 	if err := rep.ReplaceConfig(cfg); err != nil {

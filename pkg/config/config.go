@@ -2,7 +2,6 @@ package config
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +11,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -320,15 +321,7 @@ type JwtConfig struct {
 }
 
 func newDefaultJwtConfig() *JwtConfig {
-	secret := make([]byte, 32)
-	if _, err := io.ReadFull(rand.Reader, secret); err != nil {
-		panic("reading from crypto/rand failed: " + err.Error())
-	}
-
-	jwtCfg := &JwtConfig{}
-	jwtCfg.Secret = hex.EncodeToString(secret)
-
-	return jwtCfg
+	return &JwtConfig{}
 }
 
 // NewDefaultConfig returns a config object with all the fields filled out to
@@ -476,4 +469,13 @@ func validateLettersOnly(key string, value string) error {
 		return errors.Errorf(`"%s" must only contain letters`, key)
 	}
 	return nil
+}
+
+func GenerateJwtSecret() ([]byte, error) {
+	secret := make([]byte, 32)
+	if _, err := io.ReadFull(rand.Reader, secret); err != nil {
+		return nil, xerrors.Errorf("reading from crypto/rand failed: " + err.Error())
+	}
+
+	return secret, nil
 }

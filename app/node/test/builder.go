@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -40,14 +41,21 @@ func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 		configMutations: []node.ConfigOpt{
 			// Default configurations that make sense for integration tests.
 			// The can be overridden by subsequent `withConfigChanges`.
-			node.ConfigOpt(func(c *config.Config) {
+			func(c *config.Config) {
 				// Bind only locally, defer port selection until binding.
 				c.API.APIAddress = "/ip4/127.0.0.1/tcp/0"
 				c.Swarm.Address = "/ip4/0.0.0.0/tcp/0"
-			}),
-			node.ConfigOpt(func(c *config.Config) {
+			},
+			func(c *config.Config) {
 				c.Bootstrap.MinPeerThreshold = 0
-			}),
+			},
+			func(c *config.Config) {
+				secret, err := config.GenerateJwtSecret()
+				if err != nil {
+					panic(err)
+				}
+				c.Jwt.Secret = hex.EncodeToString(secret)
+			},
 		},
 		builderOpts: []node.BuilderOpt{},
 		tb:          tb,
