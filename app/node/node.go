@@ -3,18 +3,19 @@ package node
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/app/submodule/multisig"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/filecoin-project/venus/app/submodule/multisig"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
 	logging "github.com/ipfs/go-log/v2"
 	ma "github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net" //nolint
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/app/submodule/blockservice"

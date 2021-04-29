@@ -3,6 +3,7 @@ package network
 import (
 	"context"
 	"crypto/rand"
+
 	"github.com/go-errors/errors"
 	"github.com/jbenet/goprocess"
 	"github.com/libp2p/go-eventbus"

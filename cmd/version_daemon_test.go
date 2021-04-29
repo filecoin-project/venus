@@ -10,7 +10,7 @@ import (
 
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	manet "github.com/multiformats/go-multiaddr-net" //nolint
+	manet "github.com/multiformats/go-multiaddr/net"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
