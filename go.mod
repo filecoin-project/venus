@@ -19,7 +19,7 @@ require (
 	github.com/docker/go-units v0.4.0
 	github.com/drand/drand v1.2.1
 	github.com/drand/kyber v1.1.4
-	github.com/fatih/color v1.9.0
+	github.com/fatih/color v1.10.0
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v0.0.5
 	github.com/filecoin-project/go-bitfield v0.2.4
@@ -47,7 +47,7 @@ require (
 	github.com/go-errors/errors v1.0.1
 	github.com/go-kit/kit v0.10.0
 	github.com/golang/snappy v0.0.2-0.20190904063534-ff6b7dc882cf // indirect
-	github.com/golangci/golangci-lint v1.21.0
+	github.com/golangci/golangci-lint v1.39.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/uuid v1.1.2
 	github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026
@@ -95,8 +95,6 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.4.2-0.20210212194758-6c1addf493eb
 	github.com/libp2p/go-libp2p-swarm v0.3.1
 	github.com/libp2p/go-libp2p-yamux v0.4.1
-	github.com/mattn/go-colorable v0.1.6 // indirect
-	github.com/mattn/go-runewidth v0.0.8 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/morikuni/aec v1.0.0 // indirect
@@ -137,6 +135,6 @@ replace (
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210521084414-5a2e6709d9bd
 	github.com/filecoin-project/test-vectors => ./extern/test-vectors
 	github.com/filecoin-project/venus => ./
-	github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.21.0
+	github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.39.0
 	github.com/ipfs/go-ipfs-cmds => github.com/ipfs-force-community/go-ipfs-cmds v0.6.1-0.20210521090123-4587df7fa0ab
 )

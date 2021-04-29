@@ -2,9 +2,10 @@ package vmcontext_test
 
 import (
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/util"
 	"io"
 	"testing"
+
+	"github.com/filecoin-project/venus/pkg/util"
 
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
@@ -22,7 +23,7 @@ type testActorStateHandleState struct {
 func (t *testActorStateHandleState) Clone(b interface{}) error { //nolint
 	newBoj := &testActorStateHandleState{}
 	newBoj.FieldA = t.FieldA
-	b = newBoj
+	b = newBoj //nolint:staticcheck
 	return nil
 }
 

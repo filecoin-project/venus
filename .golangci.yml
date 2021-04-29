@@ -1,8 +1,8 @@
 linters:
   disable-all: true
   enable:
-    - vet
     - gofmt
+    - govet
     - misspell
     - goconst
     - golint
