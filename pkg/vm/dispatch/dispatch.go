@@ -5,16 +5,11 @@ import (
 	"fmt"
 	"reflect"
 
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
-	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
-
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 )
 
@@ -72,15 +67,16 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, nvk network.Version,
 		// the ctx will be automatically coerced
 		reflect.ValueOf(ctx),
 	}
+	//err code
+	ec := exitcode.ErrSerialization
+	if nvk < network.Version7 {
+		ec = 1
+	}
 
 	// Dragons: simplify this to arginterface
 	parserByte := func(raw []byte) *ExcuteError {
 		obj, err := m.ArgInterface(raw)
 		if err != nil {
-			ec := exitcode.ErrSerialization
-			if nvk < network.Version7 {
-				ec = 1
-			}
 			return NewExcuteError(ec, "fail to decode params")
 		}
 		args = append(args, reflect.ValueOf(obj))
@@ -95,23 +91,12 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, nvk network.Version,
 		if err != nil {
 			return []byte{}, err
 		}
-	case builtin2.CBORBytes:
-		err := parserByte(t)
-		if err != nil {
-			return []byte{}, err
+	case cbor.Marshaler:
+		buf := new(bytes.Buffer)
+		if err := t.MarshalCBOR(buf); err != nil {
+			return []byte{}, NewExcuteError(ec, fmt.Sprintf("fail to marshal argument %v", err))
 		}
-	case builtin3.CBORBytes:
-		err := parserByte(t)
-		if err != nil {
-			return []byte{}, err
-		}
-	case builtin4.CBORBytes:
-		err := parserByte(t)
-		if err != nil {
-			return []byte{}, err
-		}
-	case runtime.CBORBytes:
-		err := parserByte(t)
+		err := parserByte(buf.Bytes())
 		if err != nil {
 			return []byte{}, err
 		}
