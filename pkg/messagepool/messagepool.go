@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	stdbig "math/big"
+	"os"
 	"sort"
 	"sync"
 	"time"
@@ -1405,6 +1406,11 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan MpoolUpdate, error) 
 }
 
 func (mp *MessagePool) loadLocal() error {
+	if val := os.Getenv("VENUS_DISABLE_LOCAL_MESSAGE"); val != "" {
+		log.Warnf("receive environment to disable local local message")
+		return nil
+	}
+
 	res, err := mp.localMsgs.Query(query.Query{})
 	if err != nil {
 		return xerrors.Errorf("query local messages: %v", err)
