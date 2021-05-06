@@ -67,14 +67,10 @@ func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) (msgs []*typ
 }
 
 func deleteSelectedMessages(pending map[address.Address]map[uint64]*types.SignedMessage, msgs []*types.SignedMessage) map[address.Address]map[uint64]*types.SignedMessage {
+	// messages from the same wallet cannot be scattered in multiple blocks in a cycle, eg b1{nonce: 20~30}, b2{nonce: 31~40}
 	for _, msg := range msgs {
-		if mset, ok := pending[msg.Message.From]; ok {
-			if _, ok := mset[msg.Message.Nonce]; ok {
-				delete(mset, msg.Message.Nonce)
-				if len(mset) <= 0 {
-					delete(pending, msg.Message.From)
-				}
-			}
+		if _, ok := pending[msg.Message.From]; ok {
+			delete(pending, msg.Message.From)
 		}
 	}
 
