@@ -94,8 +94,8 @@ var mpoolSelect = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		printOneString(re, string(selectMsg))
-		return nil
+
+		return printOneString(re, string(selectMsg))
 	},
 }
 
