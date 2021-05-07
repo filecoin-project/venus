@@ -36,6 +36,7 @@ var mpoolCmd = &cmds.Command{
 		"gas-perf": mpoolGasPerfCmd,
 		"publish":  mpoolPublish,
 		"delete":   mpoolDeleteAddress,
+		"select":   mpoolSelect,
 	},
 }
 
@@ -65,6 +66,35 @@ var mpoolDeleteAddress = &cmds.Command{
 			return err
 		}
 
+		return nil
+	},
+}
+
+var mpoolSelect = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline:          "select",
+		ShortDescription: "select message from mpool",
+	},
+	Options: []cmds.Option{
+		cmds.FloatOption("quality", "optionally specify the wallet for publish message").WithDefault(0.5),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		ctx := context.TODO()
+
+		quality, _ := req.Options["quality"].(float64)
+		head, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+		msgs, err := env.(*node.Env).MessagePoolAPI.MpoolSelect(ctx, head.Key(), quality)
+		if err != nil {
+			return err
+		}
+		selectMsg, err := json.MarshalIndent(msgs, " ", "\t")
+		if err != nil {
+			return err
+		}
+		printOneString(re, string(selectMsg))
 		return nil
 	},
 }
