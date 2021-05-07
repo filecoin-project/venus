@@ -1,6 +1,6 @@
 package wallet
 
-import "github.com/ipfs-force-community/venus-wallet/core"
+import "github.com/filecoin-project/venus-wallet/core"
 
 //type MsgType string
 type MsgType = core.MsgType

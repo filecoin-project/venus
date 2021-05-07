@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/wallet/remotewallet"
 	pconfig "github.com/filecoin-project/venus/pkg/config"
-	"github.com/ipfs-force-community/venus-wallet/core"
+	"github.com/filecoin-project/venus-wallet/core"
 
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/state"

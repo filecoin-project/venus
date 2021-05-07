@@ -41,6 +41,8 @@ require (
 	github.com/filecoin-project/specs-actors/v4 v4.0.0
 	github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506
 	github.com/filecoin-project/test-vectors/schema v0.0.5
+	github.com/filecoin-project/venus-auth v1.0.2-0.20210507023017-76ce8b64e6db // indirect
+	github.com/filecoin-project/venus-wallet v1.0.1-0.20210507023531-5dfabaf5606d // indirect
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
 	github.com/go-errors/errors v1.0.1
 	github.com/go-kit/kit v0.10.0
@@ -53,8 +55,6 @@ require (
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
-	github.com/ipfs-force-community/venus-auth v0.0.0-20210409103353-0d08847b2a79
-	github.com/ipfs-force-community/venus-wallet v0.0.0-20210331090924-7e6c4e807cd1
 	github.com/ipfs/go-bitswap v0.3.2
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.1.4

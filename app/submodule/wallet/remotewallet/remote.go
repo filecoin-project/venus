@@ -5,9 +5,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	locWallet "github.com/filecoin-project/venus/pkg/wallet"
-	"github.com/ipfs-force-community/venus-wallet/api/remotecli"
-	"github.com/ipfs-force-community/venus-wallet/api/remotecli/httpparse"
-	"github.com/ipfs-force-community/venus-wallet/storage/wallet"
+	"github.com/filecoin-project/venus-wallet/api/remotecli"
+	"github.com/filecoin-project/venus-wallet/api/remotecli/httpparse"
+	"github.com/filecoin-project/venus-wallet/storage/wallet"
 	"golang.org/x/xerrors"
 )
 

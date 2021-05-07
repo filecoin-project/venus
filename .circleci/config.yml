@@ -116,6 +116,8 @@ jobs:
   deps_linux:
     docker:
       - image: circleci/golang:1.16.2-stretch
+        environment:
+          GOPROXY: "https://goproxy.io,direct"
     working_directory: /go/src/github.com/filecoin-project/venus
     resource_class: xlarge
     steps:
@@ -170,6 +172,8 @@ jobs:
   build_linux:
     docker:
       - image: circleci/golang:1.16.2-stretch
+        environment:
+          GOPROXY: "https://goproxy.io,direct"
     working_directory: /go/src/github.com/filecoin-project/venus
     resource_class: xlarge
     parameters:
@@ -224,6 +228,8 @@ jobs:
   unit_test_linux:
     docker:
       - image: circleci/golang:1.16.2-stretch
+        environment:
+          GOPROXY: "https://goproxy.io,direct"
     parallelism: 2 # Check .codecov.yml "after_n_builds" if changing this
     working_directory: /go/src/github.com/filecoin-project/venus
     resource_class: xlarge
@@ -256,6 +262,8 @@ jobs:
   integration_test_linux:
     docker:
       - image: circleci/golang:1.16.2-stretch
+        environment:
+          GOPROXY: "https://goproxy.io,direct"
     parallelism: 2 # Check .codecov.yml "after_n_builds" if changing this
     working_directory: /go/src/github.com/filecoin-project/venus
     resource_class: xlarge
@@ -290,6 +298,8 @@ jobs:
   functional_test_linux:
     docker:
       - image: circleci/golang:1.16.2-stretch
+        environment:
+          GOPROXY: "https://goproxy.io,direct"
     parallelism: 2
     working_directory: /go/src/github.com/filecoin-project/venus
     resource_class: xlarge
@@ -328,6 +338,8 @@ jobs:
   publish_release:
     docker:
       - image: circleci/golang:1.16.2-stretch
+        environment:
+          GOPROXY: "https://goproxy.io,direct"
     resource_class: small
     parameters:
       <<: *nightly_param
@@ -354,6 +366,8 @@ jobs:
   build_docker_img:
     docker:
       - image: circleci/golang:1.16.2-stretch
+        environment:
+          GOPROXY: "https://goproxy.io,direct"
     resource_class: xlarge
     parameters:
       <<: *nightly_param
@@ -444,6 +458,8 @@ jobs:
   trigger_nightly_devnet_deploy:
     docker:
       - image: circleci/golang:1.16.2-stretch
+        environment:
+          GOPROXY: "https://goproxy.io,direct"
     resource_class: small
     steps:
       - setup_remote_docker
@@ -480,6 +496,8 @@ jobs:
       <<: *staging_devnet_param
     docker:
       - image: circleci/golang:1.16.2-stretch
+        environment:
+          GOPROXY: "https://goproxy.io,direct"
     resource_class: small
     steps:
       - checkout

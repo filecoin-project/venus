@@ -183,7 +183,7 @@ Looking for even more? See the full rundown at [filecoin-project/community](http
 
 ## Maintenance
 
-Venus (previously called `venus`) is now maintained by [IPFS-Force Community](https://github.com/ipfs-force-community)
+Venus (previously called `venus`) is now maintained by [IPFS-Force Community](https://github.com/filecoin-project)
 
 Maintainers: @steven004, @diwufeiwen, @hunjixin, @felix00000
 

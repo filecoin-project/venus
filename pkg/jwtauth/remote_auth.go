@@ -3,8 +3,8 @@ package jwtauth
 import (
 	"context"
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/ipfs-force-community/venus-auth/cmd/jwtclient"
-	"github.com/ipfs-force-community/venus-auth/core"
+	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
+	"github.com/filecoin-project/venus-auth/core"
 )
 
 var _ IJwtAuthClient = (*RemoteAuth)(nil)
