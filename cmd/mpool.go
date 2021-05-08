@@ -129,7 +129,7 @@ var mpoolPublish = &cmds.Command{
 			fromAddr = addr
 		}
 
-		err := env.(*node.Env).MessagePoolAPI.MpoolPublish(ctx, fromAddr)
+		err := env.(*node.Env).MessagePoolAPI.MpoolPublishByAddr(ctx, fromAddr)
 		if err != nil {
 			return err
 		}
