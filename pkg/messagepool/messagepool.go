@@ -517,6 +517,19 @@ func (mp *MessagePool) PublishMsgForWallet(addr address.Address) error {
 	return nil
 }
 
+func (mp *MessagePool) PublishMsg(smsg *types.SignedMessage) error {
+	msgb, err := smsg.Serialize()
+	if err != nil {
+		return xerrors.Errorf("could not serialize: %s", err)
+	}
+
+	err = mp.api.PubSubPublish(msgsub.Topic(mp.netName), msgb)
+	if err != nil {
+		return xerrors.Errorf("could not publish: %s", err)
+	}
+	return nil
+}
+
 func (mp *MessagePool) Close() error {
 	close(mp.closer)
 	return mp.journal.Close()

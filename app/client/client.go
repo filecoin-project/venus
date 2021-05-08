@@ -107,7 +107,8 @@ type FullNode struct {
 	SyncState                func(context.Context) (*syncApiTypes.SyncState, error)
 
 	DeleteByAdress          func(context.Context, address.Address) error
-	MpoolPublish            func(context.Context, address.Address) error
+	MpoolPublishByAddr      func(context.Context, address.Address) error
+	MpoolPublishMessage     func(ctx context.Context, smsg *types.SignedMessage) error
 	MpoolPush               func(context.Context, *types.SignedMessage) (cid.Cid, error)
 	MpoolGetConfig          func(context.Context) (*messagepool.MpoolConfig, error)
 	MpoolSetConfig          func(context.Context, *messagepool.MpoolConfig) error
@@ -239,7 +240,8 @@ type SyncerAPI struct {
 
 type MessagePoolAPI struct {
 	DeleteByAdress          func(context.Context, address.Address) error
-	MpoolPublish            func(context.Context, address.Address) error
+	MpoolPublishByAddr      func(context.Context, address.Address) error
+	MpoolPublishMessage     func(ctx context.Context, smsg *types.SignedMessage) error
 	MpoolPush               func(context.Context, *types.SignedMessage) (cid.Cid, error)
 	MpoolGetConfig          func(context.Context) (*messagepool.MpoolConfig, error)
 	MpoolSetConfig          func(context.Context, *messagepool.MpoolConfig) error
