@@ -10,6 +10,7 @@ RUN curl -sSf https://sh.rustup.rs | sh -s -- -y
 
 ENV SRC_DIR /go/src/github.com/filecoin-project/venus
 ENV GO111MODULE on
+ENV HTTPS_PROXY https://goproxy.io
 
 COPY . $SRC_DIR
 

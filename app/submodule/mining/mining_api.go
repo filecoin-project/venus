@@ -9,7 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
 
-	"github.com/ipfs-force-community/venus-wallet/core"
+	"github.com/filecoin-project/venus-wallet/core"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"

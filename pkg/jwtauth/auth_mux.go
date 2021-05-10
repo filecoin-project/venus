@@ -2,8 +2,8 @@ package jwtauth
 
 import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/ipfs-force-community/venus-auth/core"
-	"github.com/ipfs-force-community/venus-auth/util"
+	"github.com/filecoin-project/venus-auth/core"
+	"github.com/filecoin-project/venus-auth/util"
 	logging "github.com/ipfs/go-log"
 	"net/http"
 	"strings"
