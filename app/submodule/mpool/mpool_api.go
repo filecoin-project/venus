@@ -22,7 +22,8 @@ import (
 
 type IMessagePool interface {
 	DeleteByAdress(ctx context.Context, addr address.Address) error
-	MpoolPublish(ctx context.Context, addr address.Address) error
+	MpoolPublishByAddr(context.Context, address.Address) error
+	MpoolPublishMessage(ctx context.Context, smsg *types.SignedMessage) error
 	MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error)
 	MpoolGetConfig(context.Context) (*messagepool.MpoolConfig, error)
 	MpoolSetConfig(ctx context.Context, cfg *messagepool.MpoolConfig) error
@@ -58,9 +59,12 @@ func (a *MessagePoolAPI) DeleteByAdress(ctx context.Context, addr address.Addres
 	return a.mp.MPool.DeleteByAdress(addr)
 }
 
-func (a *MessagePoolAPI) MpoolPublish(ctx context.Context, addr address.Address) error {
+func (a *MessagePoolAPI) MpoolPublishByAddr(ctx context.Context, addr address.Address) error {
 	return a.mp.MPool.PublishMsgForWallet(addr)
+}
 
+func (a *MessagePoolAPI) MpoolPublishMessage(ctx context.Context, smsg *types.SignedMessage) error {
+	return a.mp.MPool.PublishMsg(smsg)
 }
 
 func (a *MessagePoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {

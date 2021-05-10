@@ -29,7 +29,7 @@ func (actorAPI *ActorAPI) StateGetActor(ctx context.Context, actor address.Addre
 		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
 
-	view, err := actorAPI.chain.ChainReader.StateView(ts)
+	view, err := actorAPI.chain.ChainReader.ParentStateView(ts)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
