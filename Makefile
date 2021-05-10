@@ -17,3 +17,6 @@ clean:
 
 	rm -rf ./extern/filecoin-ffi
 	rm -rf ./extern/test-vectors
+
+fmt:
+	gofmt -s -w ./
