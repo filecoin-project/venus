@@ -66,7 +66,7 @@ func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, g
 func makeTestMpool() (*MessagePool, *testMpoolAPI) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
-	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "test", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "test", nil, nil, nil)
 	if err != nil {
 		panic(err)
 	}
