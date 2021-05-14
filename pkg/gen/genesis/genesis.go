@@ -23,7 +23,6 @@ import (
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -32,12 +31,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/slashing"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
 )
 
@@ -48,7 +47,7 @@ const MaxAccounts = MinerStart - AccountStart
 var log = logging.Logger("gen/genesis")
 
 type GenesisBootstrap struct { //nolint
-	Genesis *block.Block
+	Genesis *types.BlockHeader
 }
 
 /*
@@ -113,7 +112,7 @@ Genesis: {
 
 */
 
-func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Template) (*state.State, map[address.Address]address.Address, error) {
+func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Template) (*tree.State, map[address.Address]address.Address, error) {
 	// Create empty state tree
 
 	cst := cbor.NewCborStore(bs)
@@ -122,7 +121,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 		return nil, nil, xerrors.Errorf("putting empty object: %w", err)
 	}
 
-	state, err := state.NewState(cst, state.StateTreeVersion0)
+	state, err := tree.NewState(cst, tree.StateTreeVersion0)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("making new state tree: %w", err)
 	}
@@ -312,7 +311,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 	return state, keyIDs, nil
 }
 
-func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *state.State, info Actor, keyIDs map[address.Address]address.Address) error {
+func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *tree.State, info Actor, keyIDs map[address.Address]address.Address) error {
 	var ainfo AccountMeta
 	if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
 		return xerrors.Errorf("unmarshaling account meta: %w", err)
@@ -338,7 +337,7 @@ func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *state.St
 	return nil
 }
 
-func createMultisigAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore, state *state.State, ida address.Address, info Actor, keyIDs map[address.Address]address.Address) error {
+func createMultisigAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore, state *tree.State, ida address.Address, info Actor, keyIDs map[address.Address]address.Address) error {
 	if info.Type != TMultisig {
 		return fmt.Errorf("can only call createMultisigAccount with multisig Actor info")
 	}
@@ -546,7 +545,7 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs blockstore.Blocksto
 
 	tickBuf := make([]byte, 32)
 	_, _ = rand.Read(tickBuf)
-	genesisticket := block.Ticket{
+	genesisticket := types.Ticket{
 		VRFProof: tickBuf,
 	}
 
@@ -572,10 +571,10 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs blockstore.Blocksto
 		return nil, xerrors.Errorf("failed writing filecoin genesis block to blockstore: %w", err)
 	}
 
-	b := &block.Block{
+	b := &types.BlockHeader{
 		Miner:                 builtin0.SystemActorAddr,
 		Ticket:                genesisticket,
-		Parents:               block.NewTipSetKey(filecoinGenesisCid),
+		Parents:               types.NewTipSetKey(filecoinGenesisCid),
 		Height:                0,
 		ParentWeight:          big.Zero(),
 		ParentStateRoot:       stateroot,
@@ -584,8 +583,8 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs blockstore.Blocksto
 		BLSAggregate:          nil,
 		BlockSig:              nil,
 		Timestamp:             template.Timestamp,
-		ElectionProof:         new(block.ElectionProof),
-		BeaconEntries: []*block.BeaconEntry{
+		ElectionProof:         new(types.ElectionProof),
+		BeaconEntries: []*types.BeaconEntry{
 			{
 				Round: 0,
 				Data:  make([]byte, 32),

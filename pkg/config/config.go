@@ -3,17 +3,27 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"io/ioutil"
 	"os"
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/types"
 )
+
+const (
+	scryptN = 1 << 15
+	scryptP = 1
+)
+
+var DefaultDefaultMaxFee = types.MustParseFIL("0.007")
 
 // Config is an in memory representation of the filecoin configuration file
 type Config struct {
@@ -25,10 +35,13 @@ type Config struct {
 	Observability *ObservabilityConfig `json:"observability"`
 	Swarm         *SwarmConfig         `json:"swarm"`
 	Wallet        *WalletConfig        `json:"walletModule"`
+	SlashFilterDs *SlashFilterDsConfig `json:"slashFilter"`
 }
 
 // APIConfig holds all configuration options related to the api.
+// nolint
 type APIConfig struct {
+	VenusAuthURL                  string   `json:"venusAuthURL"`
 	APIAddress                    string   `json:"apiAddress"`
 	AccessControlAllowOrigin      []string `json:"accessControlAllowOrigin"`
 	AccessControlAllowCredentials bool     `json:"accessControlAllowCredentials"`
@@ -79,7 +92,7 @@ type SwarmConfig struct {
 
 func newDefaultSwarmConfig() *SwarmConfig {
 	return &SwarmConfig{
-		Address: "/ip4/0.0.0.0/tcp/6000",
+		Address: "/ip4/0.0.0.0/tcp/0",
 	}
 }
 
@@ -101,12 +114,28 @@ func newDefaultBootstrapConfig() *BootstrapConfig {
 
 // WalletConfig holds all configuration options related to the wallet.
 type WalletConfig struct {
-	DefaultAddress address.Address `json:"defaultAddress,omitempty"`
+	DefaultAddress   address.Address  `json:"defaultAddress,omitempty"`
+	PassphraseConfig PassphraseConfig `json:"passphraseConfig,omitempty"`
+	RemoteEnable     bool             `json:"remoteEnable"`
+	RemoteBackend    string           `json:"remoteBackend"`
+}
+
+type PassphraseConfig struct {
+	ScryptN int `json:"scryptN"`
+	ScryptP int `json:"scryptP"`
 }
 
 func newDefaultWalletConfig() *WalletConfig {
 	return &WalletConfig{
-		DefaultAddress: address.Undef,
+		DefaultAddress:   address.Undef,
+		PassphraseConfig: DefaultPassphraseConfig(),
+	}
+}
+
+func DefaultPassphraseConfig() PassphraseConfig {
+	return PassphraseConfig{
+		ScryptN: scryptN,
+		ScryptP: scryptP,
 	}
 }
 
@@ -182,27 +211,35 @@ func newDefaultTraceConfig() *TraceConfig {
 
 // MessagePoolConfig holds all configuration options related to nodes message pool (mpool).
 type MessagePoolConfig struct {
-	// MaxPoolSize is the maximum number of pending messages will will allow in the message pool at any time
-	MaxPoolSize uint `json:"maxPoolSize"`
 	// MaxNonceGap is the maximum nonce of a message past the last received on chain
 	MaxNonceGap uint64 `json:"maxNonceGap"`
+	// MaxFee
+	MaxFee types.FIL `json:"maxFee"`
+}
+
+var DefaultMessagePoolParam = &MessagePoolConfig{
+	MaxNonceGap: 100,
+	MaxFee:      DefaultDefaultMaxFee,
 }
 
 func newDefaultMessagePoolConfig() *MessagePoolConfig {
 	return &MessagePoolConfig{
-		MaxPoolSize: 1000000,
 		MaxNonceGap: 100,
+		MaxFee:      DefaultDefaultMaxFee,
 	}
 }
 
 type NetworkParamsConfig struct {
-	ConsensusMinerMinPower uint64                       `json:"consensusMinerMinPower"` // uint64 goes up to 18 EiB
-	MinVerifiedDealSize    int64                        `json:"minVerifiedDealSize"`
-	ReplaceProofTypes      []int64                      `json:"replaceProofTypes"`
-	BlockDelay             uint64                       `json:"blockDelay"`
-	DrandSchedule          map[abi.ChainEpoch]DrandEnum `json:"drandSchedule"`
-	ForkUpgradeParam       *ForkUpgradeConfig           `json:"forkUpgradeParam"`
-	AddressNetwork         address.Network              `json:"addressNetwork"`
+	DevNet                  bool                         `json:"devNet"`
+	NetworkType             int                          `json:"networkType"`
+	ConsensusMinerMinPower  uint64                       `json:"consensusMinerMinPower"` // uint64 goes up to 18 EiB
+	MinVerifiedDealSize     int64                        `json:"minVerifiedDealSize"`
+	ReplaceProofTypes       []abi.RegisteredSealProof    `json:"replaceProofTypes"`
+	BlockDelay              uint64                       `json:"blockDelay"`
+	DrandSchedule           map[abi.ChainEpoch]DrandEnum `json:"drandSchedule"`
+	ForkUpgradeParam        *ForkUpgradeConfig           `json:"forkUpgradeParam"`
+	AddressNetwork          address.Network              `json:"addressNetwork"`
+	PreCommitChallengeDelay abi.ChainEpoch               `json:"preCommitChallengeDelay"`
 }
 
 type ForkUpgradeConfig struct {
@@ -219,6 +256,9 @@ type ForkUpgradeConfig struct {
 	UpgradePersianHeight     abi.ChainEpoch `json:"upgradePersianHeight"`
 	UpgradeOrangeHeight      abi.ChainEpoch `json:"upgradeOrangeHeight"`
 	UpgradeClausHeight       abi.ChainEpoch `json:"upgradeClausHeight"`
+	UpgradeActorsV3Height    abi.ChainEpoch `json:"upgradeActorsV3Height"`
+	UpgradeNorwegianHeight   abi.ChainEpoch `json:"upgradeNorwegianHeight"`
+	UpgradeActorsV4Height    abi.ChainEpoch `json:"upgradeActorsV4Height"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -239,20 +279,43 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeActorsV2Height:    138720,
 	UpgradeOrangeHeight:      336458,
 	UpgradeClausHeight:       343200,
+	UpgradeActorsV3Height:    -1,
+	UpgradeNorwegianHeight:   -1,
+	UpgradeActorsV4Height:    -1,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 	defaultParams := *DefaultForkUpgradeParam
 	return &NetworkParamsConfig{
 		ConsensusMinerMinPower: 0, // 0 means don't override the value
-		ReplaceProofTypes: []int64{
-			int64(abi.RegisteredSealProof_StackedDrg2KiBV1),
-			int64(abi.RegisteredSealProof_StackedDrg512MiBV1),
-			int64(abi.RegisteredSealProof_StackedDrg32GiBV1),
-			int64(abi.RegisteredSealProof_StackedDrg64GiBV1),
+		ReplaceProofTypes: []abi.RegisteredSealProof{
+			abi.RegisteredSealProof_StackedDrg2KiBV1,
+			abi.RegisteredSealProof_StackedDrg512MiBV1,
+			abi.RegisteredSealProof_StackedDrg32GiBV1,
+			abi.RegisteredSealProof_StackedDrg64GiBV1,
 		},
 		DrandSchedule:    map[abi.ChainEpoch]DrandEnum{0: 5, -1: 1},
 		ForkUpgradeParam: &defaultParams,
+	}
+}
+
+type MySQLConfig struct {
+	ConnectionString string        `json:"connectionString"`
+	MaxOpenConn      int           `json:"maxOpenConn"`     // 100
+	MaxIdleConn      int           `json:"maxIdleConn"`     // 10
+	ConnMaxLifeTime  time.Duration `json:"connMaxLifeTime"` // minuter: 60
+	Debug            bool          `json:"debug"`
+}
+
+type SlashFilterDsConfig struct {
+	Type  string      `json:"type"`
+	MySQL MySQLConfig `json:"mysql"`
+}
+
+func newDefaultSlashFilterDsConfig() *SlashFilterDsConfig {
+	return &SlashFilterDsConfig{
+		Type:  "local",
+		MySQL: MySQLConfig{},
 	}
 }
 
@@ -268,6 +331,7 @@ func NewDefaultConfig() *Config {
 		Observability: newDefaultObservabilityConfig(),
 		Swarm:         newDefaultSwarmConfig(),
 		Wallet:        newDefaultWalletConfig(),
+		SlashFilterDs: newDefaultSlashFilterDsConfig(),
 	}
 }
 

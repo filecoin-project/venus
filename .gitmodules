@@ -1,9 +1,6 @@
-[submodule "vendors/filecoin-ffi"]
-	path = vendors/filecoin-ffi
+[submodule "extern/filecoin-ffi"]
+	path = extern/filecoin-ffi
 	url = https://github.com/filecoin-project/filecoin-ffi.git
-[submodule "vendors/fil-blst"]
-	path = vendors/fil-blst
-	url = https://github.com/filecoin-project/fil-blst.git
-[submodule "vendors/test-vectors"]
-	path = vendors/test-vectors
+[submodule "extern/test-vectors"]
+	path = extern/test-vectors
 	url = https://github.com/filecoin-project/test-vectors.git

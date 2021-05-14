@@ -59,8 +59,8 @@ Windows is not yet supported.
 A validating node can run on most systems with at least 8GB of RAM. 
 A mining node requires significant RAM and GPU resources, depending on the sector configuration to be used.
 
-### Install from Source
 
+### Install from Source
 Clone this git repository to your machine:
 
 ```sh
@@ -84,10 +84,10 @@ More info at [filecoin-ffi](https://github.com/filecoin-project/filecoin-ffi).
 
 #### Install Dependencies
 
-First, load all the Git submodules.
+First install componets
 
 ```sh
-git submodule update --init --recursive
+sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm; sudo yum install -y git gcc bzr jq pkgconfig clang llvm mesa-libGL-devel opencl-headers ocl-icd ocl-icd-devel hwloc-devel
 ```
 
 Initialize build dependencies.

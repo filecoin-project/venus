@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	addr "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/venus/pkg/config"
 	"golang.org/x/xerrors"
@@ -15,18 +16,17 @@ import (
 	runtime2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/state"
 )
 
 type FaultStateView interface {
-	state.AccountStateView
-	MinerInfo(ctx context.Context, maddr addr.Address, nv network.Version) (*miner.MinerInfo, error)
+	ResolveToKeyAddr(ctx context.Context, address address.Address) (address.Address, error)
+	MinerInfo(ctx context.Context, maddr address.Address, nv network.Version) (*miner.MinerInfo, error)
 }
 
 // Chain state required for checking consensus fault reports.
 type chainReader interface {
-	GetTipSet(block.TipSetKey) (*block.TipSet, error)
+	GetTipSet(types.TipSetKey) (*types.TipSet, error)
 }
 
 // Checks the validity of reported consensus faults.
@@ -46,7 +46,7 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 		return nil, fmt.Errorf("no consensus fault: blocks identical")
 	}
 
-	var b1, b2, b3 block.Block
+	var b1, b2, b3 types.BlockHeader
 	innerErr := b1.UnmarshalCBOR(bytes.NewReader(h1))
 	if innerErr != nil {
 		return nil, errors.Wrapf(innerErr, "failed to decode h1")
@@ -65,7 +65,7 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
 	}
 
-	// Block syntax is not validated. This implements the strictest check possible, and is also the simplest check
+	// BlockHeader syntax is not validated. This implements the strictest check possible, and is also the simplest check
 	// possible.
 	// This means that blocks that could never have been included in the chain (e.g. with an empty parent state)
 	// are still fault-able.
@@ -137,7 +137,7 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 }
 
 // Checks whether a block header is correctly signed in the context of the parent state to which it refers.
-func verifyBlockSignature(ctx context.Context, view FaultStateView, blk block.Block, nv network.Version) error {
+func verifyBlockSignature(ctx context.Context, view FaultStateView, blk types.BlockHeader, nv network.Version) error {
 	minerInfo, err := view.MinerInfo(ctx, blk.Miner, nv)
 	if err != nil {
 		panic(errors.Wrapf(err, "failed to inspect miner addresses"))

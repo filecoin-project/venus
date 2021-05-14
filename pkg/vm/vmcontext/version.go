@@ -1,10 +1,14 @@
 package vmcontext
 
 import (
+	"github.com/ipfs/go-cid"
+
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
 	actors "github.com/filecoin-project/venus/pkg/specactors"
-	"github.com/ipfs/go-cid"
 )
 
 func getAccountCid(ver actors.Version) cid.Cid {
@@ -15,6 +19,10 @@ func getAccountCid(ver actors.Version) cid.Cid {
 		code = builtin0.AccountActorCodeID
 	case actors.Version2:
 		code = builtin2.AccountActorCodeID
+	case actors.Version3:
+		code = builtin3.AccountActorCodeID
+	case actors.Version4:
+		code = builtin4.AccountActorCodeID
 	default:
 		panic("unsupported actors version")
 	}

@@ -15,15 +15,14 @@ import (
 	xerrors "github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
-func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *block.TipSet) (*vm.Ret, error) {
+func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *types.TipSet) (*vm.Ret, error) {
 	var (
 		err       error
 		stateRoot cid.Cid
@@ -36,12 +35,9 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 		// run the fork logic in `sm.TipSetState`. We need the _current_
 		// height to have no fork, because we'll run it inside this
 		// function before executing the given message.
-		height, err = ts.Height()
-		if err != nil {
-			return nil, err
-		}
+		height = ts.Height()
 		for height > 0 && (c.fork.HasExpensiveFork(ctx, height) || c.fork.HasExpensiveFork(ctx, height-1)) {
-			ts, err = c.chainState.GetTipSet(ts.EnsureParents())
+			ts, err = c.chainState.GetTipSet(ts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("failed to find a non-forking epoch: %v", err)
 			}
@@ -59,15 +55,12 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 	}
 
 	// When we're not at the genesis block, make sure we don't have an expensive migration.
-	height, err = ts.Height()
-	if err != nil {
-		return nil, err
-	}
+	height = ts.Height()
 	if height > 0 && (c.fork.HasExpensiveFork(ctx, height) || c.fork.HasExpensiveFork(ctx, height-1)) {
 		return nil, fork.ErrExpensiveFork
 	}
 
-	priorState, err := state.LoadState(ctx, cbor.NewCborStore(c.bstore), stateRoot)
+	priorState, err := tree.LoadState(ctx, cbor.NewCborStore(c.bstore), stateRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +71,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 	}
 
 	vmOption := vm.VmOption{
-		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
+		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 			dertail, err := c.chainState.GetCirculatingSupplyDetailed(ctx, epoch, tree)
 			if err != nil {
 				return abi.TokenAmount{}, err
@@ -134,7 +127,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 	return c.processor.ProcessMessage(ctx, msgApply, vmOption)
 }
 
-func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *block.TipSet) (*vm.Ret, error) {
+func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*vm.Ret, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.Call")
 	defer span.End()
 	chainReader := c.chainState
@@ -144,16 +137,16 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *blo
 		ts = chainReader.GetHead()
 
 		// Search back till we find a height with no fork, or we reach the beginning.
-		for ts.EnsureHeight() > 0 && c.fork.HasExpensiveFork(ctx, ts.EnsureHeight()-1) {
+		for ts.Height() > 0 && c.fork.HasExpensiveFork(ctx, ts.Height()-1) {
 			var err error
-			ts, err = chainReader.GetTipSet(ts.EnsureParents())
+			ts, err = chainReader.GetTipSet(ts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("failed to find a non-forking epoch: %v", err)
 			}
 		}
 	}
 	bstate := ts.At(0).ParentStateRoot
-	bheight := ts.EnsureHeight()
+	bheight := ts.Height()
 
 	// If we have to run an expensive migration, and we're not at genesis,
 	// return an error because the migration will take too long.
@@ -178,10 +171,23 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *blo
 		msg.GasLimit = constants.BlockGasLimit
 	}
 
-	st, err := state.LoadState(ctx, cbor.NewCborStore(c.bstore), bstate)
+	if msg.GasFeeCap == types.EmptyTokenAmount {
+		msg.GasFeeCap = abi.NewTokenAmount(0)
+	}
+
+	if msg.GasPremium == types.EmptyTokenAmount {
+		msg.GasPremium = abi.NewTokenAmount(0)
+	}
+
+	if msg.Value == types.EmptyTokenAmount {
+		msg.Value = abi.NewTokenAmount(0)
+	}
+
+	st, err := tree.LoadState(ctx, cbor.NewCborStore(c.bstore), bstate)
 	if err != nil {
 		return nil, xerrors.Errorf("loading state: %v", err)
 	}
+
 	fromActor, found, err := st.GetActor(ctx, msg.From)
 	if err != nil || !found {
 		return nil, xerrors.Errorf("call raw get actor: %s", err)
@@ -190,7 +196,7 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *blo
 	msg.Nonce = fromActor.Nonce
 
 	vmOption := vm.VmOption{
-		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
+		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 			dertail, err := chainReader.GetCirculatingSupplyDetailed(ctx, epoch, tree)
 			if err != nil {
 				return abi.TokenAmount{}, err
@@ -208,6 +214,5 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *blo
 		SysCallsImpl:      c.syscallsImpl,
 	}
 
-	// TODO: maybe just use the invoker directly?
-	return c.processor.ProcessMessage(ctx, msg, vmOption)
+	return c.processor.ProcessImplicitMessage(ctx, msg, vmOption)
 }

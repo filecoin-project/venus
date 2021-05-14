@@ -2,52 +2,57 @@ package types
 
 import (
 	"container/list"
-	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/ipfs/go-cid"
 	"sort"
 	"strconv"
 	"sync"
 	"time"
+
+	fbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 )
+
+var log = logging.Logger("chainsync.target")
 
 // Target tracks a logical request of the syncing subsystem to run a
 // syncing job against given inputs.
 type Target struct {
 	State   SyncStateStage
-	Base    *block.TipSet
-	Current *block.TipSet
+	Base    *types.TipSet
+	Current *types.TipSet
 	Start   time.Time
 	End     time.Time
 	Err     error
-	block.ChainInfo
+	types.ChainInfo
 }
 
 func (target *Target) IsNeibor(t *Target) bool {
-	if target.Head.EnsureHeight() != t.Head.EnsureHeight() {
+	if target.Head.Height() != t.Head.Height() {
 		return false
 	}
 
-	targetWeight, _ := target.Head.ParentWeight()
-	weightIn, _ := target.Head.ParentWeight()
+	targetWeight := t.Head.ParentWeight()
+	weightIn := target.Head.ParentWeight()
 	if !targetWeight.Equals(weightIn) {
 		return false
 	}
 
-	for _, bid := range t.Head.Key().Cids() {
-		if !t.Head.Key().Has(bid) {
-			return false
-		}
+	if !target.Head.Parents().Equals(t.Head.Parents()) {
+		return false
 	}
-
 	return true
 }
 
+func (target *Target) HasChild(t *Target) bool {
+	return target.Head.Key().ContainsAll(t.Head.Key())
+}
+
 func (target *Target) Key() string {
-	weightIn, _ := target.Head.ParentWeight()
+	weightIn := target.Head.ParentWeight()
 	return weightIn.String() +
-		strconv.FormatInt(int64(target.Head.EnsureHeight()), 10) +
-		target.Head.EnsureParents().String()
+		strconv.FormatInt(int64(target.Head.Height()), 10) +
+		target.Head.Parents().String()
 
 }
 
@@ -99,33 +104,38 @@ func (tq *TargetTracker) Add(t *Target) bool {
 	//replace last idle task because of less weight
 	var replaceIndex int
 	var replaceTarget *Target
-	//try to replace neibor
+	//try to replace a idea child target
 	for i := len(tq.q) - 1; i > -1; i-- {
-		if tq.q[i].IsNeibor(t) && tq.q[i].State == StageIdle {
+		if t.HasChild(tq.q[i]) && tq.q[i].State == StageIdle {
 			replaceTarget = tq.q[i]
 			replaceIndex = i
+			log.Infof("%s replace a child target at %d", t.Head.String(), i)
 			break
 		}
 	}
 
 	if replaceTarget == nil {
-		//replace a idle
+		//replace a least weight idle
 		for i := len(tq.q) - 1; i > -1; i-- {
 			if tq.q[i].State == StageIdle {
 				replaceTarget = tq.q[i]
 				replaceIndex = i
+				log.Infof("%s replace a idle target at %d", t.Head.String(), i)
 				break
 			}
 		}
 	}
 
 	if replaceTarget == nil {
-		if len(tq.q) <= tq.bucketSize {
+		if len(tq.q) < tq.bucketSize {
+			//append to last slot
 			tq.q = append(tq.q, t)
 		} else {
+			//return if target queue is full
 			return false
 		}
 	} else {
+
 		delete(tq.targetSet, replaceTarget.ChainInfo.Head.String())
 		tq.q[replaceIndex] = t
 	}
@@ -143,7 +153,7 @@ func sortTarget(target TargetBuckets) {
 	groups := make(map[string][]*Target)
 	var keys []fbig.Int
 	for _, t := range target {
-		weight, _ := t.Head.ParentWeight()
+		weight := t.Head.ParentWeight()
 		if _, ok := groups[weight.String()]; ok {
 			groups[weight.String()] = append(groups[weight.String()], t)
 		} else {
@@ -187,7 +197,8 @@ func (tq *TargetTracker) widen(t *Target) (*Target, bool) {
 		}
 	}
 
-	sameWeightBlks := make(map[cid.Cid]*block.Block)
+	//collect neibor block in queue include history
+	sameWeightBlks := make(map[cid.Cid]*types.BlockHeader)
 	for _, val := range tq.targetSet {
 		if val.IsNeibor(t) {
 			for _, blk := range val.Head.Blocks() {
@@ -210,7 +221,7 @@ func (tq *TargetTracker) widen(t *Target) (*Target, bool) {
 		blks = append(blks, blk)
 	}
 
-	newHead, err := block.NewTipSet(blks...)
+	newHead, err := types.NewTipSet(blks...)
 	if err != nil {
 		return nil, false
 	}
@@ -293,8 +304,8 @@ func (rq TargetBuckets) Len() int { return len(rq) }
 
 func (rq TargetBuckets) Less(i, j int) bool {
 	// We want Pop to give us the weight priority so we use greater than
-	weightI, _ := rq[i].Head.ParentWeight()
-	weightJ, _ := rq[j].Head.ParentWeight()
+	weightI := rq[i].Head.ParentWeight()
+	weightJ := rq[j].Head.ParentWeight()
 	return weightI.GreaterThan(weightJ)
 }
 

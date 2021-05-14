@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/types"
 	"io/ioutil"
 	"os"
 
@@ -22,26 +23,25 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/gen"
 	genesis2 "github.com/filecoin-project/venus/pkg/gen/genesis"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
 var glog = logging.Logger("genesis")
 
 // InitFunc is the signature for function that is used to create a genesis block.
-type InitFunc func(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error)
+type InitFunc func(cst cbor.IpldStore, bs blockstore.Blockstore) (*types.BlockHeader, error)
 
 // Ticket is the ticket to place in the genesis block header (which can't be derived from a prior ticket),
 // used in the evaluation of the messages in the genesis block,
 // and *also* the ticket value used when computing the genesis state (the parent state of the genesis block).
-var Ticket = block.Ticket{
+var Ticket = types.Ticket{
 	VRFProof: []byte{
 		0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec,
 		0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec,
@@ -51,11 +51,11 @@ var Ticket = block.Ticket{
 // VM is the view into the VM used during genesis block creation.
 type VM interface {
 	ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (*vm.Ret, error)
-	Flush() (state.Root, error)
+	Flush() (tree.Root, error)
 }
 
 func MakeGenesis(ctx context.Context, rep repo.Repo, outFile, genesisTemplate string, para *config.ForkUpgradeConfig) InitFunc {
-	return func(_ cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+	return func(_ cbor.IpldStore, bs blockstore.Blockstore) (*types.BlockHeader, error) {
 		glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
 		genesisTemplate, err := homedir.Expand(genesisTemplate)
 		if err != nil {

@@ -1,6 +1,6 @@
 module github.com/filecoin-project/venus
 
-go 1.14
+go 1.15
 
 require (
 	contrib.go.opencensus.io/exporter/jaeger v0.1.0
@@ -11,7 +11,6 @@ require (
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/bluele/gcache v0.0.0-20190518031135-bc40bd653833
 	github.com/cskr/pubsub v1.0.2
-	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
 	github.com/dgraph-io/badger/v2 v2.2007.2
 	github.com/docker/distribution v2.7.1+incompatible // indirect
@@ -22,42 +21,48 @@ require (
 	github.com/drand/kyber v1.1.4
 	github.com/fatih/color v1.9.0
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
-	github.com/filecoin-project/go-address v0.0.5-0.20201103152444-f2023ef3f5bb
-	github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20201006184820-924ee87a1349
-	github.com/filecoin-project/go-bitfield v0.2.3-0.20201110211213-fe2c1862e816
-	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
+	github.com/filecoin-project/go-address v0.0.5
+	github.com/filecoin-project/go-bitfield v0.2.4
+	github.com/filecoin-project/go-cbor-util v0.0.0-20201016124514-d0bbec7bfcc4
+	github.com/filecoin-project/go-commp-utils v0.1.0
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
-	github.com/filecoin-project/go-data-transfer v1.2.3
+	github.com/filecoin-project/go-data-transfer v1.4.1
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20201016201715-d41df56b4f6a
-	github.com/filecoin-project/go-jsonrpc v0.1.2
+	github.com/filecoin-project/go-fil-markets v1.2.4 // indirect
+	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
-	github.com/filecoin-project/go-state-types v0.0.0-20201102161440-c8033295a1fc
-	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
+	github.com/filecoin-project/go-state-types v0.1.0
+	github.com/filecoin-project/go-statestore v0.1.1-0.20210311122610-6c7a5aedbdea // indirect
 	github.com/filecoin-project/specs-actors v0.9.13
-	github.com/filecoin-project/specs-actors/v2 v2.3.3
+	github.com/filecoin-project/specs-actors/v2 v2.3.5-0.20210114162132-5b58b773f4fb
+	github.com/filecoin-project/specs-actors/v3 v3.1.0
+	github.com/filecoin-project/specs-actors/v4 v4.0.0
 	github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506
 	github.com/filecoin-project/test-vectors/schema v0.0.5
+	github.com/filecoin-project/venus-auth v1.0.2-0.20210507023017-76ce8b64e6db
+	github.com/filecoin-project/venus-wallet v1.0.1-0.20210507023531-5dfabaf5606d
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
 	github.com/go-errors/errors v1.0.1
 	github.com/go-kit/kit v0.10.0
-	github.com/golang/mock v1.4.4 // indirect
 	github.com/golang/snappy v0.0.2-0.20190904063534-ff6b7dc882cf // indirect
 	github.com/golangci/golangci-lint v1.21.0
 	github.com/google/go-github v17.0.0+incompatible
-	github.com/google/go-querystring v1.0.0 // indirect
+	github.com/google/uuid v1.1.2
 	github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026
+	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
+	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
 	github.com/ipfs/go-bitswap v0.3.2
-	github.com/ipfs/go-block-format v0.0.2
+	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.1.4
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-datastore v0.4.5
 	github.com/ipfs/go-ds-badger2 v0.1.1-0.20200708190120-187fc06f714e
 	github.com/ipfs/go-fs-lock v0.0.6
-	github.com/ipfs/go-graphsync v0.5.1
+	github.com/ipfs/go-graphsync v0.6.0
 	github.com/ipfs/go-ipfs-blockstore v1.0.3
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-cmdkit v0.0.1
@@ -77,7 +82,6 @@ require (
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/iptb v1.4.0
 	github.com/ipld/go-car v0.1.1-0.20201119040415-11b6074b6d4d
-	github.com/ipld/go-ipld-prime v0.5.1-0.20201021195245-109253e8a018
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/jbenet/goprocess v0.1.4
 	github.com/jstemmer/go-junit-report v0.9.1
@@ -88,9 +92,8 @@ require (
 	github.com/libp2p/go-libp2p-crypto v0.1.0
 	github.com/libp2p/go-libp2p-kad-dht v0.11.0
 	github.com/libp2p/go-libp2p-mplex v0.3.0
-	github.com/libp2p/go-libp2p-noise v0.1.2 // indirect
 	github.com/libp2p/go-libp2p-peerstore v0.2.6
-	github.com/libp2p/go-libp2p-pubsub v0.4.0
+	github.com/libp2p/go-libp2p-pubsub v0.4.2-0.20210212194758-6c1addf493eb
 	github.com/libp2p/go-libp2p-swarm v0.3.1
 	github.com/libp2p/go-libp2p-yamux v0.4.1
 	github.com/mattn/go-colorable v0.1.6 // indirect
@@ -102,53 +105,38 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/multiformats/go-multiaddr-net v0.2.0
 	github.com/multiformats/go-multihash v0.0.14
-	github.com/onsi/ginkgo v1.14.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/pelletier/go-toml v1.6.0 // indirect
+	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
-	github.com/prometheus/client_golang v1.6.0
-	github.com/prometheus/common v0.10.0
+	github.com/prometheus/client_golang v1.10.0
+	github.com/prometheus/common v0.18.0
 	github.com/raulk/clock v1.1.0
-	github.com/spf13/afero v1.2.2 // indirect
-	github.com/spf13/jwalterweatherman v1.1.0 // indirect
-	github.com/spf13/viper v1.5.0 // indirect
 	github.com/streadway/handy v0.0.0-20190108123426-d5acb3125c2a
-	github.com/stretchr/testify v1.6.1
-	github.com/supranational/blst v0.1.1
-	github.com/urfave/cli/v2 v2.3.0 // indirect
-	github.com/whyrusleeping/cbor-gen v0.0.0-20200826160007-0b9f6c5fb163
+	github.com/stretchr/testify v1.7.0
+	github.com/whyrusleeping/cbor-gen v0.0.0-20210219115102-f37d292932f2
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
-	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
-	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542 // indirect
+	github.com/whyrusleeping/pubsub v0.0.0-20190708150250-92bcb0691325
 	go.opencensus.io v0.22.5
-	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.16.0
-	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
-	golang.org/x/mod v0.3.1-0.20200828183125-ce943fd02449 // indirect
+	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
-	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
+	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	golang.org/x/tools v0.0.0-20201112185108-eeaa07dd7696
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
-	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
+	gorm.io/driver/mysql v1.0.5
+	gorm.io/gorm v1.21.3
 	gotest.tools v2.2.0+incompatible
-	honnef.co/go/tools v0.0.1-2020.1.3 // indirect
-	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
-
 )
 
 replace github.com/filecoin-project/venus => ./
 
-replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
+replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.21.0
 
-replace github.com/filecoin-project/filecoin-ffi => ./vendors/filecoin-ffi
+replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
-replace github.com/filecoin-project/test-vectors => ./vendors/test-vectors
-
-replace github.com/supranational/blst => ./vendors/fil-blst/blst
-
-replace github.com/filecoin-project/fil-blst => ./vendors/fil-blst
+replace github.com/filecoin-project/test-vectors => ./extern/test-vectors

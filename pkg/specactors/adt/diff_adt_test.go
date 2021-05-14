@@ -3,7 +3,6 @@ package adt
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,10 +12,12 @@ import (
 	typegen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-state-types/abi"
+
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 )
 
 func TestDiffAdtArray(t *testing.T) {

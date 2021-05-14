@@ -2,13 +2,13 @@ package syncer_test
 
 import (
 	"context"
-	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	"testing"
 	"time"
 
+	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
+	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
+
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
 	"github.com/filecoin-project/venus/pkg/clock"
@@ -34,7 +34,7 @@ func TestOneBlock(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", t1),
+		ChainInfo: *types.NewChainInfo("", "", t1),
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target))
 
@@ -55,7 +55,7 @@ func TestMultiBlockTip(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", tip),
+		ChainInfo: *types.NewChainInfo("", "", tip),
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target))
 
@@ -83,7 +83,7 @@ func TestChainIncremental(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", t1),
+		ChainInfo: *types.NewChainInfo("", "", t1),
 	}
 
 	target2 := &syncTypes.Target{
@@ -92,7 +92,7 @@ func TestChainIncremental(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", t2),
+		ChainInfo: *types.NewChainInfo("", "", t2),
 	}
 
 	target3 := &syncTypes.Target{
@@ -101,7 +101,7 @@ func TestChainIncremental(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", t3),
+		ChainInfo: *types.NewChainInfo("", "", t3),
 	}
 	target4 := &syncTypes.Target{
 		Base:      nil,
@@ -109,7 +109,7 @@ func TestChainIncremental(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", t4),
+		ChainInfo: *types.NewChainInfo("", "", t4),
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target1))
 	verifyTip(t, builder.Store(), t1, builder.StateForKey(t1.Key()))
@@ -145,7 +145,7 @@ func TestChainJump(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", t4),
+		ChainInfo: *types.NewChainInfo("", "", t4),
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target1))
 	verifyTip(t, builder.Store(), t1, builder.StateForKey(t1.Key()))
@@ -176,7 +176,7 @@ func TestIgnoreLightFork(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", t4),
+		ChainInfo: *types.NewChainInfo("", "", t4),
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target4))
 	verifyTip(t, builder.Store(), t4, builder.StateForKey(t4.Key()))
@@ -190,7 +190,7 @@ func TestIgnoreLightFork(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", forkHead),
+		ChainInfo: *types.NewChainInfo("", "", forkHead),
 	}
 	assert.Error(t, syncer.HandleNewTipSet(ctx, forkHeadTarget))
 	verifyHead(t, builder.Store(), t4)
@@ -221,7 +221,7 @@ func TestAcceptHeavierFork(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", main4),
+		ChainInfo: *types.NewChainInfo("", "", main4),
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, main4Target))
 	verifyTip(t, builder.Store(), main4, builder.StateForKey(main4.Key()))
@@ -234,7 +234,7 @@ func TestAcceptHeavierFork(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", fork3),
+		ChainInfo: *types.NewChainInfo("", "", fork3),
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, fork3Target))
 	verifyTip(t, builder.Store(), fork1, builder.StateForKey(fork1.Key()))
@@ -256,7 +256,7 @@ func TestRejectFinalityFork(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", head),
+		ChainInfo: *types.NewChainInfo("", "", head),
 	}
 	assert.NoError(t, s.HandleNewTipSet(ctx, target))
 
@@ -273,7 +273,7 @@ func TestRejectFinalityFork(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", forkFinalityHead),
+		ChainInfo: *types.NewChainInfo("", "", forkFinalityHead),
 	}
 	assert.Error(t, s.HandleNewTipSet(ctx, forkHeadTarget))
 }
@@ -291,13 +291,12 @@ func TestNoUncessesaryFetch(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", head),
+		ChainInfo: *types.NewChainInfo("", "", head),
 	}
 	assert.NoError(t, s.HandleNewTipSet(ctx, target))
 
 	// A new syncer unable to fetch blocks from the network can handle a tipset that's already
 	// in the bsstore and linked to genesis.
-	emptyFetcher := chain.NewBuilder(t, address.Undef)
 	eval := &chain.FakeStateEvaluator{
 		MessageStore: builder.Mstore(),
 	}
@@ -308,9 +307,7 @@ func TestNoUncessesaryFetch(t *testing.T) {
 		builder.Mstore(),
 		builder.BlockStore(),
 		builder,
-		emptyFetcher,
 		clock.NewFake(time.Unix(1234567890, 0)),
-		&noopFaultDetector{},
 		fork.NewMockFork())
 	require.NoError(t, err)
 
@@ -320,7 +317,7 @@ func TestNoUncessesaryFetch(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", head),
+		ChainInfo: *types.NewChainInfo("", "", head),
 	}
 	err = newSyncer.HandleNewTipSet(ctx, target2)
 	assert.Contains(t, err.Error(), "do not sync to a target has synced before")
@@ -355,13 +352,13 @@ func TestSubsetParent(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", tipB1B2B3),
+		ChainInfo: *types.NewChainInfo("", "", tipB1B2B3),
 	}
 	require.NoError(t, s.HandleNewTipSet(ctx, target1))
 
 	// Sync one tipset with a parent equal to a subset of an existing
 	// tipset in the bsstore: {B1, B2} -> {C1, C2}
-	tipB1B2 := block.RequireNewTipSet(t, tipB1B2B3.At(0), tipB1B2B3.At(1))
+	tipB1B2 := types.RequireNewTipSet(t, tipB1B2B3.At(0), tipB1B2B3.At(1))
 	tipC1C2 := builder.AppendOn(tipB1B2, 2)
 
 	target2 := &syncTypes.Target{
@@ -370,13 +367,13 @@ func TestSubsetParent(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", tipC1C2),
+		ChainInfo: *types.NewChainInfo("", "", tipC1C2),
 	}
 	assert.NoError(t, s.HandleNewTipSet(ctx, target2))
 
 	// Sync another tipset with a parent equal to a subset of the tipset
 	// just synced: C1 -> D1
-	tipC1 := block.RequireNewTipSet(t, tipC1C2.At(0))
+	tipC1 := types.RequireNewTipSet(t, tipC1C2.At(0))
 	tipD1OnC1 := builder.AppendOn(tipC1, 1)
 
 	target3 := &syncTypes.Target{
@@ -385,7 +382,7 @@ func TestSubsetParent(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", tipD1OnC1),
+		ChainInfo: *types.NewChainInfo("", "", tipD1OnC1),
 	}
 	assert.NoError(t, s.HandleNewTipSet(ctx, target3))
 
@@ -397,7 +394,7 @@ func TestSubsetParent(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", tipD1OnC1C2),
+		ChainInfo: *types.NewChainInfo("", "", tipD1OnC1C2),
 	}
 	assert.NoError(t, s.HandleNewTipSet(ctx, target4))
 }
@@ -417,13 +414,14 @@ func TestBlockNotLinkedRejected(t *testing.T) {
 
 	// The syncer fails to fetch this block so cannot sync it.
 	b1 := shadowBuilder.AppendOn(genesis, 1)
+	b2 := shadowBuilder.AppendOn(b1, 1)
 	target1 := &syncTypes.Target{
 		Base:      nil,
 		Current:   nil,
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", b1),
+		ChainInfo: *types.NewChainInfo("", "", b2),
 	}
 	assert.Error(t, syncer.HandleNewTipSet(ctx, target1))
 
@@ -435,7 +433,7 @@ func TestBlockNotLinkedRejected(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", b1),
+		ChainInfo: *types.NewChainInfo("", "", b1),
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target2))
 }
@@ -445,16 +443,16 @@ type poisonValidator struct {
 	fullFailureTS   uint64
 }
 
-func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *block.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipts []types.MessageReceipt, err error) {
+func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *types.TipSet, parentStateRoot cid.Cid) (cid.Cid, cid.Cid, error) {
 	stamp := ts.At(0).Timestamp
 	if pv.fullFailureTS == stamp {
-		return types.EmptyTxMetaCID, nil, errors.New("run state transition fails on poison timestamp")
+		return emptycid.EmptyTxMetaCID, emptycid.EmptyTxMetaCID, errors.New("run state transition fails on poison timestamp")
 	}
-	return types.EmptyTxMetaCID, nil, nil
+	return emptycid.EmptyTxMetaCID, emptycid.EmptyTxMetaCID, nil
 }
 
-func (pv *poisonValidator) ValidateMining(ctx context.Context, parent, ts *block.TipSet, parentWeight big.Int, parentReceiptRoot cid.Cid) error {
-	if pv.headerFailureTS == ts.At(0).Timestamp {
+func (pv *poisonValidator) ValidateFullBlock(ctx context.Context, blk *types.BlockHeader) error {
+	if pv.headerFailureTS == blk.Timestamp {
 		return errors.New("val semantic fails on poison timestamp")
 	}
 	return nil
@@ -464,7 +462,7 @@ func newPoisonValidator(t *testing.T, headerFailure, fullFailure uint64) *poison
 	return &poisonValidator{headerFailureTS: headerFailure, fullFailureTS: fullFailure}
 }
 
-func (pv *poisonValidator) ValidateHeaderSemantic(_ context.Context, header *block.Block, _ *block.TipSet) error {
+func (pv *poisonValidator) ValidateHeaderSemantic(_ context.Context, header *types.BlockHeader, _ *types.TipSet) error {
 	if pv.headerFailureTS == header.Timestamp {
 		return errors.New("val semantic fails on poison timestamp")
 	}
@@ -472,7 +470,7 @@ func (pv *poisonValidator) ValidateHeaderSemantic(_ context.Context, header *blo
 }
 
 // ValidateHeaderSemantic is a stub that always returns no error
-func (pv *poisonValidator) ValidateMessagesSemantic(_ context.Context, _ *block.Block, _ *block.TipSet) error {
+func (pv *poisonValidator) ValidateMessagesSemantic(_ context.Context, _ *types.BlockHeader, _ *types.TipSet) error {
 	return nil
 }
 
@@ -507,7 +505,7 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", link1),
+		ChainInfo: *types.NewChainInfo("", "", link1),
 	}
 	err := syncer.HandleNewTipSet(ctx, target1)
 	require.Error(t, err)
@@ -533,7 +531,7 @@ func TestStoresMessageReceipts(t *testing.T) {
 		Start:     time.Time{},
 		End:       time.Time{},
 		Err:       nil,
-		ChainInfo: *block.NewChainInfo("", "", t1),
+		ChainInfo: *types.NewChainInfo("", "", t1),
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target1))
 
@@ -560,7 +558,7 @@ func setup(ctx context.Context, t *testing.T) (*chain.Builder, *syncer.Syncer) {
 	return setupWithValidator(ctx, t, builder, eval, eval)
 }
 
-func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builder, fullVal syncer.FullBlockValidator, headerVal syncer.BlockValidator) (*chain.Builder, *syncer.Syncer) {
+func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builder, fullVal syncer.StateProcessor, headerVal syncer.BlockValidator) (*chain.Builder, *syncer.Syncer) {
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the bsstore, to which the syncer must ensure to put blocks.
 	sel := &chain.FakeChainSelector{}
@@ -571,9 +569,8 @@ func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builde
 		builder.Mstore(),
 		builder.BlockStore(),
 		builder,
-		builder,
 		clock.NewFake(time.Unix(1234567890, 0)),
-		&noopFaultDetector{}, fork.NewMockFork())
+		fork.NewMockFork())
 	require.NoError(t, err)
 
 	return builder, syncer
@@ -583,14 +580,14 @@ func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builde
 
 // Sub-interface of the bsstore used for verification.
 type syncStoreReader interface {
-	GetHead() *block.TipSet
-	GetTipSet(block.TipSetKey) (*block.TipSet, error)
-	GetTipSetStateRoot(*block.TipSet) (cid.Cid, error)
-	GetSiblingState(*block.TipSet) ([]*chain.TipSetMetadata, error)
+	GetHead() *types.TipSet
+	GetTipSet(types.TipSetKey) (*types.TipSet, error)
+	GetTipSetStateRoot(*types.TipSet) (cid.Cid, error)
+	GetSiblingState(*types.TipSet) ([]*chain.TipSetMetadata, error)
 }
 
 // Verifies that a tipset and associated state root are stored in the chain bsstore.
-func verifyTip(t *testing.T, store syncStoreReader, tip *block.TipSet, stateRoot cid.Cid) {
+func verifyTip(t *testing.T, store syncStoreReader, tip *types.TipSet, stateRoot cid.Cid) {
 	foundTip, err := store.GetTipSet(tip.Key())
 	require.NoError(t, err)
 	test.Equal(t, tip, foundTip)
@@ -605,12 +602,12 @@ func verifyTip(t *testing.T, store syncStoreReader, tip *block.TipSet, stateRoot
 }
 
 // Verifies that the bsstore's head is as expected.
-func verifyHead(t *testing.T, store syncStoreReader, head *block.TipSet) {
+func verifyHead(t *testing.T, store syncStoreReader, head *types.TipSet) {
 	headTipSet := store.GetHead()
 	test.Equal(t, head, headTipSet)
 }
 
-func containsTipSet(tsasSlice []*chain.TipSetMetadata, ts *block.TipSet) bool {
+func containsTipSet(tsasSlice []*chain.TipSetMetadata, ts *types.TipSet) bool {
 	for _, tsas := range tsasSlice {
 		if tsas.TipSet.String() == ts.String() { //bingo
 			return true

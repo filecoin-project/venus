@@ -2,34 +2,26 @@ package types
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
-	specsbig "github.com/filecoin-project/go-state-types/big"
 	"math/big"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-state-types/abi"
+	specsbig "github.com/filecoin-project/go-state-types/big"
 	cbor2 "github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	block "github.com/ipfs/go-block-format"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
-	errPkg "github.com/pkg/errors"
-	typegen "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 )
-
-var DefaultDefaultMaxFee = MustParseFIL("0.007")
 
 type MessageSendSpec struct {
 	MaxFee abi.TokenAmount
@@ -50,32 +42,11 @@ func (ms *MessageSendSpec) Get() MessageSendSpec {
 
 const MessageVersion = 0
 
-// EmptyMessagesCID is the cid of an empty collection of messages.
-var EmptyMessagesCID cid.Cid
-
-// EmptyReceiptsCID is the cid of an empty collection of receipts.
-var EmptyReceiptsCID cid.Cid
-
-// EmptyTxMetaCID is the cid of a TxMeta wrapping empty cids
-var EmptyTxMetaCID cid.Cid
-
-func init() {
-	tmpCst := cbor.NewCborStore(blockstore.NewBlockstore(datastore.NewMapDatastore()))
-	emptyAMTCid, err := amt.FromArray(context.Background(), tmpCst, []typegen.CBORMarshaler{})
-	if err != nil {
-		panic("could not create CID for empty AMT")
-	}
-	EmptyMessagesCID = emptyAMTCid
-	EmptyReceiptsCID = emptyAMTCid
-	EmptyTxMetaCID, err = tmpCst.Put(context.Background(), &TxMeta{SecpRoot: EmptyMessagesCID, BLSRoot: EmptyMessagesCID})
-	if err != nil {
-		panic("could not create CID for empty TxMeta")
-	}
-}
+var EmptyTokenAmount = abi.TokenAmount{}
 
 //
 type ChainMsg interface {
-	Cid() (cid.Cid, error)
+	Cid() cid.Cid
 	VMMessage() *UnsignedMessage
 	ToStorageBlock() (blocks.Block, error)
 	// FIXME: This is the *message* length, this name is misleading.
@@ -85,6 +56,8 @@ type ChainMsg interface {
 }
 
 var _ ChainMsg = &UnsignedMessage{}
+
+type Message = UnsignedMessage
 
 // UnsignedMessage is an exchange of information between two actors modeled
 // as a function call.
@@ -168,21 +141,18 @@ func (msg *UnsignedMessage) ToNode() (ipld.Node, error) {
 
 // Cid returns the canonical CID for the message.
 // TODO: can we avoid returning an error?
-func (msg *UnsignedMessage) Cid() (cid.Cid, error) {
+func (msg *UnsignedMessage) Cid() cid.Cid {
 	obj, err := msg.ToNode()
 	if err != nil {
-		return cid.Undef, errPkg.Wrap(err, "failed to marshal to cbor")
+		panic(fmt.Sprintf("failed to marshal to marshal unsigned message:%s", err))
 	}
 
-	return obj.Cid(), nil
+	return obj.Cid()
 }
 
 func (msg *UnsignedMessage) String() string {
 	errStr := "(error encoding Message)"
-	cid, err := msg.Cid()
-	if err != nil {
-		return errStr
-	}
+	cid := msg.Cid()
 	js, err := json.MarshalIndent(msg, "", "  ")
 	if err != nil {
 		return errStr
@@ -282,7 +252,7 @@ func (msg *UnsignedMessage) ValidForBlockInclusion(minGas int64, version network
 	}
 
 	if msg.GasLimit > constants.BlockGasLimit {
-		return xerrors.New("'GasLimit' field cannot be greater than a block's gas limit")
+		return xerrors.New("'GasLimit' field cannot be greater than a newBlock's gas limit")
 	}
 
 	// since prices might vary with time, this is technically semantic validation

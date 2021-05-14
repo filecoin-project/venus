@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"github.com/filecoin-project/venus/pkg/chain"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -70,3 +71,5 @@ type Message struct {
 	Cid     cid.Cid
 	Message *types.UnsignedMessage
 }
+
+type MsgLookup = chain.MsgLookup

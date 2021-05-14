@@ -3,7 +3,6 @@ package miner
 import (
 	"bytes"
 	"errors"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -116,34 +115,6 @@ func (s *state2) NumLiveSectors() (uint64, error) {
 		return 0, err
 	}
 	return total, nil
-}
-
-// todo review
-func (s *state2) FaultsSectors() ([]uint64, error) {
-	out := bitfield.New()
-
-	dls, err := s.State.LoadDeadlines(s.store)
-	if err != nil {
-		return []uint64{}, err
-	}
-
-	if err := dls.ForEach(s.store, func(dlIdx uint64, dl *miner2.Deadline) error {
-		partitions, err := dl.PartitionsArray(s.store)
-		if err != nil {
-			return err
-		}
-
-		var partition miner.Partition
-		return partitions.ForEach(&partition, func(i int64) error {
-			out, err = bitfield.MergeBitFields(out, partition.Faults)
-			return err
-		})
-		return nil
-	}); err != nil {
-		return []uint64{}, err
-	}
-
-	return out.All(bitfield.MaxEncodedSize)
 }
 
 // GetSectorExpiration returns the effective expiration of the given sector.
@@ -281,34 +252,6 @@ func (s *state2) LoadDeadline(idx uint64) (Deadline, error) {
 	return &deadline2{*dl, s.store}, nil
 }
 
-// todo review
-func (s *state2) SuccessfulPoSts() (uint64, error) {
-	dls, err := s.State.LoadDeadlines(s.store)
-	if err != nil {
-		return 0, err
-	}
-
-	count := uint64(0)
-	err = dls.ForEach(s.store, func(i uint64, dl *miner2.Deadline) error {
-		dCount, err := dl.PostSubmissions.Count()
-		if err != nil {
-			return err
-		}
-		count += dCount
-		return nil
-	})
-	if err != nil {
-		return 0, err
-	}
-
-	return count, nil
-}
-
-// todo review
-func (s *state2) GetProvingPeriodStart() abi.ChainEpoch {
-	return s.ProvingPeriodStart
-}
-
 func (s *state2) ForEachDeadline(cb func(uint64, Deadline) error) error {
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {
@@ -333,6 +276,15 @@ func (s *state2) DeadlinesChanged(other State) (bool, error) {
 	return !s.State.Deadlines.Equals(other2.Deadlines), nil
 }
 
+func (s *state2) MinerInfoChanged(other State) (bool, error) {
+	other0, ok := other.(*state2)
+	if !ok {
+		// treat an upgrade as a change, always
+		return true, nil
+	}
+	return !s.State.Info.Equals(other0.State.Info), nil
+}
+
 func (s *state2) Info() (MinerInfo, error) {
 	info, err := s.State.GetInfo(s.store)
 	if err != nil {
@@ -342,6 +294,11 @@ func (s *state2) Info() (MinerInfo, error) {
 	var pid *peer.ID
 	if peerID, err := peer.IDFromBytes(info.PeerId); err == nil {
 		pid = &peerID
+	}
+
+	wpp, err := info.SealProofType.RegisteredWindowPoStProof()
+	if err != nil {
+		return MinerInfo{}, err
 	}
 
 	mi := MinerInfo{
@@ -354,7 +311,7 @@ func (s *state2) Info() (MinerInfo, error) {
 
 		PeerId:                     pid,
 		Multiaddrs:                 info.Multiaddrs,
-		SealProofType:              info.SealProofType,
+		WindowPoStProofType:        wpp,
 		SectorSize:                 info.SectorSize,
 		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
 		ConsensusFaultElapsed:      info.ConsensusFaultElapsed,
@@ -372,8 +329,8 @@ func (s *state2) DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error) {
 	return s.State.DeadlineInfo(epoch), nil
 }
 
-func (s *state2) SectorArray() (adt.Array, error) {
-	return adt2.AsArray(s.store, s.Sectors)
+func (s *state2) DeadlineCronActive() (bool, error) {
+	return true, nil // always active in this version
 }
 
 func (s *state2) sectors() (adt.Array, error) {
@@ -433,8 +390,13 @@ func (d *deadline2) PartitionsChanged(other Deadline) (bool, error) {
 	return !d.Deadline.Partitions.Equals(other2.Deadline.Partitions), nil
 }
 
-func (d *deadline2) PostSubmissions() (bitfield.BitField, error) {
+func (d *deadline2) PartitionsPoSted() (bitfield.BitField, error) {
 	return d.Deadline.PostSubmissions, nil
+}
+
+func (d *deadline2) DisputableProofCount() (uint64, error) {
+	// field doesn't exist until v3
+	return 0, nil
 }
 
 func (p *partition2) AllSectors() (bitfield.BitField, error) {

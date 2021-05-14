@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/ipfs/go-log/v2"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-pubsub"
 
@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
-var messageTopicLogger = log.Logger("net/message_validator")
+var messageTopicLogger = logging.Logger("net/message_validator")
 var mDecodeMsgFail = metrics.NewInt64Counter("net/pubsub_message_decode_failure", "Number of messages that fail to decode seen on message pubsub channel")
 var mInvalidMsg = metrics.NewInt64Counter("net/pubsub_invalid_message", "Number of messages that fail syntax validation seen on message pubsub channel")
 
@@ -25,7 +25,7 @@ type MessageTopicValidator struct {
 
 // NewMessageTopicValidator returns a MessageTopicValidator using the input
 // signature and syntax validators.
-func NewMessageTopicValidator(syntaxVal consensus.MessageSyntaxValidator, sigVal *consensus.MessageSignatureValidator, opts ...pubsub.ValidatorOpt) *MessageTopicValidator {
+func NewMessageTopicValidator(syntaxVal *consensus.DefaultMessageSyntaxValidator, sigVal *consensus.MessageSignatureValidator, opts ...pubsub.ValidatorOpt) *MessageTopicValidator {
 	return &MessageTopicValidator{
 		opts: opts,
 		validator: func(ctx context.Context, p peer.ID, msg *pubsub.Message) bool {
@@ -36,13 +36,13 @@ func NewMessageTopicValidator(syntaxVal consensus.MessageSyntaxValidator, sigVal
 				return false
 			}
 			if err := syntaxVal.ValidateSignedMessageSyntax(ctx, unmarshaled); err != nil {
-				mCid, _ := unmarshaled.Cid()
+				mCid := unmarshaled.Cid()
 				messageTopicLogger.Debugf("message %s from peer: %s failed to syntax validate: %s", mCid.String(), p.String(), err.Error())
 				mInvalidMsg.Inc(ctx, 1)
 				return false
 			}
 			if err := sigVal.Validate(ctx, unmarshaled); err != nil {
-				mCid, _ := unmarshaled.Cid()
+				mCid := unmarshaled.Cid()
 				messageTopicLogger.Debugf("message %s from peer: %s failed to signature validate: %s", mCid.String(), p.String(), err.Error())
 				mInvalidMsg.Inc(ctx, 1)
 				return false

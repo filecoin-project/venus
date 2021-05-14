@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	stdbig "math/big"
+	"os"
 	"sort"
 	"sync"
 	"time"
@@ -29,7 +30,6 @@ import (
 	lps "github.com/whyrusleeping/pubsub"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	vcrypto "github.com/filecoin-project/venus/pkg/crypto"
@@ -65,7 +65,7 @@ var rbfDenomBig = big.NewInt(RbfDenom)
 
 const RbfDenom = 256
 
-var RepublishInterval = time.Duration(10*constants.BlockDelaySecs+constants.PropagationDelaySecs) * time.Second
+var RepublishInterval = time.Duration(10*constants.MainNetBlockDelaySecs+constants.PropagationDelaySecs) * time.Second
 
 var minimumBaseFee = big.NewInt(int64(constants.MinimumBaseFee))
 var baseFeeLowerBoundFactor = big.NewInt(10)
@@ -130,12 +130,12 @@ func init() {
 }
 
 type gasPredictor interface {
-	CallWithGas(context.Context, *types.UnsignedMessage, []types.ChainMsg, *block.TipSet) (*vm.Ret, error)
+	CallWithGas(context.Context, *types.UnsignedMessage, []types.ChainMsg, *types.TipSet) (*vm.Ret, error)
 }
 
 type actorProvider interface {
 	// GetActorAt returns the actor state defined by the chain up to some tipset
-	GetActorAt(context.Context, *block.TipSet, address.Address) (*types.Actor, error)
+	GetActorAt(context.Context, *types.TipSet, address.Address) (*types.Actor, error)
 }
 
 type MessagePool struct {
@@ -157,7 +157,7 @@ type MessagePool struct {
 	pending map[address.Address]*msgSet
 
 	curTsLk sync.Mutex // DO NOT LOCK INSIDE lk
-	curTs   *block.TipSet
+	curTs   *types.TipSet
 
 	cfgLk sync.Mutex
 	cfg   *MpoolConfig
@@ -187,11 +187,19 @@ type MessagePool struct {
 	evtTypes [3]journal.EventType
 	journal  journal.Journal
 
+	forkParams       *config.ForkUpgradeConfig
 	gasPriceSchedule *gas.PricesSchedule
 
 	gp        gasPredictor
 	ap        actorProvider
 	GetMaxFee DefaultMaxFeeFunc
+}
+
+func newDefaultMaxFeeFunc(maxFee types.FIL) DefaultMaxFeeFunc {
+	return func() (out abi.TokenAmount, err error) {
+		out = abi.TokenAmount{Int: maxFee.Int}
+		return
+	}
 }
 
 type msgSet struct {
@@ -213,14 +221,17 @@ func ComputeMinRBF(curPrem abi.TokenAmount) abi.TokenAmount {
 	return tbig.Add(minPrice, tbig.NewInt(1))
 }
 
-func CapGasFee(mff DefaultMaxFeeFunc, msg *types.UnsignedMessage, maxFee abi.TokenAmount) {
+func CapGasFee(mff DefaultMaxFeeFunc, msg *types.Message, sendSepc *types.MessageSendSpec) {
+	var maxFee abi.TokenAmount
+	if sendSepc != nil {
+		maxFee = sendSepc.MaxFee
+	}
 	if maxFee.Int == nil || maxFee.Equals(big.Zero()) {
 		mf, err := mff()
 		if err != nil {
 			log.Errorf("failed to get default max gas fee: %+v", err)
 			mf = big.Zero()
 		}
-
 		maxFee = mf
 	}
 
@@ -234,8 +245,8 @@ func CapGasFee(mff DefaultMaxFeeFunc, msg *types.UnsignedMessage, maxFee abi.Tok
 		maxFee = mf
 	}
 
-	gl := big.NewInt(msg.GasLimit)
-	totalFee := big.Mul(msg.GasFeeCap, gl)
+	gl := types.NewInt(uint64(msg.GasLimit))
+	totalFee := types.BigMul(msg.GasFeeCap, gl)
 
 	if totalFee.LessThanEqual(maxFee) {
 		return
@@ -278,14 +289,8 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 			return false, xerrors.Errorf("rejecting replace by fee because of nonce gap (Nonce: %d, nextNonce: %d): %v", m.Message.Nonce, nextNonce, ErrNonceGap)
 		}
 
-		mc, err := m.Cid()
-		if err != nil {
-			return false, err
-		}
-		exmsc, err := exms.Cid()
-		if err != nil {
-			return false, err
-		}
+		mc := m.Cid()
+		exmsc := exms.Cid()
 		if mc != exmsc {
 			// check if RBF passes
 			minPrice := ComputeMinRBF(exms.Message.GasPremium)
@@ -376,7 +381,15 @@ func (ms *msgSet) getRequiredFunds(nonce uint64) tbig.Int {
 	return tbig.Int{Int: requiredFunds}
 }
 
-func New(api Provider, ds repo.Datastore, forkParams *config.ForkUpgradeConfig, netName string, gp gasPredictor, ap actorProvider, j journal.Journal) (*MessagePool, error) {
+func New(api Provider,
+	ds repo.Datastore,
+	forkParams *config.ForkUpgradeConfig,
+	mpoolCfg *config.MessagePoolConfig,
+	netName string,
+	gp gasPredictor,
+	ap actorProvider,
+	j journal.Journal,
+) (*MessagePool, error) {
 	cache, _ := lru.New2Q(constants.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(constants.VerifSigCacheSize)
 
@@ -414,16 +427,17 @@ func New(api Provider, ds repo.Datastore, forkParams *config.ForkUpgradeConfig, 
 			evtTypeMpoolRemove: j.RegisterEventType("mpool", "remove"),
 			evtTypeMpoolRepub:  j.RegisterEventType("mpool", "repub"),
 		},
-		journal: j,
-
+		journal:          j,
+		forkParams:       forkParams,
 		gasPriceSchedule: gas.NewPricesSchedule(forkParams),
+		GetMaxFee:        newDefaultMaxFeeFunc(mpoolCfg.MaxFee),
 	}
 
 	// enable initial prunes
 	mp.pruneCooldown <- struct{}{}
 
 	// load the current tipset and subscribe to head changes _before_ loading local messages
-	mp.curTs = api.SubscribeHeadChanges(func(rev, app []*block.TipSet) error {
+	mp.curTs = api.SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
 		err := mp.HeadChange(rev, app)
 		if err != nil {
 			log.Errorf("mpool head notif handler error: %+v", err)
@@ -504,6 +518,19 @@ func (mp *MessagePool) PublishMsgForWallet(addr address.Address) error {
 	return nil
 }
 
+func (mp *MessagePool) PublishMsg(smsg *types.SignedMessage) error {
+	msgb, err := smsg.Serialize()
+	if err != nil {
+		return xerrors.Errorf("could not serialize: %s", err)
+	}
+
+	err = mp.api.PubSubPublish(msgsub.Topic(mp.netName), msgb)
+	if err != nil {
+		return xerrors.Errorf("could not publish: %s", err)
+	}
+	return nil
+}
+
 func (mp *MessagePool) Close() error {
 	close(mp.closer)
 	return mp.journal.Close()
@@ -555,7 +582,7 @@ func (mp *MessagePool) addLocal(m *types.SignedMessage) error {
 	}
 	msgb := buf.Bytes()
 
-	c, _ := m.Cid()
+	c := m.Cid()
 	if err := mp.localMsgs.Put(datastore.NewKey(string(c.Bytes())), msgb); err != nil {
 		return xerrors.Errorf("persisting local message: %v", err)
 	}
@@ -573,8 +600,8 @@ func (mp *MessagePool) addLocal(m *types.SignedMessage) error {
 // sufficiently.
 // For non local messages, if the message cannot be included in the next 20 blocks it returns
 // a (soft) validation error.
-func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *block.TipSet, local bool) (bool, error) {
-	epoch, _ := curTs.Height()
+func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.TipSet, local bool) (bool, error) {
+	epoch := curTs.Height()
 	minGas := mp.gasPriceSchedule.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
 
 	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total(), constants.NewestNetworkVersion); err != nil {
@@ -649,7 +676,7 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 		}
 	}
 
-	return m.Cid()
+	return m.Cid(), nil
 }
 
 func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
@@ -703,11 +730,7 @@ func (mp *MessagePool) Add(m *types.SignedMessage) error {
 }
 
 func sigCacheKey(m *types.SignedMessage) (string, error) {
-	c, err := m.Cid()
-	if err != nil {
-		return "", err
-	}
-
+	c := m.Cid()
 	switch m.Signature.Type {
 	case crypto.SigTypeBLS:
 		if len(m.Signature.Data) < 90 {
@@ -734,10 +757,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 		return nil
 	}
 
-	c, err := m.Message.Cid()
-	if err != nil {
-		return err
-	}
+	c := m.Message.Cid()
 	if err := sigs.Verify(&m.Signature, m.Message.From, c.Bytes()); err != nil {
 		return err
 	}
@@ -747,7 +767,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 	return nil
 }
 
-func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *block.TipSet) error {
+func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *types.TipSet) error {
 	balance, err := mp.getStateBalance(m.Message.From, curTs)
 	if err != nil {
 		return xerrors.Errorf("failed to check sender balance: %s: %v", err, ErrSoftValidationFailure)
@@ -775,7 +795,7 @@ func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTs *block.TipSet)
 	return nil
 }
 
-func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *block.TipSet, local, untrusted bool) (bool, error) {
+func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet, local, untrusted bool) (bool, error) {
 	snonce, err := mp.getStateNonce(m.Message.From, curTs)
 	if err != nil {
 		return false, xerrors.Errorf("failed to look up actor state nonce: %s: %v", err, ErrSoftValidationFailure)
@@ -855,11 +875,7 @@ func (mp *MessagePool) addSkipChecks(m *types.SignedMessage) error {
 func (mp *MessagePool) addLocked(m *types.SignedMessage, strict, untrusted bool) error {
 	log.Debugf("mpooladd: %s %d", m.Message.From, m.Message.Nonce)
 	if m.Signature.Type == crypto.SigTypeBLS {
-		c, err := m.Cid()
-		if err != nil {
-			return err
-		}
-		mp.blsSigCache.Add(c, m.Signature)
+		mp.blsSigCache.Add(m.Cid(), m.Signature)
 	}
 
 	if _, err := mp.api.PutMessage(m); err != nil {
@@ -906,7 +922,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, strict, untrusted bool)
 	}, localUpdates)
 
 	mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolAdd], func() interface{} {
-		mc, _ := m.Cid()
+		mc := m.Cid()
 		return MessagePoolEvt{
 			Action:   "add",
 			Messages: []MessagePoolEvtMessage{{UnsignedMessage: m.Message, CID: mc}},
@@ -926,7 +942,7 @@ func (mp *MessagePool) GetNonce(addr address.Address) (uint64, error) {
 	return mp.getNonceLocked(addr, mp.curTs)
 }
 
-func (mp *MessagePool) getNonceLocked(addr address.Address, curTs *block.TipSet) (uint64, error) {
+func (mp *MessagePool) getNonceLocked(addr address.Address, curTs *types.TipSet) (uint64, error) {
 	stateNonce, err := mp.getStateNonce(addr, curTs) // sanity check
 	if err != nil {
 		return 0, err
@@ -946,7 +962,7 @@ func (mp *MessagePool) getNonceLocked(addr address.Address, curTs *block.TipSet)
 	return stateNonce, nil
 }
 
-func (mp *MessagePool) getStateNonce(addr address.Address, curTs *block.TipSet) (uint64, error) {
+func (mp *MessagePool) getStateNonce(addr address.Address, curTs *types.TipSet) (uint64, error) {
 	act, err := mp.api.GetActorAfter(addr, curTs)
 	if err != nil {
 		return 0, err
@@ -955,7 +971,7 @@ func (mp *MessagePool) getStateNonce(addr address.Address, curTs *block.TipSet) 
 	return act.Nonce, nil
 }
 
-func (mp *MessagePool) getStateBalance(addr address.Address, ts *block.TipSet) (tbig.Int, error) {
+func (mp *MessagePool) getStateBalance(addr address.Address, ts *types.TipSet) (tbig.Int, error) {
 	act, err := mp.api.GetActorAfter(addr, ts)
 	if err != nil {
 		return tbig.Zero(), err
@@ -1002,7 +1018,7 @@ func (mp *MessagePool) PushUntrusted(m *types.SignedMessage) (cid.Cid, error) {
 		}
 	}
 
-	return m.Cid()
+	return m.Cid(), nil
 }
 
 func (mp *MessagePool) Remove(from address.Address, nonce uint64, applied bool) {
@@ -1025,10 +1041,9 @@ func (mp *MessagePool) remove(from address.Address, nonce uint64, applied bool) 
 		}, localUpdates)
 
 		mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
-			mc, _ := m.Cid()
 			return MessagePoolEvt{
 				Action:   "remove",
-				Messages: []MessagePoolEvtMessage{{UnsignedMessage: m.Message, CID: mc}}}
+				Messages: []MessagePoolEvtMessage{{UnsignedMessage: m.Message, CID: m.Cid()}}}
 		})
 
 		mp.currentSize--
@@ -1043,7 +1058,7 @@ func (mp *MessagePool) remove(from address.Address, nonce uint64, applied bool) 
 	}
 }
 
-func (mp *MessagePool) Pending() ([]*types.SignedMessage, *block.TipSet) {
+func (mp *MessagePool) Pending() ([]*types.SignedMessage, *types.TipSet) {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
@@ -1053,7 +1068,7 @@ func (mp *MessagePool) Pending() ([]*types.SignedMessage, *block.TipSet) {
 	return mp.allPending()
 }
 
-func (mp *MessagePool) allPending() ([]*types.SignedMessage, *block.TipSet) {
+func (mp *MessagePool) allPending() ([]*types.SignedMessage, *types.TipSet) {
 	out := make([]*types.SignedMessage, 0)
 	for a := range mp.pending {
 		out = append(out, mp.pendingFor(a)...)
@@ -1062,7 +1077,7 @@ func (mp *MessagePool) allPending() ([]*types.SignedMessage, *block.TipSet) {
 	return out, mp.curTs
 }
 
-func (mp *MessagePool) PendingFor(a address.Address) ([]*types.SignedMessage, *block.TipSet) {
+func (mp *MessagePool) PendingFor(a address.Address) ([]*types.SignedMessage, *types.TipSet) {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
@@ -1090,7 +1105,7 @@ func (mp *MessagePool) pendingFor(a address.Address) []*types.SignedMessage {
 	return set
 }
 
-func (mp *MessagePool) HeadChange(revert []*block.TipSet, apply []*block.TipSet) error {
+func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet) error {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
@@ -1133,13 +1148,7 @@ func (mp *MessagePool) HeadChange(revert []*block.TipSet, apply []*block.TipSet)
 	var merr error
 
 	for _, ts := range revert {
-		tsKey, err := ts.Parents()
-		if err != nil {
-			log.Errorf("error get tipset parent key: %s", err)
-			merr = multierror.Append(merr, err)
-			continue
-		}
-
+		tsKey := ts.Parents()
 		pts, err := mp.api.LoadTipSet(tsKey)
 		if err != nil {
 			log.Errorf("error loading reverted tipset parent: %s", err)
@@ -1175,14 +1184,12 @@ func (mp *MessagePool) HeadChange(revert []*block.TipSet, apply []*block.TipSet)
 
 			for _, msg := range smsgs {
 				rm(msg.Message.From, msg.Message.Nonce)
-				c, _ := msg.Cid()
-				maybeRepub(c)
+				maybeRepub(msg.Cid())
 			}
 
 			for _, msg := range bmsgs {
 				rm(msg.From, msg.Nonce)
-				c, _ := msg.Cid()
-				maybeRepub(c)
+				maybeRepub(msg.Cid())
 			}
 		}
 	}
@@ -1250,13 +1257,12 @@ func (mp *MessagePool) HeadChange(revert []*block.TipSet, apply []*block.TipSet)
 
 			if ff != math.MaxUint64 {
 				m := bkt.msgs[ff]
-				mc, _ := m.Cid()
+				mc := m.Cid()
 
 				// cmsg can be nil if no messages from the current nonce are in the mpool
 				ccid := "nil"
 				if cmsg != nil {
-					c, _ := cmsg.Cid()
-					ccid = c.String()
+					ccid = cmsg.Cid().String()
 				}
 
 				log.Debugw("Nonce gap",
@@ -1275,7 +1281,7 @@ func (mp *MessagePool) HeadChange(revert []*block.TipSet, apply []*block.TipSet)
 	return merr
 }
 
-func (mp *MessagePool) runHeadChange(from *block.TipSet, to *block.TipSet, rmsgs map[address.Address]map[uint64]*types.SignedMessage) error {
+func (mp *MessagePool) runHeadChange(from *types.TipSet, to *types.TipSet, rmsgs map[address.Address]map[uint64]*types.SignedMessage) error {
 	add := func(m *types.SignedMessage) {
 		s, ok := rmsgs[m.Message.From]
 		if !ok {
@@ -1344,7 +1350,7 @@ type statBucket struct {
 	msgs map[uint64]*types.SignedMessage
 }
 
-func (mp *MessagePool) MessagesForBlocks(blks []*block.Block) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) MessagesForBlocks(blks []*types.BlockHeader) ([]*types.SignedMessage, error) {
 	out := make([]*types.SignedMessage, 0)
 
 	for _, b := range blks {
@@ -1359,8 +1365,7 @@ func (mp *MessagePool) MessagesForBlocks(blks []*block.Block) ([]*types.SignedMe
 			if smsg != nil {
 				out = append(out, smsg)
 			} else {
-				mc, _ := msg.Cid()
-				log.Debugf("could not recover signature for bls message %s", mc)
+				log.Debugf("could not recover signature for bls message %s", msg.Cid())
 			}
 		}
 	}
@@ -1369,12 +1374,7 @@ func (mp *MessagePool) MessagesForBlocks(blks []*block.Block) ([]*types.SignedMe
 }
 
 func (mp *MessagePool) RecoverSig(msg *types.UnsignedMessage) *types.SignedMessage {
-	c, err := msg.Cid()
-	if err != nil {
-		log.Errorf("failed to get msg cid: %v", err)
-		return nil
-	}
-	val, ok := mp.blsSigCache.Get(c)
+	val, ok := mp.blsSigCache.Get(msg.Cid())
 	if !ok {
 		return nil
 	}
@@ -1420,6 +1420,11 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan MpoolUpdate, error) 
 }
 
 func (mp *MessagePool) loadLocal() error {
+	if val := os.Getenv("VENUS_DISABLE_LOCAL_MESSAGE"); val != "" {
+		log.Warnf("receive environment to disable local local message")
+		return nil
+	}
+
 	res, err := mp.localMsgs.Query(query.Query{})
 	if err != nil {
 		return xerrors.Errorf("query local messages: %v", err)
@@ -1463,8 +1468,7 @@ func (mp *MessagePool) Clear(local bool) {
 			}
 
 			for _, m := range mset.msgs {
-				c, _ := m.Cid()
-				err := mp.localMsgs.Delete(datastore.NewKey(string(c.Bytes())))
+				err := mp.localMsgs.Delete(datastore.NewKey(string(m.Cid().Bytes())))
 				if err != nil {
 					log.Warnf("error deleting local message: %s", err)
 				}

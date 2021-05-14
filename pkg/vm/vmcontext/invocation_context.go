@@ -175,6 +175,7 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 	// Checkpoint stateView, for restoration on revert
 	// Note that changes prior To invocation (sequence number bump and gas prepayment) persist even if invocation fails.
 	err := ctx.vm.snapshot()
+
 	if err != nil {
 		panic(err)
 	}
@@ -252,6 +253,7 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 		panic(xerrors.Errorf("cannt find to actor %v", err))
 	}
 	actorImpl := ctx.vm.getActorImpl(toActor.Code, ctx.Runtime())
+
 	// 6. create target stateView handle
 	stateHandle := newActorStateHandle((*stateHandleContext)(ctx))
 	ctx.stateHandle = &stateHandle

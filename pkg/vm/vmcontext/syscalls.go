@@ -14,13 +14,12 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/state"
+	vmState "github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
-	vmState "github.com/filecoin-project/venus/pkg/vm/state"
 )
 
 type SyscallsStateView interface {
-	state.AccountStateView
+	ResolveToKeyAddr(ctx context.Context, address address.Address) (address.Address, error)
 	MinerInfo(ctx context.Context, maddr address.Address, nv network.Version) (*miner.MinerInfo, error)
 	TotalFilCircSupply(height abi.ChainEpoch, st vmState.Tree) (abi.TokenAmount, error)
 	GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version
@@ -88,7 +87,7 @@ func (sys syscalls) BatchVerifySeals(vis map[address.Address][]proof.SealVerifyI
 	out := make(map[address.Address][]bool)
 
 	sema := make(chan struct{}, BatchSealVerifyParallelism)
-
+	vmlog.Info("BatchVerifySeals miners:", len(vis))
 	var wg sync.WaitGroup
 	for addr, seals := range vis {
 		results := make([]bool, len(seals))
@@ -112,6 +111,6 @@ func (sys syscalls) BatchVerifySeals(vis map[address.Address][]proof.SealVerifyI
 		}
 	}
 	wg.Wait()
-
+	vmlog.Info("BatchVerifySeals Result miners:", len(out))
 	return out, nil
 }

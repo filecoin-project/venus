@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	fbig "github.com/filecoin-project/go-state-types/big"
 	"io"
 	"os"
+
+	fbig "github.com/filecoin-project/go-state-types/big"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-cmds/cli"
@@ -80,6 +81,11 @@ const (
 	Size = "size"
 
 	ImportSnapshot = "import-snapshot"
+
+	// wallet password
+	Password = "password"
+
+	AuthServiceURL = "authURL"
 )
 
 func init() {
@@ -102,6 +108,7 @@ START RUNNING FILECOIN
   venus config <key> [<value>] - Get and set filecoin config values
   venus daemon                 - Start a long-running daemon process
   venus wallet                 - Manage your filecoin wallets
+  venus msig                   - Interact with a multisig wallet
 
 VIEW DATA STRUCTURES
   venus chain                  - Inspect the filecoin blockchain
@@ -132,12 +139,17 @@ State COMMANDS
   venus network-version        - MReturns the network version
   venus list-actor             - list all actors
 
+Paych COMMANDS 
+  venus paych                  - Manage payment channels
+
 TOOL COMMANDS
   venus inspect                - Show info about the venus node
   venus leb128                 - Leb128 cli encode/decode
   venus log                    - Interact with the daemon event log output
   venus protocol               - Show protocol parameter details
   venus version                - Show venus version information
+  venus seed                   - Seal sectors for genesis miner
+  venus fetch-params           - Fetch proving parameters
 `,
 	},
 	Options: []cmds.Option{
@@ -161,6 +173,7 @@ var rootSubcmdsLocal = map[string]*cmds.Command{
 	"fetch":   fetchCmd,
 	"version": versionCmd,
 	"leb128":  leb128Cmd,
+	"seed":    seedCmd,
 }
 
 // all top level commands, available on daemon. set during init() to avoid configuration loops.
@@ -182,6 +195,8 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"version":  versionCmd,
 	"state":    stateCmd,
 	"miner":    minerCmd,
+	"paych":    paychCmd,
+	"msig":     multisigCmd,
 }
 
 func init() {

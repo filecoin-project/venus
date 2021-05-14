@@ -2,6 +2,7 @@ package chain_test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
 	"strconv"
 	"testing"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
@@ -17,14 +17,14 @@ import (
 func TestSamplingChainRandomness(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
-	genesisTicket := block.Ticket{VRFProof: []byte{1, 2, 3, 4}}
+	genesisTicket := types.Ticket{VRFProof: []byte{1, 2, 3, 4}}
 
-	makeSample := func(sampleEpoch int) block.Ticket {
+	makeSample := func(sampleEpoch int) types.Ticket {
 		vrfProof := genesisTicket.VRFProof
 		if sampleEpoch >= 0 {
 			vrfProof = []byte(strconv.Itoa(sampleEpoch))
 		}
-		return block.Ticket{
+		return types.Ticket{
 			VRFProof: vrfProof,
 		}
 	}
@@ -101,10 +101,10 @@ func TestSamplingChainRandomness(t *testing.T) {
 		assert.Equal(t, makeSample(0), r)
 
 		// Sample empty chain.
-		r, err = sampler.SampleTicket(ctx, block.NewTipSetKey(), abi.ChainEpoch(0))
+		r, err = sampler.SampleTicket(ctx, types.NewTipSetKey(), abi.ChainEpoch(0))
 		assert.NoError(t, err)
 		assert.Equal(t, makeSample(-1), r)
-		r, err = sampler.SampleTicket(ctx, block.NewTipSetKey(), abi.ChainEpoch(-1))
+		r, err = sampler.SampleTicket(ctx, types.NewTipSetKey(), abi.ChainEpoch(-1))
 		assert.NoError(t, err)
 		assert.Equal(t, makeSample(-1), r)
 	})
@@ -112,10 +112,10 @@ func TestSamplingChainRandomness(t *testing.T) {
 
 // Builds a chain of single-block tips, returned in descending height order.
 // Each block's ticket is its stringified height (as bytes).
-func makeChain(t *testing.T, length int) (*chain.Builder, []*block.TipSet) {
+func makeChain(t *testing.T, length int) (*chain.Builder, []*types.TipSet) {
 	b := chain.NewBuilder(t, address.Undef)
 	height := 0
-	head := b.BuildManyOn(length, block.UndefTipSet, func(b *chain.BlockBuilder) {
+	head := b.BuildManyOn(length, types.UndefTipSet, func(b *chain.BlockBuilder) {
 		b.SetTicket([]byte(strconv.Itoa(height)))
 		height++
 	})

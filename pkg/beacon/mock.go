@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"github.com/filecoin-project/venus/pkg/types"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/venus/pkg/block"
 )
 
 // Mock beacon assumes that filecoin rounds are 1:1 mapped with the beacon rounds
@@ -35,11 +34,11 @@ func (mb *mockBeacon) RoundTime() time.Duration {
 	return mb.interval
 }
 
-func (mb *mockBeacon) entryForIndex(index uint64) block.BeaconEntry {
+func (mb *mockBeacon) entryForIndex(index uint64) types.BeaconEntry {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, index)
 	rval := blake2b.Sum256(buf)
-	return block.BeaconEntry{
+	return types.BeaconEntry{
 		Round: index,
 		Data:  rval[:],
 	}
@@ -52,7 +51,7 @@ func (mb *mockBeacon) Entry(ctx context.Context, index uint64) <-chan Response {
 	return out
 }
 
-func (mb *mockBeacon) VerifyEntry(from block.BeaconEntry, to block.BeaconEntry) error {
+func (mb *mockBeacon) VerifyEntry(from types.BeaconEntry, to types.BeaconEntry) error {
 	// TODO: cache this, especially for bls
 	oe := mb.entryForIndex(from.Round)
 	if !bytes.Equal(from.Data, oe.Data) {

@@ -2,37 +2,39 @@ package node
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/jwtauth"
-	"golang.org/x/xerrors"
+	"github.com/filecoin-project/venus/app/submodule/multisig"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p"
-	"github.com/pkg/errors"
-
 	"github.com/filecoin-project/venus/app/submodule/blockservice"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	config2 "github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/discovery"
+	"github.com/filecoin-project/venus/app/submodule/market"
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
 	"github.com/filecoin-project/venus/app/submodule/network"
+	"github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
 	"github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/journal"
+	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/specactors/policy"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/util"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
-	"github.com/filecoin-project/venus/pkg/version"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p"
+	"github.com/pkg/errors"
 )
 
 // Builder is a helper to aid in the construction of a filecoin node.
@@ -47,6 +49,8 @@ type Builder struct {
 	isRelay     bool
 	chainClock  clock.ChainEpochClock
 	genCid      cid.Cid
+	password    string
+	authURL     string
 }
 
 // BuilderOpt is an option for building a filecoin node.
@@ -80,6 +84,22 @@ func BlockTime(blockTime time.Duration) BuilderOpt {
 func PropagationDelay(propDelay time.Duration) BuilderOpt {
 	return func(c *Builder) error {
 		c.propDelay = propDelay
+		return nil
+	}
+}
+
+// SetPassword set wallet password
+func SetPassword(password string) BuilderOpt {
+	return func(c *Builder) error {
+		c.password = password
+		return nil
+	}
+}
+
+// SetAuthURL set venus auth service URL
+func SetAuthURL(url string) BuilderOpt {
+	return func(c *Builder) error {
+		c.authURL = url
 		return nil
 	}
 }
@@ -136,7 +156,7 @@ func SetNetParams(params *config.NetworkParamsConfig) {
 	if len(params.ReplaceProofTypes) > 0 {
 		newSupportedTypes := make([]abi.RegisteredSealProof, len(params.ReplaceProofTypes))
 		for idx, proofType := range params.ReplaceProofTypes {
-			newSupportedTypes[idx] = abi.RegisteredSealProof(proofType)
+			newSupportedTypes[idx] = proofType
 		}
 		// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
 		policy.SetSupportedProofTypes(newSupportedTypes...)
@@ -144,6 +164,10 @@ func SetNetParams(params *config.NetworkParamsConfig) {
 
 	if params.MinVerifiedDealSize > 0 {
 		policy.SetMinVerifiedDealSize(abi.NewStoragePower(params.MinVerifiedDealSize))
+	}
+
+	if params.PreCommitChallengeDelay > 0 {
+		policy.SetPreCommitChallengeDelay(params.PreCommitChallengeDelay)
 	}
 
 	constants.SetAddressNetwork(params.AddressNetwork)
@@ -197,7 +221,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	// create the node
 	nd := &Node{
 		offlineMode: b.offlineMode,
@@ -214,17 +237,12 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Network")
 	}
 
-	nd.VersionTable, err = version.ConfigureProtocolVersions(nd.network.NetworkName)
-	if err != nil {
-		return nil, err
-	}
-
 	nd.blockservice, err = blockservice.NewBlockserviceSubmodule(ctx, nd.blockstore, nd.network)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.blockservice")
 	}
 
-	nd.chain, err = chain.NewChainSubmodule((*builder)(b), b.repo, nd.blockstore, b.verifier)
+	nd.chain, err = chain.NewChainSubmodule(ctx, (*builder)(b), b.repo, nd.blockstore, b.verifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}
@@ -241,7 +259,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.chainClock = b.chainClock
 
 	//todo chainge builder interface to read config
-	nd.discovery, err = discovery.NewDiscoverySubmodule(ctx, (*builder)(b), b.repo.Config().Bootstrap, nd.network, nd.chain.ChainReader, nd.chain.MessageStore)
+	nd.discovery, err = discovery.NewDiscoverySubmodule(ctx, (*builder)(b), b.repo.Config(), nd.network, nd.chain.ChainReader, nd.chain.MessageStore)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.discovery")
 	}
@@ -251,12 +269,12 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}
 
-	nd.wallet, err = wallet.NewWalletSubmodule(ctx, nd.configModule, b.repo, nd.chain)
+	nd.wallet, err = wallet.NewWalletSubmodule(ctx, nd.configModule, b.repo, nd.chain, b.password)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.wallet")
 	}
 
-	nd.mpool, err = mpool.NewMpoolSubmodule((*builder)(b), nd.network, nd.chain, nd.syncer, nd.wallet)
+	nd.mpool, err = mpool.NewMpoolSubmodule((*builder)(b), nd.network, nd.chain, nd.syncer, nd.wallet, b.repo.Config().NetworkParams)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.mpool")
 	}
@@ -266,9 +284,35 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.storageNetworking")
 	}
 	nd.mining = mining.NewMiningModule(b.repo, nd.chain, nd.blockstore, nd.network, nd.syncer, *nd.wallet, b.verifier)
-	nd.jwtAuth, err = jwtauth.NewJwtAuth(b.repo)
-	if err != nil {
-		return nil, xerrors.Errorf("read or generate jwt secrect error %s", err)
+
+	nd.multiSig = multisig.NewMultiSigSubmodule(nd.chain.API(), nd.mpool.API(), nd.chain.ChainReader)
+
+	stmgr := statemanger.NewStateMangerAPI(nd.chain.ChainReader, nd.syncer.Consensus)
+	mgrps := &paychmgr.ManagerParams{
+		MPoolAPI: nd.mpool.API(),
+		ChainAPI: nd.chain.API(),
+		Protocol: nd.syncer.Consensus,
+		SM:       stmgr,
+		DS:       b.repo.PaychDatastore(),
+	}
+	nd.paychan = paych.NewPaychSubmodule(ctx, mgrps)
+	nd.market = market.NewMarketModule(nd.chain.API(), stmgr)
+
+	//auth
+	authURL := ""
+	if len(b.repo.Config().API.VenusAuthURL) > 0 {
+		authURL = b.repo.Config().API.VenusAuthURL
+	} else if len(b.authURL) > 0 {
+		authURL = b.authURL
+	}
+	if len(authURL) > 0 {
+		nd.jwtCli = jwtauth.NewRemoteAuth(authURL)
+	} else {
+		client, err := jwtauth.NewJwtAuth(b.repo)
+		if err != nil {
+			return nil, err
+		}
+		nd.jwtCli = client
 	}
 
 	apiBuilder := util.NewBuiler()
@@ -284,7 +328,9 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.storageNetworking,
 		nd.mining,
 		nd.mpool,
-		nd.jwtAuth,
+		nd.paychan,
+		nd.market,
+		nd.jwtCli,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "add service failed ")

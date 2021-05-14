@@ -96,7 +96,7 @@ func TestFSRepoOpen(t *testing.T) {
 		assert.NoError(t, WriteVersion(repoPath, 99))
 
 		_, err = OpenFSRepo(repoPath, 1)
-		expected := fmt.Sprintf("binary needs update to handle repo version, got 99 expected %d. Update binary to latest release", Version)
+		expected := fmt.Sprintf("binary needs update to handle repo version, got 99 expected %d. Update binary to latest release", LatestVersion)
 		assert.EqualError(t, err, expected)
 	})
 
@@ -111,7 +111,7 @@ func TestFSRepoOpen(t *testing.T) {
 		assert.NoError(t, ioutil.WriteFile(filepath.Join(repoPath, versionFilename), []byte("v.8"), 0644))
 
 		_, err = OpenFSRepo(repoPath, 1)
-		assert.EqualError(t, err, "failed to read version: corrupt version file: version is not an integer")
+		assert.EqualError(t, err, "failed to read version: strconv.ParseUint: parsing \"v.8\": invalid syntax")
 	})
 }
 

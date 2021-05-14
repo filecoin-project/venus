@@ -5,12 +5,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
+
+	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/venus/fixtures/asset"
+
+	"golang.org/x/xerrors"
+
+	_ "net/http/pprof" // nolint: golint
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -18,17 +24,16 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipld/go-car"
 	"github.com/libp2p/go-libp2p-core/crypto"
-	_ "net/http/pprof" // nolint: golint
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"
-	"github.com/filecoin-project/venus/fixtures/asset"
 	"github.com/filecoin-project/venus/fixtures/networks"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	"github.com/filecoin-project/venus/pkg/journal"
+	"github.com/filecoin-project/venus/pkg/migration"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/types"
 	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 
@@ -50,18 +55,27 @@ var daemonCmd = &cmds.Command{
 		cmds.StringOption(SwarmPublicRelayAddress, "public multiaddress for routing circuit relay traffic.  Necessary for relay nodes to provide this if they are not publically dialable"),
 		cmds.BoolOption(OfflineMode, "start the node without networking"),
 		cmds.BoolOption(ELStdout),
+		cmds.StringOption(AuthServiceURL, "venus auth service URL"),
 		cmds.BoolOption(IsRelay, "advertise and allow venus network traffic to be relayed through this node"),
 		cmds.StringOption(ImportSnapshot, "import chain state from a given chain export file or url"),
 		cmds.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
 		cmds.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
 		cmds.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
 		cmds.StringOption(Network, "when set, populates config with network specific parameters").WithDefault("testnetnet"),
+		cmds.StringOption(Password, "set wallet password"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
 		repoDir, err := paths.GetRepoPath(repoDir)
 		if err != nil {
 			return err
+		}
+		ps, err := asset.Asset("fixtures/_assets/proof-params/parameters.json")
+		if err != nil {
+			return err
+		}
+		if err := paramfetch.GetParams(req.Context, ps, 0); err != nil {
+			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
 		exist, err := repo.Exists(repoDir)
@@ -74,7 +88,7 @@ var daemonCmd = &cmds.Command{
 			if err := re.Emit(repoDir); err != nil {
 				return err
 			}
-			if err := repo.InitFSRepo(repoDir, repo.Version, config.NewDefaultConfig()); err != nil {
+			if err := repo.InitFSRepo(repoDir, repo.LatestVersion, config.NewDefaultConfig()); err != nil {
 				return err
 			}
 
@@ -92,12 +106,10 @@ func initRun(req *cmds.Request) error {
 	if err != nil {
 		return err
 	}
-
 	// The only error Close can return is that the repo has already been closed.
 	defer func() {
 		_ = rep.Close()
 	}()
-
 	var genesisFunc genesis.InitFunc
 	cfg := rep.Config()
 	network, _ := req.Options[Network].(string)
@@ -105,7 +117,6 @@ func initRun(req *cmds.Request) error {
 		log.Errorf("Error setting config %s", err)
 		return err
 	}
-
 	// genesis node
 	if mkGen, ok := req.Options[makeGenFlag].(string); ok {
 		preTp := req.Options[preTemplateFlag]
@@ -117,14 +128,18 @@ func initRun(req *cmds.Request) error {
 		genesisFunc = genesis.MakeGenesis(req.Context, rep, mkGen, preTp.(string), cfg.NetworkParams.ForkUpgradeParam)
 	} else {
 		genesisFileSource, _ := req.Options[GenesisFile].(string)
-		genesisFunc, err = loadGenesis(req.Context, rep, genesisFileSource)
+		genesisFunc, err = loadGenesis(req.Context, rep, genesisFileSource, network)
 		if err != nil {
 			return err
 		}
 	}
+	if authServiceURL, ok := req.Options[AuthServiceURL].(string); ok && len(authServiceURL) > 0 {
+		cfg.API.VenusAuthURL = authServiceURL
+	}
 
 	peerKeyFile, _ := req.Options[PeerKeyFile].(string)
 	walletKeyFile, _ := req.Options[WalletKeyFile].(string)
+
 	initOpts, err := getNodeInitOpts(peerKeyFile, walletKeyFile)
 	if err != nil {
 		return err
@@ -191,6 +206,14 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 		}
 	}
 
+	if password, _ := req.Options[Password].(string); len(password) > 0 {
+		opts = append(opts, node.SetPassword(password))
+	}
+
+	if authURL, ok := req.Options[AuthServiceURL].(string); ok && len(authURL) > 0 {
+		opts = append(opts, node.SetAuthURL(authURL))
+	}
+
 	journal, err := journal.NewZapJournal(rep.JournalPath())
 	if err != nil {
 		return err
@@ -247,7 +270,11 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return repo.OpenFSRepo(repoDir, repo.Version)
+	err = migration.TryToMigrate(repoDir)
+	if err != nil {
+		return nil, err
+	}
+	return repo.OpenFSRepo(repoDir, repo.LatestVersion)
 }
 
 func setConfigFromOptions(cfg *config.Config, network string) error {
@@ -256,6 +283,8 @@ func setConfigFromOptions(cfg *config.Config, network string) error {
 	switch network {
 	case "mainnet":
 		netcfg = networks.Mainnet()
+	case "nerpa":
+		netcfg = networks.NerpaNet()
 	case "testnetnet":
 		netcfg = networks.Testnet()
 	case "integrationnet":
@@ -276,18 +305,26 @@ func setConfigFromOptions(cfg *config.Config, network string) error {
 	return nil
 }
 
-func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (genesis.InitFunc, error) {
+func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string, network string) (genesis.InitFunc, error) {
 	var (
 		source io.ReadCloser
 		err    error
 	)
 
 	if sourceName == "" {
-		bs, err := asset.Asset("fixtures/_assets/car/devnet.car")
+		var bs []byte
+		var err error
+		switch network {
+		case "nerpa":
+			bs, err = asset.Asset("fixtures/_assets/car/nerpanet.car")
+		case "cali":
+			bs, err = asset.Asset("fixtures/_assets/car/calibnet.car")
+		default:
+			bs, err = asset.Asset("fixtures/_assets/car/devnet.car")
+		}
 		if err != nil {
 			return gengen.MakeGenesisFunc(), nil
 		}
-
 		source = ioutil.NopCloser(bytes.NewReader(bs))
 		// return gengen.MakeGenesisFunc(), nil
 	} else {
@@ -304,7 +341,7 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (genesis
 		return nil, err
 	}
 
-	gif := func(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+	gif := func(cst cbor.IpldStore, bs blockstore.Blockstore) (*types.BlockHeader, error) {
 		return genesisBlk, err
 	}
 
@@ -375,7 +412,7 @@ func openGenesisSource(sourceName string) (io.ReadCloser, error) {
 	return source, nil
 }
 
-func extractGenesisBlock(source io.ReadCloser, rep repo.Repo) (*block.Block, error) {
+func extractGenesisBlock(source io.ReadCloser, rep repo.Repo) (*types.BlockHeader, error) {
 	bs := rep.Datastore()
 	ch, err := car.LoadCar(bs, source)
 	if err != nil {
@@ -387,7 +424,7 @@ func extractGenesisBlock(source io.ReadCloser, rep repo.Repo) (*block.Block, err
 	if err != nil {
 		return nil, err
 	}
-	cur, err := block.DecodeBlock(bsBlk.RawData())
+	cur, err := types.DecodeBlock(bsBlk.RawData())
 	if err != nil {
 		return nil, err
 	}

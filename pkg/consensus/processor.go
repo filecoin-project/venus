@@ -7,8 +7,6 @@ import (
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/pkg/types"
 
@@ -29,11 +27,6 @@ type ApplyMessageResult struct {
 	ApplicationResult        // Application-level result, if error is nil.
 	Failure            error // Failure to apply the message
 	FailureIsPermanent bool  // Whether failure is permanent, has no chance of succeeding later.
-}
-
-type ChainRandomness interface {
-	SampleChainRandomness(ctx context.Context, head block.TipSetKey, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
-	ChainGetRandomnessFromBeacon(ctx context.Context, tsk block.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 }
 
 // DefaultProcessor handles all block processing.
@@ -59,24 +52,17 @@ func NewConfiguredProcessor(actors vm.ActorCodeLoader, syscalls vm.SyscallsImpl)
 
 // ProcessTipSet computes the state transition specified by the messages in all blocks in a TipSet.
 func (p *DefaultProcessor) ProcessTipSet(ctx context.Context,
-	parent, ts *block.TipSet,
-	msgs []block.BlockMessagesInfo,
+	parent, ts *types.TipSet,
+	msgs []types.BlockMessagesInfo,
 	vmOption vm.VmOption,
 ) (cid.Cid, []types.MessageReceipt, error) {
 	_, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 
-	epoch, err := ts.Height()
-	if err != nil {
-		return cid.Undef, nil, err
-	}
-
+	epoch := ts.Height()
 	var parentEpoch abi.ChainEpoch
 	if parent.Defined() {
-		parentEpoch, err = parent.Height()
-		if err != nil {
-			return cid.Undef, nil, err
-		}
+		parentEpoch = parent.Height()
 	}
 
 	v, err := vm.NewVM(vmOption)

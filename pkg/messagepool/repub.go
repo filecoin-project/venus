@@ -77,7 +77,6 @@ func (mp *MessagePool) republishPendingMessages() error {
 	gasLimit := int64(constants.BlockGasLimit)
 	minGas := int64(gasguess.MinGas)
 	var msgs []*types.SignedMessage
-	height, _ := ts.Height()
 
 LOOP:
 	for i := 0; i < len(chains); {
@@ -104,7 +103,7 @@ LOOP:
 			// check the baseFee lower bound -- only republish messages that can be included in the chain
 			// within the next 20 blocks.
 			for _, m := range chain.msgs {
-				if !allowNegativeChains(height) && m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
+				if m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
 					chain.Invalidate()
 					continue LOOP
 				}
@@ -119,7 +118,7 @@ LOOP:
 
 		// we can't fit the current chain but there is gas to spare
 		// trim it and push it down
-		chain.Trim(gasLimit, mp, baseFee, true)
+		chain.Trim(gasLimit, mp, baseFee)
 		for j := i; j < len(chains)-1; j++ {
 			if chains[j].Before(chains[j+1]) {
 				break
@@ -155,8 +154,7 @@ LOOP:
 		mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolRepub], func() interface{} {
 			msgsEv := make([]MessagePoolEvtMessage, 0, len(msgs))
 			for _, m := range msgs {
-				mc, _ := m.Cid()
-				msgsEv = append(msgsEv, MessagePoolEvtMessage{UnsignedMessage: m.Message, CID: mc})
+				msgsEv = append(msgsEv, MessagePoolEvtMessage{UnsignedMessage: m.Message, CID: m.Cid()})
 			}
 			return MessagePoolEvt{
 				Action:   "repub",
@@ -168,8 +166,7 @@ LOOP:
 	// track most recently republished messages
 	republished := make(map[cid.Cid]struct{})
 	for _, m := range msgs[:count] {
-		c, _ := m.Cid()
-		republished[c] = struct{}{}
+		republished[m.Cid()] = struct{}{}
 	}
 
 	mp.lk.Lock()

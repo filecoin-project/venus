@@ -8,17 +8,15 @@ import (
 	"os"
 
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/app/submodule/chain/cst"
 	"github.com/filecoin-project/venus/fixtures/networks"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/bls"  // enable bls signatures
 	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/secp" // enable secp signatures
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/slashing"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/register"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
 
 	"github.com/filecoin-project/go-address"
@@ -108,10 +106,8 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 	}*/
 
 	//chain fork
-	messageStore := chain.NewMessageStore(bs)
-	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, bs, register.DefaultActors, nil)
-	chainFork, err := fork.NewChainFork(chainState, ipldStore, bs, mainNetParams.Network.ForkUpgradeParam)
-	faultChecker := slashing.NewFaultChecker(chainState, chainFork)
+	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network)
+	faultChecker := slashing.NewFaultChecker(chainStore, chainFork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
 	if err != nil {
 		return nil, err
@@ -120,7 +116,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 		caculator = chain.NewCirculatingSupplyCalculator(bs, chainStore, mainNetParams.Network.ForkUpgradeParam)
 
 		vmOption = vm.VmOption{
-			CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
+			CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 				dertail, err := caculator.GetCirculatingSupplyDetailed(ctx, epoch, tree)
 				if err != nil {
 					return abi.TokenAmount{}, err
@@ -146,12 +142,12 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 	//flush data to blockstore
 	defer lvm.Flush() //nolint
 
-	blocks := make([]block.BlockMessagesInfo, 0, len(tipset.Blocks))
+	blocks := make([]types.BlockMessagesInfo, 0, len(tipset.Blocks))
 	for _, b := range tipset.Blocks {
-		sb := block.BlockMessagesInfo{
-			Block: &block.Block{
+		sb := types.BlockMessagesInfo{
+			Block: &types.BlockHeader{
 				Miner: b.MinerAddr,
-				ElectionProof: &block.ElectionProof{
+				ElectionProof: &types.ElectionProof{
 					WinCount: b.WinCount,
 				},
 			},
@@ -271,17 +267,15 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		}*/
 
 	//chain fork
-	messageStore := chain.NewMessageStore(bs)
-	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, bs, coderLoader, nil)
-	chainFork, err := fork.NewChainFork(chainState, ipldStore, bs, mainNetParams.Network.ForkUpgradeParam)
-	faultChecker := slashing.NewFaultChecker(chainState, chainFork)
+	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network)
+	faultChecker := slashing.NewFaultChecker(chainStore, chainFork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
 	if err != nil {
 		return nil, cid.Undef, err
 	}
 	var (
 		vmOption = vm.VmOption{
-			CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree state.Tree) (abi.TokenAmount, error) {
+			CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 				return params.CircSupply, nil
 			},
 			NtwkVersionGetter: chainFork.GetNtwkVersion,

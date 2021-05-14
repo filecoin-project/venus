@@ -13,14 +13,21 @@ type Backend interface {
 	Addresses() []address.Address
 
 	// Contains returns true if this backend stores the passed in address.
-	HasAddress(addr address.Address) bool
+	HasAddress(address.Address) bool
 
 	// Sign cryptographically signs data with the private key associated with an address.
-	SignBytes(data []byte, addr address.Address) (*crypto.Signature, error)
+	SignBytes([]byte, address.Address) (*crypto.Signature, error)
 
 	// GetKeyInfo will return the keyinfo associated with address `addr`
 	// iff backend contains the addr.
-	GetKeyInfo(addr address.Address) (*crypto.KeyInfo, error)
+	GetKeyInfo(address.Address) (*crypto.KeyInfo, error)
+
+	GetKeyInfoPassphrase(address.Address, []byte) (*crypto.KeyInfo, error)
+
+	//
+	Locked(string) error
+	UnLocked(string) error
+	WalletState() int
 }
 
 // Importer is a specialization of a wallet backend that can import
@@ -29,5 +36,5 @@ type Backend interface {
 type Importer interface {
 	// ImportKey imports the key described by the given keyinfo
 	// into the backend
-	ImportKey(ki *crypto.KeyInfo) error
+	ImportKey(*crypto.KeyInfo) error
 }

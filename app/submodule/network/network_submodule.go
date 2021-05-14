@@ -18,14 +18,12 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
-	"github.com/filecoin-project/go-storedcounter"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log"
 
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/discovery"
 	"github.com/filecoin-project/venus/pkg/net"
@@ -38,7 +36,6 @@ import (
 	gsnet "github.com/ipfs/go-graphsync/network"
 	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
-	offroute "github.com/ipfs/go-ipfs-routing/offline"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p"
 	circuit "github.com/libp2p/go-libp2p-circuit"
@@ -50,7 +47,6 @@ import (
 	mplex "github.com/libp2p/go-libp2p-mplex"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	yamux "github.com/libp2p/go-libp2p-yamux"
-	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 )
@@ -115,9 +111,15 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	bandwidthTracker := p2pmetrics.NewBandwidthCounter()
 	libP2pOpts := append(config.Libp2pOpts(), libp2p.BandwidthReporter(bandwidthTracker), makeSmuxTransportOption(true))
 
-	networkName, err := retrieveNetworkName(ctx, config.GenesisCid(), blockstore.CborStore)
-	if err != nil {
-		return nil, err
+	var networkName string
+	var err error
+	if repo.Config().NetworkParams.DevNet {
+		networkName = "testnetnet"
+	} else {
+		networkName, err = retrieveNetworkName(ctx, config.GenesisCid(), blockstore.CborStore)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// set up host
@@ -126,58 +128,60 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	validator := blankValidator{}
 	var pubsubMessageSigning bool
 	var peerMgr net.IPeerMgr
-	if !config.OfflineMode() {
-		makeDHT := func(h host.Host) (routing.Routing, error) {
-			mode := dht.ModeServer
-			opts := []dht.Option{dht.Mode(mode),
-				dht.Datastore(repo.ChainDatastore()),
-				dht.NamespacedValidator("v", validator),
-				dht.ProtocolPrefix(net.FilecoinDHT(networkName)),
-				dht.QueryFilter(dht.PublicQueryFilter),
-				dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
-				dht.DisableProviders(),
-				dht.DisableValues()}
-			r, err := dht.New(
-				ctx, h, opts...,
-			)
+	// if !config.OfflineMode() {
+	makeDHT := func(h host.Host) (routing.Routing, error) {
+		mode := dht.ModeAuto
+		opts := []dht.Option{dht.Mode(mode),
+			dht.Datastore(repo.ChainDatastore()),
+			dht.NamespacedValidator("v", validator),
+			dht.ProtocolPrefix(net.FilecoinDHT(networkName)),
+			dht.QueryFilter(dht.PublicQueryFilter),
+			dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
+			dht.DisableProviders(),
+			dht.DisableValues()}
+		r, err := dht.New(
+			ctx, h, opts...,
+		)
 
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to setup routing")
-			}
-			router = r
-			return r, err
-		}
-
-		var err error
-		peerHost, err = buildHost(ctx, config, libP2pOpts, repo, makeDHT)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to setup routing")
 		}
-		// require message signing in online mode when we have priv key
-		pubsubMessageSigning = true
-
-		//peer manager
-		bootNodes, err := net.ParseAddresses(ctx, repo.Config().Bootstrap.Addresses)
-		if err != nil {
-			return nil, err
-		}
-		period, err := time.ParseDuration(repo.Config().Bootstrap.Period)
-		if err != nil {
-			return nil, err
-		}
-
-		peerMgr, err = net.NewPeerMgr(peerHost, router.(*dht.IpfsDHT), period, bootNodes)
-		if err != nil {
-			return nil, err
-		}
-
-		go peerMgr.Run(ctx)
-	} else {
-		router = offroute.NewOfflineRouter(repo.ChainDatastore(), validator)
-		peerHost = rhost.Wrap(NewNoopLibP2PHost(), router)
-		pubsubMessageSigning = false
-		peerMgr = &net.MockPeerMgr{}
+		router = r
+		return r, err
 	}
+
+	peerHost, err = buildHost(ctx, config, libP2pOpts, repo, makeDHT)
+	if err != nil {
+		return nil, err
+	}
+	// require message signing in online mode when we have priv key
+	pubsubMessageSigning = true
+
+	// peer manager
+	bootNodes, err := net.ParseAddresses(ctx, repo.Config().Bootstrap.Addresses)
+	if err != nil {
+		return nil, err
+	}
+	period, err := time.ParseDuration(repo.Config().Bootstrap.Period)
+	if err != nil {
+		return nil, err
+	}
+
+	peerMgr, err = net.NewPeerMgr(peerHost, router.(*dht.IpfsDHT), period, bootNodes)
+	if err != nil {
+		return nil, err
+	}
+
+	// do NOT start `peerMgr` in `offline` mode
+	if !config.OfflineMode() {
+		go peerMgr.Run(ctx)
+	}
+	// } else {
+	// 	router = offroute.NewOfflineRouter(repo.ChainDatastore(), validator)
+	// 	peerHost = rhost.Wrap(NewNoopLibP2PHost(), router)
+	// 	pubsubMessageSigning = false
+	// 	peerMgr = &net.MockPeerMgr{}
+	// }
 
 	// Set up libp2p network
 	// The gossipsub heartbeat timeout needs to be set sufficiently low
@@ -215,7 +219,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	gsync := graphsyncimpl.New(ctx, graphsyncNetwork, loader, storer, graphsyncimpl.RejectAllRequestsByDefault())
 
 	//dataTransger
-	sc := storedcounter.New(repo.ChainDatastore(), datastore.NewKey("/datatransfer/client/counter"))
+	//sc := storedcounter.New(repo.ChainDatastore(), datastore.NewKey("/datatransfer/client/counter"))
 	dtNet := dtnet.NewFromLibp2pHost(peerHost)
 	dtDs := namespace.Wrap(repo.ChainDatastore(), datastore.NewKey("/datatransfer/client/transfers"))
 	transport := dtgstransport.NewTransport(peerHost.ID(), gsync)
@@ -227,7 +231,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 
 	dirPath := filepath.Join(repoPath, "data-transfer")
 	_ = os.MkdirAll(dirPath, 0777) //todo fix for test
-	dt, err := dtimpl.NewDataTransfer(dtDs, dirPath, dtNet, transport, sc)
+	dt, err := dtimpl.NewDataTransfer(dtDs, dirPath, dtNet, transport)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +338,7 @@ func (networkSubmodule *NetworkSubmodule) fetchCids(
 }
 
 func retrieveNetworkName(ctx context.Context, genCid cid.Cid, cborStore cbor.IpldStore) (string, error) {
-	var genesis block.Block
+	var genesis types.BlockHeader
 	err := cborStore.Get(ctx, genCid, &genesis)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get block %s", genCid.String())

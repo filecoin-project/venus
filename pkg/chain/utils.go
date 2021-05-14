@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"reflect"
 	"runtime"
@@ -8,12 +9,13 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/rt"
-	"github.com/filecoin-project/venus/pkg/block"
 	blockFormat "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
 	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
+	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
+	exported4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/exported"
 
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 )
@@ -32,6 +34,8 @@ func init() {
 	var actors []rt.VMActor
 	actors = append(actors, exported0.BuiltinActors()...)
 	actors = append(actors, exported2.BuiltinActors()...)
+	actors = append(actors, exported3.BuiltinActors()...)
+	actors = append(actors, exported4.BuiltinActors()...)
 
 	for _, actor := range actors {
 		exports := actor.Exports()
@@ -98,7 +102,7 @@ func PutMessage(bs blockstoreutil.Blockstore, m storable) (cid.Cid, error) {
 }
 
 // Reverse reverses the order of the slice `chain`.
-func Reverse(chain []*block.TipSet) {
+func Reverse(chain []*types.TipSet) {
 	// https://github.com/golang/go/wiki/SliceTricks#reversing
 	for i := len(chain)/2 - 1; i >= 0; i-- {
 		opp := len(chain) - 1 - i

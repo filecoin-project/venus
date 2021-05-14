@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
-	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"time"
 
@@ -19,7 +19,6 @@ import (
 	net "github.com/libp2p/go-libp2p-core/network"
 	ma "github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/metrics"
 )
 
@@ -33,7 +32,7 @@ var helloMsgErrCt = metrics.NewInt64Counter("hello_message_error", "Number of er
 
 // HelloMessage is the data structure of a single message in the hello protocol.
 type HelloMessage struct {
-	HeaviestTipSetCids   block.TipSetKey
+	HeaviestTipSetCids   types.TipSetKey
 	HeaviestTipSetHeight abi.ChainEpoch
 	HeaviestTipSetWeight fbig.Int
 	GenesisHash          cid.Cid
@@ -64,7 +63,8 @@ type HelloProtocolHandler struct {
 	// for filling out our hello messages.
 	getHeaviestTipSet GetTipSetFunc
 
-	networkName string
+	//helloTimeOut is block delay
+	helloTimeOut time.Duration
 
 	peerMgr      fnet.IPeerMgr
 	exchange     exchange.Client
@@ -72,9 +72,9 @@ type HelloProtocolHandler struct {
 	messageStore *chain.MessageStore
 }
 
-type PeerDiscoveredCallback func(ci *block.ChainInfo)
+type PeerDiscoveredCallback func(ci *types.ChainInfo)
 
-type GetTipSetFunc func() (*block.TipSet, error)
+type GetTipSetFunc func() (*types.TipSet, error)
 
 // NewHelloProtocolHandler creates a new instance of the hello protocol `Handler` and registers it to
 // the given `host.Host`.
@@ -84,15 +84,16 @@ func NewHelloProtocolHandler(h host.Host,
 	chainStore *chain.Store,
 	messageStore *chain.MessageStore,
 	gen cid.Cid,
-	networkName string) *HelloProtocolHandler {
+	helloTimeOut time.Duration,
+) *HelloProtocolHandler {
 	return &HelloProtocolHandler{
 		host:         h,
 		genesis:      gen,
-		networkName:  networkName,
 		peerMgr:      peerMgr,
 		exchange:     exchange,
 		chainStore:   chainStore,
 		messageStore: messageStore,
+		helloTimeOut: helloTimeOut,
 	}
 }
 
@@ -111,8 +112,7 @@ func (h *HelloProtocolHandler) Register(peerDiscoveredCallback PeerDiscoveredCal
 
 func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	defer s.Close() // nolint: errcheck
-	timeout := time.Duration(constants.BlockDelaySecs) * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), h.helloTimeOut)
 	defer cancel()
 
 	hello, err := h.receiveHello(ctx, s)
@@ -180,25 +180,25 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 
 	// notify the local node of the new `block.ChainInfo`
 	h.peerMgr.AddFilecoinPeer(from)
-	ci := block.NewChainInfo(from, from, fullTipSet.TipSet())
+	ci := types.NewChainInfo(from, from, fullTipSet.TipSet())
 	h.peerDiscovered(ci)
 	return
 }
 
-func (h *HelloProtocolHandler) loadLocalFullTipset(ctx context.Context, tsk block.TipSetKey) (*block.FullTipSet, error) {
+func (h *HelloProtocolHandler) loadLocalFullTipset(ctx context.Context, tsk types.TipSetKey) (*types.FullTipSet, error) {
 	ts, err := h.chainStore.GetTipSet(tsk)
 	if err != nil {
 		return nil, err
 	}
 
-	fts := &block.FullTipSet{}
+	fts := &types.FullTipSet{}
 	for _, b := range ts.Blocks() {
 		smsgs, bmsgs, err := h.messageStore.LoadMetaMessages(ctx, b.Messages)
 		if err != nil {
 			return nil, err
 		}
 
-		fb := &block.FullBlock{
+		fb := &types.FullBlock{
 			Header:       b,
 			BLSMessages:  bmsgs,
 			SECPMessages: smsgs,
@@ -217,14 +217,8 @@ func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	height, err := heaviest.Height()
-	if err != nil {
-		return nil, err
-	}
-	weight, err := heaviest.ParentWeight()
-	if err != nil {
-		return nil, err
-	}
+	height := heaviest.Height()
+	weight := heaviest.ParentWeight()
 
 	return &HelloMessage{
 		GenesisHash:          h.genesis,

@@ -1,8 +1,12 @@
 package gen
 
 import (
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
+
+	"github.com/filecoin-project/venus/pkg/gen/genesis"
 )
 
 func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
@@ -15,4 +19,29 @@ func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
 	}
 
 	return out, nil
+}
+
+var rootkeyMultisig = genesis.MultisigMeta{
+	Signers:         []address.Address{remAccTestKey},
+	Threshold:       1,
+	VestingDuration: 0,
+	VestingStart:    0,
+}
+
+var DefaultVerifregRootkeyActor = genesis.Actor{
+	Type:    genesis.TMultisig,
+	Balance: big.NewInt(0),
+	Meta:    rootkeyMultisig.ActorMeta(),
+}
+
+var remAccTestKey, _ = address.NewFromString("t1ceb34gnsc6qk5dt6n7xg6ycwzasjhbxm3iylkiy")
+var remAccMeta = genesis.MultisigMeta{
+	Signers:   []address.Address{remAccTestKey},
+	Threshold: 1,
+}
+
+var DefaultRemainderAccountActor = genesis.Actor{
+	Type:    genesis.TMultisig,
+	Balance: big.NewInt(0),
+	Meta:    remAccMeta.ActorMeta(),
 }

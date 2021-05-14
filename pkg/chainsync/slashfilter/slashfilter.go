@@ -2,6 +2,7 @@ package slashfilter
 
 import (
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/types"
 
 	"golang.org/x/xerrors"
 
@@ -10,22 +11,25 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/block"
 )
 
-type SlashFilter struct {
+type ISlashFilter interface {
+	MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error
+}
+
+type LocalSlashFilter struct {
 	byEpoch   ds.Datastore // double-fork mining faults, parent-grinding fault
 	byParents ds.Datastore // time-offset mining faults
 }
 
-func New(dstore ds.Batching) *SlashFilter {
-	return &SlashFilter{
+func NewLocalSlashFilter(dstore ds.Batching) ISlashFilter {
+	return &LocalSlashFilter{
 		byEpoch:   namespace.Wrap(dstore, ds.NewKey("/slashfilter/epoch")),
 		byParents: namespace.Wrap(dstore, ds.NewKey("/slashfilter/parents")),
 	}
 }
 
-func (f *SlashFilter) MinedBlock(bh *block.Block, parentEpoch abi.ChainEpoch) error {
+func (f *LocalSlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
 	epochKey := ds.NewKey(fmt.Sprintf("/%s/%d", bh.Miner, bh.Height))
 	{
 		// double-fork mining (2 blocks at one epoch)
@@ -88,7 +92,7 @@ func (f *SlashFilter) MinedBlock(bh *block.Block, parentEpoch abi.ChainEpoch) er
 	return nil
 }
 
-func checkFault(t ds.Datastore, key ds.Key, bh *block.Block, faultType string) error {
+func checkFault(t ds.Datastore, key ds.Key, bh *types.BlockHeader, faultType string) error {
 	fault, err := t.Has(key)
 	if err != nil {
 		return err

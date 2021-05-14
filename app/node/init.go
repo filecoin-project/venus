@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+
 	keystore "github.com/ipfs/go-ipfs-keystore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	acrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -10,7 +11,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
 const defaultPeerKeyBits = 2048
@@ -69,26 +69,6 @@ func Init(ctx context.Context, r repo.Repo, gen genesis.InitFunc, opts ...InitOp
 		return err
 	}
 
-	backend, err := wallet.NewDSBackend(r.WalletDatastore())
-	if err != nil {
-		return errors.Wrap(err, "failed to open wallet datastore")
-	}
-	w := wallet.New(backend)
-
-	defaultKey, err := initDefaultKey(w, cfg.defaultKey)
-	if err != nil {
-		return err
-	}
-	err = importInitKeys(w, cfg.initImports)
-	if err != nil {
-		return err
-	}
-
-	defaultAddress, err := defaultKey.Address()
-	if err != nil {
-		return errors.Wrap(err, "failed to extract address from default key")
-	}
-	r.Config().Wallet.DefaultAddress = defaultAddress
 	if err = r.ReplaceConfig(r.Config()); err != nil {
 		return errors.Wrap(err, "failed to write config")
 	}
@@ -106,31 +86,6 @@ func initPeerKey(store keystore.Keystore, key acrypto.PrivKey) error {
 	}
 	if err := store.Put("self", key); err != nil {
 		return errors.Wrap(err, "failed to store private key")
-	}
-	return nil
-}
-
-func initDefaultKey(w *wallet.Wallet, key *crypto.KeyInfo) (*crypto.KeyInfo, error) {
-	var err error
-	if key == nil {
-		key, err = w.NewKeyInfo()
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create default key")
-		}
-	} else {
-		if _, err := w.Import(key); err != nil {
-			return nil, errors.Wrap(err, "failed to import default key")
-		}
-	}
-	return key, nil
-}
-
-func importInitKeys(w *wallet.Wallet, importKeys []*crypto.KeyInfo) error {
-	for _, ki := range importKeys {
-		_, err := w.Import(ki)
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package chain_test
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -10,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
@@ -29,9 +29,9 @@ func TestIterAncestors(t *testing.T) {
 		b12 := store.AppendBlockOnBlocks(root)
 		b21 := store.AppendBlockOnBlocks(b11, b12)
 
-		t0 := block.RequireNewTipSet(t, root)
-		t1 := block.RequireNewTipSet(t, b11, b12)
-		t2 := block.RequireNewTipSet(t, b21)
+		t0 := types.RequireNewTipSet(t, root)
+		t1 := types.RequireNewTipSet(t, b11, b12)
+		t2 := types.RequireNewTipSet(t, b21)
 
 		it := chain.IterAncestors(ctx, store, t2)
 		assert.False(t, it.Complete())
@@ -58,9 +58,9 @@ func TestIterAncestors(t *testing.T) {
 		b12 := store.AppendBlockOnBlocks(root)
 		b21 := store.AppendBlockOnBlocks(b11, b12)
 
-		block.RequireNewTipSet(t, root)
-		t1 := block.RequireNewTipSet(t, b11, b12)
-		t2 := block.RequireNewTipSet(t, b21)
+		types.RequireNewTipSet(t, root)
+		t1 := types.RequireNewTipSet(t, b11, b12)
+		t2 := types.RequireNewTipSet(t, b21)
 
 		it := chain.IterAncestors(ctx, store, t2)
 		assert.False(t, it.Complete())
@@ -83,17 +83,15 @@ func TestCollectTipSetsOfHeightAtLeast(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 15
-	head := builder.AppendManyOn(chainLen, block.UndefTipSet)
+	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
 
 	stopHeight := abi.ChainEpoch(4)
 	iterator := chain.IterAncestors(ctx, builder, head)
 	tipsets, err := chain.CollectTipSetsOfHeightAtLeast(ctx, iterator, stopHeight)
 	assert.NoError(t, err)
-	latestHeight, err := tipsets[0].Height()
-	require.NoError(t, err)
+	latestHeight := tipsets[0].Height()
 	assert.Equal(t, abi.ChainEpoch(14), latestHeight)
-	earliestHeight, err := tipsets[len(tipsets)-1].Height()
-	require.NoError(t, err)
+	earliestHeight := tipsets[len(tipsets)-1].Height()
 	assert.Equal(t, abi.ChainEpoch(4), earliestHeight)
 	assert.Equal(t, 11, len(tipsets))
 }
@@ -105,17 +103,15 @@ func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 25
-	head := builder.AppendManyOn(chainLen, block.UndefTipSet)
+	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
 
 	stopHeight := abi.ChainEpoch(0)
 	iterator := chain.IterAncestors(ctx, builder, head)
 	tipsets, err := chain.CollectTipSetsOfHeightAtLeast(ctx, iterator, stopHeight)
 	assert.NoError(t, err)
-	latestHeight, err := tipsets[0].Height()
-	require.NoError(t, err)
+	latestHeight := tipsets[0].Height()
 	assert.Equal(t, abi.ChainEpoch(24), latestHeight)
-	earliestHeight, err := tipsets[len(tipsets)-1].Height()
-	require.NoError(t, err)
+	earliestHeight := tipsets[len(tipsets)-1].Height()
 	assert.Equal(t, abi.ChainEpoch(0), earliestHeight)
 	assert.Equal(t, chainLen, len(tipsets))
 }
@@ -142,11 +138,9 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 	iterator := chain.IterAncestors(ctx, builder, head)
 	tipsets, err := chain.CollectTipSetsOfHeightAtLeast(ctx, iterator, stopHeight)
 	assert.NoError(t, err)
-	latestHeight, err := tipsets[0].Height()
-	require.NoError(t, err)
+	latestHeight := tipsets[0].Height()
 	assert.Equal(t, abi.ChainEpoch(60), latestHeight)
-	earliestHeight, err := tipsets[len(tipsets)-1].Height()
-	require.NoError(t, err)
+	earliestHeight := tipsets[len(tipsets)-1].Height()
 	assert.Equal(t, abi.ChainEpoch(41), earliestHeight)
 	assert.Equal(t, 20, len(tipsets))
 }

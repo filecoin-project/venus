@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/filecoin-project/venus/pkg/config"
+
 	"github.com/filecoin-project/go-address"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
@@ -18,7 +20,6 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
-	"github.com/filecoin-project/venus/pkg/block"
 	chainpkg "github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -56,10 +57,11 @@ type MessagePoolSubmodule struct { //nolint
 	MessageTopic *pubsub.Topic
 	MessageSub   pubsub.Subscription
 
-	MPool     *messagepool.MessagePool
-	chain     *chain.ChainSubmodule
-	network   *network.NetworkSubmodule
-	walletAPI *wallet.WalletAPI
+	MPool      *messagepool.MessagePool
+	chain      *chain.ChainSubmodule
+	network    *network.NetworkSubmodule
+	walletAPI  *wallet.WalletAPI
+	networkCfg *config.NetworkParamsConfig
 }
 
 func OpenFilesystemJournal(lr repo.Repo) (journal.Journal, error) {
@@ -76,6 +78,7 @@ func NewMpoolSubmodule(cfg messagepoolConfig,
 	chain *chain.ChainSubmodule,
 	syncer *syncer.SyncerSubmodule,
 	wallet *wallet.WalletSubmodule,
+	networkCfg *config.NetworkParamsConfig,
 ) (*MessagePoolSubmodule, error) {
 	mpp := messagepool.NewProvider(chain.ChainReader, chain.MessageStore, cfg.Repo().Config().NetworkParams, network.Pubsub)
 
@@ -83,7 +86,8 @@ func NewMpoolSubmodule(cfg messagepoolConfig,
 	if err != nil {
 		return nil, err
 	}
-	mp, err := messagepool.New(mpp, cfg.Repo().MetaDatastore(), cfg.Repo().Config().NetworkParams.ForkUpgradeParam, network.NetworkName, syncer.Consensus, chain.State, j)
+	mp, err := messagepool.New(mpp, cfg.Repo().MetaDatastore(), cfg.Repo().Config().NetworkParams.ForkUpgradeParam, cfg.Repo().Config().Mpool,
+		network.NetworkName, syncer.Consensus, chain.ChainReader, j)
 	if err != nil {
 		return nil, xerrors.Errorf("constructing mpool: %s", err)
 	}
@@ -91,7 +95,7 @@ func NewMpoolSubmodule(cfg messagepoolConfig,
 	// setup messaging topic.
 	// register block validation on pubsub
 	msgSyntaxValidator := consensus.NewMessageSyntaxValidator()
-	msgSignatureValidator := consensus.NewMessageSignatureValidator(chain.State)
+	msgSignatureValidator := consensus.NewMessageSignatureValidator(chain.ChainReader)
 
 	mtv := msgsub.NewMessageTopicValidator(msgSyntaxValidator, msgSignatureValidator)
 	if err := network.Pubsub.RegisterTopicValidator(mtv.Topic(network.NetworkName), mtv.Validator(), mtv.Opts()...); err != nil {
@@ -99,10 +103,11 @@ func NewMpoolSubmodule(cfg messagepoolConfig,
 	}
 
 	return &MessagePoolSubmodule{
-		MPool:     mp,
-		chain:     chain,
-		walletAPI: wallet.API(),
-		network:   network,
+		MPool:      mp,
+		chain:      chain,
+		walletAPI:  wallet.API(),
+		network:    network,
+		networkCfg: networkCfg,
 	}, nil
 }
 
@@ -208,7 +213,7 @@ func (mp *MessagePoolSubmodule) Start(ctx context.Context) error {
 }
 
 func (mp *MessagePoolSubmodule) waitForSync(epochs int, subscribe func()) {
-	nearsync := time.Duration(epochs*int(constants.BlockDelaySecs)) * time.Second
+	nearsync := time.Duration(epochs*int(mp.networkCfg.BlockDelay)) * time.Second
 
 	// early check, are we synced at start up?
 	ts := mp.chain.ChainReader.GetHead()
@@ -220,7 +225,7 @@ func (mp *MessagePoolSubmodule) waitForSync(epochs int, subscribe func()) {
 	}
 
 	// we are not synced, subscribe to head changes and wait for sync
-	mp.chain.ChainReader.SubscribeHeadChanges(func(rev, app []*block.TipSet) error {
+	mp.chain.ChainReader.SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
 		if len(app) == 0 {
 			return nil
 		}

@@ -3,44 +3,45 @@ package blocksub
 import (
 	"bytes"
 	"context"
-
+	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	"github.com/filecoin-project/venus/pkg/block"
-	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/metrics"
 )
 
 var blockTopicLogger = log.Logger("net/block_validator")
 var mDecodeBlkFail = metrics.NewInt64Counter("net/pubsub_block_decode_failure", "Number of blocks that fail to decode seen on block pubsub channel")
-var mInvalidBlk = metrics.NewInt64Counter("net/pubsub_invalid_block", "Number of blocks that fail syntax validation seen on block pubsub channel")
 
 // BlockTopicValidator may be registered on go-libp2p-pubsub to validate blocksub messages.
 type BlockTopicValidator struct {
-	validator pubsub.Validator
+	validator pubsub.ValidatorEx
 	opts      []pubsub.ValidatorOpt
 }
 
+type BlockHeaderValidator interface {
+	ValidateBlockMsg(context.Context, *types.BlockMsg) pubsub.ValidationResult
+}
+
 // NewBlockTopicValidator retruns a BlockTopicValidator using `bv` for message validation
-func NewBlockTopicValidator(bv consensus.BlockSyntaxValidator, opts ...pubsub.ValidatorOpt) *BlockTopicValidator {
+func NewBlockTopicValidator(bv BlockHeaderValidator, opts ...pubsub.ValidatorOpt) *BlockTopicValidator {
 	return &BlockTopicValidator{
 		opts: opts,
-		validator: func(ctx context.Context, p peer.ID, msg *pubsub.Message) bool {
-			var bm block.BlockMsg
+		validator: func(ctx context.Context, p peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
+			var bm types.BlockMsg
 			err := bm.UnmarshalCBOR(bytes.NewReader(msg.GetData()))
 			if err != nil {
 				blockTopicLogger.Warnf("failed to decode blocksub payload from peer %s: %s", p.String(), err.Error())
 				mDecodeBlkFail.Inc(ctx, 1)
-				return false
+				return pubsub.ValidationIgnore
 			}
-			if err := bv.ValidateSyntax(ctx, bm.Header); err != nil {
-				blockTopicLogger.Warnf("failed to validate block %s from peer %s: %s", bm.Header.Cid().String(), p.String(), err.Error())
-				mInvalidBlk.Inc(ctx, 1)
-				return false
+
+			validateResult := bv.ValidateBlockMsg(ctx, &bm)
+			if validateResult == pubsub.ValidationAccept {
+				msg.ValidatorData = bm
 			}
-			return true
+			return validateResult
 		},
 	}
 }
@@ -49,7 +50,7 @@ func (btv *BlockTopicValidator) Topic(network string) string {
 	return Topic(network)
 }
 
-func (btv *BlockTopicValidator) Validator() pubsub.Validator {
+func (btv *BlockTopicValidator) Validator() pubsub.ValidatorEx {
 	return btv.validator
 }
 

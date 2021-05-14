@@ -8,8 +8,8 @@ import (
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/types"
 
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -32,9 +32,8 @@ type state0 struct {
 }
 
 func (s *state0) TotalLocked() (abi.TokenAmount, error) {
-	fml := big.Add(s.TotalClientLockedCollateral, s.TotalProviderLockedCollateral)
-	fml = big.Add(fml, s.TotalClientStorageFee)
-
+	fml := types.BigAdd(s.TotalClientLockedCollateral, s.TotalProviderLockedCollateral)
+	fml = types.BigAdd(fml, s.TotalClientStorageFee)
 	return fml, nil
 }
 
@@ -155,7 +154,7 @@ func (s *dealStates0) decode(val *cbg.Deferred) (*DealState, error) {
 	return &ds, nil
 }
 
-func (s *dealStates0) ArrayValue() adt.Array {
+func (s *dealStates0) array() adt.Array {
 	return s.Array
 }
 
@@ -196,7 +195,7 @@ func (s *dealProposals0) decode(val *cbg.Deferred) (*DealProposal, error) {
 	return &dp, nil
 }
 
-func (s *dealProposals0) ArrayValue() adt.Array {
+func (s *dealProposals0) array() adt.Array {
 	return s.Array
 }
 

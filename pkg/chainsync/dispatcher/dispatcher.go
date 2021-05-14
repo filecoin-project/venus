@@ -3,6 +3,7 @@ package dispatcher
 import (
 	"container/list"
 	"context"
+	types2 "github.com/filecoin-project/venus/pkg/types"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -11,8 +12,6 @@ import (
 	"github.com/streadway/handy/atomic"
 
 	logging "github.com/ipfs/go-log/v2"
-
-	"github.com/filecoin-project/venus/pkg/block"
 )
 
 var log = logging.Logger("chainsync.dispatcher")
@@ -25,7 +24,7 @@ const DefaultWorkQueueSize = 15
 
 // dispatchSyncer is the interface of the logic syncing incoming chains
 type dispatchSyncer interface {
-	Head() *block.TipSet
+	Head() *types2.TipSet
 	HandleNewTipSet(context.Context, *types.Target) error
 }
 
@@ -43,7 +42,7 @@ func NewDispatcherWithSizes(syncer dispatchSyncer, workQueueSize, inQueueSize in
 		control:         make(chan interface{}, 1),
 		registeredCb:    func(t *types.Target, err error) {},
 		cancelControler: list.New(),
-		maxCount:        3,
+		maxCount:        1,
 	}
 }
 
@@ -92,21 +91,21 @@ func (d *Dispatcher) SyncTracker() *types.TargetTracker {
 }
 
 // SendHello handles chain information from bootstrap peers.
-func (d *Dispatcher) SendHello(ci *block.ChainInfo) error {
+func (d *Dispatcher) SendHello(ci *types2.ChainInfo) error {
 	return d.addTracker(ci)
 }
 
 // SendOwnBlock handles chain info from a node's own mining system
-func (d *Dispatcher) SendOwnBlock(ci *block.ChainInfo) error {
+func (d *Dispatcher) SendOwnBlock(ci *types2.ChainInfo) error {
 	return d.addTracker(ci)
 }
 
 // SendGossipBlock handles chain info from new blocks sent on pubsub
-func (d *Dispatcher) SendGossipBlock(ci *block.ChainInfo) error {
+func (d *Dispatcher) SendGossipBlock(ci *types2.ChainInfo) error {
 	return d.addTracker(ci)
 }
 
-func (d *Dispatcher) addTracker(ci *block.ChainInfo) error {
+func (d *Dispatcher) addTracker(ci *types2.ChainInfo) error {
 	d.incoming <- &types.Target{
 		ChainInfo: *ci,
 		Base:      d.syncer.Head(),
@@ -143,7 +142,7 @@ func (d *Dispatcher) processIncoming(ctx context.Context) {
 			// Sort new targets by putting on work queue.
 			if d.workTracker.Add(target) {
 				log.Infof("received height %d Blocks: %d  %s current work len %d  incoming len: %d",
-					target.Head.EnsureHeight(), target.Head.Len(), target.Head.Key(), d.workTracker.Len(), len(d.incoming))
+					target.Head.Height(), target.Head.Len(), target.Head.Key(), d.workTracker.Len(), len(d.incoming))
 			}
 		}
 	}
@@ -164,6 +163,12 @@ func (d *Dispatcher) SetConcurrent(number int64) {
 			diff--
 		}
 	}
+}
+
+func (d *Dispatcher) Concurrent() int64 {
+	d.lk.Lock()
+	defer d.lk.Unlock()
+	return d.maxCount
 }
 
 func (d *Dispatcher) syncWorker(ctx context.Context) {
@@ -187,7 +192,7 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 							err := d.syncer.HandleNewTipSet(ctx, syncTarget)
 							d.workTracker.Remove(syncTarget)
 							if err != nil {
-								log.Infof("failed sync of %v at %d  %s", syncTarget.Head.Key(), syncTarget.Head.EnsureHeight(), err)
+								log.Infof("failed sync of %v at %d  %s", syncTarget.Head.Key(), syncTarget.Head.Height(), err)
 							}
 							d.registeredCb(syncTarget, err)
 							d.conCurrent.Add(-1)

@@ -5,11 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"time"
+
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"reflect"
-	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -22,18 +23,17 @@ import (
 	"golang.org/x/xerrors"
 
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/cron"
 	initActor "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 )
 
 const MaxCallDepth = 4096
@@ -54,7 +54,7 @@ type VM struct {
 	debugger *VMDebugMsg
 	vmOption VmOption
 
-	State state.Tree
+	State tree.Tree
 }
 
 func (vm *VM) ApplyImplicitMessage(msg types.ChainMsg) (*Ret, error) {
@@ -94,22 +94,21 @@ var _ VMInterpreter = (*VM)(nil)
 func NewVM(actorImpls ActorImplLookup, vmOption VmOption) (*VM, error) {
 	buf := blockstoreutil.NewBufferedBstore(vmOption.Bsstore)
 	cst := cbor.NewCborStore(buf)
-	var st state.Tree
+	var st tree.Tree
 	var err error
 	if vmOption.PRoot == cid.Undef {
 		//just for chain gen
-		st, err = state.NewState(cst, state.StateTreeVersion1)
+		st, err = tree.NewState(cst, tree.StateTreeVersion1)
 		if err != nil {
 			panic(xerrors.Errorf("create state error, should never come here"))
 		}
 	} else {
-		st, err = state.LoadState(context.Background(), cst, vmOption.PRoot)
+		st, err = tree.LoadState(context.Background(), cst, vmOption.PRoot)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	//store := storage.NewStorage(buf)
 	return &VM{
 		context:    context.Background(),
 		actorImpls: actorImpls,
@@ -199,7 +198,7 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 }
 
 // ApplyTipSetMessages implements interpreter.VMInterpreter
-func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.TipSet, parentEpoch, epoch abi.ChainEpoch, cb ExecCallBack) (cid.Cid, []types.MessageReceipt, error) {
+func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.TipSet, parentEpoch, epoch abi.ChainEpoch, cb ExecCallBack) (cid.Cid, []types.MessageReceipt, error) {
 	toProcessTipset := time.Now()
 	var receipts []types.MessageReceipt
 	pstate, _ := vm.State.Flush(vm.context)
@@ -256,7 +255,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []block.BlockMessagesInfo, ts *block.Ti
 		// Process BLS messages From the block
 		for _, m := range append(blkInfo.BlsMessages, blkInfo.SecpkMessages...) {
 			// do not recompute already seen messages
-			mcid := msgCID(m.VMMessage())
+			mcid := m.VMMessage().Cid()
 			if _, found := seenMsgs[mcid]; found {
 				continue
 			}
@@ -464,7 +463,6 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 
 	// initiate gas tracking
 	gasTank := gas.NewGasTracker(msg.GasLimit)
-
 	// pre-send
 	// 1. charge for message existence
 	// 2. load sender actor
@@ -801,7 +799,7 @@ func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *types.Actor
 	})
 }
 
-func (vm *VM) StateTree() state.Tree {
+func (vm *VM) StateTree() tree.Tree {
 	return vm.State
 }
 
@@ -864,7 +862,7 @@ func (vm *VM) clearSnapshot() {
 }
 
 //nolint
-func (vm *VM) Flush() (state.Root, error) {
+func (vm *VM) Flush() (tree.Root, error) {
 	// Flush all blocks out of the store
 	if root, err := vm.State.Flush(vm.context); err != nil {
 		return cid.Undef, err
@@ -879,14 +877,6 @@ func (vm *VM) Flush() (state.Root, error) {
 //
 // utils
 //
-
-func msgCID(msg *types.UnsignedMessage) cid.Cid {
-	c, err := msg.Cid()
-	if err != nil {
-		panic(fmt.Sprintf("failed To compute message CID: %v; %+v", err, msg))
-	}
-	return c
-}
 
 func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount, gasReward abi.TokenAmount, winCount int64) VmMessage {
 	params := &reward.AwardBlockRewardParams{

@@ -3,14 +3,13 @@ package dispatch
 import (
 	"bytes"
 	"fmt"
+	"reflect"
+
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	"reflect"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 )
 
@@ -68,15 +67,16 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, nvk network.Version,
 		// the ctx will be automatically coerced
 		reflect.ValueOf(ctx),
 	}
+	//err code
+	ec := exitcode.ErrSerialization
+	if nvk < network.Version7 {
+		ec = 1
+	}
 
 	// Dragons: simplify this to arginterface
 	parserByte := func(raw []byte) *ExcuteError {
 		obj, err := m.ArgInterface(raw)
 		if err != nil {
-			ec := exitcode.ErrSerialization
-			if nvk < network.Version7 {
-				ec = 1
-			}
 			return NewExcuteError(ec, "fail to decode params")
 		}
 		args = append(args, reflect.ValueOf(obj))
@@ -91,13 +91,12 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, nvk network.Version,
 		if err != nil {
 			return []byte{}, err
 		}
-	case builtin.CBORBytes:
-		err := parserByte(t)
-		if err != nil {
-			return []byte{}, err
+	case cbor.Marshaler:
+		buf := new(bytes.Buffer)
+		if err := t.MarshalCBOR(buf); err != nil {
+			return []byte{}, NewExcuteError(ec, fmt.Sprintf("fail to marshal argument %v", err))
 		}
-	case runtime.CBORBytes:
-		err := parserByte(t)
+		err := parserByte(buf.Bytes())
 		if err != nil {
 			return []byte{}, err
 		}
@@ -127,13 +126,13 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, nvk network.Version,
 	case cbor.Marshaler:
 		buf := new(bytes.Buffer)
 		if err := ret.MarshalCBOR(buf); err != nil {
-			return []byte{}, NewExcuteError(2, "failed to marshal response to cbor err:%v", err)
+			return []byte{}, NewExcuteError(exitcode.SysErrSenderStateInvalid, "failed to marshal response to cbor err:%v", err)
 		}
 		return buf.Bytes(), nil
 	case nil:
 		return []byte{}, nil
 	default:
-		return []byte{}, NewExcuteError(3, "could not determine type for response from call")
+		return []byte{}, NewExcuteError(exitcode.SysErrInvalidMethod, "could not determine type for response from call")
 	}
 }
 

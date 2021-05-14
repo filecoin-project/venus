@@ -2,20 +2,36 @@ package wallet
 
 import (
 	"bytes"
-	"context"
 	"fmt"
-	"golang.org/x/xerrors"
 	"reflect"
 	"sort"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 )
 
+const TestPassword = "test-password"
+
 var ErrKeyInfoNotFound = fmt.Errorf("key info not found")
+var walletLog = logging.Logger("wallet")
+
+// WalletIntersection
+// nolint
+type WalletIntersection interface {
+	HasAddress(a address.Address) bool
+	Addresses() []address.Address
+	NewAddress(p address.Protocol) (address.Address, error)
+	Import(ki *crypto.KeyInfo) (address.Address, error)
+	Export(addr address.Address, password string) (*crypto.KeyInfo, error)
+	WalletSign(keyAddr address.Address, msg []byte, meta MsgMeta) (*crypto.Signature, error)
+	HasPassword() bool
+}
+
+var _ WalletIntersection = &Wallet{}
 
 // wallet manages the locally stored addresses.
 type Wallet struct {
@@ -106,13 +122,11 @@ func (w *Wallet) SignBytes(data []byte, addr address.Address) (*crypto.Signature
 }
 
 // NewAddress creates a new account address on the default wallet backend.
-func NewAddress(w *Wallet, p address.Protocol) (address.Address, error) {
-	backends := w.Backends(DSBackendType)
-	if len(backends) == 0 {
-		return address.Undef, fmt.Errorf("missing default ds backend")
+func (w *Wallet) NewAddress(p address.Protocol) (address.Address, error) {
+	backend, err := w.DSBacked()
+	if err != nil {
+		return address.Undef, err
 	}
-
-	backend := (backends[0]).(*DSBackend)
 	return backend.NewAddress(p)
 }
 
@@ -129,7 +143,7 @@ func (w *Wallet) GetPubKeyForAddress(addr address.Address) ([]byte, error) {
 
 // NewKeyInfo creates a new KeyInfo struct in the wallet backend and returns it
 func (w *Wallet) NewKeyInfo() (*crypto.KeyInfo, error) {
-	newAddr, err := NewAddress(w, address.BLS)
+	newAddr, err := w.NewAddress(address.BLS)
 	if err != nil {
 		return &crypto.KeyInfo{}, err
 	}
@@ -150,60 +164,104 @@ func (w *Wallet) keyInfoForAddr(addr address.Address) (*crypto.KeyInfo, error) {
 	return info, nil
 }
 
-// Import adds the given keyinfos to the wallet
-func (w *Wallet) Import(kinfos ...*crypto.KeyInfo) ([]address.Address, error) {
+// Import adds the given keyinfo to the wallet
+func (w *Wallet) Import(ki *crypto.KeyInfo) (address.Address, error) {
 	dsb := w.Backends(DSBackendType)
 	if len(dsb) != 1 {
-		return nil, fmt.Errorf("expected exactly one datastore wallet backend")
+		return address.Undef, fmt.Errorf("expected exactly one datastore wallet backend")
 	}
 
 	imp, ok := dsb[0].(Importer)
 	if !ok {
-		return nil, fmt.Errorf("datastore backend wallets should implement importer")
+		return address.Undef, fmt.Errorf("datastore backend wallets should implement importer")
 	}
 
-	var out []address.Address
-	for _, ki := range kinfos {
-		if err := imp.ImportKey(ki); err != nil {
-			return nil, err
-		}
-
-		a, err := ki.Address()
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, a)
+	if err := imp.ImportKey(ki); err != nil {
+		return address.Undef, err
 	}
-	return out, nil
+
+	a, err := ki.Address()
+	if err != nil {
+		return address.Undef, err
+	}
+	return a, nil
 }
 
 // Export returns the KeyInfos for the given wallet addresses
-func (w *Wallet) Export(addrs []address.Address) ([]*crypto.KeyInfo, error) {
-	out := make([]*crypto.KeyInfo, len(addrs))
-	for i, addr := range addrs {
-		bck, err := w.Find(addr)
-		if err != nil {
-			return nil, err
-		}
-
-		ki, err := bck.GetKeyInfo(addr)
-		if err != nil {
-			return nil, err
-		}
-		out[i] = ki
+func (w *Wallet) Export(addr address.Address, password string) (*crypto.KeyInfo, error) {
+	bck, err := w.Find(addr)
+	if err != nil {
+		return nil, err
 	}
 
-	return out, nil
+	ki, err := bck.GetKeyInfoPassphrase(addr, keccak256([]byte(password)))
+	if err != nil {
+		return nil, err
+	}
+
+	return ki, nil
 }
 
-func (w *Wallet) WalletSign(ctx context.Context, addr address.Address, msg []byte, meta MsgMeta) (*crypto.Signature, error) {
+func (w *Wallet) WalletSign(addr address.Address, msg []byte, meta MsgMeta) (*crypto.Signature, error) {
 	ki, err := w.Find(addr)
 	if err != nil {
 		return nil, err
 	}
 	if ki == nil {
-		return nil, xerrors.Errorf("signing using key '%s': %w", addr.String(), ErrKeyInfoNotFound)
+		return nil, errors.Errorf("signing using key '%s': %v", addr.String(), ErrKeyInfoNotFound)
 	}
 
 	return ki.SignBytes(msg, addr)
+}
+
+func (w *Wallet) DSBacked() (*DSBackend, error) {
+	backends := w.Backends(DSBackendType)
+	if len(backends) == 0 {
+		return nil, errors.Errorf("missing default ds backend")
+	}
+
+	return (backends[0]).(*DSBackend), nil
+}
+
+func (w *Wallet) Locked(password string) error {
+	backend, err := w.DSBacked()
+	if err != nil {
+		return err
+	}
+
+	return backend.Locked(password)
+}
+
+func (w *Wallet) UnLocked(password string) error {
+	backend, err := w.DSBacked()
+	if err != nil {
+		return err
+	}
+	return backend.UnLocked(password)
+}
+
+func (w *Wallet) SetPassword(password string) error {
+	backend, err := w.DSBacked()
+	if err != nil {
+		return err
+	}
+	return backend.SetPassword(password)
+}
+
+func (w *Wallet) HasPassword() bool {
+	backend, err := w.DSBacked()
+	if err != nil {
+		walletLog.Errorf("get DSBacked failed: %v", err)
+		return false
+	}
+	return backend.HasPassword()
+}
+
+func (w *Wallet) WalletState() int {
+	backend, err := w.DSBacked()
+	if err != nil {
+		walletLog.Errorf("get DSBacked failed: %v", err)
+		return undetermined
+	}
+	return backend.WalletState()
 }

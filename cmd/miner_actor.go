@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/cmd/tablewriter"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
@@ -78,7 +77,7 @@ var actorSetAddrsCmd = &cmds.Command{
 			addrs = append(addrs, maddrNop2p.Bytes())
 		}
 
-		mi, err := env.(*node.Env).ChainAPI.StateMinerInfo(ctx, maddr, block.EmptyTSK)
+		mi, err := env.(*node.Env).ChainAPI.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -102,12 +101,7 @@ var actorSetAddrsCmd = &cmds.Command{
 			return err
 		}
 
-		cid, _ := smsg.Cid()
-		if err != nil {
-			return err
-		}
-
-		return re.Emit(fmt.Sprintf("Requested multiaddrs change in message %s", cid))
+		return re.Emit(fmt.Sprintf("Requested multiaddrs change in message %s", smsg.Cid()))
 	},
 	Type: "",
 }
@@ -135,7 +129,7 @@ var actorSetPeeridCmd = &cmds.Command{
 			return fmt.Errorf("failed to parse input as a peerId: %w", err)
 		}
 
-		mi, err := env.(*node.Env).ChainAPI.StateMinerInfo(ctx, maddr, block.EmptyTSK)
+		mi, err := env.(*node.Env).ChainAPI.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -158,13 +152,7 @@ var actorSetPeeridCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-
-		cid, _ := smsg.Cid()
-		if err != nil {
-			return err
-		}
-
-		return re.Emit(fmt.Sprintf("Requested peerid change in message %s", cid))
+		return re.Emit(fmt.Sprintf("Requested peerid change in message %s", smsg.Cid()))
 	},
 	Type: "",
 }
@@ -184,12 +172,12 @@ var actorWithdrawCmd = &cmds.Command{
 			return err
 		}
 
-		mi, err := env.(*node.Env).ChainAPI.StateMinerInfo(ctx, maddr, block.EmptyTSK)
+		mi, err := env.(*node.Env).ChainAPI.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		available, err := env.(*node.Env).ChainAPI.StateMinerAvailableBalance(ctx, maddr, block.EmptyTSK)
+		available, err := env.(*node.Env).ChainAPI.StateMinerAvailableBalance(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -224,12 +212,7 @@ var actorWithdrawCmd = &cmds.Command{
 			return err
 		}
 
-		cid, _ := smsg.Cid()
-		if err != nil {
-			return err
-		}
-
-		return re.Emit(fmt.Sprintf("Requested rewards withdrawal in message %s", cid))
+		return re.Emit(fmt.Sprintf("Requested rewards withdrawal in message %s", smsg.Cid()))
 	},
 	Type: "",
 }
@@ -252,7 +235,7 @@ var actorRepayDebtCmd = &cmds.Command{
 			return err
 		}
 
-		mi, err := env.(*node.Env).ChainAPI.StateMinerInfo(ctx, maddr, block.EmptyTSK)
+		mi, err := env.(*node.Env).ChainAPI.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -267,12 +250,12 @@ var actorRepayDebtCmd = &cmds.Command{
 
 			amount = abi.TokenAmount(f)
 		} else {
-			mact, err := env.(*node.Env).ChainAPI.StateGetActor(ctx, maddr, block.EmptyTSK)
+			mact, err := env.(*node.Env).ChainAPI.StateGetActor(ctx, maddr, types.EmptyTSK)
 			if err != nil {
 				return err
 			}
 
-			store := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(env.(*node.Env).ChainAPI)))
+			store := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
 
 			mst, err := miner.Load(store, mact)
 			if err != nil {
@@ -297,7 +280,7 @@ var actorRepayDebtCmd = &cmds.Command{
 			fromAddr = addr
 		}
 
-		fromID, err := env.(*node.Env).ChainAPI.StateLookupID(ctx, fromAddr, block.EmptyTSK)
+		fromID, err := env.(*node.Env).ChainAPI.StateLookupID(ctx, fromAddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -317,12 +300,7 @@ var actorRepayDebtCmd = &cmds.Command{
 			return err
 		}
 
-		cid, _ := smsg.Cid()
-		if err != nil {
-			return err
-		}
-
-		return re.Emit(fmt.Sprintf("Sent repay debt message %s", cid))
+		return re.Emit(fmt.Sprintf("Sent repay debt message %s", smsg.Cid()))
 	},
 	Type: "",
 }
@@ -356,12 +334,12 @@ var actorSetOwnerCmd = &cmds.Command{
 			return err
 		}
 
-		newAddr, err := api.StateLookupID(ctx, na, block.EmptyTSK)
+		newAddr, err := api.StateLookupID(ctx, na, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		mi, err := api.StateMinerInfo(ctx, maddr, block.EmptyTSK)
+		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -382,10 +360,7 @@ var actorSetOwnerCmd = &cmds.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		cid, err := smsg.Cid()
-		if err != nil {
-			return err
-		}
+		cid := smsg.Cid()
 		_ = re.Emit("Propose Message CID: " + cid.String())
 
 		// wait for it to get mined into a block
@@ -411,10 +386,7 @@ var actorSetOwnerCmd = &cmds.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		cid, err = smsg.Cid()
-		if err != nil {
-			return err
-		}
+		cid = smsg.Cid()
 		_ = re.Emit("Approve Message CID: " + cid.String())
 
 		// wait for it to get mined into a block
@@ -428,9 +400,7 @@ var actorSetOwnerCmd = &cmds.Command{
 			_ = re.Emit(fmt.Sprintf("Approve owner change failed, exitcode: %d", wait.Receipt.ExitCode))
 			return err
 		}
-		cid, _ = smsg.Cid()
-
-		return re.Emit(fmt.Sprintf("Requested rewards withdrawal in message %s", cid))
+		return re.Emit(fmt.Sprintf("Requested rewards withdrawal in message %s", smsg.Cid()))
 	},
 	Type: "",
 }
@@ -463,7 +433,7 @@ var actorControlList = &cmds.Command{
 		ctx := req.Context
 		api := env.(*node.Env).ChainAPI
 
-		mi, err := api.StateMinerInfo(ctx, maddr, block.EmptyTSK)
+		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -491,7 +461,7 @@ var actorControlList = &cmds.Command{
 				return
 			}
 
-			k, err := env.(*node.Env).ChainAPI.StateAccountKey(ctx, a, block.EmptyTSK)
+			k, err := env.(*node.Env).ChainAPI.StateAccountKey(ctx, a, types.EmptyTSK)
 			if err != nil {
 				_ = re.Emit(fmt.Sprintf("%s  %s: error getting account key: %s", name, a, err))
 				return
@@ -560,7 +530,7 @@ var actorControlSet = &cmds.Command{
 		ctx := req.Context
 		api := env.(*node.Env).ChainAPI
 
-		mi, err := env.(*node.Env).ChainAPI.StateMinerInfo(ctx, maddr, block.EmptyTSK)
+		mi, err := env.(*node.Env).ChainAPI.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -568,7 +538,7 @@ var actorControlSet = &cmds.Command{
 		del := map[address.Address]struct{}{}
 		existing := map[address.Address]struct{}{}
 		for _, controlAddress := range mi.ControlAddresses {
-			ka, err := api.StateAccountKey(ctx, controlAddress, block.EmptyTSK)
+			ka, err := api.StateAccountKey(ctx, controlAddress, types.EmptyTSK)
 			if err != nil {
 				return err
 			}
@@ -586,13 +556,13 @@ var actorControlSet = &cmds.Command{
 				return xerrors.Errorf("parsing address %d: %w", i, err)
 			}
 
-			ka, err := api.StateAccountKey(ctx, a, block.EmptyTSK)
+			ka, err := api.StateAccountKey(ctx, a, types.EmptyTSK)
 			if err != nil {
 				return err
 			}
 
 			// make sure the address exists on chain
-			_, err = api.StateLookupID(ctx, ka, block.EmptyTSK)
+			_, err = api.StateLookupID(ctx, ka, types.EmptyTSK)
 			if err != nil {
 				return xerrors.Errorf("looking up %s: %w", ka, err)
 			}
@@ -638,11 +608,7 @@ var actorControlSet = &cmds.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		cid, err := smsg.Cid()
-		if err != nil {
-			return err
-		}
-		writer.Println("Message CID: " + cid.String())
+		writer.Println("Message CID: " + smsg.Cid().String())
 
 		return re.Emit(buf)
 	},
@@ -673,12 +639,12 @@ var actorProposeChangeWorker = &cmds.Command{
 		ctx := req.Context
 		api := env.(*node.Env).ChainAPI
 
-		mi, err := api.StateMinerInfo(ctx, maddr, block.EmptyTSK)
+		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		newAddr, err := api.StateLookupID(ctx, na, block.EmptyTSK)
+		newAddr, err := api.StateLookupID(ctx, na, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -718,10 +684,7 @@ var actorProposeChangeWorker = &cmds.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		cid, err := smsg.Cid()
-		if err != nil {
-			return err
-		}
+		cid := smsg.Cid()
 		_ = re.Emit("Propose Message CID: " + cid.String())
 
 		// wait for it to get mined into a block
@@ -775,12 +738,12 @@ var actorConfirmChangeWorker = &cmds.Command{
 		ctx := req.Context
 		api := env.(*node.Env).ChainAPI
 
-		mi, err := api.StateMinerInfo(ctx, maddr, block.EmptyTSK)
+		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		newAddr, err := api.StateLookupID(ctx, na, block.EmptyTSK)
+		newAddr, err := api.StateLookupID(ctx, na, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -800,7 +763,7 @@ var actorConfirmChangeWorker = &cmds.Command{
 			return xerrors.Errorf("failed to get the chain head: %w", err)
 		}
 
-		height, _ := head.Height()
+		height := head.Height()
 		if height < mi.WorkerChangeEpoch {
 			return xerrors.Errorf("worker key change cannot be confirmed until %d, current height is %d", mi.WorkerChangeEpoch, height)
 		}
@@ -819,10 +782,7 @@ var actorConfirmChangeWorker = &cmds.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		cid, err := smsg.Cid()
-		if err != nil {
-			return err
-		}
+		cid := smsg.Cid()
 		_ = re.Emit("Confirm Message CID: " + cid.String())
 
 		// wait for it to get mined into a block
@@ -845,9 +805,7 @@ var actorConfirmChangeWorker = &cmds.Command{
 			return fmt.Errorf("confirmed worker address change not reflected on chain: expected '%s', found '%s'", newAddr, mi.Worker)
 		}
 
-		cid, _ = smsg.Cid()
-
-		return re.Emit(fmt.Sprintf("Requested peerid change in message %s", cid))
+		return re.Emit(fmt.Sprintf("Requested peerid change in message %s", smsg.Cid()))
 	},
 	Type: "",
 }

@@ -1,9 +1,12 @@
 package power
 
 import (
+	"bytes"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
@@ -96,11 +99,13 @@ func (s *state2) ListAllMiners() ([]address.Address, error) {
 
 	return miners, nil
 }
+
 func (s *state2) ForEachClaim(cb func(miner address.Address, claim Claim) error) error {
 	claims, err := adt2.AsMap(s.store, s.Claims)
 	if err != nil {
 		return err
 	}
+
 	var claim power2.Claim
 	return claims.ForEach(&claim, func(k string) error {
 		a, err := address.NewFromBytes([]byte(k))
@@ -112,4 +117,32 @@ func (s *state2) ForEachClaim(cb func(miner address.Address, claim Claim) error)
 			QualityAdjPower: claim.QualityAdjPower,
 		})
 	})
+}
+
+func (s *state2) ClaimsChanged(other State) (bool, error) {
+	other2, ok := other.(*state2)
+	if !ok {
+		// treat an upgrade as a change, always
+		return true, nil
+	}
+	return !s.State.Claims.Equals(other2.State.Claims), nil
+}
+
+func (s *state2) claims() (adt.Map, error) {
+	return adt2.AsMap(s.store, s.Claims)
+}
+
+func (s *state2) decodeClaim(val *cbg.Deferred) (Claim, error) {
+	var ci power2.Claim
+	if err := ci.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+		return Claim{}, err
+	}
+	return fromV2Claim(ci), nil
+}
+
+func fromV2Claim(v2 power2.Claim) Claim {
+	return Claim{
+		RawBytePower:    v2.RawBytePower,
+		QualityAdjPower: v2.QualityAdjPower,
+	}
 }

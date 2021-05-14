@@ -2,11 +2,14 @@ package test
 
 import (
 	"context"
+	"math/rand"
+	"testing"
+
+	"github.com/filecoin-project/venus/pkg/types"
+
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
-	"math/rand"
-	"testing"
 
 	"github.com/filecoin-project/go-address"
 	ds "github.com/ipfs/go-datastore"
@@ -18,7 +21,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/fixtures/fortest"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/wallet"
@@ -47,13 +49,13 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 }
 
 // GenesisInitFunc is a th.GenesisInitFunc using the chain seed
-func (cs *ChainSeed) GenesisInitFunc(cst cbor.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+func (cs *ChainSeed) GenesisInitFunc(cst cbor.IpldStore, bs blockstore.Blockstore) (*types.BlockHeader, error) {
 	err := blockstoreutil.CopyBlockstore(context.TODO(), cs.bstore, bs)
 	if err != nil {
 		return nil, err
 	}
 
-	var blk block.Block
+	var blk types.BlockHeader
 	if err := cst.Get(context.TODO(), cs.info.GenesisCid, &blk); err != nil {
 		return nil, err
 	}
@@ -68,6 +70,7 @@ func (cs *ChainSeed) GiveKey(t *testing.T, nd *node.Node, key int) address.Addre
 	require.Len(t, bcks, 1, "expected to get exactly one datastore backend")
 
 	dsb := bcks[0].(*wallet.DSBackend)
+	_ = dsb.SetPassword(wallet.TestPassword)
 	kinfo := cs.info.Keys[key]
 	require.NoError(t, dsb.ImportKey(kinfo))
 

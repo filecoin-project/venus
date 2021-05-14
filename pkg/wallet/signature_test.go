@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
@@ -24,11 +25,15 @@ import (
 
 func requireSignerAddr(t *testing.T) (*DSBackend, address.Address) {
 	ds := datastore.NewMapDatastore()
-	fs, err := NewDSBackend(ds)
+	fs, err := NewDSBackend(ds, config.DefaultPassphraseConfig(), "")
 	require.NoError(t, err)
+
+	err = fs.SetPassword(TestPassword)
+	assert.NoError(t, err)
 
 	addr, err := fs.NewAddress(address.SECP256K1)
 	require.NoError(t, err)
+
 	return fs, addr
 }
 

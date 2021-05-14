@@ -3,6 +3,8 @@ package networks
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/filecoin-project/venus/pkg/config"
 )
@@ -31,31 +33,41 @@ func Mainnet() *NetworkConf {
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
+			DevNet: false,
 			//ReplaceProofTypes: []int64{
 			//	int64(abi.RegisteredSealProof_StackedDrg8MiBV1),
 			//	int64(abi.RegisteredSealProof_StackedDrg512MiBV1),
 			//	int64(abi.RegisteredSealProof_StackedDrg32GiBV1),
 			//	int64(abi.RegisteredSealProof_StackedDrg64GiBV1),
 			//},
+			NetworkType:            constants.NetworkMainnet,
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 10 << 40,
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
-				UpgradeBreezeHeight:      41280,
+				UpgradeBreezeHeight:   41280,
+				UpgradeSmokeHeight:    51000,
+				UpgradeIgnitionHeight: 94000,
+				UpgradeRefuelHeight:   130800,
+				UpgradeActorsV2Height: 138720,
+				UpgradeTapeHeight:     140760,
+				UpgradeLiftoffHeight:  148888,
+				// This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
+				// Miners, clients, developers, custodians all need time to prepare.
+				// We still have upgrades and state changes to do, but can happen after signaling timing here.
+				UpgradeKumquatHeight:   170000,
+				UpgradeCalicoHeight:    265200,
+				UpgradePersianHeight:   265200 + (builtin2.EpochsInHour * 60),
+				UpgradeOrangeHeight:    336458,
+				UpgradeActorsV3Height:  550321, // 2021-03-04T00:00:30Z
+				UpgradeNorwegianHeight: 665280, // 2021-04-12T22:00:00Z
+				UpgradeActorsV4Height:  712320, // 2021-04-29T06:00:00Z
+
 				BreezeGasTampingDuration: 120,
-				UpgradeSmokeHeight:       51000,
-				UpgradeIgnitionHeight:    94000,
-				UpgradeRefuelHeight:      130800,
-				UpgradeTapeHeight:        140760,
-				UpgradeLiftoffHeight:     148888,
-				UpgradeKumquatHeight:     170000,
-				UpgradeCalicoHeight:      265200,
-				UpgradePersianHeight:     265200 + 120*60,
-				UpgradeActorsV2Height:    138720,
-				UpgradeOrangeHeight:      336458,
-				UpgradeClausHeight:       343200,
+				UpgradeClausHeight:       343200, // 2020-12-22T02:00:00Z
 			},
-			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
-			AddressNetwork: address.Mainnet,
+			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
+			AddressNetwork:          address.Mainnet,
+			PreCommitChallengeDelay: abi.ChainEpoch(150),
 		},
 	}
 }

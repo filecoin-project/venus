@@ -64,24 +64,12 @@ type Version struct {
 	//
 	// See APIVersion in build/version.go
 	APIVersion constants.Version
-
-	// TODO: git commit / os / genesis cid?
-
-	// Seconds
-	BlockDelay uint64
 }
 
 func (networkAPI *NetworkAPI) Version(context.Context) (Version, error) {
-	v, err := constants.VersionForType(constants.NodeMiner)
-	if err != nil {
-		return Version{}, err
-	}
-
 	return Version{
 		Version:    constants.UserVersion(),
-		APIVersion: v,
-
-		BlockDelay: constants.BlockDelaySecs,
+		APIVersion: constants.FullAPIVersion,
 	}, nil
 }
 

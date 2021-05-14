@@ -7,14 +7,28 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
+	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
 )
+
+const (
+	undetermined = iota
+
+	Lock
+	Unlock
+)
+
+var ErrInvalidPassword = errors.New("password matching failed")
+var ErrRepeatPassword = errors.New("set password more than once")
 
 // DSBackendType is the reflect type of the DSBackend.
 var DSBackendType = reflect.TypeOf(&DSBackend{})
@@ -26,14 +40,21 @@ type DSBackend struct {
 	// TODO: use a better interface that supports time locks, encryption, etc.
 	ds repo.Datastore
 
-	// TODO: proper cache
 	cache map[address.Address]struct{}
+
+	unLocked map[address.Address]*crypto.KeyInfo
+
+	PassphraseConf config.PassphraseConfig
+
+	password []byte
+
+	state int
 }
 
 var _ Backend = (*DSBackend)(nil)
 
 // NewDSBackend constructs a new backend using the passed in datastore.
-func NewDSBackend(ds repo.Datastore) (*DSBackend, error) {
+func NewDSBackend(ds repo.Datastore, passphraseCfg config.PassphraseConfig, password string) (*DSBackend, error) {
 	result, err := ds.Query(dsq.Query{
 		KeysOnly: true,
 	})
@@ -46,19 +67,29 @@ func NewDSBackend(ds repo.Datastore) (*DSBackend, error) {
 		return nil, errors.Wrap(err, "failed to read query results")
 	}
 
-	cache := make(map[address.Address]struct{})
+	addrCache := make(map[address.Address]struct{}, len(list))
 	for _, el := range list {
 		parsedAddr, err := address.NewFromString(strings.Trim(el.Key, "/"))
 		if err != nil {
 			return nil, errors.Wrapf(err, "trying to restore invalid address: %s", el.Key)
 		}
-		cache[parsedAddr] = struct{}{}
+		addrCache[parsedAddr] = struct{}{}
 	}
 
-	return &DSBackend{
-		ds:    ds,
-		cache: cache,
-	}, nil
+	backend := &DSBackend{
+		ds:             ds,
+		cache:          addrCache,
+		PassphraseConf: passphraseCfg,
+		unLocked:       make(map[address.Address]*crypto.KeyInfo),
+		state:          undetermined,
+	}
+	if len(password) != 0 {
+		if err := backend.SetPassword(password); err != nil {
+			return nil, err
+		}
+	}
+
+	return backend, nil
 }
 
 // ImportKey loads the address in `ai` and KeyInfo `ki` into the backend
@@ -126,7 +157,7 @@ func (backend *DSBackend) newBLSAddress() (address.Address, error) {
 }
 
 func (backend *DSBackend) putKeyInfo(ki *crypto.KeyInfo) error {
-	a, err := ki.Address()
+	addr, err := ki.Address()
 	if err != nil {
 		return err
 	}
@@ -134,25 +165,33 @@ func (backend *DSBackend) putKeyInfo(ki *crypto.KeyInfo) error {
 	backend.lk.Lock()
 	defer backend.lk.Unlock()
 
-	buf := new(bytes.Buffer)
-	err = ki.MarshalCBOR(buf)
+	key := &Key{
+		ID:      uuid.NewRandom(),
+		Address: addr,
+		KeyInfo: ki,
+	}
+
+	keyJSON, err := encryptKey(key, backend.password, backend.PassphraseConf.ScryptN, backend.PassphraseConf.ScryptP)
 	if err != nil {
 		return err
 	}
 
-	if err := backend.ds.Put(ds.NewKey(a.String()), buf.Bytes()); err != nil {
-		return errors.Wrap(err, "failed to store new address")
+	if err := backend.ds.Put(ds.NewKey(key.Address.String()), keyJSON); err != nil {
+		return errors.Wrapf(err, "failed to store new address: %s", key.Address.String())
 	}
+	backend.cache[addr] = struct{}{}
+	backend.unLocked[addr] = ki
 
-	backend.cache[a] = struct{}{}
 	return nil
 }
 
 // SignBytes cryptographically signs `data` using the private key `priv`.
 func (backend *DSBackend) SignBytes(data []byte, addr address.Address) (*crypto.Signature, error) {
-	ki, err := backend.GetKeyInfo(addr)
-	if err != nil {
-		return nil, err
+	backend.lk.RLock()
+	defer backend.lk.RUnlock()
+	ki, ok := backend.unLocked[addr]
+	if !ok {
+		return nil, errors.Errorf("%s is locked", addr.String())
 	}
 	return crypto.Sign(data, ki.PrivateKey, ki.SigType)
 }
@@ -164,16 +203,143 @@ func (backend *DSBackend) GetKeyInfo(addr address.Address) (*crypto.KeyInfo, err
 		return nil, errors.New("backend does not contain address")
 	}
 
-	// kib is a cbor of types.KeyInfo
-	kib, err := backend.ds.Get(ds.NewKey(addr.String()))
+	key, err := backend.getKey(addr, backend.password)
+	if err != nil {
+		return nil, err
+	}
+
+	return key.KeyInfo, nil
+}
+
+func (backend *DSBackend) GetKeyInfoPassphrase(addr address.Address, password []byte) (*crypto.KeyInfo, error) {
+	if !backend.HasAddress(addr) {
+		return nil, errors.New("backend does not contain address")
+	}
+
+	key, err := backend.getKey(addr, password)
+	if err != nil {
+		return nil, err
+	}
+
+	return key.KeyInfo, nil
+}
+
+func (backend *DSBackend) getKey(addr address.Address, password []byte) (*Key, error) {
+	b, err := backend.ds.Get(ds.NewKey(addr.String()))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch private key from backend")
 	}
 
-	ki := &crypto.KeyInfo{}
-	if err := ki.UnmarshalCBOR(bytes.NewReader(kib)); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal keyinfo from backend")
+	return decryptKey(b, password)
+}
+
+func (backend *DSBackend) setPassword(password []byte) {
+	backend.lk.Lock()
+	defer backend.lk.Unlock()
+	backend.password = password
+}
+
+func (backend *DSBackend) clearPassword() {
+	backend.lk.Lock()
+	defer backend.lk.Unlock()
+	backend.password = []byte{}
+}
+
+func (backend *DSBackend) Locked(password string) error {
+	if backend.state == Lock {
+		return xerrors.Errorf("already locked")
 	}
 
-	return ki, nil
+	hashPasswd := keccak256([]byte(password))
+
+	if len(backend.password) != 0 && !bytes.Equal(backend.password, hashPasswd) {
+		return ErrInvalidPassword
+	}
+
+	if len(backend.Addresses()) == 0 {
+		return xerrors.Errorf("no address need lock")
+	}
+
+	for _, addr := range backend.Addresses() {
+		_, err := backend.GetKeyInfoPassphrase(addr, hashPasswd)
+		if err != nil {
+			return err
+		}
+
+		backend.lk.Lock()
+		delete(backend.unLocked, addr)
+		backend.lk.Unlock()
+	}
+
+	backend.state = Lock
+
+	return nil
+}
+
+func (backend *DSBackend) UnLocked(password string) error {
+	if backend.state == Unlock {
+		return xerrors.Errorf("already unlocked")
+	}
+
+	hashPasswd := keccak256([]byte(password))
+
+	if len(backend.password) != 0 && !bytes.Equal(backend.password, hashPasswd) {
+		return ErrInvalidPassword
+	}
+
+	if len(backend.Addresses()) == 0 {
+		return xerrors.Errorf("no address need unlock")
+	}
+
+	for _, addr := range backend.Addresses() {
+		ki, err := backend.GetKeyInfoPassphrase(addr, hashPasswd)
+		if err != nil {
+			return err
+		}
+
+		backend.lk.Lock()
+		backend.unLocked[addr] = ki
+		backend.lk.Unlock()
+	}
+	backend.state = Unlock
+
+	return nil
+}
+
+func (backend *DSBackend) SetPassword(password string) error {
+	if len(backend.password) != 0 {
+		return ErrRepeatPassword
+	}
+
+	hashPasswd := keccak256([]byte(password))
+
+	if len(backend.Addresses()) == 0 {
+		backend.setPassword(hashPasswd)
+		return nil
+	}
+
+	for _, addr := range backend.Addresses() {
+		ki, err := backend.GetKeyInfoPassphrase(addr, hashPasswd)
+		if err != nil {
+			return err
+		}
+		backend.lk.Lock()
+		backend.unLocked[addr] = ki
+		backend.lk.Unlock()
+	}
+	if backend.state == undetermined {
+		backend.state = Unlock
+	}
+
+	backend.setPassword(hashPasswd)
+
+	return nil
+}
+
+func (backend *DSBackend) HasPassword() bool {
+	return len(backend.password) != 0
+}
+
+func (backend *DSBackend) WalletState() int {
+	return backend.state
 }

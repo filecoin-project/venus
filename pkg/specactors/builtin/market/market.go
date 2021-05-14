@@ -1,7 +1,6 @@
 package market
 
 import (
-	"github.com/filecoin-project/venus/pkg/types"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -13,9 +12,12 @@ import (
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
+	"github.com/filecoin-project/venus/pkg/types"
 )
 
 func init() {
@@ -25,11 +27,17 @@ func init() {
 	builtin.RegisterActorState(builtin2.StorageMarketActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load2(store, root)
 	})
+	builtin.RegisterActorState(builtin3.StorageMarketActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load3(store, root)
+	})
+	builtin.RegisterActorState(builtin4.StorageMarketActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load4(store, root)
+	})
 }
 
 var (
-	Address = builtin2.StorageMarketActorAddr
-	Methods = builtin2.MethodsMarket
+	Address = builtin4.StorageMarketActorAddr
+	Methods = builtin4.MethodsMarket
 )
 
 func Load(store adt.Store, act *types.Actor) (st State, err error) {
@@ -38,6 +46,10 @@ func Load(store adt.Store, act *types.Actor) (st State, err error) {
 		return load0(store, act.Head)
 	case builtin2.StorageMarketActorCodeID:
 		return load2(store, act.Head)
+	case builtin3.StorageMarketActorCodeID:
+		return load3(store, act.Head)
+	case builtin4.StorageMarketActorCodeID:
+		return load4(store, act.Head)
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
@@ -65,7 +77,8 @@ type BalanceTable interface {
 type DealStates interface {
 	ForEach(cb func(id abi.DealID, ds DealState) error) error
 	Get(id abi.DealID) (*DealState, bool, error)
-	ArrayValue() adt.Array
+
+	array() adt.Array
 	decode(*cbg.Deferred) (*DealState, error)
 }
 
@@ -73,13 +86,14 @@ type DealProposals interface {
 	ForEach(cb func(id abi.DealID, dp DealProposal) error) error
 	Get(id abi.DealID) (*DealProposal, bool, error)
 
-	ArrayValue() adt.Array
+	array() adt.Array
 	decode(*cbg.Deferred) (*DealProposal, error)
 }
 
 type PublishStorageDealsParams = market0.PublishStorageDealsParams
 type PublishStorageDealsReturn = market0.PublishStorageDealsReturn
 type VerifyDealsForActivationParams = market0.VerifyDealsForActivationParams
+type WithdrawBalanceParams = market0.WithdrawBalanceParams
 
 type ClientDealProposal = market0.ClientDealProposal
 

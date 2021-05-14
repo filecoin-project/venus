@@ -6,12 +6,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	tutil "github.com/filecoin-project/specs-actors/support/testing"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	cbornode "github.com/ipfs/go-ipld-cbor"
-
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/version"
 )
 
 // MakeCommitCfgs creates n gengen commit configs, casting strings to cids.
@@ -38,9 +33,4 @@ func MakeCommitCfgs(n int) ([]*CommitConfig, error) {
 		}
 	}
 	return cfgs, nil
-}
-
-// DefaultGenesis creates a test network genesis block with default accounts and actors installed.
-func DefaultGenesis(cst cbornode.IpldStore, bs blockstore.Blockstore) (*block.Block, error) {
-	return MakeGenesisFunc(NetworkName(version.TEST))(cst, bs)
 }

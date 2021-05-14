@@ -42,7 +42,7 @@ func (r *ReplayingRand) match(requested schema.RandomnessRule) ([]byte, bool) {
 	return nil, false
 }
 
-func (r *ReplayingRand) Randomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (r *ReplayingRand) GetRandomnessFromTickets(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	rule := schema.RandomnessRule{
 		Kind:                schema.RandomnessChain,
 		DomainSeparationTag: int64(pers),
@@ -56,7 +56,7 @@ func (r *ReplayingRand) Randomness(ctx context.Context, pers crypto.DomainSepara
 	}
 
 	r.reporter.Logf("returning fallback chain randomness: dst=%d, epoch=%d, entropy=%x", pers, round, entropy)
-	return r.fallback.Randomness(ctx, pers, round, entropy)
+	return r.fallback.GetRandomnessFromTickets(ctx, pers, round, entropy)
 }
 
 func (r *ReplayingRand) GetRandomnessFromBeacon(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {

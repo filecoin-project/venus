@@ -2,9 +2,6 @@ package paych
 
 import (
 	"encoding/base64"
-	"github.com/filecoin-project/venus/pkg/types"
-
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -12,13 +9,17 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
+	"golang.org/x/xerrors"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
+	"github.com/filecoin-project/venus/pkg/types"
 )
 
 func init() {
@@ -27,6 +28,12 @@ func init() {
 	})
 	builtin.RegisterActorState(builtin2.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load2(store, root)
+	})
+	builtin.RegisterActorState(builtin3.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load3(store, root)
+	})
+	builtin.RegisterActorState(builtin4.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load4(store, root)
 	})
 }
 
@@ -37,6 +44,10 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 		return load0(store, act.Head)
 	case builtin2.PaymentChannelActorCodeID:
 		return load2(store, act.Head)
+	case builtin3.PaymentChannelActorCodeID:
+		return load3(store, act.Head)
+	case builtin4.PaymentChannelActorCodeID:
+		return load4(store, act.Head)
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }

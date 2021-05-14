@@ -4,17 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-address"
 	"io"
 	mrand "math/rand"
 
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	xerrors "github.com/pkg/errors"
-
-	address "github.com/filecoin-project/go-address"
-	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin/cron"
@@ -30,26 +27,23 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mh "github.com/multiformats/go-multihash"
+	xerrors "github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	gfcstate "github.com/filecoin-project/venus/pkg/state"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
 	blockstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
-	"github.com/filecoin-project/venus/pkg/vm/state"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
 )
 
 const InitialBaseFee = 100e6
-
-// TODO: review add bu force
-// TODO: make a list/schedule of these.
 
 type cstore struct {
 	ctx context.Context
@@ -66,7 +60,7 @@ var (
 
 type GenesisGenerator struct {
 	// actor state
-	stateTree state.Tree
+	stateTree tree.Tree
 	store     blockstore.Blockstore
 	cst       cbor.IpldStore
 	vm        genesis.VM
@@ -79,7 +73,7 @@ type GenesisGenerator struct {
 }
 
 func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
-	csc := func(context.Context, abi.ChainEpoch, state.Tree) (abi.TokenAmount, error) {
+	csc := func(context.Context, abi.ChainEpoch, tree.Tree) (abi.TokenAmount, error) {
 		return big.Zero(), nil
 	}
 	cst := cbor.NewCborStore(bs)
@@ -116,14 +110,12 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 
 func (g *GenesisGenerator) Init(cfg *GenesisCfg) error {
 	g.pnrg = mrand.New(mrand.NewSource(cfg.Seed))
-
 	keys, err := genKeys(cfg.KeysToGen, g.pnrg)
 	if err != nil {
 		return err
 	}
 	keys = append(keys, cfg.ImportKeys...)
 	g.keys = keys
-
 	vrKey, err := crypto.NewSecpKeyFromSeed(g.pnrg)
 	if err != nil {
 		return err
@@ -328,7 +320,8 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 	// define empty cid and ensure empty components exist in blockstore
-	emptyAMTCid, err := amt.FromArray(ctx, g.cst, nil)
+	emptyAMT := adt.MakeEmptyArray(adt.WrapStore(ctx, g.cst))
+	emptyAMTCid, err := emptyAMT.Root()
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -339,12 +332,12 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	geneblk := &block.Block{
+	geneblk := &types.BlockHeader{
 		Miner:                 builtin.SystemActorAddr,
 		Ticket:                genesis.Ticket,
-		BeaconEntries:         []*block.BeaconEntry{{Data: []byte{0xca, 0xfe, 0xfa, 0xce}}},
-		ElectionProof:         new(block.ElectionProof),
-		Parents:               block.NewTipSetKey(),
+		BeaconEntries:         []*types.BeaconEntry{{Data: []byte{0xca, 0xfe, 0xfa, 0xce}}},
+		ElectionProof:         new(types.ElectionProof),
+		Parents:               types.NewTipSetKey(),
 		ParentWeight:          big.Zero(),
 		Height:                0,
 		ParentStateRoot:       stateRoot,

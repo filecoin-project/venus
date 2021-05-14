@@ -6,15 +6,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"reflect"
-	"strconv"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"reflect"
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -36,7 +34,7 @@ var msgSendCmd = &cmds.Command{
 	},
 	Arguments: []cmds.Argument{
 		cmds.StringArg("target", true, false, "address of the actor to send the message to"),
-		cmds.StringArg("method", false, false, "The method to invoke on the target actor"),
+		cmds.StringArg("value", true, false, "amount of FIL"),
 	},
 	Options: []cmds.Option{
 		cmds.StringOption("value", "Value to send with message in FIL"),
@@ -47,34 +45,32 @@ var msgSendCmd = &cmds.Command{
 		cmds.Uint64Option("nonce", "specify the nonce to use"),
 		cmds.StringOption("params-json", "specify invocation parameters in json"),
 		cmds.StringOption("params-hex", "specify invocation parameters in hex"),
+		cmds.Uint64Option("method", "The method to invoke on the target actor"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		toAddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			return err
 		}
-
-		methodID := builtin.MethodSend
-		if len(req.Arguments) > 1 {
-			tm, err := strconv.ParseUint(req.Arguments[0], 10, 64)
-			if err != nil {
-				return err
-			}
-			methodID = abi.MethodNum(tm)
-		}
-
-		rawVal := req.Options["value"]
-		if rawVal == nil {
-			rawVal = "0"
-		}
-		val, ok := types.NewAttoFILFromFILString(rawVal.(string))
+		v := req.Arguments[1]
+		val, ok := types.NewAttoFILFromFILString(v)
 		if !ok {
 			return errors.New("mal-formed value")
+		}
+
+		methodID := builtin.MethodSend
+		method, ok := req.Options["method"]
+		if ok {
+			methodID = abi.MethodNum(method.(uint64))
 		}
 
 		fromAddr, err := fromAddrOrDefault(req, env)
 		if err != nil {
 			return err
+		}
+
+		if methodID == builtin.MethodSend && fromAddr.String() == toAddr.String() {
+			return errors.New("self-transfer is not allowed")
 		}
 
 		feecap, premium, gasLimit, err := parseGasOptions(req)
@@ -134,24 +130,17 @@ var msgSendCmd = &cmds.Command{
 			if err != nil {
 				return err
 			}
-			c, _ = sm.Cid()
-			fmt.Println(sm.Cid())
+			c = sm.Cid()
 		} else {
 			sm, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(req.Context, msg, nil)
 			if err != nil {
 				return err
 			}
-			c, _ = sm.Cid()
-			fmt.Println(c)
+			c = sm.Cid()
 		}
 
-		return re.Emit(&MessageSendResult{
-			Cid:     c,
-			GasUsed: 0,
-			Preview: false,
-		})
+		return re.Emit(c.String())
 	},
-	Type: &MessageSendResult{},
 }
 
 func decodeTypedParams(ctx context.Context, fapi *node.Env, to address.Address, method abi.MethodNum, paramstr string) ([]byte, error) {

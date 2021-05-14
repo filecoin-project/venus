@@ -16,7 +16,7 @@ import (
 	stdbig "math/big"
 
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/pkg/block"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -37,6 +37,7 @@ var mpoolCmd = &cmds.Command{
 		"gas-perf": mpoolGasPerfCmd,
 		"publish":  mpoolPublish,
 		"delete":   mpoolDeleteAddress,
+		"select":   mpoolSelect,
 	},
 }
 
@@ -70,6 +71,35 @@ var mpoolDeleteAddress = &cmds.Command{
 	},
 }
 
+var mpoolSelect = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline:          "select",
+		ShortDescription: "select message from mpool",
+	},
+	Options: []cmds.Option{
+		cmds.FloatOption("quality", "optionally specify the wallet for publish message").WithDefault(0.5),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		ctx := context.TODO()
+
+		quality, _ := req.Options["quality"].(float64)
+		head, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+		msgs, err := env.(*node.Env).MessagePoolAPI.MpoolSelect(ctx, head.Key(), quality)
+		if err != nil {
+			return err
+		}
+		selectMsg, err := json.MarshalIndent(msgs, " ", "\t")
+		if err != nil {
+			return err
+		}
+
+		return printOneString(re, string(selectMsg))
+	},
+}
+
 var mpoolPublish = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline:          "publish",
@@ -100,7 +130,7 @@ var mpoolPublish = &cmds.Command{
 			fromAddr = addr
 		}
 
-		err := env.(*node.Env).MessagePoolAPI.MpoolPublish(ctx, fromAddr)
+		err := env.(*node.Env).MessagePoolAPI.MpoolPublishByAddr(ctx, fromAddr)
 		if err != nil {
 			return err
 		}
@@ -125,7 +155,7 @@ var mpoolFindCmd = &cmds.Command{
 		method, _ := req.Options["method"].(int64)
 
 		ctx := context.TODO()
-		pending, err := env.(*node.Env).MessagePoolAPI.MpoolPending(ctx, block.TipSetKey{})
+		pending, err := env.(*node.Env).MessagePoolAPI.MpoolPending(ctx, types.TipSetKey{})
 		if err != nil {
 			return err
 		}
@@ -288,7 +318,7 @@ var mpoolReplaceCmd = &cmds.Command{
 			// msg.GasLimit = 0 // TODO: need to fix the way we estimate gas limits to account for the messages already being in the mempool
 			msg.GasFeeCap = abi.NewTokenAmount(0)
 			msg.GasPremium = abi.NewTokenAmount(0)
-			retm, err := env.(*node.Env).MessagePoolAPI.GasEstimateMessageGas(req.Context, &msg, mss, block.TipSetKey{})
+			retm, err := env.(*node.Env).MessagePoolAPI.GasEstimateMessageGas(req.Context, &msg, mss, types.TipSetKey{})
 			if err != nil {
 				return fmt.Errorf("failed to estimate gas values: %w", err)
 			}
@@ -297,18 +327,14 @@ var mpoolReplaceCmd = &cmds.Command{
 			msg.GasFeeCap = big.Max(retm.GasFeeCap, msg.GasPremium)
 
 			mff := func() (abi.TokenAmount, error) {
-				return abi.TokenAmount{Int: types.DefaultDefaultMaxFee.Int}, nil
+				return abi.TokenAmount{Int: config.DefaultDefaultMaxFee.Int}, nil
 			}
 
-			var maxFee abi.TokenAmount
-			if !mss.MaxFee.Nil() {
-				maxFee = mss.MaxFee
-			}
-			messagepool.CapGasFee(mff, &msg, maxFee)
+			messagepool.CapGasFee(mff, &msg, mss)
 		} else {
 			msg.GasFeeCap = abi.NewTokenAmount(0)
 			msg.GasPremium = abi.NewTokenAmount(0)
-			newMsg, err := env.(*node.Env).MessagePoolAPI.GasEstimateMessageGas(req.Context, &msg, nil, block.TipSetKey{})
+			newMsg, err := env.(*node.Env).MessagePoolAPI.GasEstimateMessageGas(req.Context, &msg, nil, types.TipSetKey{})
 			if err != nil {
 				return fmt.Errorf("failed to estimate gas values: %w", err)
 			}
@@ -366,10 +392,7 @@ Get pending messages.
 		{
 			currTs := ts
 			for i := 0; i < basefee; i++ {
-				key, err := currTs.Parents()
-				if err != nil {
-					return xerrors.Errorf("get TipSetKey error: %w", err)
-				}
+				key := currTs.Parents()
 				currTs, err = env.(*node.Env).ChainAPI.ChainGetTipSet(key)
 				if err != nil {
 					return xerrors.Errorf("walking chain: %w", err)
@@ -391,7 +414,7 @@ Get pending messages.
 			}
 		}
 
-		msgs, err := env.(*node.Env).MessagePoolAPI.MpoolPending(ctx, block.TipSetKey{})
+		msgs, err := env.(*node.Env).MessagePoolAPI.MpoolPending(ctx, types.TipSetKey{})
 		if err != nil {
 			return err
 		}
@@ -540,7 +563,7 @@ Get pending messages.
 			}
 		}
 
-		msgs, err := env.(*node.Env).MessagePoolAPI.MpoolPending(req.Context, block.TipSetKey{})
+		msgs, err := env.(*node.Env).MessagePoolAPI.MpoolPending(req.Context, types.TipSetKey{})
 
 		if err != nil {
 			return err
@@ -560,8 +583,7 @@ Get pending messages.
 			}
 
 			if cids {
-				cid, err := msg.Cid()
-				_ = re.Emit(cid)
+				_ = re.Emit(msg.Cid())
 				_ = re.Emit(err)
 			} else {
 				_ = re.Emit(msg)
@@ -669,7 +691,7 @@ Check gas performance of messages in mempool
 
 		ctx := context.TODO()
 
-		msgs, err := env.(*node.Env).MessagePoolAPI.MpoolPending(ctx, block.TipSetKey{})
+		msgs, err := env.(*node.Env).MessagePoolAPI.MpoolPending(ctx, types.TipSetKey{})
 		if err != nil {
 			return err
 		}

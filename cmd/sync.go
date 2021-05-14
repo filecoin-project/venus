@@ -17,9 +17,21 @@ var syncCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
 		"status":         storeStatusCmd,
 		"history":        historyCmd,
+		"concurrent":     getConcurrent,
 		"set-concurrent": setConcurrent,
 	},
 }
+
+var getConcurrent = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "get concurrent of sync thread",
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		concurrent := env.(*node.Env).SyncerAPI.Concurrent()
+		return printOneString(re, strconv.Itoa(int(concurrent)))
+	},
+}
+
 var setConcurrent = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "set concurrent of sync thread",
@@ -63,11 +75,11 @@ var storeStatusCmd = &cmds.Command{
 		writer.Println("Syncing:")
 		for _, t := range inSyncing {
 			writer.Println("SyncTarget:", strconv.Itoa(count))
-			writer.Println("\tBase:", t.Base.EnsureHeight(), t.Base.Key().String())
-			writer.Println("\tTarget:", t.Head.EnsureHeight(), t.Head.Key().String())
+			writer.Println("\tBase:", t.Base.Height(), t.Base.Key().String())
+			writer.Println("\tTarget:", t.Head.Height(), t.Head.Key().String())
 
 			if t.Current != nil {
-				writer.Println("\tCurrent:", t.Current.EnsureHeight(), t.Current.Key().String())
+				writer.Println("\tCurrent:", t.Current.Height(), t.Current.Key().String())
 			} else {
 				writer.Println("\tCurrent:")
 			}
@@ -81,31 +93,11 @@ var storeStatusCmd = &cmds.Command{
 		writer.Println("Waiting:")
 		for _, t := range waitTarget {
 			writer.Println("SyncTarget:", strconv.Itoa(count))
-			writer.Println("\tBase:", t.Base.EnsureHeight(), t.Base.Key().String())
-			writer.Println("\tTarget:", t.Head.EnsureHeight(), t.Head.Key().String())
+			writer.Println("\tBase:", t.Base.Height(), t.Base.Key().String())
+			writer.Println("\tTarget:", t.Head.Height(), t.Head.Key().String())
 
 			if t.Current != nil {
-				writer.Println("\tCurrent:", t.Current.EnsureHeight(), t.Current.Key().String())
-			} else {
-				writer.Println("\tCurrent:")
-			}
-
-			writer.Println("\tStatus:", t.State.String())
-			writer.Println("\tErr:", t.Err)
-			writer.Println()
-			count++
-		}
-
-		history := tracker.History()
-		writer.Println("History:")
-		for _, t := range history {
-			writer.Println("SyncTarget:", strconv.Itoa(count))
-			writer.Println("\tBase:", t.Base.EnsureHeight(), t.Base.Key().String())
-
-			writer.Println("\tTarget:", t.Head.EnsureHeight(), t.Head.Key().String())
-
-			if t.Current != nil {
-				writer.Println("\tCurrent:", t.Current.EnsureHeight(), t.Current.Key().String())
+				writer.Println("\tCurrent:", t.Current.Height(), t.Current.Key().String())
 			} else {
 				writer.Println("\tCurrent:")
 			}
@@ -137,12 +129,12 @@ var historyCmd = &cmds.Command{
 		count := 1
 		for _, t := range history {
 			writer.Println("SyncTarget:", strconv.Itoa(count))
-			writer.Println("\tBase:", t.Base.EnsureHeight(), t.Base.Key().String())
+			writer.Println("\tBase:", t.Base.Height(), t.Base.Key().String())
 
-			writer.Println("\tTarget:", t.Head.EnsureHeight(), t.Head.Key().String())
+			writer.Println("\tTarget:", t.Head.Height(), t.Head.Key().String())
 
 			if t.Current != nil {
-				writer.Println("\tCurrent:", t.Current.EnsureHeight(), t.Current.Key().String())
+				writer.Println("\tCurrent:", t.Current.Height(), t.Current.Key().String())
 			} else {
 				writer.Println("\tCurrent:")
 			}

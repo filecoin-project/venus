@@ -156,7 +156,7 @@ func (a *runtimeAdapter) GetRandomnessFromBeacon(personalization crypto.DomainSe
 }
 
 func (a *runtimeAdapter) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	res, err := a.ctx.randSource.Randomness(a.Context(), personalization, randEpoch, entropy)
+	res, err := a.ctx.randSource.GetRandomnessFromTickets(a.Context(), personalization, randEpoch, entropy)
 	if err != nil {
 		panic(xerrors.Errorf("could not get randomness: %s", err))
 	}

@@ -267,7 +267,7 @@ var stateSectorCmd = &cmds.Command{
 			return xerrors.Errorf("sector %d for miner %s not found", sid, maddr)
 		}
 
-		height, _ := ts.Height()
+		height := ts.Height()
 		buf := new(bytes.Buffer)
 		writer := NewSilentWriter(buf)
 

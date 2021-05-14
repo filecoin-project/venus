@@ -5,13 +5,12 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
 // ShowHeader runs the `show header` command against the filecoin process
-func (f *Filecoin) ShowHeader(ctx context.Context, ref cid.Cid) (*block.Block, error) {
-	var out block.Block
+func (f *Filecoin) ShowHeader(ctx context.Context, ref cid.Cid) (*types.BlockHeader, error) {
+	var out types.BlockHeader
 
 	sRef := ref.String()
 

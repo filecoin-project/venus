@@ -120,7 +120,7 @@ func (m message0) Approve(msig address.Address, txID uint64, hashData *ProposalH
 	return &types.UnsignedMessage{
 		To:     msig,
 		From:   m.from,
-		Value:  abi.NewTokenAmount(0),
+		Value:  types.NewInt(0),
 		Method: builtin0.MethodsMultisig.Approve,
 		Params: enc,
 	}, nil
@@ -135,7 +135,7 @@ func (m message0) Cancel(msig address.Address, txID uint64, hashData *ProposalHa
 	return &types.UnsignedMessage{
 		To:     msig,
 		From:   m.from,
-		Value:  abi.NewTokenAmount(0),
+		Value:  types.NewInt(0),
 		Method: builtin0.MethodsMultisig.Cancel,
 		Params: enc,
 	}, nil

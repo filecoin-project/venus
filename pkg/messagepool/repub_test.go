@@ -4,16 +4,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-address"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/ipfs/go-datastore"
 
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
-	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/wallet"
-
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
@@ -29,32 +25,20 @@ func TestRepubMessages(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// the actors
-	r1 := repo.NewInMemoryRepo()
-	backend1, err := wallet.NewDSBackend(r1.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w1 := wallet.New(backend1)
-
-	a1, err := wallet.NewAddress(w1, address.SECP256K1)
+	w1 := newWallet(t)
+	a1, err := w1.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	r2 := repo.NewInMemoryRepo()
-	backend2, err := wallet.NewDSBackend(r2.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w2 := wallet.New(backend2)
-
-	a2, err := wallet.NewAddress(w2, address.SECP256K1)
+	w2 := newWallet(t)
+	a2, err := w2.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}

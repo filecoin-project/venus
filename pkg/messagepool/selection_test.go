@@ -2,7 +2,6 @@ package messagepool
 
 import (
 	"compress/gzip"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,7 +24,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
-	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
 
@@ -54,11 +52,8 @@ func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, g
 		GasPremium: tbig.NewInt(int64(gasPrice)),
 	}
 
-	c, err := msg.Cid()
-	if err != nil {
-		panic(err)
-	}
-	sig, err := w.WalletSign(context.TODO(), from, c.Bytes(), wallet.MsgMeta{})
+	c := msg.Cid()
+	sig, err := w.WalletSign(from, c.Bytes(), wallet.MsgMeta{})
 	if err != nil {
 		panic(err)
 	}
@@ -71,7 +66,7 @@ func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, g
 func makeTestMpool() (*MessagePool, *testMpoolAPI) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
-	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "test", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "test", nil, nil, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -85,26 +80,14 @@ func TestMessageChains(t *testing.T) {
 	mp, tma := makeTestMpool()
 
 	// the actors
-	r1 := repo.NewInMemoryRepo()
-	backend1, err := wallet.NewDSBackend(r1.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w1 := wallet.New(backend1)
-
-	a1, err := wallet.NewAddress(w1, address.SECP256K1)
+	w1 := newWallet(t)
+	a1, err := w1.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	r2 := repo.NewInMemoryRepo()
-	backend2, err := wallet.NewDSBackend(r2.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w2 := wallet.New(backend2)
-
-	a2, err := wallet.NewAddress(w2, address.SECP256K1)
+	w2 := newWallet(t)
+	a2, err := w2.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -329,26 +312,14 @@ func TestMessageChainSkipping(t *testing.T) {
 	mp, tma := makeTestMpool()
 
 	// the actors
-	r1 := repo.NewInMemoryRepo()
-	backend1, err := wallet.NewDSBackend(r1.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w1 := wallet.New(backend1)
-
-	a1, err := wallet.NewAddress(w1, address.SECP256K1)
+	w1 := newWallet(t)
+	a1, err := w1.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	r2 := repo.NewInMemoryRepo()
-	backend2, err := wallet.NewDSBackend(r2.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w2 := wallet.New(backend2)
-
-	a2, err := wallet.NewAddress(w2, address.SECP256K1)
+	w2 := newWallet(t)
+	a2, err := w2.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -411,26 +382,14 @@ func TestBasicMessageSelection(t *testing.T) {
 	mp, tma := makeTestMpool()
 
 	// the actors
-	r1 := repo.NewInMemoryRepo()
-	backend1, err := wallet.NewDSBackend(r1.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w1 := wallet.New(backend1)
-
-	a1, err := wallet.NewAddress(w1, address.SECP256K1)
+	w1 := newWallet(t)
+	a1, err := w1.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	r2 := repo.NewInMemoryRepo()
-	backend2, err := wallet.NewDSBackend(r2.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w2 := wallet.New(backend2)
-
-	a2, err := wallet.NewAddress(w2, address.SECP256K1)
+	w2 := newWallet(t)
+	a2, err := w2.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -561,26 +520,14 @@ func TestMessageSelectionTrimming(t *testing.T) {
 	mp, tma := makeTestMpool()
 
 	// the actors
-	r1 := repo.NewInMemoryRepo()
-	backend1, err := wallet.NewDSBackend(r1.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w1 := wallet.New(backend1)
-
-	a1, err := wallet.NewAddress(w1, address.SECP256K1)
+	w1 := newWallet(t)
+	a1, err := w1.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	r2 := repo.NewInMemoryRepo()
-	backend2, err := wallet.NewDSBackend(r2.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w2 := wallet.New(backend2)
-
-	a2, err := wallet.NewAddress(w2, address.SECP256K1)
+	w2 := newWallet(t)
+	a2, err := w2.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -630,26 +577,14 @@ func TestPriorityMessageSelection(t *testing.T) {
 	mp, tma := makeTestMpool()
 
 	// the actors
-	r1 := repo.NewInMemoryRepo()
-	backend1, err := wallet.NewDSBackend(r1.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w1 := wallet.New(backend1)
-
-	a1, err := wallet.NewAddress(w1, address.SECP256K1)
+	w1 := newWallet(t)
+	a1, err := w1.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	r2 := repo.NewInMemoryRepo()
-	backend2, err := wallet.NewDSBackend(r2.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w2 := wallet.New(backend2)
-
-	a2, err := wallet.NewAddress(w2, address.SECP256K1)
+	w2 := newWallet(t)
+	a2, err := w2.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -715,26 +650,14 @@ func TestPriorityMessageSelection2(t *testing.T) {
 	mp, tma := makeTestMpool()
 
 	// the actors
-	r1 := repo.NewInMemoryRepo()
-	backend1, err := wallet.NewDSBackend(r1.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w1 := wallet.New(backend1)
-
-	a1, err := wallet.NewAddress(w1, address.SECP256K1)
+	w1 := newWallet(t)
+	a1, err := w1.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	r2 := repo.NewInMemoryRepo()
-	backend2, err := wallet.NewDSBackend(r2.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w2 := wallet.New(backend2)
-
-	a2, err := wallet.NewAddress(w2, address.SECP256K1)
+	w2 := newWallet(t)
+	a2, err := w2.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -790,26 +713,14 @@ func TestPriorityMessageSelection3(t *testing.T) {
 	mp, tma := makeTestMpool()
 
 	// the actors
-	r1 := repo.NewInMemoryRepo()
-	backend1, err := wallet.NewDSBackend(r1.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w1 := wallet.New(backend1)
-
-	a1, err := wallet.NewAddress(w1, address.SECP256K1)
+	w1 := newWallet(t)
+	a1, err := w1.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	r2 := repo.NewInMemoryRepo()
-	backend2, err := wallet.NewDSBackend(r2.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w2 := wallet.New(backend2)
-
-	a2, err := wallet.NewAddress(w2, address.SECP256K1)
+	w2 := newWallet(t)
+	a2, err := w2.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -893,26 +804,14 @@ func TestOptimalMessageSelection1(t *testing.T) {
 	mp, tma := makeTestMpool()
 
 	// the actors
-	r1 := repo.NewInMemoryRepo()
-	backend1, err := wallet.NewDSBackend(r1.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w1 := wallet.New(backend1)
-
-	a1, err := wallet.NewAddress(w1, address.SECP256K1)
+	w1 := newWallet(t)
+	a1, err := w1.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	r2 := repo.NewInMemoryRepo()
-	backend2, err := wallet.NewDSBackend(r2.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w2 := wallet.New(backend2)
-
-	a2, err := wallet.NewAddress(w2, address.SECP256K1)
+	w2 := newWallet(t)
+	a2, err := w2.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -966,26 +865,14 @@ func TestOptimalMessageSelection2(t *testing.T) {
 	mp, tma := makeTestMpool()
 
 	// the actors
-	r1 := repo.NewInMemoryRepo()
-	backend1, err := wallet.NewDSBackend(r1.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w1 := wallet.New(backend1)
-
-	a1, err := wallet.NewAddress(w1, address.SECP256K1)
+	w1 := newWallet(t)
+	a1, err := w1.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	r2 := repo.NewInMemoryRepo()
-	backend2, err := wallet.NewDSBackend(r2.WalletDatastore())
-	if err != nil {
-		t.Fatal(err)
-	}
-	w2 := wallet.New(backend2)
-
-	a2, err := wallet.NewAddress(w2, address.SECP256K1)
+	w2 := newWallet(t)
+	a2, err := w2.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1056,14 +943,9 @@ func TestOptimalMessageSelection3(t *testing.T) {
 	var wallets []*wallet.Wallet
 
 	for i := 0; i < nActors; i++ {
-		r := repo.NewInMemoryRepo()
-		backend, err := wallet.NewDSBackend(r.WalletDatastore())
-		if err != nil {
-			t.Fatal(err)
-		}
-		w := wallet.New(backend)
+		w := newWallet(t)
 
-		a, err := wallet.NewAddress(w, address.SECP256K1)
+		a, err := w.NewAddress(address.SECP256K1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1138,14 +1020,9 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 	var wallets []*wallet.Wallet
 
 	for i := 0; i < nActors; i++ {
-		r := repo.NewInMemoryRepo()
-		backend, err := wallet.NewDSBackend(r.WalletDatastore())
-		if err != nil {
-			t.Fatal(err)
-		}
-		w := wallet.New(backend)
+		w := newWallet(t)
 
-		a, err := wallet.NewAddress(w, address.SECP256K1)
+		a, err := w.NewAddress(address.SECP256K1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1165,7 +1042,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 		tma.setBalance(a, 1) // in FIL
 	}
 
-	nMessages := 10 * int(constants.BlockGasLimit/gasLimit)
+	nMessages := int(10 * constants.BlockGasLimit / gasLimit)
 	t.Log("nMessages", nMessages)
 	nonces := make([]uint64, nActors)
 	for i := 0; i < nMessages; i++ {
@@ -1219,7 +1096,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 			}
 
 			for _, m := range msgs {
-				c, _ := m.Cid()
+				c := m.Cid()
 				optMsgs[c] = m
 			}
 		}
@@ -1346,9 +1223,9 @@ func TestGasReward(t *testing.T) {
 		GasReward int64
 	}{
 		{Premium: 100, FeeCap: 200, BaseFee: 100, GasReward: 100},
-		{Premium: 100, FeeCap: 200, BaseFee: 210, GasReward: -10},
+		{Premium: 100, FeeCap: 200, BaseFee: 210, GasReward: -10 * 3},
 		{Premium: 200, FeeCap: 250, BaseFee: 210, GasReward: 40},
-		{Premium: 200, FeeCap: 250, BaseFee: 2000, GasReward: -1750},
+		{Premium: 200, FeeCap: 250, BaseFee: 2000, GasReward: -1750 * 3},
 	}
 
 	mp := new(MessagePool)
@@ -1429,14 +1306,9 @@ readLoop:
 
 		localActor, ok := actorMap[m.Message.From]
 		if !ok {
-			r := repo.NewInMemoryRepo()
-			backend, err := wallet.NewDSBackend(r.WalletDatastore())
-			if err != nil {
-				t.Fatal(err)
-			}
-			w := wallet.New(backend)
+			w := newWallet(t)
 
-			a, err := wallet.NewAddress(w, address.SECP256K1)
+			a, err := w.NewAddress(address.SECP256K1)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1454,8 +1326,8 @@ readLoop:
 		m.Message.From = localActor
 		m.Message.Nonce -= baseNonce
 
-		c, _ := m.Message.Cid()
-		sig, err := w.WalletSign(context.TODO(), localActor, c.Bytes(), wallet.MsgMeta{})
+		c := m.Message.Cid()
+		sig, err := w.WalletSign(localActor, c.Bytes(), wallet.MsgMeta{})
 		if err != nil {
 			t.Fatal(err)
 		}

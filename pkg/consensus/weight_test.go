@@ -2,6 +2,7 @@ package consensus_test
 
 import (
 	"context"
+	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 
@@ -12,16 +13,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	appstate "github.com/filecoin-project/venus/pkg/state"
-	"github.com/filecoin-project/venus/pkg/vm/state"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 )
 
 func TestWeight(t *testing.T) {
 	cst := cbor.NewMemCborStore()
 	ctx := context.Background()
-	fakeTree := state.NewFromString(t, "test-Weight-StateCid", cst)
+	fakeTree := tree.NewFromString(t, "test-Weight-StateCid", cst)
 	fakeRoot, err := fakeTree.Flush(ctx)
 	require.NoError(t, err)
 	addrGetter := types.NewForTestGetter()
@@ -30,16 +30,16 @@ func TestWeight(t *testing.T) {
 	// Total is 16, so bitlen is 5, log2b is 4
 	viewer := makeStateViewer(fakeRoot, abi.NewStoragePower(16))
 	ticket := consensus.MakeFakeTicketForTest()
-	toWeigh := block.RequireNewTipSet(t, &block.Block{
+	toWeigh := types.RequireNewTipSet(t, &types.BlockHeader{
 		Miner:        minerAddr,
 		ParentWeight: fbig.Zero(),
 		Ticket:       ticket,
-		ElectionProof: &block.ElectionProof{
+		ElectionProof: &types.ElectionProof{
 			WinCount: 1,
 		},
 		ParentStateRoot:       fakeRoot,
-		Messages:              types.EmptyMessagesCID,
-		ParentMessageReceipts: types.EmptyReceiptsCID,
+		Messages:              emptycid.EmptyMessagesCID,
+		ParentMessageReceipts: emptycid.EmptyReceiptsCID,
 	})
 
 	sel := consensus.NewChainSelector(cst, &viewer)
@@ -80,16 +80,16 @@ func TestWeight(t *testing.T) {
 
 	t.Run("non-zero parent weight", func(t *testing.T) {
 		parentWeight := fbig.NewInt(int64(49))
-		toWeighWithParent := block.RequireNewTipSet(t, &block.Block{
+		toWeighWithParent := types.RequireNewTipSet(t, &types.BlockHeader{
 			Miner:        minerAddr,
 			ParentWeight: parentWeight,
 			Ticket:       ticket,
-			ElectionProof: &block.ElectionProof{
+			ElectionProof: &types.ElectionProof{
 				WinCount: 1,
 			},
 			ParentStateRoot:       fakeRoot,
-			Messages:              types.EmptyMessagesCID,
-			ParentMessageReceipts: types.EmptyReceiptsCID,
+			Messages:              emptycid.EmptyMessagesCID,
+			ParentMessageReceipts: emptycid.EmptyReceiptsCID,
 		})
 
 		// 49 + (4*256) + (4*1*1*256/2*5) = 1175
@@ -99,42 +99,42 @@ func TestWeight(t *testing.T) {
 	})
 
 	t.Run("many blocks", func(t *testing.T) {
-		toWeighThreeBlock := block.RequireNewTipSet(t,
-			&block.Block{
+		toWeighThreeBlock := types.RequireNewTipSet(t,
+			&types.BlockHeader{
 				Miner:        minerAddr,
 				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
 				Timestamp:    0,
-				ElectionProof: &block.ElectionProof{
+				ElectionProof: &types.ElectionProof{
 					WinCount: 1,
 				},
 				ParentStateRoot:       fakeRoot,
-				Messages:              types.EmptyMessagesCID,
-				ParentMessageReceipts: types.EmptyReceiptsCID,
+				Messages:              emptycid.EmptyMessagesCID,
+				ParentMessageReceipts: emptycid.EmptyReceiptsCID,
 			},
-			&block.Block{
+			&types.BlockHeader{
 				Miner:        minerAddr,
 				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
 				Timestamp:    1,
-				ElectionProof: &block.ElectionProof{
+				ElectionProof: &types.ElectionProof{
 					WinCount: 1,
 				},
 				ParentStateRoot:       fakeRoot,
-				Messages:              types.EmptyMessagesCID,
-				ParentMessageReceipts: types.EmptyReceiptsCID,
+				Messages:              emptycid.EmptyMessagesCID,
+				ParentMessageReceipts: emptycid.EmptyReceiptsCID,
 			},
-			&block.Block{
+			&types.BlockHeader{
 				Miner:        minerAddr,
 				ParentWeight: fbig.Zero(),
 				Ticket:       ticket,
 				Timestamp:    2,
-				ElectionProof: &block.ElectionProof{
+				ElectionProof: &types.ElectionProof{
 					WinCount: 1,
 				},
 				ParentStateRoot:       fakeRoot,
-				Messages:              types.EmptyMessagesCID,
-				ParentMessageReceipts: types.EmptyReceiptsCID,
+				Messages:              emptycid.EmptyMessagesCID,
+				ParentMessageReceipts: emptycid.EmptyReceiptsCID,
 			},
 		)
 		// 0 + (4*256) + (4*3*1*256/2*5) = 1331

@@ -15,13 +15,15 @@ import (
 // MemRepo is an in-memory implementation of the repo interface.
 type MemRepo struct {
 	// lk guards the config
-	lk         sync.RWMutex
-	C          *config.Config
-	D          blockstoreutil.Blockstore
-	Ks         keystore.Keystore
-	W          Datastore
-	Chain      Datastore
-	Meta       Datastore
+	lk    sync.RWMutex
+	C     *config.Config
+	D     blockstoreutil.Blockstore
+	Ks    keystore.Keystore
+	W     Datastore
+	Chain Datastore
+	Meta  Datastore
+	Paych Datastore
+	//Market     Datastore
 	version    uint
 	apiAddress string
 	token      []byte
@@ -32,13 +34,15 @@ var _ Repo = (*MemRepo)(nil)
 // NewInMemoryRepo makes a new instance of MemRepo
 func NewInMemoryRepo() *MemRepo {
 	return &MemRepo{
-		C:       config.NewDefaultConfig(),
-		D:       blockstoreutil.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore())),
-		Ks:      keystore.MutexWrap(keystore.NewMemKeystore()),
-		W:       dss.MutexWrap(datastore.NewMapDatastore()),
-		Chain:   dss.MutexWrap(datastore.NewMapDatastore()),
-		Meta:    dss.MutexWrap(datastore.NewMapDatastore()),
-		version: Version,
+		C:     config.NewDefaultConfig(),
+		D:     blockstoreutil.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore())),
+		Ks:    keystore.MutexWrap(keystore.NewMemKeystore()),
+		W:     dss.MutexWrap(datastore.NewMapDatastore()),
+		Chain: dss.MutexWrap(datastore.NewMapDatastore()),
+		Meta:  dss.MutexWrap(datastore.NewMapDatastore()),
+		Paych: dss.MutexWrap(datastore.NewMapDatastore()),
+		//Market:  dss.MutexWrap(datastore.NewMapDatastore()),
+		version: LatestVersion,
 	}
 }
 
@@ -80,6 +84,16 @@ func (mr *MemRepo) ChainDatastore() Datastore {
 	return mr.Chain
 }
 
+// ChainDatastore returns the chain datastore.
+func (mr *MemRepo) PaychDatastore() Datastore {
+	return mr.Paych
+}
+
+/*// ChainDatastore returns the chain datastore.
+func (mr *MemRepo) MarketDatastore() Datastore {
+	return mr.Market
+}
+*/
 // ChainDatastore returns the chain datastore.
 func (mr *MemRepo) MetaDatastore() Datastore {
 	return mr.Meta

@@ -6,10 +6,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/venus/pkg/types"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/venus/pkg/block"
 )
 
 // Sign takes in signature type, private key and message. Returns a signature for that message.
@@ -68,17 +67,25 @@ func ToPublic(sigType crypto.SigType, pk []byte) ([]byte, error) {
 	return sv.ToPublic(pk)
 }
 
-func CheckBlockSignature(ctx context.Context, blk *block.Block, worker address.Address) error {
-	// todo change by force
+func CheckBlockSignature(ctx context.Context, blk *types.BlockHeader, worker address.Address) error {
 	_, span := trace.StartSpan(ctx, "checkBlockSignature")
 	defer span.End()
+
+	if blk.IsValidated() {
+		return nil
+	}
 
 	if blk.BlockSig == nil {
 		return xerrors.New("block signature not present")
 	}
 
 	sigb := blk.SignatureData()
-	return Verify(blk.BlockSig, worker, sigb)
+	err := Verify(blk.BlockSig, worker, sigb)
+	if err == nil {
+		blk.SetValidated()
+	}
+
+	return err
 }
 
 // SigShim is used for introducing signature functions

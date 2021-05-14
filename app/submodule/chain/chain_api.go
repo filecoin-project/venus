@@ -5,6 +5,15 @@ type ChainAPI struct { // nolint: golint
 	ActorAPI
 	BeaconAPI
 	ChainInfoAPI
-	DbAPI
 	MinerStateAPI
+}
+
+var _ IChain = &ChainAPI{}
+
+type IChain interface {
+	IAccount
+	IActor
+	IBeacon
+	IMinerState
+	IChainInfo
 }

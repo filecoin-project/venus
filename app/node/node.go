@@ -3,12 +3,13 @@ package node
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/app/submodule/multisig"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/filecoin-project/go-jsonrpc"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
 	logging "github.com/ipfs/go-log/v2"
@@ -16,24 +17,24 @@ import (
 	manet "github.com/multiformats/go-multiaddr-net" //nolint
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/venus/app/submodule/blockservice"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	configModule "github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/discovery"
+	"github.com/filecoin-project/venus/app/submodule/market"
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
 	network2 "github.com/filecoin-project/venus/app/submodule/network"
+	"github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
 	syncer2 "github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
 	"github.com/filecoin-project/venus/pkg/clock"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/version"
 )
 
 var log = logging.Logger("node") // nolint: deadcode
@@ -46,6 +47,7 @@ const APIPrefix = "/api"
 
 // Node represents a full Filecoin node.
 type Node struct {
+
 	// offlineMode, when true, disables libp2p.
 	offlineMode bool
 
@@ -77,20 +79,20 @@ type Node struct {
 	// Supporting services
 	//
 	wallet            *wallet.WalletSubmodule
+	multiSig          *multisig.MultiSigSubmodule
 	mpool             *mpool.MessagePoolSubmodule
 	storageNetworking *storagenetworking.StorageNetworkingSubmodule
 
-	//
-	// Protocols
-	//
-	VersionTable *version.ProtocolVersionTable
-
-	jwtAuth *jwtauth.JwtAuth
+	// paychannel and market
+	market  *market.MarketSubmodule
+	paychan *paych.PaychSubmodule
 
 	//
 	// Jsonrpc
 	//
 	jsonRPCService *jsonrpc.RPCServer
+
+	jwtCli jwtauth.IJwtAuthClient
 }
 
 func (node *Node) Chain() *chain2.ChainSubmodule {
@@ -107,6 +109,10 @@ func (node *Node) Mpool() *mpool.MessagePoolSubmodule {
 
 func (node *Node) Wallet() *wallet.WalletSubmodule {
 	return node.wallet
+}
+
+func (node *Node) MultiSig() *multisig.MultiSigSubmodule {
+	return node.multiSig
 }
 
 func (node *Node) Discovery() *discovery.DiscoverySubmodule {
@@ -154,25 +160,34 @@ func (node *Node) Start(ctx context.Context) error {
 	var syncCtx context.Context
 	syncCtx, node.syncer.CancelChainSync = context.WithCancel(context.Background())
 
-	if !node.offlineMode {
-		// Start node discovery
-		err := node.discovery.Start()
-		if err != nil {
-			return err
-		}
-
-		//start syncer module to receive new blocks and start sync to latest height
-		err = node.syncer.Start(syncCtx)
-		if err != nil {
-			return err
-		}
-
-		//Start mpool module to receive new message
-		err = node.mpool.Start(syncCtx)
-		if err != nil {
-			return err
-		}
+	// Start node discovery
+	err := node.discovery.Start(node.offlineMode)
+	if err != nil {
+		return err
 	}
+
+	//start syncer module to receive new blocks and start sync to latest height
+	err = node.syncer.Start(syncCtx)
+	if err != nil {
+		return err
+	}
+
+	//Start mpool module to receive new message
+	err = node.mpool.Start(syncCtx)
+	if err != nil {
+		return err
+	}
+
+	err = node.paychan.Start()
+	if err != nil {
+		return err
+	}
+
+	/*err = node.market.Start()
+	if err != nil {
+		return err
+	}*/
+
 	return nil
 }
 
@@ -192,6 +207,12 @@ func (node *Node) Stop(ctx context.Context) {
 
 	//Stop chain submodule
 	node.chain.Stop(ctx)
+
+	//Stop paychannel submodule
+	node.paychan.Stop()
+
+	//Stop market submodule
+	//node.market.Stop()
 
 	if err := node.repo.Close(); err != nil {
 		fmt.Printf("error closing repo: %s\n", err)
@@ -220,19 +241,19 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 
 	netListener := manet.NetListener(apiListener) //nolint
 	handler := http.NewServeMux()
-	handler.Handle("/debug/pprof/", http.DefaultServeMux)
-	err = node.runRustfulAPI(ctx, handler, rootCmdDaemon) //nolint
+	err = node.runRestfulAPI(ctx, handler, rootCmdDaemon) //nolint
 	if err != nil {
 		return err
 	}
-
 	err = node.runJsonrpcAPI(ctx, handler)
 	if err != nil {
 		return err
 	}
 
+	authMux := jwtauth.NewAuthMux(node.jwtCli, handler)
+	authMux.TrustHandle("/debug/pprof/", http.DefaultServeMux)
 	apiserv := &http.Server{
-		Handler: handler,
+		Handler: authMux,
 	}
 
 	go func() {
@@ -264,7 +285,7 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 // The `ready` channel is closed when the server is running and its API address has been
 // saved to the node's repo.
 // A message sent to or closure of the `terminate` channel signals the server to stop.
-func (node *Node) runRustfulAPI(ctx context.Context, handler *http.ServeMux, rootCmdDaemon *cmds.Command) error {
+func (node *Node) runRestfulAPI(ctx context.Context, handler *http.ServeMux, rootCmdDaemon *cmds.Command) error {
 	servenv := node.createServerEnv(ctx)
 
 	apiConfig := node.repo.Config().API
@@ -279,13 +300,7 @@ func (node *Node) runRustfulAPI(ctx context.Context, handler *http.ServeMux, roo
 }
 
 func (node *Node) runJsonrpcAPI(ctx context.Context, handler *http.ServeMux) error { //nolint
-	jwtAuth := node.jwtAuth.API()
-	ah := &auth.Handler{
-		Verify: jwtAuth.AuthVerify,
-		Next:   node.jsonRPCService.ServeHTTP,
-	}
-
-	handler.Handle("/rpc/v0", ah)
+	handler.Handle("/rpc/v0", node.jsonRPCService)
 	return nil
 }
 
@@ -304,6 +319,9 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		WalletAPI:            node.wallet.API(),
 		MingingAPI:           node.mining.API(),
 		MessagePoolAPI:       node.mpool.API(),
+		PaychAPI:             node.paychan.API(),
+		MarketAPI:            node.market.API(),
+		MultiSigAPI:          node.multiSig.API(),
 	}
 
 	return &env

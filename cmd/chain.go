@@ -4,7 +4,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
-	"os"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -16,7 +16,6 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/pkg/block"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -25,7 +24,6 @@ var chainCmd = &cmds.Command{
 		Tagline: "Inspect the filecoin blockchain",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"export":   chainExportCmd,
 		"head":     chainHeadCmd,
 		"ls":       chainLsCmd,
 		"set-head": chainSetHeadCmd,
@@ -50,15 +48,8 @@ var chainHeadCmd = &cmds.Command{
 			return err
 		}
 
-		h, err := head.Height()
-		if err != nil {
-			return err
-		}
-
-		pw, err := head.ParentWeight()
-		if err != nil {
-			return err
-		}
+		h := head.Height()
+		pw := head.ParentWeight()
 
 		strTt := time.Unix(int64(head.MinTimestamp()), 0).Format("2006-01-02 15:04:05")
 
@@ -94,52 +85,52 @@ var chainLsCmd = &cmds.Command{
 		}
 
 		var err error
-		height, _ := req.Options["height"].(int64)
+
 		startTs, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
 		if err != nil {
 			return err
 		}
-		if height >= 0 {
+
+		height, _ := req.Options["height"].(int64)
+		if height >= 0 && abi.ChainEpoch(height) < startTs.Height() {
 			startTs, err = env.(*node.Env).ChainAPI.ChainGetTipSetByHeight(req.Context, abi.ChainEpoch(height), startTs.Key())
 			if err != nil {
 				return err
 			}
 		}
 
+		if abi.ChainEpoch(count) > startTs.Height()+1 {
+			count = uint(startTs.Height() + 1)
+		}
 		tipSetKeys, err := env.(*node.Env).ChainAPI.ChainList(req.Context, startTs.Key(), int(count))
 		if err != nil {
 			return err
 		}
 
-		res := make([]ChainLsResult, 0)
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
+		tpInfoStr := ""
 		for _, key := range tipSetKeys {
 			tp, err := env.(*node.Env).ChainAPI.ChainGetTipSet(key)
 			if err != nil {
 				return err
 			}
 
-			h, err := tp.Height()
-			if err != nil {
-				return err
-			}
-
 			strTt := time.Unix(int64(tp.MinTimestamp()), 0).Format("2006-01-02 15:04:05")
 
-			blks := make([]BlockResult, len(tp.Blocks()))
-			for idx, blk := range tp.Blocks() {
-				blks[idx] = BlockResult{Cid: blk.Cid(), Miner: blk.Miner}
+			oneTpInfoStr := fmt.Sprintf("%v: (%s) [ ", tp.Height(), strTt)
+			for _, blk := range tp.Blocks() {
+				oneTpInfoStr += fmt.Sprintf("%s: %s,", blk.Cid().String(), blk.Miner)
 			}
+			oneTpInfoStr += " ]"
 
-			lsRes := ChainLsResult{Height: h, Timestamp: strTt, Blocks: blks}
-			res = append(res, lsRes)
+			tpInfoStr += oneTpInfoStr + "\n"
 		}
 
-		if err := re.Emit(res); err != nil {
-			return err
-		}
-		return nil
+		writer.WriteString(tpInfoStr)
+
+		return re.Emit(buf)
 	},
-	Type: []ChainLsResult{},
 }
 
 var chainSetHeadCmd = &cmds.Command{
@@ -154,36 +145,8 @@ var chainSetHeadCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		maybeNewHead := block.NewTipSetKey(headCids...)
+		maybeNewHead := types.NewTipSetKey(headCids...)
 		return env.(*node.Env).ChainAPI.ChainSetHead(req.Context, maybeNewHead)
-	},
-}
-
-var chainExportCmd = &cmds.Command{
-	Helptext: cmds.HelpText{
-		Tagline: "Export the chain store to a car file.",
-	},
-	Arguments: []cmds.Argument{
-		cmds.StringArg("file", true, false, "File to export chain data to."),
-		cmds.StringArg("cids", true, true, "CID's of the blocks of the tipset to export from."),
-	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		f, err := os.Create(req.Arguments[0])
-		if err != nil {
-			return err
-		}
-		defer func() { _ = f.Close() }()
-
-		expCids, err := cidsFromSlice(req.Arguments[1:])
-		if err != nil {
-			return err
-		}
-		expKey := block.NewTipSetKey(expCids...)
-
-		if err := env.(*node.Env).ChainAPI.ChainExport(req.Context, expKey, f); err != nil {
-			return err
-		}
-		return nil
 	},
 }
 
@@ -239,14 +202,14 @@ var chainGetBlockCmd = &cmds.Command{
 		}
 
 		cblock := struct {
-			block.Block
+			types.BlockHeader
 			BlsMessages    []*types.UnsignedMessage
 			SecpkMessages  []*types.SignedMessage
 			ParentReceipts []*types.MessageReceipt
 			ParentMessages []cid.Cid
 		}{}
 
-		cblock.Block = *blk
+		cblock.BlockHeader = *blk
 		cblock.BlsMessages = msgs.BlsMessages
 		cblock.SecpkMessages = msgs.SecpkMessages
 		cblock.ParentReceipts = recpts

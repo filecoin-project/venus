@@ -2,9 +2,13 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -15,7 +19,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/pkg/constants"
 )
 
 // SilentWriter writes to a stream, stopping after the first error and discarding output until
@@ -152,10 +155,6 @@ func cidsFromSlice(args []string) ([]cid.Cid, error) {
 }
 
 func EpochTime(curr, e abi.ChainEpoch, blockDelay uint64) string {
-	// 2k net is different from mainnet block delay seconds
-	if blockDelay == 0 {
-		blockDelay = constants.BlockDelaySecs
-	}
 	switch {
 	case curr > e:
 		return fmt.Sprintf("%d (%s ago)", e, durafmt.Parse(time.Second*time.Duration(int64(blockDelay)*int64(curr-e))).LimitFirstN(2))
@@ -174,4 +173,24 @@ func printOneString(re cmds.ResponseEmitter, str string) error {
 	writer.Println(str)
 
 	return re.Emit(buf)
+}
+
+func ReqContext(cctx context.Context) context.Context {
+	var (
+		ctx  context.Context
+		done context.CancelFunc
+	)
+	if cctx != nil {
+		ctx = cctx
+	} else {
+		ctx = context.Background()
+	}
+	ctx, done = context.WithCancel(ctx)
+	sigChan := make(chan os.Signal, 2)
+	go func() {
+		<-sigChan
+		done()
+	}()
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
+	return ctx
 }
