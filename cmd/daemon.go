@@ -83,6 +83,14 @@ var daemonCmd = &cmds.Command{
 			return err
 		}
 		if !exist {
+			defer func() {
+				if err != nil {
+					log.Infof("Failed to initialize venus, cleaning up %s after attempt...", repoDir)
+					if err := os.RemoveAll(repoDir); err != nil {
+						log.Errorf("Failed to clean up failed repo: %s", err)
+					}
+				}
+			}()
 			log.Infof("Initializing repo at '%s'", repoDir)
 
 			if err := re.Emit(repoDir); err != nil {
