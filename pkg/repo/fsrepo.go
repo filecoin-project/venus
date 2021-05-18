@@ -2,8 +2,6 @@ package repo
 
 import (
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"io"
 	"io/ioutil"
 	"os"
@@ -13,10 +11,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/venus/pkg/fskeystore"
+
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
+
 	"github.com/filecoin-project/go-multistore"
 	badgerds "github.com/ipfs/go-ds-badger2"
 	lockfile "github.com/ipfs/go-fs-lock"
-	keystore "github.com/ipfs/go-ipfs-keystore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
@@ -61,7 +63,7 @@ type FSRepo struct {
 	ds        *blockstoreutil.BadgerBlockstore
 	stagingDs Datastore
 	mds       *multistore.MultiStore
-	keystore  keystore.Keystore
+	keystore  fskeystore.Keystore
 	walletDs  Datastore
 	chainDs   Datastore
 	metaDs    Datastore
@@ -340,7 +342,7 @@ func (r *FSRepo) Version() uint {
 }
 
 // Keystore returns the keystore
-func (r *FSRepo) Keystore() keystore.Keystore {
+func (r *FSRepo) Keystore() fskeystore.Keystore {
 	return r.keystore
 }
 
@@ -453,7 +455,7 @@ func (r *FSRepo) openDatastore() error {
 func (r *FSRepo) openKeystore() error {
 	ksp := filepath.Join(r.path, "keystore")
 
-	ks, err := keystore.NewFSKeystore(ksp)
+	ks, err := fskeystore.NewFSKeystore(ksp)
 	if err != nil {
 		return err
 	}

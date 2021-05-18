@@ -4,11 +4,11 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/filecoin-project/venus/pkg/fskeystore"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 
 	"github.com/ipfs/go-datastore"
 	dss "github.com/ipfs/go-datastore/sync"
-	keystore "github.com/ipfs/go-ipfs-keystore"
 
 	"github.com/filecoin-project/venus/app/paths"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -20,7 +20,7 @@ type MemRepo struct {
 	lk    sync.RWMutex
 	C     *config.Config
 	D     blockstoreutil.Blockstore
-	Ks    keystore.Keystore
+	Ks    fskeystore.Keystore
 	W     Datastore
 	Chain Datastore
 	Meta  Datastore
@@ -42,7 +42,7 @@ func NewInMemoryRepo() *MemRepo {
 	return &MemRepo{
 		C:     defConfig,
 		D:     blockstoreutil.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore())),
-		Ks:    keystore.MutexWrap(keystore.NewMemKeystore()),
+		Ks:    fskeystore.MutexWrap(fskeystore.NewMemKeystore()),
 		W:     dss.MutexWrap(datastore.NewMapDatastore()),
 		Chain: dss.MutexWrap(datastore.NewMapDatastore()),
 		Meta:  dss.MutexWrap(datastore.NewMapDatastore()),
@@ -76,7 +76,7 @@ func (mr *MemRepo) Datastore() blockstoreutil.Blockstore {
 }
 
 // Keystore returns the keystore.
-func (mr *MemRepo) Keystore() keystore.Keystore {
+func (mr *MemRepo) Keystore() fskeystore.Keystore {
 	return mr.Ks
 }
 

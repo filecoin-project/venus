@@ -3,7 +3,8 @@ package node
 import (
 	"context"
 
-	keystore "github.com/ipfs/go-ipfs-keystore"
+	"github.com/filecoin-project/venus/pkg/fskeystore"
+
 	cbor "github.com/ipfs/go-ipld-cbor"
 	acrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/pkg/errors"
@@ -76,7 +77,7 @@ func Init(ctx context.Context, r repo.Repo, gen genesis.InitFunc, opts ...InitOp
 	return nil
 }
 
-func initPeerKey(store keystore.Keystore, key acrypto.PrivKey) error {
+func initPeerKey(store fskeystore.Keystore, key acrypto.PrivKey) error {
 	var err error
 	if key == nil {
 		key, _, err = acrypto.GenerateKeyPair(acrypto.RSA, defaultPeerKeyBits)
@@ -84,7 +85,11 @@ func initPeerKey(store keystore.Keystore, key acrypto.PrivKey) error {
 			return errors.Wrap(err, "failed to create peer key")
 		}
 	}
-	if err := store.Put("self", key); err != nil {
+	data, err := key.Bytes()
+	if err != nil {
+		return err
+	}
+	if err := store.Put("self", data); err != nil {
 		return errors.Wrap(err, "failed to store private key")
 	}
 	return nil

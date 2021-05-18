@@ -34,10 +34,13 @@ func OptionsFromRepo(r repo.Repo) ([]BuilderOpt, error) {
 }
 
 func privKeyFromKeystore(r repo.Repo) (ci.PrivKey, error) {
-	sk, err := r.Keystore().Get("self")
+	data, err := r.Keystore().Get("self")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get key from keystore")
 	}
-
+	sk, err := ci.UnmarshalPrivateKey(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "unmarshal private key failed")
+	}
 	return sk, nil
 }

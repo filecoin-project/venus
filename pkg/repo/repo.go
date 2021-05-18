@@ -1,11 +1,10 @@
 package repo
 
 import (
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/fskeystore"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/ipfs/go-datastore"
-	keystore "github.com/ipfs/go-ipfs-keystore"
-
-	"github.com/filecoin-project/venus/pkg/config"
 )
 
 // Datastore is the datastore interface provided by the repo
@@ -25,7 +24,7 @@ type Repo interface {
 	// Datastore is a general storage solution for things like blocks.
 	Datastore() blockstoreutil.Blockstore
 
-	Keystore() keystore.Keystore
+	Keystore() fskeystore.Keystore
 
 	// WalletDatastore is a specific storage solution, only used to store sensitive wallet information.
 	WalletDatastore() Datastore
