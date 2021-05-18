@@ -10,6 +10,8 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -172,10 +174,7 @@ func TestInvalidKeyFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	defer func() {
-		_ = os.RemoveAll(tdir)
-	}()
+	defer assert.NoError(t, os.RemoveAll(tdir))
 
 	ks, err := NewFSKeystore(tdir)
 	if err != nil {
@@ -209,11 +208,11 @@ func TestInvalidKeyFiles(t *testing.T) {
 	}
 
 	exist, err := ks.Has("valid")
-	if !exist {
-		t.Fatal("should know it has a key named valid")
-	}
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !exist {
+		t.Fatal("should know it has a key named valid")
 	}
 
 	if _, err = ks.Has(".invalid"); err == nil {
