@@ -5,12 +5,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	cborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/venus/pkg/types"
-	logging "github.com/ipfs/go-log"
 	"io/ioutil"
 	"math/rand"
 	"time"
+
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/venus/pkg/types"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -128,6 +129,11 @@ func (c *client) doRequest(
 		validRes, err := c.processResponse(req, res, tipsets)
 		if err != nil {
 			exchangeClientLogger.Warnf("processing peer %s response failed: %s", peer.String(), err)
+			continue
+		}
+
+		if len(tipsets) != len(validRes.messages) {
+			exchangeClientLogger.Warnf("tipsets length (%d) not match response messages length (%d)", len(tipsets), len(validRes.messages))
 			continue
 		}
 
