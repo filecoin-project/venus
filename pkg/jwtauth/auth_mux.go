@@ -2,8 +2,8 @@ package jwtauth
 
 import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/venus-auth/core"
 	"github.com/filecoin-project/venus-auth/util"
+	ipfsHttp "github.com/ipfs/go-ipfs-cmds/http"
 	logging "github.com/ipfs/go-log"
 	"net/http"
 	"strings"
@@ -35,32 +35,32 @@ func (authMux *AuthMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	token := r.Header.Get("Authorization")
 	// if other nodes on the same PC, the permission check will passes directly
-	if strings.Split(r.RemoteAddr, ":")[0] == "127.0.0.1" {
-		ctx = core.WithPerm(ctx, core.PermAdmin)
-	} else {
-		if token == "" {
-			token = r.FormValue("token")
-			if token != "" {
-				token = "Bearer " + token
-			}
+	//if strings.Split(r.RemoteAddr, ":")[0] == "127.0.0.1" {
+	//	ctx = core.WithPerm(ctx, core.PermAdmin)
+	//} else {
+	if token == "" {
+		token = r.FormValue("token")
+		if token != "" {
+			token = "Bearer " + token
 		}
-
-		if !strings.HasPrefix(token, "Bearer ") {
-			log.Warn("missing Bearer prefix in venusauth header")
-			w.WriteHeader(401)
-			return
-		}
-
-		token = strings.TrimPrefix(token, "Bearer ")
-		res, err := authMux.jwtCli.Verify(r.Context(), util.MacAddr(), "venus", r.RemoteAddr, r.Host, token)
-		if err != nil {
-			log.Warnf("JWT Verification failed (originating from %s): %s", r.RemoteAddr, err)
-			w.WriteHeader(401)
-			return
-		}
-		ctx = auth.WithPerm(ctx, res)
-
 	}
+
+	if !strings.HasPrefix(token, "Bearer ") {
+		log.Warn("missing Bearer prefix in venusauth header")
+		w.WriteHeader(401)
+		return
+	}
+
+	token = strings.TrimPrefix(token, "Bearer ")
+	res, err := authMux.jwtCli.Verify(r.Context(), util.MacAddr(), "venus", r.RemoteAddr, r.Host, token)
+	if err != nil {
+		log.Warnf("JWT Verification failed (originating from %s): %s", r.RemoteAddr, err)
+		w.WriteHeader(401)
+		return
+	}
+	ctx = auth.WithPerm(ctx, res)
+	ctx = ipfsHttp.WithPerm(ctx, res)
+	//}
 	*r = *(r.WithContext(ctx))
 	authMux.mux.ServeHTTP(w, r)
 }

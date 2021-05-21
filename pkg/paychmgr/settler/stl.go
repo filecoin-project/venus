@@ -4,7 +4,8 @@ import (
 	"context"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/app/submodule/chain"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -17,15 +18,15 @@ type Settler interface {
 	PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error)
 	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)
 	PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence abi.ChainEpoch) (*chain.MsgLookup, error)
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence abi.ChainEpoch) (*apitypes.MsgLookup, error)
 }
 
 type settler struct {
 	mgr   *paychmgr.Manager
-	ciAPI *chain.ChainInfoAPI
+	ciAPI apiface.IChainInfo
 }
 
-func NewSetter(mgr *paychmgr.Manager, chainInfoAPI *chain.ChainInfoAPI) Settler {
+func NewSetter(mgr *paychmgr.Manager, chainInfoAPI apiface.IChainInfo) Settler {
 	return &settler{mgr, chainInfoAPI}
 }
 
@@ -61,6 +62,6 @@ func (o *settler) PaychVoucherList(ctx context.Context, pch address.Address) ([]
 func (o *settler) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
 	return o.mgr.SubmitVoucher(ctx, ch, sv, secret, proof)
 }
-func (o *settler) StateWaitMsg(ctx context.Context, cid cid.Cid, confidence abi.ChainEpoch) (*chain.MsgLookup, error) {
+func (o *settler) StateWaitMsg(ctx context.Context, cid cid.Cid, confidence abi.ChainEpoch) (*apitypes.MsgLookup, error) {
 	return o.ciAPI.StateWaitMsg(ctx, cid, confidence)
 }

@@ -27,7 +27,7 @@ var getConcurrent = &cmds.Command{
 		Tagline: "get concurrent of sync thread",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		concurrent := env.(*node.Env).SyncerAPI.Concurrent()
+		concurrent := env.(*node.Env).SyncerAPI.Concurrent(req.Context)
 		return printOneString(re, strconv.Itoa(int(concurrent)))
 	},
 }
@@ -47,7 +47,7 @@ var setConcurrent = &cmds.Command{
 		if err != nil {
 			return cmds.ClientError("invalid number")
 		}
-		env.(*node.Env).SyncerAPI.SetConcurrent(int64(concurrent))
+		env.(*node.Env).SyncerAPI.SetConcurrent(req.Context, int64(concurrent))
 		return nil
 	},
 }
@@ -57,7 +57,7 @@ var storeStatusCmd = &cmds.Command{
 		Tagline: "Show status of chain sync operation.",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		tracker := env.(*node.Env).SyncerAPI.SyncerTracker()
+		tracker := env.(*node.Env).SyncerAPI.SyncerTracker(req.Context)
 		targets := tracker.Buckets()
 		w := bytes.NewBufferString("")
 		writer := NewSilentWriter(w)
@@ -120,7 +120,7 @@ var historyCmd = &cmds.Command{
 		Tagline: "Show history of chain sync.",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		tracker := env.(*node.Env).SyncerAPI.SyncerTracker()
+		tracker := env.(*node.Env).SyncerAPI.SyncerTracker(req.Context)
 		w := bytes.NewBufferString("")
 		writer := NewSilentWriter(w)
 

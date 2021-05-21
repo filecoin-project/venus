@@ -95,10 +95,10 @@ var addrsLsCmd = &cmds.Command{
 		api := env.(*node.Env)
 		ctx := req.Context
 
-		addrs := api.WalletAPI.WalletAddresses()
+		addrs := api.WalletAPI.WalletAddresses(req.Context)
 
 		// Assume an error means no default key is set
-		def, _ := api.WalletAPI.WalletDefaultAddress()
+		def, _ := api.WalletAPI.WalletDefaultAddress(req.Context)
 
 		buf := new(bytes.Buffer)
 		tw := tablewriter.New(
@@ -175,7 +175,7 @@ var addrsLsCmd = &cmds.Command{
 
 var defaultAddressCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		addr, err := env.(*node.Env).WalletAPI.WalletDefaultAddress()
+		addr, err := env.(*node.Env).WalletAPI.WalletDefaultAddress(req.Context)
 		if err != nil {
 			return err
 		}
@@ -185,6 +185,7 @@ var defaultAddressCmd = &cmds.Command{
 }
 
 var setDefaultAddressCmd = &cmds.Command{
+	Extra: AdminExtra,
 	Arguments: []cmds.Argument{
 		cmds.StringArg("address", true, false, "address to set default for"),
 	},
@@ -231,6 +232,7 @@ type WalletSerializeResult struct {
 }
 
 var walletImportCmd = &cmds.Command{
+	Extra: AdminExtra,
 	Arguments: []cmds.Argument{
 		cmds.FileArg("walletFile", true, false, "File containing wallet data to import").EnableStdin(),
 	},
@@ -266,51 +268,54 @@ var walletImportCmd = &cmds.Command{
 	},
 }
 
-var walletExportCmd = &cmds.Command{
-	Arguments: []cmds.Argument{
-		cmds.StringArg("addr", true, true, "address of key to export"),
-		cmds.StringArg("password", false, false, "Password to be locked"),
-	},
-	PreRun: func(req *cmds.Request, env cmds.Environment) error {
-		// for testing, skip manual password entry
-		if len(req.Arguments) == 2 && len(req.Arguments[1]) != 0 {
+var (
+	walletExportCmd = &cmds.Command{
+		Extra: AdminExtra,
+		Arguments: []cmds.Argument{
+			cmds.StringArg("addr", true, true, "address of key to export"),
+			cmds.StringArg("password", false, false, "Password to be locked"),
+		},
+		PreRun: func(req *cmds.Request, env cmds.Environment) error {
+			// for testing, skip manual password entry
+			if len(req.Arguments) == 2 && len(req.Arguments[1]) != 0 {
+				return nil
+			}
+			pw, err := gopass.GetPasswdPrompt("Password:", true, os.Stdin, os.Stdout)
+			if err != nil {
+				return err
+			}
+			fmt.Println(req.Arguments)
+			req.Arguments = []string{req.Arguments[0], string(pw)}
+
 			return nil
-		}
-		pw, err := gopass.GetPasswdPrompt("Password:", true, os.Stdin, os.Stdout)
-		if err != nil {
-			return err
-		}
-		fmt.Println(req.Arguments)
-		req.Arguments = []string{req.Arguments[0], string(pw)}
+		},
+		Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+			if env.(*node.Env).WalletAPI.WalletState(req.Context) == wallet.Lock {
+				return errWalletLocked
+			}
+			if len(req.Arguments) != 2 {
+				return re.Emit("Two parameter is required.")
+			}
+			addr, err := address.NewFromString(req.Arguments[0])
+			if err != nil {
+				return err
+			}
 
-		return nil
-	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		if env.(*node.Env).WalletAPI.WalletState(req.Context) == wallet.Lock {
-			return errWalletLocked
-		}
-		if len(req.Arguments) != 2 {
-			return re.Emit("Two parameter is required.")
-		}
-		addr, err := address.NewFromString(req.Arguments[0])
-		if err != nil {
-			return err
-		}
+			pw := req.Arguments[1]
+			ki, err := env.(*node.Env).WalletAPI.WalletExport(addr, pw)
+			if err != nil {
+				return err
+			}
 
-		pw := req.Arguments[1]
-		ki, err := env.(*node.Env).WalletAPI.WalletExport(addr, pw)
-		if err != nil {
-			return err
-		}
+			kiBytes, err := json.Marshal(ki)
+			if err != nil {
+				return err
+			}
 
-		kiBytes, err := json.Marshal(ki)
-		if err != nil {
-			return err
-		}
-
-		return printOneString(re, hex.EncodeToString(kiBytes))
-	},
-}
+			return printOneString(re, hex.EncodeToString(kiBytes))
+		},
+	}
+)
 
 var setWalletPassword = &cmds.Command{
 	Arguments: []cmds.Argument{

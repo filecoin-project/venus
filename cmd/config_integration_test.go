@@ -49,7 +49,7 @@ func TestConfigDaemon(t *testing.T) {
 		assert.Equal(t, period, retrievedPeriod)
 
 		// validate config write
-		nbci, err := n.ConfigModule().API().ConfigGet("bootstrap.period")
+		nbci, err := n.ConfigModule().API().ConfigGet(ctx,"bootstrap.period")
 		require.NoError(t, err)
 		nbc, ok := nbci.(string)
 		require.True(t, ok)
@@ -73,7 +73,7 @@ func TestConfigDaemon(t *testing.T) {
 		assert.Equal(t, "fake2", bootstrapConfig.Addresses[1])
 
 		// validate config write
-		nbci, err := n.ConfigModule().API().ConfigGet("bootstrap")
+		nbci, err := n.ConfigModule().API().ConfigGet(ctx,"bootstrap")
 		require.NoError(t, err)
 		nbc, ok := nbci.(*config.BootstrapConfig)
 		require.True(t, ok)

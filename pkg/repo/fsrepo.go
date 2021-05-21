@@ -29,6 +29,7 @@ const LatestVersion uint = 3
 
 const (
 	// apiFile is the filename containing the filecoin node's api address.
+	apiToken              = "token"
 	apiFile               = "api"
 	configFilename        = "config.json"
 	tempConfigFilename    = ".config.json.temp"
@@ -675,6 +676,15 @@ func APIAddrFromRepoPath(repoPath string) (string, error) {
 	return apiAddrFromFile(repoPath)
 }
 
+// APIAddrFromRepoPath returns the token from the filecoin repo
+func APITokenFromRepoPath(repoPath string) (string, error) {
+	repoPath, err := homedir.Expand(repoPath)
+	if err != nil {
+		return "", errors.Wrap(err, fmt.Sprintf("can't resolve local repo path %s", repoPath))
+	}
+	return apiTokenFromFile(repoPath)
+}
+
 // APIAddrFromFile reads the address from the API file at the given path.
 // A relevant comment from a similar function at go-ipfs/repo/fsrepo/fsrepo.go:
 // This is a concurrent operation, meaning that any process may read this file.
@@ -690,6 +700,17 @@ func apiAddrFromFile(repoPath string) (string, error) {
 	return string(jsonrpcAPI), nil
 }
 
+// apiTokenFromFile reads the token from the token file at the given path.
+func apiTokenFromFile(repoPath string) (string, error) {
+	tokenFile := filepath.Join(repoPath, apiToken)
+	token, err := ioutil.ReadFile(tokenFile)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to read API file")
+	}
+
+	return strings.TrimSpace(string(token)), nil
+}
+
 // APIAddr reads the FSRepo's api file and returns the api address
 func (r *FSRepo) APIAddr() (string, error) {
 	return apiAddrFromFile(filepath.Clean(r.path))
@@ -697,6 +718,14 @@ func (r *FSRepo) APIAddr() (string, error) {
 
 func (r *FSRepo) SetAPIToken(token []byte) error {
 	return ioutil.WriteFile(filepath.Join(r.path, "token"), token, 0600)
+}
+
+func (r *FSRepo) APIToken() (string, error) {
+	tkBuff, err := ioutil.ReadFile(filepath.Join(r.path, "token"))
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(tkBuff)), nil
 }
 
 func badgerOptions() *badgerds.Options {

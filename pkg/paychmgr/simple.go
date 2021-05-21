@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -179,7 +180,7 @@ func (ca *channelAccessor) enqueue(task *fundsReq) {
 }
 
 // Run the operations in the queue
-func (ca *channelAccessor) processQueue(channelID string) (*ChannelAvailableFunds, error) {
+func (ca *channelAccessor) processQueue(channelID string) (*apitypes.ChannelAvailableFunds, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
@@ -275,7 +276,7 @@ func (ca *channelAccessor) msgWaitComplete(mcid cid.Cid, err error) {
 	}
 }
 
-func (ca *channelAccessor) currentAvailableFunds(channelID string, queuedAmt big.Int) (*ChannelAvailableFunds, error) {
+func (ca *channelAccessor) currentAvailableFunds(channelID string, queuedAmt big.Int) (*apitypes.ChannelAvailableFunds, error) {
 	if len(channelID) == 0 {
 		return nil, nil
 	}
@@ -316,7 +317,7 @@ func (ca *channelAccessor) currentAvailableFunds(channelID string, queuedAmt big
 		}
 	}
 
-	return &ChannelAvailableFunds{
+	return &apitypes.ChannelAvailableFunds{
 		Channel:             channelInfo.Channel,
 		From:                channelInfo.from(),
 		To:                  channelInfo.to(),
@@ -686,6 +687,6 @@ func (ca *channelAccessor) msgPromise(ctx context.Context, mcid cid.Cid) chan on
 	return promise
 }
 
-func (ca *channelAccessor) availableFunds(channelID string) (*ChannelAvailableFunds, error) {
+func (ca *channelAccessor) availableFunds(channelID string) (*apitypes.ChannelAvailableFunds, error) {
 	return ca.processQueue(channelID)
 }

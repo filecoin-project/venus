@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"errors"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"sync"
 
@@ -126,6 +127,13 @@ func (mr *MemRepo) SetAPIToken(token []byte) error {
 		mr.token = token
 	}
 	return nil
+}
+
+func (mr *MemRepo) APIToken() (string, error) {
+	if len(mr.token) == 0 {
+		return "", errors.New("token not exists")
+	}
+	return string(mr.token), nil
 }
 
 // Path returns the default path.

@@ -1,8 +1,10 @@
-package util
+package node
 
 import (
 	"github.com/filecoin-project/go-jsonrpc"
-	xerrors "github.com/pkg/errors"
+	"github.com/filecoin-project/venus/app/client"
+	"github.com/filecoin-project/venus/app/client/funcrule"
+	"golang.org/x/xerrors"
 	"reflect"
 )
 
@@ -14,7 +16,7 @@ type RPCBuilder struct {
 	apiStruct []interface{}
 }
 
-func NewBuiler() *RPCBuilder {
+func NewBuilder() *RPCBuilder {
 	return &RPCBuilder{}
 }
 
@@ -55,17 +57,17 @@ func (builder *RPCBuilder) AddService(service RPCService) error {
 			builder.apiStruct = append(builder.apiStruct, apiImpl.Interface())
 		}
 	}
-
 	return nil
 }
 
 func (builder *RPCBuilder) Build() *jsonrpc.RPCServer {
-	server := jsonrpc.NewServer()
+	server := jsonrpc.NewServer(jsonrpc.WithProxyBind(jsonrpc.PBField))
+	var fullNode client.FullNodeStruct
+	for _, apiStruct := range builder.apiStruct {
+		funcrule.PermissionProxy(apiStruct, &fullNode)
+	}
 	for _, nameSpace := range builder.namespace {
-		for _, apiStruct := range builder.apiStruct {
-			//fmt.Println("JSON RPC register:", nameSpace)
-			server.Register(nameSpace, apiStruct)
-		}
+		server.Register(nameSpace, &fullNode)
 	}
 	return server
 }

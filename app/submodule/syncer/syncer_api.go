@@ -2,6 +2,8 @@ package syncer
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	"time"
 
@@ -13,47 +15,50 @@ import (
 
 var syncAPILog = logging.Logger("syncAPI")
 
-type SyncerAPI struct { //nolint
+var _ apiface.ISyncer = &syncerAPI{}
+
+type syncerAPI struct { //nolint
 	syncer *SyncerSubmodule
 }
 
 // SyncerStatus returns the current status of the active or last active chain sync operation.
-func (syncerAPI *SyncerAPI) SyncerTracker() *syncTypes.TargetTracker {
-	return syncerAPI.syncer.ChainSyncManager.BlockProposer().SyncTracker()
+func (sa *syncerAPI) SyncerTracker(ctx context.Context) *syncTypes.TargetTracker {
+	return sa.syncer.ChainSyncManager.BlockProposer().SyncTracker()
 }
 
 // SyncerStatus returns the current status of the active or last active chain sync operation.
-func (syncerAPI *SyncerAPI) SetConcurrent(concurrent int64) {
-	syncerAPI.syncer.ChainSyncManager.BlockProposer().SetConcurrent(concurrent)
+func (sa *syncerAPI) SetConcurrent(ctx context.Context, concurrent int64)error {
+	sa.syncer.ChainSyncManager.BlockProposer().SetConcurrent(concurrent)
+	return nil
 }
 
 // SyncerStatus returns the current status of the active or last active chain sync operation.
-func (syncerAPI *SyncerAPI) Concurrent() int64 {
-	return syncerAPI.syncer.ChainSyncManager.BlockProposer().Concurrent()
+func (sa *syncerAPI) Concurrent(ctx context.Context) int64 {
+	return sa.syncer.ChainSyncManager.BlockProposer().Concurrent()
 }
 
-func (syncerAPI *SyncerAPI) ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey) (big.Int, error) {
-	ts, err := syncerAPI.syncer.ChainModule.ChainReader.GetTipSet(tsk)
+func (sa *syncerAPI) ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey) (big.Int, error) {
+	ts, err := sa.syncer.ChainModule.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return big.Int{}, err
 	}
-	return syncerAPI.syncer.ChainSelector.Weight(ctx, ts)
+	return sa.syncer.ChainSelector.Weight(ctx, ts)
 }
 
 // ChainSyncHandleNewTipSet submits a chain head to the syncer for processing.
-func (syncerAPI *SyncerAPI) ChainSyncHandleNewTipSet(ci *types.ChainInfo) error {
-	return syncerAPI.syncer.SyncProvider.HandleNewTipSet(ci)
+func (sa *syncerAPI) ChainSyncHandleNewTipSet(ctx context.Context,ci *types.ChainInfo) error {
+	return sa.syncer.SyncProvider.HandleNewTipSet(ci)
 }
 
-func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
+func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
 	//todo many dot. how to get directly
-	chainModule := syncerAPI.syncer.ChainModule
+	chainModule := sa.syncer.ChainModule
 	parent, err := chainModule.ChainReader.GetBlock(ctx, blk.Header.Parents.Cids()[0])
 	if err != nil {
 		return xerrors.Errorf("loading parent block: %v", err)
 	}
 
-	if err := syncerAPI.syncer.SlashFilter.MinedBlock(blk.Header, parent.Height); err != nil {
+	if err := sa.syncer.SlashFilter.MinedBlock(blk.Header, parent.Height); err != nil {
 		log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
 		return xerrors.Errorf("<!!> SLASH FILTER ERROR: %v", err)
 	}
@@ -74,7 +79,7 @@ func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.Bloc
 		SECPMessages: smsgs,
 	}
 
-	if err := syncerAPI.syncer.BlockValidator.ValidateMsgMeta(fb); err != nil {
+	if err := sa.syncer.BlockValidator.ValidateMsgMeta(fb); err != nil {
 		return xerrors.Errorf("provided messages did not match block: %v", err)
 	}
 
@@ -86,9 +91,9 @@ func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.Bloc
 	if _, err := chainModule.ChainReader.PutObject(ctx, blk.Header); err != nil {
 		return err
 	}
-	localPeer := syncerAPI.syncer.NetworkModule.Network.GetPeerID()
+	localPeer := sa.syncer.NetworkModule.Network.GetPeerID()
 	ci := types.NewChainInfo(localPeer, localPeer, ts)
-	if err := syncerAPI.syncer.SyncProvider.HandleNewTipSet(ci); err != nil {
+	if err := sa.syncer.SyncProvider.HandleNewTipSet(ci); err != nil {
 		return xerrors.Errorf("sync to submitted block failed: %v", err)
 	}
 
@@ -97,7 +102,7 @@ func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.Bloc
 		return xerrors.Errorf("serializing block for pubsub publishing failed: %v", err)
 	}
 	go func() {
-		err = syncerAPI.syncer.BlockTopic.Publish(ctx, b) //nolint:staticcheck
+		err = sa.syncer.BlockTopic.Publish(ctx, b) //nolint:staticcheck
 		if err != nil {
 			syncAPILog.Warnf("publish failed: %s, %v", blk.Cid(), err)
 		}
@@ -105,20 +110,20 @@ func (syncerAPI *SyncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.Bloc
 	return nil
 }
 
-func (syncerAPI *SyncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMessage, tsk types.TipSetKey) (*InvocResult, error) {
+func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMessage, tsk types.TipSetKey) (*apitypes.InvocResult, error) {
 	start := time.Now()
-	ts, err := syncerAPI.syncer.ChainModule.ChainReader.GetTipSet(tsk)
+	ts, err := sa.syncer.ChainModule.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
-	ret, err := syncerAPI.syncer.Consensus.Call(ctx, msg, ts)
+	ret, err := sa.syncer.Consensus.Call(ctx, msg, ts)
 	if err != nil {
 		return nil, err
 	}
 	duration := time.Now().Sub(start)
 
 	mcid := msg.Cid()
-	return &InvocResult{
+	return &apitypes.InvocResult{
 		MsgCid:         mcid,
 		Msg:            msg,
 		MsgRct:         &ret.Receipt,
@@ -128,16 +133,16 @@ func (syncerAPI *SyncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMe
 }
 
 //SyncState just compatible code lotus
-func (syncerAPI *SyncerAPI) SyncState(ctx context.Context) (*SyncState, error) {
-	tracker := syncerAPI.syncer.ChainSyncManager.BlockProposer().SyncTracker()
+func (sa *syncerAPI) SyncState(ctx context.Context) (*apitypes.SyncState, error) {
+	tracker := sa.syncer.ChainSyncManager.BlockProposer().SyncTracker()
 	tracker.History()
 
-	syncState := &SyncState{
+	syncState := &apitypes.SyncState{
 		VMApplied: 0,
 	}
 
 	count := 0
-	toActiveSync := func(t *syncTypes.Target) ActiveSync {
+	toActiveSync := func(t *syncTypes.Target) apitypes.ActiveSync {
 		currentHeight := t.Base.Height()
 		if t.Current != nil {
 			currentHeight = t.Current.Height()
@@ -149,7 +154,7 @@ func (syncerAPI *SyncerAPI) SyncState(ctx context.Context) (*SyncState, error) {
 		}
 		count++
 
-		activeSync := ActiveSync{
+		activeSync := apitypes.ActiveSync{
 			WorkerID: uint64(count),
 			Base:     t.Base,
 			Target:   t.Head,
@@ -161,13 +166,13 @@ func (syncerAPI *SyncerAPI) SyncState(ctx context.Context) (*SyncState, error) {
 
 		switch t.State {
 		case syncTypes.StageIdle:
-			activeSync.Stage = StageIdle
+			activeSync.Stage = apitypes.StageIdle
 		case syncTypes.StageSyncErrored:
-			activeSync.Stage = StageSyncErrored
+			activeSync.Stage = apitypes.StageSyncErrored
 		case syncTypes.StageSyncComplete:
-			activeSync.Stage = StageSyncComplete
+			activeSync.Stage = apitypes.StageSyncComplete
 		case syncTypes.StateInSyncing:
-			activeSync.Stage = StageMessages
+			activeSync.Stage = apitypes.StageMessages
 		}
 
 		return activeSync

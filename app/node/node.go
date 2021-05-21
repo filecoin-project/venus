@@ -294,6 +294,7 @@ func (node *Node) runRestfulAPI(ctx context.Context, handler *http.ServeMux, roo
 	cfg.SetAllowedOrigins(apiConfig.AccessControlAllowOrigin...)
 	cfg.SetAllowedMethods(apiConfig.AccessControlAllowMethods...)
 	cfg.SetAllowCredentials(apiConfig.AccessControlAllowCredentials)
+	cfg.AppendAllowHeaders("Authorization")
 
 	handler.Handle(APIPrefix+"/", cmdhttp.NewHandler(servenv, rootCmdDaemon, cfg))
 	return nil

@@ -485,7 +485,7 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 			Allowance: abi.NewStoragePower(int64(amt)),
 		}))
 		if err != nil {
-			return cid.Undef, xerrors.Errorf("failed to add verified client: %w", err)
+			return cid.Undef, xerrors.Errorf("failed to add verified api: %w", err)
 		}
 	}
 

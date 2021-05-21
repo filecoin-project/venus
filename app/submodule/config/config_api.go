@@ -1,6 +1,13 @@
 package config
 
-type ConfigAPI struct { //nolint
+import (
+	"context"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
+)
+
+var _ apiface.IConfig = &configAPI{}
+
+type configAPI struct { //nolint
 	config *ConfigModule
 }
 
@@ -10,12 +17,12 @@ type ConfigAPI struct { //nolint
 // For example:
 // ConfigSet("datastore.path", "dev/null") and ConfigSet("datastore", "{\"path\":\"dev/null\"}")
 // are the same operation.
-func (configAPI *ConfigAPI) ConfigSet(dottedPath string, paramJSON string) error {
-	return configAPI.config.Set(dottedPath, paramJSON)
+func (ca *configAPI) ConfigSet(ctx context.Context, dottedPath string, paramJSON string) error {
+	return ca.config.Set(dottedPath, paramJSON)
 }
 
 // ConfigGet gets config parameters from the given path.
 // The path may be either a single field name, or a dotted path to a field.
-func (configAPI *ConfigAPI) ConfigGet(dottedPath string) (interface{}, error) {
-	return configAPI.config.Get(dottedPath)
+func (ca *configAPI) ConfigGet(ctx context.Context, dottedPath string) (interface{}, error) {
+	return ca.config.Get(dottedPath)
 }

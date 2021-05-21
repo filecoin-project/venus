@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -15,7 +16,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -75,8 +75,8 @@ var chainLsCmd = &cmds.Command{
 		ShortDescription: `Provides a list of blocks in order from head to genesis. By default, only CIDs are returned for each block.`,
 	},
 	Options: []cmds.Option{
-		cmds.Int64Option("height", "Start height of the query").WithDefault(-1),
-		cmds.UintOption("count", "Number of queries").WithDefault(10),
+		cmds.Int64Option("height", "Start height of the query").WithDefault(int64(-1)),
+		cmds.UintOption("count", "Number of queries").WithDefault(uint(10)),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		count, _ := req.Options["count"].(uint)
@@ -111,7 +111,7 @@ var chainLsCmd = &cmds.Command{
 		writer := NewSilentWriter(buf)
 		tpInfoStr := ""
 		for _, key := range tipSetKeys {
-			tp, err := env.(*node.Env).ChainAPI.ChainGetTipSet(key)
+			tp, err := env.(*node.Env).ChainAPI.ChainGetTipSet(req.Context,key)
 			if err != nil {
 				return err
 			}
@@ -226,7 +226,7 @@ var chainGetBlockCmd = &cmds.Command{
 	},
 }
 
-func apiMsgCids(in []chain.Message) []cid.Cid {
+func apiMsgCids(in []apitypes.Message) []cid.Cid {
 	out := make([]cid.Cid, len(in))
 	for k, v := range in {
 		out[k] = v.Cid

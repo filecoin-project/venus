@@ -1,5 +1,9 @@
 package discovery
 
-type DiscoveryAPI struct { //nolint
+import "github.com/filecoin-project/venus/app/submodule/apiface"
+
+var _ apiface.IDiscovery = &discoveryAPI{}
+
+type discoveryAPI struct { //nolint
 	discovery *DiscoverySubmodule
 }

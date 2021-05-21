@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/app/submodule/chain"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/ipfs/go-cid"
@@ -123,7 +123,7 @@ the filecoin block header.`,
 
 		return re.Emit(bmsg)
 	},
-	Type: &chain.BlockMessages{},
+	Type: &apitypes.BlockMessages{},
 }
 
 var showReceiptsCmd = &cmds.Command{

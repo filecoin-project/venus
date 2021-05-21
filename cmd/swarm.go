@@ -241,7 +241,7 @@ var statsBandwidthCmd = &cmds.Command{
 		Tagline: "View bandwidth usage metrics",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		bandwidthStats := env.(*node.Env).NetworkAPI.NetworkGetBandwidthStats()
+		bandwidthStats := env.(*node.Env).NetworkAPI.NetworkGetBandwidthStats(req.Context)
 		return re.Emit(bandwidthStats)
 	},
 	Type: metrics.Stats{},
@@ -265,8 +265,8 @@ var idCmd = &cmds.Command{
 		cmds.StringOption("format", "f", "Specify an output format"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		addrs := env.(*node.Env).NetworkAPI.NetworkGetPeerAddresses()
-		hostID := env.(*node.Env).NetworkAPI.NetworkGetPeerID()
+		addrs := env.(*node.Env).NetworkAPI.NetworkGetPeerAddresses(req.Context)
+		hostID := env.(*node.Env).NetworkAPI.NetworkGetPeerID(req.Context)
 
 		details := IDDetails{
 			Addresses: make([]ma.Multiaddr, len(addrs)),

@@ -49,7 +49,7 @@ var actorSetAddrsCmd = &cmds.Command{
 		cmds.StringArg("address", true, false, "Address of miner to show"),
 	},
 	Options: []cmds.Option{
-		cmds.Int64Option("gas-limit", "set gas limit").WithDefault(0),
+		cmds.Int64Option("gas-limit", "set gas limit").WithDefault(int64(0)),
 		cmds.StringsOption("addrs", "set addresses"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {

@@ -2,6 +2,7 @@ package paych
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 )
 
@@ -22,6 +23,6 @@ func (ps *PaychSubmodule) Stop() {
 	ps.pmgr.Stop()
 }
 
-func (ps *PaychSubmodule) API() IPaychan {
+func (ps *PaychSubmodule) API() apiface.IPaychan {
 	return newPaychAPI(ps.pmgr)
 }

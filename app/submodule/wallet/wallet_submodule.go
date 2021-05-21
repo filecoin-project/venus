@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 
 	"github.com/filecoin-project/venus-wallet/core"
 	"github.com/filecoin-project/venus/app/submodule/chain"
@@ -72,7 +73,7 @@ func NewWalletSubmodule(ctx context.Context,
 	}, nil
 }
 
-func (wallet *WalletSubmodule) API() *WalletAPI {
+func (wallet *WalletSubmodule) API() apiface.IWallet {
 	return &WalletAPI{
 		walletModule: wallet,
 		adapter:      wallet.adapter,

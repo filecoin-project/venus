@@ -2,8 +2,9 @@ package paych
 
 import (
 	"context"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
@@ -16,75 +17,35 @@ import (
 	"github.com/filecoin-project/go-address"
 )
 
-type IPaychan interface {
-	PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*ChannelInfo, error)
-	PaychAvailableFunds(ctx context.Context, ch address.Address) (*paychmgr.ChannelAvailableFunds, error)
-	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*paychmgr.ChannelAvailableFunds, error)
-	PaychGetWaitReady(ctx context.Context, sentinel cid.Cid) (address.Address, error)
-	PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error)
-	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error)
-	PaychList(ctx context.Context) ([]address.Address, error)
-	PaychStatus(ctx context.Context, pch address.Address) (*types.PaychStatus, error)
-	PaychSettle(ctx context.Context, addr address.Address) (cid.Cid, error)
-	PaychCollect(ctx context.Context, addr address.Address) (cid.Cid, error)
-	PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) error
-	PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error)
-	PaychVoucherAdd(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta big.Int) (big.Int, error)
-	PaychVoucherCreate(ctx context.Context, pch address.Address, amt big.Int, lane uint64) (*paychmgr.VoucherCreateResult, error)
-	PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error)
-	PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error)
-}
-
 type paychAPI struct {
 	paychMgr *paychmgr.Manager
 }
 
-func newPaychAPI(p *paychmgr.Manager) IPaychan {
+func newPaychAPI(p *paychmgr.Manager) apiface.IPaychan {
 	return &paychAPI{p}
 }
 
-type PaymentInfo struct {
-	Channel      address.Address
-	WaitSentinel cid.Cid
-	Vouchers     []*paych.SignedVoucher
-}
-
-type VoucherSpec struct {
-	Amount      big.Int
-	TimeLockMin abi.ChainEpoch
-	TimeLockMax abi.ChainEpoch
-	MinSettle   abi.ChainEpoch
-
-	Extra *paych.ModVerifyParams
-}
-type ChannelInfo struct {
-	Channel      address.Address
-	WaitSentinel cid.Cid
-}
-
-type ChannelAvailableFunds = paychmgr.ChannelAvailableFunds
-
-type VoucherCreateResult = paychmgr.VoucherCreateResult
+type ChannelAvailableFunds = apitypes.ChannelAvailableFunds
 
 type PaychStatus = types.PaychStatus //nolint
 
-func (a *paychAPI) PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*ChannelInfo, error) {
+func (a *paychAPI) PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*apitypes.ChannelInfo, error) {
 	ch, mcid, err := a.paychMgr.GetPaych(ctx, from, to, amt)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ChannelInfo{
+	return &apitypes.ChannelInfo{
 		Channel:      ch,
 		WaitSentinel: mcid,
 	}, nil
 }
 
-func (a *paychAPI) PaychAvailableFunds(ctx context.Context, ch address.Address) (*paychmgr.ChannelAvailableFunds, error) {
+func (a *paychAPI) PaychAvailableFunds(ctx context.Context, ch address.Address) (*apitypes.ChannelAvailableFunds, error) {
 	return a.paychMgr.AvailableFunds(ch)
 }
 
-func (a *paychAPI) PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*paychmgr.ChannelAvailableFunds, error) {
+func (a *paychAPI) PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*apitypes.ChannelAvailableFunds, error) {
 	return a.paychMgr.AvailableFundsByFromTo(from, to)
 }
 
@@ -96,7 +57,7 @@ func (a *paychAPI) PaychAllocateLane(ctx context.Context, ch address.Address) (u
 	return a.paychMgr.AllocateLane(ch)
 }
 
-func (a *paychAPI) PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error) {
+func (a *paychAPI) PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []apitypes.VoucherSpec) (*apitypes.PaymentInfo, error) {
 	amount := vouchers[len(vouchers)-1].Amount
 
 	// TODO: Fix free fund tracking in PaychGet
@@ -133,7 +94,7 @@ func (a *paychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 		svs[i] = sv.Voucher
 	}
 
-	return &PaymentInfo{
+	return &apitypes.PaymentInfo{
 		Channel:      ch.Channel,
 		WaitSentinel: ch.WaitSentinel,
 		Vouchers:     svs,
@@ -182,7 +143,7 @@ func (a *paychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *
 // the two.
 // If there are insufficient funds in the channel to create the voucher,
 // returns a nil voucher and the shortfall.
-func (a *paychAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, amt big.Int, lane uint64) (*paychmgr.VoucherCreateResult, error) {
+func (a *paychAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, amt big.Int, lane uint64) (*apitypes.VoucherCreateResult, error) {
 	return a.paychMgr.CreateVoucher(ctx, pch, paych.SignedVoucher{Amount: amt, Lane: lane})
 }
 
