@@ -30,7 +30,7 @@ func TestMessageSend(t *testing.T) {
 	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
-	from, err := n.Wallet().API().WalletDefaultAddress() // this should = fixtures.TestAddresses[0]
+	from, err := n.Wallet().API().WalletDefaultAddress(ctx) // this should = fixtures.TestAddresses[0]
 	require.NoError(t, err)
 
 	t.Log("[failure] invalid target")
