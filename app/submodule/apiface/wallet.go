@@ -10,31 +10,31 @@ import (
 )
 
 type IWallet interface {
-	// Rule[perm:admin,ignore:true]
+	// Rule[perm:admin]
 	WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error)
-	// Rule[perm:admin,ignore:true]
+	// Rule[perm:admin]
 	WalletExport(addr address.Address, password string) (*crypto.KeyInfo, error)
-	// Rule[perm:admin,ignore:true]
+	// Rule[perm:admin]
 	WalletImport(key *crypto.KeyInfo) (address.Address, error)
-	// Rule[perm:admin,ignore:true]
+	// Rule[perm:admin]
 	WalletHas(ctx context.Context, addr address.Address) (bool, error)
-	// Rule[perm:admin,ignore:true]
+	// Rule[perm:admin]
 	WalletNewAddress(protocol address.Protocol) (address.Address, error)
-	// Rule[perm:admin,ignore:true]
+	// Rule[perm:admin]
 	WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error) //not exists in remote
-	// Rule[perm:admin,ignore:true]
+	// Rule[perm:admin]
 	WalletDefaultAddress(ctx context.Context) (address.Address, error) //not exists in remote
-	// Rule[perm:admin,ignore:true]
+	// Rule[perm:admin]
 	WalletAddresses(ctx context.Context) []address.Address
-	// Rule[perm:admin,ignore:true]
+	// Rule[perm:admin]
 	WalletSetDefault(ctx context.Context, addr address.Address) error //not exists in remote
-	// Rule[perm:admin,ignore:true]
+	// Rule[perm:admin]
 	WalletSignMessage(ctx context.Context, k address.Address, msg *types.UnsignedMessage) (*types.SignedMessage, error)
-	// Rule[perm:admin,ignore:true]
+	// Rule[perm:admin]
 	Locked(ctx context.Context, password string) error
-	// Rule[perm:admin,ignore:true]
+	// Rule[perm:admin]
 	UnLocked(ctx context.Context, password string) error
-	// Rule[perm:admin,ignore:true]
+	// Rule[perm:admin]
 	SetPassword(Context context.Context, password string) error
 	// Rule[perm:admin]
 	HasPassword(Context context.Context) bool
