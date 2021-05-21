@@ -321,7 +321,7 @@ func mustAdd(t *testing.T, mp *MessagePool, msg *types.SignedMessage) {
 func newWalletAndMpool(t *testing.T, tma *testMpoolAPI) (*wallet.Wallet, *MessagePool) {
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -518,7 +518,7 @@ func TestLoadLocal(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -554,7 +554,7 @@ func TestLoadLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mp, err = New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
+	mp, err = New(tma, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -585,7 +585,7 @@ func TestClearAll(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -633,7 +633,7 @@ func TestClearNonLocal(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -688,7 +688,7 @@ func TestUpdates(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, "mptest", nil, nil, nil)
+	mp, err := New(tma, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

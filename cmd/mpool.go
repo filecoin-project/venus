@@ -16,6 +16,7 @@ import (
 	stdbig "math/big"
 
 	"github.com/filecoin-project/venus/app/node"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -326,7 +327,7 @@ var mpoolReplaceCmd = &cmds.Command{
 			msg.GasFeeCap = big.Max(retm.GasFeeCap, msg.GasPremium)
 
 			mff := func() (abi.TokenAmount, error) {
-				return abi.TokenAmount{Int: types.DefaultDefaultMaxFee.Int}, nil
+				return abi.TokenAmount{Int: config.DefaultDefaultMaxFee.Int}, nil
 			}
 
 			messagepool.CapGasFee(mff, &msg, mss)

@@ -15,12 +15,15 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/types"
 )
 
 const (
 	scryptN = 1 << 15
 	scryptP = 1
 )
+
+var DefaultDefaultMaxFee = types.MustParseFIL("0.007")
 
 // Config is an in memory representation of the filecoin configuration file
 type Config struct {
@@ -208,16 +211,21 @@ func newDefaultTraceConfig() *TraceConfig {
 
 // MessagePoolConfig holds all configuration options related to nodes message pool (mpool).
 type MessagePoolConfig struct {
-	// MaxPoolSize is the maximum number of pending messages will will allow in the message pool at any time
-	MaxPoolSize uint `json:"maxPoolSize"`
 	// MaxNonceGap is the maximum nonce of a message past the last received on chain
 	MaxNonceGap uint64 `json:"maxNonceGap"`
+	// MaxFee
+	MaxFee types.FIL `json:"maxFee"`
+}
+
+var DefaultMessagePoolParam = &MessagePoolConfig{
+	MaxNonceGap: 100,
+	MaxFee:      DefaultDefaultMaxFee,
 }
 
 func newDefaultMessagePoolConfig() *MessagePoolConfig {
 	return &MessagePoolConfig{
-		MaxPoolSize: 1000000,
 		MaxNonceGap: 100,
+		MaxFee:      DefaultDefaultMaxFee,
 	}
 }
 
