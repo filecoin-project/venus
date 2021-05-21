@@ -252,4 +252,5 @@ type ISyncerStruct struct {
 }
 
 type IWalletStruct struct {
+	HasPassword func(p0 context.Context) bool `perm:"admin"`
 }
