@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
-
 var _ apiface.IBeacon = &beaconAPI{}
 
 type beaconAPI struct {

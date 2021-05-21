@@ -6,7 +6,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
-
 )
 
 type ChannelInfo struct {

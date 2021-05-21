@@ -17,7 +17,6 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
 
-
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/crypto"
@@ -26,7 +25,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
 )
-
 
 var _ apiface.IMining = &MiningAPI{}
 

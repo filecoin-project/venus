@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 )
+
 type Partition struct {
 	AllSectors        bitfield.BitField
 	FaultySectors     bitfield.BitField
@@ -65,6 +66,7 @@ type MarketBalance struct {
 	Escrow big.Int
 	Locked big.Int
 }
+
 var MarketBalanceNil = MarketBalance{}
 
 type Message struct {

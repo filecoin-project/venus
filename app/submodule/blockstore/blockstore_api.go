@@ -13,9 +13,6 @@ import (
 	"sync"
 )
 
-
-
-
 var _ apiface.IBlockStore = &blockstoreAPI{}
 
 type blockstoreAPI struct { //nolint

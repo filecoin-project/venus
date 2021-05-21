@@ -47,7 +47,6 @@ type ChannelAvailableFunds struct {
 	VoucherReedeemedAmt big.Int
 }
 
-
 // managerAPI defines all methods needed by the manager
 type managerAPI interface {
 	statemanger.IStateManager
@@ -73,19 +72,19 @@ type Manager struct {
 	channels map[string]*channelAccessor
 }
 type ManagerParams struct {
-	MPoolAPI apiface.IMessagePool
-	ChainAPI apiface.IChain
-	Protocol consensus.Protocol
+	MPoolAPI  apiface.IMessagePool
+	ChainAPI  apiface.IChain
+	Protocol  consensus.Protocol
 	WalletAPI apiface.IWallet
-	DS       repo.Datastore
-	SM       statemanger.IStateManager
+	DS        repo.Datastore
+	SM        statemanger.IStateManager
 }
 
 func NewManager(ctx context.Context, params *ManagerParams) *Manager {
 	ctx, shutdown := context.WithCancel(ctx)
 	impl := &managerAPIImpl{
 		IStateManager: params.SM,
-		paychAPI:      newPaychAPI(params.MPoolAPI, params.ChainAPI,params.WalletAPI),
+		paychAPI:      newPaychAPI(params.MPoolAPI, params.ChainAPI, params.WalletAPI),
 	}
 	return &Manager{
 		ctx:      ctx,

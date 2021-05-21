@@ -8,8 +8,8 @@ import (
 	"io"
 )
 
-
 var _ apiface.IBlockService = &blockServiceAPI{}
+
 type blockServiceAPI struct { //nolint
 	blockService *BlockServiceSubmodule
 }

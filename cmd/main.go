@@ -322,6 +322,7 @@ func getAPIInfo(req *cmds.Request) (*APIInfo, error) {
 	}, nil
 }
 
+// nolint
 func getAPIAddress(req *cmds.Request) (string, error) {
 	var rawAddr string
 	var err error

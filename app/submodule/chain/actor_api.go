@@ -9,7 +9,6 @@ import (
 	xerrors "github.com/pkg/errors"
 )
 
-
 var _ apiface.IActor = &actorAPI{}
 
 type actorAPI struct {

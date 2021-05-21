@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/venus/app/client/funcrule"
 	"github.com/ipfs/go-path"
 	"go/ast"
@@ -48,7 +47,7 @@ func parseRule(comment string) (*funcrule.Rule, map[string][]string) {
 			switch pair[0] {
 			case rkPerm:
 				tags[rkPerm] = pair
-				rule.Perm = auth.Permission(pair[1])
+				rule.Perm = pair[1]
 			case rkIgnore:
 				ig, err := strconv.ParseBool(pair[1])
 				if err != nil {
@@ -58,7 +57,7 @@ func parseRule(comment string) (*funcrule.Rule, map[string][]string) {
 			}
 		}
 	} else {
-		rule.Perm = auth.Permission("read")
+		rule.Perm = "read"
 		tags[rkPerm] = defaultPerm
 	}
 	return rule, tags
@@ -165,6 +164,8 @@ func typeName(e ast.Expr, pkg string) (string, error) {
 		return "", xerrors.Errorf("unknown type")
 	}
 }
+
+// nolint
 func isGoFile(fi os.FileInfo) bool {
 	name := fi.Name()
 	return !fi.IsDir() &&

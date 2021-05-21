@@ -47,7 +47,7 @@ var setConcurrent = &cmds.Command{
 		if err != nil {
 			return cmds.ClientError("invalid number")
 		}
-		env.(*node.Env).SyncerAPI.SetConcurrent(req.Context, int64(concurrent))
+		env.(*node.Env).SyncerAPI.SetConcurrent(req.Context, int64(concurrent)) //nolint
 		return nil
 	},
 }

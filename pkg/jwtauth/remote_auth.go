@@ -28,7 +28,7 @@ func (r *RemoteAuth) Verify(ctx context.Context, spanID, serviceName, preHost, h
 	jwtPerms := core.AdaptOldStrategy(res.Perm)
 	perms := make([]auth.Permission, len(jwtPerms))
 	for index, perm := range jwtPerms {
-		perms[index] = auth.Permission(perm)
+		perms[index] = perm
 	}
 	return perms, nil
 }

@@ -27,7 +27,7 @@ func (sa *syncerAPI) SyncerTracker(ctx context.Context) *syncTypes.TargetTracker
 }
 
 // SyncerStatus returns the current status of the active or last active chain sync operation.
-func (sa *syncerAPI) SetConcurrent(ctx context.Context, concurrent int64)error {
+func (sa *syncerAPI) SetConcurrent(ctx context.Context, concurrent int64) error {
 	sa.syncer.ChainSyncManager.BlockProposer().SetConcurrent(concurrent)
 	return nil
 }
@@ -46,7 +46,7 @@ func (sa *syncerAPI) ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey)
 }
 
 // ChainSyncHandleNewTipSet submits a chain head to the syncer for processing.
-func (sa *syncerAPI) ChainSyncHandleNewTipSet(ctx context.Context,ci *types.ChainInfo) error {
+func (sa *syncerAPI) ChainSyncHandleNewTipSet(ctx context.Context, ci *types.ChainInfo) error {
 	return sa.syncer.SyncProvider.HandleNewTipSet(ci)
 }
 

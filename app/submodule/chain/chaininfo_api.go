@@ -66,7 +66,7 @@ func (cia *chainInfoAPI) ProtocolParameters(ctx context.Context) (*apitypes.Prot
 			return nil, xerrors.Wrap(err, "could not retrieve network name")
 		}
 		maxUserBytes := abi.PaddedPieceSize(size).Unpadded()
-		supportedSectors = append(supportedSectors, apitypes.SectorInfo{size, maxUserBytes})
+		supportedSectors = append(supportedSectors, apitypes.SectorInfo{Size: size, MaxPieceSize: maxUserBytes})
 	}
 
 	return &apitypes.ProtocolParams{
@@ -90,7 +90,7 @@ func (cia *chainInfoAPI) ChainSetHead(ctx context.Context, key types.TipSetKey) 
 }
 
 // ChainTipSet returns the tipset at the given key
-func (cia *chainInfoAPI) ChainGetTipSet(ctx context.Context,key types.TipSetKey) (*types.TipSet, error) {
+func (cia *chainInfoAPI) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
 	return cia.chain.ChainReader.GetTipSet(key)
 }
 

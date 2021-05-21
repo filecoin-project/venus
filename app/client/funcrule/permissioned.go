@@ -34,11 +34,11 @@ func PermissionProxy(in interface{}, out interface{}) {
 		methodName := ra.Type().Method(i).Name
 		field, exists := rint.Type().FieldByName(methodName)
 		if !exists {
-			continue
 			log.Fatalf("method: %s not found in fullNode", methodName)
+			continue
 		}
 
-		requiredPerm := auth.Permission(field.Tag.Get("perm"))
+		requiredPerm := field.Tag.Get("perm")
 		if requiredPerm == "" {
 			panic("missing 'perm' tag on " + field.Name) // ok
 		}
@@ -50,7 +50,7 @@ func PermissionProxy(in interface{}, out interface{}) {
 			ctx := args[0].Interface().(context.Context)
 			errNum := 0
 			if !auth.HasPerm(ctx, defaultPerms, curule.Perm) {
-				errNum += 1
+				errNum++
 				goto ABORT
 			}
 			return fn.Call(args)
@@ -65,9 +65,8 @@ func PermissionProxy(in interface{}, out interface{}) {
 					reflect.Zero(fn.Type().Out(0)),
 					rerr,
 				}
-			} else {
-				return []reflect.Value{rerr}
 			}
+			return []reflect.Value{rerr}
 		}))
 	}
 }

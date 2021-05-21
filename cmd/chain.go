@@ -111,7 +111,7 @@ var chainLsCmd = &cmds.Command{
 		writer := NewSilentWriter(buf)
 		tpInfoStr := ""
 		for _, key := range tipSetKeys {
-			tp, err := env.(*node.Env).ChainAPI.ChainGetTipSet(req.Context,key)
+			tp, err := env.(*node.Env).ChainAPI.ChainGetTipSet(req.Context, key)
 			if err != nil {
 				return err
 			}
