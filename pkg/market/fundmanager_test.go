@@ -3,6 +3,7 @@ package market
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -10,7 +11,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-datastore"
@@ -774,11 +774,11 @@ func (mapi *mockFundManagerAPI) completeMsg(msgCid cid.Cid) {
 	}
 }
 
-func (mapi *mockFundManagerAPI) StateMarketBalance(ctx context.Context, address address.Address, tsk types.TipSetKey) (chain.MarketBalance, error) {
+func (mapi *mockFundManagerAPI) StateMarketBalance(ctx context.Context, address address.Address, tsk types.TipSetKey) (apitypes.MarketBalance, error) {
 	mapi.lk.Lock()
 	defer mapi.lk.Unlock()
 
-	return chain.MarketBalance{
+	return apitypes.MarketBalance{
 		Locked: abi.NewTokenAmount(0),
 		Escrow: mapi.getEscrow(address),
 	}, nil
@@ -807,8 +807,8 @@ func (mapi *mockFundManagerAPI) publish(addr address.Address, amt abi.TokenAmoun
 	mapi.escrow[addr] = escrow
 }
 
-func (mapi *mockFundManagerAPI) StateWaitMsg(ctx context.Context, c cid.Cid, confidence abi.ChainEpoch) (*chain.MsgLookup, error) {
-	res := &chain.MsgLookup{
+func (mapi *mockFundManagerAPI) StateWaitMsg(ctx context.Context, c cid.Cid, confidence abi.ChainEpoch) (*apitypes.MsgLookup, error) {
+	res := &apitypes.MsgLookup{
 		Message: c,
 		Receipt: types.MessageReceipt{
 			ExitCode:    0,

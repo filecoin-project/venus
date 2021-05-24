@@ -3,8 +3,8 @@ package paychmgr
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/app/submodule/mpool"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/statemanger"
@@ -47,16 +47,6 @@ type ChannelAvailableFunds struct {
 	VoucherReedeemedAmt big.Int
 }
 
-// VoucherCreateResult is the response to calling PaychVoucherCreate
-type VoucherCreateResult struct {
-	// Voucher that was created, or nil if there was an error or if there
-	// were insufficient funds in the channel
-	Voucher *paych.SignedVoucher
-	// Shortfall is the additional amount that would be needed in the channel
-	// in order to be able to create the voucher
-	Shortfall big.Int
-}
-
 // managerAPI defines all methods needed by the manager
 type managerAPI interface {
 	statemanger.IStateManager
@@ -82,18 +72,19 @@ type Manager struct {
 	channels map[string]*channelAccessor
 }
 type ManagerParams struct {
-	MPoolAPI mpool.IMessagePool
-	ChainAPI chain.IChain
-	Protocol consensus.Protocol
-	DS       repo.Datastore
-	SM       statemanger.IStateManager
+	MPoolAPI  apiface.IMessagePool
+	ChainAPI  apiface.IChain
+	Protocol  consensus.Protocol
+	WalletAPI apiface.IWallet
+	DS        repo.Datastore
+	SM        statemanger.IStateManager
 }
 
 func NewManager(ctx context.Context, params *ManagerParams) *Manager {
 	ctx, shutdown := context.WithCancel(ctx)
 	impl := &managerAPIImpl{
 		IStateManager: params.SM,
-		paychAPI:      newPaychAPI(params.MPoolAPI, params.ChainAPI),
+		paychAPI:      newPaychAPI(params.MPoolAPI, params.ChainAPI, params.WalletAPI),
 	}
 	return &Manager{
 		ctx:      ctx,
@@ -135,7 +126,7 @@ func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt b
 	return chanAccessor.getPaych(ctx, amt)
 }
 
-func (pm *Manager) AvailableFunds(ch address.Address) (*ChannelAvailableFunds, error) {
+func (pm *Manager) AvailableFunds(ch address.Address) (*apitypes.ChannelAvailableFunds, error) {
 	ca, err := pm.accessorByAddress(ch)
 	if err != nil {
 		return nil, err
@@ -149,7 +140,7 @@ func (pm *Manager) AvailableFunds(ch address.Address) (*ChannelAvailableFunds, e
 	return ca.availableFunds(ci.ChannelID)
 }
 
-func (pm *Manager) AvailableFundsByFromTo(from address.Address, to address.Address) (*ChannelAvailableFunds, error) {
+func (pm *Manager) AvailableFundsByFromTo(from address.Address, to address.Address) (*apitypes.ChannelAvailableFunds, error) {
 	ca, err := pm.accessorByFromTo(from, to)
 	if err != nil {
 		return nil, err
@@ -161,7 +152,7 @@ func (pm *Manager) AvailableFundsByFromTo(from address.Address, to address.Addre
 		// return an empty ChannelAvailableFunds, so that clients can check
 		// for the existence of a channel between from / to without getting
 		// an error.
-		return &ChannelAvailableFunds{
+		return &apitypes.ChannelAvailableFunds{
 			Channel:             nil,
 			From:                from,
 			To:                  to,
@@ -220,7 +211,7 @@ func (pm *Manager) GetChannelInfo(addr address.Address) (*ChannelInfo, error) {
 	return ca.getChannelInfo(addr)
 }
 
-func (pm *Manager) CreateVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*VoucherCreateResult, error) {
+func (pm *Manager) CreateVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*apitypes.VoucherCreateResult, error) {
 	ca, err := pm.accessorByAddress(ch)
 	if err != nil {
 		return nil, err

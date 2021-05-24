@@ -97,9 +97,9 @@ func TestDhtFindPeer(t *testing.T) {
 
 	test.ConnectNodes(t, n1, n2)
 
-	n2Id := n2.Network().API().NetworkGetPeerID()
+	n2Id := n2.Network().API().NetworkGetPeerID(ctx)
 	findpeerOutput := cmdClient.RunSuccess(ctx, "swarm", "findpeer", n2Id.String()).ReadStdoutTrimNewlines()
-	n2Addr := n2.Network().API().NetworkGetPeerAddresses()[0]
+	n2Addr := n2.Network().API().NetworkGetPeerAddresses(ctx)[0]
 
 	assert.Contains(t, findpeerOutput, n2Addr.String())
 }

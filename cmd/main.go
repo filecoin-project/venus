@@ -13,7 +13,7 @@ import (
 	"github.com/ipfs/go-ipfs-cmds/cli"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
 	ma "github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net" //nolint
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/app/node"
@@ -26,6 +26,7 @@ const (
 	// OptionAPI is the name of the option for specifying the api port.
 	OptionAPI = "cmdapiaddr"
 
+	OptionToken = "token"
 	// OptionRepoDir is the name of the option for specifying the directory of the repo.
 	OptionRepoDir = "repodir"
 
@@ -153,6 +154,7 @@ TOOL COMMANDS
 `,
 	},
 	Options: []cmds.Option{
+		cmds.StringsOption(OptionToken, "set the auth token to use"),
 		cmds.StringOption(OptionAPI, "set the api port to use"),
 		cmds.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.venus/repo"),
 		cmds.StringOption(cmds.EncLong, cmds.EncShort, "The encoding type the output should be encoded with (pretty-json or json)").WithDefault("pretty-json"),
@@ -212,6 +214,7 @@ func init() {
 
 // Run processes the arguments and stdin
 func Run(ctx context.Context, args []string, stdin, stdout, stderr *os.File) (int, error) {
+
 	err := cli.Run(ctx, RootCmd, args, stdin, stdout, stderr, buildEnv, makeExecutor)
 	if err == nil {
 		return 0, nil
@@ -227,8 +230,9 @@ func buildEnv(ctx context.Context, _ *cmds.Request) (cmds.Environment, error) {
 }
 
 type executor struct {
-	api  string
-	exec cmds.Executor
+	api   string
+	token string
+	exec  cmds.Executor
 }
 
 func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -236,32 +240,101 @@ func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.
 		return e.exec.Execute(req, re, env)
 	}
 
-	client := cmdhttp.NewClient(e.api, cmdhttp.ClientWithAPIPrefix(node.APIPrefix))
+	client := cmdhttp.NewClient(e.api, e.token, cmdhttp.ClientWithAPIPrefix(node.APIPrefix))
 
 	return client.Execute(req, re, env)
 }
 
 func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
 	isDaemonRequired := requiresDaemon(req)
-	var api string
+	var (
+		apiInfo *APIInfo
+		err     error
+	)
+
 	if isDaemonRequired {
-		var err error
-		api, err = getAPIAddress(req)
+		apiInfo, err = getAPIInfo(req)
 		if err != nil {
 			return nil, err
 		}
 	}
-
-	if api == "" && isDaemonRequired {
+	if apiInfo == nil && isDaemonRequired {
 		return nil, ErrMissingDaemon
+	}
+	if apiInfo == nil {
+		apiInfo = &APIInfo{}
 	}
 
 	return &executor{
-		api:  api,
-		exec: cmds.NewExecutor(RootCmd),
+		api:   apiInfo.Addr,
+		token: apiInfo.Token,
+		exec:  cmds.NewExecutor(RootCmd),
 	}, nil
 }
 
+type APIInfo struct {
+	Addr  string
+	Token string
+}
+
+func getAPIInfo(req *cmds.Request) (*APIInfo, error) {
+	repoDir, _ := req.Options[OptionRepoDir].(string)
+	repoDir, err := paths.GetRepoPath(repoDir)
+	if err != nil {
+		return nil, err
+	}
+	var rawAddr string
+	// second highest precedence is env vars.
+	if envapi := os.Getenv("FIL_API"); envapi != "" {
+		rawAddr = envapi
+	}
+
+	// first highest precedence is cmd flag.
+	if apiAddress, ok := req.Options[OptionAPI].(string); ok && apiAddress != "" {
+		rawAddr = apiAddress
+	}
+
+	// we will read the api file if no other option is given.
+	if len(rawAddr) == 0 {
+		rpcAPI, err := repo.APIAddrFromRepoPath(repoDir)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't find API endpoint address in environment, command-line, or local repo (is the daemon running?)")
+		}
+		rawAddr = rpcAPI //NOTICE command only use api
+	}
+
+	maddr, err := ma.NewMultiaddr(rawAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("unable to convert API endpoint address %s to a multiaddr", rawAddr))
+	}
+
+	_, host, err := manet.DialArgs(maddr)
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("unable to dial API endpoint address %s", maddr))
+	}
+
+	token := ""
+	if tk, ok := req.Options[OptionToken]; ok {
+		tkArr := tk.([]string)
+		if len(tkArr) > 0 {
+			token = tkArr[0]
+		}
+	}
+	if len(token) == 0 {
+		tk, err := repo.APITokenFromRepoPath(repoDir)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't find token in environment")
+		}
+		token = tk
+	}
+
+	return &APIInfo{
+		Addr:  host,
+		Token: token,
+	}, nil
+}
+
+// nolint
 func getAPIAddress(req *cmds.Request) (string, error) {
 	var rawAddr string
 	var err error
@@ -294,7 +367,7 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 		return "", errors.Wrap(err, fmt.Sprintf("unable to convert API endpoint address %s to a multiaddr", rawAddr))
 	}
 
-	_, host, err := manet.DialArgs(maddr) //nolint
+	_, host, err := manet.DialArgs(maddr)
 	if err != nil {
 		return "", errors.Wrap(err, fmt.Sprintf("unable to dial API endpoint address %s", maddr))
 	}

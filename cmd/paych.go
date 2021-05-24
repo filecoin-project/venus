@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/app/node"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
@@ -435,7 +436,7 @@ func sortVouchers(vouchers []*paych.SignedVoucher) []*paych.SignedVoucher {
 	})
 	return vouchers
 }
-func paychStatus(writer io.Writer, avail *paychmgr.ChannelAvailableFunds) {
+func paychStatus(writer io.Writer, avail *apitypes.ChannelAvailableFunds) {
 	if avail.Channel == nil {
 		if avail.PendingWaitSentinel != nil {
 			fmt.Fprint(writer, "Creating channel\n")

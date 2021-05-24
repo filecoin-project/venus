@@ -217,8 +217,6 @@ func (node *Node) Stop(ctx context.Context) {
 	if err := node.repo.Close(); err != nil {
 		fmt.Printf("error closing repo: %s\n", err)
 	}
-
-	fmt.Println("stopping filecoin :(")
 }
 
 func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command, ready chan interface{}) error {
@@ -294,6 +292,7 @@ func (node *Node) runRestfulAPI(ctx context.Context, handler *http.ServeMux, roo
 	cfg.SetAllowedOrigins(apiConfig.AccessControlAllowOrigin...)
 	cfg.SetAllowedMethods(apiConfig.AccessControlAllowMethods...)
 	cfg.SetAllowCredentials(apiConfig.AccessControlAllowCredentials)
+	cfg.AppendAllowHeaders("Authorization")
 
 	handler.Handle(APIPrefix+"/", cmdhttp.NewHandler(servenv, rootCmdDaemon, cfg))
 	return nil

@@ -918,13 +918,12 @@ func (v *View) loadActor(ctx context.Context, address addr.Address) (*types.Acto
 	if err != nil {
 		return nil, err
 	}
-
 	actor, found, err := tree.GetActor(ctx, address)
 	if err != nil {
 		return nil, err
 	}
 	if !found {
-		return nil, types.ErrActorNotFound
+		return nil, xerrors.Wrapf(types.ErrActorNotFound, "address is :%s", address)
 	}
 
 	return actor, err

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
@@ -78,8 +79,8 @@ type NetworkSubmodule struct { //nolint
 	DataTransferHost dtnet.DataTransferNetwork
 }
 
-func (networkSubmodule *NetworkSubmodule) API() *NetworkAPI {
-	return &NetworkAPI{network: networkSubmodule}
+func (networkSubmodule *NetworkSubmodule) API() apiface.INetwork {
+	return &networkAPI{network: networkSubmodule}
 }
 
 func (networkSubmodule *NetworkSubmodule) Stop(ctx context.Context) {
@@ -219,9 +220,9 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	gsync := graphsyncimpl.New(ctx, graphsyncNetwork, loader, storer, graphsyncimpl.RejectAllRequestsByDefault())
 
 	//dataTransger
-	//sc := storedcounter.New(repo.ChainDatastore(), datastore.NewKey("/datatransfer/client/counter"))
+	//sc := storedcounter.New(repo.ChainDatastore(), datastore.NewKey("/datatransfer/api/counter"))
 	dtNet := dtnet.NewFromLibp2pHost(peerHost)
-	dtDs := namespace.Wrap(repo.ChainDatastore(), datastore.NewKey("/datatransfer/client/transfers"))
+	dtDs := namespace.Wrap(repo.ChainDatastore(), datastore.NewKey("/datatransfer/api/transfers"))
 	transport := dtgstransport.NewTransport(peerHost.ID(), gsync)
 
 	repoPath, err := repo.Path()

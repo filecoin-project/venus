@@ -3,6 +3,7 @@ package mpool
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"os"
 	"reflect"
 	"runtime"
@@ -60,7 +61,7 @@ type MessagePoolSubmodule struct { //nolint
 	MPool      *messagepool.MessagePool
 	chain      *chain.ChainSubmodule
 	network    *network.NetworkSubmodule
-	walletAPI  *wallet.WalletAPI
+	walletAPI  apiface.IWallet
 	networkCfg *config.NetworkParamsConfig
 }
 
@@ -258,7 +259,7 @@ func (mp *MessagePoolSubmodule) Stop(ctx context.Context) {
 	}
 }
 
-func (mp *MessagePoolSubmodule) API() *MessagePoolAPI {
+func (mp *MessagePoolSubmodule) API() apiface.IMessagePool {
 	pushLocks := messagepool.NewMpoolLocker()
 	return &MessagePoolAPI{mp: mp, pushLocks: pushLocks}
 }

@@ -3,6 +3,7 @@ package jwtauth
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"strings"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -26,13 +27,8 @@ type JwtPayload struct {
 	Allow []auth.Permission
 }
 
-type IJwtAuthAPI interface {
-	Verify(ctx context.Context, spanID, serviceName, preHost, host, token string) ([]auth.Permission, error)
-	AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error)
-}
-
 type IJwtAuthClient interface {
-	API() IJwtAuthAPI
+	API() apiface.IJwtAuthAPI
 	Verify(ctx context.Context, spanID, serviceName, preHost, host, token string) ([]auth.Permission, error)
 }
 
@@ -49,7 +45,7 @@ func NewJwtAuth(lr repo.Repo) (*JwtAuth, error) {
 		jwtSecetName:  "auth-jwt-private",
 		jwtHmacSecret: "jwt-hmac-secret",
 		lr:            lr,
-		payload:       JwtPayload{Allow: []auth.Permission{"all"}},
+		payload:       JwtPayload{Allow: []auth.Permission{"admin"}},
 	}
 	var err error
 	jwtAuth.apiSecret, err = jwtAuth.loadAPISecret()
@@ -93,7 +89,6 @@ func (jwtAuth *JwtAuth) Verify(ctx context.Context, spanID, serviceName, preHost
 	if _, err := jwt3.Verify([]byte(token), (*jwt3.HMACSHA)(jwtAuth.apiSecret), &payload); err != nil {
 		return nil, xerrors.Errorf("JWT Verification failed: %v", err)
 	}
-
 	return payload.Allow, nil
 }
 
@@ -101,7 +96,7 @@ type JwtAuthAPI struct { //nolint
 	JwtAuth *JwtAuth
 }
 
-func (jwtAuth *JwtAuth) API() IJwtAuthAPI {
+func (jwtAuth *JwtAuth) API() apiface.IJwtAuthAPI {
 	return &JwtAuthAPI{JwtAuth: jwtAuth}
 }
 
@@ -118,6 +113,5 @@ func (a *JwtAuthAPI) AuthNew(ctx context.Context, perms []auth.Permission) ([]by
 	p := JwtPayload{
 		Allow: perms, // TODO: consider checking validity
 	}
-
 	return jwt3.Sign(&p, (*jwt3.HMACSHA)(a.JwtAuth.apiSecret))
 }

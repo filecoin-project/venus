@@ -11,14 +11,17 @@ import (
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 	"github.com/filecoin-project/venus/app/node"
+	sbchain "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/specactors"
+	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/multisig"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 	"reflect"
@@ -61,9 +64,9 @@ var msigCreateCmd = &cmds.Command{
 		Usage:   "[address1 address2 ...]",
 	},
 	Options: []cmds.Option{
-		cmds.Uint64Option("required", "number of required approvals (uses number of signers provided if omitted)").WithDefault(0),
+		cmds.Uint64Option("required", "number of required approvals (uses number of signers provided if omitted)").WithDefault(uint64(0)),
 		cmds.StringOption("value", "initial funds to give to multisig").WithDefault("0"),
-		cmds.Uint64Option("duration", "length of the period over which funds unlock").WithDefault(0),
+		cmds.Uint64Option("duration", "length of the period over which funds unlock").WithDefault(uint64(0)),
 		cmds.StringOption("from", "account to send the create message from"),
 	},
 	Arguments: []cmds.Argument{
@@ -88,7 +91,7 @@ var msigCreateCmd = &cmds.Command{
 		var sendAddr address.Address
 		send := reqStringOption(req, "from")
 		if send == "" {
-			defaddr, err := env.(*node.Env).WalletAPI.WalletDefaultAddress()
+			defaddr, err := env.(*node.Env).WalletAPI.WalletDefaultAddress(req.Context)
 			if err != nil {
 				return err
 			}
@@ -152,7 +155,9 @@ var msigInspectCmd = &cmds.Command{
 		if len(req.Arguments) == 0 {
 			return fmt.Errorf("must specify address of multisig to inspect")
 		}
-		store := env.(*node.Env).ChainAPI.ChainReader.Store(req.Context)
+		ctx := req.Context
+		store := adt.WrapStore(ctx, cbor.NewCborStore(sbchain.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
+		//store := env.(*node.Env).ChainAPI.ChainReader.Store(req.Context)
 		maddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			return err
@@ -171,8 +176,6 @@ var msigInspectCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-
-		//env.(*node.Env).ChainAPI.
 		mstate, err := multisig.Load(store, act)
 		if err != nil {
 			return err
@@ -1184,8 +1187,8 @@ var msigVestedCmd = &cmds.Command{
 		Usage:   "[multisigAddress]",
 	},
 	Options: []cmds.Option{
-		cmds.Int64Option("start-epoch", "start epoch to measure vesting from").WithDefault(0),
-		cmds.Int64Option("end-epoch", "end epoch to measure vesting at").WithDefault(-1),
+		cmds.Int64Option("start-epoch", "start epoch to measure vesting from").WithDefault(int64(0)),
+		cmds.Int64Option("end-epoch", "end epoch to measure vesting at").WithDefault(int64(-1)),
 	},
 	Arguments: []cmds.Argument{
 		cmds.StringArg("multisigAddress", true, false, "multisig address"),
@@ -1211,7 +1214,7 @@ var msigVestedCmd = &cmds.Command{
 		var end *types.TipSet
 		endEpoch := reqChainEpochOption(req, "end-epoch")
 		if endEpoch < 0 {
-			end = env.(*node.Env).ChainAPI.ChainReader.GetHead()
+			end, err = env.(*node.Env).ChainAPI.ChainHead(ctx)
 			if err != nil {
 				return err
 			}

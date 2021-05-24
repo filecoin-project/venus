@@ -3,6 +3,7 @@ package paychmgr
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/ipfs/go-cid"
@@ -108,7 +109,7 @@ func (ca *channelAccessor) outboundActiveByFromTo(from, to address.Address) (*Ch
 // nonce, signing the voucher and storing it in the local datastore.
 // If there are not enough funds in the channel to create the voucher, returns
 // the shortfall in funds.
-func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*VoucherCreateResult, error) {
+func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*apitypes.VoucherCreateResult, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
@@ -143,7 +144,7 @@ func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address
 		// return a voucher create result with the shortfall
 		var ife insufficientFundsErr
 		if xerrors.As(err, &ife) {
-			return &VoucherCreateResult{
+			return &apitypes.VoucherCreateResult{
 				Shortfall: ife.Shortfall(),
 			}, nil
 		}
@@ -151,7 +152,7 @@ func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address
 		return nil, xerrors.Errorf("failed to persist voucher: %w", err)
 	}
 
-	return &VoucherCreateResult{Voucher: sv, Shortfall: big.NewInt(0)}, nil
+	return &apitypes.VoucherCreateResult{Voucher: sv, Shortfall: big.NewInt(0)}, nil
 }
 
 func (ca *channelAccessor) nextNonceForLane(ci *ChannelInfo, lane uint64) uint64 {
@@ -468,7 +469,7 @@ func (ca *channelAccessor) laneState(state paych.State, ch address.Address) (map
 	}
 
 	// Note: we use a map instead of an array to store laneStates because the
-	// client sets the lane ID (the index) and potentially they could use a
+	// api sets the lane ID (the index) and potentially they could use a
 	// very large index.
 	laneStates := make(map[uint64]paych.LaneState, laneCount)
 	err = state.ForEachLaneState(func(idx uint64, ls paych.LaneState) error {

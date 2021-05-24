@@ -1,19 +1,13 @@
 package chain
 
-type ChainAPI struct { // nolint: golint
-	AccountAPI
-	ActorAPI
-	BeaconAPI
-	ChainInfoAPI
-	MinerStateAPI
+import "github.com/filecoin-project/venus/app/submodule/apiface"
+
+type chainAPI struct { // nolint: golint
+	apiface.IAccount
+	apiface.IActor
+	apiface.IBeacon
+	apiface.IMinerState
+	apiface.IChainInfo
 }
 
-var _ IChain = &ChainAPI{}
-
-type IChain interface {
-	IAccount
-	IActor
-	IBeacon
-	IMinerState
-	IChainInfo
-}
+var _ apiface.IChain = &chainAPI{}

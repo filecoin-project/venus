@@ -30,7 +30,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/statemanger"
-	"github.com/filecoin-project/venus/pkg/util"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p"
@@ -289,11 +288,12 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	stmgr := statemanger.NewStateMangerAPI(nd.chain.ChainReader, nd.syncer.Consensus)
 	mgrps := &paychmgr.ManagerParams{
-		MPoolAPI: nd.mpool.API(),
-		ChainAPI: nd.chain.API(),
-		Protocol: nd.syncer.Consensus,
-		SM:       stmgr,
-		DS:       b.repo.PaychDatastore(),
+		MPoolAPI:  nd.mpool.API(),
+		ChainAPI:  nd.chain.API(),
+		Protocol:  nd.syncer.Consensus,
+		SM:        stmgr,
+		DS:        b.repo.PaychDatastore(),
+		WalletAPI: nd.wallet.API(),
 	}
 	nd.paychan = paych.NewPaychSubmodule(ctx, mgrps)
 	nd.market = market.NewMarketModule(nd.chain.API(), stmgr)
@@ -315,7 +315,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.jwtCli = client
 	}
 
-	apiBuilder := util.NewBuiler()
+	apiBuilder := NewBuilder()
 	apiBuilder.NameSpace("Filecoin")
 	err = apiBuilder.AddServices(nd.configModule,
 		nd.blockstore,

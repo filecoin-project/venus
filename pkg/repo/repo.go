@@ -48,6 +48,9 @@ type Repo interface {
 	// SetAPIToken set api token
 	SetAPIToken(token []byte) error
 
+	// APIToken get api token
+	APIToken() (string, error)
+
 	// Version returns the current repo version.
 	Version() uint
 

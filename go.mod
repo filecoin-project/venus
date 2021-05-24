@@ -89,7 +89,6 @@ require (
 	github.com/libp2p/go-libp2p v0.12.0
 	github.com/libp2p/go-libp2p-circuit v0.4.0
 	github.com/libp2p/go-libp2p-core v0.7.0
-	github.com/libp2p/go-libp2p-crypto v0.1.0
 	github.com/libp2p/go-libp2p-kad-dht v0.11.0
 	github.com/libp2p/go-libp2p-mplex v0.3.0
 	github.com/libp2p/go-libp2p-peerstore v0.2.6
@@ -124,8 +123,8 @@ require (
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
-	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
-	golang.org/x/tools v0.0.0-20201112185108-eeaa07dd7696
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/tools v0.1.1 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 	gorm.io/driver/mysql v1.0.5
@@ -133,10 +132,11 @@ require (
 	gotest.tools v2.2.0+incompatible
 )
 
-replace github.com/filecoin-project/venus => ./
-
-replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.21.0
-
-replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
-
-replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
+replace (
+	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
+	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210521084414-5a2e6709d9bd
+	github.com/filecoin-project/test-vectors => ./extern/test-vectors
+	github.com/filecoin-project/venus => ./
+	github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.21.0
+	github.com/ipfs/go-ipfs-cmds => github.com/ipfs-force-community/go-ipfs-cmds v0.6.1-0.20210521090123-4587df7fa0ab
+)

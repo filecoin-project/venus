@@ -25,7 +25,7 @@ func reqFromWithDefault(req *cmds.Request, env cmds.Environment) (address.Addres
 		}
 		return from, nil
 	}
-	defaddr, err := env.(*node.Env).WalletAPI.WalletDefaultAddress()
+	defaddr, err := env.(*node.Env).WalletAPI.WalletDefaultAddress(req.Context)
 	if err != nil {
 		return address.Undef, err
 	}

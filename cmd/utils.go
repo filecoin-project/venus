@@ -137,7 +137,7 @@ func fromAddrOrDefault(req *cmds.Request, env cmds.Environment) (address.Address
 		return address.Undef, err
 	}
 	if addr.Empty() {
-		return env.(*node.Env).WalletAPI.WalletDefaultAddress()
+		return env.(*node.Env).WalletAPI.WalletDefaultAddress(req.Context)
 	}
 	return addr, nil
 }

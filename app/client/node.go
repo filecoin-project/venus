@@ -46,28 +46,28 @@ func getVenusClientInfo() (string, http.Header, error) {
 	return addr, headers, nil
 }
 
-func NewFullNode(ctx context.Context) (FullNode, jsonrpc.ClientCloser, error) {
+func NewFullNode(ctx context.Context) (FullNodeStruct, jsonrpc.ClientCloser, error) {
 	addr, headers, err := getVenusClientInfo()
 	if err != nil {
-		return FullNode{}, nil, err
+		return FullNodeStruct{}, nil, err
 	}
-	node := FullNode{}
+	node := FullNodeStruct{}
 	closer, err := jsonrpc.NewClient(ctx, addr, "Filecoin", &node, headers)
 	if err != nil {
-		return FullNode{}, nil, err
+		return FullNodeStruct{}, nil, err
 	}
 	return node, closer, nil
 }
 
-func NewMiningAPINode(ctx context.Context) (MiningAPI, jsonrpc.ClientCloser, error) {
+func NewMiningAPINode(ctx context.Context) (IMiningStruct, jsonrpc.ClientCloser, error) {
 	addr, headers, err := getVenusClientInfo()
 	if err != nil {
-		return MiningAPI{}, nil, err
+		return IMiningStruct{}, nil, err
 	}
-	node := MiningAPI{}
+	node := IMiningStruct{}
 	closer, err := jsonrpc.NewClient(ctx, addr, "Filecoin", &node, headers)
 	if err != nil {
-		return MiningAPI{}, nil, err
+		return IMiningStruct{}, nil, err
 	}
 	return node, closer, nil
 }

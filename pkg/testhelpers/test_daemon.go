@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	ma "github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net" //nolint
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
@@ -92,6 +92,15 @@ func (td *TestDaemon) CmdAddr() (ma.Multiaddr, error) {
 	}
 
 	return ma.NewMultiaddr(strings.TrimSpace(string(str)))
+}
+
+// CmdToken returns the command token of the test daemon (if it is running).
+func (td *TestDaemon) CmdToken() (string, error) {
+	str, err := ioutil.ReadFile(filepath.Join(td.RepoDir(), "token"))
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(str)), nil
 }
 
 // Config is a helper to read out the config of the daemon.
@@ -584,9 +593,20 @@ func tryAPICheck(td *TestDaemon) error {
 	if err != nil {
 		return err
 	}
+	token, err := td.CmdToken()
+	if err != nil {
+		return err
+	}
 
 	url := fmt.Sprintf("http://%s/api/swarm/id", host)
-	resp, err := http.Post(url, "application/json", strings.NewReader("{}"))
+	req, err := http.NewRequest("POST", url, strings.NewReader("{}"))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := (&http.Client{}).Do(req)
 	if err != nil {
 		return err
 	}

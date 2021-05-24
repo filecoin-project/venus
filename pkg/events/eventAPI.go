@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/app/submodule/chain"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	chain2 "github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
@@ -12,7 +12,7 @@ import (
 
 type IEvent interface {
 	ChainNotify(context.Context) (<-chan []*chain2.HeadChange, error)
-	ChainGetBlockMessages(context.Context, cid.Cid) (*chain.BlockMessages, error)
+	ChainGetBlockMessages(context.Context, cid.Cid) (*apitypes.BlockMessages, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	ChainHead(context.Context) (*types.TipSet, error)
 	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)

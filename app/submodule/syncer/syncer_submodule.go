@@ -3,6 +3,7 @@ package syncer
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"reflect"
 	"runtime"
 	"time"
@@ -282,6 +283,6 @@ func (syncer *SyncerSubmodule) Stop(ctx context.Context) {
 	}
 }
 
-func (syncer *SyncerSubmodule) API() *SyncerAPI {
-	return &SyncerAPI{syncer: syncer}
+func (syncer *SyncerSubmodule) API() apiface.ISyncer {
+	return &syncerAPI{syncer: syncer}
 }

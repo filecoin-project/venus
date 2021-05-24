@@ -77,7 +77,7 @@ var mpoolSelect = &cmds.Command{
 		ShortDescription: "select message from mpool",
 	},
 	Options: []cmds.Option{
-		cmds.FloatOption("quality", "optionally specify the wallet for publish message").WithDefault(0.5),
+		cmds.FloatOption("quality", "optionally specify the wallet for publish message").WithDefault(float64(0.5)),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		ctx := context.TODO()
@@ -115,7 +115,7 @@ var mpoolPublish = &cmds.Command{
 
 		var fromAddr address.Address
 		if from == "" {
-			defaddr, err := env.(*node.Env).WalletAPI.WalletDefaultAddress()
+			defaddr, err := env.(*node.Env).WalletAPI.WalletDefaultAddress(req.Context)
 			if err != nil {
 				return err
 			}
@@ -393,7 +393,7 @@ Get pending messages.
 			currTs := ts
 			for i := 0; i < basefee; i++ {
 				key := currTs.Parents()
-				currTs, err = env.(*node.Env).ChainAPI.ChainGetTipSet(key)
+				currTs, err = env.(*node.Env).ChainAPI.ChainGetTipSet(req.Context, key)
 				if err != nil {
 					return xerrors.Errorf("walking chain: %w", err)
 				}
@@ -407,7 +407,7 @@ Get pending messages.
 		if local {
 			filter = map[address.Address]struct{}{}
 
-			addrss := env.(*node.Env).WalletAPI.WalletAddresses()
+			addrss := env.(*node.Env).WalletAPI.WalletAddresses(req.Context)
 
 			for _, a := range addrss {
 				filter[a] = struct{}{}
@@ -557,7 +557,7 @@ Get pending messages.
 		if local {
 			filter = map[address.Address]struct{}{}
 
-			addrss := env.(*node.Env).WalletAPI.WalletAddresses()
+			addrss := env.(*node.Env).WalletAPI.WalletAddresses(req.Context)
 			for _, a := range addrss {
 				filter[a] = struct{}{}
 			}
@@ -700,7 +700,7 @@ Check gas performance of messages in mempool
 		if !all {
 			filter = map[address.Address]struct{}{}
 
-			addrss := env.(*node.Env).WalletAPI.WalletAddresses()
+			addrss := env.(*node.Env).WalletAPI.WalletAddresses(req.Context)
 
 			for _, a := range addrss {
 				filter[a] = struct{}{}

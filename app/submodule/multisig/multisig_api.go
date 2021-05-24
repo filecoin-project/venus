@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/multisig"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -13,23 +14,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
-type IMultiSig interface {
-	MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (cid.Cid, error)
-	MsigPropose(ctx context.Context, msig address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error)
-	MsigAddPropose(ctx context.Context, msig address.Address, src address.Address, newAdd address.Address, inc bool) (cid.Cid, error)
-	MsigAddApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, newAdd address.Address, inc bool) (cid.Cid, error)
-	MsigAddCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, newAdd address.Address, inc bool) (cid.Cid, error)
-	MsigSwapPropose(ctx context.Context, msig address.Address, src address.Address, oldAdd address.Address, newAdd address.Address) (cid.Cid, error)
-	MsigSwapApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, oldAdd address.Address, newAdd address.Address) (cid.Cid, error)
-	MsigSwapCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, oldAdd address.Address, newAdd address.Address) (cid.Cid, error)
-	MsigApprove(ctx context.Context, msig address.Address, txID uint64, src address.Address) (cid.Cid, error)
-	MsigApproveTxnHash(ctx context.Context, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error)
-	MsigCancel(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error)
-	MsigRemoveSigner(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (cid.Cid, error)
-	MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)
-}
-
-var _ IMultiSig = &multiSig{}
+var _ apiface.IMultiSig = &multiSig{}
 
 type multiSig struct {
 	*MultiSigSubmodule
@@ -41,7 +26,7 @@ const (
 	MsigCancel
 )
 
-func newMultiSig(m *MultiSigSubmodule) IMultiSig {
+func newMultiSig(m *MultiSigSubmodule) apiface.IMultiSig {
 	return &multiSig{
 		MultiSigSubmodule: m,
 	}
@@ -173,12 +158,12 @@ func (a *multiSig) MsigRemoveSigner(ctx context.Context, msig address.Address, p
 }
 
 func (a *multiSig) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
-	startTs, err := a.state.ChainGetTipSet(start)
+	startTs, err := a.state.ChainGetTipSet(ctx, start)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading start tipset %s: %w", start, err)
 	}
 
-	endTs, err := a.state.ChainGetTipSet(end)
+	endTs, err := a.state.ChainGetTipSet(ctx, end)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading end tipset %s: %w", end, err)
 	}

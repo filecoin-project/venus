@@ -3,11 +3,10 @@ package mpool
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"sync"
 
 	"github.com/filecoin-project/venus-wallet/core"
-
-	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
@@ -20,33 +19,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
-type IMessagePool interface {
-	DeleteByAdress(ctx context.Context, addr address.Address) error
-	MpoolPublishByAddr(context.Context, address.Address) error
-	MpoolPublishMessage(ctx context.Context, smsg *types.SignedMessage) error
-	MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error)
-	MpoolGetConfig(context.Context) (*messagepool.MpoolConfig, error)
-	MpoolSetConfig(ctx context.Context, cfg *messagepool.MpoolConfig) error
-	MpoolSelect(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error)
-	MpoolSelects(context.Context, types.TipSetKey, []float64) ([][]*types.SignedMessage, error)
-	MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error)
-	MpoolClear(ctx context.Context, local bool) error
-	MpoolPushUntrusted(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error)
-	MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (*types.SignedMessage, error)
-	MpoolBatchPush(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error)
-	MpoolBatchPushUntrusted(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error)
-	MpoolBatchPushMessage(ctx context.Context, msgs []*types.UnsignedMessage, spec *types.MessageSendSpec) ([]*types.SignedMessage, error)
-	MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error)
-	MpoolSub(ctx context.Context) (<-chan messagepool.MpoolUpdate, error)
-	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
-	GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec, tsk types.TipSetKey) (*types.UnsignedMessage, error)
-	GasEstimateFeeCap(ctx context.Context, msg *types.UnsignedMessage, maxqueueblks int64, tsk types.TipSetKey) (big.Int, error)
-	GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (big.Int, error)
-	WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error)
-	WalletHas(ctx context.Context, addr address.Address) (bool, error)
-}
-
-var _ IMessagePool = &MessagePoolAPI{}
+var _ apiface.IMessagePool = &MessagePoolAPI{}
 
 type MessagePoolAPI struct {
 	pushLocks *messagepool.MpoolLocker
@@ -80,7 +53,7 @@ func (a *MessagePoolAPI) MpoolSetConfig(ctx context.Context, cfg *messagepool.Mp
 }
 
 func (a *MessagePoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey, ticketQuality float64) ([]*types.SignedMessage, error) {
-	ts, err := a.mp.chain.API().ChainGetTipSet(tsk)
+	ts, err := a.mp.chain.API().ChainGetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -89,7 +62,7 @@ func (a *MessagePoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey, t
 }
 
 func (a *MessagePoolAPI) MpoolSelects(ctx context.Context, tsk types.TipSetKey, ticketQualitys []float64) ([][]*types.SignedMessage, error) {
-	ts, err := a.mp.chain.API().ChainGetTipSet(tsk)
+	ts, err := a.mp.chain.API().ChainGetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -106,7 +79,7 @@ func (a *MessagePoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) 
 			return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 		}
 	} else {
-		ts, err = a.mp.chain.API().ChainGetTipSet(tsk)
+		ts, err = a.mp.chain.API().ChainGetTipSet(ctx, tsk)
 		if err != nil {
 			return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 		}
@@ -165,7 +138,7 @@ func (a *MessagePoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) 
 			return pending, nil
 		}
 
-		ts, err = a.mp.chain.API().ChainGetTipSet(ts.Parents())
+		ts, err = a.mp.chain.API().ChainGetTipSet(ctx, ts.Parents())
 		if err != nil {
 			return nil, xerrors.Errorf("loading parent tipset: %w", err)
 		}
@@ -354,7 +327,7 @@ func (a *MessagePoolAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl 
 	return a.mp.MPool.GasEstimateGasPremium(ctx, nblocksincl, sender, gaslimit, tsk)
 }
 
-func (a *MessagePoolAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
+/*func (a *MessagePoolAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
 	head := a.mp.chain.ChainReader.GetHead()
 	view, err := a.mp.chain.ChainReader.StateView(head)
 	if err != nil {
@@ -365,10 +338,10 @@ func (a *MessagePoolAPI) WalletSign(ctx context.Context, k address.Address, msg 
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ID address: %v", keyAddr)
 	}
-	/*var meta wallet.MsgMeta
-	if len(metas) > 0 {
-		meta = metas[0]
-	} else {*/
+	//var meta wallet.MsgMeta
+	//if len(metas) > 0 {
+	//	meta = metas[0]
+	//} else {
 	meta := wallet.MsgMeta{
 		Type: core.MTUnknown,
 	}
@@ -376,6 +349,4 @@ func (a *MessagePoolAPI) WalletSign(ctx context.Context, k address.Address, msg 
 	return a.mp.walletAPI.WalletSign(ctx, keyAddr, msg, meta)
 }
 
-func (a *MessagePoolAPI) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
-	return a.mp.walletAPI.WalletHas(ctx, addr)
-}
+*/

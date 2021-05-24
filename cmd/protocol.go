@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/app/submodule/chain"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
@@ -17,5 +17,5 @@ var protocolCmd = &cmds.Command{
 		}
 		return re.Emit(params)
 	},
-	Type: chain.ProtocolParams{},
+	Type: apitypes.ProtocolParams{},
 }

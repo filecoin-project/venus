@@ -2,8 +2,11 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"io"
 	"strconv"
@@ -17,8 +20,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -298,8 +299,8 @@ var stateSectorCmd = &cmds.Command{
 	},
 }
 
-func blockDelay(a *config.ConfigAPI) (uint64, error) {
-	data, err := a.ConfigGet("parameters.blockDelay")
+func blockDelay(a apiface.IConfig) (uint64, error) {
+	data, err := a.ConfigGet(context.Background(), "parameters.blockDelay")
 	if err != nil {
 		return 0, err
 	}
@@ -442,7 +443,7 @@ var stateGetDealSetCmd = &cmds.Command{
 
 		return re.Emit(deal)
 	},
-	Type: chain.MarketDeal{},
+	Type: apitypes.MarketDeal{},
 }
 
 var stateMinerInfo = &cmds.Command{

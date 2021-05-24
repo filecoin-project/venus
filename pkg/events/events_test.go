@@ -3,7 +3,7 @@ package events
 import (
 	"context"
 	"fmt"
-	api2 "github.com/filecoin-project/venus/app/submodule/chain"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -143,17 +143,17 @@ func (fcs *fakeCS) ChainNotify(context.Context) (<-chan []*chain.HeadChange, err
 	return out, nil
 }
 
-func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*api2.BlockMessages, error) {
+func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*apitypes.BlockMessages, error) {
 	messages, ok := fcs.blkMsgs[blk]
 	if !ok {
-		return &api2.BlockMessages{}, nil
+		return &apitypes.BlockMessages{}, nil
 	}
 
 	ms, ok := fcs.msgs[messages]
 	if !ok {
-		return &api2.BlockMessages{}, nil
+		return &apitypes.BlockMessages{}, nil
 	}
-	return &api2.BlockMessages{BlsMessages: ms.bmsgs, SecpkMessages: ms.smsgs}, nil
+	return &apitypes.BlockMessages{BlsMessages: ms.bmsgs, SecpkMessages: ms.smsgs}, nil
 
 }
 

@@ -3,6 +3,9 @@ package mining
 import (
 	"bytes"
 	"context"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"os"
 
 	"github.com/filecoin-project/go-address"
@@ -13,24 +16,23 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
+var _ apiface.IMining = &MiningAPI{}
+
 type MiningAPI struct { //nolint
 	Ming *MiningModule
 }
 
-func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk types.TipSetKey) (*MiningBaseInfo, error) {
+func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk types.TipSetKey) (*apitypes.MiningBaseInfo, error) {
 	chainStore := miningAPI.Ming.ChainModule.ChainReader
 	ts, err := chainStore.GetTipSet(tsk)
 	if err != nil {
@@ -131,7 +133,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 		return nil, xerrors.Errorf("determining miner eligibility: %v", err)
 	}
 
-	return &MiningBaseInfo{
+	return &apitypes.MiningBaseInfo{
 		MinerPower:        mpow.QualityAdjPower,
 		NetworkPower:      tpow.QualityAdjPower,
 		Sectors:           sectors,
@@ -143,7 +145,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	}, nil
 }
 
-func (miningAPI *MiningAPI) MinerCreateBlock(ctx context.Context, bt *BlockTemplate) (*types.BlockMsg, error) {
+func (miningAPI *MiningAPI) MinerCreateBlock(ctx context.Context, bt *apitypes.BlockTemplate) (*types.BlockMsg, error) {
 	fblk, err := miningAPI.minerCreateBlock(ctx, bt)
 	if err != nil {
 		return nil, err
@@ -161,7 +163,7 @@ func (miningAPI *MiningAPI) MinerCreateBlock(ctx context.Context, bt *BlockTempl
 	return &out, nil
 }
 
-func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *BlockTemplate) (*types.FullBlock, error) {
+func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *apitypes.BlockTemplate) (*types.FullBlock, error) {
 	chainStore := miningAPI.Ming.ChainModule.ChainReader
 	messageStore := miningAPI.Ming.ChainModule.MessageStore
 	cfg := miningAPI.Ming.Config.Repo().Config()
@@ -306,27 +308,4 @@ func aggregateSignatures(sigs []crypto.Signature) (*crypto.Signature, error) {
 		Type: crypto.SigTypeBLS,
 		Data: aggSig[:],
 	}, nil
-}
-
-type BlockTemplate struct {
-	Miner            address.Address
-	Parents          types.TipSetKey
-	Ticket           types.Ticket
-	Eproof           *types.ElectionProof
-	BeaconValues     []*types.BeaconEntry
-	Messages         []*types.SignedMessage
-	Epoch            abi.ChainEpoch
-	Timestamp        uint64
-	WinningPoStProof []proof2.PoStProof
-}
-
-type MiningBaseInfo struct { //nolint
-	MinerPower        abi.StoragePower
-	NetworkPower      abi.StoragePower
-	Sectors           []builtin.SectorInfo
-	WorkerKey         address.Address
-	SectorSize        abi.SectorSize
-	PrevBeaconEntry   types.BeaconEntry
-	BeaconEntries     []types.BeaconEntry
-	EligibleForMining bool
 }

@@ -138,13 +138,13 @@ var newMinerCmd = &cmds.Command{
 			Owner:         owner,
 			Worker:        worker,
 			SealProofType: spt,
-			Peer:          abi.PeerID(env.(*node.Env).NetworkAPI.NetworkGetPeerID()),
+			Peer:          abi.PeerID(env.(*node.Env).NetworkAPI.NetworkGetPeerID(ctx)),
 		})
 		if err != nil {
 			return err
 		}
 
-		minerCmdLog.Info("peer id: ", env.(*node.Env).NetworkAPI.NetworkGetPeerID())
+		minerCmdLog.Info("peer id: ", env.(*node.Env).NetworkAPI.NetworkGetPeerID(ctx))
 
 		sender := owner
 		fromstr, _ := req.Options["from"].(string)

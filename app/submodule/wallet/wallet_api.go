@@ -3,6 +3,7 @@ package wallet
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"strings"
 
 	"github.com/filecoin-project/venus-wallet/core"
@@ -16,20 +17,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
-var _ IWallet = &WalletAPI{}
-
-type IWallet interface {
-	WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error)
-	WalletExport(addr address.Address, password string) (*crypto.KeyInfo, error)
-	WalletImport(key *crypto.KeyInfo) (address.Address, error)
-	WalletHas(ctx context.Context, addr address.Address) (bool, error)
-	WalletNewAddress(protocol address.Protocol) (address.Address, error)
-	WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error) //not exists in remote
-	WalletDefaultAddress() (address.Address, error)                                   //not exists in remote
-	WalletAddresses() []address.Address
-	WalletSetDefault(_ context.Context, addr address.Address) error //not exists in remote
-	WalletSignMessage(ctx context.Context, k address.Address, msg *types.UnsignedMessage) (*types.SignedMessage, error)
-}
+var _ apiface.IWallet = &WalletAPI{}
 
 var ErrNoDefaultFromAddress = errors.New("unable to determine a default walletModule address")
 
@@ -56,7 +44,7 @@ func (walletAPI *WalletAPI) WalletHas(ctx context.Context, addr address.Address)
 }
 
 // SetWalletDefaultAddress set the specified address as the default in the config.
-func (walletAPI *WalletAPI) WalletDefaultAddress() (address.Address, error) {
+func (walletAPI *WalletAPI) WalletDefaultAddress(ctx context.Context) (address.Address, error) {
 	ret, err := walletAPI.walletModule.Config.Get("walletModule.defaultAddress")
 	addr := ret.(address.Address)
 	if err != nil || !addr.Empty() {
@@ -64,8 +52,8 @@ func (walletAPI *WalletAPI) WalletDefaultAddress() (address.Address, error) {
 	}
 
 	// No default is set; pick the 0th and make it the default.
-	if len(walletAPI.WalletAddresses()) > 0 {
-		addr := walletAPI.WalletAddresses()[0]
+	if len(walletAPI.WalletAddresses(ctx)) > 0 {
+		addr := walletAPI.WalletAddresses(ctx)[0]
 		err := walletAPI.walletModule.Config.Set("walletModule.defaultAddress", addr.String())
 		if err != nil {
 			return address.Undef, err
@@ -78,13 +66,13 @@ func (walletAPI *WalletAPI) WalletDefaultAddress() (address.Address, error) {
 }
 
 // WalletAddresses gets addresses from the walletModule
-func (walletAPI *WalletAPI) WalletAddresses() []address.Address {
+func (walletAPI *WalletAPI) WalletAddresses(ctx context.Context) []address.Address {
 	return walletAPI.adapter.Addresses()
 }
 
 // SetWalletDefaultAddress set the specified address as the default in the config.
-func (walletAPI *WalletAPI) WalletSetDefault(_ context.Context, addr address.Address) error {
-	localAddrs := walletAPI.WalletAddresses()
+func (walletAPI *WalletAPI) WalletSetDefault(ctx context.Context, addr address.Address) error {
+	localAddrs := walletAPI.WalletAddresses(ctx)
 	for _, localAddr := range localAddrs {
 		if localAddr == addr {
 			err := walletAPI.walletModule.Config.Set("walletModule.defaultAddress", addr.String())

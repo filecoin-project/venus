@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/app/submodule/mpool"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -26,9 +25,9 @@ import (
 var log = logging.Logger("market_adapter")
 
 type FundManagerParams struct {
-	MP mpool.IMessagePool
-	CI chain.IChainInfo
-	MS chain.IMinerState
+	MP apiface.IMessagePool
+	CI apiface.IChainInfo
+	MS apiface.IMinerState
 	DS repo.Datastore
 }
 

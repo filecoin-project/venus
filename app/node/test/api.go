@@ -52,7 +52,9 @@ func (a *NodeAPI) Run(ctx context.Context) (client *Client, stop func()) {
 	require.NoError(a.tb, err)
 	require.NotEmpty(a.tb, addr, "empty API address")
 
-	return &Client{addr, a.tb}, func() {
+	token, err := a.node.Repo().APIToken()
+	require.NoError(a.tb, err)
+	return &Client{addr, token, a.tb}, func() {
 		cancel()
 	}
 }
@@ -60,6 +62,7 @@ func (a *NodeAPI) Run(ctx context.Context) (client *Client, stop func()) {
 // Client is an in-process client to a command API.
 type Client struct {
 	address string
+	token   string
 	tb      testing.TB
 }
 
@@ -73,6 +76,7 @@ func (c *Client) run(ctx context.Context, command ...string) (*th.CmdOutput, int
 	args := []string{
 		"venus", // A dummy first arg is required, simulating shell invocation.
 		fmt.Sprintf("--cmdapiaddr=%s", c.address),
+		fmt.Sprintf("--token=%s", c.token),
 	}
 	args = append(args, command...)
 

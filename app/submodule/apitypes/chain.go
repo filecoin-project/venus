@@ -1,4 +1,4 @@
-package chain
+package apitypes
 
 import (
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -66,6 +66,8 @@ type MarketBalance struct {
 	Escrow big.Int
 	Locked big.Int
 }
+
+var MarketBalanceNil = MarketBalance{}
 
 type Message struct {
 	Cid     cid.Cid

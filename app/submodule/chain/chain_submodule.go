@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"time"
 
@@ -110,12 +111,12 @@ func (chain *ChainSubmodule) Stop(ctx context.Context) {
 	chain.ChainReader.Stop()
 }
 
-func (chain *ChainSubmodule) API() *ChainAPI {
-	return &ChainAPI{
-		AccountAPI:    NewAccountAPI(chain),
-		ActorAPI:      NewActorAPI(chain),
-		BeaconAPI:     NewBeaconAPI(chain),
-		ChainInfoAPI:  NewChainInfoAPI(chain),
-		MinerStateAPI: NewMinerStateAPI(chain),
+func (chain *ChainSubmodule) API() apiface.IChain {
+	return &chainAPI{
+		IAccount:    NewAccountAPI(chain),
+		IActor:      NewActorAPI(chain),
+		IBeacon:     NewBeaconAPI(chain),
+		IChainInfo:  NewChainInfoAPI(chain),
+		IMinerState: NewMinerStateAPI(chain),
 	}
 }

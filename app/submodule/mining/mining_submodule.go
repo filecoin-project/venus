@@ -1,6 +1,7 @@
 package mining
 
 import (
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/network"
@@ -24,7 +25,7 @@ type MiningModule struct { //nolint
 	proofVerifier ffiwrapper.Verifier
 }
 
-func (miningModule *MiningModule) API() *MiningAPI {
+func (miningModule *MiningModule) API() apiface.IMining {
 	return &MiningAPI{Ming: miningModule}
 }
 

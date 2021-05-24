@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -126,6 +127,6 @@ func (discovery *DiscoverySubmodule) Stop() {
 	discovery.Bootstrapper.Stop()
 }
 
-func (discovery *DiscoverySubmodule) API() *DiscoveryAPI {
-	return &DiscoveryAPI{discovery: discovery}
+func (discovery *DiscoverySubmodule) API() apiface.IDiscovery {
+	return &discoveryAPI{discovery: discovery}
 }

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	repo2 "github.com/filecoin-project/venus/pkg/repo"
 	"sync"
 )
@@ -34,6 +35,6 @@ func (s *ConfigModule) Get(dottedKey string) (interface{}, error) {
 	return s.repo.Config().Get(dottedKey)
 }
 
-func (s *ConfigModule) API() *ConfigAPI {
-	return &ConfigAPI{config: s}
+func (s *ConfigModule) API() apiface.IConfig {
+	return &configAPI{config: s}
 }

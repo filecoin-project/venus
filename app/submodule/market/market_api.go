@@ -3,7 +3,8 @@ package market
 import (
 	"context"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/app/submodule/chain"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/types"
 	"golang.org/x/xerrors"
@@ -11,21 +12,18 @@ import (
 	"github.com/filecoin-project/go-address"
 )
 
-type IMarket interface {
-	StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]chain.MarketBalance, error)
-}
 type marketAPI struct {
-	chain chain.IChain
+	chain apiface.IChain
 	stmgr statemanger.IStateManager
 }
 
-func newMarketAPI(c chain.IChain, stmgr statemanger.IStateManager) IMarket {
+func newMarketAPI(c apiface.IChain, stmgr statemanger.IStateManager) apiface.IMarket {
 	return &marketAPI{c, stmgr}
 }
 
-func (m *marketAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]chain.MarketBalance, error) {
-	out := map[string]chain.MarketBalance{}
-	ts, err := m.chain.ChainGetTipSet(tsk)
+func (m *marketAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]apitypes.MarketBalance, error) {
+	out := map[string]apitypes.MarketBalance{}
+	ts, err := m.chain.ChainGetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -50,7 +48,7 @@ func (m *marketAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSe
 			return err
 		}
 
-		out[a.String()] = chain.MarketBalance{
+		out[a.String()] = apitypes.MarketBalance{
 			Escrow: es,
 			Locked: lk,
 		}

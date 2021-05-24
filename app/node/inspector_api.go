@@ -10,15 +10,26 @@ import (
 	"runtime"
 )
 
+type IInspector interface {
+	Runtime() *RuntimeInfo
+	Memory() (*MemoryInfo, error)
+	Config() *config.Config
+	Disk() (*DiskInfo, error)
+	FilecoinVersion() string
+	Environment() *EnvironmentInfo
+}
+
+var _ IInspector = &inspector{}
+
 // NewInspectorAPI returns a `Inspector` used to inspect the venus node.
-func NewInspectorAPI(r repo.Repo) *Inspector {
-	return &Inspector{
+func NewInspectorAPI(r repo.Repo) IInspector {
+	return &inspector{
 		repo: r,
 	}
 }
 
 // Inspector contains information used to inspect the venus node.
-type Inspector struct {
+type inspector struct {
 	repo repo.Repo
 }
 
@@ -65,7 +76,7 @@ type MemoryInfo struct {
 }
 
 // Runtime returns infrormation about the golang runtime.
-func (g *Inspector) Runtime() *RuntimeInfo {
+func (g *inspector) Runtime() *RuntimeInfo {
 	return &RuntimeInfo{
 		OS:            runtime.GOOS,
 		Arch:          runtime.GOARCH,
@@ -79,7 +90,7 @@ func (g *Inspector) Runtime() *RuntimeInfo {
 }
 
 // Environment returns information about the environment filecoin is running in.
-func (g *Inspector) Environment() *EnvironmentInfo {
+func (g *inspector) Environment() *EnvironmentInfo {
 	return &EnvironmentInfo{
 		FilAPI:  os.Getenv("FIL_API"),
 		FilPath: os.Getenv("FIL_PATH"),
@@ -88,7 +99,7 @@ func (g *Inspector) Environment() *EnvironmentInfo {
 }
 
 // Disk return information about filesystem the filecoin nodes repo is on.
-func (g *Inspector) Disk() (*DiskInfo, error) {
+func (g *inspector) Disk() (*DiskInfo, error) {
 	fsr, ok := g.repo.(*repo.FSRepo)
 	if !ok {
 		// we are using a in memory repo
@@ -117,7 +128,7 @@ func (g *Inspector) Disk() (*DiskInfo, error) {
 }
 
 // Memory return information about system meory usage.
-func (g *Inspector) Memory() (*MemoryInfo, error) {
+func (g *inspector) Memory() (*MemoryInfo, error) {
 	meminfo, err := sysi.MemoryInfo()
 	if err != nil {
 		return nil, err
@@ -129,11 +140,11 @@ func (g *Inspector) Memory() (*MemoryInfo, error) {
 }
 
 // configModule return the current config values of the filecoin node.
-func (g *Inspector) Config() *config.Config {
+func (g *inspector) Config() *config.Config {
 	return g.repo.Config()
 }
 
 // FilecoinVersion returns the version of venus.
-func (g *Inspector) FilecoinVersion() string {
+func (g *inspector) FilecoinVersion() string {
 	return fmt.Sprintf("%s %s", flags.GitTag, flags.GitCommit)
 }

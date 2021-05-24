@@ -4,6 +4,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/venus-auth/core"
 	"github.com/filecoin-project/venus-auth/util"
+	ipfsHttp "github.com/ipfs/go-ipfs-cmds/http"
 	logging "github.com/ipfs/go-log"
 	"net/http"
 	"strings"
@@ -35,8 +36,12 @@ func (authMux *AuthMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	token := r.Header.Get("Authorization")
 	// if other nodes on the same PC, the permission check will passes directly
+	// NOTE: local api support auth already,
+	// localhost is released only so that the current historical version can be used without the token
+	// TODO:When used in general, simply remove the if
 	if strings.Split(r.RemoteAddr, ":")[0] == "127.0.0.1" {
 		ctx = core.WithPerm(ctx, core.PermAdmin)
+		ctx = ipfsHttp.WithPerm(ctx, core.PermArr)
 	} else {
 		if token == "" {
 			token = r.FormValue("token")
@@ -59,7 +64,7 @@ func (authMux *AuthMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		ctx = auth.WithPerm(ctx, res)
-
+		ctx = ipfsHttp.WithPerm(ctx, res)
 	}
 	*r = *(r.WithContext(ctx))
 	authMux.mux.ServeHTTP(w, r)

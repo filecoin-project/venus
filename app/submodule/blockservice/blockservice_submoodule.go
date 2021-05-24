@@ -2,6 +2,7 @@ package blockservice
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/pkg/util/dag"
@@ -32,6 +33,6 @@ func NewBlockserviceSubmodule(ctx context.Context, blockstore *blockstore.Blocks
 	}, nil
 }
 
-func (blockService *BlockServiceSubmodule) API() *BlockServiceAPI {
-	return &BlockServiceAPI{blockService: blockService}
+func (blockService *BlockServiceSubmodule) API() apiface.IBlockService {
+	return &blockServiceAPI{blockService: blockService}
 }

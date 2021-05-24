@@ -2,44 +2,31 @@ package node
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/market"
-	"github.com/filecoin-project/venus/app/submodule/multisig"
-	"github.com/filecoin-project/venus/app/submodule/paych"
-
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
-	"github.com/filecoin-project/venus/app/submodule/blockservice"
-	"github.com/filecoin-project/venus/app/submodule/blockstore"
-	"github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/app/submodule/config"
-	"github.com/filecoin-project/venus/app/submodule/discovery"
-	"github.com/filecoin-project/venus/app/submodule/mining"
-	"github.com/filecoin-project/venus/app/submodule/mpool"
-	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
-	"github.com/filecoin-project/venus/app/submodule/syncer"
-	"github.com/filecoin-project/venus/app/submodule/wallet"
 )
 
 // Env is the environment for command API handlers.
 type Env struct {
 	ctx                  context.Context
-	InspectorAPI         *Inspector
-	BlockServiceAPI      *blockservice.BlockServiceAPI
-	BlockStoreAPI        *blockstore.BlockstoreAPI
-	ChainAPI             *chain.ChainAPI
-	ConfigAPI            *config.ConfigAPI
-	DiscoveryAPI         *discovery.DiscoveryAPI
-	NetworkAPI           *network.NetworkAPI
-	StorageNetworkingAPI *storagenetworking.StorageNetworkingAPI
-	SyncerAPI            *syncer.SyncerAPI
-	WalletAPI            *wallet.WalletAPI
-	MingingAPI           *mining.MiningAPI
-	MessagePoolAPI       *mpool.MessagePoolAPI
+	InspectorAPI         IInspector
+	BlockServiceAPI      apiface.IBlockService
+	BlockStoreAPI        apiface.IBlockStore
+	ChainAPI             apiface.IChain
+	ConfigAPI            apiface.IConfig
+	DiscoveryAPI         apiface.IDiscovery
+	NetworkAPI           apiface.INetwork
+	StorageNetworkingAPI storagenetworking.IStorageNetworking
+	SyncerAPI            apiface.ISyncer
+	WalletAPI            apiface.IWallet
+	MingingAPI           apiface.IMining
+	MessagePoolAPI       apiface.IMessagePool
 
-	MultiSigAPI multisig.IMultiSig
-	MarketAPI   market.IMarket
-	PaychAPI    paych.IPaychan
+	MultiSigAPI apiface.IMultiSig
+	MarketAPI   apiface.IMarket
+	PaychAPI    apiface.IPaychan
 }
 
 var _ cmds.Environment = (*Env)(nil)

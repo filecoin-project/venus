@@ -87,12 +87,12 @@ $ venus config bootstrap
 		}
 
 		if value != "" {
-			err := api.ConfigSet(key, value)
+			err := api.ConfigSet(req.Context, key, value)
 			if err != nil {
 				return err
 			}
 		}
-		res, err := api.ConfigGet(key)
+		res, err := api.ConfigGet(req.Context, key)
 		if err != nil {
 			return err
 		}
