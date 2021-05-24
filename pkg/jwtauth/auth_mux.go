@@ -38,7 +38,7 @@ func (authMux *AuthMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// if other nodes on the same PC, the permission check will passes directly
 	// NOTE: local api support auth already,
 	// localhost is released only so that the current historical version can be used without the token
-	// When used in general, simply remove the if
+	// TODO:When used in general, simply remove the if
 	if strings.Split(r.RemoteAddr, ":")[0] == "127.0.0.1" {
 		ctx = core.WithPerm(ctx, core.PermAdmin)
 		ctx = ipfsHttp.WithPerm(ctx, core.PermArr)
