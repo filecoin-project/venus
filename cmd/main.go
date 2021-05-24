@@ -26,6 +26,7 @@ const (
 	// OptionAPI is the name of the option for specifying the api port.
 	OptionAPI = "cmdapiaddr"
 
+	OptionToken = "token"
 	// OptionRepoDir is the name of the option for specifying the directory of the repo.
 	OptionRepoDir = "repodir"
 
@@ -153,6 +154,7 @@ TOOL COMMANDS
 `,
 	},
 	Options: []cmds.Option{
+		cmds.StringsOption(OptionToken, "set the auth token to use"),
 		cmds.StringOption(OptionAPI, "set the api port to use"),
 		cmds.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.venus/repo"),
 		cmds.StringOption(cmds.EncLong, cmds.EncShort, "The encoding type the output should be encoded with (pretty-json or json)").WithDefault("pretty-json"),
@@ -311,9 +313,19 @@ func getAPIInfo(req *cmds.Request) (*APIInfo, error) {
 		return nil, errors.Wrap(err, fmt.Sprintf("unable to dial API endpoint address %s", maddr))
 	}
 
-	token, err := repo.APITokenFromRepoPath(repoDir)
-	if err != nil {
-		return nil, errors.Wrap(err, "can't find token in environment")
+	token := ""
+	if tk, ok := req.Options[OptionToken]; ok {
+		tkArr := tk.([]string)
+		if len(tkArr) > 0 {
+			token = tkArr[0]
+		}
+	}
+	if len(token) == 0 {
+		tk, err := repo.APITokenFromRepoPath(repoDir)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't find token in environment")
+		}
+		token = tk
 	}
 
 	return &APIInfo{
