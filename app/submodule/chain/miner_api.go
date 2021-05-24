@@ -279,8 +279,14 @@ func (msa *minerStateAPI) StateMinerDeadlines(ctx context.Context, maddr address
 			return err
 		}
 
+		l, err := dl.DisputableProofCount()
+		if err != nil {
+			return err
+		}
+
 		out[i] = apitypes.Deadline{
-			PostSubmissions: ps,
+			PostSubmissions:      ps,
+			DisputableProofCount: l,
 		}
 		return nil
 	}); err != nil {

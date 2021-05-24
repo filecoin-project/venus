@@ -28,6 +28,7 @@ var chainCmd = &cmds.Command{
 		"ls":       chainLsCmd,
 		"set-head": chainSetHeadCmd,
 		"getblock": chainGetBlockCmd,
+		"disputer": chainDisputeSetCmd,
 	},
 }
 

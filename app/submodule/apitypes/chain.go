@@ -35,7 +35,8 @@ type ProtocolParams struct {
 }
 
 type Deadline struct {
-	PostSubmissions bitfield.BitField
+	PostSubmissions      bitfield.BitField
+	DisputableProofCount uint64
 }
 
 // BlsMessages[x].cid = Cids[x]
