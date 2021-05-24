@@ -17,3 +17,10 @@ clean:
 
 	rm -rf ./extern/filecoin-ffi
 	rm -rf ./extern/test-vectors
+
+gen:
+	go run ./tools/gen/api/proxygen.go
+	gofmt -s -l -w ./app/client/client_gen.go
+	goimports -l -w ./app/client/client_gen.go
+
+
