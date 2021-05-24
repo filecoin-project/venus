@@ -34,7 +34,7 @@ func PermissionProxy(in interface{}, out interface{}) {
 		methodName := ra.Type().Method(i).Name
 		field, exists := rint.Type().FieldByName(methodName)
 		if !exists {
-			log.Printf("method: %s not found in fullNode", methodName)
+			log.Printf("exclude method %s from fullNode", methodName)
 			continue
 		}
 
