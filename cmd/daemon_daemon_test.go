@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"testing"
 
-	manet "github.com/multiformats/go-multiaddr-net" //nolint
+	manet "github.com/multiformats/go-multiaddr/net"
 
 	"github.com/filecoin-project/venus/build/project"
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
@@ -83,8 +83,13 @@ func TestDaemonCORS(t *testing.T) {
 		assert.NoError(t, err)
 
 		url := fmt.Sprintf("http://%s/api/swarm/id", host)
+
+		token, err := td.CmdToken()
+		assert.NoError(t, err)
+
 		req, err := http.NewRequest("POST", url, nil)
 		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Add("Origin", "http://localhost:8080")
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
@@ -92,6 +97,7 @@ func TestDaemonCORS(t *testing.T) {
 
 		req, err = http.NewRequest("POST", url, nil)
 		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Add("Origin", "https://localhost:8080")
 		res, err = http.DefaultClient.Do(req)
 		assert.NoError(t, err)
@@ -99,6 +105,7 @@ func TestDaemonCORS(t *testing.T) {
 
 		req, err = http.NewRequest("POST", url, nil)
 		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Add("Origin", "http://127.0.0.1:8080")
 		res, err = http.DefaultClient.Do(req)
 		assert.NoError(t, err)
@@ -106,6 +113,7 @@ func TestDaemonCORS(t *testing.T) {
 
 		req, err = http.NewRequest("POST", url, nil)
 		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Add("Origin", "https://127.0.0.1:8080")
 		res, err = http.DefaultClient.Do(req)
 		assert.NoError(t, err)
@@ -121,10 +129,13 @@ func TestDaemonCORS(t *testing.T) {
 
 		_, host, err := manet.DialArgs(maddr) //nolint
 		assert.NoError(t, err)
+		token, err := td.CmdToken()
+		assert.NoError(t, err)
 
 		url := fmt.Sprintf("http://%s/api/swarm/id", host)
 		req, err := http.NewRequest("POST", url, nil)
 		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Add("Origin", "http://disallowed.origin")
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
@@ -143,10 +154,13 @@ func TestDaemonOverHttp(t *testing.T) {
 
 	_, host, err := manet.DialArgs(maddr) //nolint
 	require.NoError(t, err)
+	token, err := td.CmdToken()
+	assert.NoError(t, err)
 
 	url := fmt.Sprintf("http://%s/api/daemon", host)
 	req, err := http.NewRequest("POST", url, nil)
 	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+token)
 	res, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusNotFound, res.StatusCode)
