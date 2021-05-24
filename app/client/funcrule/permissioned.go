@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"golang.org/x/xerrors"
-	"log"
 	"reflect"
 )
 
@@ -34,7 +33,7 @@ func PermissionProxy(in interface{}, out interface{}) {
 		methodName := ra.Type().Method(i).Name
 		field, exists := rint.Type().FieldByName(methodName)
 		if !exists {
-			log.Printf("exclude method %s from fullNode", methodName)
+			//log.Printf("exclude method %s from fullNode", methodName)
 			continue
 		}
 
