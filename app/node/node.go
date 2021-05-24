@@ -217,8 +217,6 @@ func (node *Node) Stop(ctx context.Context) {
 	if err := node.repo.Close(); err != nil {
 		fmt.Printf("error closing repo: %s\n", err)
 	}
-
-	fmt.Println("stopping filecoin :(")
 }
 
 func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command, ready chan interface{}) error {
