@@ -16,12 +16,14 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/chain"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
+	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/net"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
 	pstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/libp2p/go-libp2p-core/metrics"
@@ -252,4 +254,19 @@ type ISyncerStruct struct {
 }
 
 type IWalletStruct struct {
+	HasPassword          func(p0 context.Context) bool                                                                         `perm:"admin"`
+	Locked               func(p0 context.Context, p1 string) error                                                             `perm:"admin"`
+	SetPassword          func(p0 context.Context, p1 string) error                                                             `perm:"admin"`
+	UnLocked             func(p0 context.Context, p1 string) error                                                             `perm:"admin"`
+	WalletAddresses      func(p0 context.Context) []address.Address                                                            `perm:"admin"`
+	WalletBalance        func(p0 context.Context, p1 address.Address) (abi.TokenAmount, error)                                 `perm:"admin"`
+	WalletDefaultAddress func(p0 context.Context) (address.Address, error)                                                     `perm:"admin"`
+	WalletExport         func(p0 address.Address, p1 string) (*crypto.KeyInfo, error)                                          `perm:"admin"`
+	WalletHas            func(p0 context.Context, p1 address.Address) (bool, error)                                            `perm:"admin"`
+	WalletImport         func(p0 *crypto.KeyInfo) (address.Address, error)                                                     `perm:"admin"`
+	WalletNewAddress     func(p0 address.Protocol) (address.Address, error)                                                    `perm:"admin"`
+	WalletSetDefault     func(p0 context.Context, p1 address.Address) error                                                    `perm:"admin"`
+	WalletSign           func(p0 context.Context, p1 address.Address, p2 []byte, p3 wallet.MsgMeta) (*crypto.Signature, error) `perm:"admin"`
+	WalletSignMessage    func(p0 context.Context, p1 address.Address, p2 *types.UnsignedMessage) (*types.SignedMessage, error) `perm:"admin"`
+	WalletState          func(p0 context.Context) int                                                                          `perm:"admin"`
 }
