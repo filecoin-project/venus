@@ -3,11 +3,11 @@ package blockstoreutil
 import (
 	"context"
 	"fmt"
+
 	"github.com/dgraph-io/badger/v2"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/keytransform"
 	dshelp "github.com/ipfs/go-ipfs-ds-help"
 	xerrors "github.com/pkg/errors"
@@ -129,7 +129,7 @@ func (txBlockstore *TxBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.C
 			k := iter.Item().Key()
 			// need to convert to key.Key using key.KeyFromDsKey.
 
-			dsKey := txBlockstore.keyTransform.InvertKey(ds.RawKey(string(k)))
+			dsKey := txBlockstore.keyTransform.InvertKey(datastore.RawKey(string(k)))
 			bk, err := dshelp.BinaryFromDsKey(dsKey)
 			if err != nil {
 				log.Warnf("error parsing key from binary: %s", err)

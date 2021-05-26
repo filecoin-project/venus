@@ -19,5 +19,5 @@ func AssertStdErrContains(t *testing.T, fast *fast.Filecoin, expected string) {
 	written, err := io.Copy(w, fast.LastCmdStdErr())
 	require.NoError(t, err)
 	require.True(t, written > 0)
-	assert.Contains(t, string(w.Bytes()), expected)
+	assert.Contains(t, w.String(), expected)
 }

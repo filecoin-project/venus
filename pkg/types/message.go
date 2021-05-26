@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	block "github.com/ipfs/go-block-format"
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -47,7 +46,7 @@ var EmptyTokenAmount = abi.TokenAmount{}
 type ChainMsg interface {
 	Cid() cid.Cid
 	VMMessage() *UnsignedMessage
-	ToStorageBlock() (blocks.Block, error)
+	ToStorageBlock() (block.Block, error)
 	// FIXME: This is the *message* length, this name is misleading.
 	ChainLength() int
 	cbor2.Marshaler
@@ -126,7 +125,7 @@ func (msg *UnsignedMessage) ToNode() (ipld.Node, error) {
 		return nil, err
 	}
 
-	blk, err := blocks.NewBlockWithCid(data, c)
+	blk, err := block.NewBlockWithCid(data, c)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +185,7 @@ func (msg *UnsignedMessage) VMMessage() *UnsignedMessage {
 	return msg
 }
 
-func (msg *UnsignedMessage) ToStorageBlock() (blocks.Block, error) {
+func (msg *UnsignedMessage) ToStorageBlock() (block.Block, error) {
 	buf := new(bytes.Buffer)
 	err := msg.MarshalCBOR(buf)
 	if err != nil {
@@ -198,7 +197,7 @@ func (msg *UnsignedMessage) ToStorageBlock() (blocks.Block, error) {
 		return nil, err
 	}
 
-	return blocks.NewBlockWithCid(data, c)
+	return block.NewBlockWithCid(data, c)
 }
 
 func (msg *UnsignedMessage) ValidForBlockInclusion(minGas int64, version network.Version) error {

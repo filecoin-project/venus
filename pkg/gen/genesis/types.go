@@ -30,7 +30,7 @@ type Miner struct {
 	ID     address.Address
 	Owner  address.Address
 	Worker address.Address
-	PeerId peer.ID //nolint:golint
+	PeerID peer.ID //nolint:golint
 
 	MarketBalance abi.TokenAmount
 	PowerBalance  abi.TokenAmount

@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"encoding/binary"
+
 	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -91,12 +92,12 @@ func (s *Sampler) SampleRandomnessFromBeacon(ctx context.Context, tsk types.TipS
 		searchHeight = 0
 	}
 
-	randTs, err := s.reader.GetTipSetByHeight(ctx, ts, searchHeight, true)
+	randTS, err := s.reader.GetTipSetByHeight(ctx, ts, searchHeight, true)
 	if err != nil {
 		return nil, err
 	}
 
-	be, err := FindLatestDRAND(ctx, randTs, s.reader)
+	be, err := FindLatestDRAND(ctx, randTS, s.reader)
 	if err != nil {
 		return nil, err
 	}

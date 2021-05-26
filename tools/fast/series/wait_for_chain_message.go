@@ -75,5 +75,5 @@ func findMessageInBlockSlice(ctx context.Context, node *fast.Filecoin, blks []ty
 		}
 	}
 
-	return nil, fmt.Errorf("Message not found")
+	return nil, fmt.Errorf("message not found")
 }

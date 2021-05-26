@@ -9,7 +9,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
-	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -59,7 +58,7 @@ var (
 
 	logSyncer    = logging.Logger("chainsync.syncer")
 	syncOneTimer *metrics.Float64Timer
-	reorgCnt     *metrics.Int64Counter
+	reorgCnt     *metrics.Int64Counter // nolint
 )
 
 func init() {
@@ -205,7 +204,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 		return xerrors.Errorf("calc current tipset %s state failed %w", next.Key().String(), err)
 	}
 
-	logSyncer.Infow("Process TipSet ", "Height:", next.Height(), "Blocks", next.Len(), " Root:", root, " receiptcid ", receiptCid, " time: ", time.Now().Sub(toProcessTime).Milliseconds())
+	logSyncer.Infow("Process TipSet ", "Height:", next.Height(), "Blocks", next.Len(), " Root:", root, " receiptcid ", receiptCid, " time: ", time.Since(toProcessTime).Milliseconds())
 
 	err = syncer.chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          next,
@@ -223,6 +222,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 // returns the union of the input tipset and the biggest tipset with the same
 // parents from the bsstore.
 // TODO: this leaks EC abstractions into the syncer, we should think about this.
+// nolint
 func (syncer *Syncer) widen(ctx context.Context, ts *types.TipSet) (*types.TipSet, error) {
 	// Lookup tipsets with the same parents from the bsstore.
 	if !syncer.chainStore.HasSiblingState(ts) {
@@ -368,8 +368,8 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 
 func (syncer *Syncer) fetchChainBlocks(ctx context.Context, knownTip *types.TipSet, targetTip *types.TipSet) ([]*types.TipSet, error) {
 	chainTipsets := []*types.TipSet{targetTip}
-	var flushDb = func(saveTips []*types.TipSet) error {
-		bs := bstore.NewTemporary()
+	var flushDB = func(saveTips []*types.TipSet) error {
+		bs := blockstoreutil.NewTemporary()
 		cborStore := cbor.NewCborStore(bs)
 		for _, tips := range saveTips {
 			for _, blk := range tips.Blocks() {
@@ -412,7 +412,7 @@ loop:
 		}
 
 		logSyncer.Infof("fetch blocks %d height from %d-%d", len(fetchHeaders), fetchHeaders[0].Height(), fetchHeaders[len(fetchHeaders)-1].Height())
-		if err = flushDb(fetchHeaders); err != nil {
+		if err = flushDB(fetchHeaders); err != nil {
 			return nil, err
 		}
 		for _, b := range fetchHeaders {
@@ -458,7 +458,7 @@ loop:
 		}
 		return nil, xerrors.Errorf("failed to sync fork: %w", err)
 	}
-	err = flushDb(fork)
+	err = flushDB(fork)
 	if err != nil {
 		return nil, err
 	}
@@ -538,7 +538,7 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*types.Ti
 		return fullTipSets, nil
 	}
 	// fetch message from remote nodes
-	bs := bstore.NewTemporary()
+	bs := blockstoreutil.NewTemporary()
 	cborStore := cbor.NewCborStore(bs)
 
 	messages, err := syncer.exchangeClient.GetChainMessages(ctx, leftChain)
@@ -691,8 +691,8 @@ func RangeProcess(ts []*types.TipSet, cb func(ts []*types.TipSet) error) (err er
 			err = cb(ts)
 			break
 		} else {
-			processTs := ts[0:maxProcessLen]
-			err = cb(processTs)
+			processTS := ts[0:maxProcessLen]
+			err = cb(processTS)
 			if err != nil {
 				break
 			}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+
 	"github.com/filecoin-project/venus/pkg/repo"
 	"golang.org/x/xerrors"
 
@@ -16,8 +17,6 @@ import (
 	dsq "github.com/ipfs/go-datastore/query"
 
 	"github.com/filecoin-project/go-address"
-	cborrpc "github.com/filecoin-project/go-cbor-util"
-
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 )
@@ -312,7 +311,7 @@ func dskeyForMsg(mcid cid.Cid) datastore.Key {
 func (ps *Store) SaveNewMessage(channelID string, mcid cid.Cid) error {
 	k := dskeyForMsg(mcid)
 
-	b, err := cborrpc.Dump(&MsgInfo{ChannelID: channelID, MsgCid: mcid})
+	b, err := cborutil.Dump(&MsgInfo{ChannelID: channelID, MsgCid: mcid})
 	if err != nil {
 		return err
 	}
@@ -333,7 +332,7 @@ func (ps *Store) SaveMessageResult(mcid cid.Cid, msgErr error) error {
 		minfo.Err = msgErr.Error()
 	}
 
-	b, err := cborrpc.Dump(minfo)
+	b, err := cborutil.Dump(minfo)
 	if err != nil {
 		return err
 	}
@@ -485,7 +484,7 @@ func marshallChannelInfo(ci *ChannelInfo) ([]byte, error) {
 	if ci.Channel == nil {
 		ci.Channel = &emptyAddr
 	}
-	return cborrpc.Dump(ci)
+	return cborutil.Dump(ci)
 }
 
 func unmarshallChannelInfo(stored *ChannelInfo, value []byte) (*ChannelInfo, error) {

@@ -5,14 +5,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
+	"time"
+
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/venus/pkg/crypto/sigs"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/prometheus/common/log"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"os"
-	"strings"
-	"time"
 
 	"github.com/Gurpartap/async"
 	"github.com/filecoin-project/go-address"
@@ -156,8 +157,8 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 
 	baseHeight := parent.Height()
 	nulls := blk.Height - (baseHeight + 1)
-	if tgtTs := parent.MinTimestamp() + bv.config.BlockDelay*uint64(nulls+1); blk.Timestamp != tgtTs {
-		return xerrors.Errorf("block has wrong timestamp: %d != %d", blk.Timestamp, tgtTs)
+	if tgtTS := parent.MinTimestamp() + bv.config.BlockDelay*uint64(nulls+1); blk.Timestamp != tgtTS {
+		return xerrors.Errorf("block has wrong timestamp: %d != %d", blk.Timestamp, tgtTS)
 	}
 
 	now := uint64(time.Now().Unix())
@@ -185,7 +186,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 
 	// get worker address
 	version := bv.fork.GetNtwkVersion(ctx, blk.Height)
-	lbTs, lbStateRoot, err := bv.chainState.GetLookbackTipSetForRound(ctx, parent, blk.Height, version)
+	lbTS, lbStateRoot, err := bv.chainState.GetLookbackTipSetForRound(ctx, parent, blk.Height, version)
 	if err != nil {
 		return xerrors.Errorf("failed to get lookback tipset for block: %w", err)
 	}
@@ -243,7 +244,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	})
 
 	winnerCheck := async.Err(func() error {
-		if err = bv.ValidateBlockWinner(ctx, workerAddr, lbTs, lbStateRoot, parent, parent.At(0).ParentStateRoot, blk, prevBeacon); err != nil {
+		if err = bv.ValidateBlockWinner(ctx, workerAddr, lbTS, lbStateRoot, parent, parent.At(0).ParentStateRoot, blk, prevBeacon); err != nil {
 			return err
 		}
 		return nil
@@ -395,9 +396,9 @@ func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockM
 func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *types.BlockHeader) (address.Address, error) {
 	// we check that the miner met the minimum power at the lookback tipset
 
-	baseTs := bv.chainState.GetHead()
+	baseTS := bv.chainState.GetHead()
 	version := bv.fork.GetNtwkVersion(ctx, bh.Height)
-	lbts, lbst, err := bv.chainState.GetLookbackTipSetForRound(ctx, baseTs, bh.Height, version)
+	lbts, lbst, err := bv.chainState.GetLookbackTipSetForRound(ctx, baseTS, bh.Height, version)
 	if err != nil {
 		log.Warnf("failed to load lookback tipset for incoming block: %s", err)
 		return address.Undef, ErrSoftFailure
@@ -414,7 +415,7 @@ func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *typ
 	// tipset - 1 for historical reasons. DO NOT use the lookback state
 	// returned by GetLookbackTipSetForRound.
 
-	eligible, err := bv.MinerEligibleToMine(ctx, bh.Miner, baseTs.At(0).ParentStateRoot, baseTs.Height(), lbts)
+	eligible, err := bv.MinerEligibleToMine(ctx, bh.Miner, baseTS.At(0).ParentStateRoot, baseTS.Height(), lbts)
 	if err != nil {
 		log.Warnf("failed to determine if incoming block's miner has minimum power: %s", err)
 		return address.Undef, ErrSoftFailure
@@ -480,14 +481,14 @@ func (bv *BlockValidator) beaconBaseEntry(ctx context.Context, blk *types.BlockH
 	return chain.FindLatestDRAND(ctx, parent, bv.chainState)
 }
 
-func (bv *BlockValidator) ValidateBlockWinner(ctx context.Context, waddr address.Address, lbTs *types.TipSet, lbRoot cid.Cid, baseTs *types.TipSet, baseRoot cid.Cid,
+func (bv *BlockValidator) ValidateBlockWinner(ctx context.Context, waddr address.Address, lbTS *types.TipSet, lbRoot cid.Cid, baseTS *types.TipSet, baseRoot cid.Cid,
 	blk *types.BlockHeader, prevEntry *types.BeaconEntry) error {
 	if blk.ElectionProof.WinCount < 1 {
 		return xerrors.Errorf("block is not claiming to be a winner")
 	}
 
-	baseHeight := baseTs.Height()
-	eligible, err := bv.MinerEligibleToMine(ctx, blk.Miner, baseRoot, baseHeight, lbTs)
+	baseHeight := baseTS.Height()
+	eligible, err := bv.MinerEligibleToMine(ctx, blk.Miner, baseRoot, baseHeight, lbTS)
 	if err != nil {
 		return xerrors.Errorf("determining if miner has min power failed: %v", err)
 	}
@@ -537,8 +538,8 @@ func (bv *BlockValidator) ValidateBlockWinner(ctx context.Context, waddr address
 	return nil
 }
 
-func (bv *BlockValidator) MinerEligibleToMine(ctx context.Context, addr address.Address, parentStateRoot cid.Cid, parentHeight abi.ChainEpoch, lookbackTs *types.TipSet) (bool, error) {
-	hmp, err := bv.minerHasMinPower(ctx, addr, lookbackTs)
+func (bv *BlockValidator) MinerEligibleToMine(ctx context.Context, addr address.Address, parentStateRoot cid.Cid, parentHeight abi.ChainEpoch, lookbackTS *types.TipSet) (bool, error) {
+	hmp, err := bv.minerHasMinPower(ctx, addr, lookbackTS)
 
 	// TODO: We're blurring the lines between a "runtime network version" and a "Lotus upgrade epoch", is that unavoidable?
 	if bv.fork.GetNtwkVersion(ctx, parentHeight) <= network.Version3 {
@@ -708,7 +709,7 @@ func (bv *BlockValidator) VerifyWinningPoStProof(ctx context.Context, nv network
 }
 
 // TODO: We should extract this somewhere else and make the message pool and miner use the same logic
-func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *appstate.SignatureValidator, blk *types.BlockHeader, baseTs *types.TipSet) (err error) {
+func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *appstate.SignatureValidator, blk *types.BlockHeader, baseTS *types.TipSet) (err error) {
 	blksecpMsgs, blkblsMsgs, err := bv.messageStore.LoadMetaMessages(ctx, blk.Messages)
 	if err != nil {
 		return xerrors.Errorf("failed loading message list %s for block %s %v", blk.Messages, blk.Cid(), err)
@@ -735,7 +736,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 		return xerrors.Errorf("loading state: %v", err)
 	}
 
-	baseHeight := baseTs.Height()
+	baseHeight := baseTS.Height()
 	pl := bv.gasPirceSchedule.PricelistByEpoch(baseHeight)
 	var sumGasLimit int64
 	checkMsg := func(msg types.ChainMsg) error {

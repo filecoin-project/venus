@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/filecoin-project/venus/app/client/funcrule"
-	"github.com/ipfs/go-path"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -15,6 +13,9 @@ import (
 	"strings"
 	"text/template"
 	"unicode"
+
+	"github.com/filecoin-project/venus/app/client/funcrule"
+	"github.com/ipfs/go-path"
 
 	"golang.org/x/xerrors"
 )
@@ -302,11 +303,7 @@ func generate(rootPath string, pkg, outpkg, outfile string) error {
 					info.Methods[mname].Tags[rkPerm] = tags[rkPerm]
 					// remove ignore method
 					if rule.Ignore {
-						if _, ok := ignoreMethods[ifname]; ok {
-							ignoreMethods[ifname] = append(ignoreMethods[ifname], mname)
-						} else {
-							ignoreMethods[ifname] = []string{mname}
-						}
+						ignoreMethods[ifname] = append(ignoreMethods[ifname], mname)
 					}
 				}
 			}

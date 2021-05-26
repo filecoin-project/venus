@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -189,9 +190,9 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 			if err := ctx.vm.revert(); err != nil {
 				panic(err)
 			}
-			switch r.(type) {
+			switch e := r.(type) {
 			case runtime.ExecutionPanic:
-				p := r.(runtime.ExecutionPanic)
+				p := e
 
 				vmlog.Warnw("Abort during actor execution.",
 					"errorMessage", p,

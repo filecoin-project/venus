@@ -21,19 +21,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
-type drandPeer struct {
-	addr string
-	tls  bool
-}
-
-func (dp *drandPeer) Address() string {
-	return dp.addr
-}
-
-func (dp *drandPeer) IsTLS() bool {
-	return dp.tls
-}
-
 // DrandBeacon connects Lotus with a drand network in order to provide
 // randomness to the system in a way that's aligned with Filecoin rounds/epochs.
 //
@@ -179,8 +166,8 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 
 func (db *DrandBeacon) MaxBeaconRoundForEpoch(filEpoch abi.ChainEpoch) uint64 {
 	// TODO: sometimes the genesis time for filecoin is zero and this goes negative
-	latestTs := ((uint64(filEpoch) * db.filRoundTime) + db.filGenTime) - db.filRoundTime
-	dround := (latestTs - db.drandGenTime) / uint64(db.interval.Seconds())
+	latestTS := ((uint64(filEpoch) * db.filRoundTime) + db.filGenTime) - db.filRoundTime
+	dround := (latestTS - db.drandGenTime) / uint64(db.interval.Seconds())
 	return dround
 }
 

@@ -70,10 +70,7 @@ func (l Loc) String() string {
 }
 
 func (l Loc) Important() bool {
-	if strings.HasPrefix(l.Function, "github.com/filecoin-project/specs-actors/actors/builtin") {
-		return true
-	}
-	return false
+	return strings.HasPrefix(l.Function, "github.com/filecoin-project/specs-actors/actors/builtin")
 }
 
 func (gt *GasTrace) MarshalJSON() ([]byte, error) {

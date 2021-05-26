@@ -4,17 +4,21 @@ package types
 
 import (
 	"fmt"
+	"io"
+	"sort"
+
 	abi "github.com/filecoin-project/go-state-types/abi"
+	crypto "github.com/filecoin-project/go-state-types/crypto"
 	exitcode "github.com/filecoin-project/go-state-types/exitcode"
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
-	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/ipfs/go-cid"
+	proof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
-	"io"
 )
 
 var _ = xerrors.Errorf
+var _ = cid.Undef
+var _ = sort.Sort
 
 var lengthBufMessageReceipt = []byte{131}
 
@@ -169,7 +173,7 @@ func (t *SignedMessage) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Message (UnsignedMessage) (struct)
+	// t.Message (types.UnsignedMessage) (struct)
 	if err := t.Message.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -199,7 +203,7 @@ func (t *SignedMessage) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Message (UnsignedMessage) (struct)
+	// t.Message (types.UnsignedMessage) (struct)
 
 	{
 
@@ -725,14 +729,14 @@ func (t *BeaconEntry) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-var lengthBufBlock = []byte{144}
+var lengthBufBlockHeader = []byte{144}
 
 func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write(lengthBufBlock); err != nil {
+	if _, err := w.Write(lengthBufBlockHeader); err != nil {
 		return err
 	}
 
@@ -743,17 +747,17 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Ticket (newBlock.Ticket) (struct)
+	// t.Ticket (types.Ticket) (struct)
 	if err := t.Ticket.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.ElectionProof (newBlock.ElectionProof) (struct)
+	// t.ElectionProof (types.ElectionProof) (struct)
 	if err := t.ElectionProof.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.BeaconEntries ([]*newBlock.BeaconEntry) (slice)
+	// t.BeaconEntries ([]*types.BeaconEntry) (slice)
 	if len(t.BeaconEntries) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.BeaconEntries was too long")
 	}
@@ -767,7 +771,7 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.WinPoStProof ([]newBlock.PoStProof) (slice)
+	// t.WinPoStProof ([]proof.PoStProof) (slice)
 	if len(t.WinPoStProof) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.WinPoStProof was too long")
 	}
@@ -781,7 +785,7 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.Parents (newBlock.TipSetKey) (struct)
+	// t.Parents (types.TipSetKey) (struct)
 	if err := t.Parents.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -876,7 +880,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.Ticket (newBlock.Ticket) (struct)
+	// t.Ticket (types.Ticket) (struct)
 
 	{
 
@@ -885,7 +889,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.ElectionProof (newBlock.ElectionProof) (struct)
+	// t.ElectionProof (types.ElectionProof) (struct)
 
 	{
 
@@ -904,7 +908,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.BeaconEntries ([]*newBlock.BeaconEntry) (slice)
+	// t.BeaconEntries ([]*types.BeaconEntry) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -933,7 +937,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		t.BeaconEntries[i] = &v
 	}
 
-	// t.WinPoStProof ([]newBlock.PoStProof) (slice)
+	// t.WinPoStProof ([]proof.PoStProof) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -949,12 +953,12 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 	}
 
 	if extra > 0 {
-		t.WinPoStProof = make([]proof2.PoStProof, extra)
+		t.WinPoStProof = make([]proof.PoStProof, extra)
 	}
 
 	for i := 0; i < int(extra); i++ {
 
-		var v proof2.PoStProof
+		var v proof.PoStProof
 		if err := v.UnmarshalCBOR(br); err != nil {
 			return err
 		}
@@ -962,7 +966,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		t.WinPoStProof[i] = v
 	}
 
-	// t.Parents (newBlock.TipSetKey) (struct)
+	// t.Parents (types.TipSetKey) (struct)
 
 	{
 
@@ -1132,7 +1136,7 @@ func (t *Ticket) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.VRFProof (newBlock.VRFPi) (slice)
+	// t.VRFProof (types.VRFPi) (slice)
 	if len(t.VRFProof) > cbg.ByteArrayMaxLen {
 		return xerrors.Errorf("Byte array in field t.VRFProof was too long")
 	}
@@ -1165,7 +1169,7 @@ func (t *Ticket) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.VRFProof (newBlock.VRFPi) (slice)
+	// t.VRFProof (types.VRFPi) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -1213,7 +1217,7 @@ func (t *ElectionProof) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.VRFProof (newBlock.VRFPi) (slice)
+	// t.VRFProof (types.VRFPi) (slice)
 	if len(t.VRFProof) > cbg.ByteArrayMaxLen {
 		return xerrors.Errorf("Byte array in field t.VRFProof was too long")
 	}
@@ -1271,7 +1275,7 @@ func (t *ElectionProof) UnmarshalCBOR(r io.Reader) error {
 
 		t.WinCount = int64(extraI)
 	}
-	// t.VRFProof (newBlock.VRFPi) (slice)
+	// t.VRFProof (types.VRFPi) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -1308,7 +1312,7 @@ func (t *BlockMsg) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.Header (newBlock.BlockHeader) (struct)
+	// t.Header (types.BlockHeader) (struct)
 	if err := t.Header.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -1361,7 +1365,7 @@ func (t *BlockMsg) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Header (newBlock.BlockHeader) (struct)
+	// t.Header (types.BlockHeader) (struct)
 
 	{
 

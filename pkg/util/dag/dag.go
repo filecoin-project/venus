@@ -7,10 +7,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 	chunk "github.com/ipfs/go-ipfs-chunker"
-	format "github.com/ipfs/go-ipld-format"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
-	dag "github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-path"
 	"github.com/ipfs/go-path/resolver"
 	"github.com/ipfs/go-unixfs"
@@ -21,7 +19,7 @@ import (
 
 // DAG is a service for accessing the merkledag
 type DAG struct {
-	dserv format.DAGService // Provides access to state tree.
+	dserv ipld.DAGService // Provides access to state tree.
 }
 
 // NewDAG creates a DAG with a given DAGService
@@ -119,13 +117,13 @@ func (dag *DAG) RecursiveGet(ctx context.Context, c cid.Cid) ([]ipld.Node, error
 //
 
 type dagCollector struct {
-	dagserv format.DAGService
-	state   []format.Node
+	dagserv ipld.DAGService
+	state   []ipld.Node
 }
 
 // collectState recursively walks the state tree starting with `stateRoot` and returns it as a slice of IPLD nodes.
 // Calling this method does not have any side effects.
-func (dc *dagCollector) collectState(ctx context.Context, stateRoot cid.Cid) ([]format.Node, error) {
+func (dc *dagCollector) collectState(ctx context.Context, stateRoot cid.Cid) ([]ipld.Node, error) {
 	dagNd, err := dc.dagserv.Get(ctx, stateRoot)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load stateroot from dagservice %s", stateRoot)
@@ -133,7 +131,7 @@ func (dc *dagCollector) collectState(ctx context.Context, stateRoot cid.Cid) ([]
 	dc.addState(dagNd)
 	seen := cid.NewSet()
 	for _, l := range dagNd.Links() {
-		if err := dag.Walk(ctx, dc.getLinks, l.Cid, seen.Visit); err != nil {
+		if err := merkledag.Walk(ctx, dc.getLinks, l.Cid, seen.Visit); err != nil {
 			return nil, errors.Wrapf(err, "dag service failed walking stateroot %s", stateRoot)
 		}
 	}
@@ -141,7 +139,7 @@ func (dc *dagCollector) collectState(ctx context.Context, stateRoot cid.Cid) ([]
 
 }
 
-func (dc *dagCollector) getLinks(ctx context.Context, c cid.Cid) ([]*format.Link, error) {
+func (dc *dagCollector) getLinks(ctx context.Context, c cid.Cid) ([]*ipld.Link, error) {
 	nd, err := dc.dagserv.Get(ctx, c)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load link from dagservice %s", c)
@@ -151,6 +149,6 @@ func (dc *dagCollector) getLinks(ctx context.Context, c cid.Cid) ([]*format.Link
 
 }
 
-func (dc *dagCollector) addState(nd format.Node) {
+func (dc *dagCollector) addState(nd ipld.Node) {
 	dc.state = append(dc.state, nd)
 }

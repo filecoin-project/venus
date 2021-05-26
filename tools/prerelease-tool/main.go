@@ -40,10 +40,8 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	go func() {
-		select {
-		case <-ctx.Done():
-			log.Print(ctx.Err())
-		}
+		<-ctx.Done()
+		log.Print(ctx.Err())
 	}()
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
@@ -127,7 +125,7 @@ func (r *prereleaseTool) deleteReleases(ctx context.Context, m releaseToDelete) 
 					return handleDeleteReleasesReturn(ok, err, deleteCount)
 				}
 				if resp.StatusCode != 204 {
-					return handleDeleteReleasesReturn(ok, fmt.Errorf(`Unexpected HTTP status code from release delete request.
+					return handleDeleteReleasesReturn(ok, fmt.Errorf(`unexpected HTTP status code from release delete request.
 						Expected: 204 Got: %d`, resp.StatusCode), deleteCount)
 				}
 				resp, err = r.client.Git.DeleteRef(ctx, r.Owner, r.Repo, "tags/"+tag)
@@ -135,7 +133,7 @@ func (r *prereleaseTool) deleteReleases(ctx context.Context, m releaseToDelete) 
 					return handleDeleteReleasesReturn(ok, err, deleteCount)
 				}
 				if resp.StatusCode != 204 {
-					return handleDeleteReleasesReturn(ok, fmt.Errorf(`Unexpected HTTP status code from release delete request.
+					return handleDeleteReleasesReturn(ok, fmt.Errorf(`unexpected HTTP status code from release delete request.
 						Expected: 204 Got: %d`, resp.StatusCode), deleteCount)
 				}
 				deleteCount++

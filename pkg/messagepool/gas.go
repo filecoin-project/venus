@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	tbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"golang.org/x/xerrors"
 
@@ -30,7 +29,7 @@ func (mp *MessagePool) GasEstimateFeeCap(
 	msg *types.UnsignedMessage,
 	maxqueueblks int64,
 	tsk types.TipSetKey,
-) (tbig.Int, error) {
+) (big.Int, error) {
 	ts, err := mp.api.ChainHead()
 	if err != nil {
 		return types.NewGasFeeCap(0), err
@@ -72,7 +71,7 @@ func medianGasPremium(prices []gasMeta, blocks int) abi.TokenAmount {
 
 	premium := prev1
 	if prev2.Sign() != 0 {
-		premium = big.Div(tbig.Add(prev1, prev2), tbig.NewInt(2))
+		premium = big.Div(big.Add(prev1, prev2), big.NewInt(2))
 	}
 
 	return premium
@@ -84,7 +83,7 @@ func (mp *MessagePool) GasEstimateGasPremium(
 	sender address.Address,
 	gaslimit int64,
 	_ types.TipSetKey,
-) (tbig.Int, error) {
+) (big.Int, error) {
 	if nblocksincl == 0 {
 		nblocksincl = 1
 	}
@@ -94,7 +93,7 @@ func (mp *MessagePool) GasEstimateGasPremium(
 
 	ts, err := mp.api.ChainHead()
 	if err != nil {
-		return tbig.Int{}, err
+		return big.Int{}, err
 	}
 
 	for i := uint64(0); i < nblocksincl*2; i++ {
@@ -106,14 +105,14 @@ func (mp *MessagePool) GasEstimateGasPremium(
 		tsPKey := ts.Parents()
 		pts, err := mp.api.ChainTipSet(tsPKey)
 		if err != nil {
-			return tbig.Int{}, err
+			return big.Int{}, err
 		}
 
 		blocks += len(pts.Blocks())
 
 		msgs, err := mp.api.MessagesForTipset(pts)
 		if err != nil {
-			return tbig.Int{}, xerrors.Errorf("loading messages: %w", err)
+			return big.Int{}, xerrors.Errorf("loading messages: %w", err)
 		}
 		for _, msg := range msgs {
 			prices = append(prices, gasMeta{
@@ -127,14 +126,14 @@ func (mp *MessagePool) GasEstimateGasPremium(
 
 	premium := medianGasPremium(prices, blocks)
 
-	if tbig.Cmp(premium, tbig.NewInt(MinGasPremium)) < 0 {
+	if big.Cmp(premium, big.NewInt(MinGasPremium)) < 0 {
 		switch nblocksincl {
 		case 1:
-			premium = tbig.NewInt(2 * MinGasPremium)
+			premium = big.NewInt(2 * MinGasPremium)
 		case 2:
-			premium = tbig.NewInt(1.5 * MinGasPremium)
+			premium = big.NewInt(1.5 * MinGasPremium)
 		default:
-			premium = tbig.NewInt(MinGasPremium)
+			premium = big.NewInt(MinGasPremium)
 		}
 	}
 
@@ -142,8 +141,8 @@ func (mp *MessagePool) GasEstimateGasPremium(
 	const precision = 32
 	// mean 1, stddev 0.005 => 95% within +-1%
 	noise := 1 + rand.NormFloat64()*0.005
-	premium = tbig.Mul(premium, tbig.NewInt(int64(noise*(1<<precision))+1))
-	premium = tbig.Div(premium, tbig.NewInt(1<<precision))
+	premium = big.Mul(premium, big.NewInt(int64(noise*(1<<precision))+1))
+	premium = big.Div(premium, big.NewInt(1<<precision))
 	return premium, nil
 }
 
@@ -155,17 +154,17 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Uns
 		}
 		tsk = ts.Key()
 	}
-	currTs, err := mp.api.ChainTipSet(tsk)
+	currTS, err := mp.api.ChainTipSet(tsk)
 	if err != nil {
 		return -1, xerrors.Errorf("getting tipset: %w", err)
 	}
 
 	msg := *msgIn
 	msg.GasLimit = constants.BlockGasLimit
-	msg.GasFeeCap = tbig.NewInt(int64(constants.MinimumBaseFee) + 1)
-	msg.GasPremium = tbig.NewInt(1)
+	msg.GasFeeCap = big.NewInt(int64(constants.MinimumBaseFee) + 1)
+	msg.GasPremium = big.NewInt(1)
 
-	fromA, err := mp.api.StateAccountKey(ctx, msgIn.From, currTs)
+	fromA, err := mp.api.StateAccountKey(ctx, msgIn.From, currTS)
 	if err != nil {
 		return -1, xerrors.Errorf("getting key address: %w", err)
 	}

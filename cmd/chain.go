@@ -5,8 +5,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"time"
+
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -87,23 +88,23 @@ var chainLsCmd = &cmds.Command{
 
 		var err error
 
-		startTs, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
+		startTS, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
 		if err != nil {
 			return err
 		}
 
 		height, _ := req.Options["height"].(int64)
-		if height >= 0 && abi.ChainEpoch(height) < startTs.Height() {
-			startTs, err = env.(*node.Env).ChainAPI.ChainGetTipSetByHeight(req.Context, abi.ChainEpoch(height), startTs.Key())
+		if height >= 0 && abi.ChainEpoch(height) < startTS.Height() {
+			startTS, err = env.(*node.Env).ChainAPI.ChainGetTipSetByHeight(req.Context, abi.ChainEpoch(height), startTS.Key())
 			if err != nil {
 				return err
 			}
 		}
 
-		if abi.ChainEpoch(count) > startTs.Height()+1 {
-			count = uint(startTs.Height() + 1)
+		if abi.ChainEpoch(count) > startTS.Height()+1 {
+			count = uint(startTS.Height() + 1)
 		}
-		tipSetKeys, err := env.(*node.Env).ChainAPI.ChainList(req.Context, startTs.Key(), int(count))
+		tipSetKeys, err := env.(*node.Env).ChainAPI.ChainList(req.Context, startTS.Key(), int(count))
 		if err != nil {
 			return err
 		}

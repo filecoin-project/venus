@@ -121,6 +121,7 @@ func NewVM(actorImpls ActorImplLookup, vmOption VmOption) (*VM, error) {
 	}, nil
 }
 
+// nolint
 func (vm *VM) setDebugger() {
 	vm.debugger = NewVMDebugMsg()
 	vm.vmDebug = true
@@ -235,7 +236,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 		}
 		vm.SetCurrentEpoch(i + 1)
 	}
-	vmlog.Debugf("process tipset fork: %v\n", time.Now().Sub(toProcessTipset).Milliseconds())
+	vmlog.Debugf("process tipset fork: %v\n", time.Since(toProcessTipset).Milliseconds())
 	// create message tracker
 	// Note: the same message could have been included by more than one miner
 	seenMsgs := make(map[cid.Cid]struct{})
@@ -329,7 +330,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 		}
 	}
 
-	vmlog.Infof("process cron: %v", time.Now().Sub(toProcessCron).Milliseconds())
+	vmlog.Infof("process cron: %v", time.Since(toProcessCron).Milliseconds())
 	if vm.vmDebug {
 		root, _ := vm.State.Flush(context.TODO())
 		vm.debugger.Printfln("after cron root: %s", root)

@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math/rand"
+
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
-	"math/rand"
 
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 
@@ -136,7 +137,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 			constructorParams := &power0.CreateMinerParams{
 				Owner:         m.Worker,
 				Worker:        m.Worker,
-				Peer:          []byte(m.PeerId),
+				Peer:          []byte(m.PeerID),
 				SealProofType: spt,
 			}
 

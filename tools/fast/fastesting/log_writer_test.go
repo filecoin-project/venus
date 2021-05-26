@@ -34,7 +34,7 @@ func TestLogWriter(t *testing.T) {
 	lw := newLogWriter(out)
 
 	for _, line := range input {
-		_, err := lw.Write([]byte(fmt.Sprintf("%s", line)))
+		_, err := lw.Write([]byte(line))
 		require.NoError(t, err)
 	}
 

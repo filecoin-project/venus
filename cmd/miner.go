@@ -236,9 +236,9 @@ var minerInfoCmd = &cmds.Command{
 		case time.Now().Unix()-int64(head.MinTimestamp()) < int64(blockDelay*3/2): // within 1.5 epochs
 			chainSyncStr = "[Chain: sync ok]"
 		case time.Now().Unix()-int64(head.MinTimestamp()) < int64(blockDelay*5): // within 5 epochs
-			chainSyncStr = fmt.Sprintf("[Chain: sync slow (%s behind)]", time.Now().Sub(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second))
+			chainSyncStr = fmt.Sprintf("[Chain: sync slow (%s behind)]", time.Since(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second))
 		default:
-			chainSyncStr = fmt.Sprintf("[Chain: sync behind! (%s behind)]", time.Now().Sub(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second))
+			chainSyncStr = fmt.Sprintf("[Chain: sync behind! (%s behind)]", time.Since(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second))
 		}
 
 		basefee := head.MinTicketBlock().ParentBaseFee

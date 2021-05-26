@@ -2,8 +2,9 @@ package state_test
 
 import (
 	"context"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"testing"
+
+	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -103,6 +104,7 @@ func TestTotalPowerUnaffectedBySlash(t *testing.T) {
 	assert.Equal(t, expected, total)
 }
 
+// nolint
 func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64, ownerKeys []crypto.KeyInfo) (cbor.IpldStore, []address.Address, cid.Cid) {
 	//todo think a way to mock power directly
 	t.Skipf("skip it due to cant mock power directly ")

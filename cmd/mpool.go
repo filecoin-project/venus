@@ -7,13 +7,14 @@ import (
 	"sort"
 	"strconv"
 
+	stdbig "math/big"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"golang.org/x/xerrors"
-	stdbig "math/big"
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -390,14 +391,14 @@ Get pending messages.
 		currBF := ts.Blocks()[0].ParentBaseFee
 		minBF := currBF
 		{
-			currTs := ts
+			currTS := ts
 			for i := 0; i < basefee; i++ {
-				key := currTs.Parents()
-				currTs, err = env.(*node.Env).ChainAPI.ChainGetTipSet(req.Context, key)
+				key := currTS.Parents()
+				currTS, err = env.(*node.Env).ChainAPI.ChainGetTipSet(req.Context, key)
 				if err != nil {
 					return xerrors.Errorf("walking chain: %w", err)
 				}
-				if newBF := currTs.Blocks()[0].ParentBaseFee; newBF.LessThan(minBF) {
+				if newBF := currTS.Blocks()[0].ParentBaseFee; newBF.LessThan(minBF) {
 					minBF = newBF
 				}
 			}

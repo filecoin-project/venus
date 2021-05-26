@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
@@ -182,7 +183,6 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	h.peerMgr.AddFilecoinPeer(from)
 	ci := types.NewChainInfo(from, from, fullTipSet.TipSet())
 	h.peerDiscovered(ci)
-	return
 }
 
 func (h *HelloProtocolHandler) loadLocalFullTipset(ctx context.Context, tsk types.TipSetKey) (*types.FullTipSet, error) {

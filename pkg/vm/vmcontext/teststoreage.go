@@ -2,6 +2,7 @@ package vmcontext
 
 import (
 	"bytes"
+
 	"github.com/filecoin-project/go-state-types/cbor"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -42,9 +43,6 @@ func (ts *TestStorage) StoreGet(cid cid.Cid, obj cbor.Unmarshaler) bool {
 	}
 
 	err = obj.UnmarshalCBOR(bytes.NewReader(node.RawData()))
-	if err != nil {
-		return false
-	}
 
-	return true
+	return err == nil
 }

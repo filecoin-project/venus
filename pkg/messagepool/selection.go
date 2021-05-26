@@ -2,11 +2,12 @@ package messagepool
 
 import (
 	"context"
-	"github.com/filecoin-project/go-state-types/abi"
 	"math/big"
 	"math/rand"
 	"sort"
 	"time"
+
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"golang.org/x/xerrors"
 
@@ -40,8 +41,8 @@ type msgChain struct {
 }
 
 func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) (msgs []*types.SignedMessage, err error) {
-	mp.curTsLk.Lock()
-	defer mp.curTsLk.Unlock()
+	mp.curTSLk.Lock()
+	defer mp.curTSLk.Unlock()
 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
@@ -50,9 +51,9 @@ func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) (msgs []*typ
 	// than any other block, then we don't bother with optimal selection because the
 	// first block will always have higher effective performance
 	if tq > 0.84 {
-		msgs, err = mp.selectMessagesGreedy(mp.curTs, ts)
+		msgs, err = mp.selectMessagesGreedy(mp.curTS, ts)
 	} else {
-		msgs, err = mp.selectMessagesOptimal(mp.curTs, ts, tq)
+		msgs, err = mp.selectMessagesOptimal(mp.curTS, ts, tq)
 	}
 
 	if err != nil {
@@ -69,9 +70,7 @@ func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) (msgs []*typ
 func deleteSelectedMessages(pending map[address.Address]map[uint64]*types.SignedMessage, msgs []*types.SignedMessage) map[address.Address]map[uint64]*types.SignedMessage {
 	// messages from the same wallet cannot be scattered in multiple blocks in a cycle, eg b1{nonce: 20~30}, b2{nonce: 31~40}
 	for _, msg := range msgs {
-		if _, ok := pending[msg.Message.From]; ok {
-			delete(pending, msg.Message.From)
-		}
+		delete(pending, msg.Message.From)
 	}
 
 	return pending
@@ -79,15 +78,15 @@ func deleteSelectedMessages(pending map[address.Address]map[uint64]*types.Signed
 
 // select the message multiple times and try not to repeat it each time
 func (mp *MessagePool) MultipleSelectMessages(ts *types.TipSet, tqs []float64) (msgss [][]*types.SignedMessage, err error) {
-	mp.curTsLk.Lock()
-	defer mp.curTsLk.Unlock()
+	mp.curTSLk.Lock()
+	defer mp.curTSLk.Unlock()
 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
 	// Load messages for the target tipset; if it is the same as the current tipset in the mpool
 	//    then this is just the pending messages
-	pending, err := mp.getPendingMessages(mp.curTs, ts)
+	pending, err := mp.getPendingMessages(mp.curTS, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -101,9 +100,9 @@ func (mp *MessagePool) MultipleSelectMessages(ts *types.TipSet, tqs []float64) (
 		}
 
 		if tq > 0.84 {
-			msgs, err = mp.multiSelectMessagesGreedy(mp.curTs, ts, pending)
+			msgs, err = mp.multiSelectMessagesGreedy(mp.curTS, ts, pending)
 		} else {
-			msgs, err = mp.multiSelectMessagesOptimal(mp.curTs, ts, tq, pending)
+			msgs, err = mp.multiSelectMessagesOptimal(mp.curTS, ts, tq, pending)
 		}
 
 		if err != nil {
@@ -130,7 +129,7 @@ func (mp *MessagePool) MultipleSelectMessages(ts *types.TipSet, tqs []float64) (
 	return msgss, nil
 }
 
-func (mp *MessagePool) multiSelectMessagesOptimal(curTs, ts *types.TipSet, tq float64, pending map[address.Address]map[uint64]*types.SignedMessage) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) multiSelectMessagesOptimal(curTS, ts *types.TipSet, tq float64, pending map[address.Address]map[uint64]*types.SignedMessage) ([]*types.SignedMessage, error) {
 	start := time.Now()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
@@ -447,7 +446,7 @@ tailLoop:
 	return result, nil
 }
 
-func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) selectMessagesOptimal(curTS, ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
 	start := time.Now()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
@@ -457,7 +456,7 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 
 	// 0. Load messages from the target tipset; if it is the same as the current tipset in
 	//    the mpool, then this is just the pending messages
-	pending, err := mp.getPendingMessages(curTs, ts)
+	pending, err := mp.getPendingMessages(curTS, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -771,7 +770,7 @@ tailLoop:
 	return result, nil
 }
 
-func (mp *MessagePool) multiSelectMessagesGreedy(curTs, ts *types.TipSet, pending map[address.Address]map[uint64]*types.SignedMessage) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) multiSelectMessagesGreedy(curTS, ts *types.TipSet, pending map[address.Address]map[uint64]*types.SignedMessage) ([]*types.SignedMessage, error) {
 	start := time.Now()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
@@ -900,7 +899,7 @@ tailLoop:
 	return result, nil
 }
 
-func (mp *MessagePool) selectMessagesGreedy(curTs, ts *types.TipSet) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) selectMessagesGreedy(curTS, ts *types.TipSet) ([]*types.SignedMessage, error) {
 	start := time.Now()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
@@ -910,7 +909,7 @@ func (mp *MessagePool) selectMessagesGreedy(curTs, ts *types.TipSet) ([]*types.S
 
 	// 0. Load messages for the target tipset; if it is the same as the current tipset in the mpool
 	//    then this is just the pending messages
-	pending, err := mp.getPendingMessages(curTs, ts)
+	pending, err := mp.getPendingMessages(curTS, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -1141,7 +1140,7 @@ tailLoop:
 	return result, gasLimit
 }
 
-func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.Address]map[uint64]*types.SignedMessage, error) {
+func (mp *MessagePool) getPendingMessages(curTS, ts *types.TipSet) (map[address.Address]map[uint64]*types.SignedMessage, error) {
 	start := time.Now()
 
 	result := make(map[address.Address]map[uint64]*types.SignedMessage)
@@ -1153,7 +1152,7 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 
 	// are we in sync?
 	inSync := false
-	if curTs.Height() == ts.Height() && curTs.Equals(ts) {
+	if curTS.Height() == ts.Height() && curTS.Equals(ts) {
 		inSync = true
 	}
 
@@ -1178,7 +1177,7 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 		return result, nil
 	}
 
-	if err := mp.runHeadChange(curTs, ts, result); err != nil {
+	if err := mp.runHeadChange(curTS, ts, result); err != nil {
 		return nil, xerrors.Errorf("failed to process difference between mpool head and given head: %v", err)
 	}
 

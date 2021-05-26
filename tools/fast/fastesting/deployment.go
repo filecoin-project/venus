@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-ipfs-files"
+	files "github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/pkg/testhelpers"
@@ -127,9 +127,7 @@ func makeDevnet(ctx context.Context, t *testing.T, network string, dir string, f
 	options[localplugin.AttrLogLevel] = "5"                                       // Set log level to Debug
 	options[localplugin.AttrFilecoinBinary] = testhelpers.MustGetFilecoinBinary() // Get the filecoin binary
 
-	genesisURI := env.GenesisCar()
-
-	fastenvOpts.InitOpts = append(fastenvOpts.InitOpts, fast.POGenesisFile(genesisURI), fast.PODevnet(networkConfig.Name))
+	fastenvOpts.InitOpts = append(fastenvOpts.InitOpts, fast.POGenesisFile(env.GenesisCar()), fast.PODevnet(networkConfig.Name))
 
 	ctx = series.SetCtxSleepDelay(ctx, time.Second*30)
 

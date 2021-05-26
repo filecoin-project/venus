@@ -5,13 +5,17 @@ package discovery
 import (
 	"fmt"
 	"io"
+	"sort"
 
 	abi "github.com/filecoin-project/go-state-types/abi"
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
 
 var _ = xerrors.Errorf
+var _ = cid.Undef
+var _ = sort.Sort
 
 var lengthBufHelloMessage = []byte{132}
 
@@ -26,7 +30,7 @@ func (t *HelloMessage) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.HeaviestTipSetCids (block.TipSetKey) (struct)
+	// t.HeaviestTipSetCids (types.TipSetKey) (struct)
 	if err := t.HeaviestTipSetCids.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -74,7 +78,7 @@ func (t *HelloMessage) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.HeaviestTipSetCids (block.TipSetKey) (struct)
+	// t.HeaviestTipSetCids (types.TipSetKey) (struct)
 
 	{
 

@@ -5,21 +5,25 @@ package chain
 import (
 	"fmt"
 	"io"
+	"sort"
 
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
 
 var _ = xerrors.Errorf
+var _ = cid.Undef
+var _ = sort.Sort
 
-var lengthBufTsState = []byte{130}
+var lengthBufTSState = []byte{130}
 
-func (t *TsState) MarshalCBOR(w io.Writer) error {
+func (t *TSState) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write(lengthBufTsState); err != nil {
+	if _, err := w.Write(lengthBufTSState); err != nil {
 		return err
 	}
 
@@ -40,8 +44,8 @@ func (t *TsState) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *TsState) UnmarshalCBOR(r io.Reader) error {
-	*t = TsState{}
+func (t *TSState) UnmarshalCBOR(r io.Reader) error {
+	*t = TSState{}
 
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)

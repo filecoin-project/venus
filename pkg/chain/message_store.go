@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	cbor2 "github.com/filecoin-project/go-state-types/cbor"
-	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 
 	"github.com/filecoin-project/venus/pkg/config"
 	blocks "github.com/ipfs/go-block-format"
@@ -115,7 +114,7 @@ func (ms *MessageStore) LoadMessage(mid cid.Cid) (types.ChainMsg, error) {
 		return m, nil
 	}
 
-	if err != bstore.ErrNotFound {
+	if err != blockstoreutil.ErrNotFound {
 		log.Warnf("GetCMessage: unexpected error getting unsigned message: %s", err)
 	}
 
@@ -429,13 +428,8 @@ func (ms *MessageStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, e
 
 	var out []types.ChainMsg
 	for _, bm := range bmsgs {
-		for _, blsm := range bm.BlsMessages {
-			out = append(out, blsm)
-		}
-
-		for _, secm := range bm.SecpkMessages {
-			out = append(out, secm)
-		}
+		out = append(out, bm.BlsMessages...)
+		out = append(out, bm.SecpkMessages...)
 	}
 
 	return out, nil
@@ -552,7 +546,7 @@ func GetReceiptRoot(receipts []types.MessageReceipt) (cid.Cid, error) {
 }
 
 func GetChainMsgRoot(ctx context.Context, messages []types.ChainMsg) (cid.Cid, error) {
-	tmpbs := bstore.NewTemporary()
+	tmpbs := blockstoreutil.NewTemporary()
 	tmpstore := adt.WrapStore(ctx, cbor.NewCborStore(tmpbs))
 
 	arr := adt.MakeEmptyArray(tmpstore)

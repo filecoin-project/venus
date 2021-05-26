@@ -194,13 +194,13 @@ func (ts *TipSet) Blocks() []*BlockHeader {
 }
 
 func (ts *TipSet) MinTimestamp() uint64 {
-	minTs := ts.blocks[0].Timestamp
+	minTS := ts.blocks[0].Timestamp
 	for _, bh := range ts.Blocks()[1:] {
-		if bh.Timestamp < minTs {
-			minTs = bh.Timestamp
+		if bh.Timestamp < minTS {
+			minTS = bh.Timestamp
 		}
 	}
-	return minTs
+	return minTS
 }
 
 func (ts *TipSet) IsChildOf(parent *TipSet) bool {

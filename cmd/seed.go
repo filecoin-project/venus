@@ -223,13 +223,11 @@ var genesisAddMsigsCmd = &cmds.Command{
 				VestingStart:    0,
 			}
 
-			act := genesis.Actor{
+			template.Accounts = append(template.Accounts, genesis.Actor{
 				Type:    genesis.TMultisig,
 				Balance: abi.TokenAmount(e.Amount),
 				Meta:    msig.ActorMeta(),
-			}
-
-			template.Accounts = append(template.Accounts, act)
+			})
 
 		}
 
@@ -373,7 +371,7 @@ func mergeGenMiners(a, b genesis.Miner) (genesis.Miner, error) {
 	return genesis.Miner{
 		Owner:         a.Owner,
 		Worker:        a.Worker,
-		PeerId:        a.PeerId,
+		PeerID:        a.PeerID,
 		MarketBalance: big.Zero(),
 		PowerBalance:  big.Zero(),
 		SectorSize:    a.SectorSize,

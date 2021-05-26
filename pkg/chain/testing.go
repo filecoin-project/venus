@@ -134,9 +134,7 @@ func (f *Builder) Store() *Store {
 	return f.store
 }
 
-func (f *Builder) RemovePeer(peer peer.ID) {
-	return
-}
+func (f *Builder) RemovePeer(peer peer.ID) {}
 
 var _ BlockProvider = (*Builder)(nil)
 var _ TipSetProvider = (*Builder)(nil)
@@ -816,6 +814,4 @@ func (f *Builder) GetFullTipSet(ctx context.Context, peer []peer.ID, tsk types.T
 	panic("implement me")
 }
 
-func (f *Builder) AddPeer(peer peer.ID) {
-	return
-}
+func (f *Builder) AddPeer(peer peer.ID) {}

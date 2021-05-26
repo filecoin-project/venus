@@ -12,6 +12,9 @@ linters:
     - varcheck
     - structcheck
     - deadcode
+    - unused
+    - stylecheck
+    - gosimple
 
 issues:
   exclude-use-default: false

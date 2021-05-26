@@ -201,26 +201,18 @@ func (pmgr *PeerMgr) doExpand(ctx context.Context) {
 type MockPeerMgr struct {
 }
 
-func (m MockPeerMgr) AddFilecoinPeer(p peer.ID) {
-	return
-}
+func (m MockPeerMgr) AddFilecoinPeer(p peer.ID) {}
 
 func (m MockPeerMgr) GetPeerLatency(p peer.ID) (time.Duration, bool) {
 	return time.Duration(0), true
 }
 
-func (m MockPeerMgr) SetPeerLatency(p peer.ID, latency time.Duration) {
-	return
-}
+func (m MockPeerMgr) SetPeerLatency(p peer.ID, latency time.Duration) {}
 
-func (m MockPeerMgr) Disconnect(p peer.ID) {
-	return
-}
+func (m MockPeerMgr) Disconnect(p peer.ID) {}
 
 func (m MockPeerMgr) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (m MockPeerMgr) Run(ctx context.Context) {
-	return
-}
+func (m MockPeerMgr) Run(ctx context.Context) {}

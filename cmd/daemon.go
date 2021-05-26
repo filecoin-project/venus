@@ -190,7 +190,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 		return err
 	}
 
-	if offlineMode, ok := req.Options[OfflineMode].(bool); ok {
+	if offlineMode, ok := req.Options[OfflineMode].(bool); ok { // nolint
 		opts = append(opts, node.OfflineMode(offlineMode))
 	}
 
@@ -214,7 +214,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 		opts = append(opts, node.SetAuthURL(authURL))
 	}
 
-	journal, err := journal.NewZapJournal(rep.JournalPath())
+	journal, err := journal.NewZapJournal(rep.JournalPath()) // nolint
 	if err != nil {
 		return err
 	}

@@ -2,8 +2,9 @@ package events
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
+
+	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"go.opencensus.io/trace"
@@ -95,7 +96,7 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 
 				triggerH := h - abi.ChainEpoch(hnd.confidence)
 
-				incTs, err := e.tsc.getNonNull(triggerH)
+				incTS, err := e.tsc.getNonNull(triggerH)
 				if err != nil {
 					return err
 				}
@@ -104,7 +105,7 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 				span.AddAttributes(trace.BoolAttribute("immediate", false))
 				handle := hnd.handle
 				e.lk.Unlock()
-				err = handle(ctx, incTs, h)
+				err = handle(ctx, incTS, h)
 				e.lk.Lock()
 				hnd.called = true
 				span.End()

@@ -1,9 +1,10 @@
 package discovery
 
 import (
-	"github.com/filecoin-project/venus/pkg/types"
 	"sort"
 	"sync"
+
+	"github.com/filecoin-project/venus/pkg/types"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -114,6 +115,7 @@ func (tracker *PeerTracker) RegisterDisconnect(ntwk network.Network) {
 
 // trustedPeers returns a slice of peers trusted by the PeerTracker. trustedPeers remain constant after
 // the PeerTracker has been initialized.
+// nolint
 func (tracker *PeerTracker) trustedPeers() []peer.ID {
 	var peers []peer.ID
 	for p := range tracker.trusted {

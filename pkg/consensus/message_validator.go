@@ -27,7 +27,7 @@ var dropNonceTooHighCt *metrics.Int64Counter
 var invReceiverUndefCt *metrics.Int64Counter
 var invSenderUndefCt *metrics.Int64Counter
 var invValueAboveMaxCt *metrics.Int64Counter
-var invParamsNilCt *metrics.Int64Counter
+var invParamsNilCt *metrics.Int64Counter // nolint
 var invGasPriceNegativeCt *metrics.Int64Counter
 var invGasBelowMinimumCt *metrics.Int64Counter
 var invNegativeValueCt *metrics.Int64Counter

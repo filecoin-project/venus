@@ -2,10 +2,11 @@ package syncer
 
 import (
 	"context"
+	"time"
+
 	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
-	"time"
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -120,7 +121,7 @@ func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMessage, 
 	if err != nil {
 		return nil, err
 	}
-	duration := time.Now().Sub(start)
+	duration := time.Since(start)
 
 	mcid := msg.Cid()
 	return &apitypes.InvocResult{
@@ -180,15 +181,13 @@ func (sa *syncerAPI) SyncState(ctx context.Context) (*apitypes.SyncState, error)
 	//current
 	for _, t := range tracker.Buckets() {
 		if t.State != syncTypes.StageSyncErrored {
-			activeSync := toActiveSync(t)
-			syncState.ActiveSyncs = append(syncState.ActiveSyncs, activeSync)
+			syncState.ActiveSyncs = append(syncState.ActiveSyncs, toActiveSync(t))
 		}
 	}
 	//history
 	for _, t := range tracker.History() {
 		if t.State != syncTypes.StageSyncErrored {
-			activeSync := toActiveSync(t)
-			syncState.ActiveSyncs = append(syncState.ActiveSyncs, activeSync)
+			syncState.ActiveSyncs = append(syncState.ActiveSyncs, toActiveSync(t))
 		}
 	}
 
