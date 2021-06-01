@@ -7,7 +7,7 @@ import (
 	"contrib.go.opencensus.io/exporter/jaeger"
 	"contrib.go.opencensus.io/exporter/prometheus"
 	ma "github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net" //nolint
+	manet "github.com/multiformats/go-multiaddr/net"
 	prom "github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/trace"
