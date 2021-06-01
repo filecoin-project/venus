@@ -362,23 +362,8 @@ var lockedCmd = &cmds.Command{
 	Arguments: []cmds.Argument{
 		cmds.StringArg("password", false, false, "Password to be locked"),
 	},
-	PreRun: func(req *cmds.Request, env cmds.Environment) error {
-		pw, err := gopass.GetPasswdPrompt("Password:", true, os.Stdin, os.Stdout)
-		if err != nil {
-			return err
-		}
-		req.Arguments = []string{string(pw)}
-
-		return nil
-	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		if len(req.Arguments) != 1 {
-			return re.Emit("A parameter is required.")
-		}
-
-		pw := req.Arguments[0]
-
-		err := env.(*node.Env).WalletAPI.Locked(req.Context, pw)
+		err := env.(*node.Env).WalletAPI.Locked(req.Context)
 		if err != nil {
 			return err
 		}

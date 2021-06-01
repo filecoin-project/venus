@@ -223,13 +223,13 @@ func (w *Wallet) DSBacked() (*DSBackend, error) {
 	return (backends[0]).(*DSBackend), nil
 }
 
-func (w *Wallet) Locked(password string) error {
+func (w *Wallet) Locked() error {
 	backend, err := w.DSBacked()
 	if err != nil {
 		return err
 	}
 
-	return backend.Locked(password)
+	return backend.Locked()
 }
 
 func (w *Wallet) UnLocked(password string) error {

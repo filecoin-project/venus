@@ -3,8 +3,9 @@ package wallet
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"strings"
+
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 
 	"github.com/filecoin-project/venus-wallet/core"
 
@@ -134,8 +135,8 @@ func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Add
 	}, nil
 }
 
-func (walletAPI *WalletAPI) Locked(ctx context.Context, password string) error {
-	return walletAPI.walletModule.Wallet.Locked(password)
+func (walletAPI *WalletAPI) Locked(ctx context.Context) error {
+	return walletAPI.walletModule.Wallet.Locked()
 }
 
 func (walletAPI *WalletAPI) UnLocked(ctx context.Context, password string) error {
