@@ -24,7 +24,6 @@ import (
 	chainpkg "github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/messagepool/journal"
 	"github.com/filecoin-project/venus/pkg/net/msgsub"
@@ -161,7 +160,7 @@ func (mp *MessagePoolSubmodule) validateLocalMessage(ctx context.Context, msg pu
 		return xerrors.New("local message has invalid destination address")
 	}
 
-	if !m.Message.Value.LessThan(crypto.TotalFilecoinInt) {
+	if !m.Message.Value.LessThan(types.TotalFilecoinInt) {
 		log.Warnf("local messages has too high value: %s", m.Message.Value)
 		return xerrors.New("value-too-high")
 	}

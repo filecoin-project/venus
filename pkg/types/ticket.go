@@ -6,8 +6,6 @@ import (
 	"math/big"
 
 	"github.com/minio/blake2b-simd"
-
-	"github.com/filecoin-project/venus/pkg/crypto"
 )
 
 // A Ticket is a marker of a tick of the blockchain's clock.  It is the source
@@ -35,7 +33,7 @@ func (t *Ticket) Less(o *Ticket) bool {
 
 func (t *Ticket) Quality() float64 {
 	ticketHash := blake2b.Sum256(t.VRFProof)
-	ticketNum := crypto.BigFromBytes(ticketHash[:]).Int
+	ticketNum := BigFromBytes(ticketHash[:]).Int
 	ticketDenu := big.NewInt(1)
 	ticketDenu.Lsh(ticketDenu, 256)
 	tv, _ := new(big.Rat).SetFrac(ticketNum, ticketDenu).Float64()

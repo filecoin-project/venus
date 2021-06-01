@@ -3,15 +3,15 @@ package market
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/types"
-	"sync"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -268,7 +268,7 @@ func (a *fundedAddress) process() {
 	if haveWithdrawals && a.state.MsgCid == nil && len(a.reservations) == 0 {
 		withdrawalCid, err := a.processWithdrawals(a.withdrawals)
 		if err == nil && withdrawalCid != cid.Undef {
-			a.applyStateChange(&withdrawalCid, crypto.EmptyInt)
+			a.applyStateChange(&withdrawalCid, types.EmptyInt)
 		}
 		a.withdrawals = filterOutProcessedReqs(a.withdrawals)
 	}

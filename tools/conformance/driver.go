@@ -2,10 +2,11 @@ package conformance
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/vm/gas"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	gobig "math/big"
 	"os"
+
+	"github.com/filecoin-project/venus/pkg/vm/gas"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/fixtures/networks"
@@ -24,7 +25,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/test-vectors/schema"
-	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/tools/conformance/chaos"
@@ -37,7 +37,7 @@ var (
 	// DefaultCirculatingSupply is the fallback circulating supply returned by
 	// the driver's CircSupplyCalculator function, used if the vector specifies
 	// no circulating supply.
-	DefaultCirculatingSupply = crypto2.TotalFilecoinInt
+	DefaultCirculatingSupply = types.TotalFilecoinInt
 
 	// DefaultBaseFee to use in the VM, if one is not supplied in the vector.
 	DefaultBaseFee = abi.NewTokenAmount(100)

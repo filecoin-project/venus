@@ -5,9 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"io"
 	"strconv"
 
@@ -20,7 +17,9 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/types"
 )
@@ -153,9 +152,9 @@ var statePowerCmd = &cmds.Command{
 			mp := power.MinerPower
 			percI := big.Div(big.Mul(mp.QualityAdjPower, big.NewInt(1000000)), tp.QualityAdjPower)
 			writer.Printf("%s(%s) / %s(%s) ~= %0.4f%"+
-				"%\n", mp.QualityAdjPower.String(), crypto.SizeStr(mp.QualityAdjPower), tp.QualityAdjPower.String(), crypto.SizeStr(tp.QualityAdjPower), float64(percI.Int64())/10000)
+				"%\n", mp.QualityAdjPower.String(), types.SizeStr(mp.QualityAdjPower), tp.QualityAdjPower.String(), types.SizeStr(tp.QualityAdjPower), float64(percI.Int64())/10000)
 		} else {
-			writer.Printf("%s(%s)\n", tp.QualityAdjPower.String(), crypto.SizeStr(tp.QualityAdjPower))
+			writer.Printf("%s(%s)\n", tp.QualityAdjPower.String(), types.SizeStr(tp.QualityAdjPower))
 		}
 
 		return re.Emit(buf)
@@ -413,7 +412,7 @@ var stateSectorSizeCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(fmt.Sprintf("%s (%d)", crypto.SizeStr(big.NewInt(int64(mi.SectorSize))), mi.SectorSize))
+		return re.Emit(fmt.Sprintf("%s (%d)", types.SizeStr(big.NewInt(int64(mi.SectorSize))), mi.SectorSize))
 	},
 	Type: "",
 }
@@ -502,7 +501,7 @@ var stateMinerInfo = &cmds.Command{
 		writer.Println()
 		writer.Printf("Consensus Fault End:\t%d\n", mi.ConsensusFaultElapsed)
 
-		writer.Printf("SectorSize:\t%s (%d)\n", crypto.SizeStr(big.NewInt(int64(mi.SectorSize))), mi.SectorSize)
+		writer.Printf("SectorSize:\t%s (%d)\n", types.SizeStr(big.NewInt(int64(mi.SectorSize))), mi.SectorSize)
 		pow, err := env.(*node.Env).ChainAPI.StateMinerPower(req.Context, addr, ts.Key())
 		if err != nil {
 			return err
@@ -512,13 +511,13 @@ var stateMinerInfo = &cmds.Command{
 		qpercI := big.Div(big.Mul(pow.MinerPower.QualityAdjPower, big.NewInt(1000000)), pow.TotalPower.QualityAdjPower)
 
 		writer.Printf("Byte Power:   %s / %s (%0.4f%%)\n",
-			crypto.SizeStr(pow.MinerPower.RawBytePower),
-			crypto.SizeStr(pow.TotalPower.RawBytePower),
+			types.SizeStr(pow.MinerPower.RawBytePower),
+			types.SizeStr(pow.TotalPower.RawBytePower),
 			float64(rpercI.Int64())/10000)
 
 		writer.Printf("Actual Power: %s / %s (%0.4f%%)\n",
-			crypto.DeciStr(pow.MinerPower.QualityAdjPower),
-			crypto.DeciStr(pow.TotalPower.QualityAdjPower),
+			types.DeciStr(pow.MinerPower.QualityAdjPower),
+			types.DeciStr(pow.TotalPower.QualityAdjPower),
 			float64(qpercI.Int64())/10000)
 
 		writer.Println()

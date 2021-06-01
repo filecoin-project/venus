@@ -3,13 +3,14 @@ package chain
 import (
 	"bytes"
 	"context"
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus/pkg/state"
 	"io"
 	"os"
 	"runtime/debug"
 	"sync"
+
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/pkg/state"
 
 	"github.com/cskr/pubsub"
 	"github.com/filecoin-project/go-address"
@@ -28,7 +29,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
@@ -931,8 +931,8 @@ func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEp
 	}
 
 	total := big.Add(circ, unCirc)
-	if !total.Equals(crypto.TotalFilecoinInt) {
-		return abi.TokenAmount{}, xerrors.Errorf("total filecoin didn't add to expected amount: %s != %s", total, crypto.TotalFilecoinInt)
+	if !total.Equals(types.TotalFilecoinInt) {
+		return abi.TokenAmount{}, xerrors.Errorf("total filecoin didn't add to expected amount: %s != %s", total, types.TotalFilecoinInt)
 	}
 
 	return circ, nil
