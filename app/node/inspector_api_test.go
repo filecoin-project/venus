@@ -1,9 +1,10 @@
 package node_test
 
 import (
-	"github.com/filecoin-project/venus/app/node"
 	"runtime"
 	"testing"
+
+	"github.com/filecoin-project/venus/app/node"
 
 	"github.com/stretchr/testify/assert"
 
@@ -57,5 +58,8 @@ func TestConfig(t *testing.T) {
 	mr := repo.NewInMemoryRepo()
 	g := node.NewInspectorAPI(mr)
 	c := g.Config()
-	assert.Equal(t, config.NewDefaultConfig(), c)
+
+	defCfg := config.NewDefaultConfig()
+	defCfg.Wallet.PassphraseConfig = config.TestPassphraseConfig()
+	assert.Equal(t, defCfg, c)
 }

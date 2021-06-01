@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	scryptN = 1 << 15
+	scryptN = 1 << 21
 	scryptP = 1
 )
 
@@ -135,6 +135,13 @@ func newDefaultWalletConfig() *WalletConfig {
 func DefaultPassphraseConfig() PassphraseConfig {
 	return PassphraseConfig{
 		ScryptN: scryptN,
+		ScryptP: scryptP,
+	}
+}
+
+func TestPassphraseConfig() PassphraseConfig {
+	return PassphraseConfig{
+		ScryptN: 1 << 15,
 		ScryptP: scryptP,
 	}
 }
