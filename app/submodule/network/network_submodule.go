@@ -4,12 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
-	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	blocks "github.com/ipfs/go-block-format"
-	bserv "github.com/ipfs/go-blockservice"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -19,7 +13,13 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
+	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	blocks "github.com/ipfs/go-block-format"
+	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log"
@@ -89,11 +89,6 @@ func (networkSubmodule *NetworkSubmodule) Stop(ctx context.Context) {
 	}
 }
 
-type blankValidator struct{}
-
-func (blankValidator) Validate(_ string, _ []byte) error        { return nil }
-func (blankValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }
-
 type networkConfig interface {
 	GenesisCid() cid.Cid
 	OfflineMode() bool
@@ -126,7 +121,6 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	// set up host
 	var peerHost host.Host
 	var router routing.Routing
-	validator := blankValidator{}
 	var pubsubMessageSigning bool
 	var peerMgr net.IPeerMgr
 	// if !config.OfflineMode() {
@@ -134,7 +128,6 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 		mode := dht.ModeAuto
 		opts := []dht.Option{dht.Mode(mode),
 			dht.Datastore(repo.ChainDatastore()),
-			dht.NamespacedValidator("v", validator),
 			dht.ProtocolPrefix(net.FilecoinDHT(networkName)),
 			dht.QueryFilter(dht.PublicQueryFilter),
 			dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
