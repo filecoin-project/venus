@@ -2,6 +2,7 @@ package jwtauth
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus-auth/core"
@@ -27,9 +28,7 @@ func (r *RemoteAuth) Verify(ctx context.Context, spanID, serviceName, preHost, h
 	}
 	jwtPerms := core.AdaptOldStrategy(res.Perm)
 	perms := make([]auth.Permission, len(jwtPerms))
-	for index, perm := range jwtPerms {
-		perms[index] = perm
-	}
+	copy(perms, jwtPerms)
 	return perms, nil
 }
 

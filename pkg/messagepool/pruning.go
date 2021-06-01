@@ -13,9 +13,9 @@ import (
 )
 
 func (mp *MessagePool) pruneExcessMessages() error {
-	mp.curTsLk.Lock()
-	ts := mp.curTs
-	mp.curTsLk.Unlock()
+	mp.curTSLk.Lock()
+	ts := mp.curTS
+	mp.curTSLk.Unlock()
 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()

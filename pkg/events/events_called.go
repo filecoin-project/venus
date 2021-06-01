@@ -71,7 +71,7 @@ type hcEvents struct {
 	ctx          context.Context
 	gcConfidence uint64
 
-	lastTs *types.TipSet
+	lastTS *types.TipSet
 
 	lk sync.Mutex
 
@@ -120,18 +120,18 @@ func (e *hcEvents) processHeadChangeEvent(rev, app []*types.TipSet) error {
 
 	for _, ts := range rev {
 		e.handleReverts(ts)
-		e.lastTs = ts
+		e.lastTS = ts
 	}
 
 	for _, ts := range app {
 		// Check if the head change caused any state changes that we were
 		// waiting for
-		stateChanges := e.watcherEvents.checkStateChanges(e.lastTs, ts)
+		stateChanges := e.watcherEvents.checkStateChanges(e.lastTS, ts)
 
 		// Queue up calls until there have been enough blocks to reach
 		// confidence on the state changes
 		for tid, data := range stateChanges {
-			e.queueForConfidence(tid, data, e.lastTs, ts)
+			e.queueForConfidence(tid, data, e.lastTS, ts)
 		}
 
 		// Check if the head change included any new message calls
@@ -146,7 +146,7 @@ func (e *hcEvents) processHeadChangeEvent(rev, app []*types.TipSet) error {
 			e.queueForConfidence(tid, data, nil, ts)
 		}
 
-		for at := e.lastTs.Height(); at <= ts.Height(); at++ {
+		for at := e.lastTS.Height(); at <= ts.Height(); at++ {
 			// Apply any queued events and timeouts that were targeted at the
 			// current chain height
 			e.applyWithConfidence(ts, at)
@@ -154,7 +154,7 @@ func (e *hcEvents) processHeadChangeEvent(rev, app []*types.TipSet) error {
 		}
 
 		// Update the latest known tipset
-		e.lastTs = ts
+		e.lastTS = ts
 	}
 
 	return nil
@@ -186,12 +186,12 @@ func (e *hcEvents) handleReverts(ts *types.TipSet) {
 
 // Queue up events until the chain has reached a height that reflects the
 // desired confidence
-func (e *hcEvents) queueForConfidence(trigID uint64, data eventData, prevTs, ts *types.TipSet) {
+func (e *hcEvents) queueForConfidence(trigID uint64, data eventData, prevTS, ts *types.TipSet) {
 	trigger := e.triggers[trigID]
 
 	prevH := NoHeight
-	if prevTs != nil {
-		prevH = prevTs.Height()
+	if prevTS != nil {
+		prevH = prevTS.Height()
 	}
 	appliedH := ts.Height()
 
@@ -221,7 +221,7 @@ func (e *hcEvents) applyWithConfidence(ts *types.TipSet, height abi.ChainEpoch) 
 	}
 
 	for origH, events := range byOrigH {
-		triggerTs, err := e.tsc.get(origH)
+		triggerTS, err := e.tsc.get(origH)
 		if err != nil {
 			log.Errorf("events: applyWithConfidence didn't find tipset for event; wanted %d; current %d", origH, height)
 		}
@@ -238,16 +238,16 @@ func (e *hcEvents) applyWithConfidence(ts *types.TipSet, height abi.ChainEpoch) 
 
 			// Previous tipset - this is relevant for example in a state change
 			// from one tipset to another
-			var prevTs *types.TipSet
+			var prevTS *types.TipSet
 			if event.prevH != NoHeight {
-				prevTs, err = e.tsc.get(event.prevH)
+				prevTS, err = e.tsc.get(event.prevH)
 				if err != nil {
 					log.Errorf("events: applyWithConfidence didn't find tipset for previous event; wanted %d; current %d", event.prevH, height)
 					continue
 				}
 			}
 
-			more, err := trigger.handle(event.data, prevTs, triggerTs, height)
+			more, err := trigger.handle(event.data, prevTS, triggerTS, height)
 			if err != nil {
 				log.Errorf("chain trigger (@H %d, triggered @ %d) failed: %s", origH, height, err)
 				continue // don't revert failed calls
@@ -281,14 +281,14 @@ func (e *hcEvents) applyTimeouts(ts *types.TipSet) {
 			continue
 		}
 
-		timeoutTs, err := e.tsc.get(ts.Height() - abi.ChainEpoch(trigger.confidence))
+		timeoutTS, err := e.tsc.get(ts.Height() - abi.ChainEpoch(trigger.confidence))
 		if err != nil {
 			log.Errorf("events: applyTimeouts didn't find tipset for event; wanted %d; current %d", ts.Height()-abi.ChainEpoch(trigger.confidence), ts.Height())
 		}
 
-		more, err := trigger.handle(nil, nil, timeoutTs, ts.Height())
+		more, err := trigger.handle(nil, nil, timeoutTS, ts.Height())
 		if err != nil {
-			log.Errorf("chain trigger (call @H %d, called @ %d) failed: %s", timeoutTs.Height(), ts.Height(), err)
+			log.Errorf("chain trigger (call @H %d, called @ %d) failed: %s", timeoutTS.Height(), ts.Height(), err)
 			continue // don't revert failed calls
 		}
 
@@ -484,7 +484,7 @@ func (me *messageEvents) checkNewCalls(ts *types.TipSet) (map[triggerID]eventDat
 
 	// For each message in the tipset
 	res := make(map[triggerID]eventData)
-	me.messagesForTs(pts, func(msg *types.UnsignedMessage) {
+	me.messagesForTS(pts, func(msg *types.UnsignedMessage) {
 		// TODO: provide receipts
 
 		// Run each trigger's matcher against the message
@@ -507,7 +507,7 @@ func (me *messageEvents) checkNewCalls(ts *types.TipSet) (map[triggerID]eventDat
 }
 
 // Get the messages in a tipset
-func (me *messageEvents) messagesForTs(ts *types.TipSet, consume func(message *types.UnsignedMessage)) {
+func (me *messageEvents) messagesForTS(ts *types.TipSet, consume func(message *types.UnsignedMessage)) {
 	seen := map[cid.Cid]struct{}{}
 
 	for _, tsb := range ts.Blocks() {

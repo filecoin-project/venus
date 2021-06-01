@@ -2,6 +2,7 @@ package multisig
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -158,24 +159,24 @@ func (a *multiSig) MsigRemoveSigner(ctx context.Context, msig address.Address, p
 }
 
 func (a *multiSig) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
-	startTs, err := a.state.ChainGetTipSet(ctx, start)
+	startTS, err := a.state.ChainGetTipSet(ctx, start)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading start tipset %s: %w", start, err)
 	}
 
-	endTs, err := a.state.ChainGetTipSet(ctx, end)
+	endTS, err := a.state.ChainGetTipSet(ctx, end)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading end tipset %s: %w", end, err)
 	}
 
-	if startTs.Height() > endTs.Height() {
-		return types.EmptyInt, xerrors.Errorf("start tipset %d is after end tipset %d", startTs.Height(), endTs.Height())
-	} else if startTs.Height() == endTs.Height() {
+	if startTS.Height() > endTS.Height() {
+		return types.EmptyInt, xerrors.Errorf("start tipset %d is after end tipset %d", startTS.Height(), endTS.Height())
+	} else if startTS.Height() == endTS.Height() {
 		return big.Zero(), nil
 	}
 
 	//LoadActor(ctx, addr, endTs)
-	act, err := a.state.GetParentStateRootActor(ctx, endTs, addr)
+	act, err := a.state.GetParentStateRootActor(ctx, endTS, addr)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor at end epoch: %w", err)
 	}
@@ -185,12 +186,12 @@ func (a *multiSig) MsigGetVested(ctx context.Context, addr address.Address, star
 		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state: %w", err)
 	}
 
-	startLk, err := msas.LockedBalance(startTs.Height())
+	startLk, err := msas.LockedBalance(startTS.Height())
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to compute locked balance at start height: %w", err)
 	}
 
-	endLk, err := msas.LockedBalance(endTs.Height())
+	endLk, err := msas.LockedBalance(endTS.Height())
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to compute locked balance at end height: %w", err)
 	}

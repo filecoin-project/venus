@@ -69,7 +69,7 @@ func NewAttoFILFromString(s string, base int) (specsbig.Int, bool) {
 // the Int is too big to fit into 64 bits or is negative
 func BigToUint64(bi specsbig.Int) (uint64, error) {
 	if !bi.Int.IsUint64() {
-		return 0, fmt.Errorf("Int: %s could not be represented as uint64", bi.String())
+		return 0, fmt.Errorf("int: %s could not be represented as uint64", bi.String())
 	}
 	return bi.Uint64(), nil
 }

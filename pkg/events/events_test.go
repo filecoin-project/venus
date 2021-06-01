@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -67,7 +68,7 @@ func (fcs *fakeCS) ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types
 	panic("Not Implemented")
 }
 
-func (fcs *fakeCS) makeTs(t *testing.T, parents types.TipSetKey, h abi.ChainEpoch, msgcid cid.Cid) *types.TipSet {
+func (fcs *fakeCS) makeTS(t *testing.T, parents types.TipSetKey, h abi.ChainEpoch, msgcid cid.Cid) *types.TipSet {
 	a, _ := address.NewFromString("t00")
 	b, _ := address.NewFromString("t02")
 	var ts, err = types.NewTipSet([]*types.BlockHeader{
@@ -208,7 +209,7 @@ func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid, nulls ...int) { /
 
 		best, err := fcs.tsc.best()
 		require.NoError(fcs.t, err)
-		ts := fcs.makeTs(fcs.t, best.Key(), fcs.h, mc)
+		ts := fcs.makeTS(fcs.t, best.Key(), fcs.h, mc)
 		require.NoError(fcs.t, fcs.tsc.add(ts))
 
 		if hasMsgs {
@@ -239,7 +240,7 @@ func TestAt(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -305,7 +306,7 @@ func TestAtDoubleTrigger(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -348,7 +349,7 @@ func TestAtNullTrigger(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -383,7 +384,7 @@ func TestAtNullConf(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -423,7 +424,7 @@ func TestAtStart(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -458,7 +459,7 @@ func TestAtStartConfidence(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -489,7 +490,7 @@ func TestAtChained(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -524,7 +525,7 @@ func TestAtChainedConfidence(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -559,7 +560,7 @@ func TestAtChainedConfidenceNull(t *testing.T) {
 		h:   1,
 		tsc: newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -598,7 +599,7 @@ func TestCalled(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -608,7 +609,7 @@ func TestCalled(t *testing.T) {
 	more := true
 	var applied, reverted bool
 	var appliedMsg *types.UnsignedMessage
-	var appliedTs *types.TipSet
+	var appliedTS *types.TipSet
 	var appliedH abi.ChainEpoch
 
 	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
@@ -617,7 +618,7 @@ func TestCalled(t *testing.T) {
 		require.Equal(t, false, applied)
 		applied = true
 		appliedMsg = msg
-		appliedTs = ts
+		appliedTS = ts
 		appliedH = curH
 		return more, nil
 	}, func(_ context.Context, ts *types.TipSet) error {
@@ -659,8 +660,8 @@ func TestCalled(t *testing.T) {
 	require.Equal(t, false, applied)
 	require.Equal(t, false, reverted)
 
-	require.Equal(t, abi.ChainEpoch(7), appliedTs.Height())
-	require.Equal(t, "bafkqaaa", appliedTs.Blocks()[0].Messages.String())
+	require.Equal(t, abi.ChainEpoch(7), appliedTS.Height())
+	require.Equal(t, "bafkqaaa", appliedTS.Blocks()[0].Messages.String())
 	require.Equal(t, abi.ChainEpoch(10), appliedH)
 	require.Equal(t, t0123, appliedMsg.To)
 	require.Equal(t, uint64(1), appliedMsg.Nonce)
@@ -703,8 +704,8 @@ func TestCalled(t *testing.T) {
 	require.Equal(t, false, reverted)
 	applied = false
 
-	require.Equal(t, abi.ChainEpoch(9), appliedTs.Height())
-	require.Equal(t, "bafkqaaa", appliedTs.Blocks()[0].Messages.String())
+	require.Equal(t, abi.ChainEpoch(9), appliedTS.Height())
+	require.Equal(t, "bafkqaaa", appliedTS.Blocks()[0].Messages.String())
 	require.Equal(t, abi.ChainEpoch(12), appliedH)
 	require.Equal(t, t0123, appliedMsg.To)
 	require.Equal(t, uint64(2), appliedMsg.Nonce)
@@ -724,8 +725,8 @@ func TestCalled(t *testing.T) {
 	reverted = false
 	applied = false
 
-	require.Equal(t, abi.ChainEpoch(7), appliedTs.Height())
-	require.Equal(t, "bafkqaaa", appliedTs.Blocks()[0].Messages.String())
+	require.Equal(t, abi.ChainEpoch(7), appliedTS.Height())
+	require.Equal(t, "bafkqaaa", appliedTS.Blocks()[0].Messages.String())
 	require.Equal(t, abi.ChainEpoch(10), appliedH)
 	require.Equal(t, t0123, appliedMsg.To)
 	require.Equal(t, uint64(2), appliedMsg.Nonce)
@@ -811,7 +812,7 @@ func TestCalledTimeout(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -851,7 +852,7 @@ func TestCalledTimeout(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events = NewEvents(context.Background(), fcs)
 
@@ -886,7 +887,7 @@ func TestCalledOrder(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -950,7 +951,7 @@ func TestCalledNull(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -1016,7 +1017,7 @@ func TestRemoveTriggersOnMessage(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -1107,15 +1108,15 @@ func TestStateChanged(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
 	more := true
 	var applied, reverted bool
 	var appliedData StateChange
-	var appliedOldTs *types.TipSet
-	var appliedNewTs *types.TipSet
+	var appliedOldTS *types.TipSet
+	var appliedNewTS *types.TipSet
 	var appliedH abi.ChainEpoch
 	var matchData StateChange
 
@@ -1128,8 +1129,8 @@ func TestStateChanged(t *testing.T) {
 		require.Equal(t, false, applied)
 		applied = true
 		appliedData = data
-		appliedOldTs = oldTs
-		appliedNewTs = newTs
+		appliedOldTS = oldTs
+		appliedNewTS = newTs
 		appliedH = curH
 		return more, nil
 	}, func(_ context.Context, ts *types.TipSet) error {
@@ -1174,8 +1175,8 @@ func TestStateChanged(t *testing.T) {
 	require.Equal(t, false, reverted)
 
 	// Change happens from 5 -> 6
-	require.Equal(t, abi.ChainEpoch(5), appliedOldTs.Height())
-	require.Equal(t, abi.ChainEpoch(6), appliedNewTs.Height())
+	require.Equal(t, abi.ChainEpoch(5), appliedOldTS.Height())
+	require.Equal(t, abi.ChainEpoch(6), appliedNewTS.Height())
 
 	// Actually applied (with confidence) at 9
 	require.Equal(t, abi.ChainEpoch(9), appliedH)
@@ -1196,7 +1197,7 @@ func TestStateChangedRevert(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -1275,7 +1276,7 @@ func TestStateChangedTimeout(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events := NewEvents(context.Background(), fcs)
 
@@ -1315,7 +1316,7 @@ func TestStateChangedTimeout(t *testing.T) {
 		blkMsgs: map[cid.Cid]cid.Cid{},
 		tsc:     newTSCache(2*constants.ForkLengthThreshold, nil),
 	}
-	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, types.EmptyTSK, 1, dummyCid)))
+	require.NoError(t, fcs.tsc.add(fcs.makeTS(t, types.EmptyTSK, 1, dummyCid)))
 
 	events = NewEvents(context.Background(), fcs)
 

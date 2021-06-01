@@ -2,9 +2,10 @@ package chain
 
 import (
 	"context"
+	"time"
+
 	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	"time"
 
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
@@ -37,11 +38,11 @@ func (cia *chainInfoAPI) BlockTime(ctx context.Context) time.Duration {
 
 // ChainLs returns an iterator of tipsets from specified head by tsKey to genesis
 func (cia *chainInfoAPI) ChainList(ctx context.Context, tsKey types.TipSetKey, count int) ([]types.TipSetKey, error) {
-	fromTs, err := cia.chain.ChainReader.GetTipSet(tsKey)
+	fromTS, err := cia.chain.ChainReader.GetTipSet(tsKey)
 	if err != nil {
 		return nil, xerrors.Wrap(err, "could not retrieve network name")
 	}
-	tipset, err := cia.chain.ChainReader.Ls(ctx, fromTs, count)
+	tipset, err := cia.chain.ChainReader.Ls(ctx, fromTS, count)
 	if err != nil {
 		return nil, err
 	}
@@ -335,12 +336,12 @@ func (cia *chainInfoAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk 
 		searchHeight = 0
 	}
 
-	randTs, err := cia.ChainGetTipSetByHeight(ctx, searchHeight, tsk)
+	randTS, err := cia.ChainGetTipSetByHeight(ctx, searchHeight, tsk)
 	if err != nil {
 		return nil, err
 	}
 
-	mtb := randTs.MinTicketBlock()
+	mtb := randTS.MinTicketBlock()
 
 	return chain.DrawRandomness(mtb.Ticket.VRFProof, personalization, randEpoch, entropy)
 }
@@ -382,8 +383,8 @@ func (cia *chainInfoAPI) StateSearchMsg(ctx context.Context, mCid cid.Cid) (*api
 		return &apitypes.MsgLookup{
 			Message: mCid,
 			Receipt: *msgResult.Receipt,
-			TipSet:  msgResult.Ts.Key(),
-			Height:  msgResult.Ts.Height(),
+			TipSet:  msgResult.TS.Key(),
+			Height:  msgResult.TS.Height(),
 		}, nil
 	}
 	return nil, nil
@@ -402,8 +403,8 @@ func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confide
 		return &apitypes.MsgLookup{
 			Message: mCid,
 			Receipt: *msgResult.Receipt,
-			TipSet:  msgResult.Ts.Key(),
-			Height:  msgResult.Ts.Height(),
+			TipSet:  msgResult.TS.Key(),
+			Height:  msgResult.TS.Height(),
 		}, nil
 	}
 	return nil, nil

@@ -13,22 +13,22 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	. "github.com/filecoin-project/venus/tools/gengen/util"
+	genutil "github.com/filecoin-project/venus/tools/gengen/util"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func testConfig(t *testing.T) *GenesisCfg {
-	fiftyCommCfgs, err := MakeCommitCfgs(50)
+func testConfig(t *testing.T) *genutil.GenesisCfg {
+	fiftyCommCfgs, err := genutil.MakeCommitCfgs(50)
 	require.NoError(t, err)
-	tenCommCfgs, err := MakeCommitCfgs(10)
+	tenCommCfgs, err := genutil.MakeCommitCfgs(10)
 	require.NoError(t, err)
 
-	return &GenesisCfg{
+	return &genutil.GenesisCfg{
 		KeysToGen:         4,
 		PreallocatedFunds: []string{"1000000", "500000"},
-		Miners: []*CreateStorageMinerConfig{
+		Miners: []*genutil.CreateStorageMinerConfig{
 			{
 				Owner:            0,
 				CommittedSectors: fiftyCommCfgs,
@@ -57,7 +57,7 @@ func TestGenGenLoading(t *testing.T) {
 	fi, err := ioutil.TempFile("", "gengentest")
 	assert.NoError(t, err)
 
-	_, err = GenGenesisCar(testConfig(t), fi)
+	_, err = genutil.GenGenesisCar(testConfig(t), fi)
 	assert.NoError(t, err)
 	assert.NoError(t, fi.Close())
 
@@ -76,10 +76,10 @@ func TestGenGenDeterministic(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	ctx := context.Background()
-	var info *RenderedGenInfo
+	var info *genutil.RenderedGenInfo
 	for i := 0; i < 5; i++ {
 		bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
-		inf, err := GenGen(ctx, testConfig(t), bstore)
+		inf, err := genutil.GenGen(ctx, testConfig(t), bstore)
 		assert.NoError(t, err)
 		if info == nil {
 			info = inf

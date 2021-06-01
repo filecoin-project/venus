@@ -6,16 +6,15 @@ package consensus
 import (
 	"context"
 	"errors"
+	"math/big"
+
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"
-	"math/big"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/state"
-	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
 )
 
 // ChainSelector weighs and compares chains.
@@ -93,8 +92,4 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b *types.TipSet) (bool
 	}
 
 	return a.Len() > b.Len(), nil
-}
-
-func (c *ChainSelector) loadStateTree(ctx context.Context, id cid.Cid) (*vmstate.State, error) {
-	return vmstate.LoadState(ctx, c.cstore, id)
 }

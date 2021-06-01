@@ -11,9 +11,8 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/keytransform"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	dshelp "github.com/ipfs/go-ipfs-ds-help"
 	"go.uber.org/zap"
 )
@@ -142,7 +141,7 @@ func Open(opts Options) (*BadgerBlockstore, error) {
 		skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
 	}
 	keyTransform := &keytransform.PrefixTransform{
-		Prefix: ds.NewKey(opts.Prefix),
+		Prefix: datastore.NewKey(opts.Prefix),
 	}
 	db, err := badger.Open(opts.Options)
 	if err != nil {
@@ -399,7 +398,7 @@ func (b *BadgerBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, err
 			}
 			k := iter.Item().Key()
 			// need to convert to key.Key using key.KeyFromDsKey.
-			bk, err := dshelp.BinaryFromDsKey(ds.RawKey(string(k)))
+			bk, err := dshelp.BinaryFromDsKey(datastore.RawKey(string(k)))
 			if err != nil {
 				log.Warnf("error parsing key from binary: %s", err)
 				continue

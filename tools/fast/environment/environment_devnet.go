@@ -209,10 +209,10 @@ func (e *Devnet) GetFunds(ctx context.Context, p *fast.Filecoin) error {
 		//}
 		return nil
 	case 400:
-		return fmt.Errorf("Bad Request: %s", string(b))
+		return fmt.Errorf("bad Request: %s", string(b))
 	case 429:
-		return fmt.Errorf("Rate Limit: %s", string(b))
+		return fmt.Errorf("rate Limit: %s", string(b))
 	default:
-		return fmt.Errorf("Unhandled Status: %s", resp.Status)
+		return fmt.Errorf("unhandled Status: %s", resp.Status)
 	}
 }

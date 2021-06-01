@@ -3,8 +3,9 @@ package types
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/filecoin-project/venus/pkg/util/test"
 	"testing"
+
+	"github.com/filecoin-project/venus/pkg/util/test"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
@@ -55,12 +56,12 @@ func TestTipsetJson(t *testing.T) {
 	jsonBytes, err := json.Marshal(ts)
 	require.NoError(t, err)
 
-	unmarshalTs := &TipSet{}
-	err = json.Unmarshal(jsonBytes, unmarshalTs)
+	unmarshalTS := &TipSet{}
+	err = json.Unmarshal(jsonBytes, unmarshalTS)
 	require.NoError(t, err)
-	assert.Equal(t, unmarshalTs.Len(), ts.Len())
+	assert.Equal(t, unmarshalTS.Len(), ts.Len())
 	for i := 0; i < ts.Len(); i++ {
-		test.Equal(t, unmarshalTs.At(i), ts.At(i))
+		test.Equal(t, unmarshalTS.At(i), ts.At(i))
 	}
 }
 

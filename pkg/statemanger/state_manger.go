@@ -2,6 +2,8 @@ package statemanger
 
 import (
 	"context"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensus"
@@ -9,7 +11,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 	"github.com/filecoin-project/venus/pkg/types"
 	"golang.org/x/xerrors"
-	"time"
 )
 
 // stateManagerAPI defines the methods needed from StateManager
@@ -61,7 +62,7 @@ func (o *stmgr) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.
 		Msg:            msg,
 		MsgRct:         &ret.Receipt,
 		ExecutionTrace: &ret.GasTracker.ExecutionTrace,
-		Duration:       time.Now().Sub(timeStart),
+		Duration:       time.Since(timeStart),
 	}, nil
 }
 func (o *stmgr) GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error) {

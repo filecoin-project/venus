@@ -21,12 +21,12 @@ const repubMsgLimit = 30
 var RepublishBatchDelay = 100 * time.Millisecond
 
 func (mp *MessagePool) republishPendingMessages() error {
-	mp.curTsLk.Lock()
-	ts := mp.curTs
+	mp.curTSLk.Lock()
+	ts := mp.curTS
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
 	if err != nil {
-		mp.curTsLk.Unlock()
+		mp.curTSLk.Unlock()
 		return xerrors.Errorf("computing basefee: %v", err)
 	}
 	baseFeeLowerBound := getBaseFeeLowerBound(baseFee, baseFeeLowerBoundFactor)
@@ -50,7 +50,7 @@ func (mp *MessagePool) republishPendingMessages() error {
 		pending[actor] = pend
 	}
 	mp.lk.Unlock()
-	mp.curTsLk.Unlock()
+	mp.curTSLk.Unlock()
 
 	if len(pending) == 0 {
 		return nil

@@ -1,8 +1,9 @@
 package exchange
 
 import (
-	"github.com/ipfs/go-cid"
 	"time"
+
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -78,8 +79,7 @@ type parsedOptions struct {
 }
 
 func (options *parsedOptions) noOptionsSet() bool {
-	return options.IncludeHeaders == false &&
-		options.IncludeMessages == false
+	return !options.IncludeHeaders && !options.IncludeMessages
 }
 
 func parseOptions(optfield uint64) *parsedOptions {

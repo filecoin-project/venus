@@ -17,13 +17,8 @@ import (
 	"github.com/filecoin-project/venus/build/internal/version"
 )
 
-var lineBreak = "\n"
-
 func init() {
 	log.SetFlags(0)
-	if runtime.GOOS == "windows" {
-		lineBreak = "\r\n"
-	}
 	// We build with go modules.
 	if err := os.Setenv("GO111MODULE", "on"); err != nil {
 		fmt.Println("Failed to set GO111MODULE env")
@@ -152,7 +147,7 @@ func forceBuildFC() {
 // exist in side of it. We use this pattern in a few places, so the need to keep the dot files around is impotant.
 func cleanDirectory(dir string, ignoredots bool) error {
 	if abs := filepath.IsAbs(dir); !abs {
-		return fmt.Errorf("Directory %s is not an absolute path, could not clean directory", dir)
+		return fmt.Errorf("directory %s is not an absolute path, could not clean directory", dir)
 	}
 
 	files, err := ioutil.ReadDir(dir)

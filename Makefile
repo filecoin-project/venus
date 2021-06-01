@@ -8,6 +8,9 @@ deps:
 	git submodule update --init
 	go run ./build/*.go smartdeps
 
+lint:
+	go run ./build/*.go lint
+
 # WARNING THIS BUILDS A GO PLUGIN AND PLUGINS *DO NOT* WORK ON WINDOWS SYSTEMS
 iptb:
 	make -C tools/iptb-plugins all

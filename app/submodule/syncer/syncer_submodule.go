@@ -3,10 +3,11 @@ package syncer
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"reflect"
 	"runtime"
 	"time"
+
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
@@ -208,6 +209,7 @@ func (syncer *SyncerSubmodule) handleIncommingBlocks(ctx context.Context, msg pu
 	return nil
 }
 
+// nolint
 func (syncer *SyncerSubmodule) loadLocalFullTipset(ctx context.Context, tsk types.TipSetKey) (*types.FullTipSet, error) {
 	ts, err := syncer.ChainModule.ChainReader.GetTipSet(tsk)
 	if err != nil {

@@ -2,9 +2,9 @@ package chain_test
 
 import (
 	"context"
-	"fmt"
-	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
+
+	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -17,7 +17,7 @@ import (
 
 func TestIterAncestors(t *testing.T) {
 	tf.UnitTest(t)
-	miner, err := address.NewSecp256k1Address([]byte(fmt.Sprintf("address")))
+	miner, err := address.NewSecp256k1Address([]byte("address"))
 	require.NoError(t, err)
 
 	t.Run("iterates", func(t *testing.T) {

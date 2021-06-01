@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/rt"
-	rtt "github.com/filecoin-project/go-state-types/rt"
 	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
@@ -173,13 +172,13 @@ func (a *runtimeAdapter) ChargeGas(name string, compute int64, virtual int64) {
 
 func (a *runtimeAdapter) Log(level rt.LogLevel, msg string, args ...interface{}) {
 	switch level {
-	case rtt.DEBUG:
+	case rt.DEBUG:
 		actorLog.Debugf(msg, args...)
-	case rtt.INFO:
+	case rt.INFO:
 		actorLog.Infof(msg, args...)
-	case rtt.WARN:
+	case rt.WARN:
 		actorLog.Warnf(msg, args...)
-	case rtt.ERROR:
+	case rt.ERROR:
 		actorLog.Errorf(msg, args...)
 	}
 }

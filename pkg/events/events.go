@@ -2,11 +2,12 @@ package events
 
 import (
 	"context"
+	"sync"
+	"time"
+
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
-	"sync"
-	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	logging "github.com/ipfs/go-log/v2"
@@ -127,7 +128,7 @@ func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 	}
 
 	e.readyOnce.Do(func() {
-		e.lastTs = cur[0].Val
+		e.lastTS = cur[0].Val
 		// Signal that we have seen first tipset
 		close(e.ready)
 	})

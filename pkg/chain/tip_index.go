@@ -2,9 +2,10 @@ package chain
 
 import (
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
@@ -145,11 +146,11 @@ func (ti *TipStateCache) Has(ts *types.TipSet) bool {
 // GetSiblingState returns the all tipsets and states stored in the TipStateCache
 // such that the parent ID of these tipsets equals the input.
 func (ti *TipStateCache) GetSiblingState(ts *types.TipSet) ([]*TipSetMetadata, error) {
-	pTs, err := ti.loader.GetTipSet(ts.Parents())
+	pTS, err := ti.loader.GetTipSet(ts.Parents())
 	if err != nil {
 		return nil, err
 	}
-	pKey := makeKey(pTs.Key().String(), ts.Height())
+	pKey := makeKey(pTS.Key().String(), ts.Height())
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
 	tsasByID, ok := ti.tsasByParentsAndHeight.Get(pKey)
@@ -167,12 +168,12 @@ func (ti *TipStateCache) GetSiblingState(ts *types.TipSet) ([]*TipSetMetadata, e
 // tracked in the TipStateCache such that the parent ID of these tipsets equals the
 // input.
 func (ti *TipStateCache) HasSiblingState(ts *types.TipSet) bool {
-	pTs, err := ti.loader.GetTipSet(ts.Parents())
+	pTS, err := ti.loader.GetTipSet(ts.Parents())
 	if err != nil {
 		return false
 	}
 
-	pKey := makeKey(pTs.Key().String(), ts.Height())
+	pKey := makeKey(pTS.Key().String(), ts.Height())
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
 	_, ok := ti.tsasByParentsAndHeight.Get(pKey)

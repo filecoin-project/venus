@@ -2,6 +2,8 @@ package chain_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/config"
 	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
@@ -10,7 +12,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -35,11 +36,11 @@ func (cbor *CborBlockStore) PutBlocks(ctx context.Context, blocks []*types.Block
 // genesis -> (link1blk1, link1blk2) -> (link2blk1, link2blk2, link2blk3) -> link3blk1 -> (null block) -> (null block) -> (link4blk1, link4blk2)
 
 // newChainStore creates a new chain store for tests.
-func newChainStore(r repo.Repo, genTs *types.TipSet) *CborBlockStore {
+func newChainStore(r repo.Repo, genTS *types.TipSet) *CborBlockStore {
 	tempBlock := r.Datastore()
 	cborStore := cbor.NewCborStore(tempBlock)
 	return &CborBlockStore{
-		Store:     chain.NewStore(r.ChainDatastore(), cborStore, tempBlock, chain.NewStatusReporter(), config.DefaultForkUpgradeParam, genTs.At(0).Cid()),
+		Store:     chain.NewStore(r.ChainDatastore(), cborStore, tempBlock, chain.NewStatusReporter(), config.DefaultForkUpgradeParam, genTS.At(0).Cid()),
 		cborStore: cborStore,
 	}
 }

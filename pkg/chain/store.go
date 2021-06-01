@@ -91,7 +91,7 @@ type HeadChange struct {
 // CheckPoint is the key which the check-point written in the datastore.
 var CheckPoint = datastore.NewKey("/chain/checkPoint")
 
-type TsState struct {
+type TSState struct {
 	StateRoot cid.Cid
 	Reciepts  cid.Cid
 }
@@ -207,24 +207,24 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	ctx, span := trace.StartSpan(ctx, "Store.Load")
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	headTsKey, err := store.loadHead()
+	headTSKey, err := store.loadHead()
 	if err != nil {
 		return err
 	}
 
-	headTs, err := LoadTipSetBlocks(ctx, store, headTsKey)
+	headTS, err := LoadTipSetBlocks(ctx, store, headTSKey)
 	if err != nil {
 		return errors.Wrap(err, "error loading head tipset")
 	}
 
-	latestHeight := headTs.At(0).Height
+	latestHeight := headTS.At(0).Height
 	loopBack := latestHeight - policy.ChainFinality
-	log.Infof("start loading chain at tipset: %s, height: %d", headTsKey.String(), latestHeight)
+	log.Infof("start loading chain at tipset: %s, height: %d", headTSKey.String(), latestHeight)
 
 	// Provide tipsets directly from the block store, not from the tipset index which is
 	// being rebuilt by this traversal.
 	tipsetProvider := TipSetProviderFromBlocks(ctx, store)
-	for iterator := IterAncestors(ctx, tipsetProvider, headTs); !iterator.Complete(); err = iterator.Next() {
+	for iterator := IterAncestors(ctx, tipsetProvider, headTS); !iterator.Complete(); err = iterator.Next() {
 		if err != nil {
 			return err
 		}
@@ -245,7 +245,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		}
 	}
 
-	log.Infof("finished loading %d tipsets from %s", latestHeight, headTs.String())
+	log.Infof("finished loading %d tipsets from %s", latestHeight, headTS.String())
 
 	//todo just for test should remove if ok, 新创建节点会出问题?
 	/*	if checkPointTs == nil || headTs.Height() > checkPointTs.Height() {
@@ -259,7 +259,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		}
 	}*/
 	// Set actual head.
-	return store.SetHead(ctx, headTs)
+	return store.SetHead(ctx, headTS)
 }
 
 // loadHead loads the latest known head from disk.
@@ -287,7 +287,7 @@ func (store *Store) LoadTipsetMetadata(ts *types.TipSet) (*TipSetMetadata, error
 		return nil, errors.Wrapf(err, "failed to read tipset key %s", ts.String())
 	}
 
-	var metadata TsState
+	var metadata TSState
 	err = metadata.UnmarshalCBOR(bytes.NewReader(tsStateBytes))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to decode tip set metadata %s", ts.String())
@@ -315,9 +315,9 @@ func (store *Store) PutTipSetMetadata(ctx context.Context, tsm *TipSetMetadata) 
 }
 
 // Ls returns an iterator over tipsets from head to genesis.
-func (store *Store) Ls(ctx context.Context, fromTs *types.TipSet, count int) ([]*types.TipSet, error) {
-	tipsets := []*types.TipSet{fromTs}
-	fromKey := fromTs.Parents()
+func (store *Store) Ls(ctx context.Context, fromTS *types.TipSet, count int) ([]*types.TipSet, error) {
+	tipsets := []*types.TipSet{fromTS}
+	fromKey := fromTS.Parents()
 	for i := 0; i < count-1; i++ {
 		ts, err := store.GetTipSet(fromKey)
 		if err != nil {
@@ -466,6 +466,7 @@ func (store *Store) GetLatestBeaconEntry(ts *types.TipSet) (*types.BeaconEntry, 
 	return nil, xerrors.Errorf("found NO beacon entries in the 20 blocks prior to given tipset")
 }
 
+// nolint
 func (store *Store) walkBack(from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
 	if to > from.Height() {
 		return nil, xerrors.Errorf("looking for tipset with height greater than start point")
@@ -509,10 +510,10 @@ func (store *Store) HasSiblingState(ts *types.TipSet) bool {
 }
 
 // SetHead sets the passed in tipset as the new head of this chain.
-func (store *Store) SetHead(ctx context.Context, newTs *types.TipSet) error {
-	log.Infof("SetHead %s %d", newTs.String(), newTs.Height())
+func (store *Store) SetHead(ctx context.Context, newTS *types.TipSet) error {
+	log.Infof("SetHead %s %d", newTS.String(), newTS.Height())
 	// Add logging to debug sporadic test failure.
-	if !newTs.Defined() {
+	if !newTS.Defined() {
 		log.Errorf("publishing empty tipset")
 		log.Error(debug.Stack())
 		return nil
@@ -526,24 +527,24 @@ func (store *Store) SetHead(ctx context.Context, newTs *types.TipSet) error {
 		defer store.mu.Unlock()
 
 		if store.head != nil {
-			if store.head.Equals(newTs) {
+			if store.head.Equals(newTS) {
 				return nil, nil, false, nil
 			}
 			//reorg
 			oldHead := store.head
-			dropped, added, err = CollectTipsToCommonAncestor(ctx, store, oldHead, newTs)
+			dropped, added, err = CollectTipsToCommonAncestor(ctx, store, oldHead, newTS)
 			if err != nil {
 				return nil, nil, false, err
 			}
 		} else {
-			added = []*types.TipSet{newTs}
+			added = []*types.TipSet{newTS}
 		}
 
 		// Ensure consistency by storing this new head on disk.
-		if errInner := store.writeHead(ctx, newTs.Key()); errInner != nil {
+		if errInner := store.writeHead(ctx, newTS.Key()); errInner != nil {
 			return nil, nil, false, errors.Wrap(errInner, "failed to write new Head to datastore")
 		}
-		store.head = newTs
+		store.head = newTS
 		return dropped, added, true, nil
 	}()
 
@@ -555,8 +556,8 @@ func (store *Store) SetHead(ctx context.Context, newTs *types.TipSet) error {
 		return nil
 	}
 
-	h := newTs.Height()
-	store.reporter.UpdateStatus(validateHead(newTs.Key()), validateHeight(h))
+	h := newTS.Height()
+	store.reporter.UpdateStatus(validateHead(newTS.Key()), validateHeight(h))
 
 	//todo wrap by go function
 	Reverse(added)
@@ -711,7 +712,7 @@ func (store *Store) writeTipSetMetadata(tsm *TipSetMetadata) error {
 		return errors.New("attempting to write receipts cid.Undef")
 	}
 
-	metadata := TsState{
+	metadata := TSState{
 		StateRoot: tsm.TipSetStateRoot,
 		Reciepts:  tsm.TipSetReceipts,
 	}
@@ -727,7 +728,7 @@ func (store *Store) writeTipSetMetadata(tsm *TipSetMetadata) error {
 }
 
 // deleteTipSetMetadata delete the state root id from the datastore for the tipset key.
-func (store *Store) deleteTipSetMetadata(ts *types.TipSet) error {
+func (store *Store) deleteTipSetMetadata(ts *types.TipSet) error { // nolint
 	h := ts.Height()
 
 	key := datastore.NewKey(makeKey(ts.String(), h))
@@ -1033,23 +1034,23 @@ func (store *Store) GetLookbackTipSetForRound(ctx context.Context, ts *types.Tip
 	}
 
 	// Get the tipset after the lookback tipset, or the next non-null one.
-	nextTs, err := store.GetTipSetByHeight(ctx, ts, lbr+1, false)
+	nextTS, err := store.GetTipSetByHeight(ctx, ts, lbr+1, false)
 	if err != nil {
 		return nil, cid.Undef, xerrors.Errorf("failed to get lookback tipset+1: %v", err)
 	}
 
-	nextTh := nextTs.Height()
+	nextTh := nextTS.Height()
 	if lbr > nextTh {
-		return nil, cid.Undef, xerrors.Errorf("failed to find non-null tipset %s (%d) which is known to exist, found %s (%d)", ts.Key(), h, nextTs.Key(), nextTh)
+		return nil, cid.Undef, xerrors.Errorf("failed to find non-null tipset %s (%d) which is known to exist, found %s (%d)", ts.Key(), h, nextTS.Key(), nextTh)
 	}
 
-	pKey := nextTs.Parents()
+	pKey := nextTS.Parents()
 	lbts, err := store.GetTipSet(pKey)
 	if err != nil {
 		return nil, cid.Undef, xerrors.Errorf("failed to resolve lookback tipset: %v", err)
 	}
 
-	return lbts, nextTs.Blocks()[0].ParentStateRoot, nil
+	return lbts, nextTS.Blocks()[0].ParentStateRoot, nil
 }
 
 // Randomness

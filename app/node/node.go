@@ -270,12 +270,10 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 	}
 
 	close(ready)
-	select {
-	case <-terminate:
-		err = apiserv.Shutdown(ctx)
-		if err != nil {
-			return err
-		}
+	<-terminate
+	err = apiserv.Shutdown(ctx)
+	if err != nil {
+		return err
 	}
 	return nil
 }

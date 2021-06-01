@@ -882,6 +882,7 @@ func (v *View) loadPowerActor(ctx context.Context) (power.State, error) {
 	return power.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
+// nolint
 func (v *View) loadRewardState(ctx context.Context) (reward.State, error) {
 	actr, err := v.loadActor(ctx, reward.Address)
 	if err != nil {
@@ -900,6 +901,7 @@ func (v *View) loadMarketState(ctx context.Context) (market.State, error) {
 	return market.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
+// nolint
 func (v *View) loadAccountActor(ctx context.Context, a addr.Address) (account.State, error) {
 	resolvedAddr, err := v.InitResolveAddress(ctx, a)
 	if err != nil {

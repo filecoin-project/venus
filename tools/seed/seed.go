@@ -127,7 +127,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 		PowerBalance:  big.Zero(),
 		SectorSize:    ssize,
 		Sectors:       sealedSectors,
-		PeerId:        pid,
+		PeerID:        pid,
 	}
 
 	if err := createDeals(miner, ki, maddr, ssize); err != nil {

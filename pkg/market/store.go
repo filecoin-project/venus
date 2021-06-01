@@ -2,6 +2,7 @@ package market
 
 import (
 	"bytes"
+
 	"github.com/filecoin-project/venus/pkg/repo"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
@@ -39,6 +40,7 @@ func (ps *Store) save(state *FundedAddressState) error {
 }
 
 // get the state for the given address
+// nolint
 func (ps *Store) get(addr address.Address) (*FundedAddressState, error) {
 	k := dskeyForAddr(addr)
 

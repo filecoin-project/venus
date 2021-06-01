@@ -53,7 +53,7 @@ func (crt *incrt) Read(buf []byte) (int, error) {
 
 	_ = crt.rd.SetReadDeadline(time.Time{})
 	if err == nil {
-		dur := time.Now().Sub(start)
+		dur := time.Since(start)
 		crt.wait -= dur
 		crt.wait += time.Duration(n) * crt.waitPerByte
 		if crt.wait < 0 {

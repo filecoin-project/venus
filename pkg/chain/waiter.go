@@ -44,7 +44,7 @@ type Waiter struct {
 
 // ChainMessage is an on-chain message with its block and receipt.
 type ChainMessage struct { //nolint
-	Ts      *types.TipSet
+	TS      *types.TipSet
 	Message types.ChainMsg
 	Block   *types.BlockHeader
 	Receipt *types.MessageReceipt
@@ -218,7 +218,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*HeadChange, ms
 		}
 	}()
 
-	var candidateTs *types.TipSet
+	var candidateTS *types.TipSet
 	var candidateRcp *ChainMessage
 	heightOfHead := currentHead.Height()
 	reverts := map[string]bool{}
@@ -232,15 +232,15 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*HeadChange, ms
 			for _, val := range notif {
 				switch val.Type {
 				case HCRevert:
-					if val.Val.Equals(candidateTs) {
-						candidateTs = nil
+					if val.Val.Equals(candidateTS) {
+						candidateTS = nil
 						candidateRcp = nil
 					}
 					if backSearchWait != nil {
 						reverts[val.Val.Key().String()] = true
 					}
 				case HCApply:
-					if candidateTs != nil && val.Val.Height() >= candidateTs.Height()+confidence {
+					if candidateTS != nil && val.Val.Height() >= candidateTS.Height()+confidence {
 						return candidateRcp, true, nil
 					}
 
@@ -252,7 +252,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*HeadChange, ms
 						if confidence == 0 {
 							return r, foundMsg, err
 						}
-						candidateTs = val.Val
+						candidateTS = val.Val
 						candidateRcp = r
 					}
 					heightOfHead = val.Val.Height()
@@ -260,14 +260,14 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*HeadChange, ms
 			}
 		case <-backSearchWait:
 			// check if we found the message in the chain and that is hasn't been reverted since we started searching
-			if backRcp != nil && !reverts[backRcp.Ts.Key().String()] {
+			if backRcp != nil && !reverts[backRcp.TS.Key().String()] {
 				// if head is at or past confidence interval, return immediately
-				if heightOfHead >= backRcp.Ts.Height()+confidence {
+				if heightOfHead >= backRcp.TS.Height()+confidence {
 					return backRcp, true, nil
 				}
 
 				// wait for confidence interval
-				candidateTs = backRcp.Ts
+				candidateTS = backRcp.TS
 				candidateRcp = backRcp
 			}
 			reverts = nil

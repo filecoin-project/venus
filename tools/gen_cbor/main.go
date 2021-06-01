@@ -78,7 +78,7 @@ func main() {
 	}
 
 	if err := gen.WriteTupleEncodersToFile("./pkg/chain/cbor_gen.go", "chain",
-		chain.TsState{},
+		chain.TSState{},
 	); err != nil {
 		panic(err)
 	}

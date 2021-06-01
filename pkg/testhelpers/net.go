@@ -5,9 +5,10 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
 	"github.com/ipfs/go-cid"
@@ -65,17 +66,11 @@ func (fh *FakeHost) SetStreamHandlerMatch(protocol.ID, func(string) bool, inet.S
 type FakeCMgr struct {
 }
 
-func (f FakeCMgr) TagPeer(id peer.ID, s string, i int) {
-	return
-}
+func (f FakeCMgr) TagPeer(id peer.ID, s string, i int) {}
 
-func (f FakeCMgr) UntagPeer(p peer.ID, tag string) {
-	return
-}
+func (f FakeCMgr) UntagPeer(p peer.ID, tag string) {}
 
-func (f FakeCMgr) UpsertTag(p peer.ID, tag string, upsert func(int) int) {
-	return
-}
+func (f FakeCMgr) UpsertTag(p peer.ID, tag string, upsert func(int) int) {}
 
 func (f FakeCMgr) GetTagInfo(p peer.ID) *connmgr.TagInfo {
 	panic("implement me")
@@ -285,10 +280,6 @@ func (f *TestExchange) GetFullTipSet(ctx context.Context, peer []peer.ID, tsk ty
 	panic("implement me")
 }
 
-func (f *TestExchange) AddPeer(peer peer.ID) {
-	return
-}
+func (f *TestExchange) AddPeer(peer peer.ID) {}
 
-func (f *TestExchange) RemovePeer(peer peer.ID) {
-	return
-}
+func (f *TestExchange) RemovePeer(peer peer.ID) {}

@@ -1,8 +1,8 @@
 linters:
   disable-all: true
   enable:
-    - vet
     - gofmt
+    - govet
     - misspell
     - goconst
     - golint
@@ -12,6 +12,9 @@ linters:
     - varcheck
     - structcheck
     - deadcode
+    - unused
+    - stylecheck
+    - gosimple
 
 issues:
   exclude-use-default: false

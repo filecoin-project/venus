@@ -5,8 +5,9 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 	"testing"
+
+	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/stretchr/testify/assert"
@@ -141,7 +142,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 
 	// create a tipset, we will assert on it in the SetStreamHandler method
 	expHeight := abi.ChainEpoch(444)
-	expTs := mustMakeTipset(t, expHeight)
+	expTS := mustMakeTipset(t, expHeight)
 
 	addr, err := address.NewSecp256k1Address([]byte("miner address"))
 	require.NoError(t, err)
@@ -156,7 +157,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 		var hb metrics.Heartbeat
 		require.NoError(t, dec.Decode(&hb))
 
-		assert.Equal(t, expTs.String(), hb.Head)
+		assert.Equal(t, expTS.String(), hb.Head)
 		assert.Equal(t, abi.ChainEpoch(444), hb.Height)
 		assert.Equal(t, "BobHoblaw", hb.Nickname)
 		assert.Equal(t, addr, hb.MinerAddress)
@@ -173,7 +174,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 			Nickname:        "BobHoblaw",
 		},
 		func() (types.TipSet, error) {
-			return *expTs, nil
+			return *expTS, nil
 		},
 		metrics.WithMinerAddressGetter(func() address.Address {
 			return addr

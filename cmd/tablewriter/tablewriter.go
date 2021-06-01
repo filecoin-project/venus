@@ -105,7 +105,7 @@ func (w *TableWriter) Flush(out io.Writer) error {
 				continue
 			}
 
-			e, _ := row[ci]
+			e := row[ci]
 			pad := colLengths[ci] - cliStringLength(e) + 2
 			if !col.SeparateLine && col.Lines > 0 {
 				e = e + strings.Repeat(" ", pad)

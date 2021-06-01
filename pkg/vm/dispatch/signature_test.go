@@ -19,22 +19,6 @@ func (*fakeActor) pointerParam(ctx interface{}, params *SimpleParams) SimpleRetu
 	return SimpleReturn{someValue: 3}
 }
 
-func (*fakeActor) pointerReturn(ctx interface{}, params SimpleParams) *SimpleReturn {
-	return &SimpleReturn{someValue: 3}
-}
-
-func (*fakeActor) noParams(ctx interface{}) SimpleReturn {
-	return SimpleReturn{someValue: 3}
-}
-
-func (*fakeActor) noReturn(ctx interface{}, params *SimpleParams) {
-	/* empty */
-}
-
-func (*fakeActor) minimalist(ctx interface{}) {
-	/* empty */
-}
-
 func TestArgInterface(t *testing.T) {
 	tf.UnitTest(t)
 
