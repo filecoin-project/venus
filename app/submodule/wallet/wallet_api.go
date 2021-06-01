@@ -3,8 +3,9 @@ package wallet
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"strings"
+
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 
 	"github.com/filecoin-project/venus-wallet/core"
 
