@@ -32,9 +32,9 @@ type IWallet interface {
 	// Rule[perm:admin,ignore:true]
 	WalletSignMessage(ctx context.Context, k address.Address, msg *types.UnsignedMessage) (*types.SignedMessage, error)
 	// Rule[perm:admin,ignore:true]
-	Locked(ctx context.Context) error
+	LockWallet(ctx context.Context) error
 	// Rule[perm:admin,ignore:true]
-	UnLocked(ctx context.Context, password string) error
+	UnLockWallet(ctx context.Context, password string) error
 	// Rule[perm:admin,ignore:true]
 	SetPassword(Context context.Context, password string) error
 	// Rule[perm:admin,ignore:true]

@@ -363,7 +363,7 @@ var lockedCmd = &cmds.Command{
 		cmds.StringArg("password", false, false, "Password to be locked"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		err := env.(*node.Env).WalletAPI.Locked(req.Context)
+		err := env.(*node.Env).WalletAPI.LockWallet(req.Context)
 		if err != nil {
 			return err
 		}
@@ -392,7 +392,7 @@ var unlockedCmd = &cmds.Command{
 
 		pw := req.Arguments[0]
 
-		err := env.(*node.Env).WalletAPI.UnLocked(req.Context, pw)
+		err := env.(*node.Env).WalletAPI.UnLockWallet(req.Context, pw)
 		if err != nil {
 			return err
 		}

@@ -46,8 +46,8 @@ func New(backends ...Backend) *Wallet {
 	backendsMap := make(map[reflect.Type][]Backend)
 
 	for _, backend := range backends {
-		kind := reflect.TypeOf(backend)
-		backendsMap[kind] = append(backendsMap[kind], backend)
+		typ := reflect.TypeOf(backend)
+		backendsMap[typ] = append(backendsMap[typ], backend)
 	}
 
 	return &Wallet{
@@ -100,13 +100,13 @@ func (w *Wallet) Addresses() []address.Address {
 	return out
 }
 
-// Backends returns backends by their kind.
-func (w *Wallet) Backends(kind reflect.Type) []Backend {
+// Backends returns backends by their type.
+func (w *Wallet) Backends(typ reflect.Type) []Backend {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 
-	cpy := make([]Backend, len(w.backends[kind]))
-	copy(cpy, w.backends[kind])
+	cpy := make([]Backend, len(w.backends[typ]))
+	copy(cpy, w.backends[typ])
 	return cpy
 }
 
@@ -223,21 +223,21 @@ func (w *Wallet) DSBacked() (*DSBackend, error) {
 	return (backends[0]).(*DSBackend), nil
 }
 
-func (w *Wallet) Locked() error {
+func (w *Wallet) LockWallet() error {
 	backend, err := w.DSBacked()
 	if err != nil {
 		return err
 	}
 
-	return backend.Locked()
+	return backend.LockWallet()
 }
 
-func (w *Wallet) UnLocked(password string) error {
+func (w *Wallet) UnLockWallet(password string) error {
 	backend, err := w.DSBacked()
 	if err != nil {
 		return err
 	}
-	return backend.UnLocked(password)
+	return backend.UnLockWallet(password)
 }
 
 func (w *Wallet) SetPassword(password string) error {

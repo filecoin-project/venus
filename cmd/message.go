@@ -6,13 +6,16 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"reflect"
+
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"reflect"
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -116,8 +119,7 @@ var msgSendCmd = &cmds.Command{
 		if nonceOption != nil {
 			nonce, ok := nonceOption.(uint64)
 			if !ok {
-				msg := fmt.Sprintf("invalid gas limit: %s", nonceOption)
-				return errors.New(msg)
+				return xerrors.Errorf("invalid nonce option: %v", nonceOption)
 			}
 			msg.Nonce = nonce
 

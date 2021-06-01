@@ -30,12 +30,12 @@ var ErrDecrypt = errors.New("could not decrypt key with given password")
 
 // EncryptKey encrypts a key using the specified scrypt parameters into a json
 // blob that can be decrypted later on.
-func encryptKey(key *Key, auth []byte, scryptN, scryptP int) ([]byte, error) {
+func encryptKey(key *Key, password []byte, scryptN, scryptP int) ([]byte, error) {
 	kBytes, err := json.Marshal(key)
 	if err != nil {
 		return nil, err
 	}
-	cryptoStruct, err := encryptData(kBytes, auth, scryptN, scryptP)
+	cryptoStruct, err := encryptData(kBytes, password, scryptN, scryptP)
 	if err != nil {
 		return nil, err
 	}
@@ -49,12 +49,12 @@ func encryptKey(key *Key, auth []byte, scryptN, scryptP int) ([]byte, error) {
 }
 
 // encryptData encrypts the data given as 'data' with the password 'venusauth'.
-func encryptData(data, auth []byte, scryptN, scryptP int) (CryptoJSON, error) {
+func encryptData(data, password []byte, scryptN, scryptP int) (CryptoJSON, error) {
 	salt := make([]byte, 32)
 	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
 		return CryptoJSON{}, xerrors.Errorf("reading from crypto/rand failed: " + err.Error())
 	}
-	derivedKey, err := scrypt.Key(auth, salt, scryptN, scryptR, scryptP, scryptDKLen)
+	derivedKey, err := scrypt.Key(password, salt, scryptN, scryptR, scryptP, scryptDKLen)
 	if err != nil {
 		return CryptoJSON{}, err
 	}
@@ -104,7 +104,7 @@ func aesCTRXOR(key, inText, iv []byte) ([]byte, error) {
 }
 
 // decryptKey decrypts a key from a json blob, returning the Key.
-func decryptKey(keyjson, auth []byte) (*Key, error) {
+func decryptKey(keyjson, password []byte) (*Key, error) {
 	var (
 		keyBytes []byte
 		err      error
@@ -118,7 +118,7 @@ func decryptKey(keyjson, auth []byte) (*Key, error) {
 		return nil, fmt.Errorf("version not supported: %v", k.Version)
 	}
 
-	keyBytes, err = decryptData(k.Crypto, auth)
+	keyBytes, err = decryptData(k.Crypto, password)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func decryptKey(keyjson, auth []byte) (*Key, error) {
 	return key, nil
 }
 
-func decryptData(cryptoJSON CryptoJSON, auth []byte) ([]byte, error) {
+func decryptData(cryptoJSON CryptoJSON, password []byte) ([]byte, error) {
 	if cryptoJSON.Cipher != "aes-128-ctr" {
 		return nil, fmt.Errorf("cipher not supported: %v", cryptoJSON.Cipher)
 	}
@@ -149,7 +149,7 @@ func decryptData(cryptoJSON CryptoJSON, auth []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	derivedKey, err := getKDFKey(cryptoJSON, auth)
+	derivedKey, err := getKDFKey(cryptoJSON, password)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func decryptData(cryptoJSON CryptoJSON, auth []byte) ([]byte, error) {
 	return plainText, err
 }
 
-func getKDFKey(cryptoJSON CryptoJSON, auth []byte) ([]byte, error) {
+func getKDFKey(cryptoJSON CryptoJSON, password []byte) ([]byte, error) {
 	salt, err := hex.DecodeString(cryptoJSON.KDFParams["salt"].(string))
 	if err != nil {
 		return nil, err
@@ -178,7 +178,7 @@ func getKDFKey(cryptoJSON CryptoJSON, auth []byte) ([]byte, error) {
 		n := ensureInt(cryptoJSON.KDFParams["n"])
 		r := ensureInt(cryptoJSON.KDFParams["r"])
 		p := ensureInt(cryptoJSON.KDFParams["p"])
-		return scrypt.Key(auth, salt, n, r, p, dkLen)
+		return scrypt.Key(password, salt, n, r, p, dkLen)
 
 	} else if cryptoJSON.KDF == "pbkdf2" {
 		c := ensureInt(cryptoJSON.KDFParams["c"])
@@ -186,7 +186,7 @@ func getKDFKey(cryptoJSON CryptoJSON, auth []byte) ([]byte, error) {
 		if prf != "hmac-sha256" {
 			return nil, fmt.Errorf("unsupported PBKDF2 PRF: %s", prf)
 		}
-		key := pbkdf2.Key(auth, salt, c, dkLen, sha256.New)
+		key := pbkdf2.Key(password, salt, c, dkLen, sha256.New)
 		return key, nil
 	}
 
