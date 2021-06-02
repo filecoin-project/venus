@@ -2,14 +2,16 @@ package jwtauth
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"io"
+	"io/ioutil"
 	"strings"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	jwt3 "github.com/gbrlsnchs/jwt/v3"
 	logging "github.com/ipfs/go-log"
-	acrypto "github.com/libp2p/go-libp2p-core/crypto"
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -56,20 +58,21 @@ func NewJwtAuth(lr repo.Repo) (*JwtAuth, error) {
 }
 
 func (jwtAuth *JwtAuth) loadAPISecret() (*APIAlg, error) {
-	pk, err := jwtAuth.lr.Keystore().Get(jwtAuth.jwtHmacSecret)
+	sk, err := jwtAuth.lr.Keystore().Get(jwtAuth.jwtHmacSecret)
 	//todo use custome keystore to replace
 	if err != nil && strings.Contains(err.Error(), "no key by the given name was found") {
 		jwtLog.Warn("Generating new API secret")
 
-		pk, _, err = acrypto.GenerateKeyPair(acrypto.RSA, 2048)
+		sk, err = ioutil.ReadAll(io.LimitReader(rand.Reader, 32))
 		if err != nil {
-			return nil, xerrors.Wrap(err, "failed to create peer key")
+			return nil, err
 		}
-		if err := jwtAuth.lr.Keystore().Put(jwtAuth.jwtHmacSecret, pk); err != nil {
+
+		if err := jwtAuth.lr.Keystore().Put(jwtAuth.jwtHmacSecret, sk); err != nil {
 			return nil, xerrors.Wrap(err, "failed to store private key")
 		}
-		raw, _ := pk.Raw()
-		cliToken, err := jwt3.Sign(&jwtAuth.payload, jwt3.NewHS256(raw))
+
+		cliToken, err := jwt3.Sign(&jwtAuth.payload, jwt3.NewHS256(sk))
 		if err != nil {
 			return nil, err
 		}
@@ -80,8 +83,8 @@ func (jwtAuth *JwtAuth) loadAPISecret() (*APIAlg, error) {
 	} else if err != nil {
 		return nil, xerrors.Errorf("could not get JWT Token: %v", err)
 	}
-	raw, _ := pk.Raw()
-	return (*APIAlg)(jwt3.NewHS256(raw)), nil
+
+	return (*APIAlg)(jwt3.NewHS256(sk)), nil
 }
 
 func (jwtAuth *JwtAuth) Verify(ctx context.Context, spanID, serviceName, preHost, host, token string) ([]auth.Permission, error) {

@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/prometheus/common/log"
 )
