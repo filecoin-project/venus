@@ -691,6 +691,30 @@ func (vm *VM) shouldBurn(msg *types.UnsignedMessage, errcode exitcode.ExitCode) 
 		}
 	}
 
+	if vm.NtwkVersion() <= network.Version12 {
+		// Check to see if we should burn funds. We avoid burning on successful
+		// window post. This won't catch _indirect_ window post calls, but this
+		// is the best we can get for now.
+		if vm.currentEpoch > vm.vmOption.Fork.GetForkUpgrade().UpgradeClausHeight && errcode == exitcode.Ok && msg.Method == miner.Methods.SubmitWindowedPoSt {
+			// Ok, we've checked the _method_, but we still need to check
+			// the target actor. It would be nice if we could just look at
+			// the trace, but I'm not sure if that's safe?
+			if toActor,_, err := vm.State.GetActor(vm.context, msg.To); err != nil {
+				// If the actor wasn't found, we probably deleted it or something. Move on.
+				if !xerrors.Is(err, types.ErrActorNotFound) {
+					// Otherwise, this should never fail and something is very wrong.
+					return false, xerrors.Errorf("failed to lookup target actor: %w", err)
+				}
+			} else if builtin.IsStorageMinerActor(toActor.Code) {
+				// Ok, this is a storage miner and we've processed a window post. Remove the burn.
+				return false, nil
+			}
+		}
+
+		return true, nil
+	}
+
+	// Any "don't burn" rules from Network v13 onwards go here, for now we always return true
 	return true, nil
 }
 

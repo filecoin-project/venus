@@ -82,7 +82,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 		if para.UpgradeIgnitionHeight >= 0 {
 			return network.Version2
 		}
-		if para.UpgradeActorsV2Height >= 0 {
+		if para.UpgradeAssemblyHeight >= 0 {
 			return network.Version3
 		}
 		if para.UpgradeLiftoffHeight >= 0 {

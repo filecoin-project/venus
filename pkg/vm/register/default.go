@@ -8,6 +8,7 @@ import (
 	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
 	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
 	exported4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/exported"
+	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
 )
 
 // DefaultActors is list of all actors that ship with Filecoin.
@@ -21,5 +22,6 @@ func init() {
 	DefaultActorBuilder.AddMany(dispatch.ActorsVersionPredicate(actors.Version2), exported2.BuiltinActors()...)
 	DefaultActorBuilder.AddMany(dispatch.ActorsVersionPredicate(actors.Version3), exported3.BuiltinActors()...)
 	DefaultActorBuilder.AddMany(dispatch.ActorsVersionPredicate(actors.Version4), exported4.BuiltinActors()...)
+	DefaultActorBuilder.AddMany(dispatch.ActorsVersionPredicate(actors.Version5), exported5.BuiltinActors()...)
 	DefaultActors = DefaultActorBuilder.Build()
 }

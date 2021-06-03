@@ -712,15 +712,15 @@ func (v *View) StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]addr
 	return powState.ListAllMiners()
 }
 
-func (v *View) StateMinerPower(ctx context.Context, maddr addr.Address, tsk types.TipSetKey) (*power.MinerPower, error) {
+func (v *View) StateMinerPower(ctx context.Context, maddr addr.Address, tsk types.TipSetKey) (power.Claim, power.Claim, bool, error) {
 	pas, err := v.loadPowerActor(ctx)
 	if err != nil {
-		return nil, err
+		return power.Claim{}, power.Claim{}, false, xerrors.Errorf("(get sset) failed to load power actor state: %v", err)
 	}
 
 	tpow, err := pas.TotalPower()
 	if err != nil {
-		return nil, err
+		return power.Claim{}, power.Claim{}, false, err
 	}
 
 	var mpow power.Claim
@@ -730,20 +730,16 @@ func (v *View) StateMinerPower(ctx context.Context, maddr addr.Address, tsk type
 		mpow, found, err = pas.MinerPower(maddr)
 		if err != nil || !found {
 			// TODO: return an error when not found?
-			return nil, err
+			return power.Claim{}, power.Claim{}, false, err
 		}
 
 		minpow, err = pas.MinerNominalPowerMeetsConsensusMinimum(maddr)
 		if err != nil {
-			return nil, err
+			return power.Claim{}, power.Claim{}, false, err
 		}
 	}
 
-	return &power.MinerPower{
-		MinerPower:  mpow,
-		TotalPower:  tpow,
-		HasMinPower: minpow,
-	}, nil
+	return mpow, tpow, minpow, nil
 }
 
 func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]MarketDeal, error) {

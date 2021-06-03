@@ -5,14 +5,11 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/filecoin-project/venus/app/submodule/apiface"
-
-	"github.com/filecoin-project/venus-wallet/core"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
@@ -124,7 +121,7 @@ func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Add
 		return nil, xerrors.Errorf("serializing message: %w", err)
 	}
 
-	sign, err := walletAPI.WalletSign(ctx, k, mb.Cid().Bytes(), wallet.MsgMeta{Type: core.MTChainMsg})
+	sign, err := walletAPI.WalletSign(ctx, k, mb.Cid().Bytes(), wallet.MsgMeta{Type: wallet.MTChainMsg})
 	if err != nil {
 		return nil, xerrors.Errorf("failed to sign message: %w", err)
 	}

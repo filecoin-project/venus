@@ -2,6 +2,9 @@ package paych
 
 import (
 	"encoding/base64"
+	"fmt"
+
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -9,47 +12,115 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
-	"golang.org/x/xerrors"
+
+	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 
+	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+
+
+	"github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
 func init() {
+
 	builtin.RegisterActorState(builtin0.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load0(store, root)
 	})
+
 	builtin.RegisterActorState(builtin2.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load2(store, root)
 	})
+
 	builtin.RegisterActorState(builtin3.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load3(store, root)
 	})
+
 	builtin.RegisterActorState(builtin4.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load4(store, root)
+	})
+
+	builtin.RegisterActorState(builtin5.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load5(store, root)
 	})
 }
 
 // Load returns an abstract copy of payment channel state, irregardless of actor version
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
+
 	case builtin0.PaymentChannelActorCodeID:
 		return load0(store, act.Head)
+
 	case builtin2.PaymentChannelActorCodeID:
 		return load2(store, act.Head)
+
 	case builtin3.PaymentChannelActorCodeID:
 		return load3(store, act.Head)
+
 	case builtin4.PaymentChannelActorCodeID:
 		return load4(store, act.Head)
+
+	case builtin5.PaymentChannelActorCodeID:
+		return load5(store, act.Head)
+
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+}
+
+func MakeState(store adt.Store, av specactors.Version) (State, error) {
+	switch av {
+
+	case specactors.Version0:
+		return make0(store)
+
+	case specactors.Version2:
+		return make2(store)
+
+	case specactors.Version3:
+		return make3(store)
+
+	case specactors.Version4:
+		return make4(store)
+
+	case specactors.Version5:
+		return make5(store)
+
+}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+func GetActorCodeID(av specactors.Version) (cid.Cid, error) {
+	switch av {
+
+	case specactors.Version0:
+		return builtin0.PaymentChannelActorCodeID, nil
+
+	case specactors.Version2:
+		return builtin2.PaymentChannelActorCodeID, nil
+
+	case specactors.Version3:
+		return builtin3.PaymentChannelActorCodeID, nil
+
+	case specactors.Version4:
+		return builtin4.PaymentChannelActorCodeID, nil
+
+	case specactors.Version5:
+		return builtin5.PaymentChannelActorCodeID, nil
+
+	}
+
+	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
 
 // State is an abstract version of payment channel state that works across
@@ -72,6 +143,8 @@ type State interface {
 
 	// Iterate lane states
 	ForEachLaneState(cb func(idx uint64, dl LaneState) error) error
+
+	GetState() interface{}
 }
 
 // LaneState is an abstract copy of the state of a single lane
@@ -96,4 +169,36 @@ func DecodeSignedVoucher(s string) (*SignedVoucher, error) {
 	}
 
 	return &sv, nil
+}
+
+var Methods = builtin5.MethodsPaych
+
+func Message(version specactors.Version, from address.Address) MessageBuilder {
+	switch version {
+
+	case specactors.Version0:
+		return message0{from}
+
+	case specactors.Version2:
+		return message2{from}
+
+	case specactors.Version3:
+		return message3{from}
+
+	case specactors.Version4:
+		return message4{from}
+
+	case specactors.Version5:
+		return message5{from}
+
+	default:
+		panic(fmt.Sprintf("unsupported actors version: %d", version))
+	}
+}
+
+type MessageBuilder interface {
+	Create(to address.Address, initialAmount abi.TokenAmount) (*types.Message, error)
+	Update(paych address.Address, voucher *SignedVoucher, secret []byte) (*types.Message, error)
+	Settle(paych address.Address) (*types.Message, error)
+	Collect(paych address.Address) (*types.Message, error)
 }
