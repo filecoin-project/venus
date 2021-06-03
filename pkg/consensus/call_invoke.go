@@ -26,17 +26,16 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 	var (
 		err       error
 		stateRoot cid.Cid
-		height    abi.ChainEpoch
 	)
 	if ts == nil {
 		ts = c.chainState.GetHead()
+
 		// Search back till we find a height with no fork, or we reach the beginning.
 		// We need the _previous_ height to have no fork, because we'll
 		// run the fork logic in `sm.TipSetState`. We need the _current_
 		// height to have no fork, because we'll run it inside this
 		// function before executing the given message.
-		height = ts.Height()
-		for height > 0 && (c.fork.HasExpensiveFork(ctx, height) || c.fork.HasExpensiveFork(ctx, height-1)) {
+		for ts.Height() > 0 && (c.fork.HasExpensiveFork(ctx, ts.Height()) || c.fork.HasExpensiveFork(ctx, ts.Height()-1)) {
 			ts, err = c.chainState.GetTipSet(ts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("failed to find a non-forking epoch: %v", err)
@@ -55,9 +54,13 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 	}
 
 	// When we're not at the genesis block, make sure we don't have an expensive migration.
-	height = ts.Height()
-	if height > 0 && (c.fork.HasExpensiveFork(ctx, height) || c.fork.HasExpensiveFork(ctx, height-1)) {
+	if ts.Height() > 0 && (c.fork.HasExpensiveFork(ctx, ts.Height()) || c.fork.HasExpensiveFork(ctx, ts.Height()-1)) {
 		return nil, fork.ErrExpensiveFork
+	}
+
+	stateRoot, err = c.fork.HandleStateForks(ctx, stateRoot, ts.Height(), ts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
 
 	priorState, err := tree.LoadState(ctx, cbor.NewCborStore(c.bstore), stateRoot)
@@ -81,7 +84,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 		NtwkVersionGetter: c.fork.GetNtwkVersion,
 		Rnd:               &rnd,
 		BaseFee:           ts.At(0).ParentBaseFee,
-		Epoch:             height + 1,
+		Epoch:             ts.Height() + 1,
 		GasPriceSchedule:  c.gasPirceSchedule,
 		PRoot:             stateRoot,
 		Bsstore:           c.bstore,
@@ -131,6 +134,7 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *typ
 	ctx, span := trace.StartSpan(ctx, "statemanager.Call")
 	defer span.End()
 	chainReader := c.chainState
+
 	// If no tipset is provided, try to find one without a fork.
 	var err error
 	if ts == nil {
@@ -145,19 +149,24 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *typ
 			}
 		}
 	}
+
 	bstate := ts.At(0).ParentStateRoot
-	bheight := ts.Height()
+	pts, err := c.chainState.GetTipSet(ts.Parents())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load parent tipset: %v", err)
+	}
+	pheight := pts.Height()
 
 	// If we have to run an expensive migration, and we're not at genesis,
 	// return an error because the migration will take too long.
 	//
 	// We allow this at height 0 for at-genesis migrations (for testing).
-	if bheight-1 > 0 && c.fork.HasExpensiveFork(ctx, bheight-1) {
+	if pheight > 0 && c.fork.HasExpensiveFork(ctx, pheight) {
 		return nil, ErrExpensiveFork
 	}
 
 	// Run the (not expensive) migration.
-	bstate, err = c.fork.HandleStateForks(ctx, bstate, bheight-1, ts)
+	bstate, err = c.fork.HandleStateForks(ctx, bstate, pheight, ts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to handle fork: %v", err)
 	}
@@ -206,7 +215,7 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *typ
 		NtwkVersionGetter: c.fork.GetNtwkVersion,
 		Rnd:               &rnd,
 		BaseFee:           ts.At(0).ParentBaseFee,
-		Epoch:             ts.At(0).Height,
+		Epoch:             pheight + 1,
 		GasPriceSchedule:  c.gasPirceSchedule,
 		Fork:              c.fork,
 		PRoot:             ts.At(0).ParentStateRoot,

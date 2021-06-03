@@ -26,3 +26,7 @@ func (ps *PaychSubmodule) Stop() {
 func (ps *PaychSubmodule) API() apiface.IPaychan {
 	return newPaychAPI(ps.pmgr)
 }
+
+func (ps *PaychSubmodule) V0API() apiface.IPaychan {
+	return newPaychAPI(ps.pmgr)
+}

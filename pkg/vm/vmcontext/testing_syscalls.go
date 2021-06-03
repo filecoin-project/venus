@@ -5,8 +5,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/ipfs/go-cid"
 	"github.com/minio/blake2b-simd"
 
@@ -25,26 +25,26 @@ func (f FakeSyscalls) HashBlake2b(data []byte) [32]byte {
 	return blake2b.Sum256(data)
 }
 
-func (f FakeSyscalls) ComputeUnsealedSectorCID(ctx context.Context, proof abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
+func (f FakeSyscalls) ComputeUnsealedSectorCID(ctx context.Context, proof5 abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	panic("implement me")
 }
 
-func (f FakeSyscalls) VerifySeal(ctx context.Context, info proof.SealVerifyInfo) error {
+func (f FakeSyscalls) VerifySeal(ctx context.Context, info proof5.SealVerifyInfo) error {
 	panic("implement me")
 }
 
-func (f FakeSyscalls) BatchVerifySeals(ctx context.Context, vis map[address.Address][]proof.SealVerifyInfo) (map[address.Address][]bool, error) {
+func (f FakeSyscalls) BatchVerifySeals(ctx context.Context, vis map[address.Address][]proof5.SealVerifyInfo) (map[address.Address][]bool, error) {
 	panic("implement me")
 }
 
-func (f FakeSyscalls) VerifyWinningPoSt(ctx context.Context, info proof.WinningPoStVerifyInfo) error {
+func (f FakeSyscalls) VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) error {
 	panic("implement me")
 }
 
-func (f FakeSyscalls) VerifyPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) error {
+func (f FakeSyscalls) VerifyPoSt(ctx context.Context, info proof5.WindowPoStVerifyInfo) error {
 	panic("implement me")
 }
 
-func (f FakeSyscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view SyscallsStateView) (*runtime.ConsensusFault, error) {
+func (f FakeSyscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view SyscallsStateView) (*rt5.ConsensusFault, error) {
 	panic("implement me")
 }

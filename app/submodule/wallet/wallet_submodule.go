@@ -2,20 +2,19 @@ package wallet
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
 
-	"github.com/filecoin-project/venus-wallet/core"
+	logging "github.com/ipfs/go-log"
+	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/wallet/remotewallet"
 	pconfig "github.com/filecoin-project/venus/pkg/config"
-
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
-	logging "github.com/ipfs/go-log"
-	"github.com/pkg/errors"
 )
 
 var log = logging.Logger("wallet")
@@ -53,7 +52,7 @@ func NewWalletSubmodule(ctx context.Context,
 
 	var adapter wallet.WalletIntersection
 	if repo.Config().Wallet.RemoteEnable {
-		if repo.Config().Wallet.RemoteBackend == core.StringEmpty {
+		if repo.Config().Wallet.RemoteBackend == wallet.StringEmpty {
 			return nil, errors.New("remote backend is empty")
 		}
 		adapter, err = remotewallet.SetupRemoteWallet(repo.Config().Wallet.RemoteBackend)
@@ -74,6 +73,13 @@ func NewWalletSubmodule(ctx context.Context,
 }
 
 func (wallet *WalletSubmodule) API() apiface.IWallet {
+	return &WalletAPI{
+		walletModule: wallet,
+		adapter:      wallet.adapter,
+	}
+}
+
+func (wallet *WalletSubmodule) V0API() apiface.IWallet {
 	return &WalletAPI{
 		walletModule: wallet,
 		adapter:      wallet.adapter,

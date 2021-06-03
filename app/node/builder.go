@@ -225,7 +225,9 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		offlineMode: b.offlineMode,
 		repo:        b.repo,
 	}
+
 	nd.configModule = config2.NewConfigModule(b.repo)
+
 	nd.blockstore, err = blockstore.NewBlockstoreSubmodule(ctx, b.repo)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.blockstore")
@@ -335,7 +337,8 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "add service failed ")
 	}
-	nd.jsonRPCService = apiBuilder.Build()
+	nd.jsonRPCService = apiBuilder.Build("v0")
+	nd.jsonRPCServiceV1 = apiBuilder.Build("v1")
 	return nd, nil
 }
 

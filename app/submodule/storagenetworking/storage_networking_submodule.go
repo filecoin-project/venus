@@ -23,3 +23,7 @@ func NewStorgeNetworkingSubmodule(ctx context.Context, network *network.NetworkS
 func (storageNetworking *StorageNetworkingSubmodule) API() IStorageNetworking {
 	return &storageNetworkingAPI{storageNetworking: storageNetworking}
 }
+
+func (storageNetworking *StorageNetworkingSubmodule) V0API() IStorageNetworking {
+	return &storageNetworkingAPI{storageNetworking: storageNetworking}
+}

@@ -22,7 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
-	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/cron"
@@ -629,7 +629,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 		gasUsed = 0
 	}
 
-	burn, err := vm.shouldBurn(msg, code)
+	burn, err := vm.shouldBurn(vm.context, msg, code)
 	if err != nil {
 		return nil, xerrors.Errorf("deciding whether should burn failed: %w", err)
 	}
@@ -669,28 +669,31 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 	}, nil
 }
 
-func (vm *VM) shouldBurn(msg *types.UnsignedMessage, errcode exitcode.ExitCode) (bool, error) {
-	// Check to see if we should burn funds. We avoid burning on successful
-	// window post. This won't catch _indirect_ window post calls, but this
-	// is the best we can get for now.
-
-	if vm.currentEpoch > vm.vmOption.Fork.GetForkUpgrade().UpgradeClausHeight && errcode == exitcode.Ok &&
-		msg.Method == miner.Methods.SubmitWindowedPoSt {
-		// Ok, we've checked the _method_, but we still need to check
-		// the target actor. It would be nice if we could just look at
-		// the trace, but I'm not sure if that's safe?
-		if toActor, _, err := vm.State.GetActor(vm.context, msg.To); err != nil {
-			// If the actor wasn't found, we probably deleted it or something. Move on.
-			if !xerrors.Is(err, types.ErrActorNotFound) {
-				// Otherwise, this should never fail and something is very wrong.
-				return false, xerrors.Errorf("failed to lookup target actor: %w", err)
+func (vm *VM) shouldBurn(ctx context.Context, msg *types.UnsignedMessage, errcode exitcode.ExitCode) (bool, error) {
+	if vm.NtwkVersion() <= network.Version12 {
+		// Check to see if we should burn funds. We avoid burning on successful
+		// window post. This won't catch _indirect_ window post calls, but this
+		// is the best we can get for now.
+		if vm.currentEpoch > vm.vmOption.Fork.GetForkUpgrade().UpgradeClausHeight && errcode == exitcode.Ok && msg.Method == miner.Methods.SubmitWindowedPoSt {
+			// Ok, we've checked the _method_, but we still need to check
+			// the target actor. It would be nice if we could just look at
+			// the trace, but I'm not sure if that's safe?
+			if toActor, _, err := vm.State.GetActor(vm.context, msg.To); err != nil {
+				// If the actor wasn't found, we probably deleted it or something. Move on.
+				if !xerrors.Is(err, types.ErrActorNotFound) {
+					// Otherwise, this should never fail and something is very wrong.
+					return false, xerrors.Errorf("failed to lookup target actor: %w", err)
+				}
+			} else if builtin.IsStorageMinerActor(toActor.Code) {
+				// Ok, this is a storage miner and we've processed a window post. Remove the burn.
+				return false, nil
 			}
-		} else if builtin.IsStorageMinerActor(toActor.Code) {
-			// Ok, this is a storage miner and we've processed a window post. Remove the burn.
-			return false, nil
 		}
+
+		return true, nil
 	}
 
+	// Any "don't burn" rules from Network v13 onwards go here, for now we always return true
 	return true, nil
 }
 
@@ -821,7 +824,7 @@ func depositFunds(act *types.Actor, amt abi.TokenAmount) {
 // implement runtime.MessageInfo for VmMessage
 //
 
-var _ specsruntime.Message = (*VmMessage)(nil)
+var _ rt5.Message = (*VmMessage)(nil)
 
 type VmMessage struct { //nolint
 	From   address.Address

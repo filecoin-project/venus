@@ -74,6 +74,8 @@ var MaxUntrustedActorPendingMessages = 10
 
 var MaxNonceGap = uint64(4)
 
+const MaxMessageSize = 64 << 10 // 64KiB
+
 var (
 	ErrMessageTooBig = errors.New("message too big")
 
@@ -679,7 +681,7 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 
 func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 	// big messages are bad, anti DOS
-	if m.ChainLength() > 32*1024 {
+	if m.ChainLength() > MaxMessageSize {
 		return xerrors.Errorf("mpool message too large (%dB): %v", m.ChainLength(), ErrMessageTooBig)
 	}
 

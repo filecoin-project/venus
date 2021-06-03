@@ -103,6 +103,10 @@ func (jwtAuth *JwtAuth) API() apiface.IJwtAuthAPI {
 	return &JwtAuthAPI{JwtAuth: jwtAuth}
 }
 
+func (jwtAuth *JwtAuth) V0API() apiface.IJwtAuthAPI {
+	return &JwtAuthAPI{JwtAuth: jwtAuth}
+}
+
 func (a *JwtAuthAPI) Verify(ctx context.Context, spanID, serviceName, preHost, host, token string) ([]auth.Permission, error) {
 	var payload JwtPayload
 	if _, err := jwt3.Verify([]byte(token), (*jwt3.HMACSHA)(a.JwtAuth.apiSecret), &payload); err != nil {

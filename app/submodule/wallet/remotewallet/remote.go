@@ -2,19 +2,19 @@ package remotewallet
 
 import (
 	"context"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus-wallet/api/remotecli"
-	"github.com/filecoin-project/venus-wallet/api/remotecli/httpparse"
-	"github.com/filecoin-project/venus-wallet/storage/wallet"
-	"github.com/filecoin-project/venus/pkg/crypto"
-	locWallet "github.com/filecoin-project/venus/pkg/wallet"
+
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+
+	"github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
-var _ locWallet.WalletIntersection = &remoteWallet{}
+var _ wallet.WalletIntersection = &remoteWallet{}
 
 type remoteWallet struct {
-	wallet.IWallet
+	IWallet
 	Cancel func()
 }
 
@@ -30,8 +30,8 @@ func (w *remoteWallet) HasPassword() bool {
 	return true
 }
 
-func SetupRemoteWallet(info string) (locWallet.WalletIntersection, error) {
-	ai, err := httpparse.ParseApiInfo(info)
+func SetupRemoteWallet(info string) (wallet.WalletIntersection, error) {
+	ai, err := ParseAPIInfo(info)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func SetupRemoteWallet(info string) (locWallet.WalletIntersection, error) {
 	if err != nil {
 		return nil, err
 	}
-	wapi, closer, err := remotecli.NewWalletRPC(context.Background(), url, ai.AuthHeader())
+	wapi, closer, err := NewWalletRPC(context.Background(), url, ai.AuthHeader())
 	if err != nil {
 		return nil, xerrors.Errorf("creating jsonrpc client: %w", err)
 	}
@@ -72,6 +72,6 @@ func (w *remoteWallet) Export(addr address.Address, password string) (*crypto.Ke
 	return ConvertLocalKeyInfo(key), nil
 }
 
-func (w *remoteWallet) WalletSign(keyAddr address.Address, msg []byte, meta locWallet.MsgMeta) (*crypto.Signature, error) {
+func (w *remoteWallet) WalletSign(keyAddr address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error) {
 	return w.IWallet.WalletSign(context.Background(), keyAddr, msg, meta)
 }

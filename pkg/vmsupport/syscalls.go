@@ -7,15 +7,15 @@ import (
 	goruntime "runtime"
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
+	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/minio/blake2b-simd"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/slashing"
@@ -26,7 +26,7 @@ import (
 var log = logging.Logger("vmsupport")
 
 type faultChecker interface {
-	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view slashing.FaultStateView) (*runtime.ConsensusFault, error)
+	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view slashing.FaultStateView) (*rt5.ConsensusFault, error)
 }
 
 // Syscalls contains the concrete implementation of VM system calls, including connection to
@@ -60,7 +60,7 @@ func (s *Syscalls) ComputeUnsealedSectorCID(_ context.Context, proof abi.Registe
 	return ffiwrapper.GenerateUnsealedCID(proof, pieces)
 }
 
-func (s *Syscalls) VerifySeal(_ context.Context, info proof.SealVerifyInfo) error {
+func (s *Syscalls) VerifySeal(_ context.Context, info proof5.SealVerifyInfo) error {
 	ok, err := s.verifier.VerifySeal(info)
 	if err != nil {
 		return err
@@ -72,7 +72,7 @@ func (s *Syscalls) VerifySeal(_ context.Context, info proof.SealVerifyInfo) erro
 
 var BatchSealVerifyParallelism = 2 * goruntime.NumCPU()
 
-func (s *Syscalls) BatchVerifySeals(ctx context.Context, vis map[address.Address][]proof.SealVerifyInfo) (map[address.Address][]bool, error) {
+func (s *Syscalls) BatchVerifySeals(ctx context.Context, vis map[address.Address][]proof5.SealVerifyInfo) (map[address.Address][]bool, error) {
 	out := make(map[address.Address][]bool)
 
 	sema := make(chan struct{}, BatchSealVerifyParallelism)
@@ -84,7 +84,7 @@ func (s *Syscalls) BatchVerifySeals(ctx context.Context, vis map[address.Address
 
 		for i, seal := range seals {
 			wg.Add(1)
-			go func(ma address.Address, ix int, svi proof.SealVerifyInfo, res []bool) {
+			go func(ma address.Address, ix int, svi proof5.SealVerifyInfo, res []bool) {
 				defer wg.Done()
 				sema <- struct{}{}
 
@@ -104,7 +104,19 @@ func (s *Syscalls) BatchVerifySeals(ctx context.Context, vis map[address.Address
 	return out, nil
 }
 
-func (s *Syscalls) VerifyPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) error {
+func (s *Syscalls) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) error {
+	ok, err := s.verifier.VerifyAggregateSeals(aggregate)
+	if err != nil {
+		return xerrors.Errorf("failed to verify aggregated PoRep: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf("invalid aggregate proof")
+	}
+
+	return nil
+}
+
+func (s *Syscalls) VerifyPoSt(ctx context.Context, info proof5.WindowPoStVerifyInfo) error {
 	ok, err := s.verifier.VerifyWindowPoSt(ctx, info)
 	if err != nil {
 		return err
@@ -115,6 +127,6 @@ func (s *Syscalls) VerifyPoSt(ctx context.Context, info proof.WindowPoStVerifyIn
 	return nil
 }
 
-func (s *Syscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view vm.SyscallsStateView) (*runtime.ConsensusFault, error) {
+func (s *Syscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view vm.SyscallsStateView) (*rt5.ConsensusFault, error) {
 	return s.faultChecker.VerifyConsensusFault(ctx, h1, h2, extra, view)
 }

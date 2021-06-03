@@ -3,25 +3,24 @@ package mpool
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"os"
 	"reflect"
 	"runtime"
 	"strconv"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/config"
-
 	"github.com/filecoin-project/go-address"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
 	chainpkg "github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool"
@@ -150,7 +149,7 @@ func (mp *MessagePoolSubmodule) validateLocalMessage(ctx context.Context, msg pu
 		return err
 	}
 
-	if m.ChainLength() > 32*1024 {
+	if m.ChainLength() > messagepool.MaxMessageSize {
 		log.Warnf("local message is too large! (%dB)", m.ChainLength())
 		return xerrors.Errorf("local message is too large! (%dB)", m.ChainLength())
 	}
@@ -259,6 +258,11 @@ func (mp *MessagePoolSubmodule) Stop(ctx context.Context) {
 }
 
 func (mp *MessagePoolSubmodule) API() apiface.IMessagePool {
+	pushLocks := messagepool.NewMpoolLocker()
+	return &MessagePoolAPI{mp: mp, pushLocks: pushLocks}
+}
+
+func (mp *MessagePoolSubmodule) V0API() apiface.IMessagePool {
 	pushLocks := messagepool.NewMpoolLocker()
 	return &MessagePoolAPI{mp: mp, pushLocks: pushLocks}
 }

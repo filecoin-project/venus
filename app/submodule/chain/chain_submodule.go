@@ -2,12 +2,11 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"time"
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -17,6 +16,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/slashing"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
 )
 
@@ -72,7 +72,7 @@ func NewChainSubmodule(ctx context.Context,
 		return nil, err
 	}
 
-	messageStore := chain.NewMessageStore(blockstore.Blockstore)
+	messageStore := chain.NewMessageStore(blockstore.Blockstore, repo.Config().NetworkParams.ForkUpgradeParam)
 	fork, err := fork.NewChainFork(ctx, chainStore, blockstore.CborStore, blockstore.Blockstore, repo.Config().NetworkParams)
 	if err != nil {
 		return nil, err
@@ -112,6 +112,16 @@ func (chain *ChainSubmodule) Stop(ctx context.Context) {
 }
 
 func (chain *ChainSubmodule) API() apiface.IChain {
+	return &chainAPI{
+		IAccount:    NewAccountAPI(chain),
+		IActor:      NewActorAPI(chain),
+		IBeacon:     NewBeaconAPI(chain),
+		IChainInfo:  NewChainInfoAPI(chain),
+		IMinerState: NewMinerStateAPI(chain),
+	}
+}
+
+func (chain *ChainSubmodule) V0API() apiface.IChain {
 	return &chainAPI{
 		IAccount:    NewAccountAPI(chain),
 		IActor:      NewActorAPI(chain),

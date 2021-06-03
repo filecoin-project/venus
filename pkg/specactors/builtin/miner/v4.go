@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
 	miner4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/miner"
 	adt4 "github.com/filecoin-project/specs-actors/v4/actors/util/adt"
 )
@@ -28,6 +29,12 @@ func load4(store adt.Store, root cid.Cid) (State, error) {
 	if err != nil {
 		return nil, err
 	}
+	return &out, nil
+}
+
+func make4(store adt.Store) (State, error) {
+	out := state4{store: store}
+	out.State = miner4.State{}
 	return &out, nil
 }
 
@@ -208,9 +215,9 @@ func (s *state4) LoadSectors(snos *bitfield.BitField) ([]*SectorOnChainInfo, err
 	// If no sector numbers are specified, load all.
 	if snos == nil {
 		infos := make([]*SectorOnChainInfo, 0, sectors.Length())
-		var info2 miner4.SectorOnChainInfo
-		if err := sectors.ForEach(&info2, func(_ int64) error {
-			info := fromV4SectorOnChainInfo(info2)
+		var info4 miner4.SectorOnChainInfo
+		if err := sectors.ForEach(&info4, func(_ int64) error {
+			info := fromV4SectorOnChainInfo(info4)
 			infos = append(infos, &info)
 			return nil
 		}); err != nil {
@@ -220,13 +227,13 @@ func (s *state4) LoadSectors(snos *bitfield.BitField) ([]*SectorOnChainInfo, err
 	}
 
 	// Otherwise, load selected.
-	infos2, err := sectors.Load(*snos)
+	infos4, err := sectors.Load(*snos)
 	if err != nil {
 		return nil, err
 	}
-	infos := make([]*SectorOnChainInfo, len(infos2))
-	for i, info2 := range infos2 {
-		info := fromV4SectorOnChainInfo(*info2)
+	infos := make([]*SectorOnChainInfo, len(infos4))
+	for i, info4 := range infos4 {
+		info := fromV4SectorOnChainInfo(*info4)
 		infos[i] = &info
 	}
 	return infos, nil
@@ -239,6 +246,10 @@ func (s *state4) IsAllocated(num abi.SectorNumber) (bool, error) {
 	}
 
 	return allocatedSectors.IsSet(uint64(num))
+}
+
+func (s *state4) GetProvingPeriodStart() (abi.ChainEpoch, error) {
+	return s.State.ProvingPeriodStart, nil
 }
 
 func (s *state4) LoadDeadline(idx uint64) (Deadline, error) {
@@ -268,13 +279,13 @@ func (s *state4) NumDeadlines() (uint64, error) {
 }
 
 func (s *state4) DeadlinesChanged(other State) (bool, error) {
-	other2, ok := other.(*state4)
+	other4, ok := other.(*state4)
 	if !ok {
 		// treat an upgrade as a change, always
 		return true, nil
 	}
 
-	return !s.State.Deadlines.Equals(other2.Deadlines), nil
+	return !s.State.Deadlines.Equals(other4.Deadlines), nil
 }
 
 func (s *state4) MinerInfoChanged(other State) (bool, error) {
@@ -357,6 +368,43 @@ func (s *state4) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (SectorPreC
 	return fromV4SectorPreCommitOnChainInfo(sp), nil
 }
 
+func (s *state4) EraseAllUnproven() error {
+
+	dls, err := s.State.LoadDeadlines(s.store)
+	if err != nil {
+		return err
+	}
+
+	err = dls.ForEach(s.store, func(dindx uint64, dl *miner4.Deadline) error {
+		ps, err := dl.PartitionsArray(s.store)
+		if err != nil {
+			return err
+		}
+
+		var part miner4.Partition
+		err = ps.ForEach(&part, func(pindx int64) error {
+			_ = part.ActivateUnproven()
+			err = ps.Set(uint64(pindx), &part)
+			return nil
+		})
+
+		if err != nil {
+			return err
+		}
+
+		dl.Partitions, err = ps.Root()
+		if err != nil {
+			return err
+		}
+
+		return dls.UpdateDeadline(s.store, dindx, dl)
+	})
+
+	return s.State.SaveDeadlines(s.store, dls)
+
+	return nil
+}
+
 func (d *deadline4) LoadPartition(idx uint64) (Partition, error) {
 	p, err := d.Deadline.LoadPartition(d.store, idx)
 	if err != nil {
@@ -377,13 +425,13 @@ func (d *deadline4) ForEachPartition(cb func(uint64, Partition) error) error {
 }
 
 func (d *deadline4) PartitionsChanged(other Deadline) (bool, error) {
-	other2, ok := other.(*deadline4)
+	other4, ok := other.(*deadline4)
 	if !ok {
 		// treat an upgrade as a change, always
 		return true, nil
 	}
 
-	return !d.Deadline.Partitions.Equals(other2.Deadline.Partitions), nil
+	return !d.Deadline.Partitions.Equals(other4.Deadline.Partitions), nil
 }
 
 func (d *deadline4) PartitionsPoSted() (bitfield.BitField, error) {
@@ -391,12 +439,14 @@ func (d *deadline4) PartitionsPoSted() (bitfield.BitField, error) {
 }
 
 func (d *deadline4) DisputableProofCount() (uint64, error) {
+
 	ops, err := d.OptimisticProofsSnapshotArray(d.store)
 	if err != nil {
 		return 0, err
 	}
 
 	return ops.Length(), nil
+
 }
 
 func (p *partition4) AllSectors() (bitfield.BitField, error) {
@@ -412,6 +462,7 @@ func (p *partition4) RecoveringSectors() (bitfield.BitField, error) {
 }
 
 func fromV4SectorOnChainInfo(v4 miner4.SectorOnChainInfo) SectorOnChainInfo {
+
 	return SectorOnChainInfo{
 		SectorNumber:          v4.SectorNumber,
 		SealProof:             v4.SealProof,
@@ -425,9 +476,11 @@ func fromV4SectorOnChainInfo(v4 miner4.SectorOnChainInfo) SectorOnChainInfo {
 		ExpectedDayReward:     v4.ExpectedDayReward,
 		ExpectedStoragePledge: v4.ExpectedStoragePledge,
 	}
+
 }
 
 func fromV4SectorPreCommitOnChainInfo(v4 miner4.SectorPreCommitOnChainInfo) SectorPreCommitOnChainInfo {
+
 	return SectorPreCommitOnChainInfo{
 		Info:               (SectorPreCommitInfo)(v4.Info),
 		PreCommitDeposit:   v4.PreCommitDeposit,
@@ -435,4 +488,9 @@ func fromV4SectorPreCommitOnChainInfo(v4 miner4.SectorPreCommitOnChainInfo) Sect
 		DealWeight:         v4.DealWeight,
 		VerifiedDealWeight: v4.VerifiedDealWeight,
 	}
+
+}
+
+func (s *state4) GetState() interface{} {
+	return &s.State
 }

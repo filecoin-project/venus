@@ -15,7 +15,7 @@ import (
 
 type message2 struct{ from address.Address }
 
-func (m message2) Create(to address.Address, initialAmount abi.TokenAmount) (*types.UnsignedMessage, error) {
+func (m message2) Create(to address.Address, initialAmount abi.TokenAmount) (*types.Message, error) {
 	params, aerr := specactors.SerializeParams(&paych2.ConstructorParams{From: m.from, To: to})
 	if aerr != nil {
 		return nil, aerr
@@ -28,7 +28,7 @@ func (m message2) Create(to address.Address, initialAmount abi.TokenAmount) (*ty
 		return nil, aerr
 	}
 
-	return &types.UnsignedMessage{
+	return &types.Message{
 		To:     init_.Address,
 		From:   m.from,
 		Value:  initialAmount,
@@ -37,7 +37,7 @@ func (m message2) Create(to address.Address, initialAmount abi.TokenAmount) (*ty
 	}, nil
 }
 
-func (m message2) Update(paych address.Address, sv *SignedVoucher, secret []byte) (*types.UnsignedMessage, error) {
+func (m message2) Update(paych address.Address, sv *SignedVoucher, secret []byte) (*types.Message, error) {
 	params, aerr := specactors.SerializeParams(&paych2.UpdateChannelStateParams{
 		Sv:     *sv,
 		Secret: secret,
@@ -46,7 +46,7 @@ func (m message2) Update(paych address.Address, sv *SignedVoucher, secret []byte
 		return nil, aerr
 	}
 
-	return &types.UnsignedMessage{
+	return &types.Message{
 		To:     paych,
 		From:   m.from,
 		Value:  abi.NewTokenAmount(0),
@@ -55,8 +55,8 @@ func (m message2) Update(paych address.Address, sv *SignedVoucher, secret []byte
 	}, nil
 }
 
-func (m message2) Settle(paych address.Address) (*types.UnsignedMessage, error) {
-	return &types.UnsignedMessage{
+func (m message2) Settle(paych address.Address) (*types.Message, error) {
+	return &types.Message{
 		To:     paych,
 		From:   m.from,
 		Value:  abi.NewTokenAmount(0),
@@ -64,8 +64,8 @@ func (m message2) Settle(paych address.Address) (*types.UnsignedMessage, error) 
 	}, nil
 }
 
-func (m message2) Collect(paych address.Address) (*types.UnsignedMessage, error) {
-	return &types.UnsignedMessage{
+func (m message2) Collect(paych address.Address) (*types.Message, error) {
+	return &types.Message{
 		To:     paych,
 		From:   m.from,
 		Value:  abi.NewTokenAmount(0),

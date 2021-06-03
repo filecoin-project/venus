@@ -59,6 +59,8 @@ func Version3Upgrade(repoPath string) error {
 	case constants.NetworkCalibnet:
 		fallthrough
 	case constants.NetworkNerpa:
+		fallthrough
+	case constants.NetworkInterop:
 		cfg.API.VenusAuthURL = ""
 	}
 

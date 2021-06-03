@@ -2,16 +2,18 @@ package paychmgr
 
 import (
 	"context"
+
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus-wallet/core"
+
 	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
-	"github.com/ipfs/go-cid"
 )
 
 // paychAPI defines the API methods needed by the payment channel manager
@@ -48,7 +50,7 @@ func (o *pcAPI) WalletHas(ctx context.Context, addr address.Address) (bool, erro
 	return o.walletAPI.WalletHas(ctx, addr)
 }
 func (o *pcAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
-	return o.walletAPI.WalletSign(ctx, k, msg, wallet.MsgMeta{Type: core.MTSignedVoucher})
+	return o.walletAPI.WalletSign(ctx, k, msg, wallet.MsgMeta{Type: wallet.MTSignedVoucher})
 }
 func (o *pcAPI) StateNetworkVersion(ctx context.Context, ts types.TipSetKey) (network.Version, error) {
 	return o.chainInfoAPI.StateNetworkVersion(ctx, ts)

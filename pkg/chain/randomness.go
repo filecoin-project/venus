@@ -5,12 +5,13 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"math/rand"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
-	"math/rand"
 )
 
 type RandomSeed []byte
@@ -18,8 +19,8 @@ type RandomSeed []byte
 ///// Chain sampling /////
 
 type ChainSampler interface { //nolint
-	Sample(ctx context.Context, epoch abi.ChainEpoch) (RandomSeed, error)
-	GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	Sample(ctx context.Context, epoch abi.ChainEpoch, lookback bool) (RandomSeed, error)
+	GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, lookback bool) (abi.Randomness, error)
 }
 
 // A sampler for use when computing genesis state (the state that the genesis block points to as parent state).
@@ -28,14 +29,14 @@ type GenesisSampler struct {
 	VRFProof types.VRFPi
 }
 
-func (g *GenesisSampler) Sample(_ context.Context, epoch abi.ChainEpoch) (RandomSeed, error) {
+func (g *GenesisSampler) Sample(_ context.Context, epoch abi.ChainEpoch, _ bool) (RandomSeed, error) {
 	if epoch > 0 {
 		return nil, fmt.Errorf("invalid use of genesis sampler for epoch %d", epoch)
 	}
 	return MakeRandomSeed(g.VRFProof)
 }
 
-func (g *GenesisSampler) GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (g *GenesisSampler) GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, _ bool) (abi.Randomness, error) {
 	//use trust beacon value todo
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
@@ -53,8 +54,10 @@ func MakeRandomSeed(rawVRFProof types.VRFPi) (RandomSeed, error) {
 
 // RandomnessSource provides randomness to actors.
 type RandomnessSource interface {
-	GetRandomnessFromTickets(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
-	GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	GetChainRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetChainRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetBeaconRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetBeaconRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
 }
 
 // A randomness source that seeds computations with a sample drawn from a chain epoch.
@@ -62,16 +65,32 @@ type ChainRandomnessSource struct { //nolint
 	Sampler ChainSampler
 }
 
-func (c *ChainRandomnessSource) GetRandomnessFromTickets(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	seed, err := c.Sampler.Sample(ctx, epoch)
+func (c *ChainRandomnessSource) GetChainRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	seed, err := c.Sampler.Sample(ctx, round, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to sample chain for randomness")
 	}
-	return BlendEntropy(tag, seed, epoch, entropy)
+	return BlendEntropy(pers, seed, round, entropy)
+}
+
+func (c *ChainRandomnessSource) GetChainRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	seed, err := c.Sampler.Sample(ctx, round, false)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to sample chain for randomness")
+	}
+	return BlendEntropy(pers, seed, round, entropy)
+}
+
+func (c *ChainRandomnessSource) GetBeaconRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return c.Sampler.GetRandomnessFromBeacon(ctx, pers, round, entropy, true)
+}
+
+func (c *ChainRandomnessSource) GetBeaconRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return c.Sampler.GetRandomnessFromBeacon(ctx, pers, round, entropy, false)
 }
 
 func (c *ChainRandomnessSource) GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return c.Sampler.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy)
+	return c.Sampler.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, true)
 }
 
 func BlendEntropy(tag crypto.DomainSeparationTag, seed RandomSeed, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {

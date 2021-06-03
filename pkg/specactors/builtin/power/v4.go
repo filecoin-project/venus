@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
 	power4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/power"
 	adt4 "github.com/filecoin-project/specs-actors/v4/actors/util/adt"
 )
@@ -24,6 +25,19 @@ func load4(store adt.Store, root cid.Cid) (State, error) {
 	if err != nil {
 		return nil, err
 	}
+	return &out, nil
+}
+
+func make4(store adt.Store) (State, error) {
+	out := state4{store: store}
+
+	s, err := power4.ConstructState(store)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
+
 	return &out, nil
 }
 
@@ -121,12 +135,36 @@ func (s *state4) ForEachClaim(cb func(miner address.Address, claim Claim) error)
 }
 
 func (s *state4) ClaimsChanged(other State) (bool, error) {
-	other2, ok := other.(*state4)
+	other4, ok := other.(*state4)
 	if !ok {
 		// treat an upgrade as a change, always
 		return true, nil
 	}
-	return !s.State.Claims.Equals(other2.State.Claims), nil
+	return !s.State.Claims.Equals(other4.State.Claims), nil
+}
+
+func (s *state4) SetTotalQualityAdjPower(p abi.StoragePower) error {
+	s.State.TotalQualityAdjPower = p
+	return nil
+}
+
+func (s *state4) SetTotalRawBytePower(p abi.StoragePower) error {
+	s.State.TotalRawBytePower = p
+	return nil
+}
+
+func (s *state4) SetThisEpochQualityAdjPower(p abi.StoragePower) error {
+	s.State.ThisEpochQualityAdjPower = p
+	return nil
+}
+
+func (s *state4) SetThisEpochRawBytePower(p abi.StoragePower) error {
+	s.State.ThisEpochRawBytePower = p
+	return nil
+}
+
+func (s *state4) GetState() interface{} {
+	return &s.State
 }
 
 func (s *state4) claims() (adt.Map, error) {

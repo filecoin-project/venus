@@ -36,3 +36,7 @@ func NewBlockserviceSubmodule(ctx context.Context, blockstore *blockstore.Blocks
 func (blockService *BlockServiceSubmodule) API() apiface.IBlockService {
 	return &blockServiceAPI{blockService: blockService}
 }
+
+func (blockService *BlockServiceSubmodule) V0API() apiface.IBlockService {
+	return &blockServiceAPI{blockService: blockService}
+}

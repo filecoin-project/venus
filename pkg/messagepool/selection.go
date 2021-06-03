@@ -1281,7 +1281,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 			break
 		}
 
-		if isMessageMute(&m.Message, ts, mp.forkParams.UpgradeActorsV4Height) {
+		if isMessageMute(&m.Message, ts, mp.forkParams.UpgradeTurboHeight) {
 			break
 		}
 
