@@ -85,7 +85,7 @@ func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx c
 	}
 
 	filReserveDisbursed := big.Zero()
-	if height > caculator.upgradeConfig.UpgradeActorsV2Height {
+	if height > caculator.upgradeConfig.UpgradeAssemblyHeight {
 		filReserveDisbursed, err = caculator.GetFilReserveDisbursed(ctx, st)
 		if err != nil {
 			return CirculatingSupply{}, xerrors.Errorf("failed to calculate filReserveDisbursed: %v", err)
@@ -346,8 +346,8 @@ func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, 
 		}
 	}
 
-	// After UpgradeActorsV2Height these funds are accounted for in GetFilReserveDisbursed
-	if height <= caculator.upgradeConfig.UpgradeActorsV2Height {
+	// After UpgradeAssemblyHeight these funds are accounted for in GetFilReserveDisbursed
+	if height <= caculator.upgradeConfig.UpgradeAssemblyHeight {
 		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
 		vf = big.Add(vf, caculator.genesisPledge)
 		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch

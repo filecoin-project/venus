@@ -18,3 +18,7 @@ func NewMultiSigSubmodule(chainState apiface.IChain, msgPool apiface.IMessagePoo
 func (sb *MultiSigSubmodule) API() apiface.IMultiSig {
 	return newMultiSig(sb)
 }
+
+func (sb *MultiSigSubmodule) V0API() apiface.IMultiSig {
+	return newMultiSig(sb)
+}

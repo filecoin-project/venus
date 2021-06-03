@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -32,7 +33,7 @@ func TestMessageStoreMessagesHappy(t *testing.T) {
 	}
 
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
-	ms := chain.NewMessageStore(bs)
+	ms := chain.NewMessageStore(bs, config.DefaultForkUpgradeParam)
 	msgsCid, err := ms.StoreMessages(ctx, msgs, []*types.UnsignedMessage{})
 	assert.NoError(t, err)
 
@@ -53,7 +54,7 @@ func TestMessageStoreReceiptsHappy(t *testing.T) {
 	}
 
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
-	ms := chain.NewMessageStore(bs)
+	ms := chain.NewMessageStore(bs, config.DefaultForkUpgradeParam)
 	receiptCids, err := ms.StoreReceipts(ctx, receipts)
 	assert.NoError(t, err)
 

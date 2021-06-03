@@ -4,7 +4,7 @@ import (
 	"bytes"
 
 	"github.com/filecoin-project/go-state-types/cbor"
-	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/ipfs/go-cid"
 	cborUtil "github.com/ipfs/go-ipld-cbor"
@@ -22,7 +22,7 @@ func NewTestStorage(state interface{}) *TestStorage {
 	}
 }
 
-var _ specsruntime.Store = (*TestStorage)(nil)
+var _ rt5.Store = (*TestStorage)(nil)
 
 // Put implements runtime.Store.
 func (ts *TestStorage) StorePut(v cbor.Marshaler) cid.Cid {

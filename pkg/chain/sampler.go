@@ -44,7 +44,7 @@ func NewSampler(reader TipSetByHeight, genesisTicket types.Ticket) *Sampler {
 // Note that this may produce the same value for different, neighbouring epochs when the epoch references a round
 // in which no blocks were produced (an empty tipset or "null block"). A caller desiring a unique see for each epoch
 // should blend in some distinguishing value (such as the epoch itself) into a hash of this ticket.
-func (s *Sampler) SampleTicket(ctx context.Context, head types.TipSetKey, epoch abi.ChainEpoch) (types.Ticket, error) {
+func (s *Sampler) SampleTicket(ctx context.Context, head types.TipSetKey, epoch abi.ChainEpoch, lookback bool) (types.Ticket, error) {
 	var ticket types.Ticket
 	if !head.IsEmpty() {
 		start, err := s.reader.GetTipSet(head)
@@ -64,7 +64,7 @@ func (s *Sampler) SampleTicket(ctx context.Context, head types.TipSetKey, epoch 
 		// Note: it is not an error to have epoch > start.Height(); in the case of a run of null blocks the
 		// sought-after height may be after the base (last non-empty) tipset.
 		// It's also not an error for the requested epoch to be negative.
-		tip, err := s.reader.GetTipSetByHeight(ctx, start, searchHeight, true)
+		tip, err := s.reader.GetTipSetByHeight(ctx, start, searchHeight, lookback)
 		if err != nil {
 			return types.Ticket{}, err
 		}
@@ -77,7 +77,7 @@ func (s *Sampler) SampleTicket(ctx context.Context, head types.TipSetKey, epoch 
 	return ticket, nil
 }
 
-func (s *Sampler) SampleRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (s *Sampler) SampleRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, lookback bool) (abi.Randomness, error) {
 	ts, err := s.reader.GetTipSet(tsk)
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func (s *Sampler) SampleRandomnessFromBeacon(ctx context.Context, tsk types.TipS
 		searchHeight = 0
 	}
 
-	randTS, err := s.reader.GetTipSetByHeight(ctx, ts, searchHeight, true)
+	randTS, err := s.reader.GetTipSetByHeight(ctx, ts, searchHeight, lookback)
 	if err != nil {
 		return nil, err
 	}
@@ -135,14 +135,14 @@ type RandomnessSamplerAtTipSet struct {
 	head    types.TipSetKey
 }
 
-func (s *RandomnessSamplerAtTipSet) Sample(ctx context.Context, epoch abi.ChainEpoch) (RandomSeed, error) {
-	ticket, err := s.sampler.SampleTicket(ctx, s.head, epoch)
+func (s *RandomnessSamplerAtTipSet) Sample(ctx context.Context, epoch abi.ChainEpoch, lookback bool) (RandomSeed, error) {
+	ticket, err := s.sampler.SampleTicket(ctx, s.head, epoch, lookback)
 	if err != nil {
 		return nil, err
 	}
 	return MakeRandomSeed(ticket.VRFProof)
 }
 
-func (s *RandomnessSamplerAtTipSet) GetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return s.sampler.SampleRandomnessFromBeacon(ctx, s.head, personalization, randEpoch, entropy)
+func (s *RandomnessSamplerAtTipSet) GetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, lookback bool) (abi.Randomness, error) {
+	return s.sampler.SampleRandomnessFromBeacon(ctx, s.head, personalization, randEpoch, entropy, lookback)
 }

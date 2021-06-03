@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
@@ -13,8 +15,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	multisig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
 var _ State = (*state0)(nil)
@@ -25,6 +25,25 @@ func load0(store adt.Store, root cid.Cid) (State, error) {
 	if err != nil {
 		return nil, err
 	}
+	return &out, nil
+}
+
+func make0(store adt.Store, signers []address.Address, threshold uint64, startEpoch abi.ChainEpoch, unlockDuration abi.ChainEpoch, initialBalance abi.TokenAmount) (State, error) {
+	out := state0{store: store}
+	out.State = msig0.State{}
+	out.State.Signers = signers
+	out.State.NumApprovalsThreshold = threshold
+	out.State.StartEpoch = startEpoch
+	out.State.UnlockDuration = unlockDuration
+	out.State.InitialBalance = initialBalance
+
+	em, err := adt0.MakeEmptyMap(store).Root()
+	if err != nil {
+		return nil, err
+	}
+
+	out.State.PendingTxns = em
+
 	return &out, nil
 }
 
@@ -68,7 +87,7 @@ func (s *state0) ForEachPendingTxn(cb func(id int64, txn Transaction) error) err
 		if n <= 0 {
 			return xerrors.Errorf("invalid pending transaction key: %v", key)
 		}
-		return cb(txid, (Transaction)(out))
+		return cb(txid, (Transaction)(out)) //nolint:unconvert
 	})
 }
 
@@ -86,9 +105,13 @@ func (s *state0) transactions() (adt.Map, error) {
 }
 
 func (s *state0) decodeTransaction(val *cbg.Deferred) (Transaction, error) {
-	var tx multisig0.Transaction
+	var tx msig0.Transaction
 	if err := tx.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return Transaction{}, err
 	}
 	return tx, nil
+}
+
+func (s *state0) GetState() interface{} {
+	return &s.State
 }

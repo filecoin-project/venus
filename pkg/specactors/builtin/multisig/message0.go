@@ -21,7 +21,7 @@ func (m message0) Create(
 	signers []address.Address, threshold uint64,
 	unlockStart, unlockDuration abi.ChainEpoch,
 	initialAmount abi.TokenAmount,
-) (*types.UnsignedMessage, error) {
+) (*types.Message, error) {
 
 	lenAddrs := uint64(len(signers))
 
@@ -64,7 +64,7 @@ func (m message0) Create(
 		return nil, actErr
 	}
 
-	return &types.UnsignedMessage{
+	return &types.Message{
 		To:     init_.Address,
 		From:   m.from,
 		Method: builtin0.MethodsInit.Exec,
@@ -74,7 +74,7 @@ func (m message0) Create(
 }
 
 func (m message0) Propose(msig, to address.Address, amt abi.TokenAmount,
-	method abi.MethodNum, params []byte) (*types.UnsignedMessage, error) {
+	method abi.MethodNum, params []byte) (*types.Message, error) {
 
 	if msig == address.Undef {
 		return nil, xerrors.Errorf("must provide a multisig address for proposal")
@@ -102,7 +102,7 @@ func (m message0) Propose(msig, to address.Address, amt abi.TokenAmount,
 		return nil, xerrors.Errorf("failed to serialize parameters: %w", actErr)
 	}
 
-	return &types.UnsignedMessage{
+	return &types.Message{
 		To:     msig,
 		From:   m.from,
 		Value:  abi.NewTokenAmount(0),
@@ -111,13 +111,13 @@ func (m message0) Propose(msig, to address.Address, amt abi.TokenAmount,
 	}, nil
 }
 
-func (m message0) Approve(msig address.Address, txID uint64, hashData *ProposalHashData) (*types.UnsignedMessage, error) {
+func (m message0) Approve(msig address.Address, txID uint64, hashData *ProposalHashData) (*types.Message, error) {
 	enc, err := txnParams(txID, hashData)
 	if err != nil {
 		return nil, err
 	}
 
-	return &types.UnsignedMessage{
+	return &types.Message{
 		To:     msig,
 		From:   m.from,
 		Value:  types.NewInt(0),
@@ -126,13 +126,13 @@ func (m message0) Approve(msig address.Address, txID uint64, hashData *ProposalH
 	}, nil
 }
 
-func (m message0) Cancel(msig address.Address, txID uint64, hashData *ProposalHashData) (*types.UnsignedMessage, error) {
+func (m message0) Cancel(msig address.Address, txID uint64, hashData *ProposalHashData) (*types.Message, error) {
 	enc, err := txnParams(txID, hashData)
 	if err != nil {
 		return nil, err
 	}
 
-	return &types.UnsignedMessage{
+	return &types.Message{
 		To:     msig,
 		From:   m.from,
 		Value:  types.NewInt(0),

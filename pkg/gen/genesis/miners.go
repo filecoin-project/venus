@@ -82,7 +82,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 		if para.UpgradeIgnitionHeight >= 0 {
 			return network.Version2
 		}
-		if para.UpgradeActorsV2Height >= 0 {
+		if para.UpgradeAssemblyHeight >= 0 {
 			return network.Version3
 		}
 		if para.UpgradeLiftoffHeight >= 0 {
@@ -364,15 +364,24 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 // TODO: copied from actors test harness, deduplicate or remove from here
 type fakeRand struct{}
 
-func (fr *fakeRand) GetRandomnessFromTickets(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (fr *fakeRand) GetChainRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(epoch * 1000))).Read(out) //nolint
+	_, _ = rand.New(rand.NewSource(int64(round * 1000))).Read(out) //nolint
 	return out, nil
 }
-
-func (fr *fakeRand) GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (fr *fakeRand) GetChainRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
+	_, _ = rand.New(rand.NewSource(int64(round * 1000))).Read(out) //nolint
+	return out, nil
+}
+func (fr *fakeRand) GetBeaconRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	out := make([]byte, 32)
+	_, _ = rand.New(rand.NewSource(int64(round))).Read(out) //nolint
+	return out, nil
+}
+func (fr *fakeRand) GetBeaconRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	out := make([]byte, 32)
+	_, _ = rand.New(rand.NewSource(int64(round))).Read(out) //nolint
 	return out, nil
 }
 

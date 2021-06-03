@@ -3,20 +3,19 @@ package mining
 import (
 	"bytes"
 	"context"
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"os"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus-wallet/core"
-
 	ffi "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/crypto"
@@ -265,7 +264,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *apitypes.B
 	if bHas {
 		nosigbytes := next.SignatureData()
 		sig, err := miningAPI.Ming.Wallet.API().WalletSign(ctx, worker, nosigbytes, wallet.MsgMeta{
-			Type: core.MTBlock,
+			Type: wallet.MTBlock,
 		})
 		if err != nil {
 			return nil, xerrors.Errorf("failed to sign new block: %v", err)

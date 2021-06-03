@@ -3,7 +3,7 @@ package dispatch
 import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	rtt "github.com/filecoin-project/go-state-types/rt"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
+	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
 
@@ -69,7 +69,7 @@ func (b *CodeLoaderBuilder) Add(predict ActorPredicate, actor Actor) *CodeLoader
 }
 
 // Add lets you add an actor dispatch table for a given version.
-func (b *CodeLoaderBuilder) AddMany(predict ActorPredicate, actors ...runtime.VMActor) *CodeLoaderBuilder {
+func (b *CodeLoaderBuilder) AddMany(predict ActorPredicate, actors ...rt5.VMActor) *CodeLoaderBuilder {
 	for _, actor := range actors {
 		b.Add(predict, actor)
 	}

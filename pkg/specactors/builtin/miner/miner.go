@@ -1,6 +1,9 @@
 package miner
 
 import (
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -9,40 +12,53 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
-	"github.com/filecoin-project/go-state-types/network"
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/types"
 
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
+	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 )
 
 func init() {
+
 	builtin.RegisterActorState(builtin0.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load0(store, root)
 	})
+
 	builtin.RegisterActorState(builtin2.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load2(store, root)
 	})
+
 	builtin.RegisterActorState(builtin3.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load3(store, root)
 	})
+
 	builtin.RegisterActorState(builtin4.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load4(store, root)
 	})
+
+	builtin.RegisterActorState(builtin5.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load5(store, root)
+	})
+
 }
 
-var Methods = builtin4.MethodsMiner
+var Methods = builtin5.MethodsMiner
 
 // Unchanged between v0, v2, v3, and v4 actors
 var WPoStProvingPeriod = miner0.WPoStProvingPeriod
@@ -58,18 +74,71 @@ const MinSectorExpiration = miner0.MinSectorExpiration
 var DeclarationsMax = miner2.DeclarationsMax
 var AddressedSectorsMax = miner2.AddressedSectorsMax
 
-func Load(store adt.Store, act *types.Actor) (st State, err error) {
+func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
+
 	case builtin0.StorageMinerActorCodeID:
 		return load0(store, act.Head)
+
 	case builtin2.StorageMinerActorCodeID:
 		return load2(store, act.Head)
+
 	case builtin3.StorageMinerActorCodeID:
 		return load3(store, act.Head)
+
 	case builtin4.StorageMinerActorCodeID:
 		return load4(store, act.Head)
+
+	case builtin5.StorageMinerActorCodeID:
+		return load5(store, act.Head)
+
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+}
+
+func MakeState(store adt.Store, av specactors.Version) (State, error) {
+	switch av {
+
+	case specactors.Version0:
+		return make0(store)
+
+	case specactors.Version2:
+		return make2(store)
+
+	case specactors.Version3:
+		return make3(store)
+
+	case specactors.Version4:
+		return make4(store)
+
+	case specactors.Version5:
+		return make5(store)
+
+	}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+func GetActorCodeID(av specactors.Version) (cid.Cid, error) {
+	switch av {
+
+	case specactors.Version0:
+		return builtin0.StorageMinerActorCodeID, nil
+
+	case specactors.Version2:
+		return builtin2.StorageMinerActorCodeID, nil
+
+	case specactors.Version3:
+		return builtin3.StorageMinerActorCodeID, nil
+
+	case specactors.Version4:
+		return builtin4.StorageMinerActorCodeID, nil
+
+	case specactors.Version5:
+		return builtin5.StorageMinerActorCodeID, nil
+
+	}
+
+	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
 
 type State interface {
@@ -91,6 +160,11 @@ type State interface {
 	NumLiveSectors() (uint64, error)
 	IsAllocated(abi.SectorNumber) (bool, error)
 
+	// Note that ProvingPeriodStart is deprecated and will be renamed / removed in a future version of actors
+	GetProvingPeriodStart() (abi.ChainEpoch, error)
+	// Testing only
+	EraseAllUnproven() error
+
 	LoadDeadline(idx uint64) (Deadline, error)
 	ForEachDeadline(cb func(idx uint64, dl Deadline) error) error
 	NumDeadlines() (uint64, error)
@@ -107,6 +181,7 @@ type State interface {
 	decodeSectorOnChainInfo(*cbg.Deferred) (SectorOnChainInfo, error)
 	precommits() (adt.Map, error)
 	decodeSectorPreCommitOnChainInfo(*cbg.Deferred) (SectorPreCommitOnChainInfo, error)
+	GetState() interface{}
 }
 
 type Deadline interface {

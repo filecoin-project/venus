@@ -3,9 +3,10 @@ package conformance
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/types"
-	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -47,8 +48,17 @@ func (r *RecordingRand) loadHead() {
 	r.head = head.Key()
 }
 
-func (r *RecordingRand) GetRandomnessFromTickets(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (r *RecordingRand) GetChainRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return r.getChainRandomness(ctx, pers, round, entropy)
+}
+
+func (r *RecordingRand) GetChainRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return r.getChainRandomness(ctx, pers, round, entropy)
+}
+
+func (r *RecordingRand) getChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	r.once.Do(r.loadHead)
+	// FullNode's ChainGetRandomnessFromTickets handles whether we should be looking forward or back
 	ret, err := r.chainReader.ChainGetRandomnessFromTickets(ctx, r.head, pers, round, entropy)
 	if err != nil {
 		return ret, err
@@ -72,7 +82,15 @@ func (r *RecordingRand) GetRandomnessFromTickets(ctx context.Context, pers crypt
 	return ret, err
 }
 
-func (r *RecordingRand) GetRandomnessFromBeacon(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (r *RecordingRand) GetBeaconRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return r.getBeaconRandomness(ctx, pers, round, entropy)
+}
+
+func (r *RecordingRand) GetBeaconRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return r.getBeaconRandomness(ctx, pers, round, entropy)
+}
+
+func (r *RecordingRand) getBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	r.once.Do(r.loadHead)
 	ret, err := r.chainReader.ChainGetRandomnessFromBeacon(ctx, r.head, pers, round, entropy)
 	if err != nil {

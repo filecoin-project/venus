@@ -6,13 +6,38 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 )
 
 type scalingCost struct {
 	flat  int64
 	scale int64
+}
+
+type stepCost []step
+
+type step struct {
+	start int64
+	cost  int64
+}
+
+func (sc stepCost) Lookup(x int64) int64 {
+	i := 0
+	for ; i < len(sc); i++ {
+		if sc[i].start > x {
+			break
+		}
+	}
+	i-- // look at previous item
+	if i < 0 {
+		return 0
+	}
+
+	return sc[i].cost
 }
 
 type pricelistV0 struct {
@@ -89,9 +114,13 @@ type pricelistV0 struct {
 
 	computeUnsealedSectorCidBase int64
 	verifySealBase               int64
-	verifyPostLookup             map[abi.RegisteredPoStProof]scalingCost
-	verifyPostDiscount           bool
-	verifyConsensusFault         int64
+	verifyAggregateSealBase      int64
+	verifyAggregateSealPer       map[abi.RegisteredSealProof]int64
+	verifyAggregateSealSteps     map[abi.RegisteredSealProof]stepCost
+
+	verifyPostLookup     map[abi.RegisteredPoStProof]scalingCost
+	verifyPostDiscount   bool
+	verifyConsensusFault int64
 }
 
 var _ Pricelist = (*pricelistV0)(nil)
@@ -131,13 +160,13 @@ func (pl *pricelistV0) OnMethodInvocation(value abi.TokenAmount, methodNum abi.M
 
 // OnIpldGet returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldGet() GasCharge {
-	return NewGasCharge("OnIpldGet", pl.ipldGetBase, 0)
+	return NewGasCharge("OnIpldGet", pl.ipldGetBase, 0).WithVirtual(114617, 0)
 }
 
 // OnIpldPut returns the gas used for storing an object
 func (pl *pricelistV0) OnIpldPut(dataSize int) GasCharge {
 	return NewGasCharge("OnIpldPut", pl.ipldPutBase, int64(dataSize)*pl.ipldPutPerByte*pl.storageGasMulti).
-		WithExtra(dataSize)
+		WithExtra(dataSize).WithVirtual(400000, int64(dataSize)*1300)
 }
 
 // OnCreateActor returns the gas used for creating an actor
@@ -177,14 +206,30 @@ func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredSealPr
 }
 
 // OnVerifySeal
-func (pl *pricelistV0) OnVerifySeal(info proof.SealVerifyInfo) GasCharge {
+func (pl *pricelistV0) OnVerifySeal(info proof2.SealVerifyInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
 	// this is not used
 	return NewGasCharge("OnVerifySeal", pl.verifySealBase, 0)
 }
 
+// OnVerifyAggregateSeals
+func (pl *pricelistV0) OnVerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) GasCharge {
+	proofType := aggregate.SealProof
+	perProof, ok := pl.verifyAggregateSealPer[proofType]
+	if !ok {
+		perProof = pl.verifyAggregateSealPer[abi.RegisteredSealProof_StackedDrg32GiBV1_1]
+	}
+
+	step, ok := pl.verifyAggregateSealSteps[proofType]
+	if !ok {
+		step = pl.verifyAggregateSealSteps[abi.RegisteredSealProof_StackedDrg32GiBV1_1]
+	}
+	num := int64(len(aggregate.Infos))
+	return NewGasCharge("OnVerifyAggregateSeals", perProof*num+step.Lookup(num), 0)
+}
+
 // OnVerifyPost
-func (pl *pricelistV0) OnVerifyPost(info proof.WindowPoStVerifyInfo) GasCharge {
+func (pl *pricelistV0) OnVerifyPost(info proof2.WindowPoStVerifyInfo) GasCharge {
 	sectorSize := "unknown"
 	var proofType abi.RegisteredPoStProof
 
@@ -207,6 +252,7 @@ func (pl *pricelistV0) OnVerifyPost(info proof.WindowPoStVerifyInfo) GasCharge {
 	}
 
 	return NewGasCharge("OnVerifyPost", gasUsed, 0).
+		WithVirtual(117680921+43780*int64(len(info.ChallengedSectors)), 0).
 		WithExtra(map[string]interface{}{
 			"type": sectorSize,
 			"size": len(info.ChallengedSectors),

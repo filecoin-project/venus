@@ -74,6 +74,8 @@ var MaxUntrustedActorPendingMessages = 10
 
 var MaxNonceGap = uint64(4)
 
+const MaxMessageSize = 64 << 10 // 64KiB
+
 var (
 	ErrMessageTooBig = errors.New("message too big")
 
@@ -150,9 +152,13 @@ type MessagePool struct {
 
 	republished map[cid.Cid]struct{}
 
+	// do NOT access this map directly, use isLocal, setLocal, and forEachLocal respectively
 	localAddrs map[address.Address]struct{}
 
+	// do NOT access this map directly, use getPendingMset, setPendingMset, deletePendingMset, forEachPending, and clearPending respectively
 	pending map[address.Address]*msgSet
+
+	keyCache map[address.Address]address.Address
 
 	curTSLk sync.Mutex // DO NOT LOCK INSIDE lk
 	curTS   *types.TipSet
@@ -188,9 +194,10 @@ type MessagePool struct {
 	forkParams       *config.ForkUpgradeConfig
 	gasPriceSchedule *gas.PricesSchedule
 
-	gp        gasPredictor
-	ap        actorProvider
-	GetMaxFee DefaultMaxFeeFunc
+	gp         gasPredictor
+	ap         actorProvider
+	GetMaxFee  DefaultMaxFeeFunc
+	PriceCache *GasPriceCache
 }
 
 func newDefaultMaxFeeFunc(maxFee types.FIL) DefaultMaxFeeFunc {
@@ -230,16 +237,6 @@ func CapGasFee(mff DefaultMaxFeeFunc, msg *types.Message, sendSepc *types.Messag
 			log.Errorf("failed to get default max gas fee: %+v", err)
 			mf = big.Zero()
 		}
-		maxFee = mf
-	}
-
-	if maxFee.Equals(big.Zero()) {
-		mf, err := mff()
-		if err != nil {
-			log.Errorf("failed to get default max gas fee: %+v", err)
-			mf = big.Zero()
-		}
-
 		maxFee = mf
 	}
 
@@ -379,6 +376,20 @@ func (ms *msgSet) getRequiredFunds(nonce uint64) big.Int {
 	return big.Int{Int: requiredFunds}
 }
 
+func (ms *msgSet) toSlice() []*types.SignedMessage {
+	set := make([]*types.SignedMessage, 0, len(ms.msgs))
+
+	for _, m := range ms.msgs {
+		set = append(set, m)
+	}
+
+	sort.Slice(set, func(i, j int) bool {
+		return set[i].Message.Nonce < set[j].Message.Nonce
+	})
+
+	return set
+}
+
 func New(api Provider,
 	ds repo.Datastore,
 	forkParams *config.ForkUpgradeConfig,
@@ -408,6 +419,7 @@ func New(api Provider,
 		repubTrigger:  make(chan struct{}, 1),
 		localAddrs:    make(map[address.Address]struct{}),
 		pending:       make(map[address.Address]*msgSet),
+		keyCache:      make(map[address.Address]address.Address),
 		minGasPrice:   big.NewInt(0),
 		pruneTrigger:  make(chan struct{}, 1),
 		pruneCooldown: make(chan struct{}, 1),
@@ -429,14 +441,17 @@ func New(api Provider,
 		forkParams:       forkParams,
 		gasPriceSchedule: gas.NewPricesSchedule(forkParams),
 		GetMaxFee:        newDefaultMaxFeeFunc(mpoolCfg.MaxFee),
+		PriceCache:       NewGasPriceCache(),
 	}
 
 	// enable initial prunes
 	mp.pruneCooldown <- struct{}{}
 
+	ctx, cancel := context.WithCancel(context.TODO())
+
 	// load the current tipset and subscribe to head changes _before_ loading local messages
 	mp.curTS = api.SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
-		err := mp.HeadChange(rev, app)
+		err := mp.HeadChange(ctx, rev, app)
 		if err != nil {
 			log.Errorf("mpool head notif handler error: %+v", err)
 		}
@@ -447,7 +462,8 @@ func New(api Provider,
 	mp.lk.Lock()
 
 	go func() {
-		err := mp.loadLocal()
+		defer cancel()
+		err := mp.loadLocal(ctx)
 
 		mp.lk.Unlock()
 		mp.curTSLk.Unlock()
@@ -458,10 +474,104 @@ func New(api Provider,
 
 		log.Info("mpool ready")
 
-		mp.runLoop()
+		mp.runLoop(ctx)
 	}()
 
 	return mp, nil
+}
+
+func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (address.Address, error) {
+	// check the cache
+	a, f := mp.keyCache[addr]
+	if f {
+		return a, nil
+	}
+
+	// resolve the address
+	ka, err := mp.api.StateAccountKeyAtFinality(ctx, addr, mp.curTS)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	// place both entries in the cache (may both be key addresses, which is fine)
+	mp.keyCache[addr] = ka
+	mp.keyCache[ka] = ka
+
+	return ka, nil
+}
+
+func (mp *MessagePool) getPendingMset(ctx context.Context, addr address.Address) (*msgSet, bool, error) {
+	ra, err := mp.resolveToKey(ctx, addr)
+	if err != nil {
+		return nil, false, err
+	}
+
+	ms, f := mp.pending[ra]
+
+	return ms, f, nil
+}
+
+func (mp *MessagePool) setPendingMset(ctx context.Context, addr address.Address, ms *msgSet) error {
+	ra, err := mp.resolveToKey(ctx, addr)
+	if err != nil {
+		return err
+	}
+
+	mp.pending[ra] = ms
+
+	return nil
+}
+
+// This method isn't strictly necessary, since it doesn't resolve any addresses, but it's safer to have
+func (mp *MessagePool) forEachPending(f func(address.Address, *msgSet)) {
+	for la, ms := range mp.pending {
+		f(la, ms)
+	}
+}
+
+func (mp *MessagePool) deletePendingMset(ctx context.Context, addr address.Address) error {
+	ra, err := mp.resolveToKey(ctx, addr)
+	if err != nil {
+		return err
+	}
+
+	delete(mp.pending, ra)
+
+	return nil
+}
+
+// This method isn't strictly necessary, since it doesn't resolve any addresses, but it's safer to have
+func (mp *MessagePool) clearPending() {
+	mp.pending = make(map[address.Address]*msgSet)
+}
+
+func (mp *MessagePool) isLocal(ctx context.Context, addr address.Address) (bool, error) {
+	ra, err := mp.resolveToKey(ctx, addr)
+	if err != nil {
+		return false, err
+	}
+
+	_, f := mp.localAddrs[ra]
+
+	return f, nil
+}
+
+func (mp *MessagePool) setLocal(ctx context.Context, addr address.Address) error {
+	ra, err := mp.resolveToKey(ctx, addr)
+	if err != nil {
+		return err
+	}
+
+	mp.localAddrs[ra] = struct{}{}
+
+	return nil
+}
+
+// This method isn't strictly necessary, since it doesn't resolve any addresses, but it's safer to have
+func (mp *MessagePool) forEachLocal(ctx context.Context, f func(context.Context, address.Address)) {
+	for la := range mp.localAddrs {
+		f(ctx, la)
+	}
 }
 
 func (mp *MessagePool) DeleteByAdress(address address.Address) error {
@@ -474,7 +584,7 @@ func (mp *MessagePool) DeleteByAdress(address address.Address) error {
 	return nil
 }
 
-func (mp *MessagePool) PublishMsgForWallet(addr address.Address) error {
+func (mp *MessagePool) PublishMsgForWallet(ctx context.Context, addr address.Address) error {
 	now := time.Now()
 	defer func() {
 		diff := time.Since(now).Seconds()
@@ -491,7 +601,7 @@ func (mp *MessagePool) PublishMsgForWallet(addr address.Address) error {
 	out := make([]*types.SignedMessage, 0)
 	for a := range mp.pending {
 		if a.String() == addr.String() {
-			out = append(out, mp.pendingFor(a)...)
+			out = append(out, mp.pendingFor(ctx, a)...)
 			break
 		}
 	}
@@ -546,15 +656,15 @@ func (mp *MessagePool) Prune() {
 	mp.pruneTrigger <- struct{}{}
 }
 
-func (mp *MessagePool) runLoop() {
+func (mp *MessagePool) runLoop(ctx context.Context) {
 	for {
 		select {
 		case <-mp.repubTk.C:
-			if err := mp.republishPendingMessages(); err != nil {
+			if err := mp.republishPendingMessages(ctx); err != nil {
 				log.Errorf("error while republishing messages: %s", err)
 			}
 		case <-mp.repubTrigger:
-			if err := mp.republishPendingMessages(); err != nil {
+			if err := mp.republishPendingMessages(ctx); err != nil {
 				log.Errorf("error while republishing messages: %s", err)
 			}
 
@@ -570,8 +680,10 @@ func (mp *MessagePool) runLoop() {
 	}
 }
 
-func (mp *MessagePool) addLocal(m *types.SignedMessage) error {
-	mp.localAddrs[m.Message.From] = struct{}{}
+func (mp *MessagePool) addLocal(ctx context.Context, m *types.SignedMessage) error {
+	if err := mp.setLocal(ctx, m.Message.From); err != nil {
+		return err
+	}
 
 	buf := new(bytes.Buffer)
 	err := m.MarshalCBOR(buf)
@@ -606,7 +718,7 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTS *types.T
 		return false, xerrors.Errorf("message will not be included in a block: %v", err)
 	}
 
-	// this checks if the GasFeeCap is suffisciently high for inclusion in the next 20 blocks
+	// this checks if the GasFeeCap is sufficiently high for inclusion in the next 20 blocks
 	// if the GasFeeCap is too low, we soft reject the message (Ignore in pubsub) and rely
 	// on republish to push it through later, if the baseFee has fallen.
 	// this is a defensive check that stops minimum baseFee spam attacks from overloading validation
@@ -641,7 +753,7 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTS *types.T
 	return publish, nil
 }
 
-func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
+func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage) (cid.Cid, error) {
 	err := mp.checkMessage(m)
 	if err != nil {
 		return cid.Undef, err
@@ -654,7 +766,7 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 	}()
 
 	mp.curTSLk.Lock()
-	publish, err := mp.addTS(m, mp.curTS, true, false)
+	publish, err := mp.addTS(ctx, m, mp.curTS, true, false)
 	if err != nil {
 		mp.curTSLk.Unlock()
 		return cid.Undef, err
@@ -679,8 +791,8 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 
 func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 	// big messages are bad, anti DOS
-	if m.ChainLength() > 32*1024 {
-		return xerrors.Errorf("mpool message too large (%dB): %v", m.ChainLength(), ErrMessageTooBig)
+	if m.ChainLength() > MaxMessageSize {
+		return xerrors.Errorf("mpool message too large (%dB): %w", m.ChainLength(), ErrMessageTooBig)
 	}
 
 	// Perform syntactic validation, minGas=0 as we check the actual mingas before we add it
@@ -708,7 +820,7 @@ func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 	return nil
 }
 
-func (mp *MessagePool) Add(m *types.SignedMessage) error {
+func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 	err := mp.checkMessage(m)
 	if err != nil {
 		return err
@@ -723,7 +835,7 @@ func (mp *MessagePool) Add(m *types.SignedMessage) error {
 	mp.curTSLk.Lock()
 	defer mp.curTSLk.Unlock()
 
-	_, err = mp.addTS(m, mp.curTS, false, false)
+	_, err = mp.addTS(ctx, m, mp.curTS, false, false)
 	return err
 }
 
@@ -765,7 +877,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 	return nil
 }
 
-func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTS *types.TipSet) error {
+func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage, curTS *types.TipSet) error {
 	balance, err := mp.getStateBalance(m.Message.From, curTS)
 	if err != nil {
 		return xerrors.Errorf("failed to check sender balance: %s: %v", err, ErrSoftValidationFailure)
@@ -779,9 +891,14 @@ func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTS *types.TipSet)
 	// add Value for soft failure check
 	//requiredFunds = types.BigAdd(requiredFunds, m.Message.Value)
 
-	mset, ok := mp.pending[m.Message.From]
+	mset, ok, err := mp.getPendingMset(ctx, m.Message.From)
+	if err != nil {
+		log.Debugf("mpoolcheckbalance failed to get pending mset: %s", err)
+		return err
+	}
+
 	if ok {
-		requiredFunds = big.Add(requiredFunds, mset.getRequiredFunds(m.Message.Nonce))
+		requiredFunds = types.BigAdd(requiredFunds, mset.getRequiredFunds(m.Message.Nonce))
 	}
 
 	if big.Cmp(balance, requiredFunds) < 0 {
@@ -793,7 +910,7 @@ func (mp *MessagePool) checkBalance(m *types.SignedMessage, curTS *types.TipSet)
 	return nil
 }
 
-func (mp *MessagePool) addTS(m *types.SignedMessage, curTS *types.TipSet, local, untrusted bool) (bool, error) {
+func (mp *MessagePool) addTS(ctx context.Context, m *types.SignedMessage, curTS *types.TipSet, local, untrusted bool) (bool, error) {
 	snonce, err := mp.getStateNonce(m.Message.From, curTS)
 	if err != nil {
 		return false, xerrors.Errorf("failed to look up actor state nonce: %s: %v", err, ErrSoftValidationFailure)
@@ -811,17 +928,17 @@ func (mp *MessagePool) addTS(m *types.SignedMessage, curTS *types.TipSet, local,
 		return false, err
 	}
 
-	if err := mp.checkBalance(m, curTS); err != nil {
+	if err := mp.checkBalance(ctx, m, curTS); err != nil {
 		return false, err
 	}
 
-	err = mp.addLocked(m, !local, untrusted)
+	err = mp.addLocked(ctx, m, !local, untrusted)
 	if err != nil {
 		return false, err
 	}
 
 	if local {
-		err = mp.addLocal(m)
+		err = mp.addLocal(ctx, m)
 		if err != nil {
 			return false, xerrors.Errorf("error persisting local message: %v", err)
 		}
@@ -830,7 +947,7 @@ func (mp *MessagePool) addTS(m *types.SignedMessage, curTS *types.TipSet, local,
 	return publish, nil
 }
 
-func (mp *MessagePool) addLoaded(m *types.SignedMessage) error {
+func (mp *MessagePool) addLoaded(ctx context.Context, m *types.SignedMessage) error {
 	err := mp.checkMessage(m)
 	if err != nil {
 		return err
@@ -856,21 +973,21 @@ func (mp *MessagePool) addLoaded(m *types.SignedMessage) error {
 		return err
 	}
 
-	if err := mp.checkBalance(m, curTS); err != nil {
+	if err := mp.checkBalance(ctx, m, curTS); err != nil {
 		return err
 	}
 
-	return mp.addLocked(m, false, false)
+	return mp.addLocked(ctx, m, false, false)
 }
 
-func (mp *MessagePool) addSkipChecks(m *types.SignedMessage) error {
+func (mp *MessagePool) addSkipChecks(ctx context.Context, m *types.SignedMessage) error {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	return mp.addLocked(m, false, false)
+	return mp.addLocked(ctx, m, false, false)
 }
 
-func (mp *MessagePool) addLocked(m *types.SignedMessage, strict, untrusted bool) error {
+func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, strict, untrusted bool) error {
 	log.Debugf("mpooladd: %s %d", m.Message.From, m.Message.Nonce)
 	if m.Signature.Type == crypto.SigTypeBLS {
 		mp.blsSigCache.Add(m.Cid(), m.Signature)
@@ -886,15 +1003,23 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, strict, untrusted bool)
 		return err
 	}
 
-	mset, ok := mp.pending[m.Message.From]
+	// Note: If performance becomes an issue, making this getOrCreatePendingMset will save some work
+	mset, ok, err := mp.getPendingMset(ctx, m.Message.From)
+	if err != nil {
+		log.Debug(err)
+		return err
+	}
+
 	if !ok {
 		nonce, err := mp.getStateNonce(m.Message.From, mp.curTS)
 		if err != nil {
-			return xerrors.Errorf("failed to get initial actor nonce: %v", err)
+			return xerrors.Errorf("failed to get initial actor nonce: %w", err)
 		}
 
 		mset = newMsgSet(nonce)
-		mp.pending[m.Message.From] = mset
+		if err = mp.setPendingMset(ctx, m.Message.From, mset); err != nil {
+			return xerrors.Errorf("failed to set pending mset: %w", err)
+		}
 	}
 
 	incr, err := mset.add(m, mp, strict, untrusted)
@@ -930,23 +1055,35 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage, strict, untrusted bool)
 	return nil
 }
 
-func (mp *MessagePool) GetNonce(addr address.Address) (uint64, error) {
+func (mp *MessagePool) GetNonce(ctx context.Context, addr address.Address, _ types.TipSetKey) (uint64, error) {
 	mp.curTSLk.Lock()
 	defer mp.curTSLk.Unlock()
 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	return mp.getNonceLocked(addr, mp.curTS)
+	return mp.getNonceLocked(ctx, addr, mp.curTS)
 }
 
-func (mp *MessagePool) getNonceLocked(addr address.Address, curTS *types.TipSet) (uint64, error) {
+// GetActor should not be used. It is only here to satisfy interface mess caused by lite node handling
+func (mp *MessagePool) GetActor(_ context.Context, addr address.Address, _ types.TipSetKey) (*types.Actor, error) {
+	mp.curTSLk.Lock()
+	defer mp.curTSLk.Unlock()
+	return mp.api.GetActorAfter(addr, mp.curTS)
+}
+
+func (mp *MessagePool) getNonceLocked(ctx context.Context, addr address.Address, curTS *types.TipSet) (uint64, error) {
 	stateNonce, err := mp.getStateNonce(addr, curTS) // sanity check
 	if err != nil {
 		return 0, err
 	}
 
-	mset, ok := mp.pending[addr]
+	mset, ok, err := mp.getPendingMset(ctx, addr)
+	if err != nil {
+		log.Debugf("mpoolgetnonce failed to get mset: %s", err)
+		return 0, err
+	}
+
 	if ok {
 		if stateNonce > mset.nextNonce {
 			log.Errorf("state nonce was larger than mset.nextNonce (%d > %d)", stateNonce, mset.nextNonce)
@@ -983,7 +1120,7 @@ func (mp *MessagePool) getStateBalance(addr address.Address, ts *types.TipSet) (
 //  - strict checks are enabled
 //  - extra strict add checks are used when adding the messages to the msgSet
 //    that means: no nonce gaps, at most 10 pending messages for the actor
-func (mp *MessagePool) PushUntrusted(m *types.SignedMessage) (cid.Cid, error) {
+func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage) (cid.Cid, error) {
 	err := mp.checkMessage(m)
 	if err != nil {
 		return cid.Undef, err
@@ -996,7 +1133,7 @@ func (mp *MessagePool) PushUntrusted(m *types.SignedMessage) (cid.Cid, error) {
 	}()
 
 	mp.curTSLk.Lock()
-	publish, err := mp.addTS(m, mp.curTS, false, true)
+	publish, err := mp.addTS(ctx, m, mp.curTS, false, true)
 	if err != nil {
 		mp.curTSLk.Unlock()
 		return cid.Undef, err
@@ -1019,15 +1156,20 @@ func (mp *MessagePool) PushUntrusted(m *types.SignedMessage) (cid.Cid, error) {
 	return m.Cid(), nil
 }
 
-func (mp *MessagePool) Remove(from address.Address, nonce uint64, applied bool) {
+func (mp *MessagePool) Remove(ctx context.Context, from address.Address, nonce uint64, applied bool) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	mp.remove(from, nonce, applied)
+	mp.remove(ctx, from, nonce, applied)
 }
 
-func (mp *MessagePool) remove(from address.Address, nonce uint64, applied bool) {
-	mset, ok := mp.pending[from]
+func (mp *MessagePool) remove(ctx context.Context, from address.Address, nonce uint64, applied bool) {
+	mset, ok, err := mp.getPendingMset(ctx, from)
+	if err != nil {
+		log.Debugf("mpoolremove failed to get mset: %s", err)
+		return
+	}
+
 	if !ok {
 		return
 	}
@@ -1052,58 +1194,56 @@ func (mp *MessagePool) remove(from address.Address, nonce uint64, applied bool) 
 	mset.rm(nonce, applied)
 
 	if len(mset.msgs) == 0 {
-		delete(mp.pending, from)
+		if err = mp.deletePendingMset(ctx, from); err != nil {
+			log.Debugf("mpoolremove failed to delete mset: %s", err)
+			return
+		}
 	}
 }
 
-func (mp *MessagePool) Pending() ([]*types.SignedMessage, *types.TipSet) {
+func (mp *MessagePool) Pending(ctx context.Context) ([]*types.SignedMessage, *types.TipSet) {
 	mp.curTSLk.Lock()
 	defer mp.curTSLk.Unlock()
 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	return mp.allPending()
+	return mp.allPending(ctx)
 }
 
-func (mp *MessagePool) allPending() ([]*types.SignedMessage, *types.TipSet) {
+func (mp *MessagePool) allPending(ctx context.Context) ([]*types.SignedMessage, *types.TipSet) {
 	out := make([]*types.SignedMessage, 0)
-	for a := range mp.pending {
-		out = append(out, mp.pendingFor(a)...)
-	}
+	mp.forEachPending(func(a address.Address, mset *msgSet) {
+		out = append(out, mset.toSlice()...)
+	})
 
 	return out, mp.curTS
 }
 
-func (mp *MessagePool) PendingFor(a address.Address) ([]*types.SignedMessage, *types.TipSet) {
+func (mp *MessagePool) PendingFor(ctx context.Context, a address.Address) ([]*types.SignedMessage, *types.TipSet) {
 	mp.curTSLk.Lock()
 	defer mp.curTSLk.Unlock()
 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
-	return mp.pendingFor(a), mp.curTS
+	return mp.pendingFor(ctx, a), mp.curTS
 }
 
-func (mp *MessagePool) pendingFor(a address.Address) []*types.SignedMessage {
-	mset := mp.pending[a]
-	if mset == nil || len(mset.msgs) == 0 {
+func (mp *MessagePool) pendingFor(ctx context.Context, a address.Address) []*types.SignedMessage {
+	mset, ok, err := mp.getPendingMset(ctx, a)
+	if err != nil {
+		log.Debugf("mpoolpendingfor failed to get mset: %s", err)
 		return nil
 	}
 
-	set := make([]*types.SignedMessage, 0, len(mset.msgs))
-
-	for _, m := range mset.msgs {
-		set = append(set, m)
+	if mset == nil || !ok || len(mset.msgs) == 0 {
+		return nil
 	}
 
-	sort.Slice(set, func(i, j int) bool {
-		return set[i].Message.Nonce < set[j].Message.Nonce
-	})
-
-	return set
+	return mset.toSlice()
 }
 
-func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet) error {
+func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, apply []*types.TipSet) error {
 	mp.curTSLk.Lock()
 	defer mp.curTSLk.Unlock()
 
@@ -1120,7 +1260,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 	rm := func(from address.Address, nonce uint64) {
 		s, ok := rmsgs[from]
 		if !ok {
-			mp.Remove(from, nonce, true)
+			mp.Remove(ctx, from, nonce, true)
 			return
 		}
 
@@ -1129,7 +1269,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 			return
 		}
 
-		mp.Remove(from, nonce, true)
+		mp.Remove(ctx, from, nonce, true)
 	}
 
 	maybeRepub := func(cid cid.Cid) {
@@ -1201,7 +1341,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 
 	for _, s := range rmsgs {
 		for _, msg := range s {
-			if err := mp.addSkipChecks(msg); err != nil {
+			if err := mp.addSkipChecks(ctx, msg); err != nil {
 				log.Errorf("Failed to readd message from reorg to mpool: %s", err)
 			}
 		}
@@ -1209,7 +1349,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 
 	if len(revert) > 0 && futureDebug {
 		mp.lk.Lock()
-		msgs, ts := mp.allPending()
+		msgs, ts := mp.allPending(ctx)
 		mp.lk.Unlock()
 
 		buckets := map[address.Address]*statBucket{}
@@ -1417,7 +1557,7 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan MpoolUpdate, error) 
 	return out, nil
 }
 
-func (mp *MessagePool) loadLocal() error {
+func (mp *MessagePool) loadLocal(ctx context.Context) error {
 	if val := os.Getenv("VENUS_DISABLE_LOCAL_MESSAGE"); val != "" {
 		log.Warnf("receive environment to disable local local message")
 		return nil
@@ -1438,7 +1578,7 @@ func (mp *MessagePool) loadLocal() error {
 			return xerrors.Errorf("unmarshaling local message: %v", err)
 		}
 
-		if err := mp.addLoaded(&sm); err != nil {
+		if err := mp.addLoaded(ctx, &sm); err != nil {
 			if xerrors.Is(err, ErrNonceTooLow) {
 				continue // todo: drop the message from local cache (if above certain confidence threshold)
 			}
@@ -1446,47 +1586,61 @@ func (mp *MessagePool) loadLocal() error {
 			log.Errorf("adding local message: %+v", err)
 		}
 
-		mp.localAddrs[sm.Message.From] = struct{}{}
+		if err = mp.setLocal(ctx, sm.Message.From); err != nil {
+			log.Debugf("mpoolloadLocal errored: %s", err)
+			return err
+		}
 	}
 
 	return nil
 }
 
-func (mp *MessagePool) Clear(local bool) {
+func (mp *MessagePool) Clear(ctx context.Context, local bool) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
 	// remove everything if local is true, including removing local messages from
 	// the datastore
 	if local {
-		for a := range mp.localAddrs {
-			mset, ok := mp.pending[a]
-			if !ok {
-				continue
+		mp.forEachLocal(ctx, func(ctx context.Context, la address.Address) {
+			mset, ok, err := mp.getPendingMset(ctx, la)
+			if err != nil {
+				log.Warnf("errored while getting pending mset: %w", err)
+				return
 			}
 
-			for _, m := range mset.msgs {
-				err := mp.localMsgs.Delete(datastore.NewKey(string(m.Cid().Bytes())))
-				if err != nil {
-					log.Warnf("error deleting local message: %s", err)
+			if ok {
+				for _, m := range mset.msgs {
+					err := mp.localMsgs.Delete(datastore.NewKey(string(m.Cid().Bytes())))
+					if err != nil {
+						log.Warnf("error deleting local message: %s", err)
+					}
 				}
 			}
-		}
+		})
 
-		mp.pending = make(map[address.Address]*msgSet)
+		mp.clearPending()
 		mp.republished = nil
 
 		return
 	}
 
-	// remove everything except the local messages
-	for a := range mp.pending {
-		_, isLocal := mp.localAddrs[a]
-		if isLocal {
-			continue
+	mp.forEachPending(func(a address.Address, ms *msgSet) {
+		isLocal, err := mp.isLocal(ctx, a)
+		if err != nil {
+			log.Warnf("errored while determining isLocal: %w", err)
+			return
 		}
-		delete(mp.pending, a)
-	}
+
+		if isLocal {
+			return
+		}
+
+		if err = mp.deletePendingMset(ctx, a); err != nil {
+			log.Warnf("errored while deleting mset: %w", err)
+			return
+		}
+	})
 }
 
 func getBaseFeeLowerBound(baseFee, factor big.Int) big.Int {

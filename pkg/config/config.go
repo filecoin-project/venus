@@ -254,7 +254,7 @@ type ForkUpgradeConfig struct {
 	UpgradeBreezeHeight      abi.ChainEpoch `json:"upgradeBreezeHeight"`
 	UpgradeIgnitionHeight    abi.ChainEpoch `json:"upgradeIgnitionHeight"`
 	UpgradeLiftoffHeight     abi.ChainEpoch `json:"upgradeLiftoffHeight"`
-	UpgradeActorsV2Height    abi.ChainEpoch `json:"upgradeActorsV2Height"`
+	UpgradeAssemblyHeight    abi.ChainEpoch `json:"upgradeActorsV2Height"`
 	UpgradeRefuelHeight      abi.ChainEpoch `json:"upgradeRefuelHeight"`
 	UpgradeTapeHeight        abi.ChainEpoch `json:"upgradeTapeHeight"`
 	UpgradeKumquatHeight     abi.ChainEpoch `json:"upgradeKumquatHeight"`
@@ -263,9 +263,10 @@ type ForkUpgradeConfig struct {
 	UpgradePersianHeight     abi.ChainEpoch `json:"upgradePersianHeight"`
 	UpgradeOrangeHeight      abi.ChainEpoch `json:"upgradeOrangeHeight"`
 	UpgradeClausHeight       abi.ChainEpoch `json:"upgradeClausHeight"`
-	UpgradeActorsV3Height    abi.ChainEpoch `json:"upgradeActorsV3Height"`
+	UpgradeTrustHeight       abi.ChainEpoch `json:"upgradeActorsV3Height"`
 	UpgradeNorwegianHeight   abi.ChainEpoch `json:"upgradeNorwegianHeight"`
-	UpgradeActorsV4Height    abi.ChainEpoch `json:"upgradeActorsV4Height"`
+	UpgradeTurboHeight       abi.ChainEpoch `json:"upgradeActorsV4Height"`
+	UpgradeHyperdriveHeight  abi.ChainEpoch `json:"upgradeHyperdriveHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -283,12 +284,13 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeKumquatHeight:     170000,
 	UpgradeCalicoHeight:      265200,
 	UpgradePersianHeight:     265200 + 120*60,
-	UpgradeActorsV2Height:    138720,
+	UpgradeAssemblyHeight:    138720,
 	UpgradeOrangeHeight:      336458,
 	UpgradeClausHeight:       343200,
-	UpgradeActorsV3Height:    -1,
-	UpgradeNorwegianHeight:   -1,
-	UpgradeActorsV4Height:    -1,
+	UpgradeTrustHeight:       550321,
+	UpgradeNorwegianHeight:   665280,
+	UpgradeTurboHeight:       712320,
+	UpgradeHyperdriveHeight:  -1,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {

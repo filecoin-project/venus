@@ -26,6 +26,24 @@ func load2(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make2(store adt.Store) (State, error) {
+	out := state2{store: store}
+
+	em, err := adt2.MakeEmptyMap(store).Root()
+	if err != nil {
+		return nil, err
+	}
+
+	emm, err := adt2.MakeEmptyMultimap(store).Root()
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *power2.ConstructState(em, emm)
+
+	return &out, nil
+}
+
 type state2 struct {
 	power2.State
 	store adt.Store
@@ -51,7 +69,7 @@ func (s *state2) TotalCommitted() (Claim, error) {
 }
 
 func (s *state2) MinerPower(addr address.Address) (Claim, bool, error) {
-	claims, err := adt2.AsMap(s.store, s.Claims)
+	claims, err := s.claims()
 	if err != nil {
 		return Claim{}, false, err
 	}
@@ -79,7 +97,7 @@ func (s *state2) MinerCounts() (uint64, uint64, error) {
 }
 
 func (s *state2) ListAllMiners() ([]address.Address, error) {
-	claims, err := adt2.AsMap(s.store, s.Claims)
+	claims, err := s.claims()
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +119,7 @@ func (s *state2) ListAllMiners() ([]address.Address, error) {
 }
 
 func (s *state2) ForEachClaim(cb func(miner address.Address, claim Claim) error) error {
-	claims, err := adt2.AsMap(s.store, s.Claims)
+	claims, err := s.claims()
 	if err != nil {
 		return err
 	}
@@ -126,6 +144,30 @@ func (s *state2) ClaimsChanged(other State) (bool, error) {
 		return true, nil
 	}
 	return !s.State.Claims.Equals(other2.State.Claims), nil
+}
+
+func (s *state2) SetTotalQualityAdjPower(p abi.StoragePower) error {
+	s.State.TotalQualityAdjPower = p
+	return nil
+}
+
+func (s *state2) SetTotalRawBytePower(p abi.StoragePower) error {
+	s.State.TotalRawBytePower = p
+	return nil
+}
+
+func (s *state2) SetThisEpochQualityAdjPower(p abi.StoragePower) error {
+	s.State.ThisEpochQualityAdjPower = p
+	return nil
+}
+
+func (s *state2) SetThisEpochRawBytePower(p abi.StoragePower) error {
+	s.State.ThisEpochRawBytePower = p
+	return nil
+}
+
+func (s *state2) GetState() interface{} {
+	return &s.State
 }
 
 func (s *state2) claims() (adt.Map, error) {

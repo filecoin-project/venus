@@ -130,3 +130,7 @@ func (discovery *DiscoverySubmodule) Stop() {
 func (discovery *DiscoverySubmodule) API() apiface.IDiscovery {
 	return &discoveryAPI{discovery: discovery}
 }
+
+func (discovery *DiscoverySubmodule) V0API() apiface.IDiscovery {
+	return &discoveryAPI{discovery: discovery}
+}

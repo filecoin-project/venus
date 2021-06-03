@@ -4,7 +4,8 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
@@ -71,8 +72,9 @@ type Pricelist interface {
 	OnVerifySignature(sigType crypto.SigType, planTextSize int) (GasCharge, error)
 	OnHashing(dataSize int) GasCharge
 	OnComputeUnsealedSectorCid(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) GasCharge
-	OnVerifySeal(info proof.SealVerifyInfo) GasCharge
-	OnVerifyPost(info proof.WindowPoStVerifyInfo) GasCharge
+	OnVerifySeal(info proof5.SealVerifyInfo) GasCharge
+	OnVerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) GasCharge
+	OnVerifyPost(info proof5.WindowPoStVerifyInfo) GasCharge
 	OnVerifyConsensusFault() GasCharge
 }
 
@@ -113,6 +115,7 @@ func NewPricesSchedule(forkParams *config.ForkUpgradeConfig) *PricesSchedule {
 			hashingBase:                  31355,
 			computeUnsealedSectorCidBase: 98647,
 			verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
+			verifyAggregateSealBase:      0,
 			verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
 				abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
 					flat:  123861062,
@@ -160,7 +163,35 @@ func NewPricesSchedule(forkParams *config.ForkUpgradeConfig) *PricesSchedule {
 
 			hashingBase:                  31355,
 			computeUnsealedSectorCidBase: 98647,
-			verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
+			verifySealBase:               2000, // TODO gas, it VerifySeal syscall is not used
+
+			verifyAggregateSealPer: map[abi.RegisteredSealProof]int64{
+				abi.RegisteredSealProof_StackedDrg32GiBV1_1: 449900,
+				abi.RegisteredSealProof_StackedDrg64GiBV1_1: 359272,
+			},
+			verifyAggregateSealSteps: map[abi.RegisteredSealProof]stepCost{
+				abi.RegisteredSealProof_StackedDrg32GiBV1_1: {
+					{4, 103994170},
+					{7, 112356810},
+					{13, 122912610},
+					{26, 137559930},
+					{52, 162039100},
+					{103, 210960780},
+					{205, 318351180},
+					{410, 528274980},
+				},
+				abi.RegisteredSealProof_StackedDrg64GiBV1_1: {
+					{4, 102581240},
+					{7, 110803030},
+					{13, 120803700},
+					{26, 134642130},
+					{52, 157357890},
+					{103, 203017690},
+					{205, 304253590},
+					{410, 509880640},
+				},
+			},
+
 			verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
 				abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
 					flat:  117680921,

@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv7"
 	"github.com/filecoin-project/specs-actors/v3/actors/migration/nv10"
 	"github.com/filecoin-project/specs-actors/v4/actors/migration/nv12"
+	"github.com/filecoin-project/specs-actors/v5/actors/migration/nv13"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -158,7 +159,7 @@ func defaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 		Network:   network.Version3,
 		Migration: cf.UpgradeRefuel,
 	}, {
-		Height:    upgradeHeight.UpgradeActorsV2Height,
+		Height:    upgradeHeight.UpgradeAssemblyHeight,
 		Network:   network.Version4,
 		Expensive: true,
 		Migration: cf.UpgradeActorsV2,
@@ -187,7 +188,7 @@ func defaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 		Network:   network.Version9,
 		Migration: nil,
 	}, {
-		Height:    upgradeHeight.UpgradeActorsV3Height,
+		Height:    upgradeHeight.UpgradeTrustHeight,
 		Network:   network.Version10,
 		Migration: cf.UpgradeActorsV3,
 		PreMigrations: []PreMigration{{
@@ -207,7 +208,7 @@ func defaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 		Network:   network.Version11,
 		Migration: nil,
 	}, {
-		Height:    upgradeHeight.UpgradeActorsV4Height,
+		Height:    upgradeHeight.UpgradeTurboHeight,
 		Network:   network.Version12,
 		Migration: cf.UpgradeActorsV4,
 		PreMigrations: []PreMigration{{
@@ -222,7 +223,22 @@ func defaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			StopWithin:      5,
 		}},
 		Expensive: true,
-	}}
+	}, {
+		Height:    upgradeHeight.UpgradeHyperdriveHeight,
+		Network:   network.Version13,
+		Migration: cf.UpgradeActorsV5,
+		PreMigrations: []PreMigration{{
+			PreMigration:    cf.PreUpgradeActorsV5,
+			StartWithin:     120,
+			DontStartWithin: 60,
+			StopWithin:      35,
+		}, {
+			PreMigration:    cf.PreUpgradeActorsV5,
+			StartWithin:     30,
+			DontStartWithin: 15,
+			StopWithin:      5,
+		}},
+		Expensive: true}}
 
 	for _, u := range updates {
 		if u.Height < 0 {
@@ -1556,7 +1572,7 @@ func (c *ChainFork) upgradeActorsV3Common(
 	// Perform the migration
 	newHamtRoot, err := nv10.MigrateStateTree(ctx, store, stateRoot.Actors, epoch, config, migrationLogger{}, cache)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("upgrading to actors v2: %v", err)
+		return cid.Undef, xerrors.Errorf("upgrading to actors v3: %v", err)
 	}
 
 	// Persist the result.
@@ -1642,12 +1658,98 @@ func (c *ChainFork) upgradeActorsV4Common(
 	// Perform the migration
 	newHamtRoot, err := nv12.MigrateStateTree(ctx, store, stateRoot.Actors, epoch, config, migrationLogger{}, cache)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("upgrading to actors v2: %v", err)
+		return cid.Undef, xerrors.Errorf("upgrading to actors v4: %v", err)
 	}
 
 	// Persist the result.
 	newRoot, err := store.Put(ctx, &vmstate.StateRoot{
 		Version: vmstate.StateTreeVersion3,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to persist new state root: %v", err)
+	}
+
+	// Persist the new tree.
+
+	{
+		from := buf
+		to := buf.Read()
+
+		if err := Copy(ctx, from, to, newRoot); err != nil {
+			return cid.Undef, xerrors.Errorf("copying migrated tree: %v", err)
+		}
+	}
+
+	return newRoot, nil
+}
+
+func (c *ChainFork) UpgradeActorsV5(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	// Use all the CPUs except 3.
+	workerCount := runtime.NumCPU() - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+
+	config := nv13.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: 10 * time.Second,
+	}
+
+	newRoot, err := c.upgradeActorsV5Common(ctx, cache, root, epoch, ts, config)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("migrating actors v5 state: %v", err)
+	}
+
+	return newRoot, nil
+}
+
+func (c *ChainFork) PreUpgradeActorsV5(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := runtime.NumCPU()
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+	config := nv13.Config{MaxWorkers: uint(workerCount)}
+	_, err := c.upgradeActorsV5Common(ctx, cache, root, epoch, ts, config)
+	return err
+}
+
+func (c *ChainFork) upgradeActorsV5Common(
+	ctx context.Context, cache MigrationCache,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+	config nv13.Config,
+) (cid.Cid, error) {
+	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
+	store := chain.ActorStore(ctx, buf)
+
+	// Load the state root.
+	var stateRoot vmstate.StateRoot
+	if err := store.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to decode state root: %v", err)
+	}
+
+	if stateRoot.Version != vmstate.StateTreeVersion3 {
+		return cid.Undef, xerrors.Errorf(
+			"expected state root version 3 for actors v5 upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv13.MigrateStateTree(ctx, store, stateRoot.Actors, epoch, config, migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("upgrading to actors v5: %v", err)
+	}
+
+	// Persist the result.
+	newRoot, err := store.Put(ctx, &vmstate.StateRoot{
+		Version: vmstate.StateTreeVersion4,
 		Actors:  newHamtRoot,
 		Info:    stateRoot.Info,
 	})

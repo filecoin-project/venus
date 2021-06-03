@@ -9,8 +9,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	cbor2 "github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/venus/pkg/config"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -20,11 +20,10 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 )
 
 // MessageProvider is an interface exposing the load methods of the
@@ -49,12 +48,13 @@ type MessageWriter interface {
 
 // MessageStore stores and loads collections of signed messages and receipts.
 type MessageStore struct {
-	bs blockstore.Blockstore
+	bs    blockstore.Blockstore
+	fkCfg *config.ForkUpgradeConfig
 }
 
 // NewMessageStore creates and returns a new store
-func NewMessageStore(bs blockstore.Blockstore) *MessageStore {
-	return &MessageStore{bs: bs}
+func NewMessageStore(bs blockstore.Blockstore, fkCfg *config.ForkUpgradeConfig) *MessageStore {
+	return &MessageStore{bs: bs, fkCfg: fkCfg}
 }
 
 // LoadMetaMessages loads the signed messages in the collection with cid c from ipld
@@ -226,17 +226,33 @@ func (ms *MessageStore) LoadTipSetMesssages(ctx context.Context, ts *types.TipSe
 
 	applied := make(map[address.Address]uint64)
 
+	//vms := cbor.NewCborStore(ms.bs)
+	//st, err := tree.LoadState(ctx, vms, ts.Blocks()[0].ParentStateRoot)
+	//if err != nil {
+	//	return nil, nil, xerrors.Errorf("failed to load state tree")
+	//}
+
 	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
+		var sender address.Address = m.From
+		//if ts.Height() >= ms.fkCfg.UpgradeHyperdriveHeight {
+		//	sender, err = st.LookupID(m.From)
+		//	if err != nil {
+		//		return false, err
+		//	}
+		//} else {
+		//	sender = m.From
+		//}
+
 		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
-		if _, ok := applied[m.From]; !ok {
-			applied[m.From] = m.Nonce
+		if _, ok := applied[sender]; !ok {
+			applied[sender] = m.Nonce
 		}
 
-		if applied[m.From] != m.Nonce {
+		if applied[sender] != m.Nonce {
 			return false, nil
 		}
 
-		applied[m.From]++
+		applied[sender]++
 
 		return true, nil
 	}
@@ -366,17 +382,33 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet)
 	//gather message
 	applied := make(map[address.Address]uint64)
 
+	//vms := cbor.NewCborStore(ms.bs)
+	//st, err := tree.LoadState(ctx, vms, ts.Blocks()[0].ParentStateRoot)
+	//if err != nil {
+	//	return nil, xerrors.Errorf("failed to load state tree")
+	//}
+
 	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
+		var sender address.Address = m.From
+		//if ts.Height() >= ms.fkCfg.UpgradeHyperdriveHeight {
+		//	sender, err = st.LookupID(m.From)
+		//	if err != nil {
+		//		return false, err
+		//	}
+		//} else {
+		//	sender = m.From
+		//}
+
 		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
-		if _, ok := applied[m.From]; !ok {
-			applied[m.From] = m.Nonce
+		if _, ok := applied[sender]; !ok {
+			applied[sender] = m.Nonce
 		}
 
-		if applied[m.From] != m.Nonce {
+		if applied[sender] != m.Nonce {
 			return false, nil
 		}
 
-		applied[m.From]++
+		applied[sender]++
 
 		return true, nil
 	}

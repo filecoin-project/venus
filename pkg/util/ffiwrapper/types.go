@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
 
@@ -27,9 +27,10 @@ type Storage interface {
 }
 
 type Verifier interface {
-	VerifySeal(proof2.SealVerifyInfo) (bool, error)
-	VerifyWinningPoSt(ctx context.Context, info proof2.WinningPoStVerifyInfo) (bool, error)
-	VerifyWindowPoSt(ctx context.Context, info proof2.WindowPoStVerifyInfo) (bool, error)
+	VerifySeal(proof5.SealVerifyInfo) (bool, error)
+	VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error)
+	VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) (bool, error)
+	VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoStVerifyInfo) (bool, error)
 
 	GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredPoStProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error)
 }

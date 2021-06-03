@@ -1,6 +1,6 @@
 module github.com/filecoin-project/venus
 
-go 1.15
+go 1.16
 
 require (
 	contrib.go.opencensus.io/exporter/jaeger v0.1.0
@@ -26,30 +26,29 @@ require (
 	github.com/filecoin-project/go-cbor-util v0.0.0-20201016124514-d0bbec7bfcc4
 	github.com/filecoin-project/go-commp-utils v0.1.0
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
-	github.com/filecoin-project/go-data-transfer v1.4.1
+	github.com/filecoin-project/go-data-transfer v1.5.0
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20201016201715-d41df56b4f6a
-	github.com/filecoin-project/go-fil-markets v1.2.4 // indirect
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200701152213-3e0f0afdc261
-	github.com/filecoin-project/go-state-types v0.1.0
-	github.com/filecoin-project/go-statestore v0.1.1-0.20210311122610-6c7a5aedbdea // indirect
-	github.com/filecoin-project/specs-actors v0.9.13
-	github.com/filecoin-project/specs-actors/v2 v2.3.5-0.20210114162132-5b58b773f4fb
-	github.com/filecoin-project/specs-actors/v3 v3.1.0
-	github.com/filecoin-project/specs-actors/v4 v4.0.0
+	github.com/filecoin-project/go-state-types v0.1.1-0.20210506134452-99b279731c48
+	github.com/filecoin-project/go-statestore v0.1.1 // indirect
+	github.com/filecoin-project/specs-actors v0.9.14
+	github.com/filecoin-project/specs-actors/v2 v2.3.5
+	github.com/filecoin-project/specs-actors/v3 v3.1.1
+	github.com/filecoin-project/specs-actors/v4 v4.0.1
+	github.com/filecoin-project/specs-actors/v5 v5.0.0-20210609212542-73e0409ac77c
 	github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506
 	github.com/filecoin-project/test-vectors/schema v0.0.5
-	github.com/filecoin-project/venus-auth v1.0.2-0.20210507023017-76ce8b64e6db
-	github.com/filecoin-project/venus-wallet v1.0.1-0.20210507023531-5dfabaf5606d
+	github.com/filecoin-project/venus-auth v1.1.0
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
 	github.com/go-errors/errors v1.0.1
 	github.com/go-kit/kit v0.10.0
 	github.com/golang/snappy v0.0.2-0.20190904063534-ff6b7dc882cf // indirect
 	github.com/golangci/golangci-lint v1.39.0
 	github.com/google/go-github v17.0.0+incompatible
-	github.com/google/uuid v1.1.2
+	github.com/google/uuid v1.2.0
 	github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/hashicorp/go-multierror v1.1.0
@@ -62,7 +61,7 @@ require (
 	github.com/ipfs/go-datastore v0.4.5
 	github.com/ipfs/go-ds-badger2 v0.1.1-0.20200708190120-187fc06f714e
 	github.com/ipfs/go-fs-lock v0.0.6
-	github.com/ipfs/go-graphsync v0.6.0
+	github.com/ipfs/go-graphsync v0.6.1
 	github.com/ipfs/go-ipfs-blockstore v1.0.3
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-cmdkit v0.0.1
@@ -71,12 +70,11 @@ require (
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
 	github.com/ipfs/go-ipfs-exchange-offline v0.0.1
 	github.com/ipfs/go-ipfs-files v0.0.8
-	github.com/ipfs/go-ipfs-keystore v0.0.1
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.5
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log v1.0.4
-	github.com/ipfs/go-log/v2 v2.1.2-0.20200626104915-0016c0b4b3e4
+	github.com/ipfs/go-log/v2 v2.1.3
 	github.com/ipfs/go-merkledag v0.3.2
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.4
@@ -100,7 +98,6 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/multiformats/go-multiaddr-dns v0.2.0
-	github.com/multiformats/go-multiaddr-net v0.2.0
 	github.com/multiformats/go-multihash v0.0.14
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
@@ -109,7 +106,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/prometheus/client_golang v1.10.0
-	github.com/prometheus/common v0.18.0
+	github.com/prometheus/common v0.25.0
 	github.com/raulk/clock v1.1.0
 	github.com/streadway/handy v0.0.0-20190108123426-d5acb3125c2a
 	github.com/stretchr/testify v1.7.0
