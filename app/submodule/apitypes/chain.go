@@ -1,16 +1,17 @@
 package apitypes
 
 import (
-	"github.com/filecoin-project/venus/pkg/chain"
 	"time"
-
-	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
+	"github.com/filecoin-project/venus/pkg/types"
 )
 
 type Partition struct {
@@ -73,6 +74,12 @@ var MarketBalanceNil = MarketBalance{}
 type Message struct {
 	Cid     cid.Cid
 	Message *types.UnsignedMessage
+}
+
+type MinerPower struct {
+	MinerPower  power.Claim
+	TotalPower  power.Claim
+	HasMinPower bool
 }
 
 type MsgLookup = chain.MsgLookup

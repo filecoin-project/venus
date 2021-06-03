@@ -36,7 +36,7 @@ func (mockFork *MockFork) GetForkUpgrade() *config.ForkUpgradeConfig {
 		UpgradeBreezeHeight:      -1,
 		UpgradeIgnitionHeight:    -1,
 		UpgradeLiftoffHeight:     -1,
-		UpgradeActorsV2Height:    -1,
+		UpgradeAssemblyHeight:    -1,
 		UpgradeRefuelHeight:      -1,
 		UpgradeTapeHeight:        -1,
 		UpgradeKumquatHeight:     -1,

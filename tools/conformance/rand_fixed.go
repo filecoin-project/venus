@@ -2,6 +2,7 @@ package conformance
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus/pkg/chain"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -18,10 +19,15 @@ func NewFixedRand() chain.RandomnessSource {
 	return &fixedRand{}
 }
 
-func (r *fixedRand) GetRandomnessFromTickets(_ context.Context, _ crypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) (abi.Randomness, error) {
+func (r *fixedRand) GetChainRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	return []byte("i_am_random_____i_am_random_____"), nil // 32 bytes.
 }
-
-func (r *fixedRand) GetRandomnessFromBeacon(_ context.Context, _ crypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) (abi.Randomness, error) {
+func (r *fixedRand) GetChainRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return []byte("i_am_random_____i_am_random_____"), nil // 32 bytes.
+}
+func (r *fixedRand) GetBeaconRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return []byte("i_am_random_____i_am_random_____"), nil // 32 bytes.
+}
+func (r *fixedRand) GetBeaconRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	return []byte("i_am_random_____i_am_random_____"), nil // 32 bytes.
 }

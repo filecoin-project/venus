@@ -39,6 +39,10 @@ func NewMockLaneState(redeemed big.Int, nonce uint64) paych.LaneState {
 	return &mockLaneState{redeemed, nonce}
 }
 
+func (ms *mockState) GetState() interface{} {
+	panic("implement me")
+}
+
 func (ms *mockState) MarshalCBOR(io.Writer) error {
 	panic("not implemented")
 }

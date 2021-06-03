@@ -29,6 +29,10 @@ func (miningModule *MiningModule) API() apiface.IMining {
 	return &MiningAPI{Ming: miningModule}
 }
 
+func (miningModule *MiningModule) V0API() apiface.IMining {
+	return &MiningAPI{Ming: miningModule}
+}
+
 func NewMiningModule(
 	conf miningConfig,
 	chainModule *chain2.ChainSubmodule,

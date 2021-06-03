@@ -11,6 +11,9 @@ deps:
 lint:
 	go run ./build/*.go lint
 
+test:
+	go run ./build/*.go test -timeout=30m
+
 # WARNING THIS BUILDS A GO PLUGIN AND PLUGINS *DO NOT* WORK ON WINDOWS SYSTEMS
 iptb:
 	make -C tools/iptb-plugins all

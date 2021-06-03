@@ -21,7 +21,7 @@ func (m message3) Create(
 	signers []address.Address, threshold uint64,
 	unlockStart, unlockDuration abi.ChainEpoch,
 	initialAmount abi.TokenAmount,
-) (*types.UnsignedMessage, error) {
+) (*types.Message, error) {
 
 	lenAddrs := uint64(len(signers))
 
@@ -61,7 +61,7 @@ func (m message3) Create(
 		return nil, actErr
 	}
 
-	return &types.UnsignedMessage{
+	return &types.Message{
 		To:     init_.Address,
 		From:   m.from,
 		Method: builtin3.MethodsInit.Exec,

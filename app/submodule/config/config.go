@@ -38,3 +38,7 @@ func (s *ConfigModule) Get(dottedKey string) (interface{}, error) {
 func (s *ConfigModule) API() apiface.IConfig {
 	return &configAPI{config: s}
 }
+
+func (s *ConfigModule) V0API() apiface.IConfig {
+	return &configAPI{config: s}
+}

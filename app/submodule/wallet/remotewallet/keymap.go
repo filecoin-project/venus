@@ -2,32 +2,33 @@ package remotewallet
 
 import (
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus-wallet/core"
+
 	"github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
-var keyMapper = map[address.Protocol]core.KeyType{
-	address.SECP256K1: core.KTSecp256k1,
-	address.BLS:       core.KTBLS,
+var keyMapper = map[address.Protocol]wallet.KeyType{
+	address.SECP256K1: wallet.KTSecp256k1,
+	address.BLS:       wallet.KTBLS,
 }
 
-func GetKeyType(p address.Protocol) core.KeyType {
+func GetKeyType(p address.Protocol) wallet.KeyType {
 	k, ok := keyMapper[p]
 	if ok {
 		return k
 	}
-	return core.KTUnknown
+	return wallet.KTUnknown
 }
 
-func ConvertRemoteKeyInfo(key *crypto.KeyInfo) *core.KeyInfo {
-	return &core.KeyInfo{
+func ConvertRemoteKeyInfo(key *crypto.KeyInfo) *wallet.KeyInfo {
+	return &wallet.KeyInfo{
 		PrivateKey: key.PrivateKey,
-		Type:       core.SignType2Key(key.SigType),
+		Type:       wallet.SignType2Key(key.SigType),
 	}
 }
-func ConvertLocalKeyInfo(key *core.KeyInfo) *crypto.KeyInfo {
+func ConvertLocalKeyInfo(key *wallet.KeyInfo) *crypto.KeyInfo {
 	return &crypto.KeyInfo{
 		PrivateKey: key.PrivateKey,
-		SigType:    core.KeyType2Sign(key.Type),
+		SigType:    wallet.KeyType2Sign(key.Type),
 	}
 }

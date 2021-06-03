@@ -7,12 +7,13 @@ import (
 	"path"
 
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/venus/app/paths"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
+
+	"github.com/filecoin-project/venus/app/paths"
 )
 
-func getVenusClientInfo() (string, http.Header, error) {
+func getVenusClientInfo(version string) (string, http.Header, error) {
 	repoPath, err := paths.GetRepoPath("")
 	if err != nil {
 		return "", nil, err
@@ -42,32 +43,21 @@ func getVenusClientInfo() (string, http.Header, error) {
 		return "", nil, err
 	}
 
-	addr = "ws://" + addr + "/rpc/v0"
+	addr = "ws://" + addr + "/rpc/" + version
 	return addr, headers, nil
 }
 
-func NewFullNode(ctx context.Context) (FullNodeStruct, jsonrpc.ClientCloser, error) {
-	addr, headers, err := getVenusClientInfo()
+func GetFullNodeAPI(ctx context.Context, version string) (FullNodeStruct, jsonrpc.ClientCloser, error) {
+	addr, headers, err := getVenusClientInfo(version)
 	if err != nil {
 		return FullNodeStruct{}, nil, err
 	}
+
 	node := FullNodeStruct{}
 	closer, err := jsonrpc.NewClient(ctx, addr, "Filecoin", &node, headers)
 	if err != nil {
 		return FullNodeStruct{}, nil, err
 	}
-	return node, closer, nil
-}
 
-func NewMiningAPINode(ctx context.Context) (IMiningStruct, jsonrpc.ClientCloser, error) {
-	addr, headers, err := getVenusClientInfo()
-	if err != nil {
-		return IMiningStruct{}, nil, err
-	}
-	node := IMiningStruct{}
-	closer, err := jsonrpc.NewClient(ctx, addr, "Filecoin", &node, headers)
-	if err != nil {
-		return IMiningStruct{}, nil, err
-	}
 	return node, closer, nil
 }

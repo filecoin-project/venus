@@ -262,3 +262,8 @@ func (mp *MessagePoolSubmodule) API() apiface.IMessagePool {
 	pushLocks := messagepool.NewMpoolLocker()
 	return &MessagePoolAPI{mp: mp, pushLocks: pushLocks}
 }
+
+func (mp *MessagePoolSubmodule) V0API() apiface.IMessagePool {
+	pushLocks := messagepool.NewMpoolLocker()
+	return &MessagePoolAPI{mp: mp, pushLocks: pushLocks}
+}

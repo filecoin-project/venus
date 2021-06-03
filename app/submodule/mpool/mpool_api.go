@@ -3,10 +3,7 @@ package mpool
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"sync"
-
-	"github.com/filecoin-project/venus-wallet/core"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
@@ -14,6 +11,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
@@ -223,7 +222,7 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Unsign
 			return nil, xerrors.Errorf("serializing message: %w", err)
 		}
 
-		sig, err := a.mp.walletAPI.WalletSign(ctx, msg.From, mb.Cid().Bytes(), wallet.MsgMeta{Type: core.MTChainMsg, Extra: mb.RawData()})
+		sig, err := a.mp.walletAPI.WalletSign(ctx, msg.From, mb.Cid().Bytes(), wallet.MsgMeta{Type: wallet.MTChainMsg, Extra: mb.RawData()})
 		if err != nil {
 			return nil, xerrors.Errorf("failed to sign message: %w", err)
 		}
@@ -347,10 +346,9 @@ func (a *MessagePoolAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl 
 	//	meta = metas[0]
 	//} else {
 	meta := wallet.MsgMeta{
-		Type: core.MTUnknown,
+		Type: wallet.MTUnknown,
 	}
 	//}
 	return a.mp.walletAPI.WalletSign(ctx, keyAddr, msg, meta)
 }
-
 */
