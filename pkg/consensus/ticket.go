@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"context"
+
 	"github.com/filecoin-project/venus/pkg/chain"
 
 	"github.com/filecoin-project/go-address"
@@ -16,7 +17,7 @@ import (
 )
 
 type ChainSampler interface {
-	SampleTicket(ctx context.Context, head types.TipSetKey, epoch abi.ChainEpoch) (types.Ticket, error)
+	SampleTicket(ctx context.Context, head types.TipSetKey, epoch abi.ChainEpoch, lookback bool) (types.Ticket, error)
 }
 
 type tipsetLoader interface {

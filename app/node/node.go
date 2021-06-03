@@ -92,7 +92,7 @@ type Node struct {
 	//
 	// Jsonrpc
 	//
-	jsonRPCService *jsonrpc.RPCServer
+	jsonRPCService, jsonRPCServiceV1 *jsonrpc.RPCServer
 
 	jwtCli jwtauth.IJwtAuthClient
 }
@@ -304,6 +304,7 @@ func (node *Node) runRestfulAPI(ctx context.Context, handler *http.ServeMux, roo
 //runJsonrpcAPI bind jsonrpc handle
 func (node *Node) runJsonrpcAPI(ctx context.Context, handler *http.ServeMux) error { //nolint
 	handler.Handle("/rpc/v0", node.jsonRPCService)
+	handler.Handle("/rpc/v1", node.jsonRPCServiceV1)
 	return nil
 }
 

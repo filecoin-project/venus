@@ -39,3 +39,7 @@ func NewBlockstoreSubmodule(ctx context.Context, repo blockstoreRepo) (*Blocksto
 func (bsm *BlockstoreSubmodule) API() apiface.IBlockStore {
 	return &blockstoreAPI{blockstore: bsm}
 }
+
+func (bsm *BlockstoreSubmodule) V0API() apiface.IBlockStore {
+	return &blockstoreAPI{blockstore: bsm}
+}

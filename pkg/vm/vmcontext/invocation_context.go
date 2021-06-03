@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
-	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/ipfs/go-cid"
 	ipfscbor "github.com/ipfs/go-ipld-cbor"
@@ -54,7 +54,7 @@ type invocationContext struct {
 }
 
 type internalActorStateHandle interface {
-	specsruntime.StateHandle
+	rt5.StateHandle
 }
 
 func newInvocationContext(rt *VM, gasIpld ipfscbor.IpldStore, topLevel *topLevelContext, msg VmMessage,
@@ -149,7 +149,7 @@ func (shc *stateHandleContext) Replace(expected cid.Cid, obj cbor.Marshaler) cid
 	return c
 }
 
-func (shc *stateHandleContext) store() specsruntime.Store {
+func (shc *stateHandleContext) store() rt5.Store {
 	return ((*invocationContext)(shc)).Store()
 }
 
@@ -413,12 +413,12 @@ func (ctx *invocationContext) Runtime() runtime.Runtime {
 }
 
 // Store implements runtime.Runtime.
-func (ctx *invocationContext) Store() specsruntime.Store {
+func (ctx *invocationContext) Store() rt5.Store {
 	return NewActorStorage(ctx.vm.context, ctx.gasIpld, ctx.gasTank, ctx.vm.pricelist)
 }
 
 // Message implements runtime.InvocationContext.
-func (ctx *invocationContext) Message() specsruntime.Message {
+func (ctx *invocationContext) Message() rt5.Message {
 	return ctx.msg
 }
 
@@ -434,7 +434,7 @@ func (ctx *invocationContext) ValidateCaller(pattern runtime.CallerPattern) {
 }
 
 // State implements runtime.InvocationContext.
-func (ctx *invocationContext) State() specsruntime.StateHandle {
+func (ctx *invocationContext) State() rt5.StateHandle {
 	return ctx.stateHandle
 }
 

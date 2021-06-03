@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/network"
@@ -9,7 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 )
 
 // Runtime has operations in the VM that are exposed to all actors.
@@ -27,15 +28,15 @@ type InvocationContext interface {
 	// Store is the raw store for IPLD objects.
 	//
 	// Note: this is required for custom data structures.
-	Store() specsruntime.Store
+	Store() rt5.Store
 	// Message contains information available to the actor about the executing message.
-	Message() specsruntime.Message
+	Message() rt5.Message
 	// ValidateCaller validates the caller against a patter.
 	//
 	// All actor methods MUST call this method before returning.
 	ValidateCaller(CallerPattern)
 	// StateHandle handles access to the actor state.
-	State() specsruntime.StateHandle
+	State() rt5.StateHandle
 	// Send allows actors to invoke methods on other actors
 	Send(toAddr address.Address, methodNum abi.MethodNum, params cbor.Marshaler, value abi.TokenAmount, out cbor.Er) exitcode.ExitCode
 	// Balance is the current balance on the current actors account.

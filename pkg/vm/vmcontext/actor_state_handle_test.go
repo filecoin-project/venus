@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/util"
 
 	"github.com/filecoin-project/go-state-types/cbor"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
+	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 
@@ -179,7 +179,7 @@ func TestActorStateHandle(t *testing.T) {
 func TestActorStateHandleNilState(t *testing.T) {
 	tf.UnitTest(t)
 
-	setup := func() (runtime.StateHandle, func()) {
+	setup := func() (rt5.StateHandle, func()) {
 		store := vmcontext.NewTestStorage(nil)
 		ctx := fakeActorStateHandleContext{
 			store:            store,
@@ -231,7 +231,7 @@ func TestActorStateHandleNilState(t *testing.T) {
 }
 
 type fakeActorStateHandleContext struct {
-	store            runtime.Store
+	store            rt5.Store
 	head             cid.Cid
 	allowSideEffects bool
 }
@@ -263,7 +263,7 @@ func (ctx *fakeActorStateHandleContext) Replace(expected cid.Cid, obj cbor.Marsh
 
 type testSetup struct {
 	initialstate testActorStateHandleState
-	h            runtime.StateHandle
+	h            rt5.StateHandle
 	cleanup      func()
 }
 

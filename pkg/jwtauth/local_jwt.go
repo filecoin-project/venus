@@ -107,6 +107,10 @@ func (jwtAuth *JwtAuth) API() apiface.IJwtAuthAPI {
 	return &JwtAuthAPI{JwtAuth: jwtAuth}
 }
 
+func (jwtAuth *JwtAuth) V0API() apiface.IJwtAuthAPI {
+	return &JwtAuthAPI{JwtAuth: jwtAuth}
+}
+
 //Verify check the token is valid or not
 func (a *JwtAuthAPI) Verify(ctx context.Context, spanID, serviceName, preHost, host, token string) ([]auth.Permission, error) {
 	var payload JwtPayload

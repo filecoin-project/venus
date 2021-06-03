@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 )
 
 // FakeVerifier is a simple mock Verifier for testing.
@@ -13,15 +13,19 @@ type FakeVerifier struct {
 
 var _ Verifier = (*FakeVerifier)(nil)
 
-func (f *FakeVerifier) VerifySeal(proof.SealVerifyInfo) (bool, error) {
+func (f *FakeVerifier) VerifySeal(proof5.SealVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (f *FakeVerifier) VerifyWinningPoSt(context.Context, proof.WinningPoStVerifyInfo) (bool, error) {
+func (f *FakeVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
 	return true, nil
 }
 
-func (f *FakeVerifier) VerifyWindowPoSt(context.Context, proof.WindowPoStVerifyInfo) (bool, error) {
+func (f *FakeVerifier) VerifyWinningPoSt(context.Context, proof5.WinningPoStVerifyInfo) (bool, error) {
+	return true, nil
+}
+
+func (f *FakeVerifier) VerifyWindowPoSt(context.Context, proof5.WindowPoStVerifyInfo) (bool, error) {
 	return true, nil
 }
 

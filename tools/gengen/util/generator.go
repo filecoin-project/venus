@@ -7,7 +7,10 @@ import (
 	"io"
 	mrand "math/rand"
 
+	"github.com/filecoin-project/venus/pkg/fork"
+
 	"github.com/filecoin-project/go-address"
+	ds "github.com/ipfs/go-datastore"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -72,6 +75,15 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 	syscallImpl := vmsupport.NewSyscalls(&vmsupport.NilFaultChecker{}, &ffiwrapper.FakeVerifier{})
 	chainRand := chain.ChainRandomnessSource{Sampler: &chain.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}}
 
+	chainStatusReporter := chain.NewStatusReporter()
+	chainDs := ds.NewMapDatastore() //just mock one
+	//chainstore
+	chainStore := chain.NewStore(chainDs, cst, bs, chainStatusReporter, config.DefaultForkUpgradeParam, cid.Undef) //load genesis from car
+	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, cst, bs, config.NewDefaultConfig().NetworkParams)
+	if err != nil {
+		panic(xerrors.Errorf("create chain fork error %v", err))
+	}
+
 	vmOption := vm.VmOption{
 		CircSupplyCalculator: csc,
 		NtwkVersionGetter: func(ctx context.Context, epoch abi.ChainEpoch) network.Version {
@@ -84,6 +96,7 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 		Bsstore:          bs,
 		PRoot:            cid.Undef,
 		SysCallsImpl:     syscallImpl,
+		Fork:             chainFork,
 	}
 	vm, err := vm.NewVM(vmOption)
 	if err != nil {

@@ -3,9 +3,15 @@
 package client
 
 import (
-	"context"
 	"io"
 	"time"
+	"context"
+
+	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
+	"github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/peer"
+	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -16,22 +22,17 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+
+	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/chain"
-	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/net"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
 	pstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
-	"github.com/ipfs/go-cid"
-	ipld "github.com/ipfs/go-ipld-format"
-	"github.com/libp2p/go-libp2p-core/metrics"
-	"github.com/libp2p/go-libp2p-core/peer"
-	ma "github.com/multiformats/go-multiaddr"
 )
 
 type FullNodeStruct struct {
@@ -175,7 +176,7 @@ type IMinerStateStruct struct {
 	StateMinerInfo                     func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (miner.MinerInfo, error)                                       `perm:"read"`
 	StateMinerInitialPledgeCollateral  func(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (big.Int, error)                 `perm:"read"`
 	StateMinerPartitions               func(p0 context.Context, p1 address.Address, p2 uint64, p3 types.TipSetKey) ([]apitypes.Partition, error)                       `perm:"read"`
-	StateMinerPower                    func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*power.MinerPower, error)                                     `perm:"read"`
+	StateMinerPower                    func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*apitypes.MinerPower, error)                                  `perm:"read"`
 	StateMinerPreCommitDepositForPower func(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (big.Int, error)                 `perm:"read"`
 	StateMinerProvingDeadline          func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error)                                           `perm:"read"`
 	StateMinerRecoveries               func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (bitfield.BitField, error)                                     `perm:"read"`

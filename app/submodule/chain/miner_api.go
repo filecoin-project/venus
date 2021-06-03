@@ -2,8 +2,6 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -12,6 +10,8 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	xerrors "github.com/pkg/errors"
 
+	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
@@ -628,10 +628,10 @@ func (msa *minerStateAPI) StateListActors(ctx context.Context, tsk types.TipSetK
 }
 
 // StateMinerPower returns the power of the indicated miner
-func (msa *minerStateAPI) StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*power.MinerPower, error) {
+func (msa *minerStateAPI) StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*apitypes.MinerPower, error) {
 	ts, err := msa.ChainReader.GetTipSet(tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset %v", err)
+		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
 
 	view, err := msa.ChainReader.ParentStateView(ts)
@@ -639,7 +639,16 @@ func (msa *minerStateAPI) StateMinerPower(ctx context.Context, addr address.Addr
 		return nil, xerrors.Errorf("loading view %s: %v", tsk, err)
 	}
 
-	return view.StateMinerPower(ctx, addr, tsk)
+	mp, net, hmp, err := view.StateMinerPower(ctx, addr, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	return &apitypes.MinerPower{
+		MinerPower:  mp,
+		TotalPower:  net,
+		HasMinPower: hmp,
+	}, nil
 }
 
 // StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or spent

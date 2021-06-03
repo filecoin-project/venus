@@ -2,11 +2,11 @@ package consensus
 
 import (
 	"context"
+
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/filecoin-project/venus/pkg/constants"
 
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof" // todo ref lotus
-
-	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"go.opencensus.io/trace"
@@ -17,9 +17,10 @@ import (
 
 // Interface to PoSt verification, modify by force EPoStVerifier -> ProofVerifier
 type ProofVerifier interface {
-	VerifySeal(info proof2.SealVerifyInfo) (bool, error)
-	VerifyWinningPoSt(ctx context.Context, info proof2.WinningPoStVerifyInfo) (bool, error)
-	VerifyWindowPoSt(ctx context.Context, info proof2.WindowPoStVerifyInfo) (bool, error)
+	VerifySeal(info proof5.SealVerifyInfo) (bool, error)
+	VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error)
+	VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) (bool, error)
+	VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoStVerifyInfo) (bool, error)
 	GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error)
 }
 

@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
 	pstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
 	"time"
@@ -152,7 +151,7 @@ type IMinerState interface {
 	// Rule[perm:read]
 	StateListActors(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)
 	// Rule[perm:read]
-	StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*power.MinerPower, error)
+	StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*apitypes.MinerPower, error)
 	// Rule[perm:read]
 	StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (big.Int, error)
 	// Rule[perm:read]

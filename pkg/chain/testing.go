@@ -6,26 +6,28 @@ import (
 	"fmt"
 	"testing"
 
-	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
-	"github.com/filecoin-project/venus/pkg/util"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	cbor "github.com/ipfs/go-ipld-cbor"
+
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
+
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
 	"github.com/filecoin-project/venus/pkg/clock"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
+	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/util"
 )
 
 // Builder builds fake chains and acts as a provider and fetcher for the chain thus generated.
@@ -167,7 +169,7 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 		repo:         repo,
 		bs:           bs,
 		cstore:       cst,
-		mstore:       NewMessageStore(bs),
+		mstore:       NewMessageStore(bs, config.DefaultForkUpgradeParam),
 		tipStateCids: make(map[string]cid.Cid),
 	}
 	ctx := context.TODO()

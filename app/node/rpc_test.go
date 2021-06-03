@@ -18,10 +18,12 @@ import (
 
 func TestWsBuilder(t *testing.T) {
 	tf.UnitTest(t)
+
 	nameSpace := "Test"
 	builder := NewBuilder().NameSpace(nameSpace)
 	err := builder.AddServices(&tmodule1{}, &tmodule2{})
 	require.NoError(t, err)
+
 	server := mockBuild(builder)
 	testServ := httptest.NewServer(server)
 	defer testServ.Close()
@@ -42,15 +44,17 @@ func TestWsBuilder(t *testing.T) {
 
 func TestJsonrpc(t *testing.T) {
 	tf.UnitTest(t)
+
 	nameSpace := "Test"
 	builder := NewBuilder().NameSpace(nameSpace)
 	err := builder.AddService(&tmodule1{})
 	require.NoError(t, err)
+
 	server := mockBuild(builder)
 	testServ := httptest.NewServer(server)
 	defer testServ.Close()
 
-	http.Handle("/rpc/v0", server)
+	http.Handle("/rpc/v1", server)
 
 	req := struct {
 		Jsonrpc string            `json:"jsonrpc"`
@@ -64,7 +68,7 @@ func TestJsonrpc(t *testing.T) {
 	}
 	reqBytes, err := json.Marshal(req)
 	require.NoError(t, err)
-	httpRes, err := http.Post("http://"+testServ.Listener.Addr().String()+"/rpc/v0", "", bytes.NewReader(reqBytes))
+	httpRes, err := http.Post("http://"+testServ.Listener.Addr().String()+"/rpc/v1", "", bytes.NewReader(reqBytes))
 	require.NoError(t, err)
 	assert.Equal(t, httpRes.Status, "200 OK")
 	result, err := ioutil.ReadAll(httpRes.Body)
@@ -80,11 +84,19 @@ func TestJsonrpc(t *testing.T) {
 type tmodule1 struct {
 }
 
+func (m *tmodule1) V0API() MockAPI1 { //nolint
+	return &mockAPI1{}
+}
+
 func (m *tmodule1) API() MockAPI1 { //nolint
 	return &mockAPI1{}
 }
 
 type tmodule2 struct {
+}
+
+func (m *tmodule2) V0API() MockAPI2 { //nolint
+	return &mockAPI2{}
 }
 
 func (m *tmodule2) API() MockAPI2 { //nolint
@@ -134,7 +146,7 @@ type Adapter2 struct {
 func mockBuild(builder *RPCBuilder) *jsonrpc.RPCServer {
 	server := jsonrpc.NewServer(jsonrpc.WithProxyBind(jsonrpc.PBField))
 	var fullNode FullAdapter
-	for _, apiStruct := range builder.apiStruct {
+	for _, apiStruct := range builder.v1APIStruct {
 		funcrule.PermissionProxy(apiStruct, &fullNode)
 	}
 	for _, nameSpace := range builder.namespace {

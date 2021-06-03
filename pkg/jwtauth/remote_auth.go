@@ -40,6 +40,10 @@ func (r *RemoteAuth) API() apiface.IJwtAuthAPI {
 	return &remoteJwtAuthAPI{JwtAuth: r}
 }
 
+func (r *RemoteAuth) V0API() apiface.IJwtAuthAPI {
+	return &remoteJwtAuthAPI{JwtAuth: r}
+}
+
 type remoteJwtAuthAPI struct { //nolint
 	JwtAuth IJwtAuthClient
 }

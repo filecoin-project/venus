@@ -23,6 +23,7 @@ import (
 	states2 "github.com/filecoin-project/specs-actors/v2/actors/states"
 	states3 "github.com/filecoin-project/specs-actors/v3/actors/states"
 	states4 "github.com/filecoin-project/specs-actors/v4/actors/states"
+	states5 "github.com/filecoin-project/specs-actors/v5/actors/states"
 )
 
 type StateTreeVersion uint64 //nolint
@@ -59,8 +60,10 @@ const (
 	StateTreeVersion1
 	// StateTreeVersion2 corresponds to actors v3.
 	StateTreeVersion2
-	// StateTreeVersion3 corresponds to actors >= v4.
+	// StateTreeVersion3 corresponds to actors v4.
 	StateTreeVersion3
+	// StateTreeVersion4 corresponds to actors v5.
+	StateTreeVersion4
 )
 
 type StateRoot struct { //nolint
@@ -126,7 +129,7 @@ func NewState(cst cbor.IpldStore, ver StateTreeVersion) (*State, error) {
 	switch ver {
 	case StateTreeVersion0:
 		// info is undefined
-	case StateTreeVersion1, StateTreeVersion2:
+	case StateTreeVersion1, StateTreeVersion2, StateTreeVersion3, StateTreeVersion4:
 		var err error
 		info, err = cst.Put(context.TODO(), new(StateInfo0))
 		if err != nil {
@@ -159,6 +162,12 @@ func NewState(cst cbor.IpldStore, ver StateTreeVersion) (*State, error) {
 		hamt = tree.Map
 	case StateTreeVersion3:
 		tree, err := states4.NewTree(store)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create state tree: %w", err)
+		}
+		hamt = tree.Map
+	case StateTreeVersion4:
+		tree, err := states5.NewTree(store)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to create state tree: %w", err)
 		}
@@ -215,6 +224,12 @@ func LoadState(ctx context.Context, cst cbor.IpldStore, c cid.Cid) (*State, erro
 	case StateTreeVersion3:
 		var tree *states4.Tree
 		tree, err = states4.LoadTree(store, root.Actors)
+		if tree != nil {
+			hamt = tree.Map
+		}
+	case StateTreeVersion4:
+		var tree *states5.Tree
+		tree, err = states5.LoadTree(store, root.Actors)
 		if tree != nil {
 			hamt = tree.Map
 		}

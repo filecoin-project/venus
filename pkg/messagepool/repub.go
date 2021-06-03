@@ -20,7 +20,7 @@ const repubMsgLimit = 30
 
 var RepublishBatchDelay = 100 * time.Millisecond
 
-func (mp *MessagePool) republishPendingMessages() error {
+func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 	mp.curTSLk.Lock()
 	ts := mp.curTS
 
