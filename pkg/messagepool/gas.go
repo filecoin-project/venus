@@ -180,8 +180,8 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Uns
 func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (int64, error) {
 	msg := *msgIn
 	msg.GasLimit = constants.BlockGasLimit
-	msg.GasFeeCap = tbig.NewInt(int64(constants.MinimumBaseFee) + 1)
-	msg.GasPremium = tbig.NewInt(1)
+	msg.GasFeeCap = big.NewInt(int64(constants.MinimumBaseFee) + 1)
+	msg.GasPremium = big.NewInt(1)
 	// Try calling until we find a height with no migration.
 	var res *vm.Ret
 	var err error
@@ -267,12 +267,12 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 		tsk = ts.Key()
 	}
 
-	currTs, err := mp.api.ChainTipSet(tsk)
+	currTS, err := mp.api.ChainTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset: %w", err)
 	}
 
-	fromA, err := mp.api.StateAccountKey(ctx, estimateMessages[0].Msg.From, currTs)
+	fromA, err := mp.api.StateAccountKey(ctx, estimateMessages[0].Msg.From, currTS)
 	if err != nil {
 		return nil, xerrors.Errorf("getting key address: %w", err)
 	}
