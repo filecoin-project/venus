@@ -17,11 +17,12 @@ func NerpaNet() *NetworkConf {
 				"/dns4/bootstrap-3.nerpa.interplanetary.dev/tcp/1347/p2p/12D3KooWNK9RmfksKXSCQj7ZwAM7L6roqbN4kwJteihq7yPvSgPs",
 				"/dns4/bootstrap-1.nerpa.interplanetary.dev/tcp/1347/p2p/12D3KooWCWSaH6iUyXYspYxELjDfzToBsyVGVz3QvC7ysXv7wESo",
 			},
+
 			MinPeerThreshold: 0,
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
-			DevNet: true,
+			DevNet: false,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
 				abi.RegisteredSealProof_StackedDrg32GiBV1,

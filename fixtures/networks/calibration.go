@@ -20,7 +20,7 @@ func Calibration() *NetworkConf {
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
-			DevNet:                 true,
+			DevNet:                 false,
 			NetworkType:            constants.NetworkCalibnet,
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 32 << 30,
