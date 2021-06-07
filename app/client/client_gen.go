@@ -133,28 +133,29 @@ type IMarketStruct struct {
 }
 
 type IMessagePoolStruct struct {
-	DeleteByAdress          func(p0 context.Context, p1 address.Address) error                                                                                                     `perm:"read"`
-	GasEstimateFeeCap       func(p0 context.Context, p1 *types.UnsignedMessage, p2 int64, p3 types.TipSetKey) (big.Int, error)                                                     `perm:"read"`
-	GasEstimateGasLimit     func(p0 context.Context, p1 *types.UnsignedMessage, p2 types.TipSetKey) (int64, error)                                                                 `perm:"read"`
-	GasEstimateGasPremium   func(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (big.Int, error)                                                 `perm:"read"`
-	GasEstimateMessageGas   func(p0 context.Context, p1 *types.UnsignedMessage, p2 *types.MessageSendSpec, p3 types.TipSetKey) (*types.UnsignedMessage, error)                     `perm:"read"`
-	MpoolBatchPush          func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error)                                                                                 `perm:"read"`
-	MpoolBatchPushMessage   func(p0 context.Context, p1 []*types.UnsignedMessage, p2 *types.MessageSendSpec) ([]*types.SignedMessage, error)                                       `perm:"read"`
-	MpoolBatchPushUntrusted func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error)                                                                                 `perm:"read"`
-	MpoolClear              func(p0 context.Context, p1 bool) error                                                                                                                `perm:"read"`
-	MpoolGetConfig          func(p0 context.Context) (*messagepool.MpoolConfig, error)                                                                                             `perm:"read"`
-	MpoolGetNonce           func(p0 context.Context, p1 address.Address) (uint64, error)                                                                                           `perm:"read"`
-	MpoolPending            func(p0 context.Context, p1 types.TipSetKey) ([]*types.SignedMessage, error)                                                                           `perm:"read"`
-	MpoolPublishByAddr      func(p0 context.Context, p1 address.Address) error                                                                                                     `perm:"read"`
-	MpoolPublishMessage     func(p0 context.Context, p1 *types.SignedMessage) error                                                                                                `perm:"read"`
-	MpoolPush               func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error)                                                                                     `perm:"read"`
-	MpoolPushMessage        func(p0 context.Context, p1 *types.UnsignedMessage, p2 *types.MessageSendSpec) (*types.SignedMessage, error)                                           `perm:"read"`
-	MpoolPushUntrusted      func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error)                                                                                     `perm:"read"`
-	MpoolSelect             func(p0 context.Context, p1 types.TipSetKey, p2 float64) ([]*types.SignedMessage, error)                                                               `perm:"read"`
-	MpoolSelects            func(p0 context.Context, p1 types.TipSetKey, p2 []float64) ([][]*types.SignedMessage, error)                                                           `perm:"read"`
-	MpoolSetConfig          func(p0 context.Context, p1 *messagepool.MpoolConfig) error                                                                                            `perm:"read"`
-	MpoolSub                func(p0 context.Context) (<-chan messagepool.MpoolUpdate, error)                                                                                       `perm:"read"`
-	SendMsg                 func(p0 context.Context, p1 address.Address, p2 address.Address, p3 abi.MethodNum, p4 abi.TokenAmount, p5 abi.TokenAmount, p6 []byte) (cid.Cid, error) `perm:"read"`
+	DeleteByAdress             func(p0 context.Context, p1 address.Address) error                                                                                                     `perm:"read"`
+	GasBatchEstimateMessageGas func(p0 context.Context, p1 []*types.EstimateMessage, p2 uint64, p3 types.TipSetKey) ([]*types.EstimateResult, error)                                  `perm:"read"`
+	GasEstimateFeeCap          func(p0 context.Context, p1 *types.UnsignedMessage, p2 int64, p3 types.TipSetKey) (big.Int, error)                                                     `perm:"read"`
+	GasEstimateGasLimit        func(p0 context.Context, p1 *types.UnsignedMessage, p2 types.TipSetKey) (int64, error)                                                                 `perm:"read"`
+	GasEstimateGasPremium      func(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (big.Int, error)                                                 `perm:"read"`
+	GasEstimateMessageGas      func(p0 context.Context, p1 *types.UnsignedMessage, p2 *types.MessageSendSpec, p3 types.TipSetKey) (*types.UnsignedMessage, error)                     `perm:"read"`
+	MpoolBatchPush             func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error)                                                                                 `perm:"read"`
+	MpoolBatchPushMessage      func(p0 context.Context, p1 []*types.UnsignedMessage, p2 *types.MessageSendSpec) ([]*types.SignedMessage, error)                                       `perm:"read"`
+	MpoolBatchPushUntrusted    func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error)                                                                                 `perm:"read"`
+	MpoolClear                 func(p0 context.Context, p1 bool) error                                                                                                                `perm:"read"`
+	MpoolGetConfig             func(p0 context.Context) (*messagepool.MpoolConfig, error)                                                                                             `perm:"read"`
+	MpoolGetNonce              func(p0 context.Context, p1 address.Address) (uint64, error)                                                                                           `perm:"read"`
+	MpoolPending               func(p0 context.Context, p1 types.TipSetKey) ([]*types.SignedMessage, error)                                                                           `perm:"read"`
+	MpoolPublishByAddr         func(p0 context.Context, p1 address.Address) error                                                                                                     `perm:"read"`
+	MpoolPublishMessage        func(p0 context.Context, p1 *types.SignedMessage) error                                                                                                `perm:"read"`
+	MpoolPush                  func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error)                                                                                     `perm:"read"`
+	MpoolPushMessage           func(p0 context.Context, p1 *types.UnsignedMessage, p2 *types.MessageSendSpec) (*types.SignedMessage, error)                                           `perm:"read"`
+	MpoolPushUntrusted         func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error)                                                                                     `perm:"read"`
+	MpoolSelect                func(p0 context.Context, p1 types.TipSetKey, p2 float64) ([]*types.SignedMessage, error)                                                               `perm:"read"`
+	MpoolSelects               func(p0 context.Context, p1 types.TipSetKey, p2 []float64) ([][]*types.SignedMessage, error)                                                           `perm:"read"`
+	MpoolSetConfig             func(p0 context.Context, p1 *messagepool.MpoolConfig) error                                                                                            `perm:"read"`
+	MpoolSub                   func(p0 context.Context) (<-chan messagepool.MpoolUpdate, error)                                                                                       `perm:"read"`
+	SendMsg                    func(p0 context.Context, p1 address.Address, p2 address.Address, p3 abi.MethodNum, p4 abi.TokenAmount, p5 abi.TokenAmount, p6 []byte) (cid.Cid, error) `perm:"read"`
 }
 
 type IMinerStateStruct struct {
