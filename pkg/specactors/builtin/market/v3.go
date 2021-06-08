@@ -28,14 +28,14 @@ func load3(store adt.Store, root cid.Cid) (State, error) {
 
 func make3(store adt.Store) (State, error) {
 	out := state3{store: store}
-	
-		s, err := market3.ConstructState(store)
-		if err != nil {
-			return nil, err
-		}
 
-		out.State = *s
-	
+	s, err := market3.ConstructState(store)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
+
 	return &out, nil
 }
 

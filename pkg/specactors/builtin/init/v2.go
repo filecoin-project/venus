@@ -9,8 +9,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 
-
-
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 )
@@ -28,14 +26,14 @@ func load2(store adt.Store, root cid.Cid) (State, error) {
 
 func make2(store adt.Store, networkName string) (State, error) {
 	out := state2{store: store}
-	
-		mr, err := adt2.MakeEmptyMap(store).Root()
-		if err != nil {
-			return nil, err
-		}
 
-		out.State = *init2.ConstructState(mr, networkName)
-	
+	mr, err := adt2.MakeEmptyMap(store).Root()
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *init2.ConstructState(mr, networkName)
+
 	return &out, nil
 }
 

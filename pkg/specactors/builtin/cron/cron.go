@@ -3,8 +3,8 @@ package cron
 import (
 	"github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
-	"golang.org/x/xerrors"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -15,7 +15,6 @@ import (
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
-
 )
 
 func MakeState(store adt.Store, av specactors.Version) (State, error) {
@@ -36,7 +35,7 @@ func MakeState(store adt.Store, av specactors.Version) (State, error) {
 	case specactors.Version5:
 		return make5(store)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
@@ -67,7 +66,6 @@ var (
 	Address = builtin5.CronActorAddr
 	Methods = builtin5.MethodsCron
 )
-
 
 type State interface {
 	GetState() interface{}

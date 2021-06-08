@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
-
 )
 
 // paychAPI defines the API methods needed by the payment channel manager

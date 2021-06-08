@@ -317,7 +317,17 @@ func (cia *chainInfoAPI) getNetworkName(ctx context.Context) (string, error) {
 }
 
 func (cia *chainInfoAPI) ChainGetRandomnessFromBeacon(ctx context.Context, key types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return cia.chain.ChainReader.ChainGetRandomnessFromBeacon(ctx, key, personalization, randEpoch, entropy)
+	ts, err := cia.chain.ChainReader.GetTipSet(key)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset key: %v", err)
+	}
+
+	// Doing this here is slightly nicer than doing it in the chainstore directly, but it's still bad for ChainAPI to reason about network upgrades
+	if randEpoch > cia.chain.Fork.GetForkUpgrade().UpgradeHyperdriveHeight {
+		return cia.chain.ChainReader.GetBeaconRandomness(ctx, ts.Key(), personalization, randEpoch, entropy, false)
+	}
+
+	return cia.chain.ChainReader.GetChainRandomness(ctx, ts.Key(), personalization, randEpoch, entropy, true)
 }
 
 func (cia *chainInfoAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
@@ -326,24 +336,12 @@ func (cia *chainInfoAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk 
 		return nil, xerrors.Errorf("loading tipset key: %v", err)
 	}
 
-	h := ts.Height()
-	if randEpoch > h {
-		return nil, xerrors.Errorf("cannot draw randomness from the future")
+	// Doing this here is slightly nicer than doing it in the chainstore directly, but it's still bad for ChainAPI to reason about network upgrades
+	if randEpoch > cia.chain.Fork.GetForkUpgrade().UpgradeHyperdriveHeight {
+		return cia.chain.ChainReader.GetChainRandomness(ctx, ts.Key(), personalization, randEpoch, entropy, false)
 	}
 
-	searchHeight := randEpoch
-	if searchHeight < 0 {
-		searchHeight = 0
-	}
-
-	randTS, err := cia.ChainGetTipSetByHeight(ctx, searchHeight, tsk)
-	if err != nil {
-		return nil, err
-	}
-
-	mtb := randTS.MinTicketBlock()
-
-	return chain.DrawRandomness(mtb.Ticket.VRFProof, personalization, randEpoch, entropy)
+	return cia.chain.ChainReader.GetChainRandomness(ctx, ts.Key(), personalization, randEpoch, entropy, true)
 }
 
 func (cia *chainInfoAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {

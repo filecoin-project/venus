@@ -32,7 +32,6 @@ import (
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
-
 )
 
 func init() {
@@ -93,7 +92,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	case builtin5.StorageMinerActorCodeID:
 		return load5(store, act.Head)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
@@ -115,7 +114,7 @@ func MakeState(store adt.Store, av specactors.Version) (State, error) {
 	case specactors.Version5:
 		return make5(store)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 

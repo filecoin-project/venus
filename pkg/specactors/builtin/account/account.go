@@ -21,7 +21,6 @@ import (
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
-
 )
 
 func init() {
@@ -89,7 +88,7 @@ func MakeState(store adt.Store, av specactors.Version, addr address.Address) (St
 	case specactors.Version5:
 		return make5(store, addr)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 

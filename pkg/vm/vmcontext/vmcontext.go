@@ -699,7 +699,7 @@ func (vm *VM) shouldBurn(msg *types.UnsignedMessage, errcode exitcode.ExitCode) 
 			// Ok, we've checked the _method_, but we still need to check
 			// the target actor. It would be nice if we could just look at
 			// the trace, but I'm not sure if that's safe?
-			if toActor,_, err := vm.State.GetActor(vm.context, msg.To); err != nil {
+			if toActor, _, err := vm.State.GetActor(vm.context, msg.To); err != nil {
 				// If the actor wasn't found, we probably deleted it or something. Move on.
 				if !xerrors.Is(err, types.ErrActorNotFound) {
 					// Otherwise, this should never fail and something is very wrong.

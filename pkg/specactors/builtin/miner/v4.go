@@ -15,7 +15,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 
-
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 
 	miner4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/miner"
@@ -370,39 +369,39 @@ func (s *state4) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (SectorPreC
 }
 
 func (s *state4) EraseAllUnproven() error {
-	
-		dls, err := s.State.LoadDeadlines(s.store)
+
+	dls, err := s.State.LoadDeadlines(s.store)
+	if err != nil {
+		return err
+	}
+
+	err = dls.ForEach(s.store, func(dindx uint64, dl *miner4.Deadline) error {
+		ps, err := dl.PartitionsArray(s.store)
 		if err != nil {
 			return err
 		}
 
-		err = dls.ForEach(s.store, func(dindx uint64, dl *miner4.Deadline) error {
-			ps, err := dl.PartitionsArray(s.store)
-			if err != nil {
-				return err
-			}
-
-			var part miner4.Partition
-			err = ps.ForEach(&part, func(pindx int64) error {
-				_ = part.ActivateUnproven()
-				err = ps.Set(uint64(pindx), &part)
-				return nil
-			})
-
-			if err != nil {
-				return err
-			}
-
-			dl.Partitions, err = ps.Root()
-			if err != nil {
-				return err
-			}
-
-			return dls.UpdateDeadline(s.store, dindx, dl)
+		var part miner4.Partition
+		err = ps.ForEach(&part, func(pindx int64) error {
+			_ = part.ActivateUnproven()
+			err = ps.Set(uint64(pindx), &part)
+			return nil
 		})
 
-		return s.State.SaveDeadlines(s.store, dls)
-	
+		if err != nil {
+			return err
+		}
+
+		dl.Partitions, err = ps.Root()
+		if err != nil {
+			return err
+		}
+
+		return dls.UpdateDeadline(s.store, dindx, dl)
+	})
+
+	return s.State.SaveDeadlines(s.store, dls)
+
 	return nil
 }
 

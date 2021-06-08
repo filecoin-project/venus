@@ -22,9 +22,8 @@ import (
 
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 
-
-	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors"
+	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/types"
 )
@@ -97,7 +96,7 @@ func MakeState(store adt.Store, av specactors.Version) (State, error) {
 	case specactors.Version5:
 		return make5(store)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
@@ -176,67 +175,67 @@ type DealState struct {
 }
 
 type DealProposal struct {
-	PieceCID			 cid.Cid
-	PieceSize			 abi.PaddedPieceSize
-	VerifiedDeal		 bool
-	Client				 address.Address
-	Provider			 address.Address
-	Label				 string
-	StartEpoch			 abi.ChainEpoch
-	EndEpoch			 abi.ChainEpoch
+	PieceCID             cid.Cid
+	PieceSize            abi.PaddedPieceSize
+	VerifiedDeal         bool
+	Client               address.Address
+	Provider             address.Address
+	Label                string
+	StartEpoch           abi.ChainEpoch
+	EndEpoch             abi.ChainEpoch
 	StoragePricePerEpoch abi.TokenAmount
-	ProviderCollateral	 abi.TokenAmount
-	ClientCollateral	 abi.TokenAmount
+	ProviderCollateral   abi.TokenAmount
+	ClientCollateral     abi.TokenAmount
 }
 
 type DealStateChanges struct {
-	Added	 []DealIDState
+	Added    []DealIDState
 	Modified []DealStateChange
-	Removed	 []DealIDState
+	Removed  []DealIDState
 }
 
 type DealIDState struct {
-	ID	 abi.DealID
+	ID   abi.DealID
 	Deal DealState
 }
 
 // DealStateChange is a change in deal state from -> to
 type DealStateChange struct {
-	ID	 abi.DealID
+	ID   abi.DealID
 	From *DealState
-	To	 *DealState
+	To   *DealState
 }
 
 type DealProposalChanges struct {
-	Added	[]ProposalIDState
+	Added   []ProposalIDState
 	Removed []ProposalIDState
 }
 
 type ProposalIDState struct {
-	ID		 abi.DealID
+	ID       abi.DealID
 	Proposal DealProposal
 }
 
 func EmptyDealState() *DealState {
 	return &DealState{
 		SectorStartEpoch: -1,
-		SlashEpoch:		  -1,
+		SlashEpoch:       -1,
 		LastUpdatedEpoch: -1,
 	}
 }
 
 // returns the earned fees and pending fees for a given deal
 func (deal DealProposal) GetDealFees(height abi.ChainEpoch) (abi.TokenAmount, abi.TokenAmount) {
-	   tf := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(deal.EndEpoch-deal.StartEpoch)))
+	tf := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(deal.EndEpoch-deal.StartEpoch)))
 
-	   ef := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(height-deal.StartEpoch)))
-	   if ef.LessThan(big.Zero()) {
-			   ef = big.Zero()
-	   }
+	ef := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(height-deal.StartEpoch)))
+	if ef.LessThan(big.Zero()) {
+		ef = big.Zero()
+	}
 
-	   if ef.GreaterThan(tf) {
-			   ef = tf
-	   }
+	if ef.GreaterThan(tf) {
+		ef = tf
+	}
 
-	   return ef, big.Sub(tf, ef)
+	return ef, big.Sub(tf, ef)
 }

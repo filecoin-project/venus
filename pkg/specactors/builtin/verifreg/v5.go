@@ -26,14 +26,14 @@ func load5(store adt.Store, root cid.Cid) (State, error) {
 
 func make5(store adt.Store, rootKeyAddress address.Address) (State, error) {
 	out := state5{store: store}
-	
-		s, err := verifreg5.ConstructState(store, rootKeyAddress)
-		if err != nil {
-			return nil, err
-		}
 
-		out.State = *s
-	
+	s, err := verifreg5.ConstructState(store, rootKeyAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
+
 	return &out, nil
 }
 

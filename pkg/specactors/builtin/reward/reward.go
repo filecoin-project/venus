@@ -3,8 +3,8 @@ package reward
 import (
 	"github.com/filecoin-project/go-state-types/abi"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	"github.com/ipfs/go-cid"
 	"github.com/filecoin-project/venus/pkg/specactors"
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -18,7 +18,6 @@ import (
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
-
 
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
@@ -93,7 +92,7 @@ func MakeState(store adt.Store, av specactors.Version, currRealizedPower abi.Sto
 	case specactors.Version5:
 		return make5(store, currRealizedPower)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 

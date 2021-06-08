@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/venus/pkg/specactors/aerrors"
+
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/types"
 
@@ -147,17 +149,31 @@ func (a *runtimeAdapter) NetworkVersion() network.Version {
 }
 
 func (a *runtimeAdapter) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	res, err := a.ctx.randSource.GetRandomnessFromBeacon(a.Context(), personalization, randEpoch, entropy)
+	var err error
+	var res []byte
+	if randEpoch > a.ctx.vm.vmOption.Fork.GetForkUpgrade().UpgradeHyperdriveHeight {
+		res, err = a.ctx.randSource.GetBeaconRandomnessLookingForward(a.Context(), personalization, randEpoch, entropy)
+	} else {
+		res, err = a.ctx.randSource.GetBeaconRandomnessLookingBack(a.Context(), personalization, randEpoch, entropy)
+	}
+
 	if err != nil {
-		panic(xerrors.Errorf("could not get randomness: %s", err))
+		panic(aerrors.Fatalf("could not get beacon randomness: %s", err))
 	}
 	return res
 }
 
 func (a *runtimeAdapter) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	res, err := a.ctx.randSource.GetRandomnessFromTickets(a.Context(), personalization, randEpoch, entropy)
+	var err error
+	var res []byte
+	if randEpoch > a.ctx.vm.vmOption.Fork.GetForkUpgrade().UpgradeHyperdriveHeight {
+		res, err = a.ctx.randSource.GetChainRandomnessLookingForward(a.Context(), personalization, randEpoch, entropy)
+	} else {
+		res, err = a.ctx.randSource.GetChainRandomnessLookingBack(a.Context(), personalization, randEpoch, entropy)
+	}
+
 	if err != nil {
-		panic(xerrors.Errorf("could not get randomness: %s", err))
+		panic(aerrors.Fatalf("could not get ticket randomness: %s", err))
 	}
 	return res
 }

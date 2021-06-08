@@ -29,13 +29,13 @@ var _ IWallet = &WalletAPIAdapter{}
 // wallet API permissions constraints
 type WalletAPIAdapter struct {
 	Internal struct {
-		WalletNew    func(ctx context.Context, kt wallet.KeyType) (address.Address, error)                                          `perm:"admin"`
-		WalletHas    func(ctx context.Context, address address.Address) (bool, error)                                             `perm:"write"`
-		WalletList   func(ctx context.Context) ([]address.Address, error)                                                         `perm:"write"`
+		WalletNew    func(ctx context.Context, kt wallet.KeyType) (address.Address, error)                                            `perm:"admin"`
+		WalletHas    func(ctx context.Context, address address.Address) (bool, error)                                                 `perm:"write"`
+		WalletList   func(ctx context.Context) ([]address.Address, error)                                                             `perm:"write"`
 		WalletSign   func(ctx context.Context, signer address.Address, toSign []byte, meta wallet.MsgMeta) (*crypto.Signature, error) `perm:"sign"`
-		WalletExport func(ctx context.Context, addr address.Address) (*wallet.KeyInfo, error)                                       `perm:"admin"`
-		WalletImport func(ctx context.Context, ki *wallet.KeyInfo) (address.Address, error)                                         `perm:"admin"`
-		WalletDelete func(ctx context.Context, addr address.Address) error                                                        `perm:"admin"`
+		WalletExport func(ctx context.Context, addr address.Address) (*wallet.KeyInfo, error)                                         `perm:"admin"`
+		WalletImport func(ctx context.Context, ki *wallet.KeyInfo) (address.Address, error)                                           `perm:"admin"`
+		WalletDelete func(ctx context.Context, addr address.Address) error                                                            `perm:"admin"`
 	}
 }
 

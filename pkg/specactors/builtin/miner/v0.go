@@ -17,7 +17,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 
-
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 )
@@ -375,9 +374,9 @@ func (s *state0) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (SectorPreC
 }
 
 func (s *state0) EraseAllUnproven() error {
-	
-		// field doesn't exist until v2
-	
+
+	// field doesn't exist until v2
+
 	return nil
 }
 

@@ -19,10 +19,9 @@ import (
 
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 
-
+	"github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -95,7 +94,7 @@ func MakeState(store adt.Store, av specactors.Version, rootKeyAddress address.Ad
 	case specactors.Version5:
 		return make5(store, rootKeyAddress)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
@@ -121,7 +120,6 @@ func GetActorCodeID(av specactors.Version) (cid.Cid, error) {
 
 	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
-
 
 type State interface {
 	cbor.Marshaler

@@ -153,7 +153,7 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *typ
 	bstate := ts.At(0).ParentStateRoot
 	pts, err := c.chainState.GetTipSet(ts.Parents())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load parent tipset: %w", err)
+		return nil, xerrors.Errorf("failed to load parent tipset: %v", err)
 	}
 	pheight := pts.Height()
 

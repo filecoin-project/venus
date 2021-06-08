@@ -28,19 +28,19 @@ func load2(store adt.Store, root cid.Cid) (State, error) {
 
 func make2(store adt.Store) (State, error) {
 	out := state2{store: store}
-	
-		ea, err := adt2.MakeEmptyArray(store).Root()
-		if err != nil {
-			return nil, err
-		}
 
-		em, err := adt2.MakeEmptyMap(store).Root()
-		if err != nil {
-			return nil, err
-		}
+	ea, err := adt2.MakeEmptyArray(store).Root()
+	if err != nil {
+		return nil, err
+	}
 
-		out.State = *market2.ConstructState(ea, em, em)
-	
+	em, err := adt2.MakeEmptyMap(store).Root()
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *market2.ConstructState(ea, em, em)
+
 	return &out, nil
 }
 

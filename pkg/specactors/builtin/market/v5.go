@@ -28,14 +28,14 @@ func load5(store adt.Store, root cid.Cid) (State, error) {
 
 func make5(store adt.Store) (State, error) {
 	out := state5{store: store}
-	
-		s, err := market5.ConstructState(store)
-		if err != nil {
-			return nil, err
-		}
 
-		out.State = *s
-	
+	s, err := market5.ConstructState(store)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
+
 	return &out, nil
 }
 
