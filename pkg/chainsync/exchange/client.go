@@ -132,18 +132,6 @@ func (c *client) doRequest(
 			continue
 		}
 
-		if req.Options == Headers {
-			if int(req.Length) != len(validRes.tipsets) {
-				exchangeClientLogger.Warnf("tipsets length (%d) not match response messages length (%d)", len(tipsets), len(validRes.messages))
-				continue
-			}
-		} else {
-			if int(req.Length) != len(validRes.messages) {
-				exchangeClientLogger.Warnf("tipsets length (%d) not match response messages length (%d)", len(tipsets), len(validRes.messages))
-				continue
-			}
-		}
-
 		c.peerTracker.logGlobalSuccess(time.Since(globalTime))
 		c.host.ConnManager().TagPeer(peer, "bsync", SuccessPeerTagValue)
 		return validRes, nil
