@@ -261,14 +261,14 @@ type IWalletStruct struct {
 	SetPassword          func(p0 context.Context, p1 string) error                                                             `perm:"admin"`
 	UnLockWallet         func(p0 context.Context, p1 string) error                                                             `perm:"admin"`
 	WalletAddresses      func(p0 context.Context) []address.Address                                                            `perm:"admin"`
-	WalletBalance        func(p0 context.Context, p1 address.Address) (abi.TokenAmount, error)                                 `perm:"admin"`
-	WalletDefaultAddress func(p0 context.Context) (address.Address, error)                                                     `perm:"admin"`
+	WalletBalance        func(p0 context.Context, p1 address.Address) (abi.TokenAmount, error)                                 `perm:"read"`
+	WalletDefaultAddress func(p0 context.Context) (address.Address, error)                                                     `perm:"write"`
 	WalletExport         func(p0 address.Address, p1 string) (*crypto.KeyInfo, error)                                          `perm:"admin"`
-	WalletHas            func(p0 context.Context, p1 address.Address) (bool, error)                                            `perm:"admin"`
+	WalletHas            func(p0 context.Context, p1 address.Address) (bool, error)                                            `perm:"write"`
 	WalletImport         func(p0 *crypto.KeyInfo) (address.Address, error)                                                     `perm:"admin"`
-	WalletNewAddress     func(p0 address.Protocol) (address.Address, error)                                                    `perm:"admin"`
+	WalletNewAddress     func(p0 address.Protocol) (address.Address, error)                                                    `perm:"write"`
 	WalletSetDefault     func(p0 context.Context, p1 address.Address) error                                                    `perm:"admin"`
-	WalletSign           func(p0 context.Context, p1 address.Address, p2 []byte, p3 wallet.MsgMeta) (*crypto.Signature, error) `perm:"admin"`
-	WalletSignMessage    func(p0 context.Context, p1 address.Address, p2 *types.UnsignedMessage) (*types.SignedMessage, error) `perm:"admin"`
+	WalletSign           func(p0 context.Context, p1 address.Address, p2 []byte, p3 wallet.MsgMeta) (*crypto.Signature, error) `perm:"sign"`
+	WalletSignMessage    func(p0 context.Context, p1 address.Address, p2 *types.UnsignedMessage) (*types.SignedMessage, error) `perm:"sign"`
 	WalletState          func(p0 context.Context) int                                                                          `perm:"admin"`
 }
