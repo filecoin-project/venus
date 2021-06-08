@@ -109,7 +109,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 
 	var networkName string
 	var err error
-	if repo.Config().NetworkParams.DevNet {
+	if !repo.Config().NetworkParams.DevNet {
 		networkName = "testnetnet"
 	} else {
 		networkName, err = retrieveNetworkName(ctx, config.GenesisCid(), blockstore.CborStore)
