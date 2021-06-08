@@ -7,4 +7,5 @@ const (
 	NetworkDebug    = 0x3
 	NetworkCalibnet = 0x4
 	NetworkNerpa    = 0x5
+	NetworkInterop  = 0x6
 )

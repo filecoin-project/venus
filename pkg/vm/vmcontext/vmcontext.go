@@ -22,7 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
-	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/cron"
@@ -845,7 +845,7 @@ func depositFunds(act *types.Actor, amt abi.TokenAmount) {
 // implement runtime.MessageInfo for VmMessage
 //
 
-var _ specsruntime.Message = (*VmMessage)(nil)
+var _ rt5.Message = (*VmMessage)(nil)
 
 type VmMessage struct { //nolint
 	From   address.Address

@@ -21,7 +21,8 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/rt"
-	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
 )
@@ -40,7 +41,8 @@ func init() {
 
 var actorLog = logging.Logger("vm.actors")
 
-var _ specsruntime.Runtime = (*runtimeAdapter)(nil)
+var _ rt5.Runtime = (*runtimeAdapter)(nil)
+var _ rt0.Runtime = (*runtimeAdapter)(nil)
 
 type runtimeAdapter struct {
 	ctx *invocationContext
@@ -200,7 +202,7 @@ func (a *runtimeAdapter) Log(level rt.LogLevel, msg string, args ...interface{})
 }
 
 // Message implements Runtime.
-func (a *runtimeAdapter) Message() specsruntime.Message {
+func (a *runtimeAdapter) Message() rt5.Message {
 	return a.ctx.Message()
 }
 
@@ -327,4 +329,8 @@ func (a *runtimeAdapter) StartSpan(name string) func() {
 
 func (a *runtimeAdapter) AbortStateMsg(msg string) {
 	runtime.Abortf(101, msg)
+}
+
+func (a *runtimeAdapter) BaseFee() abi.TokenAmount {
+	return a.ctx.vm.vmOption.BaseFee
 }
