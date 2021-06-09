@@ -84,7 +84,7 @@ More info at [filecoin-ffi](https://github.com/filecoin-project/filecoin-ffi).
 
 #### Install Dependencies
 
-First install componets
+First install components
 
 ```sh
 sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm; sudo yum install -y git gcc bzr jq pkgconfig clang llvm mesa-libGL-devel opencl-headers ocl-icd ocl-icd-devel hwloc-devel
