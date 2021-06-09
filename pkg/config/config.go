@@ -23,7 +23,7 @@ const (
 	scryptP = 1
 )
 
-var DefaultDefaultMaxFee = types.MustParseFIL("0.007")
+var DefaultDefaultMaxFee = types.MustParseFIL("1")
 
 // Config is an in memory representation of the filecoin configuration file
 type Config struct {
