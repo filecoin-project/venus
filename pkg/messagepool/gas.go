@@ -2,22 +2,21 @@ package messagepool
 
 import (
 	"context"
-	"math"
-	"math/rand"
-	"sort"
-
+	"fmt"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
+	"golang.org/x/xerrors"
+	"math"
+	"math/rand"
+	"sort"
 )
 
 const MinGasPremium = 100e3
@@ -175,8 +174,17 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Uns
 		priorMsgs = append(priorMsgs, m)
 	}
 
+	return mp.evalMessageGasLimit(ctx, msgIn, priorMsgs, ts)
+}
+
+func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (int64, error) {
+	msg := *msgIn
+	msg.GasLimit = constants.BlockGasLimit
+	msg.GasFeeCap = big.NewInt(int64(constants.MinimumBaseFee) + 1)
+	msg.GasPremium = big.NewInt(1)
 	// Try calling until we find a height with no migration.
 	var res *vm.Ret
+	var err error
 	for {
 		res, err = mp.gp.CallWithGas(ctx, &msg, priorMsgs, ts)
 		if err != fork.ErrExpensiveFork {
@@ -216,32 +224,111 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Uns
 	return res.Receipt.GasUsed + 76e3, nil
 }
 
-func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *types.MessageSendSpec, _ types.TipSetKey) (*types.Message, error) {
-	if msg.GasLimit == 0 {
-		gasLimit, err := mp.GasEstimateGasLimit(ctx, msg, types.TipSetKey{})
+func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessage *types.EstimateMessage, _ types.TipSetKey) (*types.Message, error) {
+	if estimateMessage.Msg.GasLimit == 0 {
+		gasLimit, err := mp.GasEstimateGasLimit(ctx, estimateMessage.Msg, types.TipSetKey{})
 		if err != nil {
 			return nil, xerrors.Errorf("estimating gas used: %w", err)
 		}
-		msg.GasLimit = int64(float64(gasLimit) * mp.GetConfig().GasLimitOverestimation)
+		estimateMessage.Msg.GasLimit = int64(float64(gasLimit) * mp.GetConfig().GasLimitOverestimation)
 	}
 
-	if msg.GasPremium == types.EmptyInt || types.BigCmp(msg.GasPremium, types.NewInt(0)) == 0 {
-		gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, msg.From, msg.GasLimit, types.TipSetKey{})
+	if estimateMessage.Msg.GasPremium == types.EmptyInt || types.BigCmp(estimateMessage.Msg.GasPremium, types.NewInt(0)) == 0 {
+		gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, estimateMessage.Msg.From, estimateMessage.Msg.GasLimit, types.TipSetKey{})
 		if err != nil {
 			return nil, xerrors.Errorf("estimating gas price: %w", err)
 		}
-		msg.GasPremium = gasPremium
+		estimateMessage.Msg.GasPremium = gasPremium
 	}
 
-	if msg.GasFeeCap == types.EmptyInt || types.BigCmp(msg.GasFeeCap, types.NewInt(0)) == 0 {
-		feeCap, err := mp.GasEstimateFeeCap(ctx, msg, 20, types.EmptyTSK)
+	if estimateMessage.Msg.GasFeeCap == types.EmptyInt || types.BigCmp(estimateMessage.Msg.GasFeeCap, types.NewInt(0)) == 0 {
+		feeCap, err := mp.GasEstimateFeeCap(ctx, estimateMessage.Msg, 20, types.EmptyTSK)
 		if err != nil {
 			return nil, xerrors.Errorf("estimating fee cap: %w", err)
 		}
-		msg.GasFeeCap = feeCap
+		estimateMessage.Msg.GasFeeCap = feeCap
 	}
 
-	CapGasFee(mp.GetMaxFee, msg, spec)
+	CapGasFee(mp.GetMaxFee, estimateMessage.Msg, estimateMessage.Spec)
 
-	return msg, nil
+	return estimateMessage.Msg, nil
+}
+
+func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*types.EstimateMessage, fromNonce uint64, tsk types.TipSetKey) ([]*types.EstimateResult, error) {
+	if len(estimateMessages) == 0 {
+		return nil, nil
+	}
+
+	if tsk.IsEmpty() {
+		ts, err := mp.api.ChainHead()
+		if err != nil {
+			return nil, xerrors.Errorf("getting head: %v", err)
+		}
+		tsk = ts.Key()
+	}
+
+	currTS, err := mp.api.ChainTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("getting tipset: %w", err)
+	}
+
+	fromA, err := mp.api.StateAccountKey(ctx, estimateMessages[0].Msg.From, currTS)
+	if err != nil {
+		return nil, xerrors.Errorf("getting key address: %w", err)
+	}
+	pending, ts := mp.PendingFor(fromA)
+	priorMsgs := make([]types.ChainMsg, 0, len(pending))
+	for _, m := range pending {
+		priorMsgs = append(priorMsgs, m)
+	}
+
+	var estimateResults []*types.EstimateResult
+	for _, estimateMessage := range estimateMessages {
+		estimateMsg := estimateMessage.Msg
+		estimateMsg.Nonce = fromNonce
+		if estimateMsg.GasLimit == 0 {
+			gasUsed, err := mp.evalMessageGasLimit(ctx, estimateMsg, priorMsgs, ts)
+			if err != nil {
+				estimateMsg.Nonce = 0
+				estimateResults = append(estimateResults, &types.EstimateResult{
+					Msg: estimateMsg,
+					Err: fmt.Sprintf("estimating gas price: %v", err),
+				})
+			}
+			estimateMsg.GasLimit = int64(float64(gasUsed) * estimateMessage.Spec.GasOverEstimation)
+		}
+
+		if estimateMsg.GasPremium == types.EmptyInt || types.BigCmp(estimateMsg.GasPremium, types.NewInt(0)) == 0 {
+			gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, estimateMsg.From, estimateMsg.GasLimit, types.TipSetKey{})
+			if err != nil {
+				estimateMsg.Nonce = 0
+				estimateResults = append(estimateResults, &types.EstimateResult{
+					Msg: estimateMsg,
+					Err: fmt.Sprintf("estimating gas price: %v", err),
+				})
+			}
+			estimateMsg.GasPremium = gasPremium
+		}
+
+		if estimateMsg.GasFeeCap == types.EmptyInt || types.BigCmp(estimateMsg.GasFeeCap, types.NewInt(0)) == 0 {
+			feeCap, err := mp.GasEstimateFeeCap(ctx, estimateMsg, 20, types.EmptyTSK)
+			if err != nil {
+				estimateMsg.Nonce = 0
+				estimateResults = append(estimateResults, &types.EstimateResult{
+					Msg: estimateMsg,
+					Err: fmt.Sprintf("estimating fee cap: %v", err),
+				})
+			}
+			estimateMsg.GasFeeCap = feeCap
+		}
+
+		CapGasFee(mp.GetMaxFee, estimateMessage.Msg, estimateMessage.Spec)
+
+		estimateResults = append(estimateResults, &types.EstimateResult{
+			Msg: estimateMsg,
+		})
+		priorMsgs = append(priorMsgs, estimateMsg)
+		fromNonce++
+	}
+	return estimateResults, nil
 }

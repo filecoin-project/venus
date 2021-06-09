@@ -21,8 +21,19 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 )
 
+type EstimateMessage struct {
+	Msg  *Message
+	Spec *MessageSendSpec
+}
+
+type EstimateResult struct {
+	Msg *Message
+	Err string
+}
+
 type MessageSendSpec struct {
-	MaxFee abi.TokenAmount
+	MaxFee            abi.TokenAmount
+	GasOverEstimation float64
 }
 
 var DefaultMessageSendSpec = MessageSendSpec{

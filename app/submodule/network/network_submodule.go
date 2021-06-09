@@ -109,13 +109,19 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 
 	var networkName string
 	var err error
-	if repo.Config().NetworkParams.DevNet {
+	if !repo.Config().NetworkParams.DevNet {
 		networkName = "testnetnet"
 	} else {
 		networkName, err = retrieveNetworkName(ctx, config.GenesisCid(), blockstore.CborStore)
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	// peer manager
+	bootNodes, err := net.ParseAddresses(ctx, repo.Config().Bootstrap.Addresses)
+	if err != nil {
+		return nil, err
 	}
 
 	// set up host
@@ -132,6 +138,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 			dht.QueryFilter(dht.PublicQueryFilter),
 			dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
 			dht.DisableProviders(),
+			dht.BootstrapPeers(bootNodes...),
 			dht.DisableValues()}
 		r, err := dht.New(
 			ctx, h, opts...,
@@ -151,11 +158,6 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	// require message signing in online mode when we have priv key
 	pubsubMessageSigning = true
 
-	// peer manager
-	bootNodes, err := net.ParseAddresses(ctx, repo.Config().Bootstrap.Addresses)
-	if err != nil {
-		return nil, err
-	}
 	period, err := time.ParseDuration(repo.Config().Bootstrap.Period)
 	if err != nil {
 		return nil, err
