@@ -199,23 +199,6 @@ func OpenFSRepo(repoPath string, version uint) (*FSRepo, error) {
 	return r, nil
 }
 
-// MakeRepoDirName constructs a name for a concrete repo directory, which includes its
-// version number and a timestamp. The name will begin with prefix and, if uniqueifier is
-// non-zero, end with that (intended as an ordinal for finding a free name).
-// E.g. ".filecoin-20190102-140425-012-1
-// This is exported for use by migrations.
-func MakeRepoDirName(prefix string, ts time.Time, version uint, uniqueifier uint) string {
-	name := strings.Join([]string{
-		prefix,
-		ts.Format("20060102-150405"),
-		fmt.Sprintf("v%03d", version),
-	}, "-")
-	if uniqueifier != 0 {
-		name = name + fmt.Sprintf("-%d", uniqueifier)
-	}
-	return name
-}
-
 func (r *FSRepo) loadFromDisk() error {
 	localVersion, err := r.readVersion()
 	if err != nil {

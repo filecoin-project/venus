@@ -3,6 +3,11 @@ package blockstoreutil
 import (
 	"context"
 	"fmt"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/keytransform"
+	dshelp "github.com/ipfs/go-ipfs-ds-help"
+	pool "github.com/libp2p/go-buffer-pool"
+	"github.com/multiformats/go-base32"
 	"io"
 	"sync/atomic"
 
@@ -10,11 +15,13 @@ import (
 	"github.com/dgraph-io/badger/v2/options"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/keytransform"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	dshelp "github.com/ipfs/go-ipfs-ds-help"
 	"go.uber.org/zap"
+)
+
+var (
+	// KeyPool is the buffer pool we use to compute storage keys.
+	KeyPool *pool.BufferPool = pool.GlobalPool
 )
 
 var (
@@ -125,9 +132,10 @@ type BadgerBlockstore struct {
 	// state is guarded by atomic.
 	state int64
 
-	keyTransform *keytransform.PrefixTransform
-
-	cache IBlockCache
+	prefixing    bool
+	prefix       []byte
+	prefixLen    int
+	keyTransform keytransform.KeyTransform
 }
 
 var _ blockstore.Blockstore = (*BadgerBlockstore)(nil)
@@ -140,18 +148,20 @@ func Open(opts Options) (*BadgerBlockstore, error) {
 		SugaredLogger: log.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar(),
 		skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
 	}
-	keyTransform := &keytransform.PrefixTransform{
-		Prefix: datastore.NewKey(opts.Prefix),
-	}
+
 	db, err := badger.Open(opts.Options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open badger blockstore: %w", err)
 	}
-	cache := NewLruCache(1000 * 10000)
-	bs := &BadgerBlockstore{
-		DB:           db,
-		keyTransform: keyTransform,
-		cache:        cache,
+
+	bs := &BadgerBlockstore{DB: db}
+	if p := opts.Prefix; p != "" {
+		bs.prefixing = true
+		bs.prefix = []byte(p)
+		bs.prefixLen = len(bs.prefix)
+	}
+	bs.keyTransform = &keytransform.PrefixTransform{
+		Prefix: datastore.NewKey(opts.Prefix),
 	}
 	return bs, nil
 }
@@ -167,12 +177,23 @@ func (b *BadgerBlockstore) Close() error {
 	return b.DB.Close()
 }
 
-func (b *BadgerBlockstore) ReadonlyDatastore() *TxBlockstore {
-	return &TxBlockstore{
-		cache:        b.cache,
-		tx:           b.DB.NewTransaction(false),
-		keyTransform: b.keyTransform,
+// CollectGarbage runs garbage collection on the value log
+func (b *BadgerBlockstore) CollectGarbage() error {
+	if atomic.LoadInt64(&b.state) != stateOpen {
+		return ErrBlockstoreClosed
 	}
+
+	var err error
+	for err == nil {
+		err = b.DB.RunValueLogGC(0.125)
+	}
+
+	if err == badger.ErrNoRewrite {
+		// not really an error in this case
+		return nil
+	}
+
+	return err
 }
 
 // View implements blockstore.Viewer, which leverages zero-copy read-only
@@ -182,9 +203,13 @@ func (b *BadgerBlockstore) View(cid cid.Cid, fn func([]byte) error) error {
 		return ErrBlockstoreClosed
 	}
 
-	key := b.ConvertKey(cid)
+	k, pooled := b.PooledStorageKey(cid)
+	if pooled {
+		defer KeyPool.Put(k)
+	}
+
 	return b.DB.View(func(txn *badger.Txn) error {
-		switch item, err := txn.Get(key.Bytes()); err {
+		switch item, err := txn.Get(k); err {
 		case nil:
 			return item.Value(fn)
 		case badger.ErrKeyNotFound:
@@ -195,21 +220,19 @@ func (b *BadgerBlockstore) View(cid cid.Cid, fn func([]byte) error) error {
 	})
 }
 
-// Has implements blockstore.Has.
+// Has implements Blockstore.Has.
 func (b *BadgerBlockstore) Has(cid cid.Cid) (bool, error) {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return false, ErrBlockstoreClosed
 	}
 
-	key := b.ConvertKey(cid)
-	if b.cache != nil {
-		if _, has := b.cache.Get(key.String()); has {
-			return true, nil
-		}
+	k, pooled := b.PooledStorageKey(cid)
+	if pooled {
+		defer KeyPool.Put(k)
 	}
 
 	err := b.DB.View(func(txn *badger.Txn) error {
-		_, err := txn.Get(key.Bytes())
+		_, err := txn.Get(k)
 		return err
 	})
 
@@ -223,7 +246,7 @@ func (b *BadgerBlockstore) Has(cid cid.Cid) (bool, error) {
 	}
 }
 
-// Get implements blockstore.Get.
+// Get implements Blockstore.Get.
 func (b *BadgerBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	if !cid.Defined() {
 		return nil, blockstore.ErrNotFound
@@ -233,18 +256,14 @@ func (b *BadgerBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 		return nil, ErrBlockstoreClosed
 	}
 
-	key := b.ConvertKey(cid)
-	if b.cache != nil {
-		if val, has := b.cache.Get(key.String()); has {
-			return val.(blocks.Block), nil
-		}
+	k, pooled := b.PooledStorageKey(cid)
+	if pooled {
+		defer KeyPool.Put(k)
 	}
 
-	//migrate
-	//todo just for test
 	var val []byte
 	err := b.DB.View(func(txn *badger.Txn) error {
-		switch item, err := txn.Get(key.Bytes()); err {
+		switch item, err := txn.Get(k); err {
 		case nil:
 			val, err = item.ValueCopy(nil)
 			return err
@@ -257,31 +276,23 @@ func (b *BadgerBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	blk, err := blocks.NewBlockWithCid(val, cid)
-	if err != nil {
-		return nil, err
-	}
-
-	b.cache.Add(key.String(), blk)
-	return blk, nil
+	return blocks.NewBlockWithCid(val, cid)
 }
 
-// GetSize implements blockstore.GetSize.
+// GetSize implements Blockstore.GetSize.
 func (b *BadgerBlockstore) GetSize(cid cid.Cid) (int, error) {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return -1, ErrBlockstoreClosed
 	}
 
-	key := b.ConvertKey(cid)
-	if b.cache != nil {
-		if val, has := b.cache.Get(key.String()); has {
-			return len(val.(blocks.Block).RawData()), nil
-		}
+	k, pooled := b.PooledStorageKey(cid)
+	if pooled {
+		defer KeyPool.Put(k)
 	}
 
 	var size int
 	err := b.DB.View(func(txn *badger.Txn) error {
-		switch item, err := txn.Get(key.Bytes()); err {
+		switch item, err := txn.Get(k); err {
 		case nil:
 			size = int(item.ValueSize())
 		case badger.ErrKeyNotFound:
@@ -297,23 +308,19 @@ func (b *BadgerBlockstore) GetSize(cid cid.Cid) (int, error) {
 	return size, err
 }
 
-// Put implements blockstore.Put.
+// Put implements Blockstore.Put.
 func (b *BadgerBlockstore) Put(block blocks.Block) error {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return ErrBlockstoreClosed
 	}
 
-	key := b.ConvertKey(block.Cid())
-	if _, ok := b.cache.Get(key.String()); ok {
-		return nil
+	k, pooled := b.PooledStorageKey(block.Cid())
+	if pooled {
+		defer KeyPool.Put(k)
 	}
 
 	err := b.DB.Update(func(txn *badger.Txn) error {
-		err := txn.Set(key.Bytes(), block.RawData())
-		if err == nil {
-			b.cache.Add(key.String(), block)
-		}
-		return err
+		return txn.Set(k, block.RawData())
 	})
 	if err != nil {
 		err = fmt.Errorf("failed to put block in badger blockstore: %w", err)
@@ -321,8 +328,8 @@ func (b *BadgerBlockstore) Put(block blocks.Block) error {
 	return err
 }
 
-// PutMany implements blockstore.PutMany.
-func (b *BadgerBlockstore) PutMany(blks []blocks.Block) error {
+// PutMany implements Blockstore.PutMany.
+func (b *BadgerBlockstore) PutMany(blocks []blocks.Block) error {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return ErrBlockstoreClosed
 	}
@@ -330,48 +337,91 @@ func (b *BadgerBlockstore) PutMany(blks []blocks.Block) error {
 	batch := b.DB.NewWriteBatch()
 	defer batch.Cancel()
 
-	flushToCache := map[string]blocks.Block{}
-	for _, block := range blks {
-		key := b.ConvertKey(block.Cid())
-		if _, ok := b.cache.Get(key.String()); ok {
-			continue
-		}
+	// toReturn tracks the byte slices to return to the pool, if we're using key
+	// prefixing. we can't return each slice to the pool after each Set, because
+	// badger holds on to the slice.
+	var toReturn [][]byte
+	if b.prefixing {
+		toReturn = make([][]byte, 0, len(blocks))
+		defer func() {
+			for _, b := range toReturn {
+				KeyPool.Put(b)
+			}
+		}()
+	}
 
-		if err := batch.Set(key.Bytes(), block.RawData()); err != nil {
+	for _, block := range blocks {
+		k, pooled := b.PooledStorageKey(block.Cid())
+		if pooled {
+			toReturn = append(toReturn, k)
+		}
+		if err := batch.Set(k, block.RawData()); err != nil {
 			return err
 		}
-
-		flushToCache[key.String()] = block
 	}
 
 	err := batch.Flush()
 	if err != nil {
 		err = fmt.Errorf("failed to put blocks in badger blockstore: %w", err)
 	}
-	//flush to cache
-	for k, v := range flushToCache {
-		b.cache.Add(k, v)
-	}
 	return err
 }
 
-// DeleteBlock implements blockstore.DeleteBlock.
+// DeleteBlock implements Blockstore.DeleteBlock.
 func (b *BadgerBlockstore) DeleteBlock(cid cid.Cid) error {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return ErrBlockstoreClosed
 	}
 
-	key := b.ConvertKey(cid)
+	k, pooled := b.PooledStorageKey(cid)
+	if pooled {
+		defer KeyPool.Put(k)
+	}
+
 	return b.DB.Update(func(txn *badger.Txn) error {
-		err := txn.Delete(key.Bytes())
-		if err == nil {
-			b.cache.Remove(key.String())
-		}
-		return err
+		return txn.Delete(k)
 	})
 }
 
-// AllKeysChan implements blockstore.AllKeysChan.
+func (b *BadgerBlockstore) DeleteMany(cids []cid.Cid) error {
+	if atomic.LoadInt64(&b.state) != stateOpen {
+		return ErrBlockstoreClosed
+	}
+
+	batch := b.DB.NewWriteBatch()
+	defer batch.Cancel()
+
+	// toReturn tracks the byte slices to return to the pool, if we're using key
+	// prefixing. we can't return each slice to the pool after each Set, because
+	// badger holds on to the slice.
+	var toReturn [][]byte
+	if b.prefixing {
+		toReturn = make([][]byte, 0, len(cids))
+		defer func() {
+			for _, b := range toReturn {
+				KeyPool.Put(b)
+			}
+		}()
+	}
+
+	for _, cid := range cids {
+		k, pooled := b.PooledStorageKey(cid)
+		if pooled {
+			toReturn = append(toReturn, k)
+		}
+		if err := batch.Delete(k); err != nil {
+			return err
+		}
+	}
+
+	err := batch.Flush()
+	if err != nil {
+		err = fmt.Errorf("failed to delete blocks from badger blockstore: %w", err)
+	}
+	return err
+}
+
+// AllKeysChan implements Blockstore.AllKeysChan.
 func (b *BadgerBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return nil, ErrBlockstoreClosed
@@ -379,6 +429,9 @@ func (b *BadgerBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, err
 
 	txn := b.DB.NewTransaction(false)
 	opts := badger.IteratorOptions{PrefetchSize: 100}
+	if b.prefixing {
+		opts.Prefix = b.prefix
+	}
 	iter := txn.NewIterator(opts)
 
 	ch := make(chan cid.Cid)
@@ -388,6 +441,7 @@ func (b *BadgerBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, err
 
 		// NewCidV1 makes a copy of the multihash buffer, so we can reuse it to
 		// contain allocs.
+		var buf []byte
 		for iter.Rewind(); iter.Valid(); iter.Next() {
 			if ctx.Err() != nil {
 				return // context has fired.
@@ -397,17 +451,21 @@ func (b *BadgerBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, err
 				return // closing, yield.
 			}
 			k := iter.Item().Key()
-			// need to convert to key.Key using key.KeyFromDsKey.
-			bk, err := dshelp.BinaryFromDsKey(datastore.RawKey(string(k)))
-			if err != nil {
-				log.Warnf("error parsing key from binary: %s", err)
-				continue
+			if b.prefixing {
+				k = k[b.prefixLen:]
 			}
-			cidKey := cid.NewCidV1(cid.Raw, bk)
-			select {
-			case <-ctx.Done():
-				return
-			case ch <- cidKey:
+
+			if reqlen := base32.RawStdEncoding.DecodedLen(len(k)); len(buf) < reqlen {
+				buf = make([]byte, reqlen)
+			}
+			if n, err := base32.RawStdEncoding.Decode(buf, k); err == nil {
+				select {
+				case ch <- cid.NewCidV1(cid.Raw, buf[:n]):
+				case <-ctx.Done():
+					return
+				}
+			} else {
+				log.Warnf("failed to decode key %s in badger AllKeysChan; err: %s", k, err)
 			}
 		}
 	}()
@@ -415,13 +473,40 @@ func (b *BadgerBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, err
 	return ch, nil
 }
 
-// HashOnRead implements blockstore.HashOnRead. It is not supported by this
+// HashOnRead implements Blockstore.HashOnRead. It is not supported by this
 // blockstore.
 func (b *BadgerBlockstore) HashOnRead(_ bool) {
 	log.Warnf("called HashOnRead on badger blockstore; function not supported; ignoring")
 }
 
-func (b *BadgerBlockstore) ConvertKey(cid cid.Cid) datastore.Key {
-	key := dshelp.MultihashToDsKey(cid.Hash())
-	return b.keyTransform.ConvertKey(key)
+// PooledStorageKey returns the storage key under which this CID is stored.
+//
+// The key is: prefix + base32_no_padding(cid.Hash)
+//
+// This method may return pooled byte slice, which MUST be returned to the
+// KeyPool if pooled=true, or a leak will occur.
+func (b *BadgerBlockstore) PooledStorageKey(cid cid.Cid) (key []byte, pooled bool) {
+	key2 := dshelp.MultihashToDsKey(cid.Hash())
+	k := b.keyTransform.ConvertKey(key2).Bytes()
+	return k, true // slicing upto length unnecessary; the pool has already done this.
+}
+
+// Storage acts like PooledStorageKey, but attempts to write the storage key
+// into the provided slice. If the slice capacity is insufficient, it allocates
+// a new byte slice with enough capacity to accommodate the result. This method
+// returns the resulting slice.
+func (b *BadgerBlockstore) StorageKey(dst []byte, cid cid.Cid) []byte {
+	key2 := dshelp.MultihashToDsKey(cid.Hash())
+	k := b.keyTransform.ConvertKey(key2).Bytes()
+	if len(k) > cap(dst) {
+		// passed slice is smaller than required size; create new.
+		dst = make([]byte, len(k))
+	} else if len(k) > len(dst) {
+		// passed slice has enough capacity, but its length is
+		// restricted, expand.
+		dst = dst[:cap(dst)]
+	}
+
+	copy(dst, k)
+	return dst[:len(k)]
 }
