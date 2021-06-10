@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/filecoin-project/venus/pkg/messagesigner"
+
 	"github.com/filecoin-project/go-address"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
@@ -57,6 +59,7 @@ type MessagePoolSubmodule struct { //nolint
 	MessageSub   pubsub.Subscription
 
 	MPool      *messagepool.MessagePool
+	msgSigner  *messagesigner.MessageSigner
 	chain      *chain.ChainSubmodule
 	network    *network.NetworkSubmodule
 	walletAPI  apiface.IWallet
@@ -107,6 +110,7 @@ func NewMpoolSubmodule(cfg messagepoolConfig,
 		walletAPI:  wallet.API(),
 		network:    network,
 		networkCfg: networkCfg,
+		msgSigner:  messagesigner.NewMessageSigner(wallet.Wallet, mp, cfg.Repo().MetaDatastore()),
 	}, nil
 }
 
@@ -123,7 +127,7 @@ func (mp *MessagePoolSubmodule) handleIncomingMessage(ctx context.Context, pubSu
 		return err
 	}
 
-	if err := mp.MPool.Add(unmarshaled); err != nil {
+	if err := mp.MPool.Add(ctx, unmarshaled); err != nil {
 		log.Debugf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", unmarshaled.Message.From, unmarshaled.Message.To, unmarshaled.Message.Nonce, types.FIL(unmarshaled.Message.Value), err)
 		switch {
 		case xerrors.Is(err, messagepool.ErrSoftValidationFailure):
