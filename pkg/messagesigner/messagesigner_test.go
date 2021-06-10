@@ -18,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-datastore"
 )
@@ -51,6 +52,8 @@ func (mp *mockMpool) GetActor(_ context.Context, addr address.Address, _ types.T
 }
 
 func TestMessageSignerSignMessage(t *testing.T) {
+	tf.UnitTest(t)
+
 	ctx := context.Background()
 	r := repo.NewInMemoryRepo()
 	backend, err := wallet.NewDSBackend(r.WalletDatastore(), r.Config().Wallet.PassphraseConfig, wallet.TestPassword)
