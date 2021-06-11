@@ -10,9 +10,6 @@ import (
 
 var ErrActorNotFound = errors.New("actor not found")
 
-// DefaultGasCost is default gas cost for the actor calls.
-const DefaultGasCost = 100
-
 // Actor is the central abstraction of entities in the system.
 //
 // Both individual accounts, as well as contracts (user & system level) are
@@ -53,11 +50,11 @@ func NewActor(code cid.Cid, balance abi.TokenAmount, head cid.Cid) *Actor {
 }
 
 // Empty tests whether the actor's code is defined.
-func (a *Actor) Empty() bool {
-	return !a.Code.Defined()
+func (t *Actor) Empty() bool {
+	return !t.Code.Defined()
 }
 
 // IncrementSeqNum increments the seq number.
-func (a *Actor) IncrementSeqNum() {
-	a.Nonce = a.Nonce + 1
+func (t *Actor) IncrementSeqNum() {
+	t.Nonce = t.Nonce + 1
 }

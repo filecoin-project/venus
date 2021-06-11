@@ -28,6 +28,7 @@ type InvocResult struct {
 	Error          string
 	Duration       time.Duration
 }
+
 type MsgGasCost struct {
 	Message            cid.Cid // Can be different than requested, in case it was replaced, but only gas values changed
 	GasUsed            abi.TokenAmount
