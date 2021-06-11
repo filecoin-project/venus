@@ -25,7 +25,7 @@ type Backend interface {
 	GetKeyInfoPassphrase(address.Address, []byte) (*crypto.KeyInfo, error)
 
 	LockWallet() error
-	UnLockWallet(string) error
+	UnLockWallet([]byte) error
 	WalletState() int
 }
 

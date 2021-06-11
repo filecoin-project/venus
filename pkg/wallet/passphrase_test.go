@@ -22,12 +22,10 @@ func TestEncrypKeyAndDecryptKey(t *testing.T) {
 		require.NoError(t, ds.Close())
 	}()
 
-	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), "")
+	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
 	w := New(fs)
-	err = w.SetPassword(TestPassword)
-	assert.NoError(t, err)
 
 	ki, err := w.NewKeyInfo()
 	assert.NoError(t, err)
@@ -41,13 +39,15 @@ func TestEncrypKeyAndDecryptKey(t *testing.T) {
 		KeyInfo: ki,
 	}
 
-	b, err := encryptKey(key, []byte(TestPassword), config.TestPassphraseConfig().ScryptN, config.TestPassphraseConfig().ScryptP)
+	b, err := encryptKey(key, TestPassword, config.TestPassphraseConfig().ScryptN, config.TestPassphraseConfig().ScryptP)
 	assert.NoError(t, err)
 
-	key2, err := decryptKey(b, []byte(TestPassword))
+	key2, err := decryptKey(b, TestPassword)
 	assert.NoError(t, err)
 
-	assert.Equal(t, key, key2)
+	assert.Equal(t, key.ID, key2.ID)
+	assert.Equal(t, key.Address, key2.Address)
+	assert.Equal(t, key.KeyInfo.Key(), key2.KeyInfo.Key())
 }
 
 func TestScrypt(t *testing.T) {

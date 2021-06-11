@@ -2,8 +2,9 @@ package node
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/jwtauth"
 
 	"github.com/filecoin-project/venus/app/submodule/multisig"
 
@@ -38,18 +39,18 @@ import (
 
 // Builder is a helper to aid in the construction of a filecoin node.
 type Builder struct {
-	blockTime   time.Duration
-	libp2pOpts  []libp2p.Option
-	offlineMode bool
-	verifier    ffiwrapper.Verifier
-	propDelay   time.Duration
-	repo        repo.Repo
-	journal     journal.Journal
-	isRelay     bool
-	chainClock  clock.ChainEpochClock
-	genCid      cid.Cid
-	password    string
-	authURL     string
+	blockTime      time.Duration
+	libp2pOpts     []libp2p.Option
+	offlineMode    bool
+	verifier       ffiwrapper.Verifier
+	propDelay      time.Duration
+	repo           repo.Repo
+	journal        journal.Journal
+	isRelay        bool
+	chainClock     clock.ChainEpochClock
+	genCid         cid.Cid
+	walletPassword []byte
+	authURL        string
 }
 
 // BuilderOpt is an option for building a filecoin node.
@@ -87,10 +88,10 @@ func PropagationDelay(propDelay time.Duration) BuilderOpt {
 	}
 }
 
-// SetPassword set wallet password
-func SetPassword(password string) BuilderOpt {
+// SetWalletPassword set wallet password
+func SetWalletPassword(password []byte) BuilderOpt {
 	return func(c *Builder) error {
-		c.password = password
+		c.walletPassword = password
 		return nil
 	}
 }
@@ -268,7 +269,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}
 
-	nd.wallet, err = wallet.NewWalletSubmodule(ctx, nd.configModule, b.repo, nd.chain, b.password)
+	nd.wallet, err = wallet.NewWalletSubmodule(ctx, nd.configModule, b.repo, nd.chain, b.walletPassword)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.wallet")
 	}

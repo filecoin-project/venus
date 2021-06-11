@@ -18,7 +18,7 @@ func TestGenerateSecpKey(t *testing.T) {
 	token := bytes.Repeat([]byte{42}, 512)
 	ki, err := crypto.NewSecpKeyFromSeed(bytes.NewReader(token))
 	assert.NoError(t, err)
-	sk := ki.PrivateKey
+	sk := ki.Key()
 	t.Logf("%x", sk)
 	assert.Equal(t, len(sk), 32)
 
