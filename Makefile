@@ -8,9 +8,6 @@ deps:
 	git submodule update --init
 	go run ./build/*.go smartdeps
 
-lint:
-	go run ./build/*.go lint
-
 # WARNING THIS BUILDS A GO PLUGIN AND PLUGINS *DO NOT* WORK ON WINDOWS SYSTEMS
 iptb:
 	make -C tools/iptb-plugins all
@@ -26,4 +23,8 @@ gen:
 	gofmt -s -l -w ./app/client/client_gen.go
 	goimports -l -w ./app/client/client_gen.go
 
+lint:
+	go run ./build/*.go lint
 
+test:
+	go run ./build/*.go test --timeout=30m

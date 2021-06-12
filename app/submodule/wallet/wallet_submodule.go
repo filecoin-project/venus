@@ -39,7 +39,7 @@ func NewWalletSubmodule(ctx context.Context,
 	cfg *config.ConfigModule,
 	repo walletRepo,
 	chain *chain.ChainSubmodule,
-	password string) (*WalletSubmodule, error) {
+	password []byte) (*WalletSubmodule, error) {
 	passphraseCfg, err := getPassphraseConfig(cfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get passphrase config")

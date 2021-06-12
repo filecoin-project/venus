@@ -4,5 +4,6 @@ package types
 type BlockMessagesInfo struct { //nolint
 	BlsMessages   []ChainMsg
 	SecpkMessages []ChainMsg
-	Block         *BlockHeader
+
+	Block *BlockHeader
 }

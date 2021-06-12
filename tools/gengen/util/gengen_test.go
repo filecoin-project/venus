@@ -84,7 +84,12 @@ func TestGenGenDeterministic(t *testing.T) {
 		if info == nil {
 			info = inf
 		} else {
-			assert.Equal(t, info, inf)
+			assert.Equal(t, info.GenesisCid, inf.GenesisCid)
+			assert.Equal(t, info.Miners, inf.Miners)
+			assert.Equal(t, len(info.Keys), len(inf.Keys))
+			for i, key := range inf.Keys {
+				assert.Equal(t, info.Keys[i].Key(), key.Key())
+			}
 		}
 	}
 }

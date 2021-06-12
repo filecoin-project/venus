@@ -69,6 +69,7 @@ type BlockHeader struct {
 	// ForkSignaling is extra data used by miners to communicate
 	ForkSignaling uint64 `json:"forkSignaling"`
 
+	//identical for all blocks in same tipset: the base fee after executing parent tipset
 	ParentBaseFee abi.TokenAmount `json:"parentBaseFee"`
 
 	cachedCid cid.Cid
@@ -77,12 +78,6 @@ type BlockHeader struct {
 
 	validated bool // internal, true if the signature has been validated
 }
-
-// IndexMessagesField is the message field position in the encoded newBlock
-const IndexMessagesField = 10
-
-// IndexParentsField is the parents field position in the encoded newBlock
-const IndexParentsField = 5
 
 // Cid returns the content id of this newBlock.
 func (b *BlockHeader) Cid() cid.Cid {

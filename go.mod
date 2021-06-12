@@ -9,6 +9,7 @@ require (
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
+	github.com/awnumar/memguard v0.22.2
 	github.com/bluele/gcache v0.0.0-20190518031135-bc40bd653833
 	github.com/cskr/pubsub v1.0.2
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
@@ -71,7 +72,7 @@ require (
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
 	github.com/ipfs/go-ipfs-exchange-offline v0.0.1
 	github.com/ipfs/go-ipfs-files v0.0.8
-	github.com/ipfs/go-ipfs-keystore v0.0.1
+	github.com/ipfs/go-ipfs-keystore v0.0.1 // indirect
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.5
 	github.com/ipfs/go-ipld-format v0.2.0
@@ -100,7 +101,7 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/multiformats/go-multiaddr-dns v0.2.0
-	github.com/multiformats/go-multiaddr-net v0.2.0
+	github.com/multiformats/go-multiaddr-net v0.2.0 // indirect
 	github.com/multiformats/go-multihash v0.0.14
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect

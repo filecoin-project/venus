@@ -53,8 +53,6 @@ func TestWalletBalance(t *testing.T) {
 
 	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
-	err := n.Wallet().API().SetPassword(ctx, wallet.TestPassword)
-	require.NoError(t, err)
 
 	addr, err := n.Wallet().API().WalletNewAddress(address.SECP256K1)
 	require.NoError(t, err)
@@ -82,11 +80,8 @@ func TestWalletLoadFromFile(t *testing.T) {
 	cs := test.FixtureChainSeed(t)
 	builder.WithGenesisInit(cs.GenesisInitFunc)
 
-	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
+	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
-
-	err := n.Wallet().API().SetPassword(ctx, wallet.TestPassword)
-	require.NoError(t, err)
 
 	for _, p := range fortest.KeyFilePaths() {
 		cmdClient.RunSuccess(ctx, "wallet", "import", p)
@@ -112,9 +107,6 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
 
-	err := n.Wallet().API().SetPassword(ctx, wallet.TestPassword)
-	require.NoError(t, err)
-
 	addr, err := n.Wallet().API().WalletNewAddress(address.SECP256K1)
 	require.NoError(t, err)
 
@@ -127,7 +119,7 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	resultAddr := strings.Split(result[1], " ")[0]
 	require.Equal(t, addr.String(), resultAddr)
 
-	exportJSON := cmdClient.RunSuccess(ctx, "wallet", "export", resultAddr, wallet.TestPassword).ReadStdoutTrimNewlines()
+	exportJSON := cmdClient.RunSuccess(ctx, "wallet", "export", resultAddr, string(wallet.TestPassword)).ReadStdoutTrimNewlines()
 	data, err := hex.DecodeString(exportJSON)
 	require.NoError(t, err)
 	var exportResult crypto.KeyInfo
@@ -140,9 +132,9 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 		require.NoError(t, os.Remove("walletFileTest"))
 	}()
 
-	keyInfo, err := json.Marshal(exportResult)
+	keyInfoByte, err := json.Marshal(exportResult)
 	require.NoError(t, err)
-	_, err = wf.WriteString(hex.EncodeToString(keyInfo))
+	_, err = wf.WriteString(hex.EncodeToString(keyInfoByte))
 	require.NoError(t, err)
 	require.NoError(t, wf.Close())
 

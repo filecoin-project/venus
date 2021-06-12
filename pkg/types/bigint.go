@@ -9,8 +9,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 )
 
-const BigIntMaxSerializedLen = 128 // is this big enough? or too big?
-
 var TotalFilecoinInt = FromFil(constants.FilBase)
 
 var EmptyInt = BigInt{}
