@@ -53,4 +53,3 @@ When implementing a change:
 
 This project is dual-licensed under [Apache 2.0](https://github.com/filecoin-project/lotus/blob/master/LICENSE-APACHE) and [MIT](https://github.com/filecoin-project/lotus/blob/master/LICENSE-MIT).
 
-
