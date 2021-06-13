@@ -323,7 +323,7 @@ func (bv *BlockValidator) validateBlockMsg(ctx context.Context, blk *types.Block
 	// if we are synced and the miner is unknown, then the block is rejcected.
 	key, err := bv.checkPowerAndGetWorkerKey(ctx, blk.Header)
 	if err != nil {
-		if err != ErrSoftFailure {
+		if err != ErrSoftFailure && bv.isChainNearSynced() {
 			logExpect.Errorf("received block from unknown miner or miner that doesn't meet min power over pubsub; rejecting message")
 			return pubsub.ValidationReject
 		}
@@ -344,6 +344,13 @@ func (bv *BlockValidator) validateBlockMsg(ctx context.Context, blk *types.Block
 	}
 
 	return pubsub.ValidationAccept
+}
+
+func (bv *BlockValidator) isChainNearSynced() bool {
+	ts := bv.chainState.GetHead()
+	timestamp := ts.MinTimestamp()
+	timestampTime := time.Unix(int64(timestamp), 0)
+	return constants.Clock.Since(timestampTime) < 6*time.Hour
 }
 
 func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockMsg) error {

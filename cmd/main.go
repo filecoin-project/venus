@@ -150,7 +150,7 @@ TOOL COMMANDS
   venus protocol               - Show protocol parameter details
   venus version                - Show venus version information
   venus seed                   - Seal sectors for genesis miner
-  venus fetch-params           - Fetch proving parameters
+  venus fetch                  - Fetch proving parameters
 `,
 	},
 	Options: []cmds.Option{
