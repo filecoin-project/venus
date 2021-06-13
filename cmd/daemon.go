@@ -74,7 +74,11 @@ var daemonCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		if err := paramfetch.GetParams(req.Context, ps, 0); err != nil {
+		srs, err := asset.Asset("fixtures/_assets/proof-params/srs-inner-product.json")
+		if err != nil {
+			return err
+		}
+		if err := paramfetch.GetParams(req.Context, ps, srs, 0); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
