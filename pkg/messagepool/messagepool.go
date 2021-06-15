@@ -700,7 +700,7 @@ func (mp *MessagePool) addLocal(ctx context.Context, m *types.SignedMessage) err
 	return nil
 }
 
-// verifyMsgBeforeAdd verifies that the message meets the minimum criteria for block inclusio
+// verifyMsgBeforeAdd verifies that the message meets the minimum criteria for block inclusion
 // and whether the message has enough funds to be included in the next 20 blocks.
 // If the message is not valid for block inclusion, it returns an error.
 // For local messages, if the message can be included in the next 20 blocks, it returns true to
@@ -878,7 +878,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 }
 
 func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage, curTS *types.TipSet) error {
-	balance, err := mp.getStateBalance(m.Message.From, curTS)
+	balance, err := mp.getStateBalance(ctx, m.Message.From, curTS)
 	if err != nil {
 		return xerrors.Errorf("failed to check sender balance: %s: %v", err, ErrSoftValidationFailure)
 	}
@@ -911,7 +911,7 @@ func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage,
 }
 
 func (mp *MessagePool) addTS(ctx context.Context, m *types.SignedMessage, curTS *types.TipSet, local, untrusted bool) (bool, error) {
-	snonce, err := mp.getStateNonce(m.Message.From, curTS)
+	snonce, err := mp.getStateNonce(ctx, m.Message.From, curTS)
 	if err != nil {
 		return false, xerrors.Errorf("failed to look up actor state nonce: %s: %v", err, ErrSoftValidationFailure)
 	}
@@ -959,7 +959,7 @@ func (mp *MessagePool) addLoaded(ctx context.Context, m *types.SignedMessage) er
 		return xerrors.Errorf("current tipset not loaded")
 	}
 
-	snonce, err := mp.getStateNonce(m.Message.From, curTS)
+	snonce, err := mp.getStateNonce(ctx, m.Message.From, curTS)
 	if err != nil {
 		return xerrors.Errorf("failed to look up actor state nonce: %s: %v", err, ErrSoftValidationFailure)
 	}
@@ -1011,7 +1011,7 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 	}
 
 	if !ok {
-		nonce, err := mp.getStateNonce(m.Message.From, mp.curTS)
+		nonce, err := mp.getStateNonce(ctx, m.Message.From, mp.curTS)
 		if err != nil {
 			return xerrors.Errorf("failed to get initial actor nonce: %w", err)
 		}
@@ -1073,7 +1073,7 @@ func (mp *MessagePool) GetActor(_ context.Context, addr address.Address, _ types
 }
 
 func (mp *MessagePool) getNonceLocked(ctx context.Context, addr address.Address, curTS *types.TipSet) (uint64, error) {
-	stateNonce, err := mp.getStateNonce(addr, curTS) // sanity check
+	stateNonce, err := mp.getStateNonce(ctx, addr, curTS) // sanity check
 	if err != nil {
 		return 0, err
 	}
@@ -1097,7 +1097,7 @@ func (mp *MessagePool) getNonceLocked(ctx context.Context, addr address.Address,
 	return stateNonce, nil
 }
 
-func (mp *MessagePool) getStateNonce(addr address.Address, curTS *types.TipSet) (uint64, error) {
+func (mp *MessagePool) getStateNonce(ctx context.Context, addr address.Address, curTS *types.TipSet) (uint64, error) {
 	act, err := mp.api.GetActorAfter(addr, curTS)
 	if err != nil {
 		return 0, err
@@ -1106,7 +1106,7 @@ func (mp *MessagePool) getStateNonce(addr address.Address, curTS *types.TipSet) 
 	return act.Nonce, nil
 }
 
-func (mp *MessagePool) getStateBalance(addr address.Address, ts *types.TipSet) (big.Int, error) {
+func (mp *MessagePool) getStateBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (big.Int, error) {
 	act, err := mp.api.GetActorAfter(addr, ts)
 	if err != nil {
 		return big.Zero(), err
