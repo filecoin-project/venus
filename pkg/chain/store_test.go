@@ -61,6 +61,11 @@ func requirePutTestChain(ctx context.Context, t *testing.T, cborStore *CborBlock
 }
 
 func requireSiblingState(t *testing.T, cborStore *CborBlockStore, ts *types.TipSet) []*chain.TipSetMetadata {
+	if ts.Height() == 0 {
+		tsasSlice, err := cborStore.LoadTipsetMetadata(ts)
+		require.NoError(t, err)
+		return []*chain.TipSetMetadata{tsasSlice}
+	}
 	tsasSlice, err := cborStore.GetSiblingState(ts)
 	require.NoError(t, err)
 	return tsasSlice
