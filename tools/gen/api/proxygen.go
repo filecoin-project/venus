@@ -103,7 +103,7 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 }
 
 func main() {
-	if err := generate("./app/submodule", "apiface", "client", "./app/client/client_gen.go"); err != nil {
+	if err := generate("./app/submodule", "apiface", "client", "./app/client/full.go"); err != nil {
 		fmt.Println("error: ", err)
 	}
 }

@@ -14,7 +14,6 @@ import (
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
@@ -376,18 +375,21 @@ func (cia *chainInfoAPI) MessageWait(ctx context.Context, msgCid cid.Cid, confid
 	if err != nil {
 		return nil, err
 	}
-	return cia.chain.Waiter.Wait(ctx, chainMsg, confidence, lookback)
+	return cia.chain.Waiter.Wait(ctx, chainMsg, uint64(confidence), lookback, true)
 }
 
 // StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
-func (cia *chainInfoAPI) StateSearchMsg(ctx context.Context, mCid cid.Cid) (*apitypes.MsgLookup, error) {
+func (cia *chainInfoAPI) StateSearchMsg(ctx context.Context, from types.TipSetKey, mCid cid.Cid, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
 	chainMsg, err := cia.chain.MessageStore.LoadMessage(mCid)
 	if err != nil {
 		return nil, err
 	}
 	//todo add a api for head tipset directly
-	head := cia.chain.ChainReader.GetHead()
-	msgResult, found, err := cia.chain.Waiter.Find(ctx, chainMsg, constants.LookbackNoLimit, head)
+	head, err := cia.chain.ChainReader.GetTipSet(from)
+	if err != nil {
+		return nil, err
+	}
+	msgResult, found, err := cia.chain.Waiter.Find(ctx, chainMsg, lookbackLimit, head, allowReplaced)
 	if err != nil {
 		return nil, err
 	}
@@ -405,12 +407,12 @@ func (cia *chainInfoAPI) StateSearchMsg(ctx context.Context, mCid cid.Cid) (*api
 
 // StateWaitMsg looks back in the chain for a message. If not found, it blocks until the
 // message arrives on chain, and gets to the indicated confidence depth.
-func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confidence abi.ChainEpoch) (*apitypes.MsgLookup, error) {
+func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
 	chainMsg, err := cia.chain.MessageStore.LoadMessage(mCid)
 	if err != nil {
 		return nil, err
 	}
-	msgResult, err := cia.chain.Waiter.Wait(ctx, chainMsg, confidence, constants.LookbackNoLimit)
+	msgResult, err := cia.chain.Waiter.Wait(ctx, chainMsg, confidence, lookbackLimit, allowReplaced)
 	if err != nil {
 		return nil, err
 	}
@@ -426,21 +428,21 @@ func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confide
 }
 
 // StateGetReceipt returns the message receipt for the given message
-func (cia *chainInfoAPI) StateGetReceipt(ctx context.Context, msg cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error) {
-	chainMsg, err := cia.chain.MessageStore.LoadMessage(msg)
-	if err != nil {
-		return nil, err
-	}
-	//todo add a api for head tipset directly
-	head := cia.chain.ChainReader.GetHead()
-
-	msgResult, found, err := cia.chain.Waiter.Find(ctx, chainMsg, constants.LookbackNoLimit, head)
-	if err != nil {
-		return nil, err
-	}
-
-	if found {
-		return msgResult.Receipt, nil
-	}
-	return nil, nil
-}
+//func (cia *chainInfoAPI) StateGetReceipt(ctx context.Context, msg cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error) {
+//	chainMsg, err := cia.chain.MessageStore.LoadMessage(msg)
+//	if err != nil {
+//		return nil, err
+//	}
+//	//todo add a api for head tipset directly
+//	head := cia.chain.ChainReader.GetHead()
+//
+//	msgResult, found, err := cia.chain.Waiter.Find(ctx, chainMsg, constants.LookbackNoLimit, head)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	if found {
+//		return msgResult.Receipt, nil
+//	}
+//	return nil, nil
+//}

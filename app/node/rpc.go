@@ -3,6 +3,8 @@ package node
 import (
 	"reflect"
 
+	"github.com/filecoin-project/venus/app/client/v0api"
+
 	"github.com/filecoin-project/go-jsonrpc"
 
 	"golang.org/x/xerrors"
@@ -97,10 +99,11 @@ func (builder *RPCBuilder) Build(version string) *jsonrpc.RPCServer {
 
 	server := jsonrpc.NewServer(serverOptions...)
 	var fullNode client.FullNodeStruct
+	var fullNodeV0 v0api.FullNodeStruct
 	switch version {
 	case "v0":
 		for _, apiStruct := range builder.v0APIStruct {
-			funcrule.PermissionProxy(apiStruct, &fullNode)
+			funcrule.PermissionProxy(apiStruct, &fullNodeV0)
 		}
 	case "v1":
 		for _, apiStruct := range builder.v1APIStruct {
@@ -112,6 +115,7 @@ func (builder *RPCBuilder) Build(version string) *jsonrpc.RPCServer {
 
 	for _, nameSpace := range builder.namespace {
 		server.Register(nameSpace, &fullNode)
+		server.Register(nameSpace, &fullNodeV0)
 	}
 	return server
 }

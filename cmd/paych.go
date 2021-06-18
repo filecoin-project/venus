@@ -4,6 +4,11 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"io"
+	"sort"
+	"strconv"
+	"strings"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/app/node"
@@ -14,10 +19,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"golang.org/x/xerrors"
-	"io"
-	"sort"
-	"strconv"
-	"strings"
 )
 
 var paychCmd = &cmds.Command{
@@ -122,7 +123,7 @@ var settleCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		mwait, err := env.(*node.Env).ChainAPI.StateWaitMsg(req.Context, mcid, constants.MessageConfidence)
+		mwait, err := env.(*node.Env).ChainAPI.StateWaitMsg(req.Context, mcid, constants.MessageConfidence, constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -206,7 +207,7 @@ var collectCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		mwait, err := env.(*node.Env).ChainAPI.StateWaitMsg(req.Context, mcid, constants.MessageConfidence)
+		mwait, err := env.(*node.Env).ChainAPI.StateWaitMsg(req.Context, mcid, constants.MessageConfidence, constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -406,7 +407,7 @@ var voucherSubmitCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		mwait, err := env.(*node.Env).ChainAPI.StateWaitMsg(req.Context, mcid, constants.MessageConfidence)
+		mwait, err := env.(*node.Env).ChainAPI.StateWaitMsg(req.Context, mcid, constants.MessageConfidence, constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}

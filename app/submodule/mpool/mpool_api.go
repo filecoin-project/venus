@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -298,6 +300,18 @@ func (a *MessagePoolAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.U
 // message to have high likelihood of inclusion in `nblocksincl` epochs.
 func (a *MessagePoolAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (big.Int, error) {
 	return a.mp.MPool.GasEstimateGasPremium(ctx, nblocksincl, sender, gaslimit, tsk, a.mp.MPool.PriceCache)
+}
+
+func (a *MessagePoolAPI) MpoolCheckMessages(ctx context.Context, protos []*apitypes.MessagePrototype) ([][]apitypes.MessageCheckStatus, error) {
+	return a.mp.MPool.CheckMessages(ctx, protos)
+}
+
+func (a *MessagePoolAPI) MpoolCheckPendingMessages(ctx context.Context, addr address.Address) ([][]apitypes.MessageCheckStatus, error) {
+	return a.mp.MPool.CheckPendingMessages(ctx, addr)
+}
+
+func (a *MessagePoolAPI) MpoolCheckReplaceMessages(ctx context.Context, msg []*types.Message) ([][]apitypes.MessageCheckStatus, error) {
+	return a.mp.MPool.CheckReplaceMessages(ctx, msg)
 }
 
 /*// WalletSign signs the given bytes using the given address.

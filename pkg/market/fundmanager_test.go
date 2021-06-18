@@ -808,7 +808,7 @@ func (mapi *mockFundManagerAPI) publish(addr address.Address, amt abi.TokenAmoun
 	mapi.escrow[addr] = escrow
 }
 
-func (mapi *mockFundManagerAPI) StateWaitMsg(ctx context.Context, c cid.Cid, confidence abi.ChainEpoch) (*apitypes.MsgLookup, error) {
+func (mapi *mockFundManagerAPI) StateWaitMsg(ctx context.Context, c cid.Cid, confidence uint64, limit abi.ChainEpoch, allwoReplaced bool) (*apitypes.MsgLookup, error) {
 	res := &apitypes.MsgLookup{
 		Message: c,
 		Receipt: types.MessageReceipt{
