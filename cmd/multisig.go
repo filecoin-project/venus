@@ -5,6 +5,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"sort"
+	"strconv"
+	"strings"
+	"text/tabwriter"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -24,11 +30,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
-	"reflect"
-	"sort"
-	"strconv"
-	"strings"
-	"text/tabwriter"
 )
 
 var multisigCmd = &cmds.Command{
@@ -36,7 +37,7 @@ var multisigCmd = &cmds.Command{
 		Tagline: "Interact with a multisig wallet",
 	},
 	Options: []cmds.Option{
-		cmds.Int64Option("number of block confirmations to wait for").WithDefault(int64(constants.MessageConfidence)),
+		cmds.Uint64Option("number of block confirmations to wait for").WithDefault(constants.MessageConfidence),
 	},
 	Subcommands: map[string]*cmds.Command{
 		"create":            msigCreateCmd,
@@ -121,7 +122,7 @@ var msigCreateCmd = &cmds.Command{
 			return err
 		}
 		// wait for it to get mined into a block
-		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(req.Context, msgCid, reqConfidence(req))
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(req.Context, msgCid, reqConfidence(req), constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -372,7 +373,7 @@ var msigProposeCmd = &cmds.Command{
 
 		fmt.Fprintln(buf, "send proposal in message: ", msgCid)
 		confidence := reqConfidence(req)
-		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, confidence)
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, confidence, constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -435,7 +436,7 @@ var msigRemoveProposeCmd = &cmds.Command{
 
 		fmt.Println("sent remove proposal in message: ", msgCid)
 		confidence := reqConfidence(req)
-		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, confidence)
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, confidence, constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -553,7 +554,7 @@ var msigApproveCmd = &cmds.Command{
 				return err
 			}
 		}
-		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req), constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -602,7 +603,7 @@ var msigAddProposeCmd = &cmds.Command{
 		}
 
 		confidence := reqConfidence(req)
-		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, confidence)
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, confidence, constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -676,7 +677,7 @@ var msigAddApproveCmd = &cmds.Command{
 			return err
 		}
 
-		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req), constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -739,7 +740,7 @@ var msigAddCancelCmd = &cmds.Command{
 			return err
 		}
 
-		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req), constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -794,7 +795,7 @@ var msigSwapProposeCmd = &cmds.Command{
 			return err
 		}
 
-		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req), constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -868,7 +869,7 @@ var msigSwapApproveCmd = &cmds.Command{
 			return err
 		}
 
-		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req), constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -929,7 +930,7 @@ var msigSwapCancelCmd = &cmds.Command{
 			return err
 		}
 
-		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req), constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -999,7 +1000,7 @@ var msigLockProposeCmd = &cmds.Command{
 			return err
 		}
 
-		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req), constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -1091,7 +1092,7 @@ var msigLockApproveCmd = &cmds.Command{
 			return err
 		}
 
-		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req), constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -1168,7 +1169,7 @@ var msigLockCancelCmd = &cmds.Command{
 			return err
 		}
 
-		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req), constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -1278,7 +1279,7 @@ var msigProposeThresholdCmd = &cmds.Command{
 		if err != nil {
 			return fmt.Errorf("failed to propose change of threshold: %w", err)
 		}
-		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req))
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req), constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}

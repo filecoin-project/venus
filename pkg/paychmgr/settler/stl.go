@@ -2,6 +2,7 @@ package settler
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/app/submodule/apiface"
@@ -18,7 +19,7 @@ type Settler interface {
 	PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error)
 	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)
 	PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence abi.ChainEpoch) (*apitypes.MsgLookup, error)
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 }
 
 type settler struct {
@@ -62,6 +63,6 @@ func (o *settler) PaychVoucherList(ctx context.Context, pch address.Address) ([]
 func (o *settler) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
 	return o.mgr.SubmitVoucher(ctx, ch, sv, secret, proof)
 }
-func (o *settler) StateWaitMsg(ctx context.Context, cid cid.Cid, confidence abi.ChainEpoch) (*apitypes.MsgLookup, error) {
-	return o.ciAPI.StateWaitMsg(ctx, cid, confidence)
+func (o *settler) StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
+	return o.ciAPI.StateWaitMsg(ctx, cid, confidence, lookbackLimit, allowReplaced)
 }

@@ -2,6 +2,8 @@ package apiface
 
 import (
 	"context"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -11,7 +13,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	pstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
-	"time"
 
 	"github.com/filecoin-project/go-state-types/big"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
@@ -91,12 +92,44 @@ type IChainInfo interface {
 	ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 	// Rule[perm:read]
 	StateNetworkName(ctx context.Context) (apitypes.NetworkName, error)
+	// StateSearchMsg looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
+	//
+	// NOTE: If a replacing message is found on chain, this method will return
+	// a MsgLookup for the replacing message - the MsgLookup.Message will be a different
+	// CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
+	// result of the execution of the replacing message.
+	//
+	// If the caller wants to ensure that exactly the requested message was executed,
+	// they must check that MsgLookup.Message is equal to the provided 'cid', or set the
+	// `allowReplaced` parameter to false. Without this check, and with `allowReplaced`
+	// set to true, both the requested and original message may appear as
+	// successfully executed on-chain, which may look like a double-spend.
+	//
+	// A replacing message is a message with a different CID, any of Gas values, and
+	// different signature, but with all other parameters matching (source/destination,
+	// nonce, params, etc.)
 	// Rule[perm:read]
-	StateSearchMsg(ctx context.Context, mCid cid.Cid) (*apitypes.MsgLookup, error)
+	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
+	// StateWaitMsg looks back up to limit epochs in the chain for a message.
+	// If not found, it blocks until the message arrives on chain, and gets to the
+	// indicated confidence depth.
+	//
+	// NOTE: If a replacing message is found on chain, this method will return
+	// a MsgLookup for the replacing message - the MsgLookup.Message will be a different
+	// CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
+	// result of the execution of the replacing message.
+	//
+	// If the caller wants to ensure that exactly the requested message was executed,
+	// they must check that MsgLookup.Message is equal to the provided 'cid', or set the
+	// `allowReplaced` parameter to false. Without this check, and with `allowReplaced`
+	// set to true, both the requested and original message may appear as
+	// successfully executed on-chain, which may look like a double-spend.
+	//
+	// A replacing message is a message with a different CID, any of Gas values, and
+	// different signature, but with all other parameters matching (source/destination,
+	// nonce, params, etc.)
 	// Rule[perm:read]
-	StateWaitMsg(ctx context.Context, mCid cid.Cid, confidence abi.ChainEpoch) (*apitypes.MsgLookup, error)
-	// Rule[perm:read]
-	StateGetReceipt(ctx context.Context, msg cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error)
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 	// Rule[perm:read]
 	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
 	// Rule[perm:read]

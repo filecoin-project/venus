@@ -2,6 +2,7 @@ package market
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/app/submodule/apiface"
@@ -15,7 +16,7 @@ import (
 type fundManager interface {
 	MpoolPushMessage(context.Context, *types.UnsignedMessage, *types.MessageSendSpec) (*types.SignedMessage, error)
 	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (apitypes.MarketBalance, error)
-	StateWaitMsg(ctx context.Context, c cid.Cid, confidence abi.ChainEpoch) (*apitypes.MsgLookup, error)
+	StateWaitMsg(ctx context.Context, c cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 }
 
 type fmgr struct {
@@ -42,6 +43,6 @@ func (o *fmgr) StateMarketBalance(ctx context.Context, address address.Address, 
 	return o.MinerStateAPI.StateMarketBalance(ctx, address, tsk)
 }
 
-func (o *fmgr) StateWaitMsg(ctx context.Context, c cid.Cid, confidence abi.ChainEpoch) (*apitypes.MsgLookup, error) {
-	return o.ChainInfoAPI.StateWaitMsg(ctx, c, confidence)
+func (o *fmgr) StateWaitMsg(ctx context.Context, c cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
+	return o.ChainInfoAPI.StateWaitMsg(ctx, c, confidence, limit, allowReplaced)
 }

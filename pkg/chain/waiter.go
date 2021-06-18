@@ -64,12 +64,12 @@ func NewWaiter(chainStore waiterChainReader, messages MessageProvider, bs bstore
 }
 
 // Find searches the blockchain history (but doesn't wait).
-func (w *Waiter) Find(ctx context.Context, msg types.ChainMsg, lookback abi.ChainEpoch, ts *types.TipSet) (*ChainMessage, bool, error) {
+func (w *Waiter) Find(ctx context.Context, msg types.ChainMsg, lookback abi.ChainEpoch, ts *types.TipSet, allowReplaced bool) (*ChainMessage, bool, error) {
 	if ts == nil {
 		ts = w.chainReader.GetHead()
 	}
 
-	return w.findMessage(ctx, ts, msg, lookback)
+	return w.findMessage(ctx, ts, msg, lookback, allowReplaced)
 }
 
 // WaitPredicate invokes the callback when the passed predicate succeeds.
@@ -83,9 +83,9 @@ func (w *Waiter) Find(ctx context.Context, msg types.ChainMsg, lookback abi.Chai
 // This method will always check for the message in the current head tipset.
 // A lookback parameter > 1 will cause this method to check for the message in
 // up to that many previous tipsets on the chain of the current head.
-func (w *Waiter) WaitPredicate(ctx context.Context, msg types.ChainMsg, confidence abi.ChainEpoch, lookback abi.ChainEpoch) (*ChainMessage, error) {
+func (w *Waiter) WaitPredicate(ctx context.Context, msg types.ChainMsg, confidence uint64, lookback abi.ChainEpoch, allowReplaced bool) (*ChainMessage, error) {
 	ch := w.chainReader.SubHeadChanges(ctx)
-	chainMsg, found, err := w.waitForMessage(ctx, ch, msg, confidence, lookback)
+	chainMsg, found, err := w.waitForMessage(ctx, ch, msg, confidence, lookback, allowReplaced)
 	if err != nil {
 		return nil, err
 	}
@@ -96,18 +96,18 @@ func (w *Waiter) WaitPredicate(ctx context.Context, msg types.ChainMsg, confiden
 }
 
 // Wait uses WaitPredicate to invoke the callback when a message with the given cid appears on chain.
-func (w *Waiter) Wait(ctx context.Context, msg types.ChainMsg, confidence abi.ChainEpoch, lookbackLimit abi.ChainEpoch) (*ChainMessage, error) {
+func (w *Waiter) Wait(ctx context.Context, msg types.ChainMsg, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*ChainMessage, error) {
 	mid := msg.VMMessage().Cid()
 	log.Infof("Calling Waiter.Wait CID: %s", mid.String())
 
-	return w.WaitPredicate(ctx, msg, confidence, lookbackLimit)
+	return w.WaitPredicate(ctx, msg, confidence, lookbackLimit, allowReplaced)
 }
 
 // findMessage looks for a matching in the chain and returns the message,
 // block and receipt, when it is found. Returns the found message/block or nil
 // if now block with the given CID exists in the chain.
 // The lookback parameter is the number of tipsets in the past this method will check before giving up.
-func (w *Waiter) findMessage(ctx context.Context, from *types.TipSet, m types.ChainMsg, lookback abi.ChainEpoch) (*ChainMessage, bool, error) {
+func (w *Waiter) findMessage(ctx context.Context, from *types.TipSet, m types.ChainMsg, lookback abi.ChainEpoch, allowReplaced bool) (*ChainMessage, bool, error) {
 	limitHeight := from.Height() - lookback
 	noLimit := lookback == constants.LookbackNoLimit
 
@@ -162,7 +162,7 @@ func (w *Waiter) findMessage(ctx context.Context, from *types.TipSet, m types.Ch
 
 		// check that between cur and parent tipset the nonce fell into range of our message
 		if actorNoExist || (curActor.Nonce > mNonce && act.Nonce <= mNonce) {
-			msg, found, err := w.receiptForTipset(ctx, cur, m)
+			msg, found, err := w.receiptForTipset(ctx, cur, m, allowReplaced)
 			if err != nil {
 				log.Errorf("Waiter.Wait: %s", err)
 				return nil, false, err
@@ -181,7 +181,7 @@ func (w *Waiter) findMessage(ctx context.Context, from *types.TipSet, m types.Ch
 // the message, block and receipt, when it is found. Reads until the channel is
 // closed or the context done. Returns the found message/block (or nil if the
 // channel closed without finding it), whether it was found, or an error.
-func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*HeadChange, msg types.ChainMsg, confidence abi.ChainEpoch, lookbackLimit abi.ChainEpoch) (*ChainMessage, bool, error) {
+func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*HeadChange, msg types.ChainMsg, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*ChainMessage, bool, error) {
 	current, ok := <-ch
 	if !ok {
 		return nil, false, fmt.Errorf("SubHeadChanges stream was invalid")
@@ -196,7 +196,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*HeadChange, ms
 	}
 
 	currentHead := current[0].Val
-	chainMsg, found, err := w.receiptForTipset(ctx, currentHead, msg)
+	chainMsg, found, err := w.receiptForTipset(ctx, currentHead, msg, allowReplaced)
 	if err != nil {
 		return nil, false, err
 	}
@@ -207,7 +207,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*HeadChange, ms
 	var backRcp *ChainMessage
 	backSearchWait := make(chan struct{})
 	go func() {
-		r, foundMsg, err := w.findMessage(ctx, currentHead, msg, lookbackLimit)
+		r, foundMsg, err := w.findMessage(ctx, currentHead, msg, lookbackLimit, allowReplaced)
 		if err != nil {
 			log.Warnf("failed to look back through chain for message: %w", err)
 			return
@@ -240,11 +240,11 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*HeadChange, ms
 						reverts[val.Val.Key().String()] = true
 					}
 				case HCApply:
-					if candidateTS != nil && val.Val.Height() >= candidateTS.Height()+confidence {
+					if candidateTS != nil && val.Val.Height() >= candidateTS.Height()+abi.ChainEpoch(confidence) {
 						return candidateRcp, true, nil
 					}
 
-					r, foundMsg, err := w.receiptForTipset(ctx, val.Val, msg)
+					r, foundMsg, err := w.receiptForTipset(ctx, val.Val, msg, allowReplaced)
 					if err != nil {
 						return nil, false, err
 					}
@@ -262,7 +262,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*HeadChange, ms
 			// check if we found the message in the chain and that is hasn't been reverted since we started searching
 			if backRcp != nil && !reverts[backRcp.TS.Key().String()] {
 				// if head is at or past confidence interval, return immediately
-				if heightOfHead >= backRcp.TS.Height()+confidence {
+				if heightOfHead >= backRcp.TS.Height()+abi.ChainEpoch(confidence) {
 					return backRcp, true, nil
 				}
 
@@ -278,7 +278,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*HeadChange, ms
 	}
 }
 
-func (w *Waiter) receiptForTipset(ctx context.Context, ts *types.TipSet, msg types.ChainMsg) (*ChainMessage, bool, error) {
+func (w *Waiter) receiptForTipset(ctx context.Context, ts *types.TipSet, msg types.ChainMsg, allowReplaced bool) (*ChainMessage, bool, error) {
 	// The genesis block
 	if ts.Height() == 0 {
 		return nil, false, nil
@@ -292,6 +292,7 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts *types.TipSet, msg typ
 	if err != nil {
 		return nil, false, err
 	}
+	expectedMsg := msg.VMMessage()
 	expectedCid := msg.Cid()
 	expectedNonce := msg.VMMessage().Nonce
 	expectedFrom := msg.VMMessage().From
@@ -300,15 +301,21 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts *types.TipSet, msg typ
 			msgCid := msg.Cid()
 			if msg.VMMessage().From == expectedFrom { // cheaper to just check origin first
 				if msg.VMMessage().Nonce == expectedNonce {
-					if expectedCid != msgCid {
-						log.Warnw("found message with equal nonce and call params but different CID",
-							"wanted", expectedCid, "found", msgCid, "nonce", expectedNonce, "from", expectedFrom)
+					if allowReplaced && msg.VMMessage().EqualCall(expectedMsg) {
+						if expectedCid != msgCid {
+							log.Warnw("found message with equal nonce and call params but different CID",
+								"wanted", expectedCid, "found", msgCid, "nonce", expectedNonce, "from", expectedFrom)
+						}
+						recpt, err := w.receiptByIndex(ctx, pts, msgCid, blockMessageInfos)
+						if err != nil {
+							return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
+						}
+						return &ChainMessage{ts, msg, bms.Block, recpt}, true, nil
 					}
-					recpt, err := w.receiptByIndex(ctx, pts, msgCid, blockMessageInfos)
-					if err != nil {
-						return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
-					}
-					return &ChainMessage{ts, msg, bms.Block, recpt}, true, nil
+
+					// this should be that message
+					return nil, false, xerrors.Errorf("found message with equal nonce as the one we are looking for (F: n %d, TS: %s n%d)",
+						expectedMsg.Nonce, msg.Cid(), msg.VMMessage().Nonce)
 				}
 			}
 		}

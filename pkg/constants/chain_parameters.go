@@ -1,12 +1,13 @@
 package constants
 
 import (
+	"math"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	"math"
 )
 
-const DefaultConfidence = abi.ChainEpoch(5)
+const DefaultConfidence = uint64(5)
 const DefaultMessageWaitLookback = abi.ChainEpoch(100) // in most cases, this should be enough to avoid races.
 const LookbackNoLimit = abi.ChainEpoch(-1)
 

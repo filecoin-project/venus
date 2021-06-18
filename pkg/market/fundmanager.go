@@ -709,6 +709,6 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 }
 
 func (env *fundManagerEnvironment) WaitMsg(ctx context.Context, c cid.Cid) error {
-	_, err := env.api.StateWaitMsg(ctx, c, constants.MessageConfidence)
+	_, err := env.api.StateWaitMsg(ctx, c, constants.MessageConfidence, constants.LookbackNoLimit, true)
 	return err
 }
