@@ -825,6 +825,7 @@ func (f *Builder) AddPeer(peer peer.ID) {}
 
 func (f *Builder) GeneratorGenesis() *types.TipSet {
 	b, err := asset.Asset("fixtures/_assets/car/calibnet.car")
+	require.NoError(f.t, err)
 	source := ioutil.NopCloser(bytes.NewReader(b))
 
 	ch, err := car.LoadCar(f.bs, source)
