@@ -114,7 +114,7 @@ var newMinerCmd = &cmds.Command{
 			minerCmdLog.Infof("Waiting for confirmation")
 			_ = re.Emit("Initializing worker account " + worker.String() + ", message: " + cid.String())
 
-			mw, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, cid, constants.MessageConfidence)
+			mw, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, cid, constants.MessageConfidence, constants.LookbackNoLimit, true)
 			if err != nil {
 				return xerrors.Errorf("waiting for worker init: %v", err)
 			}
@@ -177,7 +177,7 @@ var newMinerCmd = &cmds.Command{
 		minerCmdLog.Infof("Waiting for confirmation")
 		_ = re.Emit("Pushed CreateMiner message: " + cid.String())
 
-		mw, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, cid, constants.MessageConfidence)
+		mw, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, cid, constants.MessageConfidence, constants.LookbackNoLimit, true)
 		if err != nil {
 			return xerrors.Errorf("waiting for createMiner message: %v", err)
 		}

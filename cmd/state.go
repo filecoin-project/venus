@@ -67,7 +67,7 @@ var stateWaitMsgCmd = &cmds.Command{
 			return err
 		}
 
-		mw, err := env.(*node.Env).ChainAPI.StateWaitMsg(req.Context, cid, constants.MessageConfidence)
+		mw, err := env.(*node.Env).ChainAPI.StateWaitMsg(req.Context, cid, constants.MessageConfidence, constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -97,7 +97,7 @@ var stateSearchMsgCmd = &cmds.Command{
 			return err
 		}
 
-		mw, err := env.(*node.Env).ChainAPI.StateSearchMsg(req.Context, cid)
+		mw, err := env.(*node.Env).ChainAPI.StateSearchMsg(req.Context, types.EmptyTSK, cid, constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}

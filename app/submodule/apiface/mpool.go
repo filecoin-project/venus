@@ -2,6 +2,9 @@ package apiface
 
 import (
 	"context"
+
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -57,4 +60,13 @@ type IMessagePool interface {
 	GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (big.Int, error)
 	// Rule[perm:read]
 	GasEstimateGasLimit(ctx context.Context, msgIn *types.UnsignedMessage, tsk types.TipSetKey) (int64, error)
+	// MpoolCheckMessages performs logical checks on a batch of messages
+	// Rule[perm:read]
+	MpoolCheckMessages(ctx context.Context, protos []*apitypes.MessagePrototype) ([][]apitypes.MessageCheckStatus, error)
+	// MpoolCheckPendingMessages performs logical checks for all pending messages from a given address
+	// Rule[perm:read]
+	MpoolCheckPendingMessages(ctx context.Context, addr address.Address) ([][]apitypes.MessageCheckStatus, error)
+	// MpoolCheckReplaceMessages performs logical checks on pending messages with replacement
+	// Rule[perm:read]
+	MpoolCheckReplaceMessages(ctx context.Context, msg []*types.Message) ([][]apitypes.MessageCheckStatus, error)
 }

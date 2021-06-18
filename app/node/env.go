@@ -2,7 +2,9 @@ package node
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/submodule/apiface/v0api"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
@@ -24,7 +26,7 @@ type Env struct {
 	MingingAPI           apiface.IMining
 	MessagePoolAPI       apiface.IMessagePool
 
-	MultiSigAPI apiface.IMultiSig
+	MultiSigAPI v0api.IMultiSig
 	MarketAPI   apiface.IMarket
 	PaychAPI    apiface.IPaychan
 }

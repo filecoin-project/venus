@@ -2,9 +2,10 @@ package settler
 
 import (
 	"context"
+	"sync"
+
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/events"
-	"sync"
 
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 
@@ -62,7 +63,7 @@ func (pcs *paymentChannelSettler) messageHandler(msg *types.UnsignedMessage, rec
 		}
 		go func(voucher *paych.SignedVoucher, submitMessageCID cid.Cid) {
 			defer wg.Done()
-			msgLookup, err := pcs.api.StateWaitMsg(pcs.ctx, submitMessageCID, constants.MessageConfidence)
+			msgLookup, err := pcs.api.StateWaitMsg(pcs.ctx, submitMessageCID, constants.MessageConfidence, constants.LookbackNoLimit, true)
 			if err != nil {
 				log.Errorf("submitting voucher: %s", err.Error())
 			}

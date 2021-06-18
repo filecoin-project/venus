@@ -8,6 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/filecoin-project/venus/app/submodule/multisig/v0api"
+
 	"github.com/filecoin-project/venus/app/submodule/multisig"
 
 	"github.com/filecoin-project/go-jsonrpc"
@@ -320,7 +322,7 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		MessagePoolAPI:       node.mpool.API(),
 		PaychAPI:             node.paychan.API(),
 		MarketAPI:            node.market.API(),
-		MultiSigAPI:          node.multiSig.API(),
+		MultiSigAPI:          &v0api.WrapperV1IMultiSig{IMultiSig: node.multiSig.API(), IMessagePool: node.mpool.API()},
 	}
 
 	return &env

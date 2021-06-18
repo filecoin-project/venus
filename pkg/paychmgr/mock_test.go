@@ -3,11 +3,11 @@ package paychmgr
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/go-state-types/abi"
+	"sync"
+
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
-	"sync"
 
 	"github.com/ipfs/go-cid"
 
@@ -138,7 +138,7 @@ func newMockPaychAPI() *mockPaychAPI {
 	}
 }
 
-func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, confidence abi.ChainEpoch) (*chain.MsgLookup, error) {
+func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, confidence uint64) (*chain.MsgLookup, error) {
 	pchapi.lk.Lock()
 	response := make(chan types.MessageReceipt)
 

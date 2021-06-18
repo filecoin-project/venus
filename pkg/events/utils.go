@@ -2,8 +2,10 @@ package events
 
 import (
 	"context"
+
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -20,13 +22,17 @@ func (me *messageEvents) CheckMsg(ctx context.Context, smsg types.ChainMsg, hnd 
 		if msg.Nonce >= fa.Nonce {
 			return false, true, nil
 		}
-		svcid := smsg.VMMessage().Cid()
-		rec, err := me.cs.StateGetReceipt(ctx, svcid, ts.Key())
+
+		ml, err := me.cs.StateSearchMsg(me.ctx, ts.Key(), msg.Cid(), constants.LookbackNoLimit, true)
 		if err != nil {
 			return false, true, xerrors.Errorf("getting receipt in CheckMsg: %w", err)
 		}
 
-		more, err = hnd(msg, rec, ts, ts.Height())
+		if ml == nil {
+			more, err = hnd(msg, nil, ts, ts.Height())
+		} else {
+			more, err = hnd(msg, &ml.Receipt, ts, ts.Height())
+		}
 
 		return true, more, err
 	}

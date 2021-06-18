@@ -4,6 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/venus/app/submodule/apiface/v0api"
+	chainv0api "github.com/filecoin-project/venus/app/submodule/chain/v0api"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/app/submodule/apiface"
@@ -121,12 +124,6 @@ func (chain *ChainSubmodule) API() apiface.IChain {
 	}
 }
 
-func (chain *ChainSubmodule) V0API() apiface.IChain {
-	return &chainAPI{
-		IAccount:    NewAccountAPI(chain),
-		IActor:      NewActorAPI(chain),
-		IBeacon:     NewBeaconAPI(chain),
-		IChainInfo:  NewChainInfoAPI(chain),
-		IMinerState: NewMinerStateAPI(chain),
-	}
+func (chain *ChainSubmodule) V0API() v0api.IChain {
+	return &chainv0api.WrapperV1IChain{IChain: chain.API()}
 }
