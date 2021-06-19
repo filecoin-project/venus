@@ -29,4 +29,5 @@ gen:
 	gofmt -s -l -w ./app/client/client_gen.go
 	goimports -l -w ./app/client/client_gen.go
 
-
+gen-asset:
+	go-bindata -pkg=asset -o ./fixtures/asset/asset.go ./fixtures/_assets/car/ ./fixtures/_assets/proof-params/ ./fixtures/_assets/arch-diagram.monopic

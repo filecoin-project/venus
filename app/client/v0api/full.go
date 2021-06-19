@@ -111,8 +111,8 @@ type IChainInfoStruct struct {
 	StateNetworkVersion           func(p0 context.Context, p1 types.TipSetKey) (network.Version, error)                                                              `perm:"read"`
 	StateSearchMsg                func(p0 context.Context, p1 cid.Cid) (*apitypes.MsgLookup, error)                                                                  `perm:"read"`
 	StateSearchMsgLimited         func(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch) (*apitypes.MsgLookup, error)                                               `perm:"read"`
-	StateWaitMsg                  func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch) (*apitypes.MsgLookup, error)                                    `perm:"read"`
-	StateWaitMsgLimited           func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 abi.ChainEpoch) (*apitypes.MsgLookup, error)                 `perm:"read"`
+	StateWaitMsg                  func(p0 context.Context, p1 cid.Cid, p2 uint64) (*apitypes.MsgLookup, error)                                                       `perm:"read"`
+	StateWaitMsgLimited           func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch) (*apitypes.MsgLookup, error)                                    `perm:"read"`
 	StateGetReceipt               func(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (*types.MessageReceipt, error)                                            `perm:"read"`
 	VerifyEntry                   func(p0 *types.BeaconEntry, p1 *types.BeaconEntry, p2 abi.ChainEpoch) bool                                                         `perm:"read"`
 }

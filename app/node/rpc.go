@@ -105,17 +105,19 @@ func (builder *RPCBuilder) Build(version string) *jsonrpc.RPCServer {
 		for _, apiStruct := range builder.v0APIStruct {
 			funcrule.PermissionProxy(apiStruct, &fullNodeV0)
 		}
+		for _, nameSpace := range builder.namespace {
+			server.Register(nameSpace, &fullNodeV0)
+		}
 	case "v1":
 		for _, apiStruct := range builder.v1APIStruct {
 			funcrule.PermissionProxy(apiStruct, &fullNode)
 		}
+		for _, nameSpace := range builder.namespace {
+			server.Register(nameSpace, &fullNode)
+		}
 	default:
-
+		panic("invalid version: " + version)
 	}
 
-	for _, nameSpace := range builder.namespace {
-		server.Register(nameSpace, &fullNode)
-		server.Register(nameSpace, &fullNodeV0)
-	}
 	return server
 }
