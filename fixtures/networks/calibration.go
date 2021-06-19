@@ -11,10 +11,10 @@ func Calibration() *NetworkConf {
 	return &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
-				"/dns4/bootstrap-0.calibration.fildev.network/tcp/1347/p2p/12D3KooWRLZAseMo9h7fRD6ojn6YYDXHsBSavX5YmjBZ9ngtAEec",
-				"/dns4/bootstrap-1.calibration.fildev.network/tcp/1347/p2p/12D3KooWJFtDXgZEQMEkjJPSrbfdvh2xfjVKrXeNFG1t8ioJXAzv",
-				"/dns4/bootstrap-2.calibration.fildev.network/tcp/1347/p2p/12D3KooWP1uB9Lo7yCA3S17TD4Y5wStP5Nk7Vqh53m8GsFjkyujD",
-				"/dns4/bootstrap-3.calibration.fildev.network/tcp/1347/p2p/12D3KooWLrPM4WPK1YRGPCUwndWcDX8GCYgms3DiuofUmxwvhMCn",
+				"/dns4/bootstrap-0.calibration.fildev.network/tcp/1347/p2p/12D3KooWJkikQQkxS58spo76BYzFt4fotaT5NpV2zngvrqm4u5ow",
+				"/dns4/bootstrap-1.calibration.fildev.network/tcp/1347/p2p/12D3KooWLce5FDHR4EX4CrYavphA5xS3uDsX6aoowXh5tzDUxJav",
+				"/dns4/bootstrap-2.calibration.fildev.network/tcp/1347/p2p/12D3KooWA9hFfQG9GjP6bHeuQQbMD3FDtZLdW1NayxKXUT26PQZu",
+				"/dns4/bootstrap-3.calibration.fildev.network/tcp/1347/p2p/12D3KooWMHDi3LVTFG8Szqogt7RkNXvonbQYqSazxBx41A5aeuVz",
 			},
 			MinPeerThreshold: 0,
 			Period:           "30s",
@@ -37,16 +37,16 @@ func Calibration() *NetworkConf {
 				UpgradeTapeHeight:       60,
 				UpgradeLiftoffHeight:    -5,
 				UpgradeKumquatHeight:    90,
-				UpgradeCalicoHeight:     100,
+				UpgradeCalicoHeight:     120,
 				UpgradePersianHeight:    100 + (120 * 1),
 				UpgradeOrangeHeight:     300,
-				UpgradeTrustHeight:      600,
-				UpgradeNorwegianHeight:  114000,
-				UpgradeTurboHeight:      193789,
-				UpgradeHyperdriveHeight: 321519, // 2021-06-11T14:30:00Z
+				UpgradeTrustHeight:      330,
+				UpgradeNorwegianHeight:  360,
+				UpgradeTurboHeight:      390,
+				UpgradeHyperdriveHeight: 420,
 
 				BreezeGasTampingDuration: 120,
-				UpgradeClausHeight:       250,
+				UpgradeClausHeight:       270,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,

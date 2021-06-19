@@ -337,8 +337,8 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "add service failed ")
 	}
-	nd.jsonRPCService = apiBuilder.Build("v0")
 	nd.jsonRPCServiceV1 = apiBuilder.Build("v1")
+	nd.jsonRPCService = apiBuilder.Build("v0")
 	return nd, nil
 }
 
