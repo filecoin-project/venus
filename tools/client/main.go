@@ -32,7 +32,9 @@ func main() {
 
 	addrBase := "/ip4/127.0.0.1/tcp/3453"
 	addr, err := dialArgs(addrBase, "v0")
+	checkErr(err)
 	addr2, err := dialArgs(addrBase, "v1")
+	checkErr(err)
 
 	handler := http.Header{}
 	var cliV0 v0api.FullNodeStruct
@@ -106,7 +108,7 @@ func checkErr(err error) {
 }
 
 // eg. "bafy2bzaceb2ff6egw54sjcarqvl22mkitmr7q5rmlinza6nnhk6p44t5eee24"
-func toCid(cidStr string) cid.Cid {
+func toCid(cidStr string) cid.Cid { // nolint
 	cid, err := cid.Decode(cidStr)
 	checkErr(err)
 	return cid
