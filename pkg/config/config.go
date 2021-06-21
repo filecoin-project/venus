@@ -206,13 +206,15 @@ type TraceConfig struct {
 	ProbabilitySampler float64 `json:"probabilitySampler"`
 	// JaegerEndpoint is the URL traces are collected on.
 	JaegerEndpoint string `json:"jaegerEndpoint"`
+	ServerName     string `json:"servername"`
 }
 
 func newDefaultTraceConfig() *TraceConfig {
 	return &TraceConfig{
-		JaegerEndpoint:       "http://localhost:14268/api/traces",
+		JaegerEndpoint:       "localhost:6831",
 		JaegerTracingEnabled: false,
 		ProbabilitySampler:   1.0,
+		ServerName:           "venus-node",
 	}
 }
 

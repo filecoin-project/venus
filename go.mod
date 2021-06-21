@@ -3,7 +3,7 @@ module github.com/filecoin-project/venus
 go 1.16
 
 require (
-	contrib.go.opencensus.io/exporter/jaeger v0.1.0
+	contrib.go.opencensus.io/exporter/jaeger v0.2.1
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
@@ -47,6 +47,7 @@ require (
 	github.com/go-kit/kit v0.10.0
 	github.com/golang/snappy v0.0.2-0.20190904063534-ff6b7dc882cf // indirect
 	github.com/golangci/golangci-lint v1.39.0
+	github.com/google/flatbuffers v2.0.0+incompatible // indirect
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/uuid v1.2.0
 	github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026
