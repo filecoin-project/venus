@@ -33,7 +33,7 @@ func RegisterPrometheusEndpoint(cfg *config.MetricsConfig) error {
 		return err
 	}
 
-	_, promAddr, err := manet.DialArgs(promma) //nolint
+	_, promAddr, err := manet.DialArgs(promma) // nolint
 	if err != nil {
 		return err
 	}
@@ -64,22 +64,30 @@ func RegisterPrometheusEndpoint(cfg *config.MetricsConfig) error {
 
 // RegisterJaeger registers the jaeger endpoint with opencensus and names the
 // tracer `name`.
-func RegisterJaeger(name string, cfg *config.TraceConfig) error {
+func RegisterJaeger(name string, cfg *config.TraceConfig) (*jaeger.Exporter, error) {
 	if !cfg.JaegerTracingEnabled {
-		return nil
+		return nil, nil
 	}
+
+	if len(cfg.ServerName) != 0 {
+		name = cfg.ServerName
+	}
+
 	je, err := jaeger.NewExporter(jaeger.Options{
-		CollectorEndpoint: cfg.JaegerEndpoint,
+		AgentEndpoint: cfg.JaegerEndpoint,
 		Process: jaeger.Process{
 			ServiceName: name,
 		},
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	trace.RegisterExporter(je)
+	// trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
 	trace.ApplyConfig(trace.Config{DefaultSampler: trace.ProbabilitySampler(cfg.ProbabilitySampler)})
 
-	return nil
+	log.Infof("register tracing exporter:%s, service name:%s", cfg.JaegerEndpoint, name)
+
+	return je, err
 }

@@ -98,6 +98,7 @@ func (builder *RPCBuilder) Build(version string) *jsonrpc.RPCServer {
 	serverOptions = append(serverOptions, jsonrpc.WithProxyBind(jsonrpc.PBField))
 
 	server := jsonrpc.NewServer(serverOptions...)
+
 	var fullNode client.FullNodeStruct
 	var fullNodeV0 v0api.FullNodeStruct
 	switch version {
