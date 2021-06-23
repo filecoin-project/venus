@@ -45,7 +45,7 @@ type ZapWriter struct {
 	topic  string
 }
 
-// Record records an operation and its metadata to a Journal accepting variadic key-value
+// Write records an operation and its metadata to a Journal accepting variadic key-value
 // pairs.
 func (zw *ZapWriter) Write(event string, kvs ...interface{}) {
 	zw.logger.Infow(event, kvs...)

@@ -2,7 +2,7 @@ package types
 
 import "github.com/filecoin-project/go-address"
 
-// the 'f' prefix doesn't matter
+// ZeroAddress the 'f' prefix doesn't matter
 var ZeroAddress = mustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
 
 func mustParseAddress(addr string) address.Address {

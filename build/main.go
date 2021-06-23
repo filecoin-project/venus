@@ -110,9 +110,7 @@ func lint(packages ...string) {
 
 	log.Printf("Linting %s ...\n", strings.Join(packages, " "))
 
-	runCmd(cmd("go", "run", "github.com/golangci/golangci-lint/cmd/golangci-lint",
-		"--exclude", "(comment on exported (method|function|type|const|var)|should have( a package)? comment|comment should be of the form)",
-		"run", "--timeout", "5m"))
+	runCmd(cmd("go", "run", "github.com/golangci/golangci-lint/cmd/golangci-lint", "run", "--timeout", "5m"))
 }
 
 func build() {

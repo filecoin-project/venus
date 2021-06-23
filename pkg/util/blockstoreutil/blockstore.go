@@ -1,5 +1,5 @@
-// blockstore contains all the basic blockstore constructors used by lotus. Any
-// blockstores not ultimately constructed out of the building blocks in this
+// blockstoreutil contains all the basic blockstore constructors used by lotus. Any
+// blockstoreutil not ultimately constructed out of the building blocks in this
 // package may not work properly.
 //
 //  * This package correctly wraps blockstores with the IdBlockstore. This blockstore:
@@ -51,6 +51,8 @@ type GCLocker = blockstore.GCLocker
 
 var NewGCLocker = blockstore.NewGCLocker
 var NewGCBlockstore = blockstore.NewGCBlockstore
+
+// ErrNotFound is an error returned when a block is not found
 var ErrNotFound = blockstore.ErrNotFound
 
 func DefaultCacheOpts() CacheOpts {

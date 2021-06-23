@@ -83,7 +83,7 @@ type PricesSchedule struct {
 	prices map[abi.ChainEpoch]Pricelist
 }
 
-//NewPricesSchedule new gasprice schedule from netowrk parameters
+//NewPricesSchedule new gasprice schedule from forkParams parameters
 func NewPricesSchedule(forkParams *config.ForkUpgradeConfig) *PricesSchedule {
 	var prices = map[abi.ChainEpoch]Pricelist{
 		abi.ChainEpoch(0): &pricelistV0{

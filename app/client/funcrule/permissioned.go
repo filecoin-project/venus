@@ -2,14 +2,15 @@ package funcrule
 
 import (
 	"context"
+	"reflect"
+
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"golang.org/x/xerrors"
-	"reflect"
 )
 
 type MethodName = string
 
-// Rule[perm:admin,ignore:true]
+// Rule [perm:admin,ignore:true]
 // Used by Client to generate rule comments
 type Rule struct {
 	Perm   auth.Permission

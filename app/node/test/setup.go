@@ -24,7 +24,6 @@ func CreateBootstrapSetup(t *testing.T) (*ChainSeed, *gengen.GenesisCfg, clock.C
 	// set up paths and fake clock.
 	genTime := int64(1000000000)
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
-	propDelay := 6 * time.Second
 
 	// Load genesis config fixture.
 	genCfgPath := project.Root("fixtures/setup.json")
@@ -34,7 +33,7 @@ func CreateBootstrapSetup(t *testing.T) (*ChainSeed, *gengen.GenesisCfg, clock.C
 		SealProofType: constants.DevSealProofType,
 	})
 	seed := MakeChainSeed(t, genCfg)
-	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, propDelay, fakeClock)
+	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
 
 	return seed, genCfg, chainClock
 }

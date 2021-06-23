@@ -1058,6 +1058,7 @@ func (store *Store) GetLookbackTipSetForRound(ctx context.Context, ts *types.Tip
 }
 
 // Randomness
+
 // SampleChainRandomness computes randomness seeded by a ticket from the chain `head` at `sampleHeight`.
 func (store *Store) SampleChainRandomness(ctx context.Context, tsk types.TipSetKey, tag acrypto.DomainSeparationTag,
 	epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {

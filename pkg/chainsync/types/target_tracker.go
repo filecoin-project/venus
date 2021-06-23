@@ -321,7 +321,7 @@ func (tq *TargetTracker) Buckets() TargetBuckets {
 // `TargetBuckets` can panic so it shouldn't be used unwrapped
 type TargetBuckets []*Target
 
-// Heavily inspired by https://golang.org/pkg/container/heap/
+// Len heavily inspired by https://golang.org/pkg/container/heap/
 func (rq TargetBuckets) Len() int { return len(rq) }
 
 func (rq TargetBuckets) Less(i, j int) bool {
