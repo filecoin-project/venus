@@ -15,11 +15,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
-var dropNonAccountCt *metrics.Int64Counter
-var dropInsufficientGasCt *metrics.Int64Counter
-var dropNonceTooLowCt *metrics.Int64Counter
-var dropNonceTooHighCt *metrics.Int64Counter
-
 var invReceiverUndefCt *metrics.Int64Counter
 var invSenderUndefCt *metrics.Int64Counter
 var invValueAboveMaxCt *metrics.Int64Counter
@@ -38,11 +33,6 @@ const onChainMessageBase = int64(0)
 const onChainMessagePerByte = int64(2)
 
 func init() {
-	dropNonAccountCt = metrics.NewInt64Counter("consensus/msg_non_account_sender", "Count of dropped messages with non-account sender")
-	dropInsufficientGasCt = metrics.NewInt64Counter("consensus/msg_insufficient_gas_err", "Count of dropped messages with insufficient gas")
-	dropNonceTooLowCt = metrics.NewInt64Counter("consensus/msg_nonce_low_err", "Count of dropped  messages with nonce too low")
-	dropNonceTooHighCt = metrics.NewInt64Counter("consensus/msg_nonce_high_err", "Count of dropped  messages with nonce too high")
-
 	invReceiverUndefCt = metrics.NewInt64Counter("consensus/msg_undef_receiver", "Count of")
 	invSenderUndefCt = metrics.NewInt64Counter("consensus/msg_undef_sender", "Count of")
 	invValueAboveMaxCt = metrics.NewInt64Counter("consensus/msg_value_max", "Count of")

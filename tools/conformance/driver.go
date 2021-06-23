@@ -88,11 +88,10 @@ type ExecuteTipsetResult struct {
 // and reward withdrawal per miner.
 func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset, execEpoch abi.ChainEpoch) (*ExecuteTipsetResult, error) {
 	ipldStore := cbor.NewCborStore(bs)
-	chainStatusReporter := chain.NewStatusReporter()
 	mainNetParams := networks.Mainnet()
 	node.SetNetParams(&mainNetParams.Network)
 	//chainstore
-	chainStore := chain.NewStore(chainDs, ipldStore, bs, chainStatusReporter, mainNetParams.Network.ForkUpgradeParam, cid.Undef) //load genesis from car
+	chainStore := chain.NewStore(chainDs, ipldStore, bs, mainNetParams.Network.ForkUpgradeParam, cid.Undef) //load genesis from car
 
 	//drand
 	/*genBlk, err := chainStore.GetGenesisBlock(context.TODO())
@@ -250,10 +249,9 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 	mainNetParams := networks.Mainnet()
 	node.SetNetParams(&mainNetParams.Network)
 	ipldStore := cbor.NewCborStore(bs)
-	chainStatusReporter := chain.NewStatusReporter()
 	chainDs := ds.NewMapDatastore() //just mock one
 	//chainstore
-	chainStore := chain.NewStore(chainDs, ipldStore, bs, chainStatusReporter, mainNetParams.Network.ForkUpgradeParam, cid.Undef) //load genesis from car
+	chainStore := chain.NewStore(chainDs, ipldStore, bs, mainNetParams.Network.ForkUpgradeParam, cid.Undef) //load genesis from car
 
 	//drand
 	/*	genBlk, err := chainStore.GetGenesisBlock(context.TODO())

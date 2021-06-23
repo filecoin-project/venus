@@ -1,4 +1,3 @@
-// Package actor implements tooling to write and manipulate actors in go.
 package types
 
 import (

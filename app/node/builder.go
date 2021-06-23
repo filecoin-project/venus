@@ -2,8 +2,9 @@ package node
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/jwtauth"
 
 	"github.com/filecoin-project/venus/app/submodule/multisig"
 
@@ -42,7 +43,6 @@ type Builder struct {
 	libp2pOpts  []libp2p.Option
 	offlineMode bool
 	verifier    ffiwrapper.Verifier
-	propDelay   time.Duration
 	repo        repo.Repo
 	journal     journal.Journal
 	isRelay     bool

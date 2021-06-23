@@ -25,7 +25,7 @@ func NewChainInfo(source peer.ID, sender peer.ID, head *TipSet) *ChainInfo {
 	}
 }
 
-// Returns a human-readable string representation of a chain info
+// String returns a human-readable string representation of a chain info
 func (i *ChainInfo) String() string {
 	return fmt.Sprintf("{source=%s sender:%s height=%d head=%s}", i.Source, i.Sender, i.Head.Height(), i.Head.Key())
 }

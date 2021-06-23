@@ -67,7 +67,7 @@ func UnitTest(t *testing.T) {
 	//	t.Parallel()
 }
 
-// UnitTest will run the test its called from iff the `-unit` or `-short` flag
+// BenchUnitTest will run the test its called from iff the `-unit` or `-short` flag
 // is passed when calling `go test`. Otherwise the test will be skipped. UnitTest
 // will run the test its called from in parallel.
 func BenchUnitTest(t *testing.B) {

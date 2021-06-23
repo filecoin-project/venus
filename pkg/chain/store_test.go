@@ -40,7 +40,7 @@ func newChainStore(r repo.Repo, genTS *types.TipSet) *CborBlockStore {
 	tempBlock := r.Datastore()
 	cborStore := cbor.NewCborStore(tempBlock)
 	return &CborBlockStore{
-		Store:     chain.NewStore(r.ChainDatastore(), cborStore, tempBlock, chain.NewStatusReporter(), config.DefaultForkUpgradeParam, genTS.At(0).Cid()),
+		Store:     chain.NewStore(r.ChainDatastore(), cborStore, tempBlock, config.DefaultForkUpgradeParam, genTS.At(0).Cid()),
 		cborStore: cborStore,
 	}
 }
@@ -297,12 +297,11 @@ func TestHead(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genTS := builder.Genesis()
 	r := builder.Repo()
-	sr := chain.NewStatusReporter()
 	bs := builder.BlockStore()
 	cborStore := builder.Cstore()
-	cs := chain.NewStore(r.ChainDatastore(), cborStore, bs, sr, config.DefaultForkUpgradeParam, genTS.At(0).Cid())
+	cs := chain.NewStore(r.ChainDatastore(), cborStore, bs, config.DefaultForkUpgradeParam, genTS.At(0).Cid())
 	cboreStore := &CborBlockStore{
-		Store: chain.NewStore(r.ChainDatastore(), cborStore, bs, sr, config.DefaultForkUpgradeParam, genTS.At(0).Cid()),
+		Store: chain.NewStore(r.ChainDatastore(), cborStore, bs, config.DefaultForkUpgradeParam, genTS.At(0).Cid()),
 	}
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
@@ -316,17 +315,14 @@ func TestHead(t *testing.T) {
 	// Set Head
 	assertSetHead(t, cboreStore, genTS)
 	assert.ObjectsAreEqualValues(genTS.Key(), cs.GetHead())
-	assert.Equal(t, genTS.Key(), sr.Status().ValidatedHead)
 
 	// Move head forward
 	assertSetHead(t, cboreStore, link4)
 	assert.ObjectsAreEqualValues(link4.Key(), cs.GetHead())
-	assert.Equal(t, link4.Key(), sr.Status().ValidatedHead)
 
 	// Move head back
 	assertSetHead(t, cboreStore, link1)
 	assert.ObjectsAreEqualValues(link1.Key(), cs.GetHead())
-	assert.Equal(t, link1.Key(), sr.Status().ValidatedHead)
 }
 
 func assertEmptyCh(t *testing.T, ch <-chan []*chain.HeadChange) {
@@ -416,7 +412,7 @@ func TestLoadAndReboot(t *testing.T) {
 	requirePutBlocksToCborStore(t, cst, link4.ToSlice()...)
 
 	cboreStore := &CborBlockStore{
-		Store:     chain.NewStore(ds, cst, bs, chain.NewStatusReporter(), config.DefaultForkUpgradeParam, genTS.At(0).Cid()),
+		Store:     chain.NewStore(ds, cst, bs, config.DefaultForkUpgradeParam, genTS.At(0).Cid()),
 		cborStore: cst,
 	}
 	requirePutTestChain(ctx, t, cboreStore, link4.Key(), builder, 5)
@@ -426,8 +422,7 @@ func TestLoadAndReboot(t *testing.T) {
 	cboreStore.Stop()
 
 	// rebuild chain with same datastore and cborstore
-	sr := chain.NewStatusReporter()
-	rebootChain := chain.NewStore(ds, cst, bs, sr, config.DefaultForkUpgradeParam, genTS.At(0).Cid())
+	rebootChain := chain.NewStore(ds, cst, bs, config.DefaultForkUpgradeParam, genTS.At(0).Cid())
 	rebootCbore := &CborBlockStore{
 		Store: rebootChain,
 	}

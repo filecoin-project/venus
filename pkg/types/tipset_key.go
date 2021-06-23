@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"strings"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"io"
-	"strings"
 )
 
 // TipSetKey is an immutable set of CIDs forming a unique key for a TipSet.
@@ -72,7 +73,7 @@ func (tipsetKey TipSetKey) Cids() []cid.Cid {
 	return cids
 }
 
-// String() returns a human-readable representation of the key.
+// String returns a human-readable representation of the key.
 func (tipsetKey TipSetKey) String() string {
 	b := strings.Builder{}
 	b.WriteString("{")
@@ -83,7 +84,7 @@ func (tipsetKey TipSetKey) String() string {
 	return b.String()
 }
 
-// Bytes() returns a binary representation of the key.
+// Bytes returns a binary representation of the key.
 func (tipsetKey TipSetKey) Bytes() []byte {
 	return []byte(tipsetKey.value)
 }
