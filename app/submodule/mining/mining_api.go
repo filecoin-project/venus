@@ -108,7 +108,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 		return nil, nil
 	}
 
-	power, err := view.StateMinerPower(ctx, maddr, ts.Key())
+	mpow, tpow, _, err := view.StateMinerPower(ctx, maddr, ts.Key())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get power: %v", err)
 	}
@@ -134,8 +134,8 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	}
 
 	return &apitypes.MiningBaseInfo{
-		MinerPower:        power.MinerPower.QualityAdjPower,
-		NetworkPower:      power.TotalPower.QualityAdjPower,
+		MinerPower:        mpow.QualityAdjPower,
+		NetworkPower:      tpow.QualityAdjPower,
 		Sectors:           sectors,
 		WorkerKey:         worker,
 		SectorSize:        info.SectorSize,

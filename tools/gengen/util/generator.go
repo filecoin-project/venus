@@ -75,10 +75,9 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 	syscallImpl := vmsupport.NewSyscalls(&vmsupport.NilFaultChecker{}, &ffiwrapper.FakeVerifier{})
 	chainRand := chain.ChainRandomnessSource{Sampler: &chain.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}}
 
-	chainStatusReporter := chain.NewStatusReporter()
 	chainDs := ds.NewMapDatastore() //just mock one
 	//chainstore
-	chainStore := chain.NewStore(chainDs, cst, bs, chainStatusReporter, config.DefaultForkUpgradeParam, cid.Undef) //load genesis from car
+	chainStore := chain.NewStore(chainDs, cst, bs, config.DefaultForkUpgradeParam, cid.Undef) //load genesis from car
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, cst, bs, config.NewDefaultConfig().NetworkParams)
 	if err != nil {
 		panic(xerrors.Errorf("create chain fork error %v", err))

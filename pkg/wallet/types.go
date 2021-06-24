@@ -46,6 +46,7 @@ var (
 )
 
 type MsgType string
+
 type MsgMeta struct {
 	Type MsgType
 	// Additional data related to what is signed. Should be verifiable with the
