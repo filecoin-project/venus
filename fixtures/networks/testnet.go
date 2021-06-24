@@ -61,7 +61,7 @@ func Testnet() *NetworkConf {
 				UpgradeTrustHeight:      550321, // 2021-03-04T00:00:30Z
 				UpgradeNorwegianHeight:  665280, // 2021-04-12T22:00:00Z
 				UpgradeTurboHeight:      712320, // 2021-04-29T06:00:00Z
-				UpgradeHyperdriveHeight: -1,
+				UpgradeHyperdriveHeight: 892800, // 2021-06-30T22:00:00Z
 
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       343200, // 2020-12-22T02:00:00Z

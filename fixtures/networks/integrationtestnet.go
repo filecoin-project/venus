@@ -33,7 +33,7 @@ func IntegrationNet() *NetworkConf {
 				UpgradeTrustHeight:      550321,
 				UpgradeNorwegianHeight:  665280,
 				UpgradeTurboHeight:      712320,
-				UpgradeHyperdriveHeight: -1,
+				UpgradeHyperdriveHeight: 892800,
 
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       343200,
