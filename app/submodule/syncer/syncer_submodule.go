@@ -289,3 +289,7 @@ func (syncer *SyncerSubmodule) Stop(ctx context.Context) {
 func (syncer *SyncerSubmodule) API() apiface.ISyncer {
 	return &syncerAPI{syncer: syncer}
 }
+
+func (syncer *SyncerSubmodule) V0API() apiface.ISyncer {
+	return &syncerAPI{syncer: syncer}
+}

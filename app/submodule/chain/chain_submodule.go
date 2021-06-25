@@ -2,12 +2,14 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"time"
+
+	"github.com/filecoin-project/venus/app/submodule/apiface/v0api"
+	chainv0api "github.com/filecoin-project/venus/app/submodule/chain/v0api"
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -17,6 +19,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
 )
 
@@ -70,7 +73,7 @@ func NewChainSubmodule(ctx context.Context,
 		return nil, err
 	}
 
-	messageStore := chain.NewMessageStore(blockstore.Blockstore)
+	messageStore := chain.NewMessageStore(blockstore.Blockstore, repo.Config().NetworkParams.ForkUpgradeParam)
 	fork, err := fork.NewChainFork(ctx, chainStore, blockstore.CborStore, blockstore.Blockstore, repo.Config().NetworkParams)
 	if err != nil {
 		return nil, err
@@ -118,4 +121,8 @@ func (chain *ChainSubmodule) API() apiface.IChain {
 		IChainInfo:  NewChainInfoAPI(chain),
 		IMinerState: NewMinerStateAPI(chain),
 	}
+}
+
+func (chain *ChainSubmodule) V0API() v0api.IChain {
+	return &chainv0api.WrapperV1IChain{IChain: chain.API()}
 }

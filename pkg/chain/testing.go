@@ -1,31 +1,38 @@
 package chain
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
+	"io/ioutil"
 	"testing"
 
-	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
-	"github.com/filecoin-project/venus/pkg/util"
+	"github.com/ipld/go-car"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	cbor "github.com/ipfs/go-ipld-cbor"
+
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
+
+	"github.com/filecoin-project/venus/fixtures/asset"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
 	"github.com/filecoin-project/venus/pkg/clock"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
+	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/util"
 )
 
 // Builder builds fake chains and acts as a provider and fetcher for the chain thus generated.
@@ -167,7 +174,7 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 		repo:         repo,
 		bs:           bs,
 		cstore:       cst,
-		mstore:       NewMessageStore(bs),
+		mstore:       NewMessageStore(bs, config.DefaultForkUpgradeParam),
 		tipStateCids: make(map[string]cid.Cid),
 	}
 	ctx := context.TODO()
@@ -179,7 +186,8 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 	nullState := types.CidFromString(t, "null")
 	b.tipStateCids[types.NewTipSetKey().String()] = nullState
 
-	b.genesis = b.BuildOrphaTipset(types.UndefTipSet, 1, nil)
+	// create a fixed genesis
+	b.genesis = b.GeneratorGenesis()
 	b.store = NewStore(ds, cst, bs, repo.Config().NetworkParams.ForkUpgradeParam, b.genesis.At(0).Cid())
 
 	for _, block := range b.genesis.Blocks() {
@@ -188,10 +196,9 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 		require.NoError(t, err)
 	}
 
-	// Compute and remember state for the tipset.
-	stateRoot, receipt := b.ComputeState(b.genesis)
+	stateRoot, receiptRoot := b.genesis.Blocks()[0].ParentStateRoot, b.genesis.Blocks()[0].ParentMessageReceipts
+
 	b.tipStateCids[b.genesis.Key().String()] = stateRoot
-	receiptRoot, err := b.mstore.StoreReceipts(ctx, receipt)
 	require.NoError(t, err)
 	tipsetMeta := &TipSetMetadata{
 		TipSetStateRoot: stateRoot,
@@ -815,3 +822,24 @@ func (f *Builder) GetFullTipSet(ctx context.Context, peer []peer.ID, tsk types.T
 }
 
 func (f *Builder) AddPeer(peer peer.ID) {}
+
+func (f *Builder) GeneratorGenesis() *types.TipSet {
+	b, err := asset.Asset("fixtures/_assets/car/calibnet.car")
+	require.NoError(f.t, err)
+	source := ioutil.NopCloser(bytes.NewReader(b))
+
+	ch, err := car.LoadCar(f.bs, source)
+	require.NoError(f.t, err)
+
+	// need to check if we are being handed a car file with a single genesis block or an entire chain.
+	bsBlk, err := f.bs.Get(ch.Roots[0])
+	require.NoError(f.t, err)
+
+	cur, err := types.DecodeBlock(bsBlk.RawData())
+	require.NoError(f.t, err)
+
+	ts, err := types.NewTipSet(cur)
+	require.NoError(f.t, err)
+
+	return ts
+}

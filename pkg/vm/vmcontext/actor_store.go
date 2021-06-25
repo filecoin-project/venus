@@ -3,12 +3,13 @@ package vmcontext
 import (
 	"context"
 	"fmt"
+	"reflect"
+
 	"github.com/filecoin-project/go-state-types/exitcode"
-	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"
-	"reflect"
 
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
@@ -36,7 +37,7 @@ func NewActorStorage(ctx context.Context, inner cbornode.IpldStore, gasTank *gas
 // implement runtime.Store for ActorStorage
 //
 
-var _ specsruntime.Store = (*ActorStorage)(nil)
+var _ rt5.Store = (*ActorStorage)(nil)
 
 // Serialization technically belongs in the actor code, rather than inside the VM.
 // The true VM storage interface is in terms of raw bytes and, when we have user-defined,

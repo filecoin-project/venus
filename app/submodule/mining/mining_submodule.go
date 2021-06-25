@@ -31,6 +31,10 @@ func (miningModule *MiningModule) API() apiface.IMining {
 	return &MiningAPI{Ming: miningModule}
 }
 
+func (miningModule *MiningModule) V0API() apiface.IMining {
+	return &MiningAPI{Ming: miningModule}
+}
+
 //NewMiningModule create new mining module
 func NewMiningModule(
 	conf miningConfig,

@@ -40,7 +40,7 @@ type msgChain struct {
 	prev         *msgChain
 }
 
-func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) (msgs []*types.SignedMessage, err error) {
+func (mp *MessagePool) SelectMessages(ctx context.Context, ts *types.TipSet, tq float64) (msgs []*types.SignedMessage, err error) {
 	mp.curTSLk.Lock()
 	defer mp.curTSLk.Unlock()
 
@@ -51,9 +51,9 @@ func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) (msgs []*typ
 	// than any other block, then we don't bother with optimal selection because the
 	// first block will always have higher effective performance
 	if tq > 0.84 {
-		msgs, err = mp.selectMessagesGreedy(mp.curTS, ts)
+		msgs, err = mp.selectMessagesGreedy(ctx, mp.curTS, ts)
 	} else {
-		msgs, err = mp.selectMessagesOptimal(mp.curTS, ts, tq)
+		msgs, err = mp.selectMessagesOptimal(ctx, mp.curTS, ts, tq)
 	}
 
 	if err != nil {
@@ -77,7 +77,7 @@ func deleteSelectedMessages(pending map[address.Address]map[uint64]*types.Signed
 }
 
 // select the message multiple times and try not to repeat it each time
-func (mp *MessagePool) MultipleSelectMessages(ts *types.TipSet, tqs []float64) (msgss [][]*types.SignedMessage, err error) {
+func (mp *MessagePool) MultipleSelectMessages(ctx context.Context, ts *types.TipSet, tqs []float64) (msgss [][]*types.SignedMessage, err error) {
 	mp.curTSLk.Lock()
 	defer mp.curTSLk.Unlock()
 
@@ -100,9 +100,9 @@ func (mp *MessagePool) MultipleSelectMessages(ts *types.TipSet, tqs []float64) (
 		}
 
 		if tq > 0.84 {
-			msgs, err = mp.multiSelectMessagesGreedy(mp.curTS, ts, pending)
+			msgs, err = mp.multiSelectMessagesGreedy(ctx, mp.curTS, ts, pending)
 		} else {
-			msgs, err = mp.multiSelectMessagesOptimal(mp.curTS, ts, tq, pending)
+			msgs, err = mp.multiSelectMessagesOptimal(ctx, mp.curTS, ts, tq, pending)
 		}
 
 		if err != nil {
@@ -129,7 +129,7 @@ func (mp *MessagePool) MultipleSelectMessages(ts *types.TipSet, tqs []float64) (
 	return msgss, nil
 }
 
-func (mp *MessagePool) multiSelectMessagesOptimal(curTS, ts *types.TipSet, tq float64, pending map[address.Address]map[uint64]*types.SignedMessage) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) multiSelectMessagesOptimal(ctx context.Context, curTS, ts *types.TipSet, tq float64, pending map[address.Address]map[uint64]*types.SignedMessage) ([]*types.SignedMessage, error) {
 	start := time.Now()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
@@ -148,7 +148,7 @@ func (mp *MessagePool) multiSelectMessagesOptimal(curTS, ts *types.TipSet, tq fl
 
 	// 0b. Select all priority messages that fit in the block
 	minGas := int64(gasguess.MinGas)
-	result, gasLimit := mp.selectPriorityMessages(pending, baseFee, ts)
+	result, gasLimit := mp.selectPriorityMessages(ctx, pending, baseFee, ts)
 
 	// have we filled the block?
 	if gasLimit < minGas {
@@ -446,7 +446,7 @@ tailLoop:
 	return result, nil
 }
 
-func (mp *MessagePool) selectMessagesOptimal(curTS, ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) selectMessagesOptimal(ctx context.Context, curTS, ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
 	start := time.Now()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
@@ -472,7 +472,7 @@ func (mp *MessagePool) selectMessagesOptimal(curTS, ts *types.TipSet, tq float64
 
 	// 0b. Select all priority messages that fit in the block
 	minGas := int64(gasguess.MinGas)
-	result, gasLimit := mp.selectPriorityMessages(pending, baseFee, ts)
+	result, gasLimit := mp.selectPriorityMessages(ctx, pending, baseFee, ts)
 
 	// have we filled the block?
 	if gasLimit < minGas {
@@ -770,7 +770,7 @@ tailLoop:
 	return result, nil
 }
 
-func (mp *MessagePool) multiSelectMessagesGreedy(curTS, ts *types.TipSet, pending map[address.Address]map[uint64]*types.SignedMessage) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) multiSelectMessagesGreedy(ctx context.Context, curTS, ts *types.TipSet, pending map[address.Address]map[uint64]*types.SignedMessage) ([]*types.SignedMessage, error) {
 	start := time.Now()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
@@ -789,7 +789,7 @@ func (mp *MessagePool) multiSelectMessagesGreedy(curTS, ts *types.TipSet, pendin
 
 	// 0b. Select all priority messages that fit in the block
 	minGas := int64(gasguess.MinGas)
-	result, gasLimit := mp.selectPriorityMessages(pending, baseFee, ts)
+	result, gasLimit := mp.selectPriorityMessages(ctx, pending, baseFee, ts)
 
 	// have we filled the block?
 	if gasLimit < minGas {
@@ -899,7 +899,7 @@ tailLoop:
 	return result, nil
 }
 
-func (mp *MessagePool) selectMessagesGreedy(curTS, ts *types.TipSet) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) selectMessagesGreedy(ctx context.Context, curTS, ts *types.TipSet) ([]*types.SignedMessage, error) {
 	start := time.Now()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
@@ -925,7 +925,7 @@ func (mp *MessagePool) selectMessagesGreedy(curTS, ts *types.TipSet) ([]*types.S
 
 	// 0b. Select all priority messages that fit in the block
 	minGas := int64(gasguess.MinGas)
-	result, gasLimit := mp.selectPriorityMessages(pending, baseFee, ts)
+	result, gasLimit := mp.selectPriorityMessages(ctx, pending, baseFee, ts)
 
 	// have we filled the block?
 	if gasLimit < minGas {
@@ -1035,7 +1035,7 @@ tailLoop:
 	return result, nil
 }
 
-func (mp *MessagePool) selectPriorityMessages(pending map[address.Address]map[uint64]*types.SignedMessage, baseFee tbig.Int, ts *types.TipSet) ([]*types.SignedMessage, int64) {
+func (mp *MessagePool) selectPriorityMessages(ctx context.Context, pending map[address.Address]map[uint64]*types.SignedMessage, baseFee tbig.Int, ts *types.TipSet) ([]*types.SignedMessage, int64) {
 	start := time.Now()
 	defer func() {
 		if dt := time.Since(start); dt > time.Millisecond {
@@ -1051,10 +1051,15 @@ func (mp *MessagePool) selectPriorityMessages(pending map[address.Address]map[ui
 	var chains []*msgChain
 	priority := mp.cfg.PriorityAddrs
 	for _, actor := range priority {
-		mset, ok := pending[actor]
+		pk, err := mp.resolveToKey(ctx, actor)
+		if err != nil {
+			log.Debugf("mpooladdlocal failed to resolve sender: %s", err)
+			return nil, gasLimit
+		}
+		mset, ok := pending[pk]
 		if ok {
 			// remove actor from pending set as we are already processed these messages
-			delete(pending, actor)
+			delete(pending, pk)
 			// create chains for the priority actor
 			next := mp.createMessageChains(actor, mset, baseFee, ts)
 			chains = append(chains, next...)
@@ -1156,8 +1161,7 @@ func (mp *MessagePool) getPendingMessages(curTS, ts *types.TipSet) (map[address.
 		inSync = true
 	}
 
-	// first add our current pending messages
-	for a, mset := range mp.pending {
+	mp.forEachPending(func(a address.Address, mset *msgSet) {
 		if inSync {
 			// no need to copy the map
 			result[a] = mset.msgs
@@ -1170,7 +1174,7 @@ func (mp *MessagePool) getPendingMessages(curTS, ts *types.TipSet) (map[address.
 			result[a] = msetCopy
 
 		}
-	}
+	})
 
 	// we are in sync, that's the happy path
 	if inSync {
@@ -1240,7 +1244,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 	//   the balance
 	a, err := mp.api.GetActorAfter(actor, ts)
 	if err != nil {
-		log.Errorf("failed to load actor state, not building chain for %s: %v", actor, err)
+		log.Errorf("failed to load actor state, not building chain for %s: %w", actor, err)
 		return nil
 	}
 
@@ -1281,7 +1285,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 			break
 		}
 
-		if isMessageMute(&m.Message, ts, mp.forkParams.UpgradeActorsV4Height) {
+		if isMessageMute(&m.Message, ts, mp.forkParams.UpgradeTurboHeight) {
 			break
 		}
 

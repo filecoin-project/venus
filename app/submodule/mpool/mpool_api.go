@@ -3,19 +3,18 @@ package mpool
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
-	"sync"
 
-	"github.com/filecoin-project/venus-wallet/core"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
 var _ apiface.IMessagePool = &MessagePoolAPI{}
@@ -23,7 +22,6 @@ var _ apiface.IMessagePool = &MessagePoolAPI{}
 //MessagePoolAPI messsage pool api implement
 type MessagePoolAPI struct {
 	pushLocks *messagepool.MpoolLocker
-	lk        sync.Mutex
 
 	mp *MessagePoolSubmodule
 }
@@ -35,7 +33,7 @@ func (a *MessagePoolAPI) MpoolDeleteByAdress(ctx context.Context, addr address.A
 
 //MpoolPublish publish message of address
 func (a *MessagePoolAPI) MpoolPublishByAddr(ctx context.Context, addr address.Address) error {
-	return a.mp.MPool.PublishMsgForWallet(addr)
+	return a.mp.MPool.PublishMsgForWallet(ctx, addr)
 }
 
 func (a *MessagePoolAPI) MpoolPublishMessage(ctx context.Context, smsg *types.SignedMessage) error {
@@ -44,7 +42,7 @@ func (a *MessagePoolAPI) MpoolPublishMessage(ctx context.Context, smsg *types.Si
 
 // MpoolPush pushes a signed message to mempool.
 func (a *MessagePoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
-	return a.mp.MPool.Push(smsg)
+	return a.mp.MPool.Push(ctx, smsg)
 }
 
 // MpoolGetConfig returns (a copy of) the current mpool config
@@ -64,7 +62,7 @@ func (a *MessagePoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey, t
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	return a.mp.MPool.SelectMessages(ts, ticketQuality)
+	return a.mp.MPool.SelectMessages(ctx, ts, ticketQuality)
 }
 
 //MpoolSelects The batch selection message is used when multiple blocks need to select messages at the same time
@@ -74,7 +72,7 @@ func (a *MessagePoolAPI) MpoolSelects(ctx context.Context, tsk types.TipSetKey, 
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	return a.mp.MPool.MultipleSelectMessages(ts, ticketQualitys)
+	return a.mp.MPool.MultipleSelectMessages(ctx, ts, ticketQualitys)
 }
 
 // MpoolPending returns pending mempool messages.
@@ -93,7 +91,7 @@ func (a *MessagePoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) 
 		}
 	}
 
-	pending, mpts := a.mp.MPool.Pending()
+	pending, mpts := a.mp.MPool.Pending(ctx)
 
 	haveCids := map[cid.Cid]struct{}{}
 	for _, m := range pending {
@@ -155,13 +153,13 @@ func (a *MessagePoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) 
 
 // MpoolClear clears pending messages from the mpool
 func (a *MessagePoolAPI) MpoolClear(ctx context.Context, local bool) error {
-	a.mp.MPool.Clear(local)
+	a.mp.MPool.Clear(ctx, local)
 	return nil
 }
 
 // MpoolPushUntrusted pushes a signed message to mempool from untrusted sources.
 func (a *MessagePoolAPI) MpoolPushUntrusted(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
-	return a.mp.MPool.PushUntrusted(smsg)
+	return a.mp.MPool.PushUntrusted(ctx, smsg)
 }
 
 // MpoolPushMessage atomically assigns a nonce, signs, and pushes a message
@@ -222,43 +220,8 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Unsign
 		return nil, xerrors.Errorf("mpool push: not enough funds: %s < %s", b, msg.Value)
 	}
 
-	// Todo Define SignMessage ???
-	SignMessage := func(ctx context.Context, msg *types.UnsignedMessage, cb func(*types.SignedMessage) error) (*types.SignedMessage, error) {
-		a.lk.Lock()
-		defer a.lk.Unlock()
-
-		nonce, err := a.mp.MPool.GetNonce(msg.From)
-		if err != nil {
-			return nil, err
-		}
-
-		// Sign the message with the nonce
-		msg.Nonce = nonce
-		mb, err := msg.ToStorageBlock()
-		if err != nil {
-			return nil, xerrors.Errorf("serializing message: %w", err)
-		}
-
-		sig, err := a.mp.walletAPI.WalletSign(ctx, msg.From, mb.Cid().Bytes(), wallet.MsgMeta{Type: core.MTChainMsg, Extra: mb.RawData()})
-		if err != nil {
-			return nil, xerrors.Errorf("failed to sign message: %w", err)
-		}
-
-		// Callback with the signed message
-		smsg := &types.SignedMessage{
-			Message:   *msg,
-			Signature: *sig,
-		}
-		err = cb(smsg)
-		if err != nil {
-			return nil, err
-		}
-
-		return smsg, nil
-	}
-
 	// Sign and push the message
-	return SignMessage(ctx, msg, func(smsg *types.SignedMessage) error {
+	return a.mp.msgSigner.SignMessage(ctx, msg, func(smsg *types.SignedMessage) error {
 		if _, err := a.MpoolPush(ctx, smsg); err != nil {
 			return xerrors.Errorf("mpool push: failed to push message: %w", err)
 		}
@@ -270,7 +233,7 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Unsign
 func (a *MessagePoolAPI) MpoolBatchPush(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error) {
 	var messageCids []cid.Cid
 	for _, smsg := range smsgs {
-		smsgCid, err := a.mp.MPool.Push(smsg)
+		smsgCid, err := a.mp.MPool.Push(ctx, smsg)
 		if err != nil {
 			return messageCids, err
 		}
@@ -283,7 +246,7 @@ func (a *MessagePoolAPI) MpoolBatchPush(ctx context.Context, smsgs []*types.Sign
 func (a *MessagePoolAPI) MpoolBatchPushUntrusted(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error) {
 	var messageCids []cid.Cid
 	for _, smsg := range smsgs {
-		smsgCid, err := a.mp.MPool.PushUntrusted(smsg)
+		smsgCid, err := a.mp.MPool.PushUntrusted(ctx, smsg)
 		if err != nil {
 			return messageCids, err
 		}
@@ -308,7 +271,7 @@ func (a *MessagePoolAPI) MpoolBatchPushMessage(ctx context.Context, msgs []*type
 // MpoolGetNonce gets next nonce for the specified sender.
 // Note that this method may not be atomic. Use MpoolPushMessage instead.
 func (a *MessagePoolAPI) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
-	return a.mp.MPool.GetNonce(addr)
+	return a.mp.MPool.GetNonce(ctx, addr, types.EmptyTSK)
 }
 
 func (a *MessagePoolAPI) MpoolSub(ctx context.Context) (<-chan messagepool.MpoolUpdate, error) {
@@ -336,7 +299,19 @@ func (a *MessagePoolAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.U
 // GasEstimateGasPremium estimates what gas price should be used for a
 // message to have high likelihood of inclusion in `nblocksincl` epochs.
 func (a *MessagePoolAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (big.Int, error) {
-	return a.mp.MPool.GasEstimateGasPremium(ctx, nblocksincl, sender, gaslimit, tsk)
+	return a.mp.MPool.GasEstimateGasPremium(ctx, nblocksincl, sender, gaslimit, tsk, a.mp.MPool.PriceCache)
+}
+
+func (a *MessagePoolAPI) MpoolCheckMessages(ctx context.Context, protos []*apitypes.MessagePrototype) ([][]apitypes.MessageCheckStatus, error) {
+	return a.mp.MPool.CheckMessages(ctx, protos)
+}
+
+func (a *MessagePoolAPI) MpoolCheckPendingMessages(ctx context.Context, addr address.Address) ([][]apitypes.MessageCheckStatus, error) {
+	return a.mp.MPool.CheckPendingMessages(ctx, addr)
+}
+
+func (a *MessagePoolAPI) MpoolCheckReplaceMessages(ctx context.Context, msg []*types.Message) ([][]apitypes.MessageCheckStatus, error) {
+	return a.mp.MPool.CheckReplaceMessages(ctx, msg)
 }
 
 /*// WalletSign signs the given bytes using the given address.
@@ -356,10 +331,9 @@ func (a *MessagePoolAPI) WalletSign(ctx context.Context, k address.Address, msg 
 	//	meta = metas[0]
 	//} else {
 	meta := wallet.MsgMeta{
-		Type: core.MTUnknown,
+		Type: wallet.MTUnknown,
 	}
 	//}
 	return a.mp.walletAPI.WalletSign(ctx, keyAddr, msg, meta)
 }
-
 */

@@ -116,6 +116,7 @@ func lint(packages ...string) {
 func build() {
 	buildFilecoin()
 	buildGengen()
+	buildGenesisFileServer()
 	generateGenesis()
 	buildPrereleaseTool()
 }
@@ -123,6 +124,7 @@ func build() {
 func forcebuild() {
 	forceBuildFC()
 	buildGengen()
+	buildGenesisFileServer()
 	generateGenesis()
 	buildPrereleaseTool()
 }
@@ -224,6 +226,12 @@ func buildGengen() {
 	log.Println("Building gengen utils...")
 
 	runCmd(cmd([]string{"go", "build", "-o", "./tools/gengen/gengen", "./tools/gengen"}...))
+}
+
+func buildGenesisFileServer() {
+	log.Println("Building genesis file server...")
+
+	runCmd(cmd([]string{"go", "build", "-o", "./tools/genesis-file-server/genesis-file-server", "./tools/genesis-file-server/"}...))
 }
 
 func buildPrereleaseTool() {

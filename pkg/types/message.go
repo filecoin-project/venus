@@ -182,6 +182,25 @@ func (msg *UnsignedMessage) Equals(other *UnsignedMessage) bool {
 		bytes.Equal(msg.Params, other.Params)
 }
 
+func (msg *UnsignedMessage) EqualCall(o *Message) bool {
+	m1 := *msg
+	m2 := *o
+
+	m1.GasLimit, m2.GasLimit = 0, 0
+	m1.GasFeeCap, m2.GasFeeCap = specsbig.Zero(), specsbig.Zero()
+	m1.GasPremium, m2.GasPremium = specsbig.Zero(), specsbig.Zero()
+
+	return (&m1).Equals(&m2)
+}
+
+func (msg *UnsignedMessage) Serialize() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	if err := msg.MarshalCBOR(buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 func (msg *UnsignedMessage) ChainLength() int {
 	buf := new(bytes.Buffer)
 	err := msg.MarshalCBOR(buf)

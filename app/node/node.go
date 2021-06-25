@@ -8,7 +8,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/filecoin-project/venus/app/submodule/multisig/v0api"
+
 	"github.com/awnumar/memguard"
+	"github.com/filecoin-project/venus/app/submodule/multisig"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -26,7 +29,6 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/market"
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
-	"github.com/filecoin-project/venus/app/submodule/multisig"
 	network2 "github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
@@ -92,7 +94,7 @@ type Node struct {
 	//
 	// Jsonrpc
 	//
-	jsonRPCService *jsonrpc.RPCServer
+	jsonRPCService, jsonRPCServiceV1 *jsonrpc.RPCServer
 
 	jwtCli jwtauth.IJwtAuthClient
 }
@@ -304,6 +306,7 @@ func (node *Node) runRestfulAPI(ctx context.Context, handler *http.ServeMux, roo
 //runJsonrpcAPI bind jsonrpc handle
 func (node *Node) runJsonrpcAPI(ctx context.Context, handler *http.ServeMux) error { //nolint
 	handler.Handle("/rpc/v0", node.jsonRPCService)
+	handler.Handle("/rpc/v1", node.jsonRPCServiceV1)
 	return nil
 }
 
@@ -325,7 +328,7 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		MessagePoolAPI:       node.mpool.API(),
 		PaychAPI:             node.paychan.API(),
 		MarketAPI:            node.market.API(),
-		MultiSigAPI:          node.multiSig.API(),
+		MultiSigAPI:          &v0api.WrapperV1IMultiSig{IMultiSig: node.multiSig.API(), IMessagePool: node.mpool.API()},
 	}
 
 	return &env

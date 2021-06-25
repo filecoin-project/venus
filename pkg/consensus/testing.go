@@ -117,11 +117,11 @@ type FakeChainRandomness struct {
 	Seed uint
 }
 
-func (s *FakeChainRandomness) SampleChainRandomness(_ context.Context, _ types.TipSetKey, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return []byte(fmt.Sprintf("s=%d,e=%d,t=%d,p=%s", s.Seed, epoch, tag, string(entropy))), nil
+func (s *FakeChainRandomness) GetChainRandomness(ctx context.Context, tsk types.TipSetKey, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte, _ bool) ([]byte, error) {
+	return []byte(fmt.Sprintf("s=%d,e=%d,t=%d,p=%s", s.Seed, round, pers, string(entropy))), nil
 }
 
-func (s *FakeChainRandomness) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (s *FakeChainRandomness) GetBeaconRandomness(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, _ bool) (abi.Randomness, error) {
 	return []byte(""), nil
 }
 
@@ -129,7 +129,7 @@ type FakeSampler struct {
 	Seed uint
 }
 
-func (s *FakeSampler) SampleTicket(_ context.Context, _ types.TipSetKey, epoch abi.ChainEpoch) (types.Ticket, error) {
+func (s *FakeSampler) SampleTicket(_ context.Context, _ types.TipSetKey, epoch abi.ChainEpoch, _ bool) (types.Ticket, error) {
 	return types.Ticket{
 		VRFProof: []byte(fmt.Sprintf("s=%d,e=%d", s.Seed, epoch)),
 	}, nil

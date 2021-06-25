@@ -3,7 +3,7 @@ package vmcontext
 import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
 	"github.com/ipfs/go-cid"
 )
@@ -31,7 +31,7 @@ type actorStateHandleContext interface {
 // NewActorStateHandle returns a new `ActorStateHandle`
 //
 // Note: just visible for testing.
-func NewActorStateHandle(ctx actorStateHandleContext) specsruntime.StateHandle {
+func NewActorStateHandle(ctx actorStateHandleContext) rt5.StateHandle {
 	aux := newActorStateHandle(ctx)
 	return &aux
 }
@@ -44,7 +44,7 @@ func newActorStateHandle(ctx actorStateHandleContext) actorStateHandle {
 	}
 }
 
-var _ specsruntime.StateHandle = (*actorStateHandle)(nil)
+var _ rt5.StateHandle = (*actorStateHandle)(nil)
 
 func (h *actorStateHandle) StateCreate(obj cbor.Marshaler) {
 	// Store the new stateView.

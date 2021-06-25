@@ -3,25 +3,73 @@ package messagepool
 import (
 	"context"
 	"fmt"
+	"math"
+	"math/rand"
+	"sort"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	lru "github.com/hashicorp/golang-lru"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
-	"golang.org/x/xerrors"
-	"math"
-	"math/rand"
-	"sort"
 )
 
 const MinGasPremium = 100e3
 
 // const MaxSpendOnFeeDenom = 100
+
+type GasPriceCache struct {
+	c *lru.TwoQueueCache
+}
+
+type GasMeta struct {
+	Price big.Int
+	Limit int64
+}
+
+func NewGasPriceCache() *GasPriceCache {
+	// 50 because we usually won't access more than 40
+	c, err := lru.New2Q(50)
+	if err != nil {
+		// err only if parameter is bad
+		panic(err)
+	}
+
+	return &GasPriceCache{
+		c: c,
+	}
+}
+
+func (g *GasPriceCache) GetTSGasStats(provider Provider, ts *types.TipSet) ([]GasMeta, error) {
+	i, has := g.c.Get(ts.Key())
+	if has {
+		return i.([]GasMeta), nil
+	}
+
+	var prices []GasMeta
+	msgs, err := provider.MessagesForTipset(ts)
+	if err != nil {
+		return nil, xerrors.Errorf("loading messages: %w", err)
+	}
+	for _, msg := range msgs {
+		prices = append(prices, GasMeta{
+			Price: msg.VMMessage().GasPremium,
+			Limit: msg.VMMessage().GasLimit,
+		})
+	}
+
+	g.c.Add(ts.Key(), prices)
+
+	return prices, nil
+}
 
 func (mp *MessagePool) GasEstimateFeeCap(
 	ctx context.Context,
@@ -47,22 +95,19 @@ func (mp *MessagePool) GasEstimateFeeCap(
 	return out, nil
 }
 
-type gasMeta struct {
-	price big.Int
-	limit int64
-}
-
-func medianGasPremium(prices []gasMeta, blocks int) abi.TokenAmount {
+// finds 55th percntile instead of median to put negative pressure on gas price
+func medianGasPremium(prices []GasMeta, blocks int) abi.TokenAmount {
 	sort.Slice(prices, func(i, j int) bool {
 		// sort desc by price
-		return prices[i].price.GreaterThan(prices[j].price)
+		return prices[i].Price.GreaterThan(prices[j].Price)
 	})
 
 	at := constants.BlockGasTarget * int64(blocks) / 2
+	at += constants.BlockGasTarget * int64(blocks) / (2 * 20) // move 5% further
 	prev1, prev2 := big.Zero(), big.Zero()
 	for _, price := range prices {
-		prev1, prev2 = price.price, prev1
-		at -= price.limit
+		prev1, prev2 = price.Price, prev1
+		at -= price.Limit
 		if at < 0 {
 			break
 		}
@@ -82,12 +127,13 @@ func (mp *MessagePool) GasEstimateGasPremium(
 	sender address.Address,
 	gaslimit int64,
 	_ types.TipSetKey,
+	cache *GasPriceCache,
 ) (big.Int, error) {
 	if nblocksincl == 0 {
 		nblocksincl = 1
 	}
 
-	var prices []gasMeta
+	var prices []GasMeta
 	var blocks int
 
 	ts, err := mp.api.ChainHead()
@@ -96,29 +142,21 @@ func (mp *MessagePool) GasEstimateGasPremium(
 	}
 
 	for i := uint64(0); i < nblocksincl*2; i++ {
-		h := ts.Height()
-		if h == 0 {
+		if ts.Height() == 0 {
 			break // genesis
 		}
 
-		tsPKey := ts.Parents()
-		pts, err := mp.api.ChainTipSet(tsPKey)
+		pts, err := mp.api.LoadTipSet(ts.Parents())
 		if err != nil {
-			return big.Int{}, err
+			return types.BigInt{}, err
 		}
 
 		blocks += len(pts.Blocks())
-
-		msgs, err := mp.api.MessagesForTipset(pts)
+		meta, err := cache.GetTSGasStats(mp.api, pts)
 		if err != nil {
-			return big.Int{}, xerrors.Errorf("loading messages: %w", err)
+			return types.BigInt{}, err
 		}
-		for _, msg := range msgs {
-			prices = append(prices, gasMeta{
-				price: msg.VMMessage().GasPremium,
-				limit: msg.VMMessage().GasLimit,
-			})
-		}
+		prices = append(prices, meta...)
 
 		ts = pts
 	}
@@ -168,9 +206,12 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Uns
 		return -1, xerrors.Errorf("getting key address: %w", err)
 	}
 
-	pending, ts := mp.PendingFor(fromA)
+	pending, ts := mp.PendingFor(ctx, fromA)
 	priorMsgs := make([]types.ChainMsg, 0, len(pending))
 	for _, m := range pending {
+		if m.Message.Nonce == msg.Nonce {
+			break
+		}
 		priorMsgs = append(priorMsgs, m)
 	}
 
@@ -234,7 +275,7 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 	}
 
 	if estimateMessage.Msg.GasPremium == types.EmptyInt || types.BigCmp(estimateMessage.Msg.GasPremium, types.NewInt(0)) == 0 {
-		gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, estimateMessage.Msg.From, estimateMessage.Msg.GasLimit, types.TipSetKey{})
+		gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, estimateMessage.Msg.From, estimateMessage.Msg.GasLimit, types.TipSetKey{}, mp.PriceCache)
 		if err != nil {
 			return nil, xerrors.Errorf("estimating gas price: %w", err)
 		}
@@ -276,7 +317,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 	if err != nil {
 		return nil, xerrors.Errorf("getting key address: %w", err)
 	}
-	pending, ts := mp.PendingFor(fromA)
+	pending, ts := mp.PendingFor(ctx, fromA)
 	priorMsgs := make([]types.ChainMsg, 0, len(pending))
 	for _, m := range pending {
 		priorMsgs = append(priorMsgs, m)
@@ -299,7 +340,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 		}
 
 		if estimateMsg.GasPremium == types.EmptyInt || types.BigCmp(estimateMsg.GasPremium, types.NewInt(0)) == 0 {
-			gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, estimateMsg.From, estimateMsg.GasLimit, types.TipSetKey{})
+			gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, estimateMsg.From, estimateMsg.GasLimit, types.TipSetKey{}, mp.PriceCache)
 			if err != nil {
 				estimateMsg.Nonce = 0
 				estimateResults = append(estimateResults, &types.EstimateResult{

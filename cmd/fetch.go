@@ -1,9 +1,10 @@
 package cmd
 
 import (
-	paramfetch "github.com/filecoin-project/go-paramfetch"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
+
+	paramfetch "github.com/filecoin-project/go-paramfetch"
 
 	"github.com/filecoin-project/venus/fixtures/asset"
 )
@@ -22,7 +23,13 @@ var fetchCmd = &cmds.Command{
 			if err != nil {
 				return err
 			}
-			if err := paramfetch.GetParams(req.Context, ps, size); err != nil {
+
+			srs, err := asset.Asset("fixtures/_assets/proof-params/srs-inner-product.json")
+			if err != nil {
+				return err
+			}
+
+			if err := paramfetch.GetParams(req.Context, ps, srs, size); err != nil {
 				return errors.Wrapf(err, "fetching proof parameters: %v", err)
 			}
 			return nil

@@ -3,8 +3,9 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"strings"
+
+	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -364,7 +365,7 @@ var actorSetOwnerCmd = &cmds.Command{
 		_ = re.Emit("Propose Message CID: " + cid.String())
 
 		// wait for it to get mined into a block
-		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, cid, constants.MessageConfidence)
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, cid, constants.MessageConfidence, constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -390,7 +391,7 @@ var actorSetOwnerCmd = &cmds.Command{
 		_ = re.Emit("Approve Message CID: " + cid.String())
 
 		// wait for it to get mined into a block
-		wait, err = env.(*node.Env).ChainAPI.StateWaitMsg(ctx, cid, constants.MessageConfidence)
+		wait, err = env.(*node.Env).ChainAPI.StateWaitMsg(ctx, cid, constants.MessageConfidence, constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -688,7 +689,7 @@ var actorProposeChangeWorker = &cmds.Command{
 		_ = re.Emit("Propose Message CID: " + cid.String())
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, cid, constants.MessageConfidence)
+		wait, err := api.StateWaitMsg(ctx, cid, constants.MessageConfidence, constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}
@@ -786,7 +787,7 @@ var actorConfirmChangeWorker = &cmds.Command{
 		_ = re.Emit("Confirm Message CID: " + cid.String())
 
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, cid, constants.MessageConfidence)
+		wait, err := api.StateWaitMsg(ctx, cid, constants.MessageConfidence, constants.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}

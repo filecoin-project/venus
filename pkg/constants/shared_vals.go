@@ -3,7 +3,6 @@ package constants
 import (
 	"math/big"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/specactors/policy"
 
 	"github.com/filecoin-project/go-address"
@@ -15,7 +14,7 @@ import (
 // Consensus / Network
 
 const AllowableClockDriftSecs = uint64(1)
-const NewestNetworkVersion = network.Version8
+const NewestNetworkVersion = network.Version13
 const ActorUpgradeNetworkVersion = network.Version4
 
 // constants for Weight calculation
@@ -57,4 +56,4 @@ const VerifSigCacheSize = 32000
 const Finality = policy.ChainFinality
 
 // Epochs
-const MessageConfidence = abi.ChainEpoch(5)
+const MessageConfidence = uint64(5)

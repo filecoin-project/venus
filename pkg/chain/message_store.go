@@ -9,22 +9,22 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	cbor2 "github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/venus/pkg/config"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+
 	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 )
 
 // MessageProvider is an interface exposing the load methods of the
@@ -49,12 +49,13 @@ type MessageWriter interface {
 
 // MessageStore stores and loads collections of signed messages and receipts.
 type MessageStore struct {
-	bs blockstore.Blockstore
+	bs    blockstore.Blockstore
+	fkCfg *config.ForkUpgradeConfig
 }
 
 // NewMessageStore creates and returns a new store
-func NewMessageStore(bs blockstore.Blockstore) *MessageStore {
-	return &MessageStore{bs: bs}
+func NewMessageStore(bs blockstore.Blockstore, fkCfg *config.ForkUpgradeConfig) *MessageStore {
+	return &MessageStore{bs: bs, fkCfg: fkCfg}
 }
 
 // LoadMetaMessages loads the signed messages in the collection with cid c from ipld
@@ -226,6 +227,81 @@ func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types
 	return ms.StoreTxMeta(ctx, ret)
 }
 
+//load message from tipset NOTICE skip message with the same nonce
+func (ms *MessageStore) LoadTipSetMesssages(ctx context.Context, ts *types.TipSet) ([][]*types.SignedMessage, [][]*types.UnsignedMessage, error) {
+	var secpMessages [][]*types.SignedMessage
+	var blsMessages [][]*types.UnsignedMessage
+
+	applied := make(map[address.Address]uint64)
+
+	vms := cbor.NewCborStore(ms.bs)
+	st, err := tree.LoadState(ctx, vms, ts.Blocks()[0].ParentStateRoot)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "failed to load state tree %s", ts.Blocks()[0].ParentStateRoot.String())
+	}
+
+	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
+		var sender address.Address
+		if ts.Height() >= ms.fkCfg.UpgradeHyperdriveHeight {
+			sender, err = st.LookupID(m.From)
+			if err != nil {
+				return false, err
+			}
+		} else {
+			sender = m.From
+		}
+
+		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
+		if _, ok := applied[sender]; !ok {
+			applied[sender] = m.Nonce
+		}
+
+		if applied[sender] != m.Nonce {
+			return false, nil
+		}
+
+		applied[sender]++
+
+		return true, nil
+	}
+
+	for i := 0; i < ts.Len(); i++ {
+		blk := ts.At(i)
+		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, blk.Messages)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
+		}
+
+		var blksecpMessages []*types.SignedMessage
+		var blkblsMessages []*types.UnsignedMessage
+
+		for _, msg := range blsMsgs {
+			b, err := selectMsg(msg)
+			if err != nil {
+				return nil, nil, errors.Wrap(err, "failed to decide whether to select message for block")
+			}
+			if b {
+				blkblsMessages = append(blkblsMessages, msg)
+			}
+		}
+
+		for _, msg := range secpMsgs {
+			b, err := selectMsg(&msg.Message)
+			if err != nil {
+				return nil, nil, errors.Wrap(err, "failed to decide whether to select message for block")
+			}
+			if b {
+				blksecpMessages = append(blksecpMessages, msg)
+			}
+		}
+
+		blsMessages = append(blsMessages, blkblsMessages)
+		secpMessages = append(secpMessages, blksecpMessages)
+	}
+
+	return secpMessages, blsMessages, nil
+}
+
 // LoadReceipts loads the signed messages in the collection with cid c from ipld
 // storage and returns the slice implied by the collection
 func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]types.MessageReceipt, error) {
@@ -242,7 +318,7 @@ func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]types.Me
 		if found, err := a.Get(i, &rec); err != nil {
 			return nil, errors.Wrapf(err, "could not retrieve %d bytes from AMT", i)
 		} else if !found {
-			return nil, xerrors.Errorf("failed to find receipt %d", i)
+			return nil, errors.Errorf("failed to find receipt %d", i)
 		}
 		receipts[i] = rec
 	}
@@ -257,7 +333,7 @@ func (ms *MessageStore) StoreReceipts(ctx context.Context, receipts []types.Mess
 
 	for i, receipt := range receipts {
 		if err := rectarr.Set(uint64(i), &receipt); err != nil {
-			return cid.Undef, xerrors.Errorf("failed to build receipts amt: %w", err)
+			return cid.Undef, errors.Wrap(err, "failed to build receipts amt")
 		}
 	}
 
@@ -287,7 +363,7 @@ func (ms *MessageStore) loadAMTCids(ctx context.Context, c cid.Cid) ([]cid.Cid, 
 		if found, err := a.Get(i, &oc); err != nil {
 			return nil, errors.Wrapf(err, "could not retrieve %d cid from AMT", i)
 		} else if !found {
-			return nil, xerrors.Errorf("failed to find receipt %d", i)
+			return nil, errors.Errorf("failed to find receipt %d", i)
 		}
 
 		cids[i] = cid.Cid(oc)
@@ -315,17 +391,33 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet)
 	//gather message
 	applied := make(map[address.Address]uint64)
 
+	vms := cbor.NewCborStore(ms.bs)
+	st, err := tree.LoadState(ctx, vms, ts.Blocks()[0].ParentStateRoot)
+	if err != nil {
+		return nil, errors.Errorf("failed to load state tree")
+	}
+
 	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
-		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
-		if _, ok := applied[m.From]; !ok {
-			applied[m.From] = m.Nonce
+		var sender address.Address
+		if ts.Height() >= ms.fkCfg.UpgradeHyperdriveHeight {
+			sender, err = st.LookupID(m.From)
+			if err != nil {
+				return false, err
+			}
+		} else {
+			sender = m.From
 		}
 
-		if applied[m.From] != m.Nonce {
+		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
+		if _, ok := applied[sender]; !ok {
+			applied[sender] = m.Nonce
+		}
+
+		if applied[sender] != m.Nonce {
 			return false, nil
 		}
 
-		applied[m.From]++
+		applied[sender]++
 
 		return true, nil
 	}
@@ -343,7 +435,7 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet)
 		for _, msg := range blsMsgs {
 			b, err := selectMsg(msg)
 			if err != nil {
-				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
+				return nil, errors.Wrap(err, "failed to decide whether to select message for block")
 			}
 			if b {
 				sBlsMsg = append(sBlsMsg, msg)
@@ -352,7 +444,7 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet)
 		for _, msg := range secpMsgs {
 			b, err := selectMsg(&msg.Message)
 			if err != nil {
-				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
+				return nil, errors.Wrap(err, "failed to decide whether to select message for block")
 			}
 			if b {
 				sSecpMsg = append(sSecpMsg, msg)
@@ -462,7 +554,7 @@ func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet, up
 	for _, b := range ts.Blocks() {
 		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, b.Messages)
 		if err != nil {
-			return zero, xerrors.Errorf("error getting messages for: %s: %w", b.Cid(), err)
+			return zero, errors.Wrapf(err, "error getting messages for: %s", b.Cid())
 		}
 
 		for _, m := range blsMsgs {
@@ -492,7 +584,7 @@ func GetReceiptRoot(receipts []types.MessageReceipt) (cid.Cid, error) {
 	rectarr := adt.MakeEmptyArray(adt.WrapStore(context.TODO(), as))
 	for i, receipt := range receipts {
 		if err := rectarr.Set(uint64(i), &receipt); err != nil {
-			return cid.Undef, xerrors.Errorf("failed to build receipts amt: %w", err)
+			return cid.Undef, errors.Wrapf(err, "failed to build receipts amt")
 		}
 	}
 	return rectarr.Root()
@@ -511,7 +603,7 @@ func GetChainMsgRoot(ctx context.Context, messages []types.ChainMsg) (cid.Cid, e
 		}
 		k := cbg.CborCid(b.Cid())
 		if err := arr.Set(uint64(i), &k); err != nil {
-			return cid.Undef, xerrors.Errorf("failed to put message: %v", err)
+			return cid.Undef, errors.Wrap(err, "failed to put message")
 		}
 	}
 
@@ -555,7 +647,7 @@ func ComputeMsgMeta(bs blockstore.Blockstore, bmsgCids, smsgCids []cid.Cid) (cid
 		SecpRoot: smroot,
 	})
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to put msgmeta: %w", err)
+		return cid.Undef, errors.Wrap(err, "failed to put msgmeta")
 	}
 
 	return mrcid, nil

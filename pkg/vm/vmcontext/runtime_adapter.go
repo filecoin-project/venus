@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/venus/pkg/specactors/aerrors"
+
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/types"
 
@@ -19,7 +21,8 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/rt"
-	specsruntime "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
 )
@@ -38,7 +41,8 @@ func init() {
 
 var actorLog = logging.Logger("vm.actors")
 
-var _ specsruntime.Runtime = (*runtimeAdapter)(nil)
+var _ rt5.Runtime = (*runtimeAdapter)(nil)
+var _ rt0.Runtime = (*runtimeAdapter)(nil)
 
 type runtimeAdapter struct {
 	ctx *invocationContext
@@ -147,17 +151,31 @@ func (a *runtimeAdapter) NetworkVersion() network.Version {
 }
 
 func (a *runtimeAdapter) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	res, err := a.ctx.randSource.GetRandomnessFromBeacon(a.Context(), personalization, randEpoch, entropy)
+	var err error
+	var res []byte
+	if randEpoch > a.ctx.vm.vmOption.Fork.GetForkUpgrade().UpgradeHyperdriveHeight {
+		res, err = a.ctx.randSource.GetBeaconRandomnessLookingForward(a.Context(), personalization, randEpoch, entropy)
+	} else {
+		res, err = a.ctx.randSource.GetBeaconRandomnessLookingBack(a.Context(), personalization, randEpoch, entropy)
+	}
+
 	if err != nil {
-		panic(xerrors.Errorf("could not get randomness: %s", err))
+		panic(aerrors.Fatalf("could not get beacon randomness: %s", err))
 	}
 	return res
 }
 
 func (a *runtimeAdapter) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	res, err := a.ctx.randSource.GetRandomnessFromTickets(a.Context(), personalization, randEpoch, entropy)
+	var err error
+	var res []byte
+	if randEpoch > a.ctx.vm.vmOption.Fork.GetForkUpgrade().UpgradeHyperdriveHeight {
+		res, err = a.ctx.randSource.GetChainRandomnessLookingForward(a.Context(), personalization, randEpoch, entropy)
+	} else {
+		res, err = a.ctx.randSource.GetChainRandomnessLookingBack(a.Context(), personalization, randEpoch, entropy)
+	}
+
 	if err != nil {
-		panic(xerrors.Errorf("could not get randomness: %s", err))
+		panic(aerrors.Fatalf("could not get ticket randomness: %s", err))
 	}
 	return res
 }
@@ -184,7 +202,7 @@ func (a *runtimeAdapter) Log(level rt.LogLevel, msg string, args ...interface{})
 }
 
 // Message implements Runtime.
-func (a *runtimeAdapter) Message() specsruntime.Message {
+func (a *runtimeAdapter) Message() rt5.Message {
 	return a.ctx.Message()
 }
 
@@ -311,4 +329,8 @@ func (a *runtimeAdapter) StartSpan(name string) func() {
 
 func (a *runtimeAdapter) AbortStateMsg(msg string) {
 	runtime.Abortf(101, msg)
+}
+
+func (a *runtimeAdapter) BaseFee() abi.TokenAmount {
+	return a.ctx.vm.vmOption.BaseFee
 }

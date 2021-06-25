@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"errors"
 
+	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -28,6 +29,12 @@ func load0(store adt.Store, root cid.Cid) (State, error) {
 	if err != nil {
 		return nil, err
 	}
+	return &out, nil
+}
+
+func make0(store adt.Store) (State, error) {
+	out := state0{store: store}
+	out.State = miner0.State{}
 	return &out, nil
 }
 
@@ -195,6 +202,7 @@ func (s *state0) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOn
 	}
 
 	ret := fromV0SectorPreCommitOnChainInfo(*info)
+
 	return &ret, nil
 }
 
@@ -238,6 +246,10 @@ func (s *state0) IsAllocated(num abi.SectorNumber) (bool, error) {
 	}
 
 	return allocatedSectors.IsSet(uint64(num))
+}
+
+func (s *state0) GetProvingPeriodStart() (abi.ChainEpoch, error) {
+	return s.State.ProvingPeriodStart, nil
 }
 
 func (s *state0) LoadDeadline(idx uint64) (Deadline, error) {
@@ -361,6 +373,13 @@ func (s *state0) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (SectorPreC
 	return fromV0SectorPreCommitOnChainInfo(sp), nil
 }
 
+func (s *state0) EraseAllUnproven() error {
+
+	// field doesn't exist until v2
+
+	return nil
+}
+
 func (d *deadline0) LoadPartition(idx uint64) (Partition, error) {
 	p, err := d.Deadline.LoadPartition(d.store, idx)
 	if err != nil {
@@ -395,8 +414,10 @@ func (d *deadline0) PartitionsPoSted() (bitfield.BitField, error) {
 }
 
 func (d *deadline0) DisputableProofCount() (uint64, error) {
+
 	// field doesn't exist until v3
 	return 0, nil
+
 }
 
 func (p *partition0) AllSectors() (bitfield.BitField, error) {
@@ -412,9 +433,17 @@ func (p *partition0) RecoveringSectors() (bitfield.BitField, error) {
 }
 
 func fromV0SectorOnChainInfo(v0 miner0.SectorOnChainInfo) SectorOnChainInfo {
+
 	return (SectorOnChainInfo)(v0)
+
 }
 
 func fromV0SectorPreCommitOnChainInfo(v0 miner0.SectorPreCommitOnChainInfo) SectorPreCommitOnChainInfo {
+
 	return (SectorPreCommitOnChainInfo)(v0)
+
+}
+
+func (s *state0) GetState() interface{} {
+	return &s.State
 }

@@ -3,20 +3,19 @@ package mining
 import (
 	"bytes"
 	"context"
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"os"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus-wallet/core"
-
 	ffi "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/crypto"
@@ -109,7 +108,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 		return nil, nil
 	}
 
-	power, err := view.StateMinerPower(ctx, maddr, ts.Key())
+	mpow, tpow, _, err := view.StateMinerPower(ctx, maddr, ts.Key())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get power: %v", err)
 	}
@@ -135,8 +134,8 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	}
 
 	return &apitypes.MiningBaseInfo{
-		MinerPower:        power.MinerPower.QualityAdjPower,
-		NetworkPower:      power.TotalPower.QualityAdjPower,
+		MinerPower:        mpow.QualityAdjPower,
+		NetworkPower:      tpow.QualityAdjPower,
 		Sectors:           sectors,
 		WorkerKey:         worker,
 		SectorSize:        info.SectorSize,
@@ -267,7 +266,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *apitypes.B
 	if bHas {
 		nosigbytes := next.SignatureData()
 		sig, err := miningAPI.Ming.Wallet.API().WalletSign(ctx, worker, nosigbytes, wallet.MsgMeta{
-			Type: core.MTBlock,
+			Type: wallet.MTBlock,
 		})
 		if err != nil {
 			return nil, xerrors.Errorf("failed to sign new block: %v", err)

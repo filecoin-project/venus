@@ -8,10 +8,10 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
-func reqConfidence(req *cmds.Request) abi.ChainEpoch {
+func reqConfidence(req *cmds.Request) uint64 {
 	confidence, ok := req.Options["confidence"]
 	if ok {
-		return confidence.(abi.ChainEpoch)
+		return confidence.(uint64)
 	}
 	return 0
 }
