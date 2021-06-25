@@ -11,10 +11,12 @@ type MultiSigSubmodule struct { //nolint
 	store *chain2.Store
 }
 
+// MessagingSubmodule enhances the `Node` with multisig capabilities.
 func NewMultiSigSubmodule(chainState apiface.IChain, msgPool apiface.IMessagePool, store *chain2.Store) *MultiSigSubmodule {
 	return &MultiSigSubmodule{state: chainState, mpool: msgPool, store: store}
 }
 
+//API create a new multisig implement
 func (sb *MultiSigSubmodule) API() apiface.IMultiSig {
 	return newMultiSig(sb)
 }

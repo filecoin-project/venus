@@ -9,7 +9,7 @@ The Filecoin localplugin shell environment will have the following variables set
 
 | Name  | Description |
 |:---|:---|
-| `FIL_PATH` |  The value is set to the repository directory for the Filecoin node. Any `venus` commands ran in the shell will be executed against the Filecoin process for which the Shell method was invoked on in FAST. |
+| `VENUS_PATH` |  The value is set to the repository directory for the Filecoin node. Any `venus` commands ran in the shell will be executed against the Filecoin process for which the Shell method was invoked on in FAST. |
 | `FIL_PID` | The value is set to the PID for the Filecoin daemon. |
 | `FIL_BINARY` | The value is set to the binary running the Filecoin daemon. Please refer to the section below on `PATH` for more details. |
 | `PATH` | The users `PATH` will be updated to include a location that contains the binary used for executing all `venus` commands. The `venus` binary included in this location itself is defined by either the value of the `localplugin.AttrFilecoinBinary`, or the first `venus` binary found in the users `PATH`. <br/> <br/>_Note: The value of `FIL_BINARY` will not be the exact value. During node setup, the binary is copied to ensure it does not change during execution. `FIL_BINARY` will be this new path._ |

@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
+// ErrSectorNotFound sector not found error
 var ErrSectorNotFound = errors.New("sector not found")
 
 type UnpaddedByteIndex uint64

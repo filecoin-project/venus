@@ -15,10 +15,12 @@ type actorAPI struct {
 	chain *ChainSubmodule
 }
 
+//NewActorAPI new actor api
 func NewActorAPI(chain *ChainSubmodule) apiface.IActor {
 	return &actorAPI{chain: chain}
 }
 
+// StateGetActor returns the indicated actor's nonce and balance.
 func (actorAPI *actorAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
 	ts, err := actorAPI.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {

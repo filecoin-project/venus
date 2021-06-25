@@ -14,6 +14,7 @@ var _ = IFork((*MockFork)(nil))
 
 type MockFork struct{}
 
+//NewMockFork mock for test
 func NewMockFork() *MockFork {
 	return &MockFork{}
 }

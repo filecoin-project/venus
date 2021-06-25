@@ -91,6 +91,7 @@ func (ms *MessageStore) LoadMetaMessages(ctx context.Context, metaCid cid.Cid) (
 	return secpMsgs, blsMsgs, nil
 }
 
+//ReadMsgMetaCids load messager from message meta cid
 func (ms *MessageStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error) {
 	meta, err := ms.LoadTxMeta(ctx, mmc)
 	if err != nil {
@@ -108,6 +109,8 @@ func (ms *MessageStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid
 	return blsCids, secpCids, nil
 }
 
+//LoadMessage load message of specify message cid
+//First get the unsigned message. If it is not found, then get the signed message. If still not found, an error will be returned
 func (ms *MessageStore) LoadMessage(mid cid.Cid) (types.ChainMsg, error) {
 	m, err := ms.LoadUnsignedMessage(mid)
 	if err == nil {
@@ -121,6 +124,7 @@ func (ms *MessageStore) LoadMessage(mid cid.Cid) (types.ChainMsg, error) {
 	return ms.LoadSignedMessage(mid)
 }
 
+//LoadUnsignedMessage load unsigned messages in tipset
 func (ms *MessageStore) LoadUnsignedMessage(mid cid.Cid) (*types.UnsignedMessage, error) {
 	messageBlock, err := ms.bs.Get(mid)
 	if err != nil {
@@ -133,6 +137,7 @@ func (ms *MessageStore) LoadUnsignedMessage(mid cid.Cid) (*types.UnsignedMessage
 	return message, nil
 }
 
+//LoadUnsignedMessagesFromCids load unsigned messages of cid array
 func (ms *MessageStore) LoadSignedMessage(mid cid.Cid) (*types.SignedMessage, error) {
 	messageBlock, err := ms.bs.Get(mid)
 	if err != nil {
@@ -147,6 +152,7 @@ func (ms *MessageStore) LoadSignedMessage(mid cid.Cid) (*types.SignedMessage, er
 	return message, nil
 }
 
+//LoadUnsignedMessagesFromCids load unsigned messages of cid array
 func (ms *MessageStore) LoadUnsignedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error) {
 	blsMsgs := make([]*types.UnsignedMessage, len(blsCids))
 	for i, c := range blsCids {
@@ -159,6 +165,7 @@ func (ms *MessageStore) LoadUnsignedMessagesFromCids(blsCids []cid.Cid) ([]*type
 	return blsMsgs, nil
 }
 
+//LoadSignedMessagesFromCids load signed messages of cid array
 func (ms *MessageStore) LoadSignedMessagesFromCids(secpCids []cid.Cid) ([]*types.SignedMessage, error) {
 	secpMsgs := make([]*types.SignedMessage, len(secpCids))
 	for i, c := range secpCids {
@@ -217,65 +224,6 @@ func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types
 	ret.BLSRoot = blsRaw
 
 	return ms.StoreTxMeta(ctx, ret)
-}
-
-//load message from tipset NOTICE skip message with the same nonce
-func (ms *MessageStore) LoadTipSetMesssages(ctx context.Context, ts *types.TipSet) ([][]*types.SignedMessage, [][]*types.UnsignedMessage, error) {
-	var secpMessages [][]*types.SignedMessage
-	var blsMessages [][]*types.UnsignedMessage
-
-	applied := make(map[address.Address]uint64)
-
-	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
-		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
-		if _, ok := applied[m.From]; !ok {
-			applied[m.From] = m.Nonce
-		}
-
-		if applied[m.From] != m.Nonce {
-			return false, nil
-		}
-
-		applied[m.From]++
-
-		return true, nil
-	}
-
-	for i := 0; i < ts.Len(); i++ {
-		blk := ts.At(i)
-		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, blk.Messages)
-		if err != nil {
-			return nil, nil, errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
-		}
-
-		var blksecpMessages []*types.SignedMessage
-		var blkblsMessages []*types.UnsignedMessage
-
-		for _, msg := range blsMsgs {
-			b, err := selectMsg(msg)
-			if err != nil {
-				return nil, nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
-			}
-			if b {
-				blkblsMessages = append(blkblsMessages, msg)
-			}
-		}
-
-		for _, msg := range secpMsgs {
-			b, err := selectMsg(&msg.Message)
-			if err != nil {
-				return nil, nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
-			}
-			if b {
-				blksecpMessages = append(blksecpMessages, msg)
-			}
-		}
-
-		blsMessages = append(blsMessages, blkblsMessages)
-		secpMessages = append(secpMessages, blksecpMessages)
-	}
-
-	return secpMessages, blsMessages, nil
 }
 
 // LoadReceipts loads the signed messages in the collection with cid c from ipld
@@ -362,6 +310,7 @@ func (ms *MessageStore) LoadTxMeta(ctx context.Context, c cid.Cid) (types.TxMeta
 	return meta, nil
 }
 
+//LoadTipSetMessage message from tipset NOTICE skip message with the same nonce
 func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet) ([]types.BlockMessagesInfo, error) {
 	//gather message
 	applied := make(map[address.Address]uint64)
@@ -420,6 +369,7 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet)
 	return blockMsg, nil
 }
 
+//MessagesForTipset return of message ( bls message + secp message) of tipset
 func (ms *MessageStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
 	bmsgs, err := ms.LoadTipSetMessage(context.TODO(), ts)
 	if err != nil {
@@ -435,6 +385,7 @@ func (ms *MessageStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, e
 	return out, nil
 }
 
+//StoreMessage put message(include signed message and unsigned message) to database
 func (ms *MessageStore) StoreMessage(message types.ChainMsg) (cid.Cid, error) {
 	return cbor.NewCborStore(ms.bs).Put(context.TODO(), message)
 }
@@ -459,6 +410,7 @@ func MakeBlock(obj cbor2.Marshaler) (blocks.Block, error) {
 	return blocks.NewBlockWithCid(data, c)
 }
 
+//todo move to a more suitable position
 func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch, upgrade *config.ForkUpgradeConfig) abi.TokenAmount {
 	// deta := gasLimitUsed/noOfBlocks - constants.BlockGasTarget
 	// change := baseFee * deta / BlockGasTarget
@@ -493,6 +445,7 @@ func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks 
 	return nextBaseFee
 }
 
+//todo move to a more suitable position
 func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet, upgrade *config.ForkUpgradeConfig) (abi.TokenAmount, error) {
 	zero := abi.NewTokenAmount(0)
 	baseHeight := ts.Height()

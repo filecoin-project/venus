@@ -53,7 +53,7 @@ func Exec(ctx context.Context, cli client.APIClient, containerID string, detach 
 		User:         "filecoin",
 		AttachStdout: true,
 		AttachStderr: true,
-		Env:          []string{fmt.Sprintf("FIL_PATH=%s", repoDir)},
+		Env:          []string{fmt.Sprintf("VENUS_PATH=%s", repoDir)},
 		Cmd:          cmd,
 		Detach:       detach,
 	}

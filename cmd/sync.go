@@ -1,11 +1,12 @@
-// Package commands implements the command to print the blockchain.
+// Package cmd implements the command to print the blockchain.
 package cmd
 
 import (
 	"bytes"
+	"strconv"
+
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	cmds "github.com/ipfs/go-ipfs-cmds"
-	"strconv"
 
 	"github.com/filecoin-project/venus/app/node"
 )

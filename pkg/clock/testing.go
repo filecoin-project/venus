@@ -6,9 +6,9 @@ import (
 )
 
 // Creates a new fake clock and chain clock wrapping it.
-func NewFakeChain(genesis uint64, epochDuration time.Duration, propDelay time.Duration, now int64) (Fake, ChainEpochClock) {
+func NewFakeChain(genesis uint64, epochDuration time.Duration, now int64) (Fake, ChainEpochClock) {
 	fake := NewFake(time.Unix(now, 0))
-	return fake, NewChainClockFromClock(genesis, epochDuration, propDelay, fake)
+	return fake, NewChainClockFromClock(genesis, epochDuration, fake)
 }
 
 // Fake provides an interface for a clock which can be manually advanced.

@@ -25,6 +25,7 @@ func newSyscallsStateView(ctx *invocationContext, VM *VM) *syscallsStateView {
 	return &syscallsStateView{ctx: ctx, VM: VM}
 }
 
+// ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
 func (vm *syscallsStateView) ResolveToKeyAddr(ctx context.Context, accountAddr address.Address) (address.Address, error) {
 	// Short-circuit when given a pubkey address.
 	if accountAddr.Protocol() == address.SECP256K1 || accountAddr.Protocol() == address.BLS {
@@ -46,27 +47,7 @@ func (vm *syscallsStateView) ResolveToKeyAddr(ctx context.Context, accountAddr a
 	return accountState.PubkeyAddress()
 }
 
-func (vm *syscallsStateView) MinerControlAddresses(ctx context.Context, maddr address.Address) (owner, worker address.Address, err error) {
-	accountActor, found, err := vm.State.GetActor(vm.context, maddr)
-	if err != nil {
-		return address.Undef, address.Undef, errors.Wrapf(err, "miner resolution failed To find actor %s", maddr)
-	}
-	if !found {
-		return address.Undef, address.Undef, fmt.Errorf("miner resolution found no such actor %s", maddr)
-	}
-
-	accountState, err := miner.Load(adt.WrapStore(vm.context, vm.ctx.gasIpld), accountActor)
-	if err != nil {
-		panic(fmt.Errorf("signer resolution failed To lost stateView for %s ", maddr))
-	}
-
-	minerInfo, err := accountState.Info()
-	if err != nil {
-		panic(fmt.Errorf("failed To get miner info %s ", maddr))
-	}
-	return minerInfo.Owner, minerInfo.Worker, nil
-}
-
+//MinerInfo get miner info
 func (vm *syscallsStateView) MinerInfo(ctx context.Context, maddr address.Address, nv network.Version) (*miner.MinerInfo, error) {
 	accountActor, found, err := vm.State.GetActor(vm.context, maddr)
 	if err != nil {
@@ -88,10 +69,13 @@ func (vm *syscallsStateView) MinerInfo(ctx context.Context, maddr address.Addres
 
 	return &minerInfo, nil
 }
+
+//GetNtwkVersion get network version
 func (vm *syscallsStateView) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version {
 	return vm.vmOption.NtwkVersionGetter(ctx, ce)
 }
 
+//GetNtwkVersion get network version
 func (vm *syscallsStateView) TotalFilCircSupply(height abi.ChainEpoch, st tree.Tree) (abi.TokenAmount, error) {
 	return vm.vmOption.CircSupplyCalculator(context.TODO(), height, st)
 }

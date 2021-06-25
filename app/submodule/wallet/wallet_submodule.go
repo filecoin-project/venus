@@ -73,6 +73,7 @@ func NewWalletSubmodule(ctx context.Context,
 	}, nil
 }
 
+//API create a new wallet api implement
 func (wallet *WalletSubmodule) API() apiface.IWallet {
 	return &WalletAPI{
 		walletModule: wallet,

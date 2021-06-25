@@ -66,6 +66,7 @@ func (na *networkAPI) Version(context.Context) (apitypes.Version, error) {
 	}, nil
 }
 
+//NetAddrsListen return local p2p address info
 func (na *networkAPI) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
 	return peer.AddrInfo{
 		ID:    na.network.Host.ID(),

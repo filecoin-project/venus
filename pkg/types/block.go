@@ -177,6 +177,7 @@ func (b *BlockHeader) SignatureData() []byte {
 	return tmp.ToNode().RawData()
 }
 
+// Serialize serialize blockheader to binary
 func (b *BlockHeader) Serialize() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	if err := b.MarshalCBOR(buf); err != nil {
@@ -186,6 +187,7 @@ func (b *BlockHeader) Serialize() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// ToStorageBlock convert blockheader to data block with cid
 func (b *BlockHeader) ToStorageBlock() (blocks.Block, error) {
 	data, err := b.Serialize()
 	if err != nil {
@@ -200,14 +202,17 @@ func (b *BlockHeader) ToStorageBlock() (blocks.Block, error) {
 	return blocks.NewBlockWithCid(data, c)
 }
 
+// LastTicket get ticket in block
 func (b *BlockHeader) LastTicket() *Ticket {
 	return &b.Ticket
 }
 
+// SetValidated set block signature is valid after checkout blocksig
 func (b *BlockHeader) SetValidated() {
 	b.validated = true
 }
 
+// IsValidated check whether block signature is valid from memory
 func (b *BlockHeader) IsValidated() bool {
 	return b.validated
 }

@@ -110,16 +110,12 @@ func lint(packages ...string) {
 
 	log.Printf("Linting %s ...\n", strings.Join(packages, " "))
 
-	runCmd(cmd("go", "run", "github.com/golangci/golangci-lint/cmd/golangci-lint",
-		"--exclude", "(comment on exported (method|function|type|const|var)|should have( a package)? comment|comment should be of the form)",
-		"run", "--timeout", "5m"))
+	runCmd(cmd("go", "run", "github.com/golangci/golangci-lint/cmd/golangci-lint", "run", "--timeout", "5m"))
 }
 
 func build() {
 	buildFilecoin()
 	buildGengen()
-	buildFaucet()
-	buildGenesisFileServer()
 	generateGenesis()
 	buildPrereleaseTool()
 }
@@ -127,8 +123,6 @@ func build() {
 func forcebuild() {
 	forceBuildFC()
 	buildGengen()
-	buildFaucet()
-	buildGenesisFileServer()
 	generateGenesis()
 	buildPrereleaseTool()
 }
@@ -230,18 +224,6 @@ func buildGengen() {
 	log.Println("Building gengen utils...")
 
 	runCmd(cmd([]string{"go", "build", "-o", "./tools/gengen/gengen", "./tools/gengen"}...))
-}
-
-func buildFaucet() {
-	log.Println("Building faucet...")
-
-	runCmd(cmd([]string{"go", "build", "-o", "./tools/faucet/faucet", "./tools/faucet/"}...))
-}
-
-func buildGenesisFileServer() {
-	log.Println("Building genesis file server...")
-
-	runCmd(cmd([]string{"go", "build", "-o", "./tools/genesis-file-server/genesis-file-server", "./tools/genesis-file-server/"}...))
 }
 
 func buildPrereleaseTool() {

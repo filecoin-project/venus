@@ -51,7 +51,7 @@ type messagepoolConfig interface {
 	Repo() repo.Repo
 }
 
-// MessagingSubmodule enhances the `Node` with internal messaging capabilities.
+// MessagingSubmodule enhances the `Node` with internal message capabilities.
 type MessagePoolSubmodule struct { //nolint
 	// Network Fields
 	MessageTopic *pubsub.Topic
@@ -258,6 +258,7 @@ func (mp *MessagePoolSubmodule) Stop(ctx context.Context) {
 	}
 }
 
+//API create a new mpool api implement
 func (mp *MessagePoolSubmodule) API() apiface.IMessagePool {
 	pushLocks := messagepool.NewMpoolLocker()
 	return &MessagePoolAPI{mp: mp, pushLocks: pushLocks}

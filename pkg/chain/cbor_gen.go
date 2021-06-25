@@ -35,10 +35,10 @@ func (t *TSState) MarshalCBOR(w io.Writer) error {
 		return xerrors.Errorf("failed to write cid field t.StateRoot: %w", err)
 	}
 
-	// t.Reciepts (cid.Cid) (struct)
+	// t.Receipts (cid.Cid) (struct)
 
-	if err := cbg.WriteCidBuf(scratch, w, t.Reciepts); err != nil {
-		return xerrors.Errorf("failed to write cid field t.Reciepts: %w", err)
+	if err := cbg.WriteCidBuf(scratch, w, t.Receipts); err != nil {
+		return xerrors.Errorf("failed to write cid field t.Receipts: %w", err)
 	}
 
 	return nil
@@ -74,16 +74,16 @@ func (t *TSState) UnmarshalCBOR(r io.Reader) error {
 		t.StateRoot = c
 
 	}
-	// t.Reciepts (cid.Cid) (struct)
+	// t.Receipts (cid.Cid) (struct)
 
 	{
 
 		c, err := cbg.ReadCid(br)
 		if err != nil {
-			return xerrors.Errorf("failed to read cid field t.Reciepts: %w", err)
+			return xerrors.Errorf("failed to read cid field t.Receipts: %w", err)
 		}
 
-		t.Reciepts = c
+		t.Receipts = c
 
 	}
 	return nil

@@ -11,6 +11,7 @@ import (
 
 type Schedule []BeaconPoint
 
+//BeaconForEpoch select beacon at specify epoch
 func (bs Schedule) BeaconForEpoch(e abi.ChainEpoch) RandomBeacon {
 	for i := len(bs) - 1; i >= 0; i-- {
 		bp := bs[i]
@@ -21,6 +22,7 @@ func (bs Schedule) BeaconForEpoch(e abi.ChainEpoch) RandomBeacon {
 	return bs[0].Beacon
 }
 
+//DrandConfigSchedule create new beacon schedule , used to select beacon server at specify chain height
 func DrandConfigSchedule(genTimeStamp uint64, blockDelay uint64, drandSchedule map[abi.ChainEpoch]cfg.DrandEnum) (Schedule, error) {
 	shd := Schedule{}
 

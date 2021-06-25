@@ -79,6 +79,7 @@ type NetworkSubmodule struct { //nolint
 	DataTransferHost dtnet.DataTransferNetwork
 }
 
+//API create a new network implement
 func (networkSubmodule *NetworkSubmodule) API() apiface.INetwork {
 	return &networkAPI{network: networkSubmodule}
 }

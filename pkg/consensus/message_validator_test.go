@@ -34,54 +34,6 @@ func init() {
 	}
 }
 
-func TestMessagePenaltyChecker(t *testing.T) {
-	tf.UnitTest(t)
-
-	alice := addresses[0]
-	bob := addresses[1]
-	actor := newActor(t, 1000, 100)
-	api := NewMockIngestionValidatorAPI()
-	api.ActorAddr = alice
-	api.Actor = actor
-
-	checker := consensus.NewMessagePenaltyChecker(api)
-	ctx := context.Background()
-
-	t.Run("valid", func(t *testing.T) {
-		msg := newMessage(t, alice, bob, 100, 5, 1, 0)
-		assert.NoError(t, checker.PenaltyCheck(ctx, msg))
-	})
-
-	t.Run("non-account actor fails", func(t *testing.T) {
-		badActor := newActor(t, 1000, 100)
-		badActor.Code = types.CidFromString(t, "somecid")
-		msg := newMessage(t, alice, bob, 100, 5, 1, 0)
-		api := NewMockIngestionValidatorAPI()
-		api.ActorAddr = alice
-		api.Actor = badActor
-		checker := consensus.NewMessagePenaltyChecker(api)
-		assert.Errorf(t, checker.PenaltyCheck(ctx, msg), "account")
-	})
-
-	t.Run("can't cover value", func(t *testing.T) {
-		msg := newMessage(t, alice, bob, 100, 2000, 1, 0) // lots of value
-		assert.Errorf(t, checker.PenaltyCheck(ctx, msg), "funds")
-
-		msg = newMessage(t, alice, bob, 100, 5, 100000, 200) // lots of expensive gas
-		assert.Errorf(t, checker.PenaltyCheck(ctx, msg), "funds")
-	})
-
-	t.Run("low nonce", func(t *testing.T) {
-		msg := newMessage(t, alice, bob, 99, 5, 1, 0)
-		assert.Errorf(t, checker.PenaltyCheck(ctx, msg), "too low")
-	})
-
-	t.Run("high nonce", func(t *testing.T) {
-		msg := newMessage(t, alice, bob, 101, 5, 1, 0)
-		assert.Errorf(t, checker.PenaltyCheck(ctx, msg), "too high")
-	})
-}
-
 func TestBLSSignatureValidationConfiguration(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()

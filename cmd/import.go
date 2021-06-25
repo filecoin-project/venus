@@ -64,11 +64,10 @@ func importChain(r repo.Repo, fname string) error {
 		l = st.Size()
 	}
 
-	chainStatusReporter := chain.NewStatusReporter()
 	bs := r.Datastore()
 	// setup a ipldCbor on top of the local store
 	ipldCborStore := cbor.NewCborStore(bs)
-	chainStore := chain.NewStore(r.ChainDatastore(), ipldCborStore, bs, chainStatusReporter, config.DefaultForkUpgradeParam, cid.Undef)
+	chainStore := chain.NewStore(r.ChainDatastore(), ipldCborStore, bs, config.DefaultForkUpgradeParam, cid.Undef)
 
 	bufr := bufio.NewReaderSize(rd, 1<<20)
 

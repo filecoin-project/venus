@@ -16,13 +16,14 @@ type CodeLoader struct {
 	actors map[cid.Cid]ActorInfo
 }
 
+//ActorInfo vm contract actor
 type ActorInfo struct {
 	vmActor rtt.VMActor
 	// TODO: consider making this a network version range?
 	predicate ActorPredicate
 }
 
-// GetActorImpl returns executable code for an actor by code cid at a specific protocol version
+// GetActorImpl returns executable code for an actor by code cid at a specific network version
 func (cl CodeLoader) GetActorImpl(code cid.Cid, rt vmr.Runtime) (Dispatcher, *ExcuteError) {
 	//todo version check
 	actor, ok := cl.actors[code]
@@ -84,6 +85,7 @@ func (b *CodeLoaderBuilder) Build() CodeLoader {
 // An ActorPredicate returns an error if the given actor is not valid for the given runtime environment (e.g., chain height, version, etc.).
 type ActorPredicate func(vmr.Runtime, rtt.VMActor) error
 
+//ActorsVersionPredicate  get actor predicate base on actor version and network version
 func ActorsVersionPredicate(ver specactors.Version) ActorPredicate {
 	return func(rt vmr.Runtime, v rtt.VMActor) error {
 		nver := specactors.VersionForNetwork(rt.NtwkVersion())

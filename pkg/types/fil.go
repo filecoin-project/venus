@@ -3,18 +3,15 @@ package types
 import (
 	"encoding"
 	"fmt"
+	fbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"math/big"
 	"strings"
-
-	specsbig "github.com/filecoin-project/go-state-types/big"
-
-	"github.com/filecoin-project/venus/pkg/constants"
 )
 
-// ZeroFIL is the zero value for an AttoFIL, exported for consistency in construction of AttoFILs
-var ZeroFIL = specsbig.Zero()
+var ZeroFIL = fbig.NewInt(0)
 
-type FIL specsbig.Int
+type FIL BigInt
 
 func (f FIL) String() string {
 	return f.Unitless() + " FIL"
@@ -31,7 +28,7 @@ func (f FIL) Unitless() string {
 var unitPrefixes = []string{"a", "f", "p", "n", "μ", "m"}
 
 func (f FIL) Short() string {
-	n := BigInt(f)
+	n := BigInt(f).Abs()
 
 	dn := uint64(1)
 	var prefix string
@@ -49,6 +46,15 @@ func (f FIL) Short() string {
 	}
 
 	return strings.TrimRight(strings.TrimRight(r.FloatString(3), "0"), ".") + " " + prefix + "FIL"
+}
+
+func (f FIL) Nano() string {
+	r := new(big.Rat).SetFrac(f.Int, big.NewInt(int64(1e9)))
+	if r.Sign() == 0 {
+		return "0"
+	}
+
+	return strings.TrimRight(strings.TrimRight(r.FloatString(9), "0"), ".") + " nFIL"
 }
 
 func (f FIL) Format(s fmt.State, ch rune) {
@@ -75,7 +81,7 @@ func (f FIL) UnmarshalText(text []byte) error {
 }
 
 func ParseFIL(s string) (FIL, error) {
-	suffix := strings.TrimLeft(s, ".1234567890")
+	suffix := strings.TrimLeft(s, "-.1234567890")
 	s = s[:len(s)-len(suffix)]
 	var attofil bool
 	if suffix != "" {
@@ -87,6 +93,10 @@ func ParseFIL(s string) (FIL, error) {
 		default:
 			return FIL{}, fmt.Errorf("unrecognized suffix: %q", suffix)
 		}
+	}
+
+	if len(s) > 50 {
+		return FIL{}, fmt.Errorf("string length too large: %d", len(s))
 	}
 
 	r, ok := new(big.Rat).SetString(s)

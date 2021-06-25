@@ -11,10 +11,10 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/consensusfault"
 	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/bls"  // enable bls signatures
 	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/secp" // enable secp signatures
 	"github.com/filecoin-project/venus/pkg/fork"
-	"github.com/filecoin-project/venus/pkg/slashing"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/register"
@@ -88,11 +88,10 @@ type ExecuteTipsetResult struct {
 // and reward withdrawal per miner.
 func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset, execEpoch abi.ChainEpoch) (*ExecuteTipsetResult, error) {
 	ipldStore := cbor.NewCborStore(bs)
-	chainStatusReporter := chain.NewStatusReporter()
 	mainNetParams := networks.Mainnet()
 	node.SetNetParams(&mainNetParams.Network)
 	//chainstore
-	chainStore := chain.NewStore(chainDs, ipldStore, bs, chainStatusReporter, mainNetParams.Network.ForkUpgradeParam, cid.Undef) //load genesis from car
+	chainStore := chain.NewStore(chainDs, ipldStore, bs, mainNetParams.Network.ForkUpgradeParam, cid.Undef) //load genesis from car
 
 	//drand
 	/*genBlk, err := chainStore.GetGenesisBlock(context.TODO())
@@ -107,7 +106,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 
 	//chain fork
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network)
-	faultChecker := slashing.NewFaultChecker(chainStore, chainFork)
+	faultChecker := consensusfault.NewFaultChecker(chainStore, chainFork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
 	if err != nil {
 		return nil, err
@@ -250,10 +249,9 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 	mainNetParams := networks.Mainnet()
 	node.SetNetParams(&mainNetParams.Network)
 	ipldStore := cbor.NewCborStore(bs)
-	chainStatusReporter := chain.NewStatusReporter()
 	chainDs := ds.NewMapDatastore() //just mock one
 	//chainstore
-	chainStore := chain.NewStore(chainDs, ipldStore, bs, chainStatusReporter, mainNetParams.Network.ForkUpgradeParam, cid.Undef) //load genesis from car
+	chainStore := chain.NewStore(chainDs, ipldStore, bs, mainNetParams.Network.ForkUpgradeParam, cid.Undef) //load genesis from car
 
 	//drand
 	/*	genBlk, err := chainStore.GetGenesisBlock(context.TODO())
@@ -268,7 +266,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 
 	//chain fork
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network)
-	faultChecker := slashing.NewFaultChecker(chainStore, chainFork)
+	faultChecker := consensusfault.NewFaultChecker(chainStore, chainFork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
 	if err != nil {
 		return nil, cid.Undef, err

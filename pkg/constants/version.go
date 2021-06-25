@@ -7,6 +7,7 @@ import (
 // BuildVersion is the local build version, set by build system
 const BuildVersion = "0.9.5"
 
+// software version
 func UserVersion() string {
 	return BuildVersion + flags.GitCommit
 }

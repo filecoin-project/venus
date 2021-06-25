@@ -14,6 +14,7 @@ import (
 )
 
 // stateManagerAPI defines the methods needed from StateManager
+//todo remove this code and add private interface in market and paychanel package
 type IStateManager interface {
 	ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 	GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error)

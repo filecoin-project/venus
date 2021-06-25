@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/fskeystore"
+	"github.com/filecoin-project/venus/pkg/repo/fskeystore"
 
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -31,18 +31,16 @@ const LatestVersion uint = 3
 
 const (
 	// apiFile is the filename containing the filecoin node's api address.
-	apiToken              = "token"
-	apiFile               = "api"
-	configFilename        = "config.json"
-	tempConfigFilename    = ".config.json.temp"
-	lockFile              = "repo.lock"
-	versionFilename       = "version"
-	walletDatastorePrefix = "wallet"
-	chainDatastorePrefix  = "chain"
-	metaDatastorePrefix   = "metadata"
-	paychDatastorePrefix  = "paych"
-	//marketDatastoreProfix = "market"
-	// dealsDatastorePrefix   = "deals"
+	apiToken               = "token"
+	apiFile                = "api"
+	configFilename         = "config.json"
+	tempConfigFilename     = ".config.json.temp"
+	lockFile               = "repo.lock"
+	versionFilename        = "version"
+	walletDatastorePrefix  = "wallet"
+	chainDatastorePrefix   = "chain"
+	metaDatastorePrefix    = "metadata"
+	paychDatastorePrefix   = "paych"
 	snapshotStorePrefix    = "snapshots"
 	snapshotFilenamePrefix = "snapshot"
 	dataTransfer           = "data-transfer"

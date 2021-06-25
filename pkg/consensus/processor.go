@@ -87,6 +87,7 @@ func (p *DefaultProcessor) ProcessMessage(ctx context.Context, msg types.ChainMs
 	return v.ApplyMessage(msg)
 }
 
+//ProcessImplicitMessage compute the state of specify message but this functions skip value, gas,check
 func (p *DefaultProcessor) ProcessImplicitMessage(ctx context.Context, msg *types.UnsignedMessage, vmOption vm.VmOption) (ret *vm.Ret, err error) {
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessImplicitMessage")
 	span.AddAttributes(trace.StringAttribute("message", msg.String()))

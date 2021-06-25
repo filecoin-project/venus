@@ -16,7 +16,6 @@ import (
 type RandomSeed []byte
 
 ///// Chain sampling /////
-
 type ChainSampler interface { //nolint
 	Sample(ctx context.Context, epoch abi.ChainEpoch) (RandomSeed, error)
 	GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
@@ -28,6 +27,7 @@ type GenesisSampler struct {
 	VRFProof types.VRFPi
 }
 
+//Sample get genesis ticket randomSeed , t
 func (g *GenesisSampler) Sample(_ context.Context, epoch abi.ChainEpoch) (RandomSeed, error) {
 	if epoch > 0 {
 		return nil, fmt.Errorf("invalid use of genesis sampler for epoch %d", epoch)
@@ -62,6 +62,7 @@ type ChainRandomnessSource struct { //nolint
 	Sampler ChainSampler
 }
 
+//GetRandomnessFromTickets compute randomness from ticket
 func (c *ChainRandomnessSource) GetRandomnessFromTickets(ctx context.Context, tag crypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	seed, err := c.Sampler.Sample(ctx, epoch)
 	if err != nil {
@@ -70,10 +71,12 @@ func (c *ChainRandomnessSource) GetRandomnessFromTickets(ctx context.Context, ta
 	return BlendEntropy(tag, seed, epoch, entropy)
 }
 
+//GetRandomnessFromBeacon get randomness from beacon
 func (c *ChainRandomnessSource) GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	return c.Sampler.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy)
 }
 
+//BlendEntropy get randomness with chain value. sha256(buf(tag, seed, epoch, entropy))
 func BlendEntropy(tag crypto.DomainSeparationTag, seed RandomSeed, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	buffer := bytes.Buffer{}
 	err := binary.Write(&buffer, binary.BigEndian, int64(tag))

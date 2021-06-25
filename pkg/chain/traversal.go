@@ -173,30 +173,6 @@ func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator
 	return ret, nil
 }
 
-// FindTipSetAtEpoch finds the highest tipset with height <= the input epoch
-// by traversing backwards from start
-func FindTipsetAtEpoch(ctx context.Context, start *types.TipSet, epoch abi.ChainEpoch, reader TipSetProvider) (ts *types.TipSet, err error) {
-	iterator := IterAncestors(ctx, reader, start)
-	var h abi.ChainEpoch
-	searchHeight := epoch
-	if searchHeight < 0 {
-		searchHeight = 0
-	}
-
-	for ; !iterator.Complete(); err = iterator.Next() {
-		if err != nil {
-			return
-		}
-		ts = iterator.Value()
-		h = ts.Height()
-		if h <= searchHeight {
-			break
-		}
-	}
-	// If the iterator completed, ts is the genesis tipset.
-	return
-}
-
 // FindLatestDRAND returns the latest DRAND entry in the chain beginning at start
 func FindLatestDRAND(ctx context.Context, start *types.TipSet, reader TipSetProvider) (*types.BeaconEntry, error) {
 	iterator := IterAncestors(ctx, reader, start)

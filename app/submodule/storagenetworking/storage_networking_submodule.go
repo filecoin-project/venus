@@ -20,6 +20,7 @@ func NewStorgeNetworkingSubmodule(ctx context.Context, network *network.NetworkS
 	}, nil
 }
 
+//API create a new storage implement
 func (storageNetworking *StorageNetworkingSubmodule) API() IStorageNetworking {
 	return &storageNetworkingAPI{storageNetworking: storageNetworking}
 }
