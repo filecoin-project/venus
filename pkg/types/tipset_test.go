@@ -120,7 +120,7 @@ func TestTipSet(t *testing.T) {
 
 	t.Run("parent weight", func(t *testing.T) {
 		tsParentWeight := RequireNewTipSet(t, b1).ParentWeight()
-		assert.Equal(t, fbig.NewInt(int64(parentWeight*10000)), tsParentWeight)
+		assert.Equal(t, fbig.NewInt(int64(parentWeight)), tsParentWeight)
 	})
 
 	t.Run("min ticket", func(t *testing.T) {
