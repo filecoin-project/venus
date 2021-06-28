@@ -338,7 +338,7 @@ func (cia *chainInfoAPI) ChainGetRandomnessFromBeacon(ctx context.Context, key t
 		return cia.chain.ChainReader.GetBeaconRandomness(ctx, ts.Key(), personalization, randEpoch, entropy, false)
 	}
 
-	return cia.chain.ChainReader.GetChainRandomness(ctx, ts.Key(), personalization, randEpoch, entropy, true)
+	return cia.chain.ChainReader.GetBeaconRandomness(ctx, ts.Key(), personalization, randEpoch, entropy, true)
 }
 
 // ChainGetRandomnessFromTickets is used to sample the chain for randomness.
