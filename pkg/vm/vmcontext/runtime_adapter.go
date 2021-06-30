@@ -153,7 +153,8 @@ func (a *runtimeAdapter) NetworkVersion() network.Version {
 func (a *runtimeAdapter) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
 	var err error
 	var res []byte
-	if randEpoch > a.ctx.vm.vmOption.Fork.GetForkUpgrade().UpgradeHyperdriveHeight {
+
+	if a.ctx.vm.vmOption.NtwkVersionGetter(a.ctx.vm.context, randEpoch) >= network.Version13 {
 		res, err = a.ctx.randSource.GetBeaconRandomnessLookingForward(a.Context(), personalization, randEpoch, entropy)
 	} else {
 		res, err = a.ctx.randSource.GetBeaconRandomnessLookingBack(a.Context(), personalization, randEpoch, entropy)
