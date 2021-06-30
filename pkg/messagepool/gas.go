@@ -333,8 +333,9 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 				estimateMsg.Nonce = 0
 				estimateResults = append(estimateResults, &types.EstimateResult{
 					Msg: estimateMsg,
-					Err: fmt.Sprintf("estimating gas price: %v", err),
+					Err: fmt.Sprintf("estimating gas limit: %v", err),
 				})
+				continue
 			}
 			estimateMsg.GasLimit = int64(float64(gasUsed) * estimateMessage.Spec.GasOverEstimation)
 		}
@@ -345,8 +346,9 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 				estimateMsg.Nonce = 0
 				estimateResults = append(estimateResults, &types.EstimateResult{
 					Msg: estimateMsg,
-					Err: fmt.Sprintf("estimating gas price: %v", err),
+					Err: fmt.Sprintf("estimating gas premium: %v", err),
 				})
+				continue
 			}
 			estimateMsg.GasPremium = gasPremium
 		}
@@ -359,6 +361,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 					Msg: estimateMsg,
 					Err: fmt.Sprintf("estimating fee cap: %v", err),
 				})
+				continue
 			}
 			estimateMsg.GasFeeCap = feeCap
 		}
