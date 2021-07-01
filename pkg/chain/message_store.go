@@ -422,7 +422,7 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet)
 		return true, nil
 	}
 
-	blockMsg := []types.BlockMessagesInfo{}
+	var blockMsg []types.BlockMessagesInfo
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
 		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, blk.Messages) // Corresponding to  MessagesForBlock of lotus
@@ -430,8 +430,8 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet)
 			return nil, errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", ts.Key(), blk.Messages, blk.Cid())
 		}
 
-		var sBlsMsg []types.ChainMsg
-		var sSecpMsg []types.ChainMsg
+		sBlsMsg := make([]types.ChainMsg, 0, len(blsMsgs))
+		sSecpMsg := make([]types.ChainMsg, 0, len(secpMsgs))
 		for _, msg := range blsMsgs {
 			b, err := selectMsg(msg)
 			if err != nil {
