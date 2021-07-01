@@ -198,6 +198,32 @@ func (cia *chainInfoAPI) GetFullBlock(ctx context.Context, id cid.Cid) (*types.F
 	return &out, nil
 }
 
+// ChainGetMessagesInTipset returns message stores in current tipset
+func (cia *chainInfoAPI) ChainGetMessagesInTipset(ctx context.Context, key types.TipSetKey) ([]apitypes.Message, error) {
+	ts, err := cia.chain.ChainReader.GetTipSet(key)
+	if err != nil {
+		return nil, err
+	}
+	if ts.Height() == 0 {
+		return nil, nil
+	}
+
+	cm, err := cia.chain.MessageStore.MessagesForTipset(ts)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []apitypes.Message
+	for _, m := range cm {
+		out = append(out, apitypes.Message{
+			Cid:     m.Cid(),
+			Message: m.VMMessage(),
+		})
+	}
+
+	return out, nil
+}
+
 // ChainGetParentMessages returns messages stored in parent tipset of the
 // specified block.
 func (cia *chainInfoAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]apitypes.Message, error) {

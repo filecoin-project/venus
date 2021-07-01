@@ -26,8 +26,8 @@ clean:
 
 gen:
 	go run ./tools/gen/api/proxygen.go
-	gofmt -s -l -w ./app/client/client_gen.go
-	goimports -l -w ./app/client/client_gen.go
+	gofmt -s -l -w ./app/client/full.go
+	goimports -l -w ./app/client/full.go
 
 gen-asset:
 	go-bindata -pkg=asset -o ./fixtures/asset/asset.go ./fixtures/_assets/car/ ./fixtures/_assets/proof-params/ ./fixtures/_assets/arch-diagram.monopic
