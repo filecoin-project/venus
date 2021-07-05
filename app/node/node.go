@@ -3,10 +3,14 @@ package node
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"contrib.go.opencensus.io/exporter/jaeger"
+	"go.opencensus.io/tag"
 
 	"github.com/filecoin-project/venus/app/submodule/multisig/v0api"
 
@@ -97,6 +101,8 @@ type Node struct {
 	jsonRPCService, jsonRPCServiceV1 *jsonrpc.RPCServer
 
 	jwtCli jwtauth.IJwtAuthClient
+
+	jaegerExporter *jaeger.Exporter
 }
 
 func (node *Node) Chain() *chain2.ChainSubmodule {
@@ -153,11 +159,13 @@ func (node *Node) OfflineMode() bool {
 
 // Start boots up the node.
 func (node *Node) Start(ctx context.Context) error {
-	if err := metrics.RegisterPrometheusEndpoint(node.repo.Config().Observability.Metrics); err != nil {
+	var err error
+	if err = metrics.RegisterPrometheusEndpoint(node.repo.Config().Observability.Metrics); err != nil {
 		return errors.Wrap(err, "failed to setup metrics")
 	}
 
-	if err := metrics.RegisterJaeger(node.network.Host.ID().Pretty(), node.repo.Config().Observability.Tracing); err != nil {
+	if node.jaegerExporter, err = metrics.RegisterJaeger(node.network.Host.ID().Pretty(),
+		node.repo.Config().Observability.Tracing); err != nil {
 		return errors.Wrap(err, "failed to setup tracing")
 	}
 
@@ -165,18 +173,17 @@ func (node *Node) Start(ctx context.Context) error {
 	syncCtx, node.syncer.CancelChainSync = context.WithCancel(context.Background())
 
 	// Start node discovery
-	err := node.discovery.Start(node.offlineMode)
-	if err != nil {
+	if err = node.discovery.Start(node.offlineMode); err != nil {
 		return err
 	}
 
-	//start syncer module to receive new blocks and start sync to latest height
+	// start syncer module to receive new blocks and start sync to latest height
 	err = node.syncer.Start(syncCtx)
 	if err != nil {
 		return err
 	}
 
-	//Start mpool module to receive new message
+	// Start mpool module to receive new message
 	err = node.mpool.Start(syncCtx)
 	if err != nil {
 		return err
@@ -200,26 +207,30 @@ func (node *Node) Stop(ctx context.Context) {
 	// stop mpool submodule
 	node.mpool.Stop(ctx)
 
-	//stop syncer submodule
+	// stop syncer submodule
 	node.syncer.Stop(ctx)
 
-	//Stop discovery submodule
+	// Stop discovery submodule
 	node.discovery.Stop()
 
-	//Stop network submodule
+	// Stop network submodule
 	node.network.Stop(ctx)
 
-	//Stop chain submodule
+	// Stop chain submodule
 	node.chain.Stop(ctx)
 
-	//Stop paychannel submodule
+	// Stop paychannel submodule
 	node.paychan.Stop()
 
-	//Stop market submodule
-	//node.market.Stop()
+	// Stop market submodule
+	// node.market.Stop()
 
 	if err := node.repo.Close(); err != nil {
 		fmt.Printf("error closing repo: %s\n", err)
+	}
+
+	if node.jaegerExporter != nil {
+		node.jaegerExporter.Flush()
 	}
 }
 
@@ -237,14 +248,14 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 
 	// Listen on the configured address in order to bind the port number in case it has
 	// been configured as zero (i.e. OS-provided)
-	apiListener, err := manet.Listen(mAddr) //nolint
+	apiListener, err := manet.Listen(mAddr) // nolint
 	if err != nil {
 		return err
 	}
 
-	netListener := manet.NetListener(apiListener) //nolint
+	netListener := manet.NetListener(apiListener) // nolint
 	handler := http.NewServeMux()
-	err = node.runRestfulAPI(ctx, handler, rootCmdDaemon) //nolint
+	err = node.runRestfulAPI(ctx, handler, rootCmdDaemon) // nolint
 	if err != nil {
 		return err
 	}
@@ -255,12 +266,21 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 
 	authMux := jwtauth.NewAuthMux(node.jwtCli, handler)
 	authMux.TrustHandle("/debug/pprof/", http.DefaultServeMux)
+
+	// todo:
+	apikey, _ := tag.NewKey("api")
+
 	apiserv := &http.Server{
 		Handler: authMux,
+		BaseContext: func(listener net.Listener) context.Context {
+			ctx, _ := tag.New(context.Background(),
+				tag.Upsert(apikey, "venus"))
+			return ctx
+		},
 	}
 
 	go func() {
-		err := apiserv.Serve(netListener) //nolint
+		err := apiserv.Serve(netListener) // nolint
 		if err != nil && err != http.ErrServerClosed {
 			return
 		}
@@ -303,8 +323,7 @@ func (node *Node) runRestfulAPI(ctx context.Context, handler *http.ServeMux, roo
 	return nil
 }
 
-//runJsonrpcAPI bind jsonrpc handle
-func (node *Node) runJsonrpcAPI(ctx context.Context, handler *http.ServeMux) error { //nolint
+func (node *Node) runJsonrpcAPI(ctx context.Context, handler *http.ServeMux) error { // nolint
 	handler.Handle("/rpc/v0", node.jsonRPCService)
 	handler.Handle("/rpc/v1", node.jsonRPCServiceV1)
 	return nil
