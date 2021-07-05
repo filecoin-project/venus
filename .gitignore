@@ -4,7 +4,7 @@ venus
 !app/venus
 devgen.car
 localnet.json
-
+*.log
 .task
 .idea
 *.coverprofile

@@ -9,6 +9,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/ipfs-force-community/metrics/leakybucket"
+	"golang.org/x/xerrors"
+
 	"contrib.go.opencensus.io/exporter/jaeger"
 	"github.com/awnumar/memguard"
 	"github.com/filecoin-project/go-jsonrpc"
@@ -240,8 +243,8 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 	signal.Notify(terminate, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(terminate)
 	// Signal that the sever has started and then wait for a signal to stop.
-	apiConfig := node.repo.Config()
-	mAddr, err := ma.NewMultiaddr(apiConfig.API.APIAddress)
+	cfg := node.repo.Config()
+	mAddr, err := ma.NewMultiaddr(cfg.API.APIAddress)
 	if err != nil {
 		return err
 	}
@@ -254,12 +257,13 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 	}
 
 	netListener := manet.NetListener(apiListener) // nolint
-	handler := http.NewServeMux()
-	err = node.runRestfulAPI(ctx, handler, rootCmdDaemon) // nolint
+	mux := http.NewServeMux()
+	err = node.runRestfulAPI(ctx, mux, rootCmdDaemon) // nolint
 	if err != nil {
 		return err
 	}
-	err = node.runJsonrpcAPI(ctx, handler)
+
+	err = node.runJsonrpcAPI(ctx, mux)
 	if err != nil {
 		return err
 	}
@@ -269,11 +273,22 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 		return err
 	}
 
-	var remoteVerifer jwtclient.IJwtAuthClient
+	var remoteVerifer *jwtauth.RemoteAuth
 	authURL := node.repo.Config().API.VenusAuthURL
 
 	if len(authURL) > 0 {
 		remoteVerifer = jwtauth.NewRemoteAuth(authURL)
+	}
+
+	var handler http.Handler
+	if cfg.RateLimitCfg.Enable {
+		if handler, err = leakybucket.NewRateLimitHandler(cfg.RateLimitCfg.Endpoint, mux, &jwtauth.ValueFromCtx{},
+			remoteVerifer, logging.Logger("venus-rate-limit")); err != nil {
+			return xerrors.Errorf("request rate-limit is enabled, but create rate-limit handler failed:%w", err)
+		}
+		_ = logging.SetLogLevel("venus-rate-limit", "info")
+	} else {
+		handler = mux
 	}
 
 	authMux := jwtclient.NewAuthMux(localVerifer,
@@ -300,8 +315,8 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 	}()
 
 	// Write the resolved API address to the repo
-	apiConfig.API.APIAddress = apiListener.Multiaddr().String()
-	if err := node.repo.SetAPIAddr(apiConfig.API.APIAddress); err != nil {
+	cfg.API.APIAddress = apiListener.Multiaddr().String()
+	if err := node.repo.SetAPIAddr(cfg.API.APIAddress); err != nil {
 		log.Error("Could not save API address to repo")
 		return err
 	}

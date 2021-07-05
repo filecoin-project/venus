@@ -3,12 +3,23 @@ package jwtauth
 import (
 	"context"
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	auth2 "github.com/filecoin-project/venus-auth/auth"
+	va "github.com/filecoin-project/venus-auth/auth"
 	vjc "github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus-auth/core"
+	"github.com/ipfs-force-community/metrics/leakybucket"
 )
 
 var _ vjc.IJwtAuthClient = (*RemoteAuth)(nil)
+var _ leakybucket.IBucketsFinder = (*RemoteAuth)(nil)
+
+type ValueFromCtx struct{}
+
+func (vfc *ValueFromCtx) AccFromCtx(ctx context.Context) (string, bool) {
+	return vjc.CtxGetName(ctx)
+}
+func (vfc *ValueFromCtx) HostFromCtx(ctx context.Context) (string, bool) {
+	return vjc.CtxGetTokenLocation(ctx)
+}
 
 // RemoteAuth  in remote verification mode, venus connects venus-auth service, and verifies whether token is legal through rpc
 type RemoteAuth struct {
@@ -27,7 +38,7 @@ func (r *RemoteAuth) Verify(ctx context.Context, token string) ([]auth.Permissio
 	var perms []auth.Permission
 	var err error
 
-	var res *auth2.VerifyResponse
+	var res *va.VerifyResponse
 	if res, err = r.remote.Verify(ctx, token); err != nil {
 		return nil, err
 	}
@@ -37,6 +48,40 @@ func (r *RemoteAuth) Verify(ctx context.Context, token string) ([]auth.Permissio
 	copy(perms, jwtPerms)
 
 	return perms, nil
+}
+
+func (r *RemoteAuth) UserBucket(name string) (*leakybucket.Bucket, error) {
+	res, err := r.remote.GetUser(&va.GetUserRequest{Name: name})
+	if err != nil {
+		return nil, err
+	}
+	return &leakybucket.Bucket{
+		Account: res.Name, Rate: res.Rate, Cap: res.Burst}, nil
+}
+
+func (r *RemoteAuth) ListUserBuckets() ([]*leakybucket.Bucket, error) {
+	const PageSize = 5
+
+	var buckets = make([]*leakybucket.Bucket, 0, PageSize*2)
+
+	req := &va.ListUsersRequest{
+		Page:       &core.Page{Skip: 0, Limit: PageSize},
+		SourceType: 0, State: 0, KeySum: 0}
+
+	for int64(len(buckets)) == req.Skip {
+		res, err := r.remote.ListUsers(req)
+		if err != nil {
+			return nil, err
+		}
+		for _, u := range res {
+			buckets = append(buckets,
+				&leakybucket.Bucket{Account: u.Name, Rate: u.Rate, Cap: u.Burst})
+		}
+
+		req.Skip += PageSize
+	}
+	return buckets, nil
+
 }
 
 // API remote a new api

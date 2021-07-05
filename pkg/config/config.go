@@ -36,6 +36,7 @@ type Config struct {
 	Swarm         *SwarmConfig         `json:"swarm"`
 	Wallet        *WalletConfig        `json:"walletModule"`
 	SlashFilterDs *SlashFilterDsConfig `json:"slashFilter"`
+	RateLimitCfg  *RateLimitCfg        `json:"rateLimit"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -46,6 +47,13 @@ type APIConfig struct {
 	AccessControlAllowOrigin      []string `json:"accessControlAllowOrigin"`
 	AccessControlAllowCredentials bool     `json:"accessControlAllowCredentials"`
 	AccessControlAllowMethods     []string `json:"accessControlAllowMethods"`
+}
+
+type RateLimitCfg struct {
+	Endpoint string `json:"RedisEndpoint"`
+	User     string `json:"user"`
+	Pwd      string `json:"pwd"`
+	Enable   bool   `json:"enable"`
 }
 
 func newDefaultAPIConfig() *APIConfig {
@@ -238,7 +246,7 @@ func newDefaultMessagePoolConfig() *MessagePoolConfig {
 	}
 }
 
-//NetworkParamsConfig record netork parameters
+// NetworkParamsConfig record netork parameters
 type NetworkParamsConfig struct {
 	DevNet                  bool                         `json:"devNet"`
 	NetworkType             int                          `json:"networkType"`
@@ -252,7 +260,7 @@ type NetworkParamsConfig struct {
 	PreCommitChallengeDelay abi.ChainEpoch               `json:"preCommitChallengeDelay"`
 }
 
-//ForkUpgradeConfig record upgrade parameters
+// ForkUpgradeConfig record upgrade parameters
 type ForkUpgradeConfig struct {
 	UpgradeSmokeHeight       abi.ChainEpoch `json:"upgradeSmokeHeight"`
 	UpgradeBreezeHeight      abi.ChainEpoch `json:"upgradeBreezeHeight"`
@@ -332,6 +340,12 @@ func newDefaultSlashFilterDsConfig() *SlashFilterDsConfig {
 	}
 }
 
+func newRateLimitConfig() *RateLimitCfg {
+	return &RateLimitCfg{
+		Enable: false,
+	}
+}
+
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
@@ -345,6 +359,7 @@ func NewDefaultConfig() *Config {
 		Swarm:         newDefaultSwarmConfig(),
 		Wallet:        newDefaultWalletConfig(),
 		SlashFilterDs: newDefaultSlashFilterDsConfig(),
+		RateLimitCfg:  newRateLimitConfig(),
 	}
 }
 
