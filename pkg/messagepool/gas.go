@@ -85,11 +85,11 @@ func (mp *MessagePool) GasEstimateFeeCap(
 	parentBaseFee := ts.Blocks()[0].ParentBaseFee
 	increaseFactor := math.Pow(1.+1./float64(constants.BaseFeeMaxChangeDenom), float64(maxqueueblks))
 
-	feeInFuture := big.Mul(parentBaseFee, big.NewInt(int64(increaseFactor*(1<<8))))
-	out := big.Div(feeInFuture, big.NewInt(1<<8))
+	feeInFuture := types.BigMul(parentBaseFee, types.NewInt(uint64(increaseFactor*(1<<8))))
+	out := types.BigDiv(feeInFuture, types.NewInt(1<<8))
 
-	if !msg.GasPremium.Nil() && big.Cmp(msg.GasPremium, big.NewInt(0)) != 0 {
-		out = big.Add(out, msg.GasPremium)
+	if msg.GasPremium != types.EmptyInt {
+		out = types.BigAdd(out, msg.GasPremium)
 	}
 
 	return out, nil
@@ -178,8 +178,8 @@ func (mp *MessagePool) GasEstimateGasPremium(
 	const precision = 32
 	// mean 1, stddev 0.005 => 95% within +-1%
 	noise := 1 + rand.NormFloat64()*0.005
-	premium = big.Mul(premium, big.NewInt(int64(noise*(1<<precision))+1))
-	premium = big.Div(premium, big.NewInt(1<<precision))
+	premium = types.BigMul(premium, types.NewInt(uint64(noise*(1<<precision))+1))
+	premium = types.BigDiv(premium, types.NewInt(1<<precision))
 	return premium, nil
 }
 
@@ -266,6 +266,9 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 }
 
 func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessage *types.EstimateMessage, _ types.TipSetKey) (*types.Message, error) {
+	if estimateMessage == nil || estimateMessage.Msg == nil {
+		return nil, xerrors.Errorf("estimate message is nil")
+	}
 	if estimateMessage.Msg.GasLimit == 0 {
 		gasLimit, err := mp.GasEstimateGasLimit(ctx, estimateMessage.Msg, types.TipSetKey{})
 		if err != nil {
@@ -297,7 +300,7 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 
 func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*types.EstimateMessage, fromNonce uint64, tsk types.TipSetKey) ([]*types.EstimateResult, error) {
 	if len(estimateMessages) == 0 {
-		return nil, nil
+		return nil, xerrors.New("estimate messages are empty")
 	}
 
 	if tsk.IsEmpty() {
@@ -333,8 +336,9 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 				estimateMsg.Nonce = 0
 				estimateResults = append(estimateResults, &types.EstimateResult{
 					Msg: estimateMsg,
-					Err: fmt.Sprintf("estimating gas price: %v", err),
+					Err: fmt.Sprintf("estimating gas limit: %v", err),
 				})
+				continue
 			}
 			estimateMsg.GasLimit = int64(float64(gasUsed) * estimateMessage.Spec.GasOverEstimation)
 		}
@@ -345,8 +349,9 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 				estimateMsg.Nonce = 0
 				estimateResults = append(estimateResults, &types.EstimateResult{
 					Msg: estimateMsg,
-					Err: fmt.Sprintf("estimating gas price: %v", err),
+					Err: fmt.Sprintf("estimating gas premium: %v", err),
 				})
+				continue
 			}
 			estimateMsg.GasPremium = gasPremium
 		}
@@ -359,6 +364,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 					Msg: estimateMsg,
 					Err: fmt.Sprintf("estimating fee cap: %v", err),
 				})
+				continue
 			}
 			estimateMsg.GasFeeCap = feeCap
 		}
