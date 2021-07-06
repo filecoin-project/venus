@@ -197,6 +197,10 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 		config.Swarm.PublicRelayAddress = publicRelayAddress
 	}
 
+	if authURL, ok := req.Options[AuthServiceURL].(string); ok && len(authURL) > 0 {
+		config.API.VenusAuthURL = authURL
+	}
+
 	opts, err := node.OptionsFromRepo(rep)
 	if err != nil {
 		return err
@@ -220,10 +224,6 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 
 	if password, _ := req.Options[Password].(string); len(password) > 0 {
 		opts = append(opts, node.SetWalletPassword([]byte(password)))
-	}
-
-	if authURL, ok := req.Options[AuthServiceURL].(string); ok && len(authURL) > 0 {
-		opts = append(opts, node.SetAuthURL(authURL))
 	}
 
 	journal, err := journal.NewZapJournal(rep.JournalPath()) // nolint

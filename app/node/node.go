@@ -3,6 +3,8 @@ package node
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
+	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"net"
 	"net/http"
 	"os"
@@ -40,7 +42,6 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/wallet"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/repo"
 
@@ -102,8 +103,6 @@ type Node struct {
 	// Jsonrpc
 	//
 	jsonRPCService, jsonRPCServiceV1 *jsonrpc.RPCServer
-
-	jwtCli jwtauth.IJwtAuthClient
 
 	jaegerExporter *jaeger.Exporter
 }
@@ -237,7 +236,7 @@ func (node *Node) Stop(ctx context.Context) {
 	}
 }
 
-//RunRPCAndWait start rpc server and listen to signal to exit
+// RunRPCAndWait start rpc server and listen to signal to exit
 func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command, ready chan interface{}) error {
 	var terminate = make(chan os.Signal, 1)
 	signal.Notify(terminate, os.Interrupt, syscall.SIGTERM)
@@ -267,7 +266,20 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 		return err
 	}
 
-	authMux := jwtauth.NewAuthMux(node.jwtCli, handler)
+	localVerifer, err := jwtauth.NewJwtAuth(node.repo)
+	if err != nil {
+		return err
+	}
+
+	var remoteVerifer jwtclient.IJwtAuthClient
+	authURL := node.repo.Config().API.VenusAuthURL
+
+	if len(authURL) > 0 {
+		remoteVerifer = jwtauth.NewRemoteAuth(authURL)
+	}
+
+	authMux := jwtclient.NewAuthMux(localVerifer,
+		remoteVerifer, handler, logging.Logger("venus-auth"))
 	authMux.TrustHandle("/debug/pprof/", http.DefaultServeMux)
 
 	// todo:
@@ -332,7 +344,7 @@ func (node *Node) runJsonrpcAPI(ctx context.Context, handler *http.ServeMux) err
 	return nil
 }
 
-//createServerEnv create server for cmd server env
+// createServerEnv create server for cmd server env
 func (node *Node) createServerEnv(ctx context.Context) *Env {
 	env := Env{
 		ctx:                  ctx,
