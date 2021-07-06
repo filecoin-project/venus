@@ -223,6 +223,7 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 	msg.GasLimit = constants.BlockGasLimit
 	msg.GasFeeCap = big.NewInt(int64(constants.MinimumBaseFee) + 1)
 	msg.GasPremium = big.NewInt(1)
+
 	// Try calling until we find a height with no migration.
 	var res *vm.Ret
 	var err error
@@ -232,21 +233,27 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 			break
 		}
 
-		tsKey := ts.Parents()
-		ts, err = mp.api.ChainTipSet(tsKey)
+		ts, err = mp.api.ChainTipSet(ts.Parents())
 		if err != nil {
-			return -1, xerrors.Errorf("getting parent tipset: %w", err)
+			return -1, xerrors.Errorf("getting parent tipset: %v", err)
 		}
 	}
 	if err != nil {
-		return -1, xerrors.Errorf("CallWithGas failed: %w", err)
+		return -1, xerrors.Errorf("CallWithGas failed: %v", err)
 	}
 	if res.Receipt.ExitCode != exitcode.Ok {
 		return -1, xerrors.Errorf("message execution failed: exit %s", res.Receipt.ExitCode)
 	}
 
 	// Special case for PaymentChannel collect, which is deleting actor
-	act, err := mp.ap.GetActorAt(ctx, ts, msg.To)
+	pts, err := mp.api.ChainTipSet(ts.Parents())
+	if err != nil {
+		_ = err
+		// somewhat ignore it as it can happen and we just want to detect
+		// an existing PaymentChannel actor
+		return res.Receipt.GasUsed, nil
+	}
+	act, err := mp.ap.GetActorAt(ctx, pts, msg.To)
 	if err != nil {
 		_ = err
 		// somewhat ignore it as it can happen and we just want to detect
@@ -257,7 +264,7 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 	if !builtin.IsPaymentChannelActor(act.Code) {
 		return res.Receipt.GasUsed, nil
 	}
-	if msgIn.Method != paych.Methods.Collect {
+	if msg.Method != paych.Methods.Collect {
 		return res.Receipt.GasUsed, nil
 	}
 
@@ -303,14 +310,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 		return nil, xerrors.New("estimate messages are empty")
 	}
 
-	if tsk.IsEmpty() {
-		ts, err := mp.api.ChainHead()
-		if err != nil {
-			return nil, xerrors.Errorf("getting head: %v", err)
-		}
-		tsk = ts.Key()
-	}
-
+	// ChainTipSet will determine if tsk is empty
 	currTS, err := mp.api.ChainTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset: %w", err)
@@ -320,6 +320,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 	if err != nil {
 		return nil, xerrors.Errorf("getting key address: %w", err)
 	}
+
 	pending, ts := mp.PendingFor(ctx, fromA)
 	priorMsgs := make([]types.ChainMsg, 0, len(pending))
 	for _, m := range pending {
@@ -369,7 +370,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 			estimateMsg.GasFeeCap = feeCap
 		}
 
-		CapGasFee(mp.GetMaxFee, estimateMessage.Msg, estimateMessage.Spec)
+		CapGasFee(mp.GetMaxFee, estimateMsg, estimateMessage.Spec)
 
 		estimateResults = append(estimateResults, &types.EstimateResult{
 			Msg: estimateMsg,

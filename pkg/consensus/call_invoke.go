@@ -28,6 +28,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 		err       error
 		stateRoot cid.Cid
 	)
+
 	if ts == nil {
 		ts = c.chainState.GetHead()
 
@@ -42,16 +43,6 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 				return nil, xerrors.Errorf("failed to find a non-forking epoch: %v", err)
 			}
 		}
-
-		stateRoot, err = c.chainState.GetTipSetStateRoot(c.chainState.GetHead())
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		stateRoot, err = c.chainState.GetTipSetStateRoot(ts)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	// When we're not at the genesis block, make sure we don't have an expensive migration.
@@ -59,12 +50,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 		return nil, fork.ErrExpensiveFork
 	}
 
-	stateRoot, err = c.fork.HandleStateForks(ctx, stateRoot, ts.Height(), ts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to handle fork: %w", err)
-	}
-
-	priorState, err := tree.LoadState(ctx, cbor.NewCborStore(c.bstore), stateRoot)
+	stateRoot, err = c.chainState.GetTipSetStateRoot(ts)
 	if err != nil {
 		return nil, err
 	}
@@ -76,11 +62,11 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 
 	vmOption := vm.VmOption{
 		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
-			dertail, err := c.chainState.GetCirculatingSupplyDetailed(ctx, epoch, tree)
+			cs, err := c.chainState.GetCirculatingSupplyDetailed(ctx, epoch, tree)
 			if err != nil {
 				return abi.TokenAmount{}, err
 			}
-			return dertail.FilCirculating, nil
+			return cs.FilCirculating, nil
 		},
 		NtwkVersionGetter: c.fork.GetNtwkVersion,
 		Rnd:               &rnd,
@@ -93,14 +79,19 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 		Fork:              c.fork,
 	}
 
+	vmi, err := vm.NewVM(vmOption)
+	if err != nil {
+		return nil, err
+	}
+
 	for i, m := range priorMsgs {
-		_, err := c.processor.ProcessMessage(ctx, m, vmOption)
+		_, err := vmi.ApplyMessage(m)
 		if err != nil {
 			return nil, xerrors.Errorf("applying prior message (%d): %v", i, err)
 		}
 	}
 
-	fromActor, found, err := priorState.GetActor(ctx, msg.VMMessage().From)
+	fromActor, found, err := vmi.StateTree().GetActor(ctx, msg.VMMessage().From)
 	if err != nil {
 		return nil, xerrors.Errorf("get actor failed: %s", err)
 	}
@@ -112,7 +103,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 	viewer := state2.NewView(c.cstore, stateRoot)
 	fromKey, err := viewer.ResolveToKeyAddr(ctx, msg.VMMessage().From)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("could not resolve key: %v", err)
 	}
 
 	var msgApply types.ChainMsg
@@ -128,7 +119,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 			},
 		}
 	}
-	return c.processor.ProcessMessage(ctx, msgApply, vmOption)
+	return vmi.ApplyMessage(msgApply)
 }
 
 //Call used for api invoke to compute a msg base on specify tipset, if the tipset is null, use latest tipset in db

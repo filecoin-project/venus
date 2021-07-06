@@ -229,7 +229,7 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Unsign
 	})
 }
 
-// MpoolBatchPushMessage batch pushes a unsigned message to mempool.
+// MpoolBatchPush batch pushes a unsigned message to mempool.
 func (a *MessagePoolAPI) MpoolBatchPush(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error) {
 	var messageCids []cid.Cid
 	for _, smsg := range smsgs {

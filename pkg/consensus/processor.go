@@ -73,20 +73,6 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context,
 	return v.ApplyTipSetMessages(msgs, ts, parentEpoch, epoch, nil)
 }
 
-// ProcessTipSet computes the state transition specified by the messages.
-func (p *DefaultProcessor) ProcessMessage(ctx context.Context, msg types.ChainMsg, vmOption vm.VmOption) (ret *vm.Ret, err error) {
-	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessMessage")
-	span.AddAttributes(trace.StringAttribute("process message", msg.VMMessage().String()))
-	defer tracing.AddErrorEndSpan(ctx, span, &err)
-
-	v, err := vm.NewVM(vmOption)
-	if err != nil {
-		return nil, err
-	}
-
-	return v.ApplyMessage(msg)
-}
-
 //ProcessImplicitMessage compute the state of specify message but this functions skip value, gas,check
 func (p *DefaultProcessor) ProcessImplicitMessage(ctx context.Context, msg *types.UnsignedMessage, vmOption vm.VmOption) (ret *vm.Ret, err error) {
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessImplicitMessage")
