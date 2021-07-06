@@ -59,7 +59,7 @@ func setup() error {
 
 func TestAPIs(t *testing.T) {
 	testflags.UnitTest(t)
-
+	t.Skipf("local test")
 	cid, _ := cid.Decode("bafy2bzacedylucvhzggupihcqjfvv7s4mthgetphb2zzlp7kpjpykmiklfzt4")
 
 	ctx, span := trace.StartSpan(context.TODO(), "test_api")
