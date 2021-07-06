@@ -5,12 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.opencensus.io/trace"
 	"os"
 	"strings"
 	"time"
 
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
-	"github.com/filecoin-project/venus/pkg/crypto/sigs"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/prometheus/common/log"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -228,7 +228,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 
 	blockSigCheck := async.Err(func() error {
 		// Validate block signature
-		return crypto.ValidateSignature(blk.SignatureData(), workerAddr, *blk.BlockSig)
+		return crypto.Verify(blk.BlockSig, workerAddr, blk.SignatureData())
 	})
 
 	beaconValuesCheck := async.Err(func() error {
@@ -342,7 +342,7 @@ func (bv *BlockValidator) validateBlockMsg(ctx context.Context, blk *types.Block
 		return pubsub.ValidationIgnore
 	}
 
-	err = sigs.CheckBlockSignature(ctx, blk.Header, key)
+	err = checkBlockSignature(ctx, blk.Header, key)
 	if err != nil {
 		logExpect.Errorf("block signature verification failed: %s", err)
 		return pubsub.ValidationReject
@@ -914,4 +914,25 @@ func blockSanityChecks(b *types.BlockHeader) error {
 	}
 
 	return nil
+}
+
+func checkBlockSignature(ctx context.Context, blk *types.BlockHeader, worker address.Address) error {
+	_, span := trace.StartSpan(ctx, "checkBlockSignature")
+	defer span.End()
+
+	if blk.IsValidated() {
+		return nil
+	}
+
+	if blk.BlockSig == nil {
+		return xerrors.New("block signature not present")
+	}
+
+	sigb := blk.SignatureData()
+	err := crypto.Verify(blk.BlockSig, worker, sigb)
+	if err == nil {
+		blk.SetValidated()
+	}
+
+	return err
 }

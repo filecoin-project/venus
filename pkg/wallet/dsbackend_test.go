@@ -164,6 +164,6 @@ func BenchmarkDSBackendSimple(b *testing.B) {
 		}
 		assert.NoError(b, err)
 
-		assert.NoError(b, crypto.ValidateSignature(corruptData, addr, *signature))
+		assert.NoError(b, crypto.Verify(signature, addr, corruptData))
 	}
 }

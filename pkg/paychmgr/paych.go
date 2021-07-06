@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/ipfs/go-cid"
@@ -13,7 +14,6 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/venus/pkg/crypto/sigs"
 	"github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 )
@@ -205,7 +205,7 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	// TODO: technically, either party may create and sign a voucher.
 	// However, for now, we only accept them from the channel creator.
 	// More complex handling logic can be added later
-	if err := sigs.Verify(sv.Signature, from, vb); err != nil {
+	if err := crypto.Verify(sv.Signature, from, vb); err != nil {
 		return nil, err
 	}
 

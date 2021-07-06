@@ -18,7 +18,7 @@ type FakeSyscalls struct {
 
 func (f FakeSyscalls) VerifySignature(ctx context.Context, view SyscallsStateView, signature crypto.Signature, signer address.Address, plaintext []byte) error {
 	// The signer is assumed To be already resolved To a pubkey address.
-	return crypto.ValidateSignature(plaintext, signer, signature)
+	return crypto.Verify(&signature, signer, plaintext)
 }
 
 func (f FakeSyscalls) HashBlake2b(data []byte) [32]byte {

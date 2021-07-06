@@ -59,7 +59,10 @@ func (tm TicketMachine) IsValidTicket(ctx context.Context, base types.TipSetKey,
 		return errors.Wrap(err, "failed to generate ticket randomness")
 	}
 
-	return crypto.ValidateBlsSignature(randomness, workerSigner, ticket.VRFProof)
+	return crypto.Verify(&crypto.Signature{
+		Type: crypto.SigTypeBLS,
+		Data: ticket.VRFProof,
+	}, workerSigner, randomness)
 }
 
 func (tm TicketMachine) ticketVRFRandomness(ctx context.Context, base types.TipSetKey, entry *types.BeaconEntry, bSmokeHeight bool, miner address.Address, epoch abi.ChainEpoch) (abi.Randomness, error) {

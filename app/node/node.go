@@ -43,6 +43,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/repo"
+
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"  // enable bls signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp" // enable secp signatures
 )
 
 var log = logging.Logger("node") // nolint: deadcode

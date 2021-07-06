@@ -5,10 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"golang.org/x/xerrors"
-
 	"github.com/awnumar/memguard"
-	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 	logging "github.com/ipfs/go-log/v2"
@@ -51,6 +48,7 @@ func (ki *KeyInfo) UnmarshalJSON(data []byte) error {
 
 	switch k.SigType.(type) {
 	case string:
+		//compatible with lotus
 		st := k.SigType.(string)
 		if st == stBLS {
 			ki.SigType = crypto.SigTypeBLS
@@ -162,20 +160,9 @@ func (ki *KeyInfo) Address() (address.Address, error) {
 func (ki *KeyInfo) PublicKey() ([]byte, error) {
 	var pubKey []byte
 	err := ki.UsePrivateKey(func(privateKey []byte) error {
-		switch ki.SigType {
-		case SigTypeBLS:
-			var blsPrivateKey bls.PrivateKey
-			copy(blsPrivateKey[:], privateKey)
-			publicKey := bls.PrivateKeyPublicKey(blsPrivateKey)
-
-			pubKey = publicKey[:]
-			return nil
-		case SigTypeSecp256k1:
-			pubKey = PublicKeyForSecpSecretKey(privateKey)
-			return nil
-		default:
-			return xerrors.Errorf("unexpected signature type %v", ki.SigType)
-		}
+		var err error
+		pubKey, err =  ToPublic(ki.SigType, privateKey)
+		return err
 	})
 
 	return pubKey, err

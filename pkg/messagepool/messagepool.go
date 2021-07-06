@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	"math"
 	stdbig "math/big"
 	"os"
@@ -31,7 +32,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/crypto/sigs"
 	"github.com/filecoin-project/venus/pkg/messagepool/journal"
 	"github.com/filecoin-project/venus/pkg/net/msgsub"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -868,7 +868,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 	}
 
 	c := m.Message.Cid()
-	if err := sigs.Verify(&m.Signature, m.Message.From, c.Bytes()); err != nil {
+	if err := crypto2.Verify(&m.Signature, m.Message.From, c.Bytes()); err != nil {
 		return err
 	}
 
