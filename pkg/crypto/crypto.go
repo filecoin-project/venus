@@ -1,8 +1,9 @@
 package crypto
 
 import (
-	"github.com/filecoin-project/go-state-types/crypto"
 	"io"
+
+	"github.com/filecoin-project/go-state-types/crypto"
 )
 
 //
@@ -19,7 +20,7 @@ func NewSecpKeyFromSeed(seed io.Reader) (KeyInfo, error) {
 		SigType: SigTypeSecp256k1,
 	}
 	ki.SetPrivateKey(k)
-	copy(k, make([]byte,len(k))) //wipe with zero bytes
+	copy(k, make([]byte, len(k))) //wipe with zero bytes
 	return *ki, nil
 }
 
@@ -32,6 +33,6 @@ func NewBLSKeyFromSeed(seed io.Reader) (KeyInfo, error) {
 		SigType: SigTypeBLS,
 	}
 	ki.SetPrivateKey(k)
-	copy(k, make([]byte,len(k))) //wipe with zero bytes
+	copy(k, make([]byte, len(k))) //wipe with zero bytes
 	return *ki, nil
 }

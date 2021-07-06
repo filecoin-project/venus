@@ -9,7 +9,6 @@ import (
 	"golang.org/x/xerrors"
 )
 
-
 //
 // address-based signature validation
 //
@@ -21,6 +20,7 @@ const (
 	SigTypeSecp256k1 = crypto.SigTypeSecp256k1
 	SigTypeBLS       = crypto.SigTypeBLS
 )
+
 // Sign takes in signature type, private key and message. Returns a signature for that message.
 // Valid sigTypes are: "secp256k1" and "bls"
 func Sign(msg []byte, privkey []byte, sigType SigType) (*crypto.Signature, error) {
@@ -56,7 +56,6 @@ func Verify(sig *crypto.Signature, addr address.Address, msg []byte) error {
 
 	return sv.Verify(sig.Data, addr, msg)
 }
-
 
 // Generate generates private key of given type
 func Generate(sigType crypto.SigType) ([]byte, error) {

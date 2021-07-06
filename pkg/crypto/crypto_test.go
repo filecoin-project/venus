@@ -39,31 +39,31 @@ func TestGenerateSecpKey(t *testing.T) {
 	assert.NoError(t, err)
 	t.Logf("%x", pk)
 	// valid signature
-	assert.True(t, crypto.Verify(signature, addr, msg)==nil)
+	assert.True(t, crypto.Verify(signature, addr, msg) == nil)
 
 	// invalid signature - different message (too short)
-	assert.False(t, crypto.Verify(signature, addr, msg[3:])==nil)
+	assert.False(t, crypto.Verify(signature, addr, msg[3:]) == nil)
 
 	// invalid signature - different message
 	msg2 := make([]byte, 32)
 	copy(msg2, msg)
 	msg2[0] = 42
-	assert.False(t, crypto.Verify(signature, addr, msg2)==nil)
+	assert.False(t, crypto.Verify(signature, addr, msg2) == nil)
 
 	// invalid signature - different digest
 	digest2 := make([]byte, 65)
 	copy(digest2, signature.Data)
 	digest2[0] = 42
-	assert.False(t, crypto.Verify(&crypto.Signature{crypto.SigTypeSecp256k1, digest2}, addr, msg) ==nil)
+	assert.False(t, crypto.Verify(&crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: digest2}, addr, msg) == nil)
 
 	// invalid signature - digest too short
-	assert.False(t, crypto.Verify(&crypto.Signature{crypto.SigTypeSecp256k1, signature.Data[3:]}, addr, msg)==nil)
-	assert.False(t, crypto.Verify(&crypto.Signature{crypto.SigTypeSecp256k1, signature.Data[:29]}, addr, msg)==nil)
+	assert.False(t, crypto.Verify(&crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: signature.Data[3:]}, addr, msg) == nil)
+	assert.False(t, crypto.Verify(&crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: signature.Data[:29]}, addr, msg) == nil)
 
 	// invalid signature - digest too long
 	digest3 := make([]byte, 70)
 	copy(digest3, signature.Data)
-	assert.False(t, crypto.Verify(&crypto.Signature{ crypto.SigTypeSecp256k1,digest3,}, addr, msg)==nil)
+	assert.False(t, crypto.Verify(&crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: digest3}, addr, msg) == nil)
 }
 
 func TestBLSSigning(t *testing.T) {
@@ -82,7 +82,7 @@ func TestBLSSigning(t *testing.T) {
 	require.NoError(t, err)
 
 	// invalid signature fails
-	err = crypto.Verify(&crypto.Signature{crypto.SigTypeBLS, signature.Data[3:]}, addr, data)
+	err = crypto.Verify(&crypto.Signature{Type: crypto.SigTypeBLS, Data: signature.Data[3:]}, addr, data)
 	require.Error(t, err)
 
 	// invalid digest fails

@@ -161,7 +161,7 @@ func (ki *KeyInfo) PublicKey() ([]byte, error) {
 	var pubKey []byte
 	err := ki.UsePrivateKey(func(privateKey []byte) error {
 		var err error
-		pubKey, err =  ToPublic(ki.SigType, privateKey)
+		pubKey, err = ToPublic(ki.SigType, privateKey)
 		return err
 	})
 
