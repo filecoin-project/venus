@@ -15,6 +15,8 @@ import (
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	genutil "github.com/filecoin-project/venus/tools/gengen/util"
 
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

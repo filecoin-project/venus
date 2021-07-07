@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensusfault"
-	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/bls"  // enable bls signatures
-	_ "github.com/filecoin-project/venus/pkg/crypto/sigs/secp" // enable secp signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"  // enable bls signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp" // enable secp signatures
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/vm"

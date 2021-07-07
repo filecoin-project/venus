@@ -2,6 +2,7 @@ package crypto_test
 
 import (
 	"bytes"
+	"github.com/filecoin-project/go-address"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,6 +10,8 @@ import (
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/venus/pkg/crypto"
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
@@ -27,41 +30,40 @@ func TestGenerateSecpKey(t *testing.T) {
 		msg[i] = byte(i)
 	}
 
-	digest, err := crypto.SignSecp(sk, msg)
+	signature, err := crypto.Sign(msg, sk, crypto.SigTypeSecp256k1)
 	assert.NoError(t, err)
-	assert.Equal(t, len(digest), 65)
-	pk := crypto.PublicKeyForSecpSecretKey(sk)
+	assert.Equal(t, len(signature.Data), 65)
+	pk, err := crypto.ToPublic(crypto.SigTypeSecp256k1, sk)
+	assert.NoError(t, err)
+	addr, err := address.NewSecp256k1Address(pk)
+	assert.NoError(t, err)
 	t.Logf("%x", pk)
 	// valid signature
-	assert.True(t, crypto.VerifySecp(pk, msg, digest))
+	assert.True(t, crypto.Verify(signature, addr, msg) == nil)
 
 	// invalid signature - different message (too short)
-	assert.False(t, crypto.VerifySecp(pk, msg[3:], digest))
+	assert.False(t, crypto.Verify(signature, addr, msg[3:]) == nil)
 
 	// invalid signature - different message
 	msg2 := make([]byte, 32)
 	copy(msg2, msg)
 	msg2[0] = 42
-	assert.False(t, crypto.VerifySecp(pk, msg2, digest))
+	assert.False(t, crypto.Verify(signature, addr, msg2) == nil)
 
 	// invalid signature - different digest
 	digest2 := make([]byte, 65)
-	copy(digest2, digest)
+	copy(digest2, signature.Data)
 	digest2[0] = 42
-	assert.False(t, crypto.VerifySecp(pk, msg, digest2))
+	assert.False(t, crypto.Verify(&crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: digest2}, addr, msg) == nil)
 
 	// invalid signature - digest too short
-	assert.False(t, crypto.VerifySecp(pk, msg, digest[3:]))
-	assert.False(t, crypto.VerifySecp(pk, msg, digest[:29]))
+	assert.False(t, crypto.Verify(&crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: signature.Data[3:]}, addr, msg) == nil)
+	assert.False(t, crypto.Verify(&crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: signature.Data[:29]}, addr, msg) == nil)
 
 	// invalid signature - digest too long
 	digest3 := make([]byte, 70)
-	copy(digest3, digest)
-	assert.False(t, crypto.VerifySecp(pk, msg, digest3))
-
-	recovered, err := crypto.EcRecover(msg, digest)
-	assert.NoError(t, err)
-	assert.Equal(t, recovered, crypto.PublicKeyForSecpSecretKey(sk))
+	copy(digest3, signature.Data)
+	assert.False(t, crypto.Verify(&crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: digest3}, addr, msg) == nil)
 }
 
 func TestBLSSigning(t *testing.T) {
@@ -69,20 +71,22 @@ func TestBLSSigning(t *testing.T) {
 	data := []byte("data to be signed")
 	t.Logf("%x", privateKey)
 	t.Logf("%x", bls.PrivateKeyPublicKey(privateKey))
-	signature, err := crypto.SignBLS(privateKey[:], data)
+	signature, err := crypto.Sign(data, privateKey[:], crypto.SigTypeBLS)
 	require.NoError(t, err)
 
 	publicKey := bls.PrivateKeyPublicKey(privateKey)
+	addr, err := address.NewBLSAddress(publicKey[:])
+	require.NoError(t, err)
 
-	valid := crypto.VerifyBLS(publicKey[:], data, signature)
-	require.True(t, valid)
+	err = crypto.Verify(signature, addr, data)
+	require.NoError(t, err)
 
 	// invalid signature fails
-	valid = crypto.VerifyBLS(publicKey[:], data, signature[3:])
-	require.False(t, valid)
+	err = crypto.Verify(&crypto.Signature{Type: crypto.SigTypeBLS, Data: signature.Data[3:]}, addr, data)
+	require.Error(t, err)
 
 	// invalid digest fails
-	valid = crypto.VerifyBLS(publicKey[:], data[3:], signature)
-	require.False(t, valid)
+	err = crypto.Verify(signature, addr, data[3:])
+	require.Error(t, err)
 
 }

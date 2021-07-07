@@ -3,6 +3,7 @@ package paychmgr
 import (
 	"bytes"
 	"context"
+	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"testing"
 
@@ -19,7 +20,8 @@ import (
 	paych2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
-	"github.com/filecoin-project/venus/pkg/crypto/sigs"
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 	paychmock "github.com/filecoin-project/venus/pkg/specactors/builtin/paych/mock"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -776,9 +778,9 @@ func testSetupMgrWithChannel(t *testing.T) *testScaffold {
 }
 
 func testGenerateKeyPair(t *testing.T) ([]byte, []byte) {
-	priv, err := sigs.Generate(crypto.SigTypeSecp256k1)
+	priv, err := crypto2.Generate(crypto.SigTypeSecp256k1)
 	require.NoError(t, err)
-	pub, err := sigs.ToPublic(crypto.SigTypeSecp256k1, priv)
+	pub, err := crypto2.ToPublic(crypto.SigTypeSecp256k1, priv)
 	require.NoError(t, err)
 	return priv, pub
 }
@@ -793,7 +795,7 @@ func createTestVoucher(t *testing.T, ch address.Address, voucherLane uint64, non
 
 	signingBytes, err := sv.SigningBytes()
 	require.NoError(t, err)
-	sig, err := sigs.Sign(crypto.SigTypeSecp256k1, key, signingBytes)
+	sig, err := crypto2.Sign(signingBytes, key, crypto.SigTypeSecp256k1)
 	require.NoError(t, err)
 	sv.Signature = sig
 	return sv
@@ -812,7 +814,7 @@ func createTestVoucherWithExtra(t *testing.T, ch address.Address, voucherLane ui
 
 	signingBytes, err := sv.SigningBytes()
 	require.NoError(t, err)
-	sig, err := sigs.Sign(crypto.SigTypeSecp256k1, key, signingBytes)
+	sig, err := crypto2.Sign(signingBytes, key, crypto.SigTypeSecp256k1)
 	require.NoError(t, err)
 	sv.Signature = sig
 

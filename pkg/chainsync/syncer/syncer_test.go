@@ -12,6 +12,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
 	"github.com/filecoin-project/venus/pkg/clock"
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"

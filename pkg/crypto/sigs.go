@@ -1,19 +1,29 @@
-package sigs
+package crypto
 
 import (
-	"context"
 	"fmt"
+	"io"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/venus/pkg/types"
-	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
+)
+
+//
+// address-based signature validation
+//
+
+type Signature = crypto.Signature
+type SigType = crypto.SigType
+
+const (
+	SigTypeSecp256k1 = crypto.SigTypeSecp256k1
+	SigTypeBLS       = crypto.SigTypeBLS
 )
 
 // Sign takes in signature type, private key and message. Returns a signature for that message.
 // Valid sigTypes are: "secp256k1" and "bls"
-func Sign(sigType crypto.SigType, privkey []byte, msg []byte) (*crypto.Signature, error) {
+func Sign(msg []byte, privkey []byte, sigType SigType) (*crypto.Signature, error) {
 	sv, ok := sigs[sigType]
 	if !ok {
 		return nil, fmt.Errorf("cannot sign message with signature of unsupported type: %v", sigType)
@@ -67,30 +77,10 @@ func ToPublic(sigType crypto.SigType, pk []byte) ([]byte, error) {
 	return sv.ToPublic(pk)
 }
 
-func CheckBlockSignature(ctx context.Context, blk *types.BlockHeader, worker address.Address) error {
-	_, span := trace.StartSpan(ctx, "checkBlockSignature")
-	defer span.End()
-
-	if blk.IsValidated() {
-		return nil
-	}
-
-	if blk.BlockSig == nil {
-		return xerrors.New("block signature not present")
-	}
-
-	sigb := blk.SignatureData()
-	err := Verify(blk.BlockSig, worker, sigb)
-	if err == nil {
-		blk.SetValidated()
-	}
-
-	return err
-}
-
 // SigShim is used for introducing signature functions
 type SigShim interface {
 	GenPrivate() ([]byte, error)
+	GenPrivateFromSeed(seed io.Reader) ([]byte, error)
 	ToPublic(pk []byte) ([]byte, error)
 	Sign(pk []byte, msg []byte) ([]byte, error)
 	Verify(sig []byte, a address.Address, msg []byte) error

@@ -13,6 +13,9 @@ import (
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
+
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 )
 
 type fakeStateView struct {

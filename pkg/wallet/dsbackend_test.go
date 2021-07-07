@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/pkg/config"
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
@@ -164,6 +166,6 @@ func BenchmarkDSBackendSimple(b *testing.B) {
 		}
 		assert.NoError(b, err)
 
-		assert.NoError(b, crypto.ValidateSignature(corruptData, addr, *signature))
+		assert.NoError(b, crypto.Verify(signature, addr, corruptData))
 	}
 }

@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -11,8 +12,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/venus/pkg/crypto/sigs"
 )
 
 // Interface to PoSt verification, modify by force EPoStVerifier -> ProofVerifier
@@ -37,7 +36,7 @@ func VerifyVRF(ctx context.Context, worker address.Address, vrfBase, vrfproof []
 		Data: vrfproof,
 	}
 
-	if err := sigs.Verify(sig, worker, vrfBase); err != nil {
+	if err := crypto2.Verify(sig, worker, vrfBase); err != nil {
 		return xerrors.Errorf("vrf was invalid: %w", err)
 	}
 

@@ -2,13 +2,13 @@ package secp
 
 import (
 	"fmt"
+	crypto3 "github.com/filecoin-project/venus/pkg/crypto"
+	"io"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-crypto"
 	crypto2 "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/minio/blake2b-simd"
-
-	"github.com/filecoin-project/venus/pkg/crypto/sigs"
 )
 
 type secpSigner struct{}
@@ -19,6 +19,10 @@ func (secpSigner) GenPrivate() ([]byte, error) {
 		return nil, err
 	}
 	return priv, nil
+}
+
+func (secpSigner) GenPrivateFromSeed(seed io.Reader) ([]byte, error) {
+	return crypto.GenerateKeyFromSeed(seed)
 }
 
 func (secpSigner) ToPublic(pk []byte) ([]byte, error) {
@@ -55,5 +59,5 @@ func (secpSigner) Verify(sig []byte, a address.Address, msg []byte) error {
 }
 
 func init() {
-	sigs.RegisterSignature(crypto2.SigTypeSecp256k1, secpSigner{})
+	crypto3.RegisterSignature(crypto2.SigTypeSecp256k1, secpSigner{})
 }

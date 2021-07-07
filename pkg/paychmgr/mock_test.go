@@ -3,6 +3,7 @@ package paychmgr
 import (
 	"context"
 	"errors"
+	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	"sync"
 
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -15,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/venus/pkg/crypto/sigs"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 	"github.com/filecoin-project/venus/pkg/types"
 )
@@ -240,7 +240,7 @@ func (pchapi *mockPaychAPI) WalletSign(ctx context.Context, k address.Address, m
 	pchapi.lk.Lock()
 	defer pchapi.lk.Unlock()
 
-	return sigs.Sign(crypto.SigTypeSecp256k1, pchapi.signingKey, msg)
+	return crypto2.Sign(msg, pchapi.signingKey, crypto.SigTypeSecp256k1)
 }
 
 func (pchapi *mockPaychAPI) addSigningKey(key []byte) {

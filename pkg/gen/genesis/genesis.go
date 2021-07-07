@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -27,7 +28,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/consensusfault"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/crypto/sigs"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin"
@@ -248,12 +248,12 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 
 	// Setup the first verifier as ID-address 81
 	// TODO: remove this
-	skBytes, err := sigs.Generate(crypto.SigTypeBLS)
+	skBytes, err := crypto2.Generate(crypto.SigTypeBLS)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("creating random verifier secret key: %w", err)
 	}
 
-	verifierPk, err := sigs.ToPublic(crypto.SigTypeBLS, skBytes)
+	verifierPk, err := crypto2.ToPublic(crypto.SigTypeBLS, skBytes)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("creating random verifier public key: %w", err)
 	}

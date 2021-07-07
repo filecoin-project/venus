@@ -20,6 +20,8 @@ import (
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	lotusinit "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 	paychmock "github.com/filecoin-project/venus/pkg/specactors/builtin/paych/mock"

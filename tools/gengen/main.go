@@ -8,6 +8,8 @@ import (
 	"os"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"  // enable bls signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp" // enable secp signatures
 	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 

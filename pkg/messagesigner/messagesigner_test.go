@@ -21,6 +21,9 @@ import (
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-datastore"
+
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 )
 
 type mockMpool struct {

@@ -3,13 +3,13 @@ package bls
 import (
 	"crypto/rand"
 	"fmt"
+	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
+	"io"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
-
-	"github.com/filecoin-project/venus/pkg/crypto/sigs"
 )
 
 const DST = string("BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_")
@@ -31,6 +31,19 @@ func (blsSigner) GenPrivate() ([]byte, error) {
 	// Note private keys seem to be serialized little-endian!
 	sk := ffi.PrivateKeyGenerateWithSeed(ikm)
 	return sk[:], nil
+}
+
+func (blsSigner) GenPrivateFromSeed(seed io.Reader) ([]byte, error) {
+	var seedBytes ffi.PrivateKeyGenSeed
+	read, err := seed.Read(seedBytes[:])
+	if err != nil {
+		return nil, err
+	}
+	if read != len(seedBytes) {
+		return nil, fmt.Errorf("read only %d bytes of %d required from seed", read, len(seedBytes))
+	}
+	priKey := ffi.PrivateKeyGenerateWithSeed(seedBytes)
+	return priKey[:], nil
 }
 
 func (blsSigner) ToPublic(priv []byte) ([]byte, error) {
@@ -82,5 +95,5 @@ func (blsSigner) Verify(sig []byte, a address.Address, msg []byte) error {
 }
 
 func init() {
-	sigs.RegisterSignature(crypto.SigTypeBLS, blsSigner{})
+	crypto2.RegisterSignature(crypto.SigTypeBLS, blsSigner{})
 }
