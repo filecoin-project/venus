@@ -31,11 +31,12 @@ type genesisReader interface {
 
 //CirculatingSupply circulation information, including mining, public offering, private placement, release, combustion, mortgage, circulation,
 type CirculatingSupply struct {
-	FilVested      abi.TokenAmount
-	FilMined       abi.TokenAmount
-	FilBurnt       abi.TokenAmount
-	FilLocked      abi.TokenAmount
-	FilCirculating abi.TokenAmount
+	FilVested           abi.TokenAmount
+	FilMined            abi.TokenAmount
+	FilBurnt            abi.TokenAmount
+	FilLocked           abi.TokenAmount
+	FilCirculating      abi.TokenAmount
+	FilReserveDisbursed abi.TokenAmount
 }
 
 //CirculatingSupplyCalculator used to calculate the funds at a specific block height
@@ -119,11 +120,12 @@ func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx c
 	}
 
 	return CirculatingSupply{
-		FilVested:      filVested,
-		FilMined:       filMined,
-		FilBurnt:       filBurnt,
-		FilLocked:      filLocked,
-		FilCirculating: ret,
+		FilVested:           filVested,
+		FilMined:            filMined,
+		FilBurnt:            filBurnt,
+		FilLocked:           filLocked,
+		FilCirculating:      ret,
+		FilReserveDisbursed: filReserveDisbursed,
 	}, nil
 }
 

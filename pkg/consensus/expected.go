@@ -48,7 +48,6 @@ const AllowableClockDriftSecs = uint64(1)
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
 	ProcessTipSet(context.Context, *types.TipSet, *types.TipSet, []types.BlockMessagesInfo, vm.VmOption) (cid.Cid, []types.MessageReceipt, error)
-	ProcessMessage(context.Context, types.ChainMsg, vm.VmOption) (*vm.Ret, error)
 	ProcessImplicitMessage(context.Context, *types.UnsignedMessage, vm.VmOption) (*vm.Ret, error)
 }
 
