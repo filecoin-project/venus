@@ -37,12 +37,16 @@ func TestVersionOverHttp(t *testing.T) {
 	maddr, err := td.CmdAddr()
 	require.NoError(t, err)
 
-	_, host, err := manet.DialArgs(maddr) //nolint
+	_, host, err := manet.DialArgs(maddr) // nolint
 	require.NoError(t, err)
 
 	url := fmt.Sprintf("http://%s/api/version", host)
 	req, err := http.NewRequest("POST", url, nil)
 	require.NoError(t, err)
+
+	token, _ := td.CmdToken()
+	req.Header.Add("Authorization", "Bearer "+token)
+
 	res, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, res.StatusCode)

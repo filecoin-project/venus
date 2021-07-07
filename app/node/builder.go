@@ -5,8 +5,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/jwtauth"
-
 	"github.com/filecoin-project/venus/app/submodule/multisig"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -260,7 +258,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	nd.chainClock = b.chainClock
 
-	//todo chainge builder interface to read config
+	// todo chainge builder interface to read config
 	nd.discovery, err = discovery.NewDiscoverySubmodule(ctx, (*builder)(b), b.repo.Config(), nd.network, nd.chain.ChainReader, nd.chain.MessageStore)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.discovery")
@@ -301,25 +299,9 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.paychan = paych.NewPaychSubmodule(ctx, mgrps)
 	nd.market = market.NewMarketModule(nd.chain.API(), stmgr)
 
-	//auth
-	authURL := ""
-	if len(b.repo.Config().API.VenusAuthURL) > 0 {
-		authURL = b.repo.Config().API.VenusAuthURL
-	} else if len(b.authURL) > 0 {
-		authURL = b.authURL
-	}
-	if len(authURL) > 0 {
-		nd.jwtCli = jwtauth.NewRemoteAuth(authURL)
-	} else {
-		client, err := jwtauth.NewJwtAuth(b.repo)
-		if err != nil {
-			return nil, err
-		}
-		nd.jwtCli = client
-	}
-
 	apiBuilder := NewBuilder()
 	apiBuilder.NameSpace("Filecoin")
+
 	err = apiBuilder.AddServices(nd.configModule,
 		nd.blockstore,
 		nd.network,
@@ -332,9 +314,8 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.mining,
 		nd.mpool,
 		nd.paychan,
-		nd.market,
-		nd.jwtCli,
-	)
+		nd.market)
+
 	if err != nil {
 		return nil, errors.Wrap(err, "add service failed ")
 	}
@@ -352,42 +333,42 @@ func (b Builder) Repo() repo.Repo {
 
 type builder Builder
 
-//GenesisCid read genesis block cid
+// GenesisCid read genesis block cid
 func (b builder) GenesisCid() cid.Cid {
 	return b.genCid
 }
 
-//BlockTime get chain block time
+// BlockTime get chain block time
 func (b builder) BlockTime() time.Duration {
 	return b.blockTime
 }
 
-//Repo get home data repo
+// Repo get home data repo
 func (b builder) Repo() repo.Repo {
 	return b.repo
 }
 
-//IsRelay get whether the p2p network support replay
+// IsRelay get whether the p2p network support replay
 func (b builder) IsRelay() bool {
 	return b.isRelay
 }
 
-//ChainClock get chain clock
+// ChainClock get chain clock
 func (b builder) ChainClock() clock.ChainEpochClock {
 	return b.chainClock
 }
 
-//Journal get journal to record event
+// Journal get journal to record event
 func (b builder) Journal() journal.Journal {
 	return b.journal
 }
 
-//Libp2pOpts get libp2p option
+// Libp2pOpts get libp2p option
 func (b builder) Libp2pOpts() []libp2p.Option {
 	return b.libp2pOpts
 }
 
-//OfflineMode get the p2p network mode
+// OfflineMode get the p2p network mode
 func (b builder) OfflineMode() bool {
 	return b.offlineMode
 }
