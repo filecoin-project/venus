@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	vjc "github.com/filecoin-project/venus-auth/cmd/jwtclient"
+	"github.com/filecoin-project/venus/app/client/funcrule"
 	"io"
 	"io/ioutil"
 	"strings"
@@ -38,7 +39,7 @@ func NewJwtAuth(lr repo.Repo) (vjc.IJwtAuthClient, error) {
 		jwtSecetName:  "auth-jwt-private",
 		jwtHmacSecret: "jwt-hmac-secret",
 		lr:            lr,
-		payload:       JwtPayload{Allow: []auth.Permission{"admin"}},
+		payload:       JwtPayload{Allow: funcrule.AllPermissions},
 	}
 	var err error
 	jwtAuth.apiSecret, err = jwtAuth.loadAPISecret()
