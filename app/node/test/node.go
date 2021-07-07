@@ -2,16 +2,15 @@ package test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"math/rand"
 	"testing"
 
 	"github.com/filecoin-project/venus/pkg/types"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
-
-	"github.com/filecoin-project/go-address"
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -150,7 +149,7 @@ func ConnectNodes(t *testing.T, a, b *node.Node) {
 // FakeProofVerifierBuilderOpts returns default configuration for testing
 func FakeProofVerifierBuilderOpts() []node.BuilderOpt {
 	return []node.BuilderOpt{
-		node.VerifierConfigOption(&ffiwrapper.FakeVerifier{}),
+		node.VerifierConfigOption(&impl.FakeVerifier{}),
 	}
 }
 

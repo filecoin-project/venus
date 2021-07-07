@@ -1,9 +1,10 @@
-package state
+package state_test
 
 import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/state"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -43,7 +44,7 @@ func TestSignMessageOk(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("no resolution", func(t *testing.T) {
-		v := NewSignatureValidator(&fakeStateView{}) // No resolution needed.
+		v := state.NewSignatureValidator(&fakeStateView{}) // No resolution needed.
 		msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
 		smsg, err := types.NewSignedMessage(ctx, *msg, ms)
 		require.NoError(t, err)
@@ -52,10 +53,10 @@ func TestSignMessageOk(t *testing.T) {
 	t.Run("resolution required", func(t *testing.T) {
 		idAddress := types.RequireIDAddress(t, 1)
 		// Use ID address in message but sign with corresponding key address.
-		state := &fakeStateView{keys: map[address.Address]address.Address{
+		stateView := &fakeStateView{keys: map[address.Address]address.Address{
 			idAddress: keyAddr,
 		}}
-		v := NewSignatureValidator(state)
+		v := state.NewSignatureValidator(stateView)
 		msg := types.NewMeteredMessage(idAddress, idAddress, 1, types.ZeroFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
 		msgCid := msg.Cid()
 		sig, err := ms.SignBytes(ctx, msgCid.Bytes(), keyAddr)
@@ -81,7 +82,7 @@ func TestBadFrom(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("no resolution", func(t *testing.T) {
-		v := NewSignatureValidator(&fakeStateView{})
+		v := state.NewSignatureValidator(&fakeStateView{})
 
 		// Can't use NewSignedMessage constructor as it always signs with msg.From.
 		msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
@@ -99,10 +100,10 @@ func TestBadFrom(t *testing.T) {
 	t.Run("resolution required", func(t *testing.T) {
 		idAddress := types.RequireIDAddress(t, 1)
 		// Use ID address in message but sign with corresponding key address.
-		state := &fakeStateView{keys: map[address.Address]address.Address{
+		stateView := &fakeStateView{keys: map[address.Address]address.Address{
 			idAddress: keyAddr,
 		}}
-		v := NewSignatureValidator(state)
+		v := state.NewSignatureValidator(stateView)
 
 		// Can't use NewSignedMessage constructor as it always signs with msg.From.
 		msg := types.NewMeteredMessage(idAddress, idAddress, 1, types.ZeroFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
@@ -128,7 +129,7 @@ func TestSignedMessageBadSignature(t *testing.T) {
 	keyAddr, err := kis[0].Address()
 	require.NoError(t, err)
 
-	v := NewSignatureValidator(&fakeStateView{}) // no resolution needed
+	v := state.NewSignatureValidator(&fakeStateView{}) // no resolution needed
 	msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
 	smsg, err := types.NewSignedMessage(ctx, *msg, signer)
 	require.NoError(t, err)
@@ -148,7 +149,7 @@ func TestSignedMessageCorrupted(t *testing.T) {
 	keyAddr, err := kis[0].Address()
 	require.NoError(t, err)
 
-	v := NewSignatureValidator(&fakeStateView{}) // no resolution needed
+	v := state.NewSignatureValidator(&fakeStateView{}) // no resolution needed
 	msg := types.NewMeteredMessage(keyAddr, keyAddr, 1, types.ZeroFIL, builtin.MethodSend, nil, types.NewAttoFILFromFIL(0), types.NewAttoFILFromFIL(0), 1)
 	smsg, err := types.NewSignedMessage(ctx, *msg, signer)
 	require.NoError(t, err)

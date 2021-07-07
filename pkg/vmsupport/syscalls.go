@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	goruntime "runtime"
 	"sync"
 
@@ -60,7 +61,7 @@ func (s *Syscalls) HashBlake2b(data []byte) [32]byte {
 
 //ComputeUnsealedSectorCID Computes an unsealed sector CID (CommD) from its constituent piece CIDs (CommPs) and sizes.
 func (s *Syscalls) ComputeUnsealedSectorCID(_ context.Context, proof abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
-	return ffiwrapper.GenerateUnsealedCID(proof, pieces)
+	return impl.GenerateUnsealedCID(proof, pieces)
 }
 
 // VerifySeal returns true if the sealing operation from which its inputs were

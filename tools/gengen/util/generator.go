@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"io"
 	mrand "math/rand"
 
@@ -41,7 +42,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
 	blockstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
@@ -72,7 +72,7 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 		return big.Zero(), nil
 	}
 	cst := cbor.NewCborStore(bs)
-	syscallImpl := vmsupport.NewSyscalls(&vmsupport.NilFaultChecker{}, &ffiwrapper.FakeVerifier{})
+	syscallImpl := vmsupport.NewSyscalls(&vmsupport.NilFaultChecker{}, &impl.FakeVerifier{})
 	chainRand := chain.ChainRandomnessSource{Sampler: &chain.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}}
 
 	chainDs := ds.NewMapDatastore() //just mock one

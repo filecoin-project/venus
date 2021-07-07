@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"math/rand"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -37,7 +38,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/consensusfault"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
@@ -92,7 +92,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 	}
 
 	faultChecker := consensusfault.NewFaultChecker(cs, fork.NewMockFork())
-	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
+	syscalls := vmsupport.NewSyscalls(faultChecker, impl.ProofVerifier)
 	gasPirceSchedule := gas.NewPricesSchedule(para)
 	vmopt := vm.VmOption{
 		CircSupplyCalculator: csc,

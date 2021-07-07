@@ -2,6 +2,7 @@ package conformance
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	gobig "math/big"
 	"os"
 
@@ -26,7 +27,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/test-vectors/schema"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/tools/conformance/chaos"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -107,7 +107,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 	//chain fork
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network)
 	faultChecker := consensusfault.NewFaultChecker(chainStore, chainFork)
-	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
+	syscalls := vmsupport.NewSyscalls(faultChecker, impl.ProofVerifier)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +267,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 	//chain fork
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network)
 	faultChecker := consensusfault.NewFaultChecker(chainStore, chainFork)
-	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
+	syscalls := vmsupport.NewSyscalls(faultChecker, impl.ProofVerifier)
 	if err != nil {
 		return nil, cid.Undef, err
 	}

@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -31,7 +32,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/gen/genesis"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/basicfs"
 	"github.com/filecoin-project/venus/pkg/util/storiface"
 )
@@ -54,7 +54,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 		Root: sbroot,
 	}
 
-	sb, err := ffiwrapper.New(sbfs)
+	sb, err := impl.New(sbfs)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -152,7 +152,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 	return miner, ki, nil
 }
 
-func presealSector(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, sid storage.SectorRef, ssize abi.SectorSize, preimage []byte) (*genesis.PreSeal, error) {
+func presealSector(sb *impl.Sealer, sbfs *basicfs.Provider, sid storage.SectorRef, ssize abi.SectorSize, preimage []byte) (*genesis.PreSeal, error) {
 	pi, err := sb.AddPiece(context.TODO(), sid, nil, abi.PaddedPieceSize(ssize).Unpadded(), rand.Reader)
 	if err != nil {
 		return nil, err
