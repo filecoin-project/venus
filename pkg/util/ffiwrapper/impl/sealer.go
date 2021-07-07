@@ -1,4 +1,4 @@
-package ffiwrapper
+package impl
 
 type Sealer struct {
 	sectors  SectorProvider

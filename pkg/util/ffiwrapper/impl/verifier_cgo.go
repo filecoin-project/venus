@@ -1,9 +1,10 @@
 //+build cgo
 
-package ffiwrapper
+package impl
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -104,7 +105,7 @@ func (sb *Sealer) pubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorIn
 	return ffi.NewSortedPrivateSectorInfo(out...), skipped, done, nil
 }
 
-var _ Verifier = ProofVerifier
+var _ ffiwrapper.Verifier = ProofVerifier
 
 type proofVerifier struct{}
 

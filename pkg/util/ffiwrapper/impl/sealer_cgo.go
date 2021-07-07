@@ -1,6 +1,6 @@
 //+build cgo
 
-package ffiwrapper
+package impl
 
 import (
 	"bufio"

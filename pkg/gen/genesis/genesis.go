@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -34,7 +35,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
@@ -407,7 +407,7 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 	var sum abi.PaddedPieceSize
 
 	faultChecker := consensusfault.NewFaultChecker(cs, fork.NewMockFork())
-	syscalls := vmsupport.NewSyscalls(faultChecker, ffiwrapper.ProofVerifier)
+	syscalls := vmsupport.NewSyscalls(faultChecker, impl.ProofVerifier)
 
 	genesisNetworkVersion := func(context.Context, abi.ChainEpoch) network.Version { // TODO: Get from build/
 		// returns the version _before_ the first upgrade.

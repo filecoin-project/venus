@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	"github.com/pkg/errors"
 
@@ -61,27 +60,8 @@ func (v *SignatureValidator) ValidateBLSMessageAggregate(ctx context.Context, ms
 		encodedMsgCids = append(encodedMsgCids, mCid.Bytes())
 	}
 
-	if !verifyBLSAggregate(pubKeys, encodedMsgCids, sig.Data) {
+	if crypto.VerifyAggregate(pubKeys, encodedMsgCids, sig.Data) != nil {
 		return errors.New("BLS signature invalid")
 	}
 	return nil
-}
-
-// verifyBLSAggregate checks the given signature is a valid aggregate signature over all messages and public keys
-func verifyBLSAggregate(pubKeys, msgs [][]byte, signature []byte) bool {
-	digests := []ffi.Digest{}
-	for _, msg := range msgs {
-		digests = append(digests, ffi.Hash(msg))
-	}
-
-	keys := []ffi.PublicKey{}
-	for _, pubKey := range pubKeys {
-		var blsPubKey ffi.PublicKey
-		copy(blsPubKey[:], pubKey)
-		keys = append(keys, blsPubKey)
-	}
-
-	var blsSig ffi.Signature
-	copy(blsSig[:], signature)
-	return ffi.Verify(&blsSig, digests, keys)
 }

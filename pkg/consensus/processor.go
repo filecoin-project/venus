@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/pkg/types"
 
-	//"github.com/filecoin-project/venus/internal/pkg/proofs"
 	"github.com/filecoin-project/venus/pkg/vm"
 )
 

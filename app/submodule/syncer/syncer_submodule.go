@@ -108,6 +108,7 @@ func NewSyncerSubmodule(ctx context.Context,
 	if err := network.Pubsub.RegisterTopicValidator(btv.Topic(network.NetworkName), btv.Validator(), btv.Opts()...); err != nil {
 		return nil, errors.Wrap(err, "failed to register block validator")
 	}
+
 	nodeConsensus := consensus.NewExpected(blockstore.CborStore,
 		blockstore.Blockstore,
 		config.BlockTime(),
@@ -117,8 +118,8 @@ func NewSyncerSubmodule(ctx context.Context,
 		chn.Fork,
 		config.Repo().Config().NetworkParams,
 		gasPriceSchedule,
-		postVerifier,
 		blkValid,
+		chn.SystemCall,
 	)
 
 	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, blockstore.Blockstore, discovery.ExchangeClient, config.ChainClock(), chn.Fork)

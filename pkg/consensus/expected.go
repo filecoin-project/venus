@@ -11,9 +11,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/consensusfault"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
-	"github.com/filecoin-project/venus/pkg/vmsupport"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -147,11 +144,9 @@ func NewExpected(cs cbor.IpldStore,
 	fork fork.IFork,
 	config *config.NetworkParamsConfig,
 	gasPirceSchedule *gas.PricesSchedule,
-	proofVerifier ffiwrapper.Verifier,
 	blockValidator *BlockValidator,
+	syscalls vm.SyscallsImpl,
 ) *Expected {
-	faultChecker := consensusfault.NewFaultChecker(chainState, fork)
-	syscalls := vmsupport.NewSyscalls(faultChecker, proofVerifier)
 	processor := NewDefaultProcessor(syscalls)
 	c := &Expected{
 		processor:                   processor,

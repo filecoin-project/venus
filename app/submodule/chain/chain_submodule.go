@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/vm"
 	"time"
 
 	"github.com/filecoin-project/venus/app/submodule/apiface/v0api"
@@ -29,8 +30,8 @@ type ChainSubmodule struct { //nolint
 	MessageStore *chain.MessageStore
 	Sampler      *chain.Sampler
 	Processor    *consensus.DefaultProcessor
-
-	Fork fork.IFork
+	Fork         fork.IFork
+	SystemCall   vm.SyscallsImpl
 
 	CheckPoint types.TipSetKey
 	Drand      beacon.Schedule
@@ -80,7 +81,6 @@ func NewChainSubmodule(ctx context.Context,
 	}
 	faultChecker := consensusfault.NewFaultChecker(chainStore, fork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, verifier)
-
 	processor := consensus.NewDefaultProcessor(syscalls)
 
 	waiter := chain.NewWaiter(chainStore, messageStore, blockstore.Blockstore, blockstore.CborStore)
@@ -89,6 +89,7 @@ func NewChainSubmodule(ctx context.Context,
 		ChainReader:  chainStore,
 		MessageStore: messageStore,
 		Processor:    processor,
+		SystemCall:   syscalls,
 		Fork:         fork,
 		Drand:        drand,
 		config:       config,

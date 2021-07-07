@@ -1,7 +1,8 @@
-package ffiwrapper
+package impl
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
@@ -11,7 +12,7 @@ import (
 type FakeVerifier struct {
 }
 
-var _ Verifier = (*FakeVerifier)(nil)
+var _ ffiwrapper.Verifier = (*FakeVerifier)(nil)
 
 func (f *FakeVerifier) VerifySeal(proof5.SealVerifyInfo) (bool, error) {
 	return true, nil
