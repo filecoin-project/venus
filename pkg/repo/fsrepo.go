@@ -717,11 +717,11 @@ func (r *FSRepo) APIAddr() (string, error) {
 }
 
 func (r *FSRepo) SetAPIToken(token []byte) error {
-	return ioutil.WriteFile(filepath.Join(r.path, "token"), token, 0600)
+	return ioutil.WriteFile(filepath.Join(r.path, apiToken), token, 0600)
 }
 
 func (r *FSRepo) APIToken() (string, error) {
-	tkBuff, err := ioutil.ReadFile(filepath.Join(r.path, "token"))
+	tkBuff, err := ioutil.ReadFile(filepath.Join(r.path, apiToken))
 	if err != nil {
 		return "", err
 	}

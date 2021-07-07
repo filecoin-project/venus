@@ -3,8 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
-	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"net"
 	"net/http"
 	"os"
@@ -12,13 +10,7 @@ import (
 	"syscall"
 
 	"contrib.go.opencensus.io/exporter/jaeger"
-	"go.opencensus.io/tag"
-
-	"github.com/filecoin-project/venus/app/submodule/multisig/v0api"
-
 	"github.com/awnumar/memguard"
-	"github.com/filecoin-project/venus/app/submodule/multisig"
-
 	"github.com/filecoin-project/go-jsonrpc"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
@@ -26,6 +18,9 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/pkg/errors"
+	"go.opencensus.io/tag"
+
+	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
 
 	"github.com/filecoin-project/venus/app/submodule/blockservice"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
@@ -35,6 +30,8 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/market"
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
+	"github.com/filecoin-project/venus/app/submodule/multisig"
+	"github.com/filecoin-project/venus/app/submodule/multisig/v0api"
 	network2 "github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
@@ -42,6 +39,7 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/wallet"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/repo"
 
