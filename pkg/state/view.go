@@ -314,37 +314,6 @@ func (v *View) MarketEscrowBalance(ctx context.Context, addr addr.Address) (foun
 	return true, amount, nil
 }
 
-// MarketComputeDataCommitment takes deal ids and uses associated commPs to compute commD for a sector that contains the deals
-func (v *View) MarketComputeDataCommitment(ctx context.Context, registeredProof abi.RegisteredSealProof, dealIDs []abi.DealID) (cid.Cid, error) {
-	marketState, err := v.loadMarketState(ctx)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	// todo review
-	proposals, err := marketState.Proposals()
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	// map deals to pieceInfo
-	pieceInfos := make([]abi.PieceInfo, len(dealIDs))
-	for i, id := range dealIDs {
-		proposal, bFound, err := proposals.Get(id)
-		if err != nil {
-			return cid.Undef, err
-		}
-
-		if !bFound {
-			return cid.Undef, xerrors.Errorf("deal %d not found", id)
-		}
-
-		pieceInfos[i].PieceCID = proposal.PieceCID
-		pieceInfos[i].Size = proposal.PieceSize
-	}
-	return ffiwrapper.GenerateUnsealedCID(registeredProof, pieceInfos)
-}
-
 // NOTE: exposes on-chain structures directly for storage FSM interface.
 func (v *View) MarketDealProposal(ctx context.Context, dealID abi.DealID) (market.DealProposal, error) {
 	marketState, err := v.loadMarketState(ctx)

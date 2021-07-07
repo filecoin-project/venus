@@ -1,4 +1,4 @@
-package ffiwrapper
+package impl
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"

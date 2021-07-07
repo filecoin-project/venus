@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/jwtauth"
@@ -189,7 +190,7 @@ func New(ctx context.Context, opts ...BuilderOpt) (*Node, error) {
 	n := &Builder{
 		offlineMode: false,
 		blockTime:   clock.DefaultEpochDuration,
-		verifier:    ffiwrapper.ProofVerifier,
+		verifier:    impl.ProofVerifier,
 	}
 	// apply builder options
 	for _, o := range opts {

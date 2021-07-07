@@ -1,4 +1,4 @@
-package ffiwrapper
+package impl
 
 import (
 	"encoding/binary"

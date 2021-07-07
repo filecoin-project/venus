@@ -57,6 +57,22 @@ func Verify(sig *crypto.Signature, addr address.Address, msg []byte) error {
 	return sv.Verify(sig.Data, addr, msg)
 }
 
+func VerifyAggregate(pubKeys, msgs [][]byte, signature []byte) error {
+	if signature == nil {
+		return xerrors.Errorf("signature is nil")
+	}
+
+	sv, ok := sigs[crypto.SigTypeBLS]
+	if !ok {
+		return fmt.Errorf("bls not register")
+	}
+
+	if !sv.VerifyAggregate(pubKeys, msgs, signature) {
+		return xerrors.Errorf("verify aggregate message fail")
+	}
+	return nil
+}
+
 // Generate generates private key of given type
 func Generate(sigType crypto.SigType) ([]byte, error) {
 	sv, ok := sigs[sigType]
@@ -84,6 +100,7 @@ type SigShim interface {
 	ToPublic(pk []byte) ([]byte, error)
 	Sign(pk []byte, msg []byte) ([]byte, error)
 	Verify(sig []byte, a address.Address, msg []byte) error
+	VerifyAggregate(pubKeys, msgs [][]byte, signature []byte) bool
 }
 
 var sigs map[crypto.SigType]SigShim

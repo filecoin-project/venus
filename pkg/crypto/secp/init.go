@@ -13,6 +13,10 @@ import (
 
 type secpSigner struct{}
 
+func (s secpSigner) VerifyAggregate(pubKeys, msgs [][]byte, signature []byte) bool {
+	panic("not support")
+}
+
 func (secpSigner) GenPrivate() ([]byte, error) {
 	priv, err := crypto.GenerateKey()
 	if err != nil {

@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -386,7 +385,7 @@ func TestCheckMessageBig(t *testing.T) {
 	tma := newTestMpoolAPI()
 
 	w, mp := newWalletAndMpool(t, tma)
-	from, err := w.NewAddress(address.BLS)
+	from, err := w.NewAddress(address.SECP256K1)
 	assert.NoError(t, err)
 
 	tma.setBalance(from, 1000e9)
@@ -450,7 +449,7 @@ func TestMessagePoolMessagesInEachBlock(t *testing.T) {
 
 	a := tma.nextBlock()
 
-	sender, err := w.NewAddress(address.BLS)
+	sender, err := w.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -492,7 +491,7 @@ func TestRevertMessages(t *testing.T) {
 	a := tma.nextBlock()
 	b := tma.nextBlock()
 
-	sender, err := w.NewAddress(address.BLS)
+	sender, err := w.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -547,7 +546,7 @@ func TestPruningSimple(t *testing.T) {
 	a := tma.nextBlock()
 	tma.applyBlock(t, a)
 
-	sender, err := w.NewAddress(address.BLS)
+	sender, err := w.NewAddress(address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
