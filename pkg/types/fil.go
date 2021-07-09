@@ -17,6 +17,11 @@ func (f FIL) String() string {
 	return f.Unitless() + " FIL"
 }
 
+var AttoFil = NewInt(1)
+var FemtoFil = BigMul(AttoFil, NewInt(1000))
+var PicoFil = BigMul(FemtoFil, NewInt(1000))
+var NanoFil = BigMul(PicoFil, NewInt(1000))
+
 func (f FIL) Unitless() string {
 	r := new(big.Rat).SetFrac(f.Int, big.NewInt(int64(constants.FilecoinPrecision)))
 	if r.Sign() == 0 {
