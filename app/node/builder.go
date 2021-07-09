@@ -258,7 +258,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	nd.chainClock = b.chainClock
 
-	// todo chainge builder interface to read config
+	// todo change builder interface to read config
 	nd.discovery, err = discovery.NewDiscoverySubmodule(ctx, (*builder)(b), b.repo.Config(), nd.network, nd.chain.ChainReader, nd.chain.MessageStore)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.discovery")
