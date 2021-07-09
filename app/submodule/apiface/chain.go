@@ -69,6 +69,8 @@ type IChainInfo interface {
 	// Rule[perm:read]
 	ChainGetBlockMessages(ctx context.Context, bid cid.Cid) (*apitypes.BlockMessages, error)
 	// Rule[perm:read]
+	ChainGetMessagesInTipset(ctx context.Context, key types.TipSetKey) ([]apitypes.Message, error)
+	// Rule[perm:read]
 	ChainGetReceipts(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error)
 	// Rule[perm:read]
 	ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]apitypes.Message, error)
