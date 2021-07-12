@@ -44,7 +44,7 @@ require (
 	github.com/filecoin-project/specs-actors/v5 v5.0.1
 	github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506
 	github.com/filecoin-project/test-vectors/schema v0.0.5
-	github.com/filecoin-project/venus-auth v1.2.1-0.20210708092253-46a302a482b1
+	github.com/filecoin-project/venus-auth v1.2.1
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
 	github.com/go-errors/errors v1.0.1
 	github.com/go-kit/kit v0.10.0
@@ -134,8 +134,8 @@ require (
 	golang.org/x/tools v0.1.1 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
-	gorm.io/driver/mysql v1.0.5
-	gorm.io/gorm v1.21.3
+	gorm.io/driver/mysql v1.1.1
+	gorm.io/gorm v1.21.11
 	gotest.tools v2.2.0+incompatible
 )
 
