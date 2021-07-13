@@ -6,11 +6,11 @@ import (
 	va "github.com/filecoin-project/venus-auth/auth"
 	vjc "github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus-auth/core"
-	"github.com/ipfs-force-community/metrics/leakybucket"
+	"github.com/ipfs-force-community/metrics/ratelimit"
 )
 
 var _ vjc.IJwtAuthClient = (*RemoteAuth)(nil)
-var _ leakybucket.ILimitFinder = (*RemoteAuth)(nil)
+var _ ratelimit.ILimitFinder = (*RemoteAuth)(nil)
 
 type ValueFromCtx struct{}
 
@@ -50,19 +50,19 @@ func (r *RemoteAuth) Verify(ctx context.Context, token string) ([]auth.Permissio
 	return perms, nil
 }
 
-func (r *RemoteAuth) GetUserLimit(name string) (*leakybucket.Limit, error) {
+func (r *RemoteAuth) GetUserLimit(name string) (*ratelimit.Limit, error) {
 	res, err := r.remote.GetUser(&va.GetUserRequest{Name: name})
 	if err != nil {
 		return nil, err
 	}
-	return &leakybucket.Limit{
+	return &ratelimit.Limit{
 		Account: res.Name, Cap: res.ReqLimit.Cap, Duration: res.ReqLimit.ResetDur}, nil
 }
 
-func (r *RemoteAuth) ListUserLimits() ([]*leakybucket.Limit, error) {
+func (r *RemoteAuth) ListUserLimits() ([]*ratelimit.Limit, error) {
 	const PageSize = 5
 
-	var limits = make([]*leakybucket.Limit, 0, PageSize*2)
+	var limits = make([]*ratelimit.Limit, 0, PageSize*2)
 
 	req := &va.ListUsersRequest{
 		Page:       &core.Page{Skip: 0, Limit: PageSize},
@@ -75,7 +75,7 @@ func (r *RemoteAuth) ListUserLimits() ([]*leakybucket.Limit, error) {
 		}
 		for _, u := range res {
 			limits = append(limits,
-				&leakybucket.Limit{Account: u.Name, Cap: u.ReqLimit.Cap, Duration: u.ReqLimit.ResetDur})
+				&ratelimit.Limit{Account: u.Name, Cap: u.ReqLimit.Cap, Duration: u.ReqLimit.ResetDur})
 		}
 
 		req.Skip += PageSize

@@ -2,7 +2,11 @@ package node
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
+	"github.com/ipfs-force-community/metrics/ratelimit"
+	logging "github.com/ipfs/go-log"
+	"golang.org/x/xerrors"
 	"time"
 
 	"github.com/filecoin-project/venus/app/submodule/multisig"
@@ -319,8 +323,23 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "add service failed ")
 	}
-	nd.jsonRPCServiceV1 = apiBuilder.Build("v1")
-	nd.jsonRPCService = apiBuilder.Build("v0")
+
+	cfg := nd.repo.Config()
+	if len(cfg.API.VenusAuthURL) > 0 {
+		nd.remoteAuth = jwtauth.NewRemoteAuth(cfg.API.VenusAuthURL)
+	}
+
+	var ratelimiter *ratelimit.RateLimiter
+	if nd.remoteAuth != nil && cfg.RateLimitCfg.Enable {
+		if ratelimiter, err = ratelimit.NewRateLimitHandler(cfg.RateLimitCfg.Endpoint, nil,
+			&jwtauth.ValueFromCtx{}, nd.remoteAuth, logging.Logger("venus-rate-limit")); err != nil {
+			return nil, xerrors.Errorf("request rate-limit is enabled, but create rate-limit handler failed:%w", err)
+		}
+		_ = logging.SetLogLevel("venus-rate-limit", "info")
+	}
+
+	nd.jsonRPCServiceV1 = apiBuilder.Build("v1", ratelimiter)
+	nd.jsonRPCService = apiBuilder.Build("v0", ratelimiter)
 	return nd, nil
 }
 
