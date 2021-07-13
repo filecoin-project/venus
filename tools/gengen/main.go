@@ -60,7 +60,7 @@ $ cat setup.json | gengen > genesis.car
 
 The outputted file can be used by venus during init to
 set the initial genesis block:
-$ venus init --genesisfile=genesis.car
+$ venus daemon --genesisfile=genesis.car
 */
 
 var (

@@ -14,7 +14,7 @@ fi
 if [ -e "$repo/config.json" ]; then
   echo "Found Filecoin fs-repo at $repo"
 else
-  venus init
+  venus daemon
   # TODO configure custom API and address here
 fi
 
