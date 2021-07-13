@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestMain(m *testing.M) {
@@ -33,7 +34,6 @@ var closer jsonrpc.ClientCloser
 
 var endpoint = "http://localhost:3453/rpc/v0"
 var token = ""
-
 var jaegerProxyEndpoint = "192.168.1.125:6831"
 var jaegerExporter *jaeger.Exporter
 
@@ -59,7 +59,7 @@ func setup() error {
 
 func TestAPIs(t *testing.T) {
 	testflags.UnitTest(t)
-	t.Skipf("local test")
+	t.Skip("local test")
 	cid, _ := cid.Decode("bafy2bzacedylucvhzggupihcqjfvv7s4mthgetphb2zzlp7kpjpykmiklfzt4")
 
 	ctx, span := trace.StartSpan(context.TODO(), "test_api")
@@ -72,6 +72,24 @@ func TestAPIs(t *testing.T) {
 
 	if _, err := clt.ChainGetBlock(ctx, cid); err != nil {
 		fmt.Printf("call chainhead failed:%s\n", err.Error())
+	}
+}
+
+func TestRatelimit(t *testing.T) {
+	testflags.UnitTest(t)
+	t.Skip("local test")
+	ctx := context.TODO()
+
+	for j := 0; j < 5; j++ {
+		for i := 0; i < 10; i++ {
+			if _, err := clt.ChainHead(ctx); err != nil {
+				fmt.Printf("call chainhead failed:%s\n", err.Error())
+			} else {
+				fmt.Printf("index:%d, call chainhead success\n", i)
+			}
+		}
+		fmt.Printf("\n")
+		time.Sleep(time.Second * 10)
 	}
 }
 

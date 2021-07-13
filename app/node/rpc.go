@@ -1,6 +1,8 @@
 package node
 
 import (
+	"github.com/filecoin-project/venus/app/client/funcrule"
+	"github.com/ipfs-force-community/metrics/ratelimit"
 	"reflect"
 
 	"github.com/filecoin-project/venus/app/client/v0api"
@@ -10,7 +12,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/client"
-	"github.com/filecoin-project/venus/app/client/funcrule"
 )
 
 type RPCService interface {
@@ -93,7 +94,7 @@ func (builder *RPCBuilder) AddService(service RPCService) error {
 	return nil
 }
 
-func (builder *RPCBuilder) Build(version string) *jsonrpc.RPCServer {
+func (builder *RPCBuilder) Build(version string, rlinject ratelimit.IJSONRPCLimiterWarper) *jsonrpc.RPCServer {
 	serverOptions := make([]jsonrpc.ServerOption, 0)
 	serverOptions = append(serverOptions, jsonrpc.WithProxyBind(jsonrpc.PBField))
 
@@ -106,6 +107,13 @@ func (builder *RPCBuilder) Build(version string) *jsonrpc.RPCServer {
 		for _, apiStruct := range builder.v0APIStruct {
 			funcrule.PermissionProxy(apiStruct, &fullNodeV0)
 		}
+
+		if rlinject != nil {
+			var rateLimitAPI v0api.FullNodeStruct
+			rlinject.WarperLimiter(fullNodeV0, &rateLimitAPI)
+			fullNodeV0 = rateLimitAPI
+		}
+
 		for _, nameSpace := range builder.namespace {
 			server.Register(nameSpace, &fullNodeV0)
 		}
@@ -113,6 +121,13 @@ func (builder *RPCBuilder) Build(version string) *jsonrpc.RPCServer {
 		for _, apiStruct := range builder.v1APIStruct {
 			funcrule.PermissionProxy(apiStruct, &fullNode)
 		}
+
+		if rlinject != nil {
+			var rateLimitAPI client.FullNodeStruct
+			rlinject.WarperLimiter(fullNode, &rateLimitAPI)
+			fullNode = rateLimitAPI
+		}
+
 		for _, nameSpace := range builder.namespace {
 			server.Register(nameSpace, &fullNode)
 		}

@@ -9,9 +9,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/ipfs-force-community/metrics/leakybucket"
-	"golang.org/x/xerrors"
-
 	"contrib.go.opencensus.io/exporter/jaeger"
 	"github.com/awnumar/memguard"
 	"github.com/filecoin-project/go-jsonrpc"
@@ -106,6 +103,7 @@ type Node struct {
 	jsonRPCService, jsonRPCServiceV1 *jsonrpc.RPCServer
 
 	jaegerExporter *jaeger.Exporter
+	remoteAuth     *jwtauth.RemoteAuth
 }
 
 func (node *Node) Chain() *chain2.ChainSubmodule {
@@ -273,26 +271,8 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 		return err
 	}
 
-	var remoteVerifer *jwtauth.RemoteAuth
-	authURL := node.repo.Config().API.VenusAuthURL
-
-	if len(authURL) > 0 {
-		remoteVerifer = jwtauth.NewRemoteAuth(authURL)
-	}
-
-	var handler http.Handler
-	if cfg.RateLimitCfg.Enable {
-		if handler, err = leakybucket.NewRateLimitHandler(cfg.RateLimitCfg.Endpoint, mux, &jwtauth.ValueFromCtx{},
-			remoteVerifer, logging.Logger("venus-rate-limit")); err != nil {
-			return xerrors.Errorf("request rate-limit is enabled, but create rate-limit handler failed:%w", err)
-		}
-		_ = logging.SetLogLevel("venus-rate-limit", "info")
-	} else {
-		handler = mux
-	}
-
 	authMux := jwtclient.NewAuthMux(localVerifer,
-		remoteVerifer, handler, logging.Logger("venus-auth"))
+		node.remoteAuth, mux, logging.Logger("venus-auth"))
 	authMux.TrustHandle("/debug/pprof/", http.DefaultServeMux)
 
 	// todo:

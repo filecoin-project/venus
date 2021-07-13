@@ -690,8 +690,8 @@ github.com/ipfs-force-community/go-ipfs-cmds v0.6.1-0.20210521090123-4587df7fa0a
 github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210521084414-5a2e6709d9bd h1:ixRwQin8yWcnsTnyGvnk3EuL/i3aHmzmdLMnQuJYOqU=
 github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210521084414-5a2e6709d9bd/go.mod h1:XBBpuKIMaXIIzeqzO1iucq4GvbF8CxmXRFoezRh+Cx4=
 github.com/ipfs-force-community/metrics v0.0.0-20210705093944-918711d7932a/go.mod h1:ajvaa2Yv3kernFGYkOVugnapIKawekjQsBPoY+AXMf0=
-github.com/ipfs-force-community/metrics v0.0.0-20210713010623-f7f4b0d95b24 h1:83IcLbolkr9OOVHj70k8/N8qPnuOC/AkaUBSK7XZIDc=
-github.com/ipfs-force-community/metrics v0.0.0-20210713010623-f7f4b0d95b24/go.mod h1:mn40SioMuKtjmRumHFy/fJ26Pn028XuDjUJE9dorjyw=
+github.com/ipfs-force-community/metrics v0.0.0-20210713091606-80c638f93354 h1:WHPx6EJr008qg9rCraN3gPRVaieCL7Q7GkVfdWtKNtU=
+github.com/ipfs-force-community/metrics v0.0.0-20210713091606-80c638f93354/go.mod h1:mn40SioMuKtjmRumHFy/fJ26Pn028XuDjUJE9dorjyw=
 github.com/ipfs/bbloom v0.0.1/go.mod h1:oqo8CVWsJFMOZqTglBG4wydCE4IQA/G2/SEofB0rjUI=
 github.com/ipfs/bbloom v0.0.4 h1:Gi+8EGJ2y5qiD5FbsbpX/TMNcJw8gSqr7eyjHa4Fhvs=
 github.com/ipfs/bbloom v0.0.4/go.mod h1:cS9YprKXpoZ9lT0n/Mw/a6/aFV6DTjTLYHeA+gyqMG0=

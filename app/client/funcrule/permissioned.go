@@ -26,7 +26,7 @@ func defaultRule() *Rule {
 	}
 }
 
-//permissionVerify the scheduler between API and internal business
+// permissionVerify the scheduler between API and internal business
 func PermissionProxy(in interface{}, out interface{}) {
 	ra := reflect.ValueOf(in)
 	rint := reflect.ValueOf(out).Elem()
@@ -34,7 +34,7 @@ func PermissionProxy(in interface{}, out interface{}) {
 		methodName := ra.Type().Method(i).Name
 		field, exists := rint.Type().FieldByName(methodName)
 		if !exists {
-			//log.Printf("exclude method %s from fullNode", methodName)
+			// log.Printf("exclude method %s from fullNode", methodName)
 			continue
 		}
 
