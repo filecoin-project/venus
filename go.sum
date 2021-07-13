@@ -240,7 +240,6 @@ github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZm
 github.com/dgryski/go-farm v0.0.0-20190104051053-3adb47b1fb0f/go.mod h1:SqUrOPUnsFjfmXRMNPybcSiG0BgUW2AuFH8PAnS2iTw=
 github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 h1:tdlZCpZ/P9DhczCTSixgIKmwPv6+wP5DGjqLYw5SUiA=
 github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2/go.mod h1:SqUrOPUnsFjfmXRMNPybcSiG0BgUW2AuFH8PAnS2iTw=
-github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f h1:lO4WD4F/rVNCu3HqELle0jiPLLBs70cWOduZpkS1E78=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f/go.mod h1:cuUVRXasLTGF7a8hSLbxyZXjz+1KgoB3wDUb6vlszIc=
 github.com/dgryski/go-sip13 v0.0.0-20181026042036-e10d5fee7954/go.mod h1:vAd38F8PWV+bWy6jNmig1y/TA+kYO4g3RSRF0IAv0no=
 github.com/docker/distribution v2.7.1+incompatible h1:a5mlkVzth6W5A4fOsS3D2EO5BUmsJpcB+cRlLU7cSug=
@@ -362,8 +361,8 @@ github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506 h
 github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506/go.mod h1:nJRRM7Aa9XVvygr3W9k6xGF46RWzr2zxF/iGoAIfA/g=
 github.com/filecoin-project/test-vectors/schema v0.0.5 h1:w3zHQhzM4pYxJDl21avXjOKBLF8egrvwUwjpT8TquDg=
 github.com/filecoin-project/test-vectors/schema v0.0.5/go.mod h1:iQ9QXLpYWL3m7warwvK1JC/pTri8mnfEmKygNDqqY6E=
-github.com/filecoin-project/venus-auth v1.2.1 h1:Osv1vEtT+XlF+VCHCN2Sm5ovz8UZMENP3WlK/lz6/hQ=
-github.com/filecoin-project/venus-auth v1.2.1/go.mod h1:seL0Da6grKQP91NmwJbrxlI7QX/BbhLaeLeUCUS/dmA=
+github.com/filecoin-project/venus-auth v1.2.2-0.20210713014927-43c679a4edfe h1:V8S/3aZScTfsjsGmph4hAuivf/pw2awxGM3GI/mvAqY=
+github.com/filecoin-project/venus-auth v1.2.2-0.20210713014927-43c679a4edfe/go.mod h1:seL0Da6grKQP91NmwJbrxlI7QX/BbhLaeLeUCUS/dmA=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6 h1:u/UEqS66A5ckRmS4yNpjmVH56sVtS/RfclBAYocb4as=
 github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6/go.mod h1:1i71OnUq3iUe1ma7Lr6yG6/rjvM3emb6yoL7xLFzcVQ=
@@ -417,10 +416,12 @@ github.com/go-playground/validator/v10 v10.4.1/go.mod h1:nlOn6nFhuKACm19sB/8EGNn
 github.com/go-redis/redis v6.15.8+incompatible/go.mod h1:NAIEuMOZ/fxfXJIrKDQDz8wamY7mA7PouImQ2Jvg6kA=
 github.com/go-redis/redis v6.15.9+incompatible h1:K0pv1D7EQUjfyoMql+r/jZqCLizCGKFlFgcHWWmHQjg=
 github.com/go-redis/redis v6.15.9+incompatible/go.mod h1:NAIEuMOZ/fxfXJIrKDQDz8wamY7mA7PouImQ2Jvg6kA=
+github.com/go-redis/redis/v7 v7.0.0-beta h1:sm826nuE9AVZl06YSag54VTSpbGdIUMXCXXOHh48nFU=
+github.com/go-redis/redis/v7 v7.0.0-beta/go.mod h1:dohSoK1cSNPaisjbZhSk7RYyPhVx2k+4sAbJdPK5KPs=
 github.com/go-redis/redis/v8 v8.3.4/go.mod h1:jszGxBCez8QA1HWSmQxJO9Y82kNibbUmeYhKWrBejTU=
-github.com/go-redis/redis/v8 v8.11.0 h1:O1Td0mQ8UFChQ3N9zFQqo6kTU2cJ+/it88gDB+zg0wo=
 github.com/go-redis/redis/v8 v8.11.0/go.mod h1:DLomh7y2e3ggQXQLd1YgmvIfecPJoFl7WU5SOQ/r06M=
-github.com/go-redis/redis_rate/v9 v9.1.1 h1:7SIrbnhQ7zsTNEgIvprFhJf7/+l3wSpZc2iRVwUmaq8=
+github.com/go-redis/redis_rate/v7 v7.0.1 h1:qpJUfKFkEF2zQSD1GnlC3oeZMd+E7ym55HU49BZKqbY=
+github.com/go-redis/redis_rate/v7 v7.0.1/go.mod h1:IWxoSa694TQvppZ53Y5yZtqSfHKflOx+xtSw1TsSoT4=
 github.com/go-redis/redis_rate/v9 v9.1.1/go.mod h1:jjU9YxOSZ3cz0yj1QJVAJiy5ueKmL9o4AySJHcKyTSE=
 github.com/go-resty/resty/v2 v2.4.0 h1:s6TItTLejEI+2mn98oijC5w/Rk2YU+OA6x0mnZN6r6k=
 github.com/go-resty/resty/v2 v2.4.0/go.mod h1:B88+xCTEwvfD94NOuE6GS1wMlnoKNY8eEiNizfNwOwA=
@@ -689,8 +690,8 @@ github.com/ipfs-force-community/go-ipfs-cmds v0.6.1-0.20210521090123-4587df7fa0a
 github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210521084414-5a2e6709d9bd h1:ixRwQin8yWcnsTnyGvnk3EuL/i3aHmzmdLMnQuJYOqU=
 github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210521084414-5a2e6709d9bd/go.mod h1:XBBpuKIMaXIIzeqzO1iucq4GvbF8CxmXRFoezRh+Cx4=
 github.com/ipfs-force-community/metrics v0.0.0-20210705093944-918711d7932a/go.mod h1:ajvaa2Yv3kernFGYkOVugnapIKawekjQsBPoY+AXMf0=
-github.com/ipfs-force-community/metrics v0.0.0-20210708103859-bb5906dadf00 h1:nS5cK3ml1THyYX0bDdyGROhhyJf4xQ0+V/SJ46LFmu0=
-github.com/ipfs-force-community/metrics v0.0.0-20210708103859-bb5906dadf00/go.mod h1:ajvaa2Yv3kernFGYkOVugnapIKawekjQsBPoY+AXMf0=
+github.com/ipfs-force-community/metrics v0.0.0-20210713010623-f7f4b0d95b24 h1:83IcLbolkr9OOVHj70k8/N8qPnuOC/AkaUBSK7XZIDc=
+github.com/ipfs-force-community/metrics v0.0.0-20210713010623-f7f4b0d95b24/go.mod h1:mn40SioMuKtjmRumHFy/fJ26Pn028XuDjUJE9dorjyw=
 github.com/ipfs/bbloom v0.0.1/go.mod h1:oqo8CVWsJFMOZqTglBG4wydCE4IQA/G2/SEofB0rjUI=
 github.com/ipfs/bbloom v0.0.4 h1:Gi+8EGJ2y5qiD5FbsbpX/TMNcJw8gSqr7eyjHa4Fhvs=
 github.com/ipfs/bbloom v0.0.4/go.mod h1:cS9YprKXpoZ9lT0n/Mw/a6/aFV6DTjTLYHeA+gyqMG0=
