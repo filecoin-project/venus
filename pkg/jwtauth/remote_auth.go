@@ -10,7 +10,7 @@ import (
 )
 
 var _ vjc.IJwtAuthClient = (*RemoteAuth)(nil)
-var _ leakybucket.IBucketsFinder = (*RemoteAuth)(nil)
+var _ leakybucket.ILimitFinder = (*RemoteAuth)(nil)
 
 type ValueFromCtx struct{}
 
@@ -50,37 +50,37 @@ func (r *RemoteAuth) Verify(ctx context.Context, token string) ([]auth.Permissio
 	return perms, nil
 }
 
-func (r *RemoteAuth) UserBucket(name string) (*leakybucket.Bucket, error) {
+func (r *RemoteAuth) GetUserLimit(name string) (*leakybucket.Limit, error) {
 	res, err := r.remote.GetUser(&va.GetUserRequest{Name: name})
 	if err != nil {
 		return nil, err
 	}
-	return &leakybucket.Bucket{
-		Account: res.Name, Rate: res.Rate, Cap: res.Burst}, nil
+	return &leakybucket.Limit{
+		Account: res.Name, Cap: res.ReqLimit.Cap, Duration: res.ReqLimit.ResetDur}, nil
 }
 
-func (r *RemoteAuth) ListUserBuckets() ([]*leakybucket.Bucket, error) {
+func (r *RemoteAuth) ListUserLimits() ([]*leakybucket.Limit, error) {
 	const PageSize = 5
 
-	var buckets = make([]*leakybucket.Bucket, 0, PageSize*2)
+	var limits = make([]*leakybucket.Limit, 0, PageSize*2)
 
 	req := &va.ListUsersRequest{
 		Page:       &core.Page{Skip: 0, Limit: PageSize},
 		SourceType: 0, State: 0, KeySum: 0}
 
-	for int64(len(buckets)) == req.Skip {
+	for int64(len(limits)) == req.Skip {
 		res, err := r.remote.ListUsers(req)
 		if err != nil {
 			return nil, err
 		}
 		for _, u := range res {
-			buckets = append(buckets,
-				&leakybucket.Bucket{Account: u.Name, Rate: u.Rate, Cap: u.Burst})
+			limits = append(limits,
+				&leakybucket.Limit{Account: u.Name, Cap: u.ReqLimit.Cap, Duration: u.ReqLimit.ResetDur})
 		}
 
 		req.Skip += PageSize
 	}
-	return buckets, nil
+	return limits, nil
 
 }
 
