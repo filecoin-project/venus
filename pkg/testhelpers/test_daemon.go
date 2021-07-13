@@ -632,14 +632,6 @@ func ContainerDir(dir string) func(*TestDaemon) {
 	}
 }
 
-// ShouldInit allows setting the `init` config option on the daemon. If
-// set, `venus init` is run before starting up the daemon.
-func ShouldInit(i bool) func(*TestDaemon) {
-	return func(td *TestDaemon) {
-		td.init = i
-	}
-}
-
 // CmdTimeout allows setting the `cmdTimeout` config option on the daemon.
 func CmdTimeout(t time.Duration) func(*TestDaemon) {
 	return func(td *TestDaemon) {
@@ -729,15 +721,12 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 
 	td.daemonArgs = []string{filecoinBin, "daemon", repoDirFlag, cmdAPIAddrFlag, swarmListenFlag}
 
-	if td.init {
-		t.Log("run: venus need init ...")
-		if td.genesisFile != "" {
-			td.daemonArgs = append(td.daemonArgs, fmt.Sprintf("--genesisfile=%s", td.genesisFile))
-		}
+	if len(td.genesisFile) != 0 {
+		td.daemonArgs = append(td.daemonArgs, fmt.Sprintf("--genesisfile=%s", td.genesisFile))
+	}
 
-		if len(td.networkName) > 0 {
-			td.daemonArgs = append(td.daemonArgs, fmt.Sprintf("--network=%s", td.networkName))
-		}
+	if len(td.networkName) != 0 {
+		td.daemonArgs = append(td.daemonArgs, fmt.Sprintf("--network=%s", td.networkName))
 	}
 
 	if td.isRelay {
@@ -749,17 +738,6 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	}
 
 	return td
-}
-
-// RunInit is the equivalent of executing `venus init`.
-func RunInit(td *TestDaemon, opts ...string) ([]byte, error) {
-	filecoinBin := MustGetFilecoinBinary()
-
-	finalArgs := append([]string{"init"}, opts...)
-	td.logRun(finalArgs...)
-
-	process := exec.Command(filecoinBin, finalArgs...)
-	return process.CombinedOutput()
 }
 
 // GenesisFilePath returns the path to the test genesis

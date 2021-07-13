@@ -2,11 +2,12 @@ package cmd_test
 
 import (
 	"context"
+	"io/ioutil"
+	"testing"
+
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io/ioutil"
-	"testing"
 
 	"github.com/filecoin-project/venus/app/node/test"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -71,7 +72,7 @@ func TestPersistId(t *testing.T) {
 	d1.Stop()
 
 	// restart the daemon
-	d2 := th.NewDaemon(t, th.ShouldInit(false), th.ContainerDir(dir)).Start()
+	d2 := th.NewDaemon(t, th.ContainerDir(dir)).Start()
 
 	// get the id and compare to previous
 	id2 := d2.GetID()

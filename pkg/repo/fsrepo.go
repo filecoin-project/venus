@@ -165,7 +165,7 @@ func OpenFSRepo(repoPath string, version uint) (*FSRepo, error) {
 	}
 
 	if !hasConfig {
-		return nil, errors.Errorf("no repo found at %s; run: 'venus init [--repodir=%s]'", repoPath, repoPath)
+		return nil, errors.Errorf("no config found at %s", repoPath)
 	}
 
 	info, err := os.Stat(repoPath)
