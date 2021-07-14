@@ -94,7 +94,7 @@ func (builder *RPCBuilder) AddService(service RPCService) error {
 	return nil
 }
 
-func (builder *RPCBuilder) Build(version string, rlinject ratelimit.IJSONRPCLimiterWarper) *jsonrpc.RPCServer {
+func (builder *RPCBuilder) Build(version string, limiter *ratelimit.RateLimiter) *jsonrpc.RPCServer {
 	serverOptions := make([]jsonrpc.ServerOption, 0)
 	serverOptions = append(serverOptions, jsonrpc.WithProxyBind(jsonrpc.PBField))
 
@@ -108,9 +108,9 @@ func (builder *RPCBuilder) Build(version string, rlinject ratelimit.IJSONRPCLimi
 			funcrule.PermissionProxy(apiStruct, &fullNodeV0)
 		}
 
-		if rlinject != nil {
+		if limiter != nil {
 			var rateLimitAPI v0api.FullNodeStruct
-			rlinject.WarperLimiter(fullNodeV0, &rateLimitAPI)
+			limiter.WarperLimiter(fullNodeV0, &rateLimitAPI)
 			fullNodeV0 = rateLimitAPI
 		}
 
@@ -122,9 +122,9 @@ func (builder *RPCBuilder) Build(version string, rlinject ratelimit.IJSONRPCLimi
 			funcrule.PermissionProxy(apiStruct, &fullNode)
 		}
 
-		if rlinject != nil {
+		if limiter != nil {
 			var rateLimitAPI client.FullNodeStruct
-			rlinject.WarperLimiter(fullNode, &rateLimitAPI)
+			limiter.WarperLimiter(fullNode, &rateLimitAPI)
 			fullNode = rateLimitAPI
 		}
 

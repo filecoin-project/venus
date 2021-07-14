@@ -28,9 +28,7 @@ type RemoteAuth struct {
 
 // NewRemoteAuth new remote auth client from venus-auth url
 func NewRemoteAuth(url string) *RemoteAuth {
-	return &RemoteAuth{
-		remote: vjc.NewJWTClient(url),
-	}
+	return &RemoteAuth{remote: vjc.NewJWTClient(url)}
 }
 
 // Verify check token through venus-auth rpc api
@@ -50,57 +48,17 @@ func (r *RemoteAuth) Verify(ctx context.Context, token string) ([]auth.Permissio
 	return perms, nil
 }
 
-func (r *RemoteAuth) GetUserLimit(name string) (*ratelimit.Limit, error) {
-	res, err := r.remote.GetUser(&va.GetUserRequest{Name: name})
+func (r *RemoteAuth) GetUserLimit(name, service, api string) (*ratelimit.Limit, error) {
+	res, err := r.remote.GetUserRateLimit(name)
 	if err != nil {
 		return nil, err
 	}
-	return &ratelimit.Limit{
-		Account: res.Name, Cap: res.ReqLimit.Cap, Duration: res.ReqLimit.ResetDur}, nil
-}
 
-func (r *RemoteAuth) ListUserLimits() ([]*ratelimit.Limit, error) {
-	const PageSize = 5
-
-	var limits = make([]*ratelimit.Limit, 0, PageSize*2)
-
-	req := &va.ListUsersRequest{
-		Page:       &core.Page{Skip: 0, Limit: PageSize},
-		SourceType: 0, State: 0, KeySum: 0}
-
-	for int64(len(limits)) == req.Skip {
-		res, err := r.remote.ListUsers(req)
-		if err != nil {
-			return nil, err
-		}
-		for _, u := range res {
-			limits = append(limits,
-				&ratelimit.Limit{Account: u.Name, Cap: u.ReqLimit.Cap, Duration: u.ReqLimit.ResetDur})
-		}
-
-		req.Skip += PageSize
+	var limit = &ratelimit.Limit{Account: name, Cap: 0, Duration: 0}
+	if l := res.MatchedLimit(service, api); l != nil {
+		limit.Cap = l.ReqLimit.Cap
+		limit.Duration = l.ReqLimit.ResetDur
 	}
-	return limits, nil
 
-}
-
-// API remote a new api
-func (r *RemoteAuth) API() vjc.IJwtAuthAPI {
-	return &remoteJwtAuthAPI{JwtAuth: r}
-}
-
-func (r *RemoteAuth) V0API() vjc.IJwtAuthAPI {
-	return &remoteJwtAuthAPI{JwtAuth: r}
-}
-
-type remoteJwtAuthAPI struct { // nolint
-	JwtAuth vjc.IJwtAuthClient
-}
-
-func (a *remoteJwtAuthAPI) Verify(ctx context.Context, token string) ([]auth.Permission, error) {
-	return a.JwtAuth.Verify(ctx, token)
-}
-
-func (a *remoteJwtAuthAPI) AuthNew(ctx context.Context, _ []auth.Permission) ([]byte, error) {
-	panic("not support new auth in remote auth mode")
+	return limit, nil
 }
