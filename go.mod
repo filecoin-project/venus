@@ -59,6 +59,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
 	github.com/ipfs-force-community/metrics v0.0.0-20210715032600-e0ba4290a3e2
+	github.com/ipfs-force-community/venus-common-utils v0.0.0-20210714054928-2042a9040759
 	github.com/ipfs/go-bitswap v0.3.2
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.1.4
@@ -79,7 +80,7 @@ require (
 	github.com/ipfs/go-ipld-cbor v0.0.5
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log v1.0.5
-	github.com/ipfs/go-log/v2 v2.1.3
+	github.com/ipfs/go-log/v2 v2.3.0
 	github.com/ipfs/go-merkledag v0.3.2
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.4
