@@ -523,7 +523,7 @@ func (me *messageEvents) messagesForTS(ts *types.TipSet, consume func(message *t
 	seen := map[cid.Cid]struct{}{}
 
 	for _, tsb := range ts.Blocks() {
-		me.blsMsgLk.Unlock()
+		me.blsMsgLk.Lock()
 		msgsI, ok := me.blsMsgCache.Get(tsb.Cid())
 		var err error
 		if !ok {
