@@ -478,6 +478,7 @@ func newMessageEvents(ctx context.Context, hcAPI headChangeAPI, cs IEvent) messa
 		cs:          cs,
 		hcAPI:       hcAPI,
 		matchers:    make(map[triggerID]MsgMatchFunc),
+		blsMsgLk:    sync.Mutex{},
 		blsMsgCache: blsMsgCache,
 	}
 }
