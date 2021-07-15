@@ -93,16 +93,6 @@ type JwtAuthAPI struct { // nolint
 	JwtAuth *JwtAuth
 }
 
-// API jwt for token api
-// todo remove auth new api, because not secure for remote mod
-func (jwtAuth *JwtAuth) API() vjc.IJwtAuthAPI {
-	return &JwtAuthAPI{JwtAuth: jwtAuth}
-}
-
-func (jwtAuth *JwtAuth) V0API() vjc.IJwtAuthAPI {
-	return &JwtAuthAPI{JwtAuth: jwtAuth}
-}
-
 // Verify check the token is valid or not
 func (a *JwtAuthAPI) Verify(ctx context.Context, token string) ([]auth.Permission, error) {
 	var payload JwtPayload
