@@ -2,6 +2,8 @@ package events
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	lru "github.com/hashicorp/golang-lru"
 	"math"
 	"sync"
 
@@ -464,14 +466,20 @@ type messageEvents struct {
 
 	lk       sync.RWMutex
 	matchers map[triggerID]MsgMatchFunc
+
+	blockMsgLk    sync.Mutex
+	blockMsgCache *lru.ARCCache
 }
 
 func newMessageEvents(ctx context.Context, hcAPI headChangeAPI, cs IEvent) messageEvents {
+	blsMsgCache, _ := lru.NewARC(500)
 	return messageEvents{
-		ctx:      ctx,
-		cs:       cs,
-		hcAPI:    hcAPI,
-		matchers: make(map[triggerID]MsgMatchFunc),
+		ctx:           ctx,
+		cs:            cs,
+		hcAPI:         hcAPI,
+		matchers:      make(map[triggerID]MsgMatchFunc),
+		blockMsgLk:    sync.Mutex{},
+		blockMsgCache: blsMsgCache,
 	}
 }
 
@@ -515,13 +523,21 @@ func (me *messageEvents) messagesForTS(ts *types.TipSet, consume func(message *t
 	seen := map[cid.Cid]struct{}{}
 
 	for _, tsb := range ts.Blocks() {
-
-		msgs, err := me.cs.ChainGetBlockMessages(context.TODO(), tsb.Cid())
-		if err != nil {
-			log.Errorf("messagesForTs MessagesForBlock failed (ts.H=%d, Bcid:%s, B.Mcid:%s): %s", ts.Height(), tsb.Cid(), tsb.Messages, err)
-			// this is quite bad, but probably better than missing all the other updates
-			continue
+		me.blockMsgLk.Lock()
+		msgsI, ok := me.blockMsgCache.Get(tsb.Cid())
+		var err error
+		if !ok {
+			msgsI, err = me.cs.ChainGetBlockMessages(context.TODO(), tsb.Cid())
+			if err != nil {
+				log.Errorf("messagesForTs MessagesForBlock failed (ts.H=%d, Bcid:%s, B.Mcid:%s): %s", ts.Height(), tsb.Cid(), tsb.Messages, err)
+				// this is quite bad, but probably better than missing all the other updates
+				me.blockMsgLk.Unlock()
+				continue
+			}
+			me.blockMsgCache.Add(tsb.Cid(), msgsI)
 		}
+		me.blockMsgLk.Unlock()
+		msgs := msgsI.(*apitypes.BlockMessages)
 
 		for _, m := range msgs.BlsMessages {
 			mcid := m.Cid()
