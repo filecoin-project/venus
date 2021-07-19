@@ -2,14 +2,12 @@ package client
 
 import (
 	"context"
+	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 	"io/ioutil"
 	"net/http"
 	"path"
 
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
-
 	"github.com/filecoin-project/venus/app/paths"
 )
 
@@ -31,20 +29,12 @@ func getVenusClientInfo(version string) (string, http.Header, error) {
 		return "", nil, err
 	}
 
-	headers := http.Header{}
-	headers.Add("Authorization", "Bearer "+string(tokenBytes))
-	apima, err := multiaddr.NewMultiaddr(string(rpcBytes))
+	apiInfo := apiinfo.NewAPIInfo(string(rpcBytes), string(tokenBytes))
+	addr, err := apiInfo.DialArgs("v0")
 	if err != nil {
 		return "", nil, err
 	}
-
-	_, addr, err := manet.DialArgs(apima)
-	if err != nil {
-		return "", nil, err
-	}
-
-	addr = "ws://" + addr + "/rpc/" + version
-	return addr, headers, nil
+	return addr, apiInfo.AuthHeader(), nil
 }
 
 //NewFullNode It is used to construct a full node access client.

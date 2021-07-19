@@ -1,12 +1,9 @@
 package remotewallet
 
 import (
+	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 	"net/http"
 	"regexp"
-	"strings"
-
-	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
 )
 
 var (
@@ -22,7 +19,7 @@ const (
 
 // APIInfo parse URL string to
 type APIInfo struct {
-	Addr          multiaddr.Multiaddr
+	Addr          string
 	Token         []byte
 	StrategyToken []byte
 }
@@ -31,23 +28,15 @@ func ParseAPIInfo(s string) (*APIInfo, error) {
 	token := []byte(regJWTToken.FindString(s))
 	strategyToken := []byte(regUUID.FindString(s))
 	addr := regIPv4.FindString(s)
-	apima, err := multiaddr.NewMultiaddr(addr)
-	if err != nil {
-		return nil, err
-	}
 	return &APIInfo{
-		Addr:          apima,
+		Addr:          addr,
 		Token:         token,
 		StrategyToken: strategyToken,
 	}, nil
 }
 
 func (a APIInfo) DialArgs() (string, error) {
-	_, addr, err := manet.DialArgs(a.Addr)
-	if strings.HasPrefix(addr, "0.0.0.0:") {
-		addr = "127.0.0.1:" + addr[8:]
-	}
-	return "ws://" + addr + "/rpc/v0", err
+	return apiinfo.DialArgs(a.Addr, "v0")
 }
 
 func (a APIInfo) AuthHeader() http.Header {
