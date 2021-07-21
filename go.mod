@@ -44,7 +44,7 @@ require (
 	github.com/filecoin-project/specs-actors/v5 v5.0.1
 	github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506
 	github.com/filecoin-project/test-vectors/schema v0.0.5
-	github.com/filecoin-project/venus-auth v1.2.2-0.20210715022549-93e9ece22c30
+	github.com/filecoin-project/venus-auth v1.2.2-0.20210721092214-053e372d5ef3
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
 	github.com/go-errors/errors v1.0.1
 	github.com/go-kit/kit v0.10.0
@@ -58,7 +58,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
-	github.com/ipfs-force-community/metrics v0.0.0-20210715032600-e0ba4290a3e2
+	github.com/ipfs-force-community/metrics v0.0.0-20210721090333-ec5dd3d53773
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20210714054928-2042a9040759
 	github.com/ipfs/go-bitswap v0.3.2
 	github.com/ipfs/go-block-format v0.0.3
@@ -142,7 +142,7 @@ require (
 
 replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
-	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210521084414-5a2e6709d9bd
+	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210721090446-4ad25dff868c
 	github.com/filecoin-project/test-vectors => ./extern/test-vectors
 	github.com/filecoin-project/venus => ./
 	github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.39.0
