@@ -7,28 +7,39 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/venus/pkg/specactors"
+	init_ "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/venus/pkg/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 )
 
-func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []Actor, rootVerifier Actor) (int64, *types.Actor, map[address.Address]address.Address, error) {
+func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, initialActors []Actor, rootVerifier Actor, remainder Actor, av specactors.Version) (int64, *types.Actor, map[address.Address]address.Address, error) {
 	if len(initialActors) > MaxAccounts {
 		return 0, nil, nil, xerrors.New("too many initial actors")
 	}
 
-	var ias init_.State
-	ias.NextID = MinerStart
-	ias.NetworkName = netname
+	cst := cbor.NewCborStore(bs)
+	ist, err := init_.MakeState(adt.WrapStore(ctx, cst), av, netname)
+	if err != nil {
+		return 0, nil, nil, err
+	}
 
-	store := adt.WrapStore(context.TODO(), cbor.NewCborStore(bs))
-	amap := adt.MakeEmptyMap(store)
+	if err = ist.SetNextID(MinerStart); err != nil {
+		return 0, nil, nil, err
+	}
+
+	amap, err := ist.AddressMap()
+	if err != nil {
+		return 0, nil, nil, err
+	}
 
 	keyToID := map[address.Address]address.Address{}
 	counter := int64(AccountStart)
@@ -87,6 +98,33 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []Actor,
 		}
 	}
 
+	setupMsig := func(meta json.RawMessage) error {
+		var ainfo MultisigMeta
+		if err := json.Unmarshal(meta, &ainfo); err != nil {
+			return xerrors.Errorf("unmarshaling account meta: %w", err)
+		}
+		for _, e := range ainfo.Signers {
+			if _, ok := keyToID[e]; ok {
+				continue
+			}
+			fmt.Printf("init set %s t0%d\n", e, counter)
+
+			value := cbg.CborInt(counter)
+			if err := amap.Put(abi.AddrKey(e), &value); err != nil {
+				return err
+			}
+			counter = counter + 1
+			var err error
+			keyToID[e], err = address.NewIDAddress(uint64(value))
+			if err != nil {
+				return err
+			}
+
+		}
+
+		return nil
+	}
+
 	if rootVerifier.Type == TAccount {
 		var ainfo AccountMeta
 		if err := json.Unmarshal(rootVerifier.Meta, &ainfo); err != nil {
@@ -97,27 +135,27 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []Actor,
 			return 0, nil, nil, err
 		}
 	} else if rootVerifier.Type == TMultisig {
-		var ainfo MultisigMeta
-		if err := json.Unmarshal(rootVerifier.Meta, &ainfo); err != nil {
+		err := setupMsig(rootVerifier.Meta)
+		if err != nil {
+			return 0, nil, nil, xerrors.Errorf("setting up root verifier msig: %w", err)
+		}
+	}
+
+	if remainder.Type == TAccount {
+		var ainfo AccountMeta
+		if err := json.Unmarshal(remainder.Meta, &ainfo); err != nil {
 			return 0, nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
 		}
-		for _, e := range ainfo.Signers {
-			if _, ok := keyToID[e]; ok {
-				continue
-			}
-			fmt.Printf("init set %s t0%d\n", e, counter)
 
-			value := cbg.CborInt(counter)
-			if err := amap.Put(abi.AddrKey(e), &value); err != nil {
-				return 0, nil, nil, err
-			}
-			counter = counter + 1
-			var err error
-			keyToID[e], err = address.NewIDAddress(uint64(value))
-			if err != nil {
-				return 0, nil, nil, err
-			}
-
+		// TODO: Use builtin.ReserveAddress...
+		value := cbg.CborInt(90)
+		if err := amap.Put(abi.AddrKey(ainfo.Owner), &value); err != nil {
+			return 0, nil, nil, err
+		}
+	} else if remainder.Type == TMultisig {
+		err := setupMsig(remainder.Meta)
+		if err != nil {
+			return 0, nil, nil, xerrors.Errorf("setting up remainder msig: %w", err)
 		}
 	}
 
@@ -125,16 +163,25 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []Actor,
 	if err != nil {
 		return 0, nil, nil, err
 	}
-	ias.AddressMap = amapaddr
 
-	statecid, err := store.Put(store.Context(), &ias)
+	if err = ist.SetAddressMap(amapaddr); err != nil {
+		return 0, nil, nil, err
+	}
+
+	statecid, err := cst.Put(ctx, ist.GetState())
+	if err != nil {
+		return 0, nil, nil, err
+	}
+
+	actcid, err := init_.GetActorCodeID(av)
 	if err != nil {
 		return 0, nil, nil, err
 	}
 
 	act := &types.Actor{
-		Code: builtin.InitActorCodeID,
-		Head: statecid,
+		Code:    actcid,
+		Head:    statecid,
+		Balance: big.Zero(),
 	}
 
 	return counter, act, keyToID, nil

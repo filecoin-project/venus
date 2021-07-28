@@ -262,23 +262,24 @@ type NetworkParamsConfig struct {
 
 // ForkUpgradeConfig record upgrade parameters
 type ForkUpgradeConfig struct {
-	UpgradeSmokeHeight       abi.ChainEpoch `json:"upgradeSmokeHeight"`
-	UpgradeBreezeHeight      abi.ChainEpoch `json:"upgradeBreezeHeight"`
-	UpgradeIgnitionHeight    abi.ChainEpoch `json:"upgradeIgnitionHeight"`
-	UpgradeLiftoffHeight     abi.ChainEpoch `json:"upgradeLiftoffHeight"`
-	UpgradeAssemblyHeight    abi.ChainEpoch `json:"upgradeActorsV2Height"`
-	UpgradeRefuelHeight      abi.ChainEpoch `json:"upgradeRefuelHeight"`
-	UpgradeTapeHeight        abi.ChainEpoch `json:"upgradeTapeHeight"`
-	UpgradeKumquatHeight     abi.ChainEpoch `json:"upgradeKumquatHeight"`
-	BreezeGasTampingDuration abi.ChainEpoch `json:"breezeGasTampingDuration"`
-	UpgradeCalicoHeight      abi.ChainEpoch `json:"upgradeCalicoHeight"`
-	UpgradePersianHeight     abi.ChainEpoch `json:"upgradePersianHeight"`
-	UpgradeOrangeHeight      abi.ChainEpoch `json:"upgradeOrangeHeight"`
-	UpgradeClausHeight       abi.ChainEpoch `json:"upgradeClausHeight"`
-	UpgradeTrustHeight       abi.ChainEpoch `json:"upgradeActorsV3Height"`
-	UpgradeNorwegianHeight   abi.ChainEpoch `json:"upgradeNorwegianHeight"`
-	UpgradeTurboHeight       abi.ChainEpoch `json:"upgradeActorsV4Height"`
-	UpgradeHyperdriveHeight  abi.ChainEpoch `json:"upgradeHyperdriveHeight"`
+	UpgradeSmokeHeight         abi.ChainEpoch `json:"upgradeSmokeHeight"`
+	UpgradeBreezeHeight        abi.ChainEpoch `json:"upgradeBreezeHeight"`
+	UpgradeIgnitionHeight      abi.ChainEpoch `json:"upgradeIgnitionHeight"`
+	UpgradeLiftoffHeight       abi.ChainEpoch `json:"upgradeLiftoffHeight"`
+	UpgradeAssemblyHeight      abi.ChainEpoch `json:"upgradeActorsV2Height"`
+	UpgradeRefuelHeight        abi.ChainEpoch `json:"upgradeRefuelHeight"`
+	UpgradeTapeHeight          abi.ChainEpoch `json:"upgradeTapeHeight"`
+	UpgradeKumquatHeight       abi.ChainEpoch `json:"upgradeKumquatHeight"`
+	UpgradePriceListOopsHeight abi.ChainEpoch `json:"upgradePriceListOopsHeight"`
+	BreezeGasTampingDuration   abi.ChainEpoch `json:"breezeGasTampingDuration"`
+	UpgradeCalicoHeight        abi.ChainEpoch `json:"upgradeCalicoHeight"`
+	UpgradePersianHeight       abi.ChainEpoch `json:"upgradePersianHeight"`
+	UpgradeOrangeHeight        abi.ChainEpoch `json:"upgradeOrangeHeight"`
+	UpgradeClausHeight         abi.ChainEpoch `json:"upgradeClausHeight"`
+	UpgradeTrustHeight         abi.ChainEpoch `json:"upgradeActorsV3Height"`
+	UpgradeNorwegianHeight     abi.ChainEpoch `json:"upgradeNorwegianHeight"`
+	UpgradeTurboHeight         abi.ChainEpoch `json:"upgradeActorsV4Height"`
+	UpgradeHyperdriveHeight    abi.ChainEpoch `json:"upgradeHyperdriveHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -286,23 +287,24 @@ func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
 }
 
 var DefaultForkUpgradeParam = &ForkUpgradeConfig{
-	UpgradeBreezeHeight:      41280,
-	BreezeGasTampingDuration: 120,
-	UpgradeSmokeHeight:       51000,
-	UpgradeIgnitionHeight:    94000,
-	UpgradeRefuelHeight:      130800,
-	UpgradeTapeHeight:        140760,
-	UpgradeLiftoffHeight:     148888,
-	UpgradeKumquatHeight:     170000,
-	UpgradeCalicoHeight:      265200,
-	UpgradePersianHeight:     265200 + 120*60,
-	UpgradeAssemblyHeight:    138720,
-	UpgradeOrangeHeight:      336458,
-	UpgradeClausHeight:       343200,
-	UpgradeTrustHeight:       550321,
-	UpgradeNorwegianHeight:   665280,
-	UpgradeTurboHeight:       712320,
-	UpgradeHyperdriveHeight:  -1,
+	UpgradeBreezeHeight:        41280,
+	BreezeGasTampingDuration:   120,
+	UpgradeSmokeHeight:         51000,
+	UpgradeIgnitionHeight:      94000,
+	UpgradeRefuelHeight:        130800,
+	UpgradeTapeHeight:          140760,
+	UpgradeLiftoffHeight:       148888,
+	UpgradeKumquatHeight:       170000,
+	UpgradePriceListOopsHeight: 265199,
+	UpgradeCalicoHeight:        265200,
+	UpgradePersianHeight:       265200 + 120*60,
+	UpgradeAssemblyHeight:      138720,
+	UpgradeOrangeHeight:        336458,
+	UpgradeClausHeight:         343200,
+	UpgradeTrustHeight:         550321,
+	UpgradeNorwegianHeight:     665280,
+	UpgradeTurboHeight:         712320,
+	UpgradeHyperdriveHeight:    892800,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {

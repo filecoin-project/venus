@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -402,44 +401,15 @@ func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 	}, nil
 }
 
+// Get the buffered blockstore associated with the VM. This includes any temporary blocks produced
+// during this VM's execution.
+func (vm *VM) ActorStore(ctx context.Context) adt.Store {
+	return adt.WrapStore(ctx, vm.store)
+}
+
 // todo estimate gasLimit
 func (vm *VM) ApplyMessage(msg types.ChainMsg) (*Ret, error) {
 	return vm.applyMessage(msg.VMMessage(), msg.ChainLength())
-}
-
-// MutateState usage: MutateState(ctx, idAddr, func(cst cbor.IpldStore, st *ActorStateType) error {...})
-func (vm *VM) MutateState(ctx context.Context, addr address.Address, fn interface{}) error {
-	act, find, err := vm.State.GetActor(ctx, addr)
-	if err != nil {
-		return xerrors.Errorf("actor not found: %w", err)
-	}
-
-	if !find {
-		return xerrors.New("actor not found")
-	}
-
-	st := reflect.New(reflect.TypeOf(fn).In(1).Elem())
-	if err := vm.store.Get(ctx, act.Head, st.Interface()); err != nil {
-		return xerrors.Errorf("read actor head: %w", err)
-	}
-
-	out := reflect.ValueOf(fn).Call([]reflect.Value{reflect.ValueOf(vm.store), st})
-	if !out[0].IsNil() && out[0].Interface().(error) != nil {
-		return out[0].Interface().(error)
-	}
-
-	head, err := vm.store.Put(ctx, st.Interface())
-	if err != nil {
-		return xerrors.Errorf("put new actor head: %w", err)
-	}
-
-	act.Head = head
-
-	if err := vm.State.SetActor(ctx, addr, act); err != nil {
-		return xerrors.Errorf("set actor: %w", err)
-	}
-
-	return nil
 }
 
 // applyMessage applies the message To the current stateView.

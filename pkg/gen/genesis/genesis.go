@@ -5,48 +5,72 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
+
+	"github.com/filecoin-project/venus/pkg/consensusfault"
+	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
+	"github.com/filecoin-project/venus/pkg/vmsupport"
+
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/vm/gas"
+
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/state/tree"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+
+	"github.com/filecoin-project/go-state-types/network"
+
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/multisig"
+
+	"github.com/filecoin-project/venus/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/account"
+
+	"github.com/filecoin-project/venus/pkg/specactors"
+
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/verifreg"
+
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
+
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
+
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/cron"
+
+	init_ "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
+
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/system"
+
+	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/go-state-types/network"
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	account0 "github.com/filecoin-project/specs-actors/actors/builtin/account"
-	multisig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/consensusfault"
-	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/fork"
+	sigs "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm"
-	"github.com/filecoin-project/venus/pkg/vm/gas"
-	"github.com/filecoin-project/venus/pkg/vmsupport"
 )
 
 const AccountStart = 100
 const MinerStart = 1000
 const MaxAccounts = MinerStart - AccountStart
 
-var log = logging.Logger("gen/genesis")
+var log = logging.Logger("genesis")
 
-type GenesisBootstrap struct { //nolint
+type GenesisBootstrap struct {
 	Genesis *types.BlockHeader
 }
 
@@ -121,94 +145,92 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 		return nil, nil, xerrors.Errorf("putting empty object: %w", err)
 	}
 
-	state, err := tree.NewState(cst, tree.StateTreeVersion0)
+	sv, err := tree.VersionForNetwork(template.NetworkVersion)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("getting state tree version: %w", err)
+	}
+
+	state, err := tree.NewState(cst, sv)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("making new state tree: %w", err)
 	}
 
+	av := specactors.VersionForNetwork(template.NetworkVersion)
+
 	// Create system actor
 
-	sysact, err := SetupSystemActor(bs)
+	sysact, err := SetupSystemActor(ctx, bs, av)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("setup init actor: %w", err)
+		return nil, nil, xerrors.Errorf("setup system actor: %w", err)
 	}
-	if err := state.SetActor(ctx, builtin0.SystemActorAddr, sysact); err != nil {
-		return nil, nil, xerrors.Errorf("set init actor: %w", err)
+	if err := state.SetActor(ctx, system.Address, sysact); err != nil {
+		return nil, nil, xerrors.Errorf("set system actor: %w", err)
 	}
 
 	// Create init actor
 
-	idStart, initact, keyIDs, err := SetupInitActor(bs, template.NetworkName, template.Accounts, template.VerifregRootKey)
+	idStart, initact, keyIDs, err := SetupInitActor(ctx, bs, template.NetworkName, template.Accounts, template.VerifregRootKey, template.RemainderAccount, av)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("setup init actor: %w", err)
 	}
-	if err := state.SetActor(ctx, builtin0.InitActorAddr, initact); err != nil {
+	if err := state.SetActor(ctx, init_.Address, initact); err != nil {
 		return nil, nil, xerrors.Errorf("set init actor: %w", err)
 	}
 
 	// Setup reward
-	// RewardActor's state is overrwritten by SetupStorageMiners
-	rewact, err := SetupRewardActor(bs, big.Zero())
+	// RewardActor's state is overwritten by SetupStorageMiners, but needs to exist for miner creation messages
+	rewact, err := SetupRewardActor(ctx, bs, big.Zero(), av)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("setup init actor: %w", err)
+		return nil, nil, xerrors.Errorf("setup reward actor: %w", err)
 	}
 
-	err = state.SetActor(ctx, builtin0.RewardActorAddr, rewact)
+	err = state.SetActor(ctx, reward.Address, rewact)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("set network account actor: %w", err)
+		return nil, nil, xerrors.Errorf("set reward actor: %w", err)
 	}
 
 	// Setup cron
-	cronact, err := SetupCronActor(bs)
+	cronact, err := SetupCronActor(ctx, bs, av)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("setup cron actor: %w", err)
 	}
-	if err := state.SetActor(ctx, builtin0.CronActorAddr, cronact); err != nil {
+	if err := state.SetActor(ctx, cron.Address, cronact); err != nil {
 		return nil, nil, xerrors.Errorf("set cron actor: %w", err)
 	}
 
 	// Create empty power actor
-	spact, err := SetupStoragePowerActor(bs)
+	spact, err := SetupStoragePowerActor(ctx, bs, av)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("setup storage market actor: %w", err)
+		return nil, nil, xerrors.Errorf("setup storage power actor: %w", err)
 	}
-	if err := state.SetActor(ctx, builtin0.StoragePowerActorAddr, spact); err != nil {
-		return nil, nil, xerrors.Errorf("set storage market actor: %w", err)
+	if err := state.SetActor(ctx, power.Address, spact); err != nil {
+		return nil, nil, xerrors.Errorf("set storage power actor: %w", err)
 	}
 
 	// Create empty market actor
-	marketact, err := SetupStorageMarketActor(bs)
+	marketact, err := SetupStorageMarketActor(ctx, bs, av)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("setup storage market actor: %w", err)
 	}
-	if err := state.SetActor(ctx, builtin0.StorageMarketActorAddr, marketact); err != nil {
-		return nil, nil, xerrors.Errorf("set market actor: %w", err)
+	if err := state.SetActor(ctx, market.Address, marketact); err != nil {
+		return nil, nil, xerrors.Errorf("set storage market actor: %w", err)
 	}
 
 	// Create verified registry
-	verifact, err := SetupVerifiedRegistryActor(bs)
+	verifact, err := SetupVerifiedRegistryActor(ctx, bs, av)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("setup storage market actor: %w", err)
+		return nil, nil, xerrors.Errorf("setup verified registry market actor: %w", err)
 	}
-	if err := state.SetActor(ctx, builtin0.VerifiedRegistryActorAddr, verifact); err != nil {
-		return nil, nil, xerrors.Errorf("set market actor: %w", err)
-	}
-
-	burntRoot, err := cst.Put(ctx, &account0.State{
-		Address: builtin0.BurntFundsActorAddr,
-	})
-	if err != nil {
-		return nil, nil, xerrors.Errorf("failed to setup burnt funds actor state: %w", err)
+	if err := state.SetActor(ctx, verifreg.Address, verifact); err != nil {
+		return nil, nil, xerrors.Errorf("set verified registry actor: %w", err)
 	}
 
-	// Setup burnt-funds
-	err = state.SetActor(ctx, builtin0.BurntFundsActorAddr, &types.Actor{
-		Code:    builtin0.AccountActorCodeID,
-		Balance: big.NewInt(0),
-		Head:    burntRoot,
-	})
+	bact, err := makeAccountActor(ctx, cst, av, builtin.BurntFundsActorAddr, big.Zero())
 	if err != nil {
-		return nil, nil, xerrors.Errorf("set burnt funds account actor: %w", err)
+		return nil, nil, xerrors.Errorf("setup burnt funds actor state: %w", err)
+	}
+	if err := state.SetActor(ctx, builtin.BurntFundsActorAddr, bact); err != nil {
+		return nil, nil, xerrors.Errorf("set burnt funds actor: %w", err)
 	}
 
 	// Create accounts
@@ -216,7 +238,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 
 		switch info.Type {
 		case TAccount:
-			if err := createAccountActor(ctx, cst, state, info, keyIDs); err != nil {
+			if err := createAccountActor(ctx, cst, state, info, keyIDs, av); err != nil {
 				return nil, nil, xerrors.Errorf("failed to create account actor: %w", err)
 			}
 
@@ -228,7 +250,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 			}
 			idStart++
 
-			if err := createMultisigAccount(ctx, bs, cst, state, ida, info, keyIDs); err != nil {
+			if err := createMultisigAccount(ctx, cst, state, ida, info, keyIDs, av); err != nil {
 				return nil, nil, err
 			}
 		default:
@@ -237,23 +259,41 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 
 	}
 
-	vregroot, err := address.NewIDAddress(80)
-	if err != nil {
-		return nil, nil, err
-	}
+	switch template.VerifregRootKey.Type {
+	case TAccount:
+		var ainfo AccountMeta
+		if err := json.Unmarshal(template.VerifregRootKey.Meta, &ainfo); err != nil {
+			return nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+		}
 
-	if err = createMultisigAccount(ctx, bs, cst, state, vregroot, template.VerifregRootKey, keyIDs); err != nil {
-		return nil, nil, xerrors.Errorf("failed to set up verified registry signer: %w", err)
+		_, ok := keyIDs[ainfo.Owner]
+		if ok {
+			return nil, nil, fmt.Errorf("rootkey account has already been declared, cannot be assigned 80: %s", ainfo.Owner)
+		}
+
+		vact, err := makeAccountActor(ctx, cst, av, ainfo.Owner, template.VerifregRootKey.Balance)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("setup verifreg rootkey account state: %w", err)
+		}
+		if err = state.SetActor(ctx, builtin.RootVerifierAddress, vact); err != nil {
+			return nil, nil, xerrors.Errorf("set verifreg rootkey account actor: %w", err)
+		}
+	case TMultisig:
+		if err = createMultisigAccount(ctx, cst, state, builtin.RootVerifierAddress, template.VerifregRootKey, keyIDs, av); err != nil {
+			return nil, nil, xerrors.Errorf("failed to set up verified registry signer: %w", err)
+		}
+	default:
+		return nil, nil, xerrors.Errorf("unknown account type for verifreg rootkey: %w", err)
 	}
 
 	// Setup the first verifier as ID-address 81
 	// TODO: remove this
-	skBytes, err := crypto2.Generate(crypto.SigTypeBLS)
+	skBytes, err := sigs.Generate(crypto.SigTypeBLS)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("creating random verifier secret key: %w", err)
 	}
 
-	verifierPk, err := crypto2.ToPublic(crypto.SigTypeBLS, skBytes)
+	verifierPk, err := sigs.ToPublic(crypto.SigTypeBLS, skBytes)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("creating random verifier public key: %w", err)
 	}
@@ -263,32 +303,26 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 		return nil, nil, xerrors.Errorf("creating random verifier address: %w", err)
 	}
 
-	verifierID, err := address.NewIDAddress(81)
+	verifierId, err := address.NewIDAddress(81) // nolint
 	if err != nil {
 		return nil, nil, err
 	}
 
-	verifierState, err := cst.Put(ctx, &account0.State{Address: verifierAd})
+	verifierAct, err := makeAccountActor(ctx, cst, av, verifierAd, big.Zero())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, xerrors.Errorf("setup first verifier state: %w", err)
 	}
 
-	err = state.SetActor(ctx, verifierID, &types.Actor{
-		Code:    builtin0.AccountActorCodeID,
-		Balance: big.NewInt(0),
-		Head:    verifierState,
-	})
-	if err != nil {
-		return nil, nil, xerrors.Errorf("setting account from actmap: %w", err)
+	if err = state.SetActor(ctx, verifierId, verifierAct); err != nil {
+		return nil, nil, xerrors.Errorf("set first verifier actor: %w", err)
 	}
 
 	totalFilAllocated := big.Zero()
 
-	// flush as ForEach works on the HAMT
-	if _, err := state.Flush(ctx); err != nil {
-		return nil, nil, err
-	}
 	err = state.ForEach(func(addr address.Address, act *types.Actor) error {
+		if act.Balance.Nil() {
+			panic(fmt.Sprintf("actor %s (%s) has nil balance", addr, builtin.ActorNameByCode(act.Code)))
+		}
 		totalFilAllocated = big.Add(totalFilAllocated, act.Balance)
 		return nil
 	})
@@ -304,19 +338,67 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 
 	template.RemainderAccount.Balance = remainingFil
 
-	if err := createMultisigAccount(ctx, bs, cst, state, builtin.ReserveAddress, template.RemainderAccount, keyIDs); err != nil {
-		return nil, nil, xerrors.Errorf("failed to set up remainder account: %w", err)
+	switch template.RemainderAccount.Type {
+	case TAccount:
+		var ainfo AccountMeta
+		if err := json.Unmarshal(template.RemainderAccount.Meta, &ainfo); err != nil {
+			return nil, nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+		}
+
+		_, ok := keyIDs[ainfo.Owner]
+		if ok {
+			return nil, nil, fmt.Errorf("remainder account has already been declared, cannot be assigned 90: %s", ainfo.Owner)
+		}
+
+		keyIDs[ainfo.Owner] = builtin.ReserveAddress
+		err = createAccountActor(ctx, cst, state, template.RemainderAccount, keyIDs, av)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("creating remainder acct: %w", err)
+		}
+
+	case TMultisig:
+		if err = createMultisigAccount(ctx, cst, state, builtin.ReserveAddress, template.RemainderAccount, keyIDs, av); err != nil {
+			return nil, nil, xerrors.Errorf("failed to set up remainder: %w", err)
+		}
+	default:
+		return nil, nil, xerrors.Errorf("unknown account type for remainder: %w", err)
 	}
 
 	return state, keyIDs, nil
 }
 
-func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *tree.State, info Actor, keyIDs map[address.Address]address.Address) error {
+func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av specactors.Version, addr address.Address, bal types.BigInt) (*types.Actor, error) {
+	ast, err := account.MakeState(adt.WrapStore(ctx, cst), av, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	statecid, err := cst.Put(ctx, ast.GetState())
+	if err != nil {
+		return nil, err
+	}
+
+	actcid, err := account.GetActorCodeID(av)
+	if err != nil {
+		return nil, err
+	}
+
+	act := &types.Actor{
+		Code:    actcid,
+		Head:    statecid,
+		Balance: bal,
+	}
+
+	return act, nil
+}
+
+func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *tree.State, info Actor, keyIDs map[address.Address]address.Address, av specactors.Version) error {
 	var ainfo AccountMeta
 	if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
 		return xerrors.Errorf("unmarshaling account meta: %w", err)
 	}
-	st, err := cst.Put(ctx, &account0.State{Address: ainfo.Owner})
+
+	aa, err := makeAccountActor(ctx, cst, av, ainfo.Owner, info.Balance)
 	if err != nil {
 		return err
 	}
@@ -326,28 +408,20 @@ func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *tree.Sta
 		return fmt.Errorf("no registered ID for account actor: %s", ainfo.Owner)
 	}
 
-	err = state.SetActor(ctx, ida, &types.Actor{
-		Code:    builtin0.AccountActorCodeID,
-		Balance: info.Balance,
-		Head:    st,
-	})
+	err = state.SetActor(ctx, ida, aa)
 	if err != nil {
 		return xerrors.Errorf("setting account from actmap: %w", err)
 	}
 	return nil
 }
 
-func createMultisigAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.IpldStore, state *tree.State, ida address.Address, info Actor, keyIDs map[address.Address]address.Address) error {
+func createMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *tree.State, ida address.Address, info Actor, keyIDs map[address.Address]address.Address, av specactors.Version) error {
 	if info.Type != TMultisig {
 		return fmt.Errorf("can only call createMultisigAccount with multisig Actor info")
 	}
 	var ainfo MultisigMeta
 	if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
 		return xerrors.Errorf("unmarshaling account meta: %w", err)
-	}
-	pending, err := adt0.MakeEmptyMap(adt0.WrapStore(ctx, cst)).Root()
-	if err != nil {
-		return xerrors.Errorf("failed to create empty map: %v", err)
 	}
 
 	var signers []address.Address
@@ -359,74 +433,58 @@ func createMultisigAccount(ctx context.Context, bs bstore.Blockstore, cst cbor.I
 		}
 
 		// Check if actor already exists
-		_, find, err := state.GetActor(ctx, e)
-		if err == nil && find {
+		_, bFind, err := state.GetActor(ctx, e)
+		if err == nil && bFind {
 			signers = append(signers, idAddress)
 			continue
 		}
 
-		st, err := cst.Put(ctx, &account0.State{Address: e})
+		aa, err := makeAccountActor(ctx, cst, av, e, big.Zero())
 		if err != nil {
 			return err
 		}
-		err = state.SetActor(ctx, idAddress, &types.Actor{
-			Code:    builtin0.AccountActorCodeID,
-			Balance: big.NewInt(0),
-			Head:    st,
-		})
-		if err != nil {
+
+		if err = state.SetActor(ctx, idAddress, aa); err != nil {
 			return xerrors.Errorf("setting account from actmap: %w", err)
 		}
 		signers = append(signers, idAddress)
 	}
 
-	st, err := cst.Put(ctx, &multisig0.State{
-		Signers:               signers,
-		NumApprovalsThreshold: uint64(ainfo.Threshold),
-		StartEpoch:            abi.ChainEpoch(ainfo.VestingStart),
-		UnlockDuration:        abi.ChainEpoch(ainfo.VestingDuration),
-		PendingTxns:           pending,
-		InitialBalance:        info.Balance,
-	})
+	mst, err := multisig.MakeState(adt.WrapStore(ctx, cst), av, signers, uint64(ainfo.Threshold), abi.ChainEpoch(ainfo.VestingStart), abi.ChainEpoch(ainfo.VestingDuration), info.Balance)
 	if err != nil {
 		return err
 	}
+
+	statecid, err := cst.Put(ctx, mst.GetState())
+	if err != nil {
+		return err
+	}
+
+	actcid, err := multisig.GetActorCodeID(av)
+	if err != nil {
+		return err
+	}
+
 	err = state.SetActor(ctx, ida, &types.Actor{
-		Code:    builtin0.MultisigActorCodeID,
+		Code:    actcid,
 		Balance: info.Balance,
-		Head:    st,
+		Head:    statecid,
 	})
 	if err != nil {
 		return xerrors.Errorf("setting account from actmap: %w", err)
 	}
+
 	return nil
 }
 
-func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid, template Template, keyIDs map[address.Address]address.Address, para *config.ForkUpgradeConfig) (cid.Cid, error) {
+func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid, template Template, keyIDs map[address.Address]address.Address, nv network.Version, para *config.ForkUpgradeConfig) (cid.Cid, error) {
 	verifNeeds := make(map[address.Address]abi.PaddedPieceSize)
 	var sum abi.PaddedPieceSize
 
 	faultChecker := consensusfault.NewFaultChecker(cs, fork.NewMockFork())
 	syscalls := vmsupport.NewSyscalls(faultChecker, impl.ProofVerifier)
-
-	genesisNetworkVersion := func(context.Context, abi.ChainEpoch) network.Version { // TODO: Get from build/
-		// returns the version _before_ the first upgrade.
-		if para.UpgradeBreezeHeight >= 0 {
-			return network.Version0
-		}
-		if para.UpgradeSmokeHeight >= 0 {
-			return network.Version1
-		}
-		if para.UpgradeIgnitionHeight >= 0 {
-			return network.Version2
-		}
-		if para.UpgradeAssemblyHeight >= 0 {
-			return network.Version3
-		}
-		if para.UpgradeLiftoffHeight >= 0 {
-			return network.Version3
-		}
-		return constants.ActorUpgradeNetworkVersion - 1 // genesis requires actors v0.
+	genesisNetworkVersion := func(context.Context, abi.ChainEpoch) network.Version {
+		return nv
 	}
 
 	gasPriceSchedule := gas.NewPricesSchedule(para)
@@ -469,7 +527,8 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 		return cid.Undef, err
 	}
 
-	_, err = doExecValue(ctx, vm, builtin0.VerifiedRegistryActorAddr, verifregRoot, big.Zero(), builtin0.MethodsVerifiedRegistry.AddVerifier, mustEnc(&verifreg0.AddVerifierParams{
+	// Note: This is brittle, if the methodNum / param changes, it could break things
+	_, err = doExecValue(ctx, vm, verifreg.Address, verifregRoot, types.NewInt(0), builtin0.MethodsVerifiedRegistry.AddVerifier, mustEnc(&verifreg0.AddVerifierParams{
 
 		Address:   verifier,
 		Allowance: abi.NewStoragePower(int64(sum)), // eh, close enough
@@ -480,12 +539,13 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 	}
 
 	for c, amt := range verifNeeds {
-		_, err := doExecValue(ctx, vm, builtin0.VerifiedRegistryActorAddr, verifier, big.Zero(), builtin0.MethodsVerifiedRegistry.AddVerifiedClient, mustEnc(&verifreg0.AddVerifiedClientParams{
+		// Note: This is brittle, if the methodNum / param changes, it could break things
+		_, err := doExecValue(ctx, vm, verifreg.Address, verifier, types.NewInt(0), builtin0.MethodsVerifiedRegistry.AddVerifiedClient, mustEnc(&verifreg0.AddVerifiedClientParams{
 			Address:   c,
 			Allowance: abi.NewStoragePower(int64(amt)),
 		}))
 		if err != nil {
-			return cid.Undef, xerrors.Errorf("failed to add verified api: %w", err)
+			return cid.Undef, xerrors.Errorf("failed to add verified client: %w", err)
 		}
 	}
 
@@ -497,7 +557,7 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 	return st, nil
 }
 
-func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs blockstore.Blockstore, template Template, para *config.ForkUpgradeConfig) (*GenesisBootstrap, error) {
+func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, template Template, para *config.ForkUpgradeConfig) (*GenesisBootstrap, error) {
 	st, keyIDs, err := MakeInitialStateTree(ctx, bs, template)
 	if err != nil {
 		return nil, xerrors.Errorf("make initial state tree failed: %w", err)
@@ -512,17 +572,17 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs blockstore.Blocksto
 	cs := chain.NewStore(rep.ChainDatastore(), cbor.NewCborStore(bs), bs, para, cid.Undef)
 
 	// Verify PreSealed Data
-	stateroot, err = VerifyPreSealedData(ctx, cs, stateroot, template, keyIDs, para)
+	stateroot, err = VerifyPreSealedData(ctx, cs, stateroot, template, keyIDs, template.NetworkVersion, para)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to verify presealed data: %w", err)
 	}
 
-	stateroot, err = SetupStorageMiners(ctx, cs, stateroot, template.Miners, para)
+	stateroot, err = SetupStorageMiners(ctx, cs, stateroot, template.Miners, template.NetworkVersion, para)
 	if err != nil {
 		return nil, xerrors.Errorf("setup miners failed: %w", err)
 	}
 
-	store := adt0.WrapStore(ctx, cbor.NewCborStore(bs))
+	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
 	emptyroot, err := adt0.MakeEmptyArray(store).Root()
 	if err != nil {
 		return nil, xerrors.Errorf("amt build failed: %w", err)
@@ -571,11 +631,11 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs blockstore.Blocksto
 	}
 
 	b := &types.BlockHeader{
-		Miner:                 builtin0.SystemActorAddr,
+		Miner:                 system.Address,
 		Ticket:                genesisticket,
 		Parents:               types.NewTipSetKey(filecoinGenesisCid),
 		Height:                0,
-		ParentWeight:          big.Zero(),
+		ParentWeight:          types.NewInt(0),
 		ParentStateRoot:       stateroot,
 		Messages:              mmb.Cid(),
 		ParentMessageReceipts: emptyroot,

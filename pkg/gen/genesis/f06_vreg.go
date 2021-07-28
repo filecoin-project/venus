@@ -3,12 +3,14 @@ package genesis
 import (
 	"context"
 
+	"github.com/filecoin-project/venus/pkg/specactors"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/verifreg"
+
 	"github.com/filecoin-project/go-address"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/venus/pkg/types"
@@ -27,25 +29,27 @@ func init() {
 	RootVerifierID = idk
 }
 
-func SetupVerifiedRegistryActor(bs bstore.Blockstore) (*types.Actor, error) {
-	store := adt.WrapStore(context.TODO(), cbor.NewCborStore(bs))
-
-	h, err := adt.MakeEmptyMap(store).Root()
+func SetupVerifiedRegistryActor(ctx context.Context, bs bstore.Blockstore, av specactors.Version) (*types.Actor, error) {
+	cst := cbor.NewCborStore(bs)
+	vst, err := verifreg.MakeState(adt.WrapStore(ctx, cbor.NewCborStore(bs)), av, RootVerifierID)
 	if err != nil {
 		return nil, err
 	}
 
-	sms := verifreg0.ConstructState(h, RootVerifierID)
+	statecid, err := cst.Put(ctx, vst.GetState())
+	if err != nil {
+		return nil, err
+	}
 
-	stcid, err := store.Put(store.Context(), sms)
+	actcid, err := verifreg.GetActorCodeID(av)
 	if err != nil {
 		return nil, err
 	}
 
 	act := &types.Actor{
-		Code:    builtin.VerifiedRegistryActorCodeID,
-		Head:    stcid,
-		Balance: big.NewInt(0),
+		Code:    actcid,
+		Head:    statecid,
+		Balance: big.Zero(),
 	}
 
 	return act, nil

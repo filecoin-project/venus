@@ -8,7 +8,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/venus/pkg/specactors"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -23,7 +22,7 @@ func mustEnc(i cbg.CBORMarshaler) []byte {
 	return enc
 }
 
-func doExecValue(ctx context.Context, vmi vm.Interpreter, to, from address.Address, value big.Int, method abi.MethodNum, params []byte) ([]byte, error) {
+func doExecValue(ctx context.Context, vmi vm.Interpreter, to, from address.Address, value types.BigInt, method abi.MethodNum, params []byte) ([]byte, error) {
 	act, find, err := vmi.StateTree().GetActor(ctx, from)
 	if err != nil {
 		return nil, xerrors.Errorf("doExec failed to get from actor (%s): %w", from, err)

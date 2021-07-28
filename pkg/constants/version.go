@@ -1,14 +1,20 @@
 package constants
 
 import (
+	"os"
+
 	"github.com/filecoin-project/venus/build/flags"
 )
 
 // BuildVersion is the local build version, set by build system
-const BuildVersion = "0.9.7"
+const BuildVersion = "1.0.4"
 
 // software version
 func UserVersion() string {
+	if os.Getenv("VENUS_VERSION_IGNORE_COMMIT") == "1" {
+		return BuildVersion
+	}
+
 	return BuildVersion + flags.GitCommit
 }
 

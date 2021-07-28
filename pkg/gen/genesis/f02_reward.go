@@ -2,31 +2,42 @@ package genesis
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/specactors"
+	"github.com/filecoin-project/venus/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
 
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/venus/pkg/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 )
 
-func SetupRewardActor(bs bstore.Blockstore, qaPower big.Int) (*types.Actor, error) {
+func SetupRewardActor(ctx context.Context, bs bstore.Blockstore, qaPower big.Int, av specactors.Version) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
-
-	st := reward0.ConstructState(qaPower)
-
-	hcid, err := cst.Put(context.TODO(), st)
+	rst, err := reward.MakeState(adt.WrapStore(ctx, cst), av, qaPower)
 	if err != nil {
 		return nil, err
 	}
 
-	return &types.Actor{
-		Code:    builtin.RewardActorCodeID,
-		Balance: big.Int{Int: constants.InitialRewardBalance},
-		Head:    hcid,
-	}, nil
+	statecid, err := cst.Put(ctx, rst.GetState())
+	if err != nil {
+		return nil, err
+	}
+
+	actcid, err := reward.GetActorCodeID(av)
+	if err != nil {
+		return nil, err
+	}
+
+	act := &types.Actor{
+		Code:    actcid,
+		Balance: types.BigInt{Int: constants.InitialRewardBalance},
+		Head:    statecid,
+	}
+
+	return act, nil
 }

@@ -7,14 +7,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/abi"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	tbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/v3/actors/builtin"
-
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -1212,17 +1208,6 @@ func (*MessagePool) getGasPerf(gasReward *big.Int, gasLimit int64) float64 {
 	return r
 }
 
-func isMessageMute(m *types.Message, ts *types.TipSet, actorV4Height abi.ChainEpoch) bool {
-	if ts.Height() > actorV4Height {
-		return false
-	}
-
-	if m.To == builtin.StoragePowerActorAddr {
-		return m.Method == builtin.MethodsPower.CreateMiner
-	}
-	return false
-}
-
 func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint64]*types.SignedMessage, baseFee types.BigInt, ts *types.TipSet) []*msgChain {
 	// collect all messages
 	msgs := make([]*types.SignedMessage, 0, len(mset))
@@ -1282,10 +1267,6 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 
 		required := m.Message.RequiredFunds().Int
 		if balance.Cmp(required) < 0 {
-			break
-		}
-
-		if isMessageMute(&m.Message, ts, mp.forkParams.UpgradeTurboHeight) {
 			break
 		}
 
