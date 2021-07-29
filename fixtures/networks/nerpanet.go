@@ -36,25 +36,27 @@ func NerpaNet() *NetworkConf {
 				UpgradeSmokeHeight:    -1,
 				UpgradeIgnitionHeight: -2,
 				UpgradeRefuelHeight:   -3,
-				UpgradeAssemblyHeight: 30,
+				UpgradeAssemblyHeight: 30, // critical: the network can bootstrap from v1 only
 				UpgradeTapeHeight:     60,
 				UpgradeLiftoffHeight:  -5,
 				// This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
 				// Miners, clients, developers, custodians all need time to prepare.
 				// We still have upgrades and state changes to do, but can happen after signaling timing here.
-				UpgradeKumquatHeight:     90,
-				UpgradeCalicoHeight:      100,
-				UpgradePersianHeight:     100 + (builtin2.EpochsInHour * 1),
-				UpgradeOrangeHeight:      300,
-				UpgradeTrustHeight:       600,
+				UpgradeKumquatHeight:       90,
+				UpgradePriceListOopsHeight: 99,
+				UpgradeCalicoHeight:        100,
+				UpgradePersianHeight:       100 + (builtin2.EpochsInHour * 1),
+				UpgradeOrangeHeight:        300,
+				UpgradeTrustHeight:         600,
+				UpgradeNorwegianHeight:     201000,
+				UpgradeTurboHeight:         203000,
+				UpgradeHyperdriveHeight:    379178,
+
 				BreezeGasTampingDuration: 0,
-				UpgradeClausHeight:       250,
-				UpgradeNorwegianHeight:   201000,
-				UpgradeTurboHeight:       203000,
-				UpgradeHyperdriveHeight:  999999999,
+				UpgradeClausHeight:       343200,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandMainnet},
-			AddressNetwork:          address.Mainnet,
+			AddressNetwork:          address.Testnet,
 			PreCommitChallengeDelay: abi.ChainEpoch(10),
 		},
 	}

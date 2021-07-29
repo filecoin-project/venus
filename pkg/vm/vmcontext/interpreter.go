@@ -1,8 +1,6 @@
 package vmcontext
 
 import (
-	"context"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/state/tree"
@@ -22,6 +20,4 @@ type VMInterpreter interface {
 
 	StateTree() tree.Tree
 	Flush() (tree.Root, error)
-
-	MutateState(ctx context.Context, addr address.Address, fn interface{}) error
 }

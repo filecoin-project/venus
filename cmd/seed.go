@@ -39,7 +39,7 @@ var seedCmd = &cmds.Command{
 
 var genesisCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "manipulate lotus genesis template",
+		Tagline: "manipulate genesis template",
 	},
 	Subcommands: map[string]*cmds.Command{
 		"new":       genesisNewCmd,
@@ -65,6 +65,7 @@ var genesisNewCmd = &cmds.Command{
 		}
 		networkName, _ := req.Options["network-name"].(string)
 		out := genesis.Template{
+			NetworkVersion:   constants.NewestNetworkVersion,
 			Accounts:         []genesis.Actor{},
 			Miners:           []genesis.Miner{},
 			VerifregRootKey:  gen.DefaultVerifregRootkeyActor,

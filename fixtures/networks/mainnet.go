@@ -40,9 +40,8 @@ func Mainnet() *NetworkConf {
 			//	int64(abi.RegisteredSealProof_StackedDrg32GiBV1),
 			//	int64(abi.RegisteredSealProof_StackedDrg64GiBV1),
 			//},
-			NetworkType:            constants.NetworkMainnet,
-			BlockDelay:             30,
-			ConsensusMinerMinPower: 10 << 40,
+			NetworkType: constants.NetworkMainnet,
+			BlockDelay:  30,
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
 				UpgradeBreezeHeight:   41280,
 				UpgradeSmokeHeight:    51000,
@@ -54,14 +53,15 @@ func Mainnet() *NetworkConf {
 				// This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
 				// Miners, clients, developers, custodians all need time to prepare.
 				// We still have upgrades and state changes to do, but can happen after signaling timing here.
-				UpgradeKumquatHeight:    170000,
-				UpgradeCalicoHeight:     265200,
-				UpgradePersianHeight:    265200 + (builtin2.EpochsInHour * 60),
-				UpgradeOrangeHeight:     336458,
-				UpgradeTrustHeight:      550321, // 2021-03-04T00:00:30Z
-				UpgradeNorwegianHeight:  665280, // 2021-04-12T22:00:00Z
-				UpgradeTurboHeight:      712320, // 2021-04-29T06:00:00Z
-				UpgradeHyperdriveHeight: 892800, // 2021-06-30T22:00:00Z
+				UpgradeKumquatHeight:       170000,
+				UpgradePriceListOopsHeight: 265199,
+				UpgradeCalicoHeight:        265200,
+				UpgradePersianHeight:       265200 + (builtin2.EpochsInHour * 60),
+				UpgradeOrangeHeight:        336458,
+				UpgradeTrustHeight:         550321, // 2021-03-04T00:00:30Z
+				UpgradeNorwegianHeight:     665280, // 2021-04-12T22:00:00Z
+				UpgradeTurboHeight:         712320, // 2021-04-29T06:00:00Z
+				UpgradeHyperdriveHeight:    892800, // 2021-06-30T22:00:00Z
 
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       343200, // 2020-12-22T02:00:00Z

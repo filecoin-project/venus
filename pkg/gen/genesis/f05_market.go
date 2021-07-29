@@ -6,36 +6,34 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/venus/pkg/specactors"
+	"github.com/filecoin-project/venus/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 
 	"github.com/filecoin-project/venus/pkg/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 )
 
-func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
-	store := adt.WrapStore(context.TODO(), cbor.NewCborStore(bs))
-
-	a, err := adt.MakeEmptyArray(store).Root()
-	if err != nil {
-		return nil, err
-	}
-	h, err := adt.MakeEmptyMap(store).Root()
+func SetupStorageMarketActor(ctx context.Context, bs bstore.Blockstore, av specactors.Version) (*types.Actor, error) {
+	cst := cbor.NewCborStore(bs)
+	mst, err := market.MakeState(adt.WrapStore(ctx, cbor.NewCborStore(bs)), av)
 	if err != nil {
 		return nil, err
 	}
 
-	sms := market.ConstructState(a, h, h)
+	statecid, err := cst.Put(ctx, mst.GetState())
+	if err != nil {
+		return nil, err
+	}
 
-	stcid, err := store.Put(store.Context(), sms)
+	actcid, err := market.GetActorCodeID(av)
 	if err != nil {
 		return nil, err
 	}
 
 	act := &types.Actor{
-		Code:    builtin.StorageMarketActorCodeID,
-		Head:    stcid,
+		Code:    actcid,
+		Head:    statecid,
 		Balance: big.Zero(),
 	}
 

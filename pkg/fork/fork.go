@@ -176,6 +176,10 @@ func defaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 		Network:   network.Version6,
 		Migration: nil,
 	}, {
+		Height:    upgradeHeight.UpgradePriceListOopsHeight,
+		Network:   network.Version6AndAHalf,
+		Migration: nil,
+	}, {
 		Height:    upgradeHeight.UpgradeCalicoHeight,
 		Network:   network.Version7,
 		Migration: cf.UpgradeCalico,
