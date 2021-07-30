@@ -175,74 +175,76 @@ func defaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 		Height:    upgradeHeight.UpgradeKumquatHeight,
 		Network:   network.Version6,
 		Migration: nil,
-	}, {
-		Height:    upgradeHeight.UpgradePriceListOopsHeight,
-		Network:   network.Version6AndAHalf,
-		Migration: nil,
-	}, {
-		Height:    upgradeHeight.UpgradeCalicoHeight,
-		Network:   network.Version7,
-		Migration: cf.UpgradeCalico,
-	}, {
-		Height:    upgradeHeight.UpgradePersianHeight,
-		Network:   network.Version8,
-		Migration: nil,
-	}, {
-		Height:    upgradeHeight.UpgradeOrangeHeight,
-		Network:   network.Version9,
-		Migration: nil,
-	}, {
-		Height:    upgradeHeight.UpgradeTrustHeight,
-		Network:   network.Version10,
-		Migration: cf.UpgradeActorsV3,
-		PreMigrations: []PreMigration{{
-			PreMigration:    cf.PreUpgradeActorsV3,
-			StartWithin:     120,
-			DontStartWithin: 60,
-			StopWithin:      35,
+	},
+		//{
+		//		Height:    upgradeHeight.UpgradePriceListOopsHeight,
+		//		Network:   network.Version6AndAHalf,
+		//		Migration: nil,
+		//},
+		{
+			Height:    upgradeHeight.UpgradeCalicoHeight,
+			Network:   network.Version7,
+			Migration: cf.UpgradeCalico,
 		}, {
-			PreMigration:    cf.PreUpgradeActorsV3,
-			StartWithin:     30,
-			DontStartWithin: 15,
-			StopWithin:      5,
-		}},
-		Expensive: true,
-	}, {
-		Height:    upgradeHeight.UpgradeNorwegianHeight,
-		Network:   network.Version11,
-		Migration: nil,
-	}, {
-		Height:    upgradeHeight.UpgradeTurboHeight,
-		Network:   network.Version12,
-		Migration: cf.UpgradeActorsV4,
-		PreMigrations: []PreMigration{{
-			PreMigration:    cf.PreUpgradeActorsV4,
-			StartWithin:     120,
-			DontStartWithin: 60,
-			StopWithin:      35,
+			Height:    upgradeHeight.UpgradePersianHeight,
+			Network:   network.Version8,
+			Migration: nil,
 		}, {
-			PreMigration:    cf.PreUpgradeActorsV4,
-			StartWithin:     30,
-			DontStartWithin: 15,
-			StopWithin:      5,
-		}},
-		Expensive: true,
-	}, {
-		Height:    upgradeHeight.UpgradeHyperdriveHeight,
-		Network:   network.Version13,
-		Migration: cf.UpgradeActorsV5,
-		PreMigrations: []PreMigration{{
-			PreMigration:    cf.PreUpgradeActorsV5,
-			StartWithin:     120,
-			DontStartWithin: 60,
-			StopWithin:      35,
+			Height:    upgradeHeight.UpgradeOrangeHeight,
+			Network:   network.Version9,
+			Migration: nil,
 		}, {
-			PreMigration:    cf.PreUpgradeActorsV5,
-			StartWithin:     30,
-			DontStartWithin: 15,
-			StopWithin:      5,
-		}},
-		Expensive: true}}
+			Height:    upgradeHeight.UpgradeTrustHeight,
+			Network:   network.Version10,
+			Migration: cf.UpgradeActorsV3,
+			PreMigrations: []PreMigration{{
+				PreMigration:    cf.PreUpgradeActorsV3,
+				StartWithin:     120,
+				DontStartWithin: 60,
+				StopWithin:      35,
+			}, {
+				PreMigration:    cf.PreUpgradeActorsV3,
+				StartWithin:     30,
+				DontStartWithin: 15,
+				StopWithin:      5,
+			}},
+			Expensive: true,
+		}, {
+			Height:    upgradeHeight.UpgradeNorwegianHeight,
+			Network:   network.Version11,
+			Migration: nil,
+		}, {
+			Height:    upgradeHeight.UpgradeTurboHeight,
+			Network:   network.Version12,
+			Migration: cf.UpgradeActorsV4,
+			PreMigrations: []PreMigration{{
+				PreMigration:    cf.PreUpgradeActorsV4,
+				StartWithin:     120,
+				DontStartWithin: 60,
+				StopWithin:      35,
+			}, {
+				PreMigration:    cf.PreUpgradeActorsV4,
+				StartWithin:     30,
+				DontStartWithin: 15,
+				StopWithin:      5,
+			}},
+			Expensive: true,
+		}, {
+			Height:    upgradeHeight.UpgradeHyperdriveHeight,
+			Network:   network.Version13,
+			Migration: cf.UpgradeActorsV5,
+			PreMigrations: []PreMigration{{
+				PreMigration:    cf.PreUpgradeActorsV5,
+				StartWithin:     120,
+				DontStartWithin: 60,
+				StopWithin:      35,
+			}, {
+				PreMigration:    cf.PreUpgradeActorsV5,
+				StartWithin:     30,
+				DontStartWithin: 15,
+				StopWithin:      5,
+			}},
+			Expensive: true}}
 
 	for _, u := range updates {
 		if u.Height < 0 {
