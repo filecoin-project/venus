@@ -53,7 +53,7 @@ func NerpaNet() *NetworkConf {
 				UpgradeHyperdriveHeight:    379178,
 
 				BreezeGasTampingDuration: 0,
-				UpgradeClausHeight:       343200,
+				UpgradeClausHeight:       250,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandMainnet},
 			AddressNetwork:          address.Testnet,
