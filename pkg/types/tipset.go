@@ -109,6 +109,9 @@ func (ts *TipSet) At(i int) *BlockHeader {
 
 // Key returns a key for the tipset.
 func (ts *TipSet) Key() TipSetKey {
+	if ts == nil {
+		return EmptyTSK
+	}
 	return ts.key
 }
 
