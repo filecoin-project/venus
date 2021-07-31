@@ -76,11 +76,14 @@ func Version3Upgrade(repoPath string) error {
 	return repo.WriteVersion(repoPath, 3)
 }
 
-func Version4Upgrade(repoPath string) error {
-	fsrRepo, err := repo.OpenFSRepo(repoPath, 3)
-	if err != nil {
-		return err
+func Version4Upgrade(repoPath string) (err error) {
+	var fsrRepo repo.Repo
+
+	if fsrRepo, err = repo.OpenFSRepo(repoPath, 3); err != nil {
+		return
 	}
+
+	defer func() { err = fsrRepo.Close() }()
 
 	cfg := fsrRepo.Config()
 
@@ -97,13 +100,11 @@ func Version4Upgrade(repoPath string) error {
 		return nil
 	}
 
-	err = fsrRepo.ReplaceConfig(cfg)
-	if err != nil {
-		return err
+	if err = fsrRepo.ReplaceConfig(cfg); err != nil {
+		return
 	}
-	err = fsrRepo.Close()
-	if err != nil {
-		return err
+	if err = fsrRepo.Close(); err != nil {
+		return
 	}
 	return repo.WriteVersion(repoPath, 4)
 }
