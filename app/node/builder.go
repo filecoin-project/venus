@@ -331,11 +331,11 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	var ratelimiter *ratelimit.RateLimiter
 	if nd.remoteAuth != nil && cfg.RateLimitCfg.Enable {
-		if ratelimiter, err = ratelimit.NewRateLimitHandler(cfg.RateLimitCfg.Endpoint, nil,
-			&jwtauth.ValueFromCtx{}, nd.remoteAuth, logging.Logger("venus-rate-limit")); err != nil {
+		if ratelimiter, err = ratelimit.NewRateLimitHandler(cfg.RateLimitCfg.Endpoint,
+			nil, &jwtauth.ValueFromCtx{}, nd.remoteAuth, logging.Logger("rate-limit")); err != nil {
 			return nil, xerrors.Errorf("request rate-limit is enabled, but create rate-limit handler failed:%w", err)
 		}
-		_ = logging.SetLogLevel("venus-rate-limit", "info")
+		_ = logging.SetLogLevel("rate-limit", "warn")
 	}
 
 	nd.jsonRPCServiceV1 = apiBuilder.Build("v1", ratelimiter)
