@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/filecoin-project/venus/cmd"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 func main() {
@@ -14,22 +14,21 @@ func main() {
 	lvl := os.Getenv("GO_FILECOIN_LOG_LEVEL")
 	if lvl == "" {
 		logging.SetAllLoggers(logging.LevelInfo)
-		logging.SetLogLevel("beacon", "error")               // nolint: errcheck
-		logging.SetLogLevel("peer-tracker", "error")         // nolint: errcheck
-		logging.SetLogLevel("dht", "error")                  // nolint: errcheck
-		logging.SetLogLevel("bitswap", "error")              // nolint: errcheck
-		logging.SetLogLevel("graphsync", "info")             // nolint: errcheck
-		logging.SetLogLevel("heartbeat", "error")            // nolint: errcheck
-		logging.SetLogLevel("blockservice", "error")         // nolint: errcheck
-		logging.SetLogLevel("peerqueue", "error")            // nolint: errcheck
-		logging.SetLogLevel("swarm", "error")                // nolint: errcheck
-		logging.SetLogLevel("swarm2", "error")               // nolint: errcheck
-		logging.SetLogLevel("basichost", "error")            // nolint: errcheck
-		logging.SetLogLevel("dht_net", "error")              // nolint: errcheck
-		logging.SetLogLevel("pubsub", "error")               // nolint: errcheck
-		logging.SetLogLevel("relay", "error")                // nolint: errcheck
-		logging.SetLogLevel("dht/RtRefreshManager", "error") // nolint: errcheck
-
+		_ = logging.SetLogLevel("beacon", "error")
+		_ = logging.SetLogLevel("peer-tracker", "error")
+		_ = logging.SetLogLevel("dht", "error")
+		_ = logging.SetLogLevel("bitswap", "error")
+		_ = logging.SetLogLevel("graphsync", "info")
+		_ = logging.SetLogLevel("heartbeat", "error")
+		_ = logging.SetLogLevel("blockservice", "error")
+		_ = logging.SetLogLevel("peerqueue", "error")
+		_ = logging.SetLogLevel("swarm", "error")
+		_ = logging.SetLogLevel("swarm2", "error")
+		_ = logging.SetLogLevel("basichost", "error")
+		_ = logging.SetLogLevel("dht_net", "error")
+		_ = logging.SetLogLevel("pubsub", "error")
+		_ = logging.SetLogLevel("relay", "error")
+		_ = logging.SetLogLevel("dht/RtRefreshManager", "error")
 	} else {
 		level, err := logging.LevelFromString(lvl)
 		if err != nil {
