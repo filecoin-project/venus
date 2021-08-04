@@ -234,9 +234,6 @@ func (node *Node) Stop(ctx context.Context) {
 	if node.jaegerExporter != nil {
 		node.jaegerExporter.Flush()
 	}
-
-	// reset the session
-	memguard.SafeExit(0)
 }
 
 // RunRPCAndWait start rpc server and listen to signal to exit
@@ -304,6 +301,10 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 		log.Error("Could not save API address to repo")
 		return err
 	}
+
+	defer func() {
+		memguard.SafeExit(0)
+	}()
 
 	close(ready)
 	<-terminate
