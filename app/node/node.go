@@ -236,7 +236,7 @@ func (node *Node) Stop(ctx context.Context) {
 	}
 
 	// reset the session
-	memguard.Purge()
+	memguard.SafeExit(0)
 }
 
 // RunRPCAndWait start rpc server and listen to signal to exit
