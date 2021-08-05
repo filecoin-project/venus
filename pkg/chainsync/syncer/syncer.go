@@ -149,6 +149,12 @@ func NewSyncer(fv StateProcessor,
 	exchangeClient exchange.Client,
 	c clock.Clock,
 	fork fork.IFork) (*Syncer, error) {
+
+	if constants.InsecurePoStValidation {
+		log.Warn("*********************************************************************************************")
+		log.Warn(" [INSECURE-POST-VALIDATION] Insecure test validation is enabled. If you see this outside of a test, it is a severe bug! ")
+		log.Warn("*********************************************************************************************")
+	}
 	return &Syncer{
 		exchangeClient:  exchangeClient,
 		badTipSets:      syncTypes.NewBadTipSetCache(),
