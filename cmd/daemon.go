@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -107,6 +108,14 @@ var daemonCmd = &cmds.Command{
 			if err = initRun(req); err != nil {
 				return err
 			}
+		}
+
+		network, _ := req.Options[Network].(string)
+		switch network {
+		case "2k":
+			constants.InsecurePoStValidation = true
+		default:
+
 		}
 
 		return daemonRun(req, re)
