@@ -366,8 +366,8 @@ github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506 h
 github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506/go.mod h1:nJRRM7Aa9XVvygr3W9k6xGF46RWzr2zxF/iGoAIfA/g=
 github.com/filecoin-project/test-vectors/schema v0.0.5 h1:w3zHQhzM4pYxJDl21avXjOKBLF8egrvwUwjpT8TquDg=
 github.com/filecoin-project/test-vectors/schema v0.0.5/go.mod h1:iQ9QXLpYWL3m7warwvK1JC/pTri8mnfEmKygNDqqY6E=
-github.com/filecoin-project/venus-auth v1.2.2-0.20210721103851-593a379c4916 h1:5CshZxLVln0WtsZ1F0+kxzx1RL+lHqJOXRXUxBqgi0k=
-github.com/filecoin-project/venus-auth v1.2.2-0.20210721103851-593a379c4916/go.mod h1:Ly135gUqZWf6dOYloHRq0L1a6CXRJfiRmxVBwN1y8zg=
+github.com/filecoin-project/venus-auth v1.3.1-0.20210809053831-012d55d5f578 h1:RpiHYKzuEnWoPhp2HO7sVC8QY78TZIpO4dhbp0g/g+A=
+github.com/filecoin-project/venus-auth v1.3.1-0.20210809053831-012d55d5f578/go.mod h1:/cbLZYvQhinVFUG4TP2Uy1o7LtF+guT21qZIMTmKk0g=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6/go.mod h1:1i71OnUq3iUe1ma7Lr6yG6/rjvM3emb6yoL7xLFzcVQ=
 github.com/flynn/noise v1.0.0 h1:DlTHqmzmvcEiKj+4RYo/imoswx/4r6iBlCMfVtrMXpQ=
@@ -695,7 +695,6 @@ github.com/ipfs-force-community/go-ipfs-cmds v0.6.1-0.20210521090123-4587df7fa0a
 github.com/ipfs-force-community/go-ipfs-cmds v0.6.1-0.20210521090123-4587df7fa0ab/go.mod h1:ZgYiWVnCk43ChwoH8hAmI1IRbuVtq3GSTHwtRB/Kqhk=
 github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210721095535-a67dff16de21 h1:ht754GJKTx1uYy4gYUhJxxefhKqxReo/654URuB+Ksk=
 github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210721095535-a67dff16de21/go.mod h1:XBBpuKIMaXIIzeqzO1iucq4GvbF8CxmXRFoezRh+Cx4=
-github.com/ipfs-force-community/metrics v0.0.0-20210721095706-e644662d8554/go.mod h1:mn40SioMuKtjmRumHFy/fJ26Pn028XuDjUJE9dorjyw=
 github.com/ipfs-force-community/metrics v1.0.0 h1:9YTmQCVcguY+hqWq5lwpSK41dhizk5IntBFvQ6YnYNI=
 github.com/ipfs-force-community/metrics v1.0.0/go.mod h1:mn40SioMuKtjmRumHFy/fJ26Pn028XuDjUJE9dorjyw=
 github.com/ipfs-force-community/venus-common-utils v0.0.0-20210714054928-2042a9040759 h1:dI1FSoq0C85B1Y+G2ZYrhf5TeIkumzmtz4tjakoqSxU=
