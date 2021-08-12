@@ -719,7 +719,7 @@ func (store *Store) writeTipSetMetadata(tsm *TipSetMetadata) error {
 }
 
 // deleteTipSetMetadata delete the state root id from the datastore for the tipset key.
-func (store *Store) deleteTipSetMetadata(ts *types.TipSet) error { // nolint
+func (store *Store) DeleteTipSetMetadata(ts *types.TipSet) error { // nolint
 	h := ts.Height()
 
 	key := datastore.NewKey(makeKey(ts.String(), h))

@@ -3,6 +3,7 @@ package consensus
 import "C"
 import (
 	"context"
+	"sync"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -92,6 +93,10 @@ type chainReader interface {
 	GetLookbackTipSetForRound(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch, version network.Version) (*types.TipSet, cid.Cid, error)
 }
 
+type stateComputResult struct {
+	stateRoot, receipt cid.Cid
+}
+
 // Expected implements expected consensus.
 type Expected struct {
 	// cstore is used for loading state trees during message running.
@@ -128,6 +133,10 @@ type Expected struct {
 
 	// block validator before process tipset
 	blockValidator *BlockValidator
+
+	stCache       map[types.TipSetKey]stateComputResult
+	stComputeChs  map[types.TipSetKey]chan struct{}
+	stComputeLock sync.Mutex
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
@@ -159,14 +168,66 @@ func NewExpected(cs cbor.IpldStore,
 		gasPirceSchedule:            gasPirceSchedule,
 		blockValidator:              blockValidator,
 		circulatingSupplyCalculator: chain.NewCirculatingSupplyCalculator(bs, chainState, config.ForkUpgradeParam),
+
+		stCache:      make(map[types.TipSetKey]stateComputResult),
+		stComputeChs: make(map[types.TipSetKey]chan struct{}),
 	}
 	return c
+}
+
+func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet, baseStateRoot cid.Cid) (cid.Cid, cid.Cid, error) {
+	var state stateComputResult
+	var err error
+	key := ts.Key()
+	c.stComputeLock.Lock()
+
+	cmptCh, exist := c.stComputeChs[key]
+
+	if exist {
+		c.stComputeLock.Unlock()
+		select {
+		case <-cmptCh:
+			c.stComputeLock.Lock()
+		case <-ctx.Done():
+			return cid.Undef, cid.Undef, ctx.Err()
+		}
+	}
+
+	if state, exist = c.stCache[key]; exist {
+		c.stComputeLock.Unlock()
+		return state.stateRoot, state.receipt, nil
+	}
+
+	cmptCh = make(chan struct{})
+	c.stComputeChs[key] = cmptCh
+	c.stComputeLock.Unlock()
+
+	defer func() {
+		c.stComputeLock.Lock()
+		delete(c.stComputeChs, key)
+		if !state.stateRoot.Equals(cid.Undef) {
+			c.stCache[key] = state
+		}
+		c.stComputeLock.Unlock()
+		close(cmptCh)
+	}()
+
+	if ts.Height() == 0 {
+		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
+	}
+
+	if state.stateRoot, state.receipt, err = c.runStateTransition(ctx, ts, baseStateRoot); err != nil {
+		return cid.Undef, cid.Undef, err
+	}
+
+	return state.stateRoot, state.receipt, nil
+
 }
 
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context,
+func (c *Expected) runStateTransition(ctx context.Context,
 	ts *types.TipSet,
 	parentStateRoot cid.Cid,
 ) (cid.Cid, cid.Cid, error) {
