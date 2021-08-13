@@ -97,7 +97,7 @@ func NewTargetTracker(size int) *TargetTracker {
 	}
 }
 
-func (tq *TargetTracker) SubNewTarget(key string, cacheSize int) <-chan struct{} {
+func (tq *TargetTracker) SubNewTarget(key string, cacheSize int) chan struct{} {
 	tq.subLk.Lock()
 	defer tq.subLk.Unlock()
 	ch, isok := tq.subs[key]

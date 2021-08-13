@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chainsync/types"
 	"github.com/streadway/handy/atomic"
+	atmoic2 "sync/atomic"
 
 	logging "github.com/ipfs/go-log/v2"
 )
@@ -177,6 +178,7 @@ func (d *Dispatcher) Concurrent() int64 {
 func (d *Dispatcher) syncWorker(ctx context.Context) {
 	const chKey = "sync-worker"
 	ch := d.workTracker.SubNewTarget(chKey, 10)
+	var unsolvedNotify = int64(0)
 	for {
 		select {
 		// must make sure, 'ch' is not blocked, or may cause syncing problems
@@ -188,6 +190,7 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 				// Do work
 				d.lk.Lock()
 				if d.conCurrent.Get() < d.maxCount {
+					atmoic2.StoreInt64(&unsolvedNotify, 0)
 					syncTarget.State = types.StateInSyncing
 					ctx, cancel := context.WithCancel(ctx)
 					d.cancelControler.PushBack(cancel)
@@ -200,7 +203,17 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 						}
 						d.registeredCb(syncTarget, err)
 						d.conCurrent.Add(-1)
+
+						// been notified after last time execute 'handleNewTipset',
+						// but because of 'conCurrent' reached 'maxCount',
+						// the notify was ignored,
+						// that means there are new 'syncTarget' is waiting for solving.
+						if atmoic2.LoadInt64(&unsolvedNotify) > 0 {
+							ch <- struct{}{}
+						}
 					}()
+				} else {
+					atmoic2.StoreInt64(&unsolvedNotify, 1)
 				}
 				d.lk.Unlock()
 			}
