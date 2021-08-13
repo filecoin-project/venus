@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/venus/pkg/consensus"
+	"github.com/hashicorp/go-multierror"
 	"strings"
 	"sync"
 	"time"
@@ -587,7 +588,6 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 	return nil, ErrForkTooLong
 }
 
-// fetchSegMessage get message in tipset
 func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*types.TipSet) ([]*types.FullTipSet, error) {
 	// get message from local bsstore
 	if len(segTipset) == 0 {
@@ -619,6 +619,126 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*types.Ti
 	bs := blockstoreutil.NewTemporary()
 	cborStore := cbor.NewCborStore(bs)
 
+	batchSize := len(leftChain)
+	messages := make([]*exchange.CompactedMessages, batchSize)
+
+	var wg sync.WaitGroup
+	var mx sync.Mutex
+	var batchErr error
+	const windowSize = 16
+	const retryTime = 3
+
+	for j := 0; j < batchSize; j += windowSize {
+		wg.Add(1)
+		go func(j int) {
+			defer wg.Done()
+
+			nreq := windowSize
+			if j+nreq > batchSize {
+				nreq = batchSize - j
+			}
+
+			failed := false
+			for offset := 0; !failed && offset < nreq; {
+				nextI := j + offset
+				lastI := j + nreq
+
+				var requestErr error
+				var requestResult []*exchange.CompactedMessages
+				for retry := 0; requestResult == nil && retry < retryTime; retry++ {
+					if retry > 0 {
+						log.Infof("fetching messages at %d (retry %d)", nextI, retry)
+					} else {
+						log.Infof("fetching messages at %d", nextI)
+					}
+
+					result, err := syncer.exchangeClient.GetChainMessages(ctx, segTipset[:lastI])
+					if err != nil {
+						requestErr = multierror.Append(requestErr, err)
+					} else {
+						requestResult = result
+					}
+				}
+
+				mx.Lock()
+				if requestResult != nil {
+					copy(messages[j+offset:], requestResult)
+					offset += len(requestResult)
+				} else {
+					log.Errorf("error fetching messages at %d: %s", nextI, requestErr)
+					batchErr = multierror.Append(batchErr, requestErr)
+					failed = true
+				}
+				mx.Unlock()
+			}
+		}(j)
+	}
+	wg.Wait()
+
+	if batchErr != nil {
+		return nil, batchErr
+	}
+
+	for index, tip := range leftChain {
+		fts, err := zipTipSetAndMessages(bs, tip, messages[index].Bls, messages[index].Secpk, messages[index].BlsIncludes, messages[index].SecpkIncludes)
+		if err != nil {
+			return nil, xerrors.Errorf("message processing failed: %w", err)
+		}
+		leftFullChain[index] = fts
+
+		// save message
+		for _, m := range messages[index].Bls {
+			if _, err := cborStore.Put(ctx, m); err != nil {
+				return nil, xerrors.Errorf("BLS message processing failed: %w", err)
+			}
+		}
+
+		for _, m := range messages[index].Secpk {
+			if _, err := cborStore.Put(ctx, m); err != nil {
+				return nil, xerrors.Errorf("SECP message processing failed: %w", err)
+			}
+		}
+	}
+
+	if err := blockstoreutil.CopyBlockstore(ctx, bs, syncer.bsstore); err != nil {
+		return nil, errors.Wrapf(err, "failure fetching full blocks")
+	}
+	return fullTipSets, nil
+}
+
+// fetchSegMessage get message in tipset
+func (syncer *Syncer) fetchSegMessage_deprecated(ctx context.Context, segTipset []*types.TipSet) ([]*types.FullTipSet, error) {
+	// get message from local bsstore
+	if len(segTipset) == 0 {
+		return []*types.FullTipSet{}, nil
+	}
+
+	chain.Reverse(segTipset)
+	defer chain.Reverse(segTipset)
+
+	fullTipSets := make([]*types.FullTipSet, len(segTipset))
+	defer types.ReverseFullBlock(fullTipSets)
+
+	var leftChain []*types.TipSet
+	var leftFullChain []*types.FullTipSet
+	for index, tip := range segTipset {
+		fullTipset, err := syncer.getFullBlock(ctx, tip)
+		if err != nil {
+			leftChain = segTipset[index:]
+			leftFullChain = fullTipSets[index:]
+			break
+		}
+		fullTipSets[index] = fullTipset
+	}
+
+	if len(leftChain) == 0 {
+		return fullTipSets, nil
+	}
+	// fetch message from remote nodes
+	bs := blockstoreutil.NewTemporary()
+	cborStore := cbor.NewCborStore(bs)
+
+	// todo: should fetch message parallelly
 	messages, err := syncer.exchangeClient.GetChainMessages(ctx, leftChain)
 	if err != nil {
 		return nil, err

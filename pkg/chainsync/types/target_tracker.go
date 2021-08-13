@@ -140,7 +140,8 @@ func (tq *TargetTracker) pubNewTarget() {
 func (tq *TargetTracker) Add(t *Target) bool {
 	now := time.Now()
 	defer func(t *Target) {
-		fmt.Printf("--targetTracker aggregate block(%d) cost time=%d\n", t.Head.Height(), time.Since(now).Milliseconds())
+		fmt.Printf("--targetTracker aggregate block(%d, blockcount=%d) cost time=%d\n",
+			t.Head.Height(), t.Head.Len(), time.Since(now).Milliseconds())
 	}(t)
 
 	tq.lk.Lock()
@@ -189,7 +190,6 @@ func (tq *TargetTracker) Add(t *Target) bool {
 			return false
 		}
 	} else {
-
 		delete(tq.targetSet, replaceTarget.ChainInfo.Head.String())
 		tq.q[replaceIndex] = t
 	}
