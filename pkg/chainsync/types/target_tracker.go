@@ -107,7 +107,7 @@ func NewTargetTracker(size int) *TargetTracker {
 func (tq *TargetTracker) Add(t *Target) bool {
 	now := time.Now()
 	defer func() {
-		fmt.Printf("--targetTracker aggregate block(%d) cost time=%s\n", t.Head.Height(), time.Since(now).Milliseconds())
+		fmt.Printf("--targetTracker aggregate block(%d) cost time=%d\n", t.Head.Height(), time.Since(now).Milliseconds())
 	}()
 
 	tq.lk.Lock()
@@ -273,9 +273,9 @@ func (tq *TargetTracker) Select() (*Target, bool) {
 
 	defer func() {
 		if toSyncTarget == nil {
-			fmt.Printf("--targetTracker select target, no target cost time=%s\n", time.Since(now).Milliseconds())
+			fmt.Printf("--targetTracker select target, no target cost time=%d\n", time.Since(now).Milliseconds())
 		} else {
-			fmt.Printf("--targetTracker select target, get target(%d) cost time=%s\n",
+			fmt.Printf("--targetTracker select target, get target(%d) cost time=%d\n",
 				toSyncTarget.Head.Height(), time.Since(now).Milliseconds())
 		}
 	}()
@@ -291,7 +291,7 @@ func (tq *TargetTracker) Select() (*Target, bool) {
 func (tq *TargetTracker) Remove(t *Target) {
 	now := time.Now()
 	defer func() {
-		fmt.Printf("--targetTracker remove target(%d) cost time=%s\n",
+		fmt.Printf("--targetTracker remove target(%d) cost time=%d\n",
 			t.Head.Height(), time.Since(now).Milliseconds())
 	}()
 	tq.lk.Lock()
