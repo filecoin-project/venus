@@ -107,7 +107,7 @@ func NewTargetTracker(size int) *TargetTracker {
 func (tq *TargetTracker) Add(t *Target) bool {
 	now := time.Now()
 	defer func() {
-		fmt.Printf("--targetTracker aggregate block cost time=%s\n", time.Since(now).Milliseconds())
+		fmt.Printf("--targetTracker aggregate block(%d) cost time=%s\n", t.Head.Height(), time.Since(now).Milliseconds())
 	}()
 
 	tq.lk.Lock()
@@ -258,9 +258,6 @@ func (tq *TargetTracker) widen(t *Target) (*Target, bool) {
 // nothing in the queue the second argument returns false
 func (tq *TargetTracker) Select() (*Target, bool) {
 	now := time.Now()
-	defer func() {
-		fmt.Printf("--targetTracker select target cost time=%s\n", time.Since(now).Milliseconds())
-	}()
 	tq.lk.Lock()
 	defer tq.lk.Unlock()
 	if tq.q.Len() == 0 {
@@ -274,6 +271,15 @@ func (tq *TargetTracker) Select() (*Target, bool) {
 		}
 	}
 
+	defer func() {
+		if toSyncTarget == nil {
+			fmt.Printf("--targetTracker select target, no target cost time=%s\n", time.Since(now).Milliseconds())
+		} else {
+			fmt.Printf("--targetTracker select target, get target(%d) cost time=%s\n",
+				toSyncTarget.Head.Height(), time.Since(now).Milliseconds())
+		}
+	}()
+
 	if toSyncTarget == nil {
 		return nil, false
 	}
@@ -283,6 +289,11 @@ func (tq *TargetTracker) Select() (*Target, bool) {
 // Remove remote a target after sync completed
 // First remove target from live queue, add the target to history.
 func (tq *TargetTracker) Remove(t *Target) {
+	now := time.Now()
+	defer func() {
+		fmt.Printf("--targetTracker remove target(%d) cost time=%s\n",
+			t.Head.Height(), time.Since(now).Milliseconds())
+	}()
 	tq.lk.Lock()
 	defer tq.lk.Unlock()
 	for index, target := range tq.q {
