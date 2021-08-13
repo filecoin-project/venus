@@ -179,6 +179,7 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 	ch := d.workTracker.SubNewTarget(chKey, 10)
 	for {
 		select {
+		// must make sure, 'ch' is not blocked, or may cause syncing problems
 		case _, isok := <-ch:
 			if !isok {
 				break

@@ -105,7 +105,7 @@ func (tq *TargetTracker) SubNewTarget(key string, cacheSize int) <-chan struct{}
 		return ch
 	}
 	ch = make(chan struct{}, cacheSize)
-	tq.subs[key] = make(chan struct{}, cacheSize)
+	tq.subs[key] = ch
 	return ch
 }
 
@@ -139,9 +139,9 @@ func (tq *TargetTracker) pubNewTarget() {
 // After each completion of this process, all targets will be reordered. First, they will be sorted according to the weight from small to large, and then they will be sorted according to the number of blocks in the group from small to large, Include as many blocks as possible.
 func (tq *TargetTracker) Add(t *Target) bool {
 	now := time.Now()
-	defer func() {
+	defer func(t *Target) {
 		fmt.Printf("--targetTracker aggregate block(%d) cost time=%d\n", t.Head.Height(), time.Since(now).Milliseconds())
-	}()
+	}(t)
 
 	tq.lk.Lock()
 	defer tq.lk.Unlock()
