@@ -198,6 +198,7 @@ func (tq *TargetTracker) Add(t *Target) bool {
 	sortTarget(tq.q)
 	// update lowweight
 	tq.lowWeight = tq.q[len(tq.q)-1].Head.At(0).ParentWeight
+	tq.pubNewTarget()
 	return true
 }
 
