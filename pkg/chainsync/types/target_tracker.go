@@ -78,6 +78,9 @@ type TargetTracker struct {
 	targetSet   map[string]*Target
 	lowWeight   fbig.Int
 	lk          sync.Mutex
+
+	subs  map[string]chan struct{}
+	subLk sync.Mutex
 }
 
 // NewTargetTracker returns a new target queue.
@@ -90,6 +93,36 @@ func NewTargetTracker(size int) *TargetTracker {
 		targetSet:   make(map[string]*Target),
 		lk:          sync.Mutex{},
 		lowWeight:   fbig.NewInt(0),
+		subs:        make(map[string]chan struct{}),
+	}
+}
+
+func (tq *TargetTracker) SubNewTarget(key string, cacheSize int) <-chan struct{} {
+	tq.subLk.Lock()
+	defer tq.subLk.Unlock()
+	ch, isok := tq.subs[key]
+	if isok {
+		return ch
+	}
+	ch = make(chan struct{}, cacheSize)
+	tq.subs[key] = make(chan struct{}, cacheSize)
+	return ch
+}
+
+func (tq *TargetTracker) UnsubNewTarget(key string) {
+	tq.subLk.Lock()
+	defer tq.subLk.Unlock()
+	if ch, isok := tq.subs[key]; isok {
+		delete(tq.subs, key)
+		close(ch)
+	}
+}
+
+func (tq *TargetTracker) pubNewTarget() {
+	tq.subLk.Lock()
+	defer tq.subLk.Unlock()
+	for _, ch := range tq.subs {
+		ch <- struct{}{}
 	}
 }
 

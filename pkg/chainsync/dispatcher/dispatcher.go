@@ -149,7 +149,7 @@ func (d *Dispatcher) processIncoming(ctx context.Context) {
 	}
 }
 
-//SetConcurrent set the max goroutine to syncing target
+// SetConcurrent set the max goroutine to syncing target
 func (d *Dispatcher) SetConcurrent(number int64) {
 	d.lk.Lock()
 	defer d.lk.Unlock()
@@ -167,22 +167,59 @@ func (d *Dispatcher) SetConcurrent(number int64) {
 	}
 }
 
-//Concurrent get current max syncing goroutine
+// Concurrent get current max syncing goroutine
 func (d *Dispatcher) Concurrent() int64 {
 	d.lk.Lock()
 	defer d.lk.Unlock()
 	return d.maxCount
 }
 
-//syncWorker  get sync target from work tracker periodically,
-//read all sync targets each time, and start synchronization
 func (d *Dispatcher) syncWorker(ctx context.Context) {
+	const chKey = "sync-worker"
+	ch := d.workTracker.SubNewTarget(chKey, 10)
+	for {
+		select {
+		case _, isok := <-ch:
+			if !isok {
+				break
+			}
+			if syncTarget, popped := d.workTracker.Select(); popped {
+				// Do work
+				d.lk.Lock()
+				if d.conCurrent.Get() < d.maxCount {
+					syncTarget.State = types.StateInSyncing
+					ctx, cancel := context.WithCancel(ctx)
+					d.cancelControler.PushBack(cancel)
+					d.conCurrent.Add(1)
+					go func() {
+						err := d.syncer.HandleNewTipSet(ctx, syncTarget)
+						d.workTracker.Remove(syncTarget)
+						if err != nil {
+							log.Infof("failed sync of %v at %d  %s", syncTarget.Head.Key(), syncTarget.Head.Height(), err)
+						}
+						d.registeredCb(syncTarget, err)
+						d.conCurrent.Add(-1)
+					}()
+				}
+				d.lk.Unlock()
+			}
+		case <-ctx.Done():
+			d.workTracker.UnsubNewTarget(chKey)
+			log.Info("context done")
+			return
+		}
+	}
+}
+
+// syncWorker  get sync target from work tracker periodically,
+// read all sync targets each time, and start synchronization
+func (d *Dispatcher) syncWorker_deprecated(ctx context.Context) {
 	ticker := time.NewTicker(time.Millisecond * 500)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
-			for { //avoid to sleep a ticker， loop to get each target to run
+			for { // avoid to sleep a ticker， loop to get each target to run
 				syncTarget, popped := d.workTracker.Select()
 				if popped {
 					// Do work
