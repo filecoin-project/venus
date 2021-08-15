@@ -210,7 +210,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 	logbuf := &strings.Builder{}
 
 	defer func() {
-		_, _ = fmt.Fprintf(logbuf, "_sc|-----------------------------------------------\n_sc")
+		_, _ = fmt.Fprintf(logbuf, "_sc|-----------------------------------------------\n")
 		fmt.Printf(logbuf.String())
 	}()
 
@@ -240,7 +240,8 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 			return xerrors.Errorf("calc current tipset %s state failed %w",
 				next.Key().String(), err.Error())
 		}
-		_, _ = fmt.Fprintf(logbuf, "_sc| Process TipSet Height:%d, Blocks:%d, Root:%s, Receipt:%s, cost time:%d(ms)\n", next.Height(), next.Len(), root, receiptCid, time.Since(toProcessTime).Milliseconds())
+		_, _ = fmt.Fprintf(logbuf, "_sc| Process TipSet Height:%d, Blocks:%d, Root:%s, Receipt:%s, cost time:%d.3f(seconds)\n", next.Height(), next.Len(), root,
+			receiptCid, time.Since(toProcessTime).Seconds())
 
 		blk = next.At(0)
 
