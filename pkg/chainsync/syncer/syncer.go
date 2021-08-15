@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/venus/pkg/consensus"
-	"github.com/hashicorp/go-multierror"
+	"github.com/filecoin-project/venus/pkg/util/paralle"
 	"strings"
 	"sync"
 	"time"
@@ -338,6 +338,16 @@ func (syncer *Syncer) widen(ctx context.Context, ts *types.TipSet) (*types.TipSe
 func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Target) (err error) {
 	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", target.Head.String()))
+	span.AddAttributes(trace.Int64Attribute("height", int64(target.Head.Height())))
+
+	now := time.Now()
+	buf := &strings.Builder{}
+
+	fmt.Fprintf(buf, `
+_sync_opt:______________HandleNewTipset:height%d______________
+_sync_opt:blockcount:%d, 
+_sync_opt:blocks:%s`, target.Head.Height(), target.Head.Len(), target.Head.Key())
+
 	defer func() {
 		if err != nil {
 			target.Err = err
@@ -346,7 +356,13 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Tar
 			target.State = syncTypes.StageSyncComplete
 		}
 		tracing.AddErrorEndSpan(ctx, span, &err)
+		fmt.Fprintf(buf, `
+_sync_opt:syncSegement:cost time:%d
+------------------------------------------------------		
+`, time.Since(now).Milliseconds())
+		span.End()
 	}()
+
 	logSyncer.Infof("Begin fetch and sync of chain with head %v from %s at height %v", target.Head.Key(), target.Sender.String(), target.Head.Height())
 	head := syncer.chainStore.GetHead()
 	// If the store already has this tipset then the syncer is finished.
@@ -354,15 +370,12 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Tar
 		return xerrors.New("do not sync to a target with less weight")
 	}
 
-	// if syncer.chainStore.HasTipSetAndState(ctx, target.Head) ||
-	// 	target.Head.Key().Equals(head.Key()) {
-	// 	return xerrors.New("do not sync to a target has synced before")
-	// }
-
 	tipsets, err := syncer.fetchChainBlocks(ctx, head, target.Head)
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
+	fmt.Fprintf(buf, "|_sync_opt:fetchChainBlock(%d), cost time:%d\n",
+		target.Head.Len(), time.Since(now).Milliseconds())
 
 	logSyncer.Infof("fetch header success at %v %s ...", tipsets[0].Height(), tipsets[0].Key())
 	return syncer.syncSegement(ctx, target, tipsets)
@@ -612,71 +625,44 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*types.Ti
 		fullTipSets[index] = fullTipset
 	}
 
-	if len(leftChain) == 0 {
+	if len(leftFullChain) == 0 {
 		return fullTipSets, nil
 	}
 	// fetch message from remote nodes
 	bs := blockstoreutil.NewTemporary()
 	cborStore := cbor.NewCborStore(bs)
 
-	batchSize := len(leftChain)
-	messages := make([]*exchange.CompactedMessages, batchSize)
+	var par = paralle.NewPar(4)
+	var leftChainCount = len(leftChain)
+	const windowSize = 8
+	var messages = make([]*exchange.CompactedMessages, len(leftChain))
+	var lk sync.Mutex
 
-	var wg sync.WaitGroup
-	var mx sync.Mutex
-	var batchErr error
-	const windowSize = 16
-	const retryTime = 3
+	for offset, c := 0, 0; offset < leftChainCount; offset += c {
+		if offset+windowSize < leftChainCount {
+			c = windowSize
+		} else {
+			c = leftChainCount - offset
+		}
 
-	for j := 0; j < batchSize; j += windowSize {
-		wg.Add(1)
-		go func(j int) {
-			defer wg.Done()
-
-			nreq := windowSize
-			if j+nreq > batchSize {
-				nreq = batchSize - j
-			}
-
-			failed := false
-			for offset := 0; !failed && offset < nreq; {
-				nextI := j + offset
-				lastI := j + nreq
-
-				var requestErr error
-				var requestResult []*exchange.CompactedMessages
-				for retry := 0; requestResult == nil && retry < retryTime; retry++ {
-					if retry > 0 {
-						log.Infof("fetching messages at %d (retry %d)", nextI, retry)
-					} else {
-						log.Infof("fetching messages at %d", nextI)
-					}
-
-					result, err := syncer.exchangeClient.GetChainMessages(ctx, segTipset[:lastI])
-					if err != nil {
-						requestErr = multierror.Append(requestErr, err)
-					} else {
-						requestResult = result
-					}
+		par.GoV2(
+			func(args ...interface{}) error {
+				tipsets := args[0].([]*types.TipSet)
+				ofset := args[1].(int)
+				ms, err := syncer.exchangeClient.GetChainMessages(ctx, tipsets)
+				if err != nil {
+					return err
 				}
+				lk.Lock()
+				copy(messages[ofset:], ms)
+				lk.Unlock()
+				return nil
+			}, leftChain[offset:offset+c], offset)
 
-				mx.Lock()
-				if requestResult != nil {
-					copy(messages[j+offset:], requestResult)
-					offset += len(requestResult)
-				} else {
-					log.Errorf("error fetching messages at %d: %s", nextI, requestErr)
-					batchErr = multierror.Append(batchErr, requestErr)
-					failed = true
-				}
-				mx.Unlock()
-			}
-		}(j)
 	}
-	wg.Wait()
 
-	if batchErr != nil {
-		return nil, batchErr
+	if ers := par.Wait(); ers.Len() > 0 {
+		return nil, ers.ERR()
 	}
 
 	for index, tip := range leftChain {
