@@ -3,6 +3,7 @@ package dispatcher
 import (
 	"container/list"
 	"context"
+	"fmt"
 	types2 "github.com/filecoin-project/venus/pkg/types"
 	"runtime/debug"
 	"sync"
@@ -187,6 +188,11 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 				break
 			}
 			if syncTarget, popped := d.workTracker.Select(); popped {
+				fmt.Printf(`
+_sc|__________new sync target, height=%d_______
+_sc|blocks=%s
+`, syncTarget.Head.Height(), syncTarget.Head.Key().String())
+
 				// Do work
 				d.lk.Lock()
 				if d.conCurrent.Get() < d.maxCount {
