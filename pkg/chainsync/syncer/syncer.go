@@ -343,6 +343,11 @@ func (syncer *Syncer) widen(ctx context.Context, ts *types.TipSet) (*types.TipSe
 // HandleNewTipSet validates and syncs the chain rooted at the provided tipset
 // to a chain bsstore.  Iff catchup is false then the syncer will set the head.
 func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Target) (err error) {
+	fmt.Printf(`
+_sc|______________HandleNewTipset, height=%d_______
+_sc|blocks=%s
+`, target.Head.Height(), target.Head.Key().String())
+
 	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", target.Head.String()))
 	span.AddAttributes(trace.Int64Attribute("height", int64(target.Head.Height())))
@@ -367,6 +372,9 @@ _sc|blocks:%s`, target.Head.Height(), target.Head.Len(), target.Head.Key())
 _sc|total cost time:%.4f(seconds)
 ------------------------------------------------------		
 `, time.Since(now).Seconds())
+
+		fmt.Printf(buf.String())
+
 		span.End()
 	}()
 
