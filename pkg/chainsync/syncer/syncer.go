@@ -215,7 +215,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 	}()
 
 	_, _ = fmt.Fprintf(logbuf, "_sc|______syncOneTipset(%d) details____________________\n"+
-		"_sc| tipset key:%s\n", parent.Height(), parent.Key().String())
+		"_sc| tipset key:%s\n", next.Height(), next.Key().String())
 
 	blk := parent.Blocks()[0]
 
@@ -240,7 +240,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 			return xerrors.Errorf("calc current tipset %s state failed %w",
 				next.Key().String(), err.Error())
 		}
-		_, _ = fmt.Fprintf(logbuf, "_sc| Process TipSet Height:%d, Blocks:%d, Root:%s, Receipt:%s, cost time:%d.3f(seconds)\n", next.Height(), next.Len(), root,
+		_, _ = fmt.Fprintf(logbuf, "_sc| Process TipSet Height:%d, Blocks:%d, Root:%s, Receipt:%s, cost time:%.3f(seconds)\n", parent.Height(), parent.Len(), root,
 			receiptCid, time.Since(toProcessTime).Seconds())
 
 		blk = next.At(0)
@@ -261,6 +261,8 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 			return err
 		}
 	}
+
+	var beginValidateBlocks = time.Now()
 	if !parent.Key().Equals(syncer.checkPoint) {
 		var wg errgroup.Group
 		for i := 0; i < next.Len(); i++ {
@@ -275,6 +277,10 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 			return xerrors.Errorf("validate mining failed %w", err)
 		}
 	}
+
+	fmt.Fprintf(logbuf, "_sc| validateFullblocks(%d) cost time:%d\n",
+		next.Len(), time.Since(beginValidateBlocks).Milliseconds())
+
 	return nil
 }
 
