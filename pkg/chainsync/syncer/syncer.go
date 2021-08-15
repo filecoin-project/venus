@@ -211,7 +211,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 
 	defer func() {
 		_, _ = fmt.Fprintf(logbuf, "_sc|-----------------------------------------------\n_sc")
-		logSyncer.Info(logbuf.String())
+		fmt.Printf(logbuf.String())
 	}()
 
 	_, _ = fmt.Fprintf(logbuf, "_sc|______syncOneTipset(%d) details____________________\n"+
@@ -344,9 +344,9 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Tar
 	buf := &strings.Builder{}
 
 	fmt.Fprintf(buf, `
-_sync_opt:______________HandleNewTipset:height%d______________
-_sync_opt:blockcount:%d, 
-_sync_opt:blocks:%s`, target.Head.Height(), target.Head.Len(), target.Head.Key())
+_sc|______________HandleNewTipset:height%d______________
+_sc|blockcount:%d, 
+_sc|blocks:%s`, target.Head.Height(), target.Head.Len(), target.Head.Key())
 
 	defer func() {
 		if err != nil {
@@ -357,7 +357,7 @@ _sync_opt:blocks:%s`, target.Head.Height(), target.Head.Len(), target.Head.Key()
 		}
 		tracing.AddErrorEndSpan(ctx, span, &err)
 		fmt.Fprintf(buf, `
-_sync_opt:syncSegement:cost time:%d
+_sc|syncSegement:cost time:%d
 ------------------------------------------------------		
 `, time.Since(now).Milliseconds())
 		span.End()
@@ -374,7 +374,7 @@ _sync_opt:syncSegement:cost time:%d
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
-	fmt.Fprintf(buf, "|_sync_opt:fetchChainBlock(%d), cost time:%d\n",
+	fmt.Fprintf(buf, "_sc|fetchChainBlock(%d), cost time:%d\n",
 		target.Head.Len(), time.Since(now).Milliseconds())
 
 	logSyncer.Infof("fetch header success at %v %s ...", tipsets[0].Height(), tipsets[0].Key())
