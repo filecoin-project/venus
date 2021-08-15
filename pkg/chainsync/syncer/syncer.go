@@ -278,7 +278,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 		}
 	}
 
-	fmt.Fprintf(logbuf, "_sc| validateFullblocks(%d) cost time:%d\n",
+	fmt.Fprintf(logbuf, "_sc| validateFullblocks(%d) cost time:%.4f\n",
 		next.Len(), time.Since(beginValidateBlocks).Seconds())
 
 	return nil
