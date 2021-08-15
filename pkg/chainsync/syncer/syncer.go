@@ -279,7 +279,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 	}
 
 	fmt.Fprintf(logbuf, "_sc| validateFullblocks(%d) cost time:%d\n",
-		next.Len(), time.Since(beginValidateBlocks).Milliseconds())
+		next.Len(), time.Since(beginValidateBlocks).Seconds())
 
 	return nil
 }
@@ -348,9 +348,8 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Tar
 	span.AddAttributes(trace.Int64Attribute("height", int64(target.Head.Height())))
 
 	now := time.Now()
-	buf := &strings.Builder{}
 
-	fmt.Fprintf(buf, `
+	fmt.Printf(`
 _sc|______________HandleNewTipset:height%d______________
 _sc|blockcount:%d, 
 _sc|blocks:%s`, target.Head.Height(), target.Head.Len(), target.Head.Key())
@@ -363,7 +362,7 @@ _sc|blocks:%s`, target.Head.Height(), target.Head.Len(), target.Head.Key())
 			target.State = syncTypes.StageSyncComplete
 		}
 		tracing.AddErrorEndSpan(ctx, span, &err)
-		fmt.Fprintf(buf, `
+		fmt.Printf(`
 _sc|syncSegement:cost time:%d
 ------------------------------------------------------		
 `, time.Since(now).Milliseconds())
@@ -381,7 +380,7 @@ _sc|syncSegement:cost time:%d
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
-	fmt.Fprintf(buf, "_sc|fetchChainBlock(%d), cost time:%d\n",
+	fmt.Printf("_sc|fetchChainBlock(%d), cost time:%d\n",
 		target.Head.Len(), time.Since(now).Milliseconds())
 
 	logSyncer.Infof("fetch header success at %v %s ...", tipsets[0].Height(), tipsets[0].Key())

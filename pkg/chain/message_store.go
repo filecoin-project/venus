@@ -423,6 +423,7 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet)
 	}
 
 	var blockMsg []types.BlockMessagesInfo
+	// todo : load message parallelly
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
 		secpMsgs, blsMsgs, err := ms.LoadMetaMessages(ctx, blk.Messages) // Corresponding to  MessagesForBlock of lotus
