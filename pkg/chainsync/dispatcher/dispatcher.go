@@ -210,7 +210,7 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 				fmt.Printf(`
 _sc|__________new sync target, height=%d_______
 _sc|blocks=%s
-`, syncTarget.Head.Height(), syncTarget.Head.Key().String())
+_sc|`, syncTarget.Head.Height(), syncTarget.Head.Key().String())
 
 				// Do work
 				d.lk.Lock()
