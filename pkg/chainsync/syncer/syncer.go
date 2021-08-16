@@ -266,11 +266,6 @@ _sc| blocks : %s
 		fmt.Printf(logbuf.String())
 	}()
 
-	if _, _, err = syncer.RunStateTransition(ctx, child, parent); err != nil {
-		return xerrors.Errorf("RunStateTransition on tipset(%d, blocks:%s) failed:%w",
-			parent.Height(), parent.Key().String(), err)
-	}
-
 	var beginValidateBlocks = time.Now()
 	if !parent.Key().Equals(syncer.checkPoint) {
 		var wg errgroup.Group

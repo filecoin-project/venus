@@ -149,18 +149,6 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	if err != nil {
 		return xerrors.Errorf("calc parent weight failed %w", err)
 	}
-	parentReceiptRoot, err := bv.chainState.GetTipSetReceiptsRoot(parent)
-	if err != nil {
-		return xerrors.Errorf("get parent tipset state failed %w", err)
-	}
-	// confirm block state root matches parent state root
-	rootAfterCalc, err := bv.chainState.GetTipSetStateRoot(parent)
-	if err != nil {
-		return xerrors.Errorf("get parent tipset state failed %w", err)
-	}
-	if !rootAfterCalc.Equals(blk.ParentStateRoot) {
-		return xerrors.Errorf("%w (%s != %s)", ErrStateRootMismatch, rootAfterCalc, blk.ParentStateRoot)
-	}
 
 	if err := blockSanityChecks(blk); err != nil {
 		return xerrors.Errorf("incoming header failed basic sanity checks: %w", err)
@@ -184,11 +172,6 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	prevBeacon, err := bv.chainState.GetLatestBeaconEntry(parent)
 	if err != nil {
 		return xerrors.Errorf("failed to get latest beacon entry: %w", err)
-	}
-
-	// confirm block receipts match parent receipts
-	if !parentReceiptRoot.Equals(blk.ParentMessageReceipts) {
-		return ErrReceiptRootMismatch
 	}
 
 	if !parentWeight.Equals(blk.ParentWeight) {

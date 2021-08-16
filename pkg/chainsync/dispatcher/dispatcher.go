@@ -4,7 +4,6 @@ import (
 	"container/list"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
 	types2 "github.com/filecoin-project/venus/pkg/types"
 	"runtime/debug"
 	"sync"
@@ -181,7 +180,6 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 	const chKey = "sync-worker"
 	ch := d.workTracker.SubNewTarget(chKey, 10)
 	var unsolvedNotify = int64(0)
-	var lastIncomming *types.Target
 	for {
 		select {
 		// must make sure, 'ch' is not blocked, or may cause syncing problems
@@ -198,17 +196,6 @@ _sc|blocks=%s
 _sc|
 `, syncTarget.Head.Height(), syncTarget.Head.Key().String())
 
-				if lastIncomming != nil && lastIncomming.Head.Key().Equals(syncTarget.Head.Key()) {
-					continue
-				}
-
-				if lastIncomming != nil && syncTarget.Head.Parents().Equals(lastIncomming.Head.Key()) {
-					if _, _, err := d.syncer.(*syncer.Syncer).RunStateTransition(ctx, syncTarget.Head, lastIncomming.Head)
-						err != nil {
-						log.Errorf("run state transition failed:%s", err.Error())
-					}
-				}
-
 				if t, isok := d.workTracker.Select(); isok {
 					syncTarget = t
 				}
@@ -216,7 +203,6 @@ _sc|
 				// Do work
 				d.lk.Lock()
 				if d.conCurrent.Get() < d.maxCount {
-					lastIncomming = syncTarget
 					atmoic2.StoreInt64(&unsolvedNotify, 0)
 					syncTarget.State = types.StateInSyncing
 					ctx, cancel := context.WithCancel(ctx)
