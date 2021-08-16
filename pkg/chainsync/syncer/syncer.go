@@ -221,7 +221,7 @@ func (syncer *Syncer) RunStateTransition(ctx context.Context, child, parent *typ
 
 	beginTime := time.Now()
 	if stateRoot, receipt, err = syncer.stateProcessor.RunStateTransition(ctx,
-		parent, childBlk.ParentStateRoot); err != nil {
+		parent, parent.Blocks()[0].ParentStateRoot); err != nil {
 
 		_, _ = fmt.Fprintf(logbuf, "_sc|calc current tipset %s state failed %s\n",
 			parent.Key().String(), err.Error())
@@ -235,11 +235,10 @@ func (syncer *Syncer) RunStateTransition(ctx context.Context, child, parent *typ
 	childBlk = child.At(0)
 
 	if !stateRoot.Equals(childBlk.ParentStateRoot) || !receipt.Equals(childBlk.ParentMessageReceipts) {
-		_, _ = fmt.Fprintf(logbuf, "%s, (%s != %s)",
+		_, _ = fmt.Fprintf(logbuf, "_sc|%s, (%s != %s)\n",
 			consensus.ErrStateRootMismatch.Error(), childBlk.ParentStateRoot.String(), stateRoot.String())
-
 		return cid.Undef, cid.Undef, xerrors.Errorf("%w (%s != %s)",
-			consensus.ErrStateRootMismatch, childBlk.ParentStateRoot, stateRoot)
+			consensus.ErrStateRootMismatch, childBlk.ParentStateRoot.String(), stateRoot.String())
 	}
 
 	if err = syncer.chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
