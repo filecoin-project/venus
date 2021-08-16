@@ -203,6 +203,10 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 					}
 				}
 
+				if t, isok := d.workTracker.Select(); isok {
+					syncTarget = t
+				}
+
 				fmt.Printf(`
 _sc|__________new sync target, height=%d_______
 _sc|blocks=%s
