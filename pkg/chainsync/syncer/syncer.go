@@ -201,7 +201,7 @@ func (syncer *Syncer) RunStateTransition(ctx context.Context, child, parent *typ
 		fmt.Printf(logbuf.String())
 	}()
 
-	_, _ = fmt.Fprintf(logbuf, "_sc|______syncOneTipset(%d) details____________________\n"+
+	_, _ = fmt.Fprintf(logbuf, "_sc|______RunStateTransaction(%d) details____________________\n"+
 		"_sc| tipset key:%s\n", child.Height(), child.Key().String())
 
 	if stateRoot, err = syncer.chainStore.GetTipSetStateRoot(parent); err == nil {
@@ -273,7 +273,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, child *types.TipSet) 
 
 	now := time.Now()
 	_, _ = fmt.Fprintf(logbuf, `_sc|
-_sc|______sync one tipset(%d) details____________________
+_sc|______SyncOne(%d) details____________________
 _sc| blocks : %s
 `, child.Height(), child.Key().String())
 
