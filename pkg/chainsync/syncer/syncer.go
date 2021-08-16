@@ -278,7 +278,7 @@ _sc| blocks : %s
 `, child.Height(), child.Key().String())
 
 	defer func() {
-		_, _ = fmt.Fprintf(logbuf, "_sc| cost time = %.4f(seconds)\n", time.Since(now).Seconds())
+		_, _ = fmt.Fprintf(logbuf, "_sc| cost time = %.4f(seconds)\n_sc|\n", time.Since(now).Seconds())
 		fmt.Printf(logbuf.String())
 	}()
 
