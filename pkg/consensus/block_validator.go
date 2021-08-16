@@ -49,7 +49,7 @@ var ErrTemporal = errors.New("temporal error")
 var ErrSoftFailure = errors.New("soft validation failure")
 var ErrInsufficientPower = errors.New("incoming block's miner does not have minimum power")
 
-//BlockValidator used to validate a block is ok or not
+// BlockValidator used to validate a block is ok or not
 type BlockValidator struct {
 	// TicketValidator validates ticket generation
 	tv TicketValidator
@@ -76,9 +76,10 @@ type BlockValidator struct {
 	gasPirceSchedule *gas.PricesSchedule
 	// cache for validate block
 	validateBlockCache *lru.ARCCache
+	RunStateTransition func(ctx context.Context, ts *types.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipt cid.Cid, err error)
 }
 
-//NewBlockValidator create a new block validator
+// NewBlockValidator create a new block validator
 func NewBlockValidator(tv TicketValidator,
 	bstore blockstore.Blockstore,
 	messageStore *chain.MessageStore,
@@ -109,7 +110,7 @@ func NewBlockValidator(tv TicketValidator,
 	}
 }
 
-//ValidateBlockMsg used to validate block from incoming. check message, signature , wincount.
+// ValidateBlockMsg used to validate block from incoming. check message, signature , wincount.
 // if give a reject error. local node reject this block. if give a ignore error. recheck this block in latest notify
 func (bv *BlockValidator) ValidateBlockMsg(ctx context.Context, blk *types.BlockMsg) pubsub.ValidationResult {
 	validationStart := time.Now()
@@ -120,7 +121,7 @@ func (bv *BlockValidator) ValidateBlockMsg(ctx context.Context, blk *types.Block
 	return bv.validateBlockMsg(ctx, blk)
 }
 
-//ValidateFullBlock should match up with 'Semantical Validation' in validation.md in the spec
+// ValidateFullBlock should match up with 'Semantical Validation' in validation.md in the spec
 func (bv *BlockValidator) ValidateFullBlock(ctx context.Context, blk *types.BlockHeader) (err error) {
 	validationStart := time.Now()
 	defer func() {
@@ -269,11 +270,40 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	})
 
 	msgsCheck := async.Err(func() error {
-		keyStateView := bv.state.PowerStateView(blk.ParentStateRoot)
+		statRoot, _, err := bv.RunStateTransition(ctx, parent, parent.Blocks()[0].ParentStateRoot)
+		if err != nil {
+			return err
+		}
+		keyStateView := bv.state.PowerStateView(statRoot)
 		sigValidator := appstate.NewSignatureValidator(keyStateView)
 		if err := bv.checkBlockMessages(ctx, sigValidator, blk, parent); err != nil {
 			return xerrors.Errorf("block had invalid messages: %w", err)
 		}
+		return nil
+	})
+
+	stateRootCheck := async.Err(func() error {
+		stateroot, precp, err := bv.RunStateTransition(ctx, parent, parent.Blocks()[0].ParentStateRoot)
+		if err != nil {
+			return xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", blk.Height, blk.Parents, err)
+		}
+		if stateroot != blk.ParentStateRoot {
+			msgs, err := bv.messageStore.MessagesForTipset(parent)
+			if err != nil {
+				log.Error("failed to load messages for tipset during tipset state mismatch error: ", err)
+			} else {
+				log.Warn("Messages for tipset with mismatching state:")
+				for i, m := range msgs {
+					mm := m.VMMessage()
+					log.Warnf("Message[%d]: from=%s to=%s method=%d params=%x", i, mm.From, mm.To, mm.Method, mm.Params)
+				}
+			}
+			return xerrors.Errorf("parent state root did not match computed state (%s != %s)", stateroot, blk.ParentStateRoot)
+		}
+		if precp != blk.ParentMessageReceipts {
+			return xerrors.Errorf("parent receipts root did not match computed value (%s != %s)", precp, blk.ParentMessageReceipts)
+		}
+
 		return nil
 	})
 
@@ -284,8 +314,9 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 		beaconValuesCheck,
 		wproofCheck,
 		winnerCheck,
-		baseFeeCheck,
 		msgsCheck,
+		baseFeeCheck,
+		stateRootCheck,
 	}
 
 	var merr error

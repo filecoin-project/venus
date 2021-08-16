@@ -102,8 +102,8 @@ func NewSyncerSubmodule(ctx context.Context,
 		nodeChainSelector,
 		chn.Fork,
 		config.Repo().Config().NetworkParams,
-		gasPriceSchedule,
-	)
+		gasPriceSchedule)
+
 	// register block validation on pubsub
 	btv := blocksub.NewBlockTopicValidator(blkValid)
 	if err := network.Pubsub.RegisterTopicValidator(btv.Topic(network.NetworkName), btv.Validator(), btv.Opts()...); err != nil {
@@ -122,6 +122,8 @@ func NewSyncerSubmodule(ctx context.Context,
 		blkValid,
 		chn.SystemCall,
 	)
+
+	blkValid.RunStateTransition = nodeConsensus.RunStateTransition
 
 	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, blockstore.Blockstore, discovery.ExchangeClient, config.ChainClock(), chn.Fork)
 	if err != nil {
