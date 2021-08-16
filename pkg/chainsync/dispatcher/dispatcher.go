@@ -180,6 +180,7 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 	const chKey = "sync-worker"
 	ch := d.workTracker.SubNewTarget(chKey, 10)
 	var unsolvedNotify = int64(0)
+	var lastIncomming *types.Target
 	for {
 		select {
 		// must make sure, 'ch' is not blocked, or may cause syncing problems
@@ -188,6 +189,10 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 				break
 			}
 			if syncTarget, popped := d.workTracker.Select(); popped {
+				if lastIncomming != nil && lastIncomming.Head.Key().Equals(syncTarget.Head.Key()) {
+					continue
+				}
+
 				fmt.Printf(`
 _sc|__________new sync target, height=%d_______
 _sc|blocks=%s
@@ -196,6 +201,7 @@ _sc|blocks=%s
 				// Do work
 				d.lk.Lock()
 				if d.conCurrent.Get() < d.maxCount {
+					lastIncomming = syncTarget
 					atmoic2.StoreInt64(&unsolvedNotify, 0)
 					syncTarget.State = types.StateInSyncing
 					ctx, cancel := context.WithCancel(ctx)
