@@ -196,7 +196,7 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 					continue
 				}
 
-				if syncTarget.Head.Parents().Equals(lastIncomming.Head.Key()) {
+				if lastIncomming != nil && syncTarget.Head.Parents().Equals(lastIncomming.Head.Key()) {
 					if _, _, err := d.syncer.(*syncer.Syncer).RunStateTransition(ctx, syncTarget.Head, lastIncomming.Head)
 						err != nil {
 						log.Errorf("run state transition failed:%s", err.Error())
