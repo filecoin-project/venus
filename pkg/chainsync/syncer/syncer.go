@@ -260,10 +260,10 @@ func (syncer *Syncer) RunStateTransition(ctx context.Context, child, parent *typ
 // syncOne calls into consensus to check its weight, and then updates the head
 // of the bsstore if this tipset is the heaviest.
 // todo mark bad-block
-func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) error {
+func (syncer *Syncer) syncOne(ctx context.Context, parent, child *types.TipSet) error {
 	priorHeadKey := syncer.chainStore.GetHead()
 	// if tipset is already priorHeadKey, we've been here before. do nothing.
-	if priorHeadKey.Equals(next) {
+	if priorHeadKey.Equals(child) {
 		return nil
 	}
 
@@ -278,22 +278,23 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 	_, _ = fmt.Fprintf(logbuf, `_sc|
 _sc|______sync one tipset(%d) details____________________
 _sc| blocks : %s
-`, next.Height(), next.Key().String())
+`, child.Height(), child.Key().String())
 
 	defer func() {
 		_, _ = fmt.Fprintf(logbuf, "_sc| cost time = %.4f(seconds)\n", time.Since(now).Seconds())
 		fmt.Printf(logbuf.String())
 	}()
 
-	if _, _, err = syncer.RunStateTransition(ctx, parent, next); err != nil {
-		return xerrors.Errorf("RunStateTransition on tipset(%d, blocks:%s) failed:%w", err)
+	if _, _, err = syncer.RunStateTransition(ctx, child, parent); err != nil {
+		return xerrors.Errorf("RunStateTransition on tipset(%d, blocks:%s) failed:%w",
+			parent.Height(), parent.Key().String(), err)
 	}
 
 	var beginValidateBlocks = time.Now()
 	if !parent.Key().Equals(syncer.checkPoint) {
 		var wg errgroup.Group
-		for i := 0; i < next.Len(); i++ {
-			blk := next.At(i)
+		for i := 0; i < child.Len(); i++ {
+			blk := child.At(i)
 			wg.Go(func() error {
 				// Fetch the URL.
 				return syncer.blockValidator.ValidateFullBlock(ctx, blk)
@@ -306,7 +307,7 @@ _sc| blocks : %s
 	}
 
 	_, _ = fmt.Fprintf(logbuf, "_sc| validateFullblocks(%d) cost time:%.4f(seconds)\n",
-		next.Len(), time.Since(beginValidateBlocks).Seconds())
+		child.Len(), time.Since(beginValidateBlocks).Seconds())
 
 	return nil
 }
@@ -836,7 +837,8 @@ func (syncer *Syncer) processTipSetSegment(ctx context.Context, target *syncType
 			// there is no assumption that the running node's data is valid at all,
 			// so we don't really lose anything with this simplification.
 			syncer.badTipSets.AddChain(segTipset[i:])
-			return nil, errors.Wrapf(err, "failed to sync tipset %s, number %d of %d in chain", ts.Key(), i, len(segTipset))
+			return nil, errors.Wrapf(err, "failed to sync tipset %s, number %d of %d in chain",
+				ts.Key().String(), i, len(segTipset))
 		}
 		parent = ts
 		target.Current = ts
