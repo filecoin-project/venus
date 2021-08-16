@@ -192,6 +192,12 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 
 			if syncTarget, popped := d.workTracker.Select(); popped {
 
+				fmt.Printf(`
+_sc|__________new sync target, height=%d_______
+_sc|blocks=%s
+_sc|
+`, syncTarget.Head.Height(), syncTarget.Head.Key().String())
+
 				if lastIncomming != nil && lastIncomming.Head.Key().Equals(syncTarget.Head.Key()) {
 					continue
 				}
@@ -206,12 +212,6 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 				if t, isok := d.workTracker.Select(); isok {
 					syncTarget = t
 				}
-
-				fmt.Printf(`
-_sc|__________new sync target, height=%d_______
-_sc|blocks=%s
-_sc|
-`, syncTarget.Head.Height(), syncTarget.Head.Key().String())
 
 				// Do work
 				d.lk.Lock()

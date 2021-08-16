@@ -3,6 +3,7 @@ package syncer
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"reflect"
 	"runtime"
 	"time"
@@ -36,7 +37,7 @@ import (
 var log = logging.Logger("sync.module") // nolint: deadcode
 
 // SyncerSubmodule enhances the node with chain syncing capabilities
-type SyncerSubmodule struct { //nolint
+type SyncerSubmodule struct { // nolint
 	BlockstoreModule   *blockstore.BlockstoreSubmodule
 	ChainModule        *chain2.ChainSubmodule
 	NetworkModule      *network.NetworkSubmodule
@@ -179,6 +180,11 @@ func (syncer *SyncerSubmodule) handleIncommingBlocks(ctx context.Context, msg pu
 	}
 
 	header := bm.Header
+	fmt.Printf(`_sc|____incomming new block:%d________
+_sc| height:%d, cid :%s
+_sc|
+`, header.Height, header.Cid().String(), header.Parents.String())
+
 	span.AddAttributes(trace.StringAttribute("block", header.Cid().String()))
 	log.Infof("Received new block %s height %d from peer %s", header.Cid(), header.Height, sender)
 	_, err = syncer.ChainModule.ChainReader.PutObject(ctx, bm.Header)
@@ -249,7 +255,7 @@ func (syncer *SyncerSubmodule) Start(ctx context.Context) error {
 		return errors.Wrapf(err, "failed to subscribe block topic")
 	}
 
-	//process incoming blocks
+	// process incoming blocks
 	go func() {
 		for {
 			received, err := syncer.BlockSub.Next(ctx)
@@ -286,7 +292,7 @@ func (syncer *SyncerSubmodule) Stop(ctx context.Context) {
 	}
 }
 
-//API create a new sync api implement
+// API create a new sync api implement
 func (syncer *SyncerSubmodule) API() apiface.ISyncer {
 	return &syncerAPI{syncer: syncer}
 }

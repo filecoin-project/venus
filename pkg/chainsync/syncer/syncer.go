@@ -172,22 +172,6 @@ func NewSyncer(fv StateProcessor,
 	}, nil
 }
 
-func (syncer *Syncer) tryFixDismachedStateRoot(parent *types.TipSet, blk *types.BlockHeader) error {
-	if !blk.Parents.Equals(parent.Key()) {
-		return nil
-	}
-	root, _ := syncer.chainStore.GetTipSetStateRoot(parent)
-
-	if root.Equals(cid.Undef) {
-		return nil
-	}
-
-	if !root.Equals(blk.ParentStateRoot) {
-		return syncer.chainStore.(*chain.Store).DeleteTipSetMetadata(parent)
-	}
-	return nil
-}
-
 func (syncer *Syncer) RunStateTransition(ctx context.Context, child, parent *types.TipSet) (stateRoot cid.Cid, receipt cid.Cid, err error) {
 
 	if !child.Parents().Equals(parent.Key()) {
@@ -371,6 +355,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Tar
 	fmt.Printf(`
 _sc|______________HandleNewTipset start, height=%d_______
 _sc|blocks=%s
+_sc|
 `, target.Head.Height(), target.Head.Key().String())
 
 	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipSet")
@@ -423,7 +408,7 @@ _sc|------------------------------------------------------
 
 	err = syncer.syncSegement(ctx, target, tipsets)
 
-	fmt.Fprintf(buf, "_sc| syncSegment cost time:%.4f(seconds)\n",
+	fmt.Fprintf(buf, "_sc|syncSegment cost time:%.4f(seconds)\n",
 		time.Since(now).Seconds())
 
 	return err
