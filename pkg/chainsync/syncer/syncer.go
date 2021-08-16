@@ -188,6 +188,66 @@ func (syncer *Syncer) tryFixDismachedStateRoot(parent *types.TipSet, blk *types.
 	return nil
 }
 
+func (syncer *Syncer) RunStateTransition(ctx context.Context, next, parent *types.TipSet) (stateRoot cid.Cid, receipt cid.Cid, err error) {
+	logbuf := &strings.Builder{}
+
+	defer func() {
+		_, _ = fmt.Fprintf(logbuf, "_sc|-----------------------------------------------\n")
+		fmt.Printf(logbuf.String())
+	}()
+
+	_, _ = fmt.Fprintf(logbuf, "_sc|______syncOneTipset(%d) details____________________\n"+
+		"_sc| tipset key:%s\n", next.Height(), next.Key().String())
+
+	if stateRoot, err = syncer.chainStore.GetTipSetStateRoot(parent); err != nil {
+	}
+
+
+	blk := parent.Blocks()[0]
+
+	if err = syncer.tryFixDismachedStateRoot(parent, next.At(0)); err != nil {
+		fmt.Printf("fixdismatchedStateRoot failed:%s\n", err.Error())
+	}
+
+	if syncer.chainStore.HasTipSetAndState(ctx, parent) {
+		_, _ = fmt.Fprintf(logbuf, "_sc|state already exists, not need to compute\n")
+		stateRoot, receipt = blk.ParentStateRoot, blk.ParentMessageReceipts
+	} else {
+		toProcessTime := time.Now()
+
+		if stateRoot, receipt, err = syncer.stateProcessor.RunStateTransition(ctx,
+			parent, blk.ParentStateRoot); err != nil {
+
+			_, _ = fmt.Fprintf(logbuf, "_sc|calc current tipset %s state failed %s\n",
+				parent.Key().String(), err.Error())
+
+			return cid.Undef, cid.Undef, xerrors.Errorf("calc current tipset %s state failed %w",
+				next.Key().String(), err.Error())
+		}
+		_, _ = fmt.Fprintf(logbuf, "_sc| RunStateTransition Height:%d, Blocks:%d, Root:%s, Receipt:%s, cost time:%.3f(seconds)\n", parent.Height(), parent.Len(), stateRoot,
+			receipt, time.Since(toProcessTime).Seconds())
+
+		blk = next.At(0)
+
+		if !stateRoot.Equals(blk.ParentStateRoot) || !receipt.Equals(blk.ParentMessageReceipts) {
+			_, _ = fmt.Fprintf(logbuf, "%w (%s != %s)",
+				consensus.ErrStateRootMismatch, blk.ParentStateRoot, stateRoot)
+			return cid.Undef, cid.Undef, xerrors.Errorf("%w (%s != %s)",
+				consensus.ErrStateRootMismatch, blk.ParentStateRoot, stateRoot)
+		}
+
+		if err = syncer.chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
+			TipSet:          parent,
+			TipSetStateRoot: stateRoot,
+			TipSetReceipts:  receipt,
+		}); err != nil {
+			_, _ = fmt.Fprintf(logbuf, "_sc| PutTipsetMetadata failed:%s\n", err.Error())
+			return cid.Undef, cid.Undef, err
+		}
+	}
+	return stateRoot, receipt, nil
+}
+
 // syncOne syncs a single tipset with the chain bsstore. syncOne calculates the
 // parent state of the tipset and calls into consensus to run a state transition
 // in order to validate the tipset.  In the case the input tipset is valid,
@@ -240,7 +300,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 			return xerrors.Errorf("calc current tipset %s state failed %w",
 				next.Key().String(), err.Error())
 		}
-		_, _ = fmt.Fprintf(logbuf, "_sc| Process TipSet Height:%d, Blocks:%d, Root:%s, Receipt:%s, cost time:%.3f(seconds)\n", parent.Height(), parent.Len(), root,
+		_, _ = fmt.Fprintf(logbuf, "_sc| RunStateTransition Height:%d, Blocks:%d, Root:%s, Receipt:%s, cost time:%.3f(seconds)\n", parent.Height(), parent.Len(), root,
 			receiptCid, time.Since(toProcessTime).Seconds())
 
 		blk = next.At(0)
@@ -344,7 +404,7 @@ func (syncer *Syncer) widen(ctx context.Context, ts *types.TipSet) (*types.TipSe
 // to a chain bsstore.  Iff catchup is false then the syncer will set the head.
 func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Target) (err error) {
 	fmt.Printf(`
-_sc|______________HandleNewTipset, height=%d_______
+_sc|______________HandleNewTipset start, height=%d_______
 _sc|blocks=%s
 `, target.Head.Height(), target.Head.Key().String())
 
@@ -356,7 +416,7 @@ _sc|blocks=%s
 	buf := &strings.Builder{}
 
 	fmt.Fprintf(buf, `
-_sc|______________HandleNewTipset:height%d______________
+_sc|______________HandleNewTipset end, height=%d, detail:______________
 _sc|blockcount:%d, 
 _sc|blocks:%s
 `, target.Head.Height(), target.Head.Len(), target.Head.Key())
