@@ -358,7 +358,8 @@ _sc|blocks=%s
 	fmt.Fprintf(buf, `
 _sc|______________HandleNewTipset:height%d______________
 _sc|blockcount:%d, 
-_sc|blocks:%s`, target.Head.Height(), target.Head.Len(), target.Head.Key())
+_sc|blocks:%s
+`, target.Head.Height(), target.Head.Len(), target.Head.Key())
 
 	defer func() {
 		if err != nil {

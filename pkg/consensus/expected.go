@@ -232,6 +232,7 @@ func (c *Expected) runStateTransition(ctx context.Context,
 	parentStateRoot cid.Cid,
 ) (cid.Cid, cid.Cid, error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
+	defer span.End()
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 
 	blockMessageInfo, err := c.messageStore.LoadTipSetMessage(ctx, ts)
