@@ -217,8 +217,6 @@ func (syncer *Syncer) RunStateTransition(ctx context.Context, child, parent *typ
 		}
 	}
 
-	childBlk := parent.Blocks()[0]
-
 	beginTime := time.Now()
 	if stateRoot, receipt, err = syncer.stateProcessor.RunStateTransition(ctx,
 		parent, parent.Blocks()[0].ParentStateRoot); err != nil {
@@ -232,13 +230,13 @@ func (syncer *Syncer) RunStateTransition(ctx context.Context, child, parent *typ
 	_, _ = fmt.Fprintf(logbuf, "_sc| RunStateTransition Height:%d, Blocks:%d, Root:%s, Receipt:%s, cost time:%.3f(seconds)\n", parent.Height(), parent.Len(), stateRoot,
 		receipt, time.Since(beginTime).Seconds())
 
-	childBlk = child.At(0)
+	cblk := child.At(0)
 
-	if !stateRoot.Equals(childBlk.ParentStateRoot) || !receipt.Equals(childBlk.ParentMessageReceipts) {
+	if !stateRoot.Equals(cblk.ParentStateRoot) || !receipt.Equals(cblk.ParentMessageReceipts) {
 		_, _ = fmt.Fprintf(logbuf, "_sc|%s, (%s != %s)\n",
-			consensus.ErrStateRootMismatch.Error(), childBlk.ParentStateRoot.String(), stateRoot.String())
+			consensus.ErrStateRootMismatch.Error(), cblk.ParentStateRoot.String(), stateRoot.String())
 		return cid.Undef, cid.Undef, xerrors.Errorf("%w (%s != %s)",
-			consensus.ErrStateRootMismatch, childBlk.ParentStateRoot.String(), stateRoot.String())
+			consensus.ErrStateRootMismatch, cblk.ParentStateRoot.String(), stateRoot.String())
 	}
 
 	if err = syncer.chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
