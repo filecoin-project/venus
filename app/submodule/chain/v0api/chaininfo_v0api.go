@@ -7,13 +7,10 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/app/submodule/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apiface/v0api"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
 )
-
-var _ v0api.IChain = &WrapperV1IChain{}
 
 type WrapperV1IChain struct { //nolint
 	apiface.IChain

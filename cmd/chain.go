@@ -3,11 +3,12 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 	"time"
-
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -17,6 +18,9 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/node"
+	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -30,6 +34,7 @@ var chainCmd = &cmds.Command{
 		"set-head": chainSetHeadCmd,
 		"getblock": chainGetBlockCmd,
 		"disputer": chainDisputeSetCmd,
+		"export":   chainExportCmd,
 	},
 }
 
@@ -234,4 +239,130 @@ func apiMsgCids(in []apitypes.Message) []cid.Cid {
 		out[k] = v.Cid
 	}
 	return out
+}
+
+var chainExportCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "export chain to a car file",
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("outputPath", true, false, ""),
+	},
+	Options: []cmds.Option{
+		cmds.StringOption("tipset").WithDefault(""),
+		cmds.Int64Option("recent-stateroots", "specify the number of recent state roots to include in the export").WithDefault(int64(0)),
+		cmds.BoolOption("skip-old-msgs").WithDefault(false),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		if len(req.Arguments) != 1 {
+			return xerrors.New("must specify filename to export chain to")
+		}
+
+		rsrs := abi.ChainEpoch(req.Options["recent-stateroots"].(int64))
+		if rsrs > 0 && rsrs < constants.Finality {
+			return fmt.Errorf("\"recent-stateroots\" has to be greater than %d", constants.Finality)
+		}
+
+		fi, err := os.Create(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+		defer func() {
+			err := fi.Close()
+			if err != nil {
+				fmt.Printf("error closing output file: %+v", err)
+			}
+		}()
+
+		ts, err := LoadTipSet(req.Context, req, env.(*node.Env).ChainAPI)
+		if err != nil {
+			return err
+		}
+
+		skipold := req.Options["skip-old-msgs"].(bool)
+
+		if rsrs == 0 && skipold {
+			return fmt.Errorf("must pass recent stateroots along with skip-old-msgs")
+		}
+
+		stream, err := env.(*node.Env).ChainAPI.ChainExport(req.Context, rsrs, skipold, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		var last bool
+		for b := range stream {
+			last = len(b) == 0
+
+			_, err := fi.Write(b)
+			if err != nil {
+				return err
+			}
+		}
+
+		if !last {
+			return xerrors.Errorf("incomplete export (remote connection lost?)")
+		}
+
+		return nil
+	},
+}
+
+// LoadTipSet gets the tipset from the context, or the head from the API.
+//
+// It always gets the head from the API so commands use a consistent tipset even if time pases.
+func LoadTipSet(ctx context.Context, req *cmds.Request, chainAPI apiface.IChain) (*types.TipSet, error) {
+	tss := req.Options["tipset"].(string)
+	if tss == "" {
+		return chainAPI.ChainHead(ctx)
+	}
+
+	return ParseTipSetRef(ctx, chainAPI, tss)
+}
+
+func ParseTipSetRef(ctx context.Context, chainAPI apiface.IChain, tss string) (*types.TipSet, error) {
+	if tss[0] == '@' {
+		if tss == "@head" {
+			return chainAPI.ChainHead(ctx)
+		}
+
+		var h uint64
+		if _, err := fmt.Sscanf(tss, "@%d", &h); err != nil {
+			return nil, xerrors.Errorf("parsing height tipset ref: %w", err)
+		}
+
+		return chainAPI.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(h), types.EmptyTSK)
+	}
+
+	cids, err := ParseTipSetString(tss)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(cids) == 0 {
+		return nil, nil
+	}
+
+	k := types.NewTipSetKey(cids...)
+	ts, err := chainAPI.ChainGetTipSet(ctx, k)
+	if err != nil {
+		return nil, err
+	}
+
+	return ts, nil
+}
+
+func ParseTipSetString(ts string) ([]cid.Cid, error) {
+	strs := strings.Split(ts, ",")
+
+	var cids []cid.Cid
+	for _, s := range strs {
+		c, err := cid.Parse(strings.TrimSpace(s))
+		if err != nil {
+			return nil, err
+		}
+		cids = append(cids, c)
+	}
+
+	return cids, nil
 }

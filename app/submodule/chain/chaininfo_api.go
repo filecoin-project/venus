@@ -1,7 +1,10 @@
 package chain
 
 import (
+	"bufio"
 	"context"
+	"github.com/prometheus/common/log"
+	"io"
 	"time"
 
 	"github.com/filecoin-project/venus/app/submodule/apiface"
@@ -451,6 +454,55 @@ func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confide
 		}, nil
 	}
 	return nil, nil
+}
+
+func (cia *chainInfoAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipoldmsgs bool, tsk types.TipSetKey) (<-chan []byte, error) {
+	ts, err := cia.chain.ChainReader.GetTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
+	}
+	r, w := io.Pipe()
+	out := make(chan []byte)
+	go func() {
+		bw := bufio.NewWriterSize(w, 1<<20)
+
+		err := cia.chain.ChainReader.Export(ctx, ts, nroots, skipoldmsgs, bw)
+		bw.Flush()            //nolint:errcheck // it is a write to a pipe
+		w.CloseWithError(err) //nolint:errcheck // it is a pipe
+	}()
+
+	go func() {
+		defer close(out)
+		for {
+			buf := make([]byte, 1<<20)
+			n, err := r.Read(buf)
+			if err != nil && err != io.EOF {
+				log.Errorf("chain export pipe read failed: %s", err)
+				return
+			}
+			if n > 0 {
+				select {
+				case out <- buf[:n]:
+				case <-ctx.Done():
+					log.Warnf("export writer failed: %s", ctx.Err())
+					return
+				}
+			}
+			if err == io.EOF {
+				// send empty slice to indicate correct eof
+				select {
+				case out <- []byte{}:
+				case <-ctx.Done():
+					log.Warnf("export writer failed: %s", ctx.Err())
+					return
+				}
+
+				return
+			}
+		}
+	}()
+
+	return out, nil
 }
 
 // StateGetReceipt returns the message receipt for the given message

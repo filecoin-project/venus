@@ -136,6 +136,8 @@ type IChainInfo interface {
 	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
 	// Rule[perm:read]
 	VerifyEntry(parent, child *types.BeaconEntry, height abi.ChainEpoch) bool
+	// Rule[perm:read]
+	ChainExport(context.Context, abi.ChainEpoch, bool, types.TipSetKey) (<-chan []byte, error)
 }
 
 type IMinerState interface {
