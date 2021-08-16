@@ -235,8 +235,8 @@ func (syncer *Syncer) RunStateTransition(ctx context.Context, child, parent *typ
 	childBlk = child.At(0)
 
 	if !stateRoot.Equals(childBlk.ParentStateRoot) || !receipt.Equals(childBlk.ParentMessageReceipts) {
-		_, _ = fmt.Fprintf(logbuf, "%w (%s != %s)",
-			consensus.ErrStateRootMismatch, childBlk.ParentStateRoot, stateRoot)
+		_, _ = fmt.Fprintf(logbuf, "%s, (%s != %s)",
+			consensus.ErrStateRootMismatch.Error(), childBlk.ParentStateRoot.String(), stateRoot.String())
 
 		return cid.Undef, cid.Undef, xerrors.Errorf("%w (%s != %s)",
 			consensus.ErrStateRootMismatch, childBlk.ParentStateRoot, stateRoot)
