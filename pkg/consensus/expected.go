@@ -176,6 +176,9 @@ func NewExpected(cs cbor.IpldStore,
 }
 
 func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet, baseStateRoot cid.Cid) (cid.Cid, cid.Cid, error) {
+	ctx, span := trace.StartSpan(ctx, "Exected.RunStateTransition")
+	defer span.End()
+
 	var state stateComputResult
 	var err error
 	key := ts.Key()
@@ -231,9 +234,10 @@ func (c *Expected) runStateTransition(ctx context.Context,
 	ts *types.TipSet,
 	parentStateRoot cid.Cid,
 ) (cid.Cid, cid.Cid, error) {
-	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
+	ctx, span := trace.StartSpan(ctx, "Expected.innerRunStateTransition")
 	defer span.End()
-	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
+	span.AddAttributes(trace.StringAttribute("blocks", ts.String()))
+	span.AddAttributes(trace.Int64Attribute("height", int64(ts.Height())))
 
 	blockMessageInfo, err := c.messageStore.LoadTipSetMessage(ctx, ts)
 	if err != nil {

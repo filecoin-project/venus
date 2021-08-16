@@ -371,7 +371,8 @@ _sc|blocks:%s
 		tracing.AddErrorEndSpan(ctx, span, &err)
 		fmt.Fprintf(buf, `
 _sc|total cost time:%.4f(seconds)
-------------------------------------------------------		
+_sc|------------------------------------------------------		
+_sc|------------------------------------------------------		
 `, time.Since(now).Seconds())
 
 		fmt.Printf(buf.String())
