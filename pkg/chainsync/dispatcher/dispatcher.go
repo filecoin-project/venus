@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
 	types2 "github.com/filecoin-project/venus/pkg/types"
 	"runtime/debug"
 	"sync"
@@ -188,9 +189,18 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 			if !isok {
 				break
 			}
+
 			if syncTarget, popped := d.workTracker.Select(); popped {
+
 				if lastIncomming != nil && lastIncomming.Head.Key().Equals(syncTarget.Head.Key()) {
 					continue
+				}
+
+				if syncTarget.Head.Parents().Equals(lastIncomming.Head.Key()) {
+					if _, _, err := d.syncer.(*syncer.Syncer).RunStateTransition(ctx, syncTarget.Head, lastIncomming.Head)
+						err != nil {
+						log.Errorf("run state transition failed:%s", err.Error())
+					}
 				}
 
 				fmt.Printf(`
