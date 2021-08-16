@@ -197,7 +197,7 @@ func (syncer *Syncer) RunStateTransition(ctx context.Context, child, parent *typ
 	logbuf := &strings.Builder{}
 
 	defer func() {
-		_, _ = fmt.Fprintf(logbuf, "_sc|-----------------------------------------------\n")
+		_, _ = fmt.Fprintf(logbuf, "_sc|-------------------------------------\n_sc|")
 		fmt.Printf(logbuf.String())
 	}()
 
