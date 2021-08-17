@@ -2,8 +2,9 @@ package paych
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
+	"github.com/ipfs/go-datastore"
 )
 
 //PaychSubmodule support paych related functions, including paych construction, extraction, query and other functions
@@ -12,9 +13,9 @@ type PaychSubmodule struct { //nolint
 }
 
 // PaychSubmodule enhances the `Node` with paych capabilities.
-func NewPaychSubmodule(ctx context.Context, params *paychmgr.ManagerParams) *PaychSubmodule {
-	mgr := paychmgr.NewManager(ctx, params)
-	return &PaychSubmodule{mgr}
+func NewPaychSubmodule(ctx context.Context, ds datastore.Batching, params *paychmgr.ManagerParams) (*PaychSubmodule, error) {
+	mgr, err := paychmgr.NewManager(ctx, ds, params)
+	return &PaychSubmodule{mgr}, err
 }
 
 func (ps *PaychSubmodule) Start() error {
@@ -27,9 +28,9 @@ func (ps *PaychSubmodule) Stop() {
 
 //API create a new paych implement
 func (ps *PaychSubmodule) API() apiface.IPaychan {
-	return newPaychAPI(ps.pmgr)
+	return NewPaychAPI(ps.pmgr)
 }
 
 func (ps *PaychSubmodule) V0API() apiface.IPaychan {
-	return newPaychAPI(ps.pmgr)
+	return NewPaychAPI(ps.pmgr)
 }

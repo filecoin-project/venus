@@ -1,6 +1,8 @@
 package chain
 
-import "github.com/filecoin-project/venus/app/submodule/apiface"
+import (
+	"github.com/filecoin-project/venus/app/client/apiface"
+)
 
 type chainAPI struct { // nolint: golint
 	apiface.IAccount

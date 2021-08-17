@@ -3,7 +3,7 @@ package constants
 import (
 	"math/big"
 
-	"github.com/filecoin-project/venus/pkg/specactors/policy"
+	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
 
 	"github.com/filecoin-project/go-address"
 

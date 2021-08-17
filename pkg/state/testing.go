@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -12,22 +13,22 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 )
 
 // FakeStateView is a fake state view.
 type FakeStateView struct {
 	NetworkName string
-	Power       *NetworkPower
+	Power       *types.NetworkPower
 	Miners      map[address.Address]*FakeMinerState
 }
 
 // NewFakeStateView creates a new fake state view.
 func NewFakeStateView(rawBytePower, qaPower abi.StoragePower, minerCount, minPowerMinerCount int64) *FakeStateView {
 	return &FakeStateView{
-		Power: &NetworkPower{
+		Power: &types.NetworkPower{
 			RawBytePower:         rawBytePower,
 			QualityAdjustedPower: qaPower,
 			MinerCount:           minerCount,
@@ -98,7 +99,7 @@ func (v *FakeStateView) MinerProvingPeriod(ctx context.Context, maddr address.Ad
 	return m.ProvingPeriodStart, m.ProvingPeriodEnd, m.PoStFailures, nil
 }
 
-func (v *FakeStateView) PowerNetworkTotal(_ context.Context) (*NetworkPower, error) {
+func (v *FakeStateView) PowerNetworkTotal(_ context.Context) (*types.NetworkPower, error) {
 	return v.Power, nil
 }
 

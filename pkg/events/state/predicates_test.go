@@ -2,6 +2,12 @@ package state
 
 import (
 	"context"
+	test "github.com/filecoin-project/venus/pkg/events/state/mock"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
+	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -17,13 +23,6 @@ import (
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
-
-	test "github.com/filecoin-project/venus/pkg/events/state/mock"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
-	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 )
 
 var dummyCid cid.Cid

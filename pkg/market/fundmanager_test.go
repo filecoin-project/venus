@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 	"github.com/ipfs/go-datastore"
 
 	"sync"

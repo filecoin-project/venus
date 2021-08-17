@@ -16,8 +16,8 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	tutils2 "github.com/filecoin-project/specs-actors/v2/support/testing"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
-	paychmock "github.com/filecoin-project/venus/pkg/specactors/builtin/paych/mock"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
+	paychmock "github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych/mock"
 )
 
 // TestPaychAddVoucherAfterAddFunds tests adding a voucher to a channel with

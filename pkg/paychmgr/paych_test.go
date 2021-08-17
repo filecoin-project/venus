@@ -22,9 +22,9 @@ import (
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
-	paychmock "github.com/filecoin-project/venus/pkg/specactors/builtin/paych/mock"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
+	paychmock "github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych/mock"
 )
 
 func TestCheckVoucherValid(t *testing.T) {

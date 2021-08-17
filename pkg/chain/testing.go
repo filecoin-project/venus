@@ -188,7 +188,7 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 
 	// create a fixed genesis
 	b.genesis = b.GeneratorGenesis()
-	b.store = NewStore(ds, cst, bs, repo.Config().NetworkParams.ForkUpgradeParam, b.genesis.At(0).Cid())
+	b.store = NewStore(ds, bs, b.genesis.At(0).Cid(), NewMockCirculatingSupplyCalculator())
 
 	for _, block := range b.genesis.Blocks() {
 		// add block to cstore

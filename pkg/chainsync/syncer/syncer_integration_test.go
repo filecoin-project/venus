@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
 	"github.com/filecoin-project/venus/pkg/clock"
-	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/fork"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
@@ -78,7 +77,7 @@ func TestLoadFork(t *testing.T) {
 
 	// Load a new chain bsstore on the underlying data. It will only compute state for the
 	// left (heavy) branch. It has a fetcher that can't provide blocks.
-	newStore := chain.NewStore(builder.Repo().ChainDatastore(), builder.Cstore(), builder.BlockStore(), config.DefaultForkUpgradeParam, genesis.At(0).Cid())
+	newStore := chain.NewStore(builder.Repo().ChainDatastore(), builder.BlockStore(), genesis.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator())
 	newStore.SetCheckPoint(genesis.Key())
 	require.NoError(t, newStore.Load(ctx))
 	_, err = syncer.NewSyncer(eval,

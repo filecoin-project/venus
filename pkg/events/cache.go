@@ -13,7 +13,7 @@ import (
 )
 
 type uncachedAPI interface {
-	ChainNotify(context.Context) (<-chan []*chain.HeadChange, error)
+	ChainNotify(context.Context) <-chan []*chain.HeadChange
 	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*chain.HeadChange, error)
 	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*chain.MsgLookup, error)
 

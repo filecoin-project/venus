@@ -1,7 +1,7 @@
 package register
 
 import (
-	actors "github.com/filecoin-project/venus/pkg/specactors"
+	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"

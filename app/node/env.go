@@ -2,9 +2,9 @@ package node
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface/v0api"
 
-	"github.com/filecoin-project/venus/app/submodule/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apiface/v0api"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
@@ -14,7 +14,7 @@ import (
 type Env struct {
 	ctx                  context.Context
 	InspectorAPI         IInspector
-	BlockServiceAPI      apiface.IBlockService
+	BlockServiceAPI      apiface.IDagService
 	BlockStoreAPI        apiface.IBlockStore
 	ChainAPI             apiface.IChain
 	ConfigAPI            apiface.IConfig

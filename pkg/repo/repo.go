@@ -8,12 +8,7 @@ import (
 )
 
 // Datastore is the datastore interface provided by the repo
-type Datastore interface {
-	// NB: there are other more featureful interfaces we could require here, we
-	// can either force it, or just do hopeful type checks. Not all datastores
-	// implement every feature.
-	datastore.Batching
-}
+type Datastore datastore.Batching
 
 // repo is a representation of all persistent data in a filecoin node.
 type Repo interface {
