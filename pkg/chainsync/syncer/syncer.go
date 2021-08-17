@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/util/paralle"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -139,6 +140,8 @@ type Syncer struct {
 	checkPoint types.TipSetKey
 
 	fork fork.IFork
+
+	delayRunTx *delayRunTsTransition
 }
 
 // NewSyncer constructs a Syncer ready for use.  The chain reader must have a
@@ -158,7 +161,8 @@ func NewSyncer(fv StateProcessor,
 		log.Warn(" [INSECURE-POST-VALIDATION] Insecure test validation is enabled. If you see this outside of a test, it is a severe bug! ")
 		log.Warn("*********************************************************************************************")
 	}
-	return &Syncer{
+
+	syncer := &Syncer{
 		exchangeClient:  exchangeClient,
 		badTipSets:      syncTypes.NewBadTipSetCache(),
 		stateProcessor:  fv,
@@ -169,7 +173,14 @@ func NewSyncer(fv StateProcessor,
 		messageProvider: m,
 		clock:           c,
 		fork:            fork,
-	}, nil
+	}
+
+	defer func() {
+		syncer.delayRunTx = newDelayRunTsTransition(syncer)
+		syncer.delayRunTx.run()
+	}()
+
+	return syncer, nil
 }
 
 func (syncer *Syncer) RunStateTransition(ctx context.Context, ts *types.TipSet) (stateRoot cid.Cid, receipt cid.Cid, err error) {
@@ -383,7 +394,12 @@ _sc|------------------------------------------------------
 	fmt.Fprintf(buf, "_sc|syncSegment cost time:%.4f(seconds)\n",
 		time.Since(now).Seconds())
 
+	syncer.delayRunTx.update(target.Head)
+
 	return err
+}
+
+func (syncer *Syncer) delayRunStateTransition(ctx context.Context, ts *types.TipSet) {
 }
 
 func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target, tipsets []*types.TipSet) error {
@@ -896,4 +912,58 @@ func rangeProcess(ts []*types.TipSet, cb func(ts []*types.TipSet) error) (err er
 		logSyncer.Infof("Sync Process End,Remaining: %v, err: %v ...", len(ts), err)
 	}
 	return err
+}
+
+type delayRunTsTransition struct {
+	ch           chan *types.TipSet
+	toRunTs      *types.TipSet
+	syncer       *Syncer
+	runningCount int64
+}
+
+func newDelayRunTsTransition(syncer *Syncer) *delayRunTsTransition {
+	return &delayRunTsTransition{
+		ch:     make(chan *types.TipSet, 10),
+		syncer: syncer,
+	}
+}
+
+func (d *delayRunTsTransition) run() {
+	go d.listenUpdate()
+}
+
+func (d *delayRunTsTransition) stop() {
+	close(d.ch)
+}
+
+func (d *delayRunTsTransition) update(ts *types.TipSet) {
+	d.ch <- ts
+}
+
+func (d *delayRunTsTransition) listenUpdate() {
+	duration := time.Second * 5
+	ticker := time.NewTicker(duration)
+	for {
+		select {
+		case t, isok := <-d.ch:
+			if !isok {
+				return
+			}
+			if !d.toRunTs.Parents().Equals(t.Parents()) {
+				ticker.Reset(duration)
+			}
+			d.toRunTs = t
+		case <-ticker.C:
+			if d.toRunTs != nil {
+				if atomic.LoadInt64(&d.runningCount) <= 5 {
+					atomic.AddInt64(&d.runningCount, 1)
+					go func(ts *types.TipSet) {
+						_, _, _ = d.syncer.RunStateTransition(context.TODO(), ts)
+						atomic.AddInt64(&d.runningCount, -1)
+					}(d.toRunTs)
+				}
+				d.toRunTs = nil
+			}
+		}
+	}
 }
