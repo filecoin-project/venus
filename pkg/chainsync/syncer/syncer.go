@@ -396,6 +396,7 @@ _sc|------------------------------------------------------
 
 	if err != nil {
 		fmt.Fprintf(buf, "_sc|syncSegement failed:%s\n", err.Error())
+	} else {
 		syncer.delayRunTx.update(tipsets[len(tipsets)-1])
 	}
 
