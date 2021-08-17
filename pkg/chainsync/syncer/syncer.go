@@ -898,7 +898,7 @@ func zipTipSetAndMessages(bs blockstore.Blockstore, ts *types.TipSet, allbmsgs [
 	return fts, nil
 }
 
-const maxProcessLen = 32
+const maxProcessLen = 8
 
 func rangeProcess(ts []*types.TipSet, cb func(ts []*types.TipSet) error) (err error) {
 	for {
