@@ -399,9 +399,6 @@ _sc|------------------------------------------------------
 	return err
 }
 
-func (syncer *Syncer) delayRunStateTransition(ctx context.Context, ts *types.TipSet) {
-}
-
 func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target, tipsets []*types.TipSet) error {
 	parent, err := syncer.chainStore.GetTipSet(tipsets[0].Parents())
 	if err != nil {
@@ -941,7 +938,7 @@ func (d *delayRunTsTransition) update(ts *types.TipSet) {
 }
 
 func (d *delayRunTsTransition) listenUpdate() {
-	duration := time.Second * 5
+	duration := time.Second * 8
 	ticker := time.NewTicker(duration)
 	for {
 		select {
@@ -949,13 +946,13 @@ func (d *delayRunTsTransition) listenUpdate() {
 			if !isok {
 				return
 			}
-			if !d.toRunTs.Parents().Equals(t.Parents()) {
+			if d.toRunTs != nil && !d.toRunTs.Parents().Equals(t.Parents()) {
 				ticker.Reset(duration)
 			}
 			d.toRunTs = t
 		case <-ticker.C:
 			if d.toRunTs != nil {
-				if atomic.LoadInt64(&d.runningCount) <= 5 {
+				if atomic.LoadInt64(&d.runningCount) < maxProcessLen {
 					atomic.AddInt64(&d.runningCount, 1)
 					go func(ts *types.TipSet) {
 						_, _, _ = d.syncer.RunStateTransition(context.TODO(), ts)
