@@ -203,22 +203,26 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	ctx, span := trace.StartSpan(ctx, "Store.Load")
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	headTSKey, err := store.loadHead()
-	if err != nil {
+	var headTS *types.TipSet
+	var headTSKey types.TipSetKey
+	var isok = false
+
+	if headTSKey, err = store.loadHead(); err != nil {
 		return err
 	}
 
-	var headTS, isok = (*types.TipSet)(nil), false
+	if headTS, err = LoadTipSetBlocks(ctx, store, headTSKey); err == nil {
+		return errors.Wrap(err, "error loading head tipset")
+	}
 
 	for !isok && (headTS != nil && headTS.Key().Equals(types.NewTipSetKey(store.genesis))) {
 		// we haven't compute stateroot of latest tipset,
 		// so here should load head's parent as head on restart
-		headTS, err = LoadTipSetBlocks(ctx, store, headTSKey)
-		if err != nil {
-			return errors.Wrap(err, "error loading head tipset")
-		}
-		if _, err := store.LoadTipsetMetadata(headTS); err == nil {
+		if _, err = store.LoadTipsetMetadata(headTS); err == nil {
 			isok = true
+		}
+		if headTS, err = LoadTipSetBlocks(ctx, store, headTS.Parents()); err != nil {
+			return
 		}
 	}
 
