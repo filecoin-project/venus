@@ -76,8 +76,8 @@ func BadgerBlockstoreOptions(path string, readonly bool) (Options, error) {
 
 	// We mmap the index and the value logs; this is important to enable
 	// zero-copy value access.
-	opts.ValueLogLoadingMode = FileIO
-	opts.TableLoadingMode = FileIO
+	opts.ValueLogLoadingMode = MemoryMap
+	opts.TableLoadingMode = MemoryMap
 
 	// Embed only values < 128 bytes in the LSM tree; larger values are stored
 	// in value logs.
@@ -240,8 +240,8 @@ func (b *BadgerBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 		}
 	}
 
-	//migrate
-	//todo just for test
+	// migrate
+	// todo just for test
 	var val []byte
 	err := b.DB.View(func(txn *badger.Txn) error {
 		switch item, err := txn.Get(key.Bytes()); err {
@@ -348,7 +348,7 @@ func (b *BadgerBlockstore) PutMany(blks []blocks.Block) error {
 	if err != nil {
 		err = fmt.Errorf("failed to put blocks in badger blockstore: %w", err)
 	}
-	//flush to cache
+	// flush to cache
 	for k, v := range flushToCache {
 		b.cache.Add(k, v)
 	}
