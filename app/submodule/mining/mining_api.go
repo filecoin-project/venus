@@ -27,11 +27,11 @@ import (
 
 var _ apiface.IMining = &MiningAPI{}
 
-type MiningAPI struct { //nolint
+type MiningAPI struct { // nolint
 	Ming *MiningModule
 }
 
-//MinerGetBaseInfo get current miner information
+// MinerGetBaseInfo get current miner information
 func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk types.TipSetKey) (*apitypes.MiningBaseInfo, error) {
 	chainStore := miningAPI.Ming.ChainModule.ChainReader
 	ts, err := chainStore.GetTipSet(tsk)
@@ -69,7 +69,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	view := state.NewView(chainStore.Store(ctx), lbst)
 	act, err := view.LoadActor(ctx, maddr)
 	if xerrors.Is(err, types.ErrActorNotFound) {
-		//todo why
+		// todo why
 		view = state.NewView(chainStore.Store(ctx), ts.At(0).ParentStateRoot)
 		_, err := view.LoadActor(ctx, maddr)
 		if err != nil {
@@ -145,7 +145,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	}, nil
 }
 
-//MinerCreateBlock create block base on template
+// MinerCreateBlock create block base on template
 func (miningAPI *MiningAPI) MinerCreateBlock(ctx context.Context, bt *apitypes.BlockTemplate) (*types.BlockMsg, error) {
 	fblk, err := miningAPI.minerCreateBlock(ctx, bt)
 	if err != nil {
@@ -173,8 +173,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *apitypes.B
 		return nil, xerrors.Errorf("failed to load parent tipset: %v", err)
 	}
 
-	parentStateRoot := pts.Blocks()[0].ParentStateRoot
-	st, receiptCid, err := miningAPI.Ming.SyncModule.Consensus.RunStateTransition(ctx, pts, parentStateRoot)
+	st, receiptCid, err := miningAPI.Ming.SyncModule.Consensus.RunStateTransition(ctx, pts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset state: %v", err)
 	}

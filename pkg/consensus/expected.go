@@ -175,7 +175,7 @@ func NewExpected(cs cbor.IpldStore,
 	return c
 }
 
-func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet, baseStateRoot cid.Cid) (cid.Cid, cid.Cid, error) {
+func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
 	ctx, span := trace.StartSpan(ctx, "Exected.RunStateTransition")
 	defer span.End()
 
@@ -219,7 +219,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet, bas
 		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
 	}
 
-	if state.stateRoot, state.receipt, err = c.runStateTransition(ctx, ts, baseStateRoot); err != nil {
+	if state.stateRoot, state.receipt, err = c.runStateTransition(ctx, ts); err != nil {
 		return cid.Undef, cid.Undef, err
 	}
 
@@ -230,10 +230,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet, bas
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
-func (c *Expected) runStateTransition(ctx context.Context,
-	ts *types.TipSet,
-	parentStateRoot cid.Cid,
-) (cid.Cid, cid.Cid, error) {
+func (c *Expected) runStateTransition(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.innerRunStateTransition")
 	defer span.End()
 	span.AddAttributes(trace.StringAttribute("blocks", ts.String()))
@@ -281,18 +278,16 @@ func (c *Expected) runStateTransition(ctx context.Context,
 		Epoch:             ts.At(0).Height,
 		GasPriceSchedule:  c.gasPirceSchedule,
 		Bsstore:           c.bstore,
-		PRoot:             parentStateRoot,
+		PRoot:             ts.At(0).ParentStateRoot,
 		SysCallsImpl:      c.syscallsImpl,
 	}
 	root, receipts, err := c.processor.ProcessTipSet(ctx, pts, ts, blockMessageInfo, vmOption)
 	if err != nil {
 		return cid.Undef, cid.Undef, errors.Wrap(err, "error validating tipset")
 	}
-
 	receiptCid, err := c.messageStore.StoreReceipts(ctx, receipts)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to save receipt: %v", err)
 	}
-
 	return root, receiptCid, nil
 }

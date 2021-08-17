@@ -3,7 +3,6 @@ package syncer
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/util/paralle"
 	"strings"
 	"sync"
@@ -73,7 +72,7 @@ func init() {
 type StateProcessor interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts *types.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipt cid.Cid, err error)
+	RunStateTransition(ctx context.Context, ts *types.TipSet) (root cid.Cid, receipt cid.Cid, err error)
 }
 
 // BlockValidator used to validate full block
@@ -88,6 +87,7 @@ type ChainReaderWriter interface {
 	GetTipSetStateRoot(*types.TipSet) (cid.Cid, error)
 	GetTipSetReceiptsRoot(*types.TipSet) (cid.Cid, error)
 	HasTipSetAndState(context.Context, *types.TipSet) bool
+	LoadTipsetMetadata(*types.TipSet) (*chain.TipSetMetadata, error)
 	PutTipSetMetadata(context.Context, *chain.TipSetMetadata) error
 	SetHead(context.Context, *types.TipSet) error
 	HasSiblingState(*types.TipSet) bool
@@ -172,12 +172,7 @@ func NewSyncer(fv StateProcessor,
 	}, nil
 }
 
-func (syncer *Syncer) RunStateTransition(ctx context.Context, child, parent *types.TipSet) (stateRoot cid.Cid, receipt cid.Cid, err error) {
-
-	if !child.Parents().Equals(parent.Key()) {
-		return cid.Undef, cid.Undef, fmt.Errorf("child's parent key doesn't match parent")
-	}
-
+func (syncer *Syncer) RunStateTransition(ctx context.Context, ts *types.TipSet) (stateRoot cid.Cid, receipt cid.Cid, err error) {
 	logbuf := &strings.Builder{}
 
 	defer func() {
@@ -186,45 +181,27 @@ func (syncer *Syncer) RunStateTransition(ctx context.Context, child, parent *typ
 	}()
 
 	_, _ = fmt.Fprintf(logbuf, "_sc|______RunStateTransaction(%d) details____________________\n"+
-		"_sc| tipset key:%s\n", child.Height(), child.Key().String())
+		"_sc| tipset key:%s\n", ts.Height(), ts.Key().String())
 
-	if stateRoot, err = syncer.chainStore.GetTipSetStateRoot(parent); err == nil {
-		if receipt, err = syncer.chainStore.GetTipSetReceiptsRoot(parent); err == nil {
-			if child.Blocks()[0].ParentStateRoot.Equals(stateRoot) {
-				_, _ = fmt.Fprintf(logbuf, "_sc| state already exist, doesn't need compute again\n")
-				return
-			} else if err = syncer.chainStore.(*chain.Store).DeleteTipSetMetadata(parent); err != nil {
-				_, _ = fmt.Fprintf(logbuf, "_sc| chain store delete older state root failed:\n_sc| %s\n",
-					err.Error())
-				return cid.Undef, cid.Undef, err
-			}
-		}
+	var meta *chain.TipSetMetadata
+	if meta, err = syncer.chainStore.LoadTipsetMetadata(ts); err == nil {
+		return meta.TipSetStateRoot, meta.TipSetReceipts, nil
 	}
 
 	beginTime := time.Now()
-	if stateRoot, receipt, err = syncer.stateProcessor.RunStateTransition(ctx,
-		parent, parent.Blocks()[0].ParentStateRoot); err != nil {
 
+	if stateRoot, receipt, err = syncer.stateProcessor.RunStateTransition(ctx, ts); err != nil {
 		_, _ = fmt.Fprintf(logbuf, "_sc|calc current tipset %s state failed %s\n",
-			parent.Key().String(), err.Error())
-
+			ts.Key().String(), err.Error())
 		return cid.Undef, cid.Undef, xerrors.Errorf("calc current tipset %s state failed %w",
-			child.Key().String(), err.Error())
+			ts.Key().String(), err.Error())
 	}
-	_, _ = fmt.Fprintf(logbuf, "_sc| RunStateTransition Height:%d, Blocks:%d, Root:%s, Receipt:%s, cost time:%.3f(seconds)\n", parent.Height(), parent.Len(), stateRoot,
-		receipt, time.Since(beginTime).Seconds())
 
-	cblk := child.At(0)
-
-	if !stateRoot.Equals(cblk.ParentStateRoot) || !receipt.Equals(cblk.ParentMessageReceipts) {
-		_, _ = fmt.Fprintf(logbuf, "_sc|%s, (%s != %s)\n",
-			consensus.ErrStateRootMismatch.Error(), cblk.ParentStateRoot.String(), stateRoot.String())
-		return cid.Undef, cid.Undef, xerrors.Errorf("%w (%s != %s)",
-			consensus.ErrStateRootMismatch, cblk.ParentStateRoot.String(), stateRoot.String())
-	}
+	_, _ = fmt.Fprintf(logbuf, "_sc| RunStateTransition Height:%d, Blocks:%d, Root:%s, Receipt:%s, cost time:%.3f(seconds)\n",
+		ts.Height(), ts.Len(), stateRoot, receipt, time.Since(beginTime).Seconds())
 
 	if err = syncer.chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
-		TipSet:          parent,
+		TipSet:          ts,
 		TipSetStateRoot: stateRoot,
 		TipSetReceipts:  receipt,
 	}); err != nil {

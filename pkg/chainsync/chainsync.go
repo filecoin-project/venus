@@ -2,7 +2,6 @@ package chainsync
 
 import (
 	"context"
-
 	"github.com/filecoin-project/venus/pkg/chainsync/types"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	types2 "github.com/filecoin-project/venus/pkg/types"
@@ -48,7 +47,7 @@ func NewManager(fv syncer.StateProcessor,
 		return Manager{}, err
 	}
 
-	hv.RunStateTransition = fv.RunStateTransition
+	hv.RunStateTransition = syncer.RunStateTransition
 
 	dispatcher := dispatcher.NewDispatcher(syncer)
 
