@@ -216,7 +216,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		return errors.Wrap(err, "error loading head tipset")
 	}
 
-	for headTS != nil && headTS.Key().Equals(types.NewTipSetKey(store.genesis)) {
+	for headTS != nil && !headTS.Key().Equals(types.NewTipSetKey(store.genesis)) {
 		// we haven't compute stateroot of latest tipset,
 		// so here should load head's parent as head on restart
 		if _, err = store.LoadTipsetMetadata(headTS); err == nil {
@@ -229,6 +229,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 
 	latestHeight := headTS.At(0).Height
 	loopBack := latestHeight - policy.ChainFinality
+
 	log.Infof("start loading chain at tipset: %s, height: %d", headTSKey.String(), latestHeight)
 
 	// Provide tipsets directly from the block store, not from the tipset index which is
