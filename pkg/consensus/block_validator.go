@@ -192,6 +192,14 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	}
 
 	minerCheck := async.Err(func() error {
+		statRoot, _, err := bv.RunStateTransition(ctx, parent)
+		if err != nil {
+			return err
+		}
+		if !statRoot.Equals(blk.ParentStateRoot) {
+			return fmt.Errorf("expect verify miner on stateroot:%s, but caclutated is :%s",
+				blk.ParentStateRoot.String(), statRoot.String())
+		}
 		if err := bv.minerIsValid(ctx, blk.Miner, blk.ParentStateRoot); err != nil {
 			return xerrors.Errorf("minerIsValid failed: %w", err)
 		}
