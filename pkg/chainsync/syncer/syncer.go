@@ -394,7 +394,7 @@ _sc|------------------------------------------------------
 	fmt.Fprintf(buf, "_sc|syncSegment cost time:%.4f(seconds)\n",
 		time.Since(now).Seconds())
 
-	syncer.delayRunTx.update(target.Head)
+	syncer.delayRunTx.update(tipsets[len(tipsets)-1])
 
 	return err
 }

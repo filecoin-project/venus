@@ -238,7 +238,7 @@ func (c *Expected) runStateTransition(ctx context.Context, ts *types.TipSet) (ci
 
 	blockMessageInfo, err := c.messageStore.LoadTipSetMessage(ctx, ts)
 	if err != nil {
-		return cid.Undef, cid.Undef, nil
+		return cid.Undef, cid.Undef, err
 	}
 	// process tipset
 	var pts *types.TipSet
