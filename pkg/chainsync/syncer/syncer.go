@@ -394,7 +394,10 @@ _sc|------------------------------------------------------
 	fmt.Fprintf(buf, "_sc|syncSegment cost time:%.4f(seconds)\n",
 		time.Since(now).Seconds())
 
-	syncer.delayRunTx.update(tipsets[len(tipsets)-1])
+	if err != nil {
+		fmt.Fprintf(buf, "_sc|syncSegement failed:%s\n", err.Error())
+		syncer.delayRunTx.update(tipsets[len(tipsets)-1])
+	}
 
 	return err
 }
