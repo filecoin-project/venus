@@ -80,4 +80,6 @@ type IChainInfo interface {
 	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
 	// Rule[perm:read]
 	VerifyEntry(parent, child *types.BeaconEntry, height abi.ChainEpoch) bool
+	// Rule[perm:read]
+	ChainExport(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey) (<-chan []byte, error)
 }

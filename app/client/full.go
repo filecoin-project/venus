@@ -114,6 +114,7 @@ type IChainInfoStruct struct {
 	StateSearchMsg                func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*apitypes.MsgLookup, error)                  `perm:"read"`
 	StateWaitMsg                  func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*apitypes.MsgLookup, error)                           `perm:"read"`
 	VerifyEntry                   func(p0 *types.BeaconEntry, p1 *types.BeaconEntry, p2 abi.ChainEpoch) bool                                                         `perm:"read"`
+	ChainExport                   func(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey) (<-chan []byte, error)                                    `perm:"read"`
 }
 
 type IConfigStruct struct {
