@@ -201,7 +201,10 @@ func NewStore(ds repo.Datastore,
 // should not consider the chain useable and propagate the error.
 func (store *Store) Load(ctx context.Context) (err error) {
 	ctx, span := trace.StartSpan(ctx, "Store.Load")
-	defer tracing.AddErrorEndSpan(ctx, span, &err)
+	defer func() {
+		tracing.AddErrorEndSpan(ctx, span, &err)
+		span.End()
+	}()
 
 	var headTS *types.TipSet
 	var headTSKey types.TipSetKey
@@ -211,7 +214,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		return err
 	}
 
-	if headTS, err = LoadTipSetBlocks(ctx, store, headTSKey); err == nil {
+	if headTS, err = LoadTipSetBlocks(ctx, store, headTSKey); err != nil {
 		return errors.Wrap(err, "error loading head tipset")
 	}
 
