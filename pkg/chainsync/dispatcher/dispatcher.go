@@ -189,16 +189,11 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 			}
 
 			if syncTarget, popped := d.workTracker.Select(); popped {
-
 				fmt.Printf(`
 _sc|__________new sync target, height=%d_______
 _sc|blocks=%s
 _sc|
 `, syncTarget.Head.Height(), syncTarget.Head.Key().String())
-
-				if t, isok := d.workTracker.Select(); isok {
-					syncTarget = t
-				}
 
 				// Do work
 				d.lk.Lock()

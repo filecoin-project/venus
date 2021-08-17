@@ -181,7 +181,7 @@ func (syncer *SyncerSubmodule) handleIncommingBlocks(ctx context.Context, msg pu
 
 	header := bm.Header
 	fmt.Printf(`_sc|____incomming new block:%d________
-_sc| height:%d, cid :%s
+_sc| block_cid:%s, parent:%s
 _sc|
 `, header.Height, header.Cid().String(), header.Parents.String())
 
