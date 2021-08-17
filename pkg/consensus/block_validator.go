@@ -76,7 +76,7 @@ type BlockValidator struct {
 	gasPirceSchedule *gas.PricesSchedule
 	// cache for validate block
 	validateBlockCache *lru.ARCCache
-	RunStateTransition func(ctx context.Context, ts *types.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipt cid.Cid, err error)
+	RunStateTransition func(ctx context.Context, child, parent *types.TipSet) (root cid.Cid, receipt cid.Cid, err error)
 }
 
 // NewBlockValidator create a new block validator
@@ -253,7 +253,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	})
 
 	msgsCheck := async.Err(func() error {
-		statRoot, _, err := bv.RunStateTransition(ctx, parent, parent.Blocks()[0].ParentStateRoot)
+		statRoot, _, err := bv.RunStateTransition(ctx, )
 		if err != nil {
 			return err
 		}
@@ -266,7 +266,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	})
 
 	stateRootCheck := async.Err(func() error {
-		stateroot, precp, err := bv.RunStateTransition(ctx, parent, parent.Blocks()[0].ParentStateRoot)
+		stateroot, precp, err := bv.RunStateTransition(ctx, parent, )
 		if err != nil {
 			return xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", blk.Height, blk.Parents, err)
 		}

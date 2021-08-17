@@ -47,6 +47,7 @@ func NewManager(fv syncer.StateProcessor,
 	if err != nil {
 		return Manager{}, err
 	}
+	hv.RunStateTransition = syncer.RunStateTransition
 
 	dispatcher := dispatcher.NewDispatcher(syncer)
 

@@ -123,8 +123,6 @@ func NewSyncerSubmodule(ctx context.Context,
 		chn.SystemCall,
 	)
 
-	blkValid.RunStateTransition = nodeConsensus.RunStateTransition
-
 	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, blockstore.Blockstore, discovery.ExchangeClient, config.ChainClock(), chn.Fork)
 	if err != nil {
 		return nil, err

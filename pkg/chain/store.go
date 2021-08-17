@@ -3,6 +3,7 @@ package chain
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"runtime/debug"
@@ -207,14 +208,22 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		return err
 	}
 
-	headTS, err := LoadTipSetBlocks(ctx, store, headTSKey)
-	if err != nil {
-		return errors.Wrap(err, "error loading head tipset")
+	var headTS, isok = (*types.TipSet)(nil), false
+
+	for !isok && (headTS != nil && headTS.Key().Equals(types.NewTipSetKey(store.genesis))) {
+		// we haven't compute stateroot of latest tipset,
+		// so here should load head's parent as head on restart
+		headTS, err = LoadTipSetBlocks(ctx, store, headTSKey)
+		if err != nil {
+			return errors.Wrap(err, "error loading head tipset")
+		}
+		if _, err := store.LoadTipsetMetadata(headTS); err == nil {
+			isok = true
+		}
 	}
-	// we haven't compute stateroot of latest tipset,
-	// so here should load head's parent as head on restart
-	if headTS, err = LoadTipSetBlocks(ctx, store, headTS.Parents()); err != nil {
-		return errors.Wrap(err, "error loading head tipset")
+
+	if !isok {
+		return fmt.Errorf("cann't find a valiable chain head")
 	}
 
 	latestHeight := headTS.At(0).Height
