@@ -182,7 +182,7 @@ func (d *Dispatcher) selectStableTarget() (*types.Target, bool) {
 		var stabled = false
 		for ; !stabled; {
 			var curTarget *types.Target
-			time.Sleep(time.Millisecond * 500)
+			time.Sleep(time.Millisecond * 200)
 			if curTarget, popped = d.workTracker.Select(); !popped {
 				return nil, false
 			}
@@ -206,7 +206,7 @@ func (d *Dispatcher) syncWorkerV2(ctx context.Context) {
 				break
 			}
 
-			if syncTarget, popped := d.workTracker.Select(); popped {
+			if syncTarget, popped := d.selectStableTarget(); popped {
 				fmt.Printf(`
 _sc|__________new sync target, height=%d_______
 _sc|blocks=%s
