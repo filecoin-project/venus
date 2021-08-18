@@ -241,7 +241,8 @@ func (c *Expected) runStateTransition(ctx context.Context, ts *types.TipSet) (ci
 		_, _ = fmt.Fprintf(logbuf,
 			`_sc| total cost time = %.4f(seconds)
 _sc|-------------------------------------
-_sc|`, time.Since(begin).Seconds())
+_sc|
+`, time.Since(begin).Seconds())
 		fmt.Printf(logbuf.String())
 	}()
 

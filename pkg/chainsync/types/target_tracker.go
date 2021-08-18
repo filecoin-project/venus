@@ -118,6 +118,7 @@ func (tq *TargetTracker) UnsubNewTarget(key string) {
 	}
 }
 
+// todo: we should pub a 'stable' target
 func (tq *TargetTracker) pubNewTarget() {
 	tq.subLk.Lock()
 	defer tq.subLk.Unlock()
@@ -198,6 +199,7 @@ func (tq *TargetTracker) Add(t *Target) bool {
 	sortTarget(tq.q)
 	// update lowweight
 	tq.lowWeight = tq.q[len(tq.q)-1].Head.At(0).ParentWeight
+
 	tq.pubNewTarget()
 	return true
 }

@@ -176,6 +176,24 @@ func (d *Dispatcher) Concurrent() int64 {
 	return d.maxCount
 }
 
+func (d *Dispatcher) selectStableTarget() (*types.Target, bool) {
+	target, popped := d.workTracker.Select()
+	if popped {
+		var stabled = false
+		for ; !stabled; {
+			var curTarget *types.Target
+			time.Sleep(time.Millisecond * 500)
+			if curTarget, popped = d.workTracker.Select(); !popped {
+				return nil, false
+			}
+			if stabled = curTarget.Head.Key().Equals(target.Head.Key()); !stabled {
+				target = curTarget
+			}
+		}
+	}
+	return target, popped
+}
+
 func (d *Dispatcher) syncWorkerV2(ctx context.Context) {
 	const chKey = "sync-worker"
 	ch := d.workTracker.SubNewTarget(chKey, 10)
@@ -188,7 +206,7 @@ func (d *Dispatcher) syncWorkerV2(ctx context.Context) {
 				break
 			}
 
-			if syncTarget, popped := d.workTracker.Select(); popped {
+			if syncTarget, popped := d.selectStableTarget(); popped {
 				fmt.Printf(`
 _sc|__________new sync target, height=%d_______
 _sc|blocks=%s
