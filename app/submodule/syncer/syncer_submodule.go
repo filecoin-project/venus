@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/clock"
 	"reflect"
 	"runtime"
 	"time"
@@ -24,7 +25,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync"
 	"github.com/filecoin-project/venus/pkg/chainsync/slashfilter"
-	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/net/blocksub"
 	"github.com/filecoin-project/venus/pkg/net/pubsub"
@@ -192,6 +192,7 @@ _sc|
 		log.Errorf("failed to save block %s", err)
 	}
 	go func() {
+		start := time.Now()
 		_, err = syncer.NetworkModule.FetchMessagesByCids(ctx, bm.BlsMessages)
 		if err != nil {
 			log.Errorf("failed to fetch all bls messages for block received over pubusb: %s; source: %s", err, source)
@@ -204,13 +205,23 @@ _sc|
 			return
 		}
 
-		syncer.NetworkModule.Host.ConnManager().TagPeer(sender, "new-block", 20)
+		if took := time.Since(start); took > 3*time.Second {
+			fmt.Printf("_sc| slow fetch block message: cid:%s\n", bm.Header.Cid().String())
+		}
+
+		if delay := uint64(time.Now().Unix()) - bm.Header.Timestamp; delay > 5 {
+			fmt.Printf("_sc| received block with large delay(%d(seconds)), cid:%s",
+				delay, bm.Header.Cid())
+		}
+
 		log.Infof("fetch message success at %s", bm.Header.Cid())
+
 		ts, _ := types.NewTipSet(header)
 		chainInfo := types.NewChainInfo(source, sender, ts)
-		err = syncer.ChainSyncManager.BlockProposer().SendGossipBlock(chainInfo)
-		if err != nil {
+		if err = syncer.ChainSyncManager.BlockProposer().SendGossipBlock(chainInfo); err != nil {
 			log.Errorf("failed to notify syncer of new block, block: %s", err)
+		} else {
+			syncer.NetworkModule.Host.ConnManager().TagPeer(sender, "new-block", 20)
 		}
 	}()
 	return nil
