@@ -120,7 +120,7 @@ func (d *Dispatcher) addTracker(ci *types2.ChainInfo) error {
 func (d *Dispatcher) Start(syncingCtx context.Context) {
 	go d.processIncoming(syncingCtx)
 
-	go d.syncWorker(syncingCtx)
+	go d.syncWorkerV2(syncingCtx)
 }
 
 func (d *Dispatcher) processIncoming(ctx context.Context) {
