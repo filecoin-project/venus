@@ -280,6 +280,11 @@ func (store *Store) loadHead() (types.TipSetKey, error) {
 
 // LoadTipsetMetadata load tipset status (state root and reciepts)
 func (store *Store) LoadTipsetMetadata(ts *types.TipSet) (*TipSetMetadata, error) {
+	// find tipsetMeta in the cache first
+	if meta, err := store.tipIndex.Get(ts); err == nil {
+		return meta, nil
+	}
+
 	h := ts.Height()
 	key := datastore.NewKey(makeKey(ts.String(), h))
 	tsStateBytes, err := store.ds.Get(key)

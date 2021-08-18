@@ -336,7 +336,7 @@ func (syncer *Syncer) widen(ctx context.Context, ts *types.TipSet) (*types.TipSe
 // to a chain bsstore.  Iff catchup is false then the syncer will set the head.
 func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Target) (err error) {
 	fmt.Printf(`
-_sc|______________HandleNewTipset start, height=%d_______
+_sc|______________begin HandleNewTipset start, height=%d_______
 _sc|blocks=%s
 _sc|
 `, target.Head.Height(), target.Head.Key().String())
