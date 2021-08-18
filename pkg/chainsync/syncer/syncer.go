@@ -377,11 +377,11 @@ _sc|------------------------------------------------------
 
 	err = syncer.syncSegement(ctx, target, tipsets)
 
-	, _ = fmt.Fprintf(buf, "_sc|syncSegment cost time:%.4f(seconds)\n",
+	_, _ = fmt.Fprintf(buf, "_sc|syncSegment cost time:%.4f(seconds)\n",
 		time.Since(now).Seconds())
 
 	if err != nil {
-		, _ = fmt.Fprintf(buf, "_sc|syncSegement failed:%s\n", err.Error())
+		_, _ = fmt.Fprintf(buf, "_sc|syncSegement failed:%s\n", err.Error())
 	} else {
 		syncer.delayRunTx.update(tipsets[len(tipsets)-1])
 	}
