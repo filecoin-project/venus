@@ -233,7 +233,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (ci
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
 func (c *Expected) runStateTransition(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
-	fmt.Printf("sc| runstatetransitino begin(%d)\n_sc|", ts.Height())
+	fmt.Printf("_sc| runstatetransition begin(%d)\n_sc|", ts.Height())
 	logbuf := &strings.Builder{}
 	begin := time.Now()
 
