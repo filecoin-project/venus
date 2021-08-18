@@ -928,7 +928,7 @@ func (d *delayRunTsTransition) update(ts *types.TipSet) {
 }
 
 func (d *delayRunTsTransition) listenUpdate() {
-	duration := time.Second * 8
+	duration := time.Second * 4
 	ticker := time.NewTicker(duration)
 	for {
 		select {
