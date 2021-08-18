@@ -178,14 +178,18 @@ func (d *Dispatcher) Concurrent() int64 {
 
 func (d *Dispatcher) selectStableTarget() (*types.Target, bool) {
 	target, popped := d.workTracker.Select()
+	const maxSleetCount = 2
 	if popped {
 		var stabled = false
-		for ; !stabled; {
+		for i := 0; i <= maxSleetCount && !stabled; i++ {
 			var curTarget *types.Target
-			time.Sleep(time.Millisecond * 250)
+
+			time.Sleep(time.Millisecond * 150)
+
 			if curTarget, popped = d.workTracker.Select(); !popped {
 				return nil, false
 			}
+
 			if stabled = curTarget.Head.Key().Equals(target.Head.Key()); !stabled {
 				target = curTarget
 			}
