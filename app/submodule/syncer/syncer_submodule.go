@@ -206,11 +206,11 @@ _sc|
 		}
 
 		if took := time.Since(start); took > 3*time.Second {
-			fmt.Printf("_sc| slow fetch block message: cid:%s\n", bm.Header.Cid().String())
+			fmt.Printf("_sc| slow fetch block message: cid:%s\n_sc|", bm.Header.Cid().String())
 		}
 
 		if delay := uint64(time.Now().Unix()) - bm.Header.Timestamp; delay > 5 {
-			fmt.Printf("_sc| received block with large delay(%d(seconds)), cid:%s",
+			fmt.Printf("_sc| received block with large delay(%d(seconds)), cid:%s\n_sc|\n",
 				delay, bm.Header.Cid())
 		}
 
