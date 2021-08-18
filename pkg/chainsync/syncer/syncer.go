@@ -88,7 +88,7 @@ type ChainReaderWriter interface {
 	GetTipSetStateRoot(*types.TipSet) (cid.Cid, error)
 	GetTipSetReceiptsRoot(*types.TipSet) (cid.Cid, error)
 	HasTipSetAndState(context.Context, *types.TipSet) bool
-	LoadTipsetMetadata(*types.TipSet) (*chain.TipSetMetadata, error)
+	GetTipsetMetadata(*types.TipSet) (*chain.TipSetMetadata, error)
 	PutTipSetMetadata(context.Context, *chain.TipSetMetadata) error
 	SetHead(context.Context, *types.TipSet) error
 	HasSiblingState(*types.TipSet) bool
@@ -195,7 +195,7 @@ func (syncer *Syncer) RunStateTransition(ctx context.Context, ts *types.TipSet) 
 		"_sc| tipset key:%s\n", ts.Height(), ts.Key().String())
 
 	var meta *chain.TipSetMetadata
-	if meta, err = syncer.chainStore.LoadTipsetMetadata(ts); err == nil {
+	if meta, err = syncer.chainStore.GetTipsetMetadata(ts); err == nil {
 		return meta.TipSetStateRoot, meta.TipSetReceipts, nil
 	}
 

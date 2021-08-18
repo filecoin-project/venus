@@ -280,11 +280,6 @@ func (store *Store) loadHead() (types.TipSetKey, error) {
 
 // LoadTipsetMetadata load tipset status (state root and reciepts)
 func (store *Store) LoadTipsetMetadata(ts *types.TipSet) (*TipSetMetadata, error) {
-	// find tipsetMeta in the cache first
-	if meta, err := store.tipIndex.Get(ts); err == nil {
-		return meta, nil
-	}
-
 	h := ts.Height()
 	key := datastore.NewKey(makeKey(ts.String(), h))
 	tsStateBytes, err := store.ds.Get(key)
@@ -438,6 +433,10 @@ func (store *Store) GetTipSetStateRoot(key *types.TipSet) (cid.Cid, error) {
 // GetTipSetReceiptsRoot returns the root CID of the message receipts for the tipset identified by `key`.
 func (store *Store) GetTipSetReceiptsRoot(key *types.TipSet) (cid.Cid, error) {
 	return store.tipIndex.GetTipSetReceiptsRoot(key)
+}
+
+func (store *Store) GetTipsetMetadata(ts *types.TipSet) (*TipSetMetadata, error) {
+	return store.tipIndex.Get(ts)
 }
 
 // HasTipSetAndState returns true iff the default store's tipindex is indexing
