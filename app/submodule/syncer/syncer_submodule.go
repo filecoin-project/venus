@@ -180,11 +180,6 @@ func (syncer *SyncerSubmodule) handleIncommingBlocks(ctx context.Context, msg pu
 	}
 
 	header := bm.Header
-	fmt.Printf(`_sc|____incomming new block:%d________
-_sc| block_cid:%s
-_sc|
-`, header.Height, header.Cid().String(), header.Parents.String())
-
 	span.AddAttributes(trace.StringAttribute("block", header.Cid().String()))
 	log.Infof("Received new block %s height %d from peer %s", header.Cid(), header.Height, sender)
 	_, err = syncer.ChainModule.ChainReader.PutObject(ctx, bm.Header)
@@ -192,6 +187,11 @@ _sc|
 		log.Errorf("failed to save block %s", err)
 	}
 	go func() {
+		fmt.Printf(`_sc|____incomming new block:%d________
+_sc| block_cid:%s
+_sc|
+`, header.Height, header.Cid().String(), header.Parents.String())
+
 		start := time.Now()
 		_, err = syncer.NetworkModule.FetchMessagesByCids(ctx, bm.BlsMessages)
 		if err != nil {
@@ -214,14 +214,14 @@ _sc|
 				delay, bm.Header.Cid())
 		}
 
+		syncer.NetworkModule.Host.ConnManager().TagPeer(sender, "new-block", 20)
 		log.Infof("fetch message success at %s", bm.Header.Cid())
 
 		ts, _ := types.NewTipSet(header)
 		chainInfo := types.NewChainInfo(source, sender, ts)
+
 		if err = syncer.ChainSyncManager.BlockProposer().SendGossipBlock(chainInfo); err != nil {
 			log.Errorf("failed to notify syncer of new block, block: %s", err)
-		} else {
-			syncer.NetworkModule.Host.ConnManager().TagPeer(sender, "new-block", 20)
 		}
 	}()
 	return nil
