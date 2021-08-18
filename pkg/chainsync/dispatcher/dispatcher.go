@@ -176,7 +176,7 @@ func (d *Dispatcher) Concurrent() int64 {
 	return d.maxCount
 }
 
-func (d *Dispatcher) syncWorker(ctx context.Context) {
+func (d *Dispatcher) syncWorkerV2(ctx context.Context) {
 	const chKey = "sync-worker"
 	ch := d.workTracker.SubNewTarget(chKey, 10)
 	var unsolvedNotify = int64(0)
@@ -235,7 +235,7 @@ _sc|
 
 // syncWorker  get sync target from work tracker periodically,
 // read all sync targets each time, and start synchronization
-func (d *Dispatcher) syncWorker_deprecated(ctx context.Context) {
+func (d *Dispatcher) syncWorker(ctx context.Context) {
 	ticker := time.NewTicker(time.Millisecond * 500)
 	defer ticker.Stop()
 	for {
