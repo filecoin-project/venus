@@ -334,11 +334,11 @@ _sc|
 	now := time.Now()
 	buf := &strings.Builder{}
 
-	fmt.Fprintf(buf, `
+	_, _ = fmt.Fprintf(buf, `
 _sc|______________HandleNewTipset end, height=%d, detail:______________
 _sc|blockcount:%d, 
 _sc|blocks:%s
-_sc|`, target.Head.Height(), target.Head.Len(), target.Head.Key())
+`, target.Head.Height(), target.Head.Len(), target.Head.Key())
 
 	defer func() {
 		if err != nil {
@@ -348,7 +348,7 @@ _sc|`, target.Head.Height(), target.Head.Len(), target.Head.Key())
 			target.State = syncTypes.StageSyncComplete
 		}
 		tracing.AddErrorEndSpan(ctx, span, &err)
-		fmt.Fprintf(buf, `
+		_, _ = fmt.Fprintf(buf, `
 _sc|total cost time:%.4f(seconds)
 _sc|------------------------------------------------------		
 _sc|------------------------------------------------------		
@@ -370,18 +370,18 @@ _sc|------------------------------------------------------
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
-	fmt.Fprintf(buf, "_sc|fetchChainBlock(%d), cost time:%d\n",
+	_, _ = fmt.Fprintf(buf, "_sc|fetchChainBlock(%d), cost time:%d\n",
 		target.Head.Len(), time.Since(now).Milliseconds())
 
 	logSyncer.Infof("fetch header success at %v %s ...", tipsets[0].Height(), tipsets[0].Key())
 
 	err = syncer.syncSegement(ctx, target, tipsets)
 
-	fmt.Fprintf(buf, "_sc|syncSegment cost time:%.4f(seconds)\n",
+	, _ = fmt.Fprintf(buf, "_sc|syncSegment cost time:%.4f(seconds)\n",
 		time.Since(now).Seconds())
 
 	if err != nil {
-		fmt.Fprintf(buf, "_sc|syncSegement failed:%s\n", err.Error())
+		, _ = fmt.Fprintf(buf, "_sc|syncSegement failed:%s\n", err.Error())
 	} else {
 		syncer.delayRunTx.update(tipsets[len(tipsets)-1])
 	}
