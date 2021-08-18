@@ -187,12 +187,12 @@ func (syncer *SyncerSubmodule) handleIncommingBlocks(ctx context.Context, msg pu
 		log.Errorf("failed to save block %s", err)
 	}
 	go func() {
+		start := time.Now()
 		fmt.Printf(`_sc|____incomming new block:%d________
 _sc| block_cid:%s
 _sc|
 `, header.Height, header.Cid().String(), header.Parents.String())
 
-		start := time.Now()
 		_, err = syncer.NetworkModule.FetchMessagesByCids(ctx, bm.BlsMessages)
 		if err != nil {
 			log.Errorf("failed to fetch all bls messages for block received over pubusb: %s; source: %s", err, source)
@@ -223,6 +223,8 @@ _sc|
 		if err = syncer.ChainSyncManager.BlockProposer().SendGossipBlock(chainInfo); err != nil {
 			log.Errorf("failed to notify syncer of new block, block: %s", err)
 		}
+		fmt.Printf("_sc|_____imcomming new block(%d) cost time = %.4f(seconds)\n",
+			bm.Header.Height, time.Since(start).Seconds())
 	}()
 	return nil
 }
