@@ -206,7 +206,7 @@ func (d *Dispatcher) syncWorkerV2(ctx context.Context) {
 				break
 			}
 
-			if syncTarget, popped := d.selectStableTarget(); popped {
+			if syncTarget, popped := d.workTracker.Select(); popped {
 				fmt.Printf(`
 _sc|__________new sync target, height=%d_______
 _sc|blocks=%s
