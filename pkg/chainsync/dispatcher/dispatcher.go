@@ -182,7 +182,7 @@ func (d *Dispatcher) selectStableTarget() (*types.Target, bool) {
 		var stabled = false
 		for ; !stabled; {
 			var curTarget *types.Target
-			time.Sleep(time.Millisecond * 200)
+			time.Sleep(time.Millisecond * 250)
 			if curTarget, popped = d.workTracker.Select(); !popped {
 				return nil, false
 			}
