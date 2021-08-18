@@ -186,20 +186,10 @@ func NewSyncer(fv StateProcessor,
 func (syncer *Syncer) RunStateTransition(ctx context.Context, ts *types.TipSet) (stateRoot cid.Cid, receipt cid.Cid, err error) {
 	logbuf := &strings.Builder{}
 
-	defer func() {
-		_, _ = fmt.Fprintf(logbuf, "_sc|-------------------------------------\n_sc|\n")
-		fmt.Printf(logbuf.String())
-	}()
-
-	_, _ = fmt.Fprintf(logbuf, "_sc|______RunStateTransaction(%d) details____________________\n"+
-		"_sc| tipset key:%s\n", ts.Height(), ts.Key().String())
-
 	var meta *chain.TipSetMetadata
 	if meta, err = syncer.chainStore.GetTipsetMetadata(ts); err == nil {
 		return meta.TipSetStateRoot, meta.TipSetReceipts, nil
 	}
-
-	beginTime := time.Now()
 
 	if stateRoot, receipt, err = syncer.stateProcessor.RunStateTransition(ctx, ts); err != nil {
 		_, _ = fmt.Fprintf(logbuf, "_sc|calc current tipset %s state failed %s\n",
@@ -208,15 +198,11 @@ func (syncer *Syncer) RunStateTransition(ctx context.Context, ts *types.TipSet) 
 			ts.Key().String(), err.Error())
 	}
 
-	_, _ = fmt.Fprintf(logbuf, "_sc| RunStateTransition Height:%d, Blocks:%d, Root:%s, Receipt:%s, cost time:%.3f(seconds)\n",
-		ts.Height(), ts.Len(), stateRoot, receipt, time.Since(beginTime).Seconds())
-
 	if err = syncer.chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
 		TipSetStateRoot: stateRoot,
 		TipSetReceipts:  receipt,
 	}); err != nil {
-		_, _ = fmt.Fprintf(logbuf, "_sc| PutTipsetMetadata failed:%s\n", err.Error())
 		return cid.Undef, cid.Undef, err
 	}
 

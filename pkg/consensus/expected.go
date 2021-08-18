@@ -3,6 +3,8 @@ package consensus
 import "C"
 import (
 	"context"
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -231,17 +233,37 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (ci
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
 func (c *Expected) runStateTransition(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+	fmt.Printf("sc| runstatetransitino begin(%d)\n_sc|", ts.Height())
+	logbuf := &strings.Builder{}
+	begin := time.Now()
+
+	defer func() {
+		_, _ = fmt.Fprintf(logbuf,
+			`_sc| total cost time = %.4f(seconds)
+_sc|-------------------------------------
+_sc|`, time.Since(begin).Seconds())
+		fmt.Printf(logbuf.String())
+	}()
+
+	_, _ = fmt.Fprintf(logbuf, "_sc|______RunStateTransaction(%d) details____________________\n"+
+		"_sc| tipset key:%s\n", ts.Height(), ts.Key().String())
+
 	ctx, span := trace.StartSpan(ctx, "Expected.innerRunStateTransition")
 	defer span.End()
 	span.AddAttributes(trace.StringAttribute("blocks", ts.String()))
 	span.AddAttributes(trace.Int64Attribute("height", int64(ts.Height())))
 
+	beginLoadTsMessage := time.Now()
 	blockMessageInfo, err := c.messageStore.LoadTipSetMessage(ctx, ts)
 	if err != nil {
+		_, _ = fmt.Fprintf(logbuf, "_sc| load tipset message failed::%s\n", err.Error())
 		return cid.Undef, cid.Undef, err
 	}
+	_, _ = fmt.Fprintf(logbuf, "_sc| load tipset message cost time:%.4f(s)\n",
+		time.Since(beginLoadTsMessage).Seconds())
 	// process tipset
 	var pts *types.TipSet
+
 	if ts.Height() == 0 {
 		// NB: This is here because the process that executes blocks requires that the
 		// block miner reference a valid miner in the state tree. Unless we create some
@@ -250,8 +272,8 @@ func (c *Expected) runStateTransition(ctx context.Context, ts *types.TipSet) (ci
 		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
 	} else if ts.Height() > 0 {
 		parent := ts.Parents()
-		pts, err = c.chainState.GetTipSet(parent)
-		if err != nil {
+		if pts, err = c.chainState.GetTipSet(parent); err != nil {
+			_, _ = fmt.Fprintf(logbuf, "_sc| get parent tipset failed:%s\n", err.Error())
 			return cid.Undef, cid.Undef, err
 		}
 	} else {
@@ -281,13 +303,24 @@ func (c *Expected) runStateTransition(ctx context.Context, ts *types.TipSet) (ci
 		PRoot:             ts.At(0).ParentStateRoot,
 		SysCallsImpl:      c.syscallsImpl,
 	}
+
+	beginProcessTipset := time.Now()
 	root, receipts, err := c.processor.ProcessTipSet(ctx, pts, ts, blockMessageInfo, vmOption)
 	if err != nil {
+		_, _ = fmt.Fprintf(logbuf, "_sc| processTipset failed:%s\n", err.Error())
 		return cid.Undef, cid.Undef, errors.Wrap(err, "error validating tipset")
 	}
+	_, _ = fmt.Fprintf(logbuf, "_sc| processTipset cost time:%.4f(s)\n",
+		time.Since(beginProcessTipset).Seconds())
+
+	beginStoreReceipts := time.Now()
 	receiptCid, err := c.messageStore.StoreReceipts(ctx, receipts)
 	if err != nil {
+		_, _ = fmt.Fprintf(logbuf, "_sc| store receipts failed:%s\n", err.Error())
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to save receipt: %v", err)
 	}
+	_, _ = fmt.Fprintf(logbuf, "_sc| storeReceipts cost time:%.4f(s)\n",
+		time.Since(beginStoreReceipts).Seconds())
+
 	return root, receiptCid, nil
 }
