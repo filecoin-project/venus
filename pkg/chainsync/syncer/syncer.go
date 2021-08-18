@@ -338,7 +338,7 @@ _sc|
 _sc|______________HandleNewTipset end, height=%d, detail:______________
 _sc|blockcount:%d, 
 _sc|blocks:%s
-`, target.Head.Height(), target.Head.Len(), target.Head.Key())
+_sc|`, target.Head.Height(), target.Head.Len(), target.Head.Key())
 
 	defer func() {
 		if err != nil {
