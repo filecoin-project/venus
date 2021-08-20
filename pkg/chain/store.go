@@ -927,28 +927,21 @@ func (store *Store) Import(r io.Reader) (*types.TipSet, error) {
 		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
 	}
 
-	parent := root.Parents()
+	// Notice here is different with lotus, because the head tipset in lotus is not computed,
+	// but in venus the head tipset is computed, so here we will fallback a pre tipset
+	// and the chain store must has a metadata for each tipset, below code is to build the tipset metadata
 
-	//Notice here is different with lotus, because the head tipset in lotus is not computed,
-	//but in venus the head tipset is computed, so here we will fallback a pre tipset
-	//and the chain store must has a metadata for each tipset, below code is to build the tipset metadata
-	log.Info("import height: ", root.Height(), " root: ", root.At(0).ParentStateRoot, " parents: ", root.At(0).Parents)
-	parentTipset, err := store.GetTipSet(parent)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
-	}
-	err = store.PutTipSetMetadata(context.Background(), &TipSetMetadata{
-		TipSetStateRoot: root.At(0).ParentStateRoot,
-		TipSet:          parentTipset,
-		TipSetReceipts:  root.At(0).ParentMessageReceipts,
-	})
-	if err != nil {
-		return nil, err
-	}
+	// Todo What to do if it is less than 900
+	var (
+		loopBack  = 900
+		curTipset = root
+	)
 
-	loopBack := 900
-	curTipset := parentTipset
+	log.Info("import height: ", root.Height(), " root: ", root.String(), " parents: ", root.At(0).Parents)
 	for i := 0; i < loopBack; i++ {
+		if curTipset.Height() <= 0 {
+			break
+		}
 		curTipsetKey := curTipset.Parents()
 		curParentTipset, err := store.GetTipSet(curTipsetKey)
 		if err != nil {
@@ -970,7 +963,14 @@ func (store *Store) Import(r io.Reader) (*types.TipSet, error) {
 		}
 		curTipset = curParentTipset
 	}
-	return parentTipset, nil
+
+	if root.Height() > 0 {
+		root, err = store.GetTipSet(root.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
+		}
+	}
+	return root, nil
 }
 
 // SetCheckPoint set current checkpoint

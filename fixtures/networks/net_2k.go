@@ -47,7 +47,7 @@ func Net2k() *NetworkConf {
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,
-			PreCommitChallengeDelay: abi.ChainEpoch(150),
+			PreCommitChallengeDelay: abi.ChainEpoch(10),
 		},
 	}
 }
