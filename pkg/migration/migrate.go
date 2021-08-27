@@ -78,15 +78,10 @@ func Version3Upgrade(repoPath string) error {
 
 func Version4Upgrade(repoPath string) (err error) {
 	var fsrRepo repo.Repo
-
 	if fsrRepo, err = repo.OpenFSRepo(repoPath, 3); err != nil {
 		return
 	}
-
-	defer func() { err = fsrRepo.Close() }()
-
 	cfg := fsrRepo.Config()
-
 	switch cfg.NetworkParams.NetworkType {
 	case constants.NetworkMainnet:
 		cfg.NetworkParams.ForkUpgradeParam = config.DefaultForkUpgradeParam
@@ -97,14 +92,16 @@ func Version4Upgrade(repoPath string) (err error) {
 	case constants.NetworkNerpa:
 		cfg.NetworkParams.ForkUpgradeParam = networks.NerpaNet().Network.ForkUpgradeParam
 	default:
-		return nil
+		return fsrRepo.Close()
 	}
 
 	if err = fsrRepo.ReplaceConfig(cfg); err != nil {
 		return
 	}
+
 	if err = fsrRepo.Close(); err != nil {
 		return
 	}
+
 	return repo.WriteVersion(repoPath, 4)
 }

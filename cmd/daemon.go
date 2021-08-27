@@ -291,8 +291,7 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = migration.TryToMigrate(repoDir)
-	if err != nil {
+	if err = migration.TryToMigrate(repoDir); err != nil {
 		return nil, err
 	}
 	return repo.OpenFSRepo(repoDir, repo.LatestVersion)
