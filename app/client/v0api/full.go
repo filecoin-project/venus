@@ -124,6 +124,7 @@ type IChainInfoStruct struct {
 		ChainExport                   func(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey) (<-chan []byte, error)                                    `perm:"read"`
 		ChainGetBlock                 func(p0 context.Context, p1 cid.Cid) (*types.BlockHeader, error)                                                                   `perm:"read"`
 		ChainGetBlockMessages         func(p0 context.Context, p1 cid.Cid) (*apitypes.BlockMessages, error)                                                              `perm:"read"`
+		ChainGetBlockRewardByHeight   func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) ([]types.BlockReward, error)                                       `perm:"read"`
 		ChainGetMessage               func(p0 context.Context, p1 cid.Cid) (*types.UnsignedMessage, error)                                                               `perm:"read"`
 		ChainGetMessagesInTipset      func(p0 context.Context, p1 types.TipSetKey) ([]apitypes.Message, error)                                                           `perm:"read"`
 		ChainGetParentMessages        func(p0 context.Context, p1 cid.Cid) ([]apitypes.Message, error)                                                                   `perm:"read"`
@@ -169,6 +170,10 @@ func (s *IChainInfoStruct) ChainGetBlock(p0 context.Context, p1 cid.Cid) (*types
 
 func (s *IChainInfoStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*apitypes.BlockMessages, error) {
 	return s.Internal.ChainGetBlockMessages(p0, p1)
+}
+
+func (s *IChainInfoStruct) ChainGetBlockRewardByHeight(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) ([]types.BlockReward, error) {
+	return s.Internal.ChainGetBlockRewardByHeight(p0, p1, p2)
 }
 
 func (s *IChainInfoStruct) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.UnsignedMessage, error) {

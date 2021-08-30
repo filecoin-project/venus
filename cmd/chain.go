@@ -8,8 +8,11 @@ import (
 	"fmt"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"os"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/filecoin-project/venus/cmd/tablewriter"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -29,12 +32,13 @@ var chainCmd = &cmds.Command{
 		Tagline: "Inspect the filecoin blockchain",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"head":     chainHeadCmd,
-		"ls":       chainLsCmd,
-		"set-head": chainSetHeadCmd,
-		"getblock": chainGetBlockCmd,
-		"disputer": chainDisputeSetCmd,
-		"export":   chainExportCmd,
+		"head":         chainHeadCmd,
+		"ls":           chainLsCmd,
+		"set-head":     chainSetHeadCmd,
+		"getblock":     chainGetBlockCmd,
+		"disputer":     chainDisputeSetCmd,
+		"export":       chainExportCmd,
+		"block-reward": chainGetBlockRewardCmd,
 	},
 }
 
@@ -228,6 +232,47 @@ var chainGetBlockCmd = &cmds.Command{
 		}
 
 		_ = writer.Write(out)
+
+		return re.Emit(buf)
+	},
+}
+
+var chainGetBlockRewardCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Get blocks reward by height.",
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("height", true, true, ""),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		height, err := strconv.ParseInt(req.Arguments[0], 10, 64)
+		if err != nil {
+			return err
+		}
+
+		ctx := req.Context
+		blksReward, err := env.(*node.Env).ChainAPI.ChainGetBlockRewardByHeight(ctx, abi.ChainEpoch(height), types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("get block reward failed: %w", err)
+		}
+
+		buf := new(bytes.Buffer)
+		tw := tablewriter.New(
+			tablewriter.Col("Block"),
+			tablewriter.Col("Reward"),
+			tablewriter.Col("WinCount"))
+
+		for _, br := range blksReward {
+			tw.Write(map[string]interface{}{
+				"Block":    br.Block.Cid().String(),
+				"Reward":   types.MustParseFIL(br.Rewards.String() + "attofil"),
+				"WinCount": br.Block.ElectionProof.WinCount,
+			})
+		}
+
+		if err := tw.Flush(buf); err != nil {
+			return err
+		}
 
 		return re.Emit(buf)
 	},

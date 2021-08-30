@@ -149,6 +149,8 @@ type IChainInfo interface {
 	ChainExport(context.Context, abi.ChainEpoch, bool, types.TipSetKey) (<-chan []byte, error)
 	// Rule[perm:read]
 	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*chain.HeadChange, error)
+	// Rule[perm:read]
+	ChainGetBlockRewardByHeight(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) ([]types.BlockReward, error)
 }
 
 type IMinerState interface {

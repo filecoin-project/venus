@@ -54,7 +54,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context,
 	parent, ts *types.TipSet,
 	msgs []types.BlockMessagesInfo,
 	vmOption vm.VmOption,
-) (cid.Cid, []types.MessageReceipt, error) {
+) (cid.Cid, []types.MessageReceipt, []types.BlockReward, error) {
 	_, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 
@@ -66,7 +66,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context,
 
 	v, err := vm.NewVM(vmOption)
 	if err != nil {
-		return cid.Undef, nil, err
+		return cid.Undef, nil, nil, err
 	}
 
 	return v.ApplyTipSetMessages(msgs, ts, parentEpoch, epoch, nil)

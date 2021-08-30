@@ -21,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
+	reward5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/reward"
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -198,7 +199,11 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 }
 
 // ApplyTipSetMessages implements interpreter.VMInterpreter
-func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.TipSet, parentEpoch, epoch abi.ChainEpoch, cb ExecCallBack) (cid.Cid, []types.MessageReceipt, error) {
+func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo,
+	ts *types.TipSet,
+	parentEpoch,
+	epoch abi.ChainEpoch,
+	cb ExecCallBack) (cid.Cid, []types.MessageReceipt, []types.BlockReward, error) {
 	toProcessTipset := time.Now()
 	var receipts []types.MessageReceipt
 	pstate, _ := vm.State.Flush(vm.context)
@@ -208,15 +213,15 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 			cronMessage := makeCronTickMessage()
 			ret, err := vm.applyImplicitMessage(cronMessage)
 			if err != nil {
-				return cid.Undef, nil, err
+				return cid.Undef, nil, nil, err
 			}
 			pstate, err = vm.Flush()
 			if err != nil {
-				return cid.Undef, nil, xerrors.Errorf("can not Flush vm State To db %vs", err)
+				return cid.Undef, nil, nil, xerrors.Errorf("can not Flush vm State To db %vs", err)
 			}
 			if cb != nil {
 				if err := cb(cid.Undef, cronMessage, ret); err != nil {
-					return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
+					return cid.Undef, nil, nil, xerrors.Errorf("callback failed on cron message: %w", err)
 				}
 			}
 		}
@@ -224,13 +229,13 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 		// XXX: The State tree
 		forkedCid, err := vm.vmOption.Fork.HandleStateForks(vm.context, pstate, i, ts)
 		if err != nil {
-			return cid.Undef, nil, xerrors.Errorf("hand fork error: %v", err)
+			return cid.Undef, nil, nil, xerrors.Errorf("hand fork error: %v", err)
 		}
 		vmlog.Debugf("after fork root: %s\n", forkedCid)
 		if pstate != forkedCid {
 			err = vm.State.At(forkedCid)
 			if err != nil {
-				return cid.Undef, nil, xerrors.Errorf("load fork cid error: %v", err)
+				return cid.Undef, nil, nil, xerrors.Errorf("load fork cid error: %v", err)
 			}
 		}
 		vm.SetCurrentEpoch(i + 1)
@@ -239,6 +244,8 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 	// create message tracker
 	// Note: the same message could have been included by more than one miner
 	seenMsgs := make(map[cid.Cid]struct{})
+
+	blkRewards := make([]types.BlockReward, 0, len(blocks))
 
 	// process messages on each block
 	for index, blkInfo := range blocks {
@@ -263,7 +270,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 			// apply message
 			ret, err := vm.applyMessage(m.VMMessage(), m.ChainLength())
 			if err != nil {
-				return cid.Undef, nil, xerrors.Errorf("execute message error %s : %v", mcid, err)
+				return cid.Undef, nil, nil, xerrors.Errorf("execute message error %s : %v", mcid, err)
 			}
 			// accumulate result
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, ret.OutPuts.MinerPenalty)
@@ -271,7 +278,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 			receipts = append(receipts, ret.Receipt)
 			if cb != nil {
 				if err := cb(mcid, VmMessageFromUnsignedMessage(m.VMMessage()), ret); err != nil {
-					return cid.Undef, nil, err
+					return cid.Undef, nil, nil, err
 				}
 			}
 			// flag msg as seen
@@ -301,13 +308,36 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 		rewardMessage := makeBlockRewardMessage(blkInfo.Block.Miner, minerPenaltyTotal, minerGasRewardTotal, blkInfo.Block.ElectionProof.WinCount)
 		ret, err := vm.applyImplicitMessage(rewardMessage)
 		if err != nil {
-			return cid.Undef, nil, err
+			return cid.Undef, nil, nil, err
 		}
 		if cb != nil {
 			if err := cb(cid.Undef, rewardMessage, ret); err != nil {
-				return cid.Undef, nil, xerrors.Errorf("callback failed on reward message: %w", err)
+				return cid.Undef, nil, nil, xerrors.Errorf("callback failed on reward message: %w", err)
 			}
 		}
+
+		// calculate block reward
+		actor, found, err := vm.State.GetActor(vm.context, reward.Address)
+		if err != nil {
+			return cid.Undef, nil, nil, err
+		}
+		if !found {
+			return cid.Undef, nil, nil, xerrors.Errorf("not found actor")
+		}
+		state, err := reward.Load(adt.WrapStore(vm.context, vm.store), actor)
+		if err != nil {
+			return cid.Undef, nil, nil, err
+		}
+		epochReward, err := state.ThisEpochReward()
+		if err != nil {
+			return cid.Undef, nil, nil, err
+		}
+		blockReward := types.BigMul(epochReward, types.NewInt(uint64(blkInfo.Block.ElectionProof.WinCount)))
+		blockReward = types.BigDiv(blockReward, types.NewInt(uint64(builtin.ExpectedLeadersPerEpoch)))
+		totalRewards := types.BigAdd(blockReward, minerGasRewardTotal)
+		penalty := types.BigMul(minerPenaltyTotal, types.NewInt(uint64(reward5.PenaltyMultiplier)))
+		totalRewards = types.BigSub(totalRewards, penalty)
+		blkRewards = append(blkRewards, types.BlockReward{Block: blkInfo.Block, Rewards: big.NewFromGo(totalRewards.Int), Penalty: penalty})
 
 		if vm.vmDebug {
 			root, _ := vm.State.Flush(context.TODO())
@@ -322,11 +352,11 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 
 	ret, err := vm.applyImplicitMessage(cronMessage)
 	if err != nil {
-		return cid.Undef, nil, err
+		return cid.Undef, nil, nil, err
 	}
 	if cb != nil {
 		if err := cb(cid.Undef, cronMessage, ret); err != nil {
-			return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
+			return cid.Undef, nil, nil, xerrors.Errorf("callback failed on cron message: %w", err)
 		}
 	}
 
@@ -342,10 +372,10 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 	// commit stateView
 	root, err := vm.Flush()
 	if err != nil {
-		return cid.Undef, nil, err
+		return cid.Undef, nil, nil, err
 	}
 	//copy to db
-	return root, receipts, nil
+	return root, receipts, blkRewards, nil
 }
 
 // applyImplicitMessage applies messages automatically generated by the vm itself.

@@ -3,22 +3,27 @@ package chain
 import (
 	"bufio"
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	logging "github.com/ipfs/go-log/v2"
 	"io"
 	"time"
 
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/types"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/consensus"
+	"github.com/filecoin-project/venus/pkg/state/tree"
+	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/vm"
+	"github.com/filecoin-project/venus/pkg/vm/gas"
 )
 
 var _ apiface.IChainInfo = &chainInfoAPI{}
@@ -45,7 +50,7 @@ func (cia *chainInfoAPI) BlockTime(ctx context.Context) time.Duration {
 func (cia *chainInfoAPI) ChainList(ctx context.Context, tsKey types.TipSetKey, count int) ([]types.TipSetKey, error) {
 	fromTS, err := cia.chain.ChainReader.GetTipSet(tsKey)
 	if err != nil {
-		return nil, xerrors.Errorf("could not retrieve network name %w", err)
+		return nil, xerrors.Errorf("could not retrieve network name %v", err)
 	}
 	tipset, err := cia.chain.ChainReader.Ls(ctx, fromTS, count)
 	if err != nil {
@@ -62,14 +67,14 @@ func (cia *chainInfoAPI) ChainList(ctx context.Context, tsKey types.TipSetKey, c
 func (cia *chainInfoAPI) ProtocolParameters(ctx context.Context) (*apitypes.ProtocolParams, error) {
 	networkName, err := cia.getNetworkName(ctx)
 	if err != nil {
-		return nil, xerrors.Errorf("could not retrieve network name %w", err)
+		return nil, xerrors.Errorf("could not retrieve network name %v", err)
 	}
 
 	var supportedSectors []apitypes.SectorInfo
 	for proof := range miner0.SupportedProofTypes {
 		size, err := proof.SectorSize()
 		if err != nil {
-			return nil, xerrors.Errorf("could not retrieve network name %w", err)
+			return nil, xerrors.Errorf("could not retrieve network name %v", err)
 		}
 		maxUserBytes := abi.PaddedPieceSize(size).Unpadded()
 		supportedSectors = append(supportedSectors, apitypes.SectorInfo{Size: size, MaxPieceSize: maxUserBytes})
@@ -117,7 +122,7 @@ func (cia *chainInfoAPI) ChainGetTipSetByHeight(ctx context.Context, height abi.
 func (cia *chainInfoAPI) ChainGetTipSetAfterHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	ts, err := cia.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
 	return cia.chain.ChainReader.GetTipSetByHeight(ctx, ts, h, false)
 }
@@ -308,6 +313,69 @@ func (cia *chainInfoAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Ci
 	}
 
 	return out, nil
+}
+
+func (cia *chainInfoAPI) ChainGetBlockRewardByHeight(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) ([]types.BlockReward, error) {
+	ts, err := cia.ChainGetTipSetByHeight(ctx, height, tsk)
+	if err != nil {
+		return nil, err
+	}
+	if ts.Height() != height {
+		return nil, xerrors.Errorf("found ts height %d not match target height %d", ts.Height(), height)
+	}
+
+	// process tipset
+	var pts *types.TipSet
+	if ts.Height() == 0 {
+		// NB: This is here because the process that executes blocks requires that the
+		// block miner reference a valid miner in the state tree. Unless we create some
+		// magical genesis miner, this won't work properly, so we short circuit here
+		// This avoids the question of 'who gets paid the genesis block reward'
+		return make([]types.BlockReward, 0), nil
+	} else if ts.Height() > 0 {
+		parent := ts.Parents()
+		pts, err = cia.ChainGetTipSet(ctx, parent)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return make([]types.BlockReward, 0), nil
+	}
+
+	parentStateRoot, err := cia.chain.ChainReader.GetTipSetStateRoot(pts)
+	if err != nil {
+		return nil, xerrors.Errorf("get parent tipset state failed %v", err)
+	}
+
+	blockMessageInfo, err := cia.chain.MessageStore.LoadTipSetMessage(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	vmOption := vm.VmOption{
+		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
+			dertail, err := cia.chain.ChainReader.GetCirculatingSupplyDetailed(ctx, epoch, tree)
+			if err != nil {
+				return abi.TokenAmount{}, err
+			}
+			return dertail.FilCirculating, nil
+		},
+		NtwkVersionGetter: cia.chain.Fork.GetNtwkVersion,
+		Rnd:               consensus.NewHeadRandomness(cia.chain.API(), ts.Key()),
+		BaseFee:           ts.At(0).ParentBaseFee,
+		Fork:              cia.chain.Fork,
+		Epoch:             ts.At(0).Height,
+		GasPriceSchedule:  gas.NewPricesSchedule(cia.chain.Fork.GetForkUpgrade()),
+		Bsstore:           cia.chain.ChainReader.Blockstore(),
+		PRoot:             parentStateRoot,
+		SysCallsImpl:      cia.chain.SystemCall,
+	}
+	_, _, blksReward, err := cia.chain.Processor.ProcessTipSet(ctx, pts, ts, blockMessageInfo, vmOption)
+	if err != nil {
+		return nil, xerrors.Errorf("error validating tipset: %v", err)
+	}
+
+	return blksReward, nil
 }
 
 // ResolveToKeyAddr resolve user address to t0 address
@@ -599,16 +667,16 @@ func (cia *chainInfoAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch,
 func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*chain.HeadChange, error) {
 	fts, err := cia.chain.ChainReader.GetTipSet(from)
 	if err != nil {
-		return nil, xerrors.Errorf("loading from tipset %s: %w", from, err)
+		return nil, xerrors.Errorf("loading from tipset %s: %v", from, err)
 	}
 	tts, err := cia.chain.ChainReader.GetTipSet(to)
 	if err != nil {
-		return nil, xerrors.Errorf("loading to tipset %s: %w", to, err)
+		return nil, xerrors.Errorf("loading to tipset %s: %v", to, err)
 	}
 
 	revert, apply, err := chain.ReorgOps(cia.chain.ChainReader.GetTipSet, fts, tts)
 	if err != nil {
-		return nil, xerrors.Errorf("error getting tipset branches: %w", err)
+		return nil, xerrors.Errorf("error getting tipset branches: %v", err)
 	}
 
 	path := make([]*chain.HeadChange, len(revert)+len(apply))
