@@ -305,6 +305,8 @@ func setConfigFromOptions(cfg *config.Config, network string) error {
 		netcfg = networks.Mainnet()
 	case "nerpa":
 		netcfg = networks.NerpaNet()
+	case "force":
+		netcfg = networks.ForceNet()
 	case "testnetnet":
 		netcfg = networks.Testnet()
 	case "integrationnet":
@@ -343,6 +345,8 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string, network 
 			bs, err = asset.Asset("fixtures/_assets/car/calibnet.car")
 		case "interop":
 			bs, err = asset.Asset("fixtures/_assets/car/interopnet.car")
+		case "force":
+			bs, err = asset.Asset("fixtures/_assets/car/forcenet.car")
 		default:
 			bs, err = asset.Asset("fixtures/_assets/car/devnet.car")
 		}
