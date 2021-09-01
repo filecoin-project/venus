@@ -505,6 +505,31 @@ func (cia *chainInfoAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch,
 	return out, nil
 }
 
+func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*chain.HeadChange, error) {
+	fts, err := cia.chain.ChainReader.GetTipSet(from)
+	if err != nil {
+		return nil, xerrors.Errorf("loading from tipset %s: %w", from, err)
+	}
+	tts, err := cia.chain.ChainReader.GetTipSet(to)
+	if err != nil {
+		return nil, xerrors.Errorf("loading to tipset %s: %w", to, err)
+	}
+
+	revert, apply, err := chain.ReorgOps(cia.chain.ChainReader.GetTipSet, fts, tts)
+	if err != nil {
+		return nil, xerrors.Errorf("error getting tipset branches: %w", err)
+	}
+
+	path := make([]*chain.HeadChange, len(revert)+len(apply))
+	for i, r := range revert {
+		path[i] = &chain.HeadChange{Type: chain.HCRevert, Val: r}
+	}
+	for j, i := 0, len(apply)-1; i >= 0; j, i = j+1, i-1 {
+		path[j+len(revert)] = &chain.HeadChange{Type: chain.HCApply, Val: apply[i]}
+	}
+	return path, nil
+}
+
 // StateGetReceipt returns the message receipt for the given message
 //func (cia *chainInfoAPI) StateGetReceipt(ctx context.Context, msg cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error) {
 //	chainMsg, err := cia.chain.MessageStore.LoadMessage(msg)

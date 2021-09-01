@@ -87,12 +87,14 @@ type IChainStruct struct {
 
 type IChainInfoStruct struct {
 	BlockTime                     func(p0 context.Context) time.Duration                                                                                             `perm:"read"`
+	ChainExport                   func(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey) (<-chan []byte, error)                                    `perm:"read"`
 	ChainGetBlock                 func(p0 context.Context, p1 cid.Cid) (*types.BlockHeader, error)                                                                   `perm:"read"`
 	ChainGetBlockMessages         func(p0 context.Context, p1 cid.Cid) (*apitypes.BlockMessages, error)                                                              `perm:"read"`
 	ChainGetMessage               func(p0 context.Context, p1 cid.Cid) (*types.UnsignedMessage, error)                                                               `perm:"read"`
 	ChainGetMessagesInTipset      func(p0 context.Context, p1 types.TipSetKey) ([]apitypes.Message, error)                                                           `perm:"read"`
 	ChainGetParentMessages        func(p0 context.Context, p1 cid.Cid) ([]apitypes.Message, error)                                                                   `perm:"read"`
 	ChainGetParentReceipts        func(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error)                                                              `perm:"read"`
+	ChainGetPath                  func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*chain.HeadChange, error)                                      `perm:"read"`
 	ChainGetRandomnessFromBeacon  func(p0 context.Context, p1 types.TipSetKey, p2 acrypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) `perm:"read"`
 	ChainGetRandomnessFromTickets func(p0 context.Context, p1 types.TipSetKey, p2 acrypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) `perm:"read"`
 	ChainGetReceipts              func(p0 context.Context, p1 cid.Cid) ([]types.MessageReceipt, error)                                                               `perm:"read"`
@@ -114,7 +116,6 @@ type IChainInfoStruct struct {
 	StateSearchMsg                func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*apitypes.MsgLookup, error)                  `perm:"read"`
 	StateWaitMsg                  func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*apitypes.MsgLookup, error)                           `perm:"read"`
 	VerifyEntry                   func(p0 *types.BeaconEntry, p1 *types.BeaconEntry, p2 abi.ChainEpoch) bool                                                         `perm:"read"`
-	ChainExport                   func(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey) (<-chan []byte, error)                                    `perm:"read"`
 }
 
 type IConfigStruct struct {
@@ -126,8 +127,8 @@ type IDiscoveryStruct struct {
 }
 
 type IJwtAuthAPIStruct struct {
-	AuthNew func(p0 context.Context, p1 []auth.Permission) ([]byte, error)                                             `perm:"read"`
-	Verify  func(p0 context.Context, p1 string, p2 string, p3 string, p4 string, p5 string) ([]auth.Permission, error) `perm:"read"`
+	AuthNew func(p0 context.Context, p1 []auth.Permission) ([]byte, error)            `perm:"read"`
+	Verify  func(p0 context.Context, p1 string, p2 string) ([]auth.Permission, error) `perm:"read"`
 }
 
 type IMarketStruct struct {

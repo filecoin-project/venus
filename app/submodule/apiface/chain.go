@@ -138,6 +138,8 @@ type IChainInfo interface {
 	VerifyEntry(parent, child *types.BeaconEntry, height abi.ChainEpoch) bool
 	// Rule[perm:read]
 	ChainExport(context.Context, abi.ChainEpoch, bool, types.TipSetKey) (<-chan []byte, error)
+	// Rule[perm:read]
+	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*chain.HeadChange, error)
 }
 
 type IMinerState interface {
