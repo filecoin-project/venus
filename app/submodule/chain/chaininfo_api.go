@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"github.com/prometheus/common/log"
+	"golang.org/x/xerrors"
 	"io"
 	"time"
 
@@ -19,7 +20,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
-	xerrors "github.com/pkg/errors"
 )
 
 var _ apiface.IChainInfo = &chainInfoAPI{}
@@ -44,7 +44,7 @@ func (cia *chainInfoAPI) BlockTime(ctx context.Context) time.Duration {
 func (cia *chainInfoAPI) ChainList(ctx context.Context, tsKey types.TipSetKey, count int) ([]types.TipSetKey, error) {
 	fromTS, err := cia.chain.ChainReader.GetTipSet(tsKey)
 	if err != nil {
-		return nil, xerrors.Wrap(err, "could not retrieve network name")
+		return nil, xerrors.Errorf("could not retrieve network name %w", err)
 	}
 	tipset, err := cia.chain.ChainReader.Ls(ctx, fromTS, count)
 	if err != nil {
@@ -61,14 +61,14 @@ func (cia *chainInfoAPI) ChainList(ctx context.Context, tsKey types.TipSetKey, c
 func (cia *chainInfoAPI) ProtocolParameters(ctx context.Context) (*apitypes.ProtocolParams, error) {
 	networkName, err := cia.getNetworkName(ctx)
 	if err != nil {
-		return nil, xerrors.Wrap(err, "could not retrieve network name")
+		return nil, xerrors.Errorf("could not retrieve network name %w", err)
 	}
 
 	var supportedSectors []apitypes.SectorInfo
 	for proof := range miner0.SupportedProofTypes {
 		size, err := proof.SectorSize()
 		if err != nil {
-			return nil, xerrors.Wrap(err, "could not retrieve network name")
+			return nil, xerrors.Errorf("could not retrieve network name %w", err)
 		}
 		maxUserBytes := abi.PaddedPieceSize(size).Unpadded()
 		supportedSectors = append(supportedSectors, apitypes.SectorInfo{Size: size, MaxPieceSize: maxUserBytes})
