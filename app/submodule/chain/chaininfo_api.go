@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"github.com/prometheus/common/log"
+	"golang.org/x/xerrors"
 	"io"
 	"time"
 
@@ -19,7 +20,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
-	xerrors "github.com/pkg/errors"
 )
 
 var _ apiface.IChainInfo = &chainInfoAPI{}
@@ -44,7 +44,7 @@ func (cia *chainInfoAPI) BlockTime(ctx context.Context) time.Duration {
 func (cia *chainInfoAPI) ChainList(ctx context.Context, tsKey types.TipSetKey, count int) ([]types.TipSetKey, error) {
 	fromTS, err := cia.chain.ChainReader.GetTipSet(tsKey)
 	if err != nil {
-		return nil, xerrors.Wrap(err, "could not retrieve network name")
+		return nil, xerrors.Errorf("could not retrieve network name %w", err)
 	}
 	tipset, err := cia.chain.ChainReader.Ls(ctx, fromTS, count)
 	if err != nil {
@@ -61,14 +61,14 @@ func (cia *chainInfoAPI) ChainList(ctx context.Context, tsKey types.TipSetKey, c
 func (cia *chainInfoAPI) ProtocolParameters(ctx context.Context) (*apitypes.ProtocolParams, error) {
 	networkName, err := cia.getNetworkName(ctx)
 	if err != nil {
-		return nil, xerrors.Wrap(err, "could not retrieve network name")
+		return nil, xerrors.Errorf("could not retrieve network name %w", err)
 	}
 
 	var supportedSectors []apitypes.SectorInfo
 	for proof := range miner0.SupportedProofTypes {
 		size, err := proof.SectorSize()
 		if err != nil {
-			return nil, xerrors.Wrap(err, "could not retrieve network name")
+			return nil, xerrors.Errorf("could not retrieve network name %w", err)
 		}
 		maxUserBytes := abi.PaddedPieceSize(size).Unpadded()
 		supportedSectors = append(supportedSectors, apitypes.SectorInfo{Size: size, MaxPieceSize: maxUserBytes})
@@ -503,6 +503,31 @@ func (cia *chainInfoAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch,
 	}()
 
 	return out, nil
+}
+
+func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*chain.HeadChange, error) {
+	fts, err := cia.chain.ChainReader.GetTipSet(from)
+	if err != nil {
+		return nil, xerrors.Errorf("loading from tipset %s: %w", from, err)
+	}
+	tts, err := cia.chain.ChainReader.GetTipSet(to)
+	if err != nil {
+		return nil, xerrors.Errorf("loading to tipset %s: %w", to, err)
+	}
+
+	revert, apply, err := chain.ReorgOps(cia.chain.ChainReader.GetTipSet, fts, tts)
+	if err != nil {
+		return nil, xerrors.Errorf("error getting tipset branches: %w", err)
+	}
+
+	path := make([]*chain.HeadChange, len(revert)+len(apply))
+	for i, r := range revert {
+		path[i] = &chain.HeadChange{Type: chain.HCRevert, Val: r}
+	}
+	for j, i := 0, len(apply)-1; i >= 0; j, i = j+1, i-1 {
+		path[j+len(revert)] = &chain.HeadChange{Type: chain.HCApply, Val: apply[i]}
+	}
+	return path, nil
 }
 
 // StateGetReceipt returns the message receipt for the given message
