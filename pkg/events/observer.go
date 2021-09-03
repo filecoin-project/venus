@@ -56,51 +56,23 @@ func (o *observer) listenHeadChanges(ctx context.Context) {
 		if err := o.listenHeadChangesOnce(ctx); err != nil {
 			log.Errorf("listen head changes errored: %s", err)
 		} else {
-			log.Warn("listenHeadChanges quit")
+			log.Debugf("listenHeadChanges quit")
 		}
+
 		select {
-		case <-constants.Clock.After(time.Second * 45):
+		case <-constants.Clock.After(time.Minute):
 		case <-ctx.Done():
 			log.Warnf("not restarting listenHeadChanges: context error: %s", ctx.Err())
 			return
 		}
 
-		log.Info("restarting listenHeadChanges")
+		log.Debugf("restarting listenHeadChanges")
 	}
 }
 
 func (o *observer) listenHeadChangesOnce(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-
-	//notifs, err := o.api.ChainNotify(ctx)
-	//if err != nil {
-	//	// Retry is handled by caller
-	//	return xerrors.Errorf("listenHeadChanges ChainNotify call failed: %w", err)
-	//}
-	//
-	//var cur []*chain.HeadChange
-	//var ok bool
-	//
-	//// Wait for first tipset or bail
-	//select {
-	//case cur, ok = <-notifs:
-	//	if !ok {
-	//		return xerrors.Errorf("notification channel closed")
-	//	}
-	//case <-ctx.Done():
-	//	return ctx.Err()
-	//}
-	//
-	//if len(cur) != 1 {
-	//	return xerrors.Errorf("unexpected initial head notification length: %d", len(cur))
-	//}
-	//
-	//if cur[0].Type != chain.HCCurrent {
-	//	return xerrors.Errorf("expected first head notification type to be 'current', was '%s'", cur[0].Type)
-	//}
-	//
-	//curHead := cur[0].Val
 
 	curHead, err := o.api.ChainHead(ctx)
 	if err != nil {
@@ -125,12 +97,6 @@ func (o *observer) listenHeadChangesOnce(ctx context.Context) error {
 			return xerrors.Errorf("failed catch-up head changes: %w", err)
 		}
 	}
-
-	//for changes := range notifs {
-	//	if err := o.applyChanges(ctx, changes); err != nil {
-	//		return err
-	//	}
-	//}
 
 	return nil
 }
