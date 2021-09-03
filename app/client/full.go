@@ -100,6 +100,7 @@ type IChainInfoStruct struct {
 	ChainGetReceipts              func(p0 context.Context, p1 cid.Cid) ([]types.MessageReceipt, error)                                                               `perm:"read"`
 	ChainGetTipSet                func(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error)                                                                `perm:"read"`
 	ChainGetTipSetByHeight        func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error)                                             `perm:"read"`
+	ChainGetTipSetAfterHeight     func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error)                                             `perm:"read"`
 	ChainHead                     func(p0 context.Context) (*types.TipSet, error)                                                                                    `perm:"read"`
 	ChainList                     func(p0 context.Context, p1 types.TipSetKey, p2 int) ([]types.TipSetKey, error)                                                    `perm:"read"`
 	ChainNotify                   func(p0 context.Context) <-chan []*chain.HeadChange                                                                                `perm:"read"`

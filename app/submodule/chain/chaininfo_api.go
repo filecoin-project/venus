@@ -110,6 +110,17 @@ func (cia *chainInfoAPI) ChainGetTipSetByHeight(ctx context.Context, height abi.
 	return cia.chain.ChainReader.GetTipSetByHeight(ctx, ts, height, true)
 }
 
+// ChainGetTipSetAfterHeight looks back for a tipset at the specified epoch.
+// If there are no blocks at the specified epoch, the first non-nil tipset at a later epoch
+// will be returned.
+func (cia *chainInfoAPI) ChainGetTipSetAfterHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
+	ts, err := cia.chain.ChainReader.GetTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+	return cia.chain.ChainReader.GetTipSetByHeight(ctx, ts, h, false)
+}
+
 // GetParentStateRootActor get the ts ParentStateRoot actor
 func (cia *chainInfoAPI) GetActor(ctx context.Context, addr address.Address) (*types.Actor, error) {
 	head, err := cia.ChainHead(ctx)

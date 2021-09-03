@@ -22,11 +22,11 @@ type State struct {
 type UnmarshallableCBOR struct{}
 
 // UnmarshalCBOR will fail to unmarshal the value from CBOR.
-func (t *UnmarshallableCBOR) UnmarshalCBOR(io.Reader) error {
-	return fmt.Errorf("failed to unmarshal cbor") //nolint
+func (t *UnmarshallableCBOR) UnmarshalCBOR(io.Reader) error { //nolint:staticcheck
+	return fmt.Errorf("failed to unmarshal cbor")
 }
 
 // MarshalCBOR will fail to marshal the value to CBOR.
-func (t *UnmarshallableCBOR) MarshalCBOR(io.Writer) error {
-	return fmt.Errorf("failed to marshal cbor") //nolint
+func (t *UnmarshallableCBOR) MarshalCBOR(io.Writer) error { //nolint:staticcheck
+	return fmt.Errorf("failed to marshal cbor")
 }
