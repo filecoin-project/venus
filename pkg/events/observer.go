@@ -35,7 +35,7 @@ func newObserver(api *cache, gcConfidence abi.ChainEpoch) *observer {
 		ready:     make(chan struct{}),
 		observers: []TipSetObserver{},
 	}
-	obs.Observe(api.observer())
+	//obs.Observe(api.observer()) todo has ignore cache
 	return obs
 }
 
@@ -80,14 +80,14 @@ func (o *observer) listenHeadChangesOnce(ctx context.Context) error {
 	}
 
 	o.lk.Lock()
-	startHead := o.head
 	if o.head == nil {
 		o.head = curHead
 		close(o.ready)
 	}
+	startHead := o.head
 	o.lk.Unlock()
 
-	if !startHead.Equals(curHead) {
+	if startHead != nil && !startHead.Equals(curHead) {
 		changes, err := o.api.ChainGetPath(ctx, startHead.Key(), curHead.Key())
 		if err != nil {
 			return xerrors.Errorf("failed to get path from last applied tipset to head: %w", err)
