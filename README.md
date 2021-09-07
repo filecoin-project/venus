@@ -24,7 +24,7 @@ For instructions on how to build, install and join a venus storage pool, please 
 
 ## Venus architecture
 
-With ideas like security, ease of use and distributed mining pool in mind, deployment of a mining operation using Venus is quite different from one using [Lotus](https://github.com/filecoin-project/lotus). Details of mining architecture can be found [here](https://venus.filecoin.io/guide/#how-venus-works).
+With key features like security, ease of use and distributed storage pool, the deployment of a node using Venus is quite different from the one using [Lotus](https://github.com/filecoin-project/lotus). Details of mining architecture can be found [here](https://venus.filecoin.io/guide/#how-venus-works).
 
 ## Related modules
 
@@ -32,7 +32,7 @@ Venus loosely describes a collection of modules that work together to realize a 
 
 ## Contribute
 
-Lotus is a universally open project and welcomes contributions of all kinds: code, docs, and more. However, before making a contribution, we ask you to heed these recommendations:
+Venus is a universally open project and welcomes contributions of all kinds: code, docs, and more. However, before making a contribution, we ask you to heed these recommendations:
 
 1. If the proposal entails a protocol change, please first submit a [Filecoin Improvement Proposal](https://github.com/filecoin-project/FIPs).
 2. If the change is complex and requires prior discussion, [open an issue](https://github.com/filecoin-project/venus/issues) or a [discussion](https://github.com/filecoin-project/venus/discussions) to request feedback before you start working on a pull request. This is to avoid disappointment and sunk costs, in case the change is not actually needed or accepted.
@@ -51,5 +51,4 @@ When implementing a change:
 
 ## License
 
-This project is dual-licensed under [Apache 2.0](https://github.com/filecoin-project/lotus/blob/master/LICENSE-APACHE) and [MIT](https://github.com/filecoin-project/lotus/blob/master/LICENSE-MIT).
-
+This project is dual-licensed under [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) and [MIT](https://mit-license.org).
