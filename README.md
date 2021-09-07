@@ -51,4 +51,4 @@ When implementing a change:
 
 ## License
 
-This project is dual-licensed under [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) and [MIT](https://mit-license.org).
+This project is dual-licensed under [Apache 2.0](https://github.com/filecoin-project/venus/blob/master/LICENSE-APACHE) and [MIT](https://github.com/filecoin-project/venus/blob/master/LICENSE-MIT).
