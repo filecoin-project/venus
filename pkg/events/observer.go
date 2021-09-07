@@ -80,11 +80,11 @@ func (o *observer) listenHeadChangesOnce(ctx context.Context) error {
 	}
 
 	o.lk.Lock()
+	startHead := o.head
 	if o.head == nil {
 		o.head = curHead
 		close(o.ready)
 	}
-	startHead := o.head
 	o.lk.Unlock()
 
 	if !startHead.Equals(curHead) {
