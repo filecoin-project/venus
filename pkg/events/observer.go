@@ -60,7 +60,7 @@ func (o *observer) listenHeadChanges(ctx context.Context) {
 		}
 
 		select {
-		case <-constants.Clock.After(time.Minute):
+		case <-constants.Clock.After(time.Second * 45):
 		case <-ctx.Done():
 			log.Warnf("not restarting listenHeadChanges: context error: %s", ctx.Err())
 			return
