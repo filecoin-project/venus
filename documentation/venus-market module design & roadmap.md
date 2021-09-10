@@ -1,6 +1,6 @@
-# venus-market module design & roadmap
+## venus-market module design & roadmap
 
-by @venus-team
+by Venus team
 
 Sep 2021
 
@@ -18,6 +18,8 @@ Current roadmap for venus-market are loosely broken into the following phases.
 
 For phase 1, venus-market will deliver a complete deal making experience as what lotus offers. This includes compatibility with lotus client where one can make deal with venus-market using lotus client, retrieve deal/data in the same way as lotus retrieves its data, setup storage ask and etc.
 
+![image-20210910170740850](https://i.loli.net/2021/09/10/seIgEWBiko6AKc2.png)
+
 - Implementation of the one-to-one model of lotus market like module and fully interoperable with lotus implementation, which means compatibility with lotus client and more
 - venus-market deployed as independent module, like venus-sealer and venus-wallet
 - Implementation of a reliable market module that runs a seperate process from the main storage process
@@ -32,7 +34,9 @@ For phase 2, venus-market is taking the following approach.
 
 **platform-to-peer**: venus-market as deal making backend for middle-man services like Estuary connecting client and provider. As deal market matures, instead of ineffectively advertising one's storage system in #fil-deal-market, storage middleman services like Estuary and Filswan are taking up the roles for distributing datacap more effectively to storage providers looking for deals. Given venus' unique architecture where multiple providers are sharing same infrastructure (chain services), venus-market is in a good position to provide before mentioned deal making backend for a storage middle-man service.
 
-**platform-to-platform**: venus-market as storage backend for a storage integrator (a storage provider who offers different kinds of storage products to its end user, for example, filecoin, S3, tape and etc). 
+**platform-to-platform**: venus-market as storage backend for a storage integrator (a storage provider who offers different kinds of storage products to its end user, for example, filecoin, S3, tape and etc).
+
+![image-20210910160837732](https://i.loli.net/2021/09/10/sRY5u6Bw9aj713H.png)
 
 - Taking advantages of Venus' distributed architectural nature, a gateway service backend built on top of current infrastructure
 - Compact API: seperation of node and venus-market data enabling local storage of some of the deal related meta data
@@ -41,9 +45,11 @@ For phase 2, venus-market is taking the following approach.
 - venus-market as deal gateway for storage providers using venus chain services (venus shared modules)
 - Deal match making: multiple copies for store and faster retrieval
 
-### Phase 3: peer-to-peer model (long-term vision)
+### Phase 3: Decentrialized market (Dp2p) model (long-term vision)
 
 For phase 3, venus-market will look into ways to automate deal flow between client and provider using a peer-to-peer approach, giving up its role as a gateway in phase 2. Additionally, venus pool can be positioned as a retrieval node which is fully aware of deal meta that chain services helped to record.
+
+![image-20210910171104881](https://i.loli.net/2021/09/10/VE6BLpaARrMck9x.png)
 
 - Goals for phase 3 is not as clear cut; require more iterations as filecoin develops smart contracts and others
 - auto-match deal market: a service to provide algorithmically (as opposed to manually verifying data using current fil-plus framework) verified data storing/retrieval from peer to peer
