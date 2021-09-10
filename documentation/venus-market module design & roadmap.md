@@ -18,6 +18,8 @@ Current roadmap for venus-market are loosely broken into the following phases.
 
 For phase 1, venus-market will deliver a complete deal making experience as what lotus offers. This includes compatibility with lotus client where one can make deal with venus-market using lotus client, retrieve deal/data in the same way as lotus retrieves its data, setup storage ask and etc.
 
+![image-20210910134745597](https://i.loli.net/2021/09/10/FbesG9hmKirfMSC.png)
+
 - Implementation of the one-to-one model of lotus market like module and fully interoperable with lotus implementation, which means compatibility with lotus client and more
 - venus-market deployed as independent module, like venus-sealer and venus-wallet
 - Implementation of a reliable market module that runs a seperate process from the main storage process
@@ -34,6 +36,8 @@ For phase 2, venus-market is taking the following approach.
 
 **platform-to-platform**: venus-market as storage backend for a storage integrator (a storage provider who offers different kinds of storage products to its end user, for example, filecoin, S3, tape and etc). 
 
+![image-20210910134644677](https://i.loli.net/2021/09/10/RIFwj7gD9cOnGBX.png)
+
 - Taking advantages of Venus' distributed architectural nature, a gateway service backend built on top of current infrastructure
 - Compact API: seperation of node and venus-market data enabling local storage of some of the deal related meta data
 - Data transfer support for different protocols in addition to `Graphsync` [*](https://docs.google.com/document/d/1XWcTp2MEOVtKLpcpiFeeDvc_gTwQ0Bc6yABCTzDmeP0/edit#heading=h.1oxn84bcd1n1)
@@ -44,6 +48,8 @@ For phase 2, venus-market is taking the following approach.
 ### Phase 3: peer-to-peer model (long-term vision)
 
 For phase 3, venus-market will look into ways to automate deal flow between client and provider using a peer-to-peer approach, giving up its role as a gateway in phase 2. Additionally, venus pool can be positioned as a retrieval node which is fully aware of deal meta that chain services helped to record.
+
+![image-20210910134513048](https://i.loli.net/2021/09/10/AXRPNSjfJWsd5KO.png)
 
 - Goals for phase 3 is not as clear cut; require more iterations as filecoin develops smart contracts and others
 - auto-match deal market: a service to provide algorithmically (as opposed to manually verifying data using current fil-plus framework) verified data storing/retrieval from peer to peer
