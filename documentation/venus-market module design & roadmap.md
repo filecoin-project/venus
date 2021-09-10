@@ -1,6 +1,6 @@
 # venus-market module design & roadmap
 
-by @venus-team
+by @Venus team
 
 Sep 2021
 
