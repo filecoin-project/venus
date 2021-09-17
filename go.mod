@@ -32,7 +32,6 @@ require (
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20201016201715-d41df56b4f6a
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
-	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20210614165157-25a6c7769498
 	github.com/filecoin-project/go-state-types v0.1.1-0.20210506134452-99b279731c48
 	github.com/filecoin-project/go-statestore v0.1.1 // indirect
@@ -48,6 +47,7 @@ require (
 	github.com/go-errors/errors v1.0.1
 	github.com/go-kit/kit v0.10.0
 	github.com/golang/snappy v0.0.2-0.20190904063534-ff6b7dc882cf // indirect
+	github.com/golangci/gofmt v0.0.0-20190930125516-244bba706f1a
 	github.com/golangci/golangci-lint v1.39.0
 	github.com/google/flatbuffers v2.0.0+incompatible // indirect
 	github.com/google/go-github v17.0.0+incompatible

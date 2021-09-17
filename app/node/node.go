@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/chain"
 	"net"
 	"net/http"
 	"os"
@@ -22,10 +23,10 @@ import (
 
 	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
 
-	"github.com/filecoin-project/venus/app/submodule/blockservice"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	configModule "github.com/filecoin-project/venus/app/submodule/config"
+	"github.com/filecoin-project/venus/app/submodule/dagservice"
 	"github.com/filecoin-project/venus/app/submodule/discovery"
 	"github.com/filecoin-project/venus/app/submodule/market"
 	"github.com/filecoin-project/venus/app/submodule/mining"
@@ -69,12 +70,14 @@ type Node struct {
 	// It contains all persistent artifacts of the filecoin node.
 	repo repo.Repo
 
+	//moduls
+	circulatiingSupplyCalculator chain.ICirculatingSupplyCalcualtor
 	//
 	// Core services
 	//
 	configModule *configModule.ConfigModule
 	blockstore   *blockstore.BlockstoreSubmodule
-	blockservice *blockservice.BlockServiceSubmodule
+	blockservice *dagservice.DagServiceSubmodule
 	network      *network2.NetworkSubmodule
 	discovery    *discovery.DiscoverySubmodule
 
@@ -134,7 +137,7 @@ func (node *Node) Network() *network2.NetworkSubmodule {
 	return node.network
 }
 
-func (node *Node) Blockservice() *blockservice.BlockServiceSubmodule {
+func (node *Node) Blockservice() *dagservice.DagServiceSubmodule {
 	return node.blockservice
 }
 
@@ -194,11 +197,6 @@ func (node *Node) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
-	/*err = node.market.Start()
-	if err != nil {
-		return err
-	}*/
 
 	return nil
 }

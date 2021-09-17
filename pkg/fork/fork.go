@@ -41,12 +41,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
-	init_ "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/multisig"
 	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/multisig"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 )
 

@@ -2,9 +2,9 @@ package blockstore
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/pkg/repo"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 // BlockstoreSubmodule enhances the `Node` with local key/value storing capabilities.
@@ -14,25 +14,18 @@ import (
 type BlockstoreSubmodule struct { //nolint
 	// blockstore is the un-networked blocks interface
 	Blockstore bstore.Blockstore
-
-	// cborStore is a wrapper for a `cbor.IpldStore` that works on the local IPLD-Cbor objects stored in `blockstore`.
-	CborStore cbor.IpldStore
 }
 
 type blockstoreRepo interface {
-	Datastore() bstore.Blockstore
+	Repo() repo.Repo
 }
 
 // NewBlockstoreSubmodule creates a new block store submodule.
 func NewBlockstoreSubmodule(ctx context.Context, repo blockstoreRepo) (*BlockstoreSubmodule, error) {
 	// set up block store
-	bs := repo.Datastore()
-	// setup a ipldCbor on top of the local store
-	ipldCborStore := cbor.NewCborStore(bs)
-
+	bs := repo.Repo().Datastore()
 	return &BlockstoreSubmodule{
 		Blockstore: bs,
-		CborStore:  ipldCborStore,
 	}, nil
 }
 

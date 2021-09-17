@@ -2,7 +2,8 @@ package v0api
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface/v0api"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -16,6 +17,8 @@ type WrapperV1IMultiSig struct {
 	apiface.IMultiSig
 	apiface.IMessagePool
 }
+
+var _ v0api.IMultiSig = (*WrapperV1IMultiSig)(nil)
 
 func (a *WrapperV1IMultiSig) executePrototype(ctx context.Context, p *apitypes.MessagePrototype) (cid.Cid, error) {
 	sm, err := a.IMessagePool.MpoolPushMessage(ctx, &p.Message, nil)

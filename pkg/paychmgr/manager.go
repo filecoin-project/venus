@@ -3,10 +3,6 @@ package paychmgr
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	"github.com/filecoin-project/venus/pkg/consensus"
-	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
@@ -18,7 +14,7 @@ import (
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
 )
 
 var log = logging.Logger("paych")
@@ -47,16 +43,26 @@ type ChannelAvailableFunds struct {
 	VoucherReedeemedAmt big.Int
 }
 
+// VoucherCreateResult is the response to calling PaychVoucherCreate
+type VoucherCreateResult struct {
+	// Voucher that was created, or nil if there was an error or if there
+	// were insufficient funds in the channel
+	Voucher *paych.SignedVoucher
+	// Shortfall is the additional amount that would be needed in the channel
+	// in order to be able to create the voucher
+	Shortfall big.Int
+}
+
 // managerAPI defines all methods needed by the manager
 type managerAPI interface {
 	statemanger.IStateManager
-	paychAPI
+	paychDependencyAPI
 }
 
 // managerAPIImpl is used to create a composite that implements managerAPI
 type managerAPIImpl struct {
 	statemanger.IStateManager
-	paychAPI
+	paychDependencyAPI
 }
 
 type Manager struct {
@@ -72,28 +78,27 @@ type Manager struct {
 	channels map[string]*channelAccessor
 }
 type ManagerParams struct {
-	MPoolAPI  apiface.IMessagePool
-	ChainAPI  apiface.IChain
-	Protocol  consensus.Protocol
-	WalletAPI apiface.IWallet
-	DS        repo.Datastore
-	SM        statemanger.IStateManager
+	MPoolAPI     IMessagePush
+	ChainInfoAPI IChainInfo
+	WalletAPI    IWalletAPI
+	SM           statemanger.IStateManager
 }
 
-func NewManager(ctx context.Context, params *ManagerParams) *Manager {
+func NewManager(ctx context.Context, ds datastore.Batching, params *ManagerParams) (*Manager, error) {
 	ctx, shutdown := context.WithCancel(ctx)
 	impl := &managerAPIImpl{
-		IStateManager: params.SM,
-		paychAPI:      newPaychAPI(params.MPoolAPI, params.ChainAPI, params.WalletAPI),
+		IStateManager:      params.SM,
+		paychDependencyAPI: newPaychDependencyAPI(params.MPoolAPI, params.ChainInfoAPI, params.WalletAPI),
 	}
-	return &Manager{
+	pm := &Manager{
 		ctx:      ctx,
 		shutdown: shutdown,
-		store:    &Store{params.DS},
+		store:    &Store{ds},
 		sa:       &stateAccessor{sm: impl},
 		channels: make(map[string]*channelAccessor),
 		pchapi:   impl,
 	}
+	return pm, pm.Start()
 }
 
 // newManager is used by the tests to supply mocks
@@ -126,7 +131,7 @@ func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt b
 	return chanAccessor.getPaych(ctx, amt)
 }
 
-func (pm *Manager) AvailableFunds(ch address.Address) (*apitypes.ChannelAvailableFunds, error) {
+func (pm *Manager) AvailableFunds(ch address.Address) (*ChannelAvailableFunds, error) {
 	ca, err := pm.accessorByAddress(ch)
 	if err != nil {
 		return nil, err
@@ -140,7 +145,7 @@ func (pm *Manager) AvailableFunds(ch address.Address) (*apitypes.ChannelAvailabl
 	return ca.availableFunds(ci.ChannelID)
 }
 
-func (pm *Manager) AvailableFundsByFromTo(from address.Address, to address.Address) (*apitypes.ChannelAvailableFunds, error) {
+func (pm *Manager) AvailableFundsByFromTo(from address.Address, to address.Address) (*ChannelAvailableFunds, error) {
 	ca, err := pm.accessorByFromTo(from, to)
 	if err != nil {
 		return nil, err
@@ -152,7 +157,7 @@ func (pm *Manager) AvailableFundsByFromTo(from address.Address, to address.Addre
 		// return an empty ChannelAvailableFunds, so that clients can check
 		// for the existence of a channel between from / to without getting
 		// an error.
-		return &apitypes.ChannelAvailableFunds{
+		return &ChannelAvailableFunds{
 			Channel:             nil,
 			From:                from,
 			To:                  to,
@@ -211,7 +216,7 @@ func (pm *Manager) GetChannelInfo(addr address.Address) (*ChannelInfo, error) {
 	return ca.getChannelInfo(addr)
 }
 
-func (pm *Manager) CreateVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*apitypes.VoucherCreateResult, error) {
+func (pm *Manager) CreateVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*VoucherCreateResult, error) {
 	ca, err := pm.accessorByAddress(ch)
 	if err != nil {
 		return nil, err

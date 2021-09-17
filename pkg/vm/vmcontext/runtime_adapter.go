@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/venus/pkg/specactors/aerrors"
+	"github.com/filecoin-project/venus/pkg/types/specactors/aerrors"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 
 	"github.com/ipfs/go-cid"
 	cbor2 "github.com/ipfs/go-ipld-cbor"

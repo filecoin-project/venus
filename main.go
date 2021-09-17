@@ -20,7 +20,7 @@ func main() {
 		_ = logging.SetLogLevel("bitswap", "error")
 		_ = logging.SetLogLevel("graphsync", "info")
 		_ = logging.SetLogLevel("heartbeat", "error")
-		_ = logging.SetLogLevel("blockservice", "error")
+		_ = logging.SetLogLevel("dagservice", "error")
 		_ = logging.SetLogLevel("peerqueue", "error")
 		_ = logging.SetLogLevel("swarm", "error")
 		_ = logging.SetLogLevel("swarm2", "error")

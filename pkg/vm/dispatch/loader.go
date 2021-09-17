@@ -7,7 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/pkg/specactors"
+	"github.com/filecoin-project/venus/pkg/types/specactors"
 	vmr "github.com/filecoin-project/venus/pkg/vm/runtime"
 )
 

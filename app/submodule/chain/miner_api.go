@@ -2,6 +2,8 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -10,17 +12,15 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	xerrors "github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
-	pstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/reward"
 )
 
 var _ apiface.IMinerState = &minerStateAPI{}
@@ -548,7 +548,7 @@ func (msa *minerStateAPI) StateCirculatingSupply(ctx context.Context, tsk types.
 }
 
 // StateMarketDeals returns information about every deal in the Storage Market
-func (msa *minerStateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]pstate.MarketDeal, error) {
+func (msa *minerStateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketDeal, error) {
 	ts, err := msa.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset %v", err)
@@ -772,4 +772,96 @@ func (msa *minerStateAPI) StateMarketBalance(ctx context.Context, addr address.A
 
 	return out, nil
 
+}
+
+var dealProviderCollateralNum = types.NewInt(110)
+var dealProviderCollateralDen = types.NewInt(100)
+
+// StateDealProviderCollateralBounds returns the min and max collateral a storage provider
+// can issue. It takes the deal size and verified status as parameters.
+func (msa *minerStateAPI) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (apitypes.DealCollateralBounds, error) {
+	ts, err := msa.ChainReader.GetTipSet(tsk)
+	if err != nil {
+		return apitypes.DealCollateralBounds{}, xerrors.Errorf("loading tipset %s: %v", tsk, err)
+	}
+
+	view, err := msa.ChainReader.StateView(ts)
+	if err != nil {
+		return apitypes.DealCollateralBounds{}, xerrors.Errorf("loading state view %s: %v", tsk, err)
+	}
+
+	pst, err := view.LoadPowerState(ctx)
+	if err != nil {
+		return apitypes.DealCollateralBounds{}, xerrors.Errorf("failed to load power actor state: %v", err)
+	}
+
+	rst, err := view.LoadRewardState(ctx)
+	if err != nil {
+		return apitypes.DealCollateralBounds{}, xerrors.Errorf("failed to load reward actor state: %v", err)
+	}
+
+	circ, err := msa.StateVMCirculatingSupplyInternal(ctx, ts.Key())
+	if err != nil {
+		return apitypes.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %v", err)
+	}
+
+	powClaim, err := pst.TotalPower()
+	if err != nil {
+		return apitypes.DealCollateralBounds{}, xerrors.Errorf("getting total power: %v", err)
+	}
+
+	rewPow, err := rst.ThisEpochBaselinePower()
+	if err != nil {
+		return apitypes.DealCollateralBounds{}, xerrors.Errorf("getting reward baseline power: %v", err)
+	}
+
+	min, max := policy.DealProviderCollateralBounds(size,
+		verified,
+		powClaim.RawBytePower,
+		powClaim.QualityAdjPower,
+		rewPow,
+		circ.FilCirculating,
+		msa.Fork.GetNtwkVersion(ctx, ts.Height()))
+	if err != nil {
+		return apitypes.DealCollateralBounds{}, xerrors.Errorf("getting deal provider coll bounds: %v", err)
+	}
+	return apitypes.DealCollateralBounds{
+		Min: types.BigDiv(types.BigMul(min, dealProviderCollateralNum), dealProviderCollateralDen),
+		Max: max,
+	}, nil
+}
+
+// StateVerifiedClientStatus returns the data cap for the given address.
+// Returns zero if there is no entry in the data cap table for the
+// address.
+func (msa *minerStateAPI) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
+	ts, err := msa.ChainReader.GetTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
+	}
+
+	view, err := msa.ChainReader.StateView(ts)
+	if err != nil {
+		return nil, xerrors.Errorf("loading state view %s: %v", tsk, err)
+	}
+
+	vrs, err := view.LoadVerifregActor(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load verified registry state: %v", err)
+	}
+
+	aid, err := view.LookupID(ctx, addr)
+	if err != nil {
+		return nil, xerrors.Errorf("loook up id of %s : %v", addr, err)
+	}
+
+	verified, dcap, err := vrs.VerifiedClientDataCap(aid)
+	if err != nil {
+		return nil, xerrors.Errorf("looking up verified client: %v", err)
+	}
+	if !verified {
+		return nil, nil
+	}
+
+	return &dcap, nil
 }
