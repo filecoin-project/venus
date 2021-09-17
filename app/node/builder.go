@@ -164,7 +164,9 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		SM:           stmgr,
 		WalletAPI:    nd.wallet.API(),
 	}
-	nd.paychan = paych.NewPaychSubmodule(ctx, b.repo.PaychDatastore(), mgrps)
+	if nd.paychan, err = paych.NewPaychSubmodule(ctx, b.repo.PaychDatastore(), mgrps); err!=nil {
+		return nil, err
+	}
 	nd.market = market.NewMarketModule(nd.chain.API(), stmgr)
 
 	apiBuilder := NewBuilder()
