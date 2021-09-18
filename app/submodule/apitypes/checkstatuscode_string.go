@@ -5,21 +5,21 @@ package apitypes
 import "strconv"
 
 func _() {
-// An "invalid array index" compiler error signifies that the constant values have changed.
-// Re-run the stringer command to generate them again.
-var x [1]struct{}
-_ = x[CheckStatusMessageSerialize-1]
-_ = x[CheckStatusMessageSize-2]
-_ = x[CheckStatusMessageValidity-3]
-_ = x[CheckStatusMessageMinGas-4]
-_ = x[CheckStatusMessageMinBaseFee-5]
-_ = x[CheckStatusMessageBaseFee-6]
-_ = x[CheckStatusMessageBaseFeeLowerBound-7]
-_ = x[CheckStatusMessageBaseFeeUpperBound-8]
-_ = x[CheckStatusMessageGetStateNonce-9]
-_ = x[CheckStatusMessageNonce-10]
-_ = x[CheckStatusMessageGetStateBalance-11]
-_ = x[CheckStatusMessageBalance-12]
+	// An "invalid array index" compiler error signifies that the constant values have changed.
+	// Re-run the stringer command to generate them again.
+	var x [1]struct{}
+	_ = x[CheckStatusMessageSerialize-1]
+	_ = x[CheckStatusMessageSize-2]
+	_ = x[CheckStatusMessageValidity-3]
+	_ = x[CheckStatusMessageMinGas-4]
+	_ = x[CheckStatusMessageMinBaseFee-5]
+	_ = x[CheckStatusMessageBaseFee-6]
+	_ = x[CheckStatusMessageBaseFeeLowerBound-7]
+	_ = x[CheckStatusMessageBaseFeeUpperBound-8]
+	_ = x[CheckStatusMessageGetStateNonce-9]
+	_ = x[CheckStatusMessageNonce-10]
+	_ = x[CheckStatusMessageGetStateBalance-11]
+	_ = x[CheckStatusMessageBalance-12]
 }
 
 const _CheckStatusCode_name = "MessageSerializeMessageSizeMessageValidityMessageMinGasMessageMinBaseFeeMessageBaseFeeMessageBaseFeeLowerBoundMessageBaseFeeUpperBoundMessageGetStateNonceMessageNonceMessageGetStateBalanceMessageBalance"
@@ -33,4 +33,3 @@ func (i CheckStatusCode) String() string {
 	}
 	return _CheckStatusCode_name[_CheckStatusCode_index[i]:_CheckStatusCode_index[i+1]]
 }
-

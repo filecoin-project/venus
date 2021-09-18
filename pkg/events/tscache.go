@@ -195,7 +195,7 @@ func (tsc *tipSetCache) revertUnlocked(ts *types.TipSet) error {
 	return nil
 }
 
-func (tsc *tipSetCache) observer() TipSetObserver {
+func (tsc *tipSetCache) observer() TipSetObserver { //nolint
 	return (*tipSetCacheObserver)(tsc)
 }
 

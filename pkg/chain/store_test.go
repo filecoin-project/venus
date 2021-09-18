@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/config"
 	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
 	"github.com/filecoin-project/venus/pkg/util/test"
 	"github.com/ipfs/go-cid"
@@ -40,7 +39,7 @@ func newChainStore(r repo.Repo, genTS *types.TipSet) *CborBlockStore {
 	tempBlock := r.Datastore()
 	cborStore := cbor.NewCborStore(tempBlock)
 	return &CborBlockStore{
-		Store:     chain.NewStore(r.ChainDatastore(), cborStore, tempBlock, config.DefaultForkUpgradeParam, genTS.At(0).Cid()),
+		Store:     chain.NewStore(r.ChainDatastore(), tempBlock, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator()),
 		cborStore: cborStore,
 	}
 }
@@ -303,10 +302,9 @@ func TestHead(t *testing.T) {
 	genTS := builder.Genesis()
 	r := builder.Repo()
 	bs := builder.BlockStore()
-	cborStore := builder.Cstore()
-	cs := chain.NewStore(r.ChainDatastore(), cborStore, bs, config.DefaultForkUpgradeParam, genTS.At(0).Cid())
+	cs := chain.NewStore(r.ChainDatastore(), bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator())
 	cboreStore := &CborBlockStore{
-		Store: chain.NewStore(r.ChainDatastore(), cborStore, bs, config.DefaultForkUpgradeParam, genTS.At(0).Cid()),
+		Store: chain.NewStore(r.ChainDatastore(), bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator()),
 	}
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
@@ -417,7 +415,7 @@ func TestLoadAndReboot(t *testing.T) {
 	requirePutBlocksToCborStore(t, cst, link4.ToSlice()...)
 
 	cboreStore := &CborBlockStore{
-		Store:     chain.NewStore(ds, cst, bs, config.DefaultForkUpgradeParam, genTS.At(0).Cid()),
+		Store:     chain.NewStore(ds, bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator()),
 		cborStore: cst,
 	}
 	requirePutTestChain(ctx, t, cboreStore, link4.Key(), builder, 5)
@@ -427,7 +425,7 @@ func TestLoadAndReboot(t *testing.T) {
 	cboreStore.Stop()
 
 	// rebuild chain with same datastore and cborstore
-	rebootChain := chain.NewStore(ds, cst, bs, config.DefaultForkUpgradeParam, genTS.At(0).Cid())
+	rebootChain := chain.NewStore(ds, bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator())
 	rebootCbore := &CborBlockStore{
 		Store: rebootChain,
 	}

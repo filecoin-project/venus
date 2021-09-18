@@ -6,7 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 )
 
 // DefaultEpochDuration is the default duration of epochs

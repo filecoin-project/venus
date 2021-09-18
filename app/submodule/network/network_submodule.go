@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -13,8 +14,6 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
-	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
@@ -101,32 +100,28 @@ type networkConfig interface {
 	OfflineMode() bool
 	IsRelay() bool
 	Libp2pOpts() []libp2p.Option
-}
-
-type networkRepo interface {
-	Config() *config.Config
-	ChainDatastore() repo.Datastore
-	Path() (string, error)
+	Repo() repo.Repo
 }
 
 // NewNetworkSubmodule creates a new network submodule.
-func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo networkRepo, blockstore *blockstore.BlockstoreSubmodule) (*NetworkSubmodule, error) {
+func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSubmodule, error) {
 	bandwidthTracker := p2pmetrics.NewBandwidthCounter()
 	libP2pOpts := append(config.Libp2pOpts(), libp2p.BandwidthReporter(bandwidthTracker), makeSmuxTransportOption(true))
 
 	var networkName string
 	var err error
-	if !repo.Config().NetworkParams.DevNet {
+	if !config.Repo().Config().NetworkParams.DevNet {
 		networkName = "testnetnet"
 	} else {
-		networkName, err = retrieveNetworkName(ctx, config.GenesisCid(), blockstore.CborStore)
+		config.Repo().ChainDatastore()
+		networkName, err = retrieveNetworkName(ctx, config.GenesisCid(), cbor.NewCborStore(config.Repo().Datastore()))
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	// peer manager
-	bootNodes, err := net.ParseAddresses(ctx, repo.Config().Bootstrap.Addresses)
+	bootNodes, err := net.ParseAddresses(ctx, config.Repo().Config().Bootstrap.Addresses)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +135,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	makeDHT := func(h host.Host) (routing.Routing, error) {
 		mode := dht.ModeAuto
 		opts := []dht.Option{dht.Mode(mode),
-			dht.Datastore(repo.ChainDatastore()),
+			dht.Datastore(config.Repo().ChainDatastore()),
 			dht.ProtocolPrefix(net.FilecoinDHT(networkName)),
 			dht.QueryFilter(dht.PublicQueryFilter),
 			dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
@@ -158,14 +153,14 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 		return r, err
 	}
 
-	peerHost, err = buildHost(ctx, config, libP2pOpts, repo, makeDHT)
+	peerHost, err = buildHost(ctx, config, libP2pOpts, config.Repo().Config(), makeDHT)
 	if err != nil {
 		return nil, err
 	}
 	// require message signing in online mode when we have priv key
 	pubsubMessageSigning = true
 
-	period, err := time.ParseDuration(repo.Config().Bootstrap.Period)
+	period, err := time.ParseDuration(config.Repo().Config().Bootstrap.Period)
 	if err != nil {
 		return nil, err
 	}
@@ -179,12 +174,6 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	if !config.OfflineMode() {
 		go peerMgr.Run(ctx)
 	}
-	// } else {
-	// 	router = offroute.NewOfflineRouter(repo.ChainDatastore(), validator)
-	// 	peerHost = rhost.Wrap(NewNoopLibP2PHost(), router)
-	// 	pubsubMessageSigning = false
-	// 	peerMgr = &net.MockPeerMgr{}
-	// }
 
 	// Set up libp2p network
 	// The gossipsub heartbeat timeout needs to be set sufficiently low
@@ -213,21 +202,21 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(peerHost, router, bsnet.Prefix("/chain"))
 	bitswapOptions := []bitswap.Option{bitswap.ProvideEnabled(false)}
-	bswap := bitswap.New(ctx, nwork, blockstore.Blockstore, bitswapOptions...)
+	bswap := bitswap.New(ctx, nwork, config.Repo().Datastore(), bitswapOptions...)
 
 	// set up graphsync
 	graphsyncNetwork := gsnet.NewFromLibp2pHost(peerHost)
-	loader := gsstoreutil.LoaderForBlockstore(blockstore.Blockstore)
-	storer := gsstoreutil.StorerForBlockstore(blockstore.Blockstore)
+	loader := gsstoreutil.LoaderForBlockstore(config.Repo().Datastore())
+	storer := gsstoreutil.StorerForBlockstore(config.Repo().Datastore())
 	gsync := graphsyncimpl.New(ctx, graphsyncNetwork, loader, storer, graphsyncimpl.RejectAllRequestsByDefault())
 
 	//dataTransger
 	//sc := storedcounter.New(repo.ChainDatastore(), datastore.NewKey("/datatransfer/api/counter"))
 	dtNet := dtnet.NewFromLibp2pHost(peerHost)
-	dtDs := namespace.Wrap(repo.ChainDatastore(), datastore.NewKey("/datatransfer/api/transfers"))
+	dtDs := namespace.Wrap(config.Repo().ChainDatastore(), datastore.NewKey("/datatransfer/api/transfers"))
 	transport := dtgstransport.NewTransport(peerHost.ID(), gsync)
 
-	repoPath, err := repo.Path()
+	repoPath, err := config.Repo().Path()
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +242,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 		DataTransfer:     dt,
 		DataTransferHost: dtNet,
 		PeerMgr:          peerMgr,
-		blockstore:       blockstore.Blockstore,
+		blockstore:       config.Repo().Datastore(),
 	}, nil
 }
 
@@ -352,7 +341,7 @@ func retrieveNetworkName(ctx context.Context, genCid cid.Cid, cborStore cbor.Ipl
 
 // address determines if we are publically dialable.  If so use public
 // address, if not configure node to announce relay address.
-func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Option, repo networkRepo, makeDHT func(host host.Host) (routing.Routing, error)) (host.Host, error) {
+func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Option, cfg *config.Config, makeDHT func(host host.Host) (routing.Routing, error)) (host.Host, error) {
 	// Node must build a host acting as a libp2p relay.  Additionally it
 	// runs the autoNAT service which allows other nodes to check for their
 	// own dialability by having this node attempt to dial them.
@@ -361,7 +350,6 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 	}
 
 	if config.IsRelay() {
-		cfg := repo.Config()
 		publicAddr, err := ma.NewMultiaddr(cfg.Swarm.PublicRelayAddress)
 		if err != nil {
 			return nil, err

@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/types/internal"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 )
@@ -12,12 +13,12 @@ type ChainInfo struct {
 	Source peer.ID
 	// The peer that sent us the TipSetKey message.
 	Sender peer.ID
-	Head   *TipSet
+	Head   *internal.TipSet
 }
 
 // NewChainInfo creates a chain info from a peer id a head tipset key and a
 // chain height.
-func NewChainInfo(source peer.ID, sender peer.ID, head *TipSet) *ChainInfo {
+func NewChainInfo(source peer.ID, sender peer.ID, head *internal.TipSet) *ChainInfo {
 	return &ChainInfo{
 		Source: source,
 		Sender: sender,

@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/venus/build/project"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 

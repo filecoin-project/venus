@@ -9,9 +9,9 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
 )
 
 type Partition struct {
@@ -80,6 +80,11 @@ type MinerPower struct {
 	MinerPower  power.Claim
 	TotalPower  power.Claim
 	HasMinPower bool
+}
+
+type DealCollateralBounds struct {
+	Min abi.TokenAmount
+	Max abi.TokenAmount
 }
 
 type MsgLookup = chain.MsgLookup

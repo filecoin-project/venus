@@ -3,6 +3,8 @@ package mining
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"os"
 
 	"github.com/filecoin-project/go-address"
@@ -14,14 +16,13 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
-	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
@@ -185,7 +186,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *apitypes.B
 		return nil, xerrors.Errorf("getting lookback miner actor state: %v", err)
 	}
 
-	viewer := state.NewView(miningAPI.Ming.BlockStore.CborStore, lbst)
+	viewer := state.NewView(cbor.NewCborStore(miningAPI.Ming.BlockStore.Blockstore), lbst)
 	worker, err := viewer.GetMinerWorkerRaw(ctx, bt.Miner)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get miner worker: %v", err)

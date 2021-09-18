@@ -2,17 +2,15 @@ package blockstore
 
 import (
 	"context"
-	"sync"
-
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/venus/app/submodule/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	"sync"
 )
 
 var _ apiface.IBlockStore = &blockstoreAPI{}

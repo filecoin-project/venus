@@ -13,8 +13,8 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	vmState "github.com/filecoin-project/venus/pkg/state/tree"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 )
 
