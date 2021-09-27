@@ -18,7 +18,7 @@ import (
 	exported4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/exported"
 	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 )
 
 type MethodMeta struct {

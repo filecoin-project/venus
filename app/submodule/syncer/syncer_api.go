@@ -2,9 +2,9 @@ package syncer
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"time"
 
-	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 
@@ -124,7 +124,7 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 // StateCall applies the message to the tipset's parent state. The
 // message is not applied on-top-of the messages in the passed-in
 // tipset.
-func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMessage, tsk types.TipSetKey) (*apitypes.InvocResult, error) {
+func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMessage, tsk types.TipSetKey) (*types.InvocResult, error) {
 	start := time.Now()
 	ts, err := sa.syncer.ChainModule.ChainReader.GetTipSet(tsk)
 	if err != nil {
@@ -137,11 +137,11 @@ func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMessage, 
 	duration := time.Since(start)
 
 	mcid := msg.Cid()
-	return &apitypes.InvocResult{
+	return &types.InvocResult{
 		MsgCid:         mcid,
 		Msg:            msg,
 		MsgRct:         &ret.Receipt,
-		ExecutionTrace: types.ExecutionTrace{},
+		ExecutionTrace: &types.ExecutionTrace{},
 		Duration:       duration,
 	}, nil
 }

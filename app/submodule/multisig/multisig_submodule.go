@@ -1,8 +1,8 @@
 package multisig
 
 import (
-	"github.com/filecoin-project/venus/app/submodule/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apiface/v0api"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface/v0api"
 	multisigv0 "github.com/filecoin-project/venus/app/submodule/multisig/v0api"
 	chain2 "github.com/filecoin-project/venus/pkg/chain"
 )

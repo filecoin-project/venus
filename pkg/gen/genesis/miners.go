@@ -12,23 +12,23 @@ import (
 
 	market4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/market"
 
-	"github.com/filecoin-project/venus/pkg/specactors"
+	"github.com/filecoin-project/venus/pkg/types/specactors"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 
-	"github.com/filecoin-project/venus/pkg/specactors/policy"
+	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
 
-	"github.com/filecoin-project/venus/pkg/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 
 	"github.com/filecoin-project/go-state-types/network"
 
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/reward"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"

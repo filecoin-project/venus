@@ -5,12 +5,16 @@ package tree
 import (
 	"fmt"
 	"io"
+	"sort"
 
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
 
 var _ = xerrors.Errorf
+var _ = cid.Undef
+var _ = sort.Sort
 
 var lengthBufStateRoot = []byte{131}
 
@@ -25,7 +29,7 @@ func (t *StateRoot) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.Version (state.StateTreeVersion) (uint64)
+	// t.Version (tree.StateTreeVersion) (uint64)
 
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.Version)); err != nil {
 		return err
@@ -64,7 +68,7 @@ func (t *StateRoot) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Version (state.StateTreeVersion) (uint64)
+	// t.Version (tree.StateTreeVersion) (uint64)
 
 	{
 

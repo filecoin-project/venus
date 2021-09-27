@@ -2,7 +2,7 @@ package config
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface"
 )
 
 var _ apiface.IConfig = &configAPI{}

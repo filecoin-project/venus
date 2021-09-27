@@ -6,8 +6,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 )
 
@@ -19,7 +20,7 @@ type PowerStateView interface {
 	GetMinerWorkerRaw(ctx context.Context, maddr address.Address) (address.Address, error)
 	MinerInfo(ctx context.Context, maddr address.Address, nv network.Version) (*miner.MinerInfo, error)
 	MinerSectorInfo(ctx context.Context, maddr address.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, error)
-	PowerNetworkTotal(ctx context.Context) (*NetworkPower, error)
+	PowerNetworkTotal(ctx context.Context) (*types.NetworkPower, error)
 	MinerClaimedPower(ctx context.Context, miner address.Address) (raw, qa abi.StoragePower, err error)
 	GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error)
 }

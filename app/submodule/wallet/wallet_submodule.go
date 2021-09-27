@@ -2,11 +2,12 @@ package wallet
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	chain2 "github.com/filecoin-project/venus/pkg/chain"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/wallet/remotewallet"
@@ -21,11 +22,11 @@ var log = logging.Logger("wallet")
 
 // WalletSubmodule enhances the `Node` with a "wallet" and FIL transfer capabilities.
 type WalletSubmodule struct { //nolint
-	Chain   *chain.ChainSubmodule
-	Wallet  *wallet.Wallet
-	adapter wallet.WalletIntersection
-	Signer  types.Signer
-	Config  *config.ConfigModule
+	Wallet      *wallet.Wallet
+	ChainReader *chain2.Store
+	adapter     wallet.WalletIntersection
+	Signer      types.Signer
+	Config      *config.ConfigModule
 }
 
 type walletRepo interface {
@@ -35,11 +36,11 @@ type walletRepo interface {
 
 // NewWalletSubmodule creates a new storage protocol submodule.
 func NewWalletSubmodule(ctx context.Context,
-	cfg *config.ConfigModule,
 	repo walletRepo,
+	cfgModule *config.ConfigModule,
 	chain *chain.ChainSubmodule,
 	password []byte) (*WalletSubmodule, error) {
-	passphraseCfg, err := getPassphraseConfig(cfg)
+	passphraseCfg, err := getPassphraseConfig(repo.Config())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get passphrase config")
 	}
@@ -64,11 +65,11 @@ func NewWalletSubmodule(ctx context.Context,
 		adapter = fcWallet
 	}
 	return &WalletSubmodule{
-		Config:  cfg,
-		Chain:   chain,
-		Wallet:  fcWallet,
-		adapter: adapter,
-		Signer:  state.NewSigner(headSigner, fcWallet),
+		Config:      cfgModule,
+		ChainReader: chain.ChainReader,
+		Wallet:      fcWallet,
+		adapter:     adapter,
+		Signer:      state.NewSigner(headSigner, fcWallet),
 	}, nil
 }
 
@@ -87,19 +88,9 @@ func (wallet *WalletSubmodule) V0API() apiface.IWallet {
 	}
 }
 
-func getPassphraseConfig(cfg *config.ConfigModule) (pconfig.PassphraseConfig, error) {
-	scryptN, err := cfg.Get("walletModule.passphraseConfig.scryptN")
-	if err != nil {
-		return pconfig.PassphraseConfig{}, err
-	}
-
-	scryptP, err := cfg.Get("walletModule.passphraseConfig.scryptP")
-	if err != nil {
-		return pconfig.PassphraseConfig{}, err
-	}
-
+func getPassphraseConfig(cfg *pconfig.Config) (pconfig.PassphraseConfig, error) {
 	return pconfig.PassphraseConfig{
-		ScryptN: scryptN.(int),
-		ScryptP: scryptP.(int),
+		ScryptN: cfg.Wallet.PassphraseConfig.ScryptN,
+		ScryptP: cfg.Wallet.PassphraseConfig.ScryptP,
 	}, nil
 }

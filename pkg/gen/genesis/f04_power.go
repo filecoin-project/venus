@@ -3,8 +3,8 @@ package genesis
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/pkg/specactors"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
+	"github.com/filecoin-project/venus/pkg/types/specactors"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"

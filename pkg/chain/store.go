@@ -30,22 +30,21 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
-	_init "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/multisig"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/verifreg"
-	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	_init "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/multisig"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/reward"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/verifreg"
+	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/util"
 )
 
@@ -140,7 +139,7 @@ type Store struct {
 	// Tracks tipsets by height/parentset for use by expected consensus.
 	tipIndex *TipStateCache
 
-	circulatingSupplyCalculator *CirculatingSupplyCalculator
+	circulatingSupplyCalculator ICirculatingSupplyCalcualtor
 
 	chainIndex *ChainIndex
 
@@ -151,16 +150,15 @@ type Store struct {
 }
 
 // NewStore constructs a new default store.
-func NewStore(ds repo.Datastore,
-	cst cbor.IpldStore,
+func NewStore(chainDs repo.Datastore,
 	bsstore blockstore.Blockstore,
-	forkConfig *config.ForkUpgradeConfig,
 	genesisCid cid.Cid,
+	circulatiingSupplyCalculator ICirculatingSupplyCalcualtor,
 ) *Store {
 	tsCache, _ := lru.NewARC(10000)
 	store := &Store{
-		stateAndBlockSource: cst,
-		ds:                  ds,
+		stateAndBlockSource: cbor.NewCborStore(bsstore),
+		ds:                  chainDs,
 		bsstore:             bsstore,
 		headEvents:          pubsub.New(64),
 
@@ -172,7 +170,7 @@ func NewStore(ds repo.Datastore,
 	//todo cycle reference , may think a better idea
 	store.tipIndex = NewTipStateCache(store)
 	store.chainIndex = NewChainIndex(store.GetTipSet)
-	store.circulatingSupplyCalculator = NewCirculatingSupplyCalculator(bsstore, store, forkConfig)
+	store.circulatingSupplyCalculator = circulatiingSupplyCalculator
 
 	val, err := store.ds.Get(CheckPoint)
 	if err != nil {

@@ -16,9 +16,9 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
 	"github.com/filecoin-project/venus/pkg/vm"
 )
 
@@ -281,7 +281,11 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 		if err != nil {
 			return nil, xerrors.Errorf("estimating gas used: %w", err)
 		}
-		estimateMessage.Msg.GasLimit = int64(float64(gasLimit) * estimateMessage.Spec.GasOverEstimation)
+		gasLimitOverestimation := mp.GetConfig().GasLimitOverestimation
+		if estimateMessage.Spec != nil && estimateMessage.Spec.GasOverEstimation > 0 {
+			gasLimitOverestimation = estimateMessage.Spec.GasOverEstimation
+		}
+		estimateMessage.Msg.GasLimit = int64(float64(gasLimit) * gasLimitOverestimation)
 	}
 
 	if estimateMessage.Msg.GasPremium == types.EmptyInt || types.BigCmp(estimateMessage.Msg.GasPremium, types.NewInt(0)) == 0 {

@@ -9,7 +9,7 @@ import (
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 
-	actors "github.com/filecoin-project/venus/pkg/specactors"
+	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 )
 
 func getAccountCid(ver actors.Version) cid.Cid {
