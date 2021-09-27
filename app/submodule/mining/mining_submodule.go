@@ -1,7 +1,7 @@
 package mining
 
 import (
-	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/network"
@@ -13,6 +13,7 @@ import (
 
 type miningConfig interface {
 	Repo() repo.Repo
+	Verifier() ffiwrapper.Verifier
 }
 
 // MiningModule enhances the `Node` with miner capabilities.
@@ -43,7 +44,6 @@ func NewMiningModule(
 	networkModule *network.NetworkSubmodule,
 	syncModule *syncer.SyncerSubmodule,
 	wallet wallet.WalletSubmodule,
-	proofVerifier ffiwrapper.Verifier,
 ) *MiningModule {
 	return &MiningModule{
 		Config:        conf,
@@ -52,6 +52,6 @@ func NewMiningModule(
 		NetworkModule: networkModule,
 		SyncModule:    syncModule,
 		Wallet:        wallet,
-		proofVerifier: proofVerifier,
+		proofVerifier: conf.Verifier(),
 	}
 }

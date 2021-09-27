@@ -3,13 +3,11 @@ package chain
 import (
 	"bufio"
 	"context"
-	"github.com/prometheus/common/log"
-	"golang.org/x/xerrors"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	logging "github.com/ipfs/go-log/v2"
 	"io"
 	"time"
-
-	"github.com/filecoin-project/venus/app/submodule/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
@@ -20,6 +18,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 )
 
 var _ apiface.IChainInfo = &chainInfoAPI{}
@@ -27,6 +26,8 @@ var _ apiface.IChainInfo = &chainInfoAPI{}
 type chainInfoAPI struct { //nolint
 	chain *ChainSubmodule
 }
+
+var log = logging.Logger("chain")
 
 //NewChainInfoAPI new chain info api
 func NewChainInfoAPI(chain *ChainSubmodule) apiface.IChainInfo {
@@ -323,7 +324,7 @@ func (cia *chainInfoAPI) ResolveToKeyAddr(ctx context.Context, addr address.Addr
 
 //************Drand****************//
 // ChainNotify subscribe to chain head change event
-func (cia *chainInfoAPI) ChainNotify(ctx context.Context) chan []*chain.HeadChange {
+func (cia *chainInfoAPI) ChainNotify(ctx context.Context) <-chan []*chain.HeadChange {
 	return cia.chain.ChainReader.SubHeadChanges(ctx)
 }
 

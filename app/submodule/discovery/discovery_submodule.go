@@ -2,8 +2,9 @@ package discovery
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/submodule/network"
+	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/libp2p/go-libp2p-core/host"
 	"time"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
-	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/discovery"
 	"github.com/filecoin-project/venus/pkg/net"
 	"github.com/filecoin-project/venus/pkg/util/moresync"
@@ -42,30 +42,30 @@ type DiscoverySubmodule struct { //nolint
 
 type discoveryConfig interface {
 	GenesisCid() cid.Cid
+	Repo() repo.Repo
 }
 
 // NewDiscoverySubmodule creates a new discovery submodule.
 func NewDiscoverySubmodule(ctx context.Context,
-	genesiGetter discoveryConfig,
-	config *config.Config,
+	discoverCfg discoveryConfig,
 	network *network.NetworkSubmodule,
 	chainStore *chain.Store,
 	messageStore *chain.MessageStore,
 ) (*DiscoverySubmodule, error) {
-	periodStr := config.Bootstrap.Period
+	periodStr := discoverCfg.Repo().Config().Bootstrap.Period
 	period, err := time.ParseDuration(periodStr)
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't parse bootstrap period %s", periodStr)
 	}
 
 	// bootstrapper maintains connections to some subset of addresses
-	ba := config.Bootstrap.Addresses
+	ba := discoverCfg.Repo().Config().Bootstrap.Addresses
 	bpi, err := net.PeerAddrsToAddrInfo(ba)
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't parse bootstrap addresses [%s]", ba)
 	}
 
-	minPeerThreshold := config.Bootstrap.MinPeerThreshold
+	minPeerThreshold := discoverCfg.Repo().Config().Bootstrap.MinPeerThreshold
 
 	exchangeClient := exchange.NewClient(network.Host, network.PeerMgr)
 	// create a bootstrapper
@@ -82,7 +82,7 @@ func NewDiscoverySubmodule(ctx context.Context,
 		BootstrapReady:  bootStrapReady,
 		PeerTracker:     peerTracker,
 		ExchangeClient:  exchangeClient,
-		HelloHandler:    discovery.NewHelloProtocolHandler(network.Host, network.PeerMgr, exchangeClient, chainStore, messageStore, genesiGetter.GenesisCid(), time.Duration(config.NetworkParams.BlockDelay)*time.Second),
+		HelloHandler:    discovery.NewHelloProtocolHandler(network.Host, network.PeerMgr, exchangeClient, chainStore, messageStore, discoverCfg.GenesisCid(), time.Duration(discoverCfg.Repo().Config().NetworkParams.BlockDelay)*time.Second),
 		ExchangeHandler: exchange.NewServer(chainStore, messageStore, network.Host),
 		PeerDiscoveryCallbacks: []discovery.PeerDiscoveredCallback{func(msg *types.ChainInfo) {
 			bootStrapReady.Done()

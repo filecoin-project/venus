@@ -15,9 +15,9 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/specactors"
-	init_ "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors"
+	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 )
 

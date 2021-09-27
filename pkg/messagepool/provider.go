@@ -12,10 +12,9 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/messagesigner"
-	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
 )
 
 var (
@@ -46,7 +45,7 @@ type mpoolProvider struct {
 	config *config.NetworkParamsConfig
 	ps     *pubsub.PubSub
 
-	lite messagesigner.MpoolNonceAPI
+	lite MpoolNonceAPI
 }
 
 var _ Provider = (*mpoolProvider)(nil)
@@ -60,7 +59,7 @@ func NewProvider(sm *chain.Store, cms *chain.MessageStore, cfg *config.NetworkPa
 	}
 }
 
-func NewProviderLite(sm *chain.Store, ps *pubsub.PubSub, noncer messagesigner.MpoolNonceAPI) Provider {
+func NewProviderLite(sm *chain.Store, ps *pubsub.PubSub, noncer MpoolNonceAPI) Provider {
 	return &mpoolProvider{sm: sm, ps: ps, lite: noncer}
 }
 

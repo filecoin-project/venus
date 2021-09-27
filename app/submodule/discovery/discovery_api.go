@@ -1,6 +1,8 @@
 package discovery
 
-import "github.com/filecoin-project/venus/app/submodule/apiface"
+import (
+	"github.com/filecoin-project/venus/app/client/apiface"
+)
 
 var _ apiface.IDiscovery = &discoveryAPI{}
 

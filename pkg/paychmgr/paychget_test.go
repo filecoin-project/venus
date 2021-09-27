@@ -22,10 +22,10 @@ import (
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
-	lotusinit "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
-	paychmock "github.com/filecoin-project/venus/pkg/specactors/builtin/paych/mock"
 	"github.com/filecoin-project/venus/pkg/types"
+	lotusinit "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
+	paychmock "github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych/mock"
 )
 
 func testChannelResponse(t *testing.T, ch address.Address) types.MessageReceipt {

@@ -3,14 +3,15 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/types/internal"
 	"runtime"
 	"strings"
 	"time"
 )
 
 type ExecutionTrace struct {
-	Msg        *UnsignedMessage
-	MsgRct     *MessageReceipt
+	Msg        *internal.UnsignedMessage
+	MsgRct     *internal.MessageReceipt
 	Error      string
 	Duration   time.Duration
 	GasCharges []*GasTrace
@@ -74,7 +75,7 @@ func (l Loc) Important() bool {
 }
 
 func (gt *GasTrace) MarshalJSON() ([]byte, error) {
-	type GasTraceCopy GasTrace
+	type gasTraceCopy GasTrace
 	if len(gt.Location) == 0 {
 		if len(gt.Callers) != 0 {
 			frames := runtime.CallersFrames(gt.Callers)
@@ -96,6 +97,6 @@ func (gt *GasTrace) MarshalJSON() ([]byte, error) {
 		}
 	}
 
-	cpy := (*GasTraceCopy)(gt)
+	cpy := (*gasTraceCopy)(gt)
 	return json.Marshal(cpy)
 }

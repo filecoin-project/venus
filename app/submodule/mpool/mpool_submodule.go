@@ -3,20 +3,18 @@ package mpool
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"os"
 	"reflect"
 	"runtime"
 	"strconv"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/messagesigner"
-
 	"github.com/filecoin-project/go-address"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/syncer"
@@ -59,7 +57,7 @@ type MessagePoolSubmodule struct { //nolint
 	MessageSub   pubsub.Subscription
 
 	MPool      *messagepool.MessagePool
-	msgSigner  *messagesigner.MessageSigner
+	msgSigner  *messagepool.MessageSigner
 	chain      *chain.ChainSubmodule
 	network    *network.NetworkSubmodule
 	walletAPI  apiface.IWallet
@@ -80,7 +78,6 @@ func NewMpoolSubmodule(cfg messagepoolConfig,
 	chain *chain.ChainSubmodule,
 	syncer *syncer.SyncerSubmodule,
 	wallet *wallet.WalletSubmodule,
-	networkCfg *config.NetworkParamsConfig,
 ) (*MessagePoolSubmodule, error) {
 	mpp := messagepool.NewProvider(chain.ChainReader, chain.MessageStore, cfg.Repo().Config().NetworkParams, network.Pubsub)
 
@@ -109,8 +106,8 @@ func NewMpoolSubmodule(cfg messagepoolConfig,
 		chain:      chain,
 		walletAPI:  wallet.API(),
 		network:    network,
-		networkCfg: networkCfg,
-		msgSigner:  messagesigner.NewMessageSigner(wallet.Wallet, mp, cfg.Repo().MetaDatastore()),
+		networkCfg: cfg.Repo().Config().NetworkParams,
+		msgSigner:  messagepool.NewMessageSigner(wallet.Wallet, mp, cfg.Repo().MetaDatastore()),
 	}, nil
 }
 

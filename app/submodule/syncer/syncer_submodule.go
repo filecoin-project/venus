@@ -3,11 +3,12 @@ package syncer
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"reflect"
 	"runtime"
 	"time"
-
-	"github.com/filecoin-project/venus/app/submodule/apiface"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
@@ -60,6 +61,7 @@ type syncerConfig interface {
 	BlockTime() time.Duration
 	ChainClock() clock.ChainEpochClock
 	Repo() repo.Repo
+	Verifier() ffiwrapper.Verifier
 }
 
 type nodeChainSelector interface {
@@ -74,7 +76,8 @@ func NewSyncerSubmodule(ctx context.Context,
 	network *network.NetworkSubmodule,
 	discovery *discovery.DiscoverySubmodule,
 	chn *chain2.ChainSubmodule,
-	postVerifier consensus.ProofVerifier) (*SyncerSubmodule, error) {
+	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor,
+) (*SyncerSubmodule, error) {
 	// setup validation
 	gasPriceSchedule := gas.NewPricesSchedule(config.Repo().Config().NetworkParams.ForkUpgradeParam)
 
@@ -87,15 +90,16 @@ func NewSyncerSubmodule(ctx context.Context,
 	//	elections := consensus.NewElectionMachine(chn.state)
 	sampler := chain.NewSampler(chn.ChainReader, genBlk.Ticket)
 	tickets := consensus.NewTicketMachine(sampler, chn.ChainReader)
-	stateViewer := consensus.AsDefaultStateViewer(state.NewViewer(blockstore.CborStore))
-	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, &stateViewer)
+	cborStore := cbor.NewCborStore(config.Repo().Datastore())
+	stateViewer := consensus.AsDefaultStateViewer(state.NewViewer(cborStore))
+	nodeChainSelector := consensus.NewChainSelector(cborStore, &stateViewer)
 
 	blkValid := consensus.NewBlockValidator(tickets,
 		blockstore.Blockstore,
 		chn.MessageStore,
 		chn.Drand,
-		blockstore.CborStore,
-		postVerifier,
+		cborStore,
+		config.Verifier(),
 		&stateViewer,
 		chn.ChainReader,
 		nodeChainSelector,
@@ -109,7 +113,7 @@ func NewSyncerSubmodule(ctx context.Context,
 		return nil, errors.Wrap(err, "failed to register block validator")
 	}
 
-	nodeConsensus := consensus.NewExpected(blockstore.CborStore,
+	nodeConsensus := consensus.NewExpected(cborStore,
 		blockstore.Blockstore,
 		config.BlockTime(),
 		chn.ChainReader,
@@ -120,6 +124,7 @@ func NewSyncerSubmodule(ctx context.Context,
 		gasPriceSchedule,
 		blkValid,
 		chn.SystemCall,
+		circulatingSupplyCalculator,
 	)
 
 	chainSyncManager, err := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, blockstore.Blockstore, discovery.ExchangeClient, config.ChainClock(), chn.Fork)

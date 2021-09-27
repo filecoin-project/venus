@@ -65,7 +65,7 @@ func TestDAGGet(t *testing.T) {
 
 		ipldnode := chain.NewBuilder(t, address.Undef).Genesis().At(0).ToNode()
 
-		// put into out blockservice
+		// put into out dagservice
 		assert.NoError(t, blkserv.AddBlock(ipldnode))
 
 		res, err := dag.GetNode(ctx, ipldnode.Cid().String())

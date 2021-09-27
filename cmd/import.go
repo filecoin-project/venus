@@ -3,8 +3,6 @@ package cmd
 import (
 	"bufio"
 	"context"
-	"github.com/filecoin-project/venus/pkg/config"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"io"
 	"net/http"
 	"os"
@@ -66,8 +64,7 @@ func importChain(r repo.Repo, fname string) error {
 
 	bs := r.Datastore()
 	// setup a ipldCbor on top of the local store
-	ipldCborStore := cbor.NewCborStore(bs)
-	chainStore := chain.NewStore(r.ChainDatastore(), ipldCborStore, bs, config.DefaultForkUpgradeParam, cid.Undef)
+	chainStore := chain.NewStore(r.ChainDatastore(), bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator())
 
 	bufr := bufio.NewReaderSize(rd, 1<<20)
 

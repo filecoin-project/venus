@@ -5,9 +5,9 @@ import (
 
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/venus/pkg/specactors"
-	"github.com/filecoin-project/venus/pkg/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/system"
+	"github.com/filecoin-project/venus/pkg/types/specactors"
+	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/system"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 

@@ -121,7 +121,7 @@ type Expected struct {
 	gasPirceSchedule *gas.PricesSchedule
 
 	// circulate supply calculator for vm
-	circulatingSupplyCalculator *chain.CirculatingSupplyCalculator
+	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor
 
 	// systemcall for vm
 	syscallsImpl vm.SyscallsImpl
@@ -145,6 +145,7 @@ func NewExpected(cs cbor.IpldStore,
 	gasPirceSchedule *gas.PricesSchedule,
 	blockValidator *BlockValidator,
 	syscalls vm.SyscallsImpl,
+	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor,
 ) *Expected {
 	processor := NewDefaultProcessor(syscalls)
 	c := &Expected{
@@ -158,7 +159,7 @@ func NewExpected(cs cbor.IpldStore,
 		fork:                        fork,
 		gasPirceSchedule:            gasPirceSchedule,
 		blockValidator:              blockValidator,
-		circulatingSupplyCalculator: chain.NewCirculatingSupplyCalculator(bs, chainState, config.ForkUpgradeParam),
+		circulatingSupplyCalculator: circulatingSupplyCalculator,
 	}
 	return c
 }

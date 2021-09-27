@@ -3,13 +3,13 @@ package wallet
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"strings"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
@@ -26,8 +26,8 @@ type WalletAPI struct { //nolint
 
 // WalletBalance returns the current balance of the given wallet address.
 func (walletAPI *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error) {
-	headkey := walletAPI.walletModule.Chain.ChainReader.GetHead()
-	act, err := walletAPI.walletModule.Chain.ChainReader.GetActorAt(ctx, headkey, addr)
+	headkey := walletAPI.walletModule.ChainReader.GetHead()
+	act, err := walletAPI.walletModule.ChainReader.GetActorAt(ctx, headkey, addr)
 	if err != nil && strings.Contains(err.Error(), types.ErrActorNotFound.Error()) {
 		return abi.NewTokenAmount(0), nil
 	} else if err != nil {
@@ -105,8 +105,8 @@ func (walletAPI *WalletAPI) WalletExport(addr address.Address, password string) 
 
 // WalletSign signs the given bytes using the given address.
 func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error) {
-	head := walletAPI.walletModule.Chain.ChainReader.GetHead()
-	view, err := walletAPI.walletModule.Chain.ChainReader.StateView(head)
+	head := walletAPI.walletModule.ChainReader.GetHead()
+	view, err := walletAPI.walletModule.ChainReader.StateView(head)
 	if err != nil {
 		return nil, err
 	}
