@@ -69,7 +69,6 @@ var daemonCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if limit, _ := req.Options[ULimit].(bool); limit {
-			fmt.Println("setlimit")
 			if _, _, err := ulimit.ManageFdLimit(); err != nil {
 				log.Errorf("setting file descriptor limit: %s", err)
 			}
