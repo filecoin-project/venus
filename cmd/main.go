@@ -45,6 +45,8 @@ const (
 	// ELStdout tells the daemon to write event logs to stdout.
 	ELStdout = "elstdout"
 
+	ULimit = "manage-fdlimit"
+
 	// AutoSealIntervalSeconds configures the daemon to check for and seal any staged sectors on an interval.
 	//AutoSealIntervalSeconds = "auto-seal-interval-seconds"
 

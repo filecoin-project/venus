@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/util/ulimit"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -56,6 +57,7 @@ var daemonCmd = &cmds.Command{
 		cmds.StringOption(SwarmPublicRelayAddress, "public multiaddress for routing circuit relay traffic.  Necessary for relay nodes to provide this if they are not publically dialable"),
 		cmds.BoolOption(OfflineMode, "start the node without networking"),
 		cmds.BoolOption(ELStdout),
+		cmds.BoolOption(ULimit, "manage open file limit").WithDefault(true),
 		cmds.StringOption(AuthServiceURL, "venus auth service URL"),
 		cmds.BoolOption(IsRelay, "advertise and allow venus network traffic to be relayed through this node"),
 		cmds.StringOption(ImportSnapshot, "import chain state from a given chain export file or url"),
@@ -66,6 +68,13 @@ var daemonCmd = &cmds.Command{
 		cmds.StringOption(Password, "set wallet password"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		if limit, _ := req.Options[ULimit].(bool); limit {
+			fmt.Println("setlimit")
+			if _, _, err := ulimit.ManageFdLimit(); err != nil {
+				log.Errorf("setting file descriptor limit: %s", err)
+			}
+		}
+
 		repoDir, _ := req.Options[OptionRepoDir].(string)
 		repoDir, err := paths.GetRepoPath(repoDir)
 		if err != nil {
