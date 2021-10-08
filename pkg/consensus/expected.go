@@ -196,11 +196,6 @@ func (c *Expected) RunStateTransition(ctx context.Context,
 		return cid.Undef, cid.Undef, nil
 	}
 
-	rnd := HeadRandomness{
-		Chain: c.rnd,
-		Head:  ts.Key(),
-	}
-
 	vmOption := vm.VmOption{
 		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 			dertail, err := c.chainState.GetCirculatingSupplyDetailed(ctx, epoch, tree)
@@ -210,7 +205,7 @@ func (c *Expected) RunStateTransition(ctx context.Context,
 			return dertail.FilCirculating, nil
 		},
 		NtwkVersionGetter: c.fork.GetNtwkVersion,
-		Rnd:               &rnd,
+		Rnd:               NewHeadRandomness(c.rnd, ts.Key()),
 		BaseFee:           ts.At(0).ParentBaseFee,
 		Fork:              c.fork,
 		Epoch:             ts.At(0).Height,

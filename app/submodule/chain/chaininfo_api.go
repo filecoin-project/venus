@@ -369,32 +369,39 @@ func (cia *chainInfoAPI) getNetworkName(ctx context.Context) (string, error) {
 
 // ChainGetRandomnessFromBeacon is used to sample the beacon for randomness.
 func (cia *chainInfoAPI) ChainGetRandomnessFromBeacon(ctx context.Context, key types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	ts, err := cia.chain.ChainReader.GetTipSet(key)
+	_, err := cia.ChainGetTipSet(ctx, key)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset key: %v", err)
+		return nil, xerrors.Errorf("loading tipset %s: %w", key, err)
 	}
 
-	// Doing this here is slightly nicer than doing it in the chainstore directly, but it's still bad for ChainAPI to reason about network upgrades
-	if randEpoch > cia.chain.Fork.GetForkUpgrade().UpgradeHyperdriveHeight {
-		return cia.chain.ChainReader.GetBeaconRandomness(ctx, ts.Key(), personalization, randEpoch, entropy, false)
+	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, key, cia.chain.Drand)
+	rnv := cia.chain.Fork.GetNtwkVersion(ctx, randEpoch)
+
+	if rnv >= network.Version14 {
+		return r.GetBeaconRandomnessV3(ctx, personalization, randEpoch, entropy)
+	} else if rnv == network.Version13 {
+		return r.GetBeaconRandomnessV2(ctx, personalization, randEpoch, entropy)
 	}
 
-	return cia.chain.ChainReader.GetBeaconRandomness(ctx, ts.Key(), personalization, randEpoch, entropy, true)
+	return r.GetBeaconRandomnessV1(ctx, personalization, randEpoch, entropy)
+
 }
 
 // ChainGetRandomnessFromTickets is used to sample the chain for randomness.
 func (cia *chainInfoAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	ts, err := cia.chain.ChainReader.GetTipSet(tsk)
+	_, err := cia.ChainGetTipSet(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset key: %v", err)
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	// Doing this here is slightly nicer than doing it in the chainstore directly, but it's still bad for ChainAPI to reason about network upgrades
-	if randEpoch > cia.chain.Fork.GetForkUpgrade().UpgradeHyperdriveHeight {
-		return cia.chain.ChainReader.GetChainRandomness(ctx, ts.Key(), personalization, randEpoch, entropy, false)
+	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, tsk, cia.chain.Drand)
+	rnv := cia.chain.Fork.GetNtwkVersion(ctx, randEpoch)
+
+	if rnv >= network.Version13 {
+		return r.GetChainRandomnessV2(ctx, personalization, randEpoch, entropy)
 	}
 
-	return cia.chain.ChainReader.GetChainRandomness(ctx, ts.Key(), personalization, randEpoch, entropy, true)
+	return r.GetChainRandomnessV1(ctx, personalization, randEpoch, entropy)
 }
 
 // StateNetworkVersion returns the network version at the given tipset
@@ -541,23 +548,3 @@ func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey,
 	}
 	return path, nil
 }
-
-// StateGetReceipt returns the message receipt for the given message
-//func (cia *chainInfoAPI) StateGetReceipt(ctx context.Context, msg cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error) {
-//	chainMsg, err := cia.chain.MessageStore.LoadMessage(msg)
-//	if err != nil {
-//		return nil, err
-//	}
-//	//todo add a api for head tipset directly
-//	head := cia.chain.ChainReader.GetHead()
-//
-//	msgResult, found, err := cia.chain.Waiter.Find(ctx, chainMsg, constants.LookbackNoLimit, head)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	if found {
-//		return msgResult.Receipt, nil
-//	}
-//	return nil, nil
-//}

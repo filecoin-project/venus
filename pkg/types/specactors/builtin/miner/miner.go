@@ -33,6 +33,8 @@ import (
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 )
 
 func init() {
@@ -57,9 +59,13 @@ func init() {
 		return load5(store, root)
 	})
 
+	builtin.RegisterActorState(builtin6.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load6(store, root)
+	})
+
 }
 
-var Methods = builtin5.MethodsMiner
+var Methods = builtin6.MethodsMiner
 
 // Unchanged between v0, v2, v3, and v4 actors
 var WPoStProvingPeriod = miner0.WPoStProvingPeriod
@@ -93,6 +99,9 @@ func Load(store adt.Store, act *internal.Actor) (State, error) {
 	case builtin5.StorageMinerActorCodeID:
 		return load5(store, act.Head)
 
+	case builtin6.StorageMinerActorCodeID:
+		return load6(store, act.Head)
+
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
@@ -115,6 +124,9 @@ func MakeState(store adt.Store, av specactors.Version) (State, error) {
 	case specactors.Version5:
 		return make5(store)
 
+	case specactors.Version6:
+		return make6(store)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -136,6 +148,9 @@ func GetActorCodeID(av specactors.Version) (cid.Cid, error) {
 
 	case specactors.Version5:
 		return builtin5.StorageMinerActorCodeID, nil
+
+	case specactors.Version6:
+		return builtin6.StorageMinerActorCodeID, nil
 
 	}
 

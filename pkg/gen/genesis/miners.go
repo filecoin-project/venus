@@ -83,7 +83,10 @@ func mkFakedSigSyscalls(sys vmcontext.SyscallsImpl) vmcontext.SyscallsImpl {
 // Note: Much of this is brittle, if the methodNum / param / return changes, it will break things
 func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, miners []Miner, nv network.Version, para *config.ForkUpgradeConfig) (cid.Cid, error) {
 	cst := cbor.NewCborStore(cs.Blockstore())
-	av := specactors.VersionForNetwork(nv)
+	av, err := specactors.VersionForNetwork(nv)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("get actor version: %w", err)
+	}
 
 	csc := func(context.Context, abi.ChainEpoch, tree.Tree) (abi.TokenAmount, error) {
 		return big.Zero(), nil
@@ -208,12 +211,20 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 				if err != nil {
 					return xerrors.Errorf("failed to create genesis miner (publish deals): %w", err)
 				}
-				var ids market.PublishStorageDealsReturn
-				if err := ids.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
-					return xerrors.Errorf("unmarsahling publishStorageDeals result: %w", err)
+				retval, err := market.DecodePublishStorageDealsReturn(ret, nv)
+				if err != nil {
+					return xerrors.Errorf("failed to create genesis miner (decoding published deals): %w", err)
+				}
+				ids, err := retval.DealIDs()
+				if err != nil {
+					return xerrors.Errorf("failed to create genesis miner (getting published dealIDs): %w", err)
 				}
 
-				minerInfos[i].dealIDs = append(minerInfos[i].dealIDs, ids.IDs...)
+				if len(ids) != len(params.Deals) {
+					return xerrors.Errorf("failed to create genesis miner (at least one deal was invalid on publication")
+				}
+
+				minerInfos[i].dealIDs = append(minerInfos[i].dealIDs, ids...)
 				return nil
 			}
 
@@ -307,7 +318,12 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 			return cid.Undef, xerrors.Errorf("setting power state: %w", err)
 		}
 
-		rewact, err := SetupRewardActor(ctx, cs.Blockstore(), big.Zero(), specactors.VersionForNetwork(nv))
+		ver, err := specactors.VersionForNetwork(nv)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("get actor version: %w", err)
+		}
+
+		rewact, err := SetupRewardActor(ctx, cs.Blockstore(), big.Zero(), ver)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("setup reward actor: %w", err)
 		}
@@ -515,27 +531,15 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 // TODO: copied from actors test harness, deduplicate or remove from here
 type fakeRand struct{}
 
-func (fr *fakeRand) GetChainRandomnessLookingForward(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) ChainGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
 	return out, nil
 }
 
-func (fr *fakeRand) GetChainRandomnessLookingBack(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) ChainGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
-	return out, nil
-}
-
-func (fr *fakeRand) GetBeaconRandomnessLookingForward(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
-	return out, nil
-}
-
-func (fr *fakeRand) GetBeaconRandomnessLookingBack(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return out, nil
 }
 

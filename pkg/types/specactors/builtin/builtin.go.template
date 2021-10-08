@@ -107,6 +107,15 @@ func IsAccountActor(c cid.Cid) bool {
 	return false
 }
 
+func IsInitActor(c cid.Cid) bool {
+	{{range .versions}}
+		if c == builtin{{.}}.InitActorCodeID {
+			return true
+		}
+	{{end}}
+	return false
+}
+
 func IsStorageMinerActor(c cid.Cid) bool {
 	{{range .versions}}
 		if c == builtin{{.}}.StorageMinerActorCodeID {

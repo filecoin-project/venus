@@ -3,9 +3,10 @@ package networks
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/constants"
-
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/constants"
 )
 
 func Net2k() *NetworkConf {
@@ -17,6 +18,7 @@ func Net2k() *NetworkConf {
 		},
 		Network: config.NetworkParamsConfig{
 			NetworkType:            constants.Network2k,
+			GenesisNetworkVersion:  network.Version0,
 			BlockDelay:             4,
 			ConsensusMinerMinPower: 2048,
 			MinVerifiedDealSize:    256,
@@ -41,6 +43,7 @@ func Net2k() *NetworkConf {
 				UpgradeNorwegianHeight:     -14,
 				UpgradeTurboHeight:         -15,
 				UpgradeHyperdriveHeight:    -16,
+				UpgradeChocolateHeight:     -17,
 
 				BreezeGasTampingDuration: 0,
 				UpgradeClausHeight:       -11,
@@ -48,6 +51,7 @@ func Net2k() *NetworkConf {
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,
 			PreCommitChallengeDelay: abi.ChainEpoch(10),
+			FaultMaxAge:             miner.WPoStProvingPeriod * 42,
 		},
 	}
 }

@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
@@ -10,29 +11,26 @@ import (
 
 //ChainRandomness define randomness method in filecoin
 type ChainRandomness interface {
-	GetChainRandomness(ctx context.Context, tsk types.TipSetKey, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte, lookback bool) ([]byte, error)
-	GetBeaconRandomness(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, lookback bool) (abi.Randomness, error)
+	ChainGetRandomnessFromBeacon(ctx context.Context, key types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 }
+
+var _ vmcontext.HeadChainRandomness = (*HeadRandomness)(nil)
 
 // A Chain randomness source with a fixed Head tipset key.
 type HeadRandomness struct {
-	Chain ChainRandomness
-	Head  types.TipSetKey
+	chain ChainRandomness
+	head  types.TipSetKey
 }
 
-func (h *HeadRandomness) GetChainRandomnessLookingBack(ctx context.Context, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return h.Chain.GetChainRandomness(ctx, h.Head, tag, epoch, entropy, true)
+func NewHeadRandomness(chain ChainRandomness, head types.TipSetKey) *HeadRandomness {
+	return &HeadRandomness{chain: chain, head: head}
 }
 
-func (h *HeadRandomness) GetChainRandomnessLookingForward(ctx context.Context, tag acrypto.DomainSeparationTag, epoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return h.Chain.GetChainRandomness(ctx, h.Head, tag, epoch, entropy, false)
+func (h HeadRandomness) ChainGetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return h.chain.ChainGetRandomnessFromBeacon(ctx, h.head, personalization, randEpoch, entropy)
 }
 
-func (h *HeadRandomness) GetBeaconRandomnessLookingBack(ctx context.Context, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return h.Chain.GetBeaconRandomness(ctx, h.Head, pers, round, entropy, true)
-}
-
-func (h *HeadRandomness) GetBeaconRandomnessLookingForward(ctx context.Context, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return h.Chain.GetBeaconRandomness(ctx, h.Head, pers, round, entropy, false)
-
+func (h HeadRandomness) ChainGetRandomnessFromTickets(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return h.chain.ChainGetRandomnessFromTickets(ctx, h.head, personalization, randEpoch, entropy)
 }

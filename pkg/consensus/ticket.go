@@ -27,12 +27,11 @@ type tipsetLoader interface {
 // TicketMachine uses a VRF and VDF to generate deterministic, unpredictable
 // and time delayed tickets and validates these tickets.
 type TicketMachine struct {
-	sampler      ChainSampler
 	tipsetLoader tipsetLoader
 }
 
-func NewTicketMachine(sampler ChainSampler, tipsetLoader tipsetLoader) *TicketMachine {
-	return &TicketMachine{sampler: sampler, tipsetLoader: tipsetLoader}
+func NewTicketMachine(tipsetLoader tipsetLoader) *TicketMachine {
+	return &TicketMachine{tipsetLoader: tipsetLoader}
 }
 
 // MakeTicket creates a new ticket from a Chain and target epoch by running a verifiable

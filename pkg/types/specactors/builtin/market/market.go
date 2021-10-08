@@ -1,6 +1,7 @@
 package market
 
 import (
+	"github.com/filecoin-project/go-state-types/network"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -21,6 +22,8 @@ import (
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
 	"github.com/filecoin-project/venus/pkg/types/internal"
 	"github.com/filecoin-project/venus/pkg/types/specactors"
@@ -49,11 +52,15 @@ func init() {
 	builtin.RegisterActorState(builtin5.StorageMarketActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load5(store, root)
 	})
+
+	builtin.RegisterActorState(builtin6.StorageMarketActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load6(store, root)
+	})
 }
 
 var (
-	Address = builtin5.StorageMarketActorAddr
-	Methods = builtin5.MethodsMarket
+	Address = builtin6.StorageMarketActorAddr
+	Methods = builtin6.MethodsMarket
 )
 
 func Load(store adt.Store, act *internal.Actor) (State, error) {
@@ -73,6 +80,9 @@ func Load(store adt.Store, act *internal.Actor) (State, error) {
 
 	case builtin5.StorageMarketActorCodeID:
 		return load5(store, act.Head)
+
+	case builtin6.StorageMarketActorCodeID:
+		return load6(store, act.Head)
 
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
@@ -96,6 +106,9 @@ func MakeState(store adt.Store, av specactors.Version) (State, error) {
 	case specactors.Version5:
 		return make5(store)
 
+	case specactors.Version6:
+		return make6(store)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -117,6 +130,9 @@ func GetActorCodeID(av specactors.Version) (cid.Cid, error) {
 
 	case specactors.Version5:
 		return builtin5.StorageMarketActorCodeID, nil
+
+	case specactors.Version6:
+		return builtin6.StorageMarketActorCodeID, nil
 
 	}
 
@@ -162,7 +178,42 @@ type DealProposals interface {
 }
 
 type PublishStorageDealsParams = market0.PublishStorageDealsParams
-type PublishStorageDealsReturn = market0.PublishStorageDealsReturn
+type PublishStorageDealsReturn interface {
+	DealIDs() ([]abi.DealID, error)
+	// Note that this index is based on the batch of deals that were published, NOT the DealID
+	IsDealValid(index uint64) (bool, error)
+}
+
+func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStorageDealsReturn, error) {
+	av, err := specactors.VersionForNetwork(nv)
+	if err != nil {
+		return nil, err
+	}
+
+	switch av {
+
+	case specactors.Version0:
+		return decodePublishStorageDealsReturn0(b)
+
+	case specactors.Version2:
+		return decodePublishStorageDealsReturn2(b)
+
+	case specactors.Version3:
+		return decodePublishStorageDealsReturn3(b)
+
+	case specactors.Version4:
+		return decodePublishStorageDealsReturn4(b)
+
+	case specactors.Version5:
+		return decodePublishStorageDealsReturn5(b)
+
+	case specactors.Version6:
+		return decodePublishStorageDealsReturn6(b)
+
+	}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
 type VerifyDealsForActivationParams = market0.VerifyDealsForActivationParams
 type WithdrawBalanceParams = market0.WithdrawBalanceParams
 

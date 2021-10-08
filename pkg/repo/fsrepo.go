@@ -26,7 +26,7 @@ import (
 )
 
 // Version is the version of repo schema that this code understands.
-const LatestVersion uint = 4
+const LatestVersion uint = 5
 
 const (
 	// apiFile is the filename containing the filecoin node's api address.
@@ -57,12 +57,11 @@ type FSRepo struct {
 	lk  sync.RWMutex
 	cfg *config.Config
 
-	ds        *blockstoreutil.BadgerBlockstore
-	stagingDs Datastore
-	keystore  fskeystore.Keystore
-	walletDs  Datastore
-	chainDs   Datastore
-	metaDs    Datastore
+	ds       *blockstoreutil.BadgerBlockstore
+	keystore fskeystore.Keystore
+	walletDs Datastore
+	chainDs  Datastore
+	metaDs   Datastore
 	//marketDs  Datastore
 	paychDs Datastore
 	// lockfile is the file system lock to prevent others from opening the same repo.
@@ -354,10 +353,6 @@ func (r *FSRepo) Close() error {
 
 	if err := r.metaDs.Close(); err != nil {
 		return errors.Wrap(err, "failed to close meta datastore")
-	}
-
-	if err := r.stagingDs.Close(); err != nil {
-		return errors.Wrap(err, "failed to close stagingDs datastore")
 	}
 
 	if err := r.paychDs.Close(); err != nil {

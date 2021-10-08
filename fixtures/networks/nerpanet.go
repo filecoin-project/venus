@@ -3,9 +3,11 @@ package networks
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"math"
 )
 
 func NerpaNet() *NetworkConf {
@@ -29,6 +31,7 @@ func NerpaNet() *NetworkConf {
 				abi.RegisteredSealProof_StackedDrg64GiBV1,
 			},
 			NetworkType:            constants.NetworkNerpa,
+			GenesisNetworkVersion:  network.Version0,
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 4 << 40,
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
@@ -51,6 +54,7 @@ func NerpaNet() *NetworkConf {
 				UpgradeNorwegianHeight:     201000,
 				UpgradeTurboHeight:         203000,
 				UpgradeHyperdriveHeight:    379178,
+				UpgradeChocolateHeight:     math.MaxInt32,
 
 				BreezeGasTampingDuration: 0,
 				UpgradeClausHeight:       250,
