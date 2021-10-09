@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"sync"
 	"testing"
@@ -25,15 +26,19 @@ import (
 )
 
 var dummyCid cid.Cid
+var ObserveDuration time.Duration
 
 func init() {
 	dummyCid, _ = cid.Parse("bafkqaaa")
+	ObserveDuration = time.Millisecond * 100
 }
 
 type fakeMsg struct {
 	bmsgs []*types.Message
 	smsgs []*types.SignedMessage
 }
+
+var _ IEvent = &fakeCS{}
 
 type fakeCS struct {
 	t   *testing.T
@@ -49,28 +54,55 @@ type fakeCS struct {
 	waitSub    chan struct{}
 	subCh      chan<- []*chain.HeadChange
 	callNumber map[string]int
+
+	cancel context.CancelFunc
 }
 
 func newFakeCS(t *testing.T) *fakeCS {
+	ctx, cancel := context.WithCancel(context.TODO())
 	fcs := &fakeCS{
 		t:          t,
 		h:          1,
 		msgs:       make(map[cid.Cid]fakeMsg),
 		blkMsgs:    make(map[cid.Cid]cid.Cid),
 		tipsets:    make(map[types.TipSetKey]*types.TipSet),
-		tsc:        newTSCache(nil, 2*constants.ForkLengthThreshold),
+		tsc:        newTSCache(&fakeTSCacheAPI{}, 2*constants.ForkLengthThreshold),
 		callNumber: map[string]int{},
-		waitSub:    make(chan struct{}),
+		waitSub:    make(chan struct{}, 1),
+		cancel:     cancel,
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
+	fcs.loopNotify(ctx)
 	return fcs
+}
+
+func (fcs *fakeCS) stop() {
+	if fcs.cancel == nil {
+		return
+	}
+	fcs.cancel()
+}
+
+// our observe use a timer and call 'chainhead' to observe chain head change
+// to 'PASS' these tests, we must call 'ChainNotify' to start 'waitSub'
+func (fcs *fakeCS) loopNotify(ctx context.Context) {
+	head := fcs.ChainNotify(ctx)
+	go func() {
+		for {
+			select {
+			case <-head:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 }
 
 func (fcs *fakeCS) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	fcs.mu.Lock()
 	defer fcs.mu.Unlock()
 	fcs.callNumber["ChainHead"] = fcs.callNumber["ChainHead"] + 1
-	panic("implement me")
+	return fcs.tsc.ChainHead(ctx)
 }
 
 func (fcs *fakeCS) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*chain.HeadChange, error) {
@@ -127,17 +159,19 @@ func (fcs *fakeCS) StateGetActor(ctx context.Context, actor address.Address, tsk
 	panic("Not Implemented")
 }
 
-func (fcs *fakeCS) ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error) {
+func (fcs *fakeCS) ChainGetTipSetByHeight(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	fcs.mu.Lock()
 	defer fcs.mu.Unlock()
 	fcs.callNumber["ChainGetTipSetByHeight"] = fcs.callNumber["ChainGetTipSetByHeight"] + 1
-	panic("Not Implemented")
+
+	return fcs.tsc.ChainGetTipSetByHeight(ctx, height, tsk)
 }
-func (fcs *fakeCS) ChainGetTipSetAfterHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error) {
+func (fcs *fakeCS) ChainGetTipSetAfterHeight(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	fcs.mu.Lock()
 	defer fcs.mu.Unlock()
 	fcs.callNumber["ChainGetTipSetAfterHeight"] = fcs.callNumber["ChainGetTipSetAfterHeight"] + 1
-	panic("Not Implemented")
+
+	return fcs.tsc.ChainGetTipSetAfterHeight(ctx, height, tsk)
 }
 
 func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msgcid cid.Cid) *types.TipSet {
@@ -186,7 +220,7 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 	return ts
 }
 
-func (fcs *fakeCS) ChainNotify(ctx context.Context) (<-chan []*chain.HeadChange, error) {
+func (fcs *fakeCS) ChainNotify(ctx context.Context) <-chan []*chain.HeadChange {
 	fcs.mu.Lock()
 	defer fcs.mu.Unlock()
 	fcs.callNumber["ChainNotify"] = fcs.callNumber["ChainNotify"] + 1
@@ -195,19 +229,19 @@ func (fcs *fakeCS) ChainNotify(ctx context.Context) (<-chan []*chain.HeadChange,
 	if fcs.subCh != nil {
 		close(out)
 		fcs.t.Error("already subscribed to notifications")
-		return out, nil
+		return out
 	}
 
 	best, err := fcs.tsc.ChainHead(ctx)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
 	out <- []*chain.HeadChange{{Type: chain.HCCurrent, Val: best}}
 	fcs.subCh = out
 	close(fcs.waitSub)
 
-	return out, nil
+	return out
 }
 
 func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*apitypes.BlockMessages, error) {
@@ -288,7 +322,10 @@ func (fcs *fakeCS) sub(rev, app []*types.TipSet) {
 
 func (fcs *fakeCS) advance(rev, app, drop int, msgs map[int]cid.Cid, nulls ...int) {
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	defer func() {
+		cancel()
+		time.Sleep(ObserveDuration * 2)
+	}()
 
 	nullm := map[int]struct{}{}
 	for _, v := range nulls {
@@ -351,7 +388,6 @@ func (fcs *fakeCS) advance(rev, app, drop int, msgs map[int]cid.Cid, nulls ...in
 	}
 
 	fcs.sub(revs, apps)
-
 	// Wait for the last round to finish.
 	fcs.sub(nil, nil)
 	fcs.sub(nil, nil)
@@ -359,9 +395,20 @@ func (fcs *fakeCS) advance(rev, app, drop int, msgs map[int]cid.Cid, nulls ...in
 
 var _ IEvent = &fakeCS{}
 
+type ObserveMode string
+
+const (
+	ObModeTimer        = ObserveMode("timer")
+	ObModeSubscription = ObserveMode("subscription")
+)
+
+var CurObserveMode = ObModeTimer
+
 func TestAt(t *testing.T) {
 	tf.UnitTest(t)
 	fcs := newFakeCS(t)
+	defer fcs.stop()
+
 	events, err := NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
 
@@ -380,6 +427,7 @@ func TestAt(t *testing.T) {
 	require.NoError(t, err)
 
 	fcs.advance(0, 3, 0, nil)
+
 	require.Equal(t, false, applied)
 	require.Equal(t, false, reverted)
 
@@ -396,34 +444,48 @@ func TestAt(t *testing.T) {
 	require.Equal(t, false, applied)
 	require.Equal(t, false, reverted)
 
-	fcs.advance(10, 10, 0, nil)
-	require.Equal(t, true, applied)
-	require.Equal(t, true, reverted)
-	applied = false
-	reverted = false
-
-	fcs.advance(10, 1, 0, nil)
+	fcs.advance(10, 0, 0, nil)
 	require.Equal(t, false, applied)
 	require.Equal(t, true, reverted)
+
 	reverted = false
-
-	fcs.advance(0, 1, 0, nil)
-	require.Equal(t, false, applied)
-	require.Equal(t, false, reverted)
-
-	fcs.advance(0, 2, 0, nil)
-	require.Equal(t, false, applied)
-	require.Equal(t, false, reverted)
-
-	fcs.advance(0, 1, 0, nil) // 8
+	fcs.advance(0, 5, 0, nil)
 	require.Equal(t, true, applied)
 	require.Equal(t, false, reverted)
+
+	// observe chain head in timer mode, this kind of observe is not supported
+	if CurObserveMode == ObModeSubscription {
+		fcs.advance(10, 10, 0, nil)
+		require.Equal(t, true, applied)
+		require.Equal(t, true, reverted)
+		applied = false
+		reverted = false
+
+		fcs.advance(10, 1, 0, nil)
+		require.Equal(t, false, applied)
+		require.Equal(t, true, reverted)
+		reverted = false
+
+		fcs.advance(0, 1, 0, nil)
+		require.Equal(t, false, applied)
+		require.Equal(t, false, reverted)
+
+		fcs.advance(0, 2, 0, nil)
+		require.Equal(t, false, applied)
+		require.Equal(t, false, reverted)
+
+		fcs.advance(0, 1, 0, nil) // 8
+		require.Equal(t, true, applied)
+		require.Equal(t, false, reverted)
+	}
+
 }
 
 func TestAtNullTrigger(t *testing.T) {
 	tf.UnitTest(t)
 
 	fcs := newFakeCS(t)
+	defer fcs.stop()
 	events, err := NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
 
@@ -458,6 +520,7 @@ func TestAtNullConf(t *testing.T) {
 	defer cancel()
 
 	fcs := newFakeCS(t)
+	defer fcs.stop()
 
 	events, err := NewEvents(ctx, fcs)
 	require.NoError(t, err)
@@ -491,10 +554,31 @@ func TestAtNullConf(t *testing.T) {
 	reverted = false
 }
 
+var _ tsCacheAPI = &fakeTSCacheAPI{}
+
+type fakeTSCacheAPI struct{}
+
+func (f *fakeTSCacheAPI) ChainGetTipSetAfterHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error) {
+	panic("implement me")
+}
+
+func (f *fakeTSCacheAPI) ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error) {
+	panic("implement me")
+}
+
+func (f *fakeTSCacheAPI) ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error) {
+	panic("implement me")
+}
+
+func (f *fakeTSCacheAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
+	panic("implement me")
+}
+
 func TestAtStart(t *testing.T) {
 	tf.UnitTest(t)
 
 	fcs := newFakeCS(t)
+	defer fcs.stop()
 
 	events, err := NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
@@ -527,6 +611,7 @@ func TestAtStartConfidence(t *testing.T) {
 	tf.UnitTest(t)
 
 	fcs := newFakeCS(t)
+	defer fcs.stop()
 
 	events, err := NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
@@ -555,6 +640,7 @@ func TestAtChained(t *testing.T) {
 	tf.UnitTest(t)
 
 	fcs := newFakeCS(t)
+	defer fcs.stop()
 
 	events, err := NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
@@ -587,6 +673,7 @@ func TestAtChainedConfidence(t *testing.T) {
 	tf.UnitTest(t)
 
 	fcs := newFakeCS(t)
+	defer fcs.stop()
 
 	events, err := NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
@@ -619,6 +706,7 @@ func TestAtChainedConfidenceNull(t *testing.T) {
 	tf.UnitTest(t)
 
 	fcs := newFakeCS(t)
+	defer fcs.stop()
 
 	events, err := NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
@@ -652,6 +740,7 @@ func TestCalled(t *testing.T) {
 	tf.UnitTest(t)
 
 	fcs := newFakeCS(t)
+	defer fcs.stop()
 
 	events, err := NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
@@ -727,7 +816,7 @@ func TestCalled(t *testing.T) {
 	require.Equal(t, false, reverted)
 
 	// revert the message
-
+	t.Skipf("not support in timer observe mode")
 	fcs.advance(2, 1, 0, nil) // H=7, we reverted ts with the msg execution, but not the msg itself
 
 	require.Equal(t, false, applied)
@@ -857,8 +946,10 @@ func TestCalled(t *testing.T) {
 
 func TestCalledTimeout(t *testing.T) {
 	tf.UnitTest(t)
+	t.Skipf("not support in timer observe mode")
 
 	fcs := newFakeCS(t)
+	defer fcs.stop()
 
 	events, err := NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
@@ -892,6 +983,7 @@ func TestCalledTimeout(t *testing.T) {
 	// with check func reporting done
 
 	fcs = newFakeCS(t)
+	defer fcs.stop()
 
 	events, err = NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
@@ -919,7 +1011,9 @@ func TestCalledTimeout(t *testing.T) {
 
 func TestCalledOrder(t *testing.T) {
 	tf.UnitTest(t)
+	t.Skipf("not support in timer observe mode")
 	fcs := newFakeCS(t)
+	defer fcs.stop()
 
 	events, err := NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
@@ -977,6 +1071,7 @@ func TestCalledOrder(t *testing.T) {
 func TestCalledNull(t *testing.T) {
 	tf.UnitTest(t)
 	fcs := newFakeCS(t)
+	defer fcs.stop()
 
 	events, err := NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
@@ -1036,6 +1131,7 @@ func TestCalledNull(t *testing.T) {
 func TestRemoveTriggersOnMessage(t *testing.T) {
 	tf.UnitTest(t)
 	fcs := newFakeCS(t)
+	defer fcs.stop()
 
 	events, err := NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
@@ -1120,6 +1216,7 @@ type testStateChange struct {
 func TestStateChanged(t *testing.T) {
 	tf.UnitTest(t)
 	fcs := newFakeCS(t)
+	defer fcs.stop()
 
 	events, err := NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
@@ -1206,6 +1303,7 @@ func TestStateChanged(t *testing.T) {
 func TestStateChangedRevert(t *testing.T) {
 	tf.UnitTest(t)
 	fcs := newFakeCS(t)
+	defer fcs.stop()
 
 	events, err := NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
@@ -1266,6 +1364,7 @@ func TestStateChangedRevert(t *testing.T) {
 	require.Equal(t, false, applied)
 	require.Equal(t, false, reverted)
 
+	t.Skipf("not support following tests in timer observe mode")
 	// Regress but not so far as to cause a revert
 	fcs.advance(3, 1, 0, nil) // H=6
 
@@ -1282,6 +1381,7 @@ func TestStateChangedRevert(t *testing.T) {
 
 func TestStateChangedTimeout(t *testing.T) {
 	tf.UnitTest(t)
+	t.Skipf("not support in timer observe mode")
 
 	timeoutHeight := abi.ChainEpoch(20)
 	confidence := 3
@@ -1321,6 +1421,7 @@ func TestStateChangedTimeout(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			fcs := newFakeCS(t)
+			defer fcs.stop()
 
 			events, err := NewEvents(context.Background(), fcs)
 			require.NoError(t, err)
@@ -1363,6 +1464,7 @@ func TestCalledMultiplePerEpoch(t *testing.T) {
 	tf.UnitTest(t)
 
 	fcs := newFakeCS(t)
+	defer fcs.stop()
 
 	events, err := NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
@@ -1416,6 +1518,7 @@ func TestCalledMultiplePerEpoch(t *testing.T) {
 func TestCachedSameBlock(t *testing.T) {
 	tf.UnitTest(t)
 	fcs := newFakeCS(t)
+	defer fcs.stop()
 
 	_, err := NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
@@ -1427,11 +1530,13 @@ func TestCachedSameBlock(t *testing.T) {
 	assert.Assert(t, fcs.callNumber["ChainGetBlockMessages"] == 30, "expect call ChainGetBlockMessages %d but got ", 30, fcs.callNumber["ChainGetBlockMessages"])
 }
 
+// nolint
 type testObserver struct {
 	t    *testing.T
 	head *types.TipSet
 }
 
+// nolint
 func (t *testObserver) Apply(_ context.Context, from, to *types.TipSet) error {
 	if t.head != nil {
 		require.True(t.t, t.head.Equals(from))
@@ -1440,6 +1545,7 @@ func (t *testObserver) Apply(_ context.Context, from, to *types.TipSet) error {
 	return nil
 }
 
+// nolint
 func (t *testObserver) Revert(_ context.Context, from, to *types.TipSet) error {
 	if t.head != nil {
 		require.True(t.t, t.head.Equals(from))
@@ -1450,11 +1556,13 @@ func (t *testObserver) Revert(_ context.Context, from, to *types.TipSet) error {
 
 func TestReconnect(t *testing.T) {
 	tf.UnitTest(t)
+	t.Skipf("not support in timer observe mode")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	fcs := newFakeCS(t)
+	defer fcs.stop()
 
 	events, err := NewEvents(ctx, fcs)
 	require.NoError(t, err)

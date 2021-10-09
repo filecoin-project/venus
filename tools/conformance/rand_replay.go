@@ -47,7 +47,7 @@ func (r *ReplayingRand) ChainGetRandomnessFromBeacon(ctx context.Context, pers c
 }
 
 func (r *ReplayingRand) ChainGetRandomnessFromTickets(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return r.getBeaconRandomness(ctx, pers, round, entropy, false)
+	return r.getChainRandomness(ctx, pers, round, entropy, false)
 }
 
 func (r *ReplayingRand) getChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte, lookback bool) ([]byte, error) {

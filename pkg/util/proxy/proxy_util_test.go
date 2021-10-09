@@ -34,9 +34,9 @@ func TestGetInternalStructs(t *testing.T) {
 	sts := GetInternalStructs(&proxy)
 	require.Len(t, sts, 2)
 
-	sa := sts[0].(*struct{ A int })
+	sa := sts[1].(*struct{ A int })
 	sa.A = 3
-	sb := sts[1].(*struct{ B int })
+	sb := sts[0].(*struct{ B int })
 	sb.B = 4
 
 	require.Equal(t, 3, proxy.Internal.A)
