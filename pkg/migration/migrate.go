@@ -64,8 +64,6 @@ func Version3Upgrade(repoPath string) error {
 		fallthrough
 	case constants.NetworkCalibnet:
 		fallthrough
-	case constants.NetworkNerpa:
-		fallthrough
 	case constants.NetworkInterop:
 		cfg.API.VenusAuthURL = ""
 	}
@@ -94,8 +92,6 @@ func Version4Upgrade(repoPath string) (err error) {
 		cfg.NetworkParams.ForkUpgradeParam = networks.Net2k().Network.ForkUpgradeParam
 	case constants.NetworkCalibnet:
 		cfg.NetworkParams.ForkUpgradeParam = networks.Calibration().Network.ForkUpgradeParam
-	case constants.NetworkNerpa:
-		cfg.NetworkParams.ForkUpgradeParam = networks.NerpaNet().Network.ForkUpgradeParam
 	case constants.NetworkForce:
 		cfg.NetworkParams.ForkUpgradeParam = networks.ForceNet().Network.ForkUpgradeParam
 	default:

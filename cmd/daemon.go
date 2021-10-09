@@ -64,7 +64,7 @@ var daemonCmd = &cmds.Command{
 		cmds.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
 		cmds.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
 		cmds.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
-		cmds.StringOption(Network, "when set, populates config with network specific parameters, eg. 2k,nerpa,cali,interop,mainnet,testnetnet").WithDefault("testnetnet"),
+		cmds.StringOption(Network, "when set, populates config with network specific parameters, eg. 2k,cali,interop,mainnet").WithDefault("mainnet"),
 		cmds.StringOption(Password, "set wallet password"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -311,12 +311,8 @@ func setConfigFromOptions(cfg *config.Config, network string) error {
 	switch network {
 	case "mainnet":
 		netcfg = networks.Mainnet()
-	case "nerpa":
-		netcfg = networks.NerpaNet()
 	case "force":
 		netcfg = networks.ForceNet()
-	case "testnetnet":
-		netcfg = networks.Testnet()
 	case "integrationnet":
 		netcfg = networks.IntegrationNet()
 	case "2k":
@@ -347,8 +343,6 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string, network 
 		var bs []byte
 		var err error
 		switch network {
-		case "nerpa":
-			bs, err = asset.Asset("fixtures/_assets/car/nerpanet.car")
 		case "cali":
 			bs, err = asset.Asset("fixtures/_assets/car/calibnet.car")
 		case "interop":
