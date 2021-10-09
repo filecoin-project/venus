@@ -26,7 +26,6 @@ import (
 )
 
 var dummyCid cid.Cid
-var ObserveDuration time.Duration
 
 func init() {
 	dummyCid, _ = cid.Parse("bafkqaaa")
