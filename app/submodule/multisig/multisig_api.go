@@ -2,6 +2,7 @@ package multisig
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/client/apiface"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -9,11 +10,10 @@ import (
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/app/submodule/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	"github.com/filecoin-project/venus/pkg/specactors"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/multisig"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/multisig"
 )
 
 var _ apiface.IMultiSig = &multiSig{}
@@ -40,7 +40,11 @@ func (a *multiSig) messageBuilder(ctx context.Context, from address.Address) (mu
 	if err != nil {
 		return nil, err
 	}
-	return multisig.Message(specactors.VersionForNetwork(nver), from), nil
+	aver, err := specactors.VersionForNetwork(nver)
+	if err != nil {
+		return nil, err
+	}
+	return multisig.Message(aver, from), nil
 }
 
 // MsigCreate creates a multisig wallet

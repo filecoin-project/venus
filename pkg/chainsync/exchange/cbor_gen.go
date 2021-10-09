@@ -5,14 +5,17 @@ package exchange
 import (
 	"fmt"
 	"io"
+	"sort"
 
-	types "github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types"
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
 
 var _ = xerrors.Errorf
+var _ = cid.Undef
+var _ = sort.Sort
 
 var lengthBufRequest = []byte{131}
 
@@ -553,7 +556,7 @@ func (t *BSTipSet) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.Blocks ([]*block.BlockHeader) (slice)
+	// t.Blocks ([]*types.BlockHeader) (slice)
 	if len(t.Blocks) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.Blocks was too long")
 	}
@@ -592,7 +595,7 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Blocks ([]*block.BlockHeader) (slice)
+	// t.Blocks ([]*types.BlockHeader) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {

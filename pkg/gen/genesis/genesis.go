@@ -23,27 +23,27 @@ import (
 
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/multisig"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/multisig"
 
-	"github.com/filecoin-project/venus/pkg/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/account"
+	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/account"
 
-	"github.com/filecoin-project/venus/pkg/specactors"
+	"github.com/filecoin-project/venus/pkg/types/specactors"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/verifreg"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/verifreg"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/cron"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/cron"
 
-	init_ "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
+	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/reward"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/system"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/system"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -155,8 +155,10 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 		return nil, nil, xerrors.Errorf("making new state tree: %w", err)
 	}
 
-	av := specactors.VersionForNetwork(template.NetworkVersion)
-
+	av, err := specactors.VersionForNetwork(template.NetworkVersion)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("get actor version: %w", err)
+	}
 	// Create system actor
 
 	sysact, err := SetupSystemActor(ctx, bs, av)
@@ -569,7 +571,7 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 	}
 
 	// temp chainstore
-	cs := chain.NewStore(rep.ChainDatastore(), cbor.NewCborStore(bs), bs, para, cid.Undef)
+	cs := chain.NewStore(rep.ChainDatastore(), bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator())
 
 	// Verify PreSealed Data
 	stateroot, err = VerifyPreSealedData(ctx, cs, stateroot, template, keyIDs, template.NetworkVersion, para)

@@ -2,7 +2,7 @@
  This document is formatted one-sentence-per-line, breaking very long sentences at phrase boundaries.
  This format makes diffs clean and review comments easy to target.
  -->
-# Go-filecoin code overview
+# Venus code overview
 
 This document provides a high level tour of the venus implementation of the Venus protocols in Go.
 

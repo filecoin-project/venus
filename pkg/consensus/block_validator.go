@@ -28,13 +28,13 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/fork"
-	"github.com/filecoin-project/venus/pkg/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
 	appstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/hashicorp/go-multierror"
@@ -821,6 +821,11 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 
 	secpMsgs := make([]types.ChainMsg, len(blksecpMsgs))
 	for i, m := range blksecpMsgs {
+		if bv.fork.GetNtwkVersion(ctx, blk.Height) >= network.Version14 {
+			if m.Signature.Type != crypto.SigTypeSecp256k1 {
+				return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
+			}
+		}
 		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid secpk message at index %d: %v", i, err)
 		}

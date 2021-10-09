@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -107,6 +108,14 @@ var daemonCmd = &cmds.Command{
 			if err = initRun(req); err != nil {
 				return err
 			}
+		}
+
+		network, _ := req.Options[Network].(string)
+		switch network {
+		case "2k":
+			constants.InsecurePoStValidation = true
+		default:
+
 		}
 
 		return daemonRun(req, re)
@@ -282,8 +291,7 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = migration.TryToMigrate(repoDir)
-	if err != nil {
+	if err = migration.TryToMigrate(repoDir); err != nil {
 		return nil, err
 	}
 	return repo.OpenFSRepo(repoDir, repo.LatestVersion)
@@ -297,6 +305,8 @@ func setConfigFromOptions(cfg *config.Config, network string) error {
 		netcfg = networks.Mainnet()
 	case "nerpa":
 		netcfg = networks.NerpaNet()
+	case "force":
+		netcfg = networks.ForceNet()
 	case "testnetnet":
 		netcfg = networks.Testnet()
 	case "integrationnet":
@@ -335,6 +345,8 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string, network 
 			bs, err = asset.Asset("fixtures/_assets/car/calibnet.car")
 		case "interop":
 			bs, err = asset.Asset("fixtures/_assets/car/interopnet.car")
+		case "force":
+			bs, err = asset.Asset("fixtures/_assets/car/forcenet.car")
 		default:
 			bs, err = asset.Asset("fixtures/_assets/car/devnet.car")
 		}

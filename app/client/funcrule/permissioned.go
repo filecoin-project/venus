@@ -2,6 +2,7 @@ package funcrule
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/util/proxy"
 	"reflect"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -29,44 +30,48 @@ func defaultRule() *Rule {
 // permissionVerify the scheduler between API and internal business
 func PermissionProxy(in interface{}, out interface{}) {
 	ra := reflect.ValueOf(in)
-	rint := reflect.ValueOf(out).Elem()
-	for i := 0; i < ra.NumMethod(); i++ {
-		methodName := ra.Type().Method(i).Name
-		field, exists := rint.Type().FieldByName(methodName)
-		if !exists {
-			// log.Printf("exclude method %s from fullNode", methodName)
-			continue
-		}
-
-		requiredPerm := field.Tag.Get("perm")
-		if requiredPerm == "" {
-			panic("missing 'perm' tag on " + field.Name) // ok
-		}
-		curule := defaultRule()
-		curule.Perm = requiredPerm
-
-		fn := ra.Method(i)
-		rint.FieldByName(methodName).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {
-			ctx := args[0].Interface().(context.Context)
-			errNum := 0
-			if !auth.HasPerm(ctx, defaultPerms, curule.Perm) {
-				errNum++
-				goto ABORT
+	outs := proxy.GetInternalStructs(out)
+	for _, out := range outs {
+		rint := reflect.ValueOf(out).Elem()
+		for i := 0; i < ra.NumMethod(); i++ {
+			methodName := ra.Type().Method(i).Name
+			field, exists := rint.Type().FieldByName(methodName)
+			if !exists {
+				// log.Printf("exclude method %s from fullNode", methodName)
+				continue
 			}
-			return fn.Call(args)
-		ABORT:
-			err := xerrors.Errorf("missing permission to invoke '%s'", methodName)
-			if errNum&1 == 1 {
-				err = xerrors.Errorf("%s  (need '%s')", err, curule.Perm)
+
+			requiredPerm := field.Tag.Get("perm")
+			if requiredPerm == "" {
+				panic("missing 'perm' tag on " + field.Name) // ok
 			}
-			rerr := reflect.ValueOf(&err).Elem()
-			if fn.Type().NumOut() == 2 {
-				return []reflect.Value{
-					reflect.Zero(fn.Type().Out(0)),
-					rerr,
+			curule := defaultRule()
+			curule.Perm = requiredPerm
+
+			fn := ra.Method(i)
+			rint.FieldByName(methodName).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {
+				ctx := args[0].Interface().(context.Context)
+				errNum := 0
+				if !auth.HasPerm(ctx, defaultPerms, curule.Perm) {
+					errNum++
+					goto ABORT
 				}
-			}
-			return []reflect.Value{rerr}
-		}))
+				return fn.Call(args)
+			ABORT:
+				err := xerrors.Errorf("missing permission to invoke '%s'", methodName)
+				if errNum&1 == 1 {
+					err = xerrors.Errorf("%s  (need '%s')", err, curule.Perm)
+				}
+				rerr := reflect.ValueOf(&err).Elem()
+				if fn.Type().NumOut() == 2 {
+					return []reflect.Value{
+						reflect.Zero(fn.Type().Out(0)),
+						rerr,
+					}
+				}
+				return []reflect.Value{rerr}
+			}))
+		}
 	}
+
 }

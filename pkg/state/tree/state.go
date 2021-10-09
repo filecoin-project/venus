@@ -17,9 +17,9 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/specactors/adt"
-	init_ "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
+	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
 
 	states0 "github.com/filecoin-project/specs-actors/actors/states"
 	states2 "github.com/filecoin-project/specs-actors/v2/actors/states"
@@ -138,7 +138,7 @@ func VersionForNetwork(ver network.Version) (StateTreeVersion, error) {
 		return StateTreeVersion2, nil
 	case network.Version12:
 		return StateTreeVersion3, nil
-	case network.Version13:
+	case network.Version13, network.Version14:
 		return StateTreeVersion4, nil
 	default:
 		panic(fmt.Sprintf("unsupported network version %d", ver))

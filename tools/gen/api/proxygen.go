@@ -103,7 +103,7 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 }
 
 func main() {
-	if err := generate("./app/submodule", "apiface", "client", "./app/client/full.go"); err != nil {
+	if err := generate("./app/client", "apiface", "client", "./app/client/full.go"); err != nil {
 		fmt.Println("error: ", err)
 	}
 }
@@ -326,6 +326,7 @@ import (
 {{range .Imports}}	{{.}}
 {{end}}
 )
+
 `)
 	if err != nil {
 		return err
@@ -333,10 +334,25 @@ import (
 
 	err = doTemplate(w, m, `
 {{range .Infos}}
+{{$name := .Name}}
 type {{.Name}}Struct struct {
 {{range .Include}}	{{.}}Struct
-{{end}}{{range .Methods}}	{{.Name}} func({{.NamedParams}}) ({{.Results}}) `+"`"+`{{range .Tags}}{{index . 0}}:"{{index . 1}}"{{end}}`+"`"+`
-{{end}}}
+{{end}}
+
+{{ if gt (len .Methods) 0 }}
+     Internal struct {
+   		{{range .Methods}}	{{.Name}} func({{.NamedParams}}) ({{.Results}}) `+"`"+`{{range .Tags}}{{index . 0}}:"{{index . 1}}"{{end}}`+"`"+`
+  		{{end}}
+     }
+{{ end }}
+}
+
+{{range .Methods}}  func(s *{{$name}}Struct) {{.Name}} ({{.NamedParams}}) ({{.Results}}){
+   return s.Internal.{{.Name}}({{.ParamNames}})
+}
+
+{{end}}
+
 {{end}}
 
 `)

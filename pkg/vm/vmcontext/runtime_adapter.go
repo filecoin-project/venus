@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/venus/pkg/specactors/aerrors"
+	"github.com/filecoin-project/venus/pkg/types/specactors/aerrors"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 
 	"github.com/ipfs/go-cid"
 	cbor2 "github.com/ipfs/go-ipld-cbor"
@@ -151,15 +151,8 @@ func (a *runtimeAdapter) NetworkVersion() network.Version {
 }
 
 func (a *runtimeAdapter) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	var err error
-	var res []byte
-
-	if randEpoch > a.ctx.vm.vmOption.Fork.GetForkUpgrade().UpgradeHyperdriveHeight {
-		res, err = a.ctx.randSource.GetBeaconRandomnessLookingForward(a.Context(), personalization, randEpoch, entropy)
-	} else {
-		res, err = a.ctx.randSource.GetBeaconRandomnessLookingBack(a.Context(), personalization, randEpoch, entropy)
-	}
-
+	opt := a.ctx.vm.vmOption
+	res, err := opt.Rnd.ChainGetRandomnessFromBeacon(a.Context(), personalization, randEpoch, entropy)
 	if err != nil {
 		panic(aerrors.Fatalf("could not get beacon randomness: %s", err))
 	}
@@ -167,14 +160,8 @@ func (a *runtimeAdapter) GetRandomnessFromBeacon(personalization crypto.DomainSe
 }
 
 func (a *runtimeAdapter) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	var err error
-	var res []byte
-	if randEpoch > a.ctx.vm.vmOption.Fork.GetForkUpgrade().UpgradeHyperdriveHeight {
-		res, err = a.ctx.randSource.GetChainRandomnessLookingForward(a.Context(), personalization, randEpoch, entropy)
-	} else {
-		res, err = a.ctx.randSource.GetChainRandomnessLookingBack(a.Context(), personalization, randEpoch, entropy)
-	}
-
+	opt := a.ctx.vm.vmOption
+	res, err := opt.Rnd.ChainGetRandomnessFromTickets(a.Context(), personalization, randEpoch, entropy)
 	if err != nil {
 		panic(aerrors.Fatalf("could not get ticket randomness: %s", err))
 	}

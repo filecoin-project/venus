@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"golang.org/x/xerrors"
 	"runtime"
 	"sort"
 	"sync"
@@ -15,13 +16,13 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/rt"
+	"github.com/filecoin-project/specs-actors/v6/actors/migration/nv14"
 	ipfsblock "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	mh "github.com/multiformats/go-multihash"
-	xerrors "github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 
@@ -41,12 +42,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
-	init_ "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/multisig"
 	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/multisig"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 )
 
@@ -244,7 +245,24 @@ func defaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 				DontStartWithin: 15,
 				StopWithin:      5,
 			}},
-			Expensive: true}}
+			Expensive: true,
+		}, {
+			Height:    upgradeHeight.UpgradeChocolateHeight,
+			Network:   network.Version14,
+			Migration: cf.UpgradeActorsV6,
+			PreMigrations: []PreMigration{{
+				PreMigration:    cf.PreUpgradeActorsV6,
+				StartWithin:     120,
+				DontStartWithin: 60,
+				StopWithin:      35,
+			}, {
+				PreMigration:    cf.PreUpgradeActorsV6,
+				StartWithin:     30,
+				DontStartWithin: 15,
+				StopWithin:      5,
+			}},
+			Expensive: true,
+		}}
 
 	for _, u := range updates {
 		if u.Height < 0 {
@@ -382,7 +400,7 @@ func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore,
 	stateMigrations := make(map[abi.ChainEpoch]*migration, len(us))
 	expensiveUpgrades := make(map[abi.ChainEpoch]struct{}, len(us))
 	var networkVersions []versionSpec
-	lastVersion := network.Version0
+	lastVersion := networkParams.GenesisNetworkVersion
 	if len(us) > 0 {
 		// If we have any upgrades, process them and create a version schedule.
 		for _, upgrade := range us {
@@ -1777,23 +1795,94 @@ func (c *ChainFork) upgradeActorsV5Common(
 	return newRoot, nil
 }
 
+func (c *ChainFork) UpgradeActorsV6(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	// Use all the CPUs except 3.
+	workerCount := runtime.NumCPU() - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+
+	config := nv14.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: 10 * time.Second,
+	}
+
+	newRoot, err := c.upgradeActorsV6Common(ctx, cache, root, epoch, ts, config)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("migrating actors v5 state: %w", err)
+	}
+
+	return newRoot, nil
+}
+
+func (c *ChainFork) PreUpgradeActorsV6(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := runtime.NumCPU()
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+	config := nv14.Config{MaxWorkers: uint(workerCount)}
+	_, err := c.upgradeActorsV6Common(ctx, cache, root, epoch, ts, config)
+	return err
+}
+
+func (c *ChainFork) upgradeActorsV6Common(
+	ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid, epoch abi.ChainEpoch,
+	ts *types.TipSet,
+	config nv14.Config,
+) (cid.Cid, error) {
+	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
+	store := chain.ActorStore(ctx, buf)
+
+	// Load the state root.
+	var stateRoot vmstate.StateRoot
+	if err := store.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != vmstate.StateTreeVersion4 {
+		return cid.Undef, xerrors.Errorf(
+			"expected state root version 4 for actors v6 upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv14.MigrateStateTree(ctx, store, stateRoot.Actors, epoch, config, migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("upgrading to actors v5: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := store.Put(ctx, &vmstate.StateRoot{
+		Version: vmstate.StateTreeVersion4,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// Persist the new tree.
+
+	{
+		from := buf
+		to := buf.Read()
+
+		if err := Copy(ctx, from, to, newRoot); err != nil {
+			return cid.Undef, xerrors.Errorf("copying migrated tree: %w", err)
+		}
+	}
+
+	return newRoot, nil
+}
+
 func (c *ChainFork) GetForkUpgrade() *config.ForkUpgradeConfig {
 	return c.forkUpgrade
 }
-
-//func makeFakeMsg(from address.Address, to address.Address, amt abi.TokenAmount, nonce uint64) *types.Message {
-//	return &types.Message{
-//		From:  from,
-//		To:    to,
-//		Value: amt,
-//		Nonce: nonce,
-//	}
-//}
-//
-//func makeFakeRct() *types.MessageReceipt {
-//	return &types.MessageReceipt{
-//		ExitCode:    0,
-//		ReturnValue: nil,
-//		GasUsed:     0,
-//	}
-//}

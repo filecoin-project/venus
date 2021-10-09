@@ -3,7 +3,9 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/network"
 	"io/ioutil"
+	"math"
 	"os"
 	"reflect"
 	"regexp"
@@ -250,6 +252,7 @@ func newDefaultMessagePoolConfig() *MessagePoolConfig {
 type NetworkParamsConfig struct {
 	DevNet                  bool                         `json:"devNet"`
 	NetworkType             int                          `json:"networkType"`
+	GenesisNetworkVersion   network.Version              `json:"genesisNetworkVersion"`
 	ConsensusMinerMinPower  uint64                       `json:"consensusMinerMinPower"` // uint64 goes up to 18 EiB
 	MinVerifiedDealSize     int64                        `json:"minVerifiedDealSize"`
 	ReplaceProofTypes       []abi.RegisteredSealProof    `json:"replaceProofTypes"`
@@ -258,6 +261,7 @@ type NetworkParamsConfig struct {
 	ForkUpgradeParam        *ForkUpgradeConfig           `json:"forkUpgradeParam"`
 	AddressNetwork          address.Network              `json:"addressNetwork"`
 	PreCommitChallengeDelay abi.ChainEpoch               `json:"preCommitChallengeDelay"`
+	FaultMaxAge             abi.ChainEpoch               `json:"faultMaxAge"`
 }
 
 // ForkUpgradeConfig record upgrade parameters
@@ -280,6 +284,7 @@ type ForkUpgradeConfig struct {
 	UpgradeNorwegianHeight     abi.ChainEpoch `json:"upgradeNorwegianHeight"`
 	UpgradeTurboHeight         abi.ChainEpoch `json:"upgradeActorsV4Height"`
 	UpgradeHyperdriveHeight    abi.ChainEpoch `json:"upgradeHyperdriveHeight"`
+	UpgradeChocolateHeight     abi.ChainEpoch `json:"upgradeChocolateHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -305,6 +310,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeNorwegianHeight:     665280,
 	UpgradeTurboHeight:         712320,
 	UpgradeHyperdriveHeight:    892800,
+	UpgradeChocolateHeight:     math.MaxInt32, //todo
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {

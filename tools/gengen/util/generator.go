@@ -63,7 +63,6 @@ type GenesisGenerator struct {
 	keys      []*crypto.KeyInfo // Keys for pre-alloc accounts
 	vrkey     *crypto.KeyInfo   // Key for verified registry root
 	pnrg      *mrand.Rand
-	chainRand chain.ChainRandomnessSource
 	cfg       *GenesisCfg
 }
 
@@ -73,11 +72,10 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 	}
 	cst := cbor.NewCborStore(bs)
 	syscallImpl := vmsupport.NewSyscalls(&vmsupport.NilFaultChecker{}, &impl.FakeVerifier{})
-	chainRand := chain.ChainRandomnessSource{Sampler: &chain.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}}
-
+	chainRand := chain.NewGenesisRandomnessSource(genesis.Ticket.VRFProof)
 	chainDs := ds.NewMapDatastore() //just mock one
 	//chainstore
-	chainStore := chain.NewStore(chainDs, cst, bs, config.DefaultForkUpgradeParam, cid.Undef) //load genesis from car
+	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator()) //load genesis from car
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, cst, bs, config.NewDefaultConfig().NetworkParams)
 	if err != nil {
 		panic(xerrors.Errorf("create chain fork error %v", err))
@@ -88,7 +86,7 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 		NtwkVersionGetter: func(ctx context.Context, epoch abi.ChainEpoch) network.Version {
 			return network.Version6
 		},
-		Rnd:              &chain.ChainRandomnessSource{Sampler: &chain.GenesisSampler{VRFProof: genesis.Ticket.VRFProof}},
+		Rnd:              chainRand,
 		BaseFee:          abi.NewTokenAmount(InitialBaseFee),
 		Epoch:            0,
 		GasPriceSchedule: gas.NewPricesSchedule(config.DefaultForkUpgradeParam),
@@ -106,7 +104,6 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 		stateTree: vm.StateTree(),
 		store:     bs,
 		cst:       cst,
-		chainRand: chainRand,
 		vm:        vm,
 		vmOption:  vmOption,
 	}

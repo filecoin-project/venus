@@ -12,18 +12,17 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/ipfs/go-cid"
 	ipfscbor "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/pkg/specactors"
-	"github.com/filecoin-project/venus/pkg/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/specactors/aerrors"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/account"
-	init_ "github.com/filecoin-project/venus/pkg/specactors/builtin/init"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors"
+	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/types/specactors/aerrors"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/account"
+	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
@@ -45,7 +44,7 @@ type invocationContext struct {
 	originMsg         VmMessage //msg not trasfer from and to address
 	msg               VmMessage // The message being processed
 	gasTank           *gas.GasTracker
-	randSource        chain.RandomnessSource
+	randSource        HeadChainRandomness
 	isCallerValidated bool
 	depth             uint64
 	allowSideEffects  bool
@@ -58,7 +57,7 @@ type internalActorStateHandle interface {
 }
 
 func newInvocationContext(rt *VM, gasIpld ipfscbor.IpldStore, topLevel *topLevelContext, msg VmMessage,
-	gasTank *gas.GasTracker, randSource chain.RandomnessSource, parent *invocationContext) invocationContext {
+	gasTank *gas.GasTracker, randSource HeadChainRandomness, parent *invocationContext) invocationContext {
 	orginMsg := msg
 	ctx := invocationContext{
 		vm:                rt,
@@ -332,8 +331,15 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 			// Don't implicitly create an account actor for an address without an associated key.
 			runtime.Abort(exitcode.SysErrInvalidReceiver)
 		}
-
-		ctx.CreateActor(getAccountCid(specactors.VersionForNetwork(ctx.vm.NtwkVersion())), targetIDAddr)
+		ver, err := specactors.VersionForNetwork(ctx.vm.NtwkVersion())
+		if err != nil {
+			panic(err)
+		}
+		actorCode, err := account.GetActorCodeID(ver)
+		if err != nil {
+			panic(err)
+		}
+		ctx.CreateActor(actorCode, targetIDAddr)
 
 		// call constructor on account
 		newMsg := VmMessage{

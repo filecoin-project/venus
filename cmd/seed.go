@@ -1,27 +1,32 @@
 package cmd
 
 import (
+	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/docker/go-units"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/network"
 	"github.com/google/uuid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/gen"
 	"github.com/filecoin-project/venus/pkg/gen/genesis"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/tools/seed"
 )
 
@@ -42,9 +47,12 @@ var genesisCmd = &cmds.Command{
 		Tagline: "manipulate genesis template",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"new":       genesisNewCmd,
-		"add-miner": genesisAddMinerCmd,
-		"add-msis":  genesisAddMsigsCmd,
+		"new":                 genesisNewCmd,
+		"add-miner":           genesisAddMinerCmd,
+		"add-msis":            genesisAddMsigsCmd,
+		"set-vrk":             genesisSetVRKCmd,
+		"set-remainder":       genesisSetRemainderCmd,
+		"set-network-version": genesisSetActorVersionCmd,
 	},
 }
 
@@ -229,7 +237,6 @@ var genesisAddMsigsCmd = &cmds.Command{
 				Balance: abi.TokenAmount(e.Amount),
 				Meta:    msig.ActorMeta(),
 			})
-
 		}
 
 		b, err = json.MarshalIndent(&template, "", "  ")
@@ -249,16 +256,326 @@ func monthsToBlocks(nmonths int) int {
 	return int(days * 24 * 60 * 60 / constants.MainNetBlockDelaySecs)
 }
 
+func parseMultisigCsv(csvf string) ([]seed.GenAccountEntry, error) {
+	fileReader, err := os.Open(csvf)
+	if err != nil {
+		return nil, xerrors.Errorf("read multisig csv: %w", err)
+	}
+	defer fileReader.Close() //nolint:errcheck
+	r := csv.NewReader(fileReader)
+	records, err := r.ReadAll()
+	if err != nil {
+		return nil, xerrors.Errorf("read multisig csv: %w", err)
+	}
+	var entries []seed.GenAccountEntry
+	for i, e := range records[1:] {
+		var addrs []address.Address
+		addrStrs := strings.Split(strings.TrimSpace(e[7]), ":")
+		for j, a := range addrStrs {
+			addr, err := address.NewFromString(a)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to parse address %d in row %d (%q): %w", j, i, a, err)
+			}
+			addrs = append(addrs, addr)
+		}
+
+		balance, err := types.ParseFIL(strings.TrimSpace(e[2]))
+		if err != nil {
+			return nil, xerrors.Errorf("failed to parse account balance: %w", err)
+		}
+
+		vesting, err := strconv.Atoi(strings.TrimSpace(e[3]))
+		if err != nil {
+			return nil, xerrors.Errorf("failed to parse vesting duration for record %d: %w", i, err)
+		}
+
+		custodianID, err := strconv.Atoi(strings.TrimSpace(e[4]))
+		if err != nil {
+			return nil, xerrors.Errorf("failed to parse custodianID in record %d: %w", i, err)
+		}
+		threshold, err := strconv.Atoi(strings.TrimSpace(e[5]))
+		if err != nil {
+			return nil, xerrors.Errorf("failed to parse multisigM in record %d: %w", i, err)
+		}
+		num, err := strconv.Atoi(strings.TrimSpace(e[6]))
+		if err != nil {
+			return nil, xerrors.Errorf("Number of addresses be integer: %w", err)
+		}
+		if e[0] != "1" {
+			return nil, xerrors.Errorf("record version must be 1")
+		}
+		entries = append(entries, seed.GenAccountEntry{
+			Version:       1,
+			ID:            e[1],
+			Amount:        balance,
+			CustodianID:   custodianID,
+			VestingMonths: vesting,
+			M:             threshold,
+			N:             num,
+			Type:          e[8],
+			Sig1:          e[9],
+			Sig2:          e[10],
+			Addresses:     addrs,
+		})
+	}
+
+	return entries, nil
+}
+
+var genesisSetVRKCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Set the verified registry's root key",
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("templateFile", true, true, ""),
+	},
+	Options: []cmds.Option{
+		cmds.StringOption("multisig", "CSV file to parse the multisig that will be set as the root key"),
+		cmds.StringOption("account", "pubkey address that will be set as the root key (must NOT be declared anywhere else, since it must be given ID 80)"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		if len(req.Arguments) < 1 {
+			return fmt.Errorf("must specify template file and csv file with accounts")
+		}
+
+		genf, err := homedir.Expand(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		var template genesis.Template
+		b, err := ioutil.ReadFile(genf)
+		if err != nil {
+			return xerrors.Errorf("read genesis template: %w", err)
+		}
+
+		if err := json.Unmarshal(b, &template); err != nil {
+			return xerrors.Errorf("unmarshal genesis template: %w", err)
+		}
+
+		account, _ := req.Options["account"].(string)
+		multisig, _ := req.Options["multisig"].(string)
+		if len(account) > 0 {
+			addr, err := address.NewFromString(account)
+			if err != nil {
+				return err
+			}
+
+			am := genesis.AccountMeta{Owner: addr}
+
+			template.VerifregRootKey = genesis.Actor{
+				Type:    genesis.TAccount,
+				Balance: big.Zero(),
+				Meta:    am.ActorMeta(),
+			}
+		} else if len(multisig) > 0 {
+			csvf, err := homedir.Expand(multisig)
+			if err != nil {
+				return err
+			}
+
+			entries, err := parseMultisigCsv(csvf)
+			if err != nil {
+				return xerrors.Errorf("parsing multisig csv file: %w", err)
+			}
+
+			if len(entries) == 0 {
+				return xerrors.Errorf("no msig entries in csv file: %w", err)
+			}
+
+			e := entries[0]
+			if len(e.Addresses) != e.N {
+				return fmt.Errorf("entry had mismatch between 'N' and number of addresses")
+			}
+
+			msig := &genesis.MultisigMeta{
+				Signers:         e.Addresses,
+				Threshold:       e.M,
+				VestingDuration: monthsToBlocks(e.VestingMonths),
+				VestingStart:    0,
+			}
+
+			act := genesis.Actor{
+				Type:    genesis.TMultisig,
+				Balance: abi.TokenAmount(e.Amount),
+				Meta:    msig.ActorMeta(),
+			}
+
+			template.VerifregRootKey = act
+		} else {
+			return xerrors.Errorf("must include either --account or --multisig flag")
+		}
+
+		b, err = json.MarshalIndent(&template, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		if err := ioutil.WriteFile(genf, b, 0644); err != nil {
+			return err
+		}
+		return nil
+	},
+}
+
+var genesisSetRemainderCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Set the remainder actor",
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("templateFile", true, true, ""),
+	},
+	Options: []cmds.Option{
+		cmds.StringOption("multisig", "CSV file to parse the multisig that will be set as the root key"),
+		cmds.StringOption("account", "pubkey address that will be set as the root key (must NOT be declared anywhere else, since it must be given ID 80)"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		if len(req.Arguments) < 1 {
+			return fmt.Errorf("must specify template file and csv file with accounts")
+		}
+
+		genf, err := homedir.Expand(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		var template genesis.Template
+		b, err := ioutil.ReadFile(genf)
+		if err != nil {
+			return xerrors.Errorf("read genesis template: %w", err)
+		}
+
+		if err := json.Unmarshal(b, &template); err != nil {
+			return xerrors.Errorf("unmarshal genesis template: %w", err)
+		}
+
+		account, _ := req.Options["account"].(string)
+		multisig, _ := req.Options["multisig"].(string)
+		if account != "" {
+			addr, err := address.NewFromString(account)
+			if err != nil {
+				return err
+			}
+
+			am := genesis.AccountMeta{Owner: addr}
+
+			template.RemainderAccount = genesis.Actor{
+				Type:    genesis.TAccount,
+				Balance: big.Zero(),
+				Meta:    am.ActorMeta(),
+			}
+		} else if multisig != "" {
+			csvf, err := homedir.Expand(multisig)
+			if err != nil {
+				return err
+			}
+
+			entries, err := parseMultisigCsv(csvf)
+			if err != nil {
+				return xerrors.Errorf("parsing multisig csv file: %w", err)
+			}
+
+			if len(entries) == 0 {
+				return xerrors.Errorf("no msig entries in csv file: %w", err)
+			}
+
+			e := entries[0]
+			if len(e.Addresses) != e.N {
+				return fmt.Errorf("entry had mismatch between 'N' and number of addresses")
+			}
+
+			msig := &genesis.MultisigMeta{
+				Signers:         e.Addresses,
+				Threshold:       e.M,
+				VestingDuration: monthsToBlocks(e.VestingMonths),
+				VestingStart:    0,
+			}
+
+			act := genesis.Actor{
+				Type:    genesis.TMultisig,
+				Balance: abi.TokenAmount(e.Amount),
+				Meta:    msig.ActorMeta(),
+			}
+
+			template.RemainderAccount = act
+		} else {
+			return xerrors.Errorf("must include either --account or --multisig flag")
+		}
+
+		b, err = json.MarshalIndent(&template, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		if err := ioutil.WriteFile(genf, b, 0644); err != nil {
+			return err
+		}
+		return nil
+	},
+}
+
+var genesisSetActorVersionCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Set the version that this network will start from",
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("genesisFile", true, true, ""),
+		cmds.StringArg("actorVersion", true, true, ""),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		if len(req.Arguments) < 2 {
+			return fmt.Errorf("must specify genesis file and network version (e.g. '0'")
+		}
+
+		genf, err := homedir.Expand(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		var template genesis.Template
+		b, err := ioutil.ReadFile(genf)
+		if err != nil {
+			return xerrors.Errorf("read genesis template: %w", err)
+		}
+
+		if err := json.Unmarshal(b, &template); err != nil {
+			return xerrors.Errorf("unmarshal genesis template: %w", err)
+		}
+
+		nv, err := strconv.ParseUint(req.Arguments[1], 10, 64)
+		if err != nil {
+			return xerrors.Errorf("parsing network version: %w", err)
+		}
+
+		if nv > uint64(constants.NewestNetworkVersion) {
+			return xerrors.Errorf("invalid network version: %d", nv)
+		}
+
+		template.NetworkVersion = network.Version(nv)
+
+		b, err = json.MarshalIndent(&template, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		if err := ioutil.WriteFile(genf, b, 0644); err != nil {
+			return err
+		}
+		return nil
+	},
+}
+
 var preSealCmd = &cmds.Command{
 	Options: []cmds.Option{
 		cmds.StringOption("sector-dir", "sector directory").WithDefault("~/.genesis-sectors"),
 		cmds.StringOption("miner-addr", "specify the future address of your miner").WithDefault("t01000"),
 		cmds.StringOption("sector-size", "specify size of sectors to pre-seal").WithDefault("2KiB"),
-		cmds.StringOption("ticket-preimage", "set the ticket preimage for sealing randomness").WithDefault("venus is ?"),
+		cmds.StringOption("ticket-preimage", "set the ticket preimage for sealing randomness").WithDefault("venus is fire"),
 		cmds.IntOption("num-sectors", "select number of sectors to pre-seal").WithDefault(int(1)),
 		cmds.IntOption("sector-offset", "how many sector ids to skip when starting to seal").WithDefault(int(0)),
 		cmds.StringOption("key", "(optional) Key to use for signing / owner/worker addresses").WithDefault(""),
 		cmds.BoolOption("fake-sectors", "").WithDefault(false),
+		cmds.IntOption("network-version", "specify network version").WithDefault(int(-1)),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		sdir, _ := req.Options["sector-dir"].(string)
@@ -296,7 +613,13 @@ var preSealCmd = &cmds.Command{
 		}
 		sectorSize := abi.SectorSize(sectorSizeInt)
 
-		spt, err := miner.SealProofTypeFromSectorSize(sectorSize, network.Version0)
+		nv := constants.NewestNetworkVersion
+		ver, _ := req.Options["network-version"].(int)
+		if ver >= 0 {
+			nv = network.Version(ver)
+		}
+
+		spt, err := miner.SealProofTypeFromSectorSize(sectorSize, nv)
 		if err != nil {
 			return err
 		}

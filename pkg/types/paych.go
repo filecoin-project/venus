@@ -3,6 +3,7 @@ package types
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/pkg/types/internal"
 	"github.com/ipfs/go-cid"
 	"time"
 )
@@ -21,8 +22,8 @@ const (
 
 type InvocResult struct {
 	MsgCid         cid.Cid
-	Msg            *UnsignedMessage
-	MsgRct         *MessageReceipt
+	Msg            *internal.UnsignedMessage
+	MsgRct         *internal.MessageReceipt
 	GasCost        *MsgGasCost
 	ExecutionTrace *ExecutionTrace
 	Error          string

@@ -1,11 +1,13 @@
 package chain
 
 import (
+	"bufio"
 	"context"
-	"time"
-
-	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	logging "github.com/ipfs/go-log/v2"
+	"io"
+	"time"
 
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
@@ -16,7 +18,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
-	xerrors "github.com/pkg/errors"
+	"golang.org/x/xerrors"
 )
 
 var _ apiface.IChainInfo = &chainInfoAPI{}
@@ -24,6 +26,8 @@ var _ apiface.IChainInfo = &chainInfoAPI{}
 type chainInfoAPI struct { //nolint
 	chain *ChainSubmodule
 }
+
+var log = logging.Logger("chain")
 
 //NewChainInfoAPI new chain info api
 func NewChainInfoAPI(chain *ChainSubmodule) apiface.IChainInfo {
@@ -41,7 +45,7 @@ func (cia *chainInfoAPI) BlockTime(ctx context.Context) time.Duration {
 func (cia *chainInfoAPI) ChainList(ctx context.Context, tsKey types.TipSetKey, count int) ([]types.TipSetKey, error) {
 	fromTS, err := cia.chain.ChainReader.GetTipSet(tsKey)
 	if err != nil {
-		return nil, xerrors.Wrap(err, "could not retrieve network name")
+		return nil, xerrors.Errorf("could not retrieve network name %w", err)
 	}
 	tipset, err := cia.chain.ChainReader.Ls(ctx, fromTS, count)
 	if err != nil {
@@ -58,14 +62,14 @@ func (cia *chainInfoAPI) ChainList(ctx context.Context, tsKey types.TipSetKey, c
 func (cia *chainInfoAPI) ProtocolParameters(ctx context.Context) (*apitypes.ProtocolParams, error) {
 	networkName, err := cia.getNetworkName(ctx)
 	if err != nil {
-		return nil, xerrors.Wrap(err, "could not retrieve network name")
+		return nil, xerrors.Errorf("could not retrieve network name %w", err)
 	}
 
 	var supportedSectors []apitypes.SectorInfo
 	for proof := range miner0.SupportedProofTypes {
 		size, err := proof.SectorSize()
 		if err != nil {
-			return nil, xerrors.Wrap(err, "could not retrieve network name")
+			return nil, xerrors.Errorf("could not retrieve network name %w", err)
 		}
 		maxUserBytes := abi.PaddedPieceSize(size).Unpadded()
 		supportedSectors = append(supportedSectors, apitypes.SectorInfo{Size: size, MaxPieceSize: maxUserBytes})
@@ -105,6 +109,17 @@ func (cia *chainInfoAPI) ChainGetTipSetByHeight(ctx context.Context, height abi.
 		return nil, xerrors.Errorf("fail to load tipset %v", err)
 	}
 	return cia.chain.ChainReader.GetTipSetByHeight(ctx, ts, height, true)
+}
+
+// ChainGetTipSetAfterHeight looks back for a tipset at the specified epoch.
+// If there are no blocks at the specified epoch, the first non-nil tipset at a later epoch
+// will be returned.
+func (cia *chainInfoAPI) ChainGetTipSetAfterHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
+	ts, err := cia.chain.ChainReader.GetTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+	return cia.chain.ChainReader.GetTipSetByHeight(ctx, ts, h, false)
 }
 
 // GetParentStateRootActor get the ts ParentStateRoot actor
@@ -309,7 +324,7 @@ func (cia *chainInfoAPI) ResolveToKeyAddr(ctx context.Context, addr address.Addr
 
 //************Drand****************//
 // ChainNotify subscribe to chain head change event
-func (cia *chainInfoAPI) ChainNotify(ctx context.Context) chan []*chain.HeadChange {
+func (cia *chainInfoAPI) ChainNotify(ctx context.Context) <-chan []*chain.HeadChange {
 	return cia.chain.ChainReader.SubHeadChanges(ctx)
 }
 
@@ -354,32 +369,39 @@ func (cia *chainInfoAPI) getNetworkName(ctx context.Context) (string, error) {
 
 // ChainGetRandomnessFromBeacon is used to sample the beacon for randomness.
 func (cia *chainInfoAPI) ChainGetRandomnessFromBeacon(ctx context.Context, key types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	ts, err := cia.chain.ChainReader.GetTipSet(key)
+	_, err := cia.ChainGetTipSet(ctx, key)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset key: %v", err)
+		return nil, xerrors.Errorf("loading tipset %s: %w", key, err)
 	}
 
-	// Doing this here is slightly nicer than doing it in the chainstore directly, but it's still bad for ChainAPI to reason about network upgrades
-	if randEpoch > cia.chain.Fork.GetForkUpgrade().UpgradeHyperdriveHeight {
-		return cia.chain.ChainReader.GetBeaconRandomness(ctx, ts.Key(), personalization, randEpoch, entropy, false)
+	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, key, cia.chain.Drand)
+	rnv := cia.chain.Fork.GetNtwkVersion(ctx, randEpoch)
+
+	if rnv >= network.Version14 {
+		return r.GetBeaconRandomnessV3(ctx, personalization, randEpoch, entropy)
+	} else if rnv == network.Version13 {
+		return r.GetBeaconRandomnessV2(ctx, personalization, randEpoch, entropy)
 	}
 
-	return cia.chain.ChainReader.GetBeaconRandomness(ctx, ts.Key(), personalization, randEpoch, entropy, true)
+	return r.GetBeaconRandomnessV1(ctx, personalization, randEpoch, entropy)
+
 }
 
 // ChainGetRandomnessFromTickets is used to sample the chain for randomness.
 func (cia *chainInfoAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	ts, err := cia.chain.ChainReader.GetTipSet(tsk)
+	_, err := cia.ChainGetTipSet(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset key: %v", err)
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	// Doing this here is slightly nicer than doing it in the chainstore directly, but it's still bad for ChainAPI to reason about network upgrades
-	if randEpoch > cia.chain.Fork.GetForkUpgrade().UpgradeHyperdriveHeight {
-		return cia.chain.ChainReader.GetChainRandomness(ctx, ts.Key(), personalization, randEpoch, entropy, false)
+	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, tsk, cia.chain.Drand)
+	rnv := cia.chain.Fork.GetNtwkVersion(ctx, randEpoch)
+
+	if rnv >= network.Version13 {
+		return r.GetChainRandomnessV2(ctx, personalization, randEpoch, entropy)
 	}
 
-	return cia.chain.ChainReader.GetChainRandomness(ctx, ts.Key(), personalization, randEpoch, entropy, true)
+	return r.GetChainRandomnessV1(ctx, personalization, randEpoch, entropy)
 }
 
 // StateNetworkVersion returns the network version at the given tipset
@@ -453,22 +475,76 @@ func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confide
 	return nil, nil
 }
 
-// StateGetReceipt returns the message receipt for the given message
-//func (cia *chainInfoAPI) StateGetReceipt(ctx context.Context, msg cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error) {
-//	chainMsg, err := cia.chain.MessageStore.LoadMessage(msg)
-//	if err != nil {
-//		return nil, err
-//	}
-//	//todo add a api for head tipset directly
-//	head := cia.chain.ChainReader.GetHead()
-//
-//	msgResult, found, err := cia.chain.Waiter.Find(ctx, chainMsg, constants.LookbackNoLimit, head)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	if found {
-//		return msgResult.Receipt, nil
-//	}
-//	return nil, nil
-//}
+func (cia *chainInfoAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipoldmsgs bool, tsk types.TipSetKey) (<-chan []byte, error) {
+	ts, err := cia.chain.ChainReader.GetTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
+	}
+	r, w := io.Pipe()
+	out := make(chan []byte)
+	go func() {
+		bw := bufio.NewWriterSize(w, 1<<20)
+
+		err := cia.chain.ChainReader.Export(ctx, ts, nroots, skipoldmsgs, bw)
+		bw.Flush()            //nolint:errcheck // it is a write to a pipe
+		w.CloseWithError(err) //nolint:errcheck // it is a pipe
+	}()
+
+	go func() {
+		defer close(out)
+		for {
+			buf := make([]byte, 1<<20)
+			n, err := r.Read(buf)
+			if err != nil && err != io.EOF {
+				log.Errorf("chain export pipe read failed: %s", err)
+				return
+			}
+			if n > 0 {
+				select {
+				case out <- buf[:n]:
+				case <-ctx.Done():
+					log.Warnf("export writer failed: %s", ctx.Err())
+					return
+				}
+			}
+			if err == io.EOF {
+				// send empty slice to indicate correct eof
+				select {
+				case out <- []byte{}:
+				case <-ctx.Done():
+					log.Warnf("export writer failed: %s", ctx.Err())
+					return
+				}
+
+				return
+			}
+		}
+	}()
+
+	return out, nil
+}
+
+func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*chain.HeadChange, error) {
+	fts, err := cia.chain.ChainReader.GetTipSet(from)
+	if err != nil {
+		return nil, xerrors.Errorf("loading from tipset %s: %w", from, err)
+	}
+	tts, err := cia.chain.ChainReader.GetTipSet(to)
+	if err != nil {
+		return nil, xerrors.Errorf("loading to tipset %s: %w", to, err)
+	}
+
+	revert, apply, err := chain.ReorgOps(cia.chain.ChainReader.GetTipSet, fts, tts)
+	if err != nil {
+		return nil, xerrors.Errorf("error getting tipset branches: %w", err)
+	}
+
+	path := make([]*chain.HeadChange, len(revert)+len(apply))
+	for i, r := range revert {
+		path[i] = &chain.HeadChange{Type: chain.HCRevert, Val: r}
+	}
+	for j, i := 0, len(apply)-1; i >= 0; j, i = j+1, i-1 {
+		path[j+len(revert)] = &chain.HeadChange{Type: chain.HCApply, Val: apply[i]}
+	}
+	return path, nil
+}

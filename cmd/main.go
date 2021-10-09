@@ -106,51 +106,51 @@ var RootCmd = &cmds.Command{
 		Tagline: "A decentralized storage network",
 		Subcommands: `
 START RUNNING FILECOIN
-  venus config <key> [<value>] - Get and set filecoin config values
-  venus daemon                 - Start a long-running daemon process
-  venus wallet                 - Manage your filecoin wallets
-  venus msig                   - Interact with a multisig wallet
+  config <key> [<value>] - Get and set filecoin config values
+  daemon                 - Start a long-running daemon process
+  wallet                 - Manage your filecoin wallets
+  msig                   - Interact with a multisig wallet
 
 VIEW DATA STRUCTURES
-  venus chain                  - Inspect the filecoin blockchain
-  venus sync 				   - Inspect the filecoin Sync
-  venus dag                    - Interact with IPLD DAG objects
-  venus show                   - Get human-readable representations of filecoin objects
+  chain                  - Inspect the filecoin blockchain
+  sync 				   - Inspect the filecoin Sync
+  dag                    - Interact with IPLD DAG objects
+  show                   - Get human-readable representations of filecoin objects
 
 NETWORK COMMANDS
-  venus swarm                  - Interact with the swarm
-  venus drand                  - retrieve drand randomness
+  swarm                  - Interact with the swarm
+  drand                  - retrieve drand randomness
 
 MESSAGE COMMANDS
-  venus send                   - Send message
-  venus mpool                  - Manage the message pool
+  send                   - Send message
+  mpool                  - Manage the message pool
 
 State COMMANDS
-  venus wait-msg               - Wait for a message to appear on chain
-  venus search-msg             - Search to see whether a message has appeared on chain
-  venus power                  - Query network or miner power
-  venus sectors                - Query the sector set of a miner
-  venus active-sectors         - Query the active sector set of a miner
-  venus sector                 - Get miner sector info
-  venus get-actor              - Print actor information
-  venus lookup                 - Find corresponding ID address
-  venus sector-size            - Look up miners sector size
-  venus get-deal               - View on-chain deal info
-  venus miner-info             - Retrieve miner information
-  venus network-version        - MReturns the network version
-  venus list-actor             - list all actors
+  wait-msg               - Wait for a message to appear on chain
+  search-msg             - Search to see whether a message has appeared on chain
+  power                  - Query network or miner power
+  sectors                - Query the sector set of a miner
+  active-sectors         - Query the active sector set of a miner
+  sector                 - Get miner sector info
+  get-actor              - Print actor information
+  lookup                 - Find corresponding ID address
+  sector-size            - Look up miners sector size
+  get-deal               - View on-chain deal info
+  miner-info             - Retrieve miner information
+  network-version        - MReturns the network version
+  list-actor             - list all actors
 
 Paych COMMANDS 
-  venus paych                  - Manage payment channels
+  paych                  - Manage payment channels
 
 TOOL COMMANDS
-  venus inspect                - Show info about the venus node
-  venus leb128                 - Leb128 cli encode/decode
-  venus log                    - Interact with the daemon event log output
-  venus protocol               - Show protocol parameter details
-  venus version                - Show venus version information
-  venus seed                   - Seal sectors for genesis miner
-  venus fetch                  - Fetch proving parameters
+  inspect                - Show info about the venus node
+  leb128                 - Leb128 cli encode/decode
+  log                    - Interact with the daemon event log output
+  protocol               - Show protocol parameter details
+  version                - Show venus version information
+  seed                   - Seal sectors for genesis miner
+  fetch                  - Fetch proving parameters
 `,
 	},
 	Options: []cmds.Option{

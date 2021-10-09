@@ -2,9 +2,8 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/types"
 	xerrors "github.com/pkg/errors"
 )

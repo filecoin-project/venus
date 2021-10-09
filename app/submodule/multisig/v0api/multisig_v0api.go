@@ -2,10 +2,8 @@ package v0api
 
 import (
 	"context"
-
-	"github.com/filecoin-project/venus/app/submodule/apiface/v0api"
-
-	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface/v0api"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"

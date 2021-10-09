@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 
-	"github.com/filecoin-project/go-multistore"
 	badgerds "github.com/ipfs/go-ds-badger2"
 	lockfile "github.com/ipfs/go-fs-lock"
 	logging "github.com/ipfs/go-log/v2"
@@ -27,7 +26,7 @@ import (
 )
 
 // Version is the version of repo schema that this code understands.
-const LatestVersion uint = 4
+const LatestVersion uint = 5
 
 const (
 	// apiFile is the filename containing the filecoin node's api address.
@@ -58,13 +57,11 @@ type FSRepo struct {
 	lk  sync.RWMutex
 	cfg *config.Config
 
-	ds        *blockstoreutil.BadgerBlockstore
-	stagingDs Datastore
-	mds       *multistore.MultiStore
-	keystore  fskeystore.Keystore
-	walletDs  Datastore
-	chainDs   Datastore
-	metaDs    Datastore
+	ds       *blockstoreutil.BadgerBlockstore
+	keystore fskeystore.Keystore
+	walletDs Datastore
+	chainDs  Datastore
+	metaDs   Datastore
 	//marketDs  Datastore
 	paychDs Datastore
 	// lockfile is the file system lock to prevent others from opening the same repo.
@@ -250,10 +247,6 @@ func (r *FSRepo) loadFromDisk() error {
 		return errors.Wrap(err, "failed to open metadata datastore")
 	}
 
-	if err := r.openMultiStore(); err != nil {
-		return errors.Wrap(err, "failed to open staging datastore")
-	}
-
 	if err := r.openPaychDataStore(); err != nil {
 		return errors.Wrap(err, "failed to open paych datastore")
 	}
@@ -360,14 +353,6 @@ func (r *FSRepo) Close() error {
 
 	if err := r.metaDs.Close(); err != nil {
 		return errors.Wrap(err, "failed to close meta datastore")
-	}
-
-	if err := r.mds.Close(); err != nil {
-		return errors.Wrap(err, "failed to close mds datastore")
-	}
-
-	if err := r.stagingDs.Close(); err != nil {
-		return errors.Wrap(err, "failed to close stagingDs datastore")
 	}
 
 	if err := r.paychDs.Close(); err != nil {
@@ -510,21 +495,6 @@ func (r *FSRepo) openWalletDatastore() error {
 
 	r.walletDs = ds
 
-	return nil
-}
-
-func (r *FSRepo) openMultiStore() error {
-	var err error
-	r.stagingDs, err = badgerds.NewDatastore(filepath.Join(r.path, "/staging"), badgerOptions())
-	if err != nil {
-		return err
-	}
-
-	mds, err := multistore.NewMultiDstore(r.stagingDs)
-	if err != nil {
-		return err
-	}
-	r.mds = mds
 	return nil
 }
 

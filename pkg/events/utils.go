@@ -10,10 +10,10 @@ import (
 )
 
 // CheckMsg convenience function for checking and matching messages
-func (me *messageEvents) CheckMsg(ctx context.Context, smsg types.ChainMsg, hnd MsgHandler) CheckFunc {
+func (me *messageEvents) CheckMsg(smsg types.ChainMsg, hnd MsgHandler) CheckFunc {
 	msg := smsg.VMMessage()
 
-	return func(ts *types.TipSet) (done bool, more bool, err error) {
+	return func(ctx context.Context, ts *types.TipSet) (done bool, more bool, err error) {
 		fa, err := me.cs.StateGetActor(ctx, msg.From, ts.Key())
 		if err != nil {
 			return false, true, err
@@ -24,7 +24,7 @@ func (me *messageEvents) CheckMsg(ctx context.Context, smsg types.ChainMsg, hnd 
 			return false, true, nil
 		}
 
-		ml, err := me.cs.StateSearchMsg(me.ctx, ts.Key(), msg.Cid(), constants.LookbackNoLimit, true)
+		ml, err := me.cs.StateSearchMsg(ctx, ts.Key(), msg.Cid(), constants.LookbackNoLimit, true)
 		if err != nil {
 			return false, true, xerrors.Errorf("getting receipt in CheckMsg: %w", err)
 		}
@@ -40,11 +40,10 @@ func (me *messageEvents) CheckMsg(ctx context.Context, smsg types.ChainMsg, hnd 
 }
 
 //MatchMsg check that a specific message is in a block message
-func (me *messageEvents) MatchMsg(inmsg *types.UnsignedMessage) MsgMatchFunc {
-	return func(msg *types.UnsignedMessage) (matched bool, err error) {
+func (me *messageEvents) MatchMsg(inmsg *types.Message) MsgMatchFunc {
+	return func(msg *types.Message) (matched bool, err error) {
 		if msg.From == inmsg.From && msg.Nonce == inmsg.Nonce && !inmsg.Equals(msg) {
-			cidTmp := inmsg.Cid()
-			return false, xerrors.Errorf("matching msg %s from %s, nonce %d: got duplicate origin/nonce msg %d", cidTmp, inmsg.From, inmsg.Nonce, msg.Nonce)
+			return false, xerrors.Errorf("matching msg %s from %s, nonce %d: got duplicate origin/nonce msg %d", inmsg.Cid(), inmsg.From, inmsg.Nonce, msg.Nonce)
 		}
 
 		return inmsg.Equals(msg), nil

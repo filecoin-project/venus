@@ -2,20 +2,20 @@
 
 ## Goal
 
-Articulate the reasons why we write designdocs and propose that the definition of a plan is that it is written down.
+Listed the reasons why we write designdocs and propose that the importance of designdocs. 
 
 ## Problem Statement
 
-If we don't capture, on paper, in the open, the design intent behind important parts of Filecoin we experience at least the following negative consequences:
+If we don't write it down and shared it publicly, the purpose of a specific design within the Filecoin network would have the following negative consequences:
 
-  - **Wasted time**: when we don't take the time to formalize designs we often end up building the wrong thing or supporting a bunch of stuff that we don't want. We also waste time at a lower level, working within systems that are painful to use because we didn't take the time to fully think through how they should work up-front.
-  - **Missed opportunities to engage the community**: when we don't write designs we miss benefitting from the many points of view and specialized knowledge in the community. We also miss the opportunity to come together *as* a community. Engaging on design proposals brings us together. It’s exciting and energizing.
-  - **Inability for the community to engage.** This is less obvious flip side of the above. Designs have to exist on paper so that they are accessible to current and future collaborators. It can be frustrating to build, change, or work with something you don't understand the design of. You spend time trying to reverse engineer design intent instead of doing the thing you want to. The worst part is that unless there is a design on paper then nobody can run with or extend it.
+  - **Wasted time**: when we don't take the time to formalize designs we often end up building the wrong thing or supporting a bunch of stuff that we don't want. We would also waste time with minor issues, working within systems that are painful to use because we didn't take the time to fully thinking through how they should work up-front.
+  - **Missed opportunities to engage the community**: when we don't write designdocs we miss benefitting from the many points of view and specialized knowledge in the community. We also miss the opportunity to come together *as* a community. Engaging on design proposals brings us together. It’s exciting and energizing.
+  - **Inability for the community to engage.** This is less obvious flip side of the above. Designs have to exist on paper so that they are accessible to current and future collaborators. It can be frustrating to build, change, or work with something you don't understand the design of. You spend time trying to reverse engineering intent instead of doing the thing you want to. 
   
 ## Proposal
 
 1. Write designdocs for important components and features, not just ahead of time but in circumstances where there is uncertainty or confusion.
-1. Adopt the attitude that there is no plan (design) unless it is written down and circulated in the open. The norm is: __show me the plan or it doesn’t exist__.
+1. Adopt the attitude that there is no plan (design) unless it is written down and shared with the community. The spec is: __show me the plan or it doesn’t exist__.
 
 ## What is a designdoc?
 
@@ -35,18 +35,18 @@ It is important to understand that the goal of a design doc is not to defend a p
 
 Capturing design intent on paper, in the open, in a designdoc:
 - **Subjects it to thoughtful criticism**.
-- **Clearly articulates what is and is not important**.
+- **Clearly articulates what is/not important**.
 - **Synchronizes the community on important questions**. 
 - **Disseminates information in a scalable fashion**. 
 
-## What is a designdoc not?
+## What is not a designdoc?
 
 A designdoc is not a spec: you use a designdoc to rationalize a plan ahead of implementation and it should have less detail and more discussion than a spec, and it should capture far more of the *why* than a spec would. A designdoc is not a github issue, though it may be captured in one: a designdoc typically ties together a number of open questions or problems into a coherent whole. 
 
 A designdoc *does not* have to:
-- be kept up to date. It's a tool for capturing knowledge, formalizing our thinking, and synchronizing the team. Once it has served those purposes we don't necessarily need to tend to it.
-- be long. In fact it should not be long. Several pages, by six or eight it starts to feel bloated.
-- solve every problem. It should contain sufficient detail to convince readers that it contains a good idea, but not so much as to obscure the big picture or risk bike shedding on details that can fall out later.
+- be kept up to date. It's a way for capturing knowledge, formalizing our thinking, and synchronizing the team. Once it has served those purposes we don't necessarily need to tend to it.
+- be long. In fact it should not be long. The importance here is always have a clearly description.
+- solve all issues. It should contain sufficient detail to convince readers that it contains a good idea, but do not depend on a designdoc to solve all kinds of issues. 
 
 ## Alternatives
 
@@ -63,7 +63,7 @@ Specs do something different than designdocs—they enable interop. Compare the 
 
 Specs are a contract between implementations and users. And like all contracts, they are dense and detail-oriented. This makes them a difficult way to understand the big picture of a design. It is tempting to use specs to serve both this contractual use case and also the proposal-evaluating use case we're talking about here. You could think of this doc as a proposal to use designdocs for the proposal-evaluating use case, as they seem to be a more appropriate tool for that task.
 
-Obviously, we need specs too. But they often come later in the lifecycle, and are less useful for articulating system-level design than a designdoc.
+Obviously, we need specs too. But specs often arrive late, and are less useful for articulating system-level design than a designdoc.
 
 ##### Github issues.
 
@@ -81,7 +81,7 @@ A designdoc is a tool so like any apply it judiciously. If you’re building som
 With probability 1 it will be wrong. The point is to explicitly communicate what we are and are not trying to accomplish and to rationalize a proposal. It’s a planning tool and as soon as it is finished reality will start to diverge. But as they say: plans are worthless but planning is indispensable.
 
 ##### What if I’m not sure what the solution to this problem should be? 
-That’s OK. We are never sure. Try really hard to take a position. Nobody is going to hold it against you if we all discover together that the position was wrong. The hardest part of design is understanding the problem well enough to propose any solution. It facilitates collaboration and progress to write down a clear description of a problem and one hypothesized best solution.
+That’s ok, keep working hard. Nobody is going to hold it against you if we find it wrong in the end. The hardest part of a design is be clear with the problem well enough to propose any solution. It facilitates collaboration and progress to write down a clear description of a problem and with a proposed solution.
 
 ##### I don’t like / want to write design docs. I want to write code.
-OK, but you’re just limiting yourself. Getting good at writing designs enables you to increase your leverage to accomplish bigger, better things. You’re also giving up influence over outcomes if you don’t get good at articulating your ideas. But if you really don’t want to, OK, find someone to work with who does, and collaborate. Or do the prototyping, dump state, and hand off.
+OK, but you’re just limiting yourself. Getting good at writing designdocs enables you to increase your leverage to accomplish bigger, better projects. You’re also giving up the practice about articulating your ideas. But if you really don’t want to, OK, find someone to work with who does, and collaborate.

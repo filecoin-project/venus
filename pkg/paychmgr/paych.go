@@ -3,7 +3,6 @@ package paychmgr
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
 
@@ -14,8 +13,8 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/venus/pkg/specactors"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/paych"
+	"github.com/filecoin-project/venus/pkg/types/specactors"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
 )
 
 // insufficientFundsErr indicates that there are not enough funds in the
@@ -88,7 +87,11 @@ func (ca *channelAccessor) messageBuilder(ctx context.Context, from address.Addr
 		return nil, err
 	}
 
-	return paych.Message(specactors.VersionForNetwork(nwVersion), from), nil
+	ver, err := specactors.VersionForNetwork(nwVersion)
+	if err != nil {
+		return nil, err
+	}
+	return paych.Message(ver, from), nil
 }
 
 func (ca *channelAccessor) getChannelInfo(addr address.Address) (*ChannelInfo, error) {
@@ -109,7 +112,7 @@ func (ca *channelAccessor) outboundActiveByFromTo(from, to address.Address) (*Ch
 // nonce, signing the voucher and storing it in the local datastore.
 // If there are not enough funds in the channel to create the voucher, returns
 // the shortfall in funds.
-func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*apitypes.VoucherCreateResult, error) {
+func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*VoucherCreateResult, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
@@ -144,7 +147,7 @@ func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address
 		// return a voucher create result with the shortfall
 		var ife insufficientFundsErr
 		if xerrors.As(err, &ife) {
-			return &apitypes.VoucherCreateResult{
+			return &VoucherCreateResult{
 				Shortfall: ife.Shortfall(),
 			}, nil
 		}
@@ -152,7 +155,7 @@ func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address
 		return nil, xerrors.Errorf("failed to persist voucher: %w", err)
 	}
 
-	return &apitypes.VoucherCreateResult{Voucher: sv, Shortfall: big.NewInt(0)}, nil
+	return &VoucherCreateResult{Voucher: sv, Shortfall: big.NewInt(0)}, nil
 }
 
 func (ca *channelAccessor) nextNonceForLane(ci *ChannelInfo, lane uint64) uint64 {

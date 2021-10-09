@@ -3,7 +3,6 @@ package chain
 import (
 	"context"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -16,17 +15,17 @@ import (
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/power"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/reward"
 	"github.com/filecoin-project/venus/pkg/state/tree"
+	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/reward"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 )
 
-type genesisReader interface {
-	GetGenesisBlock(ctx context.Context) (*types.BlockHeader, error)
+type ICirculatingSupplyCalcualtor interface {
+	GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (CirculatingSupply, error)
 }
 
 //CirculatingSupply circulation information, including mining, public offering, private placement, release, combustion, mortgage, circulation,
@@ -41,8 +40,8 @@ type CirculatingSupply struct {
 
 //CirculatingSupplyCalculator used to calculate the funds at a specific block height
 type CirculatingSupplyCalculator struct {
-	bstore        blockstoreutil.Blockstore
-	genesisReader genesisReader
+	bstore      blockstoreutil.Blockstore
+	genesisRoot cid.Cid
 
 	// info about the Accounts in the genesis state
 	preIgnitionVesting  []msig0.State
@@ -57,8 +56,8 @@ type CirculatingSupplyCalculator struct {
 }
 
 //NewCirculatingSupplyCalculator create new  circulating supply calculator
-func NewCirculatingSupplyCalculator(bstore blockstoreutil.Blockstore, genesisReader genesisReader, upgradeConfig *config.ForkUpgradeConfig) *CirculatingSupplyCalculator {
-	return &CirculatingSupplyCalculator{bstore: bstore, genesisReader: genesisReader, upgradeConfig: upgradeConfig}
+func NewCirculatingSupplyCalculator(bstore blockstoreutil.Blockstore, genesisRoot cid.Cid, upgradeConfig *config.ForkUpgradeConfig) *CirculatingSupplyCalculator {
+	return &CirculatingSupplyCalculator{bstore: bstore, genesisRoot: genesisRoot, upgradeConfig: upgradeConfig}
 }
 
 //GetCirculatingSupplyDetailed query contract and calculate circulation status at specific height and tree state
@@ -169,19 +168,8 @@ func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx c
 
 // sets up information about the vesting schedule
 func (caculator *CirculatingSupplyCalculator) setupGenesisVestingSchedule(ctx context.Context) error {
-
-	gb, err := caculator.genesisReader.GetGenesisBlock(ctx)
-	if err != nil {
-		return xerrors.Errorf("getting genesis block: %v", err)
-	}
-
-	gts, err := types.NewTipSet(gb)
-	if err != nil {
-		return xerrors.Errorf("getting genesis tipset: %v", err)
-	}
-
 	cst := cbornode.NewCborStore(caculator.bstore)
-	sTree, err := tree.LoadState(ctx, cst, gts.At(0).ParentStateRoot)
+	sTree, err := tree.LoadState(ctx, cst, caculator.genesisRoot)
 	if err != nil {
 		return xerrors.Errorf("loading state tree: %v", err)
 	}

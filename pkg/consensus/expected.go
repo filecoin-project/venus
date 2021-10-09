@@ -121,7 +121,7 @@ type Expected struct {
 	gasPirceSchedule *gas.PricesSchedule
 
 	// circulate supply calculator for vm
-	circulatingSupplyCalculator *chain.CirculatingSupplyCalculator
+	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor
 
 	// systemcall for vm
 	syscallsImpl vm.SyscallsImpl
@@ -145,6 +145,7 @@ func NewExpected(cs cbor.IpldStore,
 	gasPirceSchedule *gas.PricesSchedule,
 	blockValidator *BlockValidator,
 	syscalls vm.SyscallsImpl,
+	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor,
 ) *Expected {
 	processor := NewDefaultProcessor(syscalls)
 	c := &Expected{
@@ -158,7 +159,7 @@ func NewExpected(cs cbor.IpldStore,
 		fork:                        fork,
 		gasPirceSchedule:            gasPirceSchedule,
 		blockValidator:              blockValidator,
-		circulatingSupplyCalculator: chain.NewCirculatingSupplyCalculator(bs, chainState, config.ForkUpgradeParam),
+		circulatingSupplyCalculator: circulatingSupplyCalculator,
 	}
 	return c
 }
@@ -195,11 +196,6 @@ func (c *Expected) RunStateTransition(ctx context.Context,
 		return cid.Undef, cid.Undef, nil
 	}
 
-	rnd := HeadRandomness{
-		Chain: c.rnd,
-		Head:  ts.Key(),
-	}
-
 	vmOption := vm.VmOption{
 		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 			dertail, err := c.chainState.GetCirculatingSupplyDetailed(ctx, epoch, tree)
@@ -209,7 +205,7 @@ func (c *Expected) RunStateTransition(ctx context.Context,
 			return dertail.FilCirculating, nil
 		},
 		NtwkVersionGetter: c.fork.GetNtwkVersion,
-		Rnd:               &rnd,
+		Rnd:               NewHeadRandomness(c.rnd, ts.Key()),
 		BaseFee:           ts.At(0).ParentBaseFee,
 		Fork:              c.fork,
 		Epoch:             ts.At(0).Height,

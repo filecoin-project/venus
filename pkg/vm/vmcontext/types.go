@@ -2,8 +2,8 @@ package vmcontext
 
 import (
 	"context"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -24,7 +24,7 @@ type NtwkVersionGetter func(context.Context, abi.ChainEpoch) network.Version
 type VmOption struct { //nolint
 	CircSupplyCalculator CircSupplyCalculator
 	NtwkVersionGetter    NtwkVersionGetter
-	Rnd                  chain.RandomnessSource
+	Rnd                  HeadChainRandomness
 	BaseFee              abi.TokenAmount
 	Fork                 fork.IFork
 	ActorCodeLoader      *dispatch.CodeLoader
@@ -33,6 +33,12 @@ type VmOption struct { //nolint
 	PRoot                cid.Cid
 	Bsstore              blockstoreutil.Blockstore
 	SysCallsImpl         SyscallsImpl
+}
+
+//ChainRandomness define randomness method in filecoin
+type HeadChainRandomness interface {
+	ChainGetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainGetRandomnessFromTickets(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 }
 
 type Ret struct {

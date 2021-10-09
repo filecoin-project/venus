@@ -2,7 +2,7 @@ package blockstore
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"

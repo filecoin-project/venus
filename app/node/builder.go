@@ -2,40 +2,35 @@ package node
 
 import (
 	"context"
+	chain2 "github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/jwtauth"
+	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/ipfs-force-community/metrics/ratelimit"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 	"time"
 
-	"github.com/filecoin-project/venus/app/submodule/multisig"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/app/submodule/blockservice"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	config2 "github.com/filecoin-project/venus/app/submodule/config"
+	"github.com/filecoin-project/venus/app/submodule/dagservice"
 	"github.com/filecoin-project/venus/app/submodule/discovery"
 	"github.com/filecoin-project/venus/app/submodule/market"
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
+	"github.com/filecoin-project/venus/app/submodule/multisig"
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
 	"github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
 	"github.com/filecoin-project/venus/pkg/clock"
-	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/journal"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
-	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p"
 	"github.com/pkg/errors"
 )
@@ -51,139 +46,9 @@ type Builder struct {
 	journal        journal.Journal
 	isRelay        bool
 	chainClock     clock.ChainEpochClock
-	genCid         cid.Cid
+	genBlk         types.BlockHeader
 	walletPassword []byte
 	authURL        string
-}
-
-// BuilderOpt is an option for building a filecoin node.
-type BuilderOpt func(*Builder) error
-
-// offlineMode enables or disables offline mode.
-func OfflineMode(offlineMode bool) BuilderOpt {
-	return func(c *Builder) error {
-		c.offlineMode = offlineMode
-		return nil
-	}
-}
-
-// IsRelay configures node to act as a libp2p relay.
-func IsRelay() BuilderOpt {
-	return func(c *Builder) error {
-		c.isRelay = true
-		return nil
-	}
-}
-
-// BlockTime sets the blockTime.
-func BlockTime(blockTime time.Duration) BuilderOpt {
-	return func(c *Builder) error {
-		c.blockTime = blockTime
-		return nil
-	}
-}
-
-// PropagationDelay sets the time the node needs to wait for blocks to arrive before mining.
-func PropagationDelay(propDelay time.Duration) BuilderOpt {
-	return func(c *Builder) error {
-		c.propDelay = propDelay
-		return nil
-	}
-}
-
-// SetWalletPassword set wallet password
-func SetWalletPassword(password []byte) BuilderOpt {
-	return func(c *Builder) error {
-		c.walletPassword = password
-		return nil
-	}
-}
-
-// SetAuthURL set venus auth service URL
-func SetAuthURL(url string) BuilderOpt {
-	return func(c *Builder) error {
-		c.authURL = url
-		return nil
-	}
-}
-
-// Libp2pOptions returns a builder option that sets up the libp2p node
-func Libp2pOptions(opts ...libp2p.Option) BuilderOpt {
-	return func(b *Builder) error {
-		// Quietly having your options overridden leads to hair loss
-		if len(b.libp2pOpts) > 0 {
-			panic("Libp2pOptions can only be called once")
-		}
-		b.libp2pOpts = opts
-		return nil
-	}
-}
-
-// VerifierConfigOption returns a function that sets the verifier to use in the node consensus
-func VerifierConfigOption(verifier ffiwrapper.Verifier) BuilderOpt {
-	return func(c *Builder) error {
-		c.verifier = verifier
-		return nil
-	}
-}
-
-// ChainClockConfigOption returns a function that sets the chainClock to use in the node.
-func ChainClockConfigOption(clk clock.ChainEpochClock) BuilderOpt {
-	return func(c *Builder) error {
-		c.chainClock = clk
-		return nil
-	}
-}
-
-// JournalConfigOption returns a function that sets the journal to use in the node.
-func JournalConfigOption(jrl journal.Journal) BuilderOpt {
-	return func(c *Builder) error {
-		c.journal = jrl
-		return nil
-	}
-}
-
-// MonkeyPatchNetworkParamsOption returns a function that sets global vars in the
-// binary's specs actor dependency to change network parameters that live there
-func MonkeyPatchNetworkParamsOption(params *config.NetworkParamsConfig) BuilderOpt {
-	return func(c *Builder) error {
-		SetNetParams(params)
-		return nil
-	}
-}
-
-func SetNetParams(params *config.NetworkParamsConfig) {
-	if params.ConsensusMinerMinPower > 0 {
-		policy.SetConsensusMinerMinPower(big.NewIntUnsigned(params.ConsensusMinerMinPower))
-	}
-	if len(params.ReplaceProofTypes) > 0 {
-		newSupportedTypes := make([]abi.RegisteredSealProof, len(params.ReplaceProofTypes))
-		for idx, proofType := range params.ReplaceProofTypes {
-			newSupportedTypes[idx] = proofType
-		}
-		// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
-		policy.SetSupportedProofTypes(newSupportedTypes...)
-	}
-
-	if params.MinVerifiedDealSize > 0 {
-		policy.SetMinVerifiedDealSize(abi.NewStoragePower(params.MinVerifiedDealSize))
-	}
-
-	if params.PreCommitChallengeDelay > 0 {
-		policy.SetPreCommitChallengeDelay(params.PreCommitChallengeDelay)
-	}
-
-	constants.SetAddressNetwork(params.AddressNetwork)
-}
-
-// MonkeyPatchSetProofTypeOption returns a function that sets package variable
-// SuppurtedProofTypes to be only the given registered proof type
-func MonkeyPatchSetProofTypeOption(proofType abi.RegisteredSealProof) BuilderOpt {
-	return func(c *Builder) error {
-		// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
-		policy.SetSupportedProofTypes(proofType)
-		return nil
-	}
 }
 
 // New creates a new node.
@@ -219,66 +84,67 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	}
 
 	// fetch genesis block id
-	b.genCid, err = readGenesisCid(b.repo.ChainDatastore())
+	b.genBlk, err = readGenesisCid(b.repo.ChainDatastore(), b.repo.Datastore())
 	if err != nil {
 		return nil, err
 	}
+
+	if b.chainClock == nil {
+		// get the genesis block time from the chainsubmodule
+		b.chainClock = clock.NewChainClock(b.genBlk.Timestamp, b.blockTime)
+	}
+
 	// create the node
 	nd := &Node{
 		offlineMode: b.offlineMode,
 		repo:        b.repo,
 	}
 
+	//modules
+	nd.circulatiingSupplyCalculator = chain2.NewCirculatingSupplyCalculator(b.repo.Datastore(), b.genBlk.ParentStateRoot, b.repo.Config().NetworkParams.ForkUpgradeParam)
+
+	//services
 	nd.configModule = config2.NewConfigModule(b.repo)
 
-	nd.blockstore, err = blockstore.NewBlockstoreSubmodule(ctx, b.repo)
+	nd.blockstore, err = blockstore.NewBlockstoreSubmodule(ctx, (*builder)(b))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.blockstore")
 	}
 
-	nd.network, err = network.NewNetworkSubmodule(ctx, (*builder)(b), b.repo, nd.blockstore)
+	nd.network, err = network.NewNetworkSubmodule(ctx, (*builder)(b))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Network")
 	}
 
-	nd.blockservice, err = blockservice.NewBlockserviceSubmodule(ctx, nd.blockstore, nd.network)
+	nd.blockservice, err = dagservice.NewDagserviceSubmodule(ctx, (*builder)(b), nd.network)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.blockservice")
+		return nil, errors.Wrap(err, "failed to build node.dagservice")
 	}
 
-	nd.chain, err = chain.NewChainSubmodule(ctx, (*builder)(b), b.repo, nd.blockstore, b.verifier)
+	nd.chain, err = chain.NewChainSubmodule(ctx, (*builder)(b), nd.circulatiingSupplyCalculator)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
-	}
-
-	if b.chainClock == nil {
-		// get the genesis block time from the chainsubmodule
-		geneBlk, err := nd.chain.ChainReader.GetGenesisBlock(ctx)
-		if err != nil {
-			return nil, err
-		}
-		b.chainClock = clock.NewChainClock(geneBlk.Timestamp, b.blockTime)
 	}
 
 	nd.chainClock = b.chainClock
 
 	// todo change builder interface to read config
-	nd.discovery, err = discovery.NewDiscoverySubmodule(ctx, (*builder)(b), b.repo.Config(), nd.network, nd.chain.ChainReader, nd.chain.MessageStore)
+	nd.discovery, err = discovery.NewDiscoverySubmodule(ctx, (*builder)(b), nd.network, nd.chain.ChainReader, nd.chain.MessageStore)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.discovery")
 	}
 
-	nd.syncer, err = syncer.NewSyncerSubmodule(ctx, (*builder)(b), nd.blockstore, nd.network, nd.discovery, nd.chain, b.verifier)
+	nd.syncer, err = syncer.NewSyncerSubmodule(ctx, (*builder)(b), nd.blockstore, nd.network, nd.discovery, nd.chain, nd.circulatiingSupplyCalculator)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}
 
-	nd.wallet, err = wallet.NewWalletSubmodule(ctx, nd.configModule, b.repo, nd.chain, b.walletPassword)
+	nd.wallet, err = wallet.NewWalletSubmodule(ctx, b.repo, nd.configModule, nd.chain, b.walletPassword)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.wallet")
 	}
 
-	nd.mpool, err = mpool.NewMpoolSubmodule((*builder)(b), nd.network, nd.chain, nd.syncer, nd.wallet, b.repo.Config().NetworkParams)
+	nd.mpool, err = mpool.NewMpoolSubmodule((*builder)(b), nd.network, nd.chain, nd.syncer, nd.wallet)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.mpool")
 	}
@@ -287,20 +153,20 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.storageNetworking")
 	}
-	nd.mining = mining.NewMiningModule(b.repo, nd.chain, nd.blockstore, nd.network, nd.syncer, *nd.wallet, b.verifier)
+	nd.mining = mining.NewMiningModule((*builder)(b), nd.chain, nd.blockstore, nd.network, nd.syncer, *nd.wallet)
 
 	nd.multiSig = multisig.NewMultiSigSubmodule(nd.chain.API(), nd.mpool.API(), nd.chain.ChainReader)
 
 	stmgr := statemanger.NewStateMangerAPI(nd.chain.ChainReader, nd.syncer.Consensus)
 	mgrps := &paychmgr.ManagerParams{
-		MPoolAPI:  nd.mpool.API(),
-		ChainAPI:  nd.chain.API(),
-		Protocol:  nd.syncer.Consensus,
-		SM:        stmgr,
-		DS:        b.repo.PaychDatastore(),
-		WalletAPI: nd.wallet.API(),
+		MPoolAPI:     nd.mpool.API(),
+		ChainInfoAPI: nd.chain.API(),
+		SM:           stmgr,
+		WalletAPI:    nd.wallet.API(),
 	}
-	nd.paychan = paych.NewPaychSubmodule(ctx, mgrps)
+	if nd.paychan, err = paych.NewPaychSubmodule(ctx, b.repo.PaychDatastore(), mgrps); err != nil {
+		return nil, err
+	}
 	nd.market = market.NewMarketModule(nd.chain.API(), stmgr)
 
 	apiBuilder := NewBuilder()
@@ -341,53 +207,4 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.jsonRPCServiceV1 = apiBuilder.Build("v1", ratelimiter)
 	nd.jsonRPCService = apiBuilder.Build("v0", ratelimiter)
 	return nd, nil
-}
-
-// repo returns the repo.
-func (b Builder) Repo() repo.Repo {
-	return b.repo
-}
-
-// Builder private method accessors for impl's
-
-type builder Builder
-
-// GenesisCid read genesis block cid
-func (b builder) GenesisCid() cid.Cid {
-	return b.genCid
-}
-
-// BlockTime get chain block time
-func (b builder) BlockTime() time.Duration {
-	return b.blockTime
-}
-
-// Repo get home data repo
-func (b builder) Repo() repo.Repo {
-	return b.repo
-}
-
-// IsRelay get whether the p2p network support replay
-func (b builder) IsRelay() bool {
-	return b.isRelay
-}
-
-// ChainClock get chain clock
-func (b builder) ChainClock() clock.ChainEpochClock {
-	return b.chainClock
-}
-
-// Journal get journal to record event
-func (b builder) Journal() journal.Journal {
-	return b.journal
-}
-
-// Libp2pOpts get libp2p option
-func (b builder) Libp2pOpts() []libp2p.Option {
-	return b.libp2pOpts
-}
-
-// OfflineMode get the p2p network mode
-func (b builder) OfflineMode() bool {
-	return b.offlineMode
 }
