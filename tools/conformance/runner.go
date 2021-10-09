@@ -70,11 +70,6 @@ func ExecuteMessageVector(r Reporter, v string, vector *schema.TestVector, varia
 			r.Fatalf("fatal failure when executing message: %s", err)
 		}
 
-		for _, xx := range ret.GasTracker.ExecutionTrace.GasCharges {
-			if xx.TotalGas > 0 {
-				fmt.Println(xx)
-			}
-		}
 		// Assert that the receipt matches what the test vector expects.
 		AssertMsgResult(r, vector.Post.Receipts[i], ret, strconv.Itoa(i))
 	}

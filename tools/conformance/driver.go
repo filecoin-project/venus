@@ -3,6 +3,7 @@ package conformance
 import (
 	"context"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	gobig "math/big"
 	"os"
 
@@ -224,7 +225,7 @@ type ExecuteMessageParams struct {
 	CircSupply abi.TokenAmount
 	BaseFee    abi.TokenAmount
 
-	Rand chain.RandomnessSource
+	Rand vmcontext.HeadChainRandomness
 }
 
 // ExecuteMessage executes a conformance test vector message in a temporary VM.

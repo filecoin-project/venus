@@ -41,8 +41,7 @@ func TestGenValidTicketChain(t *testing.T) {
 		Addrs: []address.Address{addr1, addr1, addr1, addr2, addr3, addr3, addr1, addr2},
 	}
 
-	rnd := consensus.FakeSampler{Seed: 0}
-	tm := consensus.NewTicketMachine(&rnd, loader)
+	tm := consensus.NewTicketMachine(loader)
 
 	// Grow the specified ticket Chain without error
 	for i := 0; i < len(schedule.Addrs); i++ {
@@ -70,8 +69,7 @@ func TestNextTicketFailsWithInvalidSigner(t *testing.T) {
 
 	signer, _ := types.NewMockSignersAndKeyInfo(1)
 	badAddr := types.RequireIDAddress(t, 100)
-	rnd := consensus.FakeSampler{Seed: 0}
-	tm := consensus.NewTicketMachine(&rnd, loader)
+	tm := consensus.NewTicketMachine(loader)
 	electionEntry := &types.BeaconEntry{}
 	newPeriod := false
 	badTicket, err := tm.MakeTicket(ctx, head.Key(), abi.ChainEpoch(1), miner, electionEntry, newPeriod, badAddr, signer)
