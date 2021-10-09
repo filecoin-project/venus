@@ -191,12 +191,12 @@ func (c *ChainRandomnessSource) GetChainRandomnessV2(ctx context.Context, pers c
 
 // network v0-12
 func (c *ChainRandomnessSource) GetBeaconRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	randTs, err := c.GetBeaconRandomnessTipset(ctx, round, true)
+	randTS, err := c.GetBeaconRandomnessTipset(ctx, round, true)
 	if err != nil {
 		return nil, err
 	}
 
-	be, err := FindLatestDRAND(ctx, randTs, c.reader)
+	be, err := FindLatestDRAND(ctx, randTS, c.reader)
 	if err != nil {
 		return nil, err
 	}
@@ -208,12 +208,12 @@ func (c *ChainRandomnessSource) GetBeaconRandomnessV1(ctx context.Context, pers 
 
 // network v13
 func (c *ChainRandomnessSource) GetBeaconRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	randTs, err := c.GetBeaconRandomnessTipset(ctx, round, false)
+	randTS, err := c.GetBeaconRandomnessTipset(ctx, round, false)
 	if err != nil {
 		return nil, err
 	}
 
-	be, err := FindLatestDRAND(ctx, randTs, c.reader)
+	be, err := FindLatestDRAND(ctx, randTS, c.reader)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +239,7 @@ func (c *ChainRandomnessSource) GetBeaconRandomnessV3(ctx context.Context, pers 
 }
 
 func (c *ChainRandomnessSource) extractBeaconEntryForEpoch(ctx context.Context, filecoinEpoch abi.ChainEpoch) (*types.BeaconEntry, error) {
-	randTs, err := c.GetBeaconRandomnessTipset(ctx, filecoinEpoch, false)
+	randTS, err := c.GetBeaconRandomnessTipset(ctx, filecoinEpoch, false)
 	if err != nil {
 		return nil, err
 	}
@@ -247,19 +247,19 @@ func (c *ChainRandomnessSource) extractBeaconEntryForEpoch(ctx context.Context, 
 	round := c.beacon.BeaconForEpoch(filecoinEpoch).MaxBeaconRoundForEpoch(filecoinEpoch)
 
 	for i := 0; i < 20; i++ {
-		cbe := randTs.Blocks()[0].BeaconEntries
+		cbe := randTS.Blocks()[0].BeaconEntries
 		for _, v := range cbe {
 			if v.Round == round {
 				return v, nil
 			}
 		}
 
-		next, err := c.reader.GetTipSet(randTs.Parents())
+		next, err := c.reader.GetTipSet(randTS.Parents())
 		if err != nil {
 			return nil, xerrors.Errorf("failed to load parents when searching back for beacon entry: %w", err)
 		}
 
-		randTs = next
+		randTS = next
 	}
 
 	return nil, xerrors.Errorf("didn't find beacon for round %d (epoch %d)", round, filecoinEpoch)
