@@ -19,11 +19,6 @@ const (
 
 var log = logging.Logger("keyinfo")
 
-func init() {
-	// Safely terminate in case of an interrupt signal
-	memguard.CatchInterrupt()
-}
-
 // KeyInfo is a key and its type used for signing.
 type KeyInfo struct {
 	// Private key.

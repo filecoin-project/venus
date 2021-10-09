@@ -10,8 +10,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"contrib.go.opencensus.io/exporter/jaeger"
 	"github.com/awnumar/memguard"
+
+	"contrib.go.opencensus.io/exporter/jaeger"
 	"github.com/filecoin-project/go-jsonrpc"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
@@ -299,10 +300,12 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 		return err
 	}
 
+	defer func() {
+		memguard.SafeExit(0)
+	}()
+
 	close(ready)
 	<-terminate
-	// reset the session
-	memguard.Purge()
 	err = apiserv.Shutdown(ctx)
 	if err != nil {
 		return err
