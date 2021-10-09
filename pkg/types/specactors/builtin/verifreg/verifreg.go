@@ -19,6 +19,8 @@ import (
 
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
 	"github.com/filecoin-project/venus/pkg/types/internal"
 	"github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
@@ -47,11 +49,15 @@ func init() {
 		return load5(store, root)
 	})
 
+	builtin.RegisterActorState(builtin6.VerifiedRegistryActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load6(store, root)
+	})
+
 }
 
 var (
-	Address = builtin5.VerifiedRegistryActorAddr
-	Methods = builtin5.MethodsVerifiedRegistry
+	Address = builtin6.VerifiedRegistryActorAddr
+	Methods = builtin6.MethodsVerifiedRegistry
 )
 
 func Load(store adt.Store, act *internal.Actor) (State, error) {
@@ -71,6 +77,9 @@ func Load(store adt.Store, act *internal.Actor) (State, error) {
 
 	case builtin5.VerifiedRegistryActorCodeID:
 		return load5(store, act.Head)
+
+	case builtin6.VerifiedRegistryActorCodeID:
+		return load6(store, act.Head)
 
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
@@ -94,6 +103,9 @@ func MakeState(store adt.Store, av specactors.Version, rootKeyAddress address.Ad
 	case specactors.Version5:
 		return make5(store, rootKeyAddress)
 
+	case specactors.Version6:
+		return make6(store, rootKeyAddress)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -115,6 +127,9 @@ func GetActorCodeID(av specactors.Version) (cid.Cid, error) {
 
 	case specactors.Version5:
 		return builtin5.VerifiedRegistryActorCodeID, nil
+
+	case specactors.Version6:
+		return builtin6.VerifiedRegistryActorCodeID, nil
 
 	}
 

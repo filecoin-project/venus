@@ -815,7 +815,7 @@ func (msa *minerStateAPI) StateDealProviderCollateralBounds(ctx context.Context,
 		return apitypes.DealCollateralBounds{}, xerrors.Errorf("getting reward baseline power: %v", err)
 	}
 
-	min, max := policy.DealProviderCollateralBounds(size,
+	min, max, err := policy.DealProviderCollateralBounds(size,
 		verified,
 		powClaim.RawBytePower,
 		powClaim.QualityAdjPower,

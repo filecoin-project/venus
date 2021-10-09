@@ -15,7 +15,6 @@ import (
 
 const AllowableClockDriftSecs = uint64(1)
 const NewestNetworkVersion = network.Version13
-const ActorUpgradeNetworkVersion = network.Version4
 
 // constants for Weight calculation
 // The ratio of weight contributed by short-term vs long-term factors in a given round

@@ -21,6 +21,7 @@ type SyscallsStateView = vmcontext.SyscallsStateView
 type ExecCallBack = vmcontext.ExecCallBack
 type VmMessage = vmcontext.VmMessage //nolint
 type FakeSyscalls = vmcontext.FakeSyscalls
+type ChainRandomness = vmcontext.HeadChainRandomness
 
 // NewVM creates a new VM interpreter.
 func NewVM(option VmOption) (Interpreter, error) {

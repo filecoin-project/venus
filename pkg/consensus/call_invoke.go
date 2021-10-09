@@ -55,11 +55,6 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 		return nil, err
 	}
 
-	rnd := HeadRandomness{
-		Chain: c.rnd,
-		Head:  ts.Key(),
-	}
-
 	vmOption := vm.VmOption{
 		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 			cs, err := c.chainState.GetCirculatingSupplyDetailed(ctx, epoch, tree)
@@ -69,7 +64,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 			return cs.FilCirculating, nil
 		},
 		NtwkVersionGetter: c.fork.GetNtwkVersion,
-		Rnd:               &rnd,
+		Rnd:               NewHeadRandomness(c.rnd, ts.Key()),
 		BaseFee:           ts.At(0).ParentBaseFee,
 		Epoch:             ts.Height(),
 		GasPriceSchedule:  c.gasPirceSchedule,
@@ -164,11 +159,6 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *typ
 		return nil, fmt.Errorf("failed to handle fork: %v", err)
 	}
 
-	rnd := HeadRandomness{
-		Chain: c.rnd,
-		Head:  ts.Key(),
-	}
-
 	if msg.GasLimit == 0 {
 		msg.GasLimit = constants.BlockGasLimit
 	}
@@ -206,7 +196,7 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *typ
 			return dertail.FilCirculating, nil
 		},
 		NtwkVersionGetter: c.fork.GetNtwkVersion,
-		Rnd:               &rnd,
+		Rnd:               NewHeadRandomness(c.rnd, ts.Key()),
 		BaseFee:           ts.At(0).ParentBaseFee,
 		Epoch:             pheight + 1,
 		GasPriceSchedule:  c.gasPirceSchedule,

@@ -3,8 +3,10 @@ package networks
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"math"
 
 	"github.com/filecoin-project/venus/pkg/config"
 )
@@ -33,15 +35,10 @@ func Mainnet() *NetworkConf {
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
-			DevNet: false,
-			//ReplaceProofTypes: []int64{
-			//	int64(abi.RegisteredSealProof_StackedDrg8MiBV1),
-			//	int64(abi.RegisteredSealProof_StackedDrg512MiBV1),
-			//	int64(abi.RegisteredSealProof_StackedDrg32GiBV1),
-			//	int64(abi.RegisteredSealProof_StackedDrg64GiBV1),
-			//},
-			NetworkType: constants.NetworkMainnet,
-			BlockDelay:  30,
+			DevNet:                false,
+			NetworkType:           constants.NetworkMainnet,
+			GenesisNetworkVersion: network.Version0,
+			BlockDelay:            30,
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
 				UpgradeBreezeHeight:   41280,
 				UpgradeSmokeHeight:    51000,
@@ -62,6 +59,7 @@ func Mainnet() *NetworkConf {
 				UpgradeNorwegianHeight:     665280, // 2021-04-12T22:00:00Z
 				UpgradeTurboHeight:         712320, // 2021-04-29T06:00:00Z
 				UpgradeHyperdriveHeight:    892800, // 2021-06-30T22:00:00Z
+				UpgradeChocolateHeight:     math.MaxInt32,
 
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       343200, // 2020-12-22T02:00:00Z

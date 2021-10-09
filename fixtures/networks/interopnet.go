@@ -3,7 +3,10 @@ package networks
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"math"
 
 	"github.com/filecoin-project/venus/pkg/config"
 )
@@ -26,6 +29,7 @@ func InteropNet() *NetworkConf {
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
 			},
 			NetworkType:            constants.NetworkInterop,
+			GenesisNetworkVersion:  network.Version0,
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 2048,
 			MinVerifiedDealSize:    256,
@@ -46,6 +50,7 @@ func InteropNet() *NetworkConf {
 				UpgradeNorwegianHeight:     -14,
 				UpgradeTurboHeight:         -15,
 				UpgradeHyperdriveHeight:    -16,
+				UpgradeChocolateHeight:     math.MaxInt32,
 
 				BreezeGasTampingDuration: 0,
 				UpgradeClausHeight:       -11,
@@ -53,6 +58,7 @@ func InteropNet() *NetworkConf {
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,
 			PreCommitChallengeDelay: abi.ChainEpoch(10),
+			FaultMaxAge:             miner.WPoStProvingPeriod * 42,
 		},
 	}
 }

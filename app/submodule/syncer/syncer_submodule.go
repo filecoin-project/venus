@@ -81,15 +81,9 @@ func NewSyncerSubmodule(ctx context.Context,
 	// setup validation
 	gasPriceSchedule := gas.NewPricesSchedule(config.Repo().Config().NetworkParams.ForkUpgradeParam)
 
-	genBlk, err := chn.ChainReader.GetGenesisBlock(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to locate genesis block during node build")
-	}
-
 	// set up consensus
 	//	elections := consensus.NewElectionMachine(chn.state)
-	sampler := chain.NewSampler(chn.ChainReader, genBlk.Ticket)
-	tickets := consensus.NewTicketMachine(sampler, chn.ChainReader)
+	tickets := consensus.NewTicketMachine(chn.ChainReader)
 	cborStore := cbor.NewCborStore(config.Repo().Datastore())
 	stateViewer := consensus.AsDefaultStateViewer(state.NewViewer(cborStore))
 	nodeChainSelector := consensus.NewChainSelector(cborStore, &stateViewer)
@@ -117,7 +111,7 @@ func NewSyncerSubmodule(ctx context.Context,
 		blockstore.Blockstore,
 		config.BlockTime(),
 		chn.ChainReader,
-		chn.ChainReader,
+		chn.API(),
 		chn.MessageStore,
 		chn.Fork,
 		config.Repo().Config().NetworkParams,

@@ -27,7 +27,6 @@ import (
 type ChainSubmodule struct { //nolint
 	ChainReader  *chain.Store
 	MessageStore *chain.MessageStore
-	Sampler      *chain.Sampler
 	Processor    *consensus.DefaultProcessor
 	Fork         fork.IFork
 	SystemCall   vm.SyscallsImpl
