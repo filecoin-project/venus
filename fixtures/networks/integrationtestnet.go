@@ -3,6 +3,8 @@ package networks
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
+	"math"
 
 	"github.com/filecoin-project/venus/pkg/config"
 )
@@ -18,6 +20,7 @@ func IntegrationNet() *NetworkConf {
 		Network: config.NetworkParamsConfig{
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 10 << 40,
+			GenesisNetworkVersion:  network.Version0,
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
 				UpgradeBreezeHeight:        41280,
 				UpgradeSmokeHeight:         51000,
@@ -35,6 +38,7 @@ func IntegrationNet() *NetworkConf {
 				UpgradeNorwegianHeight:     665280,
 				UpgradeTurboHeight:         712320,
 				UpgradeHyperdriveHeight:    892800,
+				UpgradeChocolateHeight:     math.MaxInt32,
 
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       343200,

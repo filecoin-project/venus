@@ -5,7 +5,7 @@ import (
 	rtt "github.com/filecoin-project/go-state-types/rt"
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/ipfs/go-cid"
-	xerrors "github.com/pkg/errors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/types/specactors"
 	vmr "github.com/filecoin-project/venus/pkg/vm/runtime"
@@ -62,6 +62,7 @@ func (b *CodeLoaderBuilder) Add(predict ActorPredicate, actor Actor) *CodeLoader
 	if predict == nil {
 		predict = func(vmr.Runtime, rtt.VMActor) error { return nil }
 	}
+
 	b.actors[actor.Code()] = ActorInfo{
 		vmActor:   actor,
 		predicate: predict,
@@ -88,7 +89,10 @@ type ActorPredicate func(vmr.Runtime, rtt.VMActor) error
 //ActorsVersionPredicate  get actor predicate base on actor version and network version
 func ActorsVersionPredicate(ver specactors.Version) ActorPredicate {
 	return func(rt vmr.Runtime, v rtt.VMActor) error {
-		nver := specactors.VersionForNetwork(rt.NtwkVersion())
+		nver, err := specactors.VersionForNetwork(rt.NtwkVersion())
+		if err != nil {
+			return xerrors.Errorf("version for network %w", err)
+		}
 		if nver != ver {
 			return xerrors.Errorf("actor %s is a version %d actor; chain only supports actor version %d at height %d", v.Code(), ver, nver, rt.CurrentEpoch())
 		}

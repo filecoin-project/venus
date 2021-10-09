@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"fmt"
+	"github.com/filecoin-project/venus/pkg/beacon"
+	"golang.org/x/xerrors"
 	"math/rand"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -16,30 +17,57 @@ import (
 
 type RandomSeed []byte
 
-///// Chain sampling /////
-type ChainSampler interface { //nolint
-	Sample(ctx context.Context, epoch abi.ChainEpoch, lookback bool) (RandomSeed, error)
-	GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, lookback bool) (abi.Randomness, error)
-}
+var _ RandomnessSource = (*GenesisRandomnessSource)(nil)
 
 // A sampler for use when computing genesis state (the state that the genesis block points to as parent state).
 // There is no chain to sample a seed from.
-type GenesisSampler struct {
-	VRFProof types.VRFPi
+type GenesisRandomnessSource struct {
+	vrf types.VRFPi
 }
 
-//Sample get genesis ticket randomSeed , t
-func (g *GenesisSampler) Sample(_ context.Context, epoch abi.ChainEpoch, _ bool) (RandomSeed, error) {
-	if epoch > 0 {
-		return nil, fmt.Errorf("invalid use of genesis sampler for epoch %d", epoch)
-	}
-	return MakeRandomSeed(g.VRFProof)
+func NewGenesisRandomnessSource(vrf types.VRFPi) *GenesisRandomnessSource {
+	return &GenesisRandomnessSource{vrf: vrf}
 }
 
-func (g *GenesisSampler) GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, _ bool) (abi.Randomness, error) {
-	//use trust beacon value todo
+func (g *GenesisRandomnessSource) ChainGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
+	return out, nil
+}
+
+func (g *GenesisRandomnessSource) ChainGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	out := make([]byte, 32)
+	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
+	return out, nil
+}
+
+func (g *GenesisRandomnessSource) GetChainRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	out := make([]byte, 32)
+	_, _ = rand.New(rand.NewSource(int64(round))).Read(out) //nolint
+	return out, nil
+}
+
+func (g *GenesisRandomnessSource) GetChainRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	out := make([]byte, 32)
+	_, _ = rand.New(rand.NewSource(int64(round))).Read(out) //nolint
+	return out, nil
+}
+
+func (g *GenesisRandomnessSource) GetBeaconRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	out := make([]byte, 32)
+	_, _ = rand.New(rand.NewSource(int64(round))).Read(out) //nolint
+	return out, nil
+}
+
+func (g *GenesisRandomnessSource) GetBeaconRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	out := make([]byte, 32)
+	_, _ = rand.New(rand.NewSource(int64(round))).Read(out) //nolint
+	return out, nil
+}
+
+func (g *GenesisRandomnessSource) GetBeaconRandomnessV3(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	out := make([]byte, 32)
+	_, _ = rand.New(rand.NewSource(int64(filecoinEpoch))).Read(out) //nolint
 	return out, nil
 }
 
@@ -54,44 +82,187 @@ func MakeRandomSeed(rawVRFProof types.VRFPi) (RandomSeed, error) {
 
 // RandomnessSource provides randomness to actors.
 type RandomnessSource interface {
-	GetChainRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
-	GetChainRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
-	GetBeaconRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
-	GetBeaconRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetChainRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetChainRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetBeaconRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetBeaconRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetBeaconRandomnessV3(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error)
 }
+
+type TipSetByHeight interface {
+	GetTipSet(key types.TipSetKey) (*types.TipSet, error)
+	GetTipSetByHeight(ctx context.Context, ts *types.TipSet, h abi.ChainEpoch, prev bool) (*types.TipSet, error)
+}
+
+var _ RandomnessSource = (*ChainRandomnessSource)(nil)
 
 // A randomness source that seeds computations with a sample drawn from a chain epoch.
 type ChainRandomnessSource struct { //nolint
-	Sampler ChainSampler
+	reader TipSetByHeight
+	head   types.TipSetKey
+	beacon beacon.Schedule
 }
 
-func (c *ChainRandomnessSource) GetChainRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	seed, err := c.Sampler.Sample(ctx, round, true)
+func NewChainRandomnessSource(reader TipSetByHeight, head types.TipSetKey, beacon beacon.Schedule) RandomnessSource {
+	return &ChainRandomnessSource{reader: reader, head: head, beacon: beacon}
+}
+
+func (c *ChainRandomnessSource) GetBeaconRandomnessTipset(ctx context.Context, randEpoch abi.ChainEpoch, lookback bool) (*types.TipSet, error) {
+	ts, err := c.reader.GetTipSet(c.head)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to sample chain for randomness")
+		return nil, err
 	}
-	return BlendEntropy(pers, seed, round, entropy)
-}
 
-func (c *ChainRandomnessSource) GetChainRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	seed, err := c.Sampler.Sample(ctx, round, false)
+	if randEpoch > ts.Height() {
+		return nil, xerrors.Errorf("cannot draw randomness from the future")
+	}
+
+	searchHeight := randEpoch
+	if searchHeight < 0 {
+		searchHeight = 0
+	}
+
+	randTS, err := c.reader.GetTipSetByHeight(ctx, ts, searchHeight, lookback)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to sample chain for randomness")
+		return nil, err
 	}
-	return BlendEntropy(pers, seed, round, entropy)
+	return randTS, nil
 }
 
-func (c *ChainRandomnessSource) GetBeaconRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return c.Sampler.GetRandomnessFromBeacon(ctx, pers, round, entropy, true)
+// Draws a ticket from the chain identified by `head` and the highest tipset with height <= `epoch`.
+// If `head` is empty (as when processing the pre-genesis state or the genesis block), the seed derived from
+// a fixed genesis ticket.
+// Note that this may produce the same value for different, neighbouring epochs when the epoch references a round
+// in which no blocks were produced (an empty tipset or "null block"). A caller desiring a unique see for each epoch
+// should blend in some distinguishing value (such as the epoch itself) into a hash of this ticket.
+func (c *ChainRandomnessSource) GetChainRandomness(ctx context.Context, epoch abi.ChainEpoch, lookback bool) (types.Ticket, error) {
+	var ticket types.Ticket
+	if !c.head.IsEmpty() {
+		start, err := c.reader.GetTipSet(c.head)
+		if err != nil {
+			return types.Ticket{}, err
+		}
+
+		if epoch > start.Height() {
+			return types.Ticket{}, xerrors.Errorf("cannot draw randomness from the future")
+		}
+
+		searchHeight := epoch
+		if searchHeight < 0 {
+			searchHeight = 0
+		}
+
+		// Note: it is not an error to have epoch > start.Height(); in the case of a run of null blocks the
+		// sought-after height may be after the base (last non-empty) tipset.
+		// It's also not an error for the requested epoch to be negative.
+		tip, err := c.reader.GetTipSetByHeight(ctx, start, searchHeight, lookback)
+		if err != nil {
+			return types.Ticket{}, err
+		}
+		ticket = tip.MinTicket()
+	} else {
+		return types.Ticket{}, xerrors.Errorf("cannot get ticket for empty tipset")
+	}
+
+	return ticket, nil
 }
 
-func (c *ChainRandomnessSource) GetBeaconRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return c.Sampler.GetRandomnessFromBeacon(ctx, pers, round, entropy, false)
+// network v0-12
+func (c *ChainRandomnessSource) GetChainRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	ticket, err := c.GetChainRandomness(ctx, round, true)
+	if err != nil {
+		return nil, err
+	}
+	// if at (or just past -- for null epochs) appropriate epoch
+	// or at genesis (works for negative epochs)
+	return DrawRandomness(ticket.VRFProof, pers, round, entropy)
 }
 
-//GetRandomnessFromBeacon get randomness from beacon
-func (c *ChainRandomnessSource) GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return c.Sampler.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, true)
+// network v13 and on
+func (c *ChainRandomnessSource) GetChainRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	ticket, err := c.GetChainRandomness(ctx, round, false)
+	if err != nil {
+		return nil, err
+	}
+	// if at (or just past -- for null epochs) appropriate epoch
+	// or at genesis (works for negative epochs)
+	return DrawRandomness(ticket.VRFProof, pers, round, entropy)
+}
+
+// network v0-12
+func (c *ChainRandomnessSource) GetBeaconRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	randTs, err := c.GetBeaconRandomnessTipset(ctx, round, true)
+	if err != nil {
+		return nil, err
+	}
+
+	be, err := FindLatestDRAND(ctx, randTs, c.reader)
+	if err != nil {
+		return nil, err
+	}
+
+	// if at (or just past -- for null epochs) appropriate epoch
+	// or at genesis (works for negative epochs)
+	return DrawRandomness(be.Data, pers, round, entropy)
+}
+
+// network v13
+func (c *ChainRandomnessSource) GetBeaconRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	randTs, err := c.GetBeaconRandomnessTipset(ctx, round, false)
+	if err != nil {
+		return nil, err
+	}
+
+	be, err := FindLatestDRAND(ctx, randTs, c.reader)
+	if err != nil {
+		return nil, err
+	}
+
+	// if at (or just past -- for null epochs) appropriate epoch
+	// or at genesis (works for negative epochs)
+	return DrawRandomness(be.Data, pers, round, entropy)
+}
+
+// network v14 and on
+func (c *ChainRandomnessSource) GetBeaconRandomnessV3(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	if filecoinEpoch < 0 {
+		return c.GetBeaconRandomnessV2(ctx, pers, filecoinEpoch, entropy)
+	}
+
+	be, err := c.extractBeaconEntryForEpoch(ctx, filecoinEpoch)
+	if err != nil {
+		log.Errorf("failed to get beacon entry as expected: %w", err)
+		return nil, err
+	}
+
+	return DrawRandomness(be.Data, pers, filecoinEpoch, entropy)
+}
+
+func (c *ChainRandomnessSource) extractBeaconEntryForEpoch(ctx context.Context, filecoinEpoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+	randTs, err := c.GetBeaconRandomnessTipset(ctx, filecoinEpoch, false)
+	if err != nil {
+		return nil, err
+	}
+
+	round := c.beacon.BeaconForEpoch(filecoinEpoch).MaxBeaconRoundForEpoch(filecoinEpoch)
+
+	for i := 0; i < 20; i++ {
+		cbe := randTs.Blocks()[0].BeaconEntries
+		for _, v := range cbe {
+			if v.Round == round {
+				return v, nil
+			}
+		}
+
+		next, err := c.reader.GetTipSet(randTs.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load parents when searching back for beacon entry: %w", err)
+		}
+
+		randTs = next
+	}
+
+	return nil, xerrors.Errorf("didn't find beacon for round %d (epoch %d)", round, filecoinEpoch)
 }
 
 //BlendEntropy get randomness with chain value. sha256(buf(tag, seed, epoch, entropy))
@@ -115,4 +286,25 @@ func BlendEntropy(tag crypto.DomainSeparationTag, seed RandomSeed, epoch abi.Cha
 	}
 	bufHash := blake2b.Sum256(buffer.Bytes())
 	return bufHash[:], nil
+}
+
+func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	h := blake2b.New256()
+	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
+		return nil, xerrors.Errorf("deriving randomness: %s", err)
+	}
+	VRFDigest := blake2b.Sum256(rbase)
+	_, err := h.Write(VRFDigest[:])
+	if err != nil {
+		return nil, xerrors.Errorf("hashing VRFDigest: %s", err)
+	}
+	if err := binary.Write(h, binary.BigEndian, round); err != nil {
+		return nil, xerrors.Errorf("deriving randomness: %s", err)
+	}
+	_, err = h.Write(entropy)
+	if err != nil {
+		return nil, xerrors.Errorf("hashing entropy: %s", err)
+	}
+
+	return h.Sum(nil), nil
 }

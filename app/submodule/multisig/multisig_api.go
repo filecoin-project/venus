@@ -40,7 +40,11 @@ func (a *multiSig) messageBuilder(ctx context.Context, from address.Address) (mu
 	if err != nil {
 		return nil, err
 	}
-	return multisig.Message(specactors.VersionForNetwork(nver), from), nil
+	aver, err := specactors.VersionForNetwork(nver)
+	if err != nil {
+		return nil, err
+	}
+	return multisig.Message(aver, from), nil
 }
 
 // MsigCreate creates a multisig wallet

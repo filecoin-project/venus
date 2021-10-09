@@ -8,7 +8,6 @@ import (
 	"runtime/debug"
 	"sync"
 
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/state"
 
@@ -1220,33 +1219,6 @@ func (store *Store) GetLookbackTipSetForRound(ctx context.Context, ts *types.Tip
 	}
 
 	return lbts, nextTS.Blocks()[0].ParentStateRoot, nil
-}
-
-// Randomness
-// SampleChainRandomness computes randomness seeded by a ticket from the chain `head` at `sampleHeight`.
-func (store *Store) GetChainRandomness(ctx context.Context, tsk types.TipSetKey, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte, lookback bool) ([]byte, error) {
-	genBlk, err := store.GetGenesisBlock(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	rnd := ChainRandomnessSource{Sampler: NewRandomnessSamplerAtTipSet(store, genBlk.Ticket, tsk)}
-	if lookback {
-		return rnd.GetChainRandomnessLookingBack(ctx, pers, round, entropy)
-	}
-	return rnd.GetChainRandomnessLookingForward(ctx, pers, round, entropy)
-}
-
-func (store *Store) GetBeaconRandomness(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, lookback bool) (abi.Randomness, error) {
-	genBlk, err := store.GetGenesisBlock(ctx)
-	if err != nil {
-		return nil, err
-	}
-	rnd := ChainRandomnessSource{Sampler: NewRandomnessSamplerAtTipSet(store, genBlk.Ticket, tsk)}
-	if lookback {
-		return rnd.GetBeaconRandomnessLookingBack(ctx, personalization, randEpoch, entropy)
-	}
-	return rnd.GetBeaconRandomnessLookingForward(ctx, personalization, randEpoch, entropy)
 }
 
 //Actor
