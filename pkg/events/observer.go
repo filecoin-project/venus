@@ -14,6 +14,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
+var ObserveDuration = time.Second * 45
+
 type observer struct {
 	api IEvent
 
@@ -60,7 +62,7 @@ func (o *observer) listenHeadChanges(ctx context.Context) {
 		}
 
 		select {
-		case <-constants.Clock.After(time.Second * 45):
+		case <-constants.Clock.After(ObserveDuration):
 		case <-ctx.Done():
 			log.Warnf("not restarting listenHeadChanges: context error: %s", ctx.Err())
 			return

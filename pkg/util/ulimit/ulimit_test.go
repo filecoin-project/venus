@@ -4,6 +4,7 @@ package ulimit
 
 import (
 	"fmt"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"os"
 	"strings"
 	"syscall"
@@ -11,6 +12,7 @@ import (
 )
 
 func TestManageFdLimit(t *testing.T) {
+	tf.UnitTest(t)
 	t.Log("Testing file descriptor count")
 	if _, _, err := ManageFdLimit(); err != nil {
 		t.Errorf("Cannot manage file descriptors")
@@ -22,6 +24,7 @@ func TestManageFdLimit(t *testing.T) {
 }
 
 func TestManageInvalidNFds(t *testing.T) {
+	tf.UnitTest(t)
 	t.Logf("Testing file descriptor invalidity")
 	var err error
 	if err = os.Unsetenv("IPFS_FD_MAX"); err != nil {
@@ -57,6 +60,7 @@ func TestManageInvalidNFds(t *testing.T) {
 }
 
 func TestManageFdLimitWithEnvSet(t *testing.T) {
+	tf.UnitTest(t)
 	t.Logf("Testing file descriptor manager with IPFS_FD_MAX set")
 	var err error
 	if err = os.Unsetenv("IPFS_FD_MAX"); err != nil {

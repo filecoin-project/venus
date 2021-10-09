@@ -136,11 +136,23 @@ type CommonAdapter struct {
 	Adapter1
 }
 type Adapter1 struct {
-	Test1 func(ctx context.Context) (string, error) `perm:"read"`
+	Internal struct {
+		Test1 func(ctx context.Context) (string, error) `perm:"read"`
+	}
+}
+
+func (adp *Adapter1) Test1(ctx context.Context) (string, error) {
+	return adp.Internal.Test1(ctx)
 }
 
 type Adapter2 struct {
-	Test2 func(ctx context.Context) error `perm:"read"`
+	Internal struct {
+		Test2 func(ctx context.Context) (string, error) `perm:"read"`
+	}
+}
+
+func (adp *Adapter2) Test2(ctx context.Context) (string, error) {
+	return adp.Internal.Test2(ctx)
 }
 
 func mockBuild(builder *RPCBuilder) *jsonrpc.RPCServer {

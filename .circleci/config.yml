@@ -117,7 +117,7 @@ jobs:
     docker:
       - image: circleci/golang:1.16.4
         environment:
-          GOPROXY: "https://goproxy.io,direct"
+          GOPROXY: "https://goproxy.cn,direct"
     working_directory: /go/src/github.com/filecoin-project/venus
     resource_class: xlarge
     steps:
@@ -173,7 +173,7 @@ jobs:
     docker:
       - image: circleci/golang:1.16.2-stretch
         environment:
-          GOPROXY: "https://goproxy.io,direct"
+          GOPROXY: "https://goproxy.cn,direct"
     working_directory: /go/src/github.com/filecoin-project/venus
     resource_class: xlarge
     parameters:
@@ -229,7 +229,7 @@ jobs:
     docker:
       - image: circleci/golang:1.16.2-stretch
         environment:
-          GOPROXY: "https://goproxy.io,direct"
+          GOPROXY: "https://goproxy.cn,direct"
     parallelism: 2 # Check .codecov.yml "after_n_builds" if changing this
     working_directory: /go/src/github.com/filecoin-project/venus
     resource_class: xlarge
@@ -263,7 +263,7 @@ jobs:
     docker:
       - image: circleci/golang:1.16.2-stretch
         environment:
-          GOPROXY: "https://goproxy.io,direct"
+          GOPROXY: "https://goproxy.cn,direct"
     parallelism: 2 # Check .codecov.yml "after_n_builds" if changing this
     working_directory: /go/src/github.com/filecoin-project/venus
     resource_class: xlarge
@@ -299,7 +299,7 @@ jobs:
     docker:
       - image: circleci/golang:1.16.2-stretch
         environment:
-          GOPROXY: "https://goproxy.io,direct"
+          GOPROXY: "https://goproxy.cn,direct"
     parallelism: 2
     working_directory: /go/src/github.com/filecoin-project/venus
     resource_class: xlarge
@@ -339,7 +339,7 @@ jobs:
     docker:
       - image: circleci/golang:1.16.2-stretch
         environment:
-          GOPROXY: "https://goproxy.io,direct"
+          GOPROXY: "https://goproxy.cn,direct"
     resource_class: small
     parameters:
       <<: *nightly_param
@@ -367,7 +367,7 @@ jobs:
     docker:
       - image: circleci/golang:1.16.2-stretch
         environment:
-          GOPROXY: "https://goproxy.io,direct"
+          GOPROXY: "https://goproxy.cn,direct"
     resource_class: xlarge
     parameters:
       <<: *nightly_param
@@ -459,7 +459,7 @@ jobs:
     docker:
       - image: circleci/golang:1.16.2-stretch
         environment:
-          GOPROXY: "https://goproxy.io,direct"
+          GOPROXY: "https://goproxy.cn,direct"
     resource_class: small
     steps:
       - setup_remote_docker
@@ -473,7 +473,7 @@ jobs:
       - run:
           name: create & push git tag
           command: |
-            git config user.email dev-helper@filecoin.io
+            git config user.email dev-helper@filecoin.cn
             git config user.name filecoin-helper
             git tag -f -a ${FILECOIN_BINARY_VERSION} -m "$(date -u '+%Y-%m-%dT%H:%M:%S%z')"
             git push -f https://${GITHUB_TOKEN}@github.com/filecoin-project/venus.git ${FILECOIN_BINARY_VERSION}
@@ -497,7 +497,7 @@ jobs:
     docker:
       - image: circleci/golang:1.16.2-stretch
         environment:
-          GOPROXY: "https://goproxy.io,direct"
+          GOPROXY: "https://goproxy.cn,direct"
     resource_class: small
     steps:
       - checkout

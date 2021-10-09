@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -29,14 +30,15 @@ type StrC struct {
 }
 
 func TestGetInternalStructs(t *testing.T) {
+	tf.UnitTest(t)
 	var proxy StrA
 
 	sts := GetInternalStructs(&proxy)
 	require.Len(t, sts, 2)
 
-	sa := sts[0].(*struct{ A int })
+	sa := sts[1].(*struct{ A int })
 	sa.A = 3
-	sb := sts[1].(*struct{ B int })
+	sb := sts[0].(*struct{ B int })
 	sb.B = 4
 
 	require.Equal(t, 3, proxy.Internal.A)
@@ -44,6 +46,7 @@ func TestGetInternalStructs(t *testing.T) {
 }
 
 func TestNestedInternalStructs(t *testing.T) {
+	tf.UnitTest(t)
 	var proxy StrC
 
 	// check that only the top-level internal struct gets picked up
