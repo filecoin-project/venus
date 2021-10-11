@@ -422,6 +422,50 @@ func (cia *chainInfoAPI) StateNetworkVersion(ctx context.Context, tsk types.TipS
 	return cia.chain.Fork.GetNtwkVersion(ctx, ts.Height()), nil
 }
 
+func (cia *chainInfoAPI) StateVerifiedRegistryRootKey(ctx context.Context, tsk types.TipSetKey) (address.Address, error) {
+	headKey, err := cia.chain.ChainReader.GetTipSet(tsk)
+	view, err := cia.chain.ChainReader.ParentStateView(headKey)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	vrs, err := view.LoadVerifregActor(ctx)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to load verified registry state: %w", err)
+	}
+
+	return vrs.RootKey()
+}
+
+func (cia *chainInfoAPI) StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
+	headKey, err := cia.chain.ChainReader.GetTipSet(tsk)
+	view, err := cia.chain.ChainReader.ParentStateView(headKey)
+	if err != nil {
+		return nil, err
+	}
+
+	aid, err := view.LookupID(ctx, addr)
+	if err != nil {
+		log.Warnf("lookup failure %v", err)
+		return nil, err
+	}
+
+	vrs, err := view.LoadVerifregActor(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load verified registry state: %w", err)
+	}
+
+	verified, dcap, err := vrs.VerifierDataCap(aid)
+	if err != nil {
+		return nil, xerrors.Errorf("looking up verifier: %w", err)
+	}
+	if !verified {
+		return nil, nil
+	}
+
+	return &dcap, nil
+}
+
 // MessageWait invokes the callback when a message with the given cid appears on chain.
 // It will find the message in both the case that it is already on chain and
 // the case that it appears in a newly mined block. An error is returned if one is

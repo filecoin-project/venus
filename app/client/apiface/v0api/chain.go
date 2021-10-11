@@ -82,4 +82,8 @@ type IChainInfo interface {
 	VerifyEntry(parent, child *types.BeaconEntry, height abi.ChainEpoch) bool
 	// Rule[perm:read]
 	ChainExport(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey) (<-chan []byte, error)
+	// Rule[perm:read]
+	StateVerifiedRegistryRootKey(ctx context.Context, tsk types.TipSetKey) (address.Address, error)
+	// Rule[perm:read]
+	StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 }
