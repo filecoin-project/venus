@@ -17,6 +17,7 @@ import (
 	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
 	exported4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/exported"
 	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
+	exported6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/exported"
 
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 )
@@ -38,7 +39,7 @@ func init() {
 	actors = append(actors, exported3.BuiltinActors()...)
 	actors = append(actors, exported4.BuiltinActors()...)
 	actors = append(actors, exported5.BuiltinActors()...)
-
+	actors = append(actors, exported6.BuiltinActors()...)
 	for _, actor := range actors {
 		exports := actor.Exports()
 		methods := make(map[abi.MethodNum]MethodMeta, len(exports))
