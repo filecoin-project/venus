@@ -19,15 +19,20 @@ var _ apiface.IWallet = &WalletAPI{}
 
 var ErrNoDefaultFromAddress = errors.New("unable to determine a default walletModule address")
 
-type WalletAPI struct { //nolint
+type WalletAPI struct { // nolint
 	walletModule *WalletSubmodule
 	adapter      wallet.WalletIntersection
 }
 
 // WalletBalance returns the current balance of the given wallet address.
 func (walletAPI *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error) {
-	headkey := walletAPI.walletModule.ChainReader.GetHead()
-	act, err := walletAPI.walletModule.ChainReader.GetActorAt(ctx, headkey, addr)
+	chainReader := walletAPI.walletModule.ChainReader
+	head := chainReader.GetHead()
+	parent, err := chainReader.GetTipSet(head.Parents())
+	if err != nil {
+		return abi.NewTokenAmount(0), err
+	}
+	act, err := walletAPI.walletModule.ChainReader.GetActorAt(ctx, parent, addr)
 	if err != nil && strings.Contains(err.Error(), types.ErrActorNotFound.Error()) {
 		return abi.NewTokenAmount(0), nil
 	} else if err != nil {
@@ -135,27 +140,27 @@ func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Add
 	}, nil
 }
 
-//LockWallet lock wallet
+// LockWallet lock wallet
 func (walletAPI *WalletAPI) LockWallet(ctx context.Context) error {
 	return walletAPI.walletModule.Wallet.LockWallet()
 }
 
-//UnLockWallet unlock wallet
+// UnLockWallet unlock wallet
 func (walletAPI *WalletAPI) UnLockWallet(ctx context.Context, password []byte) error {
 	return walletAPI.walletModule.Wallet.UnLockWallet(password)
 }
 
-//SetPassword set wallet password
+// SetPassword set wallet password
 func (walletAPI *WalletAPI) SetPassword(Context context.Context, password []byte) error {
 	return walletAPI.walletModule.Wallet.SetPassword(password)
 }
 
-//HasPassword return whether the wallet has password
+// HasPassword return whether the wallet has password
 func (walletAPI *WalletAPI) HasPassword(Context context.Context) bool {
 	return walletAPI.adapter.HasPassword()
 }
 
-//WalletState return wallet state
+// WalletState return wallet state
 func (walletAPI *WalletAPI) WalletState(Context context.Context) int {
 	return walletAPI.walletModule.Wallet.WalletState()
 }

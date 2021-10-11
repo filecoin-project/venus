@@ -29,7 +29,7 @@ type minerStateAPI struct {
 	*ChainSubmodule
 }
 
-//NewMinerStateAPI create miner state api
+// NewMinerStateAPI create miner state api
 func NewMinerStateAPI(chain *ChainSubmodule) apiface.IMinerState {
 	return &minerStateAPI{ChainSubmodule: chain}
 }
@@ -528,7 +528,12 @@ func (msa *minerStateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, 
 		return chain.CirculatingSupply{}, err
 	}
 
-	root, err := msa.ChainReader.GetTipSetStateRoot(ts)
+	parent, err := msa.ChainReader.GetTipSet(ts.Parents())
+	if err != nil {
+		return chain.CirculatingSupply{}, err
+	}
+
+	root, err := msa.ChainReader.GetTipSetStateRoot(parent)
 	if err != nil {
 		return chain.CirculatingSupply{}, err
 	}
