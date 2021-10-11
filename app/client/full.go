@@ -146,6 +146,8 @@ type IChainInfoStruct struct {
 		MessageWait                   func(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch, p3 abi.ChainEpoch) (*chain.ChainMessage, error)                            `perm:"read"`
 		ProtocolParameters            func(p0 context.Context) (*apitypes.ProtocolParams, error)                                                                         `perm:"read"`
 		ResolveToKeyAddr              func(p0 context.Context, p1 address.Address, p2 *types.TipSet) (address.Address, error)                                            `perm:"read"`
+		StateGetRandomnessFromBeacon  func(p0 context.Context, p1 acrypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) `perm:"read"`
+		StateGetRandomnessFromTickets func(p0 context.Context, p1 acrypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) `perm:"read"`
 		StateNetworkName              func(p0 context.Context) (apitypes.NetworkName, error)                                                                             `perm:"read"`
 		StateNetworkVersion           func(p0 context.Context, p1 types.TipSetKey) (network.Version, error)                                                              `perm:"read"`
 		StateSearchMsg                func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*apitypes.MsgLookup, error)                  `perm:"read"`
@@ -256,6 +258,14 @@ func (s *IChainInfoStruct) ProtocolParameters(p0 context.Context) (*apitypes.Pro
 
 func (s *IChainInfoStruct) ResolveToKeyAddr(p0 context.Context, p1 address.Address, p2 *types.TipSet) (address.Address, error) {
 	return s.Internal.ResolveToKeyAddr(p0, p1, p2)
+}
+
+func (s *IChainInfoStruct) StateGetRandomnessFromBeacon(p0 context.Context, p1 acrypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) {
+	return s.Internal.StateGetRandomnessFromBeacon(p0, p1, p2, p3, p4)
+}
+
+func (s *IChainInfoStruct) StateGetRandomnessFromTickets(p0 context.Context, p1 acrypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) {
+	return s.Internal.StateGetRandomnessFromTickets(p0, p1, p2, p3, p4)
 }
 
 func (s *IChainInfoStruct) StateNetworkName(p0 context.Context) (apitypes.NetworkName, error) {

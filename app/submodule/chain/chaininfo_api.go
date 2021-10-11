@@ -369,26 +369,16 @@ func (cia *chainInfoAPI) getNetworkName(ctx context.Context) (string, error) {
 
 // ChainGetRandomnessFromBeacon is used to sample the beacon for randomness.
 func (cia *chainInfoAPI) ChainGetRandomnessFromBeacon(ctx context.Context, key types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	_, err := cia.ChainGetTipSet(ctx, key)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", key, err)
-	}
-
-	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, key, cia.chain.Drand)
-	rnv := cia.chain.Fork.GetNtwkVersion(ctx, randEpoch)
-
-	if rnv >= network.Version14 {
-		return r.GetBeaconRandomnessV3(ctx, personalization, randEpoch, entropy)
-	} else if rnv == network.Version13 {
-		return r.GetBeaconRandomnessV2(ctx, personalization, randEpoch, entropy)
-	}
-
-	return r.GetBeaconRandomnessV1(ctx, personalization, randEpoch, entropy)
-
+	return cia.StateGetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, key)
 }
 
 // ChainGetRandomnessFromTickets is used to sample the chain for randomness.
 func (cia *chainInfoAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return cia.StateGetRandomnessFromTickets(ctx, personalization, randEpoch, entropy, tsk)
+}
+
+// StateGetRandomnessFromTickets is used to sample the chain for randomness.
+func (cia *chainInfoAPI) StateGetRandomnessFromTickets(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
 	_, err := cia.ChainGetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -402,6 +392,25 @@ func (cia *chainInfoAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk 
 	}
 
 	return r.GetChainRandomnessV1(ctx, personalization, randEpoch, entropy)
+}
+
+// StateGetRandomnessFromBeacon is used to sample the beacon for randomness.
+func (cia *chainInfoAPI) StateGetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
+	_, err := cia.ChainGetTipSet(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, tsk, cia.chain.Drand)
+	rnv := cia.chain.Fork.GetNtwkVersion(ctx, randEpoch)
+
+	if rnv >= network.Version14 {
+		return r.GetBeaconRandomnessV3(ctx, personalization, randEpoch, entropy)
+	} else if rnv == network.Version13 {
+		return r.GetBeaconRandomnessV2(ctx, personalization, randEpoch, entropy)
+	}
+
+	return r.GetBeaconRandomnessV1(ctx, personalization, randEpoch, entropy)
 }
 
 // StateNetworkVersion returns the network version at the given tipset
