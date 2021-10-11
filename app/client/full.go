@@ -151,6 +151,8 @@ type IChainInfoStruct struct {
 		StateNetworkName              func(p0 context.Context) (apitypes.NetworkName, error)                                                                             `perm:"read"`
 		StateNetworkVersion           func(p0 context.Context, p1 types.TipSetKey) (network.Version, error)                                                              `perm:"read"`
 		StateSearchMsg                func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*apitypes.MsgLookup, error)                  `perm:"read"`
+		StateVerifiedRegistryRootKey  func(p0 context.Context, p1 types.TipSetKey) (address.Address, error)                                                              `perm:"read"`
+		StateVerifierStatus           func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error)                                        `perm:"read"`
 		StateWaitMsg                  func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*apitypes.MsgLookup, error)                           `perm:"read"`
 		VerifyEntry                   func(p0 *types.BeaconEntry, p1 *types.BeaconEntry, p2 abi.ChainEpoch) bool                                                         `perm:"read"`
 	}
@@ -278,6 +280,14 @@ func (s *IChainInfoStruct) StateNetworkVersion(p0 context.Context, p1 types.TipS
 
 func (s *IChainInfoStruct) StateSearchMsg(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*apitypes.MsgLookup, error) {
 	return s.Internal.StateSearchMsg(p0, p1, p2, p3, p4)
+}
+
+func (s *IChainInfoStruct) StateVerifiedRegistryRootKey(p0 context.Context, p1 types.TipSetKey) (address.Address, error) {
+	return s.Internal.StateVerifiedRegistryRootKey(p0, p1)
+}
+
+func (s *IChainInfoStruct) StateVerifierStatus(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) {
+	return s.Internal.StateVerifierStatus(p0, p1, p2)
 }
 
 func (s *IChainInfoStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*apitypes.MsgLookup, error) {

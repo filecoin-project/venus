@@ -82,6 +82,10 @@ type IChainInfo interface {
 	// Rule[perm:read]
 	ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error)
 	// Rule[perm:read]
+	StateVerifiedRegistryRootKey(ctx context.Context, tsk types.TipSetKey) (address.Address, error)
+	// Rule[perm:read]
+	StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
+	// Rule[perm:read]
 	ChainNotify(ctx context.Context) <-chan []*chain.HeadChange
 	// Rule[perm:read]
 	GetFullBlock(ctx context.Context, id cid.Cid) (*types.FullBlock, error)
