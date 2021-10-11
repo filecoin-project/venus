@@ -424,6 +424,9 @@ func (cia *chainInfoAPI) StateNetworkVersion(ctx context.Context, tsk types.TipS
 
 func (cia *chainInfoAPI) StateVerifiedRegistryRootKey(ctx context.Context, tsk types.TipSetKey) (address.Address, error) {
 	headKey, err := cia.chain.ChainReader.GetTipSet(tsk)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("loading tipset %s: %v", tsk, err)
+	}
 	view, err := cia.chain.ChainReader.ParentStateView(headKey)
 	if err != nil {
 		return address.Undef, err
@@ -439,6 +442,9 @@ func (cia *chainInfoAPI) StateVerifiedRegistryRootKey(ctx context.Context, tsk t
 
 func (cia *chainInfoAPI) StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
 	headKey, err := cia.chain.ChainReader.GetTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
+	}
 	view, err := cia.chain.ChainReader.ParentStateView(headKey)
 	if err != nil {
 		return nil, err
