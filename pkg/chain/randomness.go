@@ -41,33 +41,33 @@ func (g *GenesisRandomnessSource) ChainGetRandomnessFromTickets(ctx context.Cont
 	return out, nil
 }
 
-func (g *GenesisRandomnessSource) GetChainRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (g *GenesisRandomnessSource) GetChainRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(round))).Read(out) //nolint
+	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
 	return out, nil
 }
 
-func (g *GenesisRandomnessSource) GetChainRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (g *GenesisRandomnessSource) GetChainRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(round))).Read(out) //nolint
+	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000 ))).Read(out) //nolint
 	return out, nil
 }
 
-func (g *GenesisRandomnessSource) GetBeaconRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (g *GenesisRandomnessSource) GetBeaconRandomnessV3(ctx context.Context, pers crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(round))).Read(out) //nolint
+	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return out, nil
 }
 
-func (g *GenesisRandomnessSource) GetBeaconRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (g *GenesisRandomnessSource) GetBeaconRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(round))).Read(out) //nolint
+	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return out, nil
 }
 
-func (g *GenesisRandomnessSource) GetBeaconRandomnessV3(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (g *GenesisRandomnessSource) GetBeaconRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(filecoinEpoch))).Read(out) //nolint
+	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return out, nil
 }
 
