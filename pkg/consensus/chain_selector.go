@@ -89,10 +89,6 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b *types.TipSet) (bool
 	if err != nil {
 		return false, err
 	}
-	// Without ties pass along the comparison.
-	if !aW.Equals(bW) {
-		return aW.GreaterThan(bW), nil
-	}
 
 	heavier := aW.GreaterThan(bW)
 	if aW.Equals(bW) && !a.Equals(b) {
