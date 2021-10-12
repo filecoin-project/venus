@@ -6,6 +6,7 @@ package consensus
 import (
 	"context"
 	"errors"
+	logging "github.com/ipfs/go-log/v2"
 	"math/big"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
@@ -16,6 +17,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/state"
 )
+
+var log = logging.Logger("chain_selector")
 
 // ChainSelector weighs and compares chains.
 type ChainSelector struct {
@@ -86,10 +89,31 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b *types.TipSet) (bool
 	if err != nil {
 		return false, err
 	}
-	// Without ties pass along the comparison.
-	if !aW.Equals(bW) {
-		return aW.GreaterThan(bW), nil
+
+	heavier := aW.GreaterThan(bW)
+	if aW.Equals(bW) && !a.Equals(b) {
+		log.Errorw("weight draw", "currTs", a, "ts", b)
+		heavier = breakWeightTie(a, b)
 	}
 
-	return a.Len() > b.Len(), nil
+	return heavier, nil
+}
+
+// true if ts1 wins according to the filecoin tie-break rule
+func breakWeightTie(ts1, ts2 *types.TipSet) bool {
+	s := len(ts1.Blocks())
+	if s > len(ts2.Blocks()) {
+		s = len(ts2.Blocks())
+	}
+
+	// blocks are already sorted by ticket
+	for i := 0; i < s; i++ {
+		if ts1.Blocks()[i].Ticket.Less(&ts2.Blocks()[i].Ticket) {
+			log.Infof("weight tie broken in favour of %s", ts1.Key())
+			return true
+		}
+	}
+
+	log.Infof("weight tie left unbroken, default to %s", ts2.Key())
+	return false
 }

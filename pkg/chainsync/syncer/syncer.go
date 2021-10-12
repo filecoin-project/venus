@@ -654,9 +654,83 @@ func (syncer *Syncer) SetHead(ctx context.Context, ts *types.TipSet) error {
 
 	// If it is the heaviest update the chainStore.
 	if heavier {
+		exceeds, err := syncer.exceedsForkLength(head, ts)
+		if err != nil {
+			return err
+		}
+		if exceeds {
+			return nil
+		}
 		return syncer.chainStore.SetHead(ctx, ts)
 	}
 	return nil
+}
+
+// Check if the two tipsets have a fork length above `ForkLengthThreshold`.
+// `synced` is the head of the chain we are currently synced to and `external`
+// is the incoming tipset potentially belonging to a forked chain. It assumes
+// the external chain has already been validated and available in the ChainStore.
+// The "fast forward" case is covered in this logic as a valid fork of length 0.
+//
+// FIXME: We may want to replace some of the logic in `syncFork()` with this.
+//  `syncFork()` counts the length on both sides of the fork at the moment (we
+//  need to settle on that) but here we just enforce it on the `synced` side.
+func (syncer *Syncer) exceedsForkLength(synced, external *types.TipSet) (bool, error) {
+	if synced == nil || external == nil {
+		// FIXME: If `cs.heaviest` is nil we should just bypass the entire
+		//  `MaybeTakeHeavierTipSet` logic (instead of each of the called
+		//  functions having to handle the nil case on their own).
+		return false, nil
+	}
+
+	var err error
+	// `forkLength`: number of tipsets we need to walk back from the our `synced`
+	// chain to the common ancestor with the new `external` head in order to
+	// adopt the fork.
+	for forkLength := 0; forkLength < int(constants.ForkLengthThreshold); forkLength++ {
+		// First walk back as many tipsets in the external chain to match the
+		// `synced` height to compare them. If we go past the `synced` height
+		// the subsequent match will fail but it will still be useful to get
+		// closer to the `synced` head parent's height in the next loop.
+		for external.Height() > synced.Height() {
+			if external.Height() == 0 {
+				// We reached the genesis of the external chain without a match;
+				// this is considered a fork outside the allowed limit (of "infinite"
+				// length).
+				return true, nil
+			}
+
+			external, err = syncer.chainStore.GetTipSet(external.Parents())
+			if err != nil {
+				return false, xerrors.Errorf("failed to load parent tipset in external chain: %w", err)
+			}
+		}
+
+		// Now check if we arrived at the common ancestor.
+		if synced.Equals(external) {
+			return false, nil
+		}
+
+		// Now check to see if we've walked back to the checkpoint.
+		if synced.Key().Equals(syncer.checkPoint) {
+			return true, nil
+		}
+
+		// If we didn't, go back *one* tipset on the `synced` side (incrementing
+		// the `forkLength`).
+		if synced.Height() == 0 {
+			// Same check as the `external` side, if we reach the start (genesis)
+			// there is no common ancestor.
+			return true, nil
+		}
+		synced, err = syncer.chainStore.GetTipSet(synced.Parents())
+		if err != nil {
+			return false, xerrors.Errorf("failed to load parent tipset in synced chain: %w", err)
+		}
+	}
+
+	// We traversed the fork length allowed without finding a common ancestor.
+	return true, nil
 }
 
 // TODO: this function effectively accepts unchecked input from the network,

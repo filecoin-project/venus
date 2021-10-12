@@ -12,7 +12,6 @@ import (
 
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/prometheus/common/log"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/Gurpartap/async"
