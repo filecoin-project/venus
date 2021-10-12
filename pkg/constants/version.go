@@ -7,7 +7,7 @@ import (
 )
 
 // BuildVersion is the local build version, set by build system
-const BuildVersion = "1.0.4"
+const BuildVersion = "1.1.0"
 
 // software version
 func UserVersion() string {
@@ -26,6 +26,6 @@ func newVer(major, minor, patch uint8) Version {
 
 // semver versions of the rpc api exposed
 var (
-	FullAPIVersion0 = newVer(1, 3, 0)
+	FullAPIVersion0 = newVer(1, 4, 0)
 	FullAPIVersion1 = newVer(2, 1, 0)
 )
