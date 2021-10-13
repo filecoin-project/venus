@@ -3,6 +3,7 @@ package chain
 import (
 	"bufio"
 	"context"
+
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	logging "github.com/ipfs/go-log/v2"
@@ -124,19 +125,12 @@ func (cia *chainInfoAPI) ChainGetTipSetAfterHeight(ctx context.Context, h abi.Ch
 
 // GetParentStateRootActor get the ts ParentStateRoot actor
 func (cia *chainInfoAPI) GetActor(ctx context.Context, addr address.Address) (*types.Actor, error) {
-	head, err := cia.ChainHead(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return cia.chain.ChainReader.GetActorAt(ctx, head, addr)
+	return cia.chain.Stmgr.GetActorAtTsk(ctx, addr, types.EmptyTSK)
 }
 
 // GetParentStateRootActor get the ts ParentStateRoot actor
 func (cia *chainInfoAPI) GetParentStateRootActor(ctx context.Context, ts *types.TipSet, addr address.Address) (*types.Actor, error) {
-	if ts == nil {
-		ts = cia.chain.ChainReader.GetHead()
-	}
-	v, err := cia.chain.ChainReader.ParentStateView(ts)
+	_, v, err := cia.chain.Stmgr.ParentStateView(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -315,11 +309,7 @@ func (cia *chainInfoAPI) ResolveToKeyAddr(ctx context.Context, addr address.Addr
 	if ts == nil {
 		ts = cia.chain.ChainReader.GetHead()
 	}
-	viewer, err := cia.chain.ChainReader.ParentStateView(ts)
-	if err != nil {
-		return address.Undef, err
-	}
-	return viewer.ResolveToKeyAddr(ctx, addr)
+	return cia.chain.Stmgr.ResolveToKeyAddress(ctx, addr, ts)
 }
 
 //************Drand****************//
@@ -358,8 +348,7 @@ func (cia *chainInfoAPI) StateNetworkName(ctx context.Context) (apitypes.Network
 }
 
 func (cia *chainInfoAPI) getNetworkName(ctx context.Context) (string, error) {
-	headKey := cia.chain.ChainReader.GetHead()
-	view, err := cia.chain.ChainReader.ParentStateView(headKey)
+	_, view, err := cia.chain.Stmgr.ParentStateView(ctx, cia.chain.ChainReader.GetHead())
 	if err != nil {
 		return "", err
 	}
@@ -379,12 +368,12 @@ func (cia *chainInfoAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk 
 
 // StateGetRandomnessFromTickets is used to sample the chain for randomness.
 func (cia *chainInfoAPI) StateGetRandomnessFromTickets(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
-	_, err := cia.ChainGetTipSet(ctx, tsk)
+	ts, err := cia.ChainGetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, tsk, cia.chain.Drand)
+	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand)
 	rnv := cia.chain.Fork.GetNtwkVersion(ctx, randEpoch)
 
 	if rnv >= network.Version13 {
@@ -396,12 +385,11 @@ func (cia *chainInfoAPI) StateGetRandomnessFromTickets(ctx context.Context, pers
 
 // StateGetRandomnessFromBeacon is used to sample the beacon for randomness.
 func (cia *chainInfoAPI) StateGetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
-	_, err := cia.ChainGetTipSet(ctx, tsk)
+	ts, err := cia.ChainGetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-
-	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, tsk, cia.chain.Drand)
+	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand)
 	rnv := cia.chain.Fork.GetNtwkVersion(ctx, randEpoch)
 
 	if rnv >= network.Version14 {
@@ -423,13 +411,13 @@ func (cia *chainInfoAPI) StateNetworkVersion(ctx context.Context, tsk types.TipS
 }
 
 func (cia *chainInfoAPI) StateVerifiedRegistryRootKey(ctx context.Context, tsk types.TipSetKey) (address.Address, error) {
-	headKey, err := cia.chain.ChainReader.GetTipSet(tsk)
+	ts, err := cia.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
-	view, err := cia.chain.ChainReader.ParentStateView(headKey)
+	_, view, err := cia.chain.Stmgr.ParentStateView(ctx, ts)
 	if err != nil {
-		return address.Undef, err
+		return address.Undef, xerrors.Errorf("filed to load parent state view:%v", err)
 	}
 
 	vrs, err := view.LoadVerifregActor(ctx)
@@ -441,11 +429,11 @@ func (cia *chainInfoAPI) StateVerifiedRegistryRootKey(ctx context.Context, tsk t
 }
 
 func (cia *chainInfoAPI) StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
-	headKey, err := cia.chain.ChainReader.GetTipSet(tsk)
+	ts, err := cia.chain.ChainReader.GetTipSet(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
-	view, err := cia.chain.ChainReader.ParentStateView(headKey)
+	_, view, err := cia.chain.Stmgr.ParentStateView(ctx, ts)
 	if err != nil {
 		return nil, err
 	}

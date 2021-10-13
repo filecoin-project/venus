@@ -2,6 +2,7 @@ package syncer_test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	"testing"
 	"time"
 
@@ -33,9 +34,15 @@ func TestLoadFork(t *testing.T) {
 
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the bsstore, to which the syncer must ensure to put blocks.
-	eval := &chain.FakeStateEvaluator{MessageStore: builder.Mstore()}
+
 	sel := &chain.FakeChainSelector{}
-	s, err := syncer.NewSyncer(eval, eval, sel, builder.Store(), builder.Mstore(), builder.BlockStore(), builder, clock.NewFake(time.Unix(1234567890, 0)), nil)
+
+	blockValidator := builder.FakeStateEvaluator()
+	stmgr := statemanger.NewStateManger(builder.Store(), blockValidator, nil, nil, nil, nil)
+
+	s, err := syncer.NewSyncer(stmgr, blockValidator, sel, builder.Store(),
+		builder.Mstore(), builder.BlockStore(), builder, clock.NewFake(time.Unix(1234567890, 0)), nil)
+
 	require.NoError(t, err)
 
 	base := builder.AppendManyOn(3, genesis)
@@ -63,6 +70,9 @@ func TestLoadFork(t *testing.T) {
 	assert.Error(t, s.HandleNewTipSet(ctx, rightTarget))
 	verifyHead(t, builder.Store(), left)
 
+	_, _, err = blockValidator.RunStateTransition(ctx, blockValidator.ChainStore.GetHead())
+	require.NoError(t, err)
+
 	// The syncer/bsstore assume that the fetcher populates the underlying block bsstore such that
 	// tipsets can be reconstructed. The chain builder used for testing doesn't do that, so do
 	// it manually here.
@@ -80,8 +90,8 @@ func TestLoadFork(t *testing.T) {
 	newStore := chain.NewStore(builder.Repo().ChainDatastore(), builder.BlockStore(), genesis.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator())
 	newStore.SetCheckPoint(genesis.Key())
 	require.NoError(t, newStore.Load(ctx))
-	_, err = syncer.NewSyncer(eval,
-		eval,
+	_, err = syncer.NewSyncer(stmgr,
+		blockValidator,
 		sel,
 		newStore,
 		builder.Mstore(),

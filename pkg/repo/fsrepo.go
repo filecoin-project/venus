@@ -62,7 +62,7 @@ type FSRepo struct {
 	walletDs Datastore
 	chainDs  Datastore
 	metaDs   Datastore
-	//marketDs  Datastore
+	//marketDs Datastore
 	paychDs Datastore
 	// lockfile is the file system lock to prevent others from opening the same repo.
 	lockfile io.Closer

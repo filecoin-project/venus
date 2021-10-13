@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/vm"
 	"sync"
 
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -45,7 +46,7 @@ type mockStateManager struct {
 	lk           sync.Mutex
 	accountState map[address.Address]address.Address
 	paychState   map[address.Address]mockPchState
-	response     *types.InvocResult
+	response     *vm.Ret
 	lastCall     *types.UnsignedMessage
 }
 
@@ -88,7 +89,7 @@ func (sm *mockStateManager) GetPaychState(ctx context.Context, addr address.Addr
 	return info.actor, info.state, nil
 }
 
-func (sm *mockStateManager) setCallResponse(response *types.InvocResult) {
+func (sm *mockStateManager) setCallResponse(response *vm.Ret) {
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 
@@ -102,7 +103,7 @@ func (sm *mockStateManager) getLastCall() *types.UnsignedMessage {
 	return sm.lastCall
 }
 
-func (sm *mockStateManager) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*types.InvocResult, error) {
+func (sm *mockStateManager) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*vm.Ret, error) {
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 

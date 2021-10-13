@@ -6,11 +6,10 @@ import (
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
-	"sort"
-	"testing"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
+	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/chainsync/dispatcher"
@@ -46,43 +45,32 @@ func TestDispatchStartHappy(t *testing.T) {
 		chainInfoWithHeightAndWeight(t, 16, 2),
 		chainInfoWithHeightAndWeight(t, 3, 3),
 		chainInfoWithHeightAndWeight(t, 2, 4),
-		chainInfoWithHeightAndWeight(t, 0, 5),
+		chainInfoWithHeightAndWeight(t, 1, 5),
 	}
 
 	testDispatch.Start(context.Background())
+	t.Logf("waiting for 'syncWorker' input channel standby for 100(ms)")
+	time.Sleep(time.Millisecond * 100)
 
 	// set up a blocking channel and register to unblock after 5 synced
 	waitCh := make(chan struct{})
-	testDispatch.RegisterCallback(func(t *syncTypes.Target, _ error) {
-		waitCh <- struct{}{}
+	testDispatch.RegisterCallback(func(target *syncTypes.Target, _ error) {
+		if target.Head.Key().Equals(cis[4].Head.Key()) {
+			waitCh <- struct{}{}
+		}
 	})
 
 	// receive requests before Start() to test deterministic order
 	for _, ci := range cis {
-		go func() {
-			assert.NoError(t, testDispatch.SendHello(ci))
-		}()
-		<-waitCh
+		go func(info *types.ChainInfo) {
+			assert.NoError(t, testDispatch.SendHello(info))
+		}(ci)
 	}
 
-	sort.Slice(cis, func(i, j int) bool {
-		weigtI := cis[i].Head.ParentWeight()
-		weigtJ := cis[j].Head.ParentWeight()
-		return weigtI.GreaterThan(weigtJ)
-	})
-	// check that the mockSyncer synced in order
-	require.Equal(t, 5, len(s.headsCalled))
-	for _, ci := range cis {
-		found := false
-		for _, call := range s.headsCalled {
-			if call.Height() == ci.Head.Height() {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("block %d not found", ci.Head.Height())
-		}
+	select {
+	case <-waitCh:
+	case <-time.After(time.Second * 5):
+		assert.Failf(t, "", "couldn't waited a correct chain syncing target in 5(s)")
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/client/apiface/v0api"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/vm"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"time"
@@ -36,6 +37,7 @@ type ChainSubmodule struct { //nolint
 
 	config chainConfig
 
+	Stmgr *statemanger.Stmgr
 	// Wait for confirm message
 	Waiter *chain.Waiter
 }

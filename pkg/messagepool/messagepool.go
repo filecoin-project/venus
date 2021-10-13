@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	"math"
 	stdbig "math/big"
 	"os"
@@ -38,7 +39,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/net/msgsub"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 )
 
@@ -129,18 +129,10 @@ func init() {
 	}
 }
 
-type gasPredictor interface {
-	CallWithGas(context.Context, *types.UnsignedMessage, []types.ChainMsg, *types.TipSet) (*vm.Ret, error)
-}
-
-type actorProvider interface {
-	// GetActorAt returns the actor state defined by the chain up to some tipset
-	GetActorAt(context.Context, *types.TipSet, address.Address) (*types.Actor, error)
-}
-
 type MessagePool struct {
 	lk sync.Mutex
 
+	sm *statemanger.Stmgr
 	ds repo.Datastore
 
 	addSema chan struct{}
@@ -194,8 +186,6 @@ type MessagePool struct {
 	forkParams       *config.ForkUpgradeConfig
 	gasPriceSchedule *gas.PricesSchedule
 
-	gp         gasPredictor
-	ap         actorProvider
 	GetMaxFee  DefaultMaxFeeFunc
 	PriceCache *GasPriceCache
 }
@@ -391,12 +381,11 @@ func (ms *msgSet) toSlice() []*types.SignedMessage {
 }
 
 func New(api Provider,
+	sm *statemanger.Stmgr,
 	ds repo.Datastore,
 	forkParams *config.ForkUpgradeConfig,
 	mpoolCfg *config.MessagePoolConfig,
 	netName string,
-	gp gasPredictor,
-	ap actorProvider,
 	j journal.Journal,
 ) (*MessagePool, error) {
 	cache, _ := lru.New2Q(constants.BlsSignatureCacheSize)
@@ -428,9 +417,8 @@ func New(api Provider,
 		changes:       lps.New(50),
 		localMsgs:     namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
 		api:           api,
+		sm:            sm,
 		netName:       netName,
-		gp:            gp,
-		ap:            ap,
 		cfg:           cfg,
 		evtTypes: [...]journal.EventType{
 			evtTypeMpoolAdd:    j.RegisterEventType("mpool", "add"),
@@ -994,12 +982,12 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 	}
 
 	if _, err := mp.api.PutMessage(m); err != nil {
-		log.Warnf("mpooladd cs.PutMessage failed: %s", err)
+		log.Warnf("mpooladd sm.PutMessage failed: %s", err)
 		return err
 	}
 
 	if _, err := mp.api.PutMessage(&m.Message); err != nil {
-		log.Warnf("mpooladd cs.PutMessage failed: %s", err)
+		log.Warnf("mpooladd sm.PutMessage failed: %s", err)
 		return err
 	}
 

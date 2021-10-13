@@ -21,11 +21,41 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 )
 
+type EstimateMessage struct {
+	Msg  *Message
+	Spec *MessageSendSpec
+}
+
+type EstimateResult struct {
+	Msg *Message
+	Err string
+}
+
+const DefaultGasOverEstimation = 1.25
+const MinGasOverEsitimation = 1.0
+
+type MessageSendSpec struct {
+	MaxFee            abi.TokenAmount
+	GasOverEstimation float64
+}
+
+var DefaultMessageSendSpec = MessageSendSpec{
+	// MaxFee of 0.1FIL
+	MaxFee: abi.NewTokenAmount(int64(constants.FilecoinPrecision) / 10),
+}
+
+func (ms *MessageSendSpec) Get() MessageSendSpec {
+	if ms == nil {
+		return DefaultMessageSendSpec
+	}
+
+	return *ms
+}
+
 const MessageVersion = uint64(0)
 
 var EmptyTokenAmount = abi.TokenAmount{}
 
-//
 type ChainMsg interface {
 	Cid() cid.Cid
 	VMMessage() *UnsignedMessage

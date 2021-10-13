@@ -2,14 +2,14 @@ package chainsync
 
 import (
 	"context"
-
+	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/types"
 	"github.com/filecoin-project/venus/pkg/consensus"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	types2 "github.com/filecoin-project/venus/pkg/types"
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/dispatcher"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
 	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
@@ -27,32 +27,33 @@ type BlockProposer interface {
 	SendGossipBlock(ci *types2.ChainInfo) error
 }
 
+var _ = (BlockProposer)((*dispatcher.Dispatcher)(nil))
+
 // Manager sync the chain.
 type Manager struct {
-	syncer     *syncer.Syncer
 	dispatcher *dispatcher.Dispatcher
 }
 
 // NewManager creates a new chain sync manager.
-func NewManager(fv syncer.StateProcessor,
+func NewManager(
+	stmgr *statemanger.Stmgr,
 	hv *consensus.BlockValidator,
+	submodule *chain2.ChainSubmodule,
 	cs syncer.ChainSelector,
-	s syncer.ChainReaderWriter,
-	m *chain.MessageStore,
 	bsstore blockstore.Blockstore,
 	exchangeClient exchange.Client,
 	c clock.Clock,
 	fork fork.IFork) (Manager, error) {
-	syncer, err := syncer.NewSyncer(fv, hv, cs, s, m, bsstore, exchangeClient, c, fork)
+
+	chainSyncer, err := syncer.NewSyncer(stmgr, hv, cs, submodule.ChainReader,
+		submodule.MessageStore, bsstore,
+		exchangeClient, c, fork)
 	if err != nil {
 		return Manager{}, err
 	}
 
-	dispatcher := dispatcher.NewDispatcher(syncer)
-
 	return Manager{
-		syncer:     syncer,
-		dispatcher: dispatcher,
+		dispatcher: dispatcher.NewDispatcher(chainSyncer),
 	}, nil
 }
 
