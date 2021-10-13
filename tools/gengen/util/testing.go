@@ -3,9 +3,9 @@ package gengen
 import (
 	"fmt"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	tutil "github.com/filecoin-project/specs-actors/support/testing"
+	"github.com/filecoin-project/specs-actors/v6/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
+	tutil "github.com/filecoin-project/specs-actors/v6/support/testing"
 	"github.com/filecoin-project/venus/pkg/constants"
 )
 
@@ -14,7 +14,7 @@ func MakeCommitCfgs(n int) ([]*CommitConfig, error) {
 	cfgs := make([]*CommitConfig, n)
 	for i := 0; i < n; i++ {
 		commP := tutil.MakeCID(fmt.Sprintf("commP: %d", i), &market.PieceCIDPrefix)
-		commR := tutil.MakeCID(fmt.Sprintf("commR: %d", i), &miner0.SealedCIDPrefix)
+		commR := tutil.MakeCID(fmt.Sprintf("commR: %d", i), &miner.SealedCIDPrefix)
 		commD := tutil.MakeCID(fmt.Sprintf("commD: %d", i), &market.PieceCIDPrefix)
 
 		dealCfg := &DealConfig{
