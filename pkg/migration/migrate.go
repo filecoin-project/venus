@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/repo"
 	logging "github.com/ipfs/go-log/v2"
 
-	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 	"math"
 )
 
@@ -25,6 +24,7 @@ var versionMap = []versionInfo{
 	{version: 3, upgrade: Version3Upgrade},
 	{version: 4, upgrade: Version4Upgrade},
 	{version: 5, upgrade: Version5Upgrade},
+	{version: 6, upgrade: Version6Upgrade},
 }
 
 // TryToMigrate used to migrate data(db,config,file,etc) in local repo
@@ -113,6 +113,7 @@ func Version4Upgrade(repoPath string) (err error) {
 	return repo.WriteVersion(repoPath, 4)
 }
 
+//Version5Upgrade
 func Version5Upgrade(repoPath string) (err error) {
 	var fsrRepo repo.Repo
 	if fsrRepo, err = repo.OpenFSRepo(repoPath, 4); err != nil {
@@ -121,21 +122,20 @@ func Version5Upgrade(repoPath string) (err error) {
 	cfg := fsrRepo.Config()
 	switch cfg.NetworkParams.NetworkType {
 	case constants.NetworkMainnet:
-		//todo yodate chocolate and FaultMaxAge in next upgrade
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = math.MaxInt32
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 1231620
 	case constants.Network2k:
-		cfg.NetworkParams.FaultMaxAge = miner6.WPoStProvingPeriod * 42
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -17
 	case constants.NetworkCalibnet:
-		cfg.NetworkParams.FaultMaxAge = miner6.WPoStProvingPeriod * 42
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 312746
 	case constants.NetworkForce:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
-		cfg.NetworkParams.FaultMaxAge = miner6.WPoStProvingPeriod * 42
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = math.MaxInt32
+	case constants.NetworkInterop:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -17
 	default:
 		return fsrRepo.Close()
 	}
@@ -149,4 +149,42 @@ func Version5Upgrade(repoPath string) (err error) {
 	}
 
 	return repo.WriteVersion(repoPath, 5)
+}
+
+//Version6Upgrade
+func Version6Upgrade(repoPath string) (err error) {
+	var fsrRepo repo.Repo
+	if fsrRepo, err = repo.OpenFSRepo(repoPath, 4); err != nil {
+		return
+	}
+	cfg := fsrRepo.Config()
+	switch cfg.NetworkParams.NetworkType {
+	case constants.NetworkMainnet:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 1231620
+	case constants.Network2k:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -17
+	case constants.NetworkCalibnet:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 312746
+	case constants.NetworkForce:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = math.MaxInt32
+	case constants.NetworkInterop:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -17
+	default:
+		return fsrRepo.Close()
+	}
+
+	if err = fsrRepo.ReplaceConfig(cfg); err != nil {
+		return
+	}
+
+	if err = fsrRepo.Close(); err != nil {
+		return
+	}
+
+	return repo.WriteVersion(repoPath, 6)
 }

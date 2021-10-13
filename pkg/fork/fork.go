@@ -421,9 +421,6 @@ func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore,
 			})
 			lastVersion = upgrade.Network
 		}
-	} else {
-		// Otherwise, go directly to the latest version.
-		lastVersion = constants.NewestNetworkVersion
 	}
 
 	fork.networkVersions = networkVersions
