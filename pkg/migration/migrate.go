@@ -154,7 +154,7 @@ func Version5Upgrade(repoPath string) (err error) {
 //Version6Upgrade
 func Version6Upgrade(repoPath string) (err error) {
 	var fsrRepo repo.Repo
-	if fsrRepo, err = repo.OpenFSRepo(repoPath, 4); err != nil {
+	if fsrRepo, err = repo.OpenFSRepo(repoPath, 5); err != nil {
 		return
 	}
 	cfg := fsrRepo.Config()
