@@ -3,7 +3,6 @@ package node
 import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -131,9 +130,6 @@ func SetNetParams(params *config.NetworkParamsConfig) {
 		policy.SetPreCommitChallengeDelay(params.PreCommitChallengeDelay)
 	}
 
-	if params.FaultMaxAge > 0 {
-		miner.FaultMaxAge = params.FaultMaxAge
-	}
 	constants.SetAddressNetwork(params.AddressNetwork)
 }
 

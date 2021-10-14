@@ -4,7 +4,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 )
@@ -56,7 +55,6 @@ func Calibration() *NetworkConf {
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,
 			PreCommitChallengeDelay: abi.ChainEpoch(150),
-			FaultMaxAge:             miner.WPoStProvingPeriod * 42,
 		},
 	}
 }

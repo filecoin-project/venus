@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	tutils2 "github.com/filecoin-project/specs-actors/v2/support/testing"
+	tutils2 "github.com/filecoin-project/specs-actors/v6/support/testing"
 
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
 	paychmock "github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych/mock"

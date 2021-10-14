@@ -34,7 +34,7 @@ import (
 	"github.com/ipfs/go-graphsync"
 	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
-	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
+	"github.com/ipfs/go-graphsync/storeutil"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p"
@@ -206,9 +206,8 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSub
 
 	// set up graphsync
 	graphsyncNetwork := gsnet.NewFromLibp2pHost(peerHost)
-	loader := gsstoreutil.LoaderForBlockstore(config.Repo().Datastore())
-	storer := gsstoreutil.StorerForBlockstore(config.Repo().Datastore())
-	gsync := graphsyncimpl.New(ctx, graphsyncNetwork, loader, storer, graphsyncimpl.RejectAllRequestsByDefault())
+	lsys := storeutil.LinkSystemForBlockstore(config.Repo().Datastore())
+	gsync := graphsyncimpl.New(ctx, graphsyncNetwork, lsys, graphsyncimpl.RejectAllRequestsByDefault())
 
 	//dataTransger
 	//sc := storedcounter.New(repo.ChainDatastore(), datastore.NewKey("/datatransfer/api/counter"))

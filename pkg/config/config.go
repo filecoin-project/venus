@@ -261,7 +261,6 @@ type NetworkParamsConfig struct {
 	ForkUpgradeParam        *ForkUpgradeConfig           `json:"forkUpgradeParam"`
 	AddressNetwork          address.Network              `json:"addressNetwork"`
 	PreCommitChallengeDelay abi.ChainEpoch               `json:"preCommitChallengeDelay"`
-	FaultMaxAge             abi.ChainEpoch               `json:"faultMaxAge"`
 }
 
 // ForkUpgradeConfig record upgrade parameters
