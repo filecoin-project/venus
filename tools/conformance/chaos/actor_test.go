@@ -11,7 +11,7 @@ import (
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	mock2 "github.com/filecoin-project/specs-actors/v2/support/mock"
-	atesting2 "github.com/filecoin-project/specs-actors/v2/support/testing"
+	atesting2 "github.com/filecoin-project/specs-actors/v6/support/testing"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )

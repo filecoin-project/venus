@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
+	tutils "github.com/filecoin-project/specs-actors/v6/support/testing"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	"github.com/ipfs/go-cid"
