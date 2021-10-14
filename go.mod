@@ -32,7 +32,7 @@ require (
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20201016201715-d41df56b4f6a
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
-	github.com/filecoin-project/go-paramfetch v0.0.2-0.20210614165157-25a6c7769498
+	github.com/filecoin-project/go-paramfetch v0.0.2
 	github.com/filecoin-project/go-state-types v0.1.1-0.20210915140513-d354ccf10379
 	github.com/filecoin-project/go-statestore v0.1.1 // indirect
 	github.com/filecoin-project/specs-actors v0.9.14

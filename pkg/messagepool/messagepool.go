@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	"math"
 	stdbig "math/big"
@@ -843,8 +844,8 @@ func sigCacheKey(m *types.SignedMessage) (string, error) {
 	c := m.Cid()
 	switch m.Signature.Type {
 	case crypto.SigTypeBLS:
-		if len(m.Signature.Data) < 90 {
-			return "", fmt.Errorf("bls signature too short")
+		if len(m.Signature.Data) != ffi.SignatureBytes {
+			return "", fmt.Errorf("bls signature incorrectly sized")
 		}
 
 		return string(c.Bytes()) + string(m.Signature.Data[64:]), nil
