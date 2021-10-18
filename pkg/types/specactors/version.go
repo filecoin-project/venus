@@ -37,6 +37,6 @@ func VersionForNetwork(version network.Version) (Version, error) {
 	case network.Version14:
 		return Version6, nil
 	default:
-		return 0, fmt.Errorf("unsupported network version %d", version)
+		return -1, fmt.Errorf("unsupported network version %d", version)
 	}
 }
