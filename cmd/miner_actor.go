@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/filecoin-project/go-address"
@@ -166,6 +168,9 @@ var actorWithdrawCmd = &cmds.Command{
 		cmds.StringArg("address", true, false, "Address of miner to show"),
 		cmds.StringArg("amount", true, false, "[amount (FIL)]"),
 	},
+	Options: []cmds.Option{
+		cmds.Uint64Option("confidence", "number of block confirmations to wait for").WithDefault(constants.MessageConfidence),
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		ctx := req.Context
 		maddr, err := address.NewFromString(req.Arguments[0])
@@ -212,8 +217,39 @@ var actorWithdrawCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
+		_ = re.Emit(fmt.Sprintf("Requested rewards withdrawal in message %s", smsg.Cid()))
 
-		return re.Emit(fmt.Sprintf("Requested rewards withdrawal in message %s", smsg.Cid()))
+		confidence, _ := req.Options["confidence"].(uint64)
+		// wait for it to get mined into a block
+		_ = re.Emit(fmt.Sprintf("waiting for %d epochs for confirmation..", confidence))
+		wait, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, smsg.Cid(), confidence, -1, true)
+		if err != nil {
+			return err
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			return err
+		}
+
+		nv, err := env.(*node.Env).ChainAPI.StateNetworkVersion(ctx, wait.TipSet)
+		if err != nil {
+			return err
+		}
+
+		if nv >= network.Version14 {
+			var withdrawn abi.TokenAmount
+			if err := withdrawn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.ReturnValue)); err != nil {
+				return err
+			}
+
+			_ = re.Emit(fmt.Sprintf("Successfully withdrew %s", types.MustParseFIL(withdrawn.String()+"attofil")))
+			if withdrawn.LessThan(amount) {
+				_ = re.Emit(fmt.Sprintf("Note that this is less than the requested amount of %s\n", amount.String()+"attofil"))
+			}
+		}
+
+		return nil
 	},
 	Type: "",
 }

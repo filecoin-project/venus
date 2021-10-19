@@ -7,6 +7,7 @@ import (
 	"math/rand"
 
 	power4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/power"
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
 	reward4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/reward"
 
@@ -428,11 +429,24 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 				}
 
 				// Commit one-by-one, otherwise pledge math tends to explode
-				confirmParams := &builtin0.ConfirmSectorProofsParams{
-					Sectors: []abi.SectorNumber{preseal.SectorID},
+				var paramBytes []byte
+
+				if av >= specactors.Version6 {
+					// TODO: fixup
+					confirmParams := &builtin6.ConfirmSectorProofsParams{
+						Sectors: []abi.SectorNumber{preseal.SectorID},
+					}
+
+					paramBytes = mustEnc(confirmParams)
+				} else {
+					confirmParams := &builtin0.ConfirmSectorProofsParams{
+						Sectors: []abi.SectorNumber{preseal.SectorID},
+					}
+
+					paramBytes = mustEnc(confirmParams)
 				}
 
-				_, err = doExecValue(ctx, vmi, minerInfos[i].maddr, power.Address, big.Zero(), miner.Methods.ConfirmSectorProofsValid, mustEnc(confirmParams))
+				_, err = doExecValue(ctx, vmi, minerInfos[i].maddr, power.Address, big.Zero(), miner.Methods.ConfirmSectorProofsValid, paramBytes)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
 				}

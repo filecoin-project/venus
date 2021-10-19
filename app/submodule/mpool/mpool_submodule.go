@@ -3,12 +3,13 @@ package mpool
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"os"
 	"reflect"
 	"runtime"
 	"strconv"
 	"time"
+
+	"github.com/filecoin-project/venus/app/client/apiface"
 
 	"github.com/filecoin-project/go-address"
 	logging "github.com/ipfs/go-log"
@@ -107,7 +108,7 @@ func NewMpoolSubmodule(cfg messagepoolConfig,
 		walletAPI:  wallet.API(),
 		network:    network,
 		networkCfg: cfg.Repo().Config().NetworkParams,
-		msgSigner:  messagepool.NewMessageSigner(wallet.Wallet, mp, cfg.Repo().MetaDatastore()),
+		msgSigner:  messagepool.NewMessageSigner(wallet.WalletIntersection(), mp, cfg.Repo().MetaDatastore()),
 	}, nil
 }
 
