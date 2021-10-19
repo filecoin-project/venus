@@ -270,8 +270,8 @@ func (s *state{{.v}}) loadAllocatedSectorNumbers() (bitfield.BitField, error) {
 }
 
 func (s *state{{.v}}) IsAllocated(num abi.SectorNumber) (bool, error) {
-	var allocatedSectors bitfield.BitField
-	if err := s.store.Get(s.store.Context(), s.State.AllocatedSectors, &allocatedSectors); err != nil {
+	allocatedSectors, err := s.loadAllocatedSectorNumbers()
+	if err != nil {
 		return false, err
 	}
 
@@ -316,6 +316,15 @@ func (s *state{{.v}}) UnallocatedSectorNumbers(count int) ([]abi.SectorNumber, e
 	}
 
 	return sectors, nil
+}
+
+func (s *state{{.v}}) GetAllocatedSectors() (*bitfield.BitField, error) {
+	var allocatedSectors bitfield.BitField
+	if err := s.store.Get(s.store.Context(), s.State.AllocatedSectors, &allocatedSectors); err != nil {
+		return nil, err
+	}
+
+	return &allocatedSectors, nil
 }
 
 func (s *state{{.v}}) LoadDeadline(idx uint64) (Deadline, error) {
@@ -470,12 +479,15 @@ func (s *state{{.v}}) EraseAllUnproven() error {
 
 			return dls.UpdateDeadline(s.store, dindx, dl)
 		})
+		if err != nil {
+			return err
+		}
 
 		return s.State.SaveDeadlines(s.store, dls)
 	{{else}}
 		// field doesn't exist until v2
+                return nil
 	{{end}}
-	return nil
 }
 
 func (d *deadline{{.v}}) LoadPartition(idx uint64) (Partition, error) {
@@ -535,6 +547,10 @@ func (p *partition{{.v}}) FaultySectors() (bitfield.BitField, error) {
 
 func (p *partition{{.v}}) RecoveringSectors() (bitfield.BitField, error) {
 	return p.Partition.Recoveries, nil
+}
+
+func (p *partition{{.v}}) UnprovenSectors() (bitfield.BitField, error) {
+	return {{if (ge .v 2)}}p.Partition.Unproven{{else}}bitfield.New(){{end}}, nil
 }
 
 func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorOnChainInfo {
