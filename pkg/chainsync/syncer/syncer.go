@@ -16,7 +16,6 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/log"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 

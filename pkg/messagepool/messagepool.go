@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	"math"
 	stdbig "math/big"
 	"os"
@@ -13,12 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/config"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/hashicorp/go-multierror"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
@@ -27,19 +20,27 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/minio/blake2b-simd"
+	"github.com/raulk/clock"
 	lps "github.com/whyrusleeping/pubsub"
 	"golang.org/x/xerrors"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
+	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/messagepool/journal"
 	"github.com/filecoin-project/venus/pkg/net/msgsub"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
-
-	"github.com/raulk/clock"
 )
 
 type MpoolChange int
@@ -840,16 +841,17 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 }
 
 func sigCacheKey(m *types.SignedMessage) (string, error) {
-	c := m.Cid()
 	switch m.Signature.Type {
 	case crypto.SigTypeBLS:
-		if len(m.Signature.Data) < 90 {
-			return "", fmt.Errorf("bls signature too short")
+		if len(m.Signature.Data) != ffi.SignatureBytes {
+			return "", fmt.Errorf("bls signature incorrectly sized")
 		}
 
-		return string(c.Bytes()) + string(m.Signature.Data[64:]), nil
+		hashCache := blake2b.Sum256(append(m.Cid().Bytes(), m.Signature.Data...))
+
+		return string(hashCache[:]), nil
 	case crypto.SigTypeSecp256k1:
-		return string(c.Bytes()), nil
+		return string(m.Cid().Bytes()), nil
 	default:
 		return "", xerrors.Errorf("unrecognized signature type: %d", m.Signature.Type)
 	}
