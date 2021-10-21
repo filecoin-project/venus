@@ -184,11 +184,11 @@ func TestRevertChange(t *testing.T) {
 		headChanges = <-ch
 	}
 	test.Equal(t, headChanges[0].Type, chain.HCRevert)
-	test.Equal(t, headChanges[0].Val, link1)
+	test.Equal(t, headChanges[0].Val, link3)
 	test.Equal(t, headChanges[1].Type, chain.HCRevert)
 	test.Equal(t, headChanges[1].Val, link2)
 	test.Equal(t, headChanges[2].Type, chain.HCRevert)
-	test.Equal(t, headChanges[2].Val, link3)
+	test.Equal(t, headChanges[2].Val, link1)
 
 	test.Equal(t, headChanges[3].Type, chain.HCApply)
 	test.Equal(t, headChanges[3].Val, link4)

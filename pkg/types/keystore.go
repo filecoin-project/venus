@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 
+	logging "github.com/ipfs/go-log/v2"
+
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/prometheus/common/log"
 )
+
+var log = logging.Logger("types")
 
 var (
 	ErrKeyInfoNotFound = fmt.Errorf("key info not found")
