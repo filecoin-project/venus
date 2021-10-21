@@ -798,26 +798,6 @@ func createTestVoucher(t *testing.T, ch address.Address, voucherLane uint64, non
 	return sv
 }
 
-func createTestVoucherWithExtra(t *testing.T, ch address.Address, voucherLane uint64, nonce uint64, voucherAmount big.Int, key []byte) *paych2.SignedVoucher {
-	sv := &paych2.SignedVoucher{
-		ChannelAddr: ch,
-		Lane:        voucherLane,
-		Nonce:       nonce,
-		Amount:      voucherAmount,
-		Extra: &paych2.ModVerifyParams{
-			Actor: tutils.NewActorAddr(t, "act"),
-		},
-	}
-
-	signingBytes, err := sv.SigningBytes()
-	require.NoError(t, err)
-	sig, err := crypto2.Sign(signingBytes, key, crypto.SigTypeSecp256k1)
-	require.NoError(t, err)
-	sv.Signature = sig
-
-	return sv
-}
-
 type mockBestSpendableAPI struct {
 	mgr *Manager
 }

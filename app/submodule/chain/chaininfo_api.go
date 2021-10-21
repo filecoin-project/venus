@@ -583,6 +583,19 @@ func (cia *chainInfoAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch,
 	return out, nil
 }
 
+// ChainGetPath returns a set of revert/apply operations needed to get from
+// one tipset to another, for example:
+//```
+//        to
+//         ^
+// from   tAA
+//   ^     ^
+// tBA    tAB
+//  ^---*--^
+//      ^
+//     tRR
+//```
+// Would return `[revert(tBA), apply(tAB), apply(tAA)]`
 func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*chain.HeadChange, error) {
 	fts, err := cia.chain.ChainReader.GetTipSet(from)
 	if err != nil {
