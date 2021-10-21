@@ -150,9 +150,9 @@ func NewSyncer(fv StateProcessor,
 	fork fork.IFork) (*Syncer, error) {
 
 	if constants.InsecurePoStValidation {
-		log.Warn("*********************************************************************************************")
-		log.Warn(" [INSECURE-POST-VALIDATION] Insecure test validation is enabled. If you see this outside of a test, it is a severe bug! ")
-		log.Warn("*********************************************************************************************")
+		logSyncer.Warn("*********************************************************************************************")
+		logSyncer.Warn(" [INSECURE-POST-VALIDATION] Insecure test validation is enabled. If you see this outside of a test, it is a severe bug! ")
+		logSyncer.Warn("*********************************************************************************************")
 	}
 	return &Syncer{
 		exchangeClient:  exchangeClient,
@@ -459,12 +459,12 @@ loop:
 		return chainTipsets, nil
 	}
 
-	log.Warnf("(fork detected) synced header chain")
+	logSyncer.Warnf("(fork detected) synced header chain")
 	fork, err := syncer.syncFork(ctx, base, knownTip)
 	if err != nil {
 		if xerrors.Is(err, ErrForkTooLong) {
 			// TODO: we're marking this block bad in the same way that we mark invalid blocks bad. Maybe distinguish?
-			log.Warn("adding forked chain to our bad tipset cache")
+			logSyncer.Warn("adding forked chain to our bad tipset cache")
 			/*		for _, b := range incoming.Blocks() {
 					syncer.bad.Add(b.Cid(), NewBadBlockReason(incoming.Cids(), "fork past finality"))
 				}*/
