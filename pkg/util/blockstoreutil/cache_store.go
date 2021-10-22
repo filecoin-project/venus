@@ -74,7 +74,7 @@ func printRate(cache gcache.Cache) {
 	for {
 		select {
 		case <-tm.C:
-			log.Infof("lru database cache hitrate:%d", cache.HitRate())
+			log.Infof("lru database cache hitrate:%f", cache.HitRate())
 		}
 	}
 }
