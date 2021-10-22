@@ -108,7 +108,7 @@ func (builder *RPCBuilder) Build(version string, limiter *ratelimit.RateLimiter)
 
 		if limiter != nil {
 			var rateLimitAPI v0api.FullNodeStruct
-			limiter.WarperLimiter(fullNodeV0, &rateLimitAPI)
+			limiter.WraperLimiter(fullNodeV0, &rateLimitAPI)
 			fullNodeV0 = rateLimitAPI
 		}
 
@@ -123,7 +123,7 @@ func (builder *RPCBuilder) Build(version string, limiter *ratelimit.RateLimiter)
 
 		if limiter != nil {
 			var rateLimitAPI client.FullNodeStruct
-			limiter.WarperLimiter(fullNode, &rateLimitAPI)
+			limiter.WraperLimiter(fullNode, &rateLimitAPI)
 			fullNode = rateLimitAPI
 		}
 
