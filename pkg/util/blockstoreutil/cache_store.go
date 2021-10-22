@@ -48,6 +48,7 @@ type LruCache struct {
 
 func NewLruCache(size int) *LruCache {
 	cache := gcache.New(size).LRU().Build()
+	printRate(cache)
 	return &LruCache{cache: cache}
 }
 
@@ -66,4 +67,14 @@ func (l LruCache) Add(key string, value interface{}) {
 
 func (l LruCache) AddWithExpire(key string, value interface{}, dur time.Duration) {
 	_ = l.cache.SetWithExpire(key, value, dur)
+}
+
+func printRate(cache gcache.Cache) {
+	tm := time.NewTicker(time.Minute)
+	for {
+		select {
+		case <-tm.C:
+			log.Infof("lru database cache hitrate:%d", cache.HitRate())
+		}
+	}
 }
