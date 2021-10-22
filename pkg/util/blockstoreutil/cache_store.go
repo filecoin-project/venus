@@ -48,7 +48,7 @@ type LruCache struct {
 
 func NewLruCache(size int) *LruCache {
 	cache := gcache.New(size).LRU().Build()
-	printRate(cache)
+	go printRate(cache)
 	return &LruCache{cache: cache}
 }
 
