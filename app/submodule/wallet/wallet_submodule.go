@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus/app/client/apiface"
 	chain2 "github.com/filecoin-project/venus/pkg/chain"
 
@@ -86,6 +87,10 @@ func (wallet *WalletSubmodule) V0API() apiface.IWallet {
 		walletModule: wallet,
 		adapter:      wallet.adapter,
 	}
+}
+
+func (wallet *WalletSubmodule) WalletIntersection() wallet.WalletIntersection {
+	return wallet.adapter
 }
 
 func getPassphraseConfig(cfg *pconfig.Config) (pconfig.PassphraseConfig, error) {
