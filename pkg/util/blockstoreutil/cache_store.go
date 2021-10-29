@@ -71,10 +71,7 @@ func (l LruCache) AddWithExpire(key string, value interface{}, dur time.Duration
 
 func printRate(cache gcache.Cache) {
 	tm := time.NewTicker(time.Minute)
-	for {
-		select {
-		case <-tm.C:
-			log.Infof("lru database cache hitrate:%f", cache.HitRate())
-		}
+	for range tm.C {
+		log.Infof("lru database cache hitrate:%f", cache.HitRate())
 	}
 }
