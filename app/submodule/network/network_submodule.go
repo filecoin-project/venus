@@ -111,7 +111,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSub
 	var networkName string
 	var err error
 	if !config.Repo().Config().NetworkParams.DevNet {
-		networkName = "testnetnet"
+		networkName = "mainnet"
 	} else {
 		config.Repo().ChainDatastore()
 		networkName, err = retrieveNetworkName(ctx, config.GenesisCid(), cbor.NewCborStore(config.Repo().Datastore()))

@@ -8,6 +8,11 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 )
 
+type NetworkConf struct {
+	Bootstrap config.BootstrapConfig
+	Network   config.NetworkParamsConfig
+}
+
 func Calibration() *NetworkConf {
 	return &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
