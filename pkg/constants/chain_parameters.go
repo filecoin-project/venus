@@ -1,6 +1,7 @@
 package constants
 
 import (
+	"github.com/filecoin-project/go-state-types/big"
 	"math"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -16,7 +17,7 @@ const BlockMessageLimit = 10000
 // Epochs
 const TicketRandomnessLookback = abi.ChainEpoch(1)
 
-//expect blocks number in a tipset
+// expect blocks number in a tipset
 var ExpectedLeadersPerEpoch = builtin0.ExpectedLeadersPerEpoch
 
 // BlockGasLimit is the maximum amount of gas that can be used to execute messages in a single block.
@@ -32,8 +33,11 @@ const MainNetBlockDelaySecs = uint64(builtin0.EpochDurationSeconds)
 
 const PropagationDelaySecs = uint64(6)
 
-//todo move this value to config
+// todo move this value to config
 var InsecurePoStValidation = false
 
 const NoTimeout = math.MaxInt64
 const NoHeight = abi.ChainEpoch(-1)
+
+var EstiMateMinPremuimBig = func() big.Int { return big.NewInt(1) }
+var EstimateMinFeeCapBig = func() big.Int { return big.NewInt(MinimumBaseFee + 1) }

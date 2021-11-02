@@ -3,18 +3,17 @@ package consensus
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
-
 	"github.com/filecoin-project/go-address"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	state2 "github.com/filecoin-project/venus/pkg/state"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	xerrors "github.com/pkg/errors"
 	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
@@ -23,7 +22,99 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm"
 )
 
-//CallWithGas used to estimate message gaslimit, for each incoming message ,should execute after priorMsg in mpool
+func (c *Expected) BulkCallWithGas(ctx context.Context, msgs []*types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *types.TipSet, cb BulkCallWithGasCallback) error {
+	// When we're not at the genesis block, make sure we don't have an expensive migration.
+	if c.fork.HasExpensiveFork(ctx, ts.Height()) || c.fork.HasExpensiveFork(ctx, ts.Height()-1) {
+		return fork.ErrExpensiveFork
+	}
+
+	stateRoot, err := c.chainState.GetTipSetStateRoot(ts)
+	if err != nil {
+		return xerrors.Errorf("get tipst(%s) state root faied:%w", ts.Key().String(), err)
+	}
+
+	vmOption := vm.VmOption{
+		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
+			cs, err := c.chainState.GetCirculatingSupplyDetailed(ctx, epoch, tree)
+			if err != nil {
+				return abi.TokenAmount{}, err
+			}
+			return cs.FilCirculating, nil
+		},
+		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(c.chainState, c.fork, ts),
+		NtwkVersionGetter:   c.fork.GetNtwkVersion,
+		Rnd:                 NewHeadRandomness(c.rnd, ts.Key()),
+		BaseFee:             ts.At(0).ParentBaseFee,
+		Fork:                c.fork,
+		Epoch:               ts.Height(),
+		GasPriceSchedule:    c.gasPirceSchedule,
+		PRoot:               stateRoot,
+		Bsstore:             c.bstore,
+		SysCallsImpl:        c.syscallsImpl,
+	}
+
+	vmi, err := vm.NewVM(vmOption)
+	if err != nil {
+		return err
+	}
+
+	for i, m := range priorMsgs {
+		_, err := vmi.ApplyMessage(m)
+		if err != nil {
+			return xerrors.Errorf("applying prior message (%d): %v", i, err)
+		}
+	}
+
+	stateTree := vmi.StateTree()
+	viewer := state2.NewView(c.cstore, vmOption.PRoot)
+	fakeSecp256k1Signature := acrypto.Signature{
+		Type: crypto.SigTypeSecp256k1,
+		Data: make([]byte, 65),
+	}
+
+	for idx, msg := range msgs {
+		fromKey, err := viewer.ResolveToKeyAddr(ctx, msg.From)
+		if err != nil {
+			if err = cb(idx, nil, nil, xerrors.Errorf("look up actor id failed:%w", err)); err != nil {
+				break
+			}
+			continue
+		}
+
+		fActor, found, err := stateTree.GetActor(ctx, msg.VMMessage().From)
+		if err != nil {
+			if err = cb(idx, nil, nil, xerrors.Errorf("get actor failed: %w", err)); err != nil {
+				break
+			}
+			continue
+		}
+
+		if !found {
+			if err = cb(idx, nil, nil, xerrors.Errorf("actor:%s not found", msg.From.String())); err != nil {
+				break
+			}
+			continue
+		}
+
+		msg.Nonce = fActor.Nonce
+
+		var msgApply types.ChainMsg
+		switch fromKey.Protocol() {
+		case address.BLS:
+			msgApply = msg
+		case address.SECP256K1:
+			msgApply = &types.SignedMessage{
+				Message:   *msg,
+				Signature: fakeSecp256k1Signature,
+			}
+		}
+		ret, err := vmi.ApplyMessage(msgApply)
+		_ = cb(idx, fActor, ret, err)
+	}
+	return nil
+}
+
+// CallWithGas used to estimate message gaslimit, for each incoming message ,should execute after priorMsg in mpool
 func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *types.TipSet) (*vm.Ret, error) {
 	var (
 		err       error
@@ -119,7 +210,7 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 	return vmi.ApplyMessage(msgApply)
 }
 
-//Call used for api invoke to compute a msg base on specify tipset, if the tipset is null, use latest tipset in db
+// Call used for api invoke to compute a msg base on specify tipset, if the tipset is null, use latest tipset in db
 func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*vm.Ret, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.Call")
 	defer span.End()

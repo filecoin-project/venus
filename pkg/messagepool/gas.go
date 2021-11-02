@@ -3,9 +3,11 @@ package messagepool
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/consensus"
 	"math"
 	"math/rand"
 	"sort"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -218,6 +220,28 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Uns
 	return mp.evalMessageGasLimit(ctx, msgIn, priorMsgs, ts)
 }
 
+func (mp *MessagePool) bulkEvalMessageGasLimit(ctx context.Context, msgIn []*types.Message,
+	priorMsgs []types.ChainMsg, ts *types.TipSet, cb consensus.BulkCallWithGasCallback) error {
+	var err error
+	if ts == nil {
+		if ts, err = mp.api.ChainHead(); err != nil {
+			return err
+		}
+	}
+
+	// Try calling until we find a height with no migration.
+	for {
+		if err = mp.gp.BulkCallWithGas(ctx, msgIn, priorMsgs, ts, cb); err == fork.ErrExpensiveFork {
+			if ts, err = mp.api.ChainTipSet(ts.Parents()); err != nil {
+				return err
+			}
+			continue
+		}
+		break
+	}
+	return err
+}
+
 func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (int64, error) {
 	msg := *msgIn
 	msg.GasLimit = constants.BlockGasLimit
@@ -277,7 +301,7 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 		return nil, xerrors.Errorf("estimate message is nil")
 	}
 	if estimateMessage.Msg.GasLimit == 0 {
-		gasLimit, err := mp.GasEstimateGasLimit(ctx, estimateMessage.Msg, types.TipSetKey{})
+		gasLimit, err := mp.GasEstimateGasLimit(ctx, estimateMessage.Msg, types.EmptyTSK)
 		if err != nil {
 			return nil, xerrors.Errorf("estimating gas used: %w", err)
 		}
@@ -309,78 +333,134 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 	return estimateMessage.Msg, nil
 }
 
-func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*types.EstimateMessage, fromNonce uint64, tsk types.TipSetKey) ([]*types.EstimateResult, error) {
+func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*types.EstimateMessage, fromNonce uint64, _ types.TipSetKey) ([]*types.EstimateResult, error) {
 	if len(estimateMessages) == 0 {
 		return nil, xerrors.New("estimate messages are empty")
 	}
 
-	// ChainTipSet will determine if tsk is empty
-	currTS, err := mp.api.ChainTipSet(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("getting tipset: %w", err)
-	}
-
-	fromA, err := mp.api.StateAccountKey(ctx, estimateMessages[0].Msg.From, currTS)
+	fromKey, err := mp.api.StateAccountKey(ctx, estimateMessages[0].Msg.From, mp.curTS)
 	if err != nil {
 		return nil, xerrors.Errorf("getting key address: %w", err)
 	}
 
-	pending, ts := mp.PendingFor(ctx, fromA)
+	pending, headTS := mp.PendingFor(ctx, fromKey)
 	priorMsgs := make([]types.ChainMsg, 0, len(pending))
 	for _, m := range pending {
+		if m.Message.Nonce >= fromNonce {
+			break
+		}
 		priorMsgs = append(priorMsgs, m)
 	}
 
-	var estimateResults []*types.EstimateResult
-	for _, estimateMessage := range estimateMessages {
-		estimateMsg := estimateMessage.Msg
-		estimateMsg.Nonce = fromNonce
-		if estimateMsg.GasLimit == 0 {
-			gasUsed, err := mp.evalMessageGasLimit(ctx, estimateMsg, priorMsgs, ts)
-			if err != nil {
-				estimateMsg.Nonce = 0
-				estimateResults = append(estimateResults, &types.EstimateResult{
-					Msg: estimateMsg,
-					Err: fmt.Sprintf("estimating gas limit: %v", err),
-				})
-				continue
-			}
-			estimateMsg.GasLimit = int64(float64(gasUsed) * estimateMessage.Spec.GasOverEstimation)
+	length := len(estimateMessages)
+	results := make([]*types.EstimateResult, length)
+	msgsIn := make([]*types.Message, length)
+
+	for i, msg := range estimateMessages {
+		msgCopy := *msg.Msg
+		if msgCopy.GasLimit == 0 {
+			msgCopy.GasLimit = constants.BlockGasLimit
+			msgCopy.GasPremium = constants.EstiMateMinPremuimBig()
+			msgCopy.GasFeeCap = constants.EstimateMinFeeCapBig()
 		}
-
-		if estimateMsg.GasPremium == types.EmptyInt || types.BigCmp(estimateMsg.GasPremium, types.NewInt(0)) == 0 {
-			gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, estimateMsg.From, estimateMsg.GasLimit, types.TipSetKey{}, mp.PriceCache)
-			if err != nil {
-				estimateMsg.Nonce = 0
-				estimateResults = append(estimateResults, &types.EstimateResult{
-					Msg: estimateMsg,
-					Err: fmt.Sprintf("estimating gas premium: %v", err),
-				})
-				continue
-			}
-			estimateMsg.GasPremium = gasPremium
-		}
-
-		if estimateMsg.GasFeeCap == types.EmptyInt || types.BigCmp(estimateMsg.GasFeeCap, types.NewInt(0)) == 0 {
-			feeCap, err := mp.GasEstimateFeeCap(ctx, estimateMsg, 20, types.EmptyTSK)
-			if err != nil {
-				estimateMsg.Nonce = 0
-				estimateResults = append(estimateResults, &types.EstimateResult{
-					Msg: estimateMsg,
-					Err: fmt.Sprintf("estimating fee cap: %v", err),
-				})
-				continue
-			}
-			estimateMsg.GasFeeCap = feeCap
-		}
-
-		CapGasFee(mp.GetMaxFee, estimateMsg, estimateMessage.Spec)
-
-		estimateResults = append(estimateResults, &types.EstimateResult{
-			Msg: estimateMsg,
-		})
-		priorMsgs = append(priorMsgs, estimateMsg)
-		fromNonce++
+		msgsIn[i] = &msgCopy
+		msg.Msg.Nonce = fromNonce + uint64(i)
 	}
-	return estimateResults, nil
+
+	var sizeDiff = func(i1, i2 big.Int) int {
+		b1, _ := i1.Bytes()
+		b2, _ := i2.Bytes()
+		return int(float64(len(b1)-len(b2)) + 0.5)
+	}
+
+	now := time.Now()
+	defer func() {
+		log.Infof("Batch estimate messages(count=%d) at epoch:%d, from:%s, start nonce:%d, cost time : %.2f(second)",
+			length, headTS.Height(), estimateMessages[0].Msg.From.String(),
+			fromNonce, time.Since(now).Seconds())
+	}()
+
+	err = mp.bulkEvalMessageGasLimit(ctx, msgsIn, priorMsgs, headTS, func(idx int, actor *types.Actor, ret *vm.Ret, err error) error {
+		originMsg := estimateMessages[idx].Msg
+		// originMsg.Nonce = actor.Nonce
+		if originMsg.Nonce != actor.Nonce {
+			log.Warnf("Batch estimate message from:%s, wanted nonce(%d), not equals actor nonce(%d), this may cause problems",
+				originMsg.From.String(), originMsg.Nonce, actor.Nonce)
+		}
+
+		result := &types.EstimateResult{Msg: originMsg}
+		results[idx] = result
+
+		if err != nil {
+			originMsg.Nonce = 0
+			result.Err = fmt.Sprintf("estimate gaslimit failed:%s", err.Error())
+			log.Warnf("Batch estimate message execute message(from:%s, nonce:%d), failed:%s",
+				originMsg.From.String(), originMsg.Nonce, err.Error())
+			return nil
+		}
+
+		if ret.Receipt.ExitCode != exitcode.Ok {
+			originMsg.Nonce = 0
+			result.Err = fmt.Sprintf("estimate gaslimit, exitcode %s", ret.Receipt.ExitCode.String())
+			log.Warnf("Batch estimate emssage execute message(from:%s, nonce:%d), returns un-expected exitcode:%s",
+				originMsg.From.String(), originMsg.Nonce, ret.Receipt.ExitCode.String())
+			return nil
+		}
+
+		if originMsg.GasLimit == 0 {
+			originMsg.GasLimit = ret.Receipt.GasUsed
+
+			if builtin.IsPaymentChannelActor(actor.Code) &&
+				originMsg.Method == paych.Methods.Collect {
+				originMsg.GasLimit += 0x76e3
+			}
+
+			defer func() {
+				// add the 'gasLimit' difference caused by estimating
+				// 'gasLimit' with 'minPremium' and 'minFeeCap', then multiply the 'overEstimation'
+				diff := sizeDiff(originMsg.GasFeeCap, constants.EstimateMinFeeCapBig())
+				prices := mp.gasPriceSchedule.PricelistByEpoch(headTS.Height())
+				originMsg.GasLimit += prices.OnChainMessage(diff).ComputeGas
+
+				diff = sizeDiff(originMsg.GasPremium, constants.EstiMateMinPremuimBig())
+				originMsg.GasLimit += prices.OnChainMessage(diff).ComputeGas
+
+				overEstimation := GasLimitOverestimation
+				spec := estimateMessages[idx].Spec
+				if spec != nil {
+					overEstimation = spec.GasOverEstimation
+					if overEstimation < 1.0 {
+						overEstimation = GasLimitOverestimation
+					}
+				}
+
+				originMsg.GasLimit = int64((float64(originMsg.GasLimit) * overEstimation) + 0.5)
+			}()
+		}
+
+		if originMsg.GasPremium == types.EmptyInt || types.BigCmp(originMsg.GasPremium, types.NewInt(0)) == 0 {
+			gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, originMsg.From,
+				originMsg.GasLimit, types.TipSetKey{}, mp.PriceCache)
+			if err != nil {
+				originMsg.Nonce = 0
+				result.Err = fmt.Sprintf("estimating gas premium: %s", err.Error())
+				return nil
+			}
+			originMsg.GasPremium = gasPremium
+		}
+
+		if originMsg.GasFeeCap == types.EmptyInt || types.BigCmp(originMsg.GasFeeCap, types.NewInt(0)) == 0 {
+			feeCap, err := mp.GasEstimateFeeCap(ctx, originMsg, 20, types.EmptyTSK)
+			if err != nil {
+				originMsg.Nonce = 0
+				result.Err = fmt.Sprintf("estimating fee cap: %v", err)
+				return nil
+			}
+			originMsg.GasFeeCap = feeCap
+		}
+
+		return nil
+	})
+
+	return results, err
 }

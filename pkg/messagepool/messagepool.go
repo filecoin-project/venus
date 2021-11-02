@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/consensus"
 	"math"
 	stdbig "math/big"
 	"os"
@@ -131,6 +132,7 @@ func init() {
 
 type gasPredictor interface {
 	CallWithGas(context.Context, *types.UnsignedMessage, []types.ChainMsg, *types.TipSet) (*vm.Ret, error)
+	BulkCallWithGas(context.Context, []*types.UnsignedMessage, []types.ChainMsg, *types.TipSet, consensus.BulkCallWithGasCallback) error
 }
 
 type actorProvider interface {
@@ -308,7 +310,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 		}
 
 		ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.RequiredFunds().Int)
-		//ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.Value.Int)
+		// ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.Value.Int)
 	}
 
 	if !has && strict && len(ms.msgs) >= maxActorPendingMessages {
@@ -324,7 +326,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 	ms.nextNonce = nextNonce
 	ms.msgs[m.Message.Nonce] = m
 	ms.requiredFunds.Add(ms.requiredFunds, m.Message.RequiredFunds().Int)
-	//ms.requiredFunds.Add(ms.requiredFunds, m.Message.Value.Int)
+	// ms.requiredFunds.Add(ms.requiredFunds, m.Message.Value.Int)
 
 	return !has, nil
 }
@@ -344,7 +346,7 @@ func (ms *msgSet) rm(nonce uint64, applied bool) {
 	}
 
 	ms.requiredFunds.Sub(ms.requiredFunds, m.Message.RequiredFunds().Int)
-	//ms.requiredFunds.Sub(ms.requiredFunds, m.Message.Value.Int)
+	// ms.requiredFunds.Sub(ms.requiredFunds, m.Message.Value.Int)
 	delete(ms.msgs, nonce)
 
 	// adjust next nonce
@@ -370,7 +372,7 @@ func (ms *msgSet) getRequiredFunds(nonce uint64) big.Int {
 	m, has := ms.msgs[nonce]
 	if has {
 		requiredFunds.Sub(requiredFunds, m.Message.RequiredFunds().Int)
-		//requiredFunds.Sub(requiredFunds, m.Message.Value.Int)
+		// requiredFunds.Sub(requiredFunds, m.Message.Value.Int)
 	}
 
 	return big.Int{Int: requiredFunds}
@@ -889,7 +891,7 @@ func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage,
 	}
 
 	// add Value for soft failure check
-	//requiredFunds = types.BigAdd(requiredFunds, m.Message.Value)
+	// requiredFunds = types.BigAdd(requiredFunds, m.Message.Value)
 
 	mset, ok, err := mp.getPendingMset(ctx, m.Message.From)
 	if err != nil {

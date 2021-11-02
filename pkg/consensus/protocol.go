@@ -17,6 +17,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm"
 )
 
+type BulkCallWithGasCallback func(idx int, actor *types.Actor, ret *vm.Ret, err error) error
+
 // Protocol is an interface defining a blockchain consensus protocol.  The
 // methods here were arrived at after significant work fitting consensus into
 // the system and the implementation level. The method set is not necessarily
@@ -32,4 +34,5 @@ type Protocol interface {
 
 	// CallWithGas compute message result of specify message base on messages in mpool
 	CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *types.TipSet) (*vm.Ret, error)
+	BulkCallWithGas(context.Context, []*types.UnsignedMessage, []types.ChainMsg, *types.TipSet, BulkCallWithGasCallback) error
 }
