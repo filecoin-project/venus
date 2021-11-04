@@ -21,6 +21,10 @@ const (
 	SigTypeBLS       = crypto.SigTypeBLS
 )
 
+const (
+	BLSSignatureBytes = 96
+)
+
 // Sign takes in signature type, private key and message. Returns a signature for that message.
 // Valid sigTypes are: "secp256k1" and "bls"
 func Sign(msg []byte, privkey []byte, sigType SigType) (*crypto.Signature, error) {

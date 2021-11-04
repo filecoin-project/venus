@@ -25,7 +25,6 @@ import (
 	lps "github.com/whyrusleeping/pubsub"
 	"golang.org/x/xerrors"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -843,12 +842,11 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 func sigCacheKey(m *types.SignedMessage) (string, error) {
 	switch m.Signature.Type {
 	case crypto.SigTypeBLS:
-		if len(m.Signature.Data) != ffi.SignatureBytes {
+		if len(m.Signature.Data) != crypto2.BLSSignatureBytes {
 			return "", fmt.Errorf("bls signature incorrectly sized")
 		}
 
 		hashCache := blake2b.Sum256(append(m.Cid().Bytes(), m.Signature.Data...))
-
 		return string(hashCache[:]), nil
 	case crypto.SigTypeSecp256k1:
 		return string(m.Cid().Bytes()), nil
