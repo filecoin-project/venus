@@ -49,7 +49,7 @@ func (g *GenesisRandomnessSource) GetChainRandomnessV1(ctx context.Context, pers
 
 func (g *GenesisRandomnessSource) GetChainRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000 ))).Read(out) //nolint
+	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
 	return out, nil
 }
 

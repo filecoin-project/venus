@@ -2,6 +2,7 @@ package vmcontext
 
 import (
 	"context"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	goruntime "runtime"
 	"sync"
 
@@ -35,15 +36,17 @@ type SyscallsImpl interface {
 	BatchVerifySeals(ctx context.Context, vis map[address.Address][]proof5.SealVerifyInfo) (map[address.Address][]bool, error)
 	VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) error
 	VerifyPoSt(ctx context.Context, info proof5.WindowPoStVerifyInfo) error
-	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view SyscallsStateView) (*rt5.ConsensusFault, error)
+	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, curEpoch abi.ChainEpoch, msg VmMessage, gasIpld cbornode.IpldStore, view SyscallsStateView, getter LookbackStateGetter) (*rt5.ConsensusFault, error)
 }
 
 type syscalls struct {
-	impl      SyscallsImpl
-	ctx       context.Context
-	gasTank   *gas.GasTracker
-	pricelist gas.Pricelist
-	stateView SyscallsStateView
+	impl          SyscallsImpl
+	vm            *VM
+	gasBlockStore cbornode.IpldStore
+	vmMsg         VmMessage
+	gasTank       *gas.GasTracker
+	pricelist     gas.Pricelist
+	stateView     SyscallsStateView
 }
 
 var _ rt5.Syscalls = (*syscalls)(nil)
@@ -54,7 +57,7 @@ func (sys syscalls) VerifySignature(signature crypto.Signature, signer address.A
 		return err
 	}
 	sys.gasTank.Charge(charge, "VerifySignature")
-	return sys.impl.VerifySignature(sys.ctx, sys.stateView, signature, signer, plaintext)
+	return sys.impl.VerifySignature(sys.vm.context, sys.stateView, signature, signer, plaintext)
 }
 
 func (sys syscalls) HashBlake2b(data []byte) [32]byte {
@@ -64,22 +67,22 @@ func (sys syscalls) HashBlake2b(data []byte) [32]byte {
 
 func (sys syscalls) ComputeUnsealedSectorCID(proof abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	sys.gasTank.Charge(sys.pricelist.OnComputeUnsealedSectorCid(proof, pieces), "ComputeUnsealedSectorCID")
-	return sys.impl.ComputeUnsealedSectorCID(sys.ctx, proof, pieces)
+	return sys.impl.ComputeUnsealedSectorCID(sys.vm.context, proof, pieces)
 }
 
 func (sys syscalls) VerifySeal(info proof5.SealVerifyInfo) error {
 	sys.gasTank.Charge(sys.pricelist.OnVerifySeal(info), "VerifySeal")
-	return sys.impl.VerifySeal(sys.ctx, info)
+	return sys.impl.VerifySeal(sys.vm.context, info)
 }
 
 func (sys syscalls) VerifyPoSt(info proof5.WindowPoStVerifyInfo) error {
 	sys.gasTank.Charge(sys.pricelist.OnVerifyPost(info), "VerifyWindowPoSt")
-	return sys.impl.VerifyPoSt(sys.ctx, info)
+	return sys.impl.VerifyPoSt(sys.vm.context, info)
 }
 
 func (sys syscalls) VerifyConsensusFault(h1, h2, extra []byte) (*rt5.ConsensusFault, error) {
 	sys.gasTank.Charge(sys.pricelist.OnVerifyConsensusFault(), "VerifyConsensusFault")
-	return sys.impl.VerifyConsensusFault(sys.ctx, h1, h2, extra, sys.stateView)
+	return sys.impl.VerifyConsensusFault(sys.vm.context, h1, h2, extra, sys.vm.currentEpoch, sys.vmMsg, sys.gasBlockStore, sys.stateView, sys.vm.vmOption.LookbackStateGetter)
 }
 
 var BatchSealVerifyParallelism = 2 * goruntime.NumCPU()

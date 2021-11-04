@@ -3,6 +3,7 @@ package consensus
 import "C"
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -83,6 +84,7 @@ type StateViewer interface {
 type chainReader interface {
 	GetTipSet(types.TipSetKey) (*types.TipSet, error)
 	GetHead() *types.TipSet
+	StateView(ts *types.TipSet) (*appstate.View, error)
 	GetTipSetStateRoot(*types.TipSet) (cid.Cid, error)
 	GetTipSetReceiptsRoot(*types.TipSet) (cid.Cid, error)
 	GetGenesisBlock(context.Context) (*types.BlockHeader, error)
@@ -204,15 +206,16 @@ func (c *Expected) RunStateTransition(ctx context.Context,
 			}
 			return dertail.FilCirculating, nil
 		},
-		NtwkVersionGetter: c.fork.GetNtwkVersion,
-		Rnd:               NewHeadRandomness(c.rnd, ts.Key()),
-		BaseFee:           ts.At(0).ParentBaseFee,
-		Fork:              c.fork,
-		Epoch:             ts.At(0).Height,
-		GasPriceSchedule:  c.gasPirceSchedule,
-		Bsstore:           c.bstore,
-		PRoot:             parentStateRoot,
-		SysCallsImpl:      c.syscallsImpl,
+		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(c.chainState, c.fork, ts),
+		NtwkVersionGetter:   c.fork.GetNtwkVersion,
+		Rnd:                 NewHeadRandomness(c.rnd, ts.Key()),
+		BaseFee:             ts.At(0).ParentBaseFee,
+		Fork:                c.fork,
+		Epoch:               ts.At(0).Height,
+		GasPriceSchedule:    c.gasPirceSchedule,
+		Bsstore:             c.bstore,
+		PRoot:               parentStateRoot,
+		SysCallsImpl:        c.syscallsImpl,
 	}
 	root, receipts, err := c.processor.ProcessTipSet(ctx, pts, ts, blockMessageInfo, vmOption)
 	if err != nil {

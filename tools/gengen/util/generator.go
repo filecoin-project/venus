@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"io"
 	mrand "math/rand"
 
@@ -86,14 +87,15 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 		NtwkVersionGetter: func(ctx context.Context, epoch abi.ChainEpoch) network.Version {
 			return network.Version6
 		},
-		Rnd:              chainRand,
-		BaseFee:          abi.NewTokenAmount(InitialBaseFee),
-		Epoch:            0,
-		GasPriceSchedule: gas.NewPricesSchedule(config.DefaultForkUpgradeParam),
-		Bsstore:          bs,
-		PRoot:            cid.Undef,
-		SysCallsImpl:     syscallImpl,
-		Fork:             chainFork,
+		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(chainStore, chainFork, nil),
+		Rnd:                 chainRand,
+		BaseFee:             abi.NewTokenAmount(InitialBaseFee),
+		Epoch:               0,
+		GasPriceSchedule:    gas.NewPricesSchedule(config.DefaultForkUpgradeParam),
+		Bsstore:             bs,
+		PRoot:               cid.Undef,
+		SysCallsImpl:        syscallImpl,
+		Fork:                chainFork,
 	}
 	vm, err := vm.NewVM(vmOption)
 	if err != nil {

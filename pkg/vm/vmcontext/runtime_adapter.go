@@ -51,11 +51,13 @@ type runtimeAdapter struct {
 
 func newRuntimeAdapter(ctx *invocationContext) *runtimeAdapter {
 	return &runtimeAdapter{ctx: ctx, syscalls: syscalls{
-		impl:      ctx.vm.vmOption.SysCallsImpl,
-		ctx:       ctx.vm.context,
-		gasTank:   ctx.gasTank,
-		pricelist: ctx.vm.pricelist,
-		stateView: ctx.stateView(),
+		impl:          ctx.vm.vmOption.SysCallsImpl,
+		vm:            ctx.vm,
+		gasBlockStore: ctx.gasIpld,
+		vmMsg:         ctx.msg,
+		gasTank:       ctx.gasTank,
+		pricelist:     ctx.vm.pricelist,
+		stateView:     ctx.stateView(),
 	}}
 }
 
