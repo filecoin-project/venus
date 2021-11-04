@@ -6,7 +6,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"math"
 )
 
 func ForceNet() *NetworkConf {
@@ -29,29 +28,29 @@ func ForceNet() *NetworkConf {
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 2048,
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
-				UpgradeBreezeHeight:   -1,
-				UpgradeSmokeHeight:    -1,
-				UpgradeIgnitionHeight: -2,
-				UpgradeRefuelHeight:   -3,
-				UpgradeTapeHeight:     -4,
-				UpgradeLiftoffHeight:  -5,
+				UpgradeBreezeHeight:      -1,
+				BreezeGasTampingDuration: 0,
+				UpgradeSmokeHeight:       -1,
+				UpgradeIgnitionHeight:    -2,
+				UpgradeRefuelHeight:      -3,
+				UpgradeTapeHeight:        -4,
+				UpgradeLiftoffHeight:     -6,
 				// This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
 				// Miners, clients, developers, custodians all need time to prepare.
 				// We still have upgrades and state changes to do, but can happen after signaling timing here.
 
-				UpgradeAssemblyHeight:      10, // critical: the network can bootstrap from v1 only
-				UpgradeKumquatHeight:       15,
-				UpgradePriceListOopsHeight: 99,
-				UpgradeCalicoHeight:        20,
-				UpgradePersianHeight:       25,
-				UpgradeOrangeHeight:        27,
-				UpgradeClausHeight:         30,
-				UpgradeTrustHeight:         35,
-				UpgradeNorwegianHeight:     40,
-				UpgradeTurboHeight:         45,
-				UpgradeHyperdriveHeight:    50,
-				UpgradeChocolateHeight:     math.MaxInt32,
-				BreezeGasTampingDuration:   0,
+				UpgradeAssemblyHeight:      -5, // critical: the network can bootstrap from v1 only
+				UpgradeKumquatHeight:       -7,
+				UpgradePriceListOopsHeight: -8,
+				UpgradeCalicoHeight:        -9,
+				UpgradePersianHeight:       -10,
+				UpgradeOrangeHeight:        -11,
+				UpgradeClausHeight:         -12,
+				UpgradeTrustHeight:         -13,
+				UpgradeNorwegianHeight:     -14,
+				UpgradeTurboHeight:         -15,
+				UpgradeHyperdriveHeight:    -16,
+				UpgradeChocolateHeight:     -17,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandMainnet},
 			AddressNetwork:          address.Testnet,
