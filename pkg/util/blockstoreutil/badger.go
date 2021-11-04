@@ -147,7 +147,8 @@ func Open(opts Options) (*BadgerBlockstore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open badger blockstore: %w", err)
 	}
-	cache := NewLruCache(1000 * 10000)
+
+	cache := NewLruCache(10 * 10000)
 	bs := &BadgerBlockstore{
 		DB:           db,
 		keyTransform: keyTransform,
