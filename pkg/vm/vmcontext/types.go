@@ -4,6 +4,7 @@ import (
 	"context"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -20,9 +21,11 @@ import (
 type ExecCallBack func(cid.Cid, VmMessage, *Ret) error
 type CircSupplyCalculator func(context.Context, abi.ChainEpoch, tree.Tree) (abi.TokenAmount, error)
 type NtwkVersionGetter func(context.Context, abi.ChainEpoch) network.Version
+type LookbackStateGetter func(context.Context, abi.ChainEpoch) (*state.View, error)
 
 type VmOption struct { //nolint
 	CircSupplyCalculator CircSupplyCalculator
+	LookbackStateGetter  LookbackStateGetter
 	NtwkVersionGetter    NtwkVersionGetter
 	Rnd                  HeadChainRandomness
 	BaseFee              abi.TokenAmount
@@ -33,6 +36,23 @@ type VmOption struct { //nolint
 	PRoot                cid.Cid
 	Bsstore              blockstoreutil.Blockstore
 	SysCallsImpl         SyscallsImpl
+}
+
+//ChainRandomness define randomness method in filecoin
+type ILookBack interface {
+	StateView(ts *types.TipSet) (*state.View, error)
+	GetLookbackTipSetForRound(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch, version network.Version) (*types.TipSet, cid.Cid, error)
+}
+
+func LookbackStateGetterForTipset(backer ILookBack, fork fork.IFork, ts *types.TipSet) LookbackStateGetter {
+	return func(ctx context.Context, round abi.ChainEpoch) (*state.View, error) {
+		ver := fork.GetNtwkVersion(ctx, round)
+		ts, _, err := backer.GetLookbackTipSetForRound(ctx, ts, round, ver)
+		if err != nil {
+			return nil, err
+		}
+		return backer.StateView(ts)
+	}
 }
 
 //ChainRandomness define randomness method in filecoin

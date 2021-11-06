@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 
 	"github.com/filecoin-project/go-address"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
@@ -63,15 +64,16 @@ func (c *Expected) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, 
 			}
 			return cs.FilCirculating, nil
 		},
-		NtwkVersionGetter: c.fork.GetNtwkVersion,
-		Rnd:               NewHeadRandomness(c.rnd, ts.Key()),
-		BaseFee:           ts.At(0).ParentBaseFee,
-		Epoch:             ts.Height(),
-		GasPriceSchedule:  c.gasPirceSchedule,
-		PRoot:             stateRoot,
-		Bsstore:           c.bstore,
-		SysCallsImpl:      c.syscallsImpl,
-		Fork:              c.fork,
+		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(c.chainState, c.fork, ts),
+		NtwkVersionGetter:   c.fork.GetNtwkVersion,
+		Rnd:                 NewHeadRandomness(c.rnd, ts.Key()),
+		BaseFee:             ts.At(0).ParentBaseFee,
+		Epoch:               ts.Height(),
+		GasPriceSchedule:    c.gasPirceSchedule,
+		PRoot:               stateRoot,
+		Bsstore:             c.bstore,
+		SysCallsImpl:        c.syscallsImpl,
+		Fork:                c.fork,
 	}
 
 	vmi, err := vm.NewVM(vmOption)
@@ -195,15 +197,16 @@ func (c *Expected) Call(ctx context.Context, msg *types.UnsignedMessage, ts *typ
 			}
 			return dertail.FilCirculating, nil
 		},
-		NtwkVersionGetter: c.fork.GetNtwkVersion,
-		Rnd:               NewHeadRandomness(c.rnd, ts.Key()),
-		BaseFee:           ts.At(0).ParentBaseFee,
-		Epoch:             pheight + 1,
-		GasPriceSchedule:  c.gasPirceSchedule,
-		Fork:              c.fork,
-		PRoot:             ts.At(0).ParentStateRoot,
-		Bsstore:           c.bstore,
-		SysCallsImpl:      c.syscallsImpl,
+		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(c.chainState, c.fork, ts),
+		NtwkVersionGetter:   c.fork.GetNtwkVersion,
+		Rnd:                 NewHeadRandomness(c.rnd, ts.Key()),
+		BaseFee:             ts.At(0).ParentBaseFee,
+		Epoch:               pheight + 1,
+		GasPriceSchedule:    c.gasPirceSchedule,
+		Fork:                c.fork,
+		PRoot:               ts.At(0).ParentStateRoot,
+		Bsstore:             c.bstore,
+		SysCallsImpl:        c.syscallsImpl,
 	}
 
 	return c.processor.ProcessImplicitMessage(ctx, msg, vmOption)

@@ -418,7 +418,9 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 	// This Method does not actually execute the message itself,
 	// but rather deals with the pre/post processing of a message.
 	// (see: `invocationContext.invoke()` for the dispatch and execution)
-
+	//  bafy2bzacec34fma6gz4sbreoljka2vavv5rpfnh3u6cosomblwuq3f3cx6utc  bafy2bzacebvqp36jctgsigaie2rb5feaq4l6trt54dxj7fy2bmvtfz4k27rv2 bafy2bzacebas7cfjko67n4e3i4rg5pvsx2krud4yhr6xnq6cpx2zgxts3j7mu
+	fmt.Println(msg.Cid().String())
+	//hit :=  msg.Cid().String() == "bafy2bzacedx5z4bpkhngegoe26cv6ywvqmr5adjzpzpfdexokm7wluf3fo4tw"
 	// initiate gas tracking
 	gasTank := gas.NewGasTracker(msg.GasLimit)
 	// pre-send
@@ -500,6 +502,11 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 	}
 
 	gasHolder := &types.Actor{Balance: big.NewInt(0)}
+	//if hit {
+	fmt.Println("actor balance ")
+	fmt.Println("gas limit cost ", gasLimitCost.String())
+	fmt.Println("msg value ", msg.Value.String())
+	//}
 	if err := vm.transferToGasHolder(msg.From, gasHolder, gasLimitCost); err != nil {
 		return nil, xerrors.Errorf("failed To withdraw gas funds: %w", err)
 	}
@@ -734,6 +741,7 @@ func (vm *VM) transferToGasHolder(addr address.Address, gasHolder *types.Actor, 
 		return xerrors.Errorf("attempted To transfer negative Value To gas holder")
 	}
 	return vm.State.MutateActor(addr, func(a *types.Actor) error {
+		//	fmt.Println("xxxx: ", a.Balance.String())
 		if err := deductFunds(a, amt); err != nil {
 			return err
 		}
