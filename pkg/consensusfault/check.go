@@ -5,10 +5,16 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
+	"github.com/filecoin-project/venus/pkg/vm"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/pkg/errors"
@@ -42,7 +48,7 @@ func NewFaultChecker(chain chainReader, fork fork.IFork) *ConsensusFaultChecker 
 // Checks validity of the submitted consensus fault with the two block headers needed to prove the fault
 // and an optional extra one to check common ancestry (as needed).
 // Note that the blocks are ordered: the method requires a.Epoch() <= b.Epoch().
-func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view FaultStateView) (*runtime5.ConsensusFault, error) {
+func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, curEpoch abi.ChainEpoch, msg vm.VmMessage, gasIpld cbornode.IpldStore, view vm.SyscallsStateView, getter vmcontext.LookbackStateGetter) (*runtime5.ConsensusFault, error) {
 	if bytes.Equal(h1, h2) {
 		return nil, fmt.Errorf("no consensus fault: blocks identical")
 	}
@@ -91,7 +97,7 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 		}
 	}
 	// Time-offset mining fault: two blocks with the same parent but different epochs.
-	// The height check is redundant at time of writing, but included for robustness to future changes to this method.
+	// The curEpoch check is redundant at time of writing, but included for robustness to future changes to this method.
 	// The blocks have a common ancestor by definition (the parent).
 	if b1.Parents.Equals(b2.Parents) && b1.Height != b2.Height {
 		fault = &runtime5.ConsensusFault{
@@ -124,12 +130,12 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 
 	// Expensive validation: signatures.
 	b1Version := s.fork.GetNtwkVersion(ctx, b1.Height)
-	err := verifyBlockSignature(ctx, view, b1, b1Version)
+	err := verifyBlockSignature(ctx, b1, b1Version, curEpoch, msg.To, gasIpld, view, getter)
 	if err != nil {
 		return nil, err
 	}
 	b2Version := s.fork.GetNtwkVersion(ctx, b2.Height)
-	err = verifyBlockSignature(ctx, view, b2, b2Version)
+	err = verifyBlockSignature(ctx, b2, b2Version, curEpoch, msg.To, gasIpld, view, getter)
 	if err != nil {
 		return nil, err
 	}
@@ -138,15 +144,36 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 }
 
 // Checks whether a block header is correctly signed in the context of the parent state to which it refers.
-func verifyBlockSignature(ctx context.Context, view FaultStateView, blk types.BlockHeader, nv network.Version) error {
-	minerInfo, err := view.MinerInfo(ctx, blk.Miner, nv)
-	if err != nil {
-		panic(errors.Wrapf(err, "failed to inspect miner addresses"))
+func verifyBlockSignature(ctx context.Context, blk types.BlockHeader, nv network.Version, curEpoch abi.ChainEpoch, receiver address.Address, gasIpld cbornode.IpldStore, view FaultStateView, getter vmcontext.LookbackStateGetter) error {
+	if nv >= network.Version7 && blk.Height < -policy.ChainFinality {
+		return xerrors.Errorf("cannot get worker key (currEpoch %d, height %d)", curEpoch, blk.Height)
 	}
+
+	lbstate, err := getter(ctx, blk.Height)
+	if err != nil {
+		return xerrors.Errorf("fialed to look back state at height %d", blk.Height)
+	}
+
+	act, err := lbstate.LoadActor(ctx, receiver)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get miner actor")
+	}
+
+	mas, err := miner.Load(adt.WrapStore(ctx, gasIpld), act)
+	if err != nil {
+		return xerrors.Errorf("failed to load state for miner %s", receiver)
+	}
+
+	info, err := mas.Info()
+	if err != nil {
+		return xerrors.Errorf("failed to get miner info for miner %s", receiver)
+	}
+
 	if blk.BlockSig == nil {
 		return errors.Errorf("no consensus fault: block %s has nil signature", blk.Cid())
 	}
-	err = state.NewSignatureValidator(view).ValidateSignature(ctx, blk.SignatureData(), minerInfo.Worker, *blk.BlockSig)
+
+	err = state.NewSignatureValidator(view).ValidateSignature(ctx, blk.SignatureData(), info.Worker, *blk.BlockSig)
 	if err != nil {
 		return errors.Wrapf(err, "no consensus fault: block %s signature invalid", blk.Cid())
 	}

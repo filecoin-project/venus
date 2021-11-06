@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	goruntime "runtime"
 	"sync"
 
@@ -18,7 +20,6 @@ import (
 	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/consensusfault"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/vm"
@@ -27,7 +28,7 @@ import (
 var log = logging.Logger("vmsupport")
 
 type faultChecker interface {
-	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view consensusfault.FaultStateView) (*rt5.ConsensusFault, error)
+	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, curEpoch abi.ChainEpoch, msg vm.VmMessage, gasIpld cbornode.IpldStore, view vm.SyscallsStateView, getter vmcontext.LookbackStateGetter) (*rt5.ConsensusFault, error)
 }
 
 // Syscalls contains the concrete implementation of VM system calls, including connection to
@@ -145,6 +146,6 @@ func (s *Syscalls) VerifyPoSt(ctx context.Context, info proof5.WindowPoStVerifyI
 // the "parent grinding fault", in which case it must be the sibling of h1 (same parent tipset) and one of the
 // blocks in the parent of h2 (i.e. h2's grandparent).
 // Returns nil and an error if the headers don't prove a fault.
-func (s *Syscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, view vm.SyscallsStateView) (*rt5.ConsensusFault, error) {
-	return s.faultChecker.VerifyConsensusFault(ctx, h1, h2, extra, view)
+func (s *Syscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, curEpoch abi.ChainEpoch, msg vm.VmMessage, gasIpld cbornode.IpldStore, view vm.SyscallsStateView, getter vmcontext.LookbackStateGetter) (*rt5.ConsensusFault, error) {
+	return s.faultChecker.VerifyConsensusFault(ctx, h1, h2, extra, curEpoch, msg, gasIpld, view, getter)
 }

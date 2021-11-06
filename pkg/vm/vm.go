@@ -40,3 +40,8 @@ type ActorCodeLoader = dispatch.CodeLoader
 
 // ActorMethodSignature wraps a specific method and allows you to encode/decodes input/output bytes into concrete types.
 type ActorMethodSignature = dispatch.MethodSignature
+
+type ILookBack = vmcontext.ILookBack
+type LookbackStateGetter = vmcontext.LookbackStateGetter
+
+//type LookbackStateGetterForTipset = vmcontext.LookbackStateGetterForTipset

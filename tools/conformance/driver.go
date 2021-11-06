@@ -123,15 +123,16 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 				}
 				return dertail.FilCirculating, nil
 			},
-			NtwkVersionGetter: chainFork.GetNtwkVersion,
-			Rnd:               NewFixedRand(),
-			BaseFee:           big.NewFromGo(&tipset.BaseFee),
-			Fork:              chainFork,
-			Epoch:             execEpoch,
-			GasPriceSchedule:  gas.NewPricesSchedule(mainNetParams.Network.ForkUpgradeParam),
-			PRoot:             preroot,
-			Bsstore:           bs,
-			SysCallsImpl:      syscalls,
+			LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(chainStore, chainFork, nil),
+			NtwkVersionGetter:   chainFork.GetNtwkVersion,
+			Rnd:                 NewFixedRand(),
+			BaseFee:             big.NewFromGo(&tipset.BaseFee),
+			Fork:                chainFork,
+			Epoch:               execEpoch,
+			GasPriceSchedule:    gas.NewPricesSchedule(mainNetParams.Network.ForkUpgradeParam),
+			PRoot:               preroot,
+			Bsstore:             bs,
+			SysCallsImpl:        syscalls,
 		}
 	)
 
@@ -277,16 +278,17 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 			CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 				return params.CircSupply, nil
 			},
-			NtwkVersionGetter: chainFork.GetNtwkVersion,
-			Rnd:               params.Rand,
-			BaseFee:           params.BaseFee,
-			Fork:              chainFork,
-			ActorCodeLoader:   &coderLoader,
-			Epoch:             params.Epoch,
-			GasPriceSchedule:  gas.NewPricesSchedule(mainNetParams.Network.ForkUpgradeParam),
-			PRoot:             params.Preroot,
-			Bsstore:           bs,
-			SysCallsImpl:      syscalls,
+			LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(chainStore, chainFork, nil),
+			NtwkVersionGetter:   chainFork.GetNtwkVersion,
+			Rnd:                 params.Rand,
+			BaseFee:             params.BaseFee,
+			Fork:                chainFork,
+			ActorCodeLoader:     &coderLoader,
+			Epoch:               params.Epoch,
+			GasPriceSchedule:    gas.NewPricesSchedule(mainNetParams.Network.ForkUpgradeParam),
+			PRoot:               params.Preroot,
+			Bsstore:             bs,
+			SysCallsImpl:        syscalls,
 		}
 	)
 
