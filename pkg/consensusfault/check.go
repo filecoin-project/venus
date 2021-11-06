@@ -150,6 +150,10 @@ func verifyBlockSignature(ctx context.Context, blk types.BlockHeader, nv network
 	}
 
 	lbstate, err := getter(ctx, blk.Height)
+	if err != nil {
+		return xerrors.Errorf("fialed to look back state at height %d", blk.Height)
+	}
+
 	act, err := lbstate.LoadActor(ctx, receiver)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get miner actor")
@@ -157,12 +161,12 @@ func verifyBlockSignature(ctx context.Context, blk types.BlockHeader, nv network
 
 	mas, err := miner.Load(adt.WrapStore(ctx, gasIpld), act)
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to load state for miner %s", receiver)
 	}
 
 	info, err := mas.Info()
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to get miner info for miner %s", receiver)
 	}
 
 	if blk.BlockSig == nil {
