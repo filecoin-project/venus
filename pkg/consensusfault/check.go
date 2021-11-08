@@ -145,7 +145,7 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 
 // Checks whether a block header is correctly signed in the context of the parent state to which it refers.
 func verifyBlockSignature(ctx context.Context, blk types.BlockHeader, nv network.Version, curEpoch abi.ChainEpoch, receiver address.Address, gasIpld cbornode.IpldStore, view FaultStateView, getter vmcontext.LookbackStateGetter) error {
-	if nv >= network.Version7 && blk.Height < -policy.ChainFinality {
+	if nv >= network.Version7 && blk.Height < curEpoch-policy.ChainFinality {
 		return xerrors.Errorf("cannot get worker key (currEpoch %d, height %d)", curEpoch, blk.Height)
 	}
 
