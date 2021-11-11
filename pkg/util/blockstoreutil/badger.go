@@ -3,9 +3,6 @@ package blockstoreutil
 import (
 	"context"
 	"fmt"
-	"io"
-	"sync/atomic"
-
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
 	blocks "github.com/ipfs/go-block-format"
@@ -15,6 +12,8 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	dshelp "github.com/ipfs/go-ipfs-ds-help"
 	"go.uber.org/zap"
+	"io"
+	"sync"
 )
 
 var (
@@ -107,9 +106,15 @@ func (b *badgerLogger) Warningf(format string, args ...interface{}) {
 	b.skip2.Warnf(format, args...)
 }
 
+// bsState is the current blockstore state
+type bsState int
+
 const (
-	stateOpen int64 = iota
+	// stateOpen signifies an open blockstore
+	stateOpen bsState = iota
+	// stateClosing signifies a blockstore that is currently closing
 	stateClosing
+	// stateClosed signifies a blockstore that has been colosed
 	stateClosed
 )
 
@@ -122,8 +127,9 @@ const (
 type BadgerBlockstore struct {
 	DB *badger.DB
 
-	// state is guarded by atomic.
-	state int64
+	stateLk sync.RWMutex
+	state   bsState
+	viewers sync.WaitGroup
 
 	keyTransform *keytransform.PrefixTransform
 
@@ -160,11 +166,23 @@ func Open(opts Options) (*BadgerBlockstore, error) {
 // Close closes the store. If the store has already been closed, this noops and
 // returns an error, even if the first closure resulted in error.
 func (b *BadgerBlockstore) Close() error {
-	if !atomic.CompareAndSwapInt64(&b.state, stateOpen, stateClosing) {
+	b.stateLk.Lock()
+	if b.state != stateOpen {
+		b.stateLk.Unlock()
 		return nil
 	}
+	b.state = stateClosing
+	b.stateLk.Unlock()
 
-	defer atomic.StoreInt64(&b.state, stateClosed)
+	defer func() {
+		b.stateLk.Lock()
+		b.state = stateClosed
+		b.stateLk.Unlock()
+	}()
+
+	// wait for all accesses to complete
+	b.viewers.Wait()
+
 	return b.DB.Close()
 }
 
@@ -179,9 +197,10 @@ func (b *BadgerBlockstore) ReadonlyDatastore() *TxBlockstore {
 // View implements blockstore.Viewer, which leverages zero-copy read-only
 // access to values.
 func (b *BadgerBlockstore) View(cid cid.Cid, fn func([]byte) error) error {
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return err
 	}
+	defer b.viewers.Done()
 
 	key := b.ConvertKey(cid)
 	return b.DB.View(func(txn *badger.Txn) error {
@@ -198,9 +217,10 @@ func (b *BadgerBlockstore) View(cid cid.Cid, fn func([]byte) error) error {
 
 // Has implements blockstore.Has.
 func (b *BadgerBlockstore) Has(cid cid.Cid) (bool, error) {
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return false, ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return false, err
 	}
+	defer b.viewers.Done()
 
 	key := b.ConvertKey(cid)
 	if b.cache != nil {
@@ -230,9 +250,10 @@ func (b *BadgerBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 		return nil, blockstore.ErrNotFound
 	}
 
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return nil, ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return nil, err
 	}
+	defer b.viewers.Done()
 
 	key := b.ConvertKey(cid)
 	if b.cache != nil {
@@ -269,9 +290,10 @@ func (b *BadgerBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 
 // GetSize implements blockstore.GetSize.
 func (b *BadgerBlockstore) GetSize(cid cid.Cid) (int, error) {
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return -1, ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return 0, err
 	}
+	defer b.viewers.Done()
 
 	key := b.ConvertKey(cid)
 	if b.cache != nil {
@@ -300,9 +322,10 @@ func (b *BadgerBlockstore) GetSize(cid cid.Cid) (int, error) {
 
 // Put implements blockstore.Put.
 func (b *BadgerBlockstore) Put(block blocks.Block) error {
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return err
 	}
+	defer b.viewers.Done()
 
 	key := b.ConvertKey(block.Cid())
 	if _, ok := b.cache.Get(key.String()); ok {
@@ -324,9 +347,10 @@ func (b *BadgerBlockstore) Put(block blocks.Block) error {
 
 // PutMany implements blockstore.PutMany.
 func (b *BadgerBlockstore) PutMany(blks []blocks.Block) error {
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return err
 	}
+	defer b.viewers.Done()
 
 	batch := b.DB.NewWriteBatch()
 	defer batch.Cancel()
@@ -358,9 +382,10 @@ func (b *BadgerBlockstore) PutMany(blks []blocks.Block) error {
 
 // DeleteBlock implements blockstore.DeleteBlock.
 func (b *BadgerBlockstore) DeleteBlock(cid cid.Cid) error {
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return err
 	}
+	defer b.viewers.Done()
 
 	key := b.ConvertKey(cid)
 	return b.DB.Update(func(txn *badger.Txn) error {
@@ -374,8 +399,8 @@ func (b *BadgerBlockstore) DeleteBlock(cid cid.Cid) error {
 
 // AllKeysChan implements blockstore.AllKeysChan.
 func (b *BadgerBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return nil, ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return nil, err
 	}
 
 	txn := b.DB.NewTransaction(false)
@@ -386,6 +411,7 @@ func (b *BadgerBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, err
 	go func() {
 		defer close(ch)
 		defer iter.Close()
+		defer b.viewers.Done()
 
 		// NewCidV1 makes a copy of the multihash buffer, so we can reuse it to
 		// contain allocs.
@@ -393,10 +419,11 @@ func (b *BadgerBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, err
 			if ctx.Err() != nil {
 				return // context has fired.
 			}
-			if atomic.LoadInt64(&b.state) != stateOpen {
+			if !b.isOpen() {
 				// open iterators will run even after the database is closed...
 				return // closing, yield.
 			}
+
 			k := iter.Item().Key()
 			// need to convert to key.Key using key.KeyFromDsKey.
 			bk, err := dshelp.BinaryFromDsKey(datastore.RawKey(string(k)))
@@ -425,4 +452,23 @@ func (b *BadgerBlockstore) HashOnRead(_ bool) {
 func (b *BadgerBlockstore) ConvertKey(cid cid.Cid) datastore.Key {
 	key := dshelp.MultihashToDsKey(cid.Hash())
 	return b.keyTransform.ConvertKey(key)
+}
+
+func (b *BadgerBlockstore) access() error {
+	b.stateLk.RLock()
+	defer b.stateLk.RUnlock()
+
+	if b.state != stateOpen {
+		return ErrBlockstoreClosed
+	}
+
+	b.viewers.Add(1)
+	return nil
+}
+
+func (b *BadgerBlockstore) isOpen() bool {
+	b.stateLk.RLock()
+	defer b.stateLk.RUnlock()
+
+	return b.state == stateOpen
 }
