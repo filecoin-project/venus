@@ -11,7 +11,7 @@ import (
 	"math"
 )
 
-var migrateLog = logging.Logger("migrate")
+var migrateLog = logging.Logger("data_migrate")
 
 type UpgradeFunc func(string) error
 
