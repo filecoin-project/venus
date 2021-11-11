@@ -25,4 +25,6 @@ type ISyncer interface {
 	StateCall(ctx context.Context, msg *types.UnsignedMessage, tsk types.TipSetKey) (*types.InvocResult, error)
 	// Rule[perm:read]
 	SyncState(ctx context.Context) (*apitypes.SyncState, error)
+	// Rule[perm:read]
+	ReplayTipset(ctx context.Context, tsKey types.TipSetKey) (*types.TipsetInvokeResult, error)
 }

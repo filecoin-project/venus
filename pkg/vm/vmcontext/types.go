@@ -36,6 +36,8 @@ type VmOption struct { //nolint
 	PRoot                cid.Cid
 	Bsstore              blockstoreutil.Blockstore
 	SysCallsImpl         SyscallsImpl
+
+	RecordTraces bool
 }
 
 //ChainRandomness define randomness method in filecoin
@@ -62,6 +64,7 @@ type HeadChainRandomness interface {
 }
 
 type Ret struct {
+	RootCid    cid.Cid
 	GasTracker *gas.GasTracker
 	OutPuts    gas.GasOutputs
 	Receipt    types.MessageReceipt

@@ -468,7 +468,7 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 	// 4. invoke
 	ret, code := newCtx.invoke()
 	if code == 0 {
-		_ = ctx.gasTank.TryCharge(gasOnActorExec)
+		_ = ctx.gasTank.TryCharge(gasOnActorExec, 1)
 		if err := out.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
 			runtime.Abortf(exitcode.ErrSerialization, "failed To unmarshal return Value: %s", err)
 		}
@@ -554,7 +554,7 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 		panic(err)
 	}
 
-	_ = ctx.gasTank.TryCharge(gasOnActorExec)
+	_ = ctx.gasTank.TryCharge(gasOnActorExec, 0)
 }
 
 // DeleteActor implements runtime.ExtendedInvocationContext.
@@ -595,7 +595,7 @@ func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 		panic(aerrors.Fatalf("failed to delete actor: %s", err))
 	}
 
-	_ = ctx.gasTank.TryCharge(gasOnActorExec)
+	_ = ctx.gasTank.TryCharge(gasOnActorExec, 0)
 }
 
 func (ctx *invocationContext) stateView() SyscallsStateView {

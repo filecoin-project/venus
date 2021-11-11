@@ -3,7 +3,6 @@ package vmcontext
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -49,8 +48,6 @@ type VM struct {
 	currentEpoch abi.ChainEpoch
 	pricelist    gas.Pricelist
 
-	vmDebug  bool // open debug or not
-	debugger *VMDebugMsg
 	vmOption VmOption
 
 	State tree.Tree
@@ -118,12 +115,6 @@ func NewVM(actorImpls ActorImplLookup, vmOption VmOption) (*VM, error) {
 		// loaded during execution
 		// currentEpoch: ..,
 	}, nil
-}
-
-// nolint
-func (vm *VM) setDebugger() {
-	vm.debugger = NewVMDebugMsg()
-	vm.vmDebug = true
 }
 
 // ApplyGenesisMessage forces the execution of a message in the vm actor.
@@ -214,6 +205,11 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 			if err != nil {
 				return cid.Undef, nil, xerrors.Errorf("can not Flush vm State To db %vs", err)
 			}
+
+			if vm.vmOption.RecordTraces {
+				ret.RootCid = pstate
+			}
+
 			if cb != nil {
 				if err := cb(cid.Undef, cronMessage, ret); err != nil {
 					return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
@@ -269,6 +265,10 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, ret.OutPuts.MinerPenalty)
 			minerGasRewardTotal = big.Add(minerGasRewardTotal, ret.OutPuts.MinerTip)
 			receipts = append(receipts, ret.Receipt)
+
+			if vm.vmOption.RecordTraces {
+				ret.RootCid, _ = vm.Flush()
+			}
 			if cb != nil {
 				if err := cb(mcid, VmMessageFromUnsignedMessage(m.VMMessage()), ret); err != nil {
 					return cid.Undef, nil, err
@@ -276,24 +276,6 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 			}
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
-
-			//write debug messager
-			if vm.vmDebug {
-				rootCid, _ := vm.Flush()
-
-				vm.debugger.Println("message:", mcid, "  root:", rootCid)
-				msgGasOutput, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
-				vm.debugger.Println(string(msgGasOutput))
-
-				var valuedTraces []*types.GasTrace
-				for _, trace := range ret.GasTracker.ExecutionTrace.GasCharges {
-					if trace.TotalGas > 0 {
-						valuedTraces = append(valuedTraces, trace)
-					}
-				}
-				tracesBytes, _ := json.MarshalIndent(valuedTraces, "", "\t")
-				vm.debugger.Println(string(tracesBytes))
-			}
 		}
 
 		// Pay block reward.
@@ -303,16 +285,15 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 		if err != nil {
 			return cid.Undef, nil, err
 		}
+		if vm.vmOption.RecordTraces {
+			ret.RootCid, _ = vm.Flush()
+		}
 		if cb != nil {
 			if err := cb(cid.Undef, rewardMessage, ret); err != nil {
 				return cid.Undef, nil, xerrors.Errorf("callback failed on reward message: %w", err)
 			}
 		}
 
-		if vm.vmDebug {
-			root, _ := vm.State.Flush(context.TODO())
-			vm.debugger.Println("reward: ", index, " root: ", root)
-		}
 		vmlog.Infof("process block %v time %v", index, time.Since(toProcessBlock).Milliseconds())
 	}
 
@@ -324,6 +305,10 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 	if err != nil {
 		return cid.Undef, nil, err
 	}
+
+	if vm.vmOption.RecordTraces {
+		ret.RootCid, _ = vm.Flush()
+	}
 	if cb != nil {
 		if err := cb(cid.Undef, cronMessage, ret); err != nil {
 			return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
@@ -331,14 +316,6 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 	}
 
 	vmlog.Infof("process cron: %v", time.Since(toProcessCron).Milliseconds())
-	if vm.vmDebug {
-		root, _ := vm.State.Flush(context.TODO())
-		vm.debugger.Printfln("after cron root: %s", root)
-
-		receipt, _ := json.MarshalIndent(receipts, "", "\t")
-		vm.debugger.Println(string(receipt))
-		vm.debugger.WriteToTerminal()
-	}
 	// commit stateView
 	root, err := vm.Flush()
 	if err != nil {
@@ -420,6 +397,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 	// (see: `invocationContext.invoke()` for the dispatch and execution)
 	// initiate gas tracking
 	gasTank := gas.NewGasTracker(msg.GasLimit)
+	gasTank.ExecutionTrace.Msg = msg
 	// pre-send
 	// 1. charge for message existence
 	// 2. load sender actor
@@ -431,7 +409,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 
 	// 1. charge for bytes used in chain
 	msgGasCost := vm.pricelist.OnChainMessage(onChainMsgSize) //todo get price list by height
-	ok := gasTank.TryCharge(msgGasCost)
+	ok := gasTank.TryCharge(msgGasCost, 0)
 	if !ok {
 		gasOutputs := gas.ZeroGasOutputs()
 		gasOutputs.MinerPenalty = big.Mul(vm.vmOption.BaseFee, big.NewInt(msgGasCost.Total()))
@@ -561,7 +539,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 
 	// 1. charge for the space used by the return Value
 	// Note: the GasUsed in the message receipt does not
-	ok = gasTank.TryCharge(vm.pricelist.OnChainReturnValue(len(ret)))
+	ok = gasTank.TryCharge(vm.pricelist.OnChainReturnValue(len(ret)), 0)
 	if !ok {
 		// Insufficient gas remaining To cover the on-chain return Value; proceed as in the case
 		// of Method execution failure.

@@ -287,7 +287,7 @@ func (a *runtimeAdapter) CreateActor(codeID cid.Cid, addr address.Address) {
 		panic(err)
 	}
 
-	_ = a.ctx.gasTank.TryCharge(gasOnActorExec)
+	_ = a.ctx.gasTank.TryCharge(gasOnActorExec, 0)
 }
 
 // DeleteActor implements Runtime.

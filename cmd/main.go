@@ -141,6 +141,7 @@ State COMMANDS
   miner-info             - Retrieve miner information
   network-version        - MReturns the network version
   list-actor             - list all actors
+  exec-trace             - execute message and retrieve gas traces		
 
 Paych COMMANDS 
   paych                  - Manage payment channels
@@ -322,6 +323,13 @@ func getAPIInfo(req *cmds.Request) (*APIInfo, error) {
 			token = tkArr[0]
 		}
 	}
+
+	if len(token) == 0 {
+		if envToken := os.Getenv("FIL_TOKEN"); envToken != "" {
+			token = envToken
+		}
+	}
+
 	if len(token) == 0 {
 		tk, err := repo.APITokenFromRepoPath(repoDir)
 		if err != nil {

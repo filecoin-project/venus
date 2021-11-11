@@ -2,6 +2,7 @@ package gas
 
 import (
 	"fmt"
+	gruntime "runtime"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -35,7 +36,7 @@ func NewGasTracker(limit int64) *GasTracker {
 //
 // WARNING: this Method will panic if there is no sufficient gas left.
 func (t *GasTracker) Charge(gas GasCharge, msg string, args ...interface{}) {
-	if ok := t.TryCharge(gas); !ok {
+	if ok := t.TryCharge(gas, 2); !ok {
 		fmsg := fmt.Sprintf(msg, args...)
 		runtime.Abortf(exitcode.SysErrOutOfGas, "gas limit %d exceeded with charge of %d: %s", t.GasAvailable, gas.Total(), fmsg)
 	}
@@ -44,10 +45,10 @@ func (t *GasTracker) Charge(gas GasCharge, msg string, args ...interface{}) {
 // TryCharge charges `amount` or `RemainingGas()``, whichever is smaller.
 //
 // Returns `True` if the there was enough gas To pay for `amount`.
-func (t *GasTracker) TryCharge(gasCharge GasCharge) bool {
+func (t *GasTracker) TryCharge(gasCharge GasCharge, skip int) bool {
 	toUse := gasCharge.Total()
-	var callers [10]uintptr
-	cout := 0 //gruntime.Callers(2+skip, callers[:])
+	var callers [3]uintptr
+	cout := gruntime.Callers(2+skip, callers[:])
 
 	now := time.Now()
 	if t.LastGasCharge != nil {

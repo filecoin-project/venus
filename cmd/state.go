@@ -7,7 +7,10 @@ import (
 	"fmt"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"io"
+	"os"
+	"path"
 	"strconv"
+	"strings"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -51,6 +54,7 @@ var stateCmd = &cmds.Command{
 		"miner-info":      stateMinerInfo,
 		"network-version": stateNtwkVersionCmd,
 		"list-actor":      stateListActorCmd,
+		"exec-trace":      stateExecTraceCmd,
 	},
 }
 
@@ -596,4 +600,116 @@ func makeActorView(act *types.Actor, addr address.Address) *ActorView {
 		Balance: act.Balance,
 		Head:    act.Head,
 	}
+}
+
+var stateExecTraceCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "execute message and retrieve it's gas traces",
+		Usage:   "./venus state exec-trace [--tskey] <message id>",
+	},
+	Options: []cmds.Option{
+		cmds.StringOption("tskey", "the key of the tipset which message is on").WithDefault(""),
+		cmds.StringOption("message", "the key of the tipset which message is on").WithDefault(""),
+		cmds.StringOption("outFile", "save execute traces to specified file").WithDefault(""),
+		cmds.Int64Option("height", "save execute traces to specified file").WithDefault(int64(-1)),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		chainAPI := env.(*node.Env).ChainAPI
+
+		var tsKey = types.EmptyTSK
+		var msg *types.UnsignedMessage
+		var fileName string
+
+		if mCidStr := req.Options["message"].(string); len(mCidStr) != 0 {
+			var (
+				err    error
+				lookUp *apitypes.MsgLookup
+				ts     *types.TipSet
+				mCid   cid.Cid
+			)
+			if mCid, err = cid.Decode(mCidStr); err != nil {
+				return err
+			}
+			msg, err = chainAPI.ChainGetMessage(req.Context, mCid)
+			if err != nil {
+				return err
+			}
+			if lookUp, err = chainAPI.StateSearchMsg(req.Context,
+				types.EmptyTSK, mCid, constants.LookbackNoLimit, true); err != nil {
+				return err
+			}
+			if lookUp == nil {
+				return fmt.Errorf("can't find message:%s", mCid.String())
+			}
+			if ts, err = chainAPI.ChainGetTipSet(req.Context, lookUp.TipSet); err != nil {
+				return err
+			}
+			tsKey = ts.Parents()
+			fileName = fmt.Sprintf("msg-%s.json", mCid.String())
+		} else if tsKeyStr := req.Options["tskey"].(string); len(tsKeyStr) != 0 {
+			cidsStr := strings.Split(tsKeyStr, " ")
+			cids, err := cidsFromSlice(cidsStr)
+			if err != nil {
+				return err
+			}
+			tsKey = types.NewTipSetKey(cids...)
+			ts, err := chainAPI.ChainGetTipSet(req.Context, tsKey)
+			if err != nil {
+				return err
+			}
+			fileName = fmt.Sprintf("tipset-%d-traces.json", ts.Height())
+		} else if height := req.Options["height"].(int64); height != -1 {
+			ts, err := chainAPI.ChainGetTipSetByHeight(req.Context, abi.ChainEpoch(height), types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+			tsKey = ts.Key()
+			fileName = fmt.Sprintf("tipset-%d-traces.json", ts.Height())
+		} else {
+			return fmt.Errorf("either 'tskey' or 'message' option is required")
+		}
+
+		tsRet, err := env.(*node.Env).SyncerAPI.ReplayTipset(req.Context, tsKey)
+		if err != nil {
+			return err
+		}
+
+		var result interface{} = tsRet
+		// 'outFile' option is set to empty string as default
+		var outFile = req.Options["outFile"].(string)
+
+		if nil != msg {
+			for _, msgRet := range tsRet.MsgRets {
+				outMsg := msgRet.ExecutionTrace.Msg
+				if outMsg != nil && outMsg.From == msg.From && outMsg.Nonce == msg.Nonce {
+					result = msgRet
+					break
+				}
+			}
+			if result == nil {
+				// should never happen.
+				return re.Emit(fmt.Sprintf("can't find message:%s", msg.Cid().String()))
+			}
+		} else if len(outFile) == 0 {
+			// whole tipset traces has a huge output, it's better to write to file
+			outFile = "./"
+		}
+
+		if len(outFile) != 0 {
+			if outFile[len(outFile)-1] == '/' {
+				outFile = path.Join(outFile, fileName)
+				if !path.IsAbs(outFile) {
+					base, _ := os.Getwd()
+					outFile = path.Join(base, outFile)
+				}
+			}
+			outData, _ := json.MarshalIndent(result, "", " ")
+			if err := os.WriteFile(outFile, outData, os.ModePerm); err != nil {
+				return err
+			}
+			result = fmt.Sprintf("state trace is saved to:%s", outFile)
+		}
+
+		return re.Emit(result)
+	},
 }
