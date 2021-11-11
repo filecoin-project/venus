@@ -3,8 +3,8 @@ package vmcontext
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -49,8 +49,6 @@ type VM struct {
 	currentEpoch abi.ChainEpoch
 	pricelist    gas.Pricelist
 
-	vmDebug  bool // open debug or not
-	debugger *VMDebugMsg
 	vmOption VmOption
 
 	State tree.Tree
@@ -75,7 +73,7 @@ type ActorImplLookup interface {
 	GetActorImpl(code cid.Cid, rt runtime.Runtime) (dispatch.Dispatcher, *dispatch.ExcuteError)
 }
 
-func VmMessageFromUnsignedMessage(msg *types.UnsignedMessage) VmMessage { //nolint
+func VmMessageFromUnsignedMessage(msg *types.UnsignedMessage) VmMessage { // nolint
 	return VmMessage{
 		From:   msg.From,
 		To:     msg.To,
@@ -118,12 +116,6 @@ func NewVM(actorImpls ActorImplLookup, vmOption VmOption) (*VM, error) {
 		// loaded during execution
 		// currentEpoch: ..,
 	}, nil
-}
-
-// nolint
-func (vm *VM) setDebugger() {
-	vm.debugger = NewVMDebugMsg()
-	vm.vmDebug = true
 }
 
 // ApplyGenesisMessage forces the execution of a message in the vm actor.
@@ -214,10 +206,15 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 			if err != nil {
 				return cid.Undef, nil, xerrors.Errorf("can not Flush vm State To db %vs", err)
 			}
-			if cb != nil {
-				if err := cb(cid.Undef, cronMessage, ret); err != nil {
-					return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
-				}
+
+			if vm.vmOption.RecordTraces {
+				ret.RootCid = pstate
+			}
+
+			if err := callCb(cb, cid.Undef,
+				implicitMessageToUnsignedMsg(cronMessage, uint64(epoch),
+					constants.BlockGasLimit*10000), ret); err != nil {
+				return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
 			}
 		}
 		// handle State forks
@@ -269,31 +266,17 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, ret.OutPuts.MinerPenalty)
 			minerGasRewardTotal = big.Add(minerGasRewardTotal, ret.OutPuts.MinerTip)
 			receipts = append(receipts, ret.Receipt)
-			if cb != nil {
-				if err := cb(mcid, VmMessageFromUnsignedMessage(m.VMMessage()), ret); err != nil {
-					return cid.Undef, nil, err
-				}
+
+			if vm.vmOption.RecordTraces {
+				ret.RootCid, _ = vm.Flush()
 			}
+
+			if err = callCb(cb, mcid, m.VMMessage(), ret); err != nil {
+				return cid.Undef, nil, err
+			}
+
 			// flag msg as seen
 			seenMsgs[mcid] = struct{}{}
-
-			//write debug messager
-			if vm.vmDebug {
-				rootCid, _ := vm.Flush()
-
-				vm.debugger.Println("message:", mcid, "  root:", rootCid)
-				msgGasOutput, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
-				vm.debugger.Println(string(msgGasOutput))
-
-				var valuedTraces []*types.GasTrace
-				for _, trace := range ret.GasTracker.ExecutionTrace.GasCharges {
-					if trace.TotalGas > 0 {
-						valuedTraces = append(valuedTraces, trace)
-					}
-				}
-				tracesBytes, _ := json.MarshalIndent(valuedTraces, "", "\t")
-				vm.debugger.Println(string(tracesBytes))
-			}
 		}
 
 		// Pay block reward.
@@ -303,16 +286,16 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 		if err != nil {
 			return cid.Undef, nil, err
 		}
-		if cb != nil {
-			if err := cb(cid.Undef, rewardMessage, ret); err != nil {
-				return cid.Undef, nil, xerrors.Errorf("callback failed on reward message: %w", err)
-			}
+		if vm.vmOption.RecordTraces {
+			ret.RootCid, _ = vm.Flush()
 		}
 
-		if vm.vmDebug {
-			root, _ := vm.State.Flush(context.TODO())
-			vm.debugger.Println("reward: ", index, " root: ", root)
+		if err := callCb(cb, cid.Undef,
+			implicitMessageToUnsignedMsg(rewardMessage, uint64(epoch),
+				1<<30), ret); err != nil {
+			return cid.Undef, nil, xerrors.Errorf("callback failed on reward message: %w", err)
 		}
+
 		vmlog.Infof("process block %v time %v", index, time.Since(toProcessBlock).Milliseconds())
 	}
 
@@ -324,21 +307,18 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 	if err != nil {
 		return cid.Undef, nil, err
 	}
-	if cb != nil {
-		if err := cb(cid.Undef, cronMessage, ret); err != nil {
-			return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
-		}
+
+	if vm.vmOption.RecordTraces {
+		ret.RootCid, _ = vm.Flush()
+	}
+
+	if err := callCb(cb, cid.Undef,
+		implicitMessageToUnsignedMsg(cronMessage, uint64(epoch),
+			constants.BlockGasLimit*10000), ret); err != nil {
+		return cid.Undef, nil, xerrors.Errorf("callback failed on reward message: %w", err)
 	}
 
 	vmlog.Infof("process cron: %v", time.Since(toProcessCron).Milliseconds())
-	if vm.vmDebug {
-		root, _ := vm.State.Flush(context.TODO())
-		vm.debugger.Printfln("after cron root: %s", root)
-
-		receipt, _ := json.MarshalIndent(receipts, "", "\t")
-		vm.debugger.Println(string(receipt))
-		vm.debugger.WriteToTerminal()
-	}
 	// commit stateView
 	root, err := vm.Flush()
 	if err != nil {
@@ -390,6 +370,7 @@ func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 		return nil, fmt.Errorf("invalid exit code %d during implicit message execution: From %s, To %s, Method %d, Value %s, Params %v",
 			code, imsg.From, imsg.To, imsg.Method, imsg.Value, imsg.Params)
 	}
+
 	return &Ret{
 		GasTracker: gasTank,
 		OutPuts:    gas.GasOutputs{},
@@ -420,6 +401,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 	// (see: `invocationContext.invoke()` for the dispatch and execution)
 	// initiate gas tracking
 	gasTank := gas.NewGasTracker(msg.GasLimit)
+	gasTank.ExecutionTrace.Msg = msg
 	// pre-send
 	// 1. charge for message existence
 	// 2. load sender actor
@@ -431,7 +413,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 
 	// 1. charge for bytes used in chain
 	msgGasCost := vm.pricelist.OnChainMessage(onChainMsgSize) //todo get price list by height
-	ok := gasTank.TryCharge(msgGasCost)
+	ok := gasTank.TryCharge(msgGasCost, 0)
 	if !ok {
 		gasOutputs := gas.ZeroGasOutputs()
 		gasOutputs.MinerPenalty = big.Mul(vm.vmOption.BaseFee, big.NewInt(msgGasCost.Total()))
@@ -561,7 +543,7 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 
 	// 1. charge for the space used by the return Value
 	// Note: the GasUsed in the message receipt does not
-	ok = gasTank.TryCharge(vm.pricelist.OnChainReturnValue(len(ret)))
+	ok = gasTank.TryCharge(vm.pricelist.OnChainReturnValue(len(ret)), 0)
 	if !ok {
 		// Insufficient gas remaining To cover the on-chain return Value; proceed as in the case
 		// of Method execution failure.
@@ -867,4 +849,44 @@ func makeCronTickMessage() VmMessage {
 		Method: cron.Methods.EpochTick,
 		Params: []byte{},
 	}
+}
+
+func implicitMessageToUnsignedMsg(cronMsg VmMessage, epoch, gasLimit uint64) *types.UnsignedMessage {
+	var params []byte
+	if m, isok := cronMsg.Params.(cbg.CBORMarshaler); isok {
+		buf := new(bytes.Buffer)
+		_ = m.MarshalCBOR(buf)
+		params = buf.Bytes()
+	} else {
+		params, _ = cronMsg.Params.([]byte)
+	}
+	return &types.Message{
+		From:       builtin.SystemActorAddr,
+		To:         cron.Address,
+		Nonce:      epoch,
+		Value:      types.NewInt(0),
+		GasFeeCap:  types.NewInt(0),
+		GasPremium: types.NewInt(0),
+		GasLimit:   int64(gasLimit),
+		Method:     cronMsg.Method,
+		Params:     params,
+	}
+}
+
+func callCb(cb ExecCallBack, mcid cid.Cid, msg *types.UnsignedMessage, ret *Ret) error {
+	if cb == nil {
+		return nil
+	}
+
+	if mcid.Equals(cid.Undef) {
+		mcid = msg.Cid()
+	}
+
+	ret.GasTracker.ExecutionTrace.Msg = msg
+	ret.GasTracker.ExecutionTrace.MsgRct = &types.MessageReceipt{
+		ExitCode:    ret.Receipt.ExitCode,
+		ReturnValue: ret.Receipt.ReturnValue,
+		GasUsed:     ret.GasTracker.GasUsed,
+	}
+	return cb(mcid, ret.GasTracker.ExecutionTrace.Msg, ret)
 }

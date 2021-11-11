@@ -341,13 +341,13 @@ type {{.Name}}Struct struct {
 
 {{ if gt (len .Methods) 0 }}
      Internal struct {
-   		{{range .Methods}}	{{.Name}} func({{.NamedParams}}) ({{.Results}}) `+"`"+`{{range .Tags}}{{index . 0}}:"{{index . 1}}"{{end}}`+"`"+`
+   		{{range .Methods}}	{{.Name}} func({{.NamedParams}}) ({{.MsgRets}}) `+"`"+`{{range .Tags}}{{index . 0}}:"{{index . 1}}"{{end}}`+"`"+`
   		{{end}}
      }
 {{ end }}
 }
 
-{{range .Methods}}  func(s *{{$name}}Struct) {{.Name}} ({{.NamedParams}}) ({{.Results}}){
+{{range .Methods}}  func(s *{{$name}}Struct) {{.Name}} ({{.NamedParams}}) ({{.MsgRets}}){
    return s.Internal.{{.Name}}({{.ParamNames}})
 }
 

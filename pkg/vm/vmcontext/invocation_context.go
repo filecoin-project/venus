@@ -30,6 +30,15 @@ import (
 
 var gasOnActorExec = gas.NewGasCharge("OnActorExec", 0, 0)
 
+var gasOnSetActor = func(addr address.Address, act *types.Actor) gas.GasCharge {
+	gasCharge := gas.NewGasCharge("OnSetActor", 0, 0)
+	gasCharge.Extra = struct {
+		types.Actor
+		Addr address.Address
+	}{Actor: *act, Addr: addr}
+	return gasCharge
+}
+
 // Context for a top-level invocation sequence.
 type topLevelContext struct {
 	originatorStableAddress address.Address // Stable (public key) address of the top-level message sender.
@@ -468,7 +477,7 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 	// 4. invoke
 	ret, code := newCtx.invoke()
 	if code == 0 {
-		_ = ctx.gasTank.TryCharge(gasOnActorExec)
+		_ = ctx.gasTank.TryCharge(gasOnActorExec, 1)
 		if err := out.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
 			runtime.Abortf(exitcode.ErrSerialization, "failed To unmarshal return Value: %s", err)
 		}
@@ -554,7 +563,7 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 		panic(err)
 	}
 
-	_ = ctx.gasTank.TryCharge(gasOnActorExec)
+	_ = ctx.gasTank.TryCharge(gasOnActorExec, 0)
 }
 
 // DeleteActor implements runtime.ExtendedInvocationContext.
@@ -595,7 +604,7 @@ func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 		panic(aerrors.Fatalf("failed to delete actor: %s", err))
 	}
 
-	_ = ctx.gasTank.TryCharge(gasOnActorExec)
+	_ = ctx.gasTank.TryCharge(gasOnActorExec, 0)
 }
 
 func (ctx *invocationContext) stateView() SyscallsStateView {

@@ -871,6 +871,7 @@ type ISyncerStruct struct {
 		SyncState                func(p0 context.Context) (*apitypes.SyncState, error)                                               `perm:"read"`
 		SyncSubmitBlock          func(p0 context.Context, p1 *types.BlockMsg) error                                                  `perm:"read"`
 		SyncerTracker            func(p0 context.Context) *syncTypes.TargetTracker                                                   `perm:"read"`
+		ReplayTipset             func(p0 context.Context, p1 types.TipSetKey) (*types.TipsetInvokeResult, error)                     `perm:"read"`
 	}
 }
 
@@ -904,6 +905,10 @@ func (s *ISyncerStruct) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg) 
 
 func (s *ISyncerStruct) SyncerTracker(p0 context.Context) *syncTypes.TargetTracker {
 	return s.Internal.SyncerTracker(p0)
+}
+
+func (s *ISyncerStruct) ReplayTipset(p0 context.Context, p1 types.TipSetKey) (*types.TipsetInvokeResult, error) {
+	return s.Internal.ReplayTipset(p0, p1)
 }
 
 type IWalletStruct struct {

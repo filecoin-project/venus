@@ -23,6 +23,7 @@ import (
 // the most theoretically obvious or pleasing and should not be considered
 // finalized.
 type Protocol interface {
+	RunStateTransitionCallback(ctx context.Context, ts *types.TipSet, parentStateRoot cid.Cid, back vm.ExecCallBack) (root cid.Cid, receipt cid.Cid, err error)
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateID`.  It returns an error if the transition is invalid.
 	RunStateTransition(ctx context.Context, ts *types.TipSet, parentStateRoot cid.Cid) (root cid.Cid, receipt cid.Cid, err error)

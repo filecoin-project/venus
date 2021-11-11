@@ -73,7 +73,7 @@ type ExecuteTipsetResult struct {
 
 	// AppliedMessages stores the messages that were applied, in the order they
 	// were applied. It includes implicit messages (cron, rewards).
-	AppliedMessages []*vm.VmMessage
+	AppliedMessages []*types.UnsignedMessage
 	// AppliedResults stores the results of AppliedMessages, in the same order.
 	AppliedResults []*vm.Ret
 }
@@ -187,12 +187,12 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 	}
 
 	var (
-		messages []*vm.VmMessage
+		messages []*types.UnsignedMessage
 		results  []*vm.Ret
 	)
 
-	postcid, receipt, err := lvm.ApplyTipSetMessages(blocks, nil, parentEpoch, execEpoch, func(_ cid.Cid, msg vm.VmMessage, ret *vm.Ret) error {
-		messages = append(messages, &msg)
+	postcid, receipt, err := lvm.ApplyTipSetMessages(blocks, nil, parentEpoch, execEpoch, func(_ cid.Cid, msg *types.UnsignedMessage, ret *vm.Ret) error {
+		messages = append(messages, msg)
 		results = append(results, ret)
 		return nil
 	})
