@@ -150,6 +150,8 @@ func (b *BlockHeader) Equals(other *BlockHeader) bool {
 func (b *BlockHeader) SignatureData() []byte {
 	tmp := *b
 	tmp.BlockSig = nil
+	tmp.cachedBytes = nil
+	tmp.cachedCid = cid.Undef
 	return tmp.ToNode().RawData()
 }
 
