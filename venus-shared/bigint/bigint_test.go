@@ -2,15 +2,7 @@ package bigint
 
 import (
 	"bytes"
-	"math/big"
-	"math/rand"
-	"strings"
 	"testing"
-	"time"
-
-	"github.com/docker/go-units"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestBigIntSerializationRoundTrip(t *testing.T) {
