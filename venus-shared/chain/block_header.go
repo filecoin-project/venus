@@ -12,8 +12,6 @@ import (
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	node "github.com/ipfs/go-ipld-format"
 )
 
 // DecodeBlock decodes raw cbor bytes into a BlockHeader.
@@ -22,8 +20,6 @@ func DecodeBlock(b []byte) (*BlockHeader, error) {
 	if err := out.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
 		return nil, err
 	}
-
-	out.cachedBytes = b
 
 	return &out, nil
 }
@@ -83,51 +79,17 @@ type BlockHeader struct {
 	//identical for all blocks in same tipset: the base fee after executing parent tipset
 	ParentBaseFee abi.TokenAmount
 
-	cachedCid cid.Cid
-
-	cachedBytes []byte
-
 	validated bool // internal, true if the signature has been validated
 }
 
 // Cid returns the content id of this newBlock.
 func (b *BlockHeader) Cid() cid.Cid {
-	c, err := b.cid()
+	c, _, err := b.SerializeWithCid()
 	if err != nil {
 		panic(err)
 	}
 
 	return c
-}
-
-func (b *BlockHeader) cid() (cid.Cid, error) {
-	if b.cachedCid == cid.Undef {
-		data, err := b.Serialize()
-		if err != nil {
-			return cid.Undef, err
-		}
-
-		b.cachedCid, err = abi.CidBuilder.Sum(data)
-		if err != nil {
-			return cid.Undef, err
-		}
-	}
-
-	return b.cachedCid, nil
-}
-
-// ToNode converts the BlockHeader to an IPLD node.
-func (b *BlockHeader) ToNode() node.Node {
-	blk, err := b.ToStorageBlock()
-	if err != nil {
-		panic(err)
-	}
-
-	n, err := cbor.DecodeBlock(blk)
-	if err != nil {
-		panic(err)
-	}
-	return n
 }
 
 func (b *BlockHeader) String() string {
@@ -147,36 +109,39 @@ func (b *BlockHeader) Equals(other *BlockHeader) bool {
 
 // SignatureData returns the newBlock's bytes with a null signature field for
 // signature creation and verification
-func (b *BlockHeader) SignatureData() []byte {
+func (b *BlockHeader) SignatureData() ([]byte, error) {
 	tmp := *b
 	tmp.BlockSig = nil
-	tmp.cachedBytes = nil
-	tmp.cachedCid = cid.Undef
-	return tmp.ToNode().RawData()
+	return tmp.Serialize()
 }
 
 // Serialize serialize blockheader to binary
 func (b *BlockHeader) Serialize() ([]byte, error) {
-	if len(b.cachedBytes) == 0 {
-		buf := new(bytes.Buffer)
-		if err := b.MarshalCBOR(buf); err != nil {
-			return nil, err
-		}
-
-		b.cachedBytes = buf.Bytes()
+	buf := new(bytes.Buffer)
+	if err := b.MarshalCBOR(buf); err != nil {
+		return nil, err
 	}
 
-	return b.cachedBytes, nil
+	return buf.Bytes(), nil
+}
+
+func (b *BlockHeader) SerializeWithCid() (cid.Cid, []byte, error) {
+	data, err := b.Serialize()
+	if err != nil {
+		return cid.Undef, nil, err
+	}
+
+	c, err := abi.CidBuilder.Sum(data)
+	if err != nil {
+		return cid.Undef, nil, err
+	}
+
+	return c, data, nil
 }
 
 // ToStorageBlock convert blockheader to data block with cid
 func (b *BlockHeader) ToStorageBlock() (blocks.Block, error) {
-	data, err := b.Serialize()
-	if err != nil {
-		return nil, err
-	}
-
-	c, err := b.cid()
+	c, data, err := b.SerializeWithCid()
 	if err != nil {
 		return nil, err
 	}
