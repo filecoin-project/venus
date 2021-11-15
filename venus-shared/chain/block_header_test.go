@@ -31,17 +31,19 @@ func TestBlockHeaderMarshal(t *testing.T) {
 
 	bh, err := DecodeBlock(b)
 	assert.NoError(t, err, "decode block header")
-	// make sure cached bytes during decoding will not influence the following tests
-	bh.cachedBytes = nil
 
 	assert.Equal(t, maddr, bh.Miner, "check for miner")
-	assert.Equal(t, signb, bh.SignatureData(), "check for signature data")
+	signdata, err := bh.SignatureData()
+	assert.NoError(t, err, "call bh.SignatureData")
+	assert.Equal(t, signb, signdata, "check for signature data")
+
+	assert.Equal(t, c, bh.Cid(), "check for bh.Cid()")
+	serialized, err := bh.Serialize()
+	assert.NoError(t, err, "call bh.Serialize")
+	assert.Equal(t, b, serialized, "check for bh.Serialize()")
 
 	blk, err := bh.ToStorageBlock()
-	assert.NoError(t, err, "ToStorageBlock")
-
-	assert.Equal(t, c, bh.cachedCid, "check for cachedCid")
-	assert.Equal(t, b, bh.cachedBytes, "check for cachedBytes")
+	assert.NoError(t, err, "call bh.ToStorageBlock")
 
 	assert.Equal(t, c, blk.Cid(), "check for blk.Cid()")
 	assert.Equal(t, b, blk.RawData(), "check for blk.RawData()")
