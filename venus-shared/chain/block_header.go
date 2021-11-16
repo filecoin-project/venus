@@ -94,11 +94,16 @@ func (b *BlockHeader) Cid() cid.Cid {
 
 func (b *BlockHeader) String() string {
 	errStr := "(error encoding BlockHeader)"
-	c := b.Cid()
+	c, _, err := b.SerializeWithCid()
+	if err != nil {
+		return errStr
+	}
+
 	js, err := json.MarshalIndent(b, "", "  ")
 	if err != nil {
 		return errStr
 	}
+
 	return fmt.Sprintf("BlockHeader cid=[%v]: %s", c, string(js))
 }
 

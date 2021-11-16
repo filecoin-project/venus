@@ -32,6 +32,8 @@ func main() {
 				chain.Ticket{},
 				chain.ElectionProof{},
 				chain.BeaconEntry{},
+				chain.Message{},
+				chain.SignedMessage{},
 			},
 		},
 	}
