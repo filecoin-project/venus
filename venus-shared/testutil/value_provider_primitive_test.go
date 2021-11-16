@@ -3,16 +3,21 @@ package testutil
 import (
 	"encoding/hex"
 	"math/rand"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDefaultBytes(t *testing.T) {
+func getRand() *rand.Rand {
 	seed := time.Now().UnixNano()
 	rand.Seed(seed)
-	local := rand.New(rand.NewSource(seed))
+	return rand.New(rand.NewSource(seed))
+}
+
+func TestDefaultBytes(t *testing.T) {
+	local := getRand()
 
 	for i := 0; i < 16; i++ {
 		var b []byte
@@ -27,9 +32,7 @@ func TestDefaultBytes(t *testing.T) {
 }
 
 func TestDefaultString(t *testing.T) {
-	seed := time.Now().UnixNano()
-	rand.Seed(seed)
-	local := rand.New(rand.NewSource(seed))
+	local := getRand()
 
 	for i := 0; i < 16; i++ {
 		var s string
@@ -43,9 +46,7 @@ func TestDefaultString(t *testing.T) {
 }
 
 func TestDefaultInt(t *testing.T) {
-	seed := time.Now().UnixNano()
-	rand.Seed(seed)
-	local := rand.New(rand.NewSource(seed))
+	local := getRand()
 
 	for i := 0; i < 16; i++ {
 		var n int
@@ -54,10 +55,70 @@ func TestDefaultInt(t *testing.T) {
 	}
 }
 
+func TestDefaultInt64(t *testing.T) {
+	assert.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(int64(0))))
+
+	local := getRand()
+
+	for i := 0; i < 16; i++ {
+		var n int64
+		Provide(t, &n)
+		assert.Equal(t, n, int64(local.Int()))
+	}
+}
+
+func TestDefaultInt32(t *testing.T) {
+	assert.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(int32(0))))
+
+	local := getRand()
+
+	for i := 0; i < 16; i++ {
+		var n int32
+		Provide(t, &n)
+		assert.Equal(t, n, int32(local.Int()))
+	}
+}
+
+func TestDefaultFloat64(t *testing.T) {
+	assert.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(float64(0))))
+
+	local := getRand()
+
+	for i := 0; i < 16; i++ {
+		var n float64
+		Provide(t, &n)
+		assert.Equal(t, n, float64(local.Int()))
+	}
+}
+
+func TestDefaultIntType(t *testing.T) {
+	type number int
+	assert.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(number(0))))
+
+	local := getRand()
+
+	for i := 0; i < 16; i++ {
+		var n number
+		Provide(t, &n)
+		assert.Equal(t, n, number(local.Int()))
+	}
+}
+
+func TestDefaultFloatType(t *testing.T) {
+	type double float64
+	assert.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(double(0))))
+
+	local := getRand()
+
+	for i := 0; i < 16; i++ {
+		var n double
+		Provide(t, &n)
+		assert.Equal(t, n, double(local.Int()))
+	}
+}
+
 func TestDefaultIntSlice(t *testing.T) {
-	seed := time.Now().UnixNano()
-	rand.Seed(seed)
-	local := rand.New(rand.NewSource(seed))
+	local := getRand()
 
 	var dest []int
 	Provide(t, &dest)
@@ -66,10 +127,21 @@ func TestDefaultIntSlice(t *testing.T) {
 	assert.Equal(t, dest[0], local.Int())
 }
 
+func TestDefaultIntTypeSlice(t *testing.T) {
+	type number int
+	assert.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(number(0))))
+
+	local := getRand()
+
+	var dest []number
+	Provide(t, &dest)
+
+	assert.Len(t, dest, 1)
+	assert.Equal(t, dest[0], number(local.Int()))
+}
+
 func TestDefaultNonNilIntSlice(t *testing.T) {
-	seed := time.Now().UnixNano()
-	rand.Seed(seed)
-	local := rand.New(rand.NewSource(seed))
+	local := getRand()
 
 	dest := make([]int, 16)
 	Provide(t, &dest)
@@ -99,9 +171,7 @@ func TestIntSliceWithFixedNumber(t *testing.T) {
 }
 
 func TestDefaultIntArray(t *testing.T) {
-	seed := time.Now().UnixNano()
-	rand.Seed(seed)
-	local := rand.New(rand.NewSource(seed))
+	local := getRand()
 
 	var dest [16]int
 	Provide(t, &dest)
@@ -115,9 +185,7 @@ func TestDefaultIntArray(t *testing.T) {
 }
 
 func TestStruct(t *testing.T) {
-	seed := time.Now().UnixNano()
-	rand.Seed(seed)
-	local := rand.New(rand.NewSource(seed))
+	local := getRand()
 
 	type inner struct {
 		Public  []int
@@ -134,9 +202,7 @@ func TestStruct(t *testing.T) {
 }
 
 func TestNestedStruct(t *testing.T) {
-	seed := time.Now().UnixNano()
-	rand.Seed(seed)
-	local := rand.New(rand.NewSource(seed))
+	local := getRand()
 
 	type nested struct {
 		Ints []int

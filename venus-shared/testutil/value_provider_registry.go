@@ -89,6 +89,14 @@ func (r *valueProviderRegistry) register(fn interface{}) error {
 	return nil
 }
 
+func (r *valueProviderRegistry) has(want reflect.Type) bool {
+	r.RLock()
+	_, has := r.providers[want]
+	r.RUnlock()
+
+	return has
+}
+
 func (r *valueProviderRegistry) provide(t *testing.T, rval reflect.Value) {
 	rtyp := rval.Type()
 	if !rval.CanSet() {
@@ -101,6 +109,22 @@ func (r *valueProviderRegistry) provide(t *testing.T, rval reflect.Value) {
 	if ok {
 		ret := provider.Call([]reflect.Value{reflect.ValueOf(t)})
 		rval.Set(ret[0])
+		return
+	}
+
+	r.RLock()
+	var convertor reflect.Value
+	for pt := range r.providers {
+		if pt.ConvertibleTo(rtyp) {
+			convertor = r.providers[pt]
+			break
+		}
+	}
+	r.RUnlock()
+
+	if convertor.IsValid() {
+		ret := convertor.Call([]reflect.Value{reflect.ValueOf(t)})
+		rval.Set(ret[0].Convert(rtyp))
 		return
 	}
 
