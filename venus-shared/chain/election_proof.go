@@ -8,8 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/minio/blake2b-simd"
 
-	"github.com/filecoin-project/venus/venus-shared/bigint"
-	"github.com/filecoin-project/venus/venus-shared/constants"
+	"github.com/filecoin-project/venus/venus-shared/chain/params"
 )
 
 // A Ticket is a marker of a tick of the blockchain's clock.  It is the source
@@ -37,7 +36,7 @@ func (t *Ticket) Less(o *Ticket) bool {
 
 func (t *Ticket) Quality() float64 {
 	ticketHash := blake2b.Sum256(t.VRFProof)
-	ticketNum := bigint.BigFromBytes(ticketHash[:]).Int
+	ticketNum := BigFromBytes(ticketHash[:]).Int
 	ticketDenu := big.NewInt(1)
 	ticketDenu.Lsh(ticketDenu, 256)
 	tv, _ := new(big.Rat).SetFrac(ticketNum, ticketDenu).Float64()
@@ -62,8 +61,6 @@ type ElectionProof struct {
 }
 
 const precision = 256
-
-var blocksPerEpoch = big.NewInt(0).SetUint64(constants.BlocksPerEpoch)
 
 var (
 	expNumCoef  []*big.Int
@@ -150,13 +147,11 @@ func polyval(p []*big.Int, x *big.Int) *big.Int {
 
 // computes lambda in Q.256
 func lambda(power, totalPower *big.Int) *big.Int {
-	lam := new(big.Int).Mul(power, blocksPerEpoch)       // Q.0
+	lam := new(big.Int).Mul(power, blocksPerEpochBig)    // Q.0
 	lam = lam.Lsh(lam, precision)                        // Q.256
 	lam = lam.Div(lam /* Q.256 */, totalPower /* Q.0 */) // Q.256
 	return lam
 }
-
-var MaxWinCount = 3 * int64(constants.BlocksPerEpoch)
 
 type poiss struct {
 	lam  *big.Int
@@ -247,7 +242,7 @@ func (ep *ElectionProof) ComputeWinCount(power abi.StoragePower, totalPower abi.
 	p, rhs := newPoiss(lam)
 
 	var j int64
-	for lhs.Cmp(rhs) < 0 && j < MaxWinCount {
+	for lhs.Cmp(rhs) < 0 && j < params.MaxWinCount {
 		rhs = p.next()
 		j++
 	}
