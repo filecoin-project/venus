@@ -34,6 +34,11 @@ func main() {
 				chain.BeaconEntry{},
 				chain.Message{},
 				chain.SignedMessage{},
+				chain.Actor{},
+				chain.MessageRoot{},
+				chain.MessageReceipt{},
+				chain.BlockMsg{},
+				chain.ExpTipSet{},
 			},
 		},
 	}
