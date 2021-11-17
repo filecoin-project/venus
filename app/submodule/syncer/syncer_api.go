@@ -229,12 +229,12 @@ func (sa *syncerAPI) ReplayTipset(ctx context.Context, tsKey types.TipSetKey) (*
 	var results []*types.InvocResult
 
 	stateRoot, _, err := sa.syncer.Consensus.RunStateTransitionCallback(ctx, ts, ts.ParentState(),
-		func(cid cid.Cid, message vmcontext.VmMessage, ret *vmcontext.Ret) error {
+		func(cid cid.Cid, msg *types.UnsignedMessage, ret *vmcontext.Ret) error {
 			results = append(results, &types.InvocResult{
 				StateRootAfterApply: ret.RootCid,
 				MsgCid:              cid,
 				MsgRct:              &ret.Receipt,
-				Msg:                 &message,
+				Msg:                 &msg,
 				GasCost: &types.MsgGasCost{
 					Message:            cid,
 					GasUsed:            abi.NewTokenAmount(ret.Receipt.GasUsed),

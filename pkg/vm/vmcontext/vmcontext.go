@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -72,7 +73,7 @@ type ActorImplLookup interface {
 	GetActorImpl(code cid.Cid, rt runtime.Runtime) (dispatch.Dispatcher, *dispatch.ExcuteError)
 }
 
-func VmMessageFromUnsignedMessage(msg *types.UnsignedMessage) VmMessage { //nolint
+func VmMessageFromUnsignedMessage(msg *types.UnsignedMessage) VmMessage { // nolint
 	return VmMessage{
 		From:   msg.From,
 		To:     msg.To,
@@ -211,7 +212,8 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 			}
 
 			if cb != nil {
-				if err := cb(cid.Undef, cronMessage, ret); err != nil {
+				if err := cb(cid.Undef, implicitMessageToUnsignedMsg(cronMessage, uint64(epoch),
+					constants.BlockGasLimit*10000), ret); err != nil {
 					return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
 				}
 			}
@@ -270,7 +272,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 				ret.RootCid, _ = vm.Flush()
 			}
 			if cb != nil {
-				if err := cb(mcid, VmMessageFromUnsignedMessage(m.VMMessage()), ret); err != nil {
+				if err := cb(mcid, m.VMMessage(), ret); err != nil {
 					return cid.Undef, nil, err
 				}
 			}
@@ -289,7 +291,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 			ret.RootCid, _ = vm.Flush()
 		}
 		if cb != nil {
-			if err := cb(cid.Undef, rewardMessage, ret); err != nil {
+			if err := cb(cid.Undef, implicitMessageToUnsignedMsg(rewardMessage, uint64(epoch), 1<<30), ret); err != nil {
 				return cid.Undef, nil, xerrors.Errorf("callback failed on reward message: %w", err)
 			}
 		}
@@ -310,7 +312,8 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 		ret.RootCid, _ = vm.Flush()
 	}
 	if cb != nil {
-		if err := cb(cid.Undef, cronMessage, ret); err != nil {
+		if err := cb(cid.Undef, implicitMessageToUnsignedMsg(cronMessage,
+			uint64(epoch), constants.BlockGasLimit*10000), ret); err != nil {
 			return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
 		}
 	}
@@ -373,7 +376,7 @@ func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 		Receipt: types.MessageReceipt{
 			ExitCode:    code,
 			ReturnValue: ret,
-			GasUsed:     0,
+			GasUsed:     gasTank.GasUsed,
 		},
 	}, nil
 }
@@ -844,5 +847,27 @@ func makeCronTickMessage() VmMessage {
 		Value:  big.Zero(),
 		Method: cron.Methods.EpochTick,
 		Params: []byte{},
+	}
+}
+
+func implicitMessageToUnsignedMsg(cronMsg VmMessage, epoch, gasLimit uint64) *types.UnsignedMessage {
+	var params []byte
+	if m, isok := cronMsg.Params.(cbg.CBORMarshaler); isok {
+		buf := new(bytes.Buffer)
+		_ = m.MarshalCBOR(buf)
+		params = buf.Bytes()
+	} else {
+		params, _ = cronMsg.Params.([]byte)
+	}
+	return &types.Message{
+		From:       builtin.SystemActorAddr,
+		To:         cron.Address,
+		Nonce:      epoch,
+		Value:      types.NewInt(0),
+		GasFeeCap:  types.NewInt(0),
+		GasPremium: types.NewInt(0),
+		GasLimit:   int64(gasLimit),
+		Method:     cronMsg.Method,
+		Params:     params,
 	}
 }
