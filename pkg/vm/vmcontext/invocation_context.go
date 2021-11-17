@@ -29,6 +29,8 @@ import (
 )
 
 var gasOnActorExec = gas.NewGasCharge("OnActorExec", 0, 0)
+var gasOnGetActor = gas.NewGasCharge("OnGetActor", 0, 0)
+var gasOnIpldGetEnd = gas.NewGasCharge("OnIpldGetEnd", 0, 0)
 
 // Context for a top-level invocation sequence.
 type topLevelContext struct {
@@ -309,7 +311,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 	}
 
 	// lookup the ActorID based on the address
-
+	ctx.gasTank.Charge(gas.NewGasCharge("OnGetActor", 0, 0), "GetActor address %s", target)
 	_, found, err = ctx.vm.State.GetActor(ctx.vm.context, target)
 	if err != nil {
 		panic(err)

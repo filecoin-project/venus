@@ -25,6 +25,8 @@ func (bs *GasChargeBlockStore) Get(c cid.Cid) (blocks.Block, error) {
 	if err != nil {
 		panic(xerrors.WithMessage(err, "failed to get block from blockstore"))
 	}
+	bs.gasTank.Charge(gasOnIpldGetEnd, "")
+	bs.gasTank.Charge(gasOnActorExec, "")
 	return blk, nil
 }
 
@@ -35,5 +37,7 @@ func (bs *GasChargeBlockStore) Put(blk blocks.Block) error {
 	if err := bs.inner.Put(blk); err != nil {
 		panic(xerrors.WithMessage(err, "failed to write data to disk"))
 	}
+
+	bs.gasTank.Charge(gasOnActorExec, "")
 	return nil
 }
