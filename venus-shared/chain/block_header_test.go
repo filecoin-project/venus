@@ -1,12 +1,15 @@
 package chain
 
 import (
+	"bytes"
 	"encoding/hex"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/filecoin-project/venus/venus-shared/testutil"
 )
 
 func TestBlockHeaderMarshal(t *testing.T) {
@@ -47,4 +50,49 @@ func TestBlockHeaderMarshal(t *testing.T) {
 
 	assert.Equal(t, c, blk.Cid(), "check for blk.Cid()")
 	assert.Equal(t, b, blk.RawData(), "check for blk.RawData()")
+}
+
+func TestBlockHeaderBasic(t *testing.T) {
+	var buf bytes.Buffer
+	sliceLen := 5
+	bytesLen := 32
+	for i := 0; i < 64; i++ {
+		var src, dst BlockHeader
+
+		opt := cborBasicTestOptions{
+			buf: &buf,
+			before: func() {
+				assert.Equal(t, src, dst)
+			},
+
+			provideOpts: []interface{}{
+				testutil.WithSliceLen(sliceLen),
+				testutil.BytesFixedProvider(bytesLen),
+				testutil.IDAddressProvider(),
+			},
+
+			provided: func() {
+				assert.Equal(t, src.Miner.Protocol(), address.ID, "miner addr proto")
+				assert.Len(t, src.Parents, sliceLen, "parents length")
+				assert.NotNil(t, src.ElectionProof, "ElectionProof")
+				assert.Len(t, src.ElectionProof.VRFProof, bytesLen, "VRFProof len")
+				assert.NotNil(t, src.BlockSig, "BlockSig")
+				assert.Len(t, src.BlockSig.Data, bytesLen, "BlockSig.Data len")
+				assert.NotNil(t, src.BLSAggregate, "BLSAggregate")
+				assert.Len(t, src.BLSAggregate.Data, bytesLen, "BLSAggregate.Data len")
+			},
+
+			marshaled: func(b []byte) {
+				decoded, err := DecodeBlock(b)
+				assert.NoError(t, err, "DecodeBlock")
+				assert.Equal(t, src, *decoded)
+			},
+
+			after: func() {
+				assert.Equal(t, src, dst)
+			},
+		}
+
+		cborBasicTest(t, &src, &dst, opt)
+	}
 }
