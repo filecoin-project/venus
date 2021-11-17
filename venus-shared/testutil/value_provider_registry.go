@@ -7,7 +7,22 @@ import (
 	"testing"
 )
 
-var typeT = reflect.TypeOf((*testing.T)(nil))
+var (
+	typeT   = reflect.TypeOf((*testing.T)(nil))
+	typeInt = reflect.TypeOf(int(0))
+)
+
+type OptionFunc func(*testing.T, *valueProviderRegistry)
+
+func WithSliceLen(size int) OptionFunc {
+	return func(t *testing.T, r *valueProviderRegistry) {
+		if size < 1 {
+			t.Fatalf("slice len must be >= 1, got %d", size)
+		}
+
+		r.opt.sliceLen = &size
+	}
+}
 
 func Provide(t *testing.T, dst interface{}, specifiedFns ...interface{}) {
 	rval := reflect.ValueOf(dst)
@@ -19,6 +34,12 @@ func Provide(t *testing.T, dst interface{}, specifiedFns ...interface{}) {
 	if len(specifiedFns) > 0 {
 		reg = defaultValueProviderRegistry.clone()
 		for fni := range specifiedFns {
+			fn := specifiedFns[fni]
+			if opt, ok := fn.(OptionFunc); ok {
+				opt(t, reg)
+				continue
+			}
+
 			if err := reg.register(specifiedFns[fni]); err != nil {
 				t.Fatalf("register specified provider %T for %T: %s", specifiedFns[fni], dst, err)
 			}
@@ -45,11 +66,16 @@ var defaultValueProviderRegistry = &valueProviderRegistry{
 type valueProviderRegistry struct {
 	sync.RWMutex
 	providers map[reflect.Type]reflect.Value
+
+	opt struct {
+		sliceLen *int
+	}
 }
 
 func (r *valueProviderRegistry) clone() *valueProviderRegistry {
 	cloned := &valueProviderRegistry{
 		providers: map[reflect.Type]reflect.Value{},
+		opt:       r.opt,
 	}
 
 	r.Lock()
@@ -112,6 +138,33 @@ func (r *valueProviderRegistry) provide(t *testing.T, rval reflect.Value) {
 		return
 	}
 
+	rkind := rtyp.Kind()
+	switch rkind {
+	case reflect.Int,
+		reflect.Int8,
+		reflect.Int16,
+		reflect.Int32,
+		reflect.Int64,
+		reflect.Uint,
+		reflect.Uint8,
+		reflect.Uint16,
+		reflect.Uint32,
+		reflect.Uint64,
+		reflect.Float32,
+		reflect.Float64:
+
+		r.RLock()
+		provider, ok = r.providers[typeInt]
+		r.RUnlock()
+
+	}
+
+	if ok {
+		ret := provider.Call([]reflect.Value{reflect.ValueOf(t)})
+		rval.Set(ret[0].Convert(rtyp))
+		return
+	}
+
 	r.RLock()
 	var convertor reflect.Value
 	for pt := range r.providers {
@@ -128,11 +181,15 @@ func (r *valueProviderRegistry) provide(t *testing.T, rval reflect.Value) {
 		return
 	}
 
-	rkind := rtyp.Kind()
 	switch rkind {
 	case reflect.Slice:
 		if rval.IsNil() || rval.Len() == 0 {
-			rval.Set(reflect.MakeSlice(rtyp, 1, 1))
+			size := 1
+			if r.opt.sliceLen != nil {
+				size = *r.opt.sliceLen
+			}
+
+			rval.Set(reflect.MakeSlice(rtyp, size, size))
 		}
 
 		for i := 0; i < rval.Len(); i++ {

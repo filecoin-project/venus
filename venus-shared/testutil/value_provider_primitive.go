@@ -19,13 +19,14 @@ const (
 
 func IntProvider(t *testing.T) int { return rand.Int() }
 
-func IntAtMostProvider(n int) func(*testing.T) int {
+func IntRangedProvider(min, max int) func(*testing.T) int {
 	return func(t *testing.T) int {
-		if n <= 0 {
-			t.Fatalf("get non-positive limit number %d", n)
+		gap := max - min
+		if gap <= 0 {
+			t.Fatalf("invalid range [%d, %d)", min, max)
 		}
 
-		return rand.Intn(n)
+		return min + rand.Intn(gap)
 	}
 }
 
