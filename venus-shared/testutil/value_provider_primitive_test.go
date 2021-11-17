@@ -127,6 +127,18 @@ func TestDefaultIntSlice(t *testing.T) {
 	assert.Equal(t, dest[0], local.Int())
 }
 
+func TestDefaultIntSliceWithLen(t *testing.T) {
+	local := getRand()
+
+	var dest []int
+	Provide(t, &dest, WithSliceLen(10))
+
+	assert.Len(t, dest, 10)
+	for i := range dest {
+		assert.Equal(t, dest[i], local.Int())
+	}
+}
+
 func TestDefaultIntTypeSlice(t *testing.T) {
 	type number int
 	assert.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(number(0))))
@@ -168,6 +180,32 @@ func TestIntSliceWithFixedNumber(t *testing.T) {
 	}
 
 	assert.Equal(t, expected, dest)
+}
+
+func TestIntSliceRanged(t *testing.T) {
+	min := 10
+	max := 20
+
+	dest := make([]int, 256)
+	Provide(t, &dest, IntRangedProvider(min, max))
+
+	for i := range dest {
+		assert.GreaterOrEqual(t, dest[i], min)
+		assert.Less(t, dest[i], max)
+	}
+}
+
+func TestNegativeIntSliceRanged(t *testing.T) {
+	min := -20
+	max := -10
+
+	dest := make([]int, 256)
+	Provide(t, &dest, IntRangedProvider(min, max))
+
+	for i := range dest {
+		assert.GreaterOrEqual(t, dest[i], min)
+		assert.Less(t, dest[i], max)
+	}
 }
 
 func TestDefaultIntArray(t *testing.T) {
