@@ -68,7 +68,8 @@ func constructTipSet(t *testing.T, height abi.ChainEpoch, parents []cid.Cid, par
 	testutil.Provide(t, &blkNum, testutil.IntRangedProvider(minBlockHeaderNumForTest, maxBlockHeaderNumForTest))
 
 	var bhs []*BlockHeader
-	testutil.Provide(t, &bhs, testutil.WithSliceLen(blkNum))
+	// use a max-int-limit of 1<<48 to prevent digit precision problem in json
+	testutil.Provide(t, &bhs, testutil.WithSliceLen(blkNum), testutil.IntRangedProvider(0, 1<<48))
 
 	require.GreaterOrEqual(t, len(bhs), minBlockHeaderNumForTest)
 	require.Less(t, len(bhs), maxBlockHeaderNumForTest)
@@ -115,4 +116,5 @@ func TestTipSetMethods(t *testing.T) {
 
 	child := constructTipSet(t, height+1, tsk.Cids(), BigMul(parentWeight, NewInt(2)))
 	require.True(t, child.IsChildOf(ts), "check if is child")
+	require.Equal(t, tsk.Cids(), child.Parents().Cids(), "child.Parents() == parent.Cids()")
 }
