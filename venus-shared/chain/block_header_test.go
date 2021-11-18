@@ -89,7 +89,10 @@ func TestBlockHeaderBasic(t *testing.T) {
 			},
 
 			Finished: func() {
+				assert.Equal(t, src.LastTicket(), dst.LastTicket())
 				assert.Equal(t, src, dst)
+				assert.Equal(t, src.String(), dst.String())
+				assert.True(t, src.Equals(&dst))
 			},
 		}
 

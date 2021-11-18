@@ -47,6 +47,10 @@ func TestBlockMsgBasic(t *testing.T) {
 				assert.NoError(t, err, "CidBuilder.Sum")
 
 				assert.NotEqual(t, bmCid, sumCid)
+
+				serialized, err := src.Serialize()
+				assert.NoError(t, err, "Serialize")
+				assert.Equal(t, b, serialized)
 			},
 
 			Finished: func() {
