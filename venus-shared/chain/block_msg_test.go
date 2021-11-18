@@ -19,27 +19,27 @@ func TestBlockMsgBasic(t *testing.T) {
 	for i := 0; i < 32; i++ {
 		var src, dst BlockMsg
 
-		opt := cborBasicTestOptions{
-			buf: &buf,
-			before: func() {
+		opt := testutil.CborErBasicTestOptions{
+			Buf: &buf,
+			Prepare: func() {
 				assert.Equal(t, src, dst)
 				assert.Nil(t, src.Header)
 				assert.Nil(t, src.BlsMessages)
 				assert.Nil(t, src.SecpkMessages)
 			},
 
-			provideOpts: []interface{}{
+			ProvideOpts: []interface{}{
 				testutil.WithSliceLen(msgLen),
 			},
 
-			provided: func() {
+			Provided: func() {
 				assert.NotEqual(t, src, dst, "value provided")
 				assert.NotNil(t, src.Header)
 				assert.NotEqual(t, emptyCids, src.BlsMessages)
 				assert.NotEqual(t, emptyCids, src.SecpkMessages)
 			},
 
-			marshaled: func(b []byte) {
+			Marshaled: func(b []byte) {
 				bmCid := src.Cid()
 				assert.Equal(t, bmCid, src.Header.Cid(), "Cid() result for BlockMsg")
 
@@ -49,11 +49,11 @@ func TestBlockMsgBasic(t *testing.T) {
 				assert.NotEqual(t, bmCid, sumCid)
 			},
 
-			after: func() {
+			Finished: func() {
 				assert.Equal(t, src, dst, "after unmarshaling")
 			},
 		}
 
-		cborBasicTest(t, &src, &dst, opt)
+		testutil.CborErBasicTest(t, &src, &dst, opt)
 	}
 }

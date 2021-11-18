@@ -59,19 +59,19 @@ func TestBlockHeaderBasic(t *testing.T) {
 	for i := 0; i < 64; i++ {
 		var src, dst BlockHeader
 
-		opt := cborBasicTestOptions{
-			buf: &buf,
-			before: func() {
+		opt := testutil.CborErBasicTestOptions{
+			Buf: &buf,
+			Prepare: func() {
 				assert.Equal(t, src, dst)
 			},
 
-			provideOpts: []interface{}{
+			ProvideOpts: []interface{}{
 				testutil.WithSliceLen(sliceLen),
 				testutil.BytesFixedProvider(bytesLen),
 				testutil.IDAddressProvider(),
 			},
 
-			provided: func() {
+			Provided: func() {
 				assert.Equal(t, src.Miner.Protocol(), address.ID, "miner addr proto")
 				assert.Len(t, src.Parents, sliceLen, "parents length")
 				assert.NotNil(t, src.ElectionProof, "ElectionProof")
@@ -82,17 +82,17 @@ func TestBlockHeaderBasic(t *testing.T) {
 				assert.Len(t, src.BLSAggregate.Data, bytesLen, "BLSAggregate.Data len")
 			},
 
-			marshaled: func(b []byte) {
+			Marshaled: func(b []byte) {
 				decoded, err := DecodeBlock(b)
 				assert.NoError(t, err, "DecodeBlock")
 				assert.Equal(t, src, *decoded)
 			},
 
-			after: func() {
+			Finished: func() {
 				assert.Equal(t, src, dst)
 			},
 		}
 
-		cborBasicTest(t, &src, &dst, opt)
+		testutil.CborErBasicTest(t, &src, &dst, opt)
 	}
 }
