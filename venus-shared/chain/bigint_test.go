@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/venus/venus-shared/testutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBigIntSerializationRoundTrip(t *testing.T) {
@@ -43,7 +43,7 @@ func TestBigIntParseErr(t *testing.T) {
 
 	for _, v := range testValues {
 		_, err := BigFromString(v)
-		assert.Error(t, err, "from invalid big int string")
+		require.Error(t, err, "from invalid big int string")
 	}
 }
 
@@ -72,8 +72,8 @@ func TestBigIntCalculating(t *testing.T) {
 		sum := BigAdd(a, b)
 		product := BigMul(a, b)
 
-		assert.True(t, BigSub(sum, a).Equals(b))
-		assert.True(t, BigDiv(product, a).Equals(b))
+		require.True(t, BigSub(sum, a).Equals(b))
+		require.True(t, BigDiv(product, a).Equals(b))
 
 		base := a
 		if base.IsZero() {
@@ -81,10 +81,10 @@ func TestBigIntCalculating(t *testing.T) {
 		}
 
 		base4 := BigMul(base, NewInt(4))
-		assert.Equal(t, BigDivFloat(base4, base), 4.0)
-		assert.Equal(t, BigDivFloat(base, base4), 0.25)
+		require.Equal(t, BigDivFloat(base4, base), 4.0)
+		require.Equal(t, BigDivFloat(base, base4), 0.25)
 
 		abs := base.Abs()
-		assert.True(t, BigMod(abs, BigAdd(abs, NewInt(1))).Equals(abs))
+		require.True(t, BigMod(abs, BigAdd(abs, NewInt(1))).Equals(abs))
 	}
 }

@@ -9,7 +9,7 @@ import (
 
 	"github.com/docker/go-units"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUnitStrs(t *testing.T) {
@@ -29,8 +29,8 @@ func TestUnitStrs(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		assert.Equal(t, c.size, SizeStr(NewInt(c.in)), "result of SizeStr")
-		assert.Equal(t, c.deci, DeciStr(NewInt(c.in)), "result of DeciStr")
+		require.Equal(t, c.size, SizeStr(NewInt(c.in)), "result of SizeStr")
+		require.Equal(t, c.deci, DeciStr(NewInt(c.in)), "result of DeciStr")
 	}
 }
 
@@ -43,10 +43,10 @@ func TestSizeStrUnitsSymmetry(t *testing.T) {
 		l := strings.ReplaceAll(units.BytesSize(float64(n)), " ", "")
 		r := strings.ReplaceAll(SizeStr(NewInt(n)), " ", "")
 
-		assert.NotContains(t, l, "e+")
-		assert.NotContains(t, r, "e+")
+		require.NotContains(t, l, "e+")
+		require.NotContains(t, r, "e+")
 
-		assert.Equal(t, l, r, "wrong formatting for %d", n)
+		require.Equal(t, l, r, "wrong formatting for %d", n)
 	}
 }
 
@@ -54,6 +54,6 @@ func TestSizeStrBig(t *testing.T) {
 	ZiB := big.NewInt(50000)
 	ZiB = ZiB.Lsh(ZiB, 70)
 
-	assert.Equal(t, "5e+04 ZiB", SizeStr(BigInt{Int: ZiB}), "inout %+v, produced wrong result", ZiB)
+	require.Equal(t, "5e+04 ZiB", SizeStr(BigInt{Int: ZiB}), "inout %+v, produced wrong result", ZiB)
 
 }

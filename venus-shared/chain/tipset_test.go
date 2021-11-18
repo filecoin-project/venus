@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 )
@@ -26,12 +26,12 @@ func constructTipSetKeyInfos(t *testing.T) (abi.ChainEpoch, []cid.Cid, big.Int) 
 
 	var parents []cid.Cid
 	testutil.Provide(t, &parents, testutil.WithSliceLen(parentNum))
-	assert.GreaterOrEqual(t, len(parents), minBlockHeaderNumForTest)
-	assert.Less(t, len(parents), maxBlockHeaderNumForTest)
+	require.GreaterOrEqual(t, len(parents), minBlockHeaderNumForTest)
+	require.Less(t, len(parents), maxBlockHeaderNumForTest)
 
 	var parentWeight big.Int
 	testutil.Provide(t, &parentWeight, testutil.PositiveBigProvider())
-	assert.True(t, parentWeight.GreaterThan(big.Zero()))
+	require.True(t, parentWeight.GreaterThan(big.Zero()))
 
 	return height, parents, parentWeight
 }
@@ -70,13 +70,13 @@ func constructTipSet(t *testing.T, height abi.ChainEpoch, parents []cid.Cid, par
 	var bhs []*BlockHeader
 	testutil.Provide(t, &bhs, testutil.WithSliceLen(blkNum))
 
-	assert.GreaterOrEqual(t, len(bhs), minBlockHeaderNumForTest)
-	assert.Less(t, len(bhs), maxBlockHeaderNumForTest)
+	require.GreaterOrEqual(t, len(bhs), minBlockHeaderNumForTest)
+	require.Less(t, len(bhs), maxBlockHeaderNumForTest)
 
 	for ai := 0; ai < len(appliers); ai++ {
 		_, err := NewTipSet(bhs)
-		assert.Errorf(t, err, "attempt to construct tipset before applier #%d", ai)
-		assert.Containsf(t, err.Error(), appliers[ai].msg, "err msg content before applier #%d", ai)
+		require.Errorf(t, err, "attempt to construct tipset before applier #%d", ai)
+		require.Containsf(t, err.Error(), appliers[ai].msg, "err msg content before applier #%d", ai)
 
 		for bi := range bhs {
 			appliers[ai].fn(bhs[bi])
@@ -85,12 +85,12 @@ func constructTipSet(t *testing.T, height abi.ChainEpoch, parents []cid.Cid, par
 
 	// duplicate bh
 	_, err := NewTipSet(append(bhs, bhs[0]))
-	assert.Error(t, err, "attempt to construct tipset with duplicated bh")
-	assert.Containsf(t, err.Error(), "duplicate block ", "err msg content for duplicate block")
+	require.Error(t, err, "attempt to construct tipset with duplicated bh")
+	require.Containsf(t, err.Error(), "duplicate block ", "err msg content for duplicate block")
 
 	// construct
 	ts, err := NewTipSet(bhs)
-	assert.NoError(t, err, "construct tipset")
+	require.NoError(t, err, "construct tipset")
 
 	return ts
 }
@@ -104,15 +104,15 @@ func TestTipSetMethods(t *testing.T) {
 	height, parents, parentWeight := constructTipSetKeyInfos(t)
 
 	ts := constructTipSet(t, height, parents, parentWeight)
-	assert.True(t, ts.Defined())
+	require.True(t, ts.Defined())
 
 	tsk := ts.Key()
-	assert.NotEqual(t, EmptyTSK, tsk, "tsk not empty")
+	require.NotEqual(t, EmptyTSK, tsk, "tsk not empty")
 
-	assert.Equal(t, ts.Height(), height)
+	require.Equal(t, ts.Height(), height)
 
-	assert.True(t, ts.ParentWeight().Equals(parentWeight), "parent weight")
+	require.True(t, ts.ParentWeight().Equals(parentWeight), "parent weight")
 
 	child := constructTipSet(t, height+1, tsk.Cids(), BigMul(parentWeight, NewInt(2)))
-	assert.True(t, child.IsChildOf(ts), "check if is child")
+	require.True(t, child.IsChildOf(ts), "check if is child")
 }

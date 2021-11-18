@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func getRand() *rand.Rand {
@@ -22,11 +22,11 @@ func TestDefaultBytes(t *testing.T) {
 	for i := 0; i < 16; i++ {
 		var b []byte
 		Provide(t, &b)
-		assert.Len(t, b, defaultBytesFixedSize)
+		require.Len(t, b, defaultBytesFixedSize)
 
 		expected := make([]byte, defaultBytesFixedSize)
 		local.Read(expected[:])
-		assert.Equal(t, expected, b)
+		require.Equal(t, expected, b)
 	}
 
 }
@@ -37,11 +37,11 @@ func TestDefaultString(t *testing.T) {
 	for i := 0; i < 16; i++ {
 		var s string
 		Provide(t, &s)
-		assert.Len(t, s, defaultBytesFixedSize*2)
+		require.Len(t, s, defaultBytesFixedSize*2)
 
 		expected := make([]byte, defaultBytesFixedSize)
 		local.Read(expected[:])
-		assert.Equal(t, hex.EncodeToString(expected), s)
+		require.Equal(t, hex.EncodeToString(expected), s)
 	}
 }
 
@@ -51,69 +51,69 @@ func TestDefaultInt(t *testing.T) {
 	for i := 0; i < 16; i++ {
 		var n int
 		Provide(t, &n)
-		assert.Equal(t, n, local.Int())
+		require.Equal(t, n, local.Int())
 	}
 }
 
 func TestDefaultInt64(t *testing.T) {
-	assert.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(int64(0))))
+	require.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(int64(0))))
 
 	local := getRand()
 
 	for i := 0; i < 16; i++ {
 		var n int64
 		Provide(t, &n)
-		assert.Equal(t, n, int64(local.Int()))
+		require.Equal(t, n, int64(local.Int()))
 	}
 }
 
 func TestDefaultInt32(t *testing.T) {
-	assert.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(int32(0))))
+	require.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(int32(0))))
 
 	local := getRand()
 
 	for i := 0; i < 16; i++ {
 		var n int32
 		Provide(t, &n)
-		assert.Equal(t, n, int32(local.Int()))
+		require.Equal(t, n, int32(local.Int()))
 	}
 }
 
 func TestDefaultFloat64(t *testing.T) {
-	assert.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(float64(0))))
+	require.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(float64(0))))
 
 	local := getRand()
 
 	for i := 0; i < 16; i++ {
 		var n float64
 		Provide(t, &n)
-		assert.Equal(t, n, float64(local.Int()))
+		require.Equal(t, n, float64(local.Int()))
 	}
 }
 
 func TestDefaultIntType(t *testing.T) {
 	type number int
-	assert.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(number(0))))
+	require.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(number(0))))
 
 	local := getRand()
 
 	for i := 0; i < 16; i++ {
 		var n number
 		Provide(t, &n)
-		assert.Equal(t, n, number(local.Int()))
+		require.Equal(t, n, number(local.Int()))
 	}
 }
 
 func TestDefaultFloatType(t *testing.T) {
 	type double float64
-	assert.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(double(0))))
+	require.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(double(0))))
 
 	local := getRand()
 
 	for i := 0; i < 16; i++ {
 		var n double
 		Provide(t, &n)
-		assert.Equal(t, n, double(local.Int()))
+		require.Equal(t, n, double(local.Int()))
 	}
 }
 
@@ -123,8 +123,8 @@ func TestDefaultIntSlice(t *testing.T) {
 	var dest []int
 	Provide(t, &dest)
 
-	assert.Len(t, dest, 1)
-	assert.Equal(t, dest[0], local.Int())
+	require.Len(t, dest, 1)
+	require.Equal(t, dest[0], local.Int())
 }
 
 func TestDefaultIntSliceWithLen(t *testing.T) {
@@ -133,23 +133,23 @@ func TestDefaultIntSliceWithLen(t *testing.T) {
 	var dest []int
 	Provide(t, &dest, WithSliceLen(10))
 
-	assert.Len(t, dest, 10)
+	require.Len(t, dest, 10)
 	for i := range dest {
-		assert.Equal(t, dest[i], local.Int())
+		require.Equal(t, dest[i], local.Int())
 	}
 }
 
 func TestDefaultIntTypeSlice(t *testing.T) {
 	type number int
-	assert.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(number(0))))
+	require.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(number(0))))
 
 	local := getRand()
 
 	var dest []number
 	Provide(t, &dest)
 
-	assert.Len(t, dest, 1)
-	assert.Equal(t, dest[0], number(local.Int()))
+	require.Len(t, dest, 1)
+	require.Equal(t, dest[0], number(local.Int()))
 }
 
 func TestDefaultNonNilIntSlice(t *testing.T) {
@@ -163,7 +163,7 @@ func TestDefaultNonNilIntSlice(t *testing.T) {
 		expected[i] = local.Int()
 	}
 
-	assert.Equal(t, expected, dest)
+	require.Equal(t, expected, dest)
 }
 
 func TestIntSliceWithFixedNumber(t *testing.T) {
@@ -179,7 +179,7 @@ func TestIntSliceWithFixedNumber(t *testing.T) {
 		expected[i] = now
 	}
 
-	assert.Equal(t, expected, dest)
+	require.Equal(t, expected, dest)
 }
 
 func TestIntSliceRanged(t *testing.T) {
@@ -190,8 +190,8 @@ func TestIntSliceRanged(t *testing.T) {
 	Provide(t, &dest, IntRangedProvider(min, max))
 
 	for i := range dest {
-		assert.GreaterOrEqual(t, dest[i], min)
-		assert.Less(t, dest[i], max)
+		require.GreaterOrEqual(t, dest[i], min)
+		require.Less(t, dest[i], max)
 	}
 }
 
@@ -203,8 +203,8 @@ func TestNegativeIntSliceRanged(t *testing.T) {
 	Provide(t, &dest, IntRangedProvider(min, max))
 
 	for i := range dest {
-		assert.GreaterOrEqual(t, dest[i], min)
-		assert.Less(t, dest[i], max)
+		require.GreaterOrEqual(t, dest[i], min)
+		require.Less(t, dest[i], max)
 	}
 }
 
@@ -219,7 +219,7 @@ func TestDefaultIntArray(t *testing.T) {
 		expected[i] = local.Int()
 	}
 
-	assert.Equal(t, expected, dest[:])
+	require.Equal(t, expected, dest[:])
 }
 
 func TestStruct(t *testing.T) {
@@ -234,9 +234,9 @@ func TestStruct(t *testing.T) {
 
 	Provide(t, &dest)
 
-	assert.Nil(t, dest.private)
-	assert.Len(t, dest.Public, 1)
-	assert.Equal(t, dest.Public[0], local.Int())
+	require.Nil(t, dest.private)
+	require.Len(t, dest.Public, 1)
+	require.Equal(t, dest.Public[0], local.Int())
 }
 
 func TestNestedStruct(t *testing.T) {
@@ -255,12 +255,12 @@ func TestNestedStruct(t *testing.T) {
 	var dest inner
 
 	Provide(t, &dest)
-	assert.NotNil(t, dest.Public)
-	assert.Nil(t, dest.private)
+	require.NotNil(t, dest.Public)
+	require.Nil(t, dest.private)
 
-	assert.Len(t, dest.Public.Ints, 1)
-	assert.Len(t, dest.Public2.Ints, 1)
+	require.Len(t, dest.Public.Ints, 1)
+	require.Len(t, dest.Public2.Ints, 1)
 
-	assert.Equal(t, dest.Public.Ints[0], local.Int())
-	assert.Equal(t, dest.Public2.Ints[0], local.Int())
+	require.Equal(t, dest.Public.Ints[0], local.Int())
+	require.Equal(t, dest.Public2.Ints[0], local.Int())
 }

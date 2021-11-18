@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/cbor"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type CborErBasicTestOptions struct {
@@ -30,14 +30,14 @@ func CborErBasicTest(t *testing.T, src, dst cbor.Er, opts CborErBasicTestOptions
 	opts.Buf.Reset()
 
 	err := src.MarshalCBOR(opts.Buf)
-	assert.NoErrorf(t, err, "marshal from src of %T", src)
+	require.NoErrorf(t, err, "marshal from src of %T", src)
 
 	if opts.Marshaled != nil {
 		opts.Marshaled(opts.Buf.Bytes())
 	}
 
 	err = dst.UnmarshalCBOR(opts.Buf)
-	assert.NoErrorf(t, err, "unmarshal to dst of %T", dst)
+	require.NoErrorf(t, err, "unmarshal to dst of %T", dst)
 
 	if opts.Finished != nil {
 		opts.Finished()

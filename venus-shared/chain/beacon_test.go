@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 )
@@ -19,8 +19,8 @@ func TestBeaconEntryBasic(t *testing.T) {
 		opt := testutil.CborErBasicTestOptions{
 			Buf: &buf,
 			Prepare: func() {
-				assert.Equal(t, src, dst, "empty values")
-				assert.Nil(t, src.Data)
+				require.Equal(t, src, dst, "empty values")
+				require.Nil(t, src.Data)
 			},
 
 			ProvideOpts: []interface{}{
@@ -28,11 +28,11 @@ func TestBeaconEntryBasic(t *testing.T) {
 			},
 
 			Provided: func() {
-				assert.Len(t, src.Data, dataLen)
+				require.Len(t, src.Data, dataLen)
 			},
 
 			Finished: func() {
-				assert.Equal(t, src, dst, "from src to dst through cbor")
+				require.Equal(t, src, dst, "from src to dst through cbor")
 
 			},
 		}

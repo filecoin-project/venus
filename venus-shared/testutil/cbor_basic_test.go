@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCborBasicForAddress(t *testing.T) {
@@ -15,12 +15,12 @@ func TestCborBasicForAddress(t *testing.T) {
 		opt := CborErBasicTestOptions{
 			Buf: &buf,
 			Prepare: func() {
-				assert.Equal(t, src, address.Undef, "empty address")
-				assert.Equal(t, src, dst, "empty cid")
+				require.Equal(t, src, address.Undef, "empty address")
+				require.Equal(t, src, dst, "empty cid")
 			},
 
 			Provided: func() {
-				assert.NotEqual(t, src, dst, "address value provided")
+				require.NotEqual(t, src, dst, "address value provided")
 			},
 
 			Marshaled: func(b []byte) {
@@ -28,8 +28,8 @@ func TestCborBasicForAddress(t *testing.T) {
 			},
 
 			Finished: func() {
-				assert.Equal(t, src, dst)
-				assert.NotEqual(t, src, address.Undef, "must not be address.Undef")
+				require.Equal(t, src, dst)
+				require.NotEqual(t, src, address.Undef, "must not be address.Undef")
 			},
 		}
 
@@ -44,8 +44,8 @@ func TestCborBasicForIDAddress(t *testing.T) {
 		opt := CborErBasicTestOptions{
 			Buf: &buf,
 			Prepare: func() {
-				assert.Equal(t, src, address.Undef, "empty address")
-				assert.Equal(t, src, dst, "empty cid")
+				require.Equal(t, src, address.Undef, "empty address")
+				require.Equal(t, src, dst, "empty cid")
 			},
 
 			ProvideOpts: []interface{}{
@@ -53,13 +53,13 @@ func TestCborBasicForIDAddress(t *testing.T) {
 			},
 
 			Provided: func() {
-				assert.NotEqual(t, src, dst, "address value provided")
-				assert.Equal(t, src.Protocol(), address.ID, "must be id address")
+				require.NotEqual(t, src, dst, "address value provided")
+				require.Equal(t, src.Protocol(), address.ID, "must be id address")
 			},
 
 			Finished: func() {
-				assert.Equal(t, src, dst)
-				assert.NotEqual(t, src, address.Undef, "must not be address.Undef")
+				require.Equal(t, src, dst)
+				require.NotEqual(t, src, address.Undef, "must not be address.Undef")
 			},
 		}
 
