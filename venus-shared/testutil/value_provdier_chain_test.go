@@ -51,15 +51,32 @@ func TestDefaultBigs(t *testing.T) {
 	Provide(t, &bigs)
 	hasPositive := false
 	hasNegative := false
-	zero := big.Zero()
 	for bi := range bigs {
 		assert.NotNil(t, bigs[bi].Int)
-		hasPositive = hasPositive || bigs[bi].GreaterThan(zero)
-		hasNegative = hasNegative || bigs[bi].LessThan(zero)
+		hasPositive = hasPositive || bigs[bi].GreaterThan(bigZero)
+		hasNegative = hasNegative || bigs[bi].LessThan(bigZero)
 	}
 
 	assert.True(t, hasPositive)
 	assert.True(t, hasNegative)
+}
+
+func TestPositiveBigs(t *testing.T) {
+	bigs := make([]big.Int, 256)
+	Provide(t, &bigs, PositiveBigProvider())
+	for bi := range bigs {
+		assert.NotNil(t, bigs[bi].Int)
+		assert.True(t, bigs[bi].GreaterThan(bigZero))
+	}
+}
+
+func TestNegativeBigs(t *testing.T) {
+	bigs := make([]big.Int, 256)
+	Provide(t, &bigs, NegativeBigProvider())
+	for bi := range bigs {
+		assert.NotNil(t, bigs[bi].Int)
+		assert.True(t, bigs[bi].LessThan(bigZero))
+	}
 }
 
 func TestDefaultSigTypes(t *testing.T) {
