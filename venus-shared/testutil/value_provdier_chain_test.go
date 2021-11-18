@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/ipfs/go-cid"
@@ -88,4 +89,30 @@ func TestDefaultSigTypes(t *testing.T) {
 	}
 
 	require.True(t, len(typs) == 2)
+}
+
+func TestDefaultPaddedSize(t *testing.T) {
+	psizes := make([]abi.PaddedPieceSize, 32)
+	Provide(t, &psizes)
+	for i := range psizes {
+		require.NoErrorf(t, psizes[i].Validate(), "invalid padded size %d", psizes[i])
+	}
+}
+
+func TestFixedPaddedSize(t *testing.T) {
+	shifts := make([]int, 32)
+	Provide(t, &shifts, IntRangedProvider(1, 50))
+	for si := range shifts {
+		var ps abi.PaddedPieceSize
+		Provide(t, &ps, PaddedSizeFixedProvider(128<<shifts[si]))
+		require.NoErrorf(t, ps.Validate(), "invalid shift %d", shifts[si])
+	}
+}
+
+func TestDefaultUnpaddedSize(t *testing.T) {
+	usizes := make([]abi.UnpaddedPieceSize, 32)
+	Provide(t, &usizes)
+	for i := range usizes {
+		require.NoErrorf(t, usizes[i].Validate(), "invalid unpadded size %d", usizes[i])
+	}
 }
