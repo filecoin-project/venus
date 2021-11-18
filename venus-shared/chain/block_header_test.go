@@ -93,6 +93,11 @@ func TestBlockHeaderBasic(t *testing.T) {
 				assert.Equal(t, src, dst)
 				assert.Equal(t, src.String(), dst.String())
 				assert.True(t, src.Equals(&dst))
+
+				assert.False(t, src.IsValidated(), "check validated before set")
+
+				src.SetValidated()
+				assert.True(t, src.IsValidated(), "check validated before set")
 			},
 		}
 
