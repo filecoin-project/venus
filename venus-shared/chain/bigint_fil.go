@@ -83,6 +83,10 @@ func (f FIL) UnmarshalText(text []byte) error {
 		return err
 	}
 
+	if f.Int == nil {
+		f.Int = big.NewInt(0)
+	}
+
 	f.Int.Set(p.Int)
 	return nil
 }

@@ -3,6 +3,7 @@ package chain
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,6 +21,14 @@ func TestFilRoundTrip(t *testing.T) {
 		if fval.String() != v {
 			t.Fatal("mismatch in values!", v, fval.String())
 		}
+
+		text, err := fval.MarshalText()
+		assert.NoError(t, err, "marshal text for fval")
+
+		fval2 := FIL(NewInt(0))
+		err = fval2.UnmarshalText(text)
+		assert.NoError(t, err, "unmarshal text for fval2")
+		assert.True(t, BigInt{Int: fval.Int}.Equals(BigInt{Int: fval2.Int}))
 	}
 }
 
