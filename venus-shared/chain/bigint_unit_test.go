@@ -12,23 +12,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSizeStr(t *testing.T) {
+func TestUnitStrs(t *testing.T) {
 	cases := []struct {
-		in  uint64
-		out string
+		in   uint64
+		size string
+		deci string
 	}{
-		{0, "0 B"},
-		{1, "1 B"},
-		{1016, "1016 B"},
-		{1024, "1 KiB"},
-		{1000 * 1024, "1000 KiB"},
-		{2000, "1.953 KiB"},
-		{5 << 20, "5 MiB"},
-		{11 << 60, "11 EiB"},
+		{0, "0 B", "0 "},
+		{1, "1 B", "1 "},
+		{1016, "1016 B", "1.02e+03 "},
+		{1024, "1 KiB", "1 Ki"},
+		{1000 * 1024, "1000 KiB", "1e+03 Ki"},
+		{2000, "1.953 KiB", "1.95 Ki"},
+		{5 << 20, "5 MiB", "5 Mi"},
+		{11 << 60, "11 EiB", "11 Ei"},
 	}
 
 	for _, c := range cases {
-		assert.Equal(t, c.out, SizeStr(NewInt(c.in)), "input %+v, produced wrong result", c)
+		assert.Equal(t, c.size, SizeStr(NewInt(c.in)), "result of SizeStr")
+		assert.Equal(t, c.deci, DeciStr(NewInt(c.in)), "result of DeciStr")
 	}
 }
 
