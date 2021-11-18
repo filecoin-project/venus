@@ -13,6 +13,10 @@ import (
 
 const idmask = uint64(1<<63) - 1
 
+var (
+	bigZero = big.Zero()
+)
+
 func init() {
 	MustRegisterDefaultValueProvier(CidProvider(defaultBytesFixedSize))
 	MustRegisterDefaultValueProvier(AddressProvider())
@@ -109,6 +113,42 @@ func BigProvider() func(*testing.T) big.Int {
 		}
 
 		return n
+	}
+}
+
+func PositiveBigProvider() func(*testing.T) big.Int {
+	bytesProvider := BytesFixedProvider(16)
+	return func(t *testing.T) big.Int {
+		for {
+			data := bytesProvider(t)
+			data[0] = 0
+			n, err := big.FromBytes(data)
+			if err != nil {
+				t.Fatalf("generate positive big.Int from bytes %x", data)
+			}
+
+			if !n.Equals(bigZero) {
+				return n
+			}
+		}
+	}
+}
+
+func NegativeBigProvider() func(*testing.T) big.Int {
+	bytesProvider := BytesFixedProvider(16)
+	return func(t *testing.T) big.Int {
+		for {
+			data := bytesProvider(t)
+			data[0] = 1
+			n, err := big.FromBytes(data)
+			if err != nil {
+				t.Fatalf("generate negative big.Int from bytes %x", data)
+			}
+
+			if !n.Equals(bigZero) {
+				return n
+			}
+		}
 	}
 }
 
