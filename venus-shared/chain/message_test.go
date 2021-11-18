@@ -14,30 +14,30 @@ func TestMessageBasic(t *testing.T) {
 	var buf bytes.Buffer
 	for i := 0; i < 32; i++ {
 		var src, dst Message
-		opt := cborBasicTestOptions{
-			buf: &buf,
-			before: func() {
+		opt := testutil.CborErBasicTestOptions{
+			Buf: &buf,
+			Prepare: func() {
 				assert.Equal(t, src, dst, "empty values")
 			},
 
-			provideOpts: []interface{}{
+			ProvideOpts: []interface{}{
 				testutil.BytesFixedProvider(paramsLen),
 				testutil.BlsAddressProvider(),
 			},
 
-			provided: func() {
+			Provided: func() {
 				assert.NotEqual(t, src, dst, "value provided")
 				assert.Equal(t, src.From.Protocol(), address.BLS, "from addr proto")
 				assert.Equal(t, src.To.Protocol(), address.BLS, "to addr proto")
 				assert.Len(t, src.Params, paramsLen, "params length")
 			},
 
-			after: func() {
+			Finished: func() {
 				assert.Equal(t, src, dst)
 				assert.Equal(t, src.Cid(), dst.Cid())
 			},
 		}
 
-		cborBasicTest(t, &src, &dst, opt)
+		testutil.CborErBasicTest(t, &src, &dst, opt)
 	}
 }

@@ -17,25 +17,25 @@ func TestElectionProofBasic(t *testing.T) {
 	for i := 0; i < 32; i++ {
 		var src, dst ElectionProof
 
-		opt := cborBasicTestOptions{
-			buf: &buf,
-			before: func() {
+		opt := testutil.CborErBasicTestOptions{
+			Buf: &buf,
+			Prepare: func() {
 				assert.Equal(t, src, dst, "empty values")
 			},
 
-			provideOpts: []interface{}{
+			ProvideOpts: []interface{}{
 				testutil.BytesFixedProvider(vrfLen),
 				testutil.IntRangedProvider(int(winCountMin), int(winCountMax)),
 			},
 
-			provided: func() {
+			Provided: func() {
 				assert.NotEqual(t, src, dst, "src value provided")
 				assert.Len(t, src.VRFProof, vrfLen, "vrf length")
 				assert.GreaterOrEqual(t, src.WinCount, winCountMin, "win count min")
 				assert.Less(t, src.WinCount, winCountMax, "win count max")
 			},
 
-			after: func() {
+			Finished: func() {
 				assert.Equal(t, src, dst, "from src to dst through cbor")
 
 				t1, t2 := Ticket{
@@ -51,6 +51,6 @@ func TestElectionProofBasic(t *testing.T) {
 			},
 		}
 
-		cborBasicTest(t, &src, &dst, opt)
+		testutil.CborErBasicTest(t, &src, &dst, opt)
 	}
 }

@@ -24,24 +24,24 @@ func WithSliceLen(size int) OptionFunc {
 	}
 }
 
-func Provide(t *testing.T, dst interface{}, specifiedFns ...interface{}) {
+func Provide(t *testing.T, dst interface{}, options ...interface{}) {
 	rval := reflect.ValueOf(dst)
 	if kind := rval.Kind(); kind != reflect.Ptr {
 		t.Fatalf("value provider can only be applied on to poniters, got %T", dst)
 	}
 
 	reg := defaultValueProviderRegistry
-	if len(specifiedFns) > 0 {
+	if len(options) > 0 {
 		reg = defaultValueProviderRegistry.clone()
-		for fni := range specifiedFns {
-			fn := specifiedFns[fni]
+		for fni := range options {
+			fn := options[fni]
 			if opt, ok := fn.(OptionFunc); ok {
 				opt(t, reg)
 				continue
 			}
 
-			if err := reg.register(specifiedFns[fni]); err != nil {
-				t.Fatalf("register specified provider %T for %T: %s", specifiedFns[fni], dst, err)
+			if err := reg.register(fn); err != nil {
+				t.Fatalf("register specified provider %T for %T: %s", fn, dst, err)
 			}
 		}
 	}
