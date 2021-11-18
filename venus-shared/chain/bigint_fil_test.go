@@ -1,8 +1,11 @@
 package chain
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/filecoin-project/venus/venus-shared/chain/params"
+	"github.com/filecoin-project/venus/venus-shared/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -10,13 +13,11 @@ import (
 func TestFilRoundTrip(t *testing.T) {
 	testValues := []string{
 		"0 FIL", "1 FIL", "1.001 FIL", "100.10001 FIL", "101100 FIL", "5000.01 FIL", "5000 FIL",
+		strings.Repeat("1", 50) + " FIL",
 	}
 
 	for _, v := range testValues {
-		fval, err := ParseFIL(v)
-		if err != nil {
-			t.Fatal(err)
-		}
+		fval := MustParseFIL(v)
 
 		if fval.String() != v {
 			t.Fatal("mismatch in values!", v, fval.String())
@@ -29,6 +30,51 @@ func TestFilRoundTrip(t *testing.T) {
 		err = fval2.UnmarshalText(text)
 		assert.NoError(t, err, "unmarshal text for fval2")
 		assert.True(t, BigInt{Int: fval.Int}.Equals(BigInt{Int: fval2.Int}))
+	}
+}
+
+func TestParseAttoFils(t *testing.T) {
+	testValues := []string{
+		"0 aFIL", "1 aFIL", "1 aFIL", "100 aFIL", "101100 aFIL", "5000 aFIL",
+		"0 attoFIL", "1 attoFIL", "1 attoFIL", "100 attoFIL", "101100 attoFIL", "5000 attoFIL",
+	}
+
+	for _, v := range testValues {
+		fval := MustParseFIL(v)
+
+		text, err := fval.MarshalText()
+		assert.NoError(t, err, "marshal text for fval")
+
+		fval2 := FIL(NewInt(0))
+		err = fval2.UnmarshalText(text)
+		assert.NoError(t, err, "unmarshal text for fval2")
+		assert.True(t, BigInt{Int: fval.Int}.Equals(BigInt{Int: fval2.Int}))
+	}
+}
+
+func TestInvalidFILString(t *testing.T) {
+	testValues := []string{
+		"0 nFIL", "1 nFIL", "1.001 nFIL", "100.10001 nFIL", "101100 nFIL", "5000.01 nFIL", "5000 nFIL",
+		"1.001.1 FIL",
+		strings.Repeat("1", 51) + " FIL",
+	}
+
+	for _, v := range testValues {
+		_, err := ParseFIL(v)
+		require.Errorf(t, err, "invalid fil string %s", v)
+	}
+}
+
+func TestBigFromFIL(t *testing.T) {
+	ratio := NewInt(params.FilecoinPrecision)
+
+	nums := make([]uint64, 32)
+	testutil.Provide(t, &nums, testutil.IntRangedProvider(10, 1000))
+
+	for i := range nums {
+		fval := FromFil(nums[i])
+		require.True(t, fval.GreaterThan(ZeroFIL), "greater than zero")
+		require.True(t, ratio.Equals(BigDiv(fval, NewInt(nums[i]))), "fil precision")
 	}
 }
 

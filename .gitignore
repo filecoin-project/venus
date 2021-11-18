@@ -8,6 +8,7 @@ localnet.json
 .task
 .idea
 *.coverprofile
+coverprofile.html
 *.out
 *.so
 
@@ -16,7 +17,7 @@ fixtures/test
 fixtures/live
 !fixtures/live/.gitkeep
 
-// Tools 
+// Tools
 tools/gengen/gengen
 tools/gengen/gensetup
 tools/fast/bin/localnet
