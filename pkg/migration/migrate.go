@@ -40,8 +40,8 @@ func TryToMigrate(repoPath string) error {
 			if err != nil {
 				return err
 			}
-			localVersion = up.version
 			migrateLog.Infof("success to upgrade version %d to version %d", localVersion, up.version)
+			localVersion = up.version
 		}
 	}
 
