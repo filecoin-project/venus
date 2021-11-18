@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 )
@@ -18,16 +18,16 @@ func TestActorBasic(t *testing.T) {
 		opt := testutil.CborErBasicTestOptions{
 			Buf: &buf,
 			Prepare: func() {
-				assert.Equal(t, src, dst, "empty values")
+				require.Equal(t, src, dst, "empty values")
 			},
 
 			Provided: func() {
-				assert.NotEqual(t, src.Code, cid.Undef)
-				assert.NotEqual(t, src.Head, cid.Undef)
+				require.NotEqual(t, src.Code, cid.Undef)
+				require.NotEqual(t, src.Head, cid.Undef)
 			},
 
 			Finished: func() {
-				assert.Equal(t, src, dst, "from src to dst through cbor")
+				require.Equal(t, src, dst, "from src to dst through cbor")
 
 			},
 		}

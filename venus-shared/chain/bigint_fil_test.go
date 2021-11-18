@@ -6,7 +6,6 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/chain/params"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,12 +23,12 @@ func TestFilRoundTrip(t *testing.T) {
 		}
 
 		text, err := fval.MarshalText()
-		assert.NoError(t, err, "marshal text for fval")
+		require.NoError(t, err, "marshal text for fval")
 
 		fval2 := FIL(NewInt(0))
 		err = fval2.UnmarshalText(text)
-		assert.NoError(t, err, "unmarshal text for fval2")
-		assert.True(t, BigInt{Int: fval.Int}.Equals(BigInt{Int: fval2.Int}))
+		require.NoError(t, err, "unmarshal text for fval2")
+		require.True(t, BigInt{Int: fval.Int}.Equals(BigInt{Int: fval2.Int}))
 	}
 }
 
@@ -43,12 +42,12 @@ func TestParseAttoFils(t *testing.T) {
 		fval := MustParseFIL(v)
 
 		text, err := fval.MarshalText()
-		assert.NoError(t, err, "marshal text for fval")
+		require.NoError(t, err, "marshal text for fval")
 
 		fval2 := FIL(NewInt(0))
 		err = fval2.UnmarshalText(text)
-		assert.NoError(t, err, "unmarshal text for fval2")
-		assert.True(t, BigInt{Int: fval.Int}.Equals(BigInt{Int: fval2.Int}))
+		require.NoError(t, err, "unmarshal text for fval2")
+		require.True(t, BigInt{Int: fval.Int}.Equals(BigInt{Int: fval2.Int}))
 	}
 }
 

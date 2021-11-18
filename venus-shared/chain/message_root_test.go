@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 )
@@ -18,25 +18,25 @@ func TestMessageRootBasic(t *testing.T) {
 		opt := testutil.CborErBasicTestOptions{
 			Buf: &buf,
 			Prepare: func() {
-				assert.Equal(t, src, dst, "empty values")
-				assert.Equal(t, src.BlsRoot, cid.Undef)
-				assert.Equal(t, src.SecpkRoot, cid.Undef)
+				require.Equal(t, src, dst, "empty values")
+				require.Equal(t, src.BlsRoot, cid.Undef)
+				require.Equal(t, src.SecpkRoot, cid.Undef)
 			},
 
 			Provided: func() {
-				assert.NotEqual(t, src.BlsRoot, cid.Undef)
-				assert.NotEqual(t, src.SecpkRoot, cid.Undef)
+				require.NotEqual(t, src.BlsRoot, cid.Undef)
+				require.NotEqual(t, src.SecpkRoot, cid.Undef)
 			},
 
 			Finished: func() {
-				assert.Equal(t, src, dst, "from src to dst through cbor")
+				require.Equal(t, src, dst, "from src to dst through cbor")
 
 				blk, err := src.ToStorageBlock()
-				assert.NoError(t, err, "ToStorageBlock")
+				require.NoError(t, err, "ToStorageBlock")
 
 				srcCid := src.Cid()
-				assert.Equal(t, srcCid, dst.Cid(), "cid compare to dst")
-				assert.Equal(t, srcCid, blk.Cid(), "cid compare to sblk")
+				require.Equal(t, srcCid, dst.Cid(), "cid compare to dst")
+				require.Equal(t, srcCid, blk.Cid(), "cid compare to sblk")
 			},
 		}
 

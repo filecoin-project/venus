@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
@@ -22,10 +22,10 @@ func TestBlockMsgBasic(t *testing.T) {
 		opt := testutil.CborErBasicTestOptions{
 			Buf: &buf,
 			Prepare: func() {
-				assert.Equal(t, src, dst)
-				assert.Nil(t, src.Header)
-				assert.Nil(t, src.BlsMessages)
-				assert.Nil(t, src.SecpkMessages)
+				require.Equal(t, src, dst)
+				require.Nil(t, src.Header)
+				require.Nil(t, src.BlsMessages)
+				require.Nil(t, src.SecpkMessages)
 			},
 
 			ProvideOpts: []interface{}{
@@ -33,28 +33,28 @@ func TestBlockMsgBasic(t *testing.T) {
 			},
 
 			Provided: func() {
-				assert.NotEqual(t, src, dst, "value provided")
-				assert.NotNil(t, src.Header)
-				assert.NotEqual(t, emptyCids, src.BlsMessages)
-				assert.NotEqual(t, emptyCids, src.SecpkMessages)
+				require.NotEqual(t, src, dst, "value provided")
+				require.NotNil(t, src.Header)
+				require.NotEqual(t, emptyCids, src.BlsMessages)
+				require.NotEqual(t, emptyCids, src.SecpkMessages)
 			},
 
 			Marshaled: func(b []byte) {
 				bmCid := src.Cid()
-				assert.Equal(t, bmCid, src.Header.Cid(), "Cid() result for BlockMsg")
+				require.Equal(t, bmCid, src.Header.Cid(), "Cid() result for BlockMsg")
 
 				sumCid, err := abi.CidBuilder.Sum(b)
-				assert.NoError(t, err, "CidBuilder.Sum")
+				require.NoError(t, err, "CidBuilder.Sum")
 
-				assert.NotEqual(t, bmCid, sumCid)
+				require.NotEqual(t, bmCid, sumCid)
 
 				serialized, err := src.Serialize()
-				assert.NoError(t, err, "Serialize")
-				assert.Equal(t, b, serialized)
+				require.NoError(t, err, "Serialize")
+				require.Equal(t, b, serialized)
 			},
 
 			Finished: func() {
-				assert.Equal(t, src, dst, "after unmarshaling")
+				require.Equal(t, src, dst, "after unmarshaling")
 			},
 		}
 

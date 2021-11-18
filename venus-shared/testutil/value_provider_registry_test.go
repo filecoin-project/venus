@@ -3,7 +3,7 @@ package testutil
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInvalidProviders(t *testing.T) {
@@ -18,6 +18,6 @@ func TestInvalidProviders(t *testing.T) {
 
 	for ri := range vals {
 		err := defaultValueProviderRegistry.register(vals[ri])
-		assert.Errorf(t, err, "value #%d", ri)
+		require.Errorf(t, err, "value #%d", ri)
 	}
 }
