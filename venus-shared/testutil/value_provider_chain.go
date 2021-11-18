@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
 )
 
 const idmask = uint64(1<<63) - 1
@@ -22,6 +23,8 @@ func init() {
 	MustRegisterDefaultValueProvier(AddressProvider())
 	MustRegisterDefaultValueProvier(BigProvider())
 	MustRegisterDefaultValueProvier(CryptoSigTypeProvider())
+	MustRegisterDefaultValueProvier(PaddedSizeProvider())
+	MustRegisterDefaultValueProvier(UnpaddedSizeProvider())
 }
 
 func CidProvider(size int) func(*testing.T) cid.Cid {
@@ -159,5 +162,27 @@ func CryptoSigTypeProvider() func(*testing.T) crypto.SigType {
 	}
 	return func(t *testing.T) crypto.SigType {
 		return opts[rand.Intn(len(opts))]
+	}
+}
+
+func PaddedSizeProvider() func(*testing.T) abi.PaddedPieceSize {
+	return func(t *testing.T) abi.PaddedPieceSize {
+		return 128 << rand.Intn(64-7)
+	}
+}
+
+func PaddedSizeFixedProvider(fixed abi.PaddedPieceSize) func(*testing.T) abi.PaddedPieceSize {
+	return func(t *testing.T) abi.PaddedPieceSize {
+		err := fixed.Validate()
+		require.NoErrorf(t, err, "invalid PaddedPieceSize %d", fixed)
+		return fixed
+	}
+}
+
+func UnpaddedSizeProvider() func(*testing.T) abi.UnpaddedPieceSize {
+	p := PaddedSizeProvider()
+	return func(t *testing.T) abi.UnpaddedPieceSize {
+		padded := p(t)
+		return padded.Unpadded()
 	}
 }
