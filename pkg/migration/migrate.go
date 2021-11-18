@@ -168,9 +168,9 @@ func Version6Upgrade(repoPath string) (err error) {
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 312746
 	case constants.NetworkForce:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = math.MaxInt32
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -17
 	case constants.NetworkInterop:
-		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -17
 	default:
 		return fsrRepo.Close()
