@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"go/build"
 	"io"
-	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 )
 
 const (
+	goSourceCodeExt = ".go"
+
 	goTemplateExt    = ".go.template"
 	goTemplateExtLen = len(goTemplateExt)
 
@@ -45,46 +45,13 @@ var replacers = [][2]string{
 	},
 }
 
-func listTemplates() (string, []string, error) {
+func findActorsPkgDir() (string, error) {
 	pkg, err := build.Import("github.com/filecoin-project/lotus/chain/actors", ".", build.FindOnly)
 	if err != nil {
-		return "", nil, fmt.Errorf("find local build path for louts: %w", err)
+		return "", fmt.Errorf("find local build path for louts: %w", err)
 	}
 
-	paths, err := listTemplateInDir(pkg.Dir)
-	if err != nil {
-		return "", nil, fmt.Errorf("list template in dir %s: %w", pkg.Dir, err)
-	}
-
-	return pkg.Dir, paths, nil
-}
-
-func listTemplateInDir(dir string) ([]string, error) {
-	var paths []string
-
-	err := fs.WalkDir(os.DirFS(dir), ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return fmt.Errorf("walking %s: %w", path, err)
-		}
-
-		if d.IsDir() {
-			return nil
-		}
-
-		if !strings.HasSuffix(path, goTemplateExt) {
-			return nil
-		}
-
-		paths = append(paths, path)
-		return nil
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("walk through the chain/actors subdir: %w", err)
-	}
-
-	sort.Strings(paths)
-	return paths, nil
+	return pkg.Dir, nil
 }
 
 func fetch(src, dst string, paths []string) error {

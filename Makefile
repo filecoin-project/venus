@@ -8,10 +8,13 @@ test: test-venus-shared
 
 compatible-all: compatible-actor
 
-compatible-actor: actor-template actor-render
+compatible-actor: actor-templates actor-sources actor-render
 
-actor-template:
-	cd venus-devtool && go run ./compatible/actors/*.go templates --dst ../venus-shared/actors/ > ../venus-shared/compatible-checks/actor-template.txt
+actor-templates:
+	cd venus-devtool && go run ./compatible/actors/*.go templates --dst ../venus-shared/actors/ > ../venus-shared/compatible-checks/actor-templates.txt
+
+actor-sources:
+	cd venus-devtool && go run ./compatible/actors/*.go sources > ../venus-shared/compatible-checks/actor-sources.txt
 
 actor-render:
 	cd venus-devtool && go run ./compatible/actors/*.go render ../venus-shared/actors/
