@@ -7,6 +7,7 @@ import (
 	gen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/libp2p/exchange"
 	"github.com/filecoin-project/venus/venus-shared/libp2p/hello"
 )
 
@@ -23,6 +24,15 @@ func main() {
 			types: []interface{}{
 				hello.GreetingMessage{},
 				hello.LatencyMessage{},
+			},
+		},
+		{
+			dir: "../venus-shared/libp2p/exchange/",
+			types: []interface{}{
+				exchange.Request{},
+				exchange.Response{},
+				exchange.CompactedMessages{},
+				exchange.BSTipSet{},
 			},
 		},
 		{
