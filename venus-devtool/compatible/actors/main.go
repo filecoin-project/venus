@@ -16,6 +16,7 @@ func main() {
 		EnableBashCompletion: true,
 		Flags:                []cli.Flag{},
 		Commands: []*cli.Command{
+			sourcesCmd,
 			templatesCmd,
 			renderCmd,
 		},
@@ -37,12 +38,16 @@ var templatesCmd = &cli.Command{
 		},
 	},
 	Action: func(c *cli.Context) error {
-		srcDir, paths, err := listTemplates()
+		srcDir, err := findActorsPkgDir()
 		if err != nil {
-			return err
+			return fmt.Errorf("find chain/actors: %w", err)
 		}
 
 		log.Println("listing")
+		paths, err := listFilesInDir(srcDir, goTemplateExt)
+		if err != nil {
+			return fmt.Errorf("list template files: %w", err)
+		}
 
 		fmt.Println("TEMPLATES IN chain/actors:")
 
@@ -80,7 +85,7 @@ var renderCmd = &cli.Command{
 			return fmt.Errorf("get abs path for %s: %w", dir, err)
 		}
 
-		templates, err := listTemplateInDir(abs)
+		templates, err := listFilesInDir(dir, goTemplateExt)
 		if err != nil {
 			return fmt.Errorf("list templates in %s: %w", abs, err)
 		}
@@ -95,6 +100,28 @@ var renderCmd = &cli.Command{
 			log.Printf("%s done", tpath)
 		}
 
+		return nil
+	},
+}
+
+var sourcesCmd = &cli.Command{
+	Name: "sources",
+	Action: func(cctx *cli.Context) error {
+		srcDir, err := findActorsPkgDir()
+		if err != nil {
+			return fmt.Errorf("find chain/actors: %w", err)
+		}
+
+		files, err := listFilesInDir(srcDir, goSourceCodeExt)
+		if err != nil {
+			return fmt.Errorf("list source code files: %w", err)
+		}
+
+		fmt.Println("SOURCES IN chain/actors:")
+
+		for _, p := range files {
+			fmt.Printf("\t%s\n", p)
+		}
 		return nil
 	},
 }

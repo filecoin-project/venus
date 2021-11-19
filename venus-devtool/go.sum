@@ -228,6 +228,8 @@ github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be/go.m
 github.com/filecoin-project/go-address v0.0.3/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+cGQ59wMIps/8YW/lDj8=
 github.com/filecoin-project/go-address v0.0.5 h1:SSaFT/5aLfPXycUlFyemoHYhRgdyXClXCyDdNJKPlDM=
 github.com/filecoin-project/go-address v0.0.5/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+cGQ59wMIps/8YW/lDj8=
+github.com/filecoin-project/go-address v0.0.6 h1:DWQtj38ax+ogHwyH3VULRIoT8E6loyXqsk/p81xoY7M=
+github.com/filecoin-project/go-address v0.0.6/go.mod h1:7B0/5DA13n6nHkB8bbGx1gWzG/dbTsZ0fgOJVGsM3TE=
 github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200424220931-6263827e49f2/go.mod h1:boRtQhzmxNocrMxOXo1NYn4oUc1NGvR8tEa79wApNXg=
 github.com/filecoin-project/go-amt-ipld/v2 v2.1.0 h1:t6qDiuGYYngDqaLc2ZUvdtAg4UNxPeOYaXhBWSNsVaM=
 github.com/filecoin-project/go-amt-ipld/v2 v2.1.0/go.mod h1:nfFPoGyX0CU9SkXX8EoCcSuHN1XcbN0c6KBh7yvP5fs=
@@ -312,6 +314,8 @@ github.com/filecoin-project/specs-actors/v5 v5.0.4 h1:OY7BdxJWlUfUFXWV/kpNBYGXNP
 github.com/filecoin-project/specs-actors/v5 v5.0.4/go.mod h1:5BAKRAMsOOlD8+qCw4UvT/lTLInCJ3JwOWZbX8Ipwq4=
 github.com/filecoin-project/specs-actors/v6 v6.0.0 h1:i+16MFE8GScWWUF0kG7x2RZ5Hqpz0CeyBHTpnijCJ6I=
 github.com/filecoin-project/specs-actors/v6 v6.0.0/go.mod h1:V1AYfi5GkHXipx1mnVivoICZh3wtwPxDVuds+fbfQtk=
+github.com/filecoin-project/specs-actors/v6 v6.0.1 h1:laxvHNsvrq83Y9n+W7znVCePi3oLyRf0Rkl4jFO8Wew=
+github.com/filecoin-project/specs-actors/v6 v6.0.1/go.mod h1:V1AYfi5GkHXipx1mnVivoICZh3wtwPxDVuds+fbfQtk=
 github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506/go.mod h1:nJRRM7Aa9XVvygr3W9k6xGF46RWzr2zxF/iGoAIfA/g=
 github.com/filecoin-project/test-vectors/schema v0.0.5/go.mod h1:iQ9QXLpYWL3m7warwvK1JC/pTri8mnfEmKygNDqqY6E=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
@@ -908,6 +912,7 @@ github.com/libp2p/go-libp2p-core v0.8.2/go.mod h1:FfewUH/YpvWbEB+ZY9AQRQ4TAD8sJB
 github.com/libp2p/go-libp2p-core v0.8.5/go.mod h1:FfewUH/YpvWbEB+ZY9AQRQ4TAD8sJBt/G1rVvhz5XT8=
 github.com/libp2p/go-libp2p-core v0.8.6 h1:3S8g006qG6Tjpj1JdRK2S+TWc2DJQKX/RG9fdLeiLSU=
 github.com/libp2p/go-libp2p-core v0.8.6/go.mod h1:dgHr0l0hIKfWpGpqAMbpo19pen9wJfdCGv51mTmdpmM=
+github.com/libp2p/go-libp2p-core v0.11.0/go.mod h1:ECdxehoYosLYHgDDFa2N4yE8Y7aQRAMf0sX9mf2sbGg=
 github.com/libp2p/go-libp2p-crypto v0.0.1/go.mod h1:yJkNyDmO341d5wwXxDUGO0LykUVT72ImHNUqh5D/dBE=
 github.com/libp2p/go-libp2p-crypto v0.0.2/go.mod h1:eETI5OUfBnvARGOHrJz2eWNyTUxEGZnBxMcbUjfIj4I=
 github.com/libp2p/go-libp2p-crypto v0.1.0/go.mod h1:sPUokVISZiy+nNuTTH/TY+leRSxnFj/2GLjtOTW90hI=
@@ -1588,6 +1593,7 @@ github.com/whyrusleeping/cbor-gen v0.0.0-20200812213548-958ddffe352c/go.mod h1:f
 github.com/whyrusleeping/cbor-gen v0.0.0-20200826160007-0b9f6c5fb163/go.mod h1:fgkXqYy7bV2cFeIEOkVTZS/WjXARfBqSH6Q2qHL33hQ=
 github.com/whyrusleeping/cbor-gen v0.0.0-20210118024343-169e9d70c0c2/go.mod h1:fgkXqYy7bV2cFeIEOkVTZS/WjXARfBqSH6Q2qHL33hQ=
 github.com/whyrusleeping/cbor-gen v0.0.0-20210219115102-f37d292932f2/go.mod h1:fgkXqYy7bV2cFeIEOkVTZS/WjXARfBqSH6Q2qHL33hQ=
+github.com/whyrusleeping/cbor-gen v0.0.0-20210303213153-67a261a1d291/go.mod h1:fgkXqYy7bV2cFeIEOkVTZS/WjXARfBqSH6Q2qHL33hQ=
 github.com/whyrusleeping/cbor-gen v0.0.0-20210713220151-be142a5ae1a8/go.mod h1:fgkXqYy7bV2cFeIEOkVTZS/WjXARfBqSH6Q2qHL33hQ=
 github.com/whyrusleeping/cbor-gen v0.0.0-20211110122933-f57984553008 h1:7WtW9D9VGpmRLuQmrPy2JobUNdka95z3MKEVpELtOjo=
 github.com/whyrusleeping/cbor-gen v0.0.0-20211110122933-f57984553008/go.mod h1:fgkXqYy7bV2cFeIEOkVTZS/WjXARfBqSH6Q2qHL33hQ=

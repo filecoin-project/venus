@@ -17,32 +17,32 @@ import (
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 
-	builtin2 "github.com/filecoin-project/specs-actors/2/actors/builtin"
-	market2 "github.com/filecoin-project/specs-actors/2/actors/builtin/market"
-	miner2 "github.com/filecoin-project/specs-actors/2/actors/builtin/miner"
-	verifreg2 "github.com/filecoin-project/specs-actors/2/actors/builtin/verifreg"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
 
-	builtin3 "github.com/filecoin-project/specs-actors/3/actors/builtin"
-	market3 "github.com/filecoin-project/specs-actors/3/actors/builtin/market"
-	miner3 "github.com/filecoin-project/specs-actors/3/actors/builtin/miner"
-	verifreg3 "github.com/filecoin-project/specs-actors/3/actors/builtin/verifreg"
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+	market3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
+	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
+	verifreg3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/verifreg"
 
-	builtin4 "github.com/filecoin-project/specs-actors/4/actors/builtin"
-	market4 "github.com/filecoin-project/specs-actors/4/actors/builtin/market"
-	miner4 "github.com/filecoin-project/specs-actors/4/actors/builtin/miner"
-	verifreg4 "github.com/filecoin-project/specs-actors/4/actors/builtin/verifreg"
+	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+	market4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/market"
+	miner4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/miner"
+	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
 
-	builtin5 "github.com/filecoin-project/specs-actors/5/actors/builtin"
-	market5 "github.com/filecoin-project/specs-actors/5/actors/builtin/market"
-	miner5 "github.com/filecoin-project/specs-actors/5/actors/builtin/miner"
-	verifreg5 "github.com/filecoin-project/specs-actors/5/actors/builtin/verifreg"
+	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
+	verifreg5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/verifreg"
 
-	builtin6 "github.com/filecoin-project/specs-actors/6/actors/builtin"
-	market6 "github.com/filecoin-project/specs-actors/6/actors/builtin/market"
-	miner6 "github.com/filecoin-project/specs-actors/6/actors/builtin/miner"
-	verifreg6 "github.com/filecoin-project/specs-actors/6/actors/builtin/verifreg"
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+	market6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/market"
+	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
+	verifreg6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/verifreg"
 
-	paych6 "github.com/filecoin-project/specs-actors/6/actors/builtin/paych"
+	paych6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/paych"
 )
 
 const (
