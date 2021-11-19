@@ -1,0 +1,27 @@
+TEMPLATES IN chain/actors:
+	builtin/account/actor.go.template
+	builtin/account/state.go.template
+	builtin/builtin.go.template
+	builtin/cron/actor.go.template
+	builtin/cron/state.go.template
+	builtin/init/actor.go.template
+	builtin/init/state.go.template
+	builtin/market/actor.go.template
+	builtin/market/state.go.template
+	builtin/miner/actor.go.template
+	builtin/miner/state.go.template
+	builtin/multisig/actor.go.template
+	builtin/multisig/message.go.template
+	builtin/multisig/state.go.template
+	builtin/paych/actor.go.template
+	builtin/paych/message.go.template
+	builtin/paych/state.go.template
+	builtin/power/actor.go.template
+	builtin/power/state.go.template
+	builtin/reward/actor.go.template
+	builtin/reward/state.go.template
+	builtin/system/actor.go.template
+	builtin/system/state.go.template
+	builtin/verifreg/actor.go.template
+	builtin/verifreg/state.go.template
+	policy/policy.go.template
