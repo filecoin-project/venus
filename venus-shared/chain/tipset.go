@@ -199,7 +199,7 @@ func (ts TipSet) String() string {
 }
 
 func (ts *TipSet) IsChildOf(parent *TipSet) bool {
-	return cidArrsEqual(ts.Parents().Cids(), parent.key.Cids()) &&
+	return CidArrsEqual(ts.Parents().Cids(), parent.key.Cids()) &&
 		// FIXME: The height check might go beyond what is meant by
 		//  "parent", but many parts of the code rely on the tipset's
 		//  height for their processing logic at the moment to obviate it.
@@ -258,7 +258,7 @@ func sortBlockHeadersInTipSet(blks []*blockHeaderWithCid) {
 	})
 }
 
-func cidArrsEqual(a, b []cid.Cid) bool {
+func CidArrsEqual(a, b []cid.Cid) bool {
 	if len(a) != len(b) {
 		return false
 	}

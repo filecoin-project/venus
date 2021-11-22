@@ -14,8 +14,8 @@ type TipSetLoader interface {
 type MessageLoader interface {
 	ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 
-	LoadMessagesFromCids(cids []cid.Cid) ([]*chain.Message, error)
-	LoadSignedMessagesFromCids(cids []cid.Cid) ([]*chain.SignedMessage, error)
+	LoadMessagesFromCids(ctx context.Context, cids []cid.Cid) ([]*chain.Message, error)
+	LoadSignedMessagesFromCids(ctx context.Context, cids []cid.Cid) ([]*chain.SignedMessage, error)
 }
 
 type ChainLoader interface {
