@@ -3,14 +3,14 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-state-types/network"
 	"io/ioutil"
-	"math"
 	"os"
 	"reflect"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -25,7 +25,7 @@ const (
 	scryptP = 1
 )
 
-var DefaultDefaultMaxFee = types.MustParseFIL("1")
+var DefaultDefaultMaxFee = types.MustParseFIL("10")
 
 // Config is an in memory representation of the filecoin configuration file
 type Config struct {
@@ -309,7 +309,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeNorwegianHeight:     665280,
 	UpgradeTurboHeight:         712320,
 	UpgradeHyperdriveHeight:    892800,
-	UpgradeChocolateHeight:     math.MaxInt32, //todo
+	UpgradeChocolateHeight:     1231620,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
