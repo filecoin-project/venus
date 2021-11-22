@@ -59,17 +59,6 @@ func requirePutTestChain(ctx context.Context, t *testing.T, cborStore *CborBlock
 	}
 }
 
-func requireSiblingState(t *testing.T, cborStore *CborBlockStore, ts *types.TipSet) []*chain.TipSetMetadata {
-	if ts.Height() == 0 {
-		tsasSlice, err := cborStore.LoadTipsetMetadata(ts)
-		require.NoError(t, err)
-		return []*chain.TipSetMetadata{tsasSlice}
-	}
-	tsasSlice, err := cborStore.GetSiblingState(ts)
-	require.NoError(t, err)
-	return tsasSlice
-}
-
 type HeadAndTipsetGetter interface {
 	GetHead() types.TipSetKey
 	GetTipSet(types.TipSetKey) (types.TipSet, error)
@@ -196,82 +185,6 @@ func TestRevertChange(t *testing.T) {
 	test.Equal(t, headChanges[4].Val, link5)
 	test.Equal(t, headChanges[5].Type, chain.HCApply)
 	test.Equal(t, headChanges[5].Val, link6)
-}
-
-// Tipsets can be retrieved by parent key (all block cids of parents).
-func TestGetByParent(t *testing.T) {
-	tf.UnitTest(t)
-
-	ctx := context.Background()
-	builder := chain.NewBuilder(t, address.Undef)
-	genTS := builder.Genesis()
-	r := repo.NewInMemoryRepo()
-	cs := newChainStore(r, genTS)
-
-	// Construct test chain data
-	link1 := builder.AppendOn(genTS, 2)
-	link2 := builder.AppendOn(link1, 3)
-	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
-
-	// Put the test chain to the store
-	requirePutTestChain(ctx, t, cs, link4.Key(), builder, 5)
-
-	gotG := requireSiblingState(t, cs, genTS)
-	got1 := requireSiblingState(t, cs, link1)
-	got2 := requireSiblingState(t, cs, link2)
-	got3 := requireSiblingState(t, cs, link3)
-	got4 := requireSiblingState(t, cs, link4) // two null blocks in between 3 and 4!
-
-	assert.ObjectsAreEqualValues(genTS, gotG[0].TipSet)
-	assert.ObjectsAreEqualValues(link1, got1[0].TipSet)
-	assert.ObjectsAreEqualValues(link2, got2[0].TipSet)
-	assert.ObjectsAreEqualValues(link3, got3[0].TipSet)
-	assert.ObjectsAreEqualValues(link4, got4[0].TipSet)
-
-	assert.Equal(t, genTS.At(0).ParentStateRoot, gotG[0].TipSetStateRoot)
-	assert.Equal(t, link1.At(0).ParentStateRoot, got1[0].TipSetStateRoot)
-	assert.Equal(t, link2.At(0).ParentStateRoot, got2[0].TipSetStateRoot)
-	assert.Equal(t, link3.At(0).ParentStateRoot, got3[0].TipSetStateRoot)
-	assert.Equal(t, link4.At(0).ParentStateRoot, got4[0].TipSetStateRoot)
-}
-
-func TestGetMultipleByParent(t *testing.T) {
-	tf.UnitTest(t)
-
-	ctx := context.Background()
-	builder := chain.NewBuilder(t, address.Undef)
-	genTS := builder.Genesis()
-	r := repo.NewInMemoryRepo()
-	cs := newChainStore(r, genTS)
-
-	// Construct test chain data
-	link1 := builder.AppendOn(genTS, 2)
-	link2 := builder.AppendOn(link1, 3)
-	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
-
-	// Put the test chain to the store
-	requirePutTestChain(ctx, t, cs, link4.Key(), builder, 5)
-
-	// Add extra children to the genesis tipset
-	otherLink1 := builder.AppendOn(genTS, 1)
-	otherRoot1 := types.CidFromString(t, "otherState")
-	newChildTsas := &chain.TipSetMetadata{
-		TipSet:          otherLink1,
-		TipSetStateRoot: otherRoot1,
-		TipSetReceipts:  emptycid.EmptyReceiptsCID,
-	}
-	require.NoError(t, cs.PutTipSetMetadata(ctx, newChildTsas))
-	gotNew1 := requireSiblingState(t, cs, otherLink1)
-	require.Equal(t, 2, len(gotNew1))
-	for _, tsas := range gotNew1 {
-		if tsas.TipSet.Len() == 1 {
-			assert.ObjectsAreEqualValues(otherRoot1, tsas.TipSetStateRoot)
-		} else {
-			assert.ObjectsAreEqualValues(link1.At(0).ParentStateRoot, tsas.TipSetStateRoot)
-		}
-	}
 }
 
 /* Head and its state is set and notified properly. */
@@ -437,11 +350,6 @@ func TestLoadAndReboot(t *testing.T) {
 	// Get a tipset and state by key
 	got2 := requireGetTipSet(ctx, t, rebootCbore, link2.Key())
 	assert.ObjectsAreEqualValues(link2, got2)
-
-	// Get another by parent key
-	got4 := requireSiblingState(t, rebootCbore, link4)
-	assert.Equal(t, 1, len(got4))
-	assert.ObjectsAreEqualValues(link4, got4[0].TipSet)
 
 	// Check the head
 	test.Equal(t, link4, rebootChain.GetHead())

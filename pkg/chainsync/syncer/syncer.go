@@ -86,8 +86,6 @@ type ChainReaderWriter interface {
 	HasTipSetAndState(context.Context, *types.TipSet) bool
 	PutTipSetMetadata(context.Context, *chain.TipSetMetadata) error
 	SetHead(context.Context, *types.TipSet) error
-	HasSiblingState(*types.TipSet) bool
-	GetSiblingState(*types.TipSet) ([]*chain.TipSetMetadata, error)
 	GetLatestBeaconEntry(*types.TipSet) (*types.BeaconEntry, error)
 	GetGenesisBlock(context.Context) (*types.BlockHeader, error)
 }
@@ -223,62 +221,6 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 		return err
 	}
 	return nil
-}
-
-// widen computes a tipset implied by the input tipset and the bsstore that
-// could potentially be the heaviest tipset. In the context of EC, widen
-// returns the union of the input tipset and the biggest tipset with the same
-// parents from the bsstore.
-// TODO: this leaks EC abstractions into the syncer, we should think about this.
-// nolint
-func (syncer *Syncer) widen(ctx context.Context, ts *types.TipSet) (*types.TipSet, error) {
-	// Lookup tipsets with the same parents from the bsstore.
-	if !syncer.chainStore.HasSiblingState(ts) {
-		return nil, nil
-	}
-	//find current tipset base the same parent and height
-	candidates, err := syncer.chainStore.GetSiblingState(ts)
-	if err != nil {
-		return nil, err
-	}
-	if len(candidates) == 0 {
-		return nil, nil
-	}
-
-	// Only take the tipset with the most blocks (this is EC specific logic) todo ?
-	max := candidates[0].TipSet
-	for _, candidate := range candidates[0:] {
-		if candidate.TipSet.Len() > max.Len() {
-			max = candidate.TipSet
-		}
-	}
-
-	// Form a new tipset from the union of ts and the largest in the bsstore, de-duped.
-	var blockSlice []*types.BlockHeader
-	blockCids := make(map[cid.Cid]struct{})
-	for i := 0; i < ts.Len(); i++ {
-		blk := ts.At(i)
-		blockCids[blk.Cid()] = struct{}{}
-		blockSlice = append(blockSlice, blk)
-	}
-	for i := 0; i < max.Len(); i++ {
-		blk := max.At(i)
-		if _, found := blockCids[blk.Cid()]; !found {
-			blockSlice = append(blockSlice, blk)
-			blockCids[blk.Cid()] = struct{}{}
-		}
-	}
-	wts, err := types.NewTipSet(blockSlice...)
-	if err != nil {
-		return nil, err
-	}
-
-	// check that the tipset is distinct from the input and tipsets from the bsstore.
-	if wts.String() == ts.String() || wts.String() == max.String() {
-		return nil, nil
-	}
-
-	return wts, nil
 }
 
 // HandleNewTipSet validates and syncs the chain rooted at the provided tipset
