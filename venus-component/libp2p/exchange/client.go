@@ -4,26 +4,25 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"time"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/venus/pkg/types"
 	logging "github.com/ipfs/go-log"
-
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-
 	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/net"
+	"github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/libp2p"
+	"github.com/filecoin-project/venus/venus-shared/libp2p/exchange"
 )
 
-var exchangeClientLogger = logging.Logger("exchange.client")
+var clientLog = logging.Logger("exchange.client")
 
 // client implements exchange.Client, using the libp2p ChainExchange protocol
 // as the fetching mechanism.
@@ -37,11 +36,11 @@ type client struct {
 	peerTracker *bsPeerTracker
 }
 
-var _ Client = (*client)(nil)
+var _ exchange.Client = (*client)(nil)
 
 // NewClient creates a new libp2p-based exchange.Client that uses the libp2p
 // ChainExhange protocol as the fetching mechanism.
-func NewClient(host host.Host, pmgr net.IPeerMgr) Client {
+func NewClient(host host.Host, pmgr libp2p.PeerManager) exchange.Client {
 	return &client{
 		host:        host,
 		peerTracker: newPeerTracker(host, pmgr),
@@ -67,25 +66,25 @@ func NewClient(host host.Host, pmgr net.IPeerMgr) Client {
 // adhere to a single API derived from this function.
 func (c *client) doRequest(
 	ctx context.Context,
-	req *Request,
+	req *exchange.Request,
 	singlePeer []peer.ID,
 	// In the `GetChainMessages` case, we won't request the headers but we still
 	// need them to check the integrity of the `CompactedMessages` in the response
 	// so the tipset blocks need to be provided by the caller.
-	tipsets []*types.TipSet,
+	tipsets []*chain.TipSet,
 ) (*validatedResponse, error) {
 	// Validate request.
 	if req.Length == 0 {
-		return nil, xerrors.Errorf("invalid request of length 0")
+		return nil, fmt.Errorf("invalid request of length 0")
 	}
 
-	if req.Length > MaxRequestLength {
-		return nil, xerrors.Errorf("request length (%d) above maximum (%d)",
-			req.Length, MaxRequestLength)
+	if req.Length > exchange.MaxRequestLength {
+		return nil, fmt.Errorf("request length (%d) above maximum (%d)",
+			req.Length, exchange.MaxRequestLength)
 	}
 
 	if req.Options == 0 {
-		return nil, xerrors.Errorf("request with no options set")
+		return nil, fmt.Errorf("request with no options set")
 	}
 
 	// Generate the list of peers to be queried, either the
@@ -98,7 +97,7 @@ func (c *client) doRequest(
 		selectPeers = c.getShuffledPeers()
 	}
 	if len(selectPeers) == 0 {
-		return nil, xerrors.Errorf("no peers available")
+		return nil, fmt.Errorf("no peers available")
 	}
 
 	// Try the request for each peer in the list,
@@ -111,15 +110,15 @@ func (c *client) doRequest(
 	for _, peer := range selectPeers {
 		select {
 		case <-ctx.Done():
-			return nil, xerrors.Errorf("context cancelled: %w", ctx.Err())
+			return nil, fmt.Errorf("context cancelled: %w", ctx.Err())
 		default:
 		}
 
 		// Send request, read response.
 		res, err := c.sendRequestToPeer(ctx, peer, req)
 		if err != nil {
-			if !xerrors.Is(err, network.ErrNoConn) {
-				exchangeClientLogger.Warnf("could not send request to peer %s: %s",
+			if !errors.Is(err, network.ErrNoConn) {
+				clientLog.Warnf("could not send request to peer %s: %s",
 					peer.String(), err)
 			}
 			continue
@@ -128,7 +127,7 @@ func (c *client) doRequest(
 		// Process and validate response.
 		validRes, err := c.processResponse(req, res, tipsets)
 		if err != nil {
-			exchangeClientLogger.Warnf("processing peer %s response failed: %s", peer.String(), err)
+			clientLog.Warnf("processing peer %s response failed: %s", peer.String(), err)
 			continue
 		}
 
@@ -137,7 +136,7 @@ func (c *client) doRequest(
 		return validRes, nil
 	}
 
-	return nil, xerrors.Errorf("doRequest failed for all peers")
+	return nil, fmt.Errorf("doRequest failed for all peers")
 }
 
 // Process and validate response. Check the status, the integrity of the
@@ -149,57 +148,59 @@ func (c *client) doRequest(
 // errors. Peer penalization should happen here then, before returning, so
 // we can apply the correct penalties depending on the cause of the error.
 // FIXME: Add the `peer` as argument once we implement penalties.
-func (c *client) processResponse(req *Request, res *Response, tipsets []*types.TipSet) (*validatedResponse, error) {
-	err := res.statusToError()
+func (c *client) processResponse(req *exchange.Request, res *exchange.Response, tipsets []*chain.TipSet) (*validatedResponse, error) {
+	err := res.StatusToError()
 	if err != nil {
-		return nil, xerrors.Errorf("status error: %s", err)
+		return nil, fmt.Errorf("status error: %w", err)
 	}
 
 	options := parseOptions(req.Options)
 	if options.noOptionsSet() {
 		// Safety check: this shouldn't have been sent, and even if it did
 		// it should have been caught by the peer in its error status.
-		return nil, xerrors.Errorf("nothing was requested")
+		return nil, fmt.Errorf("nothing was requested")
 	}
 
 	// Verify that the chain segment returned is in the valid range.
 	// Note that the returned length might be less than requested.
 	resLength := len(res.Chain)
 	if resLength == 0 {
-		return nil, xerrors.Errorf("got no chain in successful response")
+		return nil, fmt.Errorf("got no chain in successful response")
 	}
+
 	if resLength > int(req.Length) {
-		return nil, xerrors.Errorf("got longer response (%d) than requested (%d)",
+		return nil, fmt.Errorf("got longer response (%d) than requested (%d)",
 			resLength, req.Length)
 	}
-	if resLength < int(req.Length) && res.Status != Partial {
-		return nil, xerrors.Errorf("got less than requested without a proper status: %d", res.Status)
+
+	if resLength < int(req.Length) && res.Status != exchange.Partial {
+		return nil, fmt.Errorf("got less than requested without a proper status: %d", res.Status)
 	}
 
 	validRes := &validatedResponse{}
 	if options.IncludeHeaders {
 		// Check for valid block sets and extract them into `TipSet`s.
-		validRes.tipsets = make([]*types.TipSet, resLength)
+		validRes.tipsets = make([]*chain.TipSet, resLength)
 		for i := 0; i < resLength; i++ {
 			if res.Chain[i] == nil {
-				return nil, xerrors.Errorf("response with nil tipset in pos %d", i)
+				return nil, fmt.Errorf("response with nil tipset in pos %d", i)
 			}
 			for blockIdx, block := range res.Chain[i].Blocks {
 				if block == nil {
-					return nil, xerrors.Errorf("tipset with nil block in pos %d", blockIdx)
+					return nil, fmt.Errorf("tipset with nil block in pos %d", blockIdx)
 					// FIXME: Maybe we should move this check to `NewTipSet`.
 				}
 			}
 
-			validRes.tipsets[i], err = types.NewTipSet(res.Chain[i].Blocks...)
+			validRes.tipsets[i], err = chain.NewTipSet(res.Chain[i].Blocks)
 			if err != nil {
-				return nil, xerrors.Errorf("invalid tipset blocks at height (head - %d): %w", i, err)
+				return nil, fmt.Errorf("invalid tipset blocks at height (head - %d): %w", i, err)
 			}
 		}
 
 		// Check that the returned head matches the one requested
-		if !types.CidArrsEqual(validRes.tipsets[0].Key().Cids(), req.Head) {
-			return nil, xerrors.Errorf("returned chain head does not match request")
+		if !chain.CidArrsEqual(validRes.tipsets[0].Key().Cids(), req.Head) {
+			return nil, fmt.Errorf("returned chain head does not match request")
 		}
 
 		// Check `TipSet`s are connected (valid chain).
@@ -213,10 +214,10 @@ func (c *client) processResponse(req *Request, res *Response, tipsets []*types.T
 	}
 
 	if options.IncludeMessages {
-		validRes.messages = make([]*CompactedMessages, resLength)
+		validRes.messages = make([]*exchange.CompactedMessages, resLength)
 		for i := 0; i < resLength; i++ {
 			if res.Chain[i].Messages == nil {
-				return nil, xerrors.Errorf("no messages included for tipset at height (head - %d)", i)
+				return nil, fmt.Errorf("no messages included for tipset at height (head - %d)", i)
 			}
 			validRes.messages[i] = res.Chain[i].Messages
 		}
@@ -233,11 +234,11 @@ func (c *client) processResponse(req *Request, res *Response, tipsets []*types.T
 			// If we didn't request the headers they should have been provided
 			// by the caller.
 			if len(tipsets) < len(res.Chain) {
-				return nil, xerrors.Errorf("not enought tipsets provided for message response validation, needed %d, have %d", len(res.Chain), len(tipsets))
+				return nil, fmt.Errorf("not enought tipsets provided for message response validation, needed %d, have %d", len(res.Chain), len(tipsets))
 			}
-			chain := make([]*BSTipSet, 0, resLength)
+			chain := make([]*exchange.BSTipSet, 0, resLength)
 			for i, resChain := range res.Chain {
-				next := &BSTipSet{
+				next := &exchange.BSTipSet{
 					Blocks:   tipsets[i].Blocks(),
 					Messages: resChain.Messages,
 				}
@@ -254,33 +255,33 @@ func (c *client) processResponse(req *Request, res *Response, tipsets []*types.T
 	return validRes, nil
 }
 
-func (c *client) validateCompressedIndices(chain []*BSTipSet) error {
+func (c *client) validateCompressedIndices(chain []*exchange.BSTipSet) error {
 	resLength := len(chain)
 	for tipsetIdx := 0; tipsetIdx < resLength; tipsetIdx++ {
 		msgs := chain[tipsetIdx].Messages
 		blocksNum := len(chain[tipsetIdx].Blocks)
 
 		if len(msgs.BlsIncludes) != blocksNum {
-			return xerrors.Errorf("BlsIncludes (%d) does not match number of blocks (%d)",
+			return fmt.Errorf("BlsIncludes (%d) does not match number of blocks (%d)",
 				len(msgs.BlsIncludes), blocksNum)
 		}
 
 		if len(msgs.SecpkIncludes) != blocksNum {
-			return xerrors.Errorf("SecpkIncludes (%d) does not match number of blocks (%d)",
+			return fmt.Errorf("SecpkIncludes (%d) does not match number of blocks (%d)",
 				len(msgs.SecpkIncludes), blocksNum)
 		}
 
 		for blockIdx := 0; blockIdx < blocksNum; blockIdx++ {
 			for _, mi := range msgs.BlsIncludes[blockIdx] {
 				if int(mi) >= len(msgs.Bls) {
-					return xerrors.Errorf("index in BlsIncludes (%d) exceeds number of messages (%d)",
+					return fmt.Errorf("index in BlsIncludes (%d) exceeds number of messages (%d)",
 						mi, len(msgs.Bls))
 				}
 			}
 
 			for _, mi := range msgs.SecpkIncludes[blockIdx] {
 				if int(mi) >= len(msgs.Secpk) {
-					return xerrors.Errorf("index in SecpkIncludes (%d) exceeds number of messages (%d)",
+					return fmt.Errorf("index in SecpkIncludes (%d) exceeds number of messages (%d)",
 						mi, len(msgs.Secpk))
 				}
 			}
@@ -291,7 +292,7 @@ func (c *client) validateCompressedIndices(chain []*BSTipSet) error {
 }
 
 // GetBlocks implements Client.GetBlocks(). Refer to the godocs there.
-func (c *client) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) ([]*types.TipSet, error) {
+func (c *client) GetBlocks(ctx context.Context, tsk chain.TipSetKey, count int) ([]*chain.TipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "bsync.GetBlocks")
 	defer span.End()
 	if span.IsRecordingEvents() {
@@ -301,10 +302,10 @@ func (c *client) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) 
 		)
 	}
 
-	req := &Request{
+	req := &exchange.Request{
 		Head:    tsk.Cids(),
 		Length:  uint64(count),
-		Options: Headers,
+		Options: exchange.Headers,
 	}
 
 	validRes, err := c.doRequest(ctx, req, nil, nil)
@@ -316,13 +317,13 @@ func (c *client) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) 
 }
 
 // GetFullTipSet implements Client.GetFullTipSet(). Refer to the godocs there.
-func (c *client) GetFullTipSet(ctx context.Context, peers []peer.ID, tsk types.TipSetKey) (*types.FullTipSet, error) {
+func (c *client) GetFullTipSet(ctx context.Context, peers []peer.ID, tsk chain.TipSetKey) (*chain.FullTipSet, error) {
 	// TODO: round robin through these peers on error
 
-	req := &Request{
+	req := &exchange.Request{
 		Head:    tsk.Cids(),
 		Length:  1,
-		Options: Headers | Messages,
+		Options: exchange.Headers | exchange.Messages,
 	}
 
 	validRes, err := c.doRequest(ctx, req, peers, nil)
@@ -336,7 +337,7 @@ func (c *client) GetFullTipSet(ctx context.Context, peers []peer.ID, tsk types.T
 }
 
 // GetChainMessages implements Client.GetChainMessages(). Refer to the godocs there.
-func (c *client) GetChainMessages(ctx context.Context, tipsets []*types.TipSet) ([]*CompactedMessages, error) {
+func (c *client) GetChainMessages(ctx context.Context, tipsets []*chain.TipSet) ([]*exchange.CompactedMessages, error) {
 	head := tipsets[0]
 	length := uint64(len(tipsets))
 
@@ -349,10 +350,10 @@ func (c *client) GetChainMessages(ctx context.Context, tipsets []*types.TipSet) 
 	}
 	defer span.End()
 
-	req := &Request{
+	req := &exchange.Request{
 		Head:    head.Key().Cids(),
 		Length:  length,
-		Options: Messages,
+		Options: exchange.Messages,
 	}
 
 	validRes, err := c.doRequest(ctx, req, nil, tipsets)
@@ -366,7 +367,7 @@ func (c *client) GetChainMessages(ctx context.Context, tipsets []*types.TipSet) 
 // Send a request to a peer. Write request in the stream and read the
 // response back. We do not do any processing of the request/response
 // here.
-func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Request) (_ *Response, err error) {
+func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *exchange.Request) (_ *exchange.Response, err error) {
 	// Trace code.
 	ctx, span := trace.StartSpan(ctx, "sendRequestToPeer")
 	defer span.End()
@@ -387,15 +388,16 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 	}()
 	// -- TRACE --
 
-	supported, err := c.host.Peerstore().SupportsProtocols(peer, BlockSyncProtocolID, ChainExchangeProtocolID)
+	supported, err := c.host.Peerstore().SupportsProtocols(peer, exchange.BlockSyncProtocolID, exchange.ChainExchangeProtocolID)
 	if err != nil {
-		c.RemovePeer(peer)
-		return nil, xerrors.Errorf("failed to get protocols for peer: %w", err)
+		c.RemovePeer(ctx, peer)
+		return nil, fmt.Errorf("failed to get protocols for peer: %w", err)
 	}
-	if len(supported) == 0 || (supported[0] != BlockSyncProtocolID && supported[0] != ChainExchangeProtocolID) {
-		c.RemovePeer(peer)
+
+	if len(supported) == 0 || (supported[0] != exchange.BlockSyncProtocolID && supported[0] != exchange.ChainExchangeProtocolID) {
+		c.RemovePeer(ctx, peer)
 		c.host.ConnManager().TagPeer(peer, "no match protocol", -2000)
-		return nil, xerrors.Errorf("peer %s does not support protocols %s", peer, []string{BlockSyncProtocolID, ChainExchangeProtocolID})
+		return nil, fmt.Errorf("peer %s does not support protocols %s", peer, []string{exchange.BlockSyncProtocolID, exchange.ChainExchangeProtocolID})
 	}
 
 	connectionStart := time.Now()
@@ -404,10 +406,10 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 	stream, err := c.host.NewStream(
 		network.WithNoDial(ctx, "should already have connection"),
 		peer,
-		ChainExchangeProtocolID, BlockSyncProtocolID)
+		exchange.ChainExchangeProtocolID, exchange.BlockSyncProtocolID)
 	if err != nil {
-		c.RemovePeer(peer)
-		return nil, xerrors.Errorf("failed to open stream to peer: %w", err)
+		c.RemovePeer(ctx, peer)
+		return nil, fmt.Errorf("failed to open stream to peer: %w", err)
 	}
 
 	defer func() {
@@ -437,14 +439,14 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 		return nil, err
 	}
 
-	var res Response
+	var res exchange.Response
 	err = cborutil.ReadCborRPC(
 		bytes.NewReader(respBytes),
 		//bufio.NewReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline)),
 		&res)
 	if err != nil {
 		c.peerTracker.logFailure(peer, time.Since(connectionStart), req.Length)
-		return nil, xerrors.Errorf("failed to read chainxchg response: %w", err)
+		return nil, fmt.Errorf("failed to read chainxchg response: %w", err)
 	}
 
 	// FIXME: Move all this together at the top using a defer as done elsewhere.
@@ -464,12 +466,12 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 }
 
 // AddPeer implements Client.AddPeer(). Refer to the godocs there.
-func (c *client) AddPeer(p peer.ID) {
+func (c *client) AddPeer(ctx context.Context, p peer.ID) {
 	c.peerTracker.addPeer(p)
 }
 
 // RemovePeer implements Client.RemovePeer(). Refer to the godocs there.
-func (c *client) RemovePeer(p peer.ID) {
+func (c *client) RemovePeer(ctx context.Context, p peer.ID) {
 	c.peerTracker.removePeer(p)
 }
 
