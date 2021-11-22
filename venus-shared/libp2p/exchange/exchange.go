@@ -2,7 +2,6 @@ package exchange
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/ipfs/go-cid"
 
@@ -27,17 +26,6 @@ const (
 //  (Also as a consequence of this temporarily removing the `const`
 //   qualifier to avoid "const initializer [...] is not a constant" error.)
 var MaxRequestLength = uint64(policy.ChainFinality)
-
-const (
-	// Extracted constants from the code.
-	// FIXME: Should be reviewed and confirmed.
-	SuccessPeerTagValue = 25
-	WriteReqDeadline    = 5 * time.Second
-	ReadResDeadline     = WriteReqDeadline
-	ReadResMinSpeed     = 50 << 10
-	ShufflePeersPrefix  = 16
-	WriteResDeadline    = 60 * time.Second
-)
 
 // FIXME: Rename. Make private.
 type Request struct {
