@@ -7,8 +7,16 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
-type NewFilPeer struct {
-	Id peer.ID // nolint: stylecheck
+type FilPeerEvtType int
+
+const (
+	AddFilPeerEvt FilPeerEvtType = iota
+	RemoveFilPeerEvt
+)
+
+type FilPeerEvent struct {
+	Type FilPeerEvtType
+	ID   peer.ID
 }
 
 type PeerManager interface {
