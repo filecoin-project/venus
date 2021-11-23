@@ -1,4 +1,4 @@
-package exchange
+package client
 
 import (
 	"bufio"
@@ -11,18 +11,19 @@ import (
 	"time"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
-	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"go.opencensus.io/trace"
+	"go.uber.org/fx"
 
 	"github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/filecoin-project/venus/venus-shared/libp2p"
 	"github.com/filecoin-project/venus/venus-shared/libp2p/exchange"
+	"github.com/filecoin-project/venus/venus-shared/logging"
 )
 
-var clientLog = logging.Logger("exchange.client")
+var log = logging.New("exchange.client")
 
 // client implements exchange.Client, using the libp2p ChainExchange protocol
 // as the fetching mechanism.
@@ -40,10 +41,10 @@ var _ exchange.Client = (*client)(nil)
 
 // NewClient creates a new libp2p-based exchange.Client that uses the libp2p
 // ChainExhange protocol as the fetching mechanism.
-func NewClient(host host.Host, pmgr libp2p.PeerManager) exchange.Client {
+func NewClient(lc fx.Lifecycle, host host.Host, pmgr libp2p.PeerManager) exchange.Client {
 	return &client{
 		host:        host,
-		peerTracker: newPeerTracker(host, pmgr),
+		peerTracker: newPeerTracker(lc, host, pmgr),
 	}
 }
 
@@ -114,12 +115,13 @@ func (c *client) doRequest(
 		default:
 		}
 
+		plog := log.With("peer", peer.String())
+
 		// Send request, read response.
 		res, err := c.sendRequestToPeer(ctx, peer, req)
 		if err != nil {
 			if !errors.Is(err, network.ErrNoConn) {
-				clientLog.Warnf("could not send request to peer %s: %s",
-					peer.String(), err)
+				plog.Warnf("could not send request to peer: %s", err)
 			}
 			continue
 		}
@@ -127,7 +129,7 @@ func (c *client) doRequest(
 		// Process and validate response.
 		validRes, err := c.processResponse(req, res, tipsets)
 		if err != nil {
-			clientLog.Warnf("processing peer %s response failed: %s", peer.String(), err)
+			plog.Warnf("processing peer response failed: %s", err)
 			continue
 		}
 
@@ -154,8 +156,8 @@ func (c *client) processResponse(req *exchange.Request, res *exchange.Response, 
 		return nil, fmt.Errorf("status error: %w", err)
 	}
 
-	options := parseOptions(req.Options)
-	if options.noOptionsSet() {
+	options := exchange.ParseOptions(req.Options)
+	if options.IsEmpty() {
 		// Safety check: this shouldn't have been sent, and even if it did
 		// it should have been caught by the peer in its error status.
 		return nil, fmt.Errorf("nothing was requested")

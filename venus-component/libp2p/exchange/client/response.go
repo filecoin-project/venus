@@ -1,15 +1,11 @@
-package exchange
+package client
 
 import (
 	"time"
 
-	logging "github.com/ipfs/go-log"
-
 	"github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/filecoin-project/venus/venus-shared/libp2p/exchange"
 )
-
-var log = logging.Logger("exchange")
 
 const (
 	// Extracted constants from the code.
@@ -19,33 +15,7 @@ const (
 	ReadResDeadline     = WriteReqDeadline
 	ReadResMinSpeed     = 50 << 10
 	ShufflePeersPrefix  = 16
-	WriteResDeadline    = 60 * time.Second
 )
-
-// `Request` processed and validated to query the tipsets needed.
-type validatedRequest struct {
-	head    chain.TipSetKey
-	length  uint64
-	options *parsedOptions
-}
-
-// Decompressed options into separate struct members for easy access
-// during internal processing..
-type parsedOptions struct {
-	IncludeHeaders  bool
-	IncludeMessages bool
-}
-
-func (options *parsedOptions) noOptionsSet() bool {
-	return !options.IncludeHeaders && !options.IncludeMessages
-}
-
-func parseOptions(optfield uint64) *parsedOptions {
-	return &parsedOptions{
-		IncludeHeaders:  optfield&(uint64(exchange.Headers)) != 0,
-		IncludeMessages: optfield&(uint64(exchange.Messages)) != 0,
-	}
-}
 
 // Response that has been validated according to the protocol
 // and can be safely accessed.
