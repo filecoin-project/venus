@@ -1,14 +1,16 @@
-package exchange
+package client
 
 // FIXME: This needs to be reviewed.
 
 import (
+	"context"
 	"sort"
 	"sync"
 	"time"
 
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"go.uber.org/fx"
 
 	"github.com/filecoin-project/venus/venus-shared/libp2p"
 )
@@ -29,22 +31,35 @@ type bsPeerTracker struct {
 	pmgr libp2p.PeerManager
 }
 
-func newPeerTracker(h host.Host, pmgr libp2p.PeerManager) *bsPeerTracker {
+func newPeerTracker(lc fx.Lifecycle, h host.Host, pmgr libp2p.PeerManager) *bsPeerTracker {
 	bsPt := &bsPeerTracker{
 		peers: make(map[peer.ID]*peerStats),
 		pmgr:  pmgr,
 	}
 
-	sub, err := h.EventBus().Subscribe(new(libp2p.NewFilPeer))
+	sub, err := h.EventBus().Subscribe(new(libp2p.FilPeerEvent))
 	if err != nil {
 		panic(err)
 	}
 
 	go func() {
-		for newPeer := range sub.Out() {
-			bsPt.addPeer(newPeer.(libp2p.NewFilPeer).Id)
+		for evt := range sub.Out() {
+			pEvt := evt.(libp2p.FilPeerEvent)
+			switch pEvt.Type {
+			case libp2p.AddFilPeerEvt:
+				bsPt.addPeer(pEvt.ID)
+			case libp2p.RemoveFilPeerEvt:
+				bsPt.removePeer(pEvt.ID)
+			}
 		}
 	}()
+
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			return sub.Close()
+		},
+	})
+
 	return bsPt
 }
 
@@ -143,7 +158,7 @@ func (bpt *bsPeerTracker) logSuccess(p peer.ID, dur time.Duration, reqSize uint6
 	var pi *peerStats
 	var ok bool
 	if pi, ok = bpt.peers[p]; !ok {
-		log.Debugf("log success called on peer not in tracker", "peerid", p.String())
+		log.Warnw("log success called on peer not in tracker", "peerid", p.String())
 		return
 	}
 
@@ -161,7 +176,7 @@ func (bpt *bsPeerTracker) logFailure(p peer.ID, dur time.Duration, reqSize uint6
 	var pi *peerStats
 	var ok bool
 	if pi, ok = bpt.peers[p]; !ok {
-		log.Warn("log failure called on peer not in tracker", "peerid", p.String())
+		log.Warnw("log failure called on peer not in tracker", "peerid", p.String())
 		return
 	}
 
