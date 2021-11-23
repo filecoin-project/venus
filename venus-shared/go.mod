@@ -17,10 +17,12 @@ require (
 	github.com/ipfs/go-cid v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.5
 	github.com/ipfs/go-ipld-format v0.0.2
+	github.com/ipfs/go-log v1.0.4 // indirect
 	github.com/libp2p/go-libp2p-core v0.11.0 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/whyrusleeping/cbor-gen v0.0.0-20211110122933-f57984553008
+	go.uber.org/zap v1.14.1 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 )
