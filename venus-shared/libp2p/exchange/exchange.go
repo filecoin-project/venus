@@ -49,6 +49,34 @@ const (
 	Messages
 )
 
+type Options struct {
+	IncludeHeaders  bool
+	IncludeMessages bool
+}
+
+func (opt *Options) IsEmpty() bool {
+	return !opt.IncludeHeaders && !opt.IncludeMessages
+}
+
+func (opt *Options) ToBits() uint64 {
+	var bits uint64
+	if opt.IncludeHeaders {
+		bits |= Headers
+	}
+
+	if opt.IncludeMessages {
+		bits |= Messages
+	}
+	return bits
+}
+
+func ParseOptions(optfield uint64) *Options {
+	return &Options{
+		IncludeHeaders:  optfield&(uint64(Headers)) != 0,
+		IncludeMessages: optfield&(uint64(Messages)) != 0,
+	}
+}
+
 // FIXME: Rename. Make private.
 type Response struct {
 	Status status
