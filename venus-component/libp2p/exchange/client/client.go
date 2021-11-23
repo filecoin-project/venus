@@ -2,11 +2,9 @@ package client
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"time"
 
@@ -68,7 +66,7 @@ func NewClient(lc fx.Lifecycle, host host.Host, pmgr libp2p.PeerManager) exchang
 func (c *client) doRequest(
 	ctx context.Context,
 	req *exchange.Request,
-	singlePeer []peer.ID,
+	singlePeer *peer.ID,
 	// In the `GetChainMessages` case, we won't request the headers but we still
 	// need them to check the integrity of the `CompactedMessages` in the response
 	// so the tipset blocks need to be provided by the caller.
@@ -78,12 +76,10 @@ func (c *client) doRequest(
 	if req.Length == 0 {
 		return nil, fmt.Errorf("invalid request of length 0")
 	}
-
 	if req.Length > exchange.MaxRequestLength {
 		return nil, fmt.Errorf("request length (%d) above maximum (%d)",
 			req.Length, exchange.MaxRequestLength)
 	}
-
 	if req.Options == 0 {
 		return nil, fmt.Errorf("request with no options set")
 	}
@@ -91,14 +87,14 @@ func (c *client) doRequest(
 	// Generate the list of peers to be queried, either the
 	// `singlePeer` indicated or all peers available (sorted
 	// by an internal peer tracker with some randomness injected).
-	var selectPeers []peer.ID
+	var peers []peer.ID
 	if singlePeer != nil {
-		selectPeers = append(selectPeers, singlePeer...)
+		peers = []peer.ID{*singlePeer}
 	} else {
-		selectPeers = c.getShuffledPeers()
-	}
-	if len(selectPeers) == 0 {
-		return nil, fmt.Errorf("no peers available")
+		peers = c.getShuffledPeers()
+		if len(peers) == 0 {
+			return nil, fmt.Errorf("no peers available")
+		}
 	}
 
 	// Try the request for each peer in the list,
@@ -108,7 +104,7 @@ func (c *client) doRequest(
 	globalTime := time.Now()
 	// Global time used to track what is the expected time we will need to get
 	// a response if a client fails us.
-	for _, peer := range selectPeers {
+	for _, peer := range peers {
 		select {
 		case <-ctx.Done():
 			return nil, fmt.Errorf("context cancelled: %w", ctx.Err())
@@ -138,7 +134,11 @@ func (c *client) doRequest(
 		return validRes, nil
 	}
 
-	return nil, fmt.Errorf("doRequest failed for all peers")
+	errString := "doRequest failed for all peers"
+	if singlePeer != nil {
+		errString = fmt.Sprintf("doRequest failed for single peer %s", *singlePeer)
+	}
+	return nil, fmt.Errorf(errString)
 }
 
 // Process and validate response. Check the status, the integrity of the
@@ -150,11 +150,19 @@ func (c *client) doRequest(
 // errors. Peer penalization should happen here then, before returning, so
 // we can apply the correct penalties depending on the cause of the error.
 // FIXME: Add the `peer` as argument once we implement penalties.
-func (c *client) processResponse(req *exchange.Request, res *exchange.Response, tipsets []*chain.TipSet) (*validatedResponse, error) {
-	err := res.StatusToError()
+func (c *client) processResponse(req *exchange.Request, res *exchange.Response, tipsets []*chain.TipSet) (r *validatedResponse, err error) {
+	err = res.StatusToError()
 	if err != nil {
 		return nil, fmt.Errorf("status error: %w", err)
 	}
+
+	defer func() {
+		if rerr := recover(); rerr != nil {
+			log.Errorf("process response error: %s", rerr)
+			err = fmt.Errorf("process response error: %s", rerr)
+			return
+		}
+	}()
 
 	options := exchange.ParseOptions(req.Options)
 	if options.IsEmpty() {
@@ -169,12 +177,10 @@ func (c *client) processResponse(req *exchange.Request, res *exchange.Response, 
 	if resLength == 0 {
 		return nil, fmt.Errorf("got no chain in successful response")
 	}
-
 	if resLength > int(req.Length) {
 		return nil, fmt.Errorf("got longer response (%d) than requested (%d)",
 			resLength, req.Length)
 	}
-
 	if resLength < int(req.Length) && res.Status != exchange.Partial {
 		return nil, fmt.Errorf("got less than requested without a proper status: %d", res.Status)
 	}
@@ -200,8 +206,8 @@ func (c *client) processResponse(req *exchange.Request, res *exchange.Response, 
 			}
 		}
 
-		// Check that the returned head matches the one requested
-		if !chain.CidArrsEqual(validRes.tipsets[0].Key().Cids(), req.Head) {
+		// Check that the returned head matches the one requested.
+		if !chain.CidArrsEqual(validRes.tipsets[0].Cids(), req.Head) {
 			return nil, fmt.Errorf("returned chain head does not match request")
 		}
 
@@ -319,7 +325,7 @@ func (c *client) GetBlocks(ctx context.Context, tsk chain.TipSetKey, count int) 
 }
 
 // GetFullTipSet implements Client.GetFullTipSet(). Refer to the godocs there.
-func (c *client) GetFullTipSet(ctx context.Context, peers []peer.ID, tsk chain.TipSetKey) (*chain.FullTipSet, error) {
+func (c *client) GetFullTipSet(ctx context.Context, peer peer.ID, tsk chain.TipSetKey) (*chain.FullTipSet, error) {
 	// TODO: round robin through these peers on error
 
 	req := &exchange.Request{
@@ -328,7 +334,7 @@ func (c *client) GetFullTipSet(ctx context.Context, peers []peer.ID, tsk chain.T
 		Options: exchange.Headers | exchange.Messages,
 	}
 
-	validRes, err := c.doRequest(ctx, req, peers, nil)
+	validRes, err := c.doRequest(ctx, req, &peer, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -346,14 +352,14 @@ func (c *client) GetChainMessages(ctx context.Context, tipsets []*chain.TipSet) 
 	ctx, span := trace.StartSpan(ctx, "GetChainMessages")
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
-			trace.StringAttribute("tipset", fmt.Sprint(head.Key().Cids())),
+			trace.StringAttribute("tipset", fmt.Sprint(head.Cids())),
 			trace.Int64Attribute("count", int64(length)),
 		)
 	}
 	defer span.End()
 
 	req := &exchange.Request{
-		Head:    head.Key().Cids(),
+		Head:    head.Cids(),
 		Length:  length,
 		Options: exchange.Messages,
 	}
@@ -395,11 +401,9 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *excha
 		c.RemovePeer(ctx, peer)
 		return nil, fmt.Errorf("failed to get protocols for peer: %w", err)
 	}
-
 	if len(supported) == 0 || (supported[0] != exchange.BlockSyncProtocolID && supported[0] != exchange.ChainExchangeProtocolID) {
-		c.RemovePeer(ctx, peer)
-		c.host.ConnManager().TagPeer(peer, "no match protocol", -2000)
-		return nil, fmt.Errorf("peer %s does not support protocols %s", peer, []string{exchange.BlockSyncProtocolID, exchange.ChainExchangeProtocolID})
+		return nil, fmt.Errorf("peer %s does not support protocols %s",
+			peer, []string{exchange.BlockSyncProtocolID, exchange.ChainExchangeProtocolID})
 	}
 
 	connectionStart := time.Now()
@@ -414,11 +418,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *excha
 		return nil, fmt.Errorf("failed to open stream to peer: %w", err)
 	}
 
-	defer func() {
-		// Note: this will become just stream.Close once we've completed the go-libp2p migration to
-		//       go-libp2p-core 0.7.0
-		go stream.Close() //nolint:errcheck
-	}()
+	defer stream.Close() //nolint:errcheck
 
 	// Write request.
 	_ = stream.SetWriteDeadline(time.Now().Add(WriteReqDeadline))
@@ -432,19 +432,9 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *excha
 	//  its own API (https://github.com/libp2p/go-libp2p-core/issues/162).
 
 	// Read response.
-	_ = stream.SetReadDeadline(time.Time{})
-
-	//TODO Note: this will remove once we've completed the go-libp2p migration to
-	//		      go-libp2p-core 0.7.0
-	respBytes, err := ioutil.ReadAll(bufio.NewReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline)))
-	if err != nil {
-		return nil, err
-	}
-
 	var res exchange.Response
 	err = cborutil.ReadCborRPC(
-		bytes.NewReader(respBytes),
-		//bufio.NewReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline)),
+		bufio.NewReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline)),
 		&res)
 	if err != nil {
 		c.peerTracker.logFailure(peer, time.Since(connectionStart), req.Length)
