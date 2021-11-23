@@ -8,7 +8,6 @@ import (
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"go.opencensus.io/trace"
@@ -16,9 +15,69 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/filecoin-project/venus/venus-shared/libp2p/exchange"
 	"github.com/filecoin-project/venus/venus-shared/localstore"
+	"github.com/filecoin-project/venus/venus-shared/logging"
 )
 
-var exchangeServerLog = logging.Logger("exchange.Server")
+var log = logging.New("exchange")
+
+const (
+	WriteResDeadline = 60 * time.Second
+)
+
+// `Request` processed and validated to query the tipsets needed.
+type validatedRequest struct {
+	head    chain.TipSetKey
+	length  uint64
+	options *exchange.Options
+}
+
+func validateRequest(ctx context.Context, req *exchange.Request) (*validatedRequest, *exchange.Response) {
+	_, span := trace.StartSpan(ctx, "chainxchg.ValidateRequest")
+	defer span.End()
+
+	if len(req.Head) == 0 {
+		return nil, &exchange.Response{
+			Status:       exchange.BadRequest,
+			ErrorMessage: "no cids in request",
+		}
+	}
+
+	if req.Length == 0 {
+		return nil, &exchange.Response{
+			Status:       exchange.BadRequest,
+			ErrorMessage: "invalid request length of zero",
+		}
+	}
+
+	if req.Length > exchange.MaxRequestLength {
+		return nil, &exchange.Response{
+			Status: exchange.BadRequest,
+			ErrorMessage: fmt.Sprintf("request length over maximum allowed (%d)",
+				exchange.MaxRequestLength),
+		}
+	}
+
+	opts := exchange.ParseOptions(req.Options)
+	if opts.IsEmpty() {
+		return nil, &exchange.Response{
+			Status:       exchange.BadRequest,
+			ErrorMessage: "no options set",
+		}
+	}
+
+	// FIXME: Add as a defer at the start.
+	span.AddAttributes(
+		trace.BoolAttribute("blocks", opts.IncludeHeaders),
+		trace.BoolAttribute("messages", opts.IncludeMessages),
+		trace.Int64Attribute("reqlen", int64(req.Length)),
+	)
+
+	return &validatedRequest{
+		head:    chain.NewTipSetKey(req.Head...),
+		length:  req.Length,
+		options: opts,
+	}, nil
+}
 
 // Server implements exchange.Server. It services requests for the
 // libp2p ChainExchange protocol.
@@ -36,13 +95,8 @@ func NewServer(loader localstore.ChainLoader, h host.Host) *Server {
 	}
 }
 
-func (s *Server) Register() {
-	s.h.SetStreamHandler(exchange.BlockSyncProtocolID, s.handleStream)     // old
-	s.h.SetStreamHandler(exchange.ChainExchangeProtocolID, s.handleStream) // new
-}
-
 // HandleStream implements Server.HandleStream. Refer to the godocs there.
-func (s *Server) handleStream(stream inet.Stream) {
+func (s *Server) HandleStream(stream inet.Stream) {
 	ctx, span := trace.StartSpan(context.Background(), "chainxchg.HandleStream")
 	defer span.End()
 
@@ -50,25 +104,28 @@ func (s *Server) handleStream(stream inet.Stream) {
 	//       go-libp2p-core 0.7.0
 	defer stream.Close() //nolint:errcheck
 
+	slog := log.With("peer", stream.Conn().RemotePeer())
+	ctx = logging.ContextWithLogger(ctx, slog)
+
 	var req exchange.Request
 	if err := cborutil.ReadCborRPC(bufio.NewReader(stream), &req); err != nil {
-		exchangeServerLog.Warnf("failed to read block sync request: %s", err)
+		slog.Warnf("failed to read block sync request: %s", err)
 		return
 	}
-	fmt.Println(stream.Conn().RemotePeer())
-	exchangeServerLog.Infow("block sync request", "start", req.Head, "len", req.Length)
+
+	slog.Infow("block sync request", "start", req.Head, "len", req.Length)
 
 	resp, err := s.processRequest(ctx, &req)
 	if err != nil {
-		exchangeServerLog.Warn("failed to process request: ", err)
+		slog.Warnf("failed to process request: %s", err)
 		return
 	}
 
 	_ = stream.SetDeadline(time.Now().Add(WriteResDeadline))
 	if err := cborutil.WriteCborRPC(stream, resp); err != nil {
 		_ = stream.SetDeadline(time.Time{})
-		exchangeServerLog.Warnw("failed to write back response for handle stream",
-			"err", err, "peer", stream.Conn().RemotePeer())
+		slog.Warnw("failed to write back response for handle stream",
+			"err", err)
 		return
 	}
 	_ = stream.SetDeadline(time.Time{})
@@ -87,63 +144,13 @@ func (s *Server) processRequest(ctx context.Context, req *exchange.Request) (*ex
 	return s.serviceRequest(ctx, validReq)
 }
 
-// Validate request. We either return a `validatedRequest`, or an error
-// `Response` indicating why we can't process it. We do not return any
-// internal errors here, we just signal protocol ones.
-func validateRequest(ctx context.Context, req *exchange.Request) (*validatedRequest, *exchange.Response) {
-	_, span := trace.StartSpan(ctx, "chainxchg.ValidateRequest")
-	defer span.End()
-
-	validReq := validatedRequest{}
-
-	validReq.options = parseOptions(req.Options)
-	if validReq.options.noOptionsSet() {
-		return nil, &exchange.Response{
-			Status:       exchange.BadRequest,
-			ErrorMessage: "no options set",
-		}
-	}
-
-	validReq.length = req.Length
-	if validReq.length > exchange.MaxRequestLength {
-		return nil, &exchange.Response{
-			Status: exchange.BadRequest,
-			ErrorMessage: fmt.Sprintf("request length over maximum allowed (%d)",
-				exchange.MaxRequestLength),
-		}
-	}
-	if validReq.length == 0 {
-		return nil, &exchange.Response{
-			Status:       exchange.BadRequest,
-			ErrorMessage: "invalid request length of zero",
-		}
-	}
-
-	if len(req.Head) == 0 {
-		return nil, &exchange.Response{
-			Status:       exchange.BadRequest,
-			ErrorMessage: "no cids in request",
-		}
-	}
-	validReq.head = chain.NewTipSetKey(req.Head...)
-
-	// FIXME: Add as a defer at the start.
-	span.AddAttributes(
-		trace.BoolAttribute("blocks", validReq.options.IncludeHeaders),
-		trace.BoolAttribute("messages", validReq.options.IncludeMessages),
-		trace.Int64Attribute("reqlen", int64(validReq.length)),
-	)
-
-	return &validReq, nil
-}
-
 func (s *Server) serviceRequest(ctx context.Context, req *validatedRequest) (*exchange.Response, error) {
 	_, span := trace.StartSpan(ctx, "chainxchg.ServiceRequest")
 	defer span.End()
 
 	chain, err := collectChainSegment(ctx, s.loader, req)
 	if err != nil {
-		exchangeServerLog.Warn("block sync request: collectChainSegment failed: ", err)
+		logging.LoggerFromContext(ctx, log).Warnf("block sync request: collectChainSegment failed: %s", err)
 		return &exchange.Response{
 			Status:       exchange.InternalError,
 			ErrorMessage: err.Error(),
@@ -177,17 +184,10 @@ func collectChainSegment(ctx context.Context, loader localstore.ChainLoader, req
 		}
 
 		if req.options.IncludeMessages {
-			bmsgs, bmincl, smsgs, smincl, err := GatherMessages(ctx, loader, ts)
+			bst.Messages, err = gatherMessages(ctx, loader, ts)
 			if err != nil {
 				return nil, fmt.Errorf("gather messages failed: %w", err)
 			}
-
-			// FIXME: Pass the response to `gatherMessages()` and set all this there.
-			bst.Messages = &exchange.CompactedMessages{}
-			bst.Messages.Bls = bmsgs
-			bst.Messages.BlsIncludes = bmincl
-			bst.Messages.Secpk = smsgs
-			bst.Messages.SecpkIncludes = smincl
 		}
 
 		bstips = append(bstips, &bst)
@@ -202,7 +202,7 @@ func collectChainSegment(ctx context.Context, loader localstore.ChainLoader, req
 	}
 }
 
-func GatherMessages(ctx context.Context, loader localstore.ChainLoader, ts *chain.TipSet) ([]*chain.Message, [][]uint64, []*chain.SignedMessage, [][]uint64, error) {
+func gatherMessages(ctx context.Context, loader localstore.ChainLoader, ts *chain.TipSet) (*exchange.CompactedMessages, error) {
 	blsmsgmap := make(map[cid.Cid]uint64)
 	secpkmsgmap := make(map[cid.Cid]uint64)
 	var secpkincl, blsincl [][]uint64
@@ -211,7 +211,7 @@ func GatherMessages(ctx context.Context, loader localstore.ChainLoader, ts *chai
 	for _, block := range ts.Blocks() {
 		bc, sc, err := loader.ReadMsgMetaCids(ctx, block.Messages)
 		if err != nil {
-			return nil, nil, nil, nil, err
+			return nil, err
 		}
 
 		// FIXME: DRY. Use `chain.Message` interface.
@@ -244,13 +244,18 @@ func GatherMessages(ctx context.Context, loader localstore.ChainLoader, ts *chai
 
 	blsmsgs, err := loader.LoadMessagesFromCids(ctx, blscids)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, err
 	}
 
 	secpkmsgs, err := loader.LoadSignedMessagesFromCids(ctx, secpkcids)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, err
 	}
 
-	return blsmsgs, blsincl, secpkmsgs, secpkincl, nil
+	return &exchange.CompactedMessages{
+		Bls:           blsmsgs,
+		BlsIncludes:   blsincl,
+		Secpk:         secpkmsgs,
+		SecpkIncludes: secpkincl,
+	}, nil
 }
