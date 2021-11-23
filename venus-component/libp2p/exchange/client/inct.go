@@ -1,4 +1,4 @@
-package exchange
+package client
 
 import (
 	"io"
