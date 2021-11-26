@@ -605,12 +605,3 @@ func verifyHead(t *testing.T, store syncStoreReader, head *types.TipSet) {
 	headTipSet := store.GetHead()
 	test.Equal(t, head, headTipSet)
 }
-
-func containsTipSet(tsasSlice []*chain.TipSetMetadata, ts *types.TipSet) bool {
-	for _, tsas := range tsasSlice {
-		if tsas.TipSet.String() == ts.String() { //bingo
-			return true
-		}
-	}
-	return false
-}
