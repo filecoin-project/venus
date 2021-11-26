@@ -7,7 +7,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/venus-shared/chain/params"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 )
@@ -121,8 +122,69 @@ func (m *Message) EqualCall(o *Message) bool {
 	m2 := *o
 
 	m1.GasLimit, m2.GasLimit = 0, 0
-	m1.GasFeeCap, m2.GasFeeCap = big.Zero(), big.Zero()
-	m1.GasPremium, m2.GasPremium = big.Zero(), big.Zero()
+	m1.GasFeeCap, m2.GasFeeCap = bigZero, bigZero
+	m1.GasPremium, m2.GasPremium = bigZero, bigZero
 
 	return (&m1).Equals(&m2)
+}
+
+func (m *Message) ValidForBlockInclusion(minGas int64, version network.Version) error {
+	if m.Version != 0 {
+		return fmt.Errorf("'Version' unsupported")
+	}
+
+	if m.To == address.Undef {
+		return fmt.Errorf("'To' address cannot be empty")
+	}
+
+	if m.To == ZeroAddress && version >= network.Version7 {
+		return fmt.Errorf("invalid 'To' address")
+	}
+
+	if m.From == address.Undef {
+		return fmt.Errorf("'From' address cannot be empty")
+	}
+
+	if m.Value.Int == nil {
+		return fmt.Errorf("'Value' cannot be nil")
+	}
+
+	if m.Value.LessThan(bigZero) {
+		return fmt.Errorf("'Value' field cannot be negative")
+	}
+
+	if m.Value.GreaterThan(TotalFilecoinInt) {
+		return fmt.Errorf("'Value' field cannot be greater than total filecoin supply")
+	}
+
+	if m.GasFeeCap.Int == nil {
+		return fmt.Errorf("'GasFeeCap' cannot be nil")
+	}
+
+	if m.GasFeeCap.LessThan(bigZero) {
+		return fmt.Errorf("'GasFeeCap' field cannot be negative")
+	}
+
+	if m.GasPremium.Int == nil {
+		return fmt.Errorf("'GasPremium' cannot be nil")
+	}
+
+	if m.GasPremium.LessThan(bigZero) {
+		return fmt.Errorf("'GasPremium' field cannot be negative")
+	}
+
+	if m.GasPremium.GreaterThan(m.GasFeeCap) {
+		return fmt.Errorf("'GasFeeCap' less than 'GasPremium'")
+	}
+
+	if m.GasLimit > params.BlockGasLimit {
+		return fmt.Errorf("'GasLimit' field cannot be greater than a block's gas limit")
+	}
+
+	// since prices might vary with time, this is technically semantic validation
+	if m.GasLimit < minGas {
+		return fmt.Errorf("'GasLimit' field cannot be less than the cost of storing a message on chain %d < %d", m.GasLimit, minGas)
+	}
+
+	return nil
 }
