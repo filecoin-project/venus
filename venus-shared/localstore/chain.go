@@ -22,3 +22,11 @@ type ChainLoader interface {
 	TipSetLoader
 	MessageLoader
 }
+
+type FullTipSetLoader interface {
+	LoadFullTipSet(ctx context.Context, tsk chain.TipSetKey) (*chain.FullTipSet, error)
+}
+
+type FullTipSetStorer interface {
+	StoreFullTipSet(ctx context.Context, fb *chain.FullTipSet) error
+}

@@ -1,10 +1,14 @@
 package hello
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 )
+
+var ErrBadGenesis = fmt.Errorf("bad genesis block")
 
 const ProtocolID = "/fil/hello/1.0.0"
 
