@@ -3,15 +3,13 @@ package chain
 import (
 	"fmt"
 	"sync"
-	"time"
-
-	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
-	tcache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/venus/pkg/types"
 )
 
 var (
@@ -39,101 +37,73 @@ type tipLoader interface {
 	LoadTipsetMetadata(ts *types.TipSet) (*TipSetMetadata, error)
 }
 
-// TipStateCache tracks tipsets and their states by tipset block ids and parent
-// block ids.  All methods are threadsafe as shared data is guarded by a
-// mutex.
+// TipStateCache tracks tipsets and their states by tipset block ids.
+// All methods are thread safe.
 type TipStateCache struct {
-	mu sync.Mutex
-	// tsasByParents allows lookup of all TipSetAndStates with the same parent IDs.
-	tsasByParentsAndHeight *tcache.Cache
-	// tsasByID allows lookup of recorded TipSetAndStates by TipSet ID.
-	tsasByID *tcache.Cache
+	// cache allows lookup of recorded TipSet states by TipSet ID.
+	cache map[string]TSState
 
 	loader tipLoader
-}
 
-const (
-	timeExpire    = time.Hour * 24
-	cleanInterval = time.Hour * 12
-)
+	l sync.RWMutex
+}
 
 // NewTipStateCache is the TipStateCache constructor.
 func NewTipStateCache(loader tipLoader) *TipStateCache {
 	return &TipStateCache{
-		tsasByParentsAndHeight: tcache.New(timeExpire, cleanInterval),
-		tsasByID:               tcache.New(timeExpire, cleanInterval),
-		loader:                 loader,
+		cache:  make(map[string]TSState, 2880), // one day height
+		loader: loader,
 	}
 }
 
 // Put adds an entry to both of TipStateCache's internal indexes.
-// After this call the input TipSetMetadata can be looked up by the ID of
-// the tipset, or the tipset's parent.
-func (ti *TipStateCache) Put(tsas *TipSetMetadata) error {
-	ti.mu.Lock()
-	defer ti.mu.Unlock()
-	return ti.put(tsas)
-}
+// After this call the input TipSetMetadata can be looked up by the ID of the tipset.
+func (ti *TipStateCache) Put(tsm *TipSetMetadata) {
+	ti.l.Lock()
+	defer ti.l.Unlock()
 
-// Put adds an entry to both of TipStateCache's internal indexes.
-// After this call the input TipSetMetadata can be looked up by the ID of
-// the tipset, or the tipset's parent.
-func (ti *TipStateCache) put(tsas *TipSetMetadata) error {
-	tsKey := tsas.TipSet.String()
-	// Update tsasByID
-	ti.tsasByID.Set(tsKey, tsas, timeExpire)
-
-	// Update tsasByParents
-	pSet := tsas.TipSet.Parents()
-	pKey := pSet.String()
-	h := tsas.TipSet.Height()
-	key := makeKey(pKey, h)
-	tsasByID, ok := ti.tsasByParentsAndHeight.Get(key)
-	if !ok {
-		tsasByID = make(map[string]*TipSetMetadata)
-		ti.tsasByParentsAndHeight.Set(key, tsasByID, timeExpire)
+	ti.cache[tsm.TipSet.String()] = TSState{
+		StateRoot: tsm.TipSetStateRoot,
+		Receipts:  tsm.TipSetReceipts,
 	}
-	tsasByID.(map[string]*TipSetMetadata)[tsKey] = tsas
-	return nil
 }
 
 // Get returns the tipset given by the input ID and its state.
-func (ti *TipStateCache) Get(ts *types.TipSet) (*TipSetMetadata, error) {
-	ti.mu.Lock()
-	defer ti.mu.Unlock()
-	tsas, ok := ti.tsasByID.Get(ts.String())
+func (ti *TipStateCache) Get(ts *types.TipSet) (TSState, error) {
+	ti.l.RLock()
+	state, ok := ti.cache[ts.String()]
+	ti.l.RUnlock()
 	if !ok {
 		tipSetMetadata, err := ti.loader.LoadTipsetMetadata(ts)
 		if err != nil {
-			return nil, xerrors.New("state not exit")
+			return TSState{}, xerrors.New("state not exit")
 		}
+		ti.Put(tipSetMetadata)
 
-		err = ti.put(tipSetMetadata)
-		if err != nil {
-			return nil, xerrors.New("failed to update tipstate")
-		}
-
-		return tipSetMetadata, nil
+		return TSState{
+			StateRoot: tipSetMetadata.TipSetStateRoot,
+			Receipts:  tipSetMetadata.TipSetReceipts,
+		}, nil
 	}
-	return tsas.(*TipSetMetadata), nil
+	return state, nil
 }
 
 // GetTipSetStateRoot returns the tipsetStateRoot from func (ti *TipStateCache) Get(tsKey string).
 func (ti *TipStateCache) GetTipSetStateRoot(ts *types.TipSet) (cid.Cid, error) {
-	tsas, err := ti.Get(ts)
+	state, err := ti.Get(ts)
 	if err != nil {
 		return cid.Cid{}, err
 	}
-	return tsas.TipSetStateRoot, nil
+	return state.StateRoot, nil
 }
 
 // GetTipSetReceiptsRoot returns the tipsetReceipts from func (ti *TipStateCache) Get(tsKey string).
 func (ti *TipStateCache) GetTipSetReceiptsRoot(ts *types.TipSet) (cid.Cid, error) {
-	tsas, err := ti.Get(ts)
+	state, err := ti.Get(ts)
 	if err != nil {
 		return cid.Cid{}, err
 	}
-	return tsas.TipSetReceipts, nil
+	return state.Receipts, nil
 }
 
 // Has returns true iff the tipset with the input ID is stored in
@@ -141,43 +111,6 @@ func (ti *TipStateCache) GetTipSetReceiptsRoot(ts *types.TipSet) (cid.Cid, error
 func (ti *TipStateCache) Has(ts *types.TipSet) bool {
 	_, err := ti.Get(ts)
 	return err == nil
-}
-
-// GetSiblingState returns the all tipsets and states stored in the TipStateCache
-// such that the parent ID of these tipsets equals the input.
-func (ti *TipStateCache) GetSiblingState(ts *types.TipSet) ([]*TipSetMetadata, error) {
-	pTS, err := ti.loader.GetTipSet(ts.Parents())
-	if err != nil {
-		return nil, err
-	}
-	pKey := makeKey(pTS.Key().String(), ts.Height())
-	ti.mu.Lock()
-	defer ti.mu.Unlock()
-	tsasByID, ok := ti.tsasByParentsAndHeight.Get(pKey)
-	if !ok {
-		return nil, ErrNotFound
-	}
-	var ret []*TipSetMetadata
-	for _, tsas := range tsasByID.(map[string]*TipSetMetadata) {
-		ret = append(ret, tsas)
-	}
-	return ret, nil
-}
-
-// HasSiblingState returns true iff there exist tipsets, and states,
-// tracked in the TipStateCache such that the parent ID of these tipsets equals the
-// input.
-func (ti *TipStateCache) HasSiblingState(ts *types.TipSet) bool {
-	pTS, err := ti.loader.GetTipSet(ts.Parents())
-	if err != nil {
-		return false
-	}
-
-	pKey := makeKey(pTS.Key().String(), ts.Height())
-	ti.mu.Lock()
-	defer ti.mu.Unlock()
-	_, ok := ti.tsasByParentsAndHeight.Get(pKey)
-	return ok
 }
 
 // makeKey returns a unique string for every parent set key and height input

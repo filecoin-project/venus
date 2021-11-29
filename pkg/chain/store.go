@@ -230,10 +230,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 			return err
 		}
 
-		err = store.tipIndex.Put(tipSetMetadata)
-		if err != nil {
-			return err
-		}
+		store.tipIndex.Put(tipSetMetadata)
 
 		if ts.Height() <= loopBack {
 			break
@@ -286,12 +283,10 @@ func (store *Store) LoadTipsetMetadata(ts *types.TipSet) (*TipSetMetadata, error
 // PutTipSetMetadata persists the blocks of a tipset and the tipset index.
 func (store *Store) PutTipSetMetadata(ctx context.Context, tsm *TipSetMetadata) error {
 	// Update tipindex.
-	err := store.tipIndex.Put(tsm)
-	if err != nil {
-		return err
-	}
+	store.tipIndex.Put(tsm)
+
 	// Persist the state mapping.
-	if err = store.writeTipSetMetadata(tsm); err != nil {
+	if err := store.writeTipSetMetadata(tsm); err != nil {
 		return err
 	}
 
@@ -488,18 +483,6 @@ func (store *Store) walkBack(from *types.TipSet, to abi.ChainEpoch) (*types.TipS
 
 		ts = pts
 	}
-}
-
-// GetSiblingState returns the the tipsets and states tracked by
-// the default store's tipIndex that have parents identified by `parentKey`.
-func (store *Store) GetSiblingState(ts *types.TipSet) ([]*TipSetMetadata, error) {
-	return store.tipIndex.GetSiblingState(ts)
-}
-
-// HasSiblingState returns true if the default store's tipindex
-// contains any tipset identified by `parentKey`.
-func (store *Store) HasSiblingState(ts *types.TipSet) bool {
-	return store.tipIndex.HasSiblingState(ts)
 }
 
 // SetHead sets the passed in tipset as the new head of this chain.
