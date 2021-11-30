@@ -37,7 +37,6 @@ type Ordered uint
 
 const (
 	StructFieldsOrdered Ordered = 1 << iota
-	InterfaceMethodsOrdered
 )
 
 var (
@@ -74,11 +73,18 @@ type similarResult struct {
 	reason  string
 }
 
+type similarInput struct {
+	a         reflect.Type
+	b         reflect.Type
+	codecFlag CodecFlag
+	ordered   Ordered
+}
+
 var similarCache = struct {
 	sync.RWMutex
-	results map[[2]reflect.Type]similarResult
+	results map[similarInput]similarResult
 }{
-	results: make(map[[2]reflect.Type]similarResult),
+	results: make(map[similarInput]similarResult),
 }
 
 func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, string) {
@@ -96,10 +102,18 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, stri
 		return true, ""
 	}
 
+	sinput := similarInput{
+		a:         atyp,
+		b:         btyp,
+		codecFlag: codecFlag,
+		ordered:   ordered,
+	}
+
 	similarCache.RLock()
-	res, has := similarCache.results[[2]reflect.Type{atyp, btyp}]
+	res, has := similarCache.results[sinput]
 	if !has {
-		res, has = similarCache.results[[2]reflect.Type{btyp, atyp}]
+		sinput.a, sinput.b = btyp, atyp
+		res, has = similarCache.results[sinput]
 	}
 	similarCache.RUnlock()
 
@@ -112,7 +126,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, stri
 
 	defer func() {
 		similarCache.Lock()
-		similarCache.results[[2]reflect.Type{atyp, btyp}] = similarResult{
+		similarCache.results[sinput] = similarResult{
 			similar: yes,
 			reason:  reason,
 		}
@@ -129,7 +143,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, stri
 
 	if codecFlag != 0 {
 		for i := range codecs {
-			if codecFlag|codecs[i].flag == 0 {
+			if codecFlag&codecs[i].flag == 0 {
 				continue
 			}
 
@@ -312,7 +326,7 @@ func fieldsSimilar(a, b reflect.Type, codecFlag CodecFlag, ordered Ordered) (boo
 		return false, fmt.Sprintf("fields count not match, %d != %d", len(afields), len(bfields))
 	}
 
-	if ordered|StructFieldsOrdered != 0 {
+	if ordered&StructFieldsOrdered != 0 {
 		for i := range afields {
 			yes, reason := Similar(afields[i].Type, bfields[i].Type, codecFlag, ordered)
 			if !yes {
@@ -359,32 +373,14 @@ func methodsSimilar(a, b reflect.Type, codecFlag CodecFlag, ordered Ordered) (bo
 		return false, fmt.Sprintf("methods count not match, %d != %d", len(ameths), len(bmeths))
 	}
 
-	if ordered|InterfaceMethodsOrdered != 0 {
-		for i := range ameths {
-			yes, reason := Similar(ameths[i].Type, bmeths[i].Type, codecFlag, ordered)
-			if !yes {
-				return false, fmt.Sprintf("#%d method not match: %s", i, reason)
-			}
-		}
-
-		return true, ""
-	}
-
-	mmeths := map[string]reflect.Type{}
 	for i := range ameths {
-		mmeths[ameths[i].Name] = ameths[i].Type
-	}
-
-	for i := range bmeths {
-		f := bmeths[i]
-		typ, has := mmeths[f.Name]
-		if !has {
-			return false, fmt.Sprintf("named method %s of %s not found", f.Name, b)
+		if ameths[i].Name != bmeths[i].Name {
+			return false, fmt.Sprintf("#%d method name not match: %s != %s", i, ameths[i].Name, bmeths[i].Name)
 		}
 
-		yes, reason := Similar(typ, f.Type, codecFlag, ordered)
+		yes, reason := Similar(ameths[i].Type, bmeths[i].Type, codecFlag, ordered)
 		if !yes {
-			return false, fmt.Sprintf("named method %s not match: %s", f.Name, reason)
+			return false, fmt.Sprintf("#%d method not match: %s", i, reason)
 		}
 	}
 
