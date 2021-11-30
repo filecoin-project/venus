@@ -1,7 +1,6 @@
 package typecheck
 
 import (
-	"fmt"
 	"go/ast"
 	"reflect"
 	"sync"
@@ -18,10 +17,6 @@ func ExportedMethods(obj interface{}) ([]reflect.Method, error) {
 	typ, ok := obj.(reflect.Type)
 	if !ok {
 		typ = reflect.TypeOf(obj)
-	}
-
-	if kind := typ.Kind(); kind != reflect.Struct && kind != reflect.Interface {
-		return nil, fmt.Errorf("unexpected type kind %s", kind)
 	}
 
 	exportedMethodsCache.RLock()
