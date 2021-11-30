@@ -3,10 +3,11 @@ module github.com/filecoin-project/venus/venus-devtool
 go 1.16
 
 require (
+	github.com/filecoin-project/go-state-types v0.1.1
 	github.com/filecoin-project/lotus v1.12.0
-	github.com/filecoin-project/specs-actors/v6 v6.0.1 // indirect
 	github.com/filecoin-project/venus/venus-shared v0.0.1
-	github.com/urfave/cli/v2 v2.2.0 // indirect
+	github.com/ipfs/go-ipfs-http-client v0.1.0 // indirect
+	github.com/urfave/cli/v2 v2.2.0
 	github.com/whyrusleeping/cbor-gen v0.0.0-20211110122933-f57984553008
 )
 
