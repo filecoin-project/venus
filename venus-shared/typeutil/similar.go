@@ -70,7 +70,7 @@ var (
 
 type similarResult struct {
 	similar bool
-	reason  string
+	reason  *Reason
 }
 
 type similarInput struct {
@@ -87,7 +87,7 @@ var similarCache = struct {
 	results: make(map[similarInput]similarResult),
 }
 
-func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, string) {
+func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, *Reason) {
 	atyp, ok := a.(reflect.Type)
 	if !ok {
 		atyp = reflect.TypeOf(a)
@@ -99,7 +99,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, stri
 	}
 
 	if atyp == btyp {
-		return true, ""
+		return true, nil
 	}
 
 	sinput := similarInput{
@@ -122,7 +122,11 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, stri
 	}
 
 	var yes bool
-	var reason string
+	var reason *Reason
+
+	reasonf := makeReasonf(atyp, btyp)
+
+	reasonWrap := makeReasonWrap(atyp, btyp)
 
 	defer func() {
 		similarCache.Lock()
@@ -137,7 +141,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, stri
 	bkind := btyp.Kind()
 
 	if akind != bkind {
-		reason = fmt.Sprintf("kinds not match, %s != %s", akind, bkind)
+		reason = reasonf("%w: %s != %s", ReasonTypeKinds, akind, bkind)
 		return yes, reason
 	}
 
@@ -150,14 +154,14 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, stri
 			aMarImpl := atyp.Implements(codecs[i].marshaler)
 			bMarImpl := btyp.Implements(codecs[i].marshaler)
 			if aMarImpl != bMarImpl {
-				reason = fmt.Sprintf("codec marshaler implementations not match, a: %v, b: %v", aMarImpl, bMarImpl)
+				reason = reasonf("%w for codec %d: %v != %v", ReasonCodecMarshalerImplementations, codecs[i].flag, aMarImpl, bMarImpl)
 				return yes, reason
 			}
 
 			aUMarImpl := atyp.Implements(codecs[i].unmarshaler)
 			bUMarImpl := btyp.Implements(codecs[i].unmarshaler)
 			if aUMarImpl != bUMarImpl {
-				reason = fmt.Sprintf("codec unmarshaler implementations not match, a: %v, b: %v", aMarImpl, bMarImpl)
+				reason = reasonf("%w for codec %d: %v; %v", ReasonCodecUnmarshalerImplementations, codecs[i].flag, aUMarImpl, bUMarImpl)
 				return yes, reason
 			}
 		}
@@ -187,18 +191,21 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, stri
 	case reflect.Complex64, reflect.Complex128:
 		fallthrough
 
+	case reflect.Uintptr, reflect.UnsafePointer:
+		fallthrough
+
 	case reflect.String:
 		yes = true
 
 	case reflect.Array:
 		if atyp.Len() != btyp.Len() {
-			reason = fmt.Sprintf("arrays with different length: %d != %d", atyp.Len(), btyp.Len())
+			reason = reasonf("%w: %d != %d", ReasonArrayLength, atyp.Len(), btyp.Len())
 			break
 		}
 
 		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, ordered)
 		if !elemMatch {
-			reason = fmt.Sprintf("array element not match: %s", elemReason)
+			reason = reasonWrap(elemReason, ReasonArrayElement)
 			break
 		}
 
@@ -207,13 +214,13 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, stri
 	case reflect.Map:
 		keyMatch, keyReason := Similar(atyp.Key(), btyp.Key(), codecFlag, ordered)
 		if !keyMatch {
-			reason = fmt.Sprintf("map key not match: %s", keyReason)
+			reason = reasonWrap(keyReason, ReasonMapKey)
 			break
 		}
 
 		valueMatch, valueReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, ordered)
 		if !valueMatch {
-			reason = fmt.Sprintf("map value not match: %s", valueReason)
+			reason = reasonWrap(valueReason, ReasonMapValue)
 			break
 		}
 
@@ -222,7 +229,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, stri
 	case reflect.Ptr:
 		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, ordered)
 		if !elemMatch {
-			reason = fmt.Sprintf("elem of ptr not match: %s", elemReason)
+			reason = reasonWrap(elemReason, ReasonPtrElememnt)
 			break
 		}
 
@@ -231,7 +238,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, stri
 	case reflect.Slice:
 		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, ordered)
 		if !elemMatch {
-			reason = fmt.Sprintf("slice element not match: %s", elemReason)
+			reason = reasonWrap(elemReason, ReasonSliceElement)
 			break
 		}
 
@@ -240,7 +247,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, stri
 	case reflect.Struct:
 		fieldsMatch, fieldsReason := fieldsSimilar(atyp, btyp, codecFlag, ordered)
 		if !fieldsMatch {
-			reason = fmt.Sprintf("exported fields not match: %s", fieldsReason)
+			reason = reasonWrap(fieldsReason, ReasonStructField)
 			break
 		}
 
@@ -249,7 +256,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, stri
 	case reflect.Interface:
 		methsMatch, methsReason := methodsSimilar(atyp, btyp, codecFlag, ordered)
 		if !methsMatch {
-			reason = fmt.Sprintf("exported methods not match: %s", methsReason)
+			reason = reasonWrap(methsReason, ReasonInterfaceMethod)
 			break
 		}
 
@@ -259,13 +266,13 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, stri
 		adir := atyp.ChanDir()
 		bdir := btyp.ChanDir()
 		if adir != bdir {
-			reason = fmt.Sprintf("chan dir not match, %d != %d", adir, bdir)
+			reason = reasonf("%w: %s != %s", ReasonChanDir, adir, bdir)
 			break
 		}
 
 		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, ordered)
 		if !elemMatch {
-			reason = fmt.Sprintf("chan element not match: %s", elemReason)
+			reason = reasonWrap(elemReason, ReasonChanElement)
 			break
 		}
 
@@ -274,67 +281,69 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, stri
 	case reflect.Func:
 		yes, reason = funcSimilar(atyp, btyp, codecFlag, ordered)
 
-	default:
-		reason = fmt.Sprintf("unexpected type kind %s", akind)
 	}
 
 	return yes, reason
 }
 
-func funcSimilar(atyp, btyp reflect.Type, codecFlag CodecFlag, ordered Ordered) (bool, string) {
+func funcSimilar(atyp, btyp reflect.Type, codecFlag CodecFlag, ordered Ordered) (bool, *Reason) {
+	reasonf := makeReasonf(atyp, btyp)
+	reasonWrap := makeReasonWrap(atyp, btyp)
+
 	aNumIn := atyp.NumIn()
 	bNumIn := btyp.NumIn()
 	if aNumIn != bNumIn {
-		return false, fmt.Sprintf("num of inputs not match, %d != %d", aNumIn, bNumIn)
+		return false, reasonf("%w: %d != %d", ReasonFuncInNum, aNumIn, bNumIn)
 	}
 
 	aNumOut := atyp.NumOut()
 	bNumOut := btyp.NumOut()
 	if aNumOut != bNumOut {
-		return false, fmt.Sprintf("num of outputs not match, %d != %d", aNumOut, bNumOut)
+		return false, reasonf("%w: %d != %d", ReasonFuncOutNum, aNumOut, bNumOut)
 	}
 
 	for i := 0; i < aNumIn; i++ {
 		inMatch, inReason := Similar(atyp.In(i), btyp.In(i), codecFlag, ordered)
 		if !inMatch {
-			return false, fmt.Sprintf("#%d input not match: %s", i, inReason)
+			return false, reasonWrap(inReason, fmt.Errorf("%w: #%d input", ReasonFuncInType, i))
 		}
 	}
 
 	for i := 0; i < aNumOut; i++ {
 		outMatch, outReason := Similar(atyp.Out(i), btyp.Out(i), codecFlag, ordered)
 		if !outMatch {
-			return false, fmt.Sprintf("#%d output not match: %s", i, outReason)
+			return false, reasonWrap(outReason, fmt.Errorf("%w: #%d input", ReasonFuncOutType, i))
 		}
 	}
 
-	return true, ""
+	return true, nil
 }
 
-func fieldsSimilar(a, b reflect.Type, codecFlag CodecFlag, ordered Ordered) (bool, string) {
-	afields, err := ExportedFields(a)
-	if err != nil {
-		return false, err.Error()
-	}
+func fieldsSimilar(a, b reflect.Type, codecFlag CodecFlag, ordered Ordered) (bool, *Reason) {
+	reasonf := makeReasonf(a, b)
+	reasonWrap := makeReasonWrap(a, b)
 
-	bfields, err := ExportedFields(b)
-	if err != nil {
-		return false, err.Error()
-	}
+	afields := ExportedFields(a)
+
+	bfields := ExportedFields(b)
 
 	if len(afields) != len(bfields) {
-		return false, fmt.Sprintf("fields count not match, %d != %d", len(afields), len(bfields))
+		return false, reasonf("%w: %d != %d", ReasonExportedFieldsCount, len(afields), len(bfields))
 	}
 
 	if ordered&StructFieldsOrdered != 0 {
 		for i := range afields {
+			if afields[i].Name != bfields[i].Name {
+				return false, reasonf("%w: #%d field, %s != %s", ReasonExportedFieldName, i, afields[i].Name, bfields[i].Name)
+			}
+
 			yes, reason := Similar(afields[i].Type, bfields[i].Type, codecFlag, ordered)
 			if !yes {
-				return false, fmt.Sprintf("#%d field not match: %s", i, reason)
+				return false, reasonWrap(reason, fmt.Errorf("%w: #%d field named %s", ReasonExportedFieldType, i, afields[i].Name))
 			}
 		}
 
-		return true, ""
+		return true, nil
 	}
 
 	mfields := map[string]reflect.Type{}
@@ -346,43 +355,39 @@ func fieldsSimilar(a, b reflect.Type, codecFlag CodecFlag, ordered Ordered) (boo
 		f := bfields[i]
 		typ, has := mfields[f.Name]
 		if !has {
-			return false, fmt.Sprintf("named field %s of %s not found", f.Name, b)
+			return false, reasonf("%w: named %s", ReasonExportedFieldNotFound, f.Name)
 		}
 
 		yes, reason := Similar(typ, f.Type, codecFlag, ordered)
 		if !yes {
-			return false, fmt.Sprintf("named field %s not match: %s", f.Name, reason)
+			return false, reasonWrap(reason, fmt.Errorf("%w: named %s", ReasonExportedFieldType, f.Name))
 		}
 	}
 
-	return true, ""
+	return true, nil
 }
 
-func methodsSimilar(a, b reflect.Type, codecFlag CodecFlag, ordered Ordered) (bool, string) {
-	ameths, err := ExportedMethods(a)
-	if err != nil {
-		return false, err.Error()
-	}
+func methodsSimilar(a, b reflect.Type, codecFlag CodecFlag, ordered Ordered) (bool, *Reason) {
+	reasonf := makeReasonf(a, b)
+	reasonWrap := makeReasonWrap(a, b)
 
-	bmeths, err := ExportedMethods(b)
-	if err != nil {
-		return false, err.Error()
-	}
+	ameths := ExportedMethods(a)
+	bmeths := ExportedMethods(b)
 
 	if len(ameths) != len(bmeths) {
-		return false, fmt.Sprintf("methods count not match, %d != %d", len(ameths), len(bmeths))
+		return false, reasonf("%w: %d != %d", ReasonExportedMethodsCount, len(ameths), len(bmeths))
 	}
 
 	for i := range ameths {
 		if ameths[i].Name != bmeths[i].Name {
-			return false, fmt.Sprintf("#%d method name not match: %s != %s", i, ameths[i].Name, bmeths[i].Name)
+			return false, reasonf("%w: #%d method, %s != %s ", ReasonExportedMethodName, i, ameths[i].Name, bmeths[i].Name)
 		}
 
 		yes, reason := Similar(ameths[i].Type, bmeths[i].Type, codecFlag, ordered)
 		if !yes {
-			return false, fmt.Sprintf("#%d method not match: %s", i, reason)
+			return false, reasonWrap(reason, fmt.Errorf("%w: #%d method named %s", ReasonExportedMethodType, i, ameths[i].Name))
 		}
 	}
 
-	return true, ""
+	return true, nil
 }

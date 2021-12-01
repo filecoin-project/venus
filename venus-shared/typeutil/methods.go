@@ -13,7 +13,7 @@ var exportedMethodsCache = struct {
 	methods: make(map[reflect.Type][]reflect.Method),
 }
 
-func ExportedMethods(obj interface{}) ([]reflect.Method, error) {
+func ExportedMethods(obj interface{}) []reflect.Method {
 	typ, ok := obj.(reflect.Type)
 	if !ok {
 		typ = reflect.TypeOf(obj)
@@ -24,7 +24,7 @@ func ExportedMethods(obj interface{}) ([]reflect.Method, error) {
 	exportedMethodsCache.RUnlock()
 
 	if ok {
-		return methods, nil
+		return methods
 	}
 
 	num := typ.NumMethod()
@@ -42,5 +42,5 @@ func ExportedMethods(obj interface{}) ([]reflect.Method, error) {
 	exportedMethodsCache.methods[typ] = methods
 	exportedMethodsCache.Unlock()
 
-	return methods, nil
+	return methods
 }

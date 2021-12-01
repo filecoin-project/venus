@@ -7,8 +7,8 @@ import (
 )
 
 func TestExportedFields(t *testing.T) {
-	_, err := ExportedFields(new(int))
-	require.Error(t, err, "only allow structs")
+	f := ExportedFields(new(int))
+	require.Nil(t, f, "nil fields for non-struct type")
 
 	type S struct {
 		A  int
@@ -18,7 +18,6 @@ func TestExportedFields(t *testing.T) {
 		_C float64 // nolint
 	}
 
-	f, err := ExportedFields(S{})
-	require.NoError(t, err, "get exported fields")
+	f = ExportedFields(S{})
 	require.Len(t, f, 3, "exported fields")
 }

@@ -1,7 +1,6 @@
 package typeutil
 
 import (
-	"fmt"
 	"go/ast"
 	"reflect"
 	"sync"
@@ -14,14 +13,14 @@ var exportedFieldsCache = struct {
 	fields: make(map[reflect.Type][]reflect.StructField),
 }
 
-func ExportedFields(obj interface{}) ([]reflect.StructField, error) {
+func ExportedFields(obj interface{}) []reflect.StructField {
 	typ, ok := obj.(reflect.Type)
 	if !ok {
 		typ = reflect.TypeOf(obj)
 	}
 
 	if kind := typ.Kind(); kind != reflect.Struct {
-		return nil, fmt.Errorf("%s is not struct", typ)
+		return nil
 	}
 
 	exportedFieldsCache.RLock()
@@ -29,7 +28,7 @@ func ExportedFields(obj interface{}) ([]reflect.StructField, error) {
 	exportedFieldsCache.RUnlock()
 
 	if ok {
-		return fields, nil
+		return fields
 	}
 
 	num := typ.NumField()
@@ -47,5 +46,5 @@ func ExportedFields(obj interface{}) ([]reflect.StructField, error) {
 	exportedFieldsCache.fields[typ] = fields
 	exportedFieldsCache.Unlock()
 
-	return fields, nil
+	return fields
 }
