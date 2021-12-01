@@ -6,7 +6,12 @@ test-venus-shared:
 
 test: test-venus-shared
 
-compatible-all: compatible-actor
+compatible-all: compatible-api compatible-actor
+
+compatible-api: api-checksum
+
+api-checksum:
+	cd venus-devtool && go run ./compatible/apis/*.go templates > ../venus-shared/compatible-checks/api-checksum.txt
 
 compatible-actor: actor-templates actor-sources actor-render
 
