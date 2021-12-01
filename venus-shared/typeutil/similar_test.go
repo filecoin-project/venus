@@ -2,6 +2,7 @@ package typeutil
 
 import (
 	"context"
+	"errors"
 	"io"
 	"reflect"
 	"testing"
@@ -26,6 +27,8 @@ type AFloat64 float64
 type AComplet64 complex64
 type AComplet128 complex128
 type AString string
+type AUintptr uintptr
+type AUnsafePointer unsafe.Pointer
 
 type BBool bool
 type BInt int
@@ -43,6 +46,8 @@ type BFloat64 float64
 type BComplet64 complex64
 type BComplet128 complex128
 type BString string
+type BUintptr uintptr
+type BUnsafePointer unsafe.Pointer
 
 func TestSimilarSimple(t *testing.T) {
 	alist := []interface{}{
@@ -62,6 +67,8 @@ func TestSimilarSimple(t *testing.T) {
 		new(AComplet64),
 		new(AComplet128),
 		new(AString),
+		new(AUintptr),
+		new(AUnsafePointer),
 	}
 
 	blist := []interface{}{
@@ -81,6 +88,8 @@ func TestSimilarSimple(t *testing.T) {
 		new(BComplet64),
 		new(BComplet128),
 		new(BString),
+		new(BUintptr),
+		new(BUnsafePointer),
 	}
 
 	require.Equal(t, len(alist), len(blist), "values of newed types")
@@ -104,10 +113,9 @@ func TestSimilarSimple(t *testing.T) {
 
 type similarCase struct {
 	val       interface{}
-	why       string
 	codecFlag CodecFlag
 	ordered   Ordered
-	expected  bool
+	reasons   []error
 }
 
 func similarTest(t *testing.T, origin interface{}, cases []similarCase, checkIndirect bool) {
@@ -116,18 +124,40 @@ func similarTest(t *testing.T, origin interface{}, cases []similarCase, checkInd
 	indirect := checkIndirect && reflect.Indirect(valOrigin).Type() != typOrigin
 
 	for i := range cases {
+		expectedYes := len(cases[i].reasons) == 0
+
 		typCase := reflect.TypeOf(cases[i].val)
 		require.NotEqual(t, typOrigin, typCase, "types should be different")
 		require.Equal(t, typOrigin.Kind(), typCase.Kind(), "kind should not be different")
 
 		yes, reason := Similar(typOrigin, typCase, cases[i].codecFlag, cases[i].ordered)
-		require.Equalf(t, cases[i].expected, yes, "expected result of %s <-> %s: %v as a result of %s, got reason: %s", typOrigin, typCase, cases[i].expected, cases[i].why, reason)
+
+		require.Equalf(t, expectedYes, yes, "#%d similar result for %s <> %s", i, typOrigin, typCase)
+		if expectedYes {
+			require.Nil(t, reason, "reason should be nil")
+		} else {
+			require.NotNil(t, reason, "reason should not be nil")
+			for ei := range cases[i].reasons {
+				ce := cases[i].reasons[ei]
+				require.Truef(t, errors.Is(reason, ce), "for case #%d %s <> %s, reason should contains base %s, actual: %s", i, typOrigin, typCase, ce, reason)
+			}
+		}
 
 		if indirect {
 			require.Equal(t, typOrigin.Elem().Kind(), typCase.Elem().Kind(), "kind of indirect type should not be different")
 
 			yes, reason = Similar(typOrigin.Elem(), typCase.Elem(), cases[i].codecFlag, cases[i].ordered)
-			require.Equalf(t, cases[i].expected, yes, "expected result for indirect types %s <-> %s: %v as a result of %s, got reason: %s", typOrigin.Elem(), typCase.Elem(), cases[i].expected, cases[i].why, reason)
+
+			require.Equalf(t, expectedYes, yes, "#%d similar result for %s <> %s", i, typOrigin.Elem(), typCase.Elem())
+			if expectedYes {
+				require.Nil(t, reason, "reason should be nil")
+			} else {
+				require.NotNil(t, reason, "reason should not be nil")
+				for ei := range cases[i].reasons {
+					ce := cases[i].reasons[ei]
+					require.Truef(t, errors.Is(reason, ce), "for case #%d %s <> %s, reason should contains base %s, actual: %s", i, typOrigin.Elem(), typCase.Elem(), ce, reason)
+				}
+			}
 		}
 	}
 }
@@ -142,23 +172,19 @@ func TestArray(t *testing.T) {
 
 	cases := []similarCase{
 		{
-			val:      new(case1),
-			why:      "array element",
-			expected: false,
+			val:     new(case1),
+			reasons: []error{ReasonArrayElement},
 		},
 		{
-			val:      new(case2),
-			why:      "array len",
-			expected: false,
+			val:     new(case2),
+			reasons: []error{ReasonArrayLength},
 		},
 		{
-			val:      new(case3),
-			expected: true,
+			val: new(case3),
 		},
 		{
-			val:      new(case4),
-			why:      "array len",
-			expected: false,
+			val:     new(case4),
+			reasons: []error{ReasonArrayLength},
 		},
 	}
 
@@ -176,22 +202,18 @@ func TestMap(t *testing.T) {
 
 	cases := []similarCase{
 		{
-			val:      new(case1),
-			why:      "map key",
-			expected: false,
+			val:     new(case1),
+			reasons: []error{ReasonMapKey},
 		},
 		{
-			val:      new(case2),
-			why:      "map value",
-			expected: false,
+			val:     new(case2),
+			reasons: []error{ReasonMapValue},
 		},
 		{
-			val:      new(case3),
-			expected: true,
+			val: new(case3),
 		},
 		{
-			val:      new(case4),
-			expected: true,
+			val: new(case4),
 		},
 	}
 
@@ -208,18 +230,15 @@ func TestSlice(t *testing.T) {
 
 	cases := []similarCase{
 		{
-			val:      new(case1),
-			why:      "slice element",
-			expected: false,
+			val:     new(case1),
+			reasons: []error{ReasonSliceElement},
 		},
 		{
-			val:      new(case2),
-			why:      "slice element",
-			expected: false,
+			val:     new(case2),
+			reasons: []error{ReasonSliceElement},
 		},
 		{
-			val:      new(case3),
-			expected: true,
+			val: new(case3),
 		},
 	}
 
@@ -237,23 +256,19 @@ func TestChan(t *testing.T) {
 
 	cases := []similarCase{
 		{
-			val:      new(case1),
-			why:      "elem type",
-			expected: false,
+			val:     new(case1),
+			reasons: []error{ReasonChanElement},
 		},
 		{
-			val:      new(case2),
-			why:      "chan dir",
-			expected: false,
+			val:     new(case2),
+			reasons: []error{ReasonChanDir},
 		},
 		{
-			val:      new(case3),
-			why:      "chan dir",
-			expected: false,
+			val:     new(case3),
+			reasons: []error{ReasonChanDir},
 		},
 		{
-			val:      new(case4),
-			expected: true,
+			val: new(case4),
 		},
 	}
 
@@ -299,71 +314,60 @@ func TestStruct(t *testing.T) {
 
 	cases := []similarCase{
 		{
-			val:      new(case1),
-			ordered:  StructFieldsOrdered,
-			expected: true,
+			val:     new(case1),
+			ordered: StructFieldsOrdered,
+			reasons: []error{ReasonStructField, ReasonExportedFieldName},
 		},
 		{
-			val:      new(case1),
-			ordered:  0,
-			why:      "name diverse",
-			expected: false,
+			val:     new(case1),
+			ordered: 0,
+			reasons: []error{ReasonStructField, ReasonExportedFieldNotFound},
 		},
 		{
-			val:      new(case2),
-			ordered:  0,
-			expected: true,
+			val:     new(case2),
+			ordered: StructFieldsOrdered,
+			reasons: []error{ReasonStructField, ReasonExportedFieldName},
 		},
 		{
-			val:      new(case2),
-			ordered:  StructFieldsOrdered,
-			why:      "order not match",
-			expected: false,
+			val:     new(case2),
+			ordered: 0,
 		},
 		{
-			val:      new(case3),
-			ordered:  0,
-			expected: true,
+			val:     new(case3),
+			ordered: StructFieldsOrdered,
+			reasons: []error{ReasonStructField, ReasonExportedFieldName},
 		},
 		{
-			val:      new(case3),
-			ordered:  StructFieldsOrdered,
-			why:      "order not match",
-			expected: false,
+			val:     new(case3),
+			ordered: 0,
 		},
 		{
-			val:      new(case4),
-			ordered:  0,
-			expected: true,
+			val:     new(case4),
+			ordered: 0,
 		},
 		{
-			val:      new(case4),
-			ordered:  StructFieldsOrdered,
-			expected: true,
+			val:     new(case4),
+			ordered: StructFieldsOrdered,
 		},
 		{
-			val:      new(case5),
-			ordered:  0,
-			why:      "field count",
-			expected: false,
+			val:     new(case5),
+			ordered: 0,
+			reasons: []error{ReasonStructField, ReasonExportedFieldsCount},
 		},
 		{
-			val:      new(case5),
-			ordered:  StructFieldsOrdered,
-			why:      "field count",
-			expected: false,
+			val:     new(case5),
+			ordered: StructFieldsOrdered,
+			reasons: []error{ReasonStructField, ReasonExportedFieldsCount},
 		},
 		{
-			val:      new(case6),
-			ordered:  0,
-			why:      "field type",
-			expected: false,
+			val:     new(case6),
+			ordered: 0,
+			reasons: []error{ReasonStructField, ReasonExportedFieldType},
 		},
 		{
-			val:      new(case6),
-			ordered:  StructFieldsOrdered,
-			why:      "field type",
-			expected: false,
+			val:     new(case6),
+			ordered: StructFieldsOrdered,
+			reasons: []error{ReasonStructField, ReasonExportedFieldType},
 		},
 	}
 
@@ -425,44 +429,46 @@ func TestInterface(t *testing.T) {
 		Close(context.Context) error
 	}
 
+	type case9 interface {
+		Read(context.Context) (AInt, error)
+		Write(context.Context, Bytes) (AInt, error)
+		Close(context.Context) error
+		read(context.Context)
+	}
+
 	cases := []similarCase{
 		{
-			val:      new(case1),
-			expected: true,
+			val: new(case1),
 		},
 		{
-			val:      new(case2),
-			why:      "method name",
-			expected: false,
+			val:     new(case2),
+			reasons: []error{ReasonExportedMethodName},
 		},
 		{
-			val:      new(case3),
-			why:      "in num",
-			expected: false,
+			val:     new(case3),
+			reasons: []error{ReasonExportedMethodType, ReasonFuncInNum},
 		},
 		{
-			val:      new(case4),
-			why:      "out num",
-			expected: false,
+			val:     new(case4),
+			reasons: []error{ReasonExportedMethodType, ReasonFuncOutNum},
 		},
 		{
-			val:      new(case5),
-			expected: true,
+			val: new(case5),
 		},
 		{
-			val:      new(case6),
-			why:      "method num",
-			expected: false,
+			val:     new(case6),
+			reasons: []error{ReasonExportedMethodsCount},
 		},
 		{
-			val:      new(case7),
-			why:      "out type",
-			expected: false,
+			val:     new(case7),
+			reasons: []error{ReasonExportedMethodType, ReasonFuncOutType},
 		},
 		{
-			val:      new(case8),
-			why:      "in type",
-			expected: false,
+			val:     new(case8),
+			reasons: []error{ReasonExportedMethodType, ReasonFuncInType},
+		},
+		{
+			val: new(case9),
 		},
 	}
 
@@ -524,46 +530,54 @@ func (ci halfCodecInt) MarshalCBOR(w io.Writer) error { // nolint
 func TestCodec(t *testing.T) {
 	cases := []similarCase{
 		{
+			val:       new(AInt),
+			codecFlag: 0,
+		},
+		{
+			val:       new(AInt),
+			codecFlag: BinaryCodec,
+			reasons:   []error{ReasonCodecMarshalerImplementations},
+		},
+		{
+			val:       new(AInt),
+			codecFlag: TextCodec,
+			reasons:   []error{ReasonCodecMarshalerImplementations},
+		},
+		{
+			val:       new(AInt),
+			codecFlag: JSONCodec,
+			reasons:   []error{ReasonCodecMarshalerImplementations},
+		},
+		{
+			val:       new(AInt),
+			codecFlag: CborCodec,
+			reasons:   []error{ReasonCodecMarshalerImplementations},
+		},
+		{
 			val:       new(codecInt),
 			codecFlag: 0,
-			expected:  true,
 		},
 		{
 			val:       new(codecInt),
 			codecFlag: BinaryCodec,
-			why:       "binary codec",
-			expected:  false,
+			reasons:   []error{ReasonCodecUnmarshalerImplementations},
 		},
 		{
 			val:       new(codecInt),
 			codecFlag: TextCodec,
-			why:       "text codec",
-			expected:  false,
+			reasons:   []error{ReasonCodecUnmarshalerImplementations},
 		},
 		{
 			val:       new(codecInt),
 			codecFlag: JSONCodec,
-			why:       "json codec",
-			expected:  false,
+			reasons:   []error{ReasonCodecUnmarshalerImplementations},
 		},
 		{
 			val:       new(codecInt),
 			codecFlag: CborCodec,
-			why:       "cbor codec",
-			expected:  false,
+			reasons:   []error{ReasonCodecUnmarshalerImplementations},
 		},
 	}
 
-	similarTest(t, new(AInt), cases, false)
 	similarTest(t, new(halfCodecInt), cases, false)
-}
-
-func TestUnexpectedKind(t *testing.T) {
-	type Uintptr uintptr
-	yes, _ := Similar(new(uintptr), new(Uintptr), 0, 0)
-	require.False(t, yes, "uintptr is unexpected")
-
-	type UnsafePointer unsafe.Pointer
-	yes, _ = Similar(new(unsafe.Pointer), new(UnsafePointer), 0, 0)
-	require.False(t, yes, "unsafe.Pointer is unexpected")
 }
