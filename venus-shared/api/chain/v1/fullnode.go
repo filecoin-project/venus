@@ -11,7 +11,7 @@ TODO:
 1. Support global FUNC injection
 
 */
-package apiface
+package v1
 
 type FullNode interface {
 	IDagService
