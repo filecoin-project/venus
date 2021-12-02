@@ -63,7 +63,7 @@ func showDiff(impl, origin reflect.Type) {
 			continue
 		}
 
-		similar, reason := typeutil.Similar(implMethods[ii], originMethods[oi], typeutil.JSONCodec|typeutil.CborCodec, typeutil.StructFieldsOrdered)
+		similar, reason := typeutil.Similar(implMethods[ii].Type, originMethods[oi].Type, typeutil.JSONCodec|typeutil.CborCodec, typeutil.StructFieldsOrdered)
 		if similar {
 			continue
 		}

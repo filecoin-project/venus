@@ -8,10 +8,13 @@ test: test-venus-shared
 
 compatible-all: compatible-api compatible-actor
 
-compatible-api: api-checksum
+compatible-api: api-checksum api-diff
 
 api-checksum:
 	cd venus-devtool && go run ./compatible/apis/*.go checksum > ../venus-shared/compatible-checks/api-checksum.txt
+
+api-diff:
+	cd venus-devtool && go run ./compatible/apis/*.go diff > ../venus-shared/compatible-checks/api-diff.txt
 
 compatible-actor: actor-templates actor-sources actor-render
 
