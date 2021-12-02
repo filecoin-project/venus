@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 )
 
 type IBlockStore interface {
@@ -16,5 +14,5 @@ type IBlockStore interface {
 	// Rule[perm:read]
 	ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error)
 	// Rule[perm:read]
-	ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (apitypes.ObjStat, error)
+	ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (ObjStat, error)
 }

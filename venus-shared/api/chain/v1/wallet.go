@@ -5,18 +5,19 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/wallet"
+	crypto "github.com/filecoin-project/go-state-types/crypto"
+
+	"github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/wallet"
 )
 
 type IWallet interface {
 	// Rule[perm:sign]
 	WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error)
 	// Rule[perm:admin]
-	WalletExport(addr address.Address, password string) (*crypto.KeyInfo, error)
+	WalletExport(addr address.Address, password string) (*wallet.KeyInfo, error)
 	// Rule[perm:admin]
-	WalletImport(key *crypto.KeyInfo) (address.Address, error)
+	WalletImport(key *wallet.KeyInfo) (address.Address, error)
 	// Rule[perm:write]
 	WalletHas(ctx context.Context, addr address.Address) (bool, error)
 	// Rule[perm:write]
@@ -30,7 +31,7 @@ type IWallet interface {
 	// Rule[perm:admin]
 	WalletSetDefault(ctx context.Context, addr address.Address) error //not exists in remote
 	// Rule[perm:sign]
-	WalletSignMessage(ctx context.Context, k address.Address, msg *types.UnsignedMessage) (*types.SignedMessage, error)
+	WalletSignMessage(ctx context.Context, k address.Address, msg *chain.Message) (*chain.SignedMessage, error)
 	// Rule[perm:admin]
 	LockWallet(ctx context.Context) error
 	// Rule[perm:admin]

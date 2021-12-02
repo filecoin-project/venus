@@ -14,11 +14,8 @@ TODO:
 package v1
 
 type FullNode interface {
-	IDagService
 	IBlockStore
 	IChain
-	IConfig
-	IDiscovery
 	IMarket
 	IMining
 	IMessagePool
