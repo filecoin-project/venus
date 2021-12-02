@@ -1,215 +1,117 @@
-package apiface
+package v0
 
 import (
 	"context"
-	"time"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/dline"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
-
-	"github.com/filecoin-project/go-state-types/big"
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/venus/venus-shared/chain"
 )
 
-type IChain interface {
-	IAccount
-	IActor
-	IBeacon
-	IMinerState
-	IChainInfo
-}
+type ChainAPI interface {
+	// MethodGroup: Chain
+	// The Chain method group contains methods for interacting with the
+	// blockchain, but that do not require any form of state computation.
 
-type IAccount interface {
-	// Rule[perm:read]
-	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
-}
+	// ChainNotify returns channel with chain head updates.
+	// First message is guaranteed to be of len == 1, and type == 'current'.
+	ChainNotify(context.Context) (<-chan []*HeadChange, error) //perm:read
 
-type IActor interface {
-	// Rule[perm:read]
-	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
-	// Rule[perm:read]
-	ListActor(ctx context.Context) (map[address.Address]*types.Actor, error)
-}
+	// ChainHead returns the current head of the chain.
+	ChainHead(context.Context) (*chain.TipSet, error) //perm:read
 
-type IBeacon interface {
-	// Rule[perm:read]
-	BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error)
-}
+	// ChainGetRandomnessFromTickets is used to sample the chain for randomness.
+	ChainGetRandomnessFromTickets(ctx context.Context, tsk chain.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) //perm:read
 
-type IChainInfo interface {
-	// Rule[perm:read]
-	BlockTime(ctx context.Context) time.Duration
-	// Rule[perm:read]
-	ChainList(ctx context.Context, tsKey types.TipSetKey, count int) ([]types.TipSetKey, error)
-	// Rule[perm:read]
-	ChainHead(ctx context.Context) (*types.TipSet, error)
-	// Rule[perm:read]
-	ChainSetHead(ctx context.Context, key types.TipSetKey) error
-	// Rule[perm:read]
-	ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error)
-	// Rule[perm:read]
-	ChainGetTipSetByHeight(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
-	// Rule[perm:read]
-	ChainGetTipSetAfterHeight(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
-	// Rule[perm:read]
-	ChainGetRandomnessFromBeacon(ctx context.Context, key types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
-	// Rule[perm:read]
-	ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
-	// Rule[perm:read]
-	StateGetRandomnessFromTickets(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
-	// Rule[perm:read]
-	StateGetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
-	// Rule[perm:read]
-	ChainGetBlock(ctx context.Context, id cid.Cid) (*types.BlockHeader, error)
-	// Rule[perm:read]
-	ChainGetMessage(ctx context.Context, msgID cid.Cid) (*types.UnsignedMessage, error)
-	// Rule[perm:read]
-	ChainGetBlockMessages(ctx context.Context, bid cid.Cid) (*apitypes.BlockMessages, error)
-	// Rule[perm:read]
-	ChainGetMessagesInTipset(ctx context.Context, key types.TipSetKey) ([]apitypes.Message, error)
-	// Rule[perm:read]
-	ChainGetReceipts(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error)
-	// Rule[perm:read]
-	ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]apitypes.Message, error)
-	// Rule[perm:read]
-	ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error)
-	// Rule[perm:read]
-	StateVerifiedRegistryRootKey(ctx context.Context, tsk types.TipSetKey) (address.Address, error)
-	// Rule[perm:read]
-	StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
-	// Rule[perm:read]
-	ChainNotify(ctx context.Context) <-chan []*chain.HeadChange
-	// Rule[perm:read]
-	GetFullBlock(ctx context.Context, id cid.Cid) (*types.FullBlock, error)
-	// Rule[perm:read]
-	GetActor(ctx context.Context, addr address.Address) (*types.Actor, error)
-	// Rule[perm:read]
-	GetParentStateRootActor(ctx context.Context, ts *types.TipSet, addr address.Address) (*types.Actor, error)
-	// Rule[perm:read]
-	GetEntry(ctx context.Context, height abi.ChainEpoch, round uint64) (*types.BeaconEntry, error)
-	// Rule[perm:read]
-	MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*chain.ChainMessage, error)
-	// Rule[perm:read]
-	ProtocolParameters(ctx context.Context) (*apitypes.ProtocolParams, error)
-	// Rule[perm:read]
-	ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
-	// Rule[perm:read]
-	StateNetworkName(ctx context.Context) (apitypes.NetworkName, error)
-	// StateSearchMsg looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
-	//
-	// NOTE: If a replacing message is found on chain, this method will return
-	// a MsgLookup for the replacing message - the MsgLookup.Message will be a different
-	// CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
-	// result of the execution of the replacing message.
-	//
-	// If the caller wants to ensure that exactly the requested message was executed,
-	// they must check that MsgLookup.Message is equal to the provided 'cid', or set the
-	// `allowReplaced` parameter to false. Without this check, and with `allowReplaced`
-	// set to true, both the requested and original message may appear as
-	// successfully executed on-chain, which may look like a double-spend.
-	//
-	// A replacing message is a message with a different CID, any of Gas values, and
-	// different signature, but with all other parameters matching (source/destination,
-	// nonce, params, etc.)
-	// Rule[perm:read]
-	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
-	// StateWaitMsg looks back up to limit epochs in the chain for a message.
-	// If not found, it blocks until the message arrives on chain, and gets to the
-	// indicated confidence depth.
-	//
-	// NOTE: If a replacing message is found on chain, this method will return
-	// a MsgLookup for the replacing message - the MsgLookup.Message will be a different
-	// CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
-	// result of the execution of the replacing message.
-	//
-	// If the caller wants to ensure that exactly the requested message was executed,
-	// they must check that MsgLookup.Message is equal to the provided 'cid', or set the
-	// `allowReplaced` parameter to false. Without this check, and with `allowReplaced`
-	// set to true, both the requested and original message may appear as
-	// successfully executed on-chain, which may look like a double-spend.
-	//
-	// A replacing message is a message with a different CID, any of Gas values, and
-	// different signature, but with all other parameters matching (source/destination,
-	// nonce, params, etc.)
-	// Rule[perm:read]
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
-	// Rule[perm:read]
-	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
-	// Rule[perm:read]
-	VerifyEntry(parent, child *types.BeaconEntry, height abi.ChainEpoch) bool
-	// Rule[perm:read]
-	ChainExport(context.Context, abi.ChainEpoch, bool, types.TipSetKey) (<-chan []byte, error)
-	// Rule[perm:read]
-	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*chain.HeadChange, error)
-}
+	// ChainGetRandomnessFromBeacon is used to sample the beacon for randomness.
+	ChainGetRandomnessFromBeacon(ctx context.Context, tsk chain.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) //perm:read
 
-type IMinerState interface {
-	// Rule[perm:read]
-	StateMinerSectorAllocated(ctx context.Context, maddr address.Address, s abi.SectorNumber, tsk types.TipSetKey) (bool, error)
-	// Rule[perm:read]
-	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
-	// Rule[perm:read]
-	StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error)
-	// Rule[perm:read]
-	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorLocation, error)
-	// Rule[perm:read]
-	StateMinerSectorSize(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (abi.SectorSize, error)
-	// Rule[perm:read]
-	StateMinerInfo(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (miner.MinerInfo, error)
-	// Rule[perm:read]
-	StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (address.Address, error)
-	// Rule[perm:read]
-	StateMinerRecoveries(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (bitfield.BitField, error)
-	// Rule[perm:read]
-	StateMinerFaults(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (bitfield.BitField, error)
-	// Rule[perm:read]
-	StateMinerProvingDeadline(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (*dline.Info, error)
-	// Rule[perm:read]
-	StateMinerPartitions(ctx context.Context, maddr address.Address, dlIdx uint64, tsk types.TipSetKey) ([]apitypes.Partition, error)
-	// Rule[perm:read]
-	StateMinerDeadlines(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]apitypes.Deadline, error)
-	// Rule[perm:read]
-	StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
-	// Rule[perm:read]
-	StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*apitypes.MarketDeal, error)
-	// Rule[perm:read]
-	StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error)
-	// Rule[perm:read]
-	StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error)
-	// Rule[perm:read]
-	StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (chain.CirculatingSupply, error)
-	// Rule[perm:read]
-	StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error)
-	// Rule[perm:read]
-	StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketDeal, error)
-	// Rule[perm:read]
-	StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
-	// Rule[perm:read]
-	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
-	// Rule[perm:read]
-	StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)
-	// Rule[perm:read]
-	StateListActors(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)
-	// Rule[perm:read]
-	StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*apitypes.MinerPower, error)
-	// Rule[perm:read]
-	StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (big.Int, error)
-	// Rule[perm:read]
-	StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorExpiration, error)
-	// Rule[perm:read]
-	StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (apitypes.MinerSectors, error)
-	// Rule[perm:read]
-	StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (apitypes.MarketBalance, error)
-	// Rule[perm:read]
-	StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (apitypes.DealCollateralBounds, error)
-	// Rule[perm:read]
-	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
+	// ChainGetBlock returns the block specified by the given CID.
+	ChainGetBlock(context.Context, cid.Cid) (*chain.BlockHeader, error) //perm:read
+	// ChainGetTipSet returns the tipset specified by the given TipSetKey.
+	ChainGetTipSet(context.Context, chain.TipSetKey) (*chain.TipSet, error) //perm:read
+
+	// ChainGetBlockMessages returns messages stored in the specified block.
+	//
+	// Note: If there are multiple blocks in a tipset, it's likely that some
+	// messages will be duplicated. It's also possible for blocks in a tipset to have
+	// different messages from the same sender at the same nonce. When that happens,
+	// only the first message (in a block with lowest ticket) will be considered
+	// for execution
+	//
+	// NOTE: THIS METHOD SHOULD ONLY BE USED FOR GETTING MESSAGES IN A SPECIFIC BLOCK
+	//
+	// DO NOT USE THIS METHOD TO GET MESSAGES INCLUDED IN A TIPSET
+	// Use ChainGetParentMessages, which will perform correct message deduplication
+	ChainGetBlockMessages(ctx context.Context, blockCid cid.Cid) (*BlockMessages, error) //perm:read
+
+	// ChainGetParentReceipts returns receipts for messages in parent tipset of
+	// the specified block. The receipts in the list returned is one-to-one with the
+	// messages returned by a call to ChainGetParentMessages with the same blockCid.
+	ChainGetParentReceipts(ctx context.Context, blockCid cid.Cid) ([]*chain.MessageReceipt, error) //perm:read
+
+	// ChainGetParentMessages returns messages stored in parent tipset of the
+	// specified block.
+	ChainGetParentMessages(ctx context.Context, blockCid cid.Cid) ([]Message, error) //perm:read
+
+	// ChainGetMessagesInTipset returns message stores in current tipset
+	ChainGetMessagesInTipset(ctx context.Context, tsk chain.TipSetKey) ([]Message, error) //perm:read
+
+	// ChainGetTipSetByHeight looks back for a tipset at the specified epoch.
+	// If there are no blocks at the specified epoch, a tipset at an earlier epoch
+	// will be returned.
+	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, chain.TipSetKey) (*chain.TipSet, error) //perm:read
+
+	// ChainReadObj reads ipld nodes referenced by the specified CID from chain
+	// blockstore and returns raw bytes.
+	ChainReadObj(context.Context, cid.Cid) ([]byte, error) //perm:read
+
+	// ChainDeleteObj deletes node referenced by the given CID
+	ChainDeleteObj(context.Context, cid.Cid) error //perm:admin
+
+	// ChainHasObj checks if a given CID exists in the chain blockstore.
+	ChainHasObj(context.Context, cid.Cid) (bool, error) //perm:read
+
+	// ChainStatObj returns statistics about the graph referenced by 'obj'.
+	// If 'base' is also specified, then the returned stat will be a diff
+	// between the two objects.
+	ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (ObjStat, error) //perm:read
+
+	// ChainSetHead forcefully sets current chain head. Use with caution.
+	ChainSetHead(context.Context, chain.TipSetKey) error //perm:admin
+
+	// ChainGetGenesis returns the genesis tipset.
+	ChainGetGenesis(context.Context) (*chain.TipSet, error) //perm:read
+
+	// ChainTipSetWeight computes weight for the specified tipset.
+	ChainTipSetWeight(context.Context, chain.TipSetKey) (chain.BigInt, error) //perm:read
+	ChainGetNode(ctx context.Context, p string) (*IpldObject, error)          //perm:read
+
+	// ChainGetMessage reads a message referenced by the specified CID from the
+	// chain blockstore.
+	ChainGetMessage(context.Context, cid.Cid) (*chain.Message, error) //perm:read
+
+	// ChainGetPath returns a set of revert/apply operations needed to get from
+	// one tipset to another, for example:
+	//```
+	//        to
+	//         ^
+	// from   tAA
+	//   ^     ^
+	// tBA    tAB
+	//  ^---*--^
+	//      ^
+	//     tRR
+	//```
+	// Would return `[revert(tBA), apply(tAB), apply(tAA)]`
+	ChainGetPath(ctx context.Context, from chain.TipSetKey, to chain.TipSetKey) ([]*HeadChange, error) //perm:read
+
+	// ChainExport returns a stream of bytes with CAR dump of chain data.
+	// The exported chain data includes the header chain from the given tipset
+	// back to genesis, the entire genesis state, and the most recent 'nroots'
+	// state trees.
+	// If oldmsgskip is set, messages from before the requested roots are also not included.
+	ChainExport(ctx context.Context, nroots abi.ChainEpoch, oldmsgskip bool, tsk chain.TipSetKey) (<-chan []byte, error) //perm:read
 }
