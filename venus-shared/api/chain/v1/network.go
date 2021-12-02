@@ -2,13 +2,13 @@ package v1
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 
-	"github.com/filecoin-project/venus/pkg/net"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+
+	"github.com/filecoin-project/venus/venus-shared/libp2p/net"
 )
 
 type INetwork interface {
@@ -29,7 +29,7 @@ type INetwork interface {
 	// Rule[perm:read]
 	NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*net.SwarmConnInfos, error)
 	// Rule[perm:read]
-	Version(context.Context) (apitypes.Version, error)
+	Version(context.Context) (Version, error)
 	// Rule[perm:read]
 	NetAddrsListen(context.Context) (peer.AddrInfo, error)
 }
