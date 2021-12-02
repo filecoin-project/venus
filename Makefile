@@ -11,7 +11,7 @@ compatible-all: compatible-api compatible-actor
 compatible-api: api-checksum
 
 api-checksum:
-	cd venus-devtool && go run ./compatible/apis/*.go templates > ../venus-shared/compatible-checks/api-checksum.txt
+	cd venus-devtool && go run ./compatible/apis/*.go checksum > ../venus-shared/compatible-checks/api-checksum.txt
 
 compatible-actor: actor-templates actor-sources actor-render
 
