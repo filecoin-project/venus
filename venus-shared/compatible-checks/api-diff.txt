@@ -1,0 +1,158 @@
+github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.com/filecoin-project/lotus/api.FullNode:
+	- AuthVerify
+	+ BlockTime
+	- ChainBlockstoreInfo
+	- ChainCheckBlockstore
+	> ChainGetBlock {[func(context.Context, cid.Cid) (*chain.BlockHeader, error) <> func(context.Context, cid.Cid) (*types.BlockHeader, error)] base=func out type: #0 input; nested={[*chain.BlockHeader <> *types.BlockHeader] base=pointed type; nested={[chain.BlockHeader <> types.BlockHeader] base=struct field; nested={[chain.BlockHeader <> types.BlockHeader] base=exported field type: #1 field named Ticket; nested={[chain.Ticket <> *types.Ticket] base=type kinds: struct != ptr; nested=nil}}}}}
+	> ChainGetBlockMessages {[func(context.Context, cid.Cid) (*v1.BlockMessages, error) <> func(context.Context, cid.Cid) (*api.BlockMessages, error)] base=func out type: #0 input; nested={[*v1.BlockMessages <> *api.BlockMessages] base=pointed type; nested={[v1.BlockMessages <> api.BlockMessages] base=struct field; nested={[v1.BlockMessages <> api.BlockMessages] base=exported field type: #0 field named BlsMessages; nested={[[]*chain.Message <> []*types.Message] base=slice element; nested={[*chain.Message <> *types.Message] base=codec marshaler implementations for codec 4: false != true; nested=nil}}}}}}
+	- ChainGetGenesis
+	> ChainGetMessage {[func(context.Context, cid.Cid) (*chain.Message, error) <> func(context.Context, cid.Cid) (*types.Message, error)] base=func out type: #0 input; nested={[*chain.Message <> *types.Message] base=codec marshaler implementations for codec 4: false != true; nested=nil}}
+	> ChainGetMessagesInTipset {[func(context.Context, chain.TipSetKey) ([]v1.Message, error) <> func(context.Context, types.TipSetKey) ([]api.Message, error)] base=func out type: #0 input; nested={[[]v1.Message <> []api.Message] base=slice element; nested={[v1.Message <> api.Message] base=struct field; nested={[v1.Message <> api.Message] base=exported field type: #1 field named Message; nested={[*chain.Message <> *types.Message] base=codec marshaler implementations for codec 4: false != true; nested=nil}}}}}
+	- ChainGetNode
+	> ChainGetParentMessages {[func(context.Context, cid.Cid) ([]v1.Message, error) <> func(context.Context, cid.Cid) ([]api.Message, error)] base=func out type: #0 input; nested={[[]v1.Message <> []api.Message] base=slice element; nested={[v1.Message <> api.Message] base=struct field; nested={[v1.Message <> api.Message] base=exported field type: #1 field named Message; nested={[*chain.Message <> *types.Message] base=codec marshaler implementations for codec 4: false != true; nested=nil}}}}}
+	> ChainGetParentReceipts {[func(context.Context, cid.Cid) ([]*chain.MessageReceipt, error) <> func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)] base=func out type: #0 input; nested={[[]*chain.MessageReceipt <> []*types.MessageReceipt] base=slice element; nested={[*chain.MessageReceipt <> *types.MessageReceipt] base=pointed type; nested={[chain.MessageReceipt <> types.MessageReceipt] base=struct field; nested={[chain.MessageReceipt <> types.MessageReceipt] base=exported field name: #1 field, ReturnValue != Return; nested=nil}}}}}
+	+ ChainGetRandomnessFromBeacon
+	+ ChainGetRandomnessFromTickets
+	+ ChainGetReceipts
+	+ ChainList
+	> ChainNotify {[func(context.Context) <-chan []*v1.HeadChange <> func(context.Context) (<-chan []*api.HeadChange, error)] base=func out num: 1 != 2; nested=nil}
+	+ ChainSyncHandleNewTipSet
+	- ClientCalcCommP
+	- ClientCancelDataTransfer
+	- ClientCancelRetrievalDeal
+	- ClientDataTransferUpdates
+	- ClientDealPieceCID
+	- ClientDealSize
+	- ClientFindData
+	- ClientGenCar
+	- ClientGetDealInfo
+	- ClientGetDealStatus
+	- ClientGetDealUpdates
+	- ClientGetRetrievalUpdates
+	- ClientHasLocal
+	- ClientImport
+	- ClientListDataTransfers
+	- ClientListDeals
+	- ClientListImports
+	- ClientListRetrievals
+	- ClientMinerQueryOffer
+	- ClientQueryAsk
+	- ClientRemoveImport
+	- ClientRestartDataTransfer
+	- ClientRetrieve
+	- ClientRetrieveTryRestartInsufficientFunds
+	- ClientRetrieveWithEvents
+	- ClientStartDeal
+	- ClientStatelessDeal
+	- Closing
+	+ Concurrent
+	- CreateBackup
+	- Discover
+	+ GasBatchEstimateMessageGas
+	> GasEstimateFeeCap {[func(context.Context, *chain.Message, int64, chain.TipSetKey) (big.Int, error) <> func(context.Context, *types.Message, int64, types.TipSetKey) (big.Int, error)] base=func in type: #1 input; nested={[*chain.Message <> *types.Message] base=codec marshaler implementations for codec 4: false != true; nested=nil}}
+	> GasEstimateGasLimit {[func(context.Context, *chain.Message, chain.TipSetKey) (int64, error) <> func(context.Context, *types.Message, types.TipSetKey) (int64, error)] base=func in type: #1 input; nested={[*chain.Message <> *types.Message] base=codec marshaler implementations for codec 4: false != true; nested=nil}}
+	> GasEstimateMessageGas {[func(context.Context, *chain.Message, *v1.MessageSendSpec, chain.TipSetKey) (*chain.Message, error) <> func(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)] base=func in type: #1 input; nested={[*chain.Message <> *types.Message] base=codec marshaler implementations for codec 4: false != true; nested=nil}}
+	+ GetActor
+	+ GetEntry
+	+ GetFullBlock
+	+ GetParentStateRootActor
+	+ HasPassword
+	- ID
+	+ ListActor
+	+ LockWallet
+	- LogAlerts
+	- LogList
+	- LogSetLevel
+	- MarketAddBalance
+	- MarketGetReserved
+	- MarketReleaseFunds
+	- MarketReserveFunds
+	- MarketWithdraw
+	+ MessageWait
+	> MinerCreateBlock {[func(context.Context, *v1.BlockTemplate) (*chain.BlockMsg, error) <> func(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)] base=func in type: #1 input; nested={[*v1.BlockTemplate <> *api.BlockTemplate] base=pointed type; nested={[v1.BlockTemplate <> api.BlockTemplate] base=struct field; nested={[v1.BlockTemplate <> api.BlockTemplate] base=exported field type: #2 field named Ticket; nested={[chain.Ticket <> *types.Ticket] base=type kinds: struct != ptr; nested=nil}}}}}
+	> MpoolBatchPush {[func(context.Context, []*chain.SignedMessage) ([]cid.Cid, error) <> func(context.Context, []*types.SignedMessage) ([]cid.Cid, error)] base=func in type: #1 input; nested={[[]*chain.SignedMessage <> []*types.SignedMessage] base=slice element; nested={[*chain.SignedMessage <> *types.SignedMessage] base=codec marshaler implementations for codec 4: false != true; nested=nil}}}
+	> MpoolBatchPushMessage {[func(context.Context, []*chain.Message, *v1.MessageSendSpec) ([]*chain.SignedMessage, error) <> func(context.Context, []*types.Message, *api.MessageSendSpec) ([]*types.SignedMessage, error)] base=func in type: #1 input; nested={[[]*chain.Message <> []*types.Message] base=slice element; nested={[*chain.Message <> *types.Message] base=codec marshaler implementations for codec 4: false != true; nested=nil}}}
+	> MpoolBatchPushUntrusted {[func(context.Context, []*chain.SignedMessage) ([]cid.Cid, error) <> func(context.Context, []*types.SignedMessage) ([]cid.Cid, error)] base=func in type: #1 input; nested={[[]*chain.SignedMessage <> []*types.SignedMessage] base=slice element; nested={[*chain.SignedMessage <> *types.SignedMessage] base=codec marshaler implementations for codec 4: false != true; nested=nil}}}
+	> MpoolCheckReplaceMessages {[func(context.Context, []*chain.Message) ([][]messagepool.MessageCheckStatus, error) <> func(context.Context, []*types.Message) ([][]api.MessageCheckStatus, error)] base=func in type: #1 input; nested={[[]*chain.Message <> []*types.Message] base=slice element; nested={[*chain.Message <> *types.Message] base=codec marshaler implementations for codec 4: false != true; nested=nil}}}
+	+ MpoolDeleteByAdress
+	> MpoolPending {[func(context.Context, chain.TipSetKey) ([]*chain.SignedMessage, error) <> func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error)] base=func out type: #0 input; nested={[[]*chain.SignedMessage <> []*types.SignedMessage] base=slice element; nested={[*chain.SignedMessage <> *types.SignedMessage] base=codec marshaler implementations for codec 4: false != true; nested=nil}}}
+	+ MpoolPublishByAddr
+	+ MpoolPublishMessage
+	> MpoolPush {[func(context.Context, *chain.SignedMessage) (cid.Cid, error) <> func(context.Context, *types.SignedMessage) (cid.Cid, error)] base=func in type: #1 input; nested={[*chain.SignedMessage <> *types.SignedMessage] base=codec marshaler implementations for codec 4: false != true; nested=nil}}
+	> MpoolPushMessage {[func(context.Context, *chain.Message, *v1.MessageSendSpec) (*chain.SignedMessage, error) <> func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)] base=func in type: #1 input; nested={[*chain.Message <> *types.Message] base=codec marshaler implementations for codec 4: false != true; nested=nil}}
+	> MpoolPushUntrusted {[func(context.Context, *chain.SignedMessage) (cid.Cid, error) <> func(context.Context, *types.SignedMessage) (cid.Cid, error)] base=func in type: #1 input; nested={[*chain.SignedMessage <> *types.SignedMessage] base=codec marshaler implementations for codec 4: false != true; nested=nil}}
+	> MpoolSelect {[func(context.Context, chain.TipSetKey, float64) ([]*chain.SignedMessage, error) <> func(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error)] base=func out type: #0 input; nested={[[]*chain.SignedMessage <> []*types.SignedMessage] base=slice element; nested={[*chain.SignedMessage <> *types.SignedMessage] base=codec marshaler implementations for codec 4: false != true; nested=nil}}}
+	+ MpoolSelects
+	> MpoolSub {[func(context.Context) (<-chan messagepool.MpoolUpdate, error) <> func(context.Context) (<-chan api.MpoolUpdate, error)] base=func out type: #0 input; nested={[<-chan messagepool.MpoolUpdate <> <-chan api.MpoolUpdate] base=channel element; nested={[messagepool.MpoolUpdate <> api.MpoolUpdate] base=struct field; nested={[messagepool.MpoolUpdate <> api.MpoolUpdate] base=exported field type: #1 field named Message; nested={[*chain.SignedMessage <> *types.SignedMessage] base=codec marshaler implementations for codec 4: false != true; nested=nil}}}}}
+	- MsigGetAvailableBalance
+	- MsigGetPending
+	- MsigGetVestingSchedule
+	- NetAgentVersion
+	- NetAutoNatStatus
+	- NetBandwidthStats
+	- NetBandwidthStatsByPeer
+	- NetBandwidthStatsByProtocol
+	- NetBlockAdd
+	- NetBlockList
+	- NetBlockRemove
+	- NetConnect
+	- NetConnectedness
+	- NetDisconnect
+	- NetFindPeer
+	- NetPeerInfo
+	- NetPeers
+	- NetPubsubScores
+	+ NetworkConnect
+	+ NetworkFindPeer
+	+ NetworkFindProvidersAsync
+	+ NetworkGetBandwidthStats
+	+ NetworkGetClosestPeers
+	+ NetworkGetPeerAddresses
+	+ NetworkGetPeerID
+	+ NetworkPeers
+	- NodeStatus
+	> PaychNewPayment {[func(context.Context, address.Address, address.Address, []v1.VoucherSpec) (*v1.PaymentInfo, error) <> func(context.Context, address.Address, address.Address, []api.VoucherSpec) (*api.PaymentInfo, error)] base=func out type: #0 input; nested={[*v1.PaymentInfo <> *api.PaymentInfo] base=codec marshaler implementations for codec 8: false != true; nested=nil}}
+	+ ProtocolParameters
+	+ ResolveToKeyAddr
+	- Session
+	+ SetConcurrent
+	+ SetPassword
+	- Shutdown
+	- StateAllMinerFaults
+	> StateCall {[func(context.Context, *chain.Message, chain.TipSetKey) (*v1.InvocResult, error) <> func(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)] base=func in type: #1 input; nested={[*chain.Message <> *types.Message] base=codec marshaler implementations for codec 4: false != true; nested=nil}}
+	- StateChangedActors
+	- StateCompute
+	- StateDecodeParams
+	- StateEncodeParams
+	- StateListMessages
+	+ StateMinerSectorSize
+	+ StateMinerWorkerAddress
+	- StateReadState
+	- StateReplay
+	> StateSearchMsg {[func(context.Context, chain.TipSetKey, cid.Cid, abi.ChainEpoch, bool) (*v1.MsgLookup, error) <> func(context.Context, types.TipSetKey, cid.Cid, abi.ChainEpoch, bool) (*api.MsgLookup, error)] base=func out type: #0 input; nested={[*v1.MsgLookup <> *api.MsgLookup] base=pointed type; nested={[v1.MsgLookup <> api.MsgLookup] base=struct field; nested={[v1.MsgLookup <> api.MsgLookup] base=exported field type: #1 field named Receipt; nested={[chain.MessageReceipt <> types.MessageReceipt] base=struct field; nested={[chain.MessageReceipt <> types.MessageReceipt] base=exported field name: #1 field, ReturnValue != Return; nested=nil}}}}}}
+	> StateWaitMsg {[func(context.Context, cid.Cid, uint64, abi.ChainEpoch, bool) (*v1.MsgLookup, error) <> func(context.Context, cid.Cid, uint64, abi.ChainEpoch, bool) (*api.MsgLookup, error)] base=func out type: #0 input; nested={[*v1.MsgLookup <> *api.MsgLookup] base=pointed type; nested={[v1.MsgLookup <> api.MsgLookup] base=struct field; nested={[v1.MsgLookup <> api.MsgLookup] base=exported field type: #1 field named Receipt; nested={[chain.MessageReceipt <> types.MessageReceipt] base=struct field; nested={[chain.MessageReceipt <> types.MessageReceipt] base=exported field name: #1 field, ReturnValue != Return; nested=nil}}}}}}
+	- SyncCheckBad
+	- SyncCheckpoint
+	- SyncIncomingBlocks
+	- SyncMarkBad
+	> SyncSubmitBlock {[func(context.Context, *chain.BlockMsg) error <> func(context.Context, *types.BlockMsg) error] base=func in type: #1 input; nested={[*chain.BlockMsg <> *types.BlockMsg] base=pointed type; nested={[chain.BlockMsg <> types.BlockMsg] base=struct field; nested={[chain.BlockMsg <> types.BlockMsg] base=exported field type: #0 field named Header; nested={[*chain.BlockHeader <> *types.BlockHeader] base=pointed type; nested={[chain.BlockHeader <> types.BlockHeader] base=struct field; nested={[chain.BlockHeader <> types.BlockHeader] base=exported field type: #1 field named Ticket; nested={[chain.Ticket <> *types.Ticket] base=type kinds: struct != ptr; nested=nil}}}}}}}}
+	- SyncUnmarkAllBad
+	- SyncUnmarkBad
+	- SyncValidateTipset
+	+ UnLockWallet
+	+ Verify
+	+ VerifyEntry
+	> Version {[func(context.Context) (v1.Version, error) <> func(context.Context) (api.APIVersion, error)] base=func out type: #0 input; nested={[v1.Version <> api.APIVersion] base=struct field; nested={[v1.Version <> api.APIVersion] base=exported fields count: 2 != 3; nested=nil}}}
+	+ WalletAddresses
+	- WalletDelete
+	> WalletExport {[func(address.Address, string) (*wallet.KeyInfo, error) <> func(context.Context, address.Address) (*types.KeyInfo, error)] base=func in type: #0 input; nested={[address.Address <> context.Context] base=type kinds: struct != interface; nested=nil}}
+	> WalletImport {[func(*wallet.KeyInfo) (address.Address, error) <> func(context.Context, *types.KeyInfo) (address.Address, error)] base=func in num: 1 != 2; nested=nil}
+	- WalletList
+	- WalletNew
+	+ WalletNewAddress
+	> WalletSign {[func(context.Context, address.Address, []uint8, wallet.MsgMeta) (*crypto.Signature, error) <> func(context.Context, address.Address, []uint8) (*crypto.Signature, error)] base=func in num: 4 != 3; nested=nil}
+	> WalletSignMessage {[func(context.Context, address.Address, *chain.Message) (*chain.SignedMessage, error) <> func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error)] base=func in type: #2 input; nested={[*chain.Message <> *types.Message] base=codec marshaler implementations for codec 4: false != true; nested=nil}}
+	+ WalletState
+	- WalletValidateAddress
+	- WalletVerify
+
