@@ -15,6 +15,7 @@ func main() {
 		Flags:                []cli.Flag{},
 		Commands: []*cli.Command{
 			checksumCmd,
+			diffCmd,
 		},
 	}
 
