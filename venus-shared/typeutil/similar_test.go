@@ -114,7 +114,7 @@ func TestSimilarSimple(t *testing.T) {
 type similarCase struct {
 	val       interface{}
 	codecFlag CodecFlag
-	ordered   Ordered
+	smode     SimilarMode
 	reasons   []error
 }
 
@@ -130,7 +130,7 @@ func similarTest(t *testing.T, origin interface{}, cases []similarCase, checkInd
 		require.NotEqual(t, typOrigin, typCase, "types should be different")
 		require.Equal(t, typOrigin.Kind(), typCase.Kind(), "kind should not be different")
 
-		yes, reason := Similar(typOrigin, typCase, cases[i].codecFlag, cases[i].ordered)
+		yes, reason := Similar(typOrigin, typCase, cases[i].codecFlag, cases[i].smode)
 
 		require.Equalf(t, expectedYes, yes, "#%d similar result for %s <> %s", i, typOrigin, typCase)
 		if expectedYes {
@@ -146,7 +146,7 @@ func similarTest(t *testing.T, origin interface{}, cases []similarCase, checkInd
 		if indirect {
 			require.Equal(t, typOrigin.Elem().Kind(), typCase.Elem().Kind(), "kind of indirect type should not be different")
 
-			yes, reason = Similar(typOrigin.Elem(), typCase.Elem(), cases[i].codecFlag, cases[i].ordered)
+			yes, reason = Similar(typOrigin.Elem(), typCase.Elem(), cases[i].codecFlag, cases[i].smode)
 
 			require.Equalf(t, expectedYes, yes, "#%d similar result for %s <> %s", i, typOrigin.Elem(), typCase.Elem())
 			if expectedYes {
@@ -312,62 +312,72 @@ func TestStruct(t *testing.T) {
 		B uint
 	}
 
+	type case7 struct {
+		A AUInt `json:"a"`
+		B AInt
+	}
+
 	cases := []similarCase{
 		{
 			val:     new(case1),
-			ordered: StructFieldsOrdered,
+			smode:   StructFieldsOrdered,
 			reasons: []error{ReasonStructField, ReasonExportedFieldName},
 		},
 		{
 			val:     new(case1),
-			ordered: 0,
+			smode:   0,
 			reasons: []error{ReasonStructField, ReasonExportedFieldNotFound},
 		},
 		{
 			val:     new(case2),
-			ordered: StructFieldsOrdered,
+			smode:   StructFieldsOrdered,
 			reasons: []error{ReasonStructField, ReasonExportedFieldName},
 		},
 		{
-			val:     new(case2),
-			ordered: 0,
+			val:   new(case2),
+			smode: 0,
 		},
 		{
 			val:     new(case3),
-			ordered: StructFieldsOrdered,
+			smode:   StructFieldsOrdered,
 			reasons: []error{ReasonStructField, ReasonExportedFieldName},
 		},
 		{
-			val:     new(case3),
-			ordered: 0,
+			val:   new(case3),
+			smode: 0,
 		},
 		{
-			val:     new(case4),
-			ordered: 0,
+			val:   new(case4),
+			smode: 0,
 		},
 		{
-			val:     new(case4),
-			ordered: StructFieldsOrdered,
+			val:   new(case4),
+			smode: StructFieldsOrdered,
 		},
 		{
 			val:     new(case5),
-			ordered: 0,
+			smode:   0,
 			reasons: []error{ReasonStructField, ReasonExportedFieldsCount},
 		},
 		{
 			val:     new(case5),
-			ordered: StructFieldsOrdered,
+			smode:   StructFieldsOrdered,
 			reasons: []error{ReasonStructField, ReasonExportedFieldsCount},
 		},
 		{
 			val:     new(case6),
-			ordered: 0,
+			smode:   0,
 			reasons: []error{ReasonStructField, ReasonExportedFieldType},
 		},
 		{
 			val:     new(case6),
-			ordered: StructFieldsOrdered,
+			smode:   StructFieldsOrdered,
 			reasons: []error{ReasonStructField, ReasonExportedFieldType},
+		},
+		{
+			val:     new(case7),
+			smode:   StructFieldsOrdered | StructFieldTagsMatch,
+			reasons: []error{ReasonStructField, ReasonExportedFieldTag},
 		},
 	}
 
