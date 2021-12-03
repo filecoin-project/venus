@@ -60,7 +60,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- MarketReserveFunds
 	- MarketWithdraw
 	+ MessageWait
-	> MinerCreateBlock {[func(context.Context, *v1.BlockTemplate) (*chain.BlockMsg, error) <> func(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)] base=func in type: #1 input; nested={[*v1.BlockTemplate <> *api.BlockTemplate] base=pointed type; nested={[v1.BlockTemplate <> api.BlockTemplate] base=struct field; nested={[v1.BlockTemplate <> api.BlockTemplate] base=exported field type: #2 field named Ticket; nested={[chain.Ticket <> *types.Ticket] base=type kinds: struct != ptr; nested=nil}}}}}
 	> MpoolBatchPushMessage {[func(context.Context, []*chain.Message, *v1.MessageSendSpec) ([]*chain.SignedMessage, error) <> func(context.Context, []*types.Message, *api.MessageSendSpec) ([]*types.SignedMessage, error)] base=func in type: #2 input; nested={[*v1.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[v1.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[v1.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 2 != 1; nested=nil}}}}
 	+ MpoolDeleteByAdress
 	+ MpoolPublishByAddr

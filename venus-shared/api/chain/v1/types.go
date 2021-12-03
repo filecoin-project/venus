@@ -130,9 +130,9 @@ type MiningBaseInfo struct { //nolint
 type BlockTemplate struct {
 	Miner            address.Address
 	Parents          chain.TipSetKey
-	Ticket           chain.Ticket
+	Ticket           *chain.Ticket
 	Eproof           *chain.ElectionProof
-	BeaconValues     []*chain.BeaconEntry
+	BeaconValues     []chain.BeaconEntry
 	Messages         []*chain.SignedMessage
 	Epoch            abi.ChainEpoch
 	Timestamp        uint64
