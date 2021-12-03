@@ -9,9 +9,9 @@ import (
 
 // MessageReceipt is what is returned by executing a message on the vm.
 type MessageReceipt struct {
-	ExitCode    exitcode.ExitCode
-	ReturnValue []byte
-	GasUsed     int64
+	ExitCode exitcode.ExitCode
+	Return   []byte
+	GasUsed  int64
 }
 
 func (r *MessageReceipt) String() string {

@@ -5,7 +5,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- ChainCheckBlockstore
 	- ChainGetGenesis
 	- ChainGetNode
-	> ChainGetParentReceipts {[func(context.Context, cid.Cid) ([]*chain.MessageReceipt, error) <> func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)] base=func out type: #0 input; nested={[[]*chain.MessageReceipt <> []*types.MessageReceipt] base=slice element; nested={[*chain.MessageReceipt <> *types.MessageReceipt] base=pointed type; nested={[chain.MessageReceipt <> types.MessageReceipt] base=struct field; nested={[chain.MessageReceipt <> types.MessageReceipt] base=exported field name: #1 field, ReturnValue != Return; nested=nil}}}}}
 	+ ChainGetRandomnessFromBeacon
 	+ ChainGetRandomnessFromTickets
 	+ ChainGetReceipts
@@ -104,7 +103,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ SetPassword
 	- Shutdown
 	- StateAllMinerFaults
-	> StateCall {[func(context.Context, *chain.Message, chain.TipSetKey) (*v1.InvocResult, error) <> func(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)] base=func out type: #0 input; nested={[*v1.InvocResult <> *api.InvocResult] base=pointed type; nested={[v1.InvocResult <> api.InvocResult] base=struct field; nested={[v1.InvocResult <> api.InvocResult] base=exported field type: #2 field named MsgRct; nested={[*chain.MessageReceipt <> *types.MessageReceipt] base=pointed type; nested={[chain.MessageReceipt <> types.MessageReceipt] base=struct field; nested={[chain.MessageReceipt <> types.MessageReceipt] base=exported field name: #1 field, ReturnValue != Return; nested=nil}}}}}}}
+	> StateCall {[func(context.Context, *chain.Message, chain.TipSetKey) (*v1.InvocResult, error) <> func(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)] base=func out type: #0 input; nested={[*v1.InvocResult <> *api.InvocResult] base=pointed type; nested={[v1.InvocResult <> api.InvocResult] base=struct field; nested={[v1.InvocResult <> api.InvocResult] base=exported field type: #4 field named ExecutionTrace; nested={[stmgr.ExecutionTrace <> types.ExecutionTrace] base=struct field; nested={[stmgr.ExecutionTrace <> types.ExecutionTrace] base=exported field type: #4 field named GasCharges; nested={[[]*stmgr.GasTrace <> []*types.GasTrace] base=slice element; nested={[*stmgr.GasTrace <> *types.GasTrace] base=codec marshaler implementations for codec 4: false != true; nested=nil}}}}}}}}
 	- StateChangedActors
 	- StateCompute
 	- StateDecodeParams
@@ -114,8 +113,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ StateMinerWorkerAddress
 	- StateReadState
 	- StateReplay
-	> StateSearchMsg {[func(context.Context, chain.TipSetKey, cid.Cid, abi.ChainEpoch, bool) (*v1.MsgLookup, error) <> func(context.Context, types.TipSetKey, cid.Cid, abi.ChainEpoch, bool) (*api.MsgLookup, error)] base=func out type: #0 input; nested={[*v1.MsgLookup <> *api.MsgLookup] base=pointed type; nested={[v1.MsgLookup <> api.MsgLookup] base=struct field; nested={[v1.MsgLookup <> api.MsgLookup] base=exported field type: #1 field named Receipt; nested={[chain.MessageReceipt <> types.MessageReceipt] base=struct field; nested={[chain.MessageReceipt <> types.MessageReceipt] base=exported field name: #1 field, ReturnValue != Return; nested=nil}}}}}}
-	> StateWaitMsg {[func(context.Context, cid.Cid, uint64, abi.ChainEpoch, bool) (*v1.MsgLookup, error) <> func(context.Context, cid.Cid, uint64, abi.ChainEpoch, bool) (*api.MsgLookup, error)] base=func out type: #0 input; nested={[*v1.MsgLookup <> *api.MsgLookup] base=pointed type; nested={[v1.MsgLookup <> api.MsgLookup] base=struct field; nested={[v1.MsgLookup <> api.MsgLookup] base=exported field type: #1 field named Receipt; nested={[chain.MessageReceipt <> types.MessageReceipt] base=struct field; nested={[chain.MessageReceipt <> types.MessageReceipt] base=exported field name: #1 field, ReturnValue != Return; nested=nil}}}}}}
 	- SyncCheckBad
 	- SyncCheckpoint
 	- SyncIncomingBlocks
