@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/filecoin-project/venus/venus-shared/libp2p/exchange"
 	"github.com/filecoin-project/venus/venus-shared/libp2p/hello"
+	"github.com/filecoin-project/venus/venus-shared/paych"
 )
 
 type genTarget struct {
@@ -33,6 +34,12 @@ func main() {
 				exchange.Response{},
 				exchange.CompactedMessages{},
 				exchange.BSTipSet{},
+			},
+		},
+		{
+			dir: "../venus-shared/paych/",
+			types: []interface{}{
+				paych.PaymentInfo{},
 			},
 		},
 		{

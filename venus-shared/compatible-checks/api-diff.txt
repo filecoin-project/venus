@@ -93,7 +93,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ NetworkGetPeerID
 	+ NetworkPeers
 	- NodeStatus
-	> PaychNewPayment {[func(context.Context, address.Address, address.Address, []v1.VoucherSpec) (*v1.PaymentInfo, error) <> func(context.Context, address.Address, address.Address, []api.VoucherSpec) (*api.PaymentInfo, error)] base=func out type: #0 input; nested={[*v1.PaymentInfo <> *api.PaymentInfo] base=codec marshaler implementations for codec 8: false != true; nested=nil}}
 	+ ProtocolParameters
 	+ ResolveToKeyAddr
 	- Session
