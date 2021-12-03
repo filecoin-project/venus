@@ -12,14 +12,14 @@ func _() {
 	_ = x[CodecText-2]
 	_ = x[CodecJSON-4]
 	_ = x[CodecCbor-8]
-	_ = x[CodecMaxLimit-16]
+	_ = x[_codecLimit-16]
 }
 
 const (
 	_CodecFlag_name_0 = "BinaryText"
 	_CodecFlag_name_1 = "JSON"
 	_CodecFlag_name_2 = "Cbor"
-	_CodecFlag_name_3 = "MaxLimit"
+	_CodecFlag_name_3 = "_codecLimit"
 )
 
 var (

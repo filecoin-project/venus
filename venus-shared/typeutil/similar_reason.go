@@ -81,4 +81,5 @@ var (
 	ReasonExportedMethodsCount            = fmt.Errorf("exported methods count")            // nolint
 	ReasonExportedMethodName              = fmt.Errorf("exported method name")              // nolint
 	ReasonExportedMethodType              = fmt.Errorf("exported method type")              // nolint
+	ReasonRecursiveCompare                = fmt.Errorf("recursive compare")                 // nolint
 )

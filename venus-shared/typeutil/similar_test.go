@@ -4,12 +4,23 @@ import (
 	"context"
 	"errors"
 	"io"
+	"math/bits"
 	"reflect"
 	"testing"
 	"unsafe"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestCodecList(t *testing.T) {
+	zeroes := bits.TrailingZeros(uint(_codecLimit))
+	require.Equalf(t, zeroes, len(codecs), "codec count not match, %d != %d", zeroes, len(codecs))
+
+	for ci := range codecs {
+		czeroes := bits.TrailingZeros(uint(codecs[ci].flag))
+		require.Equalf(t, czeroes, ci, "#%d codec's flag is not matched", ci)
+	}
+}
 
 type ABool bool
 type AInt int
@@ -376,6 +387,11 @@ func TestStruct(t *testing.T) {
 		},
 		{
 			val:     new(case7),
+			smode:   StructFieldTagsMatch,
+			reasons: []error{ReasonStructField, ReasonExportedFieldTag},
+		},
+		{
+			val:     new(case7),
 			smode:   StructFieldsOrdered | StructFieldTagsMatch,
 			reasons: []error{ReasonStructField, ReasonExportedFieldTag},
 		},
@@ -479,6 +495,11 @@ func TestInterface(t *testing.T) {
 		},
 		{
 			val: new(case9),
+		},
+		{
+			val:     new(case9),
+			smode:   InterfaceAllMethods,
+			reasons: []error{ReasonExportedMethodsCount},
 		},
 	}
 
@@ -590,4 +611,68 @@ func TestCodec(t *testing.T) {
 	}
 
 	similarTest(t, new(halfCodecInt), cases, false)
+}
+
+func TestConvertible(t *testing.T) {
+	type origin struct {
+		A uint
+		B int
+	}
+
+	type another origin
+
+	yes, reason := Similar(new(origin), new(another), 0, 0)
+	require.Truef(t, yes, "convertible types, got reason: %s", reason)
+
+	type ra = io.ReadCloser
+	type rb = io.Reader
+	rta := reflect.TypeOf(new(ra)).Elem()
+	rtb := reflect.TypeOf(new(rb)).Elem()
+	require.True(t, rta.ConvertibleTo(rtb))
+
+	yes, reason = Similar(rta, rtb, 0, 0)
+	require.False(t, yes, "convertible interface may not be similar")
+	require.True(t, errors.Is(reason, ReasonExportedMethodsCount))
+}
+
+func TestRecursive(t *testing.T) {
+	type origin struct {
+		A   uint
+		B   int
+		Sub []origin
+	}
+
+	type case1 struct {
+		A   uint
+		B   int
+		Sub []case1
+	}
+
+	type case2 struct {
+		A   uint
+		B   int
+		Sub []origin
+	}
+
+	cases := []similarCase{
+		{
+			val:   new(case1),
+			smode: 0,
+		},
+		{
+			val:     new(case1),
+			smode:   AvoidRecursive,
+			reasons: []error{ReasonRecursiveCompare},
+		},
+		{
+			val:   new(case2),
+			smode: 0,
+		},
+		{
+			val:   new(case2),
+			smode: AvoidRecursive,
+		},
+	}
+
+	similarTest(t, new(origin), cases, false)
 }
