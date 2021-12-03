@@ -5,8 +5,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/venus/venus-shared/paych"
 )
 
 type IPaychan interface {
@@ -15,7 +16,7 @@ type IPaychan interface {
 	// @to: the payment channel recipient
 	// @amt: the deposits funds in the payment channel
 	// Rule[perm:read]
-	PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*ChannelInfo, error)
+	PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*paych.ChannelInfo, error)
 	// PaychAvailableFunds get the status of an outbound payment channel
 	// @pch: payment channel address
 	// Rule[perm:read]
@@ -39,14 +40,14 @@ type IPaychan interface {
 	// @to: the payment channel recipient
 	// @vouchers: the outstanding (non-redeemed) vouchers
 	// Rule[perm:read]
-	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error)
+	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []paych.VoucherSpec) (*paych.PaymentInfo, error)
 	// PaychList list the addresses of all channels that have been created
 	// Rule[perm:read]
 	PaychList(ctx context.Context) ([]address.Address, error)
 	// PaychStatus get the payment channel status
 	// @pch: payment channel address
 	// Rule[perm:read]
-	PaychStatus(ctx context.Context, pch address.Address) (*PaychStatus, error)
+	PaychStatus(ctx context.Context, pch address.Address) (*paych.Status, error)
 	// PaychSettle update payment channel status to settle
 	// After a settlement period (currently 12 hours) either party to the payment channel can call collect on chain
 	// @pch: payment channel address
@@ -84,7 +85,7 @@ type IPaychan interface {
 	// If there are insufficient funds in the channel to create the voucher,
 	// returns a nil voucher and the shortfall.
 	// Rule[perm:read]
-	PaychVoucherCreate(ctx context.Context, pch address.Address, amt big.Int, lane uint64) (*VoucherCreateResult, error)
+	PaychVoucherCreate(ctx context.Context, pch address.Address, amt big.Int, lane uint64) (*paych.VoucherCreateResult, error)
 	// PaychVoucherList list vouchers in payment channel
 	// @pch: payment channel address
 	// Rule[perm:read]
