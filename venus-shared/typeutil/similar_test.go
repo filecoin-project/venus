@@ -545,22 +545,22 @@ func TestCodec(t *testing.T) {
 		},
 		{
 			val:       new(AInt),
-			codecFlag: BinaryCodec,
+			codecFlag: CodecBinary,
 			reasons:   []error{ReasonCodecMarshalerImplementations},
 		},
 		{
 			val:       new(AInt),
-			codecFlag: TextCodec,
+			codecFlag: CodecText,
 			reasons:   []error{ReasonCodecMarshalerImplementations},
 		},
 		{
 			val:       new(AInt),
-			codecFlag: JSONCodec,
+			codecFlag: CodecJSON,
 			reasons:   []error{ReasonCodecMarshalerImplementations},
 		},
 		{
 			val:       new(AInt),
-			codecFlag: CborCodec,
+			codecFlag: CodecCbor,
 			reasons:   []error{ReasonCodecMarshalerImplementations},
 		},
 		{
@@ -569,22 +569,22 @@ func TestCodec(t *testing.T) {
 		},
 		{
 			val:       new(codecInt),
-			codecFlag: BinaryCodec,
+			codecFlag: CodecBinary,
 			reasons:   []error{ReasonCodecUnmarshalerImplementations},
 		},
 		{
 			val:       new(codecInt),
-			codecFlag: TextCodec,
+			codecFlag: CodecText,
 			reasons:   []error{ReasonCodecUnmarshalerImplementations},
 		},
 		{
 			val:       new(codecInt),
-			codecFlag: JSONCodec,
+			codecFlag: CodecJSON,
 			reasons:   []error{ReasonCodecUnmarshalerImplementations},
 		},
 		{
 			val:       new(codecInt),
-			codecFlag: CborCodec,
+			codecFlag: CodecCbor,
 			reasons:   []error{ReasonCodecUnmarshalerImplementations},
 		},
 	}
