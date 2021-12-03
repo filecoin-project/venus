@@ -21,7 +21,7 @@ func TestMessageReceiptBasic(t *testing.T) {
 			Buf: &buf,
 			Prepare: func() {
 				require.Equal(t, src, dst, "empty values")
-				require.Nil(t, src.ReturnValue)
+				require.Nil(t, src.Return)
 			},
 
 			ProvideOpts: []interface{}{
@@ -35,7 +35,7 @@ func TestMessageReceiptBasic(t *testing.T) {
 			},
 
 			Provided: func() {
-				require.Len(t, src.ReturnValue, dataLen)
+				require.Len(t, src.Return, dataLen)
 
 				require.GreaterOrEqual(t, src.ExitCode, exitcode.ExitCode(0))
 				require.Less(t, src.ExitCode, exitcode.ExitCode(20))

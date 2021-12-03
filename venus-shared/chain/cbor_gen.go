@@ -1221,16 +1221,16 @@ func (t *MessageReceipt) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.ReturnValue ([]uint8) (slice)
-	if len(t.ReturnValue) > cbg.ByteArrayMaxLen {
-		return xerrors.Errorf("Byte array in field t.ReturnValue was too long")
+	// t.Return ([]uint8) (slice)
+	if len(t.Return) > cbg.ByteArrayMaxLen {
+		return xerrors.Errorf("Byte array in field t.Return was too long")
 	}
 
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajByteString, uint64(len(t.ReturnValue))); err != nil {
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajByteString, uint64(len(t.Return))); err != nil {
 		return err
 	}
 
-	if _, err := w.Write(t.ReturnValue[:]); err != nil {
+	if _, err := w.Write(t.Return[:]); err != nil {
 		return err
 	}
 
@@ -1290,7 +1290,7 @@ func (t *MessageReceipt) UnmarshalCBOR(r io.Reader) error {
 
 		t.ExitCode = exitcode.ExitCode(extraI)
 	}
-	// t.ReturnValue ([]uint8) (slice)
+	// t.Return ([]uint8) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -1298,17 +1298,17 @@ func (t *MessageReceipt) UnmarshalCBOR(r io.Reader) error {
 	}
 
 	if extra > cbg.ByteArrayMaxLen {
-		return fmt.Errorf("t.ReturnValue: byte array too large (%d)", extra)
+		return fmt.Errorf("t.Return: byte array too large (%d)", extra)
 	}
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")
 	}
 
 	if extra > 0 {
-		t.ReturnValue = make([]uint8, extra)
+		t.Return = make([]uint8, extra)
 	}
 
-	if _, err := io.ReadFull(br, t.ReturnValue[:]); err != nil {
+	if _, err := io.ReadFull(br, t.Return[:]); err != nil {
 		return err
 	}
 	// t.GasUsed (int64) (int64)
