@@ -4,24 +4,11 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
-	"math/bits"
 	"reflect"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/cbor"
 )
-
-func init() {
-	if zeroes := bits.TrailingZeros(uint(CodecMaxLimit)); zeroes != len(codecs) {
-		panic(fmt.Errorf("codec count not match, %d != %d", zeroes, len(codecs)))
-	}
-
-	for ci := range codecs {
-		if zeroes := bits.TrailingZeros(uint(codecs[ci].flag)); zeroes != ci {
-			panic(fmt.Errorf("#%d codec's flag is not matched", ci))
-		}
-	}
-}
 
 type CodecFlag uint
 
@@ -31,7 +18,7 @@ const (
 	CodecText
 	CodecJSON
 	CodecCbor
-	CodecMaxLimit
+	_codecLimit
 )
 
 type SimilarMode uint
@@ -39,6 +26,8 @@ type SimilarMode uint
 const (
 	StructFieldsOrdered SimilarMode = 1 << iota
 	StructFieldTagsMatch
+	InterfaceAllMethods
+	AvoidRecursive
 )
 
 var (
@@ -89,7 +78,9 @@ var similarCache = struct {
 	results: make(map[similarInput]similarResult),
 }
 
-func Similar(a, b interface{}, codecFlag CodecFlag, smode SimilarMode) (bool, *Reason) {
+type SimilarStack = [2]reflect.Type
+
+func Similar(a, b interface{}, codecFlag CodecFlag, smode SimilarMode, stack ...SimilarStack) (bool, *Reason) {
 	atyp, ok := a.(reflect.Type)
 	if !ok {
 		atyp = reflect.TypeOf(a)
@@ -123,12 +114,22 @@ func Similar(a, b interface{}, codecFlag CodecFlag, smode SimilarMode) (bool, *R
 		return res.similar, res.reason
 	}
 
+	reasonf := makeReasonf(atyp, btyp)
+	reasonWrap := makeReasonWrap(atyp, btyp)
+
+	// recursive
+	for si := range stack {
+		// we assumpt that they are similar
+		// but we won't cache the result
+		if (stack[si][0] == atyp && stack[si][1] == btyp) || (stack[si][1] == atyp && stack[si][0] == btyp) {
+			return smode&AvoidRecursive == 0, reasonf("%w in the stack #%d, now in #%d", ReasonRecursiveCompare, si, len(stack))
+		}
+	}
+
+	stack = append(stack, [2]reflect.Type{atyp, btyp})
+
 	var yes bool
 	var reason *Reason
-
-	reasonf := makeReasonf(atyp, btyp)
-
-	reasonWrap := makeReasonWrap(atyp, btyp)
 
 	defer func() {
 		similarCache.Lock()
@@ -199,13 +200,24 @@ func Similar(a, b interface{}, codecFlag CodecFlag, smode SimilarMode) (bool, *R
 	case reflect.String:
 		yes = true
 
+	case reflect.Interface:
+
+	default:
+		yes = atyp.ConvertibleTo(btyp)
+	}
+
+	if yes {
+		return yes, reason
+	}
+
+	switch akind {
 	case reflect.Array:
 		if atyp.Len() != btyp.Len() {
 			reason = reasonf("%w: %d != %d", ReasonArrayLength, atyp.Len(), btyp.Len())
 			break
 		}
 
-		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, smode)
+		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, smode, stack...)
 		if !elemMatch {
 			reason = reasonWrap(elemReason, ReasonArrayElement)
 			break
@@ -214,13 +226,13 @@ func Similar(a, b interface{}, codecFlag CodecFlag, smode SimilarMode) (bool, *R
 		yes = true
 
 	case reflect.Map:
-		keyMatch, keyReason := Similar(atyp.Key(), btyp.Key(), codecFlag, smode)
+		keyMatch, keyReason := Similar(atyp.Key(), btyp.Key(), codecFlag, smode, stack...)
 		if !keyMatch {
 			reason = reasonWrap(keyReason, ReasonMapKey)
 			break
 		}
 
-		valueMatch, valueReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, smode)
+		valueMatch, valueReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, smode, stack...)
 		if !valueMatch {
 			reason = reasonWrap(valueReason, ReasonMapValue)
 			break
@@ -229,7 +241,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, smode SimilarMode) (bool, *R
 		yes = true
 
 	case reflect.Ptr:
-		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, smode)
+		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, smode, stack...)
 		if !elemMatch {
 			reason = reasonWrap(elemReason, ReasonPtrElememnt)
 			break
@@ -238,7 +250,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, smode SimilarMode) (bool, *R
 		yes = true
 
 	case reflect.Slice:
-		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, smode)
+		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, smode, stack...)
 		if !elemMatch {
 			reason = reasonWrap(elemReason, ReasonSliceElement)
 			break
@@ -247,7 +259,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, smode SimilarMode) (bool, *R
 		yes = true
 
 	case reflect.Struct:
-		fieldsMatch, fieldsReason := fieldsSimilar(atyp, btyp, codecFlag, smode)
+		fieldsMatch, fieldsReason := fieldsSimilar(atyp, btyp, codecFlag, smode, stack...)
 		if !fieldsMatch {
 			reason = reasonWrap(fieldsReason, ReasonStructField)
 			break
@@ -256,7 +268,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, smode SimilarMode) (bool, *R
 		yes = true
 
 	case reflect.Interface:
-		methsMatch, methsReason := methodsSimilar(atyp, btyp, codecFlag, smode)
+		methsMatch, methsReason := methodsSimilar(atyp, btyp, codecFlag, smode, stack...)
 		if !methsMatch {
 			reason = reasonWrap(methsReason, ReasonInterfaceMethod)
 			break
@@ -272,7 +284,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, smode SimilarMode) (bool, *R
 			break
 		}
 
-		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, smode)
+		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, smode, stack...)
 		if !elemMatch {
 			reason = reasonWrap(elemReason, ReasonChanElement)
 			break
@@ -281,14 +293,14 @@ func Similar(a, b interface{}, codecFlag CodecFlag, smode SimilarMode) (bool, *R
 		yes = true
 
 	case reflect.Func:
-		yes, reason = funcSimilar(atyp, btyp, codecFlag, smode)
+		yes, reason = funcSimilar(atyp, btyp, codecFlag, smode, stack...)
 
 	}
 
 	return yes, reason
 }
 
-func funcSimilar(atyp, btyp reflect.Type, codecFlag CodecFlag, ordered SimilarMode) (bool, *Reason) {
+func funcSimilar(atyp, btyp reflect.Type, codecFlag CodecFlag, smode SimilarMode, stack ...SimilarStack) (bool, *Reason) {
 	reasonf := makeReasonf(atyp, btyp)
 	reasonWrap := makeReasonWrap(atyp, btyp)
 
@@ -305,14 +317,14 @@ func funcSimilar(atyp, btyp reflect.Type, codecFlag CodecFlag, ordered SimilarMo
 	}
 
 	for i := 0; i < aNumIn; i++ {
-		inMatch, inReason := Similar(atyp.In(i), btyp.In(i), codecFlag, ordered)
+		inMatch, inReason := Similar(atyp.In(i), btyp.In(i), codecFlag, smode, stack...)
 		if !inMatch {
 			return false, reasonWrap(inReason, fmt.Errorf("%w: #%d input", ReasonFuncInType, i))
 		}
 	}
 
 	for i := 0; i < aNumOut; i++ {
-		outMatch, outReason := Similar(atyp.Out(i), btyp.Out(i), codecFlag, ordered)
+		outMatch, outReason := Similar(atyp.Out(i), btyp.Out(i), codecFlag, smode, stack...)
 		if !outMatch {
 			return false, reasonWrap(outReason, fmt.Errorf("%w: #%d input", ReasonFuncOutType, i))
 		}
@@ -321,7 +333,7 @@ func funcSimilar(atyp, btyp reflect.Type, codecFlag CodecFlag, ordered SimilarMo
 	return true, nil
 }
 
-func fieldsSimilar(a, b reflect.Type, codecFlag CodecFlag, smode SimilarMode) (bool, *Reason) {
+func fieldsSimilar(a, b reflect.Type, codecFlag CodecFlag, smode SimilarMode, stack ...SimilarStack) (bool, *Reason) {
 	reasonf := makeReasonf(a, b)
 	reasonWrap := makeReasonWrap(a, b)
 
@@ -342,7 +354,7 @@ func fieldsSimilar(a, b reflect.Type, codecFlag CodecFlag, smode SimilarMode) (b
 				return false, reasonf("%w: #%d field, %s != %s", ReasonExportedFieldTag, i, afields[i].Tag, bfields[i].Tag)
 			}
 
-			yes, reason := Similar(afields[i].Type, bfields[i].Type, codecFlag, smode)
+			yes, reason := Similar(afields[i].Type, bfields[i].Type, codecFlag, smode, stack...)
 			if !yes {
 				return false, reasonWrap(reason, fmt.Errorf("%w: #%d field named %s", ReasonExportedFieldType, i, afields[i].Name))
 			}
@@ -367,7 +379,7 @@ func fieldsSimilar(a, b reflect.Type, codecFlag CodecFlag, smode SimilarMode) (b
 			return false, reasonf("%w: named field %s, %s != %s", ReasonExportedFieldTag, f.Name, af.Tag, f.Tag)
 		}
 
-		yes, reason := Similar(af.Type, f.Type, codecFlag, smode)
+		yes, reason := Similar(af.Type, f.Type, codecFlag, smode, stack...)
 		if !yes {
 			return false, reasonWrap(reason, fmt.Errorf("%w: named %s", ReasonExportedFieldType, f.Name))
 		}
@@ -376,12 +388,16 @@ func fieldsSimilar(a, b reflect.Type, codecFlag CodecFlag, smode SimilarMode) (b
 	return true, nil
 }
 
-func methodsSimilar(a, b reflect.Type, codecFlag CodecFlag, smode SimilarMode) (bool, *Reason) {
+func methodsSimilar(a, b reflect.Type, codecFlag CodecFlag, smode SimilarMode, stack ...SimilarStack) (bool, *Reason) {
 	reasonf := makeReasonf(a, b)
 	reasonWrap := makeReasonWrap(a, b)
 
 	ameths := ExportedMethods(a)
 	bmeths := ExportedMethods(b)
+	if smode&InterfaceAllMethods != 0 {
+		ameths = AllMethods(a)
+		bmeths = AllMethods(b)
+	}
 
 	if len(ameths) != len(bmeths) {
 		return false, reasonf("%w: %d != %d", ReasonExportedMethodsCount, len(ameths), len(bmeths))
@@ -392,7 +408,7 @@ func methodsSimilar(a, b reflect.Type, codecFlag CodecFlag, smode SimilarMode) (
 			return false, reasonf("%w: #%d method, %s != %s ", ReasonExportedMethodName, i, ameths[i].Name, bmeths[i].Name)
 		}
 
-		yes, reason := Similar(ameths[i].Type, bmeths[i].Type, codecFlag, smode)
+		yes, reason := Similar(ameths[i].Type, bmeths[i].Type, codecFlag, smode, stack...)
 		if !yes {
 			return false, reasonWrap(reason, fmt.Errorf("%w: #%d method named %s", ReasonExportedMethodType, i, ameths[i].Name))
 		}

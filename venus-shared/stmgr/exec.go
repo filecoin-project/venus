@@ -1,8 +1,10 @@
 package stmgr
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -77,30 +79,30 @@ func (l Loc) Important() bool {
 	return importantRegex.MatchString(l.Function)
 }
 
-// TODO: ???
-// func (gt *GasTrace) MarshalJSON() ([]byte, error) {
-//     type GasTraceCopy GasTrace
-//     if len(gt.Location) == 0 {
-//         if len(gt.Callers) != 0 {
-//             frames := runtime.CallersFrames(gt.Callers)
-//             for {
-//                 frame, more := frames.Next()
-//                 if frame.Function == "github.com/filecoin-project/lotus/chain/vm.(*VM).ApplyMessage" {
-//                     break
-//                 }
-//                 l := Loc{
-//                     File:     frame.File,
-//                     Line:     frame.Line,
-//                     Function: frame.Function,
-//                 }
-//                 gt.Location = append(gt.Location, l)
-//                 if !more {
-//                     break
-//                 }
-//             }
-//         }
-//     }
+func (gt *GasTrace) MarshalJSON() ([]byte, error) {
+	type GasTraceCopy GasTrace
+	if len(gt.Location) == 0 {
+		if len(gt.Callers) != 0 {
+			frames := runtime.CallersFrames(gt.Callers)
+			for {
+				frame, more := frames.Next()
+				// TODO: this func name must be fixed
+				if frame.Function == "github.com/filecoin-project/lotus/chain/vm.(*VM).ApplyMessage" {
+					break
+				}
+				l := Loc{
+					File:     frame.File,
+					Line:     frame.Line,
+					Function: frame.Function,
+				}
+				gt.Location = append(gt.Location, l)
+				if !more {
+					break
+				}
+			}
+		}
+	}
 
-//     cpy := (*GasTraceCopy)(gt)
-//     return json.Marshal(cpy)
-// }
+	cpy := (*GasTraceCopy)(gt)
+	return json.Marshal(cpy)
+}
