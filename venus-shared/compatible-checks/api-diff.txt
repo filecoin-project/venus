@@ -3,7 +3,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ BlockTime
 	- ChainBlockstoreInfo
 	- ChainCheckBlockstore
-	> ChainGetBlock {[func(context.Context, cid.Cid) (*chain.BlockHeader, error) <> func(context.Context, cid.Cid) (*types.BlockHeader, error)] base=func out type: #0 input; nested={[*chain.BlockHeader <> *types.BlockHeader] base=pointed type; nested={[chain.BlockHeader <> types.BlockHeader] base=struct field; nested={[chain.BlockHeader <> types.BlockHeader] base=exported field type: #1 field named Ticket; nested={[chain.Ticket <> *types.Ticket] base=type kinds: struct != ptr; nested=nil}}}}}
 	> ChainGetBlockMessages {[func(context.Context, cid.Cid) (*v1.BlockMessages, error) <> func(context.Context, cid.Cid) (*api.BlockMessages, error)] base=func out type: #0 input; nested={[*v1.BlockMessages <> *api.BlockMessages] base=pointed type; nested={[v1.BlockMessages <> api.BlockMessages] base=struct field; nested={[v1.BlockMessages <> api.BlockMessages] base=exported field type: #0 field named BlsMessages; nested={[[]*chain.Message <> []*types.Message] base=slice element; nested={[*chain.Message <> *types.Message] base=codec marshaler implementations for codec 4: false != true; nested=nil}}}}}}
 	- ChainGetGenesis
 	> ChainGetMessage {[func(context.Context, cid.Cid) (*chain.Message, error) <> func(context.Context, cid.Cid) (*types.Message, error)] base=func out type: #0 input; nested={[*chain.Message <> *types.Message] base=codec marshaler implementations for codec 4: false != true; nested=nil}}
@@ -135,7 +134,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- SyncCheckpoint
 	- SyncIncomingBlocks
 	- SyncMarkBad
-	> SyncSubmitBlock {[func(context.Context, *chain.BlockMsg) error <> func(context.Context, *types.BlockMsg) error] base=func in type: #1 input; nested={[*chain.BlockMsg <> *types.BlockMsg] base=pointed type; nested={[chain.BlockMsg <> types.BlockMsg] base=struct field; nested={[chain.BlockMsg <> types.BlockMsg] base=exported field type: #0 field named Header; nested={[*chain.BlockHeader <> *types.BlockHeader] base=pointed type; nested={[chain.BlockHeader <> types.BlockHeader] base=struct field; nested={[chain.BlockHeader <> types.BlockHeader] base=exported field type: #1 field named Ticket; nested={[chain.Ticket <> *types.Ticket] base=type kinds: struct != ptr; nested=nil}}}}}}}}
 	- SyncUnmarkAllBad
 	- SyncUnmarkBad
 	- SyncValidateTipset

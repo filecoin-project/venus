@@ -219,7 +219,7 @@ func (ts *TipSet) MinTicketBlock() *BlockHeader {
 }
 
 // MinTicket returns the smallest ticket of all blocks in the tipset.
-func (ts *TipSet) MinTicket() Ticket {
+func (ts *TipSet) MinTicket() *Ticket {
 	return ts.MinTicketBlock().Ticket
 }
 
@@ -249,7 +249,7 @@ func sortedCidArrsEqual(a, b []cid.Cid) bool {
 
 func sortBlockHeadersInTipSet(blks []*blockHeaderWithCid) {
 	sort.Slice(blks, func(i, j int) bool {
-		cmp := blks[i].b.Ticket.Compare(&blks[j].b.Ticket)
+		cmp := blks[i].b.Ticket.Compare(blks[j].b.Ticket)
 		if cmp == 0 {
 			// Break ticket ties with the newBlock CIDs, which are distinct.
 			cmp = bytes.Compare(blks[i].c.Bytes(), blks[j].c.Bytes())
