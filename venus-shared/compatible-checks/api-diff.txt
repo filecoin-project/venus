@@ -9,7 +9,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ ChainGetRandomnessFromTickets
 	+ ChainGetReceipts
 	+ ChainList
-	> ChainNotify {[func(context.Context) <-chan []*v1.HeadChange <> func(context.Context) (<-chan []*api.HeadChange, error)] base=func out num: 1 != 2; nested=nil}
 	+ ChainSyncHandleNewTipSet
 	- ClientCalcCommP
 	- ClientCancelDataTransfer
