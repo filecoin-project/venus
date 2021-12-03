@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	if zeroes := bits.TrailingZeros(uint(_CodecLimit)); zeroes != len(codecs) {
+	if zeroes := bits.TrailingZeros(uint(CodecMaxLimit)); zeroes != len(codecs) {
 		panic(fmt.Errorf("codec count not match, %d != %d", zeroes, len(codecs)))
 	}
 
@@ -25,12 +25,13 @@ func init() {
 
 type CodecFlag uint
 
+//go:generate go run golang.org/x/tools/cmd/stringer -type=CodecFlag -trimprefix=Codec
 const (
-	BinaryCodec CodecFlag = 1 << iota
-	TextCodec
-	JSONCodec
-	CborCodec
-	_CodecLimit
+	CodecBinary CodecFlag = 1 << iota
+	CodecText
+	CodecJSON
+	CodecCbor
+	CodecMaxLimit
 )
 
 type SimilarMode uint
@@ -47,22 +48,22 @@ var (
 		unmarshaler reflect.Type
 	}{
 		{
-			flag:        BinaryCodec,
+			flag:        CodecBinary,
 			marshaler:   reflect.TypeOf((*encoding.BinaryMarshaler)(nil)).Elem(),
 			unmarshaler: reflect.TypeOf((*encoding.BinaryUnmarshaler)(nil)).Elem(),
 		},
 		{
-			flag:        TextCodec,
+			flag:        CodecText,
 			marshaler:   reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem(),
 			unmarshaler: reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem(),
 		},
 		{
-			flag:        JSONCodec,
+			flag:        CodecJSON,
 			marshaler:   reflect.TypeOf((*json.Marshaler)(nil)).Elem(),
 			unmarshaler: reflect.TypeOf((*json.Unmarshaler)(nil)).Elem(),
 		},
 		{
-			flag:        CborCodec,
+			flag:        CodecCbor,
 			marshaler:   reflect.TypeOf((*cbor.Marshaler)(nil)).Elem(),
 			unmarshaler: reflect.TypeOf((*cbor.Unmarshaler)(nil)).Elem(),
 		},
@@ -155,14 +156,14 @@ func Similar(a, b interface{}, codecFlag CodecFlag, smode SimilarMode) (bool, *R
 			aMarImpl := atyp.Implements(codecs[i].marshaler)
 			bMarImpl := btyp.Implements(codecs[i].marshaler)
 			if aMarImpl != bMarImpl {
-				reason = reasonf("%w for codec %d: %v != %v", ReasonCodecMarshalerImplementations, codecs[i].flag, aMarImpl, bMarImpl)
+				reason = reasonf("%w for codec %s: %v != %v", ReasonCodecMarshalerImplementations, codecs[i].flag, aMarImpl, bMarImpl)
 				return yes, reason
 			}
 
 			aUMarImpl := atyp.Implements(codecs[i].unmarshaler)
 			bUMarImpl := btyp.Implements(codecs[i].unmarshaler)
 			if aUMarImpl != bUMarImpl {
-				reason = reasonf("%w for codec %d: %v; %v", ReasonCodecUnmarshalerImplementations, codecs[i].flag, aUMarImpl, bUMarImpl)
+				reason = reasonf("%w for codec %s: %v; %v", ReasonCodecUnmarshalerImplementations, codecs[i].flag, aUMarImpl, bUMarImpl)
 				return yes, reason
 			}
 		}

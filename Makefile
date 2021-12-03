@@ -1,10 +1,13 @@
 cborgen:
 	cd venus-devtool && go run ./cborgen/*.go
 
+gogen:
+	cd venus-shared && go generate ./...
+
 test-venus-shared:
 	cd venus-shared && go test -covermode=set ./...
 
-test: test-venus-shared
+test: gogen test-venus-shared
 
 compatible-all: compatible-api compatible-actor
 
