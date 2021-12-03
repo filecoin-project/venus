@@ -84,7 +84,7 @@ type IChainInfo interface {
 	// Rule[perm:read]
 	StateVerifierStatus(ctx context.Context, addr address.Address, tsk chain.TipSetKey) (*abi.StoragePower, error)
 	// Rule[perm:read]
-	ChainNotify(ctx context.Context) <-chan []*HeadChange
+	ChainNotify(ctx context.Context) (<-chan []*HeadChange, error)
 	// Rule[perm:read]
 	GetFullBlock(ctx context.Context, id cid.Cid) (*chain.FullBlock, error)
 	// Rule[perm:read]
