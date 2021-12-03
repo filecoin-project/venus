@@ -50,7 +50,7 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.BeaconEntries ([]*chain.BeaconEntry) (slice)
+	// t.BeaconEntries ([]chain.BeaconEntry) (slice)
 	if len(t.BeaconEntries) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.BeaconEntries was too long")
 	}
@@ -186,8 +186,18 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 
 	{
 
-		if err := t.Ticket.UnmarshalCBOR(br); err != nil {
-			return xerrors.Errorf("unmarshaling t.Ticket: %w", err)
+		b, err := br.ReadByte()
+		if err != nil {
+			return err
+		}
+		if b != cbg.CborNull[0] {
+			if err := br.UnreadByte(); err != nil {
+				return err
+			}
+			t.Ticket = new(Ticket)
+			if err := t.Ticket.UnmarshalCBOR(br); err != nil {
+				return xerrors.Errorf("unmarshaling t.Ticket pointer: %w", err)
+			}
 		}
 
 	}
@@ -210,7 +220,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.BeaconEntries ([]*chain.BeaconEntry) (slice)
+	// t.BeaconEntries ([]chain.BeaconEntry) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -226,7 +236,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 	}
 
 	if extra > 0 {
-		t.BeaconEntries = make([]*BeaconEntry, extra)
+		t.BeaconEntries = make([]BeaconEntry, extra)
 	}
 
 	for i := 0; i < int(extra); i++ {
@@ -236,7 +246,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 			return err
 		}
 
-		t.BeaconEntries[i] = &v
+		t.BeaconEntries[i] = v
 	}
 
 	// t.WinPoStProof ([]proof.PoStProof) (slice)

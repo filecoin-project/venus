@@ -30,14 +30,14 @@ type BlockHeader struct {
 	Miner address.Address
 
 	// Ticket is the ticket submitted with this newBlock.
-	Ticket Ticket
+	Ticket *Ticket
 
 	// ElectionProof is the vrf proof giving this newBlock's miner authoring rights
 	ElectionProof *ElectionProof
 
 	// BeaconEntries contain the verifiable oracle randomness used to elect
 	// this newBlock's author leader
-	BeaconEntries []*BeaconEntry
+	BeaconEntries []BeaconEntry
 
 	// WinPoStProof are the winning post proofs
 	WinPoStProof []proof2.PoStProof
@@ -156,7 +156,7 @@ func (b *BlockHeader) ToStorageBlock() (blocks.Block, error) {
 
 // LastTicket get ticket in block
 func (b *BlockHeader) LastTicket() *Ticket {
-	return &b.Ticket
+	return b.Ticket
 }
 
 // SetValidated set block signature is valid after checkout blocksig
