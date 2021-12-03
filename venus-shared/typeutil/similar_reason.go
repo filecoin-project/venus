@@ -75,6 +75,7 @@ var (
 	ReasonFuncOutType                     = fmt.Errorf("func out type")                     // nolint
 	ReasonExportedFieldsCount             = fmt.Errorf("exported fields count")             // nolint
 	ReasonExportedFieldName               = fmt.Errorf("exported field name")               // nolint
+	ReasonExportedFieldTag                = fmt.Errorf("exported field tag")                // nolint
 	ReasonExportedFieldNotFound           = fmt.Errorf("exported field not found")          // nolint
 	ReasonExportedFieldType               = fmt.Errorf("exported field type")               // nolint
 	ReasonExportedMethodsCount            = fmt.Errorf("exported methods count")            // nolint

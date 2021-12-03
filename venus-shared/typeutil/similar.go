@@ -33,10 +33,11 @@ const (
 	_CodecLimit
 )
 
-type Ordered uint
+type SimilarMode uint
 
 const (
-	StructFieldsOrdered Ordered = 1 << iota
+	StructFieldsOrdered SimilarMode = 1 << iota
+	StructFieldTagsMatch
 )
 
 var (
@@ -77,7 +78,7 @@ type similarInput struct {
 	a         reflect.Type
 	b         reflect.Type
 	codecFlag CodecFlag
-	ordered   Ordered
+	smode     SimilarMode
 }
 
 var similarCache = struct {
@@ -87,7 +88,7 @@ var similarCache = struct {
 	results: make(map[similarInput]similarResult),
 }
 
-func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, *Reason) {
+func Similar(a, b interface{}, codecFlag CodecFlag, smode SimilarMode) (bool, *Reason) {
 	atyp, ok := a.(reflect.Type)
 	if !ok {
 		atyp = reflect.TypeOf(a)
@@ -106,7 +107,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, *Rea
 		a:         atyp,
 		b:         btyp,
 		codecFlag: codecFlag,
-		ordered:   ordered,
+		smode:     smode,
 	}
 
 	similarCache.RLock()
@@ -203,7 +204,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, *Rea
 			break
 		}
 
-		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, ordered)
+		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, smode)
 		if !elemMatch {
 			reason = reasonWrap(elemReason, ReasonArrayElement)
 			break
@@ -212,13 +213,13 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, *Rea
 		yes = true
 
 	case reflect.Map:
-		keyMatch, keyReason := Similar(atyp.Key(), btyp.Key(), codecFlag, ordered)
+		keyMatch, keyReason := Similar(atyp.Key(), btyp.Key(), codecFlag, smode)
 		if !keyMatch {
 			reason = reasonWrap(keyReason, ReasonMapKey)
 			break
 		}
 
-		valueMatch, valueReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, ordered)
+		valueMatch, valueReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, smode)
 		if !valueMatch {
 			reason = reasonWrap(valueReason, ReasonMapValue)
 			break
@@ -227,7 +228,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, *Rea
 		yes = true
 
 	case reflect.Ptr:
-		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, ordered)
+		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, smode)
 		if !elemMatch {
 			reason = reasonWrap(elemReason, ReasonPtrElememnt)
 			break
@@ -236,7 +237,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, *Rea
 		yes = true
 
 	case reflect.Slice:
-		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, ordered)
+		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, smode)
 		if !elemMatch {
 			reason = reasonWrap(elemReason, ReasonSliceElement)
 			break
@@ -245,7 +246,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, *Rea
 		yes = true
 
 	case reflect.Struct:
-		fieldsMatch, fieldsReason := fieldsSimilar(atyp, btyp, codecFlag, ordered)
+		fieldsMatch, fieldsReason := fieldsSimilar(atyp, btyp, codecFlag, smode)
 		if !fieldsMatch {
 			reason = reasonWrap(fieldsReason, ReasonStructField)
 			break
@@ -254,7 +255,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, *Rea
 		yes = true
 
 	case reflect.Interface:
-		methsMatch, methsReason := methodsSimilar(atyp, btyp, codecFlag, ordered)
+		methsMatch, methsReason := methodsSimilar(atyp, btyp, codecFlag, smode)
 		if !methsMatch {
 			reason = reasonWrap(methsReason, ReasonInterfaceMethod)
 			break
@@ -270,7 +271,7 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, *Rea
 			break
 		}
 
-		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, ordered)
+		elemMatch, elemReason := Similar(atyp.Elem(), btyp.Elem(), codecFlag, smode)
 		if !elemMatch {
 			reason = reasonWrap(elemReason, ReasonChanElement)
 			break
@@ -279,14 +280,14 @@ func Similar(a, b interface{}, codecFlag CodecFlag, ordered Ordered) (bool, *Rea
 		yes = true
 
 	case reflect.Func:
-		yes, reason = funcSimilar(atyp, btyp, codecFlag, ordered)
+		yes, reason = funcSimilar(atyp, btyp, codecFlag, smode)
 
 	}
 
 	return yes, reason
 }
 
-func funcSimilar(atyp, btyp reflect.Type, codecFlag CodecFlag, ordered Ordered) (bool, *Reason) {
+func funcSimilar(atyp, btyp reflect.Type, codecFlag CodecFlag, ordered SimilarMode) (bool, *Reason) {
 	reasonf := makeReasonf(atyp, btyp)
 	reasonWrap := makeReasonWrap(atyp, btyp)
 
@@ -319,25 +320,28 @@ func funcSimilar(atyp, btyp reflect.Type, codecFlag CodecFlag, ordered Ordered) 
 	return true, nil
 }
 
-func fieldsSimilar(a, b reflect.Type, codecFlag CodecFlag, ordered Ordered) (bool, *Reason) {
+func fieldsSimilar(a, b reflect.Type, codecFlag CodecFlag, smode SimilarMode) (bool, *Reason) {
 	reasonf := makeReasonf(a, b)
 	reasonWrap := makeReasonWrap(a, b)
 
 	afields := ExportedFields(a)
-
 	bfields := ExportedFields(b)
 
 	if len(afields) != len(bfields) {
 		return false, reasonf("%w: %d != %d", ReasonExportedFieldsCount, len(afields), len(bfields))
 	}
 
-	if ordered&StructFieldsOrdered != 0 {
+	if smode&StructFieldsOrdered != 0 {
 		for i := range afields {
 			if afields[i].Name != bfields[i].Name {
 				return false, reasonf("%w: #%d field, %s != %s", ReasonExportedFieldName, i, afields[i].Name, bfields[i].Name)
 			}
 
-			yes, reason := Similar(afields[i].Type, bfields[i].Type, codecFlag, ordered)
+			if smode&StructFieldTagsMatch != 0 && afields[i].Tag != bfields[i].Tag {
+				return false, reasonf("%w: #%d field, %s != %s", ReasonExportedFieldTag, i, afields[i].Tag, bfields[i].Tag)
+			}
+
+			yes, reason := Similar(afields[i].Type, bfields[i].Type, codecFlag, smode)
 			if !yes {
 				return false, reasonWrap(reason, fmt.Errorf("%w: #%d field named %s", ReasonExportedFieldType, i, afields[i].Name))
 			}
@@ -346,19 +350,23 @@ func fieldsSimilar(a, b reflect.Type, codecFlag CodecFlag, ordered Ordered) (boo
 		return true, nil
 	}
 
-	mfields := map[string]reflect.Type{}
+	mfields := map[string]reflect.StructField{}
 	for i := range afields {
-		mfields[afields[i].Name] = afields[i].Type
+		mfields[afields[i].Name] = afields[i]
 	}
 
 	for i := range bfields {
 		f := bfields[i]
-		typ, has := mfields[f.Name]
+		af, has := mfields[f.Name]
 		if !has {
 			return false, reasonf("%w: named %s", ReasonExportedFieldNotFound, f.Name)
 		}
 
-		yes, reason := Similar(typ, f.Type, codecFlag, ordered)
+		if smode&StructFieldTagsMatch != 0 && af.Tag != f.Tag {
+			return false, reasonf("%w: named field %s, %s != %s", ReasonExportedFieldTag, f.Name, af.Tag, f.Tag)
+		}
+
+		yes, reason := Similar(af.Type, f.Type, codecFlag, smode)
 		if !yes {
 			return false, reasonWrap(reason, fmt.Errorf("%w: named %s", ReasonExportedFieldType, f.Name))
 		}
@@ -367,7 +375,7 @@ func fieldsSimilar(a, b reflect.Type, codecFlag CodecFlag, ordered Ordered) (boo
 	return true, nil
 }
 
-func methodsSimilar(a, b reflect.Type, codecFlag CodecFlag, ordered Ordered) (bool, *Reason) {
+func methodsSimilar(a, b reflect.Type, codecFlag CodecFlag, smode SimilarMode) (bool, *Reason) {
 	reasonf := makeReasonf(a, b)
 	reasonWrap := makeReasonWrap(a, b)
 
@@ -383,7 +391,7 @@ func methodsSimilar(a, b reflect.Type, codecFlag CodecFlag, ordered Ordered) (bo
 			return false, reasonf("%w: #%d method, %s != %s ", ReasonExportedMethodName, i, ameths[i].Name, bmeths[i].Name)
 		}
 
-		yes, reason := Similar(ameths[i].Type, bmeths[i].Type, codecFlag, ordered)
+		yes, reason := Similar(ameths[i].Type, bmeths[i].Type, codecFlag, smode)
 		if !yes {
 			return false, reasonWrap(reason, fmt.Errorf("%w: #%d method named %s", ReasonExportedMethodType, i, ameths[i].Name))
 		}
