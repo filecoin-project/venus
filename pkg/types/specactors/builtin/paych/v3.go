@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/paych/state.go.template
+
 package paych
 
 import (

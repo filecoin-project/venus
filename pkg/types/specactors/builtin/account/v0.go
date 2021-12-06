@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/account/state.go.template
+
 package account
 
 import (
@@ -22,7 +24,7 @@ func load0(store adt.Store, root cid.Cid) (State, error) {
 
 func make0(store adt.Store, addr address.Address) (State, error) {
 	out := state0{store: store}
-	out.State = account0.State{Address: addr}
+	out.State = account0.State{Address:addr}
 	return &out, nil
 }
 

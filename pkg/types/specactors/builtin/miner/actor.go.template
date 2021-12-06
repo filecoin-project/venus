@@ -1,9 +1,11 @@
+// FETCHED FROM LOTUS: builtin/miner/actor.go.template
+
 package miner
 
 import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
+	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -17,7 +19,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/internal"
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
@@ -52,7 +54,7 @@ const MinSectorExpiration = miner0.MinSectorExpiration
 var DeclarationsMax = miner2.DeclarationsMax
 var AddressedSectorsMax = miner2.AddressedSectorsMax
 
-func Load(store adt.Store, act *internal.Actor) (State, error) {
+func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
 {{range .versions}}
 	case builtin{{.}}.StorageMinerActorCodeID:
@@ -62,20 +64,20 @@ func Load(store adt.Store, act *internal.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av specactors.Version) (State, error) {
+func MakeState(store adt.Store, av actors.Version) (State, error) {
 	switch av {
 {{range .versions}}
-	case specactors.Version{{.}}:
+	case actors.Version{{.}}:
 		return make{{.}}(store)
 {{end}}
 }
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
-func GetActorCodeID(av specactors.Version) (cid.Cid, error) {
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 	switch av {
 {{range .versions}}
-	case specactors.Version{{.}}:
+	case actors.Version{{.}}:
 		return builtin{{.}}.StorageMinerActorCodeID, nil
 {{end}}
 	}
@@ -177,6 +179,7 @@ type SectorOnChainInfo struct {
 	InitialPledge         abi.TokenAmount
 	ExpectedDayReward     abi.TokenAmount
 	ExpectedStoragePledge abi.TokenAmount
+	SectorKeyCID          *cid.Cid
 }
 
 type SectorPreCommitInfo = miner0.SectorPreCommitInfo

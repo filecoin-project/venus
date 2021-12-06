@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/power/state.go.template
+
 package power
 
 import (

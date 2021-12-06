@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/verifreg/state.go.template
+
 package verifreg
 
 import (
@@ -5,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors"
+	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 
 	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
@@ -25,14 +27,14 @@ func load2(store adt.Store, root cid.Cid) (State, error) {
 
 func make2(store adt.Store, rootKeyAddress address.Address) (State, error) {
 	out := state2{store: store}
+	
+		em, err := adt2.MakeEmptyMap(store).Root()
+		if err != nil {
+			return nil, err
+		}
 
-	em, err := adt2.MakeEmptyMap(store).Root()
-	if err != nil {
-		return nil, err
-	}
-
-	out.State = *verifreg2.ConstructState(em, rootKeyAddress)
-
+		out.State = *verifreg2.ConstructState(em, rootKeyAddress)
+	
 	return &out, nil
 }
 
@@ -46,19 +48,19 @@ func (s *state2) RootKey() (address.Address, error) {
 }
 
 func (s *state2) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
-	return getDataCap(s.store, specactors.Version2, s.verifiedClients, addr)
+	return getDataCap(s.store, actors.Version2, s.verifiedClients, addr)
 }
 
 func (s *state2) VerifierDataCap(addr address.Address) (bool, abi.StoragePower, error) {
-	return getDataCap(s.store, specactors.Version2, s.verifiers, addr)
+	return getDataCap(s.store, actors.Version2, s.verifiers, addr)
 }
 
 func (s *state2) ForEachVerifier(cb func(addr address.Address, dcap abi.StoragePower) error) error {
-	return forEachCap(s.store, specactors.Version2, s.verifiers, cb)
+	return forEachCap(s.store, actors.Version2, s.verifiers, cb)
 }
 
 func (s *state2) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
-	return forEachCap(s.store, specactors.Version2, s.verifiedClients, cb)
+	return forEachCap(s.store, actors.Version2, s.verifiedClients, cb)
 }
 
 func (s *state2) verifiedClients() (adt.Map, error) {

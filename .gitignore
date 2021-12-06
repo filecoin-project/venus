@@ -31,6 +31,9 @@ tools/chain-util/chain-util
 **/*.a
 **/*.pc
 
+// venus-dev-tool
+venus-dev-tool
+
 // IDE (vscode)
 .vscode
 debug.test

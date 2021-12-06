@@ -3,6 +3,8 @@ package policy
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -13,7 +15,6 @@ import (
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	paych2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
 	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
-	"github.com/stretchr/testify/require"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
@@ -75,6 +76,7 @@ func TestPartitionSizes(t *testing.T) {
 }
 
 func TestPoStSize(t *testing.T) {
+	tf.UnitTest(t)
 	v12PoStSize, err := GetMaxPoStPartitions(network.Version12, abi.RegisteredPoStProof_StackedDrgWindow64GiBV1)
 	require.Equal(t, 4, v12PoStSize)
 	require.NoError(t, err)

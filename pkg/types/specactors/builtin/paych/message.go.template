@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/paych/message.go.template
+
 package paych
 
 import (
@@ -8,19 +10,19 @@ import (
 	init{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/init"
 	paych{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/paych"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors"
+	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
-	"github.com/filecoin-project/venus/pkg/types/internal"
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 )
 
 type message{{.v}} struct{ from address.Address }
 
-func (m message{{.v}}) Create(to address.Address, initialAmount abi.TokenAmount) (*internal.Message, error) {
-	params, aerr := specactors.SerializeParams(&paych{{.v}}.ConstructorParams{From: m.from, To: to})
+func (m message{{.v}}) Create(to address.Address, initialAmount abi.TokenAmount) (*types.Message, error) {
+	params, aerr := actors.SerializeParams(&paych{{.v}}.ConstructorParams{From: m.from, To: to})
 	if aerr != nil {
 		return nil, aerr
 	}
-	enc, aerr := specactors.SerializeParams(&init{{.v}}.ExecParams{
+	enc, aerr := actors.SerializeParams(&init{{.v}}.ExecParams{
 		CodeCID:           builtin{{.v}}.PaymentChannelActorCodeID,
 		ConstructorParams: params,
 	})
@@ -28,7 +30,7 @@ func (m message{{.v}}) Create(to address.Address, initialAmount abi.TokenAmount)
 		return nil, aerr
 	}
 
-	return &internal.Message{
+	return &types.Message{
 		To:     init_.Address,
 		From:   m.from,
 		Value:  initialAmount,
@@ -37,8 +39,8 @@ func (m message{{.v}}) Create(to address.Address, initialAmount abi.TokenAmount)
 	}, nil
 }
 
-func (m message{{.v}}) Update(paych address.Address, sv *SignedVoucher, secret []byte) (*internal.Message, error) {
-	params, aerr := specactors.SerializeParams(&paych{{.v}}.UpdateChannelStateParams{
+func (m message{{.v}}) Update(paych address.Address, sv *SignedVoucher, secret []byte) (*types.Message, error) {
+	params, aerr := actors.SerializeParams(&paych{{.v}}.UpdateChannelStateParams{
 		Sv:     *sv,
 		Secret: secret,
 	})
@@ -46,7 +48,7 @@ func (m message{{.v}}) Update(paych address.Address, sv *SignedVoucher, secret [
 		return nil, aerr
 	}
 
-	return &internal.Message{
+	return &types.Message{
 		To:     paych,
 		From:   m.from,
 		Value:  abi.NewTokenAmount(0),
@@ -55,8 +57,8 @@ func (m message{{.v}}) Update(paych address.Address, sv *SignedVoucher, secret [
 	}, nil
 }
 
-func (m message{{.v}}) Settle(paych address.Address) (*internal.Message, error) {
-	return &internal.Message{
+func (m message{{.v}}) Settle(paych address.Address) (*types.Message, error) {
+	return &types.Message{
 		To:     paych,
 		From:   m.from,
 		Value:  abi.NewTokenAmount(0),
@@ -64,8 +66,8 @@ func (m message{{.v}}) Settle(paych address.Address) (*internal.Message, error) 
 	}, nil
 }
 
-func (m message{{.v}}) Collect(paych address.Address) (*internal.Message, error) {
-	return &internal.Message{
+func (m message{{.v}}) Collect(paych address.Address) (*types.Message, error) {
+	return &types.Message{
 		To:     paych,
 		From:   m.from,
 		Value:  abi.NewTokenAmount(0),

@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/builtin.go.template
+
 package builtin
 
 import (
@@ -14,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/internal"
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 
 	miner{{.latestVersion}} "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/builtin/miner"
 	proof{{.latestVersion}} "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/runtime/proof"
@@ -70,7 +72,7 @@ func RegisterActorState(code cid.Cid, loader ActorStateLoader) {
 	ActorStateLoaders[code] = loader
 }
 
-func Load(store adt.Store, act *internal.Actor) (cbor.Marshaler, error) {
+func Load(store adt.Store, act *types.Actor) (cbor.Marshaler, error) {
 	loader, found := ActorStateLoaders[act.Code]
 	if !found {
 		return nil, xerrors.Errorf("unknown actor code %s", act.Code)
@@ -101,15 +103,6 @@ func IsBuiltinActor(c cid.Cid) bool {
 func IsAccountActor(c cid.Cid) bool {
 	{{range .versions}}
 		if c == builtin{{.}}.AccountActorCodeID {
-			return true
-		}
-	{{end}}
-	return false
-}
-
-func IsInitActor(c cid.Cid) bool {
-	{{range .versions}}
-		if c == builtin{{.}}.InitActorCodeID {
 			return true
 		}
 	{{end}}

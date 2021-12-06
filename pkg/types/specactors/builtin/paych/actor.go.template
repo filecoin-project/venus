@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/paych/actor.go.template
+
 package paych
 
 import (
@@ -18,10 +20,10 @@ import (
 	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
 {{end}}
 
-	"github.com/filecoin-project/venus/pkg/types/specactors"
+	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/internal"
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 )
 
 func init() {
@@ -32,7 +34,7 @@ func init() {
 {{end}}}
 
 // Load returns an abstract copy of payment channel state, irregardless of actor version
-func Load(store adt.Store, act *internal.Actor) (State, error) {
+func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
 {{range .versions}}
 	case builtin{{.}}.PaymentChannelActorCodeID:
@@ -42,20 +44,20 @@ func Load(store adt.Store, act *internal.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av specactors.Version) (State, error) {
+func MakeState(store adt.Store, av actors.Version) (State, error) {
 	switch av {
 {{range .versions}}
-	case specactors.Version{{.}}:
+	case actors.Version{{.}}:
 		return make{{.}}(store)
 {{end}}
 }
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
-func GetActorCodeID(av specactors.Version) (cid.Cid, error) {
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 	switch av {
 {{range .versions}}
-	case specactors.Version{{.}}:
+	case actors.Version{{.}}:
 		return builtin{{.}}.PaymentChannelActorCodeID, nil
 {{end}}
 	}
@@ -113,10 +115,10 @@ func DecodeSignedVoucher(s string) (*SignedVoucher, error) {
 
 var Methods = builtin{{.latestVersion}}.MethodsPaych
 
-func Message(version specactors.Version, from address.Address) MessageBuilder {
+func Message(version actors.Version, from address.Address) MessageBuilder {
 	switch version {
 {{range .versions}}
-	case specactors.Version{{.}}:
+	case actors.Version{{.}}:
 		return message{{.}}{from}
 {{end}}
 	default:
@@ -125,8 +127,8 @@ func Message(version specactors.Version, from address.Address) MessageBuilder {
 }
 
 type MessageBuilder interface {
-	Create(to address.Address, initialAmount abi.TokenAmount) (*internal.Message, error)
-	Update(paych address.Address, voucher *SignedVoucher, secret []byte) (*internal.Message, error)
-	Settle(paych address.Address) (*internal.Message, error)
-	Collect(paych address.Address) (*internal.Message, error)
+	Create(to address.Address, initialAmount abi.TokenAmount) (*types.Message, error)
+	Update(paych address.Address, voucher *SignedVoucher, secret []byte) (*types.Message, error)
+	Settle(paych address.Address) (*types.Message, error)
+	Collect(paych address.Address) (*types.Message, error)
 }

@@ -1,9 +1,11 @@
+// FETCHED FROM LOTUS: builtin/miner/actor.go.template
+
 package miner
 
 import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
+	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -15,9 +17,9 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
 
-	"github.com/filecoin-project/venus/pkg/types/internal"
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
@@ -35,6 +37,9 @@ import (
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
+	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+
 )
 
 func init() {
@@ -63,9 +68,13 @@ func init() {
 		return load6(store, root)
 	})
 
+	builtin.RegisterActorState(builtin7.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load7(store, root)
+	})
+
 }
 
-var Methods = builtin6.MethodsMiner
+var Methods = builtin7.MethodsMiner
 
 // Unchanged between v0, v2, v3, v4, and v5 actors
 var WPoStProvingPeriod = miner0.WPoStProvingPeriod
@@ -81,7 +90,7 @@ const MinSectorExpiration = miner0.MinSectorExpiration
 var DeclarationsMax = miner2.DeclarationsMax
 var AddressedSectorsMax = miner2.AddressedSectorsMax
 
-func Load(store adt.Store, act *internal.Actor) (State, error) {
+func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
 
 	case builtin0.StorageMinerActorCodeID:
@@ -102,55 +111,64 @@ func Load(store adt.Store, act *internal.Actor) (State, error) {
 	case builtin6.StorageMinerActorCodeID:
 		return load6(store, act.Head)
 
-	}
+	case builtin7.StorageMinerActorCodeID:
+		return load7(store, act.Head)
+
+}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av specactors.Version) (State, error) {
+func MakeState(store adt.Store, av actors.Version) (State, error) {
 	switch av {
 
-	case specactors.Version0:
+	case actors.Version0:
 		return make0(store)
 
-	case specactors.Version2:
+	case actors.Version2:
 		return make2(store)
 
-	case specactors.Version3:
+	case actors.Version3:
 		return make3(store)
 
-	case specactors.Version4:
+	case actors.Version4:
 		return make4(store)
 
-	case specactors.Version5:
+	case actors.Version5:
 		return make5(store)
 
-	case specactors.Version6:
+	case actors.Version6:
 		return make6(store)
 
-	}
+	case actors.Version7:
+		return make7(store)
+
+}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
-func GetActorCodeID(av specactors.Version) (cid.Cid, error) {
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 	switch av {
 
-	case specactors.Version0:
+	case actors.Version0:
 		return builtin0.StorageMinerActorCodeID, nil
 
-	case specactors.Version2:
+	case actors.Version2:
 		return builtin2.StorageMinerActorCodeID, nil
 
-	case specactors.Version3:
+	case actors.Version3:
 		return builtin3.StorageMinerActorCodeID, nil
 
-	case specactors.Version4:
+	case actors.Version4:
 		return builtin4.StorageMinerActorCodeID, nil
 
-	case specactors.Version5:
+	case actors.Version5:
 		return builtin5.StorageMinerActorCodeID, nil
 
-	case specactors.Version6:
+	case actors.Version6:
 		return builtin6.StorageMinerActorCodeID, nil
+
+	case actors.Version7:
+		return builtin7.StorageMinerActorCodeID, nil
 
 	}
 
@@ -176,8 +194,8 @@ type State interface {
 	LoadSectors(sectorNos *bitfield.BitField) ([]*SectorOnChainInfo, error)
 	NumLiveSectors() (uint64, error)
 	IsAllocated(abi.SectorNumber) (bool, error)
-	// UnallocatedSectorNumbers returns up to count unallocated sector numbers (or less than
-	// count if there aren't enough).
+        // UnallocatedSectorNumbers returns up to count unallocated sector numbers (or less than
+        // count if there aren't enough).
 	UnallocatedSectorNumbers(count int) ([]abi.SectorNumber, error)
 	GetAllocatedSectors() (*bitfield.BitField, error)
 
@@ -251,6 +269,7 @@ type SectorOnChainInfo struct {
 	InitialPledge         abi.TokenAmount
 	ExpectedDayReward     abi.TokenAmount
 	ExpectedStoragePledge abi.TokenAmount
+	SectorKeyCID          *cid.Cid
 }
 
 type SectorPreCommitInfo = miner0.SectorPreCommitInfo

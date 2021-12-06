@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: policy/policy.go.template
+
 package policy
 
 import (
@@ -20,7 +22,6 @@ import (
 
 	paych{{.latestVersion}} "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/builtin/paych"
 )
-
 
 const (
 	ChainFinality                  = miner{{.latestVersion}}.ChainFinality

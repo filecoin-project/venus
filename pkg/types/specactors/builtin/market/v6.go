@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/market/state.go.template
+
 package market
 
 import (
@@ -9,8 +11,8 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/types/internal"
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 
 	market6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/market"
 	adt6 "github.com/filecoin-project/specs-actors/v6/actors/util/adt"
@@ -29,14 +31,14 @@ func load6(store adt.Store, root cid.Cid) (State, error) {
 
 func make6(store adt.Store) (State, error) {
 	out := state6{store: store}
+	
+		s, err := market6.ConstructState(store)
+		if err != nil {
+			return nil, err
+		}
 
-	s, err := market6.ConstructState(store)
-	if err != nil {
-		return nil, err
-	}
-
-	out.State = *s
-
+		out.State = *s
+	
 	return &out, nil
 }
 
@@ -46,8 +48,8 @@ type state6 struct {
 }
 
 func (s *state6) TotalLocked() (abi.TokenAmount, error) {
-	fml := internal.BigAdd(s.TotalClientLockedCollateral, s.TotalProviderLockedCollateral)
-	fml = internal.BigAdd(fml, s.TotalClientStorageFee)
+	fml := types.BigAdd(s.TotalClientLockedCollateral, s.TotalProviderLockedCollateral)
+	fml = types.BigAdd(fml, s.TotalClientStorageFee)
 	return fml, nil
 }
 
@@ -242,11 +244,11 @@ type publishStorageDealsReturn6 struct {
 }
 
 func (r *publishStorageDealsReturn6) IsDealValid(index uint64) (bool, error) {
-
-	return r.ValidDeals.IsSet(index)
-
+	
+	    return r.ValidDeals.IsSet(index)
+	
 }
 
 func (r *publishStorageDealsReturn6) DealIDs() ([]abi.DealID, error) {
-	return r.IDs, nil
+    return r.IDs, nil
 }

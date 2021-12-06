@@ -1,7 +1,9 @@
+// FETCHED FROM LOTUS: builtin/account/actor.go.template
+
 package account
 
 import (
-	"github.com/filecoin-project/venus/pkg/types/specactors"
+	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -10,7 +12,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/internal"
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 {{range .versions}}
 	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
 {{end}}
@@ -25,7 +27,7 @@ func init() {
 
 var Methods = builtin4.MethodsAccount
 
-func Load(store adt.Store, act *internal.Actor) (State, error) {
+func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
 {{range .versions}}
 	case builtin{{.}}.AccountActorCodeID:
@@ -35,20 +37,20 @@ func Load(store adt.Store, act *internal.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av specactors.Version, addr address.Address) (State, error) {
+func MakeState(store adt.Store, av actors.Version, addr address.Address) (State, error) {
 	switch av {
 {{range .versions}}
-	case specactors.Version{{.}}:
+	case actors.Version{{.}}:
 		return make{{.}}(store, addr)
 {{end}}
 }
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
-func GetActorCodeID(av specactors.Version) (cid.Cid, error) {
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 	switch av {
 {{range .versions}}
-	case specactors.Version{{.}}:
+	case actors.Version{{.}}:
 		return builtin{{.}}.AccountActorCodeID, nil
 {{end}}
 	}

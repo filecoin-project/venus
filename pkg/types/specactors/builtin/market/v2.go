@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/market/state.go.template
+
 package market
 
 import (
@@ -9,8 +11,8 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/types/internal"
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
@@ -29,19 +31,19 @@ func load2(store adt.Store, root cid.Cid) (State, error) {
 
 func make2(store adt.Store) (State, error) {
 	out := state2{store: store}
+	
+		ea, err := adt2.MakeEmptyArray(store).Root()
+		if err != nil {
+			return nil, err
+		}
 
-	ea, err := adt2.MakeEmptyArray(store).Root()
-	if err != nil {
-		return nil, err
-	}
+		em, err := adt2.MakeEmptyMap(store).Root()
+		if err != nil {
+			return nil, err
+		}
 
-	em, err := adt2.MakeEmptyMap(store).Root()
-	if err != nil {
-		return nil, err
-	}
-
-	out.State = *market2.ConstructState(ea, em, em)
-
+		out.State = *market2.ConstructState(ea, em, em)
+	
 	return &out, nil
 }
 
@@ -51,8 +53,8 @@ type state2 struct {
 }
 
 func (s *state2) TotalLocked() (abi.TokenAmount, error) {
-	fml := internal.BigAdd(s.TotalClientLockedCollateral, s.TotalProviderLockedCollateral)
-	fml = internal.BigAdd(fml, s.TotalClientStorageFee)
+	fml := types.BigAdd(s.TotalClientLockedCollateral, s.TotalProviderLockedCollateral)
+	fml = types.BigAdd(fml, s.TotalClientStorageFee)
 	return fml, nil
 }
 
@@ -247,12 +249,12 @@ type publishStorageDealsReturn2 struct {
 }
 
 func (r *publishStorageDealsReturn2) IsDealValid(index uint64) (bool, error) {
-
-	// PublishStorageDeals only succeeded if all deals were valid in this version of actors
-	return true, nil
-
+	
+	    // PublishStorageDeals only succeeded if all deals were valid in this version of actors
+	    return true, nil
+	
 }
 
 func (r *publishStorageDealsReturn2) DealIDs() ([]abi.DealID, error) {
-	return r.IDs, nil
+    return r.IDs, nil
 }
