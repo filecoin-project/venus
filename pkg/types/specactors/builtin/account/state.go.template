@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/account/state.go.template
+
 package account
 
 import (

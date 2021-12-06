@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/init/state.go.template
+
 package init
 
 import (
@@ -8,6 +10,9 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
+	
+
+
 
 	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -26,14 +31,14 @@ func load0(store adt.Store, root cid.Cid) (State, error) {
 
 func make0(store adt.Store, networkName string) (State, error) {
 	out := state0{store: store}
+	
+		mr, err := adt0.MakeEmptyMap(store).Root()
+		if err != nil {
+			return nil, err
+		}
 
-	mr, err := adt0.MakeEmptyMap(store).Root()
-	if err != nil {
-		return nil, err
-	}
-
-	out.State = *init0.ConstructState(mr, networkName)
-
+		out.State = *init0.ConstructState(mr, networkName)
+	
 	return &out, nil
 }
 
@@ -66,7 +71,7 @@ func (s *state0) ForEachActor(cb func(id abi.ActorID, address address.Address) e
 }
 
 func (s *state0) NetworkName() (string, error) {
-	return s.State.NetworkName, nil
+	return string(s.State.NetworkName), nil
 }
 
 func (s *state0) SetNetworkName(name string) error {

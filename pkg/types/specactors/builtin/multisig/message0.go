@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/multisig/message.go.template
+
 package multisig
 
 import (
@@ -10,9 +12,9 @@ import (
 	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	multisig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
-	"github.com/filecoin-project/venus/pkg/types/internal"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
+	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 )
 
 type message0 struct{ from address.Address }
@@ -21,7 +23,7 @@ func (m message0) Create(
 	signers []address.Address, threshold uint64,
 	unlockStart, unlockDuration abi.ChainEpoch,
 	initialAmount abi.TokenAmount,
-) (*internal.Message, error) {
+) (*types.Message, error) {
 
 	lenAddrs := uint64(len(signers))
 
@@ -48,7 +50,7 @@ func (m message0) Create(
 		UnlockDuration:        unlockDuration,
 	}
 
-	enc, actErr := specactors.SerializeParams(msigParams)
+	enc, actErr := actors.SerializeParams(msigParams)
 	if actErr != nil {
 		return nil, actErr
 	}
@@ -59,12 +61,12 @@ func (m message0) Create(
 		ConstructorParams: enc,
 	}
 
-	enc, actErr = specactors.SerializeParams(execParams)
+	enc, actErr = actors.SerializeParams(execParams)
 	if actErr != nil {
 		return nil, actErr
 	}
 
-	return &internal.Message{
+	return &types.Message{
 		To:     init_.Address,
 		From:   m.from,
 		Method: builtin0.MethodsInit.Exec,
@@ -73,8 +75,10 @@ func (m message0) Create(
 	}, nil
 }
 
+
+
 func (m message0) Propose(msig, to address.Address, amt abi.TokenAmount,
-	method abi.MethodNum, params []byte) (*internal.Message, error) {
+	method abi.MethodNum, params []byte) (*types.Message, error) {
 
 	if msig == address.Undef {
 		return nil, xerrors.Errorf("must provide a multisig address for proposal")
@@ -92,7 +96,7 @@ func (m message0) Propose(msig, to address.Address, amt abi.TokenAmount,
 		return nil, xerrors.Errorf("must provide source address")
 	}
 
-	enc, actErr := specactors.SerializeParams(&multisig0.ProposeParams{
+	enc, actErr := actors.SerializeParams(&multisig0.ProposeParams{
 		To:     to,
 		Value:  amt,
 		Method: method,
@@ -102,7 +106,7 @@ func (m message0) Propose(msig, to address.Address, amt abi.TokenAmount,
 		return nil, xerrors.Errorf("failed to serialize parameters: %w", actErr)
 	}
 
-	return &internal.Message{
+	return &types.Message{
 		To:     msig,
 		From:   m.from,
 		Value:  abi.NewTokenAmount(0),
@@ -111,32 +115,33 @@ func (m message0) Propose(msig, to address.Address, amt abi.TokenAmount,
 	}, nil
 }
 
-func (m message0) Approve(msig address.Address, txID uint64, hashData *ProposalHashData) (*internal.Message, error) {
+func (m message0) Approve(msig address.Address, txID uint64, hashData *ProposalHashData) (*types.Message, error) {
 	enc, err := txnParams(txID, hashData)
 	if err != nil {
 		return nil, err
 	}
 
-	return &internal.Message{
+	return &types.Message{
 		To:     msig,
 		From:   m.from,
-		Value:  internal.NewInt(0),
+		Value:  types.NewInt(0),
 		Method: builtin0.MethodsMultisig.Approve,
 		Params: enc,
 	}, nil
 }
 
-func (m message0) Cancel(msig address.Address, txID uint64, hashData *ProposalHashData) (*internal.Message, error) {
+func (m message0) Cancel(msig address.Address, txID uint64, hashData *ProposalHashData) (*types.Message, error) {
 	enc, err := txnParams(txID, hashData)
 	if err != nil {
 		return nil, err
 	}
 
-	return &internal.Message{
+	return &types.Message{
 		To:     msig,
 		From:   m.from,
-		Value:  internal.NewInt(0),
+		Value:  types.NewInt(0),
 		Method: builtin0.MethodsMultisig.Cancel,
 		Params: enc,
 	}, nil
 }
+

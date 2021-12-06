@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/multisig/state.go.template
+
 package multisig
 
 import (
@@ -13,6 +15,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
+
 
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 
@@ -38,14 +41,14 @@ func make3(store adt.Store, signers []address.Address, threshold uint64, startEp
 	out.State.StartEpoch = startEpoch
 	out.State.UnlockDuration = unlockDuration
 	out.State.InitialBalance = initialBalance
+	
+		em, err := adt3.StoreEmptyMap(store, builtin3.DefaultHamtBitwidth)
+		if err != nil {
+			return nil, err
+		}
 
-	em, err := adt3.StoreEmptyMap(store, builtin3.DefaultHamtBitwidth)
-	if err != nil {
-		return nil, err
-	}
-
-	out.State.PendingTxns = em
-
+		out.State.PendingTxns = em
+	
 	return &out, nil
 }
 

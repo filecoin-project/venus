@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/verifreg/actor.go.template
+
 package verifreg
 
 import (
@@ -14,8 +16,8 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	"github.com/filecoin-project/venus/pkg/types/internal"
+	actors "github.com/filecoin-project/venus/pkg/types/specactors"
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 )
 
 func init() {
@@ -31,7 +33,7 @@ var (
 	Methods = builtin{{.latestVersion}}.MethodsVerifiedRegistry
 )
 
-func Load(store adt.Store, act *internal.Actor) (State, error) {
+func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
 {{range .versions}}
 	case builtin{{.}}.VerifiedRegistryActorCodeID:
@@ -41,20 +43,20 @@ func Load(store adt.Store, act *internal.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av specactors.Version, rootKeyAddress address.Address) (State, error) {
+func MakeState(store adt.Store, av actors.Version, rootKeyAddress address.Address) (State, error) {
 	switch av {
 {{range .versions}}
-	case specactors.Version{{.}}:
+	case actors.Version{{.}}:
 		return make{{.}}(store, rootKeyAddress)
 {{end}}
 }
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
-func GetActorCodeID(av specactors.Version) (cid.Cid, error) {
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 	switch av {
 {{range .versions}}
-	case specactors.Version{{.}}:
+	case actors.Version{{.}}:
 		return builtin{{.}}.VerifiedRegistryActorCodeID, nil
 {{end}}
 	}

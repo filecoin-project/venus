@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/init/state.go.template
+
 package init
 
 import (
@@ -8,6 +10,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
+	
 
 {{if (ge .v 3)}}
 	builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
@@ -77,7 +80,7 @@ func (s *state{{.v}}) ForEachActor(cb func(id abi.ActorID, address address.Addre
 }
 
 func (s *state{{.v}}) NetworkName() (string, error) {
-	return s.State.NetworkName, nil
+	return string(s.State.NetworkName), nil
 }
 
 func (s *state{{.v}}) SetNetworkName(name string) error {

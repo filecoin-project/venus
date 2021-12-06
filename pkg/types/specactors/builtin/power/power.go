@@ -1,9 +1,11 @@
+// FETCHED FROM LOTUS: builtin/power/actor.go.template
+
 package power
 
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
+	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -11,9 +13,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
 
-	"github.com/filecoin-project/venus/pkg/types/internal"
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -26,6 +28,9 @@ import (
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
+	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+
 )
 
 func init() {
@@ -53,14 +58,18 @@ func init() {
 	builtin.RegisterActorState(builtin6.StoragePowerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load6(store, root)
 	})
+
+	builtin.RegisterActorState(builtin7.StoragePowerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load7(store, root)
+	})
 }
 
 var (
-	Address = builtin6.StoragePowerActorAddr
-	Methods = builtin6.MethodsPower
+	Address = builtin7.StoragePowerActorAddr
+	Methods = builtin7.MethodsPower
 )
 
-func Load(store adt.Store, act *internal.Actor) (State, error) {
+func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
 
 	case builtin0.StoragePowerActorCodeID:
@@ -81,55 +90,64 @@ func Load(store adt.Store, act *internal.Actor) (State, error) {
 	case builtin6.StoragePowerActorCodeID:
 		return load6(store, act.Head)
 
+	case builtin7.StoragePowerActorCodeID:
+		return load7(store, act.Head)
+
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av specactors.Version) (State, error) {
+func MakeState(store adt.Store, av actors.Version) (State, error) {
 	switch av {
 
-	case specactors.Version0:
+	case actors.Version0:
 		return make0(store)
 
-	case specactors.Version2:
+	case actors.Version2:
 		return make2(store)
 
-	case specactors.Version3:
+	case actors.Version3:
 		return make3(store)
 
-	case specactors.Version4:
+	case actors.Version4:
 		return make4(store)
 
-	case specactors.Version5:
+	case actors.Version5:
 		return make5(store)
 
-	case specactors.Version6:
+	case actors.Version6:
 		return make6(store)
 
-	}
+	case actors.Version7:
+		return make7(store)
+
+}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
-func GetActorCodeID(av specactors.Version) (cid.Cid, error) {
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 	switch av {
 
-	case specactors.Version0:
+	case actors.Version0:
 		return builtin0.StoragePowerActorCodeID, nil
 
-	case specactors.Version2:
+	case actors.Version2:
 		return builtin2.StoragePowerActorCodeID, nil
 
-	case specactors.Version3:
+	case actors.Version3:
 		return builtin3.StoragePowerActorCodeID, nil
 
-	case specactors.Version4:
+	case actors.Version4:
 		return builtin4.StoragePowerActorCodeID, nil
 
-	case specactors.Version5:
+	case actors.Version5:
 		return builtin5.StoragePowerActorCodeID, nil
 
-	case specactors.Version6:
+	case actors.Version6:
 		return builtin6.StoragePowerActorCodeID, nil
+
+	case actors.Version7:
+		return builtin7.StoragePowerActorCodeID, nil
 
 	}
 

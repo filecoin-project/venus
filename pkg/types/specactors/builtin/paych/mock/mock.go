@@ -1,12 +1,13 @@
 package mock
 
 import (
-	paych2 "github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
 	"io"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
 )
 
 type mockState struct {
@@ -14,7 +15,7 @@ type mockState struct {
 	to         address.Address
 	settlingAt abi.ChainEpoch
 	toSend     abi.TokenAmount
-	lanes      map[uint64]paych2.LaneState
+	lanes      map[uint64]paych.LaneState
 }
 
 func (ms *mockState) GetState() interface{} {
@@ -31,15 +32,15 @@ type mockLaneState struct {
 func NewMockPayChState(from address.Address,
 	to address.Address,
 	settlingAt abi.ChainEpoch,
-	lanes map[uint64]paych2.LaneState,
-) paych2.State {
+	lanes map[uint64]paych.LaneState,
+) paych.State {
 	return &mockState{from: from, to: to, settlingAt: settlingAt, toSend: big.NewInt(0), lanes: lanes}
 }
 
 // NewMockLaneState constructs a state for a payment channel lane with the set fixed values
 // that satisfies the paych.LaneState interface. Useful for populating lanes when
 // calling NewMockPayChState
-func NewMockLaneState(redeemed big.Int, nonce uint64) paych2.LaneState {
+func NewMockLaneState(redeemed big.Int, nonce uint64) paych.LaneState {
 	return &mockLaneState{redeemed, nonce}
 }
 
@@ -73,7 +74,7 @@ func (ms *mockState) LaneCount() (uint64, error) {
 }
 
 // Iterate lane states
-func (ms *mockState) ForEachLaneState(cb func(idx uint64, dl paych2.LaneState) error) error {
+func (ms *mockState) ForEachLaneState(cb func(idx uint64, dl paych.LaneState) error) error {
 	var lastErr error
 	for lane, state := range ms.lanes {
 		if err := cb(lane, state); err != nil {

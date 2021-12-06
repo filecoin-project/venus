@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/reward/state.go.template
+
 package reward
 
 import (

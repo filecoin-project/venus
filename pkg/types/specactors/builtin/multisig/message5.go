@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/multisig/message.go.template
+
 package multisig
 
 import (
@@ -10,9 +12,9 @@ import (
 	init5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/init"
 	multisig5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/multisig"
 
-	"github.com/filecoin-project/venus/pkg/types/internal"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
+	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 )
 
 type message5 struct{ message0 }
@@ -21,7 +23,7 @@ func (m message5) Create(
 	signers []address.Address, threshold uint64,
 	unlockStart, unlockDuration abi.ChainEpoch,
 	initialAmount abi.TokenAmount,
-) (*internal.Message, error) {
+) (*types.Message, error) {
 
 	lenAddrs := uint64(len(signers))
 
@@ -45,7 +47,7 @@ func (m message5) Create(
 		StartEpoch:            unlockStart,
 	}
 
-	enc, actErr := specactors.SerializeParams(msigParams)
+	enc, actErr := actors.SerializeParams(msigParams)
 	if actErr != nil {
 		return nil, actErr
 	}
@@ -56,12 +58,12 @@ func (m message5) Create(
 		ConstructorParams: enc,
 	}
 
-	enc, actErr = specactors.SerializeParams(execParams)
+	enc, actErr = actors.SerializeParams(execParams)
 	if actErr != nil {
 		return nil, actErr
 	}
 
-	return &internal.Message{
+	return &types.Message{
 		To:     init_.Address,
 		From:   m.from,
 		Method: builtin5.MethodsInit.Exec,
@@ -69,3 +71,5 @@ func (m message5) Create(
 		Value:  initialAmount,
 	}, nil
 }
+
+

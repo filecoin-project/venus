@@ -33,6 +33,9 @@ tools/chain-util/chain-util
 .DS_Store
 **/.DS_Store
 
+// venus-dev-tool
+venus-dev-tool
+
 // IDE (vscode)
 .vscode
 debug.test
