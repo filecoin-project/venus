@@ -1,7 +1,9 @@
+// FETCHED FROM LOTUS: builtin/market/actor.go.template
+
 package market
 
 import (
-    "github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/go-state-types/network"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -17,9 +19,9 @@ import (
 {{end}}
 
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
+	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/internal"
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 )
 
 func init() {
@@ -34,7 +36,7 @@ var (
 	Methods = builtin{{.latestVersion}}.MethodsMarket
 )
 
-func Load(store adt.Store, act *internal.Actor) (State, error) {
+func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
 {{range .versions}}
 	case builtin{{.}}.StorageMarketActorCodeID:
@@ -44,20 +46,20 @@ func Load(store adt.Store, act *internal.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av specactors.Version) (State, error) {
+func MakeState(store adt.Store, av actors.Version) (State, error) {
 	switch av {
 {{range .versions}}
-	case specactors.Version{{.}}:
+	case actors.Version{{.}}:
 		return make{{.}}(store)
 {{end}}
 }
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
-func GetActorCodeID(av specactors.Version) (cid.Cid, error) {
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 	switch av {
 {{range .versions}}
-	case specactors.Version{{.}}:
+	case actors.Version{{.}}:
 		return builtin{{.}}.StorageMarketActorCodeID, nil
 {{end}}
 	}
@@ -104,6 +106,7 @@ type DealProposals interface {
 }
 
 type PublishStorageDealsParams = market0.PublishStorageDealsParams
+
 type PublishStorageDealsReturn interface {
     DealIDs() ([]abi.DealID, error)
 	// Note that this index is based on the batch of deals that were published, NOT the DealID
@@ -111,14 +114,14 @@ type PublishStorageDealsReturn interface {
 }
 
 func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStorageDealsReturn, error) {
-	av, err := specactors.VersionForNetwork(nv)
+	av, err := actors.VersionForNetwork(nv)
 	if err != nil {
 		return nil, err
 	}
 
 	switch av {
 {{range .versions}}
-	case specactors.Version{{.}}:
+	case actors.Version{{.}}:
 		return decodePublishStorageDealsReturn{{.}}(b)
 {{end}}
 }

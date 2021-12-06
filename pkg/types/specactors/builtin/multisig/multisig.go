@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/multisig/actor.go.template
+
 package multisig
 
 import (
@@ -13,7 +15,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	msig6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/multisig"
+	msig7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/multisig"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -27,10 +29,13 @@ import (
 
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
-	"github.com/filecoin-project/venus/pkg/types/internal"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
+	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+
+
+	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 )
 
 func init() {
@@ -58,9 +63,13 @@ func init() {
 	builtin.RegisterActorState(builtin6.MultisigActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load6(store, root)
 	})
+
+	builtin.RegisterActorState(builtin7.MultisigActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load7(store, root)
+	})
 }
 
-func Load(store adt.Store, act *internal.Actor) (State, error) {
+func Load(store adt.Store, act *types.Actor) (State, error) {
 	switch act.Code {
 
 	case builtin0.MultisigActorCodeID:
@@ -81,55 +90,64 @@ func Load(store adt.Store, act *internal.Actor) (State, error) {
 	case builtin6.MultisigActorCodeID:
 		return load6(store, act.Head)
 
+	case builtin7.MultisigActorCodeID:
+		return load7(store, act.Head)
+
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av specactors.Version, signers []address.Address, threshold uint64, startEpoch abi.ChainEpoch, unlockDuration abi.ChainEpoch, initialBalance abi.TokenAmount) (State, error) {
+func MakeState(store adt.Store, av actors.Version, signers []address.Address, threshold uint64, startEpoch abi.ChainEpoch, unlockDuration abi.ChainEpoch, initialBalance abi.TokenAmount) (State, error) {
 	switch av {
 
-	case specactors.Version0:
+	case actors.Version0:
 		return make0(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
-	case specactors.Version2:
+	case actors.Version2:
 		return make2(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
-	case specactors.Version3:
+	case actors.Version3:
 		return make3(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
-	case specactors.Version4:
+	case actors.Version4:
 		return make4(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
-	case specactors.Version5:
+	case actors.Version5:
 		return make5(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
-	case specactors.Version6:
+	case actors.Version6:
 		return make6(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
-	}
+	case actors.Version7:
+		return make7(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
+}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
-func GetActorCodeID(av specactors.Version) (cid.Cid, error) {
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 	switch av {
 
-	case specactors.Version0:
+	case actors.Version0:
 		return builtin0.MultisigActorCodeID, nil
 
-	case specactors.Version2:
+	case actors.Version2:
 		return builtin2.MultisigActorCodeID, nil
 
-	case specactors.Version3:
+	case actors.Version3:
 		return builtin3.MultisigActorCodeID, nil
 
-	case specactors.Version4:
+	case actors.Version4:
 		return builtin4.MultisigActorCodeID, nil
 
-	case specactors.Version5:
+	case actors.Version5:
 		return builtin5.MultisigActorCodeID, nil
 
-	case specactors.Version6:
+	case actors.Version6:
 		return builtin6.MultisigActorCodeID, nil
+
+	case actors.Version7:
+		return builtin7.MultisigActorCodeID, nil
 
 	}
 
@@ -156,28 +174,31 @@ type State interface {
 
 type Transaction = msig0.Transaction
 
-var Methods = builtin6.MethodsMultisig
+var Methods = builtin7.MethodsMultisig
 
-func Message(version specactors.Version, from address.Address) MessageBuilder {
+func Message(version actors.Version, from address.Address) MessageBuilder {
 	switch version {
 
-	case specactors.Version0:
+	case actors.Version0:
 		return message0{from}
 
-	case specactors.Version2:
+	case actors.Version2:
 		return message2{message0{from}}
 
-	case specactors.Version3:
+	case actors.Version3:
 		return message3{message0{from}}
 
-	case specactors.Version4:
+	case actors.Version4:
 		return message4{message0{from}}
 
-	case specactors.Version5:
+	case actors.Version5:
 		return message5{message0{from}}
 
-	case specactors.Version6:
+	case actors.Version6:
 		return message6{message0{from}}
+
+	case actors.Version7:
+		return message7{message0{from}}
 	default:
 		panic(fmt.Sprintf("unsupported actors version: %d", version))
 	}
@@ -187,27 +208,27 @@ type MessageBuilder interface {
 	// Create a new multisig with the specified parameters.
 	Create(signers []address.Address, threshold uint64,
 		vestingStart, vestingDuration abi.ChainEpoch,
-		initialAmount abi.TokenAmount) (*internal.Message, error)
+		initialAmount abi.TokenAmount) (*types.Message, error)
 
 	// Propose a transaction to the given multisig.
 	Propose(msig, target address.Address, amt abi.TokenAmount,
-		method abi.MethodNum, params []byte) (*internal.Message, error)
+		method abi.MethodNum, params []byte) (*types.Message, error)
 
 	// Approve a multisig transaction. The "hash" is optional.
-	Approve(msig address.Address, txID uint64, hash *ProposalHashData) (*internal.Message, error)
+	Approve(msig address.Address, txID uint64, hash *ProposalHashData) (*types.Message, error)
 
 	// Cancel a multisig transaction. The "hash" is optional.
-	Cancel(msig address.Address, txID uint64, hash *ProposalHashData) (*internal.Message, error)
+	Cancel(msig address.Address, txID uint64, hash *ProposalHashData) (*types.Message, error)
 }
 
 // this type is the same between v0 and v2
-type ProposalHashData = msig6.ProposalHashData
-type ProposeReturn = msig6.ProposeReturn
-type ProposeParams = msig6.ProposeParams
-type ApproveReturn = msig6.ApproveReturn
+type ProposalHashData = msig7.ProposalHashData
+type ProposeReturn = msig7.ProposeReturn
+type ProposeParams = msig7.ProposeParams
+type ApproveReturn = msig7.ApproveReturn
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
-	params := msig6.TxnIDParams{ID: msig6.TxnID(id)}
+	params := msig7.TxnIDParams{ID: msig7.TxnID(id)}
 	if data != nil {
 		if data.Requester.Protocol() != address.ID {
 			return nil, xerrors.Errorf("proposer address must be an ID address, was %s", data.Requester)
@@ -226,5 +247,5 @@ func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
 		params.ProposalHash = hash[:]
 	}
 
-	return specactors.SerializeParams(&params)
+	return actors.SerializeParams(&params)
 }

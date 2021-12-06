@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/system/state.go.template
+
 package system
 
 import (

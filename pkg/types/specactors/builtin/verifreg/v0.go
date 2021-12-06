@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/verifreg/state.go.template
+
 package verifreg
 
 import (
@@ -5,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors"
+	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
@@ -25,14 +27,14 @@ func load0(store adt.Store, root cid.Cid) (State, error) {
 
 func make0(store adt.Store, rootKeyAddress address.Address) (State, error) {
 	out := state0{store: store}
+	
+		em, err := adt0.MakeEmptyMap(store).Root()
+		if err != nil {
+			return nil, err
+		}
 
-	em, err := adt0.MakeEmptyMap(store).Root()
-	if err != nil {
-		return nil, err
-	}
-
-	out.State = *verifreg0.ConstructState(em, rootKeyAddress)
-
+		out.State = *verifreg0.ConstructState(em, rootKeyAddress)
+	
 	return &out, nil
 }
 
@@ -46,19 +48,19 @@ func (s *state0) RootKey() (address.Address, error) {
 }
 
 func (s *state0) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
-	return getDataCap(s.store, specactors.Version0, s.verifiedClients, addr)
+	return getDataCap(s.store, actors.Version0, s.verifiedClients, addr)
 }
 
 func (s *state0) VerifierDataCap(addr address.Address) (bool, abi.StoragePower, error) {
-	return getDataCap(s.store, specactors.Version0, s.verifiers, addr)
+	return getDataCap(s.store, actors.Version0, s.verifiers, addr)
 }
 
 func (s *state0) ForEachVerifier(cb func(addr address.Address, dcap abi.StoragePower) error) error {
-	return forEachCap(s.store, specactors.Version0, s.verifiers, cb)
+	return forEachCap(s.store, actors.Version0, s.verifiers, cb)
 }
 
 func (s *state0) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
-	return forEachCap(s.store, specactors.Version0, s.verifiedClients, cb)
+	return forEachCap(s.store, actors.Version0, s.verifiedClients, cb)
 }
 
 func (s *state0) verifiedClients() (adt.Map, error) {

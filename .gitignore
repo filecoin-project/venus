@@ -16,7 +16,7 @@ fixtures/test
 fixtures/live
 !fixtures/live/.gitkeep
 
-// Tools 
+// Tools
 tools/gengen/gengen
 tools/gengen/gensetup
 tools/fast/bin/localnet
@@ -29,6 +29,9 @@ tools/chain-util/chain-util
 **/*.h
 **/*.a
 **/*.pc
+
+// venus-dev-tool
+venus-dev-tool
 
 // IDE (vscode)
 .vscode

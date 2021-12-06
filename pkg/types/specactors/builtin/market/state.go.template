@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/market/state.go.template
+
 package market
 
 import (
@@ -10,7 +12,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/internal"
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 
 	market{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/market"
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
@@ -58,8 +60,8 @@ type state{{.v}} struct {
 }
 
 func (s *state{{.v}}) TotalLocked() (abi.TokenAmount, error) {
-	fml := internal.BigAdd(s.TotalClientLockedCollateral, s.TotalProviderLockedCollateral)
-	fml = internal.BigAdd(fml, s.TotalClientStorageFee)
+	fml := types.BigAdd(s.TotalClientLockedCollateral, s.TotalProviderLockedCollateral)
+	fml = types.BigAdd(fml, s.TotalClientStorageFee)
 	return fml, nil
 }
 
@@ -237,7 +239,6 @@ func fromV{{.v}}DealProposal(v{{.v}} market{{.v}}.DealProposal) DealProposal {
 func (s *state{{.v}}) GetState() interface{} {
 	return &s.State
 }
-
 
 var _ PublishStorageDealsReturn = (*publishStorageDealsReturn{{.v}})(nil)
 

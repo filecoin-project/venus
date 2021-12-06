@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/cron/state.go.template
+
 package cron
 
 import (

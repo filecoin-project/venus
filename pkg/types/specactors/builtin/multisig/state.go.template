@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/multisig/state.go.template
+
 package multisig
 
 import (

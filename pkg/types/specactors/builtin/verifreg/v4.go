@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: builtin/verifreg/state.go.template
+
 package verifreg
 
 import (
@@ -5,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors"
+	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
@@ -26,14 +28,14 @@ func load4(store adt.Store, root cid.Cid) (State, error) {
 
 func make4(store adt.Store, rootKeyAddress address.Address) (State, error) {
 	out := state4{store: store}
+	
+		s, err := verifreg4.ConstructState(store, rootKeyAddress)
+		if err != nil {
+			return nil, err
+		}
 
-	s, err := verifreg4.ConstructState(store, rootKeyAddress)
-	if err != nil {
-		return nil, err
-	}
-
-	out.State = *s
-
+		out.State = *s
+	
 	return &out, nil
 }
 
@@ -47,19 +49,19 @@ func (s *state4) RootKey() (address.Address, error) {
 }
 
 func (s *state4) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
-	return getDataCap(s.store, specactors.Version4, s.verifiedClients, addr)
+	return getDataCap(s.store, actors.Version4, s.verifiedClients, addr)
 }
 
 func (s *state4) VerifierDataCap(addr address.Address) (bool, abi.StoragePower, error) {
-	return getDataCap(s.store, specactors.Version4, s.verifiers, addr)
+	return getDataCap(s.store, actors.Version4, s.verifiers, addr)
 }
 
 func (s *state4) ForEachVerifier(cb func(addr address.Address, dcap abi.StoragePower) error) error {
-	return forEachCap(s.store, specactors.Version4, s.verifiers, cb)
+	return forEachCap(s.store, actors.Version4, s.verifiers, cb)
 }
 
 func (s *state4) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
-	return forEachCap(s.store, specactors.Version4, s.verifiedClients, cb)
+	return forEachCap(s.store, actors.Version4, s.verifiedClients, cb)
 }
 
 func (s *state4) verifiedClients() (adt.Map, error) {
