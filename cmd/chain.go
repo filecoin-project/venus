@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"os"
 	"strings"
 	"time"
@@ -18,6 +17,7 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -29,12 +29,15 @@ var chainCmd = &cmds.Command{
 		Tagline: "Inspect the filecoin blockchain",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"head":     chainHeadCmd,
-		"ls":       chainLsCmd,
-		"set-head": chainSetHeadCmd,
-		"getblock": chainGetBlockCmd,
-		"disputer": chainDisputeSetCmd,
-		"export":   chainExportCmd,
+		"head":         chainHeadCmd,
+		"ls":           chainLsCmd,
+		"set-head":     chainSetHeadCmd,
+		"getblock":     chainGetBlockCmd,
+		"get-message":  chainGetMessageCmd,
+		"get-messages": chainGetMessagesCmd,
+		"get-receipts": chainGetReceiptsCmd,
+		"disputer":     chainDisputeSetCmd,
+		"export":       chainExportCmd,
 	},
 }
 
@@ -231,6 +234,79 @@ var chainGetBlockCmd = &cmds.Command{
 
 		return re.Emit(buf)
 	},
+}
+
+var chainGetMessageCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Show a filecoin message by its CID",
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cid", true, false, "CID of message to show"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		cid, err := cid.Decode(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		msg, err := env.(*node.Env).ChainAPI.ChainGetMessage(req.Context, cid)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(msg)
+	},
+	Type: types.UnsignedMessage{},
+}
+
+var chainGetMessagesCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline:          "Show a filecoin message collection by block CID",
+		ShortDescription: "Prints info for all messages in a collection, at the given block CID.",
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cid", true, false, "CID of block to show"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		cid, err := cid.Decode(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		bmsg, err := env.(*node.Env).ChainAPI.ChainGetBlockMessages(req.Context, cid)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(bmsg)
+	},
+	Type: &apitypes.BlockMessages{},
+}
+
+var chainGetReceiptsCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Show a filecoin receipt collection by its CID",
+		ShortDescription: `Prints info for all receipts in a collection,
+at the given CID.  MessageReceipt collection CIDs are found in the "ParentMessageReceipts"
+field of the filecoin block header.`,
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("cid", true, false, "CID of receipt collection to show"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		cid, err := cid.Decode(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		receipts, err := env.(*node.Env).ChainAPI.ChainGetReceipts(req.Context, cid)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(receipts)
+	},
+	Type: []types.MessageReceipt{},
 }
 
 func apiMsgCids(in []apitypes.Message) []cid.Cid {
