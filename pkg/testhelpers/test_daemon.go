@@ -750,7 +750,7 @@ func (td *TestDaemon) createNewProcess() {
 
 	td.process = exec.Command(td.daemonArgs[0], td.daemonArgs[1:]...)
 	// disable REUSEPORT, it creates problems in tests
-	td.process.Env = append(os.Environ(), "IPFS_REUSEPORT=false")
+	td.process.Env = append(os.Environ(), "LIBP2P_TCP_REUSEPORT=false")
 
 	// setup process pipes
 	var err error
