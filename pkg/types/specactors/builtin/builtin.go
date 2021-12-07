@@ -326,6 +326,35 @@ func IsPaymentChannelActor(c cid.Cid) bool {
 	return false
 }
 
+func IsInitActor(c cid.Cid) bool {
+
+	if c == builtin0.InitActorCodeID {
+		return true
+	}
+
+	if c == builtin2.InitActorCodeID {
+		return true
+	}
+
+	if c == builtin3.InitActorCodeID {
+		return true
+	}
+
+	if c == builtin4.InitActorCodeID {
+		return true
+	}
+
+	if c == builtin5.InitActorCodeID {
+		return true
+	}
+
+	if c == builtin6.InitActorCodeID {
+		return true
+	}
+
+	return false
+}
+
 func makeAddress(addr string) address.Address {
 	ret, err := address.NewFromString(addr)
 	if err != nil {
