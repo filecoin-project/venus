@@ -2,10 +2,13 @@ package impl
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 
 	"github.com/filecoin-project/go-state-types/abi"
+
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 )
 
 // FakeVerifier is a simple mock Verifier for testing.
@@ -19,6 +22,10 @@ func (f *FakeVerifier) VerifySeal(proof5.SealVerifyInfo) (bool, error) {
 }
 
 func (f *FakeVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
+	return true, nil
+}
+
+func (f *FakeVerifier) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (bool, error) {
 	return true, nil
 }
 

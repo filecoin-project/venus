@@ -2,13 +2,17 @@ package ffiwrapper
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-state-types/abi"
+
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 )
 
 type Verifier interface {
 	VerifySeal(proof5.SealVerifyInfo) (bool, error)
 	VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error)
+	VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (bool, error)
 	VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) (bool, error)
 	VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoStVerifyInfo) (bool, error)
 

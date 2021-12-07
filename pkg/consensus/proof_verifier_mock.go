@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-state-types/abi"
+
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 )
@@ -19,6 +21,10 @@ func (m genFakeVerifier) VerifySeal(svi proof5.SealVerifyInfo) (bool, error) {
 
 func (m genFakeVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
 	panic("implement me")
+}
+
+func (m genFakeVerifier) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (bool, error) {
+	panic("not supported")
 }
 
 func (m genFakeVerifier) VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) (bool, error) {
