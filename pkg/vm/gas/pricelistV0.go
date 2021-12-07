@@ -7,8 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 )
@@ -206,14 +205,14 @@ func (pl *pricelistV0) OnComputeUnsealedSectorCid(proofType abi.RegisteredSealPr
 }
 
 // OnVerifySeal
-func (pl *pricelistV0) OnVerifySeal(info proof2.SealVerifyInfo) GasCharge {
+func (pl *pricelistV0) OnVerifySeal(info proof7.SealVerifyInfo) GasCharge {
 	// TODO: this needs more cost tunning, check with @lotus
 	// this is not used
 	return NewGasCharge("OnVerifySeal", pl.verifySealBase, 0)
 }
 
 // OnVerifyAggregateSeals
-func (pl *pricelistV0) OnVerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) GasCharge {
+func (pl *pricelistV0) OnVerifyAggregateSeals(aggregate proof7.AggregateSealVerifyProofAndInfos) GasCharge {
 	proofType := aggregate.SealProof
 	perProof, ok := pl.verifyAggregateSealPer[proofType]
 	if !ok {
@@ -228,8 +227,14 @@ func (pl *pricelistV0) OnVerifyAggregateSeals(aggregate proof5.AggregateSealVeri
 	return NewGasCharge("OnVerifyAggregateSeals", perProof*num+step.Lookup(num), 0)
 }
 
+// OnVerifyReplicaUpdate
+func (pl *pricelistV0) OnVerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) GasCharge {
+	// TODO: do the thing
+	return GasCharge{}
+}
+
 // OnVerifyPost
-func (pl *pricelistV0) OnVerifyPost(info proof2.WindowPoStVerifyInfo) GasCharge {
+func (pl *pricelistV0) OnVerifyPost(info proof7.WindowPoStVerifyInfo) GasCharge {
 	sectorSize := "unknown"
 	var proofType abi.RegisteredPoStProof
 

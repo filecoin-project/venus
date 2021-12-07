@@ -4,25 +4,25 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+
+	cbornode "github.com/ipfs/go-ipld-cbor"
+	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
+
+	runtime7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/fork"
+	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
-	cbornode "github.com/ipfs/go-ipld-cbor"
-
-	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
-
-	runtime5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
-
-	"github.com/filecoin-project/venus/pkg/state"
 )
 
 type FaultStateView interface {
@@ -48,7 +48,7 @@ func NewFaultChecker(chain chainReader, fork fork.IFork) *ConsensusFaultChecker 
 // Checks validity of the submitted consensus fault with the two block headers needed to prove the fault
 // and an optional extra one to check common ancestry (as needed).
 // Note that the blocks are ordered: the method requires a.Epoch() <= b.Epoch().
-func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, curEpoch abi.ChainEpoch, msg vm.VmMessage, gasIpld cbornode.IpldStore, view vm.SyscallsStateView, getter vmcontext.LookbackStateGetter) (*runtime5.ConsensusFault, error) {
+func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, curEpoch abi.ChainEpoch, msg vm.VmMessage, gasIpld cbornode.IpldStore, view vm.SyscallsStateView, getter vmcontext.LookbackStateGetter) (*runtime7.ConsensusFault, error) {
 	if bytes.Equal(h1, h2) {
 		return nil, fmt.Errorf("no consensus fault: blocks identical")
 	}
@@ -85,25 +85,25 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 	}
 
 	// Check the basic fault conditions first, defer the (expensive) signature and chain history check until last.
-	var fault *runtime5.ConsensusFault
+	var fault *runtime7.ConsensusFault
 
 	// Double-fork mining fault: two blocks at the same epoch.
 	// It is not necessary to present a common ancestor of the blocks.
 	if b1.Height == b2.Height {
-		fault = &runtime5.ConsensusFault{
+		fault = &runtime7.ConsensusFault{
 			Target: b1.Miner,
 			Epoch:  b2.Height,
-			Type:   runtime5.ConsensusFaultDoubleForkMining,
+			Type:   runtime7.ConsensusFaultDoubleForkMining,
 		}
 	}
 	// Time-offset mining fault: two blocks with the same parent but different epochs.
 	// The curEpoch check is redundant at time of writing, but included for robustness to future changes to this method.
 	// The blocks have a common ancestor by definition (the parent).
 	if b1.Parents.Equals(b2.Parents) && b1.Height != b2.Height {
-		fault = &runtime5.ConsensusFault{
+		fault = &runtime7.ConsensusFault{
 			Target: b1.Miner,
 			Epoch:  b2.Height,
-			Type:   runtime5.ConsensusFaultTimeOffsetMining,
+			Type:   runtime7.ConsensusFaultTimeOffsetMining,
 		}
 	}
 	// Parent-grinding fault: one block’s parent is a tipset that provably should have included some block but does not.
@@ -116,10 +116,10 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 			return nil, errors.Wrapf(innerErr, "failed to decode extra")
 		}
 		if b1.Height == b3.Height && b3.Parents.Equals(b1.Parents) && !b2.Parents.Has(b1.Cid()) && b2.Parents.Has(b3.Cid()) {
-			fault = &runtime5.ConsensusFault{
+			fault = &runtime7.ConsensusFault{
 				Target: b1.Miner,
 				Epoch:  b2.Height,
-				Type:   runtime5.ConsensusFaultParentGrinding,
+				Type:   runtime7.ConsensusFaultParentGrinding,
 			}
 		}
 	}

@@ -9,6 +9,7 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -117,6 +118,10 @@ func (proofVerifier) VerifySeal(info proof5.SealVerifyInfo) (bool, error) {
 
 func (verifier proofVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
 	return ffi.VerifyAggregateSeals(aggregate)
+}
+
+func (proofVerifier) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (bool, error) {
+	return ffi.SectorUpdate.VerifyUpdateProof(update)
 }
 
 func (proofVerifier) VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) (bool, error) {

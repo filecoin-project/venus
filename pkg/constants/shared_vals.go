@@ -14,7 +14,7 @@ import (
 // Consensus / Network
 
 const AllowableClockDriftSecs = uint64(1)
-const NewestNetworkVersion = network.Version14
+const NewestNetworkVersion = network.Version15
 
 // constants for Weight calculation
 // The ratio of weight contributed by short-term vs long-term factors in a given round
