@@ -51,7 +51,7 @@ type IChainInfo interface {
 	ChainList(ctx context.Context, tsKey types.TipSetKey, count int) ([]types.TipSetKey, error)
 	// Rule[perm:read]
 	ChainHead(ctx context.Context) (*types.TipSet, error)
-	// Rule[perm:read]
+	// Rule[perm:admin]
 	ChainSetHead(ctx context.Context, key types.TipSetKey) error
 	// Rule[perm:read]
 	ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error)

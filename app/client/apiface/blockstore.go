@@ -11,7 +11,7 @@ import (
 type IBlockStore interface {
 	// Rule[perm:read]
 	ChainReadObj(ctx context.Context, ocid cid.Cid) ([]byte, error)
-	// Rule[perm:read]
+	// Rule[perm:admin]
 	ChainDeleteObj(ctx context.Context, obj cid.Cid) error
 	// Rule[perm:read]
 	ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error)
