@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io"
+	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -15,8 +17,6 @@ import (
 	"unicode"
 
 	"github.com/filecoin-project/venus/app/client/funcrule"
-	"github.com/ipfs/go-path"
-
 	"golang.org/x/xerrors"
 )
 
@@ -103,9 +103,222 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 }
 
 func main() {
-	if err := generate("./app/client", "apiface", "client", "./app/client/full.go"); err != nil {
-		fmt.Println("error: ", err)
+	var arg string
+	if len(os.Args) > 1 {
+		arg = os.Args[1]
 	}
+
+	apiPath := "../lotus/api"
+	rootPath := path.Join(os.Getenv("GOPATH"), "pkg/mod/github.com/filecoin-project")
+	dirs, err := os.ReadDir(rootPath)
+	if err == nil {
+		// Select the latest version of Lotus
+		for _, dir := range dirs {
+			if strings.Contains(dir.Name(), "lotus") {
+				fmt.Println(dir.Name())
+				apiPath = path.Join(rootPath, dir.Name(), "/api")
+			}
+		}
+	}
+	fmt.Println("lotus api path:", apiPath)
+
+	bmp, err := benchmarkMethodPerm(apiPath)
+	checkError(err)
+	//outputWithJSON(bmp, "benchmarkMethodPerm: ")
+
+	mm, err := methodMetaFromInterface("./app/client", "apiface", "client")
+	checkError(err)
+
+	smi := check(bmp, mm)
+	data, err := json.MarshalIndent(smi, "", "\t")
+	checkError(err)
+	err = ioutil.WriteFile("./tools/gen/api/stable_method_info.json", data, 0666)
+	checkError(err)
+	outputWithJSON(smi, "StableMethodInfo: ")
+
+	if arg != "compare" {
+		outfile := "./app/client/full.go"
+		checkError(doTemplate(outfile, mm, templ))
+	}
+}
+
+func benchmarkMethodPerm(rootPath string) (map[string]string, error) {
+	fileNames := []string{"api_full.go", "api_common.go", "api_net.go"}
+	fset := token.NewFileSet()
+	files := make([]*ast.File, 0, len(fileNames))
+	visitor := &Visitor{make(map[string]map[string]*methodMeta), map[string][]string{}}
+
+	for _, fname := range fileNames {
+		f, err := parser.ParseFile(fset, path.Join(rootPath, fname), nil, parser.AllErrors|parser.ParseComments)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, f)
+		ast.Walk(visitor, f)
+	}
+
+	perms := make(map[string]string)
+	for _, f := range files {
+		cmap := ast.NewCommentMap(fset, f, f.Comments)
+		for _, methods := range visitor.Methods {
+			for mname, node := range methods {
+				filteredComments := cmap.Filter(node.node).Comments()
+				if len(filteredComments) > 0 {
+					cmt := filteredComments[len(filteredComments)-1].List[0].Text
+					if !strings.Contains(cmt, "perm:") {
+						fmt.Println("lotus method not found perm: ", mname)
+						continue
+					}
+					pairs := strings.Split(cmt, ":")
+					if len(pairs) != 2 {
+						continue
+					}
+					perms[mname] = pairs[1]
+				}
+			}
+		}
+	}
+
+	return perms, nil
+}
+
+type methodInfo struct {
+	Name                                     string
+	node                                     ast.Node
+	Tags                                     map[string][]string
+	NamedParams, ParamNames, Results, DefRes string
+}
+type strinfo struct {
+	Name    string
+	Methods map[string]*methodInfo
+	Include []string
+}
+type meta struct {
+	Infos   map[string]*strinfo
+	Imports map[string]string
+	OutPkg  string
+}
+
+func methodMetaFromInterface(rootPath string, pkg, outpkg string) (*meta, error) {
+	fset := token.NewFileSet()
+	apiDir, err := filepath.Abs(rootPath)
+	if err != nil {
+		return nil, err
+	}
+
+	visitor := &Visitor{make(map[string]map[string]*methodMeta), map[string][]string{}}
+	m := &meta{
+		OutPkg:  outpkg,
+		Infos:   map[string]*strinfo{},
+		Imports: map[string]string{},
+	}
+	//filter := isGoFile
+	pkgs, err := parser.ParseDir(fset, path.Join(apiDir, pkg), nil, parser.AllErrors|parser.ParseComments)
+	if err != nil {
+		return nil, err
+	}
+	ap := pkgs[pkg]
+
+	ast.Walk(visitor, ap)
+	ignoreMethods := map[string][]string{}
+	for _, f := range ap.Files {
+		cmap := ast.NewCommentMap(fset, f, f.Comments)
+		for _, im := range f.Imports {
+			m.Imports[im.Path.Value] = im.Path.Value
+			if im.Name != nil {
+				m.Imports[im.Path.Value] = im.Name.Name + " " + m.Imports[im.Path.Value]
+			}
+		}
+
+		for ifname, methods := range visitor.Methods {
+			if _, ok := m.Infos[ifname]; !ok {
+				m.Infos[ifname] = &strinfo{
+					Name:    ifname,
+					Methods: map[string]*methodInfo{},
+					Include: visitor.Include[ifname],
+				}
+			}
+			info := m.Infos[ifname]
+			for mname, node := range methods {
+				filteredComments := cmap.Filter(node.node).Comments()
+				if _, ok := info.Methods[mname]; !ok {
+					var params, pnames []string
+					for _, param := range node.ftype.Params.List {
+						pstr, err := typeName(param.Type, outpkg)
+						if err != nil {
+							return nil, err
+						}
+
+						c := len(param.Names)
+						if c == 0 {
+							c = 1
+						}
+
+						for i := 0; i < c; i++ {
+							pname := fmt.Sprintf("p%d", len(params))
+							pnames = append(pnames, pname)
+							params = append(params, pname+" "+pstr)
+						}
+					}
+
+					var results []string
+					for _, result := range node.ftype.Results.List {
+						rs, err := typeName(result.Type, outpkg)
+						if err != nil {
+							return nil, err
+						}
+						results = append(results, rs)
+					}
+
+					defRes := ""
+					if len(results) > 1 {
+						defRes = results[0]
+						switch {
+						case defRes[0] == '*' || defRes[0] == '<', defRes == "interface{}":
+							defRes = "nil"
+						case defRes == "bool":
+							defRes = "false"
+						case defRes == "string":
+							defRes = `""`
+						case defRes == "int", defRes == "int64", defRes == "uint64", defRes == "uint":
+							defRes = "0"
+						default:
+							defRes = "*new(" + defRes + ")"
+						}
+						defRes += ", "
+					}
+
+					info.Methods[mname] = &methodInfo{
+						Name:        mname,
+						node:        node.node,
+						Tags:        map[string][]string{},
+						NamedParams: strings.Join(params, ", "),
+						ParamNames:  strings.Join(pnames, ", "),
+						Results:     strings.Join(results, ", "),
+						DefRes:      defRes,
+					}
+				}
+
+				// try to parse tag info
+				if len(filteredComments) > 0 {
+					cmt := filteredComments[0].List[len(filteredComments[0].List)-1].Text
+					rule, tags := parseRule(cmt)
+					info.Methods[mname].Tags[rkPerm] = tags[rkPerm]
+					// remove ignore method
+					if rule.Ignore {
+						ignoreMethods[ifname] = append(ignoreMethods[ifname], mname)
+					}
+				}
+			}
+		}
+	}
+	for ifname, mnames := range ignoreMethods {
+		for _, mname := range mnames {
+			delete(m.Infos[ifname].Methods, mname)
+		}
+	}
+
+	return m, nil
 }
 
 func typeName(e ast.Expr, pkg string) (string, error) {
@@ -166,159 +379,65 @@ func typeName(e ast.Expr, pkg string) (string, error) {
 	}
 }
 
-// nolint
-func isGoFile(fi os.FileInfo) bool {
-	name := fi.Name()
-	return !fi.IsDir() &&
-		len(name) > 0 && name[0] != '.' && // ignore .files
-		filepath.Ext(name) == ".go"
+type stableMethodInfo struct {
+	// Lotus and Venus both have functions and the same permissions
+	Common map[string]string
+	// Venus has functions that Lotus does not
+	Extend map[string]string
+	// Lotus has functions that Venus does not
+	Loss map[string]string
+	// Both Lotus and venus has functions but the permissions are different
+	Gap map[string]string
 }
 
-func generate(rootPath string, pkg, outpkg, outfile string) error {
-	fset := token.NewFileSet()
-	apiDir, err := filepath.Abs(rootPath)
-	if err != nil {
-		return err
+func newStableMethodInfo() *stableMethodInfo {
+	return &stableMethodInfo{
+		Common: make(map[string]string),
+		Extend: make(map[string]string),
+		Loss:   make(map[string]string),
+		Gap:    make(map[string]string),
 	}
-	outfile, err = filepath.Abs(outfile)
-	if err != nil {
-		return err
-	}
+}
 
-	type methodInfo struct {
-		Name                                     string
-		node                                     ast.Node
-		Tags                                     map[string][]string
-		NamedParams, ParamNames, Results, DefRes string
-	}
-	type strinfo struct {
-		Name    string
-		Methods map[string]*methodInfo
-		Include []string
-	}
-
-	type meta struct {
-		Infos   map[string]*strinfo
-		Imports map[string]string
-		OutPkg  string
-	}
-	visitor := &Visitor{make(map[string]map[string]*methodMeta), map[string][]string{}}
-	m := &meta{
-		OutPkg:  outpkg,
-		Infos:   map[string]*strinfo{},
-		Imports: map[string]string{},
-	}
-	//filter := isGoFile
-	pkgs, err := parser.ParseDir(fset, path.Join([]string{apiDir, pkg}), nil, parser.AllErrors|parser.ParseComments)
-	if err != nil {
-		return err
-	}
-	ap := pkgs[pkg]
-
-	ast.Walk(visitor, ap)
-	ignoreMethods := map[string][]string{}
-	for _, f := range ap.Files {
-		cmap := ast.NewCommentMap(fset, f, f.Comments)
-		for _, im := range f.Imports {
-			m.Imports[im.Path.Value] = im.Path.Value
-			if im.Name != nil {
-				m.Imports[im.Path.Value] = im.Name.Name + " " + m.Imports[im.Path.Value]
-			}
-		}
-
-		for ifname, methods := range visitor.Methods {
-			if _, ok := m.Infos[ifname]; !ok {
-				m.Infos[ifname] = &strinfo{
-					Name:    ifname,
-					Methods: map[string]*methodInfo{},
-					Include: visitor.Include[ifname],
+func check(bmp map[string]string, m *meta) *stableMethodInfo {
+	smi := newStableMethodInfo()
+	vMethodPerms := make(map[string]string)
+	for _, info := range m.Infos {
+		for _, one := range info.Methods {
+			mperm := one.Tags[rkPerm][1]
+			vMethodPerms[one.Name] = mperm
+			if perm, ok := bmp[one.Name]; ok {
+				if mperm != perm {
+					smi.Gap[one.Name] = fmt.Sprintf("venus:%s lotus:%s", mperm, perm)
+					continue
 				}
-			}
-			info := m.Infos[ifname]
-			for mname, node := range methods {
-				filteredComments := cmap.Filter(node.node).Comments()
-				if _, ok := info.Methods[mname]; !ok {
-					var params, pnames []string
-					for _, param := range node.ftype.Params.List {
-						pstr, err := typeName(param.Type, outpkg)
-						if err != nil {
-							return err
-						}
-
-						c := len(param.Names)
-						if c == 0 {
-							c = 1
-						}
-
-						for i := 0; i < c; i++ {
-							pname := fmt.Sprintf("p%d", len(params))
-							pnames = append(pnames, pname)
-							params = append(params, pname+" "+pstr)
-						}
-					}
-
-					var results []string
-					for _, result := range node.ftype.Results.List {
-						rs, err := typeName(result.Type, outpkg)
-						if err != nil {
-							return err
-						}
-						results = append(results, rs)
-					}
-
-					defRes := ""
-					if len(results) > 1 {
-						defRes = results[0]
-						switch {
-						case defRes[0] == '*' || defRes[0] == '<', defRes == "interface{}":
-							defRes = "nil"
-						case defRes == "bool":
-							defRes = "false"
-						case defRes == "string":
-							defRes = `""`
-						case defRes == "int", defRes == "int64", defRes == "uint64", defRes == "uint":
-							defRes = "0"
-						default:
-							defRes = "*new(" + defRes + ")"
-						}
-						defRes += ", "
-					}
-
-					info.Methods[mname] = &methodInfo{
-						Name:        mname,
-						node:        node.node,
-						Tags:        map[string][]string{},
-						NamedParams: strings.Join(params, ", "),
-						ParamNames:  strings.Join(pnames, ", "),
-						Results:     strings.Join(results, ", "),
-						DefRes:      defRes,
-					}
-
-				}
-
-				// try to parse tag info
-				if len(filteredComments) > 0 {
-					cmt := filteredComments[0].List[0].Text
-					rule, tags := parseRule(cmt)
-					info.Methods[mname].Tags[rkPerm] = tags[rkPerm]
-					// remove ignore method
-					if rule.Ignore {
-						ignoreMethods[ifname] = append(ignoreMethods[ifname], mname)
-					}
-				}
+				smi.Common[one.Name] = mperm
+			} else {
+				smi.Extend[one.Name] = mperm
 			}
 		}
 	}
-	for ifname, mnames := range ignoreMethods {
-		for _, mname := range mnames {
-			delete(m.Infos[ifname].Methods, mname)
+	for m, p := range bmp {
+		if _, ok := vMethodPerms[m]; !ok {
+			smi.Loss[m] = p
 		}
 	}
+
+	return smi
+}
+
+func doTemplate(outfile string, info interface{}, templ string) error {
 	w, err := os.OpenFile(outfile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 	if err != nil {
 		return err
 	}
-	err = doTemplate(w, m, `// Code generated by github.com/filecoin-project/tools/gen/api. DO NOT EDIT.
+	t := template.Must(template.New("").
+		Funcs(template.FuncMap{}).Parse(templ))
+
+	return t.Execute(w, info)
+}
+
+var templ = `// Code generated by github.com/filecoin-project/tools/gen/api. DO NOT EDIT.
 
 package {{.OutPkg}}
 
@@ -327,41 +446,40 @@ import (
 {{end}}
 )
 
-`)
-	if err != nil {
-		return err
-	}
-
-	err = doTemplate(w, m, `
 {{range .Infos}}
+
 {{$name := .Name}}
 type {{.Name}}Struct struct {
 {{range .Include}}	{{.}}Struct
 {{end}}
 
 {{ if gt (len .Methods) 0 }}
-     Internal struct {
-   		{{range .Methods}}	{{.Name}} func({{.NamedParams}}) ({{.Results}}) `+"`"+`{{range .Tags}}{{index . 0}}:"{{index . 1}}"{{end}}`+"`"+`
-  		{{end}}
-     }
+  Internal struct {
+    {{range .Methods}}	{{.Name}} func({{.NamedParams}}) ({{.Results}}) ` + "`" + `{{range .Tags}}{{index . 0}}:"{{index . 1}}"{{end}}` + "`" + `
+    {{end}}
+  }
 {{ end }}
 }
 
 {{range .Methods}}  func(s *{{$name}}Struct) {{.Name}} ({{.NamedParams}}) ({{.Results}}){
-   return s.Internal.{{.Name}}({{.ParamNames}})
+  return s.Internal.{{.Name}}({{.ParamNames}})
 }
 
 {{end}}
 
 {{end}}
+`
 
-`)
-	return err
+func checkError(err error) {
+	if err != nil {
+		panic(err)
+	}
 }
 
-func doTemplate(w io.Writer, info interface{}, templ string) error {
-	t := template.Must(template.New("").
-		Funcs(template.FuncMap{}).Parse(templ))
-
-	return t.Execute(w, info)
+func outputWithJSON(obj interface{}, comment string) {
+	b, err := json.MarshalIndent(obj, "", "\t")
+	if err != nil {
+		fmt.Println("json marshal error: ", err)
+	}
+	fmt.Println(comment, "\n", string(b))
 }

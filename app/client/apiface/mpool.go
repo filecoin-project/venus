@@ -13,17 +13,17 @@ import (
 )
 
 type IMessagePool interface {
-	// Rule[perm:read]
+	// Rule[perm:admin]
 	MpoolDeleteByAdress(ctx context.Context, addr address.Address) error
-	// Rule[perm:read]
+	// Rule[perm:admin]
 	MpoolPublishByAddr(context.Context, address.Address) error
-	// Rule[perm:read]
+	// Rule[perm:admin]
 	MpoolPublishMessage(ctx context.Context, smsg *types.SignedMessage) error
-	// Rule[perm:read]
+	// Rule[perm:write]
 	MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error)
 	// Rule[perm:read]
 	MpoolGetConfig(context.Context) (*messagepool.MpoolConfig, error)
-	// Rule[perm:read]
+	// Rule[perm:admin]
 	MpoolSetConfig(ctx context.Context, cfg *messagepool.MpoolConfig) error
 	// Rule[perm:read]
 	MpoolSelect(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error)
@@ -31,17 +31,17 @@ type IMessagePool interface {
 	MpoolSelects(context.Context, types.TipSetKey, []float64) ([][]*types.SignedMessage, error)
 	// Rule[perm:read]
 	MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error)
-	// Rule[perm:read]
+	// Rule[perm:write]
 	MpoolClear(ctx context.Context, local bool) error
-	// Rule[perm:read]
+	// Rule[perm:write]
 	MpoolPushUntrusted(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error)
-	// Rule[perm:read]
+	// Rule[perm:sign]
 	MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (*types.SignedMessage, error)
-	// Rule[perm:read]
+	// Rule[perm:write]
 	MpoolBatchPush(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error)
-	// Rule[perm:read]
+	// Rule[perm:write]
 	MpoolBatchPushUntrusted(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error)
-	// Rule[perm:read]
+	// Rule[perm:sign]
 	MpoolBatchPushMessage(ctx context.Context, msgs []*types.UnsignedMessage, spec *types.MessageSendSpec) ([]*types.SignedMessage, error)
 	// Rule[perm:read]
 	MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error)
