@@ -2,6 +2,7 @@ package mining
 
 import (
 	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface/v0api"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/network"
@@ -32,7 +33,7 @@ func (miningModule *MiningModule) API() apiface.IMining {
 	return &MiningAPI{Ming: miningModule}
 }
 
-func (miningModule *MiningModule) V0API() apiface.IMining {
+func (miningModule *MiningModule) V0API() v0api.IMining {
 	return &MiningAPI{Ming: miningModule}
 }
 

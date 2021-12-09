@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/filecoin-project/venus/app/client/apiface/v0api"
+
 	"github.com/filecoin-project/venus/app/client/apiface"
 
 	"github.com/filecoin-project/go-address"
@@ -265,7 +267,7 @@ func (mp *MessagePoolSubmodule) API() apiface.IMessagePool {
 	return &MessagePoolAPI{mp: mp, pushLocks: pushLocks}
 }
 
-func (mp *MessagePoolSubmodule) V0API() apiface.IMessagePool {
+func (mp *MessagePoolSubmodule) V0API() v0api.IMessagePool {
 	pushLocks := messagepool.NewMpoolLocker()
 	return &MessagePoolAPI{mp: mp, pushLocks: pushLocks}
 }
