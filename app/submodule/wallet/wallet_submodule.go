@@ -3,6 +3,8 @@ package wallet
 import (
 	"context"
 
+	"github.com/filecoin-project/venus/app/client/apiface/v0api"
+
 	"github.com/filecoin-project/venus/app/client/apiface"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
@@ -80,7 +82,7 @@ func (wallet *WalletSubmodule) API() apiface.IWallet {
 	}
 }
 
-func (wallet *WalletSubmodule) V0API() apiface.IWallet {
+func (wallet *WalletSubmodule) V0API() v0api.IWallet {
 	return &WalletAPI{
 		walletModule: wallet,
 		adapter:      wallet.adapter,

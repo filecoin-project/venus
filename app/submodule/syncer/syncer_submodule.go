@@ -3,15 +3,17 @@ package syncer
 import (
 	"bytes"
 	"context"
+	"reflect"
+	"runtime"
+	"time"
+
 	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface/v0api"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"reflect"
-	"runtime"
-	"time"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
@@ -325,6 +327,6 @@ func (syncer *SyncerSubmodule) API() apiface.ISyncer {
 	return &syncerAPI{syncer: syncer}
 }
 
-func (syncer *SyncerSubmodule) V0API() apiface.ISyncer {
+func (syncer *SyncerSubmodule) V0API() v0api.ISyncer {
 	return &syncerAPI{syncer: syncer}
 }

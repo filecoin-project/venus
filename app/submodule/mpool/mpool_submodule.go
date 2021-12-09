@@ -3,16 +3,18 @@ package mpool
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/pkg/messagepool"
-	logging "github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-pubsub"
-	"golang.org/x/xerrors"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface/v0api"
+	"github.com/libp2p/go-libp2p-core/peer"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+
+	"github.com/filecoin-project/go-address"
+	logging "github.com/ipfs/go-log"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/network"
@@ -20,6 +22,7 @@ import (
 	chainpkg "github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/messagepool/journal"
 	"github.com/filecoin-project/venus/pkg/net/msgsub"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -249,7 +252,7 @@ func (mp *MessagePoolSubmodule) API() apiface.IMessagePool {
 	return &MessagePoolAPI{mp: mp, pushLocks: pushLocks}
 }
 
-func (mp *MessagePoolSubmodule) V0API() apiface.IMessagePool {
+func (mp *MessagePoolSubmodule) V0API() v0api.IMessagePool {
 	pushLocks := messagepool.NewMpoolLocker()
 	return &MessagePoolAPI{mp: mp, pushLocks: pushLocks}
 }

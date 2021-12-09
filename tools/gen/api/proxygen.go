@@ -108,7 +108,77 @@ func main() {
 		arg = os.Args[1]
 	}
 
-	apiPath := "../lotus/api"
+	onlyCompare := arg == "compare"
+	lpath := lotusPath()
+
+	infos := struct {
+		V0 *stableMethodInfo
+		V1 *stableMethodInfo
+	}{
+		V0: v0API(lpath, onlyCompare),
+		V1: v1API(lpath, onlyCompare),
+	}
+
+	data, err := json.MarshalIndent(infos, "", "\t")
+	checkError(err)
+	err = ioutil.WriteFile("./tools/gen/api/stable_method_info.json", data, 0666)
+	checkError(err)
+}
+
+func v0API(lpath string, onlyCompare bool) *stableMethodInfo {
+	apiFilePaths := []string{
+		path.Join(lpath, "api/v0api/full.go"),
+		path.Join(lpath, "api/api_common.go"),
+		path.Join(lpath, "api/api_net.go"),
+	}
+	fmt.Println("v0 lotus api file: ", apiFilePaths)
+
+	bmp, err := benchmarkMethodPerm(apiFilePaths)
+	checkError(err)
+	//outputWithJSON(bmp, "v0 benchmarkMethodPerm: ")
+
+	mm, err := methodMetaFromInterface("./app/client/apiface", "v0api", "v0api")
+	checkError(err)
+
+	smi := check(bmp, mm)
+	outputWithJSON(smi, "v0 api StableMethodInfo: ")
+
+	if !onlyCompare {
+		outfile := "./app/client/v0api/full.go"
+		checkError(doTemplate(outfile, mm, templ))
+	}
+
+	return smi
+}
+
+func v1API(lpath string, onlyCompare bool) *stableMethodInfo {
+	apiFilePaths := []string{
+		path.Join(lpath, "api/api_full.go"),
+		path.Join(lpath, "api/api_common.go"),
+		path.Join(lpath, "api/api_net.go"),
+	}
+	fmt.Println("v1 lotus api file: ", apiFilePaths)
+
+	bmp, err := benchmarkMethodPerm(apiFilePaths)
+	checkError(err)
+	//outputWithJSON(bmp, "v1 benchmarkMethodPerm: ")
+
+	mm, err := methodMetaFromInterface("./app/client", "apiface", "client")
+	checkError(err)
+
+	smi := check(bmp, mm)
+	outputWithJSON(smi, "v1 api StableMethodInfo: ")
+
+	if !onlyCompare {
+		outfile := "./app/client/full.go"
+		checkError(doTemplate(outfile, mm, templ))
+	}
+
+	return smi
+}
+
+func lotusPath() string {
+	currPath := "../lotus"
 	rootPath := path.Join(os.Getenv("GOPATH"), "pkg/mod/github.com/filecoin-project")
 	dirs, err := os.ReadDir(rootPath)
 	if err == nil {
@@ -116,40 +186,22 @@ func main() {
 		for _, dir := range dirs {
 			if strings.Contains(dir.Name(), "lotus") {
 				fmt.Println(dir.Name())
-				apiPath = path.Join(rootPath, dir.Name(), "/api")
+				currPath = path.Join(rootPath, dir.Name())
 			}
 		}
 	}
-	fmt.Println("lotus api path:", apiPath)
+	fmt.Println("lotus path:", currPath)
 
-	bmp, err := benchmarkMethodPerm(apiPath)
-	checkError(err)
-	//outputWithJSON(bmp, "benchmarkMethodPerm: ")
-
-	mm, err := methodMetaFromInterface("./app/client", "apiface", "client")
-	checkError(err)
-
-	smi := check(bmp, mm)
-	data, err := json.MarshalIndent(smi, "", "\t")
-	checkError(err)
-	err = ioutil.WriteFile("./tools/gen/api/stable_method_info.json", data, 0666)
-	checkError(err)
-	outputWithJSON(smi, "StableMethodInfo: ")
-
-	if arg != "compare" {
-		outfile := "./app/client/full.go"
-		checkError(doTemplate(outfile, mm, templ))
-	}
+	return currPath
 }
 
-func benchmarkMethodPerm(rootPath string) (map[string]string, error) {
-	fileNames := []string{"api_full.go", "api_common.go", "api_net.go"}
+func benchmarkMethodPerm(apiFilePaths []string) (map[string]string, error) {
 	fset := token.NewFileSet()
-	files := make([]*ast.File, 0, len(fileNames))
+	files := make([]*ast.File, 0, len(apiFilePaths))
 	visitor := &Visitor{make(map[string]map[string]*methodMeta), map[string][]string{}}
 
-	for _, fname := range fileNames {
-		f, err := parser.ParseFile(fset, path.Join(rootPath, fname), nil, parser.AllErrors|parser.ParseComments)
+	for _, fpath := range apiFilePaths {
+		f, err := parser.ParseFile(fset, fpath, nil, parser.AllErrors|parser.ParseComments)
 		if err != nil {
 			return nil, err
 		}
