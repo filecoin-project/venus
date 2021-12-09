@@ -4,9 +4,6 @@ package v0api
 
 import (
 	"context"
-	"io"
-	"time"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -31,6 +28,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+	"io"
+	"time"
 )
 
 type FullNodeStruct struct {

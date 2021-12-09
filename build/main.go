@@ -267,6 +267,14 @@ func test(userArgs ...string) {
 	log.Printf("Tests finished in %.1f seconds\n", end.Sub(begin).Seconds())
 }
 
+func genAPI() {
+	log.Println("generate api...")
+
+	runCmd(cmd("go run ./tools/gen/api/proxygen.go"))
+	runCmd(cmd("gofmt -s -l -w ./app/client/v0api/full.go"))
+	runCmd(cmd("gofmt -s -l -w ./app/client/full.go"))
+}
+
 func main() {
 	args := os.Args[1:]
 
@@ -302,6 +310,8 @@ func main() {
 	case "best":
 		build()
 		test(args[1:]...)
+	case "gen-api":
+		genAPI()
 	case "all":
 		deps()
 		lint()

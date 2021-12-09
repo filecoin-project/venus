@@ -24,10 +24,13 @@ clean:
 	rm -rf ./extern/filecoin-ffi
 	rm -rf ./extern/test-vectors
 
-gen:
+gen-api:
 	go run ./tools/gen/api/proxygen.go
 	gofmt -s -l -w ./app/client/full.go
-	goimports -l -w ./app/client/full.go
+	gofmt -s -l -w ./app/client/v0api/full.go
+
+compare-api:
+	go run ./tools/gen/api/proxygen.go compare
 
 gen-asset:
 	go-bindata -pkg=asset -o ./fixtures/asset/asset.go ./fixtures/_assets/car/ ./fixtures/_assets/proof-params/ ./fixtures/_assets/arch-diagram.monopic
