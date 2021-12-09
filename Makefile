@@ -27,8 +27,7 @@ clean:
 gen-api:
 	go run ./tools/gen/api/proxygen.go
 	gofmt -s -l -w ./app/client/full.go
-	goimports -l -w ./app/client/full.go
-	goimports -l -w ./app/client/v0api/full.go
+	gofmt -s -l -w ./app/client/v0api/full.go
 
 compare-api:
 	go run ./tools/gen/api/proxygen.go compare
