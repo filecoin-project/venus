@@ -130,7 +130,7 @@ func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMessage, 
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
-	ret, err := sa.syncer.Consensus.Call(ctx, msg, ts)
+	ret, err := sa.syncer.Stmgr.Call(ctx, msg, ts)
 	if err != nil {
 		return nil, err
 	}

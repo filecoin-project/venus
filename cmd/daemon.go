@@ -275,7 +275,6 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	if err := fcn.Start(req.Context); err != nil {
 		return err
 	}
-	defer fcn.Stop(req.Context)
 
 	// Run API server around the node.
 	ready := make(chan interface{}, 1)

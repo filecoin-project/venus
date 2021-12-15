@@ -328,19 +328,15 @@ func (st *State) LookupID(addr ActorKey) (address.Address, error) {
 // ToDo Return nil if it is actor not found[ErrActorNotFound],Because the basis for judgment is: err != nil ==> panic ???
 // GetActor returns the actor from any type of `addr` provided.
 func (st *State) GetActor(ctx context.Context, addr ActorKey) (*types.Actor, bool, error) {
-	if addr == address.Undef {
-		return nil, false, fmt.Errorf("GetActor called on undefined address")
-	}
-
-	// Transform `addr` to its ID format.
-	iaddr, err := st.LookupID(addr)
-	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
-			return nil, false, nil
+	var err error
+	if addr.Protocol() != address.ID {
+		if addr, err = st.LookupID(addr); err != nil {
+			if xerrors.Is(err, types.ErrActorNotFound) {
+				return nil, false, nil
+			}
+			return nil, false, xerrors.Errorf("address resolution: %v", err)
 		}
-		return nil, false, xerrors.Errorf("address resolution: %v", err)
 	}
-	addr = iaddr
 
 	snapAct, err := st.snaps.getActor(addr)
 	if err != nil {

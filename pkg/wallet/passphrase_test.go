@@ -51,6 +51,7 @@ func TestEncrypKeyAndDecryptKey(t *testing.T) {
 }
 
 func TestScrypt(t *testing.T) {
+	t.Skipf("had test this too much, ignore this time!")
 	for n := uint8(14); n < 24; n++ {
 		b := testing.Benchmark(func(b *testing.B) {
 			for i := 0; i < b.N; i++ {

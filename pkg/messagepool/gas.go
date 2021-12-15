@@ -201,7 +201,7 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Uns
 	msg.GasFeeCap = big.NewInt(int64(constants.MinimumBaseFee) + 1)
 	msg.GasPremium = big.NewInt(1)
 
-	fromA, err := mp.api.StateAccountKey(ctx, msgIn.From, currTS)
+	fromA, err := mp.sm.ResolveToKeyAddress(ctx, msgIn.From, currTS)
 	if err != nil {
 		return -1, xerrors.Errorf("getting key address: %w", err)
 	}
@@ -228,7 +228,7 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 	var res *vm.Ret
 	var err error
 	for {
-		res, err = mp.gp.CallWithGas(ctx, &msg, priorMsgs, ts)
+		res, err = mp.sm.CallWithGas(ctx, &msg, priorMsgs, ts)
 		if err != fork.ErrExpensiveFork {
 			break
 		}
@@ -253,7 +253,7 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 		// an existing PaymentChannel actor
 		return res.Receipt.GasUsed, nil
 	}
-	act, err := mp.ap.GetActorAt(ctx, pts, msg.To)
+	act, err := mp.sm.GetActorAt(ctx, msg.To, pts)
 	if err != nil {
 		_ = err
 		// somewhat ignore it as it can happen and we just want to detect
@@ -320,7 +320,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 		return nil, xerrors.Errorf("getting tipset: %w", err)
 	}
 
-	fromA, err := mp.api.StateAccountKey(ctx, estimateMessages[0].Msg.From, currTS)
+	fromA, err := mp.sm.ResolveToKeyAddress(ctx, estimateMessages[0].Msg.From, currTS)
 	if err != nil {
 		return nil, xerrors.Errorf("getting key address: %w", err)
 	}

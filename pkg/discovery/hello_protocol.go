@@ -178,6 +178,10 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 		log.Warnf("failed to get tipset message from peer %s", from)
 		return
 	}
+	if fullTipSet == nil {
+		log.Warnf("handleNewStream get null full tipset, it's scarce!")
+		return
+	}
 
 	// notify the local node of the new `block.ChainInfo`
 	h.peerMgr.AddFilecoinPeer(from)

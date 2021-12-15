@@ -113,6 +113,12 @@ func (ti *TipStateCache) Has(ts *types.TipSet) bool {
 	return err == nil
 }
 
+func (ti *TipStateCache) Del(ts *types.TipSet) {
+	ti.l.Lock()
+	defer ti.l.Unlock()
+	delete(ti.cache, ts.String())
+}
+
 // makeKey returns a unique string for every parent set key and height input
 func makeKey(pKey string, h abi.ChainEpoch) string {
 	return fmt.Sprintf("p-%s h-%d", pKey, h)

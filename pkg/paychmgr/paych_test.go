@@ -5,6 +5,7 @@ import (
 	"context"
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/pkg/vm"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -552,8 +553,8 @@ func TestBestSpendable(t *testing.T) {
 
 	// Return success exit code from calls to check if voucher is spendable
 	bsapi := newMockBestSpendableAPI(s.mgr)
-	s.mock.setCallResponse(&types.InvocResult{
-		MsgRct: &types.MessageReceipt{
+	s.mock.setCallResponse(&vm.Ret{
+		Receipt: types.MessageReceipt{
 			ExitCode: 0,
 		},
 	})
@@ -615,8 +616,8 @@ func TestCheckSpendable(t *testing.T) {
 
 	// Return success exit code from VM call, which indicates that voucher is
 	// spendable
-	successResponse := &types.InvocResult{
-		MsgRct: &types.MessageReceipt{
+	successResponse := &vm.Ret{
+		Receipt: types.MessageReceipt{
 			ExitCode: 0,
 		},
 	}
@@ -636,8 +637,8 @@ func TestCheckSpendable(t *testing.T) {
 	require.Equal(t, secret, p.Secret)
 
 	// Check that if VM call returns non-success exit code, spendable is false
-	s.mock.setCallResponse(&types.InvocResult{
-		MsgRct: &types.MessageReceipt{
+	s.mock.setCallResponse(&vm.Ret{
+		Receipt: types.MessageReceipt{
 			ExitCode: 1,
 		},
 	})

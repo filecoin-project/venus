@@ -77,6 +77,9 @@ type TargetTracker struct {
 	targetSet   map[string]*Target
 	lowWeight   fbig.Int
 	lk          sync.Mutex
+
+	subs  map[string]chan struct{}
+	subLk sync.Mutex
 }
 
 // NewTargetTracker returns a new target queue.
@@ -89,6 +92,37 @@ func NewTargetTracker(size int) *TargetTracker {
 		targetSet:   make(map[string]*Target),
 		lk:          sync.Mutex{},
 		lowWeight:   fbig.NewInt(0),
+		subs:        make(map[string]chan struct{}),
+	}
+}
+
+func (tq *TargetTracker) SubNewTarget(key string, cacheSize int) chan struct{} {
+	tq.subLk.Lock()
+	defer tq.subLk.Unlock()
+	ch, isok := tq.subs[key]
+	if isok {
+		return ch
+	}
+	ch = make(chan struct{}, cacheSize)
+	tq.subs[key] = ch
+	return ch
+}
+
+func (tq *TargetTracker) UnsubNewTarget(key string) {
+	tq.subLk.Lock()
+	defer tq.subLk.Unlock()
+	if ch, isok := tq.subs[key]; isok {
+		delete(tq.subs, key)
+		close(ch)
+	}
+}
+
+// todo: we should pub a 'stable' target
+func (tq *TargetTracker) pubNewTarget() {
+	tq.subLk.Lock()
+	defer tq.subLk.Unlock()
+	for _, ch := range tq.subs {
+		ch <- struct{}{}
 	}
 }
 
@@ -104,6 +138,8 @@ func NewTargetTracker(size int) *TargetTracker {
 // If there are any vacancies, the current target will be appended to the end.
 // After each completion of this process, all targets will be reordered. First, they will be sorted according to the weight from small to large, and then they will be sorted according to the number of blocks in the group from small to large, Include as many blocks as possible.
 func (tq *TargetTracker) Add(t *Target) bool {
+	now := time.Now()
+
 	tq.lk.Lock()
 	defer tq.lk.Unlock()
 	//do not sync less weight
@@ -116,10 +152,10 @@ func (tq *TargetTracker) Add(t *Target) bool {
 		return false
 	}
 
-	//replace last idle task because of less weight
+	// replace last idle task because of less weight
 	var replaceIndex int
 	var replaceTarget *Target
-	//try to replace a idea child target
+	// try to replace a idea child target
 	for i := len(tq.q) - 1; i > -1; i-- {
 		if t.HasChild(tq.q[i]) && tq.q[i].State == StageIdle {
 			replaceTarget = tq.q[i]
@@ -150,7 +186,6 @@ func (tq *TargetTracker) Add(t *Target) bool {
 			return false
 		}
 	} else {
-
 		delete(tq.targetSet, replaceTarget.ChainInfo.Head.String())
 		tq.q[replaceIndex] = t
 	}
@@ -159,6 +194,13 @@ func (tq *TargetTracker) Add(t *Target) bool {
 	sortTarget(tq.q)
 	//update lowweight
 	tq.lowWeight = tq.q[len(tq.q)-1].Head.At(0).ParentWeight
+
+	tq.pubNewTarget()
+
+	defer func(t *Target) {
+		log.Infof("add new block(height:%d, count:%d) cost time=%.4f\n",
+			t.Head.Height(), t.Head.Len(), time.Since(now).Seconds())
+	}(t)
 	return true
 }
 

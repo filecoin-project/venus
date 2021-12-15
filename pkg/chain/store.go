@@ -3,6 +3,7 @@ package chain
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"runtime/debug"
@@ -183,6 +184,46 @@ func NewStore(chainDs repo.Datastore,
 	return store
 }
 
+func (store *Store) rollbackToTipset(key types.TipSetKey) error {
+	var target, err = store.GetTipSet(key)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("rollback chain head to tipset:%s, %d", target.String(), target.Height())
+
+	var head *types.TipSet
+
+	if head, err = store.loadHead(); err != nil {
+		return err
+	}
+
+	if head.Height() < target.Height() {
+		return fmt.Errorf("can't rollback to a tipset(%d) higher than chain head(%d)",
+			target.Height(), head.Height())
+	}
+
+	var toRemoveTS = make([]*types.TipSet, 0, int(head.Height()-target.Height()))
+
+	for !head.Equals(target) && head.Height() > target.Height() {
+		toRemoveTS = append(toRemoveTS, head)
+		if head, err = store.GetTipSet(head.Parents()); err != nil {
+			return err
+		}
+	}
+
+	if !head.Equals(target) {
+		return fmt.Errorf("target(%s) is not on main path", key.String())
+	}
+
+	for _, ts := range toRemoveTS {
+		_ = store.DeleteTipSetMetadata(ts)
+	}
+
+	return store.SetHead(context.TODO(), head)
+
+}
+
 // Load rebuilds the Store's caches by traversing backwards from the
 // most recent best head as stored in its datastore.  Because Load uses a
 // content addressed datastore it guarantees that parent blocks are correctly
@@ -202,20 +243,39 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	ctx, span := trace.StartSpan(ctx, "Store.Load")
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	headTSKey, err := store.loadHead()
-	if err != nil {
+	var headTS *types.TipSet
+
+	if vch := os.Getenv("VENUS_CHAIN_HEAD"); len(vch) != 0 {
+		var headKey types.TipSetKey
+		log.Infof("load chain head from  environment 'VENUS_CHAIN_HEAD'")
+		if err = headKey.UnmarshalJSON([]byte(vch)); err != nil {
+			log.Warnf("can't unmarshal environment tipsetkey:%s", vch)
+			headKey = types.EmptyTSK
+		}
+		if err = store.rollbackToTipset(headKey); err != nil {
+			return xerrors.Errorf("rollback to tipset(%s) failed:%v", headKey.String(), err)
+		}
+	}
+
+	if headTS, err = store.loadHead(); err != nil {
 		return err
 	}
 
-	headTS, err := LoadTipSetBlocks(ctx, store, headTSKey)
-	if err != nil {
-		return errors.Wrap(err, "error loading head tipset")
+	// if venus process is terminated ungracefully,
+	// the chain head state may not be computed and stored,
+	// but it's sure that it's parent state is stored..
+	if headTS.Height() > abi.ChainEpoch(0) {
+		var meta *TipSetMetadata
+		if meta, err = store.LoadTipsetMetadata(headTS); err != nil || meta == nil {
+			if headTS, err = store.GetTipSet(headTS.Parents()); err != nil {
+				return err
+			}
+		}
 	}
 
 	latestHeight := headTS.At(0).Height
 	loopBack := latestHeight - policy.ChainFinality
-	log.Infof("start loading chain at tipset: %s, height: %d", headTSKey.String(), latestHeight)
-
+	log.Infof("start loading chain at tipset: %s, height: %d", headTS.Key(), headTS.Height())
 	// Provide tipsets directly from the block store, not from the tipset index which is
 	// being rebuilt by this traversal.
 	tipsetProvider := TipSetProviderFromBlocks(ctx, store)
@@ -236,33 +296,32 @@ func (store *Store) Load(ctx context.Context) (err error) {
 			break
 		}
 	}
-
 	log.Infof("finished loading %d tipsets from %s", latestHeight, headTS.String())
 	// Set actual head.
 	return store.SetHead(ctx, headTS)
 }
 
 // loadHead loads the latest known head from disk.
-func (store *Store) loadHead() (types.TipSetKey, error) {
-	var emptyCidSet types.TipSetKey
+func (store *Store) loadHead() (*types.TipSet, error) {
 	tskBytes, err := store.ds.Get(HeadKey)
 	if err != nil {
-		return emptyCidSet, errors.Wrap(err, "failed to read HeadKey")
+		return nil, errors.Wrap(err, "failed to read HeadKey")
 	}
 
 	var tsk types.TipSetKey
 	err = tsk.UnmarshalCBOR(bytes.NewReader(tskBytes))
 	if err != nil {
-		return emptyCidSet, errors.Wrap(err, "failed to cast headCids")
+		return nil, errors.Wrap(err, "failed to cast headCids")
 	}
 
-	return tsk, nil
+	return store.GetTipSet(tsk)
 }
 
 //LoadTipsetMetadata load tipset status (state root and reciepts)
 func (store *Store) LoadTipsetMetadata(ts *types.TipSet) (*TipSetMetadata, error) {
 	h := ts.Height()
 	key := datastore.NewKey(makeKey(ts.String(), h))
+
 	tsStateBytes, err := store.ds.Get(key)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read tipset key %s", ts.String())
@@ -416,6 +475,17 @@ func (store *Store) GetTipSetStateRoot(key *types.TipSet) (cid.Cid, error) {
 // GetTipSetReceiptsRoot returns the root CID of the message receipts for the tipset identified by `key`.
 func (store *Store) GetTipSetReceiptsRoot(key *types.TipSet) (cid.Cid, error) {
 	return store.tipIndex.GetTipSetReceiptsRoot(key)
+}
+
+func (store *Store) GetTipsetMetadata(ts *types.TipSet) (*TipSetMetadata, error) {
+	tsStat, err := store.tipIndex.Get(ts)
+	if err != nil {
+		return nil, err
+	}
+	return &TipSetMetadata{
+		TipSetStateRoot: tsStat.StateRoot,
+		TipSet:          ts,
+		TipSetReceipts:  tsStat.Receipts}, nil
 }
 
 // HasTipSetAndState returns true iff the default store's tipindex is indexing
@@ -707,13 +777,14 @@ func (store *Store) writeTipSetMetadata(tsm *TipSetMetadata) error {
 	// datastore keeps key:stateRoot (k,v) pairs.
 	h := tsm.TipSet.Height()
 	key := datastore.NewKey(makeKey(tsm.TipSet.String(), h))
+
 	return store.ds.Put(key, buf.Bytes())
 }
 
 // deleteTipSetMetadata delete the state root id from the datastore for the tipset key.
-func (store *Store) deleteTipSetMetadata(ts *types.TipSet) error { // nolint
+func (store *Store) DeleteTipSetMetadata(ts *types.TipSet) error { // nolint
+	store.tipIndex.Del(ts)
 	h := ts.Height()
-
 	key := datastore.NewKey(makeKey(ts.String(), h))
 	return store.ds.Delete(key)
 }

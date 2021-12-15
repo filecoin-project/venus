@@ -2,6 +2,7 @@ package syncer_test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	"testing"
 	"time"
 
@@ -38,7 +39,10 @@ func TestOneBlock(t *testing.T) {
 		Err:       nil,
 		ChainInfo: *types.NewChainInfo("", "", t1),
 	}
+
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target))
+
+	assert.NoError(t, builder.FlushHead(ctx))
 
 	verifyTip(t, builder.Store(), t1, t1.At(0).ParentStateRoot)
 	verifyHead(t, builder.Store(), t1)
@@ -59,7 +63,9 @@ func TestMultiBlockTip(t *testing.T) {
 		Err:       nil,
 		ChainInfo: *types.NewChainInfo("", "", tip),
 	}
+
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target))
+	assert.NoError(t, builder.FlushHead(ctx))
 
 	verifyTip(t, builder.Store(), tip, builder.StateForKey(tip.Key()))
 	verifyHead(t, builder.Store(), tip)
@@ -114,18 +120,22 @@ func TestChainIncremental(t *testing.T) {
 		ChainInfo: *types.NewChainInfo("", "", t4),
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target1))
+	assert.NoError(t, builder.FlushHead(ctx))
 	verifyTip(t, builder.Store(), t1, builder.StateForKey(t1.Key()))
 	verifyHead(t, builder.Store(), t1)
 
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target2))
+	assert.NoError(t, builder.FlushHead(ctx))
 	verifyTip(t, builder.Store(), t2, builder.StateForKey(t2.Key()))
 	verifyHead(t, builder.Store(), t2)
 
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target3))
+	assert.NoError(t, builder.FlushHead(ctx))
 	verifyTip(t, builder.Store(), t3, builder.StateForKey(t3.Key()))
 	verifyHead(t, builder.Store(), t3)
 
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target4))
+	assert.NoError(t, builder.FlushHead(ctx))
 	verifyTip(t, builder.Store(), t4, builder.StateForKey(t4.Key()))
 	verifyHead(t, builder.Store(), t4)
 }
@@ -150,6 +160,7 @@ func TestChainJump(t *testing.T) {
 		ChainInfo: *types.NewChainInfo("", "", t4),
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target1))
+	assert.NoError(t, builder.FlushHead(ctx))
 	verifyTip(t, builder.Store(), t1, builder.StateForKey(t1.Key()))
 	verifyTip(t, builder.Store(), t2, builder.StateForKey(t2.Key()))
 	verifyTip(t, builder.Store(), t3, builder.StateForKey(t3.Key()))
@@ -181,6 +192,7 @@ func TestIgnoreLightFork(t *testing.T) {
 		ChainInfo: *types.NewChainInfo("", "", t4),
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target4))
+	assert.NoError(t, builder.FlushHead(ctx))
 	verifyTip(t, builder.Store(), t4, builder.StateForKey(t4.Key()))
 	verifyHead(t, builder.Store(), t4)
 
@@ -195,6 +207,7 @@ func TestIgnoreLightFork(t *testing.T) {
 		ChainInfo: *types.NewChainInfo("", "", forkHead),
 	}
 	assert.Error(t, syncer.HandleNewTipSet(ctx, forkHeadTarget))
+	assert.NoError(t, builder.FlushHead(ctx))
 	verifyHead(t, builder.Store(), t4)
 }
 
@@ -226,6 +239,7 @@ func TestAcceptHeavierFork(t *testing.T) {
 		ChainInfo: *types.NewChainInfo("", "", main4),
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, main4Target))
+	assert.NoError(t, builder.FlushHead(ctx))
 	verifyTip(t, builder.Store(), main4, builder.StateForKey(main4.Key()))
 	verifyHead(t, builder.Store(), main4)
 
@@ -239,6 +253,7 @@ func TestAcceptHeavierFork(t *testing.T) {
 		ChainInfo: *types.NewChainInfo("", "", fork3),
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, fork3Target))
+	assert.NoError(t, builder.FlushHead(ctx))
 	verifyTip(t, builder.Store(), fork1, builder.StateForKey(fork1.Key()))
 	verifyTip(t, builder.Store(), fork2, builder.StateForKey(fork2.Key()))
 	verifyTip(t, builder.Store(), fork3, builder.StateForKey(fork3.Key()))
@@ -299,10 +314,9 @@ func TestNoUncessesaryFetch(t *testing.T) {
 
 	// A new syncer unable to fetch blocks from the network can handle a tipset that's already
 	// in the bsstore and linked to genesis.
-	eval := &chain.FakeStateEvaluator{
-		MessageStore: builder.Mstore(),
-	}
-	newSyncer, err := syncer.NewSyncer(eval,
+	eval := builder.FakeStateEvaluator()
+	stmgr := statemanger.NewStateManger(builder.Store(), eval, nil, nil, nil, nil)
+	newSyncer, err := syncer.NewSyncer(stmgr,
 		eval,
 		&chain.FakeChainSelector{},
 		builder.Store(),
@@ -445,7 +459,7 @@ type poisonValidator struct {
 	fullFailureTS   uint64
 }
 
-func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *types.TipSet, parentStateRoot cid.Cid) (cid.Cid, cid.Cid, error) {
+func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
 	stamp := ts.At(0).Timestamp
 	if pv.fullFailureTS == stamp {
 		return emptycid.EmptyTxMetaCID, emptycid.EmptyTxMetaCID, errors.New("run state transition fails on poison timestamp")
@@ -481,7 +495,10 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 	ctx := context.Background()
 	eval := newPoisonValidator(t, 98, 99)
 	builder := chain.NewBuilder(t, address.Undef)
-	builder, syncer := setupWithValidator(ctx, t, builder, eval, eval)
+
+	stmgr := statemanger.NewStateManger(builder.Store(), eval, nil, nil, nil, nil)
+	builder, syncer := setupWithValidator(ctx, t, builder, stmgr, eval)
+
 	genesis := builder.Store().GetHead()
 
 	// Build a chain with messages that will fail semantic header validation
@@ -546,27 +563,29 @@ func TestStoresMessageReceipts(t *testing.T) {
 	receipts, err := builder.LoadReceipts(ctx, receiptsCid)
 	require.NoError(t, err)
 
-	//filter same nonce
+	// filter same nonce
 	assert.Len(t, receipts, 2)
 }
 
-///// Set-up /////
+// /// Set-up /////
 
 // Initializes a chain builder, bsstore and syncer.
 // The chain builder has a single genesis block, which is set as the head of the bsstore.
 func setup(ctx context.Context, t *testing.T) (*chain.Builder, *syncer.Syncer) {
 	builder := chain.NewBuilder(t, address.Undef)
-	eval := &chain.FakeStateEvaluator{
-		MessageStore: builder.Mstore(),
-	}
-	return setupWithValidator(ctx, t, builder, eval, eval)
+	eval := builder.FakeStateEvaluator()
+
+	stmgr := statemanger.NewStateManger(builder.Store(), eval, nil, nil, nil, nil)
+
+	return setupWithValidator(ctx, t, builder, stmgr, eval)
 }
 
-func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builder, fullVal syncer.StateProcessor, headerVal syncer.BlockValidator) (*chain.Builder, *syncer.Syncer) {
+func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builder,
+	stmgr *statemanger.Stmgr, headerVal syncer.BlockValidator) (*chain.Builder, *syncer.Syncer) {
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the bsstore, to which the syncer must ensure to put blocks.
 	sel := &chain.FakeChainSelector{}
-	syncer, err := syncer.NewSyncer(fullVal,
+	syncer, err := syncer.NewSyncer(stmgr,
 		headerVal,
 		sel,
 		builder.Store(),
@@ -580,7 +599,7 @@ func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builde
 	return builder, syncer
 }
 
-///// Verification helpers /////
+// /// Verification helpers /////
 
 // Sub-interface of the bsstore used for verification.
 type syncStoreReader interface {

@@ -2,19 +2,17 @@ package messagepool
 
 import (
 	"context"
-	"time"
-
 	"github.com/filecoin-project/go-address"
 	tbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/statemanger"
+	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
 	"github.com/ipfs/go-cid"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/state"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
+	"time"
 )
 
 var (
@@ -40,6 +38,7 @@ type Provider interface {
 }
 
 type mpoolProvider struct {
+	stmgr  *statemanger.Stmgr
 	sm     *chain.Store
 	cms    *chain.MessageStore
 	config *config.NetworkParamsConfig
@@ -50,9 +49,10 @@ type mpoolProvider struct {
 
 var _ Provider = (*mpoolProvider)(nil)
 
-func NewProvider(sm *chain.Store, cms *chain.MessageStore, cfg *config.NetworkParamsConfig, ps *pubsub.PubSub) Provider {
+func NewProvider(sm *statemanger.Stmgr, cs *chain.Store, cms *chain.MessageStore, cfg *config.NetworkParamsConfig, ps *pubsub.PubSub) Provider {
 	return &mpoolProvider{
-		sm:     sm,
+		stmgr:  sm,
+		sm:     cs,
 		cms:    cms,
 		config: cfg,
 		ps:     ps,
@@ -91,7 +91,7 @@ func (mpp *mpoolProvider) PutMessage(m types.ChainMsg) (cid.Cid, error) {
 }
 
 func (mpp *mpoolProvider) PubSubPublish(k string, v []byte) error {
-	return mpp.ps.Publish(k, v) //nolint
+	return mpp.ps.Publish(k, v) // nolint
 }
 
 func (mpp *mpoolProvider) GetActorAfter(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
@@ -129,28 +129,11 @@ func (mpp *mpoolProvider) StateAccountKeyAtFinality(ctx context.Context, addr ad
 			return address.Undef, xerrors.Errorf("failed to load lookback tipset: %w", err)
 		}
 	}
-
-	root, err := mpp.sm.GetTipSetStateRoot(ts)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to get state root for %s", ts.Key().String())
-	}
-
-	store := mpp.sm.ReadOnlyStateStore()
-	viewer := state.NewView(&store, root)
-
-	return viewer.ResolveToKeyAddr(ctx, addr)
+	return mpp.stmgr.ResolveToKeyAddress(ctx, addr, ts)
 }
 
 func (mpp *mpoolProvider) StateAccountKey(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
-	root, err := mpp.sm.GetTipSetStateRoot(ts)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to get state root for %s", ts.Key().String())
-	}
-
-	store := mpp.sm.ReadOnlyStateStore()
-	viewer := state.NewView(&store, root)
-
-	return viewer.ResolveToKeyAddr(ctx, addr)
+	return mpp.stmgr.ResolveToKeyAddress(ctx, addr, ts)
 }
 
 func (mpp *mpoolProvider) MessagesForBlock(h *types.BlockHeader) ([]*types.UnsignedMessage, []*types.SignedMessage, error) {

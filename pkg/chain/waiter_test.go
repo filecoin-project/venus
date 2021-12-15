@@ -3,11 +3,11 @@ package chain
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/constants"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -22,7 +22,10 @@ var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
 
 func setupTest(t *testing.T) (cbor.IpldStore, *Store, *MessageStore, *Waiter) {
 	builder := NewBuilder(t, address.Undef)
-	return builder.cstore, builder.store, builder.mstore, NewWaiter(builder.store, builder.mstore, builder.bs, builder.cstore)
+	waiter := NewWaiter(builder.store, builder.mstore, builder.bs, builder.cstore)
+	waiter.Stmgr = builder.IStmgr()
+
+	return builder.cstore, builder.store, builder.mstore, waiter
 }
 
 func TestWaitRespectsContextCancel(t *testing.T) {
@@ -44,7 +47,7 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 	select {
 	case <-doneCh:
 		fmt.Println(err)
-		//assert.Error(t, err)
+		// assert.Error(t, err)
 	case <-time.After(2 * time.Second):
 		assert.Fail(t, "Wait should have returned when context was canceled")
 	}

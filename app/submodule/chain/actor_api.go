@@ -5,7 +5,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/types"
-	xerrors "github.com/pkg/errors"
 )
 
 var _ apiface.IActor = &actorAPI{}
@@ -21,16 +20,7 @@ func NewActorAPI(chain *ChainSubmodule) apiface.IActor {
 
 // StateGetActor returns the indicated actor's nonce and balance.
 func (actorAPI *actorAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
-	ts, err := actorAPI.chain.ChainReader.GetTipSet(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
-	}
-
-	view, err := actorAPI.chain.ChainReader.ParentStateView(ts)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
-	}
-	return view.LoadActor(ctx, actor)
+	return actorAPI.chain.Stmgr.GetActorAtTsk(ctx, actor, tsk)
 }
 
 // ActorLs returns a channel with actors from the latest state on the chain

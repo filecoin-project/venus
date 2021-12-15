@@ -34,12 +34,18 @@ type waiterChainReader interface {
 	SubHeadChanges(context.Context) chan []*HeadChange
 }
 
+type IStmgr interface {
+	GetActorAt(context.Context, address.Address, *types.TipSet) (*types.Actor, error)
+	RunStateTransition(context.Context, *types.TipSet) (root cid.Cid, receipts cid.Cid, err error)
+}
+
 // Waiter waits for a message to appear on chain.
 type Waiter struct {
 	chainReader     waiterChainReader
 	messageProvider MessageProvider
 	cst             cbor.IpldStore
 	bs              bstore.Blockstore
+	Stmgr           IStmgr
 }
 
 // ChainMessage is an on-chain message with its block and receipt.
@@ -112,14 +118,9 @@ func (w *Waiter) findMessage(ctx context.Context, from *types.TipSet, m types.Ch
 	noLimit := lookback == constants.LookbackNoLimit
 
 	cur := from
-	curActor, err := w.chainReader.GetActorAt(ctx, cur, m.VMMessage().From)
+	curActor, err := w.Stmgr.GetActorAt(ctx, m.VMMessage().From, cur)
 	if err != nil {
 		return nil, false, xerrors.Errorf("failed to load from actor")
-	}
-
-	mFromID, err := w.chainReader.LookupID(ctx, from, m.VMMessage().From)
-	if err != nil {
-		return nil, false, xerrors.Errorf("looking up From id address: %w", err)
 	}
 
 	mNonce := m.VMMessage().Nonce
@@ -154,7 +155,7 @@ func (w *Waiter) findMessage(ctx context.Context, from *types.TipSet, m types.Ch
 			return nil, false, xerrors.Errorf("failed to load tipset during msg wait searchback: %w", err)
 		}
 
-		act, err := w.chainReader.GetActorAt(ctx, grandParent, mFromID)
+		act, err := w.Stmgr.GetActorAt(ctx, m.VMMessage().From, grandParent)
 		actorNoExist := errors.Is(err, types.ErrActorNotFound)
 		if err != nil && !actorNoExist {
 			return nil, false, xerrors.Errorf("failed to load the actor: %w", err)
@@ -327,9 +328,10 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts *types.TipSet, msg typ
 }
 
 func (w *Waiter) receiptByIndex(ctx context.Context, ts *types.TipSet, targetCid cid.Cid, blockMsgs []types.BlockMessagesInfo) (*types.MessageReceipt, error) {
-	receiptCid, err := w.chainReader.GetTipSetReceiptsRoot(ts)
-	if err != nil {
-		return nil, err
+	var receiptCid cid.Cid
+	var err error
+	if _, receiptCid, err = w.Stmgr.RunStateTransition(ctx, ts); err != nil {
+		return nil, xerrors.Errorf("RunStateTransition failed:%w", err)
 	}
 
 	receipts, err := w.messageProvider.LoadReceipts(ctx, receiptCid)

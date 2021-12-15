@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
+	"sync"
 	"testing"
 
 	"github.com/ipld/go-car"
@@ -55,13 +56,38 @@ type Builder struct {
 	cstore       cbor.IpldStore
 	mstore       *MessageStore
 	seq          uint64 // For unique tickets
+	eval         *FakeStateEvaluator
 
 	// Cache of the state root CID computed for each tipset key.
 	tipStateCids map[string]cid.Cid
+
+	stmgr   IStmgr
+	evaLock sync.Mutex
+}
+
+func (f *Builder) IStmgr() IStmgr {
+	f.evaLock.Lock()
+	defer f.evaLock.Unlock()
+	return f.stmgr
+}
+
+func (f *Builder) FakeStateEvaluator() *FakeStateEvaluator {
+	f.evaLock.Lock()
+	defer f.evaLock.Unlock()
+
+	if f.eval != nil {
+		return f.eval
+	}
+	f.eval = &FakeStateEvaluator{
+		ChainStore:   f.store,
+		MessageStore: f.mstore,
+		ChsWorkingOn: make(map[types.TipSetKey]chan struct{}, 1),
+	}
+	return f.eval
 }
 
 func (f *Builder) LoadTipSetMessage(ctx context.Context, ts *types.TipSet) ([]types.BlockMessagesInfo, error) {
-	//gather message
+	// gather message
 	applied := make(map[address.Address]uint64)
 	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
 		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
@@ -147,6 +173,21 @@ var _ BlockProvider = (*Builder)(nil)
 var _ TipSetProvider = (*Builder)(nil)
 var _ MessageProvider = (*Builder)(nil)
 
+type fakeStmgr struct {
+	cs  *Store
+	eva *FakeStateEvaluator
+}
+
+func (f *fakeStmgr) GetActorAt(ctx context.Context, a address.Address, set *types.TipSet) (*types.Actor, error) {
+	return f.cs.GetActorAt(ctx, set, a)
+}
+
+func (f *fakeStmgr) RunStateTransition(ctx context.Context, set *types.TipSet) (root cid.Cid, receipts cid.Cid, err error) {
+	return f.eva.RunStateTransition(ctx, set)
+}
+
+var _ IStmgr = &fakeStmgr{}
+
 // NewBuilder builds a new chain faker with default fake state building.
 func NewBuilder(t *testing.T, miner address.Address) *Builder {
 	return NewBuilderWithDeps(t, miner, &FakeStateBuilder{}, &ZeroTimestamper{})
@@ -182,7 +223,7 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 	require.NoError(t, err)
 	_, err = b.mstore.StoreReceipts(ctx, []types.MessageReceipt{})
 	require.NoError(t, err)
-	//append genesis
+	// append genesis
 	nullState := types.CidFromString(t, "null")
 	b.tipStateCids[types.NewTipSetKey().String()] = nullState
 
@@ -208,6 +249,9 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 	require.NoError(t, b.store.PutTipSetMetadata(context.TODO(), tipsetMeta))
 	err = b.store.SetHead(context.TODO(), b.genesis)
 	require.NoError(t, err)
+
+	b.stmgr = &fakeStmgr{cs: b.store, eva: b.FakeStateEvaluator()}
+
 	return b
 }
 
@@ -228,6 +272,11 @@ func (f *Builder) AppendBlockOn(parent *types.TipSet) *types.BlockHeader {
 // AppendOn creates and returns a new `width`-block tipset child of `parents`, with no messages.
 func (f *Builder) AppendOn(parent *types.TipSet, width int) *types.TipSet {
 	return f.Build(parent, width, nil)
+}
+
+func (f *Builder) FlushHead(ctx context.Context) error {
+	_, _, e := f.FakeStateEvaluator().RunStateTransition(ctx, f.store.GetHead())
+	return e
 }
 
 // AppendManyBlocksOnBlocks appends `height` blocks to the chain.
@@ -315,7 +364,7 @@ func (f *Builder) BuildOrphaTipset(parent *types.TipSet, width int, build func(b
 	emptyBLSSig := crypto.Signature{
 		Type: crypto.SigTypeBLS,
 		Data: []byte(""),
-		//Data: (*bls.Aggregate([]bls.Signature{}))[:],
+		// Data: (*bls.Aggregate([]bls.Signature{}))[:],
 	}
 
 	for i := 0; i < width; i++ {
@@ -335,9 +384,9 @@ func (f *Builder) BuildOrphaTipset(parent *types.TipSet, width int, build func(b
 			ParentMessageReceipts: emptycid.EmptyReceiptsCID,
 			BLSAggregate:          &emptyBLSSig,
 			// Omitted fields below
-			//ParentStateRoot:       stateRoot,
-			//EPoStInfo:       ePoStInfo,
-			//ForkSignaling:   forkSig,
+			// ParentStateRoot:       stateRoot,
+			// EPoStInfo:       ePoStInfo,
+			// ForkSignaling:   forkSig,
 			Timestamp:     f.stamper.Stamp(height),
 			BlockSig:      &crypto.Signature{Type: crypto.SigTypeSecp256k1, Data: []byte{}},
 			ElectionProof: &types.ElectionProof{VRFProof: []byte{0x0c, 0x0d}, WinCount: int64(10)},
@@ -441,7 +490,7 @@ func singleBuilder(build func(b *BlockBuilder)) func(b *BlockBuilder, i int) {
 	return func(b *BlockBuilder, i int) { build(b) }
 }
 
-///// BlockHeader builder /////
+// /// BlockHeader builder /////
 
 // BlockBuilder mutates blocks as they are generated.
 type BlockBuilder struct {
@@ -486,7 +535,7 @@ func (bb *BlockBuilder) SetStateRoot(root cid.Cid) {
 	bb.block.ParentStateRoot = root
 }
 
-///// state builder /////
+// /// state builder /////
 
 // StateBuilder abstracts the computation of state root CIDs from the chain builder.
 type StateBuilder interface {
@@ -542,7 +591,7 @@ func (FakeStateBuilder) Weigh(context context.Context, tip *types.TipSet) (big.I
 	return big.Add(parentWeight, big.NewInt(int64(tip.Len()))), nil
 }
 
-///// Timestamper /////
+// /// Timestamper /////
 
 // TimeStamper is an object that timestamps blocks
 type TimeStamper interface {
@@ -577,38 +626,93 @@ func (ct *ClockTimestamper) Stamp(height abi.ChainEpoch) uint64 {
 	return uint64(startTime.Unix())
 }
 
-///// state evaluator /////
+// /// state evaluator /////
 
 // FakeStateEvaluator is a syncStateEvaluator that delegates to the FakeStateBuilder.
 type FakeStateEvaluator struct {
+	ChainStore   *Store
 	MessageStore *MessageStore
 	FakeStateBuilder
+	ChsWorkingOn map[types.TipSetKey]chan struct{}
+	stLk         sync.Mutex
 }
 
 // RunStateTransition delegates to StateBuilder.ComputeState
-func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *types.TipSet, parentStateRoot cid.Cid) (cid.Cid, cid.Cid, error) {
-	//gather message
+func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *types.TipSet) (rootCid cid.Cid, receiptCid cid.Cid, err error) {
+	key := ts.Key()
+	e.stLk.Lock()
+	workingCh, exist := e.ChsWorkingOn[key]
+
+	if exist {
+		e.stLk.Unlock()
+		select {
+		case <-workingCh:
+			e.stLk.Lock()
+		case <-ctx.Done():
+			return cid.Undef, cid.Undef, ctx.Err()
+		}
+	}
+	if m, _ := e.ChainStore.LoadTipsetMetadata(ts); m != nil {
+		e.stLk.Unlock()
+		return m.TipSetStateRoot, m.TipSetReceipts, nil
+	}
+
+	workingCh = make(chan struct{})
+	e.ChsWorkingOn[key] = workingCh
+	e.stLk.Unlock()
+
+	defer func() {
+		e.stLk.Lock()
+		delete(e.ChsWorkingOn, key)
+		if err == nil {
+			_ = e.ChainStore.PutTipSetMetadata(ctx, &TipSetMetadata{
+				TipSetStateRoot: rootCid,
+				TipSet:          ts,
+				TipSetReceipts:  receiptCid,
+			})
+		}
+		e.stLk.Unlock()
+		close(workingCh)
+	}()
+
+	// gather message
 	blockMessageInfo, err := e.MessageStore.LoadTipSetMessage(ctx, ts)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to gather message in tipset %v", err)
 	}
-	root, receipts, err := e.ComputeState(parentStateRoot, blockMessageInfo)
+	var receipts []types.MessageReceipt
+	rootCid, receipts, err = e.ComputeState(ts.At(0).ParentStateRoot, blockMessageInfo)
 	if err != nil {
 		return cid.Undef, cid.Undef, errors.Wrap(err, "error compute state")
 	}
 
-	receiptCid, err := e.MessageStore.StoreReceipts(ctx, receipts)
+	receiptCid, err = e.MessageStore.StoreReceipts(ctx, receipts)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to save receipt: %v", err)
 	}
-	return root, receiptCid, nil
+
+	return rootCid, receiptCid, nil
 }
 
 func (e *FakeStateEvaluator) ValidateFullBlock(ctx context.Context, blk *types.BlockHeader) error {
-	return nil
+	parent, err := e.ChainStore.GetTipSet(blk.Parents)
+	if err != nil {
+		return err
+	}
+
+	root, receipts, err := e.RunStateTransition(ctx, parent)
+	if err != nil {
+		return err
+	}
+
+	return e.ChainStore.PutTipSetMetadata(ctx, &TipSetMetadata{
+		TipSetStateRoot: root,
+		TipSet:          parent,
+		TipSetReceipts:  receipts,
+	})
 }
 
-///// Chain selector /////
+// /// Chain selector /////
 
 // FakeChainSelector is a syncChainSelector that delegates to the FakeStateBuilder
 type FakeChainSelector struct {
@@ -633,7 +737,7 @@ func (e *FakeChainSelector) Weight(ctx context.Context, ts *types.TipSet) (big.I
 	return e.Weigh(ctx, ts)
 }
 
-///// Interface and accessor implementations /////
+// /// Interface and accessor implementations /////
 
 // GetBlock returns the block identified by `c`.
 func (f *Builder) GetBlock(ctx context.Context, c cid.Cid) (*types.BlockHeader, error) {
@@ -780,7 +884,7 @@ func (f *Builder) ReadMsgMetaCids(ctx context.Context, metaCid cid.Cid) ([]cid.C
 	return f.mstore.ReadMsgMetaCids(ctx, metaCid)
 }
 
-///// exchange  /////
+// /// exchange  /////
 func (f *Builder) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) ([]*types.TipSet, error) {
 	ts, err := f.GetTipSet(tsk)
 	if err != nil {

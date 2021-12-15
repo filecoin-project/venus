@@ -2,6 +2,7 @@ package chain_test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"testing"
 
 	"github.com/ipfs/go-datastore"
@@ -14,6 +15,7 @@ import (
 )
 
 func TestMessageStoreMessagesHappy(t *testing.T) {
+	testflags.UnitTest(t)
 	ctx := context.Background()
 	keys := types.MustGenerateKeyInfo(2, 42)
 	mm := types.NewMessageMaker(t, keys)

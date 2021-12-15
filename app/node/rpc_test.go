@@ -132,6 +132,11 @@ type FullAdapter struct {
 	CommonAdapter
 	Adapter2
 }
+
+func (f *FullAdapter) Test1(ctx context.Context) (string, error) {
+	return f.CommonAdapter.Internal.Test1(ctx)
+}
+
 type CommonAdapter struct {
 	Adapter1
 }
