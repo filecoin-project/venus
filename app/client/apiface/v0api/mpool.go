@@ -13,9 +13,9 @@ import (
 type IMessagePool interface {
 	// Rule[perm:admin]
 	MpoolDeleteByAdress(ctx context.Context, addr address.Address) error
-	// Rule[perm:admin]
+	// Rule[perm:write]
 	MpoolPublishByAddr(context.Context, address.Address) error
-	// Rule[perm:admin]
+	// Rule[perm:write]
 	MpoolPublishMessage(ctx context.Context, smsg *types.SignedMessage) error
 	// Rule[perm:write]
 	MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error)

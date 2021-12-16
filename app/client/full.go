@@ -383,8 +383,8 @@ type IMessagePoolStruct struct {
 		MpoolGetConfig             func(p0 context.Context) (*messagepool.MpoolConfig, error)                                                                         `perm:"read"`
 		MpoolGetNonce              func(p0 context.Context, p1 address.Address) (uint64, error)                                                                       `perm:"read"`
 		MpoolPending               func(p0 context.Context, p1 types.TipSetKey) ([]*types.SignedMessage, error)                                                       `perm:"read"`
-		MpoolPublishByAddr         func(p0 context.Context, p1 address.Address) error                                                                                 `perm:"admin"`
-		MpoolPublishMessage        func(p0 context.Context, p1 *types.SignedMessage) error                                                                            `perm:"admin"`
+		MpoolPublishByAddr         func(p0 context.Context, p1 address.Address) error                                                                                 `perm:"write"`
+		MpoolPublishMessage        func(p0 context.Context, p1 *types.SignedMessage) error                                                                            `perm:"write"`
 		MpoolPush                  func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error)                                                                 `perm:"write"`
 		MpoolPushMessage           func(p0 context.Context, p1 *types.UnsignedMessage, p2 *types.MessageSendSpec) (*types.SignedMessage, error)                       `perm:"sign"`
 		MpoolPushUntrusted         func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error)                                                                 `perm:"write"`

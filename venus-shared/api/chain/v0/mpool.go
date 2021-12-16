@@ -1,4 +1,4 @@
-package v1
+package v0api
 
 import (
 	"context"
@@ -15,9 +15,9 @@ import (
 type IMessagePool interface {
 	// Rule[perm:admin]
 	MpoolDeleteByAdress(ctx context.Context, addr address.Address) error
-	// Rule[perm:write]
+	// Rule[perm:admin]
 	MpoolPublishByAddr(context.Context, address.Address) error
-	// Rule[perm:write]
+	// Rule[perm:admin]
 	MpoolPublishMessage(ctx context.Context, smsg *chain.SignedMessage) error
 	// Rule[perm:write]
 	MpoolPush(ctx context.Context, smsg *chain.SignedMessage) (cid.Cid, error)
@@ -57,13 +57,4 @@ type IMessagePool interface {
 	GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk chain.TipSetKey) (big.Int, error)
 	// Rule[perm:read]
 	GasEstimateGasLimit(ctx context.Context, msgIn *chain.Message, tsk chain.TipSetKey) (int64, error)
-	// MpoolCheckMessages performs logical checks on a batch of messages
-	// Rule[perm:read]
-	MpoolCheckMessages(ctx context.Context, protos []*messagepool.MessagePrototype) ([][]messagepool.MessageCheckStatus, error)
-	// MpoolCheckPendingMessages performs logical checks for all pending messages from a given address
-	// Rule[perm:read]
-	MpoolCheckPendingMessages(ctx context.Context, addr address.Address) ([][]messagepool.MessageCheckStatus, error)
-	// MpoolCheckReplaceMessages performs logical checks on pending messages with replacement
-	// Rule[perm:read]
-	MpoolCheckReplaceMessages(ctx context.Context, msg []*chain.Message) ([][]messagepool.MessageCheckStatus, error)
 }

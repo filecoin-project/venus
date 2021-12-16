@@ -1,4 +1,4 @@
-package v1
+package v0api
 
 import (
 	"context"
@@ -16,7 +16,7 @@ type ISyncer interface {
 	SetConcurrent(ctx context.Context, concurrent int64) error
 
 	// Rule[perm:read]
-	// SyncerTracker(ctx context.Context) *syncTypes.TargetTracker
+	//SyncerTracker(ctx context.Context) *chain.TargetTracker
 
 	// Rule[perm:read]
 	Concurrent(ctx context.Context) int64

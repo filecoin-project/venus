@@ -1,4 +1,4 @@
-package v1
+package v0api
 
 import (
 	"context"
@@ -57,15 +57,9 @@ type IChainInfo interface {
 	// Rule[perm:read]
 	ChainGetTipSetByHeight(ctx context.Context, height abi.ChainEpoch, tsk chain.TipSetKey) (*chain.TipSet, error)
 	// Rule[perm:read]
-	ChainGetTipSetAfterHeight(ctx context.Context, height abi.ChainEpoch, tsk chain.TipSetKey) (*chain.TipSet, error)
-	// Rule[perm:read]
 	ChainGetRandomnessFromBeacon(ctx context.Context, key chain.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	// Rule[perm:read]
 	ChainGetRandomnessFromTickets(ctx context.Context, tsk chain.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
-	// Rule[perm:read]
-	StateGetRandomnessFromTickets(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk chain.TipSetKey) (abi.Randomness, error)
-	// Rule[perm:read]
-	StateGetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk chain.TipSetKey) (abi.Randomness, error)
 	// Rule[perm:read]
 	ChainGetBlock(ctx context.Context, id cid.Cid) (*chain.BlockHeader, error)
 	// Rule[perm:read]
@@ -80,7 +74,7 @@ type IChainInfo interface {
 	ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]chain2.Message, error)
 	// Rule[perm:read]
 	ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]*chain.MessageReceipt, error)
-	// Rule[perm:read]
+	//Rule[perm:read]
 	StateVerifiedRegistryRootKey(ctx context.Context, tsk chain.TipSetKey) (address.Address, error)
 	// Rule[perm:read]
 	StateVerifierStatus(ctx context.Context, addr address.Address, tsk chain.TipSetKey) (*abi.StoragePower, error)
@@ -102,44 +96,16 @@ type IChainInfo interface {
 	ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *chain.TipSet) (address.Address, error)
 	// Rule[perm:read]
 	StateNetworkName(ctx context.Context) (chain2.NetworkName, error)
-	// StateSearchMsg looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
-	//
-	// NOTE: If a replacing message is found on chain, this method will return
-	// a MsgLookup for the replacing message - the MsgLookup.Message will be a different
-	// CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
-	// result of the execution of the replacing message.
-	//
-	// If the caller wants to ensure that exactly the requested message was executed,
-	// they must check that MsgLookup.Message is equal to the provided 'cid', or set the
-	// `allowReplaced` parameter to false. Without this check, and with `allowReplaced`
-	// set to true, both the requested and original message may appear as
-	// successfully executed on-chain, which may look like a double-spend.
-	//
-	// A replacing message is a message with a different CID, any of Gas values, and
-	// different signature, but with all other parameters matching (source/destination,
-	// nonce, params, etc.)
 	// Rule[perm:read]
-	StateSearchMsg(ctx context.Context, from chain.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*chain2.MsgLookup, error)
-	// StateWaitMsg looks back up to limit epochs in the chain for a message.
-	// If not found, it blocks until the message arrives on chain, and gets to the
-	// indicated confidence depth.
-	//
-	// NOTE: If a replacing message is found on chain, this method will return
-	// a MsgLookup for the replacing message - the MsgLookup.Message will be a different
-	// CID than the one provided in the 'cid' param, MsgLookup.Receipt will contain the
-	// result of the execution of the replacing message.
-	//
-	// If the caller wants to ensure that exactly the requested message was executed,
-	// they must check that MsgLookup.Message is equal to the provided 'cid', or set the
-	// `allowReplaced` parameter to false. Without this check, and with `allowReplaced`
-	// set to true, both the requested and original message may appear as
-	// successfully executed on-chain, which may look like a double-spend.
-	//
-	// A replacing message is a message with a different CID, any of Gas values, and
-	// different signature, but with all other parameters matching (source/destination,
-	// nonce, params, etc.)
+	StateGetReceipt(ctx context.Context, msg cid.Cid, from chain.TipSetKey) (*chain.MessageReceipt, error)
 	// Rule[perm:read]
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*chain2.MsgLookup, error)
+	StateSearchMsg(ctx context.Context, msg cid.Cid) (*chain2.MsgLookup, error)
+	// Rule[perm:read]
+	StateSearchMsgLimited(ctx context.Context, cid cid.Cid, limit abi.ChainEpoch) (*chain2.MsgLookup, error)
+	// Rule[perm:read]
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*chain2.MsgLookup, error)
+	// Rule[perm:read]
+	StateWaitMsgLimited(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch) (*chain2.MsgLookup, error)
 	// Rule[perm:read]
 	StateNetworkVersion(ctx context.Context, tsk chain.TipSetKey) (network.Version, error)
 	// Rule[perm:read]
