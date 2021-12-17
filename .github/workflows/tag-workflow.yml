@@ -34,8 +34,14 @@ jobs:
           echo github_repository: $GITHUB_REPOSITORY
           echo github_repository: ${{github.repository}}
           export job_url=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
-          if [[ "$tag" =~ "v" ]]; then
+          if [[ "${{github.event_name}}" == "create" ]]&& [[ "$github_tag" =~ "v" ]]; then
             export godeye_method=pushRelease
+          fi
+          if [[ "$branch" == "" ]]; then
+            export branch=$github_tag
+          fi
+          if [[ "$tag" == "" ]]; then
+            export tag=$github_tag
           fi
           echo "::set-output name=commit::$commit"
           echo "::set-output name=short::$short"
@@ -128,7 +134,7 @@ jobs:
             export link=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/${{steps.vars.outputs.github_tag}}/${{steps.vars.outputs.artifact_name}}
           fi
           set +e
-          curl -v --max-time 20 -X PUT ${{secrets.GODEYE_URL}}/${{steps.vars.outputs.godeye_method}} \
+          curl --max-time 20 -X PUT ${{secrets.GODEYE_URL}}/${{steps.vars.outputs.godeye_method}} \
                   --data-urlencode "type=1" \
                   --data-urlencode "commitId=${{steps.vars.outputs.commit}}" \
                   --data-urlencode "branch=${{steps.vars.outputs.branch}}" \
