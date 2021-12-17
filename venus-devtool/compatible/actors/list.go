@@ -8,7 +8,21 @@ import (
 	"strings"
 )
 
-func listFilesInDir(dir string, ext string) ([]string, error) {
+var filterWithSuffix = func(suffix string) func(path string, d fs.DirEntry) bool {
+	return func(path string, d fs.DirEntry) bool {
+		if d.IsDir() {
+			return true
+		}
+
+		if !strings.HasSuffix(path, suffix) {
+			return true
+		}
+
+		return false
+	}
+}
+
+func listFilesInDir(dir string, filter func(string, fs.DirEntry) bool) ([]string, error) {
 	var paths []string
 
 	err := fs.WalkDir(os.DirFS(dir), ".", func(path string, d fs.DirEntry, err error) error {
@@ -16,11 +30,7 @@ func listFilesInDir(dir string, ext string) ([]string, error) {
 			return fmt.Errorf("walking %s: %w", path, err)
 		}
 
-		if d.IsDir() {
-			return nil
-		}
-
-		if !strings.HasSuffix(path, ext) {
+		if filter(path, d) {
 			return nil
 		}
 
