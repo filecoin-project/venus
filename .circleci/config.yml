@@ -184,6 +184,7 @@ jobs:
           fingerprints:
             - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
       - checkout
+      - clone_lotus
       - update_submodules
       # Save the Git SHA of the rust-fil-proofs submodule so that we can use it when creating a cache key
       - generate_rust_submodules_checksums
@@ -199,6 +200,9 @@ jobs:
           cmd: "lint"
       - go_build:
           cmd: "build"
+      - go_build:
+          cmd: "gen-api"
+      - check_file_change
       # place the filecoin binary in PATH for IPTB
       - go_build:
           cmd: "install"
@@ -749,6 +753,21 @@ commands:
           name: fetch all tags
           command: |
             git fetch --all
+  clone_lotus:
+    steps:
+      - run:
+          name: Clone lotus
+          command: |
+            mkdir -p ${GOPATH}/pkg/mod/github.com/filecoin-project
+            cd ${GOPATH}/pkg/mod/github.com/filecoin-project
+            git clone -b v1.12.0 https://github.com/filecoin-project/lotus.git
+  check_file_change:
+    steps:
+      - run:
+          name: Check api file change
+          command: |
+            cd /go/src/github.com/filecoin-project/venus
+            bash ./scripts/check_api_file_change.sh
   go_build:
     parameters:
       cmd:

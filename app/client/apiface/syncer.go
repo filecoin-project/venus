@@ -2,6 +2,7 @@ package apiface
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
@@ -9,9 +10,9 @@ import (
 )
 
 type ISyncer interface {
-	// Rule[perm:read]
+	// Rule[perm:write]
 	ChainSyncHandleNewTipSet(ctx context.Context, ci *types.ChainInfo) error
-	// Rule[perm:read]
+	// Rule[perm:admin]
 	SetConcurrent(ctx context.Context, concurrent int64) error
 	// Rule[perm:read]
 	SyncerTracker(ctx context.Context) *syncTypes.TargetTracker
@@ -19,7 +20,7 @@ type ISyncer interface {
 	Concurrent(ctx context.Context) int64
 	// Rule[perm:read]
 	ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey) (big.Int, error)
-	// Rule[perm:read]
+	// Rule[perm:write]
 	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error
 	// Rule[perm:read]
 	StateCall(ctx context.Context, msg *types.UnsignedMessage, tsk types.TipSetKey) (*types.InvocResult, error)
