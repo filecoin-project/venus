@@ -61,7 +61,7 @@ func fetch(src, dst string, paths []string) error {
 	}
 
 	for _, rel := range paths {
-		if err := fetchOne(src, dst, rel); err != nil {
+		if err := fetchOne(src, dst, rel, replacers); err != nil {
 			return fmt.Errorf("fetch template for %s: %w", rel, err)
 		}
 
@@ -71,7 +71,7 @@ func fetch(src, dst string, paths []string) error {
 	return nil
 }
 
-func fetchOne(srcDir, dstDir string, rel string) error {
+func fetchOne(srcDir, dstDir string, rel string, replacers [][2]string) error {
 	dstRel := rel
 	for _, suffix := range separatedSuffixes {
 		if strings.HasSuffix(rel, suffix) {

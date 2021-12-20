@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: version.go
+
 package actors
 
 import (

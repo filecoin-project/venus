@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/urfave/cli/v2"
 )
@@ -19,6 +21,7 @@ func main() {
 			sourcesCmd,
 			templatesCmd,
 			renderCmd,
+			replicaCmd,
 		},
 	}
 
@@ -44,7 +47,7 @@ var templatesCmd = &cli.Command{
 		}
 
 		log.Println("listing")
-		paths, err := listFilesInDir(srcDir, goTemplateExt)
+		paths, err := listFilesInDir(srcDir, filterWithSuffix(goTemplateExt))
 		if err != nil {
 			return fmt.Errorf("list template files: %w", err)
 		}
@@ -85,7 +88,7 @@ var renderCmd = &cli.Command{
 			return fmt.Errorf("get abs path for %s: %w", dir, err)
 		}
 
-		templates, err := listFilesInDir(dir, goTemplateExt)
+		templates, err := listFilesInDir(dir, filterWithSuffix(goTemplateExt))
 		if err != nil {
 			return fmt.Errorf("list templates in %s: %w", abs, err)
 		}
@@ -112,7 +115,7 @@ var sourcesCmd = &cli.Command{
 			return fmt.Errorf("find chain/actors: %w", err)
 		}
 
-		files, err := listFilesInDir(srcDir, goSourceCodeExt)
+		files, err := listFilesInDir(srcDir, filterWithSuffix(goSourceCodeExt))
 		if err != nil {
 			return fmt.Errorf("list source code files: %w", err)
 		}
@@ -121,6 +124,62 @@ var sourcesCmd = &cli.Command{
 
 		for _, p := range files {
 			fmt.Printf("\t%s\n", p)
+		}
+		return nil
+	},
+}
+
+var replicaCmd = &cli.Command{
+	Name: "replica",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "dst",
+			Value:    "",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		srcDir, err := findActorsPkgDir()
+		if err != nil {
+			return fmt.Errorf("find chain/actors: %w", err)
+		}
+
+		files, err := listFilesInDir(srcDir, func(path string, d fs.DirEntry) bool {
+			if d.IsDir() {
+				return true
+			}
+
+			if strings.HasSuffix(path, "test.go") {
+				return true
+			}
+
+			// diff.go diff_deadlines.go version.go params.go
+			if !strings.Contains(path, "diff") && !strings.HasSuffix(path, "version.go") &&
+				!strings.HasSuffix(path, "params.go") {
+				return true
+			}
+
+			return false
+		})
+		if err != nil {
+			return fmt.Errorf("list replica files failed: %w", err)
+		}
+
+		fmt.Println("replica files IN chain/actors:")
+
+		for _, p := range files {
+			fmt.Printf("\t%s\n", p)
+		}
+
+		replacers := [][2]string{
+			{"github.com/filecoin-project/lotus/chain/actors/adt", "github.com/filecoin-project/venus/venus-shared/actors/adt"},
+			{"github.com/filecoin-project/lotus/chain/actors/aerrors", "github.com/filecoin-project/venus/venus-shared/actors/aerrors"},
+		}
+
+		for _, file := range files {
+			if err := fetchOne(srcDir, cctx.String("dst"), file, replacers); err != nil {
+				return fmt.Errorf("fetch for %s: %w", file, err)
+			}
 		}
 		return nil
 	},
