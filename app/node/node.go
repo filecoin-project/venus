@@ -40,6 +40,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"syscall"
 )
 
@@ -243,6 +244,9 @@ func (node *Node) Stop(ctx context.Context) {
 
 // RunRPCAndWait start rpc server and listen to signal to exit
 func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command, ready chan interface{}) error {
+	var terminate = make(chan os.Signal, 1)
+	signal.Notify(terminate, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(terminate)
 	// Signal that the sever has started and then wait for a signal to stop.
 	cfg := node.repo.Config()
 	mAddr, err := ma.NewMultiaddr(cfg.API.APIAddress)
@@ -304,20 +308,17 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 		return err
 	}
 
-	terminate := make(chan error, 1)
-
-	// todo: design an genterfull
-	memguard.CatchSignal(func(signal os.Signal) {
-		log.Infof("received signal(%s), venus will shutdown...", signal.String())
-		node.Stop(ctx)
-		log.Infof("venus shutdown gracefully ...")
-		_ = log.Sync()
-		memguard.Purge()
-		terminate <- nil
-	}, syscall.SIGTERM, os.Interrupt)
+	defer func() {
+		memguard.SafeExit(0)
+	}()
 
 	close(ready)
-	return <-terminate
+	<-terminate
+	err = apiserv.Shutdown(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // RunAPIAndWait starts an API server and waits for it to finish.
