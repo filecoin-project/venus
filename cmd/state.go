@@ -75,10 +75,14 @@ var stateWaitMsgCmd = &cmds.Command{
 		buf := new(bytes.Buffer)
 		writer := NewSilentWriter(buf)
 
-		writer.Printf("message was executed in tipset: %s\n", mw.TipSet.Cids())
-		writer.Printf("Exit Code: %d\n", mw.Receipt.ExitCode)
-		writer.Printf("Gas Used: %d\n", mw.Receipt.GasUsed)
-		writer.Printf("Return: %x\n", mw.Receipt.ReturnValue)
+		if mw != nil {
+			writer.Printf("message was executed in tipset: %s\n", mw.TipSet.Cids())
+			writer.Printf("Exit Code: %d\n", mw.Receipt.ExitCode)
+			writer.Printf("Gas Used: %d\n", mw.Receipt.GasUsed)
+			writer.Printf("Return: %x\n", mw.Receipt.ReturnValue)
+		} else {
+			writer.Printf("Unable to find message recepit of %s", cid)
+		}
 
 		return re.Emit(buf)
 	},
