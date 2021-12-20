@@ -13,23 +13,23 @@ import (
 
 	market4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/market"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
-
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	types2 "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/go-state-types/network"
 
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/reward"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -84,7 +84,7 @@ func mkFakedSigSyscalls(sys vmcontext.SyscallsImpl) vmcontext.SyscallsImpl {
 // Note: Much of this is brittle, if the methodNum / param / return changes, it will break things
 func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, miners []Miner, nv network.Version, para *config.ForkUpgradeConfig) (cid.Cid, error) {
 	cst := cbor.NewCborStore(cs.Blockstore())
-	av, err := specactors.VersionForNetwork(nv)
+	av, err := actors.VersionForNetwork(nv)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("get actor version: %w", err)
 	}
@@ -179,7 +179,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 				return cid.Undef, xerrors.New("actor not found")
 			}
 
-			mst, err := miner.Load(adt.WrapStore(ctx, cst), mact)
+			mst, err := miner.Load(adt.WrapStore(ctx, cst), (*types2.Actor)(mact))
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("getting newly created miner state: %w", err)
 			}
@@ -287,7 +287,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 			return cid.Undef, xerrors.New("power actor not exist")
 		}
 
-		pst, err := power.Load(adt.WrapStore(ctx, cst), pact)
+		pst, err := power.Load(adt.WrapStore(ctx, cst), (*types2.Actor)(pact))
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("getting power state: %w", err)
 		}
@@ -319,7 +319,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 			return cid.Undef, xerrors.Errorf("setting power state: %w", err)
 		}
 
-		ver, err := specactors.VersionForNetwork(nv)
+		ver, err := actors.VersionForNetwork(nv)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("get actor version: %w", err)
 		}
@@ -370,7 +370,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 					return cid.Undef, xerrors.New("power actor not exist")
 				}
 
-				pst, err := power.Load(adt.WrapStore(ctx, cst), pact)
+				pst, err := power.Load(adt.WrapStore(ctx, cst), (*types2.Actor)(pact))
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("getting power state: %w", err)
 				}
@@ -431,7 +431,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 				// Commit one-by-one, otherwise pledge math tends to explode
 				var paramBytes []byte
 
-				if av >= specactors.Version6 {
+				if av >= actors.Version6 {
 					// TODO: fixup
 					confirmParams := &builtin6.ConfirmSectorProofsParams{
 						Sectors: []abi.SectorNumber{preseal.SectorID},
@@ -451,7 +451,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
 				}
 
-				if av > specactors.Version2 {
+				if av > actors.Version2 {
 					// post v2, we need to explicitly Claim this power since ConfirmSectorProofsValid doesn't do it anymore
 					claimParams := &power4.UpdateClaimedPowerParams{
 						RawByteDelta:         types.NewInt(uint64(m.SectorSize)),
@@ -477,7 +477,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 						return cid.Undef, xerrors.New("actor not found")
 					}
 
-					mst, err := miner.Load(adt.WrapStore(ctx, cst), mact)
+					mst, err := miner.Load(adt.WrapStore(ctx, cst), (*types2.Actor)(mact))
 					if err != nil {
 						return cid.Undef, xerrors.Errorf("getting miner state: %w", err)
 					}
@@ -515,7 +515,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 		return cid.Undef, xerrors.New("actor not found")
 	}
 
-	pst, err := power.Load(adt.WrapStore(ctx, cst), pact)
+	pst, err := power.Load(adt.WrapStore(ctx, cst), (*types2.Actor)(pact))
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting power state: %w", err)
 	}
@@ -570,9 +570,9 @@ func currentTotalPower(ctx context.Context, vmi vm.Interpreter, maddr address.Ad
 	return &pwr, nil
 }
 
-func dealWeight(ctx context.Context, vmi vm.Interpreter, maddr address.Address, dealIDs []abi.DealID, sectorStart, sectorExpiry abi.ChainEpoch, av specactors.Version) (abi.DealWeight, abi.DealWeight, error) {
+func dealWeight(ctx context.Context, vmi vm.Interpreter, maddr address.Address, dealIDs []abi.DealID, sectorStart, sectorExpiry abi.ChainEpoch, av actors.Version) (abi.DealWeight, abi.DealWeight, error) {
 	// TODO: This hack should move to market actor wrapper
-	if av <= specactors.Version2 {
+	if av <= actors.Version2 {
 		params := &market0.VerifyDealsForActivationParams{
 			DealIDs:      dealIDs,
 			SectorStart:  sectorStart,
@@ -619,14 +619,14 @@ func dealWeight(ctx context.Context, vmi vm.Interpreter, maddr address.Address, 
 	return dealWeights.Sectors[0].DealWeight, dealWeights.Sectors[0].VerifiedDealWeight, nil
 }
 
-func currentEpochBlockReward(ctx context.Context, vmi vm.Interpreter, maddr address.Address, av specactors.Version) (abi.StoragePower, builtin.FilterEstimate, error) {
+func currentEpochBlockReward(ctx context.Context, vmi vm.Interpreter, maddr address.Address, av actors.Version) (abi.StoragePower, builtin.FilterEstimate, error) {
 	rwret, err := doExecValue(ctx, vmi, reward.Address, maddr, big.Zero(), reward.Methods.ThisEpochReward, nil)
 	if err != nil {
 		return big.Zero(), builtin.FilterEstimate{}, err
 	}
 
 	// TODO: This hack should move to reward actor wrapper
-	if av <= specactors.Version2 {
+	if av <= actors.Version2 {
 		var epochReward reward0.ThisEpochRewardReturn
 
 		if err := epochReward.UnmarshalCBOR(bytes.NewReader(rwret)); err != nil {

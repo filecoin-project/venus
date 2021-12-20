@@ -2,6 +2,7 @@ package multisig
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus/app/client/apiface"
 
 	"github.com/filecoin-project/go-address"
@@ -12,8 +13,9 @@ import (
 
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/multisig"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
+	types2 "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var _ apiface.IMultiSig = &multiSig{}
@@ -40,7 +42,7 @@ func (a *multiSig) messageBuilder(ctx context.Context, from address.Address) (mu
 	if err != nil {
 		return nil, err
 	}
-	aver, err := specactors.VersionForNetwork(nver)
+	aver, err := actors.VersionForNetwork(nver)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +65,7 @@ func (a *multiSig) MsigCreate(ctx context.Context, req uint64, addrs []address.A
 	}
 
 	return &apitypes.MessagePrototype{
-		Message:    *msg,
+		Message:    types.UnsignedMessage(*msg),
 		ValidNonce: false,
 	}, nil
 }
@@ -81,7 +83,7 @@ func (a *multiSig) MsigPropose(ctx context.Context, msig address.Address, to add
 	}
 
 	return &apitypes.MessagePrototype{
-		Message:    *msg,
+		Message:    types.UnsignedMessage(*msg),
 		ValidNonce: false,
 	}, nil
 }
@@ -212,7 +214,7 @@ func (a *multiSig) MsigGetVested(ctx context.Context, addr address.Address, star
 		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor at end epoch: %w", err)
 	}
 
-	msas, err := multisig.Load(a.store.Store(ctx), act)
+	msas, err := multisig.Load(a.store.Store(ctx), (*types2.Actor)(act))
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state: %w", err)
 	}
@@ -244,7 +246,7 @@ func (a *multiSig) msigApproveOrCancelSimple(ctx context.Context, operation Msig
 		return nil, err
 	}
 
-	var msg *types.Message
+	var msg *types2.Message
 	switch operation {
 	case MsigApprove:
 		msg, err = mb.Approve(msig, txID, nil)
@@ -257,7 +259,7 @@ func (a *multiSig) msigApproveOrCancelSimple(ctx context.Context, operation Msig
 		return nil, err
 	}
 
-	return &apitypes.MessagePrototype{Message: *msg, ValidNonce: false}, nil
+	return &apitypes.MessagePrototype{Message: types.UnsignedMessage(*msg), ValidNonce: false}, nil
 }
 
 func (a *multiSig) msigApproveOrCancelTxnHash(ctx context.Context, operation MsigProposeResponse, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*apitypes.MessagePrototype, error) {
@@ -290,7 +292,7 @@ func (a *multiSig) msigApproveOrCancelTxnHash(ctx context.Context, operation Msi
 		return nil, err
 	}
 
-	var msg *types.Message
+	var msg *types2.Message
 	switch operation {
 	case MsigApprove:
 		msg, err = mb.Approve(msig, txID, &p)
@@ -304,13 +306,13 @@ func (a *multiSig) msigApproveOrCancelTxnHash(ctx context.Context, operation Msi
 	}
 
 	return &apitypes.MessagePrototype{
-		Message:    *msg,
+		Message:    types.UnsignedMessage(*msg),
 		ValidNonce: false,
 	}, nil
 }
 
 func serializeAddParams(new address.Address, inc bool) ([]byte, error) {
-	enc, actErr := specactors.SerializeParams(&multisig2.AddSignerParams{
+	enc, actErr := actors.SerializeParams(&multisig2.AddSignerParams{
 		Signer:   new,
 		Increase: inc,
 	})
@@ -322,7 +324,7 @@ func serializeAddParams(new address.Address, inc bool) ([]byte, error) {
 }
 
 func serializeSwapParams(old address.Address, new address.Address) ([]byte, error) {
-	enc, actErr := specactors.SerializeParams(&multisig2.SwapSignerParams{
+	enc, actErr := actors.SerializeParams(&multisig2.SwapSignerParams{
 		From: old,
 		To:   new,
 	})
@@ -334,7 +336,7 @@ func serializeSwapParams(old address.Address, new address.Address) ([]byte, erro
 }
 
 func serializeRemoveParams(rem address.Address, dec bool) ([]byte, error) {
-	enc, actErr := specactors.SerializeParams(&multisig2.RemoveSignerParams{
+	enc, actErr := actors.SerializeParams(&multisig2.RemoveSignerParams{
 		Signer:   rem,
 		Decrease: dec,
 	})

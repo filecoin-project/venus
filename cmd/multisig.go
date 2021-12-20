@@ -21,10 +21,11 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/multisig"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
+	types2 "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -177,7 +178,7 @@ var msigInspectCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		mstate, err := multisig.Load(store, act)
+		mstate, err := multisig.Load(store, (*types2.Actor)(act))
 		if err != nil {
 			return err
 		}
@@ -986,7 +987,7 @@ var msigLockProposeCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		params, actErr := specactors.SerializeParams(&msig2.LockBalanceParams{
+		params, actErr := actors.SerializeParams(&msig2.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
 			Amount:         big.Int(amount),
@@ -1077,7 +1078,7 @@ var msigLockApproveCmd = &cmds.Command{
 			return err
 		}
 
-		params, actErr := specactors.SerializeParams(&msig2.LockBalanceParams{
+		params, actErr := actors.SerializeParams(&msig2.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
 			Amount:         big.Int(amount),
@@ -1155,7 +1156,7 @@ var msigLockCancelCmd = &cmds.Command{
 			return err
 		}
 
-		params, actErr := specactors.SerializeParams(&msig2.LockBalanceParams{
+		params, actErr := actors.SerializeParams(&msig2.LockBalanceParams{
 			StartEpoch:     abi.ChainEpoch(start),
 			UnlockDuration: abi.ChainEpoch(duration),
 			Amount:         big.Int(amount),
@@ -1267,7 +1268,7 @@ var msigProposeThresholdCmd = &cmds.Command{
 			return err
 		}
 
-		params, actErr := specactors.SerializeParams(&msig2.ChangeNumApprovalsThresholdParams{
+		params, actErr := actors.SerializeParams(&msig2.ChangeNumApprovalsThresholdParams{
 			NewThreshold: newM,
 		})
 

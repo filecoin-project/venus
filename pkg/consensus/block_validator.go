@@ -5,10 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.opencensus.io/trace"
 	"os"
 	"strings"
 	"time"
+
+	"go.opencensus.io/trace"
 
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -30,12 +31,13 @@ import (
 	appstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
+	types2 "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/hashicorp/go-multierror"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
@@ -480,7 +482,7 @@ func (bv *BlockValidator) minerIsValid(ctx context.Context, maddr address.Addres
 		return xerrors.New("power actor not found")
 	}
 
-	ps, err := power.Load(adt.WrapStore(ctx, vms), pact)
+	ps, err := power.Load(adt.WrapStore(ctx, vms), (*types2.Actor)(pact))
 	if err != nil {
 		return err
 	}
@@ -605,7 +607,7 @@ func (bv *BlockValidator) MinerEligibleToMine(ctx context.Context, addr address.
 		return false, xerrors.New("power actor not found")
 	}
 
-	pstate, err := power.Load(adt.WrapStore(ctx, bv.cstore), pact)
+	pstate, err := power.Load(adt.WrapStore(ctx, bv.cstore), (*types2.Actor)(pact))
 	if err != nil {
 		return false, err
 	}
@@ -619,7 +621,7 @@ func (bv *BlockValidator) MinerEligibleToMine(ctx context.Context, addr address.
 		return false, xerrors.Errorf("miner actor %s not found", addr)
 	}
 
-	mstate, err := miner.Load(adt.WrapStore(ctx, vms), mact)
+	mstate, err := miner.Load(adt.WrapStore(ctx, vms), (*types2.Actor)(mact))
 	if err != nil {
 		return false, err
 	}
@@ -669,7 +671,7 @@ func (bv *BlockValidator) minerHasMinPower(ctx context.Context, addr address.Add
 		return false, xerrors.New("power actor not found")
 	}
 
-	ps, err := power.Load(adt.WrapStore(ctx, vms), pact)
+	ps, err := power.Load(adt.WrapStore(ctx, vms), (*types2.Actor)(pact))
 	if err != nil {
 		return false, err
 	}

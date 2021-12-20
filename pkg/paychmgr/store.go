@@ -18,7 +18,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 )
 
 var ErrChannelNotTracked = errors.New("channel not tracked")

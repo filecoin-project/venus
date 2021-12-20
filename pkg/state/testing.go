@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-address"
@@ -13,9 +14,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 )
 
 // FakeStateView is a fake state view.

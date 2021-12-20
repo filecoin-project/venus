@@ -1,11 +1,12 @@
 package chain
 
 import (
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"reflect"
 	"runtime"
 	"strings"
+
+	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/rt"
@@ -19,7 +20,7 @@ import (
 	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
 	exported6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/exported"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 )
 
 type MethodMeta struct {

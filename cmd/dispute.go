@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"strconv"
 	"time"
+
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
@@ -22,7 +24,6 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	chainpkg "github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
 )
 
 var disputeLog = logging.Logger("disputer")
@@ -85,7 +86,7 @@ var disputerMsgCmd = &cmds.Command{
 			return err
 		}
 
-		dpp, aerr := specactors.SerializeParams(&miner3.DisputeWindowedPoStParams{
+		dpp, aerr := actors.SerializeParams(&miner3.DisputeWindowedPoStParams{
 			Deadline:  deadline,
 			PoStIndex: postIndex,
 		})
@@ -352,7 +353,7 @@ func makeDisputeWindowedPosts(ctx context.Context, api apiface.ISyncer, dl miner
 
 	for i := uint64(0); i < postsSnapshotted; i++ {
 
-		dpp, aerr := specactors.SerializeParams(&miner3.DisputeWindowedPoStParams{
+		dpp, aerr := actors.SerializeParams(&miner3.DisputeWindowedPoStParams{
 			Deadline:  dl.index,
 			PoStIndex: i,
 		})

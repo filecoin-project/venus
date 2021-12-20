@@ -4,6 +4,9 @@ package client
 
 import (
 	"context"
+	"io"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -21,15 +24,13 @@ import (
 	"github.com/filecoin-project/venus/pkg/net"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/wallet"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-	"io"
-	"time"
 )
 
 type FullNodeStruct struct {

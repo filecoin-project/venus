@@ -2,9 +2,10 @@ package vmcontext
 
 import (
 	"context"
-	cbornode "github.com/ipfs/go-ipld-cbor"
 	goruntime "runtime"
 	"sync"
+
+	cbornode "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -15,8 +16,8 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 	vmState "github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 )
 
 type SyscallsStateView interface {

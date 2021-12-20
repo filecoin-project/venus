@@ -35,17 +35,18 @@ import (
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	_init "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/multisig"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/reward"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/verifreg"
-	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/util"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	_init "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
+	types2 "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 // HeadChangeTopic is the topic used to publish new heads.
@@ -1096,7 +1097,7 @@ func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEp
 			unCirc = big.Add(unCirc, actor.Balance)
 
 		case a == market.Address:
-			mst, err := market.Load(adtStore, actor)
+			mst, err := market.Load(adtStore, (*types2.Actor)(actor))
 			if err != nil {
 				return err
 			}
@@ -1113,7 +1114,7 @@ func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEp
 			circ = big.Add(circ, actor.Balance)
 
 		case builtin.IsStorageMinerActor(actor.Code):
-			mst, err := miner.Load(adtStore, actor)
+			mst, err := miner.Load(adtStore, (*types2.Actor)(actor))
 			if err != nil {
 				return err
 			}
@@ -1130,7 +1131,7 @@ func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEp
 			}
 
 		case builtin.IsMultisigActor(actor.Code):
-			mst, err := multisig.Load(adtStore, actor)
+			mst, err := multisig.Load(adtStore, (*types2.Actor)(actor))
 			if err != nil {
 				return err
 			}

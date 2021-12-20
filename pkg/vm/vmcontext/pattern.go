@@ -4,8 +4,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 )
 
 // IsAccountActor pattern checks if the caller is an account actor.
@@ -19,12 +19,12 @@ func (IsAccountActor) IsMatch(ctx runtime.PatternContext) bool {
 
 // IsAInitActor pattern checks if the caller is the init actor.
 // Dragons: delete after switching to new actors
-type IsAInitActor struct{}
+//type IsAInitActor struct{}
 
 // IsMatch returns "True" if the patterns matches
-func (IsAInitActor) IsMatch(ctx runtime.PatternContext) bool {
-	return builtin.IsInitActor(ctx.CallerCode())
-}
+//func (IsAInitActor) IsMatch(ctx runtime.PatternContext) bool {
+//	return builtin.IsInitActor(ctx.CallerCode())
+//}
 
 // Any patterns always passses.
 type Any struct{}

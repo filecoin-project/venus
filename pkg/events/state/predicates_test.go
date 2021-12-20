@@ -2,13 +2,15 @@ package state
 
 import (
 	"context"
+	"testing"
+
 	test "github.com/filecoin-project/venus/pkg/events/state/mock"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	"testing"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	types2 "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
@@ -205,7 +207,7 @@ func TestMarketPredicates(t *testing.T) {
 		marketState0 := test.CreateEmptyMarketState(t, store)
 		marketCid, err := store.Put(ctx, marketState0)
 		require.NoError(t, err)
-		marketState, err := market.Load(store, &types.Actor{
+		marketState, err := market.Load(store, &types2.Actor{
 			Code: builtin2.StorageMarketActorCodeID,
 			Head: marketCid,
 		})
@@ -318,7 +320,7 @@ func TestMarketPredicates(t *testing.T) {
 		marketState0 := test.CreateEmptyMarketState(t, store)
 		marketCid, err := store.Put(ctx, marketState0)
 		require.NoError(t, err)
-		marketState, err := market.Load(store, &types.Actor{
+		marketState, err := market.Load(store, &types2.Actor{
 			Code: builtin2.StorageMarketActorCodeID,
 			Head: marketCid,
 		})

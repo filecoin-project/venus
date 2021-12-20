@@ -1,14 +1,14 @@
+// FETCHED FROM LOTUS: builtin/verifreg/util.go
+
 package verifreg
 
 import (
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"golang.org/x/xerrors"
 )
 
 // taking this as a function instead of asking the caller to call it helps reduce some of the error

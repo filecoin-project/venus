@@ -6,15 +6,15 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 
 	"github.com/filecoin-project/venus/pkg/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 )
 
-func SetupStorageMarketActor(ctx context.Context, bs bstore.Blockstore, av specactors.Version) (*types.Actor, error) {
+func SetupStorageMarketActor(ctx context.Context, bs bstore.Blockstore, av actors.Version) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
 	mst, err := market.MakeState(adt.WrapStore(ctx, cbor.NewCborStore(bs)), av)
 	if err != nil {

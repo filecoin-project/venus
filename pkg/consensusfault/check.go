@@ -4,16 +4,18 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
+	types2 "github.com/filecoin-project/venus/venus-shared/chain"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/venus/pkg/config"
@@ -159,7 +161,7 @@ func verifyBlockSignature(ctx context.Context, blk types.BlockHeader, nv network
 		return errors.Wrapf(err, "failed to get miner actor")
 	}
 
-	mas, err := miner.Load(adt.WrapStore(ctx, gasIpld), act)
+	mas, err := miner.Load(adt.WrapStore(ctx, gasIpld), (*types2.Actor)(act))
 	if err != nil {
 		return xerrors.Errorf("failed to load state for miner %s", receiver)
 	}

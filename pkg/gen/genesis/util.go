@@ -10,12 +10,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/filecoin-project/venus/pkg/vm"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 )
 
 func mustEnc(i cbg.CBORMarshaler) []byte {
-	enc, err := specactors.SerializeParams(i)
+	enc, err := actors.SerializeParams(i)
 	if err != nil {
 		panic(err) // ok
 	}

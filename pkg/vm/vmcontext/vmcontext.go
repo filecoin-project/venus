@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
@@ -24,15 +24,16 @@ import (
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/cron"
-	initActor "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/reward"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/cron"
+	initActor "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
+	types2 "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 const MaxCallDepth = 4096
@@ -182,7 +183,7 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 	}
 
 	// get a view into the actor stateView
-	initActorState, err := initActor.Load(adt.WrapStore(vm.context, vm.store), initActorEntry)
+	initActorState, err := initActor.Load(adt.WrapStore(vm.context, vm.store), (*types2.Actor)(initActorEntry))
 	if err != nil {
 		panic(err)
 	}
