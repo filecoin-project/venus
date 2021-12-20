@@ -1,9 +1,11 @@
 package config
 
 import (
-	"github.com/filecoin-project/venus/app/client/apiface"
-	repo2 "github.com/filecoin-project/venus/pkg/repo"
 	"sync"
+
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface/v0api"
+	repo2 "github.com/filecoin-project/venus/pkg/repo"
 )
 
 // configModule is plumbing implementation for setting and retrieving values from local config.
@@ -40,6 +42,6 @@ func (s *ConfigModule) API() apiface.IConfig {
 	return &configAPI{config: s}
 }
 
-func (s *ConfigModule) V0API() apiface.IConfig {
+func (s *ConfigModule) V0API() v0api.IConfig {
 	return &configAPI{config: s}
 }

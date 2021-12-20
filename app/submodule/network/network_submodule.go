@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -50,7 +49,9 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/app/submodule/network/v0api"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface/v0api"
+	v0apiwrapper "github.com/filecoin-project/venus/app/submodule/network/v0api"
 )
 
 var networkLogger = logging.Logger("network_module")
@@ -85,8 +86,8 @@ func (networkSubmodule *NetworkSubmodule) API() apiface.INetwork {
 	return &networkAPI{network: networkSubmodule}
 }
 
-func (networkSubmodule *NetworkSubmodule) V0API() apiface.INetwork {
-	return &v0api.WrapperV1INetwork{INetwork: &networkAPI{network: networkSubmodule}}
+func (networkSubmodule *NetworkSubmodule) V0API() v0api.INetwork {
+	return &v0apiwrapper.WrapperV1INetwork{INetwork: &networkAPI{network: networkSubmodule}}
 }
 
 func (networkSubmodule *NetworkSubmodule) Stop(ctx context.Context) {

@@ -2,7 +2,9 @@ package dagservice
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface/v0api"
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/util/dag"
@@ -38,6 +40,6 @@ func (blockService *DagServiceSubmodule) API() apiface.IDagService {
 	return &dagServiceAPI{dagService: blockService}
 }
 
-func (blockService *DagServiceSubmodule) V0API() apiface.IDagService {
+func (blockService *DagServiceSubmodule) V0API() v0api.IDagService {
 	return &dagServiceAPI{dagService: blockService}
 }

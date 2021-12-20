@@ -8,6 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 
+	"github.com/filecoin-project/venus/venus-shared/api/chain"
 	"github.com/filecoin-project/venus/venus-shared/libp2p/net"
 )
 
@@ -29,7 +30,7 @@ type INetwork interface {
 	// Rule[perm:read]
 	NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*net.SwarmConnInfos, error)
 	// Rule[perm:read]
-	Version(context.Context) (Version, error)
+	Version(context.Context) (chain.Version, error)
 	// Rule[perm:read]
 	NetAddrsListen(context.Context) (peer.AddrInfo, error)
 }
