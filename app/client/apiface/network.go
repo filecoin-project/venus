@@ -19,15 +19,15 @@ type INetwork interface {
 	NetworkGetPeerAddresses(ctx context.Context) []ma.Multiaddr
 	// Rule[perm:admin]
 	NetworkGetPeerID(ctx context.Context) peer.ID
-	// Rule[perm:admin]
+	// Rule[perm:read]
 	NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan peer.AddrInfo
-	// Rule[perm:admin]
+	// Rule[perm:read]
 	NetworkGetClosestPeers(ctx context.Context, key string) (<-chan peer.ID, error)
-	// Rule[perm:admin]
+	// Rule[perm:read]
 	NetworkFindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error)
-	// Rule[perm:admin]
+	// Rule[perm:read]
 	NetworkConnect(ctx context.Context, addrs []string) (<-chan net.ConnectionResult, error)
-	// Rule[perm:admin]
+	// Rule[perm:read]
 	NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*net.SwarmConnInfos, error)
 	// Rule[perm:read]
 	Version(context.Context) (apitypes.Version, error)

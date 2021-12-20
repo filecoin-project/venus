@@ -723,14 +723,14 @@ func (s *IMultiSigStruct) MsigSwapPropose(p0 context.Context, p1 address.Address
 type INetworkStruct struct {
 	Internal struct {
 		NetAddrsListen            func(p0 context.Context) (peer.AddrInfo, error)                                  `perm:"read"`
-		NetworkConnect            func(p0 context.Context, p1 []string) (<-chan net.ConnectionResult, error)       `perm:"admin"`
-		NetworkFindPeer           func(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error)                      `perm:"admin"`
-		NetworkFindProvidersAsync func(p0 context.Context, p1 cid.Cid, p2 int) <-chan peer.AddrInfo                `perm:"admin"`
+		NetworkConnect            func(p0 context.Context, p1 []string) (<-chan net.ConnectionResult, error)       `perm:"read"`
+		NetworkFindPeer           func(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error)                      `perm:"read"`
+		NetworkFindProvidersAsync func(p0 context.Context, p1 cid.Cid, p2 int) <-chan peer.AddrInfo                `perm:"read"`
 		NetworkGetBandwidthStats  func(p0 context.Context) metrics.Stats                                           `perm:"admin"`
 		NetworkGetClosestPeers    func(p0 context.Context, p1 string) (<-chan peer.ID, error)                      `perm:"admin"`
 		NetworkGetPeerAddresses   func(p0 context.Context) []ma.Multiaddr                                          `perm:"admin"`
 		NetworkGetPeerID          func(p0 context.Context) peer.ID                                                 `perm:"admin"`
-		NetworkPeers              func(p0 context.Context, p1 bool, p2 bool, p3 bool) (*net.SwarmConnInfos, error) `perm:"admin"`
+		NetworkPeers              func(p0 context.Context, p1 bool, p2 bool, p3 bool) (*net.SwarmConnInfos, error) `perm:"read"`
 		Version                   func(p0 context.Context) (apitypes.Version, error)                               `perm:"read"`
 	}
 }
