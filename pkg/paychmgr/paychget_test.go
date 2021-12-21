@@ -2,10 +2,11 @@ package paychmgr
 
 import (
 	"context"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"sync"
 	"testing"
 	"time"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-cid"
@@ -23,9 +24,9 @@ import (
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	"github.com/filecoin-project/venus/pkg/types"
-	lotusinit "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
-	paychmock "github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych/mock"
+	lotusinit "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	paychmock "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych/mock"
 )
 
 func testChannelResponse(t *testing.T, ch address.Address) types.MessageReceipt {

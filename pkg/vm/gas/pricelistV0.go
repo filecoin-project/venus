@@ -10,7 +10,7 @@ import (
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 )
 
 type scalingCost struct {

@@ -23,27 +23,26 @@ import (
 
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/multisig"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/account"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/verifreg"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/cron"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/cron"
+	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 
-	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/reward"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/system"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/system"
-
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -155,7 +154,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 		return nil, nil, xerrors.Errorf("making new state tree: %w", err)
 	}
 
-	av, err := specactors.VersionForNetwork(template.NetworkVersion)
+	av, err := actors.VersionForNetwork(template.NetworkVersion)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("get actor version: %w", err)
 	}
@@ -369,7 +368,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 	return state, keyIDs, nil
 }
 
-func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av specactors.Version, addr address.Address, bal types.BigInt) (*types.Actor, error) {
+func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av actors.Version, addr address.Address, bal types.BigInt) (*types.Actor, error) {
 	ast, err := account.MakeState(adt.WrapStore(ctx, cst), av, addr)
 	if err != nil {
 		return nil, err
@@ -394,7 +393,7 @@ func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av specactors.Ver
 	return act, nil
 }
 
-func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *tree.State, info Actor, keyIDs map[address.Address]address.Address, av specactors.Version) error {
+func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *tree.State, info Actor, keyIDs map[address.Address]address.Address, av actors.Version) error {
 	var ainfo AccountMeta
 	if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
 		return xerrors.Errorf("unmarshaling account meta: %w", err)
@@ -417,7 +416,7 @@ func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *tree.Sta
 	return nil
 }
 
-func createMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *tree.State, ida address.Address, info Actor, keyIDs map[address.Address]address.Address, av specactors.Version) error {
+func createMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *tree.State, ida address.Address, info Actor, keyIDs map[address.Address]address.Address, av actors.Version) error {
 	if info.Type != TMultisig {
 		return fmt.Errorf("can only call createMultisigAccount with multisig Actor info")
 	}

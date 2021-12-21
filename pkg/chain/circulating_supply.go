@@ -2,8 +2,9 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"sync"
+
+	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -16,12 +17,13 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/reward"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 type ICirculatingSupplyCalcualtor interface {
@@ -369,7 +371,7 @@ func GetFilMined(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 		return big.Zero(), xerrors.Errorf("failed to load reward actor state: %v", err)
 	}
 
-	rst, err := reward.Load(adt.WrapStore(ctx, st.GetStore()), ractor)
+	rst, err := reward.Load(adt.WrapStore(ctx, st.GetStore()), (*types.Actor)(ractor))
 	if err != nil {
 		return big.Zero(), err
 	}
@@ -409,7 +411,7 @@ func getFilMarketLocked(ctx context.Context, st tree.Tree) (abi.TokenAmount, err
 		return big.Zero(), xerrors.Errorf("failed to load market actor: %v", err)
 	}
 
-	mst, err := market.Load(adt.WrapStore(ctx, st.GetStore()), act)
+	mst, err := market.Load(adt.WrapStore(ctx, st.GetStore()), (*types.Actor)(act))
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load market state: %v", err)
 	}
@@ -423,7 +425,7 @@ func getFilPowerLocked(ctx context.Context, st tree.Tree) (abi.TokenAmount, erro
 		return big.Zero(), xerrors.Errorf("failed to load power actor: %v", err)
 	}
 
-	pst, err := power.Load(adt.WrapStore(ctx, st.GetStore()), pactor)
+	pst, err := power.Load(adt.WrapStore(ctx, st.GetStore()), (*types.Actor)(pactor))
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load power state: %v", err)
 	}

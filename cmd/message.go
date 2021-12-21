@@ -20,8 +20,8 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/vm"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 )
 
 // MessageSendResult is the return type for message send command

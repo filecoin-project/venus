@@ -7,8 +7,8 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors"
 	vmr "github.com/filecoin-project/venus/pkg/vm/runtime"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 )
 
 // CodeLoader allows you to load an actor's code based on its id an epoch.
@@ -87,9 +87,9 @@ func (b *CodeLoaderBuilder) Build() CodeLoader {
 type ActorPredicate func(vmr.Runtime, rtt.VMActor) error
 
 //ActorsVersionPredicate  get actor predicate base on actor version and network version
-func ActorsVersionPredicate(ver specactors.Version) ActorPredicate {
+func ActorsVersionPredicate(ver actors.Version) ActorPredicate {
 	return func(rt vmr.Runtime, v rtt.VMActor) error {
-		nver, err := specactors.VersionForNetwork(rt.NtwkVersion())
+		nver, err := actors.VersionForNetwork(rt.NtwkVersion())
 		if err != nil {
 			return xerrors.Errorf("version for network %w", err)
 		}

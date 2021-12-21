@@ -4,6 +4,8 @@ import (
 	"context"
 	"strconv"
 
+	types2 "github.com/filecoin-project/venus/venus-shared/chain"
+
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
@@ -16,17 +18,17 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/account"
-	notinit "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
-	paychActor "github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/reward"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/verifreg"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
+	notinit "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	paychActor "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 )
 
 // Viewer builds state views from state root CIDs.
@@ -384,7 +386,7 @@ func (v *View) StateVerifiedClientStatus(ctx context.Context, addr addr.Address)
 		return abi.NewStoragePower(0), err
 	}
 
-	state, err := verifreg.Load(adt.WrapStore(ctx, v.ipldStore), act)
+	state, err := verifreg.Load(adt.WrapStore(ctx, v.ipldStore), (*types2.Actor)(act))
 	if err != nil {
 		return abi.NewStoragePower(0), err
 	}
@@ -503,7 +505,7 @@ func (v *View) PaychActorParties(ctx context.Context, paychAddr addr.Address) (f
 		return addr.Undef, addr.Undef, err
 	}
 
-	state, err := paychActor.Load(adt.WrapStore(ctx, v.ipldStore), a)
+	state, err := paychActor.Load(adt.WrapStore(ctx, v.ipldStore), (*types2.Actor)(a))
 	if err != nil {
 		return addr.Undef, addr.Undef, err
 	}
@@ -581,7 +583,7 @@ func (v *View) StateMinerAvailableBalance(ctx context.Context, maddr addr.Addres
 		return big.Int{}, err
 	}
 
-	mas, err := miner.Load(adt.WrapStore(context.TODO(), v.ipldStore), actor)
+	mas, err := miner.Load(adt.WrapStore(context.TODO(), v.ipldStore), (*types2.Actor)(actor))
 	if err != nil {
 		return big.Int{}, xerrors.Errorf("failed to load miner actor state: %v", err)
 	}
@@ -728,7 +730,7 @@ func (v *View) ResolveToKeyAddr(ctx context.Context, address addr.Address) (addr
 		return addr.Undef, xerrors.Errorf("failed to find actor: %s", address)
 	}
 
-	aast, err := account.Load(adt.WrapStore(context.TODO(), v.ipldStore), act)
+	aast, err := account.Load(adt.WrapStore(context.TODO(), v.ipldStore), (*types2.Actor)(act))
 	if err != nil {
 		return addr.Undef, xerrors.Errorf("failed to get account actor state for %s: %v", address, err)
 	}
@@ -742,12 +744,12 @@ func (v *View) LoadInitState(ctx context.Context) (notinit.State, error) {
 		return nil, err
 	}
 
-	return notinit.Load(adt.WrapStore(ctx, v.ipldStore), actr)
+	return notinit.Load(adt.WrapStore(ctx, v.ipldStore), (*types2.Actor)(actr))
 }
 
 //LoadPaychState get pay channel state for actor
 func (v *View) LoadPaychState(ctx context.Context, actor *types.Actor) (paychActor.State, error) {
-	return paychActor.Load(adt.WrapStore(context.TODO(), v.ipldStore), actor)
+	return paychActor.Load(adt.WrapStore(context.TODO(), v.ipldStore), (*types2.Actor)(actor))
 }
 
 //LoadMinerState return miner state
@@ -761,7 +763,7 @@ func (v *View) LoadMinerState(ctx context.Context, maddr addr.Address) (miner.St
 		return nil, err
 	}
 
-	return miner.Load(adt.WrapStore(context.TODO(), v.ipldStore), actr)
+	return miner.Load(adt.WrapStore(context.TODO(), v.ipldStore), (*types2.Actor)(actr))
 }
 
 func (v *View) LoadPowerActor(ctx context.Context) (power.State, error) {
@@ -770,7 +772,7 @@ func (v *View) LoadPowerActor(ctx context.Context) (power.State, error) {
 		return nil, err
 	}
 
-	return power.Load(adt.WrapStore(ctx, v.ipldStore), actr)
+	return power.Load(adt.WrapStore(ctx, v.ipldStore), (*types2.Actor)(actr))
 }
 
 func (v *View) LoadVerifregActor(ctx context.Context) (verifreg.State, error) {
@@ -779,7 +781,7 @@ func (v *View) LoadVerifregActor(ctx context.Context) (verifreg.State, error) {
 		return nil, err
 	}
 
-	return verifreg.Load(adt.WrapStore(ctx, v.ipldStore), actr)
+	return verifreg.Load(adt.WrapStore(ctx, v.ipldStore), (*types2.Actor)(actr))
 }
 
 // nolint
@@ -789,7 +791,7 @@ func (v *View) LoadRewardState(ctx context.Context) (reward.State, error) {
 		return nil, err
 	}
 
-	return reward.Load(adt.WrapStore(ctx, v.ipldStore), actr)
+	return reward.Load(adt.WrapStore(ctx, v.ipldStore), (*types2.Actor)(actr))
 }
 
 // nolint
@@ -799,7 +801,7 @@ func (v *View) LoadPowerState(ctx context.Context) (power.State, error) {
 		return nil, err
 	}
 
-	return power.Load(adt.WrapStore(ctx, v.ipldStore), actr)
+	return power.Load(adt.WrapStore(ctx, v.ipldStore), (*types2.Actor)(actr))
 }
 
 func (v *View) LoadMarketState(ctx context.Context) (market.State, error) {
@@ -808,7 +810,7 @@ func (v *View) LoadMarketState(ctx context.Context) (market.State, error) {
 		return nil, err
 	}
 
-	return market.Load(adt.WrapStore(ctx, v.ipldStore), actr)
+	return market.Load(adt.WrapStore(ctx, v.ipldStore), (*types2.Actor)(actr))
 }
 
 // nolint
@@ -822,7 +824,7 @@ func (v *View) LoadAccountState(ctx context.Context, a addr.Address) (account.St
 		return nil, err
 	}
 
-	return account.Load(adt.WrapStore(context.TODO(), v.ipldStore), actr)
+	return account.Load(adt.WrapStore(context.TODO(), v.ipldStore), (*types2.Actor)(actr))
 }
 
 //loadActor load actor of address in db
@@ -848,7 +850,7 @@ func getFilMarketLocked(ctx context.Context, ipldStore cbor.IpldStore, st vmstat
 		return big.Zero(), xerrors.Errorf("failed to load market actor: %v", err)
 	}
 
-	mst, err := market.Load(adt.WrapStore(ctx, ipldStore), mactor)
+	mst, err := market.Load(adt.WrapStore(ctx, ipldStore), (*types2.Actor)(mactor))
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load market state: %v", err)
 	}

@@ -129,6 +129,7 @@ var sourcesCmd = &cli.Command{
 	},
 }
 
+// todo: move to the appropriate
 var replicaCmd = &cli.Command{
 	Name: "replica",
 	Flags: []cli.Flag{
@@ -153,9 +154,9 @@ var replicaCmd = &cli.Command{
 				return true
 			}
 
-			// diff.go diff_deadlines.go version.go params.go
+			// diff.go diff_deadlines.go version.go params.go utils.go util.go
 			if !strings.Contains(path, "diff") && !strings.HasSuffix(path, "version.go") &&
-				!strings.HasSuffix(path, "params.go") {
+				!strings.HasSuffix(path, "params.go") && !strings.Contains(path, "util") {
 				return true
 			}
 

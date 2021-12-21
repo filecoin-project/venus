@@ -1,14 +1,15 @@
 package cmd
 
 import (
+	"testing"
+
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	tutil "github.com/filecoin-project/specs-actors/support/testing"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestEncodedString(t *testing.T) {

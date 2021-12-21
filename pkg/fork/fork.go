@@ -5,11 +5,12 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"golang.org/x/xerrors"
 	"runtime"
 	"sort"
 	"sync"
 	"time"
+
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -44,11 +45,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/multisig"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
+	types2 "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var log = logging.Logger("fork")
@@ -911,7 +913,7 @@ func setNetworkName(ctx context.Context, store adt.Store, tree *vmstate.State, n
 		return xerrors.New("did not find init actor")
 	}
 
-	initState, err := init_.Load(store, ia)
+	initState, err := init_.Load(store, (*types2.Actor)(ia))
 	if err != nil {
 		return xerrors.Errorf("reading init state: %v", err)
 	}
@@ -1022,7 +1024,7 @@ func splitGenesisMultisig0(ctx context.Context, addr address.Address, store adt0
 		return xerrors.Errorf("did not find actor: %s", addr.String())
 	}
 
-	mst, err := multisig.Load(store, mact)
+	mst, err := multisig.Load(store, (*types2.Actor)(mact))
 	if err != nil {
 		return xerrors.Errorf("getting msig state: %v", err)
 	}
@@ -1498,7 +1500,7 @@ func terminateActor(ctx context.Context, tree *vmstate.State, addr address.Addre
 		return types.ErrActorNotFound
 	}
 
-	ias, err := init_.Load(&vmstate.AdtStore{IpldStore: tree.Store}, ia)
+	ias, err := init_.Load(&vmstate.AdtStore{IpldStore: tree.Store}, (*types2.Actor)(ia))
 	if err != nil {
 		return xerrors.Errorf("loading init actor state: %v", err)
 	}

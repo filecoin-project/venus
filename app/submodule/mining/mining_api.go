@@ -3,9 +3,10 @@ package mining
 import (
 	"bytes"
 	"context"
+	"os"
+
 	"github.com/filecoin-project/venus/app/client/apiface"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"os"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -22,8 +23,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/wallet"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	types2 "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var _ apiface.IMining = &MiningAPI{}
@@ -82,7 +84,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor: %v", err)
 	}
-	mas, err := miner.Load(chainStore.Store(ctx), act)
+	mas, err := miner.Load(chainStore.Store(ctx), (*types2.Actor)(act))
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor state: %v", err)
 	}

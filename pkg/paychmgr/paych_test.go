@@ -3,10 +3,11 @@ package paychmgr
 import (
 	"bytes"
 	"context"
+	"testing"
+
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/vm"
-	"testing"
 
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -24,8 +25,8 @@ import (
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
-	paychmock "github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych/mock"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	paychmock "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych/mock"
 )
 
 func TestCheckVoucherValid(t *testing.T) {

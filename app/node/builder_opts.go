@@ -1,16 +1,17 @@
 package node
 
 import (
+	"time"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/journal"
-	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	"github.com/libp2p/go-libp2p"
-	"time"
 )
 
 // BuilderOpt is an option for building a filecoin node.
