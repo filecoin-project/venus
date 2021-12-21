@@ -3,13 +3,14 @@ package paychmgr
 import (
 	"context"
 	"errors"
+	"sync"
+
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/vm"
-	"sync"
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 
 	"github.com/ipfs/go-cid"
 
@@ -18,7 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 )
 
 type mockManagerAPI struct {

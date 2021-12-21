@@ -3,6 +3,7 @@ package paychmgr
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
 
@@ -13,8 +14,8 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 )
 
 // insufficientFundsErr indicates that there are not enough funds in the
@@ -87,7 +88,7 @@ func (ca *channelAccessor) messageBuilder(ctx context.Context, from address.Addr
 		return nil, err
 	}
 
-	ver, err := specactors.VersionForNetwork(nwVersion)
+	ver, err := actors.VersionForNetwork(nwVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -320,7 +321,7 @@ func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address
 		return false, err
 	}
 
-	ret, err := ca.api.Call(ctx, mes, nil)
+	ret, err := ca.api.Call(ctx, (*types.UnsignedMessage)(mes), nil)
 	if err != nil {
 		return false, err
 	}
@@ -437,7 +438,7 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 		return cid.Undef, err
 	}
 
-	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
+	smsg, err := ca.api.MpoolPushMessage(ctx, (*types.UnsignedMessage)(msg), nil)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -593,7 +594,7 @@ func (ca *channelAccessor) settle(ctx context.Context, ch address.Address) (cid.
 	if err != nil {
 		return cid.Undef, err
 	}
-	smgs, err := ca.api.MpoolPushMessage(ctx, msg, nil)
+	smgs, err := ca.api.MpoolPushMessage(ctx, (*types.UnsignedMessage)(msg), nil)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -625,7 +626,7 @@ func (ca *channelAccessor) collect(ctx context.Context, ch address.Address) (cid
 		return cid.Undef, err
 	}
 
-	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
+	smsg, err := ca.api.MpoolPushMessage(ctx, (*types.UnsignedMessage)(msg), nil)
 	if err != nil {
 		return cid.Undef, err
 	}

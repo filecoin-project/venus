@@ -23,9 +23,10 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/cmd/tablewriter"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	types2 "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var minerActorCmd = &cmds.Command{
@@ -85,7 +86,7 @@ var actorSetAddrsCmd = &cmds.Command{
 			return err
 		}
 
-		params, err := specactors.SerializeParams(&miner2.ChangeMultiaddrsParams{NewMultiaddrs: addrs})
+		params, err := actors.SerializeParams(&miner2.ChangeMultiaddrsParams{NewMultiaddrs: addrs})
 		if err != nil {
 			return err
 		}
@@ -137,7 +138,7 @@ var actorSetPeeridCmd = &cmds.Command{
 			return err
 		}
 
-		params, err := specactors.SerializeParams(&miner2.ChangePeerIDParams{NewID: abi.PeerID(pid)})
+		params, err := actors.SerializeParams(&miner2.ChangePeerIDParams{NewID: abi.PeerID(pid)})
 		if err != nil {
 			return err
 		}
@@ -200,7 +201,7 @@ var actorWithdrawCmd = &cmds.Command{
 			return xerrors.Errorf("can't withdraw more funds than available; requested: %s; available: %s", amount, available)
 		}
 
-		params, err := specactors.SerializeParams(&miner2.WithdrawBalanceParams{
+		params, err := actors.SerializeParams(&miner2.WithdrawBalanceParams{
 			AmountRequested: amount, // Default to attempting to withdraw all the extra funds in the miner actor
 		})
 		if err != nil {
@@ -294,7 +295,7 @@ var actorRepayDebtCmd = &cmds.Command{
 
 			store := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
 
-			mst, err := miner.Load(store, mact)
+			mst, err := miner.Load(store, (*types2.Actor)(mact))
 			if err != nil {
 				return err
 			}
@@ -381,7 +382,7 @@ var actorSetOwnerCmd = &cmds.Command{
 			return err
 		}
 
-		sp, err := specactors.SerializeParams(&newAddr)
+		sp, err := actors.SerializeParams(&newAddr)
 		if err != nil {
 			return xerrors.Errorf("serializing params: %w", err)
 		}
@@ -628,7 +629,7 @@ var actorControlSet = &cmds.Command{
 			NewControlAddrs: toSet,
 		}
 
-		sp, err := specactors.SerializeParams(cwp)
+		sp, err := actors.SerializeParams(cwp)
 		if err != nil {
 			return xerrors.Errorf("serializing params: %w", err)
 		}
@@ -705,7 +706,7 @@ var actorProposeChangeWorker = &cmds.Command{
 			NewControlAddrs: mi.ControlAddresses,
 		}
 
-		sp, err := specactors.SerializeParams(cwp)
+		sp, err := actors.SerializeParams(cwp)
 		if err != nil {
 			return xerrors.Errorf("serializing params: %w", err)
 		}

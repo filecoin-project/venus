@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	types2 "github.com/filecoin-project/venus/venus-shared/chain"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -17,15 +19,15 @@ import (
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/aerrors"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/account"
-	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/aerrors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
+	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 )
 
 var gasOnActorExec = gas.NewGasCharge("OnActorExec", 0, 0)
@@ -303,7 +305,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 	}
 
 	// get init State
-	state, err := init_.Load(ctx.vm.ContextStore(), initActorEntry)
+	state, err := init_.Load(ctx.vm.ContextStore(), (*types2.Actor)(initActorEntry))
 	if err != nil {
 		panic(err)
 	}
@@ -331,7 +333,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 			// Don't implicitly create an account actor for an address without an associated key.
 			runtime.Abort(exitcode.SysErrInvalidReceiver)
 		}
-		ver, err := specactors.VersionForNetwork(ctx.vm.NtwkVersion())
+		ver, err := actors.VersionForNetwork(ctx.vm.NtwkVersion())
 		if err != nil {
 			panic(err)
 		}
@@ -400,7 +402,7 @@ func (ctx *invocationContext) resolveToKeyAddr(addr address.Address) (address.Ad
 		return address.Undef, xerrors.Errorf("failed to find actor: %s", addr)
 	}
 
-	aast, err := account.Load(adt.WrapStore(ctx.vm.context, ctx.vm.store), act)
+	aast, err := account.Load(adt.WrapStore(ctx.vm.context, ctx.vm.store), (*types2.Actor)(act))
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to get account actor State for %s: %v", addr, err)
 	}

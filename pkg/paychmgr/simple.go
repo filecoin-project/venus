@@ -386,7 +386,7 @@ func (ca *channelAccessor) createPaych(ctx context.Context, amt big.Int) (cid.Ci
 		return cid.Undef, err
 	}
 
-	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
+	smsg, err := ca.api.MpoolPushMessage(ctx, (*types.UnsignedMessage)(msg), nil)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("initializing paych actor: %w", err)
 	}

@@ -19,13 +19,14 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
-	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/wallet"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
+	types2 "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var minerCmdLog = logging.Logger("miner.cmd")
@@ -133,7 +134,7 @@ var newMinerCmd = &cmds.Command{
 			return xerrors.Errorf("getting seal proof type: %v", err)
 		}
 
-		params, err := specactors.SerializeParams(&power2.CreateMinerParams{
+		params, err := actors.SerializeParams(&power2.CreateMinerParams{
 			Owner:         owner,
 			Worker:        worker,
 			SealProofType: spt,
@@ -250,7 +251,7 @@ var minerInfoCmd = &cmds.Command{
 		}
 
 		tbs := blockstoreutil.NewTieredBstore(chain.NewAPIBlockstore(blockstoreAPI), blockstoreutil.NewTemporary())
-		mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
+		mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), (*types2.Actor)(mact))
 		if err != nil {
 			return err
 		}

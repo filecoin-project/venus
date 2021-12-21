@@ -2,9 +2,10 @@ package syncer_test
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/statemanger"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/statemanger"
 
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
@@ -18,8 +19,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/fork"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/util/test"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"

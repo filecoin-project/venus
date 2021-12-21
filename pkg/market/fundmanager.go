@@ -3,15 +3,16 @@ package market
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"sync"
+
+	"github.com/filecoin-project/venus/app/client/apiface"
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -661,7 +662,7 @@ func (env *fundManagerEnvironment) AddFunds(
 	addr address.Address,
 	amt abi.TokenAmount,
 ) (cid.Cid, error) {
-	params, err := specactors.SerializeParams(&addr)
+	params, err := actors.SerializeParams(&addr)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -686,7 +687,7 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 	addr address.Address,
 	amt abi.TokenAmount,
 ) (cid.Cid, error) {
-	params, err := specactors.SerializeParams(&market.WithdrawBalanceParams{
+	params, err := actors.SerializeParams(&market.WithdrawBalanceParams{
 		ProviderOrClientAddress: addr,
 		Amount:                  amt,
 	})

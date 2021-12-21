@@ -3,12 +3,13 @@ package syncer
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/consensus"
-	"github.com/filecoin-project/venus/pkg/statemanger"
-	"github.com/hashicorp/go-multierror"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/consensus"
+	"github.com/filecoin-project/venus/pkg/statemanger"
+	"github.com/hashicorp/go-multierror"
 
 	"golang.org/x/sync/errgroup"
 
@@ -24,8 +25,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log/v2"

@@ -6,7 +6,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 )
