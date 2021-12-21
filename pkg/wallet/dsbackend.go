@@ -120,6 +120,9 @@ func (backend *DSBackend) HasAddress(addr address.Address) bool {
 // NewAddress creates a new address and stores it.
 // Safe for concurrent access.
 func (backend *DSBackend) NewAddress(protocol address.Protocol) (address.Address, error) {
+	backend.lk.Lock()
+	defer backend.lk.Unlock()
+
 	switch protocol {
 	case address.BLS:
 		return backend.newBLSAddress()
@@ -165,9 +168,6 @@ func (backend *DSBackend) putKeyInfo(ki *crypto.KeyInfo) error {
 		Address: addr,
 		KeyInfo: ki,
 	}
-
-	backend.lk.Lock()
-	defer backend.lk.Unlock()
 
 	var keyJSON []byte
 	err = backend.UsePassword(func(password []byte) error {
