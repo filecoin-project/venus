@@ -126,22 +126,20 @@ func TestDSBackendParallel(t *testing.T) {
 	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
-	for i := 0; i < 10; i++ {
-		var wg sync.WaitGroup
-		count := 100
-		wg.Add(count)
-		for i := 0; i < count; i++ {
-			go func() {
-				_, err := fs.NewAddress(address.SECP256K1)
-				assert.NoError(t, err)
-				wg.Done()
-			}()
-		}
-
-		wg.Wait()
+	var wg sync.WaitGroup
+	count := 100
+	wg.Add(count)
+	for i := 0; i < count; i++ {
+		go func() {
+			_, err := fs.NewAddress(address.SECP256K1)
+			assert.NoError(t, err)
+			wg.Done()
+		}()
 	}
 
-	assert.Len(t, fs.Addresses(), 10*100)
+	wg.Wait()
+
+	assert.Len(t, fs.Addresses(), count)
 }
 
 func BenchmarkDSBackendSimple(b *testing.B) {
