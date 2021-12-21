@@ -166,6 +166,9 @@ func (backend *DSBackend) putKeyInfo(ki *crypto.KeyInfo) error {
 		KeyInfo: ki,
 	}
 
+	backend.lk.Lock()
+	defer backend.lk.Unlock()
+
 	var keyJSON []byte
 	err = backend.UsePassword(func(password []byte) error {
 		var err error
@@ -176,14 +179,11 @@ func (backend *DSBackend) putKeyInfo(ki *crypto.KeyInfo) error {
 		return err
 	}
 
-	backend.lk.Lock()
 	if err := backend.ds.Put(ds.NewKey(key.Address.String()), keyJSON); err != nil {
 		return errors.Wrapf(err, "failed to store new address: %s", key.Address.String())
 	}
 	backend.cache[addr] = struct{}{}
 	backend.unLocked[addr] = ki
-	backend.lk.Unlock()
-
 	return nil
 }
 
