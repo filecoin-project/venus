@@ -4,7 +4,6 @@ import (
 	"context"
 	"contrib.go.opencensus.io/exporter/jaeger"
 	"fmt"
-	"github.com/awnumar/memguard"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
@@ -309,7 +308,7 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 	}
 
 	defer func() {
-		memguard.SafeExit(0)
+		//	memguard.SafeExit(0)
 	}()
 
 	close(ready)
