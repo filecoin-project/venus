@@ -150,12 +150,7 @@ func (w *Waiter) findMessage(ctx context.Context, from *types.TipSet, m types.Ch
 			return nil, false, xerrors.Errorf("failed to load tipset during msg wait searchback: %w", err)
 		}
 
-		grandParent, err := w.chainReader.GetTipSet(pts.Parents())
-		if err != nil {
-			return nil, false, xerrors.Errorf("failed to load tipset during msg wait searchback: %w", err)
-		}
-
-		act, err := w.Stmgr.GetActorAt(ctx, m.VMMessage().From, grandParent)
+		act, err := w.Stmgr.GetActorAt(ctx, m.VMMessage().From, pts)
 		actorNoExist := errors.Is(err, types.ErrActorNotFound)
 		if err != nil && !actorNoExist {
 			return nil, false, xerrors.Errorf("failed to load the actor: %w", err)
