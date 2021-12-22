@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
-	types2 "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -50,12 +49,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/consensusfault"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 func MinerAddress(genesisIndex uint64) address.Address {
@@ -179,7 +178,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 				return cid.Undef, xerrors.New("actor not found")
 			}
 
-			mst, err := miner.Load(adt.WrapStore(ctx, cst), (*types2.Actor)(mact))
+			mst, err := miner.Load(adt.WrapStore(ctx, cst), mact)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("getting newly created miner state: %w", err)
 			}
@@ -287,7 +286,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 			return cid.Undef, xerrors.New("power actor not exist")
 		}
 
-		pst, err := power.Load(adt.WrapStore(ctx, cst), (*types2.Actor)(pact))
+		pst, err := power.Load(adt.WrapStore(ctx, cst), pact)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("getting power state: %w", err)
 		}
@@ -370,7 +369,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 					return cid.Undef, xerrors.New("power actor not exist")
 				}
 
-				pst, err := power.Load(adt.WrapStore(ctx, cst), (*types2.Actor)(pact))
+				pst, err := power.Load(adt.WrapStore(ctx, cst), pact)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("getting power state: %w", err)
 				}
@@ -477,7 +476,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 						return cid.Undef, xerrors.New("actor not found")
 					}
 
-					mst, err := miner.Load(adt.WrapStore(ctx, cst), (*types2.Actor)(mact))
+					mst, err := miner.Load(adt.WrapStore(ctx, cst), mact)
 					if err != nil {
 						return cid.Undef, xerrors.Errorf("getting miner state: %w", err)
 					}
@@ -515,7 +514,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 		return cid.Undef, xerrors.New("actor not found")
 	}
 
-	pst, err := power.Load(adt.WrapStore(ctx, cst), (*types2.Actor)(pact))
+	pst, err := power.Load(adt.WrapStore(ctx, cst), pact)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting power state: %w", err)
 	}

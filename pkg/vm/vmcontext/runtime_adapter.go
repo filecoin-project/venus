@@ -6,7 +6,6 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/actors/aerrors"
 
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 
 	"github.com/ipfs/go-cid"
@@ -25,6 +24,7 @@ import (
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var EmptyObjectCid cid.Cid

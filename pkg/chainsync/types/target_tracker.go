@@ -8,9 +8,10 @@ import (
 	"time"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var log = logging.Logger("chainsync.target")
@@ -282,7 +283,7 @@ func (tq *TargetTracker) widen(t *Target) (*Target, bool) {
 		blks = append(blks, blk)
 	}
 
-	newHead, err := types.NewTipSet(blks...)
+	newHead, err := types.NewTipSet(blks)
 	if err != nil {
 		return nil, false
 	}

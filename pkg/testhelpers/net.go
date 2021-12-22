@@ -8,9 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/types"
-
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/event"
@@ -213,7 +212,7 @@ func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, f
 			return nil, err
 		}
 
-		ts, err := types.NewTipSet(res...)
+		ts, err := types.NewTipSet(res)
 		if err != nil {
 			return nil, err
 		}

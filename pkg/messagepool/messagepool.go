@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/statemanger"
 	"math"
 	stdbig "math/big"
 	"os"
@@ -38,21 +37,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/messagepool/journal"
 	"github.com/filecoin-project/venus/pkg/net/msgsub"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+	mptypes "github.com/filecoin-project/venus/venus-shared/messagepool"
 )
-
-type MpoolChange int
-
-const (
-	MpoolAdd MpoolChange = iota
-	MpoolRemove
-)
-
-type MpoolUpdate struct {
-	Type    MpoolChange
-	Message *types.SignedMessage
-}
 
 var log = logging.Logger("messagepool")
 
@@ -116,7 +106,7 @@ type MessagePoolEvt struct { // nolint
 }
 
 type MessagePoolEvtMessage struct { // nolint
-	types.UnsignedMessage
+	types.Message
 
 	CID cid.Cid
 }
@@ -216,7 +206,7 @@ func ComputeMinRBF(curPrem abi.TokenAmount) abi.TokenAmount {
 	return big.Add(minPrice, big.NewInt(1))
 }
 
-func CapGasFee(mff DefaultMaxFeeFunc, msg *types.Message, sendSepc *types.MessageSendSpec) {
+func CapGasFee(mff DefaultMaxFeeFunc, msg *types.Message, sendSepc *apitypes.MessageSendSpec) {
 	var maxFee abi.TokenAmount
 	if sendSepc != nil {
 		maxFee = sendSepc.MaxFee
@@ -1027,8 +1017,8 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 		}
 	}
 
-	mp.changes.Pub(MpoolUpdate{
-		Type:    MpoolAdd,
+	mp.changes.Pub(mptypes.MpoolUpdate{
+		Type:    mptypes.MpoolAdd,
 		Message: m,
 	}, localUpdates)
 
@@ -1036,7 +1026,7 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 		mc := m.Cid()
 		return MessagePoolEvt{
 			Action:   "add",
-			Messages: []MessagePoolEvtMessage{{UnsignedMessage: m.Message, CID: mc}},
+			Messages: []MessagePoolEvtMessage{{Message: m.Message, CID: mc}},
 		}
 	})
 
@@ -1163,15 +1153,15 @@ func (mp *MessagePool) remove(ctx context.Context, from address.Address, nonce u
 	}
 
 	if m, ok := mset.msgs[nonce]; ok {
-		mp.changes.Pub(MpoolUpdate{
-			Type:    MpoolRemove,
+		mp.changes.Pub(mptypes.MpoolUpdate{
+			Type:    mptypes.MpoolRemove,
 			Message: m,
 		}, localUpdates)
 
 		mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
 			return MessagePoolEvt{
 				Action:   "remove",
-				Messages: []MessagePoolEvtMessage{{UnsignedMessage: m.Message, CID: m.Cid()}}}
+				Messages: []MessagePoolEvtMessage{{Message: m.Message, CID: m.Cid()}}}
 		})
 
 		mp.currentSize--
@@ -1499,7 +1489,7 @@ func (mp *MessagePool) MessagesForBlocks(blks []*types.BlockHeader) ([]*types.Si
 	return out, nil
 }
 
-func (mp *MessagePool) RecoverSig(msg *types.UnsignedMessage) *types.SignedMessage {
+func (mp *MessagePool) RecoverSig(msg *types.Message) *types.SignedMessage {
 	val, ok := mp.blsSigCache.Get(msg.Cid())
 	if !ok {
 		return nil
@@ -1516,8 +1506,8 @@ func (mp *MessagePool) RecoverSig(msg *types.UnsignedMessage) *types.SignedMessa
 	}
 }
 
-func (mp *MessagePool) Updates(ctx context.Context) (<-chan MpoolUpdate, error) {
-	out := make(chan MpoolUpdate, 20)
+func (mp *MessagePool) Updates(ctx context.Context) (<-chan mptypes.MpoolUpdate, error) {
+	out := make(chan mptypes.MpoolUpdate, 20)
 	sub := mp.changes.Sub(localUpdates)
 
 	go func() {
@@ -1528,7 +1518,7 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan MpoolUpdate, error) 
 			select {
 			case u := <-sub:
 				select {
-				case out <- u.(MpoolUpdate):
+				case out <- u.(mptypes.MpoolUpdate):
 				case <-ctx.Done():
 					return
 				case <-mp.closer:

@@ -16,7 +16,7 @@ import (
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 // paychFundsRes is the response to a create channel or add funds request
@@ -386,7 +386,7 @@ func (ca *channelAccessor) createPaych(ctx context.Context, amt big.Int) (cid.Ci
 		return cid.Undef, err
 	}
 
-	smsg, err := ca.api.MpoolPushMessage(ctx, (*types.UnsignedMessage)(msg), nil)
+	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("initializing paych actor: %w", err)
 	}
@@ -437,7 +437,7 @@ func (ca *channelAccessor) waitPaychCreateMsg(channelID string, mcid cid.Cid) er
 	// This "works" because it hasn't changed from v0 to v2, but we still
 	// need an abstraction here.
 	var decodedReturn init2.ExecReturn
-	err = decodedReturn.UnmarshalCBOR(bytes.NewReader(mwait.Receipt.ReturnValue))
+	err = decodedReturn.UnmarshalCBOR(bytes.NewReader(mwait.Receipt.Return))
 	if err != nil {
 		log.Error(err)
 		return err
@@ -459,7 +459,7 @@ func (ca *channelAccessor) waitPaychCreateMsg(channelID string, mcid cid.Cid) er
 
 // addFunds sends a message to add funds to the channel and returns the message cid
 func (ca *channelAccessor) addFunds(ctx context.Context, channelInfo *ChannelInfo, amt big.Int) (*cid.Cid, error) {
-	msg := &types.UnsignedMessage{
+	msg := &types.Message{
 		To:     *channelInfo.Channel,
 		From:   channelInfo.Control,
 		Value:  amt,

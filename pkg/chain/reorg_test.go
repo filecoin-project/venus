@@ -2,8 +2,9 @@ package chain_test
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
+
+	"github.com/filecoin-project/venus/pkg/testhelpers"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 func TestIsReorgFork(t *testing.T) {
@@ -90,7 +92,7 @@ func getSubsetOldNewCommon(ctx context.Context, t *testing.T, builder *chain.Bui
 	block1 := builder.AppendBlockOnBlocks(commonHead)
 	block2 := builder.AppendBlockOnBlocks(commonHead)
 
-	oldHead := types.RequireNewTipSet(t, block1)
-	superset := types.RequireNewTipSet(t, block1, block2)
-	return oldHead, superset, types.RequireNewTipSet(t, commonHead)
+	oldHead := testhelpers.RequireNewTipSet(t, block1)
+	superset := testhelpers.RequireNewTipSet(t, block1, block2)
+	return oldHead, superset, testhelpers.RequireNewTipSet(t, commonHead)
 }

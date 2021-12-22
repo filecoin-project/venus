@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/venus/pkg/vm"
 )
@@ -73,7 +73,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context,
 }
 
 //ProcessImplicitMessage compute the state of specify message but this functions skip value, gas,check
-func (p *DefaultProcessor) ProcessImplicitMessage(ctx context.Context, msg *types.UnsignedMessage, vmOption vm.VmOption) (ret *vm.Ret, err error) {
+func (p *DefaultProcessor) ProcessImplicitMessage(ctx context.Context, msg *types.Message, vmOption vm.VmOption) (ret *vm.Ret, err error) {
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessImplicitMessage")
 	span.AddAttributes(trace.StringAttribute("message", msg.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)

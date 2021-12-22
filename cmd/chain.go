@@ -19,9 +19,9 @@ import (
 
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var chainCmd = &cmds.Command{
@@ -213,7 +213,7 @@ var chainGetBlockCmd = &cmds.Command{
 
 		cblock := struct {
 			types.BlockHeader
-			BlsMessages    []*types.UnsignedMessage
+			BlsMessages    []*types.Message
 			SecpkMessages  []*types.SignedMessage
 			ParentReceipts []*types.MessageReceipt
 			ParentMessages []cid.Cid
@@ -256,7 +256,7 @@ var chainGetMessageCmd = &cmds.Command{
 
 		return re.Emit(msg)
 	},
-	Type: types.UnsignedMessage{},
+	Type: types.Message{},
 }
 
 var chainGetMessagesCmd = &cmds.Command{

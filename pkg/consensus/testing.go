@@ -11,13 +11,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/pkg/state"
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
 func RequireNewTipSet(require *require.Assertions, blks ...*types.BlockHeader) *types.TipSet {
-	ts, err := types.NewTipSet(blks...)
+	ts, err := types.NewTipSet(blks)
 	require.NoError(err)
 	return ts
 }
@@ -44,7 +44,7 @@ func (mv *FakeMessageValidator) ValidateSignedMessageSyntax(ctx context.Context,
 	return nil
 }
 
-func (mv *FakeMessageValidator) ValidateUnsignedMessageSyntax(ctx context.Context, msg *types.UnsignedMessage) error {
+func (mv *FakeMessageValidator) ValidateUnsignedMessageSyntax(ctx context.Context, msg *types.Message) error {
 	return nil
 }
 
@@ -53,7 +53,7 @@ type FakeTicketMachine struct{}
 
 // MakeTicket returns a fake ticket
 func (ftm *FakeTicketMachine) MakeTicket(ctx context.Context, base types.TipSetKey, epoch abi.ChainEpoch, miner address.Address, entry *types.BeaconEntry, newPeriod bool, worker address.Address, signer types.Signer) (types.Ticket, error) {
-	return MakeFakeTicketForTest(), nil
+	return *MakeFakeTicketForTest(), nil
 }
 
 // IsValidTicket always returns true
@@ -72,11 +72,11 @@ func (ftv *FailingTicketValidator) IsValidTicket(ctx context.Context, base types
 }
 
 // MakeFakeTicketForTest creates a fake ticket
-func MakeFakeTicketForTest() types.Ticket {
+func MakeFakeTicketForTest() *types.Ticket {
 	val := make([]byte, 65)
 	val[0] = 200
-	return types.Ticket{
-		VRFProof: types.VRFPi(val[:]),
+	return &types.Ticket{
+		VRFProof: val[:],
 	}
 }
 

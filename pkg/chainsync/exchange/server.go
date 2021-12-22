@@ -4,9 +4,10 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"time"
+
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	logging "github.com/ipfs/go-log"
-	"time"
 
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -15,7 +16,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var exchangeServerLog = logging.Logger("exchange.server")
@@ -27,7 +28,7 @@ type chainReader interface {
 type messageStore interface {
 	ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 
-	LoadUnsignedMessagesFromCids(cids []cid.Cid) ([]*types.UnsignedMessage, error)
+	LoadUnsignedMessagesFromCids(cids []cid.Cid) ([]*types.Message, error)
 	LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.SignedMessage, error)
 }
 
@@ -217,7 +218,7 @@ func collectChainSegment(cr chainReader, mr messageStore, req *validatedRequest)
 	}
 }
 
-func GatherMessages(cr chainReader, mr messageStore, ts *types.TipSet) ([]*types.UnsignedMessage, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
+func GatherMessages(cr chainReader, mr messageStore, ts *types.TipSet) ([]*types.Message, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
 	blsmsgmap := make(map[cid.Cid]uint64)
 	secpkmsgmap := make(map[cid.Cid]uint64)
 	var secpkincl, blsincl [][]uint64

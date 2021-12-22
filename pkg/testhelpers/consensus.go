@@ -2,46 +2,12 @@ package testhelpers
 
 import (
 	"context"
-	fbig "github.com/filecoin-project/go-state-types/big"
+
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"testing"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/require"
-
-	bls "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/venus/pkg/consensus"
-	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/types"
 )
-
-// RequireSignedTestBlockFromTipSet creates a block with a valid signature by
-// the passed in miner work and a Miner field set to the minerAddr.
-func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet types.TipSet, stateRootCid cid.Cid, receiptRootCid cid.Cid, height abi.ChainEpoch, minerAddr address.Address, minerWorker address.Address, signer types.Signer) *types.BlockHeader {
-	ticket := consensus.MakeFakeTicketForTest()
-	emptyBLSSig := crypto.Signature{
-		Type: crypto.SigTypeBLS,
-		Data: (*bls.Aggregate([]bls.Signature{}))[:],
-	}
-
-	b := &types.BlockHeader{
-		Miner:                 minerAddr,
-		Ticket:                ticket,
-		Parents:               baseTipSet.Key(),
-		ParentWeight:          fbig.NewInt(int64(height * 10000)),
-		Height:                height,
-		ParentStateRoot:       stateRootCid,
-		ParentMessageReceipts: receiptRootCid,
-		BLSAggregate:          &emptyBLSSig,
-	}
-	sig, err := signer.SignBytes(context.TODO(), b.SignatureData(), minerWorker)
-	require.NoError(t, err)
-	b.BlockSig = sig
-
-	return b
-}
 
 // FakeBlockValidator passes everything as valid
 type FakeBlockValidator struct{}
@@ -67,7 +33,7 @@ func (fbv *FakeBlockValidator) ValidateMessagesSyntax(ctx context.Context, messa
 }
 
 // ValidateUnsignedMessagesSyntax does nothing
-func (fbv *FakeBlockValidator) ValidateUnsignedMessagesSyntax(ctx context.Context, messages []*types.UnsignedMessage) error {
+func (fbv *FakeBlockValidator) ValidateUnsignedMessagesSyntax(ctx context.Context, messages []*types.Message) error {
 	return nil
 }
 

@@ -2,12 +2,13 @@ package syncer_test
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/statemanger"
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/venus/pkg/statemanger"
+
 	"github.com/filecoin-project/venus/pkg/chainsync/types"
-	types2 "github.com/filecoin-project/venus/pkg/types"
+	types2 "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

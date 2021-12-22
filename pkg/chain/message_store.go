@@ -23,28 +23,28 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 // MessageProvider is an interface exposing the load methods of the
 // MessageStore.
 type MessageProvider interface {
 	LoadTipSetMessage(ctx context.Context, ts *types.TipSet) ([]types.BlockMessagesInfo, error)
-	LoadMetaMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
+	LoadMetaMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.Message, error)
 	ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
-	LoadUnsignedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error)
+	LoadUnsignedMessagesFromCids(blsCids []cid.Cid) ([]*types.Message, error)
 	LoadSignedMessagesFromCids(secpCids []cid.Cid) ([]*types.SignedMessage, error)
 	LoadReceipts(context.Context, cid.Cid) ([]types.MessageReceipt, error)
-	LoadTxMeta(context.Context, cid.Cid) (types.TxMeta, error)
+	LoadTxMeta(context.Context, cid.Cid) (types.MessageRoot, error)
 }
 
 // MessageWriter is an interface exposing the write methods of the
 // MessageStore.
 type MessageWriter interface {
-	StoreMessages(ctx context.Context, secpMessages []*types.SignedMessage, blsMessages []*types.UnsignedMessage) (cid.Cid, error)
+	StoreMessages(ctx context.Context, secpMessages []*types.SignedMessage, blsMessages []*types.Message) (cid.Cid, error)
 	StoreReceipts(context.Context, []types.MessageReceipt) (cid.Cid, error)
-	StoreTxMeta(context.Context, types.TxMeta) (cid.Cid, error)
+	StoreTxMeta(context.Context, types.MessageRoot) (cid.Cid, error)
 }
 
 // MessageStore stores and loads collections of signed messages and receipts.
@@ -60,14 +60,14 @@ func NewMessageStore(bs blockstore.Blockstore, fkCfg *config.ForkUpgradeConfig) 
 
 // LoadMetaMessages loads the signed messages in the collection with cid c from ipld
 // storage.
-func (ms *MessageStore) LoadMetaMessages(ctx context.Context, metaCid cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
+func (ms *MessageStore) LoadMetaMessages(ctx context.Context, metaCid cid.Cid) ([]*types.SignedMessage, []*types.Message, error) {
 	// load txmeta
 	meta, err := ms.LoadTxMeta(ctx, metaCid)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	secpCids, err := ms.loadAMTCids(ctx, meta.SecpRoot)
+	secpCids, err := ms.loadAMTCids(ctx, meta.SecpkRoot)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -78,7 +78,7 @@ func (ms *MessageStore) LoadMetaMessages(ctx context.Context, metaCid cid.Cid) (
 		return nil, nil, err
 	}
 
-	blsCids, err := ms.loadAMTCids(ctx, meta.BLSRoot)
+	blsCids, err := ms.loadAMTCids(ctx, meta.BlsRoot)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -99,11 +99,11 @@ func (ms *MessageStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid
 		return nil, nil, err
 	}
 
-	secpCids, err := ms.loadAMTCids(ctx, meta.SecpRoot)
+	secpCids, err := ms.loadAMTCids(ctx, meta.SecpkRoot)
 	if err != nil {
 		return nil, nil, err
 	}
-	blsCids, err := ms.loadAMTCids(ctx, meta.BLSRoot)
+	blsCids, err := ms.loadAMTCids(ctx, meta.BlsRoot)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -126,12 +126,12 @@ func (ms *MessageStore) LoadMessage(mid cid.Cid) (types.ChainMsg, error) {
 }
 
 //LoadUnsignedMessage load unsigned messages in tipset
-func (ms *MessageStore) LoadUnsignedMessage(mid cid.Cid) (*types.UnsignedMessage, error) {
+func (ms *MessageStore) LoadUnsignedMessage(mid cid.Cid) (*types.Message, error) {
 	messageBlock, err := ms.bs.Get(mid)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get bls message %s", mid)
 	}
-	message := &types.UnsignedMessage{}
+	message := &types.Message{}
 	if err := message.UnmarshalCBOR(bytes.NewReader(messageBlock.RawData())); err != nil {
 		return nil, errors.Wrapf(err, "could not decode bls message %s", mid)
 	}
@@ -154,8 +154,8 @@ func (ms *MessageStore) LoadSignedMessage(mid cid.Cid) (*types.SignedMessage, er
 }
 
 //LoadUnsignedMessagesFromCids load unsigned messages of cid array
-func (ms *MessageStore) LoadUnsignedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error) {
-	blsMsgs := make([]*types.UnsignedMessage, len(blsCids))
+func (ms *MessageStore) LoadUnsignedMessagesFromCids(blsCids []cid.Cid) ([]*types.Message, error) {
+	blsMsgs := make([]*types.Message, len(blsCids))
 	for i, c := range blsCids {
 		message, err := ms.LoadUnsignedMessage(c)
 		if err != nil {
@@ -181,8 +181,8 @@ func (ms *MessageStore) LoadSignedMessagesFromCids(secpCids []cid.Cid) ([]*types
 
 // StoreMessages puts the input signed messages to a collection and then writes
 // this collection to ipld storage.  The cid of the collection is returned.
-func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types.SignedMessage, blsMessages []*types.UnsignedMessage) (cid.Cid, error) {
-	var ret types.TxMeta
+func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types.SignedMessage, blsMessages []*types.Message) (cid.Cid, error) {
+	var ret types.MessageRoot
 	var err error
 
 	// store secp messages
@@ -203,7 +203,7 @@ func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "could not store secp cids as AMT")
 	}
-	ret.SecpRoot = secpRaw
+	ret.SecpkRoot = secpRaw
 
 	// store bls messages
 	blsMsgArr := adt.MakeEmptyArray(adt.WrapStore(context.TODO(), as))
@@ -222,15 +222,15 @@ func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "could not store bls cids as AMT")
 	}
-	ret.BLSRoot = blsRaw
+	ret.BlsRoot = blsRaw
 
 	return ms.StoreTxMeta(ctx, ret)
 }
 
 //load message from tipset NOTICE skip message with the same nonce
-func (ms *MessageStore) LoadTipSetMesssages(ctx context.Context, ts *types.TipSet) ([][]*types.SignedMessage, [][]*types.UnsignedMessage, error) {
+func (ms *MessageStore) LoadTipSetMesssages(ctx context.Context, ts *types.TipSet) ([][]*types.SignedMessage, [][]*types.Message, error) {
 	var secpMessages [][]*types.SignedMessage
-	var blsMessages [][]*types.UnsignedMessage
+	var blsMessages [][]*types.Message
 
 	applied := make(map[address.Address]uint64)
 
@@ -240,7 +240,7 @@ func (ms *MessageStore) LoadTipSetMesssages(ctx context.Context, ts *types.TipSe
 		return nil, nil, errors.Wrapf(err, "failed to load state tree %s", ts.Blocks()[0].ParentStateRoot.String())
 	}
 
-	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
+	selectMsg := func(m *types.Message) (bool, error) {
 		var sender address.Address
 		if ts.Height() >= ms.fkCfg.UpgradeHyperdriveHeight {
 			sender, err = st.LookupID(m.From)
@@ -273,7 +273,7 @@ func (ms *MessageStore) LoadTipSetMesssages(ctx context.Context, ts *types.TipSe
 		}
 
 		var blksecpMessages []*types.SignedMessage
-		var blkblsMessages []*types.UnsignedMessage
+		var blkblsMessages []*types.Message
 
 		for _, msg := range blsMsgs {
 			b, err := selectMsg(msg)
@@ -373,15 +373,15 @@ func (ms *MessageStore) loadAMTCids(ctx context.Context, c cid.Cid) ([]cid.Cid, 
 }
 
 // LoadTxMeta loads the secproot, blsroot data from the message store
-func (ms *MessageStore) LoadTxMeta(ctx context.Context, c cid.Cid) (types.TxMeta, error) {
+func (ms *MessageStore) LoadTxMeta(ctx context.Context, c cid.Cid) (types.MessageRoot, error) {
 	metaBlock, err := ms.bs.Get(c)
 	if err != nil {
-		return types.TxMeta{}, errors.Wrapf(err, "failed to get tx meta %s", c)
+		return types.MessageRoot{}, errors.Wrapf(err, "failed to get tx meta %s", c)
 	}
 
-	var meta types.TxMeta
+	var meta types.MessageRoot
 	if err := meta.UnmarshalCBOR(bytes.NewReader(metaBlock.RawData())); err != nil {
-		return types.TxMeta{}, errors.Wrapf(err, "could not decode tx meta %s", c)
+		return types.MessageRoot{}, errors.Wrapf(err, "could not decode tx meta %s", c)
 	}
 	return meta, nil
 }
@@ -397,7 +397,7 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet)
 		return nil, errors.Errorf("failed to load state tree")
 	}
 
-	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
+	selectMsg := func(m *types.Message) (bool, error) {
 		var sender address.Address
 		if ts.Height() >= ms.fkCfg.UpgradeHyperdriveHeight {
 			sender, err = st.LookupID(m.From)
@@ -483,7 +483,7 @@ func (ms *MessageStore) StoreMessage(message types.ChainMsg) (cid.Cid, error) {
 }
 
 // StoreTxMeta writes the secproot, blsroot block to the message store
-func (ms *MessageStore) StoreTxMeta(ctx context.Context, meta types.TxMeta) (cid.Cid, error) {
+func (ms *MessageStore) StoreTxMeta(ctx context.Context, meta types.MessageRoot) (cid.Cid, error) {
 	return cbor.NewCborStore(ms.bs).Put(ctx, &meta)
 }
 
@@ -642,9 +642,9 @@ func ComputeMsgMeta(bs blockstore.Blockstore, bmsgCids, smsgCids []cid.Cid) (cid
 		return cid.Undef, err
 	}
 
-	mrcid, err := store.Put(store.Context(), &types.TxMeta{
-		BLSRoot:  bmroot,
-		SecpRoot: smroot,
+	mrcid, err := store.Put(store.Context(), &types.MessageRoot{
+		BlsRoot:   bmroot,
+		SecpkRoot: smroot,
 	})
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to put msgmeta")

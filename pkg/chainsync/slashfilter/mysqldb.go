@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -13,6 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/filecoin-project/venus/pkg/config"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var log = logging.Logger("mysql")
@@ -88,7 +88,7 @@ func (f *MysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) error {
 //checkSameParentFault check whether the miner mined block on the same parent
 func (f *MysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) error {
 	var bk MinedBlock
-	err := f._db.Model(&MinedBlock{}).Take(&bk, "miner=? and parent_key=?", bh.Miner.String(), bh.Parents.String()).Error
+	err := f._db.Model(&MinedBlock{}).Take(&bk, "miner=? and parent_key=?", bh.Miner.String(), types.NewTipSetKey(bh.Parents...).String()).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil
 	}
@@ -130,7 +130,7 @@ func (f *MysqlSlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.Cha
 			}
 
 			var found bool
-			for _, c := range bh.Parents.Cids() {
+			for _, c := range bh.Parents {
 				if c.Equals(parent) {
 					found = true
 				}
@@ -148,7 +148,7 @@ func (f *MysqlSlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.Cha
 
 	return f._db.Save(&MinedBlock{
 		ParentEpoch: int64(parentEpoch),
-		ParentKey:   bh.Parents.String(),
+		ParentKey:   types.NewTipSetKey(bh.Parents...).String(),
 		Epoch:       int64(bh.Height),
 		Miner:       bh.Miner.String(),
 		Cid:         bh.Cid().String(),

@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/filecoin-project/venus/pkg/types"
-
 	"github.com/filecoin-project/go-address"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -17,7 +15,7 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
-	types2 "github.com/filecoin-project/venus/venus-shared/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var minerProvingCmd = &cmds.Command{
@@ -64,7 +62,7 @@ var provingInfoCmd = &cmds.Command{
 
 		stor := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
 
-		mas, err := miner.Load(stor, (*types2.Actor)(mact))
+		mas, err := miner.Load(stor, mact)
 		if err != nil {
 			return err
 		}
@@ -325,7 +323,7 @@ var provingFaultsCmd = &cmds.Command{
 			return err
 		}
 
-		mas, err := miner.Load(stor, (*types2.Actor)(mact))
+		mas, err := miner.Load(stor, mact)
 		if err != nil {
 			return err
 		}

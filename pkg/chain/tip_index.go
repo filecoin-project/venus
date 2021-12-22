@@ -5,11 +5,10 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 var (

@@ -9,9 +9,9 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 type Partition struct {
@@ -43,7 +43,7 @@ type Deadline struct {
 // BlsMessages[x].cid = Cids[x]
 // SecpkMessages[y].cid = Cids[BlsMessages.length + y]
 type BlockMessages struct {
-	BlsMessages   []*types.UnsignedMessage
+	BlsMessages   []*types.Message
 	SecpkMessages []*types.SignedMessage
 	Cids          []cid.Cid
 }
@@ -73,7 +73,7 @@ var MarketBalanceNil = MarketBalance{}
 
 type Message struct {
 	Cid     cid.Cid
-	Message *types.UnsignedMessage
+	Message *types.Message
 }
 
 type MinerPower struct {

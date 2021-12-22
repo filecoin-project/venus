@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 type ICirculatingSupplyCalcualtor interface {
@@ -132,7 +131,7 @@ func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx c
 
 /*func (c *Expected) processBlock(ctx context.Context, ts *block.TipSet) (cid.Cid, []types.MessageReceipt, error) {
 	var secpMessages [][]*types.SignedMessage
-	var blsMessages [][]*types.UnsignedMessage
+	var blsMessages [][]*types.Message
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
 		secpMsgs, blsMsgs, err := c.messageStore.LoadMetaMessages(ctx, blk.Messages.Cid)
@@ -371,7 +370,7 @@ func GetFilMined(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 		return big.Zero(), xerrors.Errorf("failed to load reward actor state: %v", err)
 	}
 
-	rst, err := reward.Load(adt.WrapStore(ctx, st.GetStore()), (*types.Actor)(ractor))
+	rst, err := reward.Load(adt.WrapStore(ctx, st.GetStore()), ractor)
 	if err != nil {
 		return big.Zero(), err
 	}
@@ -411,7 +410,7 @@ func getFilMarketLocked(ctx context.Context, st tree.Tree) (abi.TokenAmount, err
 		return big.Zero(), xerrors.Errorf("failed to load market actor: %v", err)
 	}
 
-	mst, err := market.Load(adt.WrapStore(ctx, st.GetStore()), (*types.Actor)(act))
+	mst, err := market.Load(adt.WrapStore(ctx, st.GetStore()), act)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load market state: %v", err)
 	}
@@ -425,7 +424,7 @@ func getFilPowerLocked(ctx context.Context, st tree.Tree) (abi.TokenAmount, erro
 		return big.Zero(), xerrors.Errorf("failed to load power actor: %v", err)
 	}
 
-	pst, err := power.Load(adt.WrapStore(ctx, st.GetStore()), (*types.Actor)(pactor))
+	pst, err := power.Load(adt.WrapStore(ctx, st.GetStore()), pactor)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load power state: %v", err)
 	}

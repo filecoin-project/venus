@@ -11,9 +11,9 @@ package consensus
 // except for errors in the case the stores do not have a mapping.
 import (
 	"context"
-	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/ipfs/go-cid"
 )
 
 // Protocol is an interface defining a blockchain consensus protocol.  The
@@ -25,10 +25,10 @@ import (
 type Protocol interface {
 	StateTransformer
 	// Call compute message result of specify message
-	Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*vm.Ret, error)
+	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*vm.Ret, error)
 
 	// CallWithGas compute message result of specify message base on messages in mpool
-	CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *types.TipSet) (*vm.Ret, error)
+	CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (*vm.Ret, error)
 }
 */
 

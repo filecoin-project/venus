@@ -3,6 +3,8 @@ package config
 import (
 	"testing"
 
+	"github.com/filecoin-project/venus/pkg/testhelpers"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -10,7 +12,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	repo2 "github.com/filecoin-project/venus/pkg/repo"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 func TestConfigGet(t *testing.T) {
@@ -72,7 +73,7 @@ func TestConfigSet(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, ":1234", cfg.API.APIAddress)
 
-		testAddr := types.RequireIDAddress(t, 100).String()
+		testAddr := testhelpers.RequireIDAddress(t, 100).String()
 		err = cfgAPI.Set("walletModule.defaultAddress", testAddr)
 		require.NoError(t, err)
 		assert.Equal(t, testAddr, cfg.Wallet.DefaultAddress.String())

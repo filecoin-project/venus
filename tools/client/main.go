@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/venus/app/client"
 	"github.com/filecoin-project/venus/app/client/v0api"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 const Filecoin = "Filecoin"

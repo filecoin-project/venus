@@ -17,15 +17,14 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/state"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
-	types2 "github.com/filecoin-project/venus/venus-shared/chain"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+	wtypes "github.com/filecoin-project/venus/venus-shared/wallet"
 )
 
 var _ apiface.IMining = &MiningAPI{}
@@ -84,7 +83,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor: %v", err)
 	}
-	mas, err := miner.Load(chainStore.Store(ctx), (*types2.Actor)(act))
+	mas, err := miner.Load(chainStore.Store(ctx), act)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor state: %v", err)
 	}
@@ -195,7 +194,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *apitypes.B
 
 	next := &types.BlockHeader{
 		Miner:         bt.Miner,
-		Parents:       bt.Parents,
+		Parents:       bt.Parents.Cids(),
 		Ticket:        bt.Ticket,
 		ElectionProof: bt.Eproof,
 
@@ -207,7 +206,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *apitypes.B
 		ParentMessageReceipts: receiptCid,
 	}
 
-	var blsMessages []*types.UnsignedMessage
+	var blsMessages []*types.Message
 	var secpkMessages []*types.SignedMessage
 
 	var blsMsgCids, secpkMsgCids []cid.Cid
@@ -266,9 +265,12 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *apitypes.B
 	}
 
 	if bHas {
-		nosigbytes := next.SignatureData()
-		sig, err := miningAPI.Ming.Wallet.API().WalletSign(ctx, worker, nosigbytes, wallet.MsgMeta{
-			Type: wallet.MTBlock,
+		nosigbytes, err := next.SignatureData()
+		if err != nil {
+			return nil, err
+		}
+		sig, err := miningAPI.Ming.Wallet.API().WalletSign(ctx, worker, nosigbytes, wtypes.MsgMeta{
+			Type: wtypes.MTBlock,
 		})
 		if err != nil {
 			return nil, xerrors.Errorf("failed to sign new block: %v", err)

@@ -11,7 +11,7 @@ import (
 
 type ISyncer interface {
 	// Rule[perm:write]
-	ChainSyncHandleNewTipSet(ctx context.Context, ci *chain2.ChainInfo) error
+	ChainSyncHandleNewTipSet(ctx context.Context, ci *chain.ChainInfo) error
 	// Rule[perm:admin]
 	SetConcurrent(ctx context.Context, concurrent int64) error
 

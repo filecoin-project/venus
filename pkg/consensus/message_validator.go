@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/state"
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var invReceiverUndefCt *metrics.Int64Counter
@@ -25,7 +25,7 @@ var invNegativeValueCt *metrics.Int64Counter
 var invGasAboveBlockLimitCt *metrics.Int64Counter
 
 // The maximum allowed message value.
-var msgMaxValue = types.NewAttoFILFromFIL(2e9)
+var msgMaxValue = types.FromFil(2e9)
 
 // These gas cost values must match those in vm/gas.
 // TODO: Look up gas costs from the same place the VM gets them, keyed by epoch. https://github.com/filecoin-project/venus/issues/3955
@@ -75,7 +75,7 @@ func (v *DefaultMessageSyntaxValidator) ValidateSignedMessageSyntax(ctx context.
 
 // ValidateUnsignedMessageSyntax validates unisigned message syntax and state-independent invariants.
 // Used for bls messages included in blocks.
-func (v *DefaultMessageSyntaxValidator) ValidateUnsignedMessageSyntax(ctx context.Context, msg *types.UnsignedMessage) error {
+func (v *DefaultMessageSyntaxValidator) ValidateUnsignedMessageSyntax(ctx context.Context, msg *types.Message) error {
 	buf := new(bytes.Buffer)
 	err := msg.MarshalCBOR(buf)
 	if err != nil {
@@ -84,7 +84,7 @@ func (v *DefaultMessageSyntaxValidator) ValidateUnsignedMessageSyntax(ctx contex
 	return v.validateMessageSyntaxShared(ctx, msg, int64(buf.Len()))
 }
 
-func (v *DefaultMessageSyntaxValidator) validateMessageSyntaxShared(ctx context.Context, msg *types.UnsignedMessage, msgLen int64) error {
+func (v *DefaultMessageSyntaxValidator) validateMessageSyntaxShared(ctx context.Context, msg *types.Message, msgLen int64) error {
 	if msg.Version != types.MessageVersion {
 		return fmt.Errorf("version %d, expected %d", msg.Version, types.MessageVersion)
 	}

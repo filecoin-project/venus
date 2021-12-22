@@ -10,9 +10,9 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -667,7 +667,7 @@ func (env *fundManagerEnvironment) AddFunds(
 		return cid.Undef, err
 	}
 
-	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.UnsignedMessage{
+	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.Message{
 		To:     market.Address,
 		From:   wallet,
 		Value:  amt,
@@ -695,7 +695,7 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 		return cid.Undef, xerrors.Errorf("serializing params: %w", err)
 	}
 
-	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.UnsignedMessage{
+	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.Message{
 		To:     market.Address,
 		From:   wallet,
 		Value:  big.NewInt(0),

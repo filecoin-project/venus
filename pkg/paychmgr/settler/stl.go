@@ -3,23 +3,23 @@ package settler
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/pkg/chain"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	paychtypes "github.com/filecoin-project/venus/venus-shared/paych"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
 )
 
 type Settler interface {
 	PaychList(context.Context) ([]address.Address, error)
-	PaychStatus(ctx context.Context, pch address.Address) (*types.PaychStatus, error)
+	PaychStatus(ctx context.Context, pch address.Address) (*paychtypes.Status, error)
 	PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error)
 	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)
 	PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*chain.MsgLookup, error)
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 }
 
 type settler struct {
@@ -35,14 +35,14 @@ func (o *settler) PaychList(context.Context) ([]address.Address, error) {
 	return o.mgr.ListChannels()
 }
 
-func (o *settler) PaychStatus(ctx context.Context, pch address.Address) (*types.PaychStatus, error) {
+func (o *settler) PaychStatus(ctx context.Context, pch address.Address) (*paychtypes.Status, error) {
 	ci, err := o.mgr.GetChannelInfo(pch)
 	if err != nil {
 		return nil, err
 	}
-	return &types.PaychStatus{
+	return &paychtypes.Status{
 		ControlAddr: ci.Control,
-		Direction:   types.PCHDir(ci.Direction),
+		Direction:   paychtypes.PCHDir(ci.Direction),
 	}, nil
 }
 func (o *settler) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
@@ -63,6 +63,6 @@ func (o *settler) PaychVoucherList(ctx context.Context, pch address.Address) ([]
 func (o *settler) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
 	return o.mgr.SubmitVoucher(ctx, ch, sv, secret, proof)
 }
-func (o *settler) StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*chain.MsgLookup, error) {
+func (o *settler) StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
 	return o.ciAPI.StateWaitMsg(ctx, cid, confidence, lookbackLimit, allowReplaced)
 }

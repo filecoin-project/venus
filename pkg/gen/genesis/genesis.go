@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
@@ -58,7 +59,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	sigs "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm"
 )
@@ -589,9 +589,9 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 		return nil, xerrors.Errorf("amt build failed: %w", err)
 	}
 
-	mm := &types.TxMeta{
-		BLSRoot:  emptyroot,
-		SecpRoot: emptyroot,
+	mm := &types.MessageRoot{
+		BlsRoot:   emptyroot,
+		SecpkRoot: emptyroot,
 	}
 	mmb, err := mm.ToStorageBlock()
 	if err != nil {
@@ -605,7 +605,7 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 
 	tickBuf := make([]byte, 32)
 	_, _ = rand.Read(tickBuf)
-	genesisticket := types.Ticket{
+	genesisticket := &types.Ticket{
 		VRFProof: tickBuf,
 	}
 
@@ -634,7 +634,7 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 	b := &types.BlockHeader{
 		Miner:                 system.Address,
 		Ticket:                genesisticket,
-		Parents:               types.NewTipSetKey(filecoinGenesisCid),
+		Parents:               types.NewTipSetKey(filecoinGenesisCid).Cids(),
 		Height:                0,
 		ParentWeight:          types.NewInt(0),
 		ParentStateRoot:       stateroot,
@@ -644,7 +644,7 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 		BlockSig:              nil,
 		Timestamp:             template.Timestamp,
 		ElectionProof:         new(types.ElectionProof),
-		BeaconEntries: []*types.BeaconEntry{
+		BeaconEntries: []types.BeaconEntry{
 			{
 				Round: 0,
 				Data:  make([]byte, 32),

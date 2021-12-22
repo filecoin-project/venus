@@ -4,15 +4,14 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/config"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/wallet"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/ipfs/go-datastore"
 
@@ -654,7 +653,7 @@ func setup(t *testing.T) *scaffold {
 	}
 }
 
-func checkAddMessageFields(t *testing.T, msg *types.UnsignedMessage, from address.Address, to address.Address, amt abi.TokenAmount) {
+func checkAddMessageFields(t *testing.T, msg *types.Message, from address.Address, to address.Address, amt abi.TokenAmount) {
 	require.Equal(t, from, msg.From)
 	require.Equal(t, market.Address, msg.To)
 	require.Equal(t, amt, msg.Value)
@@ -665,7 +664,7 @@ func checkAddMessageFields(t *testing.T, msg *types.UnsignedMessage, from addres
 	require.Equal(t, to, paramsTo)
 }
 
-func checkWithdrawMessageFields(t *testing.T, msg *types.UnsignedMessage, from address.Address, addr address.Address, amt abi.TokenAmount) {
+func checkWithdrawMessageFields(t *testing.T, msg *types.Message, from address.Address, addr address.Address, amt abi.TokenAmount) {
 	require.Equal(t, from, msg.From)
 	require.Equal(t, market.Address, msg.To)
 	require.Equal(t, abi.NewTokenAmount(0), msg.Value)
@@ -702,7 +701,7 @@ func newMockFundManagerAPI(wallet address.Address) *mockFundManagerAPI {
 	}
 }
 
-func (mapi *mockFundManagerAPI) MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
+func (mapi *mockFundManagerAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *apitypes.MessageSendSpec) (*types.SignedMessage, error) {
 	mapi.lk.Lock()
 	defer mapi.lk.Unlock()
 
@@ -713,7 +712,7 @@ func (mapi *mockFundManagerAPI) MpoolPushMessage(ctx context.Context, msg *types
 	return smsg, nil
 }
 
-func (mapi *mockFundManagerAPI) getSentMessage(c cid.Cid) *types.UnsignedMessage {
+func (mapi *mockFundManagerAPI) getSentMessage(c cid.Cid) *types.Message {
 	mapi.lk.Lock()
 	defer mapi.lk.Unlock()
 
@@ -814,8 +813,8 @@ func (mapi *mockFundManagerAPI) StateWaitMsg(ctx context.Context, c cid.Cid, con
 	res := &apitypes.MsgLookup{
 		Message: c,
 		Receipt: types.MessageReceipt{
-			ExitCode:    0,
-			ReturnValue: nil,
+			ExitCode: 0,
+			Return:   nil,
 		},
 	}
 	ready := make(chan struct{})

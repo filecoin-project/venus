@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-cid"
@@ -23,7 +24,6 @@ import (
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
-	"github.com/filecoin-project/venus/pkg/types"
 	lotusinit "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	paychmock "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych/mock"
@@ -37,8 +37,8 @@ func testChannelResponse(t *testing.T, ch address.Address) types.MessageReceipt 
 	createChannelRetBytes, err := cborrpc.Dump(&createChannelRet)
 	require.NoError(t, err)
 	createChannelResponse := types.MessageReceipt{
-		ExitCode:    0,
-		ReturnValue: createChannelRetBytes,
+		ExitCode: 0,
+		Return:   createChannelRetBytes,
 	}
 	return createChannelResponse
 }
@@ -185,8 +185,8 @@ func TestPaychGetCreateChannelWithErrorThenCreateAgain(t *testing.T) {
 	// 1. Set up create channel response (sent in response to WaitForMsg())
 	//    This response indicates an error.
 	errResponse := types.MessageReceipt{
-		ExitCode:    1, // error
-		ReturnValue: []byte{},
+		ExitCode: 1, // error
+		Return:   []byte{},
 	}
 
 	done := make(chan struct{})
@@ -250,8 +250,8 @@ func TestPaychGetRecoverAfterError(t *testing.T) {
 
 	// Send error create channel response
 	mock.receiveMsgResponse(mcid, types.MessageReceipt{
-		ExitCode:    1, // error
-		ReturnValue: []byte{},
+		ExitCode: 1, // error
+		Return:   []byte{},
 	})
 
 	// Send create message for a channel again
@@ -312,8 +312,8 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 
 	// Send error add funds response
 	mock.receiveMsgResponse(mcid2, types.MessageReceipt{
-		ExitCode:    1, // error
-		ReturnValue: []byte{},
+		ExitCode: 1, // error
+		Return:   []byte{},
 	})
 
 	_, err = mgr.GetPaychWaitReady(ctx, mcid2)
@@ -339,8 +339,8 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 
 	// Send success add funds response
 	mock.receiveMsgResponse(mcid3, types.MessageReceipt{
-		ExitCode:    0,
-		ReturnValue: []byte{},
+		ExitCode: 0,
+		Return:   []byte{},
 	})
 
 	_, err = mgr.GetPaychWaitReady(ctx, mcid3)
@@ -484,8 +484,8 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 
 	// Send success add funds response
 	mock2.receiveMsgResponse(mcid2, types.MessageReceipt{
-		ExitCode:    0,
-		ReturnValue: []byte{},
+		ExitCode: 0,
+		Return:   []byte{},
 	})
 
 	_, err = mgr2.GetPaychWaitReady(ctx, mcid2)
@@ -553,8 +553,8 @@ func TestPaychGetWait(t *testing.T) {
 	go func() {
 		// 6. Send add funds response
 		addFundsResponse := types.MessageReceipt{
-			ExitCode:    0,
-			ReturnValue: []byte{},
+			ExitCode: 0,
+			Return:   []byte{},
 		}
 		mock.receiveMsgResponse(addFundsMsgCid, addFundsResponse)
 	}()
@@ -604,8 +604,8 @@ func TestPaychGetWaitErr(t *testing.T) {
 
 	// 3. Send error response to create channel
 	response := types.MessageReceipt{
-		ExitCode:    1, // error
-		ReturnValue: []byte{},
+		ExitCode: 1, // error
+		Return:   []byte{},
 	}
 	mock.receiveMsgResponse(mcid, response)
 
@@ -714,8 +714,8 @@ func TestPaychGetMergeAddFunds(t *testing.T) {
 
 	// Send success add funds response
 	mock.receiveMsgResponse(addFundsMcid1, types.MessageReceipt{
-		ExitCode:    0,
-		ReturnValue: []byte{},
+		ExitCode: 0,
+		Return:   []byte{},
 	})
 
 	// Wait for add funds response
@@ -812,8 +812,8 @@ func TestPaychGetMergeAddFundsCtxCancelOne(t *testing.T) {
 
 	// Send success add funds response
 	mock.receiveMsgResponse(addFundsMcid2, types.MessageReceipt{
-		ExitCode:    0,
-		ReturnValue: []byte{},
+		ExitCode: 0,
+		Return:   []byte{},
 	})
 
 	// Wait for add funds response
@@ -1027,8 +1027,8 @@ func TestPaychAvailableFunds(t *testing.T) {
 
 	// Send success add funds response
 	mock.receiveMsgResponse(addFundsMcid, types.MessageReceipt{
-		ExitCode:    0,
-		ReturnValue: []byte{},
+		ExitCode: 0,
+		Return:   []byte{},
 	})
 
 	// Wait for add funds response

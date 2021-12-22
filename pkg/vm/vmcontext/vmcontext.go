@@ -23,7 +23,6 @@ import (
 
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
@@ -33,7 +32,8 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/cron"
 	initActor "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
-	types2 "github.com/filecoin-project/venus/venus-shared/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+	types2 "github.com/filecoin-project/venus/venus-shared/stmgr"
 )
 
 const MaxCallDepth = 4096
@@ -76,7 +76,7 @@ type ActorImplLookup interface {
 	GetActorImpl(code cid.Cid, rt runtime.Runtime) (dispatch.Dispatcher, *dispatch.ExcuteError)
 }
 
-func VmMessageFromUnsignedMessage(msg *types.UnsignedMessage) VmMessage { //nolint
+func VmMessageFromUnsignedMessage(msg *types.Message) VmMessage { //nolint
 	return VmMessage{
 		From:   msg.From,
 		To:     msg.To,
@@ -183,7 +183,7 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 	}
 
 	// get a view into the actor stateView
-	initActorState, err := initActor.Load(adt.WrapStore(vm.context, vm.store), (*types2.Actor)(initActorEntry))
+	initActorState, err := initActor.Load(adt.WrapStore(vm.context, vm.store), initActorEntry)
 	if err != nil {
 		panic(err)
 	}
@@ -286,7 +286,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 				msgGasOutput, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
 				vm.debugger.Println(string(msgGasOutput))
 
-				var valuedTraces []*types.GasTrace
+				var valuedTraces []*types2.GasTrace
 				for _, trace := range ret.GasTracker.ExecutionTrace.GasCharges {
 					if trace.TotalGas > 0 {
 						valuedTraces = append(valuedTraces, trace)
@@ -395,9 +395,9 @@ func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 		GasTracker: gasTank,
 		OutPuts:    gas.GasOutputs{},
 		Receipt: types.MessageReceipt{
-			ExitCode:    code,
-			ReturnValue: ret,
-			GasUsed:     0,
+			ExitCode: code,
+			Return:   ret,
+			GasUsed:  0,
 		},
 	}, nil
 }
@@ -414,7 +414,7 @@ func (vm *VM) ApplyMessage(msg types.ChainMsg) (*Ret, error) {
 }
 
 // applyMessage applies the message To the current stateView.
-func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret, error) {
+func (vm *VM) applyMessage(msg *types.Message, onChainMsgSize int) (*Ret, error) {
 	vm.SetCurrentEpoch(vm.vmOption.Epoch)
 	// This Method does not actually execute the message itself,
 	// but rather deals with the pre/post processing of a message.
@@ -619,14 +619,14 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 		GasTracker: gasTank,
 		OutPuts:    gasOutputs,
 		Receipt: types.MessageReceipt{
-			ExitCode:    code,
-			ReturnValue: ret,
-			GasUsed:     gasUsed,
+			ExitCode: code,
+			Return:   ret,
+			GasUsed:  gasUsed,
 		},
 	}, nil
 }
 
-func (vm *VM) shouldBurn(ctx context.Context, msg *types.UnsignedMessage, errcode exitcode.ExitCode) (bool, error) {
+func (vm *VM) shouldBurn(ctx context.Context, msg *types.Message, errcode exitcode.ExitCode) (bool, error) {
 	if vm.NtwkVersion() <= network.Version12 {
 		// Check to see if we should burn funds. We avoid burning on successful
 		// window post. This won't catch _indirect_ window post calls, but this

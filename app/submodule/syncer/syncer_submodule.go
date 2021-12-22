@@ -33,8 +33,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/net/pubsub"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/state"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/ipfs/go-blockservice"
 )
 
@@ -232,7 +232,7 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 		syncer.NetworkModule.Host.ConnManager().TagPeer(sender, "new-block", 20)
 		log.Infof("fetch message success at %s", bm.Header.Cid())
 
-		ts, _ := types.NewTipSet(header)
+		ts, _ := types.NewTipSet([]*types.BlockHeader{header})
 		chainInfo := types.NewChainInfo(source, sender, ts)
 
 		if err = syncer.ChainSyncManager.BlockProposer().SendGossipBlock(chainInfo); err != nil {

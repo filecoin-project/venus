@@ -3,14 +3,16 @@ package wallet
 import (
 	"context"
 	"errors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+	wtypes "github.com/filecoin-project/venus/venus-shared/wallet"
 )
 
 var _ apiface.IWallet = &WalletAPI{}
@@ -102,7 +104,7 @@ func (walletAPI *WalletAPI) WalletExport(addr address.Address, password string) 
 }
 
 // WalletSign signs the given bytes using the given address.
-func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error) {
+func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte, meta wtypes.MsgMeta) (*crypto.Signature, error) {
 	keyAddr, err := walletAPI.walletModule.Chain.Stmgr.ResolveToKeyAddress(ctx, k, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("ResolveTokeyAddress failed:%v", err)
@@ -111,13 +113,13 @@ func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, m
 }
 
 // WalletSignMessage signs the given message using the given address.
-func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.UnsignedMessage) (*types.SignedMessage, error) {
+func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {
 	mb, err := msg.ToStorageBlock()
 	if err != nil {
 		return nil, xerrors.Errorf("serializing message: %w", err)
 	}
 
-	sign, err := walletAPI.WalletSign(ctx, k, mb.Cid().Bytes(), wallet.MsgMeta{Type: wallet.MTChainMsg})
+	sign, err := walletAPI.WalletSign(ctx, k, mb.Cid().Bytes(), wtypes.MsgMeta{Type: wtypes.MTChainMsg})
 	if err != nil {
 		return nil, xerrors.Errorf("failed to sign message: %w", err)
 	}

@@ -2,12 +2,9 @@ package discovery_test
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/net"
-	"github.com/filecoin-project/venus/pkg/repo"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -21,8 +18,11 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/discovery"
+	"github.com/filecoin-project/venus/pkg/net"
+	"github.com/filecoin-project/venus/pkg/repo"
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 type mockHelloCallback struct {

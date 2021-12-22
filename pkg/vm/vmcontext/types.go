@@ -2,10 +2,12 @@ package vmcontext
 
 import (
 	"context"
+
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
@@ -13,7 +15,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 )
@@ -70,8 +71,8 @@ type Ret struct {
 // Failure returns with a non-zero exit code.
 func Failure(exitCode exitcode.ExitCode, gasAmount int64) types.MessageReceipt {
 	return types.MessageReceipt{
-		ExitCode:    exitCode,
-		ReturnValue: []byte{},
-		GasUsed:     gasAmount,
+		ExitCode: exitCode,
+		Return:   []byte{},
+		GasUsed:  gasAmount,
 	}
 }

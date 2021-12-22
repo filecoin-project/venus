@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
 	"github.com/filecoin-project/venus/pkg/net/msgsub"
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 const repubMsgLimit = 30
@@ -154,7 +154,7 @@ LOOP:
 		mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolRepub], func() interface{} {
 			msgsEv := make([]MessagePoolEvtMessage, 0, len(msgs))
 			for _, m := range msgs {
-				msgsEv = append(msgsEv, MessagePoolEvtMessage{UnsignedMessage: m.Message, CID: m.Cid()})
+				msgsEv = append(msgsEv, MessagePoolEvtMessage{Message: m.Message, CID: m.Cid()})
 			}
 			return MessagePoolEvt{
 				Action:   "repub",

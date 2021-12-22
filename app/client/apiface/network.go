@@ -3,13 +3,13 @@ package apiface
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-
-	"github.com/filecoin-project/venus/pkg/net"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+
+	"github.com/filecoin-project/venus/pkg/net"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 )
 
 type INetwork interface {

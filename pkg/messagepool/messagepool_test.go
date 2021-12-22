@@ -23,8 +23,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
 	"github.com/filecoin-project/venus/pkg/repo"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+	wtypes "github.com/filecoin-project/venus/venus-shared/wallet"
 )
 
 func init() {
@@ -54,7 +55,7 @@ func mkAddress(i uint64) address.Address {
 }
 
 func mkMessage(from, to address.Address, nonce uint64, w *wallet.Wallet) *types.SignedMessage {
-	msg := &types.UnsignedMessage{
+	msg := &types.Message{
 		To:         to,
 		From:       from,
 		Value:      tbig.NewInt(1),
@@ -65,7 +66,7 @@ func mkMessage(from, to address.Address, nonce uint64, w *wallet.Wallet) *types.
 	}
 
 	c := msg.Cid()
-	sig, err := w.WalletSign(from, c.Bytes(), wallet.MsgMeta{})
+	sig, err := w.WalletSign(from, c.Bytes(), wtypes.MsgMeta{})
 	if err != nil {
 		panic(err)
 	}
@@ -105,10 +106,10 @@ func mkBlock(parents *types.TipSet, weightInc int64, ticketNonce uint64) *types.
 		ElectionProof: &types.ElectionProof{
 			VRFProof: []byte(fmt.Sprintf("====%d=====", ticketNonce)),
 		},
-		Ticket: types.Ticket{
+		Ticket: &types.Ticket{
 			VRFProof: []byte(fmt.Sprintf("====%d=====", ticketNonce)),
 		},
-		Parents:               tsKey,
+		Parents:               tsKey.Cids(),
 		ParentMessageReceipts: c,
 		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
 		ParentWeight:          weight,
@@ -122,7 +123,7 @@ func mkBlock(parents *types.TipSet, weightInc int64, ticketNonce uint64) *types.
 }
 
 func mkTipSet(blks ...*types.BlockHeader) *types.TipSet {
-	ts, err := types.NewTipSet(blks...)
+	ts, err := types.NewTipSet(blks)
 	if err != nil {
 		panic(err)
 	}
@@ -173,7 +174,7 @@ func (tma *testMpoolAPI) setStateNonce(addr address.Address, v uint64) {
 }
 
 func (tma *testMpoolAPI) setBalance(addr address.Address, v uint64) {
-	tma.balance[addr] = types.NewAttoFILFromFIL(v)
+	tma.balance[addr] = types.FromFil(v)
 }
 
 func (tma *testMpoolAPI) setBalanceRaw(addr address.Address, v tbig.Int) {
@@ -265,7 +266,7 @@ func (tma *testMpoolAPI) StateAccountKey(ctx context.Context, addr address.Addre
 	return addr, nil
 }
 
-func (tma *testMpoolAPI) MessagesForBlock(h *types.BlockHeader) ([]*types.UnsignedMessage, []*types.SignedMessage, error) {
+func (tma *testMpoolAPI) MessagesForBlock(h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
 	return nil, tma.bmsgs[h.Cid()], nil
 }
 
@@ -404,7 +405,7 @@ func TestCheckMessageBig(t *testing.T) {
 			Params:     make([]byte, 41<<10), // 41KiB payload
 		}
 
-		sig, err := w.WalletSign(from, msg.Cid().Bytes(), wallet.MsgMeta{})
+		sig, err := w.WalletSign(from, msg.Cid().Bytes(), wtypes.MsgMeta{})
 		if err != nil {
 			panic(err)
 		}
@@ -427,7 +428,7 @@ func TestCheckMessageBig(t *testing.T) {
 			Params:     make([]byte, 64<<10), // 64KiB payload
 		}
 
-		sig, err := w.WalletSign(from, msg.Cid().Bytes(), wallet.MsgMeta{})
+		sig, err := w.WalletSign(from, msg.Cid().Bytes(), wtypes.MsgMeta{})
 		if err != nil {
 			panic(err)
 		}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/testhelpers"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 func TestIterAncestors(t *testing.T) {
@@ -29,9 +30,9 @@ func TestIterAncestors(t *testing.T) {
 		b12 := store.AppendBlockOnBlocks(root)
 		b21 := store.AppendBlockOnBlocks(b11, b12)
 
-		t0 := types.RequireNewTipSet(t, root)
-		t1 := types.RequireNewTipSet(t, b11, b12)
-		t2 := types.RequireNewTipSet(t, b21)
+		t0 := testhelpers.RequireNewTipSet(t, root)
+		t1 := testhelpers.RequireNewTipSet(t, b11, b12)
+		t2 := testhelpers.RequireNewTipSet(t, b21)
 
 		it := chain.IterAncestors(ctx, store, t2)
 		assert.False(t, it.Complete())
@@ -58,9 +59,9 @@ func TestIterAncestors(t *testing.T) {
 		b12 := store.AppendBlockOnBlocks(root)
 		b21 := store.AppendBlockOnBlocks(b11, b12)
 
-		types.RequireNewTipSet(t, root)
-		t1 := types.RequireNewTipSet(t, b11, b12)
-		t2 := types.RequireNewTipSet(t, b21)
+		testhelpers.RequireNewTipSet(t, root)
+		t1 := testhelpers.RequireNewTipSet(t, b11, b12)
+		t2 := testhelpers.RequireNewTipSet(t, b21)
 
 		it := chain.IterAncestors(ctx, store, t2)
 		assert.False(t, it.Complete())

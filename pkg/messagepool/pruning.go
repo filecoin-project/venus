@@ -6,10 +6,9 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 func (mp *MessagePool) pruneExcessMessages() error {

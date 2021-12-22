@@ -2,11 +2,11 @@ package test
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"math/rand"
 	"testing"
 
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/app/node"

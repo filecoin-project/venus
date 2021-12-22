@@ -7,7 +7,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 )
 
 type messageCache struct {

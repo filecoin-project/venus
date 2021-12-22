@@ -10,7 +10,6 @@ import (
 	"time"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/venus/pkg/types"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/libp2p/go-libp2p-core/host"
@@ -21,6 +20,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/net"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var exchangeClientLogger = logging.Logger("exchange.client")
@@ -191,7 +191,7 @@ func (c *client) processResponse(req *Request, res *Response, tipsets []*types.T
 				}
 			}
 
-			validRes.tipsets[i], err = types.NewTipSet(res.Chain[i].Blocks...)
+			validRes.tipsets[i], err = types.NewTipSet(res.Chain[i].Blocks)
 			if err != nil {
 				return nil, xerrors.Errorf("invalid tipset blocks at height (head - %d): %w", i, err)
 			}
