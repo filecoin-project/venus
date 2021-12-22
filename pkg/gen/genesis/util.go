@@ -9,9 +9,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/venus-shared/actors"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 func mustEnc(i cbg.CBORMarshaler) []byte {
@@ -32,7 +32,7 @@ func doExecValue(ctx context.Context, vmi vm.Interpreter, to, from address.Addre
 		return nil, xerrors.Errorf("actor (%s) not found", from)
 	}
 
-	ret, err := vmi.ApplyImplicitMessage(&types.UnsignedMessage{
+	ret, err := vmi.ApplyImplicitMessage(&types.Message{
 		To:       to,
 		From:     from,
 		Method:   method,
@@ -49,5 +49,5 @@ func doExecValue(ctx context.Context, vmi vm.Interpreter, to, from address.Addre
 		return nil, xerrors.Errorf("failed to call method: %w", ret.Receipt.String())
 	}
 
-	return ret.Receipt.ReturnValue, nil
+	return ret.Receipt.Return, nil
 }

@@ -2,14 +2,14 @@ package market
 
 import (
 	"context"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	"github.com/filecoin-project/venus/pkg/statemanger"
-	"github.com/filecoin-project/venus/pkg/types"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/pkg/statemanger"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"golang.org/x/xerrors"
 )
 
 type marketAPI struct {

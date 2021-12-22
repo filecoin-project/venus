@@ -15,8 +15,8 @@ import (
 	pconfig "github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/state"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var log = logging.Logger("wallet")

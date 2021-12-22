@@ -25,8 +25,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+	mtypes "github.com/filecoin-project/venus/venus-shared/wallet"
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 
@@ -41,11 +42,11 @@ func init() {
 const UpgradeBreezeHeight = 41280
 
 func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, gasLimit int64, gasPrice uint64) *types.SignedMessage {
-	msg := &types.UnsignedMessage{
+	msg := &types.Message{
 		From:       from,
 		To:         to,
 		Method:     2,
-		Value:      types.NewAttoFILFromFIL(0),
+		Value:      types.FromFil(0),
 		Nonce:      nonce,
 		GasLimit:   gasLimit,
 		GasFeeCap:  tbig.NewInt(int64(100) + int64(gasPrice)),
@@ -53,7 +54,7 @@ func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, g
 	}
 
 	c := msg.Cid()
-	sig, err := w.WalletSign(from, c.Bytes(), wallet.MsgMeta{})
+	sig, err := w.WalletSign(from, c.Bytes(), mtypes.MsgMeta{})
 	if err != nil {
 		panic(err)
 	}
@@ -1235,7 +1236,7 @@ func TestGasReward(t *testing.T) {
 		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			msg := &types.SignedMessage{
-				Message: types.UnsignedMessage{
+				Message: types.Message{
 					GasLimit:   10,
 					GasFeeCap:  tbig.NewInt(int64(test.FeeCap)),
 					GasPremium: tbig.NewInt(int64(test.Premium)),
@@ -1250,7 +1251,7 @@ func TestGasReward(t *testing.T) {
 }
 
 type SignedMessage struct {
-	Message   types.UnsignedMessage
+	Message   types.Message
 	Signature crypto.Signature
 }
 
@@ -1330,7 +1331,7 @@ readLoop:
 		m.Message.Nonce -= baseNonce
 
 		c := m.Message.Cid()
-		sig, err := w.WalletSign(localActor, c.Bytes(), wallet.MsgMeta{})
+		sig, err := w.WalletSign(localActor, c.Bytes(), mtypes.MsgMeta{})
 		if err != nil {
 			t.Fatal(err)
 		}

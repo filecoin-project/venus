@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/filecoin-project/venus/venus-shared/chain"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
@@ -19,15 +17,14 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/venus-shared/actors/adt"
-	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
-
 	states0 "github.com/filecoin-project/specs-actors/actors/states"
 	states2 "github.com/filecoin-project/specs-actors/v2/actors/states"
 	states3 "github.com/filecoin-project/specs-actors/v3/actors/states"
 	states4 "github.com/filecoin-project/specs-actors/v4/actors/states"
 	states5 "github.com/filecoin-project/specs-actors/v5/actors/states"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 type StateTreeVersion uint64 //nolint
@@ -294,7 +291,7 @@ func (st *State) lookupIDinternal(addr address.Address) (address.Address, error)
 		return address.Undef, xerrors.Errorf("getting init actor: %v", err)
 	}
 
-	ias, err := init_.Load(&AdtStore{st.Store}, (*chain.Actor)(act))
+	ias, err := init_.Load(&AdtStore{st.Store}, act)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("loading init actor state: %v", err)
 	}
@@ -440,7 +437,7 @@ func (st *State) ClearSnapshot() {
 func (st *State) RegisterNewAddress(addr ActorKey) (address.Address, error) {
 	var out address.Address
 	err := st.MutateActor(init_.Address, func(initact *types.Actor) error {
-		ias, err := init_.Load(&AdtStore{st.Store}, (*chain.Actor)(initact))
+		ias, err := init_.Load(&AdtStore{st.Store}, initact)
 		if err != nil {
 			return err
 		}

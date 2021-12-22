@@ -13,8 +13,8 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/venus/pkg/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var RootVerifierID address.Address

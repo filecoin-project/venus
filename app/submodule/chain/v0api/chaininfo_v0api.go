@@ -2,15 +2,16 @@ package v0api
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/client/apiface/v0api"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var _ v0api.IChain = &WrapperV1IChain{}

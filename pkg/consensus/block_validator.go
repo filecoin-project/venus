@@ -30,14 +30,13 @@ import (
 	"github.com/filecoin-project/venus/pkg/fork"
 	appstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
-	types2 "github.com/filecoin-project/venus/venus-shared/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/hashicorp/go-multierror"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
@@ -141,7 +140,7 @@ func (bv *BlockValidator) ValidateFullBlock(ctx context.Context, blk *types.Bloc
 }
 
 func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHeader) error {
-	parent, err := bv.chainState.GetTipSet(blk.Parents)
+	parent, err := bv.chainState.GetTipSet(types.NewTipSetKey(blk.Parents...))
 	if err != nil {
 		return xerrors.Errorf("load parent tipset failed %w", err)
 	}
@@ -220,7 +219,11 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 
 	blockSigCheck := async.Err(func() error {
 		// Validate block signature
-		return crypto.Verify(blk.BlockSig, workerAddr, blk.SignatureData())
+		data, err := blk.SignatureData()
+		if err != nil {
+			return err
+		}
+		return crypto.Verify(blk.BlockSig, workerAddr, data)
 	})
 
 	beaconValuesCheck := async.Err(func() error {
@@ -239,7 +242,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 
 		sampleEpoch := blk.Height - constants.TicketRandomnessLookback
 		bSmokeHeight := blk.Height > bv.config.ForkUpgradeParam.UpgradeSmokeHeight
-		if err := bv.tv.IsValidTicket(ctx, blk.Parents, beaconBase, bSmokeHeight, sampleEpoch, blk.Miner, workerAddr, blk.Ticket); err != nil {
+		if err := bv.tv.IsValidTicket(ctx, types.NewTipSetKey(blk.Parents...), beaconBase, bSmokeHeight, sampleEpoch, blk.Miner, workerAddr, *blk.Ticket); err != nil {
 			return xerrors.Errorf("invalid ticket: %s in block %s %w", blk.Ticket.String(), blk.Cid(), err)
 		}
 		return nil
@@ -414,9 +417,9 @@ func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockM
 		return err
 	}
 
-	mrcid, err := store.Put(store.Context(), &types.TxMeta{
-		BLSRoot:  bmroot,
-		SecpRoot: smroot,
+	mrcid, err := store.Put(store.Context(), &types.MessageRoot{
+		BlsRoot:   bmroot,
+		SecpkRoot: smroot,
 	})
 
 	if err != nil {
@@ -482,7 +485,7 @@ func (bv *BlockValidator) minerIsValid(ctx context.Context, maddr address.Addres
 		return xerrors.New("power actor not found")
 	}
 
-	ps, err := power.Load(adt.WrapStore(ctx, vms), (*types2.Actor)(pact))
+	ps, err := power.Load(adt.WrapStore(ctx, vms), pact)
 	if err != nil {
 		return err
 	}
@@ -508,10 +511,10 @@ func (bv *BlockValidator) ValidateBlockBeacon(blk *types.BlockHeader, parentEpoc
 
 func (bv *BlockValidator) beaconBaseEntry(ctx context.Context, blk *types.BlockHeader) (*types.BeaconEntry, error) {
 	if len(blk.BeaconEntries) > 0 {
-		return blk.BeaconEntries[len(blk.BeaconEntries)-1], nil
+		return &blk.BeaconEntries[len(blk.BeaconEntries)-1], nil
 	}
 
-	parent, err := bv.chainState.GetTipSet(blk.Parents)
+	parent, err := bv.chainState.GetTipSet(types.NewTipSetKey(blk.Parents...))
 	if err != nil {
 		return nil, err
 	}
@@ -536,7 +539,7 @@ func (bv *BlockValidator) ValidateBlockWinner(ctx context.Context, waddr address
 
 	rBeacon := prevEntry
 	if len(blk.BeaconEntries) != 0 {
-		rBeacon = blk.BeaconEntries[len(blk.BeaconEntries)-1]
+		rBeacon = &blk.BeaconEntries[len(blk.BeaconEntries)-1]
 	}
 	buf := new(bytes.Buffer)
 	if err := blk.Miner.MarshalCBOR(buf); err != nil {
@@ -607,7 +610,7 @@ func (bv *BlockValidator) MinerEligibleToMine(ctx context.Context, addr address.
 		return false, xerrors.New("power actor not found")
 	}
 
-	pstate, err := power.Load(adt.WrapStore(ctx, bv.cstore), (*types2.Actor)(pact))
+	pstate, err := power.Load(adt.WrapStore(ctx, bv.cstore), pact)
 	if err != nil {
 		return false, err
 	}
@@ -621,7 +624,7 @@ func (bv *BlockValidator) MinerEligibleToMine(ctx context.Context, addr address.
 		return false, xerrors.Errorf("miner actor %s not found", addr)
 	}
 
-	mstate, err := miner.Load(adt.WrapStore(ctx, vms), (*types2.Actor)(mact))
+	mstate, err := miner.Load(adt.WrapStore(ctx, vms), mact)
 	if err != nil {
 		return false, err
 	}
@@ -671,7 +674,7 @@ func (bv *BlockValidator) minerHasMinPower(ctx context.Context, addr address.Add
 		return false, xerrors.New("power actor not found")
 	}
 
-	ps, err := power.Load(adt.WrapStore(ctx, vms), (*types2.Actor)(pact))
+	ps, err := power.Load(adt.WrapStore(ctx, vms), pact)
 	if err != nil {
 		return false, err
 	}
@@ -698,7 +701,7 @@ func (bv *BlockValidator) VerifyWinningPoStProof(ctx context.Context, nv network
 
 	rbase := prevBeacon
 	if len(blk.BeaconEntries) > 0 {
-		rbase = blk.BeaconEntries[len(blk.BeaconEntries)-1]
+		rbase = &blk.BeaconEntries[len(blk.BeaconEntries)-1]
 	}
 
 	rand, err := chain.DrawRandomness(rbase.Data, acrypto.DomainSeparationTag_WinningPoStChallengeSeed, blk.Height, buf.Bytes())
@@ -863,9 +866,9 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 		return xerrors.Errorf("get secpMsgs root failed: %v", err)
 	}
 
-	txMeta := &types.TxMeta{
-		BLSRoot:  bmroot,
-		SecpRoot: smroot,
+	txMeta := &types.MessageRoot{
+		BlsRoot:   bmroot,
+		SecpkRoot: smroot,
 	}
 	b, err := chain.MakeBlock(txMeta)
 	if err != nil {
@@ -953,8 +956,11 @@ func checkBlockSignature(ctx context.Context, blk *types.BlockHeader, worker add
 		return xerrors.New("block signature not present")
 	}
 
-	sigb := blk.SignatureData()
-	err := crypto.Verify(blk.BlockSig, worker, sigb)
+	sigb, err := blk.SignatureData()
+	if err != nil {
+		return err
+	}
+	err = crypto.Verify(blk.BlockSig, worker, sigb)
 	if err == nil {
 		blk.SetValidated()
 	}

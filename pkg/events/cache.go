@@ -9,13 +9,14 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/types"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 type uncachedAPI interface {
 	ChainNotify(context.Context) <-chan []*chain.HeadChange
 	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*chain.HeadChange, error)
-	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*chain.MsgLookup, error)
+	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) // optional / for CalledMsg
 

@@ -20,12 +20,11 @@ import (
 	sbchain "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
-	types2 "github.com/filecoin-project/venus/venus-shared/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -133,7 +132,7 @@ var msigCreateCmd = &cmds.Command{
 		}
 		// get address of newly created miner
 		var execreturn init2.ExecReturn
-		if err := execreturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.ReturnValue)); err != nil {
+		if err := execreturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 			return err
 		}
 		// TODO: maybe register this somewhere
@@ -178,7 +177,7 @@ var msigInspectCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		mstate, err := multisig.Load(store, (*types2.Actor)(act))
+		mstate, err := multisig.Load(store, act)
 		if err != nil {
 			return err
 		}
@@ -383,7 +382,7 @@ var msigProposeCmd = &cmds.Command{
 		}
 
 		var retval msig2.ProposeReturn
-		if err := retval.UnmarshalCBOR(bytes.NewReader(wait.Receipt.ReturnValue)); err != nil {
+		if err := retval.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 			return fmt.Errorf("failed to unmarshal propose return value: %w", err)
 		}
 		fmt.Fprintf(buf, "Transaction ID: %d\n", retval.TxnID)
@@ -447,7 +446,7 @@ var msigRemoveProposeCmd = &cmds.Command{
 		}
 
 		var ret multisig.ProposeReturn
-		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.ReturnValue))
+		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
 		if err != nil {
 			return xerrors.Errorf("decoding proposal return: %w", err)
 		}
@@ -613,7 +612,7 @@ var msigAddProposeCmd = &cmds.Command{
 		}
 
 		var ret multisig.ProposeReturn
-		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.ReturnValue))
+		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
 		if err != nil {
 			return xerrors.Errorf("decoding proposal return: %w", err)
 		}
@@ -805,7 +804,7 @@ var msigSwapProposeCmd = &cmds.Command{
 			return fmt.Errorf("swap proposal returned exit %d", wait.Receipt.ExitCode)
 		}
 		var ret multisig.ProposeReturn
-		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.ReturnValue))
+		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
 		if err != nil {
 			return xerrors.Errorf("decoding proposal return: %w", err)
 		}
@@ -1010,7 +1009,7 @@ var msigLockProposeCmd = &cmds.Command{
 			return fmt.Errorf("lock proposal returned exit %d", wait.Receipt.ExitCode)
 		}
 		var ret multisig.ProposeReturn
-		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.ReturnValue))
+		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
 		if err != nil {
 			return xerrors.Errorf("decoding proposal return: %w", err)
 		}
@@ -1289,7 +1288,7 @@ var msigProposeThresholdCmd = &cmds.Command{
 			return fmt.Errorf("change threshold proposal returned exit %d", wait.Receipt.ExitCode)
 		}
 		var ret multisig.ProposeReturn
-		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.ReturnValue))
+		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
 		if err != nil {
 			return xerrors.Errorf("decoding proposal return: %w", err)
 		}

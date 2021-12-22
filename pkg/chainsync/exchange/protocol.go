@@ -5,8 +5,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 )
@@ -155,7 +155,7 @@ type BSTipSet struct {
 // FIXME: The logic to decompress this structure should belong
 //  to itself, not to the consumer.
 type CompactedMessages struct {
-	Bls         []*types.UnsignedMessage
+	Bls         []*types.Message
 	BlsIncludes [][]uint64
 
 	Secpk         []*types.SignedMessage

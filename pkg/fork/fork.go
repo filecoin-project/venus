@@ -44,13 +44,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
-	types2 "github.com/filecoin-project/venus/venus-shared/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var log = logging.Logger("fork")
@@ -636,11 +635,11 @@ func (c *ChainFork) ParentState(ts *types.TipSet) cid.Cid {
 
 func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	// Some initial parameters
-	FundsForMiners := types.NewAttoFILFromFIL(1_000_000)
+	FundsForMiners := types.FromFil(1_000_000)
 	LookbackEpoch := abi.ChainEpoch(32000)
-	AccountCap := types.NewAttoFILFromFIL(0)
-	BaseMinerBalance := types.NewAttoFILFromFIL(20)
-	DesiredReimbursementBalance := types.NewAttoFILFromFIL(5_000_000)
+	AccountCap := types.FromFil(0)
+	BaseMinerBalance := types.FromFil(20)
+	DesiredReimbursementBalance := types.FromFil(5_000_000)
 
 	isSystemAccount := func(addr address.Address) (bool, error) {
 		id, err := address.IDFromAddress(addr)
@@ -896,7 +895,7 @@ func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, cache Migrati
 		return cid.Undef, xerrors.Errorf("checking final state balance failed: %v", err)
 	}
 
-	exp := types.NewAttoFILFromFIL(constants.FilBase)
+	exp := types.FromFil(constants.FilBase)
 	if !exp.Equals(total) {
 		return cid.Undef, xerrors.Errorf("resultant state tree account balance was not correct: %s", total)
 	}
@@ -913,7 +912,7 @@ func setNetworkName(ctx context.Context, store adt.Store, tree *vmstate.State, n
 		return xerrors.New("did not find init actor")
 	}
 
-	initState, err := init_.Load(store, (*types2.Actor)(ia))
+	initState, err := init_.Load(store, ia)
 	if err != nil {
 		return xerrors.Errorf("reading init state: %v", err)
 	}
@@ -942,7 +941,7 @@ func resetGenesisMsigs0(ctx context.Context, sm *ChainFork, store adt0.Store, tr
 		return xerrors.Errorf("getting genesis block: %v", err)
 	}
 
-	gts, err := types.NewTipSet(gb)
+	gts, err := types.NewTipSet([]*types.BlockHeader{gb})
 	if err != nil {
 		return xerrors.Errorf("getting genesis tipset: %v", err)
 	}
@@ -1024,7 +1023,7 @@ func splitGenesisMultisig0(ctx context.Context, addr address.Address, store adt0
 		return xerrors.Errorf("did not find actor: %s", addr.String())
 	}
 
-	mst, err := multisig.Load(store, (*types2.Actor)(mact))
+	mst, err := multisig.Load(store, mact)
 	if err != nil {
 		return xerrors.Errorf("getting msig state: %v", err)
 	}
@@ -1500,7 +1499,7 @@ func terminateActor(ctx context.Context, tree *vmstate.State, addr address.Addre
 		return types.ErrActorNotFound
 	}
 
-	ias, err := init_.Load(&vmstate.AdtStore{IpldStore: tree.Store}, (*types2.Actor)(ia))
+	ias, err := init_.Load(&vmstate.AdtStore{IpldStore: tree.Store}, ia)
 	if err != nil {
 		return xerrors.Errorf("loading init actor state: %v", err)
 	}

@@ -12,11 +12,11 @@ import (
 	"github.com/filecoin-project/venus/pkg/fork"
 	appstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
@@ -28,7 +28,7 @@ import (
 type IStateManager interface {
 	ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 	GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error)
-	Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*vm.Ret, error)
+	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*vm.Ret, error)
 	GetMarketState(ctx context.Context, ts *types.TipSet) (market.State, error)
 }
 

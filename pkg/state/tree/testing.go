@@ -2,19 +2,19 @@ package tree
 
 import (
 	"context"
+	"testing"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"testing"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
-
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 // NewFromString sets a state tree based on an int.

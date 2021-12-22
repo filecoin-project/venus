@@ -13,7 +13,7 @@ import (
 	tbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var bigBlockGasLimit = big.NewInt(constants.BlockGasLimit)

@@ -25,9 +25,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/gen"
 	"github.com/filecoin-project/venus/pkg/gen/genesis"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/tools/seed"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var seedCmd = &cmds.Command{

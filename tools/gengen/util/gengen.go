@@ -19,7 +19,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/genesis"
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 // CreateStorageMinerConfig holds configuration options used to create a storage

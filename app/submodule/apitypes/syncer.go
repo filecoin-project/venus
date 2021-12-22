@@ -2,15 +2,17 @@ package apitypes
 
 import (
 	"fmt"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/ipfs/go-cid"
 	"time"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/ipfs/go-cid"
 )
 
 type ComputeStateOutput struct {
 	Root  cid.Cid
-	Trace []*types.InvocResult
+	Trace []*apitypes.InvocResult
 }
 
 type SyncState struct {

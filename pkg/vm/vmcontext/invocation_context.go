@@ -5,8 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	types2 "github.com/filecoin-project/venus/venus-shared/chain"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -18,7 +16,6 @@ import (
 	ipfscbor "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
@@ -28,6 +25,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
 	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var gasOnActorExec = gas.NewGasCharge("OnActorExec", 0, 0)
@@ -305,7 +303,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 	}
 
 	// get init State
-	state, err := init_.Load(ctx.vm.ContextStore(), (*types2.Actor)(initActorEntry))
+	state, err := init_.Load(ctx.vm.ContextStore(), initActorEntry)
 	if err != nil {
 		panic(err)
 	}
@@ -402,7 +400,7 @@ func (ctx *invocationContext) resolveToKeyAddr(addr address.Address) (address.Ad
 		return address.Undef, xerrors.Errorf("failed to find actor: %s", addr)
 	}
 
-	aast, err := account.Load(adt.WrapStore(ctx.vm.context, ctx.vm.store), (*types2.Actor)(act))
+	aast, err := account.Load(adt.WrapStore(ctx.vm.context, ctx.vm.store), act)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to get account actor State for %s: %v", addr, err)
 	}

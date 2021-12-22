@@ -3,23 +3,22 @@ package chain
 import (
 	"bufio"
 	"context"
-
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	logging "github.com/ipfs/go-log/v2"
 	"io"
 	"time"
-
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/types"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/pkg/chain"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var _ apiface.IChainInfo = &chainInfoAPI{}
@@ -148,7 +147,7 @@ func (cia *chainInfoAPI) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.
 
 // ChainGetMessage reads a message referenced by the specified CID from the
 // chain blockstore.
-func (cia *chainInfoAPI) ChainGetMessage(ctx context.Context, msgID cid.Cid) (*types.UnsignedMessage, error) {
+func (cia *chainInfoAPI) ChainGetMessage(ctx context.Context, msgID cid.Cid) (*types.Message, error) {
 	msg, err := cia.chain.MessageStore.LoadMessage(msgID)
 	if err != nil {
 		return nil, err
@@ -247,7 +246,7 @@ func (cia *chainInfoAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Ci
 	}
 
 	// TODO: need to get the number of messages better than this
-	pts, err := cia.chain.ChainReader.GetTipSet(types.NewTipSetKey(b.Parents.Cids()...))
+	pts, err := cia.chain.ChainReader.GetTipSet(types.NewTipSetKey(b.Parents...))
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +280,7 @@ func (cia *chainInfoAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Ci
 	}
 
 	// TODO: need to get the number of messages better than this
-	pts, err := cia.chain.ChainReader.GetTipSet(types.NewTipSetKey(b.Parents.Cids()...))
+	pts, err := cia.chain.ChainReader.GetTipSet(types.NewTipSetKey(b.Parents...))
 	if err != nil {
 		return nil, err
 	}

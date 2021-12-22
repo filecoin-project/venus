@@ -5,17 +5,16 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
-	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
+	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/testhelpers"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/util/test"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/repo"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 type CborBlockStore struct {
@@ -52,7 +51,7 @@ func requirePutTestChain(ctx context.Context, t *testing.T, cborStore *CborBlock
 		tsas := &chain.TipSetMetadata{
 			TipSet:          ts,
 			TipSetStateRoot: ts.At(0).ParentStateRoot,
-			TipSetReceipts:  emptycid.EmptyReceiptsCID,
+			TipSetReceipts:  testhelpers.EmptyReceiptsCID,
 		}
 		requirePutBlocksToCborStore(t, cborStore.cborStore, tsas.TipSet.Blocks()...)
 		require.NoError(t, cborStore.PutTipSetMetadata(ctx, tsas))
@@ -86,7 +85,7 @@ func TestPutTipSet(t *testing.T) {
 	genTsas := &chain.TipSetMetadata{
 		TipSet:          genTS,
 		TipSetStateRoot: genTS.At(0).ParentStateRoot,
-		TipSetReceipts:  emptycid.EmptyReceiptsCID,
+		TipSetReceipts:  testhelpers.EmptyReceiptsCID,
 	}
 	err := cs.PutTipSetMetadata(ctx, genTsas)
 	assert.NoError(t, err)

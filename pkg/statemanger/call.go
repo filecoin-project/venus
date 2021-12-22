@@ -3,9 +3,11 @@ package statemanger
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -19,12 +21,11 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
 )
 
 // CallWithGas used to estimate message gaslimit, for each incoming message ,should execute after priorMsg in mpool
-func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *types.TipSet) (*vm.Ret, error) {
+func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (*vm.Ret, error) {
 	var (
 		err       error
 		stateRoot cid.Cid
@@ -118,7 +119,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, pri
 }
 
 // Call used for api invoke to compute a msg base on specify tipset, if the tipset is null, use latest tipset in db
-func (s *Stmgr) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*vm.Ret, error) {
+func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*vm.Ret, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.Call")
 	defer span.End()
 

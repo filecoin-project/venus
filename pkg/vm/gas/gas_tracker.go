@@ -6,8 +6,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/exitcode"
 
-	types2 "github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
+	types "github.com/filecoin-project/venus/venus-shared/stmgr"
 )
 
 // GasTracker maintains the stateView of gas usage throughout the execution of a message.
@@ -15,12 +15,12 @@ type GasTracker struct { //nolint
 	GasAvailable int64
 	GasUsed      int64
 
-	ExecutionTrace    types2.ExecutionTrace
+	ExecutionTrace    types.ExecutionTrace
 	NumActorsCreated  uint64    //nolint
 	AllowInternal     bool      //nolint
 	CallerValidated   bool      //nolint
 	LastGasChargeTime time.Time //nolint
-	LastGasCharge     *types2.GasTrace
+	LastGasCharge     *types.GasTrace
 }
 
 // NewGasTracker initializes a new empty gas tracker
@@ -54,7 +54,7 @@ func (t *GasTracker) TryCharge(gasCharge GasCharge) bool {
 		t.LastGasCharge.TimeTaken = now.Sub(t.LastGasChargeTime)
 	}
 
-	gasTrace := types2.GasTrace{
+	gasTrace := types.GasTrace{
 		Name:  gasCharge.Name,
 		Extra: gasCharge.Extra,
 

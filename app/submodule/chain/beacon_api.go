@@ -3,9 +3,10 @@ package chain
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	xerrors "github.com/pkg/errors"
 )
 

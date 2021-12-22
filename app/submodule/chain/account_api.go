@@ -2,8 +2,9 @@ package chain
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/go-address"
 	"golang.org/x/xerrors"

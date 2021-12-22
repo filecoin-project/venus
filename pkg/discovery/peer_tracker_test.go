@@ -2,11 +2,12 @@ package discovery_test
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/util/test"
-	"github.com/libp2p/go-libp2p-core/network"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/util/test"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/libp2p/go-libp2p-core/network"
 
 	"github.com/filecoin-project/venus/pkg/discovery"
 	"github.com/libp2p/go-libp2p-core/peer"

@@ -7,7 +7,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var log = logging.Logger("events")

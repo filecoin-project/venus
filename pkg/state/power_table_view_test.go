@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/venus/pkg/testhelpers"
+
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
@@ -18,8 +20,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/state"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
 	gengen "github.com/filecoin-project/venus/tools/gengen/util"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 func TestTotal(t *testing.T) {
@@ -30,7 +32,7 @@ func TestTotal(t *testing.T) {
 	ctx := context.Background()
 	numCommittedSectors := uint64(19)
 	numMiners := 3
-	kis := types.MustGenerateBLSKeyInfo(numMiners, 0)
+	kis := testhelpers.MustGenerateBLSKeyInfo(numMiners, 0)
 
 	cst, _, root := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis)
 
@@ -50,7 +52,7 @@ func TestMiner(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	kis := types.MustGenerateBLSKeyInfo(1, 0)
+	kis := testhelpers.MustGenerateBLSKeyInfo(1, 0)
 
 	numCommittedSectors := uint64(10)
 	cst, addrs, root := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis)
@@ -73,7 +75,7 @@ func TestNoPowerAfterSlash(t *testing.T) {
 	ctx := context.Background()
 	numCommittedSectors := uint64(19)
 	numMiners := 3
-	kis := types.MustGenerateBLSKeyInfo(numMiners, 0)
+	kis := testhelpers.MustGenerateBLSKeyInfo(numMiners, 0)
 	cstPower, addrsPower, rootPower := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis)
 	cstFaults, _, rootFaults := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis[0:2]) // drop the third key
 	table := state.NewPowerTableView(state.NewView(cstPower, rootPower), state.NewView(cstFaults, rootFaults))
@@ -91,7 +93,7 @@ func TestTotalPowerUnaffectedBySlash(t *testing.T) {
 	ctx := context.Background()
 	numCommittedSectors := uint64(19)
 	numMiners := 3
-	kis := types.MustGenerateBLSKeyInfo(numMiners, 0)
+	kis := testhelpers.MustGenerateBLSKeyInfo(numMiners, 0)
 	cstPower, _, rootPower := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis)
 	cstFaults, _, rootFaults := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors, kis[0:2]) // drop the third key
 	table := state.NewPowerTableView(state.NewView(cstPower, rootPower), state.NewView(cstFaults, rootFaults))

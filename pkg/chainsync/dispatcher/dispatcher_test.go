@@ -2,19 +2,24 @@ package dispatcher_test
 
 import (
 	"context"
+	"testing"
+	"time"
+
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/venus/pkg/testhelpers"
+
 	fbig "github.com/filecoin-project/go-state-types/big"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/chainsync/dispatcher"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 type mockSyncer struct {
@@ -147,25 +152,25 @@ func requirePop(t *testing.T, q *syncTypes.TargetTracker) *syncTypes.Target {
 // an int. The tipset key is a faked cid from the string of that integer and
 // the height is that integer.
 func chainInfoWithHeightAndWeight(t *testing.T, h int, weight int64) *types.ChainInfo {
-	newAddress := types.NewForTestGetter()
+	newAddress := testhelpers.NewForTestGetter()
 	posts := []proof2.PoStProof{{PoStProof: abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, ProofBytes: []byte{0x07}}}
 	blk := &types.BlockHeader{
 		Miner:         newAddress(),
-		Ticket:        types.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
+		Ticket:        &types.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
 		ElectionProof: &types.ElectionProof{VRFProof: []byte{0x0c, 0x0d}},
-		BeaconEntries: []*types.BeaconEntry{
+		BeaconEntries: []types.BeaconEntry{
 			{
 				Round: 44,
 				Data:  []byte{0xc0},
 			},
 		},
 		Height:                abi.ChainEpoch(h),
-		Messages:              types.CidFromString(t, "someothercid"),
-		ParentMessageReceipts: types.CidFromString(t, "someothercid"),
-		Parents:               types.NewTipSetKey(types.CidFromString(t, "someothercid")),
+		Messages:              testhelpers.CidFromString(t, "someothercid"),
+		ParentMessageReceipts: testhelpers.CidFromString(t, "someothercid"),
+		Parents:               []cid.Cid{testhelpers.CidFromString(t, "someothercid")},
 		ParentWeight:          fbig.NewInt(weight),
 		ForkSignaling:         2,
-		ParentStateRoot:       types.CidFromString(t, "someothercid"),
+		ParentStateRoot:       testhelpers.CidFromString(t, "someothercid"),
 		Timestamp:             4,
 		ParentBaseFee:         abi.NewTokenAmount(20),
 		WinPoStProof:          posts,
@@ -174,7 +179,7 @@ func chainInfoWithHeightAndWeight(t *testing.T, h int, weight int64) *types.Chai
 			Data: []byte{0x4},
 		},
 	}
-	b, _ := types.NewTipSet(blk)
+	b, _ := types.NewTipSet([]*types.BlockHeader{blk})
 	return &types.ChainInfo{
 		Head: b,
 	}

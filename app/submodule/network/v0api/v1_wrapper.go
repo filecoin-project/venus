@@ -2,10 +2,11 @@ package v0api
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
 
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/api"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 )
 
 type WrapperV1INetwork struct {
@@ -18,7 +19,7 @@ func (w *WrapperV1INetwork) Version(ctx context.Context) (apitypes.Version, erro
 		return apitypes.Version{}, err
 	}
 
-	ver.APIVersion = constants.FullAPIVersion0
+	ver.APIVersion = api.Version(constants.FullAPIVersion0)
 
 	return ver, nil
 }

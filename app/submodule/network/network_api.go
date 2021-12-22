@@ -2,15 +2,17 @@ package network
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 
-	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/net"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/net"
+	"github.com/filecoin-project/venus/venus-shared/api"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 )
 
 var _ apiface.INetwork = &networkAPI{}
@@ -62,7 +64,7 @@ func (na *networkAPI) NetworkPeers(ctx context.Context, verbose, latency, stream
 func (na *networkAPI) Version(context.Context) (apitypes.Version, error) {
 	return apitypes.Version{
 		Version:    constants.UserVersion(),
-		APIVersion: constants.FullAPIVersion1,
+		APIVersion: api.Version(constants.FullAPIVersion1),
 	}, nil
 }
 

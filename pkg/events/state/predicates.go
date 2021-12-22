@@ -10,13 +10,12 @@ import (
 
 	"github.com/filecoin-project/venus/app/submodule/chain"
 
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
-	types2 "github.com/filecoin-project/venus/venus-shared/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 // UserData is the data returned from the DiffTipSetKeyFunc
@@ -73,11 +72,11 @@ type DiffStorageMarketStateFunc func(ctx context.Context, oldState market.State,
 // OnStorageMarketActorChanged calls diffStorageMarketState when the state changes for the market actor
 func (sp *StatePredicates) OnStorageMarketActorChanged(diffStorageMarketState DiffStorageMarketStateFunc) DiffTipSetKeyFunc {
 	return sp.OnActorStateChanged(market.Address, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
-		oldState, err := market.Load(adt.WrapStore(ctx, sp.cst), (*types2.Actor)(oldActorState))
+		oldState, err := market.Load(adt.WrapStore(ctx, sp.cst), oldActorState)
 		if err != nil {
 			return false, nil, err
 		}
-		newState, err := market.Load(adt.WrapStore(ctx, sp.cst), (*types2.Actor)(newActorState))
+		newState, err := market.Load(adt.WrapStore(ctx, sp.cst), newActorState)
 		if err != nil {
 			return false, nil, err
 		}
@@ -309,11 +308,11 @@ type DiffMinerActorStateFunc func(ctx context.Context, oldState miner.State, new
 
 func (sp *StatePredicates) OnInitActorChange(diffInitActorState DiffInitActorStateFunc) DiffTipSetKeyFunc {
 	return sp.OnActorStateChanged(init_.Address, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
-		oldState, err := init_.Load(adt.WrapStore(ctx, sp.cst), (*types2.Actor)(oldActorState))
+		oldState, err := init_.Load(adt.WrapStore(ctx, sp.cst), oldActorState)
 		if err != nil {
 			return false, nil, err
 		}
-		newState, err := init_.Load(adt.WrapStore(ctx, sp.cst), (*types2.Actor)(newActorState))
+		newState, err := init_.Load(adt.WrapStore(ctx, sp.cst), newActorState)
 		if err != nil {
 			return false, nil, err
 		}
@@ -324,11 +323,11 @@ func (sp *StatePredicates) OnInitActorChange(diffInitActorState DiffInitActorSta
 
 func (sp *StatePredicates) OnMinerActorChange(minerAddr address.Address, diffMinerActorState DiffMinerActorStateFunc) DiffTipSetKeyFunc {
 	return sp.OnActorStateChanged(minerAddr, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
-		oldState, err := miner.Load(adt.WrapStore(ctx, sp.cst), (*types2.Actor)(oldActorState))
+		oldState, err := miner.Load(adt.WrapStore(ctx, sp.cst), oldActorState)
 		if err != nil {
 			return false, nil, err
 		}
-		newState, err := miner.Load(adt.WrapStore(ctx, sp.cst), (*types2.Actor)(newActorState))
+		newState, err := miner.Load(adt.WrapStore(ctx, sp.cst), newActorState)
 		if err != nil {
 			return false, nil, err
 		}
@@ -372,11 +371,11 @@ type DiffPaymentChannelStateFunc func(ctx context.Context, oldState paych.State,
 // OnPaymentChannelActorChanged calls diffPaymentChannelState when the state changes for the the payment channel actor
 func (sp *StatePredicates) OnPaymentChannelActorChanged(paychAddr address.Address, diffPaymentChannelState DiffPaymentChannelStateFunc) DiffTipSetKeyFunc {
 	return sp.OnActorStateChanged(paychAddr, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
-		oldState, err := paych.Load(adt.WrapStore(ctx, sp.cst), (*types2.Actor)(oldActorState))
+		oldState, err := paych.Load(adt.WrapStore(ctx, sp.cst), oldActorState)
 		if err != nil {
 			return false, nil, err
 		}
-		newState, err := paych.Load(adt.WrapStore(ctx, sp.cst), (*types2.Actor)(newActorState))
+		newState, err := paych.Load(adt.WrapStore(ctx, sp.cst), newActorState)
 		if err != nil {
 			return false, nil, err
 		}

@@ -3,15 +3,13 @@ package v0api
 import (
 	"context"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	"github.com/filecoin-project/venus/pkg/paychmgr"
-	"github.com/filecoin-project/venus/pkg/types"
-
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/pkg/paychmgr"
+	paychtypes "github.com/filecoin-project/venus/venus-shared/paych"
 )
 
 type IPaychan interface {
@@ -20,7 +18,7 @@ type IPaychan interface {
 	// @to: the payment channel recipient
 	// @amt: the deposits funds in the payment channel
 	// Rule[perm:sign]
-	PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*apitypes.ChannelInfo, error)
+	PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*paychtypes.ChannelInfo, error)
 	// PaychAvailableFunds get the status of an outbound payment channel
 	// @pch: payment channel address
 	// Rule[perm:sign]
@@ -44,14 +42,14 @@ type IPaychan interface {
 	// @to: the payment channel recipient
 	// @vouchers: the outstanding (non-redeemed) vouchers
 	// Rule[perm:sign]
-	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []apitypes.VoucherSpec) (*apitypes.PaymentInfo, error)
+	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []paychtypes.VoucherSpec) (*paychtypes.PaymentInfo, error)
 	// PaychList list the addresses of all channels that have been created
 	// Rule[perm:read]
 	PaychList(ctx context.Context) ([]address.Address, error)
 	// PaychStatus get the payment channel status
 	// @pch: payment channel address
 	// Rule[perm:read]
-	PaychStatus(ctx context.Context, pch address.Address) (*types.PaychStatus, error)
+	PaychStatus(ctx context.Context, pch address.Address) (*paychtypes.Status, error)
 	// PaychSettle update payment channel status to settle
 	// After a settlement period (currently 12 hours) either party to the payment channel can call collect on chain
 	// @pch: payment channel address

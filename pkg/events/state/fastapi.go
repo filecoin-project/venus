@@ -4,8 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
-
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 type FastChainAPI interface {

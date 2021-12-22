@@ -3,12 +3,13 @@ package blocksub
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/venus/pkg/types"
+
 	"github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/venus/pkg/metrics"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var blockTopicLogger = log.Logger("net/block_validator")

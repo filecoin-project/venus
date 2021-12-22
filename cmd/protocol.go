@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 

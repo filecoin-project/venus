@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 const (
@@ -392,24 +392,25 @@ var limitOption = cmds.Int64Option("gas-limit", "Maximum GasUnits this message i
 
 func parseGasOptions(req *cmds.Request) (fbig.Int, fbig.Int, int64, error) {
 	var (
-		feecap      = types.ZeroFIL
-		premium     = types.ZeroFIL
+		feecap      = types.FIL{Int: types.NewInt(0).Int}
+		premium     = types.FIL{Int: types.NewInt(0).Int}
 		ok          = false
 		gasLimitInt = int64(0)
 	)
 
+	var err error
 	feecapOption := req.Options["gas-feecap"]
 	if feecapOption != nil {
-		feecap, ok = types.NewAttoFILFromString(feecapOption.(string), 10)
-		if !ok {
+		feecap, err = types.ParseFIL(feecapOption.(string))
+		if err != nil {
 			return types.ZeroFIL, types.ZeroFIL, 0, errors.New("invalid gas price (specify FIL as a decimal number)")
 		}
 	}
 
 	premiumOption := req.Options["gas-premium"]
 	if premiumOption != nil {
-		premium, ok = types.NewAttoFILFromString(premiumOption.(string), 10)
-		if !ok {
+		premium, err = types.ParseFIL(premiumOption.(string))
+		if err != nil {
 			return types.ZeroFIL, types.ZeroFIL, 0, errors.New("invalid gas price (specify FIL as a decimal number)")
 		}
 	}
@@ -423,5 +424,5 @@ func parseGasOptions(req *cmds.Request) (fbig.Int, fbig.Int, int64, error) {
 		}
 	}
 
-	return feecap, premium, gasLimitInt, nil
+	return fbig.Int{Int: feecap.Int}, fbig.Int{Int: premium.Int}, gasLimitInt, nil
 }

@@ -5,13 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/util/ulimit"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
+
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/util/ulimit"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/venus/fixtures/asset"
@@ -35,7 +37,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/journal"
 	"github.com/filecoin-project/venus/pkg/migration"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
 	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 

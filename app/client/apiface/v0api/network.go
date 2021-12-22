@@ -3,7 +3,7 @@ package v0api
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 
 	"github.com/filecoin-project/venus/pkg/net"
 	"github.com/ipfs/go-cid"

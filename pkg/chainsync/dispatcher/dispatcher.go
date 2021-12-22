@@ -3,13 +3,14 @@ package dispatcher
 import (
 	"container/list"
 	"context"
-	"github.com/filecoin-project/venus/pkg/chainsync/types"
-	types2 "github.com/filecoin-project/venus/pkg/types"
-	"github.com/streadway/handy/atomic"
 	"runtime/debug"
 	"sync"
 	atmoic2 "sync/atomic"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/chainsync/types"
+	types2 "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/streadway/handy/atomic"
 
 	logging "github.com/ipfs/go-log/v2"
 )

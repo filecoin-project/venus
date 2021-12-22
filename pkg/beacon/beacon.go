@@ -2,10 +2,10 @@ package beacon
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/types"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 )
@@ -43,7 +43,7 @@ func ValidateBlockValues(bSchedule Schedule, h *types.BlockHeader, parentEpoch a
 			if len(h.BeaconEntries) != 2 {
 				return xerrors.Errorf("expected two beacon entries at beacon fork, got %d", len(h.BeaconEntries))
 			}
-			err := currBeacon.VerifyEntry(*h.BeaconEntries[1], *h.BeaconEntries[0])
+			err := currBeacon.VerifyEntry(h.BeaconEntries[1], h.BeaconEntries[0])
 			if err != nil {
 				return xerrors.Errorf("beacon at fork point invalid: (%v, %v): %w",
 					h.BeaconEntries[1], h.BeaconEntries[0], err)
@@ -72,10 +72,11 @@ func ValidateBlockValues(bSchedule Schedule, h *types.BlockHeader, parentEpoch a
 	}
 
 	for i, e := range h.BeaconEntries {
-		if err := b.VerifyEntry(*e, *prevEntry); err != nil {
+		if err := b.VerifyEntry(e, *prevEntry); err != nil {
 			return xerrors.Errorf("beacon entry %d (%d - %x (%d)) was invalid: %w", i, e.Round, e.Data, len(e.Data), err)
 		}
-		prevEntry = e
+		prevEntry = &h.BeaconEntries[i]
+
 	}
 
 	return nil

@@ -26,7 +26,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/messagepool/journal"
 	"github.com/filecoin-project/venus/pkg/net/msgsub"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var pubsubMsgsSyncEpochs = 10
