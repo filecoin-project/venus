@@ -102,3 +102,9 @@ func (smsg *SignedMessage) String() string {
 
 	return fmt.Sprintf("SignedMessage cid=[%v]: %s", c, string(js))
 }
+
+func (smsg *SignedMessage) VMMessage() *Message {
+	return &smsg.Message
+}
+
+var _ ChainMsg = (*SignedMessage)(nil)

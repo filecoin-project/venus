@@ -17,10 +17,12 @@ require (
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-cid v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.5
+	github.com/ipfs/go-ipld-format v0.0.2
 	github.com/ipfs/go-log v1.0.4
 	github.com/libp2p/go-libp2p-core v0.8.5
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/multiformats/go-multiaddr v0.2.2
+	github.com/multiformats/go-multihash v0.0.15
 	github.com/stretchr/testify v1.7.0
 	github.com/whyrusleeping/cbor-gen v0.0.0-20210219115102-f37d292932f2
 	go.uber.org/zap v1.14.1

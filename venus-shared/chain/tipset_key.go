@@ -4,10 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
+
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 // TipSetKey is an immutable set of CIDs forming a unique key for a TipSet.
@@ -97,6 +101,91 @@ func (tsk *TipSetKey) UnmarshalJSON(b []byte) error {
 
 func (tsk TipSetKey) IsEmpty() bool {
 	return len(tsk.value) == 0
+}
+
+// ContainsAll checks if another set is a subset of this one.
+// We can assume that the relative order of members of one key is
+// maintained in the other since we assume that all ids are sorted
+// by corresponding newBlock ticket value.
+func (tipsetKey TipSetKey) ContainsAll(other TipSetKey) bool {
+	// Since we assume the ids must have the same relative sorting we can
+	// perform one pass over this set, advancing the other index whenever the
+	// values match.
+	cids := tipsetKey.Cids()
+	otherCids := other.Cids()
+	otherIdx := 0
+	for i := 0; i < len(cids) && otherIdx < len(otherCids); i++ {
+		if cids[i].Equals(otherCids[otherIdx]) {
+			otherIdx++
+		}
+	}
+	// otherIdx is advanced the full length only if every element was found in this set.
+	return otherIdx == len(otherCids)
+}
+
+// Has checks whether the set contains `id`.
+func (tipsetKey TipSetKey) Has(id cid.Cid) bool {
+	// Find index of the first CID not less than id.
+	for _, cid := range tipsetKey.Cids() {
+		if cid == id {
+			return true
+		}
+	}
+	return false
+}
+
+// Equals checks whether the set contains exactly the same CIDs as another.
+func (tipsetKey TipSetKey) Equals(other TipSetKey) bool {
+	return tipsetKey.value == other.value
+}
+
+func (tipsetKey *TipSetKey) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
+	scratch := make([]byte, 8)
+	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+	if err != nil {
+		return err
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("t.Parents: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("expected cbor array")
+	}
+
+	if extra > 0 {
+		cids := make([]cid.Cid, extra)
+		for i := 0; i < int(extra); i++ {
+
+			c, err := cbg.ReadCid(br)
+			if err != nil {
+				return xerrors.Errorf("reading cid field t.Parents failed: %v", err)
+			}
+			cids[i] = c
+		}
+		tipsetKey.value = string(encodeKey(cids))
+	}
+	return nil
+}
+
+func (tipsetKey TipSetKey) MarshalCBOR(w io.Writer) error {
+	cids := tipsetKey.Cids()
+	if len(cids) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.Parents was too long")
+	}
+	scratch := make([]byte, 9)
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajArray, uint64(len(cids))); err != nil {
+		return err
+	}
+	for _, v := range cids {
+		if err := cbg.WriteCidBuf(scratch, w, v); err != nil {
+			return xerrors.Errorf("failed writing cid field t.Parents: %v", err)
+		}
+	}
+	return nil
 }
 
 func encodeKey(cids []cid.Cid) []byte {
