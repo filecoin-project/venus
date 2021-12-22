@@ -3,29 +3,28 @@ package consensus
 import "C"
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"time"
-
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/fork"
 	appstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var (
@@ -46,7 +45,7 @@ const AllowableClockDriftSecs = uint64(1)
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
 	ProcessTipSet(context.Context, *types.TipSet, *types.TipSet, []types.BlockMessagesInfo, vm.VmOption) (cid.Cid, []types.MessageReceipt, error)
-	ProcessImplicitMessage(context.Context, *types.UnsignedMessage, vm.VmOption) (*vm.Ret, error)
+	ProcessImplicitMessage(context.Context, *types.Message, vm.VmOption) (*vm.Ret, error)
 }
 
 // TicketValidator validates that an input ticket is valid.

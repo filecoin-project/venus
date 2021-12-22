@@ -2,7 +2,6 @@ package chain
 
 import (
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 func mkAddress(i uint64) address.Address {
@@ -54,10 +54,10 @@ func mkBlock(parents *types.TipSet, weightInc int64, ticketNonce uint64) *types.
 		ElectionProof: &types.ElectionProof{
 			VRFProof: []byte(fmt.Sprintf("====%d=====", ticketNonce)),
 		},
-		Ticket: types.Ticket{
+		Ticket: &types.Ticket{
 			VRFProof: []byte(fmt.Sprintf("====%d=====", ticketNonce)),
 		},
-		Parents:               tsKey,
+		Parents:               tsKey.Cids(),
 		ParentMessageReceipts: c,
 		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
 		ParentWeight:          weight,
@@ -71,7 +71,7 @@ func mkBlock(parents *types.TipSet, weightInc int64, ticketNonce uint64) *types.
 }
 
 func mkTipSet(blks ...*types.BlockHeader) *types.TipSet {
-	ts, err := types.NewTipSet(blks...)
+	ts, err := types.NewTipSet(blks)
 	if err != nil {
 		panic(err)
 	}

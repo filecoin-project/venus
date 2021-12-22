@@ -2,19 +2,20 @@ package market
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus/app/client/apiface"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	"github.com/filecoin-project/venus/pkg/types"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 	"github.com/ipfs/go-cid"
 )
 
 // fundManagerAPI is the specific methods called by the FundManager
 // (used by the tests)
 type fundManager interface {
-	MpoolPushMessage(context.Context, *types.UnsignedMessage, *types.MessageSendSpec) (*types.SignedMessage, error)
+	MpoolPushMessage(context.Context, *types.Message, *apitypes.MessageSendSpec) (*types.SignedMessage, error)
 	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (apitypes.MarketBalance, error)
 	StateWaitMsg(ctx context.Context, c cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 }
@@ -35,7 +36,7 @@ func newFundmanager(p *FundManagerParams) fundManager {
 	return fmAPI
 }
 
-func (o *fmgr) MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
+func (o *fmgr) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *apitypes.MessageSendSpec) (*types.SignedMessage, error) {
 	return o.MPoolAPI.MpoolPushMessage(ctx, msg, spec)
 }
 

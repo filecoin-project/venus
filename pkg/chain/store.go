@@ -34,7 +34,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
@@ -46,7 +45,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
-	types2 "github.com/filecoin-project/venus/venus-shared/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 // HeadChangeTopic is the topic used to publish new heads.
@@ -163,7 +162,7 @@ func NewStore(chainDs repo.Datastore,
 		bsstore:             bsstore,
 		headEvents:          pubsub.New(64),
 
-		checkPoint:     types.UndefTipSet.Key(),
+		checkPoint:     types.EmptyTSK,
 		genesis:        genesisCid,
 		reorgNotifeeCh: make(chan ReorgNotifee),
 		tsCache:        tsCache,
@@ -406,7 +405,7 @@ func (store *Store) GetTipSet(key types.TipSetKey) (*types.TipSet, error) {
 		blks[idx] = blk
 	}
 
-	ts, err := types.NewTipSet(blks...)
+	ts, err := types.NewTipSet(blks)
 	if err != nil {
 		return nil, err
 	}
@@ -502,7 +501,7 @@ func (store *Store) GetLatestBeaconEntry(ts *types.TipSet) (*types.BeaconEntry, 
 	for i := 0; i < 20; i++ {
 		cbe := cur.At(0).BeaconEntries
 		if len(cbe) > 0 {
-			return cbe[len(cbe)-1], nil
+			return &cbe[len(cbe)-1], nil
 		}
 
 		if cur.Height() == 0 {
@@ -921,10 +920,10 @@ func (store *Store) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRece
 		}
 
 		if b.Height > 0 {
-			blocksToWalk = append(blocksToWalk, b.Parents.Cids()...)
+			blocksToWalk = append(blocksToWalk, b.Parents...)
 		} else {
 			// include the genesis block
-			cids = append(cids, b.Parents.Cids()...)
+			cids = append(cids, b.Parents...)
 		}
 
 		out := cids
@@ -1097,7 +1096,7 @@ func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEp
 			unCirc = big.Add(unCirc, actor.Balance)
 
 		case a == market.Address:
-			mst, err := market.Load(adtStore, (*types2.Actor)(actor))
+			mst, err := market.Load(adtStore, actor)
 			if err != nil {
 				return err
 			}
@@ -1114,7 +1113,7 @@ func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEp
 			circ = big.Add(circ, actor.Balance)
 
 		case builtin.IsStorageMinerActor(actor.Code):
-			mst, err := miner.Load(adtStore, (*types2.Actor)(actor))
+			mst, err := miner.Load(adtStore, actor)
 			if err != nil {
 				return err
 			}
@@ -1131,7 +1130,7 @@ func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEp
 			}
 
 		case builtin.IsMultisigActor(actor.Code):
-			mst, err := multisig.Load(adtStore, (*types2.Actor)(actor))
+			mst, err := multisig.Load(adtStore, actor)
 			if err != nil {
 				return err
 			}

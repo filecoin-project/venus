@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/wallet"
+	types "github.com/filecoin-project/venus/venus-shared/wallet"
 )
 
 var _ wallet.WalletIntersection = &remoteWallet{}
@@ -72,6 +73,6 @@ func (w *remoteWallet) Export(addr address.Address, password string) (*crypto.Ke
 	return ConvertLocalKeyInfo(key), nil
 }
 
-func (w *remoteWallet) WalletSign(keyAddr address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error) {
+func (w *remoteWallet) WalletSign(keyAddr address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error) {
 	return w.IWallet.WalletSign(context.Background(), keyAddr, msg, meta)
 }

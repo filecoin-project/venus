@@ -9,8 +9,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/statemanger"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/ipfs/go-cid"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"golang.org/x/xerrors"
@@ -31,7 +31,7 @@ type Provider interface {
 	GetActorAfter(address.Address, *types.TipSet) (*types.Actor, error)
 	StateAccountKeyAtFinality(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateAccountKey(context.Context, address.Address, *types.TipSet) (address.Address, error)
-	MessagesForBlock(block2 *types.BlockHeader) ([]*types.UnsignedMessage, []*types.SignedMessage, error)
+	MessagesForBlock(block2 *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
 	MessagesForTipset(*types.TipSet) ([]types.ChainMsg, error)
 	LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error)
 	ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (tbig.Int, error)
@@ -137,7 +137,7 @@ func (mpp *mpoolProvider) StateAccountKey(ctx context.Context, addr address.Addr
 	return mpp.stmgr.ResolveToKeyAddress(ctx, addr, ts)
 }
 
-func (mpp *mpoolProvider) MessagesForBlock(h *types.BlockHeader) ([]*types.UnsignedMessage, []*types.SignedMessage, error) {
+func (mpp *mpoolProvider) MessagesForBlock(h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
 	secpMsgs, blsMsgs, err := mpp.cms.LoadMetaMessages(context.TODO(), h.Messages)
 	return blsMsgs, secpMsgs, err
 }

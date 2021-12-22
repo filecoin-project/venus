@@ -3,6 +3,7 @@ package wallet
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 
 	"github.com/filecoin-project/go-state-types/crypto"
 )
@@ -46,11 +47,43 @@ func (kt *KeyType) UnmarshalJSON(bb []byte) error {
 	}
 }
 
+type SigType = crypto.SigType
+
 const (
+	SigTypeUnknown = SigType(math.MaxUint8)
+
+	SigTypeSecp256k1 = SigType(iota)
+	SigTypeBLS
+)
+
+const (
+	KTUnknown         KeyType = "unknown"
 	KTBLS             KeyType = "bls"
 	KTSecp256k1       KeyType = "secp256k1"
 	KTSecp256k1Ledger KeyType = "secp256k1-ledger"
 )
+
+func KeyType2Sign(kt KeyType) SigType {
+	switch kt {
+	case KTSecp256k1:
+		return SigTypeSecp256k1
+	case KTBLS:
+		return SigTypeBLS
+	default:
+		return SigTypeUnknown
+	}
+}
+
+func SignType2Key(kt SigType) KeyType {
+	switch kt {
+	case SigTypeSecp256k1:
+		return KTSecp256k1
+	case SigTypeBLS:
+		return KTBLS
+	default:
+		return KTUnknown
+	}
+}
 
 // KeyInfo is used for storing keys in KeyStore
 type KeyInfo struct {

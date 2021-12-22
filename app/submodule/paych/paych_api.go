@@ -10,9 +10,8 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
-	"github.com/filecoin-project/venus/pkg/types"
+	paychtypes "github.com/filecoin-project/venus/venus-shared/paych"
 )
 
 type PaychAPI struct {
@@ -23,15 +22,13 @@ func NewPaychAPI(p *paychmgr.Manager) *PaychAPI {
 	return &PaychAPI{p}
 }
 
-type PaychStatus = types.PaychStatus //nolint
-
-func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*apitypes.ChannelInfo, error) {
+func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*paychtypes.ChannelInfo, error) {
 	ch, mcid, err := a.paychMgr.GetPaych(ctx, from, to, amt)
 	if err != nil {
 		return nil, err
 	}
 
-	return &apitypes.ChannelInfo{
+	return &paychtypes.ChannelInfo{
 		Channel:      ch,
 		WaitSentinel: mcid,
 	}, nil
@@ -53,7 +50,7 @@ func (a *PaychAPI) PaychAllocateLane(ctx context.Context, ch address.Address) (u
 	return a.paychMgr.AllocateLane(ch)
 }
 
-func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []apitypes.VoucherSpec) (*apitypes.PaymentInfo, error) {
+func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []paychtypes.VoucherSpec) (*paychtypes.PaymentInfo, error) {
 	amount := vouchers[len(vouchers)-1].Amount
 
 	// TODO: Fix free fund tracking in PaychGet
@@ -90,7 +87,7 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 		svs[i] = sv.Voucher
 	}
 
-	return &apitypes.PaymentInfo{
+	return &paychtypes.PaymentInfo{
 		Channel:      ch.Channel,
 		WaitSentinel: ch.WaitSentinel,
 		Vouchers:     svs,
@@ -101,14 +98,14 @@ func (a *PaychAPI) PaychList(ctx context.Context) ([]address.Address, error) {
 	return a.paychMgr.ListChannels()
 }
 
-func (a *PaychAPI) PaychStatus(ctx context.Context, pch address.Address) (*types.PaychStatus, error) {
+func (a *PaychAPI) PaychStatus(ctx context.Context, pch address.Address) (*paychtypes.Status, error) {
 	ci, err := a.paychMgr.GetChannelInfo(pch)
 	if err != nil {
 		return nil, err
 	}
-	return &types.PaychStatus{
+	return &paychtypes.Status{
 		ControlAddr: ci.Control,
-		Direction:   types.PCHDir(ci.Direction),
+		Direction:   paychtypes.PCHDir(ci.Direction),
 	}, nil
 }
 

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -321,7 +321,7 @@ func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address
 		return false, err
 	}
 
-	ret, err := ca.api.Call(ctx, (*types.UnsignedMessage)(mes), nil)
+	ret, err := ca.api.Call(ctx, mes, nil)
 	if err != nil {
 		return false, err
 	}
@@ -438,7 +438,7 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 		return cid.Undef, err
 	}
 
-	smsg, err := ca.api.MpoolPushMessage(ctx, (*types.UnsignedMessage)(msg), nil)
+	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -594,7 +594,7 @@ func (ca *channelAccessor) settle(ctx context.Context, ch address.Address) (cid.
 	if err != nil {
 		return cid.Undef, err
 	}
-	smgs, err := ca.api.MpoolPushMessage(ctx, (*types.UnsignedMessage)(msg), nil)
+	smgs, err := ca.api.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -626,7 +626,7 @@ func (ca *channelAccessor) collect(ctx context.Context, ch address.Address) (cid
 		return cid.Undef, err
 	}
 
-	smsg, err := ca.api.MpoolPushMessage(ctx, (*types.UnsignedMessage)(msg), nil)
+	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
 		return cid.Undef, err
 	}

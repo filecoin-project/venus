@@ -15,6 +15,9 @@ type blockHeaderWithCid struct {
 	b *BlockHeader
 }
 
+// UndefTipSet is a singleton representing a nil or undefined tipset.
+var UndefTipSet = &TipSet{}
+
 func NewTipSet(bhs []*BlockHeader) (*TipSet, error) {
 	if len(bhs) == 0 {
 		return nil, fmt.Errorf("no blocks for tipset")
@@ -134,6 +137,12 @@ func (ts *TipSet) Len() int {
 	return len(ts.blocks)
 }
 
+// At returns the i'th newBlock in the tipset.
+// An index outside the half-open range [0, Len()) will panic.
+func (ts *TipSet) At(i int) *BlockHeader {
+	return ts.blocks[i]
+}
+
 func (ts *TipSet) Blocks() []*BlockHeader {
 	return ts.blocks
 }
@@ -231,6 +240,13 @@ func (ts *TipSet) MinTimestamp() uint64 {
 		}
 	}
 	return minTS
+}
+
+// ToSlice returns an ordered slice of pointers to the tipset's blocks.
+func (ts *TipSet) ToSlice() []*BlockHeader {
+	slice := make([]*BlockHeader, len(ts.blocks))
+	copy(slice, ts.blocks)
+	return slice
 }
 
 func sortedCidArrsEqual(a, b []cid.Cid) bool {

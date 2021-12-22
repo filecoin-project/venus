@@ -1,9 +1,13 @@
 package chain
 
 import (
+	"errors"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 )
+
+var ErrActorNotFound = errors.New("actor not found")
 
 // Actor is the central abstraction of entities in the system.
 //
@@ -32,4 +36,24 @@ type Actor struct {
 	Nonce uint64
 	// Balance is the amount of attoFIL in the actor's account.
 	Balance abi.TokenAmount
+}
+
+// NewActor constructs a new actor.
+func NewActor(code cid.Cid, balance abi.TokenAmount, head cid.Cid) *Actor {
+	return &Actor{
+		Code:    code,
+		Nonce:   0,
+		Balance: balance,
+		Head:    head,
+	}
+}
+
+// Empty tests whether the actor's code is defined.
+func (t *Actor) Empty() bool {
+	return !t.Code.Defined()
+}
+
+// IncrementSeqNum increments the seq number.
+func (t *Actor) IncrementSeqNum() {
+	t.Nonce = t.Nonce + 1
 }

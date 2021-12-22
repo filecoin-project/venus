@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/venus/app/client/apiface/v0api"
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/libp2p/go-libp2p-core/host"
 
 	"github.com/ipfs/go-cid"

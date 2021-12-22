@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"github.com/filecoin-project/venus/pkg/beacon"
-	"golang.org/x/xerrors"
 	"math/rand"
+
+	"github.com/filecoin-project/venus/pkg/beacon"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 )
@@ -136,7 +137,6 @@ func (c *ChainRandomnessSource) GetBeaconRandomnessTipset(ctx context.Context, r
 // in which no blocks were produced (an empty tipset or "null block"). A caller desiring a unique see for each epoch
 // should blend in some distinguishing value (such as the epoch itself) into a hash of this ticket.
 func (c *ChainRandomnessSource) GetChainRandomness(ctx context.Context, epoch abi.ChainEpoch, lookback bool) (types.Ticket, error) {
-	var ticket types.Ticket
 	if !c.head.IsEmpty() {
 		start, err := c.reader.GetTipSet(c.head)
 		if err != nil {
@@ -159,12 +159,9 @@ func (c *ChainRandomnessSource) GetChainRandomness(ctx context.Context, epoch ab
 		if err != nil {
 			return types.Ticket{}, err
 		}
-		ticket = tip.MinTicket()
-	} else {
-		return types.Ticket{}, xerrors.Errorf("cannot get ticket for empty tipset")
+		return *tip.MinTicket(), nil
 	}
-
-	return ticket, nil
+	return types.Ticket{}, xerrors.Errorf("cannot get ticket for empty tipset")
 }
 
 // network v0-12
@@ -250,7 +247,7 @@ func (c *ChainRandomnessSource) extractBeaconEntryForEpoch(ctx context.Context, 
 		cbe := randTS.Blocks()[0].BeaconEntries
 		for _, v := range cbe {
 			if v.Round == round {
-				return v, nil
+				return &v, nil
 			}
 		}
 

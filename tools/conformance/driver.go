@@ -2,10 +2,11 @@ package conformance
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
-	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	gobig "math/big"
 	"os"
+
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -27,8 +28,8 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/test-vectors/schema"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/tools/conformance/chaos"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -222,7 +223,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 type ExecuteMessageParams struct {
 	Preroot    cid.Cid
 	Epoch      abi.ChainEpoch
-	Message    *types.UnsignedMessage
+	Message    *types.Message
 	CircSupply abi.TokenAmount
 	BaseFee    abi.TokenAmount
 
@@ -325,7 +326,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 // others untouched.
 // TODO: generate a signature in the DSL so that it's encoded in
 //  the test vector.
-func toChainMsg(msg *types.UnsignedMessage) (ret types.ChainMsg) {
+func toChainMsg(msg *types.Message) (ret types.ChainMsg) {
 	ret = msg
 	if msg.From.Protocol() == address.SECP256K1 {
 		ret = &types.SignedMessage{

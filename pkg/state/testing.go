@@ -3,8 +3,6 @@ package state
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/pkg/types"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -22,14 +20,14 @@ import (
 // FakeStateView is a fake state view.
 type FakeStateView struct {
 	NetworkName string
-	Power       *types.NetworkPower
+	Power       *NetworkPower
 	Miners      map[address.Address]*FakeMinerState
 }
 
 // NewFakeStateView creates a new fake state view.
 func NewFakeStateView(rawBytePower, qaPower abi.StoragePower, minerCount, minPowerMinerCount int64) *FakeStateView {
 	return &FakeStateView{
-		Power: &types.NetworkPower{
+		Power: &NetworkPower{
 			RawBytePower:         rawBytePower,
 			QualityAdjustedPower: qaPower,
 			MinerCount:           minerCount,
@@ -100,7 +98,7 @@ func (v *FakeStateView) MinerProvingPeriod(ctx context.Context, maddr address.Ad
 	return m.ProvingPeriodStart, m.ProvingPeriodEnd, m.PoStFailures, nil
 }
 
-func (v *FakeStateView) PowerNetworkTotal(_ context.Context) (*types.NetworkPower, error) {
+func (v *FakeStateView) PowerNetworkTotal(_ context.Context) (*NetworkPower, error) {
 	return v.Power, nil
 }
 

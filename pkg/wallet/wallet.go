@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
+	types "github.com/filecoin-project/venus/venus-shared/wallet"
 )
 
 var TestPassword = []byte("test-password")
@@ -27,7 +28,7 @@ type WalletIntersection interface {
 	NewAddress(p address.Protocol) (address.Address, error)
 	Import(ki *crypto.KeyInfo) (address.Address, error)
 	Export(addr address.Address, password string) (*crypto.KeyInfo, error)
-	WalletSign(keyAddr address.Address, msg []byte, meta MsgMeta) (*crypto.Signature, error)
+	WalletSign(keyAddr address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error)
 	HasPassword() bool
 }
 
@@ -203,7 +204,7 @@ func (w *Wallet) Export(addr address.Address, password string) (*crypto.KeyInfo,
 }
 
 //WalletSign used to sign message with private key
-func (w *Wallet) WalletSign(addr address.Address, msg []byte, meta MsgMeta) (*crypto.Signature, error) {
+func (w *Wallet) WalletSign(addr address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error) {
 	ki, err := w.Find(addr)
 	if err != nil {
 		return nil, err

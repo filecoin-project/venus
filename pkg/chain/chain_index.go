@@ -2,9 +2,9 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	lru "github.com/hashicorp/golang-lru"
 	xerrors "github.com/pkg/errors"
 )

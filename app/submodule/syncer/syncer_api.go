@@ -2,14 +2,15 @@ package syncer
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"time"
 
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+	stmgrtypes "github.com/filecoin-project/venus/venus-shared/stmgr"
 
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/types"
 	logging "github.com/ipfs/go-log/v2"
 	xerrors "github.com/pkg/errors"
 )
@@ -57,7 +58,7 @@ func (sa *syncerAPI) ChainSyncHandleNewTipSet(ctx context.Context, ci *types.Cha
 func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
 	//todo many dot. how to get directly
 	chainModule := sa.syncer.ChainModule
-	parent, err := chainModule.ChainReader.GetBlock(ctx, blk.Header.Parents.Cids()[0])
+	parent, err := chainModule.ChainReader.GetBlock(ctx, blk.Header.Parents[0])
 	if err != nil {
 		return xerrors.Errorf("loading parent block: %v", err)
 	}
@@ -87,7 +88,7 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 		return xerrors.Errorf("provided messages did not match block: %v", err)
 	}
 
-	ts, err := types.NewTipSet(blk.Header)
+	ts, err := types.NewTipSet([]*types.BlockHeader{blk.Header})
 	if err != nil {
 		return xerrors.Errorf("somehow failed to make a tipset out of a single block: %v", err)
 	}
@@ -124,7 +125,7 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 // StateCall applies the message to the tipset's parent state. The
 // message is not applied on-top-of the messages in the passed-in
 // tipset.
-func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMessage, tsk types.TipSetKey) (*types.InvocResult, error) {
+func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*apitypes.InvocResult, error) {
 	start := time.Now()
 	ts, err := sa.syncer.ChainModule.ChainReader.GetTipSet(tsk)
 	if err != nil {
@@ -137,11 +138,11 @@ func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMessage, 
 	duration := time.Since(start)
 
 	mcid := msg.Cid()
-	return &types.InvocResult{
+	return &apitypes.InvocResult{
 		MsgCid:         mcid,
 		Msg:            msg,
 		MsgRct:         &ret.Receipt,
-		ExecutionTrace: &types.ExecutionTrace{},
+		ExecutionTrace: stmgrtypes.ExecutionTrace{},
 		Duration:       duration,
 	}, nil
 }

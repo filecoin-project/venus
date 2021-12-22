@@ -2,20 +2,21 @@ package tree
 
 import (
 	"context"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	"github.com/filecoin-project/venus/pkg/testhelpers"
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/repo"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 func TestStatePutGet(t *testing.T) {
@@ -30,7 +31,7 @@ func TestStatePutGet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	addrGetter := types.NewForTestGetter()
+	addrGetter := testhelpers.NewForTestGetter()
 	addr1 := addrGetter()
 	addr2 := addrGetter()
 	AddAccount(t, tree, cst, addr1)
@@ -81,7 +82,7 @@ func TestStateErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	AddAccount(t, tree, cst, types.NewForTestGetter()())
+	AddAccount(t, tree, cst, testhelpers.NewForTestGetter()())
 
 	c, err := constants.DefaultCidBuilder.Sum([]byte("cats"))
 	assert.NoError(t, err)
@@ -101,7 +102,7 @@ func TestGetAllActors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	addr := types.NewForTestGetter()()
+	addr := testhelpers.NewForTestGetter()()
 
 	newActor := types.Actor{Code: builtin2.AccountActorCodeID, Nonce: 1234, Balance: abi.NewTokenAmount(123)}
 	AddAccount(t, tree, cst, addr)

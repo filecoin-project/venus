@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/pkg/errors"
 )
 
@@ -40,7 +39,7 @@ func (vm *syscallsStateView) ResolveToKeyAddr(ctx context.Context, accountAddr a
 	if !found {
 		return address.Undef, fmt.Errorf("signer resolution found no such actor %s", accountAddr)
 	}
-	accountState, err := account.Load(adt.WrapStore(vm.context, vm.ctx.gasIpld), (*types.Actor)(accountActor))
+	accountState, err := account.Load(adt.WrapStore(vm.context, vm.ctx.gasIpld), accountActor)
 	if err != nil {
 		// This error is internal, shouldn't propagate as on-chain failure
 		panic(fmt.Errorf("signer resolution failed To lost stateView for %s ", accountAddr))
@@ -59,7 +58,7 @@ func (vm *syscallsStateView) MinerInfo(ctx context.Context, maddr address.Addres
 		return nil, fmt.Errorf("miner resolution found no such actor %s", maddr)
 	}
 
-	accountState, err := miner.Load(adt.WrapStore(vm.context, vm.ctx.gasIpld), (*types.Actor)(accountActor))
+	accountState, err := miner.Load(adt.WrapStore(vm.context, vm.ctx.gasIpld), accountActor)
 	if err != nil {
 		panic(fmt.Errorf("signer resolution failed To lost stateView for %s ", maddr))
 	}

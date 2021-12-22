@@ -3,14 +3,14 @@ package node
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 // readGenesisCid is a helper function that queries the provided datastore for

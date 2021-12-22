@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/venus/pkg/repo"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/stretchr/testify/assert"
 
 	"golang.org/x/xerrors"
@@ -19,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-address"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-datastore"
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"

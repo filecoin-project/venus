@@ -6,8 +6,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/wallet"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/wallet"
 )
 
 type IWallet interface {
@@ -30,7 +30,7 @@ type IWallet interface {
 	// Rule[perm:write]
 	WalletSetDefault(ctx context.Context, addr address.Address) error //not exists in remote
 	// Rule[perm:sign]
-	WalletSignMessage(ctx context.Context, k address.Address, msg *types.UnsignedMessage) (*types.SignedMessage, error)
+	WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error)
 	// Rule[perm:admin]
 	LockWallet(ctx context.Context) error
 	// Rule[perm:admin]

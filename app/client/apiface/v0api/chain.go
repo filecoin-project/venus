@@ -7,16 +7,16 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/dline"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
-
 	"github.com/filecoin-project/go-state-types/big"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 type IChain interface {
@@ -64,7 +64,7 @@ type IChainInfo interface {
 	// Rule[perm:read]
 	ChainGetBlock(ctx context.Context, id cid.Cid) (*types.BlockHeader, error)
 	// Rule[perm:read]
-	ChainGetMessage(ctx context.Context, msgID cid.Cid) (*types.UnsignedMessage, error)
+	ChainGetMessage(ctx context.Context, msgID cid.Cid) (*types.Message, error)
 	// Rule[perm:read]
 	ChainGetBlockMessages(ctx context.Context, bid cid.Cid) (*apitypes.BlockMessages, error)
 	// Rule[perm:read]
@@ -155,7 +155,7 @@ type IMinerState interface {
 	// Rule[perm:read]
 	StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error)
 	// Rule[perm:read]
-	StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketDeal, error)
+	StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]apitypes.MarketDeal, error)
 	// Rule[perm:read]
 	StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
 	// Rule[perm:read]

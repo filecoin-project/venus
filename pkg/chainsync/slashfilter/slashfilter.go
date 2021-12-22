@@ -2,7 +2,6 @@ package slashfilter
 
 import (
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/types"
 
 	"golang.org/x/xerrors"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 //ISlashFilter used to detect whether the miner mined a invalidated block , support local db and mysql storage
@@ -42,7 +42,7 @@ func (f *LocalSlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.Cha
 		}
 	}
 
-	parentsKey := ds.NewKey(fmt.Sprintf("/%s/%s", bh.Miner, bh.Parents.String()))
+	parentsKey := ds.NewKey(fmt.Sprintf("/%s/%s", bh.Miner, types.NewTipSetKey(bh.Parents...).String()))
 	{
 		// time-offset mining faults (2 blocks with the same parents)
 		if err := checkFault(f.byParents, parentsKey, bh, "time-offset mining faults"); err != nil {
@@ -73,7 +73,7 @@ func (f *LocalSlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.Cha
 			}
 
 			var found bool
-			for _, c := range bh.Parents.Cids() {
+			for _, c := range bh.Parents {
 				if c.Equals(parent) {
 					found = true
 				}

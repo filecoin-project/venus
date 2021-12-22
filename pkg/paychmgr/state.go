@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/filecoin-project/venus/pkg/statemanger"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 )
 

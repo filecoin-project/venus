@@ -1,11 +1,12 @@
 package internal
 
 import (
+	"math/big"
+	"testing"
+
 	specsbig "github.com/filecoin-project/go-state-types/big"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
-	"math/big"
-	"testing"
 )
 
 func mustParseBigInt(s string) big.Int {

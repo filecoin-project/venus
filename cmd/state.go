@@ -19,10 +19,10 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 // ActorView represents a generic way to represent details about any actor to the user.
@@ -113,7 +113,7 @@ var stateSearchMsgCmd = &cmds.Command{
 			writer.Printf("message was executed in tipset: %s", mw.TipSet.Cids())
 			writer.Printf("\nExit Code: %d", mw.Receipt.ExitCode)
 			writer.Printf("\nGas Used: %d", mw.Receipt.GasUsed)
-			writer.Printf("\nReturn: %x", mw.Receipt.ReturnValue)
+			writer.Printf("\nReturn: %x", mw.Receipt.Return)
 		} else {
 			writer.Print("message was not found on chain")
 		}

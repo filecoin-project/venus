@@ -14,8 +14,8 @@ import (
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
@@ -255,10 +255,10 @@ func (networkSubmodule *NetworkSubmodule) FetchMessagesByCids(
 	ctx context.Context,
 	service bserv.BlockService,
 	cids []cid.Cid,
-) ([]*types.UnsignedMessage, error) {
-	out := make([]*types.UnsignedMessage, len(cids))
+) ([]*types.Message, error) {
+	out := make([]*types.Message, len(cids))
 	err := networkSubmodule.fetchCids(ctx, service, cids, func(idx int, blk blocks.Block) error {
-		var msg types.UnsignedMessage
+		var msg types.Message
 		if err := msg.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
 			return err
 		}

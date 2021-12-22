@@ -4,9 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/venus/pkg/types"
-
 	"github.com/filecoin-project/go-state-types/abi"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 )

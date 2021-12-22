@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/venus/pkg/wallet"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+	mptypes "github.com/filecoin-project/venus/venus-shared/wallet"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -13,8 +15,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 const dsKeyActorNonce = "ActorNextNonce"
@@ -62,8 +62,8 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, cb
 		return nil, xerrors.Errorf("serializing message: %w", err)
 	}
 
-	sig, err := ms.wallet.WalletSign(msg.From, mb.Cid().Bytes(), wallet.MsgMeta{
-		Type:  wallet.MTChainMsg,
+	sig, err := ms.wallet.WalletSign(msg.From, mb.Cid().Bytes(), mptypes.MsgMeta{
+		Type:  mptypes.MTChainMsg,
 		Extra: mb.RawData(),
 	})
 	if err != nil {

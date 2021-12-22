@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/filecoin-project/venus/venus-shared/actors"
@@ -26,7 +25,8 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
-	types2 "github.com/filecoin-project/venus/venus-shared/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/chain/params"
 )
 
 var minerCmdLog = logging.Logger("miner.cmd")
@@ -72,7 +72,7 @@ var newMinerCmd = &cmds.Command{
 		}
 
 		gp, _ := req.Options["gas-premium"].(string)
-		gasPrice, err := types.BigFromString(gp)
+		gasPrice, err := types.ParseFIL(gp)
 		if err != nil {
 			return xerrors.Errorf("failed to parse gas-price flag: %s", err)
 		}
@@ -100,7 +100,7 @@ var newMinerCmd = &cmds.Command{
 		// make sure the worker account exists on chain
 		_, err = env.(*node.Env).ChainAPI.StateLookupID(ctx, worker, types.EmptyTSK)
 		if err != nil {
-			signed, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.UnsignedMessage{
+			signed, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 				From:  owner,
 				To:    worker,
 				Value: big.NewInt(0),
@@ -156,7 +156,7 @@ var newMinerCmd = &cmds.Command{
 			sender = faddr
 		}
 
-		createStorageMinerMsg := &types.UnsignedMessage{
+		createStorageMinerMsg := &types.Message{
 			To:    power.Address,
 			From:  sender,
 			Value: big.Zero(),
@@ -165,7 +165,7 @@ var newMinerCmd = &cmds.Command{
 			Params: params,
 
 			GasLimit:   0,
-			GasPremium: gasPrice,
+			GasPremium: abi.TokenAmount{Int: gasPrice.Int},
 		}
 
 		signed, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, createStorageMinerMsg, nil)
@@ -188,7 +188,7 @@ var newMinerCmd = &cmds.Command{
 		}
 
 		var retval power2.CreateMinerReturn
-		if err := retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.ReturnValue)); err != nil {
+		if err := retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return)); err != nil {
 			return err
 		}
 
@@ -251,7 +251,7 @@ var minerInfoCmd = &cmds.Command{
 		}
 
 		tbs := blockstoreutil.NewTieredBstore(chain.NewAPIBlockstore(blockstoreAPI), blockstoreutil.NewTemporary())
-		mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), (*types2.Actor)(mact))
+		mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
 		if err != nil {
 			return err
 		}
@@ -307,7 +307,7 @@ var minerInfoCmd = &cmds.Command{
 		if !pow.HasMinPower {
 			writer.Println("Below minimum power threshold, no blocks will be won")
 		} else {
-			expWinChance := float64(big.Mul(qpercI, big.NewInt(int64(types.BlocksPerEpoch))).Int64()) / 1000000
+			expWinChance := float64(big.Mul(qpercI, big.NewInt(int64(params.BlocksPerEpoch))).Int64()) / 1000000
 			if expWinChance > 0 {
 				if expWinChance > 1 {
 					expWinChance = 1

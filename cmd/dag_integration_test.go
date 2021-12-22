@@ -3,7 +3,6 @@ package cmd_test
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -12,6 +11,7 @@ import (
 	"github.com/filecoin-project/venus/app/node/test"
 	"github.com/filecoin-project/venus/pkg/constants"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 func TestDagDaemon(t *testing.T) {

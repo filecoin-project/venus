@@ -6,16 +6,17 @@ package consensus
 import (
 	"context"
 	"errors"
-	logging "github.com/ipfs/go-log/v2"
 	"math/big"
 
+	logging "github.com/ipfs/go-log/v2"
+
 	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/types"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/state"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var log = logging.Logger("chain_selector")
@@ -108,7 +109,7 @@ func breakWeightTie(ts1, ts2 *types.TipSet) bool {
 
 	// blocks are already sorted by ticket
 	for i := 0; i < s; i++ {
-		if ts1.Blocks()[i].Ticket.Less(&ts2.Blocks()[i].Ticket) {
+		if ts1.Blocks()[i].Ticket.Less(ts2.Blocks()[i].Ticket) {
 			log.Infof("weight tie broken in favour of %s", ts1.Key())
 			return true
 		}

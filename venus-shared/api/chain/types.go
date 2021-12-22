@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
@@ -77,6 +76,8 @@ type Deadline struct {
 	DisputableProofCount uint64
 }
 
+var MarketBalanceNil = MarketBalance{}
+
 type MarketDeal struct {
 	Proposal market.DealProposal
 	State    market.DealState
@@ -139,12 +140,12 @@ type BlockTemplate struct {
 }
 
 type EstimateMessage struct {
-	Msg  *Message
+	Msg  *chain.Message
 	Spec *MessageSendSpec
 }
 
 type EstimateResult struct {
-	Msg *Message
+	Msg *chain.Message
 	Err string
 }
 
@@ -183,15 +184,6 @@ type ChannelAvailableFunds struct {
 	// VoucherRedeemedAmt is the amount that is redeemed by vouchers on-chain
 	// and in the local datastore
 	VoucherReedeemedAmt chain.BigInt
-}
-
-// ChainInfo is used to track metadata about a peer and its chain.
-type ChainInfo struct {
-	// The originator of the TipSetKey propagation wave.
-	Source peer.ID
-	// The peer that sent us the TipSetKey message.
-	Sender peer.ID
-	Head   *chain.TipSet
 }
 
 type SyncState struct {

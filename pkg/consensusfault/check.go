@@ -9,13 +9,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/fork"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
-	types2 "github.com/filecoin-project/venus/venus-shared/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/venus/pkg/config"
@@ -101,7 +100,9 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 	// Time-offset mining fault: two blocks with the same parent but different epochs.
 	// The curEpoch check is redundant at time of writing, but included for robustness to future changes to this method.
 	// The blocks have a common ancestor by definition (the parent).
-	if b1.Parents.Equals(b2.Parents) && b1.Height != b2.Height {
+	b1PKey := types.NewTipSetKey(b1.Parents...)
+	b2PKey := types.NewTipSetKey(b2.Parents...)
+	if b1PKey.Equals(b2PKey) && b1.Height != b2.Height {
 		fault = &runtime5.ConsensusFault{
 			Target: b1.Miner,
 			Epoch:  b2.Height,
@@ -117,7 +118,8 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 		if innerErr != nil {
 			return nil, errors.Wrapf(innerErr, "failed to decode extra")
 		}
-		if b1.Height == b3.Height && b3.Parents.Equals(b1.Parents) && !b2.Parents.Has(b1.Cid()) && b2.Parents.Has(b3.Cid()) {
+		b3PKey := types.NewTipSetKey(b3.Parents...)
+		if b1.Height == b3.Height && b3PKey.Equals(b1PKey) && !b2PKey.Has(b1.Cid()) && b2PKey.Has(b3.Cid()) {
 			fault = &runtime5.ConsensusFault{
 				Target: b1.Miner,
 				Epoch:  b2.Height,
@@ -161,7 +163,7 @@ func verifyBlockSignature(ctx context.Context, blk types.BlockHeader, nv network
 		return errors.Wrapf(err, "failed to get miner actor")
 	}
 
-	mas, err := miner.Load(adt.WrapStore(ctx, gasIpld), (*types2.Actor)(act))
+	mas, err := miner.Load(adt.WrapStore(ctx, gasIpld), act)
 	if err != nil {
 		return xerrors.Errorf("failed to load state for miner %s", receiver)
 	}
@@ -175,7 +177,11 @@ func verifyBlockSignature(ctx context.Context, blk types.BlockHeader, nv network
 		return errors.Errorf("no consensus fault: block %s has nil signature", blk.Cid())
 	}
 
-	err = state.NewSignatureValidator(view).ValidateSignature(ctx, blk.SignatureData(), info.Worker, *blk.BlockSig)
+	sd, err := blk.SignatureData()
+	if err != nil {
+		return err
+	}
+	err = state.NewSignatureValidator(view).ValidateSignature(ctx, sd, info.Worker, *blk.BlockSig)
 	if err != nil {
 		return errors.Wrapf(err, "no consensus fault: block %s signature invalid", blk.Cid())
 	}

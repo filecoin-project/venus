@@ -3,12 +3,14 @@ package mpool
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/messagepool"
-	"github.com/filecoin-project/venus/pkg/types"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+	mptypes "github.com/filecoin-project/venus/venus-shared/messagepool"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
@@ -42,13 +44,28 @@ func (a *MessagePoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessag
 }
 
 // MpoolGetConfig returns (a copy of) the current mpool config
-func (a *MessagePoolAPI) MpoolGetConfig(context.Context) (*messagepool.MpoolConfig, error) {
-	return a.mp.MPool.GetConfig(), nil
+func (a *MessagePoolAPI) MpoolGetConfig(context.Context) (*mptypes.MpoolConfig, error) {
+	cfg := a.mp.MPool.GetConfig()
+	return &mptypes.MpoolConfig{
+		PriorityAddrs:          cfg.PriorityAddrs,
+		SizeLimitHigh:          cfg.SizeLimitHigh,
+		SizeLimitLow:           cfg.SizeLimitLow,
+		ReplaceByFeeRatio:      cfg.ReplaceByFeeRatio,
+		PruneCooldown:          cfg.PruneCooldown,
+		GasLimitOverestimation: cfg.GasLimitOverestimation,
+	}, nil
 }
 
 // MpoolSetConfig sets the mpool config to (a copy of) the supplied config
-func (a *MessagePoolAPI) MpoolSetConfig(ctx context.Context, cfg *messagepool.MpoolConfig) error {
-	return a.mp.MPool.SetConfig(cfg)
+func (a *MessagePoolAPI) MpoolSetConfig(ctx context.Context, cfg *mptypes.MpoolConfig) error {
+	return a.mp.MPool.SetConfig(&messagepool.MpoolConfig{
+		PriorityAddrs:          cfg.PriorityAddrs,
+		SizeLimitHigh:          cfg.SizeLimitHigh,
+		SizeLimitLow:           cfg.SizeLimitLow,
+		ReplaceByFeeRatio:      cfg.ReplaceByFeeRatio,
+		PruneCooldown:          cfg.PruneCooldown,
+		GasLimitOverestimation: cfg.GasLimitOverestimation,
+	})
 }
 
 // MpoolSelect returns a list of pending messages for inclusion in the next block
@@ -164,7 +181,7 @@ func (a *MessagePoolAPI) MpoolPushUntrusted(ctx context.Context, smsg *types.Sig
 //
 // When maxFee is set to 0, MpoolPushMessage will guess appropriate fee
 // based on current chain conditions
-func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
+func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *apitypes.MessageSendSpec) (*types.SignedMessage, error) {
 	cp := *msg
 	msg = &cp
 	inMsg := *msg
@@ -252,7 +269,7 @@ func (a *MessagePoolAPI) MpoolBatchPushUntrusted(ctx context.Context, smsgs []*t
 }
 
 // MpoolBatchPushMessage batch pushes a unsigned message to mempool.
-func (a *MessagePoolAPI) MpoolBatchPushMessage(ctx context.Context, msgs []*types.UnsignedMessage, spec *types.MessageSendSpec) ([]*types.SignedMessage, error) {
+func (a *MessagePoolAPI) MpoolBatchPushMessage(ctx context.Context, msgs []*types.Message, spec *apitypes.MessageSendSpec) ([]*types.SignedMessage, error) {
 	var smsgs []*types.SignedMessage
 	for _, msg := range msgs {
 		smsg, err := a.MpoolPushMessage(ctx, msg, spec)
@@ -270,25 +287,25 @@ func (a *MessagePoolAPI) MpoolGetNonce(ctx context.Context, addr address.Address
 	return a.mp.MPool.GetNonce(ctx, addr, types.EmptyTSK)
 }
 
-func (a *MessagePoolAPI) MpoolSub(ctx context.Context) (<-chan messagepool.MpoolUpdate, error) {
+func (a *MessagePoolAPI) MpoolSub(ctx context.Context) (<-chan mptypes.MpoolUpdate, error) {
 	return a.mp.MPool.Updates(ctx)
 }
 
 // GasEstimateMessageGas estimates gas values for unset message gas fields
-func (a *MessagePoolAPI) GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec, tsk types.TipSetKey) (*types.UnsignedMessage, error) {
-	return a.mp.MPool.GasEstimateMessageGas(ctx, &types.EstimateMessage{Msg: msg, Spec: spec}, tsk)
+func (a *MessagePoolAPI) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *apitypes.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {
+	return a.mp.MPool.GasEstimateMessageGas(ctx, &apitypes.EstimateMessage{Msg: msg, Spec: spec}, tsk)
 }
 
-func (a *MessagePoolAPI) GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*types.EstimateMessage, fromNonce uint64, tsk types.TipSetKey) ([]*types.EstimateResult, error) {
+func (a *MessagePoolAPI) GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*apitypes.EstimateMessage, fromNonce uint64, tsk types.TipSetKey) ([]*apitypes.EstimateResult, error) {
 	return a.mp.MPool.GasBatchEstimateMessageGas(ctx, estimateMessages, fromNonce, tsk)
 }
 
 // GasEstimateFeeCap estimates gas fee cap
-func (a *MessagePoolAPI) GasEstimateFeeCap(ctx context.Context, msg *types.UnsignedMessage, maxqueueblks int64, tsk types.TipSetKey) (big.Int, error) {
+func (a *MessagePoolAPI) GasEstimateFeeCap(ctx context.Context, msg *types.Message, maxqueueblks int64, tsk types.TipSetKey) (big.Int, error) {
 	return a.mp.MPool.GasEstimateFeeCap(ctx, msg, maxqueueblks, tsk)
 }
 
-func (a *MessagePoolAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.UnsignedMessage, tsk types.TipSetKey) (int64, error) {
+func (a *MessagePoolAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, tsk types.TipSetKey) (int64, error) {
 	return a.mp.MPool.GasEstimateGasLimit(ctx, msgIn, tsk)
 }
 
@@ -298,15 +315,15 @@ func (a *MessagePoolAPI) GasEstimateGasPremium(ctx context.Context, nblocksincl 
 	return a.mp.MPool.GasEstimateGasPremium(ctx, nblocksincl, sender, gaslimit, tsk, a.mp.MPool.PriceCache)
 }
 
-func (a *MessagePoolAPI) MpoolCheckMessages(ctx context.Context, protos []*apitypes.MessagePrototype) ([][]apitypes.MessageCheckStatus, error) {
+func (a *MessagePoolAPI) MpoolCheckMessages(ctx context.Context, protos []*mptypes.MessagePrototype) ([][]mptypes.MessageCheckStatus, error) {
 	return a.mp.MPool.CheckMessages(ctx, protos)
 }
 
-func (a *MessagePoolAPI) MpoolCheckPendingMessages(ctx context.Context, addr address.Address) ([][]apitypes.MessageCheckStatus, error) {
+func (a *MessagePoolAPI) MpoolCheckPendingMessages(ctx context.Context, addr address.Address) ([][]mptypes.MessageCheckStatus, error) {
 	return a.mp.MPool.CheckPendingMessages(ctx, addr)
 }
 
-func (a *MessagePoolAPI) MpoolCheckReplaceMessages(ctx context.Context, msg []*types.Message) ([][]apitypes.MessageCheckStatus, error) {
+func (a *MessagePoolAPI) MpoolCheckReplaceMessages(ctx context.Context, msg []*types.Message) ([][]mptypes.MessageCheckStatus, error) {
 	return a.mp.MPool.CheckReplaceMessages(ctx, msg)
 }
 

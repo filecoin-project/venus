@@ -18,11 +18,11 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var dummyCid cid.Cid
@@ -144,7 +144,7 @@ func (fcs *fakeCS) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*ty
 	return fcs.tipsets[key], nil
 }
 
-func (fcs *fakeCS) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*chain.MsgLookup, error) {
+func (fcs *fakeCS) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
 	fcs.mu.Lock()
 	defer fcs.mu.Unlock()
 	fcs.callNumber["StateSearchMsg"] = fcs.callNumber["StateSearchMsg"] + 1
@@ -181,9 +181,9 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 			Height: h,
 			Miner:  a,
 
-			Parents: types.NewTipSetKey(parents...),
+			Parents: parents,
 
-			Ticket: types.Ticket{VRFProof: []byte{byte(h % 2)}},
+			Ticket: &types.Ticket{VRFProof: []byte{byte(h % 2)}},
 
 			ParentStateRoot:       dummyCid,
 			Messages:              msgcid,
@@ -196,9 +196,9 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 			Height: h,
 			Miner:  b,
 
-			Parents: types.NewTipSetKey(parents...),
+			Parents: parents,
 
-			Ticket: types.Ticket{VRFProof: []byte{byte((h + 1) % 2)}},
+			Ticket: &types.Ticket{VRFProof: []byte{byte((h + 1) % 2)}},
 
 			ParentStateRoot:       dummyCid,
 			Messages:              msgcid,
@@ -207,7 +207,7 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 			BlockSig:     &crypto.Signature{Type: crypto.SigTypeBLS},
 			BLSAggregate: &crypto.Signature{Type: crypto.SigTypeBLS},
 		},
-	}...)
+	})
 
 	if fcs.tipsets == nil {
 		fcs.tipsets = map[types.TipSetKey]*types.TipSet{}

@@ -3,9 +3,9 @@ package chain
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/ipfs/go-cid"
 )
 
@@ -70,7 +70,7 @@ func LoadTipSetBlocks(ctx context.Context, store BlockProvider, key types.TipSet
 		}
 		blocks = append(blocks, blk)
 	}
-	return types.NewTipSet(blocks...)
+	return types.NewTipSet(blocks)
 }
 
 type tipsetFromBlockProvider struct {
@@ -187,7 +187,7 @@ func FindLatestDRAND(ctx context.Context, start *types.TipSet, reader TipSetProv
 
 		entries := ts.At(0).BeaconEntries
 		if len(entries) > 0 {
-			return entries[len(entries)-1], nil
+			return &entries[len(entries)-1], nil
 		}
 		// No entries, simply move on to the next ancestor
 	}

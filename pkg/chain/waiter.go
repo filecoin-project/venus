@@ -7,13 +7,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/constants"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 type MsgLookup struct {
@@ -57,7 +56,7 @@ type ChainMessage struct { //nolint
 }
 
 // WaitPredicate is a function that identifies a message and returns true when found.
-type WaitPredicate func(msg *types.UnsignedMessage, msgCid cid.Cid) bool
+type WaitPredicate func(msg *types.Message, msgCid cid.Cid) bool
 
 // NewWaiter returns a new Waiter.
 func NewWaiter(chainStore waiterChainReader, messages MessageProvider, bs bstore.Blockstore, cst cbor.IpldStore) *Waiter {

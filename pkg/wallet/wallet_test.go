@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/filecoin-project/venus/pkg/testhelpers"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
@@ -13,7 +15,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 func newWalletAndDSBackend(t *testing.T) (*Wallet, *DSBackend) {
@@ -49,7 +50,7 @@ func TestWalletSimple(t *testing.T) {
 	assert.Equal(t, fs, backend)
 
 	t.Log("find unknown address")
-	randomAddr := types.NewForTestGetter()()
+	randomAddr := testhelpers.NewForTestGetter()()
 
 	assert.False(t, w.HasAddress(randomAddr))
 

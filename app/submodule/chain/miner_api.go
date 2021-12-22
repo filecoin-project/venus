@@ -3,9 +3,6 @@ package chain
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/venus-shared/actors/policy"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -13,16 +10,17 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
-	types2 "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var _ apiface.IMinerState = &minerStateAPI{}
@@ -359,7 +357,7 @@ func (msa *minerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context
 	var sectorWeight abi.StoragePower
 	if act, found, err := sTree.GetActor(ctx, market.Address); err != nil || !found {
 		return big.Int{}, xerrors.Errorf("loading market actor %s: %v", maddr, err)
-	} else if s, err := market.Load(store, (*types2.Actor)(act)); err != nil {
+	} else if s, err := market.Load(store, act); err != nil {
 		return big.Int{}, xerrors.Errorf("loading market actor state %s: %v", maddr, err)
 	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
 		return big.Int{}, xerrors.Errorf("verifying deals for activation: %v", err)
@@ -372,7 +370,7 @@ func (msa *minerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context
 	var powerSmoothed builtin.FilterEstimate
 	if act, found, err := sTree.GetActor(ctx, power.Address); err != nil || !found {
 		return big.Int{}, xerrors.Errorf("loading power actor: %v", err)
-	} else if s, err := power.Load(store, (*types2.Actor)(act)); err != nil {
+	} else if s, err := power.Load(store, act); err != nil {
 		return big.Int{}, xerrors.Errorf("loading power actor state: %v", err)
 	} else if p, err := s.TotalPowerSmoothed(); err != nil {
 		return big.Int{}, xerrors.Errorf("failed to determine total power: %v", err)
@@ -385,7 +383,7 @@ func (msa *minerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context
 		return big.Int{}, xerrors.Errorf("loading miner actor: %v", err)
 	}
 
-	rewardState, err := reward.Load(store, (*types2.Actor)(rewardActor))
+	rewardState, err := reward.Load(store, rewardActor)
 	if err != nil {
 		return big.Int{}, xerrors.Errorf("loading reward actor state: %v", err)
 	}
@@ -419,7 +417,7 @@ func (msa *minerStateAPI) StateMinerInitialPledgeCollateral(ctx context.Context,
 	var sectorWeight abi.StoragePower
 	if act, found, err := state.GetActor(ctx, market.Address); err != nil || !found {
 		return big.Int{}, xerrors.Errorf("loading miner actor %s: %v", maddr, err)
-	} else if s, err := market.Load(store, (*types2.Actor)(act)); err != nil {
+	} else if s, err := market.Load(store, act); err != nil {
 		return big.Int{}, xerrors.Errorf("loading market actor state %s: %v", maddr, err)
 	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
 		return big.Int{}, xerrors.Errorf("verifying deals for activation: %v", err)
@@ -435,7 +433,7 @@ func (msa *minerStateAPI) StateMinerInitialPledgeCollateral(ctx context.Context,
 	)
 	if act, found, err := state.GetActor(ctx, power.Address); err != nil || !found {
 		return big.Int{}, xerrors.Errorf("loading miner actor: %v", err)
-	} else if s, err := power.Load(store, (*types2.Actor)(act)); err != nil {
+	} else if s, err := power.Load(store, act); err != nil {
 		return big.Int{}, xerrors.Errorf("loading power actor state: %v", err)
 	} else if p, err := s.TotalPowerSmoothed(); err != nil {
 		return big.Int{}, xerrors.Errorf("failed to determine total power: %v", err)
@@ -451,7 +449,7 @@ func (msa *minerStateAPI) StateMinerInitialPledgeCollateral(ctx context.Context,
 		return big.Int{}, xerrors.Errorf("loading miner actor: %v", err)
 	}
 
-	rewardState, err := reward.Load(store, (*types2.Actor)(rewardActor))
+	rewardState, err := reward.Load(store, rewardActor)
 	if err != nil {
 		return big.Int{}, xerrors.Errorf("loading reward actor state: %v", err)
 	}
@@ -504,7 +502,7 @@ func (msa *minerStateAPI) StateCirculatingSupply(ctx context.Context, tsk types.
 }
 
 // StateMarketDeals returns information about every deal in the Storage Market
-func (msa *minerStateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketDeal, error) {
+func (msa *minerStateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]apitypes.MarketDeal, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("Stmgr.ParentStateViewTsk failed:%w", err)

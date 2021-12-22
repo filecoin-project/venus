@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/market"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	gen "github.com/whyrusleeping/cbor-gen"
 )
@@ -27,20 +26,20 @@ func main() {
 		panic(err)
 	}
 
-	if err := gen.WriteTupleEncodersToFile("./pkg/types/internal/cbor_gen.go", "internal",
-		types.MessageReceipt{},
-		types.SignedMessage{},
-		types.UnsignedMessage{},
-		types.TxMeta{},
-		types.Actor{},
-		types.BeaconEntry{},
-		types.BlockHeader{},
-		types.Ticket{},
-		types.ElectionProof{},
-		types.BlockMsg{},
-	); err != nil {
-		panic(err)
-	}
+	//if err := gen.WriteTupleEncodersToFile("./pkg/types/internal/cbor_gen.go", "internal",
+	//	types.MessageReceipt{},
+	//	types.SignedMessage{},
+	//	types.TxMeta{},
+	//	types.UnsignedMessage{},
+	//	types.Actor{},
+	//	types.BeaconEntry{},
+	//	types.BlockHeader{},
+	//	types.Ticket{},
+	//	types.ElectionProof{},
+	//	types.BlockMsg{},
+	//); err != nil {
+	//	panic(err)
+	//}
 
 	if err := gen.WriteTupleEncodersToFile("./pkg/discovery/cbor_gen.go", "discovery",
 		discovery.HelloMessage{},

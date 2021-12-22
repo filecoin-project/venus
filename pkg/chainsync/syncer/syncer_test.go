@@ -5,22 +5,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/statemanger"
+	"github.com/filecoin-project/venus/pkg/testhelpers"
 
-	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
-	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
+	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	"github.com/filecoin-project/venus/pkg/clock"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	"github.com/filecoin-project/venus/pkg/fork"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/test"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -375,7 +375,7 @@ func TestSubsetParent(t *testing.T) {
 
 	// Sync one tipset with a parent equal to a subset of an existing
 	// tipset in the bsstore: {B1, B2} -> {C1, C2}
-	tipB1B2 := types.RequireNewTipSet(t, tipB1B2B3.At(0), tipB1B2B3.At(1))
+	tipB1B2 := testhelpers.RequireNewTipSet(t, tipB1B2B3.At(0), tipB1B2B3.At(1))
 	tipC1C2 := builder.AppendOn(tipB1B2, 2)
 
 	target2 := &syncTypes.Target{
@@ -390,7 +390,7 @@ func TestSubsetParent(t *testing.T) {
 
 	// Sync another tipset with a parent equal to a subset of the tipset
 	// just synced: C1 -> D1
-	tipC1 := types.RequireNewTipSet(t, tipC1C2.At(0))
+	tipC1 := testhelpers.RequireNewTipSet(t, tipC1C2.At(0))
 	tipD1OnC1 := builder.AppendOn(tipC1, 1)
 
 	target3 := &syncTypes.Target{
@@ -463,9 +463,9 @@ type poisonValidator struct {
 func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
 	stamp := ts.At(0).Timestamp
 	if pv.fullFailureTS == stamp {
-		return emptycid.EmptyTxMetaCID, emptycid.EmptyTxMetaCID, errors.New("run state transition fails on poison timestamp")
+		return testhelpers.EmptyTxMetaCID, testhelpers.EmptyTxMetaCID, errors.New("run state transition fails on poison timestamp")
 	}
-	return emptycid.EmptyTxMetaCID, emptycid.EmptyTxMetaCID, nil
+	return testhelpers.EmptyTxMetaCID, testhelpers.EmptyTxMetaCID, nil
 }
 
 func (pv *poisonValidator) ValidateFullBlock(ctx context.Context, blk *types.BlockHeader) error {
@@ -503,8 +503,8 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 	genesis := builder.Store().GetHead()
 
 	// Build a chain with messages that will fail semantic header validation
-	kis := types.MustGenerateKeyInfo(1, 42)
-	mm := types.NewMessageMaker(t, kis)
+	kis := testhelpers.MustGenerateKeyInfo(1, 42)
+	mm := testhelpers.NewMessageMaker(t, kis)
 	alice := mm.Addresses()[0]
 	m1 := mm.NewSignedMessage(alice, 0)
 	m2 := mm.NewSignedMessage(alice, 1)
@@ -513,7 +513,7 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 	link1 := builder.BuildOneOn(genesis, func(bb *chain.BlockBuilder) {
 		bb.AddMessages(
 			[]*types.SignedMessage{m1, m2, m3},
-			[]*types.UnsignedMessage{},
+			[]*types.Message{},
 		)
 		bb.SetTimestamp(98) // poison header val
 	})
@@ -540,11 +540,11 @@ func TestStoresMessageReceipts(t *testing.T) {
 	builder, syncer := setup(ctx, t)
 	genesis := builder.Store().GetHead()
 
-	keys := types.MustGenerateKeyInfo(1, 42)
-	mm := types.NewMessageMaker(t, keys)
+	keys := testhelpers.MustGenerateKeyInfo(1, 42)
+	mm := testhelpers.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
 	t1 := builder.Build(genesis, 4, func(b *chain.BlockBuilder, i int) {
-		b.AddMessages([]*types.SignedMessage{}, []*types.UnsignedMessage{mm.NewUnsignedMessage(alice, uint64(i))})
+		b.AddMessages([]*types.SignedMessage{}, []*types.Message{mm.NewUnsignedMessage(alice, uint64(i))})
 	})
 
 	target1 := &syncTypes.Target{

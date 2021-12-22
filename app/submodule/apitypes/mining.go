@@ -4,8 +4,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 type MiningBaseInfo struct { //nolint

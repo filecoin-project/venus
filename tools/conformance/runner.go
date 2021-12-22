@@ -6,11 +6,13 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
+
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/fatih/color"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -24,7 +26,6 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipld/go-car"
 
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
 )
 
@@ -147,7 +148,7 @@ func AssertMsgResult(r Reporter, expected *schema.Receipt, actual *vm.Ret, label
 	if expected, actual := expected.GasUsed, actual.Receipt.GasUsed; expected != actual {
 		r.Errorf("gas used of msg %s did not match; expected: %d, got: %d", label, expected, actual)
 	}
-	if expected, actual := []byte(expected.ReturnValue), actual.Receipt.ReturnValue; !bytes.Equal(expected, actual) {
+	if expected, actual := []byte(expected.ReturnValue), actual.Receipt.Return; !bytes.Equal(expected, actual) {
 		r.Errorf("return value of msg %s did not match; expected: %s, got: %s", label, base64.StdEncoding.EncodeToString(expected), base64.StdEncoding.EncodeToString(actual))
 	}
 }

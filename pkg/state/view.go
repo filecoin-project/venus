@@ -4,7 +4,8 @@ import (
 	"context"
 	"strconv"
 
-	types2 "github.com/filecoin-project/venus/venus-shared/chain"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -17,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
@@ -386,7 +386,7 @@ func (v *View) StateVerifiedClientStatus(ctx context.Context, addr addr.Address)
 		return abi.NewStoragePower(0), err
 	}
 
-	state, err := verifreg.Load(adt.WrapStore(ctx, v.ipldStore), (*types2.Actor)(act))
+	state, err := verifreg.Load(adt.WrapStore(ctx, v.ipldStore), act)
 	if err != nil {
 		return abi.NewStoragePower(0), err
 	}
@@ -404,7 +404,7 @@ func (v *View) StateVerifiedClientStatus(ctx context.Context, addr addr.Address)
 }
 
 // StateMarketStorageDeal returns information about the indicated deal
-func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*types.MarketDeal, error) {
+func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*apitypes.MarketDeal, error) {
 	state, err := v.LoadMarketState(ctx)
 	if err != nil {
 		return nil, err
@@ -438,14 +438,14 @@ func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*
 		return nil, xerrors.New("deal state not found")
 	}
 
-	return &types.MarketDeal{
+	return &apitypes.MarketDeal{
 		Proposal: *dealProposal,
 		State:    *dealState,
 	}, nil
 }
 
 // Returns the storage power actor's values for network total power.
-func (v *View) PowerNetworkTotal(ctx context.Context) (*types.NetworkPower, error) {
+func (v *View) PowerNetworkTotal(ctx context.Context) (*NetworkPower, error) {
 	st, err := v.LoadPowerActor(ctx)
 	if err != nil {
 		return nil, err
@@ -461,7 +461,7 @@ func (v *View) PowerNetworkTotal(ctx context.Context) (*types.NetworkPower, erro
 		return nil, err
 	}
 
-	return &types.NetworkPower{
+	return &NetworkPower{
 		RawBytePower:         tp.RawBytePower,
 		QualityAdjustedPower: tp.QualityAdjPower,
 		MinerCount:           int64(minerCount),
@@ -505,7 +505,7 @@ func (v *View) PaychActorParties(ctx context.Context, paychAddr addr.Address) (f
 		return addr.Undef, addr.Undef, err
 	}
 
-	state, err := paychActor.Load(adt.WrapStore(ctx, v.ipldStore), (*types2.Actor)(a))
+	state, err := paychActor.Load(adt.WrapStore(ctx, v.ipldStore), a)
 	if err != nil {
 		return addr.Undef, addr.Undef, err
 	}
@@ -540,29 +540,6 @@ func (v *View) StateMinerProvingDeadline(ctx context.Context, addr addr.Address,
 	return di.NextNotElapsed(), nil
 }
 
-// StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
-func (v *View) StateMinerSectors(ctx context.Context, addr addr.Address, filter *bitfield.BitField, key types.TipSetKey) ([]*types.ChainSectorInfo, error) {
-	mas, err := v.LoadMinerState(ctx, addr)
-	if err != nil {
-		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
-	}
-
-	siset, err := mas.LoadSectors(filter)
-	if err != nil {
-		return nil, err
-	}
-
-	sset := make([]*types.ChainSectorInfo, len(siset))
-	for i, val := range siset {
-		sset[i] = &types.ChainSectorInfo{
-			Info: *val,
-			ID:   val.SectorNumber,
-		}
-	}
-
-	return sset, nil
-}
-
 // StateSectorExpiration returns epoch at which given sector will expire
 func (v *View) StateSectorExpiration(ctx context.Context, maddr addr.Address, sectorNumber abi.SectorNumber, key types.TipSetKey) (*miner.SectorExpiration, error) {
 	mas, err := v.LoadMinerState(ctx, maddr)
@@ -583,7 +560,7 @@ func (v *View) StateMinerAvailableBalance(ctx context.Context, maddr addr.Addres
 		return big.Int{}, err
 	}
 
-	mas, err := miner.Load(adt.WrapStore(context.TODO(), v.ipldStore), (*types2.Actor)(actor))
+	mas, err := miner.Load(adt.WrapStore(context.TODO(), v.ipldStore), actor)
 	if err != nil {
 		return big.Int{}, xerrors.Errorf("failed to load miner actor state: %v", err)
 	}
@@ -644,8 +621,8 @@ func (v *View) StateMinerPower(ctx context.Context, maddr addr.Address, tsk type
 }
 
 // StateMarketDeals returns information about every deal in the Storage Market
-func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketDeal, error) {
-	out := map[string]types.MarketDeal{}
+func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]apitypes.MarketDeal, error) {
+	out := map[string]apitypes.MarketDeal{}
 
 	state, err := v.LoadMarketState(ctx)
 	if err != nil {
@@ -669,7 +646,7 @@ func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[s
 		} else if !found {
 			s = market.EmptyDealState()
 		}
-		out[strconv.FormatInt(int64(dealID), 10)] = types.MarketDeal{
+		out[strconv.FormatInt(int64(dealID), 10)] = apitypes.MarketDeal{
 			Proposal: d,
 			State:    *s,
 		}
@@ -730,7 +707,7 @@ func (v *View) ResolveToKeyAddr(ctx context.Context, address addr.Address) (addr
 		return addr.Undef, xerrors.Errorf("failed to find actor: %s", address)
 	}
 
-	aast, err := account.Load(adt.WrapStore(context.TODO(), v.ipldStore), (*types2.Actor)(act))
+	aast, err := account.Load(adt.WrapStore(context.TODO(), v.ipldStore), act)
 	if err != nil {
 		return addr.Undef, xerrors.Errorf("failed to get account actor state for %s: %v", address, err)
 	}
@@ -744,12 +721,12 @@ func (v *View) LoadInitState(ctx context.Context) (notinit.State, error) {
 		return nil, err
 	}
 
-	return notinit.Load(adt.WrapStore(ctx, v.ipldStore), (*types2.Actor)(actr))
+	return notinit.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
 //LoadPaychState get pay channel state for actor
 func (v *View) LoadPaychState(ctx context.Context, actor *types.Actor) (paychActor.State, error) {
-	return paychActor.Load(adt.WrapStore(context.TODO(), v.ipldStore), (*types2.Actor)(actor))
+	return paychActor.Load(adt.WrapStore(context.TODO(), v.ipldStore), actor)
 }
 
 //LoadMinerState return miner state
@@ -763,7 +740,7 @@ func (v *View) LoadMinerState(ctx context.Context, maddr addr.Address) (miner.St
 		return nil, err
 	}
 
-	return miner.Load(adt.WrapStore(context.TODO(), v.ipldStore), (*types2.Actor)(actr))
+	return miner.Load(adt.WrapStore(context.TODO(), v.ipldStore), actr)
 }
 
 func (v *View) LoadPowerActor(ctx context.Context) (power.State, error) {
@@ -772,7 +749,7 @@ func (v *View) LoadPowerActor(ctx context.Context) (power.State, error) {
 		return nil, err
 	}
 
-	return power.Load(adt.WrapStore(ctx, v.ipldStore), (*types2.Actor)(actr))
+	return power.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
 func (v *View) LoadVerifregActor(ctx context.Context) (verifreg.State, error) {
@@ -781,7 +758,7 @@ func (v *View) LoadVerifregActor(ctx context.Context) (verifreg.State, error) {
 		return nil, err
 	}
 
-	return verifreg.Load(adt.WrapStore(ctx, v.ipldStore), (*types2.Actor)(actr))
+	return verifreg.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
 // nolint
@@ -791,7 +768,7 @@ func (v *View) LoadRewardState(ctx context.Context) (reward.State, error) {
 		return nil, err
 	}
 
-	return reward.Load(adt.WrapStore(ctx, v.ipldStore), (*types2.Actor)(actr))
+	return reward.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
 // nolint
@@ -801,7 +778,7 @@ func (v *View) LoadPowerState(ctx context.Context) (power.State, error) {
 		return nil, err
 	}
 
-	return power.Load(adt.WrapStore(ctx, v.ipldStore), (*types2.Actor)(actr))
+	return power.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
 func (v *View) LoadMarketState(ctx context.Context) (market.State, error) {
@@ -810,7 +787,7 @@ func (v *View) LoadMarketState(ctx context.Context) (market.State, error) {
 		return nil, err
 	}
 
-	return market.Load(adt.WrapStore(ctx, v.ipldStore), (*types2.Actor)(actr))
+	return market.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
 // nolint
@@ -824,7 +801,7 @@ func (v *View) LoadAccountState(ctx context.Context, a addr.Address) (account.St
 		return nil, err
 	}
 
-	return account.Load(adt.WrapStore(context.TODO(), v.ipldStore), (*types2.Actor)(actr))
+	return account.Load(adt.WrapStore(context.TODO(), v.ipldStore), actr)
 }
 
 //loadActor load actor of address in db
@@ -850,7 +827,7 @@ func getFilMarketLocked(ctx context.Context, ipldStore cbor.IpldStore, st vmstat
 		return big.Zero(), xerrors.Errorf("failed to load market actor: %v", err)
 	}
 
-	mst, err := market.Load(adt.WrapStore(ctx, ipldStore), (*types2.Actor)(mactor))
+	mst, err := market.Load(adt.WrapStore(ctx, ipldStore), mactor)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("failed to load market state: %v", err)
 	}

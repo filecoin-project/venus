@@ -4,8 +4,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/filecoin-project/venus/pkg/types"
-
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"

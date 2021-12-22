@@ -20,7 +20,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool"
-	"github.com/filecoin-project/venus/pkg/types"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+	mptypes "github.com/filecoin-project/venus/venus-shared/messagepool"
 )
 
 var mpoolCmd = &cmds.Command{
@@ -291,27 +293,16 @@ var mpoolReplaceCmd = &cmds.Command{
 
 		msg := found.Message
 
-		//msg := types.Message{
-		//	From:       from,
-		//	To:         from,
-		//	Method:     2,
-		//	Value:      types.FromFil(0),
-		//	Nonce:      nonce,
-		//	GasLimit:   100000000,
-		//	GasFeeCap:  types.NewInt(100 + 4000000000),
-		//	GasPremium: types.NewInt(5000000000),
-		//}
-
 		if auto {
 			minRBF := messagepool.ComputeMinRBF(msg.GasPremium)
 
-			var mss *types.MessageSendSpec
+			var mss *apitypes.MessageSendSpec
 			if len(maxFee) > 0 {
 				maxFee, err := big.FromString(maxFee)
 				if err != nil {
 					return fmt.Errorf("parsing max-spend: %w", err)
 				}
-				mss = &types.MessageSendSpec{
+				mss = &apitypes.MessageSendSpec{
 					MaxFee: maxFee,
 				}
 			}
@@ -656,7 +647,7 @@ var mpoolConfig = &cmds.Command{
 		ctx := context.TODO()
 
 		if len(req.Arguments) > 0 {
-			cfg := new(messagepool.MpoolConfig)
+			cfg := new(mptypes.MpoolConfig)
 
 			paras := req.Arguments[0]
 			err := json.Unmarshal([]byte(paras), cfg)

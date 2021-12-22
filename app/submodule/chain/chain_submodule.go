@@ -2,26 +2,25 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/client/apiface/v0api"
-	"github.com/filecoin-project/venus/pkg/statemanger"
-	"github.com/filecoin-project/venus/pkg/vm"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"time"
 
-	chainv0api "github.com/filecoin-project/venus/app/submodule/chain/v0api"
-
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/app/client/apiface/v0api"
+	chainv0api "github.com/filecoin-project/venus/app/submodule/chain/v0api"
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/consensusfault"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
+	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 // ChainSubmodule enhances the `Node` with chain capabilities.

@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/venus-shared/chain/params"
 	blocks "github.com/ipfs/go-block-format"
@@ -14,6 +15,16 @@ import (
 )
 
 const MessageVersion = 0
+
+type ChainMsg interface {
+	Cid() cid.Cid
+	VMMessage() *Message
+	ToStorageBlock() (blocks.Block, error)
+	// FIXME: This is the *message* length, this name is misleading.
+	ChainLength() int
+	cbor.Marshaler
+	cbor.Unmarshaler
+}
 
 func DecodeMessage(b []byte) (*Message, error) {
 	var msg Message
@@ -188,3 +199,13 @@ func (m *Message) ValidForBlockInclusion(minGas int64, version network.Version) 
 
 	return nil
 }
+
+func (m *Message) VMMessage() *Message {
+	return m
+}
+
+func (m *Message) RequiredFunds() abi.TokenAmount {
+	return abi.TokenAmount{Int: BigMul(BigInt{Int: m.GasFeeCap.Int}, NewInt(uint64(m.GasLimit))).Int}
+}
+
+var _ ChainMsg = (*Message)(nil)

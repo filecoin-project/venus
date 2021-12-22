@@ -2,13 +2,14 @@ package v0api
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/client/apiface/v0api"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/messagepool"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
@@ -20,7 +21,7 @@ type WrapperV1IMultiSig struct {
 
 var _ v0api.IMultiSig = (*WrapperV1IMultiSig)(nil)
 
-func (a *WrapperV1IMultiSig) executePrototype(ctx context.Context, p *apitypes.MessagePrototype) (cid.Cid, error) {
+func (a *WrapperV1IMultiSig) executePrototype(ctx context.Context, p *messagepool.MessagePrototype) (cid.Cid, error) {
 	sm, err := a.IMessagePool.MpoolPushMessage(ctx, &p.Message, nil)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("pushing message: %w", err)

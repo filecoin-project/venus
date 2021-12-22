@@ -12,6 +12,8 @@ import (
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	node "github.com/ipfs/go-ipld-format"
 )
 
 // DecodeBlock decodes raw cbor bytes into a BlockHeader.
@@ -167,4 +169,28 @@ func (b *BlockHeader) SetValidated() {
 // IsValidated check whether block signature is valid from memory
 func (b *BlockHeader) IsValidated() bool {
 	return b.validated
+}
+
+// ToNode converts the BlockHeader to an IPLD node.
+func (b *BlockHeader) ToNode() node.Node {
+	buf := new(bytes.Buffer)
+	err := b.MarshalCBOR(buf)
+	if err != nil {
+		panic(err)
+	}
+	data := buf.Bytes()
+	c, err := DefaultCidBuilder.Sum(data)
+	if err != nil {
+		panic(err)
+	}
+
+	blk, err := blocks.NewBlockWithCid(data, c)
+	if err != nil {
+		panic(err)
+	}
+	n, err := cbor.DecodeBlock(blk)
+	if err != nil {
+		panic(err)
+	}
+	return n
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	chain2 "github.com/filecoin-project/venus/venus-shared/api/chain"
-
 	"github.com/filecoin-project/venus/venus-shared/chain"
 )
 

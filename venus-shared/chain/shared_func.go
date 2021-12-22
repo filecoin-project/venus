@@ -2,6 +2,7 @@ package chain
 
 import (
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 )
 
@@ -21,4 +22,12 @@ func MustParseCid(c string) cid.Cid {
 	}
 
 	return ret
+}
+
+func NewGasFeeCap(price int64) abi.TokenAmount {
+	return abi.NewTokenAmount(price)
+}
+
+func NewGasPremium(price int64) abi.TokenAmount {
+	return abi.NewTokenAmount(price)
 }

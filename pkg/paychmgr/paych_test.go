@@ -8,6 +8,7 @@ import (
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/vm"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -24,7 +25,6 @@ import (
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	paychmock "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych/mock"
 )
