@@ -46,7 +46,7 @@ func PermissionProxy(in interface{}, out interface{}) {
 				panic("missing 'perm' tag on " + field.Name) // ok
 			}
 			curule := defaultRule()
-			curule.Perm = requiredPerm
+			curule.Perm = auth.Permission(requiredPerm)
 
 			fn := ra.Method(i)
 			rint.FieldByName(methodName).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {

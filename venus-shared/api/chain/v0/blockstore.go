@@ -3,7 +3,7 @@ package v0api
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/venus-shared/api/chain"
+	chain2 "github.com/filecoin-project/venus/venus-shared/api/chain"
 
 	"github.com/ipfs/go-cid"
 )
@@ -16,5 +16,5 @@ type IBlockStore interface {
 	// Rule[perm:read]
 	ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error)
 	// Rule[perm:read]
-	ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (chain.ObjStat, error)
+	ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (chain2.ObjStat, error)
 }
