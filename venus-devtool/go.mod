@@ -4,9 +4,9 @@ go 1.16
 
 require (
 	github.com/filecoin-project/go-jsonrpc v0.1.5
-	github.com/filecoin-project/lotus v1.12.0
+	github.com/filecoin-project/lotus v1.13.2-0.20211213233817-8a4246227153
 	github.com/filecoin-project/venus v0.0.0-00010101000000-000000000000
-	github.com/filecoin-project/venus/venus-shared v0.0.1
+	github.com/filecoin-project/venus/venus-shared v0.0.0-00010101000000-000000000000
 	github.com/ipfs/go-ipfs-http-client v0.1.0 // indirect
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/whyrusleeping/cbor-gen v0.0.0-20211110122933-f57984553008

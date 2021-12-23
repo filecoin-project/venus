@@ -28,6 +28,8 @@ import (
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
+	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 )
 
 func init() {
@@ -55,11 +57,15 @@ func init() {
 	builtin.RegisterActorState(builtin6.StoragePowerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load6(store, root)
 	})
+
+	builtin.RegisterActorState(builtin7.StoragePowerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load7(store, root)
+	})
 }
 
 var (
-	Address = builtin6.StoragePowerActorAddr
-	Methods = builtin6.MethodsPower
+	Address = builtin7.StoragePowerActorAddr
+	Methods = builtin7.MethodsPower
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -82,6 +88,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	case builtin6.StoragePowerActorCodeID:
 		return load6(store, act.Head)
+
+	case builtin7.StoragePowerActorCodeID:
+		return load7(store, act.Head)
 
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
@@ -108,6 +117,9 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 	case actors.Version6:
 		return make6(store)
 
+	case actors.Version7:
+		return make7(store)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -132,6 +144,9 @@ func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	case actors.Version6:
 		return builtin6.StoragePowerActorCodeID, nil
+
+	case actors.Version7:
+		return builtin7.StoragePowerActorCodeID, nil
 
 	}
 
