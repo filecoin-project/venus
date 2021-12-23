@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/venus-shared/api/chain"
+	chain2 "github.com/filecoin-project/venus/venus-shared/api/chain"
 	"github.com/filecoin-project/venus/venus-shared/paych"
 )
 
@@ -21,12 +21,12 @@ type IPaychan interface {
 	// PaychAvailableFunds get the status of an outbound payment channel
 	// @pch: payment channel address
 	// Rule[perm:sign]
-	PaychAvailableFunds(ctx context.Context, ch address.Address) (*chain.ChannelAvailableFunds, error)
+	PaychAvailableFunds(ctx context.Context, ch address.Address) (*chain2.ChannelAvailableFunds, error)
 	// PaychAvailableFundsByFromTo  get the status of an outbound payment channel
 	// @from: the payment channel sender
 	// @to: he payment channel recipient
 	// Rule[perm:sign]
-	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*chain.ChannelAvailableFunds, error)
+	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*chain2.ChannelAvailableFunds, error)
 	// PaychGetWaitsigny waits until the create channel / add funds message with the sentinel
 	// @sentinel: given message CID arrives.
 	// @ch: the returned channel address can safely be used against the Manager methods.

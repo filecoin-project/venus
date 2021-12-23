@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
@@ -59,13 +59,13 @@ type IChainInfo interface {
 	// Rule[perm:read]
 	ChainGetTipSetAfterHeight(ctx context.Context, height abi.ChainEpoch, tsk chain.TipSetKey) (*chain.TipSet, error)
 	// Rule[perm:read]
-	ChainGetRandomnessFromBeacon(ctx context.Context, key chain.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainGetRandomnessFromBeacon(ctx context.Context, key chain.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	// Rule[perm:read]
-	ChainGetRandomnessFromTickets(ctx context.Context, tsk chain.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	ChainGetRandomnessFromTickets(ctx context.Context, tsk chain.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	// Rule[perm:read]
-	StateGetRandomnessFromTickets(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk chain.TipSetKey) (abi.Randomness, error)
+	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk chain.TipSetKey) (abi.Randomness, error)
 	// Rule[perm:read]
-	StateGetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk chain.TipSetKey) (abi.Randomness, error)
+	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk chain.TipSetKey) (abi.Randomness, error)
 	// Rule[perm:read]
 	ChainGetBlock(ctx context.Context, id cid.Cid) (*chain.BlockHeader, error)
 	// Rule[perm:read]

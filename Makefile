@@ -29,6 +29,11 @@ gen-api:
 	gofmt -s -l -w ./app/client/full.go
 	gofmt -s -l -w ./app/client/v0api/full.go
 
+v2-gen-api:
+	cd ./venus-devtool/ && go run ./apigen/
+	gofmt -s -l -w ./venus-shared/api/chain/v0/proxy_gen.go;
+	gofmt -s -l -w ./venus-shared/api/chain/v1/proxy_gen.go
+
 compare-api:
 	go run ./tools/gen/api/proxygen.go compare
 
