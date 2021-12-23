@@ -173,6 +173,7 @@ var replicaCmd = &cli.Command{
 		}
 
 		replacers := [][2]string{
+			{"github.com/filecoin-project/lotus/chain/actors", "github.com/filecoin-project/venus/venus-shared/actors"},
 			{"github.com/filecoin-project/lotus/chain/actors/adt", "github.com/filecoin-project/venus/venus-shared/actors/adt"},
 			{"github.com/filecoin-project/lotus/chain/actors/aerrors", "github.com/filecoin-project/venus/venus-shared/actors/aerrors"},
 		}

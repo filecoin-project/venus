@@ -73,3 +73,6 @@ actor-sources:
 
 actor-render:
 	cd venus-devtool && go run ./compatible/actors/*.go render ../venus-shared/actors/
+
+actor-replica:
+	cd venus-devtool && go run ./compatible/actors/*.go replica --dst ../venus-shared/actors/

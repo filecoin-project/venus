@@ -7,13 +7,14 @@ require (
 	github.com/filecoin-project/go-address v0.0.5
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
-	github.com/filecoin-project/go-state-types v0.1.1-0.20210915140513-d354ccf10379
+	github.com/filecoin-project/go-state-types v0.1.1
 	github.com/filecoin-project/specs-actors v0.9.13
 	github.com/filecoin-project/specs-actors/v2 v2.3.5
 	github.com/filecoin-project/specs-actors/v3 v3.1.1
 	github.com/filecoin-project/specs-actors/v4 v4.0.1
 	github.com/filecoin-project/specs-actors/v5 v5.0.4
 	github.com/filecoin-project/specs-actors/v6 v6.0.1
+	github.com/filecoin-project/specs-actors/v7 v7.0.0-20211118013026-3dce48197cec
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-cid v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.5

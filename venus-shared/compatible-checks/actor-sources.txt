@@ -14,6 +14,7 @@ SOURCES IN chain/actors:
 	builtin/account/v4.go
 	builtin/account/v5.go
 	builtin/account/v6.go
+	builtin/account/v7.go
 	builtin/builtin.go
 	builtin/cron/cron.go
 	builtin/cron/v0.go
@@ -22,6 +23,7 @@ SOURCES IN chain/actors:
 	builtin/cron/v4.go
 	builtin/cron/v5.go
 	builtin/cron/v6.go
+	builtin/cron/v7.go
 	builtin/init/diff.go
 	builtin/init/init.go
 	builtin/init/v0.go
@@ -30,6 +32,7 @@ SOURCES IN chain/actors:
 	builtin/init/v4.go
 	builtin/init/v5.go
 	builtin/init/v6.go
+	builtin/init/v7.go
 	builtin/market/diff.go
 	builtin/market/market.go
 	builtin/market/v0.go
@@ -38,6 +41,7 @@ SOURCES IN chain/actors:
 	builtin/market/v4.go
 	builtin/market/v5.go
 	builtin/market/v6.go
+	builtin/market/v7.go
 	builtin/miner/diff.go
 	builtin/miner/diff_deadlines.go
 	builtin/miner/miner.go
@@ -48,6 +52,7 @@ SOURCES IN chain/actors:
 	builtin/miner/v4.go
 	builtin/miner/v5.go
 	builtin/miner/v6.go
+	builtin/miner/v7.go
 	builtin/multisig/diff.go
 	builtin/multisig/message0.go
 	builtin/multisig/message2.go
@@ -55,6 +60,7 @@ SOURCES IN chain/actors:
 	builtin/multisig/message4.go
 	builtin/multisig/message5.go
 	builtin/multisig/message6.go
+	builtin/multisig/message7.go
 	builtin/multisig/multisig.go
 	builtin/multisig/v0.go
 	builtin/multisig/v2.go
@@ -62,12 +68,14 @@ SOURCES IN chain/actors:
 	builtin/multisig/v4.go
 	builtin/multisig/v5.go
 	builtin/multisig/v6.go
+	builtin/multisig/v7.go
 	builtin/paych/message0.go
 	builtin/paych/message2.go
 	builtin/paych/message3.go
 	builtin/paych/message4.go
 	builtin/paych/message5.go
 	builtin/paych/message6.go
+	builtin/paych/message7.go
 	builtin/paych/mock/mock.go
 	builtin/paych/paych.go
 	builtin/paych/v0.go
@@ -76,6 +84,7 @@ SOURCES IN chain/actors:
 	builtin/paych/v4.go
 	builtin/paych/v5.go
 	builtin/paych/v6.go
+	builtin/paych/v7.go
 	builtin/power/diff.go
 	builtin/power/power.go
 	builtin/power/v0.go
@@ -84,6 +93,7 @@ SOURCES IN chain/actors:
 	builtin/power/v4.go
 	builtin/power/v5.go
 	builtin/power/v6.go
+	builtin/power/v7.go
 	builtin/reward/reward.go
 	builtin/reward/v0.go
 	builtin/reward/v2.go
@@ -91,6 +101,7 @@ SOURCES IN chain/actors:
 	builtin/reward/v4.go
 	builtin/reward/v5.go
 	builtin/reward/v6.go
+	builtin/reward/v7.go
 	builtin/system/system.go
 	builtin/system/v0.go
 	builtin/system/v2.go
@@ -98,6 +109,7 @@ SOURCES IN chain/actors:
 	builtin/system/v4.go
 	builtin/system/v5.go
 	builtin/system/v6.go
+	builtin/system/v7.go
 	builtin/verifreg/util.go
 	builtin/verifreg/v0.go
 	builtin/verifreg/v2.go
@@ -105,6 +117,7 @@ SOURCES IN chain/actors:
 	builtin/verifreg/v4.go
 	builtin/verifreg/v5.go
 	builtin/verifreg/v6.go
+	builtin/verifreg/v7.go
 	builtin/verifreg/verifreg.go
 	params.go
 	policy/policy.go
