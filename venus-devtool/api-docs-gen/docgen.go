@@ -144,6 +144,10 @@ func init() {
 	addExample(map[string]chain2.MarketBalance{
 		"t026363": ExampleValue("init", reflect.TypeOf(chain2.MarketBalance{}), nil).(chain2.MarketBalance),
 	})
+	addExample([]*chain2.EstimateMessage{
+		{Msg: ExampleValue("init", reflect.TypeOf(&chain.Message{}), nil).(*chain.Message),
+			Spec: ExampleValue("init", reflect.TypeOf(&chain2.MessageSendSpec{}), nil).(*chain2.MessageSendSpec),
+		}})
 	addExample(map[string]*pubsub.TopicScoreSnapshot{
 		"/blocks": {
 			TimeInMesh:               time.Minute,
