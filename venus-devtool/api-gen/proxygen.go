@@ -12,15 +12,11 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
-	"strconv"
 	"strings"
 	"text/template"
 	"unicode"
 
-	"github.com/filecoin-project/go-jsonrpc/auth"
 	_ "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/venus/app/client/funcrule"
 	"golang.org/x/xerrors"
 )
 
@@ -36,48 +32,11 @@ var (
 	VenusV1ApiFile           = path.Join(VenusAPIPath, "chain/v1", GenAPIFileName)
 )
 
-// Rule[perm:read,ignore:true]
-var rulePattern = `Rule\[(?P<rule>.*)\]`
-
 type ruleKey = string
 
 const (
-	rkPerm   ruleKey = "perm"
-	rkIgnore ruleKey = "ignore"
+	rkPerm ruleKey = "perm"
 )
-
-var defaultPerm = []string{"perm", "read"}
-var regRule, _ = regexp.Compile(rulePattern)
-
-func parseRule(comment string) (*funcrule.Rule, map[string][]string) {
-	rule := new(funcrule.Rule)
-	match := regRule.FindStringSubmatch(comment)
-	tags := map[string][]string{}
-	if len(match) == 2 {
-		pairs := strings.Split(match[1], ",")
-		for _, v := range pairs {
-			pair := strings.Split(v, ":")
-			if len(pair) != 2 {
-				continue
-			}
-			switch pair[0] {
-			case rkPerm:
-				tags[rkPerm] = pair
-				rule.Perm = auth.Permission(pair[1])
-			case rkIgnore:
-				ig, err := strconv.ParseBool(pair[1])
-				if err != nil {
-					panic("the rule tag is invalid format")
-				}
-				rule.Ignore = ig
-			}
-		}
-	} else {
-		rule.Perm = "read"
-		tags[rkPerm] = defaultPerm
-	}
-	return rule, tags
-}
 
 type methodMeta struct {
 	node  ast.Node
@@ -372,13 +331,11 @@ func methodMetaFromInterface(rootPath string, pkg, outpkg string) (*meta, error)
 
 				// try to parse tag info
 				if len(filteredComments) > 0 {
-					cmt := filteredComments[0].List[len(filteredComments[0].List)-1].Text
-					rule, tags := parseRule(cmt)
-					info.Methods[mname].Tags[rkPerm] = tags[rkPerm]
-					// remove ignore method
-					if rule.Ignore {
-						ignoreMethods[ifname] = append(ignoreMethods[ifname], mname)
-					}
+					lastComment := filteredComments[len(filteredComments)-1]
+					// eg. cmt = `//perm:read`
+					cmt := lastComment.List[len(lastComment.List)-1].Text
+					cmt = strings.Replace(cmt, "//", "", 1)
+					info.Methods[mname].Tags[rkPerm] = strings.Split(cmt, ":")
 				}
 			}
 		}

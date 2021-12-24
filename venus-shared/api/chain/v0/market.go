@@ -8,6 +8,5 @@ import (
 )
 
 type IMarket interface {
-	// Rule[perm:read]
-	StateMarketParticipants(ctx context.Context, tsk chain.TipSetKey) (map[string]chain2.MarketBalance, error) //perm:admin
+	StateMarketParticipants(ctx context.Context, tsk chain.TipSetKey) (map[string]chain2.MarketBalance, error) //perm:read
 }

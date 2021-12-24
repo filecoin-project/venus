@@ -12,34 +12,19 @@ import (
 )
 
 type IWallet interface {
-	// Rule[perm:sign]
-	WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error)
-	// Rule[perm:admin]
-	WalletExport(addr address.Address, password string) (*wallet.KeyInfo, error)
-	// Rule[perm:admin]
-	WalletImport(key *wallet.KeyInfo) (address.Address, error)
-	// Rule[perm:write]
-	WalletHas(ctx context.Context, addr address.Address) (bool, error)
-	// Rule[perm:write]
-	WalletNewAddress(protocol address.Protocol) (address.Address, error)
-	// Rule[perm:read]
-	WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error) //not exists in remote
-	// Rule[perm:write]
-	WalletDefaultAddress(ctx context.Context) (address.Address, error) //not exists in remote
-	// Rule[perm:admin]
-	WalletAddresses(ctx context.Context) []address.Address
-	// Rule[perm:write]
-	WalletSetDefault(ctx context.Context, addr address.Address) error //not exists in remote
-	// Rule[perm:sign]
-	WalletSignMessage(ctx context.Context, k address.Address, msg *chain.Message) (*chain.SignedMessage, error)
-	// Rule[perm:admin]
-	LockWallet(ctx context.Context) error
-	// Rule[perm:admin]
-	UnLockWallet(ctx context.Context, password []byte) error
-	// Rule[perm:admin]
-	SetPassword(Context context.Context, password []byte) error
-	// Rule[perm:admin]
-	HasPassword(Context context.Context) bool
-	// Rule[perm:admin]
-	WalletState(Context context.Context) int
+	WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error) //perm:sign
+	WalletExport(addr address.Address, password string) (*wallet.KeyInfo, error)                                   //perm:admin
+	WalletImport(key *wallet.KeyInfo) (address.Address, error)                                                     //perm:admin
+	WalletHas(ctx context.Context, addr address.Address) (bool, error)                                             //perm:write
+	WalletNewAddress(protocol address.Protocol) (address.Address, error)                                           //perm:write
+	WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error)                              //perm:read
+	WalletDefaultAddress(ctx context.Context) (address.Address, error)                                             //perm:write
+	WalletAddresses(ctx context.Context) []address.Address                                                         //perm:admin
+	WalletSetDefault(ctx context.Context, addr address.Address) error                                              //perm:write
+	WalletSignMessage(ctx context.Context, k address.Address, msg *chain.Message) (*chain.SignedMessage, error)    //perm:sign
+	LockWallet(ctx context.Context) error                                                                          //perm:admin
+	UnLockWallet(ctx context.Context, password []byte) error                                                       //perm:admin
+	SetPassword(Context context.Context, password []byte) error                                                    //perm:admin
+	HasPassword(Context context.Context) bool                                                                      //perm:admin
+	WalletState(Context context.Context) int                                                                       //perm:admin
 }
