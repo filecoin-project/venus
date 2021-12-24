@@ -845,7 +845,29 @@ Perms: read
 Inputs:
 ```json
 [
-  null,
+  [
+    {
+      "Msg": {
+        "CID": {
+          "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        },
+        "Version": 42,
+        "To": "t01234",
+        "From": "t01234",
+        "Nonce": 42,
+        "Value": "0",
+        "GasLimit": 9,
+        "GasFeeCap": "0",
+        "GasPremium": "0",
+        "Method": 1,
+        "Params": "Ynl0ZSBhcnJheQ=="
+      },
+      "Spec": {
+        "MaxFee": "0",
+        "GasOverEstimation": 12.3
+      }
+    }
+  ],
   42,
   [
     {
