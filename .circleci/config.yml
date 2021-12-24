@@ -200,9 +200,9 @@ jobs:
           cmd: "lint"
       - go_build:
           cmd: "build"
-      - go_build:
-          cmd: "gen-api"
-      - check_file_change
+      #- go_build:
+      #    cmd: "gen-api"
+      #- check_file_change
       # place the filecoin binary in PATH for IPTB
       - go_build:
           cmd: "install"
