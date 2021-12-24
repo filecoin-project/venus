@@ -2,10 +2,9 @@ package config
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
 )
 
-var _ apiface.IConfig = &configAPI{}
+var _ IConfig = &configAPI{}
 
 type configAPI struct { //nolint
 	config *ConfigModule

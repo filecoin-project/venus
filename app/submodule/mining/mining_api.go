@@ -5,7 +5,6 @@ import (
 	"context"
 	"os"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
@@ -23,11 +22,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 	wtypes "github.com/filecoin-project/venus/venus-shared/wallet"
 )
 
-var _ apiface.IMining = &MiningAPI{}
+var _ v1api.IMining = &MiningAPI{}
 
 type MiningAPI struct { //nolint
 	Ming *MiningModule

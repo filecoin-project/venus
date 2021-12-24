@@ -3,14 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-jsonrpc/auth"
-	_ "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/venus/app/client/funcrule"
 	"go/ast"
 	"go/build"
 	"go/parser"
 	"go/token"
-	"golang.org/x/xerrors"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -21,6 +17,11 @@ import (
 	"strings"
 	"text/template"
 	"unicode"
+
+	"github.com/filecoin-project/go-jsonrpc/auth"
+	_ "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/venus/app/client/funcrule"
+	"golang.org/x/xerrors"
 )
 
 const (
@@ -151,7 +152,7 @@ func v0API(lpath string, onlyCompare bool) *stableMethodInfo {
 	checkError(err)
 	// outputWithJSON(bmp, "v0 benchmarkMethodPerm: ")
 
-	mm, err := methodMetaFromInterface(path.Join(VenusAPIPath, "chain/v0"), "v0api", "v0api")
+	mm, err := methodMetaFromInterface(path.Join(VenusAPIPath, "chain/v0"), "v0", "v0")
 	checkError(err)
 
 	smi := check(bmp, mm)

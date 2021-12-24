@@ -328,7 +328,7 @@ func (s *IChainInfoStruct) VerifyEntry(p0 *chain.BeaconEntry, p1 *chain.BeaconEn
 
 type IJwtAuthAPIStruct struct {
 	Internal struct {
-		AuthNew func(p0 context.Context, p1 []auth.Permission) ([]byte, error) `perm:"read"`
+		AuthNew func(p0 context.Context, p1 []auth.Permission) ([]byte, error) `perm:"admin"`
 
 		Verify func(p0 context.Context, p1 string, p2 string) ([]auth.Permission, error) `perm:"read"`
 	}
@@ -864,7 +864,7 @@ type IPaychanStruct struct {
 
 		PaychGet func(p0 context.Context, p1 address.Address, p2 address.Address, p3 big.Int) (*paych.ChannelInfo, error) `perm:"sign"`
 
-		PaychGetWaitsigny func(p0 context.Context, p1 cid.Cid) (address.Address, error) `perm:"sign"`
+		PaychGetWaitReady func(p0 context.Context, p1 cid.Cid) (address.Address, error) `perm:"sign"`
 
 		PaychList func(p0 context.Context) ([]address.Address, error) `perm:"read"`
 
@@ -874,7 +874,7 @@ type IPaychanStruct struct {
 
 		PaychStatus func(p0 context.Context, p1 address.Address) (*paych.Status, error) `perm:"read"`
 
-		PaychVoucherAdd func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 big.Int) (big.Int, error) `perm:"sign"`
+		PaychVoucherAdd func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 big.Int) (big.Int, error) `perm:"write"`
 
 		PaychVoucherCheckSpendable func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (bool, error) `perm:"read"`
 
@@ -908,8 +908,8 @@ func (s *IPaychanStruct) PaychGet(p0 context.Context, p1 address.Address, p2 add
 	return s.Internal.PaychGet(p0, p1, p2, p3)
 }
 
-func (s *IPaychanStruct) PaychGetWaitsigny(p0 context.Context, p1 cid.Cid) (address.Address, error) {
-	return s.Internal.PaychGetWaitsigny(p0, p1)
+func (s *IPaychanStruct) PaychGetWaitReady(p0 context.Context, p1 cid.Cid) (address.Address, error) {
+	return s.Internal.PaychGetWaitReady(p0, p1)
 }
 
 func (s *IPaychanStruct) PaychList(p0 context.Context) ([]address.Address, error) {
@@ -967,6 +967,8 @@ type ISyncerStruct struct {
 		SyncState func(p0 context.Context) (*chain2.SyncState, error) `perm:"read"`
 
 		SyncSubmitBlock func(p0 context.Context, p1 *chain.BlockMsg) error `perm:"write"`
+
+		SyncerTracker func(p0 context.Context) *chain2.TargetTracker `perm:"read"`
 	}
 }
 
@@ -998,6 +1000,10 @@ func (s *ISyncerStruct) SyncSubmitBlock(p0 context.Context, p1 *chain.BlockMsg) 
 	return s.Internal.SyncSubmitBlock(p0, p1)
 }
 
+func (s *ISyncerStruct) SyncerTracker(p0 context.Context) *chain2.TargetTracker {
+	return s.Internal.SyncerTracker(p0)
+}
+
 type IWalletStruct struct {
 	Internal struct {
 		HasPassword func(p0 context.Context) bool `perm:"admin"`
@@ -1022,7 +1028,7 @@ type IWalletStruct struct {
 
 		WalletNewAddress func(p0 address.Protocol) (address.Address, error) `perm:"write"`
 
-		WalletSetDefault func(p0 context.Context, p1 address.Address) error `perm:"admin"`
+		WalletSetDefault func(p0 context.Context, p1 address.Address) error `perm:"write"`
 
 		WalletSign func(p0 context.Context, p1 address.Address, p2 []byte, p3 wallet.MsgMeta) (*crypto.Signature, error) `perm:"sign"`
 

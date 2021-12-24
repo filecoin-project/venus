@@ -2,13 +2,15 @@ package cmd
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strconv"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/app/paths"
+
+	"github.com/filecoin-project/venus/pkg/config"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -259,7 +261,7 @@ var stateSectorCmd = &cmds.Command{
 			return err
 		}
 
-		blockDelay, err := blockDelay(env.(*node.Env).ConfigAPI)
+		blockDelay, err := blockDelay(req)
 		if err != nil {
 			return err
 		}
@@ -303,14 +305,20 @@ var stateSectorCmd = &cmds.Command{
 	},
 }
 
-func blockDelay(a apiface.IConfig) (uint64, error) {
-	data, err := a.ConfigGet(context.Background(), "parameters.blockDelay")
+func blockDelay(req *cmds.Request) (uint64, error) {
+	var err error
+	repoDir, _ := req.Options[OptionRepoDir].(string)
+	repoDir, err = paths.GetRepoPath(repoDir)
 	if err != nil {
 		return 0, err
 	}
-	blockDelay, _ := data.(uint64)
+	cfgPath := filepath.Join(repoDir, "config.json")
+	cfg, err := config.ReadFile(cfgPath)
+	if err != nil {
+		return 0, err
+	}
 
-	return blockDelay, nil
+	return cfg.NetworkParams.BlockDelay, nil
 }
 
 type ActorInfo struct {
@@ -463,7 +471,7 @@ var stateMinerInfo = &cmds.Command{
 			return err
 		}
 
-		blockDelay, err := blockDelay(env.(*node.Env).ConfigAPI)
+		blockDelay, err := blockDelay(req)
 		if err != nil {
 			return err
 		}

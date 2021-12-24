@@ -158,7 +158,7 @@ TOOL COMMANDS
 	Options: []cmds.Option{
 		cmds.StringsOption(OptionToken, "set the auth token to use"),
 		cmds.StringOption(OptionAPI, "set the api port to use"),
-		cmds.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.venus/repo"),
+		cmds.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.venus").WithDefault("~/.venus"),
 		cmds.StringOption(cmds.EncLong, cmds.EncShort, "The encoding type the output should be encoded with (pretty-json or json)").WithDefault("pretty-json"),
 		cmds.BoolOption("help", "Show the full command help text."),
 		cmds.BoolOption("h", "Show a short version of the command help text."),
@@ -184,9 +184,7 @@ var rootSubcmdsLocal = map[string]*cmds.Command{
 var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"chain":    chainCmd,
 	"sync":     syncCmd,
-	"config":   configCmd,
 	"drand":    drandCmd,
-	"dag":      dagCmd,
 	"inspect":  inspectCmd,
 	"leb128":   leb128Cmd,
 	"log":      logCmd,

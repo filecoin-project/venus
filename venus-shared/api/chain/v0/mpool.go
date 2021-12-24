@@ -1,4 +1,4 @@
-package v0api
+package v0
 
 import (
 	"context"

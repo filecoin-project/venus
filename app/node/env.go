@@ -5,30 +5,27 @@ import (
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/client/apiface/v0api"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
 // Env is the environment for command API handlers.
 type Env struct {
 	ctx                  context.Context
 	InspectorAPI         IInspector
-	BlockServiceAPI      apiface.IDagService
-	BlockStoreAPI        apiface.IBlockStore
-	ChainAPI             apiface.IChain
-	ConfigAPI            apiface.IConfig
-	DiscoveryAPI         apiface.IDiscovery
-	NetworkAPI           apiface.INetwork
+	BlockStoreAPI        v1api.IBlockStore
+	ChainAPI             v1api.IChain
+	NetworkAPI           v1api.INetwork
 	StorageNetworkingAPI storagenetworking.IStorageNetworking
-	SyncerAPI            apiface.ISyncer
-	WalletAPI            apiface.IWallet
-	MingingAPI           apiface.IMining
-	MessagePoolAPI       apiface.IMessagePool
+	SyncerAPI            v1api.ISyncer
+	WalletAPI            v1api.IWallet
+	MingingAPI           v1api.IMining
+	MessagePoolAPI       v1api.IMessagePool
 
 	MultiSigAPI v0api.IMultiSig
-	MarketAPI   apiface.IMarket
-	PaychAPI    apiface.IPaychan
+	MarketAPI   v1api.IMarket
+	PaychAPI    v1api.IPaychan
 }
 
 var _ cmds.Environment = (*Env)(nil)

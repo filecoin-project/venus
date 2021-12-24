@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
@@ -80,7 +79,7 @@ type IChainInfo interface {
 	// Rule[perm:read]
 	StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 	// Rule[perm:read]
-	ChainNotify(ctx context.Context) <-chan []*chain.HeadChange
+	ChainNotify(ctx context.Context) <-chan []*apitypes.HeadChange
 	// Rule[perm:read]
 	GetFullBlock(ctx context.Context, id cid.Cid) (*types.FullBlock, error)
 	// Rule[perm:read]
@@ -90,7 +89,7 @@ type IChainInfo interface {
 	// Rule[perm:read]
 	GetEntry(ctx context.Context, height abi.ChainEpoch, round uint64) (*types.BeaconEntry, error)
 	// Rule[perm:read]
-	MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*chain.ChainMessage, error)
+	MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*apitypes.ChainMessage, error)
 	// Rule[perm:read]
 	ProtocolParameters(ctx context.Context) (*apitypes.ProtocolParams, error)
 	// Rule[perm:read]
@@ -114,7 +113,7 @@ type IChainInfo interface {
 	// Rule[perm:read]
 	ChainExport(context.Context, abi.ChainEpoch, bool, types.TipSetKey) (<-chan []byte, error)
 	// Rule[perm:read]
-	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*chain.HeadChange, error)
+	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*apitypes.HeadChange, error)
 }
 
 type IMinerState interface {
@@ -151,7 +150,7 @@ type IMinerState interface {
 	// Rule[perm:read]
 	StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error)
 	// Rule[perm:read]
-	StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (chain.CirculatingSupply, error)
+	StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (types.CirculatingSupply, error)
 	// Rule[perm:read]
 	StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error)
 	// Rule[perm:read]

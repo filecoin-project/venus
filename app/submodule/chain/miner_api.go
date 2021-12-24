@@ -10,8 +10,6 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
@@ -20,17 +18,18 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
-var _ apiface.IMinerState = &minerStateAPI{}
+var _ v1api.IMinerState = &minerStateAPI{}
 
 type minerStateAPI struct {
 	*ChainSubmodule
 }
 
 // NewMinerStateAPI create miner state api
-func NewMinerStateAPI(chain *ChainSubmodule) apiface.IMinerState {
+func NewMinerStateAPI(chain *ChainSubmodule) v1api.IMinerState {
 	return &minerStateAPI{ChainSubmodule: chain}
 }
 
@@ -474,15 +473,15 @@ func (msa *minerStateAPI) StateMinerInitialPledgeCollateral(ctx context.Context,
 
 // StateVMCirculatingSupplyInternal returns an approximation of the circulating supply of Filecoin at the given tipset.
 // This is the value reported by the runtime interface to actors code.
-func (msa *minerStateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (chain.CirculatingSupply, error) {
+func (msa *minerStateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (types.CirculatingSupply, error) {
 	ts, err := msa.ChainReader.GetTipSet(tsk)
 	if err != nil {
-		return chain.CirculatingSupply{}, err
+		return types.CirculatingSupply{}, err
 	}
 
 	_, sTree, err := msa.Stmgr.ParentState(ctx, ts)
 	if err != nil {
-		return chain.CirculatingSupply{}, err
+		return types.CirculatingSupply{}, err
 	}
 
 	return msa.ChainReader.GetCirculatingSupplyDetailed(ctx, ts.Height(), sTree)

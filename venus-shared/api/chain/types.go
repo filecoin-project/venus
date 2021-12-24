@@ -237,6 +237,22 @@ type ActiveSync struct {
 	Message string
 }
 
+// sync
+type Target struct {
+	State   SyncStateStage
+	Base    *chain.TipSet
+	Current *chain.TipSet
+	Start   time.Time
+	End     time.Time
+	Err     error
+	chain.ChainInfo
+}
+
+type TargetTracker struct {
+	History []*Target
+	Buckets []*Target
+}
+
 type MsgGasCost struct {
 	Message            cid.Cid // Can be different than requested, in case it was replaced, but only gas values changed
 	GasUsed            abi.TokenAmount

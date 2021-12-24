@@ -28,7 +28,7 @@ type IWallet interface {
 	WalletDefaultAddress(ctx context.Context) (address.Address, error) //not exists in remote
 	// Rule[perm:admin]
 	WalletAddresses(ctx context.Context) []address.Address
-	// Rule[perm:admin]
+	// Rule[perm:write]
 	WalletSetDefault(ctx context.Context, addr address.Address) error //not exists in remote
 	// Rule[perm:sign]
 	WalletSignMessage(ctx context.Context, k address.Address, msg *chain.Message) (*chain.SignedMessage, error)

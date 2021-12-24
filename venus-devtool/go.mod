@@ -14,6 +14,7 @@ require (
 )
 
 replace (
+	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210731021807-68e5207079bc
 	github.com/filecoin-project/venus => ../
 	github.com/filecoin-project/venus/venus-shared => ../venus-shared/
 	github.com/ipfs/go-ipfs-cmds => github.com/ipfs-force-community/go-ipfs-cmds v0.6.1-0.20210521090123-4587df7fa0ab

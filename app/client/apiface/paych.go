@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/pkg/paychmgr"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 	paychtypes "github.com/filecoin-project/venus/venus-shared/paych"
 )
 
@@ -22,12 +22,12 @@ type IPaychan interface {
 	// PaychAvailableFunds get the status of an outbound payment channel
 	// @pch: payment channel address
 	// Rule[perm:sign]
-	PaychAvailableFunds(ctx context.Context, ch address.Address) (*paychmgr.ChannelAvailableFunds, error)
+	PaychAvailableFunds(ctx context.Context, ch address.Address) (*apitypes.ChannelAvailableFunds, error)
 	// PaychAvailableFundsByFromTo  get the status of an outbound payment channel
 	// @from: the payment channel sender
 	// @to: he payment channel recipient
 	// Rule[perm:sign]
-	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*paychmgr.ChannelAvailableFunds, error)
+	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*apitypes.ChannelAvailableFunds, error)
 	// PaychGetWaitReady waits until the create channel / add funds message with the sentinel
 	// @sentinel: given message CID arrives.
 	// @ch: the returned channel address can safely be used against the Manager methods.
@@ -87,7 +87,7 @@ type IPaychan interface {
 	// If there are insufficient funds in the channel to create the voucher,
 	// returns a nil voucher and the shortfall.
 	// Rule[perm:sign]
-	PaychVoucherCreate(ctx context.Context, pch address.Address, amt big.Int, lane uint64) (*paychmgr.VoucherCreateResult, error)
+	PaychVoucherCreate(ctx context.Context, pch address.Address, amt big.Int, lane uint64) (*paychtypes.VoucherCreateResult, error)
 	// PaychVoucherList list vouchers in payment channel
 	// @pch: payment channel address
 	// Rule[perm:write]

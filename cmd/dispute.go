@@ -18,11 +18,11 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/node"
 	chainpkg "github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
@@ -167,7 +167,10 @@ var disputerStartCmd = &cmds.Command{
 
 		// subscribe to head changes and validate the current value
 
-		headChanges := env.(*node.Env).ChainAPI.ChainNotify(ctx)
+		headChanges, err := env.(*node.Env).ChainAPI.ChainNotify(ctx)
+		if err != nil {
+			return err
+		}
 		head, ok := <-headChanges
 		if !ok {
 			return xerrors.Errorf("Notify stream was invalid")
@@ -348,7 +351,7 @@ var disputerStartCmd = &cmds.Command{
 
 // for a given miner, index, and maxPostIndex, tries to dispute posts from 0...postsSnapshotted-1
 // returns a list of DisputeWindowedPoSt msgs that are expected to succeed if sent
-func makeDisputeWindowedPosts(ctx context.Context, api apiface.ISyncer, dl minerDeadline, postsSnapshotted uint64, sender address.Address) ([]*types.Message, error) {
+func makeDisputeWindowedPosts(ctx context.Context, api v1api.ISyncer, dl minerDeadline, postsSnapshotted uint64, sender address.Address) ([]*types.Message, error) {
 	disputes := make([]*types.Message, 0)
 
 	for i := uint64(0); i < postsSnapshotted; i++ {
@@ -380,7 +383,7 @@ func makeDisputeWindowedPosts(ctx context.Context, api apiface.ISyncer, dl miner
 	return disputes, nil
 }
 
-func makeMinerDeadline(ctx context.Context, api apiface.IChain, mAddr address.Address) (abi.ChainEpoch, *minerDeadline, error) {
+func makeMinerDeadline(ctx context.Context, api v1api.IChain, mAddr address.Address) (abi.ChainEpoch, *minerDeadline, error) {
 	dl, err := api.StateMinerProvingDeadline(ctx, mAddr, types.EmptyTSK)
 	if err != nil {
 		return -1, nil, xerrors.Errorf("getting proving index list: %w", err)
@@ -392,7 +395,7 @@ func makeMinerDeadline(ctx context.Context, api apiface.IChain, mAddr address.Ad
 	}, nil
 }
 
-func getSender(ctx context.Context, api apiface.IWallet, fromStr string) (address.Address, error) {
+func getSender(ctx context.Context, api v1api.IWallet, fromStr string) (address.Address, error) {
 	if fromStr == "" {
 		return api.WalletDefaultAddress(ctx)
 	}

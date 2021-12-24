@@ -45,6 +45,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
@@ -83,11 +84,6 @@ type ReorgNotifee func(rev, app []*types.TipSet) error
 type reorg struct {
 	old []*types.TipSet
 	new []*types.TipSet
-}
-
-type HeadChange struct {
-	Type string
-	Val  *types.TipSet
 }
 
 // CheckPoint is the key which the check-point written in the datastore.
@@ -617,16 +613,16 @@ func (store *Store) SetHead(ctx context.Context, newTS *types.TipSet) error {
 
 func (store *Store) reorgWorker(ctx context.Context) chan reorg {
 	headChangeNotifee := func(rev, app []*types.TipSet) error {
-		notif := make([]*HeadChange, len(rev)+len(app))
+		notif := make([]*apitypes.HeadChange, len(rev)+len(app))
 		for i, revert := range rev {
-			notif[i] = &HeadChange{
+			notif[i] = &apitypes.HeadChange{
 				Type: HCRevert,
 				Val:  revert,
 			}
 		}
 
 		for i, apply := range app {
-			notif[i+len(rev)] = &HeadChange{
+			notif[i+len(rev)] = &apitypes.HeadChange{
 				Type: HCApply,
 				Val:  apply,
 			}
@@ -689,14 +685,14 @@ func (store *Store) reorgWorker(ctx context.Context) chan reorg {
 // SubHeadChanges returns channel with chain head updates.
 // First message is guaranteed to be of len == 1, and type == 'current'.
 // Then event in the message may be HCApply and HCRevert.
-func (store *Store) SubHeadChanges(ctx context.Context) chan []*HeadChange {
+func (store *Store) SubHeadChanges(ctx context.Context) chan []*apitypes.HeadChange {
 	store.mu.RLock()
 	subCh := store.headEvents.Sub(HeadChangeTopic)
 	head := store.head
 	store.mu.RUnlock()
 
-	out := make(chan []*HeadChange, 16)
-	out <- []*HeadChange{{
+	out := make(chan []*apitypes.HeadChange, 16)
+	out <- []*apitypes.HeadChange{{
 		Type: HCCurrent,
 		Val:  head,
 	}}
@@ -714,7 +710,7 @@ func (store *Store) SubHeadChanges(ctx context.Context) chan []*HeadChange {
 				}
 
 				select {
-				case out <- val.([]*HeadChange):
+				case out <- val.([]*apitypes.HeadChange):
 				default:
 					log.Errorf("closing head change subscription due to slow reader")
 					return
@@ -1049,7 +1045,7 @@ func (store *Store) WriteCheckPoint(ctx context.Context, cids types.TipSetKey) e
 	return store.ds.Put(CheckPoint, buf.Bytes())
 }
 
-func (store *Store) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (CirculatingSupply, error) {
+func (store *Store) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (types.CirculatingSupply, error) {
 	return store.circulatingSupplyCalculator.GetCirculatingSupplyDetailed(ctx, height, st)
 }
 

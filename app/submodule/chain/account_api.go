@@ -3,21 +3,21 @@ package chain
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/go-address"
 	"golang.org/x/xerrors"
 )
 
-var _ apiface.IAccount = &accountAPI{}
+var _ v1api.IAccount = &accountAPI{}
 
 type accountAPI struct {
 	chain *ChainSubmodule
 }
 
 //NewAccountAPI create a new account api
-func NewAccountAPI(chain *ChainSubmodule) apiface.IAccount {
+func NewAccountAPI(chain *ChainSubmodule) v1api.IAccount {
 	return &accountAPI{chain: chain}
 }
 

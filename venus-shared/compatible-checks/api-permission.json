@@ -158,6 +158,7 @@
 			"SetPassword": "admin",
 			"StateMinerSectorSize": "read",
 			"StateMinerWorkerAddress": "read",
+			"SyncerTracker": "read",
 			"UnLockWallet": "admin",
 			"Verify": "read",
 			"VerifyEntry": "read",
@@ -254,6 +255,7 @@
 	},
 	"V1": {
 		"Common": {
+			"AuthNew": "admin",
 			"BeaconGetEntry": "read",
 			"ChainDeleteObj": "admin",
 			"ChainExport": "read",
@@ -315,10 +317,12 @@
 			"PaychAvailableFundsByFromTo": "sign",
 			"PaychCollect": "sign",
 			"PaychGet": "sign",
+			"PaychGetWaitReady": "sign",
 			"PaychList": "read",
 			"PaychNewPayment": "sign",
 			"PaychSettle": "sign",
 			"PaychStatus": "read",
+			"PaychVoucherAdd": "write",
 			"PaychVoucherCheckSpendable": "read",
 			"PaychVoucherCheckValid": "read",
 			"PaychVoucherCreate": "sign",
@@ -372,6 +376,7 @@
 			"WalletExport": "admin",
 			"WalletHas": "write",
 			"WalletImport": "admin",
+			"WalletSetDefault": "write",
 			"WalletSign": "sign",
 			"WalletSignMessage": "sign"
 		},
@@ -404,13 +409,13 @@
 			"NetworkGetPeerAddresses": "admin",
 			"NetworkGetPeerID": "admin",
 			"NetworkPeers": "read",
-			"PaychGetWaitsigny": "sign",
 			"ProtocolParameters": "read",
 			"ResolveToKeyAddr": "read",
 			"SetConcurrent": "admin",
 			"SetPassword": "admin",
 			"StateMinerSectorSize": "read",
 			"StateMinerWorkerAddress": "read",
+			"SyncerTracker": "read",
 			"UnLockWallet": "admin",
 			"Verify": "read",
 			"VerifyEntry": "read",
@@ -430,6 +435,7 @@
 			"ClientDataTransferUpdates": "write",
 			"ClientDealPieceCID": "read",
 			"ClientDealSize": "read",
+			"ClientExport": "admin",
 			"ClientFindData": "read",
 			"ClientGenCar": "write",
 			"ClientGetDealInfo": "read",
@@ -448,7 +454,7 @@
 			"ClientRestartDataTransfer": "write",
 			"ClientRetrieve": "admin",
 			"ClientRetrieveTryRestartInsufficientFunds": "write",
-			"ClientRetrieveWithEvents": "admin",
+			"ClientRetrieveWait": "admin",
 			"ClientStartDeal": "admin",
 			"ClientStatelessDeal": "write",
 			"Closing": "read",
@@ -463,6 +469,7 @@
 			"MarketReleaseFunds": "sign",
 			"MarketReserveFunds": "sign",
 			"MarketWithdraw": "sign",
+			"MsigCancelTxnHash": "sign",
 			"MsigGetAvailableBalance": "read",
 			"MsigGetPending": "read",
 			"MsigGetVestingSchedule": "read",
@@ -482,7 +489,6 @@
 			"NetPeers": "read",
 			"NetPubsubScores": "read",
 			"NodeStatus": "read",
-			"PaychGetWaitReady": "sign",
 			"Session": "read",
 			"Shutdown": "admin",
 			"StateAllMinerFaults": "read",
@@ -506,10 +512,6 @@
 			"WalletValidateAddress": "read",
 			"WalletVerify": "read"
 		},
-		"Gap": {
-			"AuthNew": "venus:read lotus:admin",
-			"PaychVoucherAdd": "venus:sign lotus:write",
-			"WalletSetDefault": "venus:admin lotus:write"
-		}
+		"Gap": {}
 	}
 }

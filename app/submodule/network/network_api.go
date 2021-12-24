@@ -8,14 +8,14 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/net"
 	"github.com/filecoin-project/venus/venus-shared/api"
 	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/libp2p/net"
 )
 
-var _ apiface.INetwork = &networkAPI{}
+var _ v1api.INetwork = &networkAPI{}
 
 type networkAPI struct { //nolint
 	network *NetworkSubmodule

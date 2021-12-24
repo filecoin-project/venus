@@ -17,10 +17,10 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/constants"
 	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
@@ -387,7 +387,7 @@ var chainExportCmd = &cmds.Command{
 // LoadTipSet gets the tipset from the context, or the head from the API.
 //
 // It always gets the head from the API so commands use a consistent tipset even if time pases.
-func LoadTipSet(ctx context.Context, req *cmds.Request, chainAPI apiface.IChain) (*types.TipSet, error) {
+func LoadTipSet(ctx context.Context, req *cmds.Request, chainAPI v1api.IChain) (*types.TipSet, error) {
 	tss := req.Options["tipset"].(string)
 	if tss == "" {
 		return chainAPI.ChainHead(ctx)
@@ -396,7 +396,7 @@ func LoadTipSet(ctx context.Context, req *cmds.Request, chainAPI apiface.IChain)
 	return ParseTipSetRef(ctx, chainAPI, tss)
 }
 
-func ParseTipSetRef(ctx context.Context, chainAPI apiface.IChain, tss string) (*types.TipSet, error) {
+func ParseTipSetRef(ctx context.Context, chainAPI v1api.IChain, tss string) (*types.TipSet, error) {
 	if tss[0] == '@' {
 		if tss == "@head" {
 			return chainAPI.ChainHead(ctx)

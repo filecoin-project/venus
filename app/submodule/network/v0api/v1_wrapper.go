@@ -3,14 +3,14 @@ package v0api
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/api"
 	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
 type WrapperV1INetwork struct {
-	apiface.INetwork
+	v1api.INetwork
 }
 
 func (w *WrapperV1INetwork) Version(ctx context.Context) (apitypes.Version, error) {
@@ -24,4 +24,4 @@ func (w *WrapperV1INetwork) Version(ctx context.Context) (apitypes.Version, erro
 	return ver, nil
 }
 
-var _ apiface.INetwork = &WrapperV1INetwork{}
+var _ v1api.INetwork = &WrapperV1INetwork{}
