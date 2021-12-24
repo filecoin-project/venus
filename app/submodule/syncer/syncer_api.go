@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 	stmgrtypes "github.com/filecoin-project/venus/venus-shared/stmgr"
 
@@ -17,15 +17,54 @@ import (
 
 var syncAPILog = logging.Logger("syncAPI")
 
-var _ apiface.ISyncer = &syncerAPI{}
+var _ v1api.ISyncer = &syncerAPI{}
 
 type syncerAPI struct { //nolint
 	syncer *SyncerSubmodule
 }
 
 // SyncerStatus returns the current status of the active or last active chain sync operation.
-func (sa *syncerAPI) SyncerTracker(ctx context.Context) *syncTypes.TargetTracker {
-	return sa.syncer.ChainSyncManager.BlockProposer().SyncTracker()
+func (sa *syncerAPI) SyncerTracker(ctx context.Context) *apitypes.TargetTracker {
+	tracker := sa.syncer.ChainSyncManager.BlockProposer().SyncTracker()
+	tt := &apitypes.TargetTracker{
+		History: make([]*apitypes.Target, 0),
+		Buckets: make([]*apitypes.Target, 0),
+	}
+	convertTarget := func(src *syncTypes.Target) *apitypes.Target {
+		return &apitypes.Target{
+			State:     convertSyncStateStage(src.State),
+			Base:      src.Base,
+			Current:   src.Current,
+			Start:     src.Start,
+			End:       src.End,
+			Err:       src.Err,
+			ChainInfo: src.ChainInfo,
+		}
+	}
+	for _, target := range tracker.History() {
+		tt.History = append(tt.History, convertTarget(target))
+	}
+	for _, target := range tracker.Buckets() {
+		tt.Buckets = append(tt.Buckets, convertTarget(target))
+	}
+
+	return tt
+}
+
+func convertSyncStateStage(srtState syncTypes.SyncStateStage) apitypes.SyncStateStage {
+	var state apitypes.SyncStateStage
+	switch srtState {
+	case syncTypes.StageIdle:
+		state = apitypes.StageIdle
+	case syncTypes.StageSyncErrored:
+		state = apitypes.StageSyncErrored
+	case syncTypes.StageSyncComplete:
+		state = apitypes.StageSyncComplete
+	case syncTypes.StateInSyncing:
+		state = apitypes.StageMessages
+	}
+
+	return state
 }
 
 // SyncerStatus returns the current status of the active or last active chain sync operation.
@@ -173,23 +212,12 @@ func (sa *syncerAPI) SyncState(ctx context.Context) (*apitypes.SyncState, error)
 			WorkerID: uint64(count),
 			Base:     t.Base,
 			Target:   t.Head,
+			Stage:    convertSyncStateStage(t.State),
 			Height:   currentHeight,
 			Start:    t.Start,
 			End:      t.End,
 			Message:  msg,
 		}
-
-		switch t.State {
-		case syncTypes.StageIdle:
-			activeSync.Stage = apitypes.StageIdle
-		case syncTypes.StageSyncErrored:
-			activeSync.Stage = apitypes.StageSyncErrored
-		case syncTypes.StageSyncComplete:
-			activeSync.Stage = apitypes.StageSyncComplete
-		case syncTypes.StateInSyncing:
-			activeSync.Stage = apitypes.StageMessages
-		}
-
 		return activeSync
 	}
 	//current

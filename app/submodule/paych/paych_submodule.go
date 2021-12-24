@@ -3,9 +3,9 @@ package paych
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/client/apiface/v0api"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/ipfs/go-datastore"
 )
 
@@ -29,7 +29,7 @@ func (ps *PaychSubmodule) Stop() {
 }
 
 //API create a new paych implement
-func (ps *PaychSubmodule) API() apiface.IPaychan {
+func (ps *PaychSubmodule) API() v1api.IPaychan {
 	return NewPaychAPI(ps.pmgr)
 }
 

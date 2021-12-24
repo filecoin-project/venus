@@ -11,7 +11,7 @@ TODO:
 1. Support global FUNC injection
 
 */
-package v0api
+package v0
 
 type FullNode interface {
 	IBlockStore

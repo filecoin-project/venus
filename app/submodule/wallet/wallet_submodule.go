@@ -3,9 +3,9 @@ package wallet
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/app/client/apiface/v0api"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 
@@ -75,7 +75,7 @@ func NewWalletSubmodule(ctx context.Context,
 }
 
 //API create a new wallet api implement
-func (wallet *WalletSubmodule) API() apiface.IWallet {
+func (wallet *WalletSubmodule) API() v1api.IWallet {
 	return &WalletAPI{
 		walletModule: wallet,
 		adapter:      wallet.adapter,

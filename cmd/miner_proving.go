@@ -44,7 +44,7 @@ var provingInfoCmd = &cmds.Command{
 		}
 		ctx := req.Context
 
-		blockDelay, err := blockDelay(env.(*node.Env).ConfigAPI)
+		blockDelay, err := blockDelay(req)
 		if err != nil {
 			return err
 		}

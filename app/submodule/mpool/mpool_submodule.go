@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/client/apiface/v0api"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
@@ -26,6 +24,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/messagepool/journal"
 	"github.com/filecoin-project/venus/pkg/net/msgsub"
 	"github.com/filecoin-project/venus/pkg/repo"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
@@ -58,7 +58,7 @@ type MessagePoolSubmodule struct { //nolint
 	msgSigner  *messagepool.MessageSigner
 	chain      *chain.ChainSubmodule
 	network    *network.NetworkSubmodule
-	walletAPI  apiface.IWallet
+	walletAPI  v1api.IWallet
 	networkCfg *config.NetworkParamsConfig
 }
 
@@ -247,7 +247,7 @@ func (mp *MessagePoolSubmodule) Stop(ctx context.Context) {
 }
 
 //API create a new mpool api implement
-func (mp *MessagePoolSubmodule) API() apiface.IMessagePool {
+func (mp *MessagePoolSubmodule) API() v1api.IMessagePool {
 	pushLocks := messagepool.NewMpoolLocker()
 	return &MessagePoolAPI{mp: mp, pushLocks: pushLocks}
 }

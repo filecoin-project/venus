@@ -3,9 +3,8 @@ package blockstore
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/client/apiface/v0api"
 	"github.com/filecoin-project/venus/pkg/repo"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
@@ -31,7 +30,7 @@ func NewBlockstoreSubmodule(ctx context.Context, repo blockstoreRepo) (*Blocksto
 	}, nil
 }
 
-func (bsm *BlockstoreSubmodule) API() apiface.IBlockStore {
+func (bsm *BlockstoreSubmodule) API() v0api.IBlockStore {
 	return &blockstoreAPI{blockstore: bsm}
 }
 

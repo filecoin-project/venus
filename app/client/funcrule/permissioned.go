@@ -2,8 +2,9 @@ package funcrule
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/util/proxy"
 	"reflect"
+
+	"github.com/filecoin-project/venus/pkg/util/proxy"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"golang.org/x/xerrors"
@@ -46,7 +47,7 @@ func PermissionProxy(in interface{}, out interface{}) {
 				panic("missing 'perm' tag on " + field.Name) // ok
 			}
 			curule := defaultRule()
-			curule.Perm = auth.Permission(requiredPerm)
+			curule.Perm = requiredPerm
 
 			fn := ra.Method(i)
 			rint.FieldByName(methodName).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {

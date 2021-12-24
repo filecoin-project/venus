@@ -7,9 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/client/apiface/v0api"
-	chainv0api "github.com/filecoin-project/venus/app/submodule/chain/v0api"
+	apiwrapper "github.com/filecoin-project/venus/app/submodule/chain/v0api"
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensus"
@@ -20,6 +18,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
@@ -107,7 +107,7 @@ func (chain *ChainSubmodule) Stop(ctx context.Context) {
 }
 
 //API chain module api implement
-func (chain *ChainSubmodule) API() apiface.IChain {
+func (chain *ChainSubmodule) API() v1api.IChain {
 	return &chainAPI{
 		IAccount:    NewAccountAPI(chain),
 		IActor:      NewActorAPI(chain),
@@ -118,5 +118,5 @@ func (chain *ChainSubmodule) API() apiface.IChain {
 }
 
 func (chain *ChainSubmodule) V0API() v0api.IChain {
-	return &chainv0api.WrapperV1IChain{IChain: chain.API()}
+	return &apiwrapper.WrapperV1IChain{IChain: chain.API()}
 }

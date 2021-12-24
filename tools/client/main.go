@@ -13,8 +13,8 @@ import (
 	manet "github.com/multiformats/go-multiaddr/net"
 
 	"github.com/filecoin-project/venus/app/client"
-	"github.com/filecoin-project/venus/app/client/v0api"
 	"github.com/filecoin-project/venus/pkg/constants"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 

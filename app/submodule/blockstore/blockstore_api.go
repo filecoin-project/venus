@@ -11,11 +11,11 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
 	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
-var _ apiface.IBlockStore = &blockstoreAPI{}
+var _ v1api.IBlockStore = &blockstoreAPI{}
 
 type blockstoreAPI struct { //nolint
 	blockstore *BlockstoreSubmodule

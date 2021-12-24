@@ -8,8 +8,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/venus/pkg/net"
 	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	"github.com/filecoin-project/venus/venus-shared/libp2p/net"
 )
 
 type INetwork interface {

@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
@@ -103,7 +104,7 @@ func (o *observer) listenHeadChangesOnce(ctx context.Context) error {
 	return nil
 }
 
-func (o *observer) applyChanges(ctx context.Context, changes []*chain.HeadChange) error {
+func (o *observer) applyChanges(ctx context.Context, changes []*apitypes.HeadChange) error {
 	// Used to wait for a prior notification round to finish (by tests)
 	if len(changes) == 0 {
 		return nil

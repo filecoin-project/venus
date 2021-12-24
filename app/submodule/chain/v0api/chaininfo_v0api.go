@@ -3,8 +3,8 @@ package v0api
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/client/apiface/v0api"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
@@ -17,7 +17,7 @@ import (
 var _ v0api.IChain = &WrapperV1IChain{}
 
 type WrapperV1IChain struct { //nolint
-	apiface.IChain
+	v1api.IChain
 }
 
 func (a *WrapperV1IChain) StateSearchMsg(ctx context.Context, msg cid.Cid) (*apitypes.MsgLookup, error) {

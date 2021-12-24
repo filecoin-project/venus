@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -17,7 +17,7 @@ import (
 
 type RecordingRand struct {
 	reporter Reporter
-	api      apiface.FullNode
+	api      v1api.FullNode
 	// once guards the loading of the head tipset.
 	// can be removed when https://github.com/filecoin-project/lotus/issues/4223
 	// is fixed.
@@ -40,7 +40,7 @@ var _ vmcontext.HeadChainRandomness = (*RecordingRand)(nil)
 // NewRecordingRand returns a vm.Rand implementation that proxies calls to a
 // full Lotus node via JSON-RPC, and records matching rules and responses so
 // they can later be embedded in test vectors.
-func NewRecordingRand(reporter Reporter, api apiface.FullNode) *RecordingRand {
+func NewRecordingRand(reporter Reporter, api v1api.FullNode) *RecordingRand {
 	return &RecordingRand{reporter: reporter, api: api}
 }
 

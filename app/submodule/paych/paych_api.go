@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/venus/pkg/paychmgr"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 	paychtypes "github.com/filecoin-project/venus/venus-shared/paych"
 )
 
@@ -34,11 +35,11 @@ func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt b
 	}, nil
 }
 
-func (a *PaychAPI) PaychAvailableFunds(ctx context.Context, ch address.Address) (*paychmgr.ChannelAvailableFunds, error) {
+func (a *PaychAPI) PaychAvailableFunds(ctx context.Context, ch address.Address) (*apitypes.ChannelAvailableFunds, error) {
 	return a.paychMgr.AvailableFunds(ch)
 }
 
-func (a *PaychAPI) PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*paychmgr.ChannelAvailableFunds, error) {
+func (a *PaychAPI) PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*apitypes.ChannelAvailableFunds, error) {
 	return a.paychMgr.AvailableFundsByFromTo(from, to)
 }
 
@@ -136,7 +137,7 @@ func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *
 // the two.
 // If there are insufficient funds in the channel to create the voucher,
 // returns a nil voucher and the shortfall.
-func (a *PaychAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, amt big.Int, lane uint64) (*paychmgr.VoucherCreateResult, error) {
+func (a *PaychAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, amt big.Int, lane uint64) (*paychtypes.VoucherCreateResult, error) {
 	return a.paychMgr.CreateVoucher(ctx, pch, paych.SignedVoucher{Amount: amt, Lane: lane})
 }
 
