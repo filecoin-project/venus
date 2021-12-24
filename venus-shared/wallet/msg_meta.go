@@ -3,13 +3,13 @@ package wallet
 type MsgType string
 
 const (
-	MTUnknown = "unknown"
+	MTUnknown = MsgType("unknown")
 
 	// Signing message CID. MsgMeta.Extra contains raw cbor message bytes
-	MTChainMsg = "message"
+	MTChainMsg = MsgType("message")
 
 	// Signing a blockheader. signing raw cbor block bytes (MsgMeta.Extra is empty)
-	MTBlock = "block"
+	MTBlock = MsgType("block")
 
 	// Signing a deal proposal. signing raw cbor proposal bytes (MsgMeta.Extra is empty)
 	MTDealProposal = MsgType("dealproposal")
