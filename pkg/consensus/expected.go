@@ -89,7 +89,7 @@ type chainReader interface {
 	GetGenesisBlock(context.Context) (*types.BlockHeader, error)
 	GetLatestBeaconEntry(*types.TipSet) (*types.BeaconEntry, error)
 	GetTipSetByHeight(context.Context, *types.TipSet, abi.ChainEpoch, bool) (*types.TipSet, error)
-	GetCirculatingSupplyDetailed(context.Context, abi.ChainEpoch, tree.Tree) (chain.CirculatingSupply, error)
+	GetCirculatingSupplyDetailed(context.Context, abi.ChainEpoch, tree.Tree) (types.CirculatingSupply, error)
 	GetLookbackTipSetForRound(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch, version network.Version) (*types.TipSet, cid.Cid, error)
 	GetTipsetMetadata(*types.TipSet) (*chain.TipSetMetadata, error)
 	PutTipSetMetadata(context.Context, *chain.TipSetMetadata) error

@@ -1,15 +1,15 @@
 package chain
 
 import (
-	"github.com/filecoin-project/venus/app/client/apiface"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
 type chainAPI struct { // nolint: golint
-	apiface.IAccount
-	apiface.IActor
-	apiface.IBeacon
-	apiface.IMinerState
-	apiface.IChainInfo
+	v1api.IAccount
+	v1api.IActor
+	v1api.IBeacon
+	v1api.IMinerState
+	v1api.IChainInfo
 }
 
-var _ apiface.IChain = &chainAPI{}
+var _ v1api.IChain = &chainAPI{}

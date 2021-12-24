@@ -1,12 +1,16 @@
 package config
 
 import (
+	"context"
 	"sync"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/client/apiface/v0api"
 	repo2 "github.com/filecoin-project/venus/pkg/repo"
 )
+
+type IConfig interface {
+	ConfigSet(ctx context.Context, dottedPath string, paramJSON string) error
+	ConfigGet(ctx context.Context, dottedPath string) (interface{}, error)
+}
 
 // configModule is plumbing implementation for setting and retrieving values from local config.
 type ConfigModule struct { //nolint
@@ -38,10 +42,10 @@ func (s *ConfigModule) Get(dottedKey string) (interface{}, error) {
 }
 
 //API create a new config api implement
-func (s *ConfigModule) API() apiface.IConfig {
+func (s *ConfigModule) API() IConfig {
 	return &configAPI{config: s}
 }
 
-func (s *ConfigModule) V0API() v0api.IConfig {
+func (s *ConfigModule) V0API() IConfig {
 	return &configAPI{config: s}
 }

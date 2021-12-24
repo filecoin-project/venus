@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/go-address"
@@ -26,9 +25,9 @@ import (
 var log = logging.Logger("market_adapter")
 
 type FundManagerParams struct {
-	MP apiface.IMessagePool
-	CI apiface.IChainInfo
-	MS apiface.IMinerState
+	MP v1api.IMessagePool
+	CI v1api.IChainInfo
+	MS v1api.IMinerState
 	DS repo.Datastore
 }
 

@@ -9,14 +9,14 @@ import (
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/filecoin-project/venus/venus-shared/messagepool"
 )
 
-var _ apiface.IMultiSig = &multiSig{}
+var _ v1api.IMultiSig = &multiSig{}
 
 type multiSig struct {
 	*MultiSigSubmodule
@@ -29,7 +29,7 @@ const (
 	MsigCancel
 )
 
-func newMultiSig(m *MultiSigSubmodule) apiface.IMultiSig {
+func newMultiSig(m *MultiSigSubmodule) v1api.IMultiSig {
 	return &multiSig{
 		MultiSigSubmodule: m,
 	}

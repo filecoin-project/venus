@@ -51,7 +51,7 @@ type fakeCS struct {
 
 	mu         sync.Mutex
 	waitSub    chan struct{}
-	subCh      chan<- []*chain.HeadChange
+	subCh      chan<- []*apitypes.HeadChange
 	callNumber map[string]int
 
 	cancel context.CancelFunc
@@ -104,7 +104,7 @@ func (fcs *fakeCS) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	return fcs.tsc.ChainHead(ctx)
 }
 
-func (fcs *fakeCS) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*chain.HeadChange, error) {
+func (fcs *fakeCS) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*apitypes.HeadChange, error) {
 	fcs.mu.Lock()
 	fcs.callNumber["ChainGetPath"] = fcs.callNumber["ChainGetPath"] + 1
 	fcs.mu.Unlock()
@@ -127,12 +127,12 @@ func (fcs *fakeCS) ChainGetPath(ctx context.Context, from, to types.TipSetKey) (
 		return nil, err
 	}
 
-	path := make([]*chain.HeadChange, len(revert)+len(apply))
+	path := make([]*apitypes.HeadChange, len(revert)+len(apply))
 	for i, r := range revert {
-		path[i] = &chain.HeadChange{Type: chain.HCRevert, Val: r}
+		path[i] = &apitypes.HeadChange{Type: chain.HCRevert, Val: r}
 	}
 	for j, i := 0, len(apply)-1; i >= 0; j, i = j+1, i-1 {
-		path[j+len(revert)] = &chain.HeadChange{Type: chain.HCApply, Val: apply[i]}
+		path[j+len(revert)] = &apitypes.HeadChange{Type: chain.HCApply, Val: apply[i]}
 	}
 	return path, nil
 }
@@ -219,12 +219,12 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 	return ts
 }
 
-func (fcs *fakeCS) ChainNotify(ctx context.Context) <-chan []*chain.HeadChange {
+func (fcs *fakeCS) ChainNotify(ctx context.Context) <-chan []*apitypes.HeadChange {
 	fcs.mu.Lock()
 	defer fcs.mu.Unlock()
 	fcs.callNumber["ChainNotify"] = fcs.callNumber["ChainNotify"] + 1
 
-	out := make(chan []*chain.HeadChange, 1)
+	out := make(chan []*apitypes.HeadChange, 1)
 	if fcs.subCh != nil {
 		close(out)
 		fcs.t.Error("already subscribed to notifications")
@@ -236,7 +236,7 @@ func (fcs *fakeCS) ChainNotify(ctx context.Context) <-chan []*chain.HeadChange {
 		panic(err)
 	}
 
-	out <- []*chain.HeadChange{{Type: chain.HCCurrent, Val: best}}
+	out <- []*apitypes.HeadChange{{Type: chain.HCCurrent, Val: best}}
 	fcs.subCh = out
 	close(fcs.waitSub)
 
@@ -301,16 +301,16 @@ func (fcs *fakeCS) dropSub() {
 
 func (fcs *fakeCS) sub(rev, app []*types.TipSet) {
 	<-fcs.waitSub
-	notif := make([]*chain.HeadChange, len(rev)+len(app))
+	notif := make([]*apitypes.HeadChange, len(rev)+len(app))
 
 	for i, r := range rev {
-		notif[i] = &chain.HeadChange{
+		notif[i] = &apitypes.HeadChange{
 			Type: chain.HCRevert,
 			Val:  r,
 		}
 	}
 	for i, r := range app {
-		notif[i+len(rev)] = &chain.HeadChange{
+		notif[i+len(rev)] = &apitypes.HeadChange{
 			Type: chain.HCApply,
 			Val:  r,
 		}

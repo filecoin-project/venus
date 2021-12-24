@@ -13,14 +13,12 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"github.com/filecoin-project/venus/pkg/chain"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/net"
-	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/libp2p/net"
 	"github.com/filecoin-project/venus/venus-shared/messagepool"
 	paychtypes "github.com/filecoin-project/venus/venus-shared/paych"
 	"github.com/filecoin-project/venus/venus-shared/wallet"
@@ -128,7 +126,7 @@ type IChainInfoStruct struct {
 		ChainGetMessagesInTipset      func(p0 context.Context, p1 types.TipSetKey) ([]apitypes.Message, error)                                                           `perm:"read"`
 		ChainGetParentMessages        func(p0 context.Context, p1 cid.Cid) ([]apitypes.Message, error)                                                                   `perm:"read"`
 		ChainGetParentReceipts        func(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error)                                                              `perm:"read"`
-		ChainGetPath                  func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*chain.HeadChange, error)                                      `perm:"read"`
+		ChainGetPath                  func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*apitypes.HeadChange, error)                                   `perm:"read"`
 		ChainGetRandomnessFromBeacon  func(p0 context.Context, p1 types.TipSetKey, p2 acrypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) `perm:"read"`
 		ChainGetRandomnessFromTickets func(p0 context.Context, p1 types.TipSetKey, p2 acrypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) `perm:"read"`
 		ChainGetReceipts              func(p0 context.Context, p1 cid.Cid) ([]types.MessageReceipt, error)                                                               `perm:"read"`
@@ -137,13 +135,13 @@ type IChainInfoStruct struct {
 		ChainGetTipSetByHeight        func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error)                                             `perm:"read"`
 		ChainHead                     func(p0 context.Context) (*types.TipSet, error)                                                                                    `perm:"read"`
 		ChainList                     func(p0 context.Context, p1 types.TipSetKey, p2 int) ([]types.TipSetKey, error)                                                    `perm:"read"`
-		ChainNotify                   func(p0 context.Context) <-chan []*chain.HeadChange                                                                                `perm:"read"`
+		ChainNotify                   func(p0 context.Context) <-chan []*apitypes.HeadChange                                                                             `perm:"read"`
 		ChainSetHead                  func(p0 context.Context, p1 types.TipSetKey) error                                                                                 `perm:"admin"`
 		GetActor                      func(p0 context.Context, p1 address.Address) (*types.Actor, error)                                                                 `perm:"read"`
 		GetEntry                      func(p0 context.Context, p1 abi.ChainEpoch, p2 uint64) (*types.BeaconEntry, error)                                                 `perm:"read"`
 		GetFullBlock                  func(p0 context.Context, p1 cid.Cid) (*types.FullBlock, error)                                                                     `perm:"read"`
 		GetParentStateRootActor       func(p0 context.Context, p1 *types.TipSet, p2 address.Address) (*types.Actor, error)                                               `perm:"read"`
-		MessageWait                   func(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch, p3 abi.ChainEpoch) (*chain.ChainMessage, error)                            `perm:"read"`
+		MessageWait                   func(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch, p3 abi.ChainEpoch) (*apitypes.ChainMessage, error)                         `perm:"read"`
 		ProtocolParameters            func(p0 context.Context) (*apitypes.ProtocolParams, error)                                                                         `perm:"read"`
 		ResolveToKeyAddr              func(p0 context.Context, p1 address.Address, p2 *types.TipSet) (address.Address, error)                                            `perm:"read"`
 		StateGetRandomnessFromBeacon  func(p0 context.Context, p1 acrypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) `perm:"read"`
@@ -190,7 +188,7 @@ func (s *IChainInfoStruct) ChainGetParentReceipts(p0 context.Context, p1 cid.Cid
 	return s.Internal.ChainGetParentReceipts(p0, p1)
 }
 
-func (s *IChainInfoStruct) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*chain.HeadChange, error) {
+func (s *IChainInfoStruct) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*apitypes.HeadChange, error) {
 	return s.Internal.ChainGetPath(p0, p1, p2)
 }
 
@@ -226,7 +224,7 @@ func (s *IChainInfoStruct) ChainList(p0 context.Context, p1 types.TipSetKey, p2 
 	return s.Internal.ChainList(p0, p1, p2)
 }
 
-func (s *IChainInfoStruct) ChainNotify(p0 context.Context) <-chan []*chain.HeadChange {
+func (s *IChainInfoStruct) ChainNotify(p0 context.Context) <-chan []*apitypes.HeadChange {
 	return s.Internal.ChainNotify(p0)
 }
 
@@ -250,7 +248,7 @@ func (s *IChainInfoStruct) GetParentStateRootActor(p0 context.Context, p1 *types
 	return s.Internal.GetParentStateRootActor(p0, p1, p2)
 }
 
-func (s *IChainInfoStruct) MessageWait(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch, p3 abi.ChainEpoch) (*chain.ChainMessage, error) {
+func (s *IChainInfoStruct) MessageWait(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch, p3 abi.ChainEpoch) (*apitypes.ChainMessage, error) {
 	return s.Internal.MessageWait(p0, p1, p2, p3)
 }
 
@@ -526,7 +524,7 @@ type IMinerStateStruct struct {
 		StateSectorGetInfo                 func(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorOnChainInfo, error)         `perm:"read"`
 		StateSectorPartition               func(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorLocation, error)            `perm:"read"`
 		StateSectorPreCommitInfo           func(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) `perm:"read"`
-		StateVMCirculatingSupplyInternal   func(p0 context.Context, p1 types.TipSetKey) (chain.CirculatingSupply, error)                                                   `perm:"read"`
+		StateVMCirculatingSupplyInternal   func(p0 context.Context, p1 types.TipSetKey) (types.CirculatingSupply, error)                                                   `perm:"read"`
 		StateVerifiedClientStatus          func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error)                                     `perm:"read"`
 	}
 }
@@ -643,7 +641,7 @@ func (s *IMinerStateStruct) StateSectorPreCommitInfo(p0 context.Context, p1 addr
 	return s.Internal.StateSectorPreCommitInfo(p0, p1, p2, p3)
 }
 
-func (s *IMinerStateStruct) StateVMCirculatingSupplyInternal(p0 context.Context, p1 types.TipSetKey) (chain.CirculatingSupply, error) {
+func (s *IMinerStateStruct) StateVMCirculatingSupplyInternal(p0 context.Context, p1 types.TipSetKey) (types.CirculatingSupply, error) {
 	return s.Internal.StateVMCirculatingSupplyInternal(p0, p1)
 }
 
@@ -794,8 +792,8 @@ func (s *INetworkStruct) Version(p0 context.Context) (apitypes.Version, error) {
 type IPaychanStruct struct {
 	Internal struct {
 		PaychAllocateLane           func(p0 context.Context, p1 address.Address) (uint64, error)                                                                   `perm:"sign"`
-		PaychAvailableFunds         func(p0 context.Context, p1 address.Address) (*paychmgr.ChannelAvailableFunds, error)                                          `perm:"sign"`
-		PaychAvailableFundsByFromTo func(p0 context.Context, p1 address.Address, p2 address.Address) (*paychmgr.ChannelAvailableFunds, error)                      `perm:"sign"`
+		PaychAvailableFunds         func(p0 context.Context, p1 address.Address) (*apitypes.ChannelAvailableFunds, error)                                          `perm:"sign"`
+		PaychAvailableFundsByFromTo func(p0 context.Context, p1 address.Address, p2 address.Address) (*apitypes.ChannelAvailableFunds, error)                      `perm:"sign"`
 		PaychCollect                func(p0 context.Context, p1 address.Address) (cid.Cid, error)                                                                  `perm:"sign"`
 		PaychGet                    func(p0 context.Context, p1 address.Address, p2 address.Address, p3 big.Int) (*paychtypes.ChannelInfo, error)                  `perm:"sign"`
 		PaychGetWaitReady           func(p0 context.Context, p1 cid.Cid) (address.Address, error)                                                                  `perm:"sign"`
@@ -806,7 +804,7 @@ type IPaychanStruct struct {
 		PaychVoucherAdd             func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 big.Int) (big.Int, error)                  `perm:"write"`
 		PaychVoucherCheckSpendable  func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (bool, error)                      `perm:"read"`
 		PaychVoucherCheckValid      func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher) error                                                    `perm:"read"`
-		PaychVoucherCreate          func(p0 context.Context, p1 address.Address, p2 big.Int, p3 uint64) (*paychmgr.VoucherCreateResult, error)                     `perm:"sign"`
+		PaychVoucherCreate          func(p0 context.Context, p1 address.Address, p2 big.Int, p3 uint64) (*paychtypes.VoucherCreateResult, error)                   `perm:"sign"`
 		PaychVoucherList            func(p0 context.Context, p1 address.Address) ([]*paych.SignedVoucher, error)                                                   `perm:"write"`
 		PaychVoucherSubmit          func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (cid.Cid, error)                   `perm:"sign"`
 	}
@@ -816,11 +814,11 @@ func (s *IPaychanStruct) PaychAllocateLane(p0 context.Context, p1 address.Addres
 	return s.Internal.PaychAllocateLane(p0, p1)
 }
 
-func (s *IPaychanStruct) PaychAvailableFunds(p0 context.Context, p1 address.Address) (*paychmgr.ChannelAvailableFunds, error) {
+func (s *IPaychanStruct) PaychAvailableFunds(p0 context.Context, p1 address.Address) (*apitypes.ChannelAvailableFunds, error) {
 	return s.Internal.PaychAvailableFunds(p0, p1)
 }
 
-func (s *IPaychanStruct) PaychAvailableFundsByFromTo(p0 context.Context, p1 address.Address, p2 address.Address) (*paychmgr.ChannelAvailableFunds, error) {
+func (s *IPaychanStruct) PaychAvailableFundsByFromTo(p0 context.Context, p1 address.Address, p2 address.Address) (*apitypes.ChannelAvailableFunds, error) {
 	return s.Internal.PaychAvailableFundsByFromTo(p0, p1, p2)
 }
 
@@ -864,7 +862,7 @@ func (s *IPaychanStruct) PaychVoucherCheckValid(p0 context.Context, p1 address.A
 	return s.Internal.PaychVoucherCheckValid(p0, p1, p2)
 }
 
-func (s *IPaychanStruct) PaychVoucherCreate(p0 context.Context, p1 address.Address, p2 big.Int, p3 uint64) (*paychmgr.VoucherCreateResult, error) {
+func (s *IPaychanStruct) PaychVoucherCreate(p0 context.Context, p1 address.Address, p2 big.Int, p3 uint64) (*paychtypes.VoucherCreateResult, error) {
 	return s.Internal.PaychVoucherCreate(p0, p1, p2, p3)
 }
 

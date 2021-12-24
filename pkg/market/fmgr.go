@@ -3,7 +3,7 @@ package market
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/go-address"
@@ -21,9 +21,9 @@ type fundManager interface {
 }
 
 type fmgr struct {
-	MPoolAPI      apiface.IMessagePool
-	ChainInfoAPI  apiface.IChainInfo
-	MinerStateAPI apiface.IMinerState
+	MPoolAPI      v1api.IMessagePool
+	ChainInfoAPI  v1api.IChainInfo
+	MinerStateAPI v1api.IMinerState
 }
 
 func newFundmanager(p *FundManagerParams) fundManager {

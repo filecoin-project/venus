@@ -7,12 +7,12 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/client/apiface/v0api"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
@@ -323,7 +323,7 @@ func (syncer *SyncerSubmodule) Stop(ctx context.Context) {
 }
 
 //API create a new sync api implement
-func (syncer *SyncerSubmodule) API() apiface.ISyncer {
+func (syncer *SyncerSubmodule) API() v1api.ISyncer {
 	return &syncerAPI{syncer: syncer}
 }
 

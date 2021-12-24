@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/pkg/chain"
 	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
@@ -19,14 +18,14 @@ type TipSetObserver interface {
 }
 
 type IEvent interface {
-	ChainNotify(context.Context) <-chan []*chain.HeadChange
+	ChainNotify(context.Context) <-chan []*apitypes.HeadChange
 	ChainGetBlockMessages(context.Context, cid.Cid) (*apitypes.BlockMessages, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	ChainGetTipSetAfterHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	ChainHead(context.Context) (*types.TipSet, error)
 	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
-	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*chain.HeadChange, error)
+	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*apitypes.HeadChange, error)
 
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) // optional / for CalledMsg
 }

@@ -3,8 +3,8 @@ package v0api
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/client/apiface/v0api"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 
 	"github.com/filecoin-project/go-address"
@@ -15,8 +15,8 @@ import (
 )
 
 type WrapperV1IMultiSig struct {
-	apiface.IMultiSig
-	apiface.IMessagePool
+	v1api.IMultiSig
+	v1api.IMessagePool
 }
 
 var _ v0api.IMultiSig = (*WrapperV1IMultiSig)(nil)

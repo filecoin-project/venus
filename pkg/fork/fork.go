@@ -49,6 +49,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
@@ -337,7 +338,7 @@ type chainReader interface {
 	GetTipSetByHeight(context.Context, *types.TipSet, abi.ChainEpoch, bool) (*types.TipSet, error)
 	GetTipSetState(context.Context, *types.TipSet) (vmstate.Tree, error)
 	GetGenesisBlock(context.Context) (*types.BlockHeader, error)
-	SubHeadChanges(context.Context) chan []*chain.HeadChange
+	SubHeadChanges(context.Context) chan []*apitypes.HeadChange
 }
 
 type IFork interface {

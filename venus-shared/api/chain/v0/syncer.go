@@ -1,4 +1,4 @@
-package v0api
+package v0
 
 import (
 	"context"
@@ -14,10 +14,8 @@ type ISyncer interface {
 	ChainSyncHandleNewTipSet(ctx context.Context, ci *chain.ChainInfo) error
 	// Rule[perm:admin]
 	SetConcurrent(ctx context.Context, concurrent int64) error
-
 	// Rule[perm:read]
-	//SyncerTracker(ctx context.Context) *chain.TargetTracker
-
+	SyncerTracker(ctx context.Context) *chain2.TargetTracker
 	// Rule[perm:read]
 	Concurrent(ctx context.Context) int64
 	// Rule[perm:read]

@@ -15,13 +15,13 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/chain"
 	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
-var _ apiface.IChainInfo = &chainInfoAPI{}
+var _ v1api.IChainInfo = &chainInfoAPI{}
 
 type chainInfoAPI struct { //nolint
 	chain *ChainSubmodule
@@ -30,7 +30,7 @@ type chainInfoAPI struct { //nolint
 var log = logging.Logger("chain")
 
 //NewChainInfoAPI new chain info api
-func NewChainInfoAPI(chain *ChainSubmodule) apiface.IChainInfo {
+func NewChainInfoAPI(chain *ChainSubmodule) v1api.IChainInfo {
 	return &chainInfoAPI{chain: chain}
 }
 
@@ -313,8 +313,8 @@ func (cia *chainInfoAPI) ResolveToKeyAddr(ctx context.Context, addr address.Addr
 
 //************Drand****************//
 // ChainNotify subscribe to chain head change event
-func (cia *chainInfoAPI) ChainNotify(ctx context.Context) <-chan []*chain.HeadChange {
-	return cia.chain.ChainReader.SubHeadChanges(ctx)
+func (cia *chainInfoAPI) ChainNotify(ctx context.Context) (<-chan []*apitypes.HeadChange, error) {
+	return cia.chain.ChainReader.SubHeadChanges(ctx), nil
 }
 
 //************Drand****************//
@@ -464,7 +464,7 @@ func (cia *chainInfoAPI) StateVerifierStatus(ctx context.Context, addr address.A
 // the case that it appears in a newly mined block. An error is returned if one is
 // encountered or if the context is canceled. Otherwise, it waits forever for the message
 // to appear on chain.
-func (cia *chainInfoAPI) MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*chain.ChainMessage, error) {
+func (cia *chainInfoAPI) MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*apitypes.ChainMessage, error) {
 	chainMsg, err := cia.chain.MessageStore.LoadMessage(msgCid)
 	if err != nil {
 		return nil, err
@@ -583,7 +583,7 @@ func (cia *chainInfoAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch,
 //     tRR
 //```
 // Would return `[revert(tBA), apply(tAB), apply(tAA)]`
-func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*chain.HeadChange, error) {
+func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*apitypes.HeadChange, error) {
 	fts, err := cia.chain.ChainReader.GetTipSet(from)
 	if err != nil {
 		return nil, xerrors.Errorf("loading from tipset %s: %w", from, err)
@@ -598,12 +598,12 @@ func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey,
 		return nil, xerrors.Errorf("error getting tipset branches: %w", err)
 	}
 
-	path := make([]*chain.HeadChange, len(revert)+len(apply))
+	path := make([]*apitypes.HeadChange, len(revert)+len(apply))
 	for i, r := range revert {
-		path[i] = &chain.HeadChange{Type: chain.HCRevert, Val: r}
+		path[i] = &apitypes.HeadChange{Type: chain.HCRevert, Val: r}
 	}
 	for j, i := 0, len(apply)-1; i >= 0; j, i = j+1, i-1 {
-		path[j+len(revert)] = &chain.HeadChange{Type: chain.HCApply, Val: apply[i]}
+		path[j+len(revert)] = &apitypes.HeadChange{Type: chain.HCApply, Val: apply[i]}
 	}
 	return path, nil
 }

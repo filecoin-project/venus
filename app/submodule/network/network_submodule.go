@@ -49,9 +49,9 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/client/apiface/v0api"
-	v0apiwrapper "github.com/filecoin-project/venus/app/submodule/network/v0api"
+	apiwrapper "github.com/filecoin-project/venus/app/submodule/network/v0api"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
 var networkLogger = logging.Logger("network_module")
@@ -82,12 +82,12 @@ type NetworkSubmodule struct { //nolint
 }
 
 //API create a new network implement
-func (networkSubmodule *NetworkSubmodule) API() apiface.INetwork {
+func (networkSubmodule *NetworkSubmodule) API() v1api.INetwork {
 	return &networkAPI{network: networkSubmodule}
 }
 
 func (networkSubmodule *NetworkSubmodule) V0API() v0api.INetwork {
-	return &v0apiwrapper.WrapperV1INetwork{INetwork: &networkAPI{network: networkSubmodule}}
+	return &apiwrapper.WrapperV1INetwork{INetwork: &networkAPI{network: networkSubmodule}}
 }
 
 func (networkSubmodule *NetworkSubmodule) Stop(ctx context.Context) {

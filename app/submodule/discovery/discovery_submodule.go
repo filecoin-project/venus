@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/client/apiface/v0api"
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/pkg/repo"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
@@ -130,10 +128,10 @@ func (discovery *DiscoverySubmodule) Stop() {
 }
 
 //API create a discovery api implement
-func (discovery *DiscoverySubmodule) API() apiface.IDiscovery {
+func (discovery *DiscoverySubmodule) API() IDiscovery {
 	return &discoveryAPI{discovery: discovery}
 }
 
-func (discovery *DiscoverySubmodule) V0API() v0api.IDiscovery {
+func (discovery *DiscoverySubmodule) V0API() IDiscovery {
 	return &discoveryAPI{discovery: discovery}
 }

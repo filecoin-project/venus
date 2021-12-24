@@ -386,10 +386,6 @@ github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0/go.mod h1:7aWZdaQ1b16BVoQUYR+
 github.com/filecoin-project/go-hamt-ipld/v3 v3.0.1/go.mod h1:gXpNmr3oQx8l3o7qkGyDjJjYSRX7hp/FGOStdqrWyDI=
 github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0 h1:rVVNq0x6RGQIzCo1iiJlGFm9AGIZzeifggxtKMU7zmI=
 github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0/go.mod h1:bxmzgT8tmeVQA1/gvBwFmYdT8SOFUwB3ovSUfG1Ux0g=
-github.com/filecoin-project/go-jsonrpc v0.1.3/go.mod h1:XBBpuKIMaXIIzeqzO1iucq4GvbF8CxmXRFoezRh+Cx4=
-github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec/go.mod h1:XBBpuKIMaXIIzeqzO1iucq4GvbF8CxmXRFoezRh+Cx4=
-github.com/filecoin-project/go-jsonrpc v0.1.5 h1:ckxqZ09ivBAVf5CSmxxrqqNHC7PJm3GYGtYKiNQ+vGk=
-github.com/filecoin-project/go-jsonrpc v0.1.5/go.mod h1:XBBpuKIMaXIIzeqzO1iucq4GvbF8CxmXRFoezRh+Cx4=
 github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543/go.mod h1:mjrHv1cDGJWDlGmC0eDc1E5VJr8DmL9XMUcaFwiuKg8=
 github.com/filecoin-project/go-multistore v0.0.3/go.mod h1:kaNqCC4IhU4B1uyr7YWFHd23TL4KM32aChS0jNkyUvQ=
 github.com/filecoin-project/go-padreader v0.0.0-20200903213702-ed5fae088b20/go.mod h1:mPn+LRRd5gEKNAtc+r3ScpW2JRU/pj4NBKdADYWHiak=
@@ -404,7 +400,6 @@ github.com/filecoin-project/go-state-types v0.0.0-20201102161440-c8033295a1fc/go
 github.com/filecoin-project/go-state-types v0.1.0/go.mod h1:ezYnPf0bNkTsDibL/psSz5dy4B5awOJ/E7P2Saeep8g=
 github.com/filecoin-project/go-state-types v0.1.1-0.20210506134452-99b279731c48/go.mod h1:ezYnPf0bNkTsDibL/psSz5dy4B5awOJ/E7P2Saeep8g=
 github.com/filecoin-project/go-state-types v0.1.1-0.20210810190654-139e0e79e69e/go.mod h1:ezYnPf0bNkTsDibL/psSz5dy4B5awOJ/E7P2Saeep8g=
-github.com/filecoin-project/go-state-types v0.1.1-0.20210915140513-d354ccf10379/go.mod h1:ezYnPf0bNkTsDibL/psSz5dy4B5awOJ/E7P2Saeep8g=
 github.com/filecoin-project/go-state-types v0.1.1 h1:LR260vya4p++atgf256W6yV3Lxl5mKrBFcEZePWQrdg=
 github.com/filecoin-project/go-state-types v0.1.1/go.mod h1:ezYnPf0bNkTsDibL/psSz5dy4B5awOJ/E7P2Saeep8g=
 github.com/filecoin-project/go-statemachine v0.0.0-20200925024713-05bd7c71fbfe/go.mod h1:FGwQgZAt2Gh5mjlwJUlVB62JeYdo+if0xWxSEfBD9ig=
@@ -782,6 +777,8 @@ github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab/go.mod
 github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839/go.mod h1:xaLFMmpvUxqXtVkUJfg9QmT88cDaCJ3ZKgdZ78oO8Qo=
 github.com/ipfs-force-community/go-ipfs-cmds v0.6.1-0.20210521090123-4587df7fa0ab h1:+Jov61TTljdzTKBecQizmUWJ6IIoVgzjukKppVr5TgI=
 github.com/ipfs-force-community/go-ipfs-cmds v0.6.1-0.20210521090123-4587df7fa0ab/go.mod h1:ZgYiWVnCk43ChwoH8hAmI1IRbuVtq3GSTHwtRB/Kqhk=
+github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210731021807-68e5207079bc h1:L4JH2Ltl/Embq4qYezs3RsIYW1BB/fB9TfUkk42FOzU=
+github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210731021807-68e5207079bc/go.mod h1:XBBpuKIMaXIIzeqzO1iucq4GvbF8CxmXRFoezRh+Cx4=
 github.com/ipfs-force-community/metrics v1.0.0/go.mod h1:mn40SioMuKtjmRumHFy/fJ26Pn028XuDjUJE9dorjyw=
 github.com/ipfs-force-community/metrics v1.0.1-0.20211022060227-11142a08b729/go.mod h1:mn40SioMuKtjmRumHFy/fJ26Pn028XuDjUJE9dorjyw=
 github.com/ipfs-force-community/venus-common-utils v0.0.0-20210714054928-2042a9040759/go.mod h1:AWIt7L1UiUeIzqQdjQ/quZcVcCdnr6GXabGLBgEIMzU=

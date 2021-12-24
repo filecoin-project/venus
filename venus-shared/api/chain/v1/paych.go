@@ -27,11 +27,11 @@ type IPaychan interface {
 	// @to: he payment channel recipient
 	// Rule[perm:sign]
 	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*chain2.ChannelAvailableFunds, error)
-	// PaychGetWaitsigny waits until the create channel / add funds message with the sentinel
+	// PaychGetWaitReady waits until the create channel / add funds message with the sentinel
 	// @sentinel: given message CID arrives.
 	// @ch: the returned channel address can safely be used against the Manager methods.
 	// Rule[perm:sign]
-	PaychGetWaitsigny(ctx context.Context, sentinel cid.Cid) (address.Address, error)
+	PaychGetWaitReady(ctx context.Context, sentinel cid.Cid) (address.Address, error)
 	// PaychAllocateLane Allocate late creates a lane within a payment channel so that calls to
 	// CreatePaymentVoucher will automatically make vouchers only for the difference in total
 	// Rule[perm:sign]
@@ -76,7 +76,7 @@ type IPaychan interface {
 	// PaychVoucherAdd adds a voucher for an inbound channel.
 	// If the channel is not in the store, fetches the channel from state (and checks that
 	// the channel To address is owned by the wallet).
-	// Rule[perm:sign]
+	// Rule[perm:write]
 	PaychVoucherAdd(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta big.Int) (big.Int, error)
 	// PaychVoucherCreate creates a new signed voucher on the given payment channel
 	// with the given lane and amount.  The value passed in is exactly the value

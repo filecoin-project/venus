@@ -8,14 +8,15 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/app/submodule/wallet/remotewallet"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/wallet"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
 	wtypes "github.com/filecoin-project/venus/venus-shared/wallet"
 )
 
-var _ apiface.IWallet = &WalletAPI{}
+var _ v1api.IWallet = &WalletAPI{}
 
 var ErrNoDefaultFromAddress = errors.New("unable to determine a default walletModule address")
 
@@ -90,8 +91,8 @@ func (walletAPI *WalletAPI) WalletNewAddress(protocol address.Protocol) (address
 }
 
 // WalletImport adds a given set of KeyInfos to the walletModule
-func (walletAPI *WalletAPI) WalletImport(key *crypto.KeyInfo) (address.Address, error) {
-	addr, err := walletAPI.adapter.Import(key)
+func (walletAPI *WalletAPI) WalletImport(key *wtypes.KeyInfo) (address.Address, error) {
+	addr, err := walletAPI.adapter.Import(remotewallet.ConvertLocalKeyInfo(key))
 	if err != nil {
 		return address.Undef, err
 	}
@@ -99,8 +100,12 @@ func (walletAPI *WalletAPI) WalletImport(key *crypto.KeyInfo) (address.Address, 
 }
 
 // WalletExport returns the KeyInfos for the given walletModule addresses
-func (walletAPI *WalletAPI) WalletExport(addr address.Address, password string) (*crypto.KeyInfo, error) {
-	return walletAPI.adapter.Export(addr, password)
+func (walletAPI *WalletAPI) WalletExport(addr address.Address, password string) (*wtypes.KeyInfo, error) {
+	ki, err := walletAPI.adapter.Export(addr, password)
+	if err != nil {
+		return nil, err
+	}
+	return remotewallet.ConvertRemoteKeyInfo(ki), nil
 }
 
 // WalletSign signs the given bytes using the given address.
