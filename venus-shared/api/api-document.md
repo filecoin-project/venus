@@ -214,7 +214,12 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  "string value"
+]
+```
 
 ### Version
 
@@ -242,7 +247,9 @@ Perms: admin
 Inputs:
 ```json
 [
-  null
+  [
+    "string value"
+  ]
 ]
 ```
 
@@ -344,15 +351,29 @@ Response:
 {
   "Miner": "t01234",
   "Ticket": {
-    "VRFProof": null
+    "VRFProof": "Bw=="
   },
   "ElectionProof": {
     "WinCount": 9,
-    "VRFProof": null
+    "VRFProof": "Bw=="
   },
-  "BeaconEntries": null,
-  "WinPoStProof": null,
-  "Parents": null,
+  "BeaconEntries": [
+    {
+      "Round": 42,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    }
+  ],
+  "WinPoStProof": [
+    {
+      "PoStProof": 8,
+      "ProofBytes": "Ynl0ZSBhcnJheQ=="
+    }
+  ],
+  "Parents": [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  ],
   "ParentWeight": "0",
   "Height": 10101,
   "ParentStateRoot": {
@@ -395,9 +416,54 @@ Inputs:
 Response:
 ```json
 {
-  "BlsMessages": null,
-  "SecpkMessages": null,
-  "Cids": null
+  "BlsMessages": [
+    {
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      },
+      "Version": 42,
+      "To": "t01234",
+      "From": "t01234",
+      "Nonce": 42,
+      "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
+      "Method": 1,
+      "Params": "Ynl0ZSBhcnJheQ=="
+    }
+  ],
+  "SecpkMessages": [
+    {
+      "Message": {
+        "CID": {
+          "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        },
+        "Version": 42,
+        "To": "t01234",
+        "From": "t01234",
+        "Nonce": 42,
+        "Value": "0",
+        "GasLimit": 9,
+        "GasFeeCap": "0",
+        "GasPremium": "0",
+        "Method": 1,
+        "Params": "Ynl0ZSBhcnJheQ=="
+      },
+      "Signature": {
+        "Type": 2,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      },
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
+    }
+  ],
+  "Cids": [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  ]
 }
 ```
 
@@ -453,7 +519,31 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Cid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "Message": {
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      },
+      "Version": 42,
+      "To": "t01234",
+      "From": "t01234",
+      "Nonce": 42,
+      "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
+      "Method": 1,
+      "Params": "Ynl0ZSBhcnJheQ=="
+    }
+  }
+]
+```
 
 ### ChainGetParentMessages
 
@@ -469,7 +559,31 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Cid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "Message": {
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      },
+      "Version": 42,
+      "To": "t01234",
+      "From": "t01234",
+      "Nonce": 42,
+      "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
+      "Method": 1,
+      "Params": "Ynl0ZSBhcnJheQ=="
+    }
+  }
+]
+```
 
 ### ChainGetParentReceipts
 
@@ -485,7 +599,16 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "ExitCode": 0,
+    "Return": "Ynl0ZSBhcnJheQ==",
+    "GasUsed": 9
+  }
+]
+```
 
 ### ChainGetPath
 
@@ -514,7 +637,19 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Type": "string value",
+    "Val": {
+      "Cids": null,
+      "Blocks": null,
+      "Height": 0
+    }
+  }
+]
+```
 
 ### ChainGetRandomnessFromBeacon
 
@@ -538,7 +673,7 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response: `"Bw=="`
 
 ### ChainGetRandomnessFromTickets
 
@@ -562,7 +697,7 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response: `"Bw=="`
 
 ### ChainGetReceipts
 
@@ -578,7 +713,16 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "ExitCode": 0,
+    "Return": "Ynl0ZSBhcnJheQ==",
+    "GasUsed": 9
+  }
+]
+```
 
 ### ChainGetTipSet
 
@@ -718,7 +862,19 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
 
 ### ChainNotify
 
@@ -727,7 +883,19 @@ Perms: read
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Type": "string value",
+    "Val": {
+      "Cids": null,
+      "Blocks": null,
+      "Height": 0
+    }
+  }
+]
+```
 
 ### ChainReadObj
 
@@ -880,7 +1048,29 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Msg": {
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      },
+      "Version": 42,
+      "To": "t01234",
+      "From": "t01234",
+      "Nonce": 42,
+      "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
+      "Method": 1,
+      "Params": "Ynl0ZSBhcnJheQ=="
+    },
+    "Err": "string value"
+  }
+]
+```
 
 ### GasEstimateFeeCap
 
@@ -1106,15 +1296,29 @@ Response:
   "Header": {
     "Miner": "t01234",
     "Ticket": {
-      "VRFProof": null
+      "VRFProof": "Bw=="
     },
     "ElectionProof": {
       "WinCount": 9,
-      "VRFProof": null
+      "VRFProof": "Bw=="
     },
-    "BeaconEntries": null,
-    "WinPoStProof": null,
-    "Parents": null,
+    "BeaconEntries": [
+      {
+        "Round": 42,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      }
+    ],
+    "WinPoStProof": [
+      {
+        "PoStProof": 8,
+        "ProofBytes": "Ynl0ZSBhcnJheQ=="
+      }
+    ],
+    "Parents": [
+      {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    ],
     "ParentWeight": "0",
     "Height": 10101,
     "ParentStateRoot": {
@@ -1138,8 +1342,49 @@ Response:
     "ForkSignaling": 42,
     "ParentBaseFee": "0"
   },
-  "BLSMessages": null,
-  "SECPMessages": null
+  "BLSMessages": [
+    {
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      },
+      "Version": 42,
+      "To": "t01234",
+      "From": "t01234",
+      "Nonce": 42,
+      "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
+      "Method": 1,
+      "Params": "Ynl0ZSBhcnJheQ=="
+    }
+  ],
+  "SECPMessages": [
+    {
+      "Message": {
+        "CID": {
+          "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        },
+        "Version": 42,
+        "To": "t01234",
+        "From": "t01234",
+        "Nonce": 42,
+        "Value": "0",
+        "GasLimit": 9,
+        "GasFeeCap": "0",
+        "GasPremium": "0",
+        "Method": 1,
+        "Params": "Ynl0ZSBhcnJheQ=="
+      },
+      "Signature": {
+        "Type": 2,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      },
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
+    }
+  ]
 }
 ```
 
@@ -1246,15 +1491,29 @@ Response:
   "Block": {
     "Miner": "t01234",
     "Ticket": {
-      "VRFProof": null
+      "VRFProof": "Bw=="
     },
     "ElectionProof": {
       "WinCount": 9,
-      "VRFProof": null
+      "VRFProof": "Bw=="
     },
-    "BeaconEntries": null,
-    "WinPoStProof": null,
-    "Parents": null,
+    "BeaconEntries": [
+      {
+        "Round": 42,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      }
+    ],
+    "WinPoStProof": [
+      {
+        "PoStProof": 8,
+        "ProofBytes": "Ynl0ZSBhcnJheQ=="
+      }
+    ],
+    "Parents": [
+      {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    ],
     "ParentWeight": "0",
     "Height": 10101,
     "ParentStateRoot": {
@@ -1308,17 +1567,52 @@ Inputs:
       }
     ],
     "Ticket": {
-      "VRFProof": null
+      "VRFProof": "Bw=="
     },
     "Eproof": {
       "WinCount": 9,
-      "VRFProof": null
+      "VRFProof": "Bw=="
     },
-    "BeaconValues": null,
-    "Messages": null,
+    "BeaconValues": [
+      {
+        "Round": 42,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      }
+    ],
+    "Messages": [
+      {
+        "Message": {
+          "CID": {
+            "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+          },
+          "Version": 42,
+          "To": "t01234",
+          "From": "t01234",
+          "Nonce": 42,
+          "Value": "0",
+          "GasLimit": 9,
+          "GasFeeCap": "0",
+          "GasPremium": "0",
+          "Method": 1,
+          "Params": "Ynl0ZSBhcnJheQ=="
+        },
+        "Signature": {
+          "Type": 2,
+          "Data": "Ynl0ZSBhcnJheQ=="
+        },
+        "CID": {
+          "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        }
+      }
+    ],
     "Epoch": 10101,
     "Timestamp": 42,
-    "WinningPoStProof": null
+    "WinningPoStProof": [
+      {
+        "PoStProof": 8,
+        "ProofBytes": "Ynl0ZSBhcnJheQ=="
+      }
+    ]
   }
 ]
 ```
@@ -1329,15 +1623,29 @@ Response:
   "Header": {
     "Miner": "t01234",
     "Ticket": {
-      "VRFProof": null
+      "VRFProof": "Bw=="
     },
     "ElectionProof": {
       "WinCount": 9,
-      "VRFProof": null
+      "VRFProof": "Bw=="
     },
-    "BeaconEntries": null,
-    "WinPoStProof": null,
-    "Parents": null,
+    "BeaconEntries": [
+      {
+        "Round": 42,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      }
+    ],
+    "WinPoStProof": [
+      {
+        "PoStProof": 8,
+        "ProofBytes": "Ynl0ZSBhcnJheQ=="
+      }
+    ],
+    "Parents": [
+      {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    ],
     "ParentWeight": "0",
     "Height": 10101,
     "ParentStateRoot": {
@@ -1361,8 +1669,16 @@ Response:
     "ForkSignaling": 42,
     "ParentBaseFee": "0"
   },
-  "BlsMessages": null,
-  "SecpkMessages": null
+  "BlsMessages": [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  ],
+  "SecpkMessages": [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  ]
 }
 ```
 
@@ -1392,14 +1708,27 @@ Response:
 {
   "MinerPower": "0",
   "NetworkPower": "0",
-  "Sectors": null,
+  "Sectors": [
+    {
+      "SealProof": 8,
+      "SectorNumber": 9,
+      "SealedCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ],
   "WorkerKey": "t01234",
   "SectorSize": 34359738368,
   "PrevBeaconEntry": {
     "Round": 42,
     "Data": "Ynl0ZSBhcnJheQ=="
   },
-  "BeaconEntries": null,
+  "BeaconEntries": [
+    {
+      "Round": 42,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    }
+  ],
   "EligibleForMining": true
 }
 ```
@@ -1415,11 +1744,43 @@ Perms: write
 Inputs:
 ```json
 [
-  null
+  [
+    {
+      "Message": {
+        "CID": {
+          "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        },
+        "Version": 42,
+        "To": "t01234",
+        "From": "t01234",
+        "Nonce": 42,
+        "Value": "0",
+        "GasLimit": 9,
+        "GasFeeCap": "0",
+        "GasPremium": "0",
+        "Method": 1,
+        "Params": "Ynl0ZSBhcnJheQ=="
+      },
+      "Signature": {
+        "Type": 2,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      },
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
+    }
+  ]
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
 
 ### MpoolBatchPushMessage
 
@@ -1429,7 +1790,23 @@ Perms: sign
 Inputs:
 ```json
 [
-  null,
+  [
+    {
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      },
+      "Version": 42,
+      "To": "t01234",
+      "From": "t01234",
+      "Nonce": 42,
+      "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
+      "Method": 1,
+      "Params": "Ynl0ZSBhcnJheQ=="
+    }
+  ],
   {
     "MaxFee": "0",
     "GasOverEstimation": 12.3
@@ -1437,7 +1814,35 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Message": {
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      },
+      "Version": 42,
+      "To": "t01234",
+      "From": "t01234",
+      "Nonce": 42,
+      "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
+      "Method": 1,
+      "Params": "Ynl0ZSBhcnJheQ=="
+    },
+    "Signature": {
+      "Type": 2,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    },
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
+  }
+]
+```
 
 ### MpoolBatchPushUntrusted
 
@@ -1447,11 +1852,43 @@ Perms: write
 Inputs:
 ```json
 [
-  null
+  [
+    {
+      "Message": {
+        "CID": {
+          "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        },
+        "Version": 42,
+        "To": "t01234",
+        "From": "t01234",
+        "Nonce": 42,
+        "Value": "0",
+        "GasLimit": 9,
+        "GasFeeCap": "0",
+        "GasPremium": "0",
+        "Method": 1,
+        "Params": "Ynl0ZSBhcnJheQ=="
+      },
+      "Signature": {
+        "Type": 2,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      },
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
+    }
+  ]
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
 
 ### MpoolCheckMessages
 
@@ -1461,11 +1898,47 @@ Perms: read
 Inputs:
 ```json
 [
-  null
+  [
+    {
+      "Message": {
+        "CID": {
+          "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        },
+        "Version": 42,
+        "To": "t01234",
+        "From": "t01234",
+        "Nonce": 42,
+        "Value": "0",
+        "GasLimit": 9,
+        "GasFeeCap": "0",
+        "GasPremium": "0",
+        "Method": 1,
+        "Params": "Ynl0ZSBhcnJheQ=="
+      },
+      "ValidNonce": true
+    }
+  ]
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  [
+    {
+      "Cid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Code": 0,
+      "OK": true,
+      "Err": "string value",
+      "Hint": {
+        "abc": 123
+      }
+    }
+  ]
+]
+```
 
 ### MpoolCheckPendingMessages
 
@@ -1479,7 +1952,24 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  [
+    {
+      "Cid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Code": 0,
+      "OK": true,
+      "Err": "string value",
+      "Hint": {
+        "abc": 123
+      }
+    }
+  ]
+]
+```
 
 ### MpoolCheckReplaceMessages
 
@@ -1489,11 +1979,44 @@ Perms: read
 Inputs:
 ```json
 [
-  null
+  [
+    {
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      },
+      "Version": 42,
+      "To": "t01234",
+      "From": "t01234",
+      "Nonce": 42,
+      "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
+      "Method": 1,
+      "Params": "Ynl0ZSBhcnJheQ=="
+    }
+  ]
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  [
+    {
+      "Cid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Code": 0,
+      "OK": true,
+      "Err": "string value",
+      "Hint": {
+        "abc": 123
+      }
+    }
+  ]
+]
+```
 
 ### MpoolClear
 
@@ -1533,7 +2056,9 @@ Inputs: `null`
 Response:
 ```json
 {
-  "PriorityAddrs": null,
+  "PriorityAddrs": [
+    "t01234"
+  ],
   "SizeLimitHigh": 123,
   "SizeLimitLow": 123,
   "ReplaceByFeeRatio": 12.3,
@@ -1575,7 +2100,35 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Message": {
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      },
+      "Version": 42,
+      "To": "t01234",
+      "From": "t01234",
+      "Nonce": 42,
+      "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
+      "Method": 1,
+      "Params": "Ynl0ZSBhcnJheQ=="
+    },
+    "Signature": {
+      "Type": 2,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    },
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
+  }
+]
+```
 
 ### MpoolPublishByAddr
 
@@ -1790,7 +2343,35 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Message": {
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      },
+      "Version": 42,
+      "To": "t01234",
+      "From": "t01234",
+      "Nonce": 42,
+      "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
+      "Method": 1,
+      "Params": "Ynl0ZSBhcnJheQ=="
+    },
+    "Signature": {
+      "Type": 2,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    },
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
+  }
+]
+```
 
 ### MpoolSelects
 
@@ -1808,11 +2389,43 @@ Inputs:
       "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
     }
   ],
-  null
+  [
+    12.3
+  ]
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  [
+    {
+      "Message": {
+        "CID": {
+          "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        },
+        "Version": 42,
+        "To": "t01234",
+        "From": "t01234",
+        "Nonce": 42,
+        "Value": "0",
+        "GasLimit": 9,
+        "GasFeeCap": "0",
+        "GasPremium": "0",
+        "Method": 1,
+        "Params": "Ynl0ZSBhcnJheQ=="
+      },
+      "Signature": {
+        "Type": 2,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      },
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
+    }
+  ]
+]
+```
 
 ### MpoolSetConfig
 
@@ -1823,7 +2436,9 @@ Inputs:
 ```json
 [
   {
-    "PriorityAddrs": null,
+    "PriorityAddrs": [
+      "t01234"
+    ],
     "SizeLimitHigh": 123,
     "SizeLimitLow": 123,
     "ReplaceByFeeRatio": 12.3,
@@ -2116,7 +2731,9 @@ Inputs:
 ```json
 [
   42,
-  null,
+  [
+    "t01234"
+  ],
   10101,
   "0",
   "t01234",
@@ -2380,7 +2997,9 @@ Response:
 ```json
 {
   "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "Addrs": []
+  "Addrs": [
+    "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
+  ]
 }
 ```
 
@@ -2395,7 +3014,9 @@ Perms: read
 Inputs:
 ```json
 [
-  null
+  [
+    "string value"
+  ]
 ]
 ```
 
@@ -2423,7 +3044,9 @@ Response:
 ```json
 {
   "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "Addrs": []
+  "Addrs": [
+    "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
+  ]
 }
 ```
 
@@ -2446,7 +3069,9 @@ Response:
 ```json
 {
   "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "Addrs": []
+  "Addrs": [
+    "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
+  ]
 }
 ```
 
@@ -2488,7 +3113,12 @@ Perms: admin
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
+]
+```
 
 ### NetworkGetPeerID
 
@@ -2516,7 +3146,19 @@ Inputs:
 Response:
 ```json
 {
-  "Peers": null
+  "Peers": [
+    {
+      "Addr": "string value",
+      "Peer": "string value",
+      "Latency": "string value",
+      "Muxer": "string value",
+      "Streams": [
+        {
+          "Protocol": "string value"
+        }
+      ]
+    }
+  ]
 }
 ```
 
@@ -2656,7 +3298,12 @@ Perms: read
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  "t01234"
+]
+```
 
 ### PaychNewPayment
 
@@ -2668,7 +3315,19 @@ Inputs:
 [
   "t01234",
   "t01234",
-  null
+  [
+    {
+      "Amount": "0",
+      "TimeLockMin": 10101,
+      "TimeLockMax": 10101,
+      "MinSettle": 10101,
+      "Extra": {
+        "Actor": "t01234",
+        "Method": 1,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      }
+    }
+  ]
 ]
 ```
 
@@ -2679,7 +3338,33 @@ Response:
   "WaitSentinel": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "Vouchers": null
+  "Vouchers": [
+    {
+      "ChannelAddr": "t01234",
+      "TimeLockMin": 10101,
+      "TimeLockMax": 10101,
+      "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+      "Extra": {
+        "Actor": "t01234",
+        "Method": 1,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      },
+      "Lane": 42,
+      "Nonce": 42,
+      "Amount": "0",
+      "MinSettleHeight": 10101,
+      "Merges": [
+        {
+          "Lane": 42,
+          "Nonce": 42
+        }
+      ],
+      "Signature": {
+        "Type": 2,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      }
+    }
+  ]
 }
 ```
 
@@ -2745,7 +3430,12 @@ Inputs:
     "Nonce": 42,
     "Amount": "0",
     "MinSettleHeight": 10101,
-    "Merges": null,
+    "Merges": [
+      {
+        "Lane": 42,
+        "Nonce": 42
+      }
+    ],
     "Signature": {
       "Type": 2,
       "Data": "Ynl0ZSBhcnJheQ=="
@@ -2781,7 +3471,12 @@ Inputs:
     "Nonce": 42,
     "Amount": "0",
     "MinSettleHeight": 10101,
-    "Merges": null,
+    "Merges": [
+      {
+        "Lane": 42,
+        "Nonce": 42
+      }
+    ],
     "Signature": {
       "Type": 2,
       "Data": "Ynl0ZSBhcnJheQ=="
@@ -2817,7 +3512,12 @@ Inputs:
     "Nonce": 42,
     "Amount": "0",
     "MinSettleHeight": 10101,
-    "Merges": null,
+    "Merges": [
+      {
+        "Lane": 42,
+        "Nonce": 42
+      }
+    ],
     "Signature": {
       "Type": 2,
       "Data": "Ynl0ZSBhcnJheQ=="
@@ -2859,7 +3559,12 @@ Response:
     "Nonce": 42,
     "Amount": "0",
     "MinSettleHeight": 10101,
-    "Merges": null,
+    "Merges": [
+      {
+        "Lane": 42,
+        "Nonce": 42
+      }
+    ],
     "Signature": {
       "Type": 2,
       "Data": "Ynl0ZSBhcnJheQ=="
@@ -2881,7 +3586,36 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "ChannelAddr": "t01234",
+    "TimeLockMin": 10101,
+    "TimeLockMax": 10101,
+    "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+    "Extra": {
+      "Actor": "t01234",
+      "Method": 1,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    },
+    "Lane": 42,
+    "Nonce": 42,
+    "Amount": "0",
+    "MinSettleHeight": 10101,
+    "Merges": [
+      {
+        "Lane": 42,
+        "Nonce": 42
+      }
+    ],
+    "Signature": {
+      "Type": 2,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    }
+  }
+]
+```
 
 ### PaychVoucherSubmit
 
@@ -2906,7 +3640,12 @@ Inputs:
     "Nonce": 42,
     "Amount": "0",
     "MinSettleHeight": 10101,
-    "Merges": null,
+    "Merges": [
+      {
+        "Lane": 42,
+        "Nonce": 42
+      }
+    ],
     "Signature": {
       "Type": 2,
       "Data": "Ynl0ZSBhcnJheQ=="
@@ -2939,7 +3678,12 @@ Response:
 {
   "Network": "string value",
   "BlockTime": 60000000000,
-  "SupportedSectors": null
+  "SupportedSectors": [
+    {
+      "Size": 34359738368,
+      "MaxPieceSize": 1024
+    }
+  ]
 }
 ```
 
@@ -3116,8 +3860,73 @@ Response:
     },
     "Error": "string value",
     "Duration": 60000000000,
-    "GasCharges": null,
-    "Subcalls": null
+    "GasCharges": [
+      {
+        "Name": "string value",
+        "loc": [
+          {
+            "File": "string value",
+            "Line": 123,
+            "Function": "string value"
+          }
+        ],
+        "tg": 9,
+        "cg": 9,
+        "sg": 9,
+        "vtg": 9,
+        "vcg": 9,
+        "vsg": 9,
+        "tt": 60000000000,
+        "ex": {}
+      }
+    ],
+    "Subcalls": [
+      {
+        "Msg": {
+          "CID": {
+            "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+          },
+          "Version": 42,
+          "To": "t01234",
+          "From": "t01234",
+          "Nonce": 42,
+          "Value": "0",
+          "GasLimit": 9,
+          "GasFeeCap": "0",
+          "GasPremium": "0",
+          "Method": 1,
+          "Params": "Ynl0ZSBhcnJheQ=="
+        },
+        "MsgRct": {
+          "ExitCode": 0,
+          "Return": "Ynl0ZSBhcnJheQ==",
+          "GasUsed": 9
+        },
+        "Error": "string value",
+        "Duration": 60000000000,
+        "GasCharges": [
+          {
+            "Name": "string value",
+            "loc": [
+              {
+                "File": "string value",
+                "Line": 123,
+                "Function": "string value"
+              }
+            ],
+            "tg": 9,
+            "cg": 9,
+            "sg": 9,
+            "vtg": 9,
+            "vcg": 9,
+            "vsg": 9,
+            "tt": 60000000000,
+            "ex": {}
+          }
+        ],
+        "Subcalls": null
+      }
+    ]
   },
   "Error": "string value",
   "Duration": 60000000000
@@ -3230,7 +4039,7 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response: `"Bw=="`
 
 ### StateGetRandomnessFromTickets
 
@@ -3254,7 +4063,7 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response: `"Bw=="`
 
 ### StateListActors
 
@@ -3275,7 +4084,12 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  "t01234"
+]
+```
 
 ### StateListMiners
 
@@ -3296,7 +4110,12 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  "t01234"
+]
+```
 
 ### StateLookupID
 
@@ -3490,7 +4309,29 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "SectorNumber": 9,
+    "SealProof": 8,
+    "SealedCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "DealIDs": [
+      5432
+    ],
+    "Activation": 10101,
+    "Expiration": 10101,
+    "DealWeight": "0",
+    "VerifiedDealWeight": "0",
+    "InitialPledge": "0",
+    "ExpectedDayReward": "0",
+    "ExpectedStoragePledge": "0",
+    "SectorKeyCID": null
+  }
+]
+```
 
 ### StateMinerAvailableBalance
 
@@ -3534,7 +4375,18 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "PostSubmissions": [
+      5,
+      1
+    ],
+    "DisputableProofCount": 42
+  }
+]
+```
 
 ### StateMinerFaults
 
@@ -3590,10 +4442,14 @@ Response:
   "Owner": "t01234",
   "Worker": "t01234",
   "NewWorker": "t01234",
-  "ControlAddresses": null,
+  "ControlAddresses": [
+    "t01234"
+  ],
   "WorkerChangeEpoch": 10101,
   "PeerId": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "Multiaddrs": null,
+  "Multiaddrs": [
+    "Ynl0ZSBhcnJheQ=="
+  ],
   "WindowPoStProofType": 8,
   "SectorSize": 34359738368,
   "WindowPoStPartitionSectors": 42,
@@ -3617,7 +4473,9 @@ Inputs:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "SealRandEpoch": 10101,
-    "DealIDs": null,
+    "DealIDs": [
+      5432
+    ],
     "Expiration": 10101,
     "ReplaceCapacity": true,
     "ReplaceSectorDeadline": 42,
@@ -3658,7 +4516,33 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "AllSectors": [
+      5,
+      1
+    ],
+    "FaultySectors": [
+      5,
+      1
+    ],
+    "RecoveringSectors": [
+      5,
+      1
+    ],
+    "LiveSectors": [
+      5,
+      1
+    ],
+    "ActiveSectors": [
+      5,
+      1
+    ]
+  }
+]
+```
 
 ### StateMinerPower
 
@@ -3711,7 +4595,9 @@ Inputs:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "SealRandEpoch": 10101,
-    "DealIDs": null,
+    "DealIDs": [
+      5432
+    ],
     "Expiration": 10101,
     "ReplaceCapacity": true,
     "ReplaceSectorDeadline": 42,
@@ -3894,7 +4780,29 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "SectorNumber": 9,
+    "SealProof": 8,
+    "SealedCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "DealIDs": [
+      5432
+    ],
+    "Activation": 10101,
+    "Expiration": 10101,
+    "DealWeight": "0",
+    "VerifiedDealWeight": "0",
+    "InitialPledge": "0",
+    "ExpectedDayReward": "0",
+    "ExpectedStoragePledge": "0",
+    "SectorKeyCID": null
+  }
+]
+```
 
 ### StateMinerWorkerAddress
 
@@ -4054,7 +4962,9 @@ Response:
   "SealedCID": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "DealIDs": null,
+  "DealIDs": [
+    5432
+  ],
   "Activation": 10101,
   "Expiration": 10101,
   "DealWeight": "0",
@@ -4126,7 +5036,9 @@ Response:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "SealRandEpoch": 10101,
-    "DealIDs": null,
+    "DealIDs": [
+      5432
+    ],
     "Expiration": 10101,
     "ReplaceCapacity": true,
     "ReplaceSectorDeadline": 42,
@@ -4290,7 +5202,26 @@ Inputs: `null`
 Response:
 ```json
 {
-  "ActiveSyncs": null,
+  "ActiveSyncs": [
+    {
+      "WorkerID": 42,
+      "Base": {
+        "Cids": null,
+        "Blocks": null,
+        "Height": 0
+      },
+      "Target": {
+        "Cids": null,
+        "Blocks": null,
+        "Height": 0
+      },
+      "Stage": 1,
+      "Height": 10101,
+      "Start": "0001-01-01T00:00:00Z",
+      "End": "0001-01-01T00:00:00Z",
+      "Message": "string value"
+    }
+  ],
   "VMApplied": 42
 }
 ```
@@ -4307,15 +5238,29 @@ Inputs:
     "Header": {
       "Miner": "t01234",
       "Ticket": {
-        "VRFProof": null
+        "VRFProof": "Bw=="
       },
       "ElectionProof": {
         "WinCount": 9,
-        "VRFProof": null
+        "VRFProof": "Bw=="
       },
-      "BeaconEntries": null,
-      "WinPoStProof": null,
-      "Parents": null,
+      "BeaconEntries": [
+        {
+          "Round": 42,
+          "Data": "Ynl0ZSBhcnJheQ=="
+        }
+      ],
+      "WinPoStProof": [
+        {
+          "PoStProof": 8,
+          "ProofBytes": "Ynl0ZSBhcnJheQ=="
+        }
+      ],
+      "Parents": [
+        {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        }
+      ],
       "ParentWeight": "0",
       "Height": 10101,
       "ParentStateRoot": {
@@ -4339,8 +5284,16 @@ Inputs:
       "ForkSignaling": 42,
       "ParentBaseFee": "0"
     },
-    "BlsMessages": null,
-    "SecpkMessages": null
+    "BlsMessages": [
+      {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    ],
+    "SecpkMessages": [
+      {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    ]
   }
 ]
 ```
@@ -4360,8 +5313,56 @@ Inputs: `null`
 Response:
 ```json
 {
-  "History": null,
-  "Buckets": null
+  "History": [
+    {
+      "State": 1,
+      "Base": {
+        "Cids": null,
+        "Blocks": null,
+        "Height": 0
+      },
+      "Current": {
+        "Cids": null,
+        "Blocks": null,
+        "Height": 0
+      },
+      "Start": "0001-01-01T00:00:00Z",
+      "End": "0001-01-01T00:00:00Z",
+      "Err": {},
+      "Source": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+      "Sender": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+      "Head": {
+        "Cids": null,
+        "Blocks": null,
+        "Height": 0
+      }
+    }
+  ],
+  "Buckets": [
+    {
+      "State": 1,
+      "Base": {
+        "Cids": null,
+        "Blocks": null,
+        "Height": 0
+      },
+      "Current": {
+        "Cids": null,
+        "Blocks": null,
+        "Height": 0
+      },
+      "Start": "0001-01-01T00:00:00Z",
+      "End": "0001-01-01T00:00:00Z",
+      "Err": {},
+      "Source": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+      "Sender": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+      "Head": {
+        "Cids": null,
+        "Blocks": null,
+        "Height": 0
+      }
+    }
+  ]
 }
 ```
 
@@ -4413,7 +5414,12 @@ Perms: admin
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  "t01234"
+]
+```
 
 ### WalletBalance
 
