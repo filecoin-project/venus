@@ -131,7 +131,6 @@ require (
 	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20210927094055-39ccf1dd6fa6
-	golang.org/x/tools v0.1.1 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 	gorm.io/driver/mysql v1.1.1
