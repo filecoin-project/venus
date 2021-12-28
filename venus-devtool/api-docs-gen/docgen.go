@@ -262,7 +262,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 	switch t.Kind() {
 	case reflect.Slice:
 		out := reflect.New(t).Elem()
-		reflect.Append(out, reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
+		out = reflect.Append(out, reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
 		return out.Interface()
 	case reflect.Chan:
 		return ExampleValue(method, t.Elem(), nil)
@@ -277,7 +277,6 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 			out.Index(i).Set(reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
 		}
 		return out.Interface()
-
 	case reflect.Ptr:
 		if t.Elem().Kind() == reflect.Struct {
 			es := exampleStruct(method, t.Elem(), t)
@@ -291,7 +290,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 		return struct{}{}
 	}
 
-	fmt.Fprintf(os.Stderr, "Warnning: No example value for type: %s (method '%s')\n", t, method)
+	_, _ = fmt.Fprintf(os.Stderr, "Warnning: No example value for type: %s (method '%s')\n", t, method)
 	return nil
 }
 

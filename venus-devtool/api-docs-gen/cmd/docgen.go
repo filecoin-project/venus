@@ -44,6 +44,7 @@ func main() {
 
 		outv := docgen.ExampleValue(m.Name, ft.Out(0), nil)
 		if outv == nil {
+			_, _ = fmt.Fprintf(os.Stderr, "ExampleValue for %s get nil\n", ft.Out(0).String())
 			continue
 		}
 
