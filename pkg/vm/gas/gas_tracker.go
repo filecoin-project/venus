@@ -43,7 +43,7 @@ func (t *GasTracker) Charge(gas GasCharge, msg string, args ...interface{}) {
 }
 
 // EnableGasTracing, if true, outputs gas tracing in execution traces.
-var EnableGasTracing = os.Getenv("LOTUS_VM_ENABLE_GAS_TRACING_VERY_SLOW") == "1"
+var EnableGasTracing = os.Getenv("VENUS_VM_ENABLE_GAS_TRACING_VERY_SLOW") == "1"
 
 // TryCharge charges `amount` or `RemainingGas()``, whichever is smaller.
 //
