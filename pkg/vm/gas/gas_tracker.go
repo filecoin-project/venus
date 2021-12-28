@@ -2,6 +2,7 @@ package gas
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -41,45 +42,51 @@ func (t *GasTracker) Charge(gas GasCharge, msg string, args ...interface{}) {
 	}
 }
 
+// EnableGasTracing, if true, outputs gas tracing in execution traces.
+var EnableGasTracing = os.Getenv("LOTUS_VM_ENABLE_GAS_TRACING_VERY_SLOW") == "1"
+
 // TryCharge charges `amount` or `RemainingGas()``, whichever is smaller.
 //
 // Returns `True` if the there was enough gas To pay for `amount`.
 func (t *GasTracker) TryCharge(gasCharge GasCharge) bool {
 	toUse := gasCharge.Total()
-	var callers [10]uintptr
-	cout := 0 //gruntime.Callers(2+skip, callers[:])
+	//code for https://github.com/filecoin-project/venus/issues/4610
+	if EnableGasTracing {
+		var callers [10]uintptr
+		cout := 0 //gruntime.Callers(2+skip, callers[:])
 
-	now := time.Now()
-	if t.LastGasCharge != nil {
-		t.LastGasCharge.TimeTaken = now.Sub(t.LastGasChargeTime)
+		now := time.Now()
+		if t.LastGasCharge != nil {
+			t.LastGasCharge.TimeTaken = now.Sub(t.LastGasChargeTime)
+		}
+
+		gasTrace := types2.GasTrace{
+			Name:  gasCharge.Name,
+			Extra: gasCharge.Extra,
+
+			TotalGas:   toUse,
+			ComputeGas: gasCharge.ComputeGas,
+			StorageGas: gasCharge.StorageGas,
+
+			//TotalVirtualGas:   gasCharge.VirtualCompute*GasComputeMulti + gasCharge.VirtualStorage*GasStorageMulti,
+			TotalVirtualGas:   gasCharge.VirtualCompute + gasCharge.VirtualStorage,
+			VirtualComputeGas: gasCharge.VirtualCompute,
+			VirtualStorageGas: gasCharge.VirtualStorage,
+
+			Callers: callers[:cout],
+		}
+
+		if gasTrace.VirtualStorageGas == 0 {
+			gasTrace.VirtualStorageGas = gasTrace.StorageGas
+		}
+		if gasTrace.VirtualComputeGas == 0 {
+			gasTrace.VirtualComputeGas = gasTrace.ComputeGas
+		}
+
+		t.ExecutionTrace.GasCharges = append(t.ExecutionTrace.GasCharges, &gasTrace)
+		t.LastGasChargeTime = now
+		t.LastGasCharge = &gasTrace
 	}
-
-	gasTrace := types2.GasTrace{
-		Name:  gasCharge.Name,
-		Extra: gasCharge.Extra,
-
-		TotalGas:   toUse,
-		ComputeGas: gasCharge.ComputeGas,
-		StorageGas: gasCharge.StorageGas,
-
-		//TotalVirtualGas:   gasCharge.VirtualCompute*GasComputeMulti + gasCharge.VirtualStorage*GasStorageMulti,
-		TotalVirtualGas:   gasCharge.VirtualCompute + gasCharge.VirtualStorage,
-		VirtualComputeGas: gasCharge.VirtualCompute,
-		VirtualStorageGas: gasCharge.VirtualStorage,
-
-		Callers: callers[:cout],
-	}
-
-	if gasTrace.VirtualStorageGas == 0 {
-		gasTrace.VirtualStorageGas = gasTrace.StorageGas
-	}
-	if gasTrace.VirtualComputeGas == 0 {
-		gasTrace.VirtualComputeGas = gasTrace.ComputeGas
-	}
-
-	t.ExecutionTrace.GasCharges = append(t.ExecutionTrace.GasCharges, &gasTrace)
-	t.LastGasChargeTime = now
-	t.LastGasCharge = &gasTrace
 
 	// overflow safe
 	if t.GasUsed > t.GasAvailable-toUse {
