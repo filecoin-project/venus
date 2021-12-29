@@ -7,6 +7,9 @@ import (
 	"io"
 	mrand "math/rand"
 
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
+
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
@@ -97,7 +100,7 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 		SysCallsImpl:        syscallImpl,
 		Fork:                chainFork,
 	}
-	vm, err := vm.NewVM(vmOption)
+	vm, err := vm.NewVM(context.Background(), vmOption)
 	if err != nil {
 		panic(xerrors.Errorf("create state error, should never come here"))
 	}

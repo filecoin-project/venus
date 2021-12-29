@@ -76,7 +76,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 		Fork:                s.fork,
 	}
 
-	vmi, err := vm.NewVM(vmOption)
+	vmi, err := vm.NewVM(ctx, vmOption)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +208,7 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 		SysCallsImpl:        s.syscallsImpl,
 	}
 
-	v, err := vm.NewVM(vmOption)
+	v, err := vm.NewVM(ctx, vmOption)
 	if err != nil {
 		return nil, err
 	}
