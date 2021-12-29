@@ -16,68 +16,55 @@ type IPaychan interface {
 	// @from: the payment channel sender
 	// @to: the payment channel recipient
 	// @amt: the deposits funds in the payment channel
-	// Rule[perm:sign]
-	PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*paych.ChannelInfo, error)
+	PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*paych.ChannelInfo, error) //perm:sign
 	// PaychAvailableFunds get the status of an outbound payment channel
 	// @pch: payment channel address
-	// Rule[perm:sign]
-	PaychAvailableFunds(ctx context.Context, ch address.Address) (*chain2.ChannelAvailableFunds, error)
+	PaychAvailableFunds(ctx context.Context, ch address.Address) (*chain2.ChannelAvailableFunds, error) //perm:sign
 	// PaychAvailableFundsByFromTo  get the status of an outbound payment channel
 	// @from: the payment channel sender
 	// @to: he payment channel recipient
-	// Rule[perm:sign]
-	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*chain2.ChannelAvailableFunds, error)
+	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*chain2.ChannelAvailableFunds, error) //perm:sign
 	// PaychGetWaitReady waits until the create channel / add funds message with the sentinel
 	// @sentinel: given message CID arrives.
 	// @ch: the returned channel address can safely be used against the Manager methods.
-	// Rule[perm:sign]
-	PaychGetWaitReady(ctx context.Context, sentinel cid.Cid) (address.Address, error)
+	PaychGetWaitReady(ctx context.Context, sentinel cid.Cid) (address.Address, error) //perm:sign
 	// PaychAllocateLane Allocate late creates a lane within a payment channel so that calls to
 	// CreatePaymentVoucher will automatically make vouchers only for the difference in total
-	// Rule[perm:sign]
-	PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error)
+	PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error) //perm:sign
 	// PaychNewPayment aggregate vouchers into a new lane
 	// @from: the payment channel sender
 	// @to: the payment channel recipient
 	// @vouchers: the outstanding (non-redeemed) vouchers
-	// Rule[perm:sign]
-	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []paych.VoucherSpec) (*paych.PaymentInfo, error)
+	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []paych.VoucherSpec) (*paych.PaymentInfo, error) //perm:sign
 	// PaychList list the addresses of all channels that have been created
-	// Rule[perm:read]
-	PaychList(ctx context.Context) ([]address.Address, error)
+	PaychList(ctx context.Context) ([]address.Address, error) //perm:read
 	// PaychStatus get the payment channel status
 	// @pch: payment channel address
-	// Rule[perm:read]
-	PaychStatus(ctx context.Context, pch address.Address) (*paych.Status, error)
+	PaychStatus(ctx context.Context, pch address.Address) (*paych.Status, error) //perm:read
 	// PaychSettle update payment channel status to settle
 	// After a settlement period (currently 12 hours) either party to the payment channel can call collect on chain
 	// @pch: payment channel address
-	// Rule[perm:sign]
-	PaychSettle(ctx context.Context, addr address.Address) (cid.Cid, error)
+	PaychSettle(ctx context.Context, addr address.Address) (cid.Cid, error) //perm:sign
 	// PaychCollect update payment channel status to collect
 	// Collect sends the value of submitted vouchers to the channel recipient (the provider),
 	// and refunds the remaining channel balance to the channel creator (the client).
 	// @pch: payment channel address
-	// Rule[perm:sign]
-	PaychCollect(ctx context.Context, addr address.Address) (cid.Cid, error)
+	PaychCollect(ctx context.Context, addr address.Address) (cid.Cid, error) //perm:sign
 
 	// PaychVoucherCheckValid checks if the given voucher is valid (is or could become spendable at some point).
 	// If the channel is not in the store, fetches the channel from state (and checks that
 	// the channel To address is owned by the wallet).
 	// @pch: payment channel address
 	// @sv: voucher
-	// Rule[perm:read]
-	PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) error
+	PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) error //perm:read
 	// PaychVoucherCheckSpendable checks if the given voucher is currently spendable
 	// @pch: payment channel address
 	// @sv: voucher
-	// Rule[perm:read]
-	PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error)
+	PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) //perm:read
 	// PaychVoucherAdd adds a voucher for an inbound channel.
 	// If the channel is not in the store, fetches the channel from state (and checks that
 	// the channel To address is owned by the wallet).
-	// Rule[perm:write]
-	PaychVoucherAdd(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta big.Int) (big.Int, error)
+	PaychVoucherAdd(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta big.Int) (big.Int, error) //perm:write
 	// PaychVoucherCreate creates a new signed voucher on the given payment channel
 	// with the given lane and amount.  The value passed in is exactly the value
 	// that will be used to create the voucher, so if previous vouchers exist, the
@@ -85,15 +72,12 @@ type IPaychan interface {
 	// the two.
 	// If there are insufficient funds in the channel to create the voucher,
 	// returns a nil voucher and the shortfall.
-	// Rule[perm:sign]
-	PaychVoucherCreate(ctx context.Context, pch address.Address, amt big.Int, lane uint64) (*paych.VoucherCreateResult, error)
+	PaychVoucherCreate(ctx context.Context, pch address.Address, amt big.Int, lane uint64) (*paych.VoucherCreateResult, error) //perm:sign
 	// PaychVoucherList list vouchers in payment channel
 	// @pch: payment channel address
-	// Rule[perm:write]
-	PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error)
+	PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) //perm:write
 	// PaychVoucherSubmit Submit voucher to chain to update payment channel state
 	// @pch: payment channel address
 	// @sv: voucher in payment channel
-	// Rule[perm:sign]
-	PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error)
+	PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) //perm:sign
 }

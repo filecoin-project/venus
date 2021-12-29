@@ -9,12 +9,8 @@ import (
 )
 
 type IBlockStore interface {
-	// Rule[perm:read]
-	ChainReadObj(ctx context.Context, ocid cid.Cid) ([]byte, error)
-	// Rule[perm:admin]
-	ChainDeleteObj(ctx context.Context, obj cid.Cid) error
-	// Rule[perm:read]
-	ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error)
-	// Rule[perm:read]
-	ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (chain2.ObjStat, error)
+	ChainReadObj(ctx context.Context, cid cid.Cid) ([]byte, error)                       //perm:read
+	ChainDeleteObj(ctx context.Context, obj cid.Cid) error                               //perm:admin
+	ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error)                          //perm:read
+	ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (chain2.ObjStat, error) //perm:read
 }

@@ -13,57 +13,32 @@ import (
 )
 
 type IMessagePool interface {
-	// Rule[perm:admin]
-	MpoolDeleteByAdress(ctx context.Context, addr address.Address) error
-	// Rule[perm:write]
-	MpoolPublishByAddr(context.Context, address.Address) error
-	// Rule[perm:write]
-	MpoolPublishMessage(ctx context.Context, smsg *chain.SignedMessage) error
-	// Rule[perm:write]
-	MpoolPush(ctx context.Context, smsg *chain.SignedMessage) (cid.Cid, error)
-	// Rule[perm:read]
-	MpoolGetConfig(context.Context) (*messagepool.MpoolConfig, error)
-	// Rule[perm:admin]
-	MpoolSetConfig(ctx context.Context, cfg *messagepool.MpoolConfig) error
-	// Rule[perm:read]
-	MpoolSelect(context.Context, chain.TipSetKey, float64) ([]*chain.SignedMessage, error)
-	// Rule[perm:read]
-	MpoolSelects(context.Context, chain.TipSetKey, []float64) ([][]*chain.SignedMessage, error)
-	// Rule[perm:read]
-	MpoolPending(ctx context.Context, tsk chain.TipSetKey) ([]*chain.SignedMessage, error)
-	// Rule[perm:write]
-	MpoolClear(ctx context.Context, local bool) error
-	// Rule[perm:write]
-	MpoolPushUntrusted(ctx context.Context, smsg *chain.SignedMessage) (cid.Cid, error)
-	// Rule[perm:sign]
-	MpoolPushMessage(ctx context.Context, msg *chain.Message, spec *chain2.MessageSendSpec) (*chain.SignedMessage, error)
-	// Rule[perm:write]
-	MpoolBatchPush(ctx context.Context, smsgs []*chain.SignedMessage) ([]cid.Cid, error)
-	// Rule[perm:write]
-	MpoolBatchPushUntrusted(ctx context.Context, smsgs []*chain.SignedMessage) ([]cid.Cid, error)
-	// Rule[perm:sign]
-	MpoolBatchPushMessage(ctx context.Context, msgs []*chain.Message, spec *chain2.MessageSendSpec) ([]*chain.SignedMessage, error)
-	// Rule[perm:read]
-	MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error)
-	// Rule[perm:read]
-	MpoolSub(ctx context.Context) (<-chan messagepool.MpoolUpdate, error)
-	// Rule[perm:read]
-	GasEstimateMessageGas(ctx context.Context, msg *chain.Message, spec *chain2.MessageSendSpec, tsk chain.TipSetKey) (*chain.Message, error)
-	// Rule[perm:read]
-	GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*chain2.EstimateMessage, fromNonce uint64, tsk chain.TipSetKey) ([]*chain2.EstimateResult, error)
-	// Rule[perm:read]
-	GasEstimateFeeCap(ctx context.Context, msg *chain.Message, maxqueueblks int64, tsk chain.TipSetKey) (big.Int, error)
-	// Rule[perm:read]
-	GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk chain.TipSetKey) (big.Int, error)
-	// Rule[perm:read]
-	GasEstimateGasLimit(ctx context.Context, msgIn *chain.Message, tsk chain.TipSetKey) (int64, error)
+	MpoolDeleteByAdress(ctx context.Context, addr address.Address) error                                                                                                 //perm:admin
+	MpoolPublishByAddr(context.Context, address.Address) error                                                                                                           //perm:write
+	MpoolPublishMessage(ctx context.Context, smsg *chain.SignedMessage) error                                                                                            //perm:write
+	MpoolPush(ctx context.Context, smsg *chain.SignedMessage) (cid.Cid, error)                                                                                           //perm:write
+	MpoolGetConfig(context.Context) (*messagepool.MpoolConfig, error)                                                                                                    //perm:read
+	MpoolSetConfig(ctx context.Context, cfg *messagepool.MpoolConfig) error                                                                                              //perm:admin
+	MpoolSelect(context.Context, chain.TipSetKey, float64) ([]*chain.SignedMessage, error)                                                                               //perm:read
+	MpoolSelects(context.Context, chain.TipSetKey, []float64) ([][]*chain.SignedMessage, error)                                                                          //perm:read
+	MpoolPending(ctx context.Context, tsk chain.TipSetKey) ([]*chain.SignedMessage, error)                                                                               //perm:read
+	MpoolClear(ctx context.Context, local bool) error                                                                                                                    //perm:write
+	MpoolPushUntrusted(ctx context.Context, smsg *chain.SignedMessage) (cid.Cid, error)                                                                                  //perm:write
+	MpoolPushMessage(ctx context.Context, msg *chain.Message, spec *chain2.MessageSendSpec) (*chain.SignedMessage, error)                                                //perm:sign
+	MpoolBatchPush(ctx context.Context, smsgs []*chain.SignedMessage) ([]cid.Cid, error)                                                                                 //perm:write
+	MpoolBatchPushUntrusted(ctx context.Context, smsgs []*chain.SignedMessage) ([]cid.Cid, error)                                                                        //perm:write
+	MpoolBatchPushMessage(ctx context.Context, msgs []*chain.Message, spec *chain2.MessageSendSpec) ([]*chain.SignedMessage, error)                                      //perm:sign
+	MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error)                                                                                             //perm:read
+	MpoolSub(ctx context.Context) (<-chan messagepool.MpoolUpdate, error)                                                                                                //perm:read
+	GasEstimateMessageGas(ctx context.Context, msg *chain.Message, spec *chain2.MessageSendSpec, tsk chain.TipSetKey) (*chain.Message, error)                            //perm:read
+	GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*chain2.EstimateMessage, fromNonce uint64, tsk chain.TipSetKey) ([]*chain2.EstimateResult, error) //perm:read
+	GasEstimateFeeCap(ctx context.Context, msg *chain.Message, maxqueueblks int64, tsk chain.TipSetKey) (big.Int, error)                                                 //perm:read
+	GasEstimateGasPremium(ctx context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk chain.TipSetKey) (big.Int, error)                         //perm:read
+	GasEstimateGasLimit(ctx context.Context, msgIn *chain.Message, tsk chain.TipSetKey) (int64, error)                                                                   //perm:read
 	// MpoolCheckMessages performs logical checks on a batch of messages
-	// Rule[perm:read]
-	MpoolCheckMessages(ctx context.Context, protos []*messagepool.MessagePrototype) ([][]messagepool.MessageCheckStatus, error)
+	MpoolCheckMessages(ctx context.Context, protos []*messagepool.MessagePrototype) ([][]messagepool.MessageCheckStatus, error) //perm:read
 	// MpoolCheckPendingMessages performs logical checks for all pending messages from a given address
-	// Rule[perm:read]
-	MpoolCheckPendingMessages(ctx context.Context, addr address.Address) ([][]messagepool.MessageCheckStatus, error)
+	MpoolCheckPendingMessages(ctx context.Context, addr address.Address) ([][]messagepool.MessageCheckStatus, error) //perm:read
 	// MpoolCheckReplaceMessages performs logical checks on pending messages with replacement
-	// Rule[perm:read]
-	MpoolCheckReplaceMessages(ctx context.Context, msg []*chain.Message) ([][]messagepool.MessageCheckStatus, error)
+	MpoolCheckReplaceMessages(ctx context.Context, msg []*chain.Message) ([][]messagepool.MessageCheckStatus, error) //perm:read
 }

@@ -29,7 +29,6 @@ import (
 type FullNodeStruct struct {
 	IBlockStoreStruct
 	IChainStruct
-	IDiscoveryStruct
 	IMarketStruct
 	IMiningStruct
 	IMessagePoolStruct
@@ -325,9 +324,6 @@ func (s *IChainInfoStruct) StateWaitMsgLimited(p0 context.Context, p1 cid.Cid, p
 
 func (s *IChainInfoStruct) VerifyEntry(p0 *chain.BeaconEntry, p1 *chain.BeaconEntry, p2 abi.ChainEpoch) bool {
 	return s.Internal.VerifyEntry(p0, p1, p2)
-}
-
-type IDiscoveryStruct struct {
 }
 
 type IJwtAuthAPIStruct struct {

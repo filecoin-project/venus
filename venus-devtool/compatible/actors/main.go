@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/urfave/cli/v2"
@@ -145,18 +146,35 @@ var replicaCmd = &cli.Command{
 			return fmt.Errorf("find chain/actors: %w", err)
 		}
 
+		reg := regexp.MustCompile(`v[0-9]+.go`)
+
 		files, err := listFilesInDir(srcDir, func(path string, d fs.DirEntry) bool {
 			if d.IsDir() {
 				return true
 			}
 
+			// need adt.go diff_adt.go
+			if strings.Contains(path, "adt.go") {
+				return false
+			}
+
+			// skip test file
 			if strings.HasSuffix(path, "test.go") {
 				return true
 			}
 
-			// diff.go diff_deadlines.go version.go params.go utils.go util.go
-			if !strings.Contains(path, "diff") && !strings.HasSuffix(path, "version.go") &&
-				!strings.HasSuffix(path, "params.go") && !strings.Contains(path, "util") {
+			if strings.HasSuffix(path, "main.go") || strings.Contains(path, "template") ||
+				strings.Contains(path, "message") {
+				return true
+			}
+
+			dir := filepath.Dir(path)
+			arr := strings.Split(dir, "/")
+			if strings.HasSuffix(path, fmt.Sprintf("%s.go", arr[len(arr)-1])) {
+				return true
+			}
+
+			if reg.MatchString(d.Name()) {
 				return true
 			}
 
