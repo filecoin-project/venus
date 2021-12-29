@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: adt/store.go
+
 package adt
 
 import (
