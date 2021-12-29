@@ -39,7 +39,6 @@ func IntegrationNet() *NetworkConf {
 				UpgradeChocolateHeight:     1231620,
 				UpgradeSnapDealsHeight:     999999999999,
 
-
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       343200,
 			},
