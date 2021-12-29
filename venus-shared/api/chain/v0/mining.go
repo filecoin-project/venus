@@ -11,8 +11,6 @@ import (
 )
 
 type IMining interface {
-	// Rule[perm:read]
-	MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk chain.TipSetKey) (*chain2.MiningBaseInfo, error)
-	// Rule[perm:write]
-	MinerCreateBlock(ctx context.Context, bt *chain2.BlockTemplate) (*chain.BlockMsg, error)
+	MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk chain.TipSetKey) (*chain2.MiningBaseInfo, error) //perm:read
+	MinerCreateBlock(ctx context.Context, bt *chain2.BlockTemplate) (*chain.BlockMsg, error)                                                //perm:write
 }

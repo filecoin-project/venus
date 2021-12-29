@@ -1,3 +1,5 @@
+// FETCHED FROM LOTUS: aerrors/error.go
+
 package aerrors
 
 import (
