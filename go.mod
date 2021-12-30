@@ -44,10 +44,10 @@ require (
 	github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506
 	github.com/filecoin-project/test-vectors/schema v0.0.5
 	github.com/filecoin-project/venus-auth v1.3.1-0.20210809053831-012d55d5f578
-	github.com/filecoin-project/venus/venus-shared v0.0.0-00010101000000-000000000000
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
 	github.com/go-errors/errors v1.0.1
 	github.com/go-kit/kit v0.10.0
+	github.com/golang/mock v1.4.4
 	github.com/golang/snappy v0.0.2-0.20190904063534-ff6b7dc882cf // indirect
 	github.com/golangci/gofmt v0.0.0-20190930125516-244bba706f1a
 	github.com/golangci/golangci-lint v1.39.0
@@ -144,7 +144,6 @@ replace (
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210731021807-68e5207079bc
 	github.com/filecoin-project/test-vectors => ./extern/test-vectors
 	github.com/filecoin-project/venus => ./
-	github.com/filecoin-project/venus/venus-shared => ./venus-shared
 	github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.39.0
 	github.com/ipfs/go-ipfs-cmds => github.com/ipfs-force-community/go-ipfs-cmds v0.6.1-0.20210521090123-4587df7fa0ab
 )
