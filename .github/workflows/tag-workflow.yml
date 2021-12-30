@@ -27,15 +27,17 @@ jobs:
           export commit=$(git rev-parse HEAD)
           export short=$(git rev-parse --short HEAD)
           export github_tag=${GITHUB_REF##*/}
+          export git_message=$(git rev-list --format=%s --max-count=1 HEAD | tail +2)
+          export repo_name=${GITHUB_REPOSITORY##*/}
           export branch=$(git symbolic-ref --short -q HEAD)
           export tag=$(git describe --tags $(git rev-list --tags --max-count=1))
-          export artifact_name=venus_$(git rev-parse --short HEAD).tar.gz
-          export godeye_method=pushTest
-          echo github_repository: $GITHUB_REPOSITORY
-          echo github_repository: ${{github.repository}}
+          export artifact_name=${repo_name}_$(git rev-parse --short HEAD).tar.gz
+          export pub_method=pushTest
           export job_url=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
-          if [[ "${{github.event_name}}" == "create" ]]&& [[ "$github_tag" =~ "v" ]]; then
-            export godeye_method=pushRelease
+          export oss_exists=0
+          export ftp_exists=0
+          if [[ "${{github.event_name}}" == "create" ]] && ([[ "$github_tag" =~ "v1." ]] || [[ "$github_tag" =~ "v2." ]]); then
+            export pub_method=pushRelease
           fi
           if [[ "$branch" == "" ]]; then
             export branch=$github_tag
@@ -43,30 +45,48 @@ jobs:
           if [[ "$tag" == "" ]]; then
             export tag=$github_tag
           fi
+          if [[ "${{secrets.OSS_KEY_ID}}" != "" && \
+            "${{secrets.OSS_KEY_SECRET}}" != "" && \
+            "${{secrets.OSS_ENDPOINT}}" != "" && \
+            "${{secrets.OSS_BUCKET}}" != "" ]]; then
+            export oss_exists=1
+          fi
+          if [[ "${{secrets.FTP_HOST}}" != "" ]]; then
+            export ftp_exists=1
+          fi
           echo "::set-output name=commit::$commit"
           echo "::set-output name=short::$short"
           echo "::set-output name=github_tag::$github_tag"
+          echo "::set-output name=git_message::$git_message"
+          echo "::set-output name=repo_name::$repo_name"
           echo "::set-output name=branch::$branch"
           echo "::set-output name=tag::$tag"
           echo "::set-output name=artifact_name::$artifact_name"
           echo "::set-output name=job_url::$job_url"
-          echo "::set-output name=godeye_method::$godeye_method"
+          echo "::set-output name=pub_method::$pub_method"
+          echo "::set-output name=oss_exists::$oss_exists"
+          echo "::set-output name=ftp_exists::$ftp_exists"
 
       - name: show environment
         run: |
           echo event = ${{github.event_name}}
+          echo github_repository: $GITHUB_REPOSITORY
           echo vars.commit = ${{steps.vars.outputs.commit}}
           echo vars.short_commit = ${{steps.vars.outputs.short}}
-          echo vars.github_tag =  ${{steps.vars.outputs.github_tag}}
+          echo vars.github_tag = ${{steps.vars.outputs.github_tag}}
+          echo vars.git_message = ${{steps.vars.outputs.git_message}}
+          echo vars.repo_name =  ${{steps.vars.outputs.repo_name}}
           echo vars.branch = ${{steps.vars.outputs.branch}}
           echo vars.tag = ${{steps.vars.outputs.tag}}
           echo vars.artifact_name = ${{steps.vars.outputs.artifact_name}}
-          echo vars.godeye_method = ${{steps.vars.outputs.godeye_method}}
+          echo vars.pub_method = ${{steps.vars.outputs.pub_method}}
           echo secrets.godeye_url = ${{ secrets.GODEYE_URL }}
-          echo vars.job_url = ${{steps.vars.outputs.job_url}}
+          echo vars.oss_exists = ${{steps.vars.outputs.oss_exists}}
+          echo vars.ftp_exists = ${{steps.vars.outputs.ftp_exists}}
           echo github.ref = ${{github.ref}}
           echo github.ref_name = ${{github.ref_name}}
-
+          echo vars.job_url = ${{steps.vars.outputs.job_url}}
+          echo ftp_url = ftp://${{secrets.FTP_HOST}}/${{steps.vars.outputs.repo_name}}/${{steps.vars.outputs.artifact_name}}
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
@@ -78,16 +98,13 @@ jobs:
           platform: x64
       - name: Setup Rust
         run: (sudo apt-get update && sudo apt-get install -y clang libssl-dev && which cargo && which rustc) || (curl https://sh.rustup.rs -sSf | sh -s -- -y)
-      - name: Setup make
-        run: sudo apt-get install make
       - name: install deps
-        run: sudo apt-get install mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y && sudo apt upgrade -y
+        run: sudo apt-get install make ncftp mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y && sudo apt upgrade -y
       - name: Build
         run: |
           sudo make deps
           sudo make
-          ./venus version
-          mkdir .release && mv ./venus ./release
+          mkdir ./release && mv ./venus ./release
 
       - name: Zip Release
         uses: TheDoctor0/zip-release@0.6.0
@@ -99,28 +116,43 @@ jobs:
       - name: release
         id: release
         uses: ncipollo/release-action@v1
-        if: ${{ github.event_name == 'create' && startsWith(steps.vars.outputs.github_tag, 'v')==true }}
+        if: ${{ steps.vars.outputs.pub_method=='pushRelease' }}
         with:
           artifacts: ${{steps.vars.outputs.artifact_name}}
           tag: ${{ steps.vars.outputs.github_tag }}
           commit: ${{ steps.vars.outputs.commit }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-#      - name: setup oss
-#        if: ${{ github.event_name == 'create' && startsWith(steps.vars.outputs.tag, 'test_') }}
-#        uses: manyuanrong/setup-ossutil@master
-#        with:
-#          endpoint: oss-cn-beijing.aliyuncs.com
-#          access-key-id: ${{ secrets.OSS_KEY_ID }}
-#          access-key-secret: ${{ secrets.OSS_KEY_SECRET }}
-#      - name: cp files to aliyun
-#        if: ${{ github.event_name == 'create' && startsWith(steps.vars.outputs.tag, 'test_') }}
-#        run: |
-#          ossutil cp ./${{steps.vars.outputs.artifact_name}}  oss://shanyue-blog/
-#          ossutil sign oss://urlof-artifacts --timeout 31104000
+      - name: upload ftp
+        id: uploadftp
+        if: ${{ steps.vars.outputs.ftp_exists == '1' }}
+        continue-on-error: true
+        run: |
+          ncftpput -m -R -v -u ${{secrets.FTP_USER}} -p ${{secrets.FTP_PWD}} ${{secrets.FTP_HOST}} ./${{steps.vars.outputs.repo_name}} ./${{steps.vars.outputs.artifact_name}}
+          echo "upload file: ${{steps.vars.outputs.artifact_name}} successfully!"
+
+      - name: setup oss
+        id: setuposs
+        if: ${{ steps.vars.outputs.oss_exists == '1' && steps.uploadftp.outcome != 'success' && steps.vars.outputs.pub_method == 'pushTest' }}
+        continue-on-error: true
+        uses: manyuanrong/setup-ossutil@master
+        with:
+          endpoint: ${{secrets.OSS_ENDPOINT}}
+          access-key-id: ${{ secrets.OSS_KEY_ID }}
+          access-key-secret: ${{ secrets.OSS_KEY_SECRET }}
+
+      - name: cp files to aliyun
+        id: cposs
+        if: ${{ steps.setuposs.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          ossutil cp ./${{steps.vars.outputs.artifact_name}} ${{secrets.OSS_BUCKET}}
+          export signed_url=`ossutil sign ${{secrets.OSS_BUCKET}}/${{steps.vars.outputs.artifact_name}} --timeout 31104000 | sed -n 1p`
+          echo '::set-output name=oss_signed_url::$(signed_url)'
 
       - name: upload artifacts
-        if: ${{ !(github.event_name == 'create' && startsWith(steps.vars.outputs.github_tag, 'v')==true) }}
+        if: ${{ steps.vars.outputs.pub_method == 'pushTest' && steps.uploadftp.outcome != 'success' && steps.cposs.outcome != 'success' }}
+        continue-on-error: true
         uses: actions/upload-artifact@v2
         with:
           name: ${{steps.vars.outputs.artifact_name}}
@@ -130,16 +162,21 @@ jobs:
       - name: push god-eye
         run: |
           export link=${{steps.vars.outputs.job_url}}
-          if [[ "${{steps.release.outputs.upload_url}}" != "" ]]; then
+          if [[ "${{ steps.release.outcome }}" == "success" ]]; then
             export link=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/${{steps.vars.outputs.github_tag}}/${{steps.vars.outputs.artifact_name}}
+          elif [[ "${{ steps.uploadftp.outcome }}" == "success" ]]; then
+            export link=ftp://${{secrets.FTP_HOST}}/${{steps.vars.outputs.repo_name}}/${{steps.vars.outputs.artifact_name}}
+          elif [[ "${{ steps.cposs.outcome }}" == "success" ]]; then
+            export link=${{steps.cposs.outputs.oss_signed_url}}
           fi
+          echo download target file : $link
           set +e
-          curl --max-time 20 -X PUT ${{secrets.GODEYE_URL}}/${{steps.vars.outputs.godeye_method}} \
+          curl --max-time 20 -X PUT ${{secrets.GODEYE_URL}}/${{steps.vars.outputs.pub_method}} \
                   --data-urlencode "type=1" \
                   --data-urlencode "commitId=${{steps.vars.outputs.commit}}" \
                   --data-urlencode "branch=${{steps.vars.outputs.branch}}" \
-                  --data-urlencode "programName=venus" \
+                  --data-urlencode "programName=${{steps.vars.outputs.repo_name}}" \
                   --data-urlencode "link=$link" \
-                  --data-urlencode "description=branch:${{steps.vars.outputs.branch}}, commit:${{steps.vars.outputs.short}}, tag:${{steps.vars.outputs.github_tag}}" \
+                  --data-urlencode "description=message:${{steps.vars.outputs.git_message}}, branch:${{steps.vars.outputs.branch}}, commit:${{steps.vars.outputs.short}}, tag:${{steps.vars.outputs.github_tag}}" \
                   --data-urlencode "version=${{steps.vars.outputs.short}}"
           set -e
