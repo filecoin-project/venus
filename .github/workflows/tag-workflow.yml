@@ -74,7 +74,7 @@ jobs:
           echo vars.commit = ${{steps.vars.outputs.commit}}
           echo vars.short_commit = ${{steps.vars.outputs.short}}
           echo vars.github_tag = ${{steps.vars.outputs.github_tag}}
-          echo vars.git_message = ${{steps.vars.outputs.git_message}}
+          echo vars.git_message = "${{steps.vars.outputs.git_message}}"
           echo vars.repo_name =  ${{steps.vars.outputs.repo_name}}
           echo vars.branch = ${{steps.vars.outputs.branch}}
           echo vars.tag = ${{steps.vars.outputs.tag}}
