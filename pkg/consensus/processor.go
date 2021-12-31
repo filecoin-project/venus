@@ -64,7 +64,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context,
 		parentEpoch = parent.Height()
 	}
 
-	v, err := vm.NewVM(vmOption)
+	v, err := vm.NewVM(ctx, vmOption)
 	if err != nil {
 		return cid.Undef, nil, err
 	}
@@ -78,7 +78,7 @@ func (p *DefaultProcessor) ProcessImplicitMessage(ctx context.Context, msg *type
 	span.AddAttributes(trace.StringAttribute("message", msg.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	v, err := vm.NewVM(vmOption)
+	v, err := vm.NewVM(ctx, vmOption)
 	if err != nil {
 		return nil, err
 	}

@@ -488,9 +488,13 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 		return nv
 	}
 
+	csc := func(context.Context, abi.ChainEpoch, tree.Tree) (abi.TokenAmount, error) {
+		return big.Zero(), nil
+	}
+
 	gasPriceSchedule := gas.NewPricesSchedule(para)
 	vmopt := vm.VmOption{
-		CircSupplyCalculator: nil,
+		CircSupplyCalculator: csc,
 		NtwkVersionGetter:    genesisNetworkVersion,
 		Rnd:                  &fakeRand{},
 		BaseFee:              big.NewInt(0),
@@ -501,7 +505,7 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 		GasPriceSchedule:     gasPriceSchedule,
 	}
 
-	vm, err := vm.NewVM(vmopt)
+	vm, err := vm.NewVM(ctx, vmopt)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
 	}

@@ -54,6 +54,8 @@ type VM struct {
 	debugger *VMDebugMsg
 	vmOption VmOption
 
+	baseCircSupply abi.TokenAmount
+
 	State tree.Tree
 }
 
@@ -91,7 +93,7 @@ var _ VMInterpreter = (*VM)(nil)
 
 // NewVM creates a new runtime for executing messages.
 // Dragons: change To take a root and the store, build the tree internally
-func NewVM(actorImpls ActorImplLookup, vmOption VmOption) (*VM, error) {
+func NewVM(ctx context.Context, actorImpls ActorImplLookup, vmOption VmOption) (*VM, error) {
 	buf := blockstoreutil.NewBufferedBstore(vmOption.Bsstore)
 	cst := cbor.NewCborStore(buf)
 	var st tree.Tree
@@ -109,13 +111,19 @@ func NewVM(actorImpls ActorImplLookup, vmOption VmOption) (*VM, error) {
 		}
 	}
 
+	baseCirc, err := vmOption.CircSupplyCalculator(ctx, vmOption.Epoch, st)
+	if err != nil {
+		return nil, err
+	}
+
 	return &VM{
-		context:    context.Background(),
-		actorImpls: actorImpls,
-		bsstore:    buf,
-		store:      cst,
-		State:      st,
-		vmOption:   vmOption,
+		context:        context.Background(),
+		actorImpls:     actorImpls,
+		bsstore:        buf,
+		store:          cst,
+		State:          st,
+		vmOption:       vmOption,
+		baseCircSupply: baseCirc,
 		// loaded during execution
 		// currentEpoch: ..,
 	}, nil
@@ -762,6 +770,15 @@ func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *types.Actor
 
 func (vm *VM) StateTree() tree.Tree {
 	return vm.State
+}
+
+func (vm *VM) GetCircSupply(ctx context.Context) (abi.TokenAmount, error) {
+	// Before v15, this was recalculated on each invocation as the state tree was mutated
+	if vm.vmOption.NtwkVersionGetter(ctx, vm.vmOption.Epoch) <= network.Version14 {
+		return vm.vmOption.CircSupplyCalculator(ctx, vm.vmOption.Epoch, vm.State)
+	}
+
+	return vm.baseCircSupply, nil
 }
 
 func deductFunds(act *types.Actor, amt abi.TokenAmount) error {
