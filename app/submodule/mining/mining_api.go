@@ -221,7 +221,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *apitypes.B
 			}
 
 			blsMsgCids = append(blsMsgCids, c)
-		} else {
+		} else if msg.Signature.Type == crypto.SigTypeSecp256k1 {
 			c, err := messageStore.StoreMessage(msg)
 			if err != nil {
 				return nil, err
@@ -229,7 +229,8 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *apitypes.B
 
 			secpkMsgCids = append(secpkMsgCids, c)
 			secpkMessages = append(secpkMessages, msg)
-
+		} else {
+			return nil, xerrors.Errorf("unknown sig type: %d", msg.Signature.Type)
 		}
 	}
 	store := miningAPI.Ming.BlockStore.Blockstore

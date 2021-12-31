@@ -107,11 +107,11 @@ func (tsk TipSetKey) IsEmpty() bool {
 // We can assume that the relative order of members of one key is
 // maintained in the other since we assume that all ids are sorted
 // by corresponding newBlock ticket value.
-func (tipsetKey TipSetKey) ContainsAll(other TipSetKey) bool {
+func (tsk TipSetKey) ContainsAll(other TipSetKey) bool {
 	// Since we assume the ids must have the same relative sorting we can
 	// perform one pass over this set, advancing the other index whenever the
 	// values match.
-	cids := tipsetKey.Cids()
+	cids := tsk.Cids()
 	otherCids := other.Cids()
 	otherIdx := 0
 	for i := 0; i < len(cids) && otherIdx < len(otherCids); i++ {
@@ -124,9 +124,9 @@ func (tipsetKey TipSetKey) ContainsAll(other TipSetKey) bool {
 }
 
 // Has checks whether the set contains `id`.
-func (tipsetKey TipSetKey) Has(id cid.Cid) bool {
+func (tsk TipSetKey) Has(id cid.Cid) bool {
 	// Find index of the first CID not less than id.
-	for _, cid := range tipsetKey.Cids() {
+	for _, cid := range tsk.Cids() {
 		if cid == id {
 			return true
 		}
@@ -135,11 +135,11 @@ func (tipsetKey TipSetKey) Has(id cid.Cid) bool {
 }
 
 // Equals checks whether the set contains exactly the same CIDs as another.
-func (tipsetKey TipSetKey) Equals(other TipSetKey) bool {
-	return tipsetKey.value == other.value
+func (tsk TipSetKey) Equals(other TipSetKey) bool {
+	return tsk.value == other.value
 }
 
-func (tipsetKey *TipSetKey) UnmarshalCBOR(r io.Reader) error {
+func (tsk *TipSetKey) UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)
 	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
@@ -165,13 +165,13 @@ func (tipsetKey *TipSetKey) UnmarshalCBOR(r io.Reader) error {
 			}
 			cids[i] = c
 		}
-		tipsetKey.value = string(encodeKey(cids))
+		tsk.value = string(encodeKey(cids))
 	}
 	return nil
 }
 
-func (tipsetKey TipSetKey) MarshalCBOR(w io.Writer) error {
-	cids := tipsetKey.Cids()
+func (tsk TipSetKey) MarshalCBOR(w io.Writer) error {
+	cids := tsk.Cids()
 	if len(cids) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.Parents was too long")
 	}
