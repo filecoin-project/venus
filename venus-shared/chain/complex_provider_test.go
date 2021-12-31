@@ -1,9 +1,10 @@
 package chain
 
 import (
+	"testing"
+
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestTipsetProvider(t *testing.T) {
@@ -25,10 +26,10 @@ func TestBlockProvider(t *testing.T) {
 }
 
 func TestComplexProvider(t *testing.T) {
-	tests := map[string]func(*testing.T) {
-		"Tipset":TestTipsetProvider,
-		"Message":TestMessageProvider,
-		"Block":TestBlockProvider,
+	tests := map[string]func(*testing.T){
+		"Tipset":  TestTipsetProvider,
+		"Message": TestMessageProvider,
+		"Block":   TestBlockProvider,
 	}
 	for testName, f := range tests {
 		t.Run(testName, f)

@@ -587,7 +587,7 @@ func TestMessageSelectionTrimmingMsgsBasic(t *testing.T) {
 	}
 
 	block := tma.nextBlock()
-	ts, err := types.NewTipSet(block)
+	ts, err := types.NewTipSet([]*types.BlockHeader{block})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -642,7 +642,7 @@ func TestMessageSelectionTrimmingMsgsTwoSendersBasic(t *testing.T) {
 	}
 
 	block := tma.nextBlock()
-	ts, err := types.NewTipSet(block)
+	ts, err := types.NewTipSet([]*types.BlockHeader{block})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -707,7 +707,7 @@ func TestMessageSelectionTrimmingMsgsTwoSendersAdvanced(t *testing.T) {
 	}
 
 	block := tma.nextBlock()
-	ts, err := types.NewTipSet(block)
+	ts, err := types.NewTipSet([]*types.BlockHeader{block})
 	if err != nil {
 		t.Fatal(err)
 	}

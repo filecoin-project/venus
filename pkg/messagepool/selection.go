@@ -627,14 +627,6 @@ func (mp *MessagePool) selectMessagesOptimal(ctx context.Context, curTS, ts *typ
 			continue
 		}
 
-		// compute the dependencies that must be merged and the gas limit including deps
-		chainGasLimit := chain.gasLimit
-		var chainDeps []*msgChain
-		for curChain := chain.prev; curChain != nil && !curChain.merged; curChain = curChain.prev {
-			chainDeps = append(chainDeps, curChain)
-			chainGasLimit += curChain.gasLimit
-		}
-
 		if result.tryToAddWithDeps(chain, mp, baseFee) {
 			// adjust the effective pefromance for all subsequent chains
 			if next := chain.next; next != nil && next.effPerf > 0 {
