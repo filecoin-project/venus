@@ -8,11 +8,13 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/chain/params"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 )
 
 func TestElectionProofBasic(t *testing.T) {
+	tf.UnitTest(t)
 	vrfLen := 32
 	winCountMin := int64(3)
 	winCountMax := int64(10)
@@ -69,6 +71,7 @@ func TestElectionProofBasic(t *testing.T) {
 }
 
 func TestTicketBasic(t *testing.T) {
+	tf.UnitTest(t)
 	vrfLen := 32
 	var buf bytes.Buffer
 	for i := 0; i < 32; i++ {

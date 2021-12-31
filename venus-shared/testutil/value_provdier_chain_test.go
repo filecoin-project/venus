@@ -7,17 +7,20 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDefaultCid(t *testing.T) {
+	tf.UnitTest(t)
 	var c cid.Cid
 	Provide(t, &c)
 	require.NotEqual(t, cid.Undef, c)
 }
 
 func TestDefaultCidSlice(t *testing.T) {
+	tf.UnitTest(t)
 	cs := make([]cid.Cid, 16)
 	Provide(t, &cs)
 	for ci := range cs {
@@ -26,6 +29,7 @@ func TestDefaultCidSlice(t *testing.T) {
 }
 
 func TestDefaultAddresses(t *testing.T) {
+	tf.UnitTest(t)
 	addrs := make([]address.Address, 256)
 	protos := map[address.Protocol]struct{}{}
 	Provide(t, &addrs)
@@ -37,6 +41,7 @@ func TestDefaultAddresses(t *testing.T) {
 }
 
 func TestDefaultIDAddresses(t *testing.T) {
+	tf.UnitTest(t)
 	addrs := make([]address.Address, 256)
 	protos := map[address.Protocol]struct{}{}
 	Provide(t, &addrs, IDAddressProvider())
@@ -48,6 +53,7 @@ func TestDefaultIDAddresses(t *testing.T) {
 }
 
 func TestDefaultBigs(t *testing.T) {
+	tf.UnitTest(t)
 	bigs := make([]big.Int, 256)
 	Provide(t, &bigs)
 	hasPositive := false
@@ -63,6 +69,7 @@ func TestDefaultBigs(t *testing.T) {
 }
 
 func TestPositiveBigs(t *testing.T) {
+	tf.UnitTest(t)
 	bigs := make([]big.Int, 256)
 	Provide(t, &bigs, PositiveBigProvider())
 	for bi := range bigs {
@@ -72,6 +79,8 @@ func TestPositiveBigs(t *testing.T) {
 }
 
 func TestNegativeBigs(t *testing.T) {
+	tf.UnitTest(t)
+
 	bigs := make([]big.Int, 256)
 	Provide(t, &bigs, NegativeBigProvider())
 	for bi := range bigs {
@@ -81,6 +90,8 @@ func TestNegativeBigs(t *testing.T) {
 }
 
 func TestDefaultSigTypes(t *testing.T) {
+	tf.UnitTest(t)
+
 	sigtyps := make([]crypto.SigType, 256)
 	Provide(t, &sigtyps)
 	typs := map[crypto.SigType]struct{}{}
@@ -92,6 +103,8 @@ func TestDefaultSigTypes(t *testing.T) {
 }
 
 func TestDefaultPaddedSize(t *testing.T) {
+	tf.UnitTest(t)
+
 	psizes := make([]abi.PaddedPieceSize, 32)
 	Provide(t, &psizes)
 	for i := range psizes {
@@ -100,6 +113,8 @@ func TestDefaultPaddedSize(t *testing.T) {
 }
 
 func TestFixedPaddedSize(t *testing.T) {
+	tf.UnitTest(t)
+
 	shifts := make([]int, 32)
 	Provide(t, &shifts, IntRangedProvider(1, 50))
 	for si := range shifts {
@@ -110,6 +125,8 @@ func TestFixedPaddedSize(t *testing.T) {
 }
 
 func TestDefaultUnpaddedSize(t *testing.T) {
+	tf.UnitTest(t)
+
 	usizes := make([]abi.UnpaddedPieceSize, 32)
 	Provide(t, &usizes)
 	for i := range usizes {

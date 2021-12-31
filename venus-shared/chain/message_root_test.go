@@ -7,10 +7,12 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 )
 
 func TestMessageRootBasic(t *testing.T) {
+	tf.UnitTest(t)
 	var buf bytes.Buffer
 	for i := 0; i < 32; i++ {
 		var src, dst MessageRoot

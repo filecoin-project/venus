@@ -4,12 +4,14 @@ import (
 	"strings"
 	"testing"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/chain/params"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFilRoundTrip(t *testing.T) {
+	tf.UnitTest(t)
 	testValues := []string{
 		"0 FIL", "1 FIL", "1.001 FIL", "100.10001 FIL", "101100 FIL", "5000.01 FIL", "5000 FIL",
 		strings.Repeat("1", 50) + " FIL",
@@ -33,6 +35,7 @@ func TestFilRoundTrip(t *testing.T) {
 }
 
 func TestParseAttoFils(t *testing.T) {
+	tf.UnitTest(t)
 	testValues := []string{
 		"0 aFIL", "1 aFIL", "1 aFIL", "100 aFIL", "101100 aFIL", "5000 aFIL",
 		"0 attoFIL", "1 attoFIL", "1 attoFIL", "100 attoFIL", "101100 attoFIL", "5000 attoFIL",
@@ -52,6 +55,7 @@ func TestParseAttoFils(t *testing.T) {
 }
 
 func TestInvalidFILString(t *testing.T) {
+	tf.UnitTest(t)
 	testValues := []string{
 		"0 nFIL", "1 nFIL", "1.001 nFIL", "100.10001 nFIL", "101100 nFIL", "5000.01 nFIL", "5000 nFIL",
 		"1.001.1 FIL",
@@ -65,6 +69,7 @@ func TestInvalidFILString(t *testing.T) {
 }
 
 func TestBigFromFIL(t *testing.T) {
+	tf.UnitTest(t)
 	ratio := NewInt(params.FilecoinPrecision)
 
 	nums := make([]uint64, 32)
@@ -78,6 +83,7 @@ func TestBigFromFIL(t *testing.T) {
 }
 
 func TestFilShort(t *testing.T) {
+	tf.UnitTest(t)
 	for _, s := range []struct {
 		fil    string
 		expect string

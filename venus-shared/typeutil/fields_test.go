@@ -3,10 +3,13 @@ package typeutil
 import (
 	"testing"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/require"
 )
 
 func TestExportedFields(t *testing.T) {
+	tf.UnitTest(t)
+
 	f := ExportedFields(new(int))
 	require.Nil(t, f, "nil fields for non-struct type")
 
