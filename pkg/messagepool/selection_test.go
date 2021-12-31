@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"io"
 	"math"
@@ -1229,8 +1230,10 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 
 	logging.SetLogLevel("messagepool", "error") // nolint: errcheck
 
+	pending, err := mp.getPendingMessages(context.TODO(), mp.curTS, ts)
+	require.NoError(t, err)
 	// 1. greedy selection
-	gm, err := mp.selectMessagesGreedy(context.Background(), ts, ts)
+	gm, err := mp.selectMessagesGreedy(context.Background(), ts, ts, pending)
 	if err != nil {
 		t.Fatal(err)
 	}
