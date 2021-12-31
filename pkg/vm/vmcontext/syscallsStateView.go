@@ -78,5 +78,5 @@ func (vm *syscallsStateView) GetNtwkVersion(ctx context.Context, ce abi.ChainEpo
 
 //GetNtwkVersion get network version
 func (vm *syscallsStateView) TotalFilCircSupply(height abi.ChainEpoch, st tree.Tree) (abi.TokenAmount, error) {
-	return vm.vmOption.CircSupplyCalculator(context.TODO(), height, st)
+	return vm.GetCircSupply(context.TODO())
 }

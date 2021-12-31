@@ -1,6 +1,8 @@
 package vm
 
 import (
+	"context"
+
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/register"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
@@ -24,12 +26,12 @@ type FakeSyscalls = vmcontext.FakeSyscalls
 type ChainRandomness = vmcontext.HeadChainRandomness
 
 // NewVM creates a new VM interpreter.
-func NewVM(option VmOption) (Interpreter, error) {
+func NewVM(ctx context.Context, option VmOption) (Interpreter, error) {
 	if option.ActorCodeLoader == nil {
 		option.ActorCodeLoader = &DefaultActors
 	}
 
-	return vmcontext.NewVM(option.ActorCodeLoader, option)
+	return vmcontext.NewVM(ctx, option.ActorCodeLoader, option)
 }
 
 // DefaultActors is a code loader with the built-in actors that come with the system.

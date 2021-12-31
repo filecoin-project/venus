@@ -114,15 +114,9 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 		return nil, err
 	}
 	var (
-		caculator = chain.NewCirculatingSupplyCalculator(bs, cid.Undef, mainNetParams.Network.ForkUpgradeParam)
-
 		vmOption = vm.VmOption{
-			CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
-				dertail, err := caculator.GetCirculatingSupplyDetailed(ctx, epoch, tree)
-				if err != nil {
-					return abi.TokenAmount{}, err
-				}
-				return dertail.FilCirculating, nil
+			CircSupplyCalculator: func(context.Context, abi.ChainEpoch, tree.Tree) (abi.TokenAmount, error) {
+				return big.Zero(), nil
 			},
 			LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(chainStore, chainFork, nil),
 			NtwkVersionGetter:   chainFork.GetNtwkVersion,
@@ -137,7 +131,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 		}
 	)
 
-	lvm, err := vm.NewVM(vmOption)
+	lvm, err := vm.NewVM(context.Background(), vmOption)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +287,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		}
 	)
 
-	lvm, err := vm.NewVM(vmOption)
+	lvm, err := vm.NewVM(context.TODO(), vmOption)
 	if err != nil {
 		return nil, cid.Undef, err
 	}
