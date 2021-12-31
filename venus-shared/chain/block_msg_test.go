@@ -8,10 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 )
 
 func TestBlockMsgBasic(t *testing.T) {
+	tf.UnitTest(t)
 	msgLen := 16
 	emptyCids := make([]cid.Cid, msgLen)
 

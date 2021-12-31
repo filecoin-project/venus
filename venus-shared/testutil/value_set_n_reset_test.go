@@ -5,10 +5,13 @@ import (
 	"math/rand"
 	"testing"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/require"
 )
 
 func TestValueSetNReset(t *testing.T) {
+	tf.UnitTest(t)
+
 	for i := 0; i < 32; i++ {
 		originVal := rand.Int()
 		newVal := originVal + 1

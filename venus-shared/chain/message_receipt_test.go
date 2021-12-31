@@ -7,10 +7,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/exitcode"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 )
 
 func TestMessageReceiptBasic(t *testing.T) {
+	tf.UnitTest(t)
 	dataLen := 32
 
 	var buf bytes.Buffer

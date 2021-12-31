@@ -3,10 +3,13 @@ package testutil
 import (
 	"testing"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/require"
 )
 
 func TestInvalidProviders(t *testing.T) {
+	tf.UnitTest(t)
+
 	vals := []interface{}{
 		int(0),
 		float32(0),

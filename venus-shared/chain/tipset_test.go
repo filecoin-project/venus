@@ -6,10 +6,10 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/venus-shared/testutil"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
-
-	"github.com/filecoin-project/venus/venus-shared/testutil"
 )
 
 const (
@@ -97,11 +97,13 @@ func constructTipSet(t *testing.T, height abi.ChainEpoch, parents []cid.Cid, par
 }
 
 func TestTipSetConstruct(t *testing.T) {
+	tf.UnitTest(t)
 	height, parents, parentWeight := constructTipSetKeyInfos(t)
 	constructTipSet(t, height, parents, parentWeight)
 }
 
 func TestTipSetMethods(t *testing.T) {
+	tf.UnitTest(t)
 	height, parents, parentWeight := constructTipSetKeyInfos(t)
 
 	ts := constructTipSet(t, height, parents, parentWeight)

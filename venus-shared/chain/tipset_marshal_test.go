@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,6 +23,7 @@ func checkForTipSetEqual(t *testing.T, a, b *TipSet) {
 }
 
 func TestTipSetMarshalJSON(t *testing.T) {
+	tf.UnitTest(t)
 	height, paretns, weight := constructTipSetKeyInfos(t)
 	ts := constructTipSet(t, height, paretns, weight)
 
@@ -36,6 +38,7 @@ func TestTipSetMarshalJSON(t *testing.T) {
 }
 
 func TestTipSetEquals(t *testing.T) {
+	tf.UnitTest(t)
 	height, paretns, weight := constructTipSetKeyInfos(t)
 	ts := constructTipSet(t, height, paretns, weight)
 
@@ -44,6 +47,7 @@ func TestTipSetEquals(t *testing.T) {
 }
 
 func TestTipSetBasic(t *testing.T) {
+	tf.UnitTest(t)
 	var buf bytes.Buffer
 
 	for i := 0; i < 32; i++ {

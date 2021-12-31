@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/chain/params"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 	blocks "github.com/ipfs/go-block-format"
@@ -14,6 +15,7 @@ import (
 )
 
 func TestMessageBasic(t *testing.T) {
+	tf.UnitTest(t)
 	paramsLen := 32
 	var buf bytes.Buffer
 	for i := 0; i < 32; i++ {
@@ -64,6 +66,7 @@ func TestMessageBasic(t *testing.T) {
 }
 
 func TestMessageValidForBlockInclusion(t *testing.T) {
+	tf.UnitTest(t)
 	var msg Message
 	testutil.Provide(
 		t,
