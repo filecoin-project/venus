@@ -82,7 +82,7 @@ func (mp *MessagePool) MultipleSelectMessages(ctx context.Context, ts *types.Tip
 
 	// Load messages for the target tipset; if it is the same as the current tipset in the mpool
 	//    then this is just the pending messages
-	pending, err := mp.getPendingMessages(mp.curTS, ts)
+	pending, err := mp.getPendingMessages(ctx, mp.curTS, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (mp *MessagePool) multiSelectMessagesOptimal(ctx context.Context, curTS, ts
 	startChains := time.Now()
 	var chains []*msgChain
 	for actor, mset := range pending {
-		next := mp.createMessageChains(actor, mset, baseFee, ts)
+		next := mp.createMessageChains(ctx, actor, mset, baseFee, ts)
 		chains = append(chains, next...)
 	}
 	if dt := time.Since(startChains); dt > time.Millisecond {
@@ -452,7 +452,7 @@ func (mp *MessagePool) selectMessagesOptimal(ctx context.Context, curTS, ts *typ
 
 	// 0. Load messages from the target tipset; if it is the same as the current tipset in
 	//    the mpool, then this is just the pending messages
-	pending, err := mp.getPendingMessages(curTS, ts)
+	pending, err := mp.getPendingMessages(ctx, curTS, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -479,7 +479,7 @@ func (mp *MessagePool) selectMessagesOptimal(ctx context.Context, curTS, ts *typ
 	startChains := time.Now()
 	var chains []*msgChain
 	for actor, mset := range pending {
-		next := mp.createMessageChains(actor, mset, baseFee, ts)
+		next := mp.createMessageChains(ctx, actor, mset, baseFee, ts)
 		chains = append(chains, next...)
 	}
 	if dt := time.Since(startChains); dt > time.Millisecond {
@@ -796,7 +796,7 @@ func (mp *MessagePool) multiSelectMessagesGreedy(ctx context.Context, curTS, ts 
 	startChains := time.Now()
 	var chains []*msgChain
 	for actor, mset := range pending {
-		next := mp.createMessageChains(actor, mset, baseFee, ts)
+		next := mp.createMessageChains(ctx, actor, mset, baseFee, ts)
 		chains = append(chains, next...)
 	}
 	if dt := time.Since(startChains); dt > time.Millisecond {
@@ -905,7 +905,7 @@ func (mp *MessagePool) selectMessagesGreedy(ctx context.Context, curTS, ts *type
 
 	// 0. Load messages for the target tipset; if it is the same as the current tipset in the mpool
 	//    then this is just the pending messages
-	pending, err := mp.getPendingMessages(curTS, ts)
+	pending, err := mp.getPendingMessages(ctx, curTS, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -932,7 +932,7 @@ func (mp *MessagePool) selectMessagesGreedy(ctx context.Context, curTS, ts *type
 	startChains := time.Now()
 	var chains []*msgChain
 	for actor, mset := range pending {
-		next := mp.createMessageChains(actor, mset, baseFee, ts)
+		next := mp.createMessageChains(ctx, actor, mset, baseFee, ts)
 		chains = append(chains, next...)
 	}
 	if dt := time.Since(startChains); dt > time.Millisecond {
@@ -1057,7 +1057,7 @@ func (mp *MessagePool) selectPriorityMessages(ctx context.Context, pending map[a
 			// remove actor from pending set as we are already processed these messages
 			delete(pending, pk)
 			// create chains for the priority actor
-			next := mp.createMessageChains(actor, mset, baseFee, ts)
+			next := mp.createMessageChains(ctx, actor, mset, baseFee, ts)
 			chains = append(chains, next...)
 		}
 	}
@@ -1141,7 +1141,7 @@ tailLoop:
 	return result, gasLimit
 }
 
-func (mp *MessagePool) getPendingMessages(curTS, ts *types.TipSet) (map[address.Address]map[uint64]*types.SignedMessage, error) {
+func (mp *MessagePool) getPendingMessages(ctx context.Context, curTS, ts *types.TipSet) (map[address.Address]map[uint64]*types.SignedMessage, error) {
 	start := time.Now()
 
 	result := make(map[address.Address]map[uint64]*types.SignedMessage)
@@ -1177,7 +1177,7 @@ func (mp *MessagePool) getPendingMessages(curTS, ts *types.TipSet) (map[address.
 		return result, nil
 	}
 
-	if err := mp.runHeadChange(curTS, ts, result); err != nil {
+	if err := mp.runHeadChange(ctx, curTS, ts, result); err != nil {
 		return nil, xerrors.Errorf("failed to process difference between mpool head and given head: %v", err)
 	}
 
@@ -1208,7 +1208,7 @@ func (*MessagePool) getGasPerf(gasReward *big.Int, gasLimit int64) float64 {
 	return r
 }
 
-func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint64]*types.SignedMessage, baseFee types.BigInt, ts *types.TipSet) []*msgChain {
+func (mp *MessagePool) createMessageChains(ctx context.Context, actor address.Address, mset map[uint64]*types.SignedMessage, baseFee types.BigInt, ts *types.TipSet) []*msgChain {
 	// collect all messages
 	msgs := make([]*types.SignedMessage, 0, len(mset))
 	for _, m := range mset {
@@ -1227,7 +1227,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 	//   cannot exceed the block limit; drop all messages that exceed the limit
 	// - the total gasReward cannot exceed the actor's balance; drop all messages that exceed
 	//   the balance
-	a, err := mp.api.GetActorAfter(actor, ts)
+	a, err := mp.api.GetActorAfter(ctx, actor, ts)
 	if err != nil {
 		log.Errorf("failed to load actor state, not building chain for %s: %w", actor, err)
 		return nil

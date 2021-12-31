@@ -1,6 +1,7 @@
 package slashfilter
 
 import (
+	"context"
 	"fmt"
 
 	"golang.org/x/xerrors"
@@ -15,7 +16,7 @@ import (
 
 //ISlashFilter used to detect whether the miner mined a invalidated block , support local db and mysql storage
 type ISlashFilter interface {
-	MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error
+	MinedBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error
 }
 
 //LocalSlashFilter use badger db to save mined block for detect slash consensus block
@@ -33,11 +34,11 @@ func NewLocalSlashFilter(dstore ds.Batching) ISlashFilter {
 }
 
 //MinedBlock check whether the block mined is slash
-func (f *LocalSlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
+func (f *LocalSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
 	epochKey := ds.NewKey(fmt.Sprintf("/%s/%d", bh.Miner, bh.Height))
 	{
 		// double-fork mining (2 blocks at one epoch)
-		if err := checkFault(f.byEpoch, epochKey, bh, "double-fork mining faults"); err != nil {
+		if err := checkFault(ctx, f.byEpoch, epochKey, bh, "double-fork mining faults"); err != nil {
 			return err
 		}
 	}
@@ -45,7 +46,7 @@ func (f *LocalSlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.Cha
 	parentsKey := ds.NewKey(fmt.Sprintf("/%s/%s", bh.Miner, types.NewTipSetKey(bh.Parents...).String()))
 	{
 		// time-offset mining faults (2 blocks with the same parents)
-		if err := checkFault(f.byParents, parentsKey, bh, "time-offset mining faults"); err != nil {
+		if err := checkFault(ctx, f.byParents, parentsKey, bh, "time-offset mining faults"); err != nil {
 			return err
 		}
 	}
@@ -55,14 +56,14 @@ func (f *LocalSlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.Cha
 
 		// First check if we have mined a block on the parent epoch
 		parentEpochKey := ds.NewKey(fmt.Sprintf("/%s/%d", bh.Miner, parentEpoch))
-		have, err := f.byEpoch.Has(parentEpochKey)
+		have, err := f.byEpoch.Has(ctx, parentEpochKey)
 		if err != nil {
 			return err
 		}
 
 		if have {
 			// If we had, make sure it's in our parent tipset
-			cidb, err := f.byEpoch.Get(parentEpochKey)
+			cidb, err := f.byEpoch.Get(ctx, parentEpochKey)
 			if err != nil {
 				return xerrors.Errorf("getting other block cid: %w", err)
 			}
@@ -85,25 +86,25 @@ func (f *LocalSlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.Cha
 		}
 	}
 
-	if err := f.byParents.Put(parentsKey, bh.Cid().Bytes()); err != nil {
+	if err := f.byParents.Put(ctx, parentsKey, bh.Cid().Bytes()); err != nil {
 		return xerrors.Errorf("putting byEpoch entry: %w", err)
 	}
 
-	if err := f.byEpoch.Put(epochKey, bh.Cid().Bytes()); err != nil {
+	if err := f.byEpoch.Put(ctx, epochKey, bh.Cid().Bytes()); err != nil {
 		return xerrors.Errorf("putting byEpoch entry: %w", err)
 	}
 
 	return nil
 }
 
-func checkFault(t ds.Datastore, key ds.Key, bh *types.BlockHeader, faultType string) error {
-	fault, err := t.Has(key)
+func checkFault(ctx context.Context, t ds.Datastore, key ds.Key, bh *types.BlockHeader, faultType string) error {
+	fault, err := t.Has(ctx, key)
 	if err != nil {
 		return err
 	}
 
 	if fault {
-		cidb, err := t.Get(key)
+		cidb, err := t.Get(ctx, key)
 		if err != nil {
 			return xerrors.Errorf("getting other block cid: %w", err)
 		}

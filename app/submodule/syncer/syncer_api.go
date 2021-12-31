@@ -80,7 +80,7 @@ func (sa *syncerAPI) Concurrent(ctx context.Context) int64 {
 
 // ChainTipSetWeight computes weight for the specified tipset.
 func (sa *syncerAPI) ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey) (big.Int, error) {
-	ts, err := sa.syncer.ChainModule.ChainReader.GetTipSet(tsk)
+	ts, err := sa.syncer.ChainModule.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return big.Int{}, err
 	}
@@ -102,17 +102,17 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 		return xerrors.Errorf("loading parent block: %v", err)
 	}
 
-	if err := sa.syncer.SlashFilter.MinedBlock(blk.Header, parent.Height); err != nil {
+	if err := sa.syncer.SlashFilter.MinedBlock(ctx, blk.Header, parent.Height); err != nil {
 		log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
 		return xerrors.Errorf("<!!> SLASH FILTER ERROR: %v", err)
 	}
 
 	// TODO: should we have some sort of fast path to adding a local block?
-	bmsgs, err := chainModule.MessageStore.LoadUnsignedMessagesFromCids(blk.BlsMessages)
+	bmsgs, err := chainModule.MessageStore.LoadUnsignedMessagesFromCids(ctx, blk.BlsMessages)
 	if err != nil {
 		return xerrors.Errorf("failed to load bls messages: %v", err)
 	}
-	smsgs, err := chainModule.MessageStore.LoadSignedMessagesFromCids(blk.SecpkMessages)
+	smsgs, err := chainModule.MessageStore.LoadSignedMessagesFromCids(ctx, blk.SecpkMessages)
 	if err != nil {
 		return xerrors.Errorf("failed to load secpk message: %v", err)
 	}
@@ -123,7 +123,7 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 		SECPMessages: smsgs,
 	}
 
-	if err := sa.syncer.BlockValidator.ValidateMsgMeta(fb); err != nil {
+	if err := sa.syncer.BlockValidator.ValidateMsgMeta(ctx, fb); err != nil {
 		return xerrors.Errorf("provided messages did not match block: %v", err)
 	}
 
@@ -166,7 +166,7 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 // tipset.
 func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*apitypes.InvocResult, error) {
 	start := time.Now()
-	ts, err := sa.syncer.ChainModule.ChainReader.GetTipSet(tsk)
+	ts, err := sa.syncer.ChainModule.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}

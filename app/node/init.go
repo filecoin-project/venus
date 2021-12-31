@@ -85,7 +85,7 @@ func initPeerKey(store fskeystore.Keystore, key acrypto.PrivKey) error {
 			return errors.Wrap(err, "failed to create peer key")
 		}
 	}
-	data, err := key.Bytes()
+	data, err := key.Raw() // TODO ?
 	if err != nil {
 		return err
 	}

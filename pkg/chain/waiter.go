@@ -27,10 +27,10 @@ type MsgLookup struct {
 // Abstracts over a store of blockchain state.
 type waiterChainReader interface {
 	GetHead() *types.TipSet
-	GetTipSet(types.TipSetKey) (*types.TipSet, error)
+	GetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 	LookupID(context.Context, *types.TipSet, address.Address) (address.Address, error)
 	GetActorAt(context.Context, *types.TipSet, address.Address) (*types.Actor, error)
-	GetTipSetReceiptsRoot(*types.TipSet) (cid.Cid, error)
+	GetTipSetReceiptsRoot(context.Context, *types.TipSet) (cid.Cid, error)
 	SubHeadChanges(context.Context) chan []*apitypes.HeadChange
 }
 
@@ -137,12 +137,12 @@ func (w *Waiter) findMessage(ctx context.Context, from *types.TipSet, m types.Ch
 			return nil, false, nil
 		}
 
-		pts, err := w.chainReader.GetTipSet(cur.Parents())
+		pts, err := w.chainReader.GetTipSet(ctx, cur.Parents())
 		if err != nil {
 			return nil, false, xerrors.Errorf("failed to load tipset during msg wait searchback: %w", err)
 		}
 
-		grandParent, err := w.chainReader.GetTipSet(pts.Parents())
+		grandParent, err := w.chainReader.GetTipSet(ctx, pts.Parents())
 		if err != nil {
 			return nil, false, xerrors.Errorf("failed to load tipset during msg wait searchback: %w", err)
 		}
@@ -279,7 +279,7 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts *types.TipSet, msg typ
 		return nil, false, nil
 	}
 
-	pts, err := w.chainReader.GetTipSet(ts.Parents())
+	pts, err := w.chainReader.GetTipSet(ctx, ts.Parents())
 	if err != nil {
 		return nil, false, err
 	}

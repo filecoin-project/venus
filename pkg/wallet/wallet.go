@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -23,13 +24,13 @@ var walletLog = logging.Logger("wallet")
 // WalletIntersection
 // nolint
 type WalletIntersection interface {
-	HasAddress(a address.Address) bool
-	Addresses() []address.Address
-	NewAddress(p address.Protocol) (address.Address, error)
-	Import(ki *crypto.KeyInfo) (address.Address, error)
-	Export(addr address.Address, password string) (*crypto.KeyInfo, error)
-	WalletSign(keyAddr address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error)
-	HasPassword() bool
+	HasAddress(ctx context.Context, a address.Address) bool
+	Addresses(ctx context.Context) []address.Address
+	NewAddress(ctx context.Context, p address.Protocol) (address.Address, error)
+	Import(ctx context.Context, ki *crypto.KeyInfo) (address.Address, error)
+	Export(ctx context.Context, addr address.Address, password string) (*crypto.KeyInfo, error)
+	WalletSign(ctx context.Context, keyAddr address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error)
+	HasPassword(ctx context.Context) bool
 }
 
 var _ WalletIntersection = &Wallet{}
@@ -58,21 +59,21 @@ func New(backends ...Backend) *Wallet {
 
 // HasAddress checks if the given address is stored.
 // Safe for concurrent access.
-func (w *Wallet) HasAddress(a address.Address) bool {
-	_, err := w.Find(a)
+func (w *Wallet) HasAddress(ctx context.Context, a address.Address) bool {
+	_, err := w.Find(ctx, a)
 	return err == nil
 }
 
 // Find searches through all backends and returns the one storing the passed
 // in address.
 // Safe for concurrent access.
-func (w *Wallet) Find(addr address.Address) (Backend, error) {
+func (w *Wallet) Find(ctx context.Context, addr address.Address) (Backend, error) {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 
 	for _, backends := range w.backends {
 		for _, backend := range backends {
-			if backend.HasAddress(addr) {
+			if backend.HasAddress(ctx, addr) {
 				return backend, nil
 			}
 		}
@@ -84,14 +85,14 @@ func (w *Wallet) Find(addr address.Address) (Backend, error) {
 // Addresses retrieves all stored addresses.
 // Safe for concurrent access.
 // Always sorted in the same order.
-func (w *Wallet) Addresses() []address.Address {
+func (w *Wallet) Addresses(ctx context.Context) []address.Address {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 
 	var out []address.Address
 	for _, backends := range w.backends {
 		for _, backend := range backends {
-			out = append(out, backend.Addresses()...)
+			out = append(out, backend.Addresses(ctx)...)
 		}
 	}
 	sort.Slice(out, func(i, j int) bool {
@@ -113,28 +114,28 @@ func (w *Wallet) Backends(typ reflect.Type) []Backend {
 
 // SignBytes cryptographically signs `data` using the private key corresponding to
 // address `addr`
-func (w *Wallet) SignBytes(data []byte, addr address.Address) (*crypto.Signature, error) {
+func (w *Wallet) SignBytes(ctx context.Context, data []byte, addr address.Address) (*crypto.Signature, error) {
 	// Check that we are storing the address to sign for.
-	backend, err := w.Find(addr)
+	backend, err := w.Find(ctx, addr)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not find address: %s", addr)
 	}
-	return backend.SignBytes(data, addr)
+	return backend.SignBytes(ctx, data, addr)
 }
 
 // NewAddress creates a new account address on the default wallet backend.
-func (w *Wallet) NewAddress(p address.Protocol) (address.Address, error) {
+func (w *Wallet) NewAddress(ctx context.Context, p address.Protocol) (address.Address, error) {
 	backend, err := w.DSBacked()
 	if err != nil {
 		return address.Undef, err
 	}
-	return backend.NewAddress(p)
+	return backend.NewAddress(ctx, p)
 }
 
 // GetPubKeyForAddress returns the public key in the keystore associated with
 // the given address.
-func (w *Wallet) GetPubKeyForAddress(addr address.Address) ([]byte, error) {
-	info, err := w.keyInfoForAddr(addr)
+func (w *Wallet) GetPubKeyForAddress(ctx context.Context, addr address.Address) ([]byte, error) {
+	info, err := w.keyInfoForAddr(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -143,22 +144,22 @@ func (w *Wallet) GetPubKeyForAddress(addr address.Address) ([]byte, error) {
 }
 
 // NewKeyInfo creates a new KeyInfo struct in the wallet backend and returns it
-func (w *Wallet) NewKeyInfo() (*crypto.KeyInfo, error) {
-	newAddr, err := w.NewAddress(address.BLS)
+func (w *Wallet) NewKeyInfo(ctx context.Context) (*crypto.KeyInfo, error) {
+	newAddr, err := w.NewAddress(ctx, address.BLS)
 	if err != nil {
 		return &crypto.KeyInfo{}, err
 	}
 
-	return w.keyInfoForAddr(newAddr)
+	return w.keyInfoForAddr(ctx, newAddr)
 }
 
-func (w *Wallet) keyInfoForAddr(addr address.Address) (*crypto.KeyInfo, error) {
-	backend, err := w.Find(addr)
+func (w *Wallet) keyInfoForAddr(ctx context.Context, addr address.Address) (*crypto.KeyInfo, error) {
+	backend, err := w.Find(ctx, addr)
 	if err != nil {
 		return &crypto.KeyInfo{}, err
 	}
 
-	info, err := backend.GetKeyInfo(addr)
+	info, err := backend.GetKeyInfo(ctx, addr)
 	if err != nil {
 		return &crypto.KeyInfo{}, err
 	}
@@ -166,7 +167,7 @@ func (w *Wallet) keyInfoForAddr(addr address.Address) (*crypto.KeyInfo, error) {
 }
 
 // Import adds the given keyinfo to the wallet
-func (w *Wallet) Import(ki *crypto.KeyInfo) (address.Address, error) {
+func (w *Wallet) Import(ctx context.Context, ki *crypto.KeyInfo) (address.Address, error) {
 	dsb := w.Backends(DSBackendType)
 	if len(dsb) != 1 {
 		return address.Undef, fmt.Errorf("expected exactly one datastore wallet backend")
@@ -189,13 +190,13 @@ func (w *Wallet) Import(ki *crypto.KeyInfo) (address.Address, error) {
 }
 
 // Export returns the KeyInfos for the given wallet addresses
-func (w *Wallet) Export(addr address.Address, password string) (*crypto.KeyInfo, error) {
-	bck, err := w.Find(addr)
+func (w *Wallet) Export(ctx context.Context, addr address.Address, password string) (*crypto.KeyInfo, error) {
+	bck, err := w.Find(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
 
-	ki, err := bck.GetKeyInfoPassphrase(addr, []byte(password))
+	ki, err := bck.GetKeyInfoPassphrase(ctx, addr, []byte(password))
 	if err != nil {
 		return nil, err
 	}
@@ -204,8 +205,8 @@ func (w *Wallet) Export(addr address.Address, password string) (*crypto.KeyInfo,
 }
 
 //WalletSign used to sign message with private key
-func (w *Wallet) WalletSign(addr address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error) {
-	ki, err := w.Find(addr)
+func (w *Wallet) WalletSign(ctx context.Context, addr address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error) {
+	ki, err := w.Find(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +214,7 @@ func (w *Wallet) WalletSign(addr address.Address, msg []byte, meta types.MsgMeta
 		return nil, errors.Errorf("signing using key '%s': %v", addr.String(), ErrKeyInfoNotFound)
 	}
 
-	return ki.SignBytes(msg, addr)
+	return ki.SignBytes(ctx, msg, addr)
 }
 
 //DSBacked return the first wallet backend
@@ -228,36 +229,36 @@ func (w *Wallet) DSBacked() (*DSBackend, error) {
 }
 
 //LockWallet lock lock wallet
-func (w *Wallet) LockWallet() error {
+func (w *Wallet) LockWallet(ctx context.Context) error {
 	backend, err := w.DSBacked()
 	if err != nil {
 		return err
 	}
 
-	return backend.LockWallet()
+	return backend.LockWallet(ctx)
 }
 
 //UnLockWallet unlock local wallet with password
 
-func (w *Wallet) UnLockWallet(password []byte) error {
+func (w *Wallet) UnLockWallet(ctx context.Context, password []byte) error {
 	backend, err := w.DSBacked()
 	if err != nil {
 		return err
 	}
-	return backend.UnLockWallet(password)
+	return backend.UnLockWallet(ctx, password)
 }
 
 //SetPassword
-func (w *Wallet) SetPassword(password []byte) error {
+func (w *Wallet) SetPassword(ctx context.Context, password []byte) error {
 	backend, err := w.DSBacked()
 	if err != nil {
 		return err
 	}
-	return backend.SetPassword(password)
+	return backend.SetPassword(ctx, password)
 }
 
 //HasPassword return whether the password has been set in the wallet
-func (w *Wallet) HasPassword() bool {
+func (w *Wallet) HasPassword(ctx context.Context) bool {
 	backend, err := w.DSBacked()
 	if err != nil {
 		walletLog.Errorf("get DSBacked failed: %v", err)
@@ -267,11 +268,11 @@ func (w *Wallet) HasPassword() bool {
 }
 
 //WalletState return wallet state(lock/unlock)
-func (w *Wallet) WalletState() int {
+func (w *Wallet) WalletState(ctx context.Context) int {
 	backend, err := w.DSBacked()
 	if err != nil {
 		walletLog.Errorf("get DSBacked failed: %v", err)
 		return undetermined
 	}
-	return backend.WalletState()
+	return backend.WalletState(ctx)
 }

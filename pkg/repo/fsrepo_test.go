@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -132,13 +133,13 @@ func TestFSRepoRoundtrip(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, cfg, r.Config())
-	assert.NoError(t, r.ChainDatastore().Put(ds.NewKey("beep"), []byte("boop")))
+	assert.NoError(t, r.ChainDatastore().Put(context.Background(), ds.NewKey("beep"), []byte("boop")))
 	assert.NoError(t, r.Close())
 
 	r2, err := OpenFSRepo(repoPath, 42)
 	assert.NoError(t, err)
 
-	val, err := r2.ChainDatastore().Get(ds.NewKey("beep"))
+	val, err := r2.ChainDatastore().Get(context.Background(), ds.NewKey("beep"))
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("boop"), val)
 

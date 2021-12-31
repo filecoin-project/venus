@@ -3,31 +3,30 @@ package market
 import (
 	"bytes"
 	"context"
-
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/config"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/wallet"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	"github.com/stretchr/testify/assert"
-
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
-	"github.com/ipfs/go-datastore"
-
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	ds_sync "github.com/ipfs/go-datastore/sync"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 
 	tutils "github.com/filecoin-project/specs-actors/v6/support/testing"
+
+	"github.com/filecoin-project/venus/pkg/config"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
-	"github.com/ipfs/go-cid"
-	ds_sync "github.com/ipfs/go-datastore/sync"
-	"github.com/stretchr/testify/require"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/pkg/wallet"
+	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 // TestFundManagerBasic verifies that the basic fund manager operations work

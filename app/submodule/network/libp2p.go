@@ -32,7 +32,7 @@ func (h noopLibP2PHost) ID() peer.ID {
 	return h.peerId
 }
 
-func (noopLibP2PHost) Peerstore() peerstore.Peerstore {
+func (noopLibP2PHost) Peerstore() (peerstore.Peerstore, error) {
 	return pstoremem.NewPeerstore()
 }
 
@@ -127,10 +127,6 @@ func (noopLibP2PNetwork) Close() error {
 }
 
 func (noopLibP2PNetwork) SetStreamHandler(net.StreamHandler) {
-	panic("implement me")
-}
-
-func (noopLibP2PNetwork) SetConnHandler(net.ConnHandler) {
 	panic("implement me")
 }
 

@@ -1,6 +1,7 @@
 package messagepool
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -36,8 +37,8 @@ func (mc *MpoolConfig) Clone() *MpoolConfig {
 	return r
 }
 
-func loadConfig(ds repo.Datastore) (*MpoolConfig, error) {
-	haveCfg, err := ds.Has(ConfigKey)
+func loadConfig(ctx context.Context, ds repo.Datastore) (*MpoolConfig, error) {
+	haveCfg, err := ds.Has(ctx, ConfigKey)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +47,7 @@ func loadConfig(ds repo.Datastore) (*MpoolConfig, error) {
 		return DefaultConfig(), nil
 	}
 
-	cfgBytes, err := ds.Get(ConfigKey)
+	cfgBytes, err := ds.Get(ctx, ConfigKey)
 	if err != nil {
 		return nil, err
 	}
@@ -55,12 +56,12 @@ func loadConfig(ds repo.Datastore) (*MpoolConfig, error) {
 	return cfg, err
 }
 
-func saveConfig(cfg *MpoolConfig, ds repo.Datastore) error {
+func saveConfig(ctx context.Context, cfg *MpoolConfig, ds repo.Datastore) error {
 	cfgBytes, err := json.Marshal(cfg)
 	if err != nil {
 		return err
 	}
-	return ds.Put(ConfigKey, cfgBytes)
+	return ds.Put(ctx,  ConfigKey, cfgBytes)
 }
 
 func (mp *MessagePool) GetConfig() *MpoolConfig {
@@ -80,7 +81,7 @@ func validateConfg(cfg *MpoolConfig) error {
 	return nil
 }
 
-func (mp *MessagePool) SetConfig(cfg *MpoolConfig) error {
+func (mp *MessagePool) SetConfig(ctx context.Context, cfg *MpoolConfig) error {
 	if err := validateConfg(cfg); err != nil {
 		return err
 	}
@@ -88,7 +89,7 @@ func (mp *MessagePool) SetConfig(cfg *MpoolConfig) error {
 
 	mp.cfgLk.Lock()
 	mp.cfg = cfg
-	err := saveConfig(cfg, mp.ds)
+	err := saveConfig(ctx, cfg, mp.ds)
 	if err != nil {
 		log.Warnf("error persisting mpool config: %s", err)
 	}

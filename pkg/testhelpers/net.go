@@ -142,7 +142,7 @@ func newFakeStream() fakeStream { return fakeStream{} }
 func (fs fakeStream) ID() string                         { return "" }
 func (fs fakeStream) Protocol() protocol.ID              { return fs.pid }            // nolint: golint
 func (fs fakeStream) SetProtocol(id protocol.ID)         { fs.pid = id }              // nolint: golint
-func (fs fakeStream) Stat() inet.Stat                    { panic("not implemented") } // nolint: golint
+func (fs fakeStream) Stat() inet.Stats                   { panic("not implemented") } // nolint: golint
 func (fs fakeStream) Conn() inet.Conn                    { panic("not implemented") } // nolint: golint
 func (fs fakeStream) Write(_ []byte) (int, error)        { return 1, nil }            // nolint: golint
 func (fs fakeStream) Read(_ []byte) (int, error)         { return 1, nil }            // nolint: golint

@@ -49,14 +49,14 @@ func NewGasPriceCache() *GasPriceCache {
 	}
 }
 
-func (g *GasPriceCache) GetTSGasStats(provider Provider, ts *types.TipSet) ([]GasMeta, error) {
+func (g *GasPriceCache) GetTSGasStats(ctx context.Context, provider Provider, ts *types.TipSet) ([]GasMeta, error) {
 	i, has := g.c.Get(ts.Key())
 	if has {
 		return i.([]GasMeta), nil
 	}
 
 	var prices []GasMeta
-	msgs, err := provider.MessagesForTipset(ts)
+	msgs, err := provider.MessagesForTipset(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("loading messages: %w", err)
 	}
@@ -78,7 +78,7 @@ func (mp *MessagePool) GasEstimateFeeCap(
 	maxqueueblks int64,
 	tsk types.TipSetKey,
 ) (big.Int, error) {
-	ts, err := mp.api.ChainHead()
+	ts, err := mp.api.ChainHead(ctx)
 	if err != nil {
 		return types.NewGasFeeCap(0), err
 	}
@@ -137,7 +137,7 @@ func (mp *MessagePool) GasEstimateGasPremium(
 	var prices []GasMeta
 	var blocks int
 
-	ts, err := mp.api.ChainHead()
+	ts, err := mp.api.ChainHead(ctx)
 	if err != nil {
 		return big.Int{}, err
 	}
@@ -147,13 +147,13 @@ func (mp *MessagePool) GasEstimateGasPremium(
 			break // genesis
 		}
 
-		pts, err := mp.api.LoadTipSet(ts.Parents())
+		pts, err := mp.api.LoadTipSet(ctx, ts.Parents())
 		if err != nil {
 			return types.BigInt{}, err
 		}
 
 		blocks += len(pts.Blocks())
-		meta, err := cache.GetTSGasStats(mp.api, pts)
+		meta, err := cache.GetTSGasStats(ctx, mp.api, pts)
 		if err != nil {
 			return types.BigInt{}, err
 		}
@@ -186,13 +186,13 @@ func (mp *MessagePool) GasEstimateGasPremium(
 
 func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, tsk types.TipSetKey) (int64, error) {
 	if tsk.IsEmpty() {
-		ts, err := mp.api.ChainHead()
+		ts, err := mp.api.ChainHead(ctx)
 		if err != nil {
 			return -1, xerrors.Errorf("getting head: %v", err)
 		}
 		tsk = ts.Key()
 	}
-	currTS, err := mp.api.ChainTipSet(tsk)
+	currTS, err := mp.api.ChainTipSet(ctx, tsk)
 	if err != nil {
 		return -1, xerrors.Errorf("getting tipset: %w", err)
 	}
@@ -234,7 +234,7 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 			break
 		}
 
-		ts, err = mp.api.ChainTipSet(ts.Parents())
+		ts, err = mp.api.ChainTipSet(ctx, ts.Parents())
 		if err != nil {
 			return -1, xerrors.Errorf("getting parent tipset: %v", err)
 		}
@@ -247,7 +247,7 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 	}
 
 	// Special case for PaymentChannel collect, which is deleting actor
-	pts, err := mp.api.ChainTipSet(ts.Parents())
+	pts, err := mp.api.ChainTipSet(ctx, ts.Parents())
 	if err != nil {
 		_ = err
 		// somewhat ignore it as it can happen and we just want to detect
@@ -316,7 +316,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 	}
 
 	// ChainTipSet will determine if tsk is empty
-	currTS, err := mp.api.ChainTipSet(tsk)
+	currTS, err := mp.api.ChainTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset: %w", err)
 	}

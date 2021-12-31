@@ -233,7 +233,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	}
 	importPath, _ := req.Options[ImportSnapshot].(string)
 	if len(importPath) != 0 {
-		err := Import(rep, importPath)
+		err := Import(req.Context, rep, importPath)
 		if err != nil {
 			log.Errorf("failed to import snapshot, import path: %s, error: %s", importPath, err.Error())
 			return err
@@ -368,7 +368,7 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string, network 
 
 	defer func() { _ = source.Close() }()
 
-	genesisBlk, err := extractGenesisBlock(source, rep)
+	genesisBlk, err := extractGenesisBlock(ctx, source, rep)
 	if err != nil {
 		return nil, err
 	}
@@ -444,15 +444,15 @@ func openGenesisSource(sourceName string) (io.ReadCloser, error) {
 	return source, nil
 }
 
-func extractGenesisBlock(source io.ReadCloser, rep repo.Repo) (*types.BlockHeader, error) {
+func extractGenesisBlock(ctx context.Context, source io.ReadCloser, rep repo.Repo) (*types.BlockHeader, error) {
 	bs := rep.Datastore()
-	ch, err := car.LoadCar(bs, source)
+	ch, err := car.LoadCar(ctx, bs, source)
 	if err != nil {
 		return nil, err
 	}
 
 	// need to check if we are being handed a car file with a single genesis block or an entire chain.
-	bsBlk, err := bs.Get(ch.Roots[0])
+	bsBlk, err := bs.Get(ctx, ch.Roots[0])
 	if err != nil {
 		return nil, err
 	}

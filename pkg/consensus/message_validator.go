@@ -139,7 +139,7 @@ type MessageSignatureValidator struct {
 // signatureValidatorAPI allows the validator to access state needed for signature checking
 type signatureValidatorAPI interface {
 	GetHead() *types.TipSet
-	GetTipSet(types.TipSetKey) (*types.TipSet, error)
+	GetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 	AccountView(ts *types.TipSet) (state.AccountView, error)
 }
 

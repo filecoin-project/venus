@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"bytes"
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/venus/pkg/testhelpers"
@@ -20,7 +21,7 @@ import (
 func newWalletAndDSBackend(t *testing.T) (*Wallet, *DSBackend) {
 	t.Log("create a backend")
 	ds := datastore.NewMapDatastore()
-	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
+	fs, err := NewDSBackend(context.Background(), ds, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
 	t.Log("create a wallet with a single backend")
@@ -38,7 +39,7 @@ func TestWalletSimple(t *testing.T) {
 	w, fs := newWalletAndDSBackend(t)
 
 	t.Log("create a new address in the backend")
-	addr, err := fs.NewAddress(address.SECP256K1)
+	addr, err := fs.NewAddress(context.Background(), address.SECP256K1)
 	assert.NoError(t, err)
 
 	t.Log("test HasAddress")
@@ -60,7 +61,7 @@ func TestWalletSimple(t *testing.T) {
 	assert.Equal(t, list[0], addr)
 
 	t.Log("addresses are sorted")
-	addr2, err := fs.NewAddress(address.SECP256K1)
+	addr2, err := fs.NewAddress(context.Background(), address.SECP256K1)
 	assert.NoError(t, err)
 
 	if bytes.Compare(addr2.Bytes(), addr.Bytes()) < 0 {
@@ -91,7 +92,7 @@ func TestWalletBLSKeys(t *testing.T) {
 	})
 
 	t.Run("key uses BLS cryptography", func(t *testing.T) {
-		ki, err := wb.GetKeyInfo(addr)
+		ki, err := wb.GetKeyInfo(context.Background(), addr)
 		require.NoError(t, err)
 		assert.Equal(t, crypto.SigTypeBLS, ki.SigType)
 	})
@@ -122,7 +123,7 @@ func TestSimpleSignAndVerify(t *testing.T) {
 	w, fs := newWalletAndDSBackend(t)
 
 	t.Log("create a new address in the backend")
-	addr, err := fs.NewAddress(address.SECP256K1)
+	addr, err := fs.NewAddress(context.Background(), address.SECP256K1)
 	assert.NoError(t, err)
 
 	t.Log("test HasAddress")
@@ -157,9 +158,9 @@ func TestSignErrorCases(t *testing.T) {
 	_, fs2 := newWalletAndDSBackend(t)
 
 	t.Log("create a new address each backend")
-	addr1, err := fs1.NewAddress(address.SECP256K1)
+	addr1, err := fs1.NewAddress(context.Background(), address.SECP256K1)
 	assert.NoError(t, err)
-	addr2, err := fs2.NewAddress(address.SECP256K1)
+	addr2, err := fs2.NewAddress(context.Background(), address.SECP256K1)
 	assert.NoError(t, err)
 
 	t.Log("test HasAddress")

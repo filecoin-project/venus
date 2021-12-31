@@ -800,7 +800,7 @@ type INetworkStruct struct {
 
 		NetworkGetBandwidthStats func(p0 context.Context) metrics.Stats `perm:"admin"`
 
-		NetworkGetClosestPeers func(p0 context.Context, p1 string) (<-chan peer.ID, error) `perm:"read"`
+		NetworkGetClosestPeers func(p0 context.Context, p1 string) ([]peer.ID, error) `perm:"read"`
 
 		NetworkGetPeerAddresses func(p0 context.Context) []ma.Multiaddr `perm:"admin"`
 
@@ -832,7 +832,7 @@ func (s *INetworkStruct) NetworkGetBandwidthStats(p0 context.Context) metrics.St
 	return s.Internal.NetworkGetBandwidthStats(p0)
 }
 
-func (s *INetworkStruct) NetworkGetClosestPeers(p0 context.Context, p1 string) (<-chan peer.ID, error) {
+func (s *INetworkStruct) NetworkGetClosestPeers(p0 context.Context, p1 string) ([]peer.ID, error) {
 	return s.Internal.NetworkGetClosestPeers(p0, p1)
 }
 

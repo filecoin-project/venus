@@ -50,7 +50,7 @@ func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst cbor.IpldS
 		return nil, errors.Wrap(err, "failed to marshal genesis cid")
 	}
 
-	if err = r.ChainDatastore().Put(chain.GenesisKey, val); err != nil {
+	if err = r.ChainDatastore().Put(ctx, chain.GenesisKey, val); err != nil {
 		return nil, errors.Wrap(err, "failed to persist genesis cid")
 	}
 

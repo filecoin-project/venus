@@ -5,25 +5,19 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/filecoin-project/venus/pkg/repo"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	"github.com/stretchr/testify/assert"
-
-	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/venus/pkg/wallet"
-
-	"github.com/stretchr/testify/require"
-
-	ds_sync "github.com/ipfs/go-datastore/sync"
-
 	"github.com/filecoin-project/go-address"
-
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/ipfs/go-datastore"
+	ds_sync "github.com/ipfs/go-datastore/sync"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
+	"github.com/filecoin-project/venus/pkg/repo"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 type mockMpool struct {

@@ -40,7 +40,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 		// height to have no fork, because we'll run it inside this
 		// function before executing the given message.
 		for ts.Height() > 0 && (s.fork.HasExpensiveFork(ctx, ts.Height()) || s.fork.HasExpensiveFork(ctx, ts.Height()-1)) {
-			ts, err = s.cs.GetTipSet(ts.Parents())
+			ts, err = s.cs.GetTipSet(ctx, ts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("failed to find a non-forking epoch: %v", err)
 			}
@@ -64,7 +64,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 			}
 			return cs.FilCirculating, nil
 		},
-		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(s.cs, s.fork, ts),
+		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, s.cs, s.fork, ts),
 		NtwkVersionGetter:   s.fork.GetNtwkVersion,
 		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
 		BaseFee:             ts.At(0).ParentBaseFee,
@@ -131,14 +131,14 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 		// Search back till we find a height with no fork, or we reach the beginning.
 		for ts.Height() > 0 && s.fork.HasExpensiveFork(ctx, ts.Height()-1) {
 			var err error
-			ts, err = s.cs.GetTipSet(ts.Parents())
+			ts, err = s.cs.GetTipSet(ctx, ts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("failed to find a non-forking epoch: %v", err)
 			}
 		}
 	}
 
-	pts, err := s.cs.GetTipSet(ts.Parents())
+	pts, err := s.cs.GetTipSet(ctx, ts.Parents())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load parent tipset: %v", err)
 	}
@@ -196,7 +196,7 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 			}
 			return dertail.FilCirculating, nil
 		},
-		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(s.cs, s.fork, ts),
+		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, s.cs, s.fork, ts),
 		NtwkVersionGetter:   s.fork.GetNtwkVersion,
 		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
 		BaseFee:             ts.At(0).ParentBaseFee,

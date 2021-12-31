@@ -31,6 +31,7 @@ func TestBlockProvider(t *testing.T) {
 
 func TestComplexProvider(t *testing.T) {
 	tf.UnitTest(t)
+
 	tests := map[string]func(*testing.T){
 		"Tipset":  TestTipsetProvider,
 		"Message": TestMessageProvider,

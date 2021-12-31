@@ -71,7 +71,7 @@ func OpenFilesystemJournal(lr repo.Repo) (journal.Journal, error) {
 	return jrnl, err
 }
 
-func NewMpoolSubmodule(cfg messagepoolConfig,
+func NewMpoolSubmodule(ctx context.Context, cfg messagepoolConfig,
 	network *network.NetworkSubmodule,
 	chain *chain.ChainSubmodule,
 	wallet *wallet.WalletSubmodule,
@@ -82,7 +82,7 @@ func NewMpoolSubmodule(cfg messagepoolConfig,
 	if err != nil {
 		return nil, err
 	}
-	mp, err := messagepool.New(mpp, chain.Stmgr, cfg.Repo().MetaDatastore(),
+	mp, err := messagepool.New(ctx, mpp, chain.Stmgr, cfg.Repo().MetaDatastore(),
 		cfg.Repo().Config().NetworkParams.ForkUpgradeParam, cfg.Repo().Config().Mpool,
 		network.NetworkName, j)
 	if err != nil {

@@ -39,7 +39,7 @@ func (s *Signer) SignBytes(ctx context.Context, data []byte, addr address.Addres
 	if err != nil {
 		return nil, err
 	}
-	return s.wallet.SignBytes(data, signingAddr)
+	return s.wallet.SignBytes(ctx, data, signingAddr)
 }
 
 // HasAddress returns whether this signer can sign with the given address
@@ -48,7 +48,7 @@ func (s *Signer) HasAddress(ctx context.Context, addr address.Address) (bool, er
 	if err != nil {
 		return false, err
 	}
-	return s.wallet.HasAddress(signingAddr), nil
+	return s.wallet.HasAddress(ctx, signingAddr), nil
 }
 
 type HeadSignView struct {

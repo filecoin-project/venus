@@ -78,7 +78,7 @@ func TestLoadFork(t *testing.T) {
 	// tipsets can be reconstructed. The chain builder used for testing doesn't do that, so do
 	// it manually here.
 	for _, tip := range []*types2.TipSet{left, right} {
-		for itr := chain.IterAncestors(ctx, builder, tip); !itr.Complete(); require.NoError(t, itr.Next()) {
+		for itr := chain.IterAncestors(ctx, builder, tip); !itr.Complete(); require.NoError(t, itr.Next(ctx)) {
 			for _, block := range itr.Value().ToSlice() {
 				_, err := builder.Cstore().Put(ctx, block)
 				require.NoError(t, err)

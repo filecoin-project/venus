@@ -49,7 +49,7 @@ func (r *Router) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, e
 
 // GetClosestPeers returns a channel of the K closest peers  to the given key,
 // K is the 'K Bucket' parameter of the Kademlia DHT protocol.
-func (r *Router) GetClosestPeers(ctx context.Context, key string) (<-chan peer.ID, error) {
+func (r *Router) GetClosestPeers(ctx context.Context, key string) ([]peer.ID, error) {
 	ipfsDHT, ok := r.routing.(*dht.IpfsDHT)
 	if !ok {
 		return nil, errors.New("underlying routing should be pointer of IpfsDHT")

@@ -13,42 +13,42 @@ type SyncStore struct {
 	bs MemStore // specifically use a memStore to save indirection overhead.
 }
 
-func (m *SyncStore) DeleteBlock(k cid.Cid) error {
+func (m *SyncStore) DeleteBlock(ctx context.Context, k cid.Cid) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.bs.DeleteBlock(k)
+	return m.bs.DeleteBlock(ctx, k)
 }
-func (m *SyncStore) Has(k cid.Cid) (bool, error) {
+func (m *SyncStore) Has(ctx context.Context, k cid.Cid) (bool, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.bs.Has(k)
+	return m.bs.Has(ctx, k)
 }
-func (m *SyncStore) Get(k cid.Cid) (blocks.Block, error) {
+func (m *SyncStore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.bs.Get(k)
+	return m.bs.Get(ctx, k)
 }
 
 // GetSize returns the CIDs mapped BlockSize
-func (m *SyncStore) GetSize(k cid.Cid) (int, error) {
+func (m *SyncStore) GetSize(ctx context.Context, k cid.Cid) (int, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.bs.GetSize(k)
+	return m.bs.GetSize(ctx, k)
 }
 
 // Put puts a given block to the underlying datastore
-func (m *SyncStore) Put(b blocks.Block) error {
+func (m *SyncStore) Put(ctx context.Context, b blocks.Block) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.bs.Put(b)
+	return m.bs.Put(ctx, b)
 }
 
 // PutMany puts a slice of blocks at the same time using batching
 // capabilities of the underlying datastore whenever possible.
-func (m *SyncStore) PutMany(bs []blocks.Block) error {
+func (m *SyncStore) PutMany(ctx context.Context, bs []blocks.Block) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.bs.PutMany(bs)
+	return m.bs.PutMany(ctx, bs)
 }
 
 // AllKeysChan returns a channel from which

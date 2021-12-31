@@ -25,10 +25,10 @@ func TestIterAncestors(t *testing.T) {
 		ctx := context.Background()
 		store := chain.NewBuilder(t, miner)
 
-		root := store.AppendBlockOnBlocks()
-		b11 := store.AppendBlockOnBlocks(root)
-		b12 := store.AppendBlockOnBlocks(root)
-		b21 := store.AppendBlockOnBlocks(b11, b12)
+		root := store.AppendBlockOnBlocks(ctx)
+		b11 := store.AppendBlockOnBlocks(ctx, root)
+		b12 := store.AppendBlockOnBlocks(ctx, root)
+		b21 := store.AppendBlockOnBlocks(ctx, b11, b12)
 
 		t0 := testhelpers.RequireNewTipSet(t, root)
 		t1 := testhelpers.RequireNewTipSet(t, b11, b12)
@@ -38,15 +38,15 @@ func TestIterAncestors(t *testing.T) {
 		assert.False(t, it.Complete())
 		assert.True(t, t2.Equals(it.Value()))
 
-		assert.NoError(t, it.Next())
+		assert.NoError(t, it.Next(ctx))
 		assert.False(t, it.Complete())
 		assert.True(t, t1.Equals(it.Value()))
 
-		assert.NoError(t, it.Next())
+		assert.NoError(t, it.Next(ctx))
 		assert.False(t, it.Complete())
 		assert.True(t, t0.Equals(it.Value()))
 
-		assert.NoError(t, it.Next())
+		assert.NoError(t, it.Next(ctx))
 		assert.True(t, it.Complete())
 	})
 
@@ -54,10 +54,10 @@ func TestIterAncestors(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		store := chain.NewBuilder(t, miner)
 
-		root := store.AppendBlockOnBlocks()
-		b11 := store.AppendBlockOnBlocks(root)
-		b12 := store.AppendBlockOnBlocks(root)
-		b21 := store.AppendBlockOnBlocks(b11, b12)
+		root := store.AppendBlockOnBlocks(ctx)
+		b11 := store.AppendBlockOnBlocks(ctx, root)
+		b12 := store.AppendBlockOnBlocks(ctx, root)
+		b21 := store.AppendBlockOnBlocks(ctx, b11, b12)
 
 		testhelpers.RequireNewTipSet(t, root)
 		t1 := testhelpers.RequireNewTipSet(t, b11, b12)
@@ -67,13 +67,13 @@ func TestIterAncestors(t *testing.T) {
 		assert.False(t, it.Complete())
 		assert.True(t, t2.Equals(it.Value()))
 
-		assert.NoError(t, it.Next())
+		assert.NoError(t, it.Next(ctx))
 		assert.False(t, it.Complete())
 		assert.True(t, t1.Equals(it.Value()))
 
 		cancel()
 
-		assert.Error(t, it.Next())
+		assert.Error(t, it.Next(ctx))
 	})
 }
 
@@ -84,7 +84,7 @@ func TestCollectTipSetsOfHeightAtLeast(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 15
-	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
+	head := builder.AppendManyOn(ctx, chainLen, types.UndefTipSet)
 
 	stopHeight := abi.ChainEpoch(4)
 	iterator := chain.IterAncestors(ctx, builder, head)
@@ -104,7 +104,7 @@ func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 25
-	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
+	head := builder.AppendManyOn(ctx, chainLen, types.UndefTipSet)
 
 	stopHeight := abi.ChainEpoch(0)
 	iterator := chain.IterAncestors(ctx, builder, head)
@@ -125,15 +125,15 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 	head := builder.Genesis()
 
 	// Add 30 tipsets to the head of the chainStore.
-	head = builder.AppendManyOn(30, head)
+	head = builder.AppendManyOn(ctx, 30, head)
 
 	// Now add 10 null blocks and 1 tipset.
-	head = builder.BuildOneOn(head, func(b *chain.BlockBuilder) {
+	head = builder.BuildOneOn(ctx, head, func(b *chain.BlockBuilder) {
 		b.IncHeight(10)
 	})
 
 	// Now add 19 more tipsets.
-	head = builder.AppendManyOn(19, head)
+	head = builder.AppendManyOn(ctx, 19, head)
 
 	stopHeight := abi.ChainEpoch(35)
 	iterator := chain.IterAncestors(ctx, builder, head)
@@ -152,10 +152,10 @@ func TestFindCommonAncestorSameChain(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	head := builder.Genesis()
 	// Add 30 tipsets to the head of the chainStore.
-	head = builder.AppendManyOn(30, head)
+	head = builder.AppendManyOn(ctx,30, head)
 	headIterOne := chain.IterAncestors(ctx, builder, head)
 	headIterTwo := chain.IterAncestors(ctx, builder, head)
-	commonAncestor, err := chain.FindCommonAncestor(headIterOne, headIterTwo)
+	commonAncestor, err := chain.FindCommonAncestor(ctx, headIterOne, headIterTwo)
 	assert.NoError(t, err)
 	assert.Equal(t, head, commonAncestor)
 }
@@ -167,19 +167,19 @@ func TestFindCommonAncestorFork(t *testing.T) {
 	head := builder.Genesis()
 
 	// Add 3 tipsets to the head of the chainStore.
-	commonHeadTip := builder.AppendManyOn(3, head)
+	commonHeadTip := builder.AppendManyOn(ctx, 3, head)
 
 	// Grow the fork chain
 	lenFork := 10
-	forkHead := builder.AppendManyOn(lenFork, commonHeadTip)
+	forkHead := builder.AppendManyOn(ctx, lenFork, commonHeadTip)
 
 	// Grow the main chain
 	lenMainChain := 14
-	mainHead := builder.AppendManyOn(lenMainChain, commonHeadTip)
+	mainHead := builder.AppendManyOn(ctx, lenMainChain, commonHeadTip)
 
 	forkItr := chain.IterAncestors(ctx, builder, forkHead)
 	mainItr := chain.IterAncestors(ctx, builder, mainHead)
-	commonAncestor, err := chain.FindCommonAncestor(mainItr, forkItr)
+	commonAncestor, err := chain.FindCommonAncestor(ctx, mainItr, forkItr)
 	assert.NoError(t, err)
 	assert.ObjectsAreEqualValues(commonHeadTip, commonAncestor)
 }
@@ -191,15 +191,15 @@ func TestFindCommonAncestorNoFork(t *testing.T) {
 	head := builder.Genesis()
 
 	// Add 30 tipsets to the head of the chainStore.
-	head = builder.AppendManyOn(30, head)
+	head = builder.AppendManyOn(ctx, 30, head)
 	headIterOne := chain.IterAncestors(ctx, builder, head)
 
 	// Now add 19 more tipsets.
 	expectedAncestor := head
-	head = builder.AppendManyOn(19, head)
+	head = builder.AppendManyOn(ctx, 19, head)
 	headIterTwo := chain.IterAncestors(ctx, builder, head)
 
-	commonAncestor, err := chain.FindCommonAncestor(headIterOne, headIterTwo)
+	commonAncestor, err := chain.FindCommonAncestor(ctx, headIterOne, headIterTwo)
 	assert.NoError(t, err)
 	assert.True(t, expectedAncestor.Equals(commonAncestor))
 }
@@ -213,19 +213,19 @@ func TestFindCommonAncestorNullBlockFork(t *testing.T) {
 	head := builder.Genesis()
 
 	// Add 10 tipsets to the head of the chainStore.
-	commonHead := builder.AppendManyOn(10, head)
+	commonHead := builder.AppendManyOn(ctx, 10, head)
 
 	// From the common ancestor, add a block following a null block.
-	headAfterNull := builder.BuildOneOn(commonHead, func(b *chain.BlockBuilder) {
+	headAfterNull := builder.BuildOneOn(ctx, commonHead, func(b *chain.BlockBuilder) {
 		b.IncHeight(1)
 	})
 	afterNullItr := chain.IterAncestors(ctx, builder, headAfterNull)
 
 	// Add a block (with no null) on another fork.
-	headNoNull := builder.AppendOn(commonHead, 1)
+	headNoNull := builder.AppendOn(ctx, commonHead, 1)
 	noNullItr := chain.IterAncestors(ctx, builder, headNoNull)
 
-	commonAncestor, err := chain.FindCommonAncestor(afterNullItr, noNullItr)
+	commonAncestor, err := chain.FindCommonAncestor(ctx, afterNullItr, noNullItr)
 	assert.NoError(t, err)
 	assert.ObjectsAreEqualValues(commonHead, commonAncestor)
 }

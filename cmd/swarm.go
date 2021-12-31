@@ -135,7 +135,7 @@ var queryDhtCmd = &cmds.Command{
 
 		go func() {
 			defer cancel()
-			for p := range closestPeers {
+			for _, p := range closestPeers {
 				routing.PublishQueryEvent(ctx, &routing.QueryEvent{
 					ID:   p,
 					Type: routing.FinalPeer,

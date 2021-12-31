@@ -89,7 +89,7 @@ var newMinerCmd = &cmds.Command{
 			if env.(*node.Env).WalletAPI.WalletState(req.Context) == wallet.Lock {
 				return errWalletLocked
 			}
-			if worker, err = env.(*node.Env).WalletAPI.WalletNewAddress(address.BLS); err != nil {
+			if worker, err = env.(*node.Env).WalletAPI.WalletNewAddress(req.Context, address.BLS); err != nil {
 				return err
 			}
 		}

@@ -33,8 +33,8 @@ type MessageProvider interface {
 	LoadTipSetMessage(ctx context.Context, ts *types.TipSet) ([]types.BlockMessagesInfo, error)
 	LoadMetaMessages(context.Context, cid.Cid) ([]*types.SignedMessage, []*types.Message, error)
 	ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
-	LoadUnsignedMessagesFromCids(blsCids []cid.Cid) ([]*types.Message, error)
-	LoadSignedMessagesFromCids(secpCids []cid.Cid) ([]*types.SignedMessage, error)
+	LoadUnsignedMessagesFromCids(ctx context.Context, blsCids []cid.Cid) ([]*types.Message, error)
+	LoadSignedMessagesFromCids(ctx context.Context, secpCids []cid.Cid) ([]*types.SignedMessage, error)
 	LoadReceipts(context.Context, cid.Cid) ([]types.MessageReceipt, error)
 	LoadTxMeta(context.Context, cid.Cid) (types.MessageRoot, error)
 }
@@ -73,7 +73,7 @@ func (ms *MessageStore) LoadMetaMessages(ctx context.Context, metaCid cid.Cid) (
 	}
 
 	// load secp messages from cids
-	secpMsgs, err := ms.LoadSignedMessagesFromCids(secpCids)
+	secpMsgs, err := ms.LoadSignedMessagesFromCids(ctx, secpCids)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -84,7 +84,7 @@ func (ms *MessageStore) LoadMetaMessages(ctx context.Context, metaCid cid.Cid) (
 	}
 
 	// load bls messages from cids
-	blsMsgs, err := ms.LoadUnsignedMessagesFromCids(blsCids)
+	blsMsgs, err := ms.LoadUnsignedMessagesFromCids(ctx, blsCids)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -112,8 +112,8 @@ func (ms *MessageStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid
 
 //LoadMessage load message of specify message cid
 //First get the unsigned message. If it is not found, then get the signed message. If still not found, an error will be returned
-func (ms *MessageStore) LoadMessage(mid cid.Cid) (types.ChainMsg, error) {
-	m, err := ms.LoadUnsignedMessage(mid)
+func (ms *MessageStore) LoadMessage(ctx context.Context, mid cid.Cid) (types.ChainMsg, error) {
+	m, err := ms.LoadUnsignedMessage(ctx, mid)
 	if err == nil {
 		return m, nil
 	}
@@ -122,12 +122,12 @@ func (ms *MessageStore) LoadMessage(mid cid.Cid) (types.ChainMsg, error) {
 		log.Warnf("GetCMessage: unexpected error getting unsigned message: %s", err)
 	}
 
-	return ms.LoadSignedMessage(mid)
+	return ms.LoadSignedMessage(ctx, mid)
 }
 
 //LoadUnsignedMessage load unsigned messages in tipset
-func (ms *MessageStore) LoadUnsignedMessage(mid cid.Cid) (*types.Message, error) {
-	messageBlock, err := ms.bs.Get(mid)
+func (ms *MessageStore) LoadUnsignedMessage(ctx context.Context, mid cid.Cid) (*types.Message, error) {
+	messageBlock, err := ms.bs.Get(ctx, mid)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get bls message %s", mid)
 	}
@@ -139,8 +139,8 @@ func (ms *MessageStore) LoadUnsignedMessage(mid cid.Cid) (*types.Message, error)
 }
 
 //LoadUnsignedMessagesFromCids load unsigned messages of cid array
-func (ms *MessageStore) LoadSignedMessage(mid cid.Cid) (*types.SignedMessage, error) {
-	messageBlock, err := ms.bs.Get(mid)
+func (ms *MessageStore) LoadSignedMessage(ctx context.Context, mid cid.Cid) (*types.SignedMessage, error) {
+	messageBlock, err := ms.bs.Get(ctx, mid)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get bls message %s", mid)
 	}
@@ -154,10 +154,10 @@ func (ms *MessageStore) LoadSignedMessage(mid cid.Cid) (*types.SignedMessage, er
 }
 
 //LoadUnsignedMessagesFromCids load unsigned messages of cid array
-func (ms *MessageStore) LoadUnsignedMessagesFromCids(blsCids []cid.Cid) ([]*types.Message, error) {
+func (ms *MessageStore) LoadUnsignedMessagesFromCids(ctx context.Context, blsCids []cid.Cid) ([]*types.Message, error) {
 	blsMsgs := make([]*types.Message, len(blsCids))
 	for i, c := range blsCids {
-		message, err := ms.LoadUnsignedMessage(c)
+		message, err := ms.LoadUnsignedMessage(ctx, c)
 		if err != nil {
 			return nil, err
 		}
@@ -167,10 +167,10 @@ func (ms *MessageStore) LoadUnsignedMessagesFromCids(blsCids []cid.Cid) ([]*type
 }
 
 //LoadSignedMessagesFromCids load signed messages of cid array
-func (ms *MessageStore) LoadSignedMessagesFromCids(secpCids []cid.Cid) ([]*types.SignedMessage, error) {
+func (ms *MessageStore) LoadSignedMessagesFromCids(ctx context.Context, secpCids []cid.Cid) ([]*types.SignedMessage, error) {
 	secpMsgs := make([]*types.SignedMessage, len(secpCids))
 	for i, c := range secpCids {
-		message, err := ms.LoadSignedMessage(c)
+		message, err := ms.LoadSignedMessage(ctx, c)
 		if err != nil {
 			return nil, err
 		}
@@ -374,7 +374,7 @@ func (ms *MessageStore) loadAMTCids(ctx context.Context, c cid.Cid) ([]cid.Cid, 
 
 // LoadTxMeta loads the secproot, blsroot data from the message store
 func (ms *MessageStore) LoadTxMeta(ctx context.Context, c cid.Cid) (types.MessageRoot, error) {
-	metaBlock, err := ms.bs.Get(c)
+	metaBlock, err := ms.bs.Get(ctx, c)
 	if err != nil {
 		return types.MessageRoot{}, errors.Wrapf(err, "failed to get tx meta %s", c)
 	}

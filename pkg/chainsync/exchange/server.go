@@ -22,14 +22,14 @@ import (
 var exchangeServerLog = logging.Logger("exchange.server")
 
 type chainReader interface {
-	GetTipSet(types.TipSetKey) (*types.TipSet, error)
+	GetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 }
 
 type messageStore interface {
 	ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 
-	LoadUnsignedMessagesFromCids(cids []cid.Cid) ([]*types.Message, error)
-	LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.SignedMessage, error)
+	LoadUnsignedMessagesFromCids(ctx context.Context, cids []cid.Cid) ([]*types.Message, error)
+	LoadSignedMessagesFromCids(ctx context.Context, cids []cid.Cid) ([]*types.SignedMessage, error)
 }
 
 // server implements exchange.Server. It services requests for the
@@ -157,7 +157,7 @@ func (s *server) serviceRequest(ctx context.Context, req *validatedRequest) (*Re
 	_, span := trace.StartSpan(ctx, "chainxchg.ServiceRequest")
 	defer span.End()
 
-	chain, err := collectChainSegment(s.cr, s.mr, req)
+	chain, err := collectChainSegment(ctx, s.cr, s.mr, req)
 	if err != nil {
 		exchangeServerLog.Warn("block sync request: collectChainSegment failed: ", err)
 		return &Response{
@@ -177,13 +177,13 @@ func (s *server) serviceRequest(ctx context.Context, req *validatedRequest) (*Re
 	}, nil
 }
 
-func collectChainSegment(cr chainReader, mr messageStore, req *validatedRequest) ([]*BSTipSet, error) {
+func collectChainSegment(ctx context.Context, cr chainReader, mr messageStore, req *validatedRequest) ([]*BSTipSet, error) {
 	var bstips []*BSTipSet
 
 	cur := req.head
 	for {
 		var bst BSTipSet
-		ts, err := cr.GetTipSet(cur)
+		ts, err := cr.GetTipSet(ctx, cur)
 		if err != nil {
 			return nil, xerrors.Errorf("failed loading tipset %s: %w", cur, err)
 		}
@@ -193,7 +193,7 @@ func collectChainSegment(cr chainReader, mr messageStore, req *validatedRequest)
 		}
 
 		if req.options.IncludeMessages {
-			bmsgs, bmincl, smsgs, smincl, err := GatherMessages(cr, mr, ts)
+			bmsgs, bmincl, smsgs, smincl, err := GatherMessages(ctx, cr, mr, ts)
 			if err != nil {
 				return nil, xerrors.Errorf("gather messages failed: %w", err)
 			}
@@ -218,7 +218,7 @@ func collectChainSegment(cr chainReader, mr messageStore, req *validatedRequest)
 	}
 }
 
-func GatherMessages(cr chainReader, mr messageStore, ts *types.TipSet) ([]*types.Message, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
+func GatherMessages(ctx context.Context, cr chainReader, mr messageStore, ts *types.TipSet) ([]*types.Message, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
 	blsmsgmap := make(map[cid.Cid]uint64)
 	secpkmsgmap := make(map[cid.Cid]uint64)
 	var secpkincl, blsincl [][]uint64
@@ -258,12 +258,12 @@ func GatherMessages(cr chainReader, mr messageStore, ts *types.TipSet) ([]*types
 		secpkincl = append(secpkincl, smi)
 	}
 
-	blsmsgs, err := mr.LoadUnsignedMessagesFromCids(blscids)
+	blsmsgs, err := mr.LoadUnsignedMessagesFromCids(ctx, blscids)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 
-	secpkmsgs, err := mr.LoadSignedMessagesFromCids(secpkcids)
+	secpkmsgs, err := mr.LoadSignedMessagesFromCids(ctx, secpkcids)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}

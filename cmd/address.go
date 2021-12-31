@@ -77,7 +77,7 @@ var addrsNewCmd = &cmds.Command{
 			return errWalletLocked
 		}
 
-		addr, err := env.(*node.Env).WalletAPI.WalletNewAddress(protocol)
+		addr, err := env.(*node.Env).WalletAPI.WalletNewAddress(req.Context, protocol)
 		if err != nil {
 			return err
 		}
@@ -260,7 +260,7 @@ var walletImportCmd = &cmds.Command{
 			return err
 		}
 
-		addr, err := env.(*node.Env).WalletAPI.WalletImport(&key)
+		addr, err := env.(*node.Env).WalletAPI.WalletImport(req.Context, &key)
 		if err != nil {
 			return err
 		}
@@ -303,7 +303,7 @@ var (
 			}
 
 			pw := req.Arguments[1]
-			ki, err := env.(*node.Env).WalletAPI.WalletExport(addr, pw)
+			ki, err := env.(*node.Env).WalletAPI.WalletExport(req.Context, addr, pw)
 			if err != nil {
 				return err
 			}

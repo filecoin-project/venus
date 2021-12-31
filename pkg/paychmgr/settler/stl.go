@@ -31,12 +31,12 @@ func NewSetter(mgr *paychmgr.Manager, chainInfoAPI paychmgr.IChainInfo) Settler 
 	return &settler{mgr, chainInfoAPI}
 }
 
-func (o *settler) PaychList(context.Context) ([]address.Address, error) {
-	return o.mgr.ListChannels()
+func (o *settler) PaychList(ctx context.Context) ([]address.Address, error) {
+	return o.mgr.ListChannels(ctx)
 }
 
 func (o *settler) PaychStatus(ctx context.Context, pch address.Address) (*paychtypes.Status, error) {
-	ci, err := o.mgr.GetChannelInfo(pch)
+	ci, err := o.mgr.GetChannelInfo(ctx, pch)
 	if err != nil {
 		return nil, err
 	}

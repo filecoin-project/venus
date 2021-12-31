@@ -189,7 +189,7 @@ func (node *Node) Start(ctx context.Context) error {
 		return err
 	}
 
-	err = node.paychan.Start()
+	err = node.paychan.Start(ctx)
 	if err != nil {
 		return err
 	}

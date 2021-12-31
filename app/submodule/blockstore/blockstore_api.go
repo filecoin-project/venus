@@ -22,7 +22,7 @@ type blockstoreAPI struct { //nolint
 }
 
 func (blockstoreAPI *blockstoreAPI) ChainReadObj(ctx context.Context, ocid cid.Cid) ([]byte, error) {
-	blk, err := blockstoreAPI.blockstore.Blockstore.Get(ocid)
+	blk, err := blockstoreAPI.blockstore.Blockstore.Get(ctx, ocid)
 	if err != nil {
 		return nil, xerrors.Errorf("blockstore get: %w", err)
 	}
@@ -31,11 +31,11 @@ func (blockstoreAPI *blockstoreAPI) ChainReadObj(ctx context.Context, ocid cid.C
 }
 
 func (blockstoreAPI *blockstoreAPI) ChainDeleteObj(ctx context.Context, obj cid.Cid) error {
-	return blockstoreAPI.blockstore.Blockstore.DeleteBlock(obj)
+	return blockstoreAPI.blockstore.Blockstore.DeleteBlock(ctx, obj)
 }
 
 func (blockstoreAPI *blockstoreAPI) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error) {
-	return blockstoreAPI.blockstore.Blockstore.Has(obj)
+	return blockstoreAPI.blockstore.Blockstore.Has(ctx, obj)
 }
 
 func (blockstoreAPI *blockstoreAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (apitypes.ObjStat, error) {

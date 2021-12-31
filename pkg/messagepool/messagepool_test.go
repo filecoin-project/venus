@@ -66,7 +66,7 @@ func mkMessage(from, to address.Address, nonce uint64, w *wallet.Wallet) *types.
 	}
 
 	c := msg.Cid()
-	sig, err := w.WalletSign(from, c.Bytes(), wtypes.MsgMeta{})
+	sig, err := w.WalletSign(context.Background(), from, c.Bytes(), wtypes.MsgMeta{})
 	if err != nil {
 		panic(err)
 	}
@@ -185,20 +185,20 @@ func (tma *testMpoolAPI) setBlockMessages(h *types.BlockHeader, msgs ...*types.S
 	tma.bmsgs[h.Cid()] = msgs
 }
 
-func (tma *testMpoolAPI) ChainHead() (*types.TipSet, error) {
+func (tma *testMpoolAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	return &types.TipSet{}, nil
 }
 
-func (tma *testMpoolAPI) ChainTipSet(key types.TipSetKey) (*types.TipSet, error) {
+func (tma *testMpoolAPI) ChainTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
 	return &types.TipSet{}, nil
 }
 
-func (tma *testMpoolAPI) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) *types.TipSet {
+func (tma *testMpoolAPI) SubscribeHeadChanges(ctx context.Context, cb func(rev, app []*types.TipSet) error) *types.TipSet {
 	tma.cb = cb
 	return tma.tipsets[0]
 }
 
-func (tma *testMpoolAPI) PutMessage(m types.ChainMsg) (cid.Cid, error) {
+func (tma *testMpoolAPI) PutMessage(ctx context.Context, m types.ChainMsg) (cid.Cid, error) {
 	return cid.Undef, nil
 }
 
@@ -206,12 +206,12 @@ func (tma *testMpoolAPI) IsLite() bool {
 	return false
 }
 
-func (tma *testMpoolAPI) PubSubPublish(string, []byte) error {
+func (tma *testMpoolAPI) PubSubPublish(context.Context, string, []byte) error {
 	tma.published++
 	return nil
 }
 
-func (tma *testMpoolAPI) GetActorAfter(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+func (tma *testMpoolAPI) GetActorAfter(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, error) {
 	// regression check for load bug
 	if ts == nil {
 		panic("GetActorAfter called with nil tipset")
@@ -266,16 +266,16 @@ func (tma *testMpoolAPI) StateAccountKey(ctx context.Context, addr address.Addre
 	return addr, nil
 }
 
-func (tma *testMpoolAPI) MessagesForBlock(h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
+func (tma *testMpoolAPI) MessagesForBlock(ctx context.Context, h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
 	return nil, tma.bmsgs[h.Cid()], nil
 }
 
-func (tma *testMpoolAPI) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
+func (tma *testMpoolAPI) MessagesForTipset(ctx context.Context, ts *types.TipSet) ([]types.ChainMsg, error) {
 	if len(ts.Blocks()) != 1 {
 		panic("cant deal with multiblock tipsets in this test")
 	}
 
-	bm, sm, err := tma.MessagesForBlock(ts.Blocks()[0])
+	bm, sm, err := tma.MessagesForBlock(ctx, ts.Blocks()[0])
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +292,7 @@ func (tma *testMpoolAPI) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, 
 	return out, nil
 }
 
-func (tma *testMpoolAPI) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
+func (tma *testMpoolAPI) LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
 	for _, ts := range tma.tipsets {
 		if tsk.Equals(ts.Key()) {
 			return ts, nil
@@ -332,7 +332,7 @@ func mustAdd(t *testing.T, mp *MessagePool, msg *types.SignedMessage) {
 func newWalletAndMpool(t *testing.T, tma *testMpoolAPI) (*wallet.Wallet, *MessagePool) {
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,7 +342,7 @@ func newWalletAndMpool(t *testing.T, tma *testMpoolAPI) (*wallet.Wallet, *Messag
 
 func newWallet(t *testing.T) *wallet.Wallet {
 	r := repo.NewInMemoryRepo()
-	backend, err := wallet.NewDSBackend(r.WalletDatastore(), r.Config().Wallet.PassphraseConfig, wallet.TestPassword)
+	backend, err := wallet.NewDSBackend(context.Background(), r.WalletDatastore(), r.Config().Wallet.PassphraseConfig, wallet.TestPassword)
 	assert.NoError(t, err)
 
 	return wallet.New(backend)
@@ -357,7 +357,7 @@ func TestMessagePool(t *testing.T) {
 
 	a := tma.nextBlock()
 
-	sender, err := w.NewAddress(address.SECP256K1)
+	sender, err := w.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -386,7 +386,7 @@ func TestCheckMessageBig(t *testing.T) {
 	tma := newTestMpoolAPI()
 
 	w, mp := newWalletAndMpool(t, tma)
-	from, err := w.NewAddress(address.SECP256K1)
+	from, err := w.NewAddress(context.Background(), address.SECP256K1)
 	assert.NoError(t, err)
 
 	tma.setBalance(from, 1000e9)
@@ -405,7 +405,7 @@ func TestCheckMessageBig(t *testing.T) {
 			Params:     make([]byte, 41<<10), // 41KiB payload
 		}
 
-		sig, err := w.WalletSign(from, msg.Cid().Bytes(), wtypes.MsgMeta{})
+		sig, err := w.WalletSign(context.Background(), from, msg.Cid().Bytes(), wtypes.MsgMeta{})
 		if err != nil {
 			panic(err)
 		}
@@ -428,7 +428,7 @@ func TestCheckMessageBig(t *testing.T) {
 			Params:     make([]byte, 64<<10), // 64KiB payload
 		}
 
-		sig, err := w.WalletSign(from, msg.Cid().Bytes(), wtypes.MsgMeta{})
+		sig, err := w.WalletSign(context.Background(), from, msg.Cid().Bytes(), wtypes.MsgMeta{})
 		if err != nil {
 			panic(err)
 		}
@@ -450,7 +450,7 @@ func TestMessagePoolMessagesInEachBlock(t *testing.T) {
 
 	a := tma.nextBlock()
 
-	sender, err := w.NewAddress(address.SECP256K1)
+	sender, err := w.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -492,7 +492,7 @@ func TestRevertMessages(t *testing.T) {
 	a := tma.nextBlock()
 	b := tma.nextBlock()
 
-	sender, err := w.NewAddress(address.SECP256K1)
+	sender, err := w.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -547,7 +547,7 @@ func TestPruningSimple(t *testing.T) {
 	a := tma.nextBlock()
 	tma.applyBlock(t, a)
 
-	sender, err := w.NewAddress(address.SECP256K1)
+	sender, err := w.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -585,21 +585,21 @@ func TestLoadLocal(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// the actors
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(context.Background(), address.SECP256K1)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(address.SECP256K1)
+	a2, err := w2.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -621,7 +621,7 @@ func TestLoadLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mp, err = New(tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err = New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -652,20 +652,20 @@ func TestClearAll(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// the actors
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(address.SECP256K1)
+	a2, err := w2.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -700,20 +700,20 @@ func TestClearNonLocal(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// the actors
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(address.SECP256K1)
+	a2, err := w2.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -755,20 +755,20 @@ func TestUpdates(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// the actors
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(address.SECP256K1)
+	a2, err := w2.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}

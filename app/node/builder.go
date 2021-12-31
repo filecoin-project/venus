@@ -4,13 +4,12 @@ import (
 	"context"
 	"time"
 
-	chain2 "github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/jwtauth"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	"github.com/ipfs-force-community/metrics/ratelimit"
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p"
+	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
+
+	"github.com/ipfs-force-community/metrics/ratelimit"
 
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/app/submodule/chain"
@@ -26,13 +25,15 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
 	"github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
+	chain2 "github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/journal"
+	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
-	"github.com/libp2p/go-libp2p"
-	"github.com/pkg/errors"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 // Builder is a helper to aid in the construction of a filecoin node.
@@ -84,7 +85,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	}
 
 	// fetch genesis block id
-	b.genBlk, err = readGenesisCid(b.repo.ChainDatastore(), b.repo.Datastore())
+	b.genBlk, err = readGenesisCid(ctx, b.repo.ChainDatastore(), b.repo.Datastore())
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +144,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.wallet")
 	}
 
-	nd.mpool, err = mpool.NewMpoolSubmodule((*builder)(b), nd.network, nd.chain, nd.wallet)
+	nd.mpool, err = mpool.NewMpoolSubmodule(ctx, (*builder)(b), nd.network, nd.chain, nd.wallet)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.mpool")
 	}

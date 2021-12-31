@@ -36,7 +36,7 @@ type MiningAPI struct { //nolint
 //MinerGetBaseInfo get current miner information
 func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk types.TipSetKey) (*apitypes.MiningBaseInfo, error) {
 	chainStore := miningAPI.Ming.ChainModule.ChainReader
-	ts, err := chainStore.GetTipSet(tsk)
+	ts, err := chainStore.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset for mining base: %v", err)
 	}
@@ -44,7 +44,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset root for mining base: %v", err)
 	}
-	prev, err := chainStore.GetLatestBeaconEntry(ts)
+	prev, err := chainStore.GetLatestBeaconEntry(ctx, ts)
 	if err != nil {
 		if os.Getenv("VENUS_IGNORE_DRAND") != "_yes_" {
 			return nil, xerrors.Errorf("failed to get latest beacon entry: %v", err)
@@ -120,7 +120,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 		return nil, err
 	}
 
-	st, err := miningAPI.Ming.ChainModule.ChainReader.StateView(ts)
+	st, err := miningAPI.Ming.ChainModule.ChainReader.StateView(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load latest state: %v", err)
 	}
@@ -170,7 +170,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *apitypes.B
 	chainStore := miningAPI.Ming.ChainModule.ChainReader
 	messageStore := miningAPI.Ming.ChainModule.MessageStore
 	cfg := miningAPI.Ming.Config.Repo().Config()
-	pts, err := chainStore.GetTipSet(bt.Parents)
+	pts, err := chainStore.GetTipSet(ctx, bt.Parents)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load parent tipset: %v", err)
 	}

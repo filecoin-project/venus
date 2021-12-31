@@ -2,6 +2,7 @@ package market
 
 import (
 	"bytes"
+	"context"
 
 	"github.com/filecoin-project/venus/pkg/repo"
 
@@ -28,7 +29,7 @@ func newStore(ds repo.Datastore) *Store {
 }
 
 // save the state to the datastore
-func (ps *Store) save(state *FundedAddressState) error {
+func (ps *Store) save(ctx context.Context, state *FundedAddressState) error {
 	k := dskeyForAddr(state.Addr)
 
 	b, err := cborrpc.Dump(state)
@@ -36,7 +37,7 @@ func (ps *Store) save(state *FundedAddressState) error {
 		return err
 	}
 
-	return ps.ds.Put(k, b)
+	return ps.ds.Put(ctx, k, b)
 }
 
 // get the state for the given address

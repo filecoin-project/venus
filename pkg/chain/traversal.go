@@ -11,7 +11,7 @@ import (
 
 // TipSetProvider provides tipsets for traversal.
 type TipSetProvider interface {
-	GetTipSet(tsKey types.TipSetKey) (*types.TipSet, error)
+	GetTipSet(ctx context.Context, tsKey types.TipSetKey) (*types.TipSet, error)
 }
 
 // IterAncestors returns an iterator over tipset ancestors, yielding first the start tipset and
@@ -38,7 +38,7 @@ func (it *TipsetIterator) Complete() bool {
 }
 
 // Next advances the iterator to the next value.
-func (it *TipsetIterator) Next() error {
+func (it *TipsetIterator) Next(ctx context.Context) error {
 	select {
 	case <-it.ctx.Done():
 		return it.ctx.Err()
@@ -48,7 +48,7 @@ func (it *TipsetIterator) Next() error {
 		} else {
 			var err error
 			parentKey := it.value.Parents()
-			it.value, err = it.store.GetTipSet(parentKey)
+			it.value, err = it.store.GetTipSet(ctx, parentKey)
 			return err
 		}
 		return nil
@@ -86,7 +86,7 @@ func TipSetProviderFromBlocks(ctx context.Context, blocks BlockProvider) TipSetP
 }
 
 // GetTipSet loads the blocks for a tipset.
-func (p *tipsetFromBlockProvider) GetTipSet(tsKey types.TipSetKey) (*types.TipSet, error) {
+func (p *tipsetFromBlockProvider) GetTipSet(ctx context.Context, tsKey types.TipSetKey) (*types.TipSet, error) {
 	return LoadTipSetBlocks(p.ctx, p.blocks, tsKey)
 }
 
@@ -97,7 +97,7 @@ func CollectTipsToCommonAncestor(ctx context.Context, store TipSetProvider, oldH
 	oldIter := IterAncestors(ctx, store, oldHead)
 	newIter := IterAncestors(ctx, store, newHead)
 
-	commonAncestor, err := FindCommonAncestor(oldIter, newIter)
+	commonAncestor, err := FindCommonAncestor(ctx, oldIter, newIter)
 	if err != nil {
 		return
 	}
@@ -123,7 +123,7 @@ var ErrNoCommonAncestor = errors.New("no common ancestor")
 // FindCommonAncestor returns the common ancestor of the two tipsets pointed to
 // by the input iterators.  If they share no common ancestor ErrNoCommonAncestor
 // will be returned.
-func FindCommonAncestor(leftIter, rightIter *TipsetIterator) (*types.TipSet, error) {
+func FindCommonAncestor(ctx context.Context, leftIter, rightIter *TipsetIterator) (*types.TipSet, error) {
 	for !rightIter.Complete() && !leftIter.Complete() {
 		left := leftIter.Value()
 		right := rightIter.Value()
@@ -140,13 +140,13 @@ func FindCommonAncestor(leftIter, rightIter *TipsetIterator) (*types.TipSet, err
 		// point to a tipset at the same height or higher than the
 		// other pointer's tipset.
 		if rightHeight >= leftHeight {
-			if err := rightIter.Next(); err != nil {
+			if err := rightIter.Next(ctx); err != nil {
 				return nil, err
 			}
 		}
 
 		if leftHeight >= rightHeight {
-			if err := leftIter.Next(); err != nil {
+			if err := leftIter.Next(ctx); err != nil {
 				return nil, err
 			}
 		}
@@ -160,7 +160,7 @@ func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator
 	var ret []*types.TipSet
 	var err error
 	var h abi.ChainEpoch
-	for ; !iterator.Complete(); err = iterator.Next() {
+	for ; !iterator.Complete(); err = iterator.Next(ctx) {
 		if err != nil {
 			return nil, err
 		}
@@ -177,7 +177,7 @@ func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator
 func FindLatestDRAND(ctx context.Context, start *types.TipSet, reader TipSetProvider) (*types.BeaconEntry, error) {
 	iterator := IterAncestors(ctx, reader, start)
 	var err error
-	for ; !iterator.Complete(); err = iterator.Next() {
+	for ; !iterator.Complete(); err = iterator.Next(ctx) {
 		if err != nil {
 			return nil, err
 		}

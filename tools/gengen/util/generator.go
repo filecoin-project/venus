@@ -87,7 +87,7 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 		NtwkVersionGetter: func(ctx context.Context, epoch abi.ChainEpoch) network.Version {
 			return network.Version6
 		},
-		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(chainStore, chainFork, nil),
+		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(context.TODO(), chainStore, chainFork, nil),
 		Rnd:                 chainRand,
 		BaseFee:             abi.NewTokenAmount(InitialBaseFee),
 		Epoch:               0,
