@@ -9,10 +9,13 @@ import (
 	"testing"
 	"unsafe"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+
 	"github.com/stretchr/testify/require"
 )
 
 func TestCodecList(t *testing.T) {
+	tf.UnitTest(t)
 	zeroes := bits.TrailingZeros(uint(_codecLimit))
 	require.Equalf(t, zeroes, len(codecs), "codec count not match, %d != %d", zeroes, len(codecs))
 
@@ -61,6 +64,7 @@ type BUintptr uintptr
 type BUnsafePointer unsafe.Pointer
 
 func TestSimilarSimple(t *testing.T) {
+	tf.UnitTest(t)
 	alist := []interface{}{
 		new(ABool),
 		new(AInt),
@@ -174,6 +178,7 @@ func similarTest(t *testing.T, origin interface{}, cases []similarCase, checkInd
 }
 
 func TestArray(t *testing.T) {
+	tf.UnitTest(t)
 	type origin [2]int
 	type case1 [2]uint
 	type case2 [3]int
@@ -203,6 +208,7 @@ func TestArray(t *testing.T) {
 }
 
 func TestMap(t *testing.T) {
+	tf.UnitTest(t)
 	type origin map[string]int
 
 	type case1 map[int]int
@@ -232,6 +238,7 @@ func TestMap(t *testing.T) {
 }
 
 func TestSlice(t *testing.T) {
+	tf.UnitTest(t)
 	type origin []int
 
 	type case1 []uint
@@ -257,6 +264,7 @@ func TestSlice(t *testing.T) {
 }
 
 func TestChan(t *testing.T) {
+	tf.UnitTest(t)
 	type origin chan int
 
 	type case1 chan uint
@@ -287,6 +295,7 @@ func TestChan(t *testing.T) {
 }
 
 func TestStruct(t *testing.T) {
+	tf.UnitTest(t)
 	type origin struct {
 		A uint
 		B int
@@ -401,6 +410,7 @@ func TestStruct(t *testing.T) {
 }
 
 func TestInterface(t *testing.T) {
+	tf.UnitTest(t)
 	type origin interface {
 		Read(context.Context) (int, error)
 		Write(context.Context, []byte) (int, error)
@@ -559,6 +569,7 @@ func (ci halfCodecInt) MarshalCBOR(w io.Writer) error { // nolint
 }
 
 func TestCodec(t *testing.T) {
+	tf.UnitTest(t)
 	cases := []similarCase{
 		{
 			val:       new(AInt),
@@ -614,6 +625,7 @@ func TestCodec(t *testing.T) {
 }
 
 func TestConvertible(t *testing.T) {
+	tf.UnitTest(t)
 	type origin struct {
 		A uint
 		B int
@@ -636,6 +648,7 @@ func TestConvertible(t *testing.T) {
 }
 
 func TestRecursive(t *testing.T) {
+	tf.UnitTest(t)
 	type origin struct {
 		A   uint
 		B   int

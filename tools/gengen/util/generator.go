@@ -7,9 +7,6 @@ import (
 	"io"
 	mrand "math/rand"
 
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
-	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
-
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"

@@ -5,11 +5,12 @@ import (
 	"reflect"
 	"testing"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/require"
 )
 
 func TestExportedMethods(t *testing.T) {
-
+	tf.UnitTest(t)
 	meths := ExportedMethods(reflect.TypeOf((*io.ReadCloser)(nil)).Elem())
 	require.Len(t, meths, 2, "exported methods for io.ReadCloser")
 

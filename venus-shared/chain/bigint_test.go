@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"testing"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBigIntSerializationRoundTrip(t *testing.T) {
+	tf.UnitTest(t)
 	testValues := []string{
 		"0", "1", "10", "-10", "9999", "12345678901234567891234567890123456789012345678901234567890",
 	}
@@ -37,6 +39,7 @@ func TestBigIntSerializationRoundTrip(t *testing.T) {
 }
 
 func TestBigIntParseErr(t *testing.T) {
+	tf.UnitTest(t)
 	testValues := []string{
 		"a0", "1b", "10c", "-1d0", "9e999", "f12345678901234567891234567890123456789012345678901234567890",
 	}
@@ -48,6 +51,7 @@ func TestBigIntParseErr(t *testing.T) {
 }
 
 func TestBigIntCalculating(t *testing.T) {
+	tf.UnitTest(t)
 	zero := NewInt(0)
 	maxProvideAttempts := 8
 	for i := 0; i < 32; i++ {

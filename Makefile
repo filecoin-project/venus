@@ -58,6 +58,9 @@ cborgen:
 gogen:
 	cd venus-shared && go generate ./...
 
+inline-gen:
+	cd venus-devtool && go run ./inline-gen/main.go ../ ./inline-gen/inlinegen-data.json
+
 test-venus-shared:
 	cd venus-shared && go test -covermode=set ./...
 

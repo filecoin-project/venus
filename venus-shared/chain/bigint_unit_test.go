@@ -9,10 +9,12 @@ import (
 
 	"github.com/docker/go-units"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/require"
 )
 
 func TestUnitStrs(t *testing.T) {
+	tf.UnitTest(t)
 	cases := []struct {
 		in   uint64
 		size string
@@ -35,6 +37,7 @@ func TestUnitStrs(t *testing.T) {
 }
 
 func TestSizeStrUnitsSymmetry(t *testing.T) {
+	tf.UnitTest(t)
 	s := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(s)
 
@@ -51,6 +54,7 @@ func TestSizeStrUnitsSymmetry(t *testing.T) {
 }
 
 func TestSizeStrBig(t *testing.T) {
+	tf.UnitTest(t)
 	ZiB := big.NewInt(50000)
 	ZiB = ZiB.Lsh(ZiB, 70)
 
