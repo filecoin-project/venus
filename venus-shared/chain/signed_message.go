@@ -17,6 +17,7 @@ type SignedMessage struct {
 	Signature crypto.Signature
 }
 
+// nolint
 func (smsg *SignedMessage) ChainLength() int {
 	var data []byte
 	var err error
