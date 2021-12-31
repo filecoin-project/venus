@@ -7,10 +7,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/crypto"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 )
 
 func TestSignedMessageBasic(t *testing.T) {
+	tf.UnitTest(t)
 	sliceLen := 16
 	bytesLen := 32
 

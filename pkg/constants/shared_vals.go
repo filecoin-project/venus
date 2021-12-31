@@ -14,7 +14,16 @@ import (
 // Consensus / Network
 
 const AllowableClockDriftSecs = uint64(1)
+
+/* inline-gen template
+
+const NewestNetworkVersion = network.Version{{.latestNetworkVersion}}
+
+/* inline-gen start */
+
 const NewestNetworkVersion = network.Version15
+
+/* inline-gen end */
 
 // constants for Weight calculation
 // The ratio of weight contributed by short-term vs long-term factors in a given round

@@ -6,10 +6,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 )
 
 func TestBeaconEntryBasic(t *testing.T) {
+	tf.UnitTest(t)
 	dataLen := 32
 
 	var buf bytes.Buffer

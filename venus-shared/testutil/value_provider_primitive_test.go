@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,6 +18,8 @@ func getRand() *rand.Rand {
 }
 
 func TestDefaultBytes(t *testing.T) {
+	tf.UnitTest(t)
+
 	local := getRand()
 
 	for i := 0; i < 16; i++ {
@@ -32,6 +35,8 @@ func TestDefaultBytes(t *testing.T) {
 }
 
 func TestDefaultString(t *testing.T) {
+	tf.UnitTest(t)
+
 	local := getRand()
 
 	for i := 0; i < 16; i++ {
@@ -46,6 +51,8 @@ func TestDefaultString(t *testing.T) {
 }
 
 func TestDefaultInt(t *testing.T) {
+	tf.UnitTest(t)
+
 	local := getRand()
 
 	for i := 0; i < 16; i++ {
@@ -56,6 +63,8 @@ func TestDefaultInt(t *testing.T) {
 }
 
 func TestDefaultInt64(t *testing.T) {
+	tf.UnitTest(t)
+
 	require.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(int64(0))))
 
 	local := getRand()
@@ -68,6 +77,8 @@ func TestDefaultInt64(t *testing.T) {
 }
 
 func TestDefaultInt32(t *testing.T) {
+	tf.UnitTest(t)
+
 	require.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(int32(0))))
 
 	local := getRand()
@@ -80,6 +91,8 @@ func TestDefaultInt32(t *testing.T) {
 }
 
 func TestDefaultFloat64(t *testing.T) {
+	tf.UnitTest(t)
+
 	require.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(float64(0))))
 
 	local := getRand()
@@ -92,6 +105,8 @@ func TestDefaultFloat64(t *testing.T) {
 }
 
 func TestDefaultIntType(t *testing.T) {
+	tf.UnitTest(t)
+
 	type number int
 	require.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(number(0))))
 
@@ -105,6 +120,8 @@ func TestDefaultIntType(t *testing.T) {
 }
 
 func TestDefaultFloatType(t *testing.T) {
+	tf.UnitTest(t)
+
 	type double float64
 	require.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(double(0))))
 
@@ -118,6 +135,8 @@ func TestDefaultFloatType(t *testing.T) {
 }
 
 func TestDefaultIntSlice(t *testing.T) {
+	tf.UnitTest(t)
+
 	local := getRand()
 
 	var dest []int
@@ -128,6 +147,8 @@ func TestDefaultIntSlice(t *testing.T) {
 }
 
 func TestDefaultIntSliceWithLen(t *testing.T) {
+	tf.UnitTest(t)
+
 	local := getRand()
 
 	var dest []int
@@ -140,6 +161,8 @@ func TestDefaultIntSliceWithLen(t *testing.T) {
 }
 
 func TestDefaultIntTypeSlice(t *testing.T) {
+	tf.UnitTest(t)
+
 	type number int
 	require.False(t, defaultValueProviderRegistry.has(reflect.TypeOf(number(0))))
 
@@ -153,6 +176,8 @@ func TestDefaultIntTypeSlice(t *testing.T) {
 }
 
 func TestDefaultNonNilIntSlice(t *testing.T) {
+	tf.UnitTest(t)
+
 	local := getRand()
 
 	dest := make([]int, 16)
@@ -167,6 +192,8 @@ func TestDefaultNonNilIntSlice(t *testing.T) {
 }
 
 func TestIntSliceWithFixedNumber(t *testing.T) {
+	tf.UnitTest(t)
+
 	now := int(time.Now().UnixNano())
 
 	dest := make([]int, 16)
@@ -183,6 +210,8 @@ func TestIntSliceWithFixedNumber(t *testing.T) {
 }
 
 func TestIntSliceRanged(t *testing.T) {
+	tf.UnitTest(t)
+
 	min := 10
 	max := 20
 
@@ -196,6 +225,8 @@ func TestIntSliceRanged(t *testing.T) {
 }
 
 func TestNegativeIntSliceRanged(t *testing.T) {
+	tf.UnitTest(t)
+
 	min := -20
 	max := -10
 
@@ -209,6 +240,8 @@ func TestNegativeIntSliceRanged(t *testing.T) {
 }
 
 func TestDefaultIntArray(t *testing.T) {
+	tf.UnitTest(t)
+
 	local := getRand()
 
 	var dest [16]int
@@ -223,6 +256,8 @@ func TestDefaultIntArray(t *testing.T) {
 }
 
 func TestStruct(t *testing.T) {
+	tf.UnitTest(t)
+
 	local := getRand()
 
 	type inner struct {
@@ -240,6 +275,8 @@ func TestStruct(t *testing.T) {
 }
 
 func TestNestedStruct(t *testing.T) {
+	tf.UnitTest(t)
+
 	local := getRand()
 
 	type nested struct {

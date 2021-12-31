@@ -6,10 +6,12 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 )
 
 func TestTipSetKey(t *testing.T) {
+	tf.UnitTest(t)
 	var cids []cid.Cid
 	cidNum := 10
 

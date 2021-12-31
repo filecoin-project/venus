@@ -3,6 +3,7 @@ package api
 import (
 	"testing"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,6 +30,7 @@ type StrC struct {
 }
 
 func TestGetInternalStructs(t *testing.T) {
+	tf.UnitTest(t)
 	var proxy StrA
 
 	sts := GetInternalStructs(&proxy)
@@ -44,6 +46,7 @@ func TestGetInternalStructs(t *testing.T) {
 }
 
 func TestNestedInternalStructs(t *testing.T) {
+	tf.UnitTest(t)
 	var proxy StrC
 
 	// check that only the top-level internal struct gets picked up

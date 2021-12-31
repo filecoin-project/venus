@@ -8,10 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/big"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 )
 
 func TestGreetingMessage(t *testing.T) {
+	tf.UnitTest(t)
 	var buf bytes.Buffer
 	sliceLen := 5
 
@@ -45,6 +47,7 @@ func TestGreetingMessage(t *testing.T) {
 }
 
 func TestLatencyMessage(t *testing.T) {
+	tf.UnitTest(t)
 	var buf bytes.Buffer
 
 	for i := 0; i < 32; i++ {

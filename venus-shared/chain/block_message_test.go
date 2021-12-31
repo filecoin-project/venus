@@ -2,8 +2,10 @@ package chain
 
 import (
 	"testing"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
 func TestBlockMessageBasic(t *testing.T) {
-	// todo
+	tf.UnitTest(t)
 }

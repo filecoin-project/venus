@@ -6,9 +6,12 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/stretchr/testify/require"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
 func TestCborBasicForAddress(t *testing.T) {
+	tf.UnitTest(t)
 	var buf bytes.Buffer
 	for i := 0; i < 16; i++ {
 		var src, dst address.Address
@@ -38,6 +41,7 @@ func TestCborBasicForAddress(t *testing.T) {
 }
 
 func TestCborBasicForIDAddress(t *testing.T) {
+	tf.UnitTest(t)
 	var buf bytes.Buffer
 	for i := 0; i < 16; i++ {
 		var src, dst address.Address
