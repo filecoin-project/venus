@@ -81,19 +81,21 @@ type StateViewer interface {
 }
 
 type chainReader interface {
-	GetTipSet(types.TipSetKey) (*types.TipSet, error)
+	GetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error)
 	GetHead() *types.TipSet
-	StateView(ts *types.TipSet) (*appstate.View, error)
-	GetTipSetStateRoot(*types.TipSet) (cid.Cid, error)
-	GetTipSetReceiptsRoot(*types.TipSet) (cid.Cid, error)
+	StateView(ctx context.Context, ts *types.TipSet) (*appstate.View, error)
+	GetTipSetStateRoot(context.Context, *types.TipSet) (cid.Cid, error)
+	GetTipSetReceiptsRoot(context.Context, *types.TipSet) (cid.Cid, error)
 	GetGenesisBlock(context.Context) (*types.BlockHeader, error)
-	GetLatestBeaconEntry(*types.TipSet) (*types.BeaconEntry, error)
+	GetLatestBeaconEntry(context.Context, *types.TipSet) (*types.BeaconEntry, error)
 	GetTipSetByHeight(context.Context, *types.TipSet, abi.ChainEpoch, bool) (*types.TipSet, error)
 	GetCirculatingSupplyDetailed(context.Context, abi.ChainEpoch, tree.Tree) (types.CirculatingSupply, error)
 	GetLookbackTipSetForRound(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch, version network.Version) (*types.TipSet, cid.Cid, error)
-	GetTipsetMetadata(*types.TipSet) (*chain.TipSetMetadata, error)
+	GetTipsetMetadata(context.Context, *types.TipSet) (*chain.TipSetMetadata, error)
 	PutTipSetMetadata(context.Context, *chain.TipSetMetadata) error
 }
+
+var _ chainReader = (*chain.Store)(nil)
 
 // Expected implements expected consensus.
 type Expected struct {
@@ -132,6 +134,8 @@ type Expected struct {
 	// block validator before process tipset
 	blockValidator *BlockValidator
 }
+
+
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
 func NewExpected(cs cbor.IpldStore,
@@ -190,7 +194,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (ci
 		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
 	} else if ts.Height() > 0 {
 		parent := ts.Parents()
-		if pts, err = c.chainState.GetTipSet(parent); err != nil {
+		if pts, err = c.chainState.GetTipSet(ctx, parent); err != nil {
 			return cid.Undef, cid.Undef, err
 		}
 	} else {
@@ -205,7 +209,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (ci
 			}
 			return dertail.FilCirculating, nil
 		},
-		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(c.chainState, c.fork, ts),
+		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, c.chainState, c.fork, ts),
 		NtwkVersionGetter:   c.fork.GetNtwkVersion,
 		Rnd:                 NewHeadRandomness(c.rnd, ts.Key()),
 		BaseFee:             ts.At(0).ParentBaseFee,

@@ -152,7 +152,7 @@ func (msa *minerStateAPI) StateMinerFaults(ctx context.Context, maddr address.Ad
 // StateMinerProvingDeadline calculates the deadline at some epoch for a proving period
 // and returns the deadline-related calculations.
 func (msa *minerStateAPI) StateMinerProvingDeadline(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (*dline.Info, error) {
-	ts, err := msa.ChainReader.GetTipSet(tsk)
+	ts, err := msa.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("GetTipset failed:%v", err)
 	}
@@ -336,7 +336,7 @@ var initialPledgeDen = big.NewInt(100)
 
 // StateMinerInitialPledgeCollateral returns the precommit deposit for the specified miner's sector
 func (msa *minerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error) {
-	ts, err := msa.ChainReader.GetTipSet(tsk)
+	ts, err := msa.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return big.Int{}, err
 	}
@@ -397,7 +397,7 @@ func (msa *minerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context
 
 // StateMinerInitialPledgeCollateral returns the initial pledge collateral for the specified miner's sector
 func (msa *minerStateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error) {
-	ts, err := msa.ChainReader.GetTipSet(tsk)
+	ts, err := msa.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return big.Int{}, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
@@ -474,7 +474,7 @@ func (msa *minerStateAPI) StateMinerInitialPledgeCollateral(ctx context.Context,
 // StateVMCirculatingSupplyInternal returns an approximation of the circulating supply of Filecoin at the given tipset.
 // This is the value reported by the runtime interface to actors code.
 func (msa *minerStateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (types.CirculatingSupply, error) {
-	ts, err := msa.ChainReader.GetTipSet(tsk)
+	ts, err := msa.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return types.CirculatingSupply{}, err
 	}
@@ -577,7 +577,7 @@ func (msa *minerStateAPI) StateMinerPower(ctx context.Context, addr address.Addr
 
 // StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or spent
 func (msa *minerStateAPI) StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (big.Int, error) {
-	ts, err := msa.ChainReader.GetTipSet(tsk)
+	ts, err := msa.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return big.Int{}, xerrors.Errorf("failed to get tipset for %s, %v", tsk.String(), err)
 	}

@@ -21,11 +21,11 @@ type TxBlockstore struct {
 	keyTransform *keytransform.PrefixTransform
 }
 
-func (txBlockstore *TxBlockstore) DeleteBlock(cid cid.Cid) error {
+func (txBlockstore *TxBlockstore) DeleteBlock(ctx context.Context, cid cid.Cid) error {
 	return xerrors.New("readonly blocksgtore")
 }
 
-func (txBlockstore *TxBlockstore) Has(cid cid.Cid) (bool, error) {
+func (txBlockstore *TxBlockstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	key := txBlockstore.ConvertKey(cid)
 	if txBlockstore.cache != nil {
 		if _, has := txBlockstore.cache.Get(key.String()); has {
@@ -44,7 +44,7 @@ func (txBlockstore *TxBlockstore) Has(cid cid.Cid) (bool, error) {
 	}
 }
 
-func (txBlockstore *TxBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
+func (txBlockstore *TxBlockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
 	if !cid.Defined() {
 		return nil, ErrNotFound
 	}
@@ -80,7 +80,7 @@ func (txBlockstore *TxBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	return blk, nil
 }
 
-func (txBlockstore *TxBlockstore) GetSize(cid cid.Cid) (int, error) {
+func (txBlockstore *TxBlockstore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 	key := txBlockstore.ConvertKey(cid)
 	if txBlockstore.cache != nil {
 		if val, has := txBlockstore.cache.Get(key.String()); has {
@@ -102,11 +102,11 @@ func (txBlockstore *TxBlockstore) GetSize(cid cid.Cid) (int, error) {
 	return size, err
 }
 
-func (txBlockstore *TxBlockstore) Put(block blocks.Block) error {
+func (txBlockstore *TxBlockstore) Put(ctx context.Context, block blocks.Block) error {
 	return xerrors.New("readonly blocksgtore")
 }
 
-func (txBlockstore *TxBlockstore) PutMany(blocks []blocks.Block) error {
+func (txBlockstore *TxBlockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 	return xerrors.New("readonly blocksgtore")
 }
 

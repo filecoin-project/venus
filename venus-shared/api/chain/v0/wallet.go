@@ -13,10 +13,10 @@ import (
 
 type IWallet interface {
 	WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error) //perm:sign
-	WalletExport(addr address.Address, password string) (*wallet.KeyInfo, error)                                   //perm:admin
-	WalletImport(key *wallet.KeyInfo) (address.Address, error)                                                     //perm:admin
+	WalletExport(ctx context.Context, addr address.Address, password string) (*wallet.KeyInfo, error)              //perm:admin
+	WalletImport(ctx context.Context, key *wallet.KeyInfo) (address.Address, error)                                //perm:admin
 	WalletHas(ctx context.Context, addr address.Address) (bool, error)                                             //perm:write
-	WalletNewAddress(protocol address.Protocol) (address.Address, error)                                           //perm:write
+	WalletNewAddress(ctx context.Context, protocol address.Protocol) (address.Address, error)                      //perm:write
 	WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error)                              //perm:read
 	WalletDefaultAddress(ctx context.Context) (address.Address, error)                                             //perm:write
 	WalletAddresses(ctx context.Context) []address.Address                                                         //perm:admin
@@ -24,7 +24,7 @@ type IWallet interface {
 	WalletSignMessage(ctx context.Context, k address.Address, msg *chain.Message) (*chain.SignedMessage, error)    //perm:sign
 	LockWallet(ctx context.Context) error                                                                          //perm:admin
 	UnLockWallet(ctx context.Context, password []byte) error                                                       //perm:admin
-	SetPassword(Context context.Context, password []byte) error                                                    //perm:admin
-	HasPassword(Context context.Context) bool                                                                      //perm:admin
-	WalletState(Context context.Context) int                                                                       //perm:admin
+	SetPassword(ctx context.Context, password []byte) error                                                        //perm:admin
+	HasPassword(ctx context.Context) bool                                                                          //perm:admin
+	WalletState(ctx context.Context) int                                                                           //perm:admin
 }

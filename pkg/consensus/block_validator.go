@@ -140,7 +140,7 @@ func (bv *BlockValidator) ValidateFullBlock(ctx context.Context, blk *types.Bloc
 }
 
 func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHeader) error {
-	parent, err := bv.chainState.GetTipSet(types.NewTipSetKey(blk.Parents...))
+	parent, err := bv.chainState.GetTipSet(ctx, types.NewTipSetKey(blk.Parents...))
 	if err != nil {
 		return xerrors.Errorf("load parent tipset failed %w", err)
 	}
@@ -168,7 +168,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	}
 
 	// get parent beacon
-	prevBeacon, err := bv.chainState.GetLatestBeaconEntry(parent)
+	prevBeacon, err := bv.chainState.GetLatestBeaconEntry(ctx, parent)
 	if err != nil {
 		return xerrors.Errorf("failed to get latest beacon entry: %w", err)
 	}
@@ -514,7 +514,7 @@ func (bv *BlockValidator) beaconBaseEntry(ctx context.Context, blk *types.BlockH
 		return &blk.BeaconEntries[len(blk.BeaconEntries)-1], nil
 	}
 
-	parent, err := bv.chainState.GetTipSet(types.NewTipSetKey(blk.Parents...))
+	parent, err := bv.chainState.GetTipSet(ctx, types.NewTipSetKey(blk.Parents...))
 	if err != nil {
 		return nil, err
 	}
@@ -883,7 +883,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 // ValidateMsgMeta performs structural and content hash validation of the
 // messages within this block. If validation passes, it stores the messages in
 // the underlying IPLD block store.
-func (bv *BlockValidator) ValidateMsgMeta(fblk *types.FullBlock) error {
+func (bv *BlockValidator) ValidateMsgMeta(ctx context.Context, fblk *types.FullBlock) error {
 	if msgc := len(fblk.BLSMessages) + len(fblk.SECPMessages); msgc > constants.BlockMessageLimit {
 		return xerrors.Errorf("block %s has too many messages (%d)", fblk.Header.Cid(), msgc)
 	}
@@ -898,7 +898,7 @@ func (bv *BlockValidator) ValidateMsgMeta(fblk *types.FullBlock) error {
 	var bcids, scids []cid.Cid
 
 	for _, m := range fblk.BLSMessages {
-		c, err := chain.PutMessage(blockstore, m)
+		c, err := chain.PutMessage(ctx, blockstore, m)
 		if err != nil {
 			return xerrors.Errorf("putting bls message to blockstore after msgmeta computation: %v", err)
 		}
@@ -906,7 +906,7 @@ func (bv *BlockValidator) ValidateMsgMeta(fblk *types.FullBlock) error {
 	}
 
 	for _, m := range fblk.SECPMessages {
-		c, err := chain.PutMessage(blockstore, m)
+		c, err := chain.PutMessage(ctx, blockstore, m)
 		if err != nil {
 			return xerrors.Errorf("putting bls message to blockstore after msgmeta computation: %w", err)
 		}

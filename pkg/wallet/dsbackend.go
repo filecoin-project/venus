@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"context"
 	"crypto/rand"
 	"reflect"
 	"strings"
@@ -52,8 +53,8 @@ type DSBackend struct {
 var _ Backend = (*DSBackend)(nil)
 
 // NewDSBackend constructs a new backend using the passed in datastore.
-func NewDSBackend(ds repo.Datastore, passphraseCfg config.PassphraseConfig, password []byte) (*DSBackend, error) {
-	result, err := ds.Query(dsq.Query{
+func NewDSBackend(ctx context.Context, ds repo.Datastore, passphraseCfg config.PassphraseConfig, password []byte) (*DSBackend, error) {
+	result, err := ds.Query(ctx, dsq.Query{
 		KeysOnly: true,
 	})
 	if err != nil {
@@ -82,7 +83,7 @@ func NewDSBackend(ds repo.Datastore, passphraseCfg config.PassphraseConfig, pass
 	}
 
 	if len(password) != 0 {
-		if err := backend.SetPassword(password); err != nil {
+		if err := backend.SetPassword(ctx, password); err != nil {
 			return nil, err
 		}
 	}
@@ -91,12 +92,12 @@ func NewDSBackend(ds repo.Datastore, passphraseCfg config.PassphraseConfig, pass
 }
 
 // ImportKey loads the address in `ai` and KeyInfo `ki` into the backend
-func (backend *DSBackend) ImportKey(ki *crypto.KeyInfo) error {
-	return backend.putKeyInfo(ki)
+func (backend *DSBackend) ImportKey(ctx context.Context, ki *crypto.KeyInfo) error {
+	return backend.putKeyInfo(ctx, ki)
 }
 
 // Addresses returns a list of all addresses that are stored in this backend.
-func (backend *DSBackend) Addresses() []address.Address {
+func (backend *DSBackend) Addresses(ctx context.Context) []address.Address {
 	backend.lk.RLock()
 	defer backend.lk.RUnlock()
 
@@ -109,7 +110,7 @@ func (backend *DSBackend) Addresses() []address.Address {
 
 // HasAddress checks if the passed in address is stored in this backend.
 // Safe for concurrent access.
-func (backend *DSBackend) HasAddress(addr address.Address) bool {
+func (backend *DSBackend) HasAddress(ctx context.Context, addr address.Address) bool {
 	backend.lk.RLock()
 	defer backend.lk.RUnlock()
 
@@ -125,39 +126,39 @@ func (backend *DSBackend) NewAddress(protocol address.Protocol) (address.Address
 
 	switch protocol {
 	case address.BLS:
-		return backend.newBLSAddress()
+		return backend.newBLSAddress(ctx)
 	case address.SECP256K1:
-		return backend.newSecpAddress()
+		return backend.newSecpAddress(ctx)
 	default:
 		return address.Undef, errors.Errorf("Unknown address protocol %d", protocol)
 	}
 }
 
-func (backend *DSBackend) newSecpAddress() (address.Address, error) {
+func (backend *DSBackend) newSecpAddress(ctx context.Context) (address.Address, error) {
 	ki, err := crypto.NewSecpKeyFromSeed(rand.Reader)
 	if err != nil {
 		return address.Undef, err
 	}
 
-	if err := backend.putKeyInfo(&ki); err != nil {
+	if err := backend.putKeyInfo(ctx, &ki); err != nil {
 		return address.Undef, err
 	}
 	return ki.Address()
 }
 
-func (backend *DSBackend) newBLSAddress() (address.Address, error) {
+func (backend *DSBackend) newBLSAddress(ctx context.Context) (address.Address, error) {
 	ki, err := crypto.NewBLSKeyFromSeed(rand.Reader)
 	if err != nil {
 		return address.Undef, err
 	}
 
-	if err := backend.putKeyInfo(&ki); err != nil {
+	if err := backend.putKeyInfo(ctx, &ki); err != nil {
 		return address.Undef, err
 	}
 	return ki.Address()
 }
 
-func (backend *DSBackend) putKeyInfo(ki *crypto.KeyInfo) error {
+func (backend *DSBackend) putKeyInfo(ctx context.Context, ki *crypto.KeyInfo) error {
 	addr, err := ki.Address()
 	if err != nil {
 		return err
@@ -188,7 +189,7 @@ func (backend *DSBackend) putKeyInfo(ki *crypto.KeyInfo) error {
 }
 
 // SignBytes cryptographically signs `data` using the private key `priv`.
-func (backend *DSBackend) SignBytes(data []byte, addr address.Address) (*crypto.Signature, error) {
+func (backend *DSBackend) SignBytes(ctx context.Context, data []byte, addr address.Address) (*crypto.Signature, error) {
 	backend.lk.Lock()
 	ki, found := backend.unLocked[addr]
 	backend.lk.Unlock()
@@ -207,15 +208,15 @@ func (backend *DSBackend) SignBytes(data []byte, addr address.Address) (*crypto.
 
 // GetKeyInfo will return the private & public keys associated with address `addr`
 // iff backend contains the addr.
-func (backend *DSBackend) GetKeyInfo(addr address.Address) (*crypto.KeyInfo, error) {
-	if !backend.HasAddress(addr) {
+func (backend *DSBackend) GetKeyInfo(ctx context.Context, addr address.Address) (*crypto.KeyInfo, error) {
+	if !backend.HasAddress(ctx, addr) {
 		return nil, errors.New("backend does not contain address")
 	}
 
 	var key *Key
 	err := backend.UsePassword(func(password []byte) error {
 		var err error
-		key, err = backend.getKey(addr, password)
+		key, err = backend.getKey(ctx, addr, password)
 
 		return err
 	})
@@ -227,17 +228,17 @@ func (backend *DSBackend) GetKeyInfo(addr address.Address) (*crypto.KeyInfo, err
 }
 
 //GetKeyInfoPassphrase get private private key from wallet, get encrypt byte from db and decrypto it with password
-func (backend *DSBackend) GetKeyInfoPassphrase(addr address.Address, password []byte) (*crypto.KeyInfo, error) {
+func (backend *DSBackend) GetKeyInfoPassphrase(ctx context.Context, addr address.Address, password []byte) (*crypto.KeyInfo, error) {
 	defer func() {
 		for i := range password {
 			password[i] = 0
 		}
 	}()
-	if !backend.HasAddress(addr) {
+	if !backend.HasAddress(ctx, addr) {
 		return nil, errors.New("backend does not contain address")
 	}
 
-	key, err := backend.getKey(addr, password)
+	key, err := backend.getKey(ctx, addr, password)
 	if err != nil {
 		return nil, err
 	}
@@ -245,8 +246,8 @@ func (backend *DSBackend) GetKeyInfoPassphrase(addr address.Address, password []
 	return key.KeyInfo, nil
 }
 
-func (backend *DSBackend) getKey(addr address.Address, password []byte) (*Key, error) {
-	b, err := backend.ds.Get(ds.NewKey(addr.String()))
+func (backend *DSBackend) getKey(ctx context.Context, addr address.Address, password []byte) (*Key, error) {
+	b, err := backend.ds.Get(ctx, ds.NewKey(addr.String()))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch private key from backend")
 	}
@@ -254,16 +255,16 @@ func (backend *DSBackend) getKey(addr address.Address, password []byte) (*Key, e
 	return decryptKey(b, password)
 }
 
-func (backend *DSBackend) LockWallet() error {
+func (backend *DSBackend) LockWallet(ctx context.Context) error {
 	if backend.state == Lock {
 		return xerrors.Errorf("already locked")
 	}
 
-	if len(backend.Addresses()) == 0 {
+	if len(backend.Addresses(ctx)) == 0 {
 		return xerrors.Errorf("no address need lock")
 	}
 
-	for _, addr := range backend.Addresses() {
+	for _, addr := range backend.Addresses(ctx) {
 		backend.lk.Lock()
 		delete(backend.unLocked, addr)
 		backend.lk.Unlock()
@@ -275,7 +276,7 @@ func (backend *DSBackend) LockWallet() error {
 }
 
 //UnLockWallet unlock wallet with password, decrypt local key in db and save to protected memory
-func (backend *DSBackend) UnLockWallet(password []byte) error {
+func (backend *DSBackend) UnLockWallet(ctx context.Context, password []byte) error {
 	defer func() {
 		for i := range password {
 			password[i] = 0
@@ -285,12 +286,12 @@ func (backend *DSBackend) UnLockWallet(password []byte) error {
 		return xerrors.Errorf("already unlocked")
 	}
 
-	if len(backend.Addresses()) == 0 {
+	if len(backend.Addresses(ctx)) == 0 {
 		return xerrors.Errorf("no address need unlock")
 	}
 
-	for _, addr := range backend.Addresses() {
-		ki, err := backend.GetKeyInfoPassphrase(addr, password)
+	for _, addr := range backend.Addresses(ctx) {
+		ki, err := backend.GetKeyInfoPassphrase(ctx, addr, password)
 		if err != nil {
 			return err
 		}
@@ -305,13 +306,13 @@ func (backend *DSBackend) UnLockWallet(password []byte) error {
 }
 
 //SetPassword set password for wallet , and wallet used this password to encrypt private key
-func (backend *DSBackend) SetPassword(password []byte) error {
+func (backend *DSBackend) SetPassword(ctx context.Context, password []byte) error {
 	if backend.password != nil {
 		return ErrRepeatPassword
 	}
 
-	for _, addr := range backend.Addresses() {
-		ki, err := backend.GetKeyInfoPassphrase(addr, password)
+	for _, addr := range backend.Addresses(ctx) {
+		ki, err := backend.GetKeyInfoPassphrase(ctx, addr, password)
 		if err != nil {
 			return err
 		}
@@ -334,7 +335,7 @@ func (backend *DSBackend) HasPassword() bool {
 }
 
 //WalletState return wallet state(lock/unlock)
-func (backend *DSBackend) WalletState() int {
+func (backend *DSBackend) WalletState(ctx context.Context) int {
 	return backend.state
 }
 

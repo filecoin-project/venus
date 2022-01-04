@@ -21,7 +21,7 @@ type ChainSampler interface {
 }
 
 type tipsetLoader interface {
-	GetTipSet(types.TipSetKey) (*types.TipSet, error)
+	GetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 }
 
 // TicketMachine uses a VRF and VDF to generate deterministic, unpredictable
@@ -72,7 +72,7 @@ func (tm TicketMachine) ticketVRFRandomness(ctx context.Context, base types.TipS
 	}
 
 	if bSmokeHeight { // todo
-		ts, err := tm.tipsetLoader.GetTipSet(base)
+		ts, err := tm.tipsetLoader.GetTipSet(ctx, base)
 		if err != nil {
 			return nil, err
 		}

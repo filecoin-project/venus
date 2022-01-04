@@ -22,7 +22,7 @@ type INetwork interface {
 	// Rule[perm:read]
 	NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan peer.AddrInfo
 	// Rule[perm:read]
-	NetworkGetClosestPeers(ctx context.Context, key string) (<-chan peer.ID, error)
+	NetworkGetClosestPeers(ctx context.Context, key string) ([]peer.ID, error)
 	// Rule[perm:read]
 	NetworkFindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error)
 	// Rule[perm:read]

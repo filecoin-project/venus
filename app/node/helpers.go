@@ -2,6 +2,7 @@ package node
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 
 	"github.com/ipfs/go-cid"
@@ -15,8 +16,8 @@ import (
 
 // readGenesisCid is a helper function that queries the provided datastore for
 // an entry with the genesisKey cid, returning if found.
-func readGenesisCid(chainDs datastore.Datastore, bs blockstoreutil.Blockstore) (types.BlockHeader, error) {
-	bb, err := chainDs.Get(chain.GenesisKey)
+func readGenesisCid(ctx context.Context, chainDs datastore.Datastore, bs blockstoreutil.Blockstore) (types.BlockHeader, error) {
+	bb, err := chainDs.Get(ctx, chain.GenesisKey)
 	if err != nil {
 		return types.BlockHeader{}, errors.Wrap(err, "failed to read genesisKey")
 	}
@@ -27,7 +28,7 @@ func readGenesisCid(chainDs datastore.Datastore, bs blockstoreutil.Blockstore) (
 		return types.BlockHeader{}, errors.Wrap(err, "failed to cast genesisCid")
 	}
 
-	blkRawData, err := bs.Get(c)
+	blkRawData, err := bs.Get(ctx, c)
 	if err != nil {
 		return types.BlockHeader{}, errors.Wrap(err, "failed to read genesis block")
 	}

@@ -17,7 +17,7 @@ type INetwork interface {
 	NetworkGetPeerAddresses(ctx context.Context) []ma.Multiaddr                                    //perm:admin
 	NetworkGetPeerID(ctx context.Context) peer.ID                                                  //perm:admin
 	NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan peer.AddrInfo    //perm:read
-	NetworkGetClosestPeers(ctx context.Context, key string) (<-chan peer.ID, error)                //perm:read
+	NetworkGetClosestPeers(ctx context.Context, key string) ([]peer.ID, error)                     //perm:read
 	NetworkFindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error)                    //perm:read
 	NetworkConnect(ctx context.Context, addrs []string) (<-chan net.ConnectionResult, error)       //perm:read
 	NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*net.SwarmConnInfos, error) //perm:read

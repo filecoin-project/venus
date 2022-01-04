@@ -23,7 +23,7 @@ func NewAccountAPI(chain *ChainSubmodule) v1api.IAccount {
 
 // StateAccountKey returns the public key address of the given ID address
 func (accountAPI *accountAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
-	ts, err := accountAPI.chain.ChainReader.GetTipSet(tsk)
+	ts, err := accountAPI.chain.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}

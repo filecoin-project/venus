@@ -19,7 +19,7 @@ type remoteWallet struct {
 	Cancel func()
 }
 
-func (w *remoteWallet) Addresses() []address.Address {
+func (w *remoteWallet) Addresses(ctx context.Context) []address.Address {
 	wallets, err := w.IWallet.WalletList(context.Background())
 	if err != nil {
 		return make([]address.Address, 0)
@@ -27,7 +27,7 @@ func (w *remoteWallet) Addresses() []address.Address {
 	return wallets
 }
 
-func (w *remoteWallet) HasPassword() bool {
+func (w *remoteWallet) HasPassword(ctx context.Context) bool {
 	return true
 }
 
@@ -50,22 +50,22 @@ func SetupRemoteWallet(info string) (wallet.WalletIntersection, error) {
 	}, nil
 }
 
-func (w *remoteWallet) HasAddress(addr address.Address) bool {
+func (w *remoteWallet) HasAddress(ctx context.Context, addr address.Address) bool {
 	exist, err := w.IWallet.WalletHas(context.Background(), addr)
 	if err != nil {
 		return false
 	}
 	return exist
 }
-func (w *remoteWallet) NewAddress(protocol address.Protocol) (address.Address, error) {
+func (w *remoteWallet) NewAddress(ctx context.Context, protocol address.Protocol) (address.Address, error) {
 	return w.IWallet.WalletNew(context.Background(), GetKeyType(protocol))
 }
 
-func (w *remoteWallet) Import(key *crypto.KeyInfo) (address.Address, error) {
+func (w *remoteWallet) Import(ctx context.Context, key *crypto.KeyInfo) (address.Address, error) {
 	return w.IWallet.WalletImport(context.Background(), ConvertRemoteKeyInfo(key))
 }
 
-func (w *remoteWallet) Export(addr address.Address, password string) (*crypto.KeyInfo, error) {
+func (w *remoteWallet) Export(ctx context.Context, addr address.Address, password string) (*crypto.KeyInfo, error) {
 	key, err := w.IWallet.WalletExport(context.Background(), addr)
 	if err != nil {
 		return nil, err
@@ -73,6 +73,6 @@ func (w *remoteWallet) Export(addr address.Address, password string) (*crypto.Ke
 	return ConvertLocalKeyInfo(key), nil
 }
 
-func (w *remoteWallet) WalletSign(keyAddr address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error) {
+func (w *remoteWallet) WalletSign(ctx context.Context, keyAddr address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error) {
 	return w.IWallet.WalletSign(context.Background(), keyAddr, msg, meta)
 }

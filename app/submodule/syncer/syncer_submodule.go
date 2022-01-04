@@ -245,7 +245,7 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 
 // nolint
 func (syncer *SyncerSubmodule) loadLocalFullTipset(ctx context.Context, tsk types.TipSetKey) (*types.FullTipSet, error) {
-	ts, err := syncer.ChainModule.ChainReader.GetTipSet(tsk)
+	ts, err := syncer.ChainModule.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, err
 	}

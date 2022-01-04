@@ -178,7 +178,7 @@ func (b *BadgerBlockstore) ReadonlyDatastore() *TxBlockstore {
 
 // View implements blockstore.Viewer, which leverages zero-copy read-only
 // access to values.
-func (b *BadgerBlockstore) View(cid cid.Cid, fn func([]byte) error) error {
+func (b *BadgerBlockstore) View(ctx context.Context, cid cid.Cid, fn func([]byte) error) error {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return ErrBlockstoreClosed
 	}
@@ -197,7 +197,7 @@ func (b *BadgerBlockstore) View(cid cid.Cid, fn func([]byte) error) error {
 }
 
 // Has implements blockstore.Has.
-func (b *BadgerBlockstore) Has(cid cid.Cid) (bool, error) {
+func (b *BadgerBlockstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return false, ErrBlockstoreClosed
 	}
@@ -225,7 +225,7 @@ func (b *BadgerBlockstore) Has(cid cid.Cid) (bool, error) {
 }
 
 // Get implements blockstore.Get.
-func (b *BadgerBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
+func (b *BadgerBlockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
 	if !cid.Defined() {
 		return nil, blockstore.ErrNotFound
 	}
@@ -268,7 +268,7 @@ func (b *BadgerBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 }
 
 // GetSize implements blockstore.GetSize.
-func (b *BadgerBlockstore) GetSize(cid cid.Cid) (int, error) {
+func (b *BadgerBlockstore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return -1, ErrBlockstoreClosed
 	}
@@ -299,7 +299,7 @@ func (b *BadgerBlockstore) GetSize(cid cid.Cid) (int, error) {
 }
 
 // Put implements blockstore.Put.
-func (b *BadgerBlockstore) Put(block blocks.Block) error {
+func (b *BadgerBlockstore) Put(ctx context.Context, block blocks.Block) error {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return ErrBlockstoreClosed
 	}
@@ -323,7 +323,7 @@ func (b *BadgerBlockstore) Put(block blocks.Block) error {
 }
 
 // PutMany implements blockstore.PutMany.
-func (b *BadgerBlockstore) PutMany(blks []blocks.Block) error {
+func (b *BadgerBlockstore) PutMany(ctx context.Context, blks []blocks.Block) error {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return ErrBlockstoreClosed
 	}
@@ -357,7 +357,7 @@ func (b *BadgerBlockstore) PutMany(blks []blocks.Block) error {
 }
 
 // DeleteBlock implements blockstore.DeleteBlock.
-func (b *BadgerBlockstore) DeleteBlock(cid cid.Cid) error {
+func (b *BadgerBlockstore) DeleteBlock(ctx context.Context, cid cid.Cid) error {
 	if atomic.LoadInt64(&b.state) != stateOpen {
 		return ErrBlockstoreClosed
 	}

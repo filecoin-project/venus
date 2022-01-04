@@ -45,7 +45,7 @@ func NewWalletSubmodule(ctx context.Context,
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get passphrase config")
 	}
-	backend, err := wallet.NewDSBackend(repo.WalletDatastore(), passphraseCfg, password)
+	backend, err := wallet.NewDSBackend(ctx, repo.WalletDatastore(), passphraseCfg, password)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set up walletModule backend")
 	}

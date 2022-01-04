@@ -35,7 +35,7 @@ func (a *MessagePoolAPI) MpoolPublishByAddr(ctx context.Context, addr address.Ad
 }
 
 func (a *MessagePoolAPI) MpoolPublishMessage(ctx context.Context, smsg *types.SignedMessage) error {
-	return a.mp.MPool.PublishMsg(smsg)
+	return a.mp.MPool.PublishMsg(ctx, smsg)
 }
 
 // MpoolPush pushes a signed message to mempool.
@@ -58,7 +58,7 @@ func (a *MessagePoolAPI) MpoolGetConfig(context.Context) (*mptypes.MpoolConfig, 
 
 // MpoolSetConfig sets the mpool config to (a copy of) the supplied config
 func (a *MessagePoolAPI) MpoolSetConfig(ctx context.Context, cfg *mptypes.MpoolConfig) error {
-	return a.mp.MPool.SetConfig(&messagepool.MpoolConfig{
+	return a.mp.MPool.SetConfig(ctx, &messagepool.MpoolConfig{
 		PriorityAddrs:          cfg.PriorityAddrs,
 		SizeLimitHigh:          cfg.SizeLimitHigh,
 		SizeLimitLow:           cfg.SizeLimitLow,
@@ -126,7 +126,7 @@ func (a *MessagePoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) 
 			}
 			// different blocks in tipsets
 
-			have, err := a.mp.MPool.MessagesForBlocks(ts.Blocks())
+			have, err := a.mp.MPool.MessagesForBlocks(ctx, ts.Blocks())
 			if err != nil {
 				return nil, xerrors.Errorf("getting messages for base ts: %w", err)
 			}
@@ -136,7 +136,7 @@ func (a *MessagePoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) 
 			}
 		}
 
-		msgs, err := a.mp.MPool.MessagesForBlocks(ts.Blocks())
+		msgs, err := a.mp.MPool.MessagesForBlocks(ctx, ts.Blocks())
 		if err != nil {
 			return nil, xerrors.Errorf(": %w", err)
 		}

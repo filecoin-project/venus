@@ -40,7 +40,7 @@ func (walletAPI *WalletAPI) WalletBalance(ctx context.Context, addr address.Addr
 
 // WalletHas indicates whether the given address is in the wallet.
 func (walletAPI *WalletAPI) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
-	return walletAPI.adapter.HasAddress(addr), nil
+	return walletAPI.adapter.HasAddress(ctx, addr), nil
 }
 
 // SetWalletDefaultAddress set the specified address as the default in the config.
@@ -67,7 +67,7 @@ func (walletAPI *WalletAPI) WalletDefaultAddress(ctx context.Context) (address.A
 
 // WalletAddresses gets addresses from the walletModule
 func (walletAPI *WalletAPI) WalletAddresses(ctx context.Context) []address.Address {
-	return walletAPI.adapter.Addresses()
+	return walletAPI.adapter.Addresses(ctx)
 }
 
 // SetWalletDefaultAddress set the specified address as the default in the config.
@@ -86,13 +86,13 @@ func (walletAPI *WalletAPI) WalletSetDefault(ctx context.Context, addr address.A
 }
 
 // WalletNewAddress generates a new walletModule address
-func (walletAPI *WalletAPI) WalletNewAddress(protocol address.Protocol) (address.Address, error) {
-	return walletAPI.adapter.NewAddress(protocol)
+func (walletAPI *WalletAPI) WalletNewAddress(ctx context.Context, protocol address.Protocol) (address.Address, error) {
+	return walletAPI.adapter.NewAddress(ctx, protocol)
 }
 
 // WalletImport adds a given set of KeyInfos to the walletModule
-func (walletAPI *WalletAPI) WalletImport(key *wtypes.KeyInfo) (address.Address, error) {
-	addr, err := walletAPI.adapter.Import(remotewallet.ConvertLocalKeyInfo(key))
+func (walletAPI *WalletAPI) WalletImport(ctx context.Context, key *wtypes.KeyInfo) (address.Address, error) {
+	addr, err := walletAPI.adapter.Import(ctx, remotewallet.ConvertLocalKeyInfo(key))
 	if err != nil {
 		return address.Undef, err
 	}
@@ -100,8 +100,8 @@ func (walletAPI *WalletAPI) WalletImport(key *wtypes.KeyInfo) (address.Address, 
 }
 
 // WalletExport returns the KeyInfos for the given walletModule addresses
-func (walletAPI *WalletAPI) WalletExport(addr address.Address, password string) (*wtypes.KeyInfo, error) {
-	ki, err := walletAPI.adapter.Export(addr, password)
+func (walletAPI *WalletAPI) WalletExport(ctx context.Context, addr address.Address, password string) (*wtypes.KeyInfo, error) {
+	ki, err := walletAPI.adapter.Export(ctx, addr, password)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, m
 	if err != nil {
 		return nil, xerrors.Errorf("ResolveTokeyAddress failed:%v", err)
 	}
-	return walletAPI.adapter.WalletSign(keyAddr, msg, meta)
+	return walletAPI.adapter.WalletSign(ctx, keyAddr, msg, meta)
 }
 
 // WalletSignMessage signs the given message using the given address.
@@ -137,25 +137,25 @@ func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Add
 
 // LockWallet lock wallet
 func (walletAPI *WalletAPI) LockWallet(ctx context.Context) error {
-	return walletAPI.walletModule.Wallet.LockWallet()
+	return walletAPI.walletModule.Wallet.LockWallet(ctx)
 }
 
 // UnLockWallet unlock wallet
 func (walletAPI *WalletAPI) UnLockWallet(ctx context.Context, password []byte) error {
-	return walletAPI.walletModule.Wallet.UnLockWallet(password)
+	return walletAPI.walletModule.Wallet.UnLockWallet(ctx, password)
 }
 
 // SetPassword set wallet password
-func (walletAPI *WalletAPI) SetPassword(Context context.Context, password []byte) error {
-	return walletAPI.walletModule.Wallet.SetPassword(password)
+func (walletAPI *WalletAPI) SetPassword(ctx context.Context, password []byte) error {
+	return walletAPI.walletModule.Wallet.SetPassword(ctx, password)
 }
 
 // HasPassword return whether the wallet has password
-func (walletAPI *WalletAPI) HasPassword(Context context.Context) bool {
-	return walletAPI.adapter.HasPassword()
+func (walletAPI *WalletAPI) HasPassword(ctx context.Context) bool {
+	return walletAPI.adapter.HasPassword(ctx)
 }
 
 // WalletState return wallet state
-func (walletAPI *WalletAPI) WalletState(Context context.Context) int {
-	return walletAPI.walletModule.Wallet.WalletState()
+func (walletAPI *WalletAPI) WalletState(ctx context.Context) int {
+	return walletAPI.walletModule.Wallet.WalletState(ctx)
 }

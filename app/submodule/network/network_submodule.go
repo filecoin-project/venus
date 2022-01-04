@@ -10,34 +10,21 @@ import (
 	"strings"
 	"time"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	dtnet "github.com/filecoin-project/go-data-transfer/network"
-	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
-	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	blocks "github.com/ipfs/go-block-format"
-	bserv "github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	logging "github.com/ipfs/go-log"
-
-	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
-	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/discovery"
-	"github.com/filecoin-project/venus/pkg/net"
-	appstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
+	blocks "github.com/ipfs/go-block-format"
+	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-graphsync"
 	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	"github.com/ipfs/go-graphsync/storeutil"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
-	circuit "github.com/libp2p/go-libp2p-circuit"
 	"github.com/libp2p/go-libp2p-core/host"
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
 	smux "github.com/libp2p/go-libp2p-core/mux"
@@ -49,7 +36,20 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
+	dtnet "github.com/filecoin-project/go-data-transfer/network"
+	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
+
 	apiwrapper "github.com/filecoin-project/venus/app/submodule/network/v0api"
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/discovery"
+	"github.com/filecoin-project/venus/pkg/net"
+	"github.com/filecoin-project/venus/pkg/repo"
+	appstate "github.com/filecoin-project/venus/pkg/state"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
+
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
@@ -217,9 +217,14 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSub
 
 	//dataTransger
 	//sc := storedcounter.New(repo.ChainDatastore(), datastore.NewKey("/datatransfer/api/counter"))
+	// go-data-transfer protocol retries:
+	// 1s, 5s, 25s, 2m5s, 5m x 11 ~= 1 hour
+	dtRetryParams := dtnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
+	dtn := dtnet.NewFromLibp2pHost(peerHost, dtRetryParams)
+
 	dtNet := dtnet.NewFromLibp2pHost(peerHost)
 	dtDs := namespace.Wrap(config.Repo().ChainDatastore(), datastore.NewKey("/datatransfer/api/transfers"))
-	transport := dtgstransport.NewTransport(peerHost.ID(), gsync)
+	transport := dtgstransport.NewTransport(peerHost.ID(), gsync, dtn)
 
 	repoPath, err := config.Repo().Path()
 	if err != nil {
@@ -370,8 +375,7 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 		}
 
 		relayHost, err := libp2p.New(
-			ctx,
-			libp2p.EnableRelay(circuit.OptHop),
+			libp2p.EnableRelay(), // TODO ?
 			libp2p.EnableAutoRelay(),
 			libp2p.Routing(makeDHTRightType),
 			publicAddrFactory,
@@ -384,14 +388,16 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 		}
 		return relayHost, nil
 	}
-	return libp2p.New(
-		ctx,
+
+	opts := []libp2p.Option{
 		libp2p.UserAgent("venus"),
 		libp2p.Routing(makeDHTRightType),
 		libp2p.ChainOptions(libP2pOpts...),
 		libp2p.Ping(true),
 		libp2p.DisableRelay(),
-	)
+	}
+
+	return libp2p.New(opts...)
 }
 
 func makeSmuxTransportOption(mplexExp bool) libp2p.Option {

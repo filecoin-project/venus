@@ -42,7 +42,7 @@ func (na *networkAPI) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid
 }
 
 // NetworkGetClosestPeers issues a getClosestPeers query to the filecoin network.
-func (na *networkAPI) NetworkGetClosestPeers(ctx context.Context, key string) (<-chan peer.ID, error) {
+func (na *networkAPI) NetworkGetClosestPeers(ctx context.Context, key string) ([]peer.ID, error) {
 	return na.network.Network.GetClosestPeers(ctx, key)
 }
 

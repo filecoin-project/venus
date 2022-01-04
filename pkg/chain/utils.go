@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"context"
 	"reflect"
 	"runtime"
 	"strings"
@@ -108,13 +109,13 @@ type storable interface {
 	ToStorageBlock() (blockFormat.Block, error)
 }
 
-func PutMessage(bs blockstoreutil.Blockstore, m storable) (cid.Cid, error) {
+func PutMessage(ctx context.Context, bs blockstoreutil.Blockstore, m storable) (cid.Cid, error) {
 	b, err := m.ToStorageBlock()
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	if err := bs.Put(b); err != nil {
+	if err := bs.Put(ctx, b); err != nil {
 		return cid.Undef, err
 	}
 

@@ -91,8 +91,8 @@ type RandomnessSource interface {
 }
 
 type TipSetByHeight interface {
-	GetTipSet(key types.TipSetKey) (*types.TipSet, error)
-	GetTipSetByHeight(ctx context.Context, ts *types.TipSet, h abi.ChainEpoch, prev bool) (*types.TipSet, error)
+	GetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
+	GetTipSetByHeight(context.Context, *types.TipSet, abi.ChainEpoch, bool) (*types.TipSet, error)
 }
 
 var _ RandomnessSource = (*ChainRandomnessSource)(nil)
@@ -109,7 +109,7 @@ func NewChainRandomnessSource(reader TipSetByHeight, head types.TipSetKey, beaco
 }
 
 func (c *ChainRandomnessSource) GetBeaconRandomnessTipset(ctx context.Context, randEpoch abi.ChainEpoch, lookback bool) (*types.TipSet, error) {
-	ts, err := c.reader.GetTipSet(c.head)
+	ts, err := c.reader.GetTipSet(ctx, c.head)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +138,7 @@ func (c *ChainRandomnessSource) GetBeaconRandomnessTipset(ctx context.Context, r
 // should blend in some distinguishing value (such as the epoch itself) into a hash of this ticket.
 func (c *ChainRandomnessSource) GetChainRandomness(ctx context.Context, epoch abi.ChainEpoch, lookback bool) (types.Ticket, error) {
 	if !c.head.IsEmpty() {
-		start, err := c.reader.GetTipSet(c.head)
+		start, err := c.reader.GetTipSet(ctx, c.head)
 		if err != nil {
 			return types.Ticket{}, err
 		}
@@ -251,7 +251,7 @@ func (c *ChainRandomnessSource) extractBeaconEntryForEpoch(ctx context.Context, 
 			}
 		}
 
-		next, err := c.reader.GetTipSet(randTS.Parents())
+		next, err := c.reader.GetTipSet(ctx, randTS.Parents())
 		if err != nil {
 			return nil, xerrors.Errorf("failed to load parents when searching back for beacon entry: %w", err)
 		}

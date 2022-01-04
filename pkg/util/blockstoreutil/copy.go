@@ -22,7 +22,7 @@ func CopyBlockstore(ctx context.Context, from, to Blockstore) error {
 	// TODO: should probably expose better methods on the blockstore for this operation
 	var blks []blocks.Block
 	for c := range cids {
-		b, err := from.Get(c)
+		b, err := from.Get(ctx, c)
 		if err != nil {
 			return err
 		}
@@ -30,7 +30,7 @@ func CopyBlockstore(ctx context.Context, from, to Blockstore) error {
 		blks = append(blks, b)
 	}
 
-	if err := to.PutMany(blks); err != nil {
+	if err := to.PutMany(ctx, blks); err != nil {
 		return err
 	}
 
@@ -72,7 +72,7 @@ func CopyParticial(ctx context.Context, from, to Blockstore, root cid.Cid) error
 
 	go func() {
 		for b := range toFlush {
-			if err := to.PutMany(b); err != nil {
+			if err := to.PutMany(ctx, b); err != nil {
 				close(freeBufs)
 				errFlushChan <- xerrors.Errorf("batch put in copy: %v", err)
 				return
@@ -101,7 +101,7 @@ func CopyParticial(ctx context.Context, from, to Blockstore, root cid.Cid) error
 		return nil
 	}
 
-	if err := copyRec(from, to, root, batchCp); err != nil {
+	if err := copyRec(ctx, from, to, root, batchCp); err != nil {
 		return xerrors.Errorf("copyRec: %v", err)
 	}
 
@@ -121,13 +121,13 @@ func CopyParticial(ctx context.Context, from, to Blockstore, root cid.Cid) error
 	return nil
 }
 
-func copyRec(from, to Blockstore, root cid.Cid, cp func(blocks.Block) error) error {
+func copyRec(ctx context.Context, from, to Blockstore, root cid.Cid, cp func(blocks.Block) error) error {
 	if root.Prefix().MhType == 0 {
 		// identity cid, skip
 		return nil
 	}
 
-	blk, err := from.Get(root)
+	blk, err := from.Get(ctx, root)
 	if err != nil {
 		return xerrors.Errorf("get %s failed: %v", root, err)
 	}
@@ -152,7 +152,7 @@ func copyRec(from, to Blockstore, root cid.Cid, cp func(blocks.Block) error) err
 			}
 		} else {
 			// If we have an object, we already have its children, skip the object.
-			has, err := to.Has(link)
+			has, err := to.Has(ctx, link)
 			if err != nil {
 				lerr = xerrors.Errorf("has: %v", err)
 				return
@@ -162,7 +162,7 @@ func copyRec(from, to Blockstore, root cid.Cid, cp func(blocks.Block) error) err
 			}
 		}
 
-		if err := copyRec(from, to, link, cp); err != nil {
+		if err := copyRec(ctx, from, to, link, cp); err != nil {
 			lerr = err
 			return
 		}

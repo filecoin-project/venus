@@ -41,18 +41,18 @@ type VmOption struct { //nolint
 
 //ChainRandomness define randomness method in filecoin
 type ILookBack interface {
-	StateView(ts *types.TipSet) (*state.View, error)
+	StateView(ctx context.Context, ts *types.TipSet) (*state.View, error)
 	GetLookbackTipSetForRound(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch, version network.Version) (*types.TipSet, cid.Cid, error)
 }
 
-func LookbackStateGetterForTipset(backer ILookBack, fork fork.IFork, ts *types.TipSet) LookbackStateGetter {
+func LookbackStateGetterForTipset(ctx context.Context, backer ILookBack, fork fork.IFork, ts *types.TipSet) LookbackStateGetter {
 	return func(ctx context.Context, round abi.ChainEpoch) (*state.View, error) {
 		ver := fork.GetNtwkVersion(ctx, round)
 		ts, _, err := backer.GetLookbackTipSetForRound(ctx, ts, round, ver)
 		if err != nil {
 			return nil, err
 		}
-		return backer.StateView(ts)
+		return backer.StateView(ctx, ts)
 	}
 }
 

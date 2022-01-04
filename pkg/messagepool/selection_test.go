@@ -56,7 +56,7 @@ func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, g
 	}
 
 	c := msg.Cid()
-	sig, err := w.WalletSign(from, c.Bytes(), mtypes.MsgMeta{})
+	sig, err := w.WalletSign(context.Background(), from, c.Bytes(), mtypes.MsgMeta{})
 	if err != nil {
 		panic(err)
 	}
@@ -69,7 +69,7 @@ func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, g
 func makeTestMpool() (*MessagePool, *testMpoolAPI) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
-	mp, err := New(tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "test", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "test", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -84,13 +84,13 @@ func TestMessageChains(t *testing.T) {
 
 	// the actors
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(address.SECP256K1)
+	a2, err := w2.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestMessageChains(t *testing.T) {
 	}
 	baseFee := tbig.NewInt(0)
 
-	chains := mp.createMessageChains(a1, mset, baseFee, ts)
+	chains := mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 1 {
 		t.Fatal("expected a single chain")
 	}
@@ -134,7 +134,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = m
 	}
 
-	chains = mp.createMessageChains(a1, mset, baseFee, ts)
+	chains = mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 10 {
 		t.Fatal("expected 10 chains")
 	}
@@ -158,7 +158,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = m
 	}
 
-	chains = mp.createMessageChains(a1, mset, baseFee, ts)
+	chains = mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 2 {
 		t.Fatal("expected 1 chain")
 	}
@@ -189,7 +189,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = m
 	}
 
-	chains = mp.createMessageChains(a1, mset, baseFee, ts)
+	chains = mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 4 {
 		t.Fatal("expected 4 chains")
 	}
@@ -222,7 +222,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = m
 	}
 
-	chains = mp.createMessageChains(a1, mset, baseFee, ts)
+	chains = mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 1 {
 		t.Fatal("expected a single chain")
 	}
@@ -248,7 +248,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = m
 	}
 
-	chains = mp.createMessageChains(a1, mset, baseFee, ts)
+	chains = mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 1 {
 		t.Fatal("expected a single chain")
 	}
@@ -271,7 +271,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
 	}
 
-	chains = mp.createMessageChains(a1, mset, baseFee, ts)
+	chains = mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 1 {
 		t.Fatal("expected a single chain")
 	}
@@ -292,7 +292,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
 	}
 
-	chains = mp.createMessageChains(a1, mset, baseFee, ts)
+	chains = mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 1 {
 		t.Fatalf("expected a single chain: got %d", len(chains))
 	}
@@ -316,13 +316,13 @@ func TestMessageChainSkipping(t *testing.T) {
 
 	// the actors
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(address.SECP256K1)
+	a2, err := w2.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,7 +343,7 @@ func TestMessageChainSkipping(t *testing.T) {
 		mset[uint64(i)] = m
 	}
 
-	chains := mp.createMessageChains(a1, mset, baseFee, ts)
+	chains := mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 4 {
 		t.Fatalf("expected 4 chains, got %d", len(chains))
 	}
@@ -386,13 +386,13 @@ func TestBasicMessageSelection(t *testing.T) {
 
 	// the actors
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(address.SECP256K1)
+	a2, err := w2.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -522,13 +522,13 @@ func TestMessageSelectionTrimmingGas(t *testing.T) {
 
 	// the actors
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(address.SECP256K1)
+	a2, err := w2.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -752,13 +752,13 @@ func TestPriorityMessageSelection(t *testing.T) {
 
 	// the actors
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(address.SECP256K1)
+	a2, err := w2.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -825,13 +825,13 @@ func TestPriorityMessageSelection2(t *testing.T) {
 
 	// the actors
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(address.SECP256K1)
+	a2, err := w2.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -888,13 +888,13 @@ func TestPriorityMessageSelection3(t *testing.T) {
 
 	// the actors
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(address.SECP256K1)
+	a2, err := w2.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -979,13 +979,13 @@ func TestOptimalMessageSelection1(t *testing.T) {
 
 	// the actors
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(address.SECP256K1)
+	a2, err := w2.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1040,13 +1040,13 @@ func TestOptimalMessageSelection2(t *testing.T) {
 
 	// the actors
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(address.SECP256K1)
+	a2, err := w2.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1119,7 +1119,7 @@ func TestOptimalMessageSelection3(t *testing.T) {
 	for i := 0; i < nActors; i++ {
 		w := newWallet(t)
 
-		a, err := w.NewAddress(address.SECP256K1)
+		a, err := w.NewAddress(context.Background(), address.SECP256K1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1196,7 +1196,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 	for i := 0; i < nActors; i++ {
 		w := newWallet(t)
 
-		a, err := w.NewAddress(address.SECP256K1)
+		a, err := w.NewAddress(context.Background(), address.SECP256K1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1489,7 +1489,7 @@ readLoop:
 		if !ok {
 			w := newWallet(t)
 
-			a, err := w.NewAddress(address.SECP256K1)
+			a, err := w.NewAddress(context.Background(), address.SECP256K1)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1508,7 +1508,7 @@ readLoop:
 		m.Message.Nonce -= baseNonce
 
 		c := m.Message.Cid()
-		sig, err := w.WalletSign(localActor, c.Bytes(), mtypes.MsgMeta{})
+		sig, err := w.WalletSign(context.Background(), localActor, c.Bytes(), mtypes.MsgMeta{})
 		if err != nil {
 			t.Fatal(err)
 		}

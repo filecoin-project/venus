@@ -31,7 +31,7 @@ func TestOneBlock(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder, syncer := setup(ctx, t)
-	t1 := builder.AppendOn(builder.Genesis(), 1)
+	t1 := builder.AppendOn(ctx, builder.Genesis(), 1)
 	target := &syncTypes.Target{
 		Base:      nil,
 		Current:   nil,
@@ -55,7 +55,7 @@ func TestMultiBlockTip(t *testing.T) {
 	builder, syncer := setup(ctx, t)
 	genesis := builder.Store().GetHead()
 
-	tip := builder.AppendOn(genesis, 2)
+	tip := builder.AppendOn(ctx, genesis, 2)
 	target := &syncTypes.Target{
 		Base:      nil,
 		Current:   nil,
@@ -68,7 +68,7 @@ func TestMultiBlockTip(t *testing.T) {
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target))
 	assert.NoError(t, builder.FlushHead(ctx))
 
-	verifyTip(t, builder.Store(), tip, builder.StateForKey(tip.Key()))
+	verifyTip(t, builder.Store(), tip, builder.StateForKey(ctx, tip.Key()))
 	verifyHead(t, builder.Store(), tip)
 }
 
@@ -78,13 +78,13 @@ func TestChainIncremental(t *testing.T) {
 	builder, syncer := setup(ctx, t)
 	genesis := builder.Store().GetHead()
 
-	t1 := builder.AppendOn(genesis, 2)
+	t1 := builder.AppendOn(ctx, genesis, 2)
 
-	t2 := builder.AppendOn(t1, 3)
+	t2 := builder.AppendOn(ctx, t1, 3)
 
-	t3 := builder.AppendOn(t2, 1)
+	t3 := builder.AppendOn(ctx, t2, 1)
 
-	t4 := builder.AppendOn(t3, 2)
+	t4 := builder.AppendOn(ctx, t3, 2)
 
 	target1 := &syncTypes.Target{
 		Base:      nil,
@@ -122,22 +122,22 @@ func TestChainIncremental(t *testing.T) {
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target1))
 	assert.NoError(t, builder.FlushHead(ctx))
-	verifyTip(t, builder.Store(), t1, builder.StateForKey(t1.Key()))
+	verifyTip(t, builder.Store(), t1, builder.StateForKey(ctx, t1.Key()))
 	verifyHead(t, builder.Store(), t1)
 
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target2))
 	assert.NoError(t, builder.FlushHead(ctx))
-	verifyTip(t, builder.Store(), t2, builder.StateForKey(t2.Key()))
+	verifyTip(t, builder.Store(), t2, builder.StateForKey(ctx, t2.Key()))
 	verifyHead(t, builder.Store(), t2)
 
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target3))
 	assert.NoError(t, builder.FlushHead(ctx))
-	verifyTip(t, builder.Store(), t3, builder.StateForKey(t3.Key()))
+	verifyTip(t, builder.Store(), t3, builder.StateForKey(ctx, t3.Key()))
 	verifyHead(t, builder.Store(), t3)
 
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target4))
 	assert.NoError(t, builder.FlushHead(ctx))
-	verifyTip(t, builder.Store(), t4, builder.StateForKey(t4.Key()))
+	verifyTip(t, builder.Store(), t4, builder.StateForKey(ctx, t4.Key()))
 	verifyHead(t, builder.Store(), t4)
 }
 
@@ -147,10 +147,10 @@ func TestChainJump(t *testing.T) {
 	builder, syncer := setup(ctx, t)
 	genesis := builder.Store().GetHead()
 
-	t1 := builder.AppendOn(genesis, 2)
-	t2 := builder.AppendOn(t1, 3)
-	t3 := builder.AppendOn(t2, 1)
-	t4 := builder.AppendOn(t3, 2)
+	t1 := builder.AppendOn(ctx, genesis, 2)
+	t2 := builder.AppendOn(ctx, t1, 3)
+	t3 := builder.AppendOn(ctx, t2, 1)
+	t4 := builder.AppendOn(ctx, t3, 2)
 
 	target1 := &syncTypes.Target{
 		Base:      nil,
@@ -162,10 +162,10 @@ func TestChainJump(t *testing.T) {
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target1))
 	assert.NoError(t, builder.FlushHead(ctx))
-	verifyTip(t, builder.Store(), t1, builder.StateForKey(t1.Key()))
-	verifyTip(t, builder.Store(), t2, builder.StateForKey(t2.Key()))
-	verifyTip(t, builder.Store(), t3, builder.StateForKey(t3.Key()))
-	verifyTip(t, builder.Store(), t4, builder.StateForKey(t4.Key()))
+	verifyTip(t, builder.Store(), t1, builder.StateForKey(ctx, t1.Key()))
+	verifyTip(t, builder.Store(), t2, builder.StateForKey(ctx, t2.Key()))
+	verifyTip(t, builder.Store(), t3, builder.StateForKey(ctx, t3.Key()))
+	verifyTip(t, builder.Store(), t4, builder.StateForKey(ctx, t4.Key()))
 	verifyHead(t, builder.Store(), t4)
 }
 
@@ -175,13 +175,13 @@ func TestIgnoreLightFork(t *testing.T) {
 	builder, syncer := setup(ctx, t)
 	genesis := builder.Store().GetHead()
 
-	forkbase := builder.AppendOn(genesis, 1)
-	forkHead := builder.AppendOn(forkbase, 1)
+	forkbase := builder.AppendOn(ctx, genesis, 1)
+	forkHead := builder.AppendOn(ctx, forkbase, 1)
 
-	t1 := builder.AppendOn(forkbase, 1)
-	t2 := builder.AppendOn(t1, 1)
-	t3 := builder.AppendOn(t2, 1)
-	t4 := builder.AppendOn(t3, 1)
+	t1 := builder.AppendOn(ctx, forkbase, 1)
+	t2 := builder.AppendOn(ctx, t1, 1)
+	t3 := builder.AppendOn(ctx, t2, 1)
+	t4 := builder.AppendOn(ctx, t3, 1)
 
 	// Sync heaviest branch first.
 	target4 := &syncTypes.Target{
@@ -194,7 +194,7 @@ func TestIgnoreLightFork(t *testing.T) {
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target4))
 	assert.NoError(t, builder.FlushHead(ctx))
-	verifyTip(t, builder.Store(), t4, builder.StateForKey(t4.Key()))
+	verifyTip(t, builder.Store(), t4, builder.StateForKey(ctx, t4.Key()))
 	verifyHead(t, builder.Store(), t4)
 
 	// Lighter fork is processed but not change head.
@@ -218,18 +218,18 @@ func TestAcceptHeavierFork(t *testing.T) {
 	builder, syncer := setup(ctx, t)
 	genesis := builder.Store().GetHead()
 
-	forkbase := builder.AppendOn(genesis, 1)
+	forkbase := builder.AppendOn(ctx, genesis, 1)
 
-	main1 := builder.AppendOn(forkbase, 1)
-	main2 := builder.AppendOn(main1, 1)
-	main3 := builder.AppendOn(main2, 1)
-	main4 := builder.AppendOn(main3, 1)
+	main1 := builder.AppendOn(ctx, forkbase, 1)
+	main2 := builder.AppendOn(ctx, main1, 1)
+	main3 := builder.AppendOn(ctx, main2, 1)
+	main4 := builder.AppendOn(ctx, main3, 1)
 
 	// Fork is heavier with more blocks, despite shorter (with default fake weighing function
 	// from FakeStateEvaluator).
-	fork1 := builder.AppendOn(forkbase, 3)
-	fork2 := builder.AppendOn(fork1, 1)
-	fork3 := builder.AppendOn(fork2, 1)
+	fork1 := builder.AppendOn(ctx, forkbase, 3)
+	fork2 := builder.AppendOn(ctx, fork1, 1)
+	fork3 := builder.AppendOn(ctx, fork2, 1)
 
 	main4Target := &syncTypes.Target{
 		Base:      nil,
@@ -241,7 +241,7 @@ func TestAcceptHeavierFork(t *testing.T) {
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, main4Target))
 	assert.NoError(t, builder.FlushHead(ctx))
-	verifyTip(t, builder.Store(), main4, builder.StateForKey(main4.Key()))
+	verifyTip(t, builder.Store(), main4, builder.StateForKey(ctx, main4.Key()))
 	verifyHead(t, builder.Store(), main4)
 
 	// Heavier fork updates head3
@@ -255,9 +255,9 @@ func TestAcceptHeavierFork(t *testing.T) {
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, fork3Target))
 	assert.NoError(t, builder.FlushHead(ctx))
-	verifyTip(t, builder.Store(), fork1, builder.StateForKey(fork1.Key()))
-	verifyTip(t, builder.Store(), fork2, builder.StateForKey(fork2.Key()))
-	verifyTip(t, builder.Store(), fork3, builder.StateForKey(fork3.Key()))
+	verifyTip(t, builder.Store(), fork1, builder.StateForKey(ctx, fork1.Key()))
+	verifyTip(t, builder.Store(), fork2, builder.StateForKey(ctx, fork2.Key()))
+	verifyTip(t, builder.Store(), fork3, builder.StateForKey(ctx, fork3.Key()))
 	verifyHead(t, builder.Store(), fork3)
 }
 
@@ -267,7 +267,7 @@ func TestRejectFinalityFork(t *testing.T) {
 	builder, s := setup(ctx, t)
 	genesis := builder.Store().GetHead()
 
-	head := builder.AppendManyOn(int(policy.ChainFinality+2), genesis)
+	head := builder.AppendManyOn(ctx, int(policy.ChainFinality+2), genesis)
 	target := &syncTypes.Target{
 		Base:      nil,
 		Current:   nil,
@@ -281,10 +281,10 @@ func TestRejectFinalityFork(t *testing.T) {
 	// Differentiate fork for a new chain.  Fork has FinalityEpochs + 1
 	// blocks on top of genesis so forkFinalityBase is more than FinalityEpochs
 	// behind head
-	forkFinalityBase := builder.BuildOneOn(genesis, func(bb *chain.BlockBuilder) {
+	forkFinalityBase := builder.BuildOneOn(ctx, genesis, func(bb *chain.BlockBuilder) {
 		bb.SetTicket([]byte{0xbe})
 	})
-	forkFinalityHead := builder.AppendManyOn(int(policy.ChainFinality), forkFinalityBase)
+	forkFinalityHead := builder.AppendManyOn(ctx, int(policy.ChainFinality), forkFinalityBase)
 	forkHeadTarget := &syncTypes.Target{
 		Base:      nil,
 		Current:   nil,
@@ -302,7 +302,7 @@ func TestNoUncessesaryFetch(t *testing.T) {
 	builder, s := setup(ctx, t)
 	genesis := builder.Store().GetHead()
 
-	head := builder.AppendManyOn(4, genesis)
+	head := builder.AppendManyOn(ctx, 4, genesis)
 	target := &syncTypes.Target{
 		Base:      nil,
 		Current:   nil,
@@ -361,8 +361,8 @@ func TestSubsetParent(t *testing.T) {
 	genesis := builder.Store().GetHead()
 
 	// Set up chain with {A1, A2} -> {B1, B2, B3}
-	tipA1A2 := builder.AppendOn(genesis, 2)
-	tipB1B2B3 := builder.AppendOn(tipA1A2, 3)
+	tipA1A2 := builder.AppendOn(ctx, genesis, 2)
+	tipB1B2B3 := builder.AppendOn(ctx, tipA1A2, 3)
 	target1 := &syncTypes.Target{
 		Base:      nil,
 		Current:   nil,
@@ -376,7 +376,7 @@ func TestSubsetParent(t *testing.T) {
 	// Sync one tipset with a parent equal to a subset of an existing
 	// tipset in the bsstore: {B1, B2} -> {C1, C2}
 	tipB1B2 := testhelpers.RequireNewTipSet(t, tipB1B2B3.At(0), tipB1B2B3.At(1))
-	tipC1C2 := builder.AppendOn(tipB1B2, 2)
+	tipC1C2 := builder.AppendOn(ctx, tipB1B2, 2)
 
 	target2 := &syncTypes.Target{
 		Base:      nil,
@@ -391,7 +391,7 @@ func TestSubsetParent(t *testing.T) {
 	// Sync another tipset with a parent equal to a subset of the tipset
 	// just synced: C1 -> D1
 	tipC1 := testhelpers.RequireNewTipSet(t, tipC1C2.At(0))
-	tipD1OnC1 := builder.AppendOn(tipC1, 1)
+	tipD1OnC1 := builder.AppendOn(ctx, tipC1, 1)
 
 	target3 := &syncTypes.Target{
 		Base:      nil,
@@ -404,7 +404,7 @@ func TestSubsetParent(t *testing.T) {
 	assert.NoError(t, s.HandleNewTipSet(ctx, target3))
 
 	// A full parent also works fine: {C1, C2} -> D1
-	tipD1OnC1C2 := builder.AppendOn(tipC1C2, 1)
+	tipD1OnC1C2 := builder.AppendOn(ctx, tipC1C2, 1)
 	target4 := &syncTypes.Target{
 		Base:      nil,
 		Current:   nil,
@@ -430,8 +430,8 @@ func TestBlockNotLinkedRejected(t *testing.T) {
 	require.True(t, genesis.Equals(gen2))
 
 	// The syncer fails to fetch this block so cannot sync it.
-	b1 := shadowBuilder.AppendOn(genesis, 1)
-	b2 := shadowBuilder.AppendOn(b1, 1)
+	b1 := shadowBuilder.AppendOn(ctx, genesis, 1)
+	b2 := shadowBuilder.AppendOn(ctx, b1, 1)
 	target1 := &syncTypes.Target{
 		Base:      nil,
 		Current:   nil,
@@ -443,7 +443,7 @@ func TestBlockNotLinkedRejected(t *testing.T) {
 	assert.Error(t, syncer.HandleNewTipSet(ctx, target1))
 
 	// Make the same block available from the syncer's builder
-	builder.AppendBlockOn(genesis)
+	builder.AppendBlockOn(ctx, genesis)
 	target2 := &syncTypes.Target{
 		Base:      nil,
 		Current:   nil,
@@ -510,7 +510,7 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 	m2 := mm.NewSignedMessage(alice, 1)
 	m3 := mm.NewSignedMessage(alice, 3)
 
-	link1 := builder.BuildOneOn(genesis, func(bb *chain.BlockBuilder) {
+	link1 := builder.BuildOneOn(ctx, genesis, func(bb *chain.BlockBuilder) {
 		bb.AddMessages(
 			[]*types.SignedMessage{m1, m2, m3},
 			[]*types.Message{},
@@ -543,7 +543,7 @@ func TestStoresMessageReceipts(t *testing.T) {
 	keys := testhelpers.MustGenerateKeyInfo(1, 42)
 	mm := testhelpers.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
-	t1 := builder.Build(genesis, 4, func(b *chain.BlockBuilder, i int) {
+	t1 := builder.Build(ctx, genesis, 4, func(b *chain.BlockBuilder, i int) {
 		b.AddMessages([]*types.SignedMessage{}, []*types.Message{mm.NewUnsignedMessage(alice, uint64(i))})
 	})
 
@@ -557,7 +557,7 @@ func TestStoresMessageReceipts(t *testing.T) {
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target1))
 
-	receiptsCid, err := builder.Store().GetTipSetReceiptsRoot(t1)
+	receiptsCid, err := builder.Store().GetTipSetReceiptsRoot(ctx, t1)
 
 	require.NoError(t, err)
 
@@ -605,17 +605,19 @@ func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builde
 // Sub-interface of the bsstore used for verification.
 type syncStoreReader interface {
 	GetHead() *types.TipSet
-	GetTipSet(types.TipSetKey) (*types.TipSet, error)
-	GetTipSetStateRoot(*types.TipSet) (cid.Cid, error)
+	GetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
+	GetTipSetStateRoot(context.Context, *types.TipSet) (cid.Cid, error)
 }
 
 // Verifies that a tipset and associated state root are stored in the chain bsstore.
 func verifyTip(t *testing.T, store syncStoreReader, tip *types.TipSet, stateRoot cid.Cid) {
-	foundTip, err := store.GetTipSet(tip.Key())
+	ctx := context.Background()
+
+	foundTip, err := store.GetTipSet(ctx, tip.Key())
 	require.NoError(t, err)
 	test.Equal(t, tip, foundTip)
 
-	foundState, err := store.GetTipSetStateRoot(tip)
+	foundState, err := store.GetTipSetStateRoot(ctx, tip)
 	require.NoError(t, err)
 	test.Equal(t, stateRoot, foundState)
 }

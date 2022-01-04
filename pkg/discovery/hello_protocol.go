@@ -190,7 +190,7 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 }
 
 func (h *HelloProtocolHandler) loadLocalFullTipset(ctx context.Context, tsk types.TipSetKey) (*types.FullTipSet, error) {
-	ts, err := h.chainStore.GetTipSet(tsk)
+	ts, err := h.chainStore.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, err
 	}

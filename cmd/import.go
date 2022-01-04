@@ -21,11 +21,11 @@ var logImport = logging.Logger("commands/import")
 
 // Import cache tipset cids to store.
 // The value of the cached tipset CIDS is used as the check-point when running `venus daemon`
-func Import(r repo.Repo, fileName string) error {
-	return importChain(r, fileName)
+func Import(ctx context.Context, r repo.Repo, fileName string) error {
+	return importChain(ctx, r, fileName)
 }
 
-func importChain(r repo.Repo, fname string) error {
+func importChain(ctx context.Context, r repo.Repo, fname string) error {
 	var rd io.Reader
 	var l int64
 	if strings.HasPrefix(fname, "http://") || strings.HasPrefix(fname, "https://") {
@@ -76,7 +76,7 @@ func importChain(r repo.Repo, fname string) error {
 	bar.Units = pb.U_BYTES
 
 	bar.Start()
-	tip, err := chainStore.Import(br)
+	tip, err := chainStore.Import(ctx, br)
 	if err != nil {
 		return xerrors.Errorf("importing chain failed: %s", err)
 	}

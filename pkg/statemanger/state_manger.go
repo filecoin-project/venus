@@ -123,7 +123,7 @@ func (s *Stmgr) GetMarketState(ctx context.Context, ts *types.TipSet) (market.St
 }
 
 func (s *Stmgr) ParentStateTsk(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, *tree.State, error) {
-	ts, err := s.cs.GetTipSet(tsk)
+	ts, err := s.cs.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -134,7 +134,7 @@ func (s *Stmgr) ParentState(ctx context.Context, ts *types.TipSet) (*types.TipSe
 	if ts == nil {
 		ts = s.cs.GetHead()
 	}
-	parent, err := s.cs.GetTipSet(ts.Parents())
+	parent, err := s.cs.GetTipSet(ctx, ts.Parents())
 	if err != nil {
 		return nil, nil, xerrors.Errorf("find tipset(%s) parent failed:%w",
 			ts.Key().String(), err)
@@ -151,7 +151,7 @@ func (s *Stmgr) ParentState(ctx context.Context, ts *types.TipSet) (*types.TipSe
 }
 
 func (s *Stmgr) TipsetStateTsk(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, *tree.State, error) {
-	ts, err := s.cs.GetTipSet(tsk)
+	ts, err := s.cs.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("load tipset(%s) failed:%v",
 			tsk.String(), err)
@@ -177,7 +177,7 @@ func (s *Stmgr) Rollback(ctx context.Context, pts, cts *types.TipSet) error {
 	s.log.Infof("rollback chain head from(%d) to a valid tipset", pts.Height())
 redo:
 	s.stLk.Lock()
-	if err := s.cs.DeleteTipSetMetadata(pts); err != nil {
+	if err := s.cs.DeleteTipSetMetadata(ctx, pts); err != nil {
 		s.stLk.Unlock()
 		return err
 	}
@@ -191,7 +191,7 @@ redo:
 		return err
 	} else if !root.Equals(cts.At(0).ParentStateRoot) {
 		cts = pts
-		if pts, err = s.cs.GetTipSet(cts.Parents()); err != nil {
+		if pts, err = s.cs.GetTipSet(ctx, cts.Parents()); err != nil {
 			return err
 		}
 		goto redo
@@ -228,7 +228,7 @@ func (s *Stmgr) RunStateTransition(ctx context.Context, ts *types.TipSet) (root 
 		}
 	}
 
-	if meta, _ := s.cs.GetTipsetMetadata(ts); meta != nil {
+	if meta, _ := s.cs.GetTipsetMetadata(ctx, ts); meta != nil {
 		s.stLk.Unlock()
 		return meta.TipSetStateRoot, meta.TipSetReceipts, nil
 	}
@@ -264,7 +264,7 @@ func (s *Stmgr) RunStateTransition(ctx context.Context, ts *types.TipSet) (root 
 
 // ctx context.Context, ts *types.TipSet, addr address.Address
 func (s *Stmgr) GetActorAtTsk(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error) {
-	ts, err := s.cs.GetTipSet(tsk)
+	ts, err := s.cs.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +319,7 @@ func (s *Stmgr) RunStateTransitionV2(ctx context.Context, ts *types.TipSet) (cid
 		return state.stateRoot, state.receipt, nil
 	}
 
-	if meta, _ := s.cs.GetTipsetMetadata(ts); meta != nil {
+	if meta, _ := s.cs.GetTipsetMetadata(ctx, ts); meta != nil {
 		s.stLk.Unlock()
 		return meta.TipSetStateRoot, meta.TipSetReceipts, nil
 	}
@@ -356,7 +356,7 @@ func (s *Stmgr) RunStateTransitionV2(ctx context.Context, ts *types.TipSet) (cid
 }
 
 func (s *Stmgr) ParentStateViewTsk(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, *appstate.View, error) {
-	ts, err := s.cs.GetTipSet(tsk)
+	ts, err := s.cs.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -367,7 +367,7 @@ func (s *Stmgr) ParentStateView(ctx context.Context, ts *types.TipSet) (*types.T
 	if ts == nil {
 		ts = s.cs.GetHead()
 	}
-	parent, err := s.cs.GetTipSet(ts.Parents())
+	parent, err := s.cs.GetTipSet(ctx, ts.Parents())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -380,7 +380,7 @@ func (s *Stmgr) ParentStateView(ctx context.Context, ts *types.TipSet) (*types.T
 }
 
 func (s *Stmgr) StateViewTsk(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, cid.Cid, *appstate.View, error) {
-	ts, err := s.cs.GetTipSet(tsk)
+	ts, err := s.cs.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, cid.Undef, nil, err
 	}
@@ -394,7 +394,7 @@ func (s *Stmgr) StateView(ctx context.Context, ts *types.TipSet) (cid.Cid, *apps
 		return cid.Undef, nil, err
 	}
 
-	view, err := s.cs.StateView(ts)
+	view, err := s.cs.StateView(ctx, ts)
 	if err != nil {
 		return cid.Undef, nil, err
 	}

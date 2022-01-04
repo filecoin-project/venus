@@ -26,18 +26,18 @@ func NewAPIBlockstore(cio ChainIO) blockstore.Blockstore {
 }
 
 // DeleteBlock implements Blockstore.DeleteBlock.
-func (a *apiBStore) DeleteBlock(cid.Cid) error {
+func (a *apiBStore) DeleteBlock(context.Context, cid.Cid) error {
 	return xerrors.New("not supported")
 }
 
 // Has implements Blockstore.Has.
-func (a *apiBStore) Has(c cid.Cid) (bool, error) {
-	return a.api.ChainHasObj(context.TODO(), c)
+func (a *apiBStore) Has(ctx context.Context, c cid.Cid) (bool, error) {
+	return a.api.ChainHasObj(ctx, c)
 }
 
 // Get implements Blockstore.Get.
-func (a *apiBStore) Get(c cid.Cid) (blocks.Block, error) {
-	bb, err := a.api.ChainReadObj(context.TODO(), c)
+func (a *apiBStore) Get(ctx context.Context, c cid.Cid) (blocks.Block, error) {
+	bb, err := a.api.ChainReadObj(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -45,8 +45,8 @@ func (a *apiBStore) Get(c cid.Cid) (blocks.Block, error) {
 }
 
 // GetSize implements Blockstore.GetSize.
-func (a *apiBStore) GetSize(c cid.Cid) (int, error) {
-	bb, err := a.api.ChainReadObj(context.TODO(), c)
+func (a *apiBStore) GetSize(ctx context.Context, c cid.Cid) (int, error) {
+	bb, err := a.api.ChainReadObj(ctx, c)
 	if err != nil {
 		return 0, err
 	}
@@ -54,12 +54,12 @@ func (a *apiBStore) GetSize(c cid.Cid) (int, error) {
 }
 
 // Put implements Blockstore.Put.
-func (a *apiBStore) Put(blocks.Block) error {
+func (a *apiBStore) Put(context.Context, blocks.Block) error {
 	return xerrors.New("not supported")
 }
 
 // PutMany implements Blockstore.PutMany.
-func (a *apiBStore) PutMany([]blocks.Block) error {
+func (a *apiBStore) PutMany(context.Context, []blocks.Block) error {
 	return xerrors.New("not supported")
 }
 

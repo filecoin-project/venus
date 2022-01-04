@@ -118,7 +118,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 			CircSupplyCalculator: func(context.Context, abi.ChainEpoch, tree.Tree) (abi.TokenAmount, error) {
 				return big.Zero(), nil
 			},
-			LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(chainStore, chainFork, nil),
+			LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(context.TODO(), chainStore, chainFork, nil),
 			NtwkVersionGetter:   chainFork.GetNtwkVersion,
 			Rnd:                 NewFixedRand(),
 			BaseFee:             big.NewFromGo(&tipset.BaseFee),
@@ -250,17 +250,6 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 	//chainstore
 	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator()) //load genesis from car
 
-	//drand
-	/*	genBlk, err := chainStore.GetGenesisBlock(context.TODO())
-		if err != nil {
-			return nil, cid.Undef, err
-		}
-
-		drand, err := beacon.DefaultDrandIfaceFromConfig(genBlk.Timestamp)
-		if err != nil {
-			return nil, cid.Undef, err
-		}*/
-
 	//chain fork
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network)
 	faultChecker := consensusfault.NewFaultChecker(chainStore, chainFork)
@@ -273,7 +262,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 			CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 				return params.CircSupply, nil
 			},
-			LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(chainStore, chainFork, nil),
+			LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(context.TODO(), chainStore, chainFork, nil),
 			NtwkVersionGetter:   chainFork.GetNtwkVersion,
 			Rnd:                 params.Rand,
 			BaseFee:             params.BaseFee,

@@ -782,7 +782,7 @@ type INetworkStruct struct {
 
 		NetworkGetBandwidthStats func(p0 context.Context) metrics.Stats `perm:"admin"`
 
-		NetworkGetClosestPeers func(p0 context.Context, p1 string) (<-chan peer.ID, error) `perm:"read"`
+		NetworkGetClosestPeers func(p0 context.Context, p1 string) ([]peer.ID, error) `perm:"read"`
 
 		NetworkGetPeerAddresses func(p0 context.Context) []ma.Multiaddr `perm:"admin"`
 
@@ -814,7 +814,7 @@ func (s *INetworkStruct) NetworkGetBandwidthStats(p0 context.Context) metrics.St
 	return s.Internal.NetworkGetBandwidthStats(p0)
 }
 
-func (s *INetworkStruct) NetworkGetClosestPeers(p0 context.Context, p1 string) (<-chan peer.ID, error) {
+func (s *INetworkStruct) NetworkGetClosestPeers(p0 context.Context, p1 string) ([]peer.ID, error) {
 	return s.Internal.NetworkGetClosestPeers(p0, p1)
 }
 
@@ -1002,13 +1002,13 @@ type IWalletStruct struct {
 
 		WalletDefaultAddress func(p0 context.Context) (address.Address, error) `perm:"write"`
 
-		WalletExport func(p0 address.Address, p1 string) (*wallet.KeyInfo, error) `perm:"admin"`
+		WalletExport func(p0 context.Context, p1 address.Address, p2 string) (*wallet.KeyInfo, error) `perm:"admin"`
 
 		WalletHas func(p0 context.Context, p1 address.Address) (bool, error) `perm:"write"`
 
-		WalletImport func(p0 *wallet.KeyInfo) (address.Address, error) `perm:"admin"`
+		WalletImport func(p0 context.Context, p1 *wallet.KeyInfo) (address.Address, error) `perm:"admin"`
 
-		WalletNewAddress func(p0 address.Protocol) (address.Address, error) `perm:"write"`
+		WalletNewAddress func(p0 context.Context, p1 address.Protocol) (address.Address, error) `perm:"write"`
 
 		WalletSetDefault func(p0 context.Context, p1 address.Address) error `perm:"write"`
 
@@ -1048,20 +1048,20 @@ func (s *IWalletStruct) WalletDefaultAddress(p0 context.Context) (address.Addres
 	return s.Internal.WalletDefaultAddress(p0)
 }
 
-func (s *IWalletStruct) WalletExport(p0 address.Address, p1 string) (*wallet.KeyInfo, error) {
-	return s.Internal.WalletExport(p0, p1)
+func (s *IWalletStruct) WalletExport(p0 context.Context, p1 address.Address, p2 string) (*wallet.KeyInfo, error) {
+	return s.Internal.WalletExport(p0, p1, p2)
 }
 
 func (s *IWalletStruct) WalletHas(p0 context.Context, p1 address.Address) (bool, error) {
 	return s.Internal.WalletHas(p0, p1)
 }
 
-func (s *IWalletStruct) WalletImport(p0 *wallet.KeyInfo) (address.Address, error) {
-	return s.Internal.WalletImport(p0)
+func (s *IWalletStruct) WalletImport(p0 context.Context, p1 *wallet.KeyInfo) (address.Address, error) {
+	return s.Internal.WalletImport(p0, p1)
 }
 
-func (s *IWalletStruct) WalletNewAddress(p0 address.Protocol) (address.Address, error) {
-	return s.Internal.WalletNewAddress(p0)
+func (s *IWalletStruct) WalletNewAddress(p0 context.Context, p1 address.Protocol) (address.Address, error) {
+	return s.Internal.WalletNewAddress(p0, p1)
 }
 
 func (s *IWalletStruct) WalletSetDefault(p0 context.Context, p1 address.Address) error {

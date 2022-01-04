@@ -10,17 +10,17 @@ import (
 // MemStore is a terminal blockstore that keeps blocks in memory.
 type MemStore map[cid.Cid]blocks.Block
 
-func (m MemStore) DeleteBlock(k cid.Cid) error {
+func (m MemStore) DeleteBlock(ctx context.Context, k cid.Cid) error {
 	delete(m, k)
 	return nil
 }
 
-func (m MemStore) Has(k cid.Cid) (bool, error) {
+func (m MemStore) Has(ctx context.Context, k cid.Cid) (bool, error) {
 	_, ok := m[k]
 	return ok, nil
 }
 
-func (m MemStore) View(k cid.Cid, callback func([]byte) error) error {
+func (m MemStore) View(ctx context.Context, k cid.Cid, callback func([]byte) error) error {
 	b, ok := m[k]
 	if !ok {
 		return ErrNotFound
@@ -28,7 +28,7 @@ func (m MemStore) View(k cid.Cid, callback func([]byte) error) error {
 	return callback(b.RawData())
 }
 
-func (m MemStore) Get(k cid.Cid) (blocks.Block, error) {
+func (m MemStore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
 	b, ok := m[k]
 	if !ok {
 		return nil, ErrNotFound
@@ -37,7 +37,7 @@ func (m MemStore) Get(k cid.Cid) (blocks.Block, error) {
 }
 
 // GetSize returns the CIDs mapped BlockSize
-func (m MemStore) GetSize(k cid.Cid) (int, error) {
+func (m MemStore) GetSize(ctx context.Context, k cid.Cid) (int, error) {
 	b, ok := m[k]
 	if !ok {
 		return 0, ErrNotFound
@@ -46,7 +46,7 @@ func (m MemStore) GetSize(k cid.Cid) (int, error) {
 }
 
 // Put puts a given block to the underlying datastore
-func (m MemStore) Put(b blocks.Block) error {
+func (m MemStore) Put(ctx context.Context, b blocks.Block) error {
 	// Convert to a basic block for safety, but try to reuse the existing
 	// block if it's already a basic block.
 	k := b.Cid()
@@ -64,9 +64,9 @@ func (m MemStore) Put(b blocks.Block) error {
 
 // PutMany puts a slice of blocks at the same time using batching
 // capabilities of the underlying datastore whenever possible.
-func (m MemStore) PutMany(bs []blocks.Block) error {
+func (m MemStore) PutMany(ctx context.Context, bs []blocks.Block) error {
 	for _, b := range bs {
-		_ = m.Put(b) // can't fail
+		_ = m.Put(ctx, b) // can't fail
 	}
 	return nil
 }

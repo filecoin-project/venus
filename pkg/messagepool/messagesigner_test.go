@@ -5,25 +5,19 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/filecoin-project/venus/pkg/repo"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	"github.com/stretchr/testify/assert"
-
-	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/venus/pkg/wallet"
-
-	"github.com/stretchr/testify/require"
-
-	ds_sync "github.com/ipfs/go-datastore/sync"
-
 	"github.com/filecoin-project/go-address"
-
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/ipfs/go-datastore"
+	ds_sync "github.com/ipfs/go-datastore/sync"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
+	"github.com/filecoin-project/venus/pkg/repo"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 type mockMpool struct {
@@ -59,18 +53,18 @@ func TestMessageSignerSignMessage(t *testing.T) {
 
 	ctx := context.Background()
 	r := repo.NewInMemoryRepo()
-	backend, err := wallet.NewDSBackend(r.WalletDatastore(), r.Config().Wallet.PassphraseConfig, wallet.TestPassword)
+	backend, err := wallet.NewDSBackend(ctx, r.WalletDatastore(), r.Config().Wallet.PassphraseConfig, wallet.TestPassword)
 	assert.NoError(t, err)
 
 	w := wallet.New(backend)
 
-	from1, err := w.NewAddress(address.SECP256K1)
+	from1, err := w.NewAddress(ctx, address.SECP256K1)
 	require.NoError(t, err)
-	from2, err := w.NewAddress(address.SECP256K1)
+	from2, err := w.NewAddress(ctx, address.SECP256K1)
 	require.NoError(t, err)
-	to1, err := w.NewAddress(address.SECP256K1)
+	to1, err := w.NewAddress(ctx, address.SECP256K1)
 	require.NoError(t, err)
-	to2, err := w.NewAddress(address.SECP256K1)
+	to2, err := w.NewAddress(ctx, address.SECP256K1)
 	require.NoError(t, err)
 
 	type msgSpec struct {

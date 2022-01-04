@@ -3104,7 +3104,12 @@ Inputs:
 ]
 ```
 
-Response: `"12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"`
+Response:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
 
 ### NetworkGetPeerAddresses
 
@@ -5452,6 +5457,7 @@ Perms: admin
 Inputs:
 ```json
 [
+  "t01234",
   "string value"
 ]
 ```
@@ -5483,7 +5489,15 @@ Response: `true`
 
 Perms: admin
 
-Inputs: `null`
+Inputs:
+```json
+[
+  {
+    "Type": "bls",
+    "PrivateKey": "Ynl0ZSBhcnJheQ=="
+  }
+]
+```
 
 Response: `"t01234"`
 
@@ -5492,7 +5506,12 @@ Response: `"t01234"`
 
 Perms: write
 
-Inputs: `null`
+Inputs:
+```json
+[
+  7
+]
+```
 
 Response: `"t01234"`
 

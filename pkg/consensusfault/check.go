@@ -31,7 +31,7 @@ type FaultStateView interface {
 
 // Chain state required for checking consensus fault reports.
 type chainReader interface {
-	GetTipSet(types.TipSetKey) (*types.TipSet, error)
+	GetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 }
 
 // Checks the validity of reported consensus faults.

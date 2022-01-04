@@ -352,7 +352,7 @@ func (us UpgradeSchedule) Validate() error {
 
 type chainReader interface {
 	GetHead() *types.TipSet
-	GetTipSet(types.TipSetKey) (*types.TipSet, error)
+	GetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 	GetTipSetByHeight(context.Context, *types.TipSet, abi.ChainEpoch, bool) (*types.TipSet, error)
 	GetTipSetState(context.Context, *types.TipSet) (vmstate.Tree, error)
 	GetGenesisBlock(context.Context) (*types.BlockHeader, error)
@@ -682,7 +682,7 @@ func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, cache Migrati
 		return cid.Undef, xerrors.Errorf("failed to get tipset at lookback height: %v", err)
 	}
 
-	pts, err := c.cr.GetTipSet(lbts.Parents())
+	pts, err := c.cr.GetTipSet(ctx, lbts.Parents())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to get tipset : %v", err)
 	}
@@ -1258,13 +1258,13 @@ func linksForObj(blk ipfsblock.Block, cb func(cid.Cid)) error {
 	}
 }
 
-func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(ipfsblock.Block) error) error {
+func copyRec(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid, cp func(ipfsblock.Block) error) error {
 	if root.Prefix().MhType == 0 {
 		// identity cid, skip
 		return nil
 	}
 
-	blk, err := from.Get(root)
+	blk, err := from.Get(ctx, root)
 	if err != nil {
 		return xerrors.Errorf("get %s failed: %v", root, err)
 	}
@@ -1289,7 +1289,7 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(ipfsblock.Blo
 			}
 		} else {
 			// If we have an object, we already have its children, skip the object.
-			has, err := to.Has(link)
+			has, err := to.Has(ctx, link)
 			if err != nil {
 				lerr = xerrors.Errorf("has: %v", err)
 				return
@@ -1299,7 +1299,7 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(ipfsblock.Blo
 			}
 		}
 
-		if err := copyRec(from, to, link, cp); err != nil {
+		if err := copyRec(ctx, from, to, link, cp); err != nil {
 			lerr = err
 			return
 		}
@@ -1336,7 +1336,7 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 
 	go func() {
 		for b := range toFlush {
-			if err := to.PutMany(b); err != nil {
+			if err := to.PutMany(ctx, b); err != nil {
 				close(freeBufs)
 				errFlushChan <- xerrors.Errorf("batch put in copy: %v", err)
 				return
@@ -1365,7 +1365,7 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 		return nil
 	}
 
-	if err := copyRec(from, to, root, batchCp); err != nil {
+	if err := copyRec(ctx, from, to, root, batchCp); err != nil {
 		return xerrors.Errorf("copyRec: %v", err)
 	}
 

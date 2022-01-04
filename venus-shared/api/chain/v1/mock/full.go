@@ -1257,10 +1257,10 @@ func (mr *MockFullNodeMockRecorder) NetworkGetBandwidthStats(arg0 interface{}) *
 }
 
 // NetworkGetClosestPeers mocks base method.
-func (m *MockFullNode) NetworkGetClosestPeers(arg0 context.Context, arg1 string) (<-chan peer.ID, error) {
+func (m *MockFullNode) NetworkGetClosestPeers(arg0 context.Context, arg1 string) ([]peer.ID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NetworkGetClosestPeers", arg0, arg1)
-	ret0, _ := ret[0].(<-chan peer.ID)
+	ret0, _ := ret[0].([]peer.ID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

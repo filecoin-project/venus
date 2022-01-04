@@ -1,6 +1,7 @@
 package slashfilter
 
 import (
+	"context"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -107,7 +108,7 @@ func (f *MysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) error {
 }
 
 //MinedBlock check whether the block mined is slash
-func (f *MysqlSlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
+func (f *MysqlSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
 	if err := f.checkSameHeightFault(bh); err != nil {
 		return err
 	}

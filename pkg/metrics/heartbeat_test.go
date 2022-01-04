@@ -56,7 +56,7 @@ func newEndpoint(t *testing.T, port int) endpoint {
 		libp2p.Identity(priv),
 	}
 
-	basicHost, err := libp2p.New(context.Background(), opts...)
+	basicHost, err := libp2p.New(opts...)
 	if err != nil {
 		t.Fatal(err)
 	}

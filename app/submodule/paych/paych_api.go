@@ -36,11 +36,11 @@ func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt b
 }
 
 func (a *PaychAPI) PaychAvailableFunds(ctx context.Context, ch address.Address) (*apitypes.ChannelAvailableFunds, error) {
-	return a.paychMgr.AvailableFunds(ch)
+	return a.paychMgr.AvailableFunds(ctx, ch)
 }
 
 func (a *PaychAPI) PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*apitypes.ChannelAvailableFunds, error) {
-	return a.paychMgr.AvailableFundsByFromTo(from, to)
+	return a.paychMgr.AvailableFundsByFromTo(ctx, from, to)
 }
 
 func (a *PaychAPI) PaychGetWaitReady(ctx context.Context, sentinel cid.Cid) (address.Address, error) {
@@ -48,7 +48,7 @@ func (a *PaychAPI) PaychGetWaitReady(ctx context.Context, sentinel cid.Cid) (add
 }
 
 func (a *PaychAPI) PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error) {
-	return a.paychMgr.AllocateLane(ch)
+	return a.paychMgr.AllocateLane(ctx, ch)
 }
 
 func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []paychtypes.VoucherSpec) (*paychtypes.PaymentInfo, error) {
@@ -61,7 +61,7 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 		return nil, err
 	}
 
-	lane, err := a.paychMgr.AllocateLane(ch.Channel)
+	lane, err := a.paychMgr.AllocateLane(ctx, ch.Channel)
 	if err != nil {
 		return nil, err
 	}
@@ -96,11 +96,11 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 }
 
 func (a *PaychAPI) PaychList(ctx context.Context) ([]address.Address, error) {
-	return a.paychMgr.ListChannels()
+	return a.paychMgr.ListChannels(ctx)
 }
 
 func (a *PaychAPI) PaychStatus(ctx context.Context, pch address.Address) (*paychtypes.Status, error) {
-	ci, err := a.paychMgr.GetChannelInfo(pch)
+	ci, err := a.paychMgr.GetChannelInfo(ctx, pch)
 	if err != nil {
 		return nil, err
 	}

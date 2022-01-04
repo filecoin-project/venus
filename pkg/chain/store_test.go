@@ -47,7 +47,7 @@ func newChainStore(r repo.Repo, genTS *types.TipSet) *CborBlockStore {
 // requirePutTestChain puts the count tipsets preceding head in the source to
 // the input chain store.
 func requirePutTestChain(ctx context.Context, t *testing.T, cborStore *CborBlockStore, head types.TipSetKey, source *chain.Builder, count int) {
-	tss := source.RequireTipSets(head, count)
+	tss := source.RequireTipSets(ctx, head, count)
 	for _, ts := range tss {
 		tsas := &chain.TipSetMetadata{
 			TipSet:          ts,
@@ -103,10 +103,10 @@ func TestGetByKey(t *testing.T) {
 	cs := newChainStore(r, genTS)
 
 	// Construct test chain data
-	link1 := builder.AppendOn(genTS, 2)
-	link2 := builder.AppendOn(link1, 3)
-	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
+	link1 := builder.AppendOn(ctx, genTS, 2)
+	link2 := builder.AppendOn(ctx, link1, 3)
+	link3 := builder.AppendOn(ctx, link2, 1)
+	link4 := builder.BuildOn(ctx, link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
 
 	// Put the test chain to the store
 	requirePutTestChain(ctx, t, cs, link4.Key(), builder, 5)
@@ -148,16 +148,16 @@ func TestRevertChange(t *testing.T) {
 	cs := newChainStore(builder.Repo(), genTS)
 	genesis := builder.Genesis()
 
-	link1 := builder.AppendOn(genesis, 1)
-	link2 := builder.AppendOn(link1, 1)
-	link3 := builder.AppendOn(link2, 1)
+	link1 := builder.AppendOn(ctx, genesis, 1)
+	link2 := builder.AppendOn(ctx, link1, 1)
+	link3 := builder.AppendOn(ctx, link2, 1)
 
 	err := cs.SetHead(ctx, link3)
 	require.NoError(t, err)
 
-	link4 := builder.AppendOn(genesis, 2)
-	link5 := builder.AppendOn(link4, 2)
-	link6 := builder.AppendOn(link5, 2)
+	link4 := builder.AppendOn(ctx, genesis, 2)
+	link5 := builder.AppendOn(ctx, link4, 2)
+	link6 := builder.AppendOn(ctx, link5, 2)
 
 	ch := cs.SubHeadChanges(ctx)
 	currentA := <-ch
@@ -211,6 +211,7 @@ func assertSetHead(t *testing.T, cborStore *CborBlockStore, ts *types.TipSet) {
 func TestHead(t *testing.T) {
 	tf.UnitTest(t)
 
+	ctx := context.TODO()
 	builder := chain.NewBuilder(t, address.Undef)
 	genTS := builder.Genesis()
 	r := builder.Repo()
@@ -220,10 +221,10 @@ func TestHead(t *testing.T) {
 		Store: chain.NewStore(r.ChainDatastore(), bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator()),
 	}
 	// Construct test chain data
-	link1 := builder.AppendOn(genTS, 2)
-	link2 := builder.AppendOn(link1, 3)
-	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
+	link1 := builder.AppendOn(ctx, genTS, 2)
+	link2 := builder.AppendOn(ctx, link1, 3)
+	link3 := builder.AppendOn(ctx, link2, 1)
+	link4 := builder.BuildOn(ctx, link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
 
 	// Head starts as an empty cid set
 	assert.Equal(t, types.UndefTipSet, cs.GetHead())
@@ -258,10 +259,10 @@ func TestHeadEvents(t *testing.T) {
 	genTS := builder.Genesis()
 	chainStore := newChainStore(builder.Repo(), genTS)
 	// Construct test chain data
-	link1 := builder.AppendOn(genTS, 2)
-	link2 := builder.AppendOn(link1, 3)
-	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
+	link1 := builder.AppendOn(ctx, genTS, 2)
+	link2 := builder.AppendOn(ctx, link1, 3)
+	link3 := builder.AppendOn(ctx, link2, 1)
+	link4 := builder.BuildOn(ctx, link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
 
 	assertSetHead(t, chainStore, genTS)
 
@@ -315,10 +316,10 @@ func TestLoadAndReboot(t *testing.T) {
 	cst := cbor.NewCborStore(bs)
 
 	// Construct test chain data
-	link1 := builder.AppendOn(genTS, 2)
-	link2 := builder.AppendOn(link1, 3)
-	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
+	link1 := builder.AppendOn(ctx, genTS, 2)
+	link2 := builder.AppendOn(ctx, link1, 3)
+	link3 := builder.AppendOn(ctx, link2, 1)
+	link4 := builder.BuildOn(ctx, link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
 
 	// Add blocks to blockstore
 	requirePutBlocksToCborStore(t, cst, genTS.ToSlice()...)
@@ -356,17 +357,17 @@ func TestLoadAndReboot(t *testing.T) {
 }
 
 func requireGetTipSet(ctx context.Context, t *testing.T, chainStore *CborBlockStore, key types.TipSetKey) *types.TipSet {
-	ts, err := chainStore.GetTipSet(key)
+	ts, err := chainStore.GetTipSet(ctx, key)
 	require.NoError(t, err)
 	return ts
 }
 
 type tipSetStateRootGetter interface {
-	GetTipSetStateRoot(*types.TipSet) (cid.Cid, error)
+	GetTipSetStateRoot(context.Context, *types.TipSet) (cid.Cid, error)
 }
 
 func requireGetTipSetStateRoot(ctx context.Context, t *testing.T, chainStore tipSetStateRootGetter, ts *types.TipSet) cid.Cid {
-	stateCid, err := chainStore.GetTipSetStateRoot(ts)
+	stateCid, err := chainStore.GetTipSetStateRoot(ctx, ts)
 	require.NoError(t, err)
 	return stateCid
 }

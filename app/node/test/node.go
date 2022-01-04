@@ -5,12 +5,6 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -18,12 +12,18 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/fixtures/fortest"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	gengen "github.com/filecoin-project/venus/tools/gengen/util"
+	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 // ChainSeed is a generalized struct for configuring node
@@ -63,15 +63,15 @@ func (cs *ChainSeed) GenesisInitFunc(cst cbor.IpldStore, bs blockstore.Blockstor
 }
 
 // GiveKey gives the given key to the given node
-func (cs *ChainSeed) GiveKey(t *testing.T, nd *node.Node, key int) address.Address {
+func (cs *ChainSeed) GiveKey(ctx context.Context, t *testing.T, nd *node.Node, key int) address.Address {
 	t.Helper()
 	bcks := nd.Wallet().Wallet.Backends(wallet.DSBackendType)
 	require.Len(t, bcks, 1, "expected to get exactly one datastore backend")
 
 	dsb := bcks[0].(*wallet.DSBackend)
-	_ = dsb.SetPassword(wallet.TestPassword)
+	_ = dsb.SetPassword(ctx, wallet.TestPassword)
 	kinfo := cs.info.Keys[key]
-	require.NoError(t, dsb.ImportKey(kinfo))
+	require.NoError(t, dsb.ImportKey(ctx, kinfo))
 
 	addr, err := kinfo.Address()
 	require.NoError(t, err)
