@@ -29,6 +29,8 @@ tools/chain-util/chain-util
 **/*.h
 **/*.a
 **/*.pc
+.DS_Store
+**/.DS_Store
 
 // IDE (vscode)
 .vscode
