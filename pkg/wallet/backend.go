@@ -36,5 +36,5 @@ type Backend interface {
 type Importer interface {
 	// ImportKey imports the key described by the given keyinfo
 	// into the backend
-	ImportKey(*crypto.KeyInfo) error
+	ImportKey(context.Context, *crypto.KeyInfo) error
 }

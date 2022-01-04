@@ -178,7 +178,7 @@ func (w *Wallet) Import(ctx context.Context, ki *crypto.KeyInfo) (address.Addres
 		return address.Undef, fmt.Errorf("datastore backend wallets should implement importer")
 	}
 
-	if err := imp.ImportKey(ki); err != nil {
+	if err := imp.ImportKey(ctx, ki); err != nil {
 		return address.Undef, err
 	}
 
