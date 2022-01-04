@@ -82,7 +82,7 @@ var stateWaitMsgCmd = &cmds.Command{
 			writer.Printf("message was executed in tipset: %s\n", mw.TipSet.Cids())
 			writer.Printf("Exit Code: %d\n", mw.Receipt.ExitCode)
 			writer.Printf("Gas Used: %d\n", mw.Receipt.GasUsed)
-			writer.Printf("Return: %x\n", mw.Receipt.ReturnValue)
+			writer.Printf("Return: %x\n", mw.Receipt.Return)
 		} else {
 			writer.Printf("Unable to find message recepit of %s", cid)
 		}

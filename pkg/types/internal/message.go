@@ -350,9 +350,9 @@ func (m *TxMeta) ToStorageBlock() (block.Block, error) {
 
 // MessageReceipt is what is returned by executing a message on the vm.
 type MessageReceipt struct {
-	ExitCode    exitcode.ExitCode `json:"exitCode"`
-	ReturnValue []byte            `json:"return"`
-	GasUsed     int64             `json:"gasUsed"`
+	ExitCode exitcode.ExitCode `json:"exitCode"`
+	Return   []byte            `json:"return"`
+	GasUsed  int64             `json:"gasUsed"`
 }
 
 func (r *MessageReceipt) String() string {
