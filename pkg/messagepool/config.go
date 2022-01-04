@@ -61,7 +61,7 @@ func saveConfig(ctx context.Context, cfg *MpoolConfig, ds repo.Datastore) error 
 	if err != nil {
 		return err
 	}
-	return ds.Put(ctx,  ConfigKey, cfgBytes)
+	return ds.Put(ctx, ConfigKey, cfgBytes)
 }
 
 func (mp *MessagePool) GetConfig() *MpoolConfig {

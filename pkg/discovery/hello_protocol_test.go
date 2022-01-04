@@ -58,8 +58,8 @@ func TestHelloHandshake(t *testing.T) {
 	genesisA := builder.Genesis()
 	store := builder.Store()
 	mstore := builder.Mstore()
-	heavy1 := builder.AppendOn(genesisA, 1)
-	heavy2 := builder.AppendOn(heavy1, 1)
+	heavy1 := builder.AppendOn(ctx, genesisA, 1)
+	heavy2 := builder.AppendOn(ctx, heavy1, 1)
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -117,11 +117,11 @@ func TestHelloBadGenesis(t *testing.T) {
 	store := builder.Store()
 	mstore := builder.Mstore()
 
-	genesisA := builder.AppendOn(types.UndefTipSet, 1)
-	genesisB := builder.AppendOn(types.UndefTipSet, 1)
+	genesisA := builder.AppendOn(ctx, types.UndefTipSet, 1)
+	genesisB := builder.AppendOn(ctx, types.UndefTipSet, 1)
 
-	heavy1 := builder.AppendOn(genesisA, 1)
-	heavy2 := builder.AppendOn(heavy1, 1)
+	heavy1 := builder.AppendOn(ctx, genesisA, 1)
+	heavy2 := builder.AppendOn(ctx, heavy1, 1)
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -164,9 +164,9 @@ func TestHelloMultiBlock(t *testing.T) {
 	genesisTipset := builder.Genesis()
 	assert.Equal(t, 1, genesisTipset.Len())
 
-	heavy1 := builder.AppendOn(genesisTipset, 3)
-	heavy1 = builder.AppendOn(heavy1, 3)
-	heavy2 := builder.AppendOn(heavy1, 3)
+	heavy1 := builder.AppendOn(ctx, genesisTipset, 3)
+	heavy1 = builder.AppendOn(ctx, heavy1, 3)
+	heavy2 := builder.AppendOn(ctx, heavy1, 3)
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}

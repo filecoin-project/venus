@@ -27,8 +27,8 @@ func TestEncrypKeyAndDecryptKey(t *testing.T) {
 	assert.NoError(t, err)
 
 	w := New(fs)
-
-	ki, err := w.NewKeyInfo()
+	ctx := context.Background()
+	ki, err := w.NewKeyInfo(ctx)
 	assert.NoError(t, err)
 
 	addr, err := ki.Address()

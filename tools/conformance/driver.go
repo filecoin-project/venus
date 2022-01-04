@@ -249,7 +249,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 	chainDs := ds.NewMapDatastore() //just mock one
 	//chainstore
 	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator()) //load genesis from car
-	
+
 	//chain fork
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network)
 	faultChecker := consensusfault.NewFaultChecker(chainStore, chainFork)

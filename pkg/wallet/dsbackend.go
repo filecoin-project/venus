@@ -208,7 +208,7 @@ func (backend *DSBackend) SignBytes(ctx context.Context, data []byte, addr addre
 
 // GetKeyInfo will return the private & public keys associated with address `addr`
 // iff backend contains the addr.
-func (backend *DSBackend) GetKeyInfo(ctx context.Context,addr address.Address) (*crypto.KeyInfo, error) {
+func (backend *DSBackend) GetKeyInfo(ctx context.Context, addr address.Address) (*crypto.KeyInfo, error) {
 	if !backend.HasAddress(ctx, addr) {
 		return nil, errors.New("backend does not contain address")
 	}

@@ -224,7 +224,7 @@ func writeStateToTempCAR(bs blockstoreutil.Blockstore, roots ...cid.Cid) (string
 				continue
 			}
 			// ignore things we don't have, the state tree is incomplete.
-			if has, err := bs.Has(link.Cid); err != nil {
+			if has, err := bs.Has(context.TODO(), link.Cid); err != nil {
 				return nil, err
 			} else if has {
 				out = append(out, link)
@@ -260,7 +260,7 @@ func LoadVectorCAR(vectorCAR schema.Base64EncodedBytes) (blockstoreutil.Blocksto
 	defer r.Close() // nolint
 
 	// Load the CAR embedded in the test vector into the blockstore.
-	_, err = car.LoadCar(bs, r)
+	_, err = car.LoadCar(context.TODO(), bs, r)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load state tree car from test vector: %s", err)
 	}

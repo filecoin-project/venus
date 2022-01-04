@@ -152,7 +152,7 @@ func TestFindCommonAncestorSameChain(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	head := builder.Genesis()
 	// Add 30 tipsets to the head of the chainStore.
-	head = builder.AppendManyOn(ctx,30, head)
+	head = builder.AppendManyOn(ctx, 30, head)
 	headIterOne := chain.IterAncestors(ctx, builder, head)
 	headIterTwo := chain.IterAncestors(ctx, builder, head)
 	commonAncestor, err := chain.FindCommonAncestor(ctx, headIterOne, headIterTwo)

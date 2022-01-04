@@ -79,7 +79,7 @@ func (fm *FundManager) Start(ctx context.Context) error {
 	// - in State() only load addresses with in-progress messages
 	// - load the others just-in-time from getFundedAddress
 	// - delete(fm.fundedAddrs, addr) when the queue has been processed
-	return fm.str.forEach(func(state *FundedAddressState) {
+	return fm.str.forEach(ctx, func(state *FundedAddressState) {
 		fa := newFundedAddress(fm, state.Addr)
 		fa.state = state
 		fm.fundedAddrs[fa.state.Addr] = fa

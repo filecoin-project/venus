@@ -44,7 +44,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 	mock.setAccountAddress(toAcct, to)
 	mock.addSigningKey(fromKeyPrivate)
 
-	mgr, err := newManager(store, mock)
+	mgr, err := newManager(ctx, store, mock)
 	require.NoError(t, err)
 
 	// Send create message for a channel with value 10

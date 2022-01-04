@@ -47,7 +47,7 @@ func newChainStore(r repo.Repo, genTS *types.TipSet) *CborBlockStore {
 // requirePutTestChain puts the count tipsets preceding head in the source to
 // the input chain store.
 func requirePutTestChain(ctx context.Context, t *testing.T, cborStore *CborBlockStore, head types.TipSetKey, source *chain.Builder, count int) {
-	tss := source.RequireTipSets(head, count)
+	tss := source.RequireTipSets(ctx, head, count)
 	for _, ts := range tss {
 		tsas := &chain.TipSetMetadata{
 			TipSet:          ts,

@@ -212,9 +212,10 @@ func TestFundManagerReserveByWallet(t *testing.T) {
 	s := setup(t)
 	defer s.fm.Stop()
 
-	walletAddrA, err := s.wllt.NewAddress(address.SECP256K1)
+	ctx := context.Background()
+	walletAddrA, err := s.wllt.NewAddress(ctx, address.SECP256K1)
 	require.NoError(t, err)
-	walletAddrB, err := s.wllt.NewAddress(address.SECP256K1)
+	walletAddrB, err := s.wllt.NewAddress(ctx, address.SECP256K1)
 	require.NoError(t, err)
 
 	// Wait until all the reservation requests are queued up
@@ -400,9 +401,11 @@ func TestFundManagerWithdrawByWallet(t *testing.T) {
 	tf.UnitTest(t)
 	s := setup(t)
 	defer s.fm.Stop()
-	walletAddrA, err := s.wllt.NewAddress(address.SECP256K1)
+
+	ctx := context.Background()
+	walletAddrA, err := s.wllt.NewAddress(ctx, address.SECP256K1)
 	require.NoError(t, err)
-	walletAddrB, err := s.wllt.NewAddress(address.SECP256K1)
+	walletAddrB, err := s.wllt.NewAddress(ctx, address.SECP256K1)
 	require.NoError(t, err)
 
 	// Reserve 10
@@ -510,6 +513,8 @@ func TestFundManagerRestart(t *testing.T) {
 	s := setup(t)
 	defer s.fm.Stop()
 
+	ctx := context.Background()
+
 	acctAddr2 := tutils.NewActorAddr(t, "addr2")
 
 	// Address 1: Reserve 10
@@ -537,7 +542,7 @@ func TestFundManagerRestart(t *testing.T) {
 	// Restart
 	mockAPIAfter := s.mockAPI
 	fmAfter := newFundManager(mockAPIAfter, s.ds)
-	err = fmAfter.Start()
+	err = fmAfter.Start(ctx)
 	require.NoError(t, err)
 
 	amt3 := abi.NewTokenAmount(9)
@@ -628,11 +633,11 @@ func setup(t *testing.T) *scaffold {
 	ctx := context.Background()
 	t.Log("create a backend")
 	ds := datastore.NewMapDatastore()
-	fs, err := wallet.NewDSBackend(ds, config.TestPassphraseConfig(), wallet.TestPassword)
+	fs, err := wallet.NewDSBackend(ctx, ds, config.TestPassphraseConfig(), wallet.TestPassword)
 	assert.NoError(t, err)
 	t.Log("create a wallet with a single backend")
 	wllt := wallet.New(fs)
-	walletAddr, err := wllt.NewAddress(address.SECP256K1)
+	walletAddr, err := wllt.NewAddress(ctx, address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}

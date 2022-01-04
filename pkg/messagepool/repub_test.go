@@ -32,14 +32,15 @@ func TestRepubMessages(t *testing.T) {
 	}
 
 	// the actors
+	ctx := context.Background()
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(ctx, address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(address.SECP256K1)
+	a2, err := w2.NewAddress(ctx, address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}

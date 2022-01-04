@@ -63,7 +63,7 @@ func (cs *ChainSeed) GenesisInitFunc(cst cbor.IpldStore, bs blockstore.Blockstor
 }
 
 // GiveKey gives the given key to the given node
-func (cs *ChainSeed) GiveKey(ctx context.Context,t *testing.T, nd *node.Node, key int) address.Address {
+func (cs *ChainSeed) GiveKey(ctx context.Context, t *testing.T, nd *node.Node, key int) address.Address {
 	t.Helper()
 	bcks := nd.Wallet().Wallet.Backends(wallet.DSBackendType)
 	require.Len(t, bcks, 1, "expected to get exactly one datastore backend")

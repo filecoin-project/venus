@@ -214,7 +214,7 @@ func TestCheckVoucherValid(t *testing.T) {
 
 			// Create a manager
 			store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
-			mgr, err := newManager(store, mock)
+			mgr, err := newManager(ctx, store, mock)
 			require.NoError(t, err)
 
 			// Add channel To address to wallet
@@ -360,16 +360,16 @@ func TestAddVoucherNextLane(t *testing.T) {
 	_, err := s.mgr.AddVoucherOutbound(ctx, s.ch, sv, nil, minDelta)
 	require.NoError(t, err)
 
-	ci, err := s.mgr.GetChannelInfo(s.ch)
+	ci, err := s.mgr.GetChannelInfo(ctx, s.ch)
 	require.NoError(t, err)
 	require.EqualValues(t, ci.NextLane, 3)
 
 	// Allocate a lane (should be lane 3)
-	lane, err := s.mgr.AllocateLane(s.ch)
+	lane, err := s.mgr.AllocateLane(ctx, s.ch)
 	require.NoError(t, err)
 	require.EqualValues(t, lane, 3)
 
-	ci, err = s.mgr.GetChannelInfo(s.ch)
+	ci, err = s.mgr.GetChannelInfo(ctx, s.ch)
 	require.NoError(t, err)
 	require.EqualValues(t, ci.NextLane, 4)
 
@@ -379,7 +379,7 @@ func TestAddVoucherNextLane(t *testing.T) {
 	_, err = s.mgr.AddVoucherOutbound(ctx, s.ch, sv, nil, minDelta)
 	require.NoError(t, err)
 
-	ci, err = s.mgr.GetChannelInfo(s.ch)
+	ci, err = s.mgr.GetChannelInfo(ctx, s.ch)
 	require.NoError(t, err)
 	require.EqualValues(t, ci.NextLane, 4)
 
@@ -389,7 +389,7 @@ func TestAddVoucherNextLane(t *testing.T) {
 	_, err = s.mgr.AddVoucherOutbound(ctx, s.ch, sv, nil, minDelta)
 	require.NoError(t, err)
 
-	ci, err = s.mgr.GetChannelInfo(s.ch)
+	ci, err = s.mgr.GetChannelInfo(ctx, s.ch)
 	require.NoError(t, err)
 	require.EqualValues(t, ci.NextLane, 8)
 }
@@ -399,13 +399,15 @@ func TestAllocateLane(t *testing.T) {
 	// Set up a manager with a single payment channel
 	s := testSetupMgrWithChannel(t)
 
+	ctx := context.Background()
+
 	// First lane should be 0
-	lane, err := s.mgr.AllocateLane(s.ch)
+	lane, err := s.mgr.AllocateLane(ctx, s.ch)
 	require.NoError(t, err)
 	require.EqualValues(t, lane, 0)
 
 	// Next lane should be 1
-	lane, err = s.mgr.AllocateLane(s.ch)
+	lane, err = s.mgr.AllocateLane(ctx, s.ch)
 	require.NoError(t, err)
 	require.EqualValues(t, lane, 1)
 }
@@ -441,7 +443,7 @@ func TestAllocateLaneWithExistingLaneState(t *testing.T) {
 
 	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
-	mgr, err := newManager(store, mock)
+	mgr, err := newManager(ctx, store, mock)
 	require.NoError(t, err)
 
 	// Create a voucher on lane 2
@@ -455,7 +457,7 @@ func TestAllocateLaneWithExistingLaneState(t *testing.T) {
 	require.NoError(t, err)
 
 	// Allocate lane should return the next lane (lane 3)
-	lane, err := mgr.AllocateLane(ch)
+	lane, err := mgr.AllocateLane(ctx, ch)
 	require.NoError(t, err)
 	require.EqualValues(t, 3, lane)
 }
@@ -489,7 +491,7 @@ func TestAddVoucherInboundWalletKey(t *testing.T) {
 
 	// Create a manager
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
-	mgr, err := newManager(store, mock)
+	mgr, err := newManager(ctx, store, mock)
 	require.NoError(t, err)
 
 	// Add a voucher
@@ -727,6 +729,7 @@ type testScaffold struct {
 }
 
 func testSetupMgrWithChannel(t *testing.T) *testScaffold {
+	ctx := context.Background()
 	fromKeyPrivate, fromKeyPublic := testGenerateKeyPair(t)
 
 	ch := tutils.NewIDAddr(t, 100)
@@ -750,7 +753,7 @@ func testSetupMgrWithChannel(t *testing.T) *testScaffold {
 	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
-	mgr, err := newManager(store, mock)
+	mgr, err := newManager(ctx, store, mock)
 	require.NoError(t, err)
 
 	// Create the channel in the manager's store
@@ -760,7 +763,7 @@ func testSetupMgrWithChannel(t *testing.T) *testScaffold {
 		Target:    toAcct,
 		Direction: DirOutbound,
 	}
-	err = mgr.store.putChannelInfo(ci)
+	err = mgr.store.putChannelInfo(ctx, ci)
 	require.NoError(t, err)
 
 	// Add the from signing key to the wallet

@@ -658,7 +658,7 @@ func TestPriorityMessageSelection2(t *testing.T) {
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(context.Background(),address.SECP256K1)
+	a2, err := w2.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}

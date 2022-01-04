@@ -29,7 +29,7 @@ func requireSignerAddr(t *testing.T) (*DSBackend, address.Address) {
 	fs, err := NewDSBackend(context.Background(), ds, config.TestPassphraseConfig(), TestPassword)
 	require.NoError(t, err)
 
-	addr, err := fs.NewAddress(context.Background(),address.SECP256K1)
+	addr, err := fs.NewAddress(context.Background(), address.SECP256K1)
 	require.NoError(t, err)
 
 	return fs, addr

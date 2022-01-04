@@ -34,7 +34,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.2
 	github.com/filecoin-project/go-state-types v0.1.1
 	github.com/filecoin-project/specs-actors v0.9.14
-	github.com/filecoin-project/specs-actors/v2 v2.3.5
+	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v3 v3.1.1
 	github.com/filecoin-project/specs-actors/v4 v4.0.1
 	github.com/filecoin-project/specs-actors/v5 v5.0.4
@@ -90,7 +90,6 @@ require (
 	github.com/jstemmer/go-junit-report v0.9.1
 	github.com/libp2p/go-eventbus v0.2.1
 	github.com/libp2p/go-libp2p v0.17.0
-	github.com/libp2p/go-libp2p-circuit v0.4.0
 	github.com/libp2p/go-libp2p-core v0.13.0
 	github.com/libp2p/go-libp2p-kad-dht v0.15.0
 	github.com/libp2p/go-libp2p-mplex v0.4.1
@@ -142,7 +141,6 @@ replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210731021807-68e5207079bc
 	github.com/filecoin-project/test-vectors => ./extern/test-vectors
-	github.com/filecoin-project/venus => ./
 	github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.39.0
 	github.com/ipfs/go-ipfs-cmds => github.com/ipfs-force-community/go-ipfs-cmds v0.6.1-0.20210521090123-4587df7fa0ab
 )

@@ -404,7 +404,7 @@ func TestSubsetParent(t *testing.T) {
 	assert.NoError(t, s.HandleNewTipSet(ctx, target3))
 
 	// A full parent also works fine: {C1, C2} -> D1
-	tipD1OnC1C2 := builder.AppendOn(tipC1C2, 1)
+	tipD1OnC1C2 := builder.AppendOn(ctx, tipC1C2, 1)
 	target4 := &syncTypes.Target{
 		Base:      nil,
 		Current:   nil,
@@ -557,7 +557,7 @@ func TestStoresMessageReceipts(t *testing.T) {
 	}
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, target1))
 
-	receiptsCid, err := builder.Store().GetTipSetReceiptsRoot(t1)
+	receiptsCid, err := builder.Store().GetTipSetReceiptsRoot(ctx, t1)
 
 	require.NoError(t, err)
 
@@ -612,7 +612,7 @@ type syncStoreReader interface {
 // Verifies that a tipset and associated state root are stored in the chain bsstore.
 func verifyTip(t *testing.T, store syncStoreReader, tip *types.TipSet, stateRoot cid.Cid) {
 	ctx := context.Background()
-	
+
 	foundTip, err := store.GetTipSet(ctx, tip.Key())
 	require.NoError(t, err)
 	test.Equal(t, tip, foundTip)

@@ -120,7 +120,7 @@ func (fcs *fakeCS) ChainGetPath(ctx context.Context, from, to types.TipSetKey) (
 	}
 
 	// copied from the chainstore
-	revert, apply, err := chain.ReorgOps(func(tsk types.TipSetKey) (*types.TipSet, error) {
+	revert, apply, err := chain.ReorgOps(func(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
 		return fcs.ChainGetTipSet(ctx, tsk)
 	}, fromTS, toTS)
 	if err != nil {

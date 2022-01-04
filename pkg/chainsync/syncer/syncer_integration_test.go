@@ -46,9 +46,9 @@ func TestLoadFork(t *testing.T) {
 
 	require.NoError(t, err)
 
-	base := builder.AppendManyOn(3, genesis)
-	left := builder.AppendManyOn(4, base)
-	right := builder.AppendManyOn(3, base)
+	base := builder.AppendManyOn(ctx, 3, genesis)
+	left := builder.AppendManyOn(ctx, 4, base)
+	right := builder.AppendManyOn(ctx, 3, base)
 
 	leftTarget := &types.Target{
 		Base:      nil,

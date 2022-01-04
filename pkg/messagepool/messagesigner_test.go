@@ -53,18 +53,18 @@ func TestMessageSignerSignMessage(t *testing.T) {
 
 	ctx := context.Background()
 	r := repo.NewInMemoryRepo()
-	backend, err := wallet.NewDSBackend(r.WalletDatastore(), r.Config().Wallet.PassphraseConfig, wallet.TestPassword)
+	backend, err := wallet.NewDSBackend(ctx, r.WalletDatastore(), r.Config().Wallet.PassphraseConfig, wallet.TestPassword)
 	assert.NoError(t, err)
 
 	w := wallet.New(backend)
 
-	from1, err := w.NewAddress(address.SECP256K1)
+	from1, err := w.NewAddress(ctx, address.SECP256K1)
 	require.NoError(t, err)
-	from2, err := w.NewAddress(address.SECP256K1)
+	from2, err := w.NewAddress(ctx, address.SECP256K1)
 	require.NoError(t, err)
-	to1, err := w.NewAddress(address.SECP256K1)
+	to1, err := w.NewAddress(ctx, address.SECP256K1)
 	require.NoError(t, err)
-	to2, err := w.NewAddress(address.SECP256K1)
+	to2, err := w.NewAddress(ctx, address.SECP256K1)
 	require.NoError(t, err)
 
 	type msgSpec struct {
