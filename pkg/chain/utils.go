@@ -13,12 +13,19 @@ import (
 	blockFormat "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 
+	/* inline-gen template
+	{{range .actorVersions}}
+	exported{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin/exported"{{end}}
+	/* inline-gen start */
+
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
 	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
 	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
 	exported4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/exported"
 	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
 	exported6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/exported"
+	exported7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/exported"
+	/* inline-gen end */
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 )
@@ -35,12 +42,21 @@ var MethodsMap = map[cid.Cid]map[abi.MethodNum]MethodMeta{}
 func init() {
 	// TODO: combine with the runtime actor registry.
 	var actors []rt.VMActor
+
+	/* inline-gen template
+	{{range .actorVersions}}
+	actors = append(actors, exported{{.}}.BuiltinActors()...){{end}}
+	/* inline-gen start */
+
 	actors = append(actors, exported0.BuiltinActors()...)
 	actors = append(actors, exported2.BuiltinActors()...)
 	actors = append(actors, exported3.BuiltinActors()...)
 	actors = append(actors, exported4.BuiltinActors()...)
 	actors = append(actors, exported5.BuiltinActors()...)
 	actors = append(actors, exported6.BuiltinActors()...)
+	actors = append(actors, exported7.BuiltinActors()...)
+	/* inline-gen end */
+
 	for _, actor := range actors {
 		exports := actor.Exports()
 		methods := make(map[abi.MethodNum]MethodMeta, len(exports))
