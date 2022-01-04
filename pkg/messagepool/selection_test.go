@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/require"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"io"
 	"math"
 	"math/big"
@@ -14,6 +12,9 @@ import (
 	"os"
 	"sort"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
 	tbig "github.com/filecoin-project/go-state-types/big"
