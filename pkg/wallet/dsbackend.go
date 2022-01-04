@@ -120,7 +120,7 @@ func (backend *DSBackend) HasAddress(ctx context.Context, addr address.Address) 
 
 // NewAddress creates a new address and stores it.
 // Safe for concurrent access.
-func (backend *DSBackend) NewAddress(protocol address.Protocol) (address.Address, error) {
+func (backend *DSBackend) NewAddress(ctx context.Context, protocol address.Protocol) (address.Address, error) {
 	backend.lk.Lock()
 	defer backend.lk.Unlock()
 
@@ -180,7 +180,7 @@ func (backend *DSBackend) putKeyInfo(ctx context.Context, ki *crypto.KeyInfo) er
 		return err
 	}
 
-	if err := backend.ds.Put(ds.NewKey(key.Address.String()), keyJSON); err != nil {
+	if err := backend.ds.Put(ctx, ds.NewKey(key.Address.String()), keyJSON); err != nil {
 		return errors.Wrapf(err, "failed to store new address: %s", key.Address.String())
 	}
 	backend.cache[addr] = struct{}{}
