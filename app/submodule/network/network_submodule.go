@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/ipfs/go-bitswap"
@@ -27,10 +26,8 @@ import (
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
-	smux "github.com/libp2p/go-libp2p-core/mux"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	mplex "github.com/libp2p/go-libp2p-mplex"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	yamux "github.com/libp2p/go-libp2p-yamux"
 	ma "github.com/multiformats/go-multiaddr"
@@ -112,7 +109,7 @@ type networkConfig interface {
 // NewNetworkSubmodule creates a new network submodule.
 func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSubmodule, error) {
 	bandwidthTracker := p2pmetrics.NewBandwidthCounter()
-	libP2pOpts := append(config.Libp2pOpts(), libp2p.BandwidthReporter(bandwidthTracker), makeSmuxTransportOption(true))
+	libP2pOpts := append(config.Libp2pOpts(), libp2p.BandwidthReporter(bandwidthTracker), makeSmuxTransportOption())
 
 	var networkName string
 	var err error
@@ -400,9 +397,8 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 	return libp2p.New(opts...)
 }
 
-func makeSmuxTransportOption(mplexExp bool) libp2p.Option {
+func makeSmuxTransportOption() libp2p.Option {
 	const yamuxID = "/yamux/1.0.0"
-	const mplexID = "/mplex/6.7.0"
 
 	ymxtpt := *yamux.DefaultTransport
 	ymxtpt.AcceptBacklog = 512
@@ -411,27 +407,5 @@ func makeSmuxTransportOption(mplexExp bool) libp2p.Option {
 		ymxtpt.LogOutput = os.Stderr
 	}
 
-	muxers := map[string]smux.Multiplexer{yamuxID: &ymxtpt}
-	if mplexExp {
-		muxers[mplexID] = mplex.DefaultTransport
-	}
-
-	// Allow muxer preference order overriding
-	order := []string{yamuxID, mplexID}
-	if prefs := os.Getenv("LIBP2P_MUX_PREFS"); prefs != "" {
-		order = strings.Fields(prefs)
-	}
-
-	opts := make([]libp2p.Option, 0, len(order))
-	for _, id := range order {
-		tpt, ok := muxers[id]
-		if !ok {
-			networkLogger.Warnf("unknown or duplicate muxer in LIBP2P_MUX_PREFS: %s", id)
-			continue
-		}
-		delete(muxers, id)
-		opts = append(opts, libp2p.Muxer(id, tpt))
-	}
-
-	return libp2p.ChainOptions(opts...)
+	return libp2p.Muxer(yamuxID, &ymxtpt)
 }
