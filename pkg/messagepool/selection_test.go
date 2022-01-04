@@ -577,7 +577,7 @@ func TestMessageSelectionTrimmingMsgsBasic(t *testing.T) {
 
 	// the actors
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -619,13 +619,13 @@ func TestMessageSelectionTrimmingMsgsTwoSendersBasic(t *testing.T) {
 
 	// the actors
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(address.BLS)
+	a2, err := w2.NewAddress(context.Background(), address.BLS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -677,13 +677,13 @@ func TestMessageSelectionTrimmingMsgsTwoSendersAdvanced(t *testing.T) {
 
 	// the actors
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(context.Background(), address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(address.BLS)
+	a2, err := w2.NewAddress(context.Background(), address.BLS)
 	if err != nil {
 		t.Fatal(err)
 	}
