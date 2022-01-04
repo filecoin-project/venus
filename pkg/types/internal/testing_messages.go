@@ -97,6 +97,6 @@ func (rm *ReceiptMaker) NewReceipt() MessageReceipt {
 	seq := rm.seq
 	rm.seq++
 	return MessageReceipt{
-		ReturnValue: []byte(fmt.Sprintf("%d", seq)),
+		Return: []byte(fmt.Sprintf("%d", seq)),
 	}
 }
