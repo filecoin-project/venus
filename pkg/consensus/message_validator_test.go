@@ -150,7 +150,7 @@ func (api *FakeIngestionValidatorAPI) GetHead() *types.TipSet {
 	return ts
 }
 
-func (api *FakeIngestionValidatorAPI) GetTipSet(key types.TipSetKey) (*types.TipSet, error) {
+func (api *FakeIngestionValidatorAPI) GetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
 	return types.NewTipSet([]*types.BlockHeader{api.Block})
 }
 

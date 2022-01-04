@@ -121,6 +121,6 @@ func newMockTipsetLoader(tsk *types.TipSet) *mockTipsetLoader {
 	return &mockTipsetLoader{tsk: tsk}
 }
 
-func (m *mockTipsetLoader) GetTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
+func (m *mockTipsetLoader) GetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
 	return m.tsk, nil
 }
