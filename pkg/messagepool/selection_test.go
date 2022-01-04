@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/stretchr/testify/require"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"io"
 	"math"
 	"math/big"
@@ -514,9 +516,7 @@ func TestBasicMessageSelection(t *testing.T) {
 	}
 }
 
-func TestMessageSelectionTrimming(t *testing.T) {
-	tf.UnitTest(t)
-
+func TestMessageSelectionTrimmingGas(t *testing.T) {
 	mp, tma := makeTestMpool()
 
 	// the actors
@@ -558,7 +558,7 @@ func TestMessageSelectionTrimming(t *testing.T) {
 
 	expected := int(constants.BlockGasLimit / gasLimit)
 	if len(msgs) != expected {
-		t.Fatalf("expected %d messages, bug got %d", expected, len(msgs))
+		t.Fatalf("expected %d messages, but got %d", expected, len(msgs))
 	}
 
 	mGasLimit := int64(0)
@@ -569,6 +569,179 @@ func TestMessageSelectionTrimming(t *testing.T) {
 		t.Fatal("selected messages gas limit exceeds block gas limit!")
 	}
 
+}
+
+func TestMessageSelectionTrimmingMsgsBasic(t *testing.T) {
+	mp, tma := makeTestMpool()
+
+	// the actors
+	w1 := newWallet(t)
+	a1, err := w1.NewAddress(address.SECP256K1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	block := tma.nextBlock()
+	ts := mkTipSet(block)
+	tma.applyBlock(t, block)
+
+	tma.setBalance(a1, 1) // in FIL
+
+	// create a larger than selectable chain
+	for i := 0; i < constants.BlockMessageLimit; i++ {
+		m := makeTestMessage(w1, a1, a1, uint64(i), 300000, 100)
+		mustAdd(t, mp, m)
+	}
+
+	msgs, err := mp.SelectMessages(context.Background(), ts, 1.0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := cbg.MaxLength
+	if len(msgs) != expected {
+		t.Fatalf("expected %d messages, but got %d", expected, len(msgs))
+	}
+
+	mGasLimit := int64(0)
+	for _, m := range msgs {
+		mGasLimit += m.Message.GasLimit
+	}
+	if mGasLimit > constants.BlockGasLimit {
+		t.Fatal("selected messages gas limit exceeds block gas limit!")
+	}
+
+}
+
+func TestMessageSelectionTrimmingMsgsTwoSendersBasic(t *testing.T) {
+	mp, tma := makeTestMpool()
+
+	// the actors
+	w1 := newWallet(t)
+	a1, err := w1.NewAddress(address.SECP256K1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2 := newWallet(t)
+	a2, err := w2.NewAddress(address.BLS)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	block := tma.nextBlock()
+	ts := mkTipSet(block)
+	tma.applyBlock(t, block)
+
+	tma.setBalance(a1, 1) // in FIL
+	tma.setBalance(a2, 1) // in FIL
+
+	// create 2 larger than selectable chains
+	for i := 0; i < constants.BlockMessageLimit; i++ {
+		m := makeTestMessage(w1, a1, a2, uint64(i), 300000, 100)
+		mustAdd(t, mp, m)
+		// a2's messages are preferred
+		m = makeTestMessage(w2, a2, a1, uint64(i), 300000, 1000)
+		mustAdd(t, mp, m)
+	}
+
+	msgs, err := mp.SelectMessages(context.Background(), ts, 1.0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mGasLimit := int64(0)
+	counts := make(map[crypto.SigType]uint)
+	for _, m := range msgs {
+		mGasLimit += m.Message.GasLimit
+		counts[m.Signature.Type]++
+	}
+
+	if mGasLimit > constants.BlockGasLimit {
+		t.Fatal("selected messages gas limit exceeds block gas limit!")
+	}
+
+	expected := constants.BlockMessageLimit
+	if len(msgs) != expected {
+		t.Fatalf("expected %d messages, but got %d", expected, len(msgs))
+	}
+
+	if counts[crypto.SigTypeBLS] != cbg.MaxLength {
+		t.Fatalf("expected %d bls messages, but got %d", cbg.MaxLength, len(msgs))
+	}
+}
+
+func TestMessageSelectionTrimmingMsgsTwoSendersAdvanced(t *testing.T) {
+	mp, tma := makeTestMpool()
+
+	// the actors
+	w1 := newWallet(t)
+	a1, err := w1.NewAddress(address.SECP256K1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w2 := newWallet(t)
+	a2, err := w2.NewAddress(address.BLS)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	block := tma.nextBlock()
+	ts := mkTipSet(block)
+	tma.applyBlock(t, block)
+
+	tma.setBalance(a1, 1) // in FIL
+	tma.setBalance(a2, 1) // in FIL
+
+	// create 2 almost max-length chains of equal value
+	i := 0
+	for i = 0; i < cbg.MaxLength-1; i++ {
+		m := makeTestMessage(w1, a1, a2, uint64(i), 300000, 100)
+		mustAdd(t, mp, m)
+		// a2's messages are preferred
+		m = makeTestMessage(w2, a2, a1, uint64(i), 300000, 100)
+		mustAdd(t, mp, m)
+	}
+
+	// a1's 8192th message is worth more than a2's
+	m := makeTestMessage(w1, a1, a2, uint64(i), 300000, 1000)
+	mustAdd(t, mp, m)
+
+	m = makeTestMessage(w2, a2, a1, uint64(i), 300000, 100)
+	mustAdd(t, mp, m)
+
+	i++
+
+	// a2's (unselectable) 8193rd message is worth SO MUCH
+	m = makeTestMessage(w2, a2, a1, uint64(i), 300000, 1000000)
+	mustAdd(t, mp, m)
+
+	msgs, err := mp.SelectMessages(context.Background(), ts, 1.0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mGasLimit := int64(0)
+	counts := make(map[crypto.SigType]uint)
+	for _, m := range msgs {
+		mGasLimit += m.Message.GasLimit
+		counts[m.Signature.Type]++
+	}
+
+	if mGasLimit > constants.BlockGasLimit {
+		t.Fatal("selected messages gas limit exceeds block gas limit!")
+	}
+
+	expected := constants.BlockMessageLimit
+	if len(msgs) != expected {
+		t.Fatalf("expected %d messages, but got %d", expected, len(msgs))
+	}
+
+	// we should have taken the secp chain
+	if counts[crypto.SigTypeSecp256k1] != cbg.MaxLength {
+		t.Fatalf("expected %d bls messages, but got %d", cbg.MaxLength, len(msgs))
+	}
 }
 
 func TestPriorityMessageSelection(t *testing.T) {
@@ -1057,11 +1230,15 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 
 	logging.SetLogLevel("messagepool", "error") // nolint: errcheck
 
+	pending, err := mp.getPendingMessages(context.TODO(), mp.curTS, ts)
+	require.NoError(t, err)
 	// 1. greedy selection
-	greedyMsgs, err := mp.selectMessagesGreedy(context.Background(), ts, ts)
+	gm, err := mp.selectMessagesGreedy(context.Background(), ts, ts, pending)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	greedyMsgs := gm.msgs
 
 	totalGreedyCapacity := 0.0
 	totalGreedyReward := 0.0

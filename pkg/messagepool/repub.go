@@ -118,7 +118,7 @@ LOOP:
 
 		// we can't fit the current chain but there is gas to spare
 		// trim it and push it down
-		chain.Trim(gasLimit, mp, baseFee)
+		chain.Trim(gasLimit, repubMsgLimit, mp, baseFee)
 		for j := i; j < len(chains)-1; j++ {
 			if chains[j].Before(chains[j+1]) {
 				break
@@ -128,6 +128,10 @@ LOOP:
 	}
 
 	count := 0
+	if len(msgs) > repubMsgLimit {
+		msgs = msgs[:repubMsgLimit]
+	}
+
 	log.Infof("republishing %d messages", len(msgs))
 	for _, m := range msgs {
 		buf := new(bytes.Buffer)

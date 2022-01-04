@@ -1407,7 +1407,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 	return merr
 }
 
-func (mp *MessagePool) runHeadChange(from *types.TipSet, to *types.TipSet, rmsgs map[address.Address]map[uint64]*types.SignedMessage) error {
+func (mp *MessagePool) runHeadChange(ctx context.Context, from *types.TipSet, to *types.TipSet, rmsgs map[address.Address]map[uint64]*types.SignedMessage) error {
 	add := func(m *types.SignedMessage) {
 		s, ok := rmsgs[m.Message.From]
 		if !ok {
