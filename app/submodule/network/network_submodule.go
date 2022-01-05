@@ -76,9 +76,6 @@ type NetworkSubmodule struct { //nolint
 	//data transfer
 	DataTransfer     datatransfer.Manager
 	DataTransferHost dtnet.DataTransferNetwork
-
-	// fix datastore closed before flush
-	cancel context.CancelFunc
 }
 
 //API create a new network implement
@@ -99,7 +96,9 @@ func (networkSubmodule *NetworkSubmodule) Stop(ctx context.Context) {
 	if err := networkSubmodule.Host.Close(); err != nil {
 		networkLogger.Errorf("error closing host: %s", err.Error())
 	}
-	networkSubmodule.cancel()
+	if err := networkSubmodule.Router.(*dht.IpfsDHT).Close(); err != nil {
+		networkLogger.Errorf("error closing dht: %s", err.Error())
+	}
 }
 
 type networkConfig interface {
@@ -138,8 +137,6 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSub
 	var router routing.Routing
 	var pubsubMessageSigning bool
 	var peerMgr net.IPeerMgr
-	networkSubmodule := &NetworkSubmodule{}
-	ctx, networkSubmodule.cancel = context.WithCancel(ctx)
 	makeDHT := func(h host.Host) (routing.Routing, error) {
 		mode := dht.ModeAuto
 		opts := []dht.Option{dht.Mode(mode),
@@ -243,19 +240,19 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSub
 	network := net.New(peerHost, net.NewRouter(router), bandwidthTracker)
 
 	// build the network submdule
-	networkSubmodule.NetworkName = networkName
-	networkSubmodule.Host = peerHost
-	networkSubmodule.Router = router
-	networkSubmodule.Pubsub = gsub
-	networkSubmodule.Bitswap = bswap
-	networkSubmodule.GraphExchange = gsync
-	networkSubmodule.Network = network
-	networkSubmodule.DataTransfer = dt
-	networkSubmodule.DataTransferHost = dtNet
-	networkSubmodule.PeerMgr = peerMgr
-	networkSubmodule.Blockstore = config.Repo().Datastore()
-
-	return networkSubmodule, nil
+	return &NetworkSubmodule{
+		NetworkName:      networkName,
+		Host:             peerHost,
+		Router:           router,
+		Pubsub:           gsub,
+		Bitswap:          bswap,
+		GraphExchange:    gsync,
+		Network:          network,
+		DataTransfer:     dt,
+		DataTransferHost: dtNet,
+		PeerMgr:          peerMgr,
+		Blockstore:       config.Repo().Datastore(),
+	}, nil
 }
 
 func (networkSubmodule *NetworkSubmodule) FetchMessagesByCids(
