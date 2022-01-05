@@ -25,11 +25,10 @@ import (
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
-
+	types "github.com/filecoin-project/venus/pkg/types/internal"
+	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	actors "github.com/filecoin-project/venus/pkg/types/specactors"
-	types "github.com/filecoin-project/venus/pkg/types/internal"
 )
 
 func init() {
@@ -121,7 +120,7 @@ func MakeState(store adt.Store, av actors.Version, rootKeyAddress address.Addres
 	case actors.Version7:
 		return make7(store, rootKeyAddress)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
@@ -153,7 +152,6 @@ func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
-
 
 type State interface {
 	cbor.Marshaler

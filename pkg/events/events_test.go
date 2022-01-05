@@ -21,8 +21,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var dummyCid cid.Cid
@@ -51,7 +50,7 @@ type fakeCS struct {
 
 	mu         sync.Mutex
 	waitSub    chan struct{}
-	subCh      chan<- []*apitypes.HeadChange
+	subCh      chan<- []*types.HeadChange
 	callNumber map[string]int
 
 	cancel context.CancelFunc
@@ -104,7 +103,7 @@ func (fcs *fakeCS) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	return fcs.tsc.ChainHead(ctx)
 }
 
-func (fcs *fakeCS) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*apitypes.HeadChange, error) {
+func (fcs *fakeCS) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*types.HeadChange, error) {
 	fcs.mu.Lock()
 	fcs.callNumber["ChainGetPath"] = fcs.callNumber["ChainGetPath"] + 1
 	fcs.mu.Unlock()
@@ -127,12 +126,12 @@ func (fcs *fakeCS) ChainGetPath(ctx context.Context, from, to types.TipSetKey) (
 		return nil, err
 	}
 
-	path := make([]*apitypes.HeadChange, len(revert)+len(apply))
+	path := make([]*types.HeadChange, len(revert)+len(apply))
 	for i, r := range revert {
-		path[i] = &apitypes.HeadChange{Type: chain.HCRevert, Val: r}
+		path[i] = &types.HeadChange{Type: chain.HCRevert, Val: r}
 	}
 	for j, i := 0, len(apply)-1; i >= 0; j, i = j+1, i-1 {
-		path[j+len(revert)] = &apitypes.HeadChange{Type: chain.HCApply, Val: apply[i]}
+		path[j+len(revert)] = &types.HeadChange{Type: chain.HCApply, Val: apply[i]}
 	}
 	return path, nil
 }
@@ -144,7 +143,7 @@ func (fcs *fakeCS) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*ty
 	return fcs.tipsets[key], nil
 }
 
-func (fcs *fakeCS) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
+func (fcs *fakeCS) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	fcs.mu.Lock()
 	defer fcs.mu.Unlock()
 	fcs.callNumber["StateSearchMsg"] = fcs.callNumber["StateSearchMsg"] + 1
@@ -219,12 +218,12 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 	return ts
 }
 
-func (fcs *fakeCS) ChainNotify(ctx context.Context) <-chan []*apitypes.HeadChange {
+func (fcs *fakeCS) ChainNotify(ctx context.Context) <-chan []*types.HeadChange {
 	fcs.mu.Lock()
 	defer fcs.mu.Unlock()
 	fcs.callNumber["ChainNotify"] = fcs.callNumber["ChainNotify"] + 1
 
-	out := make(chan []*apitypes.HeadChange, 1)
+	out := make(chan []*types.HeadChange, 1)
 	if fcs.subCh != nil {
 		close(out)
 		fcs.t.Error("already subscribed to notifications")
@@ -236,25 +235,25 @@ func (fcs *fakeCS) ChainNotify(ctx context.Context) <-chan []*apitypes.HeadChang
 		panic(err)
 	}
 
-	out <- []*apitypes.HeadChange{{Type: chain.HCCurrent, Val: best}}
+	out <- []*types.HeadChange{{Type: chain.HCCurrent, Val: best}}
 	fcs.subCh = out
 	close(fcs.waitSub)
 
 	return out
 }
 
-func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*apitypes.BlockMessages, error) {
+func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*types.BlockMessages, error) {
 	fcs.mu.Lock()
 	defer fcs.mu.Unlock()
 	fcs.callNumber["ChainGetBlockMessages"] = fcs.callNumber["ChainGetBlockMessages"] + 1
 	messages, ok := fcs.blkMsgs[blk]
 	if !ok {
-		return &apitypes.BlockMessages{}, nil
+		return &types.BlockMessages{}, nil
 	}
 
 	ms, ok := fcs.msgs[messages]
 	if !ok {
-		return &apitypes.BlockMessages{}, nil
+		return &types.BlockMessages{}, nil
 	}
 
 	cids := make([]cid.Cid, len(ms.bmsgs)+len(ms.smsgs))
@@ -265,7 +264,7 @@ func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*api
 		cids[i+len(ms.bmsgs)] = m.Cid()
 	}
 
-	return &apitypes.BlockMessages{BlsMessages: ms.bmsgs, SecpkMessages: ms.smsgs, Cids: cids}, nil
+	return &types.BlockMessages{BlsMessages: ms.bmsgs, SecpkMessages: ms.smsgs, Cids: cids}, nil
 }
 
 func (fcs *fakeCS) fakeMsgs(m fakeMsg) cid.Cid {
@@ -301,16 +300,16 @@ func (fcs *fakeCS) dropSub() {
 
 func (fcs *fakeCS) sub(rev, app []*types.TipSet) {
 	<-fcs.waitSub
-	notif := make([]*apitypes.HeadChange, len(rev)+len(app))
+	notif := make([]*types.HeadChange, len(rev)+len(app))
 
 	for i, r := range rev {
-		notif[i] = &apitypes.HeadChange{
+		notif[i] = &types.HeadChange{
 			Type: chain.HCRevert,
 			Val:  r,
 		}
 	}
 	for i, r := range app {
-		notif[i+len(rev)] = &apitypes.HeadChange{
+		notif[i+len(rev)] = &types.HeadChange{
 			Type: chain.HCApply,
 			Val:  r,
 		}

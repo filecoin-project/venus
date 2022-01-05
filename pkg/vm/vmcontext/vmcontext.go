@@ -32,8 +32,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/cron"
 	initActor "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	types2 "github.com/filecoin-project/venus/venus-shared/stmgr"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 const MaxCallDepth = 4096
@@ -294,7 +293,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 				msgGasOutput, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
 				vm.debugger.Println(string(msgGasOutput))
 
-				var valuedTraces []*types2.GasTrace
+				var valuedTraces []*types.GasTrace
 				for _, trace := range ret.GasTracker.ExecutionTrace.GasCharges {
 					if trace.TotalGas > 0 {
 						valuedTraces = append(valuedTraces, trace)

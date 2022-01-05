@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"

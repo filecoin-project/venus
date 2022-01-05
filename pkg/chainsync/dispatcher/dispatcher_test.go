@@ -13,7 +13,7 @@ import (
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

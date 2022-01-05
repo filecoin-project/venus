@@ -3,9 +3,9 @@ package apiface
 import (
 	"context"
 
-	"github.com/ipfs/go-cid"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	"github.com/ipfs/go-cid"
 )
 
 type IBlockStore interface {
@@ -16,5 +16,5 @@ type IBlockStore interface {
 	// Rule[perm:read]
 	ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error)
 	// Rule[perm:read]
-	ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (apitypes.ObjStat, error)
+	ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (types.ObjStat, error)
 }

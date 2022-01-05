@@ -20,8 +20,7 @@ import (
 	"github.com/filecoin-project/venus/cmd/tablewriter"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/wallet"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	wtypes "github.com/filecoin-project/venus/venus-shared/wallet"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var errMissPassword = errors.New("the wallet is missing password, please use command `venus wallet set-password` to set password")
@@ -254,7 +253,7 @@ var walletImportCmd = &cmds.Command{
 			return fmt.Errorf("given file was not a files.File")
 		}
 
-		var key wtypes.KeyInfo
+		var key types.KeyInfo
 		err := json.NewDecoder(hex.NewDecoder(fi)).Decode(&key)
 		if err != nil {
 			return err

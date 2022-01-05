@@ -3,12 +3,12 @@ package fast
 import (
 	"context"
 
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // Protocol runs the `protocol` command against the filecoin process
-func (f *Filecoin) Protocol(ctx context.Context) (*apitypes.ProtocolParams, error) {
-	var out apitypes.ProtocolParams
+func (f *Filecoin) Protocol(ctx context.Context) (*types.ProtocolParams, error) {
+	var out types.ProtocolParams
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "venus", "protocol"); err != nil {
 		return nil, err

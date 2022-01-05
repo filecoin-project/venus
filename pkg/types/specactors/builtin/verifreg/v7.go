@@ -28,14 +28,14 @@ func load7(store adt.Store, root cid.Cid) (State, error) {
 
 func make7(store adt.Store, rootKeyAddress address.Address) (State, error) {
 	out := state7{store: store}
-	
-		s, err := verifreg7.ConstructState(store, rootKeyAddress)
-		if err != nil {
-			return nil, err
-		}
 
-		out.State = *s
-	
+	s, err := verifreg7.ConstructState(store, rootKeyAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
+
 	return &out, nil
 }
 

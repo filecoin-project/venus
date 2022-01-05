@@ -21,10 +21,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	wtypes "github.com/filecoin-project/venus/venus-shared/wallet"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var _ v1api.IMining = &MiningAPI{}
@@ -34,7 +32,7 @@ type MiningAPI struct { //nolint
 }
 
 //MinerGetBaseInfo get current miner information
-func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk types.TipSetKey) (*apitypes.MiningBaseInfo, error) {
+func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk types.TipSetKey) (*types.MiningBaseInfo, error) {
 	chainStore := miningAPI.Ming.ChainModule.ChainReader
 	ts, err := chainStore.GetTipSet(ctx, tsk)
 	if err != nil {
@@ -135,7 +133,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 		return nil, xerrors.Errorf("determining miner eligibility: %v", err)
 	}
 
-	return &apitypes.MiningBaseInfo{
+	return &types.MiningBaseInfo{
 		MinerPower:        mpow.QualityAdjPower,
 		NetworkPower:      tpow.QualityAdjPower,
 		Sectors:           sectors,
@@ -148,7 +146,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 }
 
 //MinerCreateBlock create block base on template
-func (miningAPI *MiningAPI) MinerCreateBlock(ctx context.Context, bt *apitypes.BlockTemplate) (*types.BlockMsg, error) {
+func (miningAPI *MiningAPI) MinerCreateBlock(ctx context.Context, bt *types.BlockTemplate) (*types.BlockMsg, error) {
 	fblk, err := miningAPI.minerCreateBlock(ctx, bt)
 	if err != nil {
 		return nil, err
@@ -166,7 +164,7 @@ func (miningAPI *MiningAPI) MinerCreateBlock(ctx context.Context, bt *apitypes.B
 	return &out, nil
 }
 
-func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *apitypes.BlockTemplate) (*types.FullBlock, error) {
+func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *types.BlockTemplate) (*types.FullBlock, error) {
 	chainStore := miningAPI.Ming.ChainModule.ChainReader
 	messageStore := miningAPI.Ming.ChainModule.MessageStore
 	cfg := miningAPI.Ming.Config.Repo().Config()
@@ -269,8 +267,8 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *apitypes.B
 		if err != nil {
 			return nil, err
 		}
-		sig, err := miningAPI.Ming.Wallet.API().WalletSign(ctx, worker, nosigbytes, wtypes.MsgMeta{
-			Type: wtypes.MTBlock,
+		sig, err := miningAPI.Ming.Wallet.API().WalletSign(ctx, worker, nosigbytes, types.MsgMeta{
+			Type: types.MTBlock,
 		})
 		if err != nil {
 			return nil, xerrors.Errorf("failed to sign new block: %v", err)

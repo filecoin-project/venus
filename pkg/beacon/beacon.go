@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 )

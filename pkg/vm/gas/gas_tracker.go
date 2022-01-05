@@ -5,10 +5,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
-	types "github.com/filecoin-project/venus/venus-shared/stmgr"
 )
 
 // GasTracker maintains the stateView of gas usage throughout the execution of a message.

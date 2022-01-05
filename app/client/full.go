@@ -16,12 +16,7 @@ import (
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	"github.com/filecoin-project/venus/venus-shared/libp2p/net"
-	"github.com/filecoin-project/venus/venus-shared/messagepool"
-	paychtypes "github.com/filecoin-project/venus/venus-shared/paych"
-	"github.com/filecoin-project/venus/venus-shared/wallet"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/libp2p/go-libp2p-core/metrics"
@@ -85,10 +80,10 @@ func (s *IBeaconStruct) BeaconGetEntry(p0 context.Context, p1 abi.ChainEpoch) (*
 
 type IBlockStoreStruct struct {
 	Internal struct {
-		ChainDeleteObj func(p0 context.Context, p1 cid.Cid) error                                 `perm:"admin"`
-		ChainHasObj    func(p0 context.Context, p1 cid.Cid) (bool, error)                         `perm:"read"`
-		ChainReadObj   func(p0 context.Context, p1 cid.Cid) ([]byte, error)                       `perm:"read"`
-		ChainStatObj   func(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (apitypes.ObjStat, error) `perm:"read"`
+		ChainDeleteObj func(p0 context.Context, p1 cid.Cid) error                              `perm:"admin"`
+		ChainHasObj    func(p0 context.Context, p1 cid.Cid) (bool, error)                      `perm:"read"`
+		ChainReadObj   func(p0 context.Context, p1 cid.Cid) ([]byte, error)                    `perm:"read"`
+		ChainStatObj   func(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (types.ObjStat, error) `perm:"read"`
 	}
 }
 
@@ -104,7 +99,7 @@ func (s *IBlockStoreStruct) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte
 	return s.Internal.ChainReadObj(p0, p1)
 }
 
-func (s *IBlockStoreStruct) ChainStatObj(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (apitypes.ObjStat, error) {
+func (s *IBlockStoreStruct) ChainStatObj(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (types.ObjStat, error) {
 	return s.Internal.ChainStatObj(p0, p1, p2)
 }
 
@@ -121,12 +116,12 @@ type IChainInfoStruct struct {
 		BlockTime                     func(p0 context.Context) time.Duration                                                                                             `perm:"read"`
 		ChainExport                   func(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey) (<-chan []byte, error)                                    `perm:"read"`
 		ChainGetBlock                 func(p0 context.Context, p1 cid.Cid) (*types.BlockHeader, error)                                                                   `perm:"read"`
-		ChainGetBlockMessages         func(p0 context.Context, p1 cid.Cid) (*apitypes.BlockMessages, error)                                                              `perm:"read"`
+		ChainGetBlockMessages         func(p0 context.Context, p1 cid.Cid) (*types.BlockMessages, error)                                                                 `perm:"read"`
 		ChainGetMessage               func(p0 context.Context, p1 cid.Cid) (*types.Message, error)                                                                       `perm:"read"`
-		ChainGetMessagesInTipset      func(p0 context.Context, p1 types.TipSetKey) ([]apitypes.Message, error)                                                           `perm:"read"`
-		ChainGetParentMessages        func(p0 context.Context, p1 cid.Cid) ([]apitypes.Message, error)                                                                   `perm:"read"`
+		ChainGetMessagesInTipset      func(p0 context.Context, p1 types.TipSetKey) ([]types.MessageCID, error)                                                           `perm:"read"`
+		ChainGetParentMessages        func(p0 context.Context, p1 cid.Cid) ([]types.MessageCID, error)                                                                   `perm:"read"`
 		ChainGetParentReceipts        func(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error)                                                              `perm:"read"`
-		ChainGetPath                  func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*apitypes.HeadChange, error)                                   `perm:"read"`
+		ChainGetPath                  func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*types.HeadChange, error)                                      `perm:"read"`
 		ChainGetRandomnessFromBeacon  func(p0 context.Context, p1 types.TipSetKey, p2 acrypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) `perm:"read"`
 		ChainGetRandomnessFromTickets func(p0 context.Context, p1 types.TipSetKey, p2 acrypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) `perm:"read"`
 		ChainGetReceipts              func(p0 context.Context, p1 cid.Cid) ([]types.MessageReceipt, error)                                                               `perm:"read"`
@@ -135,23 +130,23 @@ type IChainInfoStruct struct {
 		ChainGetTipSetByHeight        func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error)                                             `perm:"read"`
 		ChainHead                     func(p0 context.Context) (*types.TipSet, error)                                                                                    `perm:"read"`
 		ChainList                     func(p0 context.Context, p1 types.TipSetKey, p2 int) ([]types.TipSetKey, error)                                                    `perm:"read"`
-		ChainNotify                   func(p0 context.Context) <-chan []*apitypes.HeadChange                                                                             `perm:"read"`
+		ChainNotify                   func(p0 context.Context) <-chan []*types.HeadChange                                                                                `perm:"read"`
 		ChainSetHead                  func(p0 context.Context, p1 types.TipSetKey) error                                                                                 `perm:"admin"`
 		GetActor                      func(p0 context.Context, p1 address.Address) (*types.Actor, error)                                                                 `perm:"read"`
 		GetEntry                      func(p0 context.Context, p1 abi.ChainEpoch, p2 uint64) (*types.BeaconEntry, error)                                                 `perm:"read"`
 		GetFullBlock                  func(p0 context.Context, p1 cid.Cid) (*types.FullBlock, error)                                                                     `perm:"read"`
 		GetParentStateRootActor       func(p0 context.Context, p1 *types.TipSet, p2 address.Address) (*types.Actor, error)                                               `perm:"read"`
-		MessageWait                   func(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch, p3 abi.ChainEpoch) (*apitypes.ChainMessage, error)                         `perm:"read"`
-		ProtocolParameters            func(p0 context.Context) (*apitypes.ProtocolParams, error)                                                                         `perm:"read"`
+		MessageWait                   func(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch, p3 abi.ChainEpoch) (*types.ChainMessage, error)                            `perm:"read"`
+		ProtocolParameters            func(p0 context.Context) (*types.ProtocolParams, error)                                                                            `perm:"read"`
 		ResolveToKeyAddr              func(p0 context.Context, p1 address.Address, p2 *types.TipSet) (address.Address, error)                                            `perm:"read"`
 		StateGetRandomnessFromBeacon  func(p0 context.Context, p1 acrypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) `perm:"read"`
 		StateGetRandomnessFromTickets func(p0 context.Context, p1 acrypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) `perm:"read"`
-		StateNetworkName              func(p0 context.Context) (apitypes.NetworkName, error)                                                                             `perm:"read"`
+		StateNetworkName              func(p0 context.Context) (types.NetworkName, error)                                                                                `perm:"read"`
 		StateNetworkVersion           func(p0 context.Context, p1 types.TipSetKey) (network.Version, error)                                                              `perm:"read"`
-		StateSearchMsg                func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*apitypes.MsgLookup, error)                  `perm:"read"`
+		StateSearchMsg                func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*types.MsgLookup, error)                     `perm:"read"`
 		StateVerifiedRegistryRootKey  func(p0 context.Context, p1 types.TipSetKey) (address.Address, error)                                                              `perm:"read"`
 		StateVerifierStatus           func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error)                                        `perm:"read"`
-		StateWaitMsg                  func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*apitypes.MsgLookup, error)                           `perm:"read"`
+		StateWaitMsg                  func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*types.MsgLookup, error)                              `perm:"read"`
 		VerifyEntry                   func(p0 *types.BeaconEntry, p1 *types.BeaconEntry, p2 abi.ChainEpoch) bool                                                         `perm:"read"`
 	}
 }
@@ -168,7 +163,7 @@ func (s *IChainInfoStruct) ChainGetBlock(p0 context.Context, p1 cid.Cid) (*types
 	return s.Internal.ChainGetBlock(p0, p1)
 }
 
-func (s *IChainInfoStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*apitypes.BlockMessages, error) {
+func (s *IChainInfoStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*types.BlockMessages, error) {
 	return s.Internal.ChainGetBlockMessages(p0, p1)
 }
 
@@ -176,11 +171,11 @@ func (s *IChainInfoStruct) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*typ
 	return s.Internal.ChainGetMessage(p0, p1)
 }
 
-func (s *IChainInfoStruct) ChainGetMessagesInTipset(p0 context.Context, p1 types.TipSetKey) ([]apitypes.Message, error) {
+func (s *IChainInfoStruct) ChainGetMessagesInTipset(p0 context.Context, p1 types.TipSetKey) ([]types.MessageCID, error) {
 	return s.Internal.ChainGetMessagesInTipset(p0, p1)
 }
 
-func (s *IChainInfoStruct) ChainGetParentMessages(p0 context.Context, p1 cid.Cid) ([]apitypes.Message, error) {
+func (s *IChainInfoStruct) ChainGetParentMessages(p0 context.Context, p1 cid.Cid) ([]types.MessageCID, error) {
 	return s.Internal.ChainGetParentMessages(p0, p1)
 }
 
@@ -188,7 +183,7 @@ func (s *IChainInfoStruct) ChainGetParentReceipts(p0 context.Context, p1 cid.Cid
 	return s.Internal.ChainGetParentReceipts(p0, p1)
 }
 
-func (s *IChainInfoStruct) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*apitypes.HeadChange, error) {
+func (s *IChainInfoStruct) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*types.HeadChange, error) {
 	return s.Internal.ChainGetPath(p0, p1, p2)
 }
 
@@ -224,7 +219,7 @@ func (s *IChainInfoStruct) ChainList(p0 context.Context, p1 types.TipSetKey, p2 
 	return s.Internal.ChainList(p0, p1, p2)
 }
 
-func (s *IChainInfoStruct) ChainNotify(p0 context.Context) <-chan []*apitypes.HeadChange {
+func (s *IChainInfoStruct) ChainNotify(p0 context.Context) <-chan []*types.HeadChange {
 	return s.Internal.ChainNotify(p0)
 }
 
@@ -248,11 +243,11 @@ func (s *IChainInfoStruct) GetParentStateRootActor(p0 context.Context, p1 *types
 	return s.Internal.GetParentStateRootActor(p0, p1, p2)
 }
 
-func (s *IChainInfoStruct) MessageWait(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch, p3 abi.ChainEpoch) (*apitypes.ChainMessage, error) {
+func (s *IChainInfoStruct) MessageWait(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch, p3 abi.ChainEpoch) (*types.ChainMessage, error) {
 	return s.Internal.MessageWait(p0, p1, p2, p3)
 }
 
-func (s *IChainInfoStruct) ProtocolParameters(p0 context.Context) (*apitypes.ProtocolParams, error) {
+func (s *IChainInfoStruct) ProtocolParameters(p0 context.Context) (*types.ProtocolParams, error) {
 	return s.Internal.ProtocolParameters(p0)
 }
 
@@ -268,7 +263,7 @@ func (s *IChainInfoStruct) StateGetRandomnessFromTickets(p0 context.Context, p1 
 	return s.Internal.StateGetRandomnessFromTickets(p0, p1, p2, p3, p4)
 }
 
-func (s *IChainInfoStruct) StateNetworkName(p0 context.Context) (apitypes.NetworkName, error) {
+func (s *IChainInfoStruct) StateNetworkName(p0 context.Context) (types.NetworkName, error) {
 	return s.Internal.StateNetworkName(p0)
 }
 
@@ -276,7 +271,7 @@ func (s *IChainInfoStruct) StateNetworkVersion(p0 context.Context, p1 types.TipS
 	return s.Internal.StateNetworkVersion(p0, p1)
 }
 
-func (s *IChainInfoStruct) StateSearchMsg(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*apitypes.MsgLookup, error) {
+func (s *IChainInfoStruct) StateSearchMsg(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*types.MsgLookup, error) {
 	return s.Internal.StateSearchMsg(p0, p1, p2, p3, p4)
 }
 
@@ -288,7 +283,7 @@ func (s *IChainInfoStruct) StateVerifierStatus(p0 context.Context, p1 address.Ad
 	return s.Internal.StateVerifierStatus(p0, p1, p2)
 }
 
-func (s *IChainInfoStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*apitypes.MsgLookup, error) {
+func (s *IChainInfoStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*types.MsgLookup, error) {
 	return s.Internal.StateWaitMsg(p0, p1, p2, p3, p4)
 }
 
@@ -356,45 +351,45 @@ func (s *IJwtAuthAPIStruct) Verify(p0 context.Context, p1 string, p2 string) ([]
 
 type IMarketStruct struct {
 	Internal struct {
-		StateMarketParticipants func(p0 context.Context, p1 types.TipSetKey) (map[string]apitypes.MarketBalance, error) `perm:"read"`
+		StateMarketParticipants func(p0 context.Context, p1 types.TipSetKey) (map[string]types.MarketBalance, error) `perm:"read"`
 	}
 }
 
-func (s *IMarketStruct) StateMarketParticipants(p0 context.Context, p1 types.TipSetKey) (map[string]apitypes.MarketBalance, error) {
+func (s *IMarketStruct) StateMarketParticipants(p0 context.Context, p1 types.TipSetKey) (map[string]types.MarketBalance, error) {
 	return s.Internal.StateMarketParticipants(p0, p1)
 }
 
 type IMessagePoolStruct struct {
 	Internal struct {
-		GasBatchEstimateMessageGas func(p0 context.Context, p1 []*apitypes.EstimateMessage, p2 uint64, p3 types.TipSetKey) ([]*apitypes.EstimateResult, error) `perm:"read"`
-		GasEstimateFeeCap          func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (big.Int, error)                                  `perm:"read"`
-		GasEstimateGasLimit        func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (int64, error)                                              `perm:"read"`
-		GasEstimateGasPremium      func(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (big.Int, error)                      `perm:"read"`
-		GasEstimateMessageGas      func(p0 context.Context, p1 *types.Message, p2 *apitypes.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error)       `perm:"read"`
-		MpoolBatchPush             func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error)                                                      `perm:"write"`
-		MpoolBatchPushMessage      func(p0 context.Context, p1 []*types.Message, p2 *apitypes.MessageSendSpec) ([]*types.SignedMessage, error)                 `perm:"sign"`
-		MpoolBatchPushUntrusted    func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error)                                                      `perm:"write"`
-		MpoolCheckMessages         func(p0 context.Context, p1 []*messagepool.MessagePrototype) ([][]messagepool.MessageCheckStatus, error)                    `perm:"read"`
-		MpoolCheckPendingMessages  func(p0 context.Context, p1 address.Address) ([][]messagepool.MessageCheckStatus, error)                                    `perm:"read"`
-		MpoolCheckReplaceMessages  func(p0 context.Context, p1 []*types.Message) ([][]messagepool.MessageCheckStatus, error)                                   `perm:"read"`
-		MpoolClear                 func(p0 context.Context, p1 bool) error                                                                                     `perm:"write"`
-		MpoolDeleteByAdress        func(p0 context.Context, p1 address.Address) error                                                                          `perm:"admin"`
-		MpoolGetConfig             func(p0 context.Context) (*messagepool.MpoolConfig, error)                                                                  `perm:"read"`
-		MpoolGetNonce              func(p0 context.Context, p1 address.Address) (uint64, error)                                                                `perm:"read"`
-		MpoolPending               func(p0 context.Context, p1 types.TipSetKey) ([]*types.SignedMessage, error)                                                `perm:"read"`
-		MpoolPublishByAddr         func(p0 context.Context, p1 address.Address) error                                                                          `perm:"write"`
-		MpoolPublishMessage        func(p0 context.Context, p1 *types.SignedMessage) error                                                                     `perm:"write"`
-		MpoolPush                  func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error)                                                          `perm:"write"`
-		MpoolPushMessage           func(p0 context.Context, p1 *types.Message, p2 *apitypes.MessageSendSpec) (*types.SignedMessage, error)                     `perm:"sign"`
-		MpoolPushUntrusted         func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error)                                                          `perm:"write"`
-		MpoolSelect                func(p0 context.Context, p1 types.TipSetKey, p2 float64) ([]*types.SignedMessage, error)                                    `perm:"read"`
-		MpoolSelects               func(p0 context.Context, p1 types.TipSetKey, p2 []float64) ([][]*types.SignedMessage, error)                                `perm:"read"`
-		MpoolSetConfig             func(p0 context.Context, p1 *messagepool.MpoolConfig) error                                                                 `perm:"admin"`
-		MpoolSub                   func(p0 context.Context) (<-chan messagepool.MpoolUpdate, error)                                                            `perm:"read"`
+		GasBatchEstimateMessageGas func(p0 context.Context, p1 []*types.EstimateMessage, p2 uint64, p3 types.TipSetKey) ([]*types.EstimateResult, error) `perm:"read"`
+		GasEstimateFeeCap          func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (big.Int, error)                            `perm:"read"`
+		GasEstimateGasLimit        func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (int64, error)                                        `perm:"read"`
+		GasEstimateGasPremium      func(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (big.Int, error)                `perm:"read"`
+		GasEstimateMessageGas      func(p0 context.Context, p1 *types.Message, p2 *types.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error)    `perm:"read"`
+		MpoolBatchPush             func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error)                                                `perm:"write"`
+		MpoolBatchPushMessage      func(p0 context.Context, p1 []*types.Message, p2 *types.MessageSendSpec) ([]*types.SignedMessage, error)              `perm:"sign"`
+		MpoolBatchPushUntrusted    func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error)                                                `perm:"write"`
+		MpoolCheckMessages         func(p0 context.Context, p1 []*types.MessagePrototype) ([][]types.MessageCheckStatus, error)                          `perm:"read"`
+		MpoolCheckPendingMessages  func(p0 context.Context, p1 address.Address) ([][]types.MessageCheckStatus, error)                                    `perm:"read"`
+		MpoolCheckReplaceMessages  func(p0 context.Context, p1 []*types.Message) ([][]types.MessageCheckStatus, error)                                   `perm:"read"`
+		MpoolClear                 func(p0 context.Context, p1 bool) error                                                                               `perm:"write"`
+		MpoolDeleteByAdress        func(p0 context.Context, p1 address.Address) error                                                                    `perm:"admin"`
+		MpoolGetConfig             func(p0 context.Context) (*types.MpoolConfig, error)                                                                  `perm:"read"`
+		MpoolGetNonce              func(p0 context.Context, p1 address.Address) (uint64, error)                                                          `perm:"read"`
+		MpoolPending               func(p0 context.Context, p1 types.TipSetKey) ([]*types.SignedMessage, error)                                          `perm:"read"`
+		MpoolPublishByAddr         func(p0 context.Context, p1 address.Address) error                                                                    `perm:"write"`
+		MpoolPublishMessage        func(p0 context.Context, p1 *types.SignedMessage) error                                                               `perm:"write"`
+		MpoolPush                  func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error)                                                    `perm:"write"`
+		MpoolPushMessage           func(p0 context.Context, p1 *types.Message, p2 *types.MessageSendSpec) (*types.SignedMessage, error)                  `perm:"sign"`
+		MpoolPushUntrusted         func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error)                                                    `perm:"write"`
+		MpoolSelect                func(p0 context.Context, p1 types.TipSetKey, p2 float64) ([]*types.SignedMessage, error)                              `perm:"read"`
+		MpoolSelects               func(p0 context.Context, p1 types.TipSetKey, p2 []float64) ([][]*types.SignedMessage, error)                          `perm:"read"`
+		MpoolSetConfig             func(p0 context.Context, p1 *types.MpoolConfig) error                                                                 `perm:"admin"`
+		MpoolSub                   func(p0 context.Context) (<-chan types.MpoolUpdate, error)                                                            `perm:"read"`
 	}
 }
 
-func (s *IMessagePoolStruct) GasBatchEstimateMessageGas(p0 context.Context, p1 []*apitypes.EstimateMessage, p2 uint64, p3 types.TipSetKey) ([]*apitypes.EstimateResult, error) {
+func (s *IMessagePoolStruct) GasBatchEstimateMessageGas(p0 context.Context, p1 []*types.EstimateMessage, p2 uint64, p3 types.TipSetKey) ([]*types.EstimateResult, error) {
 	return s.Internal.GasBatchEstimateMessageGas(p0, p1, p2, p3)
 }
 
@@ -410,7 +405,7 @@ func (s *IMessagePoolStruct) GasEstimateGasPremium(p0 context.Context, p1 uint64
 	return s.Internal.GasEstimateGasPremium(p0, p1, p2, p3, p4)
 }
 
-func (s *IMessagePoolStruct) GasEstimateMessageGas(p0 context.Context, p1 *types.Message, p2 *apitypes.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) {
+func (s *IMessagePoolStruct) GasEstimateMessageGas(p0 context.Context, p1 *types.Message, p2 *types.MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) {
 	return s.Internal.GasEstimateMessageGas(p0, p1, p2, p3)
 }
 
@@ -418,7 +413,7 @@ func (s *IMessagePoolStruct) MpoolBatchPush(p0 context.Context, p1 []*types.Sign
 	return s.Internal.MpoolBatchPush(p0, p1)
 }
 
-func (s *IMessagePoolStruct) MpoolBatchPushMessage(p0 context.Context, p1 []*types.Message, p2 *apitypes.MessageSendSpec) ([]*types.SignedMessage, error) {
+func (s *IMessagePoolStruct) MpoolBatchPushMessage(p0 context.Context, p1 []*types.Message, p2 *types.MessageSendSpec) ([]*types.SignedMessage, error) {
 	return s.Internal.MpoolBatchPushMessage(p0, p1, p2)
 }
 
@@ -426,15 +421,15 @@ func (s *IMessagePoolStruct) MpoolBatchPushUntrusted(p0 context.Context, p1 []*t
 	return s.Internal.MpoolBatchPushUntrusted(p0, p1)
 }
 
-func (s *IMessagePoolStruct) MpoolCheckMessages(p0 context.Context, p1 []*messagepool.MessagePrototype) ([][]messagepool.MessageCheckStatus, error) {
+func (s *IMessagePoolStruct) MpoolCheckMessages(p0 context.Context, p1 []*types.MessagePrototype) ([][]types.MessageCheckStatus, error) {
 	return s.Internal.MpoolCheckMessages(p0, p1)
 }
 
-func (s *IMessagePoolStruct) MpoolCheckPendingMessages(p0 context.Context, p1 address.Address) ([][]messagepool.MessageCheckStatus, error) {
+func (s *IMessagePoolStruct) MpoolCheckPendingMessages(p0 context.Context, p1 address.Address) ([][]types.MessageCheckStatus, error) {
 	return s.Internal.MpoolCheckPendingMessages(p0, p1)
 }
 
-func (s *IMessagePoolStruct) MpoolCheckReplaceMessages(p0 context.Context, p1 []*types.Message) ([][]messagepool.MessageCheckStatus, error) {
+func (s *IMessagePoolStruct) MpoolCheckReplaceMessages(p0 context.Context, p1 []*types.Message) ([][]types.MessageCheckStatus, error) {
 	return s.Internal.MpoolCheckReplaceMessages(p0, p1)
 }
 
@@ -446,7 +441,7 @@ func (s *IMessagePoolStruct) MpoolDeleteByAdress(p0 context.Context, p1 address.
 	return s.Internal.MpoolDeleteByAdress(p0, p1)
 }
 
-func (s *IMessagePoolStruct) MpoolGetConfig(p0 context.Context) (*messagepool.MpoolConfig, error) {
+func (s *IMessagePoolStruct) MpoolGetConfig(p0 context.Context) (*types.MpoolConfig, error) {
 	return s.Internal.MpoolGetConfig(p0)
 }
 
@@ -470,7 +465,7 @@ func (s *IMessagePoolStruct) MpoolPush(p0 context.Context, p1 *types.SignedMessa
 	return s.Internal.MpoolPush(p0, p1)
 }
 
-func (s *IMessagePoolStruct) MpoolPushMessage(p0 context.Context, p1 *types.Message, p2 *apitypes.MessageSendSpec) (*types.SignedMessage, error) {
+func (s *IMessagePoolStruct) MpoolPushMessage(p0 context.Context, p1 *types.Message, p2 *types.MessageSendSpec) (*types.SignedMessage, error) {
 	return s.Internal.MpoolPushMessage(p0, p1, p2)
 }
 
@@ -486,37 +481,37 @@ func (s *IMessagePoolStruct) MpoolSelects(p0 context.Context, p1 types.TipSetKey
 	return s.Internal.MpoolSelects(p0, p1, p2)
 }
 
-func (s *IMessagePoolStruct) MpoolSetConfig(p0 context.Context, p1 *messagepool.MpoolConfig) error {
+func (s *IMessagePoolStruct) MpoolSetConfig(p0 context.Context, p1 *types.MpoolConfig) error {
 	return s.Internal.MpoolSetConfig(p0, p1)
 }
 
-func (s *IMessagePoolStruct) MpoolSub(p0 context.Context) (<-chan messagepool.MpoolUpdate, error) {
+func (s *IMessagePoolStruct) MpoolSub(p0 context.Context) (<-chan types.MpoolUpdate, error) {
 	return s.Internal.MpoolSub(p0)
 }
 
 type IMinerStateStruct struct {
 	Internal struct {
 		StateCirculatingSupply             func(p0 context.Context, p1 types.TipSetKey) (abi.TokenAmount, error)                                                           `perm:"read"`
-		StateDealProviderCollateralBounds  func(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (apitypes.DealCollateralBounds, error)            `perm:"read"`
+		StateDealProviderCollateralBounds  func(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (types.DealCollateralBounds, error)               `perm:"read"`
 		StateListActors                    func(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error)                                                         `perm:"read"`
 		StateListMiners                    func(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error)                                                         `perm:"read"`
 		StateLookupID                      func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error)                                       `perm:"read"`
-		StateMarketBalance                 func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (apitypes.MarketBalance, error)                                `perm:"read"`
-		StateMarketDeals                   func(p0 context.Context, p1 types.TipSetKey) (map[string]apitypes.MarketDeal, error)                                            `perm:"read"`
-		StateMarketStorageDeal             func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*apitypes.MarketDeal, error)                                       `perm:"read"`
+		StateMarketBalance                 func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.MarketBalance, error)                                   `perm:"read"`
+		StateMarketDeals                   func(p0 context.Context, p1 types.TipSetKey) (map[string]types.MarketDeal, error)                                               `perm:"read"`
+		StateMarketStorageDeal             func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*types.MarketDeal, error)                                          `perm:"read"`
 		StateMinerActiveSectors            func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*miner.SectorOnChainInfo, error)                            `perm:"read"`
 		StateMinerAvailableBalance         func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (big.Int, error)                                               `perm:"read"`
-		StateMinerDeadlines                func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]apitypes.Deadline, error)                                   `perm:"read"`
+		StateMinerDeadlines                func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]types.Deadline, error)                                      `perm:"read"`
 		StateMinerFaults                   func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (bitfield.BitField, error)                                     `perm:"read"`
 		StateMinerInfo                     func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (miner.MinerInfo, error)                                       `perm:"read"`
 		StateMinerInitialPledgeCollateral  func(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (big.Int, error)                 `perm:"read"`
-		StateMinerPartitions               func(p0 context.Context, p1 address.Address, p2 uint64, p3 types.TipSetKey) ([]apitypes.Partition, error)                       `perm:"read"`
-		StateMinerPower                    func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*apitypes.MinerPower, error)                                  `perm:"read"`
+		StateMinerPartitions               func(p0 context.Context, p1 address.Address, p2 uint64, p3 types.TipSetKey) ([]types.Partition, error)                          `perm:"read"`
+		StateMinerPower                    func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.MinerPower, error)                                     `perm:"read"`
 		StateMinerPreCommitDepositForPower func(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (big.Int, error)                 `perm:"read"`
 		StateMinerProvingDeadline          func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error)                                           `perm:"read"`
 		StateMinerRecoveries               func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (bitfield.BitField, error)                                     `perm:"read"`
 		StateMinerSectorAllocated          func(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (bool, error)                             `perm:"read"`
-		StateMinerSectorCount              func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (apitypes.MinerSectors, error)                                 `perm:"read"`
+		StateMinerSectorCount              func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.MinerSectors, error)                                    `perm:"read"`
 		StateMinerSectorSize               func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (abi.SectorSize, error)                                        `perm:"read"`
 		StateMinerSectors                  func(p0 context.Context, p1 address.Address, p2 *bitfield.BitField, p3 types.TipSetKey) ([]*miner.SectorOnChainInfo, error)     `perm:"read"`
 		StateMinerWorkerAddress            func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error)                                       `perm:"read"`
@@ -533,7 +528,7 @@ func (s *IMinerStateStruct) StateCirculatingSupply(p0 context.Context, p1 types.
 	return s.Internal.StateCirculatingSupply(p0, p1)
 }
 
-func (s *IMinerStateStruct) StateDealProviderCollateralBounds(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (apitypes.DealCollateralBounds, error) {
+func (s *IMinerStateStruct) StateDealProviderCollateralBounds(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (types.DealCollateralBounds, error) {
 	return s.Internal.StateDealProviderCollateralBounds(p0, p1, p2, p3)
 }
 
@@ -549,15 +544,15 @@ func (s *IMinerStateStruct) StateLookupID(p0 context.Context, p1 address.Address
 	return s.Internal.StateLookupID(p0, p1, p2)
 }
 
-func (s *IMinerStateStruct) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (apitypes.MarketBalance, error) {
+func (s *IMinerStateStruct) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.MarketBalance, error) {
 	return s.Internal.StateMarketBalance(p0, p1, p2)
 }
 
-func (s *IMinerStateStruct) StateMarketDeals(p0 context.Context, p1 types.TipSetKey) (map[string]apitypes.MarketDeal, error) {
+func (s *IMinerStateStruct) StateMarketDeals(p0 context.Context, p1 types.TipSetKey) (map[string]types.MarketDeal, error) {
 	return s.Internal.StateMarketDeals(p0, p1)
 }
 
-func (s *IMinerStateStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*apitypes.MarketDeal, error) {
+func (s *IMinerStateStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*types.MarketDeal, error) {
 	return s.Internal.StateMarketStorageDeal(p0, p1, p2)
 }
 
@@ -569,7 +564,7 @@ func (s *IMinerStateStruct) StateMinerAvailableBalance(p0 context.Context, p1 ad
 	return s.Internal.StateMinerAvailableBalance(p0, p1, p2)
 }
 
-func (s *IMinerStateStruct) StateMinerDeadlines(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]apitypes.Deadline, error) {
+func (s *IMinerStateStruct) StateMinerDeadlines(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]types.Deadline, error) {
 	return s.Internal.StateMinerDeadlines(p0, p1, p2)
 }
 
@@ -585,11 +580,11 @@ func (s *IMinerStateStruct) StateMinerInitialPledgeCollateral(p0 context.Context
 	return s.Internal.StateMinerInitialPledgeCollateral(p0, p1, p2, p3)
 }
 
-func (s *IMinerStateStruct) StateMinerPartitions(p0 context.Context, p1 address.Address, p2 uint64, p3 types.TipSetKey) ([]apitypes.Partition, error) {
+func (s *IMinerStateStruct) StateMinerPartitions(p0 context.Context, p1 address.Address, p2 uint64, p3 types.TipSetKey) ([]types.Partition, error) {
 	return s.Internal.StateMinerPartitions(p0, p1, p2, p3)
 }
 
-func (s *IMinerStateStruct) StateMinerPower(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*apitypes.MinerPower, error) {
+func (s *IMinerStateStruct) StateMinerPower(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.MinerPower, error) {
 	return s.Internal.StateMinerPower(p0, p1, p2)
 }
 
@@ -609,7 +604,7 @@ func (s *IMinerStateStruct) StateMinerSectorAllocated(p0 context.Context, p1 add
 	return s.Internal.StateMinerSectorAllocated(p0, p1, p2, p3)
 }
 
-func (s *IMinerStateStruct) StateMinerSectorCount(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (apitypes.MinerSectors, error) {
+func (s *IMinerStateStruct) StateMinerSectorCount(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.MinerSectors, error) {
 	return s.Internal.StateMinerSectorCount(p0, p1, p2)
 }
 
@@ -651,67 +646,67 @@ func (s *IMinerStateStruct) StateVerifiedClientStatus(p0 context.Context, p1 add
 
 type IMiningStruct struct {
 	Internal struct {
-		MinerCreateBlock func(p0 context.Context, p1 *apitypes.BlockTemplate) (*types.BlockMsg, error)                                         `perm:"write"`
-		MinerGetBaseInfo func(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*apitypes.MiningBaseInfo, error) `perm:"read"`
+		MinerCreateBlock func(p0 context.Context, p1 *types.BlockTemplate) (*types.BlockMsg, error)                                         `perm:"write"`
+		MinerGetBaseInfo func(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*types.MiningBaseInfo, error) `perm:"read"`
 	}
 }
 
-func (s *IMiningStruct) MinerCreateBlock(p0 context.Context, p1 *apitypes.BlockTemplate) (*types.BlockMsg, error) {
+func (s *IMiningStruct) MinerCreateBlock(p0 context.Context, p1 *types.BlockTemplate) (*types.BlockMsg, error) {
 	return s.Internal.MinerCreateBlock(p0, p1)
 }
 
-func (s *IMiningStruct) MinerGetBaseInfo(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*apitypes.MiningBaseInfo, error) {
+func (s *IMiningStruct) MinerGetBaseInfo(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*types.MiningBaseInfo, error) {
 	return s.Internal.MinerGetBaseInfo(p0, p1, p2, p3)
 }
 
 type IMultiSigStruct struct {
 	Internal struct {
-		MsigAddApprove     func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (*messagepool.MessagePrototype, error)            `perm:"sign"`
-		MsigAddCancel      func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (*messagepool.MessagePrototype, error)                                `perm:"sign"`
-		MsigAddPropose     func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*messagepool.MessagePrototype, error)                                           `perm:"sign"`
-		MsigApprove        func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*messagepool.MessagePrototype, error)                                                             `perm:"sign"`
-		MsigApproveTxnHash func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*messagepool.MessagePrototype, error)                                                             `perm:"sign"`
-		MsigCancel         func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*messagepool.MessagePrototype, error)                                                             `perm:"sign"`
-		MsigCancelTxnHash  func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*messagepool.MessagePrototype, error)  `perm:"read"`
-		MsigCreate         func(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*messagepool.MessagePrototype, error)      `perm:"sign"`
-		MsigGetVested      func(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error)                                                                     `perm:"read"`
-		MsigPropose        func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (*messagepool.MessagePrototype, error)             `perm:"sign"`
-		MsigRemoveSigner   func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*messagepool.MessagePrototype, error)                                           `perm:"sign"`
-		MsigSwapApprove    func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 address.Address) (*messagepool.MessagePrototype, error) `perm:"sign"`
-		MsigSwapCancel     func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (*messagepool.MessagePrototype, error)                     `perm:"sign"`
-		MsigSwapPropose    func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (*messagepool.MessagePrototype, error)                                `perm:"sign"`
+		MsigAddApprove     func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (*types.MessagePrototype, error)            `perm:"sign"`
+		MsigAddCancel      func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (*types.MessagePrototype, error)                                `perm:"sign"`
+		MsigAddPropose     func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*types.MessagePrototype, error)                                           `perm:"sign"`
+		MsigApprove        func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*types.MessagePrototype, error)                                                             `perm:"sign"`
+		MsigApproveTxnHash func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*types.MessagePrototype, error)                                                             `perm:"sign"`
+		MsigCancel         func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*types.MessagePrototype, error)                                                             `perm:"sign"`
+		MsigCancelTxnHash  func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*types.MessagePrototype, error)  `perm:"read"`
+		MsigCreate         func(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*types.MessagePrototype, error)      `perm:"sign"`
+		MsigGetVested      func(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error)                                                               `perm:"read"`
+		MsigPropose        func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (*types.MessagePrototype, error)             `perm:"sign"`
+		MsigRemoveSigner   func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*types.MessagePrototype, error)                                           `perm:"sign"`
+		MsigSwapApprove    func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 address.Address) (*types.MessagePrototype, error) `perm:"sign"`
+		MsigSwapCancel     func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (*types.MessagePrototype, error)                     `perm:"sign"`
+		MsigSwapPropose    func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (*types.MessagePrototype, error)                                `perm:"sign"`
 	}
 }
 
-func (s *IMultiSigStruct) MsigAddApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (*messagepool.MessagePrototype, error) {
+func (s *IMultiSigStruct) MsigAddApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (*types.MessagePrototype, error) {
 	return s.Internal.MsigAddApprove(p0, p1, p2, p3, p4, p5, p6)
 }
 
-func (s *IMultiSigStruct) MsigAddCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (*messagepool.MessagePrototype, error) {
+func (s *IMultiSigStruct) MsigAddCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (*types.MessagePrototype, error) {
 	return s.Internal.MsigAddCancel(p0, p1, p2, p3, p4, p5)
 }
 
-func (s *IMultiSigStruct) MsigAddPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*messagepool.MessagePrototype, error) {
+func (s *IMultiSigStruct) MsigAddPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*types.MessagePrototype, error) {
 	return s.Internal.MsigAddPropose(p0, p1, p2, p3, p4)
 }
 
-func (s *IMultiSigStruct) MsigApprove(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*messagepool.MessagePrototype, error) {
+func (s *IMultiSigStruct) MsigApprove(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*types.MessagePrototype, error) {
 	return s.Internal.MsigApprove(p0, p1, p2, p3)
 }
 
-func (s *IMultiSigStruct) MsigApproveTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*messagepool.MessagePrototype, error) {
+func (s *IMultiSigStruct) MsigApproveTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*types.MessagePrototype, error) {
 	return s.Internal.MsigApproveTxnHash(p0, p1, p2, p3)
 }
 
-func (s *IMultiSigStruct) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*messagepool.MessagePrototype, error) {
+func (s *IMultiSigStruct) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*types.MessagePrototype, error) {
 	return s.Internal.MsigCancel(p0, p1, p2, p3)
 }
 
-func (s *IMultiSigStruct) MsigCancelTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*messagepool.MessagePrototype, error) {
+func (s *IMultiSigStruct) MsigCancelTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*types.MessagePrototype, error) {
 	return s.Internal.MsigCancelTxnHash(p0, p1, p2, p3, p4, p5, p6, p7)
 }
 
-func (s *IMultiSigStruct) MsigCreate(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*messagepool.MessagePrototype, error) {
+func (s *IMultiSigStruct) MsigCreate(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*types.MessagePrototype, error) {
 	return s.Internal.MsigCreate(p0, p1, p2, p3, p4, p5, p6)
 }
 
@@ -719,38 +714,38 @@ func (s *IMultiSigStruct) MsigGetVested(p0 context.Context, p1 address.Address, 
 	return s.Internal.MsigGetVested(p0, p1, p2, p3)
 }
 
-func (s *IMultiSigStruct) MsigPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (*messagepool.MessagePrototype, error) {
+func (s *IMultiSigStruct) MsigPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (*types.MessagePrototype, error) {
 	return s.Internal.MsigPropose(p0, p1, p2, p3, p4, p5, p6)
 }
 
-func (s *IMultiSigStruct) MsigRemoveSigner(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*messagepool.MessagePrototype, error) {
+func (s *IMultiSigStruct) MsigRemoveSigner(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*types.MessagePrototype, error) {
 	return s.Internal.MsigRemoveSigner(p0, p1, p2, p3, p4)
 }
 
-func (s *IMultiSigStruct) MsigSwapApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 address.Address) (*messagepool.MessagePrototype, error) {
+func (s *IMultiSigStruct) MsigSwapApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 address.Address) (*types.MessagePrototype, error) {
 	return s.Internal.MsigSwapApprove(p0, p1, p2, p3, p4, p5, p6)
 }
 
-func (s *IMultiSigStruct) MsigSwapCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (*messagepool.MessagePrototype, error) {
+func (s *IMultiSigStruct) MsigSwapCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (*types.MessagePrototype, error) {
 	return s.Internal.MsigSwapCancel(p0, p1, p2, p3, p4, p5)
 }
 
-func (s *IMultiSigStruct) MsigSwapPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (*messagepool.MessagePrototype, error) {
+func (s *IMultiSigStruct) MsigSwapPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (*types.MessagePrototype, error) {
 	return s.Internal.MsigSwapPropose(p0, p1, p2, p3, p4)
 }
 
 type INetworkStruct struct {
 	Internal struct {
-		NetAddrsListen            func(p0 context.Context) (peer.AddrInfo, error)                                  `perm:"read"`
-		NetworkConnect            func(p0 context.Context, p1 []string) (<-chan net.ConnectionResult, error)       `perm:"read"`
-		NetworkFindPeer           func(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error)                      `perm:"read"`
-		NetworkFindProvidersAsync func(p0 context.Context, p1 cid.Cid, p2 int) <-chan peer.AddrInfo                `perm:"read"`
-		NetworkGetBandwidthStats  func(p0 context.Context) metrics.Stats                                           `perm:"admin"`
-		NetworkGetClosestPeers    func(p0 context.Context, p1 string) ([]peer.ID, error)                           `perm:"read"`
-		NetworkGetPeerAddresses   func(p0 context.Context) []ma.Multiaddr                                          `perm:"admin"`
-		NetworkGetPeerID          func(p0 context.Context) peer.ID                                                 `perm:"admin"`
-		NetworkPeers              func(p0 context.Context, p1 bool, p2 bool, p3 bool) (*net.SwarmConnInfos, error) `perm:"read"`
-		Version                   func(p0 context.Context) (apitypes.Version, error)                               `perm:"read"`
+		NetAddrsListen            func(p0 context.Context) (peer.AddrInfo, error)                                    `perm:"read"`
+		NetworkConnect            func(p0 context.Context, p1 []string) (<-chan types.ConnectionResult, error)       `perm:"read"`
+		NetworkFindPeer           func(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error)                        `perm:"read"`
+		NetworkFindProvidersAsync func(p0 context.Context, p1 cid.Cid, p2 int) <-chan peer.AddrInfo                  `perm:"read"`
+		NetworkGetBandwidthStats  func(p0 context.Context) metrics.Stats                                             `perm:"admin"`
+		NetworkGetClosestPeers    func(p0 context.Context, p1 string) ([]peer.ID, error)                             `perm:"read"`
+		NetworkGetPeerAddresses   func(p0 context.Context) []ma.Multiaddr                                            `perm:"admin"`
+		NetworkGetPeerID          func(p0 context.Context) peer.ID                                                   `perm:"admin"`
+		NetworkPeers              func(p0 context.Context, p1 bool, p2 bool, p3 bool) (*types.SwarmConnInfos, error) `perm:"read"`
+		Version                   func(p0 context.Context) (types.Version, error)                                    `perm:"read"`
 	}
 }
 
@@ -758,7 +753,7 @@ func (s *INetworkStruct) NetAddrsListen(p0 context.Context) (peer.AddrInfo, erro
 	return s.Internal.NetAddrsListen(p0)
 }
 
-func (s *INetworkStruct) NetworkConnect(p0 context.Context, p1 []string) (<-chan net.ConnectionResult, error) {
+func (s *INetworkStruct) NetworkConnect(p0 context.Context, p1 []string) (<-chan types.ConnectionResult, error) {
 	return s.Internal.NetworkConnect(p0, p1)
 }
 
@@ -786,32 +781,32 @@ func (s *INetworkStruct) NetworkGetPeerID(p0 context.Context) peer.ID {
 	return s.Internal.NetworkGetPeerID(p0)
 }
 
-func (s *INetworkStruct) NetworkPeers(p0 context.Context, p1 bool, p2 bool, p3 bool) (*net.SwarmConnInfos, error) {
+func (s *INetworkStruct) NetworkPeers(p0 context.Context, p1 bool, p2 bool, p3 bool) (*types.SwarmConnInfos, error) {
 	return s.Internal.NetworkPeers(p0, p1, p2, p3)
 }
 
-func (s *INetworkStruct) Version(p0 context.Context) (apitypes.Version, error) {
+func (s *INetworkStruct) Version(p0 context.Context) (types.Version, error) {
 	return s.Internal.Version(p0)
 }
 
 type IPaychanStruct struct {
 	Internal struct {
-		PaychAllocateLane           func(p0 context.Context, p1 address.Address) (uint64, error)                                                                   `perm:"sign"`
-		PaychAvailableFunds         func(p0 context.Context, p1 address.Address) (*apitypes.ChannelAvailableFunds, error)                                          `perm:"sign"`
-		PaychAvailableFundsByFromTo func(p0 context.Context, p1 address.Address, p2 address.Address) (*apitypes.ChannelAvailableFunds, error)                      `perm:"sign"`
-		PaychCollect                func(p0 context.Context, p1 address.Address) (cid.Cid, error)                                                                  `perm:"sign"`
-		PaychGet                    func(p0 context.Context, p1 address.Address, p2 address.Address, p3 big.Int) (*paychtypes.ChannelInfo, error)                  `perm:"sign"`
-		PaychGetWaitReady           func(p0 context.Context, p1 cid.Cid) (address.Address, error)                                                                  `perm:"sign"`
-		PaychList                   func(p0 context.Context) ([]address.Address, error)                                                                            `perm:"read"`
-		PaychNewPayment             func(p0 context.Context, p1 address.Address, p2 address.Address, p3 []paychtypes.VoucherSpec) (*paychtypes.PaymentInfo, error) `perm:"sign"`
-		PaychSettle                 func(p0 context.Context, p1 address.Address) (cid.Cid, error)                                                                  `perm:"sign"`
-		PaychStatus                 func(p0 context.Context, p1 address.Address) (*paychtypes.Status, error)                                                       `perm:"read"`
-		PaychVoucherAdd             func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 big.Int) (big.Int, error)                  `perm:"write"`
-		PaychVoucherCheckSpendable  func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (bool, error)                      `perm:"read"`
-		PaychVoucherCheckValid      func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher) error                                                    `perm:"read"`
-		PaychVoucherCreate          func(p0 context.Context, p1 address.Address, p2 big.Int, p3 uint64) (*paychtypes.VoucherCreateResult, error)                   `perm:"sign"`
-		PaychVoucherList            func(p0 context.Context, p1 address.Address) ([]*paych.SignedVoucher, error)                                                   `perm:"write"`
-		PaychVoucherSubmit          func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (cid.Cid, error)                   `perm:"sign"`
+		PaychAllocateLane           func(p0 context.Context, p1 address.Address) (uint64, error)                                                         `perm:"sign"`
+		PaychAvailableFunds         func(p0 context.Context, p1 address.Address) (*types.ChannelAvailableFunds, error)                                   `perm:"sign"`
+		PaychAvailableFundsByFromTo func(p0 context.Context, p1 address.Address, p2 address.Address) (*types.ChannelAvailableFunds, error)               `perm:"sign"`
+		PaychCollect                func(p0 context.Context, p1 address.Address) (cid.Cid, error)                                                        `perm:"sign"`
+		PaychGet                    func(p0 context.Context, p1 address.Address, p2 address.Address, p3 big.Int) (*types.ChannelInfo, error)             `perm:"sign"`
+		PaychGetWaitReady           func(p0 context.Context, p1 cid.Cid) (address.Address, error)                                                        `perm:"sign"`
+		PaychList                   func(p0 context.Context) ([]address.Address, error)                                                                  `perm:"read"`
+		PaychNewPayment             func(p0 context.Context, p1 address.Address, p2 address.Address, p3 []types.VoucherSpec) (*types.PaymentInfo, error) `perm:"sign"`
+		PaychSettle                 func(p0 context.Context, p1 address.Address) (cid.Cid, error)                                                        `perm:"sign"`
+		PaychStatus                 func(p0 context.Context, p1 address.Address) (*types.Status, error)                                                  `perm:"read"`
+		PaychVoucherAdd             func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 big.Int) (big.Int, error)        `perm:"write"`
+		PaychVoucherCheckSpendable  func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (bool, error)            `perm:"read"`
+		PaychVoucherCheckValid      func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher) error                                          `perm:"read"`
+		PaychVoucherCreate          func(p0 context.Context, p1 address.Address, p2 big.Int, p3 uint64) (*types.VoucherCreateResult, error)              `perm:"sign"`
+		PaychVoucherList            func(p0 context.Context, p1 address.Address) ([]*paych.SignedVoucher, error)                                         `perm:"write"`
+		PaychVoucherSubmit          func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (cid.Cid, error)         `perm:"sign"`
 	}
 }
 
@@ -819,11 +814,11 @@ func (s *IPaychanStruct) PaychAllocateLane(p0 context.Context, p1 address.Addres
 	return s.Internal.PaychAllocateLane(p0, p1)
 }
 
-func (s *IPaychanStruct) PaychAvailableFunds(p0 context.Context, p1 address.Address) (*apitypes.ChannelAvailableFunds, error) {
+func (s *IPaychanStruct) PaychAvailableFunds(p0 context.Context, p1 address.Address) (*types.ChannelAvailableFunds, error) {
 	return s.Internal.PaychAvailableFunds(p0, p1)
 }
 
-func (s *IPaychanStruct) PaychAvailableFundsByFromTo(p0 context.Context, p1 address.Address, p2 address.Address) (*apitypes.ChannelAvailableFunds, error) {
+func (s *IPaychanStruct) PaychAvailableFundsByFromTo(p0 context.Context, p1 address.Address, p2 address.Address) (*types.ChannelAvailableFunds, error) {
 	return s.Internal.PaychAvailableFundsByFromTo(p0, p1, p2)
 }
 
@@ -831,7 +826,7 @@ func (s *IPaychanStruct) PaychCollect(p0 context.Context, p1 address.Address) (c
 	return s.Internal.PaychCollect(p0, p1)
 }
 
-func (s *IPaychanStruct) PaychGet(p0 context.Context, p1 address.Address, p2 address.Address, p3 big.Int) (*paychtypes.ChannelInfo, error) {
+func (s *IPaychanStruct) PaychGet(p0 context.Context, p1 address.Address, p2 address.Address, p3 big.Int) (*types.ChannelInfo, error) {
 	return s.Internal.PaychGet(p0, p1, p2, p3)
 }
 
@@ -843,7 +838,7 @@ func (s *IPaychanStruct) PaychList(p0 context.Context) ([]address.Address, error
 	return s.Internal.PaychList(p0)
 }
 
-func (s *IPaychanStruct) PaychNewPayment(p0 context.Context, p1 address.Address, p2 address.Address, p3 []paychtypes.VoucherSpec) (*paychtypes.PaymentInfo, error) {
+func (s *IPaychanStruct) PaychNewPayment(p0 context.Context, p1 address.Address, p2 address.Address, p3 []types.VoucherSpec) (*types.PaymentInfo, error) {
 	return s.Internal.PaychNewPayment(p0, p1, p2, p3)
 }
 
@@ -851,7 +846,7 @@ func (s *IPaychanStruct) PaychSettle(p0 context.Context, p1 address.Address) (ci
 	return s.Internal.PaychSettle(p0, p1)
 }
 
-func (s *IPaychanStruct) PaychStatus(p0 context.Context, p1 address.Address) (*paychtypes.Status, error) {
+func (s *IPaychanStruct) PaychStatus(p0 context.Context, p1 address.Address) (*types.Status, error) {
 	return s.Internal.PaychStatus(p0, p1)
 }
 
@@ -867,7 +862,7 @@ func (s *IPaychanStruct) PaychVoucherCheckValid(p0 context.Context, p1 address.A
 	return s.Internal.PaychVoucherCheckValid(p0, p1, p2)
 }
 
-func (s *IPaychanStruct) PaychVoucherCreate(p0 context.Context, p1 address.Address, p2 big.Int, p3 uint64) (*paychtypes.VoucherCreateResult, error) {
+func (s *IPaychanStruct) PaychVoucherCreate(p0 context.Context, p1 address.Address, p2 big.Int, p3 uint64) (*types.VoucherCreateResult, error) {
 	return s.Internal.PaychVoucherCreate(p0, p1, p2, p3)
 }
 
@@ -881,14 +876,14 @@ func (s *IPaychanStruct) PaychVoucherSubmit(p0 context.Context, p1 address.Addre
 
 type ISyncerStruct struct {
 	Internal struct {
-		ChainSyncHandleNewTipSet func(p0 context.Context, p1 *types.ChainInfo) error                                            `perm:"write"`
-		ChainTipSetWeight        func(p0 context.Context, p1 types.TipSetKey) (big.Int, error)                                  `perm:"read"`
-		Concurrent               func(p0 context.Context) int64                                                                 `perm:"read"`
-		SetConcurrent            func(p0 context.Context, p1 int64) error                                                       `perm:"admin"`
-		StateCall                func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*apitypes.InvocResult, error) `perm:"read"`
-		SyncState                func(p0 context.Context) (*apitypes.SyncState, error)                                          `perm:"read"`
-		SyncSubmitBlock          func(p0 context.Context, p1 *types.BlockMsg) error                                             `perm:"write"`
-		SyncerTracker            func(p0 context.Context) *syncTypes.TargetTracker                                              `perm:"read"`
+		ChainSyncHandleNewTipSet func(p0 context.Context, p1 *types.ChainInfo) error                                         `perm:"write"`
+		ChainTipSetWeight        func(p0 context.Context, p1 types.TipSetKey) (big.Int, error)                               `perm:"read"`
+		Concurrent               func(p0 context.Context) int64                                                              `perm:"read"`
+		SetConcurrent            func(p0 context.Context, p1 int64) error                                                    `perm:"admin"`
+		StateCall                func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*types.InvocResult, error) `perm:"read"`
+		SyncState                func(p0 context.Context) (*types.SyncState, error)                                          `perm:"read"`
+		SyncSubmitBlock          func(p0 context.Context, p1 *types.BlockMsg) error                                          `perm:"write"`
+		SyncerTracker            func(p0 context.Context) *syncTypes.TargetTracker                                           `perm:"read"`
 	}
 }
 
@@ -908,11 +903,11 @@ func (s *ISyncerStruct) SetConcurrent(p0 context.Context, p1 int64) error {
 	return s.Internal.SetConcurrent(p0, p1)
 }
 
-func (s *ISyncerStruct) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*apitypes.InvocResult, error) {
+func (s *ISyncerStruct) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*types.InvocResult, error) {
 	return s.Internal.StateCall(p0, p1, p2)
 }
 
-func (s *ISyncerStruct) SyncState(p0 context.Context) (*apitypes.SyncState, error) {
+func (s *ISyncerStruct) SyncState(p0 context.Context) (*types.SyncState, error) {
 	return s.Internal.SyncState(p0)
 }
 
@@ -926,21 +921,21 @@ func (s *ISyncerStruct) SyncerTracker(p0 context.Context) *syncTypes.TargetTrack
 
 type IWalletStruct struct {
 	Internal struct {
-		HasPassword          func(p0 context.Context) bool                                                                         `perm:"admin"`
-		LockWallet           func(p0 context.Context) error                                                                        `perm:"admin"`
-		SetPassword          func(p0 context.Context, p1 []byte) error                                                             `perm:"admin"`
-		UnLockWallet         func(p0 context.Context, p1 []byte) error                                                             `perm:"admin"`
-		WalletAddresses      func(p0 context.Context) []address.Address                                                            `perm:"admin"`
-		WalletBalance        func(p0 context.Context, p1 address.Address) (abi.TokenAmount, error)                                 `perm:"read"`
-		WalletDefaultAddress func(p0 context.Context) (address.Address, error)                                                     `perm:"write"`
-		WalletExport         func(p0 address.Address, p1 string) (*crypto.KeyInfo, error)                                          `perm:"admin"`
-		WalletHas            func(p0 context.Context, p1 address.Address) (bool, error)                                            `perm:"write"`
-		WalletImport         func(p0 *crypto.KeyInfo) (address.Address, error)                                                     `perm:"admin"`
-		WalletNewAddress     func(p0 address.Protocol) (address.Address, error)                                                    `perm:"write"`
-		WalletSetDefault     func(p0 context.Context, p1 address.Address) error                                                    `perm:"write"`
-		WalletSign           func(p0 context.Context, p1 address.Address, p2 []byte, p3 wallet.MsgMeta) (*crypto.Signature, error) `perm:"sign"`
-		WalletSignMessage    func(p0 context.Context, p1 address.Address, p2 *types.Message) (*types.SignedMessage, error)         `perm:"sign"`
-		WalletState          func(p0 context.Context) int                                                                          `perm:"admin"`
+		HasPassword          func(p0 context.Context) bool                                                                        `perm:"admin"`
+		LockWallet           func(p0 context.Context) error                                                                       `perm:"admin"`
+		SetPassword          func(p0 context.Context, p1 []byte) error                                                            `perm:"admin"`
+		UnLockWallet         func(p0 context.Context, p1 []byte) error                                                            `perm:"admin"`
+		WalletAddresses      func(p0 context.Context) []address.Address                                                           `perm:"admin"`
+		WalletBalance        func(p0 context.Context, p1 address.Address) (abi.TokenAmount, error)                                `perm:"read"`
+		WalletDefaultAddress func(p0 context.Context) (address.Address, error)                                                    `perm:"write"`
+		WalletExport         func(p0 address.Address, p1 string) (*crypto.KeyInfo, error)                                         `perm:"admin"`
+		WalletHas            func(p0 context.Context, p1 address.Address) (bool, error)                                           `perm:"write"`
+		WalletImport         func(p0 *crypto.KeyInfo) (address.Address, error)                                                    `perm:"admin"`
+		WalletNewAddress     func(p0 address.Protocol) (address.Address, error)                                                   `perm:"write"`
+		WalletSetDefault     func(p0 context.Context, p1 address.Address) error                                                   `perm:"write"`
+		WalletSign           func(p0 context.Context, p1 address.Address, p2 []byte, p3 types.MsgMeta) (*crypto.Signature, error) `perm:"sign"`
+		WalletSignMessage    func(p0 context.Context, p1 address.Address, p2 *types.Message) (*types.SignedMessage, error)        `perm:"sign"`
+		WalletState          func(p0 context.Context) int                                                                         `perm:"admin"`
 	}
 }
 
@@ -992,7 +987,7 @@ func (s *IWalletStruct) WalletSetDefault(p0 context.Context, p1 address.Address)
 	return s.Internal.WalletSetDefault(p0, p1)
 }
 
-func (s *IWalletStruct) WalletSign(p0 context.Context, p1 address.Address, p2 []byte, p3 wallet.MsgMeta) (*crypto.Signature, error) {
+func (s *IWalletStruct) WalletSign(p0 context.Context, p1 address.Address, p2 []byte, p3 types.MsgMeta) (*crypto.Signature, error) {
 	return s.Internal.WalletSign(p0, p1, p2, p3)
 }
 

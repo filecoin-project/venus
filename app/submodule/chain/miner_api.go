@@ -17,9 +17,8 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var _ v1api.IMinerState = &minerStateAPI{}
@@ -175,7 +174,7 @@ func (msa *minerStateAPI) StateMinerProvingDeadline(ctx context.Context, maddr a
 }
 
 // StateMinerPartitions returns all partitions in the specified deadline
-func (msa *minerStateAPI) StateMinerPartitions(ctx context.Context, maddr address.Address, dlIdx uint64, tsk types.TipSetKey) ([]apitypes.Partition, error) {
+func (msa *minerStateAPI) StateMinerPartitions(ctx context.Context, maddr address.Address, dlIdx uint64, tsk types.TipSetKey) ([]types.Partition, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
@@ -191,7 +190,7 @@ func (msa *minerStateAPI) StateMinerPartitions(ctx context.Context, maddr addres
 		return nil, xerrors.Errorf("failed to load the deadline: %v", err)
 	}
 
-	var out []apitypes.Partition
+	var out []types.Partition
 	err = dl.ForEachPartition(func(_ uint64, part miner.Partition) error {
 		allSectors, err := part.AllSectors()
 		if err != nil {
@@ -218,7 +217,7 @@ func (msa *minerStateAPI) StateMinerPartitions(ctx context.Context, maddr addres
 			return xerrors.Errorf("getting ActiveSectors: %v", err)
 		}
 
-		out = append(out, apitypes.Partition{
+		out = append(out, types.Partition{
 			AllSectors:        allSectors,
 			FaultySectors:     faultySectors,
 			RecoveringSectors: recoveringSectors,
@@ -232,7 +231,7 @@ func (msa *minerStateAPI) StateMinerPartitions(ctx context.Context, maddr addres
 }
 
 // StateMinerDeadlines returns all the proving deadlines for the given miner
-func (msa *minerStateAPI) StateMinerDeadlines(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]apitypes.Deadline, error) {
+func (msa *minerStateAPI) StateMinerDeadlines(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]types.Deadline, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
@@ -248,7 +247,7 @@ func (msa *minerStateAPI) StateMinerDeadlines(ctx context.Context, maddr address
 		return nil, xerrors.Errorf("getting deadline count: %v", err)
 	}
 
-	out := make([]apitypes.Deadline, deadlines)
+	out := make([]types.Deadline, deadlines)
 	if err := mas.ForEachDeadline(func(i uint64, dl miner.Deadline) error {
 		ps, err := dl.PartitionsPoSted()
 		if err != nil {
@@ -260,7 +259,7 @@ func (msa *minerStateAPI) StateMinerDeadlines(ctx context.Context, maddr address
 			return err
 		}
 
-		out[i] = apitypes.Deadline{
+		out[i] = types.Deadline{
 			PostSubmissions:      ps,
 			DisputableProofCount: l,
 		}
@@ -287,7 +286,7 @@ func (msa *minerStateAPI) StateMinerSectors(ctx context.Context, maddr address.A
 }
 
 // StateMarketStorageDeal returns information about the indicated deal
-func (msa *minerStateAPI) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*apitypes.MarketDeal, error) {
+func (msa *minerStateAPI) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
@@ -325,7 +324,7 @@ func (msa *minerStateAPI) StateMarketStorageDeal(ctx context.Context, dealID abi
 		st = market.EmptyDealState()
 	}
 
-	return &apitypes.MarketDeal{
+	return &types.MarketDeal{
 		Proposal: *proposal,
 		State:    *st,
 	}, nil
@@ -501,7 +500,7 @@ func (msa *minerStateAPI) StateCirculatingSupply(ctx context.Context, tsk types.
 }
 
 // StateMarketDeals returns information about every deal in the Storage Market
-func (msa *minerStateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]apitypes.MarketDeal, error) {
+func (msa *minerStateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketDeal, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("Stmgr.ParentStateViewTsk failed:%w", err)
@@ -558,7 +557,7 @@ func (msa *minerStateAPI) StateListActors(ctx context.Context, tsk types.TipSetK
 }
 
 // StateMinerPower returns the power of the indicated miner
-func (msa *minerStateAPI) StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*apitypes.MinerPower, error) {
+func (msa *minerStateAPI) StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.MinerPower, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
@@ -568,7 +567,7 @@ func (msa *minerStateAPI) StateMinerPower(ctx context.Context, addr address.Addr
 		return nil, err
 	}
 
-	return &apitypes.MinerPower{
+	return &types.MinerPower{
 		MinerPower:  mp,
 		TotalPower:  net,
 		HasMinPower: hmp,
@@ -600,15 +599,15 @@ func (msa *minerStateAPI) StateSectorExpiration(ctx context.Context, maddr addre
 }
 
 // StateMinerSectorCount returns the number of sectors in a miner's sector set and proving set
-func (msa *minerStateAPI) StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (apitypes.MinerSectors, error) {
+func (msa *minerStateAPI) StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MinerSectors, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
-		return apitypes.MinerSectors{}, xerrors.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
+		return types.MinerSectors{}, xerrors.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
 	}
 
 	mas, err := view.LoadMinerState(ctx, addr)
 	if err != nil {
-		return apitypes.MinerSectors{}, err
+		return types.MinerSectors{}, err
 	}
 
 	var activeCount, liveCount, faultyCount uint64
@@ -638,46 +637,46 @@ func (msa *minerStateAPI) StateMinerSectorCount(ctx context.Context, addr addres
 			return nil
 		})
 	}); err != nil {
-		return apitypes.MinerSectors{}, err
+		return types.MinerSectors{}, err
 	}
-	return apitypes.MinerSectors{Live: liveCount, Active: activeCount, Faulty: faultyCount}, nil
+	return types.MinerSectors{Live: liveCount, Active: activeCount, Faulty: faultyCount}, nil
 }
 
 // StateMarketBalance looks up the Escrow and Locked balances of the given address in the Storage Market
-func (msa *minerStateAPI) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (apitypes.MarketBalance, error) {
+func (msa *minerStateAPI) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MarketBalance, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
-		return apitypes.MarketBalanceNil, xerrors.Errorf("loading view %s: %v", tsk, err)
+		return types.MarketBalanceNil, xerrors.Errorf("loading view %s: %v", tsk, err)
 	}
 
 	mstate, err := view.LoadMarketState(ctx)
 	if err != nil {
-		return apitypes.MarketBalanceNil, err
+		return types.MarketBalanceNil, err
 	}
 
 	addr, err = view.LookupID(ctx, addr)
 	if err != nil {
-		return apitypes.MarketBalanceNil, err
+		return types.MarketBalanceNil, err
 	}
 
-	var out apitypes.MarketBalance
+	var out types.MarketBalance
 
 	et, err := mstate.EscrowTable()
 	if err != nil {
-		return apitypes.MarketBalanceNil, err
+		return types.MarketBalanceNil, err
 	}
 	out.Escrow, err = et.Get(addr)
 	if err != nil {
-		return apitypes.MarketBalanceNil, xerrors.Errorf("getting escrow balance: %v", err)
+		return types.MarketBalanceNil, xerrors.Errorf("getting escrow balance: %v", err)
 	}
 
 	lt, err := mstate.LockedTable()
 	if err != nil {
-		return apitypes.MarketBalanceNil, err
+		return types.MarketBalanceNil, err
 	}
 	out.Locked, err = lt.Get(addr)
 	if err != nil {
-		return apitypes.MarketBalanceNil, xerrors.Errorf("getting locked balance: %v", err)
+		return types.MarketBalanceNil, xerrors.Errorf("getting locked balance: %v", err)
 	}
 
 	return out, nil
@@ -689,35 +688,35 @@ var dealProviderCollateralDen = types.NewInt(100)
 
 // StateDealProviderCollateralBounds returns the min and max collateral a storage provider
 // can issue. It takes the deal size and verified status as parameters.
-func (msa *minerStateAPI) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (apitypes.DealCollateralBounds, error) {
+func (msa *minerStateAPI) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (types.DealCollateralBounds, error) {
 	ts, _, view, err := msa.Stmgr.StateViewTsk(ctx, tsk)
 	if err != nil {
-		return apitypes.DealCollateralBounds{}, xerrors.Errorf("loading state view %s: %v", tsk, err)
+		return types.DealCollateralBounds{}, xerrors.Errorf("loading state view %s: %v", tsk, err)
 	}
 
 	pst, err := view.LoadPowerState(ctx)
 	if err != nil {
-		return apitypes.DealCollateralBounds{}, xerrors.Errorf("failed to load power actor state: %v", err)
+		return types.DealCollateralBounds{}, xerrors.Errorf("failed to load power actor state: %v", err)
 	}
 
 	rst, err := view.LoadRewardState(ctx)
 	if err != nil {
-		return apitypes.DealCollateralBounds{}, xerrors.Errorf("failed to load reward actor state: %v", err)
+		return types.DealCollateralBounds{}, xerrors.Errorf("failed to load reward actor state: %v", err)
 	}
 
 	circ, err := msa.StateVMCirculatingSupplyInternal(ctx, ts.Key())
 	if err != nil {
-		return apitypes.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %v", err)
+		return types.DealCollateralBounds{}, xerrors.Errorf("getting total circulating supply: %v", err)
 	}
 
 	powClaim, err := pst.TotalPower()
 	if err != nil {
-		return apitypes.DealCollateralBounds{}, xerrors.Errorf("getting total power: %v", err)
+		return types.DealCollateralBounds{}, xerrors.Errorf("getting total power: %v", err)
 	}
 
 	rewPow, err := rst.ThisEpochBaselinePower()
 	if err != nil {
-		return apitypes.DealCollateralBounds{}, xerrors.Errorf("getting reward baseline power: %v", err)
+		return types.DealCollateralBounds{}, xerrors.Errorf("getting reward baseline power: %v", err)
 	}
 
 	min, max, err := policy.DealProviderCollateralBounds(size,
@@ -728,9 +727,9 @@ func (msa *minerStateAPI) StateDealProviderCollateralBounds(ctx context.Context,
 		circ.FilCirculating,
 		msa.Fork.GetNtwkVersion(ctx, ts.Height()))
 	if err != nil {
-		return apitypes.DealCollateralBounds{}, xerrors.Errorf("getting deal provider coll bounds: %v", err)
+		return types.DealCollateralBounds{}, xerrors.Errorf("getting deal provider coll bounds: %v", err)
 	}
-	return apitypes.DealCollateralBounds{
+	return types.DealCollateralBounds{
 		Min: types.BigDiv(types.BigMul(min, dealProviderCollateralNum), dealProviderCollateralDen),
 		Max: max,
 	}, nil

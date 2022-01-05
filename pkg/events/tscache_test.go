@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type tsCacheAPIFailOnStorageCall struct {

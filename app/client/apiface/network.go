@@ -3,13 +3,12 @@ package apiface
 import (
 	"context"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	"github.com/filecoin-project/venus/venus-shared/libp2p/net"
 )
 
 type INetwork interface {
@@ -26,11 +25,11 @@ type INetwork interface {
 	// Rule[perm:read]
 	NetworkFindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error)
 	// Rule[perm:read]
-	NetworkConnect(ctx context.Context, addrs []string) (<-chan net.ConnectionResult, error)
+	NetworkConnect(ctx context.Context, addrs []string) (<-chan types.ConnectionResult, error)
 	// Rule[perm:read]
-	NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*net.SwarmConnInfos, error)
+	NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*types.SwarmConnInfos, error)
 	// Rule[perm:read]
-	Version(context.Context) (apitypes.Version, error)
+	Version(context.Context) (types.Version, error)
 	// Rule[perm:read]
 	NetAddrsListen(context.Context) (peer.AddrInfo, error)
 }

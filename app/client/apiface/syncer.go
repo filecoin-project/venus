@@ -5,8 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/big"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type ISyncer interface {
@@ -23,7 +22,7 @@ type ISyncer interface {
 	// Rule[perm:write]
 	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error
 	// Rule[perm:read]
-	StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*apitypes.InvocResult, error)
+	StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error)
 	// Rule[perm:read]
-	SyncState(ctx context.Context) (*apitypes.SyncState, error)
+	SyncState(ctx context.Context) (*types.SyncState, error)
 }

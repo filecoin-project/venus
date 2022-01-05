@@ -24,8 +24,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/repo"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/wallet"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	wtypes "github.com/filecoin-project/venus/venus-shared/wallet"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func init() {
@@ -66,7 +65,7 @@ func mkMessage(from, to address.Address, nonce uint64, w *wallet.Wallet) *types.
 	}
 
 	c := msg.Cid()
-	sig, err := w.WalletSign(context.Background(), from, c.Bytes(), wtypes.MsgMeta{})
+	sig, err := w.WalletSign(context.Background(), from, c.Bytes(), types.MsgMeta{})
 	if err != nil {
 		panic(err)
 	}
@@ -405,7 +404,7 @@ func TestCheckMessageBig(t *testing.T) {
 			Params:     make([]byte, 41<<10), // 41KiB payload
 		}
 
-		sig, err := w.WalletSign(context.Background(), from, msg.Cid().Bytes(), wtypes.MsgMeta{})
+		sig, err := w.WalletSign(context.Background(), from, msg.Cid().Bytes(), types.MsgMeta{})
 		if err != nil {
 			panic(err)
 		}
@@ -428,7 +427,7 @@ func TestCheckMessageBig(t *testing.T) {
 			Params:     make([]byte, 64<<10), // 64KiB payload
 		}
 
-		sig, err := w.WalletSign(context.Background(), from, msg.Cid().Bytes(), wtypes.MsgMeta{})
+		sig, err := w.WalletSign(context.Background(), from, msg.Cid().Bytes(), types.MsgMeta{})
 		if err != nil {
 			panic(err)
 		}

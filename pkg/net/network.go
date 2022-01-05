@@ -6,14 +6,14 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/venus/venus-shared/libp2p/net"
 )
 
 // Network is a unified interface for dealing with libp2p
@@ -52,8 +52,8 @@ func (network *Network) GetBandwidthStats() metrics.Stats {
 }
 
 // Connect connects to peers at the given addresses. Does not retry.
-func (network *Network) Connect(ctx context.Context, addrs []string) (<-chan net.ConnectionResult, error) {
-	outCh := make(chan net.ConnectionResult)
+func (network *Network) Connect(ctx context.Context, addrs []string) (<-chan types.ConnectionResult, error) {
+	outCh := make(chan types.ConnectionResult)
 
 	swrm, ok := network.host.Network().(*swarm.Swarm)
 	if !ok {
@@ -73,7 +73,7 @@ func (network *Network) Connect(ctx context.Context, addrs []string) (<-chan net
 			go func(pi peer.AddrInfo) {
 				swrm.Backoff().Clear(pi.ID)
 				err := network.host.Connect(ctx, pi)
-				outCh <- net.ConnectionResult{
+				outCh <- types.ConnectionResult{
 					PeerID: pi.ID,
 					Err:    err,
 				}
@@ -89,21 +89,21 @@ func (network *Network) Connect(ctx context.Context, addrs []string) (<-chan net
 }
 
 // Peers lists peers currently available on the network
-func (network *Network) Peers(ctx context.Context, verbose, latency, streams bool) (*net.SwarmConnInfos, error) {
+func (network *Network) Peers(ctx context.Context, verbose, latency, streams bool) (*types.SwarmConnInfos, error) {
 	if network.host == nil {
 		return nil, errors.New("node must be online")
 	}
 
 	conns := network.host.Network().Conns()
 
-	out := net.SwarmConnInfos{
-		Peers: []net.SwarmConnInfo{},
+	out := types.SwarmConnInfos{
+		Peers: []types.SwarmConnInfo{},
 	}
 	for _, c := range conns {
 		pid := c.RemotePeer()
 		addr := c.RemoteMultiaddr()
 
-		ci := net.SwarmConnInfo{
+		ci := types.SwarmConnInfo{
 			Addr: addr.String(),
 			Peer: pid.Pretty(),
 		}
@@ -120,7 +120,7 @@ func (network *Network) Peers(ctx context.Context, verbose, latency, streams boo
 			strs := c.GetStreams()
 
 			for _, s := range strs {
-				ci.Streams = append(ci.Streams, net.SwarmStreamInfo{Protocol: string(s.Protocol())})
+				ci.Streams = append(ci.Streams, types.SwarmStreamInfo{Protocol: string(s.Protocol())})
 			}
 		}
 		sort.Sort(&ci)

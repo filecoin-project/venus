@@ -12,9 +12,9 @@ import (
 	init4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/init"
 	multisig4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/multisig"
 
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
-	types "github.com/filecoin-project/venus/pkg/types/internal"
 )
 
 type message4 struct{ message0 }
@@ -71,5 +71,3 @@ func (m message4) Create(
 		Value:  initialAmount,
 	}, nil
 }
-
-

@@ -20,7 +20,7 @@ import (
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/util/test"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"

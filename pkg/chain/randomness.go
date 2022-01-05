@@ -7,7 +7,7 @@ import (
 	"math/rand"
 
 	"github.com/filecoin-project/venus/pkg/beacon"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"

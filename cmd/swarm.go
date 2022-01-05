@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -14,8 +16,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	ma "github.com/multiformats/go-multiaddr"
-
-	"github.com/filecoin-project/venus/venus-shared/libp2p/net"
 )
 
 const (
@@ -68,7 +68,7 @@ var swarmPeersCmd = &cmds.Command{
 
 		return re.Emit(&out)
 	},
-	Type: net.SwarmConnInfos{},
+	Type: types.SwarmConnInfos{},
 }
 
 var swarmConnectCmd = &cmds.Command{

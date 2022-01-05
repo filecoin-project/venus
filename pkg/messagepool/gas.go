@@ -19,8 +19,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 const MinGasPremium = 100e3
@@ -273,7 +272,7 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 	return res.Receipt.GasUsed + 76e3, nil
 }
 
-func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessage *apitypes.EstimateMessage, _ types.TipSetKey) (*types.Message, error) {
+func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessage *types.EstimateMessage, _ types.TipSetKey) (*types.Message, error) {
 	if estimateMessage == nil || estimateMessage.Msg == nil {
 		return nil, xerrors.Errorf("estimate message is nil")
 	}
@@ -310,7 +309,7 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 	return estimateMessage.Msg, nil
 }
 
-func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*apitypes.EstimateMessage, fromNonce uint64, tsk types.TipSetKey) ([]*apitypes.EstimateResult, error) {
+func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*types.EstimateMessage, fromNonce uint64, tsk types.TipSetKey) ([]*types.EstimateResult, error) {
 	if len(estimateMessages) == 0 {
 		return nil, xerrors.New("estimate messages are empty")
 	}
@@ -332,7 +331,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 		priorMsgs = append(priorMsgs, m)
 	}
 
-	var estimateResults []*apitypes.EstimateResult
+	var estimateResults []*types.EstimateResult
 	for _, estimateMessage := range estimateMessages {
 		estimateMsg := estimateMessage.Msg
 		estimateMsg.Nonce = fromNonce
@@ -346,7 +345,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 			gasUsed, err := mp.evalMessageGasLimit(ctx, estimateMsg, priorMsgs, ts)
 			if err != nil {
 				estimateMsg.Nonce = 0
-				estimateResults = append(estimateResults, &apitypes.EstimateResult{
+				estimateResults = append(estimateResults, &types.EstimateResult{
 					Msg: estimateMsg,
 					Err: fmt.Sprintf("estimating gas limit: %v", err),
 				})
@@ -359,7 +358,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 			gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, estimateMsg.From, estimateMsg.GasLimit, types.TipSetKey{}, mp.PriceCache)
 			if err != nil {
 				estimateMsg.Nonce = 0
-				estimateResults = append(estimateResults, &apitypes.EstimateResult{
+				estimateResults = append(estimateResults, &types.EstimateResult{
 					Msg: estimateMsg,
 					Err: fmt.Sprintf("estimating gas premium: %v", err),
 				})
@@ -372,7 +371,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 			feeCap, err := mp.GasEstimateFeeCap(ctx, estimateMsg, 20, types.EmptyTSK)
 			if err != nil {
 				estimateMsg.Nonce = 0
-				estimateResults = append(estimateResults, &apitypes.EstimateResult{
+				estimateResults = append(estimateResults, &types.EstimateResult{
 					Msg: estimateMsg,
 					Err: fmt.Sprintf("estimating fee cap: %v", err),
 				})
@@ -383,7 +382,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 
 		CapGasFee(mp.GetMaxFee, estimateMsg, estimateMessage.Spec)
 
-		estimateResults = append(estimateResults, &apitypes.EstimateResult{
+		estimateResults = append(estimateResults, &types.EstimateResult{
 			Msg: estimateMsg,
 		})
 		priorMsgs = append(priorMsgs, estimateMsg)

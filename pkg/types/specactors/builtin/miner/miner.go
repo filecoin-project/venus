@@ -17,9 +17,9 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
 
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	types "github.com/filecoin-project/venus/pkg/types/internal"
 
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
@@ -39,7 +39,6 @@ import (
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
-
 )
 
 func init() {
@@ -114,7 +113,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	case builtin7.StorageMinerActorCodeID:
 		return load7(store, act.Head)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
@@ -142,7 +141,7 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 	case actors.Version7:
 		return make7(store)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
@@ -194,8 +193,8 @@ type State interface {
 	LoadSectors(sectorNos *bitfield.BitField) ([]*SectorOnChainInfo, error)
 	NumLiveSectors() (uint64, error)
 	IsAllocated(abi.SectorNumber) (bool, error)
-        // UnallocatedSectorNumbers returns up to count unallocated sector numbers (or less than
-        // count if there aren't enough).
+	// UnallocatedSectorNumbers returns up to count unallocated sector numbers (or less than
+	// count if there aren't enough).
 	UnallocatedSectorNumbers(count int) ([]abi.SectorNumber, error)
 	GetAllocatedSectors() (*bitfield.BitField, error)
 

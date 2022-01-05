@@ -12,8 +12,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	wtypes "github.com/filecoin-project/venus/venus-shared/wallet"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var _ v1api.IWallet = &WalletAPI{}
@@ -91,7 +90,7 @@ func (walletAPI *WalletAPI) WalletNewAddress(ctx context.Context, protocol addre
 }
 
 // WalletImport adds a given set of KeyInfos to the walletModule
-func (walletAPI *WalletAPI) WalletImport(ctx context.Context, key *wtypes.KeyInfo) (address.Address, error) {
+func (walletAPI *WalletAPI) WalletImport(ctx context.Context, key *types.KeyInfo) (address.Address, error) {
 	addr, err := walletAPI.adapter.Import(ctx, remotewallet.ConvertLocalKeyInfo(key))
 	if err != nil {
 		return address.Undef, err
@@ -100,7 +99,7 @@ func (walletAPI *WalletAPI) WalletImport(ctx context.Context, key *wtypes.KeyInf
 }
 
 // WalletExport returns the KeyInfos for the given walletModule addresses
-func (walletAPI *WalletAPI) WalletExport(ctx context.Context, addr address.Address, password string) (*wtypes.KeyInfo, error) {
+func (walletAPI *WalletAPI) WalletExport(ctx context.Context, addr address.Address, password string) (*types.KeyInfo, error) {
 	ki, err := walletAPI.adapter.Export(ctx, addr, password)
 	if err != nil {
 		return nil, err
@@ -109,7 +108,7 @@ func (walletAPI *WalletAPI) WalletExport(ctx context.Context, addr address.Addre
 }
 
 // WalletSign signs the given bytes using the given address.
-func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte, meta wtypes.MsgMeta) (*crypto.Signature, error) {
+func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error) {
 	keyAddr, err := walletAPI.walletModule.Chain.Stmgr.ResolveToKeyAddress(ctx, k, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("ResolveTokeyAddress failed:%v", err)
@@ -124,7 +123,7 @@ func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Add
 		return nil, xerrors.Errorf("serializing message: %w", err)
 	}
 
-	sign, err := walletAPI.WalletSign(ctx, k, mb.Cid().Bytes(), wtypes.MsgMeta{Type: wtypes.MTChainMsg})
+	sign, err := walletAPI.WalletSign(ctx, k, mb.Cid().Bytes(), types.MsgMeta{Type: types.MTChainMsg})
 	if err != nil {
 		return nil, xerrors.Errorf("failed to sign message: %w", err)
 	}

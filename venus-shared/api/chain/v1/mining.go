@@ -6,11 +6,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	chain2 "github.com/filecoin-project/venus/venus-shared/api/chain"
-	"github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type IMining interface {
-	MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk chain.TipSetKey) (*chain2.MiningBaseInfo, error) //perm:read
-	MinerCreateBlock(ctx context.Context, bt *chain2.BlockTemplate) (*chain.BlockMsg, error)                                                //perm:write
+	MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk types.TipSetKey) (*types.MiningBaseInfo, error) //perm:read
+	MinerCreateBlock(ctx context.Context, bt *types.BlockTemplate) (*types.BlockMsg, error)                                                //perm:write
 }

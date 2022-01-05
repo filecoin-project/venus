@@ -7,7 +7,7 @@ import (
 	"time"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-cid"

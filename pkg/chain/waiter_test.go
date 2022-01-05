@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"github.com/filecoin-project/venus/pkg/testhelpers"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -16,8 +18,6 @@ import (
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
-
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 )
 
 var mockSigner, _ = testhelpers.NewMockSignersAndKeyInfo(10)
@@ -39,7 +39,7 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 	_, _, _, waiter := setupTest(t)
 
 	var err error
-	var chainMessage *apitypes.ChainMessage
+	var chainMessage *types.ChainMessage
 	doneCh := make(chan struct{})
 	go func() {
 		defer close(doneCh)

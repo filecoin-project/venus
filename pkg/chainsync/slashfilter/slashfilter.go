@@ -11,7 +11,7 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 //ISlashFilter used to detect whether the miner mined a invalidated block , support local db and mysql storage

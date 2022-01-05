@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/statemanger"
 
 	"github.com/filecoin-project/venus/pkg/chainsync/types"
-	types2 "github.com/filecoin-project/venus/venus-shared/chain"
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

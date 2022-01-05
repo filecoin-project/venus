@@ -25,8 +25,8 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	"github.com/filecoin-project/venus/venus-shared/chain/params"
+	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/params"
 )
 
 var minerCmdLog = logging.Logger("miner.cmd")

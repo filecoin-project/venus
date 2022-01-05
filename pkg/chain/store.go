@@ -46,8 +46,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // HeadChangeTopic is the topic used to publish new heads.
@@ -614,16 +613,16 @@ func (store *Store) SetHead(ctx context.Context, newTS *types.TipSet) error {
 
 func (store *Store) reorgWorker(ctx context.Context) chan reorg {
 	headChangeNotifee := func(rev, app []*types.TipSet) error {
-		notif := make([]*apitypes.HeadChange, len(rev)+len(app))
+		notif := make([]*types.HeadChange, len(rev)+len(app))
 		for i, revert := range rev {
-			notif[i] = &apitypes.HeadChange{
+			notif[i] = &types.HeadChange{
 				Type: HCRevert,
 				Val:  revert,
 			}
 		}
 
 		for i, apply := range app {
-			notif[i+len(rev)] = &apitypes.HeadChange{
+			notif[i+len(rev)] = &types.HeadChange{
 				Type: HCApply,
 				Val:  apply,
 			}
@@ -686,14 +685,14 @@ func (store *Store) reorgWorker(ctx context.Context) chan reorg {
 // SubHeadChanges returns channel with chain head updates.
 // First message is guaranteed to be of len == 1, and type == 'current'.
 // Then event in the message may be HCApply and HCRevert.
-func (store *Store) SubHeadChanges(ctx context.Context) chan []*apitypes.HeadChange {
+func (store *Store) SubHeadChanges(ctx context.Context) chan []*types.HeadChange {
 	store.mu.RLock()
 	subCh := store.headEvents.Sub(HeadChangeTopic)
 	head := store.head
 	store.mu.RUnlock()
 
-	out := make(chan []*apitypes.HeadChange, 16)
-	out <- []*apitypes.HeadChange{{
+	out := make(chan []*types.HeadChange, 16)
+	out <- []*types.HeadChange{{
 		Type: HCCurrent,
 		Val:  head,
 	}}
@@ -711,7 +710,7 @@ func (store *Store) SubHeadChanges(ctx context.Context) chan []*apitypes.HeadCha
 				}
 
 				select {
-				case out <- val.([]*apitypes.HeadChange):
+				case out <- val.([]*types.HeadChange):
 				default:
 					log.Errorf("closing head change subscription due to slow reader")
 					return

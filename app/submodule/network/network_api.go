@@ -3,6 +3,8 @@ package network
 import (
 	"context"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -10,9 +12,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/api"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	"github.com/filecoin-project/venus/venus-shared/libp2p/net"
 )
 
 var _ v1api.INetwork = &networkAPI{}
@@ -52,17 +52,17 @@ func (na *networkAPI) NetworkFindPeer(ctx context.Context, peerID peer.ID) (peer
 }
 
 // NetworkConnect connects to peers at the given addresses
-func (na *networkAPI) NetworkConnect(ctx context.Context, addrs []string) (<-chan net.ConnectionResult, error) {
+func (na *networkAPI) NetworkConnect(ctx context.Context, addrs []string) (<-chan types.ConnectionResult, error) {
 	return na.network.Network.Connect(ctx, addrs)
 }
 
 // NetworkPeers lists peers currently available on the network
-func (na *networkAPI) NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*net.SwarmConnInfos, error) {
+func (na *networkAPI) NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*types.SwarmConnInfos, error) {
 	return na.network.Network.Peers(ctx, verbose, latency, streams)
 }
 
-func (na *networkAPI) Version(context.Context) (apitypes.Version, error) {
-	return apitypes.Version{
+func (na *networkAPI) Version(context.Context) (types.Version, error) {
+	return types.Version{
 		Version:    constants.UserVersion(),
 		APIVersion: api.Version(constants.FullAPIVersion1),
 	}, nil

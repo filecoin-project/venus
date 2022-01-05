@@ -16,7 +16,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 
-
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
 	msig7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/multisig"
@@ -41,14 +40,14 @@ func make7(store adt.Store, signers []address.Address, threshold uint64, startEp
 	out.State.StartEpoch = startEpoch
 	out.State.UnlockDuration = unlockDuration
 	out.State.InitialBalance = initialBalance
-	
-		em, err := adt7.StoreEmptyMap(store, builtin7.DefaultHamtBitwidth)
-		if err != nil {
-			return nil, err
-		}
 
-		out.State.PendingTxns = em
-	
+	em, err := adt7.StoreEmptyMap(store, builtin7.DefaultHamtBitwidth)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State.PendingTxns = em
+
 	return &out, nil
 }
 

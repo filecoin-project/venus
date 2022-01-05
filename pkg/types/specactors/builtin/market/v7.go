@@ -11,8 +11,8 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	types "github.com/filecoin-project/venus/pkg/types/internal"
+	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	adt7 "github.com/filecoin-project/specs-actors/v7/actors/util/adt"
@@ -31,14 +31,14 @@ func load7(store adt.Store, root cid.Cid) (State, error) {
 
 func make7(store adt.Store) (State, error) {
 	out := state7{store: store}
-	
-		s, err := market7.ConstructState(store)
-		if err != nil {
-			return nil, err
-		}
 
-		out.State = *s
-	
+	s, err := market7.ConstructState(store)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
+
 	return &out, nil
 }
 
@@ -244,11 +244,11 @@ type publishStorageDealsReturn7 struct {
 }
 
 func (r *publishStorageDealsReturn7) IsDealValid(index uint64) (bool, error) {
-	
-	    return r.ValidDeals.IsSet(index)
-	
+
+	return r.ValidDeals.IsSet(index)
+
 }
 
 func (r *publishStorageDealsReturn7) DealIDs() ([]abi.DealID, error) {
-    return r.IDs, nil
+	return r.IDs, nil
 }

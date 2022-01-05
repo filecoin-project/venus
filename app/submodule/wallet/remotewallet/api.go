@@ -6,11 +6,12 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"github.com/filecoin-project/go-jsonrpc"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/wallet"
-	types "github.com/filecoin-project/venus/venus-shared/wallet"
 )
 
 type IWallet interface {

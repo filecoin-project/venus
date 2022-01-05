@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/chainsync/types"
-	types2 "github.com/filecoin-project/venus/venus-shared/chain"
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/streadway/handy/atomic"
 
 	logging "github.com/ipfs/go-log/v2"

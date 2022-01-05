@@ -7,8 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/constants"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -31,7 +30,7 @@ type waiterChainReader interface {
 	LookupID(context.Context, *types.TipSet, address.Address) (address.Address, error)
 	GetActorAt(context.Context, *types.TipSet, address.Address) (*types.Actor, error)
 	GetTipSetReceiptsRoot(context.Context, *types.TipSet) (cid.Cid, error)
-	SubHeadChanges(context.Context) chan []*apitypes.HeadChange
+	SubHeadChanges(context.Context) chan []*types.HeadChange
 }
 
 type IStmgr interface {
@@ -62,7 +61,7 @@ func NewWaiter(chainStore waiterChainReader, messages MessageProvider, bs bstore
 }
 
 // Find searches the blockchain history (but doesn't wait).
-func (w *Waiter) Find(ctx context.Context, msg types.ChainMsg, lookback abi.ChainEpoch, ts *types.TipSet, allowReplaced bool) (*apitypes.ChainMessage, bool, error) {
+func (w *Waiter) Find(ctx context.Context, msg types.ChainMsg, lookback abi.ChainEpoch, ts *types.TipSet, allowReplaced bool) (*types.ChainMessage, bool, error) {
 	if ts == nil {
 		ts = w.chainReader.GetHead()
 	}
@@ -81,7 +80,7 @@ func (w *Waiter) Find(ctx context.Context, msg types.ChainMsg, lookback abi.Chai
 // This method will always check for the message in the current head tipset.
 // A lookback parameter > 1 will cause this method to check for the message in
 // up to that many previous tipsets on the chain of the current head.
-func (w *Waiter) WaitPredicate(ctx context.Context, msg types.ChainMsg, confidence uint64, lookback abi.ChainEpoch, allowReplaced bool) (*apitypes.ChainMessage, error) {
+func (w *Waiter) WaitPredicate(ctx context.Context, msg types.ChainMsg, confidence uint64, lookback abi.ChainEpoch, allowReplaced bool) (*types.ChainMessage, error) {
 	ch := w.chainReader.SubHeadChanges(ctx)
 	chainMsg, found, err := w.waitForMessage(ctx, ch, msg, confidence, lookback, allowReplaced)
 	if err != nil {
@@ -94,7 +93,7 @@ func (w *Waiter) WaitPredicate(ctx context.Context, msg types.ChainMsg, confiden
 }
 
 // Wait uses WaitPredicate to invoke the callback when a message with the given cid appears on chain.
-func (w *Waiter) Wait(ctx context.Context, msg types.ChainMsg, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.ChainMessage, error) {
+func (w *Waiter) Wait(ctx context.Context, msg types.ChainMsg, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.ChainMessage, error) {
 	mid := msg.VMMessage().Cid()
 	log.Infof("Calling Waiter.Wait CID: %s", mid.String())
 
@@ -105,7 +104,7 @@ func (w *Waiter) Wait(ctx context.Context, msg types.ChainMsg, confidence uint64
 // block and receipt, when it is found. Returns the found message/block or nil
 // if now block with the given CID exists in the chain.
 // The lookback parameter is the number of tipsets in the past this method will check before giving up.
-func (w *Waiter) findMessage(ctx context.Context, from *types.TipSet, m types.ChainMsg, lookback abi.ChainEpoch, allowReplaced bool) (*apitypes.ChainMessage, bool, error) {
+func (w *Waiter) findMessage(ctx context.Context, from *types.TipSet, m types.ChainMsg, lookback abi.ChainEpoch, allowReplaced bool) (*types.ChainMessage, bool, error) {
 	limitHeight := from.Height() - lookback
 	noLimit := lookback == constants.LookbackNoLimit
 
@@ -176,7 +175,7 @@ func (w *Waiter) findMessage(ctx context.Context, from *types.TipSet, m types.Ch
 // channel closed without finding it), whether it was found, or an error.
 // notice matching mesage by message from and nonce. the return message may not be
 // expected, because there maybe another message have the same from and nonce value
-func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*apitypes.HeadChange, msg types.ChainMsg, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.ChainMessage, bool, error) {
+func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*types.HeadChange, msg types.ChainMsg, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.ChainMessage, bool, error) {
 	current, ok := <-ch
 	if !ok {
 		return nil, false, fmt.Errorf("SubHeadChanges stream was invalid")
@@ -199,7 +198,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*apitypes.HeadC
 		return chainMsg, found, nil
 	}
 
-	var backRcp *apitypes.ChainMessage
+	var backRcp *types.ChainMessage
 	backSearchWait := make(chan struct{})
 	go func() {
 		r, foundMsg, err := w.findMessage(ctx, currentHead, msg, lookbackLimit, allowReplaced)
@@ -214,7 +213,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*apitypes.HeadC
 	}()
 
 	var candidateTS *types.TipSet
-	var candidateRcp *apitypes.ChainMessage
+	var candidateRcp *types.ChainMessage
 	heightOfHead := currentHead.Height()
 	reverts := map[string]bool{}
 
@@ -273,7 +272,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*apitypes.HeadC
 	}
 }
 
-func (w *Waiter) receiptForTipset(ctx context.Context, ts *types.TipSet, msg types.ChainMsg, allowReplaced bool) (*apitypes.ChainMessage, bool, error) {
+func (w *Waiter) receiptForTipset(ctx context.Context, ts *types.TipSet, msg types.ChainMsg, allowReplaced bool) (*types.ChainMessage, bool, error) {
 	// The genesis block
 	if ts.Height() == 0 {
 		return nil, false, nil
@@ -305,7 +304,7 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts *types.TipSet, msg typ
 						if err != nil {
 							return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
 						}
-						return &apitypes.ChainMessage{TS: ts, Message: msg.VMMessage(), Block: bms.Block, Receipt: recpt}, true, nil
+						return &types.ChainMessage{TS: ts, Message: msg.VMMessage(), Block: bms.Block, Receipt: recpt}, true, nil
 					}
 
 					// this should be that message

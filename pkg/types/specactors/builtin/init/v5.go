@@ -10,11 +10,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	
-
 
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
-
 
 	init5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/init"
 	adt5 "github.com/filecoin-project/specs-actors/v5/actors/util/adt"
@@ -33,14 +30,14 @@ func load5(store adt.Store, root cid.Cid) (State, error) {
 
 func make5(store adt.Store, networkName string) (State, error) {
 	out := state5{store: store}
-	
-		s, err := init5.ConstructState(store, networkName)
-		if err != nil {
-			return nil, err
-		}
 
-		out.State = *s
-	
+	s, err := init5.ConstructState(store, networkName)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
+
 	return &out, nil
 }
 

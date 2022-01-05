@@ -27,12 +27,10 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
 	"github.com/filecoin-project/venus/pkg/wallet"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	mtypes "github.com/filecoin-project/venus/venus-shared/wallet"
-
-	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
@@ -57,7 +55,7 @@ func makeTestMessage(w *wallet.Wallet, from, to address.Address, nonce uint64, g
 	}
 
 	c := msg.Cid()
-	sig, err := w.WalletSign(context.Background(), from, c.Bytes(), mtypes.MsgMeta{})
+	sig, err := w.WalletSign(context.Background(), from, c.Bytes(), types.MsgMeta{})
 	if err != nil {
 		panic(err)
 	}
@@ -1509,7 +1507,7 @@ readLoop:
 		m.Message.Nonce -= baseNonce
 
 		c := m.Message.Cid()
-		sig, err := w.WalletSign(context.Background(), localActor, c.Bytes(), mtypes.MsgMeta{})
+		sig, err := w.WalletSign(context.Background(), localActor, c.Bytes(), types.MsgMeta{})
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -4,12 +4,11 @@ import (
 	"log"
 	"path/filepath"
 
-	gen "github.com/whyrusleeping/cbor-gen"
-
-	"github.com/filecoin-project/venus/venus-shared/chain"
 	"github.com/filecoin-project/venus/venus-shared/libp2p/exchange"
 	"github.com/filecoin-project/venus/venus-shared/libp2p/hello"
-	"github.com/filecoin-project/venus/venus-shared/paych"
+	"github.com/filecoin-project/venus/venus-shared/types"
+
+	gen "github.com/whyrusleeping/cbor-gen"
 )
 
 type genTarget struct {
@@ -37,25 +36,27 @@ func main() {
 			},
 		},
 		{
-			dir: "../venus-shared/paych/",
+			dir: "../venus-shared/types/",
 			types: []interface{}{
-				paych.PaymentInfo{},
+				types.BlockHeader{},
+				types.Ticket{},
+				types.ElectionProof{},
+				types.BeaconEntry{},
+				//types.Message{},
+				types.SignedMessage{},
+				//types.Actor{},
+				types.MessageRoot{},
+				types.MessageReceipt{},
+				types.BlockMsg{},
+				types.ExpTipSet{},
+				types.PaymentInfo{},
 			},
 		},
 		{
-			dir: "../venus-shared/chain/",
+			dir: "../venus-shared/internal/",
 			types: []interface{}{
-				chain.BlockHeader{},
-				chain.Ticket{},
-				chain.ElectionProof{},
-				chain.BeaconEntry{},
-				chain.Message{},
-				chain.SignedMessage{},
-				chain.Actor{},
-				chain.MessageRoot{},
-				chain.MessageReceipt{},
-				chain.BlockMsg{},
-				chain.ExpTipSet{},
+				types.Actor{},
+				types.Message{},
 			},
 		},
 	}

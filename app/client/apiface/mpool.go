@@ -5,9 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	"github.com/filecoin-project/venus/venus-shared/messagepool"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 )
 
@@ -21,9 +19,9 @@ type IMessagePool interface {
 	// Rule[perm:write]
 	MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error)
 	// Rule[perm:read]
-	MpoolGetConfig(context.Context) (*messagepool.MpoolConfig, error)
+	MpoolGetConfig(context.Context) (*types.MpoolConfig, error)
 	// Rule[perm:admin]
-	MpoolSetConfig(ctx context.Context, cfg *messagepool.MpoolConfig) error
+	MpoolSetConfig(ctx context.Context, cfg *types.MpoolConfig) error
 	// Rule[perm:read]
 	MpoolSelect(context.Context, types.TipSetKey, float64) ([]*types.SignedMessage, error)
 	// Rule[perm:read]
@@ -35,21 +33,21 @@ type IMessagePool interface {
 	// Rule[perm:write]
 	MpoolPushUntrusted(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error)
 	// Rule[perm:sign]
-	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *apitypes.MessageSendSpec) (*types.SignedMessage, error)
+	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *types.MessageSendSpec) (*types.SignedMessage, error)
 	// Rule[perm:write]
 	MpoolBatchPush(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error)
 	// Rule[perm:write]
 	MpoolBatchPushUntrusted(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error)
 	// Rule[perm:sign]
-	MpoolBatchPushMessage(ctx context.Context, msgs []*types.Message, spec *apitypes.MessageSendSpec) ([]*types.SignedMessage, error)
+	MpoolBatchPushMessage(ctx context.Context, msgs []*types.Message, spec *types.MessageSendSpec) ([]*types.SignedMessage, error)
 	// Rule[perm:read]
 	MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error)
 	// Rule[perm:read]
-	MpoolSub(ctx context.Context) (<-chan messagepool.MpoolUpdate, error)
+	MpoolSub(ctx context.Context) (<-chan types.MpoolUpdate, error)
 	// Rule[perm:read]
-	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *apitypes.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
+	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *types.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
 	// Rule[perm:read]
-	GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*apitypes.EstimateMessage, fromNonce uint64, tsk types.TipSetKey) ([]*apitypes.EstimateResult, error)
+	GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*types.EstimateMessage, fromNonce uint64, tsk types.TipSetKey) ([]*types.EstimateResult, error)
 	// Rule[perm:read]
 	GasEstimateFeeCap(ctx context.Context, msg *types.Message, maxqueueblks int64, tsk types.TipSetKey) (big.Int, error)
 	// Rule[perm:read]
@@ -58,11 +56,11 @@ type IMessagePool interface {
 	GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, tsk types.TipSetKey) (int64, error)
 	// MpoolCheckMessages performs logical checks on a batch of messages
 	// Rule[perm:read]
-	MpoolCheckMessages(ctx context.Context, protos []*messagepool.MessagePrototype) ([][]messagepool.MessageCheckStatus, error)
+	MpoolCheckMessages(ctx context.Context, protos []*types.MessagePrototype) ([][]types.MessageCheckStatus, error)
 	// MpoolCheckPendingMessages performs logical checks for all pending messages from a given address
 	// Rule[perm:read]
-	MpoolCheckPendingMessages(ctx context.Context, addr address.Address) ([][]messagepool.MessageCheckStatus, error)
+	MpoolCheckPendingMessages(ctx context.Context, addr address.Address) ([][]types.MessageCheckStatus, error)
 	// MpoolCheckReplaceMessages performs logical checks on pending messages with replacement
 	// Rule[perm:read]
-	MpoolCheckReplaceMessages(ctx context.Context, msg []*types.Message) ([][]messagepool.MessageCheckStatus, error)
+	MpoolCheckReplaceMessages(ctx context.Context, msg []*types.Message) ([][]types.MessageCheckStatus, error)
 }

@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	gengen "github.com/filecoin-project/venus/tools/gengen/util"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // ChainSeed is a generalized struct for configuring node

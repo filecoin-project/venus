@@ -3,7 +3,7 @@ package testhelpers
 import (
 	"testing"
 
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/stretchr/testify/require"
 )
 

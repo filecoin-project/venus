@@ -3,11 +3,10 @@
 package system
 
 import (
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	actors "github.com/filecoin-project/venus/pkg/types/specactors"
-	"golang.org/x/xerrors"
+	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	"github.com/ipfs/go-cid"
-
+	"golang.org/x/xerrors"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -22,7 +21,6 @@ import (
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
-
 )
 
 var (
@@ -53,7 +51,7 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 	case actors.Version7:
 		return make7(store)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
