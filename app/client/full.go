@@ -666,19 +666,20 @@ func (s *IMiningStruct) MinerGetBaseInfo(p0 context.Context, p1 address.Address,
 
 type IMultiSigStruct struct {
 	Internal struct {
-		MsigAddApprove     func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (*messagepool.MessagePrototype, error)                               `perm:"sign"`
-		MsigAddCancel      func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (*messagepool.MessagePrototype, error)                                                   `perm:"sign"`
-		MsigAddPropose     func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*messagepool.MessagePrototype, error)                                                              `perm:"sign"`
-		MsigApprove        func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*messagepool.MessagePrototype, error)                                                                                `perm:"sign"`
-		MsigApproveTxnHash func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 address.Address, p5 types.BigInt, p6 address.Address, p7 uint64, p8 []byte) (*messagepool.MessagePrototype, error) `perm:"sign"`
-		MsigCancel         func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*messagepool.MessagePrototype, error)                     `perm:"sign"`
-		MsigCreate         func(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*messagepool.MessagePrototype, error)                         `perm:"sign"`
-		MsigGetVested      func(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error)                                                                                        `perm:"read"`
-		MsigPropose        func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (*messagepool.MessagePrototype, error)                                `perm:"sign"`
-		MsigRemoveSigner   func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*messagepool.MessagePrototype, error)                                                              `perm:"sign"`
-		MsigSwapApprove    func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 address.Address) (*messagepool.MessagePrototype, error)                    `perm:"sign"`
-		MsigSwapCancel     func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (*messagepool.MessagePrototype, error)                                        `perm:"sign"`
-		MsigSwapPropose    func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (*messagepool.MessagePrototype, error)                                                   `perm:"sign"`
+		MsigAddApprove     func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (*messagepool.MessagePrototype, error)            `perm:"sign"`
+		MsigAddCancel      func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (*messagepool.MessagePrototype, error)                                `perm:"sign"`
+		MsigAddPropose     func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*messagepool.MessagePrototype, error)                                           `perm:"sign"`
+		MsigApprove        func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*messagepool.MessagePrototype, error)                                                             `perm:"sign"`
+		MsigApproveTxnHash func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*messagepool.MessagePrototype, error)                                                             `perm:"sign"`
+		MsigCancel         func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*messagepool.MessagePrototype, error)                                                             `perm:"sign"`
+		MsigCancelTxnHash  func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*messagepool.MessagePrototype, error)  `perm:"read"`
+		MsigCreate         func(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*messagepool.MessagePrototype, error)      `perm:"sign"`
+		MsigGetVested      func(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error)                                                                     `perm:"read"`
+		MsigPropose        func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (*messagepool.MessagePrototype, error)             `perm:"sign"`
+		MsigRemoveSigner   func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*messagepool.MessagePrototype, error)                                           `perm:"sign"`
+		MsigSwapApprove    func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 address.Address) (*messagepool.MessagePrototype, error) `perm:"sign"`
+		MsigSwapCancel     func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (*messagepool.MessagePrototype, error)                     `perm:"sign"`
+		MsigSwapPropose    func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (*messagepool.MessagePrototype, error)                                `perm:"sign"`
 	}
 }
 
@@ -698,12 +699,16 @@ func (s *IMultiSigStruct) MsigApprove(p0 context.Context, p1 address.Address, p2
 	return s.Internal.MsigApprove(p0, p1, p2, p3)
 }
 
-func (s *IMultiSigStruct) MsigApproveTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 address.Address, p5 types.BigInt, p6 address.Address, p7 uint64, p8 []byte) (*messagepool.MessagePrototype, error) {
-	return s.Internal.MsigApproveTxnHash(p0, p1, p2, p3, p4, p5, p6, p7, p8)
+func (s *IMultiSigStruct) MsigApproveTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*messagepool.MessagePrototype, error) {
+	return s.Internal.MsigApproveTxnHash(p0, p1, p2, p3)
 }
 
-func (s *IMultiSigStruct) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*messagepool.MessagePrototype, error) {
-	return s.Internal.MsigCancel(p0, p1, p2, p3, p4, p5, p6, p7)
+func (s *IMultiSigStruct) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*messagepool.MessagePrototype, error) {
+	return s.Internal.MsigCancel(p0, p1, p2, p3)
+}
+
+func (s *IMultiSigStruct) MsigCancelTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*messagepool.MessagePrototype, error) {
+	return s.Internal.MsigCancelTxnHash(p0, p1, p2, p3, p4, p5, p6, p7)
 }
 
 func (s *IMultiSigStruct) MsigCreate(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*messagepool.MessagePrototype, error) {
@@ -741,7 +746,7 @@ type INetworkStruct struct {
 		NetworkFindPeer           func(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error)                      `perm:"read"`
 		NetworkFindProvidersAsync func(p0 context.Context, p1 cid.Cid, p2 int) <-chan peer.AddrInfo                `perm:"read"`
 		NetworkGetBandwidthStats  func(p0 context.Context) metrics.Stats                                           `perm:"admin"`
-		NetworkGetClosestPeers    func(p0 context.Context, p1 string) (<-chan peer.ID, error)                      `perm:"read"`
+		NetworkGetClosestPeers    func(p0 context.Context, p1 string) ([]peer.ID, error)                           `perm:"read"`
 		NetworkGetPeerAddresses   func(p0 context.Context) []ma.Multiaddr                                          `perm:"admin"`
 		NetworkGetPeerID          func(p0 context.Context) peer.ID                                                 `perm:"admin"`
 		NetworkPeers              func(p0 context.Context, p1 bool, p2 bool, p3 bool) (*net.SwarmConnInfos, error) `perm:"read"`
@@ -769,7 +774,7 @@ func (s *INetworkStruct) NetworkGetBandwidthStats(p0 context.Context) metrics.St
 	return s.Internal.NetworkGetBandwidthStats(p0)
 }
 
-func (s *INetworkStruct) NetworkGetClosestPeers(p0 context.Context, p1 string) (<-chan peer.ID, error) {
+func (s *INetworkStruct) NetworkGetClosestPeers(p0 context.Context, p1 string) ([]peer.ID, error) {
 	return s.Internal.NetworkGetClosestPeers(p0, p1)
 }
 

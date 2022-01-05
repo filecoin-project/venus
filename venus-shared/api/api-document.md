@@ -83,6 +83,7 @@
   * [MsigApprove](#MsigApprove)
   * [MsigApproveTxnHash](#MsigApproveTxnHash)
   * [MsigCancel](#MsigCancel)
+  * [MsigCancelTxnHash](#MsigCancelTxnHash)
   * [MsigCreate](#MsigCreate)
   * [MsigGetVested](#MsigGetVested)
   * [MsigPropose](#MsigPropose)
@@ -2683,6 +2684,42 @@ Response:
 ```
 
 ### MsigCancel
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "t01234",
+  42,
+  "t01234"
+]
+```
+
+Response:
+```json
+{
+  "Message": {
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    },
+    "Version": 42,
+    "To": "t01234",
+    "From": "t01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ=="
+  },
+  "ValidNonce": true
+}
+```
+
+### MsigCancelTxnHash
 
 
 Perms: sign

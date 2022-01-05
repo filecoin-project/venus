@@ -24,6 +24,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- ClientDataTransferUpdates
 	- ClientDealPieceCID
 	- ClientDealSize
+	- ClientExport
 	- ClientFindData
 	- ClientGenCar
 	- ClientGetDealInfo
@@ -42,7 +43,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- ClientRestartDataTransfer
 	- ClientRetrieve
 	- ClientRetrieveTryRestartInsufficientFunds
-	- ClientRetrieveWithEvents
+	- ClientRetrieveWait
 	- ClientStartDeal
 	- ClientStatelessDeal
 	- Closing
@@ -109,8 +110,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ NetworkGetPeerID
 	+ NetworkPeers
 	- NodeStatus
-	- PaychGetWaitReady
-	+ PaychGetWaitsigny
 	+ ProtocolParameters
 	+ ResolveToKeyAddr
 	- Session
@@ -173,14 +172,14 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- SyncUnmarkAllBad
 	- SyncUnmarkBad
 	- SyncValidateTipset
+	+ SyncerTracker
 	+ UnLockWallet
 	+ Verify
 	+ VerifyEntry
 	> Version {[func(context.Context) (chain.Version, error) <> func(context.Context) (api.APIVersion, error)] base=func out type: #0 input; nested={[chain.Version <> api.APIVersion] base=struct field; nested={[chain.Version <> api.APIVersion] base=exported fields count: 2 != 3; nested=nil}}}
 	+ WalletAddresses
 	- WalletDelete
-	> WalletExport {[func(address.Address, string) (*wallet.KeyInfo, error) <> func(context.Context, address.Address) (*types.KeyInfo, error)] base=func in type: #0 input; nested={[address.Address <> context.Context] base=type kinds: struct != interface; nested=nil}}
-	> WalletImport {[func(*wallet.KeyInfo) (address.Address, error) <> func(context.Context, *types.KeyInfo) (address.Address, error)] base=func in num: 1 != 2; nested=nil}
+	> WalletExport {[func(context.Context, address.Address, string) (*wallet.KeyInfo, error) <> func(context.Context, address.Address) (*types.KeyInfo, error)] base=func in num: 3 != 2; nested=nil}
 	- WalletList
 	- WalletNew
 	+ WalletNewAddress

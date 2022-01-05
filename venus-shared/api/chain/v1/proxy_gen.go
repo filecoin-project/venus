@@ -718,7 +718,9 @@ type IMultiSigStruct struct {
 
 		MsigApproveTxnHash func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 address.Address, p5 chain.BigInt, p6 address.Address, p7 uint64, p8 []byte) (*messagepool.MessagePrototype, error) `perm:"sign"`
 
-		MsigCancel func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 chain.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*messagepool.MessagePrototype, error) `perm:"sign"`
+		MsigCancel func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*messagepool.MessagePrototype, error) `perm:"sign"`
+
+		MsigCancelTxnHash func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 chain.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*messagepool.MessagePrototype, error) `perm:"sign"`
 
 		MsigCreate func(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 chain.BigInt, p5 address.Address, p6 chain.BigInt) (*messagepool.MessagePrototype, error) `perm:"sign"`
 
@@ -756,8 +758,12 @@ func (s *IMultiSigStruct) MsigApproveTxnHash(p0 context.Context, p1 address.Addr
 	return s.Internal.MsigApproveTxnHash(p0, p1, p2, p3, p4, p5, p6, p7, p8)
 }
 
-func (s *IMultiSigStruct) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 chain.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*messagepool.MessagePrototype, error) {
-	return s.Internal.MsigCancel(p0, p1, p2, p3, p4, p5, p6, p7)
+func (s *IMultiSigStruct) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*messagepool.MessagePrototype, error) {
+	return s.Internal.MsigCancel(p0, p1, p2, p3)
+}
+
+func (s *IMultiSigStruct) MsigCancelTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 chain.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*messagepool.MessagePrototype, error) {
+	return s.Internal.MsigCancelTxnHash(p0, p1, p2, p3, p4, p5, p6, p7)
 }
 
 func (s *IMultiSigStruct) MsigCreate(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 chain.BigInt, p5 address.Address, p6 chain.BigInt) (*messagepool.MessagePrototype, error) {

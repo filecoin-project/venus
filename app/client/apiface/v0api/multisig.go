@@ -32,10 +32,13 @@ type IMultiSig interface {
 	MsigSwapCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, oldAdd address.Address, newAdd address.Address) (cid.Cid, error)
 	// Rule[perm:sign]
 	MsigApprove(ctx context.Context, msig address.Address, txID uint64, src address.Address) (cid.Cid, error)
+	// MsigCancel cancels a previously-proposed multisig message
+	// It takes the following params: <multisig address>, <proposed transaction ID>, <recipient address>, <value to transfer>,
+	// <sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
 	// Rule[perm:sign]
-	MsigApproveTxnHash(ctx context.Context, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error)
+	MsigCancelTxnHash(context.Context, address.Address, uint64, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error)
 	// Rule[perm:sign]
-	MsigCancel(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error)
+	MsigCancel(ctx context.Context, msig address.Address, txID uint64, src address.Address) (cid.Cid, error)
 	// Rule[perm:sign]
 	MsigRemoveSigner(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (cid.Cid, error)
 	// Rule[perm:read]

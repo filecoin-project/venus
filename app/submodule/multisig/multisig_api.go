@@ -113,7 +113,11 @@ func (a *multiSig) MsigAddCancel(ctx context.Context, msig address.Address, src 
 		return nil, actErr
 	}
 
-	return a.MsigCancel(ctx, msig, txID, msig, big.Zero(), src, uint64(multisig.Methods.AddSigner), enc)
+	return a.MsigCancelTxnHash(ctx, msig, txID, msig, big.Zero(), src, uint64(multisig.Methods.AddSigner), enc)
+}
+
+func (a *multiSig) MsigCancelTxnHash(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*messagepool.MessagePrototype, error) {
+	return a.msigApproveOrCancelTxnHash(ctx, MsigCancel, msig, txID, src, to, amt, src, method, params)
 }
 
 // MsigSwapPropose proposes swapping 2 signers in the multisig
@@ -146,7 +150,7 @@ func (a *multiSig) MsigSwapCancel(ctx context.Context, msig address.Address, src
 		return nil, actErr
 	}
 
-	return a.MsigCancel(ctx, msig, txID, msig, big.Zero(), src, uint64(multisig.Methods.SwapSigner), enc)
+	return a.MsigCancelTxnHash(ctx, msig, txID, msig, big.Zero(), src, uint64(multisig.Methods.SwapSigner), enc)
 }
 
 // MsigSwapCancel cancels a previously proposed SwapSigner message
@@ -169,8 +173,8 @@ func (a *multiSig) MsigApproveTxnHash(ctx context.Context, msig address.Address,
 // MsigCancel cancels a previously-proposed multisig message
 // It takes the following params: <multisig address>, <proposed transaction ID>, <recipient address>, <value to transfer>,
 // <sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
-func (a *multiSig) MsigCancel(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*messagepool.MessagePrototype, error) {
-	return a.msigApproveOrCancelTxnHash(ctx, MsigCancel, msig, txID, src, to, amt, src, method, params)
+func (a *multiSig) MsigCancel(ctx context.Context, msig address.Address, txID uint64, src address.Address) (*messagepool.MessagePrototype, error) {
+	return a.msigApproveOrCancelSimple(ctx, MsigCancel, msig, txID, src)
 }
 
 // MsigRemoveSigner proposes the removal of a signer from the multisig.

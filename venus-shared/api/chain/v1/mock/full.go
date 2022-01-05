@@ -1064,18 +1064,33 @@ func (mr *MockFullNodeMockRecorder) MsigApproveTxnHash(arg0, arg1, arg2, arg3, a
 }
 
 // MsigCancel mocks base method.
-func (m *MockFullNode) MsigCancel(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 address.Address, arg4 big.Int, arg5 address.Address, arg6 uint64, arg7 []byte) (*messagepool.MessagePrototype, error) {
+func (m *MockFullNode) MsigCancel(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 address.Address) (*messagepool.MessagePrototype, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MsigCancel", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+	ret := m.ctrl.Call(m, "MsigCancel", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(*messagepool.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // MsigCancel indicates an expected call of MsigCancel.
-func (mr *MockFullNodeMockRecorder) MsigCancel(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) MsigCancel(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MsigCancel", reflect.TypeOf((*MockFullNode)(nil).MsigCancel), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MsigCancel", reflect.TypeOf((*MockFullNode)(nil).MsigCancel), arg0, arg1, arg2, arg3)
+}
+
+// MsigCancelTxnHash mocks base method.
+func (m *MockFullNode) MsigCancelTxnHash(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 address.Address, arg4 big.Int, arg5 address.Address, arg6 uint64, arg7 []byte) (*messagepool.MessagePrototype, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MsigCancelTxnHash", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+	ret0, _ := ret[0].(*messagepool.MessagePrototype)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MsigCancelTxnHash indicates an expected call of MsigCancelTxnHash.
+func (mr *MockFullNodeMockRecorder) MsigCancelTxnHash(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MsigCancelTxnHash", reflect.TypeOf((*MockFullNode)(nil).MsigCancelTxnHash), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 }
 
 // MsigCreate mocks base method.
@@ -2387,18 +2402,18 @@ func (mr *MockFullNodeMockRecorder) WalletDefaultAddress(arg0 interface{}) *gomo
 }
 
 // WalletExport mocks base method.
-func (m *MockFullNode) WalletExport(arg0 address.Address, arg1 string) (*wallet.KeyInfo, error) {
+func (m *MockFullNode) WalletExport(arg0 context.Context, arg1 address.Address, arg2 string) (*wallet.KeyInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WalletExport", arg0, arg1)
+	ret := m.ctrl.Call(m, "WalletExport", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*wallet.KeyInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // WalletExport indicates an expected call of WalletExport.
-func (mr *MockFullNodeMockRecorder) WalletExport(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) WalletExport(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WalletExport", reflect.TypeOf((*MockFullNode)(nil).WalletExport), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WalletExport", reflect.TypeOf((*MockFullNode)(nil).WalletExport), arg0, arg1, arg2)
 }
 
 // WalletHas mocks base method.
@@ -2417,33 +2432,33 @@ func (mr *MockFullNodeMockRecorder) WalletHas(arg0, arg1 interface{}) *gomock.Ca
 }
 
 // WalletImport mocks base method.
-func (m *MockFullNode) WalletImport(arg0 *wallet.KeyInfo) (address.Address, error) {
+func (m *MockFullNode) WalletImport(arg0 context.Context, arg1 *wallet.KeyInfo) (address.Address, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WalletImport", arg0)
+	ret := m.ctrl.Call(m, "WalletImport", arg0, arg1)
 	ret0, _ := ret[0].(address.Address)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // WalletImport indicates an expected call of WalletImport.
-func (mr *MockFullNodeMockRecorder) WalletImport(arg0 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) WalletImport(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WalletImport", reflect.TypeOf((*MockFullNode)(nil).WalletImport), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WalletImport", reflect.TypeOf((*MockFullNode)(nil).WalletImport), arg0, arg1)
 }
 
 // WalletNewAddress mocks base method.
-func (m *MockFullNode) WalletNewAddress(arg0 byte) (address.Address, error) {
+func (m *MockFullNode) WalletNewAddress(arg0 context.Context, arg1 byte) (address.Address, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WalletNewAddress", arg0)
+	ret := m.ctrl.Call(m, "WalletNewAddress", arg0, arg1)
 	ret0, _ := ret[0].(address.Address)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // WalletNewAddress indicates an expected call of WalletNewAddress.
-func (mr *MockFullNodeMockRecorder) WalletNewAddress(arg0 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) WalletNewAddress(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WalletNewAddress", reflect.TypeOf((*MockFullNode)(nil).WalletNewAddress), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WalletNewAddress", reflect.TypeOf((*MockFullNode)(nil).WalletNewAddress), arg0, arg1)
 }
 
 // WalletSetDefault mocks base method.

@@ -46,7 +46,6 @@
 			"MsigAddCancel": "sign",
 			"MsigAddPropose": "sign",
 			"MsigApprove": "sign",
-			"MsigApproveTxnHash": "sign",
 			"MsigCancel": "sign",
 			"MsigCreate": "sign",
 			"MsigGetVested": "read",
@@ -150,6 +149,7 @@
 			"MpoolPublishByAddr": "write",
 			"MpoolPublishMessage": "write",
 			"MpoolSelects": "read",
+			"MsigCancelTxnHash": "sign",
 			"NetworkConnect": "read",
 			"NetworkFindPeer": "read",
 			"NetworkFindProvidersAsync": "read",
@@ -215,6 +215,7 @@
 			"MarketReleaseFunds": "sign",
 			"MarketReserveFunds": "sign",
 			"MarketWithdraw": "sign",
+			"MsigApproveTxnHash": "sign",
 			"MsigGetAvailableBalance": "read",
 			"MsigGetPending": "read",
 			"MsigGetVestingSchedule": "read",
@@ -481,7 +482,6 @@
 			"MarketReleaseFunds": "sign",
 			"MarketReserveFunds": "sign",
 			"MarketWithdraw": "sign",
-			"MsigCancelTxnHash": "sign",
 			"MsigGetAvailableBalance": "read",
 			"MsigGetPending": "read",
 			"MsigGetVestingSchedule": "read",
@@ -524,6 +524,8 @@
 			"WalletValidateAddress": "read",
 			"WalletVerify": "read"
 		},
-		"Gap": {}
+		"Gap": {
+			"MsigCancelTxnHash": "venus:read lotus:sign"
+		}
 	}
 }

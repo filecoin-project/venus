@@ -2,7 +2,6 @@ package apiface
 
 import (
 	"context"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	types "github.com/filecoin-project/venus/venus-shared/chain"
@@ -20,6 +19,10 @@ type IMultiSig interface {
 	MsigAddApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, newAdd address.Address, inc bool) (*messagepool.MessagePrototype, error)
 	// Rule[perm:sign]
 	MsigAddCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, newAdd address.Address, inc bool) (*messagepool.MessagePrototype, error)
+	// MsigCancel cancels a previously-proposed multisig message
+	// It takes the following params: <multisig address>, <proposed transaction ID>, <recipient address>, <value to transfer>,
+	// <sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
+	MsigCancelTxnHash(context.Context, address.Address, uint64, address.Address, types.BigInt, address.Address, uint64, []byte) (*messagepool.MessagePrototype, error)
 	// Rule[perm:sign]
 	MsigSwapPropose(ctx context.Context, msig address.Address, src address.Address, oldAdd address.Address, newAdd address.Address) (*messagepool.MessagePrototype, error)
 	// Rule[perm:sign]
@@ -29,9 +32,9 @@ type IMultiSig interface {
 	// Rule[perm:sign]
 	MsigApprove(ctx context.Context, msig address.Address, txID uint64, src address.Address) (*messagepool.MessagePrototype, error)
 	// Rule[perm:sign]
-	MsigApproveTxnHash(ctx context.Context, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*messagepool.MessagePrototype, error)
+	MsigApproveTxnHash(ctx context.Context, msig address.Address, txID uint64, src address.Address) (*messagepool.MessagePrototype, error)
 	// Rule[perm:sign]
-	MsigCancel(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*messagepool.MessagePrototype, error)
+	MsigCancel(ctx context.Context, msig address.Address, txID uint64, src address.Address) (*messagepool.MessagePrototype, error)
 	// Rule[perm:sign]
 	MsigRemoveSigner(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (*messagepool.MessagePrototype, error)
 	// Rule[perm:read]
