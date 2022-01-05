@@ -67,8 +67,17 @@ func (a *WrapperV1IMultiSig) MsigApproveTxnHash(ctx context.Context, msig addres
 	return a.executePrototype(ctx, p)
 }
 
-func (a *WrapperV1IMultiSig) MsigCancel(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error) {
-	p, err := a.IMultiSig.MsigCancel(ctx, msig, txID, to, amt, src, method, params)
+func (a *WrapperV1IMultiSig) MsigCancel(ctx context.Context, msig address.Address, txID uint64, src address.Address) (cid.Cid, error) {
+	p, err := a.IMultiSig.MsigCancel(ctx, msig, txID, src)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("creating prototype: %w", err)
+	}
+
+	return a.executePrototype(ctx, p)
+}
+
+func (a *WrapperV1IMultiSig) MsigCancelTxnHash(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error) {
+	p, err := a.IMultiSig.MsigCancelTxnHash(ctx, msig, txID, to, amt, src, method, params)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("creating prototype: %w", err)
 	}

@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 	"reflect"
 	"sort"
 	"strconv"
@@ -14,8 +16,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
-	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 	"github.com/filecoin-project/venus/app/node"
 	sbchain "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -47,6 +47,7 @@ var multisigCmd = &cmds.Command{
 		"approve":           msigApproveCmd,
 		"add-propose":       msigAddProposeCmd,
 		"add-approve":       msigAddApproveCmd,
+		"cancel":            msigCancelCmd,
 		"add-cancel":        msigAddCancelCmd,
 		"swap-propose":      msigSwapProposeCmd,
 		"swap-approve":      msigSwapApproveCmd,
@@ -752,6 +753,98 @@ var msigAddCancelCmd = &cmds.Command{
 	},
 }
 
+var msigCancelCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Cancel a multisig message",
+		Usage:   "<from> <multisigAddress> <txId> [destination value [methodId methodParams]]",
+	},
+	Options: []cmds.Option{
+		cmds.StringOption("from", "account to send the propose message from)"),
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("multisigAddress", false, false, "a multisig address which contains from"),
+		cmds.StringArg("txId", false, false, "msig transaction id"),
+		cmds.StringArg("destinationAddress", false, false, "recipient address"),
+		cmds.StringArg("value", false, false, "value to transfer"),
+		cmds.StringArg("methodId", false, false, "method to call in the proposed message"),
+		cmds.StringArg("methodParams", false, false, "params to include in the proposed message"),
+	},
+	Run: func(req *cmds.Request, emitter cmds.ResponseEmitter, env cmds.Environment) error {
+		var argLen = len(req.Arguments)
+		if argLen < 2 {
+			return fmt.Errorf("must pass at least multisig address and message ID")
+		}
+
+		if argLen > 2 && argLen < 4 {
+			return fmt.Errorf("usage: msig cancel <msig addr> <message ID> <desination> <value>")
+		}
+
+		if argLen > 4 && argLen < 6 {
+			return fmt.Errorf("usage: msig cancel <msig addr> <message ID> <desination> <value> [ <method> <params> ]")
+		}
+
+		msig, err := address.NewFromString(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		txid, err := strconv.ParseUint(req.Arguments[1], 10, 64)
+		if err != nil {
+			return err
+		}
+
+		from, err := reqFromWithDefault(req, env)
+		if err != nil {
+			return err
+		}
+
+		api := env.(*node.Env)
+		ctx := ReqContext(req.Context)
+		var msgCid cid.Cid
+		if argLen == 2 {
+			if msgCid, err = api.MultiSigAPI.MsigCancel(ctx, msig, txid, from); err != nil {
+				return err
+			}
+		} else {
+			dest, err := address.NewFromString(req.Arguments[2])
+			if err != nil {
+				return err
+			}
+
+			value, err := types.ParseFIL(req.Arguments[3])
+			if err != nil {
+				return err
+			}
+
+			var method uint64
+			var params []byte
+			if argLen == 6 {
+				if method, err = strconv.ParseUint(req.Arguments[4], 10, 64); err != nil {
+					return err
+				}
+				if params, err = hex.DecodeString(req.Arguments[5]); err != nil {
+					return err
+				}
+			}
+			if msgCid, err = api.MultiSigAPI.MsigCancelTxnHash(ctx, msig, txid, dest, types.BigInt(value),
+				from, method, params); err != nil {
+				return err
+			}
+		}
+		fmt.Println("sent cancel in message: ", msgCid.String())
+		wait, err := api.ChainAPI.StateWaitMsg(ctx, msgCid, reqConfidence(req), constants.Finality, true)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("cancel returned exit %d:%s", wait.Receipt.ExitCode,
+				wait.Receipt.ExitCode.String())
+		}
+		return nil
+	},
+}
+
 var msigSwapProposeCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Propose to swap signers",
@@ -1164,7 +1257,7 @@ var msigLockCancelCmd = &cmds.Command{
 			return actErr
 		}
 
-		msgCid, err := env.(*node.Env).MultiSigAPI.MsigCancel(ctx, msig, txid, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
+		msgCid, err := env.(*node.Env).MultiSigAPI.MsigCancelTxnHash(ctx, msig, txid, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
 		if err != nil {
 			return err
 		}

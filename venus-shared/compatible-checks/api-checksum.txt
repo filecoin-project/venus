@@ -1,6 +1,6 @@
 v0api.FullNode:
-	AuthNew:	In=2,	Out=2,	CheckSum=faeef9dc68d6f2533bdf7d8f22ef902d
-	AuthVerify:	In=2,	Out=2,	CheckSum=3cb63db9d6f8869fd4e9da953cc9cdcb
+	AuthNew:	In=2,	Out=2,	CheckSum=248fe5ed43f2e294ea5d71596b9272ac
+	AuthVerify:	In=2,	Out=2,	CheckSum=c156d52455ed5f2d227e08a518d5f8a1
 	BeaconGetEntry:	In=2,	Out=2,	CheckSum=c74f5c0f4039207ea45c11bfe3319c38
 	ChainDeleteObj:	In=2,	Out=1,	CheckSum=50d40a0afa31dabb8a61693aabea61b7
 	ChainExport:	In=4,	Out=2,	CheckSum=aaf98926e0ba36ec808a96de76a3cd98
@@ -46,9 +46,9 @@ v0api.FullNode:
 	ClientQueryAsk:	In=3,	Out=2,	CheckSum=2d06866277cf890ee42baa4bacffb2fc
 	ClientRemoveImport:	In=2,	Out=1,	CheckSum=a3fcb78bf5bac553baac584941c1771f
 	ClientRestartDataTransfer:	In=4,	Out=1,	CheckSum=074398536c75e25946c7f709574e0cdc
-	ClientRetrieve:	In=3,	Out=1,	CheckSum=33b5ec01d4c4b4a635ab1e7ba1db7387
+	ClientRetrieve:	In=3,	Out=1,	CheckSum=3b17e80e3a84f40959f87bff6359a49d
 	ClientRetrieveTryRestartInsufficientFunds:	In=2,	Out=1,	CheckSum=98613e8d41d3a2e52b37f97908560bd9
-	ClientRetrieveWithEvents:	In=3,	Out=2,	CheckSum=c98dd52dccd96ec2fa8be621fa35a8a8
+	ClientRetrieveWithEvents:	In=3,	Out=2,	CheckSum=56e4fa49192938527c1f089b446f0860
 	ClientStartDeal:	In=2,	Out=2,	CheckSum=85256e9ef86dbb8ebeb76097c3eea078
 	ClientStatelessDeal:	In=2,	Out=2,	CheckSum=85256e9ef86dbb8ebeb76097c3eea078
 	Closing:	In=1,	Out=2,	CheckSum=3e0dae65a2378c12be14cee8a60a3bfe
@@ -207,8 +207,8 @@ v0api.FullNode:
 	WalletVerify:	In=4,	Out=2,	CheckSum=9b22231e95efdfb94d9d55038f500636
 
 api.FullNode:
-	AuthNew:	In=2,	Out=2,	CheckSum=faeef9dc68d6f2533bdf7d8f22ef902d
-	AuthVerify:	In=2,	Out=2,	CheckSum=3cb63db9d6f8869fd4e9da953cc9cdcb
+	AuthNew:	In=2,	Out=2,	CheckSum=248fe5ed43f2e294ea5d71596b9272ac
+	AuthVerify:	In=2,	Out=2,	CheckSum=c156d52455ed5f2d227e08a518d5f8a1
 	BeaconGetEntry:	In=2,	Out=2,	CheckSum=c74f5c0f4039207ea45c11bfe3319c38
 	ChainBlockstoreInfo:	In=1,	Out=2,	CheckSum=09640e20c6d71c3e96c7a56c8698acc9
 	ChainCheckBlockstore:	In=1,	Out=1,	CheckSum=c39be30cc5a8826024fcf4d23e7017d6
@@ -239,6 +239,7 @@ api.FullNode:
 	ClientDataTransferUpdates:	In=1,	Out=2,	CheckSum=2d33b419e4b215c06ab0e8b66b5f8430
 	ClientDealPieceCID:	In=2,	Out=2,	CheckSum=93537a844ba6b74ec1ce82c887359a75
 	ClientDealSize:	In=2,	Out=2,	CheckSum=cca1dd5f58136af28546bdbdef2f948a
+	ClientExport:	In=3,	Out=1,	CheckSum=77c3a3632e06654aee2dade7aa467433
 	ClientFindData:	In=3,	Out=2,	CheckSum=232da9eb987d92a76b37572c8f44bf53
 	ClientGenCar:	In=3,	Out=1,	CheckSum=b8a0c89fc2c7c16464ac968865e9c156
 	ClientGetDealInfo:	In=2,	Out=2,	CheckSum=e67f0e7b88aff099976b0f275b601c9c
@@ -255,9 +256,9 @@ api.FullNode:
 	ClientQueryAsk:	In=3,	Out=2,	CheckSum=2d06866277cf890ee42baa4bacffb2fc
 	ClientRemoveImport:	In=2,	Out=1,	CheckSum=a3fcb78bf5bac553baac584941c1771f
 	ClientRestartDataTransfer:	In=4,	Out=1,	CheckSum=074398536c75e25946c7f709574e0cdc
-	ClientRetrieve:	In=3,	Out=1,	CheckSum=33b5ec01d4c4b4a635ab1e7ba1db7387
+	ClientRetrieve:	In=2,	Out=2,	CheckSum=b941d6f05cbec209e2f347b6826717e1
 	ClientRetrieveTryRestartInsufficientFunds:	In=2,	Out=1,	CheckSum=98613e8d41d3a2e52b37f97908560bd9
-	ClientRetrieveWithEvents:	In=3,	Out=2,	CheckSum=c98dd52dccd96ec2fa8be621fa35a8a8
+	ClientRetrieveWait:	In=2,	Out=1,	CheckSum=d289f4c3758ed7d6ab991b2cf569c969
 	ClientStartDeal:	In=2,	Out=2,	CheckSum=85256e9ef86dbb8ebeb76097c3eea078
 	ClientStatelessDeal:	In=2,	Out=2,	CheckSum=85256e9ef86dbb8ebeb76097c3eea078
 	Closing:	In=1,	Out=2,	CheckSum=3e0dae65a2378c12be14cee8a60a3bfe
@@ -299,7 +300,8 @@ api.FullNode:
 	MsigAddPropose:	In=5,	Out=2,	CheckSum=801a2539853f3e7206fd87fc4171c40b
 	MsigApprove:	In=4,	Out=2,	CheckSum=3384d4133b5559461f919c3bdb1dac41
 	MsigApproveTxnHash:	In=9,	Out=2,	CheckSum=9a7460af699e6aa82452157078046018
-	MsigCancel:	In=8,	Out=2,	CheckSum=912010a9da971230c20e5503503e33e2
+	MsigCancel:	In=4,	Out=2,	CheckSum=3384d4133b5559461f919c3bdb1dac41
+	MsigCancelTxnHash:	In=8,	Out=2,	CheckSum=912010a9da971230c20e5503503e33e2
 	MsigCreate:	In=7,	Out=2,	CheckSum=3b8196718c58238e8579cd1e2b8368d9
 	MsigGetAvailableBalance:	In=3,	Out=2,	CheckSum=a05010da3c73edfba49c3b5d28a216cd
 	MsigGetPending:	In=3,	Out=2,	CheckSum=895d889866adf330c83b8dffdbd27fac

@@ -651,19 +651,19 @@ func (s *IMiningStruct) MinerGetBaseInfo(p0 context.Context, p1 address.Address,
 
 type IMultiSigStruct struct {
 	Internal struct {
-		MsigAddApprove     func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (cid.Cid, error)                               `perm:"sign"`
-		MsigAddCancel      func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (cid.Cid, error)                                                   `perm:"sign"`
-		MsigAddPropose     func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (cid.Cid, error)                                                              `perm:"sign"`
-		MsigApprove        func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (cid.Cid, error)                                                                                `perm:"sign"`
-		MsigApproveTxnHash func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 address.Address, p5 types.BigInt, p6 address.Address, p7 uint64, p8 []byte) (cid.Cid, error) `perm:"sign"`
-		MsigCancel         func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (cid.Cid, error)                     `perm:"sign"`
-		MsigCreate         func(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (cid.Cid, error)                         `perm:"sign"`
-		MsigGetVested      func(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error)                                                                  `perm:"read"`
-		MsigPropose        func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (cid.Cid, error)                                `perm:"sign"`
-		MsigRemoveSigner   func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (cid.Cid, error)                                                              `perm:"sign"`
-		MsigSwapApprove    func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 address.Address) (cid.Cid, error)                    `perm:"sign"`
-		MsigSwapCancel     func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (cid.Cid, error)                                        `perm:"sign"`
-		MsigSwapPropose    func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (cid.Cid, error)                                                   `perm:"sign"`
+		MsigAddApprove    func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (cid.Cid, error)            `perm:"sign"`
+		MsigAddCancel     func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (cid.Cid, error)                                `perm:"sign"`
+		MsigAddPropose    func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (cid.Cid, error)                                           `perm:"sign"`
+		MsigApprove       func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (cid.Cid, error)                                                             `perm:"sign"`
+		MsigCancel        func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (cid.Cid, error)                                                             `perm:"sign"`
+		MsigCancelTxnHash func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (cid.Cid, error)  `perm:"sign"`
+		MsigCreate        func(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (cid.Cid, error)      `perm:"sign"`
+		MsigGetVested     func(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error)                                               `perm:"read"`
+		MsigPropose       func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (cid.Cid, error)             `perm:"sign"`
+		MsigRemoveSigner  func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (cid.Cid, error)                                           `perm:"sign"`
+		MsigSwapApprove   func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 address.Address) (cid.Cid, error) `perm:"sign"`
+		MsigSwapCancel    func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (cid.Cid, error)                     `perm:"sign"`
+		MsigSwapPropose   func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (cid.Cid, error)                                `perm:"sign"`
 	}
 }
 
@@ -683,12 +683,12 @@ func (s *IMultiSigStruct) MsigApprove(p0 context.Context, p1 address.Address, p2
 	return s.Internal.MsigApprove(p0, p1, p2, p3)
 }
 
-func (s *IMultiSigStruct) MsigApproveTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 address.Address, p5 types.BigInt, p6 address.Address, p7 uint64, p8 []byte) (cid.Cid, error) {
-	return s.Internal.MsigApproveTxnHash(p0, p1, p2, p3, p4, p5, p6, p7, p8)
+func (s *IMultiSigStruct) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (cid.Cid, error) {
+	return s.Internal.MsigCancel(p0, p1, p2, p3)
 }
 
-func (s *IMultiSigStruct) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (cid.Cid, error) {
-	return s.Internal.MsigCancel(p0, p1, p2, p3, p4, p5, p6, p7)
+func (s *IMultiSigStruct) MsigCancelTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (cid.Cid, error) {
+	return s.Internal.MsigCancelTxnHash(p0, p1, p2, p3, p4, p5, p6, p7)
 }
 
 func (s *IMultiSigStruct) MsigCreate(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (cid.Cid, error) {
