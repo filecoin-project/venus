@@ -17,7 +17,7 @@ type TipSetObserver interface {
 }
 
 type IEvent interface {
-	ChainNotify(context.Context) <-chan []*types.HeadChange
+	ChainNotify(context.Context) (<-chan []*types.HeadChange, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*types.BlockMessages, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	ChainGetTipSetAfterHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
