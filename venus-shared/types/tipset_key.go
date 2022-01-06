@@ -139,6 +139,15 @@ func (tsk TipSetKey) Equals(other TipSetKey) bool {
 	return tsk.value == other.value
 }
 
+// TipSetKeyFromBytes wraps an encoded key, validating correct decoding.
+func TipSetKeyFromBytes(encoded []byte) (TipSetKey, error) {
+	_, err := decodeKey(encoded)
+	if err != nil {
+		return TipSetKey{}, err
+	}
+	return TipSetKey{string(encoded)}, nil
+}
+
 func (tsk *TipSetKey) UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
 	scratch := make([]byte, 8)

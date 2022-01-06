@@ -12,11 +12,13 @@ const (
 	FTUnsealed SectorFileType = 1 << iota
 	FTSealed
 	FTCache
+	FTUpdate
+	FTUpdateCache
 
 	FileTypes = iota
 )
 
-var PathTypes = []SectorFileType{FTUnsealed, FTSealed, FTCache}
+var PathTypes = []SectorFileType{FTUnsealed, FTSealed, FTCache, FTUpdate, FTUpdateCache}
 
 const (
 	FTNone SectorFileType = 0
@@ -25,15 +27,21 @@ const (
 const FSOverheadDen = 10
 
 var FSOverheadSeal = map[SectorFileType]int{ // 10x overheads
-	FTUnsealed: FSOverheadDen,
-	FTSealed:   FSOverheadDen,
-	FTCache:    141, // 11 layers + D(2x ssize) + C + R
+	FTUnsealed:    FSOverheadDen,
+	FTSealed:      FSOverheadDen,
+	FTUpdate:      FSOverheadDen,
+	FTUpdateCache: FSOverheadDen * 2,
+	FTCache:       141, // 11 layers + D(2x ssize) + C + R'
 }
 
+// sector size * disk / fs overhead.  FSOverheadDen is like the unit of sector size
+
 var FsOverheadFinalized = map[SectorFileType]int{
-	FTUnsealed: FSOverheadDen,
-	FTSealed:   FSOverheadDen,
-	FTCache:    2,
+	FTUnsealed:    FSOverheadDen,
+	FTSealed:      FSOverheadDen,
+	FTUpdate:      FSOverheadDen * 2, // XXX: we should clear the update cache on Finalize???
+	FTUpdateCache: FSOverheadDen,
+	FTCache:       2,
 }
 
 type SectorFileType int
@@ -46,6 +54,10 @@ func (t SectorFileType) String() string {
 		return "sealed"
 	case FTCache:
 		return "cache"
+	case FTUpdate:
+		return "update"
+	case FTUpdateCache:
+		return "update-cache"
 	default:
 		return fmt.Sprintf("<unknown %d>", t)
 	}
@@ -73,6 +85,24 @@ func (t SectorFileType) SealSpaceUse(ssize abi.SectorSize) (uint64, error) {
 	return need, nil
 }
 
+func (t SectorFileType) StoreSpaceUse(ssize abi.SectorSize) (uint64, error) {
+	var need uint64
+	for _, pathType := range PathTypes {
+		if !t.Has(pathType) {
+			continue
+		}
+
+		oh, ok := FsOverheadFinalized[pathType]
+		if !ok {
+			return 0, xerrors.Errorf("no finalized overhead info for %s", pathType)
+		}
+
+		need += uint64(oh) * uint64(ssize) / FSOverheadDen
+	}
+
+	return need, nil
+}
+
 func (t SectorFileType) All() [FileTypes]bool {
 	var out [FileTypes]bool
 
@@ -86,13 +116,50 @@ func (t SectorFileType) All() [FileTypes]bool {
 type SectorPaths struct {
 	ID abi.SectorID
 
-	Unsealed string
-	Sealed   string
-	Cache    string
+	Unsealed    string
+	Sealed      string
+	Cache       string
+	Update      string
+	UpdateCache string
+}
+
+func ParseSectorID(baseName string) (abi.SectorID, error) {
+	var n abi.SectorNumber
+	var mid abi.ActorID
+	read, err := fmt.Sscanf(baseName, "s-t0%d-%d", &mid, &n)
+	if err != nil {
+		return abi.SectorID{}, xerrors.Errorf("sscanf sector name ('%s'): %w", baseName, err)
+	}
+
+	if read != 2 {
+		return abi.SectorID{}, xerrors.Errorf("parseSectorID expected to scan 2 values, got %d", read)
+	}
+
+	return abi.SectorID{
+		Miner:  mid,
+		Number: n,
+	}, nil
 }
 
 func SectorName(sid abi.SectorID) string {
 	return fmt.Sprintf("s-t0%d-%d", sid.Miner, sid.Number)
+}
+
+func PathByType(sps SectorPaths, fileType SectorFileType) string {
+	switch fileType {
+	case FTUnsealed:
+		return sps.Unsealed
+	case FTSealed:
+		return sps.Sealed
+	case FTCache:
+		return sps.Cache
+	case FTUpdate:
+		return sps.Update
+	case FTUpdateCache:
+		return sps.UpdateCache
+	}
+
+	panic("requested unknown path type")
 }
 
 func SetPathByType(sps *SectorPaths, fileType SectorFileType, p string) {
@@ -103,5 +170,9 @@ func SetPathByType(sps *SectorPaths, fileType SectorFileType, p string) {
 		sps.Sealed = p
 	case FTCache:
 		sps.Cache = p
+	case FTUpdate:
+		sps.Update = p
+	case FTUpdateCache:
+		sps.UpdateCache = p
 	}
 }
