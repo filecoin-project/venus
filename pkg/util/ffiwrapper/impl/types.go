@@ -2,27 +2,19 @@ package impl
 
 import (
 	"context"
-	"io"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
-	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/basicfs"
 	"github.com/filecoin-project/venus/pkg/util/storiface"
 )
 
-type StorageSealer interface {
-	storage.Sealer
-	storage.Storage
-}
-
 type Storage interface {
-	storage.Prover
-	StorageSealer
+	SealPreCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error)
+	SealPreCommit2(ctx context.Context, sector storage.SectorRef, pc1o storage.PreCommit1Out) (storage.SectorCids, error)
 
-	UnsealPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd cid.Cid) error
-	ReadPiece(ctx context.Context, writer io.Writer, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error)
+	FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error
 }
 
 type SectorProvider interface {

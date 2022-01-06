@@ -28,6 +28,8 @@ const (
 	MTClientDeal = MsgType("clientdeal")
 
 	MTProviderDealState = MsgType("providerdealstate")
+
+	MTVerifyAddress = MsgType("verifyaddress")
 )
 
 type MsgMeta struct {
