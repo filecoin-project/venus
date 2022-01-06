@@ -342,7 +342,7 @@ func (msa *minerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context
 	}
 
 	var sTree *tree.State
-	ts, sTree, err = msa.Stmgr.ParentState(ctx, ts)
+	_, sTree, err = msa.Stmgr.ParentState(ctx, ts)
 	if err != nil {
 		return big.Int{}, xerrors.Errorf("ParentState failed:%v", err)
 	}
