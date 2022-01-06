@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"sync"
 	"testing"
 
@@ -70,7 +72,7 @@ func newFakeCS(t *testing.T) *fakeCS {
 		cancel:     cancel,
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
-	fcs.loopNotify(ctx)
+	require.NoError(t, fcs.loopNotify(ctx))
 	return fcs
 }
 
@@ -83,8 +85,11 @@ func (fcs *fakeCS) stop() {
 
 // our observe use a timer and call 'chainhead' to observe chain head change
 // to 'PASS' these tests, we must call 'ChainNotify' to start 'waitSub'
-func (fcs *fakeCS) loopNotify(ctx context.Context) {
-	head := fcs.ChainNotify(ctx)
+func (fcs *fakeCS) loopNotify(ctx context.Context) error {
+	head, err := fcs.ChainNotify(ctx)
+	if err != nil {
+		return err
+	}
 	go func() {
 		for {
 			select {
@@ -94,6 +99,8 @@ func (fcs *fakeCS) loopNotify(ctx context.Context) {
 			}
 		}
 	}()
+
+	return nil
 }
 
 func (fcs *fakeCS) ChainHead(ctx context.Context) (*types.TipSet, error) {
@@ -218,7 +225,7 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 	return ts
 }
 
-func (fcs *fakeCS) ChainNotify(ctx context.Context) <-chan []*types.HeadChange {
+func (fcs *fakeCS) ChainNotify(ctx context.Context) (<-chan []*types.HeadChange, error) {
 	fcs.mu.Lock()
 	defer fcs.mu.Unlock()
 	fcs.callNumber["ChainNotify"] = fcs.callNumber["ChainNotify"] + 1
@@ -226,8 +233,7 @@ func (fcs *fakeCS) ChainNotify(ctx context.Context) <-chan []*types.HeadChange {
 	out := make(chan []*types.HeadChange, 1)
 	if fcs.subCh != nil {
 		close(out)
-		fcs.t.Error("already subscribed to notifications")
-		return out
+		return out, xerrors.Errorf("already subscribed to notifications")
 	}
 
 	best, err := fcs.tsc.ChainHead(ctx)
@@ -239,7 +245,7 @@ func (fcs *fakeCS) ChainNotify(ctx context.Context) <-chan []*types.HeadChange {
 	fcs.subCh = out
 	close(fcs.waitSub)
 
-	return out
+	return out, nil
 }
 
 func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*types.BlockMessages, error) {

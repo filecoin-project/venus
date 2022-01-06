@@ -11,7 +11,7 @@ deps:
 lint:
 	go run ./build/*.go lint
 
-test:
+test: test-venus-shared
 	go run ./build/*.go test -timeout=30m
 
 # WARNING THIS BUILDS A GO PLUGIN AND PLUGINS *DO NOT* WORK ON WINDOWS SYSTEMS
@@ -63,8 +63,6 @@ inline-gen:
 
 test-venus-shared:
 	cd venus-shared && go test -covermode=set ./...
-
-test: gogen test-venus-shared
 
 compatible-all: compatible-api compatible-actor
 
