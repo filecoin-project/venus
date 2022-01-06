@@ -3,11 +3,10 @@ package v0api
 import (
 	"context"
 
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type IMarket interface {
 	// Rule[perm:read]
-	StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]apitypes.MarketBalance, error) //perm:admin
+	StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketBalance, error) //perm:admin
 }

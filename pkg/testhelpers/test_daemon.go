@@ -30,7 +30,7 @@ import (
 
 	"github.com/filecoin-project/venus/build/project"
 	"github.com/filecoin-project/venus/pkg/config"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 const (

@@ -12,8 +12,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	"github.com/filecoin-project/venus/venus-shared/messagepool"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var _ v1api.IMultiSig = &multiSig{}
@@ -50,7 +49,7 @@ func (a *multiSig) messageBuilder(ctx context.Context, from address.Address) (mu
 // MsigCreate creates a multisig wallet
 // It takes the following params: <required number of senders>, <approving addresses>, <unlock duration>
 //<initial balance>, <sender address of the create msg>, <gas price>
-func (a *multiSig) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (*messagepool.MessagePrototype, error) {
+func (a *multiSig) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (*types.MessagePrototype, error) {
 
 	mb, err := a.messageBuilder(ctx, src)
 	if err != nil {
@@ -62,13 +61,13 @@ func (a *multiSig) MsigCreate(ctx context.Context, req uint64, addrs []address.A
 		return nil, err
 	}
 
-	return &messagepool.MessagePrototype{
+	return &types.MessagePrototype{
 		Message:    *msg,
 		ValidNonce: false,
 	}, nil
 }
 
-func (a *multiSig) MsigPropose(ctx context.Context, msig address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*messagepool.MessagePrototype, error) {
+func (a *multiSig) MsigPropose(ctx context.Context, msig address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*types.MessagePrototype, error) {
 
 	mb, err := a.messageBuilder(ctx, src)
 	if err != nil {
@@ -80,13 +79,13 @@ func (a *multiSig) MsigPropose(ctx context.Context, msig address.Address, to add
 		return nil, xerrors.Errorf("failed to create proposal: %w", err)
 	}
 
-	return &messagepool.MessagePrototype{
+	return &types.MessagePrototype{
 		Message:    *msg,
 		ValidNonce: false,
 	}, nil
 }
 
-func (a *multiSig) MsigAddPropose(ctx context.Context, msig address.Address, src address.Address, newAdd address.Address, inc bool) (*messagepool.MessagePrototype, error) {
+func (a *multiSig) MsigAddPropose(ctx context.Context, msig address.Address, src address.Address, newAdd address.Address, inc bool) (*types.MessagePrototype, error) {
 	enc, actErr := serializeAddParams(newAdd, inc)
 	if actErr != nil {
 		return nil, actErr
@@ -95,7 +94,7 @@ func (a *multiSig) MsigAddPropose(ctx context.Context, msig address.Address, src
 	return a.MsigPropose(ctx, msig, msig, big.Zero(), src, uint64(multisig.Methods.AddSigner), enc)
 }
 
-func (a *multiSig) MsigAddApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, newAdd address.Address, inc bool) (*messagepool.MessagePrototype, error) {
+func (a *multiSig) MsigAddApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, newAdd address.Address, inc bool) (*types.MessagePrototype, error) {
 	enc, actErr := serializeAddParams(newAdd, inc)
 	if actErr != nil {
 		return nil, actErr
@@ -107,7 +106,7 @@ func (a *multiSig) MsigAddApprove(ctx context.Context, msig address.Address, src
 // MsigAddApprove approves a previously proposed AddSigner message
 // It takes the following params: <multisig address>, <sender address of the approve msg>, <proposed message ID>,
 // <proposer address>, <new signer>, <whether the number of required signers should be increased>
-func (a *multiSig) MsigAddCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, newAdd address.Address, inc bool) (*messagepool.MessagePrototype, error) {
+func (a *multiSig) MsigAddCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, newAdd address.Address, inc bool) (*types.MessagePrototype, error) {
 	enc, actErr := serializeAddParams(newAdd, inc)
 	if actErr != nil {
 		return nil, actErr
@@ -116,14 +115,14 @@ func (a *multiSig) MsigAddCancel(ctx context.Context, msig address.Address, src 
 	return a.MsigCancelTxnHash(ctx, msig, txID, msig, big.Zero(), src, uint64(multisig.Methods.AddSigner), enc)
 }
 
-func (a *multiSig) MsigCancelTxnHash(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*messagepool.MessagePrototype, error) {
+func (a *multiSig) MsigCancelTxnHash(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*types.MessagePrototype, error) {
 	return a.msigApproveOrCancelTxnHash(ctx, MsigCancel, msig, txID, src, to, amt, src, method, params)
 }
 
 // MsigSwapPropose proposes swapping 2 signers in the multisig
 // It takes the following params: <multisig address>, <sender address of the propose msg>,
 // <old signer>, <new signer>
-func (a *multiSig) MsigSwapPropose(ctx context.Context, msig address.Address, src address.Address, oldAdd address.Address, newAdd address.Address) (*messagepool.MessagePrototype, error) {
+func (a *multiSig) MsigSwapPropose(ctx context.Context, msig address.Address, src address.Address, oldAdd address.Address, newAdd address.Address) (*types.MessagePrototype, error) {
 	enc, actErr := serializeSwapParams(oldAdd, newAdd)
 	if actErr != nil {
 		return nil, actErr
@@ -135,7 +134,7 @@ func (a *multiSig) MsigSwapPropose(ctx context.Context, msig address.Address, sr
 // MsigSwapApprove approves a previously proposed SwapSigner
 // It takes the following params: <multisig address>, <sender address of the approve msg>, <proposed message ID>,
 // <proposer address>, <old signer>, <new signer>
-func (a *multiSig) MsigSwapApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, oldAdd address.Address, newAdd address.Address) (*messagepool.MessagePrototype, error) {
+func (a *multiSig) MsigSwapApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, oldAdd address.Address, newAdd address.Address) (*types.MessagePrototype, error) {
 	enc, actErr := serializeSwapParams(oldAdd, newAdd)
 	if actErr != nil {
 		return nil, actErr
@@ -144,7 +143,7 @@ func (a *multiSig) MsigSwapApprove(ctx context.Context, msig address.Address, sr
 	return a.MsigApproveTxnHash(ctx, msig, txID, proposer, msig, big.Zero(), src, uint64(multisig.Methods.SwapSigner), enc)
 }
 
-func (a *multiSig) MsigSwapCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, oldAdd address.Address, newAdd address.Address) (*messagepool.MessagePrototype, error) {
+func (a *multiSig) MsigSwapCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, oldAdd address.Address, newAdd address.Address) (*types.MessagePrototype, error) {
 	enc, actErr := serializeSwapParams(oldAdd, newAdd)
 	if actErr != nil {
 		return nil, actErr
@@ -156,7 +155,7 @@ func (a *multiSig) MsigSwapCancel(ctx context.Context, msig address.Address, src
 // MsigSwapCancel cancels a previously proposed SwapSigner message
 // It takes the following params: <multisig address>, <sender address of the cancel msg>, <proposed message ID>,
 // <old signer>, <new signer>
-func (a *multiSig) MsigApprove(ctx context.Context, msig address.Address, txID uint64, src address.Address) (*messagepool.MessagePrototype, error) {
+func (a *multiSig) MsigApprove(ctx context.Context, msig address.Address, txID uint64, src address.Address) (*types.MessagePrototype, error) {
 	return a.msigApproveOrCancelSimple(ctx, MsigApprove, msig, txID, src)
 }
 
@@ -166,14 +165,14 @@ func (a *multiSig) MsigApprove(ctx context.Context, msig address.Address, txID u
 // exactly the transaction you think you are.
 // It takes the following params: <multisig address>, <proposed message ID>, <proposer address>, <recipient address>, <value to transfer>,
 // <sender address of the approve msg>, <method to call in the proposed message>, <params to include in the proposed message>
-func (a *multiSig) MsigApproveTxnHash(ctx context.Context, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*messagepool.MessagePrototype, error) {
+func (a *multiSig) MsigApproveTxnHash(ctx context.Context, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*types.MessagePrototype, error) {
 	return a.msigApproveOrCancelTxnHash(ctx, MsigApprove, msig, txID, proposer, to, amt, src, method, params)
 }
 
 // MsigCancel cancels a previously-proposed multisig message
 // It takes the following params: <multisig address>, <proposed transaction ID>, <recipient address>, <value to transfer>,
 // <sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
-func (a *multiSig) MsigCancel(ctx context.Context, msig address.Address, txID uint64, src address.Address) (*messagepool.MessagePrototype, error) {
+func (a *multiSig) MsigCancel(ctx context.Context, msig address.Address, txID uint64, src address.Address) (*types.MessagePrototype, error) {
 	return a.msigApproveOrCancelSimple(ctx, MsigCancel, msig, txID, src)
 }
 
@@ -182,7 +181,7 @@ func (a *multiSig) MsigCancel(ctx context.Context, msig address.Address, txID ui
 // send the message from, the address to be removed, and a boolean
 // indicating whether or not the signing threshold should be lowered by one
 // along with the address removal.
-func (a *multiSig) MsigRemoveSigner(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (*messagepool.MessagePrototype, error) {
+func (a *multiSig) MsigRemoveSigner(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (*types.MessagePrototype, error) {
 	enc, actErr := serializeRemoveParams(toRemove, decrease)
 	if actErr != nil {
 		return nil, actErr
@@ -234,7 +233,7 @@ func (a *multiSig) MsigGetVested(ctx context.Context, addr address.Address, star
 	return types.BigSub(startLk, endLk), nil
 }
 
-func (a *multiSig) msigApproveOrCancelSimple(ctx context.Context, operation MsigProposeResponse, msig address.Address, txID uint64, src address.Address) (*messagepool.MessagePrototype, error) {
+func (a *multiSig) msigApproveOrCancelSimple(ctx context.Context, operation MsigProposeResponse, msig address.Address, txID uint64, src address.Address) (*types.MessagePrototype, error) {
 	if msig == address.Undef {
 		return nil, xerrors.Errorf("must provide multisig address")
 	}
@@ -261,10 +260,10 @@ func (a *multiSig) msigApproveOrCancelSimple(ctx context.Context, operation Msig
 		return nil, err
 	}
 
-	return &messagepool.MessagePrototype{Message: *msg, ValidNonce: false}, nil
+	return &types.MessagePrototype{Message: *msg, ValidNonce: false}, nil
 }
 
-func (a *multiSig) msigApproveOrCancelTxnHash(ctx context.Context, operation MsigProposeResponse, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*messagepool.MessagePrototype, error) {
+func (a *multiSig) msigApproveOrCancelTxnHash(ctx context.Context, operation MsigProposeResponse, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*types.MessagePrototype, error) {
 	if msig == address.Undef {
 		return nil, xerrors.Errorf("must provide multisig address")
 	}
@@ -307,7 +306,7 @@ func (a *multiSig) msigApproveOrCancelTxnHash(ctx context.Context, operation Msi
 		return nil, err
 	}
 
-	return &messagepool.MessagePrototype{
+	return &types.MessagePrototype{
 		Message:    *msg,
 		ValidNonce: false,
 	}, nil

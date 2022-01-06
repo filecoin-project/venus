@@ -11,7 +11,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func mustEnc(i cbg.CBORMarshaler) []byte {

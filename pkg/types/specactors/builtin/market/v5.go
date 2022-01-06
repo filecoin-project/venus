@@ -11,8 +11,8 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	types "github.com/filecoin-project/venus/pkg/types/internal"
+	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 
 	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
 	adt5 "github.com/filecoin-project/specs-actors/v5/actors/util/adt"
@@ -31,14 +31,14 @@ func load5(store adt.Store, root cid.Cid) (State, error) {
 
 func make5(store adt.Store) (State, error) {
 	out := state5{store: store}
-	
-		s, err := market5.ConstructState(store)
-		if err != nil {
-			return nil, err
-		}
 
-		out.State = *s
-	
+	s, err := market5.ConstructState(store)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
+
 	return &out, nil
 }
 
@@ -244,12 +244,12 @@ type publishStorageDealsReturn5 struct {
 }
 
 func (r *publishStorageDealsReturn5) IsDealValid(index uint64) (bool, error) {
-	
-	    // PublishStorageDeals only succeeded if all deals were valid in this version of actors
-	    return true, nil
-	
+
+	// PublishStorageDeals only succeeded if all deals were valid in this version of actors
+	return true, nil
+
 }
 
 func (r *publishStorageDealsReturn5) DealIDs() ([]abi.DealID, error) {
-    return r.IDs, nil
+	return r.IDs, nil
 }

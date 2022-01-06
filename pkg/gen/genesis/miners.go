@@ -54,7 +54,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func MinerAddress(genesisIndex uint64) address.Address {

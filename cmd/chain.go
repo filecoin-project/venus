@@ -19,9 +19,8 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/constants"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var chainCmd = &cmds.Command{
@@ -280,7 +279,7 @@ var chainGetMessagesCmd = &cmds.Command{
 
 		return re.Emit(bmsg)
 	},
-	Type: &apitypes.BlockMessages{},
+	Type: &types.BlockMessages{},
 }
 
 var chainGetReceiptsCmd = &cmds.Command{
@@ -309,7 +308,7 @@ field of the filecoin block header.`,
 	Type: []types.MessageReceipt{},
 }
 
-func apiMsgCids(in []apitypes.Message) []cid.Cid {
+func apiMsgCids(in []types.MessageCID) []cid.Cid {
 	out := make([]cid.Cid, len(in))
 	for k, v := range in {
 		out[k] = v.Cid

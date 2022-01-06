@@ -4,10 +4,10 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
-
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 )
 
 type messageCache struct {
@@ -26,7 +26,7 @@ func newMessageCache(api IEvent) *messageCache {
 	}
 }
 
-func (c *messageCache) ChainGetBlockMessages(ctx context.Context, blkCid cid.Cid) (*apitypes.BlockMessages, error) {
+func (c *messageCache) ChainGetBlockMessages(ctx context.Context, blkCid cid.Cid) (*types.BlockMessages, error) {
 	c.blockMsgLk.Lock()
 	defer c.blockMsgLk.Unlock()
 
@@ -39,5 +39,5 @@ func (c *messageCache) ChainGetBlockMessages(ctx context.Context, blkCid cid.Cid
 		}
 		c.blockMsgCache.Add(blkCid, msgsI)
 	}
-	return msgsI.(*apitypes.BlockMessages), nil
+	return msgsI.(*types.BlockMessages), nil
 }

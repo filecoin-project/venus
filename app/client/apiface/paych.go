@@ -3,13 +3,12 @@ package apiface
 import (
 	"context"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
-
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	paychtypes "github.com/filecoin-project/venus/venus-shared/paych"
 )
 
 type IPaychan interface {
@@ -18,16 +17,16 @@ type IPaychan interface {
 	// @to: the payment channel recipient
 	// @amt: the deposits funds in the payment channel
 	// Rule[perm:sign]
-	PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*paychtypes.ChannelInfo, error)
+	PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*types.ChannelInfo, error)
 	// PaychAvailableFunds get the status of an outbound payment channel
 	// @pch: payment channel address
 	// Rule[perm:sign]
-	PaychAvailableFunds(ctx context.Context, ch address.Address) (*apitypes.ChannelAvailableFunds, error)
+	PaychAvailableFunds(ctx context.Context, ch address.Address) (*types.ChannelAvailableFunds, error)
 	// PaychAvailableFundsByFromTo  get the status of an outbound payment channel
 	// @from: the payment channel sender
 	// @to: he payment channel recipient
 	// Rule[perm:sign]
-	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*apitypes.ChannelAvailableFunds, error)
+	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*types.ChannelAvailableFunds, error)
 	// PaychGetWaitReady waits until the create channel / add funds message with the sentinel
 	// @sentinel: given message CID arrives.
 	// @ch: the returned channel address can safely be used against the Manager methods.
@@ -42,14 +41,14 @@ type IPaychan interface {
 	// @to: the payment channel recipient
 	// @vouchers: the outstanding (non-redeemed) vouchers
 	// Rule[perm:sign]
-	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []paychtypes.VoucherSpec) (*paychtypes.PaymentInfo, error)
+	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []types.VoucherSpec) (*types.PaymentInfo, error)
 	// PaychList list the addresses of all channels that have been created
 	// Rule[perm:read]
 	PaychList(ctx context.Context) ([]address.Address, error)
 	// PaychStatus get the payment channel status
 	// @pch: payment channel address
 	// Rule[perm:read]
-	PaychStatus(ctx context.Context, pch address.Address) (*paychtypes.Status, error)
+	PaychStatus(ctx context.Context, pch address.Address) (*types.Status, error)
 	// PaychSettle update payment channel status to settle
 	// After a settlement period (currently 12 hours) either party to the payment channel can call collect on chain
 	// @pch: payment channel address
@@ -87,7 +86,7 @@ type IPaychan interface {
 	// If there are insufficient funds in the channel to create the voucher,
 	// returns a nil voucher and the shortfall.
 	// Rule[perm:sign]
-	PaychVoucherCreate(ctx context.Context, pch address.Address, amt big.Int, lane uint64) (*paychtypes.VoucherCreateResult, error)
+	PaychVoucherCreate(ctx context.Context, pch address.Address, amt big.Int, lane uint64) (*types.VoucherCreateResult, error)
 	// PaychVoucherList list vouchers in payment channel
 	// @pch: payment channel address
 	// Rule[perm:write]

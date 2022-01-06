@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type ChainSampler interface {

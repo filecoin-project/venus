@@ -24,7 +24,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var (
@@ -134,8 +134,6 @@ type Expected struct {
 	// block validator before process tipset
 	blockValidator *BlockValidator
 }
-
-
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
 func NewExpected(cs cbor.IpldStore,

@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"io"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"github.com/filecoin-project/venus/cmd"
-	"github.com/filecoin-project/venus/venus-shared/libp2p/net"
 	"github.com/ipfs/go-cid"
 
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -47,8 +48,8 @@ func (f *Filecoin) SwarmConnect(ctx context.Context, addrs ...multiaddr.Multiadd
 }
 
 // SwarmPeers runs the `swarm peers` command against the filecoin process
-func (f *Filecoin) SwarmPeers(ctx context.Context, options ...ActionOption) ([]net.SwarmConnInfo, error) {
-	var out net.SwarmConnInfos
+func (f *Filecoin) SwarmPeers(ctx context.Context, options ...ActionOption) ([]types.SwarmConnInfo, error) {
+	var out types.SwarmConnInfos
 
 	args := []string{"venus", "swarm", "peers"}
 

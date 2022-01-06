@@ -10,8 +10,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/util/test"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
@@ -242,7 +241,7 @@ func TestHead(t *testing.T) {
 	assert.ObjectsAreEqualValues(link1.Key(), cs.GetHead())
 }
 
-func assertEmptyCh(t *testing.T, ch <-chan []*apitypes.HeadChange) {
+func assertEmptyCh(t *testing.T, ch <-chan []*types.HeadChange) {
 	select {
 	case <-ch:
 		assert.True(t, false)

@@ -10,8 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/pkg/constants"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var _ v0api.IChain = &WrapperV1IChain{}
@@ -20,19 +19,19 @@ type WrapperV1IChain struct { //nolint
 	v1api.IChain
 }
 
-func (a *WrapperV1IChain) StateSearchMsg(ctx context.Context, msg cid.Cid) (*apitypes.MsgLookup, error) {
+func (a *WrapperV1IChain) StateSearchMsg(ctx context.Context, msg cid.Cid) (*types.MsgLookup, error) {
 	return a.IChain.StateSearchMsg(ctx, types.EmptyTSK, msg, constants.LookbackNoLimit, true)
 }
 
-func (a *WrapperV1IChain) StateSearchMsgLimited(ctx context.Context, msg cid.Cid, limit abi.ChainEpoch) (*apitypes.MsgLookup, error) {
+func (a *WrapperV1IChain) StateSearchMsgLimited(ctx context.Context, msg cid.Cid, limit abi.ChainEpoch) (*types.MsgLookup, error) {
 	return a.IChain.StateSearchMsg(ctx, types.EmptyTSK, msg, limit, true)
 }
 
-func (a *WrapperV1IChain) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*apitypes.MsgLookup, error) {
+func (a *WrapperV1IChain) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*types.MsgLookup, error) {
 	return a.IChain.StateWaitMsg(ctx, msg, confidence, constants.LookbackNoLimit, true)
 }
 
-func (a *WrapperV1IChain) StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, limit abi.ChainEpoch) (*apitypes.MsgLookup, error) {
+func (a *WrapperV1IChain) StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, limit abi.ChainEpoch) (*types.MsgLookup, error) {
 	return a.IChain.StateWaitMsg(ctx, msg, confidence, limit, true)
 }
 

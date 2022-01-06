@@ -6,9 +6,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/statemanger"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"golang.org/x/xerrors"
 )
 
@@ -22,8 +21,8 @@ func newMarketAPI(c v1api.IChain, stmgr statemanger.IStateManager) v1api.IMarket
 }
 
 // StateMarketParticipants returns the Escrow and Locked balances of every participant in the Storage Market
-func (m *marketAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]apitypes.MarketBalance, error) {
-	out := map[string]apitypes.MarketBalance{}
+func (m *marketAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketBalance, error) {
+	out := map[string]types.MarketBalance{}
 	ts, err := m.chain.ChainGetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -49,7 +48,7 @@ func (m *marketAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSe
 			return err
 		}
 
-		out[a.String()] = apitypes.MarketBalance{
+		out[a.String()] = types.MarketBalance{
 			Escrow: es,
 			Locked: lk,
 		}

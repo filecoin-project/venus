@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // WrapHeadChangeCoalescer wraps a ReorgNotifee with a head change coalescer.

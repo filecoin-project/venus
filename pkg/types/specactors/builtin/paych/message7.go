@@ -10,9 +10,9 @@ import (
 	init7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/init"
 	paych7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/paych"
 
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
-	types "github.com/filecoin-project/venus/pkg/types/internal"
 )
 
 type message7 struct{ from address.Address }

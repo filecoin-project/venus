@@ -4,8 +4,7 @@ import (
 	"context"
 	"strconv"
 
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -404,7 +403,7 @@ func (v *View) StateVerifiedClientStatus(ctx context.Context, addr addr.Address)
 }
 
 // StateMarketStorageDeal returns information about the indicated deal
-func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*apitypes.MarketDeal, error) {
+func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*types.MarketDeal, error) {
 	state, err := v.LoadMarketState(ctx)
 	if err != nil {
 		return nil, err
@@ -438,7 +437,7 @@ func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*
 		return nil, xerrors.New("deal state not found")
 	}
 
-	return &apitypes.MarketDeal{
+	return &types.MarketDeal{
 		Proposal: *dealProposal,
 		State:    *dealState,
 	}, nil
@@ -621,8 +620,8 @@ func (v *View) StateMinerPower(ctx context.Context, maddr addr.Address, tsk type
 }
 
 // StateMarketDeals returns information about every deal in the Storage Market
-func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]apitypes.MarketDeal, error) {
-	out := map[string]apitypes.MarketDeal{}
+func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketDeal, error) {
+	out := map[string]types.MarketDeal{}
 
 	state, err := v.LoadMarketState(ctx)
 	if err != nil {
@@ -646,7 +645,7 @@ func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[s
 		} else if !found {
 			s = market.EmptyDealState()
 		}
-		out[strconv.FormatInt(int64(dealID), 10)] = apitypes.MarketDeal{
+		out[strconv.FormatInt(int64(dealID), 10)] = types.MarketDeal{
 			Proposal: d,
 			State:    *s,
 		}

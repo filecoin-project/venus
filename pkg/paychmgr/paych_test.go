@@ -8,7 +8,7 @@ import (
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/vm"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"

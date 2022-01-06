@@ -39,9 +39,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	mptypes "github.com/filecoin-project/venus/venus-shared/messagepool"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var log = logging.Logger("messagepool")
@@ -206,7 +204,7 @@ func ComputeMinRBF(curPrem abi.TokenAmount) abi.TokenAmount {
 	return big.Add(minPrice, big.NewInt(1))
 }
 
-func CapGasFee(mff DefaultMaxFeeFunc, msg *types.Message, sendSepc *apitypes.MessageSendSpec) {
+func CapGasFee(mff DefaultMaxFeeFunc, msg *types.Message, sendSepc *types.MessageSendSpec) {
 	var maxFee abi.TokenAmount
 	if sendSepc != nil {
 		maxFee = sendSepc.MaxFee
@@ -1018,8 +1016,8 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 		}
 	}
 
-	mp.changes.Pub(mptypes.MpoolUpdate{
-		Type:    mptypes.MpoolAdd,
+	mp.changes.Pub(types.MpoolUpdate{
+		Type:    types.MpoolAdd,
 		Message: m,
 	}, localUpdates)
 
@@ -1154,8 +1152,8 @@ func (mp *MessagePool) remove(ctx context.Context, from address.Address, nonce u
 	}
 
 	if m, ok := mset.msgs[nonce]; ok {
-		mp.changes.Pub(mptypes.MpoolUpdate{
-			Type:    mptypes.MpoolRemove,
+		mp.changes.Pub(types.MpoolUpdate{
+			Type:    types.MpoolRemove,
 			Message: m,
 		}, localUpdates)
 
@@ -1507,8 +1505,8 @@ func (mp *MessagePool) RecoverSig(msg *types.Message) *types.SignedMessage {
 	}
 }
 
-func (mp *MessagePool) Updates(ctx context.Context) (<-chan mptypes.MpoolUpdate, error) {
-	out := make(chan mptypes.MpoolUpdate, 20)
+func (mp *MessagePool) Updates(ctx context.Context) (<-chan types.MpoolUpdate, error) {
+	out := make(chan types.MpoolUpdate, 20)
 	sub := mp.changes.Sub(localUpdates)
 
 	go func() {
@@ -1519,7 +1517,7 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan mptypes.MpoolUpdate,
 			select {
 			case u := <-sub:
 				select {
-				case out <- u.(mptypes.MpoolUpdate):
+				case out <- u.(types.MpoolUpdate):
 				case <-ctx.Done():
 					return
 				case <-mp.closer:

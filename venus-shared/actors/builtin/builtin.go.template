@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	types "github.com/filecoin-project/venus/venus-shared/internal"
 
 	miner{{.latestVersion}} "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/builtin/miner"
 	proof{{.latestVersion}} "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/runtime/proof"

@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"

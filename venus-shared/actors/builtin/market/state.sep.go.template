@@ -12,7 +12,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	types "github.com/filecoin-project/venus/venus-shared/internal"
 
 	market{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/market"
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"

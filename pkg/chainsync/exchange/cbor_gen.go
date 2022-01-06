@@ -7,7 +7,7 @@ import (
 	"io"
 	"sort"
 
-	chain "github.com/filecoin-project/venus/venus-shared/chain"
+	chain "github.com/filecoin-project/venus/venus-shared/types"
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"

@@ -10,7 +10,7 @@ import (
 	"golang.org/x/xerrors"
 
 	blockstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type MockAPI struct {

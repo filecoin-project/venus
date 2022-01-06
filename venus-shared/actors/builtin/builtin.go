@@ -32,7 +32,7 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	types "github.com/filecoin-project/venus/venus-shared/internal"
 
 	miner7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"

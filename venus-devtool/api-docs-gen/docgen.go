@@ -2,16 +2,20 @@ package docgen
 
 import (
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"time"
+	"unicode"
+
 	network2 "github.com/filecoin-project/go-state-types/network"
-	chain2 "github.com/filecoin-project/venus/venus-shared/api/chain"
 	v0 "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	"github.com/filecoin-project/venus/venus-shared/chain"
-	"github.com/filecoin-project/venus/venus-shared/messagepool"
-	"github.com/filecoin-project/venus/venus-shared/paych"
-	"github.com/filecoin-project/venus/venus-shared/stmgr"
-	"github.com/filecoin-project/venus/venus-shared/wallet"
-	"os"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -31,14 +35,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
-	"go/ast"
-	"go/parser"
-	"go/token"
-	"path/filepath"
-	"reflect"
-	"strings"
-	"time"
-	"unicode"
 )
 
 var ExampleValues = map[reflect.Type]interface{}{
@@ -66,7 +62,7 @@ func init() {
 		panic(err)
 	}
 
-	tsk := chain.NewTipSetKey(c, c2)
+	tsk := types.NewTipSetKey(c, c2)
 
 	ExampleValues[reflect.TypeOf(tsk)] = tsk
 
@@ -91,8 +87,8 @@ func init() {
 	addExample(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1)
 	addExample(abi.ChainEpoch(10101))
 	addExample(crypto.SigTypeBLS)
-	addExample(wallet.KTBLS)
-	addExample(wallet.MTChainMsg)
+	addExample(types.KTBLS)
+	addExample(types.MTChainMsg)
 	addExample(int64(9))
 	addExample(12.3)
 	addExample(123)
@@ -106,12 +102,12 @@ func init() {
 	addExample(abi.DealID(5432))
 	addExample(abi.SectorNumber(9))
 	addExample(abi.SectorSize(32 * 1024 * 1024 * 1024))
-	addExample(messagepool.MpoolChange(0))
+	addExample(types.MpoolChange(0))
 	addExample(network.Connected)
-	addExample(chain2.NetworkName("mainnet"))
-	addExample(chain2.SyncStateStage(1))
+	addExample(types.NetworkName("mainnet"))
+	addExample(types.SyncStateStage(1))
 	addExample(api.FullAPIVersion1)
-	addExample(paych.PCHInbound)
+	addExample(types.PCHInbound)
 	addExample(time.Minute)
 	addExample(graphsync.RequestID(4))
 	addExample(datatransfer.TransferID(3))
@@ -124,29 +120,29 @@ func init() {
 	addExample(network.ReachabilityPublic)
 	addExample(map[string]int{"name": 42})
 	addExample(map[string]time.Time{"name": time.Unix(1615243938, 0).UTC()})
-	addExample(&stmgr.ExecutionTrace{
-		Msg:    ExampleValue("init", reflect.TypeOf(&chain.Message{}), nil).(*chain.Message),
-		MsgRct: ExampleValue("init", reflect.TypeOf(&chain.MessageReceipt{}), nil).(*chain.MessageReceipt),
+	addExample(&types.ExecutionTrace{
+		Msg:    ExampleValue("init", reflect.TypeOf(&types.Message{}), nil).(*types.Message),
+		MsgRct: ExampleValue("init", reflect.TypeOf(&types.MessageReceipt{}), nil).(*types.MessageReceipt),
 	})
-	addExample(map[string]chain.Actor{
-		"t01236": ExampleValue("init", reflect.TypeOf(chain.Actor{}), nil).(chain.Actor),
+	addExample(map[string]types.Actor{
+		"t01236": ExampleValue("init", reflect.TypeOf(types.Actor{}), nil).(types.Actor),
 	})
-	addExample(map[string]chain.Actor{
-		"t01236": ExampleValue("init", reflect.TypeOf(chain.Actor{}), nil).(chain.Actor),
+	addExample(map[string]types.Actor{
+		"t01236": ExampleValue("init", reflect.TypeOf(types.Actor{}), nil).(types.Actor),
 	})
 	// todo: get an error on MarshalJSON ?
 	// addExample(map[address.Address]*chain.Actor{
 	// 	"t01236": ExampleValue("init", reflect.TypeOf(*chain.Actor{}), nil).(*chain.Actor),
 	// })
-	addExample(map[string]chain2.MarketDeal{
-		"t026363": ExampleValue("init", reflect.TypeOf(chain2.MarketDeal{}), nil).(chain2.MarketDeal),
+	addExample(map[string]types.MarketDeal{
+		"t026363": ExampleValue("init", reflect.TypeOf(types.MarketDeal{}), nil).(types.MarketDeal),
 	})
-	addExample(map[string]chain2.MarketBalance{
-		"t026363": ExampleValue("init", reflect.TypeOf(chain2.MarketBalance{}), nil).(chain2.MarketBalance),
+	addExample(map[string]types.MarketBalance{
+		"t026363": ExampleValue("init", reflect.TypeOf(types.MarketBalance{}), nil).(types.MarketBalance),
 	})
-	addExample([]*chain2.EstimateMessage{
-		{Msg: ExampleValue("init", reflect.TypeOf(&chain.Message{}), nil).(*chain.Message),
-			Spec: ExampleValue("init", reflect.TypeOf(&chain2.MessageSendSpec{}), nil).(*chain2.MessageSendSpec),
+	addExample([]*types.EstimateMessage{
+		{Msg: ExampleValue("init", reflect.TypeOf(&types.Message{}), nil).(*types.Message),
+			Spec: ExampleValue("init", reflect.TypeOf(&types.MessageSendSpec{}), nil).(*types.MessageSendSpec),
 		}})
 	addExample(map[string]*pubsub.TopicScoreSnapshot{
 		"/blocks": {
@@ -194,7 +190,7 @@ func init() {
 	// 	},
 	// 	"methods": []interface{}{}},
 	// )
-	addExample(messagepool.CheckStatusCode(0))
+	addExample(types.CheckStatusCode(0))
 	addExample(map[string]interface{}{"abc": 123})
 }
 

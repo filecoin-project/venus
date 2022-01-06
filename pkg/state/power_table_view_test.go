@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/state"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	gengen "github.com/filecoin-project/venus/tools/gengen/util"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func TestTotal(t *testing.T) {

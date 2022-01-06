@@ -10,7 +10,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/metrics"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var messageTopicLogger = logging.Logger("net/message_validator")

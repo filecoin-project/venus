@@ -3,10 +3,9 @@ package v1
 import (
 	"context"
 
-	chain2 "github.com/filecoin-project/venus/venus-shared/api/chain"
-	"github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type IMarket interface {
-	StateMarketParticipants(ctx context.Context, tsk chain.TipSetKey) (map[string]chain2.MarketBalance, error) //perm:read
+	StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketBalance, error) //perm:read
 }

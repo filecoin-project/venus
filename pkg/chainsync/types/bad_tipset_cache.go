@@ -3,7 +3,7 @@ package types
 import (
 	"sync"
 
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // BadTipSetCache keeps track of bad tipsets that the syncer should not try to

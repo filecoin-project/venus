@@ -5,14 +5,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
 )
 
 var ObserveDuration = time.Second * 45
@@ -104,7 +104,7 @@ func (o *observer) listenHeadChangesOnce(ctx context.Context) error {
 	return nil
 }
 
-func (o *observer) applyChanges(ctx context.Context, changes []*apitypes.HeadChange) error {
+func (o *observer) applyChanges(ctx context.Context, changes []*types.HeadChange) error {
 	// Used to wait for a prior notification round to finish (by tests)
 	if len(changes) == 0 {
 		return nil

@@ -3,7 +3,7 @@ package fast
 import (
 	"context"
 
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // MpoolLs runs the `mpool ls` command against the filecoin process.

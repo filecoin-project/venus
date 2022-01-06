@@ -33,7 +33,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/testhelpers"
 	"github.com/filecoin-project/venus/pkg/util"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // Builder builds fake chains and acts as a provider and fetcher for the chain thus generated.

@@ -6,7 +6,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
-	"github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 const (
@@ -126,7 +126,7 @@ func (res *Response) StatusToError() error {
 type BSTipSet struct {
 	// List of blocks belonging to a single tipset to which the
 	// `CompactedMessages` are linked.
-	Blocks   []*chain.BlockHeader
+	Blocks   []*types.BlockHeader
 	Messages *CompactedMessages
 }
 
@@ -143,9 +143,9 @@ type BSTipSet struct {
 // FIXME: The logic to decompress this structure should belong
 //  to itself, not to the consumer.
 type CompactedMessages struct {
-	Bls         []*chain.Message
+	Bls         []*types.Message
 	BlsIncludes [][]uint64
 
-	Secpk         []*chain.SignedMessage
+	Secpk         []*types.SignedMessage
 	SecpkIncludes [][]uint64
 }

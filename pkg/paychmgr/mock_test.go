@@ -7,8 +7,7 @@ import (
 
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/vm"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
@@ -140,7 +139,7 @@ func newMockPaychAPI() *mockPaychAPI {
 	}
 }
 
-func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, confidence uint64) (*apitypes.MsgLookup, error) {
+func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, confidence uint64) (*types.MsgLookup, error) {
 	pchapi.lk.Lock()
 	response := make(chan types.MessageReceipt)
 
@@ -151,14 +150,14 @@ func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, conf
 		}()
 
 		delete(pchapi.waitingResponses, mcid)
-		return &apitypes.MsgLookup{Receipt: response.receipt}, nil
+		return &types.MsgLookup{Receipt: response.receipt}, nil
 	}
 
 	pchapi.waitingCalls[mcid] = &waitingCall{response: response}
 	pchapi.lk.Unlock()
 
 	receipt := <-response
-	return &apitypes.MsgLookup{Receipt: receipt}, nil
+	return &types.MsgLookup{Receipt: receipt}, nil
 }
 
 func (pchapi *mockPaychAPI) receiveMsgResponse(mcid cid.Cid, receipt types.MessageReceipt) {
@@ -195,7 +194,7 @@ func (pchapi *mockPaychAPI) close() {
 	}
 }
 
-func (pchapi *mockPaychAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *apitypes.MessageSendSpec) (*types.SignedMessage, error) {
+func (pchapi *mockPaychAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
 	pchapi.lk.Lock()
 	defer pchapi.lk.Unlock()
 

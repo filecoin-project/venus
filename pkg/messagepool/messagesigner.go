@@ -6,9 +6,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/venus/pkg/wallet"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	mptypes "github.com/filecoin-project/venus/venus-shared/wallet"
-
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -62,8 +60,8 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, cb
 		return nil, xerrors.Errorf("serializing message: %w", err)
 	}
 
-	sig, err := ms.wallet.WalletSign(ctx, msg.From, mb.Cid().Bytes(), mptypes.MsgMeta{
-		Type:  mptypes.MTChainMsg,
+	sig, err := ms.wallet.WalletSign(ctx, msg.From, mb.Cid().Bytes(), types.MsgMeta{
+		Type:  types.MTChainMsg,
 		Extra: mb.RawData(),
 	})
 	if err != nil {

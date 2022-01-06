@@ -24,7 +24,7 @@ import (
 	states5 "github.com/filecoin-project/specs-actors/v5/actors/states"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type StateTreeVersion uint64 //nolint

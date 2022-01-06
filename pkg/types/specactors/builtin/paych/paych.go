@@ -31,11 +31,10 @@ import (
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
-
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	types "github.com/filecoin-project/venus/pkg/types/internal"
 )
 
 func init() {
@@ -122,7 +121,7 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 	case actors.Version7:
 		return make7(store)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 

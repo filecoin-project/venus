@@ -29,7 +29,7 @@ var separatedSuffixes = []string{
 var replacers = [][2]string{
 	{
 		"\"github.com/filecoin-project/lotus/chain/types\"",
-		"types \"github.com/filecoin-project/venus/venus-shared/chain\"",
+		"types \"github.com/filecoin-project/venus/venus-shared/internal\"",
 	},
 	{
 		"github.com/filecoin-project/lotus/chain/actors",

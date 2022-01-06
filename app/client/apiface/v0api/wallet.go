@@ -6,13 +6,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	"github.com/filecoin-project/venus/venus-shared/wallet"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type IWallet interface {
 	// Rule[perm:sign]
-	WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error)
+	WalletSign(ctx context.Context, k address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error)
 	// Rule[perm:admin]
 	WalletExport(addr address.Address, password string) (*crypto.KeyInfo, error)
 	// Rule[perm:admin]

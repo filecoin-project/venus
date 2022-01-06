@@ -11,10 +11,9 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/ipfs/go-cid"
 
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	types "github.com/filecoin-project/venus/pkg/types/internal"
-	
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -29,7 +28,6 @@ import (
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
-
 )
 
 func init() {
@@ -120,7 +118,7 @@ func MakeState(store adt.Store, av actors.Version, networkName string) (State, e
 	case actors.Version7:
 		return make7(store, networkName)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 

@@ -25,8 +25,7 @@ import (
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/pkg/wallet"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // TestFundManagerBasic verifies that the basic fund manager operations work
@@ -705,7 +704,7 @@ func newMockFundManagerAPI(wallet address.Address) *mockFundManagerAPI {
 	}
 }
 
-func (mapi *mockFundManagerAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *apitypes.MessageSendSpec) (*types.SignedMessage, error) {
+func (mapi *mockFundManagerAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
 	mapi.lk.Lock()
 	defer mapi.lk.Unlock()
 
@@ -780,11 +779,11 @@ func (mapi *mockFundManagerAPI) completeMsg(msgCid cid.Cid) {
 	}
 }
 
-func (mapi *mockFundManagerAPI) StateMarketBalance(ctx context.Context, address address.Address, tsk types.TipSetKey) (apitypes.MarketBalance, error) {
+func (mapi *mockFundManagerAPI) StateMarketBalance(ctx context.Context, address address.Address, tsk types.TipSetKey) (types.MarketBalance, error) {
 	mapi.lk.Lock()
 	defer mapi.lk.Unlock()
 
-	return apitypes.MarketBalance{
+	return types.MarketBalance{
 		Locked: abi.NewTokenAmount(0),
 		Escrow: mapi.getEscrow(address),
 	}, nil
@@ -813,8 +812,8 @@ func (mapi *mockFundManagerAPI) publish(addr address.Address, amt abi.TokenAmoun
 	mapi.escrow[addr] = escrow
 }
 
-func (mapi *mockFundManagerAPI) StateWaitMsg(ctx context.Context, c cid.Cid, confidence uint64, limit abi.ChainEpoch, allwoReplaced bool) (*apitypes.MsgLookup, error) {
-	res := &apitypes.MsgLookup{
+func (mapi *mockFundManagerAPI) StateWaitMsg(ctx context.Context, c cid.Cid, confidence uint64, limit abi.ChainEpoch, allwoReplaced bool) (*types.MsgLookup, error) {
+	res := &types.MsgLookup{
 		Message: c,
 		Receipt: types.MessageReceipt{
 			ExitCode: 0,

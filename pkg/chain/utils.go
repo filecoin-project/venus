@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/rt"
@@ -26,6 +26,7 @@ import (
 	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
 	exported6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/exported"
 	exported7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/exported"
+
 	/* inline-gen end */
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"

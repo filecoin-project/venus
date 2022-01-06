@@ -4,13 +4,10 @@ import (
 	"context"
 	"time"
 
-	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	stmgrtypes "github.com/filecoin-project/venus/venus-shared/stmgr"
-
 	"github.com/filecoin-project/go-state-types/big"
+	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	logging "github.com/ipfs/go-log/v2"
 	xerrors "github.com/pkg/errors"
 )
@@ -24,14 +21,14 @@ type syncerAPI struct { //nolint
 }
 
 // SyncerStatus returns the current status of the active or last active chain sync operation.
-func (sa *syncerAPI) SyncerTracker(ctx context.Context) *apitypes.TargetTracker {
+func (sa *syncerAPI) SyncerTracker(ctx context.Context) *types.TargetTracker {
 	tracker := sa.syncer.ChainSyncManager.BlockProposer().SyncTracker()
-	tt := &apitypes.TargetTracker{
-		History: make([]*apitypes.Target, 0),
-		Buckets: make([]*apitypes.Target, 0),
+	tt := &types.TargetTracker{
+		History: make([]*types.Target, 0),
+		Buckets: make([]*types.Target, 0),
 	}
-	convertTarget := func(src *syncTypes.Target) *apitypes.Target {
-		return &apitypes.Target{
+	convertTarget := func(src *syncTypes.Target) *types.Target {
+		return &types.Target{
 			State:     convertSyncStateStage(src.State),
 			Base:      src.Base,
 			Current:   src.Current,
@@ -51,17 +48,17 @@ func (sa *syncerAPI) SyncerTracker(ctx context.Context) *apitypes.TargetTracker 
 	return tt
 }
 
-func convertSyncStateStage(srtState syncTypes.SyncStateStage) apitypes.SyncStateStage {
-	var state apitypes.SyncStateStage
+func convertSyncStateStage(srtState syncTypes.SyncStateStage) types.SyncStateStage {
+	var state types.SyncStateStage
 	switch srtState {
 	case syncTypes.StageIdle:
-		state = apitypes.StageIdle
+		state = types.StageIdle
 	case syncTypes.StageSyncErrored:
-		state = apitypes.StageSyncErrored
+		state = types.StageSyncErrored
 	case syncTypes.StageSyncComplete:
-		state = apitypes.StageSyncComplete
+		state = types.StageSyncComplete
 	case syncTypes.StateInSyncing:
-		state = apitypes.StageMessages
+		state = types.StageMessages
 	}
 
 	return state
@@ -164,7 +161,7 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 // StateCall applies the message to the tipset's parent state. The
 // message is not applied on-top-of the messages in the passed-in
 // tipset.
-func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*apitypes.InvocResult, error) {
+func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error) {
 	start := time.Now()
 	ts, err := sa.syncer.ChainModule.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
@@ -177,26 +174,26 @@ func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.Message, tsk type
 	duration := time.Since(start)
 
 	mcid := msg.Cid()
-	return &apitypes.InvocResult{
+	return &types.InvocResult{
 		MsgCid:         mcid,
 		Msg:            msg,
 		MsgRct:         &ret.Receipt,
-		ExecutionTrace: stmgrtypes.ExecutionTrace{},
+		ExecutionTrace: types.ExecutionTrace{},
 		Duration:       duration,
 	}, nil
 }
 
 //SyncState just compatible code lotus
-func (sa *syncerAPI) SyncState(ctx context.Context) (*apitypes.SyncState, error) {
+func (sa *syncerAPI) SyncState(ctx context.Context) (*types.SyncState, error) {
 	tracker := sa.syncer.ChainSyncManager.BlockProposer().SyncTracker()
 	tracker.History()
 
-	syncState := &apitypes.SyncState{
+	syncState := &types.SyncState{
 		VMApplied: 0,
 	}
 
 	count := 0
-	toActiveSync := func(t *syncTypes.Target) apitypes.ActiveSync {
+	toActiveSync := func(t *syncTypes.Target) types.ActiveSync {
 		currentHeight := t.Base.Height()
 		if t.Current != nil {
 			currentHeight = t.Current.Height()
@@ -208,7 +205,7 @@ func (sa *syncerAPI) SyncState(ctx context.Context) (*apitypes.SyncState, error)
 		}
 		count++
 
-		activeSync := apitypes.ActiveSync{
+		activeSync := types.ActiveSync{
 			WorkerID: uint64(count),
 			Base:     t.Base,
 			Target:   t.Head,

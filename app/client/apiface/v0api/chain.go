@@ -14,8 +14,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type IChain interface {
@@ -65,13 +64,13 @@ type IChainInfo interface {
 	// Rule[perm:read]
 	ChainGetMessage(ctx context.Context, msgID cid.Cid) (*types.Message, error)
 	// Rule[perm:read]
-	ChainGetBlockMessages(ctx context.Context, bid cid.Cid) (*apitypes.BlockMessages, error)
+	ChainGetBlockMessages(ctx context.Context, bid cid.Cid) (*types.BlockMessages, error)
 	// Rule[perm:read]
-	ChainGetMessagesInTipset(ctx context.Context, key types.TipSetKey) ([]apitypes.Message, error)
+	ChainGetMessagesInTipset(ctx context.Context, key types.TipSetKey) ([]types.Message, error)
 	// Rule[perm:read]
 	ChainGetReceipts(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error)
 	// Rule[perm:read]
-	ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]apitypes.Message, error)
+	ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]types.Message, error)
 	// Rule[perm:read]
 	ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error)
 	//Rule[perm:read]
@@ -79,7 +78,7 @@ type IChainInfo interface {
 	// Rule[perm:read]
 	StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 	// Rule[perm:read]
-	ChainNotify(ctx context.Context) <-chan []*apitypes.HeadChange
+	ChainNotify(ctx context.Context) <-chan []*types.HeadChange
 	// Rule[perm:read]
 	GetFullBlock(ctx context.Context, id cid.Cid) (*types.FullBlock, error)
 	// Rule[perm:read]
@@ -89,23 +88,23 @@ type IChainInfo interface {
 	// Rule[perm:read]
 	GetEntry(ctx context.Context, height abi.ChainEpoch, round uint64) (*types.BeaconEntry, error)
 	// Rule[perm:read]
-	MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*apitypes.ChainMessage, error)
+	MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*types.ChainMessage, error)
 	// Rule[perm:read]
-	ProtocolParameters(ctx context.Context) (*apitypes.ProtocolParams, error)
+	ProtocolParameters(ctx context.Context) (*types.ProtocolParams, error)
 	// Rule[perm:read]
 	ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 	// Rule[perm:read]
-	StateNetworkName(ctx context.Context) (apitypes.NetworkName, error)
+	StateNetworkName(ctx context.Context) (types.NetworkName, error)
 	// Rule[perm:read]
 	StateGetReceipt(ctx context.Context, msg cid.Cid, from types.TipSetKey) (*types.MessageReceipt, error)
 	// Rule[perm:read]
-	StateSearchMsg(ctx context.Context, msg cid.Cid) (*apitypes.MsgLookup, error)
+	StateSearchMsg(ctx context.Context, msg cid.Cid) (*types.MsgLookup, error)
 	// Rule[perm:read]
-	StateSearchMsgLimited(ctx context.Context, cid cid.Cid, limit abi.ChainEpoch) (*apitypes.MsgLookup, error)
+	StateSearchMsgLimited(ctx context.Context, cid cid.Cid, limit abi.ChainEpoch) (*types.MsgLookup, error)
 	// Rule[perm:read]
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*apitypes.MsgLookup, error)
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*types.MsgLookup, error)
 	// Rule[perm:read]
-	StateWaitMsgLimited(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch) (*apitypes.MsgLookup, error)
+	StateWaitMsgLimited(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch) (*types.MsgLookup, error)
 	// Rule[perm:read]
 	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
 	// Rule[perm:read]
@@ -113,7 +112,7 @@ type IChainInfo interface {
 	// Rule[perm:read]
 	ChainExport(context.Context, abi.ChainEpoch, bool, types.TipSetKey) (<-chan []byte, error)
 	// Rule[perm:read]
-	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*apitypes.HeadChange, error)
+	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*types.HeadChange, error)
 }
 
 type IMinerState interface {
@@ -138,13 +137,13 @@ type IMinerState interface {
 	// Rule[perm:read]
 	StateMinerProvingDeadline(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (*dline.Info, error)
 	// Rule[perm:read]
-	StateMinerPartitions(ctx context.Context, maddr address.Address, dlIdx uint64, tsk types.TipSetKey) ([]apitypes.Partition, error)
+	StateMinerPartitions(ctx context.Context, maddr address.Address, dlIdx uint64, tsk types.TipSetKey) ([]types.Partition, error)
 	// Rule[perm:read]
-	StateMinerDeadlines(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]apitypes.Deadline, error)
+	StateMinerDeadlines(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]types.Deadline, error)
 	// Rule[perm:read]
 	StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
 	// Rule[perm:read]
-	StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*apitypes.MarketDeal, error)
+	StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error)
 	// Rule[perm:read]
 	StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error)
 	// Rule[perm:read]
@@ -154,7 +153,7 @@ type IMinerState interface {
 	// Rule[perm:read]
 	StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error)
 	// Rule[perm:read]
-	StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]apitypes.MarketDeal, error)
+	StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketDeal, error)
 	// Rule[perm:read]
 	StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
 	// Rule[perm:read]
@@ -164,17 +163,17 @@ type IMinerState interface {
 	// Rule[perm:read]
 	StateListActors(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)
 	// Rule[perm:read]
-	StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*apitypes.MinerPower, error)
+	StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.MinerPower, error)
 	// Rule[perm:read]
 	StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (big.Int, error)
 	// Rule[perm:read]
 	StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorExpiration, error)
 	// Rule[perm:read]
-	StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (apitypes.MinerSectors, error)
+	StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MinerSectors, error)
 	// Rule[perm:read]
-	StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (apitypes.MarketBalance, error)
+	StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MarketBalance, error)
 	// Rule[perm:read]
-	StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (apitypes.DealCollateralBounds, error)
+	StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (types.DealCollateralBounds, error)
 	// Rule[perm:read]
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
 }

@@ -16,8 +16,7 @@ import (
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 
 	"github.com/filecoin-project/venus/pkg/constants"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // paychFundsRes is the response to a create channel or add funds request
@@ -180,7 +179,7 @@ func (ca *channelAccessor) enqueue(ctx context.Context, task *fundsReq) {
 }
 
 // Run the operations in the queue
-func (ca *channelAccessor) processQueue(ctx context.Context, channelID string) (*apitypes.ChannelAvailableFunds, error) {
+func (ca *channelAccessor) processQueue(ctx context.Context, channelID string) (*types.ChannelAvailableFunds, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
@@ -276,7 +275,7 @@ func (ca *channelAccessor) msgWaitComplete(ctx context.Context, mcid cid.Cid, er
 	}
 }
 
-func (ca *channelAccessor) currentAvailableFunds(ctx context.Context, channelID string, queuedAmt big.Int) (*apitypes.ChannelAvailableFunds, error) {
+func (ca *channelAccessor) currentAvailableFunds(ctx context.Context, channelID string, queuedAmt big.Int) (*types.ChannelAvailableFunds, error) {
 	if len(channelID) == 0 {
 		return nil, nil
 	}
@@ -317,7 +316,7 @@ func (ca *channelAccessor) currentAvailableFunds(ctx context.Context, channelID 
 		}
 	}
 
-	return &apitypes.ChannelAvailableFunds{
+	return &types.ChannelAvailableFunds{
 		Channel:             channelInfo.Channel,
 		From:                channelInfo.from(),
 		To:                  channelInfo.to(),
@@ -687,6 +686,6 @@ func (ca *channelAccessor) msgPromise(ctx context.Context, mcid cid.Cid) chan on
 	return promise
 }
 
-func (ca *channelAccessor) availableFunds(ctx context.Context, channelID string) (*apitypes.ChannelAvailableFunds, error) {
+func (ca *channelAccessor) availableFunds(ctx context.Context, channelID string) (*types.ChannelAvailableFunds, error) {
 	return ca.processQueue(ctx, channelID)
 }

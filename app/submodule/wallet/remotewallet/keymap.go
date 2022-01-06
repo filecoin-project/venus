@@ -2,9 +2,8 @@ package remotewallet
 
 import (
 	"github.com/filecoin-project/go-address"
-
 	"github.com/filecoin-project/venus/pkg/crypto"
-	types "github.com/filecoin-project/venus/venus-shared/wallet"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var keyMapper = map[address.Protocol]types.KeyType{

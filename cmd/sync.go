@@ -5,11 +5,12 @@ import (
 	"bytes"
 	"strconv"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/venus/app/node"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 )
 
 var syncCmd = &cmds.Command{
@@ -63,11 +64,11 @@ var storeStatusCmd = &cmds.Command{
 		targets := tracker.Buckets
 		w := bytes.NewBufferString("")
 		writer := NewSilentWriter(w)
-		var inSyncing []*apitypes.Target
-		var waitTarget []*apitypes.Target
+		var inSyncing []*types.Target
+		var waitTarget []*types.Target
 
 		for _, t := range targets {
-			if t.State == apitypes.SyncStateStage(syncTypes.StateInSyncing) {
+			if t.State == types.SyncStateStage(syncTypes.StateInSyncing) {
 				inSyncing = append(inSyncing, t)
 			} else {
 				waitTarget = append(waitTarget, t)

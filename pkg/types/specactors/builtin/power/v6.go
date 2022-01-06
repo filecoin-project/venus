@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 
-
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
 	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
@@ -33,14 +32,13 @@ func load6(store adt.Store, root cid.Cid) (State, error) {
 
 func make6(store adt.Store) (State, error) {
 	out := state6{store: store}
-	
-		s, err := power6.ConstructState(store)
-		if err != nil {
-			return nil, err
-		}
 
-		out.State = *s
-	
+	s, err := power6.ConstructState(store)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
 
 	return &out, nil
 }

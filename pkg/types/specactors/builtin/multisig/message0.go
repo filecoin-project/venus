@@ -12,9 +12,9 @@ import (
 	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	multisig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
+	types "github.com/filecoin-project/venus/pkg/types/internal"
 	actors "github.com/filecoin-project/venus/pkg/types/specactors"
 	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
-	types "github.com/filecoin-project/venus/pkg/types/internal"
 )
 
 type message0 struct{ from address.Address }
@@ -74,8 +74,6 @@ func (m message0) Create(
 		Value:  initialAmount,
 	}, nil
 }
-
-
 
 func (m message0) Propose(msig, to address.Address, amt abi.TokenAmount,
 	method abi.MethodNum, params []byte) (*types.Message, error) {
@@ -144,4 +142,3 @@ func (m message0) Cancel(msig address.Address, txID uint64, hashData *ProposalHa
 		Params: enc,
 	}, nil
 }
-

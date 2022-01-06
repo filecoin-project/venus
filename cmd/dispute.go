@@ -21,9 +21,8 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	chainpkg "github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var disputeLog = logging.Logger("disputer")
@@ -417,13 +416,13 @@ func getSender(ctx context.Context, api v1api.IWallet, fromStr string) (address.
 	return addr, nil
 }
 
-func getMaxFee(maxStr string) (*apitypes.MessageSendSpec, error) {
+func getMaxFee(maxStr string) (*types.MessageSendSpec, error) {
 	if maxStr != "" {
 		maxFee, err := types.ParseFIL(maxStr)
 		if err != nil {
 			return nil, xerrors.Errorf("parsing max-fee: %w", err)
 		}
-		return &apitypes.MessageSendSpec{
+		return &types.MessageSendSpec{
 			MaxFee: types.BigInt(maxFee),
 		}, nil
 	}

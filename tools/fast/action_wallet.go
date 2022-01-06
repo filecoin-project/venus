@@ -12,7 +12,7 @@ import (
 	files "github.com/ipfs/go-ipfs-files"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // AddressNew runs the address new command against the filecoin process.

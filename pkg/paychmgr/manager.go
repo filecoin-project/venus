@@ -5,12 +5,9 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/filecoin-project/venus/pkg/statemanger"
-	apitypes "github.com/filecoin-project/venus/venus-shared/api/chain"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	paychtypes "github.com/filecoin-project/venus/venus-shared/paych"
-
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus/pkg/statemanger"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -102,7 +99,7 @@ func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt b
 	return chanAccessor.getPaych(ctx, amt)
 }
 
-func (pm *Manager) AvailableFunds(ctx context.Context, ch address.Address) (*apitypes.ChannelAvailableFunds, error) {
+func (pm *Manager) AvailableFunds(ctx context.Context, ch address.Address) (*types.ChannelAvailableFunds, error) {
 	ca, err := pm.accessorByAddress(ctx, ch)
 	if err != nil {
 		return nil, err
@@ -116,7 +113,7 @@ func (pm *Manager) AvailableFunds(ctx context.Context, ch address.Address) (*api
 	return ca.availableFunds(ctx, ci.ChannelID)
 }
 
-func (pm *Manager) AvailableFundsByFromTo(ctx context.Context, from address.Address, to address.Address) (*apitypes.ChannelAvailableFunds, error) {
+func (pm *Manager) AvailableFundsByFromTo(ctx context.Context, from address.Address, to address.Address) (*types.ChannelAvailableFunds, error) {
 	ca, err := pm.accessorByFromTo(from, to)
 	if err != nil {
 		return nil, err
@@ -128,7 +125,7 @@ func (pm *Manager) AvailableFundsByFromTo(ctx context.Context, from address.Addr
 		// return an empty ChannelAvailableFunds, so that clients can check
 		// for the existence of a channel between from / to without getting
 		// an error.
-		return &apitypes.ChannelAvailableFunds{
+		return &types.ChannelAvailableFunds{
 			Channel:             nil,
 			From:                from,
 			To:                  to,
@@ -187,7 +184,7 @@ func (pm *Manager) GetChannelInfo(ctx context.Context, addr address.Address) (*C
 	return ca.getChannelInfo(ctx, addr)
 }
 
-func (pm *Manager) CreateVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*paychtypes.VoucherCreateResult, error) {
+func (pm *Manager) CreateVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*types.VoucherCreateResult, error) {
 	ca, err := pm.accessorByAddress(ctx, ch)
 	if err != nil {
 		return nil, err

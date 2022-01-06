@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"

@@ -6,10 +6,8 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/events"
-	types "github.com/filecoin-project/venus/venus-shared/chain"
-	paychtypes "github.com/filecoin-project/venus/venus-shared/paych"
-
 	"github.com/filecoin-project/venus/pkg/paychmgr"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
@@ -98,7 +96,7 @@ func (pcs *paymentChannelSettler) matcher(msg *types.Message) (matched bool, err
 			if err != nil {
 				return false, err
 			}
-			if status.Direction == paychtypes.PCHInbound {
+			if status.Direction == types.PCHInbound {
 				return true, nil
 			}
 		}

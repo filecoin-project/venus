@@ -3,13 +3,14 @@ package remotewallet
 import (
 	"context"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/wallet"
-	types "github.com/filecoin-project/venus/venus-shared/wallet"
 )
 
 var _ wallet.WalletIntersection = &remoteWallet{}
