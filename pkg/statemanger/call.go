@@ -68,7 +68,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 		NtwkVersionGetter:   s.fork.GetNtwkVersion,
 		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
 		BaseFee:             ts.At(0).ParentBaseFee,
-		Epoch:               ts.Height(),
+		Epoch:               ts.Height() + 1,
 		GasPriceSchedule:    s.gasSchedule,
 		PRoot:               stateRoot,
 		Bsstore:             s.cs.Blockstore(),
