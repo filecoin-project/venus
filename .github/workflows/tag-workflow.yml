@@ -102,8 +102,7 @@ jobs:
         run: sudo apt-get install make ncftp mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y && sudo apt upgrade -y
       - name: Build
         run: |
-          sudo make deps
-          sudo make
+          go clean --modcache && make deps && make
           mkdir ./release && mv ./venus ./release
 
       - name: Zip Release
