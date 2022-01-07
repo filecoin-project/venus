@@ -68,7 +68,9 @@ func (vm *VM) ApplyImplicitMessage(msg types.ChainMsg) (*Ret, error) {
 		Method: unsignedMsg.Method,
 		Params: unsignedMsg.Params,
 	}
-	vm.SetCurrentEpoch(vm.vmOption.Epoch)
+	if err := vm.SetCurrentEpoch(vm.vmOption.Epoch); err != nil {
+		return nil, xerrors.Errorf("error advancing vm an epoch: %w", err)
+	}
 	return vm.applyImplicitMessage(imsg)
 }
 
@@ -116,7 +118,7 @@ func NewVM(ctx context.Context, actorImpls ActorImplLookup, vmOption VmOption) (
 	}
 
 	return &VM{
-		context:        context.Background(),
+		context:        ctx,
 		actorImpls:     actorImpls,
 		bsstore:        buf,
 		store:          cst,
@@ -153,7 +155,9 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 		Params: params,
 	}
 
-	vm.SetCurrentEpoch(0)
+	if err := vm.SetCurrentEpoch(0); err != nil {
+		return nil, xerrors.Errorf("error advancing vm an epoch: %w", err)
+	}
 	ret, err := vm.applyImplicitMessage(imsg)
 	if err != nil {
 		return ret, err
@@ -241,7 +245,9 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 				return cid.Undef, nil, xerrors.Errorf("load fork cid error: %v", err)
 			}
 		}
-		vm.SetCurrentEpoch(i + 1)
+		if err := vm.SetCurrentEpoch(i + 1); err != nil {
+			return cid.Undef, nil, xerrors.Errorf("error advancing vm an epoch: %w", err)
+		}
 	}
 	vmlog.Debugf("process tipset fork: %v\n", time.Since(toProcessTipset).Milliseconds())
 	// create message tracker
@@ -422,7 +428,9 @@ func (vm *VM) ApplyMessage(msg types.ChainMsg) (*Ret, error) {
 
 // applyMessage applies the message To the current stateView.
 func (vm *VM) applyMessage(msg *types.Message, onChainMsgSize int) (*Ret, error) {
-	vm.SetCurrentEpoch(vm.vmOption.Epoch)
+	if err := vm.SetCurrentEpoch(vm.vmOption.Epoch); err != nil {
+		return nil, xerrors.Errorf("error advancing vm an epoch: %w", err)
+	}
 	// This Method does not actually execute the message itself,
 	// but rather deals with the pre/post processing of a message.
 	// (see: `invocationContext.invoke()` for the dispatch and execution)
@@ -727,9 +735,17 @@ func (vm *VM) CurrentEpoch() abi.ChainEpoch {
 	return vm.currentEpoch
 }
 
-func (vm *VM) SetCurrentEpoch(current abi.ChainEpoch) {
+func (vm *VM) SetCurrentEpoch(current abi.ChainEpoch) error {
 	vm.currentEpoch = current
 	vm.pricelist = vm.vmOption.GasPriceSchedule.PricelistByEpoch(current)
+
+	ncirc, err := vm.vmOption.CircSupplyCalculator(vm.context, vm.currentEpoch, vm.State)
+	if err != nil {
+		return err
+	}
+	vm.baseCircSupply = ncirc
+
+	return nil
 }
 
 func (vm *VM) NtwkVersion() network.Version {
