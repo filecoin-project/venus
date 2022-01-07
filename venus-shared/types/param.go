@@ -3,6 +3,8 @@ package types
 import (
 	"math/big"
 
+	"github.com/filecoin-project/venus/venus-shared/internal"
+
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/ipfs/go-cid"
@@ -12,13 +14,12 @@ import (
 )
 
 var (
-	//bigZero           = big2.Zero()
 	blocksPerEpochBig = big.NewInt(0).SetUint64(params.BlocksPerEpoch)
 )
 
-var TotalFilecoinInt = FromFil(params.FilBase)
+var TotalFilecoinInt = internal.TotalFilecoinInt
 
-var ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
+var ZeroAddress = internal.ZeroAddress
 
 var EmptyTokenAmount = abi.TokenAmount{}
 

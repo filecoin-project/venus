@@ -34,15 +34,11 @@ v2-gen-api:
 	gofmt -s -l -w ./venus-shared/api/chain/v0/proxy_gen.go;
 	gofmt -s -l -w ./venus-shared/api/chain/v1/proxy_gen.go
 
-docfile = ./venus-shared/api/api-document.md
+v0APIFile = ../venus-shared/api/v0-api-document.md
+v1APIFile = ../venus-shared/api/v1-api-document.md
 api-docs:
-	cd ./venus-devtool/ && \
-		go run ./api-docs-gen/cmd \
-		../venus-shared/api/chain/v1/fullnode.go \
-		FullNode v1 \
-		../venus-shared/api/chain/v1 > \
-		.$(docfile)
-	echo json-rpc-doc-file : $(docfile)
+	cd ./venus-devtool/ && go run ./api-docs-gen/cmd ../venus-shared/api/chain/v0/fullnode.go FullNode v0 ../venus-shared/api/chain/v0 $(v0APIFile)
+	cd ./venus-devtool/ && go run ./api-docs-gen/cmd ../venus-shared/api/chain/v1/fullnode.go FullNode v1 ../venus-shared/api/chain/v1 $(v1APIFile)
 
 compare-api:
 	go run ./tools/gen/api/proxygen.go compare

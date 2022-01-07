@@ -124,16 +124,14 @@ func init() {
 		Msg:    ExampleValue("init", reflect.TypeOf(&types.Message{}), nil).(*types.Message),
 		MsgRct: ExampleValue("init", reflect.TypeOf(&types.MessageReceipt{}), nil).(*types.MessageReceipt),
 	})
-	addExample(map[string]types.Actor{
-		"t01236": ExampleValue("init", reflect.TypeOf(types.Actor{}), nil).(types.Actor),
+	addExample(map[address.Address]*types.Actor{
+		addr: {
+			Code:    c,
+			Head:    c2,
+			Nonce:   10,
+			Balance: abi.NewTokenAmount(100),
+		},
 	})
-	addExample(map[string]types.Actor{
-		"t01236": ExampleValue("init", reflect.TypeOf(types.Actor{}), nil).(types.Actor),
-	})
-	// todo: get an error on MarshalJSON ?
-	// addExample(map[address.Address]*chain.Actor{
-	// 	"t01236": ExampleValue("init", reflect.TypeOf(*chain.Actor{}), nil).(*chain.Actor),
-	// })
 	addExample(map[string]types.MarketDeal{
 		"t026363": ExampleValue("init", reflect.TypeOf(types.MarketDeal{}), nil).(types.MarketDeal),
 	})
@@ -332,7 +330,7 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 
 const NoComment = "There are not yet any comments for this method."
 
-func ParseApiASTInfo(apiFile, iface, pkg, dir string) (comments map[string]string, groupDocs map[string]string) { //nolint:golint
+func ParseApiASTInfo(apiFile, iface, pkg, dir string) (comments map[string]string, groupDocs map[string]string) {
 	fset := token.NewFileSet()
 	apiDir, err := filepath.Abs(dir)
 	if err != nil {
