@@ -1,14 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"reflect"
 	"sort"
 	"strings"
 
-	"github.com/filecoin-project/venus/venus-devtool/api-docs-gen"
+	"github.com/filecoin-project/go-address"
+	docgen "github.com/filecoin-project/venus/venus-devtool/api-docs-gen"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func main() {
@@ -47,6 +51,14 @@ func main() {
 			_, _ = fmt.Fprintf(os.Stderr, "ExampleValue for %s get nil\n", ft.Out(0).String())
 			continue
 		}
+		// json: unsupported type: map[address.Address]*types.Actor, so use map[string]*types.Actor instead
+		if actors, ok := outv.(map[address.Address]*types.Actor); ok {
+			newActors := make(map[string]*types.Actor, len(actors))
+			for addr, a := range actors {
+				newActors[addr.String()] = a
+			}
+			outv = newActors
+		}
 
 		ov, err := json.MarshalIndent(outv, "", "  ")
 		if err != nil {
@@ -70,27 +82,28 @@ func main() {
 		return groupslice[i].GroupName < groupslice[j].GroupName
 	})
 
-	fmt.Printf("# Groups\n")
+	buf := &bytes.Buffer{}
+	fmt.Fprint(buf, "# Groups\n")
 
 	for _, g := range groupslice {
-		fmt.Printf("* [%s](#%s)\n", g.GroupName, g.GroupName)
+		fmt.Fprintf(buf, "* [%s](#%s)\n", g.GroupName, g.GroupName)
 		for _, method := range g.Methods {
-			fmt.Printf("  * [%s](#%s)\n", method.Name, method.Name)
+			fmt.Fprintf(buf, "  * [%s](#%s)\n", method.Name, method.Name)
 		}
 	}
 
 	for _, g := range groupslice {
 		g := g
-		fmt.Printf("## %s\n", g.GroupName)
-		fmt.Printf("%s\n\n", g.Header)
+		fmt.Fprintf(buf, "## %s\n", g.GroupName)
+		fmt.Fprintf(buf, "%s\n\n", g.Header)
 
 		sort.Slice(g.Methods, func(i, j int) bool {
 			return g.Methods[i].Name < g.Methods[j].Name
 		})
 
 		for _, m := range g.Methods {
-			fmt.Printf("### %s\n", m.Name)
-			fmt.Printf("%s\n\n", m.Comment)
+			fmt.Fprintf(buf, "### %s\n", m.Name)
+			fmt.Fprintf(buf, "%s\n\n", m.Comment)
 
 			var meth reflect.StructField
 			var ok bool
@@ -106,19 +119,23 @@ func main() {
 
 			perms := meth.Tag.Get("perm")
 
-			fmt.Printf("Perms: %s\n\n", perms)
+			fmt.Fprintf(buf, "Perms: %s\n\n", perms)
 
 			if strings.Count(m.InputExample, "\n") > 0 {
-				fmt.Printf("Inputs:\n```json\n%s\n```\n\n", m.InputExample)
+				fmt.Fprintf(buf, "Inputs:\n```json\n%s\n```\n\n", m.InputExample)
 			} else {
-				fmt.Printf("Inputs: `%s`\n\n", m.InputExample)
+				fmt.Fprintf(buf, "Inputs: `%s`\n\n", m.InputExample)
 			}
 
 			if strings.Count(m.ResponseExample, "\n") > 0 {
-				fmt.Printf("Response:\n```json\n%s\n```\n\n", m.ResponseExample)
+				fmt.Fprintf(buf, "Response:\n```json\n%s\n```\n\n", m.ResponseExample)
 			} else {
-				fmt.Printf("Response: `%s`\n\n", m.ResponseExample)
+				fmt.Fprintf(buf, "Response: `%s`\n\n", m.ResponseExample)
 			}
 		}
+	}
+
+	if err := ioutil.WriteFile(os.Args[5], buf.Bytes(), 0644); err != nil {
+		panic(err)
 	}
 }

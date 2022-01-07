@@ -23,7 +23,6 @@
   * [ChainGetRandomnessFromTickets](#ChainGetRandomnessFromTickets)
   * [ChainGetReceipts](#ChainGetReceipts)
   * [ChainGetTipSet](#ChainGetTipSet)
-  * [ChainGetTipSetAfterHeight](#ChainGetTipSetAfterHeight)
   * [ChainGetTipSetByHeight](#ChainGetTipSetByHeight)
   * [ChainHasObj](#ChainHasObj)
   * [ChainHead](#ChainHead)
@@ -48,6 +47,7 @@
 * [Has](#Has)
   * [HasPassword](#HasPassword)
 * [List](#List)
+  * [ListActor](#ListActor)
 * [Lock](#Lock)
   * [LockWallet](#LockWallet)
 * [Message](#Message)
@@ -59,9 +59,6 @@
   * [MpoolBatchPush](#MpoolBatchPush)
   * [MpoolBatchPushMessage](#MpoolBatchPushMessage)
   * [MpoolBatchPushUntrusted](#MpoolBatchPushUntrusted)
-  * [MpoolCheckMessages](#MpoolCheckMessages)
-  * [MpoolCheckPendingMessages](#MpoolCheckPendingMessages)
-  * [MpoolCheckReplaceMessages](#MpoolCheckReplaceMessages)
   * [MpoolClear](#MpoolClear)
   * [MpoolDeleteByAdress](#MpoolDeleteByAdress)
   * [MpoolGetConfig](#MpoolGetConfig)
@@ -132,8 +129,7 @@
   * [StateCirculatingSupply](#StateCirculatingSupply)
   * [StateDealProviderCollateralBounds](#StateDealProviderCollateralBounds)
   * [StateGetActor](#StateGetActor)
-  * [StateGetRandomnessFromBeacon](#StateGetRandomnessFromBeacon)
-  * [StateGetRandomnessFromTickets](#StateGetRandomnessFromTickets)
+  * [StateGetReceipt](#StateGetReceipt)
   * [StateListActors](#StateListActors)
   * [StateListMiners](#StateListMiners)
   * [StateLookupID](#StateLookupID)
@@ -160,6 +156,7 @@
   * [StateNetworkName](#StateNetworkName)
   * [StateNetworkVersion](#StateNetworkVersion)
   * [StateSearchMsg](#StateSearchMsg)
+  * [StateSearchMsgLimited](#StateSearchMsgLimited)
   * [StateSectorExpiration](#StateSectorExpiration)
   * [StateSectorGetInfo](#StateSectorGetInfo)
   * [StateSectorPartition](#StateSectorPartition)
@@ -169,6 +166,7 @@
   * [StateVerifiedRegistryRootKey](#StateVerifiedRegistryRootKey)
   * [StateVerifierStatus](#StateVerifierStatus)
   * [StateWaitMsg](#StateWaitMsg)
+  * [StateWaitMsgLimited](#StateWaitMsgLimited)
 * [Sync](#Sync)
   * [SyncState](#SyncState)
   * [SyncSubmitBlock](#SyncSubmitBlock)
@@ -733,35 +731,6 @@ Perms: read
 Inputs:
 ```json
 [
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ]
-]
-```
-
-Response:
-```json
-{
-  "Cids": null,
-  "Blocks": null,
-  "Height": 0
-}
-```
-
-### ChainGetTipSetAfterHeight
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  10101,
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -1435,6 +1404,29 @@ Response: `true`
 ## List
 
 
+### ListActor
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "t01234": {
+    "Code": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "Head": {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    },
+    "Nonce": 10,
+    "Balance": "100"
+  }
+}
+```
+
 ## Lock
 
 
@@ -1891,134 +1883,6 @@ Response:
 ]
 ```
 
-### MpoolCheckMessages
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  [
-    {
-      "Message": {
-        "CID": {
-          "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-        },
-        "Version": 42,
-        "To": "t01234",
-        "From": "t01234",
-        "Nonce": 42,
-        "Value": "0",
-        "GasLimit": 9,
-        "GasFeeCap": "0",
-        "GasPremium": "0",
-        "Method": 1,
-        "Params": "Ynl0ZSBhcnJheQ=="
-      },
-      "ValidNonce": true
-    }
-  ]
-]
-```
-
-Response:
-```json
-[
-  [
-    {
-      "Cid": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "Code": 0,
-      "OK": true,
-      "Err": "string value",
-      "Hint": {
-        "abc": 123
-      }
-    }
-  ]
-]
-```
-
-### MpoolCheckPendingMessages
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "t01234"
-]
-```
-
-Response:
-```json
-[
-  [
-    {
-      "Cid": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "Code": 0,
-      "OK": true,
-      "Err": "string value",
-      "Hint": {
-        "abc": 123
-      }
-    }
-  ]
-]
-```
-
-### MpoolCheckReplaceMessages
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  [
-    {
-      "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-      },
-      "Version": 42,
-      "To": "t01234",
-      "From": "t01234",
-      "Nonce": 42,
-      "Value": "0",
-      "GasLimit": 9,
-      "GasFeeCap": "0",
-      "GasPremium": "0",
-      "Method": 1,
-      "Params": "Ynl0ZSBhcnJheQ=="
-    }
-  ]
-]
-```
-
-Response:
-```json
-[
-  [
-    {
-      "Cid": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "Code": 0,
-      "OK": true,
-      "Err": "string value",
-      "Hint": {
-        "abc": 123
-      }
-    }
-  ]
-]
-```
-
 ### MpoolClear
 
 
@@ -2134,7 +1998,7 @@ Response:
 ### MpoolPublishByAddr
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json
@@ -2148,7 +2012,7 @@ Response: `{}`
 ### MpoolPublishMessage
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json
@@ -2512,22 +2376,7 @@ Inputs:
 Response:
 ```json
 {
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "t01234",
-    "From": "t01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
 }
 ```
 
@@ -2550,22 +2399,7 @@ Inputs:
 Response:
 ```json
 {
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "t01234",
-    "From": "t01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
 }
 ```
 
@@ -2587,22 +2421,7 @@ Inputs:
 Response:
 ```json
 {
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "t01234",
-    "From": "t01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
 }
 ```
 
@@ -2623,22 +2442,7 @@ Inputs:
 Response:
 ```json
 {
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "t01234",
-    "From": "t01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
 }
 ```
 
@@ -2664,22 +2468,7 @@ Inputs:
 Response:
 ```json
 {
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "t01234",
-    "From": "t01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
 }
 ```
 
@@ -2700,22 +2489,7 @@ Inputs:
 Response:
 ```json
 {
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "t01234",
-    "From": "t01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
 }
 ```
 
@@ -2740,22 +2514,7 @@ Inputs:
 Response:
 ```json
 {
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "t01234",
-    "From": "t01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
 }
 ```
 
@@ -2781,22 +2540,7 @@ Inputs:
 Response:
 ```json
 {
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "t01234",
-    "From": "t01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
 }
 ```
 
@@ -2850,22 +2594,7 @@ Inputs:
 Response:
 ```json
 {
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "t01234",
-    "From": "t01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
 }
 ```
 
@@ -2887,22 +2616,7 @@ Inputs:
 Response:
 ```json
 {
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "t01234",
-    "From": "t01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
 }
 ```
 
@@ -2926,22 +2640,7 @@ Inputs:
 Response:
 ```json
 {
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "t01234",
-    "From": "t01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
 }
 ```
 
@@ -2964,22 +2663,7 @@ Inputs:
 Response:
 ```json
 {
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "t01234",
-    "From": "t01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
 }
 ```
 
@@ -3001,22 +2685,7 @@ Inputs:
 Response:
 ```json
 {
-  "Message": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "t01234",
-    "From": "t01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "ValidNonce": true
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
 }
 ```
 
@@ -4059,7 +3728,7 @@ Response:
 }
 ```
 
-### StateGetRandomnessFromBeacon
+### StateGetReceipt
 
 
 Perms: read
@@ -4067,9 +3736,9 @@ Perms: read
 Inputs:
 ```json
 [
-  2,
-  10101,
-  "Ynl0ZSBhcnJheQ==",
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -4081,31 +3750,14 @@ Inputs:
 ]
 ```
 
-Response: `"Bw=="`
-
-### StateGetRandomnessFromTickets
-
-
-Perms: read
-
-Inputs:
+Response:
 ```json
-[
-  2,
-  10101,
-  "Ynl0ZSBhcnJheQ==",
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ]
-]
+{
+  "ExitCode": 0,
+  "Return": "Ynl0ZSBhcnJheQ==",
+  "GasUsed": 9
+}
 ```
-
-Response: `"Bw=="`
 
 ### StateListActors
 
@@ -4906,7 +4558,25 @@ Perms: read
 Inputs:
 ```json
 [
-  [
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+{
+  "Message": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Receipt": {
+    "ExitCode": 0,
+    "Return": "Ynl0ZSBhcnJheQ==",
+    "GasUsed": 9
+  },
+  "ReturnDec": {},
+  "TipSet": [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
@@ -4914,11 +4584,22 @@ Inputs:
       "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
     }
   ],
+  "Height": 10101
+}
+```
+
+### StateSearchMsgLimited
+
+
+Perms: read
+
+Inputs:
+```json
+[
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  10101,
-  true
+  10101
 ]
 ```
 
@@ -5201,9 +4882,47 @@ Inputs:
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
+  42
+]
+```
+
+Response:
+```json
+{
+  "Message": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Receipt": {
+    "ExitCode": 0,
+    "Return": "Ynl0ZSBhcnJheQ==",
+    "GasUsed": 9
+  },
+  "ReturnDec": {},
+  "TipSet": [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  "Height": 10101
+}
+```
+
+### StateWaitMsgLimited
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   42,
-  10101,
-  true
+  10101
 ]
 ```
 
