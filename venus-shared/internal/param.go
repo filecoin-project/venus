@@ -2,13 +2,12 @@ package internal
 
 import (
 	"github.com/filecoin-project/go-address"
-
-	big2 "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/venus-shared/types/params"
 )
 
 var (
-	bigZero = big2.Zero()
+	bigZero = big.Zero()
 )
 
 var TotalFilecoinInt = FromFil(params.FilBase)
