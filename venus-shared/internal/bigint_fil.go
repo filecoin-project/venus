@@ -2,6 +2,7 @@ package internal
 
 import (
 	"encoding"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
@@ -91,6 +92,24 @@ func (f FIL) UnmarshalText(text []byte) error {
 	return nil
 }
 
+func (f FIL) MarshalJSON() ([]byte, error) {
+	return []byte("\"" + f.String() + "\""), nil
+}
+
+func (f *FIL) UnmarshalJSON(by []byte) error {
+	p, err := ParseFIL(strings.Trim(string(by), "\""))
+	if err != nil {
+		return err
+	}
+	if f.Int != nil {
+		f.Int.Set(p.Int)
+	} else {
+		f.Int = p.Int
+	}
+
+	return nil
+}
+
 func ParseFIL(s string) (FIL, error) {
 	suffix := strings.TrimLeft(s, "-.1234567890")
 	s = s[:len(s)-len(suffix)]
@@ -145,3 +164,6 @@ func FromFil(i uint64) BigInt {
 
 var _ encoding.TextMarshaler = (*FIL)(nil)
 var _ encoding.TextUnmarshaler = (*FIL)(nil)
+
+var _ json.Marshaler = (*FIL)(nil)
+var _ json.Unmarshaler = (*FIL)(nil)
