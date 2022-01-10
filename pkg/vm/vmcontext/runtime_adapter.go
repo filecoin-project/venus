@@ -16,6 +16,12 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/rt"
+
+	/* inline-gen template
+	{{range .actorVersions}}
+	rt{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/runtime"{{end}}
+	/* inline-gen start */
+
 	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
 	rt2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 	rt3 "github.com/filecoin-project/specs-actors/v3/actors/runtime"
@@ -23,6 +29,7 @@ import (
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	rt6 "github.com/filecoin-project/specs-actors/v6/actors/runtime"
 	rt7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
+	/* inline-gen end */
 
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
@@ -45,6 +52,11 @@ func init() {
 
 var actorLog = logging.Logger("vm.actors")
 
+/* inline-gen template
+{{range .actorVersions}}
+var _ rt{{.}}.Runtime = (*runtimeAdapter)(nil){{end}}
+/* inline-gen start */
+
 var _ rt0.Runtime = (*runtimeAdapter)(nil)
 var _ rt2.Runtime = (*runtimeAdapter)(nil)
 var _ rt3.Runtime = (*runtimeAdapter)(nil)
@@ -52,6 +64,8 @@ var _ rt4.Runtime = (*runtimeAdapter)(nil)
 var _ rt5.Runtime = (*runtimeAdapter)(nil)
 var _ rt6.Runtime = (*runtimeAdapter)(nil)
 var _ rt7.Runtime = (*runtimeAdapter)(nil)
+
+/* inline-gen end */
 
 type runtimeAdapter struct {
 	ctx *invocationContext
