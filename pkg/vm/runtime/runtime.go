@@ -18,7 +18,7 @@ type Runtime interface {
 	// CurrentEpoch is the current chain epoch.
 	CurrentEpoch() abi.ChainEpoch
 
-	NtwkVersion() network.Version
+	NetworkVersion() network.Version
 }
 
 // InvocationContext is passed to the actors on each method call.

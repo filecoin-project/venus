@@ -131,12 +131,12 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 	}
 
 	// Expensive validation: signatures.
-	b1Version := s.fork.GetNtwkVersion(ctx, b1.Height)
+	b1Version := s.fork.GetNetworkVersion(ctx, b1.Height)
 	err := verifyBlockSignature(ctx, b1, b1Version, curEpoch, msg.To, gasIpld, view, getter)
 	if err != nil {
 		return nil, err
 	}
-	b2Version := s.fork.GetNtwkVersion(ctx, b2.Height)
+	b2Version := s.fork.GetNetworkVersion(ctx, b2.Height)
 	err = verifyBlockSignature(ctx, b2, b2Version, curEpoch, msg.To, gasIpld, view, getter)
 	if err != nil {
 		return nil, err

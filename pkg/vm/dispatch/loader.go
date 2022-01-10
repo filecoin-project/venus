@@ -89,7 +89,7 @@ type ActorPredicate func(vmr.Runtime, rtt.VMActor) error
 //ActorsVersionPredicate  get actor predicate base on actor version and network version
 func ActorsVersionPredicate(ver actors.Version) ActorPredicate {
 	return func(rt vmr.Runtime, v rtt.VMActor) error {
-		nver, err := actors.VersionForNetwork(rt.NtwkVersion())
+		nver, err := actors.VersionForNetwork(rt.NetworkVersion())
 		if err != nil {
 			return xerrors.Errorf("version for network %w", err)
 		}

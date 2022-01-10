@@ -60,7 +60,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	if len(entries) > 0 {
 		rbase = entries[len(entries)-1]
 	}
-	version := miningAPI.Ming.ChainModule.Fork.GetNtwkVersion(ctx, round)
+	version := miningAPI.Ming.ChainModule.Fork.GetNetworkVersion(ctx, round)
 	lbts, lbst, err := miningAPI.Ming.ChainModule.ChainReader.GetLookbackTipSetForRound(ctx, ts, round, version)
 	if err != nil {
 		return nil, xerrors.Errorf("getting lookback miner actor state: %v", err)
@@ -96,7 +96,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 		return nil, xerrors.Errorf("failed to get randomness for winning post: %v", err)
 	}
 
-	nv := miningAPI.Ming.ChainModule.Fork.GetNtwkVersion(ctx, ts.Height())
+	nv := miningAPI.Ming.ChainModule.Fork.GetNetworkVersion(ctx, ts.Height())
 
 	pv := miningAPI.Ming.proofVerifier
 	sectors, err := view.GetSectorsForWinningPoSt(ctx, nv, pv, maddr, prand)
@@ -178,7 +178,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *types.Bloc
 		return nil, xerrors.Errorf("failed to load tipset state: %v", err)
 	}
 
-	version := miningAPI.Ming.ChainModule.Fork.GetNtwkVersion(ctx, bt.Epoch)
+	version := miningAPI.Ming.ChainModule.Fork.GetNetworkVersion(ctx, bt.Epoch)
 	_, lbst, err := miningAPI.Ming.ChainModule.ChainReader.GetLookbackTipSetForRound(ctx, pts, bt.Epoch, version)
 	if err != nil {
 		return nil, xerrors.Errorf("getting lookback miner actor state: %v", err)

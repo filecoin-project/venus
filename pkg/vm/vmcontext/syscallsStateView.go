@@ -71,12 +71,12 @@ func (vm *syscallsStateView) MinerInfo(ctx context.Context, maddr address.Addres
 	return &minerInfo, nil
 }
 
-//GetNtwkVersion get network version
-func (vm *syscallsStateView) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version {
-	return vm.vmOption.NtwkVersionGetter(ctx, ce)
+//GetNetworkVersion get network version
+func (vm *syscallsStateView) GetNetworkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version {
+	return vm.vmOption.NetworkVersion
 }
 
-//GetNtwkVersion get network version
+//GetNetworkVersion get network version
 func (vm *syscallsStateView) TotalFilCircSupply(height abi.ChainEpoch, st tree.Tree) (abi.TokenAmount, error) {
 	return vm.GetCircSupply(context.TODO())
 }

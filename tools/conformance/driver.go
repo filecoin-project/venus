@@ -114,12 +114,13 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 		return nil, err
 	}
 	var (
+		ctx      = context.Background()
 		vmOption = vm.VmOption{
 			CircSupplyCalculator: func(context.Context, abi.ChainEpoch, tree.Tree) (abi.TokenAmount, error) {
 				return big.Zero(), nil
 			},
-			LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(context.TODO(), chainStore, chainFork, nil),
-			NtwkVersionGetter:   chainFork.GetNtwkVersion,
+			LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, chainStore, chainFork, nil),
+			NetworkVersion:      chainFork.GetNetworkVersion(ctx, execEpoch),
 			Rnd:                 NewFixedRand(),
 			BaseFee:             big.NewFromGo(&tipset.BaseFee),
 			Fork:                chainFork,
@@ -131,7 +132,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 		}
 	)
 
-	lvm, err := vm.NewVM(context.Background(), vmOption)
+	lvm, err := vm.NewVM(ctx, vmOption)
 	if err != nil {
 		return nil, err
 	}
@@ -258,12 +259,13 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		return nil, cid.Undef, err
 	}
 	var (
+		ctx      = context.Background()
 		vmOption = vm.VmOption{
 			CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 				return params.CircSupply, nil
 			},
-			LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(context.TODO(), chainStore, chainFork, nil),
-			NtwkVersionGetter:   chainFork.GetNtwkVersion,
+			LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, chainStore, chainFork, nil),
+			NetworkVersion:      chainFork.GetNetworkVersion(ctx, params.Epoch),
 			Rnd:                 params.Rand,
 			BaseFee:             params.BaseFee,
 			Fork:                chainFork,
@@ -276,7 +278,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		}
 	)
 
-	lvm, err := vm.NewVM(context.TODO(), vmOption)
+	lvm, err := vm.NewVM(ctx, vmOption)
 	if err != nil {
 		return nil, cid.Undef, err
 	}
