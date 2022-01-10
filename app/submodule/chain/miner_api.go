@@ -100,7 +100,7 @@ func (msa *minerStateAPI) StateMinerInfo(ctx context.Context, maddr address.Addr
 		return miner.MinerInfo{}, xerrors.Errorf("loading view %s: %v", tsk, err)
 	}
 
-	nv := msa.Fork.GetNtwkVersion(ctx, ts.Height())
+	nv := msa.Fork.GetNetworkVersion(ctx, ts.Height())
 	minfo, err := view.MinerInfo(ctx, maddr, nv)
 	if err != nil {
 		return miner.MinerInfo{}, err
@@ -725,7 +725,7 @@ func (msa *minerStateAPI) StateDealProviderCollateralBounds(ctx context.Context,
 		powClaim.QualityAdjPower,
 		rewPow,
 		circ.FilCirculating,
-		msa.Fork.GetNtwkVersion(ctx, ts.Height()))
+		msa.Fork.GetNetworkVersion(ctx, ts.Height()))
 	if err != nil {
 		return types.DealCollateralBounds{}, xerrors.Errorf("getting deal provider coll bounds: %v", err)
 	}

@@ -149,7 +149,7 @@ func (a *runtimeAdapter) StorePut(x cbor.Marshaler) cid.Cid {
 }
 
 func (a *runtimeAdapter) NetworkVersion() network.Version {
-	return a.stateView.GetNtwkVersion(a.Context(), a.CurrEpoch())
+	return a.stateView.GetNetworkVersion(a.Context(), a.CurrEpoch())
 }
 
 func (a *runtimeAdapter) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {

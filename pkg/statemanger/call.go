@@ -65,7 +65,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 			return cs.FilCirculating, nil
 		},
 		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, s.cs, s.fork, ts),
-		NtwkVersionGetter:   s.fork.GetNtwkVersion,
+		NetworkVersion:      s.fork.GetNetworkVersion(ctx, ts.Height()+1),
 		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
 		BaseFee:             ts.At(0).ParentBaseFee,
 		Epoch:               ts.Height() + 1,
@@ -197,7 +197,7 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 			return dertail.FilCirculating, nil
 		},
 		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, s.cs, s.fork, ts),
-		NtwkVersionGetter:   s.fork.GetNtwkVersion,
+		NetworkVersion:      s.fork.GetNetworkVersion(ctx, pheight+1),
 		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
 		BaseFee:             ts.At(0).ParentBaseFee,
 		Epoch:               pheight + 1,

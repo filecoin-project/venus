@@ -92,16 +92,12 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 		return big.Zero(), nil
 	}
 
-	genesisNetworkVersion := func(context.Context, abi.ChainEpoch) network.Version {
-		return nv
-	}
-
 	faultChecker := consensusfault.NewFaultChecker(cs, fork.NewMockFork())
 	syscalls := vmsupport.NewSyscalls(faultChecker, impl.ProofVerifier)
 	gasPirceSchedule := gas.NewPricesSchedule(para)
 	vmopt := vm.VmOption{
 		CircSupplyCalculator: csc,
-		NtwkVersionGetter:    genesisNetworkVersion,
+		NetworkVersion:       nv,
 		Rnd:                  &fakeRand{},
 		BaseFee:              big.NewInt(0),
 		Epoch:                0,

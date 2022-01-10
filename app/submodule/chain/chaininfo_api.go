@@ -372,7 +372,7 @@ func (cia *chainInfoAPI) StateGetRandomnessFromTickets(ctx context.Context, pers
 	}
 
 	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand)
-	rnv := cia.chain.Fork.GetNtwkVersion(ctx, randEpoch)
+	rnv := cia.chain.Fork.GetNetworkVersion(ctx, randEpoch)
 
 	if rnv >= network.Version13 {
 		return r.GetChainRandomnessV2(ctx, personalization, randEpoch, entropy)
@@ -388,7 +388,7 @@ func (cia *chainInfoAPI) StateGetRandomnessFromBeacon(ctx context.Context, perso
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand)
-	rnv := cia.chain.Fork.GetNtwkVersion(ctx, randEpoch)
+	rnv := cia.chain.Fork.GetNetworkVersion(ctx, randEpoch)
 
 	if rnv >= network.Version14 {
 		return r.GetBeaconRandomnessV3(ctx, personalization, randEpoch, entropy)
@@ -405,7 +405,7 @@ func (cia *chainInfoAPI) StateNetworkVersion(ctx context.Context, tsk types.TipS
 	if err != nil {
 		return network.VersionMax, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
-	return cia.chain.Fork.GetNtwkVersion(ctx, ts.Height()), nil
+	return cia.chain.Fork.GetNetworkVersion(ctx, ts.Height()), nil
 }
 
 func (cia *chainInfoAPI) StateVerifiedRegistryRootKey(ctx context.Context, tsk types.TipSetKey) (address.Address, error) {

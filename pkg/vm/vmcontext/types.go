@@ -21,13 +21,12 @@ import (
 
 type ExecCallBack func(cid.Cid, VmMessage, *Ret) error
 type CircSupplyCalculator func(context.Context, abi.ChainEpoch, tree.Tree) (abi.TokenAmount, error)
-type NtwkVersionGetter func(context.Context, abi.ChainEpoch) network.Version
 type LookbackStateGetter func(context.Context, abi.ChainEpoch) (*state.View, error)
 
 type VmOption struct { //nolint
 	CircSupplyCalculator CircSupplyCalculator
 	LookbackStateGetter  LookbackStateGetter
-	NtwkVersionGetter    NtwkVersionGetter
+	NetworkVersion       network.Version
 	Rnd                  HeadChainRandomness
 	BaseFee              abi.TokenAmount
 	Fork                 fork.IFork
@@ -47,7 +46,7 @@ type ILookBack interface {
 
 func LookbackStateGetterForTipset(ctx context.Context, backer ILookBack, fork fork.IFork, ts *types.TipSet) LookbackStateGetter {
 	return func(ctx context.Context, round abi.ChainEpoch) (*state.View, error) {
-		ver := fork.GetNtwkVersion(ctx, round)
+		ver := fork.GetNetworkVersion(ctx, round)
 		ts, _, err := backer.GetLookbackTipSetForRound(ctx, ts, round, ver)
 		if err != nil {
 			return nil, err

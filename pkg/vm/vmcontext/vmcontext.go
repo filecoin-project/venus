@@ -642,7 +642,7 @@ func (vm *VM) applyMessage(msg *types.Message, onChainMsgSize int) (*Ret, error)
 }
 
 func (vm *VM) shouldBurn(ctx context.Context, msg *types.Message, errcode exitcode.ExitCode) (bool, error) {
-	if vm.NtwkVersion() <= network.Version12 {
+	if vm.NetworkVersion() <= network.Version12 {
 		// Check to see if we should burn funds. We avoid burning on successful
 		// window post. This won't catch _indirect_ window post calls, but this
 		// is the best we can get for now.
@@ -748,8 +748,8 @@ func (vm *VM) SetCurrentEpoch(current abi.ChainEpoch) error {
 	return nil
 }
 
-func (vm *VM) NtwkVersion() network.Version {
-	return vm.vmOption.NtwkVersionGetter(context.TODO(), vm.currentEpoch)
+func (vm *VM) NetworkVersion() network.Version {
+	return vm.vmOption.NetworkVersion
 }
 
 func (vm *VM) transferToGasHolder(addr address.Address, gasHolder *types.Actor, amt abi.TokenAmount) error {
@@ -789,7 +789,7 @@ func (vm *VM) StateTree() tree.Tree {
 
 func (vm *VM) GetCircSupply(ctx context.Context) (abi.TokenAmount, error) {
 	// Before v15, this was recalculated on each invocation as the state tree was mutated
-	if vm.vmOption.NtwkVersionGetter(ctx, vm.vmOption.Epoch) <= network.Version14 {
+	if vm.vmOption.NetworkVersion <= network.Version14 {
 		return vm.vmOption.CircSupplyCalculator(ctx, vm.vmOption.Epoch, vm.State)
 	}
 

@@ -84,18 +84,16 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 
 	vmOption := vm.VmOption{
 		CircSupplyCalculator: csc,
-		NtwkVersionGetter: func(ctx context.Context, epoch abi.ChainEpoch) network.Version {
-			return network.Version6
-		},
-		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(context.TODO(), chainStore, chainFork, nil),
-		Rnd:                 chainRand,
-		BaseFee:             abi.NewTokenAmount(InitialBaseFee),
-		Epoch:               0,
-		GasPriceSchedule:    gas.NewPricesSchedule(config.DefaultForkUpgradeParam),
-		Bsstore:             bs,
-		PRoot:               cid.Undef,
-		SysCallsImpl:        syscallImpl,
-		Fork:                chainFork,
+		NetworkVersion:       network.Version15,
+		LookbackStateGetter:  vmcontext.LookbackStateGetterForTipset(context.TODO(), chainStore, chainFork, nil),
+		Rnd:                  chainRand,
+		BaseFee:              abi.NewTokenAmount(InitialBaseFee),
+		Epoch:                0,
+		GasPriceSchedule:     gas.NewPricesSchedule(config.DefaultForkUpgradeParam),
+		Bsstore:              bs,
+		PRoot:                cid.Undef,
+		SysCallsImpl:         syscallImpl,
+		Fork:                 chainFork,
 	}
 	vm, err := vm.NewVM(context.Background(), vmOption)
 	if err != nil {

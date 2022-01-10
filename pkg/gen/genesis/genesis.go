@@ -484,9 +484,6 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 
 	faultChecker := consensusfault.NewFaultChecker(cs, fork.NewMockFork())
 	syscalls := vmsupport.NewSyscalls(faultChecker, impl.ProofVerifier)
-	genesisNetworkVersion := func(context.Context, abi.ChainEpoch) network.Version {
-		return nv
-	}
 
 	csc := func(context.Context, abi.ChainEpoch, tree.Tree) (abi.TokenAmount, error) {
 		return big.Zero(), nil
@@ -495,7 +492,7 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 	gasPriceSchedule := gas.NewPricesSchedule(para)
 	vmopt := vm.VmOption{
 		CircSupplyCalculator: csc,
-		NtwkVersionGetter:    genesisNetworkVersion,
+		NetworkVersion:       nv,
 		Rnd:                  &fakeRand{},
 		BaseFee:              big.NewInt(0),
 		Epoch:                0,

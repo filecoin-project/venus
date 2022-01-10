@@ -360,7 +360,7 @@ type chainReader interface {
 
 type IFork interface {
 	HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error)
-	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
+	GetNetworkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
 	HasExpensiveFork(ctx context.Context, height abi.ChainEpoch) bool
 	GetForkUpgrade() *config.ForkUpgradeConfig
 	Start(ctx context.Context) error
@@ -496,7 +496,7 @@ func (c *ChainFork) HasExpensiveFork(ctx context.Context, height abi.ChainEpoch)
 	return ok
 }
 
-func (c *ChainFork) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
+func (c *ChainFork) GetNetworkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
 	// The epochs here are the _last_ epoch for every version, or -1 if the
 	// version is disabled.
 	for _, spec := range c.networkVersions {

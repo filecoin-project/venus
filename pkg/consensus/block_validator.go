@@ -178,7 +178,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	}
 
 	// get worker address
-	version := bv.fork.GetNtwkVersion(ctx, blk.Height)
+	version := bv.fork.GetNetworkVersion(ctx, blk.Height)
 	lbTS, lbStateRoot, err := bv.chainState.GetLookbackTipSetForRound(ctx, parent, blk.Height, version)
 	if err != nil {
 		return xerrors.Errorf("failed to get lookback tipset for block: %w", err)
@@ -255,7 +255,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 		return nil
 	})
 
-	winPoStNv := bv.fork.GetNtwkVersion(ctx, baseHeight)
+	winPoStNv := bv.fork.GetNetworkVersion(ctx, baseHeight)
 	wproofCheck := async.Err(func() error {
 		if err := bv.VerifyWinningPoStProof(ctx, winPoStNv, blk, prevBeacon, lbStateRoot); err != nil {
 			return xerrors.Errorf("invalid election post: %w", err)
@@ -437,7 +437,7 @@ func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *typ
 	// we check that the miner met the minimum power at the lookback tipset
 
 	baseTS := bv.chainState.GetHead()
-	version := bv.fork.GetNtwkVersion(ctx, bh.Height)
+	version := bv.fork.GetNetworkVersion(ctx, bh.Height)
 	lbts, lbst, err := bv.chainState.GetLookbackTipSetForRound(ctx, baseTS, bh.Height, version)
 	if err != nil {
 		log.Warnf("failed to load lookback tipset for incoming block: %s", err)
@@ -582,7 +582,7 @@ func (bv *BlockValidator) MinerEligibleToMine(ctx context.Context, addr address.
 	hmp, err := bv.minerHasMinPower(ctx, addr, lookbackTS)
 
 	// TODO: We're blurring the lines between a "runtime network version" and a "Lotus upgrade epoch", is that unavoidable?
-	if bv.fork.GetNtwkVersion(ctx, parentHeight) <= network.Version3 {
+	if bv.fork.GetNetworkVersion(ctx, parentHeight) <= network.Version3 {
 		return hmp, err
 	}
 
@@ -784,7 +784,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 
 		// Phase 1: syntactic validation, as defined in the spec
 		minGas := pl.OnChainMessage(msg.ChainLength())
-		if err := m.ValidForBlockInclusion(minGas.Total(), bv.fork.GetNtwkVersion(ctx, blk.Height)); err != nil {
+		if err := m.ValidForBlockInclusion(minGas.Total(), bv.fork.GetNetworkVersion(ctx, blk.Height)); err != nil {
 			return err
 		}
 
@@ -798,7 +798,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 		// Phase 2: (Partial) semantic validation:
 		// the sender exists and is an account actor, and the nonces make sense
 		var sender address.Address
-		if bv.fork.GetNtwkVersion(ctx, blk.Height) >= network.Version13 {
+		if bv.fork.GetNetworkVersion(ctx, blk.Height) >= network.Version13 {
 			sender, err = st.LookupID(m.From)
 			if err != nil {
 				return err
@@ -844,7 +844,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 
 	secpMsgs := make([]types.ChainMsg, len(blksecpMsgs))
 	for i, m := range blksecpMsgs {
-		if bv.fork.GetNtwkVersion(ctx, blk.Height) >= network.Version14 {
+		if bv.fork.GetNetworkVersion(ctx, blk.Height) >= network.Version14 {
 			if m.Signature.Type != crypto.SigTypeSecp256k1 {
 				return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 			}

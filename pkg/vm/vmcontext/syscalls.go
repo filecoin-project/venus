@@ -24,7 +24,7 @@ type SyscallsStateView interface {
 	ResolveToKeyAddr(ctx context.Context, address address.Address) (address.Address, error)
 	MinerInfo(ctx context.Context, maddr address.Address, nv network.Version) (*miner.MinerInfo, error)
 	TotalFilCircSupply(height abi.ChainEpoch, st vmState.Tree) (abi.TokenAmount, error)
-	GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version
+	GetNetworkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version
 }
 
 // Syscall implementation interface.

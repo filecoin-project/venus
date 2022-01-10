@@ -208,7 +208,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (ci
 			return dertail.FilCirculating, nil
 		},
 		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, c.chainState, c.fork, ts),
-		NtwkVersionGetter:   c.fork.GetNtwkVersion,
+		NetworkVersion:      c.fork.GetNetworkVersion(ctx, ts.At(0).Height),
 		Rnd:                 NewHeadRandomness(c.rnd, ts.Key()),
 		BaseFee:             ts.At(0).ParentBaseFee,
 		Fork:                c.fork,
