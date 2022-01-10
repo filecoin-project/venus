@@ -84,7 +84,7 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 
 	vmOption := vm.VmOption{
 		CircSupplyCalculator: csc,
-		NetworkVersion:       network.Version15,
+		NetworkVersion:       network.Version6,
 		LookbackStateGetter:  vmcontext.LookbackStateGetterForTipset(context.TODO(), chainStore, chainFork, nil),
 		Rnd:                  chainRand,
 		BaseFee:              abi.NewTokenAmount(InitialBaseFee),

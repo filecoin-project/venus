@@ -4,10 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/venus/venus-shared/actors/aerrors"
-
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
-
 	"github.com/ipfs/go-cid"
 	cbor2 "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -21,9 +17,17 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/rt"
 	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
+	rt3 "github.com/filecoin-project/specs-actors/v3/actors/runtime"
+	rt4 "github.com/filecoin-project/specs-actors/v4/actors/runtime"
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
+	rt6 "github.com/filecoin-project/specs-actors/v6/actors/runtime"
+	rt7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
+
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
+	"github.com/filecoin-project/venus/venus-shared/actors/aerrors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -41,8 +45,13 @@ func init() {
 
 var actorLog = logging.Logger("vm.actors")
 
-var _ rt5.Runtime = (*runtimeAdapter)(nil)
 var _ rt0.Runtime = (*runtimeAdapter)(nil)
+var _ rt2.Runtime = (*runtimeAdapter)(nil)
+var _ rt3.Runtime = (*runtimeAdapter)(nil)
+var _ rt4.Runtime = (*runtimeAdapter)(nil)
+var _ rt5.Runtime = (*runtimeAdapter)(nil)
+var _ rt6.Runtime = (*runtimeAdapter)(nil)
+var _ rt7.Runtime = (*runtimeAdapter)(nil)
 
 type runtimeAdapter struct {
 	ctx *invocationContext
