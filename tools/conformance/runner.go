@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"strconv"
 
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
@@ -34,6 +35,7 @@ func ExecuteMessageVector(r Reporter, v string, vector *schema.TestVector, varia
 	var (
 		ctx       = context.Background()
 		baseEpoch = variant.Epoch
+		nv        = network.Version(variant.NetworkVersion)
 		root      = vector.Pre.StateTree.RootCID
 	)
 
@@ -60,12 +62,13 @@ func ExecuteMessageVector(r Reporter, v string, vector *schema.TestVector, varia
 		// Execute the message.
 		var ret *vm.Ret
 		ret, root, err = driver.ExecuteMessage(bs, ExecuteMessageParams{
-			Preroot:    root,
-			Epoch:      abi.ChainEpoch(baseEpoch),
-			Message:    msg,
-			BaseFee:    BaseFeeOrDefault(vector.Pre.BaseFee),
-			CircSupply: CircSupplyOrDefault(vector.Pre.CircSupply),
-			Rand:       NewReplayingRand(r, vector.Randomness),
+			Preroot:        root,
+			Epoch:          abi.ChainEpoch(baseEpoch),
+			Message:        msg,
+			BaseFee:        BaseFeeOrDefault(vector.Pre.BaseFee),
+			CircSupply:     CircSupplyOrDefault(vector.Pre.CircSupply),
+			Rand:           NewReplayingRand(r, vector.Randomness),
+			NetworkVersion: nv,
 		})
 		if err != nil {
 			r.Fatalf("fatal failure when executing message: %s", err)

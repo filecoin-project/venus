@@ -142,7 +142,7 @@ func (ml migrationLogger) Log(level rt.LogLevel, msg string, args ...interface{}
 	}
 }
 
-func defaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConfig) UpgradeSchedule {
+func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConfig) UpgradeSchedule {
 	var us UpgradeSchedule
 
 	updates := []Upgrade{{
@@ -411,7 +411,7 @@ func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore,
 	}
 
 	// If we have upgrades, make sure they're in-order and make sense.
-	us := defaultUpgradeSchedule(fork, networkParams.ForkUpgradeParam)
+	us := DefaultUpgradeSchedule(fork, networkParams.ForkUpgradeParam)
 	if err := us.Validate(); err != nil {
 		return nil, err
 	}
