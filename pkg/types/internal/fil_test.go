@@ -1,6 +1,9 @@
 package internal
 
 import (
+	"encoding/json"
+	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -110,5 +113,49 @@ func TestFilShort(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, s.expect, f.Short())
 		})
+	}
+}
+
+func TestMarshal(t *testing.T) {
+	type A struct {
+		Fil FIL
+	}
+	var a = A{
+		Fil: FIL{big.NewInt(1000000)},
+	}
+
+	aBytes, err := json.Marshal(a)
+	require.NoError(t, err)
+
+	require.Equal(t, aBytes, []byte("{\"Fil\":\"0.000000000001 FIL\"}"))
+	fmt.Println(string(aBytes))
+}
+
+func TestUnMarshal(t *testing.T) {
+	type A struct {
+		Fil FIL
+	}
+	bigFIl, _ := big.NewInt(0).SetString("100000000000000000000", 10)
+	for _, s := range []struct {
+		fil    string
+		expect FIL
+	}{
+		{
+			fil:    "{\"Fil\":\"0.000000000001 FIL\"}",
+			expect: FIL{big.NewInt(1000000)},
+		},
+		{
+			fil:    "{\"Fil\":\"1 FIL\"}",
+			expect: FIL{big.NewInt(1000000000000000000)},
+		},
+		{
+			fil:    "{\"Fil\":\"100 FIL\"}",
+			expect: FIL{bigFIl},
+		},
+	} {
+		a := A{}
+		err := json.Unmarshal([]byte(s.fil), &a)
+		require.NoError(t, err)
+		require.Equal(t, a.Fil.String(), s.expect.String())
 	}
 }
