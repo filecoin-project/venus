@@ -120,6 +120,7 @@ type pricelistV0 struct {
 	verifyPostLookup     map[abi.RegisteredPoStProof]scalingCost
 	verifyPostDiscount   bool
 	verifyConsensusFault int64
+	verifyReplicaUpdate  int64
 }
 
 var _ Pricelist = (*pricelistV0)(nil)
@@ -229,8 +230,7 @@ func (pl *pricelistV0) OnVerifyAggregateSeals(aggregate proof7.AggregateSealVeri
 
 // OnVerifyReplicaUpdate
 func (pl *pricelistV0) OnVerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) GasCharge {
-	// TODO: do the thing
-	return GasCharge{}
+	return NewGasCharge("OnVerifyReplicaUpdate", pl.verifyReplicaUpdate, 0)
 }
 
 // OnVerifyPost

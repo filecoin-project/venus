@@ -213,6 +213,7 @@ func NewPricesSchedule(forkParams *config.ForkUpgradeConfig) *PricesSchedule {
 			},
 			verifyPostDiscount:   false,
 			verifyConsensusFault: 495422,
+			verifyReplicaUpdate:  36316136,
 		},
 	}
 	return &PricesSchedule{prices: prices}
