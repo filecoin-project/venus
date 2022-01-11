@@ -218,6 +218,11 @@ func NewPricesSchedule(forkParams *config.ForkUpgradeConfig) *PricesSchedule {
 	return &PricesSchedule{prices: prices}
 }
 
+// SetPricelist set new prices, for test
+func (schedule *PricesSchedule) SetPricelist(newPrices map[abi.ChainEpoch]Pricelist) {
+	schedule.prices = newPrices
+}
+
 // PricelistByEpoch finds the latest prices for the given epoch
 func (schedule *PricesSchedule) PricelistByEpoch(epoch abi.ChainEpoch) Pricelist {
 	// since we are storing the prices as map or epoch to price
