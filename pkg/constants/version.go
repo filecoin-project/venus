@@ -26,6 +26,6 @@ func newVer(major, minor, patch uint8) Version {
 
 // semver versions of the rpc api exposed
 var (
-	FullAPIVersion0 = newVer(1, 4, 0)
-	FullAPIVersion1 = newVer(2, 1, 0)
+	FullAPIVersion0 = newVer(1, 5, 0)
+	FullAPIVersion1 = newVer(2, 2, 0)
 )

@@ -22,7 +22,7 @@ type PowerStateView interface {
 	MinerSectorInfo(ctx context.Context, maddr address.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, error)
 	PowerNetworkTotal(ctx context.Context) (*NetworkPower, error)
 	MinerClaimedPower(ctx context.Context, miner address.Address) (raw, qa abi.StoragePower, err error)
-	GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error)
+	GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, maddr address.Address, rand abi.PoStRandomness) ([]builtin.ExtendedSectorInfo, error)
 }
 
 type NetworkPower struct {

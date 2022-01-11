@@ -140,7 +140,7 @@ func (v *View) MinerSectorInfo(ctx context.Context, maddr addr.Address, sectorNu
 }
 
 //GetSectorsForWinningPoSt return sector of winning post challenge result
-func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, maddr addr.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
+func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, maddr addr.Address, rand abi.PoStRandomness) ([]builtin.ExtendedSectorInfo, error) {
 	mas, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor state: %s", err)
@@ -221,12 +221,13 @@ func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version,
 		return nil, xerrors.Errorf("loading proving sectors: %s", err)
 	}
 
-	out := make([]builtin.SectorInfo, len(sectors))
+	out := make([]builtin.ExtendedSectorInfo, len(sectors))
 	for i, sinfo := range sectors {
-		out[i] = builtin.SectorInfo{
+		out[i] = builtin.ExtendedSectorInfo{
 			SealProof:    sinfo.SealProof,
 			SectorNumber: sinfo.SectorNumber,
 			SealedCID:    sinfo.SealedCID,
+			SectorKey:    sinfo.SectorKeyCID,
 		}
 	}
 
