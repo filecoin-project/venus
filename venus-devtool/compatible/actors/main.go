@@ -153,6 +153,16 @@ var replicaCmd = &cli.Command{
 				return true
 			}
 
+			// exclude like builtin/[dir]/dir.go(replaced by actor.go)
+			dir, file := filepath.Split(path)
+			if strings.Contains(dir, "builtin") && strings.HasSuffix(file, ".go") {
+				pf := file[:strings.LastIndex(file, ".go")]
+				if strings.Contains(dir, pf) {
+					fmt.Println("path:", path)
+					return true
+				}
+			}
+
 			// need adt.go diff_adt.go
 			if strings.Contains(path, "adt.go") {
 				return false
@@ -168,7 +178,7 @@ var replicaCmd = &cli.Command{
 				return true
 			}
 
-			dir := filepath.Dir(path)
+			dir = filepath.Dir(path)
 			arr := strings.Split(dir, "/")
 			if strings.HasSuffix(path, fmt.Sprintf("%s.go", arr[len(arr)-1])) {
 				return true
@@ -194,6 +204,9 @@ var replicaCmd = &cli.Command{
 			{"github.com/filecoin-project/lotus/chain/actors", "github.com/filecoin-project/venus/venus-shared/actors"},
 			{"github.com/filecoin-project/lotus/chain/actors/adt", "github.com/filecoin-project/venus/venus-shared/actors/adt"},
 			{"github.com/filecoin-project/lotus/chain/actors/aerrors", "github.com/filecoin-project/venus/venus-shared/actors/aerrors"},
+			{"dtypes.NetworkName", "string"},
+			{"\"github.com/filecoin-project/lotus/node/modules/dtypes\"", ""},
+			{"\"github.com/filecoin-project/lotus/chain/types\"", "types \"github.com/filecoin-project/venus/venus-shared/internal\""},
 		}
 
 		for _, file := range files {

@@ -110,12 +110,12 @@ func (v *FakeStateView) MinerClaimedPower(ctx context.Context, miner address.Add
 	return m.ClaimedRawPower, m.ClaimedQAPower, nil
 }
 
-func (v *FakeStateView) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
+func (v *FakeStateView) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, maddr address.Address, rand abi.PoStRandomness) ([]builtin.ExtendedSectorInfo, error) {
 	_, ok := v.Miners[maddr]
 	if !ok {
 		return nil, errors.Errorf("no miner %s", maddr)
 	}
-	return []builtin.SectorInfo{}, nil
+	return []builtin.ExtendedSectorInfo{}, nil
 }
 
 func (v *FakeStateView) MinerPledgeCollateral(_ context.Context, maddr address.Address) (locked abi.TokenAmount, total abi.TokenAmount, err error) {

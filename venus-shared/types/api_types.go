@@ -117,7 +117,7 @@ type MsgLookup struct {
 type MiningBaseInfo struct { //nolint
 	MinerPower        abi.StoragePower
 	NetworkPower      abi.StoragePower
-	Sectors           []builtin.SectorInfo
+	Sectors           []builtin.ExtendedSectorInfo
 	WorkerKey         address.Address
 	SectorSize        abi.SectorSize
 	PrevBeaconEntry   BeaconEntry

@@ -99,12 +99,12 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	nv := miningAPI.Ming.ChainModule.Fork.GetNetworkVersion(ctx, ts.Height())
 
 	pv := miningAPI.Ming.proofVerifier
-	sectors, err := view.GetSectorsForWinningPoSt(ctx, nv, pv, maddr, prand)
+	xsectors, err := view.GetSectorsForWinningPoSt(ctx, nv, pv, maddr, prand)
 	if err != nil {
 		return nil, xerrors.Errorf("getting winning post proving set: %v", err)
 	}
 
-	if len(sectors) == 0 {
+	if len(xsectors) == 0 {
 		return nil, nil
 	}
 
@@ -136,7 +136,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	return &types.MiningBaseInfo{
 		MinerPower:        mpow.QualityAdjPower,
 		NetworkPower:      tpow.QualityAdjPower,
-		Sectors:           sectors,
+		Sectors:           xsectors,
 		WorkerKey:         worker,
 		SectorSize:        info.SectorSize,
 		PrevBeaconEntry:   *prev,

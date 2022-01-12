@@ -5,7 +5,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
@@ -17,11 +16,11 @@ type FakeVerifier struct {
 
 var _ ffiwrapper.Verifier = (*FakeVerifier)(nil)
 
-func (f *FakeVerifier) VerifySeal(proof5.SealVerifyInfo) (bool, error) {
+func (f *FakeVerifier) VerifySeal(proof7.SealVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (f *FakeVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
+func (f *FakeVerifier) VerifyAggregateSeals(aggregate proof7.AggregateSealVerifyProofAndInfos) (bool, error) {
 	return true, nil
 }
 
@@ -29,14 +28,14 @@ func (f *FakeVerifier) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (boo
 	return true, nil
 }
 
-func (f *FakeVerifier) VerifyWinningPoSt(context.Context, proof5.WinningPoStVerifyInfo) (bool, error) {
+func (f *FakeVerifier) VerifyWinningPoSt(ctx context.Context, info proof7.WinningPoStVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (f *FakeVerifier) VerifyWindowPoSt(context.Context, proof5.WindowPoStVerifyInfo) (bool, error) {
+func (f *FakeVerifier) VerifyWindowPoSt(context.Context, proof7.WindowPoStVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (f *FakeVerifier) GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredPoStProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error) {
+func (f *FakeVerifier) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
 	return []uint64{}, nil
 }

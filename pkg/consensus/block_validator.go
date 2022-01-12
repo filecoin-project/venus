@@ -9,19 +9,26 @@ import (
 	"strings"
 	"time"
 
-	"go.opencensus.io/trace"
-
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/Gurpartap/async"
+	"github.com/hashicorp/go-multierror"
+	lru "github.com/hashicorp/golang-lru"
+	"github.com/ipfs/go-cid"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 
-	"github.com/Gurpartap/async"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -32,17 +39,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/hashicorp/go-multierror"
-	lru "github.com/hashicorp/golang-lru"
-	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"golang.org/x/xerrors"
 )
 
 var ErrTemporal = errors.New("temporal error")
@@ -719,25 +721,28 @@ func (bv *BlockValidator) VerifyWinningPoStProof(ctx context.Context, nv network
 		return xerrors.New("power state view is null")
 	}
 
-	sectors, err := view.GetSectorsForWinningPoSt(ctx, nv, bv.proofVerifier, blk.Miner, rand)
+	xsectors, err := view.GetSectorsForWinningPoSt(ctx, nv, bv.proofVerifier, blk.Miner, rand)
 	if err != nil {
 		return xerrors.Errorf("getting winning post sector set: %v", err)
 	}
 
-	proofs := make([]proof2.PoStProof, len(blk.WinPoStProof))
-	for idx, pf := range blk.WinPoStProof {
-		proofs[idx] = proof2.PoStProof{PoStProof: pf.PoStProof, ProofBytes: pf.ProofBytes}
+	sectors := make([]proof.SectorInfo, len(xsectors))
+	for i, xsi := range xsectors {
+		sectors[i] = proof.SectorInfo{
+			SealProof:    xsi.SealProof,
+			SectorNumber: xsi.SectorNumber,
+			SealedCID:    xsi.SealedCID,
+		}
 	}
 
-	ok, err := bv.proofVerifier.VerifyWinningPoSt(ctx, proof2.WinningPoStVerifyInfo{
+	ok, err := bv.proofVerifier.VerifyWinningPoSt(ctx, proof.WinningPoStVerifyInfo{
 		Randomness:        rand,
-		Proofs:            proofs,
+		Proofs:            blk.WinPoStProof,
 		ChallengedSectors: sectors,
 		Prover:            abi.ActorID(mid),
 	})
-
 	if err != nil {
-		return xerrors.Errorf("failed to verify election post: %v", err)
+		return xerrors.Errorf("failed to verify election post: %w", err)
 	}
 
 	if !ok {

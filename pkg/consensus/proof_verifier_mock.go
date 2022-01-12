@@ -5,7 +5,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
@@ -15,11 +14,11 @@ type genFakeVerifier struct{}
 
 var _ ffiwrapper.Verifier = (*genFakeVerifier)(nil)
 
-func (m genFakeVerifier) VerifySeal(svi proof5.SealVerifyInfo) (bool, error) {
+func (m genFakeVerifier) VerifySeal(proof7.SealVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (m genFakeVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
+func (m genFakeVerifier) VerifyAggregateSeals(proof7.AggregateSealVerifyProofAndInfos) (bool, error) {
 	panic("implement me")
 }
 
@@ -27,14 +26,14 @@ func (m genFakeVerifier) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (b
 	panic("not supported")
 }
 
-func (m genFakeVerifier) VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) (bool, error) {
+func (m genFakeVerifier) VerifyWinningPoSt(ctx context.Context, info proof7.WinningPoStVerifyInfo) (bool, error) {
 	panic("not supported")
 }
 
-func (m genFakeVerifier) VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoStVerifyInfo) (bool, error) {
+func (m genFakeVerifier) VerifyWindowPoSt(ctx context.Context, info proof7.WindowPoStVerifyInfo) (bool, error) {
 	panic("not supported")
 }
 
-func (m genFakeVerifier) GenerateWinningPoStSectorChallenge(ctx context.Context, proof abi.RegisteredPoStProof, id abi.ActorID, randomness abi.PoStRandomness, u uint64) ([]uint64, error) {
+func (m genFakeVerifier) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
 	panic("not supported")
 }
