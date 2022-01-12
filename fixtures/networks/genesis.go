@@ -35,8 +35,8 @@ func GetNetworkFromName(name string) (constants.NetworkType, error) {
 		return constants.NetworkCalibnet, nil
 	case "interop":
 		return constants.NetworkInterop, nil
-	case "snapnet":
-		return constants.NetSnapDeal, nil
+	case "butterfly":
+		return constants.NetworkButterfly, nil
 	default:
 		return 0, fmt.Errorf("unknown network name %s", name)
 	}
@@ -62,7 +62,7 @@ func SetConfigFromOptions(cfg *config.Config, network string) error {
 		netcfg = Calibration()
 	case constants.NetworkInterop:
 		netcfg = InteropNet()
-	case constants.NetSnapDeal:
+	case constants.NetworkButterfly:
 		netcfg = ButterflySnapNet()
 	default:
 		return fmt.Errorf("unknown network name %s", network)
@@ -98,6 +98,8 @@ func LoadGenesis(ctx context.Context, rep repo.Repo, sourceName string, network 
 			bs, err = asset.Asset("fixtures/_assets/car/interopnet.car")
 		case constants.NetworkForce:
 			bs, err = asset.Asset("fixtures/_assets/car/forcenet.car")
+		case constants.NetworkButterfly:
+			bs, err = asset.Asset("fixtures/_assets/car/butterflynet.car")
 		default:
 			bs, err = asset.Asset("fixtures/_assets/car/mainnet.car")
 		}

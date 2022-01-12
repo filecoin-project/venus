@@ -96,7 +96,7 @@ func Version4Upgrade(repoPath string) (err error) {
 		cfg.NetworkParams.ForkUpgradeParam = networks.Calibration().Network.ForkUpgradeParam
 	case constants.NetworkForce:
 		cfg.NetworkParams.ForkUpgradeParam = networks.ForceNet().Network.ForkUpgradeParam
-	case constants.NetSnapDeal:
+	case constants.NetworkButterfly:
 		cfg.NetworkParams.ForkUpgradeParam = networks.ButterflySnapNet().Network.ForkUpgradeParam
 	default:
 		return fsrRepo.Close()
