@@ -45,9 +45,9 @@ compare-api:
 
 gen-asset:
 	go-bindata -pkg=asset -o ./fixtures/asset/asset.go ./fixtures/_assets/car/ ./fixtures/_assets/proof-params/ ./fixtures/_assets/arch-diagram.monopic
+	gofmt -s -l -w ./fixtures/asset/asset.go
 
-
-### shared module ###
+### devtool ###
 cborgen:
 	cd venus-devtool && go run ./cborgen/*.go
 
