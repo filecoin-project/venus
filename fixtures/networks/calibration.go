@@ -56,7 +56,7 @@ func Calibration() *NetworkConf {
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       270,
 				UpgradeChocolateHeight:   312746,
-				UpgradeSnapDealsHeight:   99999999,
+				UpgradeOhSnapHeight:      99999999,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:          address.Testnet,

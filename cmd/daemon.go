@@ -1,43 +1,32 @@
 package cmd
 
 import (
-	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
-	"io"
+	"github.com/filecoin-project/venus/fixtures/networks"
 	"io/ioutil"
-	"net/http"
-	"net/url"
 	"os"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/util/ulimit"
-	"github.com/filecoin-project/venus/venus-shared/types"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/venus/fixtures/asset"
 
 	"golang.org/x/xerrors"
 
-	_ "net/http/pprof" // nolint: golint
-
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cmds "github.com/ipfs/go-ipfs-cmds"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/ipld/go-car"
 	"github.com/libp2p/go-libp2p-core/crypto"
+	_ "net/http/pprof" // nolint: golint
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"
-	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	"github.com/filecoin-project/venus/pkg/journal"
 	"github.com/filecoin-project/venus/pkg/migration"
 	"github.com/filecoin-project/venus/pkg/repo"
-	gengen "github.com/filecoin-project/venus/tools/gengen/util"
 )
 
 var log = logging.Logger("daemon")
@@ -65,7 +54,7 @@ var daemonCmd = &cmds.Command{
 		cmds.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
 		cmds.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
 		cmds.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
-		cmds.StringOption(Network, "when set, populates config with network specific parameters, eg. 2k,cali,interop,mainnet").WithDefault("mainnet"),
+		cmds.StringOption(Network, "when set, populates config with network specific parameters, eg. mainnet,2k,cali,interop,snapnet").WithDefault("mainnet"),
 		cmds.StringOption(Password, "set wallet password"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -143,7 +132,7 @@ func initRun(req *cmds.Request) error {
 	var genesisFunc genesis.InitFunc
 	cfg := rep.Config()
 	network, _ := req.Options[Network].(string)
-	if err := setConfigFromOptions(cfg, network); err != nil {
+	if err := networks.SetConfigFromOptions(cfg, network); err != nil {
 		log.Errorf("Error setting config %s", err)
 		return err
 	}
@@ -158,7 +147,7 @@ func initRun(req *cmds.Request) error {
 		genesisFunc = genesis.MakeGenesis(req.Context, rep, mkGen, preTp.(string), cfg.NetworkParams.ForkUpgradeParam)
 	} else {
 		genesisFileSource, _ := req.Options[GenesisFile].(string)
-		genesisFunc, err = loadGenesis(req.Context, rep, genesisFileSource, network)
+		genesisFunc, err = networks.LoadGenesis(req.Context, rep, genesisFileSource, network)
 		if err != nil {
 			return err
 		}
@@ -305,82 +294,6 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 	return repo.OpenFSRepo(repoDir, repo.LatestVersion)
 }
 
-func setConfigFromOptions(cfg *config.Config, network string) error {
-	// Setup specific config options.
-	var netcfg *networks.NetworkConf
-	switch network {
-	case "mainnet":
-		netcfg = networks.Mainnet()
-	case "force":
-		netcfg = networks.ForceNet()
-	case "integrationnet":
-		netcfg = networks.IntegrationNet()
-	case "2k":
-		netcfg = networks.Net2k()
-	case "cali":
-		netcfg = networks.Calibration()
-	case "interop":
-		netcfg = networks.InteropNet()
-	default:
-		return fmt.Errorf("unknown network name %s", network)
-	}
-
-	if netcfg != nil {
-		cfg.Bootstrap = &netcfg.Bootstrap
-		cfg.NetworkParams = &netcfg.Network
-	}
-
-	return nil
-}
-
-func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string, network string) (genesis.InitFunc, error) {
-	var (
-		source io.ReadCloser
-		err    error
-	)
-
-	if sourceName == "" {
-		var bs []byte
-		var err error
-		switch network {
-		case "nerpa":
-			bs, err = asset.Asset("fixtures/_assets/car/nerpanet.car")
-		case "cali":
-			bs, err = asset.Asset("fixtures/_assets/car/calibnet.car")
-		case "interop":
-			bs, err = asset.Asset("fixtures/_assets/car/interopnet.car")
-		case "force":
-			bs, err = asset.Asset("fixtures/_assets/car/forcenet.car")
-		default:
-			bs, err = asset.Asset("fixtures/_assets/car/devnet.car")
-		}
-		if err != nil {
-			return gengen.MakeGenesisFunc(), nil
-		}
-		source = ioutil.NopCloser(bytes.NewReader(bs))
-		// return gengen.MakeGenesisFunc(), nil
-	} else {
-		source, err = openGenesisSource(sourceName)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	defer func() { _ = source.Close() }()
-
-	genesisBlk, err := extractGenesisBlock(ctx, source, rep)
-	if err != nil {
-		return nil, err
-	}
-
-	gif := func(cst cbor.IpldStore, bs blockstore.Blockstore) (*types.BlockHeader, error) {
-		return genesisBlk, err
-	}
-
-	return gif, nil
-
-}
-
 func getNodeInitOpts(peerKeyFile string, walletKeyFile string) ([]node.InitOpt, error) {
 	var initOpts []node.InitOpt
 	if peerKeyFile != "" {
@@ -416,50 +329,4 @@ func getNodeInitOpts(peerKeyFile string, walletKeyFile string) ([]node.InitOpt, 
 	}
 
 	return initOpts, nil
-}
-
-func openGenesisSource(sourceName string) (io.ReadCloser, error) {
-	sourceURL, err := url.Parse(sourceName)
-	if err != nil {
-		return nil, fmt.Errorf("invalid filepath or URL for genesis file: %s", sourceURL)
-	}
-	var source io.ReadCloser
-	if sourceURL.Scheme == "http" || sourceURL.Scheme == "https" {
-		// NOTE: This code is temporary. It allows downloading a genesis block via HTTP(S) to be able to join a
-		// recently deployed staging devnet.
-		response, err := http.Get(sourceName)
-		if err != nil {
-			return nil, err
-		}
-		source = response.Body
-	} else if sourceURL.Scheme != "" {
-		return nil, fmt.Errorf("unsupported protocol for genesis file: %s", sourceURL.Scheme)
-	} else {
-		file, err := os.Open(sourceName)
-		if err != nil {
-			return nil, err
-		}
-		source = file
-	}
-	return source, nil
-}
-
-func extractGenesisBlock(ctx context.Context, source io.ReadCloser, rep repo.Repo) (*types.BlockHeader, error) {
-	bs := rep.Datastore()
-	ch, err := car.LoadCar(ctx, bs, source)
-	if err != nil {
-		return nil, err
-	}
-
-	// need to check if we are being handed a car file with a single genesis block or an entire chain.
-	bsBlk, err := bs.Get(ctx, ch.Roots[0])
-	if err != nil {
-		return nil, err
-	}
-	cur, err := types.DecodeBlock(bsBlk.RawData())
-	if err != nil {
-		return nil, err
-	}
-
-	return cur, nil
 }
