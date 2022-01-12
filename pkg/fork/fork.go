@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"github.com/docker/go-units"
 	"runtime"
 	"sort"
 	"sync"
@@ -355,6 +356,7 @@ type chainReader interface {
 	GetTipSetByHeight(context.Context, *types.TipSet, abi.ChainEpoch, bool) (*types.TipSet, error)
 	GetTipSetState(context.Context, *types.TipSet) (vmstate.Tree, error)
 	GetGenesisBlock(context.Context) (*types.BlockHeader, error)
+	GetLookbackTipSetForRound(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch, version network.Version) (*types.TipSet, cid.Cid, error)
 	SubHeadChanges(context.Context) chan []*types.HeadChange
 }
 
@@ -376,7 +378,7 @@ type versionSpec struct {
 type migration struct {
 	upgrade       MigrationFunc
 	preMigrations []PreMigration
-	cache         *nv10.MemMigrationCache
+	cache         *nv15.MemMigrationCache
 }
 
 type ChainFork struct {
@@ -427,7 +429,7 @@ func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore,
 				migration := &migration{
 					upgrade:       upgrade.Migration,
 					preMigrations: upgrade.PreMigrations,
-					cache:         nv10.NewMemMigrationCache(),
+					cache:         nv15.NewMemMigrationCache(),
 				}
 				stateMigrations[upgrade.Height] = migration
 			}
@@ -507,7 +509,7 @@ func (c *ChainFork) GetNetworkVersion(ctx context.Context, height abi.ChainEpoch
 	return c.latestVersion
 }
 
-func runPreMigration(ctx context.Context, fn PreMigrationFunc, cache *nv10.MemMigrationCache, ts *types.TipSet) {
+func runPreMigration(ctx context.Context, fn PreMigrationFunc, cache *nv15.MemMigrationCache, ts *types.TipSet) {
 	height := ts.Height()
 	parent := ts.Blocks()[0].ParentStateRoot
 
@@ -1930,8 +1932,16 @@ func (c *ChainFork) PreUpgradeActorsV7(ctx context.Context, cache MigrationCache
 		workerCount /= 2
 	}
 
-	config := nv15.Config{MaxWorkers: uint(workerCount)}
-	_, err := c.upgradeActorsV7Common(ctx, cache, root, epoch, ts, config)
+	ver := c.GetNetworkVersion(ctx, epoch)
+	lbts, lbRoot, err := c.cr.GetLookbackTipSetForRound(ctx, ts, epoch, ver)
+	if err != nil {
+		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	config := nv15.Config{MaxWorkers: uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5}
+
+	_, err = c.upgradeActorsV7Common(ctx, cache, lbRoot, epoch, lbts, config)
 	return err
 }
 
@@ -1942,9 +1952,10 @@ func (c *ChainFork) upgradeActorsV7Common(
 	ts *types.TipSet,
 	config nv15.Config,
 ) (cid.Cid, error) {
-	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
-	store := chain.ActorStore(ctx, buf)
-
+	writeStore := blockstoreutil.NewAutobatch(ctx, c.bs, units.GiB)
+	// TODO: pretty sure we'd achieve nothing by doing this, confirm in review
+	//buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), writeStore)
+	store := chain.ActorStore(ctx, writeStore)
 	// Load the state root.
 	var stateRoot vmstate.StateRoot
 	if err := store.Get(ctx, root, &stateRoot); err != nil {
@@ -1976,15 +1987,10 @@ func (c *ChainFork) upgradeActorsV7Common(
 
 	// Persist the new tree.
 
-	{
-		from := buf
-		to := buf.Read()
-
-		if err := Copy(ctx, from, to, newRoot); err != nil {
-			return cid.Undef, xerrors.Errorf("copying migrated tree: %w", err)
-		}
+	// Persists the new tree and shuts down the flush worker
+	if err := writeStore.Shutdown(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore failed: %w", err)
 	}
-
 	return newRoot, nil
 }
 
