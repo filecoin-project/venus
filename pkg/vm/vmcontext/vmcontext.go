@@ -675,22 +675,85 @@ func (vm *VM) shouldBurn(ctx context.Context, msg *types.Message, errcode exitco
 // WARNING: this Method will panic if the the amount is negative, accounts dont exist, or have inssuficient funds.
 //
 // Note: this is not idiomatic, it follows the Spec expectations for this Method.
-func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amount abi.TokenAmount) {
-	if amount.LessThan(big.Zero()) {
-		runtime.Abortf(exitcode.SysErrForbidden, "attempt To transfer negative Value %s From %s To %s", amount, debitFrom, creditTo)
+func (vm *VM) transfer(from address.Address, to address.Address, amount abi.TokenAmount, networkVersion network.Version) {
+	var fromActor *types.Actor
+	var fromID, toID address.Address
+	var err error
+	var found bool
+	// switching the order around so that transactions for more than the balance sent to self fail
+	if networkVersion >= network.Version15 {
+		if amount.LessThan(big.Zero()) {
+			runtime.Abortf(exitcode.SysErrForbidden, "attempt To transfer negative Value %s From %s To %s", amount, from, to)
+		}
+
+		fromID, err = vm.State.LookupID(from)
+		if err != nil {
+			panic(fmt.Errorf("transfer failed when resolving sender address: %s", err))
+		}
+
+		// retrieve sender account
+		fromActor, found, err = vm.State.GetActor(vm.context, fromID)
+		if err != nil {
+			panic(err)
+		}
+		if !found {
+			panic(fmt.Errorf("unreachable: sender account not found. %s", err))
+		}
+
+		// check that account has enough balance for transfer
+		if fromActor.Balance.LessThan(amount) {
+			runtime.Abortf(exitcode.SysErrInsufficientFunds, "sender %s insufficient balance %s To transfer %s To %s", amount, fromActor.Balance, from, to)
+		}
+
+		if from == to {
+			vmlog.Infow("sending to same address: noop", "from/to addr", from)
+			return
+		}
+
+		toID, err = vm.State.LookupID(to)
+		if err != nil {
+			panic(fmt.Errorf("transfer failed when resolving receiver address: %s", err))
+		}
+
+		if fromID == toID {
+			vmlog.Infow("sending to same actor ID: noop", "from/to actor", fromID)
+			return
+		}
+	} else {
+		if from == to {
+			return
+		}
+
+		fromID, err = vm.State.LookupID(from)
+		if err != nil {
+			panic(fmt.Errorf("transfer failed when resolving sender address: %s", err))
+		}
+
+		toID, err = vm.State.LookupID(to)
+		if err != nil {
+			panic(fmt.Errorf("transfer failed when resolving receiver address: %s", err))
+		}
+
+		if fromID == toID {
+			return
+		}
+
+		if amount.LessThan(types.NewInt(0)) {
+			runtime.Abortf(exitcode.SysErrForbidden, "attempt To transfer negative Value %s From %s To %s", amount, from, to)
+		}
+
+		// retrieve sender account
+		fromActor, found, err = vm.State.GetActor(vm.context, fromID)
+		if err != nil {
+			panic(err)
+		}
+		if !found {
+			panic(fmt.Errorf("unreachable: sender account not found. %s", err))
+		}
 	}
 
-	// retrieve debit account
-	fromActor, found, err := vm.State.GetActor(vm.context, debitFrom)
-	if err != nil {
-		panic(err)
-	}
-	if !found {
-		panic(fmt.Errorf("unreachable: debit account not found. %s", err))
-	}
-
-	// retrieve credit account
-	toActor, found, err := vm.State.GetActor(vm.context, creditTo)
+	// retrieve receiver account
+	toActor, found, err := vm.State.GetActor(vm.context, toID)
 	if err != nil {
 		panic(err)
 	}
@@ -700,18 +763,18 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 
 	// check that account has enough balance for transfer
 	if fromActor.Balance.LessThan(amount) {
-		runtime.Abortf(exitcode.SysErrInsufficientFunds, "sender %s insufficient balance %s To transfer %s To %s", amount, fromActor.Balance, debitFrom, creditTo)
+		runtime.Abortf(exitcode.SysErrInsufficientFunds, "sender %s insufficient balance %s To transfer %s To %s", amount, fromActor.Balance, from, to)
 	}
 
-	// debit funds
+	// deduct funds
 	fromActor.Balance = big.Sub(fromActor.Balance, amount)
-	if err := vm.State.SetActor(vm.context, debitFrom, fromActor); err != nil {
+	if err := vm.State.SetActor(vm.context, from, fromActor); err != nil {
 		panic(err)
 	}
 
-	// credit funds
+	// deposit funds
 	toActor.Balance = big.Add(toActor.Balance, amount)
-	if err := vm.State.SetActor(vm.context, creditTo, toActor); err != nil {
+	if err := vm.State.SetActor(vm.context, to, toActor); err != nil {
 		panic(err)
 	}
 }
