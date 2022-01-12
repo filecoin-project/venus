@@ -238,7 +238,7 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 	// 3. transfer funds carried by the msg
 	if !ctx.originMsg.Value.Nil() && !ctx.originMsg.Value.IsZero() {
 		if ctx.msg.From != toIDAddr {
-			ctx.vm.transfer(ctx.msg.From, toIDAddr, ctx.originMsg.Value)
+			ctx.vm.transfer(ctx.msg.From, toIDAddr, ctx.originMsg.Value, ctx.vm.NetworkVersion())
 		}
 	}
 
@@ -588,7 +588,7 @@ func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 		}
 
 		// Transfer the executing actor's balance to the beneficiary
-		ctx.vm.transfer(receiver, beneficiary, receiverActor.Balance)
+		ctx.vm.transfer(receiver, beneficiary, receiverActor.Balance, ctx.vm.NetworkVersion())
 	}
 
 	if err := ctx.vm.State.DeleteActor(ctx.vm.context, receiver); err != nil {
