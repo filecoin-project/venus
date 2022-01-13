@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/venus/pkg/constants"
+
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	manet "github.com/multiformats/go-multiaddr/net"
@@ -20,7 +22,7 @@ func TestVersion(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	commit := getCodeCommit(t)
-	tag := getLastTag(t)
+	tag := constants.BuildVersion
 	verOut, err := exec.Command(th.MustGetFilecoinBinary(), "version").Output()
 	require.NoError(t, err)
 
@@ -52,7 +54,7 @@ func TestVersionOverHttp(t *testing.T) {
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
 	commit := strings.Trim(getCodeCommit(t), "\n ")
-	tag := getLastTag(t)
+	tag := constants.BuildVersion
 	expected := fmt.Sprintf("{\"Commit\":\"%s %s\"}\n", tag, commit)
 
 	defer res.Body.Close() // nolint: errcheck
@@ -65,20 +67,6 @@ func getCodeCommit(t *testing.T) string {
 	var gitOut []byte
 	var err error
 	gitArgs := []string{"rev-parse", "--verify", "HEAD"}
-	if gitOut, err = exec.Command("git", gitArgs...).Output(); err != nil {
-		assert.NoError(t, err)
-	}
-	return strings.TrimSpace(string(gitOut))
-}
-
-func getLastTag(t *testing.T) string {
-	var gitOut []byte
-	var err error
-	gitArgs := []string{"rev-list", "--tags", "--max-count=1"}
-	if gitOut, err = exec.Command("git", gitArgs...).Output(); err != nil {
-		assert.NoError(t, err)
-	}
-	gitArgs = []string{"describe", "--tags", strings.TrimSpace(string(gitOut))}
 	if gitOut, err = exec.Command("git", gitArgs...).Output(); err != nil {
 		assert.NoError(t, err)
 	}
