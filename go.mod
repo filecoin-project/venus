@@ -17,8 +17,8 @@ require (
 	github.com/docker/docker v0.7.3-0.20190315170154-87d593639c77
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0
-	github.com/drand/drand v1.2.1
-	github.com/drand/kyber v1.1.4
+	github.com/drand/drand v1.3.0
+	github.com/drand/kyber v1.1.7
 	github.com/fatih/color v1.10.0
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v0.0.5
