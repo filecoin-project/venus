@@ -36,7 +36,8 @@ jobs:
           export job_url=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           export oss_exists=0
           export ftp_exists=0
-          if [[ "${{github.event_name}}" == "create" ]] && ([[ "$github_tag" =~ "v1." ]] || [[ "$github_tag" =~ "v2." ]]); then
+          export rx='^v([0-9]+\.){0,2}(\*|[0-9]+)(-rc[0-9]*){0,1}$'
+          if [[ "${{github.ref_type}}" == "tag" ]] && [[ "${{github.event_name}}" == "create" ]] && [[ "$github_tag" =~ $rx ]]; then
             export pub_method=pushRelease
           fi
           if [[ "$branch" == "" ]]; then
