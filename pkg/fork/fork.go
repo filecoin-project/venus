@@ -1985,11 +1985,13 @@ func (c *ChainFork) upgradeActorsV7Common(
 		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
 	}
 
-	// Persist the new tree.
-
 	// Persists the new tree and shuts down the flush worker
+	if err := writeStore.Flush(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore flush failed: %w", err)
+	}
+
 	if err := writeStore.Shutdown(ctx); err != nil {
-		return cid.Undef, xerrors.Errorf("writeStore failed: %w", err)
+		return cid.Undef, xerrors.Errorf("writeStore shutdown failed: %w", err)
 	}
 	return newRoot, nil
 }
