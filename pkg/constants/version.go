@@ -17,15 +17,3 @@ func UserVersion() string {
 
 	return BuildVersion + flags.GitCommit
 }
-
-type Version uint32
-
-func newVer(major, minor, patch uint8) Version {
-	return Version(uint32(major)<<16 | uint32(minor)<<8 | uint32(patch))
-}
-
-// semver versions of the rpc api exposed
-var (
-	FullAPIVersion0 = newVer(1, 5, 0)
-	FullAPIVersion1 = newVer(2, 2, 0)
-)

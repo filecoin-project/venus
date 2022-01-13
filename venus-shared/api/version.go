@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+
 	"golang.org/x/xerrors"
 )
 
@@ -53,8 +54,8 @@ func VersionForType(nodeType NodeType) (Version, error) {
 
 // semver versions of the rpc api exposed
 var (
-	FullAPIVersion0 = NewVer(1, 4, 0)
-	FullAPIVersion1 = NewVer(2, 1, 0)
+	FullAPIVersion0 = NewVer(1, 5, 0)
+	FullAPIVersion1 = NewVer(2, 2, 0)
 
 	MinerAPIVersion0  = NewVer(1, 2, 0)
 	WorkerAPIVersion0 = NewVer(1, 5, 0)

@@ -64,7 +64,7 @@ func (na *networkAPI) NetworkPeers(ctx context.Context, verbose, latency, stream
 func (na *networkAPI) Version(context.Context) (types.Version, error) {
 	return types.Version{
 		Version:    constants.UserVersion(),
-		APIVersion: api.Version(constants.FullAPIVersion1),
+		APIVersion: api.FullAPIVersion1,
 	}, nil
 }
 
