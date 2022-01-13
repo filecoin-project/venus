@@ -1,12 +1,17 @@
 package constants
 
+type NetworkType int
+
 const (
-	NetworkDefault  = 0
-	NetworkMainnet  = 0x1
-	Network2k       = 0x2
-	NetworkDebug    = 0x3
-	NetworkCalibnet = 0x4
-	NetworkNerpa    = 0x5
-	NetworkInterop  = 0x6
-	NetworkForce    = 0x7
+	NetworkDefault   NetworkType = 0
+	NetworkMainnet   NetworkType = 0x1
+	Network2k        NetworkType = 0x2
+	NetworkDebug     NetworkType = 0x3
+	NetworkCalibnet  NetworkType = 0x4
+	NetworkNerpa     NetworkType = 0x5
+	NetworkInterop   NetworkType = 0x6
+	NetworkForce     NetworkType = 0x7
+	NetworkButterfly NetworkType = 0x8
+
+	Integrationnet NetworkType = 0x30
 )

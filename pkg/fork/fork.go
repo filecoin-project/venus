@@ -265,7 +265,7 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			}},
 			Expensive: true,
 		}, {
-			Height:    upgradeHeight.UpgradeSnapDealsHeight,
+			Height:    upgradeHeight.UpgradeOhSnapHeight,
 			Network:   network.Version15,
 			Migration: cf.UpgradeActorsV7,
 			PreMigrations: []PreMigration{{
@@ -396,7 +396,7 @@ type ChainFork struct {
 	expensiveUpgrades map[abi.ChainEpoch]struct{}
 
 	// upgrade param
-	networkType int
+	networkType constants.NetworkType
 	forkUpgrade *config.ForkUpgradeConfig
 }
 
