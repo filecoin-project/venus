@@ -2,9 +2,11 @@ package blockstoreutil
 
 import (
 	"context"
-	blocks "github.com/ipfs/go-block-format"
 	"testing"
 
+	blocks "github.com/ipfs/go-block-format"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,6 +17,8 @@ var (
 )
 
 func TestAutobatchBlockstore(t *testing.T) {
+	tf.UnitTest(t)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
