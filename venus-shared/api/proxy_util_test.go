@@ -29,6 +29,10 @@ type StrC struct {
 	}
 }
 
+type StrD struct {
+	StrA
+}
+
 func TestGetInternalStructs(t *testing.T) {
 	tf.UnitTest(t)
 	var proxy StrA
@@ -36,13 +40,13 @@ func TestGetInternalStructs(t *testing.T) {
 	sts := GetInternalStructs(&proxy)
 	require.Len(t, sts, 2)
 
-	sa := sts[0].(*struct{ A int })
-	sa.A = 3
-	sb := sts[1].(*struct{ B int })
-	sb.B = 4
+	sa := sts[0].(*struct{ B int })
+	sa.B = 3
+	sb := sts[1].(*struct{ A int })
+	sb.A = 4
 
-	require.Equal(t, 3, proxy.Internal.A)
-	require.Equal(t, 4, proxy.StrB.Internal.B)
+	require.Equal(t, 4, proxy.Internal.A)
+	require.Equal(t, 3, proxy.StrB.Internal.B)
 }
 
 func TestNestedInternalStructs(t *testing.T) {

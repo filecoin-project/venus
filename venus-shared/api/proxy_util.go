@@ -12,12 +12,12 @@ func GetInternalStructs(in interface{}) []interface{} {
 func getInternalStructs(rv reflect.Value) []interface{} {
 	var out []interface{}
 
-	internal := rv.FieldByName(_internalField)
-	ii := internal.Addr().Interface()
-	out = append(out, ii)
-
 	for i := 0; i < rv.NumField(); i++ {
-		if rv.Type().Field(i).Name == _internalField {
+		filedValue := rv.Field(i)
+		filedType := rv.Type().Field(i)
+		if filedType.Name == _internalField {
+			ii := filedValue.Addr().Interface()
+			out = append(out, ii)
 			continue
 		}
 
