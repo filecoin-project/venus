@@ -210,7 +210,6 @@ func flags() string {
 	return fmt.Sprintf("-ldflags=github.com/filecoin-project/venus=\"%s\"", strings.Join([]string{
 		fmt.Sprintf("-X github.com/filecoin-project/venus/build/flags.GitRoot=%s", helpers.GetGitRoot()),
 		fmt.Sprintf("-X github.com/filecoin-project/venus/build/flags.GitCommit=%s", helpers.GetCommitSha()),
-		fmt.Sprintf("-X github.com/filecoin-project/venus/build/flags.GitTag=%s", helpers.GetLastTag()),
 	}, " "))
 }
 
