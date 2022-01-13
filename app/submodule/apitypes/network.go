@@ -1,6 +1,6 @@
 package apitypes
 
-import "github.com/filecoin-project/venus/pkg/constants"
+import "github.com/filecoin-project/venus/venus-shared/api"
 
 // Version provides various build-time information
 type Version struct {
@@ -10,5 +10,5 @@ type Version struct {
 	// this api
 	//
 	// See APIVersion in build/version.go
-	APIVersion constants.Version
+	APIVersion api.Version
 }
