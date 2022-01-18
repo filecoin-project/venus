@@ -216,6 +216,8 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 	pstate, _ := vm.State.Flush(vm.context)
 	for i := parentEpoch; i < epoch; i++ {
 		if i > parentEpoch {
+			// fix: https://github.com/filecoin-project/lotus/pull/7966
+			vm.vmOption.NetworkVersion = vm.vmOption.NetworkVersionGetter(vm.context, i)
 			// run cron for null rounds if any
 			cronMessage := makeCronTickMessage()
 			ret, err := vm.applyImplicitMessage(cronMessage)
@@ -249,6 +251,9 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 			return cid.Undef, nil, xerrors.Errorf("error advancing vm an epoch: %w", err)
 		}
 	}
+	// as above
+	vm.vmOption.NetworkVersion = vm.vmOption.NetworkVersionGetter(vm.context, epoch)
+
 	vmlog.Debugf("process tipset fork: %v\n", time.Since(toProcessTipset).Milliseconds())
 	// create message tracker
 	// Note: the same message could have been included by more than one miner
@@ -309,7 +314,6 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 				vm.debugger.Println(string(tracesBytes))
 			}
 		}
-
 		// Pay block reward.
 		// Dragons: missing final protocol design on if/how To determine the nominal power
 		rewardMessage := makeBlockRewardMessage(blkInfo.Block.Miner, minerPenaltyTotal, minerGasRewardTotal, blkInfo.Block.ElectionProof.WinCount)
@@ -853,7 +857,7 @@ func (vm *VM) StateTree() tree.Tree {
 func (vm *VM) GetCircSupply(ctx context.Context) (abi.TokenAmount, error) {
 	// Before v15, this was recalculated on each invocation as the state tree was mutated
 	if vm.vmOption.NetworkVersion <= network.Version14 {
-		return vm.vmOption.CircSupplyCalculator(ctx, vm.vmOption.Epoch, vm.State)
+		return vm.vmOption.CircSupplyCalculator(ctx, vm.currentEpoch, vm.State)
 	}
 
 	return vm.baseCircSupply, nil

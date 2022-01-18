@@ -553,9 +553,7 @@ func (st *State) At(root Root) error {
 		return err
 	}
 
-	st.root = newState.root
-	st.version = newState.version
-	st.info = newState.info
+	*st = *newState
 	return nil
 }
 func Diff(oldTree, newTree *State) (map[string]types.Actor, error) {
