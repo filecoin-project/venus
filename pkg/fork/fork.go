@@ -5,12 +5,12 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"github.com/docker/go-units"
 	"runtime"
 	"sort"
 	"sync"
 	"time"
 
+	"github.com/docker/go-units"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"

@@ -207,16 +207,17 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (ci
 			}
 			return dertail.FilCirculating, nil
 		},
-		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, c.chainState, c.fork, ts),
-		NetworkVersion:      c.fork.GetNetworkVersion(ctx, ts.At(0).Height),
-		Rnd:                 NewHeadRandomness(c.rnd, ts.Key()),
-		BaseFee:             ts.At(0).ParentBaseFee,
-		Fork:                c.fork,
-		Epoch:               ts.At(0).Height,
-		GasPriceSchedule:    c.gasPirceSchedule,
-		Bsstore:             c.bstore,
-		PRoot:               ts.At(0).ParentStateRoot,
-		SysCallsImpl:        c.syscallsImpl,
+		LookbackStateGetter:  vmcontext.LookbackStateGetterForTipset(ctx, c.chainState, c.fork, ts),
+		NetworkVersion:       c.fork.GetNetworkVersion(ctx, ts.At(0).Height),
+		NetworkVersionGetter: c.fork.GetNetworkVersion,
+		Rnd:                  NewHeadRandomness(c.rnd, ts.Key()),
+		BaseFee:              ts.At(0).ParentBaseFee,
+		Fork:                 c.fork,
+		Epoch:                ts.At(0).Height,
+		GasPriceSchedule:     c.gasPirceSchedule,
+		Bsstore:              c.bstore,
+		PRoot:                ts.At(0).ParentStateRoot,
+		SysCallsImpl:         c.syscallsImpl,
 	}
 	root, receipts, err := c.processor.ProcessTipSet(ctx, pts, ts, blockMessageInfo, vmOption)
 	if err != nil {
