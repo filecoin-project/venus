@@ -70,6 +70,9 @@ api-checksum:
 api-diff:
 	cd venus-devtool && go run ./compatible/apis/*.go diff > ../venus-shared/compatible-checks/api-diff.txt
 
+api-perm:
+	cd venus-devtool && go run ./compatible/apis/*.go perm > ../venus-shared/compatible-checks/api-perm.txt
+
 compatible-actor: actor-templates actor-sources actor-render
 
 actor-templates:

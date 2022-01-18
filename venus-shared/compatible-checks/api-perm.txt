@@ -1,0 +1,45 @@
+IActor.ListActor: read <> N/A
+IChainInfo.BlockTime: read <> N/A
+IChainInfo.ChainGetRandomnessFromBeacon: read <> N/A
+IChainInfo.ChainGetRandomnessFromTickets: read <> N/A
+IChainInfo.ChainGetReceipts: read <> N/A
+IChainInfo.ChainList: read <> N/A
+IChainInfo.GetActor: read <> N/A
+IChainInfo.GetEntry: read <> N/A
+IChainInfo.GetFullBlock: read <> N/A
+IChainInfo.GetParentStateRootActor: read <> N/A
+IChainInfo.MessageWait: read <> N/A
+IChainInfo.ProtocolParameters: read <> N/A
+IChainInfo.ResolveToKeyAddr: read <> N/A
+IChainInfo.VerifyEntry: read <> N/A
+IMinerState.StateMinerSectorSize: read <> N/A
+IMinerState.StateMinerWorkerAddress: read <> N/A
+IJwtAuthAPI.Verify: read <> N/A
+IMessagePool.GasBatchEstimateMessageGas: read <> N/A
+IMessagePool.MpoolDeleteByAdress: admin <> N/A
+IMessagePool.MpoolPublishByAddr: write <> N/A
+IMessagePool.MpoolPublishMessage: write <> N/A
+IMessagePool.MpoolSelects: read <> N/A
+INetwork.NetworkConnect: read <> N/A
+INetwork.NetworkFindPeer: read <> N/A
+INetwork.NetworkFindProvidersAsync: read <> N/A
+INetwork.NetworkGetBandwidthStats: admin <> N/A
+INetwork.NetworkGetClosestPeers: read <> N/A
+INetwork.NetworkGetPeerAddresses: admin <> N/A
+INetwork.NetworkGetPeerID: admin <> N/A
+INetwork.NetworkPeers: read <> N/A
+INetwork.Version: read <> Worker.Version: admin
+ISyncer.ChainSyncHandleNewTipSet: write <> N/A
+ISyncer.Concurrent: read <> N/A
+ISyncer.SetConcurrent: admin <> N/A
+ISyncer.SyncerTracker: read <> N/A
+IWallet.HasPassword: admin <> N/A
+IWallet.LockWallet: admin <> N/A
+IWallet.SetPassword: admin <> N/A
+IWallet.UnLockWallet: admin <> N/A
+IWallet.WalletAddresses: admin <> N/A
+IWallet.WalletHas: write <> Wallet.WalletHas: admin
+IWallet.WalletNewAddress: write <> N/A
+IWallet.WalletSign: sign <> Wallet.WalletSign: admin
+IWallet.WalletState: admin <> N/A
+

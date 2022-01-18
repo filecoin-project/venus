@@ -16,6 +16,7 @@ func main() {
 		Commands: []*cli.Command{
 			checksumCmd,
 			diffCmd,
+			permCmd,
 		},
 	}
 
