@@ -64,17 +64,16 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 			}
 			return cs.FilCirculating, nil
 		},
-		LookbackStateGetter:  vmcontext.LookbackStateGetterForTipset(ctx, s.cs, s.fork, ts),
-		NetworkVersion:       s.fork.GetNetworkVersion(ctx, ts.Height()+1),
-		NetworkVersionGetter: s.fork.GetNetworkVersion,
-		Rnd:                  consensus.NewHeadRandomness(s.rnd, ts.Key()),
-		BaseFee:              ts.At(0).ParentBaseFee,
-		Epoch:                ts.Height() + 1,
-		GasPriceSchedule:     s.gasSchedule,
-		PRoot:                stateRoot,
-		Bsstore:              s.cs.Blockstore(),
-		SysCallsImpl:         s.syscallsImpl,
-		Fork:                 s.fork,
+		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, s.cs, s.fork, ts),
+		NetworkVersion:      s.fork.GetNetworkVersion(ctx, ts.Height()+1),
+		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
+		BaseFee:             ts.At(0).ParentBaseFee,
+		Epoch:               ts.Height() + 1,
+		GasPriceSchedule:    s.gasSchedule,
+		PRoot:               stateRoot,
+		Bsstore:             s.cs.Blockstore(),
+		SysCallsImpl:        s.syscallsImpl,
+		Fork:                s.fork,
 	}
 
 	vmi, err := vm.NewVM(ctx, vmOption)
@@ -197,17 +196,16 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 			}
 			return dertail.FilCirculating, nil
 		},
-		LookbackStateGetter:  vmcontext.LookbackStateGetterForTipset(ctx, s.cs, s.fork, ts),
-		NetworkVersion:       s.fork.GetNetworkVersion(ctx, pheight+1),
-		NetworkVersionGetter: s.fork.GetNetworkVersion,
-		Rnd:                  consensus.NewHeadRandomness(s.rnd, ts.Key()),
-		BaseFee:              ts.At(0).ParentBaseFee,
-		Epoch:                pheight + 1,
-		GasPriceSchedule:     s.gasSchedule,
-		Fork:                 s.fork,
-		PRoot:                ts.At(0).ParentStateRoot,
-		Bsstore:              s.cs.Blockstore(),
-		SysCallsImpl:         s.syscallsImpl,
+		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, s.cs, s.fork, ts),
+		NetworkVersion:      s.fork.GetNetworkVersion(ctx, pheight+1),
+		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
+		BaseFee:             ts.At(0).ParentBaseFee,
+		Epoch:               pheight + 1,
+		GasPriceSchedule:    s.gasSchedule,
+		Fork:                s.fork,
+		PRoot:               ts.At(0).ParentStateRoot,
+		Bsstore:             s.cs.Blockstore(),
+		SysCallsImpl:        s.syscallsImpl,
 	}
 
 	v, err := vm.NewVM(ctx, vmOption)

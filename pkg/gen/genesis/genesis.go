@@ -493,16 +493,13 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 	vmopt := vm.VmOption{
 		CircSupplyCalculator: csc,
 		NetworkVersion:       nv,
-		NetworkVersionGetter: func(ctx context.Context, height abi.ChainEpoch) network.Version {
-			return nv
-		},
-		Rnd:              &fakeRand{},
-		BaseFee:          big.NewInt(0),
-		Epoch:            0,
-		PRoot:            stateroot,
-		Bsstore:          cs.Blockstore(),
-		SysCallsImpl:     mkFakedSigSyscalls(syscalls),
-		GasPriceSchedule: gasPriceSchedule,
+		Rnd:                  &fakeRand{},
+		BaseFee:              big.NewInt(0),
+		Epoch:                0,
+		PRoot:                stateroot,
+		Bsstore:              cs.Blockstore(),
+		SysCallsImpl:         mkFakedSigSyscalls(syscalls),
+		GasPriceSchedule:     gasPriceSchedule,
 	}
 
 	vm, err := vm.NewVM(ctx, vmopt)

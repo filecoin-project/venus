@@ -217,7 +217,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 	for i := parentEpoch; i < epoch; i++ {
 		if i > parentEpoch {
 			// fix: https://github.com/filecoin-project/lotus/pull/7966
-			vm.vmOption.NetworkVersion = vm.vmOption.NetworkVersionGetter(vm.context, i)
+			vm.vmOption.NetworkVersion = vm.vmOption.Fork.GetNetworkVersion(vm.context, i)
 			// run cron for null rounds if any
 			cronMessage := makeCronTickMessage()
 			ret, err := vm.applyImplicitMessage(cronMessage)
@@ -252,7 +252,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 		}
 	}
 	// as above
-	vm.vmOption.NetworkVersion = vm.vmOption.NetworkVersionGetter(vm.context, epoch)
+	vm.vmOption.NetworkVersion = vm.vmOption.Fork.GetNetworkVersion(vm.context, epoch)
 
 	vmlog.Debugf("process tipset fork: %v\n", time.Since(toProcessTipset).Milliseconds())
 	// create message tracker

@@ -22,13 +22,11 @@ import (
 type ExecCallBack func(cid.Cid, VmMessage, *Ret) error
 type CircSupplyCalculator func(context.Context, abi.ChainEpoch, tree.Tree) (abi.TokenAmount, error)
 type LookbackStateGetter func(context.Context, abi.ChainEpoch) (*state.View, error)
-type NetworkVersionGetter func(ctx context.Context, height abi.ChainEpoch) network.Version
 
 type VmOption struct { //nolint
 	CircSupplyCalculator CircSupplyCalculator
 	LookbackStateGetter  LookbackStateGetter
 	NetworkVersion       network.Version
-	NetworkVersionGetter NetworkVersionGetter
 	Rnd                  HeadChainRandomness
 	BaseFee              abi.TokenAmount
 	Fork                 fork.IFork

@@ -97,17 +97,13 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 	gasPirceSchedule := gas.NewPricesSchedule(para)
 	vmopt := vm.VmOption{
 		CircSupplyCalculator: csc,
-		NetworkVersion:       nv,
-		NetworkVersionGetter: func(ctx context.Context, height abi.ChainEpoch) network.Version {
-			return nv
-		},
-		Rnd:              &fakeRand{},
-		BaseFee:          big.NewInt(0),
-		Epoch:            0,
-		PRoot:            sroot,
-		Bsstore:          cs.Blockstore(),
-		SysCallsImpl:     mkFakedSigSyscalls(syscalls),
-		GasPriceSchedule: gasPirceSchedule,
+		Rnd:                  &fakeRand{},
+		BaseFee:              big.NewInt(0),
+		Epoch:                0,
+		PRoot:                sroot,
+		Bsstore:              cs.Blockstore(),
+		SysCallsImpl:         mkFakedSigSyscalls(syscalls),
+		GasPriceSchedule:     gasPirceSchedule,
 	}
 
 	vmi, err := vm.NewVM(ctx, vmopt)
