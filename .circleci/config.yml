@@ -184,7 +184,6 @@ jobs:
           fingerprints:
             - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
       - checkout
-      - clone_lotus
       - update_submodules
       # Save the Git SHA of the rust-fil-proofs submodule so that we can use it when creating a cache key
       - generate_rust_submodules_checksums
