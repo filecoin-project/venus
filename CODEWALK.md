@@ -71,8 +71,8 @@ Other patterns, we've evolving for our needs:
 - go-ipfs relies heavily on shell-based integration testing; we aim to rely heavily on unit testing and Go-based integration tests.
 - The go-ipfs package structure involves a deep hierarchy of dependent implementations; 
 we're moving towards a more Go-idiomatic approach with narrow interfaces defined in consuming packages (see [Patterns](#patterns).
-- The term "block" is heavily overloaded: a blockchain block ([`types/block.go`](https://github.com/filecoin-project/venus/tree/master/pkg/types/block.go)), 
-but also content-id-addressed blocks in the block service. 
+- The term "block" is heavily overloaded: a blockchain block ([`types/block.go`](https://github.com/filecoin-project/venus/tree/master/venus-shared/types/block_header.go)),
+but also content-id-addressed blocks in the block service.
 Blockchain blocks are stored in block service blocks, but are not the same thing.
 
 ## Architecture overview
@@ -178,7 +178,7 @@ It is expected that other implementations will match the behaviour of the Go act
 An ABI describes how inputs and outputs to the VM are encoded. 
 Future work will replace this implementation with a "real" VM.
 
-The [Actor](https://github.com/filecoin-project/venus/blob/master/pkg/types/actor.go) struct is the base implementation of actors, with fields common to all of them.
+The [Actor](https://github.com/filecoin-project/venus/blob/master/venus-shared/internal/actor.go) struct is the base implementation of actors, with fields common to all of them.
 
 - `Code` is a CID identifying the actor code, but since these actors are implemented in Go, is actually some fixed bytes acting as an identifier. 
 This identifier selects the kind of actor implementation when a message is sent to its address.
@@ -252,7 +252,7 @@ If a miner is elected, they have the right to mine a block in that round.
 
 Given the probabilistic nature of mining new blocks, more than one block may be mined in any given round. 
 Hence, a new block might have more than one parent block. 
-The parents form a set, which we call a [tipset](https://github.com/filecoin-project/venus/blob/master/pkg/types/tipset.go). 
+The parents form a set, which we call a [tipset](https://github.com/filecoin-project/venus/blob/master/venus-shared/types/tipset.go). 
 All the blocks in a tipset are at the same height and share the same parents. 
 Tipsets contain one or more blocks. 
 A null block count indicates the absence of any blocks mined in a previous round. 
@@ -374,7 +374,6 @@ The `functional-tests` directory contains some Go and Bash scripts which perform
 These are not daemon tests, but run separately.
 
 Some packages have a `testing.go` file with helpers for setting up tests involving that package’s types. 
-The [`types/testing.go`](https://github.com/filecoin-project/venus/blob/master/pkg/types/testing.go) file has some more generally useful constructors. 
 There is also a top-level [`testhelpers`](https://github.com/filecoin-project/venus/blob/master/pkg/testhelpers) package with higher level helpers, often used by daemon tests.
 
 We’re in process of creating the venus Automation and Systems Toolkit (FAST) [library](https://github.com/filecoin-project/venus/tree/master/tools/fast). 
