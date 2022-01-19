@@ -228,11 +228,6 @@ func (backend *DSBackend) GetKeyInfo(addr address.Address) (*crypto.KeyInfo, err
 
 //GetKeyInfoPassphrase get private private key from wallet, get encrypt byte from db and decrypto it with password
 func (backend *DSBackend) GetKeyInfoPassphrase(addr address.Address, password []byte) (*crypto.KeyInfo, error) {
-	defer func() {
-		for i := range password {
-			password[i] = 0
-		}
-	}()
 	if !backend.HasAddress(addr) {
 		return nil, errors.New("backend does not contain address")
 	}
