@@ -1,0 +1,36 @@
+name: basic checks
+
+on: ["push", "pull_request"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: dependencies
+        run: sudo apt install mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y
+
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'true'
+
+      - name: setup go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.16'
+
+      - name: deps
+        run: make deps
+
+      - name: build
+        run: make all
+
+      - name: tests-shared
+        run: make test-venus-shared
+
+      - name: compatible-checks
+        run: make compatible-all
+
+      - name: show git status
+        run: |
+          git status --porcelain
+          test -z "$(git status --porcelain)"
