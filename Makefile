@@ -24,25 +24,6 @@ clean:
 	rm -rf ./extern/filecoin-ffi
 	rm -rf ./extern/test-vectors
 
-gen-api:
-	go run ./tools/gen/api/proxygen.go
-	gofmt -s -l -w ./app/client/full.go
-	gofmt -s -l -w ./app/client/v0api/full.go
-
-v2-gen-api:
-	cd ./venus-devtool/ && go run ./api-gen/
-	gofmt -s -l -w ./venus-shared/api/chain/v0/proxy_gen.go;
-	gofmt -s -l -w ./venus-shared/api/chain/v1/proxy_gen.go
-
-v0APIDoc = ../venus-shared/api/v0-api-document.md
-v1APIDoc = ../venus-shared/api/v1-api-document.md
-api-docs:
-	cd ./venus-devtool/ && go run ./api-docs-gen/cmd ../venus-shared/api/chain/v0/fullnode.go FullNode v0 ../venus-shared/api/chain/v0 $(v0APIDoc)
-	cd ./venus-devtool/ && go run ./api-docs-gen/cmd ../venus-shared/api/chain/v1/fullnode.go FullNode v1 ../venus-shared/api/chain/v1 $(v1APIDoc)
-
-compare-api:
-	go run ./tools/gen/api/proxygen.go compare
-
 gen-asset:
 	go-bindata -pkg=asset -o ./fixtures/asset/asset.go ./fixtures/_assets/car/ ./fixtures/_assets/proof-params/ ./fixtures/_assets/arch-diagram.monopic
 	gofmt -s -l -w ./fixtures/asset/asset.go
@@ -59,6 +40,17 @@ inline-gen:
 
 test-venus-shared:
 	cd venus-shared && go test -covermode=set ./...
+
+gen-api:
+	cd ./venus-devtool/ && go run ./api-gen/
+	gofmt -s -l -w ./venus-shared/api/chain/v0/proxy_gen.go;
+	gofmt -s -l -w ./venus-shared/api/chain/v1/proxy_gen.go
+
+v0APIDoc = ../venus-shared/api/v0-api-document.md
+v1APIDoc = ../venus-shared/api/v1-api-document.md
+api-docs:
+	cd ./venus-devtool/ && go run ./api-docs-gen/cmd ../venus-shared/api/chain/v0/fullnode.go FullNode v0 ../venus-shared/api/chain/v0 $(v0APIDoc)
+	cd ./venus-devtool/ && go run ./api-docs-gen/cmd ../venus-shared/api/chain/v1/fullnode.go FullNode v1 ../venus-shared/api/chain/v1 $(v1APIDoc)
 
 compatible-all: compatible-api compatible-actor
 
