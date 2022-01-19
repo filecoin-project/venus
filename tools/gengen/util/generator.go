@@ -95,9 +95,6 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 		SysCallsImpl:         syscallImpl,
 		Fork:                 chainFork,
 	}
-	vmOption.NetworkVersionGetter = func(ctx context.Context, height abi.ChainEpoch) network.Version {
-		return vmOption.NetworkVersion
-	}
 	vm, err := vm.NewVM(context.Background(), vmOption)
 	if err != nil {
 		panic(xerrors.Errorf("create state error, should never come here"))

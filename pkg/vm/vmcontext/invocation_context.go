@@ -218,8 +218,7 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 	// 2. load target actor
 	// 3. transfer optional funds
 	// 4. short-circuit _Send_ Method
-	// 5. load target actor code
-	// 6. create target stateView handle
+	// 5. create target stateView handle
 	// assert From address is an ID address.
 	if ctx.msg.From.Protocol() != address.ID {
 		panic("bad code: sender address MUST be an ID address at invocation time")
@@ -227,7 +226,7 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 
 	// 1. load target actor
 	// Note: we replace the "To" address with the normalized version
-	_, toIDAddr := ctx.resolveTarget(ctx.originMsg.To)
+	toActor, toIDAddr := ctx.resolveTarget(ctx.originMsg.To)
 	if ctx.vm.NetworkVersion() > network.Version3 {
 		ctx.msg.To = toIDAddr
 	}
@@ -237,9 +236,7 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 
 	// 3. transfer funds carried by the msg
 	if !ctx.originMsg.Value.Nil() && !ctx.originMsg.Value.IsZero() {
-		if ctx.msg.From != toIDAddr {
-			ctx.vm.transfer(ctx.msg.From, toIDAddr, ctx.originMsg.Value, ctx.vm.NetworkVersion())
-		}
+		ctx.vm.transfer(ctx.msg.From, toIDAddr, ctx.originMsg.Value, ctx.vm.NetworkVersion())
 	}
 
 	// 4. if we are just sending funds, there is nothing else To do.
@@ -247,14 +244,9 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 		return nil, exitcode.Ok
 	}
 
-	// 5. load target actor code
-	toActor, found, err := ctx.vm.State.GetActor(ctx.vm.context, ctx.originMsg.To)
-	if err != nil || !found {
-		panic(xerrors.Errorf("cannt find to actor %v", err))
-	}
 	actorImpl := ctx.vm.getActorImpl(toActor.Code, ctx.Runtime())
 
-	// 6. create target stateView handle
+	// 5. create target stateView handle
 	stateHandle := newActorStateHandle((*stateHandleContext)(ctx))
 	ctx.stateHandle = &stateHandle
 
