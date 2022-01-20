@@ -5,27 +5,18 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/typeutil"
+
+	"github.com/filecoin-project/venus/venus-devtool/util"
 )
 
 var diffCmd = &cli.Command{
 	Name:  "diff",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		pairs := [][2]reflect.Type{
-			{
-				reflect.TypeOf((*v1.FullNode)(nil)).Elem(),
-				reflect.TypeOf((*v1api.FullNode)(nil)).Elem(),
-			},
-		}
-
-		for _, pair := range pairs {
-			showDiff(pair[0], pair[1])
-		}
+		showDiff(util.LatestAPIPair.Venus.Type, util.LatestAPIPair.Lotus.Type)
 		return nil
 	},
 }
