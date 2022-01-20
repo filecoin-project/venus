@@ -14,36 +14,39 @@ var permCmd = &cli.Command{
 	Name:  "perm",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		originMetas, err := parsePermMetas(util.LatestAPIPair.Lotus.ParseOpt)
-		if err != nil {
-			log.Fatalln("parse lotus api interfaces:", err)
-		}
-
-		targetMetas, err := parsePermMetas(util.LatestAPIPair.Venus.ParseOpt)
-		if err != nil {
-			log.Fatalln("parse venus chain api interfaces:", err)
-		}
-
-		originMap := map[string]permMeta{}
-		for _, om := range originMetas {
-			if om.perm != "" {
-				originMap[om.meth] = om
-			}
-		}
-
-		for _, tm := range targetMetas {
-			om, has := originMap[tm.meth]
-			if !has {
-				fmt.Printf("%s.%s: %s <> N/A\n", tm.iface, tm.meth, tm.perm)
-				continue
+		for _, pair := range util.APIPairs {
+			originMetas, err := parsePermMetas(pair.Lotus.ParseOpt)
+			if err != nil {
+				log.Fatalln("parse lotus api interfaces:", err)
 			}
 
-			if tm.perm != om.perm {
-				fmt.Printf("%s.%s: %s <> %s.%s: %s\n", tm.iface, tm.meth, tm.perm, om.iface, om.meth, om.perm)
+			targetMetas, err := parsePermMetas(pair.Venus.ParseOpt)
+			if err != nil {
+				log.Fatalln("parse venus chain api interfaces:", err)
 			}
-		}
 
-		fmt.Println()
+			originMap := map[string]permMeta{}
+			for _, om := range originMetas {
+				if om.perm != "" {
+					originMap[om.meth] = om
+				}
+			}
+
+			fmt.Printf("v%d: %s <> %s\n", pair.Ver, pair.Venus.ParseOpt.ImportPath, pair.Lotus.ParseOpt.ImportPath)
+			for _, tm := range targetMetas {
+				om, has := originMap[tm.meth]
+				if !has {
+					fmt.Printf("\t- %s.%s\n", tm.iface, tm.meth)
+					continue
+				}
+
+				if tm.perm != om.perm {
+					fmt.Printf("\t> %s.%s: %s <> %s.%s: %s\n", tm.iface, tm.meth, tm.perm, om.iface, om.meth, om.perm)
+				}
+			}
+
+			fmt.Println()
+		}
 
 		return nil
 	},

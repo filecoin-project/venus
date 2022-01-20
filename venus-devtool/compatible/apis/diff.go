@@ -16,7 +16,9 @@ var diffCmd = &cli.Command{
 	Name:  "diff",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		showDiff(util.LatestAPIPair.Venus.Type, util.LatestAPIPair.Lotus.Type)
+		for _, pair := range util.APIPairs {
+			showDiff(pair.Venus.Type, pair.Lotus.Type)
+		}
 		return nil
 	},
 }

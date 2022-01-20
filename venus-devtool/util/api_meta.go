@@ -28,7 +28,7 @@ var APIPairs = []struct {
 			Type: reflect.TypeOf((*v0.FullNode)(nil)).Elem(),
 			ParseOpt: InterfaceParseOption{
 				ImportPath: "github.com/filecoin-project/venus/venus-shared/api/chain/v0",
-				Included:   []string{"FullNode", "Common", "Net"},
+				IncludeAll: true,
 			},
 		},
 	},
@@ -38,7 +38,7 @@ var APIPairs = []struct {
 			Type: reflect.TypeOf((*v1api.FullNode)(nil)).Elem(),
 			ParseOpt: InterfaceParseOption{
 				ImportPath: "github.com/filecoin-project/lotus/api",
-				IncludeAll: true,
+				Included:   []string{"FullNode", "Common", "Net"},
 			},
 		},
 		Venus: APIMeta{

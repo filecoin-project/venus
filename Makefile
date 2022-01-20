@@ -62,7 +62,7 @@ test-venus-shared:
 
 compatible-all: compatible-api compatible-actor
 
-compatible-api: api-checksum api-diff
+compatible-api: api-checksum api-diff api-perm
 
 api-checksum:
 	cd venus-devtool && go run ./compatible/apis/*.go checksum > ../venus-shared/compatible-checks/api-checksum.txt
