@@ -60,7 +60,7 @@ type permMeta struct {
 }
 
 func parsePermMetas(opt util.InterfaceParseOption) ([]permMeta, error) {
-	ifaceMetas, err := util.ParseInterfaceMetas(opt)
+	ifaceMetas, _, err := util.ParseInterfaceMetas(opt)
 	if err != nil {
 		return nil, err
 	}

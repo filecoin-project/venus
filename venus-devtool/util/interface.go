@@ -8,15 +8,29 @@ import (
 	"strings"
 )
 
+type ASTMeta struct {
+	*token.FileSet
+}
+
 type InterfaceParseOption struct {
 	ImportPath string
 	IncludeAll bool
 	Included   []string
 }
 
+type PackageMeta struct {
+	Name string
+	*ast.Package
+}
+
+type FileMeta struct {
+	Name string
+	*ast.File
+}
+
 type InterfaceMeta struct {
-	Pkg      string
-	File     string
+	Pkg      PackageMeta
+	File     FileMeta
 	Name     string
 	Defined  []InterfaceMethodMeta
 	Included []string
@@ -30,8 +44,8 @@ type InterfaceMethodMeta struct {
 }
 
 type ifaceMetaVisitor struct {
-	pname      string
-	fname      string
+	pkg        PackageMeta
+	file       FileMeta
 	included   map[string]struct{}
 	includAll  bool
 	comments   ast.CommentMap
@@ -58,8 +72,8 @@ func (iv *ifaceMetaVisitor) Visit(node ast.Node) ast.Visitor {
 	if !ok {
 		ifaceIdx = len(iv.ifaces)
 		iv.ifaces = append(iv.ifaces, &InterfaceMeta{
-			Pkg:  iv.pname,
-			File: iv.fname,
+			Pkg:  iv.pkg,
+			File: iv.file,
 			Name: st.Name.Name,
 		})
 	}
@@ -84,16 +98,16 @@ func (iv *ifaceMetaVisitor) Visit(node ast.Node) ast.Visitor {
 	return iv
 }
 
-func ParseInterfaceMetas(opt InterfaceParseOption) ([]*InterfaceMeta, error) {
+func ParseInterfaceMetas(opt InterfaceParseOption) ([]*InterfaceMeta, *ASTMeta, error) {
 	location, err := FindLocationForImportPath(opt.ImportPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	fset := token.NewFileSet()
 	pkgs, err := parser.ParseDir(fset, location, nil, parser.AllErrors|parser.ParseComments)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var metas []*InterfaceMeta
@@ -109,14 +123,20 @@ func ParseInterfaceMetas(opt InterfaceParseOption) ([]*InterfaceMeta, error) {
 		}
 
 		visitor := &ifaceMetaVisitor{
-			pname:      pname,
+			pkg: PackageMeta{
+				Name:    pname,
+				Package: pkg,
+			},
 			included:   included,
 			includAll:  opt.IncludeAll,
 			ifaceIdxes: map[string]int{},
 		}
 
 		for fname, file := range pkg.Files {
-			visitor.fname = fname
+			visitor.file = FileMeta{
+				Name: fname,
+				File: file,
+			}
 			visitor.comments = ast.NewCommentMap(fset, file, file.Comments)
 			ast.Walk(visitor, file)
 		}
@@ -126,11 +146,11 @@ func ParseInterfaceMetas(opt InterfaceParseOption) ([]*InterfaceMeta, error) {
 
 	sort.Slice(metas, func(i, j int) bool {
 		if metas[i].Pkg != metas[j].Pkg {
-			return metas[i].Pkg < metas[j].Pkg
+			return metas[i].Pkg.Name < metas[j].Pkg.Name
 		}
 
 		if metas[i].File != metas[j].File {
-			return metas[i].File < metas[j].File
+			return metas[i].File.Name < metas[j].File.Name
 		}
 
 		return metas[i].Name < metas[j].Name
@@ -142,5 +162,7 @@ func ParseInterfaceMetas(opt InterfaceParseOption) ([]*InterfaceMeta, error) {
 		})
 	}
 
-	return metas, nil
+	return metas, &ASTMeta{
+		FileSet: fset,
+	}, nil
 }
