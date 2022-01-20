@@ -8,6 +8,12 @@ import (
 	"strings"
 )
 
+type InterfaceParseOption struct {
+	ImportPath string
+	IncludeAll bool
+	Included   []string
+}
+
 type InterfaceMeta struct {
 	Pkg      string
 	File     string
@@ -26,6 +32,8 @@ type InterfaceMethodMeta struct {
 type ifaceMetaVisitor struct {
 	pname      string
 	fname      string
+	included   map[string]struct{}
+	includAll  bool
 	comments   ast.CommentMap
 	ifaces     []*InterfaceMeta
 	ifaceIdxes map[string]int
@@ -39,6 +47,10 @@ func (iv *ifaceMetaVisitor) Visit(node ast.Node) ast.Visitor {
 
 	iface, ok := st.Type.(*ast.InterfaceType)
 	if !ok {
+		return iv
+	}
+
+	if _, yes := iv.included[st.Name.Name]; !yes && !iv.includAll {
 		return iv
 	}
 
@@ -72,8 +84,8 @@ func (iv *ifaceMetaVisitor) Visit(node ast.Node) ast.Visitor {
 	return iv
 }
 
-func ParseInterfaceMetas(importPath string) ([]*InterfaceMeta, error) {
-	location, err := FindLocationForImportPath(importPath)
+func ParseInterfaceMetas(opt InterfaceParseOption) ([]*InterfaceMeta, error) {
+	location, err := FindLocationForImportPath(opt.ImportPath)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +98,11 @@ func ParseInterfaceMetas(importPath string) ([]*InterfaceMeta, error) {
 
 	var metas []*InterfaceMeta
 
+	included := map[string]struct{}{}
+	for _, one := range opt.Included {
+		included[one] = struct{}{}
+	}
+
 	for pname, pkg := range pkgs {
 		if strings.HasSuffix(pname, "_test") {
 			continue
@@ -93,6 +110,8 @@ func ParseInterfaceMetas(importPath string) ([]*InterfaceMeta, error) {
 
 		visitor := &ifaceMetaVisitor{
 			pname:      pname,
+			included:   included,
+			includAll:  opt.IncludeAll,
 			ifaceIdxes: map[string]int{},
 		}
 

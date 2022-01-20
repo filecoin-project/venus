@@ -7,22 +7,18 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/filecoin-project/lotus/api/v0api"
-	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/venus/venus-devtool/util"
 )
 
 var checksumCmd = &cli.Command{
 	Name:  "checksum",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		wants := []reflect.Type{
-			reflect.TypeOf((*v0api.FullNode)(nil)).Elem(),
-			reflect.TypeOf((*v1api.FullNode)(nil)).Elem(),
-		}
-
 		var buf bytes.Buffer
-		for _, rt := range wants {
+		for _, pair := range util.APIPairs {
+			rt := pair.Lotus.Type
 			fmt.Printf("%s:\n", rt)
 			for mi := 0; mi < rt.NumMethod(); mi++ {
 				buf.Reset()

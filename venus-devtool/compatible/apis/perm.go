@@ -14,48 +14,42 @@ var permCmd = &cli.Command{
 	Name:  "perm",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		originMetas, err := parsePermMetas(permOption{
-			importPath: "github.com/filecoin-project/lotus/api",
-		})
-		if err != nil {
-			log.Fatalln("parse lotus api interfaces:", err)
-		}
-
-		targetMetas, err := parsePermMetas(permOption{
-			importPath: "github.com/filecoin-project/venus/venus-shared/api/chain/v1",
-		})
-		if err != nil {
-			log.Fatalln("parse venus chain api interfaces:", err)
-		}
-
-		originMap := map[string]permMeta{}
-		for _, om := range originMetas {
-			if om.perm != "" {
-				originMap[om.meth] = om
-			}
-		}
-
-		for _, tm := range targetMetas {
-			om, has := originMap[tm.meth]
-			if !has {
-				fmt.Printf("%s.%s: %s <> N/A\n", tm.iface, tm.meth, tm.perm)
-				continue
+		for _, pair := range util.APIPairs {
+			originMetas, err := parsePermMetas(pair.Lotus.ParseOpt)
+			if err != nil {
+				log.Fatalln("parse lotus api interfaces:", err)
 			}
 
-			if tm.perm != om.perm {
-				fmt.Printf("%s.%s: %s <> %s.%s: %s\n", tm.iface, tm.meth, tm.perm, om.iface, om.meth, om.perm)
+			targetMetas, err := parsePermMetas(pair.Venus.ParseOpt)
+			if err != nil {
+				log.Fatalln("parse venus chain api interfaces:", err)
 			}
-		}
 
-		fmt.Println()
+			originMap := map[string]permMeta{}
+			for _, om := range originMetas {
+				if om.perm != "" {
+					originMap[om.meth] = om
+				}
+			}
+
+			fmt.Printf("v%d: %s <> %s\n", pair.Ver, pair.Venus.ParseOpt.ImportPath, pair.Lotus.ParseOpt.ImportPath)
+			for _, tm := range targetMetas {
+				om, has := originMap[tm.meth]
+				if !has {
+					fmt.Printf("\t- %s.%s\n", tm.iface, tm.meth)
+					continue
+				}
+
+				if tm.perm != om.perm {
+					fmt.Printf("\t> %s.%s: %s <> %s.%s: %s\n", tm.iface, tm.meth, tm.perm, om.iface, om.meth, om.perm)
+				}
+			}
+
+			fmt.Println()
+		}
 
 		return nil
 	},
-}
-
-type permOption struct {
-	importPath string
-	excluded   map[string]struct{}
 }
 
 type permMeta struct {
@@ -65,21 +59,17 @@ type permMeta struct {
 	perm  string
 }
 
-func parsePermMetas(opt permOption) ([]permMeta, error) {
-	ifaceMetas, err := util.ParseInterfaceMetas(opt.importPath)
+func parsePermMetas(opt util.InterfaceParseOption) ([]permMeta, error) {
+	ifaceMetas, err := util.ParseInterfaceMetas(opt)
 	if err != nil {
 		return nil, err
 	}
 
 	var permMetas []permMeta
 	for _, iface := range ifaceMetas {
-		if _, yes := opt.excluded[iface.Name]; yes {
-			continue
-		}
-
 		for _, ifMeth := range iface.Defined {
 			permMetas = append(permMetas, permMeta{
-				pkg:   opt.importPath,
+				pkg:   opt.ImportPath,
 				iface: iface.Name,
 				meth:  ifMeth.Name,
 				perm:  getPerms(ifMeth),
