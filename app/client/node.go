@@ -2,10 +2,12 @@ package client
 
 import (
 	"context"
-	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 	"io/ioutil"
 	"net/http"
 	"path"
+
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus/app/paths"
@@ -40,16 +42,16 @@ func getVenusClientInfo(version string) (string, http.Header, error) {
 //NewFullNode It is used to construct a full node access client.
 //The API can be obtained from ~ /. Venus / API file, read from ~ /. Venus / token in local JWT mode,
 //and obtained from Venus auth service in central authorization mode.
-func GetFullNodeAPI(ctx context.Context, version string) (FullNodeStruct, jsonrpc.ClientCloser, error) {
+func GetFullNodeAPI(ctx context.Context, version string) (v1api.FullNodeStruct, jsonrpc.ClientCloser, error) {
 	addr, headers, err := getVenusClientInfo(version)
 	if err != nil {
-		return FullNodeStruct{}, nil, err
+		return v1api.FullNodeStruct{}, nil, err
 	}
 
-	node := FullNodeStruct{}
+	node := v1api.FullNodeStruct{}
 	closer, err := jsonrpc.NewClient(ctx, addr, "Filecoin", &node, headers)
 	if err != nil {
-		return FullNodeStruct{}, nil, err
+		return v1api.FullNodeStruct{}, nil, err
 	}
 
 	return node, closer, nil
