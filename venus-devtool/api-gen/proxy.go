@@ -205,7 +205,7 @@ func writeStruct(dst *bytes.Buffer, ifaceMeta *util.InterfaceMeta, astMeta *util
 				return fmt.Errorf("write func %s: %w", meth.Name, err)
 			}
 
-			fmt.Fprintf(dst, " `perm:%s`\n", util.GetAPIMethodPerm(meth))
+			fmt.Fprintf(dst, " `perm:\"%s\"`\n", util.GetAPIMethodPerm(meth))
 		}
 
 		fmt.Fprint(dst, structInternalTail)

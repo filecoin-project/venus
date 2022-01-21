@@ -27,26 +27,15 @@ jobs:
       - name: tests-shared
         run: make test-venus-shared
 
-      - name: compatible-checks
+      - name: compatible all
         run: |
           make compatible-all
-          git --no-pager diff
-          git --no-pager diff --quiet
 
-      - name: check api docs
+      - name: gen all
         run: |
-          make api-docs
-          git --no-pager diff
-          git --no-pager diff --quiet
+          make gen-all
 
-      - name: check cbor-gen
+      - name: detect changes
         run: |
-          make cborgen
-          git --no-pager diff
-          git --no-pager diff --quiet
-
-      - name: check mock pai
-        run: |
-          make mock-api-gen
-          git --no-pager diff
-          git --no-pager diff --quiet
+          git status --porcelain
+          test -z "$(git status --porcelain)"
