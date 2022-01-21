@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -14,9 +15,10 @@ type ASTMeta struct {
 }
 
 type InterfaceParseOption struct {
-	ImportPath string
-	IncludeAll bool
-	Included   []string
+	ImportPath     string
+	IncludeAll     bool
+	Included       []string
+	ResolveImports bool
 }
 
 type PackageMeta struct {
@@ -24,9 +26,15 @@ type PackageMeta struct {
 	*ast.Package
 }
 
+type ImportMeta struct {
+	Path  string
+	IsStd bool
+}
+
 type FileMeta struct {
 	Name string
 	*ast.File
+	Imports map[string]ImportMeta
 }
 
 type InterfaceMeta struct {
@@ -99,8 +107,39 @@ func (iv *ifaceMetaVisitor) Visit(node ast.Node) ast.Visitor {
 	return iv
 }
 
+func genFileMeta(name string, file *ast.File, resolveImports bool) (FileMeta, error) {
+	imports := map[string]ImportMeta{}
+	if resolveImports {
+
+		for _, imp := range file.Imports {
+			importPath := imp.Path.Value[1 : len(imp.Path.Value)-1]
+			found := FindPackage(importPath)
+			if found.Err != nil {
+				return FileMeta{}, fmt.Errorf("find package for %s: %w", importPath, found.Err)
+			}
+
+			importMeta := ImportMeta{
+				Path:  importPath,
+				IsStd: strings.HasPrefix(found.Dir, found.SrcRoot),
+			}
+
+			if imp.Name != nil && imp.Name.Name != "" {
+				imports[imp.Name.Name] = importMeta
+			} else {
+				imports[found.Name] = importMeta
+			}
+		}
+	}
+
+	return FileMeta{
+		Name:    name,
+		File:    file,
+		Imports: imports,
+	}, nil
+}
+
 func ParseInterfaceMetas(opt InterfaceParseOption) ([]*InterfaceMeta, *ASTMeta, error) {
-	location, err := FindLocationForImportPath(opt.ImportPath)
+	location, err := FindPackageLocation(opt.ImportPath)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -134,10 +173,12 @@ func ParseInterfaceMetas(opt InterfaceParseOption) ([]*InterfaceMeta, *ASTMeta, 
 		}
 
 		for fname, file := range pkg.Files {
-			visitor.file = FileMeta{
-				Name: fname,
-				File: file,
+			fileMeta, err := genFileMeta(fname, file, opt.ResolveImports)
+			if err != nil {
+				return nil, nil, fmt.Errorf("gen file meta for %s: %w", fname, err)
 			}
+
+			visitor.file = fileMeta
 			visitor.comments = ast.NewCommentMap(fset, file, file.Comments)
 			ast.Walk(visitor, file)
 		}
@@ -150,7 +191,7 @@ func ParseInterfaceMetas(opt InterfaceParseOption) ([]*InterfaceMeta, *ASTMeta, 
 			return metas[i].Pkg.Name < metas[j].Pkg.Name
 		}
 
-		if metas[i].File != metas[j].File {
+		if metas[i].File.Name != metas[j].File.Name {
 			return metas[i].File.Name < metas[j].File.Name
 		}
 

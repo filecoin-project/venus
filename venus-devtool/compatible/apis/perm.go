@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/urfave/cli/v2"
 
@@ -72,31 +71,10 @@ func parsePermMetas(opt util.InterfaceParseOption) ([]permMeta, error) {
 				pkg:   opt.ImportPath,
 				iface: iface.Name,
 				meth:  ifMeth.Name,
-				perm:  getPerms(ifMeth),
+				perm:  util.GetAPIMethodPerm(ifMeth),
 			})
 		}
 	}
 
 	return permMetas, nil
-}
-
-func getPerms(m util.InterfaceMethodMeta) string {
-	permStr := ""
-
-	if cmtNum := len(m.Comments); cmtNum > 0 {
-		if itemNum := len(m.Comments[cmtNum-1].List); itemNum > 0 {
-			if strings.HasPrefix(m.Comments[cmtNum-1].List[0].Text, "//") {
-				permStr = m.Comments[cmtNum-1].List[0].Text[2:]
-			}
-		}
-	}
-
-	for _, piece := range strings.Split(permStr, " ") {
-		trimmed := strings.TrimSpace(piece)
-		if strings.HasPrefix(trimmed, "perm:") {
-			return trimmed[5:]
-		}
-	}
-
-	return ""
 }

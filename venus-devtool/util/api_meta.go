@@ -2,6 +2,7 @@ package util
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -56,4 +57,25 @@ var LatestChainAPIPair = ChainAPIPairs[len(ChainAPIPairs)-1]
 type APIMeta struct {
 	Type     reflect.Type
 	ParseOpt InterfaceParseOption
+}
+
+func GetAPIMethodPerm(m InterfaceMethodMeta) string {
+	permStr := ""
+
+	if cmtNum := len(m.Comments); cmtNum > 0 {
+		if itemNum := len(m.Comments[cmtNum-1].List); itemNum > 0 {
+			if strings.HasPrefix(m.Comments[cmtNum-1].List[0].Text, "//") {
+				permStr = m.Comments[cmtNum-1].List[0].Text[2:]
+			}
+		}
+	}
+
+	for _, piece := range strings.Split(permStr, " ") {
+		trimmed := strings.TrimSpace(piece)
+		if strings.HasPrefix(trimmed, "perm:") {
+			return trimmed[5:]
+		}
+	}
+
+	return ""
 }
