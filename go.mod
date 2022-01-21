@@ -9,6 +9,7 @@ require (
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
+	github.com/ahmetb/go-linq/v3 v3.2.0
 	github.com/awnumar/memguard v0.22.2
 	github.com/bluele/gcache v0.0.0-20190518031135-bc40bd653833
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
@@ -43,12 +44,12 @@ require (
 	github.com/filecoin-project/specs-storage v0.1.1-0.20211228030229-6d460d25a0c9
 	github.com/filecoin-project/test-vectors/schema v0.0.5
 	github.com/filecoin-project/venus-auth v1.3.1-0.20210809053831-012d55d5f578
+	github.com/fxamacker/cbor/v2 v2.4.0
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
 	github.com/go-errors/errors v1.0.1
 	github.com/go-kit/kit v0.10.0
 	github.com/golang/mock v1.6.0
 	github.com/golang/snappy v0.0.2-0.20190904063534-ff6b7dc882cf // indirect
-	github.com/golangci/gofmt v0.0.0-20190930125516-244bba706f1a
 	github.com/golangci/golangci-lint v1.39.0
 	github.com/google/flatbuffers v2.0.0+incompatible // indirect
 	github.com/google/go-github v17.0.0+incompatible
