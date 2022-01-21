@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
-var APIPairs = []struct {
+var ChainAPIPairs = []struct {
 	Ver   int
 	Lotus APIMeta
 	Venus APIMeta
@@ -51,7 +51,7 @@ var APIPairs = []struct {
 	},
 }
 
-var LatestAPIPair = APIPairs[len(APIPairs)-1]
+var LatestChainAPIPair = ChainAPIPairs[len(ChainAPIPairs)-1]
 
 type APIMeta struct {
 	Type     reflect.Type

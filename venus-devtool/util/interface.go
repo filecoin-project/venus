@@ -9,6 +9,7 @@ import (
 )
 
 type ASTMeta struct {
+	Location string
 	*token.FileSet
 }
 
@@ -29,11 +30,11 @@ type FileMeta struct {
 }
 
 type InterfaceMeta struct {
-	Pkg      PackageMeta
-	File     FileMeta
-	Name     string
-	Defined  []InterfaceMethodMeta
-	Included []string
+	Pkg     PackageMeta
+	File    FileMeta
+	Name    string
+	Defined []InterfaceMethodMeta
+	Nested  []string
 }
 
 type InterfaceMethodMeta struct {
@@ -83,7 +84,7 @@ func (iv *ifaceMetaVisitor) Visit(node ast.Node) ast.Visitor {
 	for _, m := range iface.Methods.List {
 		switch meth := m.Type.(type) {
 		case *ast.Ident:
-			ifaceMeta.Included = append(ifaceMeta.Included, meth.Name)
+			ifaceMeta.Nested = append(ifaceMeta.Nested, meth.Name)
 
 		case *ast.FuncType:
 			ifaceMeta.Defined = append(ifaceMeta.Defined, InterfaceMethodMeta{
@@ -163,6 +164,7 @@ func ParseInterfaceMetas(opt InterfaceParseOption) ([]*InterfaceMeta, *ASTMeta, 
 	}
 
 	return metas, &ASTMeta{
-		FileSet: fset,
+		Location: location,
+		FileSet:  fset,
 	}, nil
 }

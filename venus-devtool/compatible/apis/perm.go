@@ -14,7 +14,7 @@ var permCmd = &cli.Command{
 	Name:  "perm",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		for _, pair := range util.APIPairs {
+		for _, pair := range util.ChainAPIPairs {
 			originMetas, err := parsePermMetas(pair.Lotus.ParseOpt)
 			if err != nil {
 				log.Fatalln("parse lotus api interfaces:", err)

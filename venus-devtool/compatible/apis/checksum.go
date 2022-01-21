@@ -17,7 +17,7 @@ var checksumCmd = &cli.Command{
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		var buf bytes.Buffer
-		for _, pair := range util.APIPairs {
+		for _, pair := range util.ChainAPIPairs {
 			rt := pair.Lotus.Type
 			fmt.Printf("%s:\n", rt)
 			for mi := 0; mi < rt.NumMethod(); mi++ {
