@@ -10,17 +10,27 @@ import (
 	"io/ioutil"
 	"log"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/venus/venus-devtool/util"
+	"github.com/filecoin-project/venus/venus-shared/api/messager"
 )
 
 func init() {
 	for _, capi := range util.ChainAPIPairs {
 		proxyTargets = append(proxyTargets, capi.Venus)
 	}
+
+	proxyTargets = append(proxyTargets, util.APIMeta{
+		Type: reflect.TypeOf((*messager.IMessager)(nil)).Elem(),
+		ParseOpt: util.InterfaceParseOption{
+			ImportPath: "github.com/filecoin-project/venus/venus-shared/api/messager",
+			IncludeAll: true,
+		},
+	})
 }
 
 var proxyTargets []util.APIMeta
