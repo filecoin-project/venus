@@ -3,11 +3,13 @@ package wallet
 import (
 	"testing"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"gotest.tools/assert"
 )
 
 func TestContainMsgType(t *testing.T) {
+	tf.UnitTest(t)
 	multiME := MEUnknown + MEChainMsg + MEStorageAsk + MEProviderDealState + MEVerifyAddress
 	assert.Equal(t, ContainMsgType(multiME, types.MTChainMsg), true)
 	assert.Equal(t, ContainMsgType(multiME, types.MTStorageAsk), true)
@@ -24,6 +26,7 @@ func TestContainMsgType(t *testing.T) {
 }
 
 func TestFindCode(t *testing.T) {
+	tf.UnitTest(t)
 	ids := FindCode(38)
 	assert.DeepEqual(t, []int{1, 2, 5}, ids)
 
@@ -32,6 +35,7 @@ func TestFindCode(t *testing.T) {
 }
 
 func TestAggregateMsgEnumCode(t *testing.T) {
+	tf.UnitTest(t)
 	me, err := AggregateMsgEnumCode([]int{1, 2, 3, 4, 5, 6, 7})
 	if err != nil {
 		t.Fatal(err)
