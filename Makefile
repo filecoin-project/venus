@@ -49,6 +49,7 @@ test-venus-shared:
 
 api-gen:
 	cd ./venus-devtool/ && go run ./api-gen/ proxy
+	cd ./venus-devtool/ && go run ./api-gen/ client
 
 v0APIDoc = ../venus-shared/api/v0-api-document.md
 v1APIDoc = ../venus-shared/api/v1-api-document.md
