@@ -23,7 +23,7 @@ type KeyStrategy struct {
 // GroupAuth relation with Group and generate a token for external invocation
 type GroupAuth struct {
 	Token    string
-	GroupId  uint
+	GroupID  uint
 	Name     string
 	KeyBinds []*KeyBind
 }
@@ -31,7 +31,7 @@ type GroupAuth struct {
 // KeyBind  bind wallet usage strategy
 // allow designated rule to pass
 type KeyBind struct {
-	BindId  uint
+	BindID  uint
 	Name    string
 	Address string
 	// source from MsgTypeTemplate or temporary create
@@ -50,7 +50,7 @@ func (kb *KeyBind) ContainMethod(m string) bool {
 
 // Group multi KeyBind
 type Group struct {
-	GroupId uint
+	GroupID uint
 	Name    string
 	// NOTE: not fill data when query groups
 	KeyBinds []*KeyBind

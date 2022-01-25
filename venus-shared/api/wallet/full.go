@@ -6,10 +6,3 @@ type IFullAPI interface {
 	ICommon
 	IWalletEvent
 }
-
-type FullAPI struct {
-	ILocalStrategy
-	ILocalWallet
-	ICommon
-	IWalletEvent
-}
