@@ -17,6 +17,7 @@ import (
 
 	"github.com/filecoin-project/venus/venus-devtool/util"
 	"github.com/filecoin-project/venus/venus-shared/api/messager"
+	"github.com/filecoin-project/venus/venus-shared/api/wallet"
 )
 
 func init() {
@@ -28,6 +29,12 @@ func init() {
 		Type: reflect.TypeOf((*messager.IMessager)(nil)).Elem(),
 		ParseOpt: util.InterfaceParseOption{
 			ImportPath: "github.com/filecoin-project/venus/venus-shared/api/messager",
+			IncludeAll: true,
+		},
+	}, util.APIMeta{
+		Type: reflect.TypeOf((*wallet.IFullAPI)(nil)).Elem(),
+		ParseOpt: util.InterfaceParseOption{
+			ImportPath: "github.com/filecoin-project/venus/venus-shared/api/wallet",
 			IncludeAll: true,
 		},
 	})

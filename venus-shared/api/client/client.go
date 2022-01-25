@@ -2,13 +2,12 @@ package client
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus/venus-shared/api"
 	v0 "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-
-	"net/http"
 )
 
 func NewFullRPCV0(ctx context.Context, addr string, header http.Header) (v0.FullNode, jsonrpc.ClientCloser, error) {
