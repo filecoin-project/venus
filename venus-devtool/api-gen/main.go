@@ -16,6 +16,7 @@ func main() {
 		Commands: []*cli.Command{
 			proxyCmd,
 			clientCmd,
+			docGenCmd,
 		},
 	}
 
