@@ -54,9 +54,15 @@ var ChainAPIPairs = []struct {
 
 var LatestChainAPIPair = ChainAPIPairs[len(ChainAPIPairs)-1]
 
+type RPCMeta struct {
+	Namespace       string
+	MethodNamespace string
+}
+
 type APIMeta struct {
 	Type     reflect.Type
 	ParseOpt InterfaceParseOption
+	RPCMeta
 }
 
 func GetAPIMethodPerm(m InterfaceMethodMeta) string {

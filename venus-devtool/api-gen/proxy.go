@@ -4,49 +4,22 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
-	"go/format"
 	"go/printer"
 	"io"
-	"io/ioutil"
 	"log"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/venus/venus-devtool/util"
-	"github.com/filecoin-project/venus/venus-shared/api/messager"
-	"github.com/filecoin-project/venus/venus-shared/api/wallet"
 )
-
-func init() {
-	for _, capi := range util.ChainAPIPairs {
-		proxyTargets = append(proxyTargets, capi.Venus)
-	}
-
-	proxyTargets = append(proxyTargets, util.APIMeta{
-		Type: reflect.TypeOf((*messager.IMessager)(nil)).Elem(),
-		ParseOpt: util.InterfaceParseOption{
-			ImportPath: "github.com/filecoin-project/venus/venus-shared/api/messager",
-			IncludeAll: true,
-		},
-	}, util.APIMeta{
-		Type: reflect.TypeOf((*wallet.IFullAPI)(nil)).Elem(),
-		ParseOpt: util.InterfaceParseOption{
-			ImportPath: "github.com/filecoin-project/venus/venus-shared/api/wallet",
-			IncludeAll: true,
-		},
-	})
-}
-
-var proxyTargets []util.APIMeta
 
 var proxyCmd = &cli.Command{
 	Name:  "proxy",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		for _, target := range proxyTargets {
+		for _, target := range apiTargets {
 			err := genProxyForAPI(target)
 			if err != nil {
 				log.Fatalf("got error while generating proxy codes for %s: %s", target.Type, err)
@@ -100,18 +73,7 @@ func genProxyForAPI(t util.APIMeta) error {
 		return fmt.Errorf("copy contents into output: %w", err)
 	}
 
-	formatted, err := format.Source(fileBuffer.Bytes())
-	if err != nil {
-		return fmt.Errorf("format source content: %w", err)
-	}
-
-	outputFile := filepath.Join(astMeta.Location, "proxy_gen.go")
-	err = ioutil.WriteFile(outputFile, formatted, 0644)
-	if err != nil {
-		return fmt.Errorf("write to output %s: %w", outputFile, err)
-	}
-
-	return nil
+	return outputSourceFile(astMeta.Location, "proxy_gen.go", &fileBuffer)
 }
 
 func writeImports(deps map[string]util.ImportMeta, dst *bytes.Buffer) error {
@@ -199,10 +161,6 @@ type %s struct {
 	}
 `
 )
-
-func structName(ifaceName string) string {
-	return ifaceName + "Struct"
-}
 
 func writeStruct(dst *bytes.Buffer, ifaceMeta *util.InterfaceMeta, astMeta *util.ASTMeta) error {
 	fmt.Fprintf(dst, structHeadFormat, structName(ifaceMeta.Name))
