@@ -229,11 +229,6 @@ func (backend *DSBackend) GetKeyInfo(ctx context.Context, addr address.Address) 
 
 //GetKeyInfoPassphrase get private private key from wallet, get encrypt byte from db and decrypto it with password
 func (backend *DSBackend) GetKeyInfoPassphrase(ctx context.Context, addr address.Address, password []byte) (*crypto.KeyInfo, error) {
-	defer func() {
-		for i := range password {
-			password[i] = 0
-		}
-	}()
 	if !backend.HasAddress(ctx, addr) {
 		return nil, errors.New("backend does not contain address")
 	}
