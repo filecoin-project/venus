@@ -12,8 +12,8 @@ func ButterflySnapNet() *NetworkConf {
 	return &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
-				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWBdRCBLUeKvoy22u5DcXs61adFn31v8WWCZgmBjDCjbsC",
-				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWDUQJBA18njjXnG9RtLxoN3muvdU7PEy55QorUEsdAqdy",
+				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWFHDtFx7CVTy4xoCDutVo1cScvSnQjDeaM8UzwVS1qwkh",
+				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWKt8cwpkiumkT8x32c3YFxsPRwhV5J8hCYPn9mhUmcAXt",
 			},
 			MinPeerThreshold: 0,
 			Period:           "30s",
@@ -46,7 +46,7 @@ func ButterflySnapNet() *NetworkConf {
 				UpgradeTurboHeight:      -15,
 				UpgradeHyperdriveHeight: -16,
 				UpgradeChocolateHeight:  -17,
-				UpgradeOhSnapHeight:     30262,
+				UpgradeOhSnapHeight:     240,
 
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       -11,

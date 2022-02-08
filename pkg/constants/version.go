@@ -7,7 +7,7 @@ import (
 )
 
 // BuildVersion is the local build version, set by build system
-const BuildVersion = "1.2.0-rc4"
+const BuildVersion = "1.2.0-rc5"
 
 // software version
 func UserVersion() string {
