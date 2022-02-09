@@ -24,7 +24,7 @@ clean:
 	rm -rf ./extern/filecoin-ffi
 	rm -rf ./extern/test-vectors
 
-gen-all: cborgen gogen inline-gen api-gen api-docs-gen
+gen-all: cborgen gogen inline-gen api-gen
 
 gen-asset:
 	go-bindata -pkg=asset -o ./fixtures/asset/asset.go ./fixtures/_assets/car/ ./fixtures/_assets/proof-params/ ./fixtures/_assets/arch-diagram.monopic
@@ -50,12 +50,7 @@ test-venus-shared:
 api-gen:
 	cd ./venus-devtool/ && go run ./api-gen/ proxy
 	cd ./venus-devtool/ && go run ./api-gen/ client
-
-v0APIDoc = ../venus-shared/api/v0-api-document.md
-v1APIDoc = ../venus-shared/api/v1-api-document.md
-api-docs-gen:
-	cd ./venus-devtool/ && go run ./api-docs-gen/cmd ../venus-shared/api/chain/v0/fullnode.go FullNode v0 ../venus-shared/api/chain/v0 $(v0APIDoc)
-	cd ./venus-devtool/ && go run ./api-docs-gen/cmd ../venus-shared/api/chain/v1/fullnode.go FullNode v1 ../venus-shared/api/chain/v1 $(v1APIDoc)
+	cd ./venus-devtool/ && go run ./api-gen/ doc
 
 compatible-all: compatible-api compatible-actor
 

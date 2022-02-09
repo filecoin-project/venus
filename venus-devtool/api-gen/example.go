@@ -1,21 +1,11 @@
-package docgen
+package main
 
 import (
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
-	"unicode"
-
-	network2 "github.com/filecoin-project/go-state-types/network"
-	v0 "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
-	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -25,7 +15,11 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/api"
+	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/messager"
+	"github.com/filecoin-project/venus/venus-shared/types/wallet"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
@@ -41,6 +35,7 @@ var ExampleValues = map[reflect.Type]interface{}{
 	reflect.TypeOf(auth.Permission("")): auth.Permission("write"),
 	reflect.TypeOf(""):                  "string value",
 	reflect.TypeOf(uint64(42)):          uint64(42),
+	reflect.TypeOf(uint(42)):            uint(42),
 	reflect.TypeOf(byte(7)):             byte(7),
 	reflect.TypeOf([]byte{}):            []byte("byte array"),
 }
@@ -79,7 +74,7 @@ func init() {
 	}
 	addExample(pid)
 	addExample(&pid)
-	addExample(network2.Version14)
+	addExample(constants.NewestNetworkVersion)
 	textSelExample := textselector.Expression("Links/21/Hash/Links/42/Hash")
 	clientEvent := retrievalmarket.ClientEventDealAccepted
 	addExample(bitfield.NewFromSet([]uint64{5}))
@@ -180,71 +175,47 @@ func init() {
 		123: "can't acquire read lock",
 	})
 	addExample([]abi.SectorNumber{123, 124})
-	// addExample(apitypes.OpenRPCDocument{
-	// 	"openrpc": "1.2.6",
-	// 	"info": map[string]interface{}{
-	// 		"title":   "Lotus RPC API",
-	// 		"version": "1.2.1/generated=2020-11-22T08:22:42-06:00",
-	// 	},
-	// 	"methods": []interface{}{}},
-	// )
 	addExample(types.CheckStatusCode(0))
 	addExample(map[string]interface{}{"abc": 123})
-}
 
-func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
-
-	switch pkg {
-	case "v1": // latest
-		switch name {
-		case "FullNode":
-			i = &v1.FullNodeStruct{}
-			t = reflect.TypeOf(new(struct{ v1.FullNode })).Elem()
-			permStruct = append(permStruct, reflect.TypeOf(v1.IBlockStoreStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v1.IBeaconStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v1.IChainStruct{}.IAccountStruct.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v1.IChainStruct{}.IActorStruct.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v1.IChainStruct{}.IBeaconStruct.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v1.IChainStruct{}.IMinerStateStruct.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v1.IChainStruct{}.IChainInfoStruct.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v1.IMarketStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v1.IMiningStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v1.IMessagePoolStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v1.IMultiSigStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v1.INetworkStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v1.IPaychanStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v1.ISyncerStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v1.IWalletStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v1.IJwtAuthAPIStruct{}.Internal))
-		default:
-			panic("unknown type")
-		}
-	case "v0":
-		switch name {
-		case "FullNode":
-			i = &v0.FullNodeStruct{}
-			t = reflect.TypeOf(new(struct{ v0.FullNode })).Elem()
-			permStruct = append(permStruct, reflect.TypeOf(v0.IBlockStoreStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v0.IBeaconStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v0.IChainStruct{}.IAccountStruct.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v0.IChainStruct{}.IActorStruct.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v0.IChainStruct{}.IBeaconStruct.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v0.IChainStruct{}.IMinerStateStruct.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v0.IChainStruct{}.IChainInfoStruct.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v0.IMarketStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v0.IMiningStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v0.IMessagePoolStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v0.IMultiSigStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v0.INetworkStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v0.IPaychanStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v0.ISyncerStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v0.IWalletStruct{}.Internal))
-			permStruct = append(permStruct, reflect.TypeOf(v0.IJwtAuthAPIStruct{}.Internal))
-		default:
-			panic("unknown type")
-		}
+	// messager
+	uuid, err := types.ParseUUID("e26f1e5c-47f7-4561-a11d-18fab6e748af")
+	if err != nil {
+		panic(err)
 	}
-	return
+	i64 := int64(10000)
+	addExample(uuid)
+	addExample(messager.OnChainMsg)
+	addExample(messager.AddressStateAlive)
+	addExample(&i64)
+	addExample(ExampleValue("init", reflect.TypeOf(&messager.Address{}), nil).(*messager.Address))
+	addExample(&messager.Node{
+		ID:    uuid,
+		Name:  "venus",
+		URL:   "/ip4/127.0.0.1/tcp/3453",
+		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIiwid3JpdGUiLCJzaWduIiwiYWRtaW4iXX0._eHBJJAiBzQmfcbD_vVmtTrkgyJQ-LOgGOiHfb8rU1I",
+		Type:  messager.LightNode,
+	})
+	addExample(&messager.Message{
+		ID:          uuid.String(),
+		UnsignedCid: &c,
+		SignedCid:   &c,
+		Message:     ExampleValue("init", reflect.TypeOf(types.Message{}), nil).(types.Message),
+		Signature:   ExampleValue("init", reflect.TypeOf(&crypto.Signature{}), nil).(*crypto.Signature),
+		Height:      100,
+		Confidence:  10,
+		Receipt:     ExampleValue("init", reflect.TypeOf(&types.MessageReceipt{}), nil).(*types.MessageReceipt),
+		TipSetKey:   tsk,
+		Meta:        ExampleValue("init", reflect.TypeOf(&messager.SendSpec{}), nil).(*messager.SendSpec),
+		WalletName:  "test",
+		FromUser:    "test",
+		State:       messager.UnFillMsg,
+	})
+	addExample(ExampleValue("init", reflect.TypeOf(&messager.SendSpec{}), nil).(*messager.SendSpec))
+	addExample(messager.QuickSendParamsCodecJSON)
+
+	// wallet
+	addExample(wallet.MEChainMsg)
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {
@@ -301,114 +272,4 @@ func exampleStruct(method string, t, parent reflect.Type) interface{} {
 	}
 
 	return ns.Interface()
-}
-
-type Visitor struct {
-	Root    string
-	Methods map[string]ast.Node
-}
-
-func (v *Visitor) Visit(node ast.Node) ast.Visitor {
-	st, ok := node.(*ast.TypeSpec)
-	if !ok {
-		return v
-	}
-
-	if st.Name.Name != v.Root {
-		return nil
-	}
-
-	iface := st.Type.(*ast.InterfaceType)
-	for _, m := range iface.Methods.List {
-		if len(m.Names) > 0 {
-			v.Methods[m.Names[0].Name] = m
-		}
-	}
-
-	return v
-}
-
-const NoComment = "There are not yet any comments for this method."
-
-func ParseApiASTInfo(apiFile, iface, pkg, dir string) (comments map[string]string, groupDocs map[string]string) {
-	fset := token.NewFileSet()
-	apiDir, err := filepath.Abs(dir)
-	if err != nil {
-		fmt.Println("./api filepath absolute error: ", err)
-		return
-	}
-	apiFile, err = filepath.Abs(apiFile)
-	if err != nil {
-		fmt.Println("filepath absolute error: ", err, "file:", apiFile)
-		return
-	}
-	pkgs, err := parser.ParseDir(fset, apiDir, nil, parser.AllErrors|parser.ParseComments)
-	if err != nil {
-		fmt.Println("parse error: ", err)
-		return
-	}
-
-	ap := pkgs[pkg]
-
-	f := ap.Files[apiFile]
-
-	cmap := ast.NewCommentMap(fset, f, f.Comments)
-
-	v := &Visitor{iface, make(map[string]ast.Node)}
-	ast.Walk(v, ap)
-
-	comments = make(map[string]string)
-	groupDocs = make(map[string]string)
-	for mn, node := range v.Methods {
-		filteredComments := cmap.Filter(node).Comments()
-		if len(filteredComments) == 0 {
-			comments[mn] = NoComment
-		} else {
-			for _, c := range filteredComments {
-				if strings.HasPrefix(c.Text(), "MethodGroup:") {
-					parts := strings.Split(c.Text(), "\n")
-					groupName := strings.TrimSpace(parts[0][12:])
-					comment := strings.Join(parts[1:], "\n")
-					groupDocs[groupName] = comment
-
-					break
-				}
-			}
-
-			l := len(filteredComments) - 1
-			if len(filteredComments) > 1 {
-				l = len(filteredComments) - 2
-			}
-			last := filteredComments[l].Text()
-			if !strings.HasPrefix(last, "MethodGroup:") {
-				comments[mn] = last
-			} else {
-				comments[mn] = NoComment
-			}
-		}
-	}
-	return comments, groupDocs
-}
-
-type MethodGroup struct {
-	GroupName string
-	Header    string
-	Methods   []*Method
-}
-
-type Method struct {
-	Comment         string
-	Name            string
-	InputExample    string
-	ResponseExample string
-}
-
-func MethodGroupFromName(mn string) string {
-	i := strings.IndexFunc(mn[1:], func(r rune) bool {
-		return unicode.IsUpper(r)
-	})
-	if i < 0 {
-		return ""
-	}
-	return mn[:i+1]
 }
