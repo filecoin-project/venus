@@ -177,6 +177,7 @@ func init() {
 	addExample([]abi.SectorNumber{123, 124})
 	addExample(types.CheckStatusCode(0))
 	addExample(map[string]interface{}{"abc": 123})
+	addExample(types.HCApply)
 
 	// messager
 	uuid, err := types.ParseUUID("e26f1e5c-47f7-4561-a11d-18fab6e748af")
