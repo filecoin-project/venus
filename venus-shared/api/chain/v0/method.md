@@ -688,7 +688,7 @@ Response:
 ```json
 [
   {
-    "Type": "string value",
+    "Type": "apply",
     "Val": {
       "Cids": null,
       "Blocks": null,
@@ -889,7 +889,7 @@ Response:
 ```json
 [
   {
-    "Type": "string value",
+    "Type": "apply",
     "Val": {
       "Cids": null,
       "Blocks": null,

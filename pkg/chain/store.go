@@ -49,14 +49,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-// HeadChangeTopic is the topic used to publish new heads.
-const (
-	HeadChangeTopic = "headchange"
-	HCRevert        = "revert"
-	HCApply         = "apply"
-	HCCurrent       = "current"
-)
-
 // ErrNoMethod is returned by Get when there is no method signature (eg, transfer).
 var ErrNoMethod = errors.New("no method")
 
@@ -616,20 +608,20 @@ func (store *Store) reorgWorker(ctx context.Context) chan reorg {
 		notif := make([]*types.HeadChange, len(rev)+len(app))
 		for i, revert := range rev {
 			notif[i] = &types.HeadChange{
-				Type: HCRevert,
+				Type: types.HCRevert,
 				Val:  revert,
 			}
 		}
 
 		for i, apply := range app {
 			notif[i+len(rev)] = &types.HeadChange{
-				Type: HCApply,
+				Type: types.HCApply,
 				Val:  apply,
 			}
 		}
 
 		// Publish an event that we have a new head.
-		store.headEvents.Pub(notif, HeadChangeTopic)
+		store.headEvents.Pub(notif, types.HeadChangeTopic)
 		return nil
 	}
 
@@ -687,13 +679,13 @@ func (store *Store) reorgWorker(ctx context.Context) chan reorg {
 // Then event in the message may be HCApply and HCRevert.
 func (store *Store) SubHeadChanges(ctx context.Context) chan []*types.HeadChange {
 	store.mu.RLock()
-	subCh := store.headEvents.Sub(HeadChangeTopic)
+	subCh := store.headEvents.Sub(types.HeadChangeTopic)
 	head := store.head
 	store.mu.RUnlock()
 
 	out := make(chan []*types.HeadChange, 16)
 	out <- []*types.HeadChange{{
-		Type: HCCurrent,
+		Type: types.HCCurrent,
 		Val:  head,
 	}}
 

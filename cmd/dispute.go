@@ -19,7 +19,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/venus/app/node"
-	chainpkg "github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -179,7 +178,7 @@ var disputerStartCmd = &cmds.Command{
 			return xerrors.Errorf("Notify first entry should have been one item")
 		}
 
-		if head[0].Type != chainpkg.HCCurrent {
+		if head[0].Type != types.HCCurrent {
 			return xerrors.Errorf("expected current head on Notify stream (got %s)", head[0].Type)
 		}
 
@@ -280,14 +279,14 @@ var disputerStartCmd = &cmds.Command{
 
 				for _, val := range notif {
 					switch val.Type {
-					case chainpkg.HCApply:
+					case types.HCApply:
 						for ; lastEpoch <= val.Val.Height(); lastEpoch++ {
 							err := applyTsk(val.Val.Key())
 							if err != nil {
 								return err
 							}
 						}
-					case chainpkg.HCRevert:
+					case types.HCRevert:
 						// do nothing
 					default:
 						return xerrors.Errorf("unexpected head change type %s", val.Type)

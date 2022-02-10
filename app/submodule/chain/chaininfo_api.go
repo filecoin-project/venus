@@ -599,10 +599,10 @@ func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey,
 
 	path := make([]*types.HeadChange, len(revert)+len(apply))
 	for i, r := range revert {
-		path[i] = &types.HeadChange{Type: chain.HCRevert, Val: r}
+		path[i] = &types.HeadChange{Type: types.HCRevert, Val: r}
 	}
 	for j, i := 0, len(apply)-1; i >= 0; j, i = j+1, i-1 {
-		path[j+len(revert)] = &types.HeadChange{Type: chain.HCApply, Val: apply[i]}
+		path[j+len(revert)] = &types.HeadChange{Type: types.HCApply, Val: apply[i]}
 	}
 	return path, nil
 }
