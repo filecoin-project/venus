@@ -16,18 +16,18 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/api"
 )
 
-type HeadType string
+type HeadChangeType string
 
 // HeadChangeTopic is the topic used to publish new heads.
 const HeadChangeTopic = "headchange"
 const (
-	HCRevert  HeadType = "revert"
-	HCApply   HeadType = "apply"
-	HCCurrent HeadType = "current"
+	HCRevert  HeadChangeType = "revert"
+	HCApply   HeadChangeType = "apply"
+	HCCurrent HeadChangeType = "current"
 )
 
 type HeadChange struct {
-	Type HeadType
+	Type HeadChangeType
 	Val  *TipSet
 }
 

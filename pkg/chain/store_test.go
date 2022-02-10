@@ -286,7 +286,7 @@ func TestHeadEvents(t *testing.T) {
 	assertSetHead(t, chainStore, link1)
 	assertSetHead(t, chainStore, genTS)
 	heads := []*types.TipSet{genTS, link1, link2, link3, link4, link4, link3, link2, link1, genTS}
-	types := []types.HeadType{types.HCApply, types.HCApply, types.HCApply, types.HCApply, types.HCApply, types.HCRevert,
+	types := []types.HeadChangeType{types.HCApply, types.HCApply, types.HCApply, types.HCApply, types.HCApply, types.HCRevert,
 		types.HCRevert, types.HCRevert, types.HCRevert}
 	// Heads arrive in the expected order
 	for i := 0; i < 9; i++ {
