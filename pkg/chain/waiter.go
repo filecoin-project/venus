@@ -180,7 +180,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*types.HeadChan
 		return nil, false, fmt.Errorf("SubHeadChanges first entry should have been one item")
 	}
 
-	if current[0].Type != HCCurrent {
+	if current[0].Type != types.HCCurrent {
 		return nil, false, fmt.Errorf("expected current head on SHC stream (got %s)", current[0].Type)
 	}
 
@@ -220,7 +220,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*types.HeadChan
 			}
 			for _, val := range notif {
 				switch val.Type {
-				case HCRevert:
+				case types.HCRevert:
 					if val.Val.Equals(candidateTS) {
 						candidateTS = nil
 						candidateRcp = nil
@@ -228,7 +228,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*types.HeadChan
 					if backSearchWait != nil {
 						reverts[val.Val.Key().String()] = true
 					}
-				case HCApply:
+				case types.HCApply:
 					if candidateTS != nil && val.Val.Height() >= candidateTS.Height()+abi.ChainEpoch(confidence) {
 						return candidateRcp, true, nil
 					}

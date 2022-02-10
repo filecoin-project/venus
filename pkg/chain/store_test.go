@@ -160,7 +160,7 @@ func TestRevertChange(t *testing.T) {
 
 	ch := cs.SubHeadChanges(ctx)
 	currentA := <-ch
-	test.Equal(t, currentA[0].Type, chain.HCCurrent)
+	test.Equal(t, currentA[0].Type, types.HCCurrent)
 	test.Equal(t, currentA[0].Val, link3)
 
 	err = cs.SetHead(ctx, link6)
@@ -171,18 +171,18 @@ func TestRevertChange(t *testing.T) {
 		//maybe link3, if link3 fetch next
 		headChanges = <-ch
 	}
-	test.Equal(t, headChanges[0].Type, chain.HCRevert)
+	test.Equal(t, headChanges[0].Type, types.HCRevert)
 	test.Equal(t, headChanges[0].Val, link3)
-	test.Equal(t, headChanges[1].Type, chain.HCRevert)
+	test.Equal(t, headChanges[1].Type, types.HCRevert)
 	test.Equal(t, headChanges[1].Val, link2)
-	test.Equal(t, headChanges[2].Type, chain.HCRevert)
+	test.Equal(t, headChanges[2].Type, types.HCRevert)
 	test.Equal(t, headChanges[2].Val, link1)
 
-	test.Equal(t, headChanges[3].Type, chain.HCApply)
+	test.Equal(t, headChanges[3].Type, types.HCApply)
 	test.Equal(t, headChanges[3].Val, link4)
-	test.Equal(t, headChanges[4].Type, chain.HCApply)
+	test.Equal(t, headChanges[4].Type, types.HCApply)
 	test.Equal(t, headChanges[4].Val, link5)
-	test.Equal(t, headChanges[5].Type, chain.HCApply)
+	test.Equal(t, headChanges[5].Type, types.HCApply)
 	test.Equal(t, headChanges[5].Val, link6)
 }
 
@@ -269,11 +269,11 @@ func TestHeadEvents(t *testing.T) {
 	chB := chainStore.SubHeadChanges(ctx)
 	// HCurrent
 	currentA := <-chA
-	test.Equal(t, currentA[0].Type, chain.HCCurrent)
+	test.Equal(t, currentA[0].Type, types.HCCurrent)
 	test.Equal(t, currentA[0].Val, genTS)
 
 	currentB := <-chB
-	test.Equal(t, currentB[0].Type, chain.HCCurrent)
+	test.Equal(t, currentB[0].Type, types.HCCurrent)
 	test.Equal(t, currentB[0].Val, genTS)
 
 	defer ctx.Done()
@@ -286,7 +286,8 @@ func TestHeadEvents(t *testing.T) {
 	assertSetHead(t, chainStore, link1)
 	assertSetHead(t, chainStore, genTS)
 	heads := []*types.TipSet{genTS, link1, link2, link3, link4, link4, link3, link2, link1, genTS}
-	types := []string{"apply", "apply", "apply", "apply", "apply", "revert", "revert", "revert", "revert"}
+	types := []types.HeadType{types.HCApply, types.HCApply, types.HCApply, types.HCApply, types.HCApply, types.HCRevert,
+		types.HCRevert, types.HCRevert, types.HCRevert}
 	// Heads arrive in the expected order
 	for i := 0; i < 9; i++ {
 		headA := <-chA

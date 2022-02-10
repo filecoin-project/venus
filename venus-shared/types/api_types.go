@@ -16,14 +16,24 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/api"
 )
 
+type HeadType string
+
+// HeadChangeTopic is the topic used to publish new heads.
+const HeadChangeTopic = "headchange"
+const (
+	HCRevert  HeadType = "revert"
+	HCApply   HeadType = "apply"
+	HCCurrent HeadType = "current"
+)
+
+type HeadChange struct {
+	Type HeadType
+	Val  *TipSet
+}
+
 type ObjStat struct {
 	Size  uint64
 	Links uint64
-}
-
-type HeadChange struct {
-	Type string
-	Val  *TipSet
 }
 
 // ChainMessage is an on-chain message with its block and receipt.

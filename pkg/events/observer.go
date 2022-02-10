@@ -11,7 +11,6 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 )
 
@@ -113,9 +112,9 @@ func (o *observer) applyChanges(ctx context.Context, changes []*types.HeadChange
 	var rev, app []*types.TipSet
 	for _, changes := range changes {
 		switch changes.Type {
-		case chain.HCRevert:
+		case types.HCRevert:
 			rev = append(rev, changes.Val)
-		case chain.HCApply:
+		case types.HCApply:
 			app = append(app, changes.Val)
 		default:
 			log.Errorf("unexpected head change notification type: '%s'", changes.Type)
