@@ -10,6 +10,7 @@ import (
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
+// Deprecated: Use venus-shared/api/chain/v0.NewFullNodeRPC instead.
 func NewFullRPCV0(ctx context.Context, addr string, header http.Header) (v0.FullNode, jsonrpc.ClientCloser, error) {
 	var full v0.FullNodeStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin", api.GetInternalStructs(&full),
@@ -17,15 +18,10 @@ func NewFullRPCV0(ctx context.Context, addr string, header http.Header) (v0.Full
 	return &full, closer, err
 }
 
+// Deprecated: Use venus-shared/api/chain/v1.NewFullNodeRPC instead.
 func NewFullRPCV1(ctx context.Context, addr string, header http.Header) (v1.FullNode, jsonrpc.ClientCloser, error) {
 	var full v1.FullNodeStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin", api.GetInternalStructs(&full),
 		header)
 	return &full, closer, err
-}
-
-func NewWalletRPC(ctx context.Context, addr string, header http.Header) (v1.IWallet, jsonrpc.ClientCloser, error) {
-	var wallet v1.IWalletStruct
-	closer, err := jsonrpc.NewClient(ctx, addr, "Filecoin", &wallet.Internal, header)
-	return &wallet, closer, err
 }

@@ -11,14 +11,14 @@ import (
 )
 
 // NewFullNodeRPC creates a new httpparse jsonrpc remotecli.
-func NewFullNodeRPC(ctx context.Context, addr string, requestHeader http.Header) (FullNode, jsonrpc.ClientCloser, error) {
+func NewFullNodeRPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (FullNode, jsonrpc.ClientCloser, error) {
 	if requestHeader == nil {
 		requestHeader = http.Header{}
 	}
 	requestHeader.Set(api.VenusAPINamespaceHeader, "v1.FullNode")
 
 	var res FullNodeStruct
-	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin", api.GetInternalStructs(&res), requestHeader)
+	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin", api.GetInternalStructs(&res), requestHeader, opts...)
 
 	return &res, closer, err
 }

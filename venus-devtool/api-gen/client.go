@@ -38,14 +38,14 @@ import (
 )
 
 // New{{ .APIName }}RPC creates a new httpparse jsonrpc remotecli.
-func New{{ .APIName }}RPC(ctx context.Context, addr string, requestHeader http.Header) ({{ .APIName }}, jsonrpc.ClientCloser, error) {
+func New{{ .APIName }}RPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) ({{ .APIName }}, jsonrpc.ClientCloser, error) {
 	if requestHeader == nil {
 		requestHeader = http.Header{}
 	}
 	requestHeader.Set(api.VenusAPINamespaceHeader, "{{ .APINs }}") 
 
 	var res {{ .APIStruct }}
-	closer, err := jsonrpc.NewMergeClient(ctx, addr, "{{ .MethNs }}", api.GetInternalStructs(&res), requestHeader)
+	closer, err := jsonrpc.NewMergeClient(ctx, addr, "{{ .MethNs }}", api.GetInternalStructs(&res), requestHeader, opts...)
 
 	return &res, closer, err
 }

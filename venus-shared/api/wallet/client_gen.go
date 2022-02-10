@@ -11,14 +11,14 @@ import (
 )
 
 // NewIFullAPIRPC creates a new httpparse jsonrpc remotecli.
-func NewIFullAPIRPC(ctx context.Context, addr string, requestHeader http.Header) (IFullAPI, jsonrpc.ClientCloser, error) {
+func NewIFullAPIRPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (IFullAPI, jsonrpc.ClientCloser, error) {
 	if requestHeader == nil {
 		requestHeader = http.Header{}
 	}
 	requestHeader.Set(api.VenusAPINamespaceHeader, "wallet.IFullAPI")
 
 	var res IFullAPIStruct
-	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin", api.GetInternalStructs(&res), requestHeader)
+	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin", api.GetInternalStructs(&res), requestHeader, opts...)
 
 	return &res, closer, err
 }

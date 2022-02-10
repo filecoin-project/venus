@@ -41,13 +41,4 @@ func TestAPIClient(t *testing.T) {
 	v1version, err := v1cli.Version(context.Background())
 	assert.Nil(t, err)
 	t.Log(v1version)
-
-	wcli, wclose, err := NewWalletRPC(ctx, addr, header)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer wclose()
-
-	addrs := wcli.WalletAddresses(context.Background())
-	t.Log(addrs)
 }
