@@ -29,10 +29,6 @@ type StrC struct {
 	}
 }
 
-type StrD struct {
-	StrA
-}
-
 func TestGetInternalStructs(t *testing.T) {
 	tf.UnitTest(t)
 	var proxy StrA
