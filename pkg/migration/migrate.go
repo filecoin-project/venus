@@ -25,6 +25,7 @@ var versionMap = []versionInfo{
 	{version: 4, upgrade: Version4Upgrade},
 	{version: 5, upgrade: Version5Upgrade},
 	{version: 6, upgrade: Version6Upgrade},
+	{version: 7, upgrade: Version7Upgrade},
 }
 
 // TryToMigrate used to migrate data(db,config,file,etc) in local repo
@@ -187,4 +188,45 @@ func Version6Upgrade(repoPath string) (err error) {
 	}
 
 	return repo.WriteVersion(repoPath, 6)
+}
+
+//Version7Upgrade
+func Version7Upgrade(repoPath string) (err error) {
+	var fsrRepo repo.Repo
+	if fsrRepo, err = repo.OpenFSRepo(repoPath, 6); err != nil {
+		return
+	}
+	cfg := fsrRepo.Config()
+	switch cfg.NetworkParams.NetworkType {
+	case constants.NetworkMainnet:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = 999999999999
+	case constants.Network2k:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = -18
+	case constants.NetworkCalibnet:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = 682006
+	case constants.NetworkButterfly:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = 240
+	case constants.NetworkForce:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = -18
+	case constants.NetworkInterop:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = -18
+	default:
+		return fsrRepo.Close()
+	}
+
+	if err = fsrRepo.ReplaceConfig(cfg); err != nil {
+		return
+	}
+
+	if err = fsrRepo.Close(); err != nil {
+		return
+	}
+
+	return repo.WriteVersion(repoPath, 7)
 }
