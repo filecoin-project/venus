@@ -4,21 +4,22 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/fixtures/asset"
-	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/genesis"
-	"github.com/filecoin-project/venus/pkg/repo"
-	gengen "github.com/filecoin-project/venus/tools/gengen/util"
-	"github.com/filecoin-project/venus/venus-shared/types"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/ipld/go-car"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
+
+	"github.com/filecoin-project/venus/fixtures/asset"
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/genesis"
+	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	gengen "github.com/filecoin-project/venus/tools/gengen/util"
+	"github.com/filecoin-project/venus/venus-shared/types"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/ipld/go-car"
 )
 
 func GetNetworkFromName(name string) (constants.NetworkType, error) {
@@ -122,7 +123,7 @@ func LoadGenesis(ctx context.Context, rep repo.Repo, sourceName string, network 
 		return nil, err
 	}
 
-	gif := func(cst cbor.IpldStore, bs blockstore.Blockstore) (*types.BlockHeader, error) {
+	gif := func(cst cbor.IpldStore, bs blockstoreutil.Blockstore) (*types.BlockHeader, error) {
 		return genesisBlk, err
 	}
 

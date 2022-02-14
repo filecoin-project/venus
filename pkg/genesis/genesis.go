@@ -11,7 +11,6 @@ import (
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -36,7 +35,7 @@ import (
 var glog = logging.Logger("genesis")
 
 // InitFunc is the signature for function that is used to create a genesis block.
-type InitFunc func(cst cbor.IpldStore, bs blockstore.Blockstore) (*types.BlockHeader, error)
+type InitFunc func(cst cbor.IpldStore, bs blockstoreutil.Blockstore) (*types.BlockHeader, error)
 
 // Ticket is the ticket to place in the genesis block header (which can't be derived from a prior ticket),
 // used in the evaluation of the messages in the genesis block,
@@ -56,7 +55,7 @@ type VM interface {
 
 //MakeGenesis return a func to construct a genesis block
 func MakeGenesis(ctx context.Context, rep repo.Repo, outFile, genesisTemplate string, para *config.ForkUpgradeConfig) InitFunc {
-	return func(_ cbor.IpldStore, bs blockstore.Blockstore) (*types.BlockHeader, error) {
+	return func(_ cbor.IpldStore, bs blockstoreutil.Blockstore) (*types.BlockHeader, error) {
 		glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
 		genesisTemplate, err := homedir.Expand(genesisTemplate)
 		if err != nil {

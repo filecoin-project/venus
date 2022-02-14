@@ -25,6 +25,8 @@ type VmMessage = vmcontext.VmMessage //nolint
 type FakeSyscalls = vmcontext.FakeSyscalls
 type ChainRandomness = vmcontext.HeadChainRandomness
 
+type VMI = vmcontext.VMI // nolint
+
 // NewVM creates a new VM interpreter.
 func NewVM(ctx context.Context, option VmOption) (Interpreter, error) {
 	if option.ActorCodeLoader == nil {

@@ -8,10 +8,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
@@ -43,9 +42,8 @@ const AllowableClockDriftSecs = uint64(1)
 
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
-	// ProcessTipSet processes all messages in a tip set.
-	ProcessTipSet(context.Context, *types.TipSet, *types.TipSet, []types.BlockMessagesInfo, vm.VmOption) (cid.Cid, []types.MessageReceipt, error)
-	ProcessImplicitMessage(context.Context, *types.Message, vm.VmOption) (*vm.Ret, error)
+	// ApplyBlocks processes all messages in a tip set.
+	ApplyBlocks(ctx context.Context, blocks []types.BlockMessagesInfo, ts *types.TipSet, pstate cid.Cid, parentEpoch, epoch abi.ChainEpoch, vmOpts vm.VmOption, cb vm.ExecCallBack) (cid.Cid, []types.MessageReceipt, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
@@ -105,7 +103,7 @@ type Expected struct {
 	// bstore contains data referenced by actors within the state
 	// during message running.  Additionally bstore is used for
 	// accessing the power table.
-	bstore blockstore.Blockstore
+	bstore blockstoreutil.Blockstore
 
 	// message store for message read/write
 	messageStore *chain.MessageStore
@@ -137,19 +135,17 @@ type Expected struct {
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
 func NewExpected(cs cbor.IpldStore,
-	bs blockstore.Blockstore,
-	bt time.Duration,
+	bs blockstoreutil.Blockstore,
 	chainState *chain.Store,
 	rnd ChainRandomness,
 	messageStore *chain.MessageStore,
 	fork fork.IFork,
-	config *config.NetworkParamsConfig,
 	gasPirceSchedule *gas.PricesSchedule,
 	blockValidator *BlockValidator,
 	syscalls vm.SyscallsImpl,
 	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor,
 ) *Expected {
-	processor := NewDefaultProcessor(syscalls)
+	processor := NewDefaultProcessor(syscalls, circulatingSupplyCalculator)
 	return &Expected{
 		processor:                   processor,
 		syscallsImpl:                syscalls,
@@ -218,10 +214,17 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (ci
 		PRoot:               ts.At(0).ParentStateRoot,
 		SysCallsImpl:        c.syscallsImpl,
 	}
-	root, receipts, err := c.processor.ProcessTipSet(ctx, pts, ts, blockMessageInfo, vmOption)
+
+	var parentEpoch abi.ChainEpoch
+	if pts.Defined() {
+		parentEpoch = pts.Height()
+	}
+
+	root, receipts, err := c.processor.ApplyBlocks(ctx, blockMessageInfo, ts, ts.ParentState(), parentEpoch, ts.Height(), vmOption, nil)
 	if err != nil {
 		return cid.Undef, cid.Undef, errors.Wrap(err, "error validating tipset")
 	}
+
 	receiptCid, err := c.messageStore.StoreReceipts(ctx, receipts)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to save receipt: %v", err)

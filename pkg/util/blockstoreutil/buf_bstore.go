@@ -105,6 +105,14 @@ func (bs *BufferedBS) DeleteBlock(ctx context.Context, c cid.Cid) error {
 	return bs.write.DeleteBlock(ctx, c)
 }
 
+func (bs *BufferedBS) DeleteMany(ctx context.Context, cids []cid.Cid) error {
+	if err := bs.read.DeleteMany(ctx, cids); err != nil {
+		return err
+	}
+
+	return bs.write.DeleteMany(ctx, cids)
+}
+
 func (bs *BufferedBS) View(ctx context.Context, c cid.Cid, callback func([]byte) error) error {
 	if bs.writeviewer == nil || bs.readviewer == nil {
 		// one of the stores isn't Viewer; fall back to pure Get behaviour.

@@ -134,7 +134,7 @@ type Syncer struct {
 	clock    clock.Clock
 	headLock sync.Mutex
 
-	bsstore    blockstore.Blockstore
+	bsstore    blockstoreutil.Blockstore
 	checkPoint types.TipSetKey
 
 	fork fork.IFork
@@ -149,7 +149,7 @@ func NewSyncer(stmgr *statemanger.Stmgr,
 	cs ChainSelector,
 	s *chain.Store,
 	m messageStore,
-	bsstore blockstore.Blockstore,
+	bsstore blockstoreutil.Blockstore,
 	exchangeClient exchange.Client,
 	c clock.Clock,
 	fork fork.IFork) (*Syncer, error) {

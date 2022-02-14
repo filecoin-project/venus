@@ -378,7 +378,7 @@ type migration struct {
 
 type ChainFork struct {
 	cr        chainReader
-	bs        blockstore.Blockstore
+	bs        blockstoreutil.Blockstore
 	ipldstore cbor.IpldStore
 
 	// Determines the network version at any given epoch.
@@ -397,7 +397,7 @@ type ChainFork struct {
 	forkUpgrade *config.ForkUpgradeConfig
 }
 
-func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore, bs blockstore.Blockstore, networkParams *config.NetworkParamsConfig) (*ChainFork, error) {
+func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore, bs blockstoreutil.Blockstore, networkParams *config.NetworkParamsConfig) (*ChainFork, error) {
 
 	fork := &ChainFork{
 		cr:          cr,

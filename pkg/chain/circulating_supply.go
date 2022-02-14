@@ -27,6 +27,7 @@ import (
 
 type ICirculatingSupplyCalcualtor interface {
 	GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (types.CirculatingSupply, error)
+	GetFilVested(ctx context.Context, height abi.ChainEpoch) (abi.TokenAmount, error)
 }
 
 //CirculatingSupplyCalculator used to calculate the funds at a specific block height
@@ -53,29 +54,7 @@ func NewCirculatingSupplyCalculator(bstore blockstoreutil.Blockstore, genesisRoo
 
 //GetCirculatingSupplyDetailed query contract and calculate circulation status at specific height and tree state
 func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (types.CirculatingSupply, error) {
-	caculator.genesisMsigLk.Lock()
-	defer caculator.genesisMsigLk.Unlock()
-	//setup genesis asset information
-	if caculator.preIgnitionVesting == nil || caculator.genesisPledge.IsZero() || caculator.genesisMarketFunds.IsZero() {
-		err := caculator.setupGenesisVestingSchedule(ctx)
-		if err != nil {
-			return types.CirculatingSupply{}, xerrors.Errorf("failed to setup pre-ignition vesting schedule: %v", err)
-		}
-	}
-	if caculator.postIgnitionVesting == nil {
-		err := caculator.setupPostIgnitionVesting(ctx)
-		if err != nil {
-			return types.CirculatingSupply{}, xerrors.Errorf("failed to setup post-ignition vesting schedule: %v", err)
-		}
-	}
-	if caculator.postCalicoVesting == nil {
-		err := caculator.setupPostCalicoVesting(ctx)
-		if err != nil {
-			return types.CirculatingSupply{}, xerrors.Errorf("failed to setup post-calico vesting schedule: %v", err)
-		}
-	}
-
-	filVested, err := caculator.GetFilVested(ctx, height, st)
+	filVested, err := caculator.GetFilVested(ctx, height)
 	if err != nil {
 		return types.CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %v", err)
 	}
@@ -309,8 +288,32 @@ func (caculator *CirculatingSupplyCalculator) setupPostCalicoVesting(ctx context
 // GetVestedFunds returns all funds that have "left" actors that are in the genesis state:
 // - For Multisigs, it counts the actual amounts that have vested at the given epoch
 // - For Accounts, it counts max(currentBalance - genesisBalance, 0).
-func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (abi.TokenAmount, error) {
+func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, height abi.ChainEpoch) (abi.TokenAmount, error) {
 	vf := big.Zero()
+
+	caculator.genesisMsigLk.Lock()
+	defer caculator.genesisMsigLk.Unlock()
+
+	// TODO: combine all this?
+	if caculator.preIgnitionVesting == nil || caculator.genesisPledge.IsZero() || caculator.genesisMarketFunds.IsZero() {
+		err := caculator.setupGenesisVestingSchedule(ctx)
+		if err != nil {
+			return vf, xerrors.Errorf("failed to setup pre-ignition vesting schedule: %w", err)
+		}
+	}
+	if caculator.postIgnitionVesting == nil {
+		err := caculator.setupPostIgnitionVesting(ctx)
+		if err != nil {
+			return vf, xerrors.Errorf("failed to setup post-ignition vesting schedule: %w", err)
+		}
+	}
+	if caculator.postCalicoVesting == nil {
+		err := caculator.setupPostCalicoVesting(ctx)
+		if err != nil {
+			return vf, xerrors.Errorf("failed to setup post-calico vesting schedule: %w", err)
+		}
+	}
+
 	if height <= caculator.upgradeConfig.UpgradeIgnitionHeight {
 		for _, v := range caculator.preIgnitionVesting {
 			au := big.Sub(v.InitialBalance, v.AmountLocked(height))

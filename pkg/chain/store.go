@@ -9,6 +9,7 @@ import (
 	"runtime/debug"
 	"sync"
 
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -98,7 +99,7 @@ type Store struct {
 	// for reading filecoin block and state objects kept by the node.
 	stateAndBlockSource cbor.IpldStore
 
-	bsstore blockstore.Blockstore
+	bsstore blockstoreutil.Blockstore
 
 	// ds is the datastore for the chain's private metadata which consists
 	// of the tipset key to state root cid mapping, and the heaviest tipset
@@ -139,7 +140,7 @@ type Store struct {
 
 // NewStore constructs a new default store.
 func NewStore(chainDs repo.Datastore,
-	bsstore blockstore.Blockstore,
+	bsstore blockstoreutil.Blockstore,
 	genesisCid cid.Cid,
 	circulatiingSupplyCalculator ICirculatingSupplyCalcualtor,
 ) *Store {
@@ -1212,7 +1213,7 @@ func (store *Store) PutMessage(ctx context.Context, m storable) (cid.Cid, error)
 
 // Blockstore return local blockstore
 // todo remove this method, and code that need blockstore should get from blockstore submodule
-func (store *Store) Blockstore() blockstore.Blockstore { // nolint
+func (store *Store) Blockstore() blockstoreutil.Blockstore { // nolint
 	return store.bsstore
 }
 

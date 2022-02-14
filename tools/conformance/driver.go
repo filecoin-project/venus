@@ -7,10 +7,11 @@ import (
 	gobig "math/big"
 	"os"
 
+	"github.com/filecoin-project/venus/pkg/consensus"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
-	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
-
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/venus/app/node"
@@ -35,7 +36,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
 var (
@@ -91,7 +91,7 @@ type ExecuteTipsetResult struct {
 // This method returns the the receipts root, the poststate root, and the VM
 // message results. The latter _include_ implicit messages, such as cron ticks
 // and reward withdrawal per miner.
-func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset, execEpoch abi.ChainEpoch) (*ExecuteTipsetResult, error) {
+func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset, execEpoch abi.ChainEpoch) (*ExecuteTipsetResult, error) {
 	ipldStore := cbor.NewCborStore(bs)
 	mainNetParams := networks.Mainnet()
 	node.SetNetParams(&mainNetParams.Network)
@@ -104,7 +104,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 		return nil, err
 	}
 
-	drand, err := beacon.DefaultDrandIfaceFromConfig(genBlk.Timestamp)
+	drand, err := beacon.DrandConfigSchedule(genBlk.Timestamp, mainNetParams.Network.BlockDelay, mainNetParams.Network.DrandSchedule)
 	if err != nil {
 		return nil, err
 	}*/
@@ -116,6 +116,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 	if err != nil {
 		return nil, err
 	}
+
 	var (
 		ctx      = context.Background()
 		vmOption = vm.VmOption{
@@ -134,13 +135,6 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 			SysCallsImpl:        syscalls,
 		}
 	)
-
-	lvm, err := vm.NewVM(ctx, vmOption)
-	if err != nil {
-		return nil, err
-	}
-	//flush data to blockstore
-	defer lvm.Flush() //nolint
 
 	blocks := make([]types.BlockMessagesInfo, 0, len(tipset.Blocks))
 	for _, b := range tipset.Blocks {
@@ -190,11 +184,15 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 		results  []*vm.Ret
 	)
 
-	postcid, receipt, err := lvm.ApplyTipSetMessages(blocks, nil, parentEpoch, execEpoch, func(_ cid.Cid, msg vm.VmMessage, ret *vm.Ret) error {
+	circulatingSupplyCalculator := chain.NewCirculatingSupplyCalculator(bs, preroot, mainNetParams.Network.ForkUpgradeParam)
+	processor := consensus.NewDefaultProcessor(syscalls, circulatingSupplyCalculator)
+
+	postcid, receipt, err := processor.ApplyBlocks(ctx, blocks, nil, preroot, parentEpoch, execEpoch, vmOption, func(_ cid.Cid, msg vm.VmMessage, ret *vm.Ret) error {
 		messages = append(messages, &msg)
 		results = append(results, ret)
 		return nil
 	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -202,12 +200,6 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 	if err != nil {
 		return nil, err
 	}
-
-	/*	postcid, receiptsroot, err := sm.ApplyBlocks(context.Background(), parentEpoch, preroot, blocks, execEpoch, vmRand, func(_ cid.Cid, msg *types.ChainMsg, ret *vm.Ret) error {
-		messages = append(messages, msg)
-		results = append(results, ret)
-		return nil
-	}, basefee, nil)*/
 
 	ret := &ExecuteTipsetResult{
 		ReceiptsRoot:    receiptsroot,
@@ -264,7 +256,7 @@ func adjustGasPricing(vectorEpoch abi.ChainEpoch, vectorNv network.Version, pric
 }
 
 // ExecuteMessage executes a conformance test vector message in a temporary VM.
-func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageParams) (*vm.Ret, cid.Cid, error) {
+func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMessageParams) (*vm.Ret, cid.Cid, error) {
 	if !d.vmFlush {
 		// do not flush the VM, just the state tree; this should be used with
 		// LOTUS_DISABLE_VM_BUF enabled, so writes will anyway be visible.

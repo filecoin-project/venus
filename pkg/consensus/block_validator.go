@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -37,7 +36,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/fork"
 	appstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
@@ -56,7 +55,7 @@ type BlockValidator struct {
 	// TicketValidator validates ticket generation
 	tv TicketValidator
 	// chain data store
-	bstore blockstore.Blockstore
+	bstore blockstoreutil.Blockstore
 	// message store
 	messageStore *chain.MessageStore
 	drand        beacon.Schedule
@@ -84,7 +83,7 @@ type BlockValidator struct {
 
 //NewBlockValidator create a new block validator
 func NewBlockValidator(tv TicketValidator,
-	bstore blockstore.Blockstore,
+	bstore blockstoreutil.Blockstore,
 	messageStore *chain.MessageStore,
 	drand beacon.Schedule,
 	cstore cbor.IpldStore,
@@ -391,7 +390,7 @@ func (bv *BlockValidator) isChainNearSynced() bool {
 func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockMsg) error {
 	// TODO there has to be a simpler way to do this without the blockstore dance
 	// block headers use adt0
-	store := blockadt.WrapStore(ctx, cbor.NewCborStore(bstore.NewTemporary()))
+	store := blockadt.WrapStore(ctx, cbor.NewCborStore(blockstoreutil.NewTemporary()))
 	bmArr := blockadt.MakeEmptyArray(store)
 	smArr := blockadt.MakeEmptyArray(store)
 
@@ -899,7 +898,7 @@ func (bv *BlockValidator) ValidateMsgMeta(ctx context.Context, fblk *types.FullB
 
 	// We use a temporary bstore here to avoid writing intermediate pieces
 	// into the blockstore.
-	blockstore := bstore.NewTemporary()
+	blockstore := blockstoreutil.NewTemporary()
 	var bcids, scids []cid.Cid
 
 	for _, m := range fblk.BLSMessages {
@@ -930,7 +929,7 @@ func (bv *BlockValidator) ValidateMsgMeta(ctx context.Context, fblk *types.FullB
 	}
 
 	// Finally, flush
-	return bstore.CopyParticial(context.TODO(), blockstore, bv.bstore, smroot)
+	return blockstoreutil.CopyParticial(context.TODO(), blockstore, bv.bstore, smroot)
 }
 
 func blockSanityChecks(b *types.BlockHeader) error {

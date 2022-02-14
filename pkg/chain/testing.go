@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+
 	"github.com/ipld/go-car"
 
 	"github.com/filecoin-project/go-address"
@@ -22,7 +24,6 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/venus/fixtures/asset"
@@ -52,7 +53,7 @@ type Builder struct {
 	stateBuilder StateBuilder
 	stamper      TimeStamper
 	repo         repo.Repo
-	bs           blockstore.Blockstore
+	bs           blockstoreutil.Blockstore
 	cstore       cbor.IpldStore
 	mstore       *MessageStore
 	seq          uint64 // For unique tickets
@@ -155,7 +156,7 @@ func (f *Builder) Mstore() *MessageStore {
 	return f.mstore
 }
 
-func (f *Builder) BlockStore() blockstore.Blockstore {
+func (f *Builder) BlockStore() blockstoreutil.Blockstore {
 	return f.bs
 }
 

@@ -74,7 +74,7 @@ func NewChainSubmodule(ctx context.Context,
 	}
 	faultChecker := consensusfault.NewFaultChecker(chainStore, fork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, config.Verifier())
-	processor := consensus.NewDefaultProcessor(syscalls)
+	processor := consensus.NewDefaultProcessor(syscalls, circulatiingSupplyCalculator)
 
 	waiter := chain.NewWaiter(chainStore, messageStore, config.Repo().Datastore(), cbor.NewCborStore(config.Repo().Datastore()))
 

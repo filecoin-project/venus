@@ -1,17 +1,31 @@
 package consensus
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"os"
+	"time"
 
-	"github.com/ipfs/go-cid"
-	"go.opencensus.io/trace"
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/metrics/tracing"
-	"github.com/filecoin-project/venus/venus-shared/types"
-
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/specs-actors/v7/actors/builtin"
+	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/vm"
+	fvm "github.com/filecoin-project/venus/pkg/vm/fvm"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/cron"
+	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
 )
+
+var processLog = logging.Logger("process block")
 
 // ApplicationResult contains the result of successfully applying one message.
 // ExecutionError might be set and the message can still be applied successfully.
@@ -30,57 +44,236 @@ type ApplyMessageResult struct {
 
 // DefaultProcessor handles all block processing.
 type DefaultProcessor struct {
-	actors   vm.ActorCodeLoader
-	syscalls vm.SyscallsImpl
+	actors                      vm.ActorCodeLoader
+	syscalls                    vm.SyscallsImpl
+	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor
 }
 
 var _ Processor = (*DefaultProcessor)(nil)
 
 // NewDefaultProcessor creates a default processor from the given state tree and vms.
-func NewDefaultProcessor(syscalls vm.SyscallsImpl) *DefaultProcessor {
-	return NewConfiguredProcessor(vm.DefaultActors, syscalls)
+func NewDefaultProcessor(syscalls vm.SyscallsImpl, circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor) *DefaultProcessor {
+	return NewConfiguredProcessor(vm.DefaultActors, syscalls, circulatingSupplyCalculator)
 }
 
 // NewConfiguredProcessor creates a default processor with custom validation and rewards.
-func NewConfiguredProcessor(actors vm.ActorCodeLoader, syscalls vm.SyscallsImpl) *DefaultProcessor {
+func NewConfiguredProcessor(actors vm.ActorCodeLoader, syscalls vm.SyscallsImpl, circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor) *DefaultProcessor {
 	return &DefaultProcessor{
-		actors:   actors,
-		syscalls: syscalls,
+		actors:                      actors,
+		syscalls:                    syscalls,
+		circulatingSupplyCalculator: circulatingSupplyCalculator,
 	}
 }
 
-// ProcessTipSet computes the state transition specified by the messages in all blocks in a TipSet.
-func (p *DefaultProcessor) ProcessTipSet(ctx context.Context,
-	parent, ts *types.TipSet,
-	msgs []types.BlockMessagesInfo,
-	vmOption vm.VmOption,
-) (cid.Cid, []types.MessageReceipt, error) {
-	_, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
-	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
+func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
+	blocks []types.BlockMessagesInfo,
+	ts *types.TipSet,
+	pstate cid.Cid,
+	parentEpoch, epoch abi.ChainEpoch,
+	vmOpts vm.VmOption,
+	cb vm.ExecCallBack) (cid.Cid, []types.MessageReceipt, error) {
 
-	epoch := ts.Height()
-	var parentEpoch abi.ChainEpoch
-	if parent.Defined() {
-		parentEpoch = parent.Height()
+	toProcessTipset := time.Now()
+	var receipts []types.MessageReceipt
+	var err error
+
+	makeVmWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (vm.VMI, error) {
+		filVested, err := p.circulatingSupplyCalculator.GetFilVested(ctx, e)
+		if err != nil {
+			return nil, err
+		}
+
+		vmOpt := vm.VmOption{
+			CircSupplyCalculator: vmOpts.CircSupplyCalculator,
+			LookbackStateGetter:  vmOpts.LookbackStateGetter,
+			FilVested:            filVested,
+			NetworkVersion:       vmOpts.Fork.GetNetworkVersion(ctx, e),
+			Rnd:                  vmOpts.Rnd,
+			BaseFee:              vmOpts.BaseFee,
+			Fork:                 vmOpts.Fork,
+			ActorCodeLoader:      vmOpts.ActorCodeLoader,
+			Epoch:                e,
+			GasPriceSchedule:     vmOpts.GasPriceSchedule,
+			PRoot:                base,
+			Bsstore:              vmOpts.Bsstore,
+			SysCallsImpl:         vmOpts.SysCallsImpl,
+		}
+
+		if os.Getenv("VENUS_USE_FVM_DOESNT_WORK_YET") == "1" {
+			processLog.Infof("ApplyBlocks use fvm")
+			return fvm.NewFVM(ctx, &vmOpt)
+		}
+
+		return vm.NewVM(ctx, vmOpt)
 	}
 
-	v, err := vm.NewVM(ctx, vmOption)
+	for i := parentEpoch; i < epoch; i++ {
+		if i > parentEpoch {
+			vmCron, err := makeVmWithBaseStateAndEpoch(pstate, i)
+			if err != nil {
+				return cid.Undef, nil, xerrors.Errorf("making cron vm: %w", err)
+			}
+
+			// run cron for null rounds if any
+			cronMessage := makeCronTickMessage()
+			ret, err := vmCron.ApplyImplicitMessage(cronMessage)
+			if err != nil {
+				return cid.Undef, nil, err
+			}
+			pstate, err = vmCron.Flush()
+			if err != nil {
+				return cid.Undef, nil, xerrors.Errorf("can not Flush vm State To db %vs", err)
+			}
+			if cb != nil {
+				if err := cb(cid.Undef, vm.VmMessage{
+					From:   builtin.SystemActorAddr,
+					To:     cron.Address,
+					Value:  big.Zero(),
+					Method: cron.Methods.EpochTick,
+					Params: []byte{},
+				}, ret); err != nil {
+					return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
+				}
+			}
+		}
+		// handle State forks
+		// XXX: The State tree
+		pstate, err = vmOpts.Fork.HandleStateForks(ctx, pstate, i, ts)
+		if err != nil {
+			return cid.Undef, nil, xerrors.Errorf("hand fork error: %v", err)
+		}
+		processLog.Debugf("after fork root: %s\n", pstate)
+	}
+
+	vm, err := makeVmWithBaseStateAndEpoch(pstate, epoch)
+	if err != nil {
+		return cid.Undef, nil, xerrors.Errorf("making cron vm: %w", err)
+	}
+
+	processLog.Debugf("process tipset fork: %v\n", time.Since(toProcessTipset).Milliseconds())
+	// create message tracker
+	// Note: the same message could have been included by more than one miner
+	seenMsgs := make(map[cid.Cid]struct{})
+
+	// process messages on each block
+	for index, blkInfo := range blocks {
+		toProcessBlock := time.Now()
+		if blkInfo.Block.Miner.Protocol() != address.ID {
+			panic("precond failure: block miner address must be an IDAddress")
+		}
+
+		// initial miner penalty and gas rewards
+		// Note: certain msg execution failures can cause the miner To pay for the gas
+		minerPenaltyTotal := big.Zero()
+		minerGasRewardTotal := big.Zero()
+
+		// Process BLS messages From the block
+		for _, m := range append(blkInfo.BlsMessages, blkInfo.SecpkMessages...) {
+			// do not recompute already seen messages
+			mcid := m.VMMessage().Cid()
+			if _, found := seenMsgs[mcid]; found {
+				continue
+			}
+
+			// apply message
+			ret, err := vm.ApplyMessage(m.VMMessage())
+			if err != nil {
+				return cid.Undef, nil, xerrors.Errorf("execute message error %s : %v", mcid, err)
+			}
+			// accumulate result
+			minerPenaltyTotal = big.Add(minerPenaltyTotal, ret.OutPuts.MinerPenalty)
+			minerGasRewardTotal = big.Add(minerGasRewardTotal, ret.OutPuts.MinerTip)
+			receipts = append(receipts, ret.Receipt)
+			if cb != nil {
+				if err := cb(mcid, vmcontext.VmMessageFromUnsignedMessage(m.VMMessage()), ret); err != nil {
+					return cid.Undef, nil, err
+				}
+			}
+			// flag msg as seen
+			seenMsgs[mcid] = struct{}{}
+		}
+		// Pay block reward.
+		// Dragons: missing final protocol design on if/how To determine the nominal power
+		rewardMessage := makeBlockRewardMessage(blkInfo.Block.Miner, minerPenaltyTotal, minerGasRewardTotal, blkInfo.Block.ElectionProof.WinCount)
+		ret, err := vm.ApplyImplicitMessage(rewardMessage)
+		if err != nil {
+			return cid.Undef, nil, err
+		}
+		if cb != nil {
+			if err := cb(cid.Undef, vmcontext.VmMessage{
+				From:   rewardMessage.From,
+				To:     rewardMessage.To,
+				Value:  rewardMessage.Value,
+				Method: rewardMessage.Method,
+				Params: rewardMessage.Params,
+			}, ret); err != nil {
+				return cid.Undef, nil, xerrors.Errorf("callback failed on reward message: %w", err)
+			}
+		}
+
+		processLog.Infof("process block %v time %v", index, time.Since(toProcessBlock).Milliseconds())
+	}
+
+	// cron tick
+	toProcessCron := time.Now()
+	cronMessage := makeCronTickMessage()
+
+	ret, err := vm.ApplyImplicitMessage(cronMessage)
 	if err != nil {
 		return cid.Undef, nil, err
 	}
+	if cb != nil {
+		if err := cb(cid.Undef, vmcontext.VmMessage{
+			From:   builtin.SystemActorAddr,
+			To:     cron.Address,
+			Value:  big.Zero(),
+			Method: cron.Methods.EpochTick,
+			Params: []byte{},
+		}, ret); err != nil {
+			return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
+		}
+	}
 
-	return v.ApplyTipSetMessages(msgs, ts, parentEpoch, epoch, nil)
+	processLog.Infof("process cron: %v", time.Since(toProcessCron).Milliseconds())
+
+	root, err := vm.Flush()
+	if err != nil {
+		return cid.Undef, nil, err
+	}
+	//copy to db
+	return root, receipts, nil
 }
 
-//ProcessImplicitMessage compute the state of specify message but this functions skip value, gas,check
-func (p *DefaultProcessor) ProcessImplicitMessage(ctx context.Context, msg *types.Message, vmOption vm.VmOption) (ret *vm.Ret, err error) {
-	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessImplicitMessage")
-	span.AddAttributes(trace.StringAttribute("message", msg.String()))
-	defer tracing.AddErrorEndSpan(ctx, span, &err)
-
-	v, err := vm.NewVM(ctx, vmOption)
-	if err != nil {
-		return nil, err
+func makeCronTickMessage() *types.Message {
+	return &types.Message{
+		To:         cron.Address,
+		From:       builtin.SystemActorAddr,
+		Value:      types.NewInt(0),
+		GasFeeCap:  types.NewInt(0),
+		GasPremium: types.NewInt(0),
+		GasLimit:   constants.BlockGasLimit * 10000, // Make super sure this is never too little
+		Method:     cron.Methods.EpochTick,
+		Params:     nil,
 	}
-	return v.ApplyImplicitMessage(msg)
+}
+
+func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount, gasReward abi.TokenAmount, winCount int64) *types.Message {
+	params := &reward.AwardBlockRewardParams{
+		Miner:     blockMiner,
+		Penalty:   penalty,
+		GasReward: gasReward,
+		WinCount:  winCount,
+	}
+	buf := new(bytes.Buffer)
+	err := params.MarshalCBOR(buf)
+	if err != nil {
+		panic(fmt.Errorf("failed To encode built-in block reward. %s", err))
+	}
+	return &types.Message{
+		From:   builtin.SystemActorAddr,
+		To:     reward.Address,
+		Value:  big.Zero(),
+		Method: reward.Methods.AwardBlockReward,
+		Params: buf.Bytes(),
+	}
 }

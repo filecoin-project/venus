@@ -25,6 +25,10 @@ func (txBlockstore *TxBlockstore) DeleteBlock(ctx context.Context, cid cid.Cid) 
 	return xerrors.New("readonly blocksgtore")
 }
 
+func (txBlockstore *TxBlockstore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
+	return xerrors.New("readonly blocksgtore")
+}
+
 func (txBlockstore *TxBlockstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	key := txBlockstore.ConvertKey(cid)
 	if txBlockstore.cache != nil {
@@ -78,6 +82,42 @@ func (txBlockstore *TxBlockstore) Get(ctx context.Context, cid cid.Cid) (blocks.
 
 	txBlockstore.cache.Add(key.String(), blk)
 	return blk, nil
+}
+
+func (txBlockstore *TxBlockstore) View(ctx context.Context, cid cid.Cid, callback func([]byte) error) error {
+	if !cid.Defined() {
+		return ErrNotFound
+	}
+
+	key := txBlockstore.ConvertKey(cid)
+	if txBlockstore.cache != nil {
+		if val, has := txBlockstore.cache.Get(key.String()); has {
+			return callback(val.(blocks.Block).RawData())
+		}
+	}
+
+	var val []byte
+	var err error
+	var item *badger.Item
+	switch item, err = txBlockstore.tx.Get(key.Bytes()); err {
+	case nil:
+		val, err = item.ValueCopy(nil)
+	case badger.ErrKeyNotFound:
+		return ErrNotFound
+	default:
+		return fmt.Errorf("failed to get block from badger blockstore: %w", err)
+	}
+	if err != nil {
+		return err
+	}
+
+	blk, err := blocks.NewBlockWithCid(val, cid)
+	if err != nil {
+		return err
+	}
+
+	txBlockstore.cache.Add(key.String(), blk)
+	return callback(blk.RawData())
 }
 
 func (txBlockstore *TxBlockstore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {

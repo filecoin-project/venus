@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
 // BlockstoreSubmodule enhances the `Node` with local key/value storing capabilities.
@@ -14,7 +14,7 @@ import (
 // - `cborStore` is used for chain state and shared with piece data exchange for deals at the moment.
 type BlockstoreSubmodule struct { //nolint
 	// blockstore is the un-networked blocks interface
-	Blockstore bstore.Blockstore
+	Blockstore blockstoreutil.Blockstore
 }
 
 type blockstoreRepo interface {

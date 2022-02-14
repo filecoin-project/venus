@@ -1,12 +1,8 @@
 package vmcontext
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"time"
-
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -29,7 +25,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/cron"
 	initActor "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -89,6 +84,8 @@ func VmMessageFromUnsignedMessage(msg *types.Message) VmMessage { //nolint
 
 // implement VMInterpreter for VM
 var _ VMInterpreter = (*VM)(nil)
+
+var _ VMI = (*VM)(nil)
 
 // NewVM creates a new runtime for executing messages.
 // Dragons: change To take a root and the store, build the tree internally
@@ -202,163 +199,6 @@ func (vm *VM) normalizeAddress(addr address.Address) (address.Address, bool) {
 		panic(err)
 	}
 	return idAddr, true
-}
-
-// ApplyTipSetMessages implements interpreter.VMInterpreter
-func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.TipSet, parentEpoch, epoch abi.ChainEpoch, cb ExecCallBack) (cid.Cid, []types.MessageReceipt, error) {
-	toProcessTipset := time.Now()
-	var receipts []types.MessageReceipt
-	pstate, _ := vm.State.Flush(vm.context)
-	for i := parentEpoch; i < epoch; i++ {
-		if i > parentEpoch {
-			// fix: https://github.com/filecoin-project/lotus/pull/7966
-			vm.vmOption.NetworkVersion = vm.vmOption.Fork.GetNetworkVersion(vm.context, i)
-			// run cron for null rounds if any
-			cronMessage := makeCronTickMessage()
-			ret, err := vm.applyImplicitMessage(cronMessage)
-			if err != nil {
-				return cid.Undef, nil, err
-			}
-			pstate, err = vm.Flush()
-			if err != nil {
-				return cid.Undef, nil, xerrors.Errorf("can not Flush vm State To db %vs", err)
-			}
-			if cb != nil {
-				if err := cb(cid.Undef, cronMessage, ret); err != nil {
-					return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
-				}
-			}
-		}
-		// handle State forks
-		// XXX: The State tree
-		forkedCid, err := vm.vmOption.Fork.HandleStateForks(vm.context, pstate, i, ts)
-		if err != nil {
-			return cid.Undef, nil, xerrors.Errorf("hand fork error: %v", err)
-		}
-		vmlog.Debugf("after fork root: %s\n", forkedCid)
-		if pstate != forkedCid {
-			err = vm.State.At(forkedCid)
-			if err != nil {
-				return cid.Undef, nil, xerrors.Errorf("load fork cid error: %v", err)
-			}
-		}
-		if err := vm.SetCurrentEpoch(i + 1); err != nil {
-			return cid.Undef, nil, xerrors.Errorf("error advancing vm an epoch: %w", err)
-		}
-	}
-	// as above
-	vm.vmOption.NetworkVersion = vm.vmOption.Fork.GetNetworkVersion(vm.context, epoch)
-
-	vmlog.Debugf("process tipset fork: %v\n", time.Since(toProcessTipset).Milliseconds())
-	// create message tracker
-	// Note: the same message could have been included by more than one miner
-	seenMsgs := make(map[cid.Cid]struct{})
-
-	// process messages on each block
-	for index, blkInfo := range blocks {
-		toProcessBlock := time.Now()
-		if blkInfo.Block.Miner.Protocol() != address.ID {
-			panic("precond failure: block miner address must be an IDAddress")
-		}
-
-		// initial miner penalty and gas rewards
-		// Note: certain msg execution failures can cause the miner To pay for the gas
-		minerPenaltyTotal := big.Zero()
-		minerGasRewardTotal := big.Zero()
-
-		// Process BLS messages From the block
-		for _, m := range append(blkInfo.BlsMessages, blkInfo.SecpkMessages...) {
-			// do not recompute already seen messages
-			mcid := m.VMMessage().Cid()
-			if _, found := seenMsgs[mcid]; found {
-				continue
-			}
-
-			// apply message
-			ret, err := vm.applyMessage(m.VMMessage(), m.ChainLength())
-			if err != nil {
-				return cid.Undef, nil, xerrors.Errorf("execute message error %s : %v", mcid, err)
-			}
-			// accumulate result
-			minerPenaltyTotal = big.Add(minerPenaltyTotal, ret.OutPuts.MinerPenalty)
-			minerGasRewardTotal = big.Add(minerGasRewardTotal, ret.OutPuts.MinerTip)
-			receipts = append(receipts, ret.Receipt)
-			if cb != nil {
-				if err := cb(mcid, VmMessageFromUnsignedMessage(m.VMMessage()), ret); err != nil {
-					return cid.Undef, nil, err
-				}
-			}
-			// flag msg as seen
-			seenMsgs[mcid] = struct{}{}
-
-			//write debug messager
-			if vm.vmDebug {
-				rootCid, _ := vm.Flush()
-
-				vm.debugger.Println("message:", mcid, "  root:", rootCid)
-				msgGasOutput, _ := json.MarshalIndent(ret.OutPuts, "", "\t")
-				vm.debugger.Println(string(msgGasOutput))
-
-				var valuedTraces []*types.GasTrace
-				for _, trace := range ret.GasTracker.ExecutionTrace.GasCharges {
-					if trace.TotalGas > 0 {
-						valuedTraces = append(valuedTraces, trace)
-					}
-				}
-				tracesBytes, _ := json.MarshalIndent(valuedTraces, "", "\t")
-				vm.debugger.Println(string(tracesBytes))
-			}
-		}
-		// Pay block reward.
-		// Dragons: missing final protocol design on if/how To determine the nominal power
-		rewardMessage := makeBlockRewardMessage(blkInfo.Block.Miner, minerPenaltyTotal, minerGasRewardTotal, blkInfo.Block.ElectionProof.WinCount)
-		ret, err := vm.applyImplicitMessage(rewardMessage)
-		if err != nil {
-			return cid.Undef, nil, err
-		}
-		if cb != nil {
-			if err := cb(cid.Undef, rewardMessage, ret); err != nil {
-				return cid.Undef, nil, xerrors.Errorf("callback failed on reward message: %w", err)
-			}
-		}
-
-		if vm.vmDebug {
-			root, _ := vm.State.Flush(context.TODO())
-			vm.debugger.Println("reward: ", index, " root: ", root)
-		}
-		vmlog.Infof("process block %v time %v", index, time.Since(toProcessBlock).Milliseconds())
-	}
-
-	// cron tick
-	toProcessCron := time.Now()
-	cronMessage := makeCronTickMessage()
-
-	ret, err := vm.applyImplicitMessage(cronMessage)
-	if err != nil {
-		return cid.Undef, nil, err
-	}
-	if cb != nil {
-		if err := cb(cid.Undef, cronMessage, ret); err != nil {
-			return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
-		}
-	}
-
-	vmlog.Infof("process cron: %v", time.Since(toProcessCron).Milliseconds())
-	if vm.vmDebug {
-		root, _ := vm.State.Flush(context.TODO())
-		vm.debugger.Printfln("after cron root: %s", root)
-
-		receipt, _ := json.MarshalIndent(receipts, "", "\t")
-		vm.debugger.Println(string(receipt))
-		vm.debugger.WriteToTerminal()
-	}
-	// commit stateView
-	root, err := vm.Flush()
-	if err != nil {
-		return cid.Undef, nil, err
-	}
-	//copy to db
-	return root, receipts, nil
 }
 
 // applyImplicitMessage applies messages automatically generated by the vm itself.
@@ -923,40 +763,5 @@ func (vm *VM) Flush() (tree.Root, error) {
 			return cid.Undef, xerrors.Errorf("copying tree: %w", err)
 		}
 		return root, nil
-	}
-}
-
-//
-// utils
-//
-
-func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount, gasReward abi.TokenAmount, winCount int64) VmMessage {
-	params := &reward.AwardBlockRewardParams{
-		Miner:     blockMiner,
-		Penalty:   penalty,
-		GasReward: gasReward,
-		WinCount:  winCount,
-	}
-	buf := new(bytes.Buffer)
-	err := params.MarshalCBOR(buf)
-	if err != nil {
-		panic(fmt.Errorf("failed To encode built-in block reward. %s", err))
-	}
-	return VmMessage{
-		From:   builtin.SystemActorAddr,
-		To:     reward.Address,
-		Value:  big.Zero(),
-		Method: reward.Methods.AwardBlockReward,
-		Params: buf.Bytes(),
-	}
-}
-
-func makeCronTickMessage() VmMessage {
-	return VmMessage{
-		From:   builtin.SystemActorAddr,
-		To:     cron.Address,
-		Value:  big.Zero(),
-		Method: cron.Methods.EpochTick,
-		Params: []byte{},
 	}
 }
