@@ -267,6 +267,9 @@ func exampleStruct(method string, t, parent reflect.Type) interface{} {
 		if f.Type == parent {
 			continue
 		}
+		if f.Type.Kind() == reflect.Chan {
+			continue
+		}
 		if strings.Title(f.Name) == f.Name {
 			ns.Elem().Field(i).Set(reflect.ValueOf(ExampleValue(method, f.Type, t)))
 		}
