@@ -9,7 +9,7 @@ import (
 	"reflect"
 
 	"github.com/filecoin-project/venus/venus-devtool/util"
-	"github.com/filecoin-project/venus/venus-shared/api/gateway"
+	gatewayv1 "github.com/filecoin-project/venus/venus-shared/api/gateway/v1"
 	"github.com/filecoin-project/venus/venus-shared/api/messager"
 	"github.com/filecoin-project/venus/venus-shared/api/wallet"
 )
@@ -31,20 +31,20 @@ func init() {
 			},
 		},
 		util.APIMeta{
-			Type: reflect.TypeOf((*gateway.IProofEventAPI)(nil)).Elem(),
-			ParseOpt: util.InterfaceParseOption{
-				ImportPath: "github.com/filecoin-project/venus/venus-shared/api/gateway",
-				IncludeAll: true,
-			},
-			RPCMeta: util.RPCMeta{
-				MethodNamespace: "Gateway",
-			},
-		},
-		util.APIMeta{
 			Type: reflect.TypeOf((*wallet.IFullAPI)(nil)).Elem(),
 			ParseOpt: util.InterfaceParseOption{
 				ImportPath: "github.com/filecoin-project/venus/venus-shared/api/wallet",
 				IncludeAll: true,
+			},
+		},
+		util.APIMeta{
+			Type: reflect.TypeOf((*gatewayv1.IGateway)(nil)).Elem(),
+			ParseOpt: util.InterfaceParseOption{
+				ImportPath: "github.com/filecoin-project/venus/venus-shared/api/gateway/v1",
+				IncludeAll: true,
+			},
+			RPCMeta: util.RPCMeta{
+				MethodNamespace: "Gateway",
 			},
 		},
 	)
