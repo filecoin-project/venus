@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -30,6 +31,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/api"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/market/client"
 	"github.com/filecoin-project/venus/venus-shared/types/messager"
 	"github.com/filecoin-project/venus/venus-shared/types/wallet"
 )
@@ -223,6 +225,15 @@ func init() {
 
 	// used in gateway
 	addExample(commontypes.PaddedByteIndex(10))
+
+	// used in market
+	addExample(filestore.Path("/some/path"))
+
+	clientDataSelector := client.DataSelector("/ipld/a/b/c")
+	addExample(clientDataSelector)
+	addExample(&clientDataSelector)
+
+	addExample(client.ImportID(1234))
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {
@@ -255,6 +266,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 			// ExampleValues[t] = es
 			return es
 		}
+
 	case reflect.Interface:
 		if t.Implements(reflect.TypeOf((*error)(nil)).Elem()) {
 			return fmt.Errorf("empty error")

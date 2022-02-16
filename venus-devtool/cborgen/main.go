@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/libp2p/exchange"
 	"github.com/filecoin-project/venus/venus-shared/libp2p/hello"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/market"
 
 	gen "github.com/whyrusleeping/cbor-gen"
 )
@@ -57,6 +58,18 @@ func main() {
 			types: []interface{}{
 				types.Actor{},
 				types.Message{},
+			},
+		},
+		{
+			dir: "../venus-shared/types/market",
+			types: []interface{}{
+				market.FundedAddressState{},
+				market.MsgInfo{},
+				market.ChannelInfo{},
+				market.VoucherInfo{},
+				market.MinerDeal{},
+				market.RetrievalAsk{},
+				market.ProviderDealState{},
 			},
 		},
 	}
