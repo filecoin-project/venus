@@ -140,5 +140,4 @@ replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210731021807-68e5207079bc
 	github.com/filecoin-project/test-vectors => ./extern/test-vectors
-	github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.39.0
 )
