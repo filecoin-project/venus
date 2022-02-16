@@ -240,7 +240,7 @@ func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.
 		return e.exec.Execute(req, re, env)
 	}
 
-	client := cmdhttp.NewClient(e.api, e.token, cmdhttp.ClientWithAPIPrefix(node.APIPrefix))
+	client := cmdhttp.NewClient(e.api, cmdhttp.ClientWithAPIPrefix(node.APIPrefix), cmdhttp.ClientWithHeader("Authorization", e.token))
 
 	return client.Execute(req, re, env)
 }
