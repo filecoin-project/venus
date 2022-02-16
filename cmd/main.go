@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	fbig "github.com/filecoin-project/go-state-types/big"
 	"io"
 	"os"
-
-	fbig "github.com/filecoin-project/go-state-types/big"
+	"strings"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-cmds/cli"
@@ -58,18 +58,6 @@ const (
 	// the public ip:port of a relay node that is sitting behind a static
 	// NAT mapping.
 	SwarmPublicRelayAddress = "swarmrelaypublic"
-
-	// PropagationDelay is the duration the miner will wait for blocks to arrive before attempting to mine a new one
-	//PropagationDelay = "prop-delay"
-
-	// PeerKeyFile is the path of file containing key to use for new nodes libp2p identity
-	PeerKeyFile = "peerkeyfile"
-
-	// WalletKeyFile is the path of file containing wallet keys that may be imported on initialization
-	WalletKeyFile = "wallet-keyfile"
-
-	// MinerActorAddress when set, sets the daemons's miner address to the provided address
-	//MinerActorAddress = "miner-actor-address"
 
 	// GenesisFile is the path of file containing archive of genesis block DAG data
 	GenesisFile = "genesisfile"
@@ -240,7 +228,7 @@ func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.
 		return e.exec.Execute(req, re, env)
 	}
 
-	client := cmdhttp.NewClient(e.api, cmdhttp.ClientWithAPIPrefix(node.APIPrefix), cmdhttp.ClientWithHeader("Authorization", e.token))
+	client := cmdhttp.NewClient(e.api, cmdhttp.ClientWithAPIPrefix(node.APIPrefix), cmdhttp.ClientWithHeader("Authorization", "Bearer "+e.token))
 
 	return client.Execute(req, re, env)
 }
@@ -293,7 +281,6 @@ func getAPIInfo(req *cmds.Request) (*APIInfo, error) {
 	if apiAddress, ok := req.Options[OptionAPI].(string); ok && apiAddress != "" {
 		rawAddr = apiAddress
 	}
-
 	// we will read the api file if no other option is given.
 	if len(rawAddr) == 0 {
 		rpcAPI, err := repo.APIAddrFromRepoPath(repoDir)
@@ -303,6 +290,7 @@ func getAPIInfo(req *cmds.Request) (*APIInfo, error) {
 		rawAddr = rpcAPI //NOTICE command only use api
 	}
 
+	rawAddr = strings.Trim(rawAddr, " \n\t")
 	maddr, err := ma.NewMultiaddr(rawAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("unable to convert API endpoint address %s to a multiaddr", rawAddr))
@@ -332,47 +320,6 @@ func getAPIInfo(req *cmds.Request) (*APIInfo, error) {
 		Addr:  host,
 		Token: token,
 	}, nil
-}
-
-// nolint
-func getAPIAddress(req *cmds.Request) (string, error) {
-	var rawAddr string
-	var err error
-	// second highest precedence is env vars.
-	if envapi := os.Getenv("VENUS_API"); envapi != "" {
-		rawAddr = envapi
-	}
-
-	// first highest precedence is cmd flag.
-	if apiAddress, ok := req.Options[OptionAPI].(string); ok && apiAddress != "" {
-		rawAddr = apiAddress
-	}
-
-	// we will read the api file if no other option is given.
-	if len(rawAddr) == 0 {
-		repoDir, _ := req.Options[OptionRepoDir].(string)
-		repoDir, err = paths.GetRepoPath(repoDir)
-		if err != nil {
-			return "", err
-		}
-		rpcAPI, err := repo.APIAddrFromRepoPath(repoDir)
-		if err != nil {
-			return "", errors.Wrap(err, "can't find API endpoint address in environment, command-line, or local repo (is the daemon running?)")
-		}
-		rawAddr = rpcAPI //NOTICE command only use api
-	}
-
-	maddr, err := ma.NewMultiaddr(rawAddr)
-	if err != nil {
-		return "", errors.Wrap(err, fmt.Sprintf("unable to convert API endpoint address %s to a multiaddr", rawAddr))
-	}
-
-	_, host, err := manet.DialArgs(maddr)
-	if err != nil {
-		return "", errors.Wrap(err, fmt.Sprintf("unable to dial API endpoint address %s", maddr))
-	}
-
-	return host, nil
 }
 
 func requiresDaemon(req *cmds.Request) bool {

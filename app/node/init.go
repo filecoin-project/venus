@@ -66,33 +66,32 @@ func Init(ctx context.Context, r repo.Repo, gen genesis.InitFunc, opts ...InitOp
 		return errors.Wrap(err, "Could not Init Node")
 	}
 
-	if err := initPeerKey(r.Keystore(), cfg.peerKey); err != nil {
-		return err
+	if cfg.peerKey != nil {
+		if cfg.peerKey, err = createPeerKey(r.Keystore()); err != nil {
+			return err
+		}
 	}
 
 	if err = r.ReplaceConfig(r.Config()); err != nil {
 		return errors.Wrap(err, "failed to write config")
 	}
-
 	return nil
 }
 
-func initPeerKey(store fskeystore.Keystore, pk acrypto.PrivKey) error {
+func createPeerKey(store fskeystore.Keystore) (acrypto.PrivKey, error) {
 	var err error
-	if pk == nil {
-		pk, _, err = acrypto.GenerateKeyPair(acrypto.RSA, defaultPeerKeyBits)
-		if err != nil {
-			return errors.Wrap(err, "failed to create peer key")
-		}
+	pk, _, err := acrypto.GenerateKeyPair(acrypto.RSA, defaultPeerKeyBits)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create peer key")
 	}
 
 	kbytes, err := acrypto.MarshalPrivateKey(pk)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := store.Put("self", kbytes); err != nil {
-		return errors.Wrap(err, "failed to store private key")
+		return nil, errors.Wrap(err, "failed to store private key")
 	}
-	return nil
+	return pk, nil
 }
