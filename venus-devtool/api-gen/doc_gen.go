@@ -116,7 +116,7 @@ func fillExampleValue(m reflect.Method) ([]byte, []byte, error) {
 
 	out := ExampleValue(m.Name, ft.Out(0), nil)
 	if out == nil {
-		return nil, nil, fmt.Errorf("ExampleValue for %s get nil\n", ft.Out(0).String())
+		return nil, nil, fmt.Errorf("ExampleValue for %s get nil", ft.Out(0).String())
 	}
 	// json: unsupported type: map[address.Address]*types.Actor, so return {}
 	if _, ok := out.(map[address.Address]*types.Actor); ok {

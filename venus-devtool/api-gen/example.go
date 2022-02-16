@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"go/token"
 	"os"
 	"reflect"
 	"strings"
@@ -15,11 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/venus-shared/api"
-	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/filecoin-project/venus/venus-shared/types/messager"
-	"github.com/filecoin-project/venus/venus-shared/types/wallet"
+	commontypes "github.com/ipfs-force-community/venus-common-utils/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
@@ -29,6 +26,12 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
+
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/api"
+	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/messager"
+	"github.com/filecoin-project/venus/venus-shared/types/wallet"
 )
 
 var ExampleValues = map[reflect.Type]interface{}{
@@ -217,6 +220,9 @@ func init() {
 
 	// wallet
 	addExample(wallet.MEChainMsg)
+
+	// used in gateway
+	addExample(commontypes.PaddedByteIndex(10))
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {
@@ -264,16 +270,35 @@ func exampleStruct(method string, t, parent reflect.Type) interface{} {
 	ns := reflect.New(t)
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
-		if f.Type == parent {
+		if shouldIgnoreField(f, parent) {
 			continue
 		}
-		if f.Type.Kind() == reflect.Chan {
-			continue
-		}
+
 		if strings.Title(f.Name) == f.Name {
 			ns.Elem().Field(i).Set(reflect.ValueOf(ExampleValue(method, f.Type, t)))
 		}
 	}
 
 	return ns.Interface()
+}
+
+func shouldIgnoreField(f reflect.StructField, parentType reflect.Type) bool {
+	if f.Type == parentType {
+		return true
+	}
+
+	if len(f.Name) == 0 {
+		return true
+	}
+
+	if !token.IsExported(f.Name) {
+		return true
+	}
+
+	jtag := f.Tag.Get("json")
+	if len(jtag) == 0 {
+		return false
+	}
+
+	return strings.Split(jtag, ",")[0] == "-"
 }
