@@ -194,7 +194,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		}
 		// Pay block reward.
 		// Dragons: missing final protocol design on if/how To determine the nominal power
-		rewardMessage := makeBlockRewardMessage(blkInfo.Block.Miner, minerPenaltyTotal, minerGasRewardTotal, blkInfo.Block.ElectionProof.WinCount)
+		rewardMessage := makeBlockRewardMessage(blkInfo.Block.Miner, minerPenaltyTotal, minerGasRewardTotal, blkInfo.Block.ElectionProof.WinCount, epoch)
 		ret, err := vm.ApplyImplicitMessage(rewardMessage)
 		if err != nil {
 			return cid.Undef, nil, err
@@ -240,6 +240,8 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 	if err != nil {
 		return cid.Undef, nil, err
 	}
+
+	processLog.Infof("ApplyBlocks, ts %s, height: %v, state: %s, receipt: %s", ts.Key(), ts.Height(), root, receipts)
 	//copy to db
 	return root, receipts, nil
 }
@@ -257,7 +259,11 @@ func makeCronTickMessage() *types.Message {
 	}
 }
 
-func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount, gasReward abi.TokenAmount, winCount int64) *types.Message {
+func makeBlockRewardMessage(blockMiner address.Address,
+	penalty abi.TokenAmount,
+	gasReward abi.TokenAmount,
+	winCount int64,
+	epoch abi.ChainEpoch) *types.Message {
 	params := &reward.AwardBlockRewardParams{
 		Miner:     blockMiner,
 		Penalty:   penalty,
@@ -270,10 +276,14 @@ func makeBlockRewardMessage(blockMiner address.Address, penalty abi.TokenAmount,
 		panic(fmt.Errorf("failed To encode built-in block reward. %s", err))
 	}
 	return &types.Message{
-		From:   builtin.SystemActorAddr,
-		To:     reward.Address,
-		Value:  big.Zero(),
-		Method: reward.Methods.AwardBlockReward,
-		Params: buf.Bytes(),
+		From:       builtin.SystemActorAddr,
+		To:         reward.Address,
+		Nonce:      uint64(epoch),
+		Value:      types.NewInt(0),
+		GasFeeCap:  types.NewInt(0),
+		GasPremium: types.NewInt(0),
+		GasLimit:   1 << 30,
+		Method:     reward.Methods.AwardBlockReward,
+		Params:     buf.Bytes(),
 	}
 }
