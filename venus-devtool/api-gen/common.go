@@ -62,6 +62,7 @@ func init() {
 				IncludeAll: true,
 			},
 			RPCMeta: util.RPCMeta{
+				Version:         0,
 				MethodNamespace: "Gateway",
 			},
 		},

@@ -1,4 +1,4 @@
-package v0
+package gateway
 
 type IGateway interface {
 	IProofEvent
