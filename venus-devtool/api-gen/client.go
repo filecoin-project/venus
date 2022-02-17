@@ -30,6 +30,7 @@ package {{ .PkgName }}
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/filecoin-project/go-jsonrpc"
@@ -37,15 +38,24 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/api"
 )
 
+const MajorVersion = {{ .MajorVersion }}
+const APINamespace = "{{ .APINs }}"
+const MethodNamespace = "{{ .MethNs }}"
+
 // New{{ .APIName }}RPC creates a new httpparse jsonrpc remotecli.
 func New{{ .APIName }}RPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) ({{ .APIName }}, jsonrpc.ClientCloser, error) {
+	endpoint, err := api.Endpoint(addr, MajorVersion)
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid addr %s: %w", addr, err)
+	}
+
 	if requestHeader == nil {
 		requestHeader = http.Header{}
 	}
-	requestHeader.Set(api.VenusAPINamespaceHeader, "{{ .APINs }}") 
+	requestHeader.Set(api.VenusAPINamespaceHeader, APINamespace) 
 
 	var res {{ .APIStruct }}
-	closer, err := jsonrpc.NewMergeClient(ctx, addr, "{{ .MethNs }}", api.GetInternalStructs(&res), requestHeader, opts...)
+	closer, err := jsonrpc.NewMergeClient(ctx, endpoint, MethodNamespace, api.GetInternalStructs(&res), requestHeader, opts...)
 
 	return &res, closer, err
 }
@@ -88,11 +98,12 @@ func genClientForAPI(t util.APIMeta) error {
 
 	var buf bytes.Buffer
 	err = tmpl.Execute(&buf, map[string]interface{}{
-		"PkgName":   apiIface.Pkg.Name,
-		"APIName":   apiName,
-		"APIStruct": structName(apiName),
-		"APINs":     ns,
-		"MethNs":    methNs,
+		"PkgName":      apiIface.Pkg.Name,
+		"APIName":      apiName,
+		"APIStruct":    structName(apiName),
+		"APINs":        ns,
+		"MethNs":       methNs,
+		"MajorVersion": t.RPCMeta.Version,
 	})
 	if err != nil {
 		return fmt.Errorf("exec template: %w", err)

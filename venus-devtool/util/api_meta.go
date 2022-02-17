@@ -31,6 +31,9 @@ var ChainAPIPairs = []struct {
 				ImportPath: "github.com/filecoin-project/venus/venus-shared/api/chain/v0",
 				IncludeAll: true,
 			},
+			RPCMeta: RPCMeta{
+				Version: 0,
+			},
 		},
 	},
 	{
@@ -48,6 +51,9 @@ var ChainAPIPairs = []struct {
 				ImportPath: "github.com/filecoin-project/venus/venus-shared/api/chain/v1",
 				IncludeAll: true,
 			},
+			RPCMeta: RPCMeta{
+				Version: 1,
+			},
 		},
 	},
 }
@@ -55,6 +61,7 @@ var ChainAPIPairs = []struct {
 var LatestChainAPIPair = ChainAPIPairs[len(ChainAPIPairs)-1]
 
 type RPCMeta struct {
+	Version         uint32
 	Namespace       string
 	MethodNamespace string
 }
