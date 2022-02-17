@@ -1,0 +1,19 @@
+package v0
+
+import (
+	"context"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	gtypes "github.com/filecoin-project/venus/venus-shared/types/gateway"
+)
+
+type IProofEvent interface {
+	ListConnectedMiners(ctx context.Context) ([]address.Address, error)                                                                              //perm:admin
+	ListMinerConnection(ctx context.Context, addr address.Address) (*gtypes.MinerState, error)                                                       //perm:admin
+	ComputeProof(ctx context.Context, miner address.Address, sectorInfos []builtin.SectorInfo, rand abi.PoStRandomness) ([]builtin.PoStProof, error) //perm:admin
+
+	ResponseProofEvent(ctx context.Context, resp *gtypes.ResponseEvent) error                                      //perm:read
+	ListenProofEvent(ctx context.Context, policy *gtypes.ProofRegisterPolicy) (<-chan *gtypes.RequestEvent, error) //perm:read
+}
