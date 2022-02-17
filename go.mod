@@ -30,6 +30,7 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.1
 	github.com/filecoin-project/go-data-transfer v1.12.1
 	github.com/filecoin-project/go-fil-commcid v0.1.0
+	github.com/filecoin-project/go-fil-markets v1.14.1
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-paramfetch v0.0.4
