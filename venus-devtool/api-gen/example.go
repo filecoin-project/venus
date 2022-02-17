@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	commontypes "github.com/ipfs-force-community/venus-common-utils/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
@@ -224,7 +223,7 @@ func init() {
 	addExample(wallet.MEChainMsg)
 
 	// used in gateway
-	addExample(commontypes.PaddedByteIndex(10))
+	addExample(types.PaddedByteIndex(10))
 
 	// used in market
 	addExample(filestore.Path("/some/path"))
