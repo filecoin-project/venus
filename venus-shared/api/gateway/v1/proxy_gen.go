@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-storage/storage"
-	types2 "github.com/ipfs-force-community/venus-common-utils/types"
 	cid "github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
@@ -87,15 +86,15 @@ func (s *IWalletEventStruct) WalletSign(p0 context.Context, p1 string, p2 addres
 
 type IMarketEventStruct struct {
 	Internal struct {
-		IsUnsealed                 func(ctx context.Context, miner address.Address, pieceCid cid.Cid, sector storage.SectorRef, offset types2.PaddedByteIndex, size abi.PaddedPieceSize) (bool, error)      `perm:"admin"`
-		ListMarketConnectionsState func(ctx context.Context) ([]gtypes.MarketConnectionState, error)                                                                                                        `perm:"admin"`
-		ListenMarketEvent          func(ctx context.Context, policy *gtypes.MarketRegisterPolicy) (<-chan *gtypes.RequestEvent, error)                                                                      `perm:"read"`
-		ResponseMarketEvent        func(ctx context.Context, resp *gtypes.ResponseEvent) error                                                                                                              `perm:"read"`
-		SectorsUnsealPiece         func(ctx context.Context, miner address.Address, pieceCid cid.Cid, sector storage.SectorRef, offset types2.PaddedByteIndex, size abi.PaddedPieceSize, dest string) error `perm:"admin"`
+		IsUnsealed                 func(ctx context.Context, miner address.Address, pieceCid cid.Cid, sector storage.SectorRef, offset types.PaddedByteIndex, size abi.PaddedPieceSize) (bool, error)      `perm:"admin"`
+		ListMarketConnectionsState func(ctx context.Context) ([]gtypes.MarketConnectionState, error)                                                                                                       `perm:"admin"`
+		ListenMarketEvent          func(ctx context.Context, policy *gtypes.MarketRegisterPolicy) (<-chan *gtypes.RequestEvent, error)                                                                     `perm:"read"`
+		ResponseMarketEvent        func(ctx context.Context, resp *gtypes.ResponseEvent) error                                                                                                             `perm:"read"`
+		SectorsUnsealPiece         func(ctx context.Context, miner address.Address, pieceCid cid.Cid, sector storage.SectorRef, offset types.PaddedByteIndex, size abi.PaddedPieceSize, dest string) error `perm:"admin"`
 	}
 }
 
-func (s *IMarketEventStruct) IsUnsealed(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 storage.SectorRef, p4 types2.PaddedByteIndex, p5 abi.PaddedPieceSize) (bool, error) {
+func (s *IMarketEventStruct) IsUnsealed(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 storage.SectorRef, p4 types.PaddedByteIndex, p5 abi.PaddedPieceSize) (bool, error) {
 	return s.Internal.IsUnsealed(p0, p1, p2, p3, p4, p5)
 }
 func (s *IMarketEventStruct) ListMarketConnectionsState(p0 context.Context) ([]gtypes.MarketConnectionState, error) {
@@ -107,7 +106,7 @@ func (s *IMarketEventStruct) ListenMarketEvent(p0 context.Context, p1 *gtypes.Ma
 func (s *IMarketEventStruct) ResponseMarketEvent(p0 context.Context, p1 *gtypes.ResponseEvent) error {
 	return s.Internal.ResponseMarketEvent(p0, p1)
 }
-func (s *IMarketEventStruct) SectorsUnsealPiece(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 storage.SectorRef, p4 types2.PaddedByteIndex, p5 abi.PaddedPieceSize, p6 string) error {
+func (s *IMarketEventStruct) SectorsUnsealPiece(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 storage.SectorRef, p4 types.PaddedByteIndex, p5 abi.PaddedPieceSize, p6 string) error {
 	return s.Internal.SectorsUnsealPiece(p0, p1, p2, p3, p4, p5, p6)
 }
 
