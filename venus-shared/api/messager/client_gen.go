@@ -3,6 +3,7 @@ package messager
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/filecoin-project/go-jsonrpc"
@@ -10,15 +11,24 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/api"
 )
 
+const MajorVersion = 0
+const APINamespace = "messager.IMessager"
+const MethodNamespace = "Message"
+
 // NewIMessagerRPC creates a new httpparse jsonrpc remotecli.
 func NewIMessagerRPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (IMessager, jsonrpc.ClientCloser, error) {
+	endpoint, err := api.Endpoint(addr, MajorVersion)
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid addr %s: %w", addr, err)
+	}
+
 	if requestHeader == nil {
 		requestHeader = http.Header{}
 	}
-	requestHeader.Set(api.VenusAPINamespaceHeader, "messager.IMessager")
+	requestHeader.Set(api.VenusAPINamespaceHeader, APINamespace)
 
 	var res IMessagerStruct
-	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Message", api.GetInternalStructs(&res), requestHeader, opts...)
+	closer, err := jsonrpc.NewMergeClient(ctx, endpoint, MethodNamespace, api.GetInternalStructs(&res), requestHeader, opts...)
 
 	return &res, closer, err
 }

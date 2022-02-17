@@ -3,6 +3,7 @@ package v0
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/filecoin-project/go-jsonrpc"
@@ -10,15 +11,24 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/api"
 )
 
+const MajorVersion = 0
+const APINamespace = "v0.FullNode"
+const MethodNamespace = "Filecoin"
+
 // NewFullNodeRPC creates a new httpparse jsonrpc remotecli.
 func NewFullNodeRPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (FullNode, jsonrpc.ClientCloser, error) {
+	endpoint, err := api.Endpoint(addr, MajorVersion)
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid addr %s: %w", addr, err)
+	}
+
 	if requestHeader == nil {
 		requestHeader = http.Header{}
 	}
-	requestHeader.Set(api.VenusAPINamespaceHeader, "v0.FullNode")
+	requestHeader.Set(api.VenusAPINamespaceHeader, APINamespace)
 
 	var res FullNodeStruct
-	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin", api.GetInternalStructs(&res), requestHeader, opts...)
+	closer, err := jsonrpc.NewMergeClient(ctx, endpoint, MethodNamespace, api.GetInternalStructs(&res), requestHeader, opts...)
 
 	return &res, closer, err
 }
