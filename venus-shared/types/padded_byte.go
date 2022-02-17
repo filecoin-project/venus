@@ -1,13 +1,9 @@
 package types
 
 import (
-	"errors"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	"golang.org/x/xerrors"
 )
-
-var ErrSectorNotFound = errors.New("sector not found")
 
 type UnpaddedByteIndex uint64
 
