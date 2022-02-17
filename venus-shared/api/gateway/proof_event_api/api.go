@@ -1,8 +1,7 @@
-package gateway
+package proof_event_api
 
 import (
 	"context"
-
 	"github.com/filecoin-project/venus/venus-shared/types/gateway"
 )
 
