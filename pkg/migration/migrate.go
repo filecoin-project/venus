@@ -1,14 +1,19 @@
 package migration
 
 import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"math"
+	"path/filepath"
+
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	logging "github.com/ipfs/go-log/v2"
-
-	"math"
 )
 
 var migrateLog = logging.Logger("data_migrate")
@@ -218,6 +223,28 @@ func Version7Upgrade(repoPath string) (err error) {
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = -18
 	default:
 		return fsrRepo.Close()
+	}
+
+	// In order to migrate maxfee
+	// from 10000000000000000000 to 10 FIL
+	type MpoolCfg struct {
+		MaxFee float64 `json:"maxFee"`
+	}
+	type tempCfg struct {
+		Mpool *MpoolCfg `json:"mpool"`
+	}
+	data, err := ioutil.ReadFile(filepath.Join(repoPath, "config.json"))
+	if err != nil {
+		migrateLog.Errorf("open config file failed: %v", err)
+	} else {
+		tmpCfg := tempCfg{}
+		if err := json.Unmarshal(data, &tmpCfg); err != nil {
+			migrateLog.Warn(err)
+		} else {
+			maxFee := types.MustParseFIL(fmt.Sprintf("%fattofil", tmpCfg.Mpool.MaxFee))
+			migrateLog.Info("current max fee: ", maxFee.String())
+			cfg.Mpool.MaxFee = maxFee
+		}
 	}
 
 	if err = fsrRepo.ReplaceConfig(cfg); err != nil {
