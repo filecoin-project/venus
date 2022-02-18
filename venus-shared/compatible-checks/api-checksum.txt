@@ -111,9 +111,12 @@ v0api.FullNode:
 	NetConnectedness:	In=2,	Out=2,	CheckSum=e489a3544ead801c9121171bdf1f3971
 	NetDisconnect:	In=2,	Out=1,	CheckSum=814e6b52918db98c4883832a38cd222b
 	NetFindPeer:	In=2,	Out=2,	CheckSum=2ffcd1ed349f87c3cc0e2bb1ee2d68c6
+	NetLimit:	In=2,	Out=2,	CheckSum=9a35d6e94508e633a1cc5c5dc3f983eb
 	NetPeerInfo:	In=2,	Out=2,	CheckSum=1c030faf779524a321fe8cec305b9f25
 	NetPeers:	In=1,	Out=2,	CheckSum=487043eee4cf0ea002d7a6d0a7ff793b
 	NetPubsubScores:	In=1,	Out=2,	CheckSum=66c7a1061de3d6e11d39ce90692aa885
+	NetSetLimit:	In=3,	Out=1,	CheckSum=f591c226feead6f0c1d9442a2320cd1e
+	NetStat:	In=2,	Out=2,	CheckSum=82ea34376644e023a4314cde3fb1e4fc
 	PaychAllocateLane:	In=2,	Out=2,	CheckSum=2f0992ed1f0be8ff9bee0c3f0a39e1e1
 	PaychAvailableFunds:	In=2,	Out=2,	CheckSum=f40942f65ce181601e7bc49e6378a89c
 	PaychAvailableFundsByFromTo:	In=3,	Out=2,	CheckSum=829ff29d78db755f3c13ab3259adb32b
@@ -325,9 +328,12 @@ api.FullNode:
 	NetConnectedness:	In=2,	Out=2,	CheckSum=e489a3544ead801c9121171bdf1f3971
 	NetDisconnect:	In=2,	Out=1,	CheckSum=814e6b52918db98c4883832a38cd222b
 	NetFindPeer:	In=2,	Out=2,	CheckSum=2ffcd1ed349f87c3cc0e2bb1ee2d68c6
+	NetLimit:	In=2,	Out=2,	CheckSum=9a35d6e94508e633a1cc5c5dc3f983eb
 	NetPeerInfo:	In=2,	Out=2,	CheckSum=1c030faf779524a321fe8cec305b9f25
 	NetPeers:	In=1,	Out=2,	CheckSum=487043eee4cf0ea002d7a6d0a7ff793b
 	NetPubsubScores:	In=1,	Out=2,	CheckSum=66c7a1061de3d6e11d39ce90692aa885
+	NetSetLimit:	In=3,	Out=1,	CheckSum=f591c226feead6f0c1d9442a2320cd1e
+	NetStat:	In=2,	Out=2,	CheckSum=82ea34376644e023a4314cde3fb1e4fc
 	NodeStatus:	In=2,	Out=2,	CheckSum=b46530b68171c85301db86c1b7c19824
 	PaychAllocateLane:	In=2,	Out=2,	CheckSum=2f0992ed1f0be8ff9bee0c3f0a39e1e1
 	PaychAvailableFunds:	In=2,	Out=2,	CheckSum=f40942f65ce181601e7bc49e6378a89c

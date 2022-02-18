@@ -96,9 +96,12 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	- NetConnectedness
 	- NetDisconnect
 	- NetFindPeer
+	- NetLimit
 	- NetPeerInfo
 	- NetPeers
 	- NetPubsubScores
+	- NetSetLimit
+	- NetStat
 	+ NetworkConnect
 	+ NetworkFindPeer
 	+ NetworkFindProvidersAsync
@@ -287,9 +290,12 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- NetConnectedness
 	- NetDisconnect
 	- NetFindPeer
+	- NetLimit
 	- NetPeerInfo
 	- NetPeers
 	- NetPubsubScores
+	- NetSetLimit
+	- NetStat
 	+ NetworkConnect
 	+ NetworkFindPeer
 	+ NetworkFindProvidersAsync

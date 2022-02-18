@@ -205,7 +205,7 @@ func Version7Upgrade(repoPath string) (err error) {
 	switch cfg.NetworkParams.NetworkType {
 	case constants.NetworkMainnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = 999999999999
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = 1594680
 	case constants.Network2k:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = -18
