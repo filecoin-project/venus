@@ -18,29 +18,11 @@ const defaultPeerKeyBits = 2048
 
 // initCfg contains configuration for initializing a node's repo.
 type initCfg struct {
-	peerKey     acrypto.PrivKey
-	defaultKey  *crypto.KeyInfo
 	initImports []*crypto.KeyInfo
 }
 
 // InitOpt is an option for initialization of a node's repo.
 type InitOpt func(*initCfg)
-
-// PeerKeyOpt sets the private key for a node's 'self' libp2p identity.
-// If unspecified, initialization will create a new one.
-func PeerKeyOpt(k acrypto.PrivKey) InitOpt {
-	return func(opts *initCfg) {
-		opts.peerKey = k
-	}
-}
-
-// DefaultKeyOpt sets the private key for the wallet's default account.
-// If unspecified, initialization will create a new one.
-func DefaultKeyOpt(ki *crypto.KeyInfo) InitOpt {
-	return func(opts *initCfg) {
-		opts.defaultKey = ki
-	}
-}
 
 // ImportKeyOpt imports the provided key during initialization.
 func ImportKeyOpt(ki *crypto.KeyInfo) InitOpt {
@@ -66,33 +48,31 @@ func Init(ctx context.Context, r repo.Repo, gen genesis.InitFunc, opts ...InitOp
 		return errors.Wrap(err, "Could not Init Node")
 	}
 
-	if err := initPeerKey(r.Keystore(), cfg.peerKey); err != nil {
-		return err
+	_, err = createPeerKey(r.Keystore())
+	if err != nil {
+		return errors.Wrap(err, "Could not Create P2p key")
 	}
 
 	if err = r.ReplaceConfig(r.Config()); err != nil {
 		return errors.Wrap(err, "failed to write config")
 	}
-
 	return nil
 }
 
-func initPeerKey(store fskeystore.Keystore, pk acrypto.PrivKey) error {
+func createPeerKey(store fskeystore.Keystore) (acrypto.PrivKey, error) {
 	var err error
-	if pk == nil {
-		pk, _, err = acrypto.GenerateKeyPair(acrypto.RSA, defaultPeerKeyBits)
-		if err != nil {
-			return errors.Wrap(err, "failed to create peer key")
-		}
+	pk, _, err := acrypto.GenerateKeyPair(acrypto.RSA, defaultPeerKeyBits)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create peer key")
 	}
 
 	kbytes, err := acrypto.MarshalPrivateKey(pk)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := store.Put("self", kbytes); err != nil {
-		return errors.Wrap(err, "failed to store private key")
+		return nil, errors.Wrap(err, "failed to store private key")
 	}
-	return nil
+	return pk, nil
 }

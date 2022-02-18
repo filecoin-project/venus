@@ -1,10 +1,8 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/venus/fixtures/networks"
-	"io/ioutil"
 	"os"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -17,7 +15,6 @@ import (
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	_ "net/http/pprof" // nolint: golint
 
 	"github.com/filecoin-project/venus/app/node"
@@ -52,8 +49,6 @@ var daemonCmd = &cmds.Command{
 		cmds.BoolOption(IsRelay, "advertise and allow venus network traffic to be relayed through this node"),
 		cmds.StringOption(ImportSnapshot, "import chain state from a given chain export file or url"),
 		cmds.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
-		cmds.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
-		cmds.StringOption(WalletKeyFile, "path of file containing keys to import into the wallet on initialization"),
 		cmds.StringOption(Network, "when set, populates config with network specific parameters, eg. mainnet,2k,cali,interop,butterfly").WithDefault("mainnet"),
 		cmds.StringOption(Password, "set wallet password"),
 	},
@@ -156,20 +151,12 @@ func initRun(req *cmds.Request) error {
 		cfg.API.VenusAuthURL = authServiceURL
 	}
 
-	peerKeyFile, _ := req.Options[PeerKeyFile].(string)
-	walletKeyFile, _ := req.Options[WalletKeyFile].(string)
-
-	initOpts, err := getNodeInitOpts(peerKeyFile, walletKeyFile)
-	if err != nil {
-		return err
-	}
-
 	if err := rep.ReplaceConfig(cfg); err != nil {
 		log.Errorf("Error replacing config %s", err)
 		return err
 	}
 
-	if err := node.Init(req.Context, rep, genesisFunc, initOpts...); err != nil {
+	if err := node.Init(req.Context, rep, genesisFunc); err != nil {
 		log.Errorf("Error initializing node %s", err)
 		return err
 	}
@@ -292,41 +279,4 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 		return nil, err
 	}
 	return repo.OpenFSRepo(repoDir, repo.LatestVersion)
-}
-
-func getNodeInitOpts(peerKeyFile string, walletKeyFile string) ([]node.InitOpt, error) {
-	var initOpts []node.InitOpt
-	if peerKeyFile != "" {
-		data, err := ioutil.ReadFile(peerKeyFile)
-		if err != nil {
-			return nil, err
-		}
-		peerKey, err := crypto.UnmarshalPrivateKey(data)
-		if err != nil {
-			return nil, err
-		}
-		initOpts = append(initOpts, node.PeerKeyOpt(peerKey))
-	}
-
-	if walletKeyFile != "" {
-		f, err := os.Open(walletKeyFile)
-		if err != nil {
-			return nil, err
-		}
-
-		var wir *WalletSerializeResult
-		if err := json.NewDecoder(f).Decode(&wir); err != nil {
-			return nil, err
-		}
-
-		if len(wir.KeyInfo) > 0 {
-			initOpts = append(initOpts, node.DefaultKeyOpt(wir.KeyInfo[0]))
-		}
-
-		for _, k := range wir.KeyInfo[1:] {
-			initOpts = append(initOpts, node.ImportKeyOpt(k))
-		}
-	}
-
-	return initOpts, nil
 }

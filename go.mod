@@ -44,7 +44,7 @@ require (
 	github.com/filecoin-project/specs-actors/v7 v7.0.0-rc1
 	github.com/filecoin-project/specs-storage v0.2.0
 	github.com/filecoin-project/test-vectors/schema v0.0.5
-	github.com/filecoin-project/venus-auth v1.3.1-0.20210809053831-012d55d5f578
+	github.com/filecoin-project/venus-auth v1.3.2-0.20220216020521-0dc6dfccd444
 	github.com/fxamacker/cbor/v2 v2.4.0
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/go-errors/errors v1.0.1
@@ -72,7 +72,7 @@ require (
 	github.com/ipfs/go-ipfs-blockstore v1.1.2
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-cmdkit v0.0.1
-	github.com/ipfs/go-ipfs-cmds v0.5.0
+	github.com/ipfs/go-ipfs-cmds v0.6.1-0.20220212012746-40b8fddb899f
 	github.com/ipfs/go-ipfs-ds-help v1.1.0
 	github.com/ipfs/go-ipfs-exchange-interface v0.1.0
 	github.com/ipfs/go-ipfs-exchange-offline v0.1.1
@@ -140,6 +140,4 @@ replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210731021807-68e5207079bc
 	github.com/filecoin-project/test-vectors => ./extern/test-vectors
-	github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.39.0
-	github.com/ipfs/go-ipfs-cmds => github.com/ipfs-force-community/go-ipfs-cmds v0.6.1-0.20210521090123-4587df7fa0ab
 )

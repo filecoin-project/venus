@@ -25,6 +25,4 @@ func buildWithMiner(t *testing.T, builder *test.NodeBuilder) {
 	// bundle together common init options for node test state
 	cs := test.FixtureChainSeed(t)
 	builder.WithGenesisInit(cs.GenesisInitFunc)
-	//builder.WithConfig(cs.MinerConfigOpt(0))
-	builder.WithInitOpt(cs.MinerInitOpt(0))
 }
