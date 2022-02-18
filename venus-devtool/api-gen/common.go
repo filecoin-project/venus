@@ -30,6 +30,7 @@ func init() {
 				IncludeAll: true,
 			},
 			RPCMeta: util.RPCMeta{
+				Version:         0,
 				MethodNamespace: "Message",
 			},
 		},
@@ -39,6 +40,9 @@ func init() {
 				ImportPath: "github.com/filecoin-project/venus/venus-shared/api/wallet",
 				IncludeAll: true,
 			},
+			RPCMeta: util.RPCMeta{
+				Version: 0,
+			},
 		},
 		util.APIMeta{
 			Type: reflect.TypeOf((*gatewayv1.IGateway)(nil)).Elem(),
@@ -47,6 +51,7 @@ func init() {
 				IncludeAll: true,
 			},
 			RPCMeta: util.RPCMeta{
+				Version:         1,
 				MethodNamespace: "Gateway",
 			},
 		},
@@ -57,6 +62,7 @@ func init() {
 				IncludeAll: true,
 			},
 			RPCMeta: util.RPCMeta{
+				Version:         0,
 				MethodNamespace: "Gateway",
 			},
 		},
@@ -67,6 +73,7 @@ func init() {
 				IncludeAll: true,
 			},
 			RPCMeta: util.RPCMeta{
+				Version:         0,
 				MethodNamespace: "VENUS_MARKET",
 			},
 		},
@@ -77,6 +84,7 @@ func init() {
 				IncludeAll: true,
 			},
 			RPCMeta: util.RPCMeta{
+				Version:         0,
 				MethodNamespace: "VENUS_MARKET_CLIENT",
 			},
 		},

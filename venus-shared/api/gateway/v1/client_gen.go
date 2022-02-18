@@ -3,6 +3,7 @@ package gateway
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/filecoin-project/go-jsonrpc"
@@ -10,15 +11,24 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/api"
 )
 
+const MajorVersion = 1
+const APINamespace = "gateway.IGateway"
+const MethodNamespace = "Gateway"
+
 // NewIGatewayRPC creates a new httpparse jsonrpc remotecli.
 func NewIGatewayRPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (IGateway, jsonrpc.ClientCloser, error) {
+	endpoint, err := api.Endpoint(addr, MajorVersion)
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid addr %s: %w", addr, err)
+	}
+
 	if requestHeader == nil {
 		requestHeader = http.Header{}
 	}
-	requestHeader.Set(api.VenusAPINamespaceHeader, "gateway.IGateway")
+	requestHeader.Set(api.VenusAPINamespaceHeader, APINamespace)
 
 	var res IGatewayStruct
-	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Gateway", api.GetInternalStructs(&res), requestHeader, opts...)
+	closer, err := jsonrpc.NewMergeClient(ctx, endpoint, MethodNamespace, api.GetInternalStructs(&res), requestHeader, opts...)
 
 	return &res, closer, err
 }

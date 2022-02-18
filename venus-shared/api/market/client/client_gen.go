@@ -3,6 +3,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/filecoin-project/go-jsonrpc"
@@ -10,15 +11,24 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/api"
 )
 
+const MajorVersion = 0
+const APINamespace = "client.IMarketClient"
+const MethodNamespace = "VENUS_MARKET_CLIENT"
+
 // NewIMarketClientRPC creates a new httpparse jsonrpc remotecli.
 func NewIMarketClientRPC(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (IMarketClient, jsonrpc.ClientCloser, error) {
+	endpoint, err := api.Endpoint(addr, MajorVersion)
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid addr %s: %w", addr, err)
+	}
+
 	if requestHeader == nil {
 		requestHeader = http.Header{}
 	}
-	requestHeader.Set(api.VenusAPINamespaceHeader, "client.IMarketClient")
+	requestHeader.Set(api.VenusAPINamespaceHeader, APINamespace)
 
 	var res IMarketClientStruct
-	closer, err := jsonrpc.NewMergeClient(ctx, addr, "VENUS_MARKET_CLIENT", api.GetInternalStructs(&res), requestHeader, opts...)
+	closer, err := jsonrpc.NewMergeClient(ctx, endpoint, MethodNamespace, api.GetInternalStructs(&res), requestHeader, opts...)
 
 	return &res, closer, err
 }
