@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-state-types/abi"
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 )
@@ -38,7 +39,7 @@ type DealInfoIncludePath struct {
 	PayloadSize     abi.UnpaddedPieceSize
 	DealID          abi.DealID
 	TotalStorageFee abi.TokenAmount
-	market.DealProposal
+	market7.DealProposal
 	FastRetrieval bool
 	PublishCid    cid.Cid
 }

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
@@ -28,7 +29,7 @@ type SectorOffset struct {
 type PieceDealInfo struct {
 	PublishCid   *cid.Cid
 	DealID       abi.DealID
-	DealProposal *market.DealProposal
+	DealProposal *market7.DealProposal
 	DealSchedule DealSchedule
 	KeepUnsealed bool
 }
