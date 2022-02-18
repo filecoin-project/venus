@@ -271,13 +271,8 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			Migration: cf.UpgradeActorsV7,
 			PreMigrations: []PreMigration{{
 				PreMigration:    cf.PreUpgradeActorsV7,
-				StartWithin:     120,
+				StartWithin:     180,
 				DontStartWithin: 60,
-				StopWithin:      35,
-			}, {
-				PreMigration:    cf.PreUpgradeActorsV7,
-				StartWithin:     30,
-				DontStartWithin: 15,
 				StopWithin:      5,
 			}},
 			Expensive: true,
@@ -1952,7 +1947,7 @@ func (c *ChainFork) upgradeActorsV7Common(
 	ts *types.TipSet,
 	config nv15.Config,
 ) (cid.Cid, error) {
-	writeStore := blockstoreutil.NewAutobatch(ctx, c.bs, units.GiB)
+	writeStore := blockstoreutil.NewAutobatch(ctx, c.bs, units.GiB/4)
 	// TODO: pretty sure we'd achieve nothing by doing this, confirm in review
 	//buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), writeStore)
 	store := chain.ActorStore(ctx, writeStore)
