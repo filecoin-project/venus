@@ -12,7 +12,6 @@ require (
 	github.com/filecoin-project/go-state-types v0.1.3
 	github.com/filecoin-project/lotus v1.13.3-0.20220112013034-7559e4311ea0
 	github.com/filecoin-project/venus v0.0.0-00010101000000-000000000000
-	github.com/ipfs-force-community/venus-common-utils v0.0.0-20210924063144-1d3a5b30de87 // indirect
 	github.com/ipfs/go-cid v0.1.0
 	github.com/ipfs/go-graphsync v0.11.5
 	github.com/ipfs/go-ipfs-http-client v0.1.0 // indirect
