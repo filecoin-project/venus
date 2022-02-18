@@ -226,7 +226,6 @@ func Version7Upgrade(repoPath string) (err error) {
 	}
 
 	// In order to migrate maxfee
-	// from 10000000000000000000 to 10 FIL
 	type MpoolCfg struct {
 		MaxFee float64 `json:"maxFee"`
 	}
@@ -237,13 +236,15 @@ func Version7Upgrade(repoPath string) (err error) {
 	if err != nil {
 		migrateLog.Errorf("open config file failed: %v", err)
 	} else {
+		// If maxFee value is String(10 FIL), unmarshal failure is expected
+		// If maxFee value is Number(10000000000000000000), need convert to FIL(10 FIL)
 		tmpCfg := tempCfg{}
 		if err := json.Unmarshal(data, &tmpCfg); err != nil {
 			migrateLog.Warn(err)
 		} else {
 			maxFee := types.MustParseFIL(fmt.Sprintf("%fattofil", tmpCfg.Mpool.MaxFee))
-			migrateLog.Info("current max fee: ", maxFee.String())
 			cfg.Mpool.MaxFee = maxFee
+			migrateLog.Info("convert mpool.maxFee from %v to %s", tmpCfg.Mpool.MaxFee, maxFee.String())
 		}
 	}
 
