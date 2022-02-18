@@ -42,7 +42,7 @@ require (
 	github.com/filecoin-project/specs-actors/v7 v7.0.0-rc1
 	github.com/filecoin-project/specs-storage v0.2.0
 	github.com/filecoin-project/test-vectors/schema v0.0.5
-	github.com/filecoin-project/venus-auth v1.3.2-0.20220216020521-0dc6dfccd444
+	github.com/filecoin-project/venus-auth v1.3.2
 	github.com/fxamacker/cbor/v2 v2.4.0
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/go-errors/errors v1.0.1
