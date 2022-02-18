@@ -57,7 +57,7 @@ func Mainnet() *NetworkConf {
 				UpgradeTurboHeight:      712320, // 2021-04-29T06:00:00Z
 				UpgradeHyperdriveHeight: 892800, // 2021-06-30T22:00:00Z
 				UpgradeChocolateHeight:  1231620,
-				UpgradeOhSnapHeight:     999999999999,
+				UpgradeOhSnapHeight:     1594680, // 2022-03-02T15:00:00Z
 
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       343200, // 2020-12-22T02:00:00Z
