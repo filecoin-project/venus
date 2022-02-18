@@ -239,9 +239,7 @@ func Version7Upgrade(repoPath string) (err error) {
 		// If maxFee value is String(10 FIL), unmarshal failure is expected
 		// If maxFee value is Number(10000000000000000000), need convert to FIL(10 FIL)
 		tmpCfg := tempCfg{}
-		if err := json.Unmarshal(data, &tmpCfg); err != nil {
-			migrateLog.Warn(err)
-		} else {
+		if err := json.Unmarshal(data, &tmpCfg); err == nil {
 			maxFee := types.MustParseFIL(fmt.Sprintf("%fattofil", tmpCfg.Mpool.MaxFee))
 			cfg.Mpool.MaxFee = maxFee
 			migrateLog.Info("convert mpool.maxFee from %v to %s", tmpCfg.Mpool.MaxFee, maxFee.String())
