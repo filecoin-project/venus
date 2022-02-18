@@ -190,8 +190,7 @@ func (l *Dockerfilecoin) Init(ctx context.Context, args ...string) (testbedi.Out
 				fmt.Sprintf("%s%s:%s", l.VolumePrefix, l.Dir(), "/data/filecoin"),
 			},
 		},
-		&network.NetworkingConfig{},
-		"")
+		&network.NetworkingConfig{}, nil, "")
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +280,7 @@ func (l *Dockerfilecoin) Start(ctx context.Context, wait bool, args ...string) (
 			Binds: []string{fmt.Sprintf("%s%s:%s", l.VolumePrefix, l.Dir(), "/data/filecoin")},
 		},
 		&network.NetworkingConfig{},
-		"")
+		nil, "")
 	if err != nil {
 		return nil, err
 	}
