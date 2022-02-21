@@ -2,8 +2,6 @@ package api
 
 import (
 	"fmt"
-
-	"golang.org/x/xerrors"
 )
 
 type Version uint32
@@ -27,38 +25,10 @@ func (ve Version) EqMajorMinor(v2 Version) bool {
 	return ve&minorMask == v2&minorMask
 }
 
-type NodeType int
-
-const (
-	NodeUnknown NodeType = iota
-
-	NodeFull
-	NodeMiner
-	NodeWorker
-)
-
-var RunningNodeType NodeType
-
-func VersionForType(nodeType NodeType) (Version, error) {
-	switch nodeType {
-	case NodeFull:
-		return FullAPIVersion1, nil
-	case NodeMiner:
-		return MinerAPIVersion0, nil
-	case NodeWorker:
-		return WorkerAPIVersion0, nil
-	default:
-		return Version(0), xerrors.Errorf("unknown node type %d", nodeType)
-	}
-}
-
 // semver versions of the rpc api exposed
 var (
 	FullAPIVersion0 = NewVer(1, 5, 0)
 	FullAPIVersion1 = NewVer(2, 2, 0)
-
-	MinerAPIVersion0  = NewVer(1, 2, 0)
-	WorkerAPIVersion0 = NewVer(1, 5, 0)
 )
 
 //nolint:varcheck,deadcode
