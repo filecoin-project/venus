@@ -98,6 +98,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			Bsstore:              vmOpts.Bsstore,
 			SysCallsImpl:         vmOpts.SysCallsImpl,
 		}
+		processLog.Infof("ts.height: %d, base: %s, currheight: %d, filVested: %v", ts.Height(), base, e, filVested)
 
 		if os.Getenv("VENUS_USE_FVM_DOESNT_WORK_YET") == "1" {
 			processLog.Infof("ApplyBlocks use fvm")
@@ -176,7 +177,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			}
 
 			// apply message
-			ret, err := vm.ApplyMessage(m.VMMessage())
+			ret, err := vm.ApplyMessage(m)
 			if err != nil {
 				return cid.Undef, nil, xerrors.Errorf("execute message error %s : %v", mcid, err)
 			}
@@ -211,6 +212,10 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			}
 		}
 
+		if ret.Receipt.ExitCode != 0 {
+			return cid.Undef, nil, xerrors.Errorf("reward application message failed (exit %d)", ret.Receipt)
+		}
+
 		processLog.Infof("process block %v time %v", index, time.Since(toProcessBlock).Milliseconds())
 	}
 
@@ -241,7 +246,6 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		return cid.Undef, nil, err
 	}
 
-	processLog.Infof("ApplyBlocks, ts %s, height: %v, state: %s, receipt: %s", ts.Key(), ts.Height(), root, receipts)
 	//copy to db
 	return root, receipts, nil
 }

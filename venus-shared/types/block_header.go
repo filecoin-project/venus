@@ -194,3 +194,12 @@ func (b *BlockHeader) ToNode() node.Node {
 	}
 	return n
 }
+
+func CidArrsContains(a []cid.Cid, b cid.Cid) bool {
+	for _, elem := range a {
+		if elem.Equals(b) {
+			return true
+		}
+	}
+	return false
+}

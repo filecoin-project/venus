@@ -2,6 +2,7 @@ package vmcontext
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -16,6 +17,14 @@ type GasChargeBlockStore struct {
 	gasTank   *gas.GasTracker
 	pricelist gas.Pricelist
 	inner     cbor.IpldBlockstore
+}
+
+func NewGasChargeBlockStore(gasTank *gas.GasTracker, pricelist gas.Pricelist, inner cbor.IpldBlockstore) *GasChargeBlockStore {
+	return &GasChargeBlockStore{
+		gasTank:   gasTank,
+		pricelist: pricelist,
+		inner:     inner,
+	}
 }
 
 //Get charge gas and than get the value of cid
