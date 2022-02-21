@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"strconv"
 	"text/tabwriter"
+	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
@@ -157,6 +159,12 @@ var provingDeadlinesCmd = &cmds.Command{
 		ctx := req.Context
 		api := env.(*node.Env).ChainAPI
 
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+		blockDelaySecs := uint64(api.BlockTime(ctx) / time.Second)
+
 		deadlines, err := api.StateMinerDeadlines(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting deadlines: %w", err)
@@ -171,7 +179,7 @@ var provingDeadlinesCmd = &cmds.Command{
 		writer := NewSilentWriter(buf)
 		writer.Printf("Miner: %s\n", maddr)
 		tw := tabwriter.NewWriter(buf, 2, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "deadline\tpartitions\tsectors (faults)\tproven partitions")
+		_, _ = fmt.Fprintln(tw, "deadline\topen\tpartitions\tsectors (faults)\tproven partitions")
 
 		for dlIdx, deadline := range deadlines {
 			partitions, err := api.StateMinerPartitions(ctx, maddr, uint64(dlIdx), types.EmptyTSK)
@@ -207,7 +215,13 @@ var provingDeadlinesCmd = &cmds.Command{
 			if di.Index == uint64(dlIdx) {
 				cur += "\t(current)"
 			}
-			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d)\t%d%s\n", dlIdx, len(partitions), sectors, faults, provenPartitions, cur)
+
+			gapIdx := uint64(dlIdx) - di.Index
+			// 30 minutes a deadline
+			gapHeight := uint64(30*60) / blockDelaySecs * gapIdx
+			open := HeightToTime(head, di.Open+abi.ChainEpoch(gapHeight), blockDelaySecs)
+
+			_, _ = fmt.Fprintf(tw, "%d\t%s\t%d\t%d (%d)\t%d%s\n", dlIdx, open, len(partitions), sectors, faults, provenPartitions, cur)
 		}
 		if err := tw.Flush(); err != nil {
 			return err
@@ -215,6 +229,14 @@ var provingDeadlinesCmd = &cmds.Command{
 
 		return re.Emit(buf)
 	},
+}
+
+func HeightToTime(ts *types.TipSet, openHeight abi.ChainEpoch, blockDelay uint64) string {
+	if ts.Len() == 0 {
+		return ""
+	}
+	firstBlkTime := ts.Blocks()[0].Timestamp - uint64(ts.Height())*blockDelay
+	return time.Unix(int64(firstBlkTime+blockDelay*uint64(openHeight)), 0).Format("15:04:05")
 }
 
 var provingDeadlineInfoCmd = &cmds.Command{

@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/filecoin-project/venus/fixtures/networks"
 	"os"
+	"time"
+
+	"github.com/filecoin-project/venus/fixtures/networks"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/util/ulimit"
@@ -13,9 +15,10 @@ import (
 
 	"golang.org/x/xerrors"
 
+	_ "net/http/pprof" // nolint: golint
+
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	logging "github.com/ipfs/go-log/v2"
-	_ "net/http/pprof" // nolint: golint
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"
@@ -228,6 +231,8 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 
 	// Monkey-patch network parameters option will set package variables during node build
 	opts = append(opts, node.MonkeyPatchNetworkParamsOption(config.NetworkParams))
+
+	opts = append(opts, node.BlockTime(time.Duration(config.NetworkParams.BlockDelay)*time.Second))
 
 	// Instantiate the node.
 	fcn, err := node.New(req.Context, opts...)
