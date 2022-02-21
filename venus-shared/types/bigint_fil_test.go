@@ -210,6 +210,7 @@ func TestMarshal(t *testing.T) {
 }
 
 func TestUnMarshal(t *testing.T) {
+	tf.UnitTest(t)
 	type A struct {
 		Fil FIL
 	}
