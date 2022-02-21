@@ -1,29 +1,32 @@
 # Groups
 
-* [MarketEvent](#MarketEvent)
+* [MarketClient](#MarketClient)
   * [IsUnsealed](#IsUnsealed)
   * [ListMarketConnectionsState](#ListMarketConnectionsState)
+  * [SectorsUnsealPiece](#SectorsUnsealPiece)
+* [MarketServiceProvider](#MarketServiceProvider)
   * [ListenMarketEvent](#ListenMarketEvent)
   * [ResponseMarketEvent](#ResponseMarketEvent)
-  * [SectorsUnsealPiece](#SectorsUnsealPiece)
-* [ProofEvent](#ProofEvent)
+* [ProofClient](#ProofClient)
   * [ComputeProof](#ComputeProof)
   * [ListConnectedMiners](#ListConnectedMiners)
   * [ListMinerConnection](#ListMinerConnection)
+* [ProofServiceProvider](#ProofServiceProvider)
   * [ListenProofEvent](#ListenProofEvent)
   * [ResponseProofEvent](#ResponseProofEvent)
-* [WalletEvent](#WalletEvent)
-  * [AddNewAddress](#AddNewAddress)
+* [WalletClient](#WalletClient)
   * [ListWalletInfo](#ListWalletInfo)
   * [ListWalletInfoByWallet](#ListWalletInfoByWallet)
+  * [WalletHas](#WalletHas)
+  * [WalletSign](#WalletSign)
+* [WalletServiceProvider](#WalletServiceProvider)
+  * [AddNewAddress](#AddNewAddress)
   * [ListenWalletEvent](#ListenWalletEvent)
   * [RemoveAddress](#RemoveAddress)
   * [ResponseWalletEvent](#ResponseWalletEvent)
   * [SupportNewAccount](#SupportNewAccount)
-  * [WalletHas](#WalletHas)
-  * [WalletSign](#WalletSign)
 
-## MarketEvent
+## MarketClient
 
 ### IsUnsealed
 
@@ -81,6 +84,35 @@ Response:
 ]
 ```
 
+### SectorsUnsealPiece
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "f01234",
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  {
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
+  },
+  10,
+  1032,
+  "string value"
+]
+```
+
+Response: `{}`
+
+## MarketServiceProvider
+
 ### ListenMarketEvent
 
 
@@ -122,34 +154,7 @@ Inputs:
 
 Response: `{}`
 
-### SectorsUnsealPiece
-
-
-Perms: admin
-
-Inputs:
-```json
-[
-  "f01234",
-  {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  {
-    "ID": {
-      "Miner": 1000,
-      "Number": 9
-    },
-    "ProofType": 8
-  },
-  10,
-  1032,
-  "string value"
-]
-```
-
-Response: `{}`
-
-## ProofEvent
+## ProofClient
 
 ### ComputeProof
 
@@ -230,6 +235,8 @@ Response:
 }
 ```
 
+## ProofServiceProvider
+
 ### ListenProofEvent
 
 
@@ -271,24 +278,7 @@ Inputs:
 
 Response: `{}`
 
-## WalletEvent
-
-### AddNewAddress
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "e26f1e5c-47f7-4561-a11d-18fab6e748af",
-  [
-    "f01234"
-  ]
-]
-```
-
-Response: `{}`
+## WalletClient
 
 ### ListWalletInfo
 
@@ -352,6 +342,66 @@ Response:
   ]
 }
 ```
+
+### WalletHas
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value",
+  "f01234"
+]
+```
+
+Response: `true`
+
+### WalletSign
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value",
+  "f01234",
+  "Ynl0ZSBhcnJheQ==",
+  {
+    "Type": "message",
+    "Extra": "Ynl0ZSBhcnJheQ=="
+  }
+]
+```
+
+Response:
+```json
+{
+  "Type": 2,
+  "Data": "Ynl0ZSBhcnJheQ=="
+}
+```
+
+## WalletServiceProvider
+
+### AddNewAddress
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "e26f1e5c-47f7-4561-a11d-18fab6e748af",
+  [
+    "f01234"
+  ]
+]
+```
+
+Response: `{}`
 
 ### ListenWalletEvent
 
@@ -428,45 +478,4 @@ Inputs:
 ```
 
 Response: `{}`
-
-### WalletHas
-
-
-Perms: admin
-
-Inputs:
-```json
-[
-  "string value",
-  "f01234"
-]
-```
-
-Response: `true`
-
-### WalletSign
-
-
-Perms: admin
-
-Inputs:
-```json
-[
-  "string value",
-  "f01234",
-  "Ynl0ZSBhcnJheQ==",
-  {
-    "Type": "message",
-    "Extra": "Ynl0ZSBhcnJheQ=="
-  }
-]
-```
-
-Response:
-```json
-{
-  "Type": 2,
-  "Data": "Ynl0ZSBhcnJheQ=="
-}
-```
 
