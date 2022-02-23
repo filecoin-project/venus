@@ -88,19 +88,24 @@ jobs:
           echo github.ref_name = ${{github.ref_name}}
           echo vars.job_url = ${{steps.vars.outputs.job_url}}
           echo ftp_url = ftp://${{secrets.FTP_HOST}}/${{steps.vars.outputs.repo_name}}/${{steps.vars.outputs.artifact_name}}
+
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
           go-version: 1.17
+
       - name: Install GCC
         uses: egor-tensin/setup-gcc@v1
         with:
           version: latest
           platform: x64
+
       - name: Setup Rust
         run: (sudo apt-get update && sudo apt-get install -y clang libssl-dev && which cargo && which rustc) || (curl https://sh.rustup.rs -sSf | sh -s -- -y)
+
       - name: install deps
         run: sudo apt-get install make ncftp mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y && sudo apt upgrade -y
+
       - name: Build
         run: |
           go clean --modcache && make deps && make
@@ -112,16 +117,6 @@ jobs:
           filename: ${{steps.vars.outputs.artifact_name}}
           path: ./release
           type: tar
-
-      - name: release
-        id: release
-        uses: ncipollo/release-action@v1
-        if: ${{ steps.vars.outputs.pub_method=='pushRelease' }}
-        with:
-          artifacts: ${{steps.vars.outputs.artifact_name}}
-          tag: ${{ steps.vars.outputs.github_tag }}
-          commit: ${{ steps.vars.outputs.commit }}
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: upload ftp
         id: uploadftp
