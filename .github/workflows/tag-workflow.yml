@@ -26,11 +26,11 @@ jobs:
         run: |
           export commit=$(git rev-parse HEAD)
           export short=$(git rev-parse --short HEAD)
-          export github_tag=${GITHUB_REF##*/}
+          export github_tag=${{github.ref_name}}
+          export tag=$github_tag
+          export branch=$github_tag
           export git_message=$(git rev-list --format=%s --max-count=1 HEAD | tail +2)
           export repo_name=${GITHUB_REPOSITORY##*/}
-          export branch=$(git symbolic-ref --short -q HEAD)
-          export tag=$(git describe --tags $(git rev-list --tags --max-count=1))
           export artifact_name=${repo_name}_$(git rev-parse --short HEAD).tar.gz
           export pub_method=pushTest
           export job_url=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
@@ -40,12 +40,7 @@ jobs:
           if [[ "${{github.ref_type}}" == "tag" ]] && [[ "${{github.event_name}}" == "create" ]] && [[ "$github_tag" =~ $rx ]]; then
             export pub_method=pushRelease
           fi
-          if [[ "$branch" == "" ]]; then
-            export branch=$github_tag
-          fi
-          if [[ "$tag" == "" ]]; then
-            export tag=$github_tag
-          fi
+
           if [[ "${{secrets.OSS_KEY_ID}}" != "" && \
             "${{secrets.OSS_KEY_SECRET}}" != "" && \
             "${{secrets.OSS_ENDPOINT}}" != "" && \
@@ -117,6 +112,7 @@ jobs:
         id: release
         uses: ncipollo/release-action@v1
         if: ${{ steps.vars.outputs.pub_method=='pushRelease' }}
+        continue-on-error: true
         with:
           artifacts: ${{steps.vars.outputs.artifact_name}}
           tag: ${{ steps.vars.outputs.github_tag }}
@@ -151,12 +147,12 @@ jobs:
           echo '::set-output name=oss_signed_url::$(signed_url)'
 
       - name: upload artifacts
-        if: ${{ steps.vars.outputs.pub_method == 'pushTest' && steps.uploadftp.outcome != 'success' && steps.cposs.outcome != 'success' }}
+        if: ${{ steps.vars.outputs.pub_method == 'pushRelease' }}
         continue-on-error: true
         uses: actions/upload-artifact@v2
         with:
           name: ${{steps.vars.outputs.artifact_name}}
-          path: ./${{steps.vars.outputs.artifact_name}}
+          path: ./release
           if-no-files-found: error
 
       - name: push god-eye
