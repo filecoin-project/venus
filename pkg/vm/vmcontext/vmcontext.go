@@ -124,8 +124,7 @@ func NewVM(ctx context.Context, actorImpls ActorImplLookup, vmOption VmOption) (
 		vmOption:       vmOption,
 		baseCircSupply: baseCirc,
 		pricelist:      vmOption.GasPriceSchedule.PricelistByEpoch(vmOption.Epoch),
-		// loaded during execution
-		// currentEpoch: ..,
+		currentEpoch:   vmOption.Epoch,
 	}, nil
 }
 
