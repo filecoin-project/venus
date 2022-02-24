@@ -68,9 +68,7 @@ func (vm *VM) ApplyImplicitMessage(msg types.ChainMsg) (*Ret, error) {
 		Method: unsignedMsg.Method,
 		Params: unsignedMsg.Params,
 	}
-	if err := vm.SetCurrentEpoch(vm.vmOption.Epoch); err != nil {
-		return nil, xerrors.Errorf("error advancing vm an epoch: %w", err)
-	}
+
 	return vm.applyImplicitMessage(imsg)
 }
 
@@ -155,9 +153,6 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 		Params: params,
 	}
 
-	if err := vm.SetCurrentEpoch(0); err != nil {
-		return nil, xerrors.Errorf("error advancing vm an epoch: %w", err)
-	}
 	ret, err := vm.applyImplicitMessage(imsg)
 	if err != nil {
 		return ret, err
@@ -432,9 +427,6 @@ func (vm *VM) ApplyMessage(msg types.ChainMsg) (*Ret, error) {
 
 // applyMessage applies the message To the current stateView.
 func (vm *VM) applyMessage(msg *types.Message, onChainMsgSize int) (*Ret, error) {
-	if err := vm.SetCurrentEpoch(vm.vmOption.Epoch); err != nil {
-		return nil, xerrors.Errorf("error advancing vm an epoch: %w", err)
-	}
 	// This Method does not actually execute the message itself,
 	// but rather deals with the pre/post processing of a message.
 	// (see: `invocationContext.invoke()` for the dispatch and execution)
