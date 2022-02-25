@@ -18,14 +18,15 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
-	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/wallet"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
+	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/params"
 )
 
 var minerCmdLog = logging.Logger("miner.cmd")
@@ -71,7 +72,7 @@ var newMinerCmd = &cmds.Command{
 		}
 
 		gp, _ := req.Options["gas-premium"].(string)
-		gasPrice, err := types.BigFromString(gp)
+		gasPrice, err := types.ParseFIL(gp)
 		if err != nil {
 			return xerrors.Errorf("failed to parse gas-price flag: %s", err)
 		}
@@ -88,7 +89,7 @@ var newMinerCmd = &cmds.Command{
 			if env.(*node.Env).WalletAPI.WalletState(req.Context) == wallet.Lock {
 				return errWalletLocked
 			}
-			if worker, err = env.(*node.Env).WalletAPI.WalletNewAddress(address.BLS); err != nil {
+			if worker, err = env.(*node.Env).WalletAPI.WalletNewAddress(req.Context, address.BLS); err != nil {
 				return err
 			}
 		}
@@ -99,7 +100,7 @@ var newMinerCmd = &cmds.Command{
 		// make sure the worker account exists on chain
 		_, err = env.(*node.Env).ChainAPI.StateLookupID(ctx, worker, types.EmptyTSK)
 		if err != nil {
-			signed, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.UnsignedMessage{
+			signed, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 				From:  owner,
 				To:    worker,
 				Value: big.NewInt(0),
@@ -133,7 +134,7 @@ var newMinerCmd = &cmds.Command{
 			return xerrors.Errorf("getting seal proof type: %v", err)
 		}
 
-		params, err := specactors.SerializeParams(&power2.CreateMinerParams{
+		params, err := actors.SerializeParams(&power2.CreateMinerParams{
 			Owner:         owner,
 			Worker:        worker,
 			SealProofType: spt,
@@ -155,7 +156,7 @@ var newMinerCmd = &cmds.Command{
 			sender = faddr
 		}
 
-		createStorageMinerMsg := &types.UnsignedMessage{
+		createStorageMinerMsg := &types.Message{
 			To:    power.Address,
 			From:  sender,
 			Value: big.Zero(),
@@ -164,7 +165,7 @@ var newMinerCmd = &cmds.Command{
 			Params: params,
 
 			GasLimit:   0,
-			GasPremium: gasPrice,
+			GasPremium: abi.TokenAmount{Int: gasPrice.Int},
 		}
 
 		signed, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, createStorageMinerMsg, nil)
@@ -187,7 +188,7 @@ var newMinerCmd = &cmds.Command{
 		}
 
 		var retval power2.CreateMinerReturn
-		if err := retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.ReturnValue)); err != nil {
+		if err := retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return)); err != nil {
 			return err
 		}
 
@@ -219,7 +220,7 @@ var minerInfoCmd = &cmds.Command{
 		blockstoreAPI := env.(*node.Env).BlockStoreAPI
 		api := env.(*node.Env).ChainAPI
 
-		blockDelay, err := blockDelay(env.(*node.Env).ConfigAPI)
+		blockDelay, err := blockDelay(req)
 		if err != nil {
 			return err
 		}
@@ -306,7 +307,7 @@ var minerInfoCmd = &cmds.Command{
 		if !pow.HasMinPower {
 			writer.Println("Below minimum power threshold, no blocks will be won")
 		} else {
-			expWinChance := float64(big.Mul(qpercI, big.NewInt(int64(types.BlocksPerEpoch))).Int64()) / 1000000
+			expWinChance := float64(big.Mul(qpercI, big.NewInt(int64(params.BlocksPerEpoch))).Int64()) / 1000000
 			if expWinChance > 0 {
 				if expWinChance > 1 {
 					expWinChance = 1

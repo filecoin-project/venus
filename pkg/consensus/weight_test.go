@@ -2,9 +2,11 @@ package consensus_test
 
 import (
 	"context"
-	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
-	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
+
+	"github.com/filecoin-project/venus/pkg/testhelpers"
+
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
@@ -24,13 +26,13 @@ func TestWeight(t *testing.T) {
 	fakeTree := tree.NewFromString(t, "test-Weight-StateCid", cst)
 	fakeRoot, err := fakeTree.Flush(ctx)
 	require.NoError(t, err)
-	addrGetter := types.NewForTestGetter()
+	addrGetter := testhelpers.NewForTestGetter()
 	minerAddr := addrGetter()
 	// We only care about total power for the weight function
 	// Total is 16, so bitlen is 5, log2b is 4
 	viewer := makeStateViewer(fakeRoot, abi.NewStoragePower(16))
 	ticket := consensus.MakeFakeTicketForTest()
-	toWeigh := types.RequireNewTipSet(t, &types.BlockHeader{
+	toWeigh := testhelpers.RequireNewTipSet(t, &types.BlockHeader{
 		Miner:        minerAddr,
 		ParentWeight: fbig.Zero(),
 		Ticket:       ticket,
@@ -38,8 +40,8 @@ func TestWeight(t *testing.T) {
 			WinCount: 1,
 		},
 		ParentStateRoot:       fakeRoot,
-		Messages:              emptycid.EmptyMessagesCID,
-		ParentMessageReceipts: emptycid.EmptyReceiptsCID,
+		Messages:              testhelpers.EmptyMessagesCID,
+		ParentMessageReceipts: testhelpers.EmptyReceiptsCID,
 	})
 
 	sel := consensus.NewChainSelector(cst, &viewer)
@@ -80,7 +82,7 @@ func TestWeight(t *testing.T) {
 
 	t.Run("non-zero parent weight", func(t *testing.T) {
 		parentWeight := fbig.NewInt(int64(49))
-		toWeighWithParent := types.RequireNewTipSet(t, &types.BlockHeader{
+		toWeighWithParent := testhelpers.RequireNewTipSet(t, &types.BlockHeader{
 			Miner:        minerAddr,
 			ParentWeight: parentWeight,
 			Ticket:       ticket,
@@ -88,8 +90,8 @@ func TestWeight(t *testing.T) {
 				WinCount: 1,
 			},
 			ParentStateRoot:       fakeRoot,
-			Messages:              emptycid.EmptyMessagesCID,
-			ParentMessageReceipts: emptycid.EmptyReceiptsCID,
+			Messages:              testhelpers.EmptyMessagesCID,
+			ParentMessageReceipts: testhelpers.EmptyReceiptsCID,
 		})
 
 		// 49 + (4*256) + (4*1*1*256/2*5) = 1175
@@ -99,7 +101,7 @@ func TestWeight(t *testing.T) {
 	})
 
 	t.Run("many blocks", func(t *testing.T) {
-		toWeighThreeBlock := types.RequireNewTipSet(t,
+		toWeighThreeBlock := testhelpers.RequireNewTipSet(t,
 			&types.BlockHeader{
 				Miner:        minerAddr,
 				ParentWeight: fbig.Zero(),
@@ -109,8 +111,8 @@ func TestWeight(t *testing.T) {
 					WinCount: 1,
 				},
 				ParentStateRoot:       fakeRoot,
-				Messages:              emptycid.EmptyMessagesCID,
-				ParentMessageReceipts: emptycid.EmptyReceiptsCID,
+				Messages:              testhelpers.EmptyMessagesCID,
+				ParentMessageReceipts: testhelpers.EmptyReceiptsCID,
 			},
 			&types.BlockHeader{
 				Miner:        minerAddr,
@@ -121,8 +123,8 @@ func TestWeight(t *testing.T) {
 					WinCount: 1,
 				},
 				ParentStateRoot:       fakeRoot,
-				Messages:              emptycid.EmptyMessagesCID,
-				ParentMessageReceipts: emptycid.EmptyReceiptsCID,
+				Messages:              testhelpers.EmptyMessagesCID,
+				ParentMessageReceipts: testhelpers.EmptyReceiptsCID,
 			},
 			&types.BlockHeader{
 				Miner:        minerAddr,
@@ -133,8 +135,8 @@ func TestWeight(t *testing.T) {
 					WinCount: 1,
 				},
 				ParentStateRoot:       fakeRoot,
-				Messages:              emptycid.EmptyMessagesCID,
-				ParentMessageReceipts: emptycid.EmptyReceiptsCID,
+				Messages:              testhelpers.EmptyMessagesCID,
+				ParentMessageReceipts: testhelpers.EmptyReceiptsCID,
 			},
 		)
 		// 0 + (4*256) + (4*3*1*256/2*5) = 1331

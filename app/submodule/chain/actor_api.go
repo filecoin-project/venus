@@ -2,19 +2,20 @@ package chain
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/pkg/types"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var _ apiface.IActor = &actorAPI{}
+var _ v1api.IActor = &actorAPI{}
 
 type actorAPI struct {
 	chain *ChainSubmodule
 }
 
 //NewActorAPI new actor api
-func NewActorAPI(chain *ChainSubmodule) apiface.IActor {
+func NewActorAPI(chain *ChainSubmodule) v1api.IActor {
 	return &actorAPI{chain: chain}
 }
 

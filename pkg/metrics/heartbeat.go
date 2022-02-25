@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // HeartbeatProtocol is the libp2p protocol used for the heartbeat service

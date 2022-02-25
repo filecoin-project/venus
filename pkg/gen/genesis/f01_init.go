@@ -15,13 +15,13 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, initialActors []Actor, rootVerifier Actor, remainder Actor, av specactors.Version) (int64, *types.Actor, map[address.Address]address.Address, error) {
+func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, initialActors []Actor, rootVerifier Actor, remainder Actor, av actors.Version) (int64, *types.Actor, map[address.Address]address.Address, error) {
 	if len(initialActors) > MaxAccounts {
 		return 0, nil, nil, xerrors.New("too many initial actors")
 	}

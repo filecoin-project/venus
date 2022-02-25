@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"github.com/filecoin-project/venus/pkg/types"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
 )

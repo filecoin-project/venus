@@ -26,20 +26,21 @@ func TestRepubMessages(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// the actors
+	ctx := context.Background()
 	w1 := newWallet(t)
-	a1, err := w1.NewAddress(address.SECP256K1)
+	a1, err := w1.NewAddress(ctx, address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	w2 := newWallet(t)
-	a2, err := w2.NewAddress(address.SECP256K1)
+	a2, err := w2.NewAddress(ctx, address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}

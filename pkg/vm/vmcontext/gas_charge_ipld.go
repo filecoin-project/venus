@@ -1,6 +1,7 @@
 package vmcontext
 
 import (
+	"context"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -18,10 +19,10 @@ type GasChargeBlockStore struct {
 }
 
 //Get charge gas and than get the value of cid
-func (bs *GasChargeBlockStore) Get(c cid.Cid) (blocks.Block, error) {
+func (bs *GasChargeBlockStore) Get(ctx context.Context, c cid.Cid) (blocks.Block, error) {
 	bs.gasTank.Charge(bs.pricelist.OnIpldGet(), "storage get %s", c)
 
-	blk, err := bs.inner.Get(c)
+	blk, err := bs.inner.Get(ctx, c)
 	if err != nil {
 		panic(xerrors.WithMessage(err, "failed to get block from blockstore"))
 	}
@@ -29,10 +30,10 @@ func (bs *GasChargeBlockStore) Get(c cid.Cid) (blocks.Block, error) {
 }
 
 //Put first charge gas and than save block
-func (bs *GasChargeBlockStore) Put(blk blocks.Block) error {
+func (bs *GasChargeBlockStore) Put(ctx context.Context, blk blocks.Block) error {
 	bs.gasTank.Charge(bs.pricelist.OnIpldPut(len(blk.RawData())), "%s storage put %d bytes", blk.Cid(), len(blk.RawData()))
 
-	if err := bs.inner.Put(blk); err != nil {
+	if err := bs.inner.Put(ctx, blk); err != nil {
 		panic(xerrors.WithMessage(err, "failed to write data to disk"))
 	}
 	return nil

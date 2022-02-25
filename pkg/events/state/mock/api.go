@@ -9,8 +9,8 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/types"
 	blockstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type MockAPI struct {
@@ -29,11 +29,11 @@ func NewMockAPI(bs blockstore.Blockstore) *MockAPI {
 }
 
 func (m *MockAPI) ChainHasObj(ctx context.Context, c cid.Cid) (bool, error) {
-	return m.bs.Has(c)
+	return m.bs.Has(ctx, c)
 }
 
 func (m *MockAPI) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
-	blk, err := m.bs.Get(c)
+	blk, err := m.bs.Get(ctx, c)
 	if err != nil {
 		return nil, xerrors.Errorf("blockstore get: %w", err)
 	}

@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	fbig "github.com/filecoin-project/go-state-types/big"
 	"io"
 	"os"
-
-	fbig "github.com/filecoin-project/go-state-types/big"
+	"strings"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-cmds/cli"
@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 const (
@@ -58,18 +58,6 @@ const (
 	// the public ip:port of a relay node that is sitting behind a static
 	// NAT mapping.
 	SwarmPublicRelayAddress = "swarmrelaypublic"
-
-	// PropagationDelay is the duration the miner will wait for blocks to arrive before attempting to mine a new one
-	//PropagationDelay = "prop-delay"
-
-	// PeerKeyFile is the path of file containing key to use for new nodes libp2p identity
-	PeerKeyFile = "peerkeyfile"
-
-	// WalletKeyFile is the path of file containing wallet keys that may be imported on initialization
-	WalletKeyFile = "wallet-keyfile"
-
-	// MinerActorAddress when set, sets the daemons's miner address to the provided address
-	//MinerActorAddress = "miner-actor-address"
 
 	// GenesisFile is the path of file containing archive of genesis block DAG data
 	GenesisFile = "genesisfile"
@@ -158,7 +146,7 @@ TOOL COMMANDS
 	Options: []cmds.Option{
 		cmds.StringsOption(OptionToken, "set the auth token to use"),
 		cmds.StringOption(OptionAPI, "set the api port to use"),
-		cmds.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.venus/repo"),
+		cmds.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.venus").WithDefault("~/.venus"),
 		cmds.StringOption(cmds.EncLong, cmds.EncShort, "The encoding type the output should be encoded with (pretty-json or json)").WithDefault("pretty-json"),
 		cmds.BoolOption("help", "Show the full command help text."),
 		cmds.BoolOption("h", "Show a short version of the command help text."),
@@ -184,9 +172,7 @@ var rootSubcmdsLocal = map[string]*cmds.Command{
 var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"chain":    chainCmd,
 	"sync":     syncCmd,
-	"config":   configCmd,
 	"drand":    drandCmd,
-	"dag":      dagCmd,
 	"inspect":  inspectCmd,
 	"leb128":   leb128Cmd,
 	"log":      logCmd,
@@ -242,7 +228,7 @@ func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.
 		return e.exec.Execute(req, re, env)
 	}
 
-	client := cmdhttp.NewClient(e.api, e.token, cmdhttp.ClientWithAPIPrefix(node.APIPrefix))
+	client := cmdhttp.NewClient(e.api, cmdhttp.ClientWithAPIPrefix(node.APIPrefix), cmdhttp.ClientWithHeader("Authorization", "Bearer "+e.token))
 
 	return client.Execute(req, re, env)
 }
@@ -295,7 +281,6 @@ func getAPIInfo(req *cmds.Request) (*APIInfo, error) {
 	if apiAddress, ok := req.Options[OptionAPI].(string); ok && apiAddress != "" {
 		rawAddr = apiAddress
 	}
-
 	// we will read the api file if no other option is given.
 	if len(rawAddr) == 0 {
 		rpcAPI, err := repo.APIAddrFromRepoPath(repoDir)
@@ -305,6 +290,7 @@ func getAPIInfo(req *cmds.Request) (*APIInfo, error) {
 		rawAddr = rpcAPI //NOTICE command only use api
 	}
 
+	rawAddr = strings.Trim(rawAddr, " \n\t")
 	maddr, err := ma.NewMultiaddr(rawAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("unable to convert API endpoint address %s to a multiaddr", rawAddr))
@@ -336,47 +322,6 @@ func getAPIInfo(req *cmds.Request) (*APIInfo, error) {
 	}, nil
 }
 
-// nolint
-func getAPIAddress(req *cmds.Request) (string, error) {
-	var rawAddr string
-	var err error
-	// second highest precedence is env vars.
-	if envapi := os.Getenv("VENUS_API"); envapi != "" {
-		rawAddr = envapi
-	}
-
-	// first highest precedence is cmd flag.
-	if apiAddress, ok := req.Options[OptionAPI].(string); ok && apiAddress != "" {
-		rawAddr = apiAddress
-	}
-
-	// we will read the api file if no other option is given.
-	if len(rawAddr) == 0 {
-		repoDir, _ := req.Options[OptionRepoDir].(string)
-		repoDir, err = paths.GetRepoPath(repoDir)
-		if err != nil {
-			return "", err
-		}
-		rpcAPI, err := repo.APIAddrFromRepoPath(repoDir)
-		if err != nil {
-			return "", errors.Wrap(err, "can't find API endpoint address in environment, command-line, or local repo (is the daemon running?)")
-		}
-		rawAddr = rpcAPI //NOTICE command only use api
-	}
-
-	maddr, err := ma.NewMultiaddr(rawAddr)
-	if err != nil {
-		return "", errors.Wrap(err, fmt.Sprintf("unable to convert API endpoint address %s to a multiaddr", rawAddr))
-	}
-
-	_, host, err := manet.DialArgs(maddr)
-	if err != nil {
-		return "", errors.Wrap(err, fmt.Sprintf("unable to dial API endpoint address %s", maddr))
-	}
-
-	return host, nil
-}
-
 func requiresDaemon(req *cmds.Request) bool {
 	for cmd := range rootSubcmdsLocal {
 		if len(req.Path) > 0 && req.Path[0] == cmd {
@@ -392,24 +337,25 @@ var limitOption = cmds.Int64Option("gas-limit", "Maximum GasUnits this message i
 
 func parseGasOptions(req *cmds.Request) (fbig.Int, fbig.Int, int64, error) {
 	var (
-		feecap      = types.ZeroFIL
-		premium     = types.ZeroFIL
+		feecap      = types.FIL{Int: types.NewInt(0).Int}
+		premium     = types.FIL{Int: types.NewInt(0).Int}
 		ok          = false
 		gasLimitInt = int64(0)
 	)
 
+	var err error
 	feecapOption := req.Options["gas-feecap"]
 	if feecapOption != nil {
-		feecap, ok = types.NewAttoFILFromString(feecapOption.(string), 10)
-		if !ok {
+		feecap, err = types.ParseFIL(feecapOption.(string))
+		if err != nil {
 			return types.ZeroFIL, types.ZeroFIL, 0, errors.New("invalid gas price (specify FIL as a decimal number)")
 		}
 	}
 
 	premiumOption := req.Options["gas-premium"]
 	if premiumOption != nil {
-		premium, ok = types.NewAttoFILFromString(premiumOption.(string), 10)
-		if !ok {
+		premium, err = types.ParseFIL(premiumOption.(string))
+		if err != nil {
 			return types.ZeroFIL, types.ZeroFIL, 0, errors.New("invalid gas price (specify FIL as a decimal number)")
 		}
 	}
@@ -423,5 +369,5 @@ func parseGasOptions(req *cmds.Request) (fbig.Int, fbig.Int, int64, error) {
 		}
 	}
 
-	return feecap, premium, gasLimitInt, nil
+	return fbig.Int{Int: feecap.Int}, fbig.Int{Int: premium.Int}, gasLimitInt, nil
 }

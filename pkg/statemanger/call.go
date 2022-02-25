@@ -3,9 +3,11 @@ package statemanger
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -19,12 +21,11 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
 )
 
 // CallWithGas used to estimate message gaslimit, for each incoming message ,should execute after priorMsg in mpool
-func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, priorMsgs []types.ChainMsg, ts *types.TipSet) (*vm.Ret, error) {
+func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (*vm.Ret, error) {
 	var (
 		err       error
 		stateRoot cid.Cid
@@ -39,7 +40,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, pri
 		// height to have no fork, because we'll run it inside this
 		// function before executing the given message.
 		for ts.Height() > 0 && (s.fork.HasExpensiveFork(ctx, ts.Height()) || s.fork.HasExpensiveFork(ctx, ts.Height()-1)) {
-			ts, err = s.cs.GetTipSet(ts.Parents())
+			ts, err = s.cs.GetTipSet(ctx, ts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("failed to find a non-forking epoch: %v", err)
 			}
@@ -63,11 +64,11 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, pri
 			}
 			return cs.FilCirculating, nil
 		},
-		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(s.cs, s.fork, ts),
-		NtwkVersionGetter:   s.fork.GetNtwkVersion,
+		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, s.cs, s.fork, ts),
+		NetworkVersion:      s.fork.GetNetworkVersion(ctx, ts.Height()+1),
 		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
 		BaseFee:             ts.At(0).ParentBaseFee,
-		Epoch:               ts.Height(),
+		Epoch:               ts.Height() + 1,
 		GasPriceSchedule:    s.gasSchedule,
 		PRoot:               stateRoot,
 		Bsstore:             s.cs.Blockstore(),
@@ -75,7 +76,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, pri
 		Fork:                s.fork,
 	}
 
-	vmi, err := vm.NewVM(vmOption)
+	vmi, err := vm.NewVM(ctx, vmOption)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +119,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.UnsignedMessage, pri
 }
 
 // Call used for api invoke to compute a msg base on specify tipset, if the tipset is null, use latest tipset in db
-func (s *Stmgr) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*vm.Ret, error) {
+func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*vm.Ret, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.Call")
 	defer span.End()
 
@@ -130,14 +131,14 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.
 		// Search back till we find a height with no fork, or we reach the beginning.
 		for ts.Height() > 0 && s.fork.HasExpensiveFork(ctx, ts.Height()-1) {
 			var err error
-			ts, err = s.cs.GetTipSet(ts.Parents())
+			ts, err = s.cs.GetTipSet(ctx, ts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("failed to find a non-forking epoch: %v", err)
 			}
 		}
 	}
 
-	pts, err := s.cs.GetTipSet(ts.Parents())
+	pts, err := s.cs.GetTipSet(ctx, ts.Parents())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load parent tipset: %v", err)
 	}
@@ -195,8 +196,8 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.
 			}
 			return dertail.FilCirculating, nil
 		},
-		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(s.cs, s.fork, ts),
-		NtwkVersionGetter:   s.fork.GetNtwkVersion,
+		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, s.cs, s.fork, ts),
+		NetworkVersion:      s.fork.GetNetworkVersion(ctx, pheight+1),
 		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
 		BaseFee:             ts.At(0).ParentBaseFee,
 		Epoch:               pheight + 1,
@@ -207,7 +208,7 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.
 		SysCallsImpl:        s.syscallsImpl,
 	}
 
-	v, err := vm.NewVM(vmOption)
+	v, err := vm.NewVM(ctx, vmOption)
 	if err != nil {
 		return nil, err
 	}

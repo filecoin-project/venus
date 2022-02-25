@@ -5,22 +5,30 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.opencensus.io/trace"
 	"os"
 	"strings"
 	"time"
 
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/Gurpartap/async"
+	"github.com/hashicorp/go-multierror"
+	lru "github.com/hashicorp/golang-lru"
+	"github.com/ipfs/go-cid"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 
-	"github.com/Gurpartap/async"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -29,19 +37,14 @@ import (
 	"github.com/filecoin-project/venus/pkg/fork"
 	appstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
-	"github.com/hashicorp/go-multierror"
-	lru "github.com/hashicorp/golang-lru"
-	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var ErrTemporal = errors.New("temporal error")
@@ -139,7 +142,7 @@ func (bv *BlockValidator) ValidateFullBlock(ctx context.Context, blk *types.Bloc
 }
 
 func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHeader) error {
-	parent, err := bv.chainState.GetTipSet(blk.Parents)
+	parent, err := bv.chainState.GetTipSet(ctx, types.NewTipSetKey(blk.Parents...))
 	if err != nil {
 		return xerrors.Errorf("load parent tipset failed %w", err)
 	}
@@ -167,7 +170,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	}
 
 	// get parent beacon
-	prevBeacon, err := bv.chainState.GetLatestBeaconEntry(parent)
+	prevBeacon, err := bv.chainState.GetLatestBeaconEntry(ctx, parent)
 	if err != nil {
 		return xerrors.Errorf("failed to get latest beacon entry: %w", err)
 	}
@@ -177,7 +180,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	}
 
 	// get worker address
-	version := bv.fork.GetNtwkVersion(ctx, blk.Height)
+	version := bv.fork.GetNetworkVersion(ctx, blk.Height)
 	lbTS, lbStateRoot, err := bv.chainState.GetLookbackTipSetForRound(ctx, parent, blk.Height, version)
 	if err != nil {
 		return xerrors.Errorf("failed to get lookback tipset for block: %w", err)
@@ -218,7 +221,11 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 
 	blockSigCheck := async.Err(func() error {
 		// Validate block signature
-		return crypto.Verify(blk.BlockSig, workerAddr, blk.SignatureData())
+		data, err := blk.SignatureData()
+		if err != nil {
+			return err
+		}
+		return crypto.Verify(blk.BlockSig, workerAddr, data)
 	})
 
 	beaconValuesCheck := async.Err(func() error {
@@ -237,7 +244,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 
 		sampleEpoch := blk.Height - constants.TicketRandomnessLookback
 		bSmokeHeight := blk.Height > bv.config.ForkUpgradeParam.UpgradeSmokeHeight
-		if err := bv.tv.IsValidTicket(ctx, blk.Parents, beaconBase, bSmokeHeight, sampleEpoch, blk.Miner, workerAddr, blk.Ticket); err != nil {
+		if err := bv.tv.IsValidTicket(ctx, types.NewTipSetKey(blk.Parents...), beaconBase, bSmokeHeight, sampleEpoch, blk.Miner, workerAddr, *blk.Ticket); err != nil {
 			return xerrors.Errorf("invalid ticket: %s in block %s %w", blk.Ticket.String(), blk.Cid(), err)
 		}
 		return nil
@@ -250,7 +257,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 		return nil
 	})
 
-	winPoStNv := bv.fork.GetNtwkVersion(ctx, baseHeight)
+	winPoStNv := bv.fork.GetNetworkVersion(ctx, baseHeight)
 	wproofCheck := async.Err(func() error {
 		if err := bv.VerifyWinningPoStProof(ctx, winPoStNv, blk, prevBeacon, lbStateRoot); err != nil {
 			return xerrors.Errorf("invalid election post: %w", err)
@@ -412,9 +419,9 @@ func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockM
 		return err
 	}
 
-	mrcid, err := store.Put(store.Context(), &types.TxMeta{
-		BLSRoot:  bmroot,
-		SecpRoot: smroot,
+	mrcid, err := store.Put(store.Context(), &types.MessageRoot{
+		BlsRoot:   bmroot,
+		SecpkRoot: smroot,
 	})
 
 	if err != nil {
@@ -432,7 +439,7 @@ func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *typ
 	// we check that the miner met the minimum power at the lookback tipset
 
 	baseTS := bv.chainState.GetHead()
-	version := bv.fork.GetNtwkVersion(ctx, bh.Height)
+	version := bv.fork.GetNetworkVersion(ctx, bh.Height)
 	lbts, lbst, err := bv.chainState.GetLookbackTipSetForRound(ctx, baseTS, bh.Height, version)
 	if err != nil {
 		log.Warnf("failed to load lookback tipset for incoming block: %s", err)
@@ -506,10 +513,10 @@ func (bv *BlockValidator) ValidateBlockBeacon(blk *types.BlockHeader, parentEpoc
 
 func (bv *BlockValidator) beaconBaseEntry(ctx context.Context, blk *types.BlockHeader) (*types.BeaconEntry, error) {
 	if len(blk.BeaconEntries) > 0 {
-		return blk.BeaconEntries[len(blk.BeaconEntries)-1], nil
+		return &blk.BeaconEntries[len(blk.BeaconEntries)-1], nil
 	}
 
-	parent, err := bv.chainState.GetTipSet(blk.Parents)
+	parent, err := bv.chainState.GetTipSet(ctx, types.NewTipSetKey(blk.Parents...))
 	if err != nil {
 		return nil, err
 	}
@@ -534,7 +541,7 @@ func (bv *BlockValidator) ValidateBlockWinner(ctx context.Context, waddr address
 
 	rBeacon := prevEntry
 	if len(blk.BeaconEntries) != 0 {
-		rBeacon = blk.BeaconEntries[len(blk.BeaconEntries)-1]
+		rBeacon = &blk.BeaconEntries[len(blk.BeaconEntries)-1]
 	}
 	buf := new(bytes.Buffer)
 	if err := blk.Miner.MarshalCBOR(buf); err != nil {
@@ -577,7 +584,7 @@ func (bv *BlockValidator) MinerEligibleToMine(ctx context.Context, addr address.
 	hmp, err := bv.minerHasMinPower(ctx, addr, lookbackTS)
 
 	// TODO: We're blurring the lines between a "runtime network version" and a "Lotus upgrade epoch", is that unavoidable?
-	if bv.fork.GetNtwkVersion(ctx, parentHeight) <= network.Version3 {
+	if bv.fork.GetNetworkVersion(ctx, parentHeight) <= network.Version3 {
 		return hmp, err
 	}
 
@@ -696,7 +703,7 @@ func (bv *BlockValidator) VerifyWinningPoStProof(ctx context.Context, nv network
 
 	rbase := prevBeacon
 	if len(blk.BeaconEntries) > 0 {
-		rbase = blk.BeaconEntries[len(blk.BeaconEntries)-1]
+		rbase = &blk.BeaconEntries[len(blk.BeaconEntries)-1]
 	}
 
 	rand, err := chain.DrawRandomness(rbase.Data, acrypto.DomainSeparationTag_WinningPoStChallengeSeed, blk.Height, buf.Bytes())
@@ -714,25 +721,28 @@ func (bv *BlockValidator) VerifyWinningPoStProof(ctx context.Context, nv network
 		return xerrors.New("power state view is null")
 	}
 
-	sectors, err := view.GetSectorsForWinningPoSt(ctx, nv, bv.proofVerifier, blk.Miner, rand)
+	xsectors, err := view.GetSectorsForWinningPoSt(ctx, nv, bv.proofVerifier, blk.Miner, rand)
 	if err != nil {
 		return xerrors.Errorf("getting winning post sector set: %v", err)
 	}
 
-	proofs := make([]proof2.PoStProof, len(blk.WinPoStProof))
-	for idx, pf := range blk.WinPoStProof {
-		proofs[idx] = proof2.PoStProof{PoStProof: pf.PoStProof, ProofBytes: pf.ProofBytes}
+	sectors := make([]proof.SectorInfo, len(xsectors))
+	for i, xsi := range xsectors {
+		sectors[i] = proof.SectorInfo{
+			SealProof:    xsi.SealProof,
+			SectorNumber: xsi.SectorNumber,
+			SealedCID:    xsi.SealedCID,
+		}
 	}
 
-	ok, err := bv.proofVerifier.VerifyWinningPoSt(ctx, proof2.WinningPoStVerifyInfo{
+	ok, err := bv.proofVerifier.VerifyWinningPoSt(ctx, proof.WinningPoStVerifyInfo{
 		Randomness:        rand,
-		Proofs:            proofs,
+		Proofs:            blk.WinPoStProof,
 		ChallengedSectors: sectors,
 		Prover:            abi.ActorID(mid),
 	})
-
 	if err != nil {
-		return xerrors.Errorf("failed to verify election post: %v", err)
+		return xerrors.Errorf("failed to verify election post: %w", err)
 	}
 
 	if !ok {
@@ -779,7 +789,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 
 		// Phase 1: syntactic validation, as defined in the spec
 		minGas := pl.OnChainMessage(msg.ChainLength())
-		if err := m.ValidForBlockInclusion(minGas.Total(), bv.fork.GetNtwkVersion(ctx, blk.Height)); err != nil {
+		if err := m.ValidForBlockInclusion(minGas.Total(), bv.fork.GetNetworkVersion(ctx, blk.Height)); err != nil {
 			return err
 		}
 
@@ -793,7 +803,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 		// Phase 2: (Partial) semantic validation:
 		// the sender exists and is an account actor, and the nonces make sense
 		var sender address.Address
-		if bv.fork.GetNtwkVersion(ctx, blk.Height) >= network.Version13 {
+		if bv.fork.GetNetworkVersion(ctx, blk.Height) >= network.Version13 {
 			sender, err = st.LookupID(m.From)
 			if err != nil {
 				return err
@@ -839,7 +849,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 
 	secpMsgs := make([]types.ChainMsg, len(blksecpMsgs))
 	for i, m := range blksecpMsgs {
-		if bv.fork.GetNtwkVersion(ctx, blk.Height) >= network.Version14 {
+		if bv.fork.GetNetworkVersion(ctx, blk.Height) >= network.Version14 {
 			if m.Signature.Type != crypto.SigTypeSecp256k1 {
 				return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 			}
@@ -861,9 +871,9 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 		return xerrors.Errorf("get secpMsgs root failed: %v", err)
 	}
 
-	txMeta := &types.TxMeta{
-		BLSRoot:  bmroot,
-		SecpRoot: smroot,
+	txMeta := &types.MessageRoot{
+		BlsRoot:   bmroot,
+		SecpkRoot: smroot,
 	}
 	b, err := chain.MakeBlock(txMeta)
 	if err != nil {
@@ -878,7 +888,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 // ValidateMsgMeta performs structural and content hash validation of the
 // messages within this block. If validation passes, it stores the messages in
 // the underlying IPLD block store.
-func (bv *BlockValidator) ValidateMsgMeta(fblk *types.FullBlock) error {
+func (bv *BlockValidator) ValidateMsgMeta(ctx context.Context, fblk *types.FullBlock) error {
 	if msgc := len(fblk.BLSMessages) + len(fblk.SECPMessages); msgc > constants.BlockMessageLimit {
 		return xerrors.Errorf("block %s has too many messages (%d)", fblk.Header.Cid(), msgc)
 	}
@@ -893,7 +903,7 @@ func (bv *BlockValidator) ValidateMsgMeta(fblk *types.FullBlock) error {
 	var bcids, scids []cid.Cid
 
 	for _, m := range fblk.BLSMessages {
-		c, err := chain.PutMessage(blockstore, m)
+		c, err := chain.PutMessage(ctx, blockstore, m)
 		if err != nil {
 			return xerrors.Errorf("putting bls message to blockstore after msgmeta computation: %v", err)
 		}
@@ -901,7 +911,7 @@ func (bv *BlockValidator) ValidateMsgMeta(fblk *types.FullBlock) error {
 	}
 
 	for _, m := range fblk.SECPMessages {
-		c, err := chain.PutMessage(blockstore, m)
+		c, err := chain.PutMessage(ctx, blockstore, m)
 		if err != nil {
 			return xerrors.Errorf("putting bls message to blockstore after msgmeta computation: %w", err)
 		}
@@ -951,8 +961,11 @@ func checkBlockSignature(ctx context.Context, blk *types.BlockHeader, worker add
 		return xerrors.New("block signature not present")
 	}
 
-	sigb := blk.SignatureData()
-	err := crypto.Verify(blk.BlockSig, worker, sigb)
+	sigb, err := blk.SignatureData()
+	if err != nil {
+		return err
+	}
+	err = crypto.Verify(blk.BlockSig, worker, sigb)
 	if err == nil {
 		blk.SetValidated()
 	}

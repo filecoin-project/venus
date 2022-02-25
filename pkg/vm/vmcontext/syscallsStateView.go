@@ -3,13 +3,14 @@ package vmcontext
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/account"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/pkg/errors"
 )
 
@@ -70,12 +71,12 @@ func (vm *syscallsStateView) MinerInfo(ctx context.Context, maddr address.Addres
 	return &minerInfo, nil
 }
 
-//GetNtwkVersion get network version
-func (vm *syscallsStateView) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version {
-	return vm.vmOption.NtwkVersionGetter(ctx, ce)
+//GetNetworkVersion get network version
+func (vm *syscallsStateView) GetNetworkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version {
+	return vm.vmOption.NetworkVersion
 }
 
-//GetNtwkVersion get network version
+//GetNetworkVersion get network version
 func (vm *syscallsStateView) TotalFilCircSupply(height abi.ChainEpoch, st tree.Tree) (abi.TokenAmount, error) {
-	return vm.vmOption.CircSupplyCalculator(context.TODO(), height, st)
+	return vm.GetCircSupply(context.TODO())
 }

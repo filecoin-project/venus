@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"sync"
 	"testing"
 
@@ -18,11 +20,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var dummyCid cid.Cid
@@ -51,7 +52,7 @@ type fakeCS struct {
 
 	mu         sync.Mutex
 	waitSub    chan struct{}
-	subCh      chan<- []*chain.HeadChange
+	subCh      chan<- []*types.HeadChange
 	callNumber map[string]int
 
 	cancel context.CancelFunc
@@ -71,7 +72,7 @@ func newFakeCS(t *testing.T) *fakeCS {
 		cancel:     cancel,
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
-	fcs.loopNotify(ctx)
+	require.NoError(t, fcs.loopNotify(ctx))
 	return fcs
 }
 
@@ -84,8 +85,11 @@ func (fcs *fakeCS) stop() {
 
 // our observe use a timer and call 'chainhead' to observe chain head change
 // to 'PASS' these tests, we must call 'ChainNotify' to start 'waitSub'
-func (fcs *fakeCS) loopNotify(ctx context.Context) {
-	head := fcs.ChainNotify(ctx)
+func (fcs *fakeCS) loopNotify(ctx context.Context) error {
+	head, err := fcs.ChainNotify(ctx)
+	if err != nil {
+		return err
+	}
 	go func() {
 		for {
 			select {
@@ -95,6 +99,8 @@ func (fcs *fakeCS) loopNotify(ctx context.Context) {
 			}
 		}
 	}()
+
+	return nil
 }
 
 func (fcs *fakeCS) ChainHead(ctx context.Context) (*types.TipSet, error) {
@@ -104,7 +110,7 @@ func (fcs *fakeCS) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	return fcs.tsc.ChainHead(ctx)
 }
 
-func (fcs *fakeCS) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*chain.HeadChange, error) {
+func (fcs *fakeCS) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*types.HeadChange, error) {
 	fcs.mu.Lock()
 	fcs.callNumber["ChainGetPath"] = fcs.callNumber["ChainGetPath"] + 1
 	fcs.mu.Unlock()
@@ -120,19 +126,19 @@ func (fcs *fakeCS) ChainGetPath(ctx context.Context, from, to types.TipSetKey) (
 	}
 
 	// copied from the chainstore
-	revert, apply, err := chain.ReorgOps(func(tsk types.TipSetKey) (*types.TipSet, error) {
+	revert, apply, err := chain.ReorgOps(func(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
 		return fcs.ChainGetTipSet(ctx, tsk)
 	}, fromTS, toTS)
 	if err != nil {
 		return nil, err
 	}
 
-	path := make([]*chain.HeadChange, len(revert)+len(apply))
+	path := make([]*types.HeadChange, len(revert)+len(apply))
 	for i, r := range revert {
-		path[i] = &chain.HeadChange{Type: chain.HCRevert, Val: r}
+		path[i] = &types.HeadChange{Type: types.HCRevert, Val: r}
 	}
 	for j, i := 0, len(apply)-1; i >= 0; j, i = j+1, i-1 {
-		path[j+len(revert)] = &chain.HeadChange{Type: chain.HCApply, Val: apply[i]}
+		path[j+len(revert)] = &types.HeadChange{Type: types.HCApply, Val: apply[i]}
 	}
 	return path, nil
 }
@@ -144,7 +150,7 @@ func (fcs *fakeCS) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*ty
 	return fcs.tipsets[key], nil
 }
 
-func (fcs *fakeCS) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*chain.MsgLookup, error) {
+func (fcs *fakeCS) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	fcs.mu.Lock()
 	defer fcs.mu.Unlock()
 	fcs.callNumber["StateSearchMsg"] = fcs.callNumber["StateSearchMsg"] + 1
@@ -181,9 +187,9 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 			Height: h,
 			Miner:  a,
 
-			Parents: types.NewTipSetKey(parents...),
+			Parents: parents,
 
-			Ticket: types.Ticket{VRFProof: []byte{byte(h % 2)}},
+			Ticket: &types.Ticket{VRFProof: []byte{byte(h % 2)}},
 
 			ParentStateRoot:       dummyCid,
 			Messages:              msgcid,
@@ -196,9 +202,9 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 			Height: h,
 			Miner:  b,
 
-			Parents: types.NewTipSetKey(parents...),
+			Parents: parents,
 
-			Ticket: types.Ticket{VRFProof: []byte{byte((h + 1) % 2)}},
+			Ticket: &types.Ticket{VRFProof: []byte{byte((h + 1) % 2)}},
 
 			ParentStateRoot:       dummyCid,
 			Messages:              msgcid,
@@ -207,7 +213,7 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 			BlockSig:     &crypto.Signature{Type: crypto.SigTypeBLS},
 			BLSAggregate: &crypto.Signature{Type: crypto.SigTypeBLS},
 		},
-	}...)
+	})
 
 	if fcs.tipsets == nil {
 		fcs.tipsets = map[types.TipSetKey]*types.TipSet{}
@@ -219,16 +225,15 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 	return ts
 }
 
-func (fcs *fakeCS) ChainNotify(ctx context.Context) <-chan []*chain.HeadChange {
+func (fcs *fakeCS) ChainNotify(ctx context.Context) (<-chan []*types.HeadChange, error) {
 	fcs.mu.Lock()
 	defer fcs.mu.Unlock()
 	fcs.callNumber["ChainNotify"] = fcs.callNumber["ChainNotify"] + 1
 
-	out := make(chan []*chain.HeadChange, 1)
+	out := make(chan []*types.HeadChange, 1)
 	if fcs.subCh != nil {
 		close(out)
-		fcs.t.Error("already subscribed to notifications")
-		return out
+		return out, xerrors.Errorf("already subscribed to notifications")
 	}
 
 	best, err := fcs.tsc.ChainHead(ctx)
@@ -236,25 +241,25 @@ func (fcs *fakeCS) ChainNotify(ctx context.Context) <-chan []*chain.HeadChange {
 		panic(err)
 	}
 
-	out <- []*chain.HeadChange{{Type: chain.HCCurrent, Val: best}}
+	out <- []*types.HeadChange{{Type: types.HCCurrent, Val: best}}
 	fcs.subCh = out
 	close(fcs.waitSub)
 
-	return out
+	return out, nil
 }
 
-func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*apitypes.BlockMessages, error) {
+func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*types.BlockMessages, error) {
 	fcs.mu.Lock()
 	defer fcs.mu.Unlock()
 	fcs.callNumber["ChainGetBlockMessages"] = fcs.callNumber["ChainGetBlockMessages"] + 1
 	messages, ok := fcs.blkMsgs[blk]
 	if !ok {
-		return &apitypes.BlockMessages{}, nil
+		return &types.BlockMessages{}, nil
 	}
 
 	ms, ok := fcs.msgs[messages]
 	if !ok {
-		return &apitypes.BlockMessages{}, nil
+		return &types.BlockMessages{}, nil
 	}
 
 	cids := make([]cid.Cid, len(ms.bmsgs)+len(ms.smsgs))
@@ -265,7 +270,7 @@ func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*api
 		cids[i+len(ms.bmsgs)] = m.Cid()
 	}
 
-	return &apitypes.BlockMessages{BlsMessages: ms.bmsgs, SecpkMessages: ms.smsgs, Cids: cids}, nil
+	return &types.BlockMessages{BlsMessages: ms.bmsgs, SecpkMessages: ms.smsgs, Cids: cids}, nil
 }
 
 func (fcs *fakeCS) fakeMsgs(m fakeMsg) cid.Cid {
@@ -301,17 +306,17 @@ func (fcs *fakeCS) dropSub() {
 
 func (fcs *fakeCS) sub(rev, app []*types.TipSet) {
 	<-fcs.waitSub
-	notif := make([]*chain.HeadChange, len(rev)+len(app))
+	notif := make([]*types.HeadChange, len(rev)+len(app))
 
 	for i, r := range rev {
-		notif[i] = &chain.HeadChange{
-			Type: chain.HCRevert,
+		notif[i] = &types.HeadChange{
+			Type: types.HCRevert,
 			Val:  r,
 		}
 	}
 	for i, r := range app {
-		notif[i+len(rev)] = &chain.HeadChange{
-			Type: chain.HCApply,
+		notif[i+len(rev)] = &types.HeadChange{
+			Type: types.HCApply,
 			Val:  r,
 		}
 	}

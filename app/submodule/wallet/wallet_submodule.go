@@ -3,7 +3,9 @@ package wallet
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 
@@ -13,8 +15,8 @@ import (
 	pconfig "github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/state"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var log = logging.Logger("wallet")
@@ -43,7 +45,7 @@ func NewWalletSubmodule(ctx context.Context,
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get passphrase config")
 	}
-	backend, err := wallet.NewDSBackend(repo.WalletDatastore(), passphraseCfg, password)
+	backend, err := wallet.NewDSBackend(ctx, repo.WalletDatastore(), passphraseCfg, password)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set up walletModule backend")
 	}
@@ -73,14 +75,14 @@ func NewWalletSubmodule(ctx context.Context,
 }
 
 //API create a new wallet api implement
-func (wallet *WalletSubmodule) API() apiface.IWallet {
+func (wallet *WalletSubmodule) API() v1api.IWallet {
 	return &WalletAPI{
 		walletModule: wallet,
 		adapter:      wallet.adapter,
 	}
 }
 
-func (wallet *WalletSubmodule) V0API() apiface.IWallet {
+func (wallet *WalletSubmodule) V0API() v0api.IWallet {
 	return &WalletAPI{
 		walletModule: wallet,
 		adapter:      wallet.adapter,

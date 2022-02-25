@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/types"
 	"io/ioutil"
 	"os"
 
@@ -31,6 +30,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var glog = logging.Logger("genesis")

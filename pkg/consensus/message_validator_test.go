@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/testhelpers"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
@@ -21,10 +23,9 @@ import (
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	"github.com/filecoin-project/venus/pkg/state"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
-var keys = types.MustGenerateKeyInfo(2, 42)
+var keys = testhelpers.MustGenerateKeyInfo(2, 42)
 var addresses = make([]address.Address, len(keys))
 
 var methodID = abi.MethodNum(21231)
@@ -45,10 +46,10 @@ func TestBLSSignatureValidationConfiguration(t *testing.T) {
 	from, err := address.NewBLSAddress(pubKey[:])
 	require.NoError(t, err)
 
-	msg := types.NewMeteredMessage(from, addresses[1], 0, types.ZeroFIL, methodID, []byte("params"), types.NewGasFeeCap(1), types.NewGasPremium(1), 300)
+	msg := testhelpers.NewMeteredMessage(from, addresses[1], 0, types.ZeroFIL, methodID, []byte("params"), types.NewGasFeeCap(1), types.NewGasPremium(1), 300)
 	mmsgCid := msg.Cid()
 
-	var signer = types.NewMockSigner(keys)
+	var signer = testhelpers.NewMockSigner(keys)
 	signer.AddrKeyInfo[msg.From] = keys[0]
 	sig, err := signer.SignBytes(ctx, mmsgCid.Bytes(), msg.From)
 	require.NoError(t, err)
@@ -71,7 +72,7 @@ func TestBLSSignatureValidationConfiguration(t *testing.T) {
 
 func TestMessageSyntaxValidator(t *testing.T) {
 	tf.UnitTest(t)
-	var signer = types.NewMockSigner(keys)
+	var signer = testhelpers.NewMockSigner(keys)
 	alice := addresses[0]
 	bob := addresses[1]
 
@@ -79,25 +80,25 @@ func TestMessageSyntaxValidator(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Actor not found is not an error", func(t *testing.T) {
-		msg, err := types.NewSignedMessage(ctx, *newMessage(t, bob, alice, 0, 0, 1, 5000), signer)
+		msg, err := testhelpers.NewSignedMessage(ctx, *newMessage(t, bob, alice, 0, 0, 1, 5000), signer)
 		require.NoError(t, err)
 		assert.NoError(t, validator.ValidateSignedMessageSyntax(ctx, msg))
 	})
 
 	t.Run("self send passes", func(t *testing.T) {
-		msg, err := types.NewSignedMessage(ctx, *newMessage(t, alice, alice, 100, 5, 1, 5000), signer)
+		msg, err := testhelpers.NewSignedMessage(ctx, *newMessage(t, alice, alice, 100, 5, 1, 5000), signer)
 		require.NoError(t, err)
 		assert.NoError(t, validator.ValidateSignedMessageSyntax(ctx, msg), "self")
 	})
 
 	t.Run("negative value fails", func(t *testing.T) {
-		msg, err := types.NewSignedMessage(ctx, *newMessage(t, alice, alice, 100, -5, 1, 5000), signer)
+		msg, err := testhelpers.NewSignedMessage(ctx, *newMessage(t, alice, alice, 100, -5, 1, 5000), signer)
 		require.NoError(t, err)
 		assert.Errorf(t, validator.ValidateSignedMessageSyntax(ctx, msg), "negative")
 	})
 
 	t.Run("block gas limit fails", func(t *testing.T) {
-		msg, err := types.NewSignedMessage(ctx, *newMessage(t, alice, bob, 100, 5, 1, constants.BlockGasLimit+1), signer)
+		msg, err := testhelpers.NewSignedMessage(ctx, *newMessage(t, alice, bob, 100, 5, 1, constants.BlockGasLimit+1), signer)
 		require.NoError(t, err)
 		assert.Errorf(t, validator.ValidateSignedMessageSyntax(ctx, msg), "block limit")
 	})
@@ -111,14 +112,14 @@ func newActor(t *testing.T, balanceAF int, nonce uint64) *types.Actor {
 }
 
 func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF int,
-	gasPrice int64, gasLimit int64) *types.UnsignedMessage {
-	val, ok := types.NewAttoFILFromString(fmt.Sprintf("%d", valueAF), 10)
-	require.True(t, ok, "invalid attofil")
-	return types.NewMeteredMessage(
+	gasPrice int64, gasLimit int64) *types.Message {
+	val, err := types.ParseFIL(fmt.Sprintf("%d", valueAF))
+	require.Nil(t, err, "invalid attofil")
+	return testhelpers.NewMeteredMessage(
 		from,
 		to,
 		nonce,
-		val,
+		abi.TokenAmount{Int: val.Int},
 		methodID,
 		[]byte("params"),
 		types.NewGasFeeCap(gasPrice),
@@ -145,12 +146,12 @@ func NewMockIngestionValidatorAPI() *FakeIngestionValidatorAPI {
 }
 
 func (api *FakeIngestionValidatorAPI) GetHead() *types.TipSet {
-	ts, _ := types.NewTipSet(api.Block)
+	ts, _ := types.NewTipSet([]*types.BlockHeader{api.Block})
 	return ts
 }
 
-func (api *FakeIngestionValidatorAPI) GetTipSet(key types.TipSetKey) (*types.TipSet, error) {
-	return types.NewTipSet(api.Block)
+func (api *FakeIngestionValidatorAPI) GetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
+	return types.NewTipSet([]*types.BlockHeader{api.Block})
 }
 
 func (api *FakeIngestionValidatorAPI) GetActorAt(ctx context.Context, key *types.TipSet, a address.Address) (*types.Actor, error) {

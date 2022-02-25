@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"testing"
 
-	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
+	"github.com/filecoin-project/venus/pkg/testhelpers"
+
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +28,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/metrics"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 var testCid cid.Cid
@@ -55,7 +56,7 @@ func newEndpoint(t *testing.T, port int) endpoint {
 		libp2p.Identity(priv),
 	}
 
-	basicHost, err := libp2p.New(context.Background(), opts...)
+	basicHost, err := libp2p.New(opts...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,16 +189,16 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 }
 
 func mustMakeTipset(t *testing.T, height abi.ChainEpoch) *types.TipSet {
-	ts, err := types.NewTipSet(&types.BlockHeader{
-		Miner:                 types.NewForTestGetter()(),
-		Ticket:                types.Ticket{VRFProof: []byte{0}},
-		Parents:               types.TipSetKey{},
+	ts, err := types.NewTipSet([]*types.BlockHeader{{
+		Miner:                 testhelpers.NewForTestGetter()(),
+		Ticket:                &types.Ticket{VRFProof: []byte{0}},
+		Parents:               types.TipSetKey{}.Cids(),
 		ParentWeight:          fbig.Zero(),
 		Height:                height,
-		ParentMessageReceipts: emptycid.EmptyMessagesCID,
-		Messages:              emptycid.EmptyTxMetaCID,
-		ParentStateRoot:       emptycid.EmptyTxMetaCID,
-	})
+		ParentMessageReceipts: testhelpers.EmptyMessagesCID,
+		Messages:              testhelpers.EmptyTxMetaCID,
+		ParentStateRoot:       testhelpers.EmptyTxMetaCID,
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}

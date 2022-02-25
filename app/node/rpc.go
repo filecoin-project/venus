@@ -1,17 +1,14 @@
 package node
 
 import (
-	"github.com/filecoin-project/venus/app/client/funcrule"
-	"github.com/ipfs-force-community/metrics/ratelimit"
 	"reflect"
 
-	"github.com/filecoin-project/venus/app/client/v0api"
-
 	"github.com/filecoin-project/go-jsonrpc"
-
+	"github.com/filecoin-project/venus/app/client/funcrule"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/ipfs-force-community/metrics/ratelimit"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/venus/app/client"
 )
 
 type RPCService interface {
@@ -116,13 +113,13 @@ func (builder *RPCBuilder) Build(version string, limiter *ratelimit.RateLimiter)
 			server.Register(nameSpace, &fullNodeV0)
 		}
 	case "v1":
-		var fullNode client.FullNodeStruct
+		var fullNode v1api.FullNodeStruct
 		for _, apiStruct := range builder.v1APIStruct {
 			funcrule.PermissionProxy(apiStruct, &fullNode)
 		}
 
 		if limiter != nil {
-			var rateLimitAPI client.FullNodeStruct
+			var rateLimitAPI v1api.FullNodeStruct
 			limiter.WraperLimiter(fullNode, &rateLimitAPI)
 			fullNode = rateLimitAPI
 		}

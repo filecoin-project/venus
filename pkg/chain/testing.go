@@ -31,9 +31,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
-	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/testhelpers"
 	"github.com/filecoin-project/venus/pkg/util"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // Builder builds fake chains and acts as a provider and fetcher for the chain thus generated.
@@ -89,7 +89,7 @@ func (f *Builder) FakeStateEvaluator() *FakeStateEvaluator {
 func (f *Builder) LoadTipSetMessage(ctx context.Context, ts *types.TipSet) ([]types.BlockMessagesInfo, error) {
 	// gather message
 	applied := make(map[address.Address]uint64)
-	selectMsg := func(m *types.UnsignedMessage) (bool, error) {
+	selectMsg := func(m *types.Message) (bool, error) {
 		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
 		if _, ok := applied[m.From]; !ok {
 			applied[m.From] = m.Nonce
@@ -219,12 +219,12 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 		tipStateCids: make(map[string]cid.Cid),
 	}
 	ctx := context.TODO()
-	_, err := b.mstore.StoreMessages(ctx, []*types.SignedMessage{}, []*types.UnsignedMessage{})
+	_, err := b.mstore.StoreMessages(ctx, []*types.SignedMessage{}, []*types.Message{})
 	require.NoError(t, err)
 	_, err = b.mstore.StoreReceipts(ctx, []types.MessageReceipt{})
 	require.NoError(t, err)
 	// append genesis
-	nullState := types.CidFromString(t, "null")
+	nullState := testhelpers.CidFromString(t, "null")
 	b.tipStateCids[types.NewTipSetKey().String()] = nullState
 
 	// create a fixed genesis
@@ -256,22 +256,22 @@ func NewBuilderWithDeps(t *testing.T, miner address.Address, sb StateBuilder, st
 }
 
 // AppendBlockOnBlocks creates and returns a new block child of `parents`, with no messages.
-func (f *Builder) AppendBlockOnBlocks(parents ...*types.BlockHeader) *types.BlockHeader {
+func (f *Builder) AppendBlockOnBlocks(ctx context.Context, parents ...*types.BlockHeader) *types.BlockHeader {
 	var tip *types.TipSet
 	if len(parents) > 0 {
-		tip = types.RequireNewTipSet(f.t, parents...)
+		tip = testhelpers.RequireNewTipSet(f.t, parents...)
 	}
-	return f.AppendBlockOn(tip)
+	return f.AppendBlockOn(ctx, tip)
 }
 
 // AppendBlockOn creates and returns a new block child of `parent`, with no messages.
-func (f *Builder) AppendBlockOn(parent *types.TipSet) *types.BlockHeader {
-	return f.Build(parent, 1, nil).At(0)
+func (f *Builder) AppendBlockOn(ctx context.Context, parent *types.TipSet) *types.BlockHeader {
+	return f.Build(ctx, parent, 1, nil).At(0)
 }
 
 // AppendOn creates and returns a new `width`-block tipset child of `parents`, with no messages.
-func (f *Builder) AppendOn(parent *types.TipSet, width int) *types.TipSet {
-	return f.Build(parent, width, nil)
+func (f *Builder) AppendOn(ctx context.Context, parent *types.TipSet, width int) *types.TipSet {
+	return f.Build(ctx, parent, width, nil)
 }
 
 func (f *Builder) FlushHead(ctx context.Context) error {
@@ -280,48 +280,48 @@ func (f *Builder) FlushHead(ctx context.Context) error {
 }
 
 // AppendManyBlocksOnBlocks appends `height` blocks to the chain.
-func (f *Builder) AppendManyBlocksOnBlocks(height int, parents ...*types.BlockHeader) *types.BlockHeader {
+func (f *Builder) AppendManyBlocksOnBlocks(ctx context.Context, height int, parents ...*types.BlockHeader) *types.BlockHeader {
 	var tip *types.TipSet
 	if len(parents) > 0 {
-		tip = types.RequireNewTipSet(f.t, parents...)
+		tip = testhelpers.RequireNewTipSet(f.t, parents...)
 	}
-	return f.BuildManyOn(height, tip, nil).At(0)
+	return f.BuildManyOn(ctx, height, tip, nil).At(0)
 }
 
 // AppendManyBlocksOn appends `height` blocks to the chain.
-func (f *Builder) AppendManyBlocksOn(height int, parent *types.TipSet) *types.BlockHeader {
-	return f.BuildManyOn(height, parent, nil).At(0)
+func (f *Builder) AppendManyBlocksOn(ctx context.Context, height int, parent *types.TipSet) *types.BlockHeader {
+	return f.BuildManyOn(ctx, height, parent, nil).At(0)
 }
 
 // AppendManyOn appends `height` tipsets to the chain.
-func (f *Builder) AppendManyOn(height int, parent *types.TipSet) *types.TipSet {
-	return f.BuildManyOn(height, parent, nil)
+func (f *Builder) AppendManyOn(ctx context.Context, height int, parent *types.TipSet) *types.TipSet {
+	return f.BuildManyOn(ctx, height, parent, nil)
 }
 
 // BuildOnBlock creates and returns a new block child of singleton tipset `parent`. See Build.
-func (f *Builder) BuildOnBlock(parent *types.BlockHeader, build func(b *BlockBuilder)) *types.BlockHeader {
+func (f *Builder) BuildOnBlock(ctx context.Context, parent *types.BlockHeader, build func(b *BlockBuilder)) *types.BlockHeader {
 	var tip *types.TipSet
 	if parent != nil {
-		tip = types.RequireNewTipSet(f.t, parent)
+		tip = testhelpers.RequireNewTipSet(f.t, parent)
 	}
-	return f.BuildOneOn(tip, build).At(0)
+	return f.BuildOneOn(ctx, tip, build).At(0)
 }
 
 // BuildOneOn creates and returns a new single-block tipset child of `parent`.
-func (f *Builder) BuildOneOn(parent *types.TipSet, build func(b *BlockBuilder)) *types.TipSet {
-	return f.Build(parent, 1, singleBuilder(build))
+func (f *Builder) BuildOneOn(ctx context.Context, parent *types.TipSet, build func(b *BlockBuilder)) *types.TipSet {
+	return f.Build(ctx, parent, 1, singleBuilder(build))
 }
 
 // BuildOn creates and returns a new `width` block tipset child of `parent`.
-func (f *Builder) BuildOn(parent *types.TipSet, width int, build func(b *BlockBuilder, i int)) *types.TipSet {
-	return f.Build(parent, width, build)
+func (f *Builder) BuildOn(ctx context.Context, parent *types.TipSet, width int, build func(b *BlockBuilder, i int)) *types.TipSet {
+	return f.Build(ctx, parent, width, build)
 }
 
 // BuildManyOn builds a chain by invoking Build `height` times.
-func (f *Builder) BuildManyOn(height int, parent *types.TipSet, build func(b *BlockBuilder)) *types.TipSet {
+func (f *Builder) BuildManyOn(ctx context.Context, height int, parent *types.TipSet, build func(b *BlockBuilder)) *types.TipSet {
 	require.True(f.t, height > 0, "")
 	for i := 0; i < height; i++ {
-		parent = f.Build(parent, 1, singleBuilder(build))
+		parent = f.Build(ctx, parent, 1, singleBuilder(build))
 	}
 	return parent
 }
@@ -331,7 +331,7 @@ func (f *Builder) BuildManyOn(height int, parent *types.TipSet, build func(b *Bl
 // Note: the blocks will all have the same miner, which is unrealistic and forbidden by consensus;
 // generalise this to random miner addresses when that is rejected by the syncer.
 // The `build` function is invoked to modify the block before it is stored.
-func (f *Builder) Build(parent *types.TipSet, width int, build func(b *BlockBuilder, i int)) *types.TipSet {
+func (f *Builder) Build(ctx context.Context, parent *types.TipSet, width int, build func(b *BlockBuilder, i int)) *types.TipSet {
 	tip := f.BuildOrphaTipset(parent, width, build)
 
 	for _, block := range tip.Blocks() {
@@ -341,7 +341,7 @@ func (f *Builder) Build(parent *types.TipSet, width int, build func(b *BlockBuil
 	}
 
 	// Compute and remember state for the tipset.
-	stateRoot, _ := f.ComputeState(tip)
+	stateRoot, _ := f.ComputeState(ctx, tip)
 	f.tipStateCids[tip.Key().String()] = stateRoot
 	return tip
 }
@@ -374,14 +374,14 @@ func (f *Builder) BuildOrphaTipset(parent *types.TipSet, width int, build func(b
 		f.seq++
 
 		b := &types.BlockHeader{
-			Ticket:                ticket,
+			Ticket:                &ticket,
 			Miner:                 f.minerAddress,
 			BeaconEntries:         nil,
 			ParentWeight:          parentWeight,
-			Parents:               parent.Key(),
+			Parents:               parent.Key().Cids(),
 			Height:                height,
-			Messages:              emptycid.EmptyTxMetaCID,
-			ParentMessageReceipts: emptycid.EmptyReceiptsCID,
+			Messages:              testhelpers.EmptyTxMetaCID,
+			ParentMessageReceipts: testhelpers.EmptyReceiptsCID,
 			BLSAggregate:          &emptyBLSSig,
 			// Omitted fields below
 			// ParentStateRoot:       stateRoot,
@@ -398,7 +398,7 @@ func (f *Builder) BuildOrphaTipset(parent *types.TipSet, width int, build func(b
 
 		// Compute state root for this block.
 		ctx := context.Background()
-		prevState := f.StateForKey(parent.Key())
+		prevState := f.StateForKey(ctx, parent.Key())
 		smsgs, umsgs, err := f.mstore.LoadMetaMessages(ctx, b.Messages)
 		require.NoError(f.t, err)
 
@@ -422,33 +422,33 @@ func (f *Builder) BuildOrphaTipset(parent *types.TipSet, width int, build func(b
 
 		blocks = append(blocks, b)
 	}
-	return types.RequireNewTipSet(f.t, blocks...)
+	return testhelpers.RequireNewTipSet(f.t, blocks...)
 }
 
 // StateForKey loads (or computes) the state root for a tipset key.
-func (f *Builder) StateForKey(key types.TipSetKey) cid.Cid {
+func (f *Builder) StateForKey(ctx context.Context, key types.TipSetKey) cid.Cid {
 	state, found := f.tipStateCids[key.String()]
 	if found {
 		return state
 	}
 	// No state yet computed for this tip (perhaps because the blocks in it have not previously
 	// been considered together as a tipset).
-	tip, err := f.GetTipSet(key)
+	tip, err := f.GetTipSet(ctx, key)
 	require.NoError(f.t, err)
-	state, _ = f.ComputeState(tip)
+	state, _ = f.ComputeState(ctx, tip)
 	return state
 }
 
 // GetBlockstoreValue gets data straight out of the underlying blockstore by cid
 func (f *Builder) GetBlockstoreValue(ctx context.Context, c cid.Cid) (blocks.Block, error) {
-	return f.bs.Get(c)
+	return f.bs.Get(ctx, c)
 }
 
 // ComputeState computes the state for a tipset from its parent state.
-func (f *Builder) ComputeState(tip *types.TipSet) (cid.Cid, []types.MessageReceipt) {
+func (f *Builder) ComputeState(ctx context.Context, tip *types.TipSet) (cid.Cid, []types.MessageReceipt) {
 	parentKey := tip.Parents()
 	// Load the state of the parent tipset and compute the required state (recursively).
-	prev := f.StateForKey(parentKey)
+	prev := f.StateForKey(ctx, parentKey)
 	blockMsgInfo := f.tipMessages(tip)
 	state, receipt, err := f.stateBuilder.ComputeState(prev, blockMsgInfo)
 	require.NoError(f.t, err)
@@ -501,7 +501,7 @@ type BlockBuilder struct {
 
 // SetTicket sets the block's ticket.
 func (bb *BlockBuilder) SetTicket(raw []byte) {
-	bb.block.Ticket = types.Ticket{VRFProof: types.VRFPi(raw)}
+	bb.block.Ticket = &types.Ticket{VRFProof: raw}
 }
 
 // SetTimestamp sets the block's timestamp.
@@ -521,7 +521,7 @@ func (bb *BlockBuilder) SetBlockSig(signature crypto.Signature) {
 }
 
 // AddMessages adds a message & receipt collection to the block.
-func (bb *BlockBuilder) AddMessages(secpmsgs []*types.SignedMessage, blsMsgs []*types.UnsignedMessage) {
+func (bb *BlockBuilder) AddMessages(secpmsgs []*types.SignedMessage, blsMsgs []*types.Message) {
 	ctx := context.Background()
 
 	meta, err := bb.messages.StoreMessages(ctx, secpmsgs, blsMsgs)
@@ -562,9 +562,9 @@ func (FakeStateBuilder) ComputeState(prev cid.Cid, blockmsg []types.BlockMessage
 			mCId := msg.Cid()
 			inputs = append(inputs, mCId)
 			receipts = append(receipts, types.MessageReceipt{
-				ExitCode:    0,
-				ReturnValue: mCId.Bytes(),
-				GasUsed:     3,
+				ExitCode: 0,
+				Return:   mCId.Bytes(),
+				GasUsed:  3,
 			})
 		}
 	}
@@ -652,7 +652,7 @@ func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *types.T
 			return cid.Undef, cid.Undef, ctx.Err()
 		}
 	}
-	if m, _ := e.ChainStore.LoadTipsetMetadata(ts); m != nil {
+	if m, _ := e.ChainStore.LoadTipsetMetadata(ctx, ts); m != nil {
 		e.stLk.Unlock()
 		return m.TipSetStateRoot, m.TipSetReceipts, nil
 	}
@@ -695,7 +695,7 @@ func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *types.T
 }
 
 func (e *FakeStateEvaluator) ValidateFullBlock(ctx context.Context, blk *types.BlockHeader) error {
-	parent, err := e.ChainStore.GetTipSet(blk.Parents)
+	parent, err := e.ChainStore.GetTipSet(ctx, types.NewTipSetKey(blk.Parents...))
 	if err != nil {
 		return err
 	}
@@ -762,8 +762,7 @@ func (f *Builder) GetBlocksByIds(ctx context.Context, cids []cid.Cid) ([]*types.
 }
 
 // GetTipSet returns the tipset identified by `key`.
-func (f *Builder) GetTipSet(key types.TipSetKey) (*types.TipSet, error) {
-	ctx := context.Background()
+func (f *Builder) GetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
 	var blocks []*types.BlockHeader
 	for _, bid := range key.Cids() {
 		var blk types.BlockHeader
@@ -772,14 +771,14 @@ func (f *Builder) GetTipSet(key types.TipSetKey) (*types.TipSet, error) {
 		}
 		blocks = append(blocks, &blk)
 	}
-	return types.NewTipSet(blocks...)
+	return types.NewTipSet(blocks)
 }
 
 // FetchTipSets fetchs the tipset at `tsKey` from the fetchers blockStore backed by the Builder.
 func (f *Builder) FetchTipSets(ctx context.Context, key types.TipSetKey, from peer.ID, done func(t *types.TipSet) (bool, error)) ([]*types.TipSet, error) {
 	var tips []*types.TipSet
 	for {
-		tip, err := f.GetTipSet(key)
+		tip, err := f.GetTipSet(ctx, key)
 		if err != nil {
 			return nil, err
 		}
@@ -819,7 +818,7 @@ func (f *Builder) GetTipSetByHeight(ctx context.Context, ts *types.TipSet, h abi
 	}
 
 	for {
-		ts = f.RequireTipSet(ts.Parents())
+		ts = f.RequireTipSet(ctx, ts.Parents())
 		height := ts.Height()
 		if height >= 0 && height == h {
 			return ts, nil
@@ -830,17 +829,17 @@ func (f *Builder) GetTipSetByHeight(ctx context.Context, ts *types.TipSet, h abi
 }
 
 // RequireTipSet returns a tipset by key, which must exist.
-func (f *Builder) RequireTipSet(key types.TipSetKey) *types.TipSet {
-	tip, err := f.GetTipSet(key)
+func (f *Builder) RequireTipSet(ctx context.Context, key types.TipSetKey) *types.TipSet {
+	tip, err := f.GetTipSet(ctx, key)
 	require.NoError(f.t, err)
 	return tip
 }
 
 // RequireTipSets returns a chain of tipsets from key, which must exist and be long enough.
-func (f *Builder) RequireTipSets(head types.TipSetKey, count int) []*types.TipSet {
+func (f *Builder) RequireTipSets(ctx context.Context, head types.TipSetKey, count int) []*types.TipSet {
 	var tips []*types.TipSet
 	for i := 0; i < count; i++ {
-		tip := f.RequireTipSet(head)
+		tip := f.RequireTipSet(ctx, head)
 		tips = append(tips, tip)
 		head = tip.Parents()
 	}
@@ -853,7 +852,7 @@ func (f *Builder) LoadReceipts(ctx context.Context, c cid.Cid) ([]types.MessageR
 }
 
 // LoadTxMeta returns the tx meta wrapper tracked by the builder.
-func (f *Builder) LoadTxMeta(ctx context.Context, metaCid cid.Cid) (types.TxMeta, error) {
+func (f *Builder) LoadTxMeta(ctx context.Context, metaCid cid.Cid) (types.MessageRoot, error) {
 	return f.mstore.LoadTxMeta(ctx, metaCid)
 }
 
@@ -863,20 +862,20 @@ func (f *Builder) StoreReceipts(ctx context.Context, receipts []types.MessageRec
 }
 
 // StoreTxMeta stores a tx meta
-func (f *Builder) StoreTxMeta(ctx context.Context, meta types.TxMeta) (cid.Cid, error) {
+func (f *Builder) StoreTxMeta(ctx context.Context, meta types.MessageRoot) (cid.Cid, error) {
 	return f.mstore.StoreTxMeta(ctx, meta)
 }
 
-func (f *Builder) LoadUnsignedMessagesFromCids(blsCids []cid.Cid) ([]*types.UnsignedMessage, error) {
-	return f.mstore.LoadUnsignedMessagesFromCids(blsCids)
+func (f *Builder) LoadUnsignedMessagesFromCids(ctx context.Context, blsCids []cid.Cid) ([]*types.Message, error) {
+	return f.mstore.LoadUnsignedMessagesFromCids(ctx, blsCids)
 }
 
-func (f *Builder) LoadSignedMessagesFromCids(secpCids []cid.Cid) ([]*types.SignedMessage, error) {
-	return f.mstore.LoadSignedMessagesFromCids(secpCids)
+func (f *Builder) LoadSignedMessagesFromCids(ctx context.Context, secpCids []cid.Cid) ([]*types.SignedMessage, error) {
+	return f.mstore.LoadSignedMessagesFromCids(ctx, secpCids)
 }
 
 // LoadMessages returns the message collections tracked by the builder.
-func (f *Builder) LoadMetaMessages(ctx context.Context, metaCid cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
+func (f *Builder) LoadMetaMessages(ctx context.Context, metaCid cid.Cid) ([]*types.SignedMessage, []*types.Message, error) {
 	return f.mstore.LoadMetaMessages(ctx, metaCid)
 }
 
@@ -886,7 +885,7 @@ func (f *Builder) ReadMsgMetaCids(ctx context.Context, metaCid cid.Cid) ([]cid.C
 
 // /// exchange  /////
 func (f *Builder) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) ([]*types.TipSet, error) {
-	ts, err := f.GetTipSet(tsk)
+	ts, err := f.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, err
 	}
@@ -895,7 +894,7 @@ func (f *Builder) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int)
 		if ts.Height() == 0 {
 			break
 		}
-		ts, err = f.GetTipSet(ts.Parents())
+		ts, err = f.GetTipSet(ctx, ts.Parents())
 		if err != nil {
 			return nil, err
 		}
@@ -907,7 +906,7 @@ func (f *Builder) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int)
 func (f *Builder) GetChainMessages(ctx context.Context, tipsets []*types.TipSet) ([]*exchange.CompactedMessages, error) {
 	result := []*exchange.CompactedMessages{}
 	for _, ts := range tipsets {
-		bmsgs, bmincl, smsgs, smincl, err := exchange.GatherMessages(f, f.mstore, ts)
+		bmsgs, bmincl, smsgs, smincl, err := exchange.GatherMessages(ctx, f, f.mstore, ts)
 		if err != nil {
 			return nil, err
 		}
@@ -932,17 +931,17 @@ func (f *Builder) GeneratorGenesis() *types.TipSet {
 	require.NoError(f.t, err)
 	source := ioutil.NopCloser(bytes.NewReader(b))
 
-	ch, err := car.LoadCar(f.bs, source)
+	ch, err := car.LoadCar(context.Background(), f.bs, source)
 	require.NoError(f.t, err)
 
 	// need to check if we are being handed a car file with a single genesis block or an entire chain.
-	bsBlk, err := f.bs.Get(ch.Roots[0])
+	bsBlk, err := f.bs.Get(context.Background(), ch.Roots[0])
 	require.NoError(f.t, err)
 
 	cur, err := types.DecodeBlock(bsBlk.RawData())
 	require.NoError(f.t, err)
 
-	ts, err := types.NewTipSet(cur)
+	ts, err := types.NewTipSet([]*types.BlockHeader{cur})
 	require.NoError(f.t, err)
 
 	return ts

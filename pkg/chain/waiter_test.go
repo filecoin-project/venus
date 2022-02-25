@@ -3,22 +3,26 @@ package chain
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/venus/venus-shared/types"
+
+	"github.com/filecoin-project/venus/pkg/testhelpers"
+
+	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/filecoin-project/go-address"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 )
 
-var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
+var mockSigner, _ = testhelpers.NewMockSignersAndKeyInfo(10)
 
-var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
+var newSignedMessage = testhelpers.NewSignedMessageForTestGetter(mockSigner)
 
 func setupTest(t *testing.T) (cbor.IpldStore, *Store, *MessageStore, *Waiter) {
 	builder := NewBuilder(t, address.Undef)
@@ -35,7 +39,7 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 	_, _, _, waiter := setupTest(t)
 
 	var err error
-	var chainMessage *ChainMessage
+	var chainMessage *types.ChainMessage
 	doneCh := make(chan struct{})
 	go func() {
 		defer close(doneCh)

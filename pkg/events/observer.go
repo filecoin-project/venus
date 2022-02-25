@@ -5,13 +5,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 var ObserveDuration = time.Second * 45
@@ -103,7 +103,7 @@ func (o *observer) listenHeadChangesOnce(ctx context.Context) error {
 	return nil
 }
 
-func (o *observer) applyChanges(ctx context.Context, changes []*chain.HeadChange) error {
+func (o *observer) applyChanges(ctx context.Context, changes []*types.HeadChange) error {
 	// Used to wait for a prior notification round to finish (by tests)
 	if len(changes) == 0 {
 		return nil
@@ -112,9 +112,9 @@ func (o *observer) applyChanges(ctx context.Context, changes []*chain.HeadChange
 	var rev, app []*types.TipSet
 	for _, changes := range changes {
 		switch changes.Type {
-		case chain.HCRevert:
+		case types.HCRevert:
 			rev = append(rev, changes.Val)
-		case chain.HCApply:
+		case types.HCApply:
 			app = append(app, changes.Val)
 		default:
 			log.Errorf("unexpected head change notification type: '%s'", changes.Type)

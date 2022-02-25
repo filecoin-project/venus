@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/venus/pkg/testhelpers"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
@@ -16,7 +18,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 func TestDAGGet(t *testing.T) {
@@ -47,7 +48,7 @@ func TestDAGGet(t *testing.T) {
 		dserv := merkledag.NewDAGService(blkserv)
 		dag := NewDAG(dserv)
 
-		someCid := types.CidFromString(t, "somecid")
+		someCid := testhelpers.CidFromString(t, "somecid")
 
 		_, err := dag.GetNode(ctx, someCid.String())
 		assert.EqualError(t, err, "merkledag: not found")
@@ -66,7 +67,7 @@ func TestDAGGet(t *testing.T) {
 		ipldnode := chain.NewBuilder(t, address.Undef).Genesis().At(0).ToNode()
 
 		// put into out dagservice
-		assert.NoError(t, blkserv.AddBlock(ipldnode))
+		assert.NoError(t, blkserv.AddBlock(ctx, ipldnode))
 
 		res, err := dag.GetNode(ctx, ipldnode.Cid().String())
 		assert.NoError(t, err)

@@ -2,9 +2,9 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	lru "github.com/hashicorp/golang-lru"
 	xerrors "github.com/pkg/errors"
 )
@@ -41,12 +41,12 @@ type lbEntry struct {
 // the tipset within the skiplength is directly obtained by reading the database.
 // if the height difference exceeds the skiplength, the tipset is read from caching.
 // if the caching fails, the tipset is obtained by reading the database and updating the cache
-func (ci *ChainIndex) GetTipSetByHeight(_ context.Context, from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
+func (ci *ChainIndex) GetTipSetByHeight(ctx context.Context, from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
 	if from.Height()-to <= ci.skipLength {
-		return ci.walkBack(from, to)
+		return ci.walkBack(ctx, from, to)
 	}
 
-	rounded, err := ci.roundDown(from)
+	rounded, err := ci.roundDown(ctx, from)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (ci *ChainIndex) GetTipSetByHeight(_ context.Context, from *types.TipSet, t
 	for {
 		cval, ok := ci.skipCache.Get(cur)
 		if !ok {
-			fc, err := ci.fillCache(cur)
+			fc, err := ci.fillCache(ctx, cur)
 			if err != nil {
 				return nil, err
 			}
@@ -67,7 +67,7 @@ func (ci *ChainIndex) GetTipSetByHeight(_ context.Context, from *types.TipSet, t
 		if lbe.ts.Height() == to || lbe.parentHeight < to {
 			return lbe.ts, nil
 		} else if to > lbe.targetHeight {
-			return ci.walkBack(lbe.ts, to)
+			return ci.walkBack(ctx, lbe.ts, to)
 		}
 
 		cur = lbe.target
@@ -75,12 +75,12 @@ func (ci *ChainIndex) GetTipSetByHeight(_ context.Context, from *types.TipSet, t
 }
 
 //GetTipsetByHeightWithoutCache get the tipset of specific height by reading the database directly
-func (ci *ChainIndex) GetTipsetByHeightWithoutCache(from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
-	return ci.walkBack(from, to)
+func (ci *ChainIndex) GetTipsetByHeightWithoutCache(ctx context.Context, from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
+	return ci.walkBack(ctx, from, to)
 }
 
-func (ci *ChainIndex) fillCache(tsk types.TipSetKey) (*lbEntry, error) {
-	ts, err := ci.loadTipSet(tsk)
+func (ci *ChainIndex) fillCache(ctx context.Context, tsk types.TipSetKey) (*lbEntry, error) {
+	ts, err := ci.loadTipSet(ctx, tsk)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (ci *ChainIndex) fillCache(tsk types.TipSetKey) (*lbEntry, error) {
 	// will either be equal to ts.Height, or at least > ts.Parent.Height()
 	rheight := ci.roundHeight(ts.Height())
 
-	parent, err := ci.loadTipSet(ts.Parents())
+	parent, err := ci.loadTipSet(ctx, ts.Parents())
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (ci *ChainIndex) fillCache(tsk types.TipSetKey) (*lbEntry, error) {
 	if parent.Height() < rheight {
 		skipTarget = parent
 	} else {
-		skipTarget, err = ci.walkBack(parent, rheight)
+		skipTarget, err = ci.walkBack(ctx, parent, rheight)
 		if err != nil {
 			return nil, xerrors.Errorf("fillCache walkback: %s", err)
 		}
@@ -131,10 +131,10 @@ func (ci *ChainIndex) roundHeight(h abi.ChainEpoch) abi.ChainEpoch {
 	return (h / ci.skipLength) * ci.skipLength
 }
 
-func (ci *ChainIndex) roundDown(ts *types.TipSet) (*types.TipSet, error) {
+func (ci *ChainIndex) roundDown(ctx context.Context, ts *types.TipSet) (*types.TipSet, error) {
 	target := ci.roundHeight(ts.Height())
 
-	rounded, err := ci.walkBack(ts, target)
+	rounded, err := ci.walkBack(ctx, ts, target)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func (ci *ChainIndex) roundDown(ts *types.TipSet) (*types.TipSet, error) {
 	return rounded, nil
 }
 
-func (ci *ChainIndex) walkBack(from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
+func (ci *ChainIndex) walkBack(ctx context.Context, from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
 	if to > from.Height() {
 		return nil, xerrors.Errorf("looking for tipset with height greater than start point")
 	}
@@ -154,7 +154,7 @@ func (ci *ChainIndex) walkBack(from *types.TipSet, to abi.ChainEpoch) (*types.Ti
 	ts := from
 
 	for {
-		pts, err := ci.loadTipSet(ts.Parents())
+		pts, err := ci.loadTipSet(ctx, ts.Parents())
 		if err != nil {
 			return nil, err
 		}

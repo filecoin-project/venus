@@ -2,16 +2,17 @@ package fast
 
 import (
 	"context"
+	"strings"
+
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/cmd"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"strings"
 
 	"github.com/filecoin-project/go-address"
 	files "github.com/ipfs/go-ipfs-files"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // AddressNew runs the address new command against the filecoin process.

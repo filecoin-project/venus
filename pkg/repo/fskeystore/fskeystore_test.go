@@ -12,7 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	ci "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/crypto"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
@@ -258,15 +258,17 @@ func (rr rr) Read(b []byte) (int, error) {
 }
 
 func privKeyOrFatal(t *testing.T) []byte {
-	priv, _, err := ci.GenerateEd25519Key(rr{})
+	priv, _, err := crypto.GenerateEd25519Key(rr{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := priv.Bytes()
+
+	kbytes, err := crypto.MarshalPrivateKey(priv)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return data
+
+	return kbytes
 }
 
 func assertGetKey(ks Keystore, name string, exp []byte) error {

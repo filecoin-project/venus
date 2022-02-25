@@ -2,8 +2,9 @@ package fork
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
@@ -23,7 +24,7 @@ func (mockFork *MockFork) HandleStateForks(ctx context.Context, root cid.Cid, he
 	return root, nil
 }
 
-func (mockFork *MockFork) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
+func (mockFork *MockFork) GetNetworkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
 	return network.Version0
 }
 

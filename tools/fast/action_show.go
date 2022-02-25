@@ -3,9 +3,8 @@ package fast
 import (
 	"context"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 // ShowHeader runs the `show header` command against the filecoin process

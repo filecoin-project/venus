@@ -3,55 +3,23 @@ package paychmgr
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/venus/pkg/statemanger"
-	"github.com/filecoin-project/venus/pkg/types"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus/pkg/statemanger"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 )
 
 var log = logging.Logger("paych")
 
 var errProofNotSupported = errors.New("payment channel proof parameter is not supported")
-
-type ChannelAvailableFunds struct {
-	// Channel is the address of the channel
-	Channel *address.Address
-	// From is the from address of the channel (channel creator)
-	From address.Address
-	// To is the to address of the channel
-	To address.Address
-	// ConfirmedAmt is the amount of funds that have been confirmed on-chain
-	// for the channel
-	ConfirmedAmt big.Int
-	// PendingAmt is the amount of funds that are pending confirmation on-chain
-	PendingAmt big.Int
-	// PendingWaitSentinel can be used with PaychGetWaitReady to wait for
-	// confirmation of pending funds
-	PendingWaitSentinel *cid.Cid
-	// QueuedAmt is the amount that is queued up behind a pending request
-	QueuedAmt big.Int
-	// VoucherRedeemedAmt is the amount that is redeemed by vouchers on-chain
-	// and in the local datastore
-	VoucherReedeemedAmt big.Int
-}
-
-// VoucherCreateResult is the response to calling PaychVoucherCreate
-type VoucherCreateResult struct {
-	// Voucher that was created, or nil if there was an error or if there
-	// were insufficient funds in the channel
-	Voucher *paych.SignedVoucher
-	// Shortfall is the additional amount that would be needed in the channel
-	// in order to be able to create the voucher
-	Shortfall big.Int
-}
 
 // managerAPI defines all methods needed by the manager
 type managerAPI interface {
@@ -98,23 +66,23 @@ func NewManager(ctx context.Context, ds datastore.Batching, params *ManagerParam
 		channels: make(map[string]*channelAccessor),
 		pchapi:   impl,
 	}
-	return pm, pm.Start()
+	return pm, pm.Start(ctx)
 }
 
 // newManager is used by the tests to supply mocks
-func newManager(pchStore *Store, pchapi managerAPI) (*Manager, error) {
+func newManager(ctx context.Context, pchStore *Store, pchapi managerAPI) (*Manager, error) {
 	pm := &Manager{
 		store:    pchStore,
 		sa:       &stateAccessor{sm: pchapi},
 		channels: make(map[string]*channelAccessor),
 		pchapi:   pchapi,
 	}
-	return pm, pm.Start()
+	return pm, pm.Start(ctx)
 }
 
 // Start restarts tracking of any messages that were sent to chain.
-func (pm *Manager) Start() error {
-	return pm.restartPending()
+func (pm *Manager) Start(ctx context.Context) error {
+	return pm.restartPending(ctx)
 }
 
 // Stop shuts down any processes used by the manager
@@ -131,33 +99,33 @@ func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt b
 	return chanAccessor.getPaych(ctx, amt)
 }
 
-func (pm *Manager) AvailableFunds(ch address.Address) (*ChannelAvailableFunds, error) {
-	ca, err := pm.accessorByAddress(ch)
+func (pm *Manager) AvailableFunds(ctx context.Context, ch address.Address) (*types.ChannelAvailableFunds, error) {
+	ca, err := pm.accessorByAddress(ctx, ch)
 	if err != nil {
 		return nil, err
 	}
 
-	ci, err := ca.getChannelInfo(ch)
+	ci, err := ca.getChannelInfo(ctx, ch)
 	if err != nil {
 		return nil, err
 	}
 
-	return ca.availableFunds(ci.ChannelID)
+	return ca.availableFunds(ctx, ci.ChannelID)
 }
 
-func (pm *Manager) AvailableFundsByFromTo(from address.Address, to address.Address) (*ChannelAvailableFunds, error) {
+func (pm *Manager) AvailableFundsByFromTo(ctx context.Context, from address.Address, to address.Address) (*types.ChannelAvailableFunds, error) {
 	ca, err := pm.accessorByFromTo(from, to)
 	if err != nil {
 		return nil, err
 	}
 
-	ci, err := ca.outboundActiveByFromTo(from, to)
+	ci, err := ca.outboundActiveByFromTo(ctx, from, to)
 	if err == ErrChannelNotTracked {
 		// If there is no active channel between from / to we still want to
 		// return an empty ChannelAvailableFunds, so that clients can check
 		// for the existence of a channel between from / to without getting
 		// an error.
-		return &ChannelAvailableFunds{
+		return &types.ChannelAvailableFunds{
 			Channel:             nil,
 			From:                from,
 			To:                  to,
@@ -172,7 +140,7 @@ func (pm *Manager) AvailableFundsByFromTo(from address.Address, to address.Addre
 		return nil, err
 	}
 
-	return ca.availableFunds(ci.ChannelID)
+	return ca.availableFunds(ctx, ci.ChannelID)
 }
 
 // GetPaychWaitReady waits until the create channel / add funds message with the
@@ -181,7 +149,7 @@ func (pm *Manager) AvailableFundsByFromTo(from address.Address, to address.Addre
 func (pm *Manager) GetPaychWaitReady(ctx context.Context, mcid cid.Cid) (address.Address, error) {
 	// Find the channel associated with the message CID
 	pm.lk.Lock()
-	ci, err := pm.store.ByMessageCid(mcid)
+	ci, err := pm.store.ByMessageCid(ctx, mcid)
 	pm.lk.Unlock()
 
 	if err != nil {
@@ -199,25 +167,25 @@ func (pm *Manager) GetPaychWaitReady(ctx context.Context, mcid cid.Cid) (address
 	return chanAccessor.getPaychWaitReady(ctx, mcid)
 }
 
-func (pm *Manager) ListChannels() ([]address.Address, error) {
+func (pm *Manager) ListChannels(ctx context.Context) ([]address.Address, error) {
 	// Need to take an exclusive lock here so that channel operations can't run
 	// in parallel (see channelLock)
 	pm.lk.Lock()
 	defer pm.lk.Unlock()
 
-	return pm.store.ListChannels()
+	return pm.store.ListChannels(ctx)
 }
 
-func (pm *Manager) GetChannelInfo(addr address.Address) (*ChannelInfo, error) {
-	ca, err := pm.accessorByAddress(addr)
+func (pm *Manager) GetChannelInfo(ctx context.Context, addr address.Address) (*ChannelInfo, error) {
+	ca, err := pm.accessorByAddress(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
-	return ca.getChannelInfo(addr)
+	return ca.getChannelInfo(ctx, addr)
 }
 
-func (pm *Manager) CreateVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*VoucherCreateResult, error) {
-	ca, err := pm.accessorByAddress(ch)
+func (pm *Manager) CreateVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*types.VoucherCreateResult, error) {
+	ca, err := pm.accessorByAddress(ctx, ch)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +211,7 @@ func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address
 	if len(proof) > 0 {
 		return false, errProofNotSupported
 	}
-	ca, err := pm.accessorByAddress(ch)
+	ca, err := pm.accessorByAddress(ctx, ch)
 	if err != nil {
 		return false, err
 	}
@@ -257,7 +225,7 @@ func (pm *Manager) AddVoucherOutbound(ctx context.Context, ch address.Address, s
 	if len(proof) > 0 {
 		return big.NewInt(0), errProofNotSupported
 	}
-	ca, err := pm.accessorByAddress(ch)
+	ca, err := pm.accessorByAddress(ctx, ch)
 	if err != nil {
 		return big.NewInt(0), err
 	}
@@ -303,7 +271,7 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 	defer pm.lk.Unlock()
 
 	// Check if channel is in store
-	ci, err := pm.store.ByAddress(ch)
+	ci, err := pm.store.ByAddress(ctx, ch)
 	if err == nil {
 		// Channel is in store, so it's already being tracked
 		return ci, nil
@@ -336,7 +304,7 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 	}
 
 	// Save channel to store
-	return pm.store.TrackChannel(stateCi)
+	return pm.store.TrackChannel(ctx, stateCi)
 }
 
 // TODO: secret vs proof doesn't make sense, there is only one, not two
@@ -344,23 +312,23 @@ func (pm *Manager) SubmitVoucher(ctx context.Context, ch address.Address, sv *pa
 	if len(proof) > 0 {
 		return cid.Undef, errProofNotSupported
 	}
-	ca, err := pm.accessorByAddress(ch)
+	ca, err := pm.accessorByAddress(ctx, ch)
 	if err != nil {
 		return cid.Undef, err
 	}
 	return ca.submitVoucher(ctx, ch, sv, secret)
 }
 
-func (pm *Manager) AllocateLane(ch address.Address) (uint64, error) {
-	ca, err := pm.accessorByAddress(ch)
+func (pm *Manager) AllocateLane(ctx context.Context, ch address.Address) (uint64, error) {
+	ca, err := pm.accessorByAddress(ctx, ch)
 	if err != nil {
 		return 0, err
 	}
-	return ca.allocateLane(ch)
+	return ca.allocateLane(ctx, ch)
 }
 
 func (pm *Manager) ListVouchers(ctx context.Context, ch address.Address) ([]*VoucherInfo, error) {
-	ca, err := pm.accessorByAddress(ch)
+	ca, err := pm.accessorByAddress(ctx, ch)
 	if err != nil {
 		return nil, err
 	}
@@ -368,7 +336,7 @@ func (pm *Manager) ListVouchers(ctx context.Context, ch address.Address) ([]*Vou
 }
 
 func (pm *Manager) Settle(ctx context.Context, addr address.Address) (cid.Cid, error) {
-	ca, err := pm.accessorByAddress(addr)
+	ca, err := pm.accessorByAddress(ctx, addr)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -376,7 +344,7 @@ func (pm *Manager) Settle(ctx context.Context, addr address.Address) (cid.Cid, e
 }
 
 func (pm *Manager) Collect(ctx context.Context, addr address.Address) (cid.Cid, error) {
-	ca, err := pm.accessorByAddress(addr)
+	ca, err := pm.accessorByAddress(ctx, addr)
 	if err != nil {
 		return cid.Undef, err
 	}

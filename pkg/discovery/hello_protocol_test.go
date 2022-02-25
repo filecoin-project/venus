@@ -2,12 +2,9 @@ package discovery_test
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/types"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/net"
-	"github.com/filecoin-project/venus/pkg/repo"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -21,8 +18,11 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/discovery"
+	"github.com/filecoin-project/venus/pkg/net"
+	"github.com/filecoin-project/venus/pkg/repo"
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type mockHelloCallback struct {
@@ -58,8 +58,8 @@ func TestHelloHandshake(t *testing.T) {
 	genesisA := builder.Genesis()
 	store := builder.Store()
 	mstore := builder.Mstore()
-	heavy1 := builder.AppendOn(genesisA, 1)
-	heavy2 := builder.AppendOn(heavy1, 1)
+	heavy1 := builder.AppendOn(ctx, genesisA, 1)
+	heavy2 := builder.AppendOn(ctx, heavy1, 1)
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -117,11 +117,11 @@ func TestHelloBadGenesis(t *testing.T) {
 	store := builder.Store()
 	mstore := builder.Mstore()
 
-	genesisA := builder.AppendOn(types.UndefTipSet, 1)
-	genesisB := builder.AppendOn(types.UndefTipSet, 1)
+	genesisA := builder.AppendOn(ctx, types.UndefTipSet, 1)
+	genesisB := builder.AppendOn(ctx, types.UndefTipSet, 1)
 
-	heavy1 := builder.AppendOn(genesisA, 1)
-	heavy2 := builder.AppendOn(heavy1, 1)
+	heavy1 := builder.AppendOn(ctx, genesisA, 1)
+	heavy2 := builder.AppendOn(ctx, heavy1, 1)
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -164,9 +164,9 @@ func TestHelloMultiBlock(t *testing.T) {
 	genesisTipset := builder.Genesis()
 	assert.Equal(t, 1, genesisTipset.Len())
 
-	heavy1 := builder.AppendOn(genesisTipset, 3)
-	heavy1 = builder.AppendOn(heavy1, 3)
-	heavy2 := builder.AppendOn(heavy1, 3)
+	heavy1 := builder.AppendOn(ctx, genesisTipset, 3)
+	heavy1 = builder.AppendOn(ctx, heavy1, 3)
+	heavy2 := builder.AppendOn(ctx, heavy1, 3)
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}

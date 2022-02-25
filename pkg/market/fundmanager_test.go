@@ -3,32 +3,29 @@ package market
 import (
 	"bytes"
 	"context"
-
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/config"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/wallet"
-	"github.com/stretchr/testify/assert"
-
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
-	"github.com/ipfs/go-datastore"
-
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	ds_sync "github.com/ipfs/go-datastore/sync"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 
 	tutils "github.com/filecoin-project/specs-actors/v6/support/testing"
+
+	"github.com/filecoin-project/venus/pkg/config"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
-	"github.com/ipfs/go-cid"
-	ds_sync "github.com/ipfs/go-datastore/sync"
-	"github.com/stretchr/testify/require"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/pkg/wallet"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // TestFundManagerBasic verifies that the basic fund manager operations work
@@ -214,9 +211,10 @@ func TestFundManagerReserveByWallet(t *testing.T) {
 	s := setup(t)
 	defer s.fm.Stop()
 
-	walletAddrA, err := s.wllt.NewAddress(address.SECP256K1)
+	ctx := context.Background()
+	walletAddrA, err := s.wllt.NewAddress(ctx, address.SECP256K1)
 	require.NoError(t, err)
-	walletAddrB, err := s.wllt.NewAddress(address.SECP256K1)
+	walletAddrB, err := s.wllt.NewAddress(ctx, address.SECP256K1)
 	require.NoError(t, err)
 
 	// Wait until all the reservation requests are queued up
@@ -402,9 +400,11 @@ func TestFundManagerWithdrawByWallet(t *testing.T) {
 	tf.UnitTest(t)
 	s := setup(t)
 	defer s.fm.Stop()
-	walletAddrA, err := s.wllt.NewAddress(address.SECP256K1)
+
+	ctx := context.Background()
+	walletAddrA, err := s.wllt.NewAddress(ctx, address.SECP256K1)
 	require.NoError(t, err)
-	walletAddrB, err := s.wllt.NewAddress(address.SECP256K1)
+	walletAddrB, err := s.wllt.NewAddress(ctx, address.SECP256K1)
 	require.NoError(t, err)
 
 	// Reserve 10
@@ -512,6 +512,8 @@ func TestFundManagerRestart(t *testing.T) {
 	s := setup(t)
 	defer s.fm.Stop()
 
+	ctx := context.Background()
+
 	acctAddr2 := tutils.NewActorAddr(t, "addr2")
 
 	// Address 1: Reserve 10
@@ -539,7 +541,7 @@ func TestFundManagerRestart(t *testing.T) {
 	// Restart
 	mockAPIAfter := s.mockAPI
 	fmAfter := newFundManager(mockAPIAfter, s.ds)
-	err = fmAfter.Start()
+	err = fmAfter.Start(ctx)
 	require.NoError(t, err)
 
 	amt3 := abi.NewTokenAmount(9)
@@ -630,11 +632,11 @@ func setup(t *testing.T) *scaffold {
 	ctx := context.Background()
 	t.Log("create a backend")
 	ds := datastore.NewMapDatastore()
-	fs, err := wallet.NewDSBackend(ds, config.TestPassphraseConfig(), wallet.TestPassword)
+	fs, err := wallet.NewDSBackend(ctx, ds, config.TestPassphraseConfig(), wallet.TestPassword)
 	assert.NoError(t, err)
 	t.Log("create a wallet with a single backend")
 	wllt := wallet.New(fs)
-	walletAddr, err := wllt.NewAddress(address.SECP256K1)
+	walletAddr, err := wllt.NewAddress(ctx, address.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -654,7 +656,7 @@ func setup(t *testing.T) *scaffold {
 	}
 }
 
-func checkAddMessageFields(t *testing.T, msg *types.UnsignedMessage, from address.Address, to address.Address, amt abi.TokenAmount) {
+func checkAddMessageFields(t *testing.T, msg *types.Message, from address.Address, to address.Address, amt abi.TokenAmount) {
 	require.Equal(t, from, msg.From)
 	require.Equal(t, market.Address, msg.To)
 	require.Equal(t, amt, msg.Value)
@@ -665,7 +667,7 @@ func checkAddMessageFields(t *testing.T, msg *types.UnsignedMessage, from addres
 	require.Equal(t, to, paramsTo)
 }
 
-func checkWithdrawMessageFields(t *testing.T, msg *types.UnsignedMessage, from address.Address, addr address.Address, amt abi.TokenAmount) {
+func checkWithdrawMessageFields(t *testing.T, msg *types.Message, from address.Address, addr address.Address, amt abi.TokenAmount) {
 	require.Equal(t, from, msg.From)
 	require.Equal(t, market.Address, msg.To)
 	require.Equal(t, abi.NewTokenAmount(0), msg.Value)
@@ -702,7 +704,7 @@ func newMockFundManagerAPI(wallet address.Address) *mockFundManagerAPI {
 	}
 }
 
-func (mapi *mockFundManagerAPI) MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
+func (mapi *mockFundManagerAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
 	mapi.lk.Lock()
 	defer mapi.lk.Unlock()
 
@@ -713,7 +715,7 @@ func (mapi *mockFundManagerAPI) MpoolPushMessage(ctx context.Context, msg *types
 	return smsg, nil
 }
 
-func (mapi *mockFundManagerAPI) getSentMessage(c cid.Cid) *types.UnsignedMessage {
+func (mapi *mockFundManagerAPI) getSentMessage(c cid.Cid) *types.Message {
 	mapi.lk.Lock()
 	defer mapi.lk.Unlock()
 
@@ -777,11 +779,11 @@ func (mapi *mockFundManagerAPI) completeMsg(msgCid cid.Cid) {
 	}
 }
 
-func (mapi *mockFundManagerAPI) StateMarketBalance(ctx context.Context, address address.Address, tsk types.TipSetKey) (apitypes.MarketBalance, error) {
+func (mapi *mockFundManagerAPI) StateMarketBalance(ctx context.Context, address address.Address, tsk types.TipSetKey) (types.MarketBalance, error) {
 	mapi.lk.Lock()
 	defer mapi.lk.Unlock()
 
-	return apitypes.MarketBalance{
+	return types.MarketBalance{
 		Locked: abi.NewTokenAmount(0),
 		Escrow: mapi.getEscrow(address),
 	}, nil
@@ -810,12 +812,12 @@ func (mapi *mockFundManagerAPI) publish(addr address.Address, amt abi.TokenAmoun
 	mapi.escrow[addr] = escrow
 }
 
-func (mapi *mockFundManagerAPI) StateWaitMsg(ctx context.Context, c cid.Cid, confidence uint64, limit abi.ChainEpoch, allwoReplaced bool) (*apitypes.MsgLookup, error) {
-	res := &apitypes.MsgLookup{
+func (mapi *mockFundManagerAPI) StateWaitMsg(ctx context.Context, c cid.Cid, confidence uint64, limit abi.ChainEpoch, allwoReplaced bool) (*types.MsgLookup, error) {
+	res := &types.MsgLookup{
 		Message: c,
 		Receipt: types.MessageReceipt{
-			ExitCode:    0,
-			ReturnValue: nil,
+			ExitCode: 0,
+			Return:   nil,
 		},
 	}
 	ready := make(chan struct{})

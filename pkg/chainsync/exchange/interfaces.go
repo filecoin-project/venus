@@ -2,9 +2,10 @@ package exchange
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/libp2p/go-libp2p-core/peer"
+
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // Server is the responder side of the ChainExchange protocol. It accepts

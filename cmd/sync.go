@@ -5,10 +5,12 @@ import (
 	"bytes"
 	"strconv"
 
-	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/venus/app/node"
+	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
 )
 
 var syncCmd = &cmds.Command{
@@ -59,14 +61,14 @@ var storeStatusCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		tracker := env.(*node.Env).SyncerAPI.SyncerTracker(req.Context)
-		targets := tracker.Buckets()
+		targets := tracker.Buckets
 		w := bytes.NewBufferString("")
 		writer := NewSilentWriter(w)
-		var inSyncing []*syncTypes.Target
-		var waitTarget []*syncTypes.Target
+		var inSyncing []*types.Target
+		var waitTarget []*types.Target
 
 		for _, t := range targets {
-			if t.State == syncTypes.StateInSyncing {
+			if t.State == types.SyncStateStage(syncTypes.StateInSyncing) {
 				inSyncing = append(inSyncing, t)
 			} else {
 				waitTarget = append(waitTarget, t)
@@ -126,7 +128,7 @@ var historyCmd = &cmds.Command{
 		writer := NewSilentWriter(w)
 
 		writer.Println("History:")
-		history := tracker.History()
+		history := tracker.History
 		count := 1
 		for _, t := range history {
 			writer.Println("SyncTarget:", strconv.Itoa(count))

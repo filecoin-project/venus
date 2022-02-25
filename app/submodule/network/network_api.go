@@ -2,18 +2,20 @@ package network
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 
-	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/net"
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/api"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
-var _ apiface.INetwork = &networkAPI{}
+var _ v1api.INetwork = &networkAPI{}
 
 type networkAPI struct { //nolint
 	network *NetworkSubmodule
@@ -40,7 +42,7 @@ func (na *networkAPI) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid
 }
 
 // NetworkGetClosestPeers issues a getClosestPeers query to the filecoin network.
-func (na *networkAPI) NetworkGetClosestPeers(ctx context.Context, key string) (<-chan peer.ID, error) {
+func (na *networkAPI) NetworkGetClosestPeers(ctx context.Context, key string) ([]peer.ID, error) {
 	return na.network.Network.GetClosestPeers(ctx, key)
 }
 
@@ -50,19 +52,19 @@ func (na *networkAPI) NetworkFindPeer(ctx context.Context, peerID peer.ID) (peer
 }
 
 // NetworkConnect connects to peers at the given addresses
-func (na *networkAPI) NetworkConnect(ctx context.Context, addrs []string) (<-chan net.ConnectionResult, error) {
+func (na *networkAPI) NetworkConnect(ctx context.Context, addrs []string) (<-chan types.ConnectionResult, error) {
 	return na.network.Network.Connect(ctx, addrs)
 }
 
 // NetworkPeers lists peers currently available on the network
-func (na *networkAPI) NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*net.SwarmConnInfos, error) {
+func (na *networkAPI) NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*types.SwarmConnInfos, error) {
 	return na.network.Network.Peers(ctx, verbose, latency, streams)
 }
 
-func (na *networkAPI) Version(context.Context) (apitypes.Version, error) {
-	return apitypes.Version{
+func (na *networkAPI) Version(context.Context) (types.Version, error) {
+	return types.Version{
 		Version:    constants.UserVersion(),
-		APIVersion: constants.FullAPIVersion1,
+		APIVersion: api.FullAPIVersion1,
 	}, nil
 }
 

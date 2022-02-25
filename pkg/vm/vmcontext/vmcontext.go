@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
@@ -23,16 +23,16 @@ import (
 
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/cron"
-	initActor "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/reward"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/cron"
+	initActor "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 const MaxCallDepth = 4096
@@ -53,6 +53,8 @@ type VM struct {
 	debugger *VMDebugMsg
 	vmOption VmOption
 
+	baseCircSupply abi.TokenAmount
+
 	State tree.Tree
 }
 
@@ -66,7 +68,7 @@ func (vm *VM) ApplyImplicitMessage(msg types.ChainMsg) (*Ret, error) {
 		Method: unsignedMsg.Method,
 		Params: unsignedMsg.Params,
 	}
-	vm.SetCurrentEpoch(vm.vmOption.Epoch)
+
 	return vm.applyImplicitMessage(imsg)
 }
 
@@ -75,7 +77,7 @@ type ActorImplLookup interface {
 	GetActorImpl(code cid.Cid, rt runtime.Runtime) (dispatch.Dispatcher, *dispatch.ExcuteError)
 }
 
-func VmMessageFromUnsignedMessage(msg *types.UnsignedMessage) VmMessage { //nolint
+func VmMessageFromUnsignedMessage(msg *types.Message) VmMessage { //nolint
 	return VmMessage{
 		From:   msg.From,
 		To:     msg.To,
@@ -90,7 +92,7 @@ var _ VMInterpreter = (*VM)(nil)
 
 // NewVM creates a new runtime for executing messages.
 // Dragons: change To take a root and the store, build the tree internally
-func NewVM(actorImpls ActorImplLookup, vmOption VmOption) (*VM, error) {
+func NewVM(ctx context.Context, actorImpls ActorImplLookup, vmOption VmOption) (*VM, error) {
 	buf := blockstoreutil.NewBufferedBstore(vmOption.Bsstore)
 	cst := cbor.NewCborStore(buf)
 	var st tree.Tree
@@ -108,15 +110,21 @@ func NewVM(actorImpls ActorImplLookup, vmOption VmOption) (*VM, error) {
 		}
 	}
 
+	baseCirc, err := vmOption.CircSupplyCalculator(ctx, vmOption.Epoch, st)
+	if err != nil {
+		return nil, err
+	}
+
 	return &VM{
-		context:    context.Background(),
-		actorImpls: actorImpls,
-		bsstore:    buf,
-		store:      cst,
-		State:      st,
-		vmOption:   vmOption,
-		// loaded during execution
-		// currentEpoch: ..,
+		context:        ctx,
+		actorImpls:     actorImpls,
+		bsstore:        buf,
+		store:          cst,
+		State:          st,
+		vmOption:       vmOption,
+		baseCircSupply: baseCirc,
+		pricelist:      vmOption.GasPriceSchedule.PricelistByEpoch(vmOption.Epoch),
+		currentEpoch:   vmOption.Epoch,
 	}, nil
 }
 
@@ -145,7 +153,6 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 		Params: params,
 	}
 
-	vm.SetCurrentEpoch(0)
 	ret, err := vm.applyImplicitMessage(imsg)
 	if err != nil {
 		return ret, err
@@ -204,6 +211,8 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 	pstate, _ := vm.State.Flush(vm.context)
 	for i := parentEpoch; i < epoch; i++ {
 		if i > parentEpoch {
+			// fix: https://github.com/filecoin-project/lotus/pull/7966
+			vm.vmOption.NetworkVersion = vm.vmOption.Fork.GetNetworkVersion(vm.context, i)
 			// run cron for null rounds if any
 			cronMessage := makeCronTickMessage()
 			ret, err := vm.applyImplicitMessage(cronMessage)
@@ -233,8 +242,13 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 				return cid.Undef, nil, xerrors.Errorf("load fork cid error: %v", err)
 			}
 		}
-		vm.SetCurrentEpoch(i + 1)
+		if err := vm.SetCurrentEpoch(i + 1); err != nil {
+			return cid.Undef, nil, xerrors.Errorf("error advancing vm an epoch: %w", err)
+		}
 	}
+	// as above
+	vm.vmOption.NetworkVersion = vm.vmOption.Fork.GetNetworkVersion(vm.context, epoch)
+
 	vmlog.Debugf("process tipset fork: %v\n", time.Since(toProcessTipset).Milliseconds())
 	// create message tracker
 	// Note: the same message could have been included by more than one miner
@@ -295,7 +309,6 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 				vm.debugger.Println(string(tracesBytes))
 			}
 		}
-
 		// Pay block reward.
 		// Dragons: missing final protocol design on if/how To determine the nominal power
 		rewardMessage := makeBlockRewardMessage(blkInfo.Block.Miner, minerPenaltyTotal, minerGasRewardTotal, blkInfo.Block.ElectionProof.WinCount)
@@ -394,9 +407,9 @@ func (vm *VM) applyImplicitMessage(imsg VmMessage) (*Ret, error) {
 		GasTracker: gasTank,
 		OutPuts:    gas.GasOutputs{},
 		Receipt: types.MessageReceipt{
-			ExitCode:    code,
-			ReturnValue: ret,
-			GasUsed:     0,
+			ExitCode: code,
+			Return:   ret,
+			GasUsed:  0,
 		},
 	}, nil
 }
@@ -413,8 +426,7 @@ func (vm *VM) ApplyMessage(msg types.ChainMsg) (*Ret, error) {
 }
 
 // applyMessage applies the message To the current stateView.
-func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret, error) {
-	vm.SetCurrentEpoch(vm.vmOption.Epoch)
+func (vm *VM) applyMessage(msg *types.Message, onChainMsgSize int) (*Ret, error) {
 	// This Method does not actually execute the message itself,
 	// but rather deals with the pre/post processing of a message.
 	// (see: `invocationContext.invoke()` for the dispatch and execution)
@@ -618,15 +630,15 @@ func (vm *VM) applyMessage(msg *types.UnsignedMessage, onChainMsgSize int) (*Ret
 		GasTracker: gasTank,
 		OutPuts:    gasOutputs,
 		Receipt: types.MessageReceipt{
-			ExitCode:    code,
-			ReturnValue: ret,
-			GasUsed:     gasUsed,
+			ExitCode: code,
+			Return:   ret,
+			GasUsed:  gasUsed,
 		},
 	}, nil
 }
 
-func (vm *VM) shouldBurn(ctx context.Context, msg *types.UnsignedMessage, errcode exitcode.ExitCode) (bool, error) {
-	if vm.NtwkVersion() <= network.Version12 {
+func (vm *VM) shouldBurn(ctx context.Context, msg *types.Message, errcode exitcode.ExitCode) (bool, error) {
+	if vm.NetworkVersion() <= network.Version12 {
 		// Check to see if we should burn funds. We avoid burning on successful
 		// window post. This won't catch _indirect_ window post calls, but this
 		// is the best we can get for now.
@@ -659,22 +671,85 @@ func (vm *VM) shouldBurn(ctx context.Context, msg *types.UnsignedMessage, errcod
 // WARNING: this Method will panic if the the amount is negative, accounts dont exist, or have inssuficient funds.
 //
 // Note: this is not idiomatic, it follows the Spec expectations for this Method.
-func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amount abi.TokenAmount) {
-	if amount.LessThan(big.Zero()) {
-		runtime.Abortf(exitcode.SysErrForbidden, "attempt To transfer negative Value %s From %s To %s", amount, debitFrom, creditTo)
+func (vm *VM) transfer(from address.Address, to address.Address, amount abi.TokenAmount, networkVersion network.Version) {
+	var fromActor *types.Actor
+	var fromID, toID address.Address
+	var err error
+	var found bool
+	// switching the order around so that transactions for more than the balance sent to self fail
+	if networkVersion >= network.Version15 {
+		if amount.LessThan(big.Zero()) {
+			runtime.Abortf(exitcode.SysErrForbidden, "attempt To transfer negative Value %s From %s To %s", amount, from, to)
+		}
+
+		fromID, err = vm.State.LookupID(from)
+		if err != nil {
+			panic(fmt.Errorf("transfer failed when resolving sender address: %s", err))
+		}
+
+		// retrieve sender account
+		fromActor, found, err = vm.State.GetActor(vm.context, fromID)
+		if err != nil {
+			panic(err)
+		}
+		if !found {
+			panic(fmt.Errorf("unreachable: sender account not found. %s", err))
+		}
+
+		// check that account has enough balance for transfer
+		if fromActor.Balance.LessThan(amount) {
+			runtime.Abortf(exitcode.SysErrInsufficientFunds, "sender %s insufficient balance %s To transfer %s To %s", amount, fromActor.Balance, from, to)
+		}
+
+		if from == to {
+			vmlog.Infow("sending to same address: noop", "from/to addr", from)
+			return
+		}
+
+		toID, err = vm.State.LookupID(to)
+		if err != nil {
+			panic(fmt.Errorf("transfer failed when resolving receiver address: %s", err))
+		}
+
+		if fromID == toID {
+			vmlog.Infow("sending to same actor ID: noop", "from/to actor", fromID)
+			return
+		}
+	} else {
+		if from == to {
+			return
+		}
+
+		fromID, err = vm.State.LookupID(from)
+		if err != nil {
+			panic(fmt.Errorf("transfer failed when resolving sender address: %s", err))
+		}
+
+		toID, err = vm.State.LookupID(to)
+		if err != nil {
+			panic(fmt.Errorf("transfer failed when resolving receiver address: %s", err))
+		}
+
+		if fromID == toID {
+			return
+		}
+
+		if amount.LessThan(types.NewInt(0)) {
+			runtime.Abortf(exitcode.SysErrForbidden, "attempt To transfer negative Value %s From %s To %s", amount, from, to)
+		}
+
+		// retrieve sender account
+		fromActor, found, err = vm.State.GetActor(vm.context, fromID)
+		if err != nil {
+			panic(err)
+		}
+		if !found {
+			panic(fmt.Errorf("unreachable: sender account not found. %s", err))
+		}
 	}
 
-	// retrieve debit account
-	fromActor, found, err := vm.State.GetActor(vm.context, debitFrom)
-	if err != nil {
-		panic(err)
-	}
-	if !found {
-		panic(fmt.Errorf("unreachable: debit account not found. %s", err))
-	}
-
-	// retrieve credit account
-	toActor, found, err := vm.State.GetActor(vm.context, creditTo)
+	// retrieve receiver account
+	toActor, found, err := vm.State.GetActor(vm.context, toID)
 	if err != nil {
 		panic(err)
 	}
@@ -684,18 +759,18 @@ func (vm *VM) transfer(debitFrom address.Address, creditTo address.Address, amou
 
 	// check that account has enough balance for transfer
 	if fromActor.Balance.LessThan(amount) {
-		runtime.Abortf(exitcode.SysErrInsufficientFunds, "sender %s insufficient balance %s To transfer %s To %s", amount, fromActor.Balance, debitFrom, creditTo)
+		runtime.Abortf(exitcode.SysErrInsufficientFunds, "sender %s insufficient balance %s To transfer %s To %s", amount, fromActor.Balance, from, to)
 	}
 
-	// debit funds
+	// deduct funds
 	fromActor.Balance = big.Sub(fromActor.Balance, amount)
-	if err := vm.State.SetActor(vm.context, debitFrom, fromActor); err != nil {
+	if err := vm.State.SetActor(vm.context, from, fromActor); err != nil {
 		panic(err)
 	}
 
-	// credit funds
+	// deposit funds
 	toActor.Balance = big.Add(toActor.Balance, amount)
-	if err := vm.State.SetActor(vm.context, creditTo, toActor); err != nil {
+	if err := vm.State.SetActor(vm.context, to, toActor); err != nil {
 		panic(err)
 	}
 }
@@ -719,13 +794,21 @@ func (vm *VM) CurrentEpoch() abi.ChainEpoch {
 	return vm.currentEpoch
 }
 
-func (vm *VM) SetCurrentEpoch(current abi.ChainEpoch) {
+func (vm *VM) SetCurrentEpoch(current abi.ChainEpoch) error {
 	vm.currentEpoch = current
 	vm.pricelist = vm.vmOption.GasPriceSchedule.PricelistByEpoch(current)
+
+	ncirc, err := vm.vmOption.CircSupplyCalculator(vm.context, vm.currentEpoch, vm.State)
+	if err != nil {
+		return err
+	}
+	vm.baseCircSupply = ncirc
+
+	return nil
 }
 
-func (vm *VM) NtwkVersion() network.Version {
-	return vm.vmOption.NtwkVersionGetter(context.TODO(), vm.currentEpoch)
+func (vm *VM) NetworkVersion() network.Version {
+	return vm.vmOption.NetworkVersion
 }
 
 func (vm *VM) transferToGasHolder(addr address.Address, gasHolder *types.Actor, amt abi.TokenAmount) error {
@@ -761,6 +844,15 @@ func (vm *VM) transferFromGasHolder(addr address.Address, gasHolder *types.Actor
 
 func (vm *VM) StateTree() tree.Tree {
 	return vm.State
+}
+
+func (vm *VM) GetCircSupply(ctx context.Context) (abi.TokenAmount, error) {
+	// Before v15, this was recalculated on each invocation as the state tree was mutated
+	if vm.vmOption.NetworkVersion <= network.Version14 {
+		return vm.vmOption.CircSupplyCalculator(ctx, vm.currentEpoch, vm.State)
+	}
+
+	return vm.baseCircSupply, nil
 }
 
 func deductFunds(act *types.Actor, amt abi.TokenAmount) error {

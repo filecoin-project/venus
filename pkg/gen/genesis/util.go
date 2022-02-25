@@ -9,13 +9,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/filecoin-project/venus/pkg/vm"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func mustEnc(i cbg.CBORMarshaler) []byte {
-	enc, err := specactors.SerializeParams(i)
+	enc, err := actors.SerializeParams(i)
 	if err != nil {
 		panic(err) // ok
 	}
@@ -32,7 +32,7 @@ func doExecValue(ctx context.Context, vmi vm.Interpreter, to, from address.Addre
 		return nil, xerrors.Errorf("actor (%s) not found", from)
 	}
 
-	ret, err := vmi.ApplyImplicitMessage(&types.UnsignedMessage{
+	ret, err := vmi.ApplyImplicitMessage(&types.Message{
 		To:       to,
 		From:     from,
 		Method:   method,
@@ -49,5 +49,5 @@ func doExecValue(ctx context.Context, vmi vm.Interpreter, to, from address.Addre
 		return nil, xerrors.Errorf("failed to call method: %w", ret.Receipt.String())
 	}
 
-	return ret.Receipt.ReturnValue, nil
+	return ret.Receipt.Return, nil
 }

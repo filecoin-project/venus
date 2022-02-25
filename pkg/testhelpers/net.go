@@ -8,9 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/types"
-
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/event"
@@ -143,7 +142,7 @@ func newFakeStream() fakeStream { return fakeStream{} }
 func (fs fakeStream) ID() string                         { return "" }
 func (fs fakeStream) Protocol() protocol.ID              { return fs.pid }            // nolint: golint
 func (fs fakeStream) SetProtocol(id protocol.ID)         { fs.pid = id }              // nolint: golint
-func (fs fakeStream) Stat() inet.Stat                    { panic("not implemented") } // nolint: golint
+func (fs fakeStream) Stat() inet.Stats                   { panic("not implemented") } // nolint: golint
 func (fs fakeStream) Conn() inet.Conn                    { panic("not implemented") } // nolint: golint
 func (fs fakeStream) Write(_ []byte) (int, error)        { return 1, nil }            // nolint: golint
 func (fs fakeStream) Read(_ []byte) (int, error)         { return 1, nil }            // nolint: golint
@@ -213,7 +212,7 @@ func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, f
 			return nil, err
 		}
 
-		ts, err := types.NewTipSet(res...)
+		ts, err := types.NewTipSet(res)
 		if err != nil {
 			return nil, err
 		}

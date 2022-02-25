@@ -30,7 +30,7 @@ func (t *HelloMessage) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.HeaviestTipSetCids (internal.TipSetKey) (struct)
+	// t.HeaviestTipSetCids (chain.TipSetKey) (struct)
 	if err := t.HeaviestTipSetCids.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func (t *HelloMessage) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.HeaviestTipSetCids (internal.TipSetKey) (struct)
+	// t.HeaviestTipSetCids (chain.TipSetKey) (struct)
 
 	{
 

@@ -1,15 +1,15 @@
 package chain
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 var (
@@ -33,8 +33,8 @@ type TipSetMetadata struct {
 }
 
 type tipLoader interface {
-	GetTipSet(key types.TipSetKey) (*types.TipSet, error)
-	LoadTipsetMetadata(ts *types.TipSet) (*TipSetMetadata, error)
+	GetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error)
+	LoadTipsetMetadata(ctx context.Context, ts *types.TipSet) (*TipSetMetadata, error)
 }
 
 // TipStateCache tracks tipsets and their states by tipset block ids.
@@ -69,12 +69,12 @@ func (ti *TipStateCache) Put(tsm *TipSetMetadata) {
 }
 
 // Get returns the tipset given by the input ID and its state.
-func (ti *TipStateCache) Get(ts *types.TipSet) (TSState, error) {
+func (ti *TipStateCache) Get(ctx context.Context, ts *types.TipSet) (TSState, error) {
 	ti.l.RLock()
 	state, ok := ti.cache[ts.String()]
 	ti.l.RUnlock()
 	if !ok {
-		tipSetMetadata, err := ti.loader.LoadTipsetMetadata(ts)
+		tipSetMetadata, err := ti.loader.LoadTipsetMetadata(ctx, ts)
 		if err != nil {
 			return TSState{}, xerrors.New("state not exit")
 		}
@@ -89,8 +89,8 @@ func (ti *TipStateCache) Get(ts *types.TipSet) (TSState, error) {
 }
 
 // GetTipSetStateRoot returns the tipsetStateRoot from func (ti *TipStateCache) Get(tsKey string).
-func (ti *TipStateCache) GetTipSetStateRoot(ts *types.TipSet) (cid.Cid, error) {
-	state, err := ti.Get(ts)
+func (ti *TipStateCache) GetTipSetStateRoot(ctx context.Context, ts *types.TipSet) (cid.Cid, error) {
+	state, err := ti.Get(ctx, ts)
 	if err != nil {
 		return cid.Cid{}, err
 	}
@@ -98,8 +98,8 @@ func (ti *TipStateCache) GetTipSetStateRoot(ts *types.TipSet) (cid.Cid, error) {
 }
 
 // GetTipSetReceiptsRoot returns the tipsetReceipts from func (ti *TipStateCache) Get(tsKey string).
-func (ti *TipStateCache) GetTipSetReceiptsRoot(ts *types.TipSet) (cid.Cid, error) {
-	state, err := ti.Get(ts)
+func (ti *TipStateCache) GetTipSetReceiptsRoot(ctx context.Context, ts *types.TipSet) (cid.Cid, error) {
+	state, err := ti.Get(ctx, ts)
 	if err != nil {
 		return cid.Cid{}, err
 	}
@@ -108,8 +108,8 @@ func (ti *TipStateCache) GetTipSetReceiptsRoot(ts *types.TipSet) (cid.Cid, error
 
 // Has returns true iff the tipset with the input ID is stored in
 // the TipStateCache.
-func (ti *TipStateCache) Has(ts *types.TipSet) bool {
-	_, err := ti.Get(ts)
+func (ti *TipStateCache) Has(ctx context.Context, ts *types.TipSet) bool {
+	_, err := ti.Get(ctx, ts)
 	return err == nil
 }
 

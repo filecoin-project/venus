@@ -2,25 +2,25 @@ package v0api
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/client/apiface/v0api"
+
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
 
 type WrapperV1IMultiSig struct {
-	apiface.IMultiSig
-	apiface.IMessagePool
+	v1api.IMultiSig
+	v1api.IMessagePool
 }
 
 var _ v0api.IMultiSig = (*WrapperV1IMultiSig)(nil)
 
-func (a *WrapperV1IMultiSig) executePrototype(ctx context.Context, p *apitypes.MessagePrototype) (cid.Cid, error) {
+func (a *WrapperV1IMultiSig) executePrototype(ctx context.Context, p *types.MessagePrototype) (cid.Cid, error) {
 	sm, err := a.IMessagePool.MpoolPushMessage(ctx, &p.Message, nil)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("pushing message: %w", err)
@@ -66,8 +66,17 @@ func (a *WrapperV1IMultiSig) MsigApproveTxnHash(ctx context.Context, msig addres
 	return a.executePrototype(ctx, p)
 }
 
-func (a *WrapperV1IMultiSig) MsigCancel(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error) {
-	p, err := a.IMultiSig.MsigCancel(ctx, msig, txID, to, amt, src, method, params)
+func (a *WrapperV1IMultiSig) MsigCancel(ctx context.Context, msig address.Address, txID uint64, src address.Address) (cid.Cid, error) {
+	p, err := a.IMultiSig.MsigCancel(ctx, msig, txID, src)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("creating prototype: %w", err)
+	}
+
+	return a.executePrototype(ctx, p)
+}
+
+func (a *WrapperV1IMultiSig) MsigCancelTxnHash(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error) {
+	p, err := a.IMultiSig.MsigCancelTxnHash(ctx, msig, txID, to, amt, src, method, params)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("creating prototype: %w", err)
 	}

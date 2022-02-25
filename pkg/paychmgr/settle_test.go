@@ -27,7 +27,7 @@ func TestPaychSettle(t *testing.T) {
 	mock := newMockManagerAPI()
 	defer mock.close()
 
-	mgr, err := newManager(store, mock)
+	mgr, err := newManager(ctx, store, mock)
 	require.NoError(t, err)
 
 	amt := big.NewInt(10)
@@ -65,7 +65,7 @@ func TestPaychSettle(t *testing.T) {
 	require.NotEqual(t, ch, ch2)
 
 	// There should now be two channels
-	cis, err := mgr.ListChannels()
+	cis, err := mgr.ListChannels(ctx)
 	require.NoError(t, err)
 	require.Len(t, cis, 2)
 }

@@ -5,18 +5,19 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"golang.org/x/xerrors"
 	"runtime"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/docker/go-units"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/rt"
-	"github.com/filecoin-project/specs-actors/v6/actors/migration/nv14"
 	ipfsblock "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -32,6 +33,8 @@ import (
 	"github.com/filecoin-project/specs-actors/v3/actors/migration/nv10"
 	"github.com/filecoin-project/specs-actors/v4/actors/migration/nv12"
 	"github.com/filecoin-project/specs-actors/v5/actors/migration/nv13"
+	"github.com/filecoin-project/specs-actors/v6/actors/migration/nv14"
+	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -43,12 +46,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/multisig"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var log = logging.Logger("fork")
@@ -140,7 +143,7 @@ func (ml migrationLogger) Log(level rt.LogLevel, msg string, args ...interface{}
 	}
 }
 
-func defaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConfig) UpgradeSchedule {
+func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConfig) UpgradeSchedule {
 	var us UpgradeSchedule
 
 	updates := []Upgrade{{
@@ -262,7 +265,19 @@ func defaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 				StopWithin:      5,
 			}},
 			Expensive: true,
-		}}
+		}, {
+			Height:    upgradeHeight.UpgradeOhSnapHeight,
+			Network:   network.Version15,
+			Migration: cf.UpgradeActorsV7,
+			PreMigrations: []PreMigration{{
+				PreMigration:    cf.PreUpgradeActorsV7,
+				StartWithin:     180,
+				DontStartWithin: 60,
+				StopWithin:      5,
+			}},
+			Expensive: true,
+		},
+	}
 
 	for _, u := range updates {
 		if u.Height < 0 {
@@ -332,16 +347,17 @@ func (us UpgradeSchedule) Validate() error {
 
 type chainReader interface {
 	GetHead() *types.TipSet
-	GetTipSet(types.TipSetKey) (*types.TipSet, error)
+	GetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 	GetTipSetByHeight(context.Context, *types.TipSet, abi.ChainEpoch, bool) (*types.TipSet, error)
 	GetTipSetState(context.Context, *types.TipSet) (vmstate.Tree, error)
 	GetGenesisBlock(context.Context) (*types.BlockHeader, error)
-	SubHeadChanges(context.Context) chan []*chain.HeadChange
+	GetLookbackTipSetForRound(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch, version network.Version) (*types.TipSet, cid.Cid, error)
+	SubHeadChanges(context.Context) chan []*types.HeadChange
 }
 
 type IFork interface {
 	HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error)
-	GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
+	GetNetworkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
 	HasExpensiveFork(ctx context.Context, height abi.ChainEpoch) bool
 	GetForkUpgrade() *config.ForkUpgradeConfig
 	Start(ctx context.Context) error
@@ -357,7 +373,7 @@ type versionSpec struct {
 type migration struct {
 	upgrade       MigrationFunc
 	preMigrations []PreMigration
-	cache         *nv10.MemMigrationCache
+	cache         *nv15.MemMigrationCache
 }
 
 type ChainFork struct {
@@ -377,7 +393,7 @@ type ChainFork struct {
 	expensiveUpgrades map[abi.ChainEpoch]struct{}
 
 	// upgrade param
-	networkType int
+	networkType constants.NetworkType
 	forkUpgrade *config.ForkUpgradeConfig
 }
 
@@ -392,7 +408,7 @@ func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore,
 	}
 
 	// If we have upgrades, make sure they're in-order and make sense.
-	us := defaultUpgradeSchedule(fork, networkParams.ForkUpgradeParam)
+	us := DefaultUpgradeSchedule(fork, networkParams.ForkUpgradeParam)
 	if err := us.Validate(); err != nil {
 		return nil, err
 	}
@@ -408,7 +424,7 @@ func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore,
 				migration := &migration{
 					upgrade:       upgrade.Migration,
 					preMigrations: upgrade.PreMigrations,
-					cache:         nv10.NewMemMigrationCache(),
+					cache:         nv15.NewMemMigrationCache(),
 				}
 				stateMigrations[upgrade.Height] = migration
 			}
@@ -477,7 +493,7 @@ func (c *ChainFork) HasExpensiveFork(ctx context.Context, height abi.ChainEpoch)
 	return ok
 }
 
-func (c *ChainFork) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
+func (c *ChainFork) GetNetworkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
 	// The epochs here are the _last_ epoch for every version, or -1 if the
 	// version is disabled.
 	for _, spec := range c.networkVersions {
@@ -488,7 +504,7 @@ func (c *ChainFork) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) n
 	return c.latestVersion
 }
 
-func runPreMigration(ctx context.Context, fn PreMigrationFunc, cache *nv10.MemMigrationCache, ts *types.TipSet) {
+func runPreMigration(ctx context.Context, fn PreMigrationFunc, cache *nv15.MemMigrationCache, ts *types.TipSet) {
 	height := ts.Height()
 	parent := ts.Blocks()[0].ParentStateRoot
 
@@ -634,11 +650,11 @@ func (c *ChainFork) ParentState(ts *types.TipSet) cid.Cid {
 
 func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	// Some initial parameters
-	FundsForMiners := types.NewAttoFILFromFIL(1_000_000)
+	FundsForMiners := types.FromFil(1_000_000)
 	LookbackEpoch := abi.ChainEpoch(32000)
-	AccountCap := types.NewAttoFILFromFIL(0)
-	BaseMinerBalance := types.NewAttoFILFromFIL(20)
-	DesiredReimbursementBalance := types.NewAttoFILFromFIL(5_000_000)
+	AccountCap := types.FromFil(0)
+	BaseMinerBalance := types.FromFil(20)
+	DesiredReimbursementBalance := types.FromFil(5_000_000)
 
 	isSystemAccount := func(addr address.Address) (bool, error) {
 		id, err := address.IDFromAddress(addr)
@@ -662,7 +678,7 @@ func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, cache Migrati
 		return cid.Undef, xerrors.Errorf("failed to get tipset at lookback height: %v", err)
 	}
 
-	pts, err := c.cr.GetTipSet(lbts.Parents())
+	pts, err := c.cr.GetTipSet(ctx, lbts.Parents())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to get tipset : %v", err)
 	}
@@ -894,7 +910,7 @@ func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, cache Migrati
 		return cid.Undef, xerrors.Errorf("checking final state balance failed: %v", err)
 	}
 
-	exp := types.NewAttoFILFromFIL(constants.FilBase)
+	exp := types.FromFil(constants.FilBase)
 	if !exp.Equals(total) {
 		return cid.Undef, xerrors.Errorf("resultant state tree account balance was not correct: %s", total)
 	}
@@ -940,7 +956,7 @@ func resetGenesisMsigs0(ctx context.Context, sm *ChainFork, store adt0.Store, tr
 		return xerrors.Errorf("getting genesis block: %v", err)
 	}
 
-	gts, err := types.NewTipSet(gb)
+	gts, err := types.NewTipSet([]*types.BlockHeader{gb})
 	if err != nil {
 		return xerrors.Errorf("getting genesis tipset: %v", err)
 	}
@@ -1238,13 +1254,13 @@ func linksForObj(blk ipfsblock.Block, cb func(cid.Cid)) error {
 	}
 }
 
-func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(ipfsblock.Block) error) error {
+func copyRec(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid, cp func(ipfsblock.Block) error) error {
 	if root.Prefix().MhType == 0 {
 		// identity cid, skip
 		return nil
 	}
 
-	blk, err := from.Get(root)
+	blk, err := from.Get(ctx, root)
 	if err != nil {
 		return xerrors.Errorf("get %s failed: %v", root, err)
 	}
@@ -1269,7 +1285,7 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(ipfsblock.Blo
 			}
 		} else {
 			// If we have an object, we already have its children, skip the object.
-			has, err := to.Has(link)
+			has, err := to.Has(ctx, link)
 			if err != nil {
 				lerr = xerrors.Errorf("has: %v", err)
 				return
@@ -1279,7 +1295,7 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(ipfsblock.Blo
 			}
 		}
 
-		if err := copyRec(from, to, link, cp); err != nil {
+		if err := copyRec(ctx, from, to, link, cp); err != nil {
 			lerr = err
 			return
 		}
@@ -1316,7 +1332,7 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 
 	go func() {
 		for b := range toFlush {
-			if err := to.PutMany(b); err != nil {
+			if err := to.PutMany(ctx, b); err != nil {
 				close(freeBufs)
 				errFlushChan <- xerrors.Errorf("batch put in copy: %v", err)
 				return
@@ -1345,7 +1361,7 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 		return nil
 	}
 
-	if err := copyRec(from, to, root, batchCp); err != nil {
+	if err := copyRec(ctx, from, to, root, batchCp); err != nil {
 		return xerrors.Errorf("copyRec: %v", err)
 	}
 
@@ -1877,6 +1893,101 @@ func (c *ChainFork) upgradeActorsV6Common(
 		}
 	}
 
+	return newRoot, nil
+}
+
+func (c *ChainFork) UpgradeActorsV7(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	// Use all the CPUs except 3.
+	workerCount := runtime.NumCPU() - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+
+	config := nv15.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: 10 * time.Second,
+	}
+
+	newRoot, err := c.upgradeActorsV7Common(ctx, cache, root, epoch, ts, config)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("migrating actors v6 state: %w", err)
+	}
+
+	return newRoot, nil
+}
+
+func (c *ChainFork) PreUpgradeActorsV7(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := runtime.NumCPU()
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+
+	ver := c.GetNetworkVersion(ctx, epoch)
+	lbts, lbRoot, err := c.cr.GetLookbackTipSetForRound(ctx, ts, epoch, ver)
+	if err != nil {
+		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	config := nv15.Config{MaxWorkers: uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5}
+
+	_, err = c.upgradeActorsV7Common(ctx, cache, lbRoot, epoch, lbts, config)
+	return err
+}
+
+func (c *ChainFork) upgradeActorsV7Common(
+	ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid, epoch abi.ChainEpoch,
+	ts *types.TipSet,
+	config nv15.Config,
+) (cid.Cid, error) {
+	writeStore := blockstoreutil.NewAutobatch(ctx, c.bs, units.GiB/4)
+	// TODO: pretty sure we'd achieve nothing by doing this, confirm in review
+	//buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), writeStore)
+	store := chain.ActorStore(ctx, writeStore)
+	// Load the state root.
+	var stateRoot vmstate.StateRoot
+	if err := store.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != vmstate.StateTreeVersion4 {
+		return cid.Undef, xerrors.Errorf(
+			"expected state root version 4 for actors v7 upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv15.MigrateStateTree(ctx, store, stateRoot.Actors, epoch, config, migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("upgrading to actors v7: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := store.Put(ctx, &vmstate.StateRoot{
+		Version: vmstate.StateTreeVersion4,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// Persists the new tree and shuts down the flush worker
+	if err := writeStore.Flush(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore flush failed: %w", err)
+	}
+
+	if err := writeStore.Shutdown(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore shutdown failed: %w", err)
+	}
 	return newRoot, nil
 }
 

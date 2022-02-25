@@ -2,25 +2,28 @@ package blockstore
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	"sync"
+
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	"golang.org/x/xerrors"
-	"sync"
+
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
-var _ apiface.IBlockStore = &blockstoreAPI{}
+var _ v1api.IBlockStore = &blockstoreAPI{}
 
 type blockstoreAPI struct { //nolint
 	blockstore *BlockstoreSubmodule
 }
 
 func (blockstoreAPI *blockstoreAPI) ChainReadObj(ctx context.Context, ocid cid.Cid) ([]byte, error) {
-	blk, err := blockstoreAPI.blockstore.Blockstore.Get(ocid)
+	blk, err := blockstoreAPI.blockstore.Blockstore.Get(ctx, ocid)
 	if err != nil {
 		return nil, xerrors.Errorf("blockstore get: %w", err)
 	}
@@ -29,14 +32,14 @@ func (blockstoreAPI *blockstoreAPI) ChainReadObj(ctx context.Context, ocid cid.C
 }
 
 func (blockstoreAPI *blockstoreAPI) ChainDeleteObj(ctx context.Context, obj cid.Cid) error {
-	return blockstoreAPI.blockstore.Blockstore.DeleteBlock(obj)
+	return blockstoreAPI.blockstore.Blockstore.DeleteBlock(ctx, obj)
 }
 
 func (blockstoreAPI *blockstoreAPI) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error) {
-	return blockstoreAPI.blockstore.Blockstore.Has(obj)
+	return blockstoreAPI.blockstore.Blockstore.Has(ctx, obj)
 }
 
-func (blockstoreAPI *blockstoreAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (apitypes.ObjStat, error) {
+func (blockstoreAPI *blockstoreAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (types.ObjStat, error) {
 	bs := blockstoreAPI.blockstore.Blockstore
 	bsvc := blockservice.New(bs, offline.Exchange(bs))
 
@@ -45,7 +48,7 @@ func (blockstoreAPI *blockstoreAPI) ChainStatObj(ctx context.Context, obj cid.Ci
 	seen := cid.NewSet()
 
 	var statslk sync.Mutex
-	var stats apitypes.ObjStat
+	var stats types.ObjStat
 	var collect = true
 
 	walker := func(ctx context.Context, c cid.Cid) ([]*ipld.Link, error) {
@@ -72,13 +75,13 @@ func (blockstoreAPI *blockstoreAPI) ChainStatObj(ctx context.Context, obj cid.Ci
 	if base != cid.Undef {
 		collect = false
 		if err := merkledag.Walk(ctx, walker, base, seen.Visit, merkledag.Concurrent()); err != nil {
-			return apitypes.ObjStat{}, err
+			return types.ObjStat{}, err
 		}
 		collect = true
 	}
 
 	if err := merkledag.Walk(ctx, walker, obj, seen.Visit, merkledag.Concurrent()); err != nil {
-		return apitypes.ObjStat{}, err
+		return types.ObjStat{}, err
 	}
 
 	return stats, nil

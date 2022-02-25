@@ -3,8 +3,8 @@ package genesis
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/verifreg"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/go-address"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -13,8 +13,8 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/venus/pkg/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var RootVerifierID address.Address
@@ -29,7 +29,7 @@ func init() {
 	RootVerifierID = idk
 }
 
-func SetupVerifiedRegistryActor(ctx context.Context, bs bstore.Blockstore, av specactors.Version) (*types.Actor, error) {
+func SetupVerifiedRegistryActor(ctx context.Context, bs bstore.Blockstore, av actors.Version) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
 	vst, err := verifreg.MakeState(adt.WrapStore(ctx, cbor.NewCborStore(bs)), av, RootVerifierID)
 	if err != nil {

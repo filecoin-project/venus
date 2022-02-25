@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
@@ -23,27 +24,26 @@ import (
 
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/multisig"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/account"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/verifreg"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/cron"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/cron"
+	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 
-	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/reward"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/system"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/system"
-
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -59,7 +59,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	sigs "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm"
 )
@@ -155,7 +154,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 		return nil, nil, xerrors.Errorf("making new state tree: %w", err)
 	}
 
-	av, err := specactors.VersionForNetwork(template.NetworkVersion)
+	av, err := actors.VersionForNetwork(template.NetworkVersion)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("get actor version: %w", err)
 	}
@@ -369,7 +368,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 	return state, keyIDs, nil
 }
 
-func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av specactors.Version, addr address.Address, bal types.BigInt) (*types.Actor, error) {
+func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av actors.Version, addr address.Address, bal types.BigInt) (*types.Actor, error) {
 	ast, err := account.MakeState(adt.WrapStore(ctx, cst), av, addr)
 	if err != nil {
 		return nil, err
@@ -394,7 +393,7 @@ func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av specactors.Ver
 	return act, nil
 }
 
-func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *tree.State, info Actor, keyIDs map[address.Address]address.Address, av specactors.Version) error {
+func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *tree.State, info Actor, keyIDs map[address.Address]address.Address, av actors.Version) error {
 	var ainfo AccountMeta
 	if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
 		return xerrors.Errorf("unmarshaling account meta: %w", err)
@@ -417,7 +416,7 @@ func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *tree.Sta
 	return nil
 }
 
-func createMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *tree.State, ida address.Address, info Actor, keyIDs map[address.Address]address.Address, av specactors.Version) error {
+func createMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *tree.State, ida address.Address, info Actor, keyIDs map[address.Address]address.Address, av actors.Version) error {
 	if info.Type != TMultisig {
 		return fmt.Errorf("can only call createMultisigAccount with multisig Actor info")
 	}
@@ -485,14 +484,15 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 
 	faultChecker := consensusfault.NewFaultChecker(cs, fork.NewMockFork())
 	syscalls := vmsupport.NewSyscalls(faultChecker, impl.ProofVerifier)
-	genesisNetworkVersion := func(context.Context, abi.ChainEpoch) network.Version {
-		return nv
+
+	csc := func(context.Context, abi.ChainEpoch, tree.Tree) (abi.TokenAmount, error) {
+		return big.Zero(), nil
 	}
 
 	gasPriceSchedule := gas.NewPricesSchedule(para)
 	vmopt := vm.VmOption{
-		CircSupplyCalculator: nil,
-		NtwkVersionGetter:    genesisNetworkVersion,
+		CircSupplyCalculator: csc,
+		NetworkVersion:       nv,
 		Rnd:                  &fakeRand{},
 		BaseFee:              big.NewInt(0),
 		Epoch:                0,
@@ -502,7 +502,7 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 		GasPriceSchedule:     gasPriceSchedule,
 	}
 
-	vm, err := vm.NewVM(vmopt)
+	vm, err := vm.NewVM(ctx, vmopt)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
 	}
@@ -590,15 +590,15 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 		return nil, xerrors.Errorf("amt build failed: %w", err)
 	}
 
-	mm := &types.TxMeta{
-		BLSRoot:  emptyroot,
-		SecpRoot: emptyroot,
+	mm := &types.MessageRoot{
+		BlsRoot:   emptyroot,
+		SecpkRoot: emptyroot,
 	}
 	mmb, err := mm.ToStorageBlock()
 	if err != nil {
 		return nil, xerrors.Errorf("serializing msgmeta failed: %w", err)
 	}
-	if err := bs.Put(mmb); err != nil {
+	if err := bs.Put(ctx, mmb); err != nil {
 		return nil, xerrors.Errorf("putting msgmeta block to blockstore: %w", err)
 	}
 
@@ -606,7 +606,7 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 
 	tickBuf := make([]byte, 32)
 	_, _ = rand.Read(tickBuf)
-	genesisticket := types.Ticket{
+	genesisticket := &types.Ticket{
 		VRFProof: tickBuf,
 	}
 
@@ -628,14 +628,14 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 		return nil, xerrors.Errorf("filecoinGenesisCid != gblk.Cid")
 	}
 
-	if err := bs.Put(gblk); err != nil {
+	if err := bs.Put(ctx, gblk); err != nil {
 		return nil, xerrors.Errorf("failed writing filecoin genesis block to blockstore: %w", err)
 	}
 
 	b := &types.BlockHeader{
 		Miner:                 system.Address,
 		Ticket:                genesisticket,
-		Parents:               types.NewTipSetKey(filecoinGenesisCid),
+		Parents:               types.NewTipSetKey(filecoinGenesisCid).Cids(),
 		Height:                0,
 		ParentWeight:          types.NewInt(0),
 		ParentStateRoot:       stateroot,
@@ -645,7 +645,7 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 		BlockSig:              nil,
 		Timestamp:             template.Timestamp,
 		ElectionProof:         new(types.ElectionProof),
-		BeaconEntries: []*types.BeaconEntry{
+		BeaconEntries: []types.BeaconEntry{
 			{
 				Round: 0,
 				Data:  make([]byte, 32),
@@ -659,7 +659,7 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 		return nil, xerrors.Errorf("serializing block header failed: %w", err)
 	}
 
-	if err := bs.Put(sb); err != nil {
+	if err := bs.Put(ctx, sb); err != nil {
 		return nil, xerrors.Errorf("putting header to blockstore: %w", err)
 	}
 

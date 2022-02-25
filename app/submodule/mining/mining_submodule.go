@@ -1,7 +1,6 @@
 package mining
 
 import (
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/network"
@@ -10,6 +9,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
 type miningConfig interface {
@@ -30,11 +31,11 @@ type MiningModule struct { //nolint
 }
 
 //API create new miningAPi implement
-func (miningModule *MiningModule) API() apiface.IMining {
+func (miningModule *MiningModule) API() v1api.IMining {
 	return &MiningAPI{Ming: miningModule}
 }
 
-func (miningModule *MiningModule) V0API() apiface.IMining {
+func (miningModule *MiningModule) V0API() v0api.IMining {
 	return &MiningAPI{Ming: miningModule}
 }
 

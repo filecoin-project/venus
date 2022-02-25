@@ -22,10 +22,10 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/cmd/tablewriter"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var minerActorCmd = &cmds.Command{
@@ -85,14 +85,14 @@ var actorSetAddrsCmd = &cmds.Command{
 			return err
 		}
 
-		params, err := specactors.SerializeParams(&miner2.ChangeMultiaddrsParams{NewMultiaddrs: addrs})
+		params, err := actors.SerializeParams(&miner2.ChangeMultiaddrsParams{NewMultiaddrs: addrs})
 		if err != nil {
 			return err
 		}
 
 		gasLimit, _ := req.Options["gas-limit"].(int64)
 
-		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.UnsignedMessage{
+		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			To:       maddr,
 			From:     mi.Worker,
 			Value:    big.NewInt(0),
@@ -137,14 +137,14 @@ var actorSetPeeridCmd = &cmds.Command{
 			return err
 		}
 
-		params, err := specactors.SerializeParams(&miner2.ChangePeerIDParams{NewID: abi.PeerID(pid)})
+		params, err := actors.SerializeParams(&miner2.ChangePeerIDParams{NewID: abi.PeerID(pid)})
 		if err != nil {
 			return err
 		}
 
 		gasLimit, _ := req.Options["gas-limit"].(int64)
 
-		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.UnsignedMessage{
+		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			To:       maddr,
 			From:     mi.Worker,
 			Value:    big.NewInt(0),
@@ -200,14 +200,14 @@ var actorWithdrawCmd = &cmds.Command{
 			return xerrors.Errorf("can't withdraw more funds than available; requested: %s; available: %s", amount, available)
 		}
 
-		params, err := specactors.SerializeParams(&miner2.WithdrawBalanceParams{
+		params, err := actors.SerializeParams(&miner2.WithdrawBalanceParams{
 			AmountRequested: amount, // Default to attempting to withdraw all the extra funds in the miner actor
 		})
 		if err != nil {
 			return err
 		}
 
-		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.UnsignedMessage{
+		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			To:     maddr,
 			From:   mi.Owner,
 			Value:  big.NewInt(0),
@@ -239,7 +239,7 @@ var actorWithdrawCmd = &cmds.Command{
 
 		if nv >= network.Version14 {
 			var withdrawn abi.TokenAmount
-			if err := withdrawn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.ReturnValue)); err != nil {
+			if err := withdrawn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 				return err
 			}
 
@@ -326,7 +326,7 @@ var actorRepayDebtCmd = &cmds.Command{
 			return xerrors.Errorf("sender isn't a controller of miner: %s", fromID)
 		}
 
-		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.UnsignedMessage{
+		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			To:     maddr,
 			From:   fromID,
 			Value:  amount,
@@ -381,12 +381,12 @@ var actorSetOwnerCmd = &cmds.Command{
 			return err
 		}
 
-		sp, err := specactors.SerializeParams(&newAddr)
+		sp, err := actors.SerializeParams(&newAddr)
 		if err != nil {
 			return xerrors.Errorf("serializing params: %w", err)
 		}
 
-		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.UnsignedMessage{
+		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
 			Method: miner.Methods.ChangeOwnerAddress,
@@ -412,7 +412,7 @@ var actorSetOwnerCmd = &cmds.Command{
 			return err
 		}
 
-		smsg, err = env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.UnsignedMessage{
+		smsg, err = env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   newAddr,
 			To:     maddr,
 			Method: miner.Methods.ChangeOwnerAddress,
@@ -628,12 +628,12 @@ var actorControlSet = &cmds.Command{
 			NewControlAddrs: toSet,
 		}
 
-		sp, err := specactors.SerializeParams(cwp)
+		sp, err := actors.SerializeParams(cwp)
 		if err != nil {
 			return xerrors.Errorf("serializing params: %w", err)
 		}
 
-		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.UnsignedMessage{
+		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
 			Method: miner.Methods.ChangeWorkerAddress,
@@ -705,12 +705,12 @@ var actorProposeChangeWorker = &cmds.Command{
 			NewControlAddrs: mi.ControlAddresses,
 		}
 
-		sp, err := specactors.SerializeParams(cwp)
+		sp, err := actors.SerializeParams(cwp)
 		if err != nil {
 			return xerrors.Errorf("serializing params: %w", err)
 		}
 
-		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.UnsignedMessage{
+		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
 			Method: miner.Methods.ChangeWorkerAddress,
@@ -809,7 +809,7 @@ var actorConfirmChangeWorker = &cmds.Command{
 			return re.Emit("Pass --really-do-it to actually execute this action")
 		}
 
-		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.UnsignedMessage{
+		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
 			Method: miner.Methods.ConfirmUpdateWorkerKey,

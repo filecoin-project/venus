@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -13,22 +12,22 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 )
 
 // FakeStateView is a fake state view.
 type FakeStateView struct {
 	NetworkName string
-	Power       *types.NetworkPower
+	Power       *NetworkPower
 	Miners      map[address.Address]*FakeMinerState
 }
 
 // NewFakeStateView creates a new fake state view.
 func NewFakeStateView(rawBytePower, qaPower abi.StoragePower, minerCount, minPowerMinerCount int64) *FakeStateView {
 	return &FakeStateView{
-		Power: &types.NetworkPower{
+		Power: &NetworkPower{
 			RawBytePower:         rawBytePower,
 			QualityAdjustedPower: qaPower,
 			MinerCount:           minerCount,
@@ -99,7 +98,7 @@ func (v *FakeStateView) MinerProvingPeriod(ctx context.Context, maddr address.Ad
 	return m.ProvingPeriodStart, m.ProvingPeriodEnd, m.PoStFailures, nil
 }
 
-func (v *FakeStateView) PowerNetworkTotal(_ context.Context) (*types.NetworkPower, error) {
+func (v *FakeStateView) PowerNetworkTotal(_ context.Context) (*NetworkPower, error) {
 	return v.Power, nil
 }
 
@@ -111,12 +110,12 @@ func (v *FakeStateView) MinerClaimedPower(ctx context.Context, miner address.Add
 	return m.ClaimedRawPower, m.ClaimedQAPower, nil
 }
 
-func (v *FakeStateView) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
+func (v *FakeStateView) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, maddr address.Address, rand abi.PoStRandomness) ([]builtin.ExtendedSectorInfo, error) {
 	_, ok := v.Miners[maddr]
 	if !ok {
 		return nil, errors.Errorf("no miner %s", maddr)
 	}
-	return []builtin.SectorInfo{}, nil
+	return []builtin.ExtendedSectorInfo{}, nil
 }
 
 func (v *FakeStateView) MinerPledgeCollateral(_ context.Context, maddr address.Address) (locked abi.TokenAmount, total abi.TokenAmount, err error) {

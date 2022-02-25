@@ -3,15 +3,15 @@ package market
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -25,9 +25,9 @@ import (
 var log = logging.Logger("market_adapter")
 
 type FundManagerParams struct {
-	MP apiface.IMessagePool
-	CI apiface.IChainInfo
-	MS apiface.IMinerState
+	MP v1api.IMessagePool
+	CI v1api.IChainInfo
+	MS v1api.IMinerState
 	DS repo.Datastore
 }
 
@@ -70,7 +70,7 @@ func (fm *FundManager) Stop() {
 	fm.shutdown()
 }
 
-func (fm *FundManager) Start() error {
+func (fm *FundManager) Start(ctx context.Context) error {
 	fm.lk.Lock()
 	defer fm.lk.Unlock()
 
@@ -79,11 +79,11 @@ func (fm *FundManager) Start() error {
 	// - in State() only load addresses with in-progress messages
 	// - load the others just-in-time from getFundedAddress
 	// - delete(fm.fundedAddrs, addr) when the queue has been processed
-	return fm.str.forEach(func(state *FundedAddressState) {
+	return fm.str.forEach(ctx, func(state *FundedAddressState) {
 		fa := newFundedAddress(fm, state.Addr)
 		fa.state = state
 		fm.fundedAddrs[fa.state.Addr] = fa
-		fa.start()
+		fa.start(ctx)
 	})
 }
 
@@ -169,13 +169,13 @@ func newFundedAddress(fm *FundManager, addr address.Address) *fundedAddress {
 
 // If there is an in-progress on-chain message, don't submit any more messages
 // on chain until it completes
-func (a *fundedAddress) start() {
+func (a *fundedAddress) start(ctx context.Context) {
 	a.lk.Lock()
 	defer a.lk.Unlock()
 
 	if a.state.MsgCid != nil {
 		a.debugf("restart: wait for %s", a.state.MsgCid)
-		a.startWaitForResults(*a.state.MsgCid)
+		a.startWaitForResults(ctx, *a.state.MsgCid)
 	}
 }
 
@@ -208,7 +208,7 @@ func (a *fundedAddress) requestAndWait(ctx context.Context, wallet address.Addre
 	a.lk.Unlock()
 
 	// Process the queue
-	go a.process()
+	go a.process(ctx)
 
 	// Wait for the results
 	select {
@@ -228,7 +228,7 @@ func (a *fundedAddress) onProcessStart(fn func() bool) {
 }
 
 // Process queued requests
-func (a *fundedAddress) process() {
+func (a *fundedAddress) process(ctx context.Context) {
 	a.lk.Lock()
 	defer a.lk.Unlock()
 
@@ -257,7 +257,7 @@ func (a *fundedAddress) process() {
 	if haveReservations {
 		res, err := a.processReservations(a.reservations, a.releases)
 		if err == nil {
-			a.applyStateChange(res.msgCid, res.amtReserved)
+			a.applyStateChange(ctx, res.msgCid, res.amtReserved)
 		}
 		a.reservations = filterOutProcessedReqs(a.reservations)
 		a.releases = filterOutProcessedReqs(a.releases)
@@ -268,7 +268,7 @@ func (a *fundedAddress) process() {
 	if haveWithdrawals && a.state.MsgCid == nil && len(a.reservations) == 0 {
 		withdrawalCid, err := a.processWithdrawals(a.withdrawals)
 		if err == nil && withdrawalCid != cid.Undef {
-			a.applyStateChange(&withdrawalCid, types.EmptyInt)
+			a.applyStateChange(ctx, &withdrawalCid, types.EmptyInt)
 		}
 		a.withdrawals = filterOutProcessedReqs(a.withdrawals)
 	}
@@ -276,11 +276,11 @@ func (a *fundedAddress) process() {
 	// If a message was sent on-chain
 	if a.state.MsgCid != nil {
 		// Start waiting for results of message (async)
-		a.startWaitForResults(*a.state.MsgCid)
+		a.startWaitForResults(ctx, *a.state.MsgCid)
 	}
 
 	// Process any remaining queued requests
-	go a.process()
+	go a.process(ctx)
 }
 
 // Filter out completed requests
@@ -295,24 +295,24 @@ func filterOutProcessedReqs(reqs []*fundRequest) []*fundRequest {
 }
 
 // Apply the results of processing queues and save to the datastore
-func (a *fundedAddress) applyStateChange(msgCid *cid.Cid, amtReserved abi.TokenAmount) {
+func (a *fundedAddress) applyStateChange(ctx context.Context, msgCid *cid.Cid, amtReserved abi.TokenAmount) {
 	a.state.MsgCid = msgCid
 	if !amtReserved.Nil() {
 		a.state.AmtReserved = amtReserved
 	}
-	a.saveState()
+	a.saveState(ctx)
 }
 
 // Clear the pending message cid so that a new message can be sent
-func (a *fundedAddress) clearWaitState() {
+func (a *fundedAddress) clearWaitState(ctx context.Context) {
 	a.state.MsgCid = nil
-	a.saveState()
+	a.saveState(ctx)
 }
 
 // Save state to datastore
-func (a *fundedAddress) saveState() {
+func (a *fundedAddress) saveState(ctx context.Context) {
 	// Not much we can do if saving to the datastore fails, just log
-	err := a.str.save(a.state)
+	err := a.str.save(ctx, a.state)
 	if err != nil {
 		log.Errorf("saving state to store for addr %s: %w", a.state.Addr, err)
 	}
@@ -563,7 +563,7 @@ func (a *fundedAddress) processWithdrawals(withdrawals []*fundRequest) (msgCid c
 }
 
 // asynchonously wait for results of message
-func (a *fundedAddress) startWaitForResults(msgCid cid.Cid) {
+func (a *fundedAddress) startWaitForResults(ctx context.Context, msgCid cid.Cid) {
 	go func() {
 		err := a.env.WaitMsg(a.ctx, msgCid)
 		if err != nil {
@@ -574,10 +574,10 @@ func (a *fundedAddress) startWaitForResults(msgCid cid.Cid) {
 
 		a.lk.Lock()
 		a.debugf("complete wait")
-		a.clearWaitState()
+		a.clearWaitState(ctx)
 		a.lk.Unlock()
 
-		a.process()
+		a.process(ctx)
 	}()
 }
 
@@ -661,12 +661,12 @@ func (env *fundManagerEnvironment) AddFunds(
 	addr address.Address,
 	amt abi.TokenAmount,
 ) (cid.Cid, error) {
-	params, err := specactors.SerializeParams(&addr)
+	params, err := actors.SerializeParams(&addr)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.UnsignedMessage{
+	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.Message{
 		To:     market.Address,
 		From:   wallet,
 		Value:  amt,
@@ -686,7 +686,7 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 	addr address.Address,
 	amt abi.TokenAmount,
 ) (cid.Cid, error) {
-	params, err := specactors.SerializeParams(&market.WithdrawBalanceParams{
+	params, err := actors.SerializeParams(&market.WithdrawBalanceParams{
 		ProviderOrClientAddress: addr,
 		Amount:                  amt,
 	})
@@ -694,7 +694,7 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 		return cid.Undef, xerrors.Errorf("serializing params: %w", err)
 	}
 
-	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.UnsignedMessage{
+	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.Message{
 		To:     market.Address,
 		From:   wallet,
 		Value:  big.NewInt(0),

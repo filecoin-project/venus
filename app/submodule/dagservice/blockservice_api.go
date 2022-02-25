@@ -2,13 +2,13 @@ package dagservice
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
+	"io"
+
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
-	"io"
 )
 
-var _ apiface.IDagService = &dagServiceAPI{}
+var _ IDagService = &dagServiceAPI{}
 
 type dagServiceAPI struct { //nolint
 	dagService *DagServiceSubmodule

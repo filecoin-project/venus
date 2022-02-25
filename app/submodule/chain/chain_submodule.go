@@ -2,26 +2,25 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/client/apiface/v0api"
-	"github.com/filecoin-project/venus/pkg/statemanger"
-	"github.com/filecoin-project/venus/pkg/vm"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"time"
 
-	chainv0api "github.com/filecoin-project/venus/app/submodule/chain/v0api"
-
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
+	apiwrapper "github.com/filecoin-project/venus/app/submodule/chain/v0api"
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/consensusfault"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
+	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // ChainSubmodule enhances the `Node` with chain capabilities.
@@ -108,7 +107,7 @@ func (chain *ChainSubmodule) Stop(ctx context.Context) {
 }
 
 //API chain module api implement
-func (chain *ChainSubmodule) API() apiface.IChain {
+func (chain *ChainSubmodule) API() v1api.IChain {
 	return &chainAPI{
 		IAccount:    NewAccountAPI(chain),
 		IActor:      NewActorAPI(chain),
@@ -119,5 +118,5 @@ func (chain *ChainSubmodule) API() apiface.IChain {
 }
 
 func (chain *ChainSubmodule) V0API() v0api.IChain {
-	return &chainv0api.WrapperV1IChain{IChain: chain.API()}
+	return &apiwrapper.WrapperV1IChain{IChain: chain.API()}
 }

@@ -2,12 +2,12 @@ package discovery
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
+	"time"
+
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/libp2p/go-libp2p-core/host"
-	"time"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -128,10 +128,10 @@ func (discovery *DiscoverySubmodule) Stop() {
 }
 
 //API create a discovery api implement
-func (discovery *DiscoverySubmodule) API() apiface.IDiscovery {
+func (discovery *DiscoverySubmodule) API() IDiscovery {
 	return &discoveryAPI{discovery: discovery}
 }
 
-func (discovery *DiscoverySubmodule) V0API() apiface.IDiscovery {
+func (discovery *DiscoverySubmodule) V0API() IDiscovery {
 	return &discoveryAPI{discovery: discovery}
 }

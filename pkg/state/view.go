@@ -4,6 +4,8 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
@@ -15,18 +17,17 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/account"
-	notinit "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
-	paychActor "github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/reward"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/verifreg"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
+	notinit "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	paychActor "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 )
 
 // Viewer builds state views from state root CIDs.
@@ -139,7 +140,7 @@ func (v *View) MinerSectorInfo(ctx context.Context, maddr addr.Address, sectorNu
 }
 
 //GetSectorsForWinningPoSt return sector of winning post challenge result
-func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, maddr addr.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
+func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, maddr addr.Address, rand abi.PoStRandomness) ([]builtin.ExtendedSectorInfo, error) {
 	mas, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor state: %s", err)
@@ -220,12 +221,13 @@ func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version,
 		return nil, xerrors.Errorf("loading proving sectors: %s", err)
 	}
 
-	out := make([]builtin.SectorInfo, len(sectors))
+	out := make([]builtin.ExtendedSectorInfo, len(sectors))
 	for i, sinfo := range sectors {
-		out[i] = builtin.SectorInfo{
+		out[i] = builtin.ExtendedSectorInfo{
 			SealProof:    sinfo.SealProof,
 			SectorNumber: sinfo.SectorNumber,
 			SealedCID:    sinfo.SealedCID,
+			SectorKey:    sinfo.SectorKeyCID,
 		}
 	}
 
@@ -443,7 +445,7 @@ func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*
 }
 
 // Returns the storage power actor's values for network total power.
-func (v *View) PowerNetworkTotal(ctx context.Context) (*types.NetworkPower, error) {
+func (v *View) PowerNetworkTotal(ctx context.Context) (*NetworkPower, error) {
 	st, err := v.LoadPowerActor(ctx)
 	if err != nil {
 		return nil, err
@@ -459,7 +461,7 @@ func (v *View) PowerNetworkTotal(ctx context.Context) (*types.NetworkPower, erro
 		return nil, err
 	}
 
-	return &types.NetworkPower{
+	return &NetworkPower{
 		RawBytePower:         tp.RawBytePower,
 		QualityAdjustedPower: tp.QualityAdjPower,
 		MinerCount:           int64(minerCount),
@@ -536,29 +538,6 @@ func (v *View) StateMinerProvingDeadline(ctx context.Context, addr addr.Address,
 	}
 
 	return di.NextNotElapsed(), nil
-}
-
-// StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
-func (v *View) StateMinerSectors(ctx context.Context, addr addr.Address, filter *bitfield.BitField, key types.TipSetKey) ([]*types.ChainSectorInfo, error) {
-	mas, err := v.LoadMinerState(ctx, addr)
-	if err != nil {
-		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
-	}
-
-	siset, err := mas.LoadSectors(filter)
-	if err != nil {
-		return nil, err
-	}
-
-	sset := make([]*types.ChainSectorInfo, len(siset))
-	for i, val := range siset {
-		sset[i] = &types.ChainSectorInfo{
-			Info: *val,
-			ID:   val.SectorNumber,
-		}
-	}
-
-	return sset, nil
 }
 
 // StateSectorExpiration returns epoch at which given sector will expire

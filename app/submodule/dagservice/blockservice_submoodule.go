@@ -2,14 +2,24 @@ package dagservice
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
+	"io"
+
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/util/dag"
+	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 
 	bserv "github.com/ipfs/go-blockservice"
 )
+
+type IDagService interface {
+	DAGGetNode(ctx context.Context, ref string) (interface{}, error)
+	DAGGetFileSize(ctx context.Context, c cid.Cid) (uint64, error)
+	DAGCat(ctx context.Context, c cid.Cid) (io.Reader, error)
+	DAGImportData(ctx context.Context, data io.Reader) (ipld.Node, error)
+}
 
 // DagServiceSubmodule enhances the `Node` with networked key/value fetching capabilities.
 // - `BlockService` is shared by chain/graphsync and piece/bitswap data
@@ -34,10 +44,10 @@ func NewDagserviceSubmodule(ctx context.Context, dagCfg dagConfig, network *netw
 	}, nil
 }
 
-func (blockService *DagServiceSubmodule) API() apiface.IDagService {
+func (blockService *DagServiceSubmodule) API() IDagService {
 	return &dagServiceAPI{dagService: blockService}
 }
 
-func (blockService *DagServiceSubmodule) V0API() apiface.IDagService {
+func (blockService *DagServiceSubmodule) V0API() IDagService {
 	return &dagServiceAPI{dagService: blockService}
 }

@@ -2,12 +2,15 @@ package cmd
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"io"
+	"path/filepath"
 	"strconv"
+
+	"github.com/filecoin-project/venus/app/paths"
+
+	"github.com/filecoin-project/venus/pkg/config"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -18,10 +21,9 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // ActorView represents a generic way to represent details about any actor to the user.
@@ -79,7 +81,7 @@ var stateWaitMsgCmd = &cmds.Command{
 			writer.Printf("message was executed in tipset: %s\n", mw.TipSet.Cids())
 			writer.Printf("Exit Code: %d\n", mw.Receipt.ExitCode)
 			writer.Printf("Gas Used: %d\n", mw.Receipt.GasUsed)
-			writer.Printf("Return: %x\n", mw.Receipt.ReturnValue)
+			writer.Printf("Return: %x\n", mw.Receipt.Return)
 		} else {
 			writer.Printf("Unable to find message recepit of %s", cid)
 		}
@@ -112,7 +114,7 @@ var stateSearchMsgCmd = &cmds.Command{
 			writer.Printf("message was executed in tipset: %s", mw.TipSet.Cids())
 			writer.Printf("\nExit Code: %d", mw.Receipt.ExitCode)
 			writer.Printf("\nGas Used: %d", mw.Receipt.GasUsed)
-			writer.Printf("\nReturn: %x", mw.Receipt.ReturnValue)
+			writer.Printf("\nReturn: %x", mw.Receipt.Return)
 		} else {
 			writer.Print("message was not found on chain")
 		}
@@ -258,7 +260,7 @@ var stateSectorCmd = &cmds.Command{
 			return err
 		}
 
-		blockDelay, err := blockDelay(env.(*node.Env).ConfigAPI)
+		blockDelay, err := blockDelay(req)
 		if err != nil {
 			return err
 		}
@@ -302,14 +304,20 @@ var stateSectorCmd = &cmds.Command{
 	},
 }
 
-func blockDelay(a apiface.IConfig) (uint64, error) {
-	data, err := a.ConfigGet(context.Background(), "parameters.blockDelay")
+func blockDelay(req *cmds.Request) (uint64, error) {
+	var err error
+	repoDir, _ := req.Options[OptionRepoDir].(string)
+	repoDir, err = paths.GetRepoPath(repoDir)
 	if err != nil {
 		return 0, err
 	}
-	blockDelay, _ := data.(uint64)
+	cfgPath := filepath.Join(repoDir, "config.json")
+	cfg, err := config.ReadFile(cfgPath)
+	if err != nil {
+		return 0, err
+	}
 
-	return blockDelay, nil
+	return cfg.NetworkParams.BlockDelay, nil
 }
 
 type ActorInfo struct {
@@ -446,7 +454,7 @@ var stateGetDealSetCmd = &cmds.Command{
 
 		return re.Emit(deal)
 	},
-	Type: apitypes.MarketDeal{},
+	Type: types.MarketDeal{},
 }
 
 var stateMinerInfo = &cmds.Command{
@@ -462,7 +470,7 @@ var stateMinerInfo = &cmds.Command{
 			return err
 		}
 
-		blockDelay, err := blockDelay(env.(*node.Env).ConfigAPI)
+		blockDelay, err := blockDelay(req)
 		if err != nil {
 			return err
 		}

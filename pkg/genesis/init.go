@@ -3,9 +3,10 @@ package genesis
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -23,7 +24,7 @@ func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst cbor.IpldS
 	if err != nil {
 		return nil, err
 	}
-	genTipSet, err := types.NewTipSet(genesis)
+	genTipSet, err := types.NewTipSet([]*types.BlockHeader{genesis})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate genesis block")
 	}
@@ -49,7 +50,7 @@ func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst cbor.IpldS
 		return nil, errors.Wrap(err, "failed to marshal genesis cid")
 	}
 
-	if err = r.ChainDatastore().Put(chain.GenesisKey, val); err != nil {
+	if err = r.ChainDatastore().Put(ctx, chain.GenesisKey, val); err != nil {
 		return nil, errors.Wrap(err, "failed to persist genesis cid")
 	}
 

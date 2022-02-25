@@ -2,17 +2,18 @@ package messagepool
 
 import (
 	"context"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	tbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/statemanger"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"golang.org/x/xerrors"
-	"time"
 )
 
 var (
@@ -22,17 +23,17 @@ var (
 )
 
 type Provider interface {
-	ChainHead() (*types.TipSet, error)
-	ChainTipSet(types.TipSetKey) (*types.TipSet, error)
-	SubscribeHeadChanges(func(rev, app []*types.TipSet) error) *types.TipSet
-	PutMessage(m types.ChainMsg) (cid.Cid, error)
-	PubSubPublish(string, []byte) error
-	GetActorAfter(address.Address, *types.TipSet) (*types.Actor, error)
+	ChainHead(ctx context.Context) (*types.TipSet, error)
+	ChainTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
+	SubscribeHeadChanges(context.Context, func(rev, app []*types.TipSet) error) *types.TipSet
+	PutMessage(context.Context, types.ChainMsg) (cid.Cid, error)
+	PubSubPublish(context.Context, string, []byte) error
+	GetActorAfter(context.Context, address.Address, *types.TipSet) (*types.Actor, error)
 	StateAccountKeyAtFinality(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateAccountKey(context.Context, address.Address, *types.TipSet) (address.Address, error)
-	MessagesForBlock(block2 *types.BlockHeader) ([]*types.UnsignedMessage, []*types.SignedMessage, error)
-	MessagesForTipset(*types.TipSet) ([]types.ChainMsg, error)
-	LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error)
+	MessagesForBlock(context.Context, *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
+	MessagesForTipset(context.Context, *types.TipSet) ([]types.ChainMsg, error)
+	LoadTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 	ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (tbig.Int, error)
 	IsLite() bool
 }
@@ -67,7 +68,7 @@ func (mpp *mpoolProvider) IsLite() bool {
 	return mpp.lite != nil
 }
 
-func (mpp *mpoolProvider) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) *types.TipSet {
+func (mpp *mpoolProvider) SubscribeHeadChanges(ctx context.Context, cb func(rev, app []*types.TipSet) error) *types.TipSet {
 	mpp.sm.SubscribeHeadChanges(
 		chain.WrapHeadChangeCoalescer(
 			cb,
@@ -78,23 +79,23 @@ func (mpp *mpoolProvider) SubscribeHeadChanges(cb func(rev, app []*types.TipSet)
 	return mpp.sm.GetHead()
 }
 
-func (mpp *mpoolProvider) ChainHead() (*types.TipSet, error) {
+func (mpp *mpoolProvider) ChainHead(context.Context) (*types.TipSet, error) {
 	return mpp.sm.GetHead(), nil
 }
 
-func (mpp *mpoolProvider) ChainTipSet(key types.TipSetKey) (*types.TipSet, error) {
-	return mpp.sm.GetTipSet(key)
+func (mpp *mpoolProvider) ChainTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
+	return mpp.sm.GetTipSet(ctx, key)
 }
 
-func (mpp *mpoolProvider) PutMessage(m types.ChainMsg) (cid.Cid, error) {
-	return mpp.sm.PutMessage(m)
+func (mpp *mpoolProvider) PutMessage(ctx context.Context, m types.ChainMsg) (cid.Cid, error) {
+	return mpp.sm.PutMessage(ctx, m)
 }
 
-func (mpp *mpoolProvider) PubSubPublish(k string, v []byte) error {
+func (mpp *mpoolProvider) PubSubPublish(ctx context.Context, k string, v []byte) error {
 	return mpp.ps.Publish(k, v) // nolint
 }
 
-func (mpp *mpoolProvider) GetActorAfter(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+func (mpp *mpoolProvider) GetActorAfter(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, error) {
 	if mpp.IsLite() {
 		n, err := mpp.lite.GetNonce(context.TODO(), addr, ts.Key())
 		if err != nil {
@@ -136,17 +137,17 @@ func (mpp *mpoolProvider) StateAccountKey(ctx context.Context, addr address.Addr
 	return mpp.stmgr.ResolveToKeyAddress(ctx, addr, ts)
 }
 
-func (mpp *mpoolProvider) MessagesForBlock(h *types.BlockHeader) ([]*types.UnsignedMessage, []*types.SignedMessage, error) {
+func (mpp *mpoolProvider) MessagesForBlock(ctx context.Context, h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
 	secpMsgs, blsMsgs, err := mpp.cms.LoadMetaMessages(context.TODO(), h.Messages)
 	return blsMsgs, secpMsgs, err
 }
 
-func (mpp *mpoolProvider) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
+func (mpp *mpoolProvider) MessagesForTipset(ctx context.Context, ts *types.TipSet) ([]types.ChainMsg, error) {
 	return mpp.cms.MessagesForTipset(ts)
 }
 
-func (mpp *mpoolProvider) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
-	return mpp.sm.GetTipSet(tsk)
+func (mpp *mpoolProvider) LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
+	return mpp.sm.GetTipSet(ctx, tsk)
 }
 
 func (mpp *mpoolProvider) ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (tbig.Int, error) {

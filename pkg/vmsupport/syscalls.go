@@ -4,31 +4,35 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
-	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
-	cbornode "github.com/ipfs/go-ipld-cbor"
 	goruntime "runtime"
 	"sync"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/ipfs/go-cid"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+
+	vmr "github.com/filecoin-project/specs-actors/v7/actors/runtime"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/state"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/pkg/vm"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 )
 
 var log = logging.Logger("vmsupport")
 
 type faultChecker interface {
-	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, curEpoch abi.ChainEpoch, msg vm.VmMessage, gasIpld cbornode.IpldStore, view vm.SyscallsStateView, getter vmcontext.LookbackStateGetter) (*rt5.ConsensusFault, error)
+	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, curEpoch abi.ChainEpoch, msg vm.VmMessage, gasIpld cbornode.IpldStore, view vm.SyscallsStateView, getter vmcontext.LookbackStateGetter) (*vmr.ConsensusFault, error)
 }
 
 // Syscalls contains the concrete implementation of VM system calls, including connection to
@@ -48,6 +52,19 @@ func NewSyscalls(faultChecker faultChecker, verifier ffiwrapper.Verifier) *Sysca
 		faultChecker: faultChecker,
 		verifier:     verifier,
 	}
+}
+
+func (s *Syscalls) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) error {
+	ok, err := s.verifier.VerifyReplicaUpdate(update)
+	if err != nil {
+		return xerrors.Errorf("failed to verify replica update: %w", err)
+	}
+
+	if !ok {
+		return fmt.Errorf("invalid replica update")
+	}
+
+	return nil
 }
 
 // VerifySignature Verifies that a signature is valid for an address and plaintext.
@@ -146,6 +163,6 @@ func (s *Syscalls) VerifyPoSt(ctx context.Context, info proof5.WindowPoStVerifyI
 // the "parent grinding fault", in which case it must be the sibling of h1 (same parent tipset) and one of the
 // blocks in the parent of h2 (i.e. h2's grandparent).
 // Returns nil and an error if the headers don't prove a fault.
-func (s *Syscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, curEpoch abi.ChainEpoch, msg vm.VmMessage, gasIpld cbornode.IpldStore, view vm.SyscallsStateView, getter vmcontext.LookbackStateGetter) (*rt5.ConsensusFault, error) {
+func (s *Syscalls) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, curEpoch abi.ChainEpoch, msg vm.VmMessage, gasIpld cbornode.IpldStore, view vm.SyscallsStateView, getter vmcontext.LookbackStateGetter) (*vmr.ConsensusFault, error) {
 	return s.faultChecker.VerifyConsensusFault(ctx, h1, h2, extra, curEpoch, msg, gasIpld, view, getter)
 }

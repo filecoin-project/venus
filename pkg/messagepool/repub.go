@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
 	"github.com/filecoin-project/venus/pkg/net/msgsub"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 const repubMsgLimit = 30
@@ -62,7 +62,7 @@ func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 		// chains that might become profitable in the next 20 blocks.
 		// We still check the lowerBound condition for individual messages so that we don't send
 		// messages that will be rejected by the mpool spam protector, so this is safe to do.
-		next := mp.createMessageChains(actor, mset, baseFeeLowerBound, ts)
+		next := mp.createMessageChains(ctx, actor, mset, baseFeeLowerBound, ts)
 		chains = append(chains, next...)
 	}
 
@@ -140,7 +140,7 @@ LOOP:
 			return xerrors.Errorf("cannot serialize message: %v", err)
 		}
 
-		err = mp.api.PubSubPublish(msgsub.Topic(mp.netName), buf.Bytes())
+		err = mp.api.PubSubPublish(ctx, msgsub.Topic(mp.netName), buf.Bytes())
 		if err != nil {
 			return xerrors.Errorf("cannot publish: %v", err)
 		}
@@ -158,7 +158,7 @@ LOOP:
 		mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolRepub], func() interface{} {
 			msgsEv := make([]MessagePoolEvtMessage, 0, len(msgs))
 			for _, m := range msgs {
-				msgsEv = append(msgsEv, MessagePoolEvtMessage{UnsignedMessage: m.Message, CID: m.Cid()})
+				msgsEv = append(msgsEv, MessagePoolEvtMessage{Message: m.Message, CID: m.Cid()})
 			}
 			return MessagePoolEvt{
 				Action:   "repub",

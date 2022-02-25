@@ -6,12 +6,11 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/events"
-
 	"github.com/filecoin-project/venus/pkg/paychmgr"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 )
@@ -24,9 +23,9 @@ type API struct {
 }
 type PaymentChannelSettler interface {
 	check(ts *types.TipSet) (done bool, more bool, err error)
-	messageHandler(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error)
+	messageHandler(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error)
 	revertHandler(ctx context.Context, ts *types.TipSet) error
-	matcher(msg *types.UnsignedMessage) (matched bool, err error)
+	matcher(msg *types.Message) (matched bool, err error)
 }
 type paymentChannelSettler struct {
 	ctx context.Context
@@ -44,7 +43,7 @@ func (pcs *paymentChannelSettler) check(ts *types.TipSet) (done bool, more bool,
 	return false, true, nil
 }
 
-func (pcs *paymentChannelSettler) messageHandler(msg *types.UnsignedMessage, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error) {
+func (pcs *paymentChannelSettler) messageHandler(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error) {
 	// Ignore unsuccessful settle messages
 	if rec.ExitCode != 0 {
 		return true, nil
@@ -80,7 +79,7 @@ func (pcs *paymentChannelSettler) revertHandler(ctx context.Context, ts *types.T
 	return nil
 }
 
-func (pcs *paymentChannelSettler) matcher(msg *types.UnsignedMessage) (matched bool, err error) {
+func (pcs *paymentChannelSettler) matcher(msg *types.Message) (matched bool, err error) {
 	// Check if this is a settle payment channel message
 	if msg.Method != paych.Methods.Settle {
 		return false, nil

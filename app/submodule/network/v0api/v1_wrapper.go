@@ -2,25 +2,26 @@ package v0api
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
 
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/types"
+
+	"github.com/filecoin-project/venus/venus-shared/api"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
 type WrapperV1INetwork struct {
-	apiface.INetwork
+	v1api.INetwork
 }
 
-func (w *WrapperV1INetwork) Version(ctx context.Context) (apitypes.Version, error) {
+func (w *WrapperV1INetwork) Version(ctx context.Context) (types.Version, error) {
 	ver, err := w.INetwork.Version(ctx)
 	if err != nil {
-		return apitypes.Version{}, err
+		return types.Version{}, err
 	}
 
-	ver.APIVersion = constants.FullAPIVersion0
+	ver.APIVersion = api.FullAPIVersion0
 
 	return ver, nil
 }
 
-var _ apiface.INetwork = &WrapperV1INetwork{}
+var _ v1api.INetwork = &WrapperV1INetwork{}

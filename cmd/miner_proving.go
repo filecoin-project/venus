@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/types"
 	"strconv"
 	"text/tabwriter"
 
@@ -14,8 +13,9 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var minerProvingCmd = &cmds.Command{
@@ -44,7 +44,7 @@ var provingInfoCmd = &cmds.Command{
 		}
 		ctx := req.Context
 
-		blockDelay, err := blockDelay(env.(*node.Env).ConfigAPI)
+		blockDelay, err := blockDelay(req)
 		if err != nil {
 			return err
 		}

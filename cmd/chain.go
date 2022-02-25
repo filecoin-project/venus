@@ -17,11 +17,10 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var chainCmd = &cmds.Command{
@@ -213,7 +212,7 @@ var chainGetBlockCmd = &cmds.Command{
 
 		cblock := struct {
 			types.BlockHeader
-			BlsMessages    []*types.UnsignedMessage
+			BlsMessages    []*types.Message
 			SecpkMessages  []*types.SignedMessage
 			ParentReceipts []*types.MessageReceipt
 			ParentMessages []cid.Cid
@@ -256,7 +255,7 @@ var chainGetMessageCmd = &cmds.Command{
 
 		return re.Emit(msg)
 	},
-	Type: types.UnsignedMessage{},
+	Type: types.Message{},
 }
 
 var chainGetMessagesCmd = &cmds.Command{
@@ -280,7 +279,7 @@ var chainGetMessagesCmd = &cmds.Command{
 
 		return re.Emit(bmsg)
 	},
-	Type: &apitypes.BlockMessages{},
+	Type: &types.BlockMessages{},
 }
 
 var chainGetReceiptsCmd = &cmds.Command{
@@ -309,7 +308,7 @@ field of the filecoin block header.`,
 	Type: []types.MessageReceipt{},
 }
 
-func apiMsgCids(in []apitypes.Message) []cid.Cid {
+func apiMsgCids(in []types.MessageCID) []cid.Cid {
 	out := make([]cid.Cid, len(in))
 	for k, v := range in {
 		out[k] = v.Cid
@@ -387,7 +386,7 @@ var chainExportCmd = &cmds.Command{
 // LoadTipSet gets the tipset from the context, or the head from the API.
 //
 // It always gets the head from the API so commands use a consistent tipset even if time pases.
-func LoadTipSet(ctx context.Context, req *cmds.Request, chainAPI apiface.IChain) (*types.TipSet, error) {
+func LoadTipSet(ctx context.Context, req *cmds.Request, chainAPI v1api.IChain) (*types.TipSet, error) {
 	tss := req.Options["tipset"].(string)
 	if tss == "" {
 		return chainAPI.ChainHead(ctx)
@@ -396,7 +395,7 @@ func LoadTipSet(ctx context.Context, req *cmds.Request, chainAPI apiface.IChain)
 	return ParseTipSetRef(ctx, chainAPI, tss)
 }
 
-func ParseTipSetRef(ctx context.Context, chainAPI apiface.IChain, tss string) (*types.TipSet, error) {
+func ParseTipSetRef(ctx context.Context, chainAPI v1api.IChain, tss string) (*types.TipSet, error) {
 	if tss[0] == '@' {
 		if tss == "@head" {
 			return chainAPI.ChainHead(ctx)

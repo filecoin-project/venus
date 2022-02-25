@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -22,12 +23,12 @@ func TestEncrypKeyAndDecryptKey(t *testing.T) {
 		require.NoError(t, ds.Close())
 	}()
 
-	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
+	fs, err := NewDSBackend(context.Background(), ds, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
 	w := New(fs)
-
-	ki, err := w.NewKeyInfo()
+	ctx := context.Background()
+	ki, err := w.NewKeyInfo(ctx)
 	assert.NoError(t, err)
 
 	addr, err := ki.Address()

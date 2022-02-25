@@ -6,10 +6,9 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 func (mp *MessagePool) pruneExcessMessages() error {
@@ -86,7 +85,7 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 		for _, m := range mset {
 			pruneMsgs[m.Message.Cid()] = m
 		}
-		actorChains := mp.createMessageChains(actor, mset, baseFeeLowerBound, ts)
+		actorChains := mp.createMessageChains(ctx, actor, mset, baseFeeLowerBound, ts)
 		chains = append(chains, actorChains...)
 	}
 

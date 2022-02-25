@@ -7,7 +7,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/filecoin-project/venus/pkg/types"
+	chain "github.com/filecoin-project/venus/venus-shared/types"
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
@@ -270,7 +270,7 @@ func (t *CompactedMessages) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.Bls ([]*types.UnsignedMessage) (slice)
+	// t.Bls ([]*chain.Message) (slice)
 	if len(t.Bls) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.Bls was too long")
 	}
@@ -307,7 +307,7 @@ func (t *CompactedMessages) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.Secpk ([]*types.SignedMessage) (slice)
+	// t.Secpk ([]*chain.SignedMessage) (slice)
 	if len(t.Secpk) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.Secpk was too long")
 	}
@@ -364,7 +364,7 @@ func (t *CompactedMessages) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Bls ([]*types.UnsignedMessage) (slice)
+	// t.Bls ([]*chain.Message) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -380,12 +380,12 @@ func (t *CompactedMessages) UnmarshalCBOR(r io.Reader) error {
 	}
 
 	if extra > 0 {
-		t.Bls = make([]*types.UnsignedMessage, extra)
+		t.Bls = make([]*chain.Message, extra)
 	}
 
 	for i := 0; i < int(extra); i++ {
 
-		var v types.UnsignedMessage
+		var v chain.Message
 		if err := v.UnmarshalCBOR(br); err != nil {
 			return err
 		}
@@ -452,7 +452,7 @@ func (t *CompactedMessages) UnmarshalCBOR(r io.Reader) error {
 		}
 	}
 
-	// t.Secpk ([]*types.SignedMessage) (slice)
+	// t.Secpk ([]*chain.SignedMessage) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -468,12 +468,12 @@ func (t *CompactedMessages) UnmarshalCBOR(r io.Reader) error {
 	}
 
 	if extra > 0 {
-		t.Secpk = make([]*types.SignedMessage, extra)
+		t.Secpk = make([]*chain.SignedMessage, extra)
 	}
 
 	for i := 0; i < int(extra); i++ {
 
-		var v types.SignedMessage
+		var v chain.SignedMessage
 		if err := v.UnmarshalCBOR(br); err != nil {
 			return err
 		}
@@ -556,7 +556,7 @@ func (t *BSTipSet) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
-	// t.Blocks ([]*types.BlockHeader) (slice)
+	// t.Blocks ([]*chain.BlockHeader) (slice)
 	if len(t.Blocks) > cbg.MaxLength {
 		return xerrors.Errorf("Slice value in field t.Blocks was too long")
 	}
@@ -595,7 +595,7 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Blocks ([]*types.BlockHeader) (slice)
+	// t.Blocks ([]*chain.BlockHeader) (slice)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 	if err != nil {
@@ -611,12 +611,12 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 	}
 
 	if extra > 0 {
-		t.Blocks = make([]*types.BlockHeader, extra)
+		t.Blocks = make([]*chain.BlockHeader, extra)
 	}
 
 	for i := 0; i < int(extra); i++ {
 
-		var v types.BlockHeader
+		var v chain.BlockHeader
 		if err := v.UnmarshalCBOR(br); err != nil {
 			return err
 		}

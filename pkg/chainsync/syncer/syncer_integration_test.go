@@ -2,12 +2,13 @@ package syncer_test
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/statemanger"
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/venus/pkg/statemanger"
+
 	"github.com/filecoin-project/venus/pkg/chainsync/types"
-	types2 "github.com/filecoin-project/venus/pkg/types"
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,9 +46,9 @@ func TestLoadFork(t *testing.T) {
 
 	require.NoError(t, err)
 
-	base := builder.AppendManyOn(3, genesis)
-	left := builder.AppendManyOn(4, base)
-	right := builder.AppendManyOn(3, base)
+	base := builder.AppendManyOn(ctx, 3, genesis)
+	left := builder.AppendManyOn(ctx, 4, base)
+	right := builder.AppendManyOn(ctx, 3, base)
 
 	leftTarget := &types.Target{
 		Base:      nil,
@@ -77,7 +78,7 @@ func TestLoadFork(t *testing.T) {
 	// tipsets can be reconstructed. The chain builder used for testing doesn't do that, so do
 	// it manually here.
 	for _, tip := range []*types2.TipSet{left, right} {
-		for itr := chain.IterAncestors(ctx, builder, tip); !itr.Complete(); require.NoError(t, itr.Next()) {
+		for itr := chain.IterAncestors(ctx, builder, tip); !itr.Complete(); require.NoError(t, itr.Next(ctx)) {
 			for _, block := range itr.Value().ToSlice() {
 				_, err := builder.Cstore().Put(ctx, block)
 				require.NoError(t, err)

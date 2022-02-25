@@ -6,6 +6,8 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -13,49 +15,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 )
-
-// SwarmConnInfo represents details about a single swarm connection.
-type SwarmConnInfo struct {
-	Addr    string
-	Peer    string
-	Latency string
-	Muxer   string
-	Streams []SwarmStreamInfo
-}
-
-// SwarmStreamInfo represents details about a single swarm stream.
-type SwarmStreamInfo struct {
-	Protocol string
-}
-
-func (ci *SwarmConnInfo) Less(i, j int) bool {
-	return ci.Streams[i].Protocol < ci.Streams[j].Protocol
-}
-
-func (ci *SwarmConnInfo) Len() int {
-	return len(ci.Streams)
-}
-
-func (ci *SwarmConnInfo) Swap(i, j int) {
-	ci.Streams[i], ci.Streams[j] = ci.Streams[j], ci.Streams[i]
-}
-
-// SwarmConnInfos represent details about a list of swarm connections.
-type SwarmConnInfos struct {
-	Peers []SwarmConnInfo
-}
-
-func (ci SwarmConnInfos) Less(i, j int) bool {
-	return ci.Peers[i].Addr < ci.Peers[j].Addr
-}
-
-func (ci SwarmConnInfos) Len() int {
-	return len(ci.Peers)
-}
-
-func (ci SwarmConnInfos) Swap(i, j int) {
-	ci.Peers[i], ci.Peers[j] = ci.Peers[j], ci.Peers[i]
-}
 
 // Network is a unified interface for dealing with libp2p
 type Network struct {
@@ -92,16 +51,9 @@ func (network *Network) GetBandwidthStats() metrics.Stats {
 	return network.Reporter.GetBandwidthTotals()
 }
 
-// ConnectionResult represents the result of an attempted connection from the
-// Connect method.
-type ConnectionResult struct {
-	PeerID peer.ID
-	Err    error
-}
-
 // Connect connects to peers at the given addresses. Does not retry.
-func (network *Network) Connect(ctx context.Context, addrs []string) (<-chan ConnectionResult, error) {
-	outCh := make(chan ConnectionResult)
+func (network *Network) Connect(ctx context.Context, addrs []string) (<-chan types.ConnectionResult, error) {
+	outCh := make(chan types.ConnectionResult)
 
 	swrm, ok := network.host.Network().(*swarm.Swarm)
 	if !ok {
@@ -121,7 +73,7 @@ func (network *Network) Connect(ctx context.Context, addrs []string) (<-chan Con
 			go func(pi peer.AddrInfo) {
 				swrm.Backoff().Clear(pi.ID)
 				err := network.host.Connect(ctx, pi)
-				outCh <- ConnectionResult{
+				outCh <- types.ConnectionResult{
 					PeerID: pi.ID,
 					Err:    err,
 				}
@@ -137,21 +89,21 @@ func (network *Network) Connect(ctx context.Context, addrs []string) (<-chan Con
 }
 
 // Peers lists peers currently available on the network
-func (network *Network) Peers(ctx context.Context, verbose, latency, streams bool) (*SwarmConnInfos, error) {
+func (network *Network) Peers(ctx context.Context, verbose, latency, streams bool) (*types.SwarmConnInfos, error) {
 	if network.host == nil {
 		return nil, errors.New("node must be online")
 	}
 
 	conns := network.host.Network().Conns()
 
-	out := SwarmConnInfos{
-		Peers: []SwarmConnInfo{},
+	out := types.SwarmConnInfos{
+		Peers: []types.SwarmConnInfo{},
 	}
 	for _, c := range conns {
 		pid := c.RemotePeer()
 		addr := c.RemoteMultiaddr()
 
-		ci := SwarmConnInfo{
+		ci := types.SwarmConnInfo{
 			Addr: addr.String(),
 			Peer: pid.Pretty(),
 		}
@@ -168,7 +120,7 @@ func (network *Network) Peers(ctx context.Context, verbose, latency, streams boo
 			strs := c.GetStreams()
 
 			for _, s := range strs {
-				ci.Streams = append(ci.Streams, SwarmStreamInfo{Protocol: string(s.Protocol())})
+				ci.Streams = append(ci.Streams, types.SwarmStreamInfo{Protocol: string(s.Protocol())})
 			}
 		}
 		sort.Sort(&ci)

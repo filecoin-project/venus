@@ -3,15 +3,17 @@ package syncer
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
+	"reflect"
+	"runtime"
+	"time"
+
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"reflect"
-	"runtime"
-	"time"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
@@ -31,8 +33,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/net/pubsub"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/state"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-blockservice"
 )
 
@@ -230,7 +232,7 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 		syncer.NetworkModule.Host.ConnManager().TagPeer(sender, "new-block", 20)
 		log.Infof("fetch message success at %s", bm.Header.Cid())
 
-		ts, _ := types.NewTipSet(header)
+		ts, _ := types.NewTipSet([]*types.BlockHeader{header})
 		chainInfo := types.NewChainInfo(source, sender, ts)
 
 		if err = syncer.ChainSyncManager.BlockProposer().SendGossipBlock(chainInfo); err != nil {
@@ -243,7 +245,7 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 
 // nolint
 func (syncer *SyncerSubmodule) loadLocalFullTipset(ctx context.Context, tsk types.TipSetKey) (*types.FullTipSet, error) {
-	ts, err := syncer.ChainModule.ChainReader.GetTipSet(tsk)
+	ts, err := syncer.ChainModule.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, err
 	}
@@ -321,10 +323,10 @@ func (syncer *SyncerSubmodule) Stop(ctx context.Context) {
 }
 
 //API create a new sync api implement
-func (syncer *SyncerSubmodule) API() apiface.ISyncer {
+func (syncer *SyncerSubmodule) API() v1api.ISyncer {
 	return &syncerAPI{syncer: syncer}
 }
 
-func (syncer *SyncerSubmodule) V0API() apiface.ISyncer {
+func (syncer *SyncerSubmodule) V0API() v0api.ISyncer {
 	return &syncerAPI{syncer: syncer}
 }

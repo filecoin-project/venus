@@ -14,8 +14,8 @@ import (
 	"github.com/filecoin-project/venus/build/project"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 	gengen "github.com/filecoin-project/venus/tools/gengen/util"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 )
 
 const blockTime = builtin.EpochDurationSeconds * time.Second
@@ -47,7 +47,7 @@ func CreateBootstrapMiner(ctx context.Context, t *testing.T, seed *ChainSeed, ch
 		WithBuilderOpt(node.MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
 		Build(ctx)
 
-	addr := seed.GiveKey(t, bootstrapMiner, 0)
+	addr := seed.GiveKey(ctx, t, bootstrapMiner, 0)
 	err := bootstrapMiner.ConfigModule().API().ConfigSet(ctx, "walletModule.defaultAddress", addr.String())
 	require.NoError(t, err)
 
@@ -60,7 +60,7 @@ func CreateBootstrapMiner(ctx context.Context, t *testing.T, seed *ChainSeed, ch
 }
 
 func initNodeGenesisMiner(ctx context.Context, t *testing.T, nd *node.Node, seed *ChainSeed, minerIdx int) (address.Address, address.Address, error) {
-	seed.GiveKey(t, nd, minerIdx)
+	seed.GiveKey(ctx, t, nd, minerIdx)
 	miner, owner := seed.GiveMiner(t, nd, 0)
 
 	return miner, owner, nil

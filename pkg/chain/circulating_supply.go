@@ -2,11 +2,12 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"
@@ -16,26 +17,16 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/power"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/reward"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 )
 
 type ICirculatingSupplyCalcualtor interface {
-	GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (CirculatingSupply, error)
-}
-
-//CirculatingSupply circulation information, including mining, public offering, private placement, release, combustion, mortgage, circulation,
-type CirculatingSupply struct {
-	FilVested           abi.TokenAmount
-	FilMined            abi.TokenAmount
-	FilBurnt            abi.TokenAmount
-	FilLocked           abi.TokenAmount
-	FilCirculating      abi.TokenAmount
-	FilReserveDisbursed abi.TokenAmount
+	GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (types.CirculatingSupply, error)
 }
 
 //CirculatingSupplyCalculator used to calculate the funds at a specific block height
@@ -61,53 +52,53 @@ func NewCirculatingSupplyCalculator(bstore blockstoreutil.Blockstore, genesisRoo
 }
 
 //GetCirculatingSupplyDetailed query contract and calculate circulation status at specific height and tree state
-func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (CirculatingSupply, error) {
+func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (types.CirculatingSupply, error) {
 	caculator.genesisMsigLk.Lock()
 	defer caculator.genesisMsigLk.Unlock()
 	//setup genesis asset information
 	if caculator.preIgnitionVesting == nil || caculator.genesisPledge.IsZero() || caculator.genesisMarketFunds.IsZero() {
 		err := caculator.setupGenesisVestingSchedule(ctx)
 		if err != nil {
-			return CirculatingSupply{}, xerrors.Errorf("failed to setup pre-ignition vesting schedule: %v", err)
+			return types.CirculatingSupply{}, xerrors.Errorf("failed to setup pre-ignition vesting schedule: %v", err)
 		}
 	}
 	if caculator.postIgnitionVesting == nil {
 		err := caculator.setupPostIgnitionVesting(ctx)
 		if err != nil {
-			return CirculatingSupply{}, xerrors.Errorf("failed to setup post-ignition vesting schedule: %v", err)
+			return types.CirculatingSupply{}, xerrors.Errorf("failed to setup post-ignition vesting schedule: %v", err)
 		}
 	}
 	if caculator.postCalicoVesting == nil {
 		err := caculator.setupPostCalicoVesting(ctx)
 		if err != nil {
-			return CirculatingSupply{}, xerrors.Errorf("failed to setup post-calico vesting schedule: %v", err)
+			return types.CirculatingSupply{}, xerrors.Errorf("failed to setup post-calico vesting schedule: %v", err)
 		}
 	}
 
 	filVested, err := caculator.GetFilVested(ctx, height, st)
 	if err != nil {
-		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %v", err)
+		return types.CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %v", err)
 	}
 
 	filReserveDisbursed := big.Zero()
 	if height > caculator.upgradeConfig.UpgradeAssemblyHeight {
 		filReserveDisbursed, err = caculator.GetFilReserveDisbursed(ctx, st)
 		if err != nil {
-			return CirculatingSupply{}, xerrors.Errorf("failed to calculate filReserveDisbursed: %v", err)
+			return types.CirculatingSupply{}, xerrors.Errorf("failed to calculate filReserveDisbursed: %v", err)
 		}
 	}
 
 	filMined, err := GetFilMined(ctx, st)
 	if err != nil {
-		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filMined: %v", err)
+		return types.CirculatingSupply{}, xerrors.Errorf("failed to calculate filMined: %v", err)
 	}
 	filBurnt, err := GetFilBurnt(ctx, st)
 	if err != nil {
-		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %v", err)
+		return types.CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %v", err)
 	}
 	filLocked, err := caculator.GetFilLocked(ctx, st)
 	if err != nil {
-		return CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %v", err)
+		return types.CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %v", err)
 	}
 	ret := big.Add(filVested, filMined)
 	ret = big.Add(ret, filReserveDisbursed)
@@ -118,7 +109,7 @@ func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx c
 		ret = big.Zero()
 	}
 
-	return CirculatingSupply{
+	return types.CirculatingSupply{
 		FilVested:           filVested,
 		FilMined:            filMined,
 		FilBurnt:            filBurnt,
@@ -130,7 +121,7 @@ func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx c
 
 /*func (c *Expected) processBlock(ctx context.Context, ts *block.TipSet) (cid.Cid, []types.MessageReceipt, error) {
 	var secpMessages [][]*types.SignedMessage
-	var blsMessages [][]*types.UnsignedMessage
+	var blsMessages [][]*types.Message
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
 		secpMsgs, blsMsgs, err := c.messageStore.LoadMetaMessages(ctx, blk.Messages.Cid)

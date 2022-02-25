@@ -17,15 +17,14 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
-
 	states0 "github.com/filecoin-project/specs-actors/actors/states"
 	states2 "github.com/filecoin-project/specs-actors/v2/actors/states"
 	states3 "github.com/filecoin-project/specs-actors/v3/actors/states"
 	states4 "github.com/filecoin-project/specs-actors/v4/actors/states"
 	states5 "github.com/filecoin-project/specs-actors/v5/actors/states"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type StateTreeVersion uint64 //nolint
@@ -138,7 +137,15 @@ func VersionForNetwork(ver network.Version) (StateTreeVersion, error) {
 		return StateTreeVersion2, nil
 	case network.Version12:
 		return StateTreeVersion3, nil
-	case network.Version13, network.Version14:
+
+	/* inline-gen template
+	{{$lastNv := .latestNetworkVersion}}
+	case{{range .networkVersions}} {{if (ge . 13.)}} network.Version{{.}}{{if (lt . $lastNv)}},{{end}}{{end}}{{end}}:
+	/* inline-gen start */
+
+	case network.Version13, network.Version14, network.Version15:
+		/* inline-gen end */
+
 		return StateTreeVersion4, nil
 	default:
 		panic(fmt.Sprintf("unsupported network version %d", ver))
@@ -546,9 +553,7 @@ func (st *State) At(root Root) error {
 		return err
 	}
 
-	st.root = newState.root
-	st.version = newState.version
-	st.info = newState.info
+	*st = *newState
 	return nil
 }
 func Diff(oldTree, newTree *State) (map[string]types.Actor, error) {

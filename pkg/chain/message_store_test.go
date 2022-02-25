@@ -2,7 +2,6 @@ package chain_test
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"testing"
 
 	"github.com/ipfs/go-datastore"
@@ -11,14 +10,16 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/testhelpers"
+	"github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func TestMessageStoreMessagesHappy(t *testing.T) {
 	testflags.UnitTest(t)
 	ctx := context.Background()
-	keys := types.MustGenerateKeyInfo(2, 42)
-	mm := types.NewMessageMaker(t, keys)
+	keys := testhelpers.MustGenerateKeyInfo(2, 42)
+	mm := testhelpers.NewMessageMaker(t, keys)
 
 	alice := mm.Addresses()[0]
 	bob := mm.Addresses()[1]
@@ -36,7 +37,7 @@ func TestMessageStoreMessagesHappy(t *testing.T) {
 
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	ms := chain.NewMessageStore(bs, config.DefaultForkUpgradeParam)
-	msgsCid, err := ms.StoreMessages(ctx, msgs, []*types.UnsignedMessage{})
+	msgsCid, err := ms.StoreMessages(ctx, msgs, []*types.Message{})
 	assert.NoError(t, err)
 
 	rtMsgs, _, err := ms.LoadMetaMessages(ctx, msgsCid)
@@ -47,7 +48,7 @@ func TestMessageStoreMessagesHappy(t *testing.T) {
 
 func TestMessageStoreReceiptsHappy(t *testing.T) {
 	ctx := context.Background()
-	mr := types.NewReceiptMaker()
+	mr := testhelpers.NewReceiptMaker()
 
 	receipts := []types.MessageReceipt{
 		mr.NewReceipt(),

@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/statemanger"
 	"math"
 	stdbig "math/big"
 	"os"
@@ -38,21 +37,10 @@ import (
 	"github.com/filecoin-project/venus/pkg/messagepool/journal"
 	"github.com/filecoin-project/venus/pkg/net/msgsub"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
-
-type MpoolChange int
-
-const (
-	MpoolAdd MpoolChange = iota
-	MpoolRemove
-)
-
-type MpoolUpdate struct {
-	Type    MpoolChange
-	Message *types.SignedMessage
-}
 
 var log = logging.Logger("messagepool")
 
@@ -116,7 +104,7 @@ type MessagePoolEvt struct { // nolint
 }
 
 type MessagePoolEvtMessage struct { // nolint
-	types.UnsignedMessage
+	types.Message
 
 	CID cid.Cid
 }
@@ -380,7 +368,8 @@ func (ms *msgSet) toSlice() []*types.SignedMessage {
 	return set
 }
 
-func New(api Provider,
+func New(ctx context.Context,
+	api Provider,
 	sm *statemanger.Stmgr,
 	ds repo.Datastore,
 	forkParams *config.ForkUpgradeConfig,
@@ -391,7 +380,7 @@ func New(api Provider,
 	cache, _ := lru.New2Q(constants.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(constants.VerifSigCacheSize)
 
-	cfg, err := loadConfig(ds)
+	cfg, err := loadConfig(ctx, ds)
 	if err != nil {
 		return nil, xerrors.Errorf("error loading mpool config: %v", err)
 	}
@@ -438,7 +427,7 @@ func New(api Provider,
 	ctx, cancel := context.WithCancel(context.TODO())
 
 	// load the current tipset and subscribe to head changes _before_ loading local messages
-	mp.curTS = api.SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
+	mp.curTS = api.SubscribeHeadChanges(ctx, func(rev, app []*types.TipSet) error {
 		err := mp.HeadChange(ctx, rev, app)
 		if err != nil {
 			log.Errorf("mpool head notif handler error: %+v", err)
@@ -604,7 +593,7 @@ func (mp *MessagePool) PublishMsgForWallet(ctx context.Context, addr address.Add
 			continue
 		}
 
-		err = mp.api.PubSubPublish(msgsub.Topic(mp.netName), msgb)
+		err = mp.api.PubSubPublish(ctx, msgsub.Topic(mp.netName), msgb)
 		if err != nil {
 			log.Errorf("could not publish: %s", err)
 			continue
@@ -614,13 +603,13 @@ func (mp *MessagePool) PublishMsgForWallet(ctx context.Context, addr address.Add
 	return nil
 }
 
-func (mp *MessagePool) PublishMsg(smsg *types.SignedMessage) error {
+func (mp *MessagePool) PublishMsg(ctx context.Context, smsg *types.SignedMessage) error {
 	msgb, err := smsg.Serialize()
 	if err != nil {
 		return xerrors.Errorf("could not serialize: %s", err)
 	}
 
-	err = mp.api.PubSubPublish(msgsub.Topic(mp.netName), msgb)
+	err = mp.api.PubSubPublish(ctx, msgsub.Topic(mp.netName), msgb)
 	if err != nil {
 		return xerrors.Errorf("could not publish: %s", err)
 	}
@@ -681,7 +670,7 @@ func (mp *MessagePool) addLocal(ctx context.Context, m *types.SignedMessage) err
 	msgb := buf.Bytes()
 
 	c := m.Cid()
-	if err := mp.localMsgs.Put(datastore.NewKey(string(c.Bytes())), msgb); err != nil {
+	if err := mp.localMsgs.Put(ctx, datastore.NewKey(string(c.Bytes())), msgb); err != nil {
 		return xerrors.Errorf("persisting local message: %v", err)
 	}
 
@@ -768,7 +757,7 @@ func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage) (cid.Ci
 			return cid.Undef, xerrors.Errorf("error serializing message: %v", err)
 		}
 
-		err = mp.api.PubSubPublish(msgsub.Topic(mp.netName), buf.Bytes())
+		err = mp.api.PubSubPublish(ctx, msgsub.Topic(mp.netName), buf.Bytes())
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("error publishing message: %v", err)
 		}
@@ -981,12 +970,12 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 		mp.blsSigCache.Add(m.Cid(), m.Signature)
 	}
 
-	if _, err := mp.api.PutMessage(m); err != nil {
+	if _, err := mp.api.PutMessage(ctx, m); err != nil {
 		log.Warnf("mpooladd sm.PutMessage failed: %s", err)
 		return err
 	}
 
-	if _, err := mp.api.PutMessage(&m.Message); err != nil {
+	if _, err := mp.api.PutMessage(ctx, &m.Message); err != nil {
 		log.Warnf("mpooladd sm.PutMessage failed: %s", err)
 		return err
 	}
@@ -1027,8 +1016,8 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 		}
 	}
 
-	mp.changes.Pub(MpoolUpdate{
-		Type:    MpoolAdd,
+	mp.changes.Pub(types.MpoolUpdate{
+		Type:    types.MpoolAdd,
 		Message: m,
 	}, localUpdates)
 
@@ -1036,7 +1025,7 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 		mc := m.Cid()
 		return MessagePoolEvt{
 			Action:   "add",
-			Messages: []MessagePoolEvtMessage{{UnsignedMessage: m.Message, CID: mc}},
+			Messages: []MessagePoolEvtMessage{{Message: m.Message, CID: mc}},
 		}
 	})
 
@@ -1054,10 +1043,10 @@ func (mp *MessagePool) GetNonce(ctx context.Context, addr address.Address, _ typ
 }
 
 // GetActor should not be used. It is only here to satisfy interface mess caused by lite node handling
-func (mp *MessagePool) GetActor(_ context.Context, addr address.Address, _ types.TipSetKey) (*types.Actor, error) {
+func (mp *MessagePool) GetActor(ctx context.Context, addr address.Address, _ types.TipSetKey) (*types.Actor, error) {
 	mp.curTSLk.Lock()
 	defer mp.curTSLk.Unlock()
-	return mp.api.GetActorAfter(addr, mp.curTS)
+	return mp.api.GetActorAfter(ctx, addr, mp.curTS)
 }
 
 func (mp *MessagePool) getNonceLocked(ctx context.Context, addr address.Address, curTS *types.TipSet) (uint64, error) {
@@ -1086,7 +1075,7 @@ func (mp *MessagePool) getNonceLocked(ctx context.Context, addr address.Address,
 }
 
 func (mp *MessagePool) getStateNonce(ctx context.Context, addr address.Address, curTS *types.TipSet) (uint64, error) {
-	act, err := mp.api.GetActorAfter(addr, curTS)
+	act, err := mp.api.GetActorAfter(ctx, addr, curTS)
 	if err != nil {
 		return 0, err
 	}
@@ -1095,7 +1084,7 @@ func (mp *MessagePool) getStateNonce(ctx context.Context, addr address.Address, 
 }
 
 func (mp *MessagePool) getStateBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (big.Int, error) {
-	act, err := mp.api.GetActorAfter(addr, ts)
+	act, err := mp.api.GetActorAfter(ctx, addr, ts)
 	if err != nil {
 		return big.Zero(), err
 	}
@@ -1135,7 +1124,7 @@ func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage
 			return cid.Undef, xerrors.Errorf("error serializing message: %v", err)
 		}
 
-		err = mp.api.PubSubPublish(msgsub.Topic(mp.netName), buf.Bytes())
+		err = mp.api.PubSubPublish(ctx, msgsub.Topic(mp.netName), buf.Bytes())
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("error publishing message: %v", err)
 		}
@@ -1163,15 +1152,15 @@ func (mp *MessagePool) remove(ctx context.Context, from address.Address, nonce u
 	}
 
 	if m, ok := mset.msgs[nonce]; ok {
-		mp.changes.Pub(MpoolUpdate{
-			Type:    MpoolRemove,
+		mp.changes.Pub(types.MpoolUpdate{
+			Type:    types.MpoolRemove,
 			Message: m,
 		}, localUpdates)
 
 		mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
 			return MessagePoolEvt{
 				Action:   "remove",
-				Messages: []MessagePoolEvtMessage{{UnsignedMessage: m.Message, CID: m.Cid()}}}
+				Messages: []MessagePoolEvtMessage{{Message: m.Message, CID: m.Cid()}}}
 		})
 
 		mp.currentSize--
@@ -1275,7 +1264,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 
 	for _, ts := range revert {
 		tsKey := ts.Parents()
-		pts, err := mp.api.LoadTipSet(tsKey)
+		pts, err := mp.api.LoadTipSet(ctx, tsKey)
 		if err != nil {
 			log.Errorf("error loading reverted tipset parent: %s", err)
 			merr = multierror.Append(merr, err)
@@ -1284,7 +1273,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 
 		mp.curTS = pts
 
-		msgs, err := mp.MessagesForBlocks(ts.Blocks())
+		msgs, err := mp.MessagesForBlocks(ctx, ts.Blocks())
 		if err != nil {
 			log.Errorf("error retrieving messages for reverted block: %s", err)
 			merr = multierror.Append(merr, err)
@@ -1300,7 +1289,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 		mp.curTS = ts
 
 		for _, b := range ts.Blocks() {
-			bmsgs, smsgs, err := mp.api.MessagesForBlock(b)
+			bmsgs, smsgs, err := mp.api.MessagesForBlock(ctx, b)
 			if err != nil {
 				xerr := xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %v", b.Cid(), b.Height, b.Messages, err)
 				log.Errorf("error retrieving messages for block: %s", xerr)
@@ -1356,7 +1345,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 
 		for a, bkt := range buckets {
 			// TODO that might not be correct with GatActorAfter but it is only debug code
-			act, err := mp.api.GetActorAfter(a, ts)
+			act, err := mp.api.GetActorAfter(ctx, a, ts)
 			if err != nil {
 				log.Debugf("%s, err: %s\n", a, err)
 				continue
@@ -1437,7 +1426,7 @@ func (mp *MessagePool) runHeadChange(ctx context.Context, from *types.TipSet, to
 	var merr error
 
 	for _, ts := range revert {
-		msgs, err := mp.MessagesForBlocks(ts.Blocks())
+		msgs, err := mp.MessagesForBlocks(ctx, ts.Blocks())
 		if err != nil {
 			log.Errorf("error retrieving messages for reverted block: %s", err)
 			merr = multierror.Append(merr, err)
@@ -1451,7 +1440,7 @@ func (mp *MessagePool) runHeadChange(ctx context.Context, from *types.TipSet, to
 
 	for _, ts := range apply {
 		for _, b := range ts.Blocks() {
-			bmsgs, smsgs, err := mp.api.MessagesForBlock(b)
+			bmsgs, smsgs, err := mp.api.MessagesForBlock(context.TODO(), b)
 			if err != nil {
 				xerr := xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %v", b.Cid(), b.Height, b.Messages, err)
 				log.Errorf("error retrieving messages for block: %s", xerr)
@@ -1476,11 +1465,11 @@ type statBucket struct {
 	msgs map[uint64]*types.SignedMessage
 }
 
-func (mp *MessagePool) MessagesForBlocks(blks []*types.BlockHeader) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) MessagesForBlocks(ctx context.Context, blks []*types.BlockHeader) ([]*types.SignedMessage, error) {
 	out := make([]*types.SignedMessage, 0)
 
 	for _, b := range blks {
-		bmsgs, smsgs, err := mp.api.MessagesForBlock(b)
+		bmsgs, smsgs, err := mp.api.MessagesForBlock(ctx, b)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %v", b.Cid(), b.Height, b.Messages, err)
 		}
@@ -1499,7 +1488,7 @@ func (mp *MessagePool) MessagesForBlocks(blks []*types.BlockHeader) ([]*types.Si
 	return out, nil
 }
 
-func (mp *MessagePool) RecoverSig(msg *types.UnsignedMessage) *types.SignedMessage {
+func (mp *MessagePool) RecoverSig(msg *types.Message) *types.SignedMessage {
 	val, ok := mp.blsSigCache.Get(msg.Cid())
 	if !ok {
 		return nil
@@ -1516,8 +1505,8 @@ func (mp *MessagePool) RecoverSig(msg *types.UnsignedMessage) *types.SignedMessa
 	}
 }
 
-func (mp *MessagePool) Updates(ctx context.Context) (<-chan MpoolUpdate, error) {
-	out := make(chan MpoolUpdate, 20)
+func (mp *MessagePool) Updates(ctx context.Context) (<-chan types.MpoolUpdate, error) {
+	out := make(chan types.MpoolUpdate, 20)
 	sub := mp.changes.Sub(localUpdates)
 
 	go func() {
@@ -1528,7 +1517,7 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan MpoolUpdate, error) 
 			select {
 			case u := <-sub:
 				select {
-				case out <- u.(MpoolUpdate):
+				case out <- u.(types.MpoolUpdate):
 				case <-ctx.Done():
 					return
 				case <-mp.closer:
@@ -1551,7 +1540,7 @@ func (mp *MessagePool) loadLocal(ctx context.Context) error {
 		return nil
 	}
 
-	res, err := mp.localMsgs.Query(query.Query{})
+	res, err := mp.localMsgs.Query(ctx, query.Query{})
 	if err != nil {
 		return xerrors.Errorf("query local messages: %v", err)
 	}
@@ -1599,7 +1588,7 @@ func (mp *MessagePool) Clear(ctx context.Context, local bool) {
 
 			if ok {
 				for _, m := range mset.msgs {
-					err := mp.localMsgs.Delete(datastore.NewKey(string(m.Cid().Bytes())))
+					err := mp.localMsgs.Delete(ctx, datastore.NewKey(string(m.Cid().Bytes())))
 					if err != nil {
 						log.Warnf("error deleting local message: %s", err)
 					}

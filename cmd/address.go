@@ -19,8 +19,8 @@ import (
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/cmd/tablewriter"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var errMissPassword = errors.New("the wallet is missing password, please use command `venus wallet set-password` to set password")
@@ -76,7 +76,7 @@ var addrsNewCmd = &cmds.Command{
 			return errWalletLocked
 		}
 
-		addr, err := env.(*node.Env).WalletAPI.WalletNewAddress(protocol)
+		addr, err := env.(*node.Env).WalletAPI.WalletNewAddress(req.Context, protocol)
 		if err != nil {
 			return err
 		}
@@ -253,13 +253,13 @@ var walletImportCmd = &cmds.Command{
 			return fmt.Errorf("given file was not a files.File")
 		}
 
-		var key crypto.KeyInfo
+		var key types.KeyInfo
 		err := json.NewDecoder(hex.NewDecoder(fi)).Decode(&key)
 		if err != nil {
 			return err
 		}
 
-		addr, err := env.(*node.Env).WalletAPI.WalletImport(&key)
+		addr, err := env.(*node.Env).WalletAPI.WalletImport(req.Context, &key)
 		if err != nil {
 			return err
 		}
@@ -302,7 +302,7 @@ var (
 			}
 
 			pw := req.Arguments[1]
-			ki, err := env.(*node.Env).WalletAPI.WalletExport(addr, pw)
+			ki, err := env.(*node.Env).WalletAPI.WalletExport(req.Context, addr, pw)
 			if err != nil {
 				return err
 			}

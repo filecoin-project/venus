@@ -3,26 +3,24 @@ package chain
 import (
 	"bufio"
 	"context"
-
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	logging "github.com/ipfs/go-log/v2"
 	"io"
 	"time"
-
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/types"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/venus/pkg/chain"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var _ apiface.IChainInfo = &chainInfoAPI{}
+var _ v1api.IChainInfo = &chainInfoAPI{}
 
 type chainInfoAPI struct { //nolint
 	chain *ChainSubmodule
@@ -31,7 +29,7 @@ type chainInfoAPI struct { //nolint
 var log = logging.Logger("chain")
 
 //NewChainInfoAPI new chain info api
-func NewChainInfoAPI(chain *ChainSubmodule) apiface.IChainInfo {
+func NewChainInfoAPI(chain *ChainSubmodule) v1api.IChainInfo {
 	return &chainInfoAPI{chain: chain}
 }
 
@@ -44,7 +42,7 @@ func (cia *chainInfoAPI) BlockTime(ctx context.Context) time.Duration {
 
 // ChainLs returns an iterator of tipsets from specified head by tsKey to genesis
 func (cia *chainInfoAPI) ChainList(ctx context.Context, tsKey types.TipSetKey, count int) ([]types.TipSetKey, error) {
-	fromTS, err := cia.chain.ChainReader.GetTipSet(tsKey)
+	fromTS, err := cia.chain.ChainReader.GetTipSet(ctx, tsKey)
 	if err != nil {
 		return nil, xerrors.Errorf("could not retrieve network name %w", err)
 	}
@@ -60,23 +58,23 @@ func (cia *chainInfoAPI) ChainList(ctx context.Context, tsKey types.TipSetKey, c
 }
 
 // ProtocolParameters return chain parameters
-func (cia *chainInfoAPI) ProtocolParameters(ctx context.Context) (*apitypes.ProtocolParams, error) {
+func (cia *chainInfoAPI) ProtocolParameters(ctx context.Context) (*types.ProtocolParams, error) {
 	networkName, err := cia.getNetworkName(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("could not retrieve network name %w", err)
 	}
 
-	var supportedSectors []apitypes.SectorInfo
+	var supportedSectors []types.SectorInfo
 	for proof := range miner0.SupportedProofTypes {
 		size, err := proof.SectorSize()
 		if err != nil {
 			return nil, xerrors.Errorf("could not retrieve network name %w", err)
 		}
 		maxUserBytes := abi.PaddedPieceSize(size).Unpadded()
-		supportedSectors = append(supportedSectors, apitypes.SectorInfo{Size: size, MaxPieceSize: maxUserBytes})
+		supportedSectors = append(supportedSectors, types.SectorInfo{Size: size, MaxPieceSize: maxUserBytes})
 	}
 
-	return &apitypes.ProtocolParams{
+	return &types.ProtocolParams{
 		Network:          networkName,
 		BlockTime:        cia.chain.config.BlockTime(),
 		SupportedSectors: supportedSectors,
@@ -89,7 +87,7 @@ func (cia *chainInfoAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
 
 // ChainSetHead sets `key` as the new head of this chain iff it exists in the nodes chain store.
 func (cia *chainInfoAPI) ChainSetHead(ctx context.Context, key types.TipSetKey) error {
-	ts, err := cia.chain.ChainReader.GetTipSet(key)
+	ts, err := cia.chain.ChainReader.GetTipSet(ctx, key)
 	if err != nil {
 		return err
 	}
@@ -98,14 +96,14 @@ func (cia *chainInfoAPI) ChainSetHead(ctx context.Context, key types.TipSetKey) 
 
 // ChainTipSet returns the tipset at the given key
 func (cia *chainInfoAPI) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
-	return cia.chain.ChainReader.GetTipSet(key)
+	return cia.chain.ChainReader.GetTipSet(ctx, key)
 }
 
 // ChainGetTipSetByHeight looks back for a tipset at the specified epoch.
 // If there are no blocks at the specified epoch, a tipset at an earlier epoch
 // will be returned.
 func (cia *chainInfoAPI) ChainGetTipSetByHeight(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
-	ts, err := cia.chain.ChainReader.GetTipSet(tsk)
+	ts, err := cia.chain.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("fail to load tipset %v", err)
 	}
@@ -116,7 +114,7 @@ func (cia *chainInfoAPI) ChainGetTipSetByHeight(ctx context.Context, height abi.
 // If there are no blocks at the specified epoch, the first non-nil tipset at a later epoch
 // will be returned.
 func (cia *chainInfoAPI) ChainGetTipSetAfterHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
-	ts, err := cia.chain.ChainReader.GetTipSet(tsk)
+	ts, err := cia.chain.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -148,8 +146,8 @@ func (cia *chainInfoAPI) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.
 
 // ChainGetMessage reads a message referenced by the specified CID from the
 // chain blockstore.
-func (cia *chainInfoAPI) ChainGetMessage(ctx context.Context, msgID cid.Cid) (*types.UnsignedMessage, error) {
-	msg, err := cia.chain.MessageStore.LoadMessage(msgID)
+func (cia *chainInfoAPI) ChainGetMessage(ctx context.Context, msgID cid.Cid) (*types.Message, error) {
+	msg, err := cia.chain.MessageStore.LoadMessage(ctx, msgID)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +155,7 @@ func (cia *chainInfoAPI) ChainGetMessage(ctx context.Context, msgID cid.Cid) (*t
 }
 
 // ChainGetMessages gets a message collection by CID
-func (cia *chainInfoAPI) ChainGetBlockMessages(ctx context.Context, bid cid.Cid) (*apitypes.BlockMessages, error) {
+func (cia *chainInfoAPI) ChainGetBlockMessages(ctx context.Context, bid cid.Cid) (*types.BlockMessages, error) {
 	b, err := cia.chain.ChainReader.GetBlock(ctx, bid)
 	if err != nil {
 		return nil, err
@@ -178,7 +176,7 @@ func (cia *chainInfoAPI) ChainGetBlockMessages(ctx context.Context, bid cid.Cid)
 		cids[i+len(bmsgs)] = m.Cid()
 	}
 
-	return &apitypes.BlockMessages{
+	return &types.BlockMessages{
 		BlsMessages:   bmsgs,
 		SecpkMessages: smsgs,
 		Cids:          cids,
@@ -208,8 +206,8 @@ func (cia *chainInfoAPI) GetFullBlock(ctx context.Context, id cid.Cid) (*types.F
 }
 
 // ChainGetMessagesInTipset returns message stores in current tipset
-func (cia *chainInfoAPI) ChainGetMessagesInTipset(ctx context.Context, key types.TipSetKey) ([]apitypes.Message, error) {
-	ts, err := cia.chain.ChainReader.GetTipSet(key)
+func (cia *chainInfoAPI) ChainGetMessagesInTipset(ctx context.Context, key types.TipSetKey) ([]types.MessageCID, error) {
+	ts, err := cia.chain.ChainReader.GetTipSet(ctx, key)
 	if err != nil {
 		return nil, err
 	}
@@ -222,9 +220,9 @@ func (cia *chainInfoAPI) ChainGetMessagesInTipset(ctx context.Context, key types
 		return nil, err
 	}
 
-	var out []apitypes.Message
+	var out []types.MessageCID
 	for _, m := range cm {
-		out = append(out, apitypes.Message{
+		out = append(out, types.MessageCID{
 			Cid:     m.Cid(),
 			Message: m.VMMessage(),
 		})
@@ -235,7 +233,7 @@ func (cia *chainInfoAPI) ChainGetMessagesInTipset(ctx context.Context, key types
 
 // ChainGetParentMessages returns messages stored in parent tipset of the
 // specified block.
-func (cia *chainInfoAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]apitypes.Message, error) {
+func (cia *chainInfoAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]types.MessageCID, error) {
 	b, err := cia.ChainGetBlock(ctx, bcid)
 	if err != nil {
 		return nil, err
@@ -247,7 +245,7 @@ func (cia *chainInfoAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Ci
 	}
 
 	// TODO: need to get the number of messages better than this
-	pts, err := cia.chain.ChainReader.GetTipSet(types.NewTipSetKey(b.Parents.Cids()...))
+	pts, err := cia.chain.ChainReader.GetTipSet(ctx, types.NewTipSetKey(b.Parents...))
 	if err != nil {
 		return nil, err
 	}
@@ -257,9 +255,9 @@ func (cia *chainInfoAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Ci
 		return nil, err
 	}
 
-	var out []apitypes.Message
+	var out []types.MessageCID
 	for _, m := range cm {
-		out = append(out, apitypes.Message{
+		out = append(out, types.MessageCID{
 			Cid:     m.Cid(),
 			Message: m.VMMessage(),
 		})
@@ -281,7 +279,7 @@ func (cia *chainInfoAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Ci
 	}
 
 	// TODO: need to get the number of messages better than this
-	pts, err := cia.chain.ChainReader.GetTipSet(types.NewTipSetKey(b.Parents.Cids()...))
+	pts, err := cia.chain.ChainReader.GetTipSet(ctx, types.NewTipSetKey(b.Parents...))
 	if err != nil {
 		return nil, err
 	}
@@ -314,8 +312,8 @@ func (cia *chainInfoAPI) ResolveToKeyAddr(ctx context.Context, addr address.Addr
 
 //************Drand****************//
 // ChainNotify subscribe to chain head change event
-func (cia *chainInfoAPI) ChainNotify(ctx context.Context) <-chan []*chain.HeadChange {
-	return cia.chain.ChainReader.SubHeadChanges(ctx)
+func (cia *chainInfoAPI) ChainNotify(ctx context.Context) (<-chan []*types.HeadChange, error) {
+	return cia.chain.ChainReader.SubHeadChanges(ctx), nil
 }
 
 //************Drand****************//
@@ -341,10 +339,10 @@ func (cia *chainInfoAPI) VerifyEntry(parent, child *types.BeaconEntry, height ab
 }
 
 // StateNetworkName returns the name of the network the node is synced to
-func (cia *chainInfoAPI) StateNetworkName(ctx context.Context) (apitypes.NetworkName, error) {
+func (cia *chainInfoAPI) StateNetworkName(ctx context.Context) (types.NetworkName, error) {
 	networkName, err := cia.getNetworkName(ctx)
 
-	return apitypes.NetworkName(networkName), err
+	return types.NetworkName(networkName), err
 }
 
 func (cia *chainInfoAPI) getNetworkName(ctx context.Context) (string, error) {
@@ -374,7 +372,7 @@ func (cia *chainInfoAPI) StateGetRandomnessFromTickets(ctx context.Context, pers
 	}
 
 	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand)
-	rnv := cia.chain.Fork.GetNtwkVersion(ctx, randEpoch)
+	rnv := cia.chain.Fork.GetNetworkVersion(ctx, randEpoch)
 
 	if rnv >= network.Version13 {
 		return r.GetChainRandomnessV2(ctx, personalization, randEpoch, entropy)
@@ -390,7 +388,7 @@ func (cia *chainInfoAPI) StateGetRandomnessFromBeacon(ctx context.Context, perso
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand)
-	rnv := cia.chain.Fork.GetNtwkVersion(ctx, randEpoch)
+	rnv := cia.chain.Fork.GetNetworkVersion(ctx, randEpoch)
 
 	if rnv >= network.Version14 {
 		return r.GetBeaconRandomnessV3(ctx, personalization, randEpoch, entropy)
@@ -403,15 +401,15 @@ func (cia *chainInfoAPI) StateGetRandomnessFromBeacon(ctx context.Context, perso
 
 // StateNetworkVersion returns the network version at the given tipset
 func (cia *chainInfoAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
-	ts, err := cia.chain.ChainReader.GetTipSet(tsk)
+	ts, err := cia.chain.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return network.VersionMax, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
-	return cia.chain.Fork.GetNtwkVersion(ctx, ts.Height()), nil
+	return cia.chain.Fork.GetNetworkVersion(ctx, ts.Height()), nil
 }
 
 func (cia *chainInfoAPI) StateVerifiedRegistryRootKey(ctx context.Context, tsk types.TipSetKey) (address.Address, error) {
-	ts, err := cia.chain.ChainReader.GetTipSet(tsk)
+	ts, err := cia.chain.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
@@ -429,7 +427,7 @@ func (cia *chainInfoAPI) StateVerifiedRegistryRootKey(ctx context.Context, tsk t
 }
 
 func (cia *chainInfoAPI) StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
-	ts, err := cia.chain.ChainReader.GetTipSet(tsk)
+	ts, err := cia.chain.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
@@ -465,8 +463,8 @@ func (cia *chainInfoAPI) StateVerifierStatus(ctx context.Context, addr address.A
 // the case that it appears in a newly mined block. An error is returned if one is
 // encountered or if the context is canceled. Otherwise, it waits forever for the message
 // to appear on chain.
-func (cia *chainInfoAPI) MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*chain.ChainMessage, error) {
-	chainMsg, err := cia.chain.MessageStore.LoadMessage(msgCid)
+func (cia *chainInfoAPI) MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*types.ChainMessage, error) {
+	chainMsg, err := cia.chain.MessageStore.LoadMessage(ctx, msgCid)
 	if err != nil {
 		return nil, err
 	}
@@ -474,13 +472,13 @@ func (cia *chainInfoAPI) MessageWait(ctx context.Context, msgCid cid.Cid, confid
 }
 
 // StateSearchMsg searches for a message in the chain, and returns its receipt and the tipset where it was executed
-func (cia *chainInfoAPI) StateSearchMsg(ctx context.Context, from types.TipSetKey, mCid cid.Cid, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
-	chainMsg, err := cia.chain.MessageStore.LoadMessage(mCid)
+func (cia *chainInfoAPI) StateSearchMsg(ctx context.Context, from types.TipSetKey, mCid cid.Cid, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
+	chainMsg, err := cia.chain.MessageStore.LoadMessage(ctx, mCid)
 	if err != nil {
 		return nil, err
 	}
 	//todo add a api for head tipset directly
-	head, err := cia.chain.ChainReader.GetTipSet(from)
+	head, err := cia.chain.ChainReader.GetTipSet(ctx, from)
 	if err != nil {
 		return nil, err
 	}
@@ -490,7 +488,7 @@ func (cia *chainInfoAPI) StateSearchMsg(ctx context.Context, from types.TipSetKe
 	}
 
 	if found {
-		return &apitypes.MsgLookup{
+		return &types.MsgLookup{
 			Message: mCid,
 			Receipt: *msgResult.Receipt,
 			TipSet:  msgResult.TS.Key(),
@@ -502,8 +500,8 @@ func (cia *chainInfoAPI) StateSearchMsg(ctx context.Context, from types.TipSetKe
 
 // StateWaitMsg looks back in the chain for a message. If not found, it blocks until the
 // message arrives on chain, and gets to the indicated confidence depth.
-func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
-	chainMsg, err := cia.chain.MessageStore.LoadMessage(mCid)
+func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
+	chainMsg, err := cia.chain.MessageStore.LoadMessage(ctx, mCid)
 	if err != nil {
 		return nil, err
 	}
@@ -512,7 +510,7 @@ func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confide
 		return nil, err
 	}
 	if msgResult != nil {
-		return &apitypes.MsgLookup{
+		return &types.MsgLookup{
 			Message: mCid,
 			Receipt: *msgResult.Receipt,
 			TipSet:  msgResult.TS.Key(),
@@ -523,7 +521,7 @@ func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confide
 }
 
 func (cia *chainInfoAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipoldmsgs bool, tsk types.TipSetKey) (<-chan []byte, error) {
-	ts, err := cia.chain.ChainReader.GetTipSet(tsk)
+	ts, err := cia.chain.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
@@ -584,12 +582,12 @@ func (cia *chainInfoAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch,
 //     tRR
 //```
 // Would return `[revert(tBA), apply(tAB), apply(tAA)]`
-func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*chain.HeadChange, error) {
-	fts, err := cia.chain.ChainReader.GetTipSet(from)
+func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*types.HeadChange, error) {
+	fts, err := cia.chain.ChainReader.GetTipSet(ctx, from)
 	if err != nil {
 		return nil, xerrors.Errorf("loading from tipset %s: %w", from, err)
 	}
-	tts, err := cia.chain.ChainReader.GetTipSet(to)
+	tts, err := cia.chain.ChainReader.GetTipSet(ctx, to)
 	if err != nil {
 		return nil, xerrors.Errorf("loading to tipset %s: %w", to, err)
 	}
@@ -599,12 +597,12 @@ func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey,
 		return nil, xerrors.Errorf("error getting tipset branches: %w", err)
 	}
 
-	path := make([]*chain.HeadChange, len(revert)+len(apply))
+	path := make([]*types.HeadChange, len(revert)+len(apply))
 	for i, r := range revert {
-		path[i] = &chain.HeadChange{Type: chain.HCRevert, Val: r}
+		path[i] = &types.HeadChange{Type: types.HCRevert, Val: r}
 	}
 	for j, i := 0, len(apply)-1; i >= 0; j, i = j+1, i-1 {
-		path[j+len(revert)] = &chain.HeadChange{Type: chain.HCApply, Val: apply[i]}
+		path[j+len(revert)] = &types.HeadChange{Type: types.HCApply, Val: apply[i]}
 	}
 	return path, nil
 }

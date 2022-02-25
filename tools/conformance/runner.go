@@ -6,11 +6,14 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
+
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/fatih/color"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -24,7 +27,6 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipld/go-car"
 
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
 )
 
@@ -33,6 +35,7 @@ func ExecuteMessageVector(r Reporter, v string, vector *schema.TestVector, varia
 	var (
 		ctx       = context.Background()
 		baseEpoch = variant.Epoch
+		nv        = network.Version(variant.NetworkVersion)
 		root      = vector.Pre.StateTree.RootCID
 	)
 
@@ -59,12 +62,13 @@ func ExecuteMessageVector(r Reporter, v string, vector *schema.TestVector, varia
 		// Execute the message.
 		var ret *vm.Ret
 		ret, root, err = driver.ExecuteMessage(bs, ExecuteMessageParams{
-			Preroot:    root,
-			Epoch:      abi.ChainEpoch(baseEpoch),
-			Message:    msg,
-			BaseFee:    BaseFeeOrDefault(vector.Pre.BaseFee),
-			CircSupply: CircSupplyOrDefault(vector.Pre.CircSupply),
-			Rand:       NewReplayingRand(r, vector.Randomness),
+			Preroot:        root,
+			Epoch:          abi.ChainEpoch(baseEpoch),
+			Message:        msg,
+			BaseFee:        BaseFeeOrDefault(vector.Pre.BaseFee),
+			CircSupply:     CircSupplyOrDefault(vector.Pre.CircSupply),
+			Rand:           NewReplayingRand(r, vector.Randomness),
+			NetworkVersion: nv,
 		})
 		if err != nil {
 			r.Fatalf("fatal failure when executing message: %s", err)
@@ -147,7 +151,7 @@ func AssertMsgResult(r Reporter, expected *schema.Receipt, actual *vm.Ret, label
 	if expected, actual := expected.GasUsed, actual.Receipt.GasUsed; expected != actual {
 		r.Errorf("gas used of msg %s did not match; expected: %d, got: %d", label, expected, actual)
 	}
-	if expected, actual := []byte(expected.ReturnValue), actual.Receipt.ReturnValue; !bytes.Equal(expected, actual) {
+	if expected, actual := []byte(expected.ReturnValue), actual.Receipt.Return; !bytes.Equal(expected, actual) {
 		r.Errorf("return value of msg %s did not match; expected: %s, got: %s", label, base64.StdEncoding.EncodeToString(expected), base64.StdEncoding.EncodeToString(actual))
 	}
 }
@@ -223,7 +227,7 @@ func writeStateToTempCAR(bs blockstoreutil.Blockstore, roots ...cid.Cid) (string
 				continue
 			}
 			// ignore things we don't have, the state tree is incomplete.
-			if has, err := bs.Has(link.Cid); err != nil {
+			if has, err := bs.Has(context.TODO(), link.Cid); err != nil {
 				return nil, err
 			} else if has {
 				out = append(out, link)
@@ -259,7 +263,7 @@ func LoadVectorCAR(vectorCAR schema.Base64EncodedBytes) (blockstoreutil.Blocksto
 	defer r.Close() // nolint
 
 	// Load the CAR embedded in the test vector into the blockstore.
-	_, err = car.LoadCar(bs, r)
+	_, err = car.LoadCar(context.TODO(), bs, r)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load state tree car from test vector: %s", err)
 	}

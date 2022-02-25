@@ -2,7 +2,10 @@ package wallet
 
 import (
 	"bytes"
+	"context"
 	"testing"
+
+	"github.com/filecoin-project/venus/pkg/testhelpers"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-datastore"
@@ -13,13 +16,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 func newWalletAndDSBackend(t *testing.T) (*Wallet, *DSBackend) {
 	t.Log("create a backend")
 	ds := datastore.NewMapDatastore()
-	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
+	fs, err := NewDSBackend(context.Background(), ds, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
 	t.Log("create a wallet with a single backend")
@@ -34,39 +36,40 @@ func newWalletAndDSBackend(t *testing.T) (*Wallet, *DSBackend) {
 func TestWalletSimple(t *testing.T) {
 	tf.UnitTest(t)
 
+	ctx := context.Background()
 	w, fs := newWalletAndDSBackend(t)
 
 	t.Log("create a new address in the backend")
-	addr, err := fs.NewAddress(address.SECP256K1)
+	addr, err := fs.NewAddress(context.Background(), address.SECP256K1)
 	assert.NoError(t, err)
 
 	t.Log("test HasAddress")
-	assert.True(t, w.HasAddress(addr))
+	assert.True(t, w.HasAddress(ctx, addr))
 
 	t.Log("find backend")
-	backend, err := w.Find(addr)
+	backend, err := w.Find(ctx, addr)
 	assert.NoError(t, err)
 	assert.Equal(t, fs, backend)
 
 	t.Log("find unknown address")
-	randomAddr := types.NewForTestGetter()()
+	randomAddr := testhelpers.NewForTestGetter()()
 
-	assert.False(t, w.HasAddress(randomAddr))
+	assert.False(t, w.HasAddress(ctx, randomAddr))
 
 	t.Log("list all addresses")
-	list := w.Addresses()
+	list := w.Addresses(ctx)
 	assert.Len(t, list, 1)
 	assert.Equal(t, list[0], addr)
 
 	t.Log("addresses are sorted")
-	addr2, err := fs.NewAddress(address.SECP256K1)
+	addr2, err := fs.NewAddress(context.Background(), address.SECP256K1)
 	assert.NoError(t, err)
 
 	if bytes.Compare(addr2.Bytes(), addr.Bytes()) < 0 {
 		addr, addr2 = addr2, addr
 	}
 	for i := 0; i < 16; i++ {
-		list := w.Addresses()
+		list := w.Addresses(ctx)
 		assert.Len(t, list, 2)
 		assert.Equal(t, list[0], addr)
 		assert.Equal(t, list[1], addr2)
@@ -78,11 +81,12 @@ func TestWalletBLSKeys(t *testing.T) {
 
 	w, wb := newWalletAndDSBackend(t)
 
-	addr, err := w.NewAddress(address.BLS)
+	ctx := context.Background()
+	addr, err := w.NewAddress(ctx, address.BLS)
 	require.NoError(t, err)
 
 	data := []byte("data to be signed")
-	sig, err := w.SignBytes(data, addr)
+	sig, err := w.SignBytes(ctx, data, addr)
 	require.NoError(t, err)
 
 	t.Run("address is BLS protocol", func(t *testing.T) {
@@ -90,7 +94,7 @@ func TestWalletBLSKeys(t *testing.T) {
 	})
 
 	t.Run("key uses BLS cryptography", func(t *testing.T) {
-		ki, err := wb.GetKeyInfo(addr)
+		ki, err := wb.GetKeyInfo(context.Background(), addr)
 		require.NoError(t, err)
 		assert.Equal(t, crypto.SigTypeBLS, ki.SigType)
 	})
@@ -118,24 +122,25 @@ func TestWalletBLSKeys(t *testing.T) {
 func TestSimpleSignAndVerify(t *testing.T) {
 	tf.UnitTest(t)
 
+	ctx := context.Background()
 	w, fs := newWalletAndDSBackend(t)
 
 	t.Log("create a new address in the backend")
-	addr, err := fs.NewAddress(address.SECP256K1)
+	addr, err := fs.NewAddress(context.Background(), address.SECP256K1)
 	assert.NoError(t, err)
 
 	t.Log("test HasAddress")
-	assert.True(t, w.HasAddress(addr))
+	assert.True(t, w.HasAddress(ctx, addr))
 
 	t.Log("find backend")
-	backend, err := w.Find(addr)
+	backend, err := w.Find(ctx, addr)
 	assert.NoError(t, err)
 	assert.Equal(t, fs, backend)
 
 	// data to sign
 	dataA := []byte("THIS IS A SIGNED SLICE OF DATA")
 	t.Log("sign content")
-	sig, err := w.SignBytes(dataA, addr)
+	sig, err := w.SignBytes(ctx, dataA, addr)
 	assert.NoError(t, err)
 
 	t.Log("verify signed content")
@@ -152,32 +157,33 @@ func TestSimpleSignAndVerify(t *testing.T) {
 func TestSignErrorCases(t *testing.T) {
 	tf.UnitTest(t)
 
+	ctx := context.Background()
 	w1, fs1 := newWalletAndDSBackend(t)
 	_, fs2 := newWalletAndDSBackend(t)
 
 	t.Log("create a new address each backend")
-	addr1, err := fs1.NewAddress(address.SECP256K1)
+	addr1, err := fs1.NewAddress(context.Background(), address.SECP256K1)
 	assert.NoError(t, err)
-	addr2, err := fs2.NewAddress(address.SECP256K1)
+	addr2, err := fs2.NewAddress(context.Background(), address.SECP256K1)
 	assert.NoError(t, err)
 
 	t.Log("test HasAddress")
-	assert.True(t, w1.HasAddress(addr1))
-	assert.False(t, w1.HasAddress(addr2))
+	assert.True(t, w1.HasAddress(ctx, addr1))
+	assert.False(t, w1.HasAddress(ctx, addr2))
 
 	t.Log("find backends")
-	backend1, err := w1.Find(addr1)
+	backend1, err := w1.Find(ctx, addr1)
 	assert.NoError(t, err)
 	assert.Equal(t, fs1, backend1)
 
 	t.Log("find backend fails for unknown address")
-	_, err = w1.Find(addr2)
+	_, err = w1.Find(ctx, addr2)
 	assert.Error(t, err)
 
 	// data to sign
 	dataA := []byte("Set tab width to '1' and make everyone happy")
 	t.Log("sign content")
-	_, err = w1.SignBytes(dataA, addr2)
+	_, err = w1.SignBytes(ctx, dataA, addr2)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "could not find address:")
 }

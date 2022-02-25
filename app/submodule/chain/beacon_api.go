@@ -3,20 +3,21 @@ package chain
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/pkg/types"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	xerrors "github.com/pkg/errors"
 )
 
-var _ apiface.IBeacon = &beaconAPI{}
+var _ v1api.IBeacon = &beaconAPI{}
 
 type beaconAPI struct {
 	chain *ChainSubmodule
 }
 
 //NewBeaconAPI create new beacon api
-func NewBeaconAPI(chain *ChainSubmodule) apiface.IBeacon {
+func NewBeaconAPI(chain *ChainSubmodule) v1api.IBeacon {
 	return &beaconAPI{chain: chain}
 }
 

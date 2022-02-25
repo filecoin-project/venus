@@ -2,29 +2,66 @@ package syncer
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"time"
 
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
-
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/types"
+	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	logging "github.com/ipfs/go-log/v2"
 	xerrors "github.com/pkg/errors"
 )
 
 var syncAPILog = logging.Logger("syncAPI")
 
-var _ apiface.ISyncer = &syncerAPI{}
+var _ v1api.ISyncer = &syncerAPI{}
 
 type syncerAPI struct { //nolint
 	syncer *SyncerSubmodule
 }
 
 // SyncerStatus returns the current status of the active or last active chain sync operation.
-func (sa *syncerAPI) SyncerTracker(ctx context.Context) *syncTypes.TargetTracker {
-	return sa.syncer.ChainSyncManager.BlockProposer().SyncTracker()
+func (sa *syncerAPI) SyncerTracker(ctx context.Context) *types.TargetTracker {
+	tracker := sa.syncer.ChainSyncManager.BlockProposer().SyncTracker()
+	tt := &types.TargetTracker{
+		History: make([]*types.Target, 0),
+		Buckets: make([]*types.Target, 0),
+	}
+	convertTarget := func(src *syncTypes.Target) *types.Target {
+		return &types.Target{
+			State:     convertSyncStateStage(src.State),
+			Base:      src.Base,
+			Current:   src.Current,
+			Start:     src.Start,
+			End:       src.End,
+			Err:       src.Err,
+			ChainInfo: src.ChainInfo,
+		}
+	}
+	for _, target := range tracker.History() {
+		tt.History = append(tt.History, convertTarget(target))
+	}
+	for _, target := range tracker.Buckets() {
+		tt.Buckets = append(tt.Buckets, convertTarget(target))
+	}
+
+	return tt
+}
+
+func convertSyncStateStage(srtState syncTypes.SyncStateStage) types.SyncStateStage {
+	var state types.SyncStateStage
+	switch srtState {
+	case syncTypes.StageIdle:
+		state = types.StageIdle
+	case syncTypes.StageSyncErrored:
+		state = types.StageSyncErrored
+	case syncTypes.StageSyncComplete:
+		state = types.StageSyncComplete
+	case syncTypes.StateInSyncing:
+		state = types.StageMessages
+	}
+
+	return state
 }
 
 // SyncerStatus returns the current status of the active or last active chain sync operation.
@@ -40,7 +77,7 @@ func (sa *syncerAPI) Concurrent(ctx context.Context) int64 {
 
 // ChainTipSetWeight computes weight for the specified tipset.
 func (sa *syncerAPI) ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey) (big.Int, error) {
-	ts, err := sa.syncer.ChainModule.ChainReader.GetTipSet(tsk)
+	ts, err := sa.syncer.ChainModule.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return big.Int{}, err
 	}
@@ -57,22 +94,22 @@ func (sa *syncerAPI) ChainSyncHandleNewTipSet(ctx context.Context, ci *types.Cha
 func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
 	//todo many dot. how to get directly
 	chainModule := sa.syncer.ChainModule
-	parent, err := chainModule.ChainReader.GetBlock(ctx, blk.Header.Parents.Cids()[0])
+	parent, err := chainModule.ChainReader.GetBlock(ctx, blk.Header.Parents[0])
 	if err != nil {
 		return xerrors.Errorf("loading parent block: %v", err)
 	}
 
-	if err := sa.syncer.SlashFilter.MinedBlock(blk.Header, parent.Height); err != nil {
+	if err := sa.syncer.SlashFilter.MinedBlock(ctx, blk.Header, parent.Height); err != nil {
 		log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
 		return xerrors.Errorf("<!!> SLASH FILTER ERROR: %v", err)
 	}
 
 	// TODO: should we have some sort of fast path to adding a local block?
-	bmsgs, err := chainModule.MessageStore.LoadUnsignedMessagesFromCids(blk.BlsMessages)
+	bmsgs, err := chainModule.MessageStore.LoadUnsignedMessagesFromCids(ctx, blk.BlsMessages)
 	if err != nil {
 		return xerrors.Errorf("failed to load bls messages: %v", err)
 	}
-	smsgs, err := chainModule.MessageStore.LoadSignedMessagesFromCids(blk.SecpkMessages)
+	smsgs, err := chainModule.MessageStore.LoadSignedMessagesFromCids(ctx, blk.SecpkMessages)
 	if err != nil {
 		return xerrors.Errorf("failed to load secpk message: %v", err)
 	}
@@ -83,11 +120,11 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 		SECPMessages: smsgs,
 	}
 
-	if err := sa.syncer.BlockValidator.ValidateMsgMeta(fb); err != nil {
+	if err := sa.syncer.BlockValidator.ValidateMsgMeta(ctx, fb); err != nil {
 		return xerrors.Errorf("provided messages did not match block: %v", err)
 	}
 
-	ts, err := types.NewTipSet(blk.Header)
+	ts, err := types.NewTipSet([]*types.BlockHeader{blk.Header})
 	if err != nil {
 		return xerrors.Errorf("somehow failed to make a tipset out of a single block: %v", err)
 	}
@@ -124,9 +161,9 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 // StateCall applies the message to the tipset's parent state. The
 // message is not applied on-top-of the messages in the passed-in
 // tipset.
-func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMessage, tsk types.TipSetKey) (*types.InvocResult, error) {
+func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error) {
 	start := time.Now()
-	ts, err := sa.syncer.ChainModule.ChainReader.GetTipSet(tsk)
+	ts, err := sa.syncer.ChainModule.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
 	}
@@ -141,22 +178,22 @@ func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.UnsignedMessage, 
 		MsgCid:         mcid,
 		Msg:            msg,
 		MsgRct:         &ret.Receipt,
-		ExecutionTrace: &types.ExecutionTrace{},
+		ExecutionTrace: types.ExecutionTrace{},
 		Duration:       duration,
 	}, nil
 }
 
 //SyncState just compatible code lotus
-func (sa *syncerAPI) SyncState(ctx context.Context) (*apitypes.SyncState, error) {
+func (sa *syncerAPI) SyncState(ctx context.Context) (*types.SyncState, error) {
 	tracker := sa.syncer.ChainSyncManager.BlockProposer().SyncTracker()
 	tracker.History()
 
-	syncState := &apitypes.SyncState{
+	syncState := &types.SyncState{
 		VMApplied: 0,
 	}
 
 	count := 0
-	toActiveSync := func(t *syncTypes.Target) apitypes.ActiveSync {
+	toActiveSync := func(t *syncTypes.Target) types.ActiveSync {
 		currentHeight := t.Base.Height()
 		if t.Current != nil {
 			currentHeight = t.Current.Height()
@@ -168,27 +205,16 @@ func (sa *syncerAPI) SyncState(ctx context.Context) (*apitypes.SyncState, error)
 		}
 		count++
 
-		activeSync := apitypes.ActiveSync{
+		activeSync := types.ActiveSync{
 			WorkerID: uint64(count),
 			Base:     t.Base,
 			Target:   t.Head,
+			Stage:    convertSyncStateStage(t.State),
 			Height:   currentHeight,
 			Start:    t.Start,
 			End:      t.End,
 			Message:  msg,
 		}
-
-		switch t.State {
-		case syncTypes.StageIdle:
-			activeSync.Stage = apitypes.StageIdle
-		case syncTypes.StageSyncErrored:
-			activeSync.Stage = apitypes.StageSyncErrored
-		case syncTypes.StageSyncComplete:
-			activeSync.Stage = apitypes.StageSyncComplete
-		case syncTypes.StateInSyncing:
-			activeSync.Stage = apitypes.StageMessages
-		}
-
 		return activeSync
 	}
 	//current

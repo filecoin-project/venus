@@ -3,16 +3,16 @@ package mpool
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/pkg/messagepool"
-	logging "github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-pubsub"
-	"golang.org/x/xerrors"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/libp2p/go-libp2p-core/peer"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+
+	"github.com/filecoin-project/go-address"
+	logging "github.com/ipfs/go-log"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/network"
@@ -20,10 +20,13 @@ import (
 	chainpkg "github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/messagepool/journal"
 	"github.com/filecoin-project/venus/pkg/net/msgsub"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var pubsubMsgsSyncEpochs = 10
@@ -55,7 +58,7 @@ type MessagePoolSubmodule struct { //nolint
 	msgSigner  *messagepool.MessageSigner
 	chain      *chain.ChainSubmodule
 	network    *network.NetworkSubmodule
-	walletAPI  apiface.IWallet
+	walletAPI  v1api.IWallet
 	networkCfg *config.NetworkParamsConfig
 }
 
@@ -68,7 +71,7 @@ func OpenFilesystemJournal(lr repo.Repo) (journal.Journal, error) {
 	return jrnl, err
 }
 
-func NewMpoolSubmodule(cfg messagepoolConfig,
+func NewMpoolSubmodule(ctx context.Context, cfg messagepoolConfig,
 	network *network.NetworkSubmodule,
 	chain *chain.ChainSubmodule,
 	wallet *wallet.WalletSubmodule,
@@ -79,7 +82,7 @@ func NewMpoolSubmodule(cfg messagepoolConfig,
 	if err != nil {
 		return nil, err
 	}
-	mp, err := messagepool.New(mpp, chain.Stmgr, cfg.Repo().MetaDatastore(),
+	mp, err := messagepool.New(ctx, mpp, chain.Stmgr, cfg.Repo().MetaDatastore(),
 		cfg.Repo().Config().NetworkParams.ForkUpgradeParam, cfg.Repo().Config().Mpool,
 		network.NetworkName, j)
 	if err != nil {
@@ -244,12 +247,12 @@ func (mp *MessagePoolSubmodule) Stop(ctx context.Context) {
 }
 
 //API create a new mpool api implement
-func (mp *MessagePoolSubmodule) API() apiface.IMessagePool {
+func (mp *MessagePoolSubmodule) API() v1api.IMessagePool {
 	pushLocks := messagepool.NewMpoolLocker()
 	return &MessagePoolAPI{mp: mp, pushLocks: pushLocks}
 }
 
-func (mp *MessagePoolSubmodule) V0API() apiface.IMessagePool {
+func (mp *MessagePoolSubmodule) V0API() v0api.IMessagePool {
 	pushLocks := messagepool.NewMpoolLocker()
 	return &MessagePoolAPI{mp: mp, pushLocks: pushLocks}
 }

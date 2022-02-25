@@ -4,53 +4,51 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	dtnet "github.com/filecoin-project/go-data-transfer/network"
-	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
-	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	blocks "github.com/ipfs/go-block-format"
-	bserv "github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	logging "github.com/ipfs/go-log"
-
-	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
-	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/discovery"
-	"github.com/filecoin-project/venus/pkg/net"
-	appstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
+	blocks "github.com/ipfs/go-block-format"
+	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-graphsync"
 	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	"github.com/ipfs/go-graphsync/storeutil"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
-	circuit "github.com/libp2p/go-libp2p-circuit"
 	"github.com/libp2p/go-libp2p-core/host"
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
-	smux "github.com/libp2p/go-libp2p-core/mux"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	mplex "github.com/libp2p/go-libp2p-mplex"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	yamux "github.com/libp2p/go-libp2p-yamux"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/app/submodule/network/v0api"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
+	dtnet "github.com/filecoin-project/go-data-transfer/network"
+	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
+
+	apiwrapper "github.com/filecoin-project/venus/app/submodule/network/v0api"
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/discovery"
+	"github.com/filecoin-project/venus/pkg/net"
+	"github.com/filecoin-project/venus/pkg/repo"
+	appstate "github.com/filecoin-project/venus/pkg/state"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/venus-shared/types"
+
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
 var networkLogger = logging.Logger("network_module")
@@ -81,12 +79,12 @@ type NetworkSubmodule struct { //nolint
 }
 
 //API create a new network implement
-func (networkSubmodule *NetworkSubmodule) API() apiface.INetwork {
+func (networkSubmodule *NetworkSubmodule) API() v1api.INetwork {
 	return &networkAPI{network: networkSubmodule}
 }
 
-func (networkSubmodule *NetworkSubmodule) V0API() apiface.INetwork {
-	return &v0api.WrapperV1INetwork{INetwork: &networkAPI{network: networkSubmodule}}
+func (networkSubmodule *NetworkSubmodule) V0API() v0api.INetwork {
+	return &apiwrapper.WrapperV1INetwork{INetwork: &networkAPI{network: networkSubmodule}}
 }
 
 func (networkSubmodule *NetworkSubmodule) Stop(ctx context.Context) {
@@ -97,6 +95,9 @@ func (networkSubmodule *NetworkSubmodule) Stop(ctx context.Context) {
 	networkLogger.Infof("closing host")
 	if err := networkSubmodule.Host.Close(); err != nil {
 		networkLogger.Errorf("error closing host: %s", err.Error())
+	}
+	if err := networkSubmodule.Router.(*dht.IpfsDHT).Close(); err != nil {
+		networkLogger.Errorf("error closing dht: %s", err.Error())
 	}
 }
 
@@ -111,7 +112,7 @@ type networkConfig interface {
 // NewNetworkSubmodule creates a new network submodule.
 func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSubmodule, error) {
 	bandwidthTracker := p2pmetrics.NewBandwidthCounter()
-	libP2pOpts := append(config.Libp2pOpts(), libp2p.BandwidthReporter(bandwidthTracker), makeSmuxTransportOption(true))
+	libP2pOpts := append(config.Libp2pOpts(), libp2p.BandwidthReporter(bandwidthTracker), makeSmuxTransportOption())
 
 	var networkName string
 	var err error
@@ -136,7 +137,6 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSub
 	var router routing.Routing
 	var pubsubMessageSigning bool
 	var peerMgr net.IPeerMgr
-	// if !config.OfflineMode() {
 	makeDHT := func(h host.Host) (routing.Routing, error) {
 		mode := dht.ModeAuto
 		opts := []dht.Option{dht.Mode(mode),
@@ -216,9 +216,14 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSub
 
 	//dataTransger
 	//sc := storedcounter.New(repo.ChainDatastore(), datastore.NewKey("/datatransfer/api/counter"))
+	// go-data-transfer protocol retries:
+	// 1s, 5s, 25s, 2m5s, 5m x 11 ~= 1 hour
+	dtRetryParams := dtnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
+	dtn := dtnet.NewFromLibp2pHost(peerHost, dtRetryParams)
+
 	dtNet := dtnet.NewFromLibp2pHost(peerHost)
 	dtDs := namespace.Wrap(config.Repo().ChainDatastore(), datastore.NewKey("/datatransfer/api/transfers"))
-	transport := dtgstransport.NewTransport(peerHost.ID(), gsync)
+	transport := dtgstransport.NewTransport(peerHost.ID(), gsync, dtn)
 
 	repoPath, err := config.Repo().Path()
 	if err != nil {
@@ -254,10 +259,10 @@ func (networkSubmodule *NetworkSubmodule) FetchMessagesByCids(
 	ctx context.Context,
 	service bserv.BlockService,
 	cids []cid.Cid,
-) ([]*types.UnsignedMessage, error) {
-	out := make([]*types.UnsignedMessage, len(cids))
+) ([]*types.Message, error) {
+	out := make([]*types.Message, len(cids))
 	err := networkSubmodule.fetchCids(ctx, service, cids, func(idx int, blk blocks.Block) error {
-		var msg types.UnsignedMessage
+		var msg types.Message
 		if err := msg.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
 			return err
 		}
@@ -369,8 +374,7 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 		}
 
 		relayHost, err := libp2p.New(
-			ctx,
-			libp2p.EnableRelay(circuit.OptHop),
+			libp2p.EnableRelay(), // TODO ?
 			libp2p.EnableAutoRelay(),
 			libp2p.Routing(makeDHTRightType),
 			publicAddrFactory,
@@ -383,19 +387,20 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 		}
 		return relayHost, nil
 	}
-	return libp2p.New(
-		ctx,
+
+	opts := []libp2p.Option{
 		libp2p.UserAgent("venus"),
 		libp2p.Routing(makeDHTRightType),
 		libp2p.ChainOptions(libP2pOpts...),
 		libp2p.Ping(true),
 		libp2p.DisableRelay(),
-	)
+	}
+
+	return libp2p.New(opts...)
 }
 
-func makeSmuxTransportOption(mplexExp bool) libp2p.Option {
+func makeSmuxTransportOption() libp2p.Option {
 	const yamuxID = "/yamux/1.0.0"
-	const mplexID = "/mplex/6.7.0"
 
 	ymxtpt := *yamux.DefaultTransport
 	ymxtpt.AcceptBacklog = 512
@@ -404,27 +409,5 @@ func makeSmuxTransportOption(mplexExp bool) libp2p.Option {
 		ymxtpt.LogOutput = os.Stderr
 	}
 
-	muxers := map[string]smux.Multiplexer{yamuxID: &ymxtpt}
-	if mplexExp {
-		muxers[mplexID] = mplex.DefaultTransport
-	}
-
-	// Allow muxer preference order overriding
-	order := []string{yamuxID, mplexID}
-	if prefs := os.Getenv("LIBP2P_MUX_PREFS"); prefs != "" {
-		order = strings.Fields(prefs)
-	}
-
-	opts := make([]libp2p.Option, 0, len(order))
-	for _, id := range order {
-		tpt, ok := muxers[id]
-		if !ok {
-			networkLogger.Warnf("unknown or duplicate muxer in LIBP2P_MUX_PREFS: %s", id)
-			continue
-		}
-		delete(muxers, id)
-		opts = append(opts, libp2p.Muxer(id, tpt))
-	}
-
-	return libp2p.ChainOptions(opts...)
+	return libp2p.Muxer(yamuxID, &ymxtpt)
 }

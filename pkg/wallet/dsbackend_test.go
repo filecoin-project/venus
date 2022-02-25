@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"context"
 	"crypto/rand"
 	"io"
 	"sync"
@@ -27,24 +28,25 @@ func TestDSBackendSimple(t *testing.T) {
 		require.NoError(t, ds.Close())
 	}()
 
-	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
+	ctx := context.Background()
+	fs, err := NewDSBackend(ctx, ds, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
 	t.Log("empty address list on empty datastore")
-	assert.Len(t, fs.Addresses(), 0)
+	assert.Len(t, fs.Addresses(ctx), 0)
 
 	t.Log("can create new address")
-	addr, err := fs.NewAddress(address.SECP256K1)
+	addr, err := fs.NewAddress(ctx, address.SECP256K1)
 	assert.NoError(t, err)
 
 	t.Log("address is stored")
-	assert.True(t, fs.HasAddress(addr))
+	assert.True(t, fs.HasAddress(ctx, addr))
 
 	t.Log("address is stored in repo, and back when loading fresh in a new backend")
-	fs2, err := NewDSBackend(ds, config.TestPassphraseConfig(), []byte("test-password"))
+	fs2, err := NewDSBackend(ctx, ds, config.TestPassphraseConfig(), []byte("test-password"))
 	assert.NoError(t, err)
 
-	assert.True(t, fs2.HasAddress(addr))
+	assert.True(t, fs2.HasAddress(ctx, addr))
 }
 
 func TestDSBackendKeyPairMatchAddress(t *testing.T) {
@@ -55,18 +57,19 @@ func TestDSBackendKeyPairMatchAddress(t *testing.T) {
 		require.NoError(t, ds.Close())
 	}()
 
-	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
+	ctx := context.Background()
+	fs, err := NewDSBackend(ctx, ds, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
 	t.Log("can create new address")
-	addr, err := fs.NewAddress(address.SECP256K1)
+	addr, err := fs.NewAddress(ctx, address.SECP256K1)
 	assert.NoError(t, err)
 
 	t.Log("address is stored")
-	assert.True(t, fs.HasAddress(addr))
+	assert.True(t, fs.HasAddress(ctx, addr))
 
 	t.Log("address references to a secret key")
-	ki, err := fs.GetKeyInfo(addr)
+	ki, err := fs.GetKeyInfo(ctx, addr)
 	assert.NoError(t, err)
 
 	dAddr, err := ki.Address()
@@ -84,32 +87,34 @@ func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
 	defer func() {
 		require.NoError(t, ds1.Close())
 	}()
-	fs1, err := NewDSBackend(ds1, config.TestPassphraseConfig(), TestPassword)
+
+	ctx := context.Background()
+	fs1, err := NewDSBackend(ctx, ds1, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
 	ds2 := datastore.NewMapDatastore()
 	defer func() {
 		require.NoError(t, ds2.Close())
 	}()
-	fs2, err := NewDSBackend(ds2, config.TestPassphraseConfig(), TestPassword)
+	fs2, err := NewDSBackend(ctx, ds2, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
 	t.Log("can create new address in fs1")
-	addr, err := fs1.NewAddress(address.SECP256K1)
+	addr, err := fs1.NewAddress(ctx, address.SECP256K1)
 	assert.NoError(t, err)
 
 	t.Log("address is stored fs1")
-	assert.True(t, fs1.HasAddress(addr))
+	assert.True(t, fs1.HasAddress(ctx, addr))
 
 	t.Log("address is not stored fs2")
-	assert.False(t, fs2.HasAddress(addr))
+	assert.False(t, fs2.HasAddress(ctx, addr))
 
 	t.Log("address references to a secret key in fs1")
-	_, err = fs1.GetKeyInfo(addr)
+	_, err = fs1.GetKeyInfo(ctx, addr)
 	assert.NoError(t, err)
 
 	t.Log("address does not references to a secret key in fs2")
-	_, err = fs2.GetKeyInfo(addr)
+	_, err = fs2.GetKeyInfo(ctx, addr)
 	assert.Error(t, err)
 	assert.Contains(t, "backend does not contain address", err.Error())
 
@@ -123,7 +128,8 @@ func TestDSBackendParallel(t *testing.T) {
 		require.NoError(t, ds.Close())
 	}()
 
-	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
+	ctx := context.Background()
+	fs, err := NewDSBackend(ctx, ds, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
 	var wg sync.WaitGroup
@@ -131,14 +137,14 @@ func TestDSBackendParallel(t *testing.T) {
 	wg.Add(count)
 	for i := 0; i < count; i++ {
 		go func() {
-			_, err := fs.NewAddress(address.SECP256K1)
+			_, err := fs.NewAddress(ctx, address.SECP256K1)
 			assert.NoError(t, err)
 			wg.Done()
 		}()
 	}
 
 	wg.Wait()
-	assert.Len(t, fs.Addresses(), 10)
+	assert.Len(t, fs.Addresses(ctx), 10)
 }
 
 func BenchmarkDSBackendSimple(b *testing.B) {
@@ -147,12 +153,13 @@ func BenchmarkDSBackendSimple(b *testing.B) {
 		require.NoError(b, ds.Close())
 	}()
 
-	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
+	ctx := context.Background()
+	fs, err := NewDSBackend(ctx, ds, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(b, err)
 
 	corruptData := make([]byte, 32)
 	for i := 0; i < b.N; i++ {
-		addr, err := fs.NewAddress(address.SECP256K1)
+		addr, err := fs.NewAddress(ctx, address.SECP256K1)
 		assert.NoError(b, err)
 
 		data := make([]byte, 32)
@@ -160,7 +167,7 @@ func BenchmarkDSBackendSimple(b *testing.B) {
 		assert.NoError(b, err)
 		copy(corruptData, data)
 
-		signature, err := fs.SignBytes(data, addr)
+		signature, err := fs.SignBytes(ctx, data, addr)
 		if err != nil {
 			b.Log(len(signature.Data), signature)
 		}

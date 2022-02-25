@@ -5,6 +5,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"time"
+
+	"github.com/filecoin-project/venus/venus-shared/types"
+
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -12,9 +16,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	ma "github.com/multiformats/go-multiaddr"
-	"time"
-
-	"github.com/filecoin-project/venus/pkg/net"
 )
 
 const (
@@ -67,7 +68,7 @@ var swarmPeersCmd = &cmds.Command{
 
 		return re.Emit(&out)
 	},
-	Type: net.SwarmConnInfos{},
+	Type: types.SwarmConnInfos{},
 }
 
 var swarmConnectCmd = &cmds.Command{
@@ -134,7 +135,7 @@ var queryDhtCmd = &cmds.Command{
 
 		go func() {
 			defer cancel()
-			for p := range closestPeers {
+			for _, p := range closestPeers {
 				routing.PublishQueryEvent(ctx, &routing.QueryEvent{
 					ID:   p,
 					Type: routing.FinalPeer,

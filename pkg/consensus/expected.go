@@ -3,29 +3,28 @@ package consensus
 import "C"
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"time"
-
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/fork"
 	appstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var (
@@ -46,7 +45,7 @@ const AllowableClockDriftSecs = uint64(1)
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
 	ProcessTipSet(context.Context, *types.TipSet, *types.TipSet, []types.BlockMessagesInfo, vm.VmOption) (cid.Cid, []types.MessageReceipt, error)
-	ProcessImplicitMessage(context.Context, *types.UnsignedMessage, vm.VmOption) (*vm.Ret, error)
+	ProcessImplicitMessage(context.Context, *types.Message, vm.VmOption) (*vm.Ret, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
@@ -82,19 +81,21 @@ type StateViewer interface {
 }
 
 type chainReader interface {
-	GetTipSet(types.TipSetKey) (*types.TipSet, error)
+	GetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error)
 	GetHead() *types.TipSet
-	StateView(ts *types.TipSet) (*appstate.View, error)
-	GetTipSetStateRoot(*types.TipSet) (cid.Cid, error)
-	GetTipSetReceiptsRoot(*types.TipSet) (cid.Cid, error)
+	StateView(ctx context.Context, ts *types.TipSet) (*appstate.View, error)
+	GetTipSetStateRoot(context.Context, *types.TipSet) (cid.Cid, error)
+	GetTipSetReceiptsRoot(context.Context, *types.TipSet) (cid.Cid, error)
 	GetGenesisBlock(context.Context) (*types.BlockHeader, error)
-	GetLatestBeaconEntry(*types.TipSet) (*types.BeaconEntry, error)
+	GetLatestBeaconEntry(context.Context, *types.TipSet) (*types.BeaconEntry, error)
 	GetTipSetByHeight(context.Context, *types.TipSet, abi.ChainEpoch, bool) (*types.TipSet, error)
-	GetCirculatingSupplyDetailed(context.Context, abi.ChainEpoch, tree.Tree) (chain.CirculatingSupply, error)
+	GetCirculatingSupplyDetailed(context.Context, abi.ChainEpoch, tree.Tree) (types.CirculatingSupply, error)
 	GetLookbackTipSetForRound(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch, version network.Version) (*types.TipSet, cid.Cid, error)
-	GetTipsetMetadata(*types.TipSet) (*chain.TipSetMetadata, error)
+	GetTipsetMetadata(context.Context, *types.TipSet) (*chain.TipSetMetadata, error)
 	PutTipSetMetadata(context.Context, *chain.TipSetMetadata) error
 }
+
+var _ chainReader = (*chain.Store)(nil)
 
 // Expected implements expected consensus.
 type Expected struct {
@@ -191,7 +192,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (ci
 		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
 	} else if ts.Height() > 0 {
 		parent := ts.Parents()
-		if pts, err = c.chainState.GetTipSet(parent); err != nil {
+		if pts, err = c.chainState.GetTipSet(ctx, parent); err != nil {
 			return cid.Undef, cid.Undef, err
 		}
 	} else {
@@ -206,8 +207,8 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (ci
 			}
 			return dertail.FilCirculating, nil
 		},
-		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(c.chainState, c.fork, ts),
-		NtwkVersionGetter:   c.fork.GetNtwkVersion,
+		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, c.chainState, c.fork, ts),
+		NetworkVersion:      c.fork.GetNetworkVersion(ctx, ts.At(0).Height),
 		Rnd:                 NewHeadRandomness(c.rnd, ts.Key()),
 		BaseFee:             ts.At(0).ParentBaseFee,
 		Fork:                c.fork,

@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -190,7 +190,7 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 }
 
 func (h *HelloProtocolHandler) loadLocalFullTipset(ctx context.Context, tsk types.TipSetKey) (*types.FullTipSet, error) {
-	ts, err := h.chainStore.GetTipSet(tsk)
+	ts, err := h.chainStore.GetTipSet(ctx, tsk)
 	if err != nil {
 		return nil, err
 	}

@@ -3,7 +3,7 @@ package constants
 import (
 	"math/big"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 
 	"github.com/filecoin-project/go-address"
 
@@ -14,7 +14,16 @@ import (
 // Consensus / Network
 
 const AllowableClockDriftSecs = uint64(1)
-const NewestNetworkVersion = network.Version14
+
+/* inline-gen template
+
+const NewestNetworkVersion = network.Version{{.latestNetworkVersion}}
+
+/* inline-gen start */
+
+const NewestNetworkVersion = network.Version15
+
+/* inline-gen end */
 
 // constants for Weight calculation
 // The ratio of weight contributed by short-term vs long-term factors in a given round

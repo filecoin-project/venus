@@ -3,10 +3,15 @@ package cmd_test
 import (
 	"context"
 	"encoding/json"
+	"testing"
+
+	"github.com/filecoin-project/venus/pkg/testhelpers"
+
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	emptycid "github.com/filecoin-project/venus/pkg/testhelpers/empty_cid"
-	"testing"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,16 +19,15 @@ import (
 	"github.com/filecoin-project/venus/app/node/test"
 	"github.com/filecoin-project/venus/fixtures/fortest"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 // Receipt is what is returned by executing a message on the vm.
 type Receipt struct {
 	// control field for encoding struct as an array
-	_           struct{} `cbor:",toarray"`
-	ExitCode    int64    `json:"exitCode"`
-	ReturnValue []byte   `json:"return"`
-	GasUsed     int64    `json:"gasUsed"`
+	_        struct{} `cbor:",toarray"`
+	ExitCode int64    `json:"exitCode"`
+	Return   []byte   `json:"return"`
+	GasUsed  int64    `json:"gasUsed"`
 }
 
 func TestBlockDaemon(t *testing.T) {
@@ -134,7 +138,7 @@ func TestBlockDaemon(t *testing.T) {
 		_, err := mockBlock(t)
 		require.NoError(t, err)
 
-		emptyMessagesLine := cmdClient.RunSuccessFirstLine(ctx, "show", "messages", emptycid.EmptyMessagesCID.String(), "--enc", "json")
+		emptyMessagesLine := cmdClient.RunSuccessFirstLine(ctx, "show", "messages", testhelpers.EmptyMessagesCID.String(), "--enc", "json")
 
 		var messageCollection []*types.SignedMessage
 		require.NoError(t, json.Unmarshal([]byte(emptyMessagesLine), &messageCollection))
@@ -154,7 +158,7 @@ func TestBlockDaemon(t *testing.T) {
 		_, err := mockBlock(t)
 		require.NoError(t, err)
 
-		emptyReceiptsLine := cmdClient.RunSuccessFirstLine(ctx, "show", "receipts", emptycid.EmptyReceiptsCID.String(), "--enc", "json")
+		emptyReceiptsLine := cmdClient.RunSuccessFirstLine(ctx, "show", "receipts", testhelpers.EmptyReceiptsCID.String(), "--enc", "json")
 
 		var receipts []Receipt
 		require.NoError(t, json.Unmarshal([]byte(emptyReceiptsLine), &receipts))
@@ -228,21 +232,21 @@ func TestBlockDaemon(t *testing.T) {
 
 func mockBlock(t *testing.T) (*types.BlockHeader, error) {
 	b := &types.BlockHeader{
-		Miner:         types.NewForTestGetter()(),
-		Ticket:        types.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
+		Miner:         testhelpers.NewForTestGetter()(),
+		Ticket:        &types.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
 		ElectionProof: &types.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
 		Height:        2,
-		BeaconEntries: []*types.BeaconEntry{
+		BeaconEntries: []types.BeaconEntry{
 			{
 				Round: 1,
 				Data:  []byte{0x3},
 			},
 		},
-		Messages:              types.CidFromString(t, "somecid"),
-		ParentMessageReceipts: types.CidFromString(t, "somecid"),
-		Parents:               types.NewTipSetKey(types.CidFromString(t, "somecid")),
+		Messages:              testhelpers.CidFromString(t, "somecid"),
+		ParentMessageReceipts: testhelpers.CidFromString(t, "somecid"),
+		Parents:               []cid.Cid{testhelpers.CidFromString(t, "somecid")},
 		ParentWeight:          big.NewInt(1000),
-		ParentStateRoot:       types.CidFromString(t, "somecid"),
+		ParentStateRoot:       testhelpers.CidFromString(t, "somecid"),
 		Timestamp:             1,
 		BlockSig: &crypto.Signature{
 			Type: crypto.SigTypeBLS,

@@ -2,8 +2,13 @@ package node
 
 import (
 	"context"
-	"contrib.go.opencensus.io/exporter/jaeger"
 	"fmt"
+	"net"
+	"net/http"
+	"os"
+	"syscall"
+
+	"contrib.go.opencensus.io/exporter/jaeger"
 	"github.com/awnumar/memguard"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
@@ -16,7 +21,7 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
 	"github.com/filecoin-project/venus/app/submodule/multisig"
-	"github.com/filecoin-project/venus/app/submodule/multisig/v0api"
+	apiwrapper "github.com/filecoin-project/venus/app/submodule/multisig/v0api"
 	network2 "github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
@@ -37,10 +42,6 @@ import (
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/pkg/errors"
 	"go.opencensus.io/tag"
-	"net"
-	"net/http"
-	"os"
-	"syscall"
 )
 
 var log = logging.Logger("node") // nolint: deadcode
@@ -188,7 +189,7 @@ func (node *Node) Start(ctx context.Context) error {
 		return err
 	}
 
-	err = node.paychan.Start()
+	err = node.paychan.Start(ctx)
 	if err != nil {
 		return err
 	}
@@ -333,7 +334,7 @@ func (node *Node) runRestfulAPI(ctx context.Context, handler *http.ServeMux, roo
 	cfg.SetAllowedOrigins(apiConfig.AccessControlAllowOrigin...)
 	cfg.SetAllowedMethods(apiConfig.AccessControlAllowMethods...)
 	cfg.SetAllowCredentials(apiConfig.AccessControlAllowCredentials)
-	cfg.AppendAllowHeaders("Authorization")
+	cfg.AddAllowedHeaders("Authorization")
 
 	handler.Handle(APIPrefix+"/", cmdhttp.NewHandler(servenv, rootCmdDaemon, cfg))
 	return nil
@@ -350,11 +351,8 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 	env := Env{
 		ctx:                  ctx,
 		InspectorAPI:         NewInspectorAPI(node.repo),
-		BlockServiceAPI:      node.blockservice.API(),
 		BlockStoreAPI:        node.blockstore.API(),
 		ChainAPI:             node.chain.API(),
-		ConfigAPI:            node.configModule.API(),
-		DiscoveryAPI:         node.discovery.API(),
 		NetworkAPI:           node.network.API(),
 		StorageNetworkingAPI: node.storageNetworking.API(),
 		SyncerAPI:            node.syncer.API(),
@@ -363,7 +361,7 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		MessagePoolAPI:       node.mpool.API(),
 		PaychAPI:             node.paychan.API(),
 		MarketAPI:            node.market.API(),
-		MultiSigAPI:          &v0api.WrapperV1IMultiSig{IMultiSig: node.multiSig.API(), IMessagePool: node.mpool.API()},
+		MultiSigAPI:          &apiwrapper.WrapperV1IMultiSig{IMultiSig: node.multiSig.API(), IMessagePool: node.mpool.API()},
 	}
 
 	return &env

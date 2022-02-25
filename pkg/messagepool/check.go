@@ -10,16 +10,15 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var baseFeeUpperBoundFactor = types.NewInt(10)
 
 // CheckMessages performs a set of logic checks for a list of messages, prior to submitting it to the mpool
-func (mp *MessagePool) CheckMessages(ctx context.Context, protos []*apitypes.MessagePrototype) ([][]apitypes.MessageCheckStatus, error) {
+func (mp *MessagePool) CheckMessages(ctx context.Context, protos []*types.MessagePrototype) ([][]types.MessageCheckStatus, error) {
 	flex := make([]bool, len(protos))
 	msgs := make([]*types.Message, len(protos))
 	for i, p := range protos {
@@ -30,7 +29,7 @@ func (mp *MessagePool) CheckMessages(ctx context.Context, protos []*apitypes.Mes
 }
 
 // CheckPendingMessages performs a set of logical sets for all messages pending from a given actor
-func (mp *MessagePool) CheckPendingMessages(ctx context.Context, from address.Address) ([][]apitypes.MessageCheckStatus, error) {
+func (mp *MessagePool) CheckPendingMessages(ctx context.Context, from address.Address) ([][]types.MessageCheckStatus, error) {
 	var msgs []*types.Message
 	mp.lk.Lock()
 	mset, ok := mp.pending[from]
@@ -54,7 +53,7 @@ func (mp *MessagePool) CheckPendingMessages(ctx context.Context, from address.Ad
 
 // CheckReplaceMessages performs a set of logical checks for related messages while performing a
 // replacement.
-func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*types.Message) ([][]apitypes.MessageCheckStatus, error) {
+func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*types.Message) ([][]types.MessageCheckStatus, error) {
 	msgMap := make(map[address.Address]map[uint64]*types.Message)
 	count := 0
 
@@ -99,7 +98,7 @@ func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*type
 
 // flexibleNonces should be either nil or of len(msgs), it signifies that message at given index
 // has non-determied nonce at this point
-func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message, interned bool, flexibleNonces []bool) (result [][]apitypes.MessageCheckStatus, err error) {
+func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message, interned bool, flexibleNonces []bool) (result [][]types.MessageCheckStatus, err error) {
 	if mp.api.IsLite() {
 		return nil, nil
 	}
@@ -130,14 +129,14 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 	state := make(map[address.Address]*actorState)
 	balances := make(map[address.Address]big.Int)
 
-	result = make([][]apitypes.MessageCheckStatus, len(msgs))
+	result = make([][]types.MessageCheckStatus, len(msgs))
 
 	for i, m := range msgs {
 		// pre-check: actor nonce
-		check := apitypes.MessageCheckStatus{
+		check := types.MessageCheckStatus{
 			Cid: m.Cid(),
-			CheckStatus: apitypes.CheckStatus{
-				Code: apitypes.CheckStatusMessageGetStateNonce,
+			CheckStatus: types.CheckStatus{
+				Code: types.CheckStatusMessageGetStateNonce,
 			},
 		}
 
@@ -184,10 +183,10 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		}
 
 		// pre-check: actor balance
-		check = apitypes.MessageCheckStatus{
+		check = types.MessageCheckStatus{
 			Cid: m.Cid(),
-			CheckStatus: apitypes.CheckStatus{
-				Code: apitypes.CheckStatusMessageGetStateBalance,
+			CheckStatus: types.CheckStatus{
+				Code: types.CheckStatusMessageGetStateBalance,
 			},
 		}
 
@@ -218,10 +217,10 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		}
 
 		// 1. Serialization
-		check = apitypes.MessageCheckStatus{
+		check = types.MessageCheckStatus{
 			Cid: m.Cid(),
-			CheckStatus: apitypes.CheckStatus{
-				Code: apitypes.CheckStatusMessageSerialize,
+			CheckStatus: types.CheckStatus{
+				Code: types.CheckStatusMessageSerialize,
 			},
 		}
 
@@ -236,10 +235,10 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		result[i] = append(result[i], check)
 
 		// 2. Message size
-		check = apitypes.MessageCheckStatus{
+		check = types.MessageCheckStatus{
 			Cid: m.Cid(),
-			CheckStatus: apitypes.CheckStatus{
-				Code: apitypes.CheckStatusMessageSize,
+			CheckStatus: types.CheckStatus{
+				Code: types.CheckStatusMessageSize,
 			},
 		}
 
@@ -253,10 +252,10 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		result[i] = append(result[i], check)
 
 		// 3. Syntactic validation
-		check = apitypes.MessageCheckStatus{
+		check = types.MessageCheckStatus{
 			Cid: m.Cid(),
-			CheckStatus: apitypes.CheckStatus{
-				Code: apitypes.CheckStatusMessageValidity,
+			CheckStatus: types.CheckStatus{
+				Code: types.CheckStatusMessageValidity,
 			},
 		}
 
@@ -278,10 +277,10 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		// 4. Min Gas
 		minGas := gas.NewPricesSchedule(mp.forkParams).PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
 
-		check = apitypes.MessageCheckStatus{
+		check = types.MessageCheckStatus{
 			Cid: m.Cid(),
-			CheckStatus: apitypes.CheckStatus{
-				Code: apitypes.CheckStatusMessageMinGas,
+			CheckStatus: types.CheckStatus{
+				Code: types.CheckStatusMessageMinGas,
 				Hint: map[string]interface{}{
 					"minGas": minGas,
 				},
@@ -298,10 +297,10 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		result[i] = append(result[i], check)
 
 		// 5. Min Base Fee
-		check = apitypes.MessageCheckStatus{
+		check = types.MessageCheckStatus{
 			Cid: m.Cid(),
-			CheckStatus: apitypes.CheckStatus{
-				Code: apitypes.CheckStatusMessageMinBaseFee,
+			CheckStatus: types.CheckStatus{
+				Code: types.CheckStatusMessageMinBaseFee,
 			},
 		}
 
@@ -318,10 +317,10 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		}
 
 		// 6. Base Fee
-		check = apitypes.MessageCheckStatus{
+		check = types.MessageCheckStatus{
 			Cid: m.Cid(),
-			CheckStatus: apitypes.CheckStatus{
-				Code: apitypes.CheckStatusMessageBaseFee,
+			CheckStatus: types.CheckStatus{
+				Code: types.CheckStatusMessageBaseFee,
 				Hint: map[string]interface{}{
 					"baseFee": baseFee,
 				},
@@ -338,10 +337,10 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		result[i] = append(result[i], check)
 
 		// 7. Base Fee lower bound
-		check = apitypes.MessageCheckStatus{
+		check = types.MessageCheckStatus{
 			Cid: m.Cid(),
-			CheckStatus: apitypes.CheckStatus{
-				Code: apitypes.CheckStatusMessageBaseFeeLowerBound,
+			CheckStatus: types.CheckStatus{
+				Code: types.CheckStatusMessageBaseFeeLowerBound,
 				Hint: map[string]interface{}{
 					"baseFeeLowerBound": baseFeeLowerBound,
 					"baseFee":           baseFee,
@@ -359,10 +358,10 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		result[i] = append(result[i], check)
 
 		// 8. Base Fee upper bound
-		check = apitypes.MessageCheckStatus{
+		check = types.MessageCheckStatus{
 			Cid: m.Cid(),
-			CheckStatus: apitypes.CheckStatus{
-				Code: apitypes.CheckStatusMessageBaseFeeUpperBound,
+			CheckStatus: types.CheckStatus{
+				Code: types.CheckStatusMessageBaseFeeUpperBound,
 				Hint: map[string]interface{}{
 					"baseFeeUpperBound": baseFeeUpperBound,
 					"baseFee":           baseFee,
@@ -382,10 +381,10 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		// stateful checks
 	checkState:
 		// 9. Message Nonce
-		check = apitypes.MessageCheckStatus{
+		check = types.MessageCheckStatus{
 			Cid: m.Cid(),
-			CheckStatus: apitypes.CheckStatus{
-				Code: apitypes.CheckStatusMessageNonce,
+			CheckStatus: types.CheckStatus{
+				Code: types.CheckStatusMessageNonce,
 				Hint: map[string]interface{}{
 					"nextNonce": st.nextNonce,
 				},
@@ -407,10 +406,10 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		st.requiredFunds.Add(st.requiredFunds, m.Value.Int)
 
 		// 10. Balance
-		check = apitypes.MessageCheckStatus{
+		check = types.MessageCheckStatus{
 			Cid: m.Cid(),
-			CheckStatus: apitypes.CheckStatus{
-				Code: apitypes.CheckStatusMessageBalance,
+			CheckStatus: types.CheckStatus{
+				Code: types.CheckStatusMessageBalance,
 				Hint: map[string]interface{}{
 					"requiredFunds": big.Int{Int: stdbig.NewInt(0).Set(st.requiredFunds)},
 				},

@@ -19,9 +19,9 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/vm"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // MessageSendResult is the return type for message send command
@@ -56,9 +56,9 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 		v := req.Arguments[1]
-		val, ok := types.NewAttoFILFromFILString(v)
-		if !ok {
-			return errors.New("mal-formed value")
+		val, err := types.ParseFIL(v)
+		if err != nil {
+			return xerrors.Errorf("mal-formed value: %v", err)
 		}
 
 		methodID := builtin.MethodSend
@@ -103,10 +103,10 @@ var msgSendCmd = &cmds.Command{
 			params = decparams
 		}
 
-		msg := &types.UnsignedMessage{
+		msg := &types.Message{
 			From:       fromAddr,
 			To:         toAddr,
-			Value:      val,
+			Value:      abi.TokenAmount{Int: val.Int},
 			GasPremium: premium,
 			GasFeeCap:  feecap,
 			GasLimit:   gasLimit,
@@ -171,7 +171,7 @@ func decodeTypedParams(ctx context.Context, fapi *node.Env, to address.Address, 
 
 // WaitResult is the result of a message wait call.
 type WaitResult struct {
-	Message   *types.UnsignedMessage
+	Message   *types.Message
 	Receipt   *types.MessageReceipt
 	Signature vm.ActorMethodSignature
 }

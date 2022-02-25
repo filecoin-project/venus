@@ -9,6 +9,7 @@
 package wallet
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -25,10 +26,10 @@ import (
 
 func requireSignerAddr(t *testing.T) (*DSBackend, address.Address) {
 	ds := datastore.NewMapDatastore()
-	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
+	fs, err := NewDSBackend(context.Background(), ds, config.TestPassphraseConfig(), TestPassword)
 	require.NoError(t, err)
 
-	addr, err := fs.NewAddress(address.SECP256K1)
+	addr, err := fs.NewAddress(context.Background(), address.SECP256K1)
 	require.NoError(t, err)
 
 	return fs, addr
@@ -42,7 +43,7 @@ func TestSignatureOk(t *testing.T) {
 	fs, addr := requireSignerAddr(t)
 
 	data := []byte("THESE BYTES WILL BE SIGNED")
-	sig, err := fs.SignBytes(data, addr)
+	sig, err := fs.SignBytes(context.Background(), data, addr)
 	require.NoError(t, err)
 
 	assert.NoError(t, crypto.Verify(sig, addr, data))
@@ -65,7 +66,7 @@ func TestDataCorrupted(t *testing.T) {
 	fs, addr := requireSignerAddr(t)
 
 	data := []byte("THESE BYTES ARE SIGNED")
-	sig, err := fs.SignBytes(data, addr)
+	sig, err := fs.SignBytes(context.Background(), data, addr)
 	require.NoError(t, err)
 
 	corruptData := []byte("THESE BYTEZ ARE SIGNED")
@@ -80,10 +81,10 @@ func TestInvalidAddress(t *testing.T) {
 	fs, addr := requireSignerAddr(t)
 
 	data := []byte("THESE BYTES ARE SIGNED")
-	sig, err := fs.SignBytes(data, addr)
+	sig, err := fs.SignBytes(context.Background(), data, addr)
 	require.NoError(t, err)
 
-	badAddr, err := fs.NewAddress(address.SECP256K1)
+	badAddr, err := fs.NewAddress(context.Background(), address.SECP256K1)
 	require.NoError(t, err)
 
 	assert.Error(t, crypto.Verify(sig, badAddr, data))
@@ -96,7 +97,7 @@ func TestSignatureCorrupted(t *testing.T) {
 	fs, addr := requireSignerAddr(t)
 
 	data := []byte("THESE BYTES ARE SIGNED")
-	sig, err := fs.SignBytes(data, addr)
+	sig, err := fs.SignBytes(context.Background(), data, addr)
 	require.NoError(t, err)
 	sig.Data[0] = sig.Data[0] ^ 0xFF // This operation ensures sig is modified
 

@@ -1,9 +1,10 @@
 package syncer
 
 import (
-	"github.com/filecoin-project/venus/pkg/chainsync"
-	"github.com/filecoin-project/venus/pkg/types"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/chainsync"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type chainSync interface {

@@ -2,10 +2,13 @@ package conformance
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
-	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
+	"fmt"
+	"math"
 	gobig "math/big"
 	"os"
+
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -26,9 +29,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/test-vectors/schema"
-	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/tools/conformance/chaos"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -113,18 +117,13 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 		return nil, err
 	}
 	var (
-		caculator = chain.NewCirculatingSupplyCalculator(bs, cid.Undef, mainNetParams.Network.ForkUpgradeParam)
-
+		ctx      = context.Background()
 		vmOption = vm.VmOption{
-			CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
-				dertail, err := caculator.GetCirculatingSupplyDetailed(ctx, epoch, tree)
-				if err != nil {
-					return abi.TokenAmount{}, err
-				}
-				return dertail.FilCirculating, nil
+			CircSupplyCalculator: func(context.Context, abi.ChainEpoch, tree.Tree) (abi.TokenAmount, error) {
+				return big.Zero(), nil
 			},
-			LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(chainStore, chainFork, nil),
-			NtwkVersionGetter:   chainFork.GetNtwkVersion,
+			LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, chainStore, chainFork, nil),
+			NetworkVersion:      chainFork.GetNetworkVersion(ctx, execEpoch),
 			Rnd:                 NewFixedRand(),
 			BaseFee:             big.NewFromGo(&tipset.BaseFee),
 			Fork:                chainFork,
@@ -136,7 +135,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 		}
 	)
 
-	lvm, err := vm.NewVM(vmOption)
+	lvm, err := vm.NewVM(ctx, vmOption)
 	if err != nil {
 		return nil, err
 	}
@@ -220,13 +219,48 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 }
 
 type ExecuteMessageParams struct {
-	Preroot    cid.Cid
-	Epoch      abi.ChainEpoch
-	Message    *types.UnsignedMessage
-	CircSupply abi.TokenAmount
-	BaseFee    abi.TokenAmount
+	Preroot        cid.Cid
+	Epoch          abi.ChainEpoch
+	Message        *types.Message
+	CircSupply     abi.TokenAmount
+	BaseFee        abi.TokenAmount
+	NetworkVersion network.Version
 
 	Rand vmcontext.HeadChainRandomness
+}
+
+// adjustGasPricing adjusts the global gas price mapping to make sure that the
+// gas pricelist for vector's network version is used at the vector's epoch.
+// Because it manipulates a global, it returns a function that reverts the
+// change. The caller MUST invoke this function or the test vector runner will
+// become invalid.
+func adjustGasPricing(vectorEpoch abi.ChainEpoch, vectorNv network.Version, priceSchedule *gas.PricesSchedule, upgradeSchedule fork.UpgradeSchedule) {
+	// Resolve the epoch at which the vector network version kicks in.
+	var epoch abi.ChainEpoch = math.MaxInt64
+	if vectorNv == network.Version0 {
+		// genesis is not an upgrade.
+		epoch = 0
+	} else {
+		for _, u := range upgradeSchedule {
+			if u.Network == vectorNv {
+				epoch = u.Height
+				break
+			}
+		}
+	}
+
+	if epoch == math.MaxInt64 {
+		panic(fmt.Sprintf("could not resolve network version %d to height", vectorNv))
+	}
+
+	// Find the right pricelist for this network version.
+	pricelist := priceSchedule.PricelistByEpoch(epoch)
+
+	// Override the pricing mapping by setting the relevant pricelist for the
+	// network version at the epoch where the vector runs.
+	priceSchedule.SetPricelist(map[abi.ChainEpoch]gas.Pricelist{
+		vectorEpoch: pricelist,
+	})
 }
 
 // ExecuteMessage executes a conformance test vector message in a temporary VM.
@@ -255,17 +289,6 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 	//chainstore
 	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator()) //load genesis from car
 
-	//drand
-	/*	genBlk, err := chainStore.GetGenesisBlock(context.TODO())
-		if err != nil {
-			return nil, cid.Undef, err
-		}
-
-		drand, err := beacon.DefaultDrandIfaceFromConfig(genBlk.Timestamp)
-		if err != nil {
-			return nil, cid.Undef, err
-		}*/
-
 	//chain fork
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network)
 	faultChecker := consensusfault.NewFaultChecker(chainStore, chainFork)
@@ -274,12 +297,13 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		return nil, cid.Undef, err
 	}
 	var (
+		ctx      = context.Background()
 		vmOption = vm.VmOption{
 			CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 				return params.CircSupply, nil
 			},
-			LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(chainStore, chainFork, nil),
-			NtwkVersionGetter:   chainFork.GetNtwkVersion,
+			LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, chainStore, chainFork, nil),
+			NetworkVersion:      params.NetworkVersion,
 			Rnd:                 params.Rand,
 			BaseFee:             params.BaseFee,
 			Fork:                chainFork,
@@ -292,7 +316,10 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		}
 	)
 
-	lvm, err := vm.NewVM(vmOption)
+	// Monkey patch the gas pricing.
+	adjustGasPricing(params.Epoch, params.NetworkVersion, vmOption.GasPriceSchedule, fork.DefaultUpgradeSchedule(chainFork, mainNetParams.Network.ForkUpgradeParam))
+
+	lvm, err := vm.NewVM(ctx, vmOption)
 	if err != nil {
 		return nil, cid.Undef, err
 	}
@@ -325,7 +352,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 // others untouched.
 // TODO: generate a signature in the DSL so that it's encoded in
 //  the test vector.
-func toChainMsg(msg *types.UnsignedMessage) (ret types.ChainMsg) {
+func toChainMsg(msg *types.Message) (ret types.ChainMsg) {
 	ret = msg
 	if msg.From.Protocol() == address.SECP256K1 {
 		ret = &types.SignedMessage{

@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
-	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"io"
 	mrand "math/rand"
 
 	"github.com/filecoin-project/venus/pkg/fork"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 
 	"github.com/filecoin-project/go-address"
 	ds "github.com/ipfs/go-datastore"
@@ -41,17 +41,17 @@ import (
 	"github.com/filecoin-project/venus/pkg/genesis"
 	gfcstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/types"
 	blockstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 const InitialBaseFee = 100e6
 
 var (
-	rewardActorInitialBalance = types.NewAttoFILFromFIL(1.4e9)
+	rewardActorInitialBalance = types.FromFil(1.4e9)
 )
 
 type GenesisGenerator struct {
@@ -84,20 +84,18 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 
 	vmOption := vm.VmOption{
 		CircSupplyCalculator: csc,
-		NtwkVersionGetter: func(ctx context.Context, epoch abi.ChainEpoch) network.Version {
-			return network.Version6
-		},
-		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(chainStore, chainFork, nil),
-		Rnd:                 chainRand,
-		BaseFee:             abi.NewTokenAmount(InitialBaseFee),
-		Epoch:               0,
-		GasPriceSchedule:    gas.NewPricesSchedule(config.DefaultForkUpgradeParam),
-		Bsstore:             bs,
-		PRoot:               cid.Undef,
-		SysCallsImpl:        syscallImpl,
-		Fork:                chainFork,
+		NetworkVersion:       network.Version6,
+		LookbackStateGetter:  vmcontext.LookbackStateGetterForTipset(context.TODO(), chainStore, chainFork, nil),
+		Rnd:                  chainRand,
+		BaseFee:              abi.NewTokenAmount(InitialBaseFee),
+		Epoch:                0,
+		GasPriceSchedule:     gas.NewPricesSchedule(config.DefaultForkUpgradeParam),
+		Bsstore:              bs,
+		PRoot:                cid.Undef,
+		SysCallsImpl:         syscallImpl,
+		Fork:                 chainFork,
 	}
-	vm, err := vm.NewVM(vmOption)
+	vm, err := vm.NewVM(context.Background(), vmOption)
 	if err != nil {
 		panic(xerrors.Errorf("create state error, should never come here"))
 	}
@@ -304,12 +302,12 @@ func (g *GenesisGenerator) setupPrealloc() error {
 			return err
 		}
 
-		value, ok := types.NewAttoFILFromFILString(v)
-		if !ok {
+		value, err := types.ParseFIL(v)
+		if err != nil {
 			return fmt.Errorf("failed to parse FIL value '%s'", v)
 		}
 
-		_, err = g.vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr, builtin.MethodSend, value, nil)
+		_, err = g.vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr, builtin.MethodSend, abi.TokenAmount{Int: value.Int}, nil)
 		if err != nil {
 			return err
 		}
@@ -329,7 +327,7 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	meta := &types.TxMeta{SecpRoot: emptyAMTCid, BLSRoot: emptyAMTCid}
+	meta := &types.MessageRoot{SecpkRoot: emptyAMTCid, BlsRoot: emptyAMTCid}
 	metaCid, err := g.cst.Put(ctx, meta)
 	if err != nil {
 		return cid.Undef, err
@@ -337,10 +335,10 @@ func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
 
 	geneblk := &types.BlockHeader{
 		Miner:                 builtin.SystemActorAddr,
-		Ticket:                genesis.Ticket,
-		BeaconEntries:         []*types.BeaconEntry{{Data: []byte{0xca, 0xfe, 0xfa, 0xce}}},
+		Ticket:                &genesis.Ticket,
+		BeaconEntries:         []types.BeaconEntry{{Data: []byte{0xca, 0xfe, 0xfa, 0xce}}},
 		ElectionProof:         new(types.ElectionProof),
-		Parents:               types.NewTipSetKey(),
+		Parents:               types.NewTipSetKey().Cids(),
 		ParentWeight:          big.Zero(),
 		Height:                0,
 		ParentStateRoot:       stateRoot,
@@ -610,7 +608,7 @@ func (g *GenesisGenerator) createMiner(ctx context.Context, m *CreateStorageMine
 	}
 	// get miner ID address
 	createMinerReturn := power.CreateMinerReturn{}
-	err = createMinerReturn.UnmarshalCBOR(bytes.NewReader(out.Receipt.ReturnValue))
+	err = createMinerReturn.UnmarshalCBOR(bytes.NewReader(out.Receipt.Return))
 	if err != nil {
 		return address.Undef, address.Undef, err
 	}
@@ -675,7 +673,7 @@ func (g *GenesisGenerator) publishDeals(actorAddr, clientAddr address.Address, c
 		return nil, xerrors.Errorf("execute genesis msg error")
 	}
 	publishStoreageDealsReturn := market.PublishStorageDealsReturn{}
-	err = publishStoreageDealsReturn.UnmarshalCBOR(bytes.NewReader(out.Receipt.ReturnValue))
+	err = publishStoreageDealsReturn.UnmarshalCBOR(bytes.NewReader(out.Receipt.Return))
 	if err != nil {
 		return nil, err
 	}
@@ -696,7 +694,7 @@ func (g *GenesisGenerator) getDealWeight(dealID abi.DealID, sectorExpiry abi.Cha
 		return big.Zero(), big.Zero(), xerrors.Errorf("execute genesis msg error")
 	}
 	verifyDealsReturn := market.VerifyDealsForActivationReturn{}
-	err = verifyDealsReturn.UnmarshalCBOR(bytes.NewReader(weightOut.Receipt.ReturnValue))
+	err = verifyDealsReturn.UnmarshalCBOR(bytes.NewReader(weightOut.Receipt.Return))
 	if err != nil {
 		return big.Zero(), big.Zero(), err
 	}
@@ -716,7 +714,7 @@ func (g *GenesisGenerator) doExecValue(ctx context.Context, to, from address.Add
 	if ret.Receipt.ExitCode != 0 {
 		return nil, xerrors.Errorf("execute genesis msg error")
 	}
-	return ret.Receipt.ReturnValue, nil
+	return ret.Receipt.Return, nil
 }
 
 func (g *GenesisGenerator) currentTotalPower(ctx context.Context, maddr address.Address) (*power.CurrentTotalPowerReturn, error) {

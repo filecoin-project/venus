@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type tsCacheAPIFailOnStorageCall struct {
@@ -67,8 +67,8 @@ func (h *cacheHarness) addWithParents(parents []cid.Cid) {
 		ParentMessageReceipts: dummyCid,
 		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS},
 		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS},
-		Parents:               types.NewTipSetKey(parents...),
-	}}...)
+		Parents:               parents,
+	}})
 	require.NoError(h.t, err)
 	require.NoError(h.t, h.tsc.add(ts))
 	h.height++
@@ -209,8 +209,8 @@ func TestTsCacheSkip(t *testing.T) {
 		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS},
 		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS},
 		// With parents that don't match the last block.
-		Parents: types.EmptyTSK,
-	}}...)
+		Parents: types.EmptyTSK.Cids(),
+	}})
 	require.NoError(h.t, err)
 	err = h.tsc.add(ts)
 	require.Error(t, err)

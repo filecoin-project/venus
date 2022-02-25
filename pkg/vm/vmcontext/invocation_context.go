@@ -16,16 +16,16 @@ import (
 	ipfscbor "github.com/ipfs/go-ipld-cbor"
 	xerrors "github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	"github.com/filecoin-project/venus/pkg/types/specactors/adt"
-	"github.com/filecoin-project/venus/pkg/types/specactors/aerrors"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/account"
-	init_ "github.com/filecoin-project/venus/pkg/types/specactors/builtin/init"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/aerrors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
+	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var gasOnActorExec = gas.NewGasCharge("OnActorExec", 0, 0)
@@ -74,7 +74,7 @@ func newInvocationContext(rt *VM, gasIpld ipfscbor.IpldStore, topLevel *topLevel
 
 	if parent != nil {
 		// TODO: The version check here should be unnecessary, but we can wait to take it out
-		if !parent.allowSideEffects && rt.NtwkVersion() >= network.Version7 {
+		if !parent.allowSideEffects && rt.NetworkVersion() >= network.Version7 {
 			runtime.Abortf(exitcode.SysErrForbidden, "internal calls currently disabled")
 		}
 		//ctx.gasUsed = parent.gasUsed
@@ -84,7 +84,7 @@ func newInvocationContext(rt *VM, gasIpld ipfscbor.IpldStore, topLevel *topLevel
 		ctx.depth = parent.depth + 1
 	}
 
-	if ctx.depth > MaxCallDepth && rt.NtwkVersion() >= network.Version6 {
+	if ctx.depth > MaxCallDepth && rt.NetworkVersion() >= network.Version6 {
 		runtime.Abortf(exitcode.SysErrForbidden, "message execution exceeds call depth")
 	}
 
@@ -95,7 +95,7 @@ func newInvocationContext(rt *VM, gasIpld ipfscbor.IpldStore, topLevel *topLevel
 	}
 	msg.From = resF
 
-	if rt.NtwkVersion() > network.Version3 {
+	if rt.NetworkVersion() > network.Version3 {
 		resT, _ := rt.normalizeAddress(msg.To)
 		// may be set to undef if recipient doesn't exist yet
 		msg.To = resT
@@ -218,8 +218,7 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 	// 2. load target actor
 	// 3. transfer optional funds
 	// 4. short-circuit _Send_ Method
-	// 5. load target actor code
-	// 6. create target stateView handle
+	// 5. create target stateView handle
 	// assert From address is an ID address.
 	if ctx.msg.From.Protocol() != address.ID {
 		panic("bad code: sender address MUST be an ID address at invocation time")
@@ -227,8 +226,8 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 
 	// 1. load target actor
 	// Note: we replace the "To" address with the normalized version
-	_, toIDAddr := ctx.resolveTarget(ctx.originMsg.To)
-	if ctx.vm.NtwkVersion() > network.Version3 {
+	toActor, toIDAddr := ctx.resolveTarget(ctx.originMsg.To)
+	if ctx.vm.NetworkVersion() > network.Version3 {
 		ctx.msg.To = toIDAddr
 	}
 
@@ -237,9 +236,7 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 
 	// 3. transfer funds carried by the msg
 	if !ctx.originMsg.Value.Nil() && !ctx.originMsg.Value.IsZero() {
-		if ctx.msg.From != toIDAddr {
-			ctx.vm.transfer(ctx.msg.From, toIDAddr, ctx.originMsg.Value)
-		}
+		ctx.vm.transfer(ctx.msg.From, toIDAddr, ctx.originMsg.Value, ctx.vm.NetworkVersion())
 	}
 
 	// 4. if we are just sending funds, there is nothing else To do.
@@ -247,21 +244,16 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 		return nil, exitcode.Ok
 	}
 
-	// 5. load target actor code
-	toActor, found, err := ctx.vm.State.GetActor(ctx.vm.context, ctx.originMsg.To)
-	if err != nil || !found {
-		panic(xerrors.Errorf("cannt find to actor %v", err))
-	}
 	actorImpl := ctx.vm.getActorImpl(toActor.Code, ctx.Runtime())
 
-	// 6. create target stateView handle
+	// 5. create target stateView handle
 	stateHandle := newActorStateHandle((*stateHandleContext)(ctx))
 	ctx.stateHandle = &stateHandle
 
 	// dispatch
 	adapter := newRuntimeAdapter(ctx) //runtimeAdapter{ctx: ctx}
 	var extErr *dispatch.ExcuteError
-	ret, extErr = actorImpl.Dispatch(ctx.originMsg.Method, ctx.vm.NtwkVersion(), adapter, ctx.originMsg.Params)
+	ret, extErr = actorImpl.Dispatch(ctx.originMsg.Method, ctx.vm.NetworkVersion(), adapter, ctx.originMsg.Params)
 	if extErr != nil {
 		runtime.Abortf(extErr.ExitCode(), extErr.Error())
 	}
@@ -331,7 +323,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 			// Don't implicitly create an account actor for an address without an associated key.
 			runtime.Abort(exitcode.SysErrInvalidReceiver)
 		}
-		ver, err := specactors.VersionForNetwork(ctx.vm.NtwkVersion())
+		ver, err := actors.VersionForNetwork(ctx.vm.NetworkVersion())
 		if err != nil {
 			panic(err)
 		}
@@ -527,7 +519,7 @@ func (ctx *invocationContext) NewActorAddress() address.Address {
 
 // CreateActor implements runtime.ExtendedInvocationContext.
 func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) {
-	if addr == address.Undef && ctx.vm.NtwkVersion() >= network.Version7 {
+	if addr == address.Undef && ctx.vm.NetworkVersion() >= network.Version7 {
 		runtime.Abortf(exitcode.SysErrorIllegalArgument, "CreateActor with Undef address")
 	}
 
@@ -576,7 +568,7 @@ func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 	if !receiverActor.Balance.IsZero() {
 		// TODO: Should be safe to drop the version-check,
 		//  since only the paych actor called this pre-version 7, but let's leave it for now
-		if ctx.vm.NtwkVersion() >= network.Version7 {
+		if ctx.vm.NetworkVersion() >= network.Version7 {
 			beneficiaryID, found := ctx.vm.normalizeAddress(beneficiary)
 			if !found {
 				runtime.Abortf(exitcode.SysErrorIllegalArgument, "beneficiary doesn't exist")
@@ -588,7 +580,7 @@ func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 		}
 
 		// Transfer the executing actor's balance to the beneficiary
-		ctx.vm.transfer(receiver, beneficiary, receiverActor.Balance)
+		ctx.vm.transfer(receiver, beneficiary, receiverActor.Balance, ctx.vm.NetworkVersion())
 	}
 
 	if err := ctx.vm.State.DeleteActor(ctx.vm.context, receiver); err != nil {

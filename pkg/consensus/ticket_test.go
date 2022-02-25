@@ -2,8 +2,12 @@ package consensus_test
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"testing"
+
+	"github.com/filecoin-project/venus/pkg/testhelpers"
+
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
 
@@ -16,21 +20,20 @@ import (
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 
 	"github.com/filecoin-project/venus/pkg/consensus"
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
 func TestGenValidTicketChain(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
-	head, _ := types.NewTipSet(mockBlock()) // Tipset key is unused by fake randomness
+	head, _ := types.NewTipSet([]*types.BlockHeader{mockBlock()}) // Tipset key is unused by fake randomness
 	loader := newMockTipsetLoader(head)
 
 	// Interleave 3 signers
-	kis := types.MustGenerateBLSKeyInfo(3, 0)
+	kis := testhelpers.MustGenerateBLSKeyInfo(3, 0)
 
 	miner, err := address.NewIDAddress(uint64(1))
 	require.NoError(t, err)
-	signer := types.NewMockSigner(kis)
+	signer := testhelpers.NewMockSigner(kis)
 	addr1 := requireAddress(t, &kis[0])
 	addr2 := requireAddress(t, &kis[1])
 	addr3 := requireAddress(t, &kis[2])
@@ -62,13 +65,13 @@ func requireValidTicket(ctx context.Context, t *testing.T, tm *consensus.TicketM
 
 func TestNextTicketFailsWithInvalidSigner(t *testing.T) {
 	ctx := context.Background()
-	head, _ := types.NewTipSet(mockBlock()) // Tipset key is unused by fake randomness
+	head, _ := types.NewTipSet([]*types.BlockHeader{mockBlock()}) // Tipset key is unused by fake randomness
 	loader := newMockTipsetLoader(head)
 	miner, err := address.NewIDAddress(uint64(1))
 	require.NoError(t, err)
 
-	signer, _ := types.NewMockSignersAndKeyInfo(1)
-	badAddr := types.RequireIDAddress(t, 100)
+	signer, _ := testhelpers.NewMockSignersAndKeyInfo(1)
+	badAddr := testhelpers.RequireIDAddress(t, 100)
 	tm := consensus.NewTicketMachine(loader)
 	electionEntry := &types.BeaconEntry{}
 	newPeriod := false
@@ -86,10 +89,10 @@ func requireAddress(t *testing.T, ki *crypto.KeyInfo) address.Address {
 func mockBlock() *types.BlockHeader {
 	mockCid, _ := constants.DefaultCidBuilder.Sum([]byte("mock"))
 	return &types.BlockHeader{
-		Miner:         types.NewForTestGetter()(),
-		Ticket:        types.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
+		Miner:         testhelpers.NewForTestGetter()(),
+		Ticket:        &types.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
 		ElectionProof: &types.ElectionProof{VRFProof: []byte{0x0a, 0x0b}},
-		BeaconEntries: []*types.BeaconEntry{
+		BeaconEntries: []types.BeaconEntry{
 			{
 				Round: 5,
 				Data:  []byte{0x0c},
@@ -118,6 +121,6 @@ func newMockTipsetLoader(tsk *types.TipSet) *mockTipsetLoader {
 	return &mockTipsetLoader{tsk: tsk}
 }
 
-func (m *mockTipsetLoader) GetTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
+func (m *mockTipsetLoader) GetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
 	return m.tsk, nil
 }

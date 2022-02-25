@@ -4,18 +4,19 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/types"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pubsubpb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/net/blocksub"
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func TestBlockTopicValidator(t *testing.T) {
@@ -27,8 +28,8 @@ func TestBlockTopicValidator(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	pid1 := th.RequireIntPeerID(t, 1)
 
-	goodBlk := builder.BuildOnBlock(nil, func(b *chain.BlockBuilder) {})
-	badBlk := builder.BuildOnBlock(nil, func(b *chain.BlockBuilder) {
+	goodBlk := builder.BuildOnBlock(ctx, nil, func(b *chain.BlockBuilder) {})
+	badBlk := builder.BuildOnBlock(ctx, nil, func(b *chain.BlockBuilder) {
 		b.IncHeight(1)
 	})
 

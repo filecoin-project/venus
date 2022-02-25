@@ -17,7 +17,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 const (
@@ -251,7 +251,7 @@ func newDefaultMessagePoolConfig() *MessagePoolConfig {
 // NetworkParamsConfig record netork parameters
 type NetworkParamsConfig struct {
 	DevNet                  bool                         `json:"devNet"`
-	NetworkType             int                          `json:"networkType"`
+	NetworkType             constants.NetworkType        `json:"networkType"`
 	GenesisNetworkVersion   network.Version              `json:"genesisNetworkVersion"`
 	ConsensusMinerMinPower  uint64                       `json:"consensusMinerMinPower"` // uint64 goes up to 18 EiB
 	MinVerifiedDealSize     int64                        `json:"minVerifiedDealSize"`
@@ -284,6 +284,7 @@ type ForkUpgradeConfig struct {
 	UpgradeTurboHeight         abi.ChainEpoch `json:"upgradeActorsV4Height"`
 	UpgradeHyperdriveHeight    abi.ChainEpoch `json:"upgradeHyperdriveHeight"`
 	UpgradeChocolateHeight     abi.ChainEpoch `json:"upgradeChocolateHeight"`
+	UpgradeOhSnapHeight        abi.ChainEpoch `json:"upgradeOhSnapHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -291,25 +292,25 @@ func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
 }
 
 var DefaultForkUpgradeParam = &ForkUpgradeConfig{
-	UpgradeBreezeHeight:        41280,
-	BreezeGasTampingDuration:   120,
-	UpgradeSmokeHeight:         51000,
-	UpgradeIgnitionHeight:      94000,
-	UpgradeRefuelHeight:        130800,
-	UpgradeTapeHeight:          140760,
-	UpgradeLiftoffHeight:       148888,
-	UpgradeKumquatHeight:       170000,
-	UpgradePriceListOopsHeight: 265199,
-	UpgradeCalicoHeight:        265200,
-	UpgradePersianHeight:       265200 + 120*60,
-	UpgradeAssemblyHeight:      138720,
-	UpgradeOrangeHeight:        336458,
-	UpgradeClausHeight:         343200,
-	UpgradeTrustHeight:         550321,
-	UpgradeNorwegianHeight:     665280,
-	UpgradeTurboHeight:         712320,
-	UpgradeHyperdriveHeight:    892800,
-	UpgradeChocolateHeight:     1231620,
+	UpgradeBreezeHeight:      41280,
+	BreezeGasTampingDuration: 120,
+	UpgradeSmokeHeight:       51000,
+	UpgradeIgnitionHeight:    94000,
+	UpgradeRefuelHeight:      130800,
+	UpgradeTapeHeight:        140760,
+	UpgradeLiftoffHeight:     148888,
+	UpgradeKumquatHeight:     170000,
+	UpgradeCalicoHeight:      265200,
+	UpgradePersianHeight:     265200 + 120*60,
+	UpgradeAssemblyHeight:    138720,
+	UpgradeOrangeHeight:      336458,
+	UpgradeClausHeight:       343200,
+	UpgradeTrustHeight:       550321,
+	UpgradeNorwegianHeight:   665280,
+	UpgradeTurboHeight:       712320,
+	UpgradeHyperdriveHeight:  892800,
+	UpgradeChocolateHeight:   1231620,
+	UpgradeOhSnapHeight:      1594680,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {

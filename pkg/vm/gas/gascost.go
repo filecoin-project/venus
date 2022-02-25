@@ -5,7 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
@@ -74,9 +74,10 @@ type Pricelist interface {
 	OnVerifySignature(sigType crypto.SigType, planTextSize int) (GasCharge, error)
 	OnHashing(dataSize int) GasCharge
 	OnComputeUnsealedSectorCid(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) GasCharge
-	OnVerifySeal(info proof5.SealVerifyInfo) GasCharge
-	OnVerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) GasCharge
-	OnVerifyPost(info proof5.WindowPoStVerifyInfo) GasCharge
+	OnVerifySeal(info proof7.SealVerifyInfo) GasCharge
+	OnVerifyAggregateSeals(aggregate proof7.AggregateSealVerifyProofAndInfos) GasCharge
+	OnVerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) GasCharge
+	OnVerifyPost(info proof7.WindowPoStVerifyInfo) GasCharge
 	OnVerifyConsensusFault() GasCharge
 }
 
@@ -212,9 +213,15 @@ func NewPricesSchedule(forkParams *config.ForkUpgradeConfig) *PricesSchedule {
 			},
 			verifyPostDiscount:   false,
 			verifyConsensusFault: 495422,
+			verifyReplicaUpdate:  36316136,
 		},
 	}
 	return &PricesSchedule{prices: prices}
+}
+
+// SetPricelist set new prices, for test
+func (schedule *PricesSchedule) SetPricelist(newPrices map[abi.ChainEpoch]Pricelist) {
+	schedule.prices = newPrices
 }
 
 // PricelistByEpoch finds the latest prices for the given epoch
