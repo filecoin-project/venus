@@ -32,3 +32,23 @@ func NewIMarketClientRPC(ctx context.Context, addr string, requestHeader http.He
 
 	return &res, closer, err
 }
+
+// DialIMarketClientRPC is a more convinient way of building client, as it resolves any format (url, multiaddr) of addr string.
+func DialIMarketClientRPC(ctx context.Context, addr string, token string, requestHeader http.Header, opts ...jsonrpc.Option) (IMarketClient, jsonrpc.ClientCloser, error) {
+	ainfo := api.NewAPIInfo(addr, token)
+	endpoint, err := ainfo.DialArgs(api.VerString(MajorVersion))
+	if err != nil {
+		return nil, nil, fmt.Errorf("get dial args: %w", err)
+	}
+
+	if requestHeader == nil {
+		requestHeader = http.Header{}
+	}
+	requestHeader.Set(api.VenusAPINamespaceHeader, APINamespace)
+	ainfo.SetAuthHeader(requestHeader)
+
+	var res IMarketClientStruct
+	closer, err := jsonrpc.NewMergeClient(ctx, endpoint, MethodNamespace, api.GetInternalStructs(&res), requestHeader, opts...)
+
+	return &res, closer, err
+}
