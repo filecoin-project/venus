@@ -326,7 +326,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 			root, _ := vm.State.Flush(context.TODO())
 			vm.debugger.Println("reward: ", index, " root: ", root)
 		}
-		vmlog.Infof("process block %v time %v", index, time.Since(toProcessBlock).Milliseconds())
+		vmlog.Infof("process block %v spent %v 'ms'", index, time.Since(toProcessBlock).Milliseconds())
 	}
 
 	// cron tick
@@ -343,7 +343,7 @@ func (vm *VM) ApplyTipSetMessages(blocks []types.BlockMessagesInfo, ts *types.Ti
 		}
 	}
 
-	vmlog.Infof("process cron: %v", time.Since(toProcessCron).Milliseconds())
+	vmlog.Infof("process cron spent %v 'ms'", time.Since(toProcessCron).Milliseconds())
 	if vm.vmDebug {
 		root, _ := vm.State.Flush(context.TODO())
 		vm.debugger.Printfln("after cron root: %s", root)

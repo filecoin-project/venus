@@ -2,14 +2,15 @@ package types
 
 import (
 	"container/list"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
-	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	"sort"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
@@ -144,11 +145,11 @@ func (tq *TargetTracker) checkBlock(block *types.BlockHeader) bool {
 
 	for _, b := range bls {
 		if b.Cid() == block.Cid() {
-			log.Warnf("block(%s) already in tipset:%d", b.Cid().String(), b.Height)
+			log.Debugf("block(%s) already in tipset: %d", b.Cid().String(), b.Height)
 			return true
 		}
 		if b.Miner == block.Miner {
-			log.Warnf("miner:%d packed more than none block in single tipset:%d, it's illegle.", b.Miner.String(), b.Height)
+			log.Warnf("miner: %s packed more than none block in single tipset: %d, it's illegal.", b.Miner.String(), b.Height)
 			return false
 		}
 	}
@@ -199,7 +200,7 @@ func (tq *TargetTracker) Add(t *Target) bool {
 
 	var err error
 	if t, err = tq.checkTipset(t); err != nil {
-		log.Errorf("targettracker add failed, check tipsit failed:%s", err.Error())
+		log.Errorf("targettracker add failed, check tipset failed: %s", err.Error())
 		return false
 	}
 

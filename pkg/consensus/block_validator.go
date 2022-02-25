@@ -118,27 +118,28 @@ func NewBlockValidator(tv TicketValidator,
 func (bv *BlockValidator) ValidateBlockMsg(ctx context.Context, blk *types.BlockMsg) pubsub.ValidationResult {
 	validationStart := time.Now()
 	defer func() {
-		logExpect.Debugw("block validation header", "Cid", blk.Cid(), "took", time.Since(validationStart), "height", blk.Header.Height, "age", time.Since(time.Unix(int64(blk.Header.Timestamp), 0)))
+		logExpect.Debugw("validate block message", "Cid", blk.Cid(), "took", time.Since(validationStart), "height", blk.Header.Height, "age", time.Since(time.Unix(int64(blk.Header.Timestamp), 0)))
 	}()
 
 	return bv.validateBlockMsg(ctx, blk)
 }
 
 //ValidateFullBlock should match up with 'Semantical Validation' in validation.md in the spec
-func (bv *BlockValidator) ValidateFullBlock(ctx context.Context, blk *types.BlockHeader) (err error) {
-	log.Infof("validateFullBlock:%d, cid:%s", blk.Height, blk.Cid().String())
+func (bv *BlockValidator) ValidateFullBlock(ctx context.Context, blk *types.BlockHeader) error {
 	validationStart := time.Now()
-	defer func() {
-		if err == nil {
-			bv.validateBlockCache.Add(blk.Cid(), struct{}{})
-		}
-		logExpect.Infow("block validation", "Cid", blk.Cid(), "took", time.Since(validationStart), "height", blk.Height, "age", time.Since(time.Unix(int64(blk.Timestamp), 0)), "Err", err)
-	}()
 
 	if _, ok := bv.validateBlockCache.Get(blk.Cid()); ok {
 		return nil
 	}
-	return bv.validateBlock(ctx, blk)
+	err := bv.validateBlock(ctx, blk)
+	if err != nil {
+		return err
+	}
+	bv.validateBlockCache.Add(blk.Cid(), struct{}{})
+
+	logExpect.Infof("validate block %s(%d) spent %v 'ms'", blk.Cid(), blk.Height, time.Since(validationStart).Milliseconds())
+
+	return nil
 }
 
 func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHeader) error {
@@ -193,13 +194,13 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	}
 
 	minerCheck := async.Err(func() error {
-		statRoot, _, err := bv.Stmgr.RunStateTransition(ctx, parent)
+		stateRoot, _, err := bv.Stmgr.RunStateTransition(ctx, parent)
 		if err != nil {
 			return err
 		}
-		if !statRoot.Equals(blk.ParentStateRoot) {
-			return fmt.Errorf("expect verify miner on stateroot:%s, but caclutated is :%s",
-				blk.ParentStateRoot.String(), statRoot.String())
+		if !stateRoot.Equals(blk.ParentStateRoot) {
+			return xerrors.Errorf("tipset(%s) state root does not match, computed %s, expected: %s",
+				parent.String(), stateRoot, blk.ParentStateRoot)
 		}
 		if err := bv.minerIsValid(ctx, blk.Miner, blk.ParentStateRoot); err != nil {
 			return xerrors.Errorf("minerIsValid failed: %w", err)
@@ -266,11 +267,11 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	})
 
 	msgsCheck := async.Err(func() error {
-		statRoot, _, err := bv.Stmgr.RunStateTransition(ctx, parent)
+		stateRoot, _, err := bv.Stmgr.RunStateTransition(ctx, parent)
 		if err != nil {
 			return err
 		}
-		keyStateView := bv.state.PowerStateView(statRoot)
+		keyStateView := bv.state.PowerStateView(stateRoot)
 		sigValidator := appstate.NewSignatureValidator(keyStateView)
 		if err := bv.checkBlockMessages(ctx, sigValidator, blk, parent); err != nil {
 			return xerrors.Errorf("block had invalid messages: %w", err)
@@ -279,23 +280,19 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	})
 
 	stateRootCheck := async.Err(func() error {
-		stateroot, precp, err := bv.Stmgr.RunStateTransition(ctx, parent)
+		stateRoot, receipt, err := bv.Stmgr.RunStateTransition(ctx, parent)
 		if err != nil {
 			return xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", blk.Height, blk.Parents, err)
 		}
 
-		if !stateroot.Equals(blk.ParentStateRoot) {
-			log.Warnf("Check StateRoot for tipset(%s, %d) with mismatching state, expected:%s, actually:%s",
-				parent.Key().String(), parent.Height(), blk.ParentStateRoot.String(), stateroot.String())
-			return xerrors.Errorf("tipset(%s) state mis-match computed state (%s != %s),%w",
-				parent.Key().String(), stateroot, blk.ParentStateRoot, ErrStateRootMismatch)
+		if !stateRoot.Equals(blk.ParentStateRoot) {
+			return xerrors.Errorf("tipset(%s) state root does not match, computed %s, expected: %s, %w",
+				parent.String(), stateRoot, blk.ParentStateRoot, ErrStateRootMismatch)
 		}
 
-		if !precp.Equals(blk.ParentMessageReceipts) {
-			log.Warnf("Check MessageReceipts for tipset(%s, %d) with mismatching state, expected:%s, actually:%s",
-				parent.Key().String(), parent.Height(), blk.ParentStateRoot.String(), stateroot.String())
-			return xerrors.Errorf("tipset(%s) message receipts mis-match computed state (%s != %s),%w",
-				parent.Key().String(), stateroot, blk.ParentStateRoot, ErrStateRootMismatch)
+		if !receipt.Equals(blk.ParentMessageReceipts) {
+			return xerrors.Errorf("tipset(%s) receipt root does not match, computed %s, expected: %s, %w",
+				parent.String(), receipt, blk.ParentMessageReceipts, ErrReceiptRootMismatch)
 		}
 
 		return nil

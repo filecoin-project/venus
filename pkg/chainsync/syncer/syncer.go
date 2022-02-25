@@ -211,19 +211,20 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 		}
 		err = wg.Wait()
 		if err != nil {
-			var stateRootMismatched bool // nolint
+			var rootNotMatch bool // nolint
 
 			if merr, isok := err.(*multierror.Error); isok {
 				for _, e := range merr.Errors {
-					if stateRootMismatched = xerrors.Is(e, consensus.ErrStateRootMismatch); stateRootMismatched {
+					if isRootNotMatch(e) {
+						rootNotMatch = true
 						break
 					}
 				}
 			} else {
-				stateRootMismatched = xerrors.Is(err, consensus.ErrStateRootMismatch) // nolint
+				rootNotMatch = isRootNotMatch(err) // nolint
 			}
 
-			if stateRootMismatched { // nolint
+			if rootNotMatch { // nolint
 				// todo: should here rollback, and re-compute?
 				_ = syncer.stmgr.Rollback(ctx, parent, next)
 			}
@@ -233,6 +234,10 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 	}
 
 	return nil
+}
+
+func isRootNotMatch(err error) bool {
+	return xerrors.Is(err, consensus.ErrStateRootMismatch) || xerrors.Is(err, consensus.ErrReceiptRootMismatch)
 }
 
 // HandleNewTipSet validates and syncs the chain rooted at the provided tipset
