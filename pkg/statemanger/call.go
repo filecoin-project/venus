@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/state"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
@@ -56,6 +57,14 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 		return nil, err
 	}
 
+	vmHeight := ts.Height() + 1
+
+	filVested, err := s.cs.GetFilVested(ctx, vmHeight)
+	if err != nil {
+		return nil, err
+	}
+
+	buffStore := blockstoreutil.NewBufferedBstore(s.cs.Blockstore())
 	vmOption := vm.VmOption{
 		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 			cs, err := s.cs.GetCirculatingSupplyDetailed(ctx, epoch, tree)
@@ -65,13 +74,14 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 			return cs.FilCirculating, nil
 		},
 		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, s.cs, s.fork, ts),
+		FilVested:           filVested,
 		NetworkVersion:      s.fork.GetNetworkVersion(ctx, ts.Height()+1),
 		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
 		BaseFee:             ts.At(0).ParentBaseFee,
-		Epoch:               ts.Height() + 1,
+		Epoch:               vmHeight,
 		GasPriceSchedule:    s.gasSchedule,
 		PRoot:               stateRoot,
-		Bsstore:             s.cs.Blockstore(),
+		Bsstore:             buffStore,
 		SysCallsImpl:        s.syscallsImpl,
 		Fork:                s.fork,
 	}
@@ -88,7 +98,17 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 		}
 	}
 
-	fromActor, found, err := vmi.StateTree().GetActor(ctx, msg.VMMessage().From)
+	stateRoot, err = vmi.Flush(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("flushing vm: %w", err)
+	}
+
+	stTree, err := tree.LoadState(ctx, cbor.NewCborStore(buffStore), stateRoot)
+	if err != nil {
+		return nil, xerrors.Errorf("loading state tree: %w", err)
+	}
+
+	fromActor, found, err := stTree.GetActor(ctx, msg.VMMessage().From)
 	if err != nil {
 		return nil, xerrors.Errorf("get actor failed: %s", err)
 	}
@@ -145,6 +165,7 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 
 	bstate := ts.At(0).ParentStateRoot
 	pheight := pts.Height()
+	vmHeight := pheight + 1
 
 	// If we have to run an expensive migration, and we're not at genesis,
 	// return an error because the migration will take too long.
@@ -158,6 +179,11 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 	bstate, err = s.fork.HandleStateForks(ctx, bstate, pheight, ts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to handle fork: %v", err)
+	}
+
+	filVested, err := s.cs.GetFilVested(ctx, vmHeight)
+	if err != nil {
+		return nil, err
 	}
 
 	if msg.GasLimit == 0 {
@@ -197,10 +223,11 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 			return dertail.FilCirculating, nil
 		},
 		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, s.cs, s.fork, ts),
+		FilVested:           filVested,
 		NetworkVersion:      s.fork.GetNetworkVersion(ctx, pheight+1),
 		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
 		BaseFee:             ts.At(0).ParentBaseFee,
-		Epoch:               pheight + 1,
+		Epoch:               vmHeight,
 		GasPriceSchedule:    s.gasSchedule,
 		Fork:                s.fork,
 		PRoot:               ts.At(0).ParentStateRoot,

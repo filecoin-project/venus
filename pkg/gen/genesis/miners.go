@@ -106,9 +106,9 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 		GasPriceSchedule:     gasPirceSchedule,
 	}
 
-	vmi, err := vm.NewVM(ctx, vmopt)
+	vmi, err := vm.NewVenusVM(ctx, vmopt)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
+		return cid.Undef, xerrors.Errorf("failed to create NewVenusVM: %w", err)
 	}
 
 	if len(miners) == 0 {

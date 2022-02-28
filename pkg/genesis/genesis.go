@@ -50,7 +50,7 @@ var Ticket = types.Ticket{
 // VM is the view into the VM used during genesis block creation.
 type VM interface {
 	ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (*vm.Ret, error)
-	Flush() (tree.Root, error)
+	Flush(ctx context.Context) (tree.Root, error)
 }
 
 //MakeGenesis return a func to construct a genesis block

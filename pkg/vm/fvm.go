@@ -10,12 +10,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
@@ -28,16 +28,16 @@ import (
 	"golang.org/x/xerrors"
 )
 
-var log = logging.Logger("fvm")
+var fvmLog = logging.Logger("fvm")
 
-var _ vm.VMI = (*FVM)(nil)
+var _ VMI = (*FVM)(nil)
 var _ ffi_cgo.Externs = (*FvmExtern)(nil)
 
 type FvmExtern struct {
 	Rand
 	blockstoreutil.Blockstore
 	epoch            abi.ChainEpoch
-	lbState          vm.LookbackStateGetter
+	lbState          LookbackStateGetter
 	base             cid.Cid
 	gasPriceSchedule *gas.PricesSchedule
 }
@@ -60,31 +60,31 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 	// can blocks be decoded properly?
 	var blockA, blockB types.BlockHeader
 	if decodeErr := blockA.UnmarshalCBOR(bytes.NewReader(a)); decodeErr != nil {
-		log.Info("invalid consensus fault: cannot decode first block header: %w", decodeErr)
+		fvmLog.Info("invalid consensus fault: cannot decode first block header: %w", decodeErr)
 		return ret, totalGas
 	}
 
 	if decodeErr := blockB.UnmarshalCBOR(bytes.NewReader(b)); decodeErr != nil {
-		log.Info("invalid consensus fault: cannot decode second block header: %w", decodeErr)
+		fvmLog.Info("invalid consensus fault: cannot decode second block header: %w", decodeErr)
 		return ret, totalGas
 	}
 
 	// are blocks the same?
 	if blockA.Cid().Equals(blockB.Cid()) {
-		log.Info("invalid consensus fault: submitted blocks are the same")
+		fvmLog.Info("invalid consensus fault: submitted blocks are the same")
 		return ret, totalGas
 	}
 	// (1) check conditions necessary to any consensus fault
 
 	// were blocks mined by same miner?
 	if blockA.Miner != blockB.Miner {
-		log.Info("invalid consensus fault: blocks not mined by the same miner")
+		fvmLog.Info("invalid consensus fault: blocks not mined by the same miner")
 		return ret, totalGas
 	}
 
 	// block a must be earlier or equal to block b, epoch wise (ie at least as early in the chain).
 	if blockB.Height < blockA.Height {
-		log.Info("invalid consensus fault: first block must not be of higher height than second")
+		fvmLog.Info("invalid consensus fault: first block must not be of higher height than second")
 		return ret, totalGas
 	}
 
@@ -116,7 +116,7 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 	var blockC types.BlockHeader
 	if len(extra) > 0 {
 		if decodeErr := blockC.UnmarshalCBOR(bytes.NewReader(extra)); decodeErr != nil {
-			log.Info("invalid consensus fault: cannot decode extra: %w", decodeErr)
+			fvmLog.Info("invalid consensus fault: cannot decode extra: %w", decodeErr)
 			return ret, totalGas
 		}
 
@@ -128,7 +128,7 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 
 	// (3) return if no consensus fault by now
 	if faultType == ffi_cgo.ConsensusFaultNone {
-		log.Info("invalid consensus fault: no fault detected")
+		fvmLog.Info("invalid consensus fault: no fault detected")
 		return ret, totalGas
 	}
 
@@ -141,14 +141,14 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 	gasA, sigErr := x.VerifyBlockSig(ctx, &blockA)
 	totalGas += gasA
 	if sigErr != nil {
-		log.Info("invalid consensus fault: cannot verify first block sig: %w", sigErr)
+		fvmLog.Info("invalid consensus fault: cannot verify first block sig: %w", sigErr)
 		return ret, totalGas
 	}
 
 	gas2, sigErr := x.VerifyBlockSig(ctx, &blockB)
 	totalGas += gas2
 	if sigErr != nil {
-		log.Info("invalid consensus fault: cannot verify second block sig: %w", sigErr)
+		fvmLog.Info("invalid consensus fault: cannot verify second block sig: %w", sigErr)
 		return ret, totalGas
 	}
 
@@ -240,7 +240,7 @@ type FVM struct {
 	fvm *ffi.FVM
 }
 
-func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
+func NewFVM(ctx context.Context, opts *VmOption) (*FVM, error) {
 	fvm, err := ffi.CreateFVM(0,
 		&FvmExtern{Rand: newWrapperRand(opts.Rnd), Blockstore: opts.Bsstore, epoch: opts.Epoch,
 			lbState: opts.LookbackStateGetter, base: opts.PRoot, gasPriceSchedule: opts.GasPriceSchedule},
@@ -255,7 +255,7 @@ func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 	}, nil
 }
 
-func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret, error) {
+func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*Ret, error) {
 	start := constants.Clock.Now()
 	msgBytes, err := cmsg.VMMessage().Serialize()
 	if err != nil {
@@ -267,7 +267,7 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 		return nil, xerrors.Errorf("applying msg: %w", err)
 	}
 
-	return &vm.Ret{
+	return &Ret{
 		Receipt: types.MessageReceipt{
 			Return:   ret.Return,
 			ExitCode: exitcode.ExitCode(ret.ExitCode),
@@ -292,7 +292,7 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 	}, nil
 }
 
-func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret, error) {
+func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (*Ret, error) {
 	start := constants.Clock.Now()
 	msgBytes, err := cmsg.VMMessage().Serialize()
 	if err != nil {
@@ -304,7 +304,7 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 		return nil, xerrors.Errorf("applying msg: %w", err)
 	}
 
-	return &vm.Ret{
+	return &Ret{
 		Receipt: types.MessageReceipt{
 			Return:   ret.Return,
 			ExitCode: exitcode.ExitCode(ret.ExitCode),
@@ -322,4 +322,27 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 
 func (fvm *FVM) Flush(ctx context.Context) (cid.Cid, error) {
 	return fvm.fvm.Flush()
+}
+
+type Rand interface {
+	GetChainRandomness(ctx context.Context, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetBeaconRandomness(ctx context.Context, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+}
+
+var _ Rand = (*wrapperRand)(nil)
+
+type wrapperRand struct {
+	ChainRandomness
+}
+
+func newWrapperRand(r ChainRandomness) Rand {
+	return wrapperRand{ChainRandomness: r}
+}
+
+func (r wrapperRand) GetChainRandomness(ctx context.Context, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return r.ChainGetRandomnessFromTickets(ctx, pers, round, entropy)
+}
+
+func (r wrapperRand) GetBeaconRandomness(ctx context.Context, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return r.ChainGetRandomnessFromBeacon(ctx, pers, round, entropy)
 }

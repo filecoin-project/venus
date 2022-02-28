@@ -502,9 +502,9 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 		GasPriceSchedule:     gasPriceSchedule,
 	}
 
-	vm, err := vm.NewVM(ctx, vmopt)
+	vm, err := vm.NewVenusVM(ctx, vmopt)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
+		return cid.Undef, xerrors.Errorf("failed to create NewVenusVM: %w", err)
 	}
 
 	for mi, m := range template.Miners {

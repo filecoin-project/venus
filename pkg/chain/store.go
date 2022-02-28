@@ -1042,6 +1042,10 @@ func (store *Store) GetCirculatingSupplyDetailed(ctx context.Context, height abi
 	return store.circulatingSupplyCalculator.GetCirculatingSupplyDetailed(ctx, height, st)
 }
 
+func (store *Store) GetFilVested(ctx context.Context, height abi.ChainEpoch) (abi.TokenAmount, error) {
+	return store.circulatingSupplyCalculator.GetFilVested(ctx, height)
+}
+
 //StateCirculatingSupply get circulate supply at specify epoch
 func (store *Store) StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error) {
 	ts, err := store.GetTipSet(ctx, tsk)

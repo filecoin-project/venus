@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -16,7 +15,6 @@ import (
 	"github.com/filecoin-project/specs-actors/v7/actors/builtin"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/vm"
-	fvm "github.com/filecoin-project/venus/pkg/vm/fvm"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/cron"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -99,11 +97,6 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			SysCallsImpl:         vmOpts.SysCallsImpl,
 		}
 		processLog.Infof("ts.height: %d, base: %s, currheight: %d, filVested: %v", ts.Height(), base, e, filVested)
-
-		if os.Getenv("VENUS_USE_FVM_DOESNT_WORK_YET") == "1" {
-			processLog.Infof("ApplyBlocks use fvm")
-			return fvm.NewFVM(ctx, &vmOpt)
-		}
 
 		return vm.NewVM(ctx, vmOpt)
 	}

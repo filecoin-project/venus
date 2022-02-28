@@ -311,7 +311,7 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 	// Monkey patch the gas pricing.
 	adjustGasPricing(params.Epoch, params.NetworkVersion, vmOption.GasPriceSchedule, fork.DefaultUpgradeSchedule(chainFork, mainNetParams.Network.ForkUpgradeParam))
 
-	lvm, err := vm.NewVM(ctx, vmOption)
+	lvm, err := vm.NewVenusVM(ctx, vmOption)
 	if err != nil {
 		return nil, cid.Undef, err
 	}
