@@ -3,6 +3,7 @@ package vmcontext
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -632,19 +633,6 @@ var _ runtime.Runtime = (*VM)(nil)
 // CurrentEpoch implements runtime.Runtime.
 func (vm *VM) CurrentEpoch() abi.ChainEpoch {
 	return vm.currentEpoch
-}
-
-func (vm *VM) SetCurrentEpoch(current abi.ChainEpoch) error {
-	vm.currentEpoch = current
-	vm.pricelist = vm.vmOption.GasPriceSchedule.PricelistByEpoch(current)
-
-	ncirc, err := vm.vmOption.CircSupplyCalculator(vm.context, vm.currentEpoch, vm.State)
-	if err != nil {
-		return err
-	}
-	vm.baseCircSupply = ncirc
-
-	return nil
 }
 
 func (vm *VM) NetworkVersion() network.Version {
