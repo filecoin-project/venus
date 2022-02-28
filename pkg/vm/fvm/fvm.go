@@ -3,6 +3,7 @@ package vm
 import (
 	"bytes"
 	"context"
+	"time"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	ffi_cgo "github.com/filecoin-project/filecoin-ffi/cgo"
@@ -255,6 +256,7 @@ func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 }
 
 func (fvm *FVM) ApplyMessage(cmsg types.ChainMsg) (*vm.Ret, error) {
+	start := constants.Clock.Now()
 	msgBytes, err := cmsg.VMMessage().Serialize()
 	if err != nil {
 		return nil, xerrors.Errorf("serializing msg: %w", err)
@@ -282,13 +284,16 @@ func (fvm *FVM) ApplyMessage(cmsg types.ChainMsg) (*vm.Ret, error) {
 			GasBurned:          0,
 		},
 		// TODO: do these eventually, not consensus critical
-		//ActorErr:       nil,
-		//ExecutionTrace: types.ExecutionTrace{},
-		//Duration:       0,
+		ActorErr: nil,
+		GasTracker: &gas.GasTracker{
+			ExecutionTrace: types.ExecutionTrace{},
+		},
+		Duration: time.Since(start),
 	}, nil
 }
 
 func (fvm *FVM) ApplyImplicitMessage(cmsg types.ChainMsg) (*vm.Ret, error) {
+	start := constants.Clock.Now()
 	msgBytes, err := cmsg.VMMessage().Serialize()
 	if err != nil {
 		return nil, xerrors.Errorf("serializing msg: %w", err)
@@ -305,20 +310,13 @@ func (fvm *FVM) ApplyImplicitMessage(cmsg types.ChainMsg) (*vm.Ret, error) {
 			ExitCode: exitcode.ExitCode(ret.ExitCode),
 			GasUsed:  ret.GasUsed,
 		},
-		OutPuts: gas.GasOutputs{
-			// TODO: do the other optional fields eventually
-			BaseFeeBurn:        abi.TokenAmount{},
-			OverEstimationBurn: abi.TokenAmount{},
-			MinerPenalty:       ret.MinerPenalty,
-			MinerTip:           ret.MinerTip,
-			Refund:             abi.TokenAmount{},
-			GasRefund:          0,
-			GasBurned:          0,
-		},
+		OutPuts: nil,
 		// TODO: do these eventually, not consensus critical
-		//ActorErr:       nil,
-		//ExecutionTrace: types.ExecutionTrace{},
-		//Duration:       0,
+		ActorErr: nil,
+		GasTracker: &gas.GasTracker{
+			ExecutionTrace: types.ExecutionTrace{},
+		},
+		Duration: time.Since(start),
 	}, nil
 }
 

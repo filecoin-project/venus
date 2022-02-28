@@ -2,6 +2,7 @@ package vmcontext
 
 import (
 	"context"
+	"time"
 
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -67,6 +68,8 @@ type Ret struct {
 	GasTracker *gas.GasTracker
 	OutPuts    gas.GasOutputs
 	Receipt    types.MessageReceipt
+	ActorErr   error
+	Duration   time.Duration
 }
 
 // Failure returns with a non-zero exit code.
