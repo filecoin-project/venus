@@ -97,11 +97,11 @@ func (mpp *mpoolProvider) PubSubPublish(ctx context.Context, k string, v []byte)
 
 func (mpp *mpoolProvider) GetActorAfter(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, error) {
 	if mpp.IsLite() {
-		n, err := mpp.lite.GetNonce(context.TODO(), addr, ts.Key())
+		n, err := mpp.lite.GetNonce(ctx, addr, ts.Key())
 		if err != nil {
 			return nil, xerrors.Errorf("getting nonce over lite: %w", err)
 		}
-		a, err := mpp.lite.GetActor(context.TODO(), addr, ts.Key())
+		a, err := mpp.lite.GetActor(ctx, addr, ts.Key())
 		if err != nil {
 			return nil, xerrors.Errorf("getting actor over lite: %w", err)
 		}
@@ -109,12 +109,12 @@ func (mpp *mpoolProvider) GetActorAfter(ctx context.Context, addr address.Addres
 		return a, nil
 	}
 
-	st, err := mpp.sm.GetTipSetState(context.TODO(), ts)
+	st, err := mpp.stmgr.TipsetState(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("computing tipset state for GetActor: %v", err)
 	}
 
-	act, found, err := st.GetActor(context.TODO(), addr)
+	act, found, err := st.GetActor(ctx, addr)
 	if !found {
 		err = xerrors.New("actor not found")
 	}
