@@ -316,7 +316,7 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 		return nil, cid.Undef, err
 	}
 
-	ret, err := lvm.ApplyMessage(toChainMsg(params.Message))
+	ret, err := lvm.ApplyMessage(ctx, toChainMsg(params.Message))
 	if err != nil {
 		return nil, cid.Undef, err
 	}
@@ -325,7 +325,7 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 	if d.vmFlush {
 		// flush the VM, committing the state tree changes and forcing a
 		// recursive copy from the temporary blcokstore to the real blockstore.
-		root, err = lvm.Flush()
+		root, err = lvm.Flush(ctx)
 		if err != nil {
 			return nil, cid.Undef, err
 		}

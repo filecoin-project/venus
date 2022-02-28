@@ -54,7 +54,7 @@ type VM struct {
 	State tree.Tree
 }
 
-func (vm *VM) ApplyImplicitMessage(msg types.ChainMsg) (*Ret, error) {
+func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg types.ChainMsg) (*Ret, error) {
 	unsignedMsg := msg.VMMessage()
 
 	imsg := VmMessage{
@@ -157,7 +157,7 @@ func (vm *VM) ApplyGenesisMessage(from address.Address, to address.Address, meth
 	}
 
 	// commit
-	if _, err := vm.Flush(); err != nil {
+	if _, err := vm.Flush(vm.context); err != nil {
 		return nil, err
 	}
 
@@ -262,7 +262,7 @@ func (vm *VM) ActorStore(ctx context.Context) adt.Store {
 }
 
 // todo estimate gasLimit
-func (vm *VM) ApplyMessage(msg types.ChainMsg) (*Ret, error) {
+func (vm *VM) ApplyMessage(ctx context.Context, msg types.ChainMsg) (*Ret, error) {
 	return vm.applyMessage(msg.VMMessage(), msg.ChainLength())
 }
 
@@ -742,7 +742,7 @@ func (vm *VM) clearSnapshot() {
 }
 
 //nolint
-func (vm *VM) Flush() (tree.Root, error) {
+func (vm *VM) Flush(ctx context.Context) (tree.Root, error) {
 	// Flush all blocks out of the store
 	if root, err := vm.State.Flush(vm.context); err != nil {
 		return cid.Undef, err

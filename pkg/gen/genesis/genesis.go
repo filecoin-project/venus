@@ -551,7 +551,7 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 		}
 	}
 
-	st, err := vm.Flush()
+	st, err := vm.Flush(ctx)
 	if err != nil {
 		return cid.Cid{}, xerrors.Errorf("vm flush: %w", err)
 	}

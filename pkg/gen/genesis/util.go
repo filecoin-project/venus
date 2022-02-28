@@ -32,7 +32,7 @@ func doExecValue(ctx context.Context, vmi vm.Interpreter, to, from address.Addre
 		return nil, xerrors.Errorf("actor (%s) not found", from)
 	}
 
-	ret, err := vmi.ApplyImplicitMessage(&types.Message{
+	ret, err := vmi.ApplyImplicitMessage(context.TODO(), &types.Message{
 		To:       to,
 		From:     from,
 		Method:   method,

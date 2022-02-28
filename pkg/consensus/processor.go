@@ -117,11 +117,11 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 
 			// run cron for null rounds if any
 			cronMessage := makeCronTickMessage()
-			ret, err := vmCron.ApplyImplicitMessage(cronMessage)
+			ret, err := vmCron.ApplyImplicitMessage(ctx, cronMessage)
 			if err != nil {
 				return cid.Undef, nil, err
 			}
-			pstate, err = vmCron.Flush()
+			pstate, err = vmCron.Flush(ctx)
 			if err != nil {
 				return cid.Undef, nil, xerrors.Errorf("can not Flush vm State To db %vs", err)
 			}
@@ -177,7 +177,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			}
 
 			// apply message
-			ret, err := vm.ApplyMessage(m)
+			ret, err := vm.ApplyMessage(ctx, m)
 			if err != nil {
 				return cid.Undef, nil, xerrors.Errorf("execute message error %s : %v", mcid, err)
 			}
@@ -196,7 +196,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		// Pay block reward.
 		// Dragons: missing final protocol design on if/how To determine the nominal power
 		rewardMessage := makeBlockRewardMessage(blkInfo.Block.Miner, minerPenaltyTotal, minerGasRewardTotal, blkInfo.Block.ElectionProof.WinCount, epoch)
-		ret, err := vm.ApplyImplicitMessage(rewardMessage)
+		ret, err := vm.ApplyImplicitMessage(ctx, rewardMessage)
 		if err != nil {
 			return cid.Undef, nil, err
 		}
@@ -223,7 +223,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 	toProcessCron := time.Now()
 	cronMessage := makeCronTickMessage()
 
-	ret, err := vm.ApplyImplicitMessage(cronMessage)
+	ret, err := vm.ApplyImplicitMessage(ctx, cronMessage)
 	if err != nil {
 		return cid.Undef, nil, err
 	}
@@ -241,7 +241,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 
 	processLog.Infof("process cron: %v", time.Since(toProcessCron).Milliseconds())
 
-	root, err := vm.Flush()
+	root, err := vm.Flush(ctx)
 	if err != nil {
 		return cid.Undef, nil, err
 	}

@@ -255,7 +255,7 @@ func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 	}, nil
 }
 
-func (fvm *FVM) ApplyMessage(cmsg types.ChainMsg) (*vm.Ret, error) {
+func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret, error) {
 	start := constants.Clock.Now()
 	msgBytes, err := cmsg.VMMessage().Serialize()
 	if err != nil {
@@ -292,7 +292,7 @@ func (fvm *FVM) ApplyMessage(cmsg types.ChainMsg) (*vm.Ret, error) {
 	}, nil
 }
 
-func (fvm *FVM) ApplyImplicitMessage(cmsg types.ChainMsg) (*vm.Ret, error) {
+func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret, error) {
 	start := constants.Clock.Now()
 	msgBytes, err := cmsg.VMMessage().Serialize()
 	if err != nil {
@@ -310,7 +310,7 @@ func (fvm *FVM) ApplyImplicitMessage(cmsg types.ChainMsg) (*vm.Ret, error) {
 			ExitCode: exitcode.ExitCode(ret.ExitCode),
 			GasUsed:  ret.GasUsed,
 		},
-		OutPuts: nil,
+		OutPuts: gas.GasOutputs{},
 		// TODO: do these eventually, not consensus critical
 		ActorErr: nil,
 		GasTracker: &gas.GasTracker{
@@ -320,6 +320,6 @@ func (fvm *FVM) ApplyImplicitMessage(cmsg types.ChainMsg) (*vm.Ret, error) {
 	}, nil
 }
 
-func (fvm *FVM) Flush() (cid.Cid, error) {
+func (fvm *FVM) Flush(ctx context.Context) (cid.Cid, error) {
 	return fvm.fvm.Flush()
 }

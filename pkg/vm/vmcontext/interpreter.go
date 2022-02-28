@@ -1,6 +1,8 @@
 package vmcontext
 
 import (
+	"context"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/state/tree"
@@ -11,9 +13,9 @@ import (
 type VMInterpreter interface {
 	// Note: any message processing error will be present as an `ExitCode` in the `MessageReceipt`.
 	ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (*Ret, error)
-	ApplyMessage(msg types.ChainMsg) (*Ret, error)
-	ApplyImplicitMessage(msg types.ChainMsg) (*Ret, error)
+	ApplyMessage(ctx context.Context, msg types.ChainMsg) (*Ret, error)
+	ApplyImplicitMessage(ctx context.Context, msg types.ChainMsg) (*Ret, error)
 
 	StateTree() tree.Tree
-	Flush() (tree.Root, error)
+	Flush(ctx context.Context) (tree.Root, error)
 }

@@ -82,7 +82,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 	}
 
 	for i, m := range priorMsgs {
-		_, err := vmi.ApplyMessage(m)
+		_, err := vmi.ApplyMessage(ctx, m)
 		if err != nil {
 			return nil, xerrors.Errorf("applying prior message (%d): %v", i, err)
 		}
@@ -115,7 +115,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 			},
 		}
 	}
-	return vmi.ApplyMessage(msgApply)
+	return vmi.ApplyMessage(ctx, msgApply)
 }
 
 // Call used for api invoke to compute a msg base on specify tipset, if the tipset is null, use latest tipset in db
@@ -212,5 +212,5 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 	if err != nil {
 		return nil, err
 	}
-	return v.ApplyImplicitMessage(msg)
+	return v.ApplyImplicitMessage(ctx, msg)
 }

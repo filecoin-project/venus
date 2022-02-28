@@ -159,7 +159,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 			}
 			minerInfos[i].maddr = ma.IDAddress
 
-			_, err = vmi.Flush()
+			_, err = vmi.Flush(ctx)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 			}
@@ -267,7 +267,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 			}
 		}
 
-		_, err = vmi.Flush()
+		_, err = vmi.Flush(ctx)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 		}
@@ -350,7 +350,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 
 				// we've added fake power for this sector above, remove it now
 
-				_, err = vmi.Flush()
+				_, err = vmi.Flush(ctx)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 				}
@@ -457,7 +457,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 						return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
 					}
 
-					_, err = vmi.Flush()
+					_, err = vmi.Flush(ctx)
 					if err != nil {
 						return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 					}
@@ -496,7 +496,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 	}
 
 	// Sanity-check total network power
-	_, err = vmi.Flush()
+	_, err = vmi.Flush(ctx)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}
@@ -529,7 +529,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 
 	// TODO: Should we re-ConstructState for the reward actor using rawPow as currRealizedPower here?
 
-	c, err := vmi.Flush()
+	c, err := vmi.Flush(ctx)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}

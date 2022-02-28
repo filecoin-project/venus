@@ -82,7 +82,7 @@ func Failure(exitCode exitcode.ExitCode, gasAmount int64) types.MessageReceipt {
 }
 
 type VMI interface {
-	ApplyMessage(cmsg types.ChainMsg) (*Ret, error)
-	ApplyImplicitMessage(msg types.ChainMsg) (*Ret, error)
-	Flush() (cid.Cid, error)
+	ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*Ret, error)
+	ApplyImplicitMessage(ctx context.Context, msg types.ChainMsg) (*Ret, error)
+	Flush(ctx context.Context) (cid.Cid, error)
 }
