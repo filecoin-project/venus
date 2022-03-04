@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/venus/app/client/funcrule"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/venus-shared/api/permission"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
@@ -164,7 +164,7 @@ func mockBuild(builder *RPCBuilder) *jsonrpc.RPCServer {
 	server := jsonrpc.NewServer(jsonrpc.WithProxyBind(jsonrpc.PBField))
 	var fullNode FullAdapter
 	for _, apiStruct := range builder.v1APIStruct {
-		funcrule.PermissionProxy(apiStruct, &fullNode)
+		permission.PermissionProxy(apiStruct, &fullNode)
 	}
 	for _, nameSpace := range builder.namespace {
 		server.Register(nameSpace, &fullNode)

@@ -3,11 +3,12 @@ package jwtauth
 import (
 	"context"
 	"crypto/rand"
-	vjc "github.com/filecoin-project/venus-auth/cmd/jwtclient"
-	"github.com/filecoin-project/venus/app/client/funcrule"
 	"io"
 	"io/ioutil"
 	"strings"
+
+	vjc "github.com/filecoin-project/venus-auth/cmd/jwtclient"
+	"github.com/filecoin-project/venus/venus-shared/api/permission"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	jwt3 "github.com/gbrlsnchs/jwt/v3"
@@ -39,7 +40,7 @@ func NewJwtAuth(lr repo.Repo) (vjc.IJwtAuthClient, error) {
 		jwtSecetName:  "auth-jwt-private",
 		jwtHmacSecret: "jwt-hmac-secret",
 		lr:            lr,
-		payload:       JwtPayload{Allow: funcrule.AllPermissions},
+		payload:       JwtPayload{Allow: permission.AllPermissions},
 	}
 
 	var err error
