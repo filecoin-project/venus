@@ -37,10 +37,6 @@ cborgen:
 gogen:
 	cd venus-shared && go generate ./...
 
-mock-api-gen:
-	cd ./venus-shared/api/chain/v0 && go run github.com/golang/mock/mockgen -destination=./mock/full.go -package=mock . FullNode
-	cd ./venus-shared/api/chain/v1 && go run github.com/golang/mock/mockgen -destination=./mock/full.go -package=mock . FullNode
-
 inline-gen:
 	cd venus-devtool && go run ./inline-gen/main.go ../ ./inline-gen/inlinegen-data.json
 
@@ -51,6 +47,7 @@ api-gen:
 	cd ./venus-devtool/ && go run ./api-gen/ proxy
 	cd ./venus-devtool/ && go run ./api-gen/ client
 	cd ./venus-devtool/ && go run ./api-gen/ doc
+	cd ./venus-devtool/ && go run ./api-gen/ mock
 
 compatible-all: compatible-api compatible-actor
 
