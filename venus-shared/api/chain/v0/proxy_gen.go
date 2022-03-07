@@ -752,16 +752,16 @@ func (s *IWalletStruct) WalletState(p0 context.Context) int { return s.Internal.
 
 type IJwtAuthAPIStruct struct {
 	Internal struct {
-		AuthNew func(ctx context.Context, perms []auth.Permission) ([]byte, error)       `perm:"admin"`
-		Verify  func(ctx context.Context, host, token string) ([]auth.Permission, error) `perm:"read"`
+		AuthNew func(ctx context.Context, perms []auth.Permission) ([]byte, error) `perm:"admin"`
+		Verify  func(ctx context.Context, token string) ([]auth.Permission, error) `perm:"read"`
 	}
 }
 
 func (s *IJwtAuthAPIStruct) AuthNew(p0 context.Context, p1 []auth.Permission) ([]byte, error) {
 	return s.Internal.AuthNew(p0, p1)
 }
-func (s *IJwtAuthAPIStruct) Verify(p0 context.Context, p1, p2 string) ([]auth.Permission, error) {
-	return s.Internal.Verify(p0, p1, p2)
+func (s *IJwtAuthAPIStruct) Verify(p0 context.Context, p1 string) ([]auth.Permission, error) {
+	return s.Internal.Verify(p0, p1)
 }
 
 type FullNodeStruct struct {

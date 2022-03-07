@@ -17,6 +17,7 @@ import (
 	configModule "github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/dagservice"
 	"github.com/filecoin-project/venus/app/submodule/discovery"
+	jwtauth2 "github.com/filecoin-project/venus/app/submodule/jwtauth"
 	"github.com/filecoin-project/venus/app/submodule/market"
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
@@ -103,6 +104,7 @@ type Node struct {
 
 	jaegerExporter *jaeger.Exporter
 	remoteAuth     *jwtauth.RemoteAuth
+	localAuth      *jwtauth.JwtAuth
 }
 
 func (node *Node) Chain() *chain2.ChainSubmodule {
@@ -270,12 +272,7 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 		return err
 	}
 
-	localVerifer, err := jwtauth.NewJwtAuth(node.repo)
-	if err != nil {
-		return err
-	}
-
-	authMux := jwtclient.NewAuthMux(localVerifer,
+	authMux := jwtclient.NewAuthMux(node.localAuth,
 		node.remoteAuth, mux, logging.Logger("venus-auth"))
 	authMux.TrustHandle("/debug/pprof/", http.DefaultServeMux)
 
@@ -362,6 +359,7 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		PaychAPI:             node.paychan.API(),
 		MarketAPI:            node.market.API(),
 		MultiSigAPI:          &apiwrapper.WrapperV1IMultiSig{IMultiSig: node.multiSig.API(), IMessagePool: node.mpool.API()},
+		AuthAPI:              jwtauth2.NewJwtAuthAPI(node.localAuth),
 	}
 
 	return &env

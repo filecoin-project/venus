@@ -1554,7 +1554,6 @@ Perms: read
 Inputs:
 ```json
 [
-  "string value",
   "string value"
 ]
 ```

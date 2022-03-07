@@ -7,6 +7,6 @@ import (
 )
 
 type IJwtAuthAPI interface {
-	Verify(ctx context.Context, host, token string) ([]auth.Permission, error) //perm:read
-	AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error)      //perm:admin
+	Verify(ctx context.Context, token string) ([]auth.Permission, error)  //perm:read
+	AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error) //perm:admin
 }

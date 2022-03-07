@@ -16,6 +16,7 @@ import (
 	config2 "github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/dagservice"
 	"github.com/filecoin-project/venus/app/submodule/discovery"
+	jwtauth2 "github.com/filecoin-project/venus/app/submodule/jwtauth"
 	"github.com/filecoin-project/venus/app/submodule/market"
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
@@ -168,6 +169,16 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	}
 	nd.market = market.NewMarketModule(nd.chain.API(), nd.syncer.Stmgr)
 
+	nd.localAuth, err = jwtauth.NewJwtAuth(nd.repo)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := nd.repo.Config()
+	if len(cfg.API.VenusAuthURL) > 0 {
+		nd.remoteAuth = jwtauth.NewRemoteAuth(cfg.API.VenusAuthURL)
+	}
+
 	apiBuilder := NewBuilder()
 	apiBuilder.NameSpace("Filecoin")
 
@@ -183,15 +194,12 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.mining,
 		nd.mpool,
 		nd.paychan,
-		nd.market)
+		nd.market,
+		jwtauth2.NewJwtAuthAPI(nd.localAuth),
+	)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "add service failed ")
-	}
-
-	cfg := nd.repo.Config()
-	if len(cfg.API.VenusAuthURL) > 0 {
-		nd.remoteAuth = jwtauth.NewRemoteAuth(cfg.API.VenusAuthURL)
 	}
 
 	var ratelimiter *ratelimit.RateLimiter

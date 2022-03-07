@@ -2310,18 +2310,18 @@ func (mr *MockFullNodeMockRecorder) UnLockWallet(arg0, arg1 interface{}) *gomock
 }
 
 // Verify mocks base method.
-func (m *MockFullNode) Verify(arg0 context.Context, arg1, arg2 string) ([]string, error) {
+func (m *MockFullNode) Verify(arg0 context.Context, arg1 string) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Verify", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Verify", arg0, arg1)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Verify indicates an expected call of Verify.
-func (mr *MockFullNodeMockRecorder) Verify(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) Verify(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Verify", reflect.TypeOf((*MockFullNode)(nil).Verify), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Verify", reflect.TypeOf((*MockFullNode)(nil).Verify), arg0, arg1)
 }
 
 // VerifyEntry mocks base method.

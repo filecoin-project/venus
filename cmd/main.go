@@ -133,6 +133,9 @@ State COMMANDS
 Paych COMMANDS 
   paych                  - Manage payment channels
 
+Auth COMMANDS
+  create-token           - create a local token
+
 TOOL COMMANDS
   inspect                - Show info about the venus node
   leb128                 - Leb128 cli encode/decode
@@ -187,6 +190,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"miner":    minerCmd,
 	"paych":    paychCmd,
 	"msig":     multisigCmd,
+	"auth":     authCmd,
 }
 
 func init() {
