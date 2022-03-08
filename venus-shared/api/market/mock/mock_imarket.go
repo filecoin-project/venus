@@ -577,10 +577,10 @@ func (mr *MockIMarketMockRecorder) MarketGetAsk(arg0, arg1 interface{}) *gomock.
 }
 
 // MarketGetDealUpdates mocks base method.
-func (m *MockIMarket) MarketGetDealUpdates(arg0 context.Context) (<-chan storagemarket.MinerDeal, error) {
+func (m *MockIMarket) MarketGetDealUpdates(arg0 context.Context) (<-chan market.MinerDeal, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MarketGetDealUpdates", arg0)
-	ret0, _ := ret[0].(<-chan storagemarket.MinerDeal)
+	ret0, _ := ret[0].(<-chan market.MinerDeal)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -681,10 +681,10 @@ func (mr *MockIMarketMockRecorder) MarketListDeals(arg0, arg1 interface{}) *gomo
 }
 
 // MarketListIncompleteDeals mocks base method.
-func (m *MockIMarket) MarketListIncompleteDeals(arg0 context.Context, arg1 address.Address) ([]storagemarket.MinerDeal, error) {
+func (m *MockIMarket) MarketListIncompleteDeals(arg0 context.Context, arg1 address.Address) ([]market.MinerDeal, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MarketListIncompleteDeals", arg0, arg1)
-	ret0, _ := ret[0].([]storagemarket.MinerDeal)
+	ret0, _ := ret[0].([]market.MinerDeal)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1047,15 +1047,15 @@ func (mr *MockIMarketMockRecorder) UpdateDealStatus(arg0, arg1, arg2, arg3 inter
 }
 
 // UpdateStorageDealStatus mocks base method.
-func (m *MockIMarket) UpdateStorageDealStatus(arg0 context.Context, arg1 cid.Cid, arg2 uint64) error {
+func (m *MockIMarket) UpdateStorageDealStatus(arg0 context.Context, arg1 cid.Cid, arg2 uint64, arg3 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateStorageDealStatus", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "UpdateStorageDealStatus", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateStorageDealStatus indicates an expected call of UpdateStorageDealStatus.
-func (mr *MockIMarketMockRecorder) UpdateStorageDealStatus(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) UpdateStorageDealStatus(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateStorageDealStatus", reflect.TypeOf((*MockIMarket)(nil).UpdateStorageDealStatus), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateStorageDealStatus", reflect.TypeOf((*MockIMarket)(nil).UpdateStorageDealStatus), arg0, arg1, arg2, arg3)
 }
