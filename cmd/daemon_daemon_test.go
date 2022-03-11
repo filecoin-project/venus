@@ -12,7 +12,6 @@ import (
 
 	manet "github.com/multiformats/go-multiaddr/net"
 
-	"github.com/filecoin-project/venus/build/project"
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 
@@ -31,9 +30,9 @@ func TestDownloadGenesis(t *testing.T) {
 
 	err = exec.CommandContext(
 		ctx,
-		project.Root("tools/genesis-file-server/genesis-file-server"),
+		th.Root("tools/genesis-file-server/genesis-file-server"),
 		"--genesis-file-path",
-		project.Root("fixtures/test/genesis.car"),
+		th.Root("fixtures/test/genesis.car"),
 		"--port",
 		strconv.Itoa(port),
 	).Start()

@@ -1,28 +1,46 @@
 export CGO_CFLAGS_ALLOW=-D__BLST_PORTABLE__
 export CGO_CFLAGS=-D__BLST_PORTABLE__
 
-all:
-	go run ./build/*.go build
+all: build
+.PHONY: all
 
-deps:
-	git submodule update --init
-	go run ./build/*.go smartdeps
+## variables
 
-lint:
-	go run ./build/*.go lint
+# git modules that need to be loaded
+MODULES:=
 
-test: test-venus-shared
-	go run ./build/*.go test -timeout=30m
+ldflags=-X=github.com/filecoin-project/venus/pkg/constants.CurrentCommit=+git.$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))
+ifneq ($(strip $(LDFLAGS)),)
+	    ldflags+=-extldflags=$(LDFLAGS)
+	endif
 
-# WARNING THIS BUILDS A GO PLUGIN AND PLUGINS *DO NOT* WORK ON WINDOWS SYSTEMS
-iptb:
-	make -C tools/iptb-plugins all
+GOFLAGS+=-ldflags="$(ldflags)"
 
-clean:
-	rm ./venus
+## FFI
 
-	rm -rf ./extern/filecoin-ffi
-	rm -rf ./extern/test-vectors
+FFI_PATH:=extern/filecoin-ffi/
+FFI_DEPS:=.install-filcrypto
+FFI_DEPS:=$(addprefix $(FFI_PATH),$(FFI_DEPS))
+
+$(FFI_DEPS): build-dep/.filecoin-install ;
+
+build-dep/.filecoin-install: $(FFI_PATH)
+	$(MAKE) -C $(FFI_PATH) $(FFI_DEPS:$(FFI_PATH)%=%)
+	@touch $@
+
+MODULES+=$(FFI_PATH)
+BUILD_DEPS+=build-dep/.filecoin-install
+CLEAN+=build-dep/.filecoin-install
+
+## modules
+build-dep:
+	mkdir $@
+
+$(MODULES): build-dep/.update-modules;
+# dummy file that marks the last time modules were updated
+build-dep/.update-modules: build-dep;
+	git submodule update --init --recursive
+	touch $@
 
 gen-all: cborgen gogen inline-gen api-gen
 
@@ -75,3 +93,19 @@ actor-render:
 
 actor-replica:
 	cd venus-devtool && go run ./compatible/actors/*.go replica --dst ../venus-shared/actors/
+
+test:
+	go test  -race ./...
+
+lint: $(BUILD_DEPS)
+	staticcheck ./...
+
+deps: $(BUILD_DEPS)
+
+dist-clean:
+	git clean -xdff
+	git submodule deinit --all -f
+
+build: $(BUILD_DEPS)
+	rm -f venus
+	go build -o ./venus $(GOFLAGS) .

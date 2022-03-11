@@ -27,6 +27,19 @@ jobs:
       - name: tests-shared
         run: make test-venus-shared
 
+      - name: Run coverage
+        run:  go test -coverpkg=./... -race -coverprofile=coverage.txt -covermode=atomic ./...
+
+      - name: Upload
+        uses: codecov/codecov-action@v2
+        with:
+          token:
+          files: ./coverage.txt
+          flags: unittests
+          name:  venus-gateway
+          fail_ci_if_error: true
+          verbose: true
+
       - name: compatible all
         run: |
           make compatible-all

@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"encoding/json"
+	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	"os"
 	"testing"
 	"time"
@@ -11,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/build/project"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/constants"
 	gengen "github.com/filecoin-project/venus/tools/gengen/util"
@@ -26,7 +26,7 @@ func CreateBootstrapSetup(t *testing.T) (*ChainSeed, *gengen.GenesisCfg, clock.C
 	fakeClock := clock.NewFake(time.Unix(genTime, 0))
 
 	// Load genesis config fixture.
-	genCfgPath := project.Root("fixtures/setup.json")
+	genCfgPath := th.Root("fixtures/setup.json")
 	genCfg := loadGenesisConfig(t, genCfgPath)
 	genCfg.Miners = append(genCfg.Miners, &gengen.CreateStorageMinerConfig{
 		Owner:         5,

@@ -42,5 +42,6 @@ debug.test
 
 // HomeBrew
 Brewfile.lock.json
-
+build-dep
+coverage.*
 receipt.json

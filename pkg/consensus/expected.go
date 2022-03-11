@@ -1,6 +1,5 @@
 package consensus
 
-import "C"
 import (
 	"context"
 	"time"

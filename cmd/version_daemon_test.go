@@ -22,12 +22,11 @@ func TestVersion(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	commit := getCodeCommit(t)
-	tag := constants.BuildVersion
 	verOut, err := exec.Command(th.MustGetFilecoinBinary(), "version").Output()
 	require.NoError(t, err)
 
 	version := string(verOut)
-	assert.Exactly(t, fmt.Sprintf("{\n\t\"Commit\": \"%s %s\"\n}\n", tag, commit), version)
+	assert.Contains(t, version, fmt.Sprintf("%s+git.%s", constants.BuildVersion, commit[0:9]))
 }
 
 func TestVersionOverHttp(t *testing.T) {
@@ -53,14 +52,12 @@ func TestVersionOverHttp(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
-	commit := strings.Trim(getCodeCommit(t), "\n ")
-	tag := constants.BuildVersion
-	expected := fmt.Sprintf("{\"Commit\":\"%s %s\"}\n", tag, commit)
+	commit := getCodeCommit(t)[0:9]
 
 	defer res.Body.Close() // nolint: errcheck
 	body, err := ioutil.ReadAll(res.Body)
 	require.NoError(t, err)
-	require.Equal(t, expected, string(body))
+	require.Contains(t, string(body), constants.BuildVersion+"+git."+commit)
 }
 
 func getCodeCommit(t *testing.T) string {
