@@ -48,7 +48,8 @@ type fakeCS struct {
 	msgs    map[cid.Cid]fakeMsg
 	blkMsgs map[cid.Cid]cid.Cid
 
-	tipsets map[types.TipSetKey]*types.TipSet
+	tipsetLk sync.Mutex
+	tipsets  map[types.TipSetKey]*types.TipSet
 
 	mu         sync.Mutex
 	waitSub    chan struct{}
@@ -105,8 +106,9 @@ func (fcs *fakeCS) loopNotify(ctx context.Context) error {
 
 func (fcs *fakeCS) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	fcs.mu.Lock()
-	defer fcs.mu.Unlock()
 	fcs.callNumber["ChainHead"] = fcs.callNumber["ChainHead"] + 1
+	fcs.mu.Unlock()
+
 	return fcs.tsc.ChainHead(ctx)
 }
 
@@ -145,36 +147,41 @@ func (fcs *fakeCS) ChainGetPath(ctx context.Context, from, to types.TipSetKey) (
 
 func (fcs *fakeCS) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
 	fcs.mu.Lock()
-	defer fcs.mu.Unlock()
 	fcs.callNumber["ChainGetTipSet"] = fcs.callNumber["ChainGetTipSet"] + 1
+	fcs.mu.Unlock()
+
+	fcs.tipsetLk.Lock()
+	defer fcs.tipsetLk.Unlock()
 	return fcs.tipsets[key], nil
 }
 
 func (fcs *fakeCS) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	fcs.mu.Lock()
-	defer fcs.mu.Unlock()
 	fcs.callNumber["StateSearchMsg"] = fcs.callNumber["StateSearchMsg"] + 1
+	fcs.mu.Unlock()
+
 	return nil, nil
 }
 
 func (fcs *fakeCS) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
 	fcs.mu.Lock()
-	defer fcs.mu.Unlock()
 	fcs.callNumber["StateGetActor"] = fcs.callNumber["StateGetActor"] + 1
+	fcs.mu.Unlock()
+
 	panic("Not Implemented")
 }
 
 func (fcs *fakeCS) ChainGetTipSetByHeight(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	fcs.mu.Lock()
-	defer fcs.mu.Unlock()
 	fcs.callNumber["ChainGetTipSetByHeight"] = fcs.callNumber["ChainGetTipSetByHeight"] + 1
+	fcs.mu.Unlock()
 
 	return fcs.tsc.ChainGetTipSetByHeight(ctx, height, tsk)
 }
 func (fcs *fakeCS) ChainGetTipSetAfterHeight(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	fcs.mu.Lock()
-	defer fcs.mu.Unlock()
 	fcs.callNumber["ChainGetTipSetAfterHeight"] = fcs.callNumber["ChainGetTipSetAfterHeight"] + 1
+	fcs.mu.Unlock()
 
 	return fcs.tsc.ChainGetTipSetAfterHeight(ctx, height, tsk)
 }
@@ -215,11 +222,12 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 		},
 	})
 
+	fcs.tipsetLk.Lock()
 	if fcs.tipsets == nil {
 		fcs.tipsets = map[types.TipSetKey]*types.TipSet{}
 	}
 	fcs.tipsets[ts.Key()] = ts
-
+	fcs.tipsetLk.Unlock()
 	require.NoError(t, err)
 
 	return ts
@@ -227,8 +235,8 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 
 func (fcs *fakeCS) ChainNotify(ctx context.Context) (<-chan []*types.HeadChange, error) {
 	fcs.mu.Lock()
-	defer fcs.mu.Unlock()
 	fcs.callNumber["ChainNotify"] = fcs.callNumber["ChainNotify"] + 1
+	fcs.mu.Unlock()
 
 	out := make(chan []*types.HeadChange, 1)
 	if fcs.subCh != nil {

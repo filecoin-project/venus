@@ -1,41 +1,58 @@
-name: basic checks
+name: basic-check
 
-on: ["push", "pull_request"]
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    branches:
+      - '**'
 
 jobs:
+
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
-      - name: dependencies
-        run: sudo apt update & sudo apt upgrade & sudo apt install --reinstall mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y
-
       - uses: actions/checkout@v2
-        with:
-          submodules: 'true'
 
-      - name: setup go
+      - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: '1.16'
+          go-version: 1.17
 
-      - name: deps
-        run: make deps
+      - name: install deps
+        run: |
+          sudo apt-get -o Acquire::Retries=3 install make ncftp mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y && sudo apt upgrade -y
 
-      - name: build
-        run: make all
+      - name: dep
+        env:
+          GOPROXY: "https://proxy.golang.org,direct"
+          GO111MODULE: "on"
+        run: |
+          make deps
 
-      - name: tests-shared
-        run: make test-venus-shared
+      - name: Build
+        env:
+          GOPROXY: "https://proxy.golang.org,direct"
+          GO111MODULE: "on"
+        run: |
+          make
 
-      - name: compatible all
+      - name: Lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.44.2
+          golangci-lint run --timeout 10m
+
+      - name: Compatible all
         run: |
           make compatible-all
 
-      - name: gen all
+      - name: Gen all
         run: |
           make gen-all
 
-      - name: detect changes
+      - name: Detect changes
         run: |
           git status --porcelain
           test -z "$(git status --porcelain)"

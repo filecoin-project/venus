@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 )
 
-type PaychAPI struct {
+type PaychAPI struct { //nolint
 	paychMgr *paychmgr.Manager
 }
 

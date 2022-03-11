@@ -1,0 +1,75 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+
+  check:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+
+      - name: install deps
+        run: |
+          sudo apt-get -o Acquire::Retries=3 install make ncftp mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y && sudo apt upgrade -y
+
+      - name: install statediff globally
+        run: |
+          ## statediff is optional; we succeed even if compilation fails.
+          mkdir -p /tmp/statediff
+          git clone https://github.com/filecoin-project/statediff.git /tmp/statediff
+          cd /tmp/statediff
+          go install ./cmd/statediff || exit 0
+
+      - name: dep
+        env:
+          GOPROXY: "https://proxy.golang.org,direct"
+          GO111MODULE: "on"
+        run: |
+          make deps
+
+      - name: Build
+        env:
+          GOPROXY: "https://proxy.golang.org,direct"
+          GO111MODULE: "on"
+        run: |
+          make
+
+      - name: Download vk file
+        run: |
+          ./venus fetch --size=0
+
+      - name: GenTool
+        run: |
+          go build -o genesis-file-server ./tools/genesis-file-server
+          go build -o gengen ./tools/gengen
+          ./gengen --keypath ./fixtures/live --out-car ./fixtures/live/genesis.car --out-json  ./fixtures/live/gen.json --config ./fixtures/setup.json
+          ./gengen --keypath ./fixtures/test --out-car ./fixtures/test/genesis.car --out-json  ./fixtures/test/gen.json --config ./fixtures/setup.json
+
+      - name: Unit Test
+        run: go test -coverpkg=./... -coverprofile=coverage_unit.txt -covermode=atomic -timeout=30m -parallel=4 -v ./... -integration=false -unit=true
+
+      - name: Integration Test
+        run: go test -coverpkg=./... -coverprofile=coverage_integration.txt -covermode=atomic -timeout=30m -parallel=4  -v ./... -integration=true -unit=false
+
+      - name: Upload
+        uses: codecov/codecov-action@v2
+        with:
+          token:
+          files: ./coverage_unit.txt,./coverage_integration.txt
+          flags: unittests,integration
+          name: venus
+          fail_ci_if_error: true
+          verbose: true

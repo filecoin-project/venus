@@ -69,7 +69,7 @@ const MaxAccounts = MinerStart - AccountStart
 
 var log = logging.Logger("genesis")
 
-type GenesisBootstrap struct {
+type GenesisBootstrap struct { //nolint
 	Genesis *types.BlockHeader
 }
 

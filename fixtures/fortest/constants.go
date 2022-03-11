@@ -3,15 +3,14 @@ package fortest
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-address"
+	th "github.com/filecoin-project/venus/pkg/testhelpers"
+	cid "github.com/ipfs/go-cid"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 
-	"github.com/filecoin-project/go-address"
-	cid "github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/venus/build/project"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	gen "github.com/filecoin-project/venus/tools/gengen/util"
 )
@@ -51,7 +50,7 @@ type detailsStruct struct {
 }
 
 func init() {
-	root := project.Root()
+	root := th.Root()
 
 	genConfigPath := filepath.Join(root, "fixtures/setup.json")
 	genConfigFile, err := os.Open(genConfigPath)
@@ -74,7 +73,7 @@ func init() {
 }
 
 func init() {
-	root := project.Root()
+	root := th.Root()
 
 	detailspath := filepath.Join(root, "fixtures/test/gen.json")
 	detailsFile, err := os.Open(detailspath)
@@ -119,7 +118,7 @@ func init() {
 
 // KeyFilePaths returns the paths to the wallets of the testaddresses
 func KeyFilePaths() []string {
-	root := project.Root()
+	root := th.Root()
 	folder := filepath.Join(root, "fixtures/test")
 
 	res := make([]string, len(testKeys))

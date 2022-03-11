@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/venus/build/project"
 	"github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
@@ -41,7 +43,7 @@ func MustGetFilecoinBinary() string {
 func GetFilecoinBinary() (string, error) {
 	bin, provided := testflags.BinaryPath()
 	if !provided {
-		bin = project.Root("venus")
+		bin = Root("venus")
 	}
 
 	_, err := os.Stat(bin)
@@ -92,4 +94,21 @@ func WaitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 	case <-time.After(timeout):
 		return true // timed out
 	}
+}
+
+// GetGitRoot return the project root joined with any path fragments
+func GetGitRoot() string {
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		panic("could not find git root")
+	}
+
+	return strings.Trim(string(out), "\n")
+}
+
+// Root return the project root joined with any path fragments
+func Root(paths ...string) string {
+	allPaths := append([]string{GetGitRoot()}, paths...)
+	return filepath.Join(allPaths...)
 }

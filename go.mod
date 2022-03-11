@@ -10,7 +10,7 @@ require (
 	github.com/ahmetb/go-linq/v3 v3.2.0
 	github.com/awnumar/memguard v0.22.2
 	github.com/bluele/gcache v0.0.0-20190518031135-bc40bd653833
-	github.com/containerd/containerd v1.6.0 // indirect
+	github.com/containerd/containerd v1.6.1 // indirect
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
 	github.com/dgraph-io/badger/v2 v2.2007.3
 	github.com/docker/distribution v2.8.0+incompatible // indirect
@@ -48,10 +48,10 @@ require (
 	github.com/go-errors/errors v1.0.1
 	github.com/go-kit/kit v0.12.0
 	github.com/golang/mock v1.6.0
-	github.com/golangci/golangci-lint v1.39.0
 	github.com/google/flatbuffers v2.0.0+incompatible // indirect
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/uuid v1.3.0
+	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/hashicorp/go-multierror v1.1.1
@@ -86,7 +86,6 @@ require (
 	github.com/ipfs/iptb v1.4.0
 	github.com/ipld/go-car v0.3.3
 	github.com/jbenet/goprocess v0.1.4
-	github.com/jstemmer/go-junit-report v0.9.1
 	github.com/libp2p/go-eventbus v0.2.1
 	github.com/libp2p/go-libp2p v0.17.0
 	github.com/libp2p/go-libp2p-core v0.13.0
@@ -95,6 +94,7 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.6.0
 	github.com/libp2p/go-libp2p-swarm v0.9.0
 	github.com/libp2p/go-libp2p-yamux v0.7.0
+	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
@@ -108,8 +108,10 @@ require (
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/prometheus/client_golang v1.11.0
 	github.com/raulk/clock v1.1.0
+	github.com/rogpeppe/go-internal v1.6.2 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
+	github.com/spf13/viper v1.7.1 // indirect
 	github.com/streadway/handy v0.0.0-20200128134331-0f66f006fb2e
 	github.com/stretchr/testify v1.7.0
 	github.com/whyrusleeping/cbor-gen v0.0.0-20210713220151-be142a5ae1a8

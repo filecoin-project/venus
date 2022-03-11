@@ -26,7 +26,7 @@ import (
 const (
 	HeartbeatProtocol = "fil/heartbeat/1.0.0"
 	// Minutes to wait before logging connection failure at ERROR level
-	connectionFailureErrorLogPeriodMinutes = 10 * time.Minute
+	connectionFailureErrorLogPeriod = 10 * time.Minute
 )
 
 var log = logging.Logger("metrics")
@@ -148,7 +148,7 @@ func (hbs *HeartbeatService) Start(ctx context.Context) {
 					failedAt = now
 					erroredAt = failedAt // Start the timer on raising to ERROR level
 					logfn = log.Warnf
-				} else if now.Sub(erroredAt) > connectionFailureErrorLogPeriodMinutes {
+				} else if now.Sub(erroredAt) > connectionFailureErrorLogPeriod {
 					logfn = log.Errorf
 					erroredAt = now // Reset the timer
 				}
