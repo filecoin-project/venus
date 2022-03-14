@@ -34,8 +34,7 @@ jobs:
       - name: Lint
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.29
-          skip-go-installation: true
+          version: v3.1.0
           args: --timeout 10m
 
       - name: Unit Test
