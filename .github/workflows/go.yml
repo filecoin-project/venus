@@ -36,18 +36,21 @@ jobs:
         with:
           version: v1.29
 
-      - name: Test
-        run: go test -v ./...
+      - name: Unit Test
+        run: go test -integration=false -unit=true -v ./...
 
-      - name: compatible all
+      - name: Integration Test
+        run: go test -integration=true -unit=false -v ./...
+
+      - name: Compatible all
         run: |
           make compatible-all
 
-      - name: gen all
+      - name: Gen all
         run: |
           make gen-all
 
-      - name: detect changes
+      - name: Detect changes
         run: |
           git status --porcelain
           test -z "$(git status --porcelain)"
@@ -60,7 +63,7 @@ jobs:
           make
 
       - name: Run coverage
-        run:  go test -coverpkg=./... -race -coverprofile=coverage.txt -covermode=atomic ./...
+        run:  go test -coverpkg=./... -race -coverprofile=coverage.txt -covermode=atomic ./... -integration=true -unit=true
 
       - name: Upload
         uses: codecov/codecov-action@v2
