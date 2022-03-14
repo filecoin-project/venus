@@ -36,7 +36,6 @@ jobs:
         with:
           version: v1.29
           skip-go-installation: true
-          skip-pkg-cache: true
 
       - name: Unit Test
         run: go test -integration=false -unit=true -v ./...
