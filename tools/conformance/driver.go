@@ -77,7 +77,7 @@ type ExecuteTipsetResult struct {
 
 	// AppliedMessages stores the messages that were applied, in the order they
 	// were applied. It includes implicit messages (cron, rewards).
-	AppliedMessages []*vm.VmMessage
+	AppliedMessages []*types.Message
 	// AppliedResults stores the results of AppliedMessages, in the same order.
 	AppliedResults []*vm.Ret
 }
@@ -180,15 +180,15 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 	}
 
 	var (
-		messages []*vm.VmMessage
+		messages []*types.Message
 		results  []*vm.Ret
 	)
 
 	circulatingSupplyCalculator := chain.NewCirculatingSupplyCalculator(bs, preroot, mainNetParams.Network.ForkUpgradeParam)
 	processor := consensus.NewDefaultProcessor(syscalls, circulatingSupplyCalculator)
 
-	postcid, receipt, err := processor.ApplyBlocks(ctx, blocks, nil, preroot, parentEpoch, execEpoch, vmOption, func(_ cid.Cid, msg vm.VmMessage, ret *vm.Ret) error {
-		messages = append(messages, &msg)
+	postcid, receipt, err := processor.ApplyBlocks(ctx, blocks, nil, preroot, parentEpoch, execEpoch, vmOption, func(_ cid.Cid, msg *types.Message, ret *vm.Ret) error {
+		messages = append(messages, msg)
 		results = append(results, ret)
 		return nil
 	})

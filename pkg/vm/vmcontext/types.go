@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 )
 
-type ExecCallBack func(cid.Cid, VmMessage, *Ret) error
+type ExecCallBack func(cid.Cid, *types.Message, *Ret) error
 type CircSupplyCalculator func(context.Context, abi.ChainEpoch, tree.Tree) (abi.TokenAmount, error)
 type LookbackStateGetter func(context.Context, abi.ChainEpoch) (*state.View, error)
 

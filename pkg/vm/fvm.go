@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/state/tree"
@@ -176,7 +177,7 @@ func (x *FvmExtern) VerifyBlockSig(ctx context.Context, blk *types.BlockHeader) 
 	return gasUsed, crypto.Verify(blk.BlockSig, waddr, sd)
 }
 
-func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerId address.Address, height abi.ChainEpoch) (address.Address, int64, error) {
+func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerID address.Address, height abi.ChainEpoch) (address.Address, int64, error) {
 	gasTank := gas.NewGasTracker(constants.BlockGasLimit * 10000)
 	cstWithoutGas := cbor.NewCborStore(x.Blockstore)
 	cbb := vmcontext.NewGasChargeBlockStore(gasTank, x.gasPriceSchedule.PricelistByEpoch(x.epoch), x.Blockstore)
@@ -187,7 +188,7 @@ func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerId address.Add
 		return address.Undef, 0, err
 	}
 	// get appropriate miner actor
-	act, err := lbState.LoadActor(ctx, minerId)
+	act, err := lbState.LoadActor(ctx, minerID)
 	if err != nil {
 		return address.Undef, 0, err
 	}
@@ -241,10 +242,25 @@ type FVM struct {
 }
 
 func NewFVM(ctx context.Context, opts *VmOption) (*FVM, error) {
+	circToReport := opts.FilVested
+	// For v14 (and earlier), we perform the FilVested portion of the calculation, and let the FVM dynamically do the rest
+	// v15 and after, the circ supply is always constant per epoch, so we calculate the base and report it at creation
+	if opts.NetworkVersion >= network.Version15 {
+		state, err := tree.LoadState(ctx, cbor.NewCborStore(opts.Bsstore), opts.PRoot)
+		if err != nil {
+			return nil, err
+		}
+
+		circToReport, err = opts.CircSupplyCalculator(ctx, opts.Epoch, state)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	fvm, err := ffi.CreateFVM(0,
 		&FvmExtern{Rand: newWrapperRand(opts.Rnd), Blockstore: opts.Bsstore, epoch: opts.Epoch,
 			lbState: opts.LookbackStateGetter, base: opts.PRoot, gasPriceSchedule: opts.GasPriceSchedule},
-		opts.Epoch, opts.BaseFee, opts.FilVested, opts.NetworkVersion, opts.PRoot,
+		opts.Epoch, opts.BaseFee, circToReport, opts.NetworkVersion, opts.PRoot,
 	)
 	if err != nil {
 		return nil, err

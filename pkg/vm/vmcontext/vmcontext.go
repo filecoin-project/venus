@@ -73,16 +73,6 @@ type ActorImplLookup interface {
 	GetActorImpl(code cid.Cid, rt runtime.Runtime) (dispatch.Dispatcher, *dispatch.ExcuteError)
 }
 
-func VmMessageFromUnsignedMessage(msg *types.Message) VmMessage { //nolint
-	return VmMessage{
-		From:   msg.From,
-		To:     msg.To,
-		Value:  msg.Value,
-		Method: msg.Method,
-		Params: msg.Params,
-	}
-}
-
 // implement VMInterpreter for VM
 var _ VMInterpreter = (*VM)(nil)
 

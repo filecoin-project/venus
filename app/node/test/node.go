@@ -43,7 +43,7 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 	require.NoError(t, err)
 	return &ChainSeed{
 		info:   info,
-		bstore: blockstoreutil.Adapt(bstore),
+		bstore: bstore,
 	}
 }
 

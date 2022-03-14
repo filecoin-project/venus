@@ -258,7 +258,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, bs blockstoreutil.Blockstore) 
 func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (*RenderedGenInfo, error) {
 	ctx := context.Background()
 
-	bstore := blockstoreutil.Adapt(blockstore.NewBlockstore(ds.NewMapDatastore()))
+	bstore := blockstoreutil.WrapIDStore(blockstore.NewBlockstore(ds.NewMapDatastore()))
 	dserv := dag.NewDAGService(bserv.New(bstore, offline.Exchange(bstore)))
 	info, err := GenGen(ctx, cfg, bstore)
 	if err != nil {

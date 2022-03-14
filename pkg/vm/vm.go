@@ -38,7 +38,7 @@ func NewVenusVM(ctx context.Context, option VmOption) (Interpreter, error) {
 }
 
 func NewVM(ctx context.Context, option VmOption) (VMI, error) {
-	if os.Getenv("VENUS_USE_FVM_DOESNT_WORK_YET") == "1" {
+	if os.Getenv("VENUS_USE_FVM_EXPERIMENTAL") == "1" {
 		fvmLog.Info("use fvm")
 		return NewFVM(ctx, &option)
 	}

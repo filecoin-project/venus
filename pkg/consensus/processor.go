@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -15,7 +16,6 @@ import (
 	"github.com/filecoin-project/specs-actors/v7/actors/builtin"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/vm"
-	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/cron"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
@@ -76,15 +76,9 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 	var err error
 
 	makeVmWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (vm.VMI, error) {
-		filVested, err := p.circulatingSupplyCalculator.GetFilVested(ctx, e)
-		if err != nil {
-			return nil, err
-		}
-
 		vmOpt := vm.VmOption{
 			CircSupplyCalculator: vmOpts.CircSupplyCalculator,
 			LookbackStateGetter:  vmOpts.LookbackStateGetter,
-			FilVested:            filVested,
 			NetworkVersion:       vmOpts.Fork.GetNetworkVersion(ctx, e),
 			Rnd:                  vmOpts.Rnd,
 			BaseFee:              vmOpts.BaseFee,
@@ -96,7 +90,13 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			Bsstore:              vmOpts.Bsstore,
 			SysCallsImpl:         vmOpts.SysCallsImpl,
 		}
-		processLog.Infof("ts.height: %d, base: %s, currheight: %d, filVested: %v", ts.Height(), base, e, filVested)
+		if os.Getenv("VENUS_USE_FVM_EXPERIMENTAL") == "1" {
+			filVested, err := p.circulatingSupplyCalculator.GetFilVested(ctx, e)
+			if err != nil {
+				return nil, err
+			}
+			vmOpts.FilVested = filVested
+		}
 
 		return vm.NewVM(ctx, vmOpt)
 	}
@@ -119,13 +119,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 				return cid.Undef, nil, xerrors.Errorf("can not Flush vm State To db %vs", err)
 			}
 			if cb != nil {
-				if err := cb(cid.Undef, vm.VmMessage{
-					From:   builtin.SystemActorAddr,
-					To:     cron.Address,
-					Value:  big.Zero(),
-					Method: cron.Methods.EpochTick,
-					Params: []byte{},
-				}, ret); err != nil {
+				if err := cb(cid.Undef, cronMessage, ret); err != nil {
 					return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
 				}
 			}
@@ -179,7 +173,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			minerGasRewardTotal = big.Add(minerGasRewardTotal, ret.OutPuts.MinerTip)
 			receipts = append(receipts, ret.Receipt)
 			if cb != nil {
-				if err := cb(mcid, vmcontext.VmMessageFromUnsignedMessage(m.VMMessage()), ret); err != nil {
+				if err := cb(mcid, m.VMMessage(), ret); err != nil {
 					return cid.Undef, nil, err
 				}
 			}
@@ -194,13 +188,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			return cid.Undef, nil, err
 		}
 		if cb != nil {
-			if err := cb(cid.Undef, vmcontext.VmMessage{
-				From:   rewardMessage.From,
-				To:     rewardMessage.To,
-				Value:  rewardMessage.Value,
-				Method: rewardMessage.Method,
-				Params: rewardMessage.Params,
-			}, ret); err != nil {
+			if err := cb(cid.Undef, rewardMessage, ret); err != nil {
 				return cid.Undef, nil, xerrors.Errorf("callback failed on reward message: %w", err)
 			}
 		}
@@ -221,13 +209,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		return cid.Undef, nil, err
 	}
 	if cb != nil {
-		if err := cb(cid.Undef, vmcontext.VmMessage{
-			From:   builtin.SystemActorAddr,
-			To:     cron.Address,
-			Value:  big.Zero(),
-			Method: cron.Methods.EpochTick,
-			Params: []byte{},
-		}, ret); err != nil {
+		if err := cb(cid.Undef, cronMessage, ret); err != nil {
 			return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
 		}
 	}
