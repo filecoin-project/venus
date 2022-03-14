@@ -36,7 +36,7 @@ jobs:
         with:
           version: v1.29
           skip-go-installation: true
-          arg: --timeout 10m
+          args: --timeout 10m
 
       - name: Unit Test
         run: go test -integration=false -unit=true -v ./...
