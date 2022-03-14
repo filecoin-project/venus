@@ -15,7 +15,6 @@ linters:
     - unused
     - stylecheck
     - gosimple
-    - typecheck
 
 issues:
   exclude:

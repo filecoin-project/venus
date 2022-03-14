@@ -35,7 +35,8 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           version: v1.44.2
-          args: --enable revive --timeout 10m
+          args: -c .golangci.yaml --timeout 10m
+          skip-cache: true
 
       - name: Unit Test
         run: go test -integration=false -unit=true -v ./...
