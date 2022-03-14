@@ -1,34 +1,69 @@
-name: basic checks
+name: Go
 
-on: ["push", "pull_request"]
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    branches:
+      - '**'
 
 jobs:
+
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
-      - name: dependencies
-        run: sudo apt update & sudo apt upgrade & sudo apt install --reinstall mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y
-
       - uses: actions/checkout@v2
-        with:
-          submodules: 'true'
 
-      - name: setup go
+      - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: '1.16'
+          go-version: 1.17
 
-      - name: deps
-        run: make deps
+      - name: install deps
+        run: sudo apt-get install make ftp git bzr curl wget -y && sudo apt upgrade -y
 
-      - name: build
-        run: make all
+      - name: dep
+        env:
+          GOPROXY: "https://proxy.golang.org,direct"
+          GO111MODULE: "on"
+        run: |
+          make deps
 
-      - name: tests-shared
-        run: make test-venus-shared
+      - name: Lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: v1.29
+
+      - name: Unit Test
+        run: go test -integration=false -unit=true -v ./...
+
+      - name: Integration Test
+        run: go test -integration=true -unit=false -v ./...
+
+      - name: Compatible all
+        run: |
+          make compatible-all
+
+      - name: Gen all
+        run: |
+          make gen-all
+
+      - name: Detect changes
+        run: |
+          git status --porcelain
+          test -z "$(git status --porcelain)"
+
+      - name: Build
+        env:
+          GOPROXY: "https://proxy.golang.org,direct"
+          GO111MODULE: "on"
+        run: |
+          make
 
       - name: Run coverage
-        run:  go test -coverpkg=./... -race -coverprofile=coverage.txt -covermode=atomic ./...
+        run:  go test -coverpkg=./... -race -coverprofile=coverage.txt -covermode=atomic ./... -integration=true -unit=true
 
       - name: Upload
         uses: codecov/codecov-action@v2
@@ -36,19 +71,6 @@ jobs:
           token:
           files: ./coverage.txt
           flags: unittests
-          name:  venus-gateway
+          name: venus-market
           fail_ci_if_error: true
           verbose: true
-
-      - name: compatible all
-        run: |
-          make compatible-all
-
-      - name: gen all
-        run: |
-          make gen-all
-
-      - name: detect changes
-        run: |
-          git status --porcelain
-          test -z "$(git status --porcelain)"
