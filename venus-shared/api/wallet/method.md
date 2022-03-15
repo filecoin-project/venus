@@ -266,7 +266,7 @@ Perms: admin
 Inputs:
 ```json
 [
-  "t01234"
+  "f01234"
 ]
 ```
 
@@ -528,7 +528,7 @@ Inputs:
 ```json
 [
   "string value",
-  "t01234",
+  "f01234",
   [
     123
   ],
@@ -550,7 +550,7 @@ Inputs:
 ```json
 [
   "string value",
-  "t01234",
+  "f01234",
   "string value",
   "string value"
 ]
@@ -648,7 +648,7 @@ Perms: admin
 Inputs:
 ```json
 [
-  "t01234"
+  "f01234"
 ]
 ```
 
@@ -768,7 +768,7 @@ Perms: admin
 Inputs:
 ```json
 [
-  "t01234"
+  "f01234"
 ]
 ```
 
@@ -787,7 +787,7 @@ Response:
 {
   "Root": true,
   "Addresses": [
-    "t01234"
+    "f01234"
   ]
 }
 ```
@@ -801,15 +801,15 @@ Perms: admin
 Inputs:
 ```json
 [
-  "t01234",
+  "f01234",
   "message",
   {
     "CID": {
       "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
     },
     "Version": 42,
-    "To": "t01234",
-    "From": "t01234",
+    "To": "f01234",
+    "From": "f01234",
     "Nonce": 42,
     "Value": "0",
     "GasLimit": 9,
@@ -833,7 +833,7 @@ Perms: admin
 Inputs:
 ```json
 [
-  "t01234"
+  "f01234"
 ]
 ```
 
@@ -847,7 +847,7 @@ Perms: admin
 Inputs:
 ```json
 [
-  "t01234"
+  "f01234"
 ]
 ```
 
@@ -867,7 +867,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "t01234"
+  "f01234"
 ]
 ```
 
@@ -888,7 +888,7 @@ Inputs:
 ]
 ```
 
-Response: `"t01234"`
+Response: `"f01234"`
 
 ### WalletList
 
@@ -900,7 +900,7 @@ Inputs: `[]`
 Response:
 ```json
 [
-  "t01234"
+  "f01234"
 ]
 ```
 
@@ -916,7 +916,7 @@ Inputs:
 ]
 ```
 
-Response: `"t01234"`
+Response: `"f01234"`
 
 ### WalletSign
 
@@ -926,7 +926,7 @@ Perms: sign
 Inputs:
 ```json
 [
-  "t01234",
+  "f01234",
   "Ynl0ZSBhcnJheQ==",
   {
     "Type": "message",
@@ -954,7 +954,7 @@ Inputs:
 ```json
 [
   [
-    "t01234"
+    "f01234"
   ]
 ]
 ```
