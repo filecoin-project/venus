@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus/cmd"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/filecoin-project/venus/cmd"
 
 	"github.com/stretchr/testify/require"
 

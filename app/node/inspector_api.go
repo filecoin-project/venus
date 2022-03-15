@@ -1,12 +1,13 @@
 package node
 
 import (
+	"os"
+	"runtime"
+
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/repo"
 	sysi "github.com/whyrusleeping/go-sysinfo"
-	"os"
-	"runtime"
 )
 
 type IInspector interface {

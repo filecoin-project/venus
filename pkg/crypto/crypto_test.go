@@ -2,8 +2,9 @@ package crypto_test
 
 import (
 	"bytes"
-	"github.com/filecoin-project/go-address"
 	"testing"
+
+	"github.com/filecoin-project/go-address"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

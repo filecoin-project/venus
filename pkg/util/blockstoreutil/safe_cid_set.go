@@ -1,8 +1,9 @@
 package blockstoreutil
 
 import (
-	"github.com/ipfs/go-cid"
 	"sync"
+
+	"github.com/ipfs/go-cid"
 )
 
 // Set is a implementation of a set of Cids, that is, a structure

@@ -2,8 +2,9 @@ package types
 
 import (
 	"encoding/json"
-	"github.com/google/uuid"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestUUID_Scan(t *testing.T) {

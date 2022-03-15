@@ -3,10 +3,11 @@ package vmcontext_test
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/config"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"io"
 	"testing"
+
+	"github.com/filecoin-project/venus/pkg/config"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
 	cbor2 "github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"

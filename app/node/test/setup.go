@@ -3,10 +3,11 @@ package test
 import (
 	"context"
 	"encoding/json"
-	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	"os"
 	"testing"
 	"time"
+
+	th "github.com/filecoin-project/venus/pkg/testhelpers"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/stretchr/testify/require"

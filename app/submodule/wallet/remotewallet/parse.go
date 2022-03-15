@@ -1,9 +1,10 @@
 package remotewallet
 
 import (
-	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 	"net/http"
 	"regexp"
+
+	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 )
 
 var (

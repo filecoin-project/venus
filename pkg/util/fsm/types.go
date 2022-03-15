@@ -2,10 +2,10 @@ package fsm
 
 import (
 	"bytes"
-	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/ipfs/go-cid"
 )
 
 // Piece is a tuple of piece and deal info

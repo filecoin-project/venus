@@ -1,15 +1,16 @@
 package cmd_test
 
 import (
-	"github.com/filecoin-project/venus/pkg/testhelpers"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"os"
 	"os/exec"
 	"path"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/testhelpers"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNoDaemonNoHang(t *testing.T) {

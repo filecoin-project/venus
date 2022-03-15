@@ -2,8 +2,9 @@ package paychmgr
 
 import (
 	"context"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"testing"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 
 	"github.com/ipfs/go-cid"
 

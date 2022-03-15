@@ -2,8 +2,9 @@ package secp
 
 import (
 	"fmt"
-	crypto3 "github.com/filecoin-project/venus/pkg/crypto"
 	"io"
+
+	crypto3 "github.com/filecoin-project/venus/pkg/crypto"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-crypto"
