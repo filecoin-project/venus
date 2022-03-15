@@ -81,7 +81,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "f01234"
+  "t01234"
 ]
 ```
 
@@ -98,7 +98,7 @@ Response:
 ```json
 [
   {
-    "Addr": "f01234",
+    "Addr": "t01234",
     "Account": "string value"
   }
 ]
@@ -112,7 +112,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "f01234"
+  "t01234"
 ]
 ```
 
@@ -126,7 +126,7 @@ Perms: write
 Inputs:
 ```json
 [
-  "f01234",
+  "t01234",
   34359738368,
   {
     "MaxPiece": 123,
@@ -149,8 +149,8 @@ Response:
     },
     "PieceSize": 1032,
     "VerifiedDeal": true,
-    "Client": "f01234",
-    "Provider": "f01234",
+    "Client": "t01234",
+    "Provider": "t01234",
     "Label": "string value",
     "StartEpoch": 10101,
     "EndEpoch": 10101,
@@ -485,7 +485,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "f01234",
+  "t01234",
   123,
   123
 ]
@@ -505,8 +505,8 @@ Response:
       },
       "PieceSize": 1032,
       "VerifiedDeal": true,
-      "Client": "f01234",
-      "Provider": "f01234",
+      "Client": "t01234",
+      "Provider": "t01234",
       "Label": "string value",
       "StartEpoch": 10101,
       "EndEpoch": 10101,
@@ -554,7 +554,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "f01234",
+  "t01234",
   {
     "MaxPiece": 123,
     "MaxPieceSize": 42
@@ -576,8 +576,8 @@ Response:
     },
     "PieceSize": 1032,
     "VerifiedDeal": true,
-    "Client": "f01234",
-    "Provider": "f01234",
+    "Client": "t01234",
+    "Provider": "t01234",
     "Label": "string value",
     "StartEpoch": 10101,
     "EndEpoch": 10101,
@@ -638,7 +638,7 @@ Inputs:
 ```json
 [
   {
-    "Miner": "f01234"
+    "Miner": "t01234"
   }
 ]
 ```
@@ -660,7 +660,7 @@ Perms: write
 Inputs:
 ```json
 [
-  "f01234",
+  "t01234",
   [
     5432
   ]
@@ -677,8 +677,8 @@ Perms: sign
 Inputs:
 ```json
 [
-  "f01234",
-  "f01234",
+  "t01234",
+  "t01234",
   "0"
 ]
 ```
@@ -755,7 +755,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "f01234"
+  "t01234"
 ]
 ```
 
@@ -767,7 +767,7 @@ Response:
     "VerifiedPrice": "0",
     "MinPieceSize": 1032,
     "MaxPieceSize": 1032,
-    "Miner": "f01234",
+    "Miner": "t01234",
     "Timestamp": 10101,
     "Expiry": 10101,
     "SeqNo": 42
@@ -795,8 +795,8 @@ Response:
     },
     "PieceSize": 1032,
     "VerifiedDeal": true,
-    "Client": "f01234",
-    "Provider": "f01234",
+    "Client": "t01234",
+    "Provider": "t01234",
     "Label": "string value",
     "StartEpoch": 10101,
     "EndEpoch": 10101,
@@ -855,7 +855,7 @@ Perms: sign
 Inputs:
 ```json
 [
-  "f01234"
+  "t01234"
 ]
 ```
 
@@ -869,7 +869,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "f01234"
+  "t01234"
 ]
 ```
 
@@ -916,7 +916,7 @@ Response:
       "VerifiedPrice": "0",
       "MinPieceSize": 1032,
       "MaxPieceSize": 1032,
-      "Miner": "f01234",
+      "Miner": "t01234",
       "Timestamp": 10101,
       "Expiry": 10101,
       "SeqNo": 42
@@ -980,7 +980,7 @@ Inputs:
 ```json
 [
   [
-    "f01234"
+    "t01234"
   ]
 ]
 ```
@@ -995,8 +995,8 @@ Response:
       },
       "PieceSize": 1032,
       "VerifiedDeal": true,
-      "Client": "f01234",
-      "Provider": "f01234",
+      "Client": "t01234",
+      "Provider": "t01234",
       "Label": "string value",
       "StartEpoch": 10101,
       "EndEpoch": 10101,
@@ -1021,7 +1021,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "f01234"
+  "t01234"
 ]
 ```
 
@@ -1035,8 +1035,8 @@ Response:
       },
       "PieceSize": 1032,
       "VerifiedDeal": true,
-      "Client": "f01234",
-      "Provider": "f01234",
+      "Client": "t01234",
+      "Provider": "t01234",
       "Label": "string value",
       "StartEpoch": 10101,
       "EndEpoch": 10101,
@@ -1099,7 +1099,7 @@ Response:
 ```json
 [
   {
-    "Miner": "f01234",
+    "Miner": "t01234",
     "PricePerByte": "0",
     "UnsealPrice": "0",
     "PaymentInterval": 42,
@@ -1116,7 +1116,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "f01234"
+  "t01234"
 ]
 ```
 
@@ -1175,8 +1175,8 @@ Response:
           },
           "PieceSize": 1032,
           "VerifiedDeal": true,
-          "Client": "f01234",
-          "Provider": "f01234",
+          "Client": "t01234",
+          "Provider": "t01234",
           "Label": "string value",
           "StartEpoch": 10101,
           "EndEpoch": 10101,
@@ -1213,7 +1213,7 @@ Perms: sign
 Inputs:
 ```json
 [
-  "f01234",
+  "t01234",
   "0"
 ]
 ```
@@ -1228,8 +1228,8 @@ Perms: sign
 Inputs:
 ```json
 [
-  "f01234",
-  "f01234",
+  "t01234",
+  "t01234",
   "0"
 ]
 ```
@@ -1266,7 +1266,7 @@ Perms: admin
 Inputs:
 ```json
 [
-  "f01234",
+  "t01234",
   "0",
   "0",
   10101,
@@ -1285,7 +1285,7 @@ Perms: admin
 Inputs:
 ```json
 [
-  "f01234",
+  "t01234",
   {
     "PricePerByte": "0",
     "UnsealPrice": "0",
@@ -1305,8 +1305,8 @@ Perms: sign
 Inputs:
 ```json
 [
-  "f01234",
-  "f01234",
+  "t01234",
+  "t01234",
   "0"
 ]
 ```
@@ -1339,8 +1339,8 @@ Response:
     "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
   },
   "Version": 42,
-  "To": "f01234",
-  "From": "f01234",
+  "To": "t01234",
+  "From": "t01234",
   "Nonce": 42,
   "Value": "0",
   "GasLimit": 9,
@@ -1364,8 +1364,8 @@ Inputs:
       "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
     },
     "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
+    "To": "t01234",
+    "From": "t01234",
     "Nonce": 42,
     "Value": "0",
     "GasLimit": 9,
@@ -1453,7 +1453,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "f01234"
+  "t01234"
 ]
 ```
 
@@ -1461,12 +1461,12 @@ Response:
 ```json
 [
   {
-    "ChannelAddr": "f01234",
+    "ChannelAddr": "t01234",
     "TimeLockMin": 10101,
     "TimeLockMax": 10101,
     "SecretPreimage": "Ynl0ZSBhcnJheQ==",
     "Extra": {
-      "Actor": "f01234",
+      "Actor": "t01234",
       "Method": 1,
       "Data": "Ynl0ZSBhcnJheQ=="
     },
@@ -1636,7 +1636,7 @@ Perms: write
 Inputs:
 ```json
 [
-  "f01234",
+  "t01234",
   5432,
   9,
   1032
@@ -1653,7 +1653,7 @@ Perms: write
 Inputs:
 ```json
 [
-  "f01234",
+  "t01234",
   5432,
   "string value"
 ]

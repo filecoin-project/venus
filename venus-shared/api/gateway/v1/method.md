@@ -36,7 +36,7 @@ Perms: admin
 Inputs:
 ```json
 [
-  "f01234",
+  "t01234",
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
@@ -65,12 +65,12 @@ Response:
 ```json
 [
   {
-    "Addr": "f01234",
+    "Addr": "t01234",
     "Conn": {
       "Connections": [
         {
           "Addrs": [
-            "f01234"
+            "t01234"
           ],
           "ChannelId": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
           "Ip": "string value",
@@ -92,7 +92,7 @@ Perms: admin
 Inputs:
 ```json
 [
-  "f01234",
+  "t01234",
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
@@ -122,7 +122,7 @@ Inputs:
 ```json
 [
   {
-    "Miner": "f01234"
+    "Miner": "t01234"
   }
 ]
 ```
@@ -164,7 +164,7 @@ Perms: admin
 Inputs:
 ```json
 [
-  "f01234",
+  "t01234",
   [
     {
       "SealProof": 8,
@@ -201,7 +201,7 @@ Inputs: `[]`
 Response:
 ```json
 [
-  "f01234"
+  "t01234"
 ]
 ```
 
@@ -213,7 +213,7 @@ Perms: admin
 Inputs:
 ```json
 [
-  "f01234"
+  "t01234"
 ]
 ```
 
@@ -223,7 +223,7 @@ Response:
   "Connections": [
     {
       "Addrs": [
-        "f01234"
+        "t01234"
       ],
       "ChannelId": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
       "Ip": "string value",
@@ -246,7 +246,7 @@ Inputs:
 ```json
 [
   {
-    "MinerAddress": "f01234"
+    "MinerAddress": "t01234"
   }
 ]
 ```
@@ -298,7 +298,7 @@ Response:
     "ConnectStates": [
       {
         "Addrs": [
-          "f01234"
+          "t01234"
         ],
         "ChannelId": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
         "Ip": "string value",
@@ -332,7 +332,7 @@ Response:
   "ConnectStates": [
     {
       "Addrs": [
-        "f01234"
+        "t01234"
       ],
       "ChannelId": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
       "Ip": "string value",
@@ -352,7 +352,7 @@ Inputs:
 ```json
 [
   "string value",
-  "f01234"
+  "t01234"
 ]
 ```
 
@@ -367,7 +367,7 @@ Inputs:
 ```json
 [
   "string value",
-  "f01234",
+  "t01234",
   "Ynl0ZSBhcnJheQ==",
   {
     "Type": "message",
@@ -396,7 +396,7 @@ Inputs:
 [
   "e26f1e5c-47f7-4561-a11d-18fab6e748af",
   [
-    "f01234"
+    "t01234"
   ]
 ]
 ```
@@ -439,7 +439,7 @@ Inputs:
 [
   "e26f1e5c-47f7-4561-a11d-18fab6e748af",
   [
-    "f01234"
+    "t01234"
   ]
 ]
 ```

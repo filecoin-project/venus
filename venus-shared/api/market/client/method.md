@@ -247,9 +247,9 @@ Response:
     "PricePerByte": "0",
     "PaymentInterval": 42,
     "PaymentIntervalIncrease": 42,
-    "Miner": "f01234",
+    "Miner": "t01234",
     "MinerPeer": {
-      "Address": "f01234",
+      "Address": "t01234",
       "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
       "PieceCID": null
     }
@@ -316,7 +316,7 @@ Response:
       }
     ]
   },
-  "Provider": "f01234",
+  "Provider": "t01234",
   "DataRef": {
     "TransferType": "string value",
     "Root": {
@@ -420,7 +420,7 @@ Response:
       }
     ]
   },
-  "Provider": "f01234",
+  "Provider": "t01234",
   "DataRef": {
     "TransferType": "string value",
     "Root": {
@@ -658,7 +658,7 @@ Response:
         }
       ]
     },
-    "Provider": "f01234",
+    "Provider": "t01234",
     "DataRef": {
       "TransferType": "string value",
       "Root": {
@@ -810,7 +810,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "f01234",
+  "t01234",
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
@@ -832,9 +832,9 @@ Response:
   "PricePerByte": "0",
   "PaymentInterval": 42,
   "PaymentIntervalIncrease": 42,
-  "Miner": "f01234",
+  "Miner": "t01234",
   "MinerPeer": {
-    "Address": "f01234",
+    "Address": "t01234",
     "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
     "PieceCID": null
   }
@@ -851,7 +851,7 @@ Inputs:
 ```json
 [
   "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "f01234"
+  "t01234"
 ]
 ```
 
@@ -862,7 +862,7 @@ Response:
   "VerifiedPrice": "0",
   "MinPieceSize": 1032,
   "MaxPieceSize": 1032,
-  "Miner": "f01234",
+  "Miner": "t01234",
   "Timestamp": 10101,
   "Expiry": 10101,
   "SeqNo": 42
@@ -921,10 +921,10 @@ Inputs:
     "UnsealPrice": "0",
     "PaymentInterval": 42,
     "PaymentIntervalIncrease": 42,
-    "Client": "f01234",
-    "Miner": "f01234",
+    "Client": "t01234",
+    "Miner": "t01234",
     "MinerPeer": {
-      "Address": "f01234",
+      "Address": "t01234",
       "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
       "PieceCID": null
     }
@@ -949,7 +949,7 @@ Perms: write
 Inputs:
 ```json
 [
-  "f01234"
+  "t01234"
 ]
 ```
 
@@ -989,8 +989,8 @@ Inputs:
       "PieceSize": 1024,
       "RawBlockSize": 42
     },
-    "Wallet": "f01234",
-    "Miner": "f01234",
+    "Wallet": "t01234",
+    "Miner": "t01234",
     "EpochPrice": "0",
     "MinBlocksDuration": 42,
     "ProviderCollateral": "0",
@@ -1022,8 +1022,8 @@ Inputs:
       "PieceSize": 1024,
       "RawBlockSize": 42
     },
-    "Wallet": "f01234",
-    "Miner": "f01234",
+    "Wallet": "t01234",
+    "Miner": "t01234",
     "EpochPrice": "0",
     "MinBlocksDuration": 42,
     "ProviderCollateral": "0",
@@ -1043,7 +1043,7 @@ Perms: read
 
 Inputs: `[]`
 
-Response: `"f01234"`
+Response: `"t01234"`
 
 ### MarketAddBalance
 
@@ -1053,8 +1053,8 @@ Perms: write
 Inputs:
 ```json
 [
-  "f01234",
-  "f01234",
+  "t01234",
+  "t01234",
   "0"
 ]
 ```
@@ -1074,7 +1074,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "f01234"
+  "t01234"
 ]
 ```
 
@@ -1088,7 +1088,7 @@ Perms: write
 Inputs:
 ```json
 [
-  "f01234",
+  "t01234",
   "0"
 ]
 ```
@@ -1103,8 +1103,8 @@ Perms: write
 Inputs:
 ```json
 [
-  "f01234",
-  "f01234",
+  "t01234",
+  "t01234",
   "0"
 ]
 ```
@@ -1124,8 +1124,8 @@ Perms: write
 Inputs:
 ```json
 [
-  "f01234",
-  "f01234",
+  "t01234",
+  "t01234",
   "0"
 ]
 ```
@@ -1158,8 +1158,8 @@ Response:
     "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
   },
   "Version": 42,
-  "To": "f01234",
-  "From": "f01234",
+  "To": "t01234",
+  "From": "t01234",
   "Nonce": 42,
   "Value": "0",
   "GasLimit": 9,
@@ -1183,8 +1183,8 @@ Inputs:
       "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
     },
     "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
+    "To": "t01234",
+    "From": "t01234",
     "Nonce": 42,
     "Value": "0",
     "GasLimit": 9,
