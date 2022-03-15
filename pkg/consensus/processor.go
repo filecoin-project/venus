@@ -75,7 +75,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 	var receipts []types.MessageReceipt
 	var err error
 
-	makeVmWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (vm.VMI, error) {
+	makeVMWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (vm.VMI, error) {
 		vmOpt := vm.VmOption{
 			CircSupplyCalculator: vmOpts.CircSupplyCalculator,
 			LookbackStateGetter:  vmOpts.LookbackStateGetter,
@@ -103,7 +103,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 
 	for i := parentEpoch; i < epoch; i++ {
 		if i > parentEpoch {
-			vmCron, err := makeVmWithBaseStateAndEpoch(pstate, i)
+			vmCron, err := makeVMWithBaseStateAndEpoch(pstate, i)
 			if err != nil {
 				return cid.Undef, nil, xerrors.Errorf("making cron vm: %w", err)
 			}
@@ -133,7 +133,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		processLog.Debugf("after fork root: %s\n", pstate)
 	}
 
-	vm, err := makeVmWithBaseStateAndEpoch(pstate, epoch)
+	vm, err := makeVMWithBaseStateAndEpoch(pstate, epoch)
 	if err != nil {
 		return cid.Undef, nil, xerrors.Errorf("making cron vm: %w", err)
 	}

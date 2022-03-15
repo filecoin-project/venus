@@ -45,8 +45,7 @@ type VM struct {
 	currentEpoch abi.ChainEpoch
 	pricelist    gas.Pricelist
 
-	vmDebug  bool // open debug or not
-	debugger *VMDebugMsg
+	debugger *VMDebugMsg // nolint
 	vmOption VmOption
 
 	baseCircSupply abi.TokenAmount
@@ -119,7 +118,6 @@ func NewVM(ctx context.Context, actorImpls ActorImplLookup, vmOption VmOption) (
 // nolint
 func (vm *VM) setDebugger() {
 	vm.debugger = NewVMDebugMsg()
-	vm.vmDebug = true
 }
 
 // ApplyGenesisMessage forces the execution of a message in the vm actor.
