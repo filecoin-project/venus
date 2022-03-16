@@ -26,6 +26,7 @@ type IMarket interface {
 	ActorSectorSize(context.Context, address.Address) (abi.SectorSize, error) //perm:read
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                                               //perm:write
+	MarketImportPublishedDeal(ctx context.Context, id string, deal market.MinerDeal) error                                                                                                                      //perm:write
 	MarketListDeals(ctx context.Context, addrs []address.Address) ([]types.MarketDeal, error)                                                                                                                   //perm:read
 	MarketListRetrievalDeals(ctx context.Context, mAddr address.Address) ([]market.ProviderDealState, error)                                                                                                    //perm:read
 	MarketGetDealUpdates(ctx context.Context) (<-chan market.MinerDeal, error)                                                                                                                                  //perm:read
