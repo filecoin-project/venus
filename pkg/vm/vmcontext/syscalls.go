@@ -16,6 +16,7 @@ import (
 	/* inline-gen template
 	{{range .actorVersions}}
 	rt{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/runtime"{{end}}
+
 	/* inline-gen start */
 
 	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
