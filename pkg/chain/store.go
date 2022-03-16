@@ -540,7 +540,6 @@ func (store *Store) SetHead(ctx context.Context, newTS *types.TipSet) error {
 
 	//todo wrap by go function
 	Reverse(added)
-	//Reverse(dropped)
 
 	//do reorg
 	store.reorgCh <- reorg{

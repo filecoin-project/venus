@@ -2,6 +2,7 @@ package gengen
 
 import (
 	"fmt"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/v6/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"

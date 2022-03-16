@@ -3,9 +3,10 @@ package fr32_test
 import (
 	"bufio"
 	"bytes"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"io/ioutil"
 	"testing"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/stretchr/testify/require"

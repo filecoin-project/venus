@@ -1,8 +1,9 @@
 package paths
 
 import (
-	"github.com/mitchellh/go-homedir"
 	"os"
+
+	"github.com/mitchellh/go-homedir"
 )
 
 // node repo path defaults

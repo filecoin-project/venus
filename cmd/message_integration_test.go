@@ -2,9 +2,10 @@ package cmd_test
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"strconv"
 	"testing"
+
+	"github.com/filecoin-project/venus/pkg/constants"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/stretchr/testify/require"

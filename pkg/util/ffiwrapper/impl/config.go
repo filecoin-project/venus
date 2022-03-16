@@ -16,10 +16,6 @@ type Config struct {
 }
 
 //nolint
-func sizeFromConfig(cfg Config) (abi.SectorSize, error) {
-	return cfg.SealProofType.SectorSize()
-}
-
 func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version) (abi.RegisteredSealProof, error) {
 	switch {
 	case nv < network.Version7:

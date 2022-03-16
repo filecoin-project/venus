@@ -18,7 +18,7 @@ type User struct {
 	Account string
 }
 
-type MarketBalance struct { //nolint:golint
+type MarketBalance struct { //nolint
 	Escrow big.Int
 	Locked big.Int
 }

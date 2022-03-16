@@ -3,6 +3,7 @@ package blockstoreutil
 import (
 	"bytes"
 	"context"
+
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"

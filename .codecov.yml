@@ -26,7 +26,3 @@ codecov:
     # yes: will delay sending notifications until all ci is finished
     # no: will send notifications without checking ci status and wait till "after_n_builds" are uploaded
     require_ci_to_pass: false
-    # number of expected builds to receive before sending notifications
-    # we can set this to prevent notifications of partial results due to CI parallelism
-    # set this with respect to the sum of test parallelism in Circle CI configuration.
-    after_n_builds: 6

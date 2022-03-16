@@ -35,7 +35,7 @@ type chainReader interface {
 }
 
 // Checks the validity of reported consensus faults.
-type ConsensusFaultChecker struct {
+type ConsensusFaultChecker struct { //nolint
 	chain chainReader
 	fork  fork.IFork
 }

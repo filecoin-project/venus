@@ -2,12 +2,13 @@ package conformance
 
 import (
 	"encoding/json"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 
 	"github.com/filecoin-project/test-vectors/schema"
 )

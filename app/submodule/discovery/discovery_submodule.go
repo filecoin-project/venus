@@ -118,7 +118,7 @@ func (discovery *DiscoverySubmodule) Start(offline bool) error {
 		// Wait for bootstrap to be sufficient connected
 		discovery.BootstrapReady.Wait()
 	}
-
+	log.Info("discovery module start")
 	return nil
 }
 

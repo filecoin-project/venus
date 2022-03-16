@@ -2,8 +2,9 @@ package test
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"testing"
+
+	"github.com/filecoin-project/venus/pkg/jwtauth"
 
 	"github.com/filecoin-project/venus/pkg/wallet"
 

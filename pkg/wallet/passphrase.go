@@ -31,11 +31,11 @@ var ErrDecrypt = errors.New("could not decrypt key with given password")
 // EncryptKey encrypts a key using the specified scrypt parameters into a json
 // blob that can be decrypted later on.
 func encryptKey(key *Key, password []byte, scryptN, scryptP int) ([]byte, error) {
-	kBytes, err := json.Marshal(key)
+	keyBytes, err := json.Marshal(key)
 	if err != nil {
 		return nil, err
 	}
-	cryptoStruct, err := encryptData(kBytes, password, scryptN, scryptP)
+	cryptoStruct, err := encryptData(keyBytes, password, scryptN, scryptP)
 	if err != nil {
 		return nil, err
 	}

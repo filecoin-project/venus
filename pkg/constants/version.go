@@ -2,12 +2,12 @@ package constants
 
 import (
 	"os"
-
-	"github.com/filecoin-project/venus/build/flags"
 )
 
 // BuildVersion is the local build version, set by build system
 const BuildVersion = "1.2.2"
+
+var CurrentCommit string
 
 // software version
 func UserVersion() string {
@@ -15,5 +15,5 @@ func UserVersion() string {
 		return BuildVersion
 	}
 
-	return BuildVersion + flags.GitCommit
+	return BuildVersion + CurrentCommit
 }

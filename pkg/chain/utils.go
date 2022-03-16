@@ -17,6 +17,7 @@ import (
 	/* inline-gen template
 	{{range .actorVersions}}
 	exported{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin/exported"{{end}}
+
 	/* inline-gen start */
 
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
@@ -26,6 +27,7 @@ import (
 	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
 	exported6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/exported"
 	exported7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/exported"
+
 	/* inline-gen end */
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
