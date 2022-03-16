@@ -90,8 +90,8 @@ type IMarketStruct struct {
 		SectorGetSealDelay                     func(context.Context) (time.Duration, error)                                                                                                                                                        `perm:"read"`
 		SectorSetExpectedSealDuration          func(context.Context, time.Duration) error                                                                                                                                                          `perm:"write"`
 		UpdateDealOnPacking                    func(ctx context.Context, miner address.Address, dealID abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error                                                                    `perm:"write"`
-		UpdateDealStatus                       func(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus string) error                                                                                                       `perm:"write"`
-		UpdateStorageDealStatus                func(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus, pieceState string) error                                                                                  `perm:"write"`
+		UpdateDealStatus                       func(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus market.PieceStatus) error                                                                                           `perm:"write"`
+		UpdateStorageDealStatus                func(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus, pieceState market.PieceStatus) error                                                                      `perm:"write"`
 	}
 }
 
@@ -297,9 +297,9 @@ func (s *IMarketStruct) SectorSetExpectedSealDuration(p0 context.Context, p1 tim
 func (s *IMarketStruct) UpdateDealOnPacking(p0 context.Context, p1 address.Address, p2 abi.DealID, p3 abi.SectorNumber, p4 abi.PaddedPieceSize) error {
 	return s.Internal.UpdateDealOnPacking(p0, p1, p2, p3, p4)
 }
-func (s *IMarketStruct) UpdateDealStatus(p0 context.Context, p1 address.Address, p2 abi.DealID, p3 string) error {
+func (s *IMarketStruct) UpdateDealStatus(p0 context.Context, p1 address.Address, p2 abi.DealID, p3 market.PieceStatus) error {
 	return s.Internal.UpdateDealStatus(p0, p1, p2, p3)
 }
-func (s *IMarketStruct) UpdateStorageDealStatus(p0 context.Context, p1 cid.Cid, p2 storagemarket.StorageDealStatus, p3 string) error {
+func (s *IMarketStruct) UpdateStorageDealStatus(p0 context.Context, p1 cid.Cid, p2 storagemarket.StorageDealStatus, p3 market.PieceStatus) error {
 	return s.Internal.UpdateStorageDealStatus(p0, p1, p2, p3)
 }

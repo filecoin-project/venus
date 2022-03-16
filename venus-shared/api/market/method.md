@@ -1726,7 +1726,7 @@ Inputs:
 [
   "f01234",
   5432,
-  "string value"
+  "Undefine"
 ]
 ```
 
@@ -1744,7 +1744,7 @@ Inputs:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   42,
-  "string value"
+  "Undefine"
 ]
 ```
 
