@@ -62,7 +62,7 @@ type IMarketStruct struct {
 		MarketGetReserved                      func(ctx context.Context, addr address.Address) (types.BigInt, error)                                                                                                                               `perm:"sign"`
 		MarketGetRetrievalAsk                  func(ctx context.Context, mAddr address.Address) (*retrievalmarket.Ask, error)                                                                                                                      `perm:"read"`
 		MarketImportDealData                   func(ctx context.Context, propcid cid.Cid, path string) error                                                                                                                                       `perm:"write"`
-		MarketImportPublishedDeal              func(ctx context.Context, id string, deal market.MinerDeal) error                                                                                                                                   `perm:"write"`
+		MarketImportPublishedDeal              func(ctx context.Context, deal market.MinerDeal) error                                                                                                                                              `perm:"write"`
 		MarketListAsk                          func(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error)                                                                                                                                `perm:"read"`
 		MarketListDataTransfers                func(ctx context.Context) ([]market.DataTransferChannel, error)                                                                                                                                     `perm:"write"`
 		MarketListDeals                        func(ctx context.Context, addrs []address.Address) ([]types.MarketDeal, error)                                                                                                                      `perm:"read"`
@@ -213,8 +213,8 @@ func (s *IMarketStruct) MarketGetRetrievalAsk(p0 context.Context, p1 address.Add
 func (s *IMarketStruct) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 string) error {
 	return s.Internal.MarketImportDealData(p0, p1, p2)
 }
-func (s *IMarketStruct) MarketImportPublishedDeal(p0 context.Context, p1 string, p2 market.MinerDeal) error {
-	return s.Internal.MarketImportPublishedDeal(p0, p1, p2)
+func (s *IMarketStruct) MarketImportPublishedDeal(p0 context.Context, p1 market.MinerDeal) error {
+	return s.Internal.MarketImportPublishedDeal(p0, p1)
 }
 func (s *IMarketStruct) MarketListAsk(p0 context.Context) ([]*storagemarket.SignedStorageAsk, error) {
 	return s.Internal.MarketListAsk(p0)

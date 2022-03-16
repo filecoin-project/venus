@@ -818,7 +818,7 @@ Response:
   "Client": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "State": 42,
   "PiecePath": "/some/path",
-  "PayloadSize": 1024,
+  "PayloadSize": 42,
   "MetadataPath": "/some/path",
   "SlashEpoch": 10101,
   "FastRetrieval": true,
@@ -843,7 +843,7 @@ Response:
   },
   "SectorNumber": 9,
   "Offset": 1032,
-  "PieceStatus": "string value",
+  "PieceStatus": "Undefine",
   "InboundCAR": "string value"
 }
 ```
@@ -909,7 +909,6 @@ Perms: write
 Inputs:
 ```json
 [
-  "string value",
   {
     "Proposal": {
       "PieceCID": {
@@ -939,7 +938,7 @@ Inputs:
     "Client": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
     "State": 42,
     "PiecePath": "/some/path",
-    "PayloadSize": 1024,
+    "PayloadSize": 42,
     "MetadataPath": "/some/path",
     "SlashEpoch": 10101,
     "FastRetrieval": true,
@@ -964,7 +963,7 @@ Inputs:
     },
     "SectorNumber": 9,
     "Offset": 1032,
-    "PieceStatus": "string value",
+    "PieceStatus": "Undefine",
     "InboundCAR": "string value"
   }
 ]
@@ -1129,7 +1128,7 @@ Response:
     "Client": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
     "State": 42,
     "PiecePath": "/some/path",
-    "PayloadSize": 1024,
+    "PayloadSize": 42,
     "MetadataPath": "/some/path",
     "SlashEpoch": 10101,
     "FastRetrieval": true,
@@ -1154,7 +1153,7 @@ Response:
     },
     "SectorNumber": 9,
     "Offset": 1032,
-    "PieceStatus": "string value",
+    "PieceStatus": "Undefine",
     "InboundCAR": "string value"
   }
 ]

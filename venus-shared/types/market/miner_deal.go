@@ -21,7 +21,7 @@ type MinerDeal struct {
 	Client                peer.ID
 	State                 storagemarket.StorageDealStatus
 	PiecePath             filestore.Path
-	PayloadSize           abi.UnpaddedPieceSize
+	PayloadSize           uint64
 	MetadataPath          filestore.Path
 	SlashEpoch            abi.ChainEpoch
 	FastRetrieval         bool
@@ -37,7 +37,7 @@ type MinerDeal struct {
 	SectorNumber      abi.SectorNumber
 
 	Offset      abi.PaddedPieceSize
-	PieceStatus string
+	PieceStatus PieceStatus
 
 	InboundCAR string
 }

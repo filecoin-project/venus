@@ -10,11 +10,13 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 )
 
+type PieceStatus string
+
 const (
-	Undefine = "Undefine"
-	Assigned = "Assigned"
-	Packing  = "Packing"
-	Proving  = "Proving"
+	Undefine PieceStatus = "Undefine"
+	Assigned PieceStatus = "Assigned"
+	Packing  PieceStatus = "Packing"
+	Proving  PieceStatus = "Proving"
 )
 
 type DealInfo struct {
