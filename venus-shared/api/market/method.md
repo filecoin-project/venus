@@ -140,11 +140,6 @@ Response:
 ```json
 [
   {
-    "Offset": 1032,
-    "Length": 1032,
-    "PayloadSize": 1024,
-    "DealID": 5432,
-    "TotalStorageFee": "0",
     "PieceCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
@@ -158,6 +153,11 @@ Response:
     "StoragePricePerEpoch": "0",
     "ProviderCollateral": "0",
     "ClientCollateral": "0",
+    "Offset": 1032,
+    "Length": 1032,
+    "PayloadSize": 42,
+    "DealID": 5432,
+    "TotalStorageFee": "0",
     "FastRetrieval": true,
     "PublishCid": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -527,7 +527,7 @@ Response:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "FastRetrieval": true,
-    "Status": "string value"
+    "Status": "Undefine"
   }
 ]
 ```
@@ -567,11 +567,6 @@ Response:
 ```json
 [
   {
-    "Offset": 1032,
-    "Length": 1032,
-    "PayloadSize": 1024,
-    "DealID": 5432,
-    "TotalStorageFee": "0",
     "PieceCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
@@ -585,6 +580,11 @@ Response:
     "StoragePricePerEpoch": "0",
     "ProviderCollateral": "0",
     "ClientCollateral": "0",
+    "Offset": 1032,
+    "Length": 1032,
+    "PayloadSize": 42,
+    "DealID": 5432,
+    "TotalStorageFee": "0",
     "FastRetrieval": true,
     "PublishCid": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"

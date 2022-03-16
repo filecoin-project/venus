@@ -1,12 +1,11 @@
 package market
 
 import (
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-state-types/abi"
-	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
-
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 )
 
@@ -27,7 +26,7 @@ type DealInfo struct {
 	Root          cid.Cid
 	PublishCid    cid.Cid
 	FastRetrieval bool
-	Status        string
+	Status        PieceStatus
 }
 
 type GetDealSpec struct {
@@ -36,14 +35,14 @@ type GetDealSpec struct {
 }
 
 type DealInfoIncludePath struct {
+	market7.DealProposal
 	Offset          abi.PaddedPieceSize
 	Length          abi.PaddedPieceSize
-	PayloadSize     abi.UnpaddedPieceSize
+	PayloadSize     uint64
 	DealID          abi.DealID
 	TotalStorageFee abi.TokenAmount
-	market7.DealProposal
-	FastRetrieval bool
-	PublishCid    cid.Cid
+	FastRetrieval   bool
+	PublishCid      cid.Cid
 }
 
 type PieceInfo struct {
