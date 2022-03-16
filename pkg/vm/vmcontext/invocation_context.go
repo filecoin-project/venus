@@ -39,7 +39,7 @@ type topLevelContext struct {
 
 // Context for an individual message invocation, including inter-actor sends.
 type invocationContext struct {
-	vm                *VM
+	vm                *LegacyVM
 	topLevel          *topLevelContext
 	originMsg         VmMessage //msg not trasfer from and to address
 	msg               VmMessage // The message being processed
@@ -56,7 +56,7 @@ type internalActorStateHandle interface {
 	rt5.StateHandle
 }
 
-func newInvocationContext(rt *VM, gasIpld ipfscbor.IpldStore, topLevel *topLevelContext, msg VmMessage,
+func newInvocationContext(rt *LegacyVM, gasIpld ipfscbor.IpldStore, topLevel *topLevelContext, msg VmMessage,
 	gasTank *gas.GasTracker, randSource HeadChainRandomness, parent *invocationContext) invocationContext {
 	orginMsg := msg
 	ctx := invocationContext{

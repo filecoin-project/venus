@@ -639,7 +639,7 @@ func TestCheckSpendable(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, secret, p.Secret)
 
-	// Check that if VM call returns non-success exit code, spendable is false
+	// Check that if LegacyVM call returns non-success exit code, spendable is false
 	s.mock.setCallResponse(&vm.Ret{
 		Receipt: types.MessageReceipt{
 			ExitCode: 1,

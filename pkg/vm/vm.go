@@ -15,7 +15,7 @@ type VmOption = vmcontext.VmOption //nolint
 
 type Ret = vmcontext.Ret
 
-// Interpreter is the VM.
+// Interpreter is the LegacyVM.
 type Interpreter = vmcontext.VMInterpreter
 
 type SyscallsImpl = vmcontext.SyscallsImpl
@@ -28,13 +28,13 @@ type ChainRandomness = vmcontext.HeadChainRandomness
 
 type Interface = vmcontext.Interface // nolint
 
-// NewVenusVM creates a new VM interpreter.
-func NewVenusVM(ctx context.Context, option VmOption) (Interpreter, error) {
+// NewLegacyVM creates a new LegacyVM interpreter.
+func NewLegacyVM(ctx context.Context, option VmOption) (Interpreter, error) {
 	if option.ActorCodeLoader == nil {
 		option.ActorCodeLoader = &DefaultActors
 	}
 
-	return vmcontext.NewVM(ctx, option.ActorCodeLoader, option)
+	return vmcontext.NewLegacyVM(ctx, option.ActorCodeLoader, option)
 }
 
 func NewVM(ctx context.Context, option VmOption) (Interface, error) {
@@ -43,7 +43,7 @@ func NewVM(ctx context.Context, option VmOption) (Interface, error) {
 		return NewFVM(ctx, &option)
 	}
 
-	return NewVenusVM(ctx, option)
+	return NewLegacyVM(ctx, option)
 }
 
 // DefaultActors is a code loader with the built-in actors that come with the system.

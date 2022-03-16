@@ -35,13 +35,13 @@ type faultChecker interface {
 	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, curEpoch abi.ChainEpoch, msg vm.VmMessage, gasIpld cbornode.IpldStore, view vm.SyscallsStateView, getter vmcontext.LookbackStateGetter) (*vmr.ConsensusFault, error)
 }
 
-// Syscalls contains the concrete implementation of VM system calls, including connection to
+// Syscalls contains the concrete implementation of LegacyVM system calls, including connection to
 // proof verification and blockchain inspection.
 // Errors returned by these methods are intended to be returned to the actor code to respond to: they must be
 // entirely deterministic and repeatable by other implementations.
 // Any non-deterministic error will instead trigger a panic.
 // TODO: determine a more robust mechanism for distinguishing transient runtime failures from deterministic errors
-// in VM and supporting code. https://github.com/filecoin-project/venus/issues/3844
+// in LegacyVM and supporting code. https://github.com/filecoin-project/venus/issues/3844
 type Syscalls struct {
 	faultChecker faultChecker
 	verifier     ffiwrapper.Verifier

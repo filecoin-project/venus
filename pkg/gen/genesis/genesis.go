@@ -502,7 +502,7 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 		GasPriceSchedule:     gasPriceSchedule,
 	}
 
-	vm, err := vm.NewVenusVM(ctx, vmopt)
+	vm, err := vm.NewLegacyVM(ctx, vmopt)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVenusVM: %w", err)
 	}

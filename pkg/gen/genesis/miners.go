@@ -106,7 +106,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 		GasPriceSchedule:     gasPirceSchedule,
 	}
 
-	vmi, err := vm.NewVenusVM(ctx, vmopt)
+	vmi, err := vm.NewLegacyVM(ctx, vmopt)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVenusVM: %w", err)
 	}
@@ -641,7 +641,7 @@ func currentEpochBlockReward(ctx context.Context, vmi vm.Interpreter, maddr addr
 
 // todo what is actually called here is vmi.vmOption.CircSupplyCalculator(context.TODO(), height, st) -> L55, So there is no structure UnsafeVM ???
 func circSupply(ctx context.Context, vmi vm.Interpreter, maddr address.Address) abi.TokenAmount {
-	//unsafeVM := &vm.UnsafeVM{VM: vmi.}
+	//unsafeVM := &vm.UnsafeVM{LegacyVM: vmi.}
 	//rt := unsafeVM.MakeRuntime(ctx, &types.Message{
 	//	GasLimit: 1_000_000_000,
 	//	From:     maddr,

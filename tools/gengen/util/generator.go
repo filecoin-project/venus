@@ -95,7 +95,7 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 		SysCallsImpl:         syscallImpl,
 		Fork:                 chainFork,
 	}
-	vm, err := vm.NewVenusVM(context.Background(), vmOption)
+	vm, err := vm.NewLegacyVM(context.Background(), vmOption)
 	if err != nil {
 		panic(xerrors.Errorf("create state error, should never come here"))
 	}

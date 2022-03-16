@@ -55,13 +55,13 @@ type Driver struct {
 }
 
 type DriverOpts struct {
-	// DisableVMFlush, when true, avoids calling VM.Flush(), forces a blockstore
+	// DisableVMFlush, when true, avoids calling LegacyVM.Flush(), forces a blockstore
 	// recursive copy, from the temporary buffer blockstore, to the real
-	// system's blockstore. Disabling VM flushing is useful when extracting test
+	// system's blockstore. Disabling LegacyVM flushing is useful when extracting test
 	// vectors and trimming state, as we don't want to force an accidental
 	// deep copy of the state tree.
 	//
-	// Disabling VM flushing almost always should go hand-in-hand with
+	// Disabling LegacyVM flushing almost always should go hand-in-hand with
 	// LOTUS_DISABLE_VM_BUF=iknowitsabadidea. That way, state tree writes are
 	// immediately committed to the blockstore.
 	DisableVMFlush bool
@@ -88,7 +88,7 @@ type ExecuteTipsetResult struct {
 // parentEpoch is the last epoch in which an actual tipset was processed. This
 // is used by Lotus for null block counting and cron firing.
 //
-// This method returns the the receipts root, the poststate root, and the VM
+// This method returns the the receipts root, the poststate root, and the LegacyVM
 // message results. The latter _include_ implicit messages, such as cron ticks
 // and reward withdrawal per miner.
 func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset, execEpoch abi.ChainEpoch) (*ExecuteTipsetResult, error) {
@@ -255,10 +255,10 @@ func adjustGasPricing(vectorEpoch abi.ChainEpoch, vectorNv network.Version, pric
 	})
 }
 
-// ExecuteMessage executes a conformance test vector message in a temporary VM.
+// ExecuteMessage executes a conformance test vector message in a temporary LegacyVM.
 func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMessageParams) (*vm.Ret, cid.Cid, error) {
 	if !d.vmFlush {
-		// do not flush the VM, just the state tree; this should be used with
+		// do not flush the LegacyVM, just the state tree; this should be used with
 		// LOTUS_DISABLE_VM_BUF enabled, so writes will anyway be visible.
 		_ = os.Setenv("LOTUS_DISABLE_VM_BUF", "iknowitsabadidea")
 	}
@@ -311,7 +311,7 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 	// Monkey patch the gas pricing.
 	adjustGasPricing(params.Epoch, params.NetworkVersion, vmOption.GasPriceSchedule, fork.DefaultUpgradeSchedule(chainFork, mainNetParams.Network.ForkUpgradeParam))
 
-	lvm, err := vm.NewVenusVM(ctx, vmOption)
+	lvm, err := vm.NewLegacyVM(ctx, vmOption)
 	if err != nil {
 		return nil, cid.Undef, err
 	}
@@ -323,7 +323,7 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 
 	var root cid.Cid
 	if d.vmFlush {
-		// flush the VM, committing the state tree changes and forcing a
+		// flush the LegacyVM, committing the state tree changes and forcing a
 		// recursive copy from the temporary blcokstore to the real blockstore.
 		root, err = lvm.Flush(ctx)
 		if err != nil {
