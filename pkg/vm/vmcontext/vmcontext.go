@@ -75,7 +75,7 @@ type ActorImplLookup interface {
 // implement VMInterpreter for VM
 var _ VMInterpreter = (*VM)(nil)
 
-var _ VMI = (*VM)(nil)
+var _ Interface = (*VM)(nil)
 
 // NewVM creates a new runtime for executing messages.
 // Dragons: change To take a root and the store, build the tree internally

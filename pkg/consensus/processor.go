@@ -75,7 +75,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 	var receipts []types.MessageReceipt
 	var err error
 
-	makeVMWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (vm.VMI, error) {
+	makeVMWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (vm.Interface, error) {
 		vmOpt := vm.VmOption{
 			CircSupplyCalculator: vmOpts.CircSupplyCalculator,
 			LookbackStateGetter:  vmOpts.LookbackStateGetter,
@@ -91,6 +91,9 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			SysCallsImpl:         vmOpts.SysCallsImpl,
 		}
 		if os.Getenv("VENUS_USE_FVM_EXPERIMENTAL") == "1" {
+			// This is needed so that the FVM does not have to duplicate the genesis vesting schedule, one
+			// of the components of the circ supply calc.
+			// This field is NOT needed by the Venus VM, and also NOT needed by the FVM from v15 onwards.
 			filVested, err := p.circulatingSupplyCalculator.GetFilVested(ctx, e)
 			if err != nil {
 				return nil, err

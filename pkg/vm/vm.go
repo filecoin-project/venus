@@ -26,7 +26,7 @@ type VmMessage = vmcontext.VmMessage //nolint
 type FakeSyscalls = vmcontext.FakeSyscalls
 type ChainRandomness = vmcontext.HeadChainRandomness
 
-type VMI = vmcontext.VMI // nolint
+type Interface = vmcontext.Interface // nolint
 
 // NewVenusVM creates a new VM interpreter.
 func NewVenusVM(ctx context.Context, option VmOption) (Interpreter, error) {
@@ -37,7 +37,7 @@ func NewVenusVM(ctx context.Context, option VmOption) (Interpreter, error) {
 	return vmcontext.NewVM(ctx, option.ActorCodeLoader, option)
 }
 
-func NewVM(ctx context.Context, option VmOption) (VMI, error) {
+func NewVM(ctx context.Context, option VmOption) (Interface, error) {
 	if os.Getenv("VENUS_USE_FVM_EXPERIMENTAL") == "1" {
 		fvmLog.Info("use fvm")
 		return NewFVM(ctx, &option)

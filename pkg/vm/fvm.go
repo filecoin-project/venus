@@ -31,7 +31,7 @@ import (
 
 var fvmLog = logging.Logger("fvm")
 
-var _ VMI = (*FVM)(nil)
+var _ Interface = (*FVM)(nil)
 var _ ffi_cgo.Externs = (*FvmExtern)(nil)
 
 type FvmExtern struct {
@@ -300,6 +300,7 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*Ret, er
 			GasBurned:          0,
 		},
 		// TODO: do these eventually, not consensus critical
+		// https://github.com/filecoin-project/ref-fvm/issues/318
 		ActorErr: nil,
 		GasTracker: &gas.GasTracker{
 			ExecutionTrace: types.ExecutionTrace{},
@@ -328,6 +329,7 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 		},
 		OutPuts: gas.GasOutputs{},
 		// TODO: do these eventually, not consensus critical
+		// https://github.com/filecoin-project/ref-fvm/issues/318
 		ActorErr: nil,
 		GasTracker: &gas.GasTracker{
 			ExecutionTrace: types.ExecutionTrace{},

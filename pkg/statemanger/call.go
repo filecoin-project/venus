@@ -57,6 +57,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 		return nil, err
 	}
 
+	// Since we're simulating a future message, pretend we're applying it in the "next" tipset
 	vmHeight := ts.Height() + 1
 
 	filVested, err := s.cs.GetFilVested(ctx, vmHeight)
@@ -98,6 +99,8 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 		}
 	}
 
+	// We flush to get the VM's view of the state tree after applying the above messages
+	// This is needed to get the correct nonce from the actor state to match the VM
 	stateRoot, err = vmi.Flush(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("flushing vm: %w", err)
@@ -165,6 +168,8 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 
 	bstate := ts.At(0).ParentStateRoot
 	pheight := pts.Height()
+
+	// Since we're simulating a future message, pretend we're applying it in the "next" tipset
 	vmHeight := pheight + 1
 
 	// If we have to run an expensive migration, and we're not at genesis,
