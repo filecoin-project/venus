@@ -7,7 +7,6 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	bitfield "github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -750,20 +749,6 @@ func (s *IWalletStruct) WalletSignMessage(p0 context.Context, p1 address.Address
 }
 func (s *IWalletStruct) WalletState(p0 context.Context) int { return s.Internal.WalletState(p0) }
 
-type IJwtAuthAPIStruct struct {
-	Internal struct {
-		AuthNew func(ctx context.Context, perms []auth.Permission) ([]byte, error)       `perm:"admin"`
-		Verify  func(ctx context.Context, host, token string) ([]auth.Permission, error) `perm:"read"`
-	}
-}
-
-func (s *IJwtAuthAPIStruct) AuthNew(p0 context.Context, p1 []auth.Permission) ([]byte, error) {
-	return s.Internal.AuthNew(p0, p1)
-}
-func (s *IJwtAuthAPIStruct) Verify(p0 context.Context, p1, p2 string) ([]auth.Permission, error) {
-	return s.Internal.Verify(p0, p1, p2)
-}
-
 type FullNodeStruct struct {
 	IBlockStoreStruct
 	IChainStruct
@@ -775,5 +760,4 @@ type FullNodeStruct struct {
 	IPaychanStruct
 	ISyncerStruct
 	IWalletStruct
-	IJwtAuthAPIStruct
 }

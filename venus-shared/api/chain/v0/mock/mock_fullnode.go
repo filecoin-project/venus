@@ -51,21 +51,6 @@ func (m *MockFullNode) EXPECT() *MockFullNodeMockRecorder {
 	return m.recorder
 }
 
-// AuthNew mocks base method.
-func (m *MockFullNode) AuthNew(arg0 context.Context, arg1 []string) ([]byte, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AuthNew", arg0, arg1)
-	ret0, _ := ret[0].([]byte)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// AuthNew indicates an expected call of AuthNew.
-func (mr *MockFullNodeMockRecorder) AuthNew(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AuthNew", reflect.TypeOf((*MockFullNode)(nil).AuthNew), arg0, arg1)
-}
-
 // BeaconGetEntry mocks base method.
 func (m *MockFullNode) BeaconGetEntry(arg0 context.Context, arg1 abi.ChainEpoch) (*types.BeaconEntry, error) {
 	m.ctrl.T.Helper()
@@ -2262,21 +2247,6 @@ func (m *MockFullNode) UnLockWallet(arg0 context.Context, arg1 []byte) error {
 func (mr *MockFullNodeMockRecorder) UnLockWallet(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnLockWallet", reflect.TypeOf((*MockFullNode)(nil).UnLockWallet), arg0, arg1)
-}
-
-// Verify mocks base method.
-func (m *MockFullNode) Verify(arg0 context.Context, arg1, arg2 string) ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Verify", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Verify indicates an expected call of Verify.
-func (mr *MockFullNodeMockRecorder) Verify(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Verify", reflect.TypeOf((*MockFullNode)(nil).Verify), arg0, arg1, arg2)
 }
 
 // VerifyEntry mocks base method.
