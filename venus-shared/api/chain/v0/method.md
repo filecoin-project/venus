@@ -48,9 +48,6 @@
   * [StateWaitMsg](#StateWaitMsg)
   * [StateWaitMsgLimited](#StateWaitMsgLimited)
   * [VerifyEntry](#VerifyEntry)
-* [JwtAuth](#JwtAuth)
-  * [AuthNew](#AuthNew)
-  * [Verify](#Verify)
 * [Market](#Market)
   * [StateMarketParticipants](#StateMarketParticipants)
 * [MessagePool](#MessagePool)
@@ -1527,44 +1524,6 @@ Inputs:
 ```
 
 Response: `true`
-
-## JwtAuth
-
-### AuthNew
-
-
-Perms: admin
-
-Inputs:
-```json
-[
-  [
-    "string value"
-  ]
-]
-```
-
-Response: `"Ynl0ZSBhcnJheQ=="`
-
-### Verify
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "string value",
-  "string value"
-]
-```
-
-Response:
-```json
-[
-  "string value"
-]
-```
 
 ## Market
 

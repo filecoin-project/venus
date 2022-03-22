@@ -1,4 +1,5 @@
 github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.com/filecoin-project/lotus/api/v0api.FullNode:
+	- AuthNew
 	- AuthVerify
 	+ BlockTime
 	> ChainExport {[func(context.Context, abi.ChainEpoch, bool, types.TipSetKey) (<-chan []uint8, error) <> func(context.Context, abi.ChainEpoch, bool, types.TipSetKey) (<-chan []uint8, error)] base=func in type: #3 input; nested={[types.TipSetKey <> types.TipSetKey] base=codec marshaler implementations for codec Cbor: true != false; nested=nil}}
@@ -176,7 +177,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	- SyncValidateTipset
 	+ SyncerTracker
 	+ UnLockWallet
-	+ Verify
 	+ VerifyEntry
 	> Version {[func(context.Context) (types.Version, error) <> func(context.Context) (api.APIVersion, error)] base=func out type: #0 input; nested={[types.Version <> api.APIVersion] base=struct field; nested={[types.Version <> api.APIVersion] base=exported fields count: 2 != 3; nested=nil}}}
 	+ WalletAddresses
@@ -191,6 +191,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	- WalletVerify
 
 github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.com/filecoin-project/lotus/api.FullNode:
+	- AuthNew
 	- AuthVerify
 	+ BlockTime
 	- ChainBlockstoreInfo
@@ -369,7 +370,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- SyncValidateTipset
 	+ SyncerTracker
 	+ UnLockWallet
-	+ Verify
 	+ VerifyEntry
 	> Version {[func(context.Context) (types.Version, error) <> func(context.Context) (api.APIVersion, error)] base=func out type: #0 input; nested={[types.Version <> api.APIVersion] base=struct field; nested={[types.Version <> api.APIVersion] base=exported fields count: 2 != 3; nested=nil}}}
 	+ WalletAddresses
