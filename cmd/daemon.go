@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/filecoin-project/venus/fixtures/networks"
 	"os"
+
+	"github.com/filecoin-project/venus/fixtures/networks"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/util/ulimit"
@@ -13,9 +14,10 @@ import (
 
 	"golang.org/x/xerrors"
 
+	_ "net/http/pprof" // nolint: golint
+
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	logging "github.com/ipfs/go-log/v2"
-	_ "net/http/pprof" // nolint: golint
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"

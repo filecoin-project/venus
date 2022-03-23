@@ -54,7 +54,7 @@ func requirePutTestChain(ctx context.Context, t *testing.T, cborStore *CborBlock
 			TipSetReceipts:  testhelpers.EmptyReceiptsCID,
 		}
 		requirePutBlocksToCborStore(t, cborStore.cborStore, tsas.TipSet.Blocks()...)
-		require.NoError(t, cborStore.PutTipSetMetadata(ctx, tsas))
+		require.NoError(t, cborStore.Store.PutTipSetMetadata(ctx, tsas))
 	}
 }
 
@@ -87,7 +87,7 @@ func TestPutTipSet(t *testing.T) {
 		TipSetStateRoot: genTS.At(0).ParentStateRoot,
 		TipSetReceipts:  testhelpers.EmptyReceiptsCID,
 	}
-	err := cs.PutTipSetMetadata(ctx, genTsas)
+	err := cs.Store.PutTipSetMetadata(ctx, genTsas)
 	assert.NoError(t, err)
 }
 
@@ -151,19 +151,19 @@ func TestRevertChange(t *testing.T) {
 	link2 := builder.AppendOn(ctx, link1, 1)
 	link3 := builder.AppendOn(ctx, link2, 1)
 
-	err := cs.SetHead(ctx, link3)
+	err := cs.Store.SetHead(ctx, link3)
 	require.NoError(t, err)
 
 	link4 := builder.AppendOn(ctx, genesis, 2)
 	link5 := builder.AppendOn(ctx, link4, 2)
 	link6 := builder.AppendOn(ctx, link5, 2)
 
-	ch := cs.SubHeadChanges(ctx)
+	ch := cs.Store.SubHeadChanges(ctx)
 	currentA := <-ch
 	test.Equal(t, currentA[0].Type, types.HCCurrent)
 	test.Equal(t, currentA[0].Val, link3)
 
-	err = cs.SetHead(ctx, link6)
+	err = cs.Store.SetHead(ctx, link6)
 	require.NoError(t, err)
 	headChanges := <-ch
 
@@ -197,12 +197,12 @@ func TestSetGenesis(t *testing.T) {
 	r := repo.NewInMemoryRepo()
 	cs := newChainStore(r, genTS)
 
-	require.Equal(t, genTS.At(0).Cid(), cs.GenesisCid())
+	require.Equal(t, genTS.At(0).Cid(), cs.Store.GenesisCid())
 }
 
 func assertSetHead(t *testing.T, cborStore *CborBlockStore, ts *types.TipSet) {
 	ctx := context.Background()
-	err := cborStore.SetHead(ctx, ts)
+	err := cborStore.Store.SetHead(ctx, ts)
 	assert.NoError(t, err)
 }
 
@@ -262,39 +262,30 @@ func TestHeadEvents(t *testing.T) {
 	link2 := builder.AppendOn(ctx, link1, 3)
 	link3 := builder.AppendOn(ctx, link2, 1)
 	link4 := builder.BuildOn(ctx, link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
-
-	assertSetHead(t, chainStore, genTS)
-
-	chA := chainStore.SubHeadChanges(ctx)
-	chB := chainStore.SubHeadChanges(ctx)
+	chA := chainStore.Store.SubHeadChanges(ctx)
+	chB := chainStore.Store.SubHeadChanges(ctx)
 	// HCurrent
-	currentA := <-chA
-	test.Equal(t, currentA[0].Type, types.HCCurrent)
-	test.Equal(t, currentA[0].Val, genTS)
-
-	currentB := <-chB
-	test.Equal(t, currentB[0].Type, types.HCCurrent)
-	test.Equal(t, currentB[0].Val, genTS)
+	<-chA
+	<-chB
 
 	defer ctx.Done()
-	assertSetHead(t, chainStore, link1)
-	assertSetHead(t, chainStore, link2)
-	assertSetHead(t, chainStore, link3)
-	assertSetHead(t, chainStore, link4)
-	assertSetHead(t, chainStore, link3)
-	assertSetHead(t, chainStore, link2)
-	assertSetHead(t, chainStore, link1)
-	assertSetHead(t, chainStore, genTS)
-	heads := []*types.TipSet{genTS, link1, link2, link3, link4, link4, link3, link2, link1, genTS}
+
+	headSets := []*types.TipSet{genTS, link1, link2, link3, link4, link3, link2, link1, genTS}
+	heads := []*types.TipSet{genTS, link1, link2, link3, link4, link4, link3, link2, link1}
 	types := []types.HeadChangeType{types.HCApply, types.HCApply, types.HCApply, types.HCApply, types.HCApply, types.HCRevert,
 		types.HCRevert, types.HCRevert, types.HCRevert}
-	// Heads arrive in the expected order
-	for i := 0; i < 9; i++ {
+	var waitAndCheck = func(index int) {
 		headA := <-chA
 		headB := <-chB
-		assert.Equal(t, headA[0].Type, types[i])
+		assert.Equal(t, headA[0].Type, types[index])
 		test.Equal(t, headA, headB)
-		test.Equal(t, headA[0].Val, heads[i])
+		test.Equal(t, headA[0].Val, heads[index])
+	}
+
+	// Heads arrive in the expected order
+	for i := 0; i < 9; i++ {
+		assertSetHead(t, chainStore, headSets[i])
+		waitAndCheck(i)
 	}
 	// No extra notifications
 	assertEmptyCh(t, chA)
@@ -328,15 +319,15 @@ func TestLoadAndReboot(t *testing.T) {
 	requirePutBlocksToCborStore(t, cst, link3.ToSlice()...)
 	requirePutBlocksToCborStore(t, cst, link4.ToSlice()...)
 
-	cboreStore := &CborBlockStore{
+	cborStore := &CborBlockStore{
 		Store:     chain.NewStore(ds, bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator()),
 		cborStore: cst,
 	}
-	requirePutTestChain(ctx, t, cboreStore, link4.Key(), builder, 5)
-	assertSetHead(t, cboreStore, genTS) // set the genesis block
+	requirePutTestChain(ctx, t, cborStore, link4.Key(), builder, 5)
+	assertSetHead(t, cborStore, genTS) // set the genesis block
 
-	assertSetHead(t, cboreStore, link4)
-	cboreStore.Stop()
+	assertSetHead(t, cborStore, link4)
+	cborStore.Store.Stop()
 
 	// rebuild chain with same datastore and cborstore
 	rebootChain := chain.NewStore(ds, bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator())
@@ -357,7 +348,7 @@ func TestLoadAndReboot(t *testing.T) {
 }
 
 func requireGetTipSet(ctx context.Context, t *testing.T, chainStore *CborBlockStore, key types.TipSetKey) *types.TipSet {
-	ts, err := chainStore.GetTipSet(ctx, key)
+	ts, err := chainStore.Store.GetTipSet(ctx, key)
 	require.NoError(t, err)
 	return ts
 }

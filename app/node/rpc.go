@@ -4,9 +4,9 @@ import (
 	"reflect"
 
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/venus/app/client/funcrule"
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/api/permission"
 	"github.com/ipfs-force-community/metrics/ratelimit"
 	"golang.org/x/xerrors"
 )
@@ -100,7 +100,7 @@ func (builder *RPCBuilder) Build(version string, limiter *ratelimit.RateLimiter)
 	case "v0":
 		var fullNodeV0 v0api.FullNodeStruct
 		for _, apiStruct := range builder.v0APIStruct {
-			funcrule.PermissionProxy(apiStruct, &fullNodeV0)
+			permission.PermissionProxy(apiStruct, &fullNodeV0)
 		}
 
 		if limiter != nil {
@@ -115,7 +115,7 @@ func (builder *RPCBuilder) Build(version string, limiter *ratelimit.RateLimiter)
 	case "v1":
 		var fullNode v1api.FullNodeStruct
 		for _, apiStruct := range builder.v1APIStruct {
-			funcrule.PermissionProxy(apiStruct, &fullNode)
+			permission.PermissionProxy(apiStruct, &fullNode)
 		}
 
 		if limiter != nil {

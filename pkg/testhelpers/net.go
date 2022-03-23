@@ -117,15 +117,15 @@ type FakeDialer struct {
 func (fd *FakeDialer) Peers() []peer.ID {
 	return fd.PeersImpl()
 }
-func (fd *FakeDialer) Peerstore() peerstore.Peerstore                       { panic("not implemented") } // nolint: golint
-func (fd *FakeDialer) LocalPeer() peer.ID                                   { panic("not implemented") } // nolint: golint
-func (fd *FakeDialer) DialPeer(context.Context, peer.ID) (inet.Conn, error) { panic("not implemented") } // nolint: golint
-func (fd *FakeDialer) ClosePeer(peer.ID) error                              { panic("not implemented") } // nolint: golint
-func (fd *FakeDialer) Connectedness(peer.ID) inet.Connectedness             { panic("not implemented") } // nolint: golint
-func (fd *FakeDialer) Conns() []inet.Conn                                   { panic("not implemented") } // nolint: golint
-func (fd *FakeDialer) ConnsToPeer(peer.ID) []inet.Conn                      { panic("not implemented") } // nolint: golint
-func (fd *FakeDialer) Notify(inet.Notifiee)                                 { panic("not implemented") } // nolint: golint
-func (fd *FakeDialer) StopNotify(inet.Notifiee)                             { panic("not implemented") } // nolint: golint
+func (fd *FakeDialer) Peerstore() peerstore.Peerstore                       { panic("not implemented") }
+func (fd *FakeDialer) LocalPeer() peer.ID                                   { panic("not implemented") }
+func (fd *FakeDialer) DialPeer(context.Context, peer.ID) (inet.Conn, error) { panic("not implemented") }
+func (fd *FakeDialer) ClosePeer(peer.ID) error                              { panic("not implemented") }
+func (fd *FakeDialer) Connectedness(peer.ID) inet.Connectedness             { panic("not implemented") }
+func (fd *FakeDialer) Conns() []inet.Conn                                   { panic("not implemented") }
+func (fd *FakeDialer) ConnsToPeer(peer.ID) []inet.Conn                      { panic("not implemented") }
+func (fd *FakeDialer) Notify(inet.Notifiee)                                 { panic("not implemented") }
+func (fd *FakeDialer) StopNotify(inet.Notifiee)                             { panic("not implemented") }
 
 // fakeStream is a test inet.Stream
 type fakeStream struct {
@@ -135,24 +135,24 @@ type fakeStream struct {
 
 var _ inet.Stream = &fakeStream{}
 
-func newFakeStream() fakeStream { return fakeStream{} }
+func newFakeStream() *fakeStream { return &fakeStream{} }
 
 // Minimal implementation of the inet.Stream interface
 
-func (fs fakeStream) ID() string                         { return "" }
-func (fs fakeStream) Protocol() protocol.ID              { return fs.pid }            // nolint: golint
-func (fs fakeStream) SetProtocol(id protocol.ID)         { fs.pid = id }              // nolint: golint
-func (fs fakeStream) Stat() inet.Stats                   { panic("not implemented") } // nolint: golint
-func (fs fakeStream) Conn() inet.Conn                    { panic("not implemented") } // nolint: golint
-func (fs fakeStream) Write(_ []byte) (int, error)        { return 1, nil }            // nolint: golint
-func (fs fakeStream) Read(_ []byte) (int, error)         { return 1, nil }            // nolint: golint
-func (fs fakeStream) Close() error                       { return nil }               // nolint: golint
-func (fs fakeStream) Reset() error                       { return nil }               // nolint: golint
-func (fs fakeStream) SetDeadline(_ time.Time) error      { return nil }               // nolint: golint
-func (fs fakeStream) SetReadDeadline(_ time.Time) error  { return nil }               // nolint: golint
-func (fs fakeStream) SetWriteDeadline(_ time.Time) error { return nil }               // nolint: golint
-func (fs fakeStream) CloseWrite() error                  { panic("implement me") }
-func (fs fakeStream) CloseRead() error                   { panic("implement me") }
+func (fs *fakeStream) ID() string                         { return "" }
+func (fs *fakeStream) Protocol() protocol.ID              { return fs.pid }            // nolint: golint
+func (fs *fakeStream) SetProtocol(id protocol.ID)         { fs.pid = id }              // nolint: golint
+func (fs *fakeStream) Stat() inet.Stats                   { panic("not implemented") } // nolint: golint
+func (fs *fakeStream) Conn() inet.Conn                    { panic("not implemented") } // nolint: golint
+func (fs *fakeStream) Write(_ []byte) (int, error)        { return 1, nil }            // nolint: golint
+func (fs *fakeStream) Read(_ []byte) (int, error)         { return 1, nil }            // nolint: golint
+func (fs *fakeStream) Close() error                       { return nil }               // nolint: golint
+func (fs *fakeStream) Reset() error                       { return nil }               // nolint: golint
+func (fs *fakeStream) SetDeadline(_ time.Time) error      { return nil }               // nolint: golint
+func (fs *fakeStream) SetReadDeadline(_ time.Time) error  { return nil }               // nolint: golint
+func (fs *fakeStream) SetWriteDeadline(_ time.Time) error { return nil }               // nolint: golint
+func (fs *fakeStream) CloseWrite() error                  { panic("implement me") }
+func (fs *fakeStream) CloseRead() error                   { panic("implement me") }
 
 // RandPeerID is a libp2p random peer ID generator.
 // These peer.ID generators were copied from libp2p/go-testutil. We didn't bring in the

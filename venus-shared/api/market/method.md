@@ -817,6 +817,7 @@ Response:
   "Client": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "State": 42,
   "PiecePath": "/some/path",
+  "PayloadSize": 1024,
   "MetadataPath": "/some/path",
   "SlashEpoch": 10101,
   "FastRetrieval": true,
@@ -840,6 +841,8 @@ Response:
     "ID": 3
   },
   "SectorNumber": 9,
+  "Offset": 1032,
+  "PieceStatus": "string value",
   "InboundCAR": "string value"
 }
 ```
@@ -1054,6 +1057,7 @@ Response:
     "Client": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
     "State": 42,
     "PiecePath": "/some/path",
+    "PayloadSize": 1024,
     "MetadataPath": "/some/path",
     "SlashEpoch": 10101,
     "FastRetrieval": true,
@@ -1077,6 +1081,8 @@ Response:
       "ID": 3
     },
     "SectorNumber": 9,
+    "Offset": 1032,
+    "PieceStatus": "string value",
     "InboundCAR": "string value"
   }
 ]
@@ -1666,7 +1672,8 @@ Inputs:
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  42
+  42,
+  "string value"
 ]
 ```
 

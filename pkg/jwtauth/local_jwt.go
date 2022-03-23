@@ -3,11 +3,12 @@ package jwtauth
 import (
 	"context"
 	"crypto/rand"
-	vjc "github.com/filecoin-project/venus-auth/cmd/jwtclient"
-	"github.com/filecoin-project/venus/app/client/funcrule"
 	"io"
 	"io/ioutil"
 	"strings"
+
+	vjc "github.com/filecoin-project/venus-auth/cmd/jwtclient"
+	"github.com/filecoin-project/venus/venus-shared/api/permission"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	jwt3 "github.com/gbrlsnchs/jwt/v3"
@@ -39,7 +40,7 @@ func NewJwtAuth(lr repo.Repo) (vjc.IJwtAuthClient, error) {
 		jwtSecetName:  "auth-jwt-private",
 		jwtHmacSecret: "jwt-hmac-secret",
 		lr:            lr,
-		payload:       JwtPayload{Allow: funcrule.AllPermissions},
+		payload:       JwtPayload{Allow: permission.AllPermissions},
 	}
 
 	var err error
@@ -87,25 +88,4 @@ func (jwtAuth *JwtAuth) Verify(ctx context.Context, token string) ([]auth.Permis
 		return nil, xerrors.Errorf("JWT Verification failed: %v", err)
 	}
 	return payload.Allow, nil
-}
-
-type JwtAuthAPI struct { // nolint
-	JwtAuth *JwtAuth
-}
-
-// Verify check the token is valid or not
-func (a *JwtAuthAPI) Verify(ctx context.Context, token string) ([]auth.Permission, error) {
-	var payload JwtPayload
-	if _, err := jwt3.Verify([]byte(token), (*jwt3.HMACSHA)(a.JwtAuth.apiSecret), &payload); err != nil {
-		return nil, xerrors.Errorf("JWT Verification failed: %v", err)
-	}
-	return payload.Allow, nil
-}
-
-// AuthNew create new token with specify permission for access venus
-func (a *JwtAuthAPI) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error) {
-	p := JwtPayload{
-		Allow: perms, // TODO: consider checking validity
-	}
-	return jwt3.Sign(&p, (*jwt3.HMACSHA)(a.JwtAuth.apiSecret))
 }

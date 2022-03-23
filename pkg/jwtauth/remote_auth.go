@@ -2,6 +2,7 @@ package jwtauth
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	va "github.com/filecoin-project/venus-auth/auth"
 	vjc "github.com/filecoin-project/venus-auth/cmd/jwtclient"

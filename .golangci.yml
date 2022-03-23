@@ -5,7 +5,7 @@ linters:
     - govet
     - misspell
     - goconst
-    - golint
+    - revive
     - errcheck
     - unconvert
     - staticcheck
@@ -15,6 +15,7 @@ linters:
     - unused
     - stylecheck
     - gosimple
+    - goimports
 
 issues:
   exclude:

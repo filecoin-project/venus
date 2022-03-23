@@ -28,7 +28,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus/build/project"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -742,7 +741,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 
 // GenesisFilePath returns the path to the test genesis
 func GenesisFilePath() string {
-	return project.Root("/fixtures/test/genesis.car")
+	return Root("/fixtures/test/genesis.car")
 }
 
 func (td *TestDaemon) createNewProcess() {

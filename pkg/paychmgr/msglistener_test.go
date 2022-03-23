@@ -1,8 +1,9 @@
 package paychmgr
 
 import (
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"testing"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"

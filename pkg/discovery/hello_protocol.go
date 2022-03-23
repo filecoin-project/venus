@@ -112,7 +112,6 @@ func (h *HelloProtocolHandler) Register(peerDiscoveredCallback PeerDiscoveredCal
 }
 
 func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
-	defer s.Close() // nolint: errcheck
 	ctx, cancel := context.WithTimeout(context.Background(), h.helloTimeOut)
 	defer cancel()
 
@@ -137,15 +136,16 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	}
 
 	go func() {
+		defer s.Close() // nolint: errcheck
 		// Send the latendy message
 		latencyMsg.TSent = time.Now().UnixNano()
-		err = h.sendLatency(latencyMsg, s)
+		err = sendLatency(latencyMsg, s)
 		if err != nil {
 			log.Error(err)
 		}
 	}()
 
-	protos, err := h.host.Peerstore().GetProtocols(s.Conn().RemotePeer())
+	protos, err := h.host.Peerstore().GetProtocols(from)
 	if err != nil {
 		log.Warnf("got error from peerstore.GetProtocols: %s", err)
 	}
@@ -270,7 +270,7 @@ func (h *HelloProtocolHandler) sendHello(s net.Stream) error {
 }
 
 // responding to latency
-func (h *HelloProtocolHandler) sendLatency(msg *LatencyMessage, s net.Stream) error {
+func sendLatency(msg *LatencyMessage, s net.Stream) error {
 	buf := new(bytes.Buffer)
 	if err := msg.MarshalCBOR(buf); err != nil {
 		return err

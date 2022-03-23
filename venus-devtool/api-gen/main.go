@@ -17,6 +17,7 @@ func main() {
 			proxyCmd,
 			clientCmd,
 			docGenCmd,
+			mockCmd,
 		},
 	}
 

@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/venus/cmd"
 	"testing"
+
+	"github.com/filecoin-project/venus/cmd"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

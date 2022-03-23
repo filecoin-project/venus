@@ -28,8 +28,8 @@ type IMarket interface {
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                                               //perm:write
 	MarketListDeals(ctx context.Context, addrs []address.Address) ([]types.MarketDeal, error)                                                                                                                   //perm:read
 	MarketListRetrievalDeals(ctx context.Context, mAddr address.Address) ([]market.ProviderDealState, error)                                                                                                    //perm:read
-	MarketGetDealUpdates(ctx context.Context) (<-chan storagemarket.MinerDeal, error)                                                                                                                           //perm:read
-	MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]storagemarket.MinerDeal, error)                                                                                                    //perm:read
+	MarketGetDealUpdates(ctx context.Context) (<-chan market.MinerDeal, error)                                                                                                                                  //perm:read
+	MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]market.MinerDeal, error)                                                                                                           //perm:read
 	MarketSetAsk(ctx context.Context, mAddr address.Address, price types.BigInt, verifiedPrice types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error //perm:admin
 	MarketGetAsk(ctx context.Context, mAddr address.Address) (*storagemarket.SignedStorageAsk, error)                                                                                                           //perm:read
 	MarketListAsk(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error)                                                                                                                               //perm:read
@@ -133,7 +133,7 @@ type IMarket interface {
 	GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*market.DealInfo, error)                                              //perm:read
 	AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error) //perm:write
 	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                          //perm:read
-	UpdateStorageDealStatus(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus) error                                     //perm:write
+	UpdateStorageDealStatus(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus, pieceState string) error                  //perm:write
 	//market event
 	ResponseMarketEvent(ctx context.Context, resp *gateway.ResponseEvent) error                                        //perm:read
 	ListenMarketEvent(ctx context.Context, policy *gateway.MarketRegisterPolicy) (<-chan *gateway.RequestEvent, error) //perm:read

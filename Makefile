@@ -1,28 +1,46 @@
 export CGO_CFLAGS_ALLOW=-D__BLST_PORTABLE__
 export CGO_CFLAGS=-D__BLST_PORTABLE__
 
-all:
-	go run ./build/*.go build
+all: build
+.PHONY: all
 
-deps:
-	git submodule update --init
-	go run ./build/*.go smartdeps
+## variables
 
-lint:
-	go run ./build/*.go lint
+# git modules that need to be loaded
+MODULES:=
 
-test: test-venus-shared
-	go run ./build/*.go test -timeout=30m
+ldflags=-X=github.com/filecoin-project/venus/pkg/constants.CurrentCommit=+git.$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))
+ifneq ($(strip $(LDFLAGS)),)
+	    ldflags+=-extldflags=$(LDFLAGS)
+	endif
 
-# WARNING THIS BUILDS A GO PLUGIN AND PLUGINS *DO NOT* WORK ON WINDOWS SYSTEMS
-iptb:
-	make -C tools/iptb-plugins all
+GOFLAGS+=-ldflags="$(ldflags)"
 
-clean:
-	rm ./venus
+## FFI
 
-	rm -rf ./extern/filecoin-ffi
-	rm -rf ./extern/test-vectors
+FFI_PATH:=extern/filecoin-ffi/
+FFI_DEPS:=.install-filcrypto
+FFI_DEPS:=$(addprefix $(FFI_PATH),$(FFI_DEPS))
+
+$(FFI_DEPS): build-dep/.filecoin-install ;
+
+build-dep/.filecoin-install: $(FFI_PATH)
+	$(MAKE) -C $(FFI_PATH) $(FFI_DEPS:$(FFI_PATH)%=%)
+	@touch $@
+
+MODULES+=$(FFI_PATH)
+BUILD_DEPS+=build-dep/.filecoin-install
+CLEAN+=build-dep/.filecoin-install
+
+## modules
+build-dep:
+	mkdir $@
+
+$(MODULES): build-dep/.update-modules;
+# dummy file that marks the last time modules were updated
+build-dep/.update-modules: build-dep;
+	git submodule update --init --recursive
+	touch $@
 
 gen-all: cborgen gogen inline-gen api-gen
 
@@ -37,10 +55,6 @@ cborgen:
 gogen:
 	cd venus-shared && go generate ./...
 
-mock-api-gen:
-	cd ./venus-shared/api/chain/v0 && go run github.com/golang/mock/mockgen -destination=./mock/full.go -package=mock . FullNode
-	cd ./venus-shared/api/chain/v1 && go run github.com/golang/mock/mockgen -destination=./mock/full.go -package=mock . FullNode
-
 inline-gen:
 	cd venus-devtool && go run ./inline-gen/main.go ../ ./inline-gen/inlinegen-data.json
 
@@ -51,6 +65,7 @@ api-gen:
 	cd ./venus-devtool/ && go run ./api-gen/ proxy
 	cd ./venus-devtool/ && go run ./api-gen/ client
 	cd ./venus-devtool/ && go run ./api-gen/ doc
+	cd ./venus-devtool/ && go run ./api-gen/ mock
 
 compatible-all: compatible-api compatible-actor
 
@@ -78,3 +93,23 @@ actor-render:
 
 actor-replica:
 	cd venus-devtool && go run ./compatible/actors/*.go replica --dst ../venus-shared/actors/
+
+test:
+	go build -o genesis-file-server ./tools/genesis-file-server
+	go build -o gengen ./tools/gengen
+	./gengen --keypath ./fixtures/live --out-car ./fixtures/live/genesis.car --out-json  ./fixtures/live/gen.json --config ./fixtures/setup.json
+	./gengen --keypath ./fixtures/test --out-car ./fixtures/test/genesis.car --out-json  ./fixtures/test/gen.json --config ./fixtures/setup.json
+	 go test  -v ./... -integration=true -unit=false
+
+lint: $(BUILD_DEPS)
+	staticcheck ./...
+
+deps: $(BUILD_DEPS)
+
+dist-clean:
+	git clean -xdff
+	git submodule deinit --all -f
+
+build: $(BUILD_DEPS)
+	rm -f venus
+	go build -o ./venus $(GOFLAGS) .

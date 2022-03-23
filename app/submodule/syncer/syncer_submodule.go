@@ -241,31 +241,6 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 	return nil
 }
 
-// nolint
-func (syncer *SyncerSubmodule) loadLocalFullTipset(ctx context.Context, tsk types.TipSetKey) (*types.FullTipSet, error) {
-	ts, err := syncer.ChainModule.ChainReader.GetTipSet(ctx, tsk)
-	if err != nil {
-		return nil, err
-	}
-
-	fts := &types.FullTipSet{}
-	for _, b := range ts.Blocks() {
-		smsgs, bmsgs, err := syncer.ChainModule.MessageStore.LoadMetaMessages(ctx, b.Messages)
-		if err != nil {
-			return nil, err
-		}
-
-		fb := &types.FullBlock{
-			Header:       b,
-			BLSMessages:  bmsgs,
-			SECPMessages: smsgs,
-		}
-		fts.Blocks = append(fts.Blocks, fb)
-	}
-
-	return fts, nil
-}
-
 // Start starts the syncer submodule for a node.
 func (syncer *SyncerSubmodule) Start(ctx context.Context) error {
 	// setup topic

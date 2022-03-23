@@ -3,8 +3,9 @@ package dispatch
 import (
 	"bytes"
 	"fmt"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"reflect"
+
+	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 // MethodSignature wraps a specific method and allows you to encode/decodes input/output bytes into concrete types.
