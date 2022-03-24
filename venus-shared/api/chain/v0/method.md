@@ -4152,6 +4152,8 @@ Response:
   "To": "f01234",
   "ConfirmedAmt": "0",
   "PendingAmt": "0",
+  "NonReservedAmt": "0",
+  "PendingAvailableAmt": "0",
   "PendingWaitSentinel": null,
   "QueuedAmt": "0",
   "VoucherReedeemedAmt": "0"
@@ -4182,6 +4184,8 @@ Response:
   "To": "f01234",
   "ConfirmedAmt": "0",
   "PendingAmt": "0",
+  "NonReservedAmt": "0",
+  "PendingAvailableAmt": "0",
   "PendingWaitSentinel": null,
   "QueuedAmt": "0",
   "VoucherReedeemedAmt": "0"

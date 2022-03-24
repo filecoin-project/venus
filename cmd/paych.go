@@ -44,6 +44,10 @@ var addFundsCmd = &cmds.Command{
 		cmds.StringArg("to_addr", true, false, "To Address is the payment channel recipient"),
 		cmds.StringArg("amount", true, false, "Amount is the deposits funds in the payment channel"),
 	},
+	Options: []cmds.Option{
+		cmds.BoolOption("restart-retrievals", "restart stalled retrieval deals on this payment channel").WithDefault(true),
+		cmds.BoolOption("reserve", "mark funds as reserved"),
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
@@ -57,10 +61,15 @@ var addFundsCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		chanInfo, err := env.(*node.Env).PaychAPI.PaychGet(req.Context, fromAddr, toAddr, big.NewFromGo(amt.Int))
-		if err != nil {
-			return err
+		var chanInfo *types.ChannelInfo
+		if reserve, _ := req.Options["reserve"].(bool); reserve {
+			chanInfo, err = env.(*node.Env).PaychAPI.PaychGet(req.Context, fromAddr, toAddr, types.BigInt(amt), types.PaychGetOpts{
+				OffChain: false,
+			})
+		} else {
+			chanInfo, err = env.(*node.Env).PaychAPI.PaychFund(req.Context, fromAddr, toAddr, types.BigInt(amt))
 		}
+
 		chAddr, err := env.(*node.Env).PaychAPI.PaychGetWaitReady(req.Context, chanInfo.WaitSentinel)
 		if err != nil {
 			return err
@@ -442,7 +451,7 @@ func paychStatus(writer io.Writer, avail *types.ChannelAvailableFunds) {
 			fmt.Fprint(writer, "Creating channel\n")
 			fmt.Fprintf(writer, "  From:          %s\n", avail.From)
 			fmt.Fprintf(writer, "  To:            %s\n", avail.To)
-			fmt.Fprintf(writer, "  Pending Amt:   %d\n", avail.PendingAmt)
+			fmt.Fprintf(writer, " Pending Amt: %s\n", types.FIL(avail.PendingAmt))
 			fmt.Fprintf(writer, "  Wait Sentinel: %s\n", avail.PendingWaitSentinel)
 			return
 		}
@@ -461,10 +470,12 @@ func paychStatus(writer io.Writer, avail *types.ChannelAvailableFunds) {
 		{"Channel", avail.Channel.String()},
 		{"From", avail.From.String()},
 		{"To", avail.To.String()},
-		{"Confirmed Amt", fmt.Sprintf("%d", avail.ConfirmedAmt)},
-		{"Pending Amt", fmt.Sprintf("%d", avail.PendingAmt)},
-		{"Queued Amt", fmt.Sprintf("%d", avail.QueuedAmt)},
-		{"Voucher Redeemed Amt", fmt.Sprintf("%d", avail.VoucherReedeemedAmt)},
+		{"Confirmed Amt", fmt.Sprintf("%s", types.FIL(avail.ConfirmedAmt))},
+		{"Available Amt", fmt.Sprintf("%s", types.FIL(avail.NonReservedAmt))},
+		{"Voucher Redeemed Amt", fmt.Sprintf("%s", types.FIL(avail.VoucherReedeemedAmt))},
+		{"Pending Amt", fmt.Sprintf("%s", types.FIL(avail.PendingAmt))},
+		{"Pending Available Amt", fmt.Sprintf("%s", types.FIL(avail.PendingAvailableAmt))},
+		{"Queued Amt", fmt.Sprintf("%s", types.FIL(avail.QueuedAmt))},
 	}
 	if avail.PendingWaitSentinel != nil {
 		nameValues = append(nameValues, []string{
