@@ -179,11 +179,14 @@ type ChannelAvailableFunds struct {
 	From address.Address
 	// To is the to address of the channel
 	To address.Address
-	// ConfirmedAmt is the amount of funds that have been confirmed on-chain
-	// for the channel
+	// ConfirmedAmt is the total amount of funds that have been confirmed on-chain for the channel
 	ConfirmedAmt BigInt
 	// PendingAmt is the amount of funds that are pending confirmation on-chain
 	PendingAmt BigInt
+	// NonReservedAmt is part of ConfirmedAmt that is available for use (e.g. when the payment channel was pre-funded)
+	NonReservedAmt BigInt
+	// PendingAvailableAmt is the amount of funds that are pending confirmation on-chain that will become available once confirmed
+	PendingAvailableAmt BigInt
 	// PendingWaitSentinel can be used with PaychGetWaitReady to wait for
 	// confirmation of pending funds
 	PendingWaitSentinel *cid.Cid

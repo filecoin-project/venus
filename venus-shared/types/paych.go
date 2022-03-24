@@ -23,6 +23,10 @@ type Status struct {
 	Direction   PCHDir
 }
 
+type PaychGetOpts struct {
+	OffChain bool
+}
+
 type ChannelInfo struct {
 	Channel      address.Address
 	WaitSentinel cid.Cid
