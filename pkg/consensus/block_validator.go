@@ -777,8 +777,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 		return xerrors.Errorf("loading state: %v", err)
 	}
 
-	baseHeight := baseTS.Height()
-	pl := bv.gasPirceSchedule.PricelistByEpoch(baseHeight)
+	pl := bv.gasPirceSchedule.PricelistByEpoch(blk.Height)
 	var sumGasLimit int64
 	checkMsg := func(msg types.ChainMsg) error {
 		m := msg.VMMessage()
