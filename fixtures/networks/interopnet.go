@@ -12,8 +12,8 @@ func InteropNet() *NetworkConf {
 	return &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
-				"/dns4/bootstrap-0.interop.fildev.network/tcp/1347/p2p/12D3KooWN86wA54r3v9M8bBYbc1vK9W1ehHDxVGPRaoeUYuXF8R7",
-				"/dns4/bootstrap-1.interop.fildev.network/tcp/1347/p2p/12D3KooWNZ41kev8mtBZgWe43qam1VX9pJyf87jnaisQP2urZZ2M",
+				"/dns4/bootstrap-0.interop.fildev.network/tcp/1347/p2p/12D3KooWPfaWdJjpPTQp5kSqsqvauJaM4cFz5NWja7qyjx7vVfjL",
+				"/dns4/bootstrap-1.interop.fildev.network/tcp/1347/p2p/12D3KooWS5tjcL6s4hHZ1HVRTgGKaXpKkiHfbBSJdjbzgejgJpEh",
 			},
 			MinPeerThreshold: 0,
 			Period:           "30s",
@@ -21,14 +21,14 @@ func InteropNet() *NetworkConf {
 		Network: config.NetworkParamsConfig{
 			DevNet: true,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
-				abi.RegisteredSealProof_StackedDrg2KiBV1,
-				abi.RegisteredSealProof_StackedDrg8MiBV1,
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
+				abi.RegisteredSealProof_StackedDrg32GiBV1,
+				abi.RegisteredSealProof_StackedDrg64GiBV1,
 			},
 			NetworkType:            constants.NetworkInterop,
-			GenesisNetworkVersion:  network.Version0,
-			BlockDelay:             30,
-			ConsensusMinerMinPower: 2048,
+			GenesisNetworkVersion:  network.Version15,
+			BlockDelay:             5,
+			ConsensusMinerMinPower: 2 << 30,
 			MinVerifiedDealSize:    256,
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
 				UpgradeBreezeHeight:     -1,

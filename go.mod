@@ -37,7 +37,7 @@ require (
 	github.com/filecoin-project/specs-actors/v4 v4.0.1
 	github.com/filecoin-project/specs-actors/v5 v5.0.4
 	github.com/filecoin-project/specs-actors/v6 v6.0.1
-	github.com/filecoin-project/specs-actors/v7 v7.0.0-rc1
+	github.com/filecoin-project/specs-actors/v7 v7.0.0-rc1.0.20220118005651-2470cb39827e
 	github.com/filecoin-project/specs-storage v0.2.0
 	github.com/filecoin-project/test-vectors/schema v0.0.5
 	github.com/filecoin-project/venus-auth v1.3.2
@@ -129,7 +129,7 @@ require (
 	go.opencensus.io v0.23.0
 	go.opentelemetry.io/otel/sdk v1.3.0 // indirect
 	go.uber.org/zap v1.19.1
-	golang.org/x/crypto v0.0.0-20210915214749-c084706c2272
+	golang.org/x/crypto v0.0.0-20211209193657-4570a0811e8b
 	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f // indirect
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
