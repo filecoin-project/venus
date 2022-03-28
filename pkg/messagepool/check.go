@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -259,7 +258,14 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 			},
 		}
 
-		if err := m.ValidForBlockInclusion(0, constants.NewestNetworkVersion); err != nil {
+		nv, err := mp.getNtwkVersion(epoch)
+		if err != nil {
+			check.OK = false
+			check.Err = fmt.Sprintf("error retrieving network version: %s", err.Error())
+		} else {
+			check.OK = true
+		}
+		if err := m.ValidForBlockInclusion(0, nv); err != nil {
 			check.OK = false
 			check.Err = fmt.Sprintf("syntactically invalid message: %s", err.Error())
 		} else {
@@ -275,7 +281,7 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		// gas checks
 
 		// 4. Min Gas
-		minGas := gas.NewPricesSchedule(mp.forkParams).PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
+		minGas := gas.NewPricesSchedule(mp.forkParams).PricelistByEpochAndNetworkVersion(epoch, nv).OnChainMessage(m.ChainLength())
 
 		check = types.MessageCheckStatus{
 			Cid: m.Cid(),
