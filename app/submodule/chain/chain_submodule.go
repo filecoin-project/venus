@@ -28,7 +28,7 @@ type ChainSubmodule struct { //nolint
 	ChainReader  *chain.Store
 	MessageStore *chain.MessageStore
 	Processor    *consensus.DefaultProcessor
-	Fork         fork.IFork
+	Fork         *fork.ChainFork
 	SystemCall   vm.SyscallsImpl
 
 	CheckPoint types.TipSetKey

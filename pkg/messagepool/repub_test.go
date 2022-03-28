@@ -26,7 +26,7 @@ func TestRepubMessages(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil, mockGetNtwkVersionfunc)
 	if err != nil {
 		t.Fatal(err)
 	}

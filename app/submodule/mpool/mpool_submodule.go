@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/filecoin-project/venus/pkg/fork"
+
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
@@ -82,9 +84,9 @@ func NewMpoolSubmodule(ctx context.Context, cfg messagepoolConfig,
 	if err != nil {
 		return nil, err
 	}
-	mp, err := messagepool.New(ctx, mpp, chain.Stmgr, cfg.Repo().MetaDatastore(),
-		cfg.Repo().Config().NetworkParams.ForkUpgradeParam, cfg.Repo().Config().Mpool,
-		network.NetworkName, j)
+	networkParams := cfg.Repo().Config().NetworkParams
+	mp, err := messagepool.New(ctx, mpp, chain.Stmgr, cfg.Repo().MetaDatastore(), networkParams.ForkUpgradeParam,
+		cfg.Repo().Config().Mpool, network.NetworkName, j, fork.DefaultUpgradeSchedule(chain.Fork, networkParams).GetNtwkVersion)
 	if err != nil {
 		return nil, xerrors.Errorf("constructing mpool: %s", err)
 	}

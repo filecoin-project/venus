@@ -126,7 +126,10 @@ type Upgrade struct {
 	PreMigrations []PreMigration
 }
 
-type UpgradeSchedule []Upgrade
+type UpgradeSchedule struct {
+	upgrades              []Upgrade
+	genesisNetworkVersion network.Version
+}
 
 type migrationLogger struct{}
 
@@ -143,8 +146,11 @@ func (ml migrationLogger) Log(level rt.LogLevel, msg string, args ...interface{}
 	}
 }
 
-func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConfig) UpgradeSchedule {
-	var us UpgradeSchedule
+func DefaultUpgradeSchedule(cf *ChainFork, networkParams *config.NetworkParamsConfig) UpgradeSchedule {
+	us := UpgradeSchedule{
+		genesisNetworkVersion: networkParams.GenesisNetworkVersion,
+	}
+	upgradeHeight := networkParams.ForkUpgradeParam
 
 	updates := []Upgrade{{
 		Height:    upgradeHeight.UpgradeBreezeHeight,
@@ -284,14 +290,14 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			// upgrade disabled
 			continue
 		}
-		us = append(us, u)
+		us.upgrades = append(us.upgrades, u)
 	}
 	return us
 }
 
 func (us UpgradeSchedule) Validate() error {
 	// Make sure each upgrade is valid.
-	for _, u := range us {
+	for _, u := range us.upgrades {
 		if u.Network <= 0 {
 			return xerrors.Errorf("cannot upgrade to version <= 0: %d", u.Network)
 		}
@@ -327,9 +333,9 @@ func (us UpgradeSchedule) Validate() error {
 	}
 
 	// Make sure the upgrade order makes sense.
-	for i := 1; i < len(us); i++ {
-		prev := &us[i-1]
-		curr := &us[i]
+	for i := 1; i < len(us.upgrades); i++ {
+		prev := &us.upgrades[i-1]
+		curr := &us.upgrades[i]
 		if !(prev.Network <= curr.Network) {
 			return xerrors.Errorf("cannot downgrade from version %d to version %d", prev.Network, curr.Network)
 		}
@@ -343,6 +349,19 @@ func (us UpgradeSchedule) Validate() error {
 		}
 	}
 	return nil
+}
+
+func (us UpgradeSchedule) GetNtwkVersion(e abi.ChainEpoch) (network.Version, error) {
+	// Traverse from newest to oldest returning upgrade active during epoch e
+	for i := len(us.upgrades) - 1; i >= 0; i-- {
+		u := us.upgrades[i]
+		// u.Height is the last epoch before u.Network becomes the active version
+		if u.Height < e {
+			return u.Network, nil
+		}
+	}
+
+	return us.genesisNetworkVersion, nil
 }
 
 type chainReader interface {
@@ -408,18 +427,18 @@ func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore,
 	}
 
 	// If we have upgrades, make sure they're in-order and make sense.
-	us := DefaultUpgradeSchedule(fork, networkParams.ForkUpgradeParam)
+	us := DefaultUpgradeSchedule(fork, networkParams)
 	if err := us.Validate(); err != nil {
 		return nil, err
 	}
 
-	stateMigrations := make(map[abi.ChainEpoch]*migration, len(us))
-	expensiveUpgrades := make(map[abi.ChainEpoch]struct{}, len(us))
+	stateMigrations := make(map[abi.ChainEpoch]*migration, len(us.upgrades))
+	expensiveUpgrades := make(map[abi.ChainEpoch]struct{}, len(us.upgrades))
 	var networkVersions []versionSpec
 	lastVersion := networkParams.GenesisNetworkVersion
-	if len(us) > 0 {
+	if len(us.upgrades) > 0 {
 		// If we have any upgrades, process them and create a version schedule.
-		for _, upgrade := range us {
+		for _, upgrade := range us.upgrades {
 			if upgrade.Migration != nil || upgrade.PreMigrations != nil {
 				migration := &migration{
 					upgrade:       upgrade.Migration,

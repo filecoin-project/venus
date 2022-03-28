@@ -123,7 +123,7 @@ func NewVM(ctx context.Context, actorImpls ActorImplLookup, vmOption VmOption) (
 		State:          st,
 		vmOption:       vmOption,
 		baseCircSupply: baseCirc,
-		pricelist:      vmOption.GasPriceSchedule.PricelistByEpoch(vmOption.Epoch),
+		pricelist:      vmOption.GasPriceSchedule.PricelistByEpochAndNetworkVersion(vmOption.Epoch, vmOption.NetworkVersion),
 		currentEpoch:   vmOption.Epoch,
 	}, nil
 }
@@ -796,7 +796,7 @@ func (vm *VM) CurrentEpoch() abi.ChainEpoch {
 
 func (vm *VM) SetCurrentEpoch(current abi.ChainEpoch) error {
 	vm.currentEpoch = current
-	vm.pricelist = vm.vmOption.GasPriceSchedule.PricelistByEpoch(current)
+	vm.pricelist = vm.vmOption.GasPriceSchedule.PricelistByEpochAndNetworkVersion(current, vm.NetworkVersion())
 
 	ncirc, err := vm.vmOption.CircSupplyCalculator(vm.context, vm.currentEpoch, vm.State)
 	if err != nil {
