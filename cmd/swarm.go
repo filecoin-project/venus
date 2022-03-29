@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/venus/pkg/net"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/venus/app/node"
@@ -41,6 +44,7 @@ libp2p peers on the internet.
 		"findpeer":  findPeerDhtCmd,
 		"findprovs": findProvidersDhtCmd,
 		"bandwidth": statsBandwidthCmd,
+		"ping":      swarmPingCmd,
 	},
 }
 
@@ -69,6 +73,79 @@ var swarmPeersCmd = &cmds.Command{
 		return re.Emit(&out)
 	},
 	Type: types.SwarmConnInfos{},
+}
+
+var swarmPingCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Ping peers",
+		ShortDescription: `
+'venus swarm ping' ping peers.
+`,
+	},
+	Options: []cmds.Option{
+		cmds.IntOption("count", "c", "specify the number of times it should ping"),
+		cmds.IntOption("internal", "minimum time between pings").WithDefault(1),
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("peer", true, false, "peers id"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		if len(req.Arguments) != 1 {
+			return re.Emit("please provide a peerID")
+		}
+		ctx := req.Context
+		count, _ := req.Options["count"].(int)
+		interval, _ := req.Options["internal"].(int)
+
+		pis, err := net.ParseAddresses(ctx, req.Arguments)
+		if err != nil {
+			return err
+		}
+
+		for i, pi := range pis {
+			results, err := env.(*node.Env).NetworkAPI.NetworkConnect(ctx, []string{req.Arguments[i]})
+			if err != nil {
+				return xerrors.Errorf("connect: %w", err)
+			}
+
+			for result := range results {
+				if result.Err != nil {
+					return result.Err
+				}
+			}
+
+			var avg time.Duration
+			var successful int
+
+			for i := 0; i < count && ctx.Err() == nil; i++ {
+				start := time.Now()
+
+				rtt, err := env.(*node.Env).NetworkAPI.NetworkPing(ctx, pi.ID)
+				if err != nil {
+					if ctx.Err() != nil {
+						break
+					}
+					log.Errorf("Ping failed: error=%v", err)
+					continue
+				}
+				if err := re.Emit(fmt.Sprintf("Pong received: time=%v", rtt)); err != nil {
+					return err
+				}
+				avg = avg + rtt
+				successful++
+
+				wctx, cancel := context.WithTimeout(ctx, time.Until(start.Add(time.Duration(interval)*time.Second)))
+				<-wctx.Done()
+				cancel()
+			}
+
+			if successful > 0 {
+				re.Emit(fmt.Sprintf("Average latency: %v", avg/time.Duration(successful)))
+			}
+		}
+
+		return nil
+	},
 }
 
 var swarmConnectCmd = &cmds.Command{

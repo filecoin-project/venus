@@ -2,6 +2,10 @@ package network
 
 import (
 	"context"
+	"time"
+
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
 
@@ -59,6 +63,14 @@ func (na *networkAPI) NetworkConnect(ctx context.Context, addrs []string) (<-cha
 // NetworkPeers lists peers currently available on the network
 func (na *networkAPI) NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*types.SwarmConnInfos, error) {
 	return na.network.Network.Peers(ctx, verbose, latency, streams)
+}
+
+func (na *networkAPI) NetworkPing(ctx context.Context, p peer.ID) (time.Duration, error) {
+	result, ok := <-ping.Ping(ctx, na.network.Host, p)
+	if !ok {
+		return 0, xerrors.Errorf("didn't get ping result: %w", ctx.Err())
+	}
+	return result.RTT, result.Error
 }
 
 func (na *networkAPI) Version(context.Context) (types.Version, error) {

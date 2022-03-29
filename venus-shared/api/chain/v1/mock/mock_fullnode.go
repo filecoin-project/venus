@@ -1310,6 +1310,21 @@ func (mr *MockFullNodeMockRecorder) NetworkPeers(arg0, arg1, arg2, arg3 interfac
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetworkPeers", reflect.TypeOf((*MockFullNode)(nil).NetworkPeers), arg0, arg1, arg2, arg3)
 }
 
+// NetworkPing mocks base method.
+func (m *MockFullNode) NetworkPing(arg0 context.Context, arg1 peer.ID) (time.Duration, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetworkPing", arg0, arg1)
+	ret0, _ := ret[0].(time.Duration)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetworkPing indicates an expected call of NetworkPing.
+func (mr *MockFullNodeMockRecorder) NetworkPing(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetworkPing", reflect.TypeOf((*MockFullNode)(nil).NetworkPing), arg0, arg1)
+}
+
 // PaychAllocateLane mocks base method.
 func (m *MockFullNode) PaychAllocateLane(arg0 context.Context, arg1 address.Address) (uint64, error) {
 	m.ctrl.T.Helper()
