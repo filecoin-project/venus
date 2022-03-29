@@ -132,6 +132,7 @@
   * [NetworkGetPeerAddresses](#NetworkGetPeerAddresses)
   * [NetworkGetPeerID](#NetworkGetPeerID)
   * [NetworkPeers](#NetworkPeers)
+  * [NetworkPing](#NetworkPing)
   * [Version](#Version)
 * [Paychan](#Paychan)
   * [PaychAllocateLane](#PaychAllocateLane)
@@ -4096,6 +4097,20 @@ Response:
   ]
 }
 ```
+
+### NetworkPing
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+Response: `60000000000`
 
 ### Version
 

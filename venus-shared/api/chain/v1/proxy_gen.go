@@ -560,6 +560,7 @@ type INetworkStruct struct {
 		NetworkGetPeerAddresses   func(ctx context.Context) []ma.Multiaddr                                                 `perm:"admin"`
 		NetworkGetPeerID          func(ctx context.Context) peer.ID                                                        `perm:"admin"`
 		NetworkPeers              func(ctx context.Context, verbose, latency, streams bool) (*types.SwarmConnInfos, error) `perm:"read"`
+		NetworkPing               func(context.Context, peer.ID) (time.Duration, error)                                    `perm:"read"`
 		Version                   func(context.Context) (types.Version, error)                                             `perm:"read"`
 	}
 }
@@ -590,6 +591,9 @@ func (s *INetworkStruct) NetworkGetPeerID(p0 context.Context) peer.ID {
 }
 func (s *INetworkStruct) NetworkPeers(p0 context.Context, p1, p2, p3 bool) (*types.SwarmConnInfos, error) {
 	return s.Internal.NetworkPeers(p0, p1, p2, p3)
+}
+func (s *INetworkStruct) NetworkPing(p0 context.Context, p1 peer.ID) (time.Duration, error) {
+	return s.Internal.NetworkPing(p0, p1)
 }
 func (s *INetworkStruct) Version(p0 context.Context) (types.Version, error) {
 	return s.Internal.Version(p0)
