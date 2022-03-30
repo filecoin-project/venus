@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
@@ -36,12 +37,13 @@ import (
 )
 
 var ExampleValues = map[reflect.Type]interface{}{
-	reflect.TypeOf(auth.Permission("")): auth.Permission("write"),
-	reflect.TypeOf(""):                  "string value",
-	reflect.TypeOf(uint64(42)):          uint64(42),
-	reflect.TypeOf(uint(42)):            uint(42),
-	reflect.TypeOf(byte(7)):             byte(7),
-	reflect.TypeOf([]byte{}):            []byte("byte array"),
+	reflect.TypeOf(auth.Permission("")):    auth.Permission("write"),
+	reflect.TypeOf(""):                     "string value",
+	reflect.TypeOf(market.PieceStatus("")): market.Undefine,
+	reflect.TypeOf(uint64(42)):             uint64(42),
+	reflect.TypeOf(uint(42)):               uint(42),
+	reflect.TypeOf(byte(7)):                byte(7),
+	reflect.TypeOf([]byte{}):               []byte("byte array"),
 }
 
 func addExample(v interface{}) {

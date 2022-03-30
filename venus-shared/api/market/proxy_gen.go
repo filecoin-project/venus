@@ -62,6 +62,7 @@ type IMarketStruct struct {
 		MarketGetReserved                      func(ctx context.Context, addr address.Address) (types.BigInt, error)                                                                                                                               `perm:"sign"`
 		MarketGetRetrievalAsk                  func(ctx context.Context, mAddr address.Address) (*retrievalmarket.Ask, error)                                                                                                                      `perm:"read"`
 		MarketImportDealData                   func(ctx context.Context, propcid cid.Cid, path string) error                                                                                                                                       `perm:"write"`
+		MarketImportPublishedDeal              func(ctx context.Context, deal market.MinerDeal) error                                                                                                                                              `perm:"write"`
 		MarketListAsk                          func(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error)                                                                                                                                `perm:"read"`
 		MarketListDataTransfers                func(ctx context.Context) ([]market.DataTransferChannel, error)                                                                                                                                     `perm:"write"`
 		MarketListDeals                        func(ctx context.Context, addrs []address.Address) ([]types.MarketDeal, error)                                                                                                                      `perm:"read"`
@@ -89,8 +90,8 @@ type IMarketStruct struct {
 		SectorGetSealDelay                     func(context.Context) (time.Duration, error)                                                                                                                                                        `perm:"read"`
 		SectorSetExpectedSealDuration          func(context.Context, time.Duration) error                                                                                                                                                          `perm:"write"`
 		UpdateDealOnPacking                    func(ctx context.Context, miner address.Address, dealID abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error                                                                    `perm:"write"`
-		UpdateDealStatus                       func(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus string) error                                                                                                       `perm:"write"`
-		UpdateStorageDealStatus                func(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus, pieceState string) error                                                                                  `perm:"write"`
+		UpdateDealStatus                       func(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus market.PieceStatus) error                                                                                           `perm:"write"`
+		UpdateStorageDealStatus                func(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus, pieceState market.PieceStatus) error                                                                      `perm:"write"`
 	}
 }
 
@@ -212,6 +213,9 @@ func (s *IMarketStruct) MarketGetRetrievalAsk(p0 context.Context, p1 address.Add
 func (s *IMarketStruct) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 string) error {
 	return s.Internal.MarketImportDealData(p0, p1, p2)
 }
+func (s *IMarketStruct) MarketImportPublishedDeal(p0 context.Context, p1 market.MinerDeal) error {
+	return s.Internal.MarketImportPublishedDeal(p0, p1)
+}
 func (s *IMarketStruct) MarketListAsk(p0 context.Context) ([]*storagemarket.SignedStorageAsk, error) {
 	return s.Internal.MarketListAsk(p0)
 }
@@ -293,9 +297,9 @@ func (s *IMarketStruct) SectorSetExpectedSealDuration(p0 context.Context, p1 tim
 func (s *IMarketStruct) UpdateDealOnPacking(p0 context.Context, p1 address.Address, p2 abi.DealID, p3 abi.SectorNumber, p4 abi.PaddedPieceSize) error {
 	return s.Internal.UpdateDealOnPacking(p0, p1, p2, p3, p4)
 }
-func (s *IMarketStruct) UpdateDealStatus(p0 context.Context, p1 address.Address, p2 abi.DealID, p3 string) error {
+func (s *IMarketStruct) UpdateDealStatus(p0 context.Context, p1 address.Address, p2 abi.DealID, p3 market.PieceStatus) error {
 	return s.Internal.UpdateDealStatus(p0, p1, p2, p3)
 }
-func (s *IMarketStruct) UpdateStorageDealStatus(p0 context.Context, p1 cid.Cid, p2 storagemarket.StorageDealStatus, p3 string) error {
+func (s *IMarketStruct) UpdateStorageDealStatus(p0 context.Context, p1 cid.Cid, p2 storagemarket.StorageDealStatus, p3 market.PieceStatus) error {
 	return s.Internal.UpdateStorageDealStatus(p0, p1, p2, p3)
 }

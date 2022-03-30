@@ -26,6 +26,7 @@ type IMarket interface {
 	ActorSectorSize(context.Context, address.Address) (abi.SectorSize, error) //perm:read
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                                               //perm:write
+	MarketImportPublishedDeal(ctx context.Context, deal market.MinerDeal) error                                                                                                                                 //perm:write
 	MarketListDeals(ctx context.Context, addrs []address.Address) ([]types.MarketDeal, error)                                                                                                                   //perm:read
 	MarketListRetrievalDeals(ctx context.Context, mAddr address.Address) ([]market.ProviderDealState, error)                                                                                                    //perm:read
 	MarketGetDealUpdates(ctx context.Context) (<-chan market.MinerDeal, error)                                                                                                                                  //perm:read
@@ -129,11 +130,11 @@ type IMarket interface {
 
 	MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                               //perm:write
 	UpdateDealOnPacking(ctx context.Context, miner address.Address, dealID abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error        //perm:write
-	UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus string) error                                              //perm:write
+	UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus market.PieceStatus) error                                  //perm:write
 	GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*market.DealInfo, error)                                              //perm:read
 	AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error) //perm:write
 	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                          //perm:read
-	UpdateStorageDealStatus(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus, pieceState string) error                  //perm:write
+	UpdateStorageDealStatus(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus, pieceState market.PieceStatus) error      //perm:write
 	//market event
 	ResponseMarketEvent(ctx context.Context, resp *gateway.ResponseEvent) error                                        //perm:read
 	ListenMarketEvent(ctx context.Context, policy *gateway.MarketRegisterPolicy) (<-chan *gateway.RequestEvent, error) //perm:read

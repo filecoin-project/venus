@@ -762,7 +762,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.PayloadSize (abi.UnpaddedPieceSize) (uint64)
+	// t.PayloadSize (uint64) (uint64)
 
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.PayloadSize)); err != nil {
 		return err
@@ -851,7 +851,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.PieceStatus (string) (string)
+	// t.PieceStatus (market.PieceStatus) (string)
 	if len(t.PieceStatus) > cbg.MaxLength {
 		return xerrors.Errorf("Value in field t.PieceStatus was too long")
 	}
@@ -1004,7 +1004,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 
 		t.PiecePath = filestore.Path(sval)
 	}
-	// t.PayloadSize (abi.UnpaddedPieceSize) (uint64)
+	// t.PayloadSize (uint64) (uint64)
 
 	{
 
@@ -1015,7 +1015,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 		if maj != cbg.MajUnsignedInt {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
-		t.PayloadSize = abi.UnpaddedPieceSize(extra)
+		t.PayloadSize = uint64(extra)
 
 	}
 	// t.MetadataPath (filestore.Path) (string)
@@ -1195,7 +1195,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 		t.Offset = abi.PaddedPieceSize(extra)
 
 	}
-	// t.PieceStatus (string) (string)
+	// t.PieceStatus (market.PieceStatus) (string)
 
 	{
 		sval, err := cbg.ReadStringBuf(br, scratch)
@@ -1203,7 +1203,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 			return err
 		}
 
-		t.PieceStatus = string(sval)
+		t.PieceStatus = PieceStatus(sval)
 	}
 	// t.InboundCAR (string) (string)
 
