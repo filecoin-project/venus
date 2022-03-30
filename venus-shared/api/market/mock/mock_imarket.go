@@ -635,6 +635,20 @@ func (mr *MockIMarketMockRecorder) MarketImportDealData(arg0, arg1, arg2 interfa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketImportDealData", reflect.TypeOf((*MockIMarket)(nil).MarketImportDealData), arg0, arg1, arg2)
 }
 
+// MarketImportPublishedDeal mocks base method.
+func (m *MockIMarket) MarketImportPublishedDeal(arg0 context.Context, arg1 market.MinerDeal) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarketImportPublishedDeal", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MarketImportPublishedDeal indicates an expected call of MarketImportPublishedDeal.
+func (mr *MockIMarketMockRecorder) MarketImportPublishedDeal(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketImportPublishedDeal", reflect.TypeOf((*MockIMarket)(nil).MarketImportPublishedDeal), arg0, arg1)
+}
+
 // MarketListAsk mocks base method.
 func (m *MockIMarket) MarketListAsk(arg0 context.Context) ([]*storagemarket.SignedStorageAsk, error) {
 	m.ctrl.T.Helper()
@@ -1033,7 +1047,7 @@ func (mr *MockIMarketMockRecorder) UpdateDealOnPacking(arg0, arg1, arg2, arg3, a
 }
 
 // UpdateDealStatus mocks base method.
-func (m *MockIMarket) UpdateDealStatus(arg0 context.Context, arg1 address.Address, arg2 abi.DealID, arg3 string) error {
+func (m *MockIMarket) UpdateDealStatus(arg0 context.Context, arg1 address.Address, arg2 abi.DealID, arg3 market.PieceStatus) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateDealStatus", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
@@ -1047,7 +1061,7 @@ func (mr *MockIMarketMockRecorder) UpdateDealStatus(arg0, arg1, arg2, arg3 inter
 }
 
 // UpdateStorageDealStatus mocks base method.
-func (m *MockIMarket) UpdateStorageDealStatus(arg0 context.Context, arg1 cid.Cid, arg2 uint64, arg3 string) error {
+func (m *MockIMarket) UpdateStorageDealStatus(arg0 context.Context, arg1 cid.Cid, arg2 uint64, arg3 market.PieceStatus) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateStorageDealStatus", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)

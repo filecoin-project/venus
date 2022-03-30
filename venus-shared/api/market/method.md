@@ -41,6 +41,7 @@
   * [MarketGetReserved](#MarketGetReserved)
   * [MarketGetRetrievalAsk](#MarketGetRetrievalAsk)
   * [MarketImportDealData](#MarketImportDealData)
+  * [MarketImportPublishedDeal](#MarketImportPublishedDeal)
   * [MarketListAsk](#MarketListAsk)
   * [MarketListDataTransfers](#MarketListDataTransfers)
   * [MarketListDeals](#MarketListDeals)
@@ -139,11 +140,6 @@ Response:
 ```json
 [
   {
-    "Offset": 1032,
-    "Length": 1032,
-    "PayloadSize": 1024,
-    "DealID": 5432,
-    "TotalStorageFee": "0",
     "PieceCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
@@ -157,6 +153,11 @@ Response:
     "StoragePricePerEpoch": "0",
     "ProviderCollateral": "0",
     "ClientCollateral": "0",
+    "Offset": 1032,
+    "Length": 1032,
+    "PayloadSize": 42,
+    "DealID": 5432,
+    "TotalStorageFee": "0",
     "FastRetrieval": true,
     "PublishCid": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -526,7 +527,7 @@ Response:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "FastRetrieval": true,
-    "Status": "string value"
+    "Status": "Undefine"
   }
 ]
 ```
@@ -566,11 +567,6 @@ Response:
 ```json
 [
   {
-    "Offset": 1032,
-    "Length": 1032,
-    "PayloadSize": 1024,
-    "DealID": 5432,
-    "TotalStorageFee": "0",
     "PieceCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
@@ -584,6 +580,11 @@ Response:
     "StoragePricePerEpoch": "0",
     "ProviderCollateral": "0",
     "ClientCollateral": "0",
+    "Offset": 1032,
+    "Length": 1032,
+    "PayloadSize": 42,
+    "DealID": 5432,
+    "TotalStorageFee": "0",
     "FastRetrieval": true,
     "PublishCid": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -817,7 +818,7 @@ Response:
   "Client": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "State": 42,
   "PiecePath": "/some/path",
-  "PayloadSize": 1024,
+  "PayloadSize": 42,
   "MetadataPath": "/some/path",
   "SlashEpoch": 10101,
   "FastRetrieval": true,
@@ -842,7 +843,7 @@ Response:
   },
   "SectorNumber": 9,
   "Offset": 1032,
-  "PieceStatus": "string value",
+  "PieceStatus": "Undefine",
   "InboundCAR": "string value"
 }
 ```
@@ -895,6 +896,76 @@ Inputs:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   "string value"
+]
+```
+
+Response: `{}`
+
+### MarketImportPublishedDeal
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  {
+    "Proposal": {
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "PieceSize": 1032,
+      "VerifiedDeal": true,
+      "Client": "f01234",
+      "Provider": "f01234",
+      "Label": "string value",
+      "StartEpoch": 10101,
+      "EndEpoch": 10101,
+      "StoragePricePerEpoch": "0",
+      "ProviderCollateral": "0",
+      "ClientCollateral": "0"
+    },
+    "ClientSignature": {
+      "Type": 2,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    },
+    "ProposalCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "AddFundsCid": null,
+    "PublishCid": null,
+    "Miner": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Client": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "State": 42,
+    "PiecePath": "/some/path",
+    "PayloadSize": 42,
+    "MetadataPath": "/some/path",
+    "SlashEpoch": 10101,
+    "FastRetrieval": true,
+    "Message": "string value",
+    "FundsReserved": "0",
+    "Ref": {
+      "TransferType": "string value",
+      "Root": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "PieceCid": null,
+      "PieceSize": 1024,
+      "RawBlockSize": 42
+    },
+    "AvailableForRetrieval": true,
+    "DealID": 5432,
+    "CreationTime": "0001-01-01T00:00:00Z",
+    "TransferChannelId": {
+      "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+      "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+      "ID": 3
+    },
+    "SectorNumber": 9,
+    "Offset": 1032,
+    "PieceStatus": "Undefine",
+    "InboundCAR": "string value"
+  }
 ]
 ```
 
@@ -1057,7 +1128,7 @@ Response:
     "Client": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
     "State": 42,
     "PiecePath": "/some/path",
-    "PayloadSize": 1024,
+    "PayloadSize": 42,
     "MetadataPath": "/some/path",
     "SlashEpoch": 10101,
     "FastRetrieval": true,
@@ -1082,7 +1153,7 @@ Response:
     },
     "SectorNumber": 9,
     "Offset": 1032,
-    "PieceStatus": "string value",
+    "PieceStatus": "Undefine",
     "InboundCAR": "string value"
   }
 ]
@@ -1655,7 +1726,7 @@ Inputs:
 [
   "f01234",
   5432,
-  "string value"
+  "Undefine"
 ]
 ```
 
@@ -1673,7 +1744,7 @@ Inputs:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   42,
-  "string value"
+  "Undefine"
 ]
 ```
 
