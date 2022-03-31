@@ -21,7 +21,7 @@ type BufferedBS struct {
 
 func NewBufferedBstore(base Blockstore) *BufferedBS {
 	var buf Blockstore
-	if os.Getenv("VENUS_DISABLE_VM_BUF") == "iknowitsabadidea" {
+	if os.Getenv("LOTUS_DISABLE_VM_BUF") == "iknowitsabadidea" {
 		log.Warn("VM BLOCKSTORE BUFFERING IS DISABLED")
 		buf = base
 	} else {
