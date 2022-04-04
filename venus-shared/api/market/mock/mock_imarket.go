@@ -95,7 +95,7 @@ func (mr *MockIMarketMockRecorder) ActorSectorSize(arg0, arg1 interface{}) *gomo
 }
 
 // AssignUnPackedDeals mocks base method.
-func (m *MockIMarket) AssignUnPackedDeals(arg0 context.Context, arg1 address.Address, arg2 abi.SectorSize, arg3 *market.GetDealSpec) ([]*market.DealInfoIncludePath, error) {
+func (m *MockIMarket) AssignUnPackedDeals(arg0 context.Context, arg1 abi.SectorID, arg2 abi.SectorSize, arg3 *market.GetDealSpec) ([]*market.DealInfoIncludePath, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AssignUnPackedDeals", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].([]*market.DealInfoIncludePath)

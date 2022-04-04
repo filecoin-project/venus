@@ -25,7 +25,7 @@ type IMarketStruct struct {
 		ActorExist                             func(ctx context.Context, addr address.Address) (bool, error)                                                                                                                                       `perm:"read"`
 		ActorList                              func(context.Context) ([]market.User, error)                                                                                                                                                        `perm:"read"`
 		ActorSectorSize                        func(context.Context, address.Address) (abi.SectorSize, error)                                                                                                                                      `perm:"read"`
-		AssignUnPackedDeals                    func(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                                                             `perm:"write"`
+		AssignUnPackedDeals                    func(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                                                                  `perm:"write"`
 		DagstoreGC                             func(ctx context.Context) ([]market.DagstoreShardResult, error)                                                                                                                                     `perm:"admin"`
 		DagstoreInitializeAll                  func(ctx context.Context, params market.DagstoreInitializeAllParams) (<-chan market.DagstoreInitializeAllEvent, error)                                                                              `perm:"write"`
 		DagstoreInitializeShard                func(ctx context.Context, key string) error                                                                                                                                                         `perm:"write"`
@@ -104,7 +104,7 @@ func (s *IMarketStruct) ActorList(p0 context.Context) ([]market.User, error) {
 func (s *IMarketStruct) ActorSectorSize(p0 context.Context, p1 address.Address) (abi.SectorSize, error) {
 	return s.Internal.ActorSectorSize(p0, p1)
 }
-func (s *IMarketStruct) AssignUnPackedDeals(p0 context.Context, p1 address.Address, p2 abi.SectorSize, p3 *market.GetDealSpec) ([]*market.DealInfoIncludePath, error) {
+func (s *IMarketStruct) AssignUnPackedDeals(p0 context.Context, p1 abi.SectorID, p2 abi.SectorSize, p3 *market.GetDealSpec) ([]*market.DealInfoIncludePath, error) {
 	return s.Internal.AssignUnPackedDeals(p0, p1, p2, p3)
 }
 func (s *IMarketStruct) DagstoreGC(p0 context.Context) ([]market.DagstoreShardResult, error) {

@@ -128,13 +128,13 @@ type IMarket interface {
 	// DagstoreGC runs garbage collection on the DAG store.
 	DagstoreGC(ctx context.Context) ([]market.DagstoreShardResult, error) //perm:admin
 
-	MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                               //perm:write
-	UpdateDealOnPacking(ctx context.Context, miner address.Address, dealID abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error        //perm:write
-	UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus market.PieceStatus) error                                  //perm:write
-	GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*market.DealInfo, error)                                              //perm:read
-	AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error) //perm:write
-	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                          //perm:read
-	UpdateStorageDealStatus(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus, pieceState market.PieceStatus) error      //perm:write
+	MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                          //perm:write
+	UpdateDealOnPacking(ctx context.Context, miner address.Address, dealID abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error   //perm:write
+	UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus market.PieceStatus) error                             //perm:write
+	GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*market.DealInfo, error)                                         //perm:read
+	AssignUnPackedDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error) //perm:write
+	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                     //perm:read
+	UpdateStorageDealStatus(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus, pieceState market.PieceStatus) error //perm:write
 	//market event
 	ResponseMarketEvent(ctx context.Context, resp *gateway.ResponseEvent) error                                        //perm:read
 	ListenMarketEvent(ctx context.Context, policy *gateway.MarketRegisterPolicy) (<-chan *gateway.RequestEvent, error) //perm:read
