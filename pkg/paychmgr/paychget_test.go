@@ -509,9 +509,8 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 	require.Nil(t, ci.AddFundsMsg)
 }
 
-// TestPaychGetRestartAfterCreateChannelMsg tests that if the system stops
-// right after the create channel message is sent, the channel will be
-// created when the system restarts.
+// TestPaychGetRecoverAfterAddFundsError tests that after an add funds fails, the
+// next attempt to add funds can succeed.
 func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
@@ -537,6 +536,14 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 	// Create a new manager with the same datastore
 	mock2 := newMockManagerAPI()
 	defer mock2.close()
+
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: types.NewInt(20),
+	}
+	mock2.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
 	mgr2, err := newManager(ctx, store, mock2)
 	require.NoError(t, err)
