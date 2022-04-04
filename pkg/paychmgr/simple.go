@@ -32,7 +32,7 @@ type fundsReq struct {
 	ctx     context.Context
 	promise chan *paychFundsRes
 	amt     big.Int
-	opts GetOpts
+	opts    GetOpts
 
 	lk sync.Mutex
 	// merge parent, if this req is part of a merge

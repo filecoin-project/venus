@@ -19,4 +19,3 @@ func (w *WrapperV1IPaych) PaychGet(ctx context.Context, from, to address.Address
 }
 
 var _ v0api.IPaychan = &WrapperV1IPaych{}
-

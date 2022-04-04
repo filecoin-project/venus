@@ -2,6 +2,7 @@ package gas
 
 import (
 	"fmt"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -216,7 +217,7 @@ var priceListCalico = pricelistV0{
 //NewPricesSchedule new gasprice schedule from forkParams parameters
 func NewPricesSchedule(forkParams *config.ForkUpgradeConfig) *PricesSchedule {
 	var prices = map[abi.ChainEpoch]Pricelist{
-		abi.ChainEpoch(0): &priceListGenesis,
+		abi.ChainEpoch(0):              &priceListGenesis,
 		forkParams.UpgradeCalicoHeight: &priceListCalico,
 	}
 	return &PricesSchedule{prices: prices}

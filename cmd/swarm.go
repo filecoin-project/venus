@@ -140,7 +140,9 @@ var swarmPingCmd = &cmds.Command{
 			}
 
 			if successful > 0 {
-				re.Emit(fmt.Sprintf("Average latency: %v", avg/time.Duration(successful)))
+				if err := re.Emit(fmt.Sprintf("Average latency: %v", avg/time.Duration(successful))); err != nil {
+					return err
+				}
 			}
 		}
 
