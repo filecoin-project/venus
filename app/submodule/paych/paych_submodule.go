@@ -36,5 +36,5 @@ func (ps *PaychSubmodule) API() v1api.IPaychan {
 }
 
 func (ps *PaychSubmodule) V0API() v0api.IPaychan {
-	return &v0api2.WrapperV1IPaych{ps.API()}
+	return &v0api2.WrapperV1IPaych{IPaychan: ps.API()}
 }

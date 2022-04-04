@@ -21,7 +21,7 @@ type IPaychan interface {
 	PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt, opts types.PaychGetOpts) (*types.ChannelInfo, error) //perm:sign
 	// PaychFund gets or creates a payment channel between address pair.
 	// The specified amount will be added to the channel through on-chain send for future use
-	PaychFund(ctx context.Context, from, to address.Address, amt types.BigInt) (*types.ChannelInfo, error)                    //perm:sign
+	PaychFund(ctx context.Context, from, to address.Address, amt types.BigInt) (*types.ChannelInfo, error) //perm:sign
 	// PaychAvailableFunds get the status of an outbound payment channel
 	// @pch: payment channel address
 	PaychAvailableFunds(ctx context.Context, ch address.Address) (*types.ChannelAvailableFunds, error) //perm:sign
