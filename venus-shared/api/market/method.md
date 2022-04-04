@@ -127,7 +127,10 @@ Perms: write
 Inputs:
 ```json
 [
-  "f01234",
+  {
+    "Miner": 1000,
+    "Number": 9
+  },
   34359738368,
   {
     "MaxPiece": 123,
