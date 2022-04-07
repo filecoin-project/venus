@@ -41,6 +41,7 @@ type FvmExtern struct {
 	lbState          LookbackStateGetter
 	base             cid.Cid
 	gasPriceSchedule *gas.PricesSchedule
+	nv  network.Version
 }
 
 // VerifyConsensusFault is similar to the one in syscalls.go used by the LegacyVM, except it never errors
@@ -180,7 +181,7 @@ func (x *FvmExtern) VerifyBlockSig(ctx context.Context, blk *types.BlockHeader) 
 func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerID address.Address, height abi.ChainEpoch) (address.Address, int64, error) {
 	gasTank := gas.NewGasTracker(constants.BlockGasLimit * 10000)
 	cstWithoutGas := cbor.NewCborStore(x.Blockstore)
-	cbb := vmcontext.NewGasChargeBlockStore(gasTank, x.gasPriceSchedule.PricelistByEpoch(x.epoch), x.Blockstore)
+	cbb := vmcontext.NewGasChargeBlockStore(gasTank, x.gasPriceSchedule.PricelistByEpochAndNetworkVersion(x.epoch, x.nv), x.Blockstore)
 	cstWithGas := cbor.NewCborStore(cbb)
 
 	lbState, err := x.lbState(ctx, height)
@@ -259,7 +260,7 @@ func NewFVM(ctx context.Context, opts *VmOption) (*FVM, error) {
 	fvmOpts := ffi.FVMOpts{
 		FVMVersion: 0,
 		Externs: &FvmExtern{Rand: newWrapperRand(opts.Rnd), Blockstore: opts.Bsstore, epoch: opts.Epoch,
-			lbState: opts.LookbackStateGetter, base: opts.PRoot, gasPriceSchedule: opts.GasPriceSchedule},
+			lbState: opts.LookbackStateGetter, base: opts.PRoot, gasPriceSchedule: opts.GasPriceSchedule, nv: opts.NetworkVersion},
 		Epoch:          opts.Epoch,
 		BaseFee:        opts.BaseFee,
 		BaseCircSupply: circToReport,
