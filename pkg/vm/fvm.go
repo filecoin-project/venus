@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -62,31 +63,31 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 	// can blocks be decoded properly?
 	var blockA, blockB types.BlockHeader
 	if decodeErr := blockA.UnmarshalCBOR(bytes.NewReader(a)); decodeErr != nil {
-		fvmLog.Info("invalid consensus fault: cannot decode first block header: %w", decodeErr)
+		fvmLog.Infof("invalid consensus fault: cannot decode first block header: %w", decodeErr)
 		return ret, totalGas
 	}
 
 	if decodeErr := blockB.UnmarshalCBOR(bytes.NewReader(b)); decodeErr != nil {
-		fvmLog.Info("invalid consensus fault: cannot decode second block header: %w", decodeErr)
+		fvmLog.Infof("invalid consensus fault: cannot decode second block header: %w", decodeErr)
 		return ret, totalGas
 	}
 
 	// are blocks the same?
 	if blockA.Cid().Equals(blockB.Cid()) {
-		fvmLog.Info("invalid consensus fault: submitted blocks are the same")
+		fvmLog.Infof("invalid consensus fault: submitted blocks are the same")
 		return ret, totalGas
 	}
 	// (1) check conditions necessary to any consensus fault
 
 	// were blocks mined by same miner?
 	if blockA.Miner != blockB.Miner {
-		fvmLog.Info("invalid consensus fault: blocks not mined by the same miner")
+		fvmLog.Infof("invalid consensus fault: blocks not mined by the same miner")
 		return ret, totalGas
 	}
 
 	// block a must be earlier or equal to block b, epoch wise (ie at least as early in the chain).
 	if blockB.Height < blockA.Height {
-		fvmLog.Info("invalid consensus fault: first block must not be of higher height than second")
+		fvmLog.Infof("invalid consensus fault: first block must not be of higher height than second")
 		return ret, totalGas
 	}
 
@@ -118,7 +119,7 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 	var blockC types.BlockHeader
 	if len(extra) > 0 {
 		if decodeErr := blockC.UnmarshalCBOR(bytes.NewReader(extra)); decodeErr != nil {
-			fvmLog.Info("invalid consensus fault: cannot decode extra: %w", decodeErr)
+			fvmLog.Infof("invalid consensus fault: cannot decode extra: %w", decodeErr)
 			return ret, totalGas
 		}
 
@@ -130,7 +131,7 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 
 	// (3) return if no consensus fault by now
 	if faultType == ffi_cgo.ConsensusFaultNone {
-		fvmLog.Info("invalid consensus fault: no fault detected")
+		fvmLog.Infof("invalid consensus fault: no fault detected")
 		return ret, totalGas
 	}
 
@@ -143,14 +144,14 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 	gasA, sigErr := x.VerifyBlockSig(ctx, &blockA)
 	totalGas += gasA
 	if sigErr != nil {
-		fvmLog.Info("invalid consensus fault: cannot verify first block sig: %w", sigErr)
+		fvmLog.Infof("invalid consensus fault: cannot verify first block sig: %w", sigErr)
 		return ret, totalGas
 	}
 
 	gas2, sigErr := x.VerifyBlockSig(ctx, &blockB)
 	totalGas += gas2
 	if sigErr != nil {
-		fvmLog.Info("invalid consensus fault: cannot verify second block sig: %w", sigErr)
+		fvmLog.Infof("invalid consensus fault: cannot verify second block sig: %w", sigErr)
 		return ret, totalGas
 	}
 
@@ -179,6 +180,9 @@ func (x *FvmExtern) VerifyBlockSig(ctx context.Context, blk *types.BlockHeader) 
 }
 
 func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerID address.Address, height abi.ChainEpoch) (address.Address, int64, error) {
+	if height < x.epoch-policy.ChainFinality {
+		return address.Undef, 0, xerrors.Errorf("cannot get worker key (currEpoch %d, height %d)", x.epoch, height)
+	}
 	gasTank := gas.NewGasTracker(constants.BlockGasLimit * 10000)
 	cstWithoutGas := cbor.NewCborStore(x.Blockstore)
 	cbb := vmcontext.NewGasChargeBlockStore(gasTank, x.gasPriceSchedule.PricelistByEpochAndNetworkVersion(x.epoch, x.nv), x.Blockstore)
