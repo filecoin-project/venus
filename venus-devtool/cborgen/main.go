@@ -68,8 +68,12 @@ func main() {
 				market.ChannelInfo{},
 				market.VoucherInfo{},
 				market.MinerDeal{},
+				market.MinerDealV0{},
+				market.DataRef{},
 				market.RetrievalAsk{},
 				market.ProviderDealState{},
+				market.Transfer{},
+				market.DealParams{},
 			},
 		},
 	}

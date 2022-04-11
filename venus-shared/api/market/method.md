@@ -832,6 +832,8 @@ Response:
     "Root": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "State": 9,
     "PieceCid": null,
     "PieceSize": 1024,
     "RawBlockSize": 42
@@ -952,6 +954,8 @@ Inputs:
       "Root": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       },
+      "Params": "Ynl0ZSBhcnJheQ==",
+      "State": 9,
       "PieceCid": null,
       "PieceSize": 1024,
       "RawBlockSize": 42
@@ -1142,6 +1146,8 @@ Response:
       "Root": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       },
+      "Params": "Ynl0ZSBhcnJheQ==",
+      "State": 9,
       "PieceCid": null,
       "PieceSize": 1024,
       "RawBlockSize": 42
