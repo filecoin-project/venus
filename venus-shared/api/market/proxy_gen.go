@@ -89,6 +89,7 @@ type IMarketStruct struct {
 		ResponseMarketEvent                    func(ctx context.Context, resp *gateway.ResponseEvent) error                                                                                                                                        `perm:"read"`
 		SectorGetSealDelay                     func(context.Context) (time.Duration, error)                                                                                                                                                        `perm:"read"`
 		SectorSetExpectedSealDuration          func(context.Context, time.Duration) error                                                                                                                                                          `perm:"write"`
+		SendMarketDealParams                   func(context.Context, market.DealParams) (*market.ProviderDealRejectionInfo, error)                                                                                                                 `perm:"write"`
 		UpdateDealOnPacking                    func(ctx context.Context, miner address.Address, dealID abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error                                                                    `perm:"write"`
 		UpdateDealStatus                       func(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus market.PieceStatus) error                                                                                           `perm:"write"`
 		UpdateStorageDealStatus                func(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus, pieceState market.PieceStatus) error                                                                      `perm:"write"`
@@ -293,6 +294,9 @@ func (s *IMarketStruct) SectorGetSealDelay(p0 context.Context) (time.Duration, e
 }
 func (s *IMarketStruct) SectorSetExpectedSealDuration(p0 context.Context, p1 time.Duration) error {
 	return s.Internal.SectorSetExpectedSealDuration(p0, p1)
+}
+func (s *IMarketStruct) SendMarketDealParams(p0 context.Context, p1 market.DealParams) (*market.ProviderDealRejectionInfo, error) {
+	return s.Internal.SendMarketDealParams(p0, p1)
 }
 func (s *IMarketStruct) UpdateDealOnPacking(p0 context.Context, p1 address.Address, p2 abi.DealID, p3 abi.SectorNumber, p4 abi.PaddedPieceSize) error {
 	return s.Internal.UpdateDealOnPacking(p0, p1, p2, p3, p4)

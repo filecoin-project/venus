@@ -68,6 +68,7 @@
   * [ResponseMarketEvent](#ResponseMarketEvent)
   * [SectorGetSealDelay](#SectorGetSealDelay)
   * [SectorSetExpectedSealDuration](#SectorSetExpectedSealDuration)
+  * [SendMarketDealParams](#SendMarketDealParams)
   * [UpdateDealOnPacking](#UpdateDealOnPacking)
   * [UpdateDealStatus](#UpdateDealStatus)
   * [UpdateStorageDealStatus](#UpdateStorageDealStatus)
@@ -1701,6 +1702,58 @@ Inputs:
 ```
 
 Response: `{}`
+
+### SendMarketDealParams
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  {
+    "DealUUID": "07070707-0707-0707-0707-070707070707",
+    "ClientDealProposal": {
+      "Proposal": {
+        "PieceCID": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "PieceSize": 1032,
+        "VerifiedDeal": true,
+        "Client": "f01234",
+        "Provider": "f01234",
+        "Label": "string value",
+        "StartEpoch": 10101,
+        "EndEpoch": 10101,
+        "StoragePricePerEpoch": "0",
+        "ProviderCollateral": "0",
+        "ClientCollateral": "0"
+      },
+      "ClientSignature": {
+        "Type": 2,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      }
+    },
+    "DealDataRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "Transfer": {
+      "Type": "string value",
+      "ClientID": "string value",
+      "Params": "Ynl0ZSBhcnJheQ==",
+      "Size": 42
+    }
+  }
+]
+```
+
+Response:
+```json
+{
+  "Accepted": true,
+  "Reason": "string value"
+}
+```
 
 ### UpdateDealOnPacking
 

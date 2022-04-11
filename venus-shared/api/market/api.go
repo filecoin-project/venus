@@ -147,4 +147,6 @@ type IMarket interface {
 	GetWriteUrl(ctx context.Context, resource string) (string, error) //perm:read
 
 	ImportV1Data(ctx context.Context, src string) error //perm:write
+
+	SendMarketDealParams(context.Context, market.DealParams) (*market.ProviderDealRejectionInfo, error) //perm:write
 }

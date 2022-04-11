@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
@@ -52,4 +54,31 @@ func NewDataTransferChannel(hostID peer.ID, channelState datatransfer.ChannelSta
 		channel.OtherPeer = channelState.Sender()
 	}
 	return channel
+}
+
+type DealParams struct {
+	DealUUID           uuid.UUID
+	ClientDealProposal market.ClientDealProposal
+	DealDataRoot       cid.Cid
+	Transfer           Transfer
+}
+
+// Transfer has the parameters for a data transfer
+type Transfer struct {
+	// The type of transfer eg "http"
+	Type string
+	// An optional ID that can be supplied by the client to identify the deal
+	ClientID string
+	// A byte array containing marshalled data specific to the transfer type
+	// eg a JSON encoded struct { URL: "<url>", Headers: {...} }
+	Params []byte
+	// The size of the data transferred in bytes
+	Size uint64
+}
+
+// ProviderDealRejectionInfo is the information sent by the Storage Provider
+// to the Client when it accepts or rejects a deal.
+type ProviderDealRejectionInfo struct {
+	Accepted bool
+	Reason   string // The rejection reason, if the deal is rejected
 }

@@ -1032,6 +1032,21 @@ func (mr *MockIMarketMockRecorder) SectorSetExpectedSealDuration(arg0, arg1 inte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SectorSetExpectedSealDuration", reflect.TypeOf((*MockIMarket)(nil).SectorSetExpectedSealDuration), arg0, arg1)
 }
 
+// SendMarketDealParams mocks base method.
+func (m *MockIMarket) SendMarketDealParams(arg0 context.Context, arg1 market.DealParams) (*market.ProviderDealRejectionInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendMarketDealParams", arg0, arg1)
+	ret0, _ := ret[0].(*market.ProviderDealRejectionInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SendMarketDealParams indicates an expected call of SendMarketDealParams.
+func (mr *MockIMarketMockRecorder) SendMarketDealParams(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMarketDealParams", reflect.TypeOf((*MockIMarket)(nil).SendMarketDealParams), arg0, arg1)
+}
+
 // UpdateDealOnPacking mocks base method.
 func (m *MockIMarket) UpdateDealOnPacking(arg0 context.Context, arg1 address.Address, arg2 abi.DealID, arg3 abi.SectorNumber, arg4 abi.PaddedPieceSize) error {
 	m.ctrl.T.Helper()
