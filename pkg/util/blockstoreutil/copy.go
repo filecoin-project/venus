@@ -31,11 +31,7 @@ func CopyBlockstore(ctx context.Context, from, to Blockstore) error {
 		blks = append(blks, b)
 	}
 
-	if err := to.PutMany(ctx, blks); err != nil {
-		return err
-	}
-
-	return nil
+	return to.PutMany(ctx, blks)
 }
 
 func linksForObj(blk blocks.Block, cb func(cid.Cid)) error {

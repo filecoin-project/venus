@@ -14,7 +14,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/mux"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
@@ -129,13 +128,14 @@ func (fd *FakeDialer) StopNotify(inet.Notifiee)                             { pa
 
 // fakeStream is a test inet.Stream
 type fakeStream struct {
-	_   mux.MuxedStream
+	_   inet.MuxedStream
 	pid protocol.ID
 }
 
 var _ inet.Stream = &fakeStream{}
 
 func newFakeStream() *fakeStream { return &fakeStream{} }
+
 // Minimal implementation of the inet.Stream interface
 func (fs *fakeStream) ID() string                         { return "" }
 func (fs *fakeStream) Protocol() protocol.ID              { return fs.pid }            // nolint: golint

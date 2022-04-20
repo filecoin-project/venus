@@ -47,7 +47,7 @@ func TestHelloHandshake(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mn, err := mocknet.WithNPeers(ctx, 2)
+	mn, err := mocknet.WithNPeers(2)
 	require.NoError(t, err)
 
 	a := mn.Hosts()[0]
@@ -107,7 +107,7 @@ func TestHelloBadGenesis(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mn, err := mocknet.WithNPeers(ctx, 2)
+	mn, err := mocknet.WithNPeers(2)
 	assert.NoError(t, err)
 
 	a := mn.Hosts()[0]
@@ -151,7 +151,7 @@ func TestHelloMultiBlock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mn, err := mocknet.WithNPeers(ctx, 2)
+	mn, err := mocknet.WithNPeers(2)
 	assert.NoError(t, err)
 
 	a := mn.Hosts()[0]

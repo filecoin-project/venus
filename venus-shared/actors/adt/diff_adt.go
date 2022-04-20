@@ -38,12 +38,8 @@ func DiffAdtArray(preArr, curArr Array, out AdtArrayDiff) error {
 			return err
 		}
 		if !found {
-			if err := out.Remove(uint64(i), prevVal); err != nil {
-				return err
-			}
-			return nil
+			return out.Remove(uint64(i), prevVal)
 		}
-
 		// no modification
 		if !bytes.Equal(prevVal.Raw, curVal.Raw) {
 			if err := out.Modify(uint64(i), prevVal, curVal); err != nil {
@@ -96,10 +92,7 @@ func DiffAdtMap(preMap, curMap Map, out AdtMapDiff) error {
 			return err
 		}
 		if !found {
-			if err := out.Remove(key, prevVal); err != nil {
-				return err
-			}
-			return nil
+			return out.Remove(key, prevVal)
 		}
 
 		// no modification

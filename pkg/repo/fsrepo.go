@@ -92,11 +92,7 @@ func InitFSRepo(targetPath string, version uint, cfg *config.Config) error {
 	}
 
 	// Create the actual directory and then the link to it.
-	if err = InitFSRepoDirect(repoPath, version, cfg); err != nil {
-		return err
-	}
-
-	return nil
+	return InitFSRepoDirect(repoPath, version, cfg)
 }
 
 // InitFSRepoDirect initializes a new repo at a target path, establishing a provided configuration.

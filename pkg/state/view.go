@@ -371,10 +371,7 @@ func (v *View) MarketDealStatesForEach(ctx context.Context, f func(id abi.DealID
 	ff := func(id abi.DealID, ds market.DealState) error {
 		return f(id, &ds)
 	}
-	if err := deals.ForEach(ff); err != nil {
-		return err
-	}
-	return nil
+	return deals.ForEach(ff)
 }
 
 // StateVerifiedClientStatus returns the data cap for the given address.

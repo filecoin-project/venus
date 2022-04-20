@@ -231,10 +231,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 
 	beaconValuesCheck := async.Err(func() error {
 		parentHeight := parent.Height()
-		if err = bv.ValidateBlockBeacon(blk, parentHeight, prevBeacon); err != nil {
-			return err
-		}
-		return nil
+		return bv.ValidateBlockBeacon(blk, parentHeight, prevBeacon)
 	})
 
 	tktsCheck := async.Err(func() error {
@@ -252,10 +249,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	})
 
 	winnerCheck := async.Err(func() error {
-		if err = bv.ValidateBlockWinner(ctx, workerAddr, lbTS, lbStateRoot, parent, parent.At(0).ParentStateRoot, blk, prevBeacon); err != nil {
-			return err
-		}
-		return nil
+		return bv.ValidateBlockWinner(ctx, workerAddr, lbTS, lbStateRoot, parent, parent.At(0).ParentStateRoot, blk, prevBeacon)
 	})
 
 	winPoStNv := bv.fork.GetNetworkVersion(ctx, baseHeight)
