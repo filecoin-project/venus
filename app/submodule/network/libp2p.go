@@ -82,6 +82,10 @@ func (noopLibP2PHost) ConnManager() connmgr.ConnManager {
 
 type noopLibP2PNetwork struct{}
 
+func (n noopLibP2PNetwork) ResourceManager() net.ResourceManager {
+	panic("implement me")
+}
+
 func (noopLibP2PNetwork) Peerstore() peerstore.Peerstore {
 	panic("implement me")
 }

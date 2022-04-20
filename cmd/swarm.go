@@ -350,10 +350,7 @@ func (idd *IDDetails) UnmarshalJSON(data []byte) error {
 	if err := decode(v, "ProtocolVersion", &idd.ProtocolVersion); err != nil {
 		return err
 	}
-	if err := decode(v, "PublicKey", &idd.PublicKey); err != nil {
-		return err
-	}
-	return nil
+	return decode(v, "PublicKey", &idd.PublicKey)
 }
 
 func decode(idd map[string]*json.RawMessage, key string, dest interface{}) error {
