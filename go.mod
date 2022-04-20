@@ -24,7 +24,7 @@ require (
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils v0.1.3
 	github.com/filecoin-project/go-crypto v0.0.1
-	github.com/filecoin-project/go-data-transfer v1.12.1
+	github.com/filecoin-project/go-data-transfer v1.15.1
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-markets v1.14.1
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
@@ -68,7 +68,7 @@ require (
 	github.com/ipfs/go-datastore v0.5.1
 	github.com/ipfs/go-ds-badger2 v0.1.2
 	github.com/ipfs/go-fs-lock v0.0.6
-	github.com/ipfs/go-graphsync v0.11.5
+	github.com/ipfs/go-graphsync v0.13.1
 	github.com/ipfs/go-ipfs-blockstore v1.1.2
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-cmdkit v0.0.1
@@ -84,7 +84,7 @@ require (
 	github.com/ipfs/go-log/v2 v2.4.0
 	github.com/ipfs/go-merkledag v0.5.1
 	github.com/ipfs/go-path v0.0.7
-	github.com/ipfs/go-unixfs v0.2.6
+	github.com/ipfs/go-unixfs v0.3.1
 	github.com/ipld/go-car v0.3.3
 	github.com/jbenet/goprocess v0.1.4
 	github.com/jonboulle/clockwork v0.2.2 // indirect
