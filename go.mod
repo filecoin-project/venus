@@ -37,8 +37,8 @@ require (
 	github.com/filecoin-project/specs-actors/v4 v4.0.1
 	github.com/filecoin-project/specs-actors/v5 v5.0.4
 	github.com/filecoin-project/specs-actors/v6 v6.0.1
-	github.com/filecoin-project/specs-actors/v7 v7.0.0-rc1
-	github.com/filecoin-project/specs-storage v0.2.0
+	github.com/filecoin-project/specs-actors/v7 v7.0.0
+	github.com/filecoin-project/specs-storage v0.2.2
 	github.com/filecoin-project/test-vectors/schema v0.0.5
 	github.com/filecoin-project/venus-auth v1.3.2
 	github.com/fxamacker/cbor/v2 v2.4.0
