@@ -136,12 +136,10 @@ type fakeStream struct {
 var _ inet.Stream = &fakeStream{}
 
 func newFakeStream() *fakeStream { return &fakeStream{} }
-
 // Minimal implementation of the inet.Stream interface
-
 func (fs *fakeStream) ID() string                         { return "" }
 func (fs *fakeStream) Protocol() protocol.ID              { return fs.pid }            // nolint: golint
-func (fs *fakeStream) SetProtocol(id protocol.ID)         { fs.pid = id }              // nolint: golint
+func (fs *fakeStream) SetProtocol(id protocol.ID) error   { fs.pid = id; return nil }  // nolint: golint
 func (fs *fakeStream) Stat() inet.Stats                   { panic("not implemented") } // nolint: golint
 func (fs *fakeStream) Conn() inet.Conn                    { panic("not implemented") } // nolint: golint
 func (fs *fakeStream) Write(_ []byte) (int, error)        { return 1, nil }            // nolint: golint
@@ -153,6 +151,7 @@ func (fs *fakeStream) SetReadDeadline(_ time.Time) error  { return nil }        
 func (fs *fakeStream) SetWriteDeadline(_ time.Time) error { return nil }               // nolint: golint
 func (fs *fakeStream) CloseWrite() error                  { panic("implement me") }
 func (fs *fakeStream) CloseRead() error                   { panic("implement me") }
+func (fs *fakeStream) Scope() inet.StreamScope            { panic("implement me") }
 
 // RandPeerID is a libp2p random peer ID generator.
 // These peer.ID generators were copied from libp2p/go-testutil. We didn't bring in the
