@@ -94,11 +94,7 @@ var genesisNewCmd = &cmds.Command{
 			return err
 		}
 
-		if err := ioutil.WriteFile(genf, genb, 0644); err != nil {
-			return err
-		}
-
-		return nil
+		return ioutil.WriteFile(genf, genb, 0644)
 	},
 }
 
@@ -174,11 +170,7 @@ var genesisAddMinerCmd = &cmds.Command{
 			return err
 		}
 
-		if err := ioutil.WriteFile(genf, genb, 0644); err != nil {
-			return err
-		}
-
-		return nil
+		return ioutil.WriteFile(genf, genb, 0644)
 	},
 }
 
@@ -244,10 +236,7 @@ var genesisAddMsigsCmd = &cmds.Command{
 			return err
 		}
 
-		if err := ioutil.WriteFile(genf, b, 0644); err != nil {
-			return err
-		}
-		return nil
+		return ioutil.WriteFile(genf, b, 0644)
 	},
 }
 
@@ -411,10 +400,7 @@ var genesisSetVRKCmd = &cmds.Command{
 			return err
 		}
 
-		if err := ioutil.WriteFile(genf, b, 0644); err != nil {
-			return err
-		}
-		return nil
+		return ioutil.WriteFile(genf, b, 0644)
 	},
 }
 
@@ -507,10 +493,7 @@ var genesisSetRemainderCmd = &cmds.Command{
 			return err
 		}
 
-		if err := ioutil.WriteFile(genf, b, 0644); err != nil {
-			return err
-		}
-		return nil
+		return ioutil.WriteFile(genf, b, 0644)
 	},
 }
 
@@ -558,10 +541,7 @@ var genesisSetActorVersionCmd = &cmds.Command{
 			return err
 		}
 
-		if err := ioutil.WriteFile(genf, b, 0644); err != nil {
-			return err
-		}
-		return nil
+		return ioutil.WriteFile(genf, b, 0644)
 	},
 }
 

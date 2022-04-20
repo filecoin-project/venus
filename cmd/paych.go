@@ -77,10 +77,7 @@ var addFundsCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		if err := re.Emit(chAddr); err != nil {
-			return err
-		}
-		return nil
+		return re.Emit(chAddr)
 	},
 }
 
@@ -93,10 +90,7 @@ var listCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		if err := re.Emit(addrs); err != nil {
-			return err
-		}
-		return nil
+		return re.Emit(addrs)
 	},
 }
 
@@ -141,10 +135,7 @@ var settleCmd = &cmds.Command{
 		if mwait.Receipt.ExitCode != 0 {
 			return xerrors.Errorf("settle message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
-		if err := re.Emit(fmt.Sprintf("Settled channel %s", chanAddr)); err != nil {
-			return err
-		}
-		return nil
+		return re.Emit(fmt.Sprintf("Settled channel %s", chanAddr))
 	},
 }
 var statusCmd = &cmds.Command{
@@ -167,10 +158,7 @@ var statusCmd = &cmds.Command{
 		//re.Emit(av)
 		w := bytes.NewBuffer(nil)
 		paychStatus(w, av)
-		if err := re.Emit(w); err != nil {
-			return err
-		}
-		return nil
+		return re.Emit(w)
 	},
 }
 var sbftCmd = &cmds.Command{
@@ -196,10 +184,7 @@ var sbftCmd = &cmds.Command{
 		}
 		w := bytes.NewBuffer(nil)
 		paychStatus(w, av)
-		if err := re.Emit(w); err != nil {
-			return err
-		}
-		return nil
+		return re.Emit(w)
 	},
 }
 var collectCmd = &cmds.Command{
@@ -226,10 +211,7 @@ var collectCmd = &cmds.Command{
 			return xerrors.Errorf("collect message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
-		if err := re.Emit(fmt.Sprintf("Collected funds for channel %s", chanAddr)); err != nil {
-			return err
-		}
-		return nil
+		return re.Emit(fmt.Sprintf("Collected funds for channel %s", chanAddr))
 	},
 }
 
@@ -267,10 +249,7 @@ var voucherCreateCmd = &cmds.Command{
 			return err
 		}
 
-		if err := re.Emit(enc); err != nil {
-			return err
-		}
-		return nil
+		return re.Emit(enc)
 	},
 }
 
@@ -295,10 +274,7 @@ var voucherCheckCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		if err := re.Emit("voucher is valid"); err != nil {
-			return err
-		}
-		return nil
+		return re.Emit("voucher is valid")
 	},
 }
 
@@ -323,10 +299,7 @@ var voucherAddCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		if err := re.Emit("add voucher successfully"); err != nil {
-			return err
-		}
-		return nil
+		return re.Emit("add voucher successfully")
 	},
 }
 
@@ -355,10 +328,7 @@ var voucherListCmd = &cmds.Command{
 			fmt.Fprintf(buff, "Lane %d, Nonce %d: %s, voucher: %s\n", v.Lane, v.Nonce, v.Amount.String(), str)
 		}
 
-		if err := re.Emit(buff); err != nil {
-			return err
-		}
-		return nil
+		return re.Emit(buff)
 	},
 }
 
@@ -391,10 +361,7 @@ var voucherBestSpendableCmd = &cmds.Command{
 			}
 			fmt.Fprintf(buff, "Lane %d, Nonce %d: %s, voucher: %s\n", v.Lane, v.Nonce, v.Amount.String(), str)
 		}
-		if err := re.Emit(buff); err != nil {
-			return err
-		}
-		return nil
+		return re.Emit(buff)
 	},
 }
 var voucherSubmitCmd = &cmds.Command{
@@ -425,10 +392,7 @@ var voucherSubmitCmd = &cmds.Command{
 		if mwait.Receipt.ExitCode != 0 {
 			return xerrors.Errorf("message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
-		if err := re.Emit("channel updated successfully"); err != nil {
-			return err
-		}
-		return nil
+		return re.Emit("channel updated successfully")
 	},
 }
 

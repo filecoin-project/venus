@@ -111,10 +111,7 @@ var storeStatusCmd = &cmds.Command{
 			count++
 		}
 
-		if err := re.Emit(w); err != nil {
-			return err
-		}
-		return nil
+		return re.Emit(w)
 	},
 }
 
@@ -148,9 +145,6 @@ var historyCmd = &cmds.Command{
 			count++
 		}
 
-		if err := re.Emit(w); err != nil {
-			return err
-		}
-		return nil
+		return re.Emit(w)
 	},
 }

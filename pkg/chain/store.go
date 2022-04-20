@@ -281,11 +281,7 @@ func (store *Store) PutTipSetMetadata(ctx context.Context, tsm *TipSetMetadata) 
 	store.tipIndex.Put(tsm)
 
 	// Persist the state mapping.
-	if err := store.writeTipSetMetadata(ctx, tsm); err != nil {
-		return err
-	}
-
-	return nil
+	return store.writeTipSetMetadata(ctx, tsm)
 }
 
 // Ls returns an iterator over tipsets from head to genesis.

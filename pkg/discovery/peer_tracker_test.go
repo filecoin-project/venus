@@ -1,7 +1,6 @@
 package discovery_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -76,10 +75,7 @@ func TestPeerTrackerRemove(t *testing.T) {
 func TestPeerTrackerNetworkDisconnect(t *testing.T) {
 	tf.UnitTest(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	mn, err := mocknet.FullMeshConnected(ctx, 4)
+	mn, err := mocknet.FullMeshConnected(4)
 	require.NoError(t, err)
 
 	self := mn.Hosts()[0]
