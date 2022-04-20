@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"time"
 
@@ -225,13 +224,6 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSub
 	dtDs := namespace.Wrap(config.Repo().ChainDatastore(), datastore.NewKey("/datatransfer/api/transfers"))
 	transport := dtgstransport.NewTransport(peerHost.ID(), gsync)
 
-	repoPath, err := config.Repo().Path()
-	if err != nil {
-		return nil, err
-	}
-
-	dirPath := filepath.Join(repoPath, "data-transfer")
-	_ = os.MkdirAll(dirPath, 0777) //todo fix for test
 	dt, err := dtimpl.NewDataTransfer(dtDs, dtn, transport)
 	if err != nil {
 		return nil, err
