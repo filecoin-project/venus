@@ -82,6 +82,7 @@
   * [StateListActors](#StateListActors)
   * [StateListMiners](#StateListMiners)
   * [StateLookupID](#StateLookupID)
+  * [StateLookupRobustAddress](#StateLookupRobustAddress)
   * [StateMarketBalance](#StateMarketBalance)
   * [StateMarketDeals](#StateMarketDeals)
   * [StateMarketStorageDeal](#StateMarketStorageDeal)
@@ -1353,7 +1354,7 @@ Inputs:
 ]
 ```
 
-Response: `15`
+Response: `16`
 
 ### StateSearchMsg
 StateSearchMsg looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
@@ -2678,6 +2679,29 @@ Inputs:
 
 Response: `"f01234"`
 
+### StateLookupRobustAddress
+StateLookupRobustAddress returns the public key address of the given ID address for non-account addresses (multisig, miners etc)
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"f01234"`
+
 ### StateMarketBalance
 
 
@@ -2737,7 +2761,7 @@ Response:
       "VerifiedDeal": true,
       "Client": "f01234",
       "Provider": "f01234",
-      "Label": "string value",
+      "Label": {},
       "StartEpoch": 10101,
       "EndEpoch": 10101,
       "StoragePricePerEpoch": "0",
@@ -2784,7 +2808,7 @@ Response:
     "VerifiedDeal": true,
     "Client": "f01234",
     "Provider": "f01234",
-    "Label": "string value",
+    "Label": {},
     "StartEpoch": 10101,
     "EndEpoch": 10101,
     "StoragePricePerEpoch": "0",

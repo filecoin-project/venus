@@ -77,3 +77,11 @@ func (uid *UUID) UnmarshalJSON(b []byte) error {
 	*uid = (UUID)(id)
 	return nil
 }
+
+func (uid UUID) MarshalBinary() ([]byte, error) {
+	return uuid.UUID(uid).MarshalBinary()
+}
+
+func (uid *UUID) UnmarshalBinary(b []byte) error {
+	return (*uuid.UUID)(uid).UnmarshalBinary(b)
+}

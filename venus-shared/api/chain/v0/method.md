@@ -1303,7 +1303,7 @@ Inputs:
 ]
 ```
 
-Response: `15`
+Response: `16`
 
 ### StateSearchMsg
 
@@ -2589,7 +2589,7 @@ Response:
       "VerifiedDeal": true,
       "Client": "f01234",
       "Provider": "f01234",
-      "Label": "string value",
+      "Label": {},
       "StartEpoch": 10101,
       "EndEpoch": 10101,
       "StoragePricePerEpoch": "0",
@@ -2636,7 +2636,7 @@ Response:
     "VerifiedDeal": true,
     "Client": "f01234",
     "Provider": "f01234",
-    "Label": "string value",
+    "Label": {},
     "StartEpoch": 10101,
     "EndEpoch": 10101,
     "StoragePricePerEpoch": "0",

@@ -84,6 +84,7 @@ type IMinerStateStruct struct {
 		StateListActors                    func(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)                                                               `perm:"read"`
 		StateListMiners                    func(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)                                                               `perm:"read"`
 		StateLookupID                      func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)                                           `perm:"read"`
+		StateLookupRobustAddress           func(context.Context, address.Address, types.TipSetKey) (address.Address, error)                                                        `perm:"read"`
 		StateMarketBalance                 func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MarketBalance, error)                                       `perm:"read"`
 		StateMarketDeals                   func(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketDeal, error)                                                     `perm:"read"`
 		StateMarketStorageDeal             func(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error)                                            `perm:"read"`
@@ -126,6 +127,9 @@ func (s *IMinerStateStruct) StateListMiners(p0 context.Context, p1 types.TipSetK
 }
 func (s *IMinerStateStruct) StateLookupID(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
 	return s.Internal.StateLookupID(p0, p1, p2)
+}
+func (s *IMinerStateStruct) StateLookupRobustAddress(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
+	return s.Internal.StateLookupRobustAddress(p0, p1, p2)
 }
 func (s *IMinerStateStruct) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.MarketBalance, error) {
 	return s.Internal.StateMarketBalance(p0, p1, p2)

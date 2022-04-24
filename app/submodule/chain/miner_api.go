@@ -8,10 +8,13 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/dline"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/state/tree"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	_init "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
@@ -525,6 +528,51 @@ func (msa *minerStateAPI) StateLookupID(ctx context.Context, addr address.Addres
 	}
 
 	return state.LookupID(addr)
+}
+
+func (msa *minerStateAPI) StateLookupRobustAddress(ctx context.Context, idAddr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	idAddrDecoded, err := address.IDFromAddress(idAddr)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to decode provided address as id addr: %w", err)
+	}
+
+	cst := cbor.NewCborStore(msa.ChainReader.Blockstore())
+	wrapStore := adt.WrapStore(ctx, cst)
+
+	_, state, err := msa.Stmgr.ParentStateTsk(ctx, tsk)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("load state failed: %w", err)
+	}
+
+	initActor, found, err := state.GetActor(ctx, _init.Address)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("load init actor: %w", err)
+	}
+	if !found {
+		return address.Undef, xerrors.Errorf("not found actor: %w", err)
+	}
+
+	initState, err := _init.Load(wrapStore, initActor)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("load init state: %w", err)
+	}
+	robustAddr := address.Undef
+
+	err = initState.ForEachActor(func(id abi.ActorID, addr address.Address) error {
+		if uint64(id) == idAddrDecoded {
+			robustAddr = addr
+			// Hacky way to early return from ForEach
+			return xerrors.New("robust address found")
+		}
+		return nil
+	})
+	if robustAddr == address.Undef {
+		if err == nil {
+			return address.Undef, xerrors.Errorf("Address %s not found", idAddr.String())
+		}
+		return address.Undef, xerrors.Errorf("finding address: %w", err)
+	}
+	return robustAddr, nil
 }
 
 // StateListMiners returns the addresses of every miner that has claimed power in the Power Actor
