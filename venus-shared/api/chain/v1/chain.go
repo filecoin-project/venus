@@ -129,7 +129,7 @@ type IMinerState interface {
 	StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error)      //perm:read
 	StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (types.CirculatingSupply, error)                                             //perm:read
 	StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error)                                                               //perm:read
-	StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketDeal, error)                                                         //perm:read
+	StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]*types.MarketDeal, error)                                                        //perm:read
 	StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)                            //perm:read
 	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)                                                  //perm:read
 	// StateLookupRobustAddress returns the public key address of the given ID address for non-account addresses (multisig, miners etc)

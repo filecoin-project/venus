@@ -618,8 +618,8 @@ func (v *View) StateMinerPower(ctx context.Context, maddr addr.Address, tsk type
 }
 
 // StateMarketDeals returns information about every deal in the Storage Market
-func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketDeal, error) {
-	out := map[string]types.MarketDeal{}
+func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]*types.MarketDeal, error) {
+	out := map[string]*types.MarketDeal{}
 
 	state, err := v.LoadMarketState(ctx)
 	if err != nil {
@@ -643,7 +643,7 @@ func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[s
 		} else if !found {
 			s = market.EmptyDealState()
 		}
-		out[strconv.FormatInt(int64(dealID), 10)] = types.MarketDeal{
+		out[strconv.FormatInt(int64(dealID), 10)] = &types.MarketDeal{
 			Proposal: d,
 			State:    *s,
 		}

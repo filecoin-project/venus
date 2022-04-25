@@ -503,7 +503,7 @@ func (msa *minerStateAPI) StateCirculatingSupply(ctx context.Context, tsk types.
 }
 
 // StateMarketDeals returns information about every deal in the Storage Market
-func (msa *minerStateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketDeal, error) {
+func (msa *minerStateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]*types.MarketDeal, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("Stmgr.ParentStateViewTsk failed:%w", err)

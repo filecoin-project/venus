@@ -85,7 +85,7 @@ type IMinerStateStruct struct {
 		StateListMiners                    func(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)                                                               `perm:"read"`
 		StateLookupID                      func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)                                           `perm:"read"`
 		StateMarketBalance                 func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MarketBalance, error)                                       `perm:"read"`
-		StateMarketDeals                   func(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketDeal, error)                                                     `perm:"read"`
+		StateMarketDeals                   func(ctx context.Context, tsk types.TipSetKey) (map[string]*types.MarketDeal, error)                                                    `perm:"read"`
 		StateMarketStorageDeal             func(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error)                                            `perm:"read"`
 		StateMinerActiveSectors            func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)                               `perm:"read"`
 		StateMinerAvailableBalance         func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (big.Int, error)                                                  `perm:"read"`
@@ -130,7 +130,7 @@ func (s *IMinerStateStruct) StateLookupID(p0 context.Context, p1 address.Address
 func (s *IMinerStateStruct) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.MarketBalance, error) {
 	return s.Internal.StateMarketBalance(p0, p1, p2)
 }
-func (s *IMinerStateStruct) StateMarketDeals(p0 context.Context, p1 types.TipSetKey) (map[string]types.MarketDeal, error) {
+func (s *IMinerStateStruct) StateMarketDeals(p0 context.Context, p1 types.TipSetKey) (map[string]*types.MarketDeal, error) {
 	return s.Internal.StateMarketDeals(p0, p1)
 }
 func (s *IMinerStateStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*types.MarketDeal, error) {

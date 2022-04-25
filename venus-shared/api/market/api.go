@@ -27,7 +27,7 @@ type IMarket interface {
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                                               //perm:write
 	MarketImportPublishedDeal(ctx context.Context, deal market.MinerDeal) error                                                                                                                                 //perm:write
-	MarketListDeals(ctx context.Context, addrs []address.Address) ([]types.MarketDeal, error)                                                                                                                   //perm:read
+	MarketListDeals(ctx context.Context, addrs []address.Address) ([]*types.MarketDeal, error)                                                                                                                  //perm:read
 	MarketListRetrievalDeals(ctx context.Context, mAddr address.Address) ([]market.ProviderDealState, error)                                                                                                    //perm:read
 	MarketGetDealUpdates(ctx context.Context) (<-chan market.MinerDeal, error)                                                                                                                                  //perm:read
 	MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]market.MinerDeal, error)                                                                                                           //perm:read

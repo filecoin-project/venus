@@ -145,8 +145,8 @@ func init() {
 			Balance: abi.NewTokenAmount(100),
 		},
 	})
-	addExample(map[string]types.MarketDeal{
-		"t026363": ExampleValue("init", reflect.TypeOf(types.MarketDeal{}), nil).(types.MarketDeal),
+	addExample(map[string]*types.MarketDeal{
+		"t026363": ExampleValue("init", reflect.TypeOf(&types.MarketDeal{}), nil).(*types.MarketDeal),
 	})
 	addExample(map[string]types.MarketBalance{
 		"t026363": ExampleValue("init", reflect.TypeOf(types.MarketBalance{}), nil).(types.MarketBalance),

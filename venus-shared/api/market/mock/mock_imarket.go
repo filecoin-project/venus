@@ -680,10 +680,10 @@ func (mr *MockIMarketMockRecorder) MarketListDataTransfers(arg0 interface{}) *go
 }
 
 // MarketListDeals mocks base method.
-func (m *MockIMarket) MarketListDeals(arg0 context.Context, arg1 []address.Address) ([]types.MarketDeal, error) {
+func (m *MockIMarket) MarketListDeals(arg0 context.Context, arg1 []address.Address) ([]*types.MarketDeal, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MarketListDeals", arg0, arg1)
-	ret0, _ := ret[0].([]types.MarketDeal)
+	ret0, _ := ret[0].([]*types.MarketDeal)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
