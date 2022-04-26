@@ -4,10 +4,10 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
 	"github.com/filecoin-project/venus/pkg/discovery"
+	"github.com/filecoin-project/venus/pkg/fvm"
 	"github.com/filecoin-project/venus/pkg/market"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	gen "github.com/whyrusleeping/cbor-gen"
 )
@@ -61,8 +61,8 @@ func main() {
 		panic(err)
 	}
 
-	if err := gen.WriteTupleEncodersToFile("./pkg/vm/cbor_gen.go", "vm",
-		vm.FvmExecutionTrace{},
+	if err := gen.WriteTupleEncodersToFile("./pkg/fvm/cbor_gen.go", "fvm",
+		fvm.FvmExecutionTrace{},
 	); err != nil {
 		panic(err)
 	}

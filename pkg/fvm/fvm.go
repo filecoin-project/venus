@@ -1,8 +1,9 @@
-package vm
+package fvm
 
 import (
 	"bytes"
 	"context"
+	"os"
 	"time"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -17,6 +18,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
@@ -32,14 +34,14 @@ import (
 
 var fvmLog = logging.Logger("fvm")
 
-var _ Interface = (*FVM)(nil)
+var _ vm.Interface = (*FVM)(nil)
 var _ ffi_cgo.Externs = (*FvmExtern)(nil)
 
 type FvmExtern struct {
 	Rand
 	blockstoreutil.Blockstore
 	epoch            abi.ChainEpoch
-	lbState          LookbackStateGetter
+	lbState          vm.LookbackStateGetter
 	base             cid.Cid
 	gasPriceSchedule *gas.PricesSchedule
 	nv               network.Version
@@ -276,7 +278,7 @@ type FVM struct {
 	fvm *ffi.FVM
 }
 
-func NewFVM(ctx context.Context, opts *VmOption) (*FVM, error) {
+func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 	circToReport := opts.FilVested
 	// For v14 (and earlier), we perform the FilVested portion of the calculation, and let the FVM dynamically do the rest
 	// v15 and after, the circ supply is always constant per epoch, so we calculate the base and report it at creation
@@ -313,7 +315,7 @@ func NewFVM(ctx context.Context, opts *VmOption) (*FVM, error) {
 	}, nil
 }
 
-func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*Ret, error) {
+func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret, error) {
 	start := constants.Clock.Now()
 	msgBytes, err := cmsg.VMMessage().Serialize()
 	if err != nil {
@@ -332,7 +334,7 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*Ret, er
 		}
 	}
 
-	return &Ret{
+	return &vm.Ret{
 		Receipt: types.MessageReceipt{
 			Return:   ret.Return,
 			ExitCode: exitcode.ExitCode(ret.ExitCode),
@@ -356,7 +358,7 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*Ret, er
 	}, nil
 }
 
-func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (*Ret, error) {
+func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret, error) {
 	start := constants.Clock.Now()
 	msgBytes, err := cmsg.VMMessage().Serialize()
 	if err != nil {
@@ -375,7 +377,7 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 		}
 	}
 
-	return &Ret{
+	return &vm.Ret{
 		Receipt: types.MessageReceipt{
 			Return:   ret.Return,
 			ExitCode: exitcode.ExitCode(ret.ExitCode),
@@ -402,10 +404,10 @@ type Rand interface {
 var _ Rand = (*wrapperRand)(nil)
 
 type wrapperRand struct {
-	ChainRandomness
+	vm.ChainRandomness
 }
 
-func newWrapperRand(r ChainRandomness) Rand {
+func newWrapperRand(r vm.ChainRandomness) Rand {
 	return wrapperRand{ChainRandomness: r}
 }
 
@@ -415,4 +417,18 @@ func (r wrapperRand) GetChainRandomness(ctx context.Context, pers acrypto.Domain
 
 func (r wrapperRand) GetBeaconRandomness(ctx context.Context, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	return r.ChainGetRandomnessFromBeacon(ctx, pers, round, entropy)
+}
+
+func NewVM(ctx context.Context, opts vm.VmOption) (vm.Interface, error) {
+	if opts.NetworkVersion >= network.Version16 {
+		return NewFVM(ctx, &opts)
+	}
+
+	// Remove after v16 upgrade, this is only to support testing and validation of the FVM
+	if os.Getenv("VENUS_USE_FVM_EXPERIMENTAL") == "1" {
+		fvmLog.Info("use fvm")
+		return NewFVM(ctx, &opts)
+	}
+
+	return vm.NewLegacyVM(ctx, opts)
 }

@@ -2,7 +2,6 @@ package vm
 
 import (
 	"context"
-	"os"
 
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/register"
@@ -35,15 +34,6 @@ func NewLegacyVM(ctx context.Context, option VmOption) (Interpreter, error) {
 	}
 
 	return vmcontext.NewLegacyVM(ctx, option.ActorCodeLoader, option)
-}
-
-func NewVM(ctx context.Context, option VmOption) (Interface, error) {
-	if os.Getenv("VENUS_USE_FVM_EXPERIMENTAL") == "1" {
-		fvmLog.Info("use fvm")
-		return NewFVM(ctx, &option)
-	}
-
-	return NewLegacyVM(ctx, option)
 }
 
 // DefaultActors is a code loader with the built-in actors that come with the system.

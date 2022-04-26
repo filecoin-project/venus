@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/fvm"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 
 	"github.com/filecoin-project/go-address"
@@ -101,7 +102,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			vmOpts.FilVested = filVested
 		}
 
-		return vm.NewVM(ctx, vmOpt)
+		return fvm.NewVM(ctx, vmOpt)
 	}
 
 	for i := parentEpoch; i < epoch; i++ {
