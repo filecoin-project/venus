@@ -5,10 +5,12 @@ go 1.16
 require (
 	contrib.go.opencensus.io/exporter/jaeger v0.2.1
 	contrib.go.opencensus.io/exporter/prometheus v0.4.0
+	github.com/BurntSushi/toml v0.4.1 // indirect
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/ahmetb/go-linq/v3 v3.2.0
 	github.com/awnumar/memguard v0.22.2
+	github.com/benbjohnson/clock v1.2.0 // indirect
 	github.com/bluele/gcache v0.0.0-20190518031135-bc40bd653833
 	github.com/containerd/cgroups v1.0.3 // indirect
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
@@ -16,6 +18,7 @@ require (
 	github.com/docker/go-units v0.4.0
 	github.com/drand/drand v1.3.0
 	github.com/drand/kyber v1.1.7
+	github.com/elastic/gosigar v0.14.1 // indirect
 	github.com/fatih/color v1.13.0
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v0.0.6
@@ -26,11 +29,12 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.1
 	github.com/filecoin-project/go-data-transfer v1.15.1
 	github.com/filecoin-project/go-fil-commcid v0.1.0
-	github.com/filecoin-project/go-fil-markets v1.20.1
-	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
+	github.com/filecoin-project/go-fil-markets v1.20.2
+	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-paramfetch v0.0.4
 	github.com/filecoin-project/go-state-types v0.1.3
+	github.com/filecoin-project/go-statemachine v1.0.2 // indirect
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v3 v3.1.1
@@ -38,6 +42,7 @@ require (
 	github.com/filecoin-project/specs-actors/v5 v5.0.4
 	github.com/filecoin-project/specs-actors/v6 v6.0.1
 	github.com/filecoin-project/specs-actors/v7 v7.0.0
+	github.com/filecoin-project/specs-actors/v8 v8.0.0-20220422153930-0afe155bfffa
 	github.com/filecoin-project/specs-storage v0.2.0
 	github.com/filecoin-project/test-vectors/schema v0.0.5
 	github.com/filecoin-project/venus-auth v1.3.2
@@ -80,22 +85,25 @@ require (
 	github.com/ipfs/go-ipfs-routing v0.2.1
 	github.com/ipfs/go-ipld-cbor v0.0.6
 	github.com/ipfs/go-ipld-format v0.2.0
+	github.com/ipfs/go-ipld-legacy v0.1.1 // indirect
 	github.com/ipfs/go-log v1.0.5
 	github.com/ipfs/go-log/v2 v2.5.0
 	github.com/ipfs/go-merkledag v0.5.1
 	github.com/ipfs/go-unixfs v0.3.1
 	github.com/ipld/go-car v0.3.3
+	github.com/ipld/go-codec-dagpb v1.3.2 // indirect
 	github.com/jbenet/goprocess v0.1.4
 	github.com/jonboulle/clockwork v0.2.2 // indirect
 	github.com/libp2p/go-eventbus v0.2.1
-	github.com/libp2p/go-libp2p v0.18.0-rc3
+	github.com/libp2p/go-libp2p v0.18.0
+	github.com/libp2p/go-libp2p-connmgr v0.3.1 // indirect
 	github.com/libp2p/go-libp2p-core v0.14.0
 	github.com/libp2p/go-libp2p-kad-dht v0.15.0
 	github.com/libp2p/go-libp2p-peerstore v0.6.0
 	github.com/libp2p/go-libp2p-pubsub v0.6.1
-	github.com/libp2p/go-libp2p-swarm v0.10.1
-	github.com/libp2p/go-libp2p-yamux v0.8.1
-	github.com/mattn/go-runewidth v0.0.9 // indirect
+	github.com/libp2p/go-libp2p-swarm v0.10.2
+	github.com/libp2p/go-libp2p-yamux v0.8.2
+	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mitchellh/go-homedir v1.1.0
@@ -133,6 +141,7 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e
 	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b // indirect
+	golang.org/x/tools v0.1.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	google.golang.org/api v0.43.0 // indirect
 	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect

@@ -28,47 +28,51 @@ import (
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 	smoothing7 "github.com/filecoin-project/specs-actors/v7/actors/util/smoothing"
 
+	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
+	smoothing8 "github.com/filecoin-project/specs-actors/v8/actors/util/smoothing"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
 
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 
-	miner7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
-	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+	miner8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/miner"
+	proof8 "github.com/filecoin-project/specs-actors/v8/actors/runtime/proof"
 )
 
-var SystemActorAddr = builtin7.SystemActorAddr
-var BurntFundsActorAddr = builtin7.BurntFundsActorAddr
-var CronActorAddr = builtin7.CronActorAddr
+var SystemActorAddr = builtin8.SystemActorAddr
+var BurntFundsActorAddr = builtin8.BurntFundsActorAddr
+var CronActorAddr = builtin8.CronActorAddr
 var SaftAddress = makeAddress("t0122")
 var ReserveAddress = makeAddress("t090")
 var RootVerifierAddress = makeAddress("t080")
 
 var (
-	ExpectedLeadersPerEpoch = builtin7.ExpectedLeadersPerEpoch
+	ExpectedLeadersPerEpoch = builtin8.ExpectedLeadersPerEpoch
 )
 
 const (
-	EpochDurationSeconds = builtin7.EpochDurationSeconds
-	EpochsInDay          = builtin7.EpochsInDay
-	SecondsInDay         = builtin7.SecondsInDay
+	EpochDurationSeconds = builtin8.EpochDurationSeconds
+	EpochsInDay          = builtin8.EpochsInDay
+	SecondsInDay         = builtin8.SecondsInDay
 )
 
 const (
-	MethodSend        = builtin7.MethodSend
-	MethodConstructor = builtin7.MethodConstructor
+	MethodSend        = builtin8.MethodSend
+	MethodConstructor = builtin8.MethodConstructor
 )
 
 // These are all just type aliases across actor versions. In the future, that might change
 // and we might need to do something fancier.
-type SectorInfo = proof7.SectorInfo
-type ExtendedSectorInfo = proof7.ExtendedSectorInfo
-type PoStProof = proof7.PoStProof
+type SectorInfo = proof8.SectorInfo
+type ExtendedSectorInfo = proof8.ExtendedSectorInfo
+type PoStProof = proof8.PoStProof
 type FilterEstimate = smoothing0.FilterEstimate
 
 func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, verifiedWeight abi.DealWeight) abi.StoragePower {
-	return miner7.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
+	return miner8.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
 }
 
 func FromV0FilterEstimate(v0 smoothing0.FilterEstimate) FilterEstimate {
@@ -113,6 +117,12 @@ func FromV7FilterEstimate(v7 smoothing7.FilterEstimate) FilterEstimate {
 
 }
 
+func FromV8FilterEstimate(v8 smoothing8.FilterEstimate) FilterEstimate {
+
+	return (FilterEstimate)(v8)
+
+}
+
 type ActorStateLoader func(store adt.Store, root cid.Cid) (cbor.Marshaler, error)
 
 var ActorStateLoaders = make(map[cid.Cid]ActorStateLoader)
@@ -130,6 +140,11 @@ func Load(store adt.Store, act *types.Actor) (cbor.Marshaler, error) {
 }
 
 func ActorNameByCode(c cid.Cid) string {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name
+	}
+
 	switch {
 
 	case builtin0.IsBuiltinActor(c):
@@ -153,12 +168,19 @@ func ActorNameByCode(c cid.Cid) string {
 	case builtin7.IsBuiltinActor(c):
 		return builtin7.ActorNameByCode(c)
 
+	case builtin8.IsBuiltinActor(c):
+		return builtin8.ActorNameByCode(c)
+
 	default:
 		return "<unknown>"
 	}
 }
 
 func IsBuiltinActor(c cid.Cid) bool {
+	_, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return true
+	}
 
 	if builtin0.IsBuiltinActor(c) {
 		return true
@@ -188,10 +210,18 @@ func IsBuiltinActor(c cid.Cid) bool {
 		return true
 	}
 
+	if builtin8.IsBuiltinActor(c) {
+		return true
+	}
+
 	return false
 }
 
 func IsAccountActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == "account"
+	}
 
 	if c == builtin0.AccountActorCodeID {
 		return true
@@ -221,10 +251,18 @@ func IsAccountActor(c cid.Cid) bool {
 		return true
 	}
 
+	if c == builtin8.AccountActorCodeID {
+		return true
+	}
+
 	return false
 }
 
 func IsStorageMinerActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == "storageminer"
+	}
 
 	if c == builtin0.StorageMinerActorCodeID {
 		return true
@@ -254,10 +292,18 @@ func IsStorageMinerActor(c cid.Cid) bool {
 		return true
 	}
 
+	if c == builtin8.StorageMinerActorCodeID {
+		return true
+	}
+
 	return false
 }
 
 func IsMultisigActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == "multisig"
+	}
 
 	if c == builtin0.MultisigActorCodeID {
 		return true
@@ -287,10 +333,18 @@ func IsMultisigActor(c cid.Cid) bool {
 		return true
 	}
 
+	if c == builtin8.MultisigActorCodeID {
+		return true
+	}
+
 	return false
 }
 
 func IsPaymentChannelActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == "paymentchannel"
+	}
 
 	if c == builtin0.PaymentChannelActorCodeID {
 		return true
@@ -317,6 +371,10 @@ func IsPaymentChannelActor(c cid.Cid) bool {
 	}
 
 	if c == builtin7.PaymentChannelActorCodeID {
+		return true
+	}
+
+	if c == builtin8.PaymentChannelActorCodeID {
 		return true
 	}
 

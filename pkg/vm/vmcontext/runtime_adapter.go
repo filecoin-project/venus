@@ -30,6 +30,7 @@ import (
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	rt6 "github.com/filecoin-project/specs-actors/v6/actors/runtime"
 	rt7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
+	rt8 "github.com/filecoin-project/specs-actors/v8/actors/runtime"
 
 	/* inline-gen end */
 
@@ -66,6 +67,7 @@ var _ rt4.Runtime = (*runtimeAdapter)(nil)
 var _ rt5.Runtime = (*runtimeAdapter)(nil)
 var _ rt6.Runtime = (*runtimeAdapter)(nil)
 var _ rt7.Runtime = (*runtimeAdapter)(nil)
+var _ rt8.Runtime = (*runtimeAdapter)(nil)
 
 /* inline-gen end */
 

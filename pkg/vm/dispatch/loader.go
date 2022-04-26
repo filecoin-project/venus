@@ -4,6 +4,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	rtt "github.com/filecoin-project/go-state-types/rt"
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -58,22 +59,38 @@ func NewBuilder() *CodeLoaderBuilder {
 }
 
 // Add lets you add an actor dispatch table for a given version.
-func (b *CodeLoaderBuilder) Add(predict ActorPredicate, actor Actor) *CodeLoaderBuilder {
+func (b *CodeLoaderBuilder) Add(av actors.Version, predict ActorPredicate, actor Actor) *CodeLoaderBuilder {
 	if predict == nil {
 		predict = func(vmr.Runtime, rtt.VMActor) error { return nil }
 	}
 
-	b.actors[actor.Code()] = ActorInfo{
+	ai := ActorInfo{
 		vmActor:   actor,
 		predicate: predict,
 	}
+
+	ac := actor.Code()
+	b.actors[ac] = ai
+
+	// necessary to make stuff work
+	var realCode cid.Cid
+	if av >= actors.Version8 {
+		name := actors.CanonicalName(builtin.ActorNameByCode(ac))
+
+		var ok bool
+		realCode, ok = actors.GetActorCodeID(av, name)
+		if ok {
+			b.actors[realCode] = ai
+		}
+	}
+
 	return b
 }
 
 // Add lets you add an actor dispatch table for a given version.
-func (b *CodeLoaderBuilder) AddMany(predict ActorPredicate, actors ...rt5.VMActor) *CodeLoaderBuilder {
+func (b *CodeLoaderBuilder) AddMany(av actors.Version, predict ActorPredicate, actors ...rt5.VMActor) *CodeLoaderBuilder {
 	for _, actor := range actors {
-		b.Add(predict, actor)
+		b.Add(av, predict, actor)
 	}
 	return b
 }

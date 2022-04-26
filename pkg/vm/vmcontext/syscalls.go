@@ -26,6 +26,7 @@ import (
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	rt6 "github.com/filecoin-project/specs-actors/v6/actors/runtime"
 	rt7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
+	rt8 "github.com/filecoin-project/specs-actors/v8/actors/runtime"
 
 	/* inline-gen end */
 
@@ -78,6 +79,7 @@ var _ rt4.Syscalls = (*syscalls)(nil)
 var _ rt5.Syscalls = (*syscalls)(nil)
 var _ rt6.Syscalls = (*syscalls)(nil)
 var _ rt7.Syscalls = (*syscalls)(nil)
+var _ rt8.Syscalls = (*syscalls)(nil)
 
 /* inline-gen end */
 

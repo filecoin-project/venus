@@ -26,7 +26,7 @@ func InteropNet() *NetworkConf {
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
 			},
 			NetworkType:            constants.NetworkInterop,
-			GenesisNetworkVersion:  network.Version0,
+			GenesisNetworkVersion:  network.Version15,
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 2048,
 			MinVerifiedDealSize:    256,
@@ -48,6 +48,7 @@ func InteropNet() *NetworkConf {
 				UpgradeHyperdriveHeight: -16,
 				UpgradeChocolateHeight:  -17,
 				UpgradeOhSnapHeight:     -18,
+				UpgradeFVM1Height:       3000,
 
 				BreezeGasTampingDuration: 0,
 				UpgradeClausHeight:       -11,

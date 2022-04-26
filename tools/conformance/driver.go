@@ -5,6 +5,8 @@ import (
 	gobig "math/big"
 	"os"
 
+	"github.com/filecoin-project/venus/venus-shared/actors"
+
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
@@ -219,40 +221,6 @@ type ExecuteMessageParams struct {
 	Rand vmcontext.HeadChainRandomness
 }
 
-// adjustGasPricing adjusts the global gas price mapping to make sure that the
-// gas pricelist for vector's network version is used at the vector's epoch.
-// Because it manipulates a global, it returns a function that reverts the
-// change. The caller MUST invoke this function or the test vector runner will
-// become invalid.
-func adjustGasPricing(vectorEpoch abi.ChainEpoch, vectorNv network.Version, priceSchedule *gas.PricesSchedule, upgradeSchedule fork.UpgradeSchedule) {
-	// Resolve the epoch at which the vector network version kicks in.
-	var epoch abi.ChainEpoch = math.MaxInt64
-	if vectorNv == network.Version0 {
-		// genesis is not an upgrade.
-		epoch = 0
-	} else {
-		for _, u := range upgradeSchedule {
-			if u.Network == vectorNv {
-				epoch = u.Height
-				break
-			}
-		}
-	}
-
-	if epoch == math.MaxInt64 {
-		panic(fmt.Sprintf("could not resolve network version %d to height", vectorNv))
-	}
-
-	// Find the right pricelist for this network version.
-	pricelist := priceSchedule.PricelistByEpoch(epoch)
-
-	// Override the pricing mapping by setting the relevant pricelist for the
-	// network version at the epoch where the vector runs.
-	priceSchedule.SetPricelist(map[abi.ChainEpoch]gas.Pricelist{
-		vectorEpoch: pricelist,
-	})
-}
-
 // ExecuteMessage executes a conformance test vector message in a temporary LegacyVM.
 func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMessageParams) (*vm.Ret, cid.Cid, error) {
 	if !d.vmFlush {
@@ -263,8 +231,9 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 	actorBuilder := register.DefaultActorBuilder
 	// register the chaos actor if required by the vector.
 	if chaosOn, ok := d.selector["chaos_actor"]; ok && chaosOn == "true" {
+		av, _ := actors.VersionForNetwork(params.NetworkVersion)
 		chaosActor := chaos.Actor{}
-		actorBuilder.Add(nil, chaosActor)
+		actorBuilder.Add(av, nil, chaosActor)
 	}
 
 	coderLoader := actorBuilder.Build()

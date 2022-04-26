@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
 
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 
@@ -82,6 +83,11 @@ func Load(store adt.Store, act *types.Actor) (cbor.Marshaler, error) {
 }
 
 func ActorNameByCode(c cid.Cid) string {
+	name, _, ok := actors.GetActorMetaByCode(c)
+    if ok {
+    	return name
+	}
+
 	switch {
 		{{range .versions}}
 			case builtin{{.}}.IsBuiltinActor(c):
@@ -93,6 +99,11 @@ func ActorNameByCode(c cid.Cid) string {
 }
 
 func IsBuiltinActor(c cid.Cid) bool {
+	_, _, ok := actors.GetActorMetaByCode(c)
+    if ok {
+    	return true
+	}
+
 	{{range .versions}}
 		if builtin{{.}}.IsBuiltinActor(c) {
 			return true
@@ -102,6 +113,11 @@ func IsBuiltinActor(c cid.Cid) bool {
 }
 
 func IsAccountActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+    if ok {
+    	return name == "account"
+	}
+
 	{{range .versions}}
 		if c == builtin{{.}}.AccountActorCodeID {
 			return true
@@ -111,6 +127,11 @@ func IsAccountActor(c cid.Cid) bool {
 }
 
 func IsStorageMinerActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+    if ok {
+    	return name == "storageminer"
+	}
+
 	{{range .versions}}
 		if c == builtin{{.}}.StorageMinerActorCodeID {
 			return true
@@ -120,6 +141,11 @@ func IsStorageMinerActor(c cid.Cid) bool {
 }
 
 func IsMultisigActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+    if ok {
+    	return name == "multisig"
+	}
+
 	{{range .versions}}
 		if c == builtin{{.}}.MultisigActorCodeID {
 			return true
@@ -129,6 +155,11 @@ func IsMultisigActor(c cid.Cid) bool {
 }
 
 func IsPaymentChannelActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+    if ok {
+    	return name == "paymentchannel"
+	}
+
 	{{range .versions}}
 		if c == builtin{{.}}.PaymentChannelActorCodeID {
 			return true

@@ -25,6 +25,9 @@ import (
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
+	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
+
+	verifreg8 "github.com/filecoin-project/specs-actors/v7/actors/builtin/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
@@ -61,14 +64,54 @@ func init() {
 		return load7(store, root)
 	})
 
+	builtin.RegisterActorState(builtin8.VerifiedRegistryActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load8(store, root)
+	})
+
 }
 
 var (
-	Address = builtin7.VerifiedRegistryActorAddr
-	Methods = builtin7.MethodsVerifiedRegistry
+	Address = builtin8.VerifiedRegistryActorAddr
+	Methods = builtin8.MethodsVerifiedRegistry
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
+	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
+		if name != "verifiedregistry" {
+			return nil, xerrors.Errorf("actor code is not verifiedregistry: %s", name)
+		}
+
+		switch av {
+
+		case actors.Version0:
+			return load0(store, act.Head)
+
+		case actors.Version2:
+			return load2(store, act.Head)
+
+		case actors.Version3:
+			return load3(store, act.Head)
+
+		case actors.Version4:
+			return load4(store, act.Head)
+
+		case actors.Version5:
+			return load5(store, act.Head)
+
+		case actors.Version6:
+			return load6(store, act.Head)
+
+		case actors.Version7:
+			return load7(store, act.Head)
+
+		case actors.Version8:
+			return load8(store, act.Head)
+
+		default:
+			return nil, xerrors.Errorf("unknown actor version: %d", av)
+		}
+	}
+
 	switch act.Code {
 
 	case builtin0.VerifiedRegistryActorCodeID:
@@ -91,6 +134,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	case builtin7.VerifiedRegistryActorCodeID:
 		return load7(store, act.Head)
+
+	case builtin8.VerifiedRegistryActorCodeID:
+		return load8(store, act.Head)
 
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
@@ -120,11 +166,18 @@ func MakeState(store adt.Store, av actors.Version, rootKeyAddress address.Addres
 	case actors.Version7:
 		return make7(store, rootKeyAddress)
 
+	case actors.Version8:
+		return make8(store, rootKeyAddress)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
 func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	if c, ok := actors.GetActorCodeID(av, "verifiedregistry"); ok {
+		return c, nil
+	}
+
 	switch av {
 
 	case actors.Version0:
@@ -148,10 +201,20 @@ func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 	case actors.Version7:
 		return builtin7.VerifiedRegistryActorCodeID, nil
 
+	case actors.Version8:
+		return builtin8.VerifiedRegistryActorCodeID, nil
+
 	}
 
 	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
+
+type RemoveDataCapProposal = verifreg8.RemoveDataCapProposal
+type RemoveDataCapRequest = verifreg8.RemoveDataCapRequest
+type RemoveDataCapParams = verifreg8.RemoveDataCapParams
+type RmDcProposalID = verifreg8.RmDcProposalID
+
+const SignatureDomainSeparation_RemoveDataCap = verifreg8.SignatureDomainSeparation_RemoveDataCap
 
 type State interface {
 	cbor.Marshaler
@@ -159,6 +222,7 @@ type State interface {
 	RootKey() (address.Address, error)
 	VerifiedClientDataCap(address.Address) (bool, abi.StoragePower, error)
 	VerifierDataCap(address.Address) (bool, abi.StoragePower, error)
+	RemoveDataCapProposalID(verifier address.Address, client address.Address) (bool, uint64, error)
 	ForEachVerifier(func(addr address.Address, dcap abi.StoragePower) error) error
 	ForEachClient(func(addr address.Address, dcap abi.StoragePower) error) error
 	GetState() interface{}

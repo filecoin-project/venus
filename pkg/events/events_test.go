@@ -1635,4 +1635,3 @@ func TestUnregister(t *testing.T) {
 	found = events.Unregister(dneObs)
 	require.False(t, found)
 }
-
