@@ -12,6 +12,9 @@ coverprofile.html
 *.out
 *.so
 
+builtin-actors/v7/*
+builtin-actors/v8/*
+
 fixtures/test
 !fixtures/test/.gitkeep
 fixtures/live

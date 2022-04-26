@@ -9,8 +9,6 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
-	"github.com/ipfs-force-community/metrics/ratelimit"
-
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	config2 "github.com/filecoin-project/venus/app/submodule/config"
@@ -25,6 +23,7 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
 	"github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
+	builtin_actors "github.com/filecoin-project/venus/builtin-actors"
 	chain2 "github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/journal"
@@ -34,6 +33,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/ipfs-force-community/metrics/ratelimit"
 )
 
 // Builder is a helper to aid in the construction of a filecoin node.
@@ -100,6 +100,10 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		offlineMode: b.offlineMode,
 		repo:        b.repo,
 		chainClock:  b.chainClock,
+	}
+
+	if _, err := builtin_actors.LoadBuiltinActors(ctx); err != nil {
+		return nil, xerrors.Errorf("failed to load builtin actors %v", err)
 	}
 
 	//modules

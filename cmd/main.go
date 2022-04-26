@@ -6,7 +6,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
+
+	builtin_actors "github.com/filecoin-project/venus/builtin-actors"
+	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"golang.org/x/xerrors"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -88,6 +95,39 @@ func init() {
 			return enc
 		}
 	}
+}
+
+var loadCarPreFunc = func(req *cmds.Request, env cmds.Environment) error {
+	repoDir, _ := req.Options[OptionRepoDir].(string)
+	repoDir, err := paths.GetRepoPath(repoDir)
+	if err != nil {
+		return err
+	}
+	configPath := filepath.Join(repoDir, "config.json")
+	if _, err := os.Lstat(configPath); err != nil {
+		// first start
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	cfg, err := config.ReadFile(configPath)
+	if err != nil {
+		return err
+	}
+
+	if err := builtin_actors.LoadActorsFromCar(cfg.NetworkParams.NetworkType); err != nil {
+		return err
+	}
+	// preload manifest so that we have the correct code CID inventory for cli since that doesn't
+	// go through CI
+	if len(builtin_actors.BuiltinActorsV8Bundle()) > 0 {
+		bs := blockstoreutil.NewMemory()
+		if err := actors.LoadManifestFromBundle(context.TODO(), bs, actors.Version8, builtin_actors.BuiltinActorsV8Bundle()); err != nil {
+			return xerrors.Errorf("error loading actor manifest: %w", err)
+		}
+	}
+	return err
 }
 
 // command object for the local cli
@@ -189,12 +229,37 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"msig":     multisigCmd,
 }
 
+type preFun func(req *cmds.Request, env cmds.Environment) error
+
 func init() {
+	wrapper := func(oldPreFun, newPreFun preFun) preFun {
+		return func(req *cmds.Request, env cmds.Environment) error {
+			if oldPreFun != nil {
+				if err := oldPreFun(req, env); err != nil {
+					return err
+				}
+			}
+			return newPreFun(req, env)
+		}
+	}
+
 	for k, v := range rootSubcmdsLocal {
+		if len(v.Subcommands) == 0 {
+			v.PreRun = wrapper(v.PreRun, loadCarPreFunc)
+		}
+		for _, sub := range v.Subcommands {
+			sub.PreRun = wrapper(v.PreRun, loadCarPreFunc)
+		}
 		RootCmd.Subcommands[k] = v
 	}
 
 	for k, v := range rootSubcmdsDaemon {
+		if len(v.Subcommands) == 0 {
+			v.PreRun = wrapper(v.PreRun, loadCarPreFunc)
+		}
+		for _, sub := range v.Subcommands {
+			sub.PreRun = wrapper(v.PreRun, loadCarPreFunc)
+		}
 		RootCmd.Subcommands[k] = v
 		RootCmdDaemon.Subcommands[k] = v
 	}
