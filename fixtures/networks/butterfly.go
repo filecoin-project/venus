@@ -5,7 +5,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func ButterflySnapNet() *NetworkConf {
@@ -25,7 +25,7 @@ func ButterflySnapNet() *NetworkConf {
 				abi.RegisteredSealProof_StackedDrg32GiBV1,
 				abi.RegisteredSealProof_StackedDrg64GiBV1,
 			},
-			NetworkType:            constants.NetworkButterfly,
+			NetworkType:            types.NetworkButterfly,
 			GenesisNetworkVersion:  network.Version14,
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 2 << 30,

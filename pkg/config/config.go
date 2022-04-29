@@ -251,7 +251,7 @@ func newDefaultMessagePoolConfig() *MessagePoolConfig {
 // NetworkParamsConfig record netork parameters
 type NetworkParamsConfig struct {
 	DevNet                  bool                         `json:"devNet"`
-	NetworkType             constants.NetworkType        `json:"networkType"`
+	NetworkType             types.NetworkType            `json:"networkType"`
 	GenesisNetworkVersion   network.Version              `json:"genesisNetworkVersion"`
 	ConsensusMinerMinPower  uint64                       `json:"consensusMinerMinPower"` // uint64 goes up to 18 EiB
 	MinVerifiedDealSize     int64                        `json:"minVerifiedDealSize"`

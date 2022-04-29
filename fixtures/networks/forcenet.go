@@ -5,7 +5,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func ForceNet() *NetworkConf {
@@ -23,7 +23,7 @@ func ForceNet() *NetworkConf {
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
 				abi.RegisteredSealProof_StackedDrg32GiBV1,
 			},
-			NetworkType:            constants.NetworkForce,
+			NetworkType:            types.NetworkForce,
 			GenesisNetworkVersion:  network.Version14,
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 2048,

@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/venus/fixtures/asset"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
@@ -22,22 +21,22 @@ import (
 	"github.com/ipld/go-car"
 )
 
-func GetNetworkFromName(name string) (constants.NetworkType, error) {
+func GetNetworkFromName(name string) (types.NetworkType, error) {
 	switch name {
 	case "mainnet":
-		return constants.NetworkMainnet, nil
+		return types.NetworkMainnet, nil
 	case "force":
-		return constants.NetworkForce, nil
+		return types.NetworkForce, nil
 	case "integrationnet":
-		return constants.Integrationnet, nil
+		return types.Integrationnet, nil
 	case "2k":
-		return constants.Network2k, nil
+		return types.Network2k, nil
 	case "cali":
-		return constants.NetworkCalibnet, nil
+		return types.NetworkCalibnet, nil
 	case "interop":
-		return constants.NetworkInterop, nil
+		return types.NetworkInterop, nil
 	case "butterfly":
-		return constants.NetworkButterfly, nil
+		return types.NetworkButterfly, nil
 	default:
 		return 0, fmt.Errorf("unknown network name %s", name)
 	}
@@ -51,19 +50,19 @@ func SetConfigFromOptions(cfg *config.Config, network string) error {
 	}
 	var netcfg *NetworkConf
 	switch networkType {
-	case constants.NetworkMainnet:
+	case types.NetworkMainnet:
 		netcfg = Mainnet()
-	case constants.NetworkForce:
+	case types.NetworkForce:
 		netcfg = ForceNet()
-	case constants.Integrationnet:
+	case types.Integrationnet:
 		netcfg = IntegrationNet()
-	case constants.Network2k:
+	case types.Network2k:
 		netcfg = Net2k()
-	case constants.NetworkCalibnet:
+	case types.NetworkCalibnet:
 		netcfg = Calibration()
-	case constants.NetworkInterop:
+	case types.NetworkInterop:
 		netcfg = InteropNet()
-	case constants.NetworkButterfly:
+	case types.NetworkButterfly:
 		netcfg = ButterflySnapNet()
 	default:
 		return fmt.Errorf("unknown network name %s", network)
@@ -91,15 +90,15 @@ func LoadGenesis(ctx context.Context, rep repo.Repo, sourceName string, network 
 
 		var bs []byte
 		switch networkType {
-		case constants.NetworkNerpa:
+		case types.NetworkNerpa:
 			bs, err = asset.Asset("fixtures/_assets/car/nerpanet.car")
-		case constants.NetworkCalibnet:
+		case types.NetworkCalibnet:
 			bs, err = asset.Asset("fixtures/_assets/car/calibnet.car")
-		case constants.NetworkInterop:
+		case types.NetworkInterop:
 			bs, err = asset.Asset("fixtures/_assets/car/interopnet.car")
-		case constants.NetworkForce:
+		case types.NetworkForce:
 			bs, err = asset.Asset("fixtures/_assets/car/forcenet.car")
-		case constants.NetworkButterfly:
+		case types.NetworkButterfly:
 			bs, err = asset.Asset("fixtures/_assets/car/butterflynet.car")
 		default:
 			bs, err = asset.Asset("fixtures/_assets/car/mainnet.car")

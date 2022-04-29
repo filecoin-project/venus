@@ -6,7 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func Mainnet() *NetworkConf {
@@ -35,7 +35,7 @@ func Mainnet() *NetworkConf {
 		},
 		Network: config.NetworkParamsConfig{
 			DevNet:                false,
-			NetworkType:           constants.NetworkMainnet,
+			NetworkType:           types.NetworkMainnet,
 			GenesisNetworkVersion: network.Version0,
 			BlockDelay:            30,
 			ForkUpgradeParam: &config.ForkUpgradeConfig{

@@ -425,7 +425,7 @@ type ChainFork struct {
 	expensiveUpgrades map[abi.ChainEpoch]struct{}
 
 	// upgrade param
-	networkType constants.NetworkType
+	networkType types.NetworkType
 	forkUpgrade *config.ForkUpgradeConfig
 }
 
@@ -1475,7 +1475,7 @@ func (c *ChainFork) UpgradeLiftoff(ctx context.Context, cache MigrationCache, ro
 }
 
 func (c *ChainFork) UpgradeCalico(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
-	if c.networkType != constants.NetworkMainnet {
+	if c.networkType != types.NetworkMainnet {
 		return root, nil
 	}
 
@@ -1588,7 +1588,7 @@ func (c *ChainFork) UpgradeActorsV3(ctx context.Context, cache MigrationCache, r
 		return cid.Undef, xerrors.Errorf("getting state tree: %v", err)
 	}
 
-	if c.networkType == constants.NetworkMainnet {
+	if c.networkType == types.NetworkMainnet {
 		err := terminateActor(ctx, tree, types.ZeroAddress, epoch)
 		if err != nil && !xerrors.Is(err, types.ErrActorNotFound) {
 			return cid.Undef, xerrors.Errorf("deleting zero bls actor: %v", err)
