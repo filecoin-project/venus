@@ -30,8 +30,10 @@ import (
 	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
+	builtin_actors2 "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs-force-community/metrics/ratelimit"
 )
@@ -102,7 +104,8 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		chainClock:  b.chainClock,
 	}
 
-	if _, err := builtin_actors.LoadBuiltinActors(ctx); err != nil {
+	actorBuilder := builtin_actors2.NewBuiltinActorsBuilder(builtin_actors.Actorsv7FS, builtin_actors.Actorsv8FS)
+	if _, err := actorBuilder.LoadBuiltinActors(ctx, blockstoreutil.NewMemory()); err != nil {
 		return nil, xerrors.Errorf("failed to load builtin actors %v", err)
 	}
 
