@@ -1,0 +1,26 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ docker ]
+  pull_request:
+    branches: [ docker ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build the Docker image 
+      run: |
+        docker build . --file Dockerfile --tag filvenus/venus:$(date +%s)
+        docker tag filvenus/venus:$(date +%s) filvenus/venus:latest
+    - name: Login to registry
+      run: docker login --username=filvenus --password ${{ secrets.DOCKER_PASSWORD }} 
+    - name: Push Image
+      run: |
+        docker push filvenus/venus:$(date +%s)
+        docker push filvenus/venus:latest
