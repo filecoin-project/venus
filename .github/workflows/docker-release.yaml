@@ -14,6 +14,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        ref: docker
     - name: Build the Docker image 
       run: |
         docker build . --file Dockerfile --tag filvenus/venus:$(date +%s)
