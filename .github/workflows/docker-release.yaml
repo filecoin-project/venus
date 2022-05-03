@@ -18,7 +18,8 @@ jobs:
         ref: docker
     - name: Build the Docker image 
       run: |
-        ls
+        make docker-buildenv
+        make docker-runtime
         docker build . --file dockerfile --tag filvenus/venus:$(date +%s)
         docker tag filvenus/venus:$(date +%s) filvenus/venus:latest
     - name: Login to registry
