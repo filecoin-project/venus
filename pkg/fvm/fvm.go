@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/venus/venus-shared/actors/aerrors"
+
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	ffi_cgo "github.com/filecoin-project/filecoin-ffi/cgo"
 	"github.com/filecoin-project/go-address"
@@ -334,6 +336,15 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 		}
 	}
 
+	var aerr aerrors.ActorError
+	if ret.ExitCode != 0 {
+		amsg := ret.FailureInfo
+		if amsg == "" {
+			amsg = "unknown error"
+		}
+		aerr = aerrors.New(exitcode.ExitCode(ret.ExitCode), amsg)
+	}
+
 	return &vm.Ret{
 		Receipt: types.MessageReceipt{
 			Return:   ret.Return,
@@ -350,7 +361,7 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 			GasRefund:          0,
 			GasBurned:          0,
 		},
-		ActorErr: nil,
+		ActorErr: aerr,
 		GasTracker: &gas.GasTracker{
 			ExecutionTrace: et.ToExecutionTrace(),
 		},
@@ -377,6 +388,15 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 		}
 	}
 
+	var aerr aerrors.ActorError
+	if ret.ExitCode != 0 {
+		amsg := ret.FailureInfo
+		if amsg == "" {
+			amsg = "unknown error"
+		}
+		aerr = aerrors.New(exitcode.ExitCode(ret.ExitCode), amsg)
+	}
+
 	return &vm.Ret{
 		Receipt: types.MessageReceipt{
 			Return:   ret.Return,
@@ -384,7 +404,7 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 			GasUsed:  ret.GasUsed,
 		},
 		OutPuts:  gas.GasOutputs{},
-		ActorErr: nil,
+		ActorErr: aerr,
 		GasTracker: &gas.GasTracker{
 			ExecutionTrace: et.ToExecutionTrace(),
 		},
