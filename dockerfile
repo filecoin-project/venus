@@ -1,11 +1,11 @@
-FROM venus-buildenv AS buildenv
+FROM filvenus/venus-buildenv AS buildenv
 
 RUN git clone https://github.com/filecoin-project/venus.git --depth 1 
 RUN export GOPROXY=https://goproxy.cn && cd venus  && make
 RUN cd venus && ldd ./venus
 
 
-FROM venus-runtime
+FROM filvenus/venus-runtime
 
 # DIR for app
 WORKDIR /app
