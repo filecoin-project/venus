@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
 	"github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
-	builtin_actors "github.com/filecoin-project/venus/builtin-actors"
 	chain2 "github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/journal"
@@ -33,7 +32,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
-	builtin_actors2 "github.com/filecoin-project/venus/venus-shared/builtin-actors"
+	builtin_actors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs-force-community/metrics/ratelimit"
 )
@@ -104,8 +103,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		chainClock:  b.chainClock,
 	}
 
-	actorBuilder := builtin_actors2.NewBuiltinActorsBuilder(builtin_actors.Actorsv7FS, builtin_actors.Actorsv8FS)
-	if _, err := actorBuilder.LoadBuiltinActors(ctx, blockstoreutil.NewMemory()); err != nil {
+	if _, err := builtin_actors.LoadBuiltinActors(ctx, blockstoreutil.NewMemory()); err != nil {
 		return nil, xerrors.Errorf("failed to load builtin actors %v", err)
 	}
 

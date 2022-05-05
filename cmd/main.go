@@ -117,15 +117,15 @@ var loadCarPreFunc = func(req *cmds.Request, env cmds.Environment) error {
 		return err
 	}
 
-	actorBuilder := builtin_actors2.NewBuiltinActorsBuilder(builtin_actors.Actorsv7FS, builtin_actors.Actorsv8FS)
-	if err := actorBuilder.LoadActorsFromCar(cfg.NetworkParams.NetworkType); err != nil {
+	err = builtin_actors2.SetActorsBundle(builtin_actors.Actorsv7FS, builtin_actors.Actorsv8FS, cfg.NetworkParams.NetworkType)
+	if err != nil {
 		return err
 	}
 	// preload manifest so that we have the correct code CID inventory for cli since that doesn't
 	// go through CI
-	if len(actorBuilder.BuiltinActorsV8Bundle()) > 0 {
+	if len(builtin_actors2.BuiltinActorsV8Bundle()) > 0 {
 		bs := blockstoreutil.NewMemory()
-		if err := actors.LoadManifestFromBundle(context.TODO(), bs, actors.Version8, actorBuilder.BuiltinActorsV8Bundle()); err != nil {
+		if err := actors.LoadManifestFromBundle(context.TODO(), bs, actors.Version8, builtin_actors2.BuiltinActorsV8Bundle()); err != nil {
 			return xerrors.Errorf("error loading actor manifest: %w", err)
 		}
 	}
