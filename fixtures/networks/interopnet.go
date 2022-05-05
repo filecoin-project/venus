@@ -12,8 +12,8 @@ func InteropNet() *NetworkConf {
 	return &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
-				"/dns4/bootstrap-0.interop.fildev.network/tcp/1347/p2p/12D3KooWN86wA54r3v9M8bBYbc1vK9W1ehHDxVGPRaoeUYuXF8R7",
-				"/dns4/bootstrap-1.interop.fildev.network/tcp/1347/p2p/12D3KooWNZ41kev8mtBZgWe43qam1VX9pJyf87jnaisQP2urZZ2M",
+				"/dns4/bootstrap-0.interop.fildev.network/tcp/1347/p2p/12D3KooWKh4DZbYJA9brRKzrjixmjyr2T8Er8N9moLRFB6NcC3EC",
+				"/dns4/bootstrap-1.interop.fildev.network/tcp/1347/p2p/12D3KooWRE7NYtgfYP2cHD4zY31JQ9B1Y79oNgdgAuMs8t4RVBbL",
 			},
 			MinPeerThreshold: 0,
 			Period:           "30s",
