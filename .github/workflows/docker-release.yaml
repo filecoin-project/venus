@@ -20,12 +20,13 @@ jobs:
       run: |
         make docker-buildenv
         make docker-runtime
-        # docker build . --file dockerfile --tag filvenus/venus:${{steps.vars.outputs.tag}}
-        # docker tag filvenus/venus:${{steps.vars.outputs.tag}} filvenus/venus:latest
         docker build . --file dockerfile --tag filvenus/venus:latest
+        # docker tag filvenus/venus:latest filvenus/venus:${{steps.vars.outputs.tag}}
     - name: Login to registry
       run: docker login --username=filvenus --password ${{ secrets.DOCKER_PASSWORD }} 
     - name: Push Image
       run: |
         # docker push filvenus/venus:${{steps.vars.outputs.tag}}
         docker push filvenus/venus:latest
+        docker push filvenus/venus-runtime:latest
+        docker push filvenus/venus-buildenv:latest
