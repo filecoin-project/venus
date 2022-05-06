@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/journal"
 	"github.com/filecoin-project/venus/pkg/migration"
 	"github.com/filecoin-project/venus/pkg/repo"
+	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 )
 
 var log = logging.Logger("daemon")
@@ -141,6 +142,10 @@ func initRun(req *cmds.Request) error {
 		}
 
 		node.SetNetParams(cfg.NetworkParams)
+		// load builtin actors
+		if _, err := builtinactors.LoadBuiltinActors(req.Context, rep.Datastore()); err != nil {
+			return err
+		}
 		genesisFunc = genesis.MakeGenesis(req.Context, rep, mkGen, preTp.(string), cfg.NetworkParams.ForkUpgradeParam)
 	} else {
 		genesisFileSource, _ := req.Options[GenesisFile].(string)

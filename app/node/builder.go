@@ -29,10 +29,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
-	builtin_actors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
+	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs-force-community/metrics/ratelimit"
 )
@@ -103,10 +102,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		chainClock:  b.chainClock,
 	}
 
-	if _, err := builtin_actors.LoadBuiltinActors(ctx, blockstoreutil.NewMemory()); err != nil {
-		return nil, xerrors.Errorf("failed to load builtin actors %v", err)
-	}
-
 	//modules
 	nd.circulatiingSupplyCalculator = chain2.NewCirculatingSupplyCalculator(b.repo.Datastore(), b.genBlk.ParentStateRoot, b.repo.Config().NetworkParams.ForkUpgradeParam)
 
@@ -126,6 +121,10 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.blockservice, err = dagservice.NewDagserviceSubmodule(ctx, (*builder)(b), nd.network)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.dagservice")
+	}
+
+	if _, err := builtinactors.LoadBuiltinActors(ctx, b.Repo().Datastore()); err != nil {
+		return nil, xerrors.Errorf("failed to load builtin actors %v", err)
 	}
 
 	nd.chain, err = chain.NewChainSubmodule(ctx, (*builder)(b), nd.circulatiingSupplyCalculator)
