@@ -2,9 +2,7 @@
 
 echo $@
 
-
-if [ $nettype=="calibnet" ]
-then
+if [ $nettype = "calibnet" ];then
     nettype="cali"
 fi
 
