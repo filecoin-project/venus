@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"sync/atomic"
 	"time"
-
-	"github.com/filecoin-project/venus/venus-shared/actors/aerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	ffi_cgo "github.com/filecoin-project/filecoin-ffi/cgo"
@@ -24,6 +23,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/aerrors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
@@ -32,6 +32,11 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
+)
+
+// stat counters
+var (
+	StatApplied uint64
 )
 
 var fvmLog = logging.Logger("fvm")
@@ -319,6 +324,7 @@ func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 
 func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret, error) {
 	start := constants.Clock.Now()
+	defer atomic.AddUint64(&StatApplied, 1)
 	msgBytes, err := cmsg.VMMessage().Serialize()
 	if err != nil {
 		return nil, xerrors.Errorf("serializing msg: %w", err)
@@ -371,6 +377,7 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 
 func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret, error) {
 	start := constants.Clock.Now()
+	defer atomic.AddUint64(&StatApplied, 1)
 	msgBytes, err := cmsg.VMMessage().Serialize()
 	if err != nil {
 		return nil, xerrors.Errorf("serializing msg: %w", err)

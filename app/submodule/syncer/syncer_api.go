@@ -2,10 +2,12 @@ package syncer
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/big"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
+	"github.com/filecoin-project/venus/pkg/fvm"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	logging "github.com/ipfs/go-log/v2"
@@ -189,7 +191,7 @@ func (sa *syncerAPI) SyncState(ctx context.Context) (*types.SyncState, error) {
 	tracker.History()
 
 	syncState := &types.SyncState{
-		VMApplied: 0,
+		VMApplied: atomic.LoadUint64(&fvm.StatApplied),
 	}
 
 	count := 0
