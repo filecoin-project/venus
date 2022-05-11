@@ -1245,6 +1245,7 @@ Inputs:
 Response: `"f01234"`
 
 ### StateGetNetworkParams
+StateGetNetworkParams return current network params
 
 
 Perms: read

@@ -607,6 +607,7 @@ func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey,
 	return path, nil
 }
 
+// StateGetNetworkParams returns current network params
 func (cia *chainInfoAPI) StateGetNetworkParams(ctx context.Context) (*types.NetworkParams, error) {
 	networkName, err := cia.getNetworkName(ctx)
 	if err != nil {
