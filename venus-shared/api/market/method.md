@@ -834,6 +834,7 @@ Response:
     },
     "Params": "Ynl0ZSBhcnJheQ==",
     "State": 9,
+    "DealUUID": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
     "PieceCid": null,
     "PieceSize": 1024,
     "RawBlockSize": 42
@@ -956,6 +957,7 @@ Inputs:
       },
       "Params": "Ynl0ZSBhcnJheQ==",
       "State": 9,
+      "DealUUID": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
       "PieceCid": null,
       "PieceSize": 1024,
       "RawBlockSize": 42
@@ -1148,6 +1150,7 @@ Response:
       },
       "Params": "Ynl0ZSBhcnJheQ==",
       "State": 9,
+      "DealUUID": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
       "PieceCid": null,
       "PieceSize": 1024,
       "RawBlockSize": 42
