@@ -11,7 +11,6 @@ import (
 	ffi_cgo "github.com/filecoin-project/filecoin-ffi/cgo"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
@@ -358,14 +357,13 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 			GasUsed:  ret.GasUsed,
 		},
 		OutPuts: gas.GasOutputs{
-			// TODO: do the other optional fields eventually
-			BaseFeeBurn:        big.Zero(),
-			OverEstimationBurn: big.Zero(),
+			BaseFeeBurn:        ret.BaseFeeBurn,
+			OverEstimationBurn: ret.OverEstimationBurn,
 			MinerPenalty:       ret.MinerPenalty,
 			MinerTip:           ret.MinerTip,
-			Refund:             big.Zero(),
-			GasRefund:          0,
-			GasBurned:          0,
+			Refund:             ret.Refund,
+			GasRefund:          ret.GasRefund,
+			GasBurned:          ret.GasBurned,
 		},
 		ActorErr: aerr,
 		GasTracker: &gas.GasTracker{

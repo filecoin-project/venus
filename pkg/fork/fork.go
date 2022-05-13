@@ -2039,7 +2039,7 @@ func (c *ChainFork) UpgradeActorsV8(ctx context.Context, cache MigrationCache, r
 
 	newRoot, err := c.upgradeActorsV8Common(ctx, cache, root, epoch, ts, config)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("migrating actors v6 state: %w", err)
+		return cid.Undef, xerrors.Errorf("migrating actors v8 state: %w", err)
 	}
 
 	return newRoot, nil
