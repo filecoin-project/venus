@@ -1622,6 +1622,21 @@ func (mr *MockFullNodeMockRecorder) StateGetActor(arg0, arg1, arg2 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetActor", reflect.TypeOf((*MockFullNode)(nil).StateGetActor), arg0, arg1, arg2)
 }
 
+// StateGetNetworkParams mocks base method.
+func (m *MockFullNode) StateGetNetworkParams(arg0 context.Context) (*types.NetworkParams, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetNetworkParams", arg0)
+	ret0, _ := ret[0].(*types.NetworkParams)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetNetworkParams indicates an expected call of StateGetNetworkParams.
+func (mr *MockFullNodeMockRecorder) StateGetNetworkParams(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetNetworkParams", reflect.TypeOf((*MockFullNode)(nil).StateGetNetworkParams), arg0)
+}
+
 // StateGetReceipt mocks base method.
 func (m *MockFullNode) StateGetReceipt(arg0 context.Context, arg1 cid.Cid, arg2 types.TipSetKey) (*types.MessageReceipt, error) {
 	m.ctrl.T.Helper()

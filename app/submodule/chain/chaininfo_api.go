@@ -606,3 +606,42 @@ func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey,
 	}
 	return path, nil
 }
+
+// StateGetNetworkParams returns current network params
+func (cia *chainInfoAPI) StateGetNetworkParams(ctx context.Context) (*types.NetworkParams, error) {
+	networkName, err := cia.getNetworkName(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cfg := cia.chain.config.Repo().Config()
+	params := &types.NetworkParams{
+		NetworkName:             types.NetworkName(networkName),
+		BlockDelaySecs:          cfg.NetworkParams.BlockDelay,
+		ConsensusMinerMinPower:  abi.NewStoragePower(int64(cfg.NetworkParams.ConsensusMinerMinPower)),
+		SupportedProofTypes:     cfg.NetworkParams.ReplaceProofTypes,
+		PreCommitChallengeDelay: cfg.NetworkParams.PreCommitChallengeDelay,
+		ForkUpgradeParams: types.ForkUpgradeParams{
+			UpgradeSmokeHeight:       cfg.NetworkParams.ForkUpgradeParam.UpgradeSmokeHeight,
+			UpgradeBreezeHeight:      cfg.NetworkParams.ForkUpgradeParam.UpgradeBreezeHeight,
+			UpgradeIgnitionHeight:    cfg.NetworkParams.ForkUpgradeParam.UpgradeIgnitionHeight,
+			UpgradeLiftoffHeight:     cfg.NetworkParams.ForkUpgradeParam.UpgradeLiftoffHeight,
+			UpgradeAssemblyHeight:    cfg.NetworkParams.ForkUpgradeParam.UpgradeAssemblyHeight,
+			UpgradeRefuelHeight:      cfg.NetworkParams.ForkUpgradeParam.UpgradeRefuelHeight,
+			UpgradeTapeHeight:        cfg.NetworkParams.ForkUpgradeParam.UpgradeTapeHeight,
+			UpgradeKumquatHeight:     cfg.NetworkParams.ForkUpgradeParam.UpgradeKumquatHeight,
+			BreezeGasTampingDuration: cfg.NetworkParams.ForkUpgradeParam.BreezeGasTampingDuration,
+			UpgradeCalicoHeight:      cfg.NetworkParams.ForkUpgradeParam.UpgradeCalicoHeight,
+			UpgradePersianHeight:     cfg.NetworkParams.ForkUpgradeParam.UpgradePersianHeight,
+			UpgradeOrangeHeight:      cfg.NetworkParams.ForkUpgradeParam.UpgradeOrangeHeight,
+			UpgradeClausHeight:       cfg.NetworkParams.ForkUpgradeParam.UpgradeClausHeight,
+			UpgradeTrustHeight:       cfg.NetworkParams.ForkUpgradeParam.UpgradeTrustHeight,
+			UpgradeNorwegianHeight:   cfg.NetworkParams.ForkUpgradeParam.UpgradeNorwegianHeight,
+			UpgradeTurboHeight:       cfg.NetworkParams.ForkUpgradeParam.UpgradeTurboHeight,
+			UpgradeHyperdriveHeight:  cfg.NetworkParams.ForkUpgradeParam.UpgradeHyperdriveHeight,
+			UpgradeChocolateHeight:   cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight,
+			UpgradeOhSnapHeight:      cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight,
+		},
+	}
+
+	return params, nil
+}
