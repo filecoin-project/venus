@@ -134,7 +134,11 @@ Inputs:
   34359738368,
   {
     "MaxPiece": 123,
-    "MaxPieceSize": 42
+    "MaxPieceSize": 42,
+    "MaxUsedSpace": 42,
+    "MinPiece": 123,
+    "MinPieceSize": 42,
+    "MinUsedSpace": 42
   }
 ]
 ```
@@ -561,7 +565,11 @@ Inputs:
   "f01234",
   {
     "MaxPiece": 123,
-    "MaxPieceSize": 42
+    "MaxPieceSize": 42,
+    "MaxUsedSpace": 42,
+    "MinPiece": 123,
+    "MinPieceSize": 42,
+    "MinUsedSpace": 42
   }
 ]
 ```
