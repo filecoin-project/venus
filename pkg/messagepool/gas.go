@@ -245,31 +245,65 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 		return -1, xerrors.Errorf("message execution failed: exit %s", res.Receipt.ExitCode)
 	}
 
+	ret := res.Receipt.GasUsed
+
+	transitionalMulti := 1.0
+	// Overestimate gas around the upgrade
+	if ts.Height() <= mp.forkParams.UpgradeFVM1Height && (mp.forkParams.UpgradeFVM1Height-ts.Height() <= 20) {
+		transitionalMulti = 2.0
+
+		func() {
+			_, st, err := mp.sm.ParentState(ctx, ts)
+			if err != nil {
+				return
+			}
+			act, found, err := st.GetActor(ctx, msg.To)
+			if err != nil {
+				return
+			}
+			if !found {
+				return
+			}
+
+			if builtin.IsStorageMinerActor(act.Code) {
+				switch msgIn.Method {
+				case 5:
+					transitionalMulti = 3.954
+				case 6:
+					transitionalMulti = 4.095
+				case 7:
+					// skip, stay at 2.0
+					//transitionalMulti = 1.289
+				case 11:
+					transitionalMulti = 17.8758
+				case 16:
+					transitionalMulti = 2.1704
+				case 25:
+					transitionalMulti = 3.1177
+				case 26:
+					transitionalMulti = 2.3322
+				default:
+				}
+			}
+
+			// skip storage market, 80th percentie for everything ~1.9, leave it at 2.0
+		}()
+	}
+	ret = (ret * int64(transitionalMulti*1024)) >> 10
+
 	// Special case for PaymentChannel collect, which is deleting actor
-	pts, err := mp.api.ChainTipSet(ctx, ts.Parents())
-	if err != nil {
-		_ = err
-		// somewhat ignore it as it can happen and we just want to detect
-		// an existing PaymentChannel actor
-		return res.Receipt.GasUsed, nil
-	}
-	act, err := mp.sm.GetActorAt(ctx, msg.To, pts)
-	if err != nil {
-		_ = err
-		// somewhat ignore it as it can happen and we just want to detect
-		// an existing PaymentChannel actor
-		return res.Receipt.GasUsed, nil
+	// We ignore errors in this special case since they CAN occur,
+	// and we just want to detect existing payment channel actors
+	_, st, err := mp.sm.ParentState(ctx, ts)
+	if err == nil {
+		act, found, err := st.GetActor(ctx, msg.To)
+		if err == nil && found && builtin.IsPaymentChannelActor(act.Code) && msgIn.Method == paych.Methods.Collect {
+			// add the refunded gas for DestroyActor back into the gas used
+			ret += 76e3
+		}
 	}
 
-	if !builtin.IsPaymentChannelActor(act.Code) {
-		return res.Receipt.GasUsed, nil
-	}
-	if msg.Method != paych.Methods.Collect {
-		return res.Receipt.GasUsed, nil
-	}
-
-	// return GasUsed without the refund for DestoryActor
-	return res.Receipt.GasUsed + 76e3, nil
+	return ret, nil
 }
 
 func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessage *types.EstimateMessage, _ types.TipSetKey) (*types.Message, error) {
