@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
@@ -23,6 +24,47 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
+
+var feecapOption = cmds.StringOption("gas-feecap", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
+var premiumOption = cmds.StringOption("gas-premium", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
+var limitOption = cmds.Int64Option("gas-limit", "Maximum GasUnits this message is allowed to consume")
+
+func parseGasOptions(req *cmds.Request) (fbig.Int, fbig.Int, int64, error) {
+	var (
+		feecap      = types.FIL{Int: types.NewInt(0).Int}
+		premium     = types.FIL{Int: types.NewInt(0).Int}
+		ok          = false
+		gasLimitInt = int64(0)
+	)
+
+	var err error
+	feecapOption := req.Options["gas-feecap"]
+	if feecapOption != nil {
+		feecap, err = types.ParseFIL(feecapOption.(string))
+		if err != nil {
+			return types.ZeroFIL, types.ZeroFIL, 0, errors.New("invalid gas price (specify FIL as a decimal number)")
+		}
+	}
+
+	premiumOption := req.Options["gas-premium"]
+	if premiumOption != nil {
+		premium, err = types.ParseFIL(premiumOption.(string))
+		if err != nil {
+			return types.ZeroFIL, types.ZeroFIL, 0, errors.New("invalid gas price (specify FIL as a decimal number)")
+		}
+	}
+
+	limitOption := req.Options["gas-limit"]
+	if limitOption != nil {
+		gasLimitInt, ok = limitOption.(int64)
+		if !ok {
+			msg := fmt.Sprintf("invalid gas limit: %s", limitOption)
+			return types.ZeroFIL, types.ZeroFIL, 0, errors.New(msg)
+		}
+	}
+
+	return fbig.Int{Int: feecap.Int}, fbig.Int{Int: premium.Int}, gasLimitInt, nil
+}
 
 // MessageSendResult is the return type for message send command
 type MessageSendResult struct {
