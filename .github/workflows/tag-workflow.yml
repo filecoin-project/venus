@@ -174,14 +174,14 @@ jobs:
           set -e
 
       - name: Publish the Docker image 
-      if: ${{ steps.vars.outputs.pub_method=='pushRelease' }}
-      run: |
-        make docker-buildenv
-        make docker-runtime
-        docker build . --file dockerfile --tag filvenus/venus:latest
-        docker tag filvenus/venus:latest filvenus/venus:${{steps.vars.outputs.github_tag}}
-        docker login --username=filvenus --password ${{ secrets.DOCKER_PASSWORD }} 
-        docker push filvenus/venus:${{steps.vars.outputs.github_tag}}
-        docker push filvenus/venus:latest
-        docker push filvenus/venus-runtime:latest
-        docker push filvenus/venus-buildenv:latest
+        if: ${{ steps.vars.outputs.pub_method=='pushRelease' }}
+        run: |
+          make docker-buildenv
+          make docker-runtime
+          docker build . --file dockerfile --tag filvenus/venus:latest
+          docker tag filvenus/venus:latest filvenus/venus:${{steps.vars.outputs.github_tag}}
+          docker login --username=filvenus --password ${{ secrets.DOCKER_PASSWORD }} 
+          docker push filvenus/venus:${{steps.vars.outputs.github_tag}}
+          docker push filvenus/venus:latest
+          docker push filvenus/venus-runtime:latest
+          docker push filvenus/venus-buildenv:latest
