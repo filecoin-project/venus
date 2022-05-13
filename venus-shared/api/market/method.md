@@ -135,7 +135,6 @@ Inputs:
   {
     "MaxPiece": 123,
     "MaxPieceSize": 42,
-    "MaxUsedSpace": 42,
     "MinPiece": 123,
     "MinPieceSize": 42,
     "MinUsedSpace": 42
@@ -566,7 +565,6 @@ Inputs:
   {
     "MaxPiece": 123,
     "MaxPieceSize": 42,
-    "MaxUsedSpace": 42,
     "MinPiece": 123,
     "MinPieceSize": 42,
     "MinUsedSpace": 42
