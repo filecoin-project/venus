@@ -174,7 +174,7 @@ jobs:
           set -e
 
       - name: Publish the Docker image 
-        if: ${{ steps.vars.outputs.pub_method=='pushRelease' }}
+        if: ${{ github.ref_type == 'tag' && github.event_name == 'create' }}
         run: |
           make docker-buildenv
           make docker-runtime
