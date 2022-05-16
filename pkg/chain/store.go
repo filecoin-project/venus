@@ -8,6 +8,7 @@ import (
 	"runtime/debug"
 	"sync"
 
+	"github.com/filecoin-project/pubsub"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
@@ -19,7 +20,6 @@ import (
 	carutil "github.com/ipld/go-car/util"
 	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"github.com/whyrusleeping/pubsub"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 

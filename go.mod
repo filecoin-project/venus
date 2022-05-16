@@ -5,7 +5,7 @@ go 1.16
 require (
 	contrib.go.opencensus.io/exporter/jaeger v0.2.1
 	contrib.go.opencensus.io/exporter/prometheus v0.4.0
-	github.com/BurntSushi/toml v0.4.1 // indirect
+	github.com/BurntSushi/toml v0.4.1
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/ahmetb/go-linq/v3 v3.2.0
@@ -35,6 +35,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.4
 	github.com/filecoin-project/go-state-types v0.1.3
 	github.com/filecoin-project/go-statemachine v1.0.2 // indirect
+	github.com/filecoin-project/pubsub v1.0.0
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v3 v3.1.1
@@ -126,11 +127,10 @@ require (
 	github.com/spf13/viper v1.7.1 // indirect
 	github.com/streadway/handy v0.0.0-20200128134331-0f66f006fb2e
 	github.com/stretchr/objx v0.2.0 // indirect
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	github.com/whyrusleeping/cbor-gen v0.0.0-20220302191723-37c43cae8e14
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
-	github.com/whyrusleeping/pubsub v0.0.0-20190708150250-92bcb0691325
 	go.etcd.io/bbolt v1.3.6 // indirect
 	go.opencensus.io v0.23.0
 	go.opentelemetry.io/otel/sdk v1.3.0 // indirect

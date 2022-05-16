@@ -24,7 +24,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/minio/blake2b-simd"
 	"github.com/raulk/clock"
-	lps "github.com/whyrusleeping/pubsub"
+	lps "github.com/filecoin-project/pubsub"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -1522,7 +1522,7 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan types.MpoolUpdate, e
 	sub := mp.changes.Sub(localUpdates)
 
 	go func() {
-		defer mp.changes.Unsub(sub, localUpdates)
+		defer mp.changes.Unsub(sub)
 		defer close(out)
 
 		for {
