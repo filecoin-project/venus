@@ -9,13 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	builtin_actors "github.com/filecoin-project/venus/builtin-actors"
-	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	"github.com/filecoin-project/venus/venus-shared/actors"
-	builtin_actors2 "github.com/filecoin-project/venus/venus-shared/builtin-actors"
-	"golang.org/x/xerrors"
-
 	fbig "github.com/filecoin-project/go-state-types/big"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-cmds/cli"
@@ -23,10 +16,14 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"
+	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/repo"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	builtin_actors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -98,7 +95,7 @@ func init() {
 	}
 }
 
-var loadCarPreFunc = func(req *cmds.Request, env cmds.Environment) error {
+var loadBundles = func(req *cmds.Request, env cmds.Environment) error {
 	repoDir, _ := req.Options[OptionRepoDir].(string)
 	repoDir, err := paths.GetRepoPath(repoDir)
 	if err != nil {
@@ -116,19 +113,20 @@ var loadCarPreFunc = func(req *cmds.Request, env cmds.Environment) error {
 	if err != nil {
 		return err
 	}
-
-	err = builtin_actors2.SetActorsBundle(builtin_actors.Actorsv7FS, builtin_actors.Actorsv8FS, cfg.NetworkParams.NetworkType)
-	if err != nil {
-		return err
+	builtin_actors.SetNetworkBundle(cfg.NetworkParams.NetworkType)
+	if err := os.Setenv(builtin_actors.RepoPath, repoDir); err != nil {
+		return xerrors.Errorf("set env %s failed %v", builtin_actors.RepoPath, err)
 	}
+
 	// preload manifest so that we have the correct code CID inventory for cli since that doesn't
 	// go through CI
-	if len(builtin_actors2.BuiltinActorsV8Bundle()) > 0 {
-		bs := blockstoreutil.NewMemory()
-		if err := actors.LoadManifestFromBundle(context.TODO(), bs, actors.Version8, builtin_actors2.BuiltinActorsV8Bundle()); err != nil {
-			return xerrors.Errorf("error loading actor manifest: %w", err)
-		}
+	// TODO loading the bundle in every cli invocation adds some latency; we should figure out a way
+	//      to load actor CIDs without incurring this hit.
+	bs := blockstoreutil.NewMemory()
+	if err := builtin_actors.FetchAndLoadBundles(req.Context, bs, builtin_actors.BuiltinActorReleases); err != nil {
+		return xerrors.Errorf("error loading actor manifest: %w", err)
 	}
+
 	return err
 }
 
@@ -247,20 +245,20 @@ func init() {
 
 	for k, v := range rootSubcmdsLocal {
 		if len(v.Subcommands) == 0 {
-			v.PreRun = wrapper(v.PreRun, loadCarPreFunc)
+			v.PreRun = wrapper(v.PreRun, loadBundles)
 		}
 		for _, sub := range v.Subcommands {
-			sub.PreRun = wrapper(v.PreRun, loadCarPreFunc)
+			sub.PreRun = wrapper(v.PreRun, loadBundles)
 		}
 		RootCmd.Subcommands[k] = v
 	}
 
 	for k, v := range rootSubcmdsDaemon {
 		if len(v.Subcommands) == 0 {
-			v.PreRun = wrapper(v.PreRun, loadCarPreFunc)
+			v.PreRun = wrapper(v.PreRun, loadBundles)
 		}
 		for _, sub := range v.Subcommands {
-			sub.PreRun = wrapper(v.PreRun, loadCarPreFunc)
+			sub.PreRun = wrapper(v.PreRun, loadBundles)
 		}
 		RootCmd.Subcommands[k] = v
 		RootCmdDaemon.Subcommands[k] = v

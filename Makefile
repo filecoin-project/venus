@@ -42,12 +42,6 @@ build-dep/.update-modules: build-dep;
 	git submodule update --init --recursive
 	touch $@
 
-# builtin actor bundles
-builtin-actor-bundles:
-	./builtin-actors/fetch-bundles.sh
-
-BUILD_DEPS+=builtin-actor-bundles
-
 gen-all: cborgen gogen inline-gen api-gen
 
 gen-asset:

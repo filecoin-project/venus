@@ -31,7 +31,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
-	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
+	builtin_actors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs-force-community/metrics/ratelimit"
 )
@@ -123,7 +123,12 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.dagservice")
 	}
 
-	if _, err := builtinactors.LoadBuiltinActors(ctx, b.Repo().Datastore()); err != nil {
+	repoPath, err := b.Repo().Path()
+	if err != nil {
+		return nil, err
+	}
+	builtin_actors.SetNetworkBundle(b.Repo().Config().NetworkParams.NetworkType)
+	if _, err := builtin_actors.LoadBuiltinActors(ctx, repoPath, b.Repo().Datastore(), b.Repo().MetaDatastore()); err != nil {
 		return nil, xerrors.Errorf("failed to load builtin actors %v", err)
 	}
 
