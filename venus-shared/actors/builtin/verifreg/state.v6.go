@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
 	verifreg6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/verifreg"
 	adt6 "github.com/filecoin-project/specs-actors/v6/actors/util/adt"
 )

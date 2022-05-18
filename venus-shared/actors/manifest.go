@@ -8,13 +8,14 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/filecoin-project/go-state-types/manifest"
+
 	"golang.org/x/xerrors"
 
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	car "github.com/ipld/go-car"
 
-	"github.com/filecoin-project/specs-actors/v8/actors/builtin/manifest"
 	blockstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 )
@@ -25,6 +26,20 @@ var manifestCids map[Version]cid.Cid = map[Version]cid.Cid{
 
 var manifests map[Version]*manifest.Manifest
 var actorMeta map[cid.Cid]actorEntry
+
+const (
+	AccountKey  = "account"
+	CronKey     = "cron"
+	InitKey     = "init"
+	MarketKey   = "storagemarket"
+	MinerKey    = "storageminer"
+	MultisigKey = "multisig"
+	PaychKey    = "paymentchannel"
+	PowerKey    = "storagepower"
+	RewardKey   = "reward"
+	SystemKey   = "system"
+	VerifregKey = "verifiedregistry"
+)
 
 var (
 	manifestMx sync.RWMutex
@@ -75,7 +90,19 @@ func loadManifests(ctx context.Context, store cbor.IpldStore) error {
 
 		manifests[av] = mf
 
-		for _, name := range []string{"system", "init", "cron", "account", "storagepower", "storageminer", "storagemarket", "paymentchannel", "multisig", "reward", "verifiedregistry"} {
+		for _, name := range []string{
+			AccountKey,
+			CronKey,
+			InitKey,
+			MarketKey,
+			MinerKey,
+			MultisigKey,
+			PaychKey,
+			PowerKey,
+			RewardKey,
+			SystemKey,
+			VerifregKey,
+		} {
 			c, ok := mf.Get(name)
 			if ok {
 				actorMeta[c] = actorEntry{name: name, version: av}
@@ -126,6 +153,8 @@ func LoadBundle(ctx context.Context, bs blockstore.Blockstore, av Version, data 
 	if err != nil {
 		return xerrors.Errorf("error loading builtin actors v%d bundle: %w", av, err)
 	}
+
+	// TODO: check that this only has one root?
 
 	manifestCid := hdr.Roots[0]
 	AddManifest(av, manifestCid)

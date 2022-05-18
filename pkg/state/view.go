@@ -16,6 +16,7 @@ import (
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
@@ -23,7 +24,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
 	notinit "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	lminer "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	paychActor "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
@@ -110,7 +111,7 @@ func (v *View) GetMinerWorkerRaw(ctx context.Context, maddr addr.Address) (addr.
 }
 
 // MinerInfo returns info about the indicated miner
-func (v *View) MinerInfo(ctx context.Context, maddr addr.Address, nv network.Version) (*miner.MinerInfo, error) {
+func (v *View) MinerInfo(ctx context.Context, maddr addr.Address, nv network.Version) (*lminer.MinerInfo, error) {
 	minerState, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, err
@@ -148,12 +149,12 @@ func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version,
 
 	var provingSectors bitfield.BitField
 	if nv < network.Version7 {
-		allSectors, err := miner.AllPartSectors(mas, miner.Partition.AllSectors)
+		allSectors, err := lminer.AllPartSectors(mas, lminer.Partition.AllSectors)
 		if err != nil {
 			return nil, xerrors.Errorf("get all sectors: %v", err)
 		}
 
-		faultySectors, err := miner.AllPartSectors(mas, miner.Partition.FaultySectors)
+		faultySectors, err := lminer.AllPartSectors(mas, lminer.Partition.FaultySectors)
 		if err != nil {
 			return nil, xerrors.Errorf("get faulty sectors: %v", err)
 		}
@@ -163,7 +164,7 @@ func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version,
 			return nil, xerrors.Errorf("calc proving sectors: %v", err)
 		}
 	} else {
-		provingSectors, err = miner.AllPartSectors(mas, miner.Partition.ActiveSectors)
+		provingSectors, err = lminer.AllPartSectors(mas, lminer.Partition.ActiveSectors)
 		if err != nil {
 			return nil, xerrors.Errorf("get active sectors sectors: %v", err)
 		}
@@ -189,7 +190,7 @@ func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version,
 		return nil, xerrors.Errorf("getting miner ID: %s", err)
 	}
 
-	proofType, err := miner.WinningPoStProofTypeFromWindowPoStProofType(nv, info.WindowPoStProofType)
+	proofType, err := lminer.WinningPoStProofTypeFromWindowPoStProofType(nv, info.WindowPoStProofType)
 	if err != nil {
 		return nil, xerrors.Errorf("determining winning post proof type: %v", err)
 	}
@@ -245,7 +246,7 @@ func (v *View) SectorPreCommitInfo(ctx context.Context, maddr addr.Address, sid 
 }
 
 // StateSectorPartition finds deadline/partition with the specified sector
-func (v *View) StateSectorPartition(ctx context.Context, maddr addr.Address, sectorNumber abi.SectorNumber) (*miner.SectorLocation, error) {
+func (v *View) StateSectorPartition(ctx context.Context, maddr addr.Address, sectorNumber abi.SectorNumber) (*lminer.SectorLocation, error) {
 	mas, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %v", err)
@@ -538,7 +539,7 @@ func (v *View) StateMinerProvingDeadline(ctx context.Context, addr addr.Address,
 }
 
 // StateSectorExpiration returns epoch at which given sector will expire
-func (v *View) StateSectorExpiration(ctx context.Context, maddr addr.Address, sectorNumber abi.SectorNumber, key types.TipSetKey) (*miner.SectorExpiration, error) {
+func (v *View) StateSectorExpiration(ctx context.Context, maddr addr.Address, sectorNumber abi.SectorNumber, key types.TipSetKey) (*lminer.SectorExpiration, error) {
 	mas, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, err
@@ -557,7 +558,7 @@ func (v *View) StateMinerAvailableBalance(ctx context.Context, maddr addr.Addres
 		return big.Int{}, err
 	}
 
-	mas, err := miner.Load(adt.WrapStore(context.TODO(), v.ipldStore), actor)
+	mas, err := lminer.Load(adt.WrapStore(context.TODO(), v.ipldStore), actor)
 	if err != nil {
 		return big.Int{}, xerrors.Errorf("failed to load miner actor state: %v", err)
 	}
@@ -660,7 +661,7 @@ func (v *View) StateMinerActiveSectors(ctx context.Context, maddr addr.Address, 
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor state: %v", err)
 	}
-	activeSectors, err := miner.AllPartSectors(mas, miner.Partition.ActiveSectors)
+	activeSectors, err := lminer.AllPartSectors(mas, lminer.Partition.ActiveSectors)
 	if err != nil {
 		return nil, xerrors.Errorf("merge partition active sets: %v", err)
 	}
@@ -727,7 +728,7 @@ func (v *View) LoadPaychState(ctx context.Context, actor *types.Actor) (paychAct
 }
 
 //LoadMinerState return miner state
-func (v *View) LoadMinerState(ctx context.Context, maddr addr.Address) (miner.State, error) {
+func (v *View) LoadMinerState(ctx context.Context, maddr addr.Address) (lminer.State, error) {
 	resolvedAddr, err := v.InitResolveAddress(ctx, maddr)
 	if err != nil {
 		return nil, err
@@ -737,7 +738,7 @@ func (v *View) LoadMinerState(ctx context.Context, maddr addr.Address) (miner.St
 		return nil, err
 	}
 
-	return miner.Load(adt.WrapStore(context.TODO(), v.ipldStore), actr)
+	return lminer.Load(adt.WrapStore(context.TODO(), v.ipldStore), actr)
 }
 
 func (v *View) LoadPowerActor(ctx context.Context) (power.State, error) {

@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -173,7 +174,7 @@ func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, i
 		return 0, nil, nil, err
 	}
 
-	actcid, err := init_.GetActorCodeID(av)
+	actcid, err := builtin.GetInitActorCodeID(av)
 	if err != nil {
 		return 0, nil, nil, err
 	}

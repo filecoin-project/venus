@@ -9,14 +9,16 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/dline"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	_init "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	lminer "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
@@ -77,7 +79,7 @@ func (msa *minerStateAPI) StateSectorGetInfo(ctx context.Context, maddr address.
 }
 
 // StateSectorPartition finds deadline/partition with the specified sector
-func (msa *minerStateAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorLocation, error) {
+func (msa *minerStateAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*lminer.SectorLocation, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loadParentStateViewTsk(%s) failed:%v", tsk.String(), err)
@@ -97,18 +99,43 @@ func (msa *minerStateAPI) StateMinerSectorSize(ctx context.Context, maddr addres
 }
 
 // StateMinerInfo returns info about the indicated miner
-func (msa *minerStateAPI) StateMinerInfo(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
+func (msa *minerStateAPI) StateMinerInfo(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (types.MinerInfo, error) {
 	ts, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
-		return miner.MinerInfo{}, xerrors.Errorf("loading view %s: %v", tsk, err)
+		return types.MinerInfo{}, xerrors.Errorf("loading view %s: %v", tsk, err)
 	}
 
 	nv := msa.Fork.GetNetworkVersion(ctx, ts.Height())
 	minfo, err := view.MinerInfo(ctx, maddr, nv)
 	if err != nil {
-		return miner.MinerInfo{}, err
+		return types.MinerInfo{}, err
 	}
-	return *minfo, nil
+
+	var pid *peer.ID
+	if peerID, err := peer.IDFromBytes(minfo.PeerId); err == nil {
+		pid = &peerID
+	}
+
+	ret := types.MinerInfo{
+		Owner:                      minfo.Owner,
+		Worker:                     minfo.Worker,
+		ControlAddresses:           minfo.ControlAddresses,
+		NewWorker:                  address.Undef,
+		WorkerChangeEpoch:          -1,
+		PeerId:                     pid,
+		Multiaddrs:                 minfo.Multiaddrs,
+		WindowPoStProofType:        minfo.WindowPoStProofType,
+		SectorSize:                 minfo.SectorSize,
+		WindowPoStPartitionSectors: minfo.WindowPoStPartitionSectors,
+		ConsensusFaultElapsed:      minfo.ConsensusFaultElapsed,
+	}
+
+	if minfo.PendingWorkerKey != nil {
+		ret.NewWorker = minfo.PendingWorkerKey.NewWorker
+		ret.WorkerChangeEpoch = minfo.PendingWorkerKey.EffectiveAt
+	}
+
+	return ret, nil
 }
 
 // StateMinerWorkerAddress get miner worker address
@@ -133,7 +160,7 @@ func (msa *minerStateAPI) StateMinerRecoveries(ctx context.Context, maddr addres
 		return bitfield.BitField{}, xerrors.Errorf("failed to load miner actor state: %v", err)
 	}
 
-	return miner.AllPartSectors(mas, miner.Partition.RecoveringSectors)
+	return lminer.AllPartSectors(mas, lminer.Partition.RecoveringSectors)
 }
 
 // StateMinerFaults returns a bitfield indicating the faulty sectors of the given miner
@@ -148,7 +175,7 @@ func (msa *minerStateAPI) StateMinerFaults(ctx context.Context, maddr address.Ad
 		return bitfield.BitField{}, xerrors.Errorf("failed to load miner actor state: %v", err)
 	}
 
-	return miner.AllPartSectors(mas, miner.Partition.FaultySectors)
+	return lminer.AllPartSectors(mas, lminer.Partition.FaultySectors)
 }
 
 // StateMinerProvingDeadline calculates the deadline at some epoch for a proving period
@@ -194,7 +221,7 @@ func (msa *minerStateAPI) StateMinerPartitions(ctx context.Context, maddr addres
 	}
 
 	var out []types.Partition
-	err = dl.ForEachPartition(func(_ uint64, part miner.Partition) error {
+	err = dl.ForEachPartition(func(_ uint64, part lminer.Partition) error {
 		allSectors, err := part.AllSectors()
 		if err != nil {
 			return xerrors.Errorf("getting AllSectors: %v", err)
@@ -251,7 +278,7 @@ func (msa *minerStateAPI) StateMinerDeadlines(ctx context.Context, maddr address
 	}
 
 	out := make([]types.Deadline, deadlines)
-	if err := mas.ForEachDeadline(func(i uint64, dl miner.Deadline) error {
+	if err := mas.ForEachDeadline(func(i uint64, dl lminer.Deadline) error {
 		ps, err := dl.PartitionsPoSted()
 		if err != nil {
 			return err
@@ -637,7 +664,7 @@ func (msa *minerStateAPI) StateMinerAvailableBalance(ctx context.Context, maddr 
 }
 
 // StateSectorExpiration returns epoch at which given sector will expire
-func (msa *minerStateAPI) StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorExpiration, error) {
+func (msa *minerStateAPI) StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*lminer.SectorExpiration, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
@@ -659,8 +686,8 @@ func (msa *minerStateAPI) StateMinerSectorCount(ctx context.Context, addr addres
 	}
 
 	var activeCount, liveCount, faultyCount uint64
-	if err := mas.ForEachDeadline(func(_ uint64, dl miner.Deadline) error {
-		return dl.ForEachPartition(func(_ uint64, part miner.Partition) error {
+	if err := mas.ForEachDeadline(func(_ uint64, dl lminer.Deadline) error {
+		return dl.ForEachPartition(func(_ uint64, part lminer.Partition) error {
 			if active, err := part.ActiveSectors(); err != nil {
 				return err
 			} else if count, err := active.Count(); err != nil {

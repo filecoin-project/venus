@@ -11,14 +11,11 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-bitfield"
-	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
-
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 
-	market8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
-	adt8 "github.com/filecoin-project/specs-actors/v8/actors/util/adt"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 )
 
 var _ State = (*state8)(nil)
@@ -279,26 +276,9 @@ type publishStorageDealsReturn8 struct {
 	market8.PublishStorageDealsReturn
 }
 
-func (r *publishStorageDealsReturn8) IsDealValid(index uint64) (bool, int, error) {
+func (r *publishStorageDealsReturn8) IsDealValid(index uint64) (bool, error) {
 
-	set, err := r.ValidDeals.IsSet(index)
-	if err != nil || !set {
-		return false, -1, err
-	}
-	maskBf, err := bitfield.NewFromIter(&rlepluslazy.RunSliceIterator{
-		Runs: []rlepluslazy.Run{rlepluslazy.Run{Val: true, Len: index}}})
-	if err != nil {
-		return false, -1, err
-	}
-	before, err := bitfield.IntersectBitField(maskBf, r.ValidDeals)
-	if err != nil {
-		return false, -1, err
-	}
-	outIdx, err := before.Count()
-	if err != nil {
-		return false, -1, err
-	}
-	return set, int(outIdx), nil
+	return r.ValidDeals.IsSet(index)
 
 }
 

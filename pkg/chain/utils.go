@@ -14,12 +14,6 @@ import (
 	blockFormat "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 
-	/* inline-gen template
-	{{range .actorVersions}}
-	exported{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin/exported"{{end}}
-
-	/* inline-gen start */
-
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
 	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
 	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
@@ -28,8 +22,6 @@ import (
 	exported6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/exported"
 	exported7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/exported"
 	exported8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/exported"
-
-	/* inline-gen end */
 
 	_actors "github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
@@ -53,11 +45,6 @@ func init() {
 	// TODO: combine with the runtime actor registry.
 	var actors []actorsWithVersion
 
-	/* inline-gen template
-	{{range .actorVersions}}
-	actors = append(actors, actorsWithVersion{av: _actors.Version{{.}}, actors: exported{{.}}.BuiltinActors()}){{end}}
-	/* inline-gen start */
-
 	actors = append(actors, actorsWithVersion{av: _actors.Version0, actors: exported0.BuiltinActors()})
 	actors = append(actors, actorsWithVersion{av: _actors.Version2, actors: exported2.BuiltinActors()})
 	actors = append(actors, actorsWithVersion{av: _actors.Version3, actors: exported3.BuiltinActors()})
@@ -66,7 +53,6 @@ func init() {
 	actors = append(actors, actorsWithVersion{av: _actors.Version6, actors: exported6.BuiltinActors()})
 	actors = append(actors, actorsWithVersion{av: _actors.Version7, actors: exported7.BuiltinActors()})
 	actors = append(actors, actorsWithVersion{av: _actors.Version8, actors: exported8.BuiltinActors()})
-	/* inline-gen end */
 
 	for _, awv := range actors {
 		for _, actor := range awv.actors {

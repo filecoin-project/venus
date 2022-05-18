@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	market8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/google/uuid"
@@ -281,6 +281,7 @@ func createDeals(m *genesis.Miner, ki *crypto.KeyInfo, maddr address.Address, ss
 			ClientCollateral:     big.Zero(),
 		}
 
+		sector.DealClientKey = ki
 		sector.Deal = *proposal
 	}
 

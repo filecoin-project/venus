@@ -6,10 +6,11 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
@@ -667,10 +668,10 @@ func (env *fundManagerEnvironment) AddFunds(
 	}
 
 	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.Message{
-		To:     market.Address,
+		To:     builtin.StorageMarketActorAddr,
 		From:   wallet,
 		Value:  amt,
-		Method: market.Methods.AddBalance,
+		Method: builtin.MethodsMarket.AddBalance,
 		Params: params,
 	}, nil)
 
@@ -686,7 +687,7 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 	addr address.Address,
 	amt abi.TokenAmount,
 ) (cid.Cid, error) {
-	params, err := actors.SerializeParams(&market.WithdrawBalanceParams{
+	params, err := actors.SerializeParams(&markettypes.WithdrawBalanceParams{
 		ProviderOrClientAddress: addr,
 		Amount:                  amt,
 	})
@@ -695,10 +696,10 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 	}
 
 	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.Message{
-		To:     market.Address,
+		To:     builtin.StorageMarketActorAddr,
 		From:   wallet,
 		Value:  big.NewInt(0),
-		Method: market.Methods.WithdrawBalance,
+		Method: builtin.MethodsMarket.WithdrawBalance,
 		Params: params,
 	}, nil)
 

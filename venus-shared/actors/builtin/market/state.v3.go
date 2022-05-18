@@ -279,10 +279,10 @@ type publishStorageDealsReturn3 struct {
 	market3.PublishStorageDealsReturn
 }
 
-func (r *publishStorageDealsReturn3) IsDealValid(index uint64) (bool, int, error) {
+func (r *publishStorageDealsReturn3) IsDealValid(index uint64) (bool, error) {
 
 	// PublishStorageDeals only succeeded if all deals were valid in this version of actors
-	return true, int(index), nil
+	return true, nil
 
 }
 

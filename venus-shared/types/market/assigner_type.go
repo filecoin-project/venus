@@ -1,12 +1,11 @@
 package market
 
 import (
-	market8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 )
 
 type PieceStatus string
@@ -35,7 +34,7 @@ type GetDealSpec struct {
 }
 
 type DealInfoIncludePath struct {
-	market8.DealProposal
+	market.DealProposal
 	Offset          abi.PaddedPieceSize
 	Length          abi.PaddedPieceSize
 	PayloadSize     uint64

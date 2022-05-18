@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/consensusfault"
 	"github.com/filecoin-project/venus/pkg/fork"
+	"github.com/filecoin-project/venus/pkg/fvm"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -379,7 +380,7 @@ func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av actors.Version
 		return nil, err
 	}
 
-	actcid, err := account.GetActorCodeID(av)
+	actcid, err := builtin.GetAccountActorCodeID(av)
 	if err != nil {
 		return nil, err
 	}
@@ -461,7 +462,7 @@ func createMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *tree.
 		return err
 	}
 
-	actcid, err := multisig.GetActorCodeID(av)
+	actcid, err := builtin.GetMultisigActorCodeID(av)
 	if err != nil {
 		return err
 	}
@@ -502,7 +503,7 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 		GasPriceSchedule:     gasPriceSchedule,
 	}
 
-	vm, err := vm.NewLegacyVM(ctx, vmopt)
+	vm, err := fvm.NewVM(ctx, vmopt)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVenusVM: %w", err)
 	}
@@ -582,23 +583,6 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 	stateroot, err = SetupStorageMiners(ctx, cs, stateroot, template.Miners, template.NetworkVersion, para)
 	if err != nil {
 		return nil, xerrors.Errorf("setup miners failed: %w", err)
-	}
-
-	if template.NetworkVersion >= network.Version16 {
-		st, err := tree.LoadState(ctx, cbor.NewCborStore(bs), stateroot)
-		if err != nil {
-			return nil, xerrors.Errorf("error loading state tree")
-		}
-
-		err = patchManifestCodeCids(st, template.NetworkVersion)
-		if err != nil {
-			return nil, xerrors.Errorf("error patching state tree: %w", err)
-		}
-
-		stateroot, err = st.Flush(ctx)
-		if err != nil {
-			return nil, xerrors.Errorf("flush state tree failed: %w", err)
-		}
 	}
 
 	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))

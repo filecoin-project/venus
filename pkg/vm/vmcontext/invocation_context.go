@@ -327,7 +327,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 		if err != nil {
 			panic(err)
 		}
-		actorCode, err := account.GetActorCodeID(ver)
+		actorCode, err := builtin.GetAccountActorCodeID(ver)
 		if err != nil {
 			panic(err)
 		}

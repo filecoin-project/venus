@@ -4,13 +4,15 @@ import (
 	"encoding/json"
 
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/wallet"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	market8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 )
 
 type ActorType string
@@ -21,11 +23,19 @@ const (
 )
 
 type PreSeal struct {
-	CommR     cid.Cid
-	CommD     cid.Cid
-	SectorID  abi.SectorNumber
-	Deal      market8.DealProposal
-	ProofType abi.RegisteredSealProof
+	CommR         cid.Cid
+	CommD         cid.Cid
+	SectorID      abi.SectorNumber
+	Deal          market8.DealProposal
+	DealClientKey *crypto.KeyInfo
+	ProofType     abi.RegisteredSealProof
+}
+
+type Key struct {
+	wallet.KeyInfo
+
+	PublicKey []byte
+	Address   address.Address
 }
 
 type Miner struct {

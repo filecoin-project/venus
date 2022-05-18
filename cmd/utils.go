@@ -19,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/app/node"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // SilentWriter writes to a stream, stopping after the first error and discarding output until
@@ -193,4 +194,18 @@ func ReqContext(cctx context.Context) context.Context {
 	}()
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
 	return ctx
+}
+
+func isController(mi types.MinerInfo, addr address.Address) bool {
+	if addr == mi.Owner || addr == mi.Worker {
+		return true
+	}
+
+	for _, ca := range mi.ControlAddresses {
+		if addr == ca {
+			return true
+		}
+	}
+
+	return false
 }

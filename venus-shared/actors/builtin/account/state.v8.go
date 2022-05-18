@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
-	account8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/account"
+	account8 "github.com/filecoin-project/go-state-types/builtin/v8/account"
 )
 
 var _ State = (*state8)(nil)

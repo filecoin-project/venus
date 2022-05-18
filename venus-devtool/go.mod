@@ -6,10 +6,10 @@ require (
 	github.com/filecoin-project/go-address v0.0.6
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-data-transfer v1.15.1
-	github.com/filecoin-project/go-fil-markets v1.20.2
+	github.com/filecoin-project/go-fil-markets v1.20.1-v16-1
 	github.com/filecoin-project/go-jsonrpc v0.1.5
-	github.com/filecoin-project/go-state-types v0.1.3
-	github.com/filecoin-project/lotus v1.15.2
+	github.com/filecoin-project/go-state-types v0.1.7
+	github.com/filecoin-project/lotus v1.15.3-0.20220517224243-3c2fcce2c313
 	github.com/filecoin-project/venus v0.0.0-00010101000000-000000000000
 	github.com/ipfs/go-cid v0.1.0
 	github.com/ipfs/go-graphsync v0.13.1
@@ -18,10 +18,11 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.6.1
 	github.com/multiformats/go-multiaddr v0.5.0
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/whyrusleeping/cbor-gen v0.0.0-20220302191723-37c43cae8e14
+	github.com/whyrusleeping/cbor-gen v0.0.0-20220323183124-98fa8256a799
 )
 
 require (
+	github.com/BurntSushi/toml v0.4.1 // indirect
 	github.com/DataDog/zstd v1.4.1 // indirect
 	github.com/GeertJohan/go.incremental v1.0.0 // indirect
 	github.com/GeertJohan/go.rice v1.0.2 // indirect
@@ -49,15 +50,15 @@ require (
 	github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0 // indirect
 	github.com/filecoin-project/go-padreader v0.0.1 // indirect
 	github.com/filecoin-project/go-statestore v0.2.0 // indirect
-	github.com/filecoin-project/specs-actors v0.9.14 // indirect
+	github.com/filecoin-project/specs-actors v0.9.15-0.20220514164640-94e0d5e123bd // indirect
 	github.com/filecoin-project/specs-actors/v2 v2.3.6 // indirect
-	github.com/filecoin-project/specs-actors/v3 v3.1.1 // indirect
-	github.com/filecoin-project/specs-actors/v4 v4.0.1 // indirect
-	github.com/filecoin-project/specs-actors/v5 v5.0.4 // indirect
-	github.com/filecoin-project/specs-actors/v6 v6.0.1 // indirect
-	github.com/filecoin-project/specs-actors/v7 v7.0.0 // indirect
+	github.com/filecoin-project/specs-actors/v3 v3.1.2 // indirect
+	github.com/filecoin-project/specs-actors/v4 v4.0.2 // indirect
+	github.com/filecoin-project/specs-actors/v5 v5.0.6-0.20220514165557-0b29a778685b // indirect
+	github.com/filecoin-project/specs-actors/v6 v6.0.2-0.20220511204807-569c6d12432b // indirect
+	github.com/filecoin-project/specs-actors/v7 v7.0.1-0.20220511223846-637436c27154 // indirect
 	github.com/filecoin-project/specs-actors/v8 v8.0.0-20220422153930-0afe155bfffa // indirect
-	github.com/filecoin-project/specs-storage v0.2.2 // indirect
+	github.com/filecoin-project/specs-storage v0.4.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/gbrlsnchs/jwt/v3 v3.0.1 // indirect
 	github.com/go-logr/logr v1.2.2 // indirect

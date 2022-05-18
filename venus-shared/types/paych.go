@@ -3,9 +3,8 @@ package types
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 )
 
 type SignedVoucher = paych.SignedVoucher

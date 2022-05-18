@@ -11,10 +11,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	lpaych "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"golang.org/x/xerrors"
@@ -266,7 +267,7 @@ var voucherCheckCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		voucher, err := paych.DecodeSignedVoucher(req.Arguments[1])
+		voucher, err := lpaych.DecodeSignedVoucher(req.Arguments[1])
 		if err != nil {
 			return err
 		}
@@ -291,7 +292,7 @@ var voucherAddCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		voucher, err := paych.DecodeSignedVoucher(req.Arguments[1])
+		voucher, err := lpaych.DecodeSignedVoucher(req.Arguments[1])
 		if err != nil {
 			return err
 		}
@@ -377,7 +378,7 @@ var voucherSubmitCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		voucher, err := paych.DecodeSignedVoucher(req.Arguments[1])
+		voucher, err := lpaych.DecodeSignedVoucher(req.Arguments[1])
 		if err != nil {
 			return err
 		}

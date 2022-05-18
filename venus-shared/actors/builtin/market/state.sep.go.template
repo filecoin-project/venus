@@ -14,8 +14,13 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 
+{{if (le .v 7)}}
 	market{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/market"
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
+{{else}}
+	market{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}market"
+	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
+{{end}}
 )
 
 var _ State = (*state{{.v}})(nil)
@@ -295,29 +300,12 @@ type publishStorageDealsReturn{{.v}} struct {
 	market{{.v}}.PublishStorageDealsReturn
 }
 
-func (r *publishStorageDealsReturn{{.v}}) IsDealValid(index uint64) (bool, int, error) {
+func (r *publishStorageDealsReturn{{.v}}) IsDealValid(index uint64) (bool, error) {
 	{{if (ge .v 6)}}
-	set, err := r.ValidDeals.IsSet(index)
-	if err != nil || !set {
-		return false, -1, err
-	}
-	maskBf, err := bitfield.NewFromIter(&rlepluslazy.RunSliceIterator{
-		Runs: []rlepluslazy.Run{rlepluslazy.Run{Val: true, Len: index}}})
-	if err != nil {
-		return false, -1, err
-	}
-	before, err := bitfield.IntersectBitField(maskBf, r.ValidDeals)
-	if err != nil {
-		return false, -1, err
-	}
-	outIdx, err := before.Count()
-	if err != nil {
-		return false, -1, err
-	}
-	return set, int(outIdx), nil
+	    return r.ValidDeals.IsSet(index)
 	{{else}}
 	    // PublishStorageDeals only succeeded if all deals were valid in this version of actors
-	    return true, int(index), nil
+	    return true, nil
 	{{end}}
 }
 

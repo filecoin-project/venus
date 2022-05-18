@@ -14,11 +14,11 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"golang.org/x/xerrors"
 
+	builtin2 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -297,7 +297,7 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 	_, st, err := mp.sm.ParentState(ctx, ts)
 	if err == nil {
 		act, found, err := st.GetActor(ctx, msg.To)
-		if err == nil && found && builtin.IsPaymentChannelActor(act.Code) && msgIn.Method == paych.Methods.Collect {
+		if err == nil && found && builtin.IsPaymentChannelActor(act.Code) && msgIn.Method == builtin2.MethodsPaych.Collect {
 			// add the refunded gas for DestroyActor back into the gas used
 			ret += 76e3
 		}

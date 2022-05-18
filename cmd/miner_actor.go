@@ -19,6 +19,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
 
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/cmd/tablewriter"
@@ -97,7 +98,7 @@ var actorSetAddrsCmd = &cmds.Command{
 			From:     mi.Worker,
 			Value:    big.NewInt(0),
 			GasLimit: gasLimit,
-			Method:   miner.Methods.ChangeMultiaddrs,
+			Method:   builtintypes.MethodsMiner.ChangeMultiaddrs,
 			Params:   params,
 		}, nil)
 		if err != nil {
@@ -149,7 +150,7 @@ var actorSetPeeridCmd = &cmds.Command{
 			From:     mi.Worker,
 			Value:    big.NewInt(0),
 			GasLimit: gasLimit,
-			Method:   miner.Methods.ChangePeerID,
+			Method:   builtintypes.MethodsMiner.ChangePeerID,
 			Params:   params,
 		}, nil)
 		if err != nil {
@@ -211,7 +212,7 @@ var actorWithdrawCmd = &cmds.Command{
 			To:     maddr,
 			From:   mi.Owner,
 			Value:  big.NewInt(0),
-			Method: miner.Methods.WithdrawBalance,
+			Method: builtintypes.MethodsMiner.WithdrawBalance,
 			Params: params,
 		}, nil)
 		if err != nil {
@@ -322,7 +323,7 @@ var actorRepayDebtCmd = &cmds.Command{
 			return err
 		}
 
-		if !mi.IsController(fromID) {
+		if !isController(mi, fromID) {
 			return xerrors.Errorf("sender isn't a controller of miner: %s", fromID)
 		}
 
@@ -330,7 +331,7 @@ var actorRepayDebtCmd = &cmds.Command{
 			To:     maddr,
 			From:   fromID,
 			Value:  amount,
-			Method: miner.Methods.RepayDebt,
+			Method: builtintypes.MethodsMiner.RepayDebt,
 			Params: nil,
 		}, nil)
 		if err != nil {
@@ -389,7 +390,7 @@ var actorSetOwnerCmd = &cmds.Command{
 		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: miner.Methods.ChangeOwnerAddress,
+			Method: builtintypes.MethodsMiner.ChangeOwnerAddress,
 			Value:  big.Zero(),
 			Params: sp,
 		}, nil)
@@ -415,7 +416,7 @@ var actorSetOwnerCmd = &cmds.Command{
 		smsg, err = env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   newAddr,
 			To:     maddr,
-			Method: miner.Methods.ChangeOwnerAddress,
+			Method: builtintypes.MethodsMiner.ChangeOwnerAddress,
 			Value:  big.Zero(),
 			Params: sp,
 		}, nil)
@@ -636,7 +637,7 @@ var actorControlSet = &cmds.Command{
 		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: miner.Methods.ChangeWorkerAddress,
+			Method: builtintypes.MethodsMiner.ChangeWorkerAddress,
 
 			Value:  big.Zero(),
 			Params: sp,
@@ -713,7 +714,7 @@ var actorProposeChangeWorker = &cmds.Command{
 		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: miner.Methods.ChangeWorkerAddress,
+			Method: builtintypes.MethodsMiner.ChangeWorkerAddress,
 			Value:  big.Zero(),
 			Params: sp,
 		}, nil)
@@ -812,7 +813,7 @@ var actorConfirmChangeWorker = &cmds.Command{
 		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: miner.Methods.ConfirmUpdateWorkerKey,
+			Method: builtintypes.MethodsMiner.ConfirmUpdateWorkerKey,
 			Value:  big.Zero(),
 		}, nil)
 		if err != nil {
