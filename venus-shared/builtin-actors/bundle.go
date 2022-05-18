@@ -22,7 +22,7 @@ func SetNetworkBundle(networkType types.NetworkType) {
 		NetworkBundle = "caterpillarnet"
 	case types.NetworkCalibnet:
 		NetworkBundle = "calibrationnet"
-	case types.NetworkMainnet:
+	default:
 		NetworkBundle = "mainnet"
 	}
 }
@@ -35,14 +35,31 @@ type BundleSpec struct {
 }
 
 type Bundle struct {
+	// Version is the actors version in this bundle
 	Version actors.Version
+	// Release is the release id
 	Release string
+	// Path is the (optional) bundle path; takes precedence over url
+	Path map[string]string
+	// URL is the (optional) bundle URL; takes precdence over github release
+	URL map[string]BundleURL
+	// Devlopment indicates whether this is a development version; when set, in conjunction with path,
+	// it will always load the bundle to the blockstore, without recording the manifest CID in the
+	// datastore.
+	Development bool
 }
 
-var BuiltinActorReleases map[actors.Version]string
+type BundleURL struct {
+	// URL is the url of the bundle
+	URL string
+	// Checksum is the sha256 checksum of the bundle
+	Checksum string
+}
+
+var BuiltinActorReleases map[actors.Version]Bundle
 
 func init() {
-	BuiltinActorReleases = make(map[actors.Version]string)
+	BuiltinActorReleases = make(map[actors.Version]Bundle)
 
 	spec := BundleSpec{}
 
@@ -53,6 +70,6 @@ func init() {
 	}
 
 	for _, b := range spec.Bundles {
-		BuiltinActorReleases[b.Version] = b.Release
+		BuiltinActorReleases[b.Version] = b
 	}
 }
