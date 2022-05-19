@@ -24,7 +24,7 @@ func LoadBuiltinActors(ctx context.Context, repoPath string, bs blockstoreutil.B
 
 	for av, bd := range BuiltinActorReleases {
 		// first check to see if we know this release
-		key := dstore.NewKey(fmt.Sprintf("/builtin-actors/v%d/%s", av, bd.Release))
+		key := dstore.NewKey(fmt.Sprintf("/builtin-actors/v%d/%s/%s", av, bd.Release, netw))
 
 		data, err := ds.Get(ctx, key)
 		switch err {
