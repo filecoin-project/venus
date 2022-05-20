@@ -109,6 +109,8 @@ type IChainInfo interface {
 	VerifyEntry(parent, child *types.BeaconEntry, height abi.ChainEpoch) bool                                                             //perm:read
 	ChainExport(context.Context, abi.ChainEpoch, bool, types.TipSetKey) (<-chan []byte, error)                                            //perm:read
 	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*types.HeadChange, error)                              //perm:read
+	// StateGetNetworkParams return current network params
+	StateGetNetworkParams(ctx context.Context) (*types.NetworkParams, error) //perm:read
 }
 
 type IMinerState interface {

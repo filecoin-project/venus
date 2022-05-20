@@ -29,8 +29,20 @@ type DealInfo struct {
 }
 
 type GetDealSpec struct {
-	MaxPiece     int
+	// max limit of deal count
+	MaxPiece int
+
+	// max limit of date size in one single deal
 	MaxPieceSize uint64
+
+	// min limit of deal count
+	MinPiece int
+
+	// min limit of data size in one single deal
+	MinPieceSize uint64
+
+	// min limit of total space used by deals
+	MinUsedSpace uint64
 }
 
 type DealInfoIncludePath struct {

@@ -315,3 +315,34 @@ type MinerInfo struct {
 	WindowPoStPartitionSectors uint64
 	ConsensusFaultElapsed      abi.ChainEpoch
 }
+
+type NetworkParams struct {
+	NetworkName             NetworkName
+	BlockDelaySecs          uint64
+	ConsensusMinerMinPower  abi.StoragePower
+	SupportedProofTypes     []abi.RegisteredSealProof
+	PreCommitChallengeDelay abi.ChainEpoch
+	ForkUpgradeParams       ForkUpgradeParams
+}
+
+type ForkUpgradeParams struct {
+	UpgradeSmokeHeight       abi.ChainEpoch
+	UpgradeBreezeHeight      abi.ChainEpoch
+	UpgradeIgnitionHeight    abi.ChainEpoch
+	UpgradeLiftoffHeight     abi.ChainEpoch
+	UpgradeAssemblyHeight    abi.ChainEpoch
+	UpgradeRefuelHeight      abi.ChainEpoch
+	UpgradeTapeHeight        abi.ChainEpoch
+	UpgradeKumquatHeight     abi.ChainEpoch
+	BreezeGasTampingDuration abi.ChainEpoch
+	UpgradeCalicoHeight      abi.ChainEpoch
+	UpgradePersianHeight     abi.ChainEpoch
+	UpgradeOrangeHeight      abi.ChainEpoch
+	UpgradeClausHeight       abi.ChainEpoch
+	UpgradeTrustHeight       abi.ChainEpoch
+	UpgradeNorwegianHeight   abi.ChainEpoch
+	UpgradeTurboHeight       abi.ChainEpoch
+	UpgradeHyperdriveHeight  abi.ChainEpoch
+	UpgradeChocolateHeight   abi.ChainEpoch
+	UpgradeOhSnapHeight      abi.ChainEpoch
+}
