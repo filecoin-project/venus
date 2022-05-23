@@ -26,7 +26,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/venus/fixtures/asset"
+	"github.com/filecoin-project/venus/fixtures/assets"
 	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -928,7 +928,7 @@ func (f *Builder) GetFullTipSet(ctx context.Context, peer []peer.ID, tsk types.T
 func (f *Builder) AddPeer(peer peer.ID) {}
 
 func (f *Builder) GeneratorGenesis() *types.TipSet {
-	b, err := asset.Asset("fixtures/_assets/car/calibnet.car")
+	b, err := assets.GetGenesis(types.NetworkCalibnet)
 	require.NoError(f.t, err)
 	source := ioutil.NopCloser(bytes.NewReader(b))
 

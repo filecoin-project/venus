@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/filecoin-project/venus/fixtures/asset"
+	"github.com/filecoin-project/venus/fixtures/assets"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/genesis"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -88,21 +88,7 @@ func LoadGenesis(ctx context.Context, rep repo.Repo, sourceName string, network 
 			return nil, err
 		}
 
-		var bs []byte
-		switch networkType {
-		case types.NetworkNerpa:
-			bs, err = asset.Asset("fixtures/_assets/car/nerpanet.car")
-		case types.NetworkCalibnet:
-			bs, err = asset.Asset("fixtures/_assets/car/calibnet.car")
-		case types.NetworkInterop:
-			bs, err = asset.Asset("fixtures/_assets/car/interopnet.car")
-		case types.NetworkForce:
-			bs, err = asset.Asset("fixtures/_assets/car/forcenet.car")
-		case types.NetworkButterfly:
-			bs, err = asset.Asset("fixtures/_assets/car/butterflynet.car")
-		default:
-			bs, err = asset.Asset("fixtures/_assets/car/mainnet.car")
-		}
+		bs, err := assets.GetGenesis(networkType)
 		if err != nil {
 			return gengen.MakeGenesisFunc(), nil
 		}

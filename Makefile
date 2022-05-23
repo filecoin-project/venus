@@ -44,10 +44,6 @@ build-dep/.update-modules: build-dep;
 
 gen-all: cborgen gogen inline-gen api-gen
 
-gen-asset:
-	go-bindata -pkg=asset -o ./fixtures/asset/asset.go ./fixtures/_assets/car/ ./fixtures/_assets/proof-params/ ./fixtures/_assets/arch-diagram.monopic
-	gofmt -s -l -w ./fixtures/asset/asset.go
-
 ### devtool ###
 cborgen:
 	cd venus-devtool && go run ./cborgen/*.go

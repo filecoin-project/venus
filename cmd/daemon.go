@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/venus/fixtures/assets"
 	"github.com/filecoin-project/venus/fixtures/networks"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/util/ulimit"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/venus/fixtures/asset"
 
 	"golang.org/x/xerrors"
 
@@ -67,11 +67,11 @@ var daemonCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		ps, err := asset.Asset("fixtures/_assets/proof-params/parameters.json")
+		ps, err := assets.GetProofParams()
 		if err != nil {
 			return err
 		}
-		srs, err := asset.Asset("fixtures/_assets/proof-params/srs-inner-product.json")
+		srs, err := assets.GetSrs()
 		if err != nil {
 			return err
 		}
