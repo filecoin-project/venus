@@ -30,6 +30,7 @@ var versionMap = []versionInfo{
 	{version: 5, upgrade: Version5Upgrade},
 	{version: 6, upgrade: Version6Upgrade},
 	{version: 7, upgrade: Version7Upgrade},
+	{version: 8, upgrade: Version8Upgrade},
 }
 
 // TryToMigrate used to migrate data(db,config,file,etc) in local repo
@@ -254,4 +255,45 @@ func Version7Upgrade(repoPath string) (err error) {
 	}
 
 	return repo.WriteVersion(repoPath, 7)
+}
+
+//Version8Upgrade
+func Version8Upgrade(repoPath string) (err error) {
+	var fsrRepo repo.Repo
+	if fsrRepo, err = repo.OpenFSRepo(repoPath, 7); err != nil {
+		return
+	}
+	cfg := fsrRepo.Config()
+	switch cfg.NetworkParams.NetworkType {
+	case types.NetworkMainnet:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 99999999999999
+	case types.Network2k:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version15
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -19
+	case types.NetworkCalibnet:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 99999999999999
+	case types.NetworkForce:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version15
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -19
+	case types.NetworkInterop:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 100
+	case types.NetworkButterfly:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 99999999999999
+	default:
+		return fsrRepo.Close()
+	}
+
+	if err = fsrRepo.ReplaceConfig(cfg); err != nil {
+		return
+	}
+
+	if err = fsrRepo.Close(); err != nil {
+		return
+	}
+
+	return repo.WriteVersion(repoPath, 8)
 }
