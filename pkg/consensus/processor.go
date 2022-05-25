@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -90,16 +89,6 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			PRoot:                base,
 			Bsstore:              vmOpts.Bsstore,
 			SysCallsImpl:         vmOpts.SysCallsImpl,
-		}
-		if os.Getenv("VENUS_USE_FVM_EXPERIMENTAL") == "1" {
-			// This is needed so that the FVM does not have to duplicate the genesis vesting schedule, one
-			// of the components of the circ supply calc.
-			// This field is NOT needed by the LegacyVM, and also NOT needed by the FVM from v15 onwards.
-			filVested, err := p.circulatingSupplyCalculator.GetFilVested(ctx, e)
-			if err != nil {
-				return nil, err
-			}
-			vmOpts.FilVested = filVested
 		}
 
 		return fvm.NewVM(ctx, vmOpt)

@@ -285,19 +285,14 @@ type FVM struct {
 }
 
 func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
-	circToReport := opts.FilVested
-	// For v14 (and earlier), we perform the FilVested portion of the calculation, and let the FVM dynamically do the rest
-	// v15 and after, the circ supply is always constant per epoch, so we calculate the base and report it at creation
-	if opts.NetworkVersion >= network.Version15 {
-		state, err := tree.LoadState(ctx, cbor.NewCborStore(opts.Bsstore), opts.PRoot)
-		if err != nil {
-			return nil, err
-		}
+	state, err := tree.LoadState(ctx, cbor.NewCborStore(opts.Bsstore), opts.PRoot)
+	if err != nil {
+		return nil, err
+	}
 
-		circToReport, err = opts.CircSupplyCalculator(ctx, opts.Epoch, state)
-		if err != nil {
-			return nil, err
-		}
+	circToReport, err := opts.CircSupplyCalculator(ctx, opts.Epoch, state)
+	if err != nil {
+		return nil, err
 	}
 	fvmOpts := ffi.FVMOpts{
 		FVMVersion: 0,
@@ -444,13 +439,15 @@ func (r wrapperRand) GetBeaconRandomness(ctx context.Context, pers acrypto.Domai
 	return r.ChainGetRandomnessFromBeacon(ctx, pers, round, entropy)
 }
 
+var experimentalUseFvm = os.Getenv("VENUS_USE_FVM_EXPERIMENTAL") == "1"
+
 func NewVM(ctx context.Context, opts vm.VmOption) (vm.Interface, error) {
 	if opts.NetworkVersion >= network.Version16 {
 		return NewFVM(ctx, &opts)
 	}
 
 	// Remove after v16 upgrade, this is only to support testing and validation of the FVM
-	if os.Getenv("VENUS_USE_FVM_EXPERIMENTAL") == "1" {
+	if experimentalUseFvm && opts.NetworkVersion >= network.Version15 {
 		fvmLog.Info("use fvm")
 		return NewFVM(ctx, &opts)
 	}

@@ -27,18 +27,16 @@ type LookbackStateGetter func(context.Context, abi.ChainEpoch) (*state.View, err
 type VmOption struct { //nolint
 	CircSupplyCalculator CircSupplyCalculator
 	LookbackStateGetter  LookbackStateGetter
-	// Amount of FIL vested from genesis actors.
-	FilVested        abi.TokenAmount
-	NetworkVersion   network.Version
-	Rnd              HeadChainRandomness
-	BaseFee          abi.TokenAmount
-	Fork             fork.IFork
-	ActorCodeLoader  *dispatch.CodeLoader
-	Epoch            abi.ChainEpoch
-	GasPriceSchedule *gas.PricesSchedule
-	PRoot            cid.Cid
-	Bsstore          blockstoreutil.Blockstore
-	SysCallsImpl     SyscallsImpl
+	NetworkVersion       network.Version
+	Rnd                  HeadChainRandomness
+	BaseFee              abi.TokenAmount
+	Fork                 fork.IFork
+	ActorCodeLoader      *dispatch.CodeLoader
+	Epoch                abi.ChainEpoch
+	GasPriceSchedule     *gas.PricesSchedule
+	PRoot                cid.Cid
+	Bsstore              blockstoreutil.Blockstore
+	SysCallsImpl         SyscallsImpl
 }
 
 //ChainRandomness define randomness method in filecoin
