@@ -53,6 +53,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
+	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -2076,6 +2077,13 @@ func (c *ChainFork) upgradeActorsV8Common(
 ) (cid.Cid, error) {
 	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
 	store := chain.ActorStore(ctx, buf)
+
+	// ensure that the manifet is loaded in the blockstore
+	if err := builtinactors.FetchAndLoadBundles(ctx, buf, map[actors.Version]builtinactors.Bundle{
+		actors.Version8: builtinactors.BuiltinActorReleases[actors.Version8],
+	}); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
+	}
 
 	// Load the state root.
 	var stateRoot vmstate.StateRoot
