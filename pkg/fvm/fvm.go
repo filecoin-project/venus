@@ -319,7 +319,8 @@ func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret, error) {
 	start := constants.Clock.Now()
 	defer atomic.AddUint64(&StatApplied, 1)
-	msgBytes, err := cmsg.VMMessage().Serialize()
+	vmMsg := cmsg.VMMessage()
+	msgBytes, err := vmMsg.Serialize()
 	if err != nil {
 		return nil, xerrors.Errorf("serializing msg: %w", err)
 	}
@@ -329,11 +330,11 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 		return nil, xerrors.Errorf("applying msg: %w", err)
 	}
 
-	var et FvmExecutionTrace
-	if len(ret.ExecTraceBytes) != 0 {
-		if err = et.UnmarshalCBOR(bytes.NewReader(ret.ExecTraceBytes)); err != nil {
-			return nil, xerrors.Errorf("failed to unmarshal exectrace: %w", err)
-		}
+	duration := time.Since(start)
+	receipt := types.MessageReceipt{
+		Return:   ret.Return,
+		ExitCode: exitcode.ExitCode(ret.ExitCode),
+		GasUsed:  ret.GasUsed,
 	}
 
 	var aerr aerrors.ActorError
@@ -345,12 +346,24 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 		aerr = aerrors.New(exitcode.ExitCode(ret.ExitCode), amsg)
 	}
 
+	var et types.ExecutionTrace
+	if len(ret.ExecTraceBytes) != 0 {
+		var fvmEt FvmExecutionTrace
+		if err = fvmEt.UnmarshalCBOR(bytes.NewReader(ret.ExecTraceBytes)); err != nil {
+			return nil, xerrors.Errorf("failed to unmarshal exectrace: %w", err)
+		}
+		et = fvmEt.ToExecutionTrace()
+	} else {
+		et.Msg = vmMsg
+		et.MsgRct = &receipt
+		et.Duration = duration
+		if aerr != nil {
+			et.Error = aerr.Error()
+		}
+	}
+
 	return &vm.Ret{
-		Receipt: types.MessageReceipt{
-			Return:   ret.Return,
-			ExitCode: exitcode.ExitCode(ret.ExitCode),
-			GasUsed:  ret.GasUsed,
-		},
+		Receipt: receipt,
 		OutPuts: gas.GasOutputs{
 			BaseFeeBurn:        ret.BaseFeeBurn,
 			OverEstimationBurn: ret.OverEstimationBurn,
@@ -362,7 +375,7 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 		},
 		ActorErr: aerr,
 		GasTracker: &gas.GasTracker{
-			ExecutionTrace: et.ToExecutionTrace(),
+			ExecutionTrace: et,
 		},
 		Duration: time.Since(start),
 	}, nil
