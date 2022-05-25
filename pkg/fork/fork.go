@@ -392,6 +392,7 @@ type IFork interface {
 	HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error)
 	GetNetworkVersion(ctx context.Context, height abi.ChainEpoch) network.Version
 	HasExpensiveFork(ctx context.Context, height abi.ChainEpoch) bool
+	HasExpensiveForkBetween(parent, height abi.ChainEpoch) bool
 	GetForkUpgrade() *config.ForkUpgradeConfig
 	Start(ctx context.Context) error
 }
@@ -524,6 +525,18 @@ func (c *ChainFork) HandleStateForks(ctx context.Context, root cid.Cid, height a
 func (c *ChainFork) HasExpensiveFork(ctx context.Context, height abi.ChainEpoch) bool {
 	_, ok := c.expensiveUpgrades[height]
 	return ok
+}
+
+// Returns true executing tipsets between the specified heights would trigger an expensive
+// migration. NOTE: migrations occurring _at_ the target height are not included, as they're
+// executed _after_ the target height.
+func (c *ChainFork) HasExpensiveForkBetween(parent, height abi.ChainEpoch) bool {
+	for h := parent; h < height; h++ {
+		if _, ok := c.expensiveUpgrades[h]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *ChainFork) GetNetworkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {

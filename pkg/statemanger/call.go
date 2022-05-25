@@ -42,27 +42,41 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 		// run the fork logic in `sm.TipSetState`. We need the _current_
 		// height to have no fork, because we'll run it inside this
 		// function before executing the given message.
-		for ts.Height() > 0 && (s.fork.HasExpensiveFork(ctx, ts.Height()) || s.fork.HasExpensiveFork(ctx, ts.Height()-1)) {
-			ts, err = s.cs.GetTipSet(ctx, ts.Parents())
+		for ts.Height() > 0 {
+			pts, err := s.cs.GetTipSet(ctx, ts.Parents())
 			if err != nil {
-				return nil, xerrors.Errorf("failed to find a non-forking epoch: %v", err)
+				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
 			}
+			if !s.fork.HasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
+				break
+			}
+
+			ts = pts
 		}
-	}
-
-	// When we're not at the genesis block, make sure we don't have an expensive migration.
-	if ts.Height() > 0 && (s.fork.HasExpensiveFork(ctx, ts.Height()) || s.fork.HasExpensiveFork(ctx, ts.Height()-1)) {
-		return nil, fork.ErrExpensiveFork
-	}
-
-	if stateRoot, view, err = s.StateView(ctx, ts); err != nil {
-		return nil, err
+	} else if ts.Height() > 0 {
+		pts, err := s.cs.GetTipSet(ctx, ts.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
+		}
+		if s.fork.HasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
+			return nil, fork.ErrExpensiveFork
+		}
 	}
 
 	// Since we're simulating a future message, pretend we're applying it in the "next" tipset
 	vmHeight := ts.Height() + 1
 
-	buffStore := blockstoreutil.NewBufferedBstore(s.cs.Blockstore())
+	if stateRoot, view, err = s.StateView(ctx, ts); err != nil {
+		return nil, err
+	}
+
+	// Technically, the tipset we're passing in here should be ts+1, but that may not exist
+	stateRoot, err = s.fork.HandleStateForks(ctx, stateRoot, ts.Height(), ts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to handle fork: %w", err)
+	}
+
+	buffStore := blockstoreutil.NewTieredBstore(s.cs.Blockstore(), blockstoreutil.NewTemporarySync())
 	vmOption := vm.VmOption{
 		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 			cs, err := s.cs.GetCirculatingSupplyDetailed(ctx, epoch, tree)
@@ -142,44 +156,72 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 	ctx, span := trace.StartSpan(ctx, "statemanager.Call")
 	defer span.End()
 
+	var pheight abi.ChainEpoch = -1
+
 	// If no tipset is provided, try to find one without a fork.
 	var err error
 	if ts == nil {
 		ts = s.cs.GetHead()
 
 		// Search back till we find a height with no fork, or we reach the beginning.
-		for ts.Height() > 0 && s.fork.HasExpensiveFork(ctx, ts.Height()-1) {
-			var err error
-			ts, err = s.cs.GetTipSet(ctx, ts.Parents())
+		for ts.Height() > 0 {
+			pts, err := s.cs.GetTipSet(ctx, ts.Parents())
 			if err != nil {
-				return nil, xerrors.Errorf("failed to find a non-forking epoch: %v", err)
+				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
 			}
+			if !s.fork.HasExpensiveFork(ctx, pts.Height()) {
+				pheight = pts.Height()
+				break
+			}
+			ts = pts
 		}
+	} else if ts.Height() > 0 {
+		pts, err := s.cs.GetTipSet(ctx, ts.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load parent tipset: %w", err)
+		}
+		pheight = pts.Height()
+		if s.fork.HasExpensiveFork(ctx, pheight) {
+			return nil, fork.ErrExpensiveFork
+		}
+	} else {
+		// We can't get the parent tipset in this case.
+		pheight = ts.Height() - 1
 	}
-
-	pts, err := s.cs.GetTipSet(ctx, ts.Parents())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to load parent tipset: %v", err)
-	}
-
-	bstate := ts.At(0).ParentStateRoot
-	pheight := pts.Height()
 
 	// Since we're simulating a future message, pretend we're applying it in the "next" tipset
 	vmHeight := pheight + 1
-
-	// If we have to run an expensive migration, and we're not at genesis,
-	// return an error because the migration will take too long.
-	//
-	// We allow this at height 0 for at-genesis migrations (for testing).
-	if pheight > 0 && s.fork.HasExpensiveFork(ctx, pheight) {
-		return nil, consensus.ErrExpensiveFork
-	}
+	bstate := ts.At(0).ParentStateRoot
 
 	// Run the (not expensive) migration.
 	bstate, err = s.fork.HandleStateForks(ctx, bstate, pheight, ts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to handle fork: %v", err)
+	}
+
+	vmOption := vm.VmOption{
+		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
+			dertail, err := s.cs.GetCirculatingSupplyDetailed(ctx, epoch, tree)
+			if err != nil {
+				return abi.TokenAmount{}, err
+			}
+			return dertail.FilCirculating, nil
+		},
+		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, s.cs, s.fork, ts),
+		NetworkVersion:      s.fork.GetNetworkVersion(ctx, pheight+1),
+		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
+		BaseFee:             types.NewInt(0),
+		Epoch:               vmHeight,
+		GasPriceSchedule:    s.gasSchedule,
+		Fork:                s.fork,
+		PRoot:               ts.At(0).ParentStateRoot,
+		Bsstore:             s.cs.Blockstore(),
+		SysCallsImpl:        s.syscallsImpl,
+	}
+
+	v, err := fvm.NewVM(ctx, vmOption)
+	if err != nil {
+		return nil, err
 	}
 
 	if msg.GasLimit == 0 {
@@ -210,29 +252,5 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 
 	msg.Nonce = fromActor.Nonce
 
-	vmOption := vm.VmOption{
-		CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
-			dertail, err := s.cs.GetCirculatingSupplyDetailed(ctx, epoch, tree)
-			if err != nil {
-				return abi.TokenAmount{}, err
-			}
-			return dertail.FilCirculating, nil
-		},
-		LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, s.cs, s.fork, ts),
-		NetworkVersion:      s.fork.GetNetworkVersion(ctx, pheight+1),
-		Rnd:                 consensus.NewHeadRandomness(s.rnd, ts.Key()),
-		BaseFee:             ts.At(0).ParentBaseFee,
-		Epoch:               vmHeight,
-		GasPriceSchedule:    s.gasSchedule,
-		Fork:                s.fork,
-		PRoot:               ts.At(0).ParentStateRoot,
-		Bsstore:             s.cs.Blockstore(),
-		SysCallsImpl:        s.syscallsImpl,
-	}
-
-	v, err := fvm.NewVM(ctx, vmOption)
-	if err != nil {
-		return nil, err
-	}
 	return v.ApplyImplicitMessage(ctx, msg)
 }
