@@ -267,22 +267,22 @@ func Version8Upgrade(repoPath string) (err error) {
 	switch cfg.NetworkParams.NetworkType {
 	case types.NetworkMainnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 99999999999999
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeFVM1Height = 99999999999999
 	case types.Network2k:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version15
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -19
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeFVM1Height = -19
 	case types.NetworkCalibnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 99999999999999
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeFVM1Height = 99999999999999
 	case types.NetworkForce:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version15
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -19
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeFVM1Height = -19
 	case types.NetworkInterop:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 100
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeFVM1Height = 100
 	case types.NetworkButterfly:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 99999999999999
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeFVM1Height = 99999999999999
 	default:
 		return fsrRepo.Close()
 	}
