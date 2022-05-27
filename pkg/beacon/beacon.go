@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
@@ -29,13 +30,13 @@ type BeaconPoint struct { //nolint
 type RandomBeacon interface {
 	Entry(context.Context, uint64) <-chan Response
 	VerifyEntry(types.BeaconEntry, types.BeaconEntry) error
-	MaxBeaconRoundForEpoch(abi.ChainEpoch) uint64
+	MaxBeaconRoundForEpoch(network.Version, abi.ChainEpoch) uint64
 }
 
 // ValidateBlockValues Verify that the beacon in the block header is correct, first get beacon server at block epoch and parent block epoch in schedule.
 // if paraent beacon is the same beacon server. value beacon normally but if not equal, means that the pre entry in another beacon chain, so just validate
 // beacon value in current block header. the first values is parent beacon the the second value is current beacon.
-func ValidateBlockValues(bSchedule Schedule, h *types.BlockHeader, parentEpoch abi.ChainEpoch, prevEntry *types.BeaconEntry) error {
+func ValidateBlockValues(bSchedule Schedule, nv network.Version, h *types.BlockHeader, parentEpoch abi.ChainEpoch, prevEntry *types.BeaconEntry) error {
 	{
 		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
 		currBeacon := bSchedule.BeaconForEpoch(h.Height)
@@ -54,7 +55,7 @@ func ValidateBlockValues(bSchedule Schedule, h *types.BlockHeader, parentEpoch a
 
 	// TODO: fork logic
 	b := bSchedule.BeaconForEpoch(h.Height)
-	maxRound := b.MaxBeaconRoundForEpoch(h.Height)
+	maxRound := b.MaxBeaconRoundForEpoch(nv, h.Height)
 	if maxRound == prevEntry.Round {
 		if len(h.BeaconEntries) != 0 {
 			return xerrors.Errorf("expected not to have any beacon entries in this block, got %d", len(h.BeaconEntries))
@@ -82,13 +83,13 @@ func ValidateBlockValues(bSchedule Schedule, h *types.BlockHeader, parentEpoch a
 	return nil
 }
 
-func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, epoch abi.ChainEpoch, parentEpoch abi.ChainEpoch, prev types.BeaconEntry) ([]types.BeaconEntry, error) { //nolint
+func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, nv network.Version, epoch abi.ChainEpoch, parentEpoch abi.ChainEpoch, prev types.BeaconEntry) ([]types.BeaconEntry, error) { //nolint
 	{
 		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
 		currBeacon := bSchedule.BeaconForEpoch(epoch)
 		if parentBeacon != currBeacon {
 			// Fork logic
-			round := currBeacon.MaxBeaconRoundForEpoch(epoch)
+			round := currBeacon.MaxBeaconRoundForEpoch(nv, epoch)
 			out := make([]types.BeaconEntry, 2)
 			rch := currBeacon.Entry(ctx, round-1)
 			res := <-rch
@@ -110,7 +111,7 @@ func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, epoch abi.Ch
 
 	start := time.Now()
 
-	maxRound := beacon.MaxBeaconRoundForEpoch(epoch)
+	maxRound := beacon.MaxBeaconRoundForEpoch(nv, epoch)
 	if maxRound == prev.Round {
 		return nil, nil
 	}

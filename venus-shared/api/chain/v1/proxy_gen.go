@@ -68,16 +68,6 @@ func (s *IActorStruct) StateGetActor(p0 context.Context, p1 address.Address, p2 
 	return s.Internal.StateGetActor(p0, p1, p2)
 }
 
-type IBeaconStruct struct {
-	Internal struct {
-		BeaconGetEntry func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
-	}
-}
-
-func (s *IBeaconStruct) BeaconGetEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
-	return s.Internal.BeaconGetEntry(p0, p1)
-}
-
 type IMinerStateStruct struct {
 	Internal struct {
 		StateCirculatingSupply             func(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error)                                                                 `perm:"read"`
@@ -236,6 +226,7 @@ type IChainInfoStruct struct {
 		MessageWait                   func(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*types.ChainMessage, error)                                                  `perm:"read"`
 		ProtocolParameters            func(ctx context.Context) (*types.ProtocolParams, error)                                                                                                     `perm:"read"`
 		ResolveToKeyAddr              func(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)                                                                   `perm:"read"`
+		StateGetBeaconEntry           func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error)                                                                                  `perm:"read"`
 		StateGetNetworkParams         func(ctx context.Context) (*types.NetworkParams, error)                                                                                                      `perm:"read"`
 		StateGetRandomnessFromBeacon  func(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) `perm:"read"`
 		StateGetRandomnessFromTickets func(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) `perm:"read"`
@@ -327,6 +318,9 @@ func (s *IChainInfoStruct) ProtocolParameters(p0 context.Context) (*types.Protoc
 func (s *IChainInfoStruct) ResolveToKeyAddr(p0 context.Context, p1 address.Address, p2 *types.TipSet) (address.Address, error) {
 	return s.Internal.ResolveToKeyAddr(p0, p1, p2)
 }
+func (s *IChainInfoStruct) StateGetBeaconEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
+	return s.Internal.StateGetBeaconEntry(p0, p1)
+}
 func (s *IChainInfoStruct) StateGetNetworkParams(p0 context.Context) (*types.NetworkParams, error) {
 	return s.Internal.StateGetNetworkParams(p0)
 }
@@ -361,7 +355,6 @@ func (s *IChainInfoStruct) VerifyEntry(p0, p1 *types.BeaconEntry, p2 abi.ChainEp
 type IChainStruct struct {
 	IAccountStruct
 	IActorStruct
-	IBeaconStruct
 	IMinerStateStruct
 	IChainInfoStruct
 }

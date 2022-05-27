@@ -16,6 +16,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	cfg "github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -170,11 +171,32 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 }
 
 // MaxBeaconRoundForEpoch get the turn of beacon chain corresponding to chain height
-func (db *DrandBeacon) MaxBeaconRoundForEpoch(filEpoch abi.ChainEpoch) uint64 {
+func (db *DrandBeacon) MaxBeaconRoundForEpoch(nv network.Version, filEpoch abi.ChainEpoch) uint64 {
 	// TODO: sometimes the genesis time for filecoin is zero and this goes negative
 	latestTS := ((uint64(filEpoch) * db.filRoundTime) + db.filGenTime) - db.filRoundTime
+
+	if nv <= network.Version15 {
+		return db.maxBeaconRoundV1(latestTS)
+	}
+
+	return db.maxBeaconRoundV2(latestTS)
+}
+
+func (db *DrandBeacon) maxBeaconRoundV1(latestTS uint64) uint64 {
 	dround := (latestTS - db.drandGenTime) / uint64(db.interval.Seconds())
 	return dround
+}
+
+func (db *DrandBeacon) maxBeaconRoundV2(latestTS uint64) uint64 {
+	if latestTS < db.drandGenTime {
+		return 1
+	}
+
+	fromGenesis := latestTS - db.drandGenTime
+	// we take the time from genesis divided by the periods in seconds, that
+	// gives us the number of periods since genesis.  We also add +1 because
+	// round 1 starts at genesis time.
+	return fromGenesis/uint64(db.interval.Seconds()) + 1
 }
 
 var _ RandomBeacon = (*DrandBeacon)(nil)

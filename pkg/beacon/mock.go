@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
@@ -60,7 +61,7 @@ func (mb *mockBeacon) VerifyEntry(from types.BeaconEntry, to types.BeaconEntry) 
 	return nil
 }
 
-func (mb *mockBeacon) MaxBeaconRoundForEpoch(epoch abi.ChainEpoch) uint64 {
+func (mb *mockBeacon) MaxBeaconRoundForEpoch(nv network.Version, epoch abi.ChainEpoch) uint64 {
 	// offset for better testing
 	return uint64(epoch + 100)
 }

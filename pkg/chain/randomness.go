@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 )
@@ -97,15 +98,18 @@ type TipSetByHeight interface {
 
 var _ RandomnessSource = (*ChainRandomnessSource)(nil)
 
+type NetworkVersionGetter func(context.Context, abi.ChainEpoch) network.Version
+
 // A randomness source that seeds computations with a sample drawn from a chain epoch.
 type ChainRandomnessSource struct { //nolint
-	reader TipSetByHeight
-	head   types.TipSetKey
-	beacon beacon.Schedule
+	reader               TipSetByHeight
+	head                 types.TipSetKey
+	beacon               beacon.Schedule
+	networkVersionGetter NetworkVersionGetter
 }
 
-func NewChainRandomnessSource(reader TipSetByHeight, head types.TipSetKey, beacon beacon.Schedule) RandomnessSource {
-	return &ChainRandomnessSource{reader: reader, head: head, beacon: beacon}
+func NewChainRandomnessSource(reader TipSetByHeight, head types.TipSetKey, beacon beacon.Schedule, networkVersionGetter NetworkVersionGetter) RandomnessSource {
+	return &ChainRandomnessSource{reader: reader, head: head, beacon: beacon, networkVersionGetter: networkVersionGetter}
 }
 
 func (c *ChainRandomnessSource) GetBeaconRandomnessTipset(ctx context.Context, randEpoch abi.ChainEpoch, lookback bool) (*types.TipSet, error) {
@@ -241,7 +245,9 @@ func (c *ChainRandomnessSource) extractBeaconEntryForEpoch(ctx context.Context, 
 		return nil, err
 	}
 
-	round := c.beacon.BeaconForEpoch(filecoinEpoch).MaxBeaconRoundForEpoch(filecoinEpoch)
+	nv := c.networkVersionGetter(ctx, filecoinEpoch)
+
+	round := c.beacon.BeaconForEpoch(filecoinEpoch).MaxBeaconRoundForEpoch(nv, filecoinEpoch)
 
 	for i := 0; i < 20; i++ {
 		cbe := randTS.Blocks()[0].BeaconEntries

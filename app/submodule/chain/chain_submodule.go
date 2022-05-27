@@ -111,7 +111,6 @@ func (chain *ChainSubmodule) API() v1api.IChain {
 	return &chainAPI{
 		IAccount:    NewAccountAPI(chain),
 		IActor:      NewActorAPI(chain),
-		IBeacon:     NewBeaconAPI(chain),
 		IChainInfo:  NewChainInfoAPI(chain),
 		IMinerState: NewMinerStateAPI(chain),
 	}

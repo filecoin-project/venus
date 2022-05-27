@@ -5,8 +5,6 @@
 * [Actor](#Actor)
   * [ListActor](#ListActor)
   * [StateGetActor](#StateGetActor)
-* [Beacon](#Beacon)
-  * [BeaconGetEntry](#BeaconGetEntry)
 * [BlockStore](#BlockStore)
   * [ChainDeleteObj](#ChainDeleteObj)
   * [ChainHasObj](#ChainHasObj)
@@ -39,6 +37,7 @@
   * [MessageWait](#MessageWait)
   * [ProtocolParameters](#ProtocolParameters)
   * [ResolveToKeyAddr](#ResolveToKeyAddr)
+  * [StateGetBeaconEntry](#StateGetBeaconEntry)
   * [StateGetNetworkParams](#StateGetNetworkParams)
   * [StateGetRandomnessFromBeacon](#StateGetRandomnessFromBeacon)
   * [StateGetRandomnessFromTickets](#StateGetRandomnessFromTickets)
@@ -249,28 +248,6 @@ Response:
   },
   "Nonce": 42,
   "Balance": "0"
-}
-```
-
-## Beacon
-
-### BeaconGetEntry
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  10101
-]
-```
-
-Response:
-```json
-{
-  "Round": 42,
-  "Data": "Ynl0ZSBhcnJheQ=="
 }
 ```
 
@@ -1278,6 +1255,29 @@ Inputs:
 ```
 
 Response: `"f01234"`
+
+### StateGetBeaconEntry
+StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If
+the entry has not yet been produced, the call will block until the entry
+becomes available
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101
+]
+```
+
+Response:
+```json
+{
+  "Round": 42,
+  "Data": "Ynl0ZSBhcnJheQ=="
+}
+```
 
 ### StateGetNetworkParams
 StateGetNetworkParams return current network params

@@ -3,6 +3,7 @@ package chain
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"time"
 
@@ -338,6 +339,29 @@ func (cia *chainInfoAPI) VerifyEntry(parent, child *types.BeaconEntry, height ab
 	return cia.chain.Drand.BeaconForEpoch(height).VerifyEntry(*parent, *child) != nil
 }
 
+// BeaconGetEntry returns the beacon entry for the given filecoin epoch. If
+// the entry has not yet been produced, the call will block until the entry
+// becomes available
+func (cia *chainInfoAPI) StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+	b := cia.chain.Drand.BeaconForEpoch(epoch)
+	nv := cia.chain.Fork.GetNetworkVersion(ctx, epoch)
+	rr := b.MaxBeaconRoundForEpoch(nv, epoch)
+	e := b.Entry(ctx, rr)
+
+	select {
+	case be, ok := <-e:
+		if !ok {
+			return nil, fmt.Errorf("beacon get returned no value")
+		}
+		if be.Err != nil {
+			return nil, be.Err
+		}
+		return &be.Entry, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
 // StateNetworkName returns the name of the network the node is synced to
 func (cia *chainInfoAPI) StateNetworkName(ctx context.Context) (types.NetworkName, error) {
 	networkName, err := cia.getNetworkName(ctx)
@@ -371,7 +395,7 @@ func (cia *chainInfoAPI) StateGetRandomnessFromTickets(ctx context.Context, pers
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand)
+	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand, cia.chain.Fork.GetNetworkVersion)
 	rnv := cia.chain.Fork.GetNetworkVersion(ctx, randEpoch)
 
 	if rnv >= network.Version13 {
@@ -387,7 +411,7 @@ func (cia *chainInfoAPI) StateGetRandomnessFromBeacon(ctx context.Context, perso
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand)
+	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand, cia.chain.Fork.GetNetworkVersion)
 	rnv := cia.chain.Fork.GetNetworkVersion(ctx, randEpoch)
 
 	if rnv >= network.Version14 {

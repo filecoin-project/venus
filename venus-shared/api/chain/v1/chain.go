@@ -21,7 +21,6 @@ import (
 type IChain interface {
 	IAccount
 	IActor
-	IBeacon
 	IMinerState
 	IChainInfo
 }
@@ -33,10 +32,6 @@ type IAccount interface {
 type IActor interface {
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) //perm:read
 	ListActor(ctx context.Context) (map[address.Address]*types.Actor, error)                             //perm:read
-}
-
-type IBeacon interface {
-	BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) //perm:read
 }
 
 type IChainInfo interface {
@@ -51,24 +46,28 @@ type IChainInfo interface {
 	ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) //perm:read
 	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
 	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)  //perm:read
-	ChainGetBlock(ctx context.Context, id cid.Cid) (*types.BlockHeader, error)                                                                                                            //perm:read
-	ChainGetMessage(ctx context.Context, msgID cid.Cid) (*types.Message, error)                                                                                                           //perm:read
-	ChainGetBlockMessages(ctx context.Context, bid cid.Cid) (*types.BlockMessages, error)                                                                                                 //perm:read
-	ChainGetMessagesInTipset(ctx context.Context, key types.TipSetKey) ([]types.MessageCID, error)                                                                                        //perm:read
-	ChainGetReceipts(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error)                                                                                                     //perm:read
-	ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]types.MessageCID, error)                                                                                                 //perm:read
-	ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error)                                                                                            //perm:read
-	StateVerifiedRegistryRootKey(ctx context.Context, tsk types.TipSetKey) (address.Address, error)                                                                                       //perm:read
-	StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)                                                                        //perm:read
-	ChainNotify(ctx context.Context) (<-chan []*types.HeadChange, error)                                                                                                                  //perm:read
-	GetFullBlock(ctx context.Context, id cid.Cid) (*types.FullBlock, error)                                                                                                               //perm:read
-	GetActor(ctx context.Context, addr address.Address) (*types.Actor, error)                                                                                                             //perm:read
-	GetParentStateRootActor(ctx context.Context, ts *types.TipSet, addr address.Address) (*types.Actor, error)                                                                            //perm:read
-	GetEntry(ctx context.Context, height abi.ChainEpoch, round uint64) (*types.BeaconEntry, error)                                                                                        //perm:read
-	MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*types.ChainMessage, error)                                                                    //perm:read
-	ProtocolParameters(ctx context.Context) (*types.ProtocolParams, error)                                                                                                                //perm:read
-	ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)                                                                                //perm:read
-	StateNetworkName(ctx context.Context) (types.NetworkName, error)                                                                                                                      //perm:read
+	// StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If
+	// the entry has not yet been produced, the call will block until the entry
+	// becomes available
+	StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error)                         //perm:read
+	ChainGetBlock(ctx context.Context, id cid.Cid) (*types.BlockHeader, error)                                         //perm:read
+	ChainGetMessage(ctx context.Context, msgID cid.Cid) (*types.Message, error)                                        //perm:read
+	ChainGetBlockMessages(ctx context.Context, bid cid.Cid) (*types.BlockMessages, error)                              //perm:read
+	ChainGetMessagesInTipset(ctx context.Context, key types.TipSetKey) ([]types.MessageCID, error)                     //perm:read
+	ChainGetReceipts(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error)                                  //perm:read
+	ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]types.MessageCID, error)                              //perm:read
+	ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error)                         //perm:read
+	StateVerifiedRegistryRootKey(ctx context.Context, tsk types.TipSetKey) (address.Address, error)                    //perm:read
+	StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)     //perm:read
+	ChainNotify(ctx context.Context) (<-chan []*types.HeadChange, error)                                               //perm:read
+	GetFullBlock(ctx context.Context, id cid.Cid) (*types.FullBlock, error)                                            //perm:read
+	GetActor(ctx context.Context, addr address.Address) (*types.Actor, error)                                          //perm:read
+	GetParentStateRootActor(ctx context.Context, ts *types.TipSet, addr address.Address) (*types.Actor, error)         //perm:read
+	GetEntry(ctx context.Context, height abi.ChainEpoch, round uint64) (*types.BeaconEntry, error)                     //perm:read
+	MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*types.ChainMessage, error) //perm:read
+	ProtocolParameters(ctx context.Context) (*types.ProtocolParams, error)                                             //perm:read
+	ResolveToKeyAddr(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)             //perm:read
+	StateNetworkName(ctx context.Context) (types.NetworkName, error)                                                   //perm:read
 	// StateSearchMsg looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
 	//
 	// NOTE: If a replacing message is found on chain, this method will return

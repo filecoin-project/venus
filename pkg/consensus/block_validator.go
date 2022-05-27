@@ -230,7 +230,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 
 	beaconValuesCheck := async.Err(func() error {
 		parentHeight := parent.Height()
-		return bv.ValidateBlockBeacon(blk, parentHeight, prevBeacon)
+		return bv.ValidateBlockBeacon(blk, parentHeight, prevBeacon, bv.fork.GetNetworkVersion(ctx, blk.Height))
 	})
 
 	tktsCheck := async.Err(func() error {
@@ -494,11 +494,11 @@ func (bv *BlockValidator) minerIsValid(ctx context.Context, maddr address.Addres
 	return nil
 }
 
-func (bv *BlockValidator) ValidateBlockBeacon(blk *types.BlockHeader, parentEpoch abi.ChainEpoch, prevEntry *types.BeaconEntry) error {
+func (bv *BlockValidator) ValidateBlockBeacon(blk *types.BlockHeader, parentEpoch abi.ChainEpoch, prevEntry *types.BeaconEntry, nv network.Version) error {
 	if os.Getenv("VENUS_IGNORE_DRAND") == "_yes_" {
 		return nil
 	}
-	return beacon.ValidateBlockValues(bv.drand, blk, parentEpoch, prevEntry)
+	return beacon.ValidateBlockValues(bv.drand, nv, blk, parentEpoch, prevEntry)
 }
 
 func (bv *BlockValidator) beaconBaseEntry(ctx context.Context, blk *types.BlockHeader) (*types.BeaconEntry, error) {

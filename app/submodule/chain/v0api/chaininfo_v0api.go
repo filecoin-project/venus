@@ -47,3 +47,7 @@ func (a *WrapperV1IChain) StateGetReceipt(ctx context.Context, msg cid.Cid, from
 
 	return &ml.Receipt, nil
 }
+
+func (a *WrapperV1IChain) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+	return a.StateGetBeaconEntry(ctx, epoch)
+}

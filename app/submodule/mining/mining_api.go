@@ -51,7 +51,9 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 		prev = &types.BeaconEntry{}
 	}
 
-	entries, err := beacon.BeaconEntriesForBlock(ctx, miningAPI.Ming.ChainModule.Drand, round, ts.Height(), *prev)
+	nv := miningAPI.Ming.ChainModule.Fork.GetNetworkVersion(ctx, ts.Height())
+
+	entries, err := beacon.BeaconEntriesForBlock(ctx, miningAPI.Ming.ChainModule.Drand, nv, round, ts.Height(), *prev)
 	if err != nil {
 		return nil, err
 	}
@@ -95,8 +97,6 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get randomness for winning post: %v", err)
 	}
-
-	nv := miningAPI.Ming.ChainModule.Fork.GetNetworkVersion(ctx, ts.Height())
 
 	pv := miningAPI.Ming.proofVerifier
 	xsectors, err := view.GetSectorsForWinningPoSt(ctx, nv, pv, maddr, prand)
