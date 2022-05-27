@@ -5,12 +5,14 @@ import (
 	_ "embed"
 
 	"github.com/BurntSushi/toml"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var NetworkBundle string
+var ActorsCIDs = make(map[actors.Version]cid.Cid)
 
 func SetNetworkBundle(networkType types.NetworkType) {
 	switch networkType {
@@ -20,11 +22,17 @@ func SetNetworkBundle(networkType types.NetworkType) {
 		NetworkBundle = "butterflynet"
 	case types.NetworkInterop:
 		NetworkBundle = "caterpillarnet"
+		ActorsCIDs[actors.Version8] = types.MustParseCid("bafy2bzaceadr77tamp35bbb3rtio4ver4pnk2cbxqif3nn3mrmxra2nlvwoce")
 	case types.NetworkCalibnet:
 		NetworkBundle = "calibrationnet"
 	default:
 		NetworkBundle = "mainnet"
 	}
+}
+
+// Must have called SetNetworkBundle before calling GetActorsCIDs
+func GetActorsCIDs() map[actors.Version]cid.Cid {
+	return ActorsCIDs
 }
 
 //go:embed bundles.toml

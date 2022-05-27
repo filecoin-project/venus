@@ -129,7 +129,7 @@ func LoadBuiltinActorsTesting(ctx context.Context, bs blockstoreutil.Blockstore,
 	testingBundleMx.Lock()
 	defer testingBundleMx.Unlock()
 
-	const basePath = "/tmp/lotus-testing"
+	const basePath = "/tmp/venus-testing"
 	for av, bd := range BuiltinActorReleases {
 		switch {
 		case bd.Path[netw] != "":

@@ -1,6 +1,7 @@
 package builtinactors
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/ipld/go-car"
 )
 
 func FetchAndLoadBundleFromRelease(ctx context.Context, basePath string, bs blockstore.Blockstore, av actors.Version, rel, netw string) (cid.Cid, error) {
@@ -57,6 +59,23 @@ func LoadBundle(ctx context.Context, bs blockstore.Blockstore, path string, av a
 	if err := actors.LoadBundle(ctx, bs, av, data); err != nil {
 		return cid.Undef, xerrors.Errorf("error loading bundle for builtin-actors version %d: %w", av, err)
 	}
+
+	blobr := bytes.NewReader(data)
+
+	hdr, err := car.LoadCar(ctx, bs, blobr)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("error loading builtin actors v%d bundle: %w", av, err)
+	}
+
+	// TODO: check that this only has one root?
+	manifestCid := hdr.Roots[0]
+
+	if val, ok := ActorsCIDs[av]; ok {
+		if val != manifestCid {
+			return cid.Undef, xerrors.Errorf("actors V%d manifest CID %s did not match CID given in params file: %s", av, manifestCid, val)
+		}
+	}
+	actors.AddManifest(av, manifestCid)
 
 	mfCid, ok := actors.GetManifest(av)
 	if !ok {
