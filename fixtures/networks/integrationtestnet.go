@@ -5,6 +5,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func IntegrationNet() *NetworkConf {
@@ -18,6 +19,7 @@ func IntegrationNet() *NetworkConf {
 		Network: config.NetworkParamsConfig{
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 10 << 40,
+			NetworkType:            types.Integrationnet,
 			GenesisNetworkVersion:  network.Version0,
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
 				UpgradeBreezeHeight:     41280,

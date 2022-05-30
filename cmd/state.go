@@ -612,7 +612,6 @@ var stateSysActorCIDsCmd = &cmds.Command{
 		cmds.UintOption("network-version", "specify network version").WithDefault(uint(constants.NewestNetworkVersion)),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		fmt.Println("xxx")
 		ctx := req.Context
 		ts, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
 		if err != nil {

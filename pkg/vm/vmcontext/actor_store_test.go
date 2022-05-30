@@ -49,15 +49,6 @@ func TestActorStore(t *testing.T) {
 		assert.Contains(t, thrown.(string), "failed To get object *typegen.CborCid ")
 	})
 
-	t.Run("panic on put storage failure", func(t *testing.T) {
-		store := vmcontext.NewActorStorage(ctx, raw, gasTank, priceSchedule.PricelistByEpoch(0))
-		v := typegen.CborInt(0)
-		_, thrown := tryPut(store, &v)
-		_, ok := thrown.(vmr.ExecutionPanic)
-		assert.NotNil(t, thrown)
-		assert.False(t, ok, "expected non-abort panic")
-	})
-
 	t.Run("panic on get storage failure", func(t *testing.T) {
 		store := vmcontext.NewActorStorage(ctx, raw, gasTank, priceSchedule.PricelistByEpoch(0))
 		var v typegen.CborInt

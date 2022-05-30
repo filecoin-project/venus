@@ -123,13 +123,16 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.dagservice")
 	}
 
-	repoPath, err := b.Repo().Path()
-	if err != nil {
-		return nil, err
-	}
-	builtin_actors.SetNetworkBundle(b.Repo().Config().NetworkParams.NetworkType)
-	if _, err := builtin_actors.LoadBuiltinActors(ctx, repoPath, b.Repo().Datastore(), b.Repo().MetaDatastore()); err != nil {
-		return nil, xerrors.Errorf("failed to load builtin actors %v", err)
+	// load builtin actor very slow, so integration test skip it
+	if b.Repo().Config().NetworkParams.NetworkType != types.Integrationnet {
+		repoPath, err := b.Repo().Path()
+		if err != nil {
+			return nil, err
+		}
+		builtin_actors.SetNetworkBundle(b.Repo().Config().NetworkParams.NetworkType)
+		if _, err := builtin_actors.LoadBuiltinActors(ctx, repoPath, b.Repo().Datastore(), b.Repo().MetaDatastore()); err != nil {
+			return nil, xerrors.Errorf("failed to load builtin actors %v", err)
+		}
 	}
 
 	nd.chain, err = chain.NewChainSubmodule(ctx, (*builder)(b), nd.circulatiingSupplyCalculator)

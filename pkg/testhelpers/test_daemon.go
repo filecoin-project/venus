@@ -307,12 +307,6 @@ func (td *TestDaemon) Start() *TestDaemon {
 	require.NoError(td.test, td.process.Start())
 
 	err := td.WaitForAPI()
-	if err != nil {
-		stdErr, _ := ioutil.ReadAll(td.Stderr)
-		stdOut, _ := ioutil.ReadAll(td.Stdout)
-		td.test.Errorf("%s\n%s", stdErr, stdOut)
-	}
-
 	require.NoError(td.test, err, "Daemon failed to start")
 
 	// on first startup import key pairs, if defined

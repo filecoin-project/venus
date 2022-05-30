@@ -94,19 +94,21 @@ func init() {
 }
 
 var loadBundles = func(req *cmds.Request, env cmds.Environment) error {
-	repoDir, _ := req.Options[OptionRepoDir].(string)
-	repoDir, err := paths.GetRepoPath(repoDir)
-	if err != nil {
-		return err
+	nt, _ := req.Options[Network].(string)
+	// Integrateion test skip load builtin actors
+	if nt == "integrationnet" {
+		return nil
 	}
-	configPath := filepath.Join(repoDir, "config.json")
-	if _, err := os.Lstat(configPath); err != nil {
+
+	repoDir, _ := req.Options[OptionRepoDir].(string)
+	if _, err := os.Lstat(repoDir); err != nil {
 		// first start
 		if os.IsNotExist(err) {
 			return nil
 		}
 		return err
 	}
+	configPath := filepath.Join(repoDir, "config.json")
 	cfg, err := config.ReadFile(configPath)
 	if err != nil {
 		return err
@@ -246,22 +248,18 @@ func init() {
 	}
 
 	for k, v := range rootSubcmdsLocal {
-		if len(v.Subcommands) == 0 {
-			v.PreRun = wrapper(v.PreRun, loadBundles)
-		}
-		for _, sub := range v.Subcommands {
-			sub.PreRun = wrapper(v.PreRun, loadBundles)
+		if k == "daemon" {
+			if len(v.Subcommands) == 0 {
+				v.PreRun = wrapper(v.PreRun, loadBundles)
+			}
+			for _, sub := range v.Subcommands {
+				sub.PreRun = wrapper(v.PreRun, loadBundles)
+			}
 		}
 		RootCmd.Subcommands[k] = v
 	}
 
 	for k, v := range rootSubcmdsDaemon {
-		if len(v.Subcommands) == 0 {
-			v.PreRun = wrapper(v.PreRun, loadBundles)
-		}
-		for _, sub := range v.Subcommands {
-			sub.PreRun = wrapper(v.PreRun, loadBundles)
-		}
 		RootCmd.Subcommands[k] = v
 		RootCmdDaemon.Subcommands[k] = v
 	}
