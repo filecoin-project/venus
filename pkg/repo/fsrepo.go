@@ -216,7 +216,11 @@ func (r *FSRepo) loadFromDisk() error {
 	}
 
 	if localVersion > r.version {
-		return fmt.Errorf("binary needs update to handle repo version, got %d expected %d. Update binary to latest release", localVersion, LatestVersion)
+		// 实现根据环境变量 `VENUS_DISABLE_SKYR` 来控制是否升级fvm
+		// todo: 在下一次网络（nv17）升级移除
+		if r.version != 7 {
+			return fmt.Errorf("binary needs update to handle repo version, got %d expected %d. Update binary to latest release", localVersion, r.version)
+		}
 	}
 
 	if err := r.loadConfig(); err != nil {

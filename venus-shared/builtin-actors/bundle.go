@@ -22,7 +22,7 @@ func SetNetworkBundle(networkType types.NetworkType) {
 		NetworkBundle = "butterflynet"
 	case types.NetworkInterop:
 		NetworkBundle = "caterpillarnet"
-		ActorsCIDs[actors.Version8] = types.MustParseCid("bafy2bzaceadr77tamp35bbb3rtio4ver4pnk2cbxqif3nn3mrmxra2nlvwoce")
+		ActorsCIDs[actors.Version8] = types.MustParseCid("bafy2bzacec2w2zpvykvrjtxrndaq3ow7fh3ytum5l3qyfy3p4nw7vyjybtgea")
 	case types.NetworkCalibnet:
 		NetworkBundle = "calibrationnet"
 	default:

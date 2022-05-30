@@ -42,6 +42,8 @@ func TryToMigrate(repoPath string) error {
 	}
 
 	for _, up := range versionMap {
+		// 实现根据环境变量 `VENUS_DISABLE_SKYR` 来控制是否升级fvm
+		// todo: 在下一次网络（nv17）升级移除
 		if up.version > localVersion || (localVersion == 8 && up.version == 8) {
 			err = up.upgrade(repoPath)
 			if err != nil {
@@ -269,7 +271,7 @@ func Version8Upgrade(repoPath string) (err error) {
 	case types.NetworkMainnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 99999999999999
-		// disable upgrade fvm, https://github.com/filecoin-project/lotus/pull/8733
+		// https://github.com/filecoin-project/lotus/pull/8733
 		if os.Getenv("VENUS_DISABLE_SKYR") == "1" {
 			cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 99999999999999
 		}
