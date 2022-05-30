@@ -3,6 +3,7 @@ package fvm
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"sync/atomic"
 	"time"
@@ -410,7 +411,7 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 		aerr = aerrors.New(exitcode.ExitCode(ret.ExitCode), amsg)
 	}
 
-	return &vm.Ret{
+	applyRet := &vm.Ret{
 		Receipt: types.MessageReceipt{
 			Return:   ret.Return,
 			ExitCode: exitcode.ExitCode(ret.ExitCode),
@@ -422,7 +423,13 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 			ExecutionTrace: et.ToExecutionTrace(),
 		},
 		Duration: time.Since(start),
-	}, nil
+	}
+
+	if ret.ExitCode != 0 {
+		return applyRet, fmt.Errorf("implicit message failed with exit code: %d and error: %w", ret.ExitCode, applyRet.ActorErr)
+	}
+
+	return applyRet, nil
 }
 
 func (fvm *FVM) Flush(ctx context.Context) (cid.Cid, error) {
