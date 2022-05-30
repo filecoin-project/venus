@@ -286,7 +286,7 @@ func DefaultUpgradeSchedule(cf *ChainFork, networkParams *config.NetworkParamsCo
 			}},
 			Expensive: true,
 		}, {
-			Height:    upgradeHeight.UpgradeFVM1Height,
+			Height:    upgradeHeight.UpgradeSkyrHeight,
 			Network:   network.Version16,
 			Migration: cf.UpgradeActorsV8,
 			PreMigrations: []PreMigration{{

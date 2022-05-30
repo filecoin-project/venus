@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"os"
 	"path/filepath"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -41,7 +42,7 @@ func TryToMigrate(repoPath string) error {
 	}
 
 	for _, up := range versionMap {
-		if up.version > localVersion {
+		if up.version > localVersion || (localVersion == 8 && up.version == 8) {
 			err = up.upgrade(repoPath)
 			if err != nil {
 				return err
@@ -267,22 +268,26 @@ func Version8Upgrade(repoPath string) (err error) {
 	switch cfg.NetworkParams.NetworkType {
 	case types.NetworkMainnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeFVM1Height = 99999999999999
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 99999999999999
+		// disable upgrade fvm, https://github.com/filecoin-project/lotus/pull/8733
+		if os.Getenv("VENUS_DISABLE_SKYR") == "1" {
+			cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 99999999999999
+		}
 	case types.Network2k:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version15
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeFVM1Height = -19
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = -19
 	case types.NetworkCalibnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeFVM1Height = 99999999999999
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 99999999999999
 	case types.NetworkForce:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version15
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeFVM1Height = -19
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = -19
 	case types.NetworkInterop:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeFVM1Height = 100
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 100
 	case types.NetworkButterfly:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeFVM1Height = 99999999999999
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 99999999999999
 	default:
 		return fsrRepo.Close()
 	}

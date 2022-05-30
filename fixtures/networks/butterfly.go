@@ -47,7 +47,7 @@ func ButterflySnapNet() *NetworkConf {
 				UpgradeHyperdriveHeight: -16,
 				UpgradeChocolateHeight:  -17,
 				UpgradeOhSnapHeight:     240,
-				UpgradeFVM1Height:       99999999999999,
+				UpgradeSkyrHeight:       99999999999999,
 
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       -11,

@@ -249,7 +249,7 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 
 	transitionalMulti := 1.0
 	// Overestimate gas around the upgrade
-	if ts.Height() <= mp.forkParams.UpgradeFVM1Height && (mp.forkParams.UpgradeFVM1Height-ts.Height() <= 20) {
+	if ts.Height() <= mp.forkParams.UpgradeSkyrHeight && (mp.forkParams.UpgradeSkyrHeight-ts.Height() <= 20) {
 		transitionalMulti = 2.0
 
 		func() {

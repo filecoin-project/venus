@@ -48,7 +48,7 @@ func InteropNet() *NetworkConf {
 				UpgradeHyperdriveHeight: -16,
 				UpgradeChocolateHeight:  -17,
 				UpgradeOhSnapHeight:     -18,
-				UpgradeFVM1Height:       100,
+				UpgradeSkyrHeight:       100,
 
 				BreezeGasTampingDuration: 0,
 				UpgradeClausHeight:       -11,
