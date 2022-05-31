@@ -9,12 +9,14 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/venus/app/paths"
+	"github.com/filecoin-project/venus/cmd/tablewriter"
 
 	"github.com/filecoin-project/venus/pkg/config"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/multiformats/go-multiaddr"
@@ -22,6 +24,7 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -53,6 +56,7 @@ var stateCmd = &cmds.Command{
 		"miner-info":      stateMinerInfo,
 		"network-version": stateNtwkVersionCmd,
 		"list-actor":      stateListActorCmd,
+		"actor-cids":      stateSysActorCIDsCmd,
 	},
 }
 
@@ -597,6 +601,80 @@ var stateListActorCmd = &cmds.Command{
 			_, err = w.Write([]byte("\n"))
 			return err
 		}),
+	},
+}
+
+var stateSysActorCIDsCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Returns the built-in actor bundle manifest ID & system actor cids",
+	},
+	Options: []cmds.Option{
+		cmds.UintOption("network-version", "specify network version").WithDefault(uint(constants.NewestNetworkVersion)),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		fmt.Println("xxx")
+		ctx := req.Context
+		ts, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		nv, err := env.(*node.Env).ChainAPI.StateNetworkVersion(ctx, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		targetNV, ok := req.Options["network-version"].(uint)
+		if ok {
+			nv = network.Version(targetNV)
+		}
+		buf := new(bytes.Buffer)
+
+		buf.WriteString(fmt.Sprintf("Network Version: %d\n", nv))
+
+		actorVersion, err := actors.VersionForNetwork(nv)
+		if err != nil {
+			return err
+		}
+		buf.WriteString(fmt.Sprintf("Actor Version: %d\n", actorVersion))
+
+		manifestCid, ok := actors.GetManifest(actorVersion)
+		if !ok {
+			return xerrors.Errorf("cannot get manifest CID")
+		}
+		buf.WriteString(fmt.Sprintf("Manifest CID: %v\n\n", manifestCid))
+
+		tw := tablewriter.New(tablewriter.Col("Actor"), tablewriter.Col("CID"))
+
+		for _, name := range []string{
+			actors.AccountKey,
+			actors.CronKey,
+			actors.InitKey,
+			actors.MarketKey,
+			actors.MinerKey,
+			actors.MultisigKey,
+			actors.PaychKey,
+			actors.PowerKey,
+			actors.RewardKey,
+			actors.SystemKey,
+			actors.VerifregKey,
+		} {
+			sysActorCID, ok := actors.GetActorCodeID(actorVersion, name)
+			if !ok {
+				return xerrors.Errorf("error getting actor %v code id for actor version %d", name,
+					actorVersion)
+			}
+			tw.Write(map[string]interface{}{
+				"Actor": name,
+				"CID":   sysActorCID.String(),
+			})
+		}
+
+		if err := tw.Flush(buf); err != nil {
+			return err
+		}
+
+		return re.Emit(buf)
 	},
 }
 

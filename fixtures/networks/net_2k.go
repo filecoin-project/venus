@@ -17,7 +17,7 @@ func Net2k() *NetworkConf {
 		},
 		Network: config.NetworkParamsConfig{
 			NetworkType:            types.Network2k,
-			GenesisNetworkVersion:  network.Version15,
+			GenesisNetworkVersion:  network.Version16,
 			BlockDelay:             4,
 			ConsensusMinerMinPower: 2048,
 			MinVerifiedDealSize:    256,
