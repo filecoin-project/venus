@@ -3,7 +3,6 @@
 package actors
 
 import (
-	"bytes"
 	"context"
 	"strings"
 	"sync"
@@ -12,12 +11,9 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	car "github.com/ipld/go-car"
-
-	blockstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 )
 
 var manifestCids map[Version]cid.Cid
@@ -37,6 +33,22 @@ const (
 	SystemKey   = "system"
 	VerifregKey = "verifiedregistry"
 )
+
+func GetBuiltinActorsKeys() []string {
+	return []string{
+		AccountKey,
+		CronKey,
+		InitKey,
+		MarketKey,
+		MinerKey,
+		MultisigKey,
+		PaychKey,
+		PowerKey,
+		RewardKey,
+		SystemKey,
+		VerifregKey,
+	}
+}
 
 var (
 	manifestMx sync.RWMutex
@@ -91,19 +103,8 @@ func loadManifests(ctx context.Context, store cbor.IpldStore) error {
 
 		manifests[av] = mf
 
-		for _, name := range []string{
-			AccountKey,
-			CronKey,
-			InitKey,
-			MarketKey,
-			MinerKey,
-			MultisigKey,
-			PaychKey,
-			PowerKey,
-			RewardKey,
-			SystemKey,
-			VerifregKey,
-		} {
+		var actorKeys = GetBuiltinActorsKeys()
+		for _, name := range actorKeys {
 			c, ok := mf.Get(name)
 			if ok {
 				actorMeta[c] = actorEntry{name: name, version: av}
@@ -145,20 +146,4 @@ func CanonicalName(name string) string {
 	}
 
 	return name
-}
-
-func LoadBundle(ctx context.Context, bs blockstore.Blockstore, av Version, data []byte) error {
-	blobr := bytes.NewReader(data)
-
-	hdr, err := car.LoadCar(ctx, bs, blobr)
-	if err != nil {
-		return xerrors.Errorf("error loading builtin actors v%d bundle: %w", av, err)
-	}
-
-	// TODO: check that this only has one root?
-
-	manifestCid := hdr.Roots[0]
-	AddManifest(av, manifestCid)
-
-	return nil
 }

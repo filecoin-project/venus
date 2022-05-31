@@ -646,19 +646,7 @@ var stateSysActorCIDsCmd = &cmds.Command{
 
 		tw := tablewriter.New(tablewriter.Col("Actor"), tablewriter.Col("CID"))
 
-		for _, name := range []string{
-			actors.AccountKey,
-			actors.CronKey,
-			actors.InitKey,
-			actors.MarketKey,
-			actors.MinerKey,
-			actors.MultisigKey,
-			actors.PaychKey,
-			actors.PowerKey,
-			actors.RewardKey,
-			actors.SystemKey,
-			actors.VerifregKey,
-		} {
+		for _, name := range actors.GetBuiltinActorsKeys() {
 			sysActorCID, ok := actors.GetActorCodeID(actorVersion, name)
 			if !ok {
 				return xerrors.Errorf("error getting actor %v code id for actor version %d", name,

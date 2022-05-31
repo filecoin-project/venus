@@ -56,10 +56,6 @@ func LoadBundle(ctx context.Context, bs blockstore.Blockstore, path string, av a
 		return cid.Undef, xerrors.Errorf("error reading bundle for builtin-actors version %d: %w", av, err)
 	}
 
-	if err := actors.LoadBundle(ctx, bs, av, data); err != nil {
-		return cid.Undef, xerrors.Errorf("error loading bundle for builtin-actors version %d: %w", av, err)
-	}
-
 	blobr := bytes.NewReader(data)
 
 	hdr, err := car.LoadCar(ctx, bs, blobr)

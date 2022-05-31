@@ -141,7 +141,7 @@ START RUNNING FILECOIN
 
 VIEW DATA STRUCTURES
   chain                  - Inspect the filecoin blockchain
-  sync 				   - Inspect the filecoin Sync
+  sync                   - Inspect the filecoin Sync
   dag                    - Interact with IPLD DAG objects
   show                   - Get human-readable representations of filecoin objects
 
@@ -170,6 +170,9 @@ State COMMANDS
 
 Paych COMMANDS 
   paych                  - Manage payment channels
+
+Cid COMMANDS
+  manifest-cid-from-car  - Get the manifest CID from a car file
 
 TOOL COMMANDS
   inspect                - Show info about the venus node
