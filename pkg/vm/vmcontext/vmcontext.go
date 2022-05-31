@@ -111,7 +111,7 @@ func NewLegacyVM(ctx context.Context, actorImpls ActorImplLookup, vmOption VmOpt
 		State:          st,
 		vmOption:       vmOption,
 		baseCircSupply: baseCirc,
-		pricelist:      vmOption.GasPriceSchedule.PricelistByEpochAndNetworkVersion(vmOption.Epoch, vmOption.NetworkVersion),
+		pricelist:      vmOption.GasPriceSchedule.PricelistByEpoch(vmOption.Epoch),
 		currentEpoch:   vmOption.Epoch,
 	}, nil
 }

@@ -224,7 +224,7 @@ func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerID address.Add
 	}
 	gasTank := gas.NewGasTracker(constants.BlockGasLimit * 10000)
 	cstWithoutGas := cbor.NewCborStore(x.Blockstore)
-	cbb := vmcontext.NewGasChargeBlockStore(gasTank, x.gasPriceSchedule.PricelistByEpochAndNetworkVersion(x.epoch, x.nv), x.Blockstore)
+	cbb := vmcontext.NewGasChargeBlockStore(gasTank, x.gasPriceSchedule.PricelistByEpoch(x.epoch), x.Blockstore)
 	cstWithGas := cbor.NewCborStore(cbb)
 
 	lbState, err := x.lbState(ctx, height)

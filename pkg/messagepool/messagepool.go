@@ -12,8 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/network"
-
+	lps "github.com/filecoin-project/pubsub"
 	"github.com/hashicorp/go-multierror"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
@@ -24,7 +23,6 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/minio/blake2b-simd"
 	"github.com/raulk/clock"
-	lps "github.com/filecoin-project/pubsub"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -111,8 +109,6 @@ type MessagePoolEvtMessage struct { // nolint
 	CID cid.Cid
 }
 
-type getNtwkVersionFunc func(abi.ChainEpoch) (network.Version, error)
-
 func init() {
 	// if the republish interval is too short compared to the pubsub timecache, adjust it
 	minInterval := pubsub.TimeCacheDuration + time.Duration(constants.PropagationDelaySecs)
@@ -153,8 +149,6 @@ type MessagePool struct {
 	api Provider
 
 	minGasPrice big.Int
-
-	getNtwkVersion getNtwkVersionFunc
 
 	currentSize int
 
@@ -382,7 +376,6 @@ func New(ctx context.Context,
 	mpoolCfg *config.MessagePoolConfig,
 	netName string,
 	j journal.Journal,
-	getNtwkVersion getNtwkVersionFunc,
 ) (*MessagePool, error) {
 	cache, _ := lru.New2Q(constants.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(constants.VerifSigCacheSize)
@@ -397,26 +390,25 @@ func New(ctx context.Context,
 	}
 
 	mp := &MessagePool{
-		ds:             ds,
-		addSema:        make(chan struct{}, 1),
-		closer:         make(chan struct{}),
-		repubTk:        constants.Clock.Ticker(RepublishInterval),
-		repubTrigger:   make(chan struct{}, 1),
-		localAddrs:     make(map[address.Address]struct{}),
-		pending:        make(map[address.Address]*msgSet),
-		keyCache:       make(map[address.Address]address.Address),
-		minGasPrice:    big.NewInt(0),
-		getNtwkVersion: getNtwkVersion,
-		pruneTrigger:   make(chan struct{}, 1),
-		pruneCooldown:  make(chan struct{}, 1),
-		blsSigCache:    cache,
-		sigValCache:    verifcache,
-		changes:        lps.New(50),
-		localMsgs:      namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
-		api:            api,
-		sm:             sm,
-		netName:        netName,
-		cfg:            cfg,
+		ds:            ds,
+		addSema:       make(chan struct{}, 1),
+		closer:        make(chan struct{}),
+		repubTk:       constants.Clock.Ticker(RepublishInterval),
+		repubTrigger:  make(chan struct{}, 1),
+		localAddrs:    make(map[address.Address]struct{}),
+		pending:       make(map[address.Address]*msgSet),
+		keyCache:      make(map[address.Address]address.Address),
+		minGasPrice:   big.NewInt(0),
+		pruneTrigger:  make(chan struct{}, 1),
+		pruneCooldown: make(chan struct{}, 1),
+		blsSigCache:   cache,
+		sigValCache:   verifcache,
+		changes:       lps.New(50),
+		localMsgs:     namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
+		api:           api,
+		sm:            sm,
+		netName:       netName,
+		cfg:           cfg,
 		evtTypes: [...]journal.EventType{
 			evtTypeMpoolAdd:    j.RegisterEventType("mpool", "add"),
 			evtTypeMpoolRemove: j.RegisterEventType("mpool", "remove"),
@@ -697,11 +689,7 @@ func (mp *MessagePool) addLocal(ctx context.Context, m *types.SignedMessage) err
 // a (soft) validation error.
 func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTS *types.TipSet, local bool) (bool, error) {
 	epoch := curTS.Height() + 1
-	nv, err := mp.getNtwkVersion(epoch)
-	if err != nil {
-		return false, xerrors.Errorf("getting network version: %w", err)
-	}
-	minGas := mp.gasPriceSchedule.PricelistByEpochAndNetworkVersion(epoch, nv).OnChainMessage(m.ChainLength())
+	minGas := mp.gasPriceSchedule.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
 
 	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total(), constants.NewestNetworkVersion); err != nil {
 		return false, xerrors.Errorf("message will not be included in a block: %v", err)

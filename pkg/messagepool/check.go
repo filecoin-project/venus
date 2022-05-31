@@ -258,13 +258,7 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 			},
 		}
 
-		nv, err := mp.getNtwkVersion(epoch)
-		if err != nil {
-			check.OK = false
-			check.Err = fmt.Sprintf("error retrieving network version: %s", err.Error())
-		} else {
-			check.OK = true
-		}
+		nv := mp.sm.GetNetworkVersion(ctx, epoch)
 		if err := m.ValidForBlockInclusion(0, nv); err != nil {
 			check.OK = false
 			check.Err = fmt.Sprintf("syntactically invalid message: %s", err.Error())
@@ -281,7 +275,7 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		// gas checks
 
 		// 4. Min Gas
-		minGas := gas.NewPricesSchedule(mp.forkParams).PricelistByEpochAndNetworkVersion(epoch, nv).OnChainMessage(m.ChainLength())
+		minGas := gas.NewPricesSchedule(mp.forkParams).PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
 
 		check = types.MessageCheckStatus{
 			Cid: m.Cid(),

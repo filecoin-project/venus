@@ -781,11 +781,6 @@ func (mp *MessagePool) createMessageChains(ctx context.Context, actor address.Ad
 	skip := 0
 	i := 0
 	rewards := make([]*big.Int, 0, len(msgs))
-	nv, err := mp.getNtwkVersion(ts.Height())
-	if err != nil {
-		log.Errorf("getting network version: %v", err)
-		return nil
-	}
 	for i = 0; i < len(msgs); i++ {
 		m := msgs[i]
 
@@ -801,7 +796,7 @@ func (mp *MessagePool) createMessageChains(ctx context.Context, actor address.Ad
 		}
 		curNonce++
 
-		minGas := mp.gasPriceSchedule.PricelistByEpochAndNetworkVersion(ts.Height(), nv).OnChainMessage(m.ChainLength()).Total()
+		minGas := mp.gasPriceSchedule.PricelistByEpoch(ts.Height()).OnChainMessage(m.ChainLength()).Total()
 		if m.Message.GasLimit < minGas {
 			break
 		}

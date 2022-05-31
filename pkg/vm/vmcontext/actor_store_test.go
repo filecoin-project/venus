@@ -27,9 +27,8 @@ func TestActorStore(t *testing.T) {
 	raw := cbor.NewCborStore(blockstore.NewBlockstore(datastore.NewMapDatastore()))
 	gasTank := gas.NewGasTracker(1e6)
 	priceSchedule := gas.NewPricesSchedule(config.DefaultForkUpgradeParam)
-	nv := config.NewDefaultConfig().NetworkParams.GenesisNetworkVersion
 	t.Run("abort on put serialization failure", func(t *testing.T) {
-		store := vmcontext.NewActorStorage(ctx, raw, gasTank, priceSchedule.PricelistByEpochAndNetworkVersion(0, nv))
+		store := vmcontext.NewActorStorage(ctx, raw, gasTank, priceSchedule.PricelistByEpoch(0))
 		_, thrown := tryPut(store, cannotCBOR{})
 		abort, ok := thrown.(vmr.ExecutionPanic)
 		assert.NotNil(t, thrown)
@@ -38,7 +37,7 @@ func TestActorStore(t *testing.T) {
 	})
 
 	t.Run("abort on get serialization failure", func(t *testing.T) {
-		store := vmcontext.NewActorStorage(ctx, raw, gasTank, priceSchedule.PricelistByEpochAndNetworkVersion(0, nv))
+		store := vmcontext.NewActorStorage(ctx, raw, gasTank, priceSchedule.PricelistByEpoch(0))
 		v := typegen.CborInt(0)
 
 		c, thrown := tryPut(store, &v)
@@ -51,7 +50,7 @@ func TestActorStore(t *testing.T) {
 	})
 
 	t.Run("panic on put storage failure", func(t *testing.T) {
-		store := vmcontext.NewActorStorage(ctx, &brokenStorage{}, gasTank, priceSchedule.PricelistByEpochAndNetworkVersion(0, nv))
+		store := vmcontext.NewActorStorage(ctx, raw, gasTank, priceSchedule.PricelistByEpoch(0))
 		v := typegen.CborInt(0)
 		_, thrown := tryPut(store, &v)
 		_, ok := thrown.(vmr.ExecutionPanic)
@@ -60,7 +59,7 @@ func TestActorStore(t *testing.T) {
 	})
 
 	t.Run("panic on get storage failure", func(t *testing.T) {
-		store := vmcontext.NewActorStorage(ctx, &brokenStorage{}, gasTank, priceSchedule.PricelistByEpochAndNetworkVersion(0, nv))
+		store := vmcontext.NewActorStorage(ctx, raw, gasTank, priceSchedule.PricelistByEpoch(0))
 		var v typegen.CborInt
 		thrown := tryGet(store, cid.Undef, &v)
 		_, ok := thrown.(vmr.ExecutionPanic)

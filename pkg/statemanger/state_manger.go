@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/fork"
@@ -399,6 +401,10 @@ func (s *Stmgr) StateView(ctx context.Context, ts *types.TipSet) (cid.Cid, *apps
 		return cid.Undef, nil, err
 	}
 	return stateCid, view, nil
+}
+
+func (s *Stmgr) GetNetworkVersion(ctx context.Context, h abi.ChainEpoch) network.Version {
+	return s.fork.GetNetworkVersion(ctx, h)
 }
 
 func (s *Stmgr) FlushChainHead() (*types.TipSet, error) {
