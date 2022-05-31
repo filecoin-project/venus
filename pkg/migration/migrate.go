@@ -289,7 +289,7 @@ func Version8Upgrade(repoPath string) (err error) {
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 100
 	case types.NetworkButterfly:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 99999999999999
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 333258
 	default:
 		return fsrRepo.Close()
 	}
