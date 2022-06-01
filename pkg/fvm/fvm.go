@@ -52,7 +52,6 @@ type FvmExtern struct {
 	lbState          vm.LookbackStateGetter
 	base             cid.Cid
 	gasPriceSchedule *gas.PricesSchedule
-	nv               network.Version
 }
 
 // This may eventually become identical to ExecutionTrace, but we can make incremental progress towards that
@@ -298,8 +297,13 @@ func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 	}
 	fvmOpts := ffi.FVMOpts{
 		FVMVersion: 0,
-		Externs: &FvmExtern{Rand: newWrapperRand(opts.Rnd), Blockstore: opts.Bsstore, epoch: opts.Epoch,
-			lbState: opts.LookbackStateGetter, base: opts.PRoot, gasPriceSchedule: opts.GasPriceSchedule, nv: opts.NetworkVersion},
+		Externs: &FvmExtern{
+			Rand:       newWrapperRand(opts.Rnd),
+			Blockstore: opts.Bsstore,
+			epoch:      opts.Epoch,
+			lbState:    opts.LookbackStateGetter,
+			base:       opts.PRoot, gasPriceSchedule: opts.GasPriceSchedule,
+		},
 		Epoch:          opts.Epoch,
 		BaseFee:        opts.BaseFee,
 		BaseCircSupply: circToReport,
