@@ -371,7 +371,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 		estimateMsg.Nonce = fromNonce
 
 		if estimateMessage.Spec != nil {
-			log.Infof("GasBatchEstimateMessageGas from %s, nonce %d, gas limit %d, gas fee cap %s, max fee %s",
+			log.Debugf("GasBatchEstimateMessageGas from %s, nonce %d, gas limit %d, gas fee cap %s, max fee %s",
 				estimateMsg.From, estimateMsg.Nonce, estimateMsg.GasLimit, estimateMsg.GasFeeCap, estimateMessage.Spec.MaxFee)
 		}
 
