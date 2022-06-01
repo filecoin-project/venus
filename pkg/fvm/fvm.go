@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/aerrors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
@@ -307,6 +308,20 @@ func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 		Tracing:        gas.EnableDetailedTracing,
 	}
 
+	if os.Getenv("VENUS_USE_FVM_CUSTOM_BUNDLE") == "1" {
+		av, err := actors.VersionForNetwork(opts.NetworkVersion)
+		if err != nil {
+			return nil, xerrors.Errorf("mapping network version to actors version: %w", err)
+		}
+
+		c, ok := actors.GetManifest(av)
+		if !ok {
+			return nil, xerrors.Errorf("no manifest for custom bundle (actors version %d)", av)
+		}
+
+		fvmOpts.Manifest = c
+	}
+
 	fvm, err := ffi.CreateFVM(&fvmOpts)
 	if err != nil {
 		return nil, err
@@ -385,7 +400,8 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret, error) {
 	start := constants.Clock.Now()
 	defer atomic.AddUint64(&StatApplied, 1)
-	msgBytes, err := cmsg.VMMessage().Serialize()
+	vmMsg := cmsg.VMMessage()
+	msgBytes, err := vmMsg.Serialize()
 	if err != nil {
 		return nil, xerrors.Errorf("serializing msg: %w", err)
 	}
@@ -395,11 +411,11 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 		return nil, xerrors.Errorf("applying msg: %w", err)
 	}
 
-	var et FvmExecutionTrace
-	if len(ret.ExecTraceBytes) != 0 {
-		if err = et.UnmarshalCBOR(bytes.NewReader(ret.ExecTraceBytes)); err != nil {
-			return nil, xerrors.Errorf("failed to unmarshal exectrace: %w", err)
-		}
+	duration := time.Since(start)
+	receipt := types.MessageReceipt{
+		Return:   ret.Return,
+		ExitCode: exitcode.ExitCode(ret.ExitCode),
+		GasUsed:  ret.GasUsed,
 	}
 
 	var aerr aerrors.ActorError
@@ -411,16 +427,28 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 		aerr = aerrors.New(exitcode.ExitCode(ret.ExitCode), amsg)
 	}
 
+	var et types.ExecutionTrace
+	if len(ret.ExecTraceBytes) != 0 {
+		var fvmEt FvmExecutionTrace
+		if err = fvmEt.UnmarshalCBOR(bytes.NewReader(ret.ExecTraceBytes)); err != nil {
+			return nil, xerrors.Errorf("failed to unmarshal exectrace: %w", err)
+		}
+		et = fvmEt.ToExecutionTrace()
+	} else {
+		et.Msg = vmMsg
+		et.MsgRct = &receipt
+		et.Duration = duration
+		if aerr != nil {
+			et.Error = aerr.Error()
+		}
+	}
+
 	applyRet := &vm.Ret{
-		Receipt: types.MessageReceipt{
-			Return:   ret.Return,
-			ExitCode: exitcode.ExitCode(ret.ExitCode),
-			GasUsed:  ret.GasUsed,
-		},
+		Receipt:  receipt,
 		OutPuts:  gas.GasOutputs{},
 		ActorErr: aerr,
 		GasTracker: &gas.GasTracker{
-			ExecutionTrace: et.ToExecutionTrace(),
+			ExecutionTrace: et,
 		},
 		Duration: time.Since(start),
 	}
