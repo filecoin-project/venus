@@ -1,9 +1,7 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
@@ -41,14 +39,7 @@ var cidFromCarCmd = &cmds.Command{
 			return err
 		}
 
-		data, err := io.ReadAll(f)
-		if err != nil {
-			return xerrors.Errorf("error reading car file: %w", err)
-		}
-
-		blobr := bytes.NewReader(data)
-
-		hdr, err := car.LoadCar(ctx, bs, blobr)
+		hdr, err := car.LoadCar(ctx, bs, f)
 		if err != nil {
 			return xerrors.Errorf("error loading car file: %w", err)
 		}
