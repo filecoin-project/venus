@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/gen"
@@ -73,7 +74,7 @@ var genesisNewCmd = &cmds.Command{
 		}
 		networkName, _ := req.Options["network-name"].(string)
 		out := genesis.Template{
-			NetworkVersion:   constants.NewestNetworkVersion,
+			NetworkVersion:   networks.Net2k().Network.GenesisNetworkVersion,
 			Accounts:         []genesis.Actor{},
 			Miners:           []genesis.Miner{},
 			VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
@@ -555,7 +556,7 @@ var preSealCmd = &cmds.Command{
 		cmds.IntOption("sector-offset", "how many sector ids to skip when starting to seal").WithDefault(int(0)),
 		cmds.StringOption("key", "(optional) Key to use for signing / owner/worker addresses").WithDefault(""),
 		cmds.BoolOption("fake-sectors", "").WithDefault(false),
-		cmds.IntOption("network-version", "specify network version").WithDefault(int(-1)),
+		cmds.IntOption("network-version", "specify network version").WithDefault(int(networks.Net2k().Network.GenesisNetworkVersion)),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		sdir, _ := req.Options["sector-dir"].(string)
@@ -593,7 +594,7 @@ var preSealCmd = &cmds.Command{
 		}
 		sectorSize := abi.SectorSize(sectorSizeInt)
 
-		nv := constants.NewestNetworkVersion
+		nv := networks.Net2k().Network.GenesisNetworkVersion
 		ver, _ := req.Options["network-version"].(int)
 		if ver >= 0 {
 			nv = network.Version(ver)

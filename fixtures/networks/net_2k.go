@@ -43,7 +43,7 @@ func Net2k() *NetworkConf {
 				UpgradeHyperdriveHeight: -16,
 				UpgradeChocolateHeight:  -17,
 				UpgradeOhSnapHeight:     -18,
-				UpgradeSkyrHeight:       -19,
+				UpgradeSkyrHeight:       100,
 
 				BreezeGasTampingDuration: 0,
 				UpgradeClausHeight:       -11,
