@@ -44,7 +44,7 @@ func (t *GasTracker) Charge(gas GasCharge, msg string, args ...interface{}) {
 }
 
 // EnableDetailedTracing, if true, outputs gas tracing in execution traces.
-var EnableDetailedTracing = os.Getenv("VENUS_VM_ENABLE_GAS_TRACING_VERY_SLOW") == "1"
+var EnableDetailedTracing = os.Getenv("VENUS_VM_ENABLE_TRACING") == "1"
 
 // TryCharge charges `amount` or `RemainingGas()``, whichever is smaller.
 //
