@@ -14,7 +14,7 @@ import (
 // Add should be called when a new k,v is added to the array
 // Modify should be called when a value is modified in the array
 // Remove should be called when a value is removed from the array
-type AdtArrayDiff interface {
+type AdtArrayDiff interface { // nolint
 	Add(key uint64, val *typegen.Deferred) error
 	Modify(key uint64, from, to *typegen.Deferred) error
 	Remove(key uint64, val *typegen.Deferred) error
@@ -70,7 +70,7 @@ func DiffAdtArray(preArr, curArr Array, out AdtArrayDiff) error {
 // Add should be called when a new k,v is added to the map
 // Modify should be called when a value is modified in the map
 // Remove should be called when a value is removed from the map
-type AdtMapDiff interface {
+type AdtMapDiff interface { // nolint
 	AsKey(key string) (abi.Keyer, error)
 	Add(key string, val *typegen.Deferred) error
 	Modify(key string, from, to *typegen.Deferred) error

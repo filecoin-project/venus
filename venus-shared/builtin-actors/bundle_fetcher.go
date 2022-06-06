@@ -140,21 +140,18 @@ func (b *BundleFetcher) fetchURL(url, path string) error {
 }
 
 func (b *BundleFetcher) fetchFromRelease(release, bundleBasePath, bundleFile, bundleHash string) error {
-	bundleHashUrl := fmt.Sprintf("https://github.com/filecoin-project/builtin-actors/releases/download/%s/%s",
+	bundleHashURL := fmt.Sprintf("https://github.com/filecoin-project/builtin-actors/releases/download/%s/%s",
 		release, bundleHash)
 	bundleHashPath := filepath.Join(bundleBasePath, bundleHash)
-	if err := b.fetchURL(bundleHashUrl, bundleHashPath); err != nil {
+	if err := b.fetchURL(bundleHashURL, bundleHashPath); err != nil {
 		return err
 	}
 
-	bundleFileUrl := fmt.Sprintf("https://github.com/filecoin-project/builtin-actors/releases/download/%s/%s",
+	bundleFileURL := fmt.Sprintf("https://github.com/filecoin-project/builtin-actors/releases/download/%s/%s",
 		release, bundleFile)
 	bundleFilePath := filepath.Join(bundleBasePath, bundleFile)
-	if err := b.fetchURL(bundleFileUrl, bundleFilePath); err != nil {
-		return err
-	}
 
-	return nil
+	return b.fetchURL(bundleFileURL, bundleFilePath)
 }
 
 func (b *BundleFetcher) fetchFromURL(bundleBasePath, bundleFile, url string) error {

@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors"
 )
 
-type BuiltinActorsLoaded struct{}
+type BuiltinActorsLoaded struct{} // nolint
 
 func LoadBuiltinActors(ctx context.Context, repoPath string, bs blockstoreutil.Blockstore, ds dstore.Batching) (result BuiltinActorsLoaded, err error) {
 	// We can't put it as a dep in inputs causes a stack overflow in DI from circular dependency

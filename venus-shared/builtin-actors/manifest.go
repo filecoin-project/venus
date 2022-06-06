@@ -121,9 +121,5 @@ func FetchAndLoadBundles(ctx context.Context, bs blockstore.Blockstore, bar map[
 	}
 
 	cborStore := cbor.NewCborStore(bs)
-	if err := actors.LoadManifests(ctx, cborStore); err != nil {
-		return err
-	}
-
-	return nil
+	return actors.LoadManifests(ctx, cborStore)
 }

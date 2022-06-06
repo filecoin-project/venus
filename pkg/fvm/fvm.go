@@ -45,7 +45,7 @@ var fvmLog = logging.Logger("fvm")
 var _ vm.Interface = (*FVM)(nil)
 var _ ffi_cgo.Externs = (*FvmExtern)(nil)
 
-type FvmExtern struct {
+type FvmExtern struct { // nolint
 	Rand
 	blockstoreutil.Blockstore
 	epoch            abi.ChainEpoch
@@ -55,7 +55,7 @@ type FvmExtern struct {
 }
 
 // This may eventually become identical to ExecutionTrace, but we can make incremental progress towards that
-type FvmExecutionTrace struct {
+type FvmExecutionTrace struct { // nolint
 	Msg    *types.Message
 	MsgRct *types.MessageReceipt
 	Error  string

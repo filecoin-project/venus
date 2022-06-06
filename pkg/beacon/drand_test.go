@@ -28,9 +28,9 @@ func TestPrintGroupInfo(t *testing.T) {
 }
 
 func TestMaxBeaconRoundForEpoch(t *testing.T) {
-	todayTs := uint64(1652222222)
+	todayTS := uint64(1652222222)
 	drandCfg := config.DrandConfigs[config.DrandDevnet]
-	db, err := NewDrandBeacon(todayTs, config.NewDefaultConfig().NetworkParams.BlockDelay, drandCfg)
+	db, err := NewDrandBeacon(todayTS, config.NewDefaultConfig().NetworkParams.BlockDelay, drandCfg)
 	assert.NoError(t, err)
 	mbr15 := db.MaxBeaconRoundForEpoch(network.Version15, 100)
 	mbr16 := db.MaxBeaconRoundForEpoch(network.Version16, 100)

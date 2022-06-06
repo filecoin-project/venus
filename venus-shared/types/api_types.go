@@ -308,7 +308,7 @@ type MinerInfo struct {
 	NewWorker                  address.Address   // Must be an ID-address.
 	ControlAddresses           []address.Address // Must be an ID-addresses.
 	WorkerChangeEpoch          abi.ChainEpoch
-	PeerId                     *peer.ID
+	PeerId                     *peer.ID // nolint
 	Multiaddrs                 []abi.Multiaddrs
 	WindowPoStProofType        abi.RegisteredPoStProof
 	SectorSize                 abi.SectorSize

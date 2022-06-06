@@ -742,16 +742,3 @@ func currentEpochBlockReward(ctx context.Context, vm vm.Interface, maddr address
 
 	return epochReward.ThisEpochBaselinePower, builtin.FilterEstimate(epochReward.ThisEpochRewardSmoothed), nil
 }
-
-// todo what is actually called here is vmi.vmOption.CircSupplyCalculator(context.TODO(), height, st) -> L55, So there is no structure UnsafeVM ???
-func circSupply(ctx context.Context, vmi vm.Interpreter, maddr address.Address) abi.TokenAmount {
-	//unsafeVM := &vm.UnsafeVM{LegacyVM: vmi.}
-	//rt := unsafeVM.MakeRuntime(ctx, &types.Message{
-	//	GasLimit: 1_000_000_000,
-	//	From:     maddr,
-	//})
-	//
-	//return rt.TotalFilCircSupply()
-
-	return big.Zero()
-}
