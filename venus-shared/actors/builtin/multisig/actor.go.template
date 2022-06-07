@@ -7,7 +7,6 @@ import (
 
 	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -30,7 +29,7 @@ import (
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
        if name != actors.MultisigKey {
-          return nil, xerrors.Errorf("actor code is not multisig: %s", name)
+          return nil, fmt.Errorf("actor code is not multisig: %s", name)
        }
 
        switch av {
@@ -52,7 +51,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 {{end}}
 	}
 
-	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+	return nil, fmt.Errorf("unknown actor code %s", act.Code)
 }
 
 func MakeState(store adt.Store, av actors.Version, signers []address.Address, threshold uint64, startEpoch abi.ChainEpoch, unlockDuration abi.ChainEpoch, initialBalance abi.TokenAmount) (State, error) {
@@ -62,7 +61,7 @@ func MakeState(store adt.Store, av actors.Version, signers []address.Address, th
 		return make{{.}}(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 {{end}}
 }
-	return nil, xerrors.Errorf("unknown actor version %d", av)
+	return nil, fmt.Errorf("unknown actor version %d", av)
 }
 
 type State interface {
@@ -124,13 +123,13 @@ func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
 	params := msig{{.latestVersion}}.TxnIDParams{ID: msig{{.latestVersion}}.TxnID(id)}
 	if data != nil {
 		if data.Requester.Protocol() != address.ID {
-			return nil, xerrors.Errorf("proposer address must be an ID address, was %s", data.Requester)
+			return nil, fmt.Errorf("proposer address must be an ID address, was %s", data.Requester)
 		}
 		if data.Value.Sign() == -1 {
-			return nil, xerrors.Errorf("proposal value must be non-negative, was %s", data.Value)
+			return nil, fmt.Errorf("proposal value must be non-negative, was %s", data.Value)
 		}
 		if data.To == address.Undef {
-			return nil, xerrors.Errorf("proposed destination address must be set")
+			return nil, fmt.Errorf("proposed destination address must be set")
 		}
 		pser, err := data.Serialize()
 		if err != nil {

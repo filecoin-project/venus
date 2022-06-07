@@ -3,8 +3,9 @@
 package init
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -39,7 +40,7 @@ var (
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
 		if name != actors.InitKey {
-			return nil, xerrors.Errorf("actor code is not init: %s", name)
+			return nil, fmt.Errorf("actor code is not init: %s", name)
 		}
 
 		switch av {
@@ -75,7 +76,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	}
 
-	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+	return nil, fmt.Errorf("unknown actor code %s", act.Code)
 }
 
 func MakeState(store adt.Store, av actors.Version, networkName string) (State, error) {
@@ -106,7 +107,7 @@ func MakeState(store adt.Store, av actors.Version, networkName string) (State, e
 		return make8(store, networkName)
 
 	}
-	return nil, xerrors.Errorf("unknown actor version %d", av)
+	return nil, fmt.Errorf("unknown actor version %d", av)
 }
 
 type State interface {

@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
@@ -100,7 +98,7 @@ var msgSendCmd = &cmds.Command{
 		v := req.Arguments[1]
 		val, err := types.ParseFIL(v)
 		if err != nil {
-			return xerrors.Errorf("mal-formed value: %v", err)
+			return fmt.Errorf("mal-formed value: %v", err)
 		}
 
 		methodID := builtin.MethodSend
@@ -161,7 +159,7 @@ var msgSendCmd = &cmds.Command{
 		if nonceOption != nil {
 			nonce, ok := nonceOption.(uint64)
 			if !ok {
-				return xerrors.Errorf("invalid nonce option: %v", nonceOption)
+				return fmt.Errorf("invalid nonce option: %v", nonceOption)
 			}
 			msg.Nonce = nonce
 

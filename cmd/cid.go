@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipld/go-car"
-	"golang.org/x/xerrors"
 )
 
 var cidCmd = &cmds.Command{
@@ -31,7 +30,7 @@ var cidFromCarCmd = &cmds.Command{
 
 		f, err := os.OpenFile(req.Arguments[0], os.O_RDONLY, 0664)
 		if err != nil {
-			return xerrors.Errorf("opening the car file: %w", err)
+			return fmt.Errorf("opening the car file: %w", err)
 		}
 
 		bs := blockstoreutil.NewMemory()
@@ -41,7 +40,7 @@ var cidFromCarCmd = &cmds.Command{
 
 		hdr, err := car.LoadCar(ctx, bs, f)
 		if err != nil {
-			return xerrors.Errorf("error loading car file: %w", err)
+			return fmt.Errorf("error loading car file: %w", err)
 		}
 
 		manifestCid := hdr.Roots[0]

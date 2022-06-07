@@ -11,7 +11,6 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/minio/blake2b-simd"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -55,7 +54,7 @@ func NewSyscalls(faultChecker faultChecker, verifier ffiwrapper.Verifier) *Sysca
 func (s *Syscalls) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) error {
 	ok, err := s.verifier.VerifyReplicaUpdate(update)
 	if err != nil {
-		return xerrors.Errorf("failed to verify replica update: %w", err)
+		return fmt.Errorf("failed to verify replica update: %w", err)
 	}
 
 	if !ok {
@@ -130,7 +129,7 @@ func (s *Syscalls) BatchVerifySeals(ctx context.Context, vis map[address.Address
 func (s *Syscalls) VerifyAggregateSeals(aggregate proof7.AggregateSealVerifyProofAndInfos) error {
 	ok, err := s.verifier.VerifyAggregateSeals(aggregate)
 	if err != nil {
-		return xerrors.Errorf("failed to verify aggregated PoRep: %w", err)
+		return fmt.Errorf("failed to verify aggregated PoRep: %w", err)
 	}
 	if !ok {
 		return fmt.Errorf("invalid aggregate proof")

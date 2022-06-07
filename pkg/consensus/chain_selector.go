@@ -6,13 +6,13 @@ package consensus
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 
 	logging "github.com/ipfs/go-log/v2"
 
 	fbig "github.com/filecoin-project/go-state-types/big"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/state"
@@ -54,7 +54,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts *types.TipSet) (fbig.Int,
 		log2P = int64(networkPower.BitLen() - 1)
 	} else {
 		// Not really expect to be here ...
-		return fbig.Zero(), xerrors.Errorf("All power in the net is gone. You network might be disconnected, or the net is dead!")
+		return fbig.Zero(), fmt.Errorf("all power in the net is gone. You network might be disconnected, or the net is dead")
 	}
 
 	weight := ts.ParentWeight()

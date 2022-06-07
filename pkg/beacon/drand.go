@@ -3,6 +3,8 @@ package beacon
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	dchain "github.com/drand/drand/chain"
@@ -13,7 +15,6 @@ import (
 	kzap "github.com/go-kit/kit/log/zap"
 	lru "github.com/hashicorp/golang-lru"
 	"go.uber.org/zap/zapcore"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
@@ -53,7 +54,7 @@ type DrandHTTPClient interface {
 func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*DrandBeacon, error) {
 	drandChain, err := dchain.InfoFromJSON(bytes.NewReader([]byte(config.ChainInfoJSON)))
 	if err != nil {
-		return nil, xerrors.Errorf("unable to unmarshal drand chain info: %w", err)
+		return nil, fmt.Errorf("unable to unmarshal drand chain info: %w", err)
 	}
 
 	dlogger := dlog.NewKitLoggerFrom(kzap.NewZapSugarLogger(
@@ -63,7 +64,7 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 	for _, url := range config.Servers {
 		hc, err := hclient.NewWithInfo(url, drandChain, nil)
 		if err != nil {
-			return nil, xerrors.Errorf("could not create http drand client: %w", err)
+			return nil, fmt.Errorf("could not create http drand client: %w", err)
 		}
 		hc.(DrandHTTPClient).SetUserAgent("drand-client-lotus/" + constants.BuildVersion)
 		clients = append(clients, hc)
@@ -80,7 +81,7 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 
 	client, err := dclient.Wrap(clients, opts...)
 	if err != nil {
-		return nil, xerrors.Errorf("creating drand client: %v", err)
+		return nil, fmt.Errorf("creating drand client: %v", err)
 	}
 
 	lc, err := lru.New(1024)
@@ -121,7 +122,7 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan Response 
 
 		var br Response
 		if err != nil {
-			br.Err = xerrors.Errorf("drand failed Get request: %w", err)
+			br.Err = fmt.Errorf("drand failed Get request: %w", err)
 		} else {
 			br.Entry.Round = resp.Round()
 			br.Entry.Data = resp.Signature()
@@ -153,7 +154,7 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 	}
 	if be := db.getCachedValue(curr.Round); be != nil {
 		if !bytes.Equal(curr.Data, be.Data) {
-			return xerrors.New("invalid beacon value, does not match cached good value")
+			return errors.New("invalid beacon value, does not match cached good value")
 		}
 		// return no error if the value is in the cache already
 		return nil

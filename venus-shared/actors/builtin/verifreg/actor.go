@@ -3,7 +3,7 @@
 package verifreg
 
 import (
-	"golang.org/x/xerrors"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -39,7 +39,7 @@ var (
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
 		if name != actors.VerifregKey {
-			return nil, xerrors.Errorf("actor code is not verifreg: %s", name)
+			return nil, fmt.Errorf("actor code is not verifreg: %s", name)
 		}
 
 		switch av {
@@ -75,7 +75,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	}
 
-	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+	return nil, fmt.Errorf("unknown actor code %s", act.Code)
 }
 
 func MakeState(store adt.Store, av actors.Version, rootKeyAddress address.Address) (State, error) {
@@ -106,7 +106,7 @@ func MakeState(store adt.Store, av actors.Version, rootKeyAddress address.Addres
 		return make8(store, rootKeyAddress)
 
 	}
-	return nil, xerrors.Errorf("unknown actor version %d", av)
+	return nil, fmt.Errorf("unknown actor version %d", av)
 }
 
 type State interface {

@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/repo"
 )
@@ -115,7 +113,7 @@ func (f *fsJournal) rollJournalFile() error {
 
 	nfi, err := os.Create(filepath.Join(f.dir, fmt.Sprintf("lotus-journal-%s.ndjson", constants.Clock.Now().Format(RFC3339nocolon))))
 	if err != nil {
-		return xerrors.Errorf("failed to open journal file: %w", err)
+		return fmt.Errorf("failed to open journal file: %w", err)
 	}
 
 	f.fi = nfi

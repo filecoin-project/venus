@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -14,7 +15,6 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/fork"
@@ -222,7 +222,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (ci
 
 	receiptCid, err := c.messageStore.StoreReceipts(ctx, receipts)
 	if err != nil {
-		return cid.Undef, cid.Undef, xerrors.Errorf("failed to save receipt: %v", err)
+		return cid.Undef, cid.Undef, fmt.Errorf("failed to save receipt: %v", err)
 	}
 
 	return root, receiptCid, nil

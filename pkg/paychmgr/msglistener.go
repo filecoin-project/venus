@@ -1,7 +1,7 @@
 package paychmgr
 
 import (
-	"golang.org/x/xerrors"
+	"fmt"
 
 	"github.com/hannahhoward/go-pubsub"
 
@@ -23,11 +23,11 @@ func newMsgListeners() msgListeners {
 	ps := pubsub.New(func(event pubsub.Event, subFn pubsub.SubscriberFn) error {
 		evt, ok := event.(msgCompleteEvt)
 		if !ok {
-			return xerrors.Errorf("wrong type of event")
+			return fmt.Errorf("wrong type of event")
 		}
 		sub, ok := subFn.(subscriberFn)
 		if !ok {
-			return xerrors.Errorf("wrong type of subscriber")
+			return fmt.Errorf("wrong type of subscriber")
 		}
 		sub(evt)
 		return nil

@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	logging "github.com/ipfs/go-log/v2"
 )
 
@@ -27,7 +25,7 @@ type BundleFetcher struct {
 func NewBundleFetcher(basepath string) (*BundleFetcher, error) {
 	path := filepath.Join(basepath, "builtin-actors")
 	if err := os.MkdirAll(path, 0755); err != nil {
-		return nil, xerrors.Errorf("error making bundle directory %s: %w", path, err)
+		return nil, fmt.Errorf("error making bundle directory %s: %w", path, err)
 	}
 
 	return &BundleFetcher{path: path}, nil
@@ -40,7 +38,7 @@ func (b *BundleFetcher) FetchFromRelease(version int, release, netw string) (pat
 	bundleBasePath := filepath.Join(b.path, fmt.Sprintf("v%d", version), release)
 
 	if err := os.MkdirAll(bundleBasePath, 0755); err != nil {
-		return "", xerrors.Errorf("error making bundle directory %s: %w", bundleBasePath, err)
+		return "", fmt.Errorf("error making bundle directory %s: %w", bundleBasePath, err)
 	}
 
 	// check if it exists; if it does, check the hash
@@ -57,12 +55,12 @@ func (b *BundleFetcher) FetchFromRelease(version int, release, netw string) (pat
 	fmt.Println("fetching bundle ", bundleFile)
 	if err := b.fetchFromRelease(release, bundleBasePath, bundleFile, bundleHash); err != nil {
 		log.Errorf("error fetching bundle %s: %s", bundleName, err)
-		return "", xerrors.Errorf("error fetching bundle: %w", err)
+		return "", fmt.Errorf("error fetching bundle: %w", err)
 	}
 
 	if err := b.checkRelease(bundleBasePath, bundleFile, bundleHash); err != nil {
 		log.Errorf("error checking bundle %s: %s", bundleName, err)
-		return "", xerrors.Errorf("error checking bundle: %s", err)
+		return "", fmt.Errorf("error checking bundle: %s", err)
 	}
 
 	return bundleFilePath, nil
@@ -74,7 +72,7 @@ func (b *BundleFetcher) FetchFromURL(version int, release, netw, url, cksum stri
 	bundleBasePath := filepath.Join(b.path, fmt.Sprintf("v%d", version), release)
 
 	if err := os.MkdirAll(bundleBasePath, 0755); err != nil {
-		return "", xerrors.Errorf("error making bundle directory %s: %w", bundleBasePath, err)
+		return "", fmt.Errorf("error making bundle directory %s: %w", bundleBasePath, err)
 	}
 
 	// check if it exists; if it does, check the hash
@@ -91,12 +89,12 @@ func (b *BundleFetcher) FetchFromURL(version int, release, netw, url, cksum stri
 	fmt.Println("fetching bundle ", bundleFile)
 	if err := b.fetchFromURL(bundleBasePath, bundleFile, url); err != nil {
 		log.Errorf("error fetching bundle %s: %s", bundleName, err)
-		return "", xerrors.Errorf("error fetching bundle: %w", err)
+		return "", fmt.Errorf("error fetching bundle: %w", err)
 	}
 
 	if err := b.checkHash(bundleBasePath, bundleFile, cksum); err != nil {
 		log.Errorf("error checking bundle %s: %s", bundleName, err)
-		return "", xerrors.Errorf("error checking bundle: %s", err)
+		return "", fmt.Errorf("error checking bundle: %s", err)
 	}
 
 	return bundleFilePath, nil
@@ -113,7 +111,7 @@ func (b *BundleFetcher) fetchURL(url, path string) error {
 				time.Sleep(time.Second)
 				continue
 			}
-			return xerrors.Errorf("error fetching %s: %w", url, err)
+			return fmt.Errorf("error fetching %s: %w", url, err)
 		}
 		defer resp.Body.Close() //nolint
 
@@ -125,18 +123,18 @@ func (b *BundleFetcher) fetchURL(url, path string) error {
 
 		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
-			return xerrors.Errorf("error opening %s for writing: %w", path, err)
+			return fmt.Errorf("error opening %s for writing: %w", path, err)
 		}
 		defer f.Close() //nolint
 
 		if _, err := io.Copy(f, resp.Body); err != nil {
-			return xerrors.Errorf("error writing %s: %w", path, err)
+			return fmt.Errorf("error writing %s: %w", path, err)
 		}
 
 		return nil
 	}
 
-	return xerrors.Errorf("all attempts to fetch %s failed", url)
+	return fmt.Errorf("all attempts to fetch %s failed", url)
 }
 
 func (b *BundleFetcher) fetchFromRelease(release, bundleBasePath, bundleFile, bundleHash string) error {
@@ -163,13 +161,13 @@ func (b *BundleFetcher) checkRelease(bundleBasePath, bundleFile, bundleHash stri
 	bundleHashPath := filepath.Join(bundleBasePath, bundleHash)
 	f, err := os.Open(bundleHashPath)
 	if err != nil {
-		return xerrors.Errorf("error opening %s: %w", bundleHashPath, err)
+		return fmt.Errorf("error opening %s: %w", bundleHashPath, err)
 	}
 	defer f.Close() //nolint
 
 	bs, err := io.ReadAll(f)
 	if err != nil {
-		return xerrors.Errorf("error reading %s: %w", bundleHashPath, err)
+		return fmt.Errorf("error reading %s: %w", bundleHashPath, err)
 	}
 
 	parts := strings.Split(string(bs), " ")
@@ -181,24 +179,24 @@ func (b *BundleFetcher) checkRelease(bundleBasePath, bundleFile, bundleHash stri
 func (b *BundleFetcher) checkHash(bundleBasePath, bundleFile, cksum string) error {
 	expectedDigest, err := hex.DecodeString(cksum)
 	if err != nil {
-		return xerrors.Errorf("error decoding digest from %s: %w", cksum, err)
+		return fmt.Errorf("error decoding digest from %s: %w", cksum, err)
 	}
 
 	bundleFilePath := filepath.Join(bundleBasePath, bundleFile)
 	f, err := os.Open(bundleFilePath)
 	if err != nil {
-		return xerrors.Errorf("error opening %s: %w", bundleFilePath, err)
+		return fmt.Errorf("error opening %s: %w", bundleFilePath, err)
 	}
 	defer f.Close() //nolint
 
 	h256 := sha256.New()
 	if _, err := io.Copy(h256, f); err != nil {
-		return xerrors.Errorf("error computing digest for %s: %w", bundleFilePath, err)
+		return fmt.Errorf("error computing digest for %s: %w", bundleFilePath, err)
 	}
 	digest := h256.Sum(nil)
 
 	if !bytes.Equal(digest, expectedDigest) {
-		return xerrors.Errorf("hash mismatch")
+		return fmt.Errorf("hash mismatch")
 	}
 
 	return nil

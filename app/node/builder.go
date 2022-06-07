@@ -2,12 +2,12 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
 	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/app/submodule/chain"
@@ -131,7 +131,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		}
 		builtin_actors.SetNetworkBundle(b.Repo().Config().NetworkParams.NetworkType)
 		if _, err := builtin_actors.LoadBuiltinActors(ctx, repoPath, b.Repo().Datastore(), b.Repo().MetaDatastore()); err != nil {
-			return nil, xerrors.Errorf("failed to load builtin actors %v", err)
+			return nil, fmt.Errorf("failed to load builtin actors %v", err)
 		}
 	}
 
@@ -210,7 +210,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if nd.remoteAuth != nil && cfg.RateLimitCfg.Enable {
 		if ratelimiter, err = ratelimit.NewRateLimitHandler(cfg.RateLimitCfg.Endpoint,
 			nil, &jwtauth.ValueFromCtx{}, nd.remoteAuth, logging.Logger("rate-limit")); err != nil {
-			return nil, xerrors.Errorf("request rate-limit is enabled, but create rate-limit handler failed:%w", err)
+			return nil, fmt.Errorf("request rate-limit is enabled, but create rate-limit handler failed:%w", err)
 		}
 		_ = logging.SetLogLevel("rate-limit", "warn")
 	}

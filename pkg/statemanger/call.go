@@ -2,6 +2,7 @@ package statemanger
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/filecoin-project/venus/pkg/fvm"
@@ -19,7 +20,6 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
@@ -45,7 +45,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 		for ts.Height() > 0 {
 			pts, err := s.cs.GetTipSet(ctx, ts.Parents())
 			if err != nil {
-				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
+				return nil, fmt.Errorf("failed to find a non-forking epoch: %w", err)
 			}
 			if !s.fork.HasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
 				break
@@ -56,7 +56,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 	} else if ts.Height() > 0 {
 		pts, err := s.cs.GetTipSet(ctx, ts.Parents())
 		if err != nil {
-			return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
+			return nil, fmt.Errorf("failed to find a non-forking epoch: %w", err)
 		}
 		if s.fork.HasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
 			return nil, fork.ErrExpensiveFork
@@ -105,7 +105,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 	for i, m := range priorMsgs {
 		_, err := vmi.ApplyMessage(ctx, m)
 		if err != nil {
-			return nil, xerrors.Errorf("applying prior message (%d): %v", i, err)
+			return nil, fmt.Errorf("applying prior message (%d): %v", i, err)
 		}
 	}
 
@@ -113,26 +113,26 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 	// This is needed to get the correct nonce from the actor state to match the VM
 	stateRoot, err = vmi.Flush(ctx)
 	if err != nil {
-		return nil, xerrors.Errorf("flushing vm: %w", err)
+		return nil, fmt.Errorf("flushing vm: %w", err)
 	}
 
 	stTree, err := tree.LoadState(ctx, cbor.NewCborStore(buffStore), stateRoot)
 	if err != nil {
-		return nil, xerrors.Errorf("loading state tree: %w", err)
+		return nil, fmt.Errorf("loading state tree: %w", err)
 	}
 
 	fromActor, found, err := stTree.GetActor(ctx, msg.VMMessage().From)
 	if err != nil {
-		return nil, xerrors.Errorf("get actor failed: %s", err)
+		return nil, fmt.Errorf("get actor failed: %s", err)
 	}
 	if !found {
-		return nil, xerrors.New("actor not found")
+		return nil, errors.New("actor not found")
 	}
 	msg.Nonce = fromActor.Nonce
 
 	fromKey, err := view.ResolveToKeyAddr(ctx, msg.VMMessage().From)
 	if err != nil {
-		return nil, xerrors.Errorf("could not resolve key: %v", err)
+		return nil, fmt.Errorf("could not resolve key: %v", err)
 	}
 
 	var msgApply types.ChainMsg
@@ -167,7 +167,7 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 		for ts.Height() > 0 {
 			pts, err := s.cs.GetTipSet(ctx, ts.Parents())
 			if err != nil {
-				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
+				return nil, fmt.Errorf("failed to find a non-forking epoch: %w", err)
 			}
 			if !s.fork.HasExpensiveFork(ctx, pts.Height()) {
 				pheight = pts.Height()
@@ -178,7 +178,7 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 	} else if ts.Height() > 0 {
 		pts, err := s.cs.GetTipSet(ctx, ts.Parents())
 		if err != nil {
-			return nil, xerrors.Errorf("failed to load parent tipset: %w", err)
+			return nil, fmt.Errorf("failed to load parent tipset: %w", err)
 		}
 		pheight = pts.Height()
 		if s.fork.HasExpensiveFork(ctx, pheight) {
@@ -242,12 +242,12 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 
 	st, err := tree.LoadState(ctx, cbor.NewCborStore(s.cs.Blockstore()), bstate)
 	if err != nil {
-		return nil, xerrors.Errorf("loading state: %v", err)
+		return nil, fmt.Errorf("loading state: %v", err)
 	}
 
 	fromActor, found, err := st.GetActor(ctx, msg.From)
 	if err != nil || !found {
-		return nil, xerrors.Errorf("call raw get actor: %s", err)
+		return nil, fmt.Errorf("call raw get actor: %s", err)
 	}
 
 	msg.Nonce = fromActor.Nonce

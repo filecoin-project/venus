@@ -6,8 +6,6 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
@@ -40,7 +38,7 @@ import (
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
 		if name != actors.PaychKey {
-			return nil, xerrors.Errorf("actor code is not paych: %s", name)
+			return nil, fmt.Errorf("actor code is not paych: %s", name)
 		}
 
 		switch av {
@@ -76,7 +74,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	}
 
-	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+	return nil, fmt.Errorf("unknown actor code %s", act.Code)
 }
 
 // State is an abstract version of payment channel state that works across

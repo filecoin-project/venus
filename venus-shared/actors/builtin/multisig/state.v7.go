@@ -6,11 +6,12 @@ import (
 	"bytes"
 	"encoding/binary"
 
+	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
@@ -88,7 +89,7 @@ func (s *state7) ForEachPendingTxn(cb func(id int64, txn Transaction) error) err
 	return arr.ForEach(&out, func(key string) error {
 		txid, n := binary.Varint([]byte(key))
 		if n <= 0 {
-			return xerrors.Errorf("invalid pending transaction key: %v", key)
+			return fmt.Errorf("invalid pending transaction key: %v", key)
 		}
 		return cb(txid, (Transaction)(out)) //nolint:unconvert
 	})

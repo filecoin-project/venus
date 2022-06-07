@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	"sync"
 	"testing"
 
@@ -241,7 +239,7 @@ func (fcs *fakeCS) ChainNotify(ctx context.Context) (<-chan []*types.HeadChange,
 	out := make(chan []*types.HeadChange, 1)
 	if fcs.subCh != nil {
 		close(out)
-		return out, xerrors.Errorf("already subscribed to notifications")
+		return out, fmt.Errorf("already subscribed to notifications")
 	}
 
 	best, err := fcs.tsc.ChainHead(ctx)

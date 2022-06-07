@@ -18,7 +18,6 @@ import (
 	lpaych "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	cmds "github.com/ipfs/go-ipfs-cmds"
-	"golang.org/x/xerrors"
 )
 
 var paychCmd = &cmds.Command{
@@ -134,7 +133,7 @@ var settleCmd = &cmds.Command{
 			return err
 		}
 		if mwait.Receipt.ExitCode != 0 {
-			return xerrors.Errorf("settle message execution failed (exit code %d)", mwait.Receipt.ExitCode)
+			return fmt.Errorf("settle message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 		return re.Emit(fmt.Sprintf("Settled channel %s", chanAddr))
 	},
@@ -209,7 +208,7 @@ var collectCmd = &cmds.Command{
 			return err
 		}
 		if mwait.Receipt.ExitCode != 0 {
-			return xerrors.Errorf("collect message execution failed (exit code %d)", mwait.Receipt.ExitCode)
+			return fmt.Errorf("collect message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
 		return re.Emit(fmt.Sprintf("Collected funds for channel %s", chanAddr))
@@ -243,7 +242,7 @@ var voucherCreateCmd = &cmds.Command{
 			return err
 		}
 		if res.Voucher == nil {
-			return xerrors.Errorf("Could not create voucher: insufficient funds in channel, shortfall: %d", res.Shortfall)
+			return fmt.Errorf("could not create voucher: insufficient funds in channel, shortfall: %d", res.Shortfall)
 		}
 		enc, err := encodedString(res.Voucher)
 		if err != nil {
@@ -391,7 +390,7 @@ var voucherSubmitCmd = &cmds.Command{
 			return err
 		}
 		if mwait.Receipt.ExitCode != 0 {
-			return xerrors.Errorf("message execution failed (exit code %d)", mwait.Receipt.ExitCode)
+			return fmt.Errorf("message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 		return re.Emit("channel updated successfully")
 	},

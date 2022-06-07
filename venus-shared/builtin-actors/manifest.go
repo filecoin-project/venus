@@ -7,7 +7,6 @@ import (
 
 	blockstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	"golang.org/x/xerrors"
 
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -17,12 +16,12 @@ import (
 func FetchAndLoadBundleFromRelease(ctx context.Context, basePath string, bs blockstore.Blockstore, av actors.Version, rel, netw string) (cid.Cid, error) {
 	fetcher, err := NewBundleFetcher(basePath)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("error creating fetcher for builtin-actors version %d: %w", av, err)
+		return cid.Undef, fmt.Errorf("error creating fetcher for builtin-actors version %d: %w", av, err)
 	}
 
 	path, err := fetcher.FetchFromRelease(int(av), rel, netw)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("error fetching bundle for builtin-actors version %d: %w", av, err)
+		return cid.Undef, fmt.Errorf("error fetching bundle for builtin-actors version %d: %w", av, err)
 	}
 
 	return LoadBundle(ctx, bs, path, av)
@@ -31,12 +30,12 @@ func FetchAndLoadBundleFromRelease(ctx context.Context, basePath string, bs bloc
 func FetchAndLoadBundleFromURL(ctx context.Context, basePath string, bs blockstore.Blockstore, av actors.Version, rel, netw, url, cksum string) (cid.Cid, error) {
 	fetcher, err := NewBundleFetcher(basePath)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("error creating fetcher for builtin-actors version %d: %w", av, err)
+		return cid.Undef, fmt.Errorf("error creating fetcher for builtin-actors version %d: %w", av, err)
 	}
 
 	path, err := fetcher.FetchFromURL(int(av), rel, netw, url, cksum)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("error fetching bundle for builtin-actors version %d: %w", av, err)
+		return cid.Undef, fmt.Errorf("error fetching bundle for builtin-actors version %d: %w", av, err)
 	}
 
 	return LoadBundle(ctx, bs, path, av)
@@ -45,13 +44,13 @@ func FetchAndLoadBundleFromURL(ctx context.Context, basePath string, bs blocksto
 func LoadBundle(ctx context.Context, bs blockstore.Blockstore, path string, av actors.Version) (cid.Cid, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("error opening bundle for builtin-actors version %d: %w", av, err)
+		return cid.Undef, fmt.Errorf("error opening bundle for builtin-actors version %d: %w", av, err)
 	}
 	defer f.Close() //nolint
 
 	hdr, err := car.LoadCar(ctx, bs, f)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("error loading builtin actors v%d bundle: %w", av, err)
+		return cid.Undef, fmt.Errorf("error loading builtin actors v%d bundle: %w", av, err)
 	}
 
 	// TODO: check that this only has one root?
@@ -59,14 +58,14 @@ func LoadBundle(ctx context.Context, bs blockstore.Blockstore, path string, av a
 
 	if val, ok := ActorsCIDs[av]; ok {
 		if val != manifestCid {
-			return cid.Undef, xerrors.Errorf("actors V%d manifest CID %s did not match CID given in params file: %s", av, manifestCid, val)
+			return cid.Undef, fmt.Errorf("actors V%d manifest CID %s did not match CID given in params file: %s", av, manifestCid, val)
 		}
 	}
 	actors.AddManifest(av, manifestCid)
 
 	mfCid, ok := actors.GetManifest(av)
 	if !ok {
-		return cid.Undef, xerrors.Errorf("missing manifest CID for builtin-actors vrsion %d", av)
+		return cid.Undef, fmt.Errorf("missing manifest CID for builtin-actors vrsion %d", av)
 	}
 
 	return mfCid, nil
@@ -80,7 +79,7 @@ func FetchAndLoadBundles(ctx context.Context, bs blockstore.Blockstore, bar map[
 
 	path := os.Getenv(BundleRepoPath)
 	if path == "" {
-		return xerrors.Errorf("failed to got env: %s", BundleRepoPath)
+		return fmt.Errorf("failed to got env: %s", BundleRepoPath)
 	}
 
 	for av, bd := range bar {

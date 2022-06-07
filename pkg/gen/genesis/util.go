@@ -2,9 +2,9 @@ package genesis
 
 import (
 	"context"
+	"fmt"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -33,11 +33,11 @@ func doExecValue(ctx context.Context, vmi vm.Interface, to, from address.Address
 		Nonce:    0,
 	})
 	if err != nil {
-		return nil, xerrors.Errorf("doExec apply message failed: %w", err)
+		return nil, fmt.Errorf("doExec apply message failed: %w", err)
 	}
 
 	if ret.Receipt.ExitCode != 0 {
-		return nil, xerrors.Errorf("failed to call method: %w", ret.Receipt.String())
+		return nil, fmt.Errorf("failed to call method: %s", ret.Receipt.String())
 	}
 
 	return ret.Receipt.Return, nil

@@ -2,12 +2,12 @@ package events
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 )
 
 type heightHandler struct {
@@ -52,7 +52,7 @@ func newHeightEvents(api IEvent, obs *observer, gcConfidence abi.ChainEpoch) *he
 func (e *heightEvents) ChainAt(ctx context.Context, hnd HeightHandler, rev RevertHandler, confidence int, h abi.ChainEpoch) error {
 	if abi.ChainEpoch(confidence) > e.gcConfidence {
 		// Need this to be able to GC effectively.
-		return xerrors.Errorf("confidence cannot be greater than gcConfidence: %d > %d", confidence, e.gcConfidence)
+		return fmt.Errorf("confidence cannot be greater than gcConfidence: %d > %d", confidence, e.gcConfidence)
 	}
 	handler := &heightHandler{
 		height: h,
@@ -84,7 +84,7 @@ func (e *heightEvents) ChainAt(ctx context.Context, hnd HeightHandler, rev Rever
 				var err error
 				ts, err = e.api.ChainGetTipSetAfterHeight(ctx, handler.height, head.Key())
 				if err != nil {
-					return xerrors.Errorf("events.ChainAt: failed to get tipset: %s", err)
+					return fmt.Errorf("events.ChainAt: failed to get tipset: %s", err)
 				}
 			}
 

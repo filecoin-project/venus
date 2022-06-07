@@ -17,7 +17,6 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
 
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/state/tree"
@@ -89,7 +88,7 @@ func NewLegacyVM(ctx context.Context, actorImpls ActorImplLookup, vmOption VmOpt
 		//just for chain gen
 		st, err = tree.NewState(cst, tree.StateTreeVersion1)
 		if err != nil {
-			panic(xerrors.Errorf("create state error, should never come here"))
+			panic(fmt.Errorf("create state error, should never come here"))
 		}
 	} else {
 		st, err = tree.LoadState(context.Background(), cst, vmOption.PRoot)
@@ -342,7 +341,7 @@ func (vm *LegacyVM) applyMessage(msg *types.Message, onChainMsgSize int) (*Ret, 
 
 	gasHolder := &types.Actor{Balance: big.NewInt(0)}
 	if err := vm.transferToGasHolder(msg.From, gasHolder, gasLimitCost); err != nil {
-		return nil, xerrors.Errorf("failed To withdraw gas funds: %w", err)
+		return nil, fmt.Errorf("failed To withdraw gas funds: %w", err)
 	}
 
 	// 5. increment sender Nonce
@@ -429,30 +428,30 @@ func (vm *LegacyVM) applyMessage(msg *types.Message, onChainMsgSize int) (*Ret, 
 
 	burn, err := vm.shouldBurn(vm.context, msg, code)
 	if err != nil {
-		return nil, xerrors.Errorf("deciding whether should burn failed: %w", err)
+		return nil, fmt.Errorf("deciding whether should burn failed: %w", err)
 	}
 
 	gasOutputs := gas.ComputeGasOutputs(gasUsed, msg.GasLimit, vm.vmOption.BaseFee, msg.GasFeeCap, msg.GasPremium, burn)
 
 	if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder, gasOutputs.BaseFeeBurn); err != nil {
-		return nil, xerrors.Errorf("failed To burn base fee: %w", err)
+		return nil, fmt.Errorf("failed To burn base fee: %w", err)
 	}
 
 	if err := vm.transferFromGasHolder(reward.Address, gasHolder, gasOutputs.MinerTip); err != nil {
-		return nil, xerrors.Errorf("failed To give miner gas reward: %w", err)
+		return nil, fmt.Errorf("failed To give miner gas reward: %w", err)
 	}
 
 	if err := vm.transferFromGasHolder(builtin.BurntFundsActorAddr, gasHolder, gasOutputs.OverEstimationBurn); err != nil {
-		return nil, xerrors.Errorf("failed To burn overestimation fee: %w", err)
+		return nil, fmt.Errorf("failed To burn overestimation fee: %w", err)
 	}
 
 	// refund unused gas
 	if err := vm.transferFromGasHolder(msg.From, gasHolder, gasOutputs.Refund); err != nil {
-		return nil, xerrors.Errorf("failed To refund gas: %w", err)
+		return nil, fmt.Errorf("failed To refund gas: %w", err)
 	}
 
 	if big.Cmp(big.NewInt(0), gasHolder.Balance) != 0 {
-		return nil, xerrors.Errorf("gas handling math is wrong")
+		return nil, fmt.Errorf("gas handling math is wrong")
 	}
 
 	// 3. Success!
@@ -478,9 +477,9 @@ func (vm *LegacyVM) shouldBurn(ctx context.Context, msg *types.Message, errcode 
 			// the trace, but I'm not sure if that's safe?
 			if toActor, _, err := vm.State.GetActor(vm.context, msg.To); err != nil {
 				// If the actor wasn't found, we probably deleted it or something. Move on.
-				if !xerrors.Is(err, types.ErrActorNotFound) {
+				if !errors.Is(err, types.ErrActorNotFound) {
 					// Otherwise, this should never fail and something is very wrong.
-					return false, xerrors.Errorf("failed to lookup target actor: %w", err)
+					return false, fmt.Errorf("failed to lookup target actor: %w", err)
 				}
 			} else if builtin.IsStorageMinerActor(toActor.Code) {
 				// Ok, this is a storage miner and we've processed a window post. Remove the burn.
@@ -630,7 +629,7 @@ func (vm *LegacyVM) NetworkVersion() network.Version {
 
 func (vm *LegacyVM) transferToGasHolder(addr address.Address, gasHolder *types.Actor, amt abi.TokenAmount) error {
 	if amt.LessThan(big.NewInt(0)) {
-		return xerrors.Errorf("attempted To transfer negative Value To gas holder")
+		return fmt.Errorf("attempted To transfer negative Value To gas holder")
 	}
 	return vm.State.MutateActor(addr, func(a *types.Actor) error {
 		if err := deductFunds(a, amt); err != nil {
@@ -643,7 +642,7 @@ func (vm *LegacyVM) transferToGasHolder(addr address.Address, gasHolder *types.A
 
 func (vm *LegacyVM) transferFromGasHolder(addr address.Address, gasHolder *types.Actor, amt abi.TokenAmount) error {
 	if amt.LessThan(big.NewInt(0)) {
-		return xerrors.Errorf("attempted To transfer negative Value From gas holder")
+		return fmt.Errorf("attempted To transfer negative Value From gas holder")
 	}
 
 	if amt.Equals(big.NewInt(0)) {
@@ -737,7 +736,7 @@ func (vm *LegacyVM) Flush(ctx context.Context) (tree.Root, error) {
 		return cid.Undef, err
 	} else {
 		if err := blockstoreutil.CopyBlockstore(context.TODO(), vm.bsstore.Write(), vm.bsstore.Read()); err != nil {
-			return cid.Undef, xerrors.Errorf("copying tree: %w", err)
+			return cid.Undef, fmt.Errorf("copying tree: %w", err)
 		}
 		return root, nil
 	}

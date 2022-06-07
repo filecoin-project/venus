@@ -2,6 +2,7 @@ package messagepool
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -12,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	lru "github.com/hashicorp/golang-lru"
-	"golang.org/x/xerrors"
 
 	builtin2 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -57,7 +57,7 @@ func (g *GasPriceCache) GetTSGasStats(ctx context.Context, provider Provider, ts
 	var prices []GasMeta
 	msgs, err := provider.MessagesForTipset(ctx, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("loading messages: %w", err)
+		return nil, fmt.Errorf("loading messages: %w", err)
 	}
 	for _, msg := range msgs {
 		prices = append(prices, GasMeta{
@@ -187,13 +187,13 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Mes
 	if tsk.IsEmpty() {
 		ts, err := mp.api.ChainHead(ctx)
 		if err != nil {
-			return -1, xerrors.Errorf("getting head: %v", err)
+			return -1, fmt.Errorf("getting head: %v", err)
 		}
 		tsk = ts.Key()
 	}
 	currTS, err := mp.api.ChainTipSet(ctx, tsk)
 	if err != nil {
-		return -1, xerrors.Errorf("getting tipset: %w", err)
+		return -1, fmt.Errorf("getting tipset: %w", err)
 	}
 
 	msg := *msgIn
@@ -203,7 +203,7 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Mes
 
 	fromA, err := mp.sm.ResolveToKeyAddress(ctx, msgIn.From, currTS)
 	if err != nil {
-		return -1, xerrors.Errorf("getting key address: %w", err)
+		return -1, fmt.Errorf("getting key address: %w", err)
 	}
 
 	pending, ts := mp.PendingFor(ctx, fromA)
@@ -235,14 +235,14 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 
 		ts, err = mp.api.ChainTipSet(ctx, ts.Parents())
 		if err != nil {
-			return -1, xerrors.Errorf("getting parent tipset: %v", err)
+			return -1, fmt.Errorf("getting parent tipset: %v", err)
 		}
 	}
 	if err != nil {
-		return -1, xerrors.Errorf("CallWithGas failed: %v", err)
+		return -1, fmt.Errorf("CallWithGas failed: %v", err)
 	}
 	if res.Receipt.ExitCode != exitcode.Ok {
-		return -1, xerrors.Errorf("message execution failed: exit %s", res.Receipt.ExitCode)
+		return -1, fmt.Errorf("message execution failed: exit %s", res.Receipt.ExitCode)
 	}
 
 	ret := res.Receipt.GasUsed
@@ -308,12 +308,12 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 
 func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessage *types.EstimateMessage, _ types.TipSetKey) (*types.Message, error) {
 	if estimateMessage == nil || estimateMessage.Msg == nil {
-		return nil, xerrors.Errorf("estimate message is nil")
+		return nil, fmt.Errorf("estimate message is nil")
 	}
 	if estimateMessage.Msg.GasLimit == 0 {
 		gasLimit, err := mp.GasEstimateGasLimit(ctx, estimateMessage.Msg, types.TipSetKey{})
 		if err != nil {
-			return nil, xerrors.Errorf("estimating gas used: %w", err)
+			return nil, fmt.Errorf("estimating gas used: %w", err)
 		}
 		gasLimitOverestimation := mp.GetConfig().GasLimitOverestimation
 		if estimateMessage.Spec != nil && estimateMessage.Spec.GasOverEstimation > 0 {
@@ -325,7 +325,7 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 	if estimateMessage.Msg.GasPremium == types.EmptyInt || types.BigCmp(estimateMessage.Msg.GasPremium, types.NewInt(0)) == 0 {
 		gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, estimateMessage.Msg.From, estimateMessage.Msg.GasLimit, types.TipSetKey{}, mp.PriceCache)
 		if err != nil {
-			return nil, xerrors.Errorf("estimating gas price: %w", err)
+			return nil, fmt.Errorf("estimating gas price: %w", err)
 		}
 		estimateMessage.Msg.GasPremium = gasPremium
 	}
@@ -333,7 +333,7 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 	if estimateMessage.Msg.GasFeeCap == types.EmptyInt || types.BigCmp(estimateMessage.Msg.GasFeeCap, types.NewInt(0)) == 0 {
 		feeCap, err := mp.GasEstimateFeeCap(ctx, estimateMessage.Msg, 20, types.EmptyTSK)
 		if err != nil {
-			return nil, xerrors.Errorf("estimating fee cap: %w", err)
+			return nil, fmt.Errorf("estimating fee cap: %w", err)
 		}
 		estimateMessage.Msg.GasFeeCap = feeCap
 	}
@@ -345,18 +345,18 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 
 func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*types.EstimateMessage, fromNonce uint64, tsk types.TipSetKey) ([]*types.EstimateResult, error) {
 	if len(estimateMessages) == 0 {
-		return nil, xerrors.New("estimate messages are empty")
+		return nil, errors.New("estimate messages are empty")
 	}
 
 	// ChainTipSet will determine if tsk is empty
 	currTS, err := mp.api.ChainTipSet(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("getting tipset: %w", err)
+		return nil, fmt.Errorf("getting tipset: %w", err)
 	}
 
 	fromA, err := mp.sm.ResolveToKeyAddress(ctx, estimateMessages[0].Msg.From, currTS)
 	if err != nil {
-		return nil, xerrors.Errorf("getting key address: %w", err)
+		return nil, fmt.Errorf("getting key address: %w", err)
 	}
 
 	pending, ts := mp.PendingFor(ctx, fromA)

@@ -2,9 +2,9 @@ package gasguess
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -83,12 +83,12 @@ func GuessGasUsed(ctx context.Context, tsk types.TipSetKey, msg *types.SignedMes
 
 	to, err := al(ctx, msg.Message.To, tsk)
 	if err != nil {
-		return failedGuess(msg), xerrors.Errorf("could not lookup actor: %v", err)
+		return failedGuess(msg), fmt.Errorf("could not lookup actor: %v", err)
 	}
 
 	guess, ok := Costs[CostKey{to.Code, msg.Message.Method}]
 	if !ok {
-		return failedGuess(msg), xerrors.Errorf("unknown code-method combo")
+		return failedGuess(msg), fmt.Errorf("unknown code-method combo")
 	}
 	if guess > msg.Message.GasLimit {
 		guess = msg.Message.GasLimit

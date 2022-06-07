@@ -2,12 +2,12 @@ package impl
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"os"
 	"syscall"
 
 	"github.com/detailyang/go-fallocate"
-	"golang.org/x/xerrors"
 
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -37,21 +37,21 @@ type partialFile struct {
 func writeTrailer(maxPieceSize int64, w *os.File, r rlepluslazy.RunIterator) error {
 	trailer, err := rlepluslazy.EncodeRuns(r, nil)
 	if err != nil {
-		return xerrors.Errorf("encoding trailer: %w", err)
+		return fmt.Errorf("encoding trailer: %w", err)
 	}
 
 	// maxPieceSize == unpadded(sectorSize) == trailer start
 	if _, err := w.Seek(maxPieceSize, io.SeekStart); err != nil {
-		return xerrors.Errorf("seek to trailer start: %w", err)
+		return fmt.Errorf("seek to trailer start: %w", err)
 	}
 
 	rb, err := w.Write(trailer)
 	if err != nil {
-		return xerrors.Errorf("writing trailer data: %w", err)
+		return fmt.Errorf("writing trailer data: %w", err)
 	}
 
 	if err := binary.Write(w, binary.LittleEndian, uint32(len(trailer))); err != nil {
-		return xerrors.Errorf("writing trailer length: %w", err)
+		return fmt.Errorf("writing trailer length: %w", err)
 	}
 
 	return w.Truncate(maxPieceSize + int64(rb) + 4)
@@ -60,7 +60,7 @@ func writeTrailer(maxPieceSize int64, w *os.File, r rlepluslazy.RunIterator) err
 func createPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialFile, error) {
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644) // nolint
 	if err != nil {
-		return nil, xerrors.Errorf("openning partial file '%s': %w", path, err)
+		return nil, fmt.Errorf("openning partial file '%s': %w", path, err)
 	}
 
 	err = func() error {
@@ -72,11 +72,11 @@ func createPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialF
 			}
 		}
 		if err != nil {
-			return xerrors.Errorf("fallocate '%s': %w", path, err)
+			return fmt.Errorf("fallocate '%s': %w", path, err)
 		}
 
 		if err := writeTrailer(int64(maxPieceSize), f, &rlepluslazy.RunSliceIterator{}); err != nil {
-			return xerrors.Errorf("writing trailer: %w", err)
+			return fmt.Errorf("writing trailer: %w", err)
 		}
 
 		return nil
@@ -86,7 +86,7 @@ func createPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialF
 		return nil, err
 	}
 	if err := f.Close(); err != nil {
-		return nil, xerrors.Errorf("close empty partial file: %w", err)
+		return nil, fmt.Errorf("close empty partial file: %w", err)
 	}
 
 	return openPartialFile(maxPieceSize, path)
@@ -95,30 +95,30 @@ func createPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialF
 func openPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialFile, error) {
 	f, err := os.OpenFile(path, os.O_RDWR, 0644) // nolint
 	if err != nil {
-		return nil, xerrors.Errorf("openning partial file '%s': %w", path, err)
+		return nil, fmt.Errorf("openning partial file '%s': %w", path, err)
 	}
 
 	var rle rlepluslazy.RLE
 	err = func() error {
 		st, err := f.Stat()
 		if err != nil {
-			return xerrors.Errorf("stat '%s': %w", path, err)
+			return fmt.Errorf("stat '%s': %w", path, err)
 		}
 		if st.Size() < int64(maxPieceSize) {
-			return xerrors.Errorf("sector file '%s' was smaller than the sector size %d < %d", path, st.Size(), maxPieceSize)
+			return fmt.Errorf("sector file '%s' was smaller than the sector size %d < %d", path, st.Size(), maxPieceSize)
 		}
 		// read trailer
 		var tlen [4]byte
 		_, err = f.ReadAt(tlen[:], st.Size()-int64(len(tlen)))
 		if err != nil {
-			return xerrors.Errorf("reading trailer length: %w", err)
+			return fmt.Errorf("reading trailer length: %w", err)
 		}
 
 		// sanity-check the length
 		trailerLen := binary.LittleEndian.Uint32(tlen[:])
 		expectLen := int64(trailerLen) + int64(len(tlen)) + int64(maxPieceSize)
 		if expectLen != st.Size() {
-			return xerrors.Errorf("file '%s' has inconsistent length; has %d bytes; expected %d (%d trailer, %d sector data)", path, st.Size(), expectLen, int64(trailerLen)+int64(len(tlen)), maxPieceSize)
+			return fmt.Errorf("file '%s' has inconsistent length; has %d bytes; expected %d (%d trailer, %d sector data)", path, st.Size(), expectLen, int64(trailerLen)+int64(len(tlen)), maxPieceSize)
 		}
 		if trailerLen > veryLargeRle {
 			log.Warnf("Partial file '%s' has a VERY large trailer with %d bytes", path, trailerLen)
@@ -126,36 +126,36 @@ func openPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialFil
 
 		trailerStart := st.Size() - int64(len(tlen)) - int64(trailerLen)
 		if trailerStart != int64(maxPieceSize) {
-			return xerrors.Errorf("expected sector size to equal trailer start index")
+			return fmt.Errorf("expected sector size to equal trailer start index")
 		}
 
 		trailerBytes := make([]byte, trailerLen)
 		_, err = f.ReadAt(trailerBytes, trailerStart)
 		if err != nil {
-			return xerrors.Errorf("reading trailer: %w", err)
+			return fmt.Errorf("reading trailer: %w", err)
 		}
 
 		rle, err = rlepluslazy.FromBuf(trailerBytes)
 		if err != nil {
-			return xerrors.Errorf("decoding trailer: %w", err)
+			return fmt.Errorf("decoding trailer: %w", err)
 		}
 
 		it, err := rle.RunIterator()
 		if err != nil {
-			return xerrors.Errorf("getting trailer run iterator: %w", err)
+			return fmt.Errorf("getting trailer run iterator: %w", err)
 		}
 
 		f, err := rlepluslazy.Fill(it)
 		if err != nil {
-			return xerrors.Errorf("filling bitfield: %w", err)
+			return fmt.Errorf("filling bitfield: %w", err)
 		}
 		lastSet, err := rlepluslazy.Count(f)
 		if err != nil {
-			return xerrors.Errorf("finding last set byte index: %w", err)
+			return fmt.Errorf("finding last set byte index: %w", err)
 		}
 
 		if lastSet > uint64(maxPieceSize) {
-			return xerrors.Errorf("last set byte at index higher than sector size: %d > %d", lastSet, maxPieceSize)
+			return fmt.Errorf("last set byte at index higher than sector size: %d > %d", lastSet, maxPieceSize)
 		}
 
 		return nil
@@ -179,7 +179,7 @@ func (pf *partialFile) Close() error {
 
 func (pf *partialFile) Writer(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) (io.Writer, error) {
 	if _, err := pf.file.Seek(int64(offset), io.SeekStart); err != nil {
-		return nil, xerrors.Errorf("seek piece start: %w", err)
+		return nil, fmt.Errorf("seek piece start: %w", err)
 	}
 
 	{
@@ -218,7 +218,7 @@ func (pf *partialFile) MarkAllocated(offset storiface.PaddedByteIndex, size abi.
 	}
 
 	if err := writeTrailer(int64(pf.maxPiece), pf.file, ored); err != nil {
-		return xerrors.Errorf("writing trailer: %w", err)
+		return fmt.Errorf("writing trailer: %w", err)
 	}
 
 	return nil
@@ -231,7 +231,7 @@ func (pf *partialFile) Free(offset storiface.PaddedByteIndex, size abi.PaddedPie
 	}
 
 	if err := fsutil.Deallocate(pf.file, int64(offset), int64(size)); err != nil {
-		return xerrors.Errorf("deallocating: %w", err)
+		return fmt.Errorf("deallocating: %w", err)
 	}
 
 	s, err := rlepluslazy.Subtract(have, pieceRun(offset, size))
@@ -240,7 +240,7 @@ func (pf *partialFile) Free(offset storiface.PaddedByteIndex, size abi.PaddedPie
 	}
 
 	if err := writeTrailer(int64(pf.maxPiece), pf.file, s); err != nil {
-		return xerrors.Errorf("writing trailer: %w", err)
+		return fmt.Errorf("writing trailer: %w", err)
 	}
 
 	return nil
@@ -248,7 +248,7 @@ func (pf *partialFile) Free(offset storiface.PaddedByteIndex, size abi.PaddedPie
 
 func (pf *partialFile) Reader(offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) (*os.File, error) {
 	if _, err := pf.file.Seek(int64(offset), io.SeekStart); err != nil {
-		return nil, xerrors.Errorf("seek piece start: %w", err)
+		return nil, fmt.Errorf("seek piece start: %w", err)
 	}
 
 	{

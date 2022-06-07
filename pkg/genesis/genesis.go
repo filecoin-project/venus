@@ -7,8 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 
-	"golang.org/x/xerrors"
-
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
@@ -64,7 +62,7 @@ func MakeGenesis(ctx context.Context, rep repo.Repo, outFile, genesisTemplate st
 
 		fdata, err := ioutil.ReadFile(genesisTemplate)
 		if err != nil {
-			return nil, xerrors.Errorf("reading preseals json: %w", err)
+			return nil, fmt.Errorf("reading preseals json: %w", err)
 		}
 
 		var template genesis2.Template
@@ -84,7 +82,7 @@ func MakeGenesis(ctx context.Context, rep repo.Repo, outFile, genesisTemplate st
 
 		b, err := genesis2.MakeGenesisBlock(context.TODO(), rep, cbs, template, para)
 		if err != nil {
-			return nil, xerrors.Errorf("make genesis block: %w", err)
+			return nil, fmt.Errorf("make genesis block: %w", err)
 		}
 
 		fmt.Printf("GENESIS MINER ADDRESS: t0%d\n", genesis2.MinerStart)

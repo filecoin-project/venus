@@ -14,7 +14,6 @@ import (
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -45,7 +44,7 @@ func (cia *chainInfoAPI) BlockTime(ctx context.Context) time.Duration {
 func (cia *chainInfoAPI) ChainList(ctx context.Context, tsKey types.TipSetKey, count int) ([]types.TipSetKey, error) {
 	fromTS, err := cia.chain.ChainReader.GetTipSet(ctx, tsKey)
 	if err != nil {
-		return nil, xerrors.Errorf("could not retrieve network name %w", err)
+		return nil, fmt.Errorf("could not retrieve network name %w", err)
 	}
 	tipset, err := cia.chain.ChainReader.Ls(ctx, fromTS, count)
 	if err != nil {
@@ -62,14 +61,14 @@ func (cia *chainInfoAPI) ChainList(ctx context.Context, tsKey types.TipSetKey, c
 func (cia *chainInfoAPI) ProtocolParameters(ctx context.Context) (*types.ProtocolParams, error) {
 	networkName, err := cia.getNetworkName(ctx)
 	if err != nil {
-		return nil, xerrors.Errorf("could not retrieve network name %w", err)
+		return nil, fmt.Errorf("could not retrieve network name %w", err)
 	}
 
 	var supportedSectors []types.SectorInfo
 	for proof := range miner0.SupportedProofTypes {
 		size, err := proof.SectorSize()
 		if err != nil {
-			return nil, xerrors.Errorf("could not retrieve network name %w", err)
+			return nil, fmt.Errorf("could not retrieve network name %w", err)
 		}
 		maxUserBytes := abi.PaddedPieceSize(size).Unpadded()
 		supportedSectors = append(supportedSectors, types.SectorInfo{Size: size, MaxPieceSize: maxUserBytes})
@@ -106,7 +105,7 @@ func (cia *chainInfoAPI) ChainGetTipSet(ctx context.Context, key types.TipSetKey
 func (cia *chainInfoAPI) ChainGetTipSetByHeight(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	ts, err := cia.chain.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("fail to load tipset %v", err)
+		return nil, fmt.Errorf("fail to load tipset %v", err)
 	}
 	return cia.chain.ChainReader.GetTipSetByHeight(ctx, ts, height, true)
 }
@@ -117,7 +116,7 @@ func (cia *chainInfoAPI) ChainGetTipSetByHeight(ctx context.Context, height abi.
 func (cia *chainInfoAPI) ChainGetTipSetAfterHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	ts, err := cia.chain.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return nil, fmt.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	return cia.chain.ChainReader.GetTipSetByHeight(ctx, ts, h, false)
 }
@@ -325,11 +324,11 @@ func (cia *chainInfoAPI) GetEntry(ctx context.Context, height abi.ChainEpoch, ro
 	select {
 	case resp := <-rch:
 		if resp.Err != nil {
-			return nil, xerrors.Errorf("beacon entry request returned error: %s", resp.Err)
+			return nil, fmt.Errorf("beacon entry request returned error: %s", resp.Err)
 		}
 		return &resp.Entry, nil
 	case <-ctx.Done():
-		return nil, xerrors.Errorf("context timed out waiting on beacon entry to come back for round %d: %s", round, ctx.Err())
+		return nil, fmt.Errorf("context timed out waiting on beacon entry to come back for round %d: %s", round, ctx.Err())
 	}
 
 }
@@ -392,7 +391,7 @@ func (cia *chainInfoAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk 
 func (cia *chainInfoAPI) StateGetRandomnessFromTickets(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
 	ts, err := cia.ChainGetTipSet(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return nil, fmt.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
 	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand, cia.chain.Fork.GetNetworkVersion)
@@ -409,7 +408,7 @@ func (cia *chainInfoAPI) StateGetRandomnessFromTickets(ctx context.Context, pers
 func (cia *chainInfoAPI) StateGetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
 	ts, err := cia.ChainGetTipSet(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return nil, fmt.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	r := chain.NewChainRandomnessSource(cia.chain.ChainReader, ts.Key(), cia.chain.Drand, cia.chain.Fork.GetNetworkVersion)
 	rnv := cia.chain.Fork.GetNetworkVersion(ctx, randEpoch)
@@ -427,7 +426,7 @@ func (cia *chainInfoAPI) StateGetRandomnessFromBeacon(ctx context.Context, perso
 func (cia *chainInfoAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
 	ts, err := cia.chain.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
-		return network.VersionMax, xerrors.Errorf("loading tipset %s: %v", tsk, err)
+		return network.VersionMax, fmt.Errorf("loading tipset %s: %v", tsk, err)
 	}
 	return cia.chain.Fork.GetNetworkVersion(ctx, ts.Height()), nil
 }
@@ -435,16 +434,16 @@ func (cia *chainInfoAPI) StateNetworkVersion(ctx context.Context, tsk types.TipS
 func (cia *chainInfoAPI) StateVerifiedRegistryRootKey(ctx context.Context, tsk types.TipSetKey) (address.Address, error) {
 	ts, err := cia.chain.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("loading tipset %s: %v", tsk, err)
+		return address.Undef, fmt.Errorf("loading tipset %s: %v", tsk, err)
 	}
 	_, view, err := cia.chain.Stmgr.ParentStateView(ctx, ts)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("filed to load parent state view:%v", err)
+		return address.Undef, fmt.Errorf("filed to load parent state view:%v", err)
 	}
 
 	vrs, err := view.LoadVerifregActor(ctx)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to load verified registry state: %w", err)
+		return address.Undef, fmt.Errorf("failed to load verified registry state: %w", err)
 	}
 
 	return vrs.RootKey()
@@ -453,7 +452,7 @@ func (cia *chainInfoAPI) StateVerifiedRegistryRootKey(ctx context.Context, tsk t
 func (cia *chainInfoAPI) StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
 	ts, err := cia.chain.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
+		return nil, fmt.Errorf("loading tipset %s: %v", tsk, err)
 	}
 	_, view, err := cia.chain.Stmgr.ParentStateView(ctx, ts)
 	if err != nil {
@@ -468,12 +467,12 @@ func (cia *chainInfoAPI) StateVerifierStatus(ctx context.Context, addr address.A
 
 	vrs, err := view.LoadVerifregActor(ctx)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load verified registry state: %w", err)
+		return nil, fmt.Errorf("failed to load verified registry state: %w", err)
 	}
 
 	verified, dcap, err := vrs.VerifierDataCap(aid)
 	if err != nil {
-		return nil, xerrors.Errorf("looking up verifier: %w", err)
+		return nil, fmt.Errorf("looking up verifier: %w", err)
 	}
 	if !verified {
 		return nil, nil
@@ -547,7 +546,7 @@ func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confide
 func (cia *chainInfoAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipoldmsgs bool, tsk types.TipSetKey) (<-chan []byte, error) {
 	ts, err := cia.chain.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
+		return nil, fmt.Errorf("loading tipset %s: %v", tsk, err)
 	}
 	r, w := io.Pipe()
 	out := make(chan []byte)
@@ -609,16 +608,16 @@ func (cia *chainInfoAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch,
 func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*types.HeadChange, error) {
 	fts, err := cia.chain.ChainReader.GetTipSet(ctx, from)
 	if err != nil {
-		return nil, xerrors.Errorf("loading from tipset %s: %w", from, err)
+		return nil, fmt.Errorf("loading from tipset %s: %w", from, err)
 	}
 	tts, err := cia.chain.ChainReader.GetTipSet(ctx, to)
 	if err != nil {
-		return nil, xerrors.Errorf("loading to tipset %s: %w", to, err)
+		return nil, fmt.Errorf("loading to tipset %s: %w", to, err)
 	}
 
 	revert, apply, err := chain.ReorgOps(cia.chain.ChainReader.GetTipSet, fts, tts)
 	if err != nil {
-		return nil, xerrors.Errorf("error getting tipset branches: %w", err)
+		return nil, fmt.Errorf("error getting tipset branches: %w", err)
 	}
 
 	path := make([]*types.HeadChange, len(revert)+len(apply))

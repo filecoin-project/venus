@@ -2,10 +2,10 @@ package network
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
 
@@ -68,7 +68,7 @@ func (na *networkAPI) NetworkPeers(ctx context.Context, verbose, latency, stream
 func (na *networkAPI) NetworkPing(ctx context.Context, p peer.ID) (time.Duration, error) {
 	result, ok := <-ping.Ping(ctx, na.network.Host, p)
 	if !ok {
-		return 0, xerrors.Errorf("didn't get ping result: %w", ctx.Err())
+		return 0, fmt.Errorf("didn't get ping result: %w", ctx.Err())
 	}
 	return result.RTT, result.Error
 }

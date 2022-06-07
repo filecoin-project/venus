@@ -4,12 +4,11 @@ package actors
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/manifest"
-
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	cid "github.com/ipfs/go-cid"
@@ -94,11 +93,11 @@ func loadManifests(ctx context.Context, store cbor.IpldStore) error {
 	for av, mfCid := range manifestCids {
 		mf := &manifest.Manifest{}
 		if err := adtStore.Get(ctx, mfCid, mf); err != nil {
-			return xerrors.Errorf("error reading manifest for network version %d (cid: %s): %w", av, mfCid, err)
+			return fmt.Errorf("error reading manifest for network version %d (cid: %s): %w", av, mfCid, err)
 		}
 
 		if err := mf.Load(ctx, adtStore); err != nil {
-			return xerrors.Errorf("error loading manifest for network version %d: %w", av, err)
+			return fmt.Errorf("error loading manifest for network version %d: %w", av, err)
 		}
 
 		manifests[av] = mf

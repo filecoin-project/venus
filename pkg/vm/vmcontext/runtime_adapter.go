@@ -7,7 +7,6 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor2 "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
-	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -101,16 +100,16 @@ func (a *runtimeAdapter) stateCommit(oldh, newh cid.Cid) error {
 	// TODO: we can make this more efficient in the future...
 	act, found, err := a.ctx.vm.State.GetActor(a.Context(), a.Receiver())
 	if !found || err != nil {
-		return xerrors.Errorf("failed To get actor To commit stateView, %s", err)
+		return fmt.Errorf("failed To get actor To commit stateView, %s", err)
 	}
 
 	if act.Head != oldh {
-		return xerrors.Errorf("failed To update, inconsistent base reference, %s", err)
+		return fmt.Errorf("failed To update, inconsistent base reference, %s", err)
 	}
 
 	act.Head = newh
 	if err := a.ctx.vm.State.SetActor(a.Context(), a.Receiver(), act); err != nil {
-		return xerrors.Errorf("failed To set actor in commit stateView, %s", err)
+		return fmt.Errorf("failed To set actor in commit stateView, %s", err)
 	}
 
 	return nil

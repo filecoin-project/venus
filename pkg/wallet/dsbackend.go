@@ -3,6 +3,7 @@ package wallet
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"reflect"
 	"strings"
 	"sync"
@@ -13,7 +14,6 @@ import (
 	dsq "github.com/ipfs/go-datastore/query"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
@@ -252,11 +252,11 @@ func (backend *DSBackend) getKey(ctx context.Context, addr address.Address, pass
 
 func (backend *DSBackend) LockWallet(ctx context.Context) error {
 	if backend.state == Lock {
-		return xerrors.Errorf("already locked")
+		return fmt.Errorf("already locked")
 	}
 
 	if len(backend.Addresses(ctx)) == 0 {
-		return xerrors.Errorf("no address need lock")
+		return fmt.Errorf("no address need lock")
 	}
 
 	for _, addr := range backend.Addresses(ctx) {
@@ -278,11 +278,11 @@ func (backend *DSBackend) UnLockWallet(ctx context.Context, password []byte) err
 		}
 	}()
 	if backend.state == Unlock {
-		return xerrors.Errorf("already unlocked")
+		return fmt.Errorf("already unlocked")
 	}
 
 	if len(backend.Addresses(ctx)) == 0 {
-		return xerrors.Errorf("no address need unlock")
+		return fmt.Errorf("no address need unlock")
 	}
 
 	for _, addr := range backend.Addresses(ctx) {

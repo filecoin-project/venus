@@ -2,13 +2,13 @@ package market
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"golang.org/x/xerrors"
 )
 
 type marketAPI struct {
@@ -25,7 +25,7 @@ func (m *marketAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSe
 	out := map[string]types.MarketBalance{}
 	ts, err := m.chain.ChainGetTipSet(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return nil, fmt.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
 	state, err := m.stmgr.GetMarketState(ctx, ts)

@@ -1,10 +1,11 @@
 package impl
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("ffiwrapper")
@@ -31,7 +32,7 @@ func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version) (abi.
 		case 64 << 30:
 			return abi.RegisteredSealProof_StackedDrg64GiBV1, nil
 		default:
-			return 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
+			return 0, fmt.Errorf("unsupported sector size for miner: %v", ssize)
 		}
 	case nv >= network.Version7:
 		switch ssize {
@@ -46,9 +47,9 @@ func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version) (abi.
 		case 64 << 30:
 			return abi.RegisteredSealProof_StackedDrg64GiBV1_1, nil
 		default:
-			return 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
+			return 0, fmt.Errorf("unsupported sector size for miner: %v", ssize)
 		}
 	}
 
-	return 0, xerrors.Errorf("unsupported network version")
+	return 0, fmt.Errorf("unsupported network version")
 }

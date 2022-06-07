@@ -15,7 +15,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"
@@ -115,7 +114,7 @@ var loadBundles = func(req *cmds.Request, env cmds.Environment) error {
 	}
 	builtin_actors.SetNetworkBundle(cfg.NetworkParams.NetworkType)
 	if err := os.Setenv(builtin_actors.BundleRepoPath, repoDir); err != nil {
-		return xerrors.Errorf("set env %s failed %v", builtin_actors.BundleRepoPath, err)
+		return fmt.Errorf("set env %s failed %v", builtin_actors.BundleRepoPath, err)
 	}
 
 	// preload manifest so that we have the correct code CID inventory for cli since that doesn't
@@ -124,7 +123,7 @@ var loadBundles = func(req *cmds.Request, env cmds.Environment) error {
 	//      to load actor CIDs without incurring this hit.
 	bs := blockstoreutil.NewMemory()
 	if err := builtin_actors.FetchAndLoadBundles(req.Context, bs, builtin_actors.BuiltinActorReleases); err != nil {
-		return xerrors.Errorf("error loading actor manifest: %w", err)
+		return fmt.Errorf("error loading actor manifest: %w", err)
 	}
 
 	return err

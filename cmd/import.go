@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -13,7 +14,6 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
-	xerrors "github.com/pkg/errors"
 	"gopkg.in/cheggaaa/pb.v1"
 )
 
@@ -36,7 +36,7 @@ func importChain(ctx context.Context, r repo.Repo, fname string) error {
 		defer resp.Body.Close() //nolint:errcheck
 
 		if resp.StatusCode != http.StatusOK {
-			return xerrors.Errorf("non-200 response: %d", resp.StatusCode)
+			return fmt.Errorf("non-200 response: %d", resp.StatusCode)
 		}
 
 		rd = resp.Body
@@ -78,13 +78,13 @@ func importChain(ctx context.Context, r repo.Repo, fname string) error {
 	bar.Start()
 	tip, err := chainStore.Import(ctx, br)
 	if err != nil {
-		return xerrors.Errorf("importing chain failed: %s", err)
+		return fmt.Errorf("importing chain failed: %s", err)
 	}
 	bar.Finish()
 
 	err = chainStore.SetHead(context.TODO(), tip)
 	if err != nil {
-		return xerrors.Errorf("importing chain failed: %s", err)
+		return fmt.Errorf("importing chain failed: %s", err)
 	}
 	logImport.Infof("accepting %s as new head", tip.Key().String())
 

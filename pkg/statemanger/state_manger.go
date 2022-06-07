@@ -2,6 +2,7 @@ package statemanger
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -22,7 +23,6 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 )
 
 // stateManagerAPI defines the methods needed from StateManager
@@ -83,7 +83,7 @@ func (s *Stmgr) ResolveToKeyAddress(ctx context.Context, addr address.Address, t
 	case address.BLS, address.SECP256K1:
 		return addr, nil
 	case address.Actor:
-		return address.Undef, xerrors.New("cannot resolve actor address to key address")
+		return address.Undef, errors.New("cannot resolve actor address to key address")
 	default:
 	}
 	if ts == nil {
@@ -127,7 +127,7 @@ func (s *Stmgr) GetMarketState(ctx context.Context, ts *types.TipSet) (market.St
 func (s *Stmgr) ParentStateTsk(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, *tree.State, error) {
 	ts, err := s.cs.GetTipSet(ctx, tsk)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return nil, nil, fmt.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	return s.ParentState(ctx, ts)
 }
@@ -138,14 +138,14 @@ func (s *Stmgr) ParentState(ctx context.Context, ts *types.TipSet) (*types.TipSe
 	}
 	parent, err := s.cs.GetTipSet(ctx, ts.Parents())
 	if err != nil {
-		return nil, nil, xerrors.Errorf("find tipset(%s) parent failed:%w",
+		return nil, nil, fmt.Errorf("find tipset(%s) parent failed:%w",
 			ts.Key().String(), err)
 	}
 
 	if stateRoot, _, err := s.RunStateTransition(ctx, parent); err != nil {
-		return nil, nil, xerrors.Errorf("runstateTransition failed:%w", err)
+		return nil, nil, fmt.Errorf("runstateTransition failed:%w", err)
 	} else if !stateRoot.Equals(ts.At(0).ParentStateRoot) {
-		return nil, nil, xerrors.Errorf("runstateTransition error, %w", consensus.ErrStateRootMismatch)
+		return nil, nil, fmt.Errorf("runstateTransition error, %w", consensus.ErrStateRootMismatch)
 	}
 
 	state, err := tree.LoadState(ctx, s.cs.Store(ctx), ts.At(0).ParentStateRoot)
@@ -155,12 +155,12 @@ func (s *Stmgr) ParentState(ctx context.Context, ts *types.TipSet) (*types.TipSe
 func (s *Stmgr) TipsetStateTsk(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, *tree.State, error) {
 	ts, err := s.cs.GetTipSet(ctx, tsk)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("load tipset(%s) failed:%v",
+		return nil, nil, fmt.Errorf("load tipset(%s) failed:%v",
 			tsk.String(), err)
 	}
 	stat, err := s.TipsetState(ctx, ts)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("load tipset(%s, %d) state failed:%v",
+		return nil, nil, fmt.Errorf("load tipset(%s, %d) state failed:%v",
 			ts.String(), ts.Height(), err)
 	}
 	return ts, stat, nil
@@ -376,7 +376,7 @@ func (s *Stmgr) ParentStateView(ctx context.Context, ts *types.TipSet) (*types.T
 
 	_, view, err := s.StateView(ctx, parent)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("StateView failed:%w", err)
+		return nil, nil, fmt.Errorf("StateView failed:%w", err)
 	}
 	return parent, view, nil
 }

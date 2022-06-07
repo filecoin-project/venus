@@ -6,13 +6,14 @@ import (
 	"bytes"
 	"errors"
 
+	"fmt"
+
 	"github.com/filecoin-project/go-bitfield"
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
@@ -57,7 +58,7 @@ type partition8 struct {
 func (s *state8) AvailableBalance(bal abi.TokenAmount) (available abi.TokenAmount, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = xerrors.Errorf("failed to get available balance: %w", r)
+			err = fmt.Errorf("failed to get available balance: %w", r)
 			available = abi.NewTokenAmount(0)
 		}
 	}()
@@ -191,7 +192,7 @@ func (s *state8) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, e
 		return nil, err
 	}
 	if out.Early == 0 && out.OnTime == 0 {
-		return nil, xerrors.Errorf("failed to find sector %d", num)
+		return nil, fmt.Errorf("failed to find sector %d", num)
 	}
 	return &out, nil
 }

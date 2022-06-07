@@ -5,8 +5,9 @@ package market
 import (
 	"unicode/utf8"
 
+	"fmt"
+
 	"github.com/filecoin-project/go-state-types/network"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -45,7 +46,7 @@ var (
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
 		if name != actors.MarketKey {
-			return nil, xerrors.Errorf("actor code is not market: %s", name)
+			return nil, fmt.Errorf("actor code is not market: %s", name)
 		}
 
 		switch av {
@@ -81,7 +82,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	}
 
-	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+	return nil, fmt.Errorf("unknown actor code %s", act.Code)
 }
 
 func MakeState(store adt.Store, av actors.Version) (State, error) {
@@ -112,7 +113,7 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 		return make8(store)
 
 	}
-	return nil, xerrors.Errorf("unknown actor version %d", av)
+	return nil, fmt.Errorf("unknown actor version %d", av)
 }
 
 type State interface {
@@ -192,7 +193,7 @@ func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStora
 		return decodePublishStorageDealsReturn8(b)
 
 	}
-	return nil, xerrors.Errorf("unknown actor version %d", av)
+	return nil, fmt.Errorf("unknown actor version %d", av)
 }
 
 type DealProposal = market8.DealProposal

@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
 	"math/rand"
 
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -119,7 +119,7 @@ func (c *ChainRandomnessSource) GetBeaconRandomnessTipset(ctx context.Context, r
 	}
 
 	if randEpoch > ts.Height() {
-		return nil, xerrors.Errorf("cannot draw randomness from the future")
+		return nil, fmt.Errorf("cannot draw randomness from the future")
 	}
 
 	searchHeight := randEpoch
@@ -148,7 +148,7 @@ func (c *ChainRandomnessSource) GetChainRandomness(ctx context.Context, epoch ab
 		}
 
 		if epoch > start.Height() {
-			return types.Ticket{}, xerrors.Errorf("cannot draw randomness from the future")
+			return types.Ticket{}, fmt.Errorf("cannot draw randomness from the future")
 		}
 
 		searchHeight := epoch
@@ -165,7 +165,7 @@ func (c *ChainRandomnessSource) GetChainRandomness(ctx context.Context, epoch ab
 		}
 		return *tip.MinTicket(), nil
 	}
-	return types.Ticket{}, xerrors.Errorf("cannot get ticket for empty tipset")
+	return types.Ticket{}, fmt.Errorf("cannot get ticket for empty tipset")
 }
 
 // network v0-12
@@ -259,13 +259,13 @@ func (c *ChainRandomnessSource) extractBeaconEntryForEpoch(ctx context.Context, 
 
 		next, err := c.reader.GetTipSet(ctx, randTS.Parents())
 		if err != nil {
-			return nil, xerrors.Errorf("failed to load parents when searching back for beacon entry: %w", err)
+			return nil, fmt.Errorf("failed to load parents when searching back for beacon entry: %w", err)
 		}
 
 		randTS = next
 	}
 
-	return nil, xerrors.Errorf("didn't find beacon for round %d (epoch %d)", round, filecoinEpoch)
+	return nil, fmt.Errorf("didn't find beacon for round %d (epoch %d)", round, filecoinEpoch)
 }
 
 //BlendEntropy get randomness with chain value. sha256(buf(tag, seed, epoch, entropy))
@@ -294,19 +294,19 @@ func BlendEntropy(tag crypto.DomainSeparationTag, seed RandomSeed, epoch abi.Cha
 func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	h := blake2b.New256()
 	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
-		return nil, xerrors.Errorf("deriving randomness: %s", err)
+		return nil, fmt.Errorf("deriving randomness: %s", err)
 	}
 	VRFDigest := blake2b.Sum256(rbase)
 	_, err := h.Write(VRFDigest[:])
 	if err != nil {
-		return nil, xerrors.Errorf("hashing VRFDigest: %s", err)
+		return nil, fmt.Errorf("hashing VRFDigest: %s", err)
 	}
 	if err := binary.Write(h, binary.BigEndian, round); err != nil {
-		return nil, xerrors.Errorf("deriving randomness: %s", err)
+		return nil, fmt.Errorf("deriving randomness: %s", err)
 	}
 	_, err = h.Write(entropy)
 	if err != nil {
-		return nil, xerrors.Errorf("hashing entropy: %s", err)
+		return nil, fmt.Errorf("hashing entropy: %s", err)
 	}
 
 	return h.Sum(nil), nil

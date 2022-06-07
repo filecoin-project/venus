@@ -2,11 +2,12 @@ package events
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"golang.org/x/xerrors"
 )
 
 type tsCacheAPI interface {
@@ -89,7 +90,7 @@ func (tsc *tipSetCache) get(ctx context.Context, height abi.ChainEpoch, tsk type
 	} else if headH < height {
 		tsc.mu.RUnlock()
 		// If the user doesn't pass a tsk, we assume "head" is the last tipset we processed.
-		return nil, xerrors.Errorf("requested epoch is in the future")
+		return nil, fmt.Errorf("requested epoch is in the future")
 	} else if height < tailH {
 		log.Warnf("tipSetCache.get: requested tipset not in cache, requesting from storage (h=%d; tail=%d)", height, tailH)
 		tsc.mu.RUnlock()
@@ -125,10 +126,10 @@ func (tsc *tipSetCache) add(to *types.TipSet) error {
 	if tsc.len > 0 {
 		best := tsc.byHeight[tsc.start]
 		if best.Height() >= to.Height() {
-			return xerrors.Errorf("tipSetCache.add: expected new tipset height to be at least %d, was %d", tsc.byHeight[tsc.start].Height()+1, to.Height())
+			return fmt.Errorf("tipSetCache.add: expected new tipset height to be at least %d, was %d", tsc.byHeight[tsc.start].Height()+1, to.Height())
 		}
 		if best.Key() != to.Parents() {
-			return xerrors.Errorf(
+			return fmt.Errorf(
 				"tipSetCache.add: expected new tipset %s (%d) to follow %s (%d), its parents are %s",
 				to.Key(), to.Height(), best.Key(), best.Height(), best.Parents(),
 			)
@@ -182,7 +183,7 @@ func (tsc *tipSetCache) revertUnlocked(ts *types.TipSet) error {
 	was := tsc.byHeight[tsc.start]
 
 	if !was.Equals(ts) {
-		return xerrors.New("tipSetCache.revert: revert tipset didn't match cache head")
+		return errors.New("tipSetCache.revert: revert tipset didn't match cache head")
 	}
 	delete(tsc.byKey, was.Key())
 

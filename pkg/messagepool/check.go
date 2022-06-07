@@ -8,7 +8,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -113,7 +112,7 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 	} else {
 		baseFee, err = mp.api.ChainComputeBaseFee(context.Background(), curTS)
 		if err != nil {
-			return nil, xerrors.Errorf("error computing basefee: %w", err)
+			return nil, fmt.Errorf("error computing basefee: %w", err)
 		}
 	}
 

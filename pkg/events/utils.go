@@ -2,8 +2,7 @@ package events
 
 import (
 	"context"
-
-	"golang.org/x/xerrors"
+	"fmt"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -26,7 +25,7 @@ func (me *messageEvents) CheckMsg(smsg types.ChainMsg, hnd MsgHandler) CheckFunc
 
 		ml, err := me.cs.StateSearchMsg(ctx, ts.Key(), msg.Cid(), constants.LookbackNoLimit, true)
 		if err != nil {
-			return false, true, xerrors.Errorf("getting receipt in CheckMsg: %w", err)
+			return false, true, fmt.Errorf("getting receipt in CheckMsg: %w", err)
 		}
 
 		if ml == nil {
@@ -43,7 +42,7 @@ func (me *messageEvents) CheckMsg(smsg types.ChainMsg, hnd MsgHandler) CheckFunc
 func (me *messageEvents) MatchMsg(inmsg *types.Message) MsgMatchFunc {
 	return func(msg *types.Message) (matched bool, err error) {
 		if msg.From == inmsg.From && msg.Nonce == inmsg.Nonce && !inmsg.Equals(msg) {
-			return false, xerrors.Errorf("matching msg %s from %s, nonce %d: got duplicate origin/nonce msg %d", inmsg.Cid(), inmsg.From, inmsg.Nonce, msg.Nonce)
+			return false, fmt.Errorf("matching msg %s from %s, nonce %d: got duplicate origin/nonce msg %d", inmsg.Cid(), inmsg.From, inmsg.Nonce, msg.Nonce)
 		}
 
 		return inmsg.Equals(msg), nil

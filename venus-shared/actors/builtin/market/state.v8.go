@@ -5,11 +5,12 @@ package market
 import (
 	"bytes"
 
+	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
@@ -199,7 +200,7 @@ func (s *dealProposals8) Get(dealID abi.DealID) (*DealProposal, bool, error) {
 
 	proposal, err := fromV8DealProposal(proposal8)
 	if err != nil {
-		return nil, true, xerrors.Errorf("decoding proposal: %w", err)
+		return nil, true, fmt.Errorf("decoding proposal: %w", err)
 	}
 
 	return &proposal, true, nil
@@ -210,7 +211,7 @@ func (s *dealProposals8) ForEach(cb func(dealID abi.DealID, dp DealProposal) err
 	return s.Array.ForEach(&dp8, func(idx int64) error {
 		dp, err := fromV8DealProposal(dp8)
 		if err != nil {
-			return xerrors.Errorf("decoding proposal: %w", err)
+			return fmt.Errorf("decoding proposal: %w", err)
 		}
 
 		return cb(abi.DealID(idx), dp)
@@ -266,7 +267,7 @@ var _ PublishStorageDealsReturn = (*publishStorageDealsReturn8)(nil)
 func decodePublishStorageDealsReturn8(b []byte) (PublishStorageDealsReturn, error) {
 	var retval market8.PublishStorageDealsReturn
 	if err := retval.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
-		return nil, xerrors.Errorf("failed to unmarshal PublishStorageDealsReturn: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal PublishStorageDealsReturn: %w", err)
 	}
 
 	return &publishStorageDealsReturn8{retval}, nil

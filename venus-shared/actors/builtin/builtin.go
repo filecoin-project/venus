@@ -3,9 +3,10 @@
 package builtin
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -170,7 +171,7 @@ func GetAccountActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	}
 
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+	return cid.Undef, fmt.Errorf("unknown actor version %d", av)
 }
 
 func IsAccountActor(c cid.Cid) bool {
@@ -240,7 +241,7 @@ func GetCronActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	}
 
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+	return cid.Undef, fmt.Errorf("unknown actor version %d", av)
 }
 
 func GetInitActorCodeID(av actors.Version) (cid.Cid, error) {
@@ -273,7 +274,7 @@ func GetInitActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	}
 
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+	return cid.Undef, fmt.Errorf("unknown actor version %d", av)
 }
 
 func GetMarketActorCodeID(av actors.Version) (cid.Cid, error) {
@@ -306,7 +307,7 @@ func GetMarketActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	}
 
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+	return cid.Undef, fmt.Errorf("unknown actor version %d", av)
 }
 
 func GetMinerActorCodeID(av actors.Version) (cid.Cid, error) {
@@ -339,7 +340,7 @@ func GetMinerActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	}
 
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+	return cid.Undef, fmt.Errorf("unknown actor version %d", av)
 }
 
 func IsStorageMinerActor(c cid.Cid) bool {
@@ -409,7 +410,7 @@ func GetMultisigActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	}
 
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+	return cid.Undef, fmt.Errorf("unknown actor version %d", av)
 }
 
 func IsMultisigActor(c cid.Cid) bool {
@@ -479,7 +480,7 @@ func GetPaymentChannelActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	}
 
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+	return cid.Undef, fmt.Errorf("unknown actor version %d", av)
 }
 
 func IsPaymentChannelActor(c cid.Cid) bool {
@@ -549,7 +550,7 @@ func GetPowerActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	}
 
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+	return cid.Undef, fmt.Errorf("unknown actor version %d", av)
 }
 
 func GetRewardActorCodeID(av actors.Version) (cid.Cid, error) {
@@ -582,7 +583,7 @@ func GetRewardActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	}
 
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+	return cid.Undef, fmt.Errorf("unknown actor version %d", av)
 }
 
 func GetSystemActorCodeID(av actors.Version) (cid.Cid, error) {
@@ -615,7 +616,7 @@ func GetSystemActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	}
 
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+	return cid.Undef, fmt.Errorf("unknown actor version %d", av)
 }
 
 func GetVerifregActorCodeID(av actors.Version) (cid.Cid, error) {
@@ -648,7 +649,7 @@ func GetVerifregActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	}
 
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+	return cid.Undef, fmt.Errorf("unknown actor version %d", av)
 }
 
 func makeAddress(addr string) address.Address {

@@ -3,13 +3,13 @@ package paychmgr
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/sync/errgroup"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
@@ -190,7 +190,7 @@ func (m *mergedFundsReq) completeAmount(avail types.BigInt, channelInfo *Channel
 					failed = types.BigAdd(failed, r.amt)
 					r.onComplete(&paychFundsRes{
 						channel: *channelInfo.Channel,
-						err:     xerrors.Errorf("not enough funds available in the payment channel %s; add funds with 'lotus paych add-funds %s %s %s'", channelInfo.Channel, channelInfo.from(), channelInfo.to(), types.FIL(r.amt).Unitless()),
+						err:     fmt.Errorf("not enough funds available in the payment channel %s; add funds with 'lotus paych add-funds %s %s %s'", channelInfo.Channel, channelInfo.from(), channelInfo.to(), types.FIL(r.amt).Unitless()),
 					})
 				}
 				next = i + 1
@@ -225,13 +225,13 @@ func (m *mergedFundsReq) failOffChainNoChannel(from, to address.Address) (*paych
 		if !r.isActive() {
 			continue
 		}
-		r.onComplete(&paychFundsRes{err: xerrors.Errorf("payment channel doesn't exist, create with 'lotus paych add-funds %s %s %s'", from, to, types.FIL(r.amt).Unitless())})
+		r.onComplete(&paychFundsRes{err: fmt.Errorf("payment channel doesn't exist, create with 'lotus paych add-funds %s %s %s'", from, to, types.FIL(r.amt).Unitless())})
 		next = i + 1
 	}
 
 	m.reqs = m.reqs[next:]
 	if len(m.reqs) == 0 {
-		return &paychFundsRes{err: xerrors.Errorf("payment channel doesn't exist, create with 'lotus paych add-funds %s %s 0'", from, to)}, freed
+		return &paychFundsRes{err: fmt.Errorf("payment channel doesn't exist, create with 'lotus paych add-funds %s %s 0'", from, to)}, freed
 	}
 
 	return nil, freed
@@ -497,7 +497,7 @@ func (ca *channelAccessor) createPaych(ctx context.Context, amt, avail big.Int) 
 
 	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("initializing paych actor: %w", err)
+		return cid.Undef, fmt.Errorf("initializing paych actor: %w", err)
 	}
 	mcid := smsg.Cid()
 	// Create a new channel in the store
@@ -537,7 +537,7 @@ func (ca *channelAccessor) waitPaychCreateMsg(ctx context.Context, channelID str
 			log.Errorf("failed to remove channel %s: %s", channelID, dserr)
 		}
 
-		err := xerrors.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
+		err := fmt.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
 		log.Error(err)
 		return err
 	}
@@ -641,7 +641,7 @@ func (ca *channelAccessor) waitAddFundsMsg(ctx context.Context, channelID string
 	}
 
 	if mwait.Receipt.ExitCode != 0 {
-		err := xerrors.Errorf("voucher channel creation failed: adding funds (exit code %d)", mwait.Receipt.ExitCode)
+		err := fmt.Errorf("voucher channel creation failed: adding funds (exit code %d)", mwait.Receipt.ExitCode)
 		log.Error(err)
 
 		ca.lk.Lock()
@@ -711,7 +711,7 @@ func (pm *Manager) restartPending(ctx context.Context) error {
 			group.Go(func() error {
 				ca, err := pm.accessorByFromTo(ci.Control, ci.Target)
 				if err != nil {
-					return xerrors.Errorf("error initializing payment channel manager %s -> %s: %s", ci.Control, ci.Target, err)
+					return fmt.Errorf("error initializing payment channel manager %s -> %s: %s", ci.Control, ci.Target, err)
 				}
 				go ca.waitForPaychCreateMsg(ctx, ci.ChannelID, *ci.CreateMsg)
 				return nil
@@ -720,7 +720,7 @@ func (pm *Manager) restartPending(ctx context.Context) error {
 			group.Go(func() error {
 				ca, err := pm.accessorByAddress(ctx, *ci.Channel)
 				if err != nil {
-					return xerrors.Errorf("error initializing payment channel manager %s: %s", ci.Channel, err)
+					return fmt.Errorf("error initializing payment channel manager %s: %s", ci.Channel, err)
 				}
 				go ca.waitForAddFundsMsg(ctx, ci.ChannelID, *ci.AddFundsMsg)
 				return nil
@@ -747,7 +747,7 @@ func (ca *channelAccessor) getPaychWaitReady(ctx context.Context, mcid cid.Cid) 
 	if len(msgInfo.Err) > 0 {
 		ca.lk.Unlock()
 
-		return address.Undef, xerrors.New(msgInfo.Err)
+		return address.Undef, errors.New(msgInfo.Err)
 	}
 
 	// If the message has completed successfully

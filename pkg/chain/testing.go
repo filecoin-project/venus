@@ -20,7 +20,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/xerrors"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -117,7 +116,7 @@ func (f *Builder) LoadTipSetMessage(ctx context.Context, ts *types.TipSet) ([]ty
 		for _, msg := range blsMsgs {
 			b, err := selectMsg(msg)
 			if err != nil {
-				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
+				return nil, fmt.Errorf("failed to decide whether to select message for block: %w", err)
 			}
 			if b {
 				sBlsMsg = append(sBlsMsg, msg)
@@ -127,7 +126,7 @@ func (f *Builder) LoadTipSetMessage(ctx context.Context, ts *types.TipSet) ([]ty
 		for _, msg := range secpMsgs {
 			b, err := selectMsg(&msg.Message)
 			if err != nil {
-				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
+				return nil, fmt.Errorf("failed to decide whether to select message for block: %w", err)
 			}
 			if b {
 				sSecpMsg = append(sSecpMsg, msg)
@@ -679,7 +678,7 @@ func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *types.T
 	// gather message
 	blockMessageInfo, err := e.MessageStore.LoadTipSetMessage(ctx, ts)
 	if err != nil {
-		return cid.Undef, cid.Undef, xerrors.Errorf("failed to gather message in tipset %v", err)
+		return cid.Undef, cid.Undef, fmt.Errorf("failed to gather message in tipset %v", err)
 	}
 	var receipts []types.MessageReceipt
 	rootCid, receipts, err = e.ComputeState(ts.At(0).ParentStateRoot, blockMessageInfo)
@@ -689,7 +688,7 @@ func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts *types.T
 
 	receiptCid, err = e.MessageStore.StoreReceipts(ctx, receipts)
 	if err != nil {
-		return cid.Undef, cid.Undef, xerrors.Errorf("failed to save receipt: %v", err)
+		return cid.Undef, cid.Undef, fmt.Errorf("failed to save receipt: %v", err)
 	}
 
 	return rootCid, receiptCid, nil

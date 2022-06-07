@@ -2,6 +2,7 @@ package blockstoreutil
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/dgraph-io/badger/v2"
@@ -10,7 +11,6 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/keytransform"
 	dshelp "github.com/ipfs/go-ipfs-ds-help"
-	xerrors "github.com/pkg/errors"
 )
 
 var _ Blockstore = (*TxBlockstore)(nil)
@@ -22,11 +22,11 @@ type TxBlockstore struct {
 }
 
 func (txBlockstore *TxBlockstore) DeleteBlock(ctx context.Context, cid cid.Cid) error {
-	return xerrors.New("readonly blocksgtore")
+	return errors.New("readonly blocksgtore")
 }
 
 func (txBlockstore *TxBlockstore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
-	return xerrors.New("readonly blocksgtore")
+	return errors.New("readonly blocksgtore")
 }
 
 func (txBlockstore *TxBlockstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
@@ -143,11 +143,11 @@ func (txBlockstore *TxBlockstore) GetSize(ctx context.Context, cid cid.Cid) (int
 }
 
 func (txBlockstore *TxBlockstore) Put(ctx context.Context, block blocks.Block) error {
-	return xerrors.New("readonly blocksgtore")
+	return errors.New("readonly blocksgtore")
 }
 
 func (txBlockstore *TxBlockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
-	return xerrors.New("readonly blocksgtore")
+	return errors.New("readonly blocksgtore")
 }
 
 func (txBlockstore *TxBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {

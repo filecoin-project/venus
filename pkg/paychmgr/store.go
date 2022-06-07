@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/venus/pkg/repo"
-	"golang.org/x/xerrors"
 
 	"github.com/google/uuid"
 
@@ -132,7 +131,7 @@ func (ci *ChannelInfo) markVoucherSubmitted(sv *paych.SignedVoucher) error {
 		return err
 	}
 	if vi == nil {
-		return xerrors.Errorf("cannot submit voucher that has not been added to channel")
+		return fmt.Errorf("cannot submit voucher that has not been added to channel")
 	}
 
 	// Mark the voucher as submitted
@@ -156,7 +155,7 @@ func (ci *ChannelInfo) wasVoucherSubmitted(sv *paych.SignedVoucher) (bool, error
 		return false, err
 	}
 	if vi == nil {
-		return false, xerrors.Errorf("cannot submit voucher that has not been added to channel")
+		return false, fmt.Errorf("cannot submit voucher that has not been added to channel")
 	}
 	return vi.Submitted, nil
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
+	"fmt"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
@@ -216,7 +216,7 @@ func (s *dealProposals{{.v}}) Get(dealID abi.DealID) (*DealProposal, bool, error
 
     proposal, err := fromV{{.v}}DealProposal(proposal{{.v}})
     if err != nil {
-        return nil, true, xerrors.Errorf("decoding proposal: %w", err)
+        return nil, true, fmt.Errorf("decoding proposal: %w", err)
     }
 
     return &proposal, true, nil
@@ -227,7 +227,7 @@ func (s *dealProposals{{.v}}) ForEach(cb func(dealID abi.DealID, dp DealProposal
 	return s.Array.ForEach(&dp{{.v}}, func(idx int64) error {
         dp, err := fromV{{.v}}DealProposal(dp{{.v}})
         if err != nil {
-            return xerrors.Errorf("decoding proposal: %w", err)
+            return fmt.Errorf("decoding proposal: %w", err)
         }
 
         return cb(abi.DealID(idx), dp)
@@ -256,7 +256,7 @@ func fromV{{.v}}DealProposal(v{{.v}} market{{.v}}.DealProposal) (DealProposal, e
     {{if (le .v 7)}}
         label, err := labelFromGoString(v{{.v}}.Label)
         if err != nil {
-            return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
+            return DealProposal{}, fmt.Errorf("error setting deal label: %w", err)
         }
     {{else}}
         label := v{{.v}}.Label
@@ -290,7 +290,7 @@ var _ PublishStorageDealsReturn = (*publishStorageDealsReturn{{.v}})(nil)
 func decodePublishStorageDealsReturn{{.v}}(b []byte) (PublishStorageDealsReturn, error) {
 	var retval market{{.v}}.PublishStorageDealsReturn
 	if err := retval.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
-		return nil, xerrors.Errorf("failed to unmarshal PublishStorageDealsReturn: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal PublishStorageDealsReturn: %w", err)
 	}
 
 	return &publishStorageDealsReturn{{.v}}{retval}, nil

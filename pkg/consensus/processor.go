@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 )
 
 var processLog = logging.Logger("process block")
@@ -98,7 +97,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		if i > parentEpoch {
 			vmCron, err := makeVMWithBaseStateAndEpoch(pstate, i)
 			if err != nil {
-				return cid.Undef, nil, xerrors.Errorf("making cron vm: %w", err)
+				return cid.Undef, nil, fmt.Errorf("making cron vm: %w", err)
 			}
 
 			// run cron for null rounds if any
@@ -109,11 +108,11 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			}
 			pstate, err = vmCron.Flush(ctx)
 			if err != nil {
-				return cid.Undef, nil, xerrors.Errorf("can not Flush vm State To db %vs", err)
+				return cid.Undef, nil, fmt.Errorf("can not Flush vm State To db %vs", err)
 			}
 			if cb != nil {
 				if err := cb(cid.Undef, cronMessage, ret); err != nil {
-					return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
+					return cid.Undef, nil, fmt.Errorf("callback failed on cron message: %w", err)
 				}
 			}
 		}
@@ -121,14 +120,14 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		// XXX: The State tree
 		pstate, err = vmOpts.Fork.HandleStateForks(ctx, pstate, i, ts)
 		if err != nil {
-			return cid.Undef, nil, xerrors.Errorf("hand fork error: %v", err)
+			return cid.Undef, nil, fmt.Errorf("hand fork error: %v", err)
 		}
 		processLog.Debugf("after fork root: %s\n", pstate)
 	}
 
 	vm, err := makeVMWithBaseStateAndEpoch(pstate, epoch)
 	if err != nil {
-		return cid.Undef, nil, xerrors.Errorf("making cron vm: %w", err)
+		return cid.Undef, nil, fmt.Errorf("making cron vm: %w", err)
 	}
 
 	processLog.Debugf("process tipset fork: %v\n", time.Since(toProcessTipset).Milliseconds())
@@ -159,7 +158,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			// apply message
 			ret, err := vm.ApplyMessage(ctx, m)
 			if err != nil {
-				return cid.Undef, nil, xerrors.Errorf("execute message error %s : %v", mcid, err)
+				return cid.Undef, nil, fmt.Errorf("execute message error %s : %v", mcid, err)
 			}
 			// accumulate result
 			minerPenaltyTotal = big.Add(minerPenaltyTotal, ret.OutPuts.MinerPenalty)
@@ -182,12 +181,12 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		}
 		if cb != nil {
 			if err := cb(cid.Undef, rewardMessage, ret); err != nil {
-				return cid.Undef, nil, xerrors.Errorf("callback failed on reward message: %w", err)
+				return cid.Undef, nil, fmt.Errorf("callback failed on reward message: %w", err)
 			}
 		}
 
 		if ret.Receipt.ExitCode != 0 {
-			return cid.Undef, nil, xerrors.Errorf("reward application message failed (exit %d)", ret.Receipt)
+			return cid.Undef, nil, fmt.Errorf("reward application message failed (exit %d)", ret.Receipt)
 		}
 
 		processLog.Infof("process block %v time %v", index, time.Since(toProcessBlock).Milliseconds())
@@ -203,7 +202,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 	}
 	if cb != nil {
 		if err := cb(cid.Undef, cronMessage, ret); err != nil {
-			return cid.Undef, nil, xerrors.Errorf("callback failed on cron message: %w", err)
+			return cid.Undef, nil, fmt.Errorf("callback failed on cron message: %w", err)
 		}
 	}
 

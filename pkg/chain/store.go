@@ -3,6 +3,7 @@ package chain
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"runtime/debug"
@@ -22,7 +23,6 @@ import (
 	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -356,7 +356,7 @@ func (store *Store) GetTipSetByHeight(ctx context.Context, ts *types.TipSet, h a
 	}
 
 	if h > ts.Height() {
-		return nil, xerrors.Errorf("looking for tipset with height greater than start point")
+		return nil, fmt.Errorf("looking for tipset with height greater than start point")
 	}
 
 	if h == ts.Height() {
@@ -438,12 +438,12 @@ func (store *Store) GetLatestBeaconEntry(ctx context.Context, ts *types.TipSet) 
 		}
 
 		if cur.Height() == 0 {
-			return nil, xerrors.Errorf("made it back to genesis block without finding beacon entry")
+			return nil, fmt.Errorf("made it back to genesis block without finding beacon entry")
 		}
 
 		next, err := store.GetTipSet(ctx, cur.Parents())
 		if err != nil {
-			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
+			return nil, fmt.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
 		}
 		cur = next
 	}
@@ -454,13 +454,13 @@ func (store *Store) GetLatestBeaconEntry(ctx context.Context, ts *types.TipSet) 
 		}, nil
 	}
 
-	return nil, xerrors.Errorf("found NO beacon entries in the 20 blocks prior to given tipset")
+	return nil, fmt.Errorf("found NO beacon entries in the 20 blocks prior to given tipset")
 }
 
 // nolint
 func (store *Store) walkBack(ctx context.Context, from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
 	if to > from.Height() {
-		return nil, xerrors.Errorf("looking for tipset with height greater than start point")
+		return nil, fmt.Errorf("looking for tipset with height greater than start point")
 	}
 
 	if to == from.Height() {
@@ -750,7 +750,7 @@ func recurseLinks(ctx context.Context, bs blockstore.Blockstore, walked *cid.Set
 
 	data, err := bs.Get(ctx, root)
 	if err != nil {
-		return nil, xerrors.Errorf("recurse links get (%s) failed: %w", root, err)
+		return nil, fmt.Errorf("recurse links get (%s) failed: %w", root, err)
 	}
 
 	var rerr error
@@ -773,7 +773,7 @@ func recurseLinks(ctx context.Context, bs blockstore.Blockstore, walked *cid.Set
 		}
 	})
 	if err != nil {
-		return nil, xerrors.Errorf("scanning for links failed: %w", err)
+		return nil, fmt.Errorf("scanning for links failed: %w", err)
 	}
 
 	return in, rerr
@@ -786,17 +786,17 @@ func (store *Store) Export(ctx context.Context, ts *types.TipSet, inclRecentRoot
 	}
 
 	if err := car.WriteHeader(h, w); err != nil {
-		return xerrors.Errorf("failed to write car header: %s", err)
+		return fmt.Errorf("failed to write car header: %s", err)
 	}
 
 	return store.WalkSnapshot(ctx, ts, inclRecentRoots, skipOldMsgs, true, func(c cid.Cid) error {
 		blk, err := store.bsstore.Get(ctx, c)
 		if err != nil {
-			return xerrors.Errorf("writing object to car, bs.Get: %w", err)
+			return fmt.Errorf("writing object to car, bs.Get: %w", err)
 		}
 
 		if err := carutil.LdWrite(w, c.Bytes(), blk.RawData()); err != nil {
-			return xerrors.Errorf("failed to write block to car output: %w", err)
+			return fmt.Errorf("failed to write block to car output: %w", err)
 		}
 
 		return nil
@@ -825,12 +825,12 @@ func (store *Store) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRece
 
 		data, err := store.bsstore.Get(ctx, blk)
 		if err != nil {
-			return xerrors.Errorf("getting block: %w", err)
+			return fmt.Errorf("getting block: %w", err)
 		}
 
 		var b types.BlockHeader
 		if err := b.UnmarshalCBOR(bytes.NewBuffer(data.RawData())); err != nil {
-			return xerrors.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
+			return fmt.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
 		}
 
 		if currentMinHeight > b.Height {
@@ -845,7 +845,7 @@ func (store *Store) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRece
 			if walked.Visit(b.Messages) {
 				mcids, err := recurseLinks(ctx, store.bsstore, walked, b.Messages, []cid.Cid{b.Messages})
 				if err != nil {
-					return xerrors.Errorf("recursing messages failed: %w", err)
+					return fmt.Errorf("recursing messages failed: %w", err)
 				}
 				cids = mcids
 			}
@@ -864,7 +864,7 @@ func (store *Store) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRece
 			if walked.Visit(b.ParentStateRoot) {
 				cids, err := recurseLinks(ctx, store.bsstore, walked, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
 				if err != nil {
-					return xerrors.Errorf("recursing genesis state failed: %w", err)
+					return fmt.Errorf("recursing genesis state failed: %w", err)
 				}
 
 				out = append(out, cids...)
@@ -909,7 +909,7 @@ func (store *Store) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRece
 		next := blocksToWalk[0]
 		blocksToWalk = blocksToWalk[1:]
 		if err := walkChain(next); err != nil {
-			return xerrors.Errorf("walk chain failed: %w", err)
+			return fmt.Errorf("walk chain failed: %w", err)
 		}
 	}
 
@@ -922,12 +922,12 @@ func (store *Store) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRece
 func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, error) {
 	header, err := car.LoadCar(ctx, store.bsstore, r)
 	if err != nil {
-		return nil, xerrors.Errorf("loadcar failed: %w", err)
+		return nil, fmt.Errorf("loadcar failed: %w", err)
 	}
 
 	root, err := store.GetTipSet(ctx, types.NewTipSetKey(header.Roots...))
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
+		return nil, fmt.Errorf("failed to load root tipset from chainfile: %w", err)
 	}
 
 	// Notice here is different with lotus, because the head tipset in lotus is not computed,
@@ -948,7 +948,7 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, err
 		curTipsetKey := curTipset.Parents()
 		curParentTipset, err := store.GetTipSet(ctx, curTipsetKey)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
+			return nil, fmt.Errorf("failed to load root tipset from chainfile: %w", err)
 		}
 
 		if curParentTipset.Height() == 0 {
@@ -1085,7 +1085,7 @@ func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEp
 			circ = big.Add(circ, big.Max(ab, big.Zero()))
 			unCirc = big.Add(unCirc, big.Min(actor.Balance, lb))
 		default:
-			return xerrors.Errorf("unexpected actor: %s", a)
+			return fmt.Errorf("unexpected actor: %s", a)
 		}
 
 		return nil
@@ -1097,7 +1097,7 @@ func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEp
 
 	total := big.Add(circ, unCirc)
 	if !total.Equals(types.TotalFilecoinInt) {
-		return abi.TokenAmount{}, xerrors.Errorf("total filecoin didn't add to expected amount: %s != %s", total, types.TotalFilecoinInt)
+		return abi.TokenAmount{}, fmt.Errorf("total filecoin didn't add to expected amount: %s != %s", total, types.TotalFilecoinInt)
 	}
 
 	return circ, nil
@@ -1175,14 +1175,14 @@ func (store *Store) GetParentReceipt(b *types.BlockHeader, i int) (*types.Messag
 	// block headers use adt0, for now.
 	a, err := blockadt.AsArray(adt.WrapStore(ctx, store.stateAndBlockSource), b.ParentMessageReceipts)
 	if err != nil {
-		return nil, xerrors.Errorf("amt load: %w", err)
+		return nil, fmt.Errorf("amt load: %w", err)
 	}
 
 	var r types.MessageReceipt
 	if found, err := a.Get(uint64(i), &r); err != nil {
 		return nil, err
 	} else if !found {
-		return nil, xerrors.Errorf("failed to find receipt %d", i)
+		return nil, fmt.Errorf("failed to find receipt %d", i)
 	}
 
 	return &r, nil
@@ -1212,18 +1212,18 @@ func (store *Store) GetLookbackTipSetForRound(ctx context.Context, ts *types.Tip
 	// Get the tipset after the lookback tipset, or the next non-null one.
 	nextTS, err := store.GetTipSetByHeight(ctx, ts, lbr+1, false)
 	if err != nil {
-		return nil, cid.Undef, xerrors.Errorf("failed to get lookback tipset+1: %v", err)
+		return nil, cid.Undef, fmt.Errorf("failed to get lookback tipset+1: %v", err)
 	}
 
 	nextTh := nextTS.Height()
 	if lbr > nextTh {
-		return nil, cid.Undef, xerrors.Errorf("failed to find non-null tipset %s (%d) which is known to exist, found %s (%d)", ts.Key(), h, nextTS.Key(), nextTh)
+		return nil, cid.Undef, fmt.Errorf("failed to find non-null tipset %s (%d) which is known to exist, found %s (%d)", ts.Key(), h, nextTS.Key(), nextTh)
 	}
 
 	pKey := nextTS.Parents()
 	lbts, err := store.GetTipSet(ctx, pKey)
 	if err != nil {
-		return nil, cid.Undef, xerrors.Errorf("failed to resolve lookback tipset: %v", err)
+		return nil, cid.Undef, fmt.Errorf("failed to resolve lookback tipset: %v", err)
 	}
 
 	return lbts, nextTS.Blocks()[0].ParentStateRoot, nil

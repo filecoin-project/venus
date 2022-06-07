@@ -32,7 +32,6 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 )
 
 // stat counters
@@ -211,7 +210,7 @@ func (x *FvmExtern) VerifyBlockSig(ctx context.Context, blk *types.BlockHeader) 
 	}
 
 	if blk.BlockSig == nil {
-		return 0, xerrors.Errorf("no consensus fault: block %s has nil signature", blk.Cid())
+		return 0, fmt.Errorf("no consensus fault: block %s has nil signature", blk.Cid())
 	}
 
 	sd, err := blk.SignatureData()
@@ -224,7 +223,7 @@ func (x *FvmExtern) VerifyBlockSig(ctx context.Context, blk *types.BlockHeader) 
 
 func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerID address.Address, height abi.ChainEpoch) (address.Address, int64, error) {
 	if height < x.epoch-policy.ChainFinality {
-		return address.Undef, 0, xerrors.Errorf("cannot get worker key (currEpoch %d, height %d)", x.epoch, height)
+		return address.Undef, 0, fmt.Errorf("cannot get worker key (currEpoch %d, height %d)", x.epoch, height)
 	}
 	gasTank := gas.NewGasTracker(constants.BlockGasLimit * 10000)
 	cstWithoutGas := cbor.NewCborStore(x.Blockstore)
@@ -271,15 +270,15 @@ func resolveToKeyAddr(state tree.Tree, addr address.Address, cst cbor.IpldStore)
 
 	act, found, err := state.GetActor(context.TODO(), addr)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to find actor: %s", addr)
+		return address.Undef, fmt.Errorf("failed to find actor: %s", addr)
 	}
 	if !found {
-		return address.Undef, xerrors.Errorf("signer resolution found no such actor %s", addr)
+		return address.Undef, fmt.Errorf("signer resolution found no such actor %s", addr)
 	}
 
 	aast, err := account.Load(adt.WrapStore(context.TODO(), cst), act)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", addr, err)
+		return address.Undef, fmt.Errorf("failed to get account actor state for %s: %w", addr, err)
 	}
 
 	return aast.PubkeyAddress()
@@ -319,12 +318,12 @@ func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 	if os.Getenv("VENUS_USE_FVM_CUSTOM_BUNDLE") == "1" {
 		av, err := actors.VersionForNetwork(opts.NetworkVersion)
 		if err != nil {
-			return nil, xerrors.Errorf("mapping network version to actors version: %w", err)
+			return nil, fmt.Errorf("mapping network version to actors version: %w", err)
 		}
 
 		c, ok := actors.GetManifest(av)
 		if !ok {
-			return nil, xerrors.Errorf("no manifest for custom bundle (actors version %d)", av)
+			return nil, fmt.Errorf("no manifest for custom bundle (actors version %d)", av)
 		}
 
 		fvmOpts.Manifest = c
@@ -346,12 +345,12 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 	vmMsg := cmsg.VMMessage()
 	msgBytes, err := vmMsg.Serialize()
 	if err != nil {
-		return nil, xerrors.Errorf("serializing msg: %w", err)
+		return nil, fmt.Errorf("serializing msg: %w", err)
 	}
 
 	ret, err := fvm.fvm.ApplyMessage(msgBytes, uint(cmsg.ChainLength()))
 	if err != nil {
-		return nil, xerrors.Errorf("applying msg: %w", err)
+		return nil, fmt.Errorf("applying msg: %w", err)
 	}
 
 	duration := time.Since(start)
@@ -374,7 +373,7 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 	if len(ret.ExecTraceBytes) != 0 {
 		var fvmEt FvmExecutionTrace
 		if err = fvmEt.UnmarshalCBOR(bytes.NewReader(ret.ExecTraceBytes)); err != nil {
-			return nil, xerrors.Errorf("failed to unmarshal exectrace: %w", err)
+			return nil, fmt.Errorf("failed to unmarshal exectrace: %w", err)
 		}
 		et = fvmEt.ToExecutionTrace()
 	} else {
@@ -411,12 +410,12 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 	vmMsg := cmsg.VMMessage()
 	msgBytes, err := vmMsg.Serialize()
 	if err != nil {
-		return nil, xerrors.Errorf("serializing msg: %w", err)
+		return nil, fmt.Errorf("serializing msg: %w", err)
 	}
 
 	ret, err := fvm.fvm.ApplyImplicitMessage(msgBytes)
 	if err != nil {
-		return nil, xerrors.Errorf("applying msg: %w", err)
+		return nil, fmt.Errorf("applying msg: %w", err)
 	}
 
 	duration := time.Since(start)
@@ -439,7 +438,7 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 	if len(ret.ExecTraceBytes) != 0 {
 		var fvmEt FvmExecutionTrace
 		if err = fvmEt.UnmarshalCBOR(bytes.NewReader(ret.ExecTraceBytes)); err != nil {
-			return nil, xerrors.Errorf("failed to unmarshal exectrace: %w", err)
+			return nil, fmt.Errorf("failed to unmarshal exectrace: %w", err)
 		}
 		et = fvmEt.ToExecutionTrace()
 	} else {

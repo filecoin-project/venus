@@ -4,7 +4,7 @@ package paych
 
 import (
     {{if (ge .v 8)}}
-  	"golang.org/x/xerrors"
+  	"fmt"
     {{end}}
 
 	"github.com/filecoin-project/go-address"
@@ -35,7 +35,7 @@ func (m message{{.v}}) Create(to address.Address, initialAmount abi.TokenAmount)
     {{else}}
     actorCodeID, ok := actors.GetActorCodeID(actors.Version{{.v}}, "paymentchannel")
     if !ok {
-      return nil, xerrors.Errorf("error getting actor paymentchannel code id for actor version %d", {{.v}})
+      return nil, fmt.Errorf("error getting actor paymentchannel code id for actor version %d", {{.v}})
     }
     {{end}}
 

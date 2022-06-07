@@ -12,7 +12,6 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
 )
 
 type MsgLookup struct {
@@ -111,7 +110,7 @@ func (w *Waiter) findMessage(ctx context.Context, from *types.TipSet, m types.Ch
 	cur := from
 	curActor, err := w.Stmgr.GetActorAt(ctx, m.VMMessage().From, cur)
 	if err != nil {
-		return nil, false, xerrors.Errorf("failed to load from actor")
+		return nil, false, fmt.Errorf("failed to load from actor")
 	}
 
 	mNonce := m.VMMessage().Nonce
@@ -138,13 +137,13 @@ func (w *Waiter) findMessage(ctx context.Context, from *types.TipSet, m types.Ch
 
 		pts, err := w.chainReader.GetTipSet(ctx, cur.Parents())
 		if err != nil {
-			return nil, false, xerrors.Errorf("failed to load tipset during msg wait searchback: %w", err)
+			return nil, false, fmt.Errorf("failed to load tipset during msg wait searchback: %w", err)
 		}
 
 		act, err := w.Stmgr.GetActorAt(ctx, m.VMMessage().From, pts)
 		actorNoExist := errors.Is(err, types.ErrActorNotFound)
 		if err != nil && !actorNoExist {
-			return nil, false, xerrors.Errorf("failed to load the actor: %w", err)
+			return nil, false, fmt.Errorf("failed to load the actor: %w", err)
 		}
 
 		// check that between cur and parent tipset the nonce fell into range of our message
@@ -303,7 +302,7 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts *types.TipSet, msg typ
 					}
 
 					// this should be that message
-					return nil, false, xerrors.Errorf("found message with equal nonce as the one we are looking for (F: n %d, TS: %s n%d)",
+					return nil, false, fmt.Errorf("found message with equal nonce as the one we are looking for (F: n %d, TS: %s n%d)",
 						expectedMsg.Nonce, msg.Cid(), msg.VMMessage().Nonce)
 				}
 			}
@@ -317,7 +316,7 @@ func (w *Waiter) receiptByIndex(ctx context.Context, ts *types.TipSet, targetCid
 	var receiptCid cid.Cid
 	var err error
 	if _, receiptCid, err = w.Stmgr.RunStateTransition(ctx, ts); err != nil {
-		return nil, xerrors.Errorf("RunStateTransition failed:%w", err)
+		return nil, fmt.Errorf("RunStateTransition failed:%w", err)
 	}
 
 	receipts, err := w.messageProvider.LoadReceipts(ctx, receiptCid)

@@ -12,8 +12,6 @@ import (
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 
-	"golang.org/x/xerrors"
-
 	_ "net/http/pprof" // nolint: golint
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -76,7 +74,7 @@ var daemonCmd = &cmds.Command{
 			return err
 		}
 		if err := paramfetch.GetParams(req.Context, ps, srs, 0); err != nil {
-			return xerrors.Errorf("fetching proof parameters: %w", err)
+			return fmt.Errorf("fetching proof parameters: %w", err)
 		}
 
 		exist, err := repo.Exists(repoDir)
@@ -138,7 +136,7 @@ func initRun(req *cmds.Request) error {
 	if mkGen, ok := req.Options[makeGenFlag].(string); ok {
 		preTp := req.Options[preTemplateFlag]
 		if preTp == nil {
-			return xerrors.Errorf("must also pass file with genesis template to `--%s`", preTemplateFlag)
+			return fmt.Errorf("must also pass file with genesis template to `--%s`", preTemplateFlag)
 		}
 
 		node.SetNetParams(cfg.NetworkParams)

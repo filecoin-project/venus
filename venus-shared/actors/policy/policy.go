@@ -5,8 +5,9 @@ package policy
 import (
 	"sort"
 
+	"fmt"
+
 	"github.com/filecoin-project/go-state-types/big"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
@@ -286,7 +287,7 @@ func GetMaxProveCommitDuration(ver actors.Version, t abi.RegisteredSealProof) (a
 		return miner8.MaxProveCommitDuration[t], nil
 
 	default:
-		return 0, xerrors.Errorf("unsupported actors version")
+		return 0, fmt.Errorf("unsupported actors version")
 	}
 }
 
@@ -384,7 +385,7 @@ func DealProviderCollateralBounds(
 		return min, max, nil
 
 	default:
-		return big.Zero(), big.Zero(), xerrors.Errorf("unsupported actors version")
+		return big.Zero(), big.Zero(), fmt.Errorf("unsupported actors version")
 	}
 }
 
@@ -538,7 +539,7 @@ func GetAddressedSectorsMax(nwVer network.Version) (int, error) {
 		return miner8.AddressedSectorsMax, nil
 
 	default:
-		return 0, xerrors.Errorf("unsupported network version")
+		return 0, fmt.Errorf("unsupported network version")
 	}
 }
 
@@ -583,7 +584,7 @@ func GetDeclarationsMax(nwVer network.Version) (int, error) {
 		return miner8.DeclarationsMax, nil
 
 	default:
-		return 0, xerrors.Errorf("unsupported network version")
+		return 0, fmt.Errorf("unsupported network version")
 	}
 }
 
@@ -627,7 +628,7 @@ func AggregateProveCommitNetworkFee(nwVer network.Version, aggregateSize int, ba
 		return miner8.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
 
 	default:
-		return big.Zero(), xerrors.Errorf("unsupported network version")
+		return big.Zero(), fmt.Errorf("unsupported network version")
 	}
 }
 
@@ -671,6 +672,6 @@ func AggregatePreCommitNetworkFee(nwVer network.Version, aggregateSize int, base
 		return miner8.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
 
 	default:
-		return big.Zero(), xerrors.Errorf("unsupported network version")
+		return big.Zero(), fmt.Errorf("unsupported network version")
 	}
 }

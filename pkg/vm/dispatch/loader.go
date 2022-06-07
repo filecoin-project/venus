@@ -1,12 +1,13 @@
 package dispatch
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/go-state-types/exitcode"
 	rtt "github.com/filecoin-project/go-state-types/rt"
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	vmr "github.com/filecoin-project/venus/pkg/vm/runtime"
 	"github.com/filecoin-project/venus/venus-shared/actors"
@@ -43,7 +44,7 @@ func (cl CodeLoader) GetUnsafeActorImpl(code cid.Cid) (Dispatcher, error) {
 	//todo version check
 	actor, ok := cl.actors[code]
 	if !ok {
-		return nil, xerrors.Errorf("unable to get actorv for code %s", code)
+		return nil, fmt.Errorf("unable to get actorv for code %s", code)
 	}
 	return &actorDispatcher{code: code, actor: actor.vmActor}, nil
 }
@@ -108,10 +109,10 @@ func ActorsVersionPredicate(ver actors.Version) ActorPredicate {
 	return func(rt vmr.Runtime, v rtt.VMActor) error {
 		nver, err := actors.VersionForNetwork(rt.NetworkVersion())
 		if err != nil {
-			return xerrors.Errorf("version for network %w", err)
+			return fmt.Errorf("version for network %w", err)
 		}
 		if nver != ver {
-			return xerrors.Errorf("actor %s is a version %d actor; chain only supports actor version %d at height %d", v.Code(), ver, nver, rt.CurrentEpoch())
+			return fmt.Errorf("actor %s is a version %d actor; chain only supports actor version %d at height %d", v.Code(), ver, nver, rt.CurrentEpoch())
 		}
 		return nil
 	}

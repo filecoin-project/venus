@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	logging "github.com/ipfs/go-log/v2"
-	xerrors "github.com/pkg/errors"
 )
 
 var syncAPILog = logging.Logger("syncAPI")
@@ -98,22 +98,22 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 	chainModule := sa.syncer.ChainModule
 	parent, err := chainModule.ChainReader.GetBlock(ctx, blk.Header.Parents[0])
 	if err != nil {
-		return xerrors.Errorf("loading parent block: %v", err)
+		return fmt.Errorf("loading parent block: %v", err)
 	}
 
 	if err := sa.syncer.SlashFilter.MinedBlock(ctx, blk.Header, parent.Height); err != nil {
 		log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
-		return xerrors.Errorf("<!!> SLASH FILTER ERROR: %v", err)
+		return fmt.Errorf("<!!> SLASH FILTER ERROR: %v", err)
 	}
 
 	// TODO: should we have some sort of fast path to adding a local block?
 	bmsgs, err := chainModule.MessageStore.LoadUnsignedMessagesFromCids(ctx, blk.BlsMessages)
 	if err != nil {
-		return xerrors.Errorf("failed to load bls messages: %v", err)
+		return fmt.Errorf("failed to load bls messages: %v", err)
 	}
 	smsgs, err := chainModule.MessageStore.LoadSignedMessagesFromCids(ctx, blk.SecpkMessages)
 	if err != nil {
-		return xerrors.Errorf("failed to load secpk message: %v", err)
+		return fmt.Errorf("failed to load secpk message: %v", err)
 	}
 
 	fb := &types.FullBlock{
@@ -123,12 +123,12 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 	}
 
 	if err := sa.syncer.BlockValidator.ValidateMsgMeta(ctx, fb); err != nil {
-		return xerrors.Errorf("provided messages did not match block: %v", err)
+		return fmt.Errorf("provided messages did not match block: %v", err)
 	}
 
 	ts, err := types.NewTipSet([]*types.BlockHeader{blk.Header})
 	if err != nil {
-		return xerrors.Errorf("somehow failed to make a tipset out of a single block: %v", err)
+		return fmt.Errorf("somehow failed to make a tipset out of a single block: %v", err)
 	}
 
 	if _, err := chainModule.ChainReader.PutObject(ctx, blk.Header); err != nil {
@@ -137,12 +137,12 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 	localPeer := sa.syncer.NetworkModule.Network.GetPeerID()
 	ci := types.NewChainInfo(localPeer, localPeer, ts)
 	if err := sa.syncer.SyncProvider.HandleNewTipSet(ci); err != nil {
-		return xerrors.Errorf("sync to submitted block failed: %v", err)
+		return fmt.Errorf("sync to submitted block failed: %v", err)
 	}
 
 	b, err := blk.Serialize()
 	if err != nil {
-		return xerrors.Errorf("serializing block for pubsub publishing failed: %v", err)
+		return fmt.Errorf("serializing block for pubsub publishing failed: %v", err)
 	}
 	go func() {
 		err = sa.syncer.BlockTopic.Publish(ctx, b) //nolint:staticcheck
@@ -167,7 +167,7 @@ func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.Message, tsk type
 	start := time.Now()
 	ts, err := sa.syncer.ChainModule.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %v", tsk, err)
+		return nil, fmt.Errorf("loading tipset %s: %v", tsk, err)
 	}
 	ret, err := sa.syncer.Stmgr.Call(ctx, msg, ts)
 	if err != nil {

@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"golang.org/x/xerrors"
-
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -65,7 +63,7 @@ func (f *LocalSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader
 			// If we had, make sure it's in our parent tipset
 			cidb, err := f.byEpoch.Get(ctx, parentEpochKey)
 			if err != nil {
-				return xerrors.Errorf("getting other block cid: %w", err)
+				return fmt.Errorf("getting other block cid: %w", err)
 			}
 
 			_, parent, err := cid.CidFromBytes(cidb)
@@ -81,17 +79,17 @@ func (f *LocalSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader
 			}
 
 			if !found {
-				return xerrors.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
+				return fmt.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
 			}
 		}
 	}
 
 	if err := f.byParents.Put(ctx, parentsKey, bh.Cid().Bytes()); err != nil {
-		return xerrors.Errorf("putting byEpoch entry: %w", err)
+		return fmt.Errorf("putting byEpoch entry: %w", err)
 	}
 
 	if err := f.byEpoch.Put(ctx, epochKey, bh.Cid().Bytes()); err != nil {
-		return xerrors.Errorf("putting byEpoch entry: %w", err)
+		return fmt.Errorf("putting byEpoch entry: %w", err)
 	}
 
 	return nil
@@ -106,7 +104,7 @@ func checkFault(ctx context.Context, t ds.Datastore, key ds.Key, bh *types.Block
 	if fault {
 		cidb, err := t.Get(ctx, key)
 		if err != nil {
-			return xerrors.Errorf("getting other block cid: %w", err)
+			return fmt.Errorf("getting other block cid: %w", err)
 		}
 
 		_, other, err := cid.CidFromBytes(cidb)
@@ -118,7 +116,7 @@ func checkFault(ctx context.Context, t ds.Datastore, key ds.Key, bh *types.Block
 			return nil
 		}
 
-		return xerrors.Errorf("produced block would trigger '%s' consensus fault; miner: %s; bh: %s, other: %s", faultType, bh.Miner, bh.Cid(), other)
+		return fmt.Errorf("produced block would trigger '%s' consensus fault; miner: %s; bh: %s, other: %s", faultType, bh.Miner, bh.Cid(), other)
 	}
 
 	return nil

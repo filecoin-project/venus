@@ -2,9 +2,9 @@ package genesis
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/go-state-types/big"
-	"golang.org/x/xerrors"
 
 	systemtypes "github.com/filecoin-project/go-state-types/builtin/v8/system"
 
@@ -34,12 +34,12 @@ func SetupSystemActor(ctx context.Context, bs bstore.Blockstore, av actors.Versi
 	if av >= actors.Version8 {
 		mfCid, ok := actors.GetManifest(av)
 		if !ok {
-			return nil, xerrors.Errorf("missing manifest for actors version %d", av)
+			return nil, fmt.Errorf("missing manifest for actors version %d", av)
 		}
 
 		mf := manifest.Manifest{}
 		if err := cst.Get(ctx, mfCid, &mf); err != nil {
-			return nil, xerrors.Errorf("loading manifest for actors version %d: %w", av, err)
+			return nil, fmt.Errorf("loading manifest for actors version %d: %w", av, err)
 		}
 
 		st8 := st.GetState().(*systemtypes.State)

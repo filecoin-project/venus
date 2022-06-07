@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 )
@@ -78,7 +78,7 @@ func (o *observer) listenHeadChangesOnce(ctx context.Context) error {
 
 	curHead, err := o.api.ChainHead(ctx)
 	if err != nil {
-		return xerrors.Errorf("listenHeadChanges ChainHead call failed: %w", err)
+		return fmt.Errorf("listenHeadChanges ChainHead call failed: %w", err)
 	}
 
 	o.lk.Lock()
@@ -92,11 +92,11 @@ func (o *observer) listenHeadChangesOnce(ctx context.Context) error {
 	if startHead != nil && !startHead.Equals(curHead) {
 		changes, err := o.api.ChainGetPath(ctx, startHead.Key(), curHead.Key())
 		if err != nil {
-			return xerrors.Errorf("failed to get path from last applied tipset to head: %w", err)
+			return fmt.Errorf("failed to get path from last applied tipset to head: %w", err)
 		}
 
 		if err := o.applyChanges(ctx, changes); err != nil {
-			return xerrors.Errorf("failed catch-up head changes: %w", err)
+			return fmt.Errorf("failed catch-up head changes: %w", err)
 		}
 	}
 
@@ -122,7 +122,7 @@ func (o *observer) applyChanges(ctx context.Context, changes []*types.HeadChange
 	}
 
 	if err := o.headChange(ctx, rev, app); err != nil {
-		return xerrors.Errorf("failed to apply head changes: %w", err)
+		return fmt.Errorf("failed to apply head changes: %w", err)
 	}
 	return nil
 }
@@ -145,7 +145,7 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 	// entire process and handle any strange reorgs.
 	for i, from := range rev {
 		if !from.Equals(head) {
-			return xerrors.Errorf(
+			return fmt.Errorf(
 				"expected to revert %s (%d), reverting %s (%d)",
 				head.Key(), head.Height(), from.Key(), from.Height(),
 			)
@@ -161,7 +161,7 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 			to, err = o.api.ChainGetTipSet(ctx, from.Parents())
 			if err != nil {
 				// Well, this sucks. We'll bail and restart.
-				return xerrors.Errorf("failed to get tipset when reverting due to a SetHeead: %w", err)
+				return fmt.Errorf("failed to get tipset when reverting due to a SetHeead: %w", err)
 			}
 		}
 
@@ -190,7 +190,7 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 
 	for _, to := range app {
 		if to.Parents() != head.Key() {
-			return xerrors.Errorf(
+			return fmt.Errorf(
 				"cannot apply %s (%d) with parents %s on top of %s (%d)",
 				to.Key(), to.Height(), to.Parents(), head.Key(), head.Height(),
 			)

@@ -9,7 +9,6 @@ import (
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/venus-shared/actors"
@@ -32,13 +31,13 @@ func LoadBuiltinActors(ctx context.Context, repoPath string, bs blockstoreutil.B
 			// ok, we do, this should be the manifest cid
 			mfCid, err := cid.Cast(data)
 			if err != nil {
-				return result, xerrors.Errorf("error parsing cid for %s: %w", key, err)
+				return result, fmt.Errorf("error parsing cid for %s: %w", key, err)
 			}
 
 			// check the blockstore for existence of the manifest
 			has, err := bs.Has(ctx, mfCid)
 			if err != nil {
-				return result, xerrors.Errorf("error checking blockstore for manifest cid %s: %w", mfCid, err)
+				return result, fmt.Errorf("error checking blockstore for manifest cid %s: %w", mfCid, err)
 			}
 
 			if has {
@@ -55,7 +54,7 @@ func LoadBuiltinActors(ctx context.Context, repoPath string, bs blockstoreutil.B
 			// we don't have a release key, we need to load the bundle
 
 		default:
-			return result, xerrors.Errorf("error loading %s from datastore: %w", key, err)
+			return result, fmt.Errorf("error loading %s from datastore: %w", key, err)
 		}
 
 		// we haven't recorded it in the datastore, so we need to load it
@@ -92,7 +91,7 @@ func LoadBuiltinActors(ctx context.Context, repoPath string, bs blockstoreutil.B
 			}
 
 		default:
-			return result, xerrors.Errorf("no release or path specified for version %d bundle", av)
+			return result, fmt.Errorf("no release or path specified for version %d bundle", av)
 		}
 
 		if bd.Development || bd.Release == "" {
@@ -102,14 +101,14 @@ func LoadBuiltinActors(ctx context.Context, repoPath string, bs blockstoreutil.B
 
 		// add the release key with the manifest to avoid reloading it in next restart.
 		if err := ds.Put(ctx, key, mfCid.Bytes()); err != nil {
-			return result, xerrors.Errorf("error storing manifest CID for builtin-actors vrsion %d to the datastore: %w", av, err)
+			return result, fmt.Errorf("error storing manifest CID for builtin-actors vrsion %d to the datastore: %w", av, err)
 		}
 	}
 
 	// we've loaded all the bundles, now load the manifests to get actor code CIDs.
 	cborStore := cbor.NewCborStore(bs)
 	if err := actors.LoadManifests(ctx, cborStore); err != nil {
-		return result, xerrors.Errorf("error loading actor manifests: %w", err)
+		return result, fmt.Errorf("error loading actor manifests: %w", err)
 	}
 
 	return result, nil
@@ -134,7 +133,7 @@ func LoadBuiltinActorsTesting(ctx context.Context, bs blockstoreutil.Blockstore,
 		switch {
 		case bd.Path[netw] != "":
 			if _, err := LoadBundle(ctx, bs, bd.Path[netw], av); err != nil {
-				return result, xerrors.Errorf("error loading testing bundle for builtin-actors version %d/%s: %w", av, netw, err)
+				return result, fmt.Errorf("error loading testing bundle for builtin-actors version %d/%s: %w", av, netw, err)
 			}
 
 		case bd.URL[netw].URL != "":
@@ -145,17 +144,17 @@ func LoadBuiltinActorsTesting(ctx context.Context, bs blockstoreutil.Blockstore,
 
 		case bd.Release != "":
 			if _, err := FetchAndLoadBundleFromRelease(ctx, basePath, bs, av, bd.Release, netw); err != nil {
-				return result, xerrors.Errorf("error loading testing bundle for builtin-actors version %d/%s: %w", av, netw, err)
+				return result, fmt.Errorf("error loading testing bundle for builtin-actors version %d/%s: %w", av, netw, err)
 			}
 
 		default:
-			return result, xerrors.Errorf("no path or release specified for version %d testing bundle", av)
+			return result, fmt.Errorf("no path or release specified for version %d testing bundle", av)
 		}
 	}
 
 	cborStore := cbor.NewCborStore(bs)
 	if err := actors.LoadManifests(ctx, cborStore); err != nil {
-		return result, xerrors.Errorf("error loading actor manifests: %w", err)
+		return result, fmt.Errorf("error loading actor manifests: %w", err)
 	}
 
 	return result, nil

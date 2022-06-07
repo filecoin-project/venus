@@ -3,6 +3,7 @@ package paychmgr
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"sync"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
-	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
@@ -112,7 +112,7 @@ type GetOpts struct {
 
 func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt big.Int, opts GetOpts) (address.Address, cid.Cid, error) {
 	if !opts.Reserve && opts.OffChain {
-		return address.Undef, cid.Undef, xerrors.Errorf("can't fund payment channels without on-chain operations")
+		return address.Undef, cid.Undef, fmt.Errorf("can't fund payment channels without on-chain operations")
 	}
 	chanAccessor, err := pm.accessorByFromTo(from, to)
 	if err != nil {
@@ -179,7 +179,7 @@ func (pm *Manager) GetPaychWaitReady(ctx context.Context, mcid cid.Cid) (address
 
 	if err != nil {
 		if err == datastore.ErrNotFound {
-			return address.Undef, xerrors.Errorf("Could not find wait msg cid %s", mcid)
+			return address.Undef, fmt.Errorf("could not find wait msg cid %s", mcid)
 		}
 		return address.Undef, err
 	}
@@ -325,7 +325,7 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 	}
 	if !has {
 		msg := "cannot add voucher for channel %s: wallet does not have key for address %s"
-		return nil, xerrors.Errorf(msg, ch, to)
+		return nil, fmt.Errorf(msg, ch, to)
 	}
 
 	// Save channel to store

@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -10,7 +11,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-	"golang.org/x/xerrors"
 
 	// Used for genesis.
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -56,28 +56,28 @@ func NewCirculatingSupplyCalculator(bstore blockstoreutil.Blockstore, genesisRoo
 func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (types.CirculatingSupply, error) {
 	filVested, err := caculator.GetFilVested(ctx, height)
 	if err != nil {
-		return types.CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %v", err)
+		return types.CirculatingSupply{}, fmt.Errorf("failed to calculate filVested: %v", err)
 	}
 
 	filReserveDisbursed := big.Zero()
 	if height > caculator.upgradeConfig.UpgradeAssemblyHeight {
 		filReserveDisbursed, err = caculator.GetFilReserveDisbursed(ctx, st)
 		if err != nil {
-			return types.CirculatingSupply{}, xerrors.Errorf("failed to calculate filReserveDisbursed: %v", err)
+			return types.CirculatingSupply{}, fmt.Errorf("failed to calculate filReserveDisbursed: %v", err)
 		}
 	}
 
 	filMined, err := GetFilMined(ctx, st)
 	if err != nil {
-		return types.CirculatingSupply{}, xerrors.Errorf("failed to calculate filMined: %v", err)
+		return types.CirculatingSupply{}, fmt.Errorf("failed to calculate filMined: %v", err)
 	}
 	filBurnt, err := GetFilBurnt(ctx, st)
 	if err != nil {
-		return types.CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %v", err)
+		return types.CirculatingSupply{}, fmt.Errorf("failed to calculate filBurnt: %v", err)
 	}
 	filLocked, err := caculator.GetFilLocked(ctx, st)
 	if err != nil {
-		return types.CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %v", err)
+		return types.CirculatingSupply{}, fmt.Errorf("failed to calculate filLocked: %v", err)
 	}
 	ret := big.Add(filVested, filMined)
 	ret = big.Add(ret, filReserveDisbursed)
@@ -141,17 +141,17 @@ func (caculator *CirculatingSupplyCalculator) setupGenesisVestingSchedule(ctx co
 	cst := cbornode.NewCborStore(caculator.bstore)
 	sTree, err := tree.LoadState(ctx, cst, caculator.genesisRoot)
 	if err != nil {
-		return xerrors.Errorf("loading state tree: %v", err)
+		return fmt.Errorf("loading state tree: %v", err)
 	}
 
 	gmf, err := getFilMarketLocked(ctx, sTree)
 	if err != nil {
-		return xerrors.Errorf("setting up genesis market funds: %v", err)
+		return fmt.Errorf("setting up genesis market funds: %v", err)
 	}
 
 	gp, err := getFilPowerLocked(ctx, sTree)
 	if err != nil {
-		return xerrors.Errorf("setting up genesis pledge: %v", err)
+		return fmt.Errorf("setting up genesis pledge: %v", err)
 	}
 
 	caculator.genesisMarketFunds = gmf
@@ -298,19 +298,19 @@ func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, 
 	if caculator.preIgnitionVesting == nil || caculator.genesisPledge.IsZero() || caculator.genesisMarketFunds.IsZero() {
 		err := caculator.setupGenesisVestingSchedule(ctx)
 		if err != nil {
-			return vf, xerrors.Errorf("failed to setup pre-ignition vesting schedule: %w", err)
+			return vf, fmt.Errorf("failed to setup pre-ignition vesting schedule: %w", err)
 		}
 	}
 	if caculator.postIgnitionVesting == nil {
 		err := caculator.setupPostIgnitionVesting(ctx)
 		if err != nil {
-			return vf, xerrors.Errorf("failed to setup post-ignition vesting schedule: %w", err)
+			return vf, fmt.Errorf("failed to setup post-ignition vesting schedule: %w", err)
 		}
 	}
 	if caculator.postCalicoVesting == nil {
 		err := caculator.setupPostCalicoVesting(ctx)
 		if err != nil {
-			return vf, xerrors.Errorf("failed to setup post-calico vesting schedule: %w", err)
+			return vf, fmt.Errorf("failed to setup post-calico vesting schedule: %w", err)
 		}
 	}
 
@@ -349,7 +349,7 @@ func (caculator *CirculatingSupplyCalculator) GetFilVested(ctx context.Context, 
 func (caculator *CirculatingSupplyCalculator) GetFilReserveDisbursed(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	ract, found, err := st.GetActor(ctx, builtin.ReserveAddress)
 	if !found || err != nil {
-		return big.Zero(), xerrors.Errorf("failed to get reserve actor: %v", err)
+		return big.Zero(), fmt.Errorf("failed to get reserve actor: %v", err)
 	}
 
 	// If money enters the reserve actor, this could lead to a negative term
@@ -360,7 +360,7 @@ func (caculator *CirculatingSupplyCalculator) GetFilReserveDisbursed(ctx context
 func GetFilMined(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	ractor, found, err := st.GetActor(ctx, reward.Address)
 	if !found || err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load reward actor state: %v", err)
+		return big.Zero(), fmt.Errorf("failed to load reward actor state: %v", err)
 	}
 
 	rst, err := reward.Load(adt.WrapStore(ctx, st.GetStore()), ractor)
@@ -375,7 +375,7 @@ func GetFilMined(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 func GetFilBurnt(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	burnt, found, err := st.GetActor(ctx, builtin.BurntFundsActorAddr)
 	if !found || err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load burnt actor: %v", err)
+		return big.Zero(), fmt.Errorf("failed to load burnt actor: %v", err)
 	}
 
 	return burnt.Balance, nil
@@ -386,12 +386,12 @@ func (caculator *CirculatingSupplyCalculator) GetFilLocked(ctx context.Context, 
 
 	filMarketLocked, err := getFilMarketLocked(ctx, st)
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %v", err)
+		return big.Zero(), fmt.Errorf("failed to get filMarketLocked: %v", err)
 	}
 
 	filPowerLocked, err := getFilPowerLocked(ctx, st)
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to get filPowerLocked: %v", err)
+		return big.Zero(), fmt.Errorf("failed to get filPowerLocked: %v", err)
 	}
 
 	return big.Add(filMarketLocked, filPowerLocked), nil
@@ -400,12 +400,12 @@ func (caculator *CirculatingSupplyCalculator) GetFilLocked(ctx context.Context, 
 func getFilMarketLocked(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	act, found, err := st.GetActor(ctx, market.Address)
 	if !found || err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load market actor: %v", err)
+		return big.Zero(), fmt.Errorf("failed to load market actor: %v", err)
 	}
 
 	mst, err := market.Load(adt.WrapStore(ctx, st.GetStore()), act)
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load market state: %v", err)
+		return big.Zero(), fmt.Errorf("failed to load market state: %v", err)
 	}
 
 	return mst.TotalLocked()
@@ -414,12 +414,12 @@ func getFilMarketLocked(ctx context.Context, st tree.Tree) (abi.TokenAmount, err
 func getFilPowerLocked(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	pactor, found, err := st.GetActor(ctx, power.Address)
 	if !found || err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load power actor: %v", err)
+		return big.Zero(), fmt.Errorf("failed to load power actor: %v", err)
 	}
 
 	pst, err := power.Load(adt.WrapStore(ctx, st.GetStore()), pactor)
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load power state: %v", err)
+		return big.Zero(), fmt.Errorf("failed to load power state: %v", err)
 	}
 
 	return pst.TotalLocked()

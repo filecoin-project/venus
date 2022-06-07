@@ -20,7 +20,6 @@ import (
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/multiformats/go-multiaddr"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -247,7 +246,7 @@ var stateSectorCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 2 {
-			return xerrors.Errorf("expected 2 params")
+			return fmt.Errorf("expected 2 params")
 		}
 		maddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
@@ -274,7 +273,7 @@ var stateSectorCmd = &cmds.Command{
 			return err
 		}
 		if si == nil {
-			return xerrors.Errorf("sector %d for miner %s not found", sid, maddr)
+			return fmt.Errorf("sector %d for miner %s not found", sid, maddr)
 		}
 
 		height := ts.Height()
@@ -443,7 +442,7 @@ var stateGetDealSetCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		dealid, err := strconv.ParseUint(req.Arguments[0], 10, 64)
 		if err != nil {
-			return xerrors.Errorf("parsing deal ID: %w", err)
+			return fmt.Errorf("parsing deal ID: %w", err)
 		}
 
 		ts, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
@@ -491,7 +490,7 @@ var stateMinerInfo = &cmds.Command{
 
 		availableBalance, err := env.(*node.Env).ChainAPI.StateMinerAvailableBalance(req.Context, addr, ts.Key())
 		if err != nil {
-			return xerrors.Errorf("getting miner available balance: %w", err)
+			return fmt.Errorf("getting miner available balance: %w", err)
 		}
 
 		buf := new(bytes.Buffer)
@@ -510,7 +509,7 @@ var stateMinerInfo = &cmds.Command{
 		for _, addr := range mi.Multiaddrs {
 			a, err := multiaddr.NewMultiaddrBytes(addr)
 			if err != nil {
-				return xerrors.Errorf("undecodable listen address: %v", err)
+				return fmt.Errorf("undecodable listen address: %v", err)
 			}
 			writer.Printf("%s ", a)
 		}
@@ -540,7 +539,7 @@ var stateMinerInfo = &cmds.Command{
 
 		cd, err := env.(*node.Env).ChainAPI.StateMinerProvingDeadline(req.Context, addr, ts.Key())
 		if err != nil {
-			return xerrors.Errorf("getting miner info: %w", err)
+			return fmt.Errorf("getting miner info: %w", err)
 		}
 
 		writer.Printf("Proving Period Start:\t%s\n", EpochTime(cd.CurrentEpoch, cd.PeriodStart, blockDelay))
@@ -639,7 +638,7 @@ var stateSysActorCIDsCmd = &cmds.Command{
 
 		manifestCid, ok := actors.GetManifest(actorVersion)
 		if !ok {
-			return xerrors.Errorf("cannot get manifest CID")
+			return fmt.Errorf("cannot get manifest CID")
 		}
 		buf.WriteString(fmt.Sprintf("Manifest CID: %v\n\n", manifestCid))
 
@@ -648,7 +647,7 @@ var stateSysActorCIDsCmd = &cmds.Command{
 		for _, name := range actors.GetBuiltinActorsKeys() {
 			sysActorCID, ok := actors.GetActorCodeID(actorVersion, name)
 			if !ok {
-				return xerrors.Errorf("error getting actor %v code id for actor version %d", name,
+				return fmt.Errorf("error getting actor %v code id for actor version %d", name,
 					actorVersion)
 			}
 			tw.Write(map[string]interface{}{

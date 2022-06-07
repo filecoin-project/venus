@@ -3,11 +3,12 @@
 package miner
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -37,7 +38,7 @@ import (
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
 		if name != actors.MinerKey {
-			return nil, xerrors.Errorf("actor code is not miner: %s", name)
+			return nil, fmt.Errorf("actor code is not miner: %s", name)
 		}
 
 		switch av {
@@ -73,7 +74,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	}
 
-	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+	return nil, fmt.Errorf("unknown actor code %s", act.Code)
 }
 
 func MakeState(store adt.Store, av actors.Version) (State, error) {
@@ -104,7 +105,7 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 		return make8(store)
 
 	}
-	return nil, xerrors.Errorf("unknown actor version %d", av)
+	return nil, fmt.Errorf("unknown actor version %d", av)
 }
 
 type State interface {
@@ -207,7 +208,7 @@ func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.Re
 		case abi.RegisteredPoStProof_StackedDrgWindow64GiBV1:
 			return abi.RegisteredSealProof_StackedDrg64GiBV1, nil
 		default:
-			return -1, xerrors.Errorf("unrecognized window post type: %d", proof)
+			return -1, fmt.Errorf("unrecognized window post type: %d", proof)
 		}
 	}
 
@@ -223,7 +224,7 @@ func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.Re
 	case abi.RegisteredPoStProof_StackedDrgWindow64GiBV1:
 		return abi.RegisteredSealProof_StackedDrg64GiBV1_1, nil
 	default:
-		return -1, xerrors.Errorf("unrecognized window post type: %d", proof)
+		return -1, fmt.Errorf("unrecognized window post type: %d", proof)
 	}
 }
 
@@ -240,7 +241,7 @@ func WinningPoStProofTypeFromWindowPoStProofType(nver network.Version, proof abi
 	case abi.RegisteredPoStProof_StackedDrgWindow64GiBV1:
 		return abi.RegisteredPoStProof_StackedDrgWinning64GiBV1, nil
 	default:
-		return -1, xerrors.Errorf("unknown proof type %d", proof)
+		return -1, fmt.Errorf("unknown proof type %d", proof)
 	}
 }
 

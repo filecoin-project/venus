@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/net"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
 
@@ -105,7 +104,7 @@ var swarmPingCmd = &cmds.Command{
 		for i, pi := range pis {
 			results, err := env.(*node.Env).NetworkAPI.NetworkConnect(ctx, []string{req.Arguments[i]})
 			if err != nil {
-				return xerrors.Errorf("connect: %w", err)
+				return fmt.Errorf("connect: %w", err)
 			}
 
 			for result := range results {
