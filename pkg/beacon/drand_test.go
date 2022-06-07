@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 
 	dchain "github.com/drand/drand/chain"
 	hclient "github.com/drand/drand/client/http"
@@ -15,6 +16,7 @@ import (
 )
 
 func TestPrintGroupInfo(t *testing.T) {
+	tf.UnitTest(t)
 	server := config.DrandConfigs[config.DrandDevnet].Servers[0]
 	c, err := hclient.New(server, nil, nil)
 	assert.NoError(t, err)
@@ -28,6 +30,7 @@ func TestPrintGroupInfo(t *testing.T) {
 }
 
 func TestMaxBeaconRoundForEpoch(t *testing.T) {
+	tf.UnitTest(t)
 	todayTS := uint64(1652222222)
 	drandCfg := config.DrandConfigs[config.DrandDevnet]
 	db, err := NewDrandBeacon(todayTS, config.NewDefaultConfig().NetworkParams.BlockDelay, drandCfg)

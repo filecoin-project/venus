@@ -123,7 +123,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 		return fvm.NewVM(ctx, vmopt)
 	}
 
-	genesisVm, err := newVM(sroot)
+	genesisVM, err := newVM(sroot)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVenusVM: %w", err)
 	}
@@ -160,7 +160,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 			}
 
 			params := mustEnc(constructorParams)
-			rval, err := doExecValue(ctx, genesisVm, power.Address, m.Owner, m.PowerBalance, power.Methods.CreateMiner, params)
+			rval, err := doExecValue(ctx, genesisVM, power.Address, m.Owner, m.PowerBalance, power.Methods.CreateMiner, params)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
 			}
@@ -176,7 +176,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 			}
 			minerInfos[i].maddr = ma.IDAddress
 
-			nh, err := genesisVm.Flush(ctx)
+			nh, err := genesisVM.Flush(ctx)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 			}
@@ -212,7 +212,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 
 		if m.MarketBalance.GreaterThan(big.Zero()) {
 			params := mustEnc(&minerInfos[i].maddr)
-			_, err := doExecValue(ctx, genesisVm, market.Address, m.Worker, m.MarketBalance, market.Methods.AddBalance, params)
+			_, err := doExecValue(ctx, genesisVM, market.Address, m.Worker, m.MarketBalance, market.Methods.AddBalance, params)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("failed to create genesis miner (add balance): %w", err)
 			}
@@ -224,7 +224,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 			publish := func(params *markettypes.PublishStorageDealsParams) error {
 				fmt.Printf("publishing %d storage deals on miner %s with worker %s\n", len(params.Deals), params.Deals[0].Proposal.Provider, m.Worker)
 
-				ret, err := doExecValue(ctx, genesisVm, market.Address, m.Worker, big.Zero(), builtin0.MethodsMarket.PublishStorageDeals, mustEnc(params))
+				ret, err := doExecValue(ctx, genesisVM, market.Address, m.Worker, big.Zero(), builtin0.MethodsMarket.PublishStorageDeals, mustEnc(params))
 				if err != nil {
 					return xerrors.Errorf("failed to create genesis miner (publish deals): %w", err)
 				}
@@ -298,7 +298,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 			for pi := range m.Sectors {
 				rawPow = types.BigAdd(rawPow, types.NewInt(uint64(m.SectorSize)))
 
-				dweight, vdweight, err := dealWeight(ctx, genesisVm, minerInfos[i].maddr, []abi.DealID{minerInfos[i].dealIDs[pi]}, 0, minerInfos[i].presealExp, av)
+				dweight, vdweight, err := dealWeight(ctx, genesisVM, minerInfos[i].maddr, []abi.DealID{minerInfos[i].dealIDs[pi]}, 0, minerInfos[i].presealExp, av)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("getting deal weight: %w", err)
 				}
@@ -309,7 +309,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 			}
 		}
 
-		nh, err := genesisVm.Flush(ctx)
+		nh, err := genesisVM.Flush(ctx)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 		}
@@ -382,7 +382,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 			return cid.Undef, xerrors.Errorf("flushing state tree: %w", err)
 		}
 
-		genesisVm, err = newVM(nh)
+		genesisVM, err = newVM(nh)
 		if err != nil {
 			return cid.Undef, fmt.Errorf("creating new vm: %w", err)
 		}
@@ -401,7 +401,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 					Expiration:    minerInfos[i].presealExp, // TODO: Allow setting externally!
 				}
 
-				dweight, vdweight, err := dealWeight(ctx, genesisVm, minerInfos[i].maddr, params.DealIDs, 0, minerInfos[i].presealExp, av)
+				dweight, vdweight, err := dealWeight(ctx, genesisVM, minerInfos[i].maddr, params.DealIDs, 0, minerInfos[i].presealExp, av)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("getting deal weight: %w", err)
 				}
@@ -410,7 +410,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 
 				// we've added fake power for this sector above, remove it now
 
-				nh, err := genesisVm.Flush(ctx)
+				nh, err := genesisVM.Flush(ctx)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 				}
@@ -463,17 +463,17 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 					return cid.Undef, xerrors.Errorf("flushing state tree: %w", err)
 				}
 
-				genesisVm, err = newVM(nh)
+				genesisVM, err = newVM(nh)
 				if err != nil {
 					return cid.Undef, fmt.Errorf("creating new vm: %w", err)
 				}
 
-				baselinePower, rewardSmoothed, err := currentEpochBlockReward(ctx, genesisVm, minerInfos[i].maddr, av)
+				baselinePower, rewardSmoothed, err := currentEpochBlockReward(ctx, genesisVM, minerInfos[i].maddr, av)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("getting current epoch reward: %w", err)
 				}
 
-				tpow, err := currentTotalPower(ctx, genesisVm, minerInfos[i].maddr)
+				tpow, err := currentTotalPower(ctx, genesisVM, minerInfos[i].maddr)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("getting current total power: %w", err)
 				}
@@ -492,7 +492,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 				pledge = big.Add(pcd, pledge)
 
 				fmt.Println(types.FIL(pledge))
-				_, err = doExecValue(ctx, genesisVm, minerInfos[i].maddr, m.Worker, pledge, builtintypes.MethodsMiner.PreCommitSector, mustEnc(params))
+				_, err = doExecValue(ctx, genesisVM, minerInfos[i].maddr, m.Worker, pledge, builtintypes.MethodsMiner.PreCommitSector, mustEnc(params))
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
 				}
@@ -515,7 +515,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 					paramBytes = mustEnc(confirmParams)
 				}
 
-				_, err = doExecValue(ctx, genesisVm, minerInfos[i].maddr, power.Address, big.Zero(), builtintypes.MethodsMiner.ConfirmSectorProofsValid, paramBytes)
+				_, err = doExecValue(ctx, genesisVM, minerInfos[i].maddr, power.Address, big.Zero(), builtintypes.MethodsMiner.ConfirmSectorProofsValid, paramBytes)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
 				}
@@ -527,12 +527,12 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 						QualityAdjustedDelta: sectorWeight,
 					}
 
-					_, err = doExecValue(ctx, genesisVm, power.Address, minerInfos[i].maddr, big.Zero(), power.Methods.UpdateClaimedPower, mustEnc(claimParams))
+					_, err = doExecValue(ctx, genesisVM, power.Address, minerInfos[i].maddr, big.Zero(), power.Methods.UpdateClaimedPower, mustEnc(claimParams))
 					if err != nil {
 						return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
 					}
 
-					nh, err := genesisVm.Flush(ctx)
+					nh, err := genesisVM.Flush(ctx)
 					if err != nil {
 						return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 					}
@@ -576,7 +576,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 						return cid.Undef, xerrors.Errorf("flushing state tree: %w", err)
 					}
 
-					genesisVm, err = newVM(nh)
+					genesisVM, err = newVM(nh)
 					if err != nil {
 						return cid.Undef, fmt.Errorf("creating new vm: %w", err)
 					}
@@ -586,7 +586,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 	}
 
 	// Sanity-check total network power
-	nh, err := genesisVm.Flush(ctx)
+	nh, err := genesisVM.Flush(ctx)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}
@@ -624,7 +624,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 
 	// TODO: Should we re-ConstructState for the reward actor using rawPow as currRealizedPower here?
 
-	c, err := genesisVm.Flush(ctx)
+	c, err := genesisVM.Flush(ctx)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}
