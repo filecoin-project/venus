@@ -3,14 +3,18 @@ package paychmgr
 import (
 	"context"
 	"errors"
+	"os"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/statemanger"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/mitchellh/go-homedir"
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -71,6 +75,17 @@ func NewManager(ctx context.Context, ds datastore.Batching, params *ManagerParam
 
 // newManager is used by the tests to supply mocks
 func newManager(ctx context.Context, pchStore *Store, pchapi managerAPI) (*Manager, error) {
+	builtinactors.SetNetworkBundle(types.NetworkButterfly)
+	repoPath, err := homedir.Expand("~/.venus")
+	if err != nil {
+		return nil, err
+	}
+	if err := os.Setenv(builtinactors.RepoPath, repoPath); err != nil {
+		return nil, err
+	}
+	if err := builtinactors.FetchAndLoadBundles(ctx, blockstoreutil.NewMemory(), builtinactors.BuiltinActorReleases); err != nil {
+		return nil, err
+	}
 	pm := &Manager{
 		store:    pchStore,
 		sa:       &stateAccessor{sm: pchapi},
