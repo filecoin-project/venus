@@ -72,15 +72,15 @@ func LoadBundle(ctx context.Context, bs blockstore.Blockstore, path string, av a
 	return mfCid, nil
 }
 
-var RepoPath = "REPO_PATH"
+var BundleRepoPath = "BUNDLE_REPO_PATH"
 
 // utility for blanket loading outside DI
 func FetchAndLoadBundles(ctx context.Context, bs blockstore.Blockstore, bar map[actors.Version]Bundle) error {
 	netw := NetworkBundle
 
-	path := os.Getenv(RepoPath)
+	path := os.Getenv(BundleRepoPath)
 	if path == "" {
-		return xerrors.Errorf("failed to got env: %s", RepoPath)
+		return xerrors.Errorf("failed to got env: %s", BundleRepoPath)
 	}
 
 	for av, bd := range bar {

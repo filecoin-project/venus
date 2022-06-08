@@ -54,7 +54,7 @@ func (b *BundleFetcher) FetchFromRelease(version int, release, netw string) (pat
 		log.Warnf("invalid bundle %s: %s; refetching", bundleName, err)
 	}
 
-	log.Infof("fetching bundle %s", bundleFile)
+	fmt.Println("fetching bundle ", bundleFile)
 	if err := b.fetchFromRelease(release, bundleBasePath, bundleFile, bundleHash); err != nil {
 		log.Errorf("error fetching bundle %s: %s", bundleName, err)
 		return "", xerrors.Errorf("error fetching bundle: %w", err)
@@ -88,7 +88,7 @@ func (b *BundleFetcher) FetchFromURL(version int, release, netw, url, cksum stri
 		log.Warnf("invalid bundle %s: %s; refetching", bundleName, err)
 	}
 
-	log.Infof("fetching bundle %s", bundleFile)
+	fmt.Println("fetching bundle ", bundleFile)
 	if err := b.fetchFromURL(bundleBasePath, bundleFile, url); err != nil {
 		log.Errorf("error fetching bundle %s: %s", bundleName, err)
 		return "", xerrors.Errorf("error fetching bundle: %w", err)
@@ -103,7 +103,7 @@ func (b *BundleFetcher) FetchFromURL(version int, release, netw, url, cksum stri
 }
 
 func (b *BundleFetcher) fetchURL(url, path string) error {
-	log.Infof("fetching URL: %s", url)
+	fmt.Println("fetching URL: ", url)
 
 	for i := 0; i < 3; i++ {
 		resp, err := http.Get(url) //nolint

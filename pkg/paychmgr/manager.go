@@ -80,7 +80,7 @@ func newManager(ctx context.Context, pchStore *Store, pchapi managerAPI) (*Manag
 	if err != nil {
 		return nil, err
 	}
-	if err := os.Setenv(builtinactors.RepoPath, repoPath); err != nil {
+	if err := os.Setenv(builtinactors.BundleRepoPath, repoPath); err != nil {
 		return nil, err
 	}
 	if err := builtinactors.FetchAndLoadBundles(ctx, blockstoreutil.NewMemory(), builtinactors.BuiltinActorReleases); err != nil {
