@@ -23,24 +23,16 @@ require (
 
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
-	github.com/DataDog/zstd v1.4.1 // indirect
 	github.com/GeertJohan/go.incremental v1.0.0 // indirect
 	github.com/GeertJohan/go.rice v1.0.2 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/ahmetb/go-linq/v3 v3.2.0 // indirect
 	github.com/akavel/rsrc v0.8.0 // indirect
-	github.com/bluele/gcache v0.0.0-20190518031135-bc40bd653833 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
-	github.com/cespare/xxhash v1.1.0 // indirect
-	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/crackcomm/go-gitignore v0.0.0-20170627025303-887ab5e44cc3 // indirect
 	github.com/daaku/go.zipexe v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dgraph-io/badger/v2 v2.2007.3 // indirect
-	github.com/dgraph-io/ristretto v0.1.0 // indirect
-	github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 // indirect
-	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/filecoin-project/go-amt-ipld/v2 v2.1.1-0.20201006184820-924ee87a1349 // indirect
 	github.com/filecoin-project/go-amt-ipld/v3 v3.1.0 // indirect
 	github.com/filecoin-project/go-amt-ipld/v4 v4.0.0 // indirect
@@ -58,18 +50,15 @@ require (
 	github.com/filecoin-project/specs-actors/v6 v6.0.2-0.20220511204807-569c6d12432b // indirect
 	github.com/filecoin-project/specs-actors/v7 v7.0.1-0.20220511223846-637436c27154 // indirect
 	github.com/filecoin-project/specs-actors/v8 v8.0.0-20220422153930-0afe155bfffa // indirect
-	github.com/filecoin-project/specs-storage v0.4.0 // indirect
+	github.com/filecoin-project/specs-storage v0.4.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/gbrlsnchs/jwt/v3 v3.0.1 // indirect
 	github.com/go-logr/logr v1.2.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/glog v1.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/mock v1.6.0 // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/golang/snappy v0.0.3 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hannahhoward/cbor-gen-for v0.0.0-20200817222906-ea96cece81f1 // indirect
@@ -98,7 +87,6 @@ require (
 	github.com/ipfs/go-unixfs v0.3.1 // indirect
 	github.com/ipfs/go-verifcid v0.0.1 // indirect
 	github.com/ipfs/interface-go-ipfs-core v0.5.2 // indirect
-	github.com/ipld/go-car v0.3.3 // indirect
 	github.com/ipld/go-codec-dagpb v1.3.2 // indirect
 	github.com/ipld/go-ipld-prime v0.16.0 // indirect
 	github.com/jbenet/goprocess v0.1.4 // indirect
@@ -129,7 +117,6 @@ require (
 	github.com/multiformats/go-varint v0.0.6 // indirect
 	github.com/nkovacs/streamquote v1.0.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
-	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/polydawn/refmt v0.0.0-20201211092308-30ac6d18308e // indirect
