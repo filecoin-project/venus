@@ -30,6 +30,3 @@ COPY --from=buildenv  /usr/lib/x86_64-linux-gnu/libhwloc.so.5  \
 
 EXPOSE 3453
 ENTRYPOINT ["/app/venus","daemon"]
-
-
-

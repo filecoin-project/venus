@@ -11,4 +11,4 @@ RUN apt-get install -y \
 RUN apt-get install -y \
      gcc  clang build-essential  
 RUN apt-get install -y \
-    make ncftp git curl  wget
+     make ncftp git curl  wget
