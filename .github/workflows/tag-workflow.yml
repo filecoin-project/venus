@@ -172,3 +172,16 @@ jobs:
                   --data-urlencode "description=message:${{steps.vars.outputs.git_message}}, branch:${{steps.vars.outputs.branch}}, commit:${{steps.vars.outputs.short}}, tag:${{steps.vars.outputs.github_tag}}" \
                   --data-urlencode "version=${{steps.vars.outputs.short}}"
           set -e
+
+      - name: Publish the Docker image 
+        if: ${{ github.ref_type == 'tag' && github.event_name == 'create' }}
+        run: |
+          make docker-buildenv
+          make docker-runtime
+          docker build . --file dockerfile --tag filvenus/venus:latest
+          docker tag filvenus/venus:latest filvenus/venus:${{steps.vars.outputs.github_tag}}
+          docker login --username=filvenus --password ${{ secrets.DOCKER_PASSWORD }} 
+          docker push filvenus/venus:${{steps.vars.outputs.github_tag}}
+          docker push filvenus/venus:latest
+          docker push filvenus/venus-runtime:latest
+          docker push filvenus/venus-buildenv:latest
