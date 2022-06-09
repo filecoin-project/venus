@@ -3,6 +3,8 @@ package builtinactors
 import (
 	"bytes"
 	_ "embed"
+	"fmt"
+	"os"
 
 	"github.com/BurntSushi/toml"
 	"github.com/ipfs/go-cid"
@@ -14,7 +16,10 @@ import (
 var NetworkBundle string
 var ActorsCIDs = make(map[actors.Version]cid.Cid)
 
-func SetNetworkBundle(networkType types.NetworkType) {
+func SetBundleInfo(networkType types.NetworkType, repoPath string) error {
+	if err := os.Setenv(BundleRepoPath, repoPath); err != nil {
+		return err
+	}
 	switch networkType {
 	case types.Network2k, types.NetworkForce:
 		NetworkBundle = "devnet"
@@ -29,9 +34,11 @@ func SetNetworkBundle(networkType types.NetworkType) {
 	default:
 		NetworkBundle = "mainnet"
 	}
+	fmt.Printf("NetworkBundle %v, BUNDLE_REPO_PATH: %v, ActorsCIDs: %v \n", NetworkBundle, repoPath, ActorsCIDs)
+	return nil
 }
 
-// Must have called SetNetworkBundle before calling GetActorsCIDs
+// Must have called SetBundleInfo before calling GetActorsCIDs
 func GetActorsCIDs() map[actors.Version]cid.Cid {
 	return ActorsCIDs
 }

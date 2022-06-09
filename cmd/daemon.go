@@ -145,7 +145,9 @@ func initRun(req *cmds.Request) error {
 		if err != nil {
 			return err
 		}
-		builtin_actors.SetNetworkBundle(cfg.NetworkParams.NetworkType)
+		if err := builtin_actors.SetBundleInfo(cfg.NetworkParams.NetworkType, repoPath); err != nil {
+			return err
+		}
 		if _, err := builtin_actors.LoadBuiltinActors(req.Context, repoPath, rep.Datastore(), rep.MetaDatastore()); err != nil {
 			return err
 		}

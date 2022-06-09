@@ -100,21 +100,23 @@ var loadBundles = func(req *cmds.Request, env cmds.Environment) error {
 	}
 
 	repoDir, _ := req.Options[OptionRepoDir].(string)
-	if _, err := os.Lstat(repoDir); err != nil {
+	repoPath, err := paths.GetRepoPath(repoDir)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Lstat(repoPath); err != nil {
 		// first start
 		if os.IsNotExist(err) {
 			return nil
 		}
 		return err
 	}
-	configPath := filepath.Join(repoDir, "config.json")
-	cfg, err := config.ReadFile(configPath)
+	cfg, err := config.ReadFile(filepath.Join(repoPath, "config.json"))
 	if err != nil {
 		return err
 	}
-	builtin_actors.SetNetworkBundle(cfg.NetworkParams.NetworkType)
-	if err := os.Setenv(builtin_actors.BundleRepoPath, repoDir); err != nil {
-		return fmt.Errorf("set env %s failed %v", builtin_actors.BundleRepoPath, err)
+	if err := builtin_actors.SetBundleInfo(cfg.NetworkParams.NetworkType, repoPath); err != nil {
+		return err
 	}
 
 	// preload manifest so that we have the correct code CID inventory for cli since that doesn't

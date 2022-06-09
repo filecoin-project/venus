@@ -129,7 +129,9 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		builtin_actors.SetNetworkBundle(b.Repo().Config().NetworkParams.NetworkType)
+		if err := builtin_actors.SetBundleInfo(b.Repo().Config().NetworkParams.NetworkType, repoPath); err != nil {
+			return nil, err
+		}
 		if _, err := builtin_actors.LoadBuiltinActors(ctx, repoPath, b.Repo().Datastore(), b.Repo().MetaDatastore()); err != nil {
 			return nil, fmt.Errorf("failed to load builtin actors %v", err)
 		}

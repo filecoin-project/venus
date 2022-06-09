@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -75,12 +74,11 @@ func NewManager(ctx context.Context, ds datastore.Batching, params *ManagerParam
 
 // newManager is used by the tests to supply mocks
 func newManager(ctx context.Context, pchStore *Store, pchapi managerAPI) (*Manager, error) {
-	builtinactors.SetNetworkBundle(types.NetworkButterfly)
 	repoPath, err := homedir.Expand("~/.venus")
 	if err != nil {
 		return nil, err
 	}
-	if err := os.Setenv(builtinactors.BundleRepoPath, repoPath); err != nil {
+	if err := builtinactors.SetBundleInfo(types.NetworkButterfly, repoPath); err != nil {
 		return nil, err
 	}
 	if err := builtinactors.FetchAndLoadBundles(ctx, blockstoreutil.NewMemory(), builtinactors.BuiltinActorReleases); err != nil {
