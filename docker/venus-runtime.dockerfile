@@ -1,12 +1,12 @@
 FROM ubuntu:20.04
 
-# 证书下载
+# install dependence
 RUN apt-get -qq update \
     && apt-get -qq install -y --no-install-recommends ca-certificates curl vim telnet
 
-# 设置时区为上海
+# set time zone to Shanghai
 RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 RUN echo 'Asia/Shanghai' >/etc/timezone
 
-# 设置编码
+# set charset
 ENV LANG C.UTF-8
