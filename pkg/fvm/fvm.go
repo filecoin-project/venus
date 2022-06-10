@@ -494,7 +494,7 @@ func (r wrapperRand) GetBeaconRandomness(ctx context.Context, pers acrypto.Domai
 	return r.ChainGetRandomnessFromBeacon(ctx, pers, round, entropy)
 }
 
-var experimentalUseFvm = os.Getenv("VENUS_USE_FVM_EXPERIMENTAL") == "1"
+var experimentalUseFvm = os.Getenv("VENUS_USE_FVM_TO_SYNC_MAINNET_V15") == "1"
 
 func NewVM(ctx context.Context, opts vm.VmOption) (vm.Interface, error) {
 	if opts.NetworkVersion >= network.Version16 {
