@@ -242,7 +242,8 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 		return -1, fmt.Errorf("CallWithGas failed: %v", err)
 	}
 	if res.Receipt.ExitCode != exitcode.Ok {
-		return -1, fmt.Errorf("message execution failed: exit %s", res.Receipt.ExitCode)
+		log.Warnf("message execution failed: from %v, method %d, exit %s, reason: %v", msg.From, msg.Method, res.Receipt.ExitCode, res.ActorErr)
+		return -1, fmt.Errorf("message execution failed: exit %s, reason: %v", res.Receipt.ExitCode, res.ActorErr)
 	}
 
 	ret := res.Receipt.GasUsed
