@@ -2073,9 +2073,7 @@ func (c *ChainFork) upgradeActorsV8Common(
 	store := chain.ActorStore(ctx, buf)
 
 	// ensure that the manifest is loaded in the blockstore
-	if err := builtinactors.FetchAndLoadBundles(ctx, buf, map[actors.Version]builtinactors.Bundle{
-		actors.Version8: builtinactors.BuiltinActorReleases[actors.Version8],
-	}); err != nil {
+	if err := builtinactors.LoadBundles(ctx, buf, actors.Version8); err != nil {
 		return cid.Undef, fmt.Errorf("failed to load manifest bundle: %w", err)
 	}
 
@@ -2095,14 +2093,6 @@ func (c *ChainFork) upgradeActorsV8Common(
 	manifest, ok := actors.GetManifest(actors.Version8)
 	if !ok {
 		return cid.Undef, fmt.Errorf("no manifest CID for v8 upgrade")
-	}
-
-	actorsCIDs := builtinactors.GetActorsCIDs()
-	log.Infof("version8 actors: %v", actorsCIDs[actors.Version8])
-	if val, ok := actorsCIDs[actors.Version8]; ok {
-		if val != manifest {
-			return cid.Undef, fmt.Errorf("actors V8 manifest CID %s did not match CID given in params file: %s", manifest, val)
-		}
 	}
 
 	// Perform the migration

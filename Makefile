@@ -42,7 +42,7 @@ build-dep/.update-modules: build-dep;
 	git submodule update --init --recursive
 	touch $@
 
-gen-all: cborgen gogen inline-gen api-gen
+gen-all: cborgen gogen inline-gen api-gen bundle-gen
 
 ### devtool ###
 cborgen:
@@ -56,6 +56,10 @@ inline-gen:
 
 test-venus-shared:
 	cd venus-shared && go test -covermode=set ./...
+
+bundle-gen:
+	cd venus-devtool && go run ./bundle-gen/*.go  --dst ./../venus-shared/builtin-actors/builtin_actors_gen.go
+	goimports -w venus-shared/builtin-actors/builtin_actors_gen.go
 
 api-gen:
 	cd ./venus-devtool/ && go run ./api-gen/ proxy

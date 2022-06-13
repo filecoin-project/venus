@@ -141,14 +141,7 @@ func initRun(req *cmds.Request) error {
 
 		node.SetNetParams(cfg.NetworkParams)
 		// load builtin actors
-		repoPath, err := rep.Path()
-		if err != nil {
-			return err
-		}
-		if err := builtin_actors.SetBundleInfo(cfg.NetworkParams.NetworkType, repoPath); err != nil {
-			return err
-		}
-		if _, err := builtin_actors.LoadBuiltinActors(req.Context, repoPath, rep.Datastore(), rep.MetaDatastore()); err != nil {
+		if err := builtin_actors.SetNetworkBundle(cfg.NetworkParams.NetworkType); err != nil {
 			return err
 		}
 		genesisFunc = genesis.MakeGenesis(req.Context, rep, mkGen, preTp.(string), cfg.NetworkParams.ForkUpgradeParam)

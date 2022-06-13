@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -18,10 +17,7 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/paths"
-	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	builtin_actors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 )
 
 const (
@@ -90,45 +86,6 @@ func init() {
 			return enc
 		}
 	}
-}
-
-var loadBundles = func(req *cmds.Request, env cmds.Environment) error {
-	nt, _ := req.Options[Network].(string)
-	// Integrateion test skip load builtin actors
-	if nt == "integrationnet" {
-		return nil
-	}
-
-	repoDir, _ := req.Options[OptionRepoDir].(string)
-	repoPath, err := paths.GetRepoPath(repoDir)
-	if err != nil {
-		return err
-	}
-	if _, err := os.Lstat(repoPath); err != nil {
-		// first start
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
-	}
-	cfg, err := config.ReadFile(filepath.Join(repoPath, "config.json"))
-	if err != nil {
-		return err
-	}
-	if err := builtin_actors.SetBundleInfo(cfg.NetworkParams.NetworkType, repoPath); err != nil {
-		return err
-	}
-
-	// preload manifest so that we have the correct code CID inventory for cli since that doesn't
-	// go through CI
-	// TODO loading the bundle in every cli invocation adds some latency; we should figure out a way
-	//      to load actor CIDs without incurring this hit.
-	bs := blockstoreutil.NewMemory()
-	if err := builtin_actors.FetchAndLoadBundles(req.Context, bs, builtin_actors.BuiltinActorReleases); err != nil {
-		return fmt.Errorf("error loading actor manifest: %w", err)
-	}
-
-	return err
 }
 
 // command object for the local cli
@@ -234,29 +191,8 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"msig":     multisigCmd,
 }
 
-type preFun func(req *cmds.Request, env cmds.Environment) error
-
 func init() {
-	wrapper := func(oldPreFun, newPreFun preFun) preFun {
-		return func(req *cmds.Request, env cmds.Environment) error {
-			if oldPreFun != nil {
-				if err := oldPreFun(req, env); err != nil {
-					return err
-				}
-			}
-			return newPreFun(req, env)
-		}
-	}
-
 	for k, v := range rootSubcmdsLocal {
-		if k == "daemon" {
-			if len(v.Subcommands) == 0 {
-				v.PreRun = wrapper(v.PreRun, loadBundles)
-			}
-			for _, sub := range v.Subcommands {
-				sub.PreRun = wrapper(v.PreRun, loadBundles)
-			}
-		}
 		RootCmd.Subcommands[k] = v
 	}
 

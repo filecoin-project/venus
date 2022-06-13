@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/fvm"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
+	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/venus/pkg/config"
@@ -158,6 +159,10 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 	av, err := actors.VersionForNetwork(template.NetworkVersion)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get actor version: %w", err)
+	}
+
+	if err := builtinactors.LoadBundles(ctx, bs, av); err != nil {
+		return nil, nil, fmt.Errorf("loading actors for genesis block: %w", err)
 	}
 	// Create system actor
 

@@ -102,6 +102,10 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		chainClock:  b.chainClock,
 	}
 
+	if err := builtin_actors.SetNetworkBundle(b.repo.Config().NetworkParams.NetworkType); err != nil {
+		return nil, err
+	}
+
 	//modules
 	nd.circulatiingSupplyCalculator = chain2.NewCirculatingSupplyCalculator(b.repo.Datastore(), b.genBlk.ParentStateRoot, b.repo.Config().NetworkParams.ForkUpgradeParam)
 
@@ -121,20 +125,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.blockservice, err = dagservice.NewDagserviceSubmodule(ctx, (*builder)(b), nd.network)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.dagservice")
-	}
-
-	// load builtin actor very slow, so integration test skip it
-	if b.Repo().Config().NetworkParams.NetworkType != types.Integrationnet {
-		repoPath, err := b.Repo().Path()
-		if err != nil {
-			return nil, err
-		}
-		if err := builtin_actors.SetBundleInfo(b.Repo().Config().NetworkParams.NetworkType, repoPath); err != nil {
-			return nil, err
-		}
-		if _, err := builtin_actors.LoadBuiltinActors(ctx, repoPath, b.Repo().Datastore(), b.Repo().MetaDatastore()); err != nil {
-			return nil, fmt.Errorf("failed to load builtin actors %v", err)
-		}
 	}
 
 	nd.chain, err = chain.NewChainSubmodule(ctx, (*builder)(b), nd.circulatiingSupplyCalculator)

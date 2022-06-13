@@ -107,9 +107,11 @@ func init() {
 					Ret:    et.Out(0),
 				}
 			}
-			MethodsMap[actor.Code()] = methods
+
 			if realCode.Defined() {
 				MethodsMap[realCode] = methods
+			} else {
+				MethodsMap[actor.Code()] = methods
 			}
 		}
 	}

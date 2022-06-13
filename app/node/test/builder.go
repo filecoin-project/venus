@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/venus/pkg/jwtauth"
-	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/venus/pkg/wallet"
 
@@ -52,10 +51,6 @@ func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 			}),
 			node.ConfigOpt(func(c *config.Config) {
 				c.Bootstrap.MinPeerThreshold = 0
-			}),
-			// Integration test will skip load builtin actors
-			node.ConfigOpt(func(c *config.Config) {
-				c.NetworkParams.NetworkType = types.Integrationnet
 			}),
 		},
 		builderOpts: []node.BuilderOpt{
