@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/types"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
@@ -85,4 +86,12 @@ func (blockstoreAPI *blockstoreAPI) ChainStatObj(ctx context.Context, obj cid.Ci
 	}
 
 	return stats, nil
+}
+
+func (blockstoreAPI *blockstoreAPI) ChainPutObj(ctx context.Context, blk blocks.Block) error {
+	return blockstoreAPI.blockstore.Blockstore.Put(ctx, blk)
+}
+
+func (blockstoreAPI *blockstoreAPI) PutMany(ctx context.Context, blocks []blocks.Block) error {
+	return blockstoreAPI.blockstore.Blockstore.PutMany(ctx, blocks)
 }

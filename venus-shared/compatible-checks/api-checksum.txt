@@ -20,6 +20,7 @@ v0api.FullNode:
 	ChainHasObj:	In=2,	Out=2,	CheckSum=7fe71bcffa1b110db106e0104e98a32f
 	ChainHead:	In=1,	Out=2,	CheckSum=6d1e4c4d8184dc8d645a56278f14cfad
 	ChainNotify:	In=1,	Out=2,	CheckSum=9525148e93a5b83600ebfbde4d24f3e9
+	ChainPutObj:	In=2,	Out=1,	CheckSum=8f14a26d66dd2a48d50d58af2ff7d722
 	ChainReadObj:	In=2,	Out=2,	CheckSum=6fd9244d87bf5d14fb5e79b0dbc0940d
 	ChainSetHead:	In=2,	Out=1,	CheckSum=cdfe593ac791e823186abb77bfad49a0
 	ChainStatObj:	In=3,	Out=2,	CheckSum=9db2a0d97998daaf9c15e7c3d6ffe82d
@@ -236,6 +237,7 @@ api.FullNode:
 	ChainHasObj:	In=2,	Out=2,	CheckSum=7fe71bcffa1b110db106e0104e98a32f
 	ChainHead:	In=1,	Out=2,	CheckSum=6d1e4c4d8184dc8d645a56278f14cfad
 	ChainNotify:	In=1,	Out=2,	CheckSum=9525148e93a5b83600ebfbde4d24f3e9
+	ChainPutObj:	In=2,	Out=1,	CheckSum=8f14a26d66dd2a48d50d58af2ff7d722
 	ChainReadObj:	In=2,	Out=2,	CheckSum=6fd9244d87bf5d14fb5e79b0dbc0940d
 	ChainSetHead:	In=2,	Out=1,	CheckSum=cdfe593ac791e823186abb77bfad49a0
 	ChainStatObj:	In=3,	Out=2,	CheckSum=9db2a0d97998daaf9c15e7c3d6ffe82d

@@ -10,6 +10,7 @@
 * [BlockStore](#BlockStore)
   * [ChainDeleteObj](#ChainDeleteObj)
   * [ChainHasObj](#ChainHasObj)
+  * [ChainPutObj](#ChainPutObj)
   * [ChainReadObj](#ChainReadObj)
   * [ChainStatObj](#ChainStatObj)
 * [ChainInfo](#ChainInfo)
@@ -309,6 +310,21 @@ Inputs:
 ```
 
 Response: `true`
+
+### ChainPutObj
+ChainPutObj puts a given object into the block store
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {}
+]
+```
+
+Response: `{}`
 
 ### ChainReadObj
 

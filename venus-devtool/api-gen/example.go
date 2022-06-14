@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
@@ -122,6 +123,8 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	block := blocks.Block(&blocks.BasicBlock{})
+	ExampleValues[reflect.TypeOf(&block).Elem()] = block
 	addExample(reqID)
 	addExample(datatransfer.TransferID(3))
 	addExample(datatransfer.Ongoing)

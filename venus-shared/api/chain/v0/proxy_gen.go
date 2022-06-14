@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
+	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -26,6 +27,7 @@ type IBlockStoreStruct struct {
 	Internal struct {
 		ChainDeleteObj func(ctx context.Context, obj cid.Cid) error                                `perm:"admin"`
 		ChainHasObj    func(ctx context.Context, obj cid.Cid) (bool, error)                        `perm:"read"`
+		ChainPutObj    func(context.Context, blocks.Block) error                                   `perm:"admin"`
 		ChainReadObj   func(ctx context.Context, cid cid.Cid) ([]byte, error)                      `perm:"read"`
 		ChainStatObj   func(ctx context.Context, obj cid.Cid, base cid.Cid) (types.ObjStat, error) `perm:"read"`
 	}
@@ -36,6 +38,9 @@ func (s *IBlockStoreStruct) ChainDeleteObj(p0 context.Context, p1 cid.Cid) error
 }
 func (s *IBlockStoreStruct) ChainHasObj(p0 context.Context, p1 cid.Cid) (bool, error) {
 	return s.Internal.ChainHasObj(p0, p1)
+}
+func (s *IBlockStoreStruct) ChainPutObj(p0 context.Context, p1 blocks.Block) error {
+	return s.Internal.ChainPutObj(p0, p1)
 }
 func (s *IBlockStoreStruct) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, error) {
 	return s.Internal.ChainReadObj(p0, p1)

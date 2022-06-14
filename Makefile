@@ -98,7 +98,7 @@ test:
 	go build -o gengen ./tools/gengen
 	./gengen --keypath ./fixtures/live --out-car ./fixtures/live/genesis.car --out-json  ./fixtures/live/gen.json --config ./fixtures/setup.json
 	./gengen --keypath ./fixtures/test --out-car ./fixtures/test/genesis.car --out-json  ./fixtures/test/gen.json --config ./fixtures/setup.json
-	 go test  -v ./... -integration=true -unit=false
+	go test  -v ./... -integration=true -unit=false
 
 lint: $(BUILD_DEPS)
 	staticcheck ./...
