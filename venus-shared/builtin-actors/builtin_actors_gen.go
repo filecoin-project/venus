@@ -24,6 +24,23 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 		"verifiedregistry": types.MustParseCid("bafk2bzacecbhego5vgecly7rw2igkjggzplpv4vnclpyti4x42gaejokm6vmc"),
 	},
 }, {
+	Network:     "calibrationnet",
+	Version:     8,
+	ManifestCid: types.MustParseCid("bafy2bzaced4z2234ptuufryfekgfstbd54nehguvssd6ehigybhhksxsycuno"),
+	Actors: map[string]cid.Cid{
+		"account":          types.MustParseCid("bafk2bzaceciadbjjhts53lmrojgnujoyvux4fx6444w6f5y33olfokkvkrbuu"),
+		"cron":             types.MustParseCid("bafk2bzaceahzwi3rmu4rpnz4ql6tclg4f4sbo5piyweut7ccfp6bwocsw24ze"),
+		"init":             types.MustParseCid("bafk2bzacebcmo3hxum3stwg7rvinvf44eusk5mwdsjvbezwzce7et6lpheaji"),
+		"multisig":         types.MustParseCid("bafk2bzaceb3frglrinpyou6oha3jcjnwhmbfqdbaqzi3l6ifcf2r2t4pi4vns"),
+		"paymentchannel":   types.MustParseCid("bafk2bzacedarudx3zeudotuhltmr5qlbgsjelzx2ze3653p3v6cpgx7ejlcl6"),
+		"reward":           types.MustParseCid("bafk2bzacedn5jwjjtmr7nfhgrw4pcrt4rdwh72bhqwrs6onb2dxk5xlrywqrk"),
+		"storagemarket":    types.MustParseCid("bafk2bzacebvyzgssvcnttuw4fexk3r6szdnk5f2ykoe3aetscae33rxuyjfy2"),
+		"storageminer":     types.MustParseCid("bafk2bzacedcupmzfcwi6ohkklttbsrwvbux3ptpdb4a7g34jmf6cm2ge7qlkk"),
+		"storagepower":     types.MustParseCid("bafk2bzacecyn75cwowuhmn6nfi2covidf5ihr7veyx7bd4lezkkvh2nbjzjry"),
+		"system":           types.MustParseCid("bafk2bzaceclsb6xnx62hilb6kk5qydzha5xubxkrpy7kqqyr4kq2bhadg5jbe"),
+		"verifiedregistry": types.MustParseCid("bafk2bzacedfjp6a5m2nhsmzae2i4grfaw4urzpiur22w6h55csptvr5cauttm"),
+	},
+}, {
 	Network:     "caterpillarnet",
 	Version:     8,
 	ManifestCid: types.MustParseCid("bafy2bzacecooicf3mbtuqjmdfdtbw35ivp2xyjktlxwfebwvulaahamrqw3k4"),
