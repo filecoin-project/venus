@@ -51,7 +51,7 @@ func Calibration() *NetworkConf {
 				UpgradeNorwegianHeight:  360,
 				UpgradeTurboHeight:      390,
 				UpgradeHyperdriveHeight: 420,
-				UpgradeSkyrHeight:       99999999999999,
+				UpgradeSkyrHeight:       1044660, // 2022-06-16T17:30:00Z
 
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       270,

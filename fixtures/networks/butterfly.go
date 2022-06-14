@@ -26,7 +26,7 @@ func ButterflySnapNet() *NetworkConf {
 				abi.RegisteredSealProof_StackedDrg64GiBV1,
 			},
 			NetworkType:            types.NetworkButterfly,
-			GenesisNetworkVersion:  network.Version14,
+			GenesisNetworkVersion:  network.Version15,
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 2 << 30,
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
@@ -46,8 +46,8 @@ func ButterflySnapNet() *NetworkConf {
 				UpgradeTurboHeight:      -15,
 				UpgradeHyperdriveHeight: -16,
 				UpgradeChocolateHeight:  -17,
-				UpgradeOhSnapHeight:     240,
-				UpgradeSkyrHeight:       333258, // 2022-05-31T14:32:00Z
+				UpgradeOhSnapHeight:     -18,
+				UpgradeSkyrHeight:       50,
 
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       -11,
