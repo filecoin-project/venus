@@ -114,6 +114,10 @@ v0api.FullNode:
 	NetLimit:	In=2,	Out=2,	CheckSum=9a35d6e94508e633a1cc5c5dc3f983eb
 	NetPeerInfo:	In=2,	Out=2,	CheckSum=1c030faf779524a321fe8cec305b9f25
 	NetPeers:	In=1,	Out=2,	CheckSum=487043eee4cf0ea002d7a6d0a7ff793b
+	NetPing:	In=2,	Out=2,	CheckSum=7081d18449beab714417419e17be3b34
+	NetProtectAdd:	In=2,	Out=1,	CheckSum=3ce06693ca8248772f180ce9bf9b80e6
+	NetProtectList:	In=1,	Out=2,	CheckSum=8d4d1b9788ba2116116e41a4d7f91540
+	NetProtectRemove:	In=2,	Out=1,	CheckSum=3ce06693ca8248772f180ce9bf9b80e6
 	NetPubsubScores:	In=1,	Out=2,	CheckSum=66c7a1061de3d6e11d39ce90692aa885
 	NetSetLimit:	In=3,	Out=1,	CheckSum=f591c226feead6f0c1d9442a2320cd1e
 	NetStat:	In=2,	Out=2,	CheckSum=82ea34376644e023a4314cde3fb1e4fc
@@ -127,12 +131,12 @@ v0api.FullNode:
 	PaychNewPayment:	In=4,	Out=2,	CheckSum=8bb33e38d75917df1357fcf071335ba9
 	PaychSettle:	In=2,	Out=2,	CheckSum=fdb746bab5f269b63dc0256d50570d81
 	PaychStatus:	In=2,	Out=2,	CheckSum=ae911e02219f1412acb95e95a4065478
-	PaychVoucherAdd:	In=5,	Out=2,	CheckSum=8abddd426fa4de6362414384cdec101c
-	PaychVoucherCheckSpendable:	In=5,	Out=2,	CheckSum=ab5f887200e92223e9adb9573f32e23f
-	PaychVoucherCheckValid:	In=3,	Out=1,	CheckSum=52e8d077109b5410e1dead7e9bf696b0
+	PaychVoucherAdd:	In=5,	Out=2,	CheckSum=4bd3099043e7f90e37c1f30476cd7ff5
+	PaychVoucherCheckSpendable:	In=5,	Out=2,	CheckSum=b9d2610776265f877521a9a9521b3a43
+	PaychVoucherCheckValid:	In=3,	Out=1,	CheckSum=e991badd914254dda0d6c41b7eb36958
 	PaychVoucherCreate:	In=4,	Out=2,	CheckSum=e5113a58d351abf5cadd77b46f690c2d
-	PaychVoucherList:	In=2,	Out=2,	CheckSum=55450ef559b971b6894fb3865003b7b4
-	PaychVoucherSubmit:	In=5,	Out=2,	CheckSum=158150e9cb2e2d176ee9ba4674d382d9
+	PaychVoucherList:	In=2,	Out=2,	CheckSum=c4a81e1915ceee53e3ecde9f1ae30b4c
+	PaychVoucherSubmit:	In=5,	Out=2,	CheckSum=03f7a7f3a90849ea5da8eedd01643a1c
 	Session:	In=1,	Out=2,	CheckSum=cdb04ef6a97114c8f24f456a2e70f1cd
 	Shutdown:	In=1,	Out=1,	CheckSum=c39be30cc5a8826024fcf4d23e7017d6
 	StateAccountKey:	In=3,	Out=2,	CheckSum=9b6f9fdaea5bb22c60772266c418d98f
@@ -144,6 +148,7 @@ v0api.FullNode:
 	StateDealProviderCollateralBounds:	In=4,	Out=2,	CheckSum=5231e44843c0b74a04371e1e7170d4b2
 	StateDecodeParams:	In=5,	Out=2,	CheckSum=8c6311be4dc064a657368516c33e1307
 	StateGetActor:	In=3,	Out=2,	CheckSum=adcd0bbd36e3ab94f777c7cb3df1fb34
+	StateGetNetworkParams:	In=1,	Out=2,	CheckSum=7bc6ff254ba803762ffb166c6d96a921
 	StateGetRandomnessFromBeacon:	In=5,	Out=2,	CheckSum=b98225c36bf011979dbcad0fb938e659
 	StateGetRandomnessFromTickets:	In=5,	Out=2,	CheckSum=b98225c36bf011979dbcad0fb938e659
 	StateGetReceipt:	In=3,	Out=2,	CheckSum=03f4f567eaa55a6ccad8b4a4c95b590a
@@ -152,23 +157,23 @@ v0api.FullNode:
 	StateListMiners:	In=2,	Out=2,	CheckSum=57bcc4526adaf4b0582c0b117d39b042
 	StateLookupID:	In=3,	Out=2,	CheckSum=9b6f9fdaea5bb22c60772266c418d98f
 	StateMarketBalance:	In=3,	Out=2,	CheckSum=bbab976bd25166200f737c94fc970bc7
-	StateMarketDeals:	In=2,	Out=2,	CheckSum=38821c8f592f6f56eb985973ac1ffd36
+	StateMarketDeals:	In=2,	Out=2,	CheckSum=46b5eef922e8252939bf00e1e80ae89e
 	StateMarketParticipants:	In=2,	Out=2,	CheckSum=acc9019d0b6e389743c6f992350f407c
 	StateMarketStorageDeal:	In=3,	Out=2,	CheckSum=94af302d39beba9f0ce7648f4118b6aa
-	StateMinerActiveSectors:	In=3,	Out=2,	CheckSum=bac211cd5a37bfadf156b636ad7b9381
+	StateMinerActiveSectors:	In=3,	Out=2,	CheckSum=10a984fbf3118e0dab152af36aa64424
 	StateMinerAvailableBalance:	In=3,	Out=2,	CheckSum=a05010da3c73edfba49c3b5d28a216cd
 	StateMinerDeadlines:	In=3,	Out=2,	CheckSum=5b128c75ba4953740906520cca96b962
 	StateMinerFaults:	In=3,	Out=2,	CheckSum=9d26d848f93597964f751b43edd3d476
-	StateMinerInfo:	In=3,	Out=2,	CheckSum=0782a05b506c86bcfb47082a6f8e37fc
-	StateMinerInitialPledgeCollateral:	In=4,	Out=2,	CheckSum=d87787cc5072c480ed580099fc926668
+	StateMinerInfo:	In=3,	Out=2,	CheckSum=4ba684a8519aa97d4df405cee3496e7c
+	StateMinerInitialPledgeCollateral:	In=4,	Out=2,	CheckSum=d2a137a064199d4c8bfd685d21e991f4
 	StateMinerPartitions:	In=4,	Out=2,	CheckSum=b3cba1da3bd87c433cb8f9df7f7edc09
 	StateMinerPower:	In=3,	Out=2,	CheckSum=0e70a6360616c25624118181f764d7df
-	StateMinerPreCommitDepositForPower:	In=4,	Out=2,	CheckSum=d87787cc5072c480ed580099fc926668
+	StateMinerPreCommitDepositForPower:	In=4,	Out=2,	CheckSum=d2a137a064199d4c8bfd685d21e991f4
 	StateMinerProvingDeadline:	In=3,	Out=2,	CheckSum=8c6037a054ad720ecfb3d0c3f4f90fe6
 	StateMinerRecoveries:	In=3,	Out=2,	CheckSum=9d26d848f93597964f751b43edd3d476
 	StateMinerSectorAllocated:	In=4,	Out=2,	CheckSum=2accd56a9e9196fa1ca85a1d60e19fc2
 	StateMinerSectorCount:	In=3,	Out=2,	CheckSum=573483cbcf3ccdd38063b9ce16453dc2
-	StateMinerSectors:	In=4,	Out=2,	CheckSum=c04491aa9e0e6e9a743046c60e13683d
+	StateMinerSectors:	In=4,	Out=2,	CheckSum=067ee5993041463c27212b948a59e1e5
 	StateNetworkName:	In=1,	Out=2,	CheckSum=afb82130640a26dcd9d7010f31c69572
 	StateNetworkVersion:	In=2,	Out=2,	CheckSum=47de92e3b59793ade53abd96c347bace
 	StateReadState:	In=3,	Out=2,	CheckSum=f53f39943eea93d5f3dd64f1389e4c64
@@ -176,9 +181,9 @@ v0api.FullNode:
 	StateSearchMsg:	In=2,	Out=2,	CheckSum=e4186ab56a9d2e3c99174110e3f697dc
 	StateSearchMsgLimited:	In=3,	Out=2,	CheckSum=8990ed018d033c44ebb38c0d077bc6d0
 	StateSectorExpiration:	In=4,	Out=2,	CheckSum=bb669c8b66b6f74c681b4345c9e4cc8f
-	StateSectorGetInfo:	In=4,	Out=2,	CheckSum=27a4e36a319274aca9597f105bc438ff
+	StateSectorGetInfo:	In=4,	Out=2,	CheckSum=1fb47cbbd06b1a50e47a087a28998016
 	StateSectorPartition:	In=4,	Out=2,	CheckSum=e3743df55a360243a32ac64ce1282c53
-	StateSectorPreCommitInfo:	In=4,	Out=2,	CheckSum=40e05fc7142ce524b9a58e8655ce5a01
+	StateSectorPreCommitInfo:	In=4,	Out=2,	CheckSum=04d3c9135dc061d98706f61158224288
 	StateVMCirculatingSupplyInternal:	In=2,	Out=2,	CheckSum=05c2114e08be095cece55db19e214d2c
 	StateVerifiedClientStatus:	In=3,	Out=2,	CheckSum=e33ae4cd2315832f2d6f2aa74b68c34e
 	StateVerifiedRegistryRootKey:	In=2,	Out=2,	CheckSum=5ad3a497ee24e321c780a69b8d2f0936
@@ -212,7 +217,6 @@ v0api.FullNode:
 api.FullNode:
 	AuthNew:	In=2,	Out=2,	CheckSum=248fe5ed43f2e294ea5d71596b9272ac
 	AuthVerify:	In=2,	Out=2,	CheckSum=c156d52455ed5f2d227e08a518d5f8a1
-	BeaconGetEntry:	In=2,	Out=2,	CheckSum=c74f5c0f4039207ea45c11bfe3319c38
 	ChainBlockstoreInfo:	In=1,	Out=2,	CheckSum=09640e20c6d71c3e96c7a56c8698acc9
 	ChainCheckBlockstore:	In=1,	Out=1,	CheckSum=c39be30cc5a8826024fcf4d23e7017d6
 	ChainDeleteObj:	In=2,	Out=1,	CheckSum=50d40a0afa31dabb8a61693aabea61b7
@@ -256,7 +260,7 @@ api.FullNode:
 	ClientListImports:	In=1,	Out=2,	CheckSum=1966c3c721d57e0a728d3b51ba3a61d4
 	ClientListRetrievals:	In=1,	Out=2,	CheckSum=d5485e62b97cf31e1880d54808968895
 	ClientMinerQueryOffer:	In=4,	Out=2,	CheckSum=f57fabb5f04c1086302b43bd5087b9e2
-	ClientQueryAsk:	In=3,	Out=2,	CheckSum=2d06866277cf890ee42baa4bacffb2fc
+	ClientQueryAsk:	In=3,	Out=2,	CheckSum=21716c12b10749d3c777c33603d3dc09
 	ClientRemoveImport:	In=2,	Out=1,	CheckSum=a3fcb78bf5bac553baac584941c1771f
 	ClientRestartDataTransfer:	In=4,	Out=1,	CheckSum=074398536c75e25946c7f709574e0cdc
 	ClientRetrieve:	In=2,	Out=2,	CheckSum=b941d6f05cbec209e2f347b6826717e1
@@ -331,6 +335,10 @@ api.FullNode:
 	NetLimit:	In=2,	Out=2,	CheckSum=9a35d6e94508e633a1cc5c5dc3f983eb
 	NetPeerInfo:	In=2,	Out=2,	CheckSum=1c030faf779524a321fe8cec305b9f25
 	NetPeers:	In=1,	Out=2,	CheckSum=487043eee4cf0ea002d7a6d0a7ff793b
+	NetPing:	In=2,	Out=2,	CheckSum=7081d18449beab714417419e17be3b34
+	NetProtectAdd:	In=2,	Out=1,	CheckSum=3ce06693ca8248772f180ce9bf9b80e6
+	NetProtectList:	In=1,	Out=2,	CheckSum=8d4d1b9788ba2116116e41a4d7f91540
+	NetProtectRemove:	In=2,	Out=1,	CheckSum=3ce06693ca8248772f180ce9bf9b80e6
 	NetPubsubScores:	In=1,	Out=2,	CheckSum=66c7a1061de3d6e11d39ce90692aa885
 	NetSetLimit:	In=3,	Out=1,	CheckSum=f591c226feead6f0c1d9442a2320cd1e
 	NetStat:	In=2,	Out=2,	CheckSum=82ea34376644e023a4314cde3fb1e4fc
@@ -339,18 +347,19 @@ api.FullNode:
 	PaychAvailableFunds:	In=2,	Out=2,	CheckSum=f40942f65ce181601e7bc49e6378a89c
 	PaychAvailableFundsByFromTo:	In=3,	Out=2,	CheckSum=829ff29d78db755f3c13ab3259adb32b
 	PaychCollect:	In=2,	Out=2,	CheckSum=fdb746bab5f269b63dc0256d50570d81
-	PaychGet:	In=4,	Out=2,	CheckSum=f7fb571ad0461c404a0789f6b8c38501
+	PaychFund:	In=4,	Out=2,	CheckSum=f7fb571ad0461c404a0789f6b8c38501
+	PaychGet:	In=5,	Out=2,	CheckSum=f0c77308814c6aefa820f1801e8eef8e
 	PaychGetWaitReady:	In=2,	Out=2,	CheckSum=59546a25118c9e0dbb3ad569d3ec0c6f
 	PaychList:	In=1,	Out=2,	CheckSum=566d37a33889023f9f73c632fa4e8279
 	PaychNewPayment:	In=4,	Out=2,	CheckSum=8bb33e38d75917df1357fcf071335ba9
 	PaychSettle:	In=2,	Out=2,	CheckSum=fdb746bab5f269b63dc0256d50570d81
 	PaychStatus:	In=2,	Out=2,	CheckSum=ae911e02219f1412acb95e95a4065478
-	PaychVoucherAdd:	In=5,	Out=2,	CheckSum=8abddd426fa4de6362414384cdec101c
-	PaychVoucherCheckSpendable:	In=5,	Out=2,	CheckSum=ab5f887200e92223e9adb9573f32e23f
-	PaychVoucherCheckValid:	In=3,	Out=1,	CheckSum=52e8d077109b5410e1dead7e9bf696b0
+	PaychVoucherAdd:	In=5,	Out=2,	CheckSum=4bd3099043e7f90e37c1f30476cd7ff5
+	PaychVoucherCheckSpendable:	In=5,	Out=2,	CheckSum=b9d2610776265f877521a9a9521b3a43
+	PaychVoucherCheckValid:	In=3,	Out=1,	CheckSum=e991badd914254dda0d6c41b7eb36958
 	PaychVoucherCreate:	In=4,	Out=2,	CheckSum=e5113a58d351abf5cadd77b46f690c2d
-	PaychVoucherList:	In=2,	Out=2,	CheckSum=55450ef559b971b6894fb3865003b7b4
-	PaychVoucherSubmit:	In=5,	Out=2,	CheckSum=158150e9cb2e2d176ee9ba4674d382d9
+	PaychVoucherList:	In=2,	Out=2,	CheckSum=c4a81e1915ceee53e3ecde9f1ae30b4c
+	PaychVoucherSubmit:	In=5,	Out=2,	CheckSum=03f7a7f3a90849ea5da8eedd01643a1c
 	Session:	In=1,	Out=2,	CheckSum=cdb04ef6a97114c8f24f456a2e70f1cd
 	Shutdown:	In=1,	Out=1,	CheckSum=c39be30cc5a8826024fcf4d23e7017d6
 	StateAccountKey:	In=3,	Out=2,	CheckSum=9b6f9fdaea5bb22c60772266c418d98f
@@ -363,39 +372,42 @@ api.FullNode:
 	StateDecodeParams:	In=5,	Out=2,	CheckSum=8c6311be4dc064a657368516c33e1307
 	StateEncodeParams:	In=4,	Out=2,	CheckSum=3e1a5390b92b1b69f9be038cd7400e38
 	StateGetActor:	In=3,	Out=2,	CheckSum=adcd0bbd36e3ab94f777c7cb3df1fb34
+	StateGetBeaconEntry:	In=2,	Out=2,	CheckSum=c74f5c0f4039207ea45c11bfe3319c38
+	StateGetNetworkParams:	In=1,	Out=2,	CheckSum=7bc6ff254ba803762ffb166c6d96a921
 	StateGetRandomnessFromBeacon:	In=5,	Out=2,	CheckSum=b98225c36bf011979dbcad0fb938e659
 	StateGetRandomnessFromTickets:	In=5,	Out=2,	CheckSum=b98225c36bf011979dbcad0fb938e659
 	StateListActors:	In=2,	Out=2,	CheckSum=57bcc4526adaf4b0582c0b117d39b042
 	StateListMessages:	In=4,	Out=2,	CheckSum=f12ce9e8a127bf320fb0b289a19b4ea6
 	StateListMiners:	In=2,	Out=2,	CheckSum=57bcc4526adaf4b0582c0b117d39b042
 	StateLookupID:	In=3,	Out=2,	CheckSum=9b6f9fdaea5bb22c60772266c418d98f
+	StateLookupRobustAddress:	In=3,	Out=2,	CheckSum=9b6f9fdaea5bb22c60772266c418d98f
 	StateMarketBalance:	In=3,	Out=2,	CheckSum=bbab976bd25166200f737c94fc970bc7
-	StateMarketDeals:	In=2,	Out=2,	CheckSum=38821c8f592f6f56eb985973ac1ffd36
+	StateMarketDeals:	In=2,	Out=2,	CheckSum=46b5eef922e8252939bf00e1e80ae89e
 	StateMarketParticipants:	In=2,	Out=2,	CheckSum=acc9019d0b6e389743c6f992350f407c
 	StateMarketStorageDeal:	In=3,	Out=2,	CheckSum=94af302d39beba9f0ce7648f4118b6aa
-	StateMinerActiveSectors:	In=3,	Out=2,	CheckSum=bac211cd5a37bfadf156b636ad7b9381
+	StateMinerActiveSectors:	In=3,	Out=2,	CheckSum=10a984fbf3118e0dab152af36aa64424
 	StateMinerAvailableBalance:	In=3,	Out=2,	CheckSum=a05010da3c73edfba49c3b5d28a216cd
 	StateMinerDeadlines:	In=3,	Out=2,	CheckSum=5b128c75ba4953740906520cca96b962
 	StateMinerFaults:	In=3,	Out=2,	CheckSum=9d26d848f93597964f751b43edd3d476
-	StateMinerInfo:	In=3,	Out=2,	CheckSum=0782a05b506c86bcfb47082a6f8e37fc
-	StateMinerInitialPledgeCollateral:	In=4,	Out=2,	CheckSum=d87787cc5072c480ed580099fc926668
+	StateMinerInfo:	In=3,	Out=2,	CheckSum=4ba684a8519aa97d4df405cee3496e7c
+	StateMinerInitialPledgeCollateral:	In=4,	Out=2,	CheckSum=d2a137a064199d4c8bfd685d21e991f4
 	StateMinerPartitions:	In=4,	Out=2,	CheckSum=b3cba1da3bd87c433cb8f9df7f7edc09
 	StateMinerPower:	In=3,	Out=2,	CheckSum=0e70a6360616c25624118181f764d7df
-	StateMinerPreCommitDepositForPower:	In=4,	Out=2,	CheckSum=d87787cc5072c480ed580099fc926668
+	StateMinerPreCommitDepositForPower:	In=4,	Out=2,	CheckSum=d2a137a064199d4c8bfd685d21e991f4
 	StateMinerProvingDeadline:	In=3,	Out=2,	CheckSum=8c6037a054ad720ecfb3d0c3f4f90fe6
 	StateMinerRecoveries:	In=3,	Out=2,	CheckSum=9d26d848f93597964f751b43edd3d476
 	StateMinerSectorAllocated:	In=4,	Out=2,	CheckSum=2accd56a9e9196fa1ca85a1d60e19fc2
 	StateMinerSectorCount:	In=3,	Out=2,	CheckSum=573483cbcf3ccdd38063b9ce16453dc2
-	StateMinerSectors:	In=4,	Out=2,	CheckSum=c04491aa9e0e6e9a743046c60e13683d
+	StateMinerSectors:	In=4,	Out=2,	CheckSum=067ee5993041463c27212b948a59e1e5
 	StateNetworkName:	In=1,	Out=2,	CheckSum=afb82130640a26dcd9d7010f31c69572
 	StateNetworkVersion:	In=2,	Out=2,	CheckSum=47de92e3b59793ade53abd96c347bace
 	StateReadState:	In=3,	Out=2,	CheckSum=f53f39943eea93d5f3dd64f1389e4c64
 	StateReplay:	In=3,	Out=2,	CheckSum=ec89143eb01290212c3ce0032f62c5fc
 	StateSearchMsg:	In=5,	Out=2,	CheckSum=05ad20588933ea6ffa941f47b826708a
 	StateSectorExpiration:	In=4,	Out=2,	CheckSum=bb669c8b66b6f74c681b4345c9e4cc8f
-	StateSectorGetInfo:	In=4,	Out=2,	CheckSum=27a4e36a319274aca9597f105bc438ff
+	StateSectorGetInfo:	In=4,	Out=2,	CheckSum=1fb47cbbd06b1a50e47a087a28998016
 	StateSectorPartition:	In=4,	Out=2,	CheckSum=e3743df55a360243a32ac64ce1282c53
-	StateSectorPreCommitInfo:	In=4,	Out=2,	CheckSum=40e05fc7142ce524b9a58e8655ce5a01
+	StateSectorPreCommitInfo:	In=4,	Out=2,	CheckSum=04d3c9135dc061d98706f61158224288
 	StateVMCirculatingSupplyInternal:	In=2,	Out=2,	CheckSum=05c2114e08be095cece55db19e214d2c
 	StateVerifiedClientStatus:	In=3,	Out=2,	CheckSum=e33ae4cd2315832f2d6f2aa74b68c34e
 	StateVerifiedRegistryRootKey:	In=2,	Out=2,	CheckSum=5ad3a497ee24e321c780a69b8d2f0936
