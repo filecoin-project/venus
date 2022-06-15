@@ -114,3 +114,16 @@ dist-clean:
 build: $(BUILD_DEPS)
 	rm -f venus
 	go build -o ./venus $(GOFLAGS) .
+
+
+.PHONY: docker
+
+
+docker-buildenv:
+	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) -t filvenus/venus-buildenv -f docker/venus-buildenv.dockerfile .
+
+docker-runtime:
+	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) -t filvenus/venus-runtime -f docker/venus-runtime.dockerfile .
+
+docker:
+	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) -t venus .
