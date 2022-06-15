@@ -63,7 +63,6 @@ func SetNetworkBundle(networkType types.NetworkType) error {
 		networkBundle = "mainnet"
 	}
 
-	fmt.Printf("NetworkBundle %v\n", networkBundle)
 	return UseNetworkBundle(networkBundle)
 }
 
