@@ -119,7 +119,7 @@ build: $(BUILD_DEPS)
 
 .PHONY: docker
 
-BUILD_DOCKER_PROXY=
+
 docker-buildenv:
 	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) -t filvenus/venus-buildenv -f docker/venus-buildenv.dockerfile .
 
