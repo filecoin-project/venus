@@ -54,6 +54,7 @@ func ButterflySnapNet() *NetworkConf {
 			},
 			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork: address.Testnet,
+			PreCommitChallengeDelay: abi.ChainEpoch(150),
 		},
 	}
 }
