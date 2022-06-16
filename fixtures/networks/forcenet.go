@@ -24,7 +24,7 @@ func ForceNet() *NetworkConf {
 				abi.RegisteredSealProof_StackedDrg32GiBV1,
 			},
 			NetworkType:            types.NetworkForce,
-			GenesisNetworkVersion:  network.Version15,
+			GenesisNetworkVersion:  network.Version16,
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 2048,
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
