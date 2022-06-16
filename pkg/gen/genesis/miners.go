@@ -115,6 +115,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 			BaseFee:              big.NewInt(0),
 			Epoch:                0,
 			PRoot:                base,
+			NetworkVersion:       nv,
 			Bsstore:              cs.Blockstore(),
 			SysCallsImpl:         mkFakedSigSyscalls(syscalls),
 			GasPriceSchedule:     gasPirceSchedule,
@@ -262,7 +263,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 					var sig *crypto.Signature
 					err = preseal.DealClientKey.UsePrivateKey(func(privateKey []byte) error {
 						var err error
-						sig, err = crypto2.Sign(privateKey, buf, preseal.DealClientKey.SigType)
+						sig, err = crypto2.Sign(buf, privateKey, preseal.DealClientKey.SigType)
 						return err
 					})
 					if err != nil {
