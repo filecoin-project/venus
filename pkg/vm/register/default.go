@@ -6,7 +6,6 @@ import (
 	/* inline-gen template
 	{{range .actorVersions}}
 	exported{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin/exported"{{end}}
-
 	/* inline-gen start */
 
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
@@ -35,7 +34,7 @@ func GetDefaultActros() *dispatch.CodeLoader {
 	loadOnce.Do(func() {
 		/* inline-gen template
 		{{range .actorVersions}}
-			DefaultActorBuilder.AddMany(actors.Version{{.}}, dispatch.ActorsVersionPredicate(actors.Version{{.}}), exported{{.}}.BuiltinActors()...){{end}}
+		DefaultActorBuilder.AddMany(actors.Version{{.}}, dispatch.ActorsVersionPredicate(actors.Version{{.}}), exported{{.}}.BuiltinActors()...){{end}}
 		/* inline-gen start */
 
 		DefaultActorBuilder.AddMany(actors.Version0, dispatch.ActorsVersionPredicate(actors.Version0), exported0.BuiltinActors()...)

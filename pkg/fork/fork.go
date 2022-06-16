@@ -48,7 +48,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/state/tree"
 	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/venus-shared/actors"
@@ -2145,7 +2144,7 @@ func (c *ChainFork) GetForkUpgrade() *config.ForkUpgradeConfig {
 
 // 	av := actors.Version9
 // 	// This may change for upgrade
-// 	newStateTreeVersion := tree.StateTreeVersion4
+// 	newStateTreeVersion := vmstate.StateTreeVersion4
 
 // 	// ensure that the manifest is loaded in the blockstore
 // 	if err := builtinactors.LoadBundles(ctx, buf, actors.Version9); err != nil {
@@ -2158,16 +2157,16 @@ func (c *ChainFork) GetForkUpgrade() *config.ForkUpgradeConfig {
 // 	}
 
 // 	bstore := c.bs
-// 	return LiteMigration(ctx, bstore, newActorsManifestCid, root, av, tree.StateTreeVersion4, newStateTreeVersion)
+// 	return LiteMigration(ctx, bstore, newActorsManifestCid, root, av, vmstate.StateTreeVersion4, newStateTreeVersion)
 // }
 
-func LiteMigration(ctx context.Context, bstore blockstoreutil.Blockstore, newActorsManifestCid cid.Cid, root cid.Cid, av actors.Version, oldStateTreeVersion tree.StateTreeVersion, newStateTreeVersion tree.StateTreeVersion) (cid.Cid, error) {
+func LiteMigration(ctx context.Context, bstore blockstoreutil.Blockstore, newActorsManifestCid cid.Cid, root cid.Cid, av actors.Version, oldStateTreeVersion vmstate.StateTreeVersion, newStateTreeVersion vmstate.StateTreeVersion) (cid.Cid, error) {
 	buf := blockstoreutil.NewTieredBstore(bstore, blockstoreutil.NewTemporarySync())
 	store := chain.ActorStore(ctx, buf)
 	adtStore := gstStore.WrapStore(ctx, store)
 
 	// Load the state root.
-	var stateRoot tree.StateRoot
+	var stateRoot vmstate.StateRoot
 	if err := store.Get(ctx, root, &stateRoot); err != nil {
 		return cid.Undef, fmt.Errorf("failed to decode state root: %w", err)
 	}
@@ -2180,7 +2179,7 @@ func LiteMigration(ctx context.Context, bstore blockstoreutil.Blockstore, newAct
 		)
 	}
 
-	st, err := tree.LoadState(ctx, store, root)
+	st, err := vmstate.LoadState(ctx, store, root)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("failed to load state tree: %w", err)
 	}
@@ -2225,7 +2224,7 @@ func LiteMigration(ctx context.Context, bstore blockstoreutil.Blockstore, newAct
 	startTime := time.Now()
 
 	// Load output state tree
-	actorsOut, err := tree.NewState(adtStore, newStateTreeVersion)
+	actorsOut, err := vmstate.NewState(adtStore, newStateTreeVersion)
 	if err != nil {
 		return cid.Undef, err
 	}
