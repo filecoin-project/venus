@@ -232,7 +232,7 @@ func (c *ChainRandomnessSource) GetBeaconRandomnessV3(ctx context.Context, pers 
 
 	be, err := c.extractBeaconEntryForEpoch(ctx, filecoinEpoch)
 	if err != nil {
-		log.Errorf("failed to get beacon entry as expected: %w", err)
+		log.Errorf("failed to get beacon entry as expected: %s", err)
 		return nil, err
 	}
 
