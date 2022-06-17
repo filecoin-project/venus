@@ -107,6 +107,8 @@ func Version4Upgrade(repoPath string) (err error) {
 		cfg.NetworkParams.ForkUpgradeParam = networks.ForceNet().Network.ForkUpgradeParam
 	case types.NetworkButterfly:
 		cfg.NetworkParams.ForkUpgradeParam = networks.ButterflySnapNet().Network.ForkUpgradeParam
+	case types.NetworkInterop:
+		cfg.NetworkParams.ForkUpgradeParam = networks.InteropNet().Network.ForkUpgradeParam
 	default:
 		return fsrRepo.Close()
 	}
@@ -217,7 +219,7 @@ func Version7Upgrade(repoPath string) (err error) {
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = 682006
 	case types.NetworkButterfly:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = 240
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = -18
 	case types.NetworkForce:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = -18
