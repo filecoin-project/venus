@@ -19,17 +19,18 @@ func InteropNet() *NetworkConf {
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
-			DevNet: true,
+			DevNet:                true,
+			NetworkType:           types.NetworkInterop,
+			GenesisNetworkVersion: network.Version15,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg2KiBV1,
 				abi.RegisteredSealProof_StackedDrg8MiBV1,
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
 			},
-			NetworkType:            types.NetworkInterop,
-			GenesisNetworkVersion:  network.Version15,
-			BlockDelay:             30,
-			ConsensusMinerMinPower: 2048,
-			MinVerifiedDealSize:    256,
+			BlockDelay:              30,
+			ConsensusMinerMinPower:  2048,
+			MinVerifiedDealSize:     256,
+			PreCommitChallengeDelay: abi.ChainEpoch(10),
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
 				UpgradeBreezeHeight:     -1,
 				UpgradeSmokeHeight:      -2,
@@ -53,9 +54,8 @@ func InteropNet() *NetworkConf {
 				BreezeGasTampingDuration: 0,
 				UpgradeClausHeight:       -11,
 			},
-			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
-			AddressNetwork:          address.Testnet,
-			PreCommitChallengeDelay: abi.ChainEpoch(10),
+			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			AddressNetwork: address.Testnet,
 		},
 	}
 }

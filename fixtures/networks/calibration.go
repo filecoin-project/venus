@@ -26,15 +26,17 @@ func Calibration() *NetworkConf {
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
-			DevNet:                 true,
-			NetworkType:            types.NetworkCalibnet,
-			GenesisNetworkVersion:  network.Version0,
-			BlockDelay:             30,
-			ConsensusMinerMinPower: 32 << 30,
+			DevNet:                true,
+			NetworkType:           types.NetworkCalibnet,
+			GenesisNetworkVersion: network.Version0,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg32GiBV1,
 				abi.RegisteredSealProof_StackedDrg64GiBV1,
 			},
+			BlockDelay:              30,
+			ConsensusMinerMinPower:  32 << 30,
+			MinVerifiedDealSize:     1 << 20,
+			PreCommitChallengeDelay: abi.ChainEpoch(150),
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
 				UpgradeBreezeHeight:     -1,
 				UpgradeSmokeHeight:      -2,
@@ -58,9 +60,8 @@ func Calibration() *NetworkConf {
 				UpgradeChocolateHeight:   312746,
 				UpgradeOhSnapHeight:      682006, // 2022-02-10T19:23:00Z
 			},
-			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
-			AddressNetwork:          address.Testnet,
-			PreCommitChallengeDelay: abi.ChainEpoch(150),
+			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			AddressNetwork: address.Testnet,
 		},
 	}
 }

@@ -17,16 +17,18 @@ func ForceNet() *NetworkConf {
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
-			DevNet: true,
+			DevNet:                true,
+			NetworkType:           types.NetworkForce,
+			GenesisNetworkVersion: network.Version16,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg8MiBV1,
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
 				abi.RegisteredSealProof_StackedDrg32GiBV1,
 			},
-			NetworkType:            types.NetworkForce,
-			GenesisNetworkVersion:  network.Version16,
-			BlockDelay:             30,
-			ConsensusMinerMinPower: 2048,
+			BlockDelay:              30,
+			ConsensusMinerMinPower:  2048,
+			MinVerifiedDealSize:     256,
+			PreCommitChallengeDelay: abi.ChainEpoch(10),
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
 				UpgradeBreezeHeight:      -1,
 				BreezeGasTampingDuration: 0,
@@ -53,9 +55,8 @@ func ForceNet() *NetworkConf {
 				UpgradeOhSnapHeight:     -18,
 				UpgradeSkyrHeight:       -19,
 			},
-			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandMainnet},
-			AddressNetwork:          address.Testnet,
-			PreCommitChallengeDelay: abi.ChainEpoch(10),
+			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: config.DrandMainnet},
+			AddressNetwork: address.Testnet,
 		},
 	}
 }

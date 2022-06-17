@@ -19,16 +19,18 @@ func ButterflySnapNet() *NetworkConf {
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
-			DevNet: true,
+			DevNet:                true,
+			NetworkType:           types.NetworkButterfly,
+			GenesisNetworkVersion: network.Version15,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
 				abi.RegisteredSealProof_StackedDrg32GiBV1,
 				abi.RegisteredSealProof_StackedDrg64GiBV1,
 			},
-			NetworkType:            types.NetworkButterfly,
-			GenesisNetworkVersion:  network.Version15,
-			BlockDelay:             30,
-			ConsensusMinerMinPower: 2 << 30,
+			BlockDelay:              30,
+			ConsensusMinerMinPower:  2 << 30,
+			MinVerifiedDealSize:     1 << 20,
+			PreCommitChallengeDelay: abi.ChainEpoch(150),
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
 				UpgradeBreezeHeight:     -1,
 				UpgradeSmokeHeight:      -2,
@@ -52,9 +54,8 @@ func ButterflySnapNet() *NetworkConf {
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       -11,
 			},
-			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
-			AddressNetwork:          address.Testnet,
-			PreCommitChallengeDelay: abi.ChainEpoch(150),
+			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			AddressNetwork: address.Testnet,
 		},
 	}
 }
