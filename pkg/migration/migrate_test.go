@@ -15,7 +15,6 @@ import (
 func TestMigration(t *testing.T) {
 	tf.UnitTest(t)
 
-	var ver uint = 0
 	cfgs := map[types.NetworkType]*config.NetworkParamsConfig{
 		types.Network2k:        &networks.Net2k().Network,
 		types.NetworkForce:     &networks.ForceNet().Network,
@@ -31,7 +30,7 @@ func TestMigration(t *testing.T) {
 		repoPath := t.TempDir()
 		assert.Nil(t, os.RemoveAll(repoPath))
 		t.Log(repoPath)
-		assert.Nil(t, repo.InitFSRepo(repoPath, ver, cfg))
+		assert.Nil(t, repo.InitFSRepo(repoPath, 0, cfg))
 
 		assert.Nil(t, TryToMigrate(repoPath))
 		fsRepo, err := repo.OpenFSRepo(repoPath, repo.LatestVersion)

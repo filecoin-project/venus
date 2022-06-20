@@ -17,10 +17,10 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/utils"
 )
 
 var feecapOption = cmds.StringOption("gas-feecap", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
@@ -191,7 +191,7 @@ func decodeTypedParams(ctx context.Context, fapi *node.Env, to address.Address, 
 		return nil, err
 	}
 
-	methodMeta, found := chain.MethodsMap[act.Code][method]
+	methodMeta, found := utils.MethodsMap[act.Code][method]
 	if !found {
 		return nil, fmt.Errorf("method %d not found on actor %s", method, act.Code)
 	}
