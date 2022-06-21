@@ -1,28 +1,30 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 
+	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var NameType = map[types.NetworkName]types.NetworkType{
-	"mainnet":        types.NetworkMainnet,
-	"calibrationnet": types.NetworkCalibnet,
-	"butterflynet":   types.NetworkButterfly,
-	"interopnet":     types.NetworkInterop,
-	"integrationnet": types.Integrationnet,
+	types.NetworkNameMain:        types.NetworkMainnet,
+	types.NetworkNameCalibration: types.NetworkCalibnet,
+	types.NetworkNameButterfly:   types.NetworkButterfly,
+	types.NetworkNameInterop:     types.NetworkInterop,
+	types.NetworkNameIntegration: types.Integrationnet,
 }
 
-var TypeName = map[types.NetworkType]types.NetworkName{
-	types.NetworkMainnet:   "mainnet",
-	types.NetworkCalibnet:  "calibrationnet",
-	types.NetworkButterfly: "butterflynet",
-	types.NetworkInterop:   "interopnet",
-	types.Integrationnet:   "integrationnet",
-}
+var TypeName = func() map[types.NetworkType]types.NetworkName {
+	typeName := make(map[types.NetworkType]types.NetworkName, len(NameType))
+	for nt, nn := range NameType {
+		typeName[nn] = nt
+	}
 
-var ErrMay2kNetwork = fmt.Errorf("may 2k network")
+	return typeName
+}()
 
 func NetworkNameToNetworkType(networkName types.NetworkName) (types.NetworkType, error) {
 	if len(networkName) == 0 {
@@ -33,5 +35,32 @@ func NetworkNameToNetworkType(networkName types.NetworkName) (types.NetworkType,
 		return nt, nil
 	}
 	// 2k and force networks do not have exact network names
-	return types.NetworkDefault, ErrMay2kNetwork
+	return types.Network2k, nil
+}
+
+func NetworkTypeToNetworkName(networkType types.NetworkType) types.NetworkName {
+	nn, ok := TypeName[networkType]
+	if ok {
+		return nn
+	}
+
+	// 2k and force networks do not have exact network names
+	return ""
+}
+
+func LoadBuiltinActors(ctx context.Context, full v1.FullNode) error {
+	networkName, err := full.StateNetworkName(ctx)
+	if err != nil {
+		return err
+	}
+	nt, err := NetworkNameToNetworkType(networkName)
+	if err != nil {
+		return err
+	}
+	if err := builtinactors.SetNetworkBundle(nt); err != nil {
+		return err
+	}
+	ReloadMethodsMap()
+
+	return nil
 }

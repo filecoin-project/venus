@@ -14,7 +14,7 @@ func TestMethodMap(t *testing.T) {
 
 	t.Run("Default to load mainnet v8 actors", func(t *testing.T) {
 		for _, actorsMetadata := range builtinactors.EmbeddedBuiltinActorsMetadata {
-			if actorsMetadata.Network == "mainnet" {
+			if actorsMetadata.Network == string(types.NetworkNameMain) {
 				for _, actor := range actorsMetadata.Actors {
 					_, ok := MethodsMap[actor]
 					assert.True(t, ok)
@@ -25,7 +25,7 @@ func TestMethodMap(t *testing.T) {
 
 	t.Run("ReLoad butterflynet v8 actors", func(t *testing.T) {
 		for _, actorsMetadata := range builtinactors.EmbeddedBuiltinActorsMetadata {
-			if actorsMetadata.Network == "butterflynet" {
+			if actorsMetadata.Network == string(types.NetworkNameButterfly) {
 				for _, actor := range actorsMetadata.Actors {
 					_, ok := MethodsMap[actor]
 					assert.False(t, ok)
@@ -36,7 +36,7 @@ func TestMethodMap(t *testing.T) {
 		assert.Nil(t, builtinactors.SetNetworkBundle(types.NetworkButterfly))
 		ReloadMethodsMap()
 		for _, actorsMetadata := range builtinactors.EmbeddedBuiltinActorsMetadata {
-			if actorsMetadata.Network == "butterflynet" {
+			if actorsMetadata.Network == string(types.NetworkNameButterfly) {
 				for _, actor := range actorsMetadata.Actors {
 					_, ok := MethodsMap[actor]
 					assert.True(t, ok)

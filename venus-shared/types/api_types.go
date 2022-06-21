@@ -60,6 +60,14 @@ type MessageCID struct {
 
 type NetworkName string
 
+const (
+	NetworkNameMain        NetworkName = "mainnet"
+	NetworkNameCalibration NetworkName = "calibrationnet"
+	NetworkNameButterfly   NetworkName = "butterflynet"
+	NetworkNameInterop     NetworkName = "interopnet"
+	NetworkNameIntegration NetworkName = "integrationnet"
+)
+
 type NetworkType int
 
 const (
