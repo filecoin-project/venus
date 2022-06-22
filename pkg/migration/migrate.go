@@ -272,7 +272,7 @@ func Version8Upgrade(repoPath string) (err error) {
 	switch cfg.NetworkParams.NetworkType {
 	case types.NetworkMainnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 99999999999999
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 1960320
 		// https://github.com/filecoin-project/lotus/pull/8733
 		if os.Getenv("VENUS_DISABLE_SKYR") == "1" {
 			cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 99999999999999
