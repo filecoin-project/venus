@@ -289,7 +289,7 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 
 			// skip storage market, 80th percentie for everything ~1.9, leave it at 2.0
 		}()
-		log.Infof("overestimate gas around the upgrade %v", transitionalMulti)
+		log.Infof("overestimate gas around the upgrade msg: %v, transitional multi: %v", msg, transitionalMulti)
 	}
 	ret = (ret * int64(transitionalMulti*1024)) >> 10
 

@@ -256,6 +256,7 @@ Response:
 ## Beacon
 
 ### BeaconGetEntry
+Deprecated: Use StateGetBeaconEntry instead.
 
 
 Perms: read
@@ -704,6 +705,7 @@ Response:
 ```
 
 ### ChainGetRandomnessFromBeacon
+Deprecated: Use StateGetRandomnessFromBeacon instead.
 
 
 Perms: read
@@ -728,6 +730,7 @@ Inputs:
 Response: `"Bw=="`
 
 ### ChainGetRandomnessFromTickets
+Deprecated: Use StateGetRandomnessFromTickets instead.
 
 
 Perms: read
