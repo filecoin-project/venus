@@ -6,9 +6,9 @@ require (
 	github.com/filecoin-project/go-address v1.0.0
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-data-transfer v1.15.1
-	github.com/filecoin-project/go-fil-markets v1.20.1-v16-1
+	github.com/filecoin-project/go-fil-markets v1.20.1-v16-2
 	github.com/filecoin-project/go-jsonrpc v0.1.5
-	github.com/filecoin-project/go-state-types v0.1.9
+	github.com/filecoin-project/go-state-types v0.1.10
 	github.com/filecoin-project/lotus v1.16.0-pre-rc.0.20220614091823-016749b60be5
 	github.com/filecoin-project/venus v0.0.0-00010101000000-000000000000
 	github.com/ipfs/go-block-format v0.0.3
