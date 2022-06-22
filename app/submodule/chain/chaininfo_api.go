@@ -341,6 +341,13 @@ func (cia *chainInfoAPI) VerifyEntry(parent, child *types.BeaconEntry, height ab
 // BeaconGetEntry returns the beacon entry for the given filecoin epoch. If
 // the entry has not yet been produced, the call will block until the entry
 // becomes available
+func (cia *chainInfoAPI) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+	return cia.StateGetBeaconEntry(ctx, epoch)
+}
+
+// StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If
+// the entry has not yet been produced, the call will block until the entry
+// becomes available
 func (cia *chainInfoAPI) StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
 	b := cia.chain.Drand.BeaconForEpoch(epoch)
 	nv := cia.chain.Fork.GetNetworkVersion(ctx, epoch)

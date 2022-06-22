@@ -68,6 +68,16 @@ func (s *IActorStruct) StateGetActor(p0 context.Context, p1 address.Address, p2 
 	return s.Internal.StateGetActor(p0, p1, p2)
 }
 
+type IBeaconStruct struct {
+	Internal struct {
+		BeaconGetEntry func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
+	}
+}
+
+func (s *IBeaconStruct) BeaconGetEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
+	return s.Internal.BeaconGetEntry(p0, p1)
+}
+
 type IMinerStateStruct struct {
 	Internal struct {
 		StateCirculatingSupply             func(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error)                                                                 `perm:"read"`
@@ -355,6 +365,7 @@ func (s *IChainInfoStruct) VerifyEntry(p0, p1 *types.BeaconEntry, p2 abi.ChainEp
 type IChainStruct struct {
 	IAccountStruct
 	IActorStruct
+	IBeaconStruct
 	IMinerStateStruct
 	IChainInfoStruct
 }

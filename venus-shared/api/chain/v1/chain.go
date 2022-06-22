@@ -21,6 +21,7 @@ import (
 type IChain interface {
 	IAccount
 	IActor
+	IBeacon
 	IMinerState
 	IChainInfo
 }
@@ -32,6 +33,10 @@ type IAccount interface {
 type IActor interface {
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) //perm:read
 	ListActor(ctx context.Context) (map[address.Address]*types.Actor, error)                             //perm:read
+}
+
+type IBeacon interface {
+	BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) //perm:read
 }
 
 type IChainInfo interface {

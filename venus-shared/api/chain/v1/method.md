@@ -5,6 +5,8 @@
 * [Actor](#Actor)
   * [ListActor](#ListActor)
   * [StateGetActor](#StateGetActor)
+* [Beacon](#Beacon)
+  * [BeaconGetEntry](#BeaconGetEntry)
 * [BlockStore](#BlockStore)
   * [ChainDeleteObj](#ChainDeleteObj)
   * [ChainHasObj](#ChainHasObj)
@@ -248,6 +250,28 @@ Response:
   },
   "Nonce": 42,
   "Balance": "0"
+}
+```
+
+## Beacon
+
+### BeaconGetEntry
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101
+]
+```
+
+Response:
+```json
+{
+  "Round": 42,
+  "Data": "Ynl0ZSBhcnJheQ=="
 }
 ```
 

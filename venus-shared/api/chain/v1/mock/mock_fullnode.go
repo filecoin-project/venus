@@ -51,6 +51,21 @@ func (m *MockFullNode) EXPECT() *MockFullNodeMockRecorder {
 	return m.recorder
 }
 
+// BeaconGetEntry mocks base method.
+func (m *MockFullNode) BeaconGetEntry(arg0 context.Context, arg1 abi.ChainEpoch) (*types.BeaconEntry, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BeaconGetEntry", arg0, arg1)
+	ret0, _ := ret[0].(*types.BeaconEntry)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BeaconGetEntry indicates an expected call of BeaconGetEntry.
+func (mr *MockFullNodeMockRecorder) BeaconGetEntry(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeaconGetEntry", reflect.TypeOf((*MockFullNode)(nil).BeaconGetEntry), arg0, arg1)
+}
+
 // BlockTime mocks base method.
 func (m *MockFullNode) BlockTime(arg0 context.Context) time.Duration {
 	m.ctrl.T.Helper()
