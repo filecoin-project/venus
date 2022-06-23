@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"text/template"
 
 	"github.com/urfave/cli/v2"
 
+	"github.com/filecoin-project/venus/venus-devtool/util"
 	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 )
 
@@ -24,13 +27,17 @@ func main() {
 				return err
 			}
 
-			fi, err := os.Create(ctx.String("dst"))
+			buf := &bytes.Buffer{}
+			if err := tmpl.Execute(buf, metadata); err != nil {
+				return err
+			}
+
+			formatted, err := util.FmtFile("", buf.Bytes())
 			if err != nil {
 				return err
 			}
-			defer fi.Close() //nolint
 
-			return tmpl.Execute(fi, metadata)
+			return ioutil.WriteFile(ctx.String("dst"), formatted, 0744)
 		},
 	}
 

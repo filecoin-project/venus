@@ -59,7 +59,6 @@ test-venus-shared:
 
 bundle-gen:
 	cd venus-devtool && go run ./bundle-gen/*.go  --dst ./../venus-shared/builtin-actors/builtin_actors_gen.go
-	goimports -w venus-shared/builtin-actors/builtin_actors_gen.go
 
 api-gen:
 	cd ./venus-devtool/ && go run ./api-gen/ proxy
