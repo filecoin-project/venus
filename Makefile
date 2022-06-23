@@ -59,7 +59,6 @@ test-venus-shared:
 
 bundle-gen:
 	cd venus-devtool && go run ./bundle-gen/*.go  --dst ./../venus-shared/builtin-actors/builtin_actors_gen.go
-	goimports -w venus-shared/builtin-actors/builtin_actors_gen.go
 
 api-gen:
 	cd ./venus-devtool/ && go run ./api-gen/ proxy
@@ -81,7 +80,6 @@ api-perm:
 	cd venus-devtool && go run ./compatible/apis/*.go perm > ../venus-shared/compatible-checks/api-perm.txt
 
 compatible-actor: actor-templates actor-sources actor-render
-	goimports -w -format-only venus-shared/actors/*
 
 actor-templates:
 	cd venus-devtool && go run ./compatible/actors/*.go templates --dst ../venus-shared/actors/ > ../venus-shared/compatible-checks/actor-templates.txt
