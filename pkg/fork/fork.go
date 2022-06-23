@@ -3,6 +3,7 @@ package fork
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -59,6 +60,9 @@ import (
 	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
+
+//go:embed FVMLiftoff.txt
+var fvmLiftoffBanner string
 
 var log = logging.Logger("fork")
 
@@ -2039,6 +2043,8 @@ func (c *ChainFork) UpgradeActorsV8(ctx context.Context, cache MigrationCache, r
 	if err != nil {
 		return cid.Undef, fmt.Errorf("migrating actors v8 state: %w", err)
 	}
+
+	fmt.Print(fvmLiftoffBanner)
 
 	return newRoot, nil
 }
