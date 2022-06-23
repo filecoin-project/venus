@@ -5,6 +5,8 @@
 * [Actor](#Actor)
   * [ListActor](#ListActor)
   * [StateGetActor](#StateGetActor)
+* [Beacon](#Beacon)
+  * [BeaconGetEntry](#BeaconGetEntry)
 * [BlockStore](#BlockStore)
   * [ChainDeleteObj](#ChainDeleteObj)
   * [ChainHasObj](#ChainHasObj)
@@ -248,6 +250,29 @@ Response:
   },
   "Nonce": 42,
   "Balance": "0"
+}
+```
+
+## Beacon
+
+### BeaconGetEntry
+Deprecated: Use StateGetBeaconEntry instead.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101
+]
+```
+
+Response:
+```json
+{
+  "Round": 42,
+  "Data": "Ynl0ZSBhcnJheQ=="
 }
 ```
 
@@ -680,6 +705,7 @@ Response:
 ```
 
 ### ChainGetRandomnessFromBeacon
+Deprecated: Use StateGetRandomnessFromBeacon instead.
 
 
 Perms: read
@@ -704,6 +730,7 @@ Inputs:
 Response: `"Bw=="`
 
 ### ChainGetRandomnessFromTickets
+Deprecated: Use StateGetRandomnessFromTickets instead.
 
 
 Perms: read

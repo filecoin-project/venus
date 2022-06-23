@@ -289,6 +289,7 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 
 			// skip storage market, 80th percentie for everything ~1.9, leave it at 2.0
 		}()
+		log.Infof("overestimate gas around the upgrade msg: %v, transitional multi: %v", msg, transitionalMulti)
 	}
 	ret = (ret * int64(transitionalMulti*1024)) >> 10
 
@@ -320,6 +321,7 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 		if estimateMessage.Spec != nil && estimateMessage.Spec.GasOverEstimation > 0 {
 			gasLimitOverestimation = estimateMessage.Spec.GasOverEstimation
 		}
+		log.Debugf("call GasEstimateMessageGas %v, spec: %v, config gasLimitOverestimation: %v", estimateMessage.Msg, estimateMessage.Spec, mp.GetConfig().GasLimitOverestimation)
 		estimateMessage.Msg.GasLimit = int64(float64(gasLimit) * gasLimitOverestimation)
 	}
 
@@ -371,10 +373,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 		estimateMsg := estimateMessage.Msg
 		estimateMsg.Nonce = fromNonce
 
-		if estimateMessage.Spec != nil {
-			log.Debugf("GasBatchEstimateMessageGas from %s, nonce %d, gas limit %d, gas fee cap %s, max fee %s",
-				estimateMsg.From, estimateMsg.Nonce, estimateMsg.GasLimit, estimateMsg.GasFeeCap, estimateMessage.Spec.MaxFee)
-		}
+		log.Debugf("call GasBatchEstimateMessageGas msg %v, spec %v", estimateMsg, estimateMessage.Spec)
 
 		if estimateMsg.GasLimit == 0 {
 			gasUsed, err := mp.evalMessageGasLimit(ctx, estimateMsg, priorMsgs, ts)

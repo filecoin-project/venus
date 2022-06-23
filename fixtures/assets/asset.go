@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-//go:embed car
+//go:embed genesis-car
 var carFS embed.FS
 
 func GetGenesis(networkType types.NetworkType) ([]byte, error) {
@@ -27,7 +27,7 @@ func GetGenesis(networkType types.NetworkType) ([]byte, error) {
 		fileName = "mainnet.car"
 	}
 
-	return carFS.ReadFile(filepath.Join("car", fileName))
+	return carFS.ReadFile(filepath.Join("genesis-car", fileName))
 }
 
 //go:embed proof-params

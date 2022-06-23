@@ -9,6 +9,7 @@ type chainAPI struct { // nolint: golint
 	v1api.IActor
 	v1api.IMinerState
 	v1api.IChainInfo
+	v1api.IBeacon
 }
 
 var _ v1api.IChain = &chainAPI{}
