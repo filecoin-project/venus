@@ -236,6 +236,7 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 		actorBuilder.Add(av, nil, chaosActor)
 	}
 
+	register.GetDefaultActros()
 	coderLoader := actorBuilder.Build()
 
 	if params.Rand == nil {
