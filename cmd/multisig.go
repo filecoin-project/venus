@@ -164,6 +164,11 @@ var msigInspectCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
+
+		if err := utils.LoadBuiltinActors(ctx, env.(*node.Env).ChainAPI); err != nil {
+			return err
+		}
+
 		head, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
 		if err != nil {
 			return err

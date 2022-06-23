@@ -121,6 +121,10 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
+		if err := utils.LoadBuiltinActors(req.Context, env.(*node.Env).ChainAPI); err != nil {
+			return err
+		}
+
 		var params []byte
 		rawPJ := req.Options["params-json"]
 		if rawPJ != nil {

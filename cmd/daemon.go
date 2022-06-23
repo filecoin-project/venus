@@ -6,6 +6,8 @@ import (
 
 	"github.com/filecoin-project/venus/fixtures/assets"
 	"github.com/filecoin-project/venus/fixtures/networks"
+	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
+	"github.com/filecoin-project/venus/venus-shared/utils"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/util/ulimit"
@@ -24,7 +26,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/journal"
 	"github.com/filecoin-project/venus/pkg/migration"
 	"github.com/filecoin-project/venus/pkg/repo"
-	builtin_actors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 )
 
 var log = logging.Logger("daemon")
@@ -140,10 +141,6 @@ func initRun(req *cmds.Request) error {
 		}
 
 		node.SetNetParams(cfg.NetworkParams)
-		// load builtin actors
-		if err := builtin_actors.SetNetworkBundle(cfg.NetworkParams.NetworkType); err != nil {
-			return err
-		}
 		genesisFunc = genesis.MakeGenesis(req.Context, rep, mkGen, preTp.(string), cfg.NetworkParams.ForkUpgradeParam)
 	} else {
 		genesisFileSource, _ := req.Options[GenesisFile].(string)
@@ -177,6 +174,11 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	}
 
 	config := rep.Config()
+
+	if err := builtinactors.SetNetworkBundle(config.NetworkParams.NetworkType); err != nil {
+		return err
+	}
+	utils.ReloadMethodsMap()
 
 	// second highest precedence is env vars.
 	if envAPI := os.Getenv("VENUS_API"); envAPI != "" {

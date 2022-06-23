@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -48,8 +47,12 @@ func NetworkTypeToNetworkName(networkType types.NetworkType) types.NetworkName {
 	return ""
 }
 
-func LoadBuiltinActors(ctx context.Context, full v1.FullNode) error {
-	networkName, err := full.StateNetworkName(ctx)
+type networkNameGetter interface {
+	StateNetworkName(ctx context.Context) (types.NetworkName, error)
+}
+
+func LoadBuiltinActors(ctx context.Context, getter networkNameGetter) error {
+	networkName, err := getter.StateNetworkName(ctx)
 	if err != nil {
 		return err
 	}
