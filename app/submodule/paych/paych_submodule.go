@@ -5,6 +5,7 @@ import (
 
 	"github.com/ipfs/go-datastore"
 
+	v0api2 "github.com/filecoin-project/venus/app/submodule/paych/v0api"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -35,5 +36,5 @@ func (ps *PaychSubmodule) API() v1api.IPaychan {
 }
 
 func (ps *PaychSubmodule) V0API() v0api.IPaychan {
-	return NewPaychAPI(ps.pmgr)
+	return &v0api2.WrapperV1IPaych{IPaychan: ps.API()}
 }

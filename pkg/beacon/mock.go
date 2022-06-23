@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/minio/blake2b-simd"
-	"golang.org/x/xerrors"
 )
 
 // Mock beacon assumes that filecoin rounds are 1:1 mapped with the beacon rounds
@@ -55,12 +56,12 @@ func (mb *mockBeacon) VerifyEntry(from types.BeaconEntry, to types.BeaconEntry) 
 	// TODO: cache this, especially for bls
 	oe := mb.entryForIndex(from.Round)
 	if !bytes.Equal(from.Data, oe.Data) {
-		return xerrors.Errorf("mock beacon entry was invalid!")
+		return fmt.Errorf("mock beacon entry was invalid")
 	}
 	return nil
 }
 
-func (mb *mockBeacon) MaxBeaconRoundForEpoch(epoch abi.ChainEpoch) uint64 {
+func (mb *mockBeacon) MaxBeaconRoundForEpoch(nv network.Version, epoch abi.ChainEpoch) uint64 {
 	// offset for better testing
 	return uint64(epoch + 100)
 }

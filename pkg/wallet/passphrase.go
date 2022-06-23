@@ -16,7 +16,6 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/crypto/scrypt"
 	"golang.org/x/crypto/sha3"
-	"golang.org/x/xerrors"
 )
 
 const (
@@ -52,7 +51,7 @@ func encryptKey(key *Key, password []byte, scryptN, scryptP int) ([]byte, error)
 func encryptData(data, password []byte, scryptN, scryptP int) (CryptoJSON, error) {
 	salt := make([]byte, 32)
 	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
-		return CryptoJSON{}, xerrors.Errorf("reading from crypto/rand failed: " + err.Error())
+		return CryptoJSON{}, fmt.Errorf("reading from crypto/rand failed: " + err.Error())
 	}
 	derivedKey, err := scrypt.Key(password, salt, scryptN, scryptR, scryptP, scryptDKLen)
 	if err != nil {
@@ -62,7 +61,7 @@ func encryptData(data, password []byte, scryptN, scryptP int) (CryptoJSON, error
 
 	iv := make([]byte, aes.BlockSize) // 16
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		return CryptoJSON{}, xerrors.Errorf("reading from crypto/rand failed: " + err.Error())
+		return CryptoJSON{}, fmt.Errorf("reading from crypto/rand failed: " + err.Error())
 	}
 	cipherText, err := aesCTRXOR(encryptKey, data, iv)
 	if err != nil {

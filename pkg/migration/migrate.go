@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"os"
 	"path/filepath"
 
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	logging "github.com/ipfs/go-log/v2"
@@ -31,6 +31,7 @@ var versionMap = []versionInfo{
 	{version: 5, upgrade: Version5Upgrade},
 	{version: 6, upgrade: Version6Upgrade},
 	{version: 7, upgrade: Version7Upgrade},
+	{version: 8, upgrade: Version8Upgrade},
 }
 
 // TryToMigrate used to migrate data(db,config,file,etc) in local repo
@@ -41,7 +42,9 @@ func TryToMigrate(repoPath string) error {
 	}
 
 	for _, up := range versionMap {
-		if up.version > localVersion {
+		// 实现根据环境变量 `VENUS_DISABLE_SKYR` 来控制是否升级fvm
+		// todo: 在下一次网络（nv17）升级移除
+		if up.version > localVersion || (localVersion == 8 && up.version == 8) {
 			err = up.upgrade(repoPath)
 			if err != nil {
 				return err
@@ -64,15 +67,15 @@ func Version3Upgrade(repoPath string) error {
 	cfg := fsrRepo.Config()
 
 	switch cfg.NetworkParams.NetworkType {
-	case constants.NetworkMainnet:
+	case types.NetworkMainnet:
 		fallthrough
-	case constants.Network2k:
+	case types.Network2k:
 		fallthrough
-	case constants.NetworkCalibnet:
+	case types.NetworkCalibnet:
 		fallthrough
-	case constants.NetworkNerpa:
+	case types.NetworkNerpa:
 		fallthrough
-	case constants.NetworkInterop:
+	case types.NetworkInterop:
 		cfg.API.VenusAuthURL = ""
 	}
 
@@ -94,15 +97,15 @@ func Version4Upgrade(repoPath string) (err error) {
 	}
 	cfg := fsrRepo.Config()
 	switch cfg.NetworkParams.NetworkType {
-	case constants.NetworkMainnet:
+	case types.NetworkMainnet:
 		cfg.NetworkParams.ForkUpgradeParam = config.DefaultForkUpgradeParam
-	case constants.Network2k:
+	case types.Network2k:
 		cfg.NetworkParams.ForkUpgradeParam = networks.Net2k().Network.ForkUpgradeParam
-	case constants.NetworkCalibnet:
+	case types.NetworkCalibnet:
 		cfg.NetworkParams.ForkUpgradeParam = networks.Calibration().Network.ForkUpgradeParam
-	case constants.NetworkForce:
+	case types.NetworkForce:
 		cfg.NetworkParams.ForkUpgradeParam = networks.ForceNet().Network.ForkUpgradeParam
-	case constants.NetworkButterfly:
+	case types.NetworkButterfly:
 		cfg.NetworkParams.ForkUpgradeParam = networks.ButterflySnapNet().Network.ForkUpgradeParam
 	default:
 		return fsrRepo.Close()
@@ -127,19 +130,19 @@ func Version5Upgrade(repoPath string) (err error) {
 	}
 	cfg := fsrRepo.Config()
 	switch cfg.NetworkParams.NetworkType {
-	case constants.NetworkMainnet:
+	case types.NetworkMainnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 1231620
-	case constants.Network2k:
+	case types.Network2k:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -17
-	case constants.NetworkCalibnet:
+	case types.NetworkCalibnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 312746
-	case constants.NetworkForce:
+	case types.NetworkForce:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = math.MaxInt32
-	case constants.NetworkInterop:
+	case types.NetworkInterop:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -17
 	default:
@@ -165,19 +168,19 @@ func Version6Upgrade(repoPath string) (err error) {
 	}
 	cfg := fsrRepo.Config()
 	switch cfg.NetworkParams.NetworkType {
-	case constants.NetworkMainnet:
+	case types.NetworkMainnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 1231620
-	case constants.Network2k:
+	case types.Network2k:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -17
-	case constants.NetworkCalibnet:
+	case types.NetworkCalibnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 312746
-	case constants.NetworkForce:
+	case types.NetworkForce:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -17
-	case constants.NetworkInterop:
+	case types.NetworkInterop:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -17
 	default:
@@ -203,22 +206,22 @@ func Version7Upgrade(repoPath string) (err error) {
 	}
 	cfg := fsrRepo.Config()
 	switch cfg.NetworkParams.NetworkType {
-	case constants.NetworkMainnet:
+	case types.NetworkMainnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = 1594680
-	case constants.Network2k:
+	case types.Network2k:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = -18
-	case constants.NetworkCalibnet:
+	case types.NetworkCalibnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = 682006
-	case constants.NetworkButterfly:
+	case types.NetworkButterfly:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = 240
-	case constants.NetworkForce:
+	case types.NetworkForce:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = -18
-	case constants.NetworkInterop:
+	case types.NetworkInterop:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = -18
 	default:
@@ -255,4 +258,49 @@ func Version7Upgrade(repoPath string) (err error) {
 	}
 
 	return repo.WriteVersion(repoPath, 7)
+}
+
+//Version8Upgrade
+func Version8Upgrade(repoPath string) (err error) {
+	var fsrRepo repo.Repo
+	if fsrRepo, err = repo.OpenFSRepo(repoPath, 7); err != nil {
+		return
+	}
+	cfg := fsrRepo.Config()
+	switch cfg.NetworkParams.NetworkType {
+	case types.NetworkMainnet:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 99999999999999
+		// https://github.com/filecoin-project/lotus/pull/8733
+		if os.Getenv("VENUS_DISABLE_SKYR") == "1" {
+			cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 99999999999999
+		}
+	case types.Network2k:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version15
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = -19
+	case types.NetworkCalibnet:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 1044660
+	case types.NetworkForce:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version15
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = -19
+	case types.NetworkInterop:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 100
+	case types.NetworkButterfly:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 50
+	default:
+		return fsrRepo.Close()
+	}
+
+	if err = fsrRepo.ReplaceConfig(cfg); err != nil {
+		return
+	}
+
+	if err = fsrRepo.Close(); err != nil {
+		return
+	}
+
+	return repo.WriteVersion(repoPath, 8)
 }

@@ -4,15 +4,13 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/venus/fixtures/assets"
 	"github.com/filecoin-project/venus/fixtures/networks"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/util/ulimit"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/venus/fixtures/asset"
-
-	"golang.org/x/xerrors"
 
 	_ "net/http/pprof" // nolint: golint
 
@@ -26,6 +24,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/journal"
 	"github.com/filecoin-project/venus/pkg/migration"
 	"github.com/filecoin-project/venus/pkg/repo"
+	builtin_actors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 )
 
 var log = logging.Logger("daemon")
@@ -66,16 +65,16 @@ var daemonCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		ps, err := asset.Asset("fixtures/_assets/proof-params/parameters.json")
+		ps, err := assets.GetProofParams()
 		if err != nil {
 			return err
 		}
-		srs, err := asset.Asset("fixtures/_assets/proof-params/srs-inner-product.json")
+		srs, err := assets.GetSrs()
 		if err != nil {
 			return err
 		}
 		if err := paramfetch.GetParams(req.Context, ps, srs, 0); err != nil {
-			return xerrors.Errorf("fetching proof parameters: %w", err)
+			return fmt.Errorf("fetching proof parameters: %w", err)
 		}
 
 		exist, err := repo.Exists(repoDir)
@@ -137,10 +136,14 @@ func initRun(req *cmds.Request) error {
 	if mkGen, ok := req.Options[makeGenFlag].(string); ok {
 		preTp := req.Options[preTemplateFlag]
 		if preTp == nil {
-			return xerrors.Errorf("must also pass file with genesis template to `--%s`", preTemplateFlag)
+			return fmt.Errorf("must also pass file with genesis template to `--%s`", preTemplateFlag)
 		}
 
 		node.SetNetParams(cfg.NetworkParams)
+		// load builtin actors
+		if err := builtin_actors.SetNetworkBundle(cfg.NetworkParams.NetworkType); err != nil {
+			return err
+		}
 		genesisFunc = genesis.MakeGenesis(req.Context, rep, mkGen, preTp.(string), cfg.NetworkParams.ForkUpgradeParam)
 	} else {
 		genesisFileSource, _ := req.Options[GenesisFile].(string)

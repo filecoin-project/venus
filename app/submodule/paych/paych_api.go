@@ -2,15 +2,15 @@ package paych
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 )
@@ -23,8 +23,26 @@ func NewPaychAPI(p *paychmgr.Manager) *PaychAPI {
 	return &PaychAPI{p}
 }
 
-func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*types.ChannelInfo, error) {
-	ch, mcid, err := a.paychMgr.GetPaych(ctx, from, to, amt)
+func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt, opts types.PaychGetOpts) (*types.ChannelInfo, error) {
+	ch, mcid, err := a.paychMgr.GetPaych(ctx, from, to, amt, paychmgr.GetOpts{
+		Reserve:  true,
+		OffChain: opts.OffChain,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.ChannelInfo{
+		Channel:      ch,
+		WaitSentinel: mcid,
+	}, nil
+}
+
+func (a *PaychAPI) PaychFund(ctx context.Context, from, to address.Address, amt types.BigInt) (*types.ChannelInfo, error) {
+	ch, mcid, err := a.paychMgr.GetPaych(ctx, from, to, amt, paychmgr.GetOpts{
+		Reserve:  false,
+		OffChain: false,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +74,7 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 
 	// TODO: Fix free fund tracking in PaychGet
 	// TODO: validate voucher spec before locking funds
-	ch, err := a.PaychGet(ctx, from, to, amount)
+	ch, err := a.PaychGet(ctx, from, to, amount, types.PaychGetOpts{OffChain: false})
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +100,7 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 			return nil, err
 		}
 		if sv.Voucher == nil {
-			return nil, xerrors.Errorf("Could not create voucher - shortfall of %d", sv.Shortfall)
+			return nil, fmt.Errorf("could not create voucher - shortfall of %d", sv.Shortfall)
 		}
 
 		svs[i] = sv.Voucher

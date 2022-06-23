@@ -13,7 +13,7 @@ import (
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 )
 
-// Runtime has operations in the VM that are exposed to all actors.
+// Runtime has operations in the LegacyVM that are exposed to all actors.
 type Runtime interface {
 	// CurrentEpoch is the current chain epoch.
 	CurrentEpoch() abi.ChainEpoch
@@ -96,12 +96,12 @@ func (p ExecutionPanic) String() string {
 	return fmt.Sprintf("ExitCode(%d)", p.Code())
 }
 
-// Abort aborts the VM execution and sets the executing message return to the given `code`.
+// Abort aborts the LegacyVM execution and sets the executing message return to the given `code`.
 func Abort(code exitcode.ExitCode) {
 	panic(ExecutionPanic{code: code})
 }
 
-// Abortf will stop the VM execution and return an the error to the caller.
+// Abortf will stop the LegacyVM execution and return an the error to the caller.
 func Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
 	panic(ExecutionPanic{code: code, msg: fmt.Sprintf(msg, args...)})
 }

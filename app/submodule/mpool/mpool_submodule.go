@@ -3,6 +3,8 @@ package mpool
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -12,7 +14,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	logging "github.com/ipfs/go-log"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/network"
@@ -82,11 +83,11 @@ func NewMpoolSubmodule(ctx context.Context, cfg messagepoolConfig,
 	if err != nil {
 		return nil, err
 	}
-	mp, err := messagepool.New(ctx, mpp, chain.Stmgr, cfg.Repo().MetaDatastore(),
-		cfg.Repo().Config().NetworkParams.ForkUpgradeParam, cfg.Repo().Config().Mpool,
-		network.NetworkName, j)
+	networkParams := cfg.Repo().Config().NetworkParams
+	mp, err := messagepool.New(ctx, mpp, chain.Stmgr, cfg.Repo().MetaDatastore(), networkParams.ForkUpgradeParam,
+		cfg.Repo().Config().Mpool, network.NetworkName, j)
 	if err != nil {
-		return nil, xerrors.Errorf("constructing mpool: %s", err)
+		return nil, fmt.Errorf("constructing mpool: %s", err)
 	}
 
 	return &MessagePoolSubmodule{
@@ -129,15 +130,15 @@ func (mp *MessagePoolSubmodule) Validate(ctx context.Context, pid peer.ID, msg *
 	if err := mp.MPool.Add(ctx, m); err != nil {
 		log.Debugf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
 		switch {
-		case xerrors.Is(err, messagepool.ErrSoftValidationFailure):
+		case errors.Is(err, messagepool.ErrSoftValidationFailure):
 			fallthrough
-		case xerrors.Is(err, messagepool.ErrRBFTooLowPremium):
+		case errors.Is(err, messagepool.ErrRBFTooLowPremium):
 			fallthrough
-		case xerrors.Is(err, messagepool.ErrTooManyPendingMessages):
+		case errors.Is(err, messagepool.ErrTooManyPendingMessages):
 			fallthrough
-		case xerrors.Is(err, messagepool.ErrNonceGap):
+		case errors.Is(err, messagepool.ErrNonceGap):
 			fallthrough
-		case xerrors.Is(err, messagepool.ErrNonceTooLow):
+		case errors.Is(err, messagepool.ErrNonceTooLow):
 			return pubsub.ValidationIgnore
 		default:
 			return pubsub.ValidationReject

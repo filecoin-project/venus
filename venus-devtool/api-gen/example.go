@@ -80,6 +80,10 @@ func init() {
 	}
 	addExample(pid)
 	addExample(&pid)
+	uuid, err := types.ParseUUID("e26f1e5c-47f7-4561-a11d-18fab6e748af")
+	if err != nil {
+		panic(err)
+	}
 	addExample(constants.NewestNetworkVersion)
 	textSelExample := textselector.Expression("Links/21/Hash/Links/42/Hash")
 	clientEvent := retrievalmarket.ClientEventDealAccepted
@@ -110,7 +114,15 @@ func init() {
 	addExample(api.FullAPIVersion1)
 	addExample(types.PCHInbound)
 	addExample(time.Minute)
-	addExample(graphsync.NewRequestID())
+	reqIDBytes, err := uuid.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+	reqID, err := graphsync.ParseRequestID(reqIDBytes)
+	if err != nil {
+		panic(err)
+	}
+	addExample(reqID)
 	addExample(datatransfer.TransferID(3))
 	addExample(datatransfer.Ongoing)
 	addExample(clientEvent)
@@ -133,8 +145,8 @@ func init() {
 			Balance: abi.NewTokenAmount(100),
 		},
 	})
-	addExample(map[string]types.MarketDeal{
-		"t026363": ExampleValue("init", reflect.TypeOf(types.MarketDeal{}), nil).(types.MarketDeal),
+	addExample(map[string]*types.MarketDeal{
+		"t026363": ExampleValue("init", reflect.TypeOf(&types.MarketDeal{}), nil).(*types.MarketDeal),
 	})
 	addExample(map[string]types.MarketBalance{
 		"t026363": ExampleValue("init", reflect.TypeOf(types.MarketBalance{}), nil).(types.MarketBalance),
@@ -186,10 +198,6 @@ func init() {
 	addExample(types.HCApply)
 
 	// messager
-	uuid, err := types.ParseUUID("e26f1e5c-47f7-4561-a11d-18fab6e748af")
-	if err != nil {
-		panic(err)
-	}
 	i64 := int64(10000)
 	addExample(uuid)
 	addExample(messager.OnChainMsg)

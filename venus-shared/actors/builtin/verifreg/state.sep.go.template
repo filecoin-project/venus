@@ -10,9 +10,17 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
-{{if (ge .v 3)}}	builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
-{{end}}	verifreg{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/verifreg"
+{{if (le .v 7)}}
+    {{if (ge .v 3)}}
+        builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
+    {{end}}
+    verifreg{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/verifreg"
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
+{{else}}
+	verifreg{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}verifreg"
+	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
+	builtin{{.v}} "github.com/filecoin-project/go-state-types/builtin"
+{{end}}
 )
 
 var _ State = (*state{{.v}})(nil)
@@ -63,6 +71,10 @@ func (s *state{{.v}}) VerifierDataCap(addr address.Address) (bool, abi.StoragePo
 	return getDataCap(s.store, actors.Version{{.v}}, s.verifiers, addr)
 }
 
+func (s *state{{.v}}) RemoveDataCapProposalID(verifier address.Address, client address.Address) (bool, uint64, error) {
+	return getRemoveDataCapProposalID(s.store, actors.Version{{.v}}, s.removeDataCapProposalIDs, verifier, client)
+}
+
 func (s *state{{.v}}) ForEachVerifier(cb func(addr address.Address, dcap abi.StoragePower) error) error {
 	return forEachCap(s.store, actors.Version{{.v}}, s.verifiers, cb)
 }
@@ -77,6 +89,11 @@ func (s *state{{.v}}) verifiedClients() (adt.Map, error) {
 
 func (s *state{{.v}}) verifiers() (adt.Map, error) {
 	return adt{{.v}}.AsMap(s.store, s.Verifiers{{if (ge .v 3)}}, builtin{{.v}}.DefaultHamtBitwidth{{end}})
+}
+
+func (s *state{{.v}}) removeDataCapProposalIDs() (adt.Map, error) {
+    {{if le .v 6}}return nil, nil
+    {{else}}return adt{{.v}}.AsMap(s.store, s.RemoveDataCapProposalIDs, builtin{{.v}}.DefaultHamtBitwidth){{end}}
 }
 
 func (s *state{{.v}}) GetState() interface{} {

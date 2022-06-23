@@ -8,11 +8,24 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
+var _ Blockstore = (*SyncStore)(nil)
+
 type SyncStore struct {
 	mu sync.RWMutex
-	bs MemStore // specifically use a memStore to save indirection overhead.
+	bs MemBlockstore // specifically use a memStore to save indirection overhead.
 }
 
+func (m *SyncStore) View(ctx context.Context, cid cid.Cid, callback func([]byte) error) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.bs.View(ctx, cid, callback)
+}
+
+func (m *SyncStore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.bs.DeleteMany(ctx, cids)
+}
 func (m *SyncStore) DeleteBlock(ctx context.Context, k cid.Cid) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

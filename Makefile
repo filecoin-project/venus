@@ -42,11 +42,7 @@ build-dep/.update-modules: build-dep;
 	git submodule update --init --recursive
 	touch $@
 
-gen-all: cborgen gogen inline-gen api-gen
-
-gen-asset:
-	go-bindata -pkg=asset -o ./fixtures/asset/asset.go ./fixtures/_assets/car/ ./fixtures/_assets/proof-params/ ./fixtures/_assets/arch-diagram.monopic
-	gofmt -s -l -w ./fixtures/asset/asset.go
+gen-all: cborgen gogen inline-gen api-gen bundle-gen
 
 ### devtool ###
 cborgen:
@@ -60,6 +56,9 @@ inline-gen:
 
 test-venus-shared:
 	cd venus-shared && go test -covermode=set ./...
+
+bundle-gen:
+	cd venus-devtool && go run ./bundle-gen/*.go  --dst ./../venus-shared/builtin-actors/builtin_actors_gen.go
 
 api-gen:
 	cd ./venus-devtool/ && go run ./api-gen/ proxy
@@ -113,8 +112,6 @@ dist-clean:
 build: $(BUILD_DEPS)
 	rm -f venus
 	go build -o ./venus $(GOFLAGS) .
-
-
 
 
 .PHONY: docker

@@ -32,6 +32,10 @@ func (mockFork *MockFork) HasExpensiveFork(ctx context.Context, height abi.Chain
 	return false
 }
 
+func (mockFork *MockFork) HasExpensiveForkBetween(parent, height abi.ChainEpoch) bool {
+	return false
+}
+
 func (mockFork *MockFork) GetForkUpgrade() *config.ForkUpgradeConfig {
 	return &config.ForkUpgradeConfig{
 		UpgradeSmokeHeight:       -1,

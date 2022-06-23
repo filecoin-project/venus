@@ -5,10 +5,11 @@ package paychmgr
 import (
 	"fmt"
 	"io"
+	"math"
 	"sort"
 
 	address "github.com/filecoin-project/go-address"
-	paych "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
@@ -16,6 +17,7 @@ import (
 
 var _ = xerrors.Errorf
 var _ = cid.Undef
+var _ = math.E
 var _ = sort.Sort
 
 var lengthBufVoucherInfo = []byte{131}
@@ -134,7 +136,7 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-var lengthBufChannelInfo = []byte{140}
+var lengthBufChannelInfo = []byte{142}
 
 func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -205,6 +207,16 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.AvailableAmount (big.Int) (struct)
+	if err := t.AvailableAmount.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.PendingAvailableAmount (big.Int) (struct)
+	if err := t.PendingAvailableAmount.MarshalCBOR(w); err != nil {
+		return err
+	}
+
 	// t.PendingAmount (big.Int) (struct)
 	if err := t.PendingAmount.MarshalCBOR(w); err != nil {
 		return err
@@ -255,7 +267,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 12 {
+	if extra != 14 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -369,6 +381,24 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 
 		if err := t.Amount.UnmarshalCBOR(br); err != nil {
 			return xerrors.Errorf("unmarshaling t.Amount: %w", err)
+		}
+
+	}
+	// t.AvailableAmount (big.Int) (struct)
+
+	{
+
+		if err := t.AvailableAmount.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.AvailableAmount: %w", err)
+		}
+
+	}
+	// t.PendingAvailableAmount (big.Int) (struct)
+
+	{
+
+		if err := t.PendingAvailableAmount.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.PendingAvailableAmount: %w", err)
 		}
 
 	}

@@ -6,17 +6,17 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
 	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
+	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 )
 
 var _ State = (*state2)(nil)
@@ -87,7 +87,7 @@ func (s *state2) ForEachPendingTxn(cb func(id int64, txn Transaction) error) err
 	return arr.ForEach(&out, func(key string) error {
 		txid, n := binary.Varint([]byte(key))
 		if n <= 0 {
-			return xerrors.Errorf("invalid pending transaction key: %v", key)
+			return fmt.Errorf("invalid pending transaction key: %v", key)
 		}
 		return cb(txid, (Transaction)(out)) //nolint:unconvert
 	})
@@ -111,7 +111,7 @@ func (s *state2) decodeTransaction(val *cbg.Deferred) (Transaction, error) {
 	if err := tx.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return Transaction{}, err
 	}
-	return tx, nil
+	return Transaction(tx), nil
 }
 
 func (s *state2) GetState() interface{} {

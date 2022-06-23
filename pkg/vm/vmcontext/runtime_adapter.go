@@ -7,7 +7,6 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor2 "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
-	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -16,13 +15,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/rt"
-
-	/* inline-gen template
-	{{range .actorVersions}}
-	rt{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/runtime"{{end}}
-
-	/* inline-gen start */
-
 	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
 	rt2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 	rt3 "github.com/filecoin-project/specs-actors/v3/actors/runtime"
@@ -30,9 +22,6 @@ import (
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	rt6 "github.com/filecoin-project/specs-actors/v6/actors/runtime"
 	rt7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
-
-	/* inline-gen end */
-
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
 	"github.com/filecoin-project/venus/venus-shared/actors/aerrors"
@@ -54,11 +43,6 @@ func init() {
 
 var actorLog = logging.Logger("vm.actors")
 
-/* inline-gen template
-{{range .actorVersions}}
-var _ rt{{.}}.Runtime = (*runtimeAdapter)(nil){{end}}
-/* inline-gen start */
-
 var _ rt0.Runtime = (*runtimeAdapter)(nil)
 var _ rt2.Runtime = (*runtimeAdapter)(nil)
 var _ rt3.Runtime = (*runtimeAdapter)(nil)
@@ -66,8 +50,6 @@ var _ rt4.Runtime = (*runtimeAdapter)(nil)
 var _ rt5.Runtime = (*runtimeAdapter)(nil)
 var _ rt6.Runtime = (*runtimeAdapter)(nil)
 var _ rt7.Runtime = (*runtimeAdapter)(nil)
-
-/* inline-gen end */
 
 type runtimeAdapter struct {
 	ctx *invocationContext
@@ -118,16 +100,16 @@ func (a *runtimeAdapter) stateCommit(oldh, newh cid.Cid) error {
 	// TODO: we can make this more efficient in the future...
 	act, found, err := a.ctx.vm.State.GetActor(a.Context(), a.Receiver())
 	if !found || err != nil {
-		return xerrors.Errorf("failed To get actor To commit stateView, %s", err)
+		return fmt.Errorf("failed To get actor To commit stateView, %s", err)
 	}
 
 	if act.Head != oldh {
-		return xerrors.Errorf("failed To update, inconsistent base reference, %s", err)
+		return fmt.Errorf("failed To update, inconsistent base reference, %s", err)
 	}
 
 	act.Head = newh
 	if err := a.ctx.vm.State.SetActor(a.Context(), a.Receiver(), act); err != nil {
-		return xerrors.Errorf("failed To set actor in commit stateView, %s", err)
+		return fmt.Errorf("failed To set actor in commit stateView, %s", err)
 	}
 
 	return nil

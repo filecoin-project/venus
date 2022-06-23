@@ -11,10 +11,10 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	cid "github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/gateway"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
@@ -65,7 +65,7 @@ type IMarketStruct struct {
 		MarketImportPublishedDeal              func(ctx context.Context, deal market.MinerDeal) error                                                                                                                                              `perm:"write"`
 		MarketListAsk                          func(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error)                                                                                                                                `perm:"read"`
 		MarketListDataTransfers                func(ctx context.Context) ([]market.DataTransferChannel, error)                                                                                                                                     `perm:"write"`
-		MarketListDeals                        func(ctx context.Context, addrs []address.Address) ([]types.MarketDeal, error)                                                                                                                      `perm:"read"`
+		MarketListDeals                        func(ctx context.Context, addrs []address.Address) ([]*types.MarketDeal, error)                                                                                                                     `perm:"read"`
 		MarketListIncompleteDeals              func(ctx context.Context, mAddr address.Address) ([]market.MinerDeal, error)                                                                                                                        `perm:"read"`
 		MarketListRetrievalAsk                 func(ctx context.Context) ([]*market.RetrievalAsk, error)                                                                                                                                           `perm:"read"`
 		MarketListRetrievalDeals               func(ctx context.Context, mAddr address.Address) ([]market.ProviderDealState, error)                                                                                                                `perm:"read"`
@@ -222,7 +222,7 @@ func (s *IMarketStruct) MarketListAsk(p0 context.Context) ([]*storagemarket.Sign
 func (s *IMarketStruct) MarketListDataTransfers(p0 context.Context) ([]market.DataTransferChannel, error) {
 	return s.Internal.MarketListDataTransfers(p0)
 }
-func (s *IMarketStruct) MarketListDeals(p0 context.Context, p1 []address.Address) ([]types.MarketDeal, error) {
+func (s *IMarketStruct) MarketListDeals(p0 context.Context, p1 []address.Address) ([]*types.MarketDeal, error) {
 	return s.Internal.MarketListDeals(p0, p1)
 }
 func (s *IMarketStruct) MarketListIncompleteDeals(p0 context.Context, p1 address.Address) ([]market.MinerDeal, error) {

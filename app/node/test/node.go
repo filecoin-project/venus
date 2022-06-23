@@ -29,7 +29,7 @@ import (
 // ChainSeed is a generalized struct for configuring node
 type ChainSeed struct {
 	info   *gengen.RenderedGenInfo
-	bstore blockstore.Blockstore
+	bstore blockstoreutil.Blockstore
 }
 
 // MakeChainSeed creates a chain seed struct (see above) from a given
@@ -38,7 +38,7 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 	t.Helper()
 
 	mds := ds.NewMapDatastore()
-	bstore := blockstore.NewBlockstore(mds)
+	bstore := blockstoreutil.Adapt(blockstore.NewBlockstore(mds))
 	info, err := gengen.GenGen(context.TODO(), cfg, bstore)
 	require.NoError(t, err)
 	return &ChainSeed{
@@ -48,7 +48,7 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 }
 
 // GenesisInitFunc is a th.GenesisInitFunc using the chain seed
-func (cs *ChainSeed) GenesisInitFunc(cst cbor.IpldStore, bs blockstore.Blockstore) (*types.BlockHeader, error) {
+func (cs *ChainSeed) GenesisInitFunc(cst cbor.IpldStore, bs blockstoreutil.Blockstore) (*types.BlockHeader, error) {
 	err := blockstoreutil.CopyBlockstore(context.TODO(), cs.bstore, bs)
 	if err != nil {
 		return nil, err

@@ -5,7 +5,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type NetworkConf struct {
@@ -27,7 +27,7 @@ func Calibration() *NetworkConf {
 		},
 		Network: config.NetworkParamsConfig{
 			DevNet:                 true,
-			NetworkType:            constants.NetworkCalibnet,
+			NetworkType:            types.NetworkCalibnet,
 			GenesisNetworkVersion:  network.Version0,
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 32 << 30,
@@ -51,6 +51,7 @@ func Calibration() *NetworkConf {
 				UpgradeNorwegianHeight:  360,
 				UpgradeTurboHeight:      390,
 				UpgradeHyperdriveHeight: 420,
+				UpgradeSkyrHeight:       1044660, // 2022-06-16T17:30:00Z
 
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       270,

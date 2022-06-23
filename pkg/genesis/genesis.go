@@ -7,11 +7,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"golang.org/x/xerrors"
-
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -36,7 +33,7 @@ import (
 var glog = logging.Logger("genesis")
 
 // InitFunc is the signature for function that is used to create a genesis block.
-type InitFunc func(cst cbor.IpldStore, bs blockstore.Blockstore) (*types.BlockHeader, error)
+type InitFunc func(cst cbor.IpldStore, bs blockstoreutil.Blockstore) (*types.BlockHeader, error)
 
 // Ticket is the ticket to place in the genesis block header (which can't be derived from a prior ticket),
 // used in the evaluation of the messages in the genesis block,
@@ -48,15 +45,15 @@ var Ticket = types.Ticket{
 	},
 }
 
-// VM is the view into the VM used during genesis block creation.
+// VM is the view into the LegacyVM used during genesis block creation.
 type VM interface {
 	ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (*vm.Ret, error)
-	Flush() (tree.Root, error)
+	Flush(ctx context.Context) (tree.Root, error)
 }
 
 //MakeGenesis return a func to construct a genesis block
 func MakeGenesis(ctx context.Context, rep repo.Repo, outFile, genesisTemplate string, para *config.ForkUpgradeConfig) InitFunc {
-	return func(_ cbor.IpldStore, bs blockstore.Blockstore) (*types.BlockHeader, error) {
+	return func(_ cbor.IpldStore, bs blockstoreutil.Blockstore) (*types.BlockHeader, error) {
 		glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
 		genesisTemplate, err := homedir.Expand(genesisTemplate)
 		if err != nil {
@@ -65,7 +62,7 @@ func MakeGenesis(ctx context.Context, rep repo.Repo, outFile, genesisTemplate st
 
 		fdata, err := ioutil.ReadFile(genesisTemplate)
 		if err != nil {
-			return nil, xerrors.Errorf("reading preseals json: %w", err)
+			return nil, fmt.Errorf("reading preseals json: %w", err)
 		}
 
 		var template genesis2.Template
@@ -85,7 +82,7 @@ func MakeGenesis(ctx context.Context, rep repo.Repo, outFile, genesisTemplate st
 
 		b, err := genesis2.MakeGenesisBlock(context.TODO(), rep, cbs, template, para)
 		if err != nil {
-			return nil, xerrors.Errorf("make genesis block: %w", err)
+			return nil, fmt.Errorf("make genesis block: %w", err)
 		}
 
 		fmt.Printf("GENESIS MINER ADDRESS: t0%d\n", genesis2.MinerStart)

@@ -2,15 +2,16 @@ package conformance
 
 import (
 	"context"
-	"fmt"
-	"math"
 	gobig "math/big"
 	"os"
 
-	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
-	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 
+	"github.com/filecoin-project/venus/pkg/consensus"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/venus/app/node"
@@ -35,7 +36,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
 var (
@@ -55,13 +55,13 @@ type Driver struct {
 }
 
 type DriverOpts struct {
-	// DisableVMFlush, when true, avoids calling VM.Flush(), forces a blockstore
+	// DisableVMFlush, when true, avoids calling LegacyVM.Flush(), forces a blockstore
 	// recursive copy, from the temporary buffer blockstore, to the real
-	// system's blockstore. Disabling VM flushing is useful when extracting test
+	// system's blockstore. Disabling LegacyVM flushing is useful when extracting test
 	// vectors and trimming state, as we don't want to force an accidental
 	// deep copy of the state tree.
 	//
-	// Disabling VM flushing almost always should go hand-in-hand with
+	// Disabling LegacyVM flushing almost always should go hand-in-hand with
 	// LOTUS_DISABLE_VM_BUF=iknowitsabadidea. That way, state tree writes are
 	// immediately committed to the blockstore.
 	DisableVMFlush bool
@@ -77,7 +77,7 @@ type ExecuteTipsetResult struct {
 
 	// AppliedMessages stores the messages that were applied, in the order they
 	// were applied. It includes implicit messages (cron, rewards).
-	AppliedMessages []*vm.VmMessage
+	AppliedMessages []*types.Message
 	// AppliedResults stores the results of AppliedMessages, in the same order.
 	AppliedResults []*vm.Ret
 }
@@ -88,10 +88,10 @@ type ExecuteTipsetResult struct {
 // parentEpoch is the last epoch in which an actual tipset was processed. This
 // is used by Lotus for null block counting and cron firing.
 //
-// This method returns the the receipts root, the poststate root, and the VM
+// This method returns the the receipts root, the poststate root, and the LegacyVM
 // message results. The latter _include_ implicit messages, such as cron ticks
 // and reward withdrawal per miner.
-func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset, execEpoch abi.ChainEpoch) (*ExecuteTipsetResult, error) {
+func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset, execEpoch abi.ChainEpoch) (*ExecuteTipsetResult, error) {
 	ipldStore := cbor.NewCborStore(bs)
 	mainNetParams := networks.Mainnet()
 	node.SetNetParams(&mainNetParams.Network)
@@ -104,7 +104,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 		return nil, err
 	}
 
-	drand, err := beacon.DefaultDrandIfaceFromConfig(genBlk.Timestamp)
+	drand, err := beacon.DrandConfigSchedule(genBlk.Timestamp, mainNetParams.Network.BlockDelay, mainNetParams.Network.DrandSchedule)
 	if err != nil {
 		return nil, err
 	}*/
@@ -116,6 +116,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 	if err != nil {
 		return nil, err
 	}
+
 	var (
 		ctx      = context.Background()
 		vmOption = vm.VmOption{
@@ -134,13 +135,6 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 			SysCallsImpl:        syscalls,
 		}
 	)
-
-	lvm, err := vm.NewVM(ctx, vmOption)
-	if err != nil {
-		return nil, err
-	}
-	//flush data to blockstore
-	defer lvm.Flush() //nolint
 
 	blocks := make([]types.BlockMessagesInfo, 0, len(tipset.Blocks))
 	for _, b := range tipset.Blocks {
@@ -186,15 +180,19 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 	}
 
 	var (
-		messages []*vm.VmMessage
+		messages []*types.Message
 		results  []*vm.Ret
 	)
 
-	postcid, receipt, err := lvm.ApplyTipSetMessages(blocks, nil, parentEpoch, execEpoch, func(_ cid.Cid, msg vm.VmMessage, ret *vm.Ret) error {
-		messages = append(messages, &msg)
+	circulatingSupplyCalculator := chain.NewCirculatingSupplyCalculator(bs, preroot, mainNetParams.Network.ForkUpgradeParam)
+	processor := consensus.NewDefaultProcessor(syscalls, circulatingSupplyCalculator)
+
+	postcid, receipt, err := processor.ApplyBlocks(ctx, blocks, nil, preroot, parentEpoch, execEpoch, vmOption, func(_ cid.Cid, msg *types.Message, ret *vm.Ret) error {
+		messages = append(messages, msg)
 		results = append(results, ret)
 		return nil
 	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -202,12 +200,6 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, chainDs ds.Batching, pr
 	if err != nil {
 		return nil, err
 	}
-
-	/*	postcid, receiptsroot, err := sm.ApplyBlocks(context.Background(), parentEpoch, preroot, blocks, execEpoch, vmRand, func(_ cid.Cid, msg *types.ChainMsg, ret *vm.Ret) error {
-		messages = append(messages, msg)
-		results = append(results, ret)
-		return nil
-	}, basefee, nil)*/
 
 	ret := &ExecuteTipsetResult{
 		ReceiptsRoot:    receiptsroot,
@@ -229,52 +221,19 @@ type ExecuteMessageParams struct {
 	Rand vmcontext.HeadChainRandomness
 }
 
-// adjustGasPricing adjusts the global gas price mapping to make sure that the
-// gas pricelist for vector's network version is used at the vector's epoch.
-// Because it manipulates a global, it returns a function that reverts the
-// change. The caller MUST invoke this function or the test vector runner will
-// become invalid.
-func adjustGasPricing(vectorEpoch abi.ChainEpoch, vectorNv network.Version, priceSchedule *gas.PricesSchedule, upgradeSchedule fork.UpgradeSchedule) {
-	// Resolve the epoch at which the vector network version kicks in.
-	var epoch abi.ChainEpoch = math.MaxInt64
-	if vectorNv == network.Version0 {
-		// genesis is not an upgrade.
-		epoch = 0
-	} else {
-		for _, u := range upgradeSchedule {
-			if u.Network == vectorNv {
-				epoch = u.Height
-				break
-			}
-		}
-	}
-
-	if epoch == math.MaxInt64 {
-		panic(fmt.Sprintf("could not resolve network version %d to height", vectorNv))
-	}
-
-	// Find the right pricelist for this network version.
-	pricelist := priceSchedule.PricelistByEpoch(epoch)
-
-	// Override the pricing mapping by setting the relevant pricelist for the
-	// network version at the epoch where the vector runs.
-	priceSchedule.SetPricelist(map[abi.ChainEpoch]gas.Pricelist{
-		vectorEpoch: pricelist,
-	})
-}
-
-// ExecuteMessage executes a conformance test vector message in a temporary VM.
-func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageParams) (*vm.Ret, cid.Cid, error) {
+// ExecuteMessage executes a conformance test vector message in a temporary LegacyVM.
+func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMessageParams) (*vm.Ret, cid.Cid, error) {
 	if !d.vmFlush {
-		// do not flush the VM, just the state tree; this should be used with
+		// do not flush the LegacyVM, just the state tree; this should be used with
 		// LOTUS_DISABLE_VM_BUF enabled, so writes will anyway be visible.
 		_ = os.Setenv("LOTUS_DISABLE_VM_BUF", "iknowitsabadidea")
 	}
 	actorBuilder := register.DefaultActorBuilder
 	// register the chaos actor if required by the vector.
 	if chaosOn, ok := d.selector["chaos_actor"]; ok && chaosOn == "true" {
+		av, _ := actors.VersionForNetwork(params.NetworkVersion)
 		chaosActor := chaos.Actor{}
-		actorBuilder.Add(nil, chaosActor)
+		actorBuilder.Add(av, nil, chaosActor)
 	}
 
 	coderLoader := actorBuilder.Build()
@@ -316,24 +275,21 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		}
 	)
 
-	// Monkey patch the gas pricing.
-	adjustGasPricing(params.Epoch, params.NetworkVersion, vmOption.GasPriceSchedule, fork.DefaultUpgradeSchedule(chainFork, mainNetParams.Network.ForkUpgradeParam))
-
-	lvm, err := vm.NewVM(ctx, vmOption)
+	lvm, err := vm.NewLegacyVM(ctx, vmOption)
 	if err != nil {
 		return nil, cid.Undef, err
 	}
 
-	ret, err := lvm.ApplyMessage(toChainMsg(params.Message))
+	ret, err := lvm.ApplyMessage(ctx, toChainMsg(params.Message))
 	if err != nil {
 		return nil, cid.Undef, err
 	}
 
 	var root cid.Cid
 	if d.vmFlush {
-		// flush the VM, committing the state tree changes and forcing a
+		// flush the LegacyVM, committing the state tree changes and forcing a
 		// recursive copy from the temporary blcokstore to the real blockstore.
-		root, err = lvm.Flush()
+		root, err = lvm.Flush(ctx)
 		if err != nil {
 			return nil, cid.Undef, err
 		}

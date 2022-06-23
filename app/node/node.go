@@ -275,8 +275,7 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 		return err
 	}
 
-	authMux := jwtclient.NewAuthMux(localVerifer,
-		node.remoteAuth, mux, logging.Logger("venus-auth"))
+	authMux := jwtclient.NewAuthMux(localVerifer, node.remoteAuth, mux)
 	authMux.TrustHandle("/debug/pprof/", http.DefaultServeMux)
 
 	// todo:

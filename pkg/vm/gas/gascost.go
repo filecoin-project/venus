@@ -49,7 +49,7 @@ func NewGasCharge(name string, computeGas int64, storageGas int64) GasCharge {
 	}
 }
 
-// Pricelist provides prices for operations in the VM.
+// Pricelist provides prices for operations in the LegacyVM.
 //
 // Note: this interface should be APPEND ONLY since last chain checkpoint
 type Pricelist interface {
@@ -219,13 +219,9 @@ func NewPricesSchedule(forkParams *config.ForkUpgradeConfig) *PricesSchedule {
 	return &PricesSchedule{prices: prices}
 }
 
-// SetPricelist set new prices, for test
-func (schedule *PricesSchedule) SetPricelist(newPrices map[abi.ChainEpoch]Pricelist) {
-	schedule.prices = newPrices
-}
-
 // PricelistByEpoch finds the latest prices for the given epoch
 func (schedule *PricesSchedule) PricelistByEpoch(epoch abi.ChainEpoch) Pricelist {
+
 	// since we are storing the prices as map or epoch to price
 	// we need to get the price with the highest epoch that is lower or equal to the `epoch` arg
 	bestEpoch := abi.ChainEpoch(0)

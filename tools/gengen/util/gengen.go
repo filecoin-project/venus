@@ -19,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/genesis"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -191,7 +192,7 @@ var defaultGenTimeOpt = GenTime(123456789)
 func MakeGenesisFunc(opts ...GenOption) genesis.InitFunc {
 	// Dragons: GenesisInitFunc should take in only a blockstore to remove the hidden
 	// assumption that cst and bs are backed by the same storage.
-	return func(cst cbor.IpldStore, bs blockstore.Blockstore) (*types.BlockHeader, error) {
+	return func(cst cbor.IpldStore, bs blockstoreutil.Blockstore) (*types.BlockHeader, error) {
 		ctx := context.Background()
 		genCfg := &GenesisCfg{}
 		err := defaultGenTimeOpt(genCfg)
@@ -222,7 +223,7 @@ func MakeGenesisFunc(opts ...GenOption) genesis.InitFunc {
 // the final genesis block.
 //
 // WARNING: Do not use maps in this code, they will make this code non deterministic.
-func GenGen(ctx context.Context, cfg *GenesisCfg, bs blockstore.Blockstore) (*RenderedGenInfo, error) {
+func GenGen(ctx context.Context, cfg *GenesisCfg, bs blockstoreutil.Blockstore) (*RenderedGenInfo, error) {
 	generator := NewGenesisGenerator(bs)
 	err := generator.Init(cfg)
 	if err != nil {
@@ -257,8 +258,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, bs blockstore.Blockstore) (*Re
 func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (*RenderedGenInfo, error) {
 	ctx := context.Background()
 
-	bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
-	bstore = blockstore.NewIdStore(bstore)
+	bstore := blockstoreutil.WrapIDStore(blockstore.NewBlockstore(ds.NewMapDatastore()))
 	dserv := dag.NewDAGService(bserv.New(bstore, offline.Exchange(bstore)))
 	info, err := GenGen(ctx, cfg, bstore)
 	if err != nil {

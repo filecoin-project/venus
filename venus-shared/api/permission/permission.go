@@ -2,12 +2,12 @@ package permission
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/filecoin-project/venus/venus-shared/api"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"golang.org/x/xerrors"
 )
 
 type permission = auth.Permission
@@ -64,9 +64,9 @@ func PermissionProxy(in interface{}, out interface{}) {
 				}
 				return fn.Call(args)
 			ABORT:
-				err := xerrors.Errorf("missing permission to invoke '%s'", methodName)
+				err := fmt.Errorf("missing permission to invoke '%s'", methodName)
 				if errNum&1 == 1 {
-					err = xerrors.Errorf("%s  (need '%s')", err, requiredPerm)
+					err = fmt.Errorf("%s  (need '%s')", err, requiredPerm)
 				}
 				rerr := reflect.ValueOf(&err).Elem()
 				if fn.Type().NumOut() == 2 {

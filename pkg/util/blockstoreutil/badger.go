@@ -372,6 +372,26 @@ func (b *BadgerBlockstore) DeleteBlock(ctx context.Context, cid cid.Cid) error {
 	})
 }
 
+func (b *BadgerBlockstore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
+	if atomic.LoadInt64(&b.state) != stateOpen {
+		return ErrBlockstoreClosed
+	}
+
+	for _, cid := range cids {
+		key := b.ConvertKey(cid)
+		if err := b.DB.Update(func(txn *badger.Txn) error {
+			err := txn.Delete(key.Bytes())
+			if err == nil {
+				b.cache.Remove(key.String())
+			}
+			return err
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // AllKeysChan implements blockstore.AllKeysChan.
 func (b *BadgerBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	if atomic.LoadInt64(&b.state) != stateOpen {

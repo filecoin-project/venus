@@ -85,7 +85,7 @@ func (gt *GasTrace) MarshalJSON() ([]byte, error) {
 			for {
 				frame, more := frames.Next()
 				// TODO: this func name must be fixed
-				if frame.Function == "github.com/filecoin-project/lotus/chain/vm.(*VM).ApplyMessage" {
+				if frame.Function == "github.com/filecoin-project/lotus/chain/vm.(*LegacyVM).ApplyMessage" {
 					break
 				}
 				l := Loc{

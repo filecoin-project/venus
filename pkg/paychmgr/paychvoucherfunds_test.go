@@ -17,7 +17,8 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	tutils2 "github.com/filecoin-project/specs-actors/v6/support/testing"
 
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	lpaych "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	paychmock "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych/mock"
 )
 
@@ -49,7 +50,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 
 	// Send create message for a channel with value 10
 	createAmt := big.NewInt(10)
-	_, createMsgCid, err := mgr.GetPaych(ctx, from, to, createAmt)
+	_, createMsgCid, err := mgr.GetPaych(ctx, from, to, createAmt, onChainReserve)
 	require.NoError(t, err)
 
 	// Send create channel response
@@ -63,7 +64,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 		Nonce:   0,
 		Balance: createAmt,
 	}
-	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]lpaych.LaneState)))
 
 	// Wait for create response to be processed by manager
 	_, err = mgr.GetPaychWaitReady(ctx, createMsgCid)
@@ -85,7 +86,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 	require.Equal(t, res.Shortfall, excessAmt)
 
 	// Add funds so as to cover the voucher shortfall
-	_, addFundsMsgCid, err := mgr.GetPaych(ctx, from, to, excessAmt)
+	_, addFundsMsgCid, err := mgr.GetPaych(ctx, from, to, excessAmt, onChainReserve)
 	require.NoError(t, err)
 
 	// Trigger add funds confirmation

@@ -43,8 +43,8 @@ func (t *GasTracker) Charge(gas GasCharge, msg string, args ...interface{}) {
 	}
 }
 
-// EnableGasTracing, if true, outputs gas tracing in execution traces.
-var EnableGasTracing = os.Getenv("VENUS_VM_ENABLE_GAS_TRACING_VERY_SLOW") == "1"
+// EnableDetailedTracing, if true, outputs gas tracing in execution traces.
+var EnableDetailedTracing = os.Getenv("VENUS_VM_ENABLE_TRACING") == "1"
 
 // TryCharge charges `amount` or `RemainingGas()``, whichever is smaller.
 //
@@ -52,7 +52,7 @@ var EnableGasTracing = os.Getenv("VENUS_VM_ENABLE_GAS_TRACING_VERY_SLOW") == "1"
 func (t *GasTracker) TryCharge(gasCharge GasCharge) bool {
 	toUse := gasCharge.Total()
 	//code for https://github.com/filecoin-project/venus/issues/4610
-	if EnableGasTracing {
+	if EnableDetailedTracing {
 		var callers [10]uintptr
 		cout := 0 //gruntime.Callers(2+skip, callers[:])
 

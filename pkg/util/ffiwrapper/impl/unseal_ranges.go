@@ -1,7 +1,7 @@
 package impl
 
 import (
-	"golang.org/x/xerrors"
+	"fmt"
 
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -20,7 +20,7 @@ func computeUnsealRanges(unsealed rlepluslazy.RunIterator, offset storiface.Unpa
 	todo := pieceRun(offset.Padded(), size.Padded())
 	todo, err := rlepluslazy.Subtract(todo, unsealed)
 	if err != nil {
-		return nil, xerrors.Errorf("compute todo-unsealed: %w", err)
+		return nil, fmt.Errorf("compute todo-unsealed: %w", err)
 	}
 
 	return rlepluslazy.JoinClose(todo, mergeGaps)

@@ -5,7 +5,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func Net2k() *NetworkConf {
@@ -16,8 +16,8 @@ func Net2k() *NetworkConf {
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
-			NetworkType:            constants.Network2k,
-			GenesisNetworkVersion:  network.Version15,
+			NetworkType:            types.Network2k,
+			GenesisNetworkVersion:  network.Version16,
 			BlockDelay:             4,
 			ConsensusMinerMinPower: 2048,
 			MinVerifiedDealSize:    256,
@@ -43,6 +43,7 @@ func Net2k() *NetworkConf {
 				UpgradeHyperdriveHeight: -16,
 				UpgradeChocolateHeight:  -17,
 				UpgradeOhSnapHeight:     -18,
+				UpgradeSkyrHeight:       -19,
 
 				BreezeGasTampingDuration: 0,
 				UpgradeClausHeight:       -11,

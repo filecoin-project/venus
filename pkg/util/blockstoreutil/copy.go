@@ -3,11 +3,11 @@ package blockstoreutil
 import (
 	"bytes"
 	"context"
+	"fmt"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
-	xerrors "github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 )
@@ -39,14 +39,14 @@ func linksForObj(blk blocks.Block, cb func(cid.Cid)) error {
 	case cid.DagCBOR:
 		err := cbg.ScanForLinks(bytes.NewReader(blk.RawData()), cb)
 		if err != nil {
-			return xerrors.Errorf("cbg.ScanForLinks: %v", err)
+			return fmt.Errorf("cbg.ScanForLinks: %v", err)
 		}
 		return nil
 	case cid.Raw:
 		// We implicitly have all children of raw blocks.
 		return nil
 	default:
-		return xerrors.Errorf("vm flush copy method only supports dag cbor")
+		return fmt.Errorf("vm flush copy method only supports dag cbor")
 	}
 }
 
@@ -71,7 +71,7 @@ func CopyParticial(ctx context.Context, from, to Blockstore, root cid.Cid) error
 		for b := range toFlush {
 			if err := to.PutMany(ctx, b); err != nil {
 				close(freeBufs)
-				errFlushChan <- xerrors.Errorf("batch put in copy: %v", err)
+				errFlushChan <- fmt.Errorf("batch put in copy: %v", err)
 				return
 			}
 			freeBufs <- b[:0]
@@ -99,7 +99,7 @@ func CopyParticial(ctx context.Context, from, to Blockstore, root cid.Cid) error
 	}
 
 	if err := copyRec(ctx, from, to, root, batchCp); err != nil {
-		return xerrors.Errorf("copyRec: %v", err)
+		return fmt.Errorf("copyRec: %v", err)
 	}
 
 	if len(batch) > 0 {
@@ -126,7 +126,7 @@ func copyRec(ctx context.Context, from, to Blockstore, root cid.Cid, cp func(blo
 
 	blk, err := from.Get(ctx, root)
 	if err != nil {
-		return xerrors.Errorf("get %s failed: %v", root, err)
+		return fmt.Errorf("get %s failed: %v", root, err)
 	}
 
 	var lerr error
@@ -151,7 +151,7 @@ func copyRec(ctx context.Context, from, to Blockstore, root cid.Cid, cp func(blo
 			// If we have an object, we already have its children, skip the object.
 			has, err := to.Has(ctx, link)
 			if err != nil {
-				lerr = xerrors.Errorf("has: %v", err)
+				lerr = fmt.Errorf("has: %v", err)
 				return
 			}
 			if has {
@@ -165,14 +165,14 @@ func copyRec(ctx context.Context, from, to Blockstore, root cid.Cid, cp func(blo
 		}
 	})
 	if err != nil {
-		return xerrors.Errorf("linksForObj (%x): %v", blk.RawData(), err)
+		return fmt.Errorf("linksForObj (%x): %v", blk.RawData(), err)
 	}
 	if lerr != nil {
 		return lerr
 	}
 
 	if err := cp(blk); err != nil {
-		return xerrors.Errorf("copy: %v", err)
+		return fmt.Errorf("copy: %v", err)
 	}
 	return nil
 }

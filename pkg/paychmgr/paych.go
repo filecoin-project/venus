@@ -2,19 +2,20 @@ package paychmgr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	lpaych "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 )
 
 // insufficientFundsErr indicates that there are not enough funds in the
@@ -81,7 +82,7 @@ func newChannelAccessor(pm *Manager, from address.Address, to address.Address) *
 	}
 }
 
-func (ca *channelAccessor) messageBuilder(ctx context.Context, from address.Address) (paych.MessageBuilder, error) {
+func (ca *channelAccessor) messageBuilder(ctx context.Context, from address.Address) (lpaych.MessageBuilder, error) {
 	nwVersion, err := ca.api.StateNetworkVersion(ctx, types.EmptyTSK)
 	if err != nil {
 		return nil, err
@@ -91,7 +92,7 @@ func (ca *channelAccessor) messageBuilder(ctx context.Context, from address.Addr
 	if err != nil {
 		return nil, err
 	}
-	return paych.Message(ver, from), nil
+	return lpaych.Message(ver, from), nil
 }
 
 func (ca *channelAccessor) getChannelInfo(ctx context.Context, addr address.Address) (*ChannelInfo, error) {
@@ -105,7 +106,7 @@ func (ca *channelAccessor) outboundActiveByFromTo(ctx context.Context, from, to 
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
-	return ca.store.OutboundActiveByFromTo(ctx, from, to)
+	return ca.store.OutboundActiveByFromTo(ctx, ca.api, from, to)
 }
 
 // createVoucher creates a voucher with the given specification, setting its
@@ -119,7 +120,7 @@ func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address
 	// Find the channel for the voucher
 	ci, err := ca.store.ByAddress(ctx, ch)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get channel info by address: %w", err)
+		return nil, fmt.Errorf("failed to get channel info by address: %w", err)
 	}
 
 	// Set the voucher channel
@@ -132,12 +133,12 @@ func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address
 	// Sign the voucher
 	vb, err := sv.SigningBytes()
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get voucher signing bytes: %w", err)
+		return nil, fmt.Errorf("failed to get voucher signing bytes: %w", err)
 	}
 
 	sig, err := ca.api.WalletSign(ctx, ci.Control, vb)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to sign voucher: %w", err)
+		return nil, fmt.Errorf("failed to sign voucher: %w", err)
 	}
 	sv.Signature = sig
 
@@ -146,13 +147,13 @@ func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address
 		// If there are not enough funds in the channel to cover the voucher,
 		// return a voucher create result with the shortfall
 		var ife insufficientFundsErr
-		if xerrors.As(err, &ife) {
+		if errors.As(err, &ife) {
 			return &types.VoucherCreateResult{
 				Shortfall: ife.Shortfall(),
 			}, nil
 		}
 
-		return nil, xerrors.Errorf("failed to persist voucher: %w", err)
+		return nil, fmt.Errorf("failed to persist voucher: %w", err)
 	}
 
 	return &types.VoucherCreateResult{Voucher: sv, Shortfall: big.NewInt(0)}, nil
@@ -171,30 +172,30 @@ func (ca *channelAccessor) nextNonceForLane(ci *ChannelInfo, lane uint64) uint64
 	return maxnonce + 1
 }
 
-func (ca *channelAccessor) checkVoucherValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (map[uint64]paych.LaneState, error) {
+func (ca *channelAccessor) checkVoucherValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (map[uint64]lpaych.LaneState, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
 	return ca.checkVoucherValidUnlocked(ctx, ch, sv)
 }
 
-func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (map[uint64]paych.LaneState, error) {
+func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (map[uint64]lpaych.LaneState, error) {
 	if sv.ChannelAddr != ch {
-		return nil, xerrors.Errorf("voucher ChannelAddr doesn't match channel address, got %s, expected %s", sv.ChannelAddr, ch)
+		return nil, fmt.Errorf("voucher ChannelAddr doesn't match channel address, got %s, expected %s", sv.ChannelAddr, ch)
 	}
 
 	// check voucher is unlocked
 	if sv.Extra != nil {
-		return nil, xerrors.Errorf("voucher is Message Locked")
+		return nil, fmt.Errorf("voucher is Message Locked")
 	}
 	if sv.TimeLockMax != 0 {
-		return nil, xerrors.Errorf("voucher is Max Time Locked")
+		return nil, fmt.Errorf("voucher is Max Time Locked")
 	}
 	if sv.TimeLockMin != 0 {
-		return nil, xerrors.Errorf("voucher is Min Time Locked")
+		return nil, fmt.Errorf("voucher is Min Time Locked")
 	}
-	if len(sv.SecretPreimage) != 0 {
-		return nil, xerrors.Errorf("voucher is Hash Locked")
+	if len(sv.SecretHash) != 0 {
+		return nil, fmt.Errorf("voucher is Hash Locked")
 	}
 
 	// Load payment channel actor state
@@ -387,7 +388,7 @@ func (ca *channelAccessor) addVoucherUnlocked(ctx context.Context, ch address.Ad
 
 	delta := big.Sub(sv.Amount, redeemed)
 	if minDelta.GreaterThan(delta) {
-		return delta, xerrors.Errorf("addVoucher: supplied token amount too low; minD=%s, D=%s; laneAmt=%s; v.Amt=%s", minDelta, delta, redeemed, sv.Amount)
+		return delta, fmt.Errorf("addVoucher: supplied token amount too low; minD=%s, D=%s; laneAmt=%s; v.Amt=%s", minDelta, delta, redeemed, sv.Amount)
 	}
 
 	ci.Vouchers = append(ci.Vouchers, &VoucherInfo{
@@ -423,7 +424,7 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 			return cid.Undef, err
 		}
 		if submitted {
-			return cid.Undef, xerrors.Errorf("cannot submit voucher that has already been submitted")
+			return cid.Undef, fmt.Errorf("cannot submit voucher that has already been submitted")
 		}
 	}
 
@@ -476,7 +477,7 @@ func (ca *channelAccessor) listVouchers(ctx context.Context, ch address.Address)
 
 // laneState gets the LaneStates from chain, then applies all vouchers in
 // the data store over the chain state
-func (ca *channelAccessor) laneState(ctx context.Context, state paych.State, ch address.Address) (map[uint64]paych.LaneState, error) {
+func (ca *channelAccessor) laneState(ctx context.Context, state lpaych.State, ch address.Address) (map[uint64]lpaych.LaneState, error) {
 	// TODO: we probably want to call UpdateChannelState with all vouchers to be fully correct
 	//  (but technically dont't need to)
 
@@ -488,8 +489,8 @@ func (ca *channelAccessor) laneState(ctx context.Context, state paych.State, ch 
 	// Note: we use a map instead of an array to store laneStates because the
 	// api sets the lane ID (the index) and potentially they could use a
 	// very large index.
-	laneStates := make(map[uint64]paych.LaneState, laneCount)
-	err = state.ForEachLaneState(func(idx uint64, ls paych.LaneState) error {
+	laneStates := make(map[uint64]lpaych.LaneState, laneCount)
+	err = state.ForEachLaneState(func(idx uint64, ls lpaych.LaneState) error {
 		laneStates[idx] = ls
 		return nil
 	})
@@ -505,7 +506,7 @@ func (ca *channelAccessor) laneState(ctx context.Context, state paych.State, ch 
 
 	for _, v := range vouchers {
 		for range v.Voucher.Merges {
-			return nil, xerrors.Errorf("paych merges not handled yet")
+			return nil, fmt.Errorf("paych merges not handled yet")
 		}
 
 		// Check if there is an existing laneState in the payment channel
@@ -532,10 +533,10 @@ func (ca *channelAccessor) laneState(ctx context.Context, state paych.State, ch 
 }
 
 // Get the total redeemed amount across all lanes, after applying the voucher
-func (ca *channelAccessor) totalRedeemedWithVoucher(laneStates map[uint64]paych.LaneState, sv *paych.SignedVoucher) (big.Int, error) {
+func (ca *channelAccessor) totalRedeemedWithVoucher(laneStates map[uint64]lpaych.LaneState, sv *paych.SignedVoucher) (big.Int, error) {
 	// TODO: merges
 	if len(sv.Merges) != 0 {
-		return big.Int{}, xerrors.Errorf("dont currently support paych lane merges")
+		return big.Int{}, fmt.Errorf("dont currently support paych lane merges")
 	}
 
 	total := big.NewInt(0)

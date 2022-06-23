@@ -6,9 +6,9 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 
@@ -16,7 +16,7 @@ import (
 )
 
 // Init initializes a DefaultSyncer in the given repo.
-func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst cbor.IpldStore, gen InitFunc) (*chain.Store, error) {
+func Init(ctx context.Context, r repo.Repo, bs blockstoreutil.Blockstore, cst cbor.IpldStore, gen InitFunc) (*chain.Store, error) {
 	// TODO the following should be wrapped in the chain.Store or a sub
 	// interface.
 	// Generate the genesis tipset.

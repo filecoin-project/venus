@@ -2,12 +2,12 @@ package events
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -285,7 +285,7 @@ func (e *hcEvents) onHeadChanged(ctx context.Context, check CheckFunc, hnd Event
 	// Check if the event has already occurred
 	done, more, err := check(ctx, e.lastTS)
 	if err != nil {
-		return 0, xerrors.Errorf("called check error (h: %d): %w", e.lastTS.Height(), err)
+		return 0, fmt.Errorf("called check error (h: %d): %w", e.lastTS.Height(), err)
 	}
 	if done {
 		timeout = NoTimeout

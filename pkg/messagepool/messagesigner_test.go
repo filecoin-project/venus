@@ -2,6 +2,7 @@ package messagepool
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -11,7 +12,6 @@ import (
 	ds_sync "github.com/ipfs/go-datastore/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/xerrors"
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
@@ -173,7 +173,7 @@ func TestMessageSignerSignMessage(t *testing.T) {
 				To:   to1,
 				From: from1,
 			},
-			cbErr: xerrors.Errorf("err"),
+			cbErr: fmt.Errorf("err"),
 		}, {
 			// Callback successful, should increment nonce in datastore
 			msg: &types.Message{

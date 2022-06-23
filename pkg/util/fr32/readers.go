@@ -1,10 +1,9 @@
 package fr32
 
 import (
+	"fmt"
 	"io"
 	"math/bits"
-
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 )
@@ -18,7 +17,7 @@ type unpadReader struct {
 
 func NewUnpadReader(src io.Reader, sz abi.PaddedPieceSize) (io.Reader, error) {
 	if err := sz.Validate(); err != nil {
-		return nil, xerrors.Errorf("bad piece size: %w", err)
+		return nil, fmt.Errorf("bad piece size: %w", err)
 	}
 
 	buf := make([]byte, MTTresh*mtChunkCount(sz))
@@ -41,7 +40,7 @@ func (r *unpadReader) Read(out []byte) (int, error) {
 	outTwoPow := 1 << (63 - bits.LeadingZeros64(uint64(chunks*128)))
 
 	if err := abi.PaddedPieceSize(outTwoPow).Validate(); err != nil {
-		return 0, xerrors.Errorf("output must be of valid padded piece size: %w", err)
+		return 0, fmt.Errorf("output must be of valid padded piece size: %w", err)
 	}
 
 	todo := abi.PaddedPieceSize(outTwoPow)
@@ -57,7 +56,7 @@ func (r *unpadReader) Read(out []byte) (int, error) {
 	}
 
 	if n != int(todo) {
-		return 0, xerrors.Errorf("didn't read enough: %w", err)
+		return 0, fmt.Errorf("didn't read enough: %w", err)
 	}
 
 	Unpad(r.work[:todo], out[:todo.Unpadded()])
@@ -121,7 +120,7 @@ func (w *padWriter) Write(p []byte) (int, error) {
 
 func (w *padWriter) Close() error {
 	if len(w.stash) > 0 {
-		return xerrors.Errorf("still have %d unprocessed bytes", len(w.stash))
+		return fmt.Errorf("still have %d unprocessed bytes", len(w.stash))
 	}
 
 	// allow gc

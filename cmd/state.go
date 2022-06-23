@@ -9,19 +9,21 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/venus/app/paths"
+	"github.com/filecoin-project/venus/cmd/tablewriter"
 
 	"github.com/filecoin-project/venus/pkg/config"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/multiformats/go-multiaddr"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -53,6 +55,7 @@ var stateCmd = &cmds.Command{
 		"miner-info":      stateMinerInfo,
 		"network-version": stateNtwkVersionCmd,
 		"list-actor":      stateListActorCmd,
+		"actor-cids":      stateSysActorCIDsCmd,
 	},
 }
 
@@ -243,7 +246,7 @@ var stateSectorCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 2 {
-			return xerrors.Errorf("expected 2 params")
+			return fmt.Errorf("expected 2 params")
 		}
 		maddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
@@ -270,7 +273,7 @@ var stateSectorCmd = &cmds.Command{
 			return err
 		}
 		if si == nil {
-			return xerrors.Errorf("sector %d for miner %s not found", sid, maddr)
+			return fmt.Errorf("sector %d for miner %s not found", sid, maddr)
 		}
 
 		height := ts.Height()
@@ -439,7 +442,7 @@ var stateGetDealSetCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		dealid, err := strconv.ParseUint(req.Arguments[0], 10, 64)
 		if err != nil {
-			return xerrors.Errorf("parsing deal ID: %w", err)
+			return fmt.Errorf("parsing deal ID: %w", err)
 		}
 
 		ts, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
@@ -487,7 +490,7 @@ var stateMinerInfo = &cmds.Command{
 
 		availableBalance, err := env.(*node.Env).ChainAPI.StateMinerAvailableBalance(req.Context, addr, ts.Key())
 		if err != nil {
-			return xerrors.Errorf("getting miner available balance: %w", err)
+			return fmt.Errorf("getting miner available balance: %w", err)
 		}
 
 		buf := new(bytes.Buffer)
@@ -506,7 +509,7 @@ var stateMinerInfo = &cmds.Command{
 		for _, addr := range mi.Multiaddrs {
 			a, err := multiaddr.NewMultiaddrBytes(addr)
 			if err != nil {
-				return xerrors.Errorf("undecodable listen address: %v", err)
+				return fmt.Errorf("undecodable listen address: %v", err)
 			}
 			writer.Printf("%s ", a)
 		}
@@ -536,7 +539,7 @@ var stateMinerInfo = &cmds.Command{
 
 		cd, err := env.(*node.Env).ChainAPI.StateMinerProvingDeadline(req.Context, addr, ts.Key())
 		if err != nil {
-			return xerrors.Errorf("getting miner info: %w", err)
+			return fmt.Errorf("getting miner info: %w", err)
 		}
 
 		writer.Printf("Proving Period Start:\t%s\n", EpochTime(cd.CurrentEpoch, cd.PeriodStart, blockDelay))
@@ -597,6 +600,67 @@ var stateListActorCmd = &cmds.Command{
 			_, err = w.Write([]byte("\n"))
 			return err
 		}),
+	},
+}
+
+var stateSysActorCIDsCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Returns the built-in actor bundle manifest ID & system actor cids",
+	},
+	Options: []cmds.Option{
+		cmds.UintOption("network-version", "specify network version").WithDefault(uint(constants.NewestNetworkVersion)),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		ctx := req.Context
+		ts, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		nv, err := env.(*node.Env).ChainAPI.StateNetworkVersion(ctx, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		targetNV, ok := req.Options["network-version"].(uint)
+		if ok {
+			nv = network.Version(targetNV)
+		}
+		buf := new(bytes.Buffer)
+
+		buf.WriteString(fmt.Sprintf("Network Version: %d\n", nv))
+
+		actorVersion, err := actors.VersionForNetwork(nv)
+		if err != nil {
+			return err
+		}
+		buf.WriteString(fmt.Sprintf("Actor Version: %d\n", actorVersion))
+
+		manifestCid, ok := actors.GetManifest(actorVersion)
+		if !ok {
+			return fmt.Errorf("cannot get manifest CID")
+		}
+		buf.WriteString(fmt.Sprintf("Manifest CID: %v\n\n", manifestCid))
+
+		tw := tablewriter.New(tablewriter.Col("Actor"), tablewriter.Col("CID"))
+
+		for _, name := range actors.GetBuiltinActorsKeys() {
+			sysActorCID, ok := actors.GetActorCodeID(actorVersion, name)
+			if !ok {
+				return fmt.Errorf("error getting actor %v code id for actor version %d", name,
+					actorVersion)
+			}
+			tw.Write(map[string]interface{}{
+				"Actor": name,
+				"CID":   sysActorCID.String(),
+			})
+		}
+
+		if err := tw.Flush(buf); err != nil {
+			return err
+		}
+
+		return re.Emit(buf)
 	},
 }
 

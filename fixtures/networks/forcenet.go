@@ -5,7 +5,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func ForceNet() *NetworkConf {
@@ -23,8 +23,8 @@ func ForceNet() *NetworkConf {
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
 				abi.RegisteredSealProof_StackedDrg32GiBV1,
 			},
-			NetworkType:            constants.NetworkForce,
-			GenesisNetworkVersion:  network.Version14,
+			NetworkType:            types.NetworkForce,
+			GenesisNetworkVersion:  network.Version15,
 			BlockDelay:             30,
 			ConsensusMinerMinPower: 2048,
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
@@ -51,6 +51,7 @@ func ForceNet() *NetworkConf {
 				UpgradeHyperdriveHeight: -16,
 				UpgradeChocolateHeight:  -17,
 				UpgradeOhSnapHeight:     -18,
+				UpgradeSkyrHeight:       -19,
 			},
 			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: config.DrandMainnet},
 			AddressNetwork:          address.Testnet,

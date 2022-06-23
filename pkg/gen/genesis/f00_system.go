@@ -2,8 +2,15 @@ package genesis
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/go-state-types/big"
+
+	systemtypes "github.com/filecoin-project/go-state-types/builtin/v8/system"
+
+	"github.com/filecoin-project/go-state-types/manifest"
+
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
@@ -24,12 +31,27 @@ func SetupSystemActor(ctx context.Context, bs bstore.Blockstore, av actors.Versi
 		return nil, err
 	}
 
+	if av >= actors.Version8 {
+		mfCid, ok := actors.GetManifest(av)
+		if !ok {
+			return nil, fmt.Errorf("missing manifest for actors version %d", av)
+		}
+
+		mf := manifest.Manifest{}
+		if err := cst.Get(ctx, mfCid, &mf); err != nil {
+			return nil, fmt.Errorf("loading manifest for actors version %d: %w", av, err)
+		}
+
+		st8 := st.GetState().(*systemtypes.State)
+		st8.BuiltinActors = mf.Data
+	}
+
 	statecid, err := cst.Put(ctx, st.GetState())
 	if err != nil {
 		return nil, err
 	}
 
-	actcid, err := system.GetActorCodeID(av)
+	actcid, err := builtin.GetSystemActorCodeID(av)
 	if err != nil {
 		return nil, err
 	}

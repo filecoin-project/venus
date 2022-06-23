@@ -2,6 +2,7 @@ package vmcontext
 
 import (
 	"context"
+	"time"
 
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -19,7 +20,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 )
 
-type ExecCallBack func(cid.Cid, VmMessage, *Ret) error
+type ExecCallBack func(cid.Cid, *types.Message, *Ret) error
 type CircSupplyCalculator func(context.Context, abi.ChainEpoch, tree.Tree) (abi.TokenAmount, error)
 type LookbackStateGetter func(context.Context, abi.ChainEpoch) (*state.View, error)
 
@@ -65,6 +66,8 @@ type Ret struct {
 	GasTracker *gas.GasTracker
 	OutPuts    gas.GasOutputs
 	Receipt    types.MessageReceipt
+	ActorErr   error
+	Duration   time.Duration
 }
 
 // Failure returns with a non-zero exit code.
@@ -74,4 +77,10 @@ func Failure(exitCode exitcode.ExitCode, gasAmount int64) types.MessageReceipt {
 		Return:   []byte{},
 		GasUsed:  gasAmount,
 	}
+}
+
+type Interface interface {
+	ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*Ret, error)
+	ApplyImplicitMessage(ctx context.Context, msg types.ChainMsg) (*Ret, error)
+	Flush(ctx context.Context) (cid.Cid, error)
 }

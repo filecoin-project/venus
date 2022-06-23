@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	lps "github.com/filecoin-project/pubsub"
 	"github.com/hashicorp/go-multierror"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
@@ -22,8 +23,6 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/minio/blake2b-simd"
 	"github.com/raulk/clock"
-	lps "github.com/whyrusleeping/pubsub"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -249,7 +248,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 		}
 
 	case strict && m.Message.Nonce > nextNonce+maxNonceGap:
-		return false, xerrors.Errorf("message nonce has too big a gap from expected nonce (Nonce: %d, nextNonce: %d): %v", m.Message.Nonce, nextNonce, ErrNonceGap)
+		return false, fmt.Errorf("message nonce has too big a gap from expected nonce (Nonce: %d, nextNonce: %d): %v", m.Message.Nonce, nextNonce, ErrNonceGap)
 
 	case m.Message.Nonce > nextNonce:
 		nonceGap = true
@@ -259,7 +258,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 	if has {
 		// refuse RBF if we have a gap
 		if strict && nonceGap {
-			return false, xerrors.Errorf("rejecting replace by fee because of nonce gap (Nonce: %d, nextNonce: %d): %v", m.Message.Nonce, nextNonce, ErrNonceGap)
+			return false, fmt.Errorf("rejecting replace by fee because of nonce gap (Nonce: %d, nextNonce: %d): %v", m.Message.Nonce, nextNonce, ErrNonceGap)
 		}
 
 		mc := m.Cid()
@@ -275,13 +274,13 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 					" increase GasPremium to %s from %s to trigger replace by fee: %s",
 					m.Message.From, m.Message.Nonce, minPrice, m.Message.GasPremium,
 					ErrRBFTooLowPremium)
-				return false, xerrors.Errorf("message from %s with nonce %d already in mpool,"+
+				return false, fmt.Errorf("message from %s with nonce %d already in mpool,"+
 					" increase GasPremium to %s from %s to trigger replace by fee: %v",
 					m.Message.From, m.Message.Nonce, minPrice, m.Message.GasPremium,
 					ErrRBFTooLowPremium)
 			}
 		} else {
-			return false, xerrors.Errorf("message from %s with nonce %d already in mpool: %v",
+			return false, fmt.Errorf("message from %s with nonce %d already in mpool: %v",
 				m.Message.From, m.Message.Nonce, ErrSoftValidationFailure)
 		}
 
@@ -382,7 +381,7 @@ func New(ctx context.Context,
 
 	cfg, err := loadConfig(ctx, ds)
 	if err != nil {
-		return nil, xerrors.Errorf("error loading mpool config: %v", err)
+		return nil, fmt.Errorf("error loading mpool config: %v", err)
 	}
 
 	if j == nil {
@@ -606,12 +605,12 @@ func (mp *MessagePool) PublishMsgForWallet(ctx context.Context, addr address.Add
 func (mp *MessagePool) PublishMsg(ctx context.Context, smsg *types.SignedMessage) error {
 	msgb, err := smsg.Serialize()
 	if err != nil {
-		return xerrors.Errorf("could not serialize: %s", err)
+		return fmt.Errorf("could not serialize: %s", err)
 	}
 
 	err = mp.api.PubSubPublish(ctx, msgsub.Topic(mp.netName), msgb)
 	if err != nil {
-		return xerrors.Errorf("could not publish: %s", err)
+		return fmt.Errorf("could not publish: %s", err)
 	}
 	return nil
 }
@@ -665,13 +664,13 @@ func (mp *MessagePool) addLocal(ctx context.Context, m *types.SignedMessage) err
 	buf := new(bytes.Buffer)
 	err := m.MarshalCBOR(buf)
 	if err != nil {
-		return xerrors.Errorf("error serializing message: %v", err)
+		return fmt.Errorf("error serializing message: %v", err)
 	}
 	msgb := buf.Bytes()
 
 	c := m.Cid()
 	if err := mp.localMsgs.Put(ctx, datastore.NewKey(string(c.Bytes())), msgb); err != nil {
-		return xerrors.Errorf("persisting local message: %v", err)
+		return fmt.Errorf("persisting local message: %v", err)
 	}
 
 	return nil
@@ -688,11 +687,11 @@ func (mp *MessagePool) addLocal(ctx context.Context, m *types.SignedMessage) err
 // For non local messages, if the message cannot be included in the next 20 blocks it returns
 // a (soft) validation error.
 func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTS *types.TipSet, local bool) (bool, error) {
-	epoch := curTS.Height()
+	epoch := curTS.Height() + 1
 	minGas := mp.gasPriceSchedule.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
 
 	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total(), constants.NewestNetworkVersion); err != nil {
-		return false, xerrors.Errorf("message will not be included in a block: %v", err)
+		return false, fmt.Errorf("message will not be included in a block: %v", err)
 	}
 
 	// this checks if the GasFeeCap is sufficiently high for inclusion in the next 20 blocks
@@ -711,7 +710,7 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTS *types.T
 		var err error
 		baseFee, err = mp.api.ChainComputeBaseFee(context.TODO(), curTS)
 		if err != nil {
-			return false, xerrors.Errorf("computing basefee: %v", err)
+			return false, fmt.Errorf("computing basefee: %v", err)
 		}
 	}
 
@@ -722,7 +721,7 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTS *types.T
 				m.Message.GasFeeCap, baseFeeLowerBound)
 			publish = false
 		} else {
-			return false, xerrors.Errorf("GasFeeCap doesn't meet base fee lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s): %v",
+			return false, fmt.Errorf("GasFeeCap doesn't meet base fee lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s): %v",
 				m.Message.GasFeeCap, baseFeeLowerBound, ErrSoftValidationFailure)
 		}
 	}
@@ -754,12 +753,12 @@ func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage) (cid.Ci
 		buf := new(bytes.Buffer)
 		err := m.MarshalCBOR(buf)
 		if err != nil {
-			return cid.Undef, xerrors.Errorf("error serializing message: %v", err)
+			return cid.Undef, fmt.Errorf("error serializing message: %v", err)
 		}
 
 		err = mp.api.PubSubPublish(ctx, msgsub.Topic(mp.netName), buf.Bytes())
 		if err != nil {
-			return cid.Undef, xerrors.Errorf("error publishing message: %v", err)
+			return cid.Undef, fmt.Errorf("error publishing message: %v", err)
 		}
 	}
 
@@ -769,12 +768,12 @@ func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage) (cid.Ci
 func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 	// big messages are bad, anti DOS
 	if m.ChainLength() > MaxMessageSize {
-		return xerrors.Errorf("mpool message too large (%dB): %w", m.ChainLength(), ErrMessageTooBig)
+		return fmt.Errorf("mpool message too large (%dB): %w", m.ChainLength(), ErrMessageTooBig)
 	}
 
 	// Perform syntactic validation, minGas=0 as we check the actual mingas before we add it
 	if err := m.Message.ValidForBlockInclusion(0, constants.NewestNetworkVersion); err != nil {
-		return xerrors.Errorf("message not valid for block inclusion: %v", err)
+		return fmt.Errorf("message not valid for block inclusion: %v", err)
 	}
 
 	if m.Message.To == address.Undef {
@@ -828,7 +827,7 @@ func sigCacheKey(m *types.SignedMessage) (string, error) {
 	case crypto.SigTypeSecp256k1:
 		return string(m.Cid().Bytes()), nil
 	default:
-		return "", xerrors.Errorf("unrecognized signature type: %d", m.Signature.Type)
+		return "", fmt.Errorf("unrecognized signature type: %d", m.Signature.Type)
 	}
 }
 
@@ -857,12 +856,12 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage, curTS *types.TipSet) error {
 	balance, err := mp.getStateBalance(ctx, m.Message.From, curTS)
 	if err != nil {
-		return xerrors.Errorf("failed to check sender balance: %s: %v", err, ErrSoftValidationFailure)
+		return fmt.Errorf("failed to check sender balance: %s: %v", err, ErrSoftValidationFailure)
 	}
 
 	requiredFunds := m.Message.RequiredFunds()
 	if big.Cmp(balance, requiredFunds) < 0 {
-		return xerrors.Errorf("not enough funds (required: %s, balance: %s): %v", types.FIL(requiredFunds), types.FIL(balance), ErrNotEnoughFunds)
+		return fmt.Errorf("not enough funds (required: %s, balance: %s): %v", types.FIL(requiredFunds), types.FIL(balance), ErrNotEnoughFunds)
 	}
 
 	// add Value for soft failure check
@@ -881,7 +880,7 @@ func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage,
 	if big.Cmp(balance, requiredFunds) < 0 {
 		// Note: we fail here for ErrSoftValidationFailure to signal a soft failure because we might
 		// be out of sync.
-		return xerrors.Errorf("not enough funds including pending messages (required: %s, balance: %s): %v", types.FIL(requiredFunds), types.FIL(balance), ErrSoftValidationFailure)
+		return fmt.Errorf("not enough funds including pending messages (required: %s, balance: %s): %v", types.FIL(requiredFunds), types.FIL(balance), ErrSoftValidationFailure)
 	}
 
 	return nil
@@ -890,11 +889,11 @@ func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage,
 func (mp *MessagePool) addTS(ctx context.Context, m *types.SignedMessage, curTS *types.TipSet, local, untrusted bool) (bool, error) {
 	snonce, err := mp.getStateNonce(ctx, m.Message.From, curTS)
 	if err != nil {
-		return false, xerrors.Errorf("failed to look up actor state nonce: %s: %v", err, ErrSoftValidationFailure)
+		return false, fmt.Errorf("failed to look up actor state nonce: %s: %v", err, ErrSoftValidationFailure)
 	}
 
 	if snonce > m.Message.Nonce {
-		return false, xerrors.Errorf("minimum expected nonce is %d: %v", snonce, ErrNonceTooLow)
+		return false, fmt.Errorf("minimum expected nonce is %d: %v", snonce, ErrNonceTooLow)
 	}
 
 	mp.lk.Lock()
@@ -917,7 +916,7 @@ func (mp *MessagePool) addTS(ctx context.Context, m *types.SignedMessage, curTS 
 	if local {
 		err = mp.addLocal(ctx, m)
 		if err != nil {
-			return false, xerrors.Errorf("error persisting local message: %v", err)
+			return false, fmt.Errorf("error persisting local message: %v", err)
 		}
 	}
 
@@ -933,16 +932,16 @@ func (mp *MessagePool) addLoaded(ctx context.Context, m *types.SignedMessage) er
 	curTS := mp.curTS
 
 	if curTS == nil {
-		return xerrors.Errorf("current tipset not loaded")
+		return fmt.Errorf("current tipset not loaded")
 	}
 
 	snonce, err := mp.getStateNonce(ctx, m.Message.From, curTS)
 	if err != nil {
-		return xerrors.Errorf("failed to look up actor state nonce: %s: %v", err, ErrSoftValidationFailure)
+		return fmt.Errorf("failed to look up actor state nonce: %s: %v", err, ErrSoftValidationFailure)
 	}
 
 	if snonce > m.Message.Nonce {
-		return xerrors.Errorf("minimum expected nonce is %d: %w", snonce, ErrNonceTooLow)
+		return fmt.Errorf("minimum expected nonce is %d: %w", snonce, ErrNonceTooLow)
 	}
 
 	_, err = mp.verifyMsgBeforeAdd(m, curTS, true)
@@ -990,12 +989,12 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 	if !ok {
 		nonce, err := mp.getStateNonce(ctx, m.Message.From, mp.curTS)
 		if err != nil {
-			return xerrors.Errorf("failed to get initial actor nonce: %w", err)
+			return fmt.Errorf("failed to get initial actor nonce: %w", err)
 		}
 
 		mset = newMsgSet(nonce)
 		if err = mp.setPendingMset(ctx, m.Message.From, mset); err != nil {
-			return xerrors.Errorf("failed to set pending mset: %w", err)
+			return fmt.Errorf("failed to set pending mset: %w", err)
 		}
 	}
 
@@ -1121,12 +1120,12 @@ func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage
 		buf := new(bytes.Buffer)
 		err := m.MarshalCBOR(buf)
 		if err != nil {
-			return cid.Undef, xerrors.Errorf("error serializing message: %v", err)
+			return cid.Undef, fmt.Errorf("error serializing message: %v", err)
 		}
 
 		err = mp.api.PubSubPublish(ctx, msgsub.Topic(mp.netName), buf.Bytes())
 		if err != nil {
-			return cid.Undef, xerrors.Errorf("error publishing message: %v", err)
+			return cid.Undef, fmt.Errorf("error publishing message: %v", err)
 		}
 	}
 
@@ -1291,7 +1290,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 		for _, b := range ts.Blocks() {
 			bmsgs, smsgs, err := mp.api.MessagesForBlock(ctx, b)
 			if err != nil {
-				xerr := xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %v", b.Cid(), b.Height, b.Messages, err)
+				xerr := fmt.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %v", b.Cid(), b.Height, b.Messages, err)
 				log.Errorf("error retrieving messages for block: %s", xerr)
 				merr = multierror.Append(merr, xerr)
 				continue
@@ -1420,7 +1419,7 @@ func (mp *MessagePool) runHeadChange(ctx context.Context, from *types.TipSet, to
 
 	revert, apply, err := chain.ReorgOps(mp.api.LoadTipSet, from, to)
 	if err != nil {
-		return xerrors.Errorf("failed to compute reorg ops for mpool pending messages: %v", err)
+		return fmt.Errorf("failed to compute reorg ops for mpool pending messages: %v", err)
 	}
 
 	var merr error
@@ -1442,7 +1441,7 @@ func (mp *MessagePool) runHeadChange(ctx context.Context, from *types.TipSet, to
 		for _, b := range ts.Blocks() {
 			bmsgs, smsgs, err := mp.api.MessagesForBlock(context.TODO(), b)
 			if err != nil {
-				xerr := xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %v", b.Cid(), b.Height, b.Messages, err)
+				xerr := fmt.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %v", b.Cid(), b.Height, b.Messages, err)
 				log.Errorf("error retrieving messages for block: %s", xerr)
 				merr = multierror.Append(merr, xerr)
 				continue
@@ -1471,7 +1470,7 @@ func (mp *MessagePool) MessagesForBlocks(ctx context.Context, blks []*types.Bloc
 	for _, b := range blks {
 		bmsgs, smsgs, err := mp.api.MessagesForBlock(ctx, b)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %v", b.Cid(), b.Height, b.Messages, err)
+			return nil, fmt.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %v", b.Cid(), b.Height, b.Messages, err)
 		}
 		out = append(out, smsgs...)
 
@@ -1510,7 +1509,7 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan types.MpoolUpdate, e
 	sub := mp.changes.Sub(localUpdates)
 
 	go func() {
-		defer mp.changes.Unsub(sub, localUpdates)
+		defer mp.changes.Unsub(sub)
 		defer close(out)
 
 		for {
@@ -1542,21 +1541,21 @@ func (mp *MessagePool) loadLocal(ctx context.Context) error {
 
 	res, err := mp.localMsgs.Query(ctx, query.Query{})
 	if err != nil {
-		return xerrors.Errorf("query local messages: %v", err)
+		return fmt.Errorf("query local messages: %v", err)
 	}
 
 	for r := range res.Next() {
 		if r.Error != nil {
-			return xerrors.Errorf("r.Error: %v", r.Error)
+			return fmt.Errorf("r.Error: %v", r.Error)
 		}
 
 		var sm types.SignedMessage
 		if err := sm.UnmarshalCBOR(bytes.NewReader(r.Value)); err != nil {
-			return xerrors.Errorf("unmarshaling local message: %v", err)
+			return fmt.Errorf("unmarshaling local message: %v", err)
 		}
 
 		if err := mp.addLoaded(ctx, &sm); err != nil {
-			if xerrors.Is(err, ErrNonceTooLow) {
+			if errors.Is(err, ErrNonceTooLow) {
 				continue // todo: drop the message from local cache (if above certain confidence threshold)
 			}
 

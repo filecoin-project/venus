@@ -10,7 +10,6 @@ v0: github.com/filecoin-project/venus/venus-shared/api/chain/v0 <> github.com/fi
 	- IChainInfo.MessageWait
 	- IChainInfo.ProtocolParameters
 	- IChainInfo.ResolveToKeyAddr
-	- IChainInfo.StateGetNetworkParams
 	- IChainInfo.VerifyEntry
 	- IMinerState.StateMinerSectorSize
 	- IMinerState.StateMinerWorkerAddress
@@ -29,6 +28,7 @@ v0: github.com/filecoin-project/venus/venus-shared/api/chain/v0 <> github.com/fi
 	- INetwork.NetworkGetPeerAddresses
 	- INetwork.NetworkGetPeerID
 	- INetwork.NetworkPeers
+	- INetwork.NetworkPing
 	- INetwork.Version
 	- ISyncer.ChainSyncHandleNewTipSet
 	- ISyncer.Concurrent
@@ -44,6 +44,7 @@ v0: github.com/filecoin-project/venus/venus-shared/api/chain/v0 <> github.com/fi
 
 v1: github.com/filecoin-project/venus/venus-shared/api/chain/v1 <> github.com/filecoin-project/lotus/api
 	- IActor.ListActor
+	- IBeacon.BeaconGetEntry
 	- IChainInfo.BlockTime
 	- IChainInfo.ChainGetRandomnessFromBeacon
 	- IChainInfo.ChainGetRandomnessFromTickets
@@ -56,7 +57,6 @@ v1: github.com/filecoin-project/venus/venus-shared/api/chain/v1 <> github.com/fi
 	- IChainInfo.MessageWait
 	- IChainInfo.ProtocolParameters
 	- IChainInfo.ResolveToKeyAddr
-	- IChainInfo.StateGetNetworkParams
 	- IChainInfo.VerifyEntry
 	- IMinerState.StateMinerSectorSize
 	- IMinerState.StateMinerWorkerAddress
@@ -73,6 +73,7 @@ v1: github.com/filecoin-project/venus/venus-shared/api/chain/v1 <> github.com/fi
 	- INetwork.NetworkGetPeerAddresses
 	- INetwork.NetworkGetPeerID
 	- INetwork.NetworkPeers
+	- INetwork.NetworkPing
 	- ISyncer.ChainSyncHandleNewTipSet
 	- ISyncer.Concurrent
 	- ISyncer.SetConcurrent
