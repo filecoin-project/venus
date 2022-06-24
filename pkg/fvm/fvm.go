@@ -376,13 +376,14 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 			return nil, fmt.Errorf("failed to unmarshal exectrace: %w", err)
 		}
 		et = fvmEt.ToExecutionTrace()
-	} else {
-		et.Msg = vmMsg
-		et.MsgRct = &receipt
-		et.Duration = duration
-		if aerr != nil {
-			et.Error = aerr.Error()
-		}
+	}
+
+	// Set the top-level exectrace info from the message and receipt for backwards compatibility
+	et.Msg = vmMsg
+	et.MsgRct = &receipt
+	et.Duration = duration
+	if aerr != nil {
+		et.Error = aerr.Error()
 	}
 
 	return &vm.Ret{
@@ -494,7 +495,7 @@ func (r wrapperRand) GetBeaconRandomness(ctx context.Context, pers acrypto.Domai
 	return r.ChainGetRandomnessFromBeacon(ctx, pers, round, entropy)
 }
 
-var experimentalUseFvm = os.Getenv("VENUS_USE_FVM_TO_SYNC_MAINNET_V15") == "1"
+var useFvmForMainnetV15 = os.Getenv("VENUS_USE_FVM_TO_SYNC_MAINNET_V15") == "1"
 
 func NewVM(ctx context.Context, opts vm.VmOption) (vm.Interface, error) {
 	if opts.NetworkVersion >= network.Version16 {
@@ -502,7 +503,7 @@ func NewVM(ctx context.Context, opts vm.VmOption) (vm.Interface, error) {
 	}
 
 	// Remove after v16 upgrade, this is only to support testing and validation of the FVM
-	if experimentalUseFvm && opts.NetworkVersion >= network.Version15 {
+	if useFvmForMainnetV15 && opts.NetworkVersion >= network.Version15 {
 		fvmLog.Info("use fvm")
 		return NewFVM(ctx, &opts)
 	}

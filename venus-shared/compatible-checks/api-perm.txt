@@ -1,4 +1,5 @@
 v0: github.com/filecoin-project/venus/venus-shared/api/chain/v0 <> github.com/filecoin-project/lotus/api/v0api
+	- IBlockStore.ChainPutObj
 	- IActor.ListActor
 	- IChainInfo.BlockTime
 	- IChainInfo.ChainGetReceipts

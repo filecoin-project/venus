@@ -16,15 +16,16 @@ func Net2k() *NetworkConf {
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
-			NetworkType:            types.Network2k,
-			GenesisNetworkVersion:  network.Version16,
-			BlockDelay:             4,
-			ConsensusMinerMinPower: 2048,
-			MinVerifiedDealSize:    256,
+			NetworkType:           types.Network2k,
+			GenesisNetworkVersion: network.Version16,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg2KiBV1,
 				abi.RegisteredSealProof_StackedDrg8MiBV1,
 			},
+			BlockDelay:              4,
+			ConsensusMinerMinPower:  2048,
+			MinVerifiedDealSize:     256,
+			PreCommitChallengeDelay: abi.ChainEpoch(10),
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
 				UpgradeBreezeHeight:     -1,
 				UpgradeSmokeHeight:      -2,
@@ -48,9 +49,8 @@ func Net2k() *NetworkConf {
 				BreezeGasTampingDuration: 0,
 				UpgradeClausHeight:       -11,
 			},
-			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 1},
-			AddressNetwork:          address.Testnet,
-			PreCommitChallengeDelay: abi.ChainEpoch(10),
+			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			AddressNetwork: address.Testnet,
 		},
 	}
 }

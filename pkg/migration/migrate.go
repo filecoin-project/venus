@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
-	"os"
 	"path/filepath"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -42,9 +41,7 @@ func TryToMigrate(repoPath string) error {
 	}
 
 	for _, up := range versionMap {
-		// 实现根据环境变量 `VENUS_DISABLE_SKYR` 来控制是否升级fvm
-		// todo: 在下一次网络（nv17）升级移除
-		if up.version > localVersion || (localVersion == 8 && up.version == 8) {
+		if up.version > localVersion {
 			err = up.upgrade(repoPath)
 			if err != nil {
 				return err
@@ -107,6 +104,8 @@ func Version4Upgrade(repoPath string) (err error) {
 		cfg.NetworkParams.ForkUpgradeParam = networks.ForceNet().Network.ForkUpgradeParam
 	case types.NetworkButterfly:
 		cfg.NetworkParams.ForkUpgradeParam = networks.ButterflySnapNet().Network.ForkUpgradeParam
+	case types.NetworkInterop:
+		cfg.NetworkParams.ForkUpgradeParam = networks.InteropNet().Network.ForkUpgradeParam
 	default:
 		return fsrRepo.Close()
 	}
@@ -217,7 +216,7 @@ func Version7Upgrade(repoPath string) (err error) {
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = 682006
 	case types.NetworkButterfly:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = 240
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = -18
 	case types.NetworkForce:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = -18
@@ -270,25 +269,21 @@ func Version8Upgrade(repoPath string) (err error) {
 	switch cfg.NetworkParams.NetworkType {
 	case types.NetworkMainnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 99999999999999
-		// https://github.com/filecoin-project/lotus/pull/8733
-		if os.Getenv("VENUS_DISABLE_SKYR") == "1" {
-			cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 99999999999999
-		}
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 1960320
 	case types.Network2k:
-		cfg.NetworkParams.GenesisNetworkVersion = network.Version15
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version16
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = -19
 	case types.NetworkCalibnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 1044660
 	case types.NetworkForce:
-		cfg.NetworkParams.GenesisNetworkVersion = network.Version15
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version16
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = -19
 	case types.NetworkInterop:
-		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version15
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 100
 	case types.NetworkButterfly:
-		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version15
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 50
 	default:
 		return fsrRepo.Close()

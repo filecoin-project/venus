@@ -19,13 +19,13 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/app/node"
 	sbchain "github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/utils"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -164,6 +164,11 @@ var msigInspectCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
+
+		if err := utils.LoadBuiltinActors(ctx, env.(*node.Env).ChainAPI); err != nil {
+			return err
+		}
+
 		head, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
 		if err != nil {
 			return err
@@ -271,7 +276,7 @@ var msigInspectCmd = &cmds.Command{
 						fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), "new account, unknown method", tx.Method, paramStr)
 					}
 				} else {
-					method := chain.MethodsMap[targAct.Code][tx.Method]
+					method := utils.MethodsMap[targAct.Code][tx.Method]
 
 					if decParams && tx.Method != 0 {
 						ptyp := reflect.New(method.Params.Elem()).Interface().(cbg.CBORUnmarshaler)

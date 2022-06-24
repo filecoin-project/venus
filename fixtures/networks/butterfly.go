@@ -12,23 +12,25 @@ func ButterflySnapNet() *NetworkConf {
 	return &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
-				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWFHDtFx7CVTy4xoCDutVo1cScvSnQjDeaM8UzwVS1qwkh",
-				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWKt8cwpkiumkT8x32c3YFxsPRwhV5J8hCYPn9mhUmcAXt",
+				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWSUZhAY3eyoPUboJ1ZWe4dNPFWTr1EPoDjbTDSAN15uhY",
+				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWDfvNrSRVGWAGbn3sm9C8z98W2x25qCZjaXGHXmGiH24e",
 			},
 			MinPeerThreshold: 0,
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
-			DevNet: true,
+			DevNet:                true,
+			NetworkType:           types.NetworkButterfly,
+			GenesisNetworkVersion: network.Version15,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
 				abi.RegisteredSealProof_StackedDrg512MiBV1,
 				abi.RegisteredSealProof_StackedDrg32GiBV1,
 				abi.RegisteredSealProof_StackedDrg64GiBV1,
 			},
-			NetworkType:            types.NetworkButterfly,
-			GenesisNetworkVersion:  network.Version15,
-			BlockDelay:             30,
-			ConsensusMinerMinPower: 2 << 30,
+			BlockDelay:              30,
+			ConsensusMinerMinPower:  2 << 30,
+			MinVerifiedDealSize:     1 << 20,
+			PreCommitChallengeDelay: abi.ChainEpoch(150),
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
 				UpgradeBreezeHeight:     -1,
 				UpgradeSmokeHeight:      -2,

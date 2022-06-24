@@ -50,7 +50,7 @@ var _ Processor = (*DefaultProcessor)(nil)
 
 // NewDefaultProcessor creates a default processor from the given state tree and vms.
 func NewDefaultProcessor(syscalls vm.SyscallsImpl, circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor) *DefaultProcessor {
-	return NewConfiguredProcessor(vm.DefaultActors, syscalls, circulatingSupplyCalculator)
+	return NewConfiguredProcessor(*vm.GetDefaultActors(), syscalls, circulatingSupplyCalculator)
 }
 
 // NewConfiguredProcessor creates a default processor with custom validation and rewards.

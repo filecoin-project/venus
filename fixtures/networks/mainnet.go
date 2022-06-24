@@ -37,7 +37,14 @@ func Mainnet() *NetworkConf {
 			DevNet:                false,
 			NetworkType:           types.NetworkMainnet,
 			GenesisNetworkVersion: network.Version0,
-			BlockDelay:            30,
+			ReplaceProofTypes: []abi.RegisteredSealProof{
+				abi.RegisteredSealProof_StackedDrg32GiBV1,
+				abi.RegisteredSealProof_StackedDrg64GiBV1,
+			},
+			BlockDelay:              30,
+			ConsensusMinerMinPower:  10 << 40,
+			MinVerifiedDealSize:     1 << 20,
+			PreCommitChallengeDelay: abi.ChainEpoch(150),
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
 				UpgradeBreezeHeight:   41280,
 				UpgradeSmokeHeight:    51000,
@@ -59,14 +66,13 @@ func Mainnet() *NetworkConf {
 				UpgradeHyperdriveHeight: 892800, // 2021-06-30T22:00:00Z
 				UpgradeChocolateHeight:  1231620,
 				UpgradeOhSnapHeight:     1594680, // 2022-03-01T15:00:00Z
-				UpgradeSkyrHeight:       99999999999999,
+				UpgradeSkyrHeight:       1960320, // 2022-07-06T14:00:00Z
 
 				BreezeGasTampingDuration: 120,
 				UpgradeClausHeight:       343200, // 2020-12-22T02:00:00Z
 			},
-			DrandSchedule:           map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
-			AddressNetwork:          address.Mainnet,
-			PreCommitChallengeDelay: abi.ChainEpoch(150),
+			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
+			AddressNetwork: address.Mainnet,
 		},
 	}
 }

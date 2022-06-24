@@ -31,7 +31,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
-	builtin_actors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs-force-community/metrics/ratelimit"
 )
@@ -100,10 +99,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		offlineMode: b.offlineMode,
 		repo:        b.repo,
 		chainClock:  b.chainClock,
-	}
-
-	if err := builtin_actors.SetNetworkBundle(b.repo.Config().NetworkParams.NetworkType); err != nil {
-		return nil, err
 	}
 
 	//modules

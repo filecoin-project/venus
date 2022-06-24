@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/system"
 
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
@@ -26,7 +27,8 @@ func SetupSystemActor(ctx context.Context, bs bstore.Blockstore, av actors.Versi
 	var st system.State
 
 	cst := cbor.NewCborStore(bs)
-	st, err := system.MakeState(adt.WrapStore(ctx, cst), av)
+	// TODO pass in built-in actors cid for V8 and later
+	st, err := system.MakeState(adt.WrapStore(ctx, cst), av, cid.Undef)
 	if err != nil {
 		return nil, err
 	}
