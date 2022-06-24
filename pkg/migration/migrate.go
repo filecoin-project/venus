@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
-	"os"
 	"path/filepath"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -42,9 +41,7 @@ func TryToMigrate(repoPath string) error {
 	}
 
 	for _, up := range versionMap {
-		// 实现根据环境变量 `VENUS_DISABLE_SKYR` 来控制是否升级fvm
-		// todo: 在下一次网络（nv17）升级移除
-		if up.version > localVersion || (localVersion == 8 && up.version == 8) {
+		if up.version > localVersion {
 			err = up.upgrade(repoPath)
 			if err != nil {
 				return err
@@ -273,10 +270,6 @@ func Version8Upgrade(repoPath string) (err error) {
 	case types.NetworkMainnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 1960320
-		// https://github.com/filecoin-project/lotus/pull/8733
-		if os.Getenv("VENUS_DISABLE_SKYR") == "1" {
-			cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 99999999999999
-		}
 	case types.Network2k:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version16
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = -19
