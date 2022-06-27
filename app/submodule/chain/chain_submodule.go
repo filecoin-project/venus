@@ -113,6 +113,7 @@ func (chain *ChainSubmodule) API() v1api.IChain {
 		IActor:      NewActorAPI(chain),
 		IChainInfo:  NewChainInfoAPI(chain),
 		IMinerState: NewMinerStateAPI(chain),
+		IBeacon:     NewBeaconAPI(chain),
 	}
 }
 
