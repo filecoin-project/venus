@@ -123,7 +123,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	+ SetPassword
 	- Shutdown
 	> StateAccountKey {[func(context.Context, address.Address, types.TipSetKey) (address.Address, error) <> func(context.Context, address.Address, types.TipSetKey) (address.Address, error)] base=func in type: #2 input; nested={[types.TipSetKey <> types.TipSetKey] base=codec marshaler implementations for codec Cbor: true != false; nested=nil}}
-	- StateActorCodeCIDs
 	- StateAllMinerFaults
 	> StateCall {[func(context.Context, *internal.Message, types.TipSetKey) (*types.InvocResult, error) <> func(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)] base=func in type: #2 input; nested={[types.TipSetKey <> types.TipSetKey] base=codec marshaler implementations for codec Cbor: true != false; nested=nil}}
 	- StateChangedActors
@@ -326,7 +325,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ SetPassword
 	- Shutdown
 	> StateAccountKey {[func(context.Context, address.Address, types.TipSetKey) (address.Address, error) <> func(context.Context, address.Address, types.TipSetKey) (address.Address, error)] base=func in type: #2 input; nested={[types.TipSetKey <> types.TipSetKey] base=codec marshaler implementations for codec Cbor: true != false; nested=nil}}
-	- StateActorCodeCIDs
 	- StateAllMinerFaults
 	> StateCall {[func(context.Context, *internal.Message, types.TipSetKey) (*types.InvocResult, error) <> func(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)] base=func in type: #2 input; nested={[types.TipSetKey <> types.TipSetKey] base=codec marshaler implementations for codec Cbor: true != false; nested=nil}}
 	- StateChangedActors

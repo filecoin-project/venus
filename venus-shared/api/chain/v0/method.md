@@ -39,6 +39,7 @@
   * [MessageWait](#MessageWait)
   * [ProtocolParameters](#ProtocolParameters)
   * [ResolveToKeyAddr](#ResolveToKeyAddr)
+  * [StateActorCodeCIDs](#StateActorCodeCIDs)
   * [StateGetNetworkParams](#StateGetNetworkParams)
   * [StateGetReceipt](#StateGetReceipt)
   * [StateNetworkName](#StateNetworkName)
@@ -1260,6 +1261,21 @@ Inputs:
 ```
 
 Response: `"f01234"`
+
+### StateActorCodeCIDs
+StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  16
+]
+```
+
+Response: `{}`
 
 ### StateGetNetworkParams
 StateGetNetworkParams return current network params

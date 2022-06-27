@@ -16,6 +16,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -677,4 +678,31 @@ func (cia *chainInfoAPI) StateGetNetworkParams(ctx context.Context) (*types.Netw
 	}
 
 	return params, nil
+}
+
+func (cia *chainInfoAPI) StateActorCodeCIDs(ctx context.Context, nv network.Version) (map[string]cid.Cid, error) {
+	actorVersion, err := actors.VersionForNetwork(nv)
+	if err != nil {
+		return nil, fmt.Errorf("invalid network version")
+	}
+
+	cids := make(map[string]cid.Cid)
+
+	manifestCid, ok := actors.GetManifest(actorVersion)
+	if !ok {
+		return nil, fmt.Errorf("cannot get manifest CID")
+	}
+
+	cids["_manifest"] = manifestCid
+
+	var actorKeys = actors.GetBuiltinActorsKeys()
+	for _, name := range actorKeys {
+		actorCID, ok := actors.GetActorCodeID(actorVersion, name)
+		if !ok {
+			return nil, fmt.Errorf("didn't find actor %v code id for actor version %d", name,
+				actorVersion)
+		}
+		cids[name] = actorCID
+	}
+	return cids, nil
 }
