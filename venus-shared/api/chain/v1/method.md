@@ -40,6 +40,7 @@
   * [MessageWait](#MessageWait)
   * [ProtocolParameters](#ProtocolParameters)
   * [ResolveToKeyAddr](#ResolveToKeyAddr)
+  * [StateActorCodeCIDs](#StateActorCodeCIDs)
   * [StateGetBeaconEntry](#StateGetBeaconEntry)
   * [StateGetNetworkParams](#StateGetNetworkParams)
   * [StateGetRandomnessFromBeacon](#StateGetRandomnessFromBeacon)
@@ -1298,6 +1299,21 @@ Inputs:
 ```
 
 Response: `"f01234"`
+
+### StateActorCodeCIDs
+StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  16
+]
+```
+
+Response: `{}`
 
 ### StateGetBeaconEntry
 StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If
