@@ -680,6 +680,7 @@ func (cia *chainInfoAPI) StateGetNetworkParams(ctx context.Context) (*types.Netw
 	return params, nil
 }
 
+// StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
 func (cia *chainInfoAPI) StateActorCodeCIDs(ctx context.Context, nv network.Version) (map[string]cid.Cid, error) {
 	actorVersion, err := actors.VersionForNetwork(nv)
 	if err != nil {
