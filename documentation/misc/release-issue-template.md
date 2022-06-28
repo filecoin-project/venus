@@ -45,15 +45,11 @@
     - [ ] 出块验证，出一个块
     - [ ] Snapdeal验证
     - [ ] 让一个扇区变成faulty，观察是否恢复
-- [ ] **阶段 2 - 社区测试**
+- [ ] **阶段 2 - 社区Beta测试**
   - [ ] 社区[Venus Master](https://filecoinproject.slack.com/archives/C03B30M20N7)测试
   - [ ] 新功能特性，配置变化等等的文档撰写
-
-- [ ] **阶段 3 - 社区生产测试**
-  - [ ] 更新[CHANGELOG.md](https://github.com/filecoin-project/venus/blob/master/CHANGELOG.md)
-  - [ ] 邀请更多社区成员参与测试
     
-- [ ] **阶段 4 - 发版**
+- [ ] **阶段 3 - 发版**
   - [ ] 最终准备
     - [ ] 确认`version.go`已更新
     - [ ] 准备changelog
