@@ -636,23 +636,16 @@ var stateSysActorCIDsCmd = &cmds.Command{
 		}
 		buf.WriteString(fmt.Sprintf("Actor Version: %d\n", actorVersion))
 
-		manifestCid, ok := actors.GetManifest(actorVersion)
-		if !ok {
-			return fmt.Errorf("cannot get manifest CID")
-		}
-		buf.WriteString(fmt.Sprintf("Manifest CID: %v\n\n", manifestCid))
-
 		tw := tablewriter.New(tablewriter.Col("Actor"), tablewriter.Col("CID"))
 
-		for _, name := range actors.GetBuiltinActorsKeys() {
-			sysActorCID, ok := actors.GetActorCodeID(actorVersion, name)
-			if !ok {
-				return fmt.Errorf("error getting actor %v code id for actor version %d", name,
-					actorVersion)
-			}
+		actorsCids, err := env.(*node.Env).ChainAPI.StateActorCodeCIDs(ctx, nv)
+		if err != nil {
+			return err
+		}
+		for name, cid := range actorsCids {
 			tw.Write(map[string]interface{}{
 				"Actor": name,
-				"CID":   sysActorCID.String(),
+				"CID":   cid.String(),
 			})
 		}
 

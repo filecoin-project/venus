@@ -141,6 +141,7 @@ v0api.FullNode:
 	Session:	In=1,	Out=2,	CheckSum=cdb04ef6a97114c8f24f456a2e70f1cd
 	Shutdown:	In=1,	Out=1,	CheckSum=c39be30cc5a8826024fcf4d23e7017d6
 	StateAccountKey:	In=3,	Out=2,	CheckSum=9b6f9fdaea5bb22c60772266c418d98f
+	StateActorCodeCIDs:	In=2,	Out=2,	CheckSum=d52881195cc100121739e6c85c45dd9f
 	StateAllMinerFaults:	In=3,	Out=2,	CheckSum=a17e05b21e1ecc8da867e2f76df6c46c
 	StateCall:	In=3,	Out=2,	CheckSum=b33ab6c7df31d805c256c8ab6691b085
 	StateChangedActors:	In=3,	Out=2,	CheckSum=cbc0cd36e495552a6672caab9f839468
@@ -365,6 +366,7 @@ api.FullNode:
 	Session:	In=1,	Out=2,	CheckSum=cdb04ef6a97114c8f24f456a2e70f1cd
 	Shutdown:	In=1,	Out=1,	CheckSum=c39be30cc5a8826024fcf4d23e7017d6
 	StateAccountKey:	In=3,	Out=2,	CheckSum=9b6f9fdaea5bb22c60772266c418d98f
+	StateActorCodeCIDs:	In=2,	Out=2,	CheckSum=d52881195cc100121739e6c85c45dd9f
 	StateAllMinerFaults:	In=3,	Out=2,	CheckSum=a17e05b21e1ecc8da867e2f76df6c46c
 	StateCall:	In=3,	Out=2,	CheckSum=b33ab6c7df31d805c256c8ab6691b085
 	StateChangedActors:	In=3,	Out=2,	CheckSum=cbc0cd36e495552a6672caab9f839468
