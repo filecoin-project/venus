@@ -2,15 +2,13 @@ package cmd_test
 
 import (
 	"context"
-	"io/ioutil"
 	"testing"
 
-	th "github.com/filecoin-project/venus/pkg/testhelpers"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/filecoin-project/venus/app/node/test"
+	th "github.com/filecoin-project/venus/pkg/testhelpers"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSwarmConnectPeersValid(t *testing.T) {
@@ -61,8 +59,7 @@ func TestPersistId(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	// we need to control this
-	dir, err := ioutil.TempDir("", "go-fil-test")
-	require.NoError(t, err)
+	dir := t.TempDir()
 
 	// Start a demon in dir
 	d1 := th.NewDaemon(t, th.ContainerDir(dir)).Start()

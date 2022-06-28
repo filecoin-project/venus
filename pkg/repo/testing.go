@@ -15,12 +15,6 @@ func RequireMakeTempDir(t *testing.T, dirname string) string {
 	return newdir
 }
 
-// RequireRemoveAll ensures that the error condition is checked when we clean up
-// after creating a temporary directory.
-func RequireRemoveAll(t *testing.T, path string) {
-	require.NoError(t, os.RemoveAll(path))
-}
-
 // RequireOpenTempFile is a shortcut for opening a given temp file with a given
 // suffix, then returning both a filename and a file pointer.
 func RequireOpenTempFile(t *testing.T, suffix string) (*os.File, string) {
