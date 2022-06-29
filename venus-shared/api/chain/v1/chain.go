@@ -118,6 +118,8 @@ type IChainInfo interface {
 	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*types.HeadChange, error)                              //perm:read
 	// StateGetNetworkParams return current network params
 	StateGetNetworkParams(ctx context.Context) (*types.NetworkParams, error) //perm:read
+	// StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
+	StateActorCodeCIDs(context.Context, network.Version) (map[string]cid.Cid, error) //perm:read
 }
 
 type IMinerState interface {
