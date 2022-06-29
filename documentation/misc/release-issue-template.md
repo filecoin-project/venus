@@ -8,6 +8,8 @@
 
 <!-- 针对这个版本需要申明的注意事项 -->
 
+<!-- 需要特别注意的issue，PR等等 -->
+
 ## ✅ 常规检查项
 
 准备:
@@ -31,13 +33,6 @@
     - [ ] 检查节点同步情况
   - 升级预生产环境
     - [ ] 检查节点同步情况
-    - `Metrics`报告（待开发）
-        - Block validation time
-        - Memory / CPU usage
-        - Number of goroutines
-        - IPLD block read latency
-        - Bandwidth usage
-    - [ ] 如果有一项比原来有很大的差距，调查并修复
   - 确认以下工作流 (Z版本可选；X、Y版本必选)
     - [ ] 封装一个扇区
     - [ ] 发一个存储订单
@@ -54,6 +49,7 @@
     - [ ] 确认`version.go`已更新
     - [ ] 准备changelog
     - [ ] `tag`为`vX.Y.Z`
+    - [ ] 版本发布至`releases`（注：[github](https://github.com/filecoin-project/venus/releases)有区分`tag`和`releases`）
     - [ ] 创建新版本的discussion讨论帖
 
 
