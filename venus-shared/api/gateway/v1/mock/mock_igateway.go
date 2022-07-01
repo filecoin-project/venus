@@ -12,8 +12,7 @@ import (
 	abi "github.com/filecoin-project/go-state-types/abi"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	network "github.com/filecoin-project/go-state-types/network"
-	proof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
-	proof0 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+	proof "github.com/filecoin-project/go-state-types/proof"
 	storage "github.com/filecoin-project/specs-storage/storage"
 	types "github.com/filecoin-project/venus/venus-shared/types"
 	gateway "github.com/filecoin-project/venus/venus-shared/types/gateway"
@@ -59,7 +58,7 @@ func (mr *MockIGatewayMockRecorder) AddNewAddress(arg0, arg1, arg2 interface{}) 
 }
 
 // ComputeProof mocks base method.
-func (m *MockIGateway) ComputeProof(arg0 context.Context, arg1 address.Address, arg2 []proof0.ExtendedSectorInfo, arg3 abi.PoStRandomness, arg4 abi.ChainEpoch, arg5 network.Version) ([]proof.PoStProof, error) {
+func (m *MockIGateway) ComputeProof(arg0 context.Context, arg1 address.Address, arg2 []proof.ExtendedSectorInfo, arg3 abi.PoStRandomness, arg4 abi.ChainEpoch, arg5 network.Version) ([]proof.PoStProof, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ComputeProof", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].([]proof.PoStProof)

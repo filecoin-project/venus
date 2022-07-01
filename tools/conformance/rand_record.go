@@ -62,8 +62,8 @@ func (r *RecordingRand) GetChainRandomnessV1(ctx context.Context, pers crypto.Do
 
 func (r *RecordingRand) getChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	r.once.Do(r.loadHead)
-	// FullNode's ChainGetRandomnessFromTickets handles whether we should be looking forward or back
-	ret, err := r.api.ChainGetRandomnessFromTickets(ctx, r.head, pers, round, entropy)
+	// FullNode's StateGetRandomnessFromTickets handles whether we should be looking forward or back
+	ret, err := r.api.StateGetRandomnessFromTickets(ctx, pers, round, entropy, r.head)
 	if err != nil {
 		return ret, err
 	}
@@ -100,7 +100,7 @@ func (r *RecordingRand) GetBeaconRandomnessV2(ctx context.Context, pers crypto.D
 
 func (r *RecordingRand) getBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	r.once.Do(r.loadHead)
-	ret, err := r.api.ChainGetRandomnessFromBeacon(ctx, r.head, pers, round, entropy)
+	ret, err := r.api.StateGetRandomnessFromBeacon(ctx, pers, round, entropy, r.head)
 	if err != nil {
 		return ret, err
 	}

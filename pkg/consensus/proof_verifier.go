@@ -2,9 +2,9 @@ package consensus
 
 import (
 	"context"
+	"fmt"
 
 	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -41,7 +41,7 @@ func VerifyVRF(ctx context.Context, worker address.Address, vrfBase, vrfproof []
 	}
 
 	if err := crypto2.Verify(sig, worker, vrfBase); err != nil {
-		return xerrors.Errorf("vrf was invalid: %w", err)
+		return fmt.Errorf("vrf was invalid: %w", err)
 	}
 
 	return nil

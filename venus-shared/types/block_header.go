@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	"github.com/filecoin-project/go-state-types/proof"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -42,7 +42,7 @@ type BlockHeader struct {
 	BeaconEntries []BeaconEntry
 
 	// WinPoStProof are the winning post proofs
-	WinPoStProof []proof2.PoStProof
+	WinPoStProof []proof.PoStProof
 
 	// Parents is the set of parents this newBlock was based on. Typically one,
 	// but can be several in the case where there were multiple winning ticket-
@@ -193,4 +193,13 @@ func (b *BlockHeader) ToNode() node.Node {
 		panic(err)
 	}
 	return n
+}
+
+func CidArrsContains(a []cid.Cid, b cid.Cid) bool {
+	for _, elem := range a {
+		if elem.Equals(b) {
+			return true
+		}
+	}
+	return false
 }

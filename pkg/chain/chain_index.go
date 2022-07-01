@@ -2,11 +2,11 @@ package chain
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	lru "github.com/hashicorp/golang-lru"
-	xerrors "github.com/pkg/errors"
 )
 
 var DefaultChainIndexCacheSize = 32 << 10
@@ -111,7 +111,7 @@ func (ci *ChainIndex) fillCache(ctx context.Context, tsk types.TipSetKey) (*lbEn
 	} else {
 		skipTarget, err = ci.walkBack(ctx, parent, rheight)
 		if err != nil {
-			return nil, xerrors.Errorf("fillCache walkback: %s", err)
+			return nil, fmt.Errorf("fillCache walkback: %s", err)
 		}
 	}
 
@@ -144,7 +144,7 @@ func (ci *ChainIndex) roundDown(ctx context.Context, ts *types.TipSet) (*types.T
 
 func (ci *ChainIndex) walkBack(ctx context.Context, from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
 	if to > from.Height() {
-		return nil, xerrors.Errorf("looking for tipset with height greater than start point")
+		return nil, fmt.Errorf("looking for tipset with height greater than start point")
 	}
 
 	if to == from.Height() {

@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/google/uuid"
@@ -29,7 +29,6 @@ import (
 	ic "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/minio/blake2b-simd"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/gen/genesis"
@@ -131,7 +130,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 	}
 
 	if err := createDeals(miner, ki, maddr, ssize); err != nil {
-		return nil, nil, xerrors.Errorf("creating deals: %w", err)
+		return nil, nil, fmt.Errorf("creating deals: %w", err)
 	}
 
 	{
@@ -142,11 +141,11 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 			CanStore: false,
 		}, "", "  ")
 		if err != nil {
-			return nil, nil, xerrors.Errorf("marshaling storage config: %w", err)
+			return nil, nil, fmt.Errorf("marshaling storage config: %w", err)
 		}
 
 		if err := ioutil.WriteFile(filepath.Join(sbroot, "sectorstore.json"), b, 0644); err != nil {
-			return nil, nil, xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(sbroot, "storage.json"), err)
+			return nil, nil, fmt.Errorf("persisting storage metadata (%s): %w", filepath.Join(sbroot, "storage.json"), err)
 		}
 	}
 
@@ -166,20 +165,20 @@ func presealSector(sb *impl.Sealer, sbfs *basicfs.Provider, sid storage.SectorRe
 
 	in2, err := sb.SealPreCommit1(context.TODO(), sid, ticket, []abi.PieceInfo{pi})
 	if err != nil {
-		return nil, xerrors.Errorf("commit: %w", err)
+		return nil, fmt.Errorf("commit: %w", err)
 	}
 
 	cids, err := sb.SealPreCommit2(context.TODO(), sid, in2)
 	if err != nil {
-		return nil, xerrors.Errorf("commit: %w", err)
+		return nil, fmt.Errorf("commit: %w", err)
 	}
 
 	if err := sb.FinalizeSector(context.TODO(), sid, nil); err != nil {
-		return nil, xerrors.Errorf("trim cache: %w", err)
+		return nil, fmt.Errorf("trim cache: %w", err)
 	}
 
 	if err := cleanupUnsealed(sbfs, sid); err != nil {
-		return nil, xerrors.Errorf("remove unsealed file: %w", err)
+		return nil, fmt.Errorf("remove unsealed file: %w", err)
 	}
 
 	log.Warn("PreCommitOutput: ", sid, cids.Sealed, cids.Unsealed)
@@ -195,17 +194,17 @@ func presealSector(sb *impl.Sealer, sbfs *basicfs.Provider, sid storage.SectorRe
 func presealSectorFake(sbfs *basicfs.Provider, sid storage.SectorRef, ssize abi.SectorSize) (*genesis.PreSeal, error) {
 	paths, done, err := sbfs.AcquireSector(context.TODO(), sid, 0, storiface.FTSealed|storiface.FTCache, storiface.PathSealing)
 	if err != nil {
-		return nil, xerrors.Errorf("acquire unsealed sector: %w", err)
+		return nil, fmt.Errorf("acquire unsealed sector: %w", err)
 	}
 	defer done()
 
 	if err := os.Mkdir(paths.Cache, 0755); err != nil {
-		return nil, xerrors.Errorf("mkdir cache: %w", err)
+		return nil, fmt.Errorf("mkdir cache: %w", err)
 	}
 
 	commr, err := ffi.FauxRep(sid.ProofType, paths.Cache, paths.Sealed)
 	if err != nil {
-		return nil, xerrors.Errorf("fauxrep: %w", err)
+		return nil, fmt.Errorf("fauxrep: %w", err)
 	}
 
 	return &genesis.PreSeal{
@@ -263,12 +262,17 @@ func createDeals(m *genesis.Miner, ki *crypto.KeyInfo, maddr address.Address, ss
 		return err
 	}
 	for i, sector := range m.Sectors {
-		proposal := &market2.DealProposal{
+		label, err := market8.NewLabelFromString(fmt.Sprintf("%d", i))
+		if err != nil {
+			return err
+		}
+
+		proposal := &market8.DealProposal{
 			PieceCID:             sector.CommD,
 			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               addr,
 			Provider:             maddr,
-			Label:                fmt.Sprintf("%d", i),
+			Label:                label,
 			StartEpoch:           0,
 			EndEpoch:             9001,
 			StoragePricePerEpoch: big.Zero(),
@@ -276,6 +280,7 @@ func createDeals(m *genesis.Miner, ki *crypto.KeyInfo, maddr address.Address, ss
 			ClientCollateral:     big.Zero(),
 		}
 
+		sector.DealClientKey = ki
 		sector.Deal = *proposal
 	}
 
@@ -299,13 +304,13 @@ type GenAccountEntry struct {
 func ParseMultisigCsv(csvf string) ([]GenAccountEntry, error) {
 	fileReader, err := os.Open(csvf)
 	if err != nil {
-		return nil, xerrors.Errorf("read multisig csv: %w", err)
+		return nil, fmt.Errorf("read multisig csv: %w", err)
 	}
 	defer fileReader.Close() //nolint:errcheck
 	r := csv.NewReader(fileReader)
 	records, err := r.ReadAll()
 	if err != nil {
-		return nil, xerrors.Errorf("read multisig csv: %w", err)
+		return nil, fmt.Errorf("read multisig csv: %w", err)
 	}
 	var entries []GenAccountEntry
 	for i, e := range records[1:] {
@@ -314,35 +319,35 @@ func ParseMultisigCsv(csvf string) ([]GenAccountEntry, error) {
 		for j, a := range addrStrs {
 			addr, err := address.NewFromString(a)
 			if err != nil {
-				return nil, xerrors.Errorf("failed to parse address %d in row %d (%q): %w", j, i, a, err)
+				return nil, fmt.Errorf("failed to parse address %d in row %d (%q): %w", j, i, a, err)
 			}
 			addrs = append(addrs, addr)
 		}
 
 		balance, err := types.ParseFIL(strings.TrimSpace(e[2]))
 		if err != nil {
-			return nil, xerrors.Errorf("failed to parse account balance: %w", err)
+			return nil, fmt.Errorf("failed to parse account balance: %w", err)
 		}
 
 		vesting, err := strconv.Atoi(strings.TrimSpace(e[3]))
 		if err != nil {
-			return nil, xerrors.Errorf("failed to parse vesting duration for record %d: %w", i, err)
+			return nil, fmt.Errorf("failed to parse vesting duration for record %d: %w", i, err)
 		}
 
 		custodianID, err := strconv.Atoi(strings.TrimSpace(e[4]))
 		if err != nil {
-			return nil, xerrors.Errorf("failed to parse custodianID in record %d: %w", i, err)
+			return nil, fmt.Errorf("failed to parse custodianID in record %d: %w", i, err)
 		}
 		threshold, err := strconv.Atoi(strings.TrimSpace(e[5]))
 		if err != nil {
-			return nil, xerrors.Errorf("failed to parse multisigM in record %d: %w", i, err)
+			return nil, fmt.Errorf("failed to parse multisigM in record %d: %w", i, err)
 		}
 		num, err := strconv.Atoi(strings.TrimSpace(e[6]))
 		if err != nil {
-			return nil, xerrors.Errorf("Number of addresses be integer: %w", err)
+			return nil, fmt.Errorf("number of addresses be integer: %w", err)
 		}
 		if e[0] != "1" {
-			return nil, xerrors.Errorf("record version must be 1")
+			return nil, fmt.Errorf("record version must be 1")
 		}
 		entries = append(entries, GenAccountEntry{
 			Version:       1,

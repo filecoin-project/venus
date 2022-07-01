@@ -4,8 +4,6 @@ import (
 	"errors"
 	"math"
 
-	"golang.org/x/xerrors"
-
 	"github.com/ahmetb/go-linq/v3"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -70,7 +68,7 @@ func FindCode(enum MsgEnum) []int {
 
 func AggregateMsgEnumCode(codes []int) (MsgEnum, error) {
 	if len(codes) == 0 {
-		return 0, xerrors.New("nil reference")
+		return 0, errors.New("nil reference")
 	}
 	linq.From(codes).Distinct().ToSlice(&codes)
 	em := MsgEnum(0)

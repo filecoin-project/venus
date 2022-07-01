@@ -10,7 +10,6 @@ import (
 	logging "github.com/ipfs/go-log"
 
 	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -185,7 +184,7 @@ func collectChainSegment(ctx context.Context, cr chainReader, mr messageStore, r
 		var bst BSTipSet
 		ts, err := cr.GetTipSet(ctx, cur)
 		if err != nil {
-			return nil, xerrors.Errorf("failed loading tipset %s: %w", cur, err)
+			return nil, fmt.Errorf("failed loading tipset %s: %w", cur, err)
 		}
 
 		if req.options.IncludeHeaders {
@@ -195,7 +194,7 @@ func collectChainSegment(ctx context.Context, cr chainReader, mr messageStore, r
 		if req.options.IncludeMessages {
 			bmsgs, bmincl, smsgs, smincl, err := GatherMessages(ctx, cr, mr, ts)
 			if err != nil {
-				return nil, xerrors.Errorf("gather messages failed: %w", err)
+				return nil, fmt.Errorf("gather messages failed: %w", err)
 			}
 
 			// FIXME: Pass the response to `gatherMessages()` and set all this there.

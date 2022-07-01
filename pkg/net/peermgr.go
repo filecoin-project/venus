@@ -2,10 +2,9 @@ package net
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
-
-	"golang.org/x/xerrors"
 
 	"github.com/libp2p/go-libp2p-core/event"
 	host "github.com/libp2p/go-libp2p-core/host"
@@ -81,7 +80,7 @@ func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, period time.Duration, bootstrap [
 	}
 	emitter, err := h.EventBus().Emitter(new(NewFilPeer))
 	if err != nil {
-		return nil, xerrors.Errorf("creating NewFilPeer emitter: %w", err)
+		return nil, fmt.Errorf("creating NewFilPeer emitter: %w", err)
 	}
 	pm.filPeerEmitter = emitter
 

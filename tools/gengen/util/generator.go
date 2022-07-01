@@ -95,7 +95,7 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 		SysCallsImpl:         syscallImpl,
 		Fork:                 chainFork,
 	}
-	vm, err := vm.NewVM(context.Background(), vmOption)
+	vm, err := vm.NewLegacyVM(context.Background(), vmOption)
 	if err != nil {
 		panic(xerrors.Errorf("create state error, should never come here"))
 	}
@@ -316,7 +316,7 @@ func (g *GenesisGenerator) setupPrealloc() error {
 }
 
 func (g *GenesisGenerator) genBlock(ctx context.Context) (cid.Cid, error) {
-	stateRoot, err := g.vm.Flush()
+	stateRoot, err := g.vm.Flush(ctx)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -567,7 +567,7 @@ func (g *GenesisGenerator) createMiner(ctx context.Context, m *CreateStorageMine
 	}
 
 	// Resolve worker account's ID address.
-	stateRoot, err := g.vm.Flush()
+	stateRoot, err := g.vm.Flush(ctx)
 	if err != nil {
 		return address.Undef, address.Undef, err
 	}

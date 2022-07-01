@@ -5,10 +5,10 @@ import (
 
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	tutil "github.com/filecoin-project/specs-actors/support/testing"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,7 +26,7 @@ func TestEncodedString(t *testing.T) {
 		ChannelAddr:     chanAddr,
 		TimeLockMin:     1,
 		TimeLockMax:     100,
-		SecretPreimage:  []byte("ProfesrXXXXXXXXXXXXXXXXXXXXXXXXX"),
+		SecretHash:      []byte("ProfesrXXXXXXXXXXXXXXXXXXXXXXXXX"),
 		Extra:           ex,
 		Lane:            1,
 		Nonce:           1,

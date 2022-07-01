@@ -6,7 +6,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"golang.org/x/xerrors"
 )
 
 //
@@ -46,7 +45,7 @@ func Sign(msg []byte, privkey []byte, sigType SigType) (*crypto.Signature, error
 // Verify verifies signatures
 func Verify(sig *crypto.Signature, addr address.Address, msg []byte) error {
 	if sig == nil {
-		return xerrors.Errorf("signature is nil")
+		return fmt.Errorf("signature is nil")
 	}
 
 	if addr.Protocol() == address.ID {
@@ -63,7 +62,7 @@ func Verify(sig *crypto.Signature, addr address.Address, msg []byte) error {
 
 func VerifyAggregate(pubKeys, msgs [][]byte, signature []byte) error {
 	if signature == nil {
-		return xerrors.Errorf("signature is nil")
+		return fmt.Errorf("signature is nil")
 	}
 
 	sv, ok := sigs[crypto.SigTypeBLS]
@@ -72,7 +71,7 @@ func VerifyAggregate(pubKeys, msgs [][]byte, signature []byte) error {
 	}
 
 	if !sv.VerifyAggregate(pubKeys, msgs, signature) {
-		return xerrors.Errorf("verify aggregate message fail")
+		return fmt.Errorf("verify aggregate message fail")
 	}
 	return nil
 }

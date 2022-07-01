@@ -27,3 +27,7 @@ func (m MockCirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx contex
 		FilReserveDisbursed: abi.TokenAmount{},
 	}, nil
 }
+
+func (m MockCirculatingSupplyCalculator) GetFilVested(ctx context.Context, height abi.ChainEpoch) (abi.TokenAmount, error) {
+	return abi.TokenAmount{}, nil
+}

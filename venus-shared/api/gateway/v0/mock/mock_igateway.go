@@ -11,7 +11,7 @@ import (
 	address "github.com/filecoin-project/go-address"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
-	proof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof "github.com/filecoin-project/go-state-types/proof"
 	storage "github.com/filecoin-project/specs-storage/storage"
 	types "github.com/filecoin-project/venus/venus-shared/types"
 	gateway "github.com/filecoin-project/venus/venus-shared/types/gateway"

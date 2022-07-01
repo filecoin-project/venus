@@ -14,7 +14,7 @@ type VmOption = vmcontext.VmOption //nolint
 
 type Ret = vmcontext.Ret
 
-// Interpreter is the VM.
+// Interpreter is the LegacyVM.
 type Interpreter = vmcontext.VMInterpreter
 
 type SyscallsImpl = vmcontext.SyscallsImpl
@@ -25,17 +25,19 @@ type VmMessage = vmcontext.VmMessage //nolint
 type FakeSyscalls = vmcontext.FakeSyscalls
 type ChainRandomness = vmcontext.HeadChainRandomness
 
-// NewVM creates a new VM interpreter.
-func NewVM(ctx context.Context, option VmOption) (Interpreter, error) {
+type Interface = vmcontext.Interface // nolint
+
+// NewLegacyVM creates a new LegacyVM interpreter.
+func NewLegacyVM(ctx context.Context, option VmOption) (Interpreter, error) {
 	if option.ActorCodeLoader == nil {
-		option.ActorCodeLoader = &DefaultActors
+		option.ActorCodeLoader = GetDefaultActors()
 	}
 
-	return vmcontext.NewVM(ctx, option.ActorCodeLoader, option)
+	return vmcontext.NewLegacyVM(ctx, option.ActorCodeLoader, option)
 }
 
-// DefaultActors is a code loader with the built-in actors that come with the system.
-var DefaultActors = register.DefaultActors
+// GetDefaultActors return a code loader with the built-in actors that come with the system.
+var GetDefaultActors = register.GetDefaultActros
 
 // ActorCodeLoader allows yo to load an actor's code based on its id an epoch.
 type ActorCodeLoader = dispatch.CodeLoader

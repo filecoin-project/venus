@@ -2,10 +2,9 @@ package blockstoreutil
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
-
-	"golang.org/x/xerrors"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -201,12 +200,12 @@ func (bs *AutobatchBlockstore) DeleteBlock(context.Context, cid.Cid) error {
 	// - delete from the backingBs (if present)
 	// - remove from addedCids (if present)
 	// - if present in addedCids, also walk the ordered lists and remove if present
-	return xerrors.New("deletion is unsupported")
+	return errors.New("deletion is unsupported")
 }
 
 func (bs *AutobatchBlockstore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
 	// see note in DeleteBlock()
-	return xerrors.New("deletion is unsupported")
+	return errors.New("deletion is unsupported")
 }
 
 func (bs *AutobatchBlockstore) Has(ctx context.Context, c cid.Cid) (bool, error) {

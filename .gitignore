@@ -12,6 +12,8 @@ coverprofile.html
 *.out
 *.so
 
+actor-bundles-v8.*
+
 fixtures/test
 !fixtures/test/.gitkeep
 fixtures/live

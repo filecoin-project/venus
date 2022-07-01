@@ -9,9 +9,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/api"
 )
@@ -58,6 +59,30 @@ type MessageCID struct {
 }
 
 type NetworkName string
+
+const (
+	NetworkNameMain        NetworkName = "mainnet"
+	NetworkNameCalibration NetworkName = "calibrationnet"
+	NetworkNameButterfly   NetworkName = "butterflynet"
+	NetworkNameInterop     NetworkName = "interopnet"
+	NetworkNameIntegration NetworkName = "integrationnet"
+)
+
+type NetworkType int
+
+const (
+	NetworkDefault   NetworkType = 0
+	NetworkMainnet   NetworkType = 0x1
+	Network2k        NetworkType = 0x2
+	NetworkDebug     NetworkType = 0x3
+	NetworkCalibnet  NetworkType = 0x4
+	NetworkNerpa     NetworkType = 0x5
+	NetworkInterop   NetworkType = 0x6
+	NetworkForce     NetworkType = 0x7
+	NetworkButterfly NetworkType = 0x8
+
+	Integrationnet NetworkType = 0x30
+)
 
 type Partition struct {
 	AllSectors        bitfield.BitField
@@ -179,11 +204,14 @@ type ChannelAvailableFunds struct {
 	From address.Address
 	// To is the to address of the channel
 	To address.Address
-	// ConfirmedAmt is the amount of funds that have been confirmed on-chain
-	// for the channel
+	// ConfirmedAmt is the total amount of funds that have been confirmed on-chain for the channel
 	ConfirmedAmt BigInt
 	// PendingAmt is the amount of funds that are pending confirmation on-chain
 	PendingAmt BigInt
+	// NonReservedAmt is part of ConfirmedAmt that is available for use (e.g. when the payment channel was pre-funded)
+	NonReservedAmt BigInt
+	// PendingAvailableAmt is the amount of funds that are pending confirmation on-chain that will become available once confirmed
+	PendingAvailableAmt BigInt
 	// PendingWaitSentinel can be used with PaychGetWaitReady to wait for
 	// confirmation of pending funds
 	PendingWaitSentinel *cid.Cid
@@ -280,6 +308,20 @@ type InvocResult struct {
 	ExecutionTrace ExecutionTrace
 	Error          string
 	Duration       time.Duration
+}
+
+type MinerInfo struct {
+	Owner                      address.Address   // Must be an ID-address.
+	Worker                     address.Address   // Must be an ID-address.
+	NewWorker                  address.Address   // Must be an ID-address.
+	ControlAddresses           []address.Address // Must be an ID-addresses.
+	WorkerChangeEpoch          abi.ChainEpoch
+	PeerId                     *peer.ID // nolint
+	Multiaddrs                 []abi.Multiaddrs
+	WindowPoStProofType        abi.RegisteredPoStProof
+	SectorSize                 abi.SectorSize
+	WindowPoStPartitionSectors uint64
+	ConsensusFaultElapsed      abi.ChainEpoch
 }
 
 type NetworkParams struct {

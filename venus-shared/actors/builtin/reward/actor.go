@@ -3,11 +3,11 @@
 package reward
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/cbor"
 
@@ -25,48 +25,32 @@ import (
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
+	builtin8 "github.com/filecoin-project/go-state-types/builtin"
+
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 )
 
-func init() {
-
-	builtin.RegisterActorState(builtin0.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load0(store, root)
-	})
-
-	builtin.RegisterActorState(builtin2.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load2(store, root)
-	})
-
-	builtin.RegisterActorState(builtin3.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load3(store, root)
-	})
-
-	builtin.RegisterActorState(builtin4.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load4(store, root)
-	})
-
-	builtin.RegisterActorState(builtin5.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load5(store, root)
-	})
-
-	builtin.RegisterActorState(builtin6.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load6(store, root)
-	})
-
-	builtin.RegisterActorState(builtin7.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load7(store, root)
-	})
-}
-
 var (
-	Address = builtin7.RewardActorAddr
-	Methods = builtin7.MethodsReward
+	Address = builtin8.RewardActorAddr
+	Methods = builtin8.MethodsReward
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
+	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
+		if name != actors.RewardKey {
+			return nil, fmt.Errorf("actor code is not reward: %s", name)
+		}
+
+		switch av {
+
+		case actors.Version8:
+			return load8(store, act.Head)
+
+		}
+	}
+
 	switch act.Code {
 
 	case builtin0.RewardActorCodeID:
@@ -91,7 +75,8 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 		return load7(store, act.Head)
 
 	}
-	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+
+	return nil, fmt.Errorf("unknown actor code %s", act.Code)
 }
 
 func MakeState(store adt.Store, av actors.Version, currRealizedPower abi.StoragePower) (State, error) {
@@ -118,37 +103,11 @@ func MakeState(store adt.Store, av actors.Version, currRealizedPower abi.Storage
 	case actors.Version7:
 		return make7(store, currRealizedPower)
 
-	}
-	return nil, xerrors.Errorf("unknown actor version %d", av)
-}
-
-func GetActorCodeID(av actors.Version) (cid.Cid, error) {
-	switch av {
-
-	case actors.Version0:
-		return builtin0.RewardActorCodeID, nil
-
-	case actors.Version2:
-		return builtin2.RewardActorCodeID, nil
-
-	case actors.Version3:
-		return builtin3.RewardActorCodeID, nil
-
-	case actors.Version4:
-		return builtin4.RewardActorCodeID, nil
-
-	case actors.Version5:
-		return builtin5.RewardActorCodeID, nil
-
-	case actors.Version6:
-		return builtin6.RewardActorCodeID, nil
-
-	case actors.Version7:
-		return builtin7.RewardActorCodeID, nil
+	case actors.Version8:
+		return make8(store, currRealizedPower)
 
 	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+	return nil, fmt.Errorf("unknown actor version %d", av)
 }
 
 type State interface {

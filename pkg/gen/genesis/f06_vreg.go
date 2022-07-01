@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/go-address"
@@ -41,7 +42,7 @@ func SetupVerifiedRegistryActor(ctx context.Context, bs bstore.Blockstore, av ac
 		return nil, err
 	}
 
-	actcid, err := verifreg.GetActorCodeID(av)
+	actcid, err := builtin.GetVerifregActorCodeID(av)
 	if err != nil {
 		return nil, err
 	}

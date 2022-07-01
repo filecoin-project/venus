@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -14,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -55,7 +55,7 @@ var mpoolDeleteAddress = &cmds.Command{
 
 		from, _ := req.Options["from"].(string)
 		if from == "" {
-			return xerrors.Errorf("address can`t be null")
+			return fmt.Errorf("address can`t be null")
 		}
 
 		addr, err := address.NewFromString(from)
@@ -264,12 +264,12 @@ var mpoolReplaceCmd = &cmds.Command{
 			from = f
 			nonce = n
 		default:
-			return xerrors.New("command syntax error")
+			return errors.New("command syntax error")
 		}
 
 		ts, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
 		if err != nil {
-			return xerrors.Errorf("getting chain head: %w", err)
+			return fmt.Errorf("getting chain head: %w", err)
 		}
 
 		pending, err := env.(*node.Env).MessagePoolAPI.MpoolPending(req.Context, ts.Key())
@@ -375,7 +375,7 @@ Get pending messages.
 		ctx := context.TODO()
 		ts, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
 		if err != nil {
-			return xerrors.Errorf("getting chain head: %w", err)
+			return fmt.Errorf("getting chain head: %w", err)
 		}
 		currBF := ts.Blocks()[0].ParentBaseFee
 		minBF := currBF
@@ -385,7 +385,7 @@ Get pending messages.
 				key := currTS.Parents()
 				currTS, err = env.(*node.Env).ChainAPI.ChainGetTipSet(req.Context, key)
 				if err != nil {
-					return xerrors.Errorf("walking chain: %w", err)
+					return fmt.Errorf("walking chain: %w", err)
 				}
 				if newBF := currTS.Blocks()[0].ParentBaseFee; newBF.LessThan(minBF) {
 					minBF = newBF
@@ -709,7 +709,7 @@ Check gas performance of messages in mempool
 		ts, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
 
 		if err != nil {
-			return xerrors.Errorf("failed to get chain head: %w", err)
+			return fmt.Errorf("failed to get chain head: %w", err)
 		}
 
 		baseFee := ts.Blocks()[0].ParentBaseFee

@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/testhelpers"
 	"github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -35,7 +36,7 @@ func TestMessageStoreMessagesHappy(t *testing.T) {
 		mm.NewSignedMessage(bob, 2),
 	}
 
-	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	bs := blockstoreutil.Adapt(blockstore.NewBlockstore(datastore.NewMapDatastore()))
 	ms := chain.NewMessageStore(bs, config.DefaultForkUpgradeParam)
 	msgsCid, err := ms.StoreMessages(ctx, msgs, []*types.Message{})
 	assert.NoError(t, err)
@@ -56,7 +57,7 @@ func TestMessageStoreReceiptsHappy(t *testing.T) {
 		mr.NewReceipt(),
 	}
 
-	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	bs := blockstoreutil.Adapt(blockstore.NewBlockstore(datastore.NewMapDatastore()))
 	ms := chain.NewMessageStore(bs, config.DefaultForkUpgradeParam)
 	receiptCids, err := ms.StoreReceipts(ctx, receipts)
 	assert.NoError(t, err)

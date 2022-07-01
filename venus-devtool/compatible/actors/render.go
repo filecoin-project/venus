@@ -3,13 +3,13 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"go/format"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
 
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/venus/venus-devtool/util"
 )
 
 func importPath(v int) string {
@@ -72,9 +72,9 @@ func renderSingle(t *template.Template, dir string) error {
 		return fmt.Errorf("render single template: %w", err)
 	}
 
-	formatted, err := format.Source(buf.Bytes())
+	formatted, err := util.FmtFile("", buf.Bytes())
 	if err != nil {
-		return fmt.Errorf("format go source file: %w", err)
+		return fmt.Errorf("format go source file : %w", err)
 	}
 
 	err = os.WriteFile(filepath.Join(dir, t.Name()+".go"), formatted, 0644)
@@ -99,7 +99,7 @@ func renderSeparated(t *template.Template, dir string) error {
 			return fmt.Errorf("render separated template for ver %d: %w", v, err)
 		}
 
-		formatted, err := format.Source(buf.Bytes())
+		formatted, err := util.FmtFile("", buf.Bytes())
 		if err != nil {
 			return fmt.Errorf("format go source file for ver %d: %w", v, err)
 		}

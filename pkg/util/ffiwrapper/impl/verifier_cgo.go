@@ -5,9 +5,9 @@ package impl
 
 import (
 	"context"
+	"fmt"
 
 	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -28,7 +28,7 @@ func (sb *Sealer) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, 
 	}
 	defer done()
 	if len(skipped) > 0 {
-		return nil, xerrors.Errorf("pubSectorToPriv skipped sectors: %+v", skipped)
+		return nil, fmt.Errorf("pubSectorToPriv skipped sectors: %+v", skipped)
 	}
 
 	return ffi.GenerateWinningPoSt(minerID, privsectors, randomness)
@@ -38,13 +38,13 @@ func (sb *Sealer) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 	randomness[31] &= 0x3f
 	privsectors, skipped, done, err := sb.pubExtendedSectorToPriv(ctx, minerID, sectorInfo, nil, abi.RegisteredSealProof.RegisteredWindowPoStProof)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("gathering sector info: %w", err)
+		return nil, nil, fmt.Errorf("gathering sector info: %w", err)
 	}
 
 	defer done()
 
 	if len(skipped) > 0 {
-		return nil, skipped, xerrors.Errorf("pubSectorToPriv skipped some sectors")
+		return nil, skipped, fmt.Errorf("pubSectorToPriv skipped some sectors")
 	}
 
 	proof, faulty, err := ffi.GenerateWindowPoSt(minerID, privsectors, randomness)
@@ -113,7 +113,7 @@ func (sb *Sealer) pubExtendedSectorToPriv(ctx context.Context, mid abi.ActorID, 
 		postProofType, err := rpt(s.SealProof)
 		if err != nil {
 			done()
-			return ffi.SortedPrivateSectorInfo{}, nil, nil, xerrors.Errorf("acquiring registered PoSt proof from sector info %+v: %w", s, err)
+			return ffi.SortedPrivateSectorInfo{}, nil, nil, fmt.Errorf("acquiring registered PoSt proof from sector info %+v: %w", s, err)
 		}
 
 		ffiInfo := ffiproof.SectorInfo{

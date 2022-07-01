@@ -3,12 +3,12 @@ package messagepool
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
@@ -27,7 +27,7 @@ func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
 	if err != nil {
 		mp.curTSLk.Unlock()
-		return xerrors.Errorf("computing basefee: %v", err)
+		return fmt.Errorf("computing basefee: %v", err)
 	}
 	baseFeeLowerBound := getBaseFeeLowerBound(baseFee, baseFeeLowerBoundFactor)
 
@@ -137,12 +137,12 @@ LOOP:
 		buf := new(bytes.Buffer)
 		err := m.MarshalCBOR(buf)
 		if err != nil {
-			return xerrors.Errorf("cannot serialize message: %v", err)
+			return fmt.Errorf("cannot serialize message: %v", err)
 		}
 
 		err = mp.api.PubSubPublish(ctx, msgsub.Topic(mp.netName), buf.Bytes())
 		if err != nil {
-			return xerrors.Errorf("cannot publish: %v", err)
+			return fmt.Errorf("cannot publish: %v", err)
 		}
 
 		count++

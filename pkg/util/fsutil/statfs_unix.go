@@ -1,15 +1,14 @@
 package fsutil
 
 import (
+	"fmt"
 	"syscall"
-
-	"golang.org/x/xerrors"
 )
 
 func Statfs(path string) (FsStat, error) {
 	var stat syscall.Statfs_t
 	if err := syscall.Statfs(path, &stat); err != nil {
-		return FsStat{}, xerrors.Errorf("statfs: %w", err)
+		return FsStat{}, fmt.Errorf("statfs: %w", err)
 	}
 
 	// force int64 to handle platform specific differences

@@ -2,13 +2,13 @@ package messagepool
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"sort"
 	"time"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	tbig "github.com/filecoin-project/go-state-types/big"
@@ -207,7 +207,7 @@ func (mp *MessagePool) selectMessagesOptimal(ctx context.Context, curTS, ts *typ
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
 	if err != nil {
-		return nil, xerrors.Errorf("computing basefee: %w", err)
+		return nil, fmt.Errorf("computing basefee: %w", err)
 	}
 
 	if len(pending) == 0 {
@@ -448,7 +448,7 @@ func (mp *MessagePool) selectMessagesGreedy(ctx context.Context, curTS, ts *type
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
 	if err != nil {
-		return nil, xerrors.Errorf("computing basefee: %w", err)
+		return nil, fmt.Errorf("computing basefee: %w", err)
 	}
 
 	if len(pending) == 0 {
@@ -720,7 +720,7 @@ func (mp *MessagePool) getPendingMessages(ctx context.Context, curTS, ts *types.
 	}
 
 	if err := mp.runHeadChange(ctx, curTS, ts, result); err != nil {
-		return nil, xerrors.Errorf("failed to process difference between mpool head and given head: %w", err)
+		return nil, fmt.Errorf("failed to process difference between mpool head and given head: %w", err)
 	}
 
 	return result, nil

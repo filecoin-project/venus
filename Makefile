@@ -42,11 +42,7 @@ build-dep/.update-modules: build-dep;
 	git submodule update --init --recursive
 	touch $@
 
-gen-all: cborgen gogen inline-gen api-gen
-
-gen-asset:
-	go-bindata -pkg=asset -o ./fixtures/asset/asset.go ./fixtures/_assets/car/ ./fixtures/_assets/proof-params/ ./fixtures/_assets/arch-diagram.monopic
-	gofmt -s -l -w ./fixtures/asset/asset.go
+gen-all: cborgen gogen inline-gen api-gen bundle-gen
 
 ### devtool ###
 cborgen:
@@ -60,6 +56,9 @@ inline-gen:
 
 test-venus-shared:
 	cd venus-shared && go test -covermode=set ./...
+
+bundle-gen:
+	cd venus-devtool && go run ./bundle-gen/*.go  --dst ./../venus-shared/builtin-actors/builtin_actors_gen.go
 
 api-gen:
 	cd ./venus-devtool/ && go run ./api-gen/ proxy
@@ -99,7 +98,7 @@ test:
 	go build -o gengen ./tools/gengen
 	./gengen --keypath ./fixtures/live --out-car ./fixtures/live/genesis.car --out-json  ./fixtures/live/gen.json --config ./fixtures/setup.json
 	./gengen --keypath ./fixtures/test --out-car ./fixtures/test/genesis.car --out-json  ./fixtures/test/gen.json --config ./fixtures/setup.json
-	 go test  -v ./... -integration=true -unit=false
+	go test  -v ./... -integration=true -unit=false
 
 lint: $(BUILD_DEPS)
 	staticcheck ./...
@@ -115,11 +114,9 @@ build: $(BUILD_DEPS)
 	go build -o ./venus $(GOFLAGS) .
 
 
-
-
 .PHONY: docker
 
-BUILD_DOCKER_PROXY=
+
 docker-buildenv:
 	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) -t filvenus/venus-buildenv -f docker/venus-buildenv.dockerfile .
 

@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
 )
 
 var (
@@ -76,7 +75,7 @@ func (ti *TipStateCache) Get(ctx context.Context, ts *types.TipSet) (TSState, er
 	if !ok {
 		tipSetMetadata, err := ti.loader.LoadTipsetMetadata(ctx, ts)
 		if err != nil {
-			return TSState{}, xerrors.New("state not exit")
+			return TSState{}, errors.New("state not exit")
 		}
 		ti.Put(tipSetMetadata)
 

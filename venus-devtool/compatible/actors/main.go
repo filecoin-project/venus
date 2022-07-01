@@ -207,6 +207,8 @@ var replicaCmd = &cli.Command{
 			{"dtypes.NetworkName", "string"},
 			{"\"github.com/filecoin-project/lotus/node/modules/dtypes\"", ""},
 			{"\"github.com/filecoin-project/lotus/chain/types\"", "types \"github.com/filecoin-project/venus/venus-shared/internal\""},
+			{"\"github.com/filecoin-project/lotus/blockstore\"", "blockstore \"github.com/filecoin-project/venus/pkg/util/blockstoreutil\""},
+			{"golang.org/x/xerrors", "fmt"},
 		}
 
 		for _, file := range files {

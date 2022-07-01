@@ -7,10 +7,11 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"github.com/filecoin-project/venus/venus-devtool/util"
 )
 
 const (
@@ -111,11 +112,13 @@ func main() {
 
 		if rewrite {
 			fmt.Printf("write %s\n", path)
-			if err := ioutil.WriteFile(path, []byte(strings.Join(outLines, "\n")), 0664); err != nil {
+			formatted, err := util.FmtFile("", []byte(strings.Join(outLines, "\n")))
+			if err != nil {
 				return err
 			}
-
-			fmtFile(path)
+			if err := ioutil.WriteFile(path, formatted, 0664); err != nil {
+				return err
+			}
 		}
 
 		return nil
@@ -123,8 +126,4 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func fmtFile(path string) {
-	exec.Command("gofmt", "-s", "-l", "-w", path).Run()
 }
