@@ -60,7 +60,18 @@
     - [ ] 准备changelog
     - [ ] `tag`为`vX.Y.Z`
     - [ ] 版本发布至`releases`（注：[github](https://github.com/filecoin-project/venus/releases)有区分`tag`和`releases`）
+    - [ ] 检查是否有`PR`单独提交至`release/vX.Y.Z`分支，并提交`Release back to master`的`PR`
     - [ ] 创建新版本的discussion讨论帖
+
+<!-- 
+
+关于Release back to master解释：
+
+在开发release/vX.Y.Z分支的过程中，可能有些PR只提交了release/vX.Y.Z，但是没有合并至master，例如 升级epoch，bug修复，版本提升等等。
+
+那么当发版结束时，需要提交题为，chore: releases back to master的PR。把只合并到release/vX.Y.Z分支的PR合回master。参考：https://github.com/filecoin-project/lotus/pull/8929
+
+-->
 
 
 - [ ] **发版后**
