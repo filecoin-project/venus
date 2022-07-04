@@ -154,5 +154,5 @@ type IMarket interface {
 
 	RemovePieceStorage(ctx context.Context, name string) error //perm:admin
 
-	GetPieceStorages(ctx context.Context) market.PieceStorageList //perm:read
+	GetPieceStorages(ctx context.Context) market.PieceStorageInfos //perm:read
 }
