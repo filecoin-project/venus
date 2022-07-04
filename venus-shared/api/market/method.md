@@ -4,6 +4,8 @@
   * [ActorExist](#ActorExist)
   * [ActorList](#ActorList)
   * [ActorSectorSize](#ActorSectorSize)
+  * [AddFsPieceStorage](#AddFsPieceStorage)
+  * [AddS3PieceStorage](#AddS3PieceStorage)
   * [AssignUnPackedDeals](#AssignUnPackedDeals)
   * [DagstoreGC](#DagstoreGC)
   * [DagstoreInitializeAll](#DagstoreInitializeAll)
@@ -26,6 +28,7 @@
   * [DealsSetConsiderVerifiedStorageDeals](#DealsSetConsiderVerifiedStorageDeals)
   * [DealsSetPieceCidBlocklist](#DealsSetPieceCidBlocklist)
   * [GetDeals](#GetDeals)
+  * [GetPieceStorages](#GetPieceStorages)
   * [GetReadUrl](#GetReadUrl)
   * [GetUnPackedDeals](#GetUnPackedDeals)
   * [GetWriteUrl](#GetWriteUrl)
@@ -65,6 +68,7 @@
   * [PiecesGetPieceInfo](#PiecesGetPieceInfo)
   * [PiecesListCidInfos](#PiecesListCidInfos)
   * [PiecesListPieces](#PiecesListPieces)
+  * [RemovePieceStorage](#RemovePieceStorage)
   * [ResponseMarketEvent](#ResponseMarketEvent)
   * [SectorGetSealDelay](#SectorGetSealDelay)
   * [SectorSetExpectedSealDuration](#SectorSetExpectedSealDuration)
@@ -118,6 +122,41 @@ Inputs:
 ```
 
 Response: `34359738368`
+
+### AddFsPieceStorage
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  true,
+  "string value",
+  "string value"
+]
+```
+
+Response: `{}`
+
+### AddS3PieceStorage
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  true,
+  "string value",
+  "string value",
+  "string value",
+  "string value",
+  "string value"
+]
+```
+
+Response: `{}`
 
 ### AssignUnPackedDeals
 
@@ -536,6 +575,33 @@ Response:
     "Status": "Undefine"
   }
 ]
+```
+
+### GetPieceStorages
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "FsStorage": [
+    {
+      "Path": "string value",
+      "Name": "string value",
+      "ReadOnly": true
+    }
+  ],
+  "S3Storage": [
+    {
+      "Name": "string value",
+      "ReadOnly": true,
+      "EndPoint": "string value"
+    }
+  ]
+}
 ```
 
 ### GetReadUrl
@@ -1662,6 +1728,20 @@ Response:
   }
 ]
 ```
+
+### RemovePieceStorage
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
 
 ### ResponseMarketEvent
 market event
