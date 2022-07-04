@@ -3,6 +3,7 @@ package vmcontext
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
@@ -14,7 +15,6 @@ import (
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/ipfs/go-cid"
 	ipfscbor "github.com/ipfs/go-ipld-cbor"
-	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
@@ -39,7 +39,7 @@ type topLevelContext struct {
 
 // Context for an individual message invocation, including inter-actor sends.
 type invocationContext struct {
-	vm                *VM
+	vm                *LegacyVM
 	topLevel          *topLevelContext
 	originMsg         VmMessage //msg not trasfer from and to address
 	msg               VmMessage // The message being processed
@@ -56,7 +56,7 @@ type internalActorStateHandle interface {
 	rt5.StateHandle
 }
 
-func newInvocationContext(rt *VM, gasIpld ipfscbor.IpldStore, topLevel *topLevelContext, msg VmMessage,
+func newInvocationContext(rt *LegacyVM, gasIpld ipfscbor.IpldStore, topLevel *topLevelContext, msg VmMessage,
 	gasTank *gas.GasTracker, randSource HeadChainRandomness, parent *invocationContext) invocationContext {
 	orginMsg := msg
 	ctx := invocationContext{
@@ -327,7 +327,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 		if err != nil {
 			panic(err)
 		}
-		actorCode, err := account.GetActorCodeID(ver)
+		actorCode, err := builtin.GetAccountActorCodeID(ver)
 		if err != nil {
 			panic(err)
 		}
@@ -389,12 +389,12 @@ func (ctx *invocationContext) resolveToKeyAddr(addr address.Address) (address.Ad
 
 	act, found, err := ctx.vm.State.GetActor(ctx.vm.context, addr)
 	if !found || err != nil {
-		return address.Undef, xerrors.Errorf("failed to find actor: %s", addr)
+		return address.Undef, fmt.Errorf("failed to find actor: %s", addr)
 	}
 
 	aast, err := account.Load(adt.WrapStore(ctx.vm.context, ctx.vm.store), act)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to get account actor State for %s: %v", addr, err)
+		return address.Undef, fmt.Errorf("failed to get account actor State for %s: %v", addr, err)
 	}
 
 	return aast.PubkeyAddress()
@@ -472,7 +472,7 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 func (ctx *invocationContext) Balance() abi.TokenAmount {
 	toActor, found, err := ctx.vm.State.GetActor(ctx.vm.context, ctx.originMsg.To)
 	if err != nil {
-		panic(xerrors.Errorf("cannot find to actor %v", err))
+		panic(fmt.Errorf("cannot find to actor %v", err))
 	}
 	if !found {
 		return abi.NewTokenAmount(0)
@@ -555,7 +555,7 @@ func (ctx *invocationContext) DeleteActor(beneficiary address.Address) {
 	ctx.gasTank.Charge(ctx.vm.pricelist.OnDeleteActor(), "DeleteActor %s", receiver)
 	receiverActor, found, err := ctx.vm.State.GetActor(ctx.vm.context, receiver)
 	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if errors.Is(err, types.ErrActorNotFound) {
 			runtime.Abortf(exitcode.SysErrorIllegalActor, "failed to load actor in delete actor: %s", err)
 		}
 		panic(aerrors.Fatalf("failed to get actor: %s", err))
@@ -605,7 +605,7 @@ var _ runtime.PatternContext = (*patternContext2)(nil)
 func (ctx *patternContext2) CallerCode() cid.Cid {
 	toActor, found, err := ctx.vm.State.GetActor(ctx.vm.context, ctx.originMsg.From)
 	if err != nil || !found {
-		panic(xerrors.Errorf("cannt find to actor %v", err))
+		panic(fmt.Errorf("cannt find to actor %v", err))
 	}
 	return toActor.Code
 }

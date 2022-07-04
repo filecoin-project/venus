@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -28,7 +29,7 @@ func SetupStoragePowerActor(ctx context.Context, bs bstore.Blockstore, av actors
 		return nil, err
 	}
 
-	actcid, err := power.GetActorCodeID(av)
+	actcid, err := builtin.GetPowerActorCodeID(av)
 	if err != nil {
 		return nil, err
 	}

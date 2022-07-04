@@ -5,11 +5,12 @@ package market
 import (
 	"bytes"
 
+	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
@@ -201,14 +202,24 @@ func (s *dealProposals2) Get(dealID abi.DealID) (*DealProposal, bool, error) {
 	if !found {
 		return nil, false, nil
 	}
-	proposal := fromV2DealProposal(proposal2)
+
+	proposal, err := fromV2DealProposal(proposal2)
+	if err != nil {
+		return nil, true, fmt.Errorf("decoding proposal: %w", err)
+	}
+
 	return &proposal, true, nil
 }
 
 func (s *dealProposals2) ForEach(cb func(dealID abi.DealID, dp DealProposal) error) error {
 	var dp2 market2.DealProposal
 	return s.Array.ForEach(&dp2, func(idx int64) error {
-		return cb(abi.DealID(idx), fromV2DealProposal(dp2))
+		dp, err := fromV2DealProposal(dp2)
+		if err != nil {
+			return fmt.Errorf("decoding proposal: %w", err)
+		}
+
+		return cb(abi.DealID(idx), dp)
 	})
 }
 
@@ -217,7 +228,12 @@ func (s *dealProposals2) decode(val *cbg.Deferred) (*DealProposal, error) {
 	if err := dp2.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
-	dp := fromV2DealProposal(dp2)
+
+	dp, err := fromV2DealProposal(dp2)
+	if err != nil {
+		return nil, err
+	}
+
 	return &dp, nil
 }
 
@@ -225,8 +241,29 @@ func (s *dealProposals2) array() adt.Array {
 	return s.Array
 }
 
-func fromV2DealProposal(v2 market2.DealProposal) DealProposal {
-	return (DealProposal)(v2)
+func fromV2DealProposal(v2 market2.DealProposal) (DealProposal, error) {
+
+	label, err := labelFromGoString(v2.Label)
+	if err != nil {
+		return DealProposal{}, fmt.Errorf("error setting deal label: %w", err)
+	}
+
+	return DealProposal{
+		PieceCID:     v2.PieceCID,
+		PieceSize:    v2.PieceSize,
+		VerifiedDeal: v2.VerifiedDeal,
+		Client:       v2.Client,
+		Provider:     v2.Provider,
+
+		Label: label,
+
+		StartEpoch:           v2.StartEpoch,
+		EndEpoch:             v2.EndEpoch,
+		StoragePricePerEpoch: v2.StoragePricePerEpoch,
+
+		ProviderCollateral: v2.ProviderCollateral,
+		ClientCollateral:   v2.ClientCollateral,
+	}, nil
 }
 
 func (s *state2) GetState() interface{} {
@@ -238,7 +275,7 @@ var _ PublishStorageDealsReturn = (*publishStorageDealsReturn2)(nil)
 func decodePublishStorageDealsReturn2(b []byte) (PublishStorageDealsReturn, error) {
 	var retval market2.PublishStorageDealsReturn
 	if err := retval.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
-		return nil, xerrors.Errorf("failed to unmarshal PublishStorageDealsReturn: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal PublishStorageDealsReturn: %w", err)
 	}
 
 	return &publishStorageDealsReturn2{retval}, nil
@@ -248,10 +285,10 @@ type publishStorageDealsReturn2 struct {
 	market2.PublishStorageDealsReturn
 }
 
-func (r *publishStorageDealsReturn2) IsDealValid(index uint64) (bool, error) {
+func (r *publishStorageDealsReturn2) IsDealValid(index uint64) (bool, int, error) {
 
 	// PublishStorageDeals only succeeded if all deals were valid in this version of actors
-	return true, nil
+	return true, int(index), nil
 
 }
 

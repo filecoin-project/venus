@@ -2,6 +2,7 @@ package blockstoreutil
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/dgraph-io/badger/v2"
@@ -10,7 +11,6 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/keytransform"
 	dshelp "github.com/ipfs/go-ipfs-ds-help"
-	xerrors "github.com/pkg/errors"
 )
 
 var _ Blockstore = (*TxBlockstore)(nil)
@@ -22,7 +22,11 @@ type TxBlockstore struct {
 }
 
 func (txBlockstore *TxBlockstore) DeleteBlock(ctx context.Context, cid cid.Cid) error {
-	return xerrors.New("readonly blocksgtore")
+	return errors.New("readonly blocksgtore")
+}
+
+func (txBlockstore *TxBlockstore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
+	return errors.New("readonly blocksgtore")
 }
 
 func (txBlockstore *TxBlockstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
@@ -80,6 +84,42 @@ func (txBlockstore *TxBlockstore) Get(ctx context.Context, cid cid.Cid) (blocks.
 	return blk, nil
 }
 
+func (txBlockstore *TxBlockstore) View(ctx context.Context, cid cid.Cid, callback func([]byte) error) error {
+	if !cid.Defined() {
+		return ErrNotFound
+	}
+
+	key := txBlockstore.ConvertKey(cid)
+	if txBlockstore.cache != nil {
+		if val, has := txBlockstore.cache.Get(key.String()); has {
+			return callback(val.(blocks.Block).RawData())
+		}
+	}
+
+	var val []byte
+	var err error
+	var item *badger.Item
+	switch item, err = txBlockstore.tx.Get(key.Bytes()); err {
+	case nil:
+		val, err = item.ValueCopy(nil)
+	case badger.ErrKeyNotFound:
+		return ErrNotFound
+	default:
+		return fmt.Errorf("failed to get block from badger blockstore: %w", err)
+	}
+	if err != nil {
+		return err
+	}
+
+	blk, err := blocks.NewBlockWithCid(val, cid)
+	if err != nil {
+		return err
+	}
+
+	txBlockstore.cache.Add(key.String(), blk)
+	return callback(blk.RawData())
+}
+
 func (txBlockstore *TxBlockstore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 	key := txBlockstore.ConvertKey(cid)
 	if txBlockstore.cache != nil {
@@ -103,11 +143,11 @@ func (txBlockstore *TxBlockstore) GetSize(ctx context.Context, cid cid.Cid) (int
 }
 
 func (txBlockstore *TxBlockstore) Put(ctx context.Context, block blocks.Block) error {
-	return xerrors.New("readonly blocksgtore")
+	return errors.New("readonly blocksgtore")
 }
 
 func (txBlockstore *TxBlockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
-	return xerrors.New("readonly blocksgtore")
+	return errors.New("readonly blocksgtore")
 }
 
 func (txBlockstore *TxBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {

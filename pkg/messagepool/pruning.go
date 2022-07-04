@@ -2,13 +2,14 @@ package messagepool
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sort"
 	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 )
 
 func (mp *MessagePool) pruneExcessMessages() error {
@@ -32,7 +33,7 @@ func (mp *MessagePool) pruneExcessMessages() error {
 		}()
 		return err
 	default:
-		return xerrors.New("cannot prune before cooldown")
+		return errors.New("cannot prune before cooldown")
 	}
 }
 
@@ -44,7 +45,7 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 
 	baseFee, err := mp.api.ChainComputeBaseFee(ctx, ts)
 	if err != nil {
-		return xerrors.Errorf("computing basefee: %v", err)
+		return fmt.Errorf("computing basefee: %v", err)
 	}
 	baseFeeLowerBound := getBaseFeeLowerBound(baseFee, baseFeeLowerBoundFactor)
 

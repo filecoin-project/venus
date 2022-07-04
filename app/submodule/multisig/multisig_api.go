@@ -2,12 +2,12 @@ package multisig
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
@@ -76,7 +76,7 @@ func (a *multiSig) MsigPropose(ctx context.Context, msig address.Address, to add
 
 	msg, err := mb.Propose(msig, to, amt, abi.MethodNum(method), params)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to create proposal: %w", err)
+		return nil, fmt.Errorf("failed to create proposal: %w", err)
 	}
 
 	return &types.MessagePrototype{
@@ -195,16 +195,16 @@ func (a *multiSig) MsigRemoveSigner(ctx context.Context, msig address.Address, p
 func (a *multiSig) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
 	startTS, err := a.state.ChainGetTipSet(ctx, start)
 	if err != nil {
-		return types.EmptyInt, xerrors.Errorf("loading start tipset %s: %w", start, err)
+		return types.EmptyInt, fmt.Errorf("loading start tipset %s: %w", start, err)
 	}
 
 	endTS, err := a.state.ChainGetTipSet(ctx, end)
 	if err != nil {
-		return types.EmptyInt, xerrors.Errorf("loading end tipset %s: %w", end, err)
+		return types.EmptyInt, fmt.Errorf("loading end tipset %s: %w", end, err)
 	}
 
 	if startTS.Height() > endTS.Height() {
-		return types.EmptyInt, xerrors.Errorf("start tipset %d is after end tipset %d", startTS.Height(), endTS.Height())
+		return types.EmptyInt, fmt.Errorf("start tipset %d is after end tipset %d", startTS.Height(), endTS.Height())
 	} else if startTS.Height() == endTS.Height() {
 		return big.Zero(), nil
 	}
@@ -212,22 +212,22 @@ func (a *multiSig) MsigGetVested(ctx context.Context, addr address.Address, star
 	//LoadActor(ctx, addr, endTs)
 	act, err := a.state.GetParentStateRootActor(ctx, endTS, addr)
 	if err != nil {
-		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor at end epoch: %w", err)
+		return types.EmptyInt, fmt.Errorf("failed to load multisig actor at end epoch: %w", err)
 	}
 
 	msas, err := multisig.Load(a.store.Store(ctx), act)
 	if err != nil {
-		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state: %w", err)
+		return types.EmptyInt, fmt.Errorf("failed to load multisig actor state: %w", err)
 	}
 
 	startLk, err := msas.LockedBalance(startTS.Height())
 	if err != nil {
-		return types.EmptyInt, xerrors.Errorf("failed to compute locked balance at start height: %w", err)
+		return types.EmptyInt, fmt.Errorf("failed to compute locked balance at start height: %w", err)
 	}
 
 	endLk, err := msas.LockedBalance(endTS.Height())
 	if err != nil {
-		return types.EmptyInt, xerrors.Errorf("failed to compute locked balance at end height: %w", err)
+		return types.EmptyInt, fmt.Errorf("failed to compute locked balance at end height: %w", err)
 	}
 
 	return types.BigSub(startLk, endLk), nil
@@ -235,11 +235,11 @@ func (a *multiSig) MsigGetVested(ctx context.Context, addr address.Address, star
 
 func (a *multiSig) msigApproveOrCancelSimple(ctx context.Context, operation MsigProposeResponse, msig address.Address, txID uint64, src address.Address) (*types.MessagePrototype, error) {
 	if msig == address.Undef {
-		return nil, xerrors.Errorf("must provide multisig address")
+		return nil, fmt.Errorf("must provide multisig address")
 	}
 
 	if src == address.Undef {
-		return nil, xerrors.Errorf("must provide source address")
+		return nil, fmt.Errorf("must provide source address")
 	}
 
 	mb, err := a.messageBuilder(ctx, src)
@@ -254,7 +254,7 @@ func (a *multiSig) msigApproveOrCancelSimple(ctx context.Context, operation Msig
 	case MsigCancel:
 		msg, err = mb.Cancel(msig, txID, nil)
 	default:
-		return nil, xerrors.Errorf("Invalid operation for msigApproveOrCancel")
+		return nil, fmt.Errorf("invalid operation for msigApproveOrCancel")
 	}
 	if err != nil {
 		return nil, err
@@ -265,11 +265,11 @@ func (a *multiSig) msigApproveOrCancelSimple(ctx context.Context, operation Msig
 
 func (a *multiSig) msigApproveOrCancelTxnHash(ctx context.Context, operation MsigProposeResponse, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*types.MessagePrototype, error) {
 	if msig == address.Undef {
-		return nil, xerrors.Errorf("must provide multisig address")
+		return nil, fmt.Errorf("must provide multisig address")
 	}
 
 	if src == address.Undef {
-		return nil, xerrors.Errorf("must provide source address")
+		return nil, fmt.Errorf("must provide source address")
 	}
 
 	if proposer.Protocol() != address.ID {
@@ -300,7 +300,7 @@ func (a *multiSig) msigApproveOrCancelTxnHash(ctx context.Context, operation Msi
 	case MsigCancel:
 		msg, err = mb.Cancel(msig, txID, &p)
 	default:
-		return nil, xerrors.Errorf("Invalid operation for msigApproveOrCancel")
+		return nil, fmt.Errorf("invalid operation for msigApproveOrCancel")
 	}
 	if err != nil {
 		return nil, err

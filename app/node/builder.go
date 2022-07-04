@@ -2,14 +2,12 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
 	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
-
-	"github.com/ipfs-force-community/metrics/ratelimit"
 
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/app/submodule/chain"
@@ -34,6 +32,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/ipfs-force-community/metrics/ratelimit"
 )
 
 // Builder is a helper to aid in the construction of a filecoin node.
@@ -198,7 +197,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if nd.remoteAuth != nil && cfg.RateLimitCfg.Enable {
 		if ratelimiter, err = ratelimit.NewRateLimitHandler(cfg.RateLimitCfg.Endpoint,
 			nil, &jwtauth.ValueFromCtx{}, nd.remoteAuth, logging.Logger("rate-limit")); err != nil {
-			return nil, xerrors.Errorf("request rate-limit is enabled, but create rate-limit handler failed:%w", err)
+			return nil, fmt.Errorf("request rate-limit is enabled, but create rate-limit handler failed:%w", err)
 		}
 		_ = logging.SetLogLevel("rate-limit", "warn")
 	}

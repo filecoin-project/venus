@@ -8,9 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
-	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -106,7 +104,7 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 	curTS := mp.curTS
 	mp.curTSLk.Unlock()
 
-	epoch := curTS.Height()
+	epoch := curTS.Height() + 1
 
 	var baseFee big.Int
 	if len(curTS.Blocks()) > 0 {
@@ -114,7 +112,7 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 	} else {
 		baseFee, err = mp.api.ChainComputeBaseFee(context.Background(), curTS)
 		if err != nil {
-			return nil, xerrors.Errorf("error computing basefee: %w", err)
+			return nil, fmt.Errorf("error computing basefee: %w", err)
 		}
 	}
 
@@ -259,7 +257,8 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 			},
 		}
 
-		if err := m.ValidForBlockInclusion(0, constants.NewestNetworkVersion); err != nil {
+		nv := mp.sm.GetNetworkVersion(ctx, epoch)
+		if err := m.ValidForBlockInclusion(0, nv); err != nil {
 			check.OK = false
 			check.Err = fmt.Sprintf("syntactically invalid message: %s", err.Error())
 		} else {

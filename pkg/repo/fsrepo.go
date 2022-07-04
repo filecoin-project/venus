@@ -26,7 +26,7 @@ import (
 )
 
 // Version is the version of repo schema that this code understands.
-const LatestVersion uint = 7
+const LatestVersion uint = 8
 
 const (
 	// apiFile is the filename containing the filecoin node's api address.

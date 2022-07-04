@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 
 	tutils "github.com/filecoin-project/specs-actors/v6/support/testing"
@@ -672,7 +673,7 @@ func checkWithdrawMessageFields(t *testing.T, msg *types.Message, from address.A
 	require.Equal(t, market.Address, msg.To)
 	require.Equal(t, abi.NewTokenAmount(0), msg.Value)
 
-	var params market.WithdrawBalanceParams
+	var params markettypes.WithdrawBalanceParams
 	err := params.UnmarshalCBOR(bytes.NewReader(msg.Params))
 	require.NoError(t, err)
 	require.Equal(t, addr, params.ProviderOrClientAddress)
@@ -753,7 +754,7 @@ func (mapi *mockFundManagerAPI) completeMsg(msgCid cid.Cid) {
 			mapi.escrow[escrowAcct] = escrow
 			log.Debugf("%s:   escrow %d -> %d", escrowAcct, before, escrow)
 		} else {
-			var params market.WithdrawBalanceParams
+			var params markettypes.WithdrawBalanceParams
 			err := params.UnmarshalCBOR(bytes.NewReader(pmsg.msg.Message.Params))
 			if err != nil {
 				panic(err)

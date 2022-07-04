@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	"sync"
 	"testing"
 
@@ -241,7 +239,7 @@ func (fcs *fakeCS) ChainNotify(ctx context.Context) (<-chan []*types.HeadChange,
 	out := make(chan []*types.HeadChange, 1)
 	if fcs.subCh != nil {
 		close(out)
-		return out, xerrors.Errorf("already subscribed to notifications")
+		return out, fmt.Errorf("already subscribed to notifications")
 	}
 
 	best, err := fcs.tsc.ChainHead(ctx)
@@ -1601,4 +1599,37 @@ func TestReconnect(t *testing.T) {
 	// drop with nulls
 	fcs.advance(0, 5, 2, nil, 0, 1, 3)
 	require.True(t, fcs.callNumber["ChainGetPath"] == 4)
+}
+
+func TestUnregister(t *testing.T) {
+	tf.UnitTest(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	fcs := newFakeCS(t)
+
+	events, err := NewEvents(ctx, fcs)
+	require.NoError(t, err)
+
+	tsObs := &testObserver{t: t}
+	events.Observe(tsObs)
+
+	// observer receives heads as the chain advances
+	fcs.advance(0, 1, 0, nil)
+	headBeforeDeregister := events.lastTS
+	require.Equal(t, tsObs.head, headBeforeDeregister)
+
+	// observer unregistered successfully
+	found := events.Unregister(tsObs)
+	require.True(t, found)
+
+	// observer stops receiving heads as the chain advances
+	fcs.advance(0, 1, 0, nil)
+	require.Equal(t, tsObs.head, headBeforeDeregister)
+	require.NotEqual(t, tsObs.head, events.lastTS)
+
+	// unregistering an invalid observer returns false
+	dneObs := &testObserver{t: t}
+	found = events.Unregister(dneObs)
+	require.False(t, found)
 }

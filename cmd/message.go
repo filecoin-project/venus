@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
@@ -19,10 +17,10 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/utils"
 )
 
 var feecapOption = cmds.StringOption("gas-feecap", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
@@ -100,7 +98,7 @@ var msgSendCmd = &cmds.Command{
 		v := req.Arguments[1]
 		val, err := types.ParseFIL(v)
 		if err != nil {
-			return xerrors.Errorf("mal-formed value: %v", err)
+			return fmt.Errorf("mal-formed value: %v", err)
 		}
 
 		methodID := builtin.MethodSend
@@ -120,6 +118,10 @@ var msgSendCmd = &cmds.Command{
 
 		feecap, premium, gasLimit, err := parseGasOptions(req)
 		if err != nil {
+			return err
+		}
+
+		if err := utils.LoadBuiltinActors(req.Context, env.(*node.Env).ChainAPI); err != nil {
 			return err
 		}
 
@@ -161,7 +163,7 @@ var msgSendCmd = &cmds.Command{
 		if nonceOption != nil {
 			nonce, ok := nonceOption.(uint64)
 			if !ok {
-				return xerrors.Errorf("invalid nonce option: %v", nonceOption)
+				return fmt.Errorf("invalid nonce option: %v", nonceOption)
 			}
 			msg.Nonce = nonce
 
@@ -193,7 +195,7 @@ func decodeTypedParams(ctx context.Context, fapi *node.Env, to address.Address, 
 		return nil, err
 	}
 
-	methodMeta, found := chain.MethodsMap[act.Code][method]
+	methodMeta, found := utils.MethodsMap[act.Code][method]
 	if !found {
 		return nil, fmt.Errorf("method %d not found on actor %s", method, act.Code)
 	}

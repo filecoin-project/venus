@@ -19,6 +19,14 @@ type GasChargeBlockStore struct {
 	inner     cbor.IpldBlockstore
 }
 
+func NewGasChargeBlockStore(gasTank *gas.GasTracker, pricelist gas.Pricelist, inner cbor.IpldBlockstore) *GasChargeBlockStore {
+	return &GasChargeBlockStore{
+		gasTank:   gasTank,
+		pricelist: pricelist,
+		inner:     inner,
+	}
+}
+
 //Get charge gas and than get the value of cid
 func (bs *GasChargeBlockStore) Get(ctx context.Context, c cid.Cid) (blocks.Block, error) {
 	bs.gasTank.Charge(bs.pricelist.OnIpldGet(), "storage get %s", c)

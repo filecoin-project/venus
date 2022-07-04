@@ -2,6 +2,8 @@ package messagepool
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -13,7 +15,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"golang.org/x/xerrors"
 )
 
 var (
@@ -99,11 +100,11 @@ func (mpp *mpoolProvider) GetActorAfter(ctx context.Context, addr address.Addres
 	if mpp.IsLite() {
 		n, err := mpp.lite.GetNonce(ctx, addr, ts.Key())
 		if err != nil {
-			return nil, xerrors.Errorf("getting nonce over lite: %w", err)
+			return nil, fmt.Errorf("getting nonce over lite: %w", err)
 		}
 		a, err := mpp.lite.GetActor(ctx, addr, ts.Key())
 		if err != nil {
-			return nil, xerrors.Errorf("getting actor over lite: %w", err)
+			return nil, fmt.Errorf("getting actor over lite: %w", err)
 		}
 		a.Nonce = n
 		return a, nil
@@ -111,12 +112,12 @@ func (mpp *mpoolProvider) GetActorAfter(ctx context.Context, addr address.Addres
 
 	st, err := mpp.stmgr.TipsetState(ctx, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("computing tipset state for GetActor: %v", err)
+		return nil, fmt.Errorf("computing tipset state for GetActor: %v", err)
 	}
 
 	act, found, err := st.GetActor(ctx, addr)
 	if !found {
-		err = xerrors.New("actor not found")
+		err = errors.New("actor not found")
 	}
 
 	return act, err
@@ -127,7 +128,7 @@ func (mpp *mpoolProvider) StateAccountKeyAtFinality(ctx context.Context, addr ad
 	if ts.Height() > policy.ChainFinality {
 		ts, err = mpp.sm.GetTipSetByHeight(ctx, ts, ts.Height()-policy.ChainFinality, true)
 		if err != nil {
-			return address.Undef, xerrors.Errorf("failed to load lookback tipset: %w", err)
+			return address.Undef, fmt.Errorf("failed to load lookback tipset: %w", err)
 		}
 	}
 	return mpp.stmgr.ResolveToKeyAddress(ctx, addr, ts)
@@ -153,7 +154,7 @@ func (mpp *mpoolProvider) LoadTipSet(ctx context.Context, tsk types.TipSetKey) (
 func (mpp *mpoolProvider) ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (tbig.Int, error) {
 	baseFee, err := mpp.cms.ComputeBaseFee(ctx, ts, mpp.config.ForkUpgradeParam)
 	if err != nil {
-		return tbig.NewInt(0), xerrors.Errorf("computing base fee at %s: %v", ts, err)
+		return tbig.NewInt(0), fmt.Errorf("computing base fee at %s: %v", ts, err)
 	}
 	return baseFee, nil
 }

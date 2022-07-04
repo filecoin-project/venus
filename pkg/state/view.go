@@ -2,20 +2,22 @@ package state
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	xerrors "github.com/pkg/errors"
 
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
@@ -23,7 +25,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
 	notinit "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	lminer "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	paychActor "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
@@ -89,7 +91,7 @@ func (v *View) InitResolveAddress(ctx context.Context, a addr.Address) (addr.Add
 	}
 
 	if !found {
-		return addr.Undef, xerrors.Errorf("not found resolve address")
+		return addr.Undef, fmt.Errorf("not found resolve address")
 	}
 
 	return rAddr, nil
@@ -110,7 +112,7 @@ func (v *View) GetMinerWorkerRaw(ctx context.Context, maddr addr.Address) (addr.
 }
 
 // MinerInfo returns info about the indicated miner
-func (v *View) MinerInfo(ctx context.Context, maddr addr.Address, nv network.Version) (*miner.MinerInfo, error) {
+func (v *View) MinerInfo(ctx context.Context, maddr addr.Address, nv network.Version) (*lminer.MinerInfo, error) {
 	minerState, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, err
@@ -143,35 +145,35 @@ func (v *View) MinerSectorInfo(ctx context.Context, maddr addr.Address, sectorNu
 func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, maddr addr.Address, rand abi.PoStRandomness) ([]builtin.ExtendedSectorInfo, error) {
 	mas, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load miner actor state: %s", err)
+		return nil, fmt.Errorf("failed to load miner actor state: %s", err)
 	}
 
 	var provingSectors bitfield.BitField
 	if nv < network.Version7 {
-		allSectors, err := miner.AllPartSectors(mas, miner.Partition.AllSectors)
+		allSectors, err := lminer.AllPartSectors(mas, lminer.Partition.AllSectors)
 		if err != nil {
-			return nil, xerrors.Errorf("get all sectors: %v", err)
+			return nil, fmt.Errorf("get all sectors: %v", err)
 		}
 
-		faultySectors, err := miner.AllPartSectors(mas, miner.Partition.FaultySectors)
+		faultySectors, err := lminer.AllPartSectors(mas, lminer.Partition.FaultySectors)
 		if err != nil {
-			return nil, xerrors.Errorf("get faulty sectors: %v", err)
+			return nil, fmt.Errorf("get faulty sectors: %v", err)
 		}
 
 		provingSectors, err = bitfield.SubtractBitField(allSectors, faultySectors)
 		if err != nil {
-			return nil, xerrors.Errorf("calc proving sectors: %v", err)
+			return nil, fmt.Errorf("calc proving sectors: %v", err)
 		}
 	} else {
-		provingSectors, err = miner.AllPartSectors(mas, miner.Partition.ActiveSectors)
+		provingSectors, err = lminer.AllPartSectors(mas, lminer.Partition.ActiveSectors)
 		if err != nil {
-			return nil, xerrors.Errorf("get active sectors sectors: %v", err)
+			return nil, fmt.Errorf("get active sectors sectors: %v", err)
 		}
 	}
 
 	numProvSect, err := provingSectors.Count()
 	if err != nil {
-		return nil, xerrors.Errorf("failed to count bits: %s", err)
+		return nil, fmt.Errorf("failed to count bits: %s", err)
 	}
 
 	// TODO(review): is this right? feels fishy to me
@@ -181,27 +183,27 @@ func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version,
 
 	info, err := mas.Info()
 	if err != nil {
-		return nil, xerrors.Errorf("getting miner info: %s", err)
+		return nil, fmt.Errorf("getting miner info: %s", err)
 	}
 
 	mid, err := addr.IDFromAddress(maddr)
 	if err != nil {
-		return nil, xerrors.Errorf("getting miner ID: %s", err)
+		return nil, fmt.Errorf("getting miner ID: %s", err)
 	}
 
-	proofType, err := miner.WinningPoStProofTypeFromWindowPoStProofType(nv, info.WindowPoStProofType)
+	proofType, err := lminer.WinningPoStProofTypeFromWindowPoStProofType(nv, info.WindowPoStProofType)
 	if err != nil {
-		return nil, xerrors.Errorf("determining winning post proof type: %v", err)
+		return nil, fmt.Errorf("determining winning post proof type: %v", err)
 	}
 
 	ids, err := pv.GenerateWinningPoStSectorChallenge(ctx, proofType, abi.ActorID(mid), rand, numProvSect)
 	if err != nil {
-		return nil, xerrors.Errorf("generating winning post challenges: %s", err)
+		return nil, fmt.Errorf("generating winning post challenges: %s", err)
 	}
 
 	iter, err := provingSectors.BitIterator()
 	if err != nil {
-		return nil, xerrors.Errorf("iterating over proving sectors: %s", err)
+		return nil, fmt.Errorf("iterating over proving sectors: %s", err)
 	}
 
 	// Select winning sectors by _index_ in the all-sectors bitfield.
@@ -210,7 +212,7 @@ func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version,
 	for _, n := range ids {
 		sno, err := iter.Nth(n - prev)
 		if err != nil {
-			return nil, xerrors.Errorf("iterating over proving sectors: %s", err)
+			return nil, fmt.Errorf("iterating over proving sectors: %s", err)
 		}
 		selectedSectors.Set(sno)
 		prev = n
@@ -218,7 +220,7 @@ func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version,
 
 	sectors, err := mas.LoadSectors(&selectedSectors)
 	if err != nil {
-		return nil, xerrors.Errorf("loading proving sectors: %s", err)
+		return nil, fmt.Errorf("loading proving sectors: %s", err)
 	}
 
 	out := make([]builtin.ExtendedSectorInfo, len(sectors))
@@ -238,17 +240,17 @@ func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version,
 func (v *View) SectorPreCommitInfo(ctx context.Context, maddr addr.Address, sid abi.SectorNumber) (*miner.SectorPreCommitOnChainInfo, error) {
 	mas, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
-		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %v", err)
+		return nil, fmt.Errorf("(get sset) failed to load miner actor: %v", err)
 	}
 
 	return mas.GetPrecommittedSector(sid)
 }
 
 // StateSectorPartition finds deadline/partition with the specified sector
-func (v *View) StateSectorPartition(ctx context.Context, maddr addr.Address, sectorNumber abi.SectorNumber) (*miner.SectorLocation, error) {
+func (v *View) StateSectorPartition(ctx context.Context, maddr addr.Address, sectorNumber abi.SectorNumber) (*lminer.SectorLocation, error) {
 	mas, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
-		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %v", err)
+		return nil, fmt.Errorf("(get sset) failed to load miner actor: %v", err)
 	}
 
 	return mas.FindSector(sectorNumber)
@@ -335,7 +337,7 @@ func (v *View) MarketDealProposal(ctx context.Context, dealID abi.DealID) (marke
 	}
 
 	if !bFound {
-		return market.DealProposal{}, xerrors.Errorf("deal %d not found", dealID)
+		return market.DealProposal{}, fmt.Errorf("deal %d not found", dealID)
 	}
 	return *proposal, nil
 }
@@ -394,7 +396,7 @@ func (v *View) StateVerifiedClientStatus(ctx context.Context, addr addr.Address)
 	}
 
 	if !found {
-		return abi.NewStoragePower(0), xerrors.New("address not found")
+		return abi.NewStoragePower(0), errors.New("address not found")
 	}
 
 	return storagePower, nil
@@ -418,7 +420,7 @@ func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*
 	}
 
 	if !found {
-		return nil, xerrors.New("deal proposal not found")
+		return nil, errors.New("deal proposal not found")
 	}
 
 	dealStates, err := state.States()
@@ -432,7 +434,7 @@ func (v *View) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID) (*
 	}
 
 	if !found {
-		return nil, xerrors.New("deal state not found")
+		return nil, errors.New("deal state not found")
 	}
 
 	return &types.MarketDeal{
@@ -479,7 +481,7 @@ func (v *View) MinerClaimedPower(ctx context.Context, miner addr.Address) (raw, 
 	}
 
 	if !found {
-		return big.Zero(), big.Zero(), xerrors.New("miner not found")
+		return big.Zero(), big.Zero(), errors.New("miner not found")
 	}
 
 	return p.RawBytePower, p.QualityAdjPower, nil
@@ -525,20 +527,20 @@ func (v *View) PaychActorParties(ctx context.Context, paychAddr addr.Address) (f
 func (v *View) StateMinerProvingDeadline(ctx context.Context, addr addr.Address, ts *types.TipSet) (*dline.Info, error) {
 	mas, err := v.LoadMinerState(ctx, addr)
 	if err != nil {
-		return nil, xerrors.WithMessage(err, "failed to get proving dealline")
+		return nil, errors.WithMessage(err, "failed to get proving dealline")
 	}
 
 	height := ts.Height()
 	di, err := mas.DeadlineInfo(height)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get deadline info: %v", err)
+		return nil, fmt.Errorf("failed to get deadline info: %v", err)
 	}
 
 	return di.NextNotElapsed(), nil
 }
 
 // StateSectorExpiration returns epoch at which given sector will expire
-func (v *View) StateSectorExpiration(ctx context.Context, maddr addr.Address, sectorNumber abi.SectorNumber, key types.TipSetKey) (*miner.SectorExpiration, error) {
+func (v *View) StateSectorExpiration(ctx context.Context, maddr addr.Address, sectorNumber abi.SectorNumber, key types.TipSetKey) (*lminer.SectorExpiration, error) {
 	mas, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, err
@@ -557,9 +559,9 @@ func (v *View) StateMinerAvailableBalance(ctx context.Context, maddr addr.Addres
 		return big.Int{}, err
 	}
 
-	mas, err := miner.Load(adt.WrapStore(context.TODO(), v.ipldStore), actor)
+	mas, err := lminer.Load(adt.WrapStore(context.TODO(), v.ipldStore), actor)
 	if err != nil {
-		return big.Int{}, xerrors.Errorf("failed to load miner actor state: %v", err)
+		return big.Int{}, fmt.Errorf("failed to load miner actor state: %v", err)
 	}
 
 	height := ts.Height()
@@ -580,7 +582,7 @@ func (v *View) StateMinerAvailableBalance(ctx context.Context, maddr addr.Addres
 func (v *View) StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]addr.Address, error) {
 	powState, err := v.LoadPowerActor(ctx)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load power actor state: %v", err)
+		return nil, fmt.Errorf("failed to load power actor state: %v", err)
 	}
 
 	return powState.ListAllMiners()
@@ -590,7 +592,7 @@ func (v *View) StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]addr
 func (v *View) StateMinerPower(ctx context.Context, maddr addr.Address, tsk types.TipSetKey) (power.Claim, power.Claim, bool, error) {
 	pas, err := v.LoadPowerActor(ctx)
 	if err != nil {
-		return power.Claim{}, power.Claim{}, false, xerrors.Errorf("(get sset) failed to load power actor state: %v", err)
+		return power.Claim{}, power.Claim{}, false, fmt.Errorf("(get sset) failed to load power actor state: %v", err)
 	}
 
 	tpow, err := pas.TotalPower()
@@ -618,8 +620,8 @@ func (v *View) StateMinerPower(ctx context.Context, maddr addr.Address, tsk type
 }
 
 // StateMarketDeals returns information about every deal in the Storage Market
-func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketDeal, error) {
-	out := map[string]types.MarketDeal{}
+func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]*types.MarketDeal, error) {
+	out := map[string]*types.MarketDeal{}
 
 	state, err := v.LoadMarketState(ctx)
 	if err != nil {
@@ -639,11 +641,11 @@ func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[s
 	if err := da.ForEach(func(dealID abi.DealID, d market.DealProposal) error {
 		s, found, err := sa.Get(dealID)
 		if err != nil {
-			return xerrors.Errorf("failed to get state for deal in proposals array: %v", err)
+			return fmt.Errorf("failed to get state for deal in proposals array: %v", err)
 		} else if !found {
 			s = market.EmptyDealState()
 		}
-		out[strconv.FormatInt(int64(dealID), 10)] = types.MarketDeal{
+		out[strconv.FormatInt(int64(dealID), 10)] = &types.MarketDeal{
 			Proposal: d,
 			State:    *s,
 		}
@@ -658,11 +660,11 @@ func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[s
 func (v *View) StateMinerActiveSectors(ctx context.Context, maddr addr.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
 	mas, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load miner actor state: %v", err)
+		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
 	}
-	activeSectors, err := miner.AllPartSectors(mas, miner.Partition.ActiveSectors)
+	activeSectors, err := lminer.AllPartSectors(mas, lminer.Partition.ActiveSectors)
 	if err != nil {
-		return nil, xerrors.Errorf("merge partition active sets: %v", err)
+		return nil, fmt.Errorf("merge partition active sets: %v", err)
 	}
 	return mas.LoadSectors(&activeSectors)
 }
@@ -671,17 +673,17 @@ func (v *View) StateMinerActiveSectors(ctx context.Context, maddr addr.Address, 
 func (v *View) GetFilLocked(ctx context.Context, st vmstate.Tree) (abi.TokenAmount, error) {
 	filMarketLocked, err := getFilMarketLocked(ctx, v.ipldStore, st)
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to get filMarketLocked: %v", err)
+		return big.Zero(), fmt.Errorf("failed to get filMarketLocked: %v", err)
 	}
 
 	powerState, err := v.LoadPowerActor(ctx)
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to get filPowerLocked: %v", err)
+		return big.Zero(), fmt.Errorf("failed to get filPowerLocked: %v", err)
 	}
 
 	filPowerLocked, err := powerState.TotalLocked()
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to get filPowerLocked: %v", err)
+		return big.Zero(), fmt.Errorf("failed to get filPowerLocked: %v", err)
 	}
 
 	return big.Add(filMarketLocked, filPowerLocked), nil
@@ -701,12 +703,12 @@ func (v *View) ResolveToKeyAddr(ctx context.Context, address addr.Address) (addr
 
 	act, err := v.LoadActor(context.TODO(), address)
 	if err != nil {
-		return addr.Undef, xerrors.Errorf("failed to find actor: %s", address)
+		return addr.Undef, fmt.Errorf("failed to find actor: %s", address)
 	}
 
 	aast, err := account.Load(adt.WrapStore(context.TODO(), v.ipldStore), act)
 	if err != nil {
-		return addr.Undef, xerrors.Errorf("failed to get account actor state for %s: %v", address, err)
+		return addr.Undef, fmt.Errorf("failed to get account actor state for %s: %v", address, err)
 	}
 
 	return aast.PubkeyAddress()
@@ -727,7 +729,7 @@ func (v *View) LoadPaychState(ctx context.Context, actor *types.Actor) (paychAct
 }
 
 //LoadMinerState return miner state
-func (v *View) LoadMinerState(ctx context.Context, maddr addr.Address) (miner.State, error) {
+func (v *View) LoadMinerState(ctx context.Context, maddr addr.Address) (lminer.State, error) {
 	resolvedAddr, err := v.InitResolveAddress(ctx, maddr)
 	if err != nil {
 		return nil, err
@@ -737,7 +739,7 @@ func (v *View) LoadMinerState(ctx context.Context, maddr addr.Address) (miner.St
 		return nil, err
 	}
 
-	return miner.Load(adt.WrapStore(context.TODO(), v.ipldStore), actr)
+	return lminer.Load(adt.WrapStore(context.TODO(), v.ipldStore), actr)
 }
 
 func (v *View) LoadPowerActor(ctx context.Context) (power.State, error) {
@@ -812,7 +814,7 @@ func (v *View) loadActor(ctx context.Context, address addr.Address) (*types.Acto
 		return nil, err
 	}
 	if !found {
-		return nil, xerrors.Wrapf(types.ErrActorNotFound, "address is :%s", address)
+		return nil, errors.Wrapf(types.ErrActorNotFound, "address is :%s", address)
 	}
 
 	return actor, err
@@ -821,12 +823,12 @@ func (v *View) loadActor(ctx context.Context, address addr.Address) (*types.Acto
 func getFilMarketLocked(ctx context.Context, ipldStore cbor.IpldStore, st vmstate.Tree) (abi.TokenAmount, error) {
 	mactor, found, err := st.GetActor(ctx, market.Address)
 	if !found || err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load market actor: %v", err)
+		return big.Zero(), fmt.Errorf("failed to load market actor: %v", err)
 	}
 
 	mst, err := market.Load(adt.WrapStore(ctx, ipldStore), mactor)
 	if err != nil {
-		return big.Zero(), xerrors.Errorf("failed to load market state: %v", err)
+		return big.Zero(), fmt.Errorf("failed to load market state: %v", err)
 	}
 
 	return mst.TotalLocked()

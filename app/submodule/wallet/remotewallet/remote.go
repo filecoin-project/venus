@@ -2,10 +2,9 @@ package remotewallet
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
-
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 
@@ -43,7 +42,7 @@ func SetupRemoteWallet(info string) (wallet.WalletIntersection, error) {
 	}
 	wapi, closer, err := NewWalletRPC(context.Background(), url, ai.AuthHeader())
 	if err != nil {
-		return nil, xerrors.Errorf("creating jsonrpc client: %w", err)
+		return nil, fmt.Errorf("creating jsonrpc client: %w", err)
 	}
 	return &remoteWallet{
 		IWallet: wapi,

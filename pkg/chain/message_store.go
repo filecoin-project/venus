@@ -49,12 +49,12 @@ type MessageWriter interface {
 
 // MessageStore stores and loads collections of signed messages and receipts.
 type MessageStore struct {
-	bs    blockstore.Blockstore
+	bs    blockstoreutil.Blockstore
 	fkCfg *config.ForkUpgradeConfig
 }
 
 // NewMessageStore creates and returns a new store
-func NewMessageStore(bs blockstore.Blockstore, fkCfg *config.ForkUpgradeConfig) *MessageStore {
+func NewMessageStore(bs blockstoreutil.Blockstore, fkCfg *config.ForkUpgradeConfig) *MessageStore {
 	return &MessageStore{bs: bs, fkCfg: fkCfg}
 }
 

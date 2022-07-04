@@ -3,6 +3,7 @@ package jwtauth
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"strings"
@@ -75,7 +76,7 @@ func (jwtAuth *JwtAuth) loadAPISecret() (*APIAlg, error) {
 			return nil, err
 		}
 	} else if err != nil {
-		return nil, xerrors.Errorf("could not get JWT Token: %v", err)
+		return nil, fmt.Errorf("could not get JWT Token: %v", err)
 	}
 
 	return (*APIAlg)(jwt3.NewHS256(sk)), nil
@@ -85,7 +86,7 @@ func (jwtAuth *JwtAuth) loadAPISecret() (*APIAlg, error) {
 func (jwtAuth *JwtAuth) Verify(ctx context.Context, token string) ([]auth.Permission, error) {
 	var payload JwtPayload
 	if _, err := jwt3.Verify([]byte(token), (*jwt3.HMACSHA)(jwtAuth.apiSecret), &payload); err != nil {
-		return nil, xerrors.Errorf("JWT Verification failed: %v", err)
+		return nil, fmt.Errorf("JWT Verification failed: %v", err)
 	}
 	return payload.Allow, nil
 }

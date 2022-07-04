@@ -24,12 +24,14 @@ func (vfc *ValueFromCtx) HostFromCtx(ctx context.Context) (string, bool) {
 
 // RemoteAuth  in remote verification mode, venus connects venus-auth service, and verifies whether token is legal through rpc
 type RemoteAuth struct {
-	remote *vjc.JWTClient
+	remote *vjc.AuthClient
 }
 
 // NewRemoteAuth new remote auth client from venus-auth url
 func NewRemoteAuth(url string) *RemoteAuth {
-	return &RemoteAuth{remote: vjc.NewJWTClient(url)}
+	// vjc.NewAuthClient always return nil error
+	cli, _ := vjc.NewAuthClient(url)
+	return &RemoteAuth{remote: cli}
 }
 
 // Verify check token through venus-auth rpc api
@@ -50,7 +52,7 @@ func (r *RemoteAuth) Verify(ctx context.Context, token string) ([]auth.Permissio
 }
 
 func (r *RemoteAuth) GetUserLimit(name, service, api string) (*ratelimit.Limit, error) {
-	res, err := r.remote.GetUserRateLimit(name)
+	res, err := r.remote.GetUserRateLimit(name, "")
 	if err != nil {
 		return nil, err
 	}

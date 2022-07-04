@@ -3,10 +3,10 @@ package wallet
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/submodule/wallet/remotewallet"
 	"github.com/filecoin-project/venus/pkg/crypto"
@@ -28,7 +28,7 @@ type WalletAPI struct { // nolint
 func (walletAPI *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error) {
 	actor, err := walletAPI.walletModule.Chain.Stmgr.GetActorAtTsk(ctx, addr, types.EmptyTSK)
 	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if errors.Is(err, types.ErrActorNotFound) {
 			return abi.NewTokenAmount(0), nil
 		}
 		return abi.NewTokenAmount(0), err
@@ -111,7 +111,7 @@ func (walletAPI *WalletAPI) WalletExport(ctx context.Context, addr address.Addre
 func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error) {
 	keyAddr, err := walletAPI.walletModule.Chain.Stmgr.ResolveToKeyAddress(ctx, k, nil)
 	if err != nil {
-		return nil, xerrors.Errorf("ResolveTokeyAddress failed:%v", err)
+		return nil, fmt.Errorf("ResolveTokeyAddress failed:%v", err)
 	}
 	return walletAPI.adapter.WalletSign(ctx, keyAddr, msg, meta)
 }
@@ -120,12 +120,12 @@ func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, m
 func (walletAPI *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {
 	mb, err := msg.ToStorageBlock()
 	if err != nil {
-		return nil, xerrors.Errorf("serializing message: %w", err)
+		return nil, fmt.Errorf("serializing message: %w", err)
 	}
 
 	sign, err := walletAPI.WalletSign(ctx, k, mb.Cid().Bytes(), types.MsgMeta{Type: types.MTChainMsg})
 	if err != nil {
-		return nil, xerrors.Errorf("failed to sign message: %w", err)
+		return nil, fmt.Errorf("failed to sign message: %w", err)
 	}
 
 	return &types.SignedMessage{

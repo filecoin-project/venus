@@ -13,7 +13,6 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain"
@@ -74,7 +73,7 @@ var newMinerCmd = &cmds.Command{
 		gp, _ := req.Options["gas-premium"].(string)
 		gasPrice, err := types.ParseFIL(gp)
 		if err != nil {
-			return xerrors.Errorf("failed to parse gas-price flag: %s", err)
+			return fmt.Errorf("failed to parse gas-price flag: %s", err)
 		}
 
 		worker := owner
@@ -106,7 +105,7 @@ var newMinerCmd = &cmds.Command{
 				Value: big.NewInt(0),
 			}, nil)
 			if err != nil {
-				return xerrors.Errorf("push worker init: %v", err)
+				return fmt.Errorf("push worker init: %v", err)
 			}
 
 			cid := signed.Cid()
@@ -117,21 +116,21 @@ var newMinerCmd = &cmds.Command{
 
 			mw, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, cid, constants.MessageConfidence, constants.LookbackNoLimit, true)
 			if err != nil {
-				return xerrors.Errorf("waiting for worker init: %v", err)
+				return fmt.Errorf("waiting for worker init: %v", err)
 			}
 			if mw.Receipt.ExitCode != 0 {
-				return xerrors.Errorf("initializing worker account failed: exit code %d", mw.Receipt.ExitCode)
+				return fmt.Errorf("initializing worker account failed: exit code %d", mw.Receipt.ExitCode)
 			}
 		}
 
 		nv, err := env.(*node.Env).ChainAPI.StateNetworkVersion(ctx, types.EmptyTSK)
 		if err != nil {
-			return xerrors.Errorf("getting network version: %v", err)
+			return fmt.Errorf("getting network version: %v", err)
 		}
 
 		spt, err := miner.SealProofTypeFromSectorSize(abi.SectorSize(ssize), nv)
 		if err != nil {
-			return xerrors.Errorf("getting seal proof type: %v", err)
+			return fmt.Errorf("getting seal proof type: %v", err)
 		}
 
 		params, err := actors.SerializeParams(&power2.CreateMinerParams{
@@ -170,7 +169,7 @@ var newMinerCmd = &cmds.Command{
 
 		signed, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, createStorageMinerMsg, nil)
 		if err != nil {
-			return xerrors.Errorf("pushing createMiner message: %w", err)
+			return fmt.Errorf("pushing createMiner message: %w", err)
 		}
 
 		cid := signed.Cid()
@@ -180,11 +179,11 @@ var newMinerCmd = &cmds.Command{
 
 		mw, err := env.(*node.Env).ChainAPI.StateWaitMsg(ctx, cid, constants.MessageConfidence, constants.LookbackNoLimit, true)
 		if err != nil {
-			return xerrors.Errorf("waiting for createMiner message: %v", err)
+			return fmt.Errorf("waiting for createMiner message: %v", err)
 		}
 
 		if mw.Receipt.ExitCode != 0 {
-			return xerrors.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode)
+			return fmt.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode)
 		}
 
 		var retval power2.CreateMinerReturn
@@ -327,11 +326,11 @@ var minerInfoCmd = &cmds.Command{
 		// vest on deadline boundaries, and they're unlocked by cron.
 		lockedFunds, err := mas.LockedFunds()
 		if err != nil {
-			return xerrors.Errorf("getting locked funds: %w", err)
+			return fmt.Errorf("getting locked funds: %w", err)
 		}
 		availBalance, err := mas.AvailableBalance(mact.Balance)
 		if err != nil {
-			return xerrors.Errorf("getting available balance: %w", err)
+			return fmt.Errorf("getting available balance: %w", err)
 		}
 		spendable = big.Add(spendable, availBalance)
 
@@ -343,7 +342,7 @@ var minerInfoCmd = &cmds.Command{
 
 		mb, err := api.StateMarketBalance(ctx, maddr, types.EmptyTSK)
 		if err != nil {
-			return xerrors.Errorf("getting market balance: %w", err)
+			return fmt.Errorf("getting market balance: %w", err)
 		}
 		spendable = big.Add(spendable, big.Sub(mb.Escrow, mb.Locked))
 
@@ -353,7 +352,7 @@ var minerInfoCmd = &cmds.Command{
 
 		wb, err := env.(*node.Env).WalletAPI.WalletBalance(ctx, mi.Worker)
 		if err != nil {
-			return xerrors.Errorf("getting worker balance: %w", err)
+			return fmt.Errorf("getting worker balance: %w", err)
 		}
 		spendable = big.Add(spendable, wb)
 		writer.Printf("Worker Balance:   %s\n", types.FIL(wb).Short())
@@ -362,7 +361,7 @@ var minerInfoCmd = &cmds.Command{
 			for _, ca := range mi.ControlAddresses {
 				b, err := env.(*node.Env).WalletAPI.WalletBalance(ctx, ca)
 				if err != nil {
-					return xerrors.Errorf("getting control address balance: %w", err)
+					return fmt.Errorf("getting control address balance: %w", err)
 				}
 				cbsum = big.Add(cbsum, b)
 			}

@@ -251,7 +251,7 @@ func newDefaultMessagePoolConfig() *MessagePoolConfig {
 // NetworkParamsConfig record netork parameters
 type NetworkParamsConfig struct {
 	DevNet                  bool                         `json:"devNet"`
-	NetworkType             constants.NetworkType        `json:"networkType"`
+	NetworkType             types.NetworkType            `json:"networkType"`
 	GenesisNetworkVersion   network.Version              `json:"genesisNetworkVersion"`
 	ConsensusMinerMinPower  uint64                       `json:"consensusMinerMinPower"` // uint64 goes up to 18 EiB
 	MinVerifiedDealSize     int64                        `json:"minVerifiedDealSize"`
@@ -285,6 +285,7 @@ type ForkUpgradeConfig struct {
 	UpgradeHyperdriveHeight    abi.ChainEpoch `json:"upgradeHyperdriveHeight"`
 	UpgradeChocolateHeight     abi.ChainEpoch `json:"upgradeChocolateHeight"`
 	UpgradeOhSnapHeight        abi.ChainEpoch `json:"upgradeOhSnapHeight"`
+	UpgradeSkyrHeight          abi.ChainEpoch `json:"upgradeSkyrHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -311,6 +312,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeHyperdriveHeight:  892800,
 	UpgradeChocolateHeight:   1231620,
 	UpgradeOhSnapHeight:      1594680,
+	UpgradeSkyrHeight:        1960320,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {

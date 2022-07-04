@@ -5,11 +5,15 @@ package market
 import (
 	"bytes"
 
+	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-bitfield"
+	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
@@ -196,14 +200,24 @@ func (s *dealProposals6) Get(dealID abi.DealID) (*DealProposal, bool, error) {
 	if !found {
 		return nil, false, nil
 	}
-	proposal := fromV6DealProposal(proposal6)
+
+	proposal, err := fromV6DealProposal(proposal6)
+	if err != nil {
+		return nil, true, fmt.Errorf("decoding proposal: %w", err)
+	}
+
 	return &proposal, true, nil
 }
 
 func (s *dealProposals6) ForEach(cb func(dealID abi.DealID, dp DealProposal) error) error {
 	var dp6 market6.DealProposal
 	return s.Array.ForEach(&dp6, func(idx int64) error {
-		return cb(abi.DealID(idx), fromV6DealProposal(dp6))
+		dp, err := fromV6DealProposal(dp6)
+		if err != nil {
+			return fmt.Errorf("decoding proposal: %w", err)
+		}
+
+		return cb(abi.DealID(idx), dp)
 	})
 }
 
@@ -212,7 +226,12 @@ func (s *dealProposals6) decode(val *cbg.Deferred) (*DealProposal, error) {
 	if err := dp6.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
-	dp := fromV6DealProposal(dp6)
+
+	dp, err := fromV6DealProposal(dp6)
+	if err != nil {
+		return nil, err
+	}
+
 	return &dp, nil
 }
 
@@ -220,8 +239,29 @@ func (s *dealProposals6) array() adt.Array {
 	return s.Array
 }
 
-func fromV6DealProposal(v6 market6.DealProposal) DealProposal {
-	return (DealProposal)(v6)
+func fromV6DealProposal(v6 market6.DealProposal) (DealProposal, error) {
+
+	label, err := labelFromGoString(v6.Label)
+	if err != nil {
+		return DealProposal{}, fmt.Errorf("error setting deal label: %w", err)
+	}
+
+	return DealProposal{
+		PieceCID:     v6.PieceCID,
+		PieceSize:    v6.PieceSize,
+		VerifiedDeal: v6.VerifiedDeal,
+		Client:       v6.Client,
+		Provider:     v6.Provider,
+
+		Label: label,
+
+		StartEpoch:           v6.StartEpoch,
+		EndEpoch:             v6.EndEpoch,
+		StoragePricePerEpoch: v6.StoragePricePerEpoch,
+
+		ProviderCollateral: v6.ProviderCollateral,
+		ClientCollateral:   v6.ClientCollateral,
+	}, nil
 }
 
 func (s *state6) GetState() interface{} {
@@ -233,7 +273,7 @@ var _ PublishStorageDealsReturn = (*publishStorageDealsReturn6)(nil)
 func decodePublishStorageDealsReturn6(b []byte) (PublishStorageDealsReturn, error) {
 	var retval market6.PublishStorageDealsReturn
 	if err := retval.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
-		return nil, xerrors.Errorf("failed to unmarshal PublishStorageDealsReturn: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal PublishStorageDealsReturn: %w", err)
 	}
 
 	return &publishStorageDealsReturn6{retval}, nil
@@ -243,9 +283,26 @@ type publishStorageDealsReturn6 struct {
 	market6.PublishStorageDealsReturn
 }
 
-func (r *publishStorageDealsReturn6) IsDealValid(index uint64) (bool, error) {
+func (r *publishStorageDealsReturn6) IsDealValid(index uint64) (bool, int, error) {
 
-	return r.ValidDeals.IsSet(index)
+	set, err := r.ValidDeals.IsSet(index)
+	if err != nil || !set {
+		return false, -1, err
+	}
+	maskBf, err := bitfield.NewFromIter(&rlepluslazy.RunSliceIterator{
+		Runs: []rlepluslazy.Run{rlepluslazy.Run{Val: true, Len: index}}})
+	if err != nil {
+		return false, -1, err
+	}
+	before, err := bitfield.IntersectBitField(maskBf, r.ValidDeals)
+	if err != nil {
+		return false, -1, err
+	}
+	outIdx, err := before.Count()
+	if err != nil {
+		return false, -1, err
+	}
+	return set, int(outIdx), nil
 
 }
 

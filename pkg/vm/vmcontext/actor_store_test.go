@@ -49,17 +49,8 @@ func TestActorStore(t *testing.T) {
 		assert.Contains(t, thrown.(string), "failed To get object *typegen.CborCid ")
 	})
 
-	t.Run("panic on put storage failure", func(t *testing.T) {
-		store := vmcontext.NewActorStorage(ctx, &brokenStorage{}, gasTank, priceSchedule.PricelistByEpoch(0))
-		v := typegen.CborInt(0)
-		_, thrown := tryPut(store, &v)
-		_, ok := thrown.(vmr.ExecutionPanic)
-		assert.NotNil(t, thrown)
-		assert.False(t, ok, "expected non-abort panic")
-	})
-
 	t.Run("panic on get storage failure", func(t *testing.T) {
-		store := vmcontext.NewActorStorage(ctx, &brokenStorage{}, gasTank, priceSchedule.PricelistByEpoch(0))
+		store := vmcontext.NewActorStorage(ctx, raw, gasTank, priceSchedule.PricelistByEpoch(0))
 		var v typegen.CborInt
 		thrown := tryGet(store, cid.Undef, &v)
 		_, ok := thrown.(vmr.ExecutionPanic)
@@ -89,14 +80,4 @@ type cannotCBOR struct {
 
 func (c cannotCBOR) MarshalCBOR(w io.Writer) error {
 	return fmt.Errorf("no")
-}
-
-type brokenStorage struct{}
-
-func (brokenStorage) Get(_ context.Context, _ cid.Cid, _ interface{}) error {
-	return fmt.Errorf("no")
-}
-
-func (brokenStorage) Put(_ context.Context, _ interface{}) (cid.Cid, error) {
-	return cid.Undef, fmt.Errorf("no")
 }

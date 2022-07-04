@@ -17,6 +17,7 @@ import (
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -81,7 +82,7 @@ func TestGenGenDeterministic(t *testing.T) {
 	var info *genutil.RenderedGenInfo
 	for i := 0; i < 5; i++ {
 		bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
-		inf, err := genutil.GenGen(ctx, testConfig(t), bstore)
+		inf, err := genutil.GenGen(ctx, testConfig(t), blockstoreutil.Adapt(bstore))
 		assert.NoError(t, err)
 		if info == nil {
 			info = inf

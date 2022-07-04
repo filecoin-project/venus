@@ -17,8 +17,8 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-	"golang.org/x/xerrors"
 
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/cmd/tablewriter"
@@ -97,7 +97,7 @@ var actorSetAddrsCmd = &cmds.Command{
 			From:     mi.Worker,
 			Value:    big.NewInt(0),
 			GasLimit: gasLimit,
-			Method:   miner.Methods.ChangeMultiaddrs,
+			Method:   builtintypes.MethodsMiner.ChangeMultiaddrs,
 			Params:   params,
 		}, nil)
 		if err != nil {
@@ -149,7 +149,7 @@ var actorSetPeeridCmd = &cmds.Command{
 			From:     mi.Worker,
 			Value:    big.NewInt(0),
 			GasLimit: gasLimit,
-			Method:   miner.Methods.ChangePeerID,
+			Method:   builtintypes.MethodsMiner.ChangePeerID,
 			Params:   params,
 		}, nil)
 		if err != nil {
@@ -191,13 +191,13 @@ var actorWithdrawCmd = &cmds.Command{
 		amount := available
 		f, err := types.ParseFIL(req.Arguments[1])
 		if err != nil {
-			return xerrors.Errorf("parsing 'amount' argument: %v", err)
+			return fmt.Errorf("parsing 'amount' argument: %v", err)
 		}
 
 		amount = abi.TokenAmount(f)
 
 		if amount.GreaterThan(available) {
-			return xerrors.Errorf("can't withdraw more funds than available; requested: %s; available: %s", amount, available)
+			return fmt.Errorf("can't withdraw more funds than available; requested: %s; available: %s", amount, available)
 		}
 
 		params, err := actors.SerializeParams(&miner2.WithdrawBalanceParams{
@@ -211,7 +211,7 @@ var actorWithdrawCmd = &cmds.Command{
 			To:     maddr,
 			From:   mi.Owner,
 			Value:  big.NewInt(0),
-			Method: miner.Methods.WithdrawBalance,
+			Method: builtintypes.MethodsMiner.WithdrawBalance,
 			Params: params,
 		}, nil)
 		if err != nil {
@@ -282,7 +282,7 @@ var actorRepayDebtCmd = &cmds.Command{
 		if len(fil) != 0 {
 			f, err := types.ParseFIL(fil)
 			if err != nil {
-				return xerrors.Errorf("parsing 'amount' argument: %w", err)
+				return fmt.Errorf("parsing 'amount' argument: %w", err)
 			}
 
 			amount = abi.TokenAmount(f)
@@ -322,15 +322,15 @@ var actorRepayDebtCmd = &cmds.Command{
 			return err
 		}
 
-		if !mi.IsController(fromID) {
-			return xerrors.Errorf("sender isn't a controller of miner: %s", fromID)
+		if !isController(mi, fromID) {
+			return fmt.Errorf("sender isn't a controller of miner: %s", fromID)
 		}
 
 		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			To:     maddr,
 			From:   fromID,
 			Value:  amount,
-			Method: miner.Methods.RepayDebt,
+			Method: builtintypes.MethodsMiner.RepayDebt,
 			Params: nil,
 		}, nil)
 		if err != nil {
@@ -383,18 +383,18 @@ var actorSetOwnerCmd = &cmds.Command{
 
 		sp, err := actors.SerializeParams(&newAddr)
 		if err != nil {
-			return xerrors.Errorf("serializing params: %w", err)
+			return fmt.Errorf("serializing params: %w", err)
 		}
 
 		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: miner.Methods.ChangeOwnerAddress,
+			Method: builtintypes.MethodsMiner.ChangeOwnerAddress,
 			Value:  big.Zero(),
 			Params: sp,
 		}, nil)
 		if err != nil {
-			return xerrors.Errorf("mpool push: %w", err)
+			return fmt.Errorf("mpool push: %w", err)
 		}
 
 		cid := smsg.Cid()
@@ -415,12 +415,12 @@ var actorSetOwnerCmd = &cmds.Command{
 		smsg, err = env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   newAddr,
 			To:     maddr,
-			Method: miner.Methods.ChangeOwnerAddress,
+			Method: builtintypes.MethodsMiner.ChangeOwnerAddress,
 			Value:  big.Zero(),
 			Params: sp,
 		}, nil)
 		if err != nil {
-			return xerrors.Errorf("mpool push: %w", err)
+			return fmt.Errorf("mpool push: %w", err)
 		}
 
 		cid = smsg.Cid()
@@ -590,7 +590,7 @@ var actorControlSet = &cmds.Command{
 		for i, as := range addrs {
 			a, err := address.NewFromString(as)
 			if err != nil {
-				return xerrors.Errorf("parsing address %d: %w", i, err)
+				return fmt.Errorf("parsing address %d: %w", i, err)
 			}
 
 			ka, err := api.StateAccountKey(ctx, a, types.EmptyTSK)
@@ -601,7 +601,7 @@ var actorControlSet = &cmds.Command{
 			// make sure the address exists on chain
 			_, err = api.StateLookupID(ctx, ka, types.EmptyTSK)
 			if err != nil {
-				return xerrors.Errorf("looking up %s: %w", ka, err)
+				return fmt.Errorf("looking up %s: %w", ka, err)
 			}
 
 			delete(del, ka)
@@ -630,19 +630,19 @@ var actorControlSet = &cmds.Command{
 
 		sp, err := actors.SerializeParams(cwp)
 		if err != nil {
-			return xerrors.Errorf("serializing params: %w", err)
+			return fmt.Errorf("serializing params: %w", err)
 		}
 
 		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: miner.Methods.ChangeWorkerAddress,
+			Method: builtintypes.MethodsMiner.ChangeWorkerAddress,
 
 			Value:  big.Zero(),
 			Params: sp,
 		}, nil)
 		if err != nil {
-			return xerrors.Errorf("mpool push: %w", err)
+			return fmt.Errorf("mpool push: %w", err)
 		}
 
 		writer.Println("Message CID: " + smsg.Cid().String())
@@ -707,18 +707,18 @@ var actorProposeChangeWorker = &cmds.Command{
 
 		sp, err := actors.SerializeParams(cwp)
 		if err != nil {
-			return xerrors.Errorf("serializing params: %w", err)
+			return fmt.Errorf("serializing params: %w", err)
 		}
 
 		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: miner.Methods.ChangeWorkerAddress,
+			Method: builtintypes.MethodsMiner.ChangeWorkerAddress,
 			Value:  big.Zero(),
 			Params: sp,
 		}, nil)
 		if err != nil {
-			return xerrors.Errorf("mpool push: %w", err)
+			return fmt.Errorf("mpool push: %w", err)
 		}
 
 		cid := smsg.Cid()
@@ -797,12 +797,12 @@ var actorConfirmChangeWorker = &cmds.Command{
 
 		head, err := api.ChainHead(ctx)
 		if err != nil {
-			return xerrors.Errorf("failed to get the chain head: %w", err)
+			return fmt.Errorf("failed to get the chain head: %w", err)
 		}
 
 		height := head.Height()
 		if height < mi.WorkerChangeEpoch {
-			return xerrors.Errorf("worker key change cannot be confirmed until %d, current height is %d", mi.WorkerChangeEpoch, height)
+			return fmt.Errorf("worker key change cannot be confirmed until %d, current height is %d", mi.WorkerChangeEpoch, height)
 		}
 
 		if !req.Options["really-do-it"].(bool) {
@@ -812,11 +812,11 @@ var actorConfirmChangeWorker = &cmds.Command{
 		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: miner.Methods.ConfirmUpdateWorkerKey,
+			Method: builtintypes.MethodsMiner.ConfirmUpdateWorkerKey,
 			Value:  big.Zero(),
 		}, nil)
 		if err != nil {
-			return xerrors.Errorf("mpool push: %w", err)
+			return fmt.Errorf("mpool push: %w", err)
 		}
 
 		cid := smsg.Cid()

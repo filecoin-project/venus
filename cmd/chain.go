@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -15,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -178,7 +178,7 @@ var chainGetBlockCmd = &cmds.Command{
 		ctx := req.Context
 		blk, err := env.(*node.Env).ChainAPI.ChainGetBlock(ctx, bcid)
 		if err != nil {
-			return xerrors.Errorf("get block failed: %w", err)
+			return fmt.Errorf("get block failed: %w", err)
 		}
 
 		buf := new(bytes.Buffer)
@@ -197,12 +197,12 @@ var chainGetBlockCmd = &cmds.Command{
 
 		msgs, err := env.(*node.Env).ChainAPI.ChainGetBlockMessages(ctx, bcid)
 		if err != nil {
-			return xerrors.Errorf("failed to get messages: %v", err)
+			return fmt.Errorf("failed to get messages: %v", err)
 		}
 
 		pmsgs, err := env.(*node.Env).ChainAPI.ChainGetParentMessages(ctx, bcid)
 		if err != nil {
-			return xerrors.Errorf("failed to get parent messages: %v", err)
+			return fmt.Errorf("failed to get parent messages: %v", err)
 		}
 
 		recpts, err := env.(*node.Env).ChainAPI.ChainGetParentReceipts(ctx, bcid)
@@ -330,7 +330,7 @@ var chainExportCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 1 {
-			return xerrors.New("must specify filename to export chain to")
+			return errors.New("must specify filename to export chain to")
 		}
 
 		rsrs := abi.ChainEpoch(req.Options["recent-stateroots"].(int64))
@@ -376,7 +376,7 @@ var chainExportCmd = &cmds.Command{
 		}
 
 		if !last {
-			return xerrors.Errorf("incomplete export (remote connection lost?)")
+			return fmt.Errorf("incomplete export (remote connection lost?)")
 		}
 
 		return nil
@@ -403,7 +403,7 @@ func ParseTipSetRef(ctx context.Context, chainAPI v1api.IChain, tss string) (*ty
 
 		var h uint64
 		if _, err := fmt.Sscanf(tss, "@%d", &h); err != nil {
-			return nil, xerrors.Errorf("parsing height tipset ref: %w", err)
+			return nil, fmt.Errorf("parsing height tipset ref: %w", err)
 		}
 
 		return chainAPI.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(h), types.EmptyTSK)

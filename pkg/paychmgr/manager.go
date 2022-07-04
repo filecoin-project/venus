@@ -3,6 +3,7 @@ package paychmgr
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -11,10 +12,9 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
-	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 )
 
 var log = logging.Logger("paych")
@@ -90,13 +90,21 @@ func (pm *Manager) Stop() {
 	pm.shutdown()
 }
 
-func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt big.Int) (address.Address, cid.Cid, error) {
+type GetOpts struct {
+	Reserve  bool
+	OffChain bool
+}
+
+func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt big.Int, opts GetOpts) (address.Address, cid.Cid, error) {
+	if !opts.Reserve && opts.OffChain {
+		return address.Undef, cid.Undef, fmt.Errorf("can't fund payment channels without on-chain operations")
+	}
 	chanAccessor, err := pm.accessorByFromTo(from, to)
 	if err != nil {
 		return address.Undef, cid.Undef, err
 	}
 
-	return chanAccessor.getPaych(ctx, amt)
+	return chanAccessor.getPaych(ctx, amt, opts)
 }
 
 func (pm *Manager) AvailableFunds(ctx context.Context, ch address.Address) (*types.ChannelAvailableFunds, error) {
@@ -131,6 +139,8 @@ func (pm *Manager) AvailableFundsByFromTo(ctx context.Context, from address.Addr
 			To:                  to,
 			ConfirmedAmt:        big.NewInt(0),
 			PendingAmt:          big.NewInt(0),
+			NonReservedAmt:      big.NewInt(0),
+			PendingAvailableAmt: big.NewInt(0),
 			PendingWaitSentinel: nil,
 			QueuedAmt:           big.NewInt(0),
 			VoucherReedeemedAmt: big.NewInt(0),
@@ -154,7 +164,7 @@ func (pm *Manager) GetPaychWaitReady(ctx context.Context, mcid cid.Cid) (address
 
 	if err != nil {
 		if err == datastore.ErrNotFound {
-			return address.Undef, xerrors.Errorf("Could not find wait msg cid %s", mcid)
+			return address.Undef, fmt.Errorf("could not find wait msg cid %s", mcid)
 		}
 		return address.Undef, err
 	}
@@ -300,7 +310,7 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 	}
 	if !has {
 		msg := "cannot add voucher for channel %s: wallet does not have key for address %s"
-		return nil, xerrors.Errorf(msg, ch, to)
+		return nil, fmt.Errorf(msg, ch, to)
 	}
 
 	// Save channel to store

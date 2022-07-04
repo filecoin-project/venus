@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"io/ioutil"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	fcbor "github.com/fxamacker/cbor/v2"
 	"github.com/minio/blake2b-simd"
-	"golang.org/x/xerrors"
 )
 
 type DrawRandomParams struct {
@@ -24,19 +24,19 @@ type DrawRandomParams struct {
 func (dr *DrawRandomParams) SignBytes() ([]byte, error) {
 	h := blake2b.New256()
 	if err := binary.Write(h, binary.BigEndian, int64(dr.Pers)); err != nil {
-		return nil, xerrors.Errorf("deriving randomness: %w", err)
+		return nil, fmt.Errorf("deriving randomness: %w", err)
 	}
 	VRFDigest := blake2b.Sum256(dr.Rbase)
 	_, err := h.Write(VRFDigest[:])
 	if err != nil {
-		return nil, xerrors.Errorf("hashing VRFDigest: %w", err)
+		return nil, fmt.Errorf("hashing VRFDigest: %w", err)
 	}
 	if err := binary.Write(h, binary.BigEndian, dr.Round); err != nil {
-		return nil, xerrors.Errorf("deriving randomness: %w", err)
+		return nil, fmt.Errorf("deriving randomness: %w", err)
 	}
 	_, err = h.Write(dr.Entropy)
 	if err != nil {
-		return nil, xerrors.Errorf("hashing entropy: %w", err)
+		return nil, fmt.Errorf("hashing entropy: %w", err)
 	}
 
 	return h.Sum(nil), nil

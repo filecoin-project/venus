@@ -32,37 +32,25 @@ func TestInitRepoDirect(t *testing.T) {
 	}
 
 	t.Run("successfully creates when directory exists", func(t *testing.T) {
-		dir, err := ioutil.TempDir("", "init")
-		require.NoError(t, err)
-		defer RequireRemoveAll(t, dir)
+		dir := t.TempDir()
 
-		_, err = initAndOpenRepoDirect(dir, 42, cfg)
+		_, err := initAndOpenRepoDirect(dir, 42, cfg)
 		assert.NoError(t, err)
 		checkNewRepoFiles(t, dir, 42)
 	})
 
 	t.Run("successfully creates when directory does not exist", func(t *testing.T) {
-		dir, err := ioutil.TempDir("", "init")
-		require.NoError(t, err)
-		defer func() {
-			require.NoError(t, os.RemoveAll(dir))
-		}()
+		dir := filepath.Join(t.TempDir(), "nested")
 
-		dir = filepath.Join(dir, "nested")
-
-		_, err = initAndOpenRepoDirect(dir, 42, cfg)
+		_, err := initAndOpenRepoDirect(dir, 42, cfg)
 		assert.NoError(t, err)
 		checkNewRepoFiles(t, dir, 42)
 	})
 
 	t.Run("fails with error if directory is not writeable", func(t *testing.T) {
-		parentDir, err := ioutil.TempDir("", "init")
-		require.NoError(t, err)
-		defer RequireRemoveAll(t, parentDir)
-
 		// make read only dir
-		dir := filepath.Join(parentDir, "readonly")
-		err = os.Mkdir(dir, 0444)
+		dir := filepath.Join(t.TempDir(), "readonly")
+		err := os.Mkdir(dir, 0444)
 		assert.NoError(t, err)
 		assert.False(t, ConfigExists(dir))
 
@@ -71,11 +59,9 @@ func TestInitRepoDirect(t *testing.T) {
 	})
 
 	t.Run("fails with error if directory not empty", func(t *testing.T) {
-		dir, err := ioutil.TempDir("", "init")
-		require.NoError(t, err)
-		defer RequireRemoveAll(t, dir)
+		dir := t.TempDir()
 
-		err = ioutil.WriteFile(filepath.Join(dir, "hi"), []byte("hello"), 0644)
+		err := ioutil.WriteFile(filepath.Join(dir, "hi"), []byte("hello"), 0644)
 		assert.NoError(t, err)
 
 		_, err = initAndOpenRepoDirect(dir, 42, cfg)
@@ -87,31 +73,25 @@ func TestFSRepoOpen(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("[fail] repo version newer than binary", func(t *testing.T) {
-		container, err := ioutil.TempDir("", "")
-		require.NoError(t, err)
-		defer RequireRemoveAll(t, container)
-		repoPath := path.Join(container, "repo")
+		repoPath := path.Join(t.TempDir(), "repo")
 
 		assert.NoError(t, InitFSRepo(repoPath, 1, config.NewDefaultConfig()))
 		// set wrong version
 		assert.NoError(t, WriteVersion(repoPath, 99))
 
-		_, err = OpenFSRepo(repoPath, 1)
+		_, err := OpenFSRepo(repoPath, 1)
 		expected := fmt.Sprintf("binary needs update to handle repo version, got 99 expected %d. Update binary to latest release", LatestVersion)
 		assert.EqualError(t, err, expected)
 	})
 
 	t.Run("[fail] version corrupt", func(t *testing.T) {
-		container, err := ioutil.TempDir("", "")
-		require.NoError(t, err)
-		defer RequireRemoveAll(t, container)
-		repoPath := path.Join(container, "repo")
+		repoPath := path.Join(t.TempDir(), "repo")
 
 		assert.NoError(t, InitFSRepo(repoPath, 1, config.NewDefaultConfig()))
 		// set wrong version
 		assert.NoError(t, ioutil.WriteFile(filepath.Join(repoPath, versionFilename), []byte("v.8"), 0644))
 
-		_, err = OpenFSRepo(repoPath, 1)
+		_, err := OpenFSRepo(repoPath, 1)
 		assert.EqualError(t, err, "failed to read version: strconv.ParseUint: parsing \"v.8\": invalid syntax")
 	})
 }
@@ -119,15 +99,11 @@ func TestFSRepoOpen(t *testing.T) {
 func TestFSRepoRoundtrip(t *testing.T) {
 	tf.UnitTest(t)
 
-	container, err := ioutil.TempDir("", "container")
-	require.NoError(t, err)
-	defer RequireRemoveAll(t, container)
-
 	cfg := config.NewDefaultConfig()
 	cfg.API.APIAddress = "foo" // testing that what we get back isnt just the default
 
-	repoPath := path.Join(container, "repo")
-	assert.NoError(t, err, InitFSRepo(repoPath, 42, cfg))
+	repoPath := path.Join(t.TempDir(), "repo")
+	assert.NoError(t, InitFSRepo(repoPath, 42, cfg))
 
 	r, err := OpenFSRepo(repoPath, 42)
 	assert.NoError(t, err)
@@ -149,14 +125,11 @@ func TestFSRepoRoundtrip(t *testing.T) {
 func TestFSRepoReplaceAndSnapshotConfig(t *testing.T) {
 	tf.UnitTest(t)
 
-	container, err := ioutil.TempDir("", "container")
-	require.NoError(t, err)
-	defer RequireRemoveAll(t, container)
-	repoPath := path.Join(container, "repo")
+	repoPath := path.Join(t.TempDir(), "repo")
 
 	cfg := config.NewDefaultConfig()
 	cfg.API.APIAddress = "foo"
-	assert.NoError(t, err, InitFSRepo(repoPath, 42, cfg))
+	assert.NoError(t, InitFSRepo(repoPath, 42, cfg))
 
 	expSnpsht, err := ioutil.ReadFile(filepath.Join(repoPath, configFilename))
 	require.NoError(t, err)
@@ -189,13 +162,10 @@ func TestFSRepoReplaceAndSnapshotConfig(t *testing.T) {
 func TestRepoLock(t *testing.T) {
 	tf.UnitTest(t)
 
-	container, err := ioutil.TempDir("", "container")
-	require.NoError(t, err)
-	defer RequireRemoveAll(t, container)
-	repoPath := path.Join(container, "repo")
+	repoPath := path.Join(t.TempDir(), "repo")
 
 	cfg := config.NewDefaultConfig()
-	assert.NoError(t, err, InitFSRepo(repoPath, 42, cfg))
+	assert.NoError(t, InitFSRepo(repoPath, 42, cfg))
 
 	r, err := OpenFSRepo(repoPath, 42)
 	assert.NoError(t, err)
@@ -212,20 +182,17 @@ func TestRepoLock(t *testing.T) {
 func TestRepoLockFail(t *testing.T) {
 	tf.UnitTest(t)
 
-	container, err := ioutil.TempDir("", "container")
-	require.NoError(t, err)
-	defer RequireRemoveAll(t, container)
-	repoPath := path.Join(container, "repo")
+	repoPath := path.Join(t.TempDir(), "repo")
 
 	cfg := config.NewDefaultConfig()
-	assert.NoError(t, err, InitFSRepo(repoPath, 42, cfg))
+	assert.NoError(t, InitFSRepo(repoPath, 42, cfg))
 
 	// set invalid version, to make opening the repo fail
 	assert.NoError(t,
 		ioutil.WriteFile(filepath.Join(repoPath, versionFilename), []byte("hello"), 0644),
 	)
 
-	_, err = OpenFSRepo(repoPath, 42)
+	_, err := OpenFSRepo(repoPath, 42)
 	assert.Error(t, err)
 
 	_, err = os.Lstat(filepath.Join(repoPath, lockFile))
@@ -342,12 +309,10 @@ func getSnapshotFilenames(t *testing.T, dir string) []string {
 }
 
 func withFSRepo(t *testing.T, f func(*FSRepo)) {
-	dir, err := ioutil.TempDir("", "")
-	require.NoError(t, err)
-	defer RequireRemoveAll(t, dir)
+	dir := t.TempDir()
 
 	cfg := config.NewDefaultConfig()
-	require.NoError(t, err, InitFSRepoDirect(dir, 42, cfg))
+	require.NoError(t, InitFSRepoDirect(dir, 42, cfg))
 
 	r, err := OpenFSRepo(dir, 42)
 	require.NoError(t, err)

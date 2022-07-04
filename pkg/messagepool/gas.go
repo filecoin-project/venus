@@ -2,6 +2,7 @@ package messagepool
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -12,13 +13,12 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	lru "github.com/hashicorp/golang-lru"
-	"golang.org/x/xerrors"
 
+	builtin2 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -57,7 +57,7 @@ func (g *GasPriceCache) GetTSGasStats(ctx context.Context, provider Provider, ts
 	var prices []GasMeta
 	msgs, err := provider.MessagesForTipset(ctx, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("loading messages: %w", err)
+		return nil, fmt.Errorf("loading messages: %w", err)
 	}
 	for _, msg := range msgs {
 		prices = append(prices, GasMeta{
@@ -187,13 +187,13 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Mes
 	if tsk.IsEmpty() {
 		ts, err := mp.api.ChainHead(ctx)
 		if err != nil {
-			return -1, xerrors.Errorf("getting head: %v", err)
+			return -1, fmt.Errorf("getting head: %v", err)
 		}
 		tsk = ts.Key()
 	}
 	currTS, err := mp.api.ChainTipSet(ctx, tsk)
 	if err != nil {
-		return -1, xerrors.Errorf("getting tipset: %w", err)
+		return -1, fmt.Errorf("getting tipset: %w", err)
 	}
 
 	msg := *msgIn
@@ -203,7 +203,7 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Mes
 
 	fromA, err := mp.sm.ResolveToKeyAddress(ctx, msgIn.From, currTS)
 	if err != nil {
-		return -1, xerrors.Errorf("getting key address: %w", err)
+		return -1, fmt.Errorf("getting key address: %w", err)
 	}
 
 	pending, ts := mp.PendingFor(ctx, fromA)
@@ -235,63 +235,100 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 
 		ts, err = mp.api.ChainTipSet(ctx, ts.Parents())
 		if err != nil {
-			return -1, xerrors.Errorf("getting parent tipset: %v", err)
+			return -1, fmt.Errorf("getting parent tipset: %v", err)
 		}
 	}
 	if err != nil {
-		return -1, xerrors.Errorf("CallWithGas failed: %v", err)
+		return -1, fmt.Errorf("CallWithGas failed: %v", err)
 	}
 	if res.Receipt.ExitCode != exitcode.Ok {
-		return -1, xerrors.Errorf("message execution failed: exit %s", res.Receipt.ExitCode)
+		log.Warnf("message execution failed: from %v, method %d, exit %s, reason: %v", msg.From, msg.Method, res.Receipt.ExitCode, res.ActorErr)
+		return -1, fmt.Errorf("message execution failed: exit %s, reason: %v", res.Receipt.ExitCode, res.ActorErr)
 	}
+
+	ret := res.Receipt.GasUsed
+
+	transitionalMulti := 1.0
+	// Overestimate gas around the upgrade
+	if ts.Height() <= mp.forkParams.UpgradeSkyrHeight && (mp.forkParams.UpgradeSkyrHeight-ts.Height() <= 20) {
+		transitionalMulti = 2.0
+
+		func() {
+			_, st, err := mp.sm.ParentState(ctx, ts)
+			if err != nil {
+				return
+			}
+			act, found, err := st.GetActor(ctx, msg.To)
+			if err != nil {
+				return
+			}
+			if !found {
+				return
+			}
+
+			if builtin.IsStorageMinerActor(act.Code) {
+				switch msgIn.Method {
+				case 5:
+					transitionalMulti = 3.954
+				case 6:
+					transitionalMulti = 4.095
+				case 7:
+					// skip, stay at 2.0
+					//transitionalMulti = 1.289
+				case 11:
+					transitionalMulti = 17.8758
+				case 16:
+					transitionalMulti = 2.1704
+				case 25:
+					transitionalMulti = 3.1177
+				case 26:
+					transitionalMulti = 2.3322
+				default:
+				}
+			}
+
+			// skip storage market, 80th percentie for everything ~1.9, leave it at 2.0
+		}()
+		log.Infof("overestimate gas around the upgrade msg: %v, transitional multi: %v", msg, transitionalMulti)
+	}
+	ret = (ret * int64(transitionalMulti*1024)) >> 10
 
 	// Special case for PaymentChannel collect, which is deleting actor
-	pts, err := mp.api.ChainTipSet(ctx, ts.Parents())
-	if err != nil {
-		_ = err
-		// somewhat ignore it as it can happen and we just want to detect
-		// an existing PaymentChannel actor
-		return res.Receipt.GasUsed, nil
-	}
-	act, err := mp.sm.GetActorAt(ctx, msg.To, pts)
-	if err != nil {
-		_ = err
-		// somewhat ignore it as it can happen and we just want to detect
-		// an existing PaymentChannel actor
-		return res.Receipt.GasUsed, nil
+	// We ignore errors in this special case since they CAN occur,
+	// and we just want to detect existing payment channel actors
+	_, st, err := mp.sm.ParentState(ctx, ts)
+	if err == nil {
+		act, found, err := st.GetActor(ctx, msg.To)
+		if err == nil && found && builtin.IsPaymentChannelActor(act.Code) && msgIn.Method == builtin2.MethodsPaych.Collect {
+			// add the refunded gas for DestroyActor back into the gas used
+			ret += 76e3
+		}
 	}
 
-	if !builtin.IsPaymentChannelActor(act.Code) {
-		return res.Receipt.GasUsed, nil
-	}
-	if msg.Method != paych.Methods.Collect {
-		return res.Receipt.GasUsed, nil
-	}
-
-	// return GasUsed without the refund for DestoryActor
-	return res.Receipt.GasUsed + 76e3, nil
+	return ret, nil
 }
 
 func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessage *types.EstimateMessage, _ types.TipSetKey) (*types.Message, error) {
 	if estimateMessage == nil || estimateMessage.Msg == nil {
-		return nil, xerrors.Errorf("estimate message is nil")
+		return nil, fmt.Errorf("estimate message is nil")
 	}
 	if estimateMessage.Msg.GasLimit == 0 {
 		gasLimit, err := mp.GasEstimateGasLimit(ctx, estimateMessage.Msg, types.TipSetKey{})
 		if err != nil {
-			return nil, xerrors.Errorf("estimating gas used: %w", err)
+			return nil, fmt.Errorf("estimating gas used: %w", err)
 		}
 		gasLimitOverestimation := mp.GetConfig().GasLimitOverestimation
 		if estimateMessage.Spec != nil && estimateMessage.Spec.GasOverEstimation > 0 {
 			gasLimitOverestimation = estimateMessage.Spec.GasOverEstimation
 		}
+		log.Debugf("call GasEstimateMessageGas %v, spec: %v, config gasLimitOverestimation: %v", estimateMessage.Msg, estimateMessage.Spec, mp.GetConfig().GasLimitOverestimation)
 		estimateMessage.Msg.GasLimit = int64(float64(gasLimit) * gasLimitOverestimation)
 	}
 
 	if estimateMessage.Msg.GasPremium == types.EmptyInt || types.BigCmp(estimateMessage.Msg.GasPremium, types.NewInt(0)) == 0 {
 		gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, estimateMessage.Msg.From, estimateMessage.Msg.GasLimit, types.TipSetKey{}, mp.PriceCache)
 		if err != nil {
-			return nil, xerrors.Errorf("estimating gas price: %w", err)
+			return nil, fmt.Errorf("estimating gas price: %w", err)
 		}
 		estimateMessage.Msg.GasPremium = gasPremium
 	}
@@ -299,7 +336,7 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 	if estimateMessage.Msg.GasFeeCap == types.EmptyInt || types.BigCmp(estimateMessage.Msg.GasFeeCap, types.NewInt(0)) == 0 {
 		feeCap, err := mp.GasEstimateFeeCap(ctx, estimateMessage.Msg, 20, types.EmptyTSK)
 		if err != nil {
-			return nil, xerrors.Errorf("estimating fee cap: %w", err)
+			return nil, fmt.Errorf("estimating fee cap: %w", err)
 		}
 		estimateMessage.Msg.GasFeeCap = feeCap
 	}
@@ -311,18 +348,18 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 
 func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateMessages []*types.EstimateMessage, fromNonce uint64, tsk types.TipSetKey) ([]*types.EstimateResult, error) {
 	if len(estimateMessages) == 0 {
-		return nil, xerrors.New("estimate messages are empty")
+		return nil, errors.New("estimate messages are empty")
 	}
 
 	// ChainTipSet will determine if tsk is empty
 	currTS, err := mp.api.ChainTipSet(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("getting tipset: %w", err)
+		return nil, fmt.Errorf("getting tipset: %w", err)
 	}
 
 	fromA, err := mp.sm.ResolveToKeyAddress(ctx, estimateMessages[0].Msg.From, currTS)
 	if err != nil {
-		return nil, xerrors.Errorf("getting key address: %w", err)
+		return nil, fmt.Errorf("getting key address: %w", err)
 	}
 
 	pending, ts := mp.PendingFor(ctx, fromA)
@@ -336,10 +373,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 		estimateMsg := estimateMessage.Msg
 		estimateMsg.Nonce = fromNonce
 
-		if estimateMessage.Spec != nil {
-			log.Infof("GasBatchEstimateMessageGas from %s, nonce %d, gas limit %d, gas fee cap %s, max fee %s",
-				estimateMsg.From, estimateMsg.Nonce, estimateMsg.GasLimit, estimateMsg.GasFeeCap, estimateMessage.Spec.MaxFee)
-		}
+		log.Debugf("call GasBatchEstimateMessageGas msg %v, spec %v", estimateMsg, estimateMessage.Spec)
 
 		if estimateMsg.GasLimit == 0 {
 			gasUsed, err := mp.evalMessageGasLimit(ctx, estimateMsg, priorMsgs, ts)

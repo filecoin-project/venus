@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/venus/fixtures/assets"
 	"github.com/filecoin-project/venus/fixtures/networks"
+	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
+	"github.com/filecoin-project/venus/venus-shared/utils"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/util/ulimit"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/venus/fixtures/asset"
-
-	"golang.org/x/xerrors"
 
 	_ "net/http/pprof" // nolint: golint
 
@@ -66,16 +66,16 @@ var daemonCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		ps, err := asset.Asset("fixtures/_assets/proof-params/parameters.json")
+		ps, err := assets.GetProofParams()
 		if err != nil {
 			return err
 		}
-		srs, err := asset.Asset("fixtures/_assets/proof-params/srs-inner-product.json")
+		srs, err := assets.GetSrs()
 		if err != nil {
 			return err
 		}
 		if err := paramfetch.GetParams(req.Context, ps, srs, 0); err != nil {
-			return xerrors.Errorf("fetching proof parameters: %w", err)
+			return fmt.Errorf("fetching proof parameters: %w", err)
 		}
 
 		exist, err := repo.Exists(repoDir)
@@ -137,7 +137,7 @@ func initRun(req *cmds.Request) error {
 	if mkGen, ok := req.Options[makeGenFlag].(string); ok {
 		preTp := req.Options[preTemplateFlag]
 		if preTp == nil {
-			return xerrors.Errorf("must also pass file with genesis template to `--%s`", preTemplateFlag)
+			return fmt.Errorf("must also pass file with genesis template to `--%s`", preTemplateFlag)
 		}
 
 		node.SetNetParams(cfg.NetworkParams)
@@ -174,6 +174,11 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	}
 
 	config := rep.Config()
+
+	if err := builtinactors.SetNetworkBundle(config.NetworkParams.NetworkType); err != nil {
+		return err
+	}
+	utils.ReloadMethodsMap()
 
 	// second highest precedence is env vars.
 	if envAPI := os.Getenv("VENUS_API"); envAPI != "" {

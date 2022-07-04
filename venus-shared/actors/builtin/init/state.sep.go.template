@@ -7,17 +7,22 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
+	"fmt"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	
 
-{{if (ge .v 3)}}
-	builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
-{{end}}
-
+{{if (le .v 7)}}
+    {{if (ge .v 3)}}
+        builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
+    {{end}}
 	init{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/init"
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
+{{else}}
+	init{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}init"
+	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
+	builtin{{.v}} "github.com/filecoin-project/go-state-types/builtin"
+{{end}}
 )
 
 var _ State = (*state{{.v}})(nil)
@@ -100,12 +105,12 @@ func (s *state{{.v}}) Remove(addrs ...address.Address) (err error) {
 	}
 	for _, addr := range addrs {
 		if err = m.Delete(abi.AddrKey(addr)); err != nil {
-			return xerrors.Errorf("failed to delete entry for address: %s; err: %w", addr, err)
+			return fmt.Errorf("failed to delete entry for address: %s; err: %w", addr, err)
 		}
 	}
 	amr, err := m.Root()
 	if err != nil {
-		return xerrors.Errorf("failed to get address map root: %w", err)
+		return fmt.Errorf("failed to get address map root: %w", err)
 	}
 	s.State.AddressMap = amr
 	return nil

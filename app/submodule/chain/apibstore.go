@@ -2,11 +2,12 @@ package chain
 
 import (
 	"context"
+	"errors"
 
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	"golang.org/x/xerrors"
 )
 
 type ChainIO interface { //nolint
@@ -19,15 +20,13 @@ type apiBStore struct {
 }
 
 // NewAPIBlockstore create new blockstore api
-func NewAPIBlockstore(cio ChainIO) blockstore.Blockstore {
-	return &apiBStore{
-		api: cio,
-	}
+func NewAPIBlockstore(cio ChainIO) blockstoreutil.Blockstore {
+	return blockstoreutil.Adapt(&apiBStore{api: cio})
 }
 
 // DeleteBlock implements Blockstore.DeleteBlock.
 func (a *apiBStore) DeleteBlock(context.Context, cid.Cid) error {
-	return xerrors.New("not supported")
+	return errors.New("not supported")
 }
 
 // Has implements Blockstore.Has.
@@ -55,17 +54,17 @@ func (a *apiBStore) GetSize(ctx context.Context, c cid.Cid) (int, error) {
 
 // Put implements Blockstore.Put.
 func (a *apiBStore) Put(context.Context, blocks.Block) error {
-	return xerrors.New("not supported")
+	return errors.New("not supported")
 }
 
 // PutMany implements Blockstore.PutMany.
 func (a *apiBStore) PutMany(context.Context, []blocks.Block) error {
-	return xerrors.New("not supported")
+	return errors.New("not supported")
 }
 
 // AllKeysChan implements Blockstore.AllKeysChan.
 func (a *apiBStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
-	return nil, xerrors.New("not supported")
+	return nil, errors.New("not supported")
 }
 
 // HashOnRead implements Blockstore.HashOnRead.

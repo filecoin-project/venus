@@ -43,6 +43,8 @@ var replacers = [][2]string{
 		"dtypes.NetworkName",
 		"string",
 	},
+	{"\"golang.org/x/xerrors\"", "\"fmt\""},
+	{"xerrors.Errorf", "fmt.Errorf"},
 }
 
 func findActorsPkgDir() (string, error) {
@@ -69,6 +71,39 @@ func fetch(src, dst string, paths []string) error {
 	}
 
 	return nil
+}
+
+func filterSamePkg(data []byte) []byte {
+	lines := bytes.Split(data, []byte("\n"))
+	lineLen := len(lines)
+	buf := &bytes.Buffer{}
+	pkgs := make(map[string]struct{})
+	var start, end bool
+	for i, line := range lines {
+		str := strings.TrimSpace(string(line))
+		if str == "import (" {
+			start = true
+		}
+		if start && str == ")" {
+			end = true
+			start = false
+		}
+		if start && !end {
+			pkg := strings.TrimSpace(string(line))
+			if _, ok := pkgs[pkg]; ok && strings.HasPrefix(pkg, "\"") {
+				continue
+			} else {
+				pkgs[pkg] = struct{}{}
+			}
+		}
+		buf.Write(line)
+		if i == lineLen-1 && len(line) == 0 {
+		} else {
+			buf.WriteString("\n")
+		}
+	}
+
+	return buf.Bytes()
 }
 
 func fetchOne(srcDir, dstDir string, rel string, replacers [][2]string) error {
@@ -115,6 +150,8 @@ func fetchOne(srcDir, dstDir string, rel string, replacers [][2]string) error {
 	for _, replacer := range replacers {
 		data = bytes.ReplaceAll(data, []byte(replacer[0]), []byte(replacer[1]))
 	}
+
+	data = filterSamePkg(data)
 
 	_, err = io.Copy(fdst, bytes.NewReader(data))
 	if err != nil {

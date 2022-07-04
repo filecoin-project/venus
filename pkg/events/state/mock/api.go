@@ -2,12 +2,12 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
 
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	blockstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -35,7 +35,7 @@ func (m *MockAPI) ChainHasObj(ctx context.Context, c cid.Cid) (bool, error) {
 func (m *MockAPI) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
 	blk, err := m.bs.Get(ctx, c)
 	if err != nil {
-		return nil, xerrors.Errorf("blockstore get: %w", err)
+		return nil, fmt.Errorf("blockstore get: %w", err)
 	}
 
 	return blk.RawData(), nil
