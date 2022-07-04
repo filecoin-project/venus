@@ -443,10 +443,10 @@ func (mr *MockIMarketMockRecorder) GetDeals(arg0, arg1, arg2, arg3 interface{}) 
 }
 
 // GetPieceStorages mocks base method.
-func (m *MockIMarket) GetPieceStorages(arg0 context.Context) market.PieceStorageList {
+func (m *MockIMarket) GetPieceStorages(arg0 context.Context) market.PieceStorageInfos {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetPieceStorages", arg0)
-	ret0, _ := ret[0].(market.PieceStorageList)
+	ret0, _ := ret[0].(market.PieceStorageInfos)
 	return ret0
 }
 

@@ -1,6 +1,6 @@
 package market
 
-type PieceStorageList struct {
+type PieceStorageInfos struct {
 	FsStorage []FsStorage
 	S3Storage []S3Storage
 }
