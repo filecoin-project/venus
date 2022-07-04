@@ -1,6 +1,7 @@
 package node
 
 import (
+	"errors"
 	"reflect"
 
 	"github.com/filecoin-project/go-jsonrpc"
@@ -8,7 +9,6 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
 	"github.com/ipfs-force-community/metrics/ratelimit"
-	"golang.org/x/xerrors"
 )
 
 type RPCService interface {
@@ -43,7 +43,7 @@ func (builder *RPCBuilder) AddService(service RPCService) error {
 	serviceV := reflect.ValueOf(service)
 	apiMethod := serviceV.MethodByName(methodName)
 	if !apiMethod.IsValid() {
-		return xerrors.New("expect API function")
+		return errors.New("expect API function")
 	}
 
 	apiImpls := apiMethod.Call([]reflect.Value{})
@@ -68,7 +68,7 @@ func (builder *RPCBuilder) AddService(service RPCService) error {
 	serviceV = reflect.ValueOf(service)
 	apiMethod = serviceV.MethodByName(methodName)
 	if !apiMethod.IsValid() {
-		return xerrors.New("expect API function")
+		return errors.New("expect API function")
 	}
 
 	apiImpls = apiMethod.Call([]reflect.Value{})

@@ -2,12 +2,12 @@ package chain
 
 import (
 	"context"
+	"fmt"
 
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-address"
-	"golang.org/x/xerrors"
 )
 
 var _ v1api.IAccount = &accountAPI{}
@@ -25,7 +25,7 @@ func NewAccountAPI(chain *ChainSubmodule) v1api.IAccount {
 func (accountAPI *accountAPI) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
 	ts, err := accountAPI.chain.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return address.Undef, fmt.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	return accountAPI.chain.Stmgr.ResolveToKeyAddress(ctx, addr, ts)
 }

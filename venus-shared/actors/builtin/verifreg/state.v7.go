@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+
 	verifreg7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/verifreg"
 	adt7 "github.com/filecoin-project/specs-actors/v7/actors/util/adt"
 )
@@ -56,6 +57,10 @@ func (s *state7) VerifierDataCap(addr address.Address) (bool, abi.StoragePower, 
 	return getDataCap(s.store, actors.Version7, s.verifiers, addr)
 }
 
+func (s *state7) RemoveDataCapProposalID(verifier address.Address, client address.Address) (bool, uint64, error) {
+	return getRemoveDataCapProposalID(s.store, actors.Version7, s.removeDataCapProposalIDs, verifier, client)
+}
+
 func (s *state7) ForEachVerifier(cb func(addr address.Address, dcap abi.StoragePower) error) error {
 	return forEachCap(s.store, actors.Version7, s.verifiers, cb)
 }
@@ -70,6 +75,10 @@ func (s *state7) verifiedClients() (adt.Map, error) {
 
 func (s *state7) verifiers() (adt.Map, error) {
 	return adt7.AsMap(s.store, s.Verifiers, builtin7.DefaultHamtBitwidth)
+}
+
+func (s *state7) removeDataCapProposalIDs() (adt.Map, error) {
+	return adt7.AsMap(s.store, s.RemoveDataCapProposalIDs, builtin7.DefaultHamtBitwidth)
 }
 
 func (s *state7) GetState() interface{} {

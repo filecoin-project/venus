@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 )
 
 type VoucherInfo struct {

@@ -134,7 +134,7 @@ func (v *FakeStateView) MinerInfo(ctx context.Context, maddr address.Address, nv
 	return &miner.MinerInfo{
 		Owner:  m.Owner,
 		Worker: m.Worker,
-		PeerId: &m.PeerID,
+		PeerId: []byte(m.PeerID),
 	}, nil
 }
 

@@ -11,12 +11,9 @@ import (
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/minio/blake2b-simd"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	vmr "github.com/filecoin-project/specs-actors/v7/actors/runtime"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
@@ -35,13 +32,13 @@ type faultChecker interface {
 	VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte, curEpoch abi.ChainEpoch, msg vm.VmMessage, gasIpld cbornode.IpldStore, view vm.SyscallsStateView, getter vmcontext.LookbackStateGetter) (*vmr.ConsensusFault, error)
 }
 
-// Syscalls contains the concrete implementation of VM system calls, including connection to
+// Syscalls contains the concrete implementation of LegacyVM system calls, including connection to
 // proof verification and blockchain inspection.
 // Errors returned by these methods are intended to be returned to the actor code to respond to: they must be
 // entirely deterministic and repeatable by other implementations.
 // Any non-deterministic error will instead trigger a panic.
 // TODO: determine a more robust mechanism for distinguishing transient runtime failures from deterministic errors
-// in VM and supporting code. https://github.com/filecoin-project/venus/issues/3844
+// in LegacyVM and supporting code. https://github.com/filecoin-project/venus/issues/3844
 type Syscalls struct {
 	faultChecker faultChecker
 	verifier     ffiwrapper.Verifier
@@ -57,7 +54,7 @@ func NewSyscalls(faultChecker faultChecker, verifier ffiwrapper.Verifier) *Sysca
 func (s *Syscalls) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) error {
 	ok, err := s.verifier.VerifyReplicaUpdate(update)
 	if err != nil {
-		return xerrors.Errorf("failed to verify replica update: %w", err)
+		return fmt.Errorf("failed to verify replica update: %w", err)
 	}
 
 	if !ok {
@@ -84,7 +81,7 @@ func (s *Syscalls) ComputeUnsealedSectorCID(_ context.Context, proof abi.Registe
 
 // VerifySeal returns true if the sealing operation from which its inputs were
 // derived was valid, and false if not.
-func (s *Syscalls) VerifySeal(_ context.Context, info proof5.SealVerifyInfo) error {
+func (s *Syscalls) VerifySeal(_ context.Context, info proof7.SealVerifyInfo) error {
 	ok, err := s.verifier.VerifySeal(info)
 	if err != nil {
 		return err
@@ -97,7 +94,7 @@ func (s *Syscalls) VerifySeal(_ context.Context, info proof5.SealVerifyInfo) err
 var BatchSealVerifyParallelism = 2 * goruntime.NumCPU()
 
 //BatchVerifySeals batch verify windows post
-func (s *Syscalls) BatchVerifySeals(ctx context.Context, vis map[address.Address][]proof5.SealVerifyInfo) (map[address.Address][]bool, error) {
+func (s *Syscalls) BatchVerifySeals(ctx context.Context, vis map[address.Address][]proof7.SealVerifyInfo) (map[address.Address][]bool, error) {
 	out := make(map[address.Address][]bool)
 
 	sema := make(chan struct{}, BatchSealVerifyParallelism)
@@ -109,7 +106,7 @@ func (s *Syscalls) BatchVerifySeals(ctx context.Context, vis map[address.Address
 
 		for i, seal := range seals {
 			wg.Add(1)
-			go func(ma address.Address, ix int, svi proof5.SealVerifyInfo, res []bool) {
+			go func(ma address.Address, ix int, svi proof7.SealVerifyInfo, res []bool) {
 				defer wg.Done()
 				sema <- struct{}{}
 
@@ -129,10 +126,10 @@ func (s *Syscalls) BatchVerifySeals(ctx context.Context, vis map[address.Address
 	return out, nil
 }
 
-func (s *Syscalls) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) error {
+func (s *Syscalls) VerifyAggregateSeals(aggregate proof7.AggregateSealVerifyProofAndInfos) error {
 	ok, err := s.verifier.VerifyAggregateSeals(aggregate)
 	if err != nil {
-		return xerrors.Errorf("failed to verify aggregated PoRep: %w", err)
+		return fmt.Errorf("failed to verify aggregated PoRep: %w", err)
 	}
 	if !ok {
 		return fmt.Errorf("invalid aggregate proof")
@@ -142,7 +139,7 @@ func (s *Syscalls) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProo
 }
 
 //VerifyPoSt verify windows post
-func (s *Syscalls) VerifyPoSt(ctx context.Context, info proof5.WindowPoStVerifyInfo) error {
+func (s *Syscalls) VerifyPoSt(ctx context.Context, info proof7.WindowPoStVerifyInfo) error {
 	ok, err := s.verifier.VerifyWindowPoSt(ctx, info)
 	if err != nil {
 		return err

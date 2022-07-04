@@ -19,11 +19,11 @@ import (
 //
 type syscallsStateView struct {
 	ctx *invocationContext
-	*VM
+	*LegacyVM
 }
 
-func newSyscallsStateView(ctx *invocationContext, VM *VM) *syscallsStateView {
-	return &syscallsStateView{ctx: ctx, VM: VM}
+func newSyscallsStateView(ctx *invocationContext, VM *LegacyVM) *syscallsStateView {
+	return &syscallsStateView{ctx: ctx, LegacyVM: VM}
 }
 
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.

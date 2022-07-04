@@ -1,11 +1,13 @@
 package dispatch
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/go-state-types/exitcode"
 	rtt "github.com/filecoin-project/go-state-types/rt"
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	vmr "github.com/filecoin-project/venus/pkg/vm/runtime"
 	"github.com/filecoin-project/venus/venus-shared/actors"
@@ -42,7 +44,7 @@ func (cl CodeLoader) GetUnsafeActorImpl(code cid.Cid) (Dispatcher, error) {
 	//todo version check
 	actor, ok := cl.actors[code]
 	if !ok {
-		return nil, xerrors.Errorf("unable to get actorv for code %s", code)
+		return nil, fmt.Errorf("unable to get actorv for code %s", code)
 	}
 	return &actorDispatcher{code: code, actor: actor.vmActor}, nil
 }
@@ -58,22 +60,38 @@ func NewBuilder() *CodeLoaderBuilder {
 }
 
 // Add lets you add an actor dispatch table for a given version.
-func (b *CodeLoaderBuilder) Add(predict ActorPredicate, actor Actor) *CodeLoaderBuilder {
+func (b *CodeLoaderBuilder) Add(av actors.Version, predict ActorPredicate, actor Actor) *CodeLoaderBuilder {
 	if predict == nil {
 		predict = func(vmr.Runtime, rtt.VMActor) error { return nil }
 	}
 
-	b.actors[actor.Code()] = ActorInfo{
+	ai := ActorInfo{
 		vmActor:   actor,
 		predicate: predict,
 	}
+
+	ac := actor.Code()
+	b.actors[ac] = ai
+
+	// necessary to make stuff work
+	var realCode cid.Cid
+	if av >= actors.Version8 {
+		name := actors.CanonicalName(builtin.ActorNameByCode(ac))
+
+		var ok bool
+		realCode, ok = actors.GetActorCodeID(av, name)
+		if ok {
+			b.actors[realCode] = ai
+		}
+	}
+
 	return b
 }
 
 // Add lets you add an actor dispatch table for a given version.
-func (b *CodeLoaderBuilder) AddMany(predict ActorPredicate, actors ...rt5.VMActor) *CodeLoaderBuilder {
+func (b *CodeLoaderBuilder) AddMany(av actors.Version, predict ActorPredicate, actors ...rt5.VMActor) *CodeLoaderBuilder {
 	for _, actor := range actors {
-		b.Add(predict, actor)
+		b.Add(av, predict, actor)
 	}
 	return b
 }
@@ -91,10 +109,10 @@ func ActorsVersionPredicate(ver actors.Version) ActorPredicate {
 	return func(rt vmr.Runtime, v rtt.VMActor) error {
 		nver, err := actors.VersionForNetwork(rt.NetworkVersion())
 		if err != nil {
-			return xerrors.Errorf("version for network %w", err)
+			return fmt.Errorf("version for network %w", err)
 		}
 		if nver != ver {
-			return xerrors.Errorf("actor %s is a version %d actor; chain only supports actor version %d at height %d", v.Code(), ver, nver, rt.CurrentEpoch())
+			return fmt.Errorf("actor %s is a version %d actor; chain only supports actor version %d at height %d", v.Code(), ver, nver, rt.CurrentEpoch())
 		}
 		return nil
 	}

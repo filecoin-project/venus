@@ -6,10 +6,11 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
@@ -19,7 +20,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("market_adapter")
@@ -510,7 +510,7 @@ func (a *fundedAddress) processWithdrawals(withdrawals []*fundRequest) (msgCid c
 			if !withdrawalAmt.IsZero() {
 				msg += fmt.Sprintf(" - queued withdrawals (%s)", types.FIL(withdrawalAmt))
 			}
-			err := xerrors.Errorf(msg)
+			err := fmt.Errorf(msg)
 			a.debugf("%s", err)
 			req.Complete(cid.Undef, err)
 			continue
@@ -667,10 +667,10 @@ func (env *fundManagerEnvironment) AddFunds(
 	}
 
 	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.Message{
-		To:     market.Address,
+		To:     builtin.StorageMarketActorAddr,
 		From:   wallet,
 		Value:  amt,
-		Method: market.Methods.AddBalance,
+		Method: builtin.MethodsMarket.AddBalance,
 		Params: params,
 	}, nil)
 
@@ -686,19 +686,19 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 	addr address.Address,
 	amt abi.TokenAmount,
 ) (cid.Cid, error) {
-	params, err := actors.SerializeParams(&market.WithdrawBalanceParams{
+	params, err := actors.SerializeParams(&markettypes.WithdrawBalanceParams{
 		ProviderOrClientAddress: addr,
 		Amount:                  amt,
 	})
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("serializing params: %w", err)
+		return cid.Undef, fmt.Errorf("serializing params: %w", err)
 	}
 
 	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.Message{
-		To:     market.Address,
+		To:     builtin.StorageMarketActorAddr,
 		From:   wallet,
 		Value:  big.NewInt(0),
-		Method: market.Methods.WithdrawBalance,
+		Method: builtin.MethodsMarket.WithdrawBalance,
 		Params: params,
 	}, nil)
 

@@ -2,9 +2,9 @@ package genesis
 
 import (
 	"context"
+	"fmt"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -22,31 +22,22 @@ func mustEnc(i cbg.CBORMarshaler) []byte {
 	return enc
 }
 
-func doExecValue(ctx context.Context, vmi vm.Interpreter, to, from address.Address, value types.BigInt, method abi.MethodNum, params []byte) ([]byte, error) {
-	act, find, err := vmi.StateTree().GetActor(ctx, from)
-	if err != nil {
-		return nil, xerrors.Errorf("doExec failed to get from actor (%s): %w", from, err)
-	}
-
-	if !find {
-		return nil, xerrors.Errorf("actor (%s) not found", from)
-	}
-
-	ret, err := vmi.ApplyImplicitMessage(&types.Message{
+func doExecValue(ctx context.Context, vmi vm.Interface, to, from address.Address, value types.BigInt, method abi.MethodNum, params []byte) ([]byte, error) {
+	ret, err := vmi.ApplyImplicitMessage(context.TODO(), &types.Message{
 		To:       to,
 		From:     from,
 		Method:   method,
 		Params:   params,
 		GasLimit: 1_000_000_000_000_000,
 		Value:    value,
-		Nonce:    act.Nonce,
+		Nonce:    0,
 	})
 	if err != nil {
-		return nil, xerrors.Errorf("doExec apply message failed: %w", err)
+		return nil, fmt.Errorf("doExec apply message failed: %w", err)
 	}
 
 	if ret.Receipt.ExitCode != 0 {
-		return nil, xerrors.Errorf("failed to call method: %w", ret.Receipt.String())
+		return nil, fmt.Errorf("failed to call method: %s", ret.Receipt.String())
 	}
 
 	return ret.Receipt.Return, nil

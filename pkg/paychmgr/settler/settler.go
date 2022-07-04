@@ -10,7 +10,8 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 )
@@ -81,7 +82,7 @@ func (pcs *paymentChannelSettler) revertHandler(ctx context.Context, ts *types.T
 
 func (pcs *paymentChannelSettler) matcher(msg *types.Message) (matched bool, err error) {
 	// Check if this is a settle payment channel message
-	if msg.Method != paych.Methods.Settle {
+	if msg.Method != builtin.MethodsPaych.Settle {
 		return false, nil
 	}
 	// Check if this payment channel is of concern to this node (i.e. tracked in payment channel store),

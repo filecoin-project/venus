@@ -1,10 +1,9 @@
 package fsutil
 
 import (
+	"fmt"
 	"os"
 	"syscall"
-
-	"golang.org/x/xerrors"
 )
 
 type SizeInfo struct {
@@ -18,7 +17,7 @@ func FileSize(path string) (SizeInfo, error) {
 		if err == syscall.ENOENT {
 			return SizeInfo{}, os.ErrNotExist
 		}
-		return SizeInfo{}, xerrors.Errorf("stat: %w", err)
+		return SizeInfo{}, fmt.Errorf("stat: %w", err)
 	}
 
 	// NOTE: stat.Blocks is in 512B blocks, NOT in stat.Blksize

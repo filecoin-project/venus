@@ -19,18 +19,17 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/app/node"
 	sbchain "github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/utils"
 	"github.com/ipfs/go-cid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 )
 
 var multisigCmd = &cmds.Command{
@@ -165,6 +164,11 @@ var msigInspectCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
+
+		if err := utils.LoadBuiltinActors(ctx, env.(*node.Env).ChainAPI); err != nil {
+			return err
+		}
+
 		head, err := env.(*node.Env).ChainAPI.ChainHead(req.Context)
 		if err != nil {
 			return err
@@ -232,7 +236,7 @@ var msigInspectCmd = &cmds.Command{
 			}
 		}
 		if err := signerTable.Flush(); err != nil {
-			return xerrors.Errorf("flushing output: %+v", err)
+			return fmt.Errorf("flushing output: %+v", err)
 		}
 
 		pending := make(map[int64]multisig.Transaction)
@@ -240,7 +244,7 @@ var msigInspectCmd = &cmds.Command{
 			pending[id] = txn
 			return nil
 		}); err != nil {
-			return xerrors.Errorf("reading pending transactions: %w", err)
+			return fmt.Errorf("reading pending transactions: %w", err)
 		}
 
 		decParams := reqBoolOption(req, "decode-params")
@@ -272,17 +276,17 @@ var msigInspectCmd = &cmds.Command{
 						fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), "new account, unknown method", tx.Method, paramStr)
 					}
 				} else {
-					method := chain.MethodsMap[targAct.Code][tx.Method]
+					method := utils.MethodsMap[targAct.Code][tx.Method]
 
 					if decParams && tx.Method != 0 {
 						ptyp := reflect.New(method.Params.Elem()).Interface().(cbg.CBORUnmarshaler)
 						if err := ptyp.UnmarshalCBOR(bytes.NewReader(tx.Params)); err != nil {
-							return xerrors.Errorf("failed to decode parameters of transaction %d: %w", txid, err)
+							return fmt.Errorf("failed to decode parameters of transaction %d: %w", txid, err)
 						}
 
 						b, err := json.Marshal(ptyp)
 						if err != nil {
-							return xerrors.Errorf("could not json marshal parameter type: %w", err)
+							return fmt.Errorf("could not json marshal parameter type: %w", err)
 						}
 						paramStr = string(b)
 					}
@@ -290,7 +294,7 @@ var msigInspectCmd = &cmds.Command{
 				}
 			}
 			if err := w.Flush(); err != nil {
-				return xerrors.Errorf("flushing output: %+v", err)
+				return fmt.Errorf("flushing output: %+v", err)
 			}
 		}
 		return re.Emit(cliw)
@@ -450,7 +454,7 @@ var msigRemoveProposeCmd = &cmds.Command{
 		var ret multisig.ProposeReturn
 		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
 		if err != nil {
-			return xerrors.Errorf("decoding proposal return: %w", err)
+			return fmt.Errorf("decoding proposal return: %w", err)
 		}
 		cliw := new(bytes.Buffer)
 		fmt.Fprintf(cliw, "sent remove singer proposal in message: %s\n", msgCid)
@@ -616,7 +620,7 @@ var msigAddProposeCmd = &cmds.Command{
 		var ret multisig.ProposeReturn
 		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
 		if err != nil {
-			return xerrors.Errorf("decoding proposal return: %w", err)
+			return fmt.Errorf("decoding proposal return: %w", err)
 		}
 		cliw := new(bytes.Buffer)
 		fmt.Fprintf(cliw, "sent add singer proposal in message: %s\n", msgCid)
@@ -900,7 +904,7 @@ var msigSwapProposeCmd = &cmds.Command{
 		var ret multisig.ProposeReturn
 		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
 		if err != nil {
-			return xerrors.Errorf("decoding proposal return: %w", err)
+			return fmt.Errorf("decoding proposal return: %w", err)
 		}
 		cliw := new(bytes.Buffer)
 		fmt.Fprintf(cliw, "sent swap singer proposal in message: %s\n", msgCid)
@@ -1105,7 +1109,7 @@ var msigLockProposeCmd = &cmds.Command{
 		var ret multisig.ProposeReturn
 		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
 		if err != nil {
-			return xerrors.Errorf("decoding proposal return: %w", err)
+			return fmt.Errorf("decoding proposal return: %w", err)
 		}
 		cliw := new(bytes.Buffer)
 		fmt.Fprintf(cliw, "sent lock balance proposal in message: %s\n", msgCid)
@@ -1384,7 +1388,7 @@ var msigProposeThresholdCmd = &cmds.Command{
 		var ret multisig.ProposeReturn
 		err = ret.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
 		if err != nil {
-			return xerrors.Errorf("decoding proposal return: %w", err)
+			return fmt.Errorf("decoding proposal return: %w", err)
 		}
 		cliw := new(bytes.Buffer)
 		fmt.Fprintf(cliw, "sent change threshold proposal in message: %s\n", msgCid)

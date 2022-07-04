@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -14,13 +15,13 @@ import (
 	"github.com/google/uuid"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/mitchellh/go-homedir"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/venus/fixtures/networks"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/gen"
@@ -69,11 +70,11 @@ var genesisNewCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fileName := req.Arguments[0]
 		if fileName == "" {
-			return xerrors.New("seed genesis new [genesis.json]")
+			return errors.New("seed genesis new [genesis.json]")
 		}
 		networkName, _ := req.Options["network-name"].(string)
 		out := genesis.Template{
-			NetworkVersion:   constants.NewestNetworkVersion,
+			NetworkVersion:   networks.Net2k().Network.GenesisNetworkVersion,
 			Accounts:         []genesis.Actor{},
 			Miners:           []genesis.Miner{},
 			VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
@@ -108,7 +109,7 @@ var genesisAddMinerCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 2 {
-			return xerrors.New("seed genesis add-miner [genesis.json] [preseal.json]")
+			return errors.New("seed genesis add-miner [genesis.json] [preseal.json]")
 		}
 
 		genf, err := homedir.Expand(req.Arguments[0])
@@ -119,24 +120,24 @@ var genesisAddMinerCmd = &cmds.Command{
 		var template genesis.Template
 		genb, err := ioutil.ReadFile(genf)
 		if err != nil {
-			return xerrors.Errorf("read genesis template: %w", err)
+			return fmt.Errorf("read genesis template: %w", err)
 		}
 
 		if err := json.Unmarshal(genb, &template); err != nil {
-			return xerrors.Errorf("unmarshal genesis template: %w", err)
+			return fmt.Errorf("unmarshal genesis template: %w", err)
 		}
 
 		minf, err := homedir.Expand(req.Arguments[1])
 		if err != nil {
-			return xerrors.Errorf("expand preseal file path: %w", err)
+			return fmt.Errorf("expand preseal file path: %w", err)
 		}
 		miners := map[string]genesis.Miner{}
 		minb, err := ioutil.ReadFile(minf)
 		if err != nil {
-			return xerrors.Errorf("read preseal file: %w", err)
+			return fmt.Errorf("read preseal file: %w", err)
 		}
 		if err := json.Unmarshal(minb, &miners); err != nil {
-			return xerrors.Errorf("unmarshal miner info: %w", err)
+			return fmt.Errorf("unmarshal miner info: %w", err)
 		}
 
 		for mn, miner := range miners {
@@ -145,14 +146,14 @@ var genesisAddMinerCmd = &cmds.Command{
 				id := uint64(genesis.MinerStart) + uint64(len(template.Miners))
 				maddr, err := address.NewFromString(mn)
 				if err != nil {
-					return xerrors.Errorf("parsing miner address: %w", err)
+					return fmt.Errorf("parsing miner address: %w", err)
 				}
 				mid, err := address.IDFromAddress(maddr)
 				if err != nil {
-					return xerrors.Errorf("getting miner id from address: %w", err)
+					return fmt.Errorf("getting miner id from address: %w", err)
 				}
 				if mid != id {
-					return xerrors.Errorf("tried to set miner t0%d as t0%d", mid, id)
+					return fmt.Errorf("tried to set miner t0%d as t0%d", mid, id)
 				}
 			}
 
@@ -200,16 +201,16 @@ var genesisAddMsigsCmd = &cmds.Command{
 		var template genesis.Template
 		b, err := ioutil.ReadFile(genf)
 		if err != nil {
-			return xerrors.Errorf("read genesis template: %w", err)
+			return fmt.Errorf("read genesis template: %w", err)
 		}
 
 		if err := json.Unmarshal(b, &template); err != nil {
-			return xerrors.Errorf("unmarshal genesis template: %w", err)
+			return fmt.Errorf("unmarshal genesis template: %w", err)
 		}
 
 		entries, err := seed.ParseMultisigCsv(csvf)
 		if err != nil {
-			return xerrors.Errorf("parsing multisig csv file: %w", err)
+			return fmt.Errorf("parsing multisig csv file: %w", err)
 		}
 
 		for i, e := range entries {
@@ -248,13 +249,13 @@ func monthsToBlocks(nmonths int) int {
 func parseMultisigCsv(csvf string) ([]seed.GenAccountEntry, error) {
 	fileReader, err := os.Open(csvf)
 	if err != nil {
-		return nil, xerrors.Errorf("read multisig csv: %w", err)
+		return nil, fmt.Errorf("read multisig csv: %w", err)
 	}
 	defer fileReader.Close() //nolint:errcheck
 	r := csv.NewReader(fileReader)
 	records, err := r.ReadAll()
 	if err != nil {
-		return nil, xerrors.Errorf("read multisig csv: %w", err)
+		return nil, fmt.Errorf("read multisig csv: %w", err)
 	}
 	var entries []seed.GenAccountEntry
 	for i, e := range records[1:] {
@@ -263,35 +264,35 @@ func parseMultisigCsv(csvf string) ([]seed.GenAccountEntry, error) {
 		for j, a := range addrStrs {
 			addr, err := address.NewFromString(a)
 			if err != nil {
-				return nil, xerrors.Errorf("failed to parse address %d in row %d (%q): %w", j, i, a, err)
+				return nil, fmt.Errorf("failed to parse address %d in row %d (%q): %w", j, i, a, err)
 			}
 			addrs = append(addrs, addr)
 		}
 
 		balance, err := types.ParseFIL(strings.TrimSpace(e[2]))
 		if err != nil {
-			return nil, xerrors.Errorf("failed to parse account balance: %w", err)
+			return nil, fmt.Errorf("failed to parse account balance: %w", err)
 		}
 
 		vesting, err := strconv.Atoi(strings.TrimSpace(e[3]))
 		if err != nil {
-			return nil, xerrors.Errorf("failed to parse vesting duration for record %d: %w", i, err)
+			return nil, fmt.Errorf("failed to parse vesting duration for record %d: %w", i, err)
 		}
 
 		custodianID, err := strconv.Atoi(strings.TrimSpace(e[4]))
 		if err != nil {
-			return nil, xerrors.Errorf("failed to parse custodianID in record %d: %w", i, err)
+			return nil, fmt.Errorf("failed to parse custodianID in record %d: %w", i, err)
 		}
 		threshold, err := strconv.Atoi(strings.TrimSpace(e[5]))
 		if err != nil {
-			return nil, xerrors.Errorf("failed to parse multisigM in record %d: %w", i, err)
+			return nil, fmt.Errorf("failed to parse multisigM in record %d: %w", i, err)
 		}
 		num, err := strconv.Atoi(strings.TrimSpace(e[6]))
 		if err != nil {
-			return nil, xerrors.Errorf("Number of addresses be integer: %w", err)
+			return nil, fmt.Errorf("number of addresses be integer: %w", err)
 		}
 		if e[0] != "1" {
-			return nil, xerrors.Errorf("record version must be 1")
+			return nil, fmt.Errorf("record version must be 1")
 		}
 		entries = append(entries, seed.GenAccountEntry{
 			Version:       1,
@@ -335,11 +336,11 @@ var genesisSetVRKCmd = &cmds.Command{
 		var template genesis.Template
 		b, err := ioutil.ReadFile(genf)
 		if err != nil {
-			return xerrors.Errorf("read genesis template: %w", err)
+			return fmt.Errorf("read genesis template: %w", err)
 		}
 
 		if err := json.Unmarshal(b, &template); err != nil {
-			return xerrors.Errorf("unmarshal genesis template: %w", err)
+			return fmt.Errorf("unmarshal genesis template: %w", err)
 		}
 
 		account, _ := req.Options["account"].(string)
@@ -365,11 +366,11 @@ var genesisSetVRKCmd = &cmds.Command{
 
 			entries, err := parseMultisigCsv(csvf)
 			if err != nil {
-				return xerrors.Errorf("parsing multisig csv file: %w", err)
+				return fmt.Errorf("parsing multisig csv file: %w", err)
 			}
 
 			if len(entries) == 0 {
-				return xerrors.Errorf("no msig entries in csv file: %w", err)
+				return fmt.Errorf("no msig entries in csv file: %w", err)
 			}
 
 			e := entries[0]
@@ -392,7 +393,7 @@ var genesisSetVRKCmd = &cmds.Command{
 
 			template.VerifregRootKey = act
 		} else {
-			return xerrors.Errorf("must include either --account or --multisig flag")
+			return fmt.Errorf("must include either --account or --multisig flag")
 		}
 
 		b, err = json.MarshalIndent(&template, "", "  ")
@@ -428,11 +429,11 @@ var genesisSetRemainderCmd = &cmds.Command{
 		var template genesis.Template
 		b, err := ioutil.ReadFile(genf)
 		if err != nil {
-			return xerrors.Errorf("read genesis template: %w", err)
+			return fmt.Errorf("read genesis template: %w", err)
 		}
 
 		if err := json.Unmarshal(b, &template); err != nil {
-			return xerrors.Errorf("unmarshal genesis template: %w", err)
+			return fmt.Errorf("unmarshal genesis template: %w", err)
 		}
 
 		account, _ := req.Options["account"].(string)
@@ -458,11 +459,11 @@ var genesisSetRemainderCmd = &cmds.Command{
 
 			entries, err := parseMultisigCsv(csvf)
 			if err != nil {
-				return xerrors.Errorf("parsing multisig csv file: %w", err)
+				return fmt.Errorf("parsing multisig csv file: %w", err)
 			}
 
 			if len(entries) == 0 {
-				return xerrors.Errorf("no msig entries in csv file: %w", err)
+				return fmt.Errorf("no msig entries in csv file: %w", err)
 			}
 
 			e := entries[0]
@@ -485,7 +486,7 @@ var genesisSetRemainderCmd = &cmds.Command{
 
 			template.RemainderAccount = act
 		} else {
-			return xerrors.Errorf("must include either --account or --multisig flag")
+			return fmt.Errorf("must include either --account or --multisig flag")
 		}
 
 		b, err = json.MarshalIndent(&template, "", "  ")
@@ -518,20 +519,20 @@ var genesisSetActorVersionCmd = &cmds.Command{
 		var template genesis.Template
 		b, err := ioutil.ReadFile(genf)
 		if err != nil {
-			return xerrors.Errorf("read genesis template: %w", err)
+			return fmt.Errorf("read genesis template: %w", err)
 		}
 
 		if err := json.Unmarshal(b, &template); err != nil {
-			return xerrors.Errorf("unmarshal genesis template: %w", err)
+			return fmt.Errorf("unmarshal genesis template: %w", err)
 		}
 
 		nv, err := strconv.ParseUint(req.Arguments[1], 10, 64)
 		if err != nil {
-			return xerrors.Errorf("parsing network version: %w", err)
+			return fmt.Errorf("parsing network version: %w", err)
 		}
 
 		if nv > uint64(constants.NewestNetworkVersion) {
-			return xerrors.Errorf("invalid network version: %d", nv)
+			return fmt.Errorf("invalid network version: %d", nv)
 		}
 
 		template.NetworkVersion = network.Version(nv)
@@ -555,7 +556,7 @@ var preSealCmd = &cmds.Command{
 		cmds.IntOption("sector-offset", "how many sector ids to skip when starting to seal").WithDefault(int(0)),
 		cmds.StringOption("key", "(optional) Key to use for signing / owner/worker addresses").WithDefault(""),
 		cmds.BoolOption("fake-sectors", "").WithDefault(false),
-		cmds.IntOption("network-version", "specify network version").WithDefault(int(-1)),
+		cmds.IntOption("network-version", "specify network version").WithDefault(int(networks.Net2k().Network.GenesisNetworkVersion)),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		sdir, _ := req.Options["sector-dir"].(string)
@@ -593,7 +594,7 @@ var preSealCmd = &cmds.Command{
 		}
 		sectorSize := abi.SectorSize(sectorSizeInt)
 
-		nv := constants.NewestNetworkVersion
+		nv := networks.Net2k().Network.GenesisNetworkVersion
 		ver, _ := req.Options["network-version"].(int)
 		if ver >= 0 {
 			nv = network.Version(ver)
@@ -669,7 +670,7 @@ var aggregateManifestsCmd = &cmds.Command{
 
 func mergeGenMiners(a, b genesis.Miner) (genesis.Miner, error) {
 	if a.SectorSize != b.SectorSize {
-		return genesis.Miner{}, xerrors.Errorf("sector sizes mismatch, %d != %d", a.SectorSize, b.SectorSize)
+		return genesis.Miner{}, fmt.Errorf("sector sizes mismatch, %d != %d", a.SectorSize, b.SectorSize)
 	}
 
 	return genesis.Miner{

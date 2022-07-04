@@ -6,7 +6,7 @@ import (
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 
-	"github.com/filecoin-project/venus/fixtures/asset"
+	"github.com/filecoin-project/venus/fixtures/assets"
 )
 
 var fetchCmd = &cmds.Command{
@@ -19,12 +19,12 @@ var fetchCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		// highest precedence is cmd line flag.
 		if size, ok := req.Options[Size].(uint64); ok {
-			ps, err := asset.Asset("fixtures/_assets/proof-params/parameters.json")
+			ps, err := assets.GetProofParams()
 			if err != nil {
 				return err
 			}
 
-			srs, err := asset.Asset("fixtures/_assets/proof-params/srs-inner-product.json")
+			srs, err := assets.GetSrs()
 			if err != nil {
 				return err
 			}

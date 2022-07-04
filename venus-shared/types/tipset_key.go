@@ -7,8 +7,6 @@ import (
 	"io"
 	"strings"
 
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -170,7 +168,7 @@ func (tsk *TipSetKey) UnmarshalCBOR(r io.Reader) error {
 
 			c, err := cbg.ReadCid(br)
 			if err != nil {
-				return xerrors.Errorf("reading cid field t.Parents failed: %v", err)
+				return fmt.Errorf("reading cid field t.Parents failed: %v", err)
 			}
 			cids[i] = c
 		}
@@ -182,7 +180,7 @@ func (tsk *TipSetKey) UnmarshalCBOR(r io.Reader) error {
 func (tsk TipSetKey) MarshalCBOR(w io.Writer) error {
 	cids := tsk.Cids()
 	if len(cids) > cbg.MaxLength {
-		return xerrors.Errorf("Slice value in field t.Parents was too long")
+		return fmt.Errorf("slice value in field t.Parents was too long")
 	}
 	scratch := make([]byte, 9)
 
@@ -191,7 +189,7 @@ func (tsk TipSetKey) MarshalCBOR(w io.Writer) error {
 	}
 	for _, v := range cids {
 		if err := cbg.WriteCidBuf(scratch, w, v); err != nil {
-			return xerrors.Errorf("failed writing cid field t.Parents: %v", err)
+			return fmt.Errorf("failed writing cid field t.Parents: %v", err)
 		}
 	}
 	return nil

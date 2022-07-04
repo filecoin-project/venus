@@ -2,13 +2,13 @@ package slashfilter
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
@@ -25,7 +25,7 @@ type MysqlSlashFilter struct {
 //MinedBlock record mined block
 type MinedBlock struct {
 	ParentEpoch int64  `gorm:"column:parent_epoch;type:bigint(20);NOT NULL"`
-	ParentKey   string `gorm:"column:parent_key;type:varchar(256);NOT NULL"`
+	ParentKey   string `gorm:"column:parent_key;type:varchar(1000);NOT NULL"`
 
 	Epoch int64  `gorm:"column:epoch;type:bigint(20);NOT NULL"`
 	Miner string `gorm:"column:miner;type:varchar(256);NOT NULL"`
@@ -36,7 +36,7 @@ type MinedBlock struct {
 func NewMysqlSlashFilter(cfg config.MySQLConfig) (ISlashFilter, error) {
 	db, err := gorm.Open(mysql.Open(cfg.ConnectionString))
 	if err != nil {
-		return nil, xerrors.Errorf("[db connection failed] Connection : %s %w", cfg.ConnectionString, err)
+		return nil, fmt.Errorf("[db connection failed] Connection : %s %w", cfg.ConnectionString, err)
 	}
 
 	if cfg.Debug {
@@ -82,7 +82,7 @@ func (f *MysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) error {
 		return nil
 	}
 
-	return xerrors.Errorf("produced block would trigger double-fork mining faults consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
+	return fmt.Errorf("produced block would trigger double-fork mining faults consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
 
 }
 
@@ -103,7 +103,7 @@ func (f *MysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) error {
 		return nil
 	}
 
-	return xerrors.Errorf("produced block would trigger time-offset mining faults consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
+	return fmt.Errorf("produced block would trigger time-offset mining faults consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
 
 }
 
@@ -138,7 +138,7 @@ func (f *MysqlSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader
 			}
 
 			if !found {
-				return xerrors.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
+				return fmt.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
 			}
 		} else if err != gorm.ErrRecordNotFound {
 			//other error except not found

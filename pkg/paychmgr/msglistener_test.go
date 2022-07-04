@@ -1,13 +1,13 @@
 package paychmgr
 
 import (
+	"fmt"
 	"testing"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/xerrors"
 )
 
 func testCids() []cid.Cid {
@@ -21,7 +21,7 @@ func TestMsgListener(t *testing.T) {
 	ml := newMsgListeners()
 
 	done := false
-	experr := xerrors.Errorf("some err")
+	experr := fmt.Errorf("some err")
 	cids := testCids()
 	ml.onMsgComplete(cids[0], func(err error) {
 		require.Equal(t, experr, err)
@@ -58,7 +58,7 @@ func TestMsgListenerUnsub(t *testing.T) {
 	ml := newMsgListeners()
 
 	done := false
-	experr := xerrors.Errorf("some err")
+	experr := fmt.Errorf("some err")
 	cids := testCids()
 	unsub := ml.onMsgComplete(cids[0], func(err error) {
 		t.Fatal("should not call unsubscribed listener")

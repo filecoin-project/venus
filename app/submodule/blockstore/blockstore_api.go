@@ -2,16 +2,17 @@ package blockstore
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
-	"golang.org/x/xerrors"
 
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
@@ -25,7 +26,7 @@ type blockstoreAPI struct { //nolint
 func (blockstoreAPI *blockstoreAPI) ChainReadObj(ctx context.Context, ocid cid.Cid) ([]byte, error) {
 	blk, err := blockstoreAPI.blockstore.Blockstore.Get(ctx, ocid)
 	if err != nil {
-		return nil, xerrors.Errorf("blockstore get: %w", err)
+		return nil, fmt.Errorf("blockstore get: %w", err)
 	}
 
 	return blk.RawData(), nil
@@ -85,4 +86,12 @@ func (blockstoreAPI *blockstoreAPI) ChainStatObj(ctx context.Context, obj cid.Ci
 	}
 
 	return stats, nil
+}
+
+func (blockstoreAPI *blockstoreAPI) ChainPutObj(ctx context.Context, blk blocks.Block) error {
+	return blockstoreAPI.blockstore.Blockstore.Put(ctx, blk)
+}
+
+func (blockstoreAPI *blockstoreAPI) PutMany(ctx context.Context, blocks []blocks.Block) error {
+	return blockstoreAPI.blockstore.Blockstore.PutMany(ctx, blocks)
 }

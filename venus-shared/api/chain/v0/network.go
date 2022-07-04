@@ -2,6 +2,7 @@ package v0
 
 import (
 	"context"
+	"time"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
 
@@ -20,6 +21,7 @@ type INetwork interface {
 	NetworkFindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error)                      //perm:read
 	NetworkConnect(ctx context.Context, addrs []string) (<-chan types.ConnectionResult, error)       //perm:read
 	NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*types.SwarmConnInfos, error) //perm:read
+	NetworkPing(context.Context, peer.ID) (time.Duration, error)                                     //perm:read
 	Version(context.Context) (types.Version, error)                                                  //perm:read
 	NetAddrsListen(context.Context) (peer.AddrInfo, error)                                           //perm:read
 }

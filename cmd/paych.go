@@ -11,13 +11,13 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	lpaych "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	cmds "github.com/ipfs/go-ipfs-cmds"
-	"golang.org/x/xerrors"
 )
 
 var paychCmd = &cmds.Command{
@@ -44,6 +44,10 @@ var addFundsCmd = &cmds.Command{
 		cmds.StringArg("to_addr", true, false, "To Address is the payment channel recipient"),
 		cmds.StringArg("amount", true, false, "Amount is the deposits funds in the payment channel"),
 	},
+	Options: []cmds.Option{
+		cmds.BoolOption("restart-retrievals", "restart stalled retrieval deals on this payment channel").WithDefault(true),
+		cmds.BoolOption("reserve", "mark funds as reserved"),
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
@@ -57,10 +61,18 @@ var addFundsCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		chanInfo, err := env.(*node.Env).PaychAPI.PaychGet(req.Context, fromAddr, toAddr, big.NewFromGo(amt.Int))
+		var chanInfo *types.ChannelInfo
+		if reserve, _ := req.Options["reserve"].(bool); reserve {
+			chanInfo, err = env.(*node.Env).PaychAPI.PaychGet(req.Context, fromAddr, toAddr, types.BigInt(amt), types.PaychGetOpts{
+				OffChain: false,
+			})
+		} else {
+			chanInfo, err = env.(*node.Env).PaychAPI.PaychFund(req.Context, fromAddr, toAddr, types.BigInt(amt))
+		}
 		if err != nil {
 			return err
 		}
+
 		chAddr, err := env.(*node.Env).PaychAPI.PaychGetWaitReady(req.Context, chanInfo.WaitSentinel)
 		if err != nil {
 			return err
@@ -121,7 +133,7 @@ var settleCmd = &cmds.Command{
 			return err
 		}
 		if mwait.Receipt.ExitCode != 0 {
-			return xerrors.Errorf("settle message execution failed (exit code %d)", mwait.Receipt.ExitCode)
+			return fmt.Errorf("settle message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 		return re.Emit(fmt.Sprintf("Settled channel %s", chanAddr))
 	},
@@ -196,7 +208,7 @@ var collectCmd = &cmds.Command{
 			return err
 		}
 		if mwait.Receipt.ExitCode != 0 {
-			return xerrors.Errorf("collect message execution failed (exit code %d)", mwait.Receipt.ExitCode)
+			return fmt.Errorf("collect message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
 		return re.Emit(fmt.Sprintf("Collected funds for channel %s", chanAddr))
@@ -230,7 +242,7 @@ var voucherCreateCmd = &cmds.Command{
 			return err
 		}
 		if res.Voucher == nil {
-			return xerrors.Errorf("Could not create voucher: insufficient funds in channel, shortfall: %d", res.Shortfall)
+			return fmt.Errorf("could not create voucher: insufficient funds in channel, shortfall: %d", res.Shortfall)
 		}
 		enc, err := encodedString(res.Voucher)
 		if err != nil {
@@ -254,7 +266,7 @@ var voucherCheckCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		voucher, err := paych.DecodeSignedVoucher(req.Arguments[1])
+		voucher, err := lpaych.DecodeSignedVoucher(req.Arguments[1])
 		if err != nil {
 			return err
 		}
@@ -279,7 +291,7 @@ var voucherAddCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		voucher, err := paych.DecodeSignedVoucher(req.Arguments[1])
+		voucher, err := lpaych.DecodeSignedVoucher(req.Arguments[1])
 		if err != nil {
 			return err
 		}
@@ -365,7 +377,7 @@ var voucherSubmitCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		voucher, err := paych.DecodeSignedVoucher(req.Arguments[1])
+		voucher, err := lpaych.DecodeSignedVoucher(req.Arguments[1])
 		if err != nil {
 			return err
 		}
@@ -378,7 +390,7 @@ var voucherSubmitCmd = &cmds.Command{
 			return err
 		}
 		if mwait.Receipt.ExitCode != 0 {
-			return xerrors.Errorf("message execution failed (exit code %d)", mwait.Receipt.ExitCode)
+			return fmt.Errorf("message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 		return re.Emit("channel updated successfully")
 	},
@@ -406,7 +418,7 @@ func paychStatus(writer io.Writer, avail *types.ChannelAvailableFunds) {
 			fmt.Fprint(writer, "Creating channel\n")
 			fmt.Fprintf(writer, "  From:          %s\n", avail.From)
 			fmt.Fprintf(writer, "  To:            %s\n", avail.To)
-			fmt.Fprintf(writer, "  Pending Amt:   %d\n", avail.PendingAmt)
+			fmt.Fprintf(writer, " Pending Amt: %s\n", types.FIL(avail.PendingAmt))
 			fmt.Fprintf(writer, "  Wait Sentinel: %s\n", avail.PendingWaitSentinel)
 			return
 		}
@@ -425,10 +437,12 @@ func paychStatus(writer io.Writer, avail *types.ChannelAvailableFunds) {
 		{"Channel", avail.Channel.String()},
 		{"From", avail.From.String()},
 		{"To", avail.To.String()},
-		{"Confirmed Amt", fmt.Sprintf("%d", avail.ConfirmedAmt)},
-		{"Pending Amt", fmt.Sprintf("%d", avail.PendingAmt)},
-		{"Queued Amt", fmt.Sprintf("%d", avail.QueuedAmt)},
-		{"Voucher Redeemed Amt", fmt.Sprintf("%d", avail.VoucherReedeemedAmt)},
+		{"Confirmed Amt", fmt.Sprintf("%s", types.FIL(avail.ConfirmedAmt))},
+		{"Available Amt", fmt.Sprintf("%s", types.FIL(avail.NonReservedAmt))},
+		{"Voucher Redeemed Amt", fmt.Sprintf("%s", types.FIL(avail.VoucherReedeemedAmt))},
+		{"Pending Amt", fmt.Sprintf("%s", types.FIL(avail.PendingAmt))},
+		{"Pending Available Amt", fmt.Sprintf("%s", types.FIL(avail.PendingAvailableAmt))},
+		{"Queued Amt", fmt.Sprintf("%s", types.FIL(avail.QueuedAmt))},
 	}
 	if avail.PendingWaitSentinel != nil {
 		nameValues = append(nameValues, []string{

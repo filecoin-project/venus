@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/venus/pkg/repo"
-	"golang.org/x/xerrors"
 
 	"github.com/google/uuid"
 
@@ -19,7 +18,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 )
 
 var ErrChannelNotTracked = errors.New("channel not tracked")
@@ -75,6 +74,10 @@ type ChannelInfo struct {
 	// has locally been added to the channel. It should reflect the channel's
 	// Balance on chain as long as all operations occur on the same datastore.
 	Amount fbig.Int
+	// AvailableAmount indicates how much afil is non-reserved
+	AvailableAmount fbig.Int
+	// PendingAvailableAmount is available amount that we're awaiting confirmation of
+	PendingAvailableAmount fbig.Int
 	// PendingAmount is the amount that we're awaiting confirmation of
 	PendingAmount fbig.Int
 	// CreateMsg is the CID of a pending create message (while waiting for confirmation)
@@ -128,7 +131,7 @@ func (ci *ChannelInfo) markVoucherSubmitted(sv *paych.SignedVoucher) error {
 		return err
 	}
 	if vi == nil {
-		return xerrors.Errorf("cannot submit voucher that has not been added to channel")
+		return fmt.Errorf("cannot submit voucher that has not been added to channel")
 	}
 
 	// Mark the voucher as submitted
@@ -152,7 +155,7 @@ func (ci *ChannelInfo) wasVoucherSubmitted(sv *paych.SignedVoucher) (bool, error
 		return false, err
 	}
 	if vi == nil {
-		return false, xerrors.Errorf("cannot submit voucher that has not been added to channel")
+		return false, fmt.Errorf("cannot submit voucher that has not been added to channel")
 	}
 	return vi.Submitted, nil
 }
@@ -377,13 +380,26 @@ func (ps *Store) GetMessage(ctx context.Context, mcid cid.Cid) (*MsgInfo, error)
 
 // OutboundActiveByFromTo looks for outbound channels that have not been
 // settled, with the given from / to addresses
-func (ps *Store) OutboundActiveByFromTo(ctx context.Context, from address.Address, to address.Address) (*ChannelInfo, error) {
+func (ps *Store) OutboundActiveByFromTo(ctx context.Context, sma managerAPI, from address.Address, to address.Address) (*ChannelInfo, error) {
 	return ps.findChan(ctx, func(ci *ChannelInfo) bool {
 		if ci.Direction != DirOutbound {
 			return false
 		}
 		if ci.Settling {
 			return false
+		}
+		if ci.Channel != nil {
+			_, st, err := sma.GetPaychState(ctx, *ci.Channel, nil)
+			if err != nil {
+				return false
+			}
+			sat, err := st.SettlingAt()
+			if err != nil {
+				return false
+			}
+			if sat != 0 {
+				return false
+			}
 		}
 		return ci.Control == from && ci.Target == to
 	})
@@ -417,14 +433,15 @@ func (ps *Store) ByChannelID(ctx context.Context, channelID string) (*ChannelInf
 }
 
 // CreateChannel creates an outbound channel for the given from / to
-func (ps *Store) CreateChannel(ctx context.Context, from address.Address, to address.Address, createMsgCid cid.Cid, amt fbig.Int) (*ChannelInfo, error) {
+func (ps *Store) CreateChannel(ctx context.Context, from address.Address, to address.Address, createMsgCid cid.Cid, amt, avail fbig.Int) (*ChannelInfo, error) {
 	ci := &ChannelInfo{
-		Direction:     DirOutbound,
-		NextLane:      0,
-		Control:       from,
-		Target:        to,
-		CreateMsg:     &createMsgCid,
-		PendingAmount: amt,
+		Direction:              DirOutbound,
+		NextLane:               0,
+		Control:                from,
+		Target:                 to,
+		CreateMsg:              &createMsgCid,
+		PendingAmount:          amt,
+		PendingAvailableAmount: avail,
 	}
 
 	// Save the new channel
@@ -496,6 +513,12 @@ func unmarshallChannelInfo(stored *ChannelInfo, value []byte) (*ChannelInfo, err
 	// See note above about CBOR marshalling address.Address
 	if stored.Channel != nil && *stored.Channel == emptyAddr {
 		stored.Channel = nil
+	}
+
+	// backwards compat
+	if stored.AvailableAmount.Int == nil {
+		stored.AvailableAmount = fbig.NewInt(0)
+		stored.PendingAvailableAmount = fbig.NewInt(0)
 	}
 
 	return stored, nil

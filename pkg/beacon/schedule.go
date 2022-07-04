@@ -1,10 +1,10 @@
 package beacon
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	xerrors "github.com/pkg/errors"
 
 	cfg "github.com/filecoin-project/venus/pkg/config"
 )
@@ -29,7 +29,7 @@ func DrandConfigSchedule(genTimeStamp uint64, blockDelay uint64, drandSchedule m
 	for start, config := range drandSchedule {
 		bc, err := NewDrandBeacon(genTimeStamp, blockDelay, cfg.DrandConfigs[config])
 		if err != nil {
-			return nil, xerrors.Errorf("creating drand beacon: %v", err)
+			return nil, fmt.Errorf("creating drand beacon: %v", err)
 		}
 		shd = append(shd, BeaconPoint{Start: start, Beacon: bc})
 	}

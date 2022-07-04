@@ -5,12 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
-	"os"
 	"path/filepath"
 	"sort"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
 
@@ -48,10 +45,7 @@ func assertDirContents(dir string, exp []string) error {
 
 func TestKeystoreBasics(t *testing.T) {
 	tf.UnitTest(t)
-	tdir, err := ioutil.TempDir("", "keystore-test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tdir := t.TempDir()
 
 	ks, err := NewFSKeystore(tdir)
 	if err != nil {
@@ -169,12 +163,7 @@ func TestKeystoreBasics(t *testing.T) {
 func TestInvalidKeyFiles(t *testing.T) {
 	tf.UnitTest(t)
 
-	tdir, err := ioutil.TempDir("", "keystore-test")
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer assert.NoError(t, os.RemoveAll(tdir))
+	tdir := t.TempDir()
 
 	ks, err := NewFSKeystore(tdir)
 	if err != nil {
@@ -223,10 +212,7 @@ func TestInvalidKeyFiles(t *testing.T) {
 func TestNonExistingKey(t *testing.T) {
 	tf.UnitTest(t)
 
-	tdir, err := ioutil.TempDir("", "keystore-test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tdir := t.TempDir()
 
 	ks, err := NewFSKeystore(tdir)
 	if err != nil {

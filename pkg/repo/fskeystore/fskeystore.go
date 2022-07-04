@@ -1,25 +1,25 @@
 package fskeystore
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("fskeystore")
 
 // ErrNoSuchKey is returned if a key of the given name is not found in the store
-var ErrNoSuchKey = xerrors.Errorf("no key by the given name was found")
+var ErrNoSuchKey = fmt.Errorf("no key by the given name was found")
 
 // ErrKeyExists is returned when writing a key would overwrite an existing key
-var ErrKeyExists = xerrors.Errorf("key by that name already exists, refusing to overwrite")
+var ErrKeyExists = fmt.Errorf("key by that name already exists, refusing to overwrite")
 
 // ErrKeyFmt is returned when the key's format is invalid
-var ErrKeyFmt = xerrors.Errorf("key has invalid format")
+var ErrKeyFmt = fmt.Errorf("key has invalid format")
 
 // FSKeystore is a keystore backed by files in a given directory stored on disk.
 type FSKeystore struct {
@@ -149,15 +149,15 @@ func (ks *FSKeystore) List() ([]string, error) {
 
 func validateName(name string) error {
 	if name == "" {
-		return xerrors.Errorf("key names must be at least one character: %v", ErrKeyFmt)
+		return fmt.Errorf("key names must be at least one character: %v", ErrKeyFmt)
 	}
 
 	if strings.Contains(name, "/") {
-		return xerrors.Errorf("key names may not contain slashes: %v", ErrKeyFmt)
+		return fmt.Errorf("key names may not contain slashes: %v", ErrKeyFmt)
 	}
 
 	if strings.HasPrefix(name, ".") {
-		return xerrors.Errorf("key names may not begin with a period: %v", ErrKeyFmt)
+		return fmt.Errorf("key names may not begin with a period: %v", ErrKeyFmt)
 	}
 
 	return nil

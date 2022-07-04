@@ -3,6 +3,8 @@ package mining
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"os"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -12,7 +14,6 @@ import (
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/ipfs/go-cid"
-	xerrors "github.com/pkg/errors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
@@ -36,22 +37,24 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	chainStore := miningAPI.Ming.ChainModule.ChainReader
 	ts, err := chainStore.GetTipSet(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load tipset for mining base: %v", err)
+		return nil, fmt.Errorf("failed to load tipset for mining base: %v", err)
 	}
 	pt, _, err := miningAPI.Ming.Stmgr.RunStateTransition(ctx, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get tipset root for mining base: %v", err)
+		return nil, fmt.Errorf("failed to get tipset root for mining base: %v", err)
 	}
 	prev, err := chainStore.GetLatestBeaconEntry(ctx, ts)
 	if err != nil {
 		if os.Getenv("VENUS_IGNORE_DRAND") != "_yes_" {
-			return nil, xerrors.Errorf("failed to get latest beacon entry: %v", err)
+			return nil, fmt.Errorf("failed to get latest beacon entry: %v", err)
 		}
 
 		prev = &types.BeaconEntry{}
 	}
 
-	entries, err := beacon.BeaconEntriesForBlock(ctx, miningAPI.Ming.ChainModule.Drand, round, ts.Height(), *prev)
+	nv := miningAPI.Ming.ChainModule.Fork.GetNetworkVersion(ctx, ts.Height())
+
+	entries, err := beacon.BeaconEntriesForBlock(ctx, miningAPI.Ming.ChainModule.Drand, nv, round, ts.Height(), *prev)
 	if err != nil {
 		return nil, err
 	}
@@ -63,45 +66,43 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	version := miningAPI.Ming.ChainModule.Fork.GetNetworkVersion(ctx, round)
 	lbts, lbst, err := miningAPI.Ming.ChainModule.ChainReader.GetLookbackTipSetForRound(ctx, ts, round, version)
 	if err != nil {
-		return nil, xerrors.Errorf("getting lookback miner actor state: %v", err)
+		return nil, fmt.Errorf("getting lookback miner actor state: %v", err)
 	}
 
 	view := state.NewView(chainStore.Store(ctx), lbst)
 	act, err := view.LoadActor(ctx, maddr)
-	if xerrors.Is(err, types.ErrActorNotFound) {
+	if errors.Is(err, types.ErrActorNotFound) {
 		//todo why
 		view = state.NewView(chainStore.Store(ctx), ts.At(0).ParentStateRoot)
 		_, err := view.LoadActor(ctx, maddr)
 		if err != nil {
-			return nil, xerrors.Errorf("loading miner in current state: %v", err)
+			return nil, fmt.Errorf("loading miner in current state: %v", err)
 		}
 
 		return nil, nil
 	}
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load miner actor: %v", err)
+		return nil, fmt.Errorf("failed to load miner actor: %v", err)
 	}
 	mas, err := miner.Load(chainStore.Store(ctx), act)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load miner actor state: %v", err)
+		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
 	}
 
 	buf := new(bytes.Buffer)
 	if err := maddr.MarshalCBOR(buf); err != nil {
-		return nil, xerrors.Errorf("failed to marshal miner address: %v", err)
+		return nil, fmt.Errorf("failed to marshal miner address: %v", err)
 	}
 
 	prand, err := chain.DrawRandomness(rbase.Data, acrypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get randomness for winning post: %v", err)
+		return nil, fmt.Errorf("failed to get randomness for winning post: %v", err)
 	}
-
-	nv := miningAPI.Ming.ChainModule.Fork.GetNetworkVersion(ctx, ts.Height())
 
 	pv := miningAPI.Ming.proofVerifier
 	xsectors, err := view.GetSectorsForWinningPoSt(ctx, nv, pv, maddr, prand)
 	if err != nil {
-		return nil, xerrors.Errorf("getting winning post proving set: %v", err)
+		return nil, fmt.Errorf("getting winning post proving set: %v", err)
 	}
 
 	if len(xsectors) == 0 {
@@ -110,7 +111,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 
 	mpow, tpow, _, err := view.StateMinerPower(ctx, maddr, ts.Key())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get power: %v", err)
+		return nil, fmt.Errorf("failed to get power: %v", err)
 	}
 
 	info, err := mas.Info()
@@ -120,17 +121,17 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 
 	st, err := miningAPI.Ming.ChainModule.ChainReader.StateView(ctx, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load latest state: %v", err)
+		return nil, fmt.Errorf("failed to load latest state: %v", err)
 	}
 	worker, err := st.ResolveToKeyAddr(ctx, info.Worker)
 	if err != nil {
-		return nil, xerrors.Errorf("resolving worker address: %v", err)
+		return nil, fmt.Errorf("resolving worker address: %v", err)
 	}
 
 	// TODO: Not ideal performance...This method reloads miner and power state (already looked up here and in GetPowerRaw)
 	eligible, err := miningAPI.Ming.SyncModule.BlockValidator.MinerEligibleToMine(ctx, maddr, pt, ts.Height(), lbts)
 	if err != nil {
-		return nil, xerrors.Errorf("determining miner eligibility: %v", err)
+		return nil, fmt.Errorf("determining miner eligibility: %v", err)
 	}
 
 	return &types.MiningBaseInfo{
@@ -170,24 +171,24 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *types.Bloc
 	cfg := miningAPI.Ming.Config.Repo().Config()
 	pts, err := chainStore.GetTipSet(ctx, bt.Parents)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load parent tipset: %v", err)
+		return nil, fmt.Errorf("failed to load parent tipset: %v", err)
 	}
 
 	st, receiptCid, err := miningAPI.Ming.Stmgr.RunStateTransition(ctx, pts)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load tipset state: %v", err)
+		return nil, fmt.Errorf("failed to load tipset state: %v", err)
 	}
 
 	version := miningAPI.Ming.ChainModule.Fork.GetNetworkVersion(ctx, bt.Epoch)
 	_, lbst, err := miningAPI.Ming.ChainModule.ChainReader.GetLookbackTipSetForRound(ctx, pts, bt.Epoch, version)
 	if err != nil {
-		return nil, xerrors.Errorf("getting lookback miner actor state: %v", err)
+		return nil, fmt.Errorf("getting lookback miner actor state: %v", err)
 	}
 
 	viewer := state.NewView(cbor.NewCborStore(miningAPI.Ming.BlockStore.Blockstore), lbst)
 	worker, err := viewer.GetMinerWorkerRaw(ctx, bt.Miner)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get miner worker: %v", err)
+		return nil, fmt.Errorf("failed to get miner worker: %v", err)
 	}
 
 	next := &types.BlockHeader{
@@ -253,13 +254,13 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *types.Bloc
 
 	baseFee, err := messageStore.ComputeBaseFee(ctx, pts, cfg.NetworkParams.ForkUpgradeParam)
 	if err != nil {
-		return nil, xerrors.Errorf("computing base fee: %v", err)
+		return nil, fmt.Errorf("computing base fee: %v", err)
 	}
 	next.ParentBaseFee = baseFee
 
 	bHas, err := miningAPI.Ming.Wallet.API().WalletHas(ctx, worker)
 	if err != nil {
-		return nil, xerrors.Errorf("find wallet: %v", err)
+		return nil, fmt.Errorf("find wallet: %v", err)
 	}
 
 	if bHas {
@@ -271,7 +272,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *types.Bloc
 			Type: types.MTBlock,
 		})
 		if err != nil {
-			return nil, xerrors.Errorf("failed to sign new block: %v", err)
+			return nil, fmt.Errorf("failed to sign new block: %v", err)
 		}
 
 		next.BlockSig = sig
@@ -295,7 +296,7 @@ func aggregateSignatures(sigs []crypto.Signature) (*crypto.Signature, error) {
 	aggSig := ffi.Aggregate(sigsS)
 	if aggSig == nil {
 		if len(sigs) > 0 {
-			return nil, xerrors.Errorf("bls.Aggregate returned nil with %d signatures", len(sigs))
+			return nil, fmt.Errorf("bls.Aggregate returned nil with %d signatures", len(sigs))
 		}
 
 		zeroSig := ffi.CreateZeroSignature()

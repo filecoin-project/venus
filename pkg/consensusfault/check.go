@@ -7,7 +7,6 @@ import (
 
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -65,10 +64,10 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 	// workaround chain halt
 	forkUpgrade := s.fork.GetForkUpgrade()
 	if config.IsNearUpgrade(b1.Height, forkUpgrade.UpgradeOrangeHeight) {
-		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
+		return nil, fmt.Errorf("consensus reporting disabled around Upgrade Orange")
 	}
 	if config.IsNearUpgrade(b2.Height, forkUpgrade.UpgradeOrangeHeight) {
-		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
+		return nil, fmt.Errorf("consensus reporting disabled around Upgrade Orange")
 	}
 
 	// BlockHeader syntax is not validated. This implements the strictest check possible, and is also the simplest check
@@ -148,12 +147,12 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 // Checks whether a block header is correctly signed in the context of the parent state to which it refers.
 func verifyBlockSignature(ctx context.Context, blk types.BlockHeader, nv network.Version, curEpoch abi.ChainEpoch, receiver address.Address, gasIpld cbornode.IpldStore, view FaultStateView, getter vmcontext.LookbackStateGetter) error {
 	if nv >= network.Version7 && blk.Height < curEpoch-policy.ChainFinality {
-		return xerrors.Errorf("cannot get worker key (currEpoch %d, height %d)", curEpoch, blk.Height)
+		return fmt.Errorf("cannot get worker key (currEpoch %d, height %d)", curEpoch, blk.Height)
 	}
 
 	lbstate, err := getter(ctx, blk.Height)
 	if err != nil {
-		return xerrors.Errorf("fialed to look back state at height %d", blk.Height)
+		return fmt.Errorf("fialed to look back state at height %d", blk.Height)
 	}
 
 	act, err := lbstate.LoadActor(ctx, receiver)
@@ -163,12 +162,12 @@ func verifyBlockSignature(ctx context.Context, blk types.BlockHeader, nv network
 
 	mas, err := miner.Load(adt.WrapStore(ctx, gasIpld), act)
 	if err != nil {
-		return xerrors.Errorf("failed to load state for miner %s", receiver)
+		return fmt.Errorf("failed to load state for miner %s", receiver)
 	}
 
 	info, err := mas.Info()
 	if err != nil {
-		return xerrors.Errorf("failed to get miner info for miner %s", receiver)
+		return fmt.Errorf("failed to get miner info for miner %s", receiver)
 	}
 
 	if blk.BlockSig == nil {

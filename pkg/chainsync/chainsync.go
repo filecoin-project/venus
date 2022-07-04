@@ -8,9 +8,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/chainsync/types"
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/statemanger"
+	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
-
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/venus/pkg/chainsync/dispatcher"
 	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
@@ -41,7 +40,7 @@ func NewManager(
 	hv *consensus.BlockValidator,
 	submodule *chain2.ChainSubmodule,
 	cs syncer.ChainSelector,
-	bsstore blockstore.Blockstore,
+	bsstore blockstoreutil.Blockstore,
 	exchangeClient exchange.Client,
 	c clock.Clock,
 	fork fork.IFork) (Manager, error) {

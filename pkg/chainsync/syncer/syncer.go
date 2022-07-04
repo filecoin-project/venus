@@ -32,7 +32,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 )
 
 // Syncer updates its chain.Store according to the methods of its
@@ -134,7 +133,7 @@ type Syncer struct {
 	clock    clock.Clock
 	headLock sync.Mutex
 
-	bsstore    blockstore.Blockstore
+	bsstore    blockstoreutil.Blockstore
 	checkPoint types.TipSetKey
 
 	fork fork.IFork
@@ -149,7 +148,7 @@ func NewSyncer(stmgr *statemanger.Stmgr,
 	cs ChainSelector,
 	s *chain.Store,
 	m messageStore,
-	bsstore blockstore.Blockstore,
+	bsstore blockstoreutil.Blockstore,
 	exchangeClient exchange.Client,
 	c clock.Clock,
 	fork fork.IFork) (*Syncer, error) {
@@ -229,7 +228,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 				_ = syncer.stmgr.Rollback(ctx, parent, next)
 			}
 
-			return xerrors.Errorf("validate mining failed %w", err)
+			return fmt.Errorf("validate mining failed %w", err)
 		}
 	}
 
@@ -237,7 +236,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next *types.TipSet) e
 }
 
 func isRootNotMatch(err error) bool {
-	return xerrors.Is(err, consensus.ErrStateRootMismatch) || xerrors.Is(err, consensus.ErrReceiptRootMismatch)
+	return errors.Is(err, consensus.ErrStateRootMismatch) || errors.Is(err, consensus.ErrReceiptRootMismatch)
 }
 
 // HandleNewTipSet validates and syncs the chain rooted at the provided tipset
@@ -266,11 +265,11 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Tar
 	head := syncer.chainStore.GetHead()
 	//If the store already has this tipset then the syncer is finished.
 	if target.Head.At(0).ParentWeight.LessThan(head.At(0).ParentWeight) {
-		return xerrors.New("do not sync to a target with less weight")
+		return errors.New("do not sync to a target with less weight")
 	}
 
 	if syncer.chainStore.HasTipSetAndState(ctx, target.Head) || target.Head.Key().Equals(head.Key()) {
-		return xerrors.New("do not sync to a target has synced before")
+		return errors.New("do not sync to a target has synced before")
 	}
 
 	tipsets, err := syncer.fetchChainBlocks(ctx, head, target.Head)
@@ -308,7 +307,7 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 		logSyncer.Infof("finish to fetch message segement %d-%d", startTip, emdTipset)
 		err = <-errProcessChan
 		if err != nil {
-			return xerrors.Errorf("process message failed %v", err)
+			return fmt.Errorf("process message failed %v", err)
 		}
 		wg.Add(1)
 		go func() {
@@ -421,7 +420,7 @@ loop:
 
 	knownParent, err := syncer.chainStore.GetTipSet(ctx, knownTip.Parents())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load next local tipset: %w", err)
+		return nil, fmt.Errorf("failed to load next local tipset: %w", err)
 	}
 	if base.IsChildOf(knownParent) {
 		// common case: receiving a block thats potentially part of the same tipset as our best block
@@ -432,14 +431,14 @@ loop:
 	logSyncer.Warnf("(fork detected) synced header chain")
 	fork, err := syncer.syncFork(ctx, base, knownTip)
 	if err != nil {
-		if xerrors.Is(err, ErrForkTooLong) {
+		if errors.Is(err, ErrForkTooLong) {
 			// TODO: we're marking this block bad in the same way that we mark invalid blocks bad. Maybe distinguish?
 			logSyncer.Warn("adding forked chain to our bad tipset cache")
 			/*		for _, b := range incoming.Blocks() {
 					syncer.bad.Add(b.Cid(), NewBadBlockReason(incoming.Cids(), "fork past finality"))
 				}*/
 		}
-		return nil, xerrors.Errorf("failed to sync fork: %w", err)
+		return nil, fmt.Errorf("failed to sync fork: %w", err)
 	}
 	err = flushDB(fork)
 	if err != nil {
@@ -476,15 +475,15 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 
 	nts, err := syncer.chainStore.GetTipSet(ctx, known.Parents())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load next local tipset: %w", err)
+		return nil, fmt.Errorf("failed to load next local tipset: %w", err)
 	}
 
 	for cur := 0; cur < len(tips); {
 		if nts.Height() == 0 {
 			if !gensisiBlock.Equals(nts.At(0)) {
-				return nil, xerrors.Errorf("somehow synced chain that linked back to a different genesis (bad genesis: %s)", nts.Key())
+				return nil, fmt.Errorf("somehow synced chain that linked back to a different genesis (bad genesis: %s)", nts.Key())
 			}
-			return nil, xerrors.Errorf("synced chain forked at genesis, refusing to sync; incoming: %s", incoming.ToSlice())
+			return nil, fmt.Errorf("synced chain forked at genesis, refusing to sync; incoming: %s", incoming.ToSlice())
 		}
 
 		if nts.Equals(tips[cur]) {
@@ -496,7 +495,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 		} else {
 			nts, err = syncer.chainStore.GetTipSet(ctx, nts.Parents())
 			if err != nil {
-				return nil, xerrors.Errorf("loading next local tipset: %w", err)
+				return nil, fmt.Errorf("loading next local tipset: %w", err)
 			}
 		}
 	}
@@ -544,20 +543,20 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*types.Ti
 	for index, tip := range leftChain {
 		fts, err := zipTipSetAndMessages(bs, tip, messages[index].Bls, messages[index].Secpk, messages[index].BlsIncludes, messages[index].SecpkIncludes)
 		if err != nil {
-			return nil, xerrors.Errorf("message processing failed: %w", err)
+			return nil, fmt.Errorf("message processing failed: %w", err)
 		}
 		leftFullChain[index] = fts
 
 		//save message
 		for _, m := range messages[index].Bls {
 			if _, err := cborStore.Put(ctx, m); err != nil {
-				return nil, xerrors.Errorf("BLS message processing failed: %w", err)
+				return nil, fmt.Errorf("BLS message processing failed: %w", err)
 			}
 		}
 
 		for _, m := range messages[index].Secpk {
 			if _, err := cborStore.Put(ctx, m); err != nil {
-				return nil, xerrors.Errorf("SECP message processing failed: %w", err)
+				return nil, fmt.Errorf("SECP message processing failed: %w", err)
 			}
 		}
 	}
@@ -671,7 +670,7 @@ func (syncer *Syncer) exceedsForkLength(ctx context.Context, synced, external *t
 
 			external, err = syncer.chainStore.GetTipSet(ctx, external.Parents())
 			if err != nil {
-				return false, xerrors.Errorf("failed to load parent tipset in external chain: %w", err)
+				return false, fmt.Errorf("failed to load parent tipset in external chain: %w", err)
 			}
 		}
 
@@ -694,7 +693,7 @@ func (syncer *Syncer) exceedsForkLength(ctx context.Context, synced, external *t
 		}
 		synced, err = syncer.chainStore.GetTipSet(ctx, synced.Parents())
 		if err != nil {
-			return false, xerrors.Errorf("failed to load parent tipset in synced chain: %w", err)
+			return false, fmt.Errorf("failed to load parent tipset in synced chain: %w", err)
 		}
 	}
 

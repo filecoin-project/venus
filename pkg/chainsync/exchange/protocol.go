@@ -1,6 +1,7 @@
 package exchange
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -8,7 +9,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	logging "github.com/ipfs/go-log"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("exchange")
@@ -122,15 +122,15 @@ func (res *Response) statusToError() error {
 		// FIXME: Consider if we want to not process `Partial` responses
 		//  and return an error instead.
 	case NotFound:
-		return xerrors.Errorf("not found")
+		return fmt.Errorf("not found")
 	case GoAway:
-		return xerrors.Errorf("not handling 'go away' chainxchg responses yet")
+		return fmt.Errorf("not handling 'go away' chainxchg responses yet")
 	case InternalError:
-		return xerrors.Errorf("block sync peer errored: %s", res.ErrorMessage)
+		return fmt.Errorf("block sync peer errored: %s", res.ErrorMessage)
 	case BadRequest:
-		return xerrors.Errorf("block sync request invalid: %s", res.ErrorMessage)
+		return fmt.Errorf("block sync request invalid: %s", res.ErrorMessage)
 	default:
-		return xerrors.Errorf("unrecognized response code: %d", res.Status)
+		return fmt.Errorf("unrecognized response code: %d", res.Status)
 	}
 }
 

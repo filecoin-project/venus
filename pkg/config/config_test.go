@@ -29,11 +29,7 @@ func TestDefaults(t *testing.T) {
 func TestWriteFile(t *testing.T) {
 	tf.UnitTest(t)
 
-	dir, err := ioutil.TempDir("", "config")
-	assert.NoError(t, err)
-	defer func() {
-		require.NoError(t, os.RemoveAll(dir))
-	}()
+	dir := t.TempDir()
 
 	cfg := NewDefaultConfig()
 
@@ -54,11 +50,7 @@ func TestWriteFile(t *testing.T) {
 func TestConfigRoundtrip(t *testing.T) {
 	tf.UnitTest(t)
 
-	dir, err := ioutil.TempDir("", "config")
-	assert.NoError(t, err)
-	defer func() {
-		require.NoError(t, os.RemoveAll(dir))
-	}()
+	dir := t.TempDir()
 
 	cfg := NewDefaultConfig()
 
@@ -75,7 +67,7 @@ func TestConfigReadFileDefaults(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("all sections exist", func(t *testing.T) {
-		cfgpath, cleaner, err := createConfigFile(`
+		cfgpath, err := createConfigFile(t, `
 		{
 			"api": {
 				"apiAddress": "/ip4/127.0.0.1/tcp/9999",
@@ -86,9 +78,6 @@ func TestConfigReadFileDefaults(t *testing.T) {
 			}
 		}`)
 		assert.NoError(t, err)
-		defer func() {
-			require.NoError(t, cleaner())
-		}()
 		cfg, err := ReadFile(cfgpath)
 		assert.NoError(t, err)
 
@@ -97,7 +86,7 @@ func TestConfigReadFileDefaults(t *testing.T) {
 	})
 
 	t.Run("missing one section", func(t *testing.T) {
-		cfgpath, cleaner, err := createConfigFile(`
+		cfgpath, err := createConfigFile(t, `
 		{
 			"api": {
 				"apiAddress": "/ip4/127.0.0.1/tcp/9999",
@@ -105,9 +94,6 @@ func TestConfigReadFileDefaults(t *testing.T) {
 			}
 		}`)
 		assert.NoError(t, err)
-		defer func() {
-			require.NoError(t, cleaner())
-		}()
 		cfg, err := ReadFile(cfgpath)
 		assert.NoError(t, err)
 
@@ -116,11 +102,8 @@ func TestConfigReadFileDefaults(t *testing.T) {
 	})
 
 	t.Run("empty file", func(t *testing.T) {
-		cfgpath, cleaner, err := createConfigFile("")
+		cfgpath, err := createConfigFile(t, "")
 		assert.NoError(t, err)
-		defer func() {
-			require.NoError(t, cleaner())
-		}()
 		cfg, err := ReadFile(cfgpath)
 		assert.NoError(t, err)
 
@@ -210,11 +193,8 @@ func TestConfigSet(t *testing.T) {
 		assert.Equal(t, cfg.Datastore.Type, "badgerbadgerbadgerds")
 		assert.Equal(t, cfg.Datastore.Path, "mushroom-mushroom")
 
-		cfg1path, cleaner, err := createConfigFile(fmt.Sprintf(`{"datastore": %s}`, jsonBlob))
+		cfg1path, err := createConfigFile(t, fmt.Sprintf(`{"datastore": %s}`, jsonBlob))
 		assert.NoError(t, err)
-		defer func() {
-			require.NoError(t, cleaner())
-		}()
 
 		cfg1, err := ReadFile(cfg1path)
 		assert.NoError(t, err)
@@ -274,18 +254,12 @@ path = "mushroom-mushroom"}`
 	})
 }
 
-func createConfigFile(content string) (string, func() error, error) {
-	dir, err := ioutil.TempDir("", "config")
-	if err != nil {
-		return "", nil, err
-	}
-	cfgpath := filepath.Join(dir, "config.json")
+func createConfigFile(t *testing.T, content string) (string, error) {
+	cfgpath := filepath.Join(t.TempDir(), "config.json")
 
 	if err := ioutil.WriteFile(cfgpath, []byte(content), 0644); err != nil {
-		return "", nil, err
+		return "", err
 	}
 
-	return cfgpath, func() error {
-		return os.RemoveAll(dir)
-	}, nil
+	return cfgpath, nil
 }

@@ -40,18 +40,37 @@ func TestUUID_JsonMarshal(t *testing.T) {
 
 	val := T{ID: NewUUID()}
 
-	marsahlBytes, err := json.Marshal(&val)
+	marshallBytes, err := json.Marshal(&val)
 	if err != nil {
 		t.Error(err)
 	}
 
 	var val2 T
-	err = json.Unmarshal(marsahlBytes, &val2)
+	err = json.Unmarshal(marshallBytes, &val2)
 	if err != nil {
 		t.Error(err)
 	}
 
 	if val2.ID != val.ID {
 		t.Errorf("UUID json marshal fail")
+	}
+}
+
+func TestUUID_MarshalBinary(t *testing.T) {
+	uuid := NewUUID()
+
+	marshallBytes, err := uuid.MarshalBinary()
+	if err != nil {
+		t.Error(err)
+	}
+
+	uuid2 := &UUID{}
+	err = uuid2.UnmarshalBinary(marshallBytes)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if uuid != *uuid2 {
+		t.Errorf("UUID binary marshal fail")
 	}
 }

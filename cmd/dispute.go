@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -14,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	cmds "github.com/ipfs/go-ipfs-cmds"
-	"golang.org/x/xerrors"
 
 	logging "github.com/ipfs/go-log/v2"
 
@@ -60,7 +60,7 @@ var disputerMsgCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) != 3 {
-			return xerrors.New("Usage: dispute [minerAddress index postIndex]")
+			return errors.New("usage: dispute [minerAddress index postIndex]")
 		}
 
 		toa, err := address.NewFromString(req.Arguments[0])
@@ -90,7 +90,7 @@ var disputerMsgCmd = &cmds.Command{
 		})
 
 		if aerr != nil {
-			return xerrors.Errorf("failed to serailize params: %w", aerr)
+			return fmt.Errorf("failed to serailize params: %w", aerr)
 		}
 
 		dmsg := &types.Message{
@@ -103,7 +103,7 @@ var disputerMsgCmd = &cmds.Command{
 
 		rslt, err := env.(*node.Env).SyncerAPI.StateCall(req.Context, dmsg, types.EmptyTSK)
 		if err != nil {
-			return xerrors.Errorf("failed to simulate dispute: %w", err)
+			return fmt.Errorf("failed to simulate dispute: %w", err)
 		}
 
 		buf := new(bytes.Buffer)
@@ -171,15 +171,15 @@ var disputerStartCmd = &cmds.Command{
 		}
 		head, ok := <-headChanges
 		if !ok {
-			return xerrors.Errorf("Notify stream was invalid")
+			return fmt.Errorf("notify stream was invalid")
 		}
 
 		if len(head) != 1 {
-			return xerrors.Errorf("Notify first entry should have been one item")
+			return fmt.Errorf("notify first entry should have been one item")
 		}
 
 		if head[0].Type != types.HCCurrent {
-			return xerrors.Errorf("expected current head on Notify stream (got %s)", head[0].Type)
+			return fmt.Errorf("expected current head on Notify stream (got %s)", head[0].Type)
 		}
 
 		lastEpoch := head[0].Val.Height()
@@ -197,7 +197,7 @@ var disputerStartCmd = &cmds.Command{
 		for _, miner := range minerList {
 			dClose, dl, err := makeMinerDeadline(ctx, env.(*node.Env).ChainAPI, miner)
 			if err != nil {
-				return xerrors.Errorf("making deadline: %w", err)
+				return fmt.Errorf("making deadline: %w", err)
 			}
 
 			deadlineMap[dClose+Confidence] = append(deadlineMap[dClose+Confidence], *dl)
@@ -229,11 +229,11 @@ var disputerStartCmd = &cmds.Command{
 			for _, dl := range dls {
 				fullDeadlines, err := env.(*node.Env).ChainAPI.StateMinerDeadlines(ctx, dl.miner, tsk)
 				if err != nil {
-					return xerrors.Errorf("failed to load deadlines: %w", err)
+					return fmt.Errorf("failed to load deadlines: %w", err)
 				}
 
 				if int(dl.index) >= len(fullDeadlines) {
-					return xerrors.Errorf("deadline index %d not found in deadlines", dl.index)
+					return fmt.Errorf("deadline index %d not found in deadlines", dl.index)
 				}
 
 				disputableProofs := fullDeadlines[dl.index].DisputableProofCount
@@ -241,14 +241,14 @@ var disputerStartCmd = &cmds.Command{
 
 				ms, err := makeDisputeWindowedPosts(ctx, env.(*node.Env).SyncerAPI, dl, disputableProofs, fromAddr)
 				if err != nil {
-					return xerrors.Errorf("failed to check for disputes: %w", err)
+					return fmt.Errorf("failed to check for disputes: %w", err)
 				}
 
 				dpmsgs = append(dpmsgs, ms...)
 
 				dClose, dl, err := makeMinerDeadline(ctx, env.(*node.Env).ChainAPI, dl.miner)
 				if err != nil {
-					return xerrors.Errorf("making deadline: %w", err)
+					return fmt.Errorf("making deadline: %w", err)
 				}
 
 				deadlineMap[dClose+Confidence] = append(deadlineMap[dClose+Confidence], *dl)
@@ -274,7 +274,7 @@ var disputerStartCmd = &cmds.Command{
 			select {
 			case notif, ok := <-headChanges:
 				if !ok {
-					return xerrors.Errorf("head change channel errored")
+					return fmt.Errorf("head change channel errored")
 				}
 
 				for _, val := range notif {
@@ -289,7 +289,7 @@ var disputerStartCmd = &cmds.Command{
 					case types.HCRevert:
 						// do nothing
 					default:
-						return xerrors.Errorf("unexpected head change type %s", val.Type)
+						return fmt.Errorf("unexpected head change type %s", val.Type)
 					}
 				}
 			case <-statusCheckTicker.C:
@@ -297,7 +297,7 @@ var disputerStartCmd = &cmds.Command{
 
 				minerList, err = env.(*node.Env).ChainAPI.StateListMiners(ctx, types.EmptyTSK)
 				if err != nil {
-					return xerrors.Errorf("getting miner list: %w", err)
+					return fmt.Errorf("getting miner list: %w", err)
 				}
 
 				for _, m := range minerList {
@@ -305,7 +305,7 @@ var disputerStartCmd = &cmds.Command{
 					if !ok {
 						dClose, dl, err := makeMinerDeadline(ctx, env.(*node.Env).ChainAPI, m)
 						if err != nil {
-							return xerrors.Errorf("making deadline: %w", err)
+							return fmt.Errorf("making deadline: %w", err)
 						}
 
 						deadlineMap[dClose+Confidence] = append(deadlineMap[dClose+Confidence], *dl)
@@ -360,7 +360,7 @@ func makeDisputeWindowedPosts(ctx context.Context, api v1api.ISyncer, dl minerDe
 		})
 
 		if aerr != nil {
-			return nil, xerrors.Errorf("failed to serailize params: %w", aerr)
+			return nil, fmt.Errorf("failed to serailize params: %w", aerr)
 		}
 
 		dispute := &types.Message{
@@ -384,7 +384,7 @@ func makeDisputeWindowedPosts(ctx context.Context, api v1api.ISyncer, dl minerDe
 func makeMinerDeadline(ctx context.Context, api v1api.IChain, mAddr address.Address) (abi.ChainEpoch, *minerDeadline, error) {
 	dl, err := api.StateMinerProvingDeadline(ctx, mAddr, types.EmptyTSK)
 	if err != nil {
-		return -1, nil, xerrors.Errorf("getting proving index list: %w", err)
+		return -1, nil, fmt.Errorf("getting proving index list: %w", err)
 	}
 
 	return dl.Close, &minerDeadline{
@@ -409,7 +409,7 @@ func getSender(ctx context.Context, api v1api.IWallet, fromStr string) (address.
 	}
 
 	if !has {
-		return address.Undef, xerrors.Errorf("wallet doesn't contain: %s ", addr)
+		return address.Undef, fmt.Errorf("wallet doesn't contain: %s ", addr)
 	}
 
 	return addr, nil
@@ -419,7 +419,7 @@ func getMaxFee(maxStr string) (*types.MessageSendSpec, error) {
 	if maxStr != "" {
 		maxFee, err := types.ParseFIL(maxStr)
 		if err != nil {
-			return nil, xerrors.Errorf("parsing max-fee: %w", err)
+			return nil, fmt.Errorf("parsing max-fee: %w", err)
 		}
 		return &types.MessageSendSpec{
 			MaxFee: types.BigInt(maxFee),

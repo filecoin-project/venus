@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/venus/venus-shared/api"
+	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
@@ -24,4 +25,4 @@ func (w *WrapperV1INetwork) Version(ctx context.Context) (types.Version, error) 
 	return ver, nil
 }
 
-var _ v1api.INetwork = &WrapperV1INetwork{}
+var _ v0api.INetwork = &WrapperV1INetwork{}
