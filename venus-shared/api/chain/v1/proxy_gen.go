@@ -574,6 +574,7 @@ func (s *IMultiSigStruct) MsigSwapPropose(p0 context.Context, p1 address.Address
 type INetworkStruct struct {
 	Internal struct {
 		NetAddrsListen            func(context.Context) (peer.AddrInfo, error)                                             `perm:"read"`
+		NetDisconnect             func(context.Context, peer.ID) error                                                     `perm:"write"`
 		NetworkConnect            func(ctx context.Context, addrs []string) (<-chan types.ConnectionResult, error)         `perm:"read"`
 		NetworkFindPeer           func(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error)                         `perm:"read"`
 		NetworkFindProvidersAsync func(ctx context.Context, key cid.Cid, count int) <-chan peer.AddrInfo                   `perm:"read"`
@@ -589,6 +590,9 @@ type INetworkStruct struct {
 
 func (s *INetworkStruct) NetAddrsListen(p0 context.Context) (peer.AddrInfo, error) {
 	return s.Internal.NetAddrsListen(p0)
+}
+func (s *INetworkStruct) NetDisconnect(p0 context.Context, p1 peer.ID) error {
+	return s.Internal.NetDisconnect(p0, p1)
 }
 func (s *INetworkStruct) NetworkConnect(p0 context.Context, p1 []string) (<-chan types.ConnectionResult, error) {
 	return s.Internal.NetworkConnect(p0, p1)
