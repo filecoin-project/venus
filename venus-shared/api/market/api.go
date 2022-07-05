@@ -125,6 +125,9 @@ type IMarket interface {
 	// It returns a stream of events to report progress.
 	DagstoreInitializeAll(ctx context.Context, params market.DagstoreInitializeAllParams) (<-chan market.DagstoreInitializeAllEvent, error) //perm:write
 
+	//DagstoreInitializeStorage initializes all pieces in specify storage
+	DagstoreInitializeStorage(context.Context, string, market.DagstoreInitializeAllParams) (<-chan market.DagstoreInitializeAllEvent, error)
+
 	// DagstoreGC runs garbage collection on the DAG store.
 	DagstoreGC(ctx context.Context) ([]market.DagstoreShardResult, error) //perm:admin
 

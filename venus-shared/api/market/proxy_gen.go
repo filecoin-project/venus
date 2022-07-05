@@ -31,6 +31,7 @@ type IMarketStruct struct {
 		DagstoreGC                             func(ctx context.Context) ([]market.DagstoreShardResult, error)                                                                                                                                     `perm:"admin"`
 		DagstoreInitializeAll                  func(ctx context.Context, params market.DagstoreInitializeAllParams) (<-chan market.DagstoreInitializeAllEvent, error)                                                                              `perm:"write"`
 		DagstoreInitializeShard                func(ctx context.Context, key string) error                                                                                                                                                         `perm:"write"`
+		DagstoreInitializeStorage              func(context.Context, string, market.DagstoreInitializeAllParams) (<-chan market.DagstoreInitializeAllEvent, error)                                                                                 `perm:""`
 		DagstoreListShards                     func(ctx context.Context) ([]market.DagstoreShardInfo, error)                                                                                                                                       `perm:"read"`
 		DagstoreRecoverShard                   func(ctx context.Context, key string) error                                                                                                                                                         `perm:"write"`
 		DealsConsiderOfflineRetrievalDeals     func(context.Context) (bool, error)                                                                                                                                                                 `perm:"admin"`
@@ -125,6 +126,9 @@ func (s *IMarketStruct) DagstoreInitializeAll(p0 context.Context, p1 market.Dags
 }
 func (s *IMarketStruct) DagstoreInitializeShard(p0 context.Context, p1 string) error {
 	return s.Internal.DagstoreInitializeShard(p0, p1)
+}
+func (s *IMarketStruct) DagstoreInitializeStorage(p0 context.Context, p1 string, p2 market.DagstoreInitializeAllParams) (<-chan market.DagstoreInitializeAllEvent, error) {
+	return s.Internal.DagstoreInitializeStorage(p0, p1, p2)
 }
 func (s *IMarketStruct) DagstoreListShards(p0 context.Context) ([]market.DagstoreShardInfo, error) {
 	return s.Internal.DagstoreListShards(p0)

@@ -10,6 +10,7 @@
   * [DagstoreGC](#DagstoreGC)
   * [DagstoreInitializeAll](#DagstoreInitializeAll)
   * [DagstoreInitializeShard](#DagstoreInitializeShard)
+  * [DagstoreInitializeStorage](#DagstoreInitializeStorage)
   * [DagstoreListShards](#DagstoreListShards)
   * [DagstoreRecoverShard](#DagstoreRecoverShard)
   * [DealsConsiderOfflineRetrievalDeals](#DealsConsiderOfflineRetrievalDeals)
@@ -296,6 +297,34 @@ Inputs:
 ```
 
 Response: `{}`
+
+### DagstoreInitializeStorage
+
+
+Perms: 
+
+Inputs:
+```json
+[
+  "string value",
+  {
+    "MaxConcurrency": 123,
+    "IncludeSealed": true
+  }
+]
+```
+
+Response:
+```json
+{
+  "Key": "string value",
+  "Event": "string value",
+  "Success": true,
+  "Error": "string value",
+  "Total": 123,
+  "Current": 123
+}
+```
 
 ### DagstoreListShards
 DagstoreListShards returns information about all shards known to the
