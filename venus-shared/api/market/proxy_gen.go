@@ -49,7 +49,7 @@ type IMarketStruct struct {
 		DealsSetConsiderVerifiedStorageDeals   func(context.Context, bool) error                                                                                                                                                                   `perm:"admin"`
 		DealsSetPieceCidBlocklist              func(context.Context, []cid.Cid) error                                                                                                                                                              `perm:"admin"`
 		GetDeals                               func(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*market.DealInfo, error)                                                                                               `perm:"read"`
-		GetPieceStorages                       func(ctx context.Context) market.PieceStorageList                                                                                                                                                   `perm:"read"`
+		GetPieceStorages                       func(ctx context.Context) market.PieceStorageInfos                                                                                                                                                  `perm:"read"`
 		GetReadUrl                             func(context.Context, string) (string, error)                                                                                                                                                       `perm:"read"`
 		GetUnPackedDeals                       func(ctx context.Context, miner address.Address, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                                                                                   `perm:"read"`
 		GetWriteUrl                            func(ctx context.Context, resource string) (string, error)                                                                                                                                          `perm:"read"`
@@ -180,7 +180,7 @@ func (s *IMarketStruct) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.C
 func (s *IMarketStruct) GetDeals(p0 context.Context, p1 address.Address, p2, p3 int) ([]*market.DealInfo, error) {
 	return s.Internal.GetDeals(p0, p1, p2, p3)
 }
-func (s *IMarketStruct) GetPieceStorages(p0 context.Context) market.PieceStorageList {
+func (s *IMarketStruct) GetPieceStorages(p0 context.Context) market.PieceStorageInfos {
 	return s.Internal.GetPieceStorages(p0)
 }
 func (s *IMarketStruct) GetReadUrl(p0 context.Context, p1 string) (string, error) {
