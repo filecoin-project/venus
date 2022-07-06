@@ -51,6 +51,7 @@ type Address struct {
 	GasOverEstimation float64      `json:"gasOverEstimation"`
 	MaxFee            big.Int      `json:"maxFee,omitempty"`
 	MaxFeeCap         big.Int      `json:"maxFeeCap"`
+	GasOverPremium    float64      `json:"gasOverPremium"`
 
 	IsDeleted int       `json:"isDeleted"` // 是否删除 1:是  -1:否
 	CreatedAt time.Time `json:"createAt"`  // 创建时间
