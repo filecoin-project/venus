@@ -47,7 +47,7 @@ type IMessagerStruct struct {
 		RepublishMessage         func(ctx context.Context, id string) error                                                                                               `perm:"admin"`
 		SaveNode                 func(ctx context.Context, node *types.Node) error                                                                                        `perm:"admin"`
 		Send                     func(ctx context.Context, params types.QuickSendParams) (string, error)                                                                  `perm:"admin"`
-		SetFeeParams             func(ctx context.Context, addr address.Address, gasOverEstimation float64, maxFee, maxFeeCap string) error                               `perm:"admin"`
+		SetFeeParams             func(ctx context.Context, addr address.Address, gasOverEstimation, gasOverPremium float64, maxFee, maxFeeCap string) error               `perm:"admin"`
 		SetLogLevel              func(ctx context.Context, level string) error                                                                                            `perm:"admin"`
 		SetSelectMsgNum          func(ctx context.Context, addr address.Address, num uint64) error                                                                        `perm:"admin"`
 		SetSharedParams          func(ctx context.Context, params *types.SharedSpec) error                                                                                `perm:"admin"`
@@ -159,8 +159,8 @@ func (s *IMessagerStruct) SaveNode(p0 context.Context, p1 *types.Node) error {
 func (s *IMessagerStruct) Send(p0 context.Context, p1 types.QuickSendParams) (string, error) {
 	return s.Internal.Send(p0, p1)
 }
-func (s *IMessagerStruct) SetFeeParams(p0 context.Context, p1 address.Address, p2 float64, p3, p4 string) error {
-	return s.Internal.SetFeeParams(p0, p1, p2, p3, p4)
+func (s *IMessagerStruct) SetFeeParams(p0 context.Context, p1 address.Address, p2, p3 float64, p4, p5 string) error {
+	return s.Internal.SetFeeParams(p0, p1, p2, p3, p4, p5)
 }
 func (s *IMessagerStruct) SetLogLevel(p0 context.Context, p1 string) error {
 	return s.Internal.SetLogLevel(p0, p1)
