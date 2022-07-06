@@ -240,7 +240,7 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 // Start starts the syncer submodule for a node.
 func (syncer *SyncerSubmodule) Start(ctx context.Context) error {
 	// setup topic
-	topic, err := syncer.NetworkModule.Pubsub.Join(blocksub.Topic(syncer.NetworkModule.NetworkName))
+	topic, err := syncer.NetworkModule.Pubsub.Join(types.BlockTopic(syncer.NetworkModule.NetworkName))
 	if err != nil {
 		return err
 	}

@@ -3,6 +3,8 @@ package network
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
@@ -126,4 +128,21 @@ func (na *networkAPI) NetConnectedness(ctx context.Context, p peer.ID) (network.
 // NetAutoNatStatus return a struct with current NAT status and public dial address
 func (na *networkAPI) NetAutoNatStatus(context.Context) (types.NatInfo, error) {
 	return na.network.Network.AutoNatStatus()
+}
+
+// NetPubsubScores return scores for all connected and recent peers
+func (na *networkAPI) NetPubsubScores(context.Context) ([]types.PubsubScore, error) {
+	scores := na.network.ScoreKeeper.Get()
+	out := make([]types.PubsubScore, len(scores))
+	i := 0
+	for k, v := range scores {
+		out[i] = types.PubsubScore{ID: k, Score: v}
+		i++
+	}
+
+	sort.Slice(out, func(i, j int) bool {
+		return strings.Compare(string(out[i].ID), string(out[j].ID)) > 0
+	})
+
+	return out, nil
 }

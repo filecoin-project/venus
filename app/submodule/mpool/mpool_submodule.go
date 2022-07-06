@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/pkg/messagepool/journal"
-	"github.com/filecoin-project/venus/pkg/net/msgsub"
 	"github.com/filecoin-project/venus/pkg/repo"
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -178,7 +177,7 @@ func (mp *MessagePoolSubmodule) validateLocalMessage(ctx context.Context, msg *p
 
 // Start to the message pubsub topic to learn about messages to mine into blocks.
 func (mp *MessagePoolSubmodule) Start(ctx context.Context) error {
-	topicName := msgsub.Topic(mp.network.NetworkName)
+	topicName := types.MessageTopic(mp.network.NetworkName)
 	var err error
 	if err = mp.network.Pubsub.RegisterTopicValidator(topicName, mp.Validate); err != nil {
 		return err

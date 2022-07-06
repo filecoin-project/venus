@@ -55,6 +55,7 @@ libp2p peers on the internet.
 		"protect":        protectAddCmd,
 		"unprotect":      protectRemoveCmd,
 		"list-protected": protectListCmd,
+		"scores":         swarmScoresCmd,
 	},
 }
 
@@ -634,6 +635,49 @@ var protectListCmd = &cmds.Command{
 
 		for _, pid := range pids {
 			writer.Printf("%s\n", pid)
+		}
+
+		return re.Emit(buf)
+	},
+}
+
+var swarmScoresCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Print peers' pubsub scores",
+	},
+	Options: []cmds.Option{
+		cmds.BoolOption("extended", "x", "print extended peer scores in json"),
+		cmds.BoolOption("sort", "s", "sort by peer score"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		scores, err := env.(*node.Env).NetworkAPI.NetPubsubScores(req.Context)
+		if err != nil {
+			return err
+		}
+
+		sorted, _ := req.Options["sort"].(bool)
+		extended, _ := req.Options["extended"].(bool)
+
+		if sorted {
+			sort.Slice(scores, func(i, j int) bool {
+				return scores[i].Score.Score > scores[j].Score.Score
+			})
+		}
+
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
+		if extended {
+			for _, peer := range scores {
+				data, err := json.Marshal(peer)
+				if err != nil {
+					return err
+				}
+				writer.Printf("%s\n", string(data))
+			}
+		} else {
+			for _, peer := range scores {
+				writer.Printf("%s, %f\n", peer.ID, peer.Score.Score)
+			}
 		}
 
 		return re.Emit(buf)
