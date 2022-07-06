@@ -1522,7 +1522,8 @@ Inputs:
   },
   {
     "MaxFee": "0",
-    "GasOverEstimation": 12.3
+    "GasOverEstimation": 12.3,
+    "GasPremiumRation": 12.3
   }
 ]
 ```

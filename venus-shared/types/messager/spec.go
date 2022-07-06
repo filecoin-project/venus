@@ -10,6 +10,7 @@ type SendSpec struct {
 	GasOverEstimation float64        `json:"gasOverEstimation"`
 	MaxFee            big.Int        `json:"maxFee,omitempty"`
 	MaxFeeCap         big.Int        `json:"maxFeeCap"`
+	GasPremiumRation  float64        `json:"gasPremiumRation"`
 }
 
 type SharedSpec struct {
@@ -18,6 +19,7 @@ type SharedSpec struct {
 	GasOverEstimation float64 `json:"gasOverEstimation"`
 	MaxFee            big.Int `json:"maxFee,omitempty"`
 	MaxFeeCap         big.Int `json:"maxFeeCap"`
+	GasPremiumRation  float64 `json:"gasPremiumRation"`
 
 	SelMsgNum uint64 `json:"selMsgNum"`
 }
@@ -31,5 +33,6 @@ func (ss *SharedSpec) GetSendSpec() *SendSpec {
 		GasOverEstimation: ss.GasOverEstimation,
 		MaxFee:            ss.MaxFee,
 		MaxFeeCap:         ss.MaxFeeCap,
+		GasPremiumRation:  ss.GasPremiumRation,
 	}
 }

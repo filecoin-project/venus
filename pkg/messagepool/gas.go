@@ -312,6 +312,7 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 	if estimateMessage == nil || estimateMessage.Msg == nil {
 		return nil, fmt.Errorf("estimate message is nil")
 	}
+	log.Debugf("call GasEstimateMessageGas %v, send spec: %v", estimateMessage.Msg, estimateMessage.Spec)
 	if estimateMessage.Msg.GasLimit == 0 {
 		gasLimit, err := mp.GasEstimateGasLimit(ctx, estimateMessage.Msg, types.TipSetKey{})
 		if err != nil {
@@ -321,7 +322,6 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 		if estimateMessage.Spec != nil && estimateMessage.Spec.GasOverEstimation > 0 {
 			gasLimitOverestimation = estimateMessage.Spec.GasOverEstimation
 		}
-		log.Debugf("call GasEstimateMessageGas %v, spec: %v, config gasLimitOverestimation: %v", estimateMessage.Msg, estimateMessage.Spec, mp.GetConfig().GasLimitOverestimation)
 		estimateMessage.Msg.GasLimit = int64(float64(gasLimit) * gasLimitOverestimation)
 	}
 
@@ -329,6 +329,12 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 		gasPremium, err := mp.GasEstimateGasPremium(ctx, 10, estimateMessage.Msg.From, estimateMessage.Msg.GasLimit, types.TipSetKey{}, mp.PriceCache)
 		if err != nil {
 			return nil, fmt.Errorf("estimating gas price: %w", err)
+		}
+		if estimateMessage.Spec != nil && estimateMessage.Spec.GasPremiumRation > 0 {
+			olgGasPremium := gasPremium
+			gasPremiumRationInt := int64(estimateMessage.Spec.GasPremiumRation * 1000)
+			gasPremium = big.Div(big.Mul(gasPremium, big.NewInt(gasPremiumRationInt)), big.NewInt(1000))
+			log.Debugf("call GasEstimateMessageGas old premium %v, new premium %v, premium ration %f", olgGasPremium, gasPremium, estimateMessage.Spec.GasPremiumRation)
 		}
 		estimateMessage.Msg.GasPremium = gasPremium
 	}
@@ -397,6 +403,12 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 					Err: fmt.Sprintf("estimating gas premium: %v", err),
 				})
 				continue
+			}
+			if estimateMessage.Spec != nil && estimateMessage.Spec.GasPremiumRation > 0 {
+				olgGasPremium := gasPremium
+				gasPremiumRationInt := int64(estimateMessage.Spec.GasPremiumRation * 1000)
+				gasPremium = big.Div(big.Mul(gasPremium, big.NewInt(gasPremiumRationInt)), big.NewInt(1000))
+				log.Debugf("call GasBatchEstimateMessageGas old premium %v, new premium %v, premium ration %f", olgGasPremium, gasPremium, estimateMessage.Spec.GasPremiumRation)
 			}
 			estimateMsg.GasPremium = gasPremium
 		}

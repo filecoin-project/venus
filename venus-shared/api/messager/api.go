@@ -35,17 +35,17 @@ type IMessager interface {
 	MarkBadMessage(ctx context.Context, id string) error                                                                                                       //perm:admin
 	RecoverFailedMsg(ctx context.Context, addr address.Address) ([]string, error)                                                                              //perm:admin
 
-	GetAddress(ctx context.Context, addr address.Address) (*types.Address, error)                                      //perm:admin
-	HasAddress(ctx context.Context, addr address.Address) (bool, error)                                                //perm:read
-	WalletHas(ctx context.Context, addr address.Address) (bool, error)                                                 //perm:read
-	ListAddress(ctx context.Context) ([]*types.Address, error)                                                         //perm:admin
-	UpdateNonce(ctx context.Context, addr address.Address, nonce uint64) error                                         //perm:admin
-	DeleteAddress(ctx context.Context, addr address.Address) error                                                     //perm:admin
-	ForbiddenAddress(ctx context.Context, addr address.Address) error                                                  //perm:admin
-	ActiveAddress(ctx context.Context, addr address.Address) error                                                     //perm:admin
-	SetSelectMsgNum(ctx context.Context, addr address.Address, num uint64) error                                       //perm:admin
-	SetFeeParams(ctx context.Context, addr address.Address, gasOverEstimation float64, maxFee, maxFeeCap string) error //perm:admin
-	ClearUnFillMessage(ctx context.Context, addr address.Address) (int, error)                                         //perm:admin
+	GetAddress(ctx context.Context, addr address.Address) (*types.Address, error)                                                        //perm:admin
+	HasAddress(ctx context.Context, addr address.Address) (bool, error)                                                                  //perm:read
+	WalletHas(ctx context.Context, addr address.Address) (bool, error)                                                                   //perm:read
+	ListAddress(ctx context.Context) ([]*types.Address, error)                                                                           //perm:admin
+	UpdateNonce(ctx context.Context, addr address.Address, nonce uint64) error                                                           //perm:admin
+	DeleteAddress(ctx context.Context, addr address.Address) error                                                                       //perm:admin
+	ForbiddenAddress(ctx context.Context, addr address.Address) error                                                                    //perm:admin
+	ActiveAddress(ctx context.Context, addr address.Address) error                                                                       //perm:admin
+	SetSelectMsgNum(ctx context.Context, addr address.Address, num uint64) error                                                         //perm:admin
+	SetFeeParams(ctx context.Context, addr address.Address, gasOverEstimation, gasPremiumRation float64, maxFee, maxFeeCap string) error //perm:admin
+	ClearUnFillMessage(ctx context.Context, addr address.Address) (int, error)                                                           //perm:admin
 
 	GetSharedParams(ctx context.Context) (*types.SharedSpec, error)      //perm:admin
 	SetSharedParams(ctx context.Context, params *types.SharedSpec) error //perm:admin
