@@ -22,7 +22,7 @@ type syncerAPI struct { //nolint
 	syncer *SyncerSubmodule
 }
 
-// SyncerStatus returns the current status of the active or last active chain sync operation.
+// SyncerTracker returns the TargetTracker of syncing.
 func (sa *syncerAPI) SyncerTracker(ctx context.Context) *types.TargetTracker {
 	tracker := sa.syncer.ChainSyncManager.BlockProposer().SyncTracker()
 	tt := &types.TargetTracker{
@@ -66,13 +66,13 @@ func convertSyncStateStage(srtState syncTypes.SyncStateStage) types.SyncStateSta
 	return state
 }
 
-// SyncerStatus returns the current status of the active or last active chain sync operation.
+// SetConcurrent set the syncer worker(go-routine) number of chain syncing
 func (sa *syncerAPI) SetConcurrent(ctx context.Context, concurrent int64) error {
 	sa.syncer.ChainSyncManager.BlockProposer().SetConcurrent(concurrent)
 	return nil
 }
 
-// SyncerStatus returns the current status of the active or last active chain sync operation.
+// Concurrent get the syncer worker(go-routine) number of chain syncing.
 func (sa *syncerAPI) Concurrent(ctx context.Context) int64 {
 	return sa.syncer.ChainSyncManager.BlockProposer().Concurrent()
 }

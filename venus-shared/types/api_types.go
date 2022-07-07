@@ -273,7 +273,6 @@ type ActiveSync struct {
 	Message string
 }
 
-// sync
 type Target struct {
 	State   SyncStateStage
 	Base    *TipSet

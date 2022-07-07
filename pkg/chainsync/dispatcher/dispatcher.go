@@ -86,7 +86,7 @@ type Dispatcher struct {
 	maxCount        int64
 }
 
-// SendOwnBlock handles chain info from a node's own mining system
+// SyncTracker returns the target tracker of syncing
 func (d *Dispatcher) SyncTracker() *types.TargetTracker {
 	return d.workTracker
 }
