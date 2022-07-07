@@ -176,7 +176,9 @@ Inputs:
     "MaxPieceSize": 42,
     "MinPiece": 123,
     "MinPieceSize": 42,
-    "MinUsedSpace": 42
+    "MinUsedSpace": 42,
+    "StartEpoch": 10101,
+    "EndEpoch": 10101
   }
 ]
 ```
@@ -633,7 +635,9 @@ Inputs:
     "MaxPieceSize": 42,
     "MinPiece": 123,
     "MinPieceSize": 42,
-    "MinUsedSpace": 42
+    "MinUsedSpace": 42,
+    "StartEpoch": 10101,
+    "EndEpoch": 10101
   }
 ]
 ```
