@@ -87,3 +87,8 @@ func (na *networkAPI) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
 		Addrs: na.network.Host.Addrs(),
 	}, nil
 }
+
+// NetDisconnect disconnect to peer at the given address
+func (na *networkAPI) NetDisconnect(_ context.Context, p peer.ID) error {
+	return na.network.Network.Disconnect(p)
+}

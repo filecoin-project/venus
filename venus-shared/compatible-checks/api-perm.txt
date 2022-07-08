@@ -21,6 +21,7 @@ v0: github.com/filecoin-project/venus/venus-shared/api/chain/v0 <> github.com/fi
 	- IMessagePool.MpoolSelects
 	- IMultiSig.MsigCancelTxnHash
 	- INetwork.NetAddrsListen
+	- INetwork.NetDisconnect
 	- INetwork.NetworkConnect
 	- INetwork.NetworkFindPeer
 	- INetwork.NetworkFindProvidersAsync

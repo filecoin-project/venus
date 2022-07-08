@@ -24,4 +24,5 @@ type INetwork interface {
 	NetworkPing(context.Context, peer.ID) (time.Duration, error)                                     //perm:read
 	Version(context.Context) (types.Version, error)                                                  //perm:read
 	NetAddrsListen(context.Context) (peer.AddrInfo, error)                                           //perm:read
+	NetDisconnect(context.Context, peer.ID) error                                                    //perm:write
 }

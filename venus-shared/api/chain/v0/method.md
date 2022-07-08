@@ -127,6 +127,7 @@
   * [MsigSwapPropose](#MsigSwapPropose)
 * [Network](#Network)
   * [NetAddrsListen](#NetAddrsListen)
+  * [NetDisconnect](#NetDisconnect)
   * [NetworkConnect](#NetworkConnect)
   * [NetworkFindPeer](#NetworkFindPeer)
   * [NetworkFindProvidersAsync](#NetworkFindProvidersAsync)
@@ -4017,6 +4018,20 @@ Response:
   ]
 }
 ```
+
+### NetDisconnect
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+Response: `{}`
 
 ### NetworkConnect
 
