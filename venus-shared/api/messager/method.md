@@ -1078,12 +1078,15 @@ Perms: admin
 Inputs:
 ```json
 [
-  "string value",
-  true,
-  "string value",
-  9,
-  "string value",
-  "string value"
+  {
+    "ID": "string value",
+    "Auto": true,
+    "MaxFee": "string value",
+    "GasLimit": 9,
+    "GasPremium": "string value",
+    "GasFeecap": "string value",
+    "GasOverPremium": 12.3
+  }
 ]
 ```
 

@@ -43,7 +43,7 @@ type IMessagerStruct struct {
 		PushMessageWithId        func(ctx context.Context, id string, msg *shared.Message, meta *types.SendSpec) (string, error)                                          `perm:"write"`
 		RecoverFailedMsg         func(ctx context.Context, addr address.Address) ([]string, error)                                                                        `perm:"admin"`
 		RefreshSharedParams      func(ctx context.Context) error                                                                                                          `perm:"admin"`
-		ReplaceMessage           func(ctx context.Context, id string, auto bool, maxFee string, gasLimit int64, gasPremium string, gasFeecap string) (cid.Cid, error)     `perm:"admin"`
+		ReplaceMessage           func(ctx context.Context, params types.ReplacMessageParams) (cid.Cid, error)                                                             `perm:"admin"`
 		RepublishMessage         func(ctx context.Context, id string) error                                                                                               `perm:"admin"`
 		SaveNode                 func(ctx context.Context, node *types.Node) error                                                                                        `perm:"admin"`
 		Send                     func(ctx context.Context, params types.QuickSendParams) (string, error)                                                                  `perm:"admin"`
@@ -147,8 +147,8 @@ func (s *IMessagerStruct) RecoverFailedMsg(p0 context.Context, p1 address.Addres
 func (s *IMessagerStruct) RefreshSharedParams(p0 context.Context) error {
 	return s.Internal.RefreshSharedParams(p0)
 }
-func (s *IMessagerStruct) ReplaceMessage(p0 context.Context, p1 string, p2 bool, p3 string, p4 int64, p5 string, p6 string) (cid.Cid, error) {
-	return s.Internal.ReplaceMessage(p0, p1, p2, p3, p4, p5, p6)
+func (s *IMessagerStruct) ReplaceMessage(p0 context.Context, p1 types.ReplacMessageParams) (cid.Cid, error) {
+	return s.Internal.ReplaceMessage(p0, p1)
 }
 func (s *IMessagerStruct) RepublishMessage(p0 context.Context, p1 string) error {
 	return s.Internal.RepublishMessage(p0, p1)
