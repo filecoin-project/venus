@@ -151,3 +151,13 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 		UpdatedAt:  m.UpdatedAt,
 	})
 }
+
+type ReplacMessageParams struct {
+	ID             string
+	Auto           bool
+	MaxFee         abi.TokenAmount
+	GasLimit       int64
+	GasPremium     abi.TokenAmount
+	GasFeecap      abi.TokenAmount
+	GasOverPremium float64
+}
