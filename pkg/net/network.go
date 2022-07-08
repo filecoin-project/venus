@@ -130,3 +130,8 @@ func (network *Network) Peers(ctx context.Context, verbose, latency, streams boo
 	sort.Sort(&out)
 	return &out, nil
 }
+
+// Disconnect disconnect to peer at the given address
+func (network *Network) Disconnect(p peer.ID) error {
+	return network.host.Network().ClosePeer(p)
+}

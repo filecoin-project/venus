@@ -1209,6 +1209,20 @@ func (mr *MockFullNodeMockRecorder) NetAddrsListen(arg0 interface{}) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetAddrsListen", reflect.TypeOf((*MockFullNode)(nil).NetAddrsListen), arg0)
 }
 
+// NetDisconnect mocks base method.
+func (m *MockFullNode) NetDisconnect(arg0 context.Context, arg1 peer.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetDisconnect", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// NetDisconnect indicates an expected call of NetDisconnect.
+func (mr *MockFullNodeMockRecorder) NetDisconnect(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetDisconnect", reflect.TypeOf((*MockFullNode)(nil).NetDisconnect), arg0, arg1)
+}
+
 // NetworkConnect mocks base method.
 func (m *MockFullNode) NetworkConnect(arg0 context.Context, arg1 []string) (<-chan types.ConnectionResult, error) {
 	m.ctrl.T.Helper()
