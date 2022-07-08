@@ -1067,7 +1067,8 @@ Inputs:
   "string value",
   9,
   "string value",
-  "string value"
+  "string value",
+  12.3
 ]
 ```
 

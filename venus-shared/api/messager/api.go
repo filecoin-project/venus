@@ -12,28 +12,28 @@ import (
 )
 
 type IMessager interface {
-	HasMessageByUid(ctx context.Context, id string) (bool, error)                                                                                              //perm:read
-	WaitMessage(ctx context.Context, id string, confidence uint64) (*types.Message, error)                                                                     //perm:read
-	ForcePushMessage(ctx context.Context, account string, msg *shared.Message, meta *types.SendSpec) (string, error)                                           //perm:admin
-	ForcePushMessageWithId(ctx context.Context, id string, account string, msg *shared.Message, meta *types.SendSpec) (string, error)                          //perm:write
-	PushMessage(ctx context.Context, msg *shared.Message, meta *types.SendSpec) (string, error)                                                                //perm:write
-	PushMessageWithId(ctx context.Context, id string, msg *shared.Message, meta *types.SendSpec) (string, error)                                               //perm:write
-	GetMessageByUid(ctx context.Context, id string) (*types.Message, error)                                                                                    //perm:read
-	GetMessageBySignedCid(ctx context.Context, cid cid.Cid) (*types.Message, error)                                                                            //perm:read
-	GetMessageByUnsignedCid(ctx context.Context, cid cid.Cid) (*types.Message, error)                                                                          //perm:read
-	GetMessageByFromAndNonce(ctx context.Context, from address.Address, nonce uint64) (*types.Message, error)                                                  //perm:read
-	ListMessage(ctx context.Context) ([]*types.Message, error)                                                                                                 //perm:admin
-	ListMessageByFromState(ctx context.Context, from address.Address, state types.MessageState, isAsc bool, pageIndex, pageSize int) ([]*types.Message, error) //perm:admin
-	ListMessageByAddress(ctx context.Context, addr address.Address) ([]*types.Message, error)                                                                  //perm:admin
-	ListFailedMessage(ctx context.Context) ([]*types.Message, error)                                                                                           //perm:admin
-	ListBlockedMessage(ctx context.Context, addr address.Address, d time.Duration) ([]*types.Message, error)                                                   //perm:admin
-	UpdateMessageStateByID(ctx context.Context, id string, state types.MessageState) error                                                                     //perm:admin
-	UpdateAllFilledMessage(ctx context.Context) (int, error)                                                                                                   //perm:admin
-	UpdateFilledMessageByID(ctx context.Context, id string) (string, error)                                                                                    //perm:admin
-	ReplaceMessage(ctx context.Context, id string, auto bool, maxFee string, gasLimit int64, gasPremium string, gasFeecap string) (cid.Cid, error)             //perm:admin
-	RepublishMessage(ctx context.Context, id string) error                                                                                                     //perm:admin
-	MarkBadMessage(ctx context.Context, id string) error                                                                                                       //perm:admin
-	RecoverFailedMsg(ctx context.Context, addr address.Address) ([]string, error)                                                                              //perm:admin
+	HasMessageByUid(ctx context.Context, id string) (bool, error)                                                                                                          //perm:read
+	WaitMessage(ctx context.Context, id string, confidence uint64) (*types.Message, error)                                                                                 //perm:read
+	ForcePushMessage(ctx context.Context, account string, msg *shared.Message, meta *types.SendSpec) (string, error)                                                       //perm:admin
+	ForcePushMessageWithId(ctx context.Context, id string, account string, msg *shared.Message, meta *types.SendSpec) (string, error)                                      //perm:write
+	PushMessage(ctx context.Context, msg *shared.Message, meta *types.SendSpec) (string, error)                                                                            //perm:write
+	PushMessageWithId(ctx context.Context, id string, msg *shared.Message, meta *types.SendSpec) (string, error)                                                           //perm:write
+	GetMessageByUid(ctx context.Context, id string) (*types.Message, error)                                                                                                //perm:read
+	GetMessageBySignedCid(ctx context.Context, cid cid.Cid) (*types.Message, error)                                                                                        //perm:read
+	GetMessageByUnsignedCid(ctx context.Context, cid cid.Cid) (*types.Message, error)                                                                                      //perm:read
+	GetMessageByFromAndNonce(ctx context.Context, from address.Address, nonce uint64) (*types.Message, error)                                                              //perm:read
+	ListMessage(ctx context.Context) ([]*types.Message, error)                                                                                                             //perm:admin
+	ListMessageByFromState(ctx context.Context, from address.Address, state types.MessageState, isAsc bool, pageIndex, pageSize int) ([]*types.Message, error)             //perm:admin
+	ListMessageByAddress(ctx context.Context, addr address.Address) ([]*types.Message, error)                                                                              //perm:admin
+	ListFailedMessage(ctx context.Context) ([]*types.Message, error)                                                                                                       //perm:admin
+	ListBlockedMessage(ctx context.Context, addr address.Address, d time.Duration) ([]*types.Message, error)                                                               //perm:admin
+	UpdateMessageStateByID(ctx context.Context, id string, state types.MessageState) error                                                                                 //perm:admin
+	UpdateAllFilledMessage(ctx context.Context) (int, error)                                                                                                               //perm:admin
+	UpdateFilledMessageByID(ctx context.Context, id string) (string, error)                                                                                                //perm:admin
+	ReplaceMessage(ctx context.Context, id string, auto bool, maxFee string, gasLimit int64, gasPremium string, gasFeecap string, gasOverPremium float64) (cid.Cid, error) //perm:admin
+	RepublishMessage(ctx context.Context, id string) error                                                                                                                 //perm:admin
+	MarkBadMessage(ctx context.Context, id string) error                                                                                                                   //perm:admin
+	RecoverFailedMsg(ctx context.Context, addr address.Address) ([]string, error)                                                                                          //perm:admin
 
 	GetAddress(ctx context.Context, addr address.Address) (*types.Address, error)                                      //perm:admin
 	HasAddress(ctx context.Context, addr address.Address) (bool, error)                                                //perm:read

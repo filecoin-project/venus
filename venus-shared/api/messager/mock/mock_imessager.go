@@ -469,18 +469,18 @@ func (mr *MockIMessagerMockRecorder) RefreshSharedParams(arg0 interface{}) *gomo
 }
 
 // ReplaceMessage mocks base method.
-func (m *MockIMessager) ReplaceMessage(arg0 context.Context, arg1 string, arg2 bool, arg3 string, arg4 int64, arg5, arg6 string) (cid.Cid, error) {
+func (m *MockIMessager) ReplaceMessage(arg0 context.Context, arg1 string, arg2 bool, arg3 string, arg4 int64, arg5, arg6 string, arg7 float64) (cid.Cid, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReplaceMessage", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	ret := m.ctrl.Call(m, "ReplaceMessage", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 	ret0, _ := ret[0].(cid.Cid)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ReplaceMessage indicates an expected call of ReplaceMessage.
-func (mr *MockIMessagerMockRecorder) ReplaceMessage(arg0, arg1, arg2, arg3, arg4, arg5, arg6 interface{}) *gomock.Call {
+func (mr *MockIMessagerMockRecorder) ReplaceMessage(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplaceMessage", reflect.TypeOf((*MockIMessager)(nil).ReplaceMessage), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplaceMessage", reflect.TypeOf((*MockIMessager)(nil).ReplaceMessage), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 }
 
 // RepublishMessage mocks base method.

@@ -14,49 +14,49 @@ import (
 
 type IMessagerStruct struct {
 	Internal struct {
-		ActiveAddress            func(ctx context.Context, addr address.Address) error                                                                                    `perm:"admin"`
-		ClearUnFillMessage       func(ctx context.Context, addr address.Address) (int, error)                                                                             `perm:"admin"`
-		DeleteAddress            func(ctx context.Context, addr address.Address) error                                                                                    `perm:"admin"`
-		DeleteNode               func(ctx context.Context, name string) error                                                                                             `perm:"admin"`
-		ForbiddenAddress         func(ctx context.Context, addr address.Address) error                                                                                    `perm:"admin"`
-		ForcePushMessage         func(ctx context.Context, account string, msg *shared.Message, meta *types.SendSpec) (string, error)                                     `perm:"admin"`
-		ForcePushMessageWithId   func(ctx context.Context, id string, account string, msg *shared.Message, meta *types.SendSpec) (string, error)                          `perm:"write"`
-		GetAddress               func(ctx context.Context, addr address.Address) (*types.Address, error)                                                                  `perm:"admin"`
-		GetMessageByFromAndNonce func(ctx context.Context, from address.Address, nonce uint64) (*types.Message, error)                                                    `perm:"read"`
-		GetMessageBySignedCid    func(ctx context.Context, cid cid.Cid) (*types.Message, error)                                                                           `perm:"read"`
-		GetMessageByUid          func(ctx context.Context, id string) (*types.Message, error)                                                                             `perm:"read"`
-		GetMessageByUnsignedCid  func(ctx context.Context, cid cid.Cid) (*types.Message, error)                                                                           `perm:"read"`
-		GetNode                  func(ctx context.Context, name string) (*types.Node, error)                                                                              `perm:"admin"`
-		GetSharedParams          func(ctx context.Context) (*types.SharedSpec, error)                                                                                     `perm:"admin"`
-		HasAddress               func(ctx context.Context, addr address.Address) (bool, error)                                                                            `perm:"read"`
-		HasMessageByUid          func(ctx context.Context, id string) (bool, error)                                                                                       `perm:"read"`
-		HasNode                  func(ctx context.Context, name string) (bool, error)                                                                                     `perm:"admin"`
-		ListAddress              func(ctx context.Context) ([]*types.Address, error)                                                                                      `perm:"admin"`
-		ListBlockedMessage       func(ctx context.Context, addr address.Address, d time.Duration) ([]*types.Message, error)                                               `perm:"admin"`
-		ListFailedMessage        func(ctx context.Context) ([]*types.Message, error)                                                                                      `perm:"admin"`
-		ListMessage              func(ctx context.Context) ([]*types.Message, error)                                                                                      `perm:"admin"`
-		ListMessageByAddress     func(ctx context.Context, addr address.Address) ([]*types.Message, error)                                                                `perm:"admin"`
-		ListMessageByFromState   func(ctx context.Context, from address.Address, state types.MessageState, isAsc bool, pageIndex, pageSize int) ([]*types.Message, error) `perm:"admin"`
-		ListNode                 func(ctx context.Context) ([]*types.Node, error)                                                                                         `perm:"admin"`
-		MarkBadMessage           func(ctx context.Context, id string) error                                                                                               `perm:"admin"`
-		PushMessage              func(ctx context.Context, msg *shared.Message, meta *types.SendSpec) (string, error)                                                     `perm:"write"`
-		PushMessageWithId        func(ctx context.Context, id string, msg *shared.Message, meta *types.SendSpec) (string, error)                                          `perm:"write"`
-		RecoverFailedMsg         func(ctx context.Context, addr address.Address) ([]string, error)                                                                        `perm:"admin"`
-		RefreshSharedParams      func(ctx context.Context) error                                                                                                          `perm:"admin"`
-		ReplaceMessage           func(ctx context.Context, id string, auto bool, maxFee string, gasLimit int64, gasPremium string, gasFeecap string) (cid.Cid, error)     `perm:"admin"`
-		RepublishMessage         func(ctx context.Context, id string) error                                                                                               `perm:"admin"`
-		SaveNode                 func(ctx context.Context, node *types.Node) error                                                                                        `perm:"admin"`
-		Send                     func(ctx context.Context, params types.QuickSendParams) (string, error)                                                                  `perm:"admin"`
-		SetFeeParams             func(ctx context.Context, addr address.Address, gasOverEstimation float64, maxFee, maxFeeCap string) error                               `perm:"admin"`
-		SetLogLevel              func(ctx context.Context, level string) error                                                                                            `perm:"admin"`
-		SetSelectMsgNum          func(ctx context.Context, addr address.Address, num uint64) error                                                                        `perm:"admin"`
-		SetSharedParams          func(ctx context.Context, params *types.SharedSpec) error                                                                                `perm:"admin"`
-		UpdateAllFilledMessage   func(ctx context.Context) (int, error)                                                                                                   `perm:"admin"`
-		UpdateFilledMessageByID  func(ctx context.Context, id string) (string, error)                                                                                     `perm:"admin"`
-		UpdateMessageStateByID   func(ctx context.Context, id string, state types.MessageState) error                                                                     `perm:"admin"`
-		UpdateNonce              func(ctx context.Context, addr address.Address, nonce uint64) error                                                                      `perm:"admin"`
-		WaitMessage              func(ctx context.Context, id string, confidence uint64) (*types.Message, error)                                                          `perm:"read"`
-		WalletHas                func(ctx context.Context, addr address.Address) (bool, error)                                                                            `perm:"read"`
+		ActiveAddress            func(ctx context.Context, addr address.Address) error                                                                                                        `perm:"admin"`
+		ClearUnFillMessage       func(ctx context.Context, addr address.Address) (int, error)                                                                                                 `perm:"admin"`
+		DeleteAddress            func(ctx context.Context, addr address.Address) error                                                                                                        `perm:"admin"`
+		DeleteNode               func(ctx context.Context, name string) error                                                                                                                 `perm:"admin"`
+		ForbiddenAddress         func(ctx context.Context, addr address.Address) error                                                                                                        `perm:"admin"`
+		ForcePushMessage         func(ctx context.Context, account string, msg *shared.Message, meta *types.SendSpec) (string, error)                                                         `perm:"admin"`
+		ForcePushMessageWithId   func(ctx context.Context, id string, account string, msg *shared.Message, meta *types.SendSpec) (string, error)                                              `perm:"write"`
+		GetAddress               func(ctx context.Context, addr address.Address) (*types.Address, error)                                                                                      `perm:"admin"`
+		GetMessageByFromAndNonce func(ctx context.Context, from address.Address, nonce uint64) (*types.Message, error)                                                                        `perm:"read"`
+		GetMessageBySignedCid    func(ctx context.Context, cid cid.Cid) (*types.Message, error)                                                                                               `perm:"read"`
+		GetMessageByUid          func(ctx context.Context, id string) (*types.Message, error)                                                                                                 `perm:"read"`
+		GetMessageByUnsignedCid  func(ctx context.Context, cid cid.Cid) (*types.Message, error)                                                                                               `perm:"read"`
+		GetNode                  func(ctx context.Context, name string) (*types.Node, error)                                                                                                  `perm:"admin"`
+		GetSharedParams          func(ctx context.Context) (*types.SharedSpec, error)                                                                                                         `perm:"admin"`
+		HasAddress               func(ctx context.Context, addr address.Address) (bool, error)                                                                                                `perm:"read"`
+		HasMessageByUid          func(ctx context.Context, id string) (bool, error)                                                                                                           `perm:"read"`
+		HasNode                  func(ctx context.Context, name string) (bool, error)                                                                                                         `perm:"admin"`
+		ListAddress              func(ctx context.Context) ([]*types.Address, error)                                                                                                          `perm:"admin"`
+		ListBlockedMessage       func(ctx context.Context, addr address.Address, d time.Duration) ([]*types.Message, error)                                                                   `perm:"admin"`
+		ListFailedMessage        func(ctx context.Context) ([]*types.Message, error)                                                                                                          `perm:"admin"`
+		ListMessage              func(ctx context.Context) ([]*types.Message, error)                                                                                                          `perm:"admin"`
+		ListMessageByAddress     func(ctx context.Context, addr address.Address) ([]*types.Message, error)                                                                                    `perm:"admin"`
+		ListMessageByFromState   func(ctx context.Context, from address.Address, state types.MessageState, isAsc bool, pageIndex, pageSize int) ([]*types.Message, error)                     `perm:"admin"`
+		ListNode                 func(ctx context.Context) ([]*types.Node, error)                                                                                                             `perm:"admin"`
+		MarkBadMessage           func(ctx context.Context, id string) error                                                                                                                   `perm:"admin"`
+		PushMessage              func(ctx context.Context, msg *shared.Message, meta *types.SendSpec) (string, error)                                                                         `perm:"write"`
+		PushMessageWithId        func(ctx context.Context, id string, msg *shared.Message, meta *types.SendSpec) (string, error)                                                              `perm:"write"`
+		RecoverFailedMsg         func(ctx context.Context, addr address.Address) ([]string, error)                                                                                            `perm:"admin"`
+		RefreshSharedParams      func(ctx context.Context) error                                                                                                                              `perm:"admin"`
+		ReplaceMessage           func(ctx context.Context, id string, auto bool, maxFee string, gasLimit int64, gasPremium string, gasFeecap string, gasOverPremium float64) (cid.Cid, error) `perm:"admin"`
+		RepublishMessage         func(ctx context.Context, id string) error                                                                                                                   `perm:"admin"`
+		SaveNode                 func(ctx context.Context, node *types.Node) error                                                                                                            `perm:"admin"`
+		Send                     func(ctx context.Context, params types.QuickSendParams) (string, error)                                                                                      `perm:"admin"`
+		SetFeeParams             func(ctx context.Context, addr address.Address, gasOverEstimation float64, maxFee, maxFeeCap string) error                                                   `perm:"admin"`
+		SetLogLevel              func(ctx context.Context, level string) error                                                                                                                `perm:"admin"`
+		SetSelectMsgNum          func(ctx context.Context, addr address.Address, num uint64) error                                                                                            `perm:"admin"`
+		SetSharedParams          func(ctx context.Context, params *types.SharedSpec) error                                                                                                    `perm:"admin"`
+		UpdateAllFilledMessage   func(ctx context.Context) (int, error)                                                                                                                       `perm:"admin"`
+		UpdateFilledMessageByID  func(ctx context.Context, id string) (string, error)                                                                                                         `perm:"admin"`
+		UpdateMessageStateByID   func(ctx context.Context, id string, state types.MessageState) error                                                                                         `perm:"admin"`
+		UpdateNonce              func(ctx context.Context, addr address.Address, nonce uint64) error                                                                                          `perm:"admin"`
+		WaitMessage              func(ctx context.Context, id string, confidence uint64) (*types.Message, error)                                                                              `perm:"read"`
+		WalletHas                func(ctx context.Context, addr address.Address) (bool, error)                                                                                                `perm:"read"`
 	}
 }
 
@@ -147,8 +147,8 @@ func (s *IMessagerStruct) RecoverFailedMsg(p0 context.Context, p1 address.Addres
 func (s *IMessagerStruct) RefreshSharedParams(p0 context.Context) error {
 	return s.Internal.RefreshSharedParams(p0)
 }
-func (s *IMessagerStruct) ReplaceMessage(p0 context.Context, p1 string, p2 bool, p3 string, p4 int64, p5 string, p6 string) (cid.Cid, error) {
-	return s.Internal.ReplaceMessage(p0, p1, p2, p3, p4, p5, p6)
+func (s *IMessagerStruct) ReplaceMessage(p0 context.Context, p1 string, p2 bool, p3 string, p4 int64, p5 string, p6 string, p7 float64) (cid.Cid, error) {
+	return s.Internal.ReplaceMessage(p0, p1, p2, p3, p4, p5, p6, p7)
 }
 func (s *IMessagerStruct) RepublishMessage(p0 context.Context, p1 string) error {
 	return s.Internal.RepublishMessage(p0, p1)
