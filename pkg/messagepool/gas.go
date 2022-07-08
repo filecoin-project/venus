@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	stdbig "math/big"
 	"math/rand"
 	"sort"
 
@@ -332,8 +333,7 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 		}
 		if estimateMessage.Spec != nil && estimateMessage.Spec.GasPremiumRation > 0 {
 			olgGasPremium := gasPremium
-			gasPremiumRationInt := int64(estimateMessage.Spec.GasPremiumRation * 1000)
-			gasPremium = big.Div(big.Mul(gasPremium, big.NewInt(gasPremiumRationInt)), big.NewInt(1000))
+			gasPremium, _ := new(stdbig.Float).Mul(new(stdbig.Float).SetInt(stdbig.NewInt(gasPremium.Int64())), stdbig.NewFloat(estimateMessage.Spec.GasPremiumRation)).Int(nil)
 			log.Debugf("call GasEstimateMessageGas old premium %v, new premium %v, premium ration %f", olgGasPremium, gasPremium, estimateMessage.Spec.GasPremiumRation)
 		}
 		estimateMessage.Msg.GasPremium = gasPremium
@@ -406,8 +406,7 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 			}
 			if estimateMessage.Spec != nil && estimateMessage.Spec.GasPremiumRation > 0 {
 				olgGasPremium := gasPremium
-				gasPremiumRationInt := int64(estimateMessage.Spec.GasPremiumRation * 1000)
-				gasPremium = big.Div(big.Mul(gasPremium, big.NewInt(gasPremiumRationInt)), big.NewInt(1000))
+				gasPremium, _ := new(stdbig.Float).Mul(new(stdbig.Float).SetInt(stdbig.NewInt(gasPremium.Int64())), stdbig.NewFloat(estimateMessage.Spec.GasPremiumRation)).Int(nil)
 				log.Debugf("call GasBatchEstimateMessageGas old premium %v, new premium %v, premium ration %f", olgGasPremium, gasPremium, estimateMessage.Spec.GasPremiumRation)
 			}
 			estimateMsg.GasPremium = gasPremium
