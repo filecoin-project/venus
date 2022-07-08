@@ -88,7 +88,7 @@ type IMarket interface {
 
 	// DagstoreListShards returns information about all shards known to the
 	// DAG store. Only available on nodes running the markets subsystem.
-	DagstoreListShards(ctx context.Context) ([]market.DagstoreShardInfo, error) //perm:read
+	DagstoreListShards(ctx context.Context) ([]market.DagstoreShardInfo, error) //perm:admin
 
 	// DagstoreInitializeShard initializes an uninitialized shard.
 	//
@@ -107,14 +107,14 @@ type IMarket interface {
 	//
 	// This operation fails if the shard is not in ShardStateNew state.
 	// It blocks until initialization finishes.
-	DagstoreInitializeShard(ctx context.Context, key string) error //perm:write
+	DagstoreInitializeShard(ctx context.Context, key string) error //perm:admin
 
 	// DagstoreRecoverShard attempts to recover a failed shard.
 	//
 	// This operation fails if the shard is not in ShardStateErrored state.
 	// It blocks until recovery finishes. If recovery failed, it returns the
 	// error.
-	DagstoreRecoverShard(ctx context.Context, key string) error //perm:write
+	DagstoreRecoverShard(ctx context.Context, key string) error //perm:admin
 
 	// DagstoreInitializeAll initializes all uninitialized shards in bulk,
 	// according to the policy passed in the parameters.
@@ -123,7 +123,10 @@ type IMarket interface {
 	// IO pressure if the storage subsystem has a large amount of deals.
 	//
 	// It returns a stream of events to report progress.
-	DagstoreInitializeAll(ctx context.Context, params market.DagstoreInitializeAllParams) (<-chan market.DagstoreInitializeAllEvent, error) //perm:write
+	DagstoreInitializeAll(ctx context.Context, params market.DagstoreInitializeAllParams) (<-chan market.DagstoreInitializeAllEvent, error) //perm:admin
+
+	//DagstoreInitializeStorage initializes all pieces in specify storage
+	DagstoreInitializeStorage(context.Context, string, market.DagstoreInitializeAllParams) (<-chan market.DagstoreInitializeAllEvent, error) //perm:admin
 
 	// DagstoreGC runs garbage collection on the DAG store.
 	DagstoreGC(ctx context.Context) ([]market.DagstoreShardResult, error) //perm:admin

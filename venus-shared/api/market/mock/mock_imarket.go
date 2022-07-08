@@ -181,6 +181,21 @@ func (mr *MockIMarketMockRecorder) DagstoreInitializeShard(arg0, arg1 interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DagstoreInitializeShard", reflect.TypeOf((*MockIMarket)(nil).DagstoreInitializeShard), arg0, arg1)
 }
 
+// DagstoreInitializeStorage mocks base method.
+func (m *MockIMarket) DagstoreInitializeStorage(arg0 context.Context, arg1 string, arg2 market.DagstoreInitializeAllParams) (<-chan market.DagstoreInitializeAllEvent, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DagstoreInitializeStorage", arg0, arg1, arg2)
+	ret0, _ := ret[0].(<-chan market.DagstoreInitializeAllEvent)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DagstoreInitializeStorage indicates an expected call of DagstoreInitializeStorage.
+func (mr *MockIMarketMockRecorder) DagstoreInitializeStorage(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DagstoreInitializeStorage", reflect.TypeOf((*MockIMarket)(nil).DagstoreInitializeStorage), arg0, arg1, arg2)
+}
+
 // DagstoreListShards mocks base method.
 func (m *MockIMarket) DagstoreListShards(arg0 context.Context) ([]market.DagstoreShardInfo, error) {
 	m.ctrl.T.Helper()
