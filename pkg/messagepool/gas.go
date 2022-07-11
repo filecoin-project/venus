@@ -333,8 +333,9 @@ func (mp *MessagePool) GasEstimateMessageGas(ctx context.Context, estimateMessag
 		}
 		if estimateMessage.Spec != nil && estimateMessage.Spec.GasOverPremium > 0 {
 			olgGasPremium := gasPremium
-			gasPremium, _ := new(stdbig.Float).Mul(new(stdbig.Float).SetInt(stdbig.NewInt(gasPremium.Int64())), stdbig.NewFloat(estimateMessage.Spec.GasOverPremium)).Int(nil)
-			log.Debugf("call GasEstimateMessageGas old premium %v, new premium %v, premium ration %f", olgGasPremium, gasPremium, estimateMessage.Spec.GasOverPremium)
+			newGasPremium, _ := new(stdbig.Float).Mul(new(stdbig.Float).SetInt(stdbig.NewInt(gasPremium.Int64())), stdbig.NewFloat(estimateMessage.Spec.GasOverPremium)).Int(nil)
+			gasPremium = big.NewFromGo(newGasPremium)
+			log.Debugf("call GasEstimateMessageGas old premium %v, new premium %v, premium ration %f", olgGasPremium, newGasPremium, estimateMessage.Spec.GasOverPremium)
 		}
 		estimateMessage.Msg.GasPremium = gasPremium
 	}
@@ -406,8 +407,9 @@ func (mp *MessagePool) GasBatchEstimateMessageGas(ctx context.Context, estimateM
 			}
 			if estimateMessage.Spec != nil && estimateMessage.Spec.GasOverPremium > 0 {
 				olgGasPremium := gasPremium
-				gasPremium, _ := new(stdbig.Float).Mul(new(stdbig.Float).SetInt(stdbig.NewInt(gasPremium.Int64())), stdbig.NewFloat(estimateMessage.Spec.GasOverPremium)).Int(nil)
-				log.Debugf("call GasBatchEstimateMessageGas old premium %v, new premium %v, premium ration %f", olgGasPremium, gasPremium, estimateMessage.Spec.GasOverPremium)
+				newGasPremium, _ := new(stdbig.Float).Mul(new(stdbig.Float).SetInt(stdbig.NewInt(gasPremium.Int64())), stdbig.NewFloat(estimateMessage.Spec.GasOverPremium)).Int(nil)
+				gasPremium = big.NewFromGo(newGasPremium)
+				log.Debugf("call GasBatchEstimateMessageGas old premium %v, new premium %v, premium ration %f", olgGasPremium, newGasPremium, estimateMessage.Spec.GasOverPremium)
 			}
 			estimateMsg.GasPremium = gasPremium
 		}
