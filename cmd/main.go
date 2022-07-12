@@ -28,6 +28,8 @@ const (
 	// OptionRepoDir is the name of the option for specifying the directory of the repo.
 	OptionRepoDir = "repo"
 
+	OptionLegacyRepoDir = "repodir"
+
 	// OptionSectorDir is the name of the option for specifying the directory into which staged and sealed sectors will be written.
 	//OptionSectorDir = "sectordir"
 
@@ -147,7 +149,7 @@ TOOL COMMANDS
 	Options: []cmds.Option{
 		cmds.StringsOption(OptionToken, "set the auth token to use"),
 		cmds.StringOption(OptionAPI, "set the api port to use"),
-		cmds.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.venus"),
+		cmds.StringOption(OptionRepoDir, OptionLegacyRepoDir, "set the repo directory, defaults to ~/.venus"),
 		cmds.StringOption(cmds.EncLong, cmds.EncShort, "The encoding type the output should be encoded with (pretty-json or json)").WithDefault("pretty-json"),
 		cmds.BoolOption("help", "Show the full command help text."),
 		cmds.BoolOption("h", "Show a short version of the command help text."),
