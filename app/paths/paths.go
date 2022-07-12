@@ -8,6 +8,7 @@ import (
 
 // node repo path defaults
 const filPathVar = "VENUS_PATH"
+const venusDir = "VENUS_DIR"
 const defaultRepoDir = "~/.venus"
 
 // GetRepoPath returns the path of the venus repo from a potential override
@@ -19,6 +20,10 @@ func GetRepoPath(override string) (string, error) {
 	}
 	// Environment variable is second precedence
 	envRepoDir := os.Getenv(filPathVar)
+	if envRepoDir != "" {
+		return homedir.Expand(envRepoDir)
+	}
+	envRepoDir = os.Getenv(venusDir)
 	if envRepoDir != "" {
 		return homedir.Expand(envRepoDir)
 	}
