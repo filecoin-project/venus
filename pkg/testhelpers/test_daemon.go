@@ -138,7 +138,7 @@ func (td *TestDaemon) RunWithStdin(stdin io.Reader, args ...string) *CmdOutput {
 		args = strings.Split(args[0], " ")
 	}
 
-	finalArgs := append(args, "--repodir="+td.RepoDir(), "--cmdapiaddr="+addr.String())
+	finalArgs := append(args, "--repo="+td.RepoDir(), "--cmdapiaddr="+addr.String())
 
 	td.logRun(finalArgs...)
 	cmd := exec.CommandContext(ctx, bin, finalArgs...)
@@ -702,7 +702,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		td.containerDir = newDir
 	}
 
-	repoDirFlag := fmt.Sprintf("--repodir=%s", td.RepoDir())
+	repoDirFlag := fmt.Sprintf("--repo=%s", td.RepoDir())
 
 	// Defer allocation of a command API port until listening. The node will write the
 	// listening address to the "api" file in the repo, from where we can read it when issuing commands.
