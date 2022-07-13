@@ -185,6 +185,7 @@ type EstimateResult struct {
 type MessageSendSpec struct {
 	MaxFee            abi.TokenAmount
 	GasOverEstimation float64
+	GasOverPremium    float64
 }
 
 // Version provides various build-time information
