@@ -133,17 +133,21 @@ var newMinerCmd = &cmds.Command{
 			return fmt.Errorf("getting seal proof type: %v", err)
 		}
 
+		peerID, err := env.(*node.Env).NetworkAPI.ID(ctx)
+		if err != nil {
+			return err
+		}
 		params, err := actors.SerializeParams(&power2.CreateMinerParams{
 			Owner:         owner,
 			Worker:        worker,
 			SealProofType: spt,
-			Peer:          abi.PeerID(env.(*node.Env).NetworkAPI.NetworkGetPeerID(ctx)),
+			Peer:          abi.PeerID(peerID),
 		})
 		if err != nil {
 			return err
 		}
 
-		minerCmdLog.Info("peer id: ", env.(*node.Env).NetworkAPI.NetworkGetPeerID(ctx))
+		minerCmdLog.Info("peer id: ", peerID.Pretty())
 
 		sender := owner
 		fromstr, _ := req.Options["from"].(string)

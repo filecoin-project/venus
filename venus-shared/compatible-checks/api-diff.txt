@@ -57,7 +57,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	+ GetFullBlock
 	+ GetParentStateRootActor
 	+ HasPassword
-	- ID
 	+ ListActor
 	+ LockWallet
 	- LogAlerts
@@ -85,36 +84,15 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	- MsigGetPending
 	> MsigGetVested {[func(context.Context, address.Address, types.TipSetKey, types.TipSetKey) (big.Int, error) <> func(context.Context, address.Address, types.TipSetKey, types.TipSetKey) (big.Int, error)] base=func in type: #2 input; nested={[types.TipSetKey <> types.TipSetKey] base=codec marshaler implementations for codec Cbor: true != false; nested=nil}}
 	- MsigGetVestingSchedule
-	- NetAgentVersion
-	- NetAutoNatStatus
-	- NetBandwidthStats
-	- NetBandwidthStatsByPeer
-	- NetBandwidthStatsByProtocol
 	- NetBlockAdd
 	- NetBlockList
 	- NetBlockRemove
-	- NetConnect
-	- NetConnectedness
-	- NetFindPeer
+	+ NetFindProvidersAsync
+	+ NetGetClosestPeers
 	- NetLimit
-	- NetPeerInfo
-	- NetPeers
-	- NetPing
-	- NetProtectAdd
-	- NetProtectList
-	- NetProtectRemove
 	- NetPubsubScores
 	- NetSetLimit
 	- NetStat
-	+ NetworkConnect
-	+ NetworkFindPeer
-	+ NetworkFindProvidersAsync
-	+ NetworkGetBandwidthStats
-	+ NetworkGetClosestPeers
-	+ NetworkGetPeerAddresses
-	+ NetworkGetPeerID
-	+ NetworkPeers
-	+ NetworkPing
 	+ ProtocolParameters
 	+ ResolveToKeyAddr
 	- Session
@@ -259,7 +237,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ GetFullBlock
 	+ GetParentStateRootActor
 	+ HasPassword
-	- ID
 	+ ListActor
 	+ LockWallet
 	- LogAlerts
@@ -285,36 +262,15 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- MsigGetPending
 	> MsigGetVested {[func(context.Context, address.Address, types.TipSetKey, types.TipSetKey) (big.Int, error) <> func(context.Context, address.Address, types.TipSetKey, types.TipSetKey) (big.Int, error)] base=func in type: #2 input; nested={[types.TipSetKey <> types.TipSetKey] base=codec marshaler implementations for codec Cbor: true != false; nested=nil}}
 	- MsigGetVestingSchedule
-	- NetAgentVersion
-	- NetAutoNatStatus
-	- NetBandwidthStats
-	- NetBandwidthStatsByPeer
-	- NetBandwidthStatsByProtocol
 	- NetBlockAdd
 	- NetBlockList
 	- NetBlockRemove
-	- NetConnect
-	- NetConnectedness
-	- NetFindPeer
+	+ NetFindProvidersAsync
+	+ NetGetClosestPeers
 	- NetLimit
-	- NetPeerInfo
-	- NetPeers
-	- NetPing
-	- NetProtectAdd
-	- NetProtectList
-	- NetProtectRemove
 	- NetPubsubScores
 	- NetSetLimit
 	- NetStat
-	+ NetworkConnect
-	+ NetworkFindPeer
-	+ NetworkFindProvidersAsync
-	+ NetworkGetBandwidthStats
-	+ NetworkGetClosestPeers
-	+ NetworkGetPeerAddresses
-	+ NetworkGetPeerID
-	+ NetworkPeers
-	+ NetworkPing
 	- NodeStatus
 	+ ProtocolParameters
 	+ ResolveToKeyAddr
