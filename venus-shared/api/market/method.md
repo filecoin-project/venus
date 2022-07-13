@@ -4,10 +4,13 @@
   * [ActorExist](#ActorExist)
   * [ActorList](#ActorList)
   * [ActorSectorSize](#ActorSectorSize)
+  * [AddFsPieceStorage](#AddFsPieceStorage)
+  * [AddS3PieceStorage](#AddS3PieceStorage)
   * [AssignUnPackedDeals](#AssignUnPackedDeals)
   * [DagstoreGC](#DagstoreGC)
   * [DagstoreInitializeAll](#DagstoreInitializeAll)
   * [DagstoreInitializeShard](#DagstoreInitializeShard)
+  * [DagstoreInitializeStorage](#DagstoreInitializeStorage)
   * [DagstoreListShards](#DagstoreListShards)
   * [DagstoreRecoverShard](#DagstoreRecoverShard)
   * [DealsConsiderOfflineRetrievalDeals](#DealsConsiderOfflineRetrievalDeals)
@@ -26,6 +29,7 @@
   * [DealsSetConsiderVerifiedStorageDeals](#DealsSetConsiderVerifiedStorageDeals)
   * [DealsSetPieceCidBlocklist](#DealsSetPieceCidBlocklist)
   * [GetDeals](#GetDeals)
+  * [GetPieceStorages](#GetPieceStorages)
   * [GetReadUrl](#GetReadUrl)
   * [GetUnPackedDeals](#GetUnPackedDeals)
   * [GetWriteUrl](#GetWriteUrl)
@@ -65,6 +69,7 @@
   * [PiecesGetPieceInfo](#PiecesGetPieceInfo)
   * [PiecesListCidInfos](#PiecesListCidInfos)
   * [PiecesListPieces](#PiecesListPieces)
+  * [RemovePieceStorage](#RemovePieceStorage)
   * [ResponseMarketEvent](#ResponseMarketEvent)
   * [SectorGetSealDelay](#SectorGetSealDelay)
   * [SectorSetExpectedSealDuration](#SectorSetExpectedSealDuration)
@@ -119,6 +124,41 @@ Inputs:
 
 Response: `34359738368`
 
+### AddFsPieceStorage
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  true,
+  "string value",
+  "string value"
+]
+```
+
+Response: `{}`
+
+### AddS3PieceStorage
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  true,
+  "string value",
+  "string value",
+  "string value",
+  "string value",
+  "string value"
+]
+```
+
+Response: `{}`
+
 ### AssignUnPackedDeals
 
 
@@ -137,7 +177,9 @@ Inputs:
     "MaxPieceSize": 42,
     "MinPiece": 123,
     "MinPieceSize": 42,
-    "MinUsedSpace": 42
+    "MinUsedSpace": 42,
+    "StartEpoch": 10101,
+    "EndEpoch": 10101
   }
 ]
 ```
@@ -201,7 +243,7 @@ IO pressure if the storage subsystem has a large amount of deals.
 It returns a stream of events to report progress.
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json
@@ -245,7 +287,7 @@ This operation fails if the shard is not in ShardStateNew state.
 It blocks until initialization finishes.
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json
@@ -256,12 +298,41 @@ Inputs:
 
 Response: `{}`
 
+### DagstoreInitializeStorage
+DagstoreInitializeStorage initializes all pieces in specify storage
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value",
+  {
+    "MaxConcurrency": 123,
+    "IncludeSealed": true
+  }
+]
+```
+
+Response:
+```json
+{
+  "Key": "string value",
+  "Event": "string value",
+  "Success": true,
+  "Error": "string value",
+  "Total": 123,
+  "Current": 123
+}
+```
+
 ### DagstoreListShards
 DagstoreListShards returns information about all shards known to the
 DAG store. Only available on nodes running the markets subsystem.
 
 
-Perms: read
+Perms: admin
 
 Inputs: `[]`
 
@@ -284,7 +355,7 @@ It blocks until recovery finishes. If recovery failed, it returns the
 error.
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json
@@ -538,6 +609,33 @@ Response:
 ]
 ```
 
+### GetPieceStorages
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "FsStorage": [
+    {
+      "Path": "string value",
+      "Name": "string value",
+      "ReadOnly": true
+    }
+  ],
+  "S3Storage": [
+    {
+      "Name": "string value",
+      "ReadOnly": true,
+      "EndPoint": "string value"
+    }
+  ]
+}
+```
+
 ### GetReadUrl
 piece storage
 
@@ -567,7 +665,9 @@ Inputs:
     "MaxPieceSize": 42,
     "MinPiece": 123,
     "MinPieceSize": 42,
-    "MinUsedSpace": 42
+    "MinUsedSpace": 42,
+    "StartEpoch": 10101,
+    "EndEpoch": 10101
   }
 ]
 ```
@@ -1662,6 +1762,20 @@ Response:
   }
 ]
 ```
+
+### RemovePieceStorage
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
 
 ### ResponseMarketEvent
 market event
