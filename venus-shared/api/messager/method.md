@@ -145,7 +145,8 @@ Inputs:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0"
+    "maxFeeCap": "0",
+    "gasOverPremium": 12.3
   }
 ]
 ```
@@ -181,7 +182,8 @@ Inputs:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0"
+    "maxFeeCap": "0",
+    "gasOverPremium": 12.3
   }
 ]
 ```
@@ -212,6 +214,7 @@ Response:
   "gasOverEstimation": 12.3,
   "maxFee": "0",
   "maxFeeCap": "0",
+  "gasOverPremium": 12.3,
   "isDeleted": 123,
   "createAt": "0001-01-01T00:00:00Z",
   "updateAt": "0001-01-01T00:00:00Z"
@@ -274,7 +277,8 @@ Response:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0"
+    "maxFeeCap": "0",
+    "gasOverPremium": 12.3
   },
   "WalletName": "test",
   "FromUser": "test",
@@ -341,7 +345,8 @@ Response:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0"
+    "maxFeeCap": "0",
+    "gasOverPremium": 12.3
   },
   "WalletName": "test",
   "FromUser": "test",
@@ -406,7 +411,8 @@ Response:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0"
+    "maxFeeCap": "0",
+    "gasOverPremium": 12.3
   },
   "WalletName": "test",
   "FromUser": "test",
@@ -473,7 +479,8 @@ Response:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0"
+    "maxFeeCap": "0",
+    "gasOverPremium": 12.3
   },
   "WalletName": "test",
   "FromUser": "test",
@@ -520,6 +527,7 @@ Response:
   "gasOverEstimation": 12.3,
   "maxFee": "0",
   "maxFeeCap": "0",
+  "gasOverPremium": 12.3,
   "selMsgNum": 42
 }
 ```
@@ -586,6 +594,7 @@ Response:
     "gasOverEstimation": 12.3,
     "maxFee": "0",
     "maxFeeCap": "0",
+    "gasOverPremium": 12.3,
     "isDeleted": 123,
     "createAt": "0001-01-01T00:00:00Z",
     "updateAt": "0001-01-01T00:00:00Z"
@@ -650,7 +659,8 @@ Response:
       "expireEpoch": 10101,
       "gasOverEstimation": 12.3,
       "maxFee": "0",
-      "maxFeeCap": "0"
+      "maxFeeCap": "0",
+      "gasOverPremium": 12.3
     },
     "WalletName": "test",
     "FromUser": "test",
@@ -712,7 +722,8 @@ Response:
       "expireEpoch": 10101,
       "gasOverEstimation": 12.3,
       "maxFee": "0",
-      "maxFeeCap": "0"
+      "maxFeeCap": "0",
+      "gasOverPremium": 12.3
     },
     "WalletName": "test",
     "FromUser": "test",
@@ -774,7 +785,8 @@ Response:
       "expireEpoch": 10101,
       "gasOverEstimation": 12.3,
       "maxFee": "0",
-      "maxFeeCap": "0"
+      "maxFeeCap": "0",
+      "gasOverPremium": 12.3
     },
     "WalletName": "test",
     "FromUser": "test",
@@ -841,7 +853,8 @@ Response:
       "expireEpoch": 10101,
       "gasOverEstimation": 12.3,
       "maxFee": "0",
-      "maxFeeCap": "0"
+      "maxFeeCap": "0",
+      "gasOverPremium": 12.3
     },
     "WalletName": "test",
     "FromUser": "test",
@@ -912,7 +925,8 @@ Response:
       "expireEpoch": 10101,
       "gasOverEstimation": 12.3,
       "maxFee": "0",
-      "maxFeeCap": "0"
+      "maxFeeCap": "0",
+      "gasOverPremium": 12.3
     },
     "WalletName": "test",
     "FromUser": "test",
@@ -984,7 +998,8 @@ Inputs:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0"
+    "maxFeeCap": "0",
+    "gasOverPremium": 12.3
   }
 ]
 ```
@@ -1019,7 +1034,8 @@ Inputs:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0"
+    "maxFeeCap": "0",
+    "gasOverPremium": 12.3
   }
 ]
 ```
@@ -1147,6 +1163,7 @@ Inputs:
 [
   "f01234",
   12.3,
+  12.3,
   "string value",
   "string value"
 ]
@@ -1196,6 +1213,7 @@ Inputs:
     "gasOverEstimation": 12.3,
     "maxFee": "0",
     "maxFeeCap": "0",
+    "gasOverPremium": 12.3,
     "selMsgNum": 42
   }
 ]
@@ -1312,7 +1330,8 @@ Response:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0"
+    "maxFeeCap": "0",
+    "gasOverPremium": 12.3
   },
   "WalletName": "test",
   "FromUser": "test",
