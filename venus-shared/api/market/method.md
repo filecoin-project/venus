@@ -1556,7 +1556,8 @@ Inputs:
   },
   {
     "MaxFee": "0",
-    "GasOverEstimation": 12.3
+    "GasOverEstimation": 12.3,
+    "GasOverPremium": 12.3
   }
 ]
 ```
