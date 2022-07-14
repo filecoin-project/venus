@@ -30,7 +30,7 @@ type IMessager interface {
 	UpdateMessageStateByID(ctx context.Context, id string, state types.MessageState) error                                                                     //perm:admin
 	UpdateAllFilledMessage(ctx context.Context) (int, error)                                                                                                   //perm:admin
 	UpdateFilledMessageByID(ctx context.Context, id string) (string, error)                                                                                    //perm:admin
-	ReplaceMessage(ctx context.Context, id string, auto bool, maxFee string, gasLimit int64, gasPremium string, gasFeecap string) (cid.Cid, error)             //perm:admin
+	ReplaceMessage(ctx context.Context, params *types.ReplacMessageParams) (cid.Cid, error)                                                                    //perm:admin
 	RepublishMessage(ctx context.Context, id string) error                                                                                                     //perm:admin
 	MarkBadMessage(ctx context.Context, id string) error                                                                                                       //perm:admin
 	RecoverFailedMsg(ctx context.Context, addr address.Address) ([]string, error)                                                                              //perm:admin
