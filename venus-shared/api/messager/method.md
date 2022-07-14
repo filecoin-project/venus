@@ -145,7 +145,6 @@ Inputs:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0",
     "gasOverPremium": 12.3
   }
 ]
@@ -182,7 +181,6 @@ Inputs:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0",
     "gasOverPremium": 12.3
   }
 ]
@@ -213,7 +211,7 @@ Response:
   "state": 1,
   "gasOverEstimation": 12.3,
   "maxFee": "0",
-  "maxFeeCap": "0",
+  "gasFeeCap": "0",
   "gasOverPremium": 12.3,
   "isDeleted": 123,
   "createAt": "0001-01-01T00:00:00Z",
@@ -277,7 +275,6 @@ Response:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0",
     "gasOverPremium": 12.3
   },
   "WalletName": "test",
@@ -345,7 +342,6 @@ Response:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0",
     "gasOverPremium": 12.3
   },
   "WalletName": "test",
@@ -411,7 +407,6 @@ Response:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0",
     "gasOverPremium": 12.3
   },
   "WalletName": "test",
@@ -479,7 +474,6 @@ Response:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0",
     "gasOverPremium": 12.3
   },
   "WalletName": "test",
@@ -526,7 +520,7 @@ Response:
   "id": 42,
   "gasOverEstimation": 12.3,
   "maxFee": "0",
-  "maxFeeCap": "0",
+  "gasFeeCap": "0",
   "gasOverPremium": 12.3,
   "selMsgNum": 42
 }
@@ -593,7 +587,7 @@ Response:
     "state": 1,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0",
+    "gasFeeCap": "0",
     "gasOverPremium": 12.3,
     "isDeleted": 123,
     "createAt": "0001-01-01T00:00:00Z",
@@ -659,7 +653,6 @@ Response:
       "expireEpoch": 10101,
       "gasOverEstimation": 12.3,
       "maxFee": "0",
-      "maxFeeCap": "0",
       "gasOverPremium": 12.3
     },
     "WalletName": "test",
@@ -722,7 +715,6 @@ Response:
       "expireEpoch": 10101,
       "gasOverEstimation": 12.3,
       "maxFee": "0",
-      "maxFeeCap": "0",
       "gasOverPremium": 12.3
     },
     "WalletName": "test",
@@ -785,7 +777,6 @@ Response:
       "expireEpoch": 10101,
       "gasOverEstimation": 12.3,
       "maxFee": "0",
-      "maxFeeCap": "0",
       "gasOverPremium": 12.3
     },
     "WalletName": "test",
@@ -853,7 +844,6 @@ Response:
       "expireEpoch": 10101,
       "gasOverEstimation": 12.3,
       "maxFee": "0",
-      "maxFeeCap": "0",
       "gasOverPremium": 12.3
     },
     "WalletName": "test",
@@ -925,7 +915,6 @@ Response:
       "expireEpoch": 10101,
       "gasOverEstimation": 12.3,
       "maxFee": "0",
-      "maxFeeCap": "0",
       "gasOverPremium": 12.3
     },
     "WalletName": "test",
@@ -998,7 +987,6 @@ Inputs:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0",
     "gasOverPremium": 12.3
   }
 ]
@@ -1034,7 +1022,6 @@ Inputs:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0",
     "gasOverPremium": 12.3
   }
 ]
@@ -1215,7 +1202,7 @@ Inputs:
     "id": 42,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0",
+    "gasFeeCap": "0",
     "gasOverPremium": 12.3,
     "selMsgNum": 42
   }
@@ -1333,7 +1320,6 @@ Response:
     "expireEpoch": 10101,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
-    "maxFeeCap": "0",
     "gasOverPremium": 12.3
   },
   "WalletName": "test",
