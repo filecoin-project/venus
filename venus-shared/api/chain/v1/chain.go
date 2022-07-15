@@ -21,7 +21,6 @@ import (
 type IChain interface {
 	IAccount
 	IActor
-	IBeacon
 	IMinerState
 	IChainInfo
 }
@@ -35,23 +34,14 @@ type IActor interface {
 	ListActor(ctx context.Context) (map[address.Address]*types.Actor, error)                             //perm:read
 }
 
-type IBeacon interface {
-	// Deprecated: Use StateGetBeaconEntry instead.
-	BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) //perm:read
-}
-
 type IChainInfo interface {
-	BlockTime(ctx context.Context) time.Duration                                                                      //perm:read
-	ChainList(ctx context.Context, tsKey types.TipSetKey, count int) ([]types.TipSetKey, error)                       //perm:read
-	ChainHead(ctx context.Context) (*types.TipSet, error)                                                             //perm:read
-	ChainSetHead(ctx context.Context, key types.TipSetKey) error                                                      //perm:admin
-	ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error)                                   //perm:read
-	ChainGetTipSetByHeight(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)    //perm:read
-	ChainGetTipSetAfterHeight(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) //perm:read
-	// Deprecated: Use StateGetRandomnessFromBeacon instead.
-	ChainGetRandomnessFromBeacon(ctx context.Context, key types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) //perm:read
-	// Deprecated: Use StateGetRandomnessFromTickets instead.
-	ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) //perm:read
+	BlockTime(ctx context.Context) time.Duration                                                                                                                                          //perm:read
+	ChainList(ctx context.Context, tsKey types.TipSetKey, count int) ([]types.TipSetKey, error)                                                                                           //perm:read
+	ChainHead(ctx context.Context) (*types.TipSet, error)                                                                                                                                 //perm:read
+	ChainSetHead(ctx context.Context, key types.TipSetKey) error                                                                                                                          //perm:admin
+	ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error)                                                                                                       //perm:read
+	ChainGetTipSetByHeight(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)                                                                        //perm:read
+	ChainGetTipSetAfterHeight(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)                                                                     //perm:read
 	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
 	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)  //perm:read
 	// StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If

@@ -10,10 +10,10 @@ import (
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 )
 
-//ChainRandomness define randomness method in filecoin
+// ChainRandomness define randomness method in filecoin
 type ChainRandomness interface {
-	ChainGetRandomnessFromBeacon(ctx context.Context, key types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
-	ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	StateGetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
+	StateGetRandomnessFromTickets(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
 }
 
 var _ vmcontext.HeadChainRandomness = (*HeadRandomness)(nil)
@@ -29,9 +29,9 @@ func NewHeadRandomness(chain ChainRandomness, head types.TipSetKey) *HeadRandomn
 }
 
 func (h HeadRandomness) ChainGetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return h.chain.ChainGetRandomnessFromBeacon(ctx, h.head, personalization, randEpoch, entropy)
+	return h.chain.StateGetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, h.head)
 }
 
 func (h HeadRandomness) ChainGetRandomnessFromTickets(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return h.chain.ChainGetRandomnessFromTickets(ctx, h.head, personalization, randEpoch, entropy)
+	return h.chain.StateGetRandomnessFromTickets(ctx, personalization, randEpoch, entropy, h.head)
 }

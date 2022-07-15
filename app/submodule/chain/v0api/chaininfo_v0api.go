@@ -7,6 +7,7 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -50,4 +51,12 @@ func (a *WrapperV1IChain) StateGetReceipt(ctx context.Context, msg cid.Cid, from
 
 func (a *WrapperV1IChain) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
 	return a.StateGetBeaconEntry(ctx, epoch)
+}
+
+func (a *WrapperV1IChain) ChainGetRandomnessFromBeacon(ctx context.Context, key types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return a.StateGetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, key)
+}
+
+func (a *WrapperV1IChain) ChainGetRandomnessFromTickets(ctx context.Context, key types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return a.StateGetRandomnessFromTickets(ctx, personalization, randEpoch, entropy, key)
 }

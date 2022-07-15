@@ -176,7 +176,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.com/filecoin-project/lotus/api.FullNode:
 	- AuthNew
 	- AuthVerify
-	+ BeaconGetEntry
 	+ BlockTime
 	- ChainBlockstoreInfo
 	- ChainCheckBlockstore
@@ -185,8 +184,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	> ChainGetMessagesInTipset {[func(context.Context, types.TipSetKey) ([]types.MessageCID, error) <> func(context.Context, types.TipSetKey) ([]api.Message, error)] base=func in type: #1 input; nested={[types.TipSetKey <> types.TipSetKey] base=codec marshaler implementations for codec Cbor: true != false; nested=nil}}
 	- ChainGetNode
 	> ChainGetPath {[func(context.Context, types.TipSetKey, types.TipSetKey) ([]*types.HeadChange, error) <> func(context.Context, types.TipSetKey, types.TipSetKey) ([]*api.HeadChange, error)] base=func in type: #1 input; nested={[types.TipSetKey <> types.TipSetKey] base=codec marshaler implementations for codec Cbor: true != false; nested=nil}}
-	+ ChainGetRandomnessFromBeacon
-	+ ChainGetRandomnessFromTickets
 	+ ChainGetReceipts
 	> ChainGetTipSet {[func(context.Context, types.TipSetKey) (*types.TipSet, error) <> func(context.Context, types.TipSetKey) (*types.TipSet, error)] base=func in type: #1 input; nested={[types.TipSetKey <> types.TipSetKey] base=codec marshaler implementations for codec Cbor: true != false; nested=nil}}
 	> ChainGetTipSetAfterHeight {[func(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error) <> func(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)] base=func in type: #2 input; nested={[types.TipSetKey <> types.TipSetKey] base=codec marshaler implementations for codec Cbor: true != false; nested=nil}}
