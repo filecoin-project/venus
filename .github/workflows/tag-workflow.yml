@@ -1,16 +1,9 @@
 name: build for test/release
 
 on:
-  create:
-    tags:
-      - '**'
-  pull_request:
-    branches:
-      - master
   push:
-    branches:
-      - master
-      - test*
+    branches: ['prep/**', 'release/**', 'test/**', master, main]
+    tags: ['**']
   workflow_dispatch:
 jobs:
   build:
@@ -36,9 +29,15 @@ jobs:
           export job_url=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           export oss_exists=0
           export ftp_exists=0
-          export rx='^v([0-9]+\.){0,2}(\*|[0-9]+)(-rc[0-9]*){0,1}$'
-          if [[ "${{github.ref_type}}" == "tag" ]] && [[ "${{github.event_name}}" == "create" ]] && [[ "$github_tag" =~ $rx ]]; then
-            export pub_method=pushRelease
+          export is_tag_create=false
+
+          export rx_tag='^refs\/tags\/.*'
+          export rx_version_tag='^v([0-9]+\.){0,2}(\*|[0-9]+)(-rc[0-9]*){0,1}$'
+          if [[ "${{github.ref}}" =~ $rx_tag ]]; then
+            export is_tag_create=true
+            if [[ "${{github.ref_name}}" =~ $rx_version_tag ]]; then
+              export pub_method=pushRelease
+            fi
           fi
 
           if [[ "${{secrets.OSS_KEY_ID}}" != "" && \
@@ -50,6 +49,7 @@ jobs:
           if [[ "${{secrets.FTP_HOST}}" != "" ]]; then
             export ftp_exists=1
           fi
+
           echo "::set-output name=commit::$commit"
           echo "::set-output name=short::$short"
           echo "::set-output name=github_tag::$github_tag"
@@ -60,6 +60,7 @@ jobs:
           echo "::set-output name=artifact_name::$artifact_name"
           echo "::set-output name=job_url::$job_url"
           echo "::set-output name=pub_method::$pub_method"
+          echo "::set-output name=is_tag_create:$is_tag_create"
           echo "::set-output name=oss_exists::$oss_exists"
           echo "::set-output name=ftp_exists::$ftp_exists"
 
@@ -79,6 +80,7 @@ jobs:
           echo secrets.godeye_url = ${{ secrets.GODEYE_URL }}
           echo vars.oss_exists = ${{steps.vars.outputs.oss_exists}}
           echo vars.ftp_exists = ${{steps.vars.outputs.ftp_exists}}
+          echo vars.is_tag_create = ${{steps.vars.outputs.is_tag_create}}
           echo github.ref = ${{github.ref}}
           echo github.ref_name = ${{github.ref_name}}
           echo vars.job_url = ${{steps.vars.outputs.job_url}}
@@ -174,7 +176,7 @@ jobs:
           set -e
 
       - name: Publish the Docker image 
-        if: ${{ github.ref_type == 'tag' && github.event_name == 'create' }}
+        if: ${{ steps.vars.outputs.is_tag_create == 'true' }}
         run: |
           make docker-buildenv
           make docker-runtime
