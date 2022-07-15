@@ -353,4 +353,5 @@ type ForkUpgradeParams struct {
 	UpgradeHyperdriveHeight  abi.ChainEpoch
 	UpgradeChocolateHeight   abi.ChainEpoch
 	UpgradeOhSnapHeight      abi.ChainEpoch
+	UpgradeSkyrHeight        abi.ChainEpoch
 }
