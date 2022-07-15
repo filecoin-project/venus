@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -17,6 +18,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-core/routing"
+	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/net"
@@ -451,15 +453,23 @@ var idCmd = &cmds.Command{
 			return err
 		}
 
-		peerID := addrs.ID.Pretty()
-		buf := &bytes.Buffer{}
-		writer := NewSilentWriter(buf)
-		for _, addr := range addrs.Addrs {
-			writer.Printf("%s/p2p/%s\n", addr, peerID)
+		hostID := addrs.ID
+		details := IDDetails{
+			Addresses: make([]ma.Multiaddr, len(addrs.Addrs)),
+			ID:        hostID,
 		}
 
-		return re.Emit(buf)
+		for i, addr := range addrs.Addrs {
+			subAddr, err := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", hostID.Pretty()))
+			if err != nil {
+				return err
+			}
+			details.Addresses[i] = addr.Encapsulate(subAddr)
+		}
+
+		return re.Emit(&details)
 	},
+	Type: &IDDetails{},
 }
 
 var disconnectCmd = &cmds.Command{
@@ -628,4 +638,88 @@ var protectListCmd = &cmds.Command{
 
 		return re.Emit(buf)
 	},
+}
+
+// IDDetails is a collection of information about a node.
+type IDDetails struct {
+	Addresses       []ma.Multiaddr
+	ID              peer.ID
+	AgentVersion    string
+	ProtocolVersion string
+	PublicKey       []byte // raw bytes
+}
+
+// MarshalJSON implements json.Marshaler
+func (idd IDDetails) MarshalJSON() ([]byte, error) {
+	addressStrings := make([]string, len(idd.Addresses))
+	for i, addr := range idd.Addresses {
+		addressStrings[i] = addr.String()
+	}
+
+	v := map[string]interface{}{
+		"Addresses": addressStrings,
+	}
+
+	if idd.ID != "" {
+		v["ID"] = idd.ID.Pretty()
+	}
+	if idd.AgentVersion != "" {
+		v["AgentVersion"] = idd.AgentVersion
+	}
+	if idd.ProtocolVersion != "" {
+		v["ProtocolVersion"] = idd.ProtocolVersion
+	}
+	if idd.PublicKey != nil {
+		// Base64-encode the public key explicitly.
+		// This is what the built-in JSON encoder does to []byte too.
+		v["PublicKey"] = base64.StdEncoding.EncodeToString(idd.PublicKey)
+	}
+	return json.Marshal(v)
+}
+
+// UnmarshalJSON implements Unmarshaler
+func (idd *IDDetails) UnmarshalJSON(data []byte) error {
+	var v map[string]*json.RawMessage
+	var err error
+	if err = json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+
+	var addresses []string
+	if err := decode(v, "Addresses", &addresses); err != nil {
+		return err
+	}
+	idd.Addresses = make([]ma.Multiaddr, len(addresses))
+	for i, addr := range addresses {
+		a, err := ma.NewMultiaddr(addr)
+		if err != nil {
+			return err
+		}
+		idd.Addresses[i] = a
+	}
+
+	var id string
+	if err := decode(v, "ID", &id); err != nil {
+		return err
+	}
+	if idd.ID, err = peer.Decode(id); err != nil {
+		return err
+	}
+
+	if err := decode(v, "AgentVersion", &idd.AgentVersion); err != nil {
+		return err
+	}
+	if err := decode(v, "ProtocolVersion", &idd.ProtocolVersion); err != nil {
+		return err
+	}
+	return decode(v, "PublicKey", &idd.PublicKey)
+}
+
+func decode(idd map[string]*json.RawMessage, key string, dest interface{}) error {
+	if raw := idd[key]; raw != nil {
+		if err := json.Unmarshal(*raw, &dest); err != nil {
+			return err
+		}
+	}
+	return nil
 }
