@@ -2,17 +2,31 @@
 
 echo $@
 
-if [ $nettype = "calibnet" ];then
+Args=" --auth-url=http://127.0.0.1:8989 "
+
+if [ $nettype ]
+then 
+    if [ $nettype = "calibnet" ]
+    then
     nettype="cali"
+    fi
+
+    Args="$Args --network=$nettype"
 fi
 
-echo "nettype:"
-echo $nettype
-
-if [ -f "/snapshot.car"  ]
+if [ $snapshot ]
 then
-    echo "snapshot.car exists"
-    ./venus daemon --network=${nettype} --auth-url=http://127.0.0.1:8989 --import-snapshot /snapshot.car
-else
-    echo "snapshot.car not found"
-    ./venus daemon --network=${nettype} --auth-url=http://127.0.0.1:8989 
+    Args="$Args --import-snapshot=/snapshot.car"
+fi
+
+if [ $genesisfile ]
+then
+    Args="$Args --genesisfile=/genesis.gen"
+fi
+
+
+echo "EXEC: ./venus daemon $Args"
+echo 
+echo
+
+./venus daemon $Args
