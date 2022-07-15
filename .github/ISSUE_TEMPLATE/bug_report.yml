@@ -51,8 +51,8 @@ body:
     label: 版本 / Version
     render: text
     description: |
-      填写 `./venus version` 和/或 `./venus-messager --version` 的输出内容。
-      Enter the output of `./venus version` and/or `./venus-messager --version` if applicable.
+      填写组件的版本。
+      Enter version of the component if applicable.
     placeholder: |
       e.g.
       { "Version": "1.6.0+git.3652863fa.dirty" }
