@@ -25,10 +25,12 @@ import (
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	yamux "github.com/libp2p/go-libp2p-yamux"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
@@ -56,7 +58,8 @@ var networkLogger = logging.Logger("network_module")
 type NetworkSubmodule struct { //nolint
 	NetworkName string
 
-	Host host.Host
+	Host    host.Host
+	RawHost types.RawHost
 
 	// Router is a router from IPFS
 	Router routing.Routing
@@ -132,35 +135,21 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSub
 	}
 
 	// set up host
-	var peerHost host.Host
-	var router routing.Routing
 	var pubsubMessageSigning bool
 	var peerMgr net.IPeerMgr
-	makeDHT := func(h host.Host) (routing.Routing, error) {
-		mode := dht.ModeAuto
-		opts := []dht.Option{dht.Mode(mode),
-			dht.Datastore(config.Repo().ChainDatastore()),
-			dht.ProtocolPrefix(net.FilecoinDHT(networkName)),
-			dht.QueryFilter(dht.PublicQueryFilter),
-			dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
-			dht.DisableProviders(),
-			dht.BootstrapPeers(bootNodes...),
-			dht.DisableValues()}
-		r, err := dht.New(
-			ctx, h, opts...,
-		)
 
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to setup routing")
-		}
-		router = r
-		return r, err
-	}
-
-	peerHost, err = buildHost(ctx, config, libP2pOpts, config.Repo().Config(), makeDHT)
+	rawHost, err := buildHost(ctx, config, libP2pOpts, config.Repo().Config())
 	if err != nil {
 		return nil, err
 	}
+
+	router, err := makeDHT(ctx, rawHost, config, networkName, bootNodes)
+	if err != nil {
+		return nil, err
+	}
+
+	peerHost := routedHost(rawHost, router)
+
 	// require message signing in online mode when we have priv key
 	pubsubMessageSigning = true
 
@@ -229,12 +218,13 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSub
 		return nil, err
 	}
 	// build network
-	network := net.New(peerHost, net.NewRouter(router), bandwidthTracker)
+	network := net.New(peerHost, rawHost, net.NewRouter(router), bandwidthTracker)
 
 	// build the network submdule
 	return &NetworkSubmodule{
 		NetworkName:      networkName,
 		Host:             peerHost,
+		RawHost:          rawHost,
 		Router:           router,
 		Pubsub:           gsub,
 		Bitswap:          bswap,
@@ -342,14 +332,7 @@ func retrieveNetworkName(ctx context.Context, genCid cid.Cid, cborStore cbor.Ipl
 
 // address determines if we are publically dialable.  If so use public
 // address, if not configure node to announce relay address.
-func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Option, cfg *config.Config, makeDHT func(host host.Host) (routing.Routing, error)) (host.Host, error) {
-	// Node must build a host acting as a libp2p relay.  Additionally it
-	// runs the autoNAT service which allows other nodes to check for their
-	// own dialability by having this node attempt to dial them.
-	makeDHTRightType := func(h host.Host) (routing.PeerRouting, error) {
-		return makeDHT(h)
-	}
-
+func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Option, cfg *config.Config) (types.RawHost, error) {
 	if config.IsRelay() {
 		publicAddr, err := ma.NewMultiaddr(cfg.Swarm.PublicRelayAddress)
 		if err != nil {
@@ -368,7 +351,6 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 		relayHost, err := libp2p.New(
 			libp2p.EnableRelay(), // TODO ?
 			libp2p.EnableAutoRelay(),
-			libp2p.Routing(makeDHTRightType),
 			publicAddrFactory,
 			libp2p.ChainOptions(libP2pOpts...),
 			libp2p.Ping(true),
@@ -382,13 +364,36 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 
 	opts := []libp2p.Option{
 		libp2p.UserAgent("venus"),
-		libp2p.Routing(makeDHTRightType),
 		libp2p.ChainOptions(libP2pOpts...),
 		libp2p.Ping(true),
 		libp2p.DisableRelay(),
 	}
 
 	return libp2p.New(opts...)
+}
+
+func makeDHT(ctx context.Context, h types.RawHost, config networkConfig, networkName string, bootNodes []peer.AddrInfo) (routing.Routing, error) {
+	mode := dht.ModeAuto
+	opts := []dht.Option{dht.Mode(mode),
+		dht.Datastore(config.Repo().ChainDatastore()),
+		dht.ProtocolPrefix(net.FilecoinDHT(networkName)),
+		dht.QueryFilter(dht.PublicQueryFilter),
+		dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
+		dht.DisableProviders(),
+		dht.BootstrapPeers(bootNodes...),
+		dht.DisableValues()}
+	r, err := dht.New(
+		ctx, h, opts...,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to setup routing")
+	}
+
+	return r, nil
+}
+
+func routedHost(rh types.RawHost, r routing.Routing) host.Host {
+	return routedhost.Wrap(rh, r)
 }
 
 func makeSmuxTransportOption() libp2p.Option {

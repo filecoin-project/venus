@@ -11,8 +11,9 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	ma "github.com/multiformats/go-multiaddr"
+	"github.com/libp2p/go-libp2p-core/protocol"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/api"
@@ -25,47 +26,65 @@ type networkAPI struct { //nolint
 	network *NetworkSubmodule
 }
 
-// NetworkGetBandwidthStats gets stats on the current bandwidth usage of the network
-func (na *networkAPI) NetworkGetBandwidthStats(ctx context.Context) metrics.Stats {
-	return na.network.Network.GetBandwidthStats()
+// NetBandwidthStats gets stats on the current bandwidth usage of the network
+func (na *networkAPI) NetBandwidthStats(ctx context.Context) (metrics.Stats, error) {
+	return na.network.Network.GetBandwidthStats(), nil
 }
 
-// NetworkGetPeerAddresses gets the current addresses of the node
-func (na *networkAPI) NetworkGetPeerAddresses(ctx context.Context) []ma.Multiaddr {
-	return na.network.Network.GetPeerAddresses()
+// NetBandwidthStatsByPeer returns statistics about the nodes bandwidth
+// usage and current rate per peer
+func (na *networkAPI) NetBandwidthStatsByPeer(ctx context.Context) (map[string]metrics.Stats, error) {
+	return na.network.Network.GetBandwidthStatsByPeer()
 }
 
-// NetworkGetPeerID gets the current peer id of the node
-func (na *networkAPI) NetworkGetPeerID(ctx context.Context) peer.ID {
-	return na.network.Network.GetPeerID()
+// NetBandwidthStatsByProtocol returns statistics about the nodes bandwidth
+// usage and current rate per protocol
+func (na *networkAPI) NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error) {
+	return na.network.Network.GetBandwidthStatsByProtocol()
 }
 
-// NetworkFindProvidersAsync issues a findProviders query to the filecoin network content router.
-func (na *networkAPI) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan peer.AddrInfo {
+// ID returns the current peer id of the node
+func (na *networkAPI) ID(ctx context.Context) (peer.ID, error) {
+	return na.network.Network.GetPeerID(), nil
+}
+
+// NetFindProvidersAsync issues a findProviders query to the filecoin network content router.
+func (na *networkAPI) NetFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan peer.AddrInfo {
 	return na.network.Network.Router.FindProvidersAsync(ctx, key, count)
 }
 
-// NetworkGetClosestPeers issues a getClosestPeers query to the filecoin network.
-func (na *networkAPI) NetworkGetClosestPeers(ctx context.Context, key string) ([]peer.ID, error) {
+// NetGetClosestPeers issues a getClosestPeers query to the filecoin network.
+func (na *networkAPI) NetGetClosestPeers(ctx context.Context, key string) ([]peer.ID, error) {
 	return na.network.Network.GetClosestPeers(ctx, key)
 }
 
-// NetworkFindPeer searches the libp2p router for a given peer id
-func (na *networkAPI) NetworkFindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
+// NetFindPeer searches the libp2p router for a given peer id
+func (na *networkAPI) NetFindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
 	return na.network.Network.FindPeer(ctx, peerID)
 }
 
-// NetworkConnect connects to peers at the given addresses
-func (na *networkAPI) NetworkConnect(ctx context.Context, addrs []string) (<-chan types.ConnectionResult, error) {
-	return na.network.Network.Connect(ctx, addrs)
+// NetPeerInfo searches the peer info for a given peer id
+func (na *networkAPI) NetPeerInfo(ctx context.Context, peerID peer.ID) (*types.ExtendedPeerInfo, error) {
+	return na.network.Network.PeerInfo(ctx, peerID)
 }
 
-// NetworkPeers lists peers currently available on the network
-func (na *networkAPI) NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*types.SwarmConnInfos, error) {
-	return na.network.Network.Peers(ctx, verbose, latency, streams)
+// NetConnect connects to peer at the given address
+func (na *networkAPI) NetConnect(ctx context.Context, p peer.AddrInfo) error {
+	return na.network.Network.Connect(ctx, p)
 }
 
-func (na *networkAPI) NetworkPing(ctx context.Context, p peer.ID) (time.Duration, error) {
+// NetPeers lists peers currently available on the network
+func (na *networkAPI) NetPeers(ctx context.Context) ([]peer.AddrInfo, error) {
+	return na.network.Network.Peers(ctx)
+}
+
+// NetAgentVersion returns agent version for a given peer id
+func (na *networkAPI) NetAgentVersion(ctx context.Context, p peer.ID) (string, error) {
+	return na.network.Network.AgentVersion(ctx, p)
+}
+
+// NetPing returns result of a ping attempt
+func (na *networkAPI) NetPing(ctx context.Context, p peer.ID) (time.Duration, error) {
 	result, ok := <-ping.Ping(ctx, na.network.Host, p)
 	if !ok {
 		return 0, fmt.Errorf("didn't get ping result: %w", ctx.Err())
@@ -80,7 +99,7 @@ func (na *networkAPI) Version(context.Context) (types.Version, error) {
 	}, nil
 }
 
-//NetAddrsListen return local p2p address info
+// NetAddrsListen return local p2p address info
 func (na *networkAPI) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
 	return peer.AddrInfo{
 		ID:    na.network.Host.ID(),
@@ -91,4 +110,29 @@ func (na *networkAPI) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
 // NetDisconnect disconnect to peer at the given address
 func (na *networkAPI) NetDisconnect(_ context.Context, p peer.ID) error {
 	return na.network.Network.Disconnect(p)
+}
+
+// NetProtectAdd protect peer at the given peers id
+func (na *networkAPI) NetProtectAdd(ctx context.Context, peers []peer.ID) error {
+	return na.network.Network.ProtectAdd(peers)
+}
+
+// NetProtectRemove unprotect peer at the given peers id
+func (na *networkAPI) NetProtectRemove(ctx context.Context, peers []peer.ID) error {
+	return na.network.Network.ProtectRemove(peers)
+}
+
+// NetProtectList returns the peers that are protected
+func (na *networkAPI) NetProtectList(ctx context.Context) ([]peer.ID, error) {
+	return na.network.Network.ProtectList()
+}
+
+// NetConnectedness returns a state signaling connection capabilities
+func (na *networkAPI) NetConnectedness(ctx context.Context, p peer.ID) (network.Connectedness, error) {
+	return na.network.Network.Connectedness(p)
+}
+
+// NetAutoNatStatus return a struct with current NAT status and public dial address
+func (na *networkAPI) NetAutoNatStatus(context.Context) (types.NatInfo, error) {
+	return na.network.Network.AutoNatStatus()
 }

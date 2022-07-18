@@ -25,8 +25,9 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
+	network0 "github.com/libp2p/go-libp2p-core/network"
 	peer "github.com/libp2p/go-libp2p-core/peer"
-	multiaddr "github.com/multiformats/go-multiaddr"
+	protocol "github.com/libp2p/go-libp2p-core/protocol"
 )
 
 // MockFullNode is a mock of FullNode interface.
@@ -613,6 +614,21 @@ func (m *MockFullNode) HasPassword(arg0 context.Context) bool {
 func (mr *MockFullNodeMockRecorder) HasPassword(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasPassword", reflect.TypeOf((*MockFullNode)(nil).HasPassword), arg0)
+}
+
+// ID mocks base method.
+func (m *MockFullNode) ID(arg0 context.Context) (peer.ID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ID", arg0)
+	ret0, _ := ret[0].(peer.ID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ID indicates an expected call of ID.
+func (mr *MockFullNodeMockRecorder) ID(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockFullNode)(nil).ID), arg0)
 }
 
 // ListActor mocks base method.
@@ -1209,6 +1225,110 @@ func (mr *MockFullNodeMockRecorder) NetAddrsListen(arg0 interface{}) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetAddrsListen", reflect.TypeOf((*MockFullNode)(nil).NetAddrsListen), arg0)
 }
 
+// NetAgentVersion mocks base method.
+func (m *MockFullNode) NetAgentVersion(arg0 context.Context, arg1 peer.ID) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetAgentVersion", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetAgentVersion indicates an expected call of NetAgentVersion.
+func (mr *MockFullNodeMockRecorder) NetAgentVersion(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetAgentVersion", reflect.TypeOf((*MockFullNode)(nil).NetAgentVersion), arg0, arg1)
+}
+
+// NetAutoNatStatus mocks base method.
+func (m *MockFullNode) NetAutoNatStatus(arg0 context.Context) (types.NatInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetAutoNatStatus", arg0)
+	ret0, _ := ret[0].(types.NatInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetAutoNatStatus indicates an expected call of NetAutoNatStatus.
+func (mr *MockFullNodeMockRecorder) NetAutoNatStatus(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetAutoNatStatus", reflect.TypeOf((*MockFullNode)(nil).NetAutoNatStatus), arg0)
+}
+
+// NetBandwidthStats mocks base method.
+func (m *MockFullNode) NetBandwidthStats(arg0 context.Context) (metrics.Stats, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetBandwidthStats", arg0)
+	ret0, _ := ret[0].(metrics.Stats)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetBandwidthStats indicates an expected call of NetBandwidthStats.
+func (mr *MockFullNodeMockRecorder) NetBandwidthStats(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetBandwidthStats", reflect.TypeOf((*MockFullNode)(nil).NetBandwidthStats), arg0)
+}
+
+// NetBandwidthStatsByPeer mocks base method.
+func (m *MockFullNode) NetBandwidthStatsByPeer(arg0 context.Context) (map[string]metrics.Stats, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetBandwidthStatsByPeer", arg0)
+	ret0, _ := ret[0].(map[string]metrics.Stats)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetBandwidthStatsByPeer indicates an expected call of NetBandwidthStatsByPeer.
+func (mr *MockFullNodeMockRecorder) NetBandwidthStatsByPeer(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetBandwidthStatsByPeer", reflect.TypeOf((*MockFullNode)(nil).NetBandwidthStatsByPeer), arg0)
+}
+
+// NetBandwidthStatsByProtocol mocks base method.
+func (m *MockFullNode) NetBandwidthStatsByProtocol(arg0 context.Context) (map[protocol.ID]metrics.Stats, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetBandwidthStatsByProtocol", arg0)
+	ret0, _ := ret[0].(map[protocol.ID]metrics.Stats)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetBandwidthStatsByProtocol indicates an expected call of NetBandwidthStatsByProtocol.
+func (mr *MockFullNodeMockRecorder) NetBandwidthStatsByProtocol(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetBandwidthStatsByProtocol", reflect.TypeOf((*MockFullNode)(nil).NetBandwidthStatsByProtocol), arg0)
+}
+
+// NetConnect mocks base method.
+func (m *MockFullNode) NetConnect(arg0 context.Context, arg1 peer.AddrInfo) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetConnect", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// NetConnect indicates an expected call of NetConnect.
+func (mr *MockFullNodeMockRecorder) NetConnect(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetConnect", reflect.TypeOf((*MockFullNode)(nil).NetConnect), arg0, arg1)
+}
+
+// NetConnectedness mocks base method.
+func (m *MockFullNode) NetConnectedness(arg0 context.Context, arg1 peer.ID) (network0.Connectedness, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetConnectedness", arg0, arg1)
+	ret0, _ := ret[0].(network0.Connectedness)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetConnectedness indicates an expected call of NetConnectedness.
+func (mr *MockFullNodeMockRecorder) NetConnectedness(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetConnectedness", reflect.TypeOf((*MockFullNode)(nil).NetConnectedness), arg0, arg1)
+}
+
 // NetDisconnect mocks base method.
 func (m *MockFullNode) NetDisconnect(arg0 context.Context, arg1 peer.ID) error {
 	m.ctrl.T.Helper()
@@ -1223,135 +1343,136 @@ func (mr *MockFullNodeMockRecorder) NetDisconnect(arg0, arg1 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetDisconnect", reflect.TypeOf((*MockFullNode)(nil).NetDisconnect), arg0, arg1)
 }
 
-// NetworkConnect mocks base method.
-func (m *MockFullNode) NetworkConnect(arg0 context.Context, arg1 []string) (<-chan types.ConnectionResult, error) {
+// NetFindPeer mocks base method.
+func (m *MockFullNode) NetFindPeer(arg0 context.Context, arg1 peer.ID) (peer.AddrInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NetworkConnect", arg0, arg1)
-	ret0, _ := ret[0].(<-chan types.ConnectionResult)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// NetworkConnect indicates an expected call of NetworkConnect.
-func (mr *MockFullNodeMockRecorder) NetworkConnect(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetworkConnect", reflect.TypeOf((*MockFullNode)(nil).NetworkConnect), arg0, arg1)
-}
-
-// NetworkFindPeer mocks base method.
-func (m *MockFullNode) NetworkFindPeer(arg0 context.Context, arg1 peer.ID) (peer.AddrInfo, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NetworkFindPeer", arg0, arg1)
+	ret := m.ctrl.Call(m, "NetFindPeer", arg0, arg1)
 	ret0, _ := ret[0].(peer.AddrInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// NetworkFindPeer indicates an expected call of NetworkFindPeer.
-func (mr *MockFullNodeMockRecorder) NetworkFindPeer(arg0, arg1 interface{}) *gomock.Call {
+// NetFindPeer indicates an expected call of NetFindPeer.
+func (mr *MockFullNodeMockRecorder) NetFindPeer(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetworkFindPeer", reflect.TypeOf((*MockFullNode)(nil).NetworkFindPeer), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetFindPeer", reflect.TypeOf((*MockFullNode)(nil).NetFindPeer), arg0, arg1)
 }
 
-// NetworkFindProvidersAsync mocks base method.
-func (m *MockFullNode) NetworkFindProvidersAsync(arg0 context.Context, arg1 cid.Cid, arg2 int) <-chan peer.AddrInfo {
+// NetFindProvidersAsync mocks base method.
+func (m *MockFullNode) NetFindProvidersAsync(arg0 context.Context, arg1 cid.Cid, arg2 int) <-chan peer.AddrInfo {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NetworkFindProvidersAsync", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "NetFindProvidersAsync", arg0, arg1, arg2)
 	ret0, _ := ret[0].(<-chan peer.AddrInfo)
 	return ret0
 }
 
-// NetworkFindProvidersAsync indicates an expected call of NetworkFindProvidersAsync.
-func (mr *MockFullNodeMockRecorder) NetworkFindProvidersAsync(arg0, arg1, arg2 interface{}) *gomock.Call {
+// NetFindProvidersAsync indicates an expected call of NetFindProvidersAsync.
+func (mr *MockFullNodeMockRecorder) NetFindProvidersAsync(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetworkFindProvidersAsync", reflect.TypeOf((*MockFullNode)(nil).NetworkFindProvidersAsync), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetFindProvidersAsync", reflect.TypeOf((*MockFullNode)(nil).NetFindProvidersAsync), arg0, arg1, arg2)
 }
 
-// NetworkGetBandwidthStats mocks base method.
-func (m *MockFullNode) NetworkGetBandwidthStats(arg0 context.Context) metrics.Stats {
+// NetGetClosestPeers mocks base method.
+func (m *MockFullNode) NetGetClosestPeers(arg0 context.Context, arg1 string) ([]peer.ID, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NetworkGetBandwidthStats", arg0)
-	ret0, _ := ret[0].(metrics.Stats)
-	return ret0
-}
-
-// NetworkGetBandwidthStats indicates an expected call of NetworkGetBandwidthStats.
-func (mr *MockFullNodeMockRecorder) NetworkGetBandwidthStats(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetworkGetBandwidthStats", reflect.TypeOf((*MockFullNode)(nil).NetworkGetBandwidthStats), arg0)
-}
-
-// NetworkGetClosestPeers mocks base method.
-func (m *MockFullNode) NetworkGetClosestPeers(arg0 context.Context, arg1 string) ([]peer.ID, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NetworkGetClosestPeers", arg0, arg1)
+	ret := m.ctrl.Call(m, "NetGetClosestPeers", arg0, arg1)
 	ret0, _ := ret[0].([]peer.ID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// NetworkGetClosestPeers indicates an expected call of NetworkGetClosestPeers.
-func (mr *MockFullNodeMockRecorder) NetworkGetClosestPeers(arg0, arg1 interface{}) *gomock.Call {
+// NetGetClosestPeers indicates an expected call of NetGetClosestPeers.
+func (mr *MockFullNodeMockRecorder) NetGetClosestPeers(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetworkGetClosestPeers", reflect.TypeOf((*MockFullNode)(nil).NetworkGetClosestPeers), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetGetClosestPeers", reflect.TypeOf((*MockFullNode)(nil).NetGetClosestPeers), arg0, arg1)
 }
 
-// NetworkGetPeerAddresses mocks base method.
-func (m *MockFullNode) NetworkGetPeerAddresses(arg0 context.Context) []multiaddr.Multiaddr {
+// NetPeerInfo mocks base method.
+func (m *MockFullNode) NetPeerInfo(arg0 context.Context, arg1 peer.ID) (*types.ExtendedPeerInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NetworkGetPeerAddresses", arg0)
-	ret0, _ := ret[0].([]multiaddr.Multiaddr)
-	return ret0
-}
-
-// NetworkGetPeerAddresses indicates an expected call of NetworkGetPeerAddresses.
-func (mr *MockFullNodeMockRecorder) NetworkGetPeerAddresses(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetworkGetPeerAddresses", reflect.TypeOf((*MockFullNode)(nil).NetworkGetPeerAddresses), arg0)
-}
-
-// NetworkGetPeerID mocks base method.
-func (m *MockFullNode) NetworkGetPeerID(arg0 context.Context) peer.ID {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NetworkGetPeerID", arg0)
-	ret0, _ := ret[0].(peer.ID)
-	return ret0
-}
-
-// NetworkGetPeerID indicates an expected call of NetworkGetPeerID.
-func (mr *MockFullNodeMockRecorder) NetworkGetPeerID(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetworkGetPeerID", reflect.TypeOf((*MockFullNode)(nil).NetworkGetPeerID), arg0)
-}
-
-// NetworkPeers mocks base method.
-func (m *MockFullNode) NetworkPeers(arg0 context.Context, arg1, arg2, arg3 bool) (*types.SwarmConnInfos, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NetworkPeers", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*types.SwarmConnInfos)
+	ret := m.ctrl.Call(m, "NetPeerInfo", arg0, arg1)
+	ret0, _ := ret[0].(*types.ExtendedPeerInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// NetworkPeers indicates an expected call of NetworkPeers.
-func (mr *MockFullNodeMockRecorder) NetworkPeers(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+// NetPeerInfo indicates an expected call of NetPeerInfo.
+func (mr *MockFullNodeMockRecorder) NetPeerInfo(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetworkPeers", reflect.TypeOf((*MockFullNode)(nil).NetworkPeers), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetPeerInfo", reflect.TypeOf((*MockFullNode)(nil).NetPeerInfo), arg0, arg1)
 }
 
-// NetworkPing mocks base method.
-func (m *MockFullNode) NetworkPing(arg0 context.Context, arg1 peer.ID) (time.Duration, error) {
+// NetPeers mocks base method.
+func (m *MockFullNode) NetPeers(arg0 context.Context) ([]peer.AddrInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NetworkPing", arg0, arg1)
+	ret := m.ctrl.Call(m, "NetPeers", arg0)
+	ret0, _ := ret[0].([]peer.AddrInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetPeers indicates an expected call of NetPeers.
+func (mr *MockFullNodeMockRecorder) NetPeers(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetPeers", reflect.TypeOf((*MockFullNode)(nil).NetPeers), arg0)
+}
+
+// NetPing mocks base method.
+func (m *MockFullNode) NetPing(arg0 context.Context, arg1 peer.ID) (time.Duration, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetPing", arg0, arg1)
 	ret0, _ := ret[0].(time.Duration)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// NetworkPing indicates an expected call of NetworkPing.
-func (mr *MockFullNodeMockRecorder) NetworkPing(arg0, arg1 interface{}) *gomock.Call {
+// NetPing indicates an expected call of NetPing.
+func (mr *MockFullNodeMockRecorder) NetPing(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetworkPing", reflect.TypeOf((*MockFullNode)(nil).NetworkPing), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetPing", reflect.TypeOf((*MockFullNode)(nil).NetPing), arg0, arg1)
+}
+
+// NetProtectAdd mocks base method.
+func (m *MockFullNode) NetProtectAdd(arg0 context.Context, arg1 []peer.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetProtectAdd", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// NetProtectAdd indicates an expected call of NetProtectAdd.
+func (mr *MockFullNodeMockRecorder) NetProtectAdd(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetProtectAdd", reflect.TypeOf((*MockFullNode)(nil).NetProtectAdd), arg0, arg1)
+}
+
+// NetProtectList mocks base method.
+func (m *MockFullNode) NetProtectList(arg0 context.Context) ([]peer.ID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetProtectList", arg0)
+	ret0, _ := ret[0].([]peer.ID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetProtectList indicates an expected call of NetProtectList.
+func (mr *MockFullNodeMockRecorder) NetProtectList(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetProtectList", reflect.TypeOf((*MockFullNode)(nil).NetProtectList), arg0)
+}
+
+// NetProtectRemove mocks base method.
+func (m *MockFullNode) NetProtectRemove(arg0 context.Context, arg1 []peer.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetProtectRemove", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// NetProtectRemove indicates an expected call of NetProtectRemove.
+func (mr *MockFullNodeMockRecorder) NetProtectRemove(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetProtectRemove", reflect.TypeOf((*MockFullNode)(nil).NetProtectRemove), arg0, arg1)
 }
 
 // PaychAllocateLane mocks base method.

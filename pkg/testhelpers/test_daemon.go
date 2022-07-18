@@ -21,6 +21,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/pkg/errors"
@@ -591,8 +592,9 @@ func tryAPICheck(td *TestDaemon) error {
 		return err
 	}
 
-	url := fmt.Sprintf("http://%s/api/swarm/id", host)
-	req, err := http.NewRequest("POST", url, strings.NewReader("{}"))
+	url := fmt.Sprintf("http://%s/rpc/v0", host)
+	reqData := `{"method": "Filecoin.ID","params":[], "id": 0}`
+	req, err := http.NewRequest("POST", url, strings.NewReader(reqData))
 	if err != nil {
 		return err
 	}
@@ -610,9 +612,13 @@ func tryAPICheck(td *TestDaemon) error {
 		return fmt.Errorf("liveness check failed: %s", err)
 	}
 
-	_, ok := out["ID"]
+	peerStr, ok := out["result"].(string)
+	_, err = peer.Decode(peerStr)
+	if err != nil {
+		return err
+	}
 	if !ok {
-		return fmt.Errorf("liveness check failed: ID field not present in output")
+		return fmt.Errorf("liveness check failed")
 	}
 
 	return nil
