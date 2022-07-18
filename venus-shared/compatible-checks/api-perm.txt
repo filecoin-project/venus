@@ -20,17 +20,25 @@ v0: github.com/filecoin-project/venus/venus-shared/api/chain/v0 <> github.com/fi
 	- IMessagePool.MpoolPublishMessage
 	- IMessagePool.MpoolSelects
 	- IMultiSig.MsigCancelTxnHash
+	- INetwork.ID
 	- INetwork.NetAddrsListen
+	- INetwork.NetAgentVersion
+	- INetwork.NetAutoNatStatus
+	- INetwork.NetBandwidthStats
+	- INetwork.NetBandwidthStatsByPeer
+	- INetwork.NetBandwidthStatsByProtocol
+	- INetwork.NetConnect
+	- INetwork.NetConnectedness
 	- INetwork.NetDisconnect
-	- INetwork.NetworkConnect
-	- INetwork.NetworkFindPeer
-	- INetwork.NetworkFindProvidersAsync
-	- INetwork.NetworkGetBandwidthStats
-	- INetwork.NetworkGetClosestPeers
-	- INetwork.NetworkGetPeerAddresses
-	- INetwork.NetworkGetPeerID
-	- INetwork.NetworkPeers
-	- INetwork.NetworkPing
+	- INetwork.NetFindPeer
+	- INetwork.NetFindProvidersAsync
+	- INetwork.NetGetClosestPeers
+	- INetwork.NetPeerInfo
+	- INetwork.NetPeers
+	- INetwork.NetPing
+	- INetwork.NetProtectAdd
+	- INetwork.NetProtectList
+	- INetwork.NetProtectRemove
 	- INetwork.Version
 	- ISyncer.ChainSyncHandleNewTipSet
 	- ISyncer.Concurrent
@@ -67,15 +75,10 @@ v1: github.com/filecoin-project/venus/venus-shared/api/chain/v1 <> github.com/fi
 	- IMessagePool.MpoolPublishByAddr
 	- IMessagePool.MpoolPublishMessage
 	- IMessagePool.MpoolSelects
-	- INetwork.NetworkConnect
-	- INetwork.NetworkFindPeer
-	- INetwork.NetworkFindProvidersAsync
-	- INetwork.NetworkGetBandwidthStats
-	- INetwork.NetworkGetClosestPeers
-	- INetwork.NetworkGetPeerAddresses
-	- INetwork.NetworkGetPeerID
-	- INetwork.NetworkPeers
-	- INetwork.NetworkPing
+	> INetwork.NetConnect: admin <> Net.NetConnect: write
+	> INetwork.NetDisconnect: admin <> Net.NetDisconnect: write
+	- INetwork.NetFindProvidersAsync
+	- INetwork.NetGetClosestPeers
 	- ISyncer.ChainSyncHandleNewTipSet
 	- ISyncer.Concurrent
 	- ISyncer.SetConcurrent
