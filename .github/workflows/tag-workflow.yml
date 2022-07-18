@@ -60,7 +60,7 @@ jobs:
           echo "::set-output name=artifact_name::$artifact_name"
           echo "::set-output name=job_url::$job_url"
           echo "::set-output name=pub_method::$pub_method"
-          echo "::set-output name=is_tag_create:$is_tag_create"
+          echo "::set-output name=is_tag_create::$is_tag_create"
           echo "::set-output name=oss_exists::$oss_exists"
           echo "::set-output name=ftp_exists::$ftp_exists"
 
