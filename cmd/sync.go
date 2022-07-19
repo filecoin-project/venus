@@ -80,12 +80,10 @@ var storeStatusCmd = &cmds.Command{
 			writer.Println("SyncTarget:", strconv.Itoa(count))
 			writer.Println("\tBase:", t.Base.Height(), t.Base.Key().String())
 			writer.Println("\tTarget:", t.Head.Height(), t.Head.Key().String())
+			writer.Println("\tCurrent:", t.Current.Height(), t.Current.Key().String())
 
-			if t.Current != nil {
-				writer.Println("\tCurrent:", t.Current.Height(), t.Current.Key().String())
-			} else {
-				writer.Println("\tCurrent:")
-			}
+			HeightDiff := t.Head.Height() - t.Current.Height()
+			writer.Println("\tHeightDiff:", HeightDiff)
 
 			writer.Println("\tStatus:", t.State.String())
 			writer.Println("\tErr:", t.Err)
@@ -98,12 +96,10 @@ var storeStatusCmd = &cmds.Command{
 			writer.Println("SyncTarget:", strconv.Itoa(count))
 			writer.Println("\tBase:", t.Base.Height(), t.Base.Key().String())
 			writer.Println("\tTarget:", t.Head.Height(), t.Head.Key().String())
+			writer.Println("\tCurrent:", t.Current.Height(), t.Current.Key().String())
 
-			if t.Current != nil {
-				writer.Println("\tCurrent:", t.Current.Height(), t.Current.Key().String())
-			} else {
-				writer.Println("\tCurrent:")
-			}
+			HeightDiff := t.Head.Height() - t.Current.Height()
+			writer.Println("\tHeightDiff:", HeightDiff)
 
 			writer.Println("\tStatus:", t.State.String())
 			writer.Println("\tErr:", t.Err)

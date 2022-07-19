@@ -110,6 +110,7 @@ func (d *Dispatcher) addTracker(ci *types2.ChainInfo) error {
 	d.incoming <- &types.Target{
 		ChainInfo: *ci,
 		Base:      d.syncer.Head(),
+		Current:   d.syncer.Head(),
 		Start:     time.Now(),
 	}
 	return nil
