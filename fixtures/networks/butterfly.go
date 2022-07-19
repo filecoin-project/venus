@@ -12,8 +12,8 @@ func ButterflySnapNet() *NetworkConf {
 	return &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
-				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWSUZhAY3eyoPUboJ1ZWe4dNPFWTr1EPoDjbTDSAN15uhY",
-				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWDfvNrSRVGWAGbn3sm9C8z98W2x25qCZjaXGHXmGiH24e",
+				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWHc8xB2S1wFeF9ar9bVdXoEEaBPGLqfKxVQH55c4nNmxs",
+				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWPcNcwS3cKarWrN7MfANWNpzXmZA9Ag6eH9FHFdLQ3LFQ",
 			},
 			MinPeerThreshold: 0,
 			Period:           "30s",
