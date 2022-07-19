@@ -1384,7 +1384,8 @@ Response:
     "UpgradeTurboHeight": 10101,
     "UpgradeHyperdriveHeight": 10101,
     "UpgradeChocolateHeight": 10101,
-    "UpgradeOhSnapHeight": 10101
+    "UpgradeOhSnapHeight": 10101,
+    "UpgradeSkyrHeight": 10101
   }
 }
 ```
