@@ -14,6 +14,7 @@ import (
 	"github.com/ipfs/go-datastore/keytransform"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	dshelp "github.com/ipfs/go-ipfs-ds-help"
+	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 )
 
@@ -189,7 +190,7 @@ func (b *BadgerBlockstore) View(ctx context.Context, cid cid.Cid, fn func([]byte
 		case nil:
 			return item.Value(fn)
 		case badger.ErrKeyNotFound:
-			return blockstore.ErrNotFound
+			return ipld.ErrNotFound{Cid: cid}
 		default:
 			return fmt.Errorf("failed to view block from badger blockstore: %w", err)
 		}
@@ -227,7 +228,7 @@ func (b *BadgerBlockstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 // Get implements blockstore.Get.
 func (b *BadgerBlockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
 	if !cid.Defined() {
-		return nil, blockstore.ErrNotFound
+		return nil, ipld.ErrNotFound{Cid: cid}
 	}
 
 	if atomic.LoadInt64(&b.state) != stateOpen {
@@ -250,7 +251,7 @@ func (b *BadgerBlockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, 
 			val, err = item.ValueCopy(nil)
 			return err
 		case badger.ErrKeyNotFound:
-			return blockstore.ErrNotFound
+			return ipld.ErrNotFound{Cid: cid}
 		default:
 			return fmt.Errorf("failed to get block from badger blockstore: %w", err)
 		}
@@ -286,7 +287,7 @@ func (b *BadgerBlockstore) GetSize(ctx context.Context, cid cid.Cid) (int, error
 		case nil:
 			size = int(item.ValueSize())
 		case badger.ErrKeyNotFound:
-			return blockstore.ErrNotFound
+			return ipld.ErrNotFound{Cid: cid}
 		default:
 			return fmt.Errorf("failed to get block size from badger blockstore: %w", err)
 		}

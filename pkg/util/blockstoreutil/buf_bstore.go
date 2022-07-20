@@ -6,6 +6,7 @@ import (
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 )
 
@@ -124,7 +125,7 @@ func (bs *BufferedBS) View(ctx context.Context, c cid.Cid, callback func([]byte)
 	}
 
 	// both stores are viewable.
-	if err := bs.writeviewer.View(ctx, c, callback); err == ErrNotFound {
+	if err := bs.writeviewer.View(ctx, c, callback); ipld.IsNotFound(err) {
 		// not found in write blockstore; fall through.
 	} else {
 		return err // propagate errors, or nil, i.e. found.
@@ -134,7 +135,7 @@ func (bs *BufferedBS) View(ctx context.Context, c cid.Cid, callback func([]byte)
 
 func (bs *BufferedBS) Get(ctx context.Context, c cid.Cid) (block.Block, error) {
 	if out, err := bs.write.Get(ctx, c); err != nil {
-		if err != ErrNotFound {
+		if !ipld.IsNotFound(err) {
 			return nil, err
 		}
 	} else {
@@ -146,7 +147,7 @@ func (bs *BufferedBS) Get(ctx context.Context, c cid.Cid) (block.Block, error) {
 
 func (bs *BufferedBS) GetSize(ctx context.Context, c cid.Cid) (int, error) {
 	s, err := bs.read.GetSize(ctx, c)
-	if err == ErrNotFound || s == 0 {
+	if ipld.IsNotFound(err) || s == 0 {
 		return bs.write.GetSize(ctx, c)
 	}
 
