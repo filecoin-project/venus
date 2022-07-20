@@ -74,16 +74,6 @@ func (s *IActorStruct) StateGetActor(p0 context.Context, p1 address.Address, p2 
 	return s.Internal.StateGetActor(p0, p1, p2)
 }
 
-type IBeaconStruct struct {
-	Internal struct {
-		BeaconGetEntry func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
-	}
-}
-
-func (s *IBeaconStruct) BeaconGetEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
-	return s.Internal.BeaconGetEntry(p0, p1)
-}
-
 type IMinerStateStruct struct {
 	Internal struct {
 		StateCirculatingSupply             func(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error)                                                                 `perm:"read"`
@@ -225,8 +215,6 @@ type IChainInfoStruct struct {
 		ChainGetParentMessages        func(ctx context.Context, bcid cid.Cid) ([]types.MessageCID, error)                                                                                          `perm:"read"`
 		ChainGetParentReceipts        func(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error)                                                                                     `perm:"read"`
 		ChainGetPath                  func(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*types.HeadChange, error)                                                             `perm:"read"`
-		ChainGetRandomnessFromBeacon  func(ctx context.Context, key types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) `perm:"read"`
-		ChainGetRandomnessFromTickets func(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) `perm:"read"`
 		ChainGetReceipts              func(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error)                                                                                        `perm:"read"`
 		ChainGetTipSet                func(ctx context.Context, key types.TipSetKey) (*types.TipSet, error)                                                                                        `perm:"read"`
 		ChainGetTipSetAfterHeight     func(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)                                                                 `perm:"read"`
@@ -283,12 +271,6 @@ func (s *IChainInfoStruct) ChainGetParentReceipts(p0 context.Context, p1 cid.Cid
 }
 func (s *IChainInfoStruct) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*types.HeadChange, error) {
 	return s.Internal.ChainGetPath(p0, p1, p2)
-}
-func (s *IChainInfoStruct) ChainGetRandomnessFromBeacon(p0 context.Context, p1 types.TipSetKey, p2 crypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) {
-	return s.Internal.ChainGetRandomnessFromBeacon(p0, p1, p2, p3, p4)
-}
-func (s *IChainInfoStruct) ChainGetRandomnessFromTickets(p0 context.Context, p1 types.TipSetKey, p2 crypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) {
-	return s.Internal.ChainGetRandomnessFromTickets(p0, p1, p2, p3, p4)
 }
 func (s *IChainInfoStruct) ChainGetReceipts(p0 context.Context, p1 cid.Cid) ([]types.MessageReceipt, error) {
 	return s.Internal.ChainGetReceipts(p0, p1)
@@ -375,7 +357,6 @@ func (s *IChainInfoStruct) VerifyEntry(p0, p1 *types.BeaconEntry, p2 abi.ChainEp
 type IChainStruct struct {
 	IAccountStruct
 	IActorStruct
-	IBeaconStruct
 	IMinerStateStruct
 	IChainInfoStruct
 }

@@ -339,14 +339,6 @@ func (cia *chainInfoAPI) VerifyEntry(parent, child *types.BeaconEntry, height ab
 	return cia.chain.Drand.BeaconForEpoch(height).VerifyEntry(*parent, *child) != nil
 }
 
-// BeaconGetEntry returns the beacon entry for the given filecoin epoch. If
-// the entry has not yet been produced, the call will block until the entry
-// becomes available
-// Deprecated: Use StateGetBeaconEntry instead.
-func (cia *chainInfoAPI) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
-	return cia.StateGetBeaconEntry(ctx, epoch)
-}
-
 // StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If
 // the entry has not yet been produced, the call will block until the entry
 // becomes available
@@ -384,18 +376,6 @@ func (cia *chainInfoAPI) getNetworkName(ctx context.Context) (string, error) {
 	}
 
 	return view.InitNetworkName(ctx)
-}
-
-// ChainGetRandomnessFromBeacon is used to sample the beacon for randomness.
-// Deprecated: Use StateGetRandomnessFromBeacon instead.
-func (cia *chainInfoAPI) ChainGetRandomnessFromBeacon(ctx context.Context, key types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return cia.StateGetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, key)
-}
-
-// ChainGetRandomnessFromTickets is used to sample the chain for randomness.
-// Deprecated: Use StateGetRandomnessFromTickets instead.
-func (cia *chainInfoAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	return cia.StateGetRandomnessFromTickets(ctx, personalization, randEpoch, entropy, tsk)
 }
 
 // StateGetRandomnessFromTickets is used to sample the chain for randomness.
