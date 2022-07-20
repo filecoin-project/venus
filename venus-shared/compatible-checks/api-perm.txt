@@ -54,10 +54,7 @@ v0: github.com/filecoin-project/venus/venus-shared/api/chain/v0 <> github.com/fi
 
 v1: github.com/filecoin-project/venus/venus-shared/api/chain/v1 <> github.com/filecoin-project/lotus/api
 	- IActor.ListActor
-	- IBeacon.BeaconGetEntry
 	- IChainInfo.BlockTime
-	- IChainInfo.ChainGetRandomnessFromBeacon
-	- IChainInfo.ChainGetRandomnessFromTickets
 	- IChainInfo.ChainGetReceipts
 	- IChainInfo.ChainList
 	- IChainInfo.GetActor

@@ -5,8 +5,6 @@
 * [Actor](#Actor)
   * [ListActor](#ListActor)
   * [StateGetActor](#StateGetActor)
-* [Beacon](#Beacon)
-  * [BeaconGetEntry](#BeaconGetEntry)
 * [BlockStore](#BlockStore)
   * [ChainDeleteObj](#ChainDeleteObj)
   * [ChainHasObj](#ChainHasObj)
@@ -23,8 +21,6 @@
   * [ChainGetParentMessages](#ChainGetParentMessages)
   * [ChainGetParentReceipts](#ChainGetParentReceipts)
   * [ChainGetPath](#ChainGetPath)
-  * [ChainGetRandomnessFromBeacon](#ChainGetRandomnessFromBeacon)
-  * [ChainGetRandomnessFromTickets](#ChainGetRandomnessFromTickets)
   * [ChainGetReceipts](#ChainGetReceipts)
   * [ChainGetTipSet](#ChainGetTipSet)
   * [ChainGetTipSetAfterHeight](#ChainGetTipSetAfterHeight)
@@ -261,29 +257,6 @@ Response:
   },
   "Nonce": 42,
   "Balance": "0"
-}
-```
-
-## Beacon
-
-### BeaconGetEntry
-Deprecated: Use StateGetBeaconEntry instead.
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  10101
-]
-```
-
-Response:
-```json
-{
-  "Round": 42,
-  "Data": "Ynl0ZSBhcnJheQ=="
 }
 ```
 
@@ -729,56 +702,6 @@ Response:
   }
 ]
 ```
-
-### ChainGetRandomnessFromBeacon
-Deprecated: Use StateGetRandomnessFromBeacon instead.
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ],
-  2,
-  10101,
-  "Ynl0ZSBhcnJheQ=="
-]
-```
-
-Response: `"Bw=="`
-
-### ChainGetRandomnessFromTickets
-Deprecated: Use StateGetRandomnessFromTickets instead.
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ],
-  2,
-  10101,
-  "Ynl0ZSBhcnJheQ=="
-]
-```
-
-Response: `"Bw=="`
 
 ### ChainGetReceipts
 
