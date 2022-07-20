@@ -1,56 +1,56 @@
-name: Enhancement
-description:  Suggest an improvement to an existing venus feature.
-labels: [need/triage, kind/enhancement]
+name: 功能特性 / Enhancement
+description:  "提议新功能，或改善已有功能 / New feature request or enhancement suggestion"
+labels: [C-enhancement, community]
 body:
 - type: checkboxes
   attributes:
-    label: Checklist
-    description: Please check off the following boxes before continuing to create an improvement suggestion!
+    label: 链服务模块 / Chain Service Components
+    description: |
+      选择涉及模块。
+      Please select the related components.
     options:
-      - label: This is **not** a new feature or an enhancement to the Filecoin protocol. If it is,  please open an [FIP issue](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0001.md).
-        required: true
-      - label: This is **not** a new feature request. If it is, please file a [feature request](https://github.com/filecoin-project/venus/issues/new?assignees=&labels=need%2Ftriage%2Ckind%2Ffeature&template=feature_request.yml) instead.
-        required: true
-      - label: This is **not** brainstorming ideas. If you have an idea you'd like to discuss, please open a new discussion on [the venus forum](https://github.com/filecoin-project/venus/discussions/categories/ideas) and select the category as `Ideas`.
-        required: true
-      - label: I **have** a specific, actionable, and well motivated improvement to propose.
-        required: true
+      - label: venus
+        required: false
+      - label: venus-auth
+        required: false
+      - label: venus-gateway
+        required: false
+      - label: venus-messager
+        required: false
+      - label: venus-miner
+        required: false
+      - label: 文档 / docs
+        required: false
 - type: checkboxes
   attributes:
-    label: Venus component
-    description: Please select the venus component you are filing an improvement request for
+    label: 订单服务模块 / Deal Service Components
+    description: |
+      选择涉及模块。
+      Please select the related components.
     options:
-      - label: venus daemon - [chain service] chain sync
+      - label: venus-market
         required: false
-      - label: venus auth - [chain service] authentication
+      - label: 文档 / docs
         required: false
-      - label: venus messager - [chain service] message management (mpool)
+- type: checkboxes
+  attributes:
+    label: 算力服务模块 / Storage Power Service Components
+    description: |
+      选择涉及模块。
+      Please select the related components.
+    options:
+      - label: venus-sector-manager
         required: false
-      - label: venus gateway - [chain service] gateway
+      - label: venus-worker
         required: false
-      - label: venus miner - [chain service] mining and block production
-        required: false
-      - label: venus sealer/worker - sealing
-        required: false
-      - label: venus sealer - proving (WindowPoSt)
-        required: false
-      - label: venus market - storage deal
-        required: false
-      - label: venus market - retrieval deal
-        required: false
-      - label: venus market - data transfer
-        required: false
-      - label: venus light-weight client
-        required: false
-      - label: venus JSON-RPC API
-        required: false
-      - label:  Other
+      - label: 文档 / docs
         required: false
 - type: textarea
-  id: request
+  id: description
   attributes:
-    label: Improvement Suggestion
-    description: A clear and concise description of what the motivation or the current problem is and what is the suggested improvement?
-    placeholder: Ex. Currently venus... However, as a storage provider, I'd like...
+    label: 描述 / Description
+    placeholder: |
+      是否可以考虑...
+      I suggest ...
   validations:
     required: true

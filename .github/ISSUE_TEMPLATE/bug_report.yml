@@ -1,99 +1,92 @@
 name: "Bug Report"
-description: "File a bug report to help us improve"
-labels: [need/triage, kind/bug]
+description: "报告 bug / File a bug report to help us improve"
+labels: [C-bug, community]
 body:
 - type: checkboxes
   attributes:
-    label: Checklist
-    description: Please check off the following boxes before continuing to file a bug report!
+    label: 链服务模块 / Chain Service Components
+    description: |
+      选择涉及模块。
+      Please select the related components.
     options:
-      - label: This is **not** a security-related bug/issue. If it is, please follow please follow the [security policy](https://github.com/filecoin-project/venus/security/policy).
-        required: true
-      - label: This is **not** a question or a support request. If you have any lotus related questions, please ask in the [venus forum](https://github.com/filecoin-project/venus/discussions).
-        required: true
-      - label: This is **not** a new feature request. If it is, please file a [feature request](https://github.com/filecoin-project/venus/issues/new?assignees=&labels=need%2Ftriage%2Ckind%2Ffeature&template=feature_request.yml) instead.
-        required: true
-      - label: This is **not** an enhancement request. If it is, please file a [improvement suggestion](https://github.com/filecoin-project/venus/issues/new?assignees=&labels=need%2Ftriage%2Ckind%2Fenhancement&template=enhancement.yml) instead.
-        required: true
-      - label: I **have** searched on the [issue tracker](https://github.com/filecoin-project/venus/issues) and the [venus forum](https://github.com/filecoin-project/venus/discussions), and there is no existing related issue or discussion.
-        required: true
-      - label: I am running the [`latest release`](https://github.com/filecoin-project/venus/releases), or the most recent RC(release canadiate) for the upcoming release or the dev branch(master), or have an issue updating to any of these.
-        required: true
-      - label: I did not make any code changes to venus.
+      - label: venus
+        required: false
+      - label: venus-auth
+        required: false
+      - label: venus-gateway
+        required: false
+      - label: venus-messager
+        required: false
+      - label: venus-miner
+        required: false
+      - label: 文档 / docs
         required: false
 - type: checkboxes
   attributes:
-    label: Venus component
-    description: Please select the venus component you are filing a bug for
+    label: 订单服务模块 / Deal Service Components
+    description: |
+      选择涉及模块。
+      Please select the related components.
     options:
-      - label: venus daemon - chain sync
+      - label: venus-market
         required: false
-      - label: venus auth - authentication
+      - label: 文档 / docs
         required: false
-      - label: venus gateway - chain service gateway
+- type: checkboxes
+  attributes:
+    label: 算力服务模块 / Storage Power Service Components
+    description: |
+      选择涉及模块。
+      Please select the related components.
+    options:
+      - label: venus-sector-manager
         required: false
-      - label: venus miner - mining and block production
+      - label: venus-worker
         required: false
-      - label: venus sealer/worker - sealing
-        required: false
-      - label: venus sealer - proving(WindowPoSt)
-        required: false
-      - label: venus market - storage deal
-        required: false
-      - label: venus market - retrieval deal
-        required: false
-      - label: venus market - data transfer
-        required: false
-      - label: venus light-weight client
-        required: false
-      - label: venus JSON-RPC API
-        required: false
-      - label: venus messager - message management (mpool)
-        required: false
-      - label:  Other
+      - label: 文档 / docs
         required: false
 - type: textarea
   id: version
   attributes:
-    label: Venus Version
+    label: 版本 / Version
     render: text
-    description: Enter the output of `./venus version` and `./venus-sealer -v` if applicable.
+    description: |
+      填写组件的版本。
+      Enter version of the component if applicable.
     placeholder: |
-      e.g. 
-      Daemon: "Commit": "v1.0.4 c816de06debd1874bc0b2c9cad10a80e8f388681" 
-      Local: venus-sealer version 1.2.6+git.eb586f1.dirty
+      e.g.
+      { "Version": "1.6.0+git.3652863fa.dirty" }
+      venus message version v1.6.0--58feea4
   validations:
     required: true
 - type: textarea
-  id: Description
+  id: description
   attributes:
-    label: Describe the Bug
+    label: 描述 / Describe the Bug
     description: |
+      填写你所遇到的崩溃、异常信息或你认为与预期结果不符的行为。
       This is where you get to tell us what went wrong, when doing so, please try to provide a clear and concise description of the bug with all related information:
-      * What you were doing when you experienced the bug?
-      * Any *error* messages you saw, *where* you saw them, and what you believe may have caused them (if you have any ideas).
-      * What is the expected behaviour?
-      * For sealing issues, include the output of `./venus-sealer sectors status --log <sectorId>` for the failed sector(s).
-      * For proving issues, include the output of `./venus-sealer proving` info.
-      * For deal making issues, include the output of `./market-client list-deals -v` and/or `./venus-market storage-deals|retrieval-deals|data-transfers list [-v]` commands for the deal(s) in question.
   validations:
     required: true
 - type: textarea
-  id: extraInfo
+  id: logging
   attributes:
-    label: Logging Information
+    label: 日志 / Logging Information
     render: text
     description: |
-      Please provide debug logs of the problem, remember you can get set log level.
+      填写可以帮助定位问题的日志信息。
+      Please provide debug logs of the problem.
       If you don't provide detailed logs when you raise the issue it will almost certainly be the first request I make before furthur diagnosing the problem.
   validations:
     required: true
 - type: textarea
-  id: RepoSteps
+  id: reproduce
   attributes:
-    label: Repo Steps
-    description: "Steps to reproduce the behavior"
-    value: |
+    label: 重现步骤 / Repo Steps
+    description: |
+      能够重现问题的步骤。
+      Steps to reproduce the behavior.
+    placeholder: |
       1. Run '...'
       2. Do '...'
       3. See error '...'
