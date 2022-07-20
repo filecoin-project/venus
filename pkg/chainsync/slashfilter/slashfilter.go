@@ -85,7 +85,7 @@ func (f *LocalSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader
 	}
 
 	if err := f.byParents.Put(ctx, parentsKey, bh.Cid().Bytes()); err != nil {
-		return fmt.Errorf("putting byEpoch entry: %w", err)
+		return fmt.Errorf("putting byParents entry: %w", err)
 	}
 
 	if err := f.byEpoch.Put(ctx, epochKey, bh.Cid().Bytes()); err != nil {
