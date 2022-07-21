@@ -372,6 +372,7 @@ api.FullNode:
 	StateChangedActors:	In=3,	Out=2,	CheckSum=cbc0cd36e495552a6672caab9f839468
 	StateCirculatingSupply:	In=2,	Out=2,	CheckSum=22ac180fa0c583b4036666bfc155fd63
 	StateCompute:	In=4,	Out=2,	CheckSum=1d429c389354255c7f865f00a59e3888
+	StateComputeDataCID:	In=5,	Out=2,	CheckSum=83d963e02e49a6747b0f83daf1d249be
 	StateDealProviderCollateralBounds:	In=4,	Out=2,	CheckSum=5231e44843c0b74a04371e1e7170d4b2
 	StateDecodeParams:	In=5,	Out=2,	CheckSum=8c6311be4dc064a657368516c33e1307
 	StateEncodeParams:	In=4,	Out=2,	CheckSum=3e1a5390b92b1b69f9be038cd7400e38
@@ -411,7 +412,7 @@ api.FullNode:
 	StateSectorExpiration:	In=4,	Out=2,	CheckSum=bb669c8b66b6f74c681b4345c9e4cc8f
 	StateSectorGetInfo:	In=4,	Out=2,	CheckSum=1fb47cbbd06b1a50e47a087a28998016
 	StateSectorPartition:	In=4,	Out=2,	CheckSum=e3743df55a360243a32ac64ce1282c53
-	StateSectorPreCommitInfo:	In=4,	Out=2,	CheckSum=04d3c9135dc061d98706f61158224288
+	StateSectorPreCommitInfo:	In=4,	Out=2,	CheckSum=699963129f096b031a79fbd0e8c11b1c
 	StateVMCirculatingSupplyInternal:	In=2,	Out=2,	CheckSum=05c2114e08be095cece55db19e214d2c
 	StateVerifiedClientStatus:	In=3,	Out=2,	CheckSum=e33ae4cd2315832f2d6f2aa74b68c34e
 	StateVerifiedRegistryRootKey:	In=2,	Out=2,	CheckSum=5ad3a497ee24e321c780a69b8d2f0936

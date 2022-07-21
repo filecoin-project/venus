@@ -16,6 +16,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	ipld "github.com/ipfs/go-ipld-format"
 
 	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -118,7 +119,7 @@ func (ms *MessageStore) LoadMessage(ctx context.Context, mid cid.Cid) (types.Cha
 		return m, nil
 	}
 
-	if err != blockstoreutil.ErrNotFound {
+	if !ipld.IsNotFound(err) {
 		log.Warnf("GetCMessage: unexpected error getting unsigned message: %s", err)
 	}
 

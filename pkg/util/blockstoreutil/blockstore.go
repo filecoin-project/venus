@@ -65,9 +65,6 @@ type BatchDeleter interface {
 var NewGCLocker = blockstore.NewGCLocker
 var NewGCBlockstore = blockstore.NewGCBlockstore
 
-// ErrNotFound is an error returned when a block is not found
-var ErrNotFound = blockstore.ErrNotFound
-
 func DefaultCacheOpts() CacheOpts {
 	return CacheOpts{
 		HasBloomFilterSize:   0,
