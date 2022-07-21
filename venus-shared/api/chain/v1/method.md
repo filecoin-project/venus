@@ -5,8 +5,6 @@
 * [Actor](#Actor)
   * [ListActor](#ListActor)
   * [StateGetActor](#StateGetActor)
-* [Beacon](#Beacon)
-  * [BeaconGetEntry](#BeaconGetEntry)
 * [BlockStore](#BlockStore)
   * [ChainDeleteObj](#ChainDeleteObj)
   * [ChainHasObj](#ChainHasObj)
@@ -23,8 +21,6 @@
   * [ChainGetParentMessages](#ChainGetParentMessages)
   * [ChainGetParentReceipts](#ChainGetParentReceipts)
   * [ChainGetPath](#ChainGetPath)
-  * [ChainGetRandomnessFromBeacon](#ChainGetRandomnessFromBeacon)
-  * [ChainGetRandomnessFromTickets](#ChainGetRandomnessFromTickets)
   * [ChainGetReceipts](#ChainGetReceipts)
   * [ChainGetTipSet](#ChainGetTipSet)
   * [ChainGetTipSetAfterHeight](#ChainGetTipSetAfterHeight)
@@ -131,16 +127,25 @@
   * [MsigSwapCancel](#MsigSwapCancel)
   * [MsigSwapPropose](#MsigSwapPropose)
 * [Network](#Network)
+  * [ID](#ID)
   * [NetAddrsListen](#NetAddrsListen)
-  * [NetworkConnect](#NetworkConnect)
-  * [NetworkFindPeer](#NetworkFindPeer)
-  * [NetworkFindProvidersAsync](#NetworkFindProvidersAsync)
-  * [NetworkGetBandwidthStats](#NetworkGetBandwidthStats)
-  * [NetworkGetClosestPeers](#NetworkGetClosestPeers)
-  * [NetworkGetPeerAddresses](#NetworkGetPeerAddresses)
-  * [NetworkGetPeerID](#NetworkGetPeerID)
-  * [NetworkPeers](#NetworkPeers)
-  * [NetworkPing](#NetworkPing)
+  * [NetAgentVersion](#NetAgentVersion)
+  * [NetAutoNatStatus](#NetAutoNatStatus)
+  * [NetBandwidthStats](#NetBandwidthStats)
+  * [NetBandwidthStatsByPeer](#NetBandwidthStatsByPeer)
+  * [NetBandwidthStatsByProtocol](#NetBandwidthStatsByProtocol)
+  * [NetConnect](#NetConnect)
+  * [NetConnectedness](#NetConnectedness)
+  * [NetDisconnect](#NetDisconnect)
+  * [NetFindPeer](#NetFindPeer)
+  * [NetFindProvidersAsync](#NetFindProvidersAsync)
+  * [NetGetClosestPeers](#NetGetClosestPeers)
+  * [NetPeerInfo](#NetPeerInfo)
+  * [NetPeers](#NetPeers)
+  * [NetPing](#NetPing)
+  * [NetProtectAdd](#NetProtectAdd)
+  * [NetProtectList](#NetProtectList)
+  * [NetProtectRemove](#NetProtectRemove)
   * [Version](#Version)
 * [Paychan](#Paychan)
   * [PaychAllocateLane](#PaychAllocateLane)
@@ -252,29 +257,6 @@ Response:
   },
   "Nonce": 42,
   "Balance": "0"
-}
-```
-
-## Beacon
-
-### BeaconGetEntry
-Deprecated: Use StateGetBeaconEntry instead.
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  10101
-]
-```
-
-Response:
-```json
-{
-  "Round": 42,
-  "Data": "Ynl0ZSBhcnJheQ=="
 }
 ```
 
@@ -720,56 +702,6 @@ Response:
   }
 ]
 ```
-
-### ChainGetRandomnessFromBeacon
-Deprecated: Use StateGetRandomnessFromBeacon instead.
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ],
-  2,
-  10101,
-  "Ynl0ZSBhcnJheQ=="
-]
-```
-
-Response: `"Bw=="`
-
-### ChainGetRandomnessFromTickets
-Deprecated: Use StateGetRandomnessFromTickets instead.
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ],
-  2,
-  10101,
-  "Ynl0ZSBhcnJheQ=="
-]
-```
-
-Response: `"Bw=="`
 
 ### ChainGetReceipts
 
@@ -1375,7 +1307,8 @@ Response:
     "UpgradeTurboHeight": 10101,
     "UpgradeHyperdriveHeight": 10101,
     "UpgradeChocolateHeight": 10101,
-    "UpgradeOhSnapHeight": 10101
+    "UpgradeOhSnapHeight": 10101,
+    "UpgradeSkyrHeight": 10101
   }
 }
 ```
@@ -1706,7 +1639,8 @@ Inputs:
       },
       "Spec": {
         "MaxFee": "0",
-        "GasOverEstimation": 12.3
+        "GasOverEstimation": 12.3,
+        "GasOverPremium": 12.3
       }
     }
   ],
@@ -1868,7 +1802,8 @@ Inputs:
   },
   {
     "MaxFee": "0",
-    "GasOverEstimation": 12.3
+    "GasOverEstimation": 12.3,
+    "GasOverPremium": 12.3
   },
   [
     {
@@ -1973,7 +1908,8 @@ Inputs:
   ],
   {
     "MaxFee": "0",
-    "GasOverEstimation": 12.3
+    "GasOverEstimation": 12.3,
+    "GasOverPremium": 12.3
   }
 ]
 ```
@@ -2415,7 +2351,8 @@ Inputs:
   },
   {
     "MaxFee": "0",
-    "GasOverEstimation": 12.3
+    "GasOverEstimation": 12.3,
+    "GasOverPremium": 12.3
   }
 ]
 ```
@@ -4392,6 +4329,15 @@ Response:
 
 ## Network
 
+### ID
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `"12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"`
+
 ### NetAddrsListen
 
 
@@ -4409,7 +4355,7 @@ Response:
 }
 ```
 
-### NetworkConnect
+### NetAgentVersion
 
 
 Perms: read
@@ -4417,21 +4363,136 @@ Perms: read
 Inputs:
 ```json
 [
-  [
-    "string value"
-  ]
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
 ]
 ```
+
+Response: `"string value"`
+
+### NetAutoNatStatus
+
+
+Perms: read
+
+Inputs: `[]`
 
 Response:
 ```json
 {
-  "PeerID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "Err": {}
+  "Reachability": 1,
+  "PublicAddr": "string value"
 }
 ```
 
-### NetworkFindPeer
+### NetBandwidthStats
+NetBandwidthStats returns statistics about the nodes total bandwidth
+usage and current rate across all peers and protocols.
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "TotalIn": 9,
+  "TotalOut": 9,
+  "RateIn": 12.3,
+  "RateOut": 12.3
+}
+```
+
+### NetBandwidthStatsByPeer
+NetBandwidthStatsByPeer returns statistics about the nodes bandwidth
+usage and current rate per peer
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "12D3KooWSXmXLJmBR1M7i9RW9GQPNUhZSzXKzxDHWtAgNuJAbyEJ": {
+    "TotalIn": 174000,
+    "TotalOut": 12500,
+    "RateIn": 100,
+    "RateOut": 50
+  }
+}
+```
+
+### NetBandwidthStatsByProtocol
+NetBandwidthStatsByProtocol returns statistics about the nodes bandwidth
+usage and current rate per protocol
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "/fil/hello/1.0.0": {
+    "TotalIn": 174000,
+    "TotalOut": 12500,
+    "RateIn": 100,
+    "RateOut": 50
+  }
+}
+```
+
+### NetConnect
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Addrs": [
+      "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
+    ]
+  }
+]
+```
+
+Response: `{}`
+
+### NetConnectedness
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+Response: `1`
+
+### NetDisconnect
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+Response: `{}`
+
+### NetFindPeer
 
 
 Perms: read
@@ -4453,7 +4514,7 @@ Response:
 }
 ```
 
-### NetworkFindProvidersAsync
+### NetFindProvidersAsync
 
 
 Perms: read
@@ -4478,24 +4539,7 @@ Response:
 }
 ```
 
-### NetworkGetBandwidthStats
-
-
-Perms: admin
-
-Inputs: `[]`
-
-Response:
-```json
-{
-  "TotalIn": 9,
-  "TotalOut": 9,
-  "RateIn": 12.3,
-  "RateOut": 12.3
-}
-```
-
-### NetworkGetClosestPeers
+### NetGetClosestPeers
 
 
 Perms: read
@@ -4514,30 +4558,7 @@ Response:
 ]
 ```
 
-### NetworkGetPeerAddresses
-
-
-Perms: admin
-
-Inputs: `[]`
-
-Response:
-```json
-[
-  "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
-]
-```
-
-### NetworkGetPeerID
-
-
-Perms: admin
-
-Inputs: `[]`
-
-Response: `"12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"`
-
-### NetworkPeers
+### NetPeerInfo
 
 
 Perms: read
@@ -4545,32 +4566,54 @@ Perms: read
 Inputs:
 ```json
 [
-  true,
-  true,
-  true
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
 ]
 ```
 
 Response:
 ```json
 {
-  "Peers": [
-    {
-      "Addr": "string value",
-      "Peer": "string value",
-      "Latency": "string value",
-      "Muxer": "string value",
-      "Streams": [
-        {
-          "Protocol": "string value"
-        }
-      ]
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Agent": "string value",
+  "Addrs": [
+    "string value"
+  ],
+  "Protocols": [
+    "string value"
+  ],
+  "ConnMgrMeta": {
+    "FirstSeen": "0001-01-01T00:00:00Z",
+    "Value": 123,
+    "Tags": {
+      "name": 42
+    },
+    "Conns": {
+      "name": "2021-03-08T22:52:18Z"
     }
-  ]
+  }
 }
 ```
 
-### NetworkPing
+### NetPeers
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  {
+    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Addrs": [
+      "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
+    ]
+  }
+]
+```
+
+### NetPing
 
 
 Perms: read
@@ -4583,6 +4626,52 @@ Inputs:
 ```
 
 Response: `60000000000`
+
+### NetProtectAdd
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  ]
+]
+```
+
+Response: `{}`
+
+### NetProtectList
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+### NetProtectRemove
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  ]
+]
+```
+
+Response: `{}`
 
 ### Version
 

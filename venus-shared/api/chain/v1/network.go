@@ -4,24 +4,44 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/venus/venus-shared/types"
-
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/metrics"
+	network2 "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	ma "github.com/multiformats/go-multiaddr"
+	"github.com/libp2p/go-libp2p-core/protocol"
+
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type INetwork interface {
-	NetworkGetBandwidthStats(ctx context.Context) metrics.Stats                                      //perm:admin
-	NetworkGetPeerAddresses(ctx context.Context) []ma.Multiaddr                                      //perm:admin
-	NetworkGetPeerID(ctx context.Context) peer.ID                                                    //perm:admin
-	NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan peer.AddrInfo      //perm:read
-	NetworkGetClosestPeers(ctx context.Context, key string) ([]peer.ID, error)                       //perm:read
-	NetworkFindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error)                      //perm:read
-	NetworkConnect(ctx context.Context, addrs []string) (<-chan types.ConnectionResult, error)       //perm:read
-	NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*types.SwarmConnInfos, error) //perm:read
-	NetworkPing(context.Context, peer.ID) (time.Duration, error)                                     //perm:read
-	Version(context.Context) (types.Version, error)                                                  //perm:read
-	NetAddrsListen(context.Context) (peer.AddrInfo, error)                                           //perm:read
+	NetFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan peer.AddrInfo //perm:read
+	NetGetClosestPeers(ctx context.Context, key string) ([]peer.ID, error)                  //perm:read
+	NetConnectedness(context.Context, peer.ID) (network2.Connectedness, error)              //perm:read
+	NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, error)                      //perm:read
+	NetConnect(ctx context.Context, pi peer.AddrInfo) error                                 //perm:admin
+	NetPeers(ctx context.Context) ([]peer.AddrInfo, error)                                  //perm:read
+	NetPeerInfo(ctx context.Context, p peer.ID) (*types.ExtendedPeerInfo, error)            //perm:read
+	NetAgentVersion(ctx context.Context, p peer.ID) (string, error)                         //perm:read
+	NetPing(ctx context.Context, p peer.ID) (time.Duration, error)                          //perm:read
+	NetAddrsListen(ctx context.Context) (peer.AddrInfo, error)                              //perm:read
+	NetDisconnect(ctx context.Context, p peer.ID) error                                     //perm:admin
+	NetAutoNatStatus(context.Context) (types.NatInfo, error)                                //perm:read
+	Version(ctx context.Context) (types.Version, error)                                     //perm:read
+	ID(ctx context.Context) (peer.ID, error)                                                //perm:read
+
+	// NetBandwidthStats returns statistics about the nodes total bandwidth
+	// usage and current rate across all peers and protocols.
+	NetBandwidthStats(ctx context.Context) (metrics.Stats, error) //perm:read
+
+	// NetBandwidthStatsByPeer returns statistics about the nodes bandwidth
+	// usage and current rate per peer
+	NetBandwidthStatsByPeer(ctx context.Context) (map[string]metrics.Stats, error) //perm:read
+
+	// NetBandwidthStatsByProtocol returns statistics about the nodes bandwidth
+	// usage and current rate per protocol
+	NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error) //perm:read
+
+	NetProtectAdd(ctx context.Context, acl []peer.ID) error    //perm:admin
+	NetProtectRemove(ctx context.Context, acl []peer.ID) error //perm:admin
+	NetProtectList(ctx context.Context) ([]peer.ID, error)     //perm:read
 }

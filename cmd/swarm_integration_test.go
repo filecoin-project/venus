@@ -98,11 +98,11 @@ func TestDhtFindPeer(t *testing.T) {
 
 	test.ConnectNodes(t, n1, n2)
 
-	n2Id := n2.Network().API().NetworkGetPeerID(ctx)
-	findpeerOutput := cmdClient.RunSuccess(ctx, "swarm", "findpeer", n2Id.String()).ReadStdoutTrimNewlines()
-	n2Addr := n2.Network().API().NetworkGetPeerAddresses(ctx)[0]
+	pi, err := n2.Network().API().NetAddrsListen(ctx)
+	assert.Nil(t, err)
+	findpeerOutput := cmdClient.RunSuccess(ctx, "swarm", "findpeer", pi.ID.Pretty()).ReadStdoutTrimNewlines()
 
-	assert.Contains(t, findpeerOutput, n2Addr.String())
+	assert.Contains(t, findpeerOutput, pi.Addrs[0].String())
 }
 
 func TestStatsBandwidth(t *testing.T) {
@@ -115,5 +115,5 @@ func TestStatsBandwidth(t *testing.T) {
 
 	stats := cmdClient.RunSuccess(ctx, "swarm", "bandwidth").ReadStdoutTrimNewlines()
 
-	assert.Equal(t, "{\n\t\"TotalIn\": 0,\n\t\"TotalOut\": 0,\n\t\"RateIn\": 0,\n\t\"RateOut\": 0\n}", stats)
+	assert.Equal(t, "Segment  TotalIn  TotalOut  RateIn  RateOut\nTotal    0 B      0 B       0 B/s   0 B/s", stats)
 }

@@ -43,6 +43,14 @@ type GetDealSpec struct {
 
 	// min limit of total space used by deals
 	MinUsedSpace uint64
+
+	// start epoch limit of the chosen deals
+	// if set, the deals should not be activated before or equal than the this epoch
+	StartEpoch abi.ChainEpoch
+
+	// end epoch limit of the chosen deals
+	// if set, the deals should not be alive after or equal than the this epoch
+	EndEpoch abi.ChainEpoch
 }
 
 type DealInfoIncludePath struct {

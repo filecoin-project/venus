@@ -16,8 +16,9 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/metrics"
+	network2 "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	ma "github.com/multiformats/go-multiaddr"
+	"github.com/libp2p/go-libp2p-core/protocol"
 
 	lminer "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -71,16 +72,6 @@ func (s *IActorStruct) ListActor(p0 context.Context) (map[address.Address]*types
 }
 func (s *IActorStruct) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) {
 	return s.Internal.StateGetActor(p0, p1, p2)
-}
-
-type IBeaconStruct struct {
-	Internal struct {
-		BeaconGetEntry func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
-	}
-}
-
-func (s *IBeaconStruct) BeaconGetEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
-	return s.Internal.BeaconGetEntry(p0, p1)
 }
 
 type IMinerStateStruct struct {
@@ -224,8 +215,6 @@ type IChainInfoStruct struct {
 		ChainGetParentMessages        func(ctx context.Context, bcid cid.Cid) ([]types.MessageCID, error)                                                                                          `perm:"read"`
 		ChainGetParentReceipts        func(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error)                                                                                     `perm:"read"`
 		ChainGetPath                  func(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*types.HeadChange, error)                                                             `perm:"read"`
-		ChainGetRandomnessFromBeacon  func(ctx context.Context, key types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) `perm:"read"`
-		ChainGetRandomnessFromTickets func(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) `perm:"read"`
 		ChainGetReceipts              func(ctx context.Context, id cid.Cid) ([]types.MessageReceipt, error)                                                                                        `perm:"read"`
 		ChainGetTipSet                func(ctx context.Context, key types.TipSetKey) (*types.TipSet, error)                                                                                        `perm:"read"`
 		ChainGetTipSetAfterHeight     func(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)                                                                 `perm:"read"`
@@ -282,12 +271,6 @@ func (s *IChainInfoStruct) ChainGetParentReceipts(p0 context.Context, p1 cid.Cid
 }
 func (s *IChainInfoStruct) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*types.HeadChange, error) {
 	return s.Internal.ChainGetPath(p0, p1, p2)
-}
-func (s *IChainInfoStruct) ChainGetRandomnessFromBeacon(p0 context.Context, p1 types.TipSetKey, p2 crypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) {
-	return s.Internal.ChainGetRandomnessFromBeacon(p0, p1, p2, p3, p4)
-}
-func (s *IChainInfoStruct) ChainGetRandomnessFromTickets(p0 context.Context, p1 types.TipSetKey, p2 crypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) {
-	return s.Internal.ChainGetRandomnessFromTickets(p0, p1, p2, p3, p4)
 }
 func (s *IChainInfoStruct) ChainGetReceipts(p0 context.Context, p1 cid.Cid) ([]types.MessageReceipt, error) {
 	return s.Internal.ChainGetReceipts(p0, p1)
@@ -374,7 +357,6 @@ func (s *IChainInfoStruct) VerifyEntry(p0, p1 *types.BeaconEntry, p2 abi.ChainEp
 type IChainStruct struct {
 	IAccountStruct
 	IActorStruct
-	IBeaconStruct
 	IMinerStateStruct
 	IChainInfoStruct
 }
@@ -573,49 +555,83 @@ func (s *IMultiSigStruct) MsigSwapPropose(p0 context.Context, p1 address.Address
 
 type INetworkStruct struct {
 	Internal struct {
-		NetAddrsListen            func(context.Context) (peer.AddrInfo, error)                                             `perm:"read"`
-		NetworkConnect            func(ctx context.Context, addrs []string) (<-chan types.ConnectionResult, error)         `perm:"read"`
-		NetworkFindPeer           func(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error)                         `perm:"read"`
-		NetworkFindProvidersAsync func(ctx context.Context, key cid.Cid, count int) <-chan peer.AddrInfo                   `perm:"read"`
-		NetworkGetBandwidthStats  func(ctx context.Context) metrics.Stats                                                  `perm:"admin"`
-		NetworkGetClosestPeers    func(ctx context.Context, key string) ([]peer.ID, error)                                 `perm:"read"`
-		NetworkGetPeerAddresses   func(ctx context.Context) []ma.Multiaddr                                                 `perm:"admin"`
-		NetworkGetPeerID          func(ctx context.Context) peer.ID                                                        `perm:"admin"`
-		NetworkPeers              func(ctx context.Context, verbose, latency, streams bool) (*types.SwarmConnInfos, error) `perm:"read"`
-		NetworkPing               func(context.Context, peer.ID) (time.Duration, error)                                    `perm:"read"`
-		Version                   func(context.Context) (types.Version, error)                                             `perm:"read"`
+		ID                          func(ctx context.Context) (peer.ID, error)                             `perm:"read"`
+		NetAddrsListen              func(ctx context.Context) (peer.AddrInfo, error)                       `perm:"read"`
+		NetAgentVersion             func(ctx context.Context, p peer.ID) (string, error)                   `perm:"read"`
+		NetAutoNatStatus            func(context.Context) (types.NatInfo, error)                           `perm:"read"`
+		NetBandwidthStats           func(ctx context.Context) (metrics.Stats, error)                       `perm:"read"`
+		NetBandwidthStatsByPeer     func(ctx context.Context) (map[string]metrics.Stats, error)            `perm:"read"`
+		NetBandwidthStatsByProtocol func(ctx context.Context) (map[protocol.ID]metrics.Stats, error)       `perm:"read"`
+		NetConnect                  func(ctx context.Context, pi peer.AddrInfo) error                      `perm:"admin"`
+		NetConnectedness            func(context.Context, peer.ID) (network2.Connectedness, error)         `perm:"read"`
+		NetDisconnect               func(ctx context.Context, p peer.ID) error                             `perm:"admin"`
+		NetFindPeer                 func(ctx context.Context, p peer.ID) (peer.AddrInfo, error)            `perm:"read"`
+		NetFindProvidersAsync       func(ctx context.Context, key cid.Cid, count int) <-chan peer.AddrInfo `perm:"read"`
+		NetGetClosestPeers          func(ctx context.Context, key string) ([]peer.ID, error)               `perm:"read"`
+		NetPeerInfo                 func(ctx context.Context, p peer.ID) (*types.ExtendedPeerInfo, error)  `perm:"read"`
+		NetPeers                    func(ctx context.Context) ([]peer.AddrInfo, error)                     `perm:"read"`
+		NetPing                     func(ctx context.Context, p peer.ID) (time.Duration, error)            `perm:"read"`
+		NetProtectAdd               func(ctx context.Context, acl []peer.ID) error                         `perm:"admin"`
+		NetProtectList              func(ctx context.Context) ([]peer.ID, error)                           `perm:"read"`
+		NetProtectRemove            func(ctx context.Context, acl []peer.ID) error                         `perm:"admin"`
+		Version                     func(ctx context.Context) (types.Version, error)                       `perm:"read"`
 	}
 }
 
+func (s *INetworkStruct) ID(p0 context.Context) (peer.ID, error) { return s.Internal.ID(p0) }
 func (s *INetworkStruct) NetAddrsListen(p0 context.Context) (peer.AddrInfo, error) {
 	return s.Internal.NetAddrsListen(p0)
 }
-func (s *INetworkStruct) NetworkConnect(p0 context.Context, p1 []string) (<-chan types.ConnectionResult, error) {
-	return s.Internal.NetworkConnect(p0, p1)
+func (s *INetworkStruct) NetAgentVersion(p0 context.Context, p1 peer.ID) (string, error) {
+	return s.Internal.NetAgentVersion(p0, p1)
 }
-func (s *INetworkStruct) NetworkFindPeer(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error) {
-	return s.Internal.NetworkFindPeer(p0, p1)
+func (s *INetworkStruct) NetAutoNatStatus(p0 context.Context) (types.NatInfo, error) {
+	return s.Internal.NetAutoNatStatus(p0)
 }
-func (s *INetworkStruct) NetworkFindProvidersAsync(p0 context.Context, p1 cid.Cid, p2 int) <-chan peer.AddrInfo {
-	return s.Internal.NetworkFindProvidersAsync(p0, p1, p2)
+func (s *INetworkStruct) NetBandwidthStats(p0 context.Context) (metrics.Stats, error) {
+	return s.Internal.NetBandwidthStats(p0)
 }
-func (s *INetworkStruct) NetworkGetBandwidthStats(p0 context.Context) metrics.Stats {
-	return s.Internal.NetworkGetBandwidthStats(p0)
+func (s *INetworkStruct) NetBandwidthStatsByPeer(p0 context.Context) (map[string]metrics.Stats, error) {
+	return s.Internal.NetBandwidthStatsByPeer(p0)
 }
-func (s *INetworkStruct) NetworkGetClosestPeers(p0 context.Context, p1 string) ([]peer.ID, error) {
-	return s.Internal.NetworkGetClosestPeers(p0, p1)
+func (s *INetworkStruct) NetBandwidthStatsByProtocol(p0 context.Context) (map[protocol.ID]metrics.Stats, error) {
+	return s.Internal.NetBandwidthStatsByProtocol(p0)
 }
-func (s *INetworkStruct) NetworkGetPeerAddresses(p0 context.Context) []ma.Multiaddr {
-	return s.Internal.NetworkGetPeerAddresses(p0)
+func (s *INetworkStruct) NetConnect(p0 context.Context, p1 peer.AddrInfo) error {
+	return s.Internal.NetConnect(p0, p1)
 }
-func (s *INetworkStruct) NetworkGetPeerID(p0 context.Context) peer.ID {
-	return s.Internal.NetworkGetPeerID(p0)
+func (s *INetworkStruct) NetConnectedness(p0 context.Context, p1 peer.ID) (network2.Connectedness, error) {
+	return s.Internal.NetConnectedness(p0, p1)
 }
-func (s *INetworkStruct) NetworkPeers(p0 context.Context, p1, p2, p3 bool) (*types.SwarmConnInfos, error) {
-	return s.Internal.NetworkPeers(p0, p1, p2, p3)
+func (s *INetworkStruct) NetDisconnect(p0 context.Context, p1 peer.ID) error {
+	return s.Internal.NetDisconnect(p0, p1)
 }
-func (s *INetworkStruct) NetworkPing(p0 context.Context, p1 peer.ID) (time.Duration, error) {
-	return s.Internal.NetworkPing(p0, p1)
+func (s *INetworkStruct) NetFindPeer(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error) {
+	return s.Internal.NetFindPeer(p0, p1)
+}
+func (s *INetworkStruct) NetFindProvidersAsync(p0 context.Context, p1 cid.Cid, p2 int) <-chan peer.AddrInfo {
+	return s.Internal.NetFindProvidersAsync(p0, p1, p2)
+}
+func (s *INetworkStruct) NetGetClosestPeers(p0 context.Context, p1 string) ([]peer.ID, error) {
+	return s.Internal.NetGetClosestPeers(p0, p1)
+}
+func (s *INetworkStruct) NetPeerInfo(p0 context.Context, p1 peer.ID) (*types.ExtendedPeerInfo, error) {
+	return s.Internal.NetPeerInfo(p0, p1)
+}
+func (s *INetworkStruct) NetPeers(p0 context.Context) ([]peer.AddrInfo, error) {
+	return s.Internal.NetPeers(p0)
+}
+func (s *INetworkStruct) NetPing(p0 context.Context, p1 peer.ID) (time.Duration, error) {
+	return s.Internal.NetPing(p0, p1)
+}
+func (s *INetworkStruct) NetProtectAdd(p0 context.Context, p1 []peer.ID) error {
+	return s.Internal.NetProtectAdd(p0, p1)
+}
+func (s *INetworkStruct) NetProtectList(p0 context.Context) ([]peer.ID, error) {
+	return s.Internal.NetProtectList(p0)
+}
+func (s *INetworkStruct) NetProtectRemove(p0 context.Context, p1 []peer.ID) error {
+	return s.Internal.NetProtectRemove(p0, p1)
 }
 func (s *INetworkStruct) Version(p0 context.Context) (types.Version, error) {
 	return s.Internal.Version(p0)

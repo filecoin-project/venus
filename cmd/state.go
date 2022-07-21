@@ -159,6 +159,9 @@ var statePowerCmd = &cmds.Command{
 		tp := power.TotalPower
 		if len(req.Arguments) == 1 {
 			mp := power.MinerPower
+			if !power.HasMinPower {
+				mp.QualityAdjPower = big.NewInt(0)
+			}
 			percI := big.Div(big.Mul(mp.QualityAdjPower, big.NewInt(1000000)), tp.QualityAdjPower)
 			writer.Printf("%s(%s) / %s(%s) ~= %0.4f%"+
 				"%\n", mp.QualityAdjPower.String(), types.SizeStr(mp.QualityAdjPower), tp.QualityAdjPower.String(), types.SizeStr(tp.QualityAdjPower), float64(percI.Int64())/10000)

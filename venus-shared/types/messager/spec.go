@@ -9,7 +9,7 @@ type SendSpec struct {
 	ExpireEpoch       abi.ChainEpoch `json:"expireEpoch"`
 	GasOverEstimation float64        `json:"gasOverEstimation"`
 	MaxFee            big.Int        `json:"maxFee,omitempty"`
-	MaxFeeCap         big.Int        `json:"maxFeeCap"`
+	GasOverPremium    float64        `json:"gasOverPremium"`
 }
 
 type SharedSpec struct {
@@ -17,7 +17,8 @@ type SharedSpec struct {
 
 	GasOverEstimation float64 `json:"gasOverEstimation"`
 	MaxFee            big.Int `json:"maxFee,omitempty"`
-	MaxFeeCap         big.Int `json:"maxFeeCap"`
+	GasFeeCap         big.Int `json:"gasFeeCap"`
+	GasOverPremium    float64 `json:"gasOverPremium"`
 
 	SelMsgNum uint64 `json:"selMsgNum"`
 }
@@ -30,6 +31,6 @@ func (ss *SharedSpec) GetSendSpec() *SendSpec {
 	return &SendSpec{
 		GasOverEstimation: ss.GasOverEstimation,
 		MaxFee:            ss.MaxFee,
-		MaxFeeCap:         ss.MaxFeeCap,
+		GasOverPremium:    ss.GasOverPremium,
 	}
 }
