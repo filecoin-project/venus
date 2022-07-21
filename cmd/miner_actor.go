@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/venus/cmd/tablewriter"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -492,18 +493,27 @@ var actorControlList = &cmds.Command{
 		}
 
 		printKey := func(name string, a address.Address) {
-			b, err := env.(*node.Env).WalletAPI.WalletBalance(ctx, a)
+			api := env.(*node.Env).ChainAPI
+			actor, err := api.StateGetActor(ctx, a, types.EmptyTSK)
 			if err != nil {
-				_ = re.Emit(fmt.Sprintf("%s  %s: error getting balance: %s", name, a, err))
+				_ = re.Emit(fmt.Sprintf("get actor(%s) failed: %s", a, err))
 				return
 			}
+			b := actor.Balance
 
-			k, err := env.(*node.Env).ChainAPI.StateAccountKey(ctx, a, types.EmptyTSK)
-			if err != nil {
-				_ = re.Emit(fmt.Sprintf("%s  %s: error getting account key: %s", name, a, err))
-				return
+			var k address.Address
+			// param 'a` maybe a 'robust', in that case, 'StateAccountKey' returns an error.
+			if builtin.IsAccountActor(actor.Code) {
+				if k, err = api.StateAccountKey(ctx, a, types.EmptyTSK); err != nil {
+					_ = re.Emit(fmt.Sprintf("%s  %s: error getting account key: %s", name, a, err))
+					return
+				}
+			} else { // if builtin.IsMultisigActor(actor.Code)
+				if k, err = api.StateLookupRobustAddress(ctx, a, types.EmptyTSK); err != nil {
+					_ = re.Emit(fmt.Sprintf("%s  %s: error getting robust address: %s", name, a, err))
+					return
+				}
 			}
-
 			kstr := k.String()
 			if !req.Options["verbose"].(bool) {
 				kstr = kstr[:9] + "..."
