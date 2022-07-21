@@ -501,7 +501,7 @@ var actorControlList = &cmds.Command{
 			api := env.(*node.Env).ChainAPI
 			actor, err := api.StateGetActor(ctx, a, types.EmptyTSK)
 			if err != nil {
-				_ = re.Emit(fmt.Sprintf("get actor(%s) failed: %s", a, err.Error))
+				_ = re.Emit(fmt.Sprintf("get actor(%s) failed: %s", a, err))
 				return
 			}
 
