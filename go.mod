@@ -57,28 +57,28 @@ require (
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
 	github.com/ipfs-force-community/metrics v1.0.1-0.20211022060227-11142a08b729
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20210924063144-1d3a5b30de87
-	github.com/ipfs/go-bitswap v0.5.1
+	github.com/ipfs/go-bitswap v0.6.0
 	github.com/ipfs/go-block-format v0.0.3
-	github.com/ipfs/go-blockservice v0.2.1
+	github.com/ipfs/go-blockservice v0.3.0
 	github.com/ipfs/go-cid v0.1.0
 	github.com/ipfs/go-datastore v0.5.1
 	github.com/ipfs/go-ds-badger2 v0.1.2
 	github.com/ipfs/go-fs-lock v0.0.7
 	github.com/ipfs/go-graphsync v0.13.1
-	github.com/ipfs/go-ipfs-blockstore v1.1.2
+	github.com/ipfs/go-ipfs-blockstore v1.2.0
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-cmdkit v0.0.1
 	github.com/ipfs/go-ipfs-cmds v0.6.1-0.20220212012746-40b8fddb899f
 	github.com/ipfs/go-ipfs-ds-help v1.1.0
 	github.com/ipfs/go-ipfs-exchange-interface v0.1.0
-	github.com/ipfs/go-ipfs-exchange-offline v0.1.1
+	github.com/ipfs/go-ipfs-exchange-offline v0.2.0
 	github.com/ipfs/go-ipfs-files v0.0.9
 	github.com/ipfs/go-ipfs-routing v0.2.1
 	github.com/ipfs/go-ipld-cbor v0.0.6
-	github.com/ipfs/go-ipld-format v0.2.0
+	github.com/ipfs/go-ipld-format v0.4.0
 	github.com/ipfs/go-log v1.0.5
 	github.com/ipfs/go-log/v2 v2.5.1
-	github.com/ipfs/go-merkledag v0.5.1
+	github.com/ipfs/go-merkledag v0.6.0
 	github.com/ipfs/go-unixfs v0.3.1
 	github.com/ipld/go-car v0.3.3
 	github.com/jbenet/goprocess v0.1.4

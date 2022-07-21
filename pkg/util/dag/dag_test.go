@@ -51,7 +51,7 @@ func TestDAGGet(t *testing.T) {
 		someCid := testhelpers.CidFromString(t, "somecid")
 
 		_, err := dag.GetNode(ctx, someCid.String())
-		assert.EqualError(t, err, "merkledag: not found")
+		assert.True(t, format.IsNotFound(err))
 	})
 
 	t.Run("matching IPLD node is emitted", func(t *testing.T) {

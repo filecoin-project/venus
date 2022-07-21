@@ -141,6 +141,11 @@ func initRun(req *cmds.Request) error {
 		}
 
 		node.SetNetParams(cfg.NetworkParams)
+		if err := builtinactors.SetNetworkBundle(cfg.NetworkParams.NetworkType); err != nil {
+			return err
+		}
+		utils.ReloadMethodsMap()
+
 		genesisFunc = genesis.MakeGenesis(req.Context, rep, mkGen, preTp.(string), cfg.NetworkParams.ForkUpgradeParam)
 	} else {
 		genesisFileSource, _ := req.Options[GenesisFile].(string)
