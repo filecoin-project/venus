@@ -493,17 +493,13 @@ var actorControlList = &cmds.Command{
 		}
 
 		printKey := func(name string, a address.Address) {
-			b, err := env.(*node.Env).WalletAPI.WalletBalance(ctx, a)
-			if err != nil {
-				_ = re.Emit(fmt.Sprintf("%s  %s: error getting balance: %s", name, a, err))
-				return
-			}
 			api := env.(*node.Env).ChainAPI
 			actor, err := api.StateGetActor(ctx, a, types.EmptyTSK)
 			if err != nil {
 				_ = re.Emit(fmt.Sprintf("get actor(%s) failed: %s", a, err))
 				return
 			}
+			b := actor.Balance
 
 			var k address.Address
 			// param 'a` maybe a 'robust', in that case, 'StateAccountKey' returns an error.
