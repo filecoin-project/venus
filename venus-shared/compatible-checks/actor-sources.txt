@@ -1,4 +1,5 @@
 SOURCES IN chain/actors:
+	actor_cids.go
 	adt/adt.go
 	adt/diff_adt.go
 	adt/diff_adt_test.go

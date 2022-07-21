@@ -11,6 +11,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/keytransform"
 	dshelp "github.com/ipfs/go-ipfs-ds-help"
+	ipld "github.com/ipfs/go-ipld-format"
 )
 
 var _ Blockstore = (*TxBlockstore)(nil)
@@ -50,7 +51,7 @@ func (txBlockstore *TxBlockstore) Has(ctx context.Context, cid cid.Cid) (bool, e
 
 func (txBlockstore *TxBlockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
 	if !cid.Defined() {
-		return nil, ErrNotFound
+		return nil, ipld.ErrNotFound{Cid: cid}
 	}
 
 	key := txBlockstore.ConvertKey(cid)
@@ -67,7 +68,7 @@ func (txBlockstore *TxBlockstore) Get(ctx context.Context, cid cid.Cid) (blocks.
 	case nil:
 		val, err = item.ValueCopy(nil)
 	case badger.ErrKeyNotFound:
-		return nil, ErrNotFound
+		return nil, ipld.ErrNotFound{Cid: cid}
 	default:
 		return nil, fmt.Errorf("failed to get block from badger blockstore: %w", err)
 	}
@@ -86,7 +87,7 @@ func (txBlockstore *TxBlockstore) Get(ctx context.Context, cid cid.Cid) (blocks.
 
 func (txBlockstore *TxBlockstore) View(ctx context.Context, cid cid.Cid, callback func([]byte) error) error {
 	if !cid.Defined() {
-		return ErrNotFound
+		return ipld.ErrNotFound{Cid: cid}
 	}
 
 	key := txBlockstore.ConvertKey(cid)
@@ -103,7 +104,7 @@ func (txBlockstore *TxBlockstore) View(ctx context.Context, cid cid.Cid, callbac
 	case nil:
 		val, err = item.ValueCopy(nil)
 	case badger.ErrKeyNotFound:
-		return ErrNotFound
+		return ipld.ErrNotFound{Cid: cid}
 	default:
 		return fmt.Errorf("failed to get block from badger blockstore: %w", err)
 	}
@@ -135,7 +136,7 @@ func (txBlockstore *TxBlockstore) GetSize(ctx context.Context, cid cid.Cid) (int
 	case nil:
 		size = int(item.ValueSize())
 	case badger.ErrKeyNotFound:
-		return -1, ErrNotFound
+		return -1, ipld.ErrNotFound{Cid: cid}
 	default:
 		return -1, fmt.Errorf("failed to get block size from badger blockstore: %w", err)
 	}

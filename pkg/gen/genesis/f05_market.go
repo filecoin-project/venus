@@ -2,13 +2,13 @@ package genesis
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/go-state-types/big"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 
 	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
@@ -27,9 +27,9 @@ func SetupStorageMarketActor(ctx context.Context, bs bstore.Blockstore, av actor
 		return nil, err
 	}
 
-	actcid, err := builtin.GetMarketActorCodeID(av)
-	if err != nil {
-		return nil, err
+	actcid, found := actors.GetActorCodeID(av, actors.MarketKey)
+	if !found {
+		return nil, fmt.Errorf("failed to get market actor code ID for actors version %d", av)
 	}
 
 	act := &types.Actor{
