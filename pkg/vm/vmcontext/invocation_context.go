@@ -327,9 +327,9 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 		if err != nil {
 			panic(err)
 		}
-		actorCode, err := builtin.GetAccountActorCodeID(ver)
-		if err != nil {
-			panic(err)
+		actorCode, found := actors.GetActorCodeID(ver, actors.AccountKey)
+		if !found {
+			panic(fmt.Errorf("failed to get account actor code ID for actors version %d", ver))
 		}
 		ctx.CreateActor(actorCode, targetIDAddr)
 

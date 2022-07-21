@@ -10,8 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/manifest"
 
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
-
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/system"
@@ -53,9 +51,9 @@ func SetupSystemActor(ctx context.Context, bs bstore.Blockstore, av actors.Versi
 		return nil, err
 	}
 
-	actcid, err := builtin.GetSystemActorCodeID(av)
-	if err != nil {
-		return nil, err
+	actcid, found := actors.GetActorCodeID(av, actors.SystemKey)
+	if !found {
+		return nil, fmt.Errorf("failed to get system actor code ID for actors version %d", av)
 	}
 
 	act := &types.Actor{

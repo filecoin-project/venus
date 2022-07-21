@@ -11,7 +11,6 @@ import (
 	builtin8 "github.com/filecoin-project/go-state-types/builtin"
 	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
 	multisig8 "github.com/filecoin-project/go-state-types/builtin/v8/multisig"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
@@ -53,8 +52,8 @@ func (m message8) Create(
 		return nil, actErr
 	}
 
-	code, err := builtin.GetMultisigActorCodeID(actors.Version8)
-	if err != nil {
+	code, ok := actors.GetActorCodeID(actors.Version8, actors.MultisigKey)
+	if !ok {
 		return nil, fmt.Errorf("failed to get multisig code ID")
 	}
 

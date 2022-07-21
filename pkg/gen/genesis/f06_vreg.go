@@ -2,9 +2,9 @@ package genesis
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/go-address"
@@ -42,9 +42,9 @@ func SetupVerifiedRegistryActor(ctx context.Context, bs bstore.Blockstore, av ac
 		return nil, err
 	}
 
-	actcid, err := builtin.GetVerifregActorCodeID(av)
-	if err != nil {
-		return nil, err
+	actcid, found := actors.GetActorCodeID(av, actors.VerifregKey)
+	if !found {
+		return nil, fmt.Errorf("failed to get verifreg actor code ID for actors version %d", av)
 	}
 
 	act := &types.Actor{

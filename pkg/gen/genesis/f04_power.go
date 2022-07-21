@@ -2,13 +2,13 @@ package genesis
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -29,9 +29,9 @@ func SetupStoragePowerActor(ctx context.Context, bs bstore.Blockstore, av actors
 		return nil, err
 	}
 
-	actcid, err := builtin.GetPowerActorCodeID(av)
-	if err != nil {
-		return nil, err
+	actcid, found := actors.GetActorCodeID(av, actors.PowerKey)
+	if !found {
+		return nil, fmt.Errorf("failed to get power actor code ID for actors version %d", av)
 	}
 
 	act := &types.Actor{
