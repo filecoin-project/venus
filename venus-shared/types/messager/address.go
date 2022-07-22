@@ -50,7 +50,7 @@ type Address struct {
 	State             AddressState `json:"state"`
 	GasOverEstimation float64      `json:"gasOverEstimation"`
 	MaxFee            big.Int      `json:"maxFee,omitempty"`
-	GasFeeCap         big.Int      `json:"gasFeeCap"`
+	MaxFeeCap         big.Int      `json:"maxFeeCap"`
 	GasOverPremium    float64      `json:"gasOverPremium"`
 
 	IsDeleted int       `json:"isDeleted"` // 是否删除 1:是  -1:否
