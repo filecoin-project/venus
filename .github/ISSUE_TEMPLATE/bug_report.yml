@@ -1,6 +1,6 @@
 name: "Bug Report"
 description: "报告 bug / File a bug report to help us improve"
-labels: [C-bug, community]
+labels: [C-bug]
 body:
 - type: checkboxes
   attributes:
