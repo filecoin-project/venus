@@ -58,7 +58,7 @@ test-venus-shared:
 	cd venus-shared && go test -covermode=set ./...
 
 bundle-gen:
-	cd venus-devtool && go run ./bundle-gen/*.go  --dst ./../venus-shared/builtin-actors/builtin_actors_gen.go
+	cd venus-devtool && go run ./bundle-gen/*.go  --dst ./../venus-shared/actors/builtin_actors_gen.go
 
 api-gen:
 	cd ./venus-devtool/ && go run ./api-gen/ proxy

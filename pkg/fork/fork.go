@@ -57,7 +57,6 @@ import (
 	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/system"
-	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -2082,7 +2081,7 @@ func (c *ChainFork) upgradeActorsV8Common(
 	store := chain.ActorStore(ctx, buf)
 
 	// ensure that the manifest is loaded in the blockstore
-	if err := builtinactors.LoadBundles(ctx, buf, actors.Version8); err != nil {
+	if err := actors.LoadBundles(ctx, buf, actors.Version8); err != nil {
 		return cid.Undef, fmt.Errorf("failed to load manifest bundle: %w", err)
 	}
 
@@ -2153,7 +2152,7 @@ func (c *ChainFork) GetForkUpgrade() *config.ForkUpgradeConfig {
 // 	newStateTreeVersion := vmstate.StateTreeVersion4
 
 // 	// ensure that the manifest is loaded in the blockstore
-// 	if err := builtinactors.LoadBundles(ctx, buf, actors.Version9); err != nil {
+// 	if err := actors.LoadBundles(ctx, buf, actors.Version9); err != nil {
 // 		return cid.Undef, fmt.Errorf("failed to load manifest bundle: %w", err)
 // 	}
 

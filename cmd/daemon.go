@@ -6,7 +6,7 @@ import (
 
 	"github.com/filecoin-project/venus/fixtures/assets"
 	"github.com/filecoin-project/venus/fixtures/networks"
-	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/utils"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -141,7 +141,7 @@ func initRun(req *cmds.Request) error {
 		}
 
 		node.SetNetParams(cfg.NetworkParams)
-		if err := builtinactors.SetNetworkBundle(cfg.NetworkParams.NetworkType); err != nil {
+		if err := actors.SetNetworkBundle(int(cfg.NetworkParams.NetworkType)); err != nil {
 			return err
 		}
 		utils.ReloadMethodsMap()
@@ -180,7 +180,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 
 	config := rep.Config()
 
-	if err := builtinactors.SetNetworkBundle(config.NetworkParams.NetworkType); err != nil {
+	if err := actors.SetNetworkBundle(int(config.NetworkParams.NetworkType)); err != nil {
 		return err
 	}
 	utils.ReloadMethodsMap()

@@ -1,4 +1,4 @@
-package builtinactors
+package actors
 
 import (
 	"bytes"
@@ -8,7 +8,6 @@ import (
 	"os"
 
 	blockstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	"github.com/filecoin-project/venus/venus-shared/actors"
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipld/go-car"
 )
@@ -37,14 +36,14 @@ func LoadBundle(ctx context.Context, bs blockstore.Blockstore, r io.Reader) (cid
 
 // LoadBundles loads the bundles for the specified actor versions into the passed blockstore, if and
 // only if the bundle's manifest is not already present in the blockstore.
-func LoadBundles(ctx context.Context, bs blockstore.Blockstore, versions ...actors.Version) error {
+func LoadBundles(ctx context.Context, bs blockstore.Blockstore, versions ...Version) error {
 	for _, av := range versions {
 		// No bundles before version 8.
-		if av < actors.Version8 {
+		if av < Version8 {
 			continue
 		}
 
-		manifestCid, ok := actors.GetManifest(av)
+		manifestCid, ok := GetManifest(av)
 		if !ok {
 			// All manifests are registered on start, so this must succeed.
 			return fmt.Errorf("unknown actor version v%d", av)
