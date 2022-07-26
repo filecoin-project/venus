@@ -2,28 +2,27 @@ package cmd
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-ipfs-cmds"
+
 	"github.com/filecoin-project/venus/app/node"
-	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
 var drandCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline:          "Explore access and configure drand.",
-		ShortDescription: ``,
+		Tagline: "Explore drand",
 	},
-
 	Subcommands: map[string]*cmds.Command{
-		"random": drandRandom,
+		"random": drandRandomCmd,
 	},
 }
 
-var drandRandom = &cmds.Command{
+var drandRandomCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Retrieve randomness round from drand group",
+		Tagline: "Retrieve randomness from the drand server",
 	},
 	Options: []cmds.Option{
-		cmds.Uint64Option("round", "retrieve randomness at given round (default 0)"),
-		cmds.Uint64Option("round", "retrieve randomness at height round (default 0)"),
+		cmds.Uint64Option("height", "chain epoch (default 0)"),
+		cmds.Uint64Option("round", "retrieve randomness at requested round (default 0)"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		round, _ := req.Options["round"].(uint64)

@@ -171,21 +171,21 @@ var rootSubcmdsLocal = map[string]*cmds.Command{
 
 // all top level commands, available on daemon. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
-	"chain":    chainCmd,
-	"sync":     syncCmd,
-	"drand":    drandCmd,
-	"inspect":  inspectCmd,
-	"log":      logCmd,
-	"send":     msgSendCmd,
-	"mpool":    mpoolCmd,
-	"show":     showCmd,
-	"swarm":    swarmCmd,
-	"wallet":   walletCmd,
-	"version":  versionCmd,
-	"state":    stateCmd,
-	"miner":    minerCmd,
-	"paych":    paychCmd,
-	"msig":     multisigCmd,
+	"chain":   chainCmd,
+	"sync":    syncCmd,
+	"drand":   drandCmd,
+	"inspect": inspectCmd,
+	"log":     logCmd,
+	"send":    msgSendCmd,
+	"mpool":   mpoolCmd,
+	"show":    showCmd,
+	"swarm":   swarmCmd,
+	"wallet":  walletCmd,
+	"version": versionCmd,
+	"state":   stateCmd,
+	"miner":   minerCmd,
+	"paych":   paychCmd,
+	"msig":    multisigCmd,
 }
 
 func init() {
