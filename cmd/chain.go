@@ -25,18 +25,18 @@ import (
 
 var chainCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Inspect the filecoin blockchain",
+		Tagline: "Interact with filecoin blockchain",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"head":         chainHeadCmd,
-		"ls":           chainLsCmd,
-		"set-head":     chainSetHeadCmd,
-		"getblock":     chainGetBlockCmd,
-		"get-message":  chainGetMessageCmd,
-		"get-messages": chainGetMessagesCmd,
-		"get-receipts": chainGetReceiptsCmd,
-		"disputer":     chainDisputeSetCmd,
-		"export":       chainExportCmd,
+		"head":               chainHeadCmd,
+		"ls":                 chainLsCmd,
+		"set-head":           chainSetHeadCmd,
+		"get-block":          chainGetBlockCmd,
+		"get-message":        chainGetMessageCmd,
+		"get-block-messages": chainGetBlockMessagesCmd,
+		"get-receipts":       chainGetReceiptsCmd,
+		"disputer":           chainDisputeSetCmd,
+		"export":             chainExportCmd,
 	},
 }
 
@@ -258,7 +258,7 @@ var chainGetMessageCmd = &cmds.Command{
 	Type: types.Message{},
 }
 
-var chainGetMessagesCmd = &cmds.Command{
+var chainGetBlockMessagesCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline:          "Show a filecoin message collection by block CID",
 		ShortDescription: "Prints info for all messages in a collection, at the given block CID.",

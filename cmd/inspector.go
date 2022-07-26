@@ -1,11 +1,10 @@
 package cmd
 
 import (
-	"github.com/ipfs/go-ipfs-cmds"
-
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
 var inspectCmd = &cmds.Command{
@@ -24,10 +23,8 @@ var inspectCmd = &cmds.Command{
 }
 var allInspectCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Print all diagnostic information.",
-		ShortDescription: `
-Prints out information about filecoin process and its environment.
-`,
+		Tagline:          "Print all diagnostic information.",
+		ShortDescription: "Prints out information about filecoin process and its environment.",
 	},
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 		var allInfo node.AllInspectorInfo
@@ -54,10 +51,8 @@ Prints out information about filecoin process and its environment.
 
 var runtimeInspectCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Print runtime diagnostic information.",
-		ShortDescription: `
-Prints out information about the golang runtime.
-`,
+		Tagline:          "Print runtime diagnostic information.",
+		ShortDescription: "Prints out information about the golang runtime.",
 	},
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 		out := env.(*node.Env).InspectorAPI.Runtime()
@@ -68,10 +63,8 @@ Prints out information about the golang runtime.
 
 var diskInspectCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Print filesystem usage information.",
-		ShortDescription: `
-Prints out information about the filesystem.
-`,
+		Tagline:          "Print filesystem usage information.",
+		ShortDescription: "Prints out information about the filesystem.",
 	},
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 		out, err := env.(*node.Env).InspectorAPI.Disk()
@@ -85,10 +78,8 @@ Prints out information about the filesystem.
 
 var memoryInspectCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Print memory usage information.",
-		ShortDescription: `
-Prints out information about memory usage.
-`,
+		Tagline:          "Print memory usage information.",
+		ShortDescription: "Prints out information about memory usage.",
 	},
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 		out, err := env.(*node.Env).InspectorAPI.Memory()
@@ -102,10 +93,8 @@ Prints out information about memory usage.
 
 var configInspectCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Print in-memory config information.",
-		ShortDescription: `
-Prints out information about your filecoin nodes config.
-`,
+		Tagline:          "Print in-memory config information.",
+		ShortDescription: "Prints out information about your filecoin nodes config.",
 	},
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 		out := env.(*node.Env).InspectorAPI.Config()
@@ -116,10 +105,8 @@ Prints out information about your filecoin nodes config.
 
 var envInspectCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Print filecoin environment information.",
-		ShortDescription: `
-Prints out information about your filecoin nodes environment.
-`,
+		Tagline:          "Print filecoin environment information.",
+		ShortDescription: "Prints out information about your filecoin nodes environment.",
 	},
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 		out := env.(*node.Env).InspectorAPI.Environment()

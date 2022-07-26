@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/venus/app/node"
 )

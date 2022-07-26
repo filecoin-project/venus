@@ -93,12 +93,12 @@ func init() {
 // command object for the local cli
 var RootCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "A decentralized storage network",
+		Tagline: "Filecoin decentralized storage network client",
 		Subcommands: `
 START RUNNING VENUS
   config <key> [<value>] - Get and set venus config values
-  daemon                 - Start a long-running daemon process
-  wallet                 - Manage your filecoin wallets
+  daemon                 - Start a venus daemon process
+  wallet                 - Manage wallet
   msig                   - Interact with a multisig wallet
 
 VIEW DATA STRUCTURES
