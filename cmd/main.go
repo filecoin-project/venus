@@ -95,8 +95,8 @@ var RootCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "A decentralized storage network",
 		Subcommands: `
-START RUNNING FILECOIN
-  config <key> [<value>] - Get and set filecoin config values
+START RUNNING VENUS
+  config <key> [<value>] - Get and set venus config values
   daemon                 - Start a long-running daemon process
   wallet                 - Manage your filecoin wallets
   msig                   - Interact with a multisig wallet
@@ -138,7 +138,6 @@ Cid COMMANDS
 
 TOOL COMMANDS
   inspect                - Show info about the venus node
-  leb128                 - Leb128 cli encode/decode
   log                    - Interact with the daemon event log output
   protocol               - Show protocol parameter details
   version                - Show venus version information
@@ -167,7 +166,6 @@ var rootSubcmdsLocal = map[string]*cmds.Command{
 	"daemon":  daemonCmd,
 	"fetch":   fetchCmd,
 	"version": versionCmd,
-	"leb128":  leb128Cmd,
 	"seed":    seedCmd,
 	"cid":     cidCmd,
 }
@@ -178,7 +176,6 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"sync":     syncCmd,
 	"drand":    drandCmd,
 	"inspect":  inspectCmd,
-	"leb128":   leb128Cmd,
 	"log":      logCmd,
 	"send":     msgSendCmd,
 	"mpool":    mpoolCmd,
