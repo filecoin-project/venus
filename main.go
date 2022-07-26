@@ -5,8 +5,9 @@ import (
 	_ "net/http/pprof"
 	"os"
 
-	"github.com/filecoin-project/venus/cmd"
 	logging "github.com/ipfs/go-log/v2"
+
+	"github.com/filecoin-project/venus/cmd"
 )
 
 func main() {
@@ -35,6 +36,12 @@ func main() {
 			level = logging.LevelInfo
 		}
 		logging.SetAllLoggers(level)
+	}
+
+	if len(os.Args) > 1 {
+		if os.Args[1] == "-v" {
+			os.Args[1] = "version"
+		}
 	}
 
 	code, _ := cmd.Run(context.Background(), os.Args, os.Stdin, os.Stdout, os.Stderr)
