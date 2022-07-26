@@ -139,7 +139,6 @@ Cid COMMANDS
 TOOL COMMANDS
   inspect                - Show info about the venus node
   log                    - Interact with the daemon event log output
-  protocol               - Show protocol parameter details
   version                - Show venus version information
   seed                   - Seal sectors for genesis miner
   fetch                  - Fetch proving parameters
@@ -179,7 +178,6 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"log":      logCmd,
 	"send":     msgSendCmd,
 	"mpool":    mpoolCmd,
-	"protocol": protocolCmd,
 	"show":     showCmd,
 	"swarm":    swarmCmd,
 	"wallet":   walletCmd,

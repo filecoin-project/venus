@@ -1,14 +1,16 @@
 package cmd
 
 import (
+	"github.com/ipfs/go-ipfs-cmds"
+
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/config"
-	cmds "github.com/ipfs/go-ipfs-cmds"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var inspectCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Show info about the filecoin node",
+		Tagline: "Show info about the venus node",
 	},
 	Subcommands: map[string]*cmds.Command{
 		"all":         allInspectCmd,
@@ -17,6 +19,7 @@ var inspectCmd = &cmds.Command{
 		"memory":      memoryInspectCmd,
 		"config":      configInspectCmd,
 		"environment": envInspectCmd,
+		"protocol":    protocolInspectCmd,
 	},
 }
 var allInspectCmd = &cmds.Command{
@@ -123,4 +126,18 @@ Prints out information about your filecoin nodes environment.
 		return cmds.EmitOnce(res, out)
 	},
 	Type: node.EnvironmentInfo{},
+}
+
+var protocolInspectCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Show protocol parameter details",
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		params, err := env.(*node.Env).ChainAPI.ProtocolParameters(req.Context)
+		if err != nil {
+			return err
+		}
+		return re.Emit(params)
+	},
+	Type: types.ProtocolParams{},
 }
