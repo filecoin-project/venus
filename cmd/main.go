@@ -96,7 +96,6 @@ var RootCmd = &cmds.Command{
 		Tagline: "Filecoin decentralized storage network client",
 		Subcommands: `
 START RUNNING VENUS
-  config <key> [<value>] - Get and set venus config values
   daemon                 - Start a venus daemon process
   wallet                 - Manage wallet
   msig                   - Interact with a multisig wallet
@@ -109,7 +108,7 @@ VIEW DATA STRUCTURES
 
 NETWORK COMMANDS
   swarm                  - Interact with the swarm
-  drand                  - retrieve drand randomness
+  drand                  - Retrieve randomness from drand server
 
 MESSAGE COMMANDS
   send                   - Send message

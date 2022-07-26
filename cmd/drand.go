@@ -9,16 +9,7 @@ import (
 
 var drandCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "Explore drand",
-	},
-	Subcommands: map[string]*cmds.Command{
-		"random": drandRandomCmd,
-	},
-}
-
-var drandRandomCmd = &cmds.Command{
-	Helptext: cmds.HelpText{
-		Tagline: "Retrieve randomness from the drand server",
+		Tagline: "Retrieve randomness from drand server",
 	},
 	Options: []cmds.Option{
 		cmds.Uint64Option("height", "chain epoch (default 0)"),
