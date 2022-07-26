@@ -93,12 +93,11 @@ func init() {
 // command object for the local cli
 var RootCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "A decentralized storage network",
+		Tagline: "Filecoin decentralized storage network client",
 		Subcommands: `
-START RUNNING FILECOIN
-  config <key> [<value>] - Get and set filecoin config values
-  daemon                 - Start a long-running daemon process
-  wallet                 - Manage your filecoin wallets
+START RUNNING VENUS
+  daemon                 - Start a venus daemon process
+  wallet                 - Manage wallet
   msig                   - Interact with a multisig wallet
 
 VIEW DATA STRUCTURES
@@ -109,7 +108,7 @@ VIEW DATA STRUCTURES
 
 NETWORK COMMANDS
   swarm                  - Interact with the swarm
-  drand                  - retrieve drand randomness
+  drand                  - Retrieve randomness from drand server
 
 MESSAGE COMMANDS
   send                   - Send message
@@ -138,9 +137,7 @@ Cid COMMANDS
 
 TOOL COMMANDS
   inspect                - Show info about the venus node
-  leb128                 - Leb128 cli encode/decode
   log                    - Interact with the daemon event log output
-  protocol               - Show protocol parameter details
   version                - Show venus version information
   seed                   - Seal sectors for genesis miner
   fetch                  - Fetch proving parameters
@@ -167,30 +164,27 @@ var rootSubcmdsLocal = map[string]*cmds.Command{
 	"daemon":  daemonCmd,
 	"fetch":   fetchCmd,
 	"version": versionCmd,
-	"leb128":  leb128Cmd,
 	"seed":    seedCmd,
 	"cid":     cidCmd,
 }
 
 // all top level commands, available on daemon. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
-	"chain":    chainCmd,
-	"sync":     syncCmd,
-	"drand":    drandCmd,
-	"inspect":  inspectCmd,
-	"leb128":   leb128Cmd,
-	"log":      logCmd,
-	"send":     msgSendCmd,
-	"mpool":    mpoolCmd,
-	"protocol": protocolCmd,
-	"show":     showCmd,
-	"swarm":    swarmCmd,
-	"wallet":   walletCmd,
-	"version":  versionCmd,
-	"state":    stateCmd,
-	"miner":    minerCmd,
-	"paych":    paychCmd,
-	"msig":     multisigCmd,
+	"chain":   chainCmd,
+	"sync":    syncCmd,
+	"drand":   drandCmd,
+	"inspect": inspectCmd,
+	"log":     logCmd,
+	"send":    msgSendCmd,
+	"mpool":   mpoolCmd,
+	"show":    showCmd,
+	"swarm":   swarmCmd,
+	"wallet":  walletCmd,
+	"version": versionCmd,
+	"state":   stateCmd,
+	"miner":   minerCmd,
+	"paych":   paychCmd,
+	"msig":    multisigCmd,
 }
 
 func init() {

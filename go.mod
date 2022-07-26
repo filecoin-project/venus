@@ -28,7 +28,6 @@ require (
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-markets v1.20.1-v16-2
 	github.com/filecoin-project/go-jsonrpc v0.1.5
-	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-paramfetch v0.0.4
 	github.com/filecoin-project/go-state-types v0.1.10
 	github.com/filecoin-project/pubsub v1.0.0
