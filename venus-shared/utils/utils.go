@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -60,7 +60,7 @@ func LoadBuiltinActors(ctx context.Context, getter networkNameGetter) error {
 	if err != nil {
 		return err
 	}
-	if err := builtinactors.SetNetworkBundle(nt); err != nil {
+	if err := actors.SetNetworkBundle(int(nt)); err != nil {
 		return err
 	}
 	ReloadMethodsMap()
