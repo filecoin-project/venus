@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 )
 
-//go:embed builtin-actors/*.tar.zst
+//go:embed builtin-actors-code/*.tar.zst
 var embeddedBuiltinActorReleases embed.FS
 
 // NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
@@ -136,7 +136,7 @@ type BuiltinActorsMetadata struct { // nolint
 // There should be no need to call this method as the result is cached in the
 // `EmbeddedBuiltinActorsMetadata` variable on `make gen`.
 func ReadEmbeddedBuiltinActorsMetadata() ([]*BuiltinActorsMetadata, error) {
-	files, err := embeddedBuiltinActorReleases.ReadDir("builtin-actors")
+	files, err := embeddedBuiltinActorReleases.ReadDir("builtin-actors-code")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read embedded bundle directory: %s", err)
 	}
@@ -176,7 +176,7 @@ func readEmbeddedBuiltinActorsMetadata(bundle string) ([]*BuiltinActorsMetadata,
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse actors version from bundle '%q': %s", bundle, err)
 	}
-	fi, err := embeddedBuiltinActorReleases.Open(fmt.Sprintf("builtin-actors/%s", bundle))
+	fi, err := embeddedBuiltinActorReleases.Open(fmt.Sprintf("builtin-actors-code/%s", bundle))
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +263,7 @@ func readBundleManifest(r io.Reader) (cid.Cid, map[string]cid.Cid, error) {
 
 // GetEmbeddedBuiltinActorsBundle returns the builtin-actors bundle for the given actors version.
 func GetEmbeddedBuiltinActorsBundle(version Version) ([]byte, bool) {
-	fi, err := embeddedBuiltinActorReleases.Open(fmt.Sprintf("actors/v%d.tar.zst", version))
+	fi, err := embeddedBuiltinActorReleases.Open(fmt.Sprintf("builtin-actors-code/v%d.tar.zst", version))
 	if err != nil {
 		return nil, false
 	}
