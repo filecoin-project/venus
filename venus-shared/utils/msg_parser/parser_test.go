@@ -1,4 +1,4 @@
-package msg_parser
+package msgparser
 
 import (
 	"bytes"
@@ -186,9 +186,9 @@ func (c testCase) wantRet(t *testing.T, p reflect.Type) interface{} {
 }
 
 func (c testCase) wantErr() bool {
-	is_err, isok := c["is_err"]
+	isErr, isok := c["is_err"]
 	if isok {
-		if b, isok := is_err.(bool); isok {
+		if b, isok := isErr.(bool); isok {
 			return b
 		}
 	}
@@ -210,7 +210,7 @@ func TestMessagePaser_ParseMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name(t), func(t *testing.T) {
-			msgId := tt.msgid()
+			msgID := tt.msgid()
 			msg := tt.message(t)
 			gotArgs, gotRets, err := ms.ParseMessage(ctx, msg, tt.receipt(t))
 			if (err != nil) != tt.wantErr() {
@@ -224,12 +224,12 @@ func TestMessagePaser_ParseMessage(t *testing.T) {
 			}
 			wantArgs := tt.wantArgs(t, reflect.TypeOf(gotArgs))
 			if !reflect.DeepEqual(gotArgs, wantArgs) {
-				t.Errorf("ParseMessage(%v) gotArgs = %v, want %v", msgId, gotArgs, wantArgs)
+				t.Errorf("ParseMessage(%v) gotArgs = %v, want %v", msgID, gotArgs, wantArgs)
 			}
 
 			wantRets := tt.wantRet(t, reflect.TypeOf(gotRets))
 			if !reflect.DeepEqual(gotRets, wantRets) {
-				t.Errorf("ParseMessage(%s) gotRet = %v, want %v", msgId, gotRets, wantRets)
+				t.Errorf("ParseMessage(%s) gotRet = %v, want %v", msgID, gotRets, wantRets)
 			}
 		})
 	}

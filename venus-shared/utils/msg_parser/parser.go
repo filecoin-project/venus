@@ -1,4 +1,4 @@
-package msg_parser
+package msgparser
 
 import (
 	"bytes"

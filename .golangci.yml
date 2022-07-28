@@ -46,7 +46,8 @@ linters-settings:
     min-occurrences: 6
 
 run:
-skip-dirs-use-default: false
-skip-dirs:
-  - pkg/constants$
-  - pkg/util/test$
+  skip-dirs:
+    - pkg/constants$
+    - pkg/util/test$
+  skip-files:
+    - ".*_gen\\.go$" # skip auto generated go files
