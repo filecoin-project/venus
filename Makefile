@@ -61,7 +61,8 @@ bundle-gen:
 	cd venus-devtool && go run ./bundle-gen/*.go  --dst ./../venus-shared/actors/builtin_actors_gen.go
 
 api-gen:
-	rm ./venus-shared/api/market/client_gen.go
+	find ./venus-shared/api/ -name 'client_gen.go' -delete
+	find ./venus-shared/api/ -name 'proxy_gen.go' -delete
 	cd ./venus-devtool/ && go run ./api-gen/ proxy
 	cd ./venus-devtool/ && go run ./api-gen/ client
 	cd ./venus-devtool/ && go run ./api-gen/ doc
