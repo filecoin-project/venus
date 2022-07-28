@@ -129,10 +129,9 @@ func loadMethodsMap() {
 				}
 			}
 
+			MethodsMap[actor.Code()] = methods
 			if realCode.Defined() {
 				MethodsMap[realCode] = methods
-			} else {
-				MethodsMap[actor.Code()] = methods
 			}
 		}
 	}
