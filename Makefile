@@ -11,8 +11,8 @@ MODULES:=
 
 ldflags=-X=github.com/filecoin-project/venus/pkg/constants.CurrentCommit=+git.$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))
 ifneq ($(strip $(LDFLAGS)),)
-	    ldflags+=-extldflags=$(LDFLAGS)
-	endif
+	ldflags+=-extldflags=$(LDFLAGS)
+endif
 
 GOFLAGS+=-ldflags="$(ldflags)"
 
@@ -103,7 +103,7 @@ test:
 	go test  -v ./... -integration=true -unit=false
 
 lint: $(BUILD_DEPS)
-	staticcheck ./...
+	golangci-lint run
 
 deps: $(BUILD_DEPS)
 
