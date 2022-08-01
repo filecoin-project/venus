@@ -19,6 +19,9 @@ var proxyCmd = &cli.Command{
 	Name:  "proxy",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
+		if err := util.LoadExtraInterfaceMeta(); err != nil {
+			return err
+		}
 		for _, target := range apiTargets {
 			err := genProxyForAPI(target)
 			if err != nil {
@@ -260,7 +263,6 @@ func resolveDep(typ ast.Expr, ifaceMeta *util.InterfaceMeta, deps map[string]uti
 	xident, ok := selector.X.(*ast.Ident)
 	if !ok || xident.Name == "" {
 		return nil
-
 	}
 
 	importMeta, has := ifaceMeta.File.Imports[xident.Name]

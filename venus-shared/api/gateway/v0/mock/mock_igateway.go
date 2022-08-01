@@ -290,6 +290,21 @@ func (mr *MockIGatewayMockRecorder) SupportNewAccount(arg0, arg1, arg2 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SupportNewAccount", reflect.TypeOf((*MockIGateway)(nil).SupportNewAccount), arg0, arg1, arg2)
 }
 
+// Version mocks base method.
+func (m *MockIGateway) Version(arg0 context.Context) (types.Version, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Version", arg0)
+	ret0, _ := ret[0].(types.Version)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Version indicates an expected call of Version.
+func (mr *MockIGatewayMockRecorder) Version(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Version", reflect.TypeOf((*MockIGateway)(nil).Version), arg0)
+}
+
 // WalletHas mocks base method.
 func (m *MockIGateway) WalletHas(arg0 context.Context, arg1 string, arg2 address.Address) (bool, error) {
 	m.ctrl.T.Helper()

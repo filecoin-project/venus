@@ -30,7 +30,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/venus-shared/api"
+	"github.com/filecoin-project/venus/venus-shared/api/chain"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/market/client"
 	"github.com/filecoin-project/venus/venus-shared/types/messager"
@@ -112,7 +112,7 @@ func init() {
 	addExample(network.Connected)
 	addExample(types.NetworkName("mainnet"))
 	addExample(types.SyncStateStage(1))
-	addExample(api.FullAPIVersion1)
+	addExample(chain.FullAPIVersion1)
 	addExample(types.PCHInbound)
 	addExample(time.Minute)
 	reqIDBytes, err := uuid.MarshalBinary()

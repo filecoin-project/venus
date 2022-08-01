@@ -16,7 +16,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/venus-shared/api"
+	"github.com/filecoin-project/venus/venus-shared/api/chain"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
@@ -95,7 +95,7 @@ func (na *networkAPI) NetPing(ctx context.Context, p peer.ID) (time.Duration, er
 func (na *networkAPI) Version(context.Context) (types.Version, error) {
 	return types.Version{
 		Version:    constants.UserVersion(),
-		APIVersion: api.FullAPIVersion1,
+		APIVersion: chain.FullAPIVersion1,
 	}, nil
 }
 

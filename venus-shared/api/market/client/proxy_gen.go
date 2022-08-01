@@ -55,6 +55,8 @@ type IMarketClientStruct struct {
 		MessagerGetMessage                        func(ctx context.Context, mid cid.Cid) (*types.Message, error)                                             `perm:"read"`
 		MessagerPushMessage                       func(ctx context.Context, msg *types.Message, meta *types.MessageSendSpec) (cid.Cid, error)                `perm:"write"`
 		MessagerWaitMessage                       func(ctx context.Context, mid cid.Cid) (*types.MsgLookup, error)                                           `perm:"read"`
+		Version                                   func(ctx context.Context) (types.
+								Version, error) `perm:"read"`
 	}
 }
 
@@ -168,4 +170,8 @@ func (s *IMarketClientStruct) MessagerPushMessage(p0 context.Context, p1 *types.
 }
 func (s *IMarketClientStruct) MessagerWaitMessage(p0 context.Context, p1 cid.Cid) (*types.MsgLookup, error) {
 	return s.Internal.MessagerWaitMessage(p0, p1)
+}
+func (s *IMarketClientStruct) Version(p0 context.Context) (types.
+	Version, error) {
+	return s.Internal.Version(p0)
 }

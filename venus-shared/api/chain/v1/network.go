@@ -10,6 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 
+	"github.com/filecoin-project/venus/venus-shared/api"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -26,7 +27,6 @@ type INetwork interface {
 	NetAddrsListen(ctx context.Context) (peer.AddrInfo, error)                              //perm:read
 	NetDisconnect(ctx context.Context, p peer.ID) error                                     //perm:admin
 	NetAutoNatStatus(context.Context) (types.NatInfo, error)                                //perm:read
-	Version(ctx context.Context) (types.Version, error)                                     //perm:read
 	ID(ctx context.Context) (peer.ID, error)                                                //perm:read
 
 	// NetBandwidthStats returns statistics about the nodes total bandwidth
@@ -44,4 +44,5 @@ type INetwork interface {
 	NetProtectAdd(ctx context.Context, acl []peer.ID) error    //perm:admin
 	NetProtectRemove(ctx context.Context, acl []peer.ID) error //perm:admin
 	NetProtectList(ctx context.Context) ([]peer.ID, error)     //perm:read
+	api.Version
 }

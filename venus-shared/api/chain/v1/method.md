@@ -4674,6 +4674,7 @@ Inputs:
 Response: `{}`
 
 ### Version
+Version provides information about API provider
 
 
 Perms: read

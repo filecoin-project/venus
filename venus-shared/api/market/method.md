@@ -77,6 +77,7 @@
   * [UpdateDealOnPacking](#UpdateDealOnPacking)
   * [UpdateDealStatus](#UpdateDealStatus)
   * [UpdateStorageDealStatus](#UpdateStorageDealStatus)
+  * [Version](#Version)
 
 ## Market
 
@@ -1944,4 +1945,20 @@ Inputs:
 ```
 
 Response: `{}`
+
+### Version
+Version provides information about API provider
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "Version": "string value",
+  "APIVersion": 131584
+}
+```
 

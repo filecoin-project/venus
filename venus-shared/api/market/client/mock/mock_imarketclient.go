@@ -590,3 +590,18 @@ func (mr *MockIMarketClientMockRecorder) MessagerWaitMessage(arg0, arg1 interfac
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MessagerWaitMessage", reflect.TypeOf((*MockIMarketClient)(nil).MessagerWaitMessage), arg0, arg1)
 }
+
+// Version mocks base method.
+func (m *MockIMarketClient) Version(arg0 context.Context) (types.Version, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Version", arg0)
+	ret0, _ := ret[0].(types.Version)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Version indicates an expected call of Version.
+func (mr *MockIMarketClientMockRecorder) Version(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Version", reflect.TypeOf((*MockIMarketClient)(nil).Version), arg0)
+}
