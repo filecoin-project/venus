@@ -13,6 +13,9 @@ var permCmd = &cli.Command{
 	Name:  "perm",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
+		if err := util.LoadExtraInterfaceMeta(); err != nil {
+			return err
+		}
 		for _, pair := range util.ChainAPIPairs {
 			originMetas, err := parsePermMetas(pair.Lotus.ParseOpt)
 			if err != nil {

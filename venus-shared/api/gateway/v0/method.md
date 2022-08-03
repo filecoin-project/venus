@@ -1,5 +1,7 @@
 # Groups
 
+* [Gateway](#Gateway)
+  * [Version](#Version)
 * [MarketClient](#MarketClient)
   * [IsUnsealed](#IsUnsealed)
   * [ListMarketConnectionsState](#ListMarketConnectionsState)
@@ -25,6 +27,24 @@
   * [RemoveAddress](#RemoveAddress)
   * [ResponseWalletEvent](#ResponseWalletEvent)
   * [SupportNewAccount](#SupportNewAccount)
+
+## Gateway
+
+### Version
+Version provides information about API provider
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "Version": "string value",
+  "APIVersion": 131584
+}
+```
 
 ## MarketClient
 

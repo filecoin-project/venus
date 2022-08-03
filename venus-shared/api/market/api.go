@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 
+	"github.com/filecoin-project/venus/venus-shared/api"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/gateway"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
@@ -159,4 +160,6 @@ type IMarket interface {
 	RemovePieceStorage(ctx context.Context, name string) error //perm:admin
 
 	GetPieceStorages(ctx context.Context) market.PieceStorageInfos //perm:read
+
+	api.Version
 }

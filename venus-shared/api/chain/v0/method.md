@@ -51,6 +51,8 @@
   * [StateWaitMsg](#StateWaitMsg)
   * [StateWaitMsgLimited](#StateWaitMsgLimited)
   * [VerifyEntry](#VerifyEntry)
+* [Common](#Common)
+  * [Version](#Version)
 * [Market](#Market)
   * [StateMarketParticipants](#StateMarketParticipants)
 * [MessagePool](#MessagePool)
@@ -145,7 +147,6 @@
   * [NetProtectAdd](#NetProtectAdd)
   * [NetProtectList](#NetProtectList)
   * [NetProtectRemove](#NetProtectRemove)
-  * [Version](#Version)
 * [Paychan](#Paychan)
   * [PaychAllocateLane](#PaychAllocateLane)
   * [PaychAvailableFunds](#PaychAvailableFunds)
@@ -1610,6 +1611,24 @@ Inputs:
 ```
 
 Response: `true`
+
+## Common
+
+### Version
+Version provides information about API provider
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "Version": "string value",
+  "APIVersion": 131584
+}
+```
 
 ## Market
 
@@ -4358,21 +4377,6 @@ Inputs:
 ```
 
 Response: `{}`
-
-### Version
-
-
-Perms: read
-
-Inputs: `[]`
-
-Response:
-```json
-{
-  "Version": "string value",
-  "APIVersion": 131584
-}
-```
 
 ## Paychan
 

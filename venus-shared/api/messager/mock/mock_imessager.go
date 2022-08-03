@@ -11,6 +11,7 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	internal "github.com/filecoin-project/venus/venus-shared/internal"
+	types "github.com/filecoin-project/venus/venus-shared/types"
 	messager "github.com/filecoin-project/venus/venus-shared/types/messager"
 	gomock "github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"
@@ -638,6 +639,21 @@ func (m *MockIMessager) UpdateNonce(arg0 context.Context, arg1 address.Address, 
 func (mr *MockIMessagerMockRecorder) UpdateNonce(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateNonce", reflect.TypeOf((*MockIMessager)(nil).UpdateNonce), arg0, arg1, arg2)
+}
+
+// Version mocks base method.
+func (m *MockIMessager) Version(arg0 context.Context) (types.Version, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Version", arg0)
+	ret0, _ := ret[0].(types.Version)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Version indicates an expected call of Version.
+func (mr *MockIMessagerMockRecorder) Version(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Version", reflect.TypeOf((*MockIMessager)(nil).Version), arg0)
 }
 
 // WaitMessage mocks base method.

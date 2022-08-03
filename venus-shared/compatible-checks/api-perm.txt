@@ -14,6 +14,7 @@ v0: github.com/filecoin-project/venus/venus-shared/api/chain/v0 <> github.com/fi
 	- IChainInfo.VerifyEntry
 	- IMinerState.StateMinerSectorSize
 	- IMinerState.StateMinerWorkerAddress
+	- ICommon.Version
 	- IMessagePool.GasBatchEstimateMessageGas
 	- IMessagePool.MpoolDeleteByAdress
 	- IMessagePool.MpoolPublishByAddr
@@ -39,7 +40,6 @@ v0: github.com/filecoin-project/venus/venus-shared/api/chain/v0 <> github.com/fi
 	- INetwork.NetProtectAdd
 	- INetwork.NetProtectList
 	- INetwork.NetProtectRemove
-	- INetwork.Version
 	- ISyncer.ChainSyncHandleNewTipSet
 	- ISyncer.Concurrent
 	- ISyncer.SetConcurrent

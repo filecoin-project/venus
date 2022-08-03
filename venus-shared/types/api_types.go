@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
-	"github.com/filecoin-project/venus/venus-shared/api"
 )
 
 type HeadChangeType string
@@ -195,7 +194,7 @@ type Version struct {
 	// APIVersion is a binary encoded semver version of the remote implementing
 	// this api
 	//
-	APIVersion api.Version
+	APIVersion APIVersion
 }
 
 type ChannelAvailableFunds struct {
