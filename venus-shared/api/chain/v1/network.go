@@ -10,7 +10,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 
-	"github.com/filecoin-project/venus/venus-shared/api"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -44,5 +43,4 @@ type INetwork interface {
 	NetProtectAdd(ctx context.Context, acl []peer.ID) error    //perm:admin
 	NetProtectRemove(ctx context.Context, acl []peer.ID) error //perm:admin
 	NetProtectList(ctx context.Context) ([]peer.ID, error)     //perm:read
-	api.Version
 }

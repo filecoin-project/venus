@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	"github.com/filecoin-project/venus/app/submodule/chain"
+	"github.com/filecoin-project/venus/app/submodule/common"
 	config2 "github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/dagservice"
 	"github.com/filecoin-project/venus/app/submodule/discovery"
@@ -182,7 +183,9 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.mining,
 		nd.mpool,
 		nd.paychan,
-		nd.market)
+		nd.market,
+		common.NewCommonAPI(),
+	)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "add service failed ")

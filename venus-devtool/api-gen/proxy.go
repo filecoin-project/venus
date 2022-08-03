@@ -172,16 +172,20 @@ func writeStruct(dst *bytes.Buffer, ifaceMeta *util.InterfaceMeta, astMeta *util
 		fmt.Fprintf(dst, "\t%s\n", structName(nested))
 	}
 
+	tmpBuf := &bytes.Buffer{}
 	if len(ifaceMeta.Defined) > 0 {
 		fmt.Fprint(dst, structInternalHead)
 
 		for _, meth := range ifaceMeta.Defined {
 			fmt.Fprintf(dst, "\t\t%s ", meth.Name)
 
-			err := printer.Fprint(dst, astMeta.FileSet, meth.FuncType)
+			err := printer.Fprint(tmpBuf, astMeta.FileSet, meth.FuncType)
 			if err != nil {
 				return fmt.Errorf("write func %s: %w", meth.Name, err)
 			}
+
+			dst.WriteString(strings.ReplaceAll(tmpBuf.String(), "\n\t", ""))
+			tmpBuf.Reset()
 
 			fmt.Fprintf(dst, " `perm:\"%s\"`\n", util.GetAPIMethodPerm(meth))
 		}
@@ -310,7 +314,7 @@ func writeMethodBody(dst *bytes.Buffer, typBuf *bytes.Buffer, ifaceMeta *util.In
 		}
 
 		callNames = append(callNames, names...)
-		params = append(params, strings.Join(names, ", ")+" "+typBuf.String())
+		params = append(params, strings.Join(names, ", ")+" "+strings.ReplaceAll(typBuf.String(), "\n\t", ""))
 	}
 
 	results := []string{}
@@ -331,7 +335,7 @@ func writeMethodBody(dst *bytes.Buffer, typBuf *bytes.Buffer, ifaceMeta *util.In
 		}
 
 		for i := 0; i < count; i++ {
-			results = append(results, typBuf.String())
+			results = append(results, strings.ReplaceAll(typBuf.String(), "\n\t", ""))
 		}
 	}
 

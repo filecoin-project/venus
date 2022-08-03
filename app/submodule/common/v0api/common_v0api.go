@@ -3,19 +3,20 @@ package v0api
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/venus-shared/types"
-
 	"github.com/filecoin-project/venus/venus-shared/api/chain"
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-type WrapperV1INetwork struct {
-	v1api.INetwork
+var _ v0api.ICommon = (*WrapperV1ICommon)(nil)
+
+type WrapperV1ICommon struct { //nolint
+	v1api.ICommon
 }
 
-func (w *WrapperV1INetwork) Version(ctx context.Context) (types.Version, error) {
-	ver, err := w.INetwork.Version(ctx)
+func (a *WrapperV1ICommon) Version(ctx context.Context) (types.Version, error) {
+	ver, err := a.ICommon.Version(ctx)
 	if err != nil {
 		return types.Version{}, err
 	}
@@ -24,5 +25,3 @@ func (w *WrapperV1INetwork) Version(ctx context.Context) (types.Version, error) 
 
 	return ver, nil
 }
-
-var _ v0api.INetwork = &WrapperV1INetwork{}

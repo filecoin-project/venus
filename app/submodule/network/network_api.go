@@ -15,8 +15,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 
-	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/venus-shared/api/chain"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
@@ -90,13 +88,6 @@ func (na *networkAPI) NetPing(ctx context.Context, p peer.ID) (time.Duration, er
 		return 0, fmt.Errorf("didn't get ping result: %w", ctx.Err())
 	}
 	return result.RTT, result.Error
-}
-
-func (na *networkAPI) Version(context.Context) (types.Version, error) {
-	return types.Version{
-		Version:    constants.UserVersion(),
-		APIVersion: chain.FullAPIVersion1,
-	}, nil
 }
 
 // NetAddrsListen return local p2p address info

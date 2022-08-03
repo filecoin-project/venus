@@ -149,14 +149,10 @@ type IGatewayStruct struct {
 	IMarketEventStruct
 
 	Internal struct {
-		Version func(ctx context.
-			Context) (types.
-			Version, error) `perm:"read"`
+		Version func(ctx context.Context) (types.Version, error) `perm:"read"`
 	}
 }
 
-func (s *IGatewayStruct) Version(p0 context.
-	Context) (types.
-	Version, error) {
+func (s *IGatewayStruct) Version(p0 context.Context) (types.Version, error) {
 	return s.Internal.Version(p0)
 }
