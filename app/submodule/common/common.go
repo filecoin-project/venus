@@ -11,25 +11,25 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var _ v1api.ICommon = (*CommonAPI)(nil)
+var _ v1api.ICommon = (*CommonModule)(nil)
 
-type CommonAPI struct{} // nolint
+type CommonModule struct{} // nolint
 
-func NewCommonAPI() *CommonAPI {
-	return new(CommonAPI)
+func NewCommonModule() *CommonModule {
+	return new(CommonModule)
 }
 
-func (a *CommonAPI) Version(ctx context.Context) (types.Version, error) {
+func (cm *CommonModule) Version(ctx context.Context) (types.Version, error) {
 	return types.Version{
 		Version:    constants.UserVersion(),
 		APIVersion: chain.FullAPIVersion1,
 	}, nil
 }
 
-func (a *CommonAPI) API() v1api.ICommon {
-	return a
+func (cm *CommonModule) API() v1api.ICommon {
+	return cm
 }
 
-func (a *CommonAPI) V0API() v0api.ICommon {
-	return &apiwrapper.WrapperV1ICommon{ICommon: a}
+func (cm *CommonModule) V0API() v0api.ICommon {
+	return &apiwrapper.WrapperV1ICommon{ICommon: cm}
 }
