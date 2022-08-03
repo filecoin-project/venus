@@ -13,7 +13,7 @@ import (
 
 var _ v1api.ICommon = (*CommonAPI)(nil)
 
-type CommonAPI struct{}
+type CommonAPI struct{} // nolint
 
 func NewCommonAPI() *CommonAPI {
 	return new(CommonAPI)
