@@ -1,4 +1,4 @@
-package net
+package peermgr
 
 import (
 	"context"

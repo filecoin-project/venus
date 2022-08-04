@@ -4,9 +4,9 @@ import (
 	"context"
 
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
 	"github.com/filecoin-project/venus/pkg/chainsync/types"
 	"github.com/filecoin-project/venus/pkg/consensus"
+	"github.com/filecoin-project/venus/pkg/net/exchange"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"

@@ -2,10 +2,10 @@ package main
 
 import (
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
-	"github.com/filecoin-project/venus/pkg/discovery"
 	"github.com/filecoin-project/venus/pkg/fvm"
 	"github.com/filecoin-project/venus/pkg/market"
+	"github.com/filecoin-project/venus/pkg/net"
+	"github.com/filecoin-project/venus/pkg/net/exchange"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
@@ -28,8 +28,8 @@ func main() {
 	}
 
 	if err := gen.WriteTupleEncodersToFile("./pkg/discovery/cbor_gen.go", "discovery",
-		discovery.HelloMessage{},
-		discovery.LatencyMessage{},
+		net.HelloMessage{},
+		net.LatencyMessage{},
 	); err != nil {
 		panic(err)
 	}

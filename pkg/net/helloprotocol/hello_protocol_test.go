@@ -1,7 +1,9 @@
-package discovery_test
+package helloprotocol_test
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/net/helloprotocol"
+	"github.com/filecoin-project/venus/pkg/net/peermgr"
 	"testing"
 	"time"
 
@@ -17,7 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/discovery"
 	"github.com/filecoin-project/venus/pkg/net"
 	"github.com/filecoin-project/venus/pkg/repo"
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
@@ -59,17 +60,20 @@ func TestHelloHandshake(t *testing.T) {
 	store := builder.Store()
 	mstore := builder.Mstore()
 	heavy1 := builder.AppendOn(ctx, genesisA, 1)
-	heavy2 := builder.AppendOn(ctx, heavy1, 1)
+	oldStore := copyStoreAndSetHead(ctx, store, heavy1)
 
+	heavy2 := builder.AppendOn(ctx, heavy1, 1)
+	_ = store.SetHead(ctx, heavy2)
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
-	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
+
+	//hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
 	//peer manager
 	aPeerMgr, err := mockPeerMgr(ctx, t, a)
 	require.NoError(t, err)
 
-	discovery.NewHelloProtocolHandler(a, aPeerMgr, nil, store, mstore, genesisA.Blocks()[0].Cid(), time.Second*30).Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
-	discovery.NewHelloProtocolHandler(b, aPeerMgr, nil, store, mstore, genesisA.Blocks()[0].Cid(), time.Second*30).Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
+	helloprotocol.NewHelloProtocolHandler(a, aPeerMgr, nil, oldStore, mstore, genesisA.Blocks()[0].Cid(), time.Second*30).Register(msc1.HelloCallback)
+	helloprotocol.NewHelloProtocolHandler(b, aPeerMgr, nil, store, mstore, genesisA.Blocks()[0].Cid(), time.Second*30).Register(msc2.HelloCallback)
 
 	msc1.On("HelloCallback", b.ID(), heavy2.Key()).Return()
 	msc2.On("HelloCallback", a.ID(), heavy1.Key()).Return()
@@ -121,17 +125,19 @@ func TestHelloBadGenesis(t *testing.T) {
 	genesisB := builder.AppendOn(ctx, types.UndefTipSet, 1)
 
 	heavy1 := builder.AppendOn(ctx, genesisA, 1)
+	oldStore := copyStoreAndSetHead(ctx, store, heavy1)
+
 	heavy2 := builder.AppendOn(ctx, heavy1, 1)
+	_ = store.SetHead(ctx, heavy2)
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
-	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
 	//peer manager
 	peerMgr, err := mockPeerMgr(ctx, t, a)
 	require.NoError(t, err)
 
-	discovery.NewHelloProtocolHandler(a, peerMgr, nil, store, mstore, genesisA.Blocks()[0].Cid(), time.Second*30).Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
-	discovery.NewHelloProtocolHandler(b, peerMgr, nil, store, mstore, genesisB.Blocks()[0].Cid(), time.Second*30).Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
+	helloprotocol.NewHelloProtocolHandler(a, peerMgr, nil, oldStore, mstore, genesisA.Blocks()[0].Cid(), time.Second*30).Register(msc1.HelloCallback)
+	helloprotocol.NewHelloProtocolHandler(b, peerMgr, nil, store, mstore, genesisB.Blocks()[0].Cid(), time.Second*30).Register(msc2.HelloCallback)
 
 	msc1.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 	msc2.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
@@ -166,17 +172,18 @@ func TestHelloMultiBlock(t *testing.T) {
 
 	heavy1 := builder.AppendOn(ctx, genesisTipset, 3)
 	heavy1 = builder.AppendOn(ctx, heavy1, 3)
-	heavy2 := builder.AppendOn(ctx, heavy1, 3)
+	oldStore := copyStoreAndSetHead(ctx, store, heavy1)
 
+	heavy2 := builder.AppendOn(ctx, heavy1, 3)
+	_ = store.SetHead(ctx, heavy2)
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
-	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
 	//peer manager
 	peerMgr, err := mockPeerMgr(ctx, t, a)
 	require.NoError(t, err)
 
-	discovery.NewHelloProtocolHandler(a, peerMgr, nil, store, mstore, genesisTipset.At(0).Cid(), time.Second*30).Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
-	discovery.NewHelloProtocolHandler(b, peerMgr, nil, store, mstore, genesisTipset.At(0).Cid(), time.Second*30).Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
+	helloprotocol.NewHelloProtocolHandler(a, peerMgr, nil, oldStore, mstore, genesisTipset.At(0).Cid(), time.Second*30).Register(msc1.HelloCallback)
+	helloprotocol.NewHelloProtocolHandler(b, peerMgr, nil, store, mstore, genesisTipset.At(0).Cid(), time.Second*30).Register(msc2.HelloCallback)
 
 	msc1.On("HelloCallback", b.ID(), heavy2.Key()).Return()
 	msc2.On("HelloCallback", a.ID(), heavy1.Key()).Return()
@@ -190,9 +197,15 @@ func TestHelloMultiBlock(t *testing.T) {
 	msc2.AssertExpectations(t)
 }
 
-func mockPeerMgr(ctx context.Context, t *testing.T, h host.Host) (*net.PeerMgr, error) {
+func mockPeerMgr(ctx context.Context, t *testing.T, h host.Host) (*peermgr.PeerMgr, error) {
 	addrInfo, err := net.ParseAddresses(ctx, repo.NewInMemoryRepo().Config().Bootstrap.Addresses)
 	require.NoError(t, err)
 
-	return net.NewPeerMgr(h, dht.NewDHT(ctx, h, ds.NewMapDatastore()), 10, addrInfo)
+	return peermgr.NewPeerMgr(h, dht.NewDHT(ctx, h, ds.NewMapDatastore()), 10, addrInfo)
+}
+
+func copyStoreAndSetHead(ctx context.Context, store *chain.Store, ts *types.TipSet) *chain.Store {
+	storeCopy  := *store
+	storeCopy.SetHead(ctx, ts)
+	return &storeCopy
 }

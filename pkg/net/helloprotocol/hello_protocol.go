@@ -1,4 +1,4 @@
-package discovery
+package helloprotocol
 
 import (
 	"bytes"
@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
+	"github.com/filecoin-project/venus/pkg/net/exchange"
+	"github.com/filecoin-project/venus/pkg/net/peermgr"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
-	fnet "github.com/filecoin-project/venus/pkg/net"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -60,14 +60,10 @@ type HelloProtocolHandler struct {
 	// peerDiscovered is called when new peers tell us about their chain
 	peerDiscovered PeerDiscoveredCallback
 
-	//  is used to retrieve the current heaviest tipset
-	// for filling out our hello messages.
-	getHeaviestTipSet GetTipSetFunc
-
 	//helloTimeOut is block delay
 	helloTimeOut time.Duration
 
-	peerMgr      fnet.IPeerMgr
+	peerMgr      peermgr.IPeerMgr
 	exchange     exchange.Client
 	chainStore   *chain.Store
 	messageStore *chain.MessageStore
@@ -80,7 +76,7 @@ type GetTipSetFunc func() (*types.TipSet, error)
 // NewHelloProtocolHandler creates a new instance of the hello protocol `Handler` and registers it to
 // the given `host.Host`.
 func NewHelloProtocolHandler(h host.Host,
-	peerMgr fnet.IPeerMgr,
+	peerMgr peermgr.IPeerMgr,
 	exchange exchange.Client,
 	chainStore *chain.Store,
 	messageStore *chain.MessageStore,
@@ -99,10 +95,9 @@ func NewHelloProtocolHandler(h host.Host,
 }
 
 // Register registers the handler with the network.
-func (h *HelloProtocolHandler) Register(peerDiscoveredCallback PeerDiscoveredCallback, getHeaviestTipSet GetTipSetFunc) {
+func (h *HelloProtocolHandler) Register(peerDiscoveredCallback PeerDiscoveredCallback) {
 	// register callbacks
 	h.peerDiscovered = peerDiscoveredCallback
-	h.getHeaviestTipSet = getHeaviestTipSet
 
 	// register a handle for when a new connection against someone is created
 	h.host.SetStreamHandler(helloProtocolID, h.handleNewStream)
@@ -217,10 +212,7 @@ func (h *HelloProtocolHandler) loadLocalFullTipset(ctx context.Context, tsk type
 var ErrBadGenesis = fmt.Errorf("bad genesis block")
 
 func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
-	heaviest, err := h.getHeaviestTipSet()
-	if err != nil {
-		return nil, err
-	}
+	heaviest := h.chainStore.GetHead()
 	height := heaviest.Height()
 	weight := heaviest.ParentWeight()
 
