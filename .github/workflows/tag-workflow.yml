@@ -2,9 +2,10 @@ name: build for test/release
 
 on:
   push:
-    branches: ['prep/**', 'release/**', 'test/**', master, main]
+    branches: ['prep/**', 'release/**', 'test/**', master]
     tags: ['**']
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-20.04
@@ -96,7 +97,7 @@ jobs:
 
       - name: Build
         run: |
-          go clean --modcache && make deps && make
+          go clean --modcache && make
           mkdir ./release && mv ./venus ./release
 
       - name: Zip Release
@@ -105,6 +106,14 @@ jobs:
           filename: ${{steps.vars.outputs.artifact_name}}
           path: ./release
           type: tar
+
+      - name: upload artifacts
+        if: ${{ steps.vars.outputs.pub_method == 'pushRelease' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{steps.vars.outputs.artifact_name}}
+          path: ./${{steps.vars.outputs.artifact_name}}
+          if-no-files-found: error
 
       - name: release
         id: release
@@ -144,15 +153,6 @@ jobs:
           export signed_url=`ossutil sign ${{secrets.OSS_BUCKET}}/${{steps.vars.outputs.artifact_name}} --timeout 31104000 | sed -n 1p`
           echo '::set-output name=oss_signed_url::$(signed_url)'
 
-      - name: upload artifacts
-        if: ${{ steps.vars.outputs.pub_method == 'pushRelease' }}
-        continue-on-error: true
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{steps.vars.outputs.artifact_name}}
-          path: ./release
-          if-no-files-found: error
-
       - name: push god-eye
         run: |
           export link=${{steps.vars.outputs.job_url}}
@@ -174,16 +174,3 @@ jobs:
                   --data-urlencode "description=message:${{steps.vars.outputs.git_message}}, branch:${{steps.vars.outputs.branch}}, commit:${{steps.vars.outputs.short}}, tag:${{steps.vars.outputs.github_tag}}" \
                   --data-urlencode "version=${{steps.vars.outputs.short}}"
           set -e
-
-      - name: Publish the Docker image 
-        if: ${{ steps.vars.outputs.is_tag_create == 'true' }}
-        run: |
-          make docker-buildenv
-          make docker-runtime
-          docker build . --file dockerfile --tag filvenus/venus:latest
-          docker tag filvenus/venus:latest filvenus/venus:${{steps.vars.outputs.github_tag}}
-          docker login --username=filvenus --password ${{ secrets.DOCKER_PASSWORD }} 
-          docker push filvenus/venus:${{steps.vars.outputs.github_tag}}
-          docker push filvenus/venus:latest
-          docker push filvenus/venus-runtime:latest
-          docker push filvenus/venus-buildenv:latest
