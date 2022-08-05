@@ -95,12 +95,12 @@ actor-render:
 actor-replica:
 	cd venus-devtool && go run ./compatible/actors/*.go replica --dst ../venus-shared/actors/
 
-test:
+test:test-venus-shared
 	go build -o genesis-file-server ./tools/genesis-file-server
 	go build -o gengen ./tools/gengen
 	./gengen --keypath ./fixtures/live --out-car ./fixtures/live/genesis.car --out-json  ./fixtures/live/gen.json --config ./fixtures/setup.json
 	./gengen --keypath ./fixtures/test --out-car ./fixtures/test/genesis.car --out-json  ./fixtures/test/gen.json --config ./fixtures/setup.json
-	go test  -v ./... -integration=true -unit=false
+	go test $(go list ./... | grep -v /venus-shared/)  -unit=false
 
 lint: $(BUILD_DEPS)
 	golangci-lint run

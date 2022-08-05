@@ -52,7 +52,7 @@ type LatencyMessage struct {
 // containing some information about the state of our chain,
 // and receive the same information from them. This is used to
 // initiate a chainsync and detect connections to forks.
-type HelloProtocolHandler struct {
+type HelloProtocolHandler struct { //nolint
 	host host.Host
 
 	genesis cid.Cid

@@ -3,9 +3,10 @@ package node
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/filecoin-project/venus/app/submodule/dagservice"
 	"github.com/filecoin-project/venus/app/submodule/network"
-	"time"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
@@ -126,7 +127,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.dagservice")
 	}
-
 
 	nd.syncer, err = syncer.NewSyncerSubmodule(ctx, (*builder)(b), nd.blockstore, nd.network, nd.chain, nd.circulatiingSupplyCalculator)
 	if err != nil {

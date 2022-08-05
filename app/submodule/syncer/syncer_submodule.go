@@ -147,7 +147,7 @@ func NewSyncerSubmodule(ctx context.Context,
 			return nil, err
 		}
 	}
-	
+
 	network.HelloHandler.Register(func(ci *types.ChainInfo) {
 		err := chainSyncManager.BlockProposer().SendHello(ci)
 		if err != nil {

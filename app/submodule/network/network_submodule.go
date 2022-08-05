@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/net/helloprotocol"
 	"os"
 	"runtime"
 	"time"
+
+	"github.com/filecoin-project/venus/pkg/net/helloprotocol"
 
 	"github.com/dchest/blake2b"
 	"github.com/ipfs/go-bitswap"
@@ -232,7 +233,7 @@ func NewNetworkSubmodule(ctx context.Context, chainStore *chain.Store,
 		DataTransferHost: dtNet,
 		PeerMgr:          peerMgr,
 		HelloHandler:     helloHandler,
-		cfg: config,
+		cfg:              config,
 	}, nil
 }
 

@@ -4,8 +4,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/fvm"
 	"github.com/filecoin-project/venus/pkg/market"
-	"github.com/filecoin-project/venus/pkg/net"
 	"github.com/filecoin-project/venus/pkg/net/exchange"
+	"github.com/filecoin-project/venus/pkg/net/helloprotocol"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
@@ -28,8 +28,8 @@ func main() {
 	}
 
 	if err := gen.WriteTupleEncodersToFile("./pkg/discovery/cbor_gen.go", "discovery",
-		net.HelloMessage{},
-		net.LatencyMessage{},
+		helloprotocol.HelloMessage{},
+		helloprotocol.LatencyMessage{},
 	); err != nil {
 		panic(err)
 	}

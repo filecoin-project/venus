@@ -59,6 +59,9 @@ jobs:
           ./gengen --keypath ./fixtures/live --out-car ./fixtures/live/genesis.car --out-json  ./fixtures/live/gen.json --config ./fixtures/setup.json
           ./gengen --keypath ./fixtures/test --out-car ./fixtures/test/genesis.car --out-json  ./fixtures/test/gen.json --config ./fixtures/setup.json
 
+      - name: Integration Test
+        run: go test -coverpkg=./... -coverprofile=coverage_venus_shared.txt -covermode=atomic -timeout=30m -parallel=4  -v ./venus-shared/...
+
       - name: Unit Test
         run: go test -coverpkg=./... -coverprofile=coverage_unit.txt -covermode=atomic -timeout=30m -parallel=4 -v ./... -integration=false -unit=true
 
@@ -69,7 +72,7 @@ jobs:
         uses: codecov/codecov-action@v2
         with:
           token:
-          files: ./coverage_unit.txt,./coverage_integration.txt
+          files: ./coverage_unit.txt,./coverage_integration.txt,./coverage_venus_shared.txt
           flags: unittests,integration
           name: venus
           fail_ci_if_error: true
