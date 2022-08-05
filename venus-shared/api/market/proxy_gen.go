@@ -25,8 +25,8 @@ type IMarketStruct struct {
 		ActorExist                             func(ctx context.Context, addr address.Address) (bool, error)                                                                                                                                       `perm:"read"`
 		ActorList                              func(context.Context) ([]market.User, error)                                                                                                                                                        `perm:"read"`
 		ActorSectorSize                        func(context.Context, address.Address) (abi.SectorSize, error)                                                                                                                                      `perm:"read"`
-		AddFsPieceStorage                      func(ctx context.Context, readonly bool, path string, name string) error                                                                                                                            `perm:"admin"`
-		AddS3PieceStorage                      func(ctx context.Context, readonly bool, endpoit, name, key, secret, token string) error                                                                                                            `perm:"admin"`
+		AddFsPieceStorage                      func(ctx context.Context, name string, path string, readonly bool) error                                                                                                                            `perm:"admin"`
+		AddS3PieceStorage                      func(ctx context.Context, name, endpoit, bucket, subdir, accessKey, secretKey, token string, readonly bool) error                                                                                   `perm:"admin"`
 		AssignUnPackedDeals                    func(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                                                                  `perm:"write"`
 		DagstoreGC                             func(ctx context.Context) ([]market.DagstoreShardResult, error)                                                                                                                                     `perm:"admin"`
 		DagstoreInitializeAll                  func(ctx context.Context, params market.DagstoreInitializeAllParams) (<-chan market.DagstoreInitializeAllEvent, error)                                                                              `perm:"admin"`
@@ -110,11 +110,11 @@ func (s *IMarketStruct) ActorList(p0 context.Context) ([]market.User, error) {
 func (s *IMarketStruct) ActorSectorSize(p0 context.Context, p1 address.Address) (abi.SectorSize, error) {
 	return s.Internal.ActorSectorSize(p0, p1)
 }
-func (s *IMarketStruct) AddFsPieceStorage(p0 context.Context, p1 bool, p2 string, p3 string) error {
+func (s *IMarketStruct) AddFsPieceStorage(p0 context.Context, p1 string, p2 string, p3 bool) error {
 	return s.Internal.AddFsPieceStorage(p0, p1, p2, p3)
 }
-func (s *IMarketStruct) AddS3PieceStorage(p0 context.Context, p1 bool, p2, p3, p4, p5, p6 string) error {
-	return s.Internal.AddS3PieceStorage(p0, p1, p2, p3, p4, p5, p6)
+func (s *IMarketStruct) AddS3PieceStorage(p0 context.Context, p1, p2, p3, p4, p5, p6, p7 string, p8 bool) error {
+	return s.Internal.AddS3PieceStorage(p0, p1, p2, p3, p4, p5, p6, p7, p8)
 }
 func (s *IMarketStruct) AssignUnPackedDeals(p0 context.Context, p1 abi.SectorID, p2 abi.SectorSize, p3 *market.GetDealSpec) ([]*market.DealInfoIncludePath, error) {
 	return s.Internal.AssignUnPackedDeals(p0, p1, p2, p3)

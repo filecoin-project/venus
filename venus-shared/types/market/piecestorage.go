@@ -15,4 +15,6 @@ type S3Storage struct {
 	Name     string
 	ReadOnly bool
 	EndPoint string
+	Bucket   string
+	SubDir   string
 }

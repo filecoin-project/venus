@@ -95,7 +95,7 @@ func (mr *MockIMarketMockRecorder) ActorSectorSize(arg0, arg1 interface{}) *gomo
 }
 
 // AddFsPieceStorage mocks base method.
-func (m *MockIMarket) AddFsPieceStorage(arg0 context.Context, arg1 bool, arg2, arg3 string) error {
+func (m *MockIMarket) AddFsPieceStorage(arg0 context.Context, arg1, arg2 string, arg3 bool) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddFsPieceStorage", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
@@ -109,17 +109,17 @@ func (mr *MockIMarketMockRecorder) AddFsPieceStorage(arg0, arg1, arg2, arg3 inte
 }
 
 // AddS3PieceStorage mocks base method.
-func (m *MockIMarket) AddS3PieceStorage(arg0 context.Context, arg1 bool, arg2, arg3, arg4, arg5, arg6 string) error {
+func (m *MockIMarket) AddS3PieceStorage(arg0 context.Context, arg1, arg2, arg3, arg4, arg5, arg6, arg7 string, arg8 bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddS3PieceStorage", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	ret := m.ctrl.Call(m, "AddS3PieceStorage", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddS3PieceStorage indicates an expected call of AddS3PieceStorage.
-func (mr *MockIMarketMockRecorder) AddS3PieceStorage(arg0, arg1, arg2, arg3, arg4, arg5, arg6 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) AddS3PieceStorage(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddS3PieceStorage", reflect.TypeOf((*MockIMarket)(nil).AddS3PieceStorage), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddS3PieceStorage", reflect.TypeOf((*MockIMarket)(nil).AddS3PieceStorage), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 }
 
 // AssignUnPackedDeals mocks base method.
