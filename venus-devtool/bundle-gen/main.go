@@ -10,7 +10,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/venus/venus-devtool/util"
-	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 )
 
 func main() {
@@ -22,7 +22,7 @@ func main() {
 		},
 		Action: func(ctx *cli.Context) error {
 
-			metadata, err := builtinactors.ReadEmbeddedBuiltinActorsMetadata()
+			metadata, err := actors.ReadEmbeddedBuiltinActorsMetadata()
 			if err != nil {
 				return err
 			}
@@ -50,22 +50,30 @@ func main() {
 
 var tmpl *template.Template = template.Must(template.New("actor-metadata").Parse(`
 // WARNING: This file has automatically been generated
-package builtinactors
+package actors
 import (
-	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 )
 var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMetadata{
 {{- range . }} {
 	Network: {{printf "%q" .Network}},
 	Version: {{.Version}},
-	ManifestCid: types.MustParseCid({{printf "%q" .ManifestCid}}),
+	ManifestCid: mustParseCid({{printf "%q" .ManifestCid}}),
 	Actors: map[string]cid.Cid {
 	{{- range $name, $cid := .Actors }}
-		{{printf "%q" $name}}: types.MustParseCid({{printf "%q" $cid}}),
+		{{printf "%q" $name}}: mustParseCid({{printf "%q" $cid}}),
 	{{- end }}
 	},
 },
 {{- end -}}
+}
+
+func mustParseCid(c string) cid.Cid {
+	ret, err := cid.Decode(c)
+	if err != nil {
+		panic(err)
+	}
+
+	return ret
 }
 `))

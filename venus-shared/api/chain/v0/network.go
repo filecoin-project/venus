@@ -26,7 +26,6 @@ type INetwork interface {
 	NetAddrsListen(ctx context.Context) (peer.AddrInfo, error)                              //perm:read
 	NetDisconnect(ctx context.Context, p peer.ID) error                                     //perm:admin
 	NetAutoNatStatus(context.Context) (types.NatInfo, error)                                //perm:read
-	Version(ctx context.Context) (types.Version, error)                                     //perm:read
 	ID(ctx context.Context) (peer.ID, error)                                                //perm:read
 
 	// NetBandwidthStats returns statistics about the nodes total bandwidth

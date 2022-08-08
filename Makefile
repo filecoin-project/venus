@@ -11,8 +11,8 @@ MODULES:=
 
 ldflags=-X=github.com/filecoin-project/venus/pkg/constants.CurrentCommit=+git.$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))
 ifneq ($(strip $(LDFLAGS)),)
-	    ldflags+=-extldflags=$(LDFLAGS)
-	endif
+	ldflags+=-extldflags=$(LDFLAGS)
+endif
 
 GOFLAGS+=-ldflags="$(ldflags)"
 
@@ -58,9 +58,11 @@ test-venus-shared:
 	cd venus-shared && go test -covermode=set ./...
 
 bundle-gen:
-	cd venus-devtool && go run ./bundle-gen/*.go  --dst ./../venus-shared/builtin-actors/builtin_actors_gen.go
+	cd venus-devtool && go run ./bundle-gen/*.go  --dst ./../venus-shared/actors/builtin_actors_gen.go
 
 api-gen:
+	find ./venus-shared/api/ -name 'client_gen.go' -delete
+	find ./venus-shared/api/ -name 'proxy_gen.go' -delete
 	cd ./venus-devtool/ && go run ./api-gen/ proxy
 	cd ./venus-devtool/ && go run ./api-gen/ client
 	cd ./venus-devtool/ && go run ./api-gen/ doc
@@ -101,7 +103,7 @@ test:
 	go test  -v ./... -integration=true -unit=false
 
 lint: $(BUILD_DEPS)
-	staticcheck ./...
+	golangci-lint run
 
 deps: $(BUILD_DEPS)
 

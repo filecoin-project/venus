@@ -85,6 +85,7 @@ type IMarketStruct struct {
 		MessagerPushMessage                    func(ctx context.Context, msg *types.Message, meta *types.MessageSendSpec) (cid.Cid, error)                                                                                                         `perm:"write"`
 		MessagerWaitMessage                    func(ctx context.Context, mid cid.Cid) (*types.MsgLookup, error)                                                                                                                                    `perm:"read"`
 		NetAddrsListen                         func(context.Context) (peer.AddrInfo, error)                                                                                                                                                        `perm:"read"`
+		OfflineDealImport                      func(ctx context.Context, deal market.MinerDeal) error                                                                                                                                              `perm:"admin"`
 		PaychVoucherList                       func(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error)                                                                                                                      `perm:"read"`
 		PiecesGetCIDInfo                       func(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error)                                                                                                                          `perm:"read"`
 		PiecesGetPieceInfo                     func(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error)                                                                                                                          `perm:"read"`
@@ -97,6 +98,7 @@ type IMarketStruct struct {
 		UpdateDealOnPacking                    func(ctx context.Context, miner address.Address, dealID abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error                                                                    `perm:"write"`
 		UpdateDealStatus                       func(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus market.PieceStatus) error                                                                                           `perm:"write"`
 		UpdateStorageDealStatus                func(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus, pieceState market.PieceStatus) error                                                                      `perm:"write"`
+		Version                                func(ctx context.Context) (types.Version, error)                                                                                                                                                    `perm:"read"`
 	}
 }
 
@@ -287,6 +289,9 @@ func (s *IMarketStruct) MessagerWaitMessage(p0 context.Context, p1 cid.Cid) (*ty
 func (s *IMarketStruct) NetAddrsListen(p0 context.Context) (peer.AddrInfo, error) {
 	return s.Internal.NetAddrsListen(p0)
 }
+func (s *IMarketStruct) OfflineDealImport(p0 context.Context, p1 market.MinerDeal) error {
+	return s.Internal.OfflineDealImport(p0, p1)
+}
 func (s *IMarketStruct) PaychVoucherList(p0 context.Context, p1 address.Address) ([]*paych.SignedVoucher, error) {
 	return s.Internal.PaychVoucherList(p0, p1)
 }
@@ -322,4 +327,7 @@ func (s *IMarketStruct) UpdateDealStatus(p0 context.Context, p1 address.Address,
 }
 func (s *IMarketStruct) UpdateStorageDealStatus(p0 context.Context, p1 cid.Cid, p2 storagemarket.StorageDealStatus, p3 market.PieceStatus) error {
 	return s.Internal.UpdateStorageDealStatus(p0, p1, p2, p3)
+}
+func (s *IMarketStruct) Version(p0 context.Context) (types.Version, error) {
+	return s.Internal.Version(p0)
 }

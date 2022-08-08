@@ -7,7 +7,6 @@ import (
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/api/chain/v1/mock"
-	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -48,7 +47,7 @@ func TestLoadBuiltinActors(t *testing.T) {
 
 		assert.Nil(t, LoadBuiltinActors(ctx, full))
 
-		for _, actorsMetadata := range builtinactors.EmbeddedBuiltinActorsMetadata {
+		for _, actorsMetadata := range actors.EmbeddedBuiltinActorsMetadata {
 			if actorsMetadata.Network == string(nn) {
 				for name, actor := range actorsMetadata.Actors {
 					res, ok := actors.GetActorCodeID(actorsMetadata.Version, name)

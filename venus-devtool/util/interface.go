@@ -101,6 +101,18 @@ func (iv *ifaceMetaVisitor) Visit(node ast.Node) ast.Visitor {
 				FuncType: meth,
 				Comments: iv.comments.Filter(m).Comments(),
 			})
+		case *ast.SelectorExpr:
+			methodName := meth.Sel.Name
+			methodMeta := extraInterfaceMethodMeta[methodName]
+			ifaceMeta.Defined = append(ifaceMeta.Defined, InterfaceMethodMeta{
+				Name:     methodName,
+				Node:     m,
+				FuncType: methodMeta.FuncType,
+				Comments: methodMeta.Comments,
+			})
+			for k, importMeta := range extraImports[methodName] {
+				ifaceMeta.File.Imports[k] = importMeta
+			}
 		}
 	}
 
@@ -208,4 +220,28 @@ func ParseInterfaceMetas(opt InterfaceParseOption) ([]*InterfaceMeta, *ASTMeta, 
 		Location: location,
 		FileSet:  fset,
 	}, nil
+}
+
+var extraInterfaceMethodMeta = make(map[string]InterfaceMethodMeta)
+var extraImports = make(map[string]map[string]ImportMeta)
+
+func LoadExtraInterfaceMeta() error {
+	opt := InterfaceParseOption{
+		ImportPath:     "github.com/filecoin-project/venus/venus-shared/api",
+		Included:       []string{"Version"},
+		ResolveImports: true,
+	}
+
+	ifaceMetas, _, err := ParseInterfaceMetas(opt)
+	if err != nil {
+		return err
+	}
+	for _, meta := range ifaceMetas {
+		for _, methodMeta := range meta.Defined {
+			extraInterfaceMethodMeta[methodMeta.Name] = methodMeta
+			extraImports[methodMeta.Name] = meta.File.Imports
+		}
+	}
+
+	return nil
 }

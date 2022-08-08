@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 
+	"github.com/filecoin-project/venus/venus-shared/api"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/gateway"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
@@ -52,6 +53,7 @@ type IMarket interface {
 	PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error)   //perm:read
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error //perm:admin
+	OfflineDealImport(ctx context.Context, deal market.MinerDeal) error          //perm:admin
 	DealsConsiderOnlineStorageDeals(context.Context) (bool, error)               //perm:admin
 	DealsSetConsiderOnlineStorageDeals(context.Context, bool) error              //perm:admin
 	DealsConsiderOnlineRetrievalDeals(context.Context) (bool, error)             //perm:admin
@@ -158,4 +160,6 @@ type IMarket interface {
 	RemovePieceStorage(ctx context.Context, name string) error //perm:admin
 
 	GetPieceStorages(ctx context.Context) market.PieceStorageInfos //perm:read
+
+	api.Version
 }

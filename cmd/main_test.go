@@ -20,7 +20,7 @@ func TestRequiresDaemon(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, requiresDaemon(reqWithoutDaemon))
 
-	reqSubcmdDaemon, err := cmds.NewRequest(context.Background(), []string{"leb128", "decode"}, nil, []string{"A=="}, nil, RootCmd)
+	reqSubcmdDaemon, err := cmds.NewRequest(context.Background(), []string{"version"}, nil, []string{}, nil, RootCmd)
 	assert.NoError(t, err)
 	assert.False(t, requiresDaemon(reqSubcmdDaemon))
 }

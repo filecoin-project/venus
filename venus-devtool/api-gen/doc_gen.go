@@ -23,6 +23,9 @@ var ctxElem = reflect.TypeOf((*context.Context)(nil)).Elem()
 var docGenCmd = &cli.Command{
 	Name: "doc",
 	Action: func(cctx *cli.Context) error {
+		if err := util.LoadExtraInterfaceMeta(); err != nil {
+			return err
+		}
 		for _, t := range apiTargets {
 			if err := genDocForAPI(t); err != nil {
 				return err

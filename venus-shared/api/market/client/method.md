@@ -38,6 +38,7 @@
   * [MessagerGetMessage](#MessagerGetMessage)
   * [MessagerPushMessage](#MessagerPushMessage)
   * [MessagerWaitMessage](#MessagerWaitMessage)
+  * [Version](#Version)
 
 ## MarketClient
 
@@ -1243,6 +1244,22 @@ Response:
     }
   ],
   "Height": 10101
+}
+```
+
+### Version
+Version provides information about API provider
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "Version": "string value",
+  "APIVersion": 131584
 }
 ```
 

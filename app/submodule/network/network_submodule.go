@@ -39,7 +39,6 @@ import (
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
 
-	apiwrapper "github.com/filecoin-project/venus/app/submodule/network/v0api"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/discovery"
 	"github.com/filecoin-project/venus/pkg/net"
@@ -86,7 +85,7 @@ func (networkSubmodule *NetworkSubmodule) API() v1api.INetwork {
 }
 
 func (networkSubmodule *NetworkSubmodule) V0API() v0api.INetwork {
-	return &apiwrapper.WrapperV1INetwork{INetwork: &networkAPI{network: networkSubmodule}}
+	return &networkAPI{network: networkSubmodule}
 }
 
 func (networkSubmodule *NetworkSubmodule) Stop(ctx context.Context) {

@@ -116,9 +116,7 @@ func SetNetParams(params *config.NetworkParamsConfig) {
 	}
 	if len(params.ReplaceProofTypes) > 0 {
 		newSupportedTypes := make([]abi.RegisteredSealProof, len(params.ReplaceProofTypes))
-		for idx, proofType := range params.ReplaceProofTypes {
-			newSupportedTypes[idx] = proofType
-		}
+		copy(newSupportedTypes, params.ReplaceProofTypes)
 		// Switch reference rather than mutate in place to avoid concurrent map mutation (in tests).
 		policy.SetSupportedProofTypes(newSupportedTypes...)
 	}

@@ -1,4 +1,4 @@
-package builtinactors
+package actors
 
 import (
 	"archive/tar"
@@ -18,46 +18,55 @@ import (
 	"github.com/ipld/go-car"
 
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
-	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
-	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-//go:embed actors/*.tar.zst
+//go:embed builtin-actors-code/*.tar.zst
 var embeddedBuiltinActorReleases embed.FS
 
 // NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
-var BundleOverrides map[actors.Version]string
+var BundleOverrides map[Version]string
 
 var NetworkBundle = "mainnet"
 
 func init() {
 	if BundleOverrides == nil {
-		BundleOverrides = make(map[actors.Version]string)
+		BundleOverrides = make(map[Version]string)
 	}
 
-	for _, av := range actors.Versions {
+	for _, av := range Versions {
 		path := os.Getenv(fmt.Sprintf("VENUS_BUILTIN_ACTORS_V%d_BUNDLE", av))
 		if path == "" {
 			continue
 		}
-		BundleOverrides[actors.Version(av)] = path
+		BundleOverrides[Version(av)] = path
 	}
 	if err := loadManifests(NetworkBundle); err != nil {
 		panic(err)
 	}
 }
 
-func SetNetworkBundle(networkType types.NetworkType) error {
+// NetworkMainnet   NetworkType = 0x1
+// Network2k        NetworkType = 0x2
+// NetworkCalibnet  NetworkType = 0x4
+// NetworkInterop   NetworkType = 0x6
+// NetworkForce     NetworkType = 0x7
+// NetworkButterfly NetworkType = 0x8
+// Avoid import cycle, we use concrete values
+func SetNetworkBundle(networkType int) error {
 	networkBundle := ""
 	switch networkType {
-	case types.Network2k, types.NetworkForce:
+	// case types.Network2k, types.NetworkForce:
+	case 0x2, 0x7:
 		networkBundle = "devnet"
-	case types.NetworkButterfly:
+	// case types.NetworkButterfly:
+	case 0x8:
 		networkBundle = "butterflynet"
-	case types.NetworkInterop:
+	// case types.NetworkInterop:
+	case 0x6:
 		networkBundle = "caterpillarnet"
-	case types.NetworkCalibnet:
+	// case types.NetworkCalibnet:
+	case 0x4:
 		networkBundle = "calibrationnet"
 	default:
 		networkBundle = "mainnet"
@@ -79,7 +88,7 @@ func UseNetworkBundle(netw string) error {
 }
 
 func loadManifests(netw string) error {
-	overridden := make(map[actors.Version]struct{})
+	overridden := make(map[Version]struct{})
 	var newMetadata []*BuiltinActorsMetadata
 	// First, prefer overrides.
 	for av, path := range BundleOverrides {
@@ -107,10 +116,10 @@ func loadManifests(netw string) error {
 		newMetadata = append(newMetadata, meta)
 	}
 
-	actors.ClearManifests()
+	ClearManifests()
 
 	for _, meta := range newMetadata {
-		actors.RegisterManifest(meta.Version, meta.ManifestCid, meta.Actors)
+		RegisterManifest(meta.Version, meta.ManifestCid, meta.Actors)
 	}
 
 	return nil
@@ -118,7 +127,7 @@ func loadManifests(netw string) error {
 
 type BuiltinActorsMetadata struct { // nolint
 	Network     string
-	Version     actors.Version
+	Version     Version
 	ManifestCid cid.Cid
 	Actors      map[string]cid.Cid
 }
@@ -127,7 +136,7 @@ type BuiltinActorsMetadata struct { // nolint
 // There should be no need to call this method as the result is cached in the
 // `EmbeddedBuiltinActorsMetadata` variable on `make gen`.
 func ReadEmbeddedBuiltinActorsMetadata() ([]*BuiltinActorsMetadata, error) {
-	files, err := embeddedBuiltinActorReleases.ReadDir("actors")
+	files, err := embeddedBuiltinActorReleases.ReadDir("builtin-actors-code")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read embedded bundle directory: %s", err)
 	}
@@ -167,7 +176,7 @@ func readEmbeddedBuiltinActorsMetadata(bundle string) ([]*BuiltinActorsMetadata,
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse actors version from bundle '%q': %s", bundle, err)
 	}
-	fi, err := embeddedBuiltinActorReleases.Open(fmt.Sprintf("actors/%s", bundle))
+	fi, err := embeddedBuiltinActorReleases.Open(fmt.Sprintf("builtin-actors-code/%s", bundle))
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +215,7 @@ func readEmbeddedBuiltinActorsMetadata(bundle string) ([]*BuiltinActorsMetadata,
 		}
 		bundles = append(bundles, &BuiltinActorsMetadata{
 			Network:     name,
-			Version:     actors.Version(version),
+			Version:     Version(version),
 			ManifestCid: root,
 			Actors:      actorCids,
 		})
@@ -235,12 +244,12 @@ func readBundleManifest(r io.Reader) (cid.Cid, map[string]cid.Cid, error) {
 		return cid.Undef, nil, fmt.Errorf("expected one root when loading actors bundle, got %d", len(hdr.Roots))
 	}
 	root := hdr.Roots[0]
-	actorCids, err := actors.ReadManifest(context.Background(), adt.WrapStore(context.Background(), cbor.NewCborStore(bs)), root)
+	actorCids, err := ReadManifest(context.Background(), adt.WrapStore(context.Background(), cbor.NewCborStore(bs)), root)
 	if err != nil {
 		return cid.Undef, nil, err
 	}
 
-	// Make sure we have all the actors.
+	// Make sure we have all the
 	for name, c := range actorCids {
 		if has, err := bs.Has(context.Background(), c); err != nil {
 			return cid.Undef, nil, fmt.Errorf("got an error when checking that the bundle has the actor %q: %w", name, err)
@@ -253,8 +262,8 @@ func readBundleManifest(r io.Reader) (cid.Cid, map[string]cid.Cid, error) {
 }
 
 // GetEmbeddedBuiltinActorsBundle returns the builtin-actors bundle for the given actors version.
-func GetEmbeddedBuiltinActorsBundle(version actors.Version) ([]byte, bool) {
-	fi, err := embeddedBuiltinActorReleases.Open(fmt.Sprintf("actors/v%d.tar.zst", version))
+func GetEmbeddedBuiltinActorsBundle(version Version) ([]byte, bool) {
+	fi, err := embeddedBuiltinActorReleases.Open(fmt.Sprintf("builtin-actors-code/v%d.tar.zst", version))
 	if err != nil {
 		return nil, false
 	}

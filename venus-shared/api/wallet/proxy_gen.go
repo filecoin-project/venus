@@ -216,7 +216,7 @@ type ICommonStruct struct {
 		AuthVerify  func(ctx context.Context, token string) ([]auth.Permission, error) `perm:"read"`
 		LogList     func(context.Context) ([]string, error)                            `perm:"read"`
 		LogSetLevel func(context.Context, string, string) error                        `perm:"write"`
-		Version     func(context.Context) (types.Version, error)                       `perm:"read"`
+		Version     func(ctx context.Context) (types.Version, error)                   `perm:"read"`
 	}
 }
 

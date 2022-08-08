@@ -971,6 +971,20 @@ func (mr *MockIMarketMockRecorder) NetAddrsListen(arg0 interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetAddrsListen", reflect.TypeOf((*MockIMarket)(nil).NetAddrsListen), arg0)
 }
 
+// OfflineDealImport mocks base method.
+func (m *MockIMarket) OfflineDealImport(arg0 context.Context, arg1 market.MinerDeal) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "OfflineDealImport", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// OfflineDealImport indicates an expected call of OfflineDealImport.
+func (mr *MockIMarketMockRecorder) OfflineDealImport(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OfflineDealImport", reflect.TypeOf((*MockIMarket)(nil).OfflineDealImport), arg0, arg1)
+}
+
 // PaychVoucherList mocks base method.
 func (m *MockIMarket) PaychVoucherList(arg0 context.Context, arg1 address.Address) ([]*paych.SignedVoucher, error) {
 	m.ctrl.T.Helper()
@@ -1143,4 +1157,19 @@ func (m *MockIMarket) UpdateStorageDealStatus(arg0 context.Context, arg1 cid.Cid
 func (mr *MockIMarketMockRecorder) UpdateStorageDealStatus(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateStorageDealStatus", reflect.TypeOf((*MockIMarket)(nil).UpdateStorageDealStatus), arg0, arg1, arg2, arg3)
+}
+
+// Version mocks base method.
+func (m *MockIMarket) Version(arg0 context.Context) (types.Version, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Version", arg0)
+	ret0, _ := ret[0].(types.Version)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Version indicates an expected call of Version.
+func (mr *MockIMarketMockRecorder) Version(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Version", reflect.TypeOf((*MockIMarket)(nil).Version), arg0)
 }

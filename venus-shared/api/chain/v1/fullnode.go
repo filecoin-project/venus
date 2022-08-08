@@ -11,4 +11,5 @@ type FullNode interface {
 	IPaychan
 	ISyncer
 	IWallet
+	ICommon
 }

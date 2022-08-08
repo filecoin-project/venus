@@ -573,7 +573,6 @@ type INetworkStruct struct {
 		NetProtectAdd               func(ctx context.Context, acl []peer.ID) error                         `perm:"admin"`
 		NetProtectList              func(ctx context.Context) ([]peer.ID, error)                           `perm:"read"`
 		NetProtectRemove            func(ctx context.Context, acl []peer.ID) error                         `perm:"admin"`
-		Version                     func(ctx context.Context) (types.Version, error)                       `perm:"read"`
 	}
 }
 
@@ -631,9 +630,6 @@ func (s *INetworkStruct) NetProtectList(p0 context.Context) ([]peer.ID, error) {
 }
 func (s *INetworkStruct) NetProtectRemove(p0 context.Context, p1 []peer.ID) error {
 	return s.Internal.NetProtectRemove(p0, p1)
-}
-func (s *INetworkStruct) Version(p0 context.Context) (types.Version, error) {
-	return s.Internal.Version(p0)
 }
 
 type IPaychanStruct struct {
@@ -802,6 +798,16 @@ func (s *IWalletStruct) WalletSignMessage(p0 context.Context, p1 address.Address
 }
 func (s *IWalletStruct) WalletState(p0 context.Context) int { return s.Internal.WalletState(p0) }
 
+type ICommonStruct struct {
+	Internal struct {
+		Version func(ctx context.Context) (types.Version, error) `perm:"read"`
+	}
+}
+
+func (s *ICommonStruct) Version(p0 context.Context) (types.Version, error) {
+	return s.Internal.Version(p0)
+}
+
 type FullNodeStruct struct {
 	IBlockStoreStruct
 	IChainStruct
@@ -813,4 +819,5 @@ type FullNodeStruct struct {
 	IPaychanStruct
 	ISyncerStruct
 	IWalletStruct
+	ICommonStruct
 }
