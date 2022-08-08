@@ -33,13 +33,6 @@ jobs:
           cd /tmp/statediff
           go install ./cmd/statediff || exit 0
 
-      - name: dep
-        env:
-          GOPROXY: "https://proxy.golang.org,direct"
-          GO111MODULE: "on"
-        run: |
-          make deps
-
       - name: Build
         env:
           GOPROXY: "https://proxy.golang.org,direct"
