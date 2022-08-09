@@ -22,7 +22,6 @@ import (
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
-	"github.com/filecoin-project/venus/app/submodule/discovery"
 	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/pkg/beacon"
 	"github.com/filecoin-project/venus/pkg/chain"
@@ -42,10 +41,9 @@ var log = logging.Logger("sync.module") // nolint: deadcode
 
 // SyncerSubmodule enhances the node with chain syncing capabilities
 type SyncerSubmodule struct { //nolint
-	BlockstoreModule   *blockstore.BlockstoreSubmodule
-	ChainModule        *chain2.ChainSubmodule
-	NetworkModule      *network.NetworkSubmodule
-	DiscoverySubmodule *discovery.DiscoverySubmodule
+	BlockstoreModule *blockstore.BlockstoreSubmodule
+	ChainModule      *chain2.ChainSubmodule
+	NetworkModule    *network.NetworkSubmodule
 
 	// todo: use the 'Topic' and 'Subscription' defined in
 	//  "github.com/libp2p/go-libp2p-pubsub" replace which defined in
@@ -82,7 +80,6 @@ func NewSyncerSubmodule(ctx context.Context,
 	config syncerConfig,
 	blockstore *blockstore.BlockstoreSubmodule,
 	network *network.NetworkSubmodule,
-	discovery *discovery.DiscoverySubmodule,
 	chn *chain2.ChainSubmodule,
 	circulatingSupplyCalculator chain.ICirculatingSupplyCalcualtor,
 ) (*SyncerSubmodule, error) {
@@ -134,18 +131,10 @@ func NewSyncerSubmodule(ctx context.Context,
 	chn.Waiter.Stmgr = stmgr
 
 	chainSyncManager, err := chainsync.NewManager(stmgr, blkValid, chn, nodeChainSelector,
-		blockstore.Blockstore, discovery.ExchangeClient, config.ChainClock(), chn.Fork)
+		blockstore.Blockstore, network.ExchangeClient, config.ChainClock(), chn.Fork)
 	if err != nil {
 		return nil, err
 	}
-
-	discovery.PeerDiscoveryCallbacks = append(discovery.PeerDiscoveryCallbacks, func(ci *types.ChainInfo) {
-		err := chainSyncManager.BlockProposer().SendHello(ci)
-		if err != nil {
-			log.Errorf("error receiving chain info from hello %s: %s", ci, err)
-			return
-		}
-	})
 
 	var (
 		slashFilter slashfilter.ISlashFilter
@@ -159,18 +148,25 @@ func NewSyncerSubmodule(ctx context.Context,
 		}
 	}
 
+	network.HelloHandler.Register(func(ci *types.ChainInfo) {
+		err := chainSyncManager.BlockProposer().SendHello(ci)
+		if err != nil {
+			log.Errorf("error receiving chain info from hello %s: %s", ci, err)
+			return
+		}
+	})
+
 	return &SyncerSubmodule{
-		Stmgr:              stmgr,
-		BlockstoreModule:   blockstore,
-		ChainModule:        chn,
-		NetworkModule:      network,
-		DiscoverySubmodule: discovery,
-		SlashFilter:        slashFilter,
-		ChainSelector:      nodeChainSelector,
-		ChainSyncManager:   &chainSyncManager,
-		Drand:              chn.Drand,
-		SyncProvider:       *NewChainSyncProvider(&chainSyncManager),
-		BlockValidator:     blkValid,
+		Stmgr:            stmgr,
+		BlockstoreModule: blockstore,
+		ChainModule:      chn,
+		NetworkModule:    network,
+		SlashFilter:      slashFilter,
+		ChainSelector:    nodeChainSelector,
+		ChainSyncManager: &chainSyncManager,
+		Drand:            chn.Drand,
+		SyncProvider:     *NewChainSyncProvider(&chainSyncManager),
+		BlockValidator:   blkValid,
 	}, nil
 }
 
@@ -216,7 +212,7 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 				bm.Header.Height, bm.Header.Cid(), delay.String())
 		}
 
-		blkSvc := blockservice.New(syncer.NetworkModule.Blockstore, syncer.NetworkModule.Bitswap)
+		blkSvc := blockservice.New(syncer.BlockstoreModule.Blockstore, syncer.NetworkModule.Bitswap)
 
 		if _, err := syncer.NetworkModule.FetchMessagesByCids(ctx, blkSvc, bm.BlsMessages); err != nil {
 			log.Errorf("fetch block bls messages failed:%s", err.Error())

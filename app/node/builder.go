@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/venus/app/submodule/dagservice"
+	"github.com/filecoin-project/venus/app/submodule/network"
+
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
 	"github.com/pkg/errors"
@@ -13,13 +16,10 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/app/submodule/common"
 	config2 "github.com/filecoin-project/venus/app/submodule/config"
-	"github.com/filecoin-project/venus/app/submodule/dagservice"
-	"github.com/filecoin-project/venus/app/submodule/discovery"
 	"github.com/filecoin-project/venus/app/submodule/market"
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
 	"github.com/filecoin-project/venus/app/submodule/multisig"
-	"github.com/filecoin-project/venus/app/submodule/network"
 	"github.com/filecoin-project/venus/app/submodule/paych"
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
 	"github.com/filecoin-project/venus/app/submodule/syncer"
@@ -113,7 +113,12 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.blockstore")
 	}
 
-	nd.network, err = network.NewNetworkSubmodule(ctx, (*builder)(b))
+	nd.chain, err = chain.NewChainSubmodule(ctx, (*builder)(b), nd.circulatiingSupplyCalculator)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build node.Chain")
+	}
+
+	nd.network, err = network.NewNetworkSubmodule(ctx, nd.chain.ChainReader, nd.chain.MessageStore, (*builder)(b))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Network")
 	}
@@ -123,18 +128,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.dagservice")
 	}
 
-	nd.chain, err = chain.NewChainSubmodule(ctx, (*builder)(b), nd.circulatiingSupplyCalculator)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.Chain")
-	}
-
-	// todo change builder interface to read config
-	nd.discovery, err = discovery.NewDiscoverySubmodule(ctx, (*builder)(b), nd.network, nd.chain.ChainReader, nd.chain.MessageStore)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.discovery")
-	}
-
-	nd.syncer, err = syncer.NewSyncerSubmodule(ctx, (*builder)(b), nd.blockstore, nd.network, nd.discovery, nd.chain, nd.circulatiingSupplyCalculator)
+	nd.syncer, err = syncer.NewSyncerSubmodule(ctx, (*builder)(b), nd.blockstore, nd.network, nd.chain, nd.circulatiingSupplyCalculator)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}
@@ -177,7 +171,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.blockstore,
 		nd.network,
 		nd.blockservice,
-		nd.discovery,
 		nd.chain,
 		nd.syncer,
 		nd.wallet,

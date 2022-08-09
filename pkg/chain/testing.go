@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/filecoin-project/venus/pkg/net/exchange"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 
 	"github.com/ipld/go-car"
@@ -26,7 +27,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/venus/fixtures/assets"
-	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"

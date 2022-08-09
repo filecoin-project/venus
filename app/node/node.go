@@ -16,7 +16,6 @@ import (
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	configModule "github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/dagservice"
-	"github.com/filecoin-project/venus/app/submodule/discovery"
 	"github.com/filecoin-project/venus/app/submodule/market"
 	"github.com/filecoin-project/venus/app/submodule/mining"
 	"github.com/filecoin-project/venus/app/submodule/mpool"
@@ -75,7 +74,6 @@ type Node struct {
 	blockstore   *blockstore.BlockstoreSubmodule
 	blockservice *dagservice.DagServiceSubmodule
 	network      *network2.NetworkSubmodule
-	discovery    *discovery.DiscoverySubmodule
 
 	//
 	// Subsystems
@@ -125,10 +123,6 @@ func (node *Node) MultiSig() *multisig.MultiSigSubmodule {
 	return node.multiSig
 }
 
-func (node *Node) Discovery() *discovery.DiscoverySubmodule {
-	return node.discovery
-}
-
 func (node *Node) Network() *network2.NetworkSubmodule {
 	return node.network
 }
@@ -172,11 +166,6 @@ func (node *Node) Start(ctx context.Context) error {
 	var syncCtx context.Context
 	syncCtx, node.syncer.CancelChainSync = context.WithCancel(context.Background())
 
-	// Start node discovery
-	if err = node.discovery.Start(node.offlineMode); err != nil {
-		return err
-	}
-
 	// start syncer module to receive new blocks and start sync to latest height
 	err = node.syncer.Start(syncCtx)
 	if err != nil {
@@ -194,6 +183,12 @@ func (node *Node) Start(ctx context.Context) error {
 		return err
 	}
 
+	// network should start late,
+	err = node.network.Start(syncCtx)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -206,10 +201,6 @@ func (node *Node) Stop(ctx context.Context) {
 	// stop syncer submodule
 	log.Infof("shutting down chain syncer...")
 	node.syncer.Stop(ctx)
-
-	// Stop discovery submodule
-	log.Infof("shutting down discovery...")
-	node.discovery.Stop()
 
 	// Stop network submodule
 	log.Infof("shutting down network...")

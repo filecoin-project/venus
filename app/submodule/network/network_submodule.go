@@ -8,6 +8,9 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/filecoin-project/venus/pkg/net/helloprotocol"
+
+	"github.com/dchest/blake2b"
 	"github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
 	blocks "github.com/ipfs/go-block-format"
@@ -29,6 +32,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
+	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	yamux "github.com/libp2p/go-libp2p-yamux"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
@@ -39,12 +43,13 @@ import (
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
 
+	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/discovery"
 	"github.com/filecoin-project/venus/pkg/net"
+	filexchange "github.com/filecoin-project/venus/pkg/net/exchange"
+	"github.com/filecoin-project/venus/pkg/net/peermgr"
 	"github.com/filecoin-project/venus/pkg/repo"
 	appstate "github.com/filecoin-project/venus/pkg/state"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
@@ -72,11 +77,15 @@ type NetworkSubmodule struct { //nolint
 
 	GraphExchange graphsync.GraphExchange
 
-	Blockstore blockstoreutil.Blockstore
-	PeerMgr    net.IPeerMgr
+	HelloHandler *helloprotocol.HelloProtocolHandler
+
+	PeerMgr        peermgr.IPeerMgr
+	ExchangeClient filexchange.Client
 	//data transfer
 	DataTransfer     datatransfer.Manager
 	DataTransferHost dtnet.DataTransferNetwork
+
+	cfg networkConfig
 }
 
 //API create a new network implement
@@ -111,10 +120,10 @@ type networkConfig interface {
 }
 
 // NewNetworkSubmodule creates a new network submodule.
-func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSubmodule, error) {
+func NewNetworkSubmodule(ctx context.Context, chainStore *chain.Store,
+	messageStore *chain.MessageStore, config networkConfig) (*NetworkSubmodule, error) {
 	bandwidthTracker := p2pmetrics.NewBandwidthCounter()
 	libP2pOpts := append(config.Libp2pOpts(), libp2p.BandwidthReporter(bandwidthTracker), makeSmuxTransportOption())
-
 	var networkName string
 	var err error
 	if !config.Repo().Config().NetworkParams.DevNet {
@@ -134,8 +143,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSub
 	}
 
 	// set up host
-	var pubsubMessageSigning bool
-	var peerMgr net.IPeerMgr
+	var peerMgr peermgr.IPeerMgr
 
 	rawHost, err := buildHost(ctx, config, libP2pOpts, config.Repo().Config())
 	if err != nil {
@@ -148,23 +156,14 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSub
 	}
 
 	peerHost := routedHost(rawHost, router)
-
-	// require message signing in online mode when we have priv key
-	pubsubMessageSigning = true
-
 	period, err := time.ParseDuration(config.Repo().Config().Bootstrap.Period)
 	if err != nil {
 		return nil, err
 	}
 
-	peerMgr, err = net.NewPeerMgr(peerHost, router.(*dht.IpfsDHT), period, bootNodes)
+	peerMgr, err = peermgr.NewPeerMgr(peerHost, router.(*dht.IpfsDHT), period, bootNodes)
 	if err != nil {
 		return nil, err
-	}
-
-	// do NOT start `peerMgr` in `offline` mode
-	if !config.OfflineMode() {
-		go peerMgr.Run(ctx)
 	}
 
 	// Set up libp2p network
@@ -183,8 +182,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSub
 		//  goroutine, 8K -> 16K
 		libp2pps.WithValidateThrottle(16 << 10),
 
-		libp2pps.WithMessageSigning(pubsubMessageSigning),
-		libp2pps.WithDiscovery(&discovery.NoopDiscovery{}),
+		libp2pps.WithMessageIdFn(HashMsgId),
 	}
 	gsub, err := libp2pps.NewGossipSub(ctx, peerHost, options...)
 	if err != nil {
@@ -218,7 +216,8 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSub
 	}
 	// build network
 	network := net.New(peerHost, rawHost, net.NewRouter(router), bandwidthTracker)
-
+	exchangeClient := filexchange.NewClient(peerHost, peerMgr)
+	helloHandler := helloprotocol.NewHelloProtocolHandler(peerHost, peerMgr, exchangeClient, chainStore, messageStore, config.GenesisCid(), time.Duration(config.Repo().Config().NetworkParams.BlockDelay)*time.Second)
 	// build the network submdule
 	return &NetworkSubmodule{
 		NetworkName:      networkName,
@@ -228,12 +227,22 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig) (*NetworkSub
 		Pubsub:           gsub,
 		Bitswap:          bswap,
 		GraphExchange:    gsync,
+		ExchangeClient:   exchangeClient,
 		Network:          network,
 		DataTransfer:     dt,
 		DataTransferHost: dtNet,
 		PeerMgr:          peerMgr,
-		Blockstore:       config.Repo().Datastore(),
+		HelloHandler:     helloHandler,
+		cfg:              config,
 	}, nil
+}
+
+func (networkSubmodule *NetworkSubmodule) Start(ctx context.Context) error {
+	// do NOT start `peerMgr` in `offline` mode
+	if !networkSubmodule.cfg.OfflineMode() {
+		go networkSubmodule.PeerMgr.Run(ctx)
+	}
+	return nil
 }
 
 func (networkSubmodule *NetworkSubmodule) FetchMessagesByCids(
@@ -406,4 +415,9 @@ func makeSmuxTransportOption() libp2p.Option {
 	}
 
 	return libp2p.Muxer(yamuxID, &ymxtpt)
+}
+
+func HashMsgId(m *pubsub_pb.Message) string {
+	hash := blake2b.Sum256(m.Data)
+	return string(hash[:])
 }

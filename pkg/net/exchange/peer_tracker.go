@@ -10,7 +10,7 @@ import (
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/filecoin-project/venus/pkg/net"
+	"github.com/filecoin-project/venus/pkg/net/peermgr"
 )
 
 type peerStats struct {
@@ -26,23 +26,23 @@ type bsPeerTracker struct {
 	peers         map[peer.ID]*peerStats
 	avgGlobalTime time.Duration
 
-	pmgr net.IPeerMgr
+	pmgr peermgr.IPeerMgr
 }
 
-func newPeerTracker(h host.Host, pmgr net.IPeerMgr) *bsPeerTracker {
+func newPeerTracker(h host.Host, pmgr peermgr.IPeerMgr) *bsPeerTracker {
 	bsPt := &bsPeerTracker{
 		peers: make(map[peer.ID]*peerStats),
 		pmgr:  pmgr,
 	}
 
-	sub, err := h.EventBus().Subscribe(new(net.NewFilPeer))
+	sub, err := h.EventBus().Subscribe(new(peermgr.NewFilPeer))
 	if err != nil {
 		panic(err)
 	}
 
 	go func() {
 		for newPeer := range sub.Out() {
-			bsPt.addPeer(newPeer.(net.NewFilPeer).Id)
+			bsPt.addPeer(newPeer.(peermgr.NewFilPeer).Id)
 		}
 	}()
 	return bsPt

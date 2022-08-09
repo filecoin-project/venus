@@ -11,6 +11,7 @@ require (
 	github.com/ahmetb/go-linq/v3 v3.2.0
 	github.com/awnumar/memguard v0.22.2
 	github.com/bluele/gcache v0.0.0-20190518031135-bc40bd653833
+	github.com/dchest/blake2b v1.0.0
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
 	github.com/dgraph-io/badger/v2 v2.2007.3
 	github.com/docker/go-units v0.4.0
@@ -72,7 +73,6 @@ require (
 	github.com/ipfs/go-ipfs-exchange-interface v0.1.0
 	github.com/ipfs/go-ipfs-exchange-offline v0.2.0
 	github.com/ipfs/go-ipfs-files v0.0.9
-	github.com/ipfs/go-ipfs-routing v0.2.1
 	github.com/ipfs/go-ipld-cbor v0.0.6
 	github.com/ipfs/go-ipld-format v0.4.0
 	github.com/ipfs/go-log v1.0.5

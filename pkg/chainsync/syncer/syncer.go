@@ -18,12 +18,12 @@ import (
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/chainsync/exchange"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/metrics/tracing"
+	"github.com/filecoin-project/venus/pkg/net/exchange"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	"github.com/filecoin-project/venus/venus-shared/types"
