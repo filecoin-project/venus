@@ -1,11 +1,16 @@
-name: build for test/release
+name: reuse build and upload
 
 on:
-  push:
-    branches: ['prep/**', 'release/**', 'test/**', master, main]
-    tags: ['**']
-  workflow_dispatch:
+
+  workflow_call:
+    inputs:
+      bin_name:
+        type: string
+      has_ffi:
+        type: boolean
+
 jobs:
+
   build:
     runs-on: ubuntu-20.04
     steps:
@@ -66,6 +71,8 @@ jobs:
 
       - name: show environment
         run: |
+          echo bin_name = ${{inputs.bin_name}}
+          echo has_ffi = ${{inputs.has_ffi}}
           echo event = ${{github.event_name}}
           echo github_repository: $GITHUB_REPOSITORY
           echo vars.commit = ${{steps.vars.outputs.commit}}
@@ -85,19 +92,34 @@ jobs:
           echo github.ref_name = ${{github.ref_name}}
           echo vars.job_url = ${{steps.vars.outputs.job_url}}
           echo ftp_url = ftp://${{secrets.FTP_HOST}}/${{steps.vars.outputs.repo_name}}/${{steps.vars.outputs.artifact_name}}
+
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
           go-version: 1.17
+
       - name: install deps
+        if: ${{ !inputs.has_ffi }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install ncftp
+
+      - name: install more deps
+        if: ${{ inputs.has_ffi }}
         run: |
           sudo apt-get update
           sudo apt-get -o Acquire::Retries=3 install make ncftp mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y && sudo apt upgrade -y
 
       - name: Build
         run: |
-          go clean --modcache && make deps && make
-          mkdir ./release && mv ./venus ./release
+          go clean --modcache && make
+          mkdir ./release
+          if [[ "${{steps.vars.outputs.repo_name}}" == "venus-market" ]]; then
+            mv ./market-client ./venus-market ./release
+          fi
+          if [[ "${{steps.vars.outputs.repo_name}}" != "venus-market" ]]; then
+            mv ./${{inputs.bin_name}} ./release
+          fi
 
       - name: Zip Release
         uses: TheDoctor0/zip-release@0.6.0
@@ -105,6 +127,14 @@ jobs:
           filename: ${{steps.vars.outputs.artifact_name}}
           path: ./release
           type: tar
+
+      - name: upload artifacts
+        uses: actions/upload-artifact@v2
+        if: ${{ steps.vars.outputs.pub_method == 'pushRelease' }}
+        with:
+          name: ${{steps.vars.outputs.artifact_name}}
+          path: ./${{steps.vars.outputs.artifact_name}}
+          if-no-files-found: error
 
       - name: release
         id: release
@@ -120,7 +150,6 @@ jobs:
       - name: upload ftp
         id: uploadftp
         if: ${{ steps.vars.outputs.ftp_exists == '1' }}
-        continue-on-error: true
         run: |
           ncftpput -m -R -v -u ${{secrets.FTP_USER}} -p ${{secrets.FTP_PWD}} ${{secrets.FTP_HOST}} ./${{steps.vars.outputs.repo_name}} ./${{steps.vars.outputs.artifact_name}}
           echo "upload file: ${{steps.vars.outputs.artifact_name}} successfully!"
@@ -128,7 +157,6 @@ jobs:
       - name: setup oss
         id: setuposs
         if: ${{ steps.vars.outputs.oss_exists == '1' && steps.uploadftp.outcome != 'success' && steps.vars.outputs.pub_method == 'pushTest' }}
-        continue-on-error: true
         uses: manyuanrong/setup-ossutil@master
         with:
           endpoint: ${{secrets.OSS_ENDPOINT}}
@@ -138,20 +166,10 @@ jobs:
       - name: cp files to aliyun
         id: cposs
         if: ${{ steps.setuposs.outcome == 'success' }}
-        continue-on-error: true
         run: |
           ossutil cp ./${{steps.vars.outputs.artifact_name}} ${{secrets.OSS_BUCKET}}
           export signed_url=`ossutil sign ${{secrets.OSS_BUCKET}}/${{steps.vars.outputs.artifact_name}} --timeout 31104000 | sed -n 1p`
           echo '::set-output name=oss_signed_url::$(signed_url)'
-
-      - name: upload artifacts
-        if: ${{ steps.vars.outputs.pub_method == 'pushRelease' }}
-        continue-on-error: true
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{steps.vars.outputs.artifact_name}}
-          path: ./release
-          if-no-files-found: error
 
       - name: push god-eye
         run: |
@@ -174,16 +192,3 @@ jobs:
                   --data-urlencode "description=message:${{steps.vars.outputs.git_message}}, branch:${{steps.vars.outputs.branch}}, commit:${{steps.vars.outputs.short}}, tag:${{steps.vars.outputs.github_tag}}" \
                   --data-urlencode "version=${{steps.vars.outputs.short}}"
           set -e
-
-      - name: Publish the Docker image 
-        if: ${{ steps.vars.outputs.is_tag_create == 'true' }}
-        run: |
-          make docker-buildenv
-          make docker-runtime
-          docker build . --file dockerfile --tag filvenus/venus:latest
-          docker tag filvenus/venus:latest filvenus/venus:${{steps.vars.outputs.github_tag}}
-          docker login --username=filvenus --password ${{ secrets.DOCKER_PASSWORD }} 
-          docker push filvenus/venus:${{steps.vars.outputs.github_tag}}
-          docker push filvenus/venus:latest
-          docker push filvenus/venus-runtime:latest
-          docker push filvenus/venus-buildenv:latest

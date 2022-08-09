@@ -1,0 +1,11 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: ['prep/**', 'release/**', 'test/**', master]
+    tags: ['**']
+
+jobs:
+
+  build_docker_image:
+    uses: ./.github/workflows/common_docker_image.yml

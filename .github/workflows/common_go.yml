@@ -1,0 +1,64 @@
+name: build and golangci-lint and test
+
+on:
+
+  workflow_call:
+    inputs:
+      has_ffi:
+        type: boolean
+
+jobs:
+
+  check:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+
+      - name: vars
+        id: vars
+        run: |
+          export repo_name=${GITHUB_REPOSITORY##*/}
+          echo "::set-output name=repo_name::$repo_name"
+
+      - name: show vars
+        run: |
+          echo vars.repo_name = ${{steps.vars.outputs.repo_name}}
+
+      - name: install deps
+        if: ${{ inputs.has_ffi }}
+        run: sudo apt-get -o Acquire::Retries=3 update && sudo apt-get -o Acquire::Retries=3 install make ftp git bzr curl hwloc libhwloc-dev mesa-opencl-icd ocl-icd-opencl-dev wget -y && sudo apt upgrade -y
+
+      - name: Build
+        env:
+          GOPROXY: "https://proxy.golang.org,direct"
+          GO111MODULE: "on"
+        run: |
+          make
+
+      - name: Lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.44.2
+          golangci-lint run --timeout 10m
+
+      - name: Detect changes
+        run: |
+          git status --porcelain
+          test -z "$(git status --porcelain)"
+
+      - name: Run coverage
+        run:  go test -coverpkg=./... -race -coverprofile=coverage.txt -covermode=atomic ./...
+
+      - name: Upload
+        uses: codecov/codecov-action@v2
+        with:
+          token:
+          files:  ./coverage.txt
+          flags: unittests
+          name: ${{steps.vars.outputs.repo_name}}
+          fail_ci_if_error: true
+          verbose: true

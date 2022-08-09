@@ -1,0 +1,13 @@
+name: build and upload
+
+on:
+  push:
+    branches: ['prep/**', 'release/**', 'test/**', master]
+    tags: ['**']
+
+jobs:
+  build_upload:
+    uses: ./.github/workflows/common_build_upload.yml
+    with:
+      bin_name: 'venus'
+      has_ffi: true
