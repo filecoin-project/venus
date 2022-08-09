@@ -153,9 +153,9 @@ type IMarket interface {
 
 	ImportV1Data(ctx context.Context, src string) error //perm:write
 
-	AddFsPieceStorage(ctx context.Context, readonly bool, path string, name string) error //perm:admin
+	AddFsPieceStorage(ctx context.Context, name string, path string, readonly bool) error //perm:admin
 
-	AddS3PieceStorage(ctx context.Context, readonly bool, endpoit, name, key, secret, token string) error //perm:admin
+	AddS3PieceStorage(ctx context.Context, name, endpoit, bucket, subdir, accessKey, secretKey, token string, readonly bool) error //perm:admin
 
 	RemovePieceStorage(ctx context.Context, name string) error //perm:admin
 

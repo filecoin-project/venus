@@ -134,9 +134,9 @@ Perms: admin
 Inputs:
 ```json
 [
-  true,
   "string value",
-  "string value"
+  "string value",
+  true
 ]
 ```
 
@@ -150,12 +150,14 @@ Perms: admin
 Inputs:
 ```json
 [
-  true,
   "string value",
   "string value",
   "string value",
   "string value",
-  "string value"
+  "string value",
+  "string value",
+  "string value",
+  true
 ]
 ```
 
@@ -632,7 +634,9 @@ Response:
     {
       "Name": "string value",
       "ReadOnly": true,
-      "EndPoint": "string value"
+      "EndPoint": "string value",
+      "Bucket": "string value",
+      "SubDir": "string value"
     }
   ]
 }
