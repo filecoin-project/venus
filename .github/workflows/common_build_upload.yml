@@ -8,6 +8,21 @@ on:
         type: string
       has_ffi:
         type: boolean
+    secrets:
+      OSS_KEY_ID:
+      OSS_KEY_SECRET:
+      OSS_ENDPOINT:
+      OSS_BUCKET:
+      FTP_HOST:
+        required: true
+      FTP_USER:
+        required: true
+      FTP_PWD:
+        required: true
+      GODEYE_URL:
+        required: true
+      token:
+        required: true
 
 jobs:
 
@@ -145,7 +160,7 @@ jobs:
           artifacts: ${{steps.vars.outputs.artifact_name}}
           tag: ${{ steps.vars.outputs.github_tag }}
           commit: ${{ steps.vars.outputs.commit }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.token }}
 
       - name: upload ftp
         id: uploadftp
