@@ -3,6 +3,9 @@ name: Reuse Docker Image CI
 on:
 
   workflow_call:
+    secrets:
+      DOCKER_PASSWORD:
+        required: true
 
 jobs:
 
@@ -37,6 +40,7 @@ jobs:
         echo github_tag = ${{ steps.vars.outputs.github_tag }}
         echo repo_name = ${{ steps.vars.outputs.repo_name }}
         echo docker_user_name = ${{steps.vars.outputs.docker_user_name}}
+        echo docker_password = ${{secrets.DOCKER_PASSWORD}}
 
     - name: Build the Docker image
       if: ${{ steps.vars.outputs.is_tag_create == 'true' }}

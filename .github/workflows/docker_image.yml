@@ -9,3 +9,5 @@ jobs:
 
   build_docker_image:
     uses: ./.github/workflows/common_docker_image.yml
+    secrets:
+      DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
