@@ -112,36 +112,6 @@ func (mr *MockIMessagerMockRecorder) ForbiddenAddress(arg0, arg1 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForbiddenAddress", reflect.TypeOf((*MockIMessager)(nil).ForbiddenAddress), arg0, arg1)
 }
 
-// ForcePushMessage mocks base method.
-func (m *MockIMessager) ForcePushMessage(arg0 context.Context, arg1 string, arg2 *internal.Message, arg3 *messager.SendSpec) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ForcePushMessage", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ForcePushMessage indicates an expected call of ForcePushMessage.
-func (mr *MockIMessagerMockRecorder) ForcePushMessage(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForcePushMessage", reflect.TypeOf((*MockIMessager)(nil).ForcePushMessage), arg0, arg1, arg2, arg3)
-}
-
-// ForcePushMessageWithId mocks base method.
-func (m *MockIMessager) ForcePushMessageWithId(arg0 context.Context, arg1, arg2 string, arg3 *internal.Message, arg4 *messager.SendSpec) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ForcePushMessageWithId", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ForcePushMessageWithId indicates an expected call of ForcePushMessageWithId.
-func (mr *MockIMessagerMockRecorder) ForcePushMessageWithId(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForcePushMessageWithId", reflect.TypeOf((*MockIMessager)(nil).ForcePushMessageWithId), arg0, arg1, arg2, arg3, arg4)
-}
-
 // GetAddress mocks base method.
 func (m *MockIMessager) GetAddress(arg0 context.Context, arg1 address.Address) (*messager.Address, error) {
 	m.ctrl.T.Helper()

@@ -6,8 +6,6 @@
   * [DeleteAddress](#DeleteAddress)
   * [DeleteNode](#DeleteNode)
   * [ForbiddenAddress](#ForbiddenAddress)
-  * [ForcePushMessage](#ForcePushMessage)
-  * [ForcePushMessageWithId](#ForcePushMessageWithId)
   * [GetAddress](#GetAddress)
   * [GetMessageByFromAndNonce](#GetMessageByFromAndNonce)
   * [GetMessageBySignedCid](#GetMessageBySignedCid)
@@ -120,77 +118,6 @@ Inputs:
 ```
 
 Response: `{}`
-
-### ForcePushMessage
-
-
-Perms: admin
-
-Inputs:
-```json
-[
-  "string value",
-  {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  {
-    "expireEpoch": 10101,
-    "gasOverEstimation": 12.3,
-    "maxFee": "0",
-    "gasOverPremium": 12.3
-  }
-]
-```
-
-Response: `"string value"`
-
-### ForcePushMessageWithId
-
-
-Perms: write
-
-Inputs:
-```json
-[
-  "string value",
-  "string value",
-  {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  {
-    "expireEpoch": 10101,
-    "gasOverEstimation": 12.3,
-    "maxFee": "0",
-    "gasOverPremium": 12.3
-  }
-]
-```
-
-Response: `"string value"`
 
 ### GetAddress
 

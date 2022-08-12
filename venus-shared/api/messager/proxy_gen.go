@@ -20,8 +20,6 @@ type IMessagerStruct struct {
 		DeleteAddress            func(ctx context.Context, addr address.Address) error                                                                                      `perm:"admin"`
 		DeleteNode               func(ctx context.Context, name string) error                                                                                               `perm:"admin"`
 		ForbiddenAddress         func(ctx context.Context, addr address.Address) error                                                                                      `perm:"admin"`
-		ForcePushMessage         func(ctx context.Context, account string, msg *types.Message, meta *mtypes.SendSpec) (string, error)                                       `perm:"admin"`
-		ForcePushMessageWithId   func(ctx context.Context, id string, account string, msg *types.Message, meta *mtypes.SendSpec) (string, error)                            `perm:"write"`
 		GetAddress               func(ctx context.Context, addr address.Address) (*mtypes.Address, error)                                                                   `perm:"admin"`
 		GetMessageByFromAndNonce func(ctx context.Context, from address.Address, nonce uint64) (*mtypes.Message, error)                                                     `perm:"read"`
 		GetMessageBySignedCid    func(ctx context.Context, cid cid.Cid) (*mtypes.Message, error)                                                                            `perm:"read"`
@@ -79,12 +77,6 @@ func (s *IMessagerStruct) DeleteNode(p0 context.Context, p1 string) error {
 }
 func (s *IMessagerStruct) ForbiddenAddress(p0 context.Context, p1 address.Address) error {
 	return s.Internal.ForbiddenAddress(p0, p1)
-}
-func (s *IMessagerStruct) ForcePushMessage(p0 context.Context, p1 string, p2 *types.Message, p3 *mtypes.SendSpec) (string, error) {
-	return s.Internal.ForcePushMessage(p0, p1, p2, p3)
-}
-func (s *IMessagerStruct) ForcePushMessageWithId(p0 context.Context, p1 string, p2 string, p3 *types.Message, p4 *mtypes.SendSpec) (string, error) {
-	return s.Internal.ForcePushMessageWithId(p0, p1, p2, p3, p4)
 }
 func (s *IMessagerStruct) GetAddress(p0 context.Context, p1 address.Address) (*mtypes.Address, error) {
 	return s.Internal.GetAddress(p0, p1)
