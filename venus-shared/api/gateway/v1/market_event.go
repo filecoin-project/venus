@@ -6,9 +6,11 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
+
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/venus/venus-shared/types"
 	gtypes "github.com/filecoin-project/venus/venus-shared/types/gateway"
-	"github.com/ipfs/go-cid"
 )
 
 type IMarketEvent interface {

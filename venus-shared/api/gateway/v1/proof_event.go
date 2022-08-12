@@ -21,6 +21,7 @@ type IProofClient interface {
 	ListMinerConnection(ctx context.Context, addr address.Address) (*gtypes.MinerState, error)                                                                                                                 //perm:admin
 	ComputeProof(ctx context.Context, miner address.Address, sectorInfos []builtin.ExtendedSectorInfo, rand abi.PoStRandomness, height abi.ChainEpoch, nwVersion network.Version) ([]builtin.PoStProof, error) //perm:admin
 }
+
 type IProofServiceProvider interface {
 	ResponseProofEvent(ctx context.Context, resp *gtypes.ResponseEvent) error                                      //perm:read
 	ListenProofEvent(ctx context.Context, policy *gtypes.ProofRegisterPolicy) (<-chan *gtypes.RequestEvent, error) //perm:read

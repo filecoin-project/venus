@@ -16,10 +16,10 @@ type IWalletEvent interface {
 }
 
 type IWalletClient interface {
-	ListWalletInfo(ctx context.Context) ([]*gtypes.WalletDetail, error)                                                                 //perm:admin
-	ListWalletInfoByWallet(ctx context.Context, wallet string) (*gtypes.WalletDetail, error)                                            //perm:admin
-	WalletHas(ctx context.Context, supportAccount string, addr address.Address) (bool, error)                                           //perm:admin
-	WalletSign(ctx context.Context, account string, addr address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error) //perm:admin
+	ListWalletInfo(ctx context.Context) ([]*gtypes.WalletDetail, error)                                                 //perm:admin
+	ListWalletInfoByWallet(ctx context.Context, wallet string) (*gtypes.WalletDetail, error)                            //perm:admin
+	WalletHas(ctx context.Context, addr address.Address) (bool, error)                                                  //perm:admin
+	WalletSign(ctx context.Context, addr address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error) //perm:admin
 }
 
 type IWalletServiceProvider interface {

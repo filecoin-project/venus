@@ -306,31 +306,31 @@ func (mr *MockIGatewayMockRecorder) Version(arg0 interface{}) *gomock.Call {
 }
 
 // WalletHas mocks base method.
-func (m *MockIGateway) WalletHas(arg0 context.Context, arg1 string, arg2 address.Address) (bool, error) {
+func (m *MockIGateway) WalletHas(arg0 context.Context, arg1 address.Address) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WalletHas", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "WalletHas", arg0, arg1)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // WalletHas indicates an expected call of WalletHas.
-func (mr *MockIGatewayMockRecorder) WalletHas(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockIGatewayMockRecorder) WalletHas(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WalletHas", reflect.TypeOf((*MockIGateway)(nil).WalletHas), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WalletHas", reflect.TypeOf((*MockIGateway)(nil).WalletHas), arg0, arg1)
 }
 
 // WalletSign mocks base method.
-func (m *MockIGateway) WalletSign(arg0 context.Context, arg1 string, arg2 address.Address, arg3 []byte, arg4 types.MsgMeta) (*crypto.Signature, error) {
+func (m *MockIGateway) WalletSign(arg0 context.Context, arg1 address.Address, arg2 []byte, arg3 types.MsgMeta) (*crypto.Signature, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WalletSign", arg0, arg1, arg2, arg3, arg4)
+	ret := m.ctrl.Call(m, "WalletSign", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(*crypto.Signature)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // WalletSign indicates an expected call of WalletSign.
-func (mr *MockIGatewayMockRecorder) WalletSign(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+func (mr *MockIGatewayMockRecorder) WalletSign(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WalletSign", reflect.TypeOf((*MockIGateway)(nil).WalletSign), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WalletSign", reflect.TypeOf((*MockIGateway)(nil).WalletSign), arg0, arg1, arg2, arg3)
 }

@@ -371,7 +371,6 @@ Perms: admin
 Inputs:
 ```json
 [
-  "string value",
   "f01234"
 ]
 ```
@@ -386,7 +385,6 @@ Perms: admin
 Inputs:
 ```json
 [
-  "string value",
   "f01234",
   "Ynl0ZSBhcnJheQ==",
   {

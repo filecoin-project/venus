@@ -54,10 +54,10 @@ type IProofEventStruct struct {
 
 type IWalletClientStruct struct {
 	Internal struct {
-		ListWalletInfo         func(ctx context.Context) ([]*gtypes.WalletDetail, error)                                                                     `perm:"admin"`
-		ListWalletInfoByWallet func(ctx context.Context, wallet string) (*gtypes.WalletDetail, error)                                                        `perm:"admin"`
-		WalletHas              func(ctx context.Context, supportAccount string, addr address.Address) (bool, error)                                          `perm:"admin"`
-		WalletSign             func(ctx context.Context, account string, addr address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error) `perm:"admin"`
+		ListWalletInfo         func(ctx context.Context) ([]*gtypes.WalletDetail, error)                                                     `perm:"admin"`
+		ListWalletInfoByWallet func(ctx context.Context, wallet string) (*gtypes.WalletDetail, error)                                        `perm:"admin"`
+		WalletHas              func(ctx context.Context, addr address.Address) (bool, error)                                                 `perm:"admin"`
+		WalletSign             func(ctx context.Context, addr address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error) `perm:"admin"`
 	}
 }
 
@@ -67,11 +67,11 @@ func (s *IWalletClientStruct) ListWalletInfo(p0 context.Context) ([]*gtypes.Wall
 func (s *IWalletClientStruct) ListWalletInfoByWallet(p0 context.Context, p1 string) (*gtypes.WalletDetail, error) {
 	return s.Internal.ListWalletInfoByWallet(p0, p1)
 }
-func (s *IWalletClientStruct) WalletHas(p0 context.Context, p1 string, p2 address.Address) (bool, error) {
-	return s.Internal.WalletHas(p0, p1, p2)
+func (s *IWalletClientStruct) WalletHas(p0 context.Context, p1 address.Address) (bool, error) {
+	return s.Internal.WalletHas(p0, p1)
 }
-func (s *IWalletClientStruct) WalletSign(p0 context.Context, p1 string, p2 address.Address, p3 []byte, p4 types.MsgMeta) (*crypto.Signature, error) {
-	return s.Internal.WalletSign(p0, p1, p2, p3, p4)
+func (s *IWalletClientStruct) WalletSign(p0 context.Context, p1 address.Address, p2 []byte, p3 types.MsgMeta) (*crypto.Signature, error) {
+	return s.Internal.WalletSign(p0, p1, p2, p3)
 }
 
 type IWalletServiceProviderStruct struct {
