@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"testing"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetNetworkFromName(t *testing.T) {
+	tf.UnitTest(t)
+
 	testCast := []struct {
 		name    string
 		network types.NetworkType
@@ -79,6 +82,8 @@ func TestGetNetworkFromName(t *testing.T) {
 }
 
 func TestGetNetworkConfig(t *testing.T) {
+	tf.UnitTest(t)
+
 	testCast := []struct {
 		name    string
 		network *NetworkConf
