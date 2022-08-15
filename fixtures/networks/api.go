@@ -9,19 +9,19 @@ import (
 
 func GetNetworkFromName(name string) (types.NetworkType, error) {
 	switch name {
-	case "mainnet":
+	case string(types.NetworkNameMain):
 		return types.NetworkMainnet, nil
 	case "force":
 		return types.NetworkForce, nil
-	case "integrationnet":
+	case string(types.NetworkNameIntegration):
 		return types.Integrationnet, nil
 	case "2k":
 		return types.Network2k, nil
-	case "cali", "calibrationnet":
+	case "cali", string(types.NetworkNameCalibration):
 		return types.NetworkCalibnet, nil
-	case "interop", "interopnet":
+	case "interop", string(types.NetworkNameInterop):
 		return types.NetworkInterop, nil
-	case "butterfly", "butterflynet":
+	case "butterfly", string(types.NetworkNameButterfly):
 		return types.NetworkButterfly, nil
 	default:
 		return 0, fmt.Errorf("unknown network name %s", name)

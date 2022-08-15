@@ -5,7 +5,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	mrand "math/rand"
+	"net/http"
+	"net/url"
+	"os"
 
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
@@ -47,13 +51,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/vmsupport"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
-	"io/ioutil"
-	"os"
-
 	"github.com/ipld/go-car"
-
-	"net/http"
-	"net/url"
 
 	"github.com/filecoin-project/venus/fixtures/assets"
 	"github.com/filecoin-project/venus/fixtures/networks"
