@@ -24,7 +24,14 @@
 <!-- 
 关于backport解释：
 
-1. 当需要发版时，建立标题为，chore: backport: xxxx, xxxx... 的PR。用于把master上的一些bug修复的PR合并回release/vX.Y.Z分支。xxxx为bug修复的PR号码。参考：https://github.com/filecoin-project/lotus/pull/8847（注：参考中为一个feat非bug修复）
+Lotus方面backport指master的pr合到`release/vX.Y.Z`, Venus基于master的话，backport的意义可能和lotus不一样。
+
+@SimleCode补充backport：
+
+1. 稳定版本(指vX.Y.Z)有bug，意味着master分支也会有相应的问题，可以考虑先把修复代码合到 release/vX.Y.Z，待测试及版本发布后通过backport方式合到master
+2. rc 及 pre-rc 的bug，可以在rc的基础上发一个rc+1版本，若该rc已合到master，则rc+1需要合到master，反之则不需要
+
+具体举例：当需要发版时，建立标题为，chore: backport: xxxx, xxxx... 的PR。用于把master上的一些bug修复的PR合并回release/vX.Y.Z分支。xxxx为bug修复的PR号码。参考：https://github.com/filecoin-project/lotus/pull/8847（注：参考中为一个feat非bug修复）
 -->
 
 测试:
