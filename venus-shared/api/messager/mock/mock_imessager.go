@@ -411,6 +411,21 @@ func (mr *MockIMessagerMockRecorder) MarkBadMessage(arg0, arg1 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkBadMessage", reflect.TypeOf((*MockIMessager)(nil).MarkBadMessage), arg0, arg1)
 }
 
+// NetAddrsListen mocks base method.
+func (m *MockIMessager) NetAddrsListen(arg0 context.Context) (peer.AddrInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetAddrsListen", arg0)
+	ret0, _ := ret[0].(peer.AddrInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetAddrsListen indicates an expected call of NetAddrsListen.
+func (mr *MockIMessagerMockRecorder) NetAddrsListen(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetAddrsListen", reflect.TypeOf((*MockIMessager)(nil).NetAddrsListen), arg0)
+}
+
 // NetConnect mocks base method.
 func (m *MockIMessager) NetConnect(arg0 context.Context, arg1 peer.AddrInfo) error {
 	m.ctrl.T.Helper()

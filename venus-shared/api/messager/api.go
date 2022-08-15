@@ -66,6 +66,7 @@ type IMessager interface {
 	NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, error) //perm:read
 	NetPeers(ctx context.Context) ([]peer.AddrInfo, error)             //perm:read
 	NetConnect(ctx context.Context, pi peer.AddrInfo) error            //perm:admin
+	NetAddrsListen(ctx context.Context) (peer.AddrInfo, error)         //perm:read
 
 	api.Version
 }

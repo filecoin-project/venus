@@ -26,6 +26,7 @@
   * [ListMessageByFromState](#ListMessageByFromState)
   * [ListNode](#ListNode)
   * [MarkBadMessage](#MarkBadMessage)
+  * [NetAddrsListen](#NetAddrsListen)
   * [NetConnect](#NetConnect)
   * [NetFindPeer](#NetFindPeer)
   * [NetPeers](#NetPeers)
@@ -963,6 +964,23 @@ Inputs:
 ```
 
 Response: `{}`
+
+### NetAddrsListen
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Addrs": [
+    "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
+  ]
+}
+```
 
 ### NetConnect
 
