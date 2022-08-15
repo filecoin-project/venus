@@ -15,6 +15,7 @@ import (
 	messager "github.com/filecoin-project/venus/venus-shared/types/messager"
 	gomock "github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 )
 
 // MockIMessager is a mock of IMessager interface.
@@ -408,6 +409,50 @@ func (m *MockIMessager) MarkBadMessage(arg0 context.Context, arg1 string) error 
 func (mr *MockIMessagerMockRecorder) MarkBadMessage(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkBadMessage", reflect.TypeOf((*MockIMessager)(nil).MarkBadMessage), arg0, arg1)
+}
+
+// NetConnect mocks base method.
+func (m *MockIMessager) NetConnect(arg0 context.Context, arg1 peer.AddrInfo) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetConnect", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// NetConnect indicates an expected call of NetConnect.
+func (mr *MockIMessagerMockRecorder) NetConnect(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetConnect", reflect.TypeOf((*MockIMessager)(nil).NetConnect), arg0, arg1)
+}
+
+// NetFindPeer mocks base method.
+func (m *MockIMessager) NetFindPeer(arg0 context.Context, arg1 peer.ID) (peer.AddrInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetFindPeer", arg0, arg1)
+	ret0, _ := ret[0].(peer.AddrInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetFindPeer indicates an expected call of NetFindPeer.
+func (mr *MockIMessagerMockRecorder) NetFindPeer(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetFindPeer", reflect.TypeOf((*MockIMessager)(nil).NetFindPeer), arg0, arg1)
+}
+
+// NetPeers mocks base method.
+func (m *MockIMessager) NetPeers(arg0 context.Context) ([]peer.AddrInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetPeers", arg0)
+	ret0, _ := ret[0].([]peer.AddrInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetPeers indicates an expected call of NetPeers.
+func (mr *MockIMessagerMockRecorder) NetPeers(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetPeers", reflect.TypeOf((*MockIMessager)(nil).NetPeers), arg0)
 }
 
 // PushMessage mocks base method.
