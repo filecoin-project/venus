@@ -7,6 +7,7 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	cid "github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
 	mtypes "github.com/filecoin-project/venus/venus-shared/types/messager"
@@ -39,6 +40,10 @@ type IMessagerStruct struct {
 		ListMessageByFromState   func(ctx context.Context, from address.Address, state mtypes.MessageState, isAsc bool, pageIndex, pageSize int) ([]*mtypes.Message, error) `perm:"admin"`
 		ListNode                 func(ctx context.Context) ([]*mtypes.Node, error)                                                                                          `perm:"admin"`
 		MarkBadMessage           func(ctx context.Context, id string) error                                                                                                 `perm:"admin"`
+		NetAddrsListen           func(ctx context.Context) (peer.AddrInfo, error)                                                                                           `perm:"read"`
+		NetConnect               func(ctx context.Context, pi peer.AddrInfo) error                                                                                          `perm:"admin"`
+		NetFindPeer              func(ctx context.Context, p peer.ID) (peer.AddrInfo, error)                                                                                `perm:"read"`
+		NetPeers                 func(ctx context.Context) ([]peer.AddrInfo, error)                                                                                         `perm:"read"`
 		PushMessage              func(ctx context.Context, msg *types.Message, meta *mtypes.SendSpec) (string, error)                                                       `perm:"write"`
 		PushMessageWithId        func(ctx context.Context, id string, msg *types.Message, meta *mtypes.SendSpec) (string, error)                                            `perm:"write"`
 		RecoverFailedMsg         func(ctx context.Context, addr address.Address) ([]string, error)                                                                          `perm:"admin"`
@@ -135,6 +140,18 @@ func (s *IMessagerStruct) ListNode(p0 context.Context) ([]*mtypes.Node, error) {
 }
 func (s *IMessagerStruct) MarkBadMessage(p0 context.Context, p1 string) error {
 	return s.Internal.MarkBadMessage(p0, p1)
+}
+func (s *IMessagerStruct) NetAddrsListen(p0 context.Context) (peer.AddrInfo, error) {
+	return s.Internal.NetAddrsListen(p0)
+}
+func (s *IMessagerStruct) NetConnect(p0 context.Context, p1 peer.AddrInfo) error {
+	return s.Internal.NetConnect(p0, p1)
+}
+func (s *IMessagerStruct) NetFindPeer(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error) {
+	return s.Internal.NetFindPeer(p0, p1)
+}
+func (s *IMessagerStruct) NetPeers(p0 context.Context) ([]peer.AddrInfo, error) {
+	return s.Internal.NetPeers(p0)
 }
 func (s *IMessagerStruct) PushMessage(p0 context.Context, p1 *types.Message, p2 *mtypes.SendSpec) (string, error) {
 	return s.Internal.PushMessage(p0, p1, p2)

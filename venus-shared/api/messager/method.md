@@ -26,6 +26,10 @@
   * [ListMessageByFromState](#ListMessageByFromState)
   * [ListNode](#ListNode)
   * [MarkBadMessage](#MarkBadMessage)
+  * [NetAddrsListen](#NetAddrsListen)
+  * [NetConnect](#NetConnect)
+  * [NetFindPeer](#NetFindPeer)
+  * [NetPeers](#NetPeers)
   * [PushMessage](#PushMessage)
   * [PushMessageWithId](#PushMessageWithId)
   * [RecoverFailedMsg](#RecoverFailedMsg)
@@ -960,6 +964,83 @@ Inputs:
 ```
 
 Response: `{}`
+
+### NetAddrsListen
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Addrs": [
+    "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
+  ]
+}
+```
+
+### NetConnect
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Addrs": [
+      "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
+    ]
+  }
+]
+```
+
+Response: `{}`
+
+### NetFindPeer
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+Response:
+```json
+{
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Addrs": [
+    "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
+  ]
+}
+```
+
+### NetPeers
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  {
+    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Addrs": [
+      "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
+    ]
+  }
+]
+```
 
 ### PushMessage
 

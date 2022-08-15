@@ -149,7 +149,7 @@ func initRun(req *cmds.Request) error {
 		genesisFunc = genesis.MakeGenesis(req.Context, rep, mkGen, preTp.(string), cfg.NetworkParams.ForkUpgradeParam)
 	} else {
 		genesisFileSource, _ := req.Options[GenesisFile].(string)
-		genesisFunc, err = networks.LoadGenesis(req.Context, rep, genesisFileSource, network)
+		genesisFunc, err = genesis.LoadGenesis(req.Context, rep, genesisFileSource, network)
 		if err != nil {
 			return err
 		}
