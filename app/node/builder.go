@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/venus-auth/jwtclient"
 	"github.com/filecoin-project/venus/app/submodule/dagservice"
 	"github.com/filecoin-project/venus/app/submodule/network"
 
@@ -27,7 +28,6 @@ import (
 	chain2 "github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/journal"
-	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
@@ -186,15 +186,20 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "add service failed ")
 	}
 
+	var client *jwtclient.AuthClient
 	cfg := nd.repo.Config()
 	if len(cfg.API.VenusAuthURL) > 0 {
-		nd.remoteAuth = jwtauth.NewRemoteAuth(cfg.API.VenusAuthURL)
+		client, err = jwtclient.NewAuthClient(cfg.API.VenusAuthURL)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create remote jwt auth client: %w", err)
+		}
+		nd.remoteAuth = jwtclient.WarpIJwtAuthClient(client)
 	}
 
 	var ratelimiter *ratelimit.RateLimiter
-	if nd.remoteAuth != nil && cfg.RateLimitCfg.Enable {
+	if client != nil && cfg.RateLimitCfg.Enable {
 		if ratelimiter, err = ratelimit.NewRateLimitHandler(cfg.RateLimitCfg.Endpoint,
-			nil, &jwtauth.ValueFromCtx{}, nd.remoteAuth, logging.Logger("rate-limit")); err != nil {
+			nil, &ValueFromCtx{}, jwtclient.WarpLimitFinder(client), logging.Logger("rate-limit")); err != nil {
 			return nil, fmt.Errorf("request rate-limit is enabled, but create rate-limit handler failed:%w", err)
 		}
 		_ = logging.SetLogLevel("rate-limit", "warn")
@@ -203,4 +208,13 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.jsonRPCServiceV1 = apiBuilder.Build("v1", ratelimiter)
 	nd.jsonRPCService = apiBuilder.Build("v0", ratelimiter)
 	return nd, nil
+}
+
+type ValueFromCtx struct{}
+
+func (vfc *ValueFromCtx) AccFromCtx(ctx context.Context) (string, bool) {
+	return jwtclient.CtxGetName(ctx)
+}
+func (vfc *ValueFromCtx) HostFromCtx(ctx context.Context) (string, bool) {
+	return jwtclient.CtxGetTokenLocation(ctx)
 }
