@@ -5,8 +5,8 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	va "github.com/filecoin-project/venus-auth/auth"
-	vjc "github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus-auth/core"
+	vjc "github.com/filecoin-project/venus-auth/jwtclient"
 	"github.com/ipfs-force-community/metrics/ratelimit"
 )
 

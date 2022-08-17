@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	vjc "github.com/filecoin-project/venus-auth/cmd/jwtclient"
+	vjc "github.com/filecoin-project/venus-auth/jwtclient"
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
