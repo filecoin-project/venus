@@ -42,9 +42,8 @@ require (
 	github.com/filecoin-project/specs-actors/v8 v8.0.1
 	github.com/filecoin-project/specs-storage v0.4.1
 	github.com/filecoin-project/test-vectors/schema v0.0.5
-	github.com/filecoin-project/venus-auth v1.6.0
+	github.com/filecoin-project/venus-auth v1.6.1-0.20220818060206-3313af6a9ba1
 	github.com/fxamacker/cbor/v2 v2.4.0
-	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/go-errors/errors v1.0.1
 	github.com/go-kit/kit v0.12.0
 	github.com/golang/mock v1.6.0
@@ -156,6 +155,7 @@ require (
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
+	github.com/gbrlsnchs/jwt/v3 v3.0.1 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.7.0 // indirect
 	github.com/go-kit/log v0.2.0 // indirect
