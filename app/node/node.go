@@ -11,8 +11,6 @@ import (
 	"contrib.go.opencensus.io/exporter/jaeger"
 	"github.com/awnumar/memguard"
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/venus-auth/auth"
-	"github.com/filecoin-project/venus-auth/core"
 	"github.com/filecoin-project/venus-auth/jwtclient"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
@@ -262,14 +260,7 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 		return err
 	}
 
-	secret, err := jwtclient.RandSecret()
-	if err != nil {
-		return fmt.Errorf("failed to generate secret: %s", err)
-	}
-	localVerifer, token, err := jwtclient.NewLocalAuthClient(secret, auth.JWTPayload{
-		Perm: core.PermAdmin,
-		Name: "VenusNodeLocalToken",
-	})
+	localVerifer, token, err := jwtclient.NewLocalAuthClient()
 	if err != nil {
 		return fmt.Errorf("failed to generate local auth client: %s", err)
 	}

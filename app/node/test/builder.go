@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/venus-auth/auth"
-	"github.com/filecoin-project/venus-auth/core"
 	"github.com/filecoin-project/venus-auth/jwtclient"
 
 	"github.com/filecoin-project/venus/pkg/wallet"
@@ -101,13 +99,7 @@ func (b *NodeBuilder) Build(ctx context.Context) *node.Node {
 	repoConfigOpts, err := node.OptionsFromRepo(repo)
 	b.requireNoError(err)
 
-	secret, err := jwtclient.RandSecret()
-	b.requireNoError(err)
-
-	_, token, err := jwtclient.NewLocalAuthClient(secret, auth.JWTPayload{
-		Perm: core.PermAdmin,
-		Name: "VenusNodeLocalToken",
-	})
+	_, token, err := jwtclient.NewLocalAuthClient()
 	b.requireNoError(err)
 
 	err = repo.SetAPIToken(token)
