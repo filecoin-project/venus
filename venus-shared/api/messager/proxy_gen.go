@@ -52,7 +52,7 @@ type IMessagerStruct struct {
 		RepublishMessage         func(ctx context.Context, id string) error                                                                                                 `perm:"admin"`
 		SaveNode                 func(ctx context.Context, node *mtypes.Node) error                                                                                         `perm:"admin"`
 		Send                     func(ctx context.Context, params mtypes.QuickSendParams) (string, error)                                                                   `perm:"admin"`
-		SetFeeParams             func(ctx context.Context, addr address.Address, gasOverEstimation, gasOverPremium float64, maxFee, maxFeeCap string) error                 `perm:"admin"`
+		SetFeeParams             func(ctx context.Context, addr address.Address, gasOverEstimation, gasOverPremium float64, maxFee, gasFeeCap string) error                 `perm:"admin"`
 		SetLogLevel              func(ctx context.Context, level string) error                                                                                              `perm:"admin"`
 		SetSelectMsgNum          func(ctx context.Context, addr address.Address, num uint64) error                                                                          `perm:"admin"`
 		SetSharedParams          func(ctx context.Context, params *mtypes.SharedSpec) error                                                                                 `perm:"admin"`
