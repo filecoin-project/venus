@@ -46,7 +46,7 @@ type IMessager interface {
 	ForbiddenAddress(ctx context.Context, addr address.Address) error                                                                  //perm:admin
 	ActiveAddress(ctx context.Context, addr address.Address) error                                                                     //perm:admin
 	SetSelectMsgNum(ctx context.Context, addr address.Address, num uint64) error                                                       //perm:admin
-	SetFeeParams(ctx context.Context, addr address.Address, gasOverEstimation, gasOverPremium float64, maxFee, maxFeeCap string) error //perm:admin
+	SetFeeParams(ctx context.Context, addr address.Address, gasOverEstimation, gasOverPremium float64, maxFee, gasFeeCap string) error //perm:admin
 	ClearUnFillMessage(ctx context.Context, addr address.Address) (int, error)                                                         //perm:admin
 
 	GetSharedParams(ctx context.Context) (*mtypes.SharedSpec, error)      //perm:admin
