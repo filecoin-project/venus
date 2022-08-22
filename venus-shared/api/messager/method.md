@@ -209,8 +209,6 @@ Response:
     "maxFee": "0",
     "gasOverPremium": 12.3
   },
-  "WalletName": "test",
-  "FromUser": "test",
   "State": 1,
   "CreatedAt": "0001-01-01T00:00:00Z",
   "UpdatedAt": "0001-01-01T00:00:00Z"
@@ -276,8 +274,6 @@ Response:
     "maxFee": "0",
     "gasOverPremium": 12.3
   },
-  "WalletName": "test",
-  "FromUser": "test",
   "State": 1,
   "CreatedAt": "0001-01-01T00:00:00Z",
   "UpdatedAt": "0001-01-01T00:00:00Z"
@@ -341,8 +337,6 @@ Response:
     "maxFee": "0",
     "gasOverPremium": 12.3
   },
-  "WalletName": "test",
-  "FromUser": "test",
   "State": 1,
   "CreatedAt": "0001-01-01T00:00:00Z",
   "UpdatedAt": "0001-01-01T00:00:00Z"
@@ -408,8 +402,6 @@ Response:
     "maxFee": "0",
     "gasOverPremium": 12.3
   },
-  "WalletName": "test",
-  "FromUser": "test",
   "State": 1,
   "CreatedAt": "0001-01-01T00:00:00Z",
   "UpdatedAt": "0001-01-01T00:00:00Z"
@@ -589,8 +581,6 @@ Response:
       "maxFee": "0",
       "gasOverPremium": 12.3
     },
-    "WalletName": "test",
-    "FromUser": "test",
     "State": 1,
     "CreatedAt": "0001-01-01T00:00:00Z",
     "UpdatedAt": "0001-01-01T00:00:00Z"
@@ -651,8 +641,6 @@ Response:
       "maxFee": "0",
       "gasOverPremium": 12.3
     },
-    "WalletName": "test",
-    "FromUser": "test",
     "State": 1,
     "CreatedAt": "0001-01-01T00:00:00Z",
     "UpdatedAt": "0001-01-01T00:00:00Z"
@@ -713,8 +701,6 @@ Response:
       "maxFee": "0",
       "gasOverPremium": 12.3
     },
-    "WalletName": "test",
-    "FromUser": "test",
     "State": 1,
     "CreatedAt": "0001-01-01T00:00:00Z",
     "UpdatedAt": "0001-01-01T00:00:00Z"
@@ -780,8 +766,6 @@ Response:
       "maxFee": "0",
       "gasOverPremium": 12.3
     },
-    "WalletName": "test",
-    "FromUser": "test",
     "State": 1,
     "CreatedAt": "0001-01-01T00:00:00Z",
     "UpdatedAt": "0001-01-01T00:00:00Z"
@@ -851,8 +835,6 @@ Response:
       "maxFee": "0",
       "gasOverPremium": 12.3
     },
-    "WalletName": "test",
-    "FromUser": "test",
     "State": 1,
     "CreatedAt": "0001-01-01T00:00:00Z",
     "UpdatedAt": "0001-01-01T00:00:00Z"
@@ -1132,7 +1114,6 @@ Inputs:
     "To": "f01234",
     "From": "f01234",
     "Val": "0",
-    "Account": "string value",
     "GasPremium": "0",
     "GasFeeCap": "0",
     "GasLimit": 10000,
@@ -1344,8 +1325,6 @@ Response:
     "maxFee": "0",
     "gasOverPremium": 12.3
   },
-  "WalletName": "test",
-  "FromUser": "test",
   "State": 1,
   "CreatedAt": "0001-01-01T00:00:00Z",
   "UpdatedAt": "0001-01-01T00:00:00Z"

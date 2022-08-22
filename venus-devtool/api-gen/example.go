@@ -231,8 +231,6 @@ func init() {
 		Receipt:     ExampleValue("init", reflect.TypeOf(&types.MessageReceipt{}), nil).(*types.MessageReceipt),
 		TipSetKey:   tsk,
 		Meta:        ExampleValue("init", reflect.TypeOf(&messager.SendSpec{}), nil).(*messager.SendSpec),
-		WalletName:  "test",
-		FromUser:    "test",
 		State:       messager.UnFillMsg,
 	})
 	addExample(ExampleValue("init", reflect.TypeOf(&messager.SendSpec{}), nil).(*messager.SendSpec))
