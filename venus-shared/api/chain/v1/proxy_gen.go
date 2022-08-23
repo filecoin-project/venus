@@ -3,6 +3,7 @@ package v1
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
@@ -76,9 +77,14 @@ func (s *IActorStruct) StateGetActor(p0 context.Context, p1 address.Address, p2 
 
 type IMinerStateStruct struct {
 	Internal struct {
+		StateAllMinerFaults                func(ctx context.Context, lookback abi.ChainEpoch, ts types.TipSetKey) ([]*types.Fault, error)                                          `perm:"read"`
+		StateChangedActors                 func(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)                                                                 `perm:"read"`
 		StateCirculatingSupply             func(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error)                                                                 `perm:"read"`
 		StateDealProviderCollateralBounds  func(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (types.DealCollateralBounds, error)             `perm:"read"`
+		StateDecodeParams                  func(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error)        `perm:"read"`
+		StateEncodeParams                  func(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error)                              `perm:"read"`
 		StateListActors                    func(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)                                                               `perm:"read"`
+		StateListMessages                  func(ctx context.Context, match *types.MessageMatch, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)                       `perm:"read"`
 		StateListMiners                    func(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)                                                               `perm:"read"`
 		StateLookupID                      func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)                                           `perm:"read"`
 		StateLookupRobustAddress           func(context.Context, address.Address, types.TipSetKey) (address.Address, error)                                                        `perm:"read"`
@@ -101,6 +107,7 @@ type IMinerStateStruct struct {
 		StateMinerSectorSize               func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (abi.SectorSize, error)                                           `perm:"read"`
 		StateMinerSectors                  func(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error) `perm:"read"`
 		StateMinerWorkerAddress            func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (address.Address, error)                                          `perm:"read"`
+		StateReadState                     func(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.ActorState, error)                                        `perm:"read"`
 		StateSectorExpiration              func(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*lminer.SectorExpiration, error)  `perm:"read"`
 		StateSectorGetInfo                 func(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error)             `perm:"read"`
 		StateSectorPartition               func(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*lminer.SectorLocation, error)    `perm:"read"`
@@ -110,14 +117,29 @@ type IMinerStateStruct struct {
 	}
 }
 
+func (s *IMinerStateStruct) StateAllMinerFaults(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) ([]*types.Fault, error) {
+	return s.Internal.StateAllMinerFaults(p0, p1, p2)
+}
+func (s *IMinerStateStruct) StateChangedActors(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (map[string]types.Actor, error) {
+	return s.Internal.StateChangedActors(p0, p1, p2)
+}
 func (s *IMinerStateStruct) StateCirculatingSupply(p0 context.Context, p1 types.TipSetKey) (abi.TokenAmount, error) {
 	return s.Internal.StateCirculatingSupply(p0, p1)
 }
 func (s *IMinerStateStruct) StateDealProviderCollateralBounds(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (types.DealCollateralBounds, error) {
 	return s.Internal.StateDealProviderCollateralBounds(p0, p1, p2, p3)
 }
+func (s *IMinerStateStruct) StateDecodeParams(p0 context.Context, p1 address.Address, p2 abi.MethodNum, p3 []byte, p4 types.TipSetKey) (interface{}, error) {
+	return s.Internal.StateDecodeParams(p0, p1, p2, p3, p4)
+}
+func (s *IMinerStateStruct) StateEncodeParams(p0 context.Context, p1 cid.Cid, p2 abi.MethodNum, p3 json.RawMessage) ([]byte, error) {
+	return s.Internal.StateEncodeParams(p0, p1, p2, p3)
+}
 func (s *IMinerStateStruct) StateListActors(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {
 	return s.Internal.StateListActors(p0, p1)
+}
+func (s *IMinerStateStruct) StateListMessages(p0 context.Context, p1 *types.MessageMatch, p2 types.TipSetKey, p3 abi.ChainEpoch) ([]cid.Cid, error) {
+	return s.Internal.StateListMessages(p0, p1, p2, p3)
 }
 func (s *IMinerStateStruct) StateListMiners(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {
 	return s.Internal.StateListMiners(p0, p1)
@@ -184,6 +206,9 @@ func (s *IMinerStateStruct) StateMinerSectors(p0 context.Context, p1 address.Add
 }
 func (s *IMinerStateStruct) StateMinerWorkerAddress(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
 	return s.Internal.StateMinerWorkerAddress(p0, p1, p2)
+}
+func (s *IMinerStateStruct) StateReadState(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.ActorState, error) {
+	return s.Internal.StateReadState(p0, p1, p2)
 }
 func (s *IMinerStateStruct) StateSectorExpiration(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*lminer.SectorExpiration, error) {
 	return s.Internal.StateSectorExpiration(p0, p1, p2, p3)

@@ -251,6 +251,10 @@ func resolveDep(typ ast.Expr, ifaceMeta *util.InterfaceMeta, deps map[string]uti
 
 		return nil
 
+	case *ast.InterfaceType:
+
+		return nil
+
 	default:
 		return fmt.Errorf("found unexpected type: %T", typ)
 	}

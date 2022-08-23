@@ -44,9 +44,19 @@ func (cl CodeLoader) GetUnsafeActorImpl(code cid.Cid) (Dispatcher, error) {
 	//todo version check
 	actor, ok := cl.actors[code]
 	if !ok {
-		return nil, fmt.Errorf("unable to get actorv for code %s", code)
+		return nil, fmt.Errorf("unable to get actor for code %s", code)
 	}
 	return &actorDispatcher{code: code, actor: actor.vmActor}, nil
+}
+
+func (cl CodeLoader) GetVMActor(code cid.Cid) (rtt.VMActor, error) {
+	//todo version check
+	actor, ok := cl.actors[code]
+	if !ok {
+		return nil, fmt.Errorf("unable to get actor for code %s", code)
+	}
+
+	return actor.vmActor, nil
 }
 
 // CodeLoaderBuilder helps you build a CodeLoader.

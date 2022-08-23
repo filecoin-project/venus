@@ -79,9 +79,14 @@
   * [MpoolSetConfig](#MpoolSetConfig)
   * [MpoolSub](#MpoolSub)
 * [MinerState](#MinerState)
+  * [StateAllMinerFaults](#StateAllMinerFaults)
+  * [StateChangedActors](#StateChangedActors)
   * [StateCirculatingSupply](#StateCirculatingSupply)
   * [StateDealProviderCollateralBounds](#StateDealProviderCollateralBounds)
+  * [StateDecodeParams](#StateDecodeParams)
+  * [StateEncodeParams](#StateEncodeParams)
   * [StateListActors](#StateListActors)
+  * [StateListMessages](#StateListMessages)
   * [StateListMiners](#StateListMiners)
   * [StateLookupID](#StateLookupID)
   * [StateLookupRobustAddress](#StateLookupRobustAddress)
@@ -104,6 +109,7 @@
   * [StateMinerSectorSize](#StateMinerSectorSize)
   * [StateMinerSectors](#StateMinerSectors)
   * [StateMinerWorkerAddress](#StateMinerWorkerAddress)
+  * [StateReadState](#StateReadState)
   * [StateSectorExpiration](#StateSectorExpiration)
   * [StateSectorGetInfo](#StateSectorGetInfo)
   * [StateSectorPartition](#StateSectorPartition)
@@ -2613,6 +2619,69 @@ Response:
 
 ## MinerState
 
+### StateAllMinerFaults
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "Miner": "f01234",
+    "Epoch": 10101
+  }
+]
+```
+
+### StateChangedActors
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+{
+  "t01236": {
+    "Code": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "Head": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "Nonce": 42,
+    "Balance": "0"
+  }
+}
+```
+
 ### StateCirculatingSupply
 
 
@@ -2663,6 +2732,48 @@ Response:
 }
 ```
 
+### StateDecodeParams
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  1,
+  "Ynl0ZSBhcnJheQ==",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
+
+### StateEncodeParams
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  1,
+  "json raw message"
+]
+```
+
+Response: `"Ynl0ZSBhcnJheQ=="`
+
 ### StateListActors
 
 
@@ -2686,6 +2797,39 @@ Response:
 ```json
 [
   "f01234"
+]
+```
+
+### StateListMessages
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "To": "f01234",
+    "From": "f01234"
+  },
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  10101
+]
+```
+
+Response:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 ]
 ```
 
@@ -3421,6 +3565,37 @@ Inputs:
 ```
 
 Response: `"f01234"`
+
+### StateReadState
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Balance": "0",
+  "Code": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "State": {}
+}
+```
 
 ### StateSectorExpiration
 

@@ -1,6 +1,8 @@
 package register
 
 import (
+	"bytes"
+	"fmt"
 	"sync"
 
 	/* inline-gen template
@@ -21,6 +23,8 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // defaultActors is list of all actors that ship with Filecoin.
@@ -51,4 +55,22 @@ func GetDefaultActros() *dispatch.CodeLoader {
 	})
 
 	return &defaultActors
+}
+
+func DumpActorState(codeLoader *dispatch.CodeLoader, act *types.Actor, b []byte) (interface{}, error) {
+	if builtin.IsAccountActor(act.Code) { // Account code special case
+		return nil, nil
+	}
+
+	vmActor, err := codeLoader.GetVMActor(act.Code)
+	if err != nil {
+		return nil, fmt.Errorf("state type for actor %s not found", act.Code)
+	}
+
+	um := vmActor.State()
+	if err := um.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
+		return nil, fmt.Errorf("unmarshaling actor state: %w", err)
+	}
+
+	return um, nil
 }
