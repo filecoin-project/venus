@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
+	"github.com/filecoin-project/venus/venus-shared/api"
 )
 
 var (
@@ -37,7 +37,7 @@ func ParseAPIInfo(s string) (*APIInfo, error) {
 }
 
 func (a APIInfo) DialArgs() (string, error) {
-	return apiinfo.DialArgs(a.Addr, "v0")
+	return api.DialArgs(a.Addr, "v0")
 }
 
 func (a APIInfo) AuthHeader() http.Header {
