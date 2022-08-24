@@ -20,15 +20,15 @@ Venus is an implementation of the Filecoin Distributed Storage Network. For more
 
 ## Building & Documentation
 
-For instructions on how to build, install and join a venus storage pool, please visit [here](https://venus.filecoin.io/guide/Using-venus-Shared-Modules.html).
+For instructions on how to build, install and join a venus storage pool, please visit [here](https://venus.filecoin.io/intro/).
 
 ## Venus architecture
 
-With key features like security, ease of use and distributed storage pool, the deployment of a node using Venus is quite different from the one using [Lotus](https://github.com/filecoin-project/lotus). Details of mining architecture can be found [here](https://venus.filecoin.io/guide/#how-venus-works).
+With key features like security, ease of use and distributed storage pool, the deployment of a node using Venus is quite different from the one using [Lotus](https://github.com/filecoin-project/lotus). Details of mining architecture can be found [here](https://venus.filecoin.io/intro/#how-venus-works).
 
 ## Related modules
 
-Venus loosely describes a collection of modules that work together to realize a fully featured Filecoin implementation. List of stand-alone venus modules repos can ben found [here](https://venus.filecoin.io/guide/Using-venus-Shared-Modules.html#introducing-venus-modules), each assuming different roles in the functioning of Filecoin.
+Venus loosely describes a collection of modules that work together to realize a fully featured Filecoin implementation. List of stand-alone venus modules repos can be found [here](https://venus.filecoin.io/intro/#how-venus-works), each assuming different roles in the functioning of Filecoin.
 
 ## Contribute
 
