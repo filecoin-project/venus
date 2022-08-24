@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/venus/pkg/jwtauth"
-
 	"github.com/filecoin-project/venus/pkg/wallet"
 
 	"github.com/stretchr/testify/require"
@@ -98,8 +96,7 @@ func (b *NodeBuilder) Build(ctx context.Context) *node.Node {
 	// Initialize the node.
 	repoConfigOpts, err := node.OptionsFromRepo(repo)
 	b.requireNoError(err)
-	_, err = jwtauth.NewJwtAuth(repo)
-	b.requireNoError(err)
+
 	nd, err := node.New(ctx, append(repoConfigOpts, b.builderOpts...)...)
 	b.requireNoError(err)
 	return nd

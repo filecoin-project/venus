@@ -11,7 +11,7 @@ import (
 	"contrib.go.opencensus.io/exporter/jaeger"
 	"github.com/awnumar/memguard"
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
+	"github.com/filecoin-project/venus-auth/jwtclient"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
 	configModule "github.com/filecoin-project/venus/app/submodule/config"
@@ -31,7 +31,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/config"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"  // enable bls signatures
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp" // enable secp signatures
-	"github.com/filecoin-project/venus/pkg/jwtauth"
 	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/repo"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -100,7 +99,7 @@ type Node struct {
 	jsonRPCService, jsonRPCServiceV1 *jsonrpc.RPCServer
 
 	jaegerExporter *jaeger.Exporter
-	remoteAuth     *jwtauth.RemoteAuth
+	remoteAuth     jwtclient.IJwtAuthClient
 }
 
 func (node *Node) Chain() *chain2.ChainSubmodule {
@@ -261,9 +260,13 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 		return err
 	}
 
-	localVerifer, err := jwtauth.NewJwtAuth(node.repo)
+	localVerifer, token, err := jwtclient.NewLocalAuthClient()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to generate local auth client: %s", err)
+	}
+	err = node.repo.SetAPIToken(token)
+	if err != nil {
+		return fmt.Errorf("set token fail: %w", err)
 	}
 
 	authMux := jwtclient.NewAuthMux(localVerifer, node.remoteAuth, mux)

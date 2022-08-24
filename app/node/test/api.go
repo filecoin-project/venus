@@ -55,6 +55,7 @@ func (a *NodeAPI) Run(ctx context.Context) (client *Client, stop func()) {
 
 	token, err := a.node.Repo().APIToken()
 	require.NoError(a.tb, err)
+	require.NotEmpty(a.tb, token, "empty token")
 	return &Client{addr, token, a.tb}, func() {
 		cancel()
 	}
