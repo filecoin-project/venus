@@ -457,33 +457,32 @@ func (mr *MockIMarketMockRecorder) GetDeals(arg0, arg1, arg2, arg3 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDeals", reflect.TypeOf((*MockIMarket)(nil).GetDeals), arg0, arg1, arg2, arg3)
 }
 
-// GetPieceStorages mocks base method.
-func (m *MockIMarket) GetPieceStorages(arg0 context.Context) market.PieceStorageInfos {
+// GetRetrievalDealStatistic mocks base method.
+func (m *MockIMarket) GetRetrievalDealStatistic(arg0 context.Context, arg1 address.Address) market.RetrievalDealStatistic {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPieceStorages", arg0)
-	ret0, _ := ret[0].(market.PieceStorageInfos)
+	ret := m.ctrl.Call(m, "GetRetrievalDealStatistic", arg0, arg1)
+	ret0, _ := ret[0].(market.RetrievalDealStatistic)
 	return ret0
 }
 
-// GetPieceStorages indicates an expected call of GetPieceStorages.
-func (mr *MockIMarketMockRecorder) GetPieceStorages(arg0 interface{}) *gomock.Call {
+// GetRetrievalDealStatistic indicates an expected call of GetRetrievalDealStatistic.
+func (mr *MockIMarketMockRecorder) GetRetrievalDealStatistic(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPieceStorages", reflect.TypeOf((*MockIMarket)(nil).GetPieceStorages), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRetrievalDealStatistic", reflect.TypeOf((*MockIMarket)(nil).GetRetrievalDealStatistic), arg0, arg1)
 }
 
-// GetReadUrl mocks base method.
-func (m *MockIMarket) GetReadUrl(arg0 context.Context, arg1 string) (string, error) {
+// GetStorageDealStatistic mocks base method.
+func (m *MockIMarket) GetStorageDealStatistic(arg0 context.Context, arg1 address.Address) market.StorageDealStatistic {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetReadUrl", arg0, arg1)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "GetStorageDealStatistic", arg0, arg1)
+	ret0, _ := ret[0].(market.StorageDealStatistic)
+	return ret0
 }
 
-// GetReadUrl indicates an expected call of GetReadUrl.
-func (mr *MockIMarketMockRecorder) GetReadUrl(arg0, arg1 interface{}) *gomock.Call {
+// GetStorageDealStatistic indicates an expected call of GetStorageDealStatistic.
+func (mr *MockIMarketMockRecorder) GetStorageDealStatistic(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReadUrl", reflect.TypeOf((*MockIMarket)(nil).GetReadUrl), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStorageDealStatistic", reflect.TypeOf((*MockIMarket)(nil).GetStorageDealStatistic), arg0, arg1)
 }
 
 // GetUnPackedDeals mocks base method.
@@ -499,21 +498,6 @@ func (m *MockIMarket) GetUnPackedDeals(arg0 context.Context, arg1 address.Addres
 func (mr *MockIMarketMockRecorder) GetUnPackedDeals(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUnPackedDeals", reflect.TypeOf((*MockIMarket)(nil).GetUnPackedDeals), arg0, arg1, arg2)
-}
-
-// GetWriteUrl mocks base method.
-func (m *MockIMarket) GetWriteUrl(arg0 context.Context, arg1 string) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetWriteUrl", arg0, arg1)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetWriteUrl indicates an expected call of GetWriteUrl.
-func (mr *MockIMarketMockRecorder) GetWriteUrl(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWriteUrl", reflect.TypeOf((*MockIMarket)(nil).GetWriteUrl), arg0, arg1)
 }
 
 // ID mocks base method.
@@ -543,6 +527,20 @@ func (m *MockIMarket) ImportV1Data(arg0 context.Context, arg1 string) error {
 func (mr *MockIMarketMockRecorder) ImportV1Data(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImportV1Data", reflect.TypeOf((*MockIMarket)(nil).ImportV1Data), arg0, arg1)
+}
+
+// ListPieceStorageInfos mocks base method.
+func (m *MockIMarket) ListPieceStorageInfos(arg0 context.Context) market.PieceStorageInfos {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListPieceStorageInfos", arg0)
+	ret0, _ := ret[0].(market.PieceStorageInfos)
+	return ret0
+}
+
+// ListPieceStorageInfos indicates an expected call of ListPieceStorageInfos.
+func (mr *MockIMarketMockRecorder) ListPieceStorageInfos(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPieceStorageInfos", reflect.TypeOf((*MockIMarket)(nil).ListPieceStorageInfos), arg0)
 }
 
 // ListenMarketEvent mocks base method.

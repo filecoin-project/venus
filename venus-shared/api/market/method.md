@@ -29,12 +29,12 @@
   * [DealsSetConsiderVerifiedStorageDeals](#DealsSetConsiderVerifiedStorageDeals)
   * [DealsSetPieceCidBlocklist](#DealsSetPieceCidBlocklist)
   * [GetDeals](#GetDeals)
-  * [GetPieceStorages](#GetPieceStorages)
-  * [GetReadUrl](#GetReadUrl)
+  * [GetRetrievalDealStatistic](#GetRetrievalDealStatistic)
+  * [GetStorageDealStatistic](#GetStorageDealStatistic)
   * [GetUnPackedDeals](#GetUnPackedDeals)
-  * [GetWriteUrl](#GetWriteUrl)
   * [ID](#ID)
   * [ImportV1Data](#ImportV1Data)
+  * [ListPieceStorageInfos](#ListPieceStorageInfos)
   * [ListenMarketEvent](#ListenMarketEvent)
   * [MarkDealsAsPacking](#MarkDealsAsPacking)
   * [MarketAddBalance](#MarketAddBalance)
@@ -613,37 +613,9 @@ Response:
 ]
 ```
 
-### GetPieceStorages
-
-
-Perms: read
-
-Inputs: `[]`
-
-Response:
-```json
-{
-  "FsStorage": [
-    {
-      "Path": "string value",
-      "Name": "string value",
-      "ReadOnly": true
-    }
-  ],
-  "S3Storage": [
-    {
-      "Name": "string value",
-      "ReadOnly": true,
-      "EndPoint": "string value",
-      "Bucket": "string value",
-      "SubDir": "string value"
-    }
-  ]
-}
-```
-
-### GetReadUrl
-piece storage
+### GetRetrievalDealStatistic
+GetRetrievalDealStatistic get retrieval deal statistic infomation
+if set miner address to address.Undef, return all storage deal info
 
 
 Perms: read
@@ -651,11 +623,41 @@ Perms: read
 Inputs:
 ```json
 [
-  "string value"
+  "f01234"
 ]
 ```
 
-Response: `"string value"`
+Response:
+```json
+{
+  "DealsStatus": {
+    "42": 9
+  }
+}
+```
+
+### GetStorageDealStatistic
+GetStorageDealStatistic get storage deal statistic infomation
+if set miner address to address.Undef, return all storage deal info
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response:
+```json
+{
+  "DealsStatus": {
+    "42": 9
+  }
+}
+```
 
 ### GetUnPackedDeals
 
@@ -708,20 +710,6 @@ Response:
 ]
 ```
 
-### GetWriteUrl
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "string value"
-]
-```
-
-Response: `"string value"`
-
 ### ID
 
 
@@ -744,6 +732,35 @@ Inputs:
 ```
 
 Response: `{}`
+
+### ListPieceStorageInfos
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "FsStorage": [
+    {
+      "Path": "string value",
+      "Name": "string value",
+      "ReadOnly": true
+    }
+  ],
+  "S3Storage": [
+    {
+      "Name": "string value",
+      "ReadOnly": true,
+      "EndPoint": "string value",
+      "Bucket": "string value",
+      "SubDir": "string value"
+    }
+  ]
+}
+```
 
 ### ListenMarketEvent
 
