@@ -12,9 +12,15 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"
+
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 )
+
+type ComputeStateOutput struct {
+	Root  cid.Cid
+	Trace []*InvocResult
+}
 
 type HeadChangeType string
 
@@ -57,6 +63,12 @@ type MessageCID struct {
 	Message *Message
 }
 
+type ActorState struct {
+	Balance BigInt
+	Code    cid.Cid
+	State   interface{}
+}
+
 type NetworkName string
 
 const (
@@ -89,6 +101,16 @@ type Partition struct {
 	RecoveringSectors bitfield.BitField
 	LiveSectors       bitfield.BitField
 	ActiveSectors     bitfield.BitField
+}
+
+type Fault struct {
+	Miner address.Address
+	Epoch abi.ChainEpoch
+}
+
+type MessageMatch struct {
+	To   address.Address
+	From address.Address
 }
 
 // SectorInfo provides information about a sector construction

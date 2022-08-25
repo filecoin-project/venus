@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/token"
 	"os"
@@ -141,6 +142,10 @@ func init() {
 		Msg:    ExampleValue("init", reflect.TypeOf(&types.Message{}), nil).(*types.Message),
 		MsgRct: ExampleValue("init", reflect.TypeOf(&types.MessageReceipt{}), nil).(*types.MessageReceipt),
 	})
+	addExample(map[string]types.Actor{
+		"t01236": ExampleValue("init", reflect.TypeOf(types.Actor{}), nil).(types.Actor),
+	})
+	addExample(json.RawMessage(`"json raw message"`))
 	addExample(map[address.Address]*types.Actor{
 		addr: {
 			Code:    c,

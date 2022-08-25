@@ -1,20 +1,27 @@
 package chain
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
-	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/ipfs/go-cid"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/venus/pkg/state/tree"
+	"github.com/filecoin-project/venus/pkg/vm/register"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	_init "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
@@ -25,6 +32,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/utils"
 )
 
 var _ v1api.IMinerState = &minerStateAPI{}
@@ -177,6 +185,10 @@ func (msa *minerStateAPI) StateMinerFaults(ctx context.Context, maddr address.Ad
 	}
 
 	return lminer.AllPartSectors(mas, lminer.Partition.FaultySectors)
+}
+
+func (msa *minerStateAPI) StateAllMinerFaults(ctx context.Context, lookback abi.ChainEpoch, endTsk types.TipSetKey) ([]*types.Fault, error) {
+	return nil, fmt.Errorf("fixme")
 }
 
 // StateMinerProvingDeadline calculates the deadline at some epoch for a proving period
@@ -564,7 +576,7 @@ func (msa *minerStateAPI) StateLookupRobustAddress(ctx context.Context, idAddr a
 		return address.Undef, fmt.Errorf("failed to decode provided address as id addr: %w", err)
 	}
 
-	cst := cbor.NewCborStore(msa.ChainReader.Blockstore())
+	cst := cbornode.NewCborStore(msa.ChainReader.Blockstore())
 	wrapStore := adt.WrapStore(ctx, cst)
 
 	_, state, err := msa.Stmgr.ParentStateTsk(ctx, tsk)
@@ -839,4 +851,170 @@ func (msa *minerStateAPI) StateVerifiedClientStatus(ctx context.Context, addr ad
 	}
 
 	return &dcap, nil
+}
+
+func (msa *minerStateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.Cid) (map[string]types.Actor, error) {
+	store := msa.ChainReader.Store(ctx)
+
+	oldTree, err := tree.LoadState(ctx, store, old)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load old state tree: %w", err)
+	}
+
+	newTree, err := tree.LoadState(ctx, store, new)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load new state tree: %w", err)
+	}
+
+	return tree.Diff(oldTree, newTree)
+}
+
+func (msa *minerStateAPI) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.ActorState, error) {
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("loading tipset:%s parent state view: %v", tsk, err)
+	}
+
+	act, err := view.LoadActor(ctx, actor)
+	if err != nil {
+		return nil, err
+	}
+
+	blk, err := msa.ChainReader.Blockstore().Get(ctx, act.Head)
+	if err != nil {
+		return nil, fmt.Errorf("getting actor head: %w", err)
+	}
+
+	oif, err := register.DumpActorState(register.GetDefaultActros(), act, blk.RawData())
+	if err != nil {
+		return nil, fmt.Errorf("dumping actor state (a:%s): %w", actor, err)
+	}
+
+	return &types.ActorState{
+		Balance: act.Balance,
+		Code:    act.Code,
+		State:   oif,
+	}, nil
+}
+
+func (msa *minerStateAPI) StateDecodeParams(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error) {
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("loading tipset:%s parent state view: %v", tsk, err)
+	}
+
+	act, err := view.LoadActor(ctx, toAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	methodMeta, found := utils.MethodsMap[act.Code][method]
+	if !found {
+		return nil, fmt.Errorf("method %d not found on actor %s", method, act.Code)
+	}
+
+	paramType := reflect.New(methodMeta.Params.Elem()).Interface().(cbg.CBORUnmarshaler)
+
+	if err = paramType.UnmarshalCBOR(bytes.NewReader(params)); err != nil {
+		return nil, err
+	}
+
+	return paramType, nil
+}
+
+func (msa *minerStateAPI) StateEncodeParams(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error) {
+	methodMeta, found := utils.MethodsMap[toActCode][method]
+	if !found {
+		return nil, fmt.Errorf("method %d not found on actor %s", method, toActCode)
+	}
+
+	paramType := reflect.New(methodMeta.Params.Elem()).Interface().(cbg.CBORUnmarshaler)
+
+	if err := json.Unmarshal(params, &paramType); err != nil {
+		return nil, fmt.Errorf("json unmarshal: %w", err)
+	}
+
+	var cbb bytes.Buffer
+	if err := paramType.(cbor.Marshaler).MarshalCBOR(&cbb); err != nil {
+		return nil, fmt.Errorf("cbor marshal: %w", err)
+	}
+
+	return cbb.Bytes(), nil
+}
+
+func (msa *minerStateAPI) StateListMessages(ctx context.Context, match *types.MessageMatch, tsk types.TipSetKey, toheight abi.ChainEpoch) ([]cid.Cid, error) {
+	ts, err := msa.ChainReader.GetTipSet(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	if ts == nil {
+		ts = msa.ChainReader.GetHead()
+	}
+
+	if match.To == address.Undef && match.From == address.Undef {
+		return nil, fmt.Errorf("must specify at least To or From in message filter")
+	} else if match.To != address.Undef {
+		_, err := msa.StateLookupID(ctx, match.To, tsk)
+
+		// if the recipient doesn't exist at the start point, we're not gonna find any matches
+		if errors.Is(err, types.ErrActorNotFound) {
+			return nil, nil
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("looking up match.To: %w", err)
+		}
+	} else if match.From != address.Undef {
+		_, err := msa.StateLookupID(ctx, match.From, tsk)
+
+		// if the sender doesn't exist at the start point, we're not gonna find any matches
+		if errors.Is(err, types.ErrActorNotFound) {
+			return nil, nil
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("looking up match.From: %w", err)
+		}
+	}
+
+	// TODO: This should probably match on both ID and robust address, no?
+	matchFunc := func(msg *types.Message) bool {
+		if match.From != address.Undef && match.From != msg.From {
+			return false
+		}
+
+		if match.To != address.Undef && match.To != msg.To {
+			return false
+		}
+
+		return true
+	}
+
+	var out []cid.Cid
+	for ts.Height() >= toheight {
+		msgs, err := msa.MessageStore.MessagesForTipset(ts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get messages for tipset (%s): %w", ts.Key(), err)
+		}
+
+		for _, msg := range msgs {
+			if matchFunc(msg.VMMessage()) {
+				out = append(out, msg.Cid())
+			}
+		}
+
+		if ts.Height() == 0 {
+			break
+		}
+
+		next, err := msa.ChainReader.GetTipSet(ctx, ts.Parents())
+		if err != nil {
+			return nil, fmt.Errorf("loading next tipset: %w", err)
+		}
+
+		ts = next
+	}
+
+	return out, nil
 }
