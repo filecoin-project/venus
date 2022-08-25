@@ -159,11 +159,11 @@ type IMarket interface {
 
 	// GetStorageDealStatistic get storage deal statistic infomation
 	// if set miner address to address.Undef, return all storage deal info
-	GetStorageDealStatistic(ctx context.Context, miner address.Address) market.StorageDealStatistic //perm:read
+	GetStorageDealStatistic(ctx context.Context, miner address.Address) (*market.StorageDealStatistic, error) //perm:read
 
 	// GetRetrievalDealStatistic get retrieval deal statistic infomation
 	// if set miner address to address.Undef, return all storage deal info
-	GetRetrievalDealStatistic(ctx context.Context, miner address.Address) market.RetrievalDealStatistic //perm:read
+	GetRetrievalDealStatistic(ctx context.Context, miner address.Address) (*market.RetrievalDealStatistic, error) //perm:read
 
 	api.Version
 }

@@ -50,8 +50,8 @@ type IMarketStruct struct {
 		DealsSetConsiderVerifiedStorageDeals   func(context.Context, bool) error                                                                                                                                                                   `perm:"admin"`
 		DealsSetPieceCidBlocklist              func(context.Context, []cid.Cid) error                                                                                                                                                              `perm:"admin"`
 		GetDeals                               func(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*market.DealInfo, error)                                                                                               `perm:"read"`
-		GetRetrievalDealStatistic              func(ctx context.Context, miner address.Address) market.RetrievalDealStatistic                                                                                                                      `perm:"read"`
-		GetStorageDealStatistic                func(ctx context.Context, miner address.Address) market.StorageDealStatistic                                                                                                                        `perm:"read"`
+		GetRetrievalDealStatistic              func(ctx context.Context, miner address.Address) (*market.RetrievalDealStatistic, error)                                                                                                            `perm:"read"`
+		GetStorageDealStatistic                func(ctx context.Context, miner address.Address) (*market.StorageDealStatistic, error)                                                                                                              `perm:"read"`
 		GetUnPackedDeals                       func(ctx context.Context, miner address.Address, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                                                                                   `perm:"read"`
 		ID                                     func(context.Context) (peer.ID, error)                                                                                                                                                              `perm:"read"`
 		ImportV1Data                           func(ctx context.Context, src string) error                                                                                                                                                         `perm:"write"`
@@ -186,10 +186,10 @@ func (s *IMarketStruct) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.C
 func (s *IMarketStruct) GetDeals(p0 context.Context, p1 address.Address, p2, p3 int) ([]*market.DealInfo, error) {
 	return s.Internal.GetDeals(p0, p1, p2, p3)
 }
-func (s *IMarketStruct) GetRetrievalDealStatistic(p0 context.Context, p1 address.Address) market.RetrievalDealStatistic {
+func (s *IMarketStruct) GetRetrievalDealStatistic(p0 context.Context, p1 address.Address) (*market.RetrievalDealStatistic, error) {
 	return s.Internal.GetRetrievalDealStatistic(p0, p1)
 }
-func (s *IMarketStruct) GetStorageDealStatistic(p0 context.Context, p1 address.Address) market.StorageDealStatistic {
+func (s *IMarketStruct) GetStorageDealStatistic(p0 context.Context, p1 address.Address) (*market.StorageDealStatistic, error) {
 	return s.Internal.GetStorageDealStatistic(p0, p1)
 }
 func (s *IMarketStruct) GetUnPackedDeals(p0 context.Context, p1 address.Address, p2 *market.GetDealSpec) ([]*market.DealInfoIncludePath, error) {

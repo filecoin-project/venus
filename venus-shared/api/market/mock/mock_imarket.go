@@ -458,11 +458,12 @@ func (mr *MockIMarketMockRecorder) GetDeals(arg0, arg1, arg2, arg3 interface{}) 
 }
 
 // GetRetrievalDealStatistic mocks base method.
-func (m *MockIMarket) GetRetrievalDealStatistic(arg0 context.Context, arg1 address.Address) market.RetrievalDealStatistic {
+func (m *MockIMarket) GetRetrievalDealStatistic(arg0 context.Context, arg1 address.Address) (*market.RetrievalDealStatistic, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRetrievalDealStatistic", arg0, arg1)
-	ret0, _ := ret[0].(market.RetrievalDealStatistic)
-	return ret0
+	ret0, _ := ret[0].(*market.RetrievalDealStatistic)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetRetrievalDealStatistic indicates an expected call of GetRetrievalDealStatistic.
@@ -472,11 +473,12 @@ func (mr *MockIMarketMockRecorder) GetRetrievalDealStatistic(arg0, arg1 interfac
 }
 
 // GetStorageDealStatistic mocks base method.
-func (m *MockIMarket) GetStorageDealStatistic(arg0 context.Context, arg1 address.Address) market.StorageDealStatistic {
+func (m *MockIMarket) GetStorageDealStatistic(arg0 context.Context, arg1 address.Address) (*market.StorageDealStatistic, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetStorageDealStatistic", arg0, arg1)
-	ret0, _ := ret[0].(market.StorageDealStatistic)
-	return ret0
+	ret0, _ := ret[0].(*market.StorageDealStatistic)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetStorageDealStatistic indicates an expected call of GetStorageDealStatistic.
