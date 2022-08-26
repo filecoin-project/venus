@@ -64,10 +64,7 @@ Lotus方面backport指master的pr合到`release/vX.Y.Z`, Venus基于master的话
       - [ ]正式版`vX.Y.Z`
       - [ ]rc版`vX.Y.Z-rc[x]`，并标记为`pre-release`
       - [ ]pre-rc版`vX.Y.Z-pre-rc[x]`，并标记为`pre-release`
-    - [ ] 版本发布至`releases`
-<!-- 
-注：[github](https://github.com/filecoin-project/venus/releases)有区分`tag`和`releases`）
--->
+    - [ ] 版本发布至`releases` <!-- 注：[github](https://github.com/filecoin-project/venus/releases)有区分`tag`和`releases`）-->
     - [ ] （可选）检查是否有`PR`单独提交至`release/vX.Y.Z`分支，并提交`Release back to master`的`PR`
     - [ ] （可选）创建新版本的discussion讨论帖
 
