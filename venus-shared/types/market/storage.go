@@ -3,6 +3,8 @@ package market
 import (
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -127,5 +129,5 @@ type StorageDealStatistic struct {
 // RetrievalDealStatistic storage  statistical information
 // The struct is used here for statistical information that may need to be added in the future
 type RetrievalDealStatistic struct {
-	DealsStatus map[storagemarket.StorageDealStatus]int64
+	DealsStatus map[retrievalmarket.DealStatus]int64
 }

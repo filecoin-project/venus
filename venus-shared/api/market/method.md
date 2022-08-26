@@ -631,7 +631,7 @@ Response:
 ```json
 {
   "DealsStatus": {
-    "42": 9
+    "0": 9
   }
 }
 ```
