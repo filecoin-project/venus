@@ -9,6 +9,7 @@ type FsStorage struct {
 	Path     string
 	Name     string
 	ReadOnly bool
+	Status   StorageStatus
 }
 
 type S3Storage struct {
@@ -17,4 +18,5 @@ type S3Storage struct {
 	EndPoint string
 	Bucket   string
 	SubDir   string
+	Status   StorageStatus
 }

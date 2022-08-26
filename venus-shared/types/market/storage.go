@@ -131,3 +131,9 @@ type StorageDealStatistic struct {
 type RetrievalDealStatistic struct {
 	DealsStatus map[retrievalmarket.DealStatus]int64
 }
+
+type StorageStatus struct {
+	Capacity  int64
+	Available int64
+	Reserved  int64
+}

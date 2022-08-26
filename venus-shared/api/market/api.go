@@ -162,7 +162,7 @@ type IMarket interface {
 	GetStorageDealStatistic(ctx context.Context, miner address.Address) (*market.StorageDealStatistic, error) //perm:read
 
 	// GetRetrievalDealStatistic get retrieval deal statistic infomation
-	// if set miner address to address.Undef, return all storage deal info
+	// todo address undefined is invalid, it is currently not possible to directly associate an order with a miner
 	GetRetrievalDealStatistic(ctx context.Context, miner address.Address) (*market.RetrievalDealStatistic, error) //perm:read
 
 	api.Version

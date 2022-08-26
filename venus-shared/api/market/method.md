@@ -615,7 +615,7 @@ Response:
 
 ### GetRetrievalDealStatistic
 GetRetrievalDealStatistic get retrieval deal statistic infomation
-if set miner address to address.Undef, return all storage deal info
+todo address undefined is invalid, it is currently not possible to directly associate an order with a miner
 
 
 Perms: read
@@ -747,7 +747,12 @@ Response:
     {
       "Path": "string value",
       "Name": "string value",
-      "ReadOnly": true
+      "ReadOnly": true,
+      "Status": {
+        "Capacity": 9,
+        "Available": 9,
+        "Reserved": 9
+      }
     }
   ],
   "S3Storage": [
@@ -756,7 +761,12 @@ Response:
       "ReadOnly": true,
       "EndPoint": "string value",
       "Bucket": "string value",
-      "SubDir": "string value"
+      "SubDir": "string value",
+      "Status": {
+        "Capacity": 9,
+        "Available": 9,
+        "Reserved": 9
+      }
     }
   ]
 }
