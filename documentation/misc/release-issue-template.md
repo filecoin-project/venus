@@ -12,17 +12,27 @@
 
 ## ✅ 常规检查项
 
-准备:
+### 准备:
 
+<!-- 
+
+⚠️注意：
+
+对于合进master的代码要有一定的约束：不想在本次发版的pr不能合进master，比如说好几个组件加了新功能，会较大影响用户习惯或有大的改动，虽然代码测试过了，但是我们不想最近给社区用，就不能合进master分支
+
+-->
+
+  - [ ] 确保当前`master`功能与其他组件不冲突，不破坏兼容性
   - [ ] 从`master`拉出发布分支（3选1）
     - [ ] 正式版`release/vX.Y.Z`
     - [ ]`rc`版`release/vX.Y.Z-rc[x]`
     - [ ]`pre-rc`版`release/vX.Y.Z-pre-rc[x]`
   - [ ] 依照[发版规则](https://github.com/ipfs-force-community/dev-guidances/blob/master/%E9%A1%B9%E7%9B%AE%E7%AE%A1%E7%90%86/Venus/%E7%89%88%E6%9C%AC%E5%8F%91%E5%B8%83%E7%AE%A1%E7%90%86.md)递进`master`上的版本号，并更新发布分支中`version.go`的版本号
-  - [ ] 依照[分支管理规范](https://github.com/ipfs-force-community/dev-guidances/blob/master/%E8%B4%A8%E9%87%8F%E7%AE%A1%E7%90%86/%E4%BB%A3%E7%A0%81/git%E4%BD%BF%E7%94%A8/%E5%88%86%E6%94%AF%E7%AE%A1%E7%90%86%E8%A7%84%E8%8C%83.md)进行分支开发；如有重大`bug`修复需要从`master`中并入分支，可以通过[backport](https://github.com/filecoin-project/lotus/pull/8847)的方式合并至`release/vX.Y.Z`分支
+  - [ ] 发布分支中功能冻结；如有重大`bug`修复需要从`master`中并入分支，可以通过[backport](https://github.com/filecoin-project/lotus/pull/8847)的方式合并至`release/vX.Y.Z`分支
 
 <!-- 
-关于backport解释：
+
+⚠️关于backport解释：
 
 Lotus方面backport指master的pr合到`release/vX.Y.Z`, Venus基于master的话，backport的意义可能和lotus不一样。
 
@@ -34,7 +44,7 @@ Lotus方面backport指master的pr合到`release/vX.Y.Z`, Venus基于master的话
 具体举例：当需要发版时，建立标题为，chore: backport: xxxx, xxxx... 的PR。用于把master上的一些bug修复的PR合并回release/vX.Y.Z分支。xxxx为bug修复的PR号码。参考：https://github.com/filecoin-project/lotus/pull/8847（注：参考中为一个feat非bug修复）
 -->
 
-测试:
+### 测试:
 
 - [ ] **阶段 0 - 自动化测试**
   - 自动化测试
@@ -76,6 +86,7 @@ Lotus方面backport指master的pr合到`release/vX.Y.Z`, Venus基于master的话
 那么当发版结束时，需要提交题为，chore: releases back to master的PR。把只合并到release/vX.Y.Z分支的PR合回master。参考：https://github.com/filecoin-project/lotus/pull/8929
 -->
 
-- [ ] **发版后**
-  - [ ] （可选）按需更新[release-issue-templat.md](https://github.com/filecoin-project/venus/blob/master/documentation/misc/release-issue-template.md)模版
-  - [ ] （可选）使用[release-issue-templat.md](https://github.com/filecoin-project/venus/blob/master/documentation/misc/release-issue-templat.md)模版创建下一个发版issue
+### 发版后:
+
+- [ ] （可选）按需更新[release-issue-templat.md](https://github.com/filecoin-project/venus/blob/master/documentation/misc/release-issue-template.md)模版
+- [ ] （可选）使用[release-issue-templat.md](https://github.com/filecoin-project/venus/blob/master/documentation/misc/release-issue-templat.md)模版创建下一个发版issue
