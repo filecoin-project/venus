@@ -147,10 +147,6 @@ type IMarket interface {
 	// Paych
 	PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) //perm:read
 
-	//piece storage
-	GetReadUrl(context.Context, string) (string, error)               //perm:read
-	GetWriteUrl(ctx context.Context, resource string) (string, error) //perm:read
-
 	ImportV1Data(ctx context.Context, src string) error //perm:write
 
 	AddFsPieceStorage(ctx context.Context, name string, path string, readonly bool) error //perm:admin
@@ -159,7 +155,15 @@ type IMarket interface {
 
 	RemovePieceStorage(ctx context.Context, name string) error //perm:admin
 
-	GetPieceStorages(ctx context.Context) market.PieceStorageInfos //perm:read
+	ListPieceStorageInfos(ctx context.Context) market.PieceStorageInfos //perm:read
+
+	// GetStorageDealStatistic get storage deal statistic information
+	// if set miner address to address.Undef, return all storage deal info
+	GetStorageDealStatistic(ctx context.Context, miner address.Address) (*market.StorageDealStatistic, error) //perm:read
+
+	// GetRetrievalDealStatistic get retrieval deal statistic information
+	// todo address undefined is invalid, it is currently not possible to directly associate an order with a miner
+	GetRetrievalDealStatistic(ctx context.Context, miner address.Address) (*market.RetrievalDealStatistic, error) //perm:read
 
 	api.Version
 }
