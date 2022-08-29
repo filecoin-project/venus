@@ -614,7 +614,7 @@ Response:
 ```
 
 ### GetRetrievalDealStatistic
-GetRetrievalDealStatistic get retrieval deal statistic infomation
+GetRetrievalDealStatistic get retrieval deal statistic information
 todo address undefined is invalid, it is currently not possible to directly associate an order with a miner
 
 
@@ -637,7 +637,7 @@ Response:
 ```
 
 ### GetStorageDealStatistic
-GetStorageDealStatistic get storage deal statistic infomation
+GetStorageDealStatistic get storage deal statistic information
 if set miner address to address.Undef, return all storage deal info
 
 

@@ -111,7 +111,7 @@ The last step is crucial, as it enables peers to learn our updated addresses, an
 ## Pubsub via Gossipsub
 
 Filecoin relies on [GossipSub](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub) for pubsub gossip among peers propagating blockchain blocks and unmined messages.
-Please refer to the linked spec for more infomation.
+Please refer to the linked spec for more information.
 
 ## Contribute to libp2p
 
