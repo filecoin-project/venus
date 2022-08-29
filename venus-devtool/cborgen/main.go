@@ -4,6 +4,12 @@ import (
 	"log"
 	"path/filepath"
 
+	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/fvm"
+	"github.com/filecoin-project/venus/pkg/net/helloprotocol"
+	"github.com/filecoin-project/venus/pkg/paychmgr"
+	"github.com/filecoin-project/venus/pkg/state/tree"
+	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/venus-shared/libp2p/exchange"
 	"github.com/filecoin-project/venus/venus-shared/libp2p/hello"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -43,9 +49,7 @@ func main() {
 				types.Ticket{},
 				types.ElectionProof{},
 				types.BeaconEntry{},
-				//types.Message{},
 				types.SignedMessage{},
-				//types.Actor{},
 				types.MessageRoot{},
 				types.MessageReceipt{},
 				types.BlockMsg{},
@@ -70,6 +74,51 @@ func main() {
 				market.MinerDeal{},
 				market.RetrievalAsk{},
 				market.ProviderDealState{},
+			},
+		},
+		{
+			dir: "../pkg/paychmgr",
+			types: []interface{}{
+				paychmgr.VoucherInfo{},
+				paychmgr.ChannelInfo{},
+				paychmgr.MsgInfo{},
+			},
+		},
+		{
+			dir: "../pkg/market",
+			types: []interface{}{
+				market.FundedAddressState{},
+			},
+		},
+		{
+			dir: "../pkg/net/helloprotocol",
+			types: []interface{}{
+				helloprotocol.HelloMessage{},
+				helloprotocol.LatencyMessage{},
+			},
+		},
+		{
+			dir: "../pkg/vm/dispatch",
+			types: []interface{}{
+				dispatch.SimpleParams{},
+			},
+		},
+		{
+			dir: "../pkg/state/tree",
+			types: []interface{}{
+				tree.StateRoot{},
+			},
+		},
+		{
+			dir: "../pkg/chain",
+			types: []interface{}{
+				chain.TSState{},
+			},
+		},
+		{
+			dir: "../pkg/fvm",
+			types: []interface{}{
+				fvm.FvmExecutionTrace{},
 			},
 		},
 	}
