@@ -28,3 +28,8 @@ COPY --from=filvenus/venus-buildenv   /usr/lib/x86_64-linux-gnu/libhwloc.so.15  
     /usr/lib/x86_64-linux-gnu/libnuma.so.1  \
     /usr/lib/x86_64-linux-gnu/libltdl.so.7  \
     /lib/
+
+
+# DIR for app
+WORKDIR /app
+ENV PATH "$PATH:/app/"
