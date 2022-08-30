@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/utils"
 
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/util/ulimit"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
@@ -103,14 +102,6 @@ var daemonCmd = &cmds.Command{
 			if err = initRun(req); err != nil {
 				return err
 			}
-		}
-
-		network, _ := req.Options[Network].(string)
-		switch network {
-		case "2k":
-			constants.InsecurePoStValidation = true
-		default:
-
 		}
 
 		return daemonRun(req, re)
