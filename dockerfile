@@ -2,10 +2,10 @@ FROM filvenus/venus-buildenv AS buildenv
 
 COPY ./go.mod ./venus/go.mod
 COPY ./extern/ ./venus/extern/
-RUN export GOPROXY=https://goproxy.cn && cd venus   && go mod download 
+RUN export GOPROXY=https://goproxy.cn,direct && cd venus   && go mod download 
 
 COPY . ./venus
-RUN export GOPROXY=https://goproxy.cn && cd venus  && make
+RUN export GOPROXY=https://goproxy.cn,direct && cd venus  && make
 RUN cd venus && ldd ./venus
 
 
