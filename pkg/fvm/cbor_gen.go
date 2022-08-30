@@ -8,7 +8,6 @@ import (
 	"math"
 	"sort"
 
-	internal "github.com/filecoin-project/venus/venus-shared/internal"
 	types "github.com/filecoin-project/venus/venus-shared/types"
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -34,7 +33,7 @@ func (t *FvmExecutionTrace) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Msg (internal.Message) (struct)
+	// t.Msg (types.Message) (struct)
 	if err := t.Msg.MarshalCBOR(cw); err != nil {
 		return err
 	}
@@ -95,7 +94,7 @@ func (t *FvmExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Msg (internal.Message) (struct)
+	// t.Msg (types.Message) (struct)
 
 	{
 
@@ -107,7 +106,7 @@ func (t *FvmExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 			if err := cr.UnreadByte(); err != nil {
 				return err
 			}
-			t.Msg = new(internal.Message)
+			t.Msg = new(types.Message)
 			if err := t.Msg.UnmarshalCBOR(cr); err != nil {
 				return xerrors.Errorf("unmarshaling t.Msg pointer: %w", err)
 			}
