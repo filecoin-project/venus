@@ -696,7 +696,7 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	return nil
 }
 
-var lengthBufMinerDeal = []byte{151}
+var lengthBufMinerDeal = []byte{152, 25}
 
 func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -899,6 +899,19 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	if _, err := io.WriteString(w, string(t.InboundCAR)); err != nil {
 		return err
 	}
+
+	// t.CreatedAt (uint64) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.CreatedAt)); err != nil {
+		return err
+	}
+
+	// t.UpdatedAt (uint64) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.UpdatedAt)); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -921,7 +934,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 23 {
+	if extra != 25 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -1245,10 +1258,38 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 
 		t.InboundCAR = string(sval)
 	}
+	// t.CreatedAt (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.CreatedAt = uint64(extra)
+
+	}
+	// t.UpdatedAt (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.UpdatedAt = uint64(extra)
+
+	}
 	return nil
 }
 
-var lengthBufRetrievalAsk = []byte{133}
+var lengthBufRetrievalAsk = []byte{135}
 
 func (t *RetrievalAsk) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -1289,6 +1330,18 @@ func (t *RetrievalAsk) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.CreatedAt (uint64) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.CreatedAt)); err != nil {
+		return err
+	}
+
+	// t.UpdatedAt (uint64) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.UpdatedAt)); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -1311,7 +1364,7 @@ func (t *RetrievalAsk) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 5 {
+	if extra != 7 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -1370,10 +1423,38 @@ func (t *RetrievalAsk) UnmarshalCBOR(r io.Reader) (err error) {
 		t.PaymentIntervalIncrease = uint64(extra)
 
 	}
+	// t.CreatedAt (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.CreatedAt = uint64(extra)
+
+	}
+	// t.UpdatedAt (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.UpdatedAt = uint64(extra)
+
+	}
 	return nil
 }
 
-var lengthBufProviderDealState = []byte{139}
+var lengthBufProviderDealState = []byte{141}
 
 func (t *ProviderDealState) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -1460,6 +1541,19 @@ func (t *ProviderDealState) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteBool(w, t.LegacyProtocol); err != nil {
 		return err
 	}
+
+	// t.CreatedAt (uint64) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.CreatedAt)); err != nil {
+		return err
+	}
+
+	// t.UpdatedAt (uint64) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.UpdatedAt)); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -1482,7 +1576,7 @@ func (t *ProviderDealState) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 11 {
+	if extra != 13 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -1627,6 +1721,34 @@ func (t *ProviderDealState) UnmarshalCBOR(r io.Reader) (err error) {
 		t.LegacyProtocol = true
 	default:
 		return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
+	}
+	// t.CreatedAt (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.CreatedAt = uint64(extra)
+
+	}
+	// t.UpdatedAt (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.UpdatedAt = uint64(extra)
+
 	}
 	return nil
 }

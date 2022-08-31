@@ -15,4 +15,5 @@ type FundedAddressState struct {
 	AmtReserved abi.TokenAmount
 	// MsgCid is the cid of an in-progress on-chain message
 	MsgCid *cid.Cid
+	TimeStamp
 }

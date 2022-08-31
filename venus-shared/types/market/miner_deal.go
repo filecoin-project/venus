@@ -40,6 +40,8 @@ type MinerDeal struct {
 	PieceStatus PieceStatus
 
 	InboundCAR string
+
+	TimeStamp
 }
 
 func (deal *MinerDeal) FilMarketMinerDeal() *storagemarket.MinerDeal {
