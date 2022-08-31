@@ -49,3 +49,4 @@ coverage.*
 receipt.json
 genesis-file-server
 gengen
+dockerfile

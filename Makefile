@@ -125,5 +125,8 @@ docker-buildenv:
 docker-runtime:
 	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) -t filvenus/venus-runtime -f docker/venus-runtime.dockerfile .
 
+TAG:=test
 docker:
-	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) -t venus .
+	curl -O https://raw.githubusercontent.com/filecoin-project/venus-docs/feat/tanlang/improve-docker-usage/script/dockerfile
+	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=venus -t venus  .
+	docker tag venus:latest filvenus/venus:$(TAG)
