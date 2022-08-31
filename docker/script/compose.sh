@@ -25,8 +25,5 @@ then
 fi
 
 
-echo "EXEC: ./venus daemon $Args"
-echo 
-echo
-
+echo "EXEC: ./venus daemon $Args \n\n"
 ./venus daemon $Args
