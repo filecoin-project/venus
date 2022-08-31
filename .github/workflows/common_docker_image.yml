@@ -45,14 +45,8 @@ jobs:
     - name: Build the Docker image
       if: ${{ steps.vars.outputs.is_tag_create == 'true' }}
       run: |
-        if [[ "${{steps.vars.outputs.repo_name}}" = "venus" ]]; then
-          make docker-buildenv
-          make docker-runtime
-        fi
         docker build . --file dockerfile --tag ${{steps.vars.outputs.docker_user_name}}/${{steps.vars.outputs.repo_name}}:latest
         docker tag ${{steps.vars.outputs.docker_user_name}}/${{steps.vars.outputs.repo_name}}:latest ${{steps.vars.outputs.docker_user_name}}/${{steps.vars.outputs.repo_name}}:${{ steps.vars.outputs.github_tag }}
         docker login --username=${{steps.vars.outputs.docker_user_name}} --password ${{ secrets.DOCKER_PASSWORD }} 
         docker push ${{steps.vars.outputs.docker_user_name}}/${{steps.vars.outputs.repo_name}}:${{ steps.vars.outputs.github_tag }}
         docker push ${{steps.vars.outputs.docker_user_name}}/${{steps.vars.outputs.repo_name}}:latest
-        docker push ${{steps.vars.outputs.docker_user_name}}/${{steps.vars.outputs.repo_name}}-runtime:latest
-        docker push ${{steps.vars.outputs.docker_user_name}}/${{steps.vars.outputs.repo_name}}-buildenv:latest
