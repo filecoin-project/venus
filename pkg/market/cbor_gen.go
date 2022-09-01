@@ -18,7 +18,7 @@ var _ = cid.Undef
 var _ = math.E
 var _ = sort.Sort
 
-var lengthBufFundedAddressState = []byte{131}
+var lengthBufFundedAddressState = []byte{132}
 
 func (t *FundedAddressState) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -54,6 +54,10 @@ func (t *FundedAddressState) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
+	// t.TimeStamp (market.TimeStamp) (struct)
+	if err := t.TimeStamp.MarshalCBOR(cw); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -76,7 +80,7 @@ func (t *FundedAddressState) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 3 {
+	if extra != 4 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -117,6 +121,15 @@ func (t *FundedAddressState) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			t.MsgCid = &c
+		}
+
+	}
+	// t.TimeStamp (market.TimeStamp) (struct)
+
+	{
+
+		if err := t.TimeStamp.UnmarshalCBOR(cr); err != nil {
+			return xerrors.Errorf("unmarshaling t.TimeStamp: %w", err)
 		}
 
 	}
