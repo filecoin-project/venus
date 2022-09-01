@@ -9,8 +9,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/filecoin-project/venus/pkg/net/exchange"
+	aexchange "github.com/filecoin-project/venus/pkg/net/exchange"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	"github.com/filecoin-project/venus/venus-shared/libp2p/exchange"
 
 	"github.com/ipld/go-car"
 
@@ -906,7 +907,7 @@ func (f *Builder) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int)
 func (f *Builder) GetChainMessages(ctx context.Context, tipsets []*types.TipSet) ([]*exchange.CompactedMessages, error) {
 	result := []*exchange.CompactedMessages{}
 	for _, ts := range tipsets {
-		bmsgs, bmincl, smsgs, smincl, err := exchange.GatherMessages(ctx, f, f.mstore, ts)
+		bmsgs, bmincl, smsgs, smincl, err := aexchange.GatherMessages(ctx, f, f.mstore, ts)
 		if err != nil {
 			return nil, err
 		}

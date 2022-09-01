@@ -5,6 +5,7 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/peer"
 
+	"github.com/filecoin-project/venus/venus-shared/libp2p/exchange"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -26,7 +27,7 @@ type Client interface {
 
 	// GetChainMessages fetches messages from the network, starting from the first provided tipset
 	// and returning messages from as many tipsets as requested or less.
-	GetChainMessages(ctx context.Context, tipsets []*types.TipSet) ([]*CompactedMessages, error)
+	GetChainMessages(ctx context.Context, tipsets []*types.TipSet) ([]*exchange.CompactedMessages, error)
 
 	// GetFullTipSet fetches a full tipset from a given peer. If successful,
 	// the fetched object contains block headers and all messages in full form.

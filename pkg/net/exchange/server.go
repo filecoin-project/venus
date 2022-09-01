@@ -15,6 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 
+	"github.com/filecoin-project/venus/venus-shared/libp2p/exchange"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -52,8 +53,8 @@ func NewServer(cr chainReader, mr messageStore, h host.Host) Server {
 }
 
 func (s *server) Register() {
-	s.h.SetStreamHandler(BlockSyncProtocolID, s.handleStream)     // old
-	s.h.SetStreamHandler(ChainExchangeProtocolID, s.handleStream) // new
+	s.h.SetStreamHandler(exchange.BlockSyncProtocolID, s.handleStream)     // old
+	s.h.SetStreamHandler(exchange.ChainExchangeProtocolID, s.handleStream) // new
 }
 
 // HandleStream implements Server.HandleStream. Refer to the godocs there.
@@ -65,7 +66,7 @@ func (s *server) handleStream(stream inet.Stream) {
 	//       go-libp2p-core 0.7.0
 	defer stream.Close() //nolint:errcheck
 
-	var req Request
+	var req exchange.Request
 	if err := cborutil.ReadCborRPC(bufio.NewReader(stream), &req); err != nil {
 		exchangeServerLog.Warnf("failed to read block sync request: %s", err)
 		return
@@ -91,7 +92,7 @@ func (s *server) handleStream(stream inet.Stream) {
 
 // Validate and service the request. We return either a protocol
 // response or an internal error.
-func (s *server) processRequest(ctx context.Context, req *Request) (*Response, error) {
+func (s *server) processRequest(ctx context.Context, req *exchange.Request) (*exchange.Response, error) {
 	validReq, errResponse := validateRequest(ctx, req)
 	if errResponse != nil {
 		// The request did not pass validation, return the response
@@ -105,38 +106,38 @@ func (s *server) processRequest(ctx context.Context, req *Request) (*Response, e
 // Validate request. We either return a `validatedRequest`, or an error
 // `Response` indicating why we can't process it. We do not return any
 // internal errors here, we just signal protocol ones.
-func validateRequest(ctx context.Context, req *Request) (*validatedRequest, *Response) {
+func validateRequest(ctx context.Context, req *exchange.Request) (*validatedRequest, *exchange.Response) {
 	_, span := trace.StartSpan(ctx, "chainxchg.ValidateRequest")
 	defer span.End()
 
 	validReq := validatedRequest{}
 
-	validReq.options = parseOptions(req.Options)
-	if validReq.options.noOptionsSet() {
-		return nil, &Response{
-			Status:       BadRequest,
+	validReq.options = exchange.ParseOptions(req.Options)
+	if validReq.options.IsEmpty() {
+		return nil, &exchange.Response{
+			Status:       exchange.BadRequest,
 			ErrorMessage: "no options set",
 		}
 	}
 
 	validReq.length = req.Length
-	if validReq.length > MaxRequestLength {
-		return nil, &Response{
-			Status: BadRequest,
+	if validReq.length > exchange.MaxRequestLength {
+		return nil, &exchange.Response{
+			Status: exchange.BadRequest,
 			ErrorMessage: fmt.Sprintf("request length over maximum allowed (%d)",
-				MaxRequestLength),
+				exchange.MaxRequestLength),
 		}
 	}
 	if validReq.length == 0 {
-		return nil, &Response{
-			Status:       BadRequest,
+		return nil, &exchange.Response{
+			Status:       exchange.BadRequest,
 			ErrorMessage: "invalid request length of zero",
 		}
 	}
 
 	if len(req.Head) == 0 {
-		return nil, &Response{
-			Status:       BadRequest,
+		return nil, &exchange.Response{
+			Status:       exchange.BadRequest,
 			ErrorMessage: "no cids in request",
 		}
 	}
@@ -152,36 +153,36 @@ func validateRequest(ctx context.Context, req *Request) (*validatedRequest, *Res
 	return &validReq, nil
 }
 
-func (s *server) serviceRequest(ctx context.Context, req *validatedRequest) (*Response, error) {
+func (s *server) serviceRequest(ctx context.Context, req *validatedRequest) (*exchange.Response, error) {
 	_, span := trace.StartSpan(ctx, "chainxchg.ServiceRequest")
 	defer span.End()
 
 	chain, err := collectChainSegment(ctx, s.cr, s.mr, req)
 	if err != nil {
 		exchangeServerLog.Warn("block sync request: collectChainSegment failed: ", err)
-		return &Response{
-			Status:       InternalError,
+		return &exchange.Response{
+			Status:       exchange.InternalError,
 			ErrorMessage: err.Error(),
 		}, nil
 	}
 
-	status := Ok
+	status := exchange.Ok
 	if len(chain) < int(req.length) {
-		status = Partial
+		status = exchange.Partial
 	}
 
-	return &Response{
+	return &exchange.Response{
 		Chain:  chain,
 		Status: status,
 	}, nil
 }
 
-func collectChainSegment(ctx context.Context, cr chainReader, mr messageStore, req *validatedRequest) ([]*BSTipSet, error) {
-	var bstips []*BSTipSet
+func collectChainSegment(ctx context.Context, cr chainReader, mr messageStore, req *validatedRequest) ([]*exchange.BSTipSet, error) {
+	var bstips []*exchange.BSTipSet
 
 	cur := req.head
 	for {
-		var bst BSTipSet
+		var bst exchange.BSTipSet
 		ts, err := cr.GetTipSet(ctx, cur)
 		if err != nil {
 			return nil, fmt.Errorf("failed loading tipset %s: %w", cur, err)
@@ -198,7 +199,7 @@ func collectChainSegment(ctx context.Context, cr chainReader, mr messageStore, r
 			}
 
 			// FIXME: Pass the response to `gatherMessages()` and set all this there.
-			bst.Messages = &CompactedMessages{}
+			bst.Messages = &exchange.CompactedMessages{}
 			bst.Messages.Bls = bmsgs
 			bst.Messages.BlsIncludes = bmincl
 			bst.Messages.Secpk = smsgs

@@ -49,6 +49,8 @@ const (
 	Messages
 )
 
+// Decompressed options into separate struct members for easy access
+// during internal processing..
 type Options struct {
 	IncludeHeaders  bool
 	IncludeMessages bool
