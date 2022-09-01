@@ -80,6 +80,7 @@ func main() {
 				market.MinerDeal{},
 				market.RetrievalAsk{},
 				market.ProviderDealState{},
+				market.TimeStamp{},
 			},
 		},
 		{
