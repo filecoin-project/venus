@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var NameType = map[types.NetworkName]types.NetworkType{
+var NetworkNameWithNetworkType = map[types.NetworkName]types.NetworkType{
 	types.NetworkNameMain:        types.NetworkMainnet,
 	types.NetworkNameCalibration: types.NetworkCalibnet,
 	types.NetworkNameButterfly:   types.NetworkButterfly,
@@ -16,9 +16,9 @@ var NameType = map[types.NetworkName]types.NetworkType{
 	types.NetworkNameIntegration: types.Integrationnet,
 }
 
-var TypeName = func() map[types.NetworkType]types.NetworkName {
-	typeName := make(map[types.NetworkType]types.NetworkName, len(NameType))
-	for nt, nn := range NameType {
+var NetworkTypeWithNetworkName = func() map[types.NetworkType]types.NetworkName {
+	typeName := make(map[types.NetworkType]types.NetworkName, len(NetworkNameWithNetworkType))
+	for nt, nn := range NetworkNameWithNetworkType {
 		typeName[nn] = nt
 	}
 
@@ -29,7 +29,7 @@ func NetworkNameToNetworkType(networkName types.NetworkName) (types.NetworkType,
 	if len(networkName) == 0 {
 		return types.NetworkDefault, fmt.Errorf("network name is empty")
 	}
-	nt, ok := NameType[networkName]
+	nt, ok := NetworkNameWithNetworkType[networkName]
 	if ok {
 		return nt, nil
 	}
@@ -38,7 +38,7 @@ func NetworkNameToNetworkType(networkName types.NetworkName) (types.NetworkType,
 }
 
 func NetworkTypeToNetworkName(networkType types.NetworkType) types.NetworkName {
-	nn, ok := TypeName[networkType]
+	nn, ok := NetworkTypeWithNetworkName[networkType]
 	if ok {
 		return nn
 	}

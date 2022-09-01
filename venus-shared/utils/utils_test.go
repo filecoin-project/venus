@@ -14,7 +14,7 @@ import (
 
 func TestNetworkNamtToNetworkType(t *testing.T) {
 	tf.UnitTest(t)
-	for nt, nn := range TypeName {
+	for nt, nn := range NetworkTypeWithNetworkName {
 		got, err := NetworkNameToNetworkType(nn)
 		assert.Nil(t, err)
 		assert.Equal(t, nt, got)
@@ -27,7 +27,7 @@ func TestNetworkNamtToNetworkType(t *testing.T) {
 
 func TestNetworkTypeToNetworkName(t *testing.T) {
 	tf.UnitTest(t)
-	for nt, nn := range TypeName {
+	for nt, nn := range NetworkTypeWithNetworkName {
 		got := NetworkTypeToNetworkName(nt)
 		assert.Equal(t, nn, got)
 	}
@@ -42,7 +42,7 @@ func TestLoadBuiltinActors(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	full := mock.NewMockFullNode(ctrl)
 
-	for nn := range NameType {
+	for nn := range NetworkNameWithNetworkType {
 		full.EXPECT().StateNetworkName(ctx).Return(nn, nil)
 
 		assert.Nil(t, LoadBuiltinActors(ctx, full))
