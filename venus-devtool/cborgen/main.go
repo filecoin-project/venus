@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/fvm"
+	market1 "github.com/filecoin-project/venus/pkg/market"
 	"github.com/filecoin-project/venus/pkg/net/helloprotocol"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/state/tree"
@@ -92,7 +93,7 @@ func main() {
 		{
 			dir: "../pkg/market",
 			types: []interface{}{
-				market.FundedAddressState{},
+				market1.FundedAddressState{},
 			},
 		},
 		{
