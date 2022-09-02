@@ -45,7 +45,8 @@ jobs:
     - name: Build the Docker image
       if: ${{ steps.vars.outputs.is_tag_create == 'true' }}
       run: |
-        docker build . --file dockerfile --tag ${{steps.vars.outputs.docker_user_name}}/${{steps.vars.outputs.repo_name}}:latest
+        curl -O https://raw.githubusercontent.com/filecoin-project/venus-docs/master/script/dockerfile
+        docker build . --file dockerfile --build-arg BUILD_TARGET=${{steps.vars.outputs.repo_name}} --tag ${{steps.vars.outputs.docker_user_name}}/${{steps.vars.outputs.repo_name}}:latest
         docker tag ${{steps.vars.outputs.docker_user_name}}/${{steps.vars.outputs.repo_name}}:latest ${{steps.vars.outputs.docker_user_name}}/${{steps.vars.outputs.repo_name}}:${{ steps.vars.outputs.github_tag }}
         docker login --username=${{steps.vars.outputs.docker_user_name}} --password ${{ secrets.DOCKER_PASSWORD }} 
         docker push ${{steps.vars.outputs.docker_user_name}}/${{steps.vars.outputs.repo_name}}:${{ steps.vars.outputs.github_tag }}
