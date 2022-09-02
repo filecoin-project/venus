@@ -38,28 +38,13 @@ func TestGetNetworkFromName(t *testing.T) {
 			err:     nil,
 		},
 		{
-			name:    "cali",
-			network: types.NetworkCalibnet,
-			err:     nil,
-		},
-		{
 			name:    "calibrationnet",
 			network: types.NetworkCalibnet,
 			err:     nil,
 		},
 		{
-			name:    "interop",
-			network: types.NetworkInterop,
-			err:     nil,
-		},
-		{
 			name:    "interopnet",
 			network: types.NetworkInterop,
-			err:     nil,
-		},
-		{
-			name:    "butterfly",
-			network: types.NetworkButterfly,
 			err:     nil,
 		},
 		{
@@ -110,28 +95,13 @@ func TestGetNetworkConfig(t *testing.T) {
 			err:     nil,
 		},
 		{
-			name:    "cali",
-			network: Calibration(),
-			err:     nil,
-		},
-		{
 			name:    "calibrationnet",
 			network: Calibration(),
 			err:     nil,
 		},
 		{
-			name:    "interop",
-			network: InteropNet(),
-			err:     nil,
-		},
-		{
 			name:    "interopnet",
 			network: InteropNet(),
-			err:     nil,
-		},
-		{
-			name:    "butterfly",
-			network: ButterflySnapNet(),
 			err:     nil,
 		},
 		{

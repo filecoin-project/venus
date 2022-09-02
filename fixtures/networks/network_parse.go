@@ -5,27 +5,21 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/utils"
 )
 
 func GetNetworkFromName(name string) (types.NetworkType, error) {
-	switch name {
-	case string(types.NetworkNameMain):
-		return types.NetworkMainnet, nil
-	case "force":
-		return types.NetworkForce, nil
-	case string(types.NetworkNameIntegration):
-		return types.Integrationnet, nil
-	case "2k":
+	if name == "2k" {
 		return types.Network2k, nil
-	case "cali", string(types.NetworkNameCalibration):
-		return types.NetworkCalibnet, nil
-	case "interop", string(types.NetworkNameInterop):
-		return types.NetworkInterop, nil
-	case "butterfly", string(types.NetworkNameButterfly):
-		return types.NetworkButterfly, nil
-	default:
-		return 0, fmt.Errorf("unknown network name %s", name)
 	}
+	if name == "force" {
+		return types.NetworkForce, nil
+	}
+	nt, ok := utils.NetworkNameWithNetworkType[types.NetworkName(name)]
+	if !ok {
+		return types.NetworkDefault, fmt.Errorf("unknown network name %s", name)
+	}
+	return nt, nil
 }
 
 func SetConfigFromOptions(cfg *config.Config, network string) error {

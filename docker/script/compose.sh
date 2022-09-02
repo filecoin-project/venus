@@ -5,12 +5,7 @@ echo $@
 Args=" --auth-url=http://127.0.0.1:8989 "
 
 if [ $nettype ]
-then 
-    if [ $nettype = "calibnet" ]
-    then
-    nettype="cali"
-    fi
-
+then
     Args="$Args --network=$nettype"
 fi
 
