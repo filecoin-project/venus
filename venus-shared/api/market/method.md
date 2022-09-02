@@ -986,7 +986,9 @@ Response:
   "SectorNumber": 9,
   "Offset": 1032,
   "PieceStatus": "Undefine",
-  "InboundCAR": "string value"
+  "InboundCAR": "string value",
+  "CreatedAt": 42,
+  "UpdatedAt": 42
 }
 ```
 
@@ -1106,7 +1108,9 @@ Inputs:
     "SectorNumber": 9,
     "Offset": 1032,
     "PieceStatus": "Undefine",
-    "InboundCAR": "string value"
+    "InboundCAR": "string value",
+    "CreatedAt": 42,
+    "UpdatedAt": 42
   }
 ]
 ```
@@ -1296,7 +1300,9 @@ Response:
     "SectorNumber": 9,
     "Offset": 1032,
     "PieceStatus": "Undefine",
-    "InboundCAR": "string value"
+    "InboundCAR": "string value",
+    "CreatedAt": 42,
+    "UpdatedAt": 42
   }
 ]
 ```
@@ -1316,7 +1322,9 @@ Response:
     "PricePerByte": "0",
     "UnsealPrice": "0",
     "PaymentInterval": 42,
-    "PaymentIntervalIncrease": 42
+    "PaymentIntervalIncrease": 42,
+    "CreatedAt": 42,
+    "UpdatedAt": 42
   }
 ]
 ```
@@ -1364,7 +1372,9 @@ Response:
     "FundsReceived": "0",
     "Message": "string value",
     "CurrentInterval": 42,
-    "LegacyProtocol": true
+    "LegacyProtocol": true,
+    "CreatedAt": 42,
+    "UpdatedAt": 42
   }
 ]
 ```
@@ -1721,7 +1731,9 @@ Inputs:
     "SectorNumber": 9,
     "Offset": 1032,
     "PieceStatus": "Undefine",
-    "InboundCAR": "string value"
+    "InboundCAR": "string value",
+    "CreatedAt": 42,
+    "UpdatedAt": 42
   }
 ]
 ```

@@ -11,4 +11,5 @@ type RetrievalAsk struct {
 	UnsealPrice             abi.TokenAmount
 	PaymentInterval         uint64
 	PaymentIntervalIncrease uint64
+	TimeStamp
 }

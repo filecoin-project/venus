@@ -68,3 +68,8 @@ type PieceInfo struct {
 	PieceCID cid.Cid
 	Deals    []*DealInfo
 }
+
+type TimeStamp struct {
+	CreatedAt uint64
+	UpdatedAt uint64
+}

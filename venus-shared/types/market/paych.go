@@ -64,6 +64,8 @@ type ChannelInfo struct {
 	AddFundsMsg *cid.Cid
 	// Settling indicates whether the channel has entered into the settling state
 	Settling bool
+
+	TimeStamp
 }
 
 func (ci *ChannelInfo) From() address.Address {
@@ -149,6 +151,7 @@ type MsgInfo struct {
 	Received bool
 	// Err is the error received in the response
 	Err string
+	TimeStamp
 }
 
 const (

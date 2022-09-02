@@ -23,6 +23,7 @@ type ProviderDealState struct {
 	Message               string
 	CurrentInterval       uint64
 	LegacyProtocol        bool
+	TimeStamp
 }
 
 func (deal *ProviderDealState) TotalPaidFor() uint64 {
