@@ -33,7 +33,6 @@
   * [PushMessage](#PushMessage)
   * [PushMessageWithId](#PushMessageWithId)
   * [RecoverFailedMsg](#RecoverFailedMsg)
-  * [RefreshSharedParams](#RefreshSharedParams)
   * [ReplaceMessage](#ReplaceMessage)
   * [RepublishMessage](#RepublishMessage)
   * [SaveNode](#SaveNode)
@@ -218,6 +217,7 @@ Response:
   "maxFee": "0",
   "gasFeeCap": "0",
   "gasOverPremium": 12.3,
+  "baseFee": "0",
   "isDeleted": 123,
   "createAt": "0001-01-01T00:00:00Z",
   "updateAt": "0001-01-01T00:00:00Z"
@@ -527,6 +527,7 @@ Response:
   "maxFee": "0",
   "gasFeeCap": "0",
   "gasOverPremium": 12.3,
+  "baseFee": "0",
   "selMsgNum": 42
 }
 ```
@@ -594,6 +595,7 @@ Response:
     "maxFee": "0",
     "gasFeeCap": "0",
     "gasOverPremium": 12.3,
+    "baseFee": "0",
     "isDeleted": 123,
     "createAt": "0001-01-01T00:00:00Z",
     "updateAt": "0001-01-01T00:00:00Z"
@@ -1130,15 +1132,6 @@ Response:
 ]
 ```
 
-### RefreshSharedParams
-
-
-Perms: admin
-
-Inputs: `[]`
-
-Response: `{}`
-
 ### ReplaceMessage
 
 
@@ -1233,11 +1226,14 @@ Perms: admin
 Inputs:
 ```json
 [
-  "f01234",
-  12.3,
-  12.3,
-  "string value",
-  "string value"
+  {
+    "address": "f01234",
+    "gasOverEstimation": 12.3,
+    "gasOverPremium": 12.3,
+    "maxFeeStr": "string value",
+    "gasFeeCapStr": "string value",
+    "baseFeeStr": "string value"
+  }
 ]
 ```
 
@@ -1286,6 +1282,7 @@ Inputs:
     "maxFee": "0",
     "gasFeeCap": "0",
     "gasOverPremium": 12.3,
+    "baseFee": "0",
     "selMsgNum": 42
   }
 ]
