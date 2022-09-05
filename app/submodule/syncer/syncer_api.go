@@ -145,9 +145,11 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 		return fmt.Errorf("serializing block for pubsub publishing failed: %v", err)
 	}
 	go func() {
-		err = sa.syncer.BlockTopic.Publish(ctx, b) //nolint:staticcheck
+		tCtx, tCancel := context.WithTimeout(context.TODO(), time.Minute)
+		defer tCancel()
+		err = sa.syncer.BlockTopic.Publish(tCtx, b) //nolint:staticcheck
 		if err != nil {
-			syncAPILog.Warnf("publish failed: %s, %v", blk.Cid(), err)
+			syncAPILog.Warnf("publish block failed: %s, %v", blk.Cid(), err)
 		}
 	}()
 	return nil
