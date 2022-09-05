@@ -7,7 +7,7 @@ on:
 
 jobs:
   build_upload:
-    uses: ./.github/workflows/common_build_upload.yml
+    uses: filecoin-project/venus/.github/workflows/common_build_upload.yml
     with:
       bin_name: 'venus'
       has_ffi: true
