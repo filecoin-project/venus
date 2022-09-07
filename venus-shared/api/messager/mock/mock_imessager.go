@@ -515,20 +515,6 @@ func (mr *MockIMessagerMockRecorder) RecoverFailedMsg(arg0, arg1 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecoverFailedMsg", reflect.TypeOf((*MockIMessager)(nil).RecoverFailedMsg), arg0, arg1)
 }
 
-// RefreshSharedParams mocks base method.
-func (m *MockIMessager) RefreshSharedParams(arg0 context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RefreshSharedParams", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// RefreshSharedParams indicates an expected call of RefreshSharedParams.
-func (mr *MockIMessagerMockRecorder) RefreshSharedParams(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshSharedParams", reflect.TypeOf((*MockIMessager)(nil).RefreshSharedParams), arg0)
-}
-
 // ReplaceMessage mocks base method.
 func (m *MockIMessager) ReplaceMessage(arg0 context.Context, arg1 *messager.ReplacMessageParams) (cid.Cid, error) {
 	m.ctrl.T.Helper()
@@ -588,17 +574,17 @@ func (mr *MockIMessagerMockRecorder) Send(arg0, arg1 interface{}) *gomock.Call {
 }
 
 // SetFeeParams mocks base method.
-func (m *MockIMessager) SetFeeParams(arg0 context.Context, arg1 address.Address, arg2, arg3 float64, arg4, arg5 string) error {
+func (m *MockIMessager) SetFeeParams(arg0 context.Context, arg1 *messager.AddressSpec) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetFeeParams", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret := m.ctrl.Call(m, "SetFeeParams", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SetFeeParams indicates an expected call of SetFeeParams.
-func (mr *MockIMessagerMockRecorder) SetFeeParams(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+func (mr *MockIMessagerMockRecorder) SetFeeParams(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetFeeParams", reflect.TypeOf((*MockIMessager)(nil).SetFeeParams), arg0, arg1, arg2, arg3, arg4, arg5)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetFeeParams", reflect.TypeOf((*MockIMessager)(nil).SetFeeParams), arg0, arg1)
 }
 
 // SetLogLevel mocks base method.

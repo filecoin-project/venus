@@ -47,12 +47,11 @@ type IMessagerStruct struct {
 		PushMessage              func(ctx context.Context, msg *types.Message, meta *mtypes.SendSpec) (string, error)                                                       `perm:"write"`
 		PushMessageWithId        func(ctx context.Context, id string, msg *types.Message, meta *mtypes.SendSpec) (string, error)                                            `perm:"write"`
 		RecoverFailedMsg         func(ctx context.Context, addr address.Address) ([]string, error)                                                                          `perm:"admin"`
-		RefreshSharedParams      func(ctx context.Context) error                                                                                                            `perm:"admin"`
 		ReplaceMessage           func(ctx context.Context, params *mtypes.ReplacMessageParams) (cid.Cid, error)                                                             `perm:"admin"`
 		RepublishMessage         func(ctx context.Context, id string) error                                                                                                 `perm:"admin"`
 		SaveNode                 func(ctx context.Context, node *mtypes.Node) error                                                                                         `perm:"admin"`
 		Send                     func(ctx context.Context, params mtypes.QuickSendParams) (string, error)                                                                   `perm:"admin"`
-		SetFeeParams             func(ctx context.Context, addr address.Address, gasOverEstimation, gasOverPremium float64, maxFee, gasFeeCap string) error                 `perm:"admin"`
+		SetFeeParams             func(ctx context.Context, params *mtypes.AddressSpec) error                                                                                `perm:"admin"`
 		SetLogLevel              func(ctx context.Context, level string) error                                                                                              `perm:"admin"`
 		SetSelectMsgNum          func(ctx context.Context, addr address.Address, num uint64) error                                                                          `perm:"admin"`
 		SetSharedParams          func(ctx context.Context, params *mtypes.SharedSpec) error                                                                                 `perm:"admin"`
@@ -162,9 +161,6 @@ func (s *IMessagerStruct) PushMessageWithId(p0 context.Context, p1 string, p2 *t
 func (s *IMessagerStruct) RecoverFailedMsg(p0 context.Context, p1 address.Address) ([]string, error) {
 	return s.Internal.RecoverFailedMsg(p0, p1)
 }
-func (s *IMessagerStruct) RefreshSharedParams(p0 context.Context) error {
-	return s.Internal.RefreshSharedParams(p0)
-}
 func (s *IMessagerStruct) ReplaceMessage(p0 context.Context, p1 *mtypes.ReplacMessageParams) (cid.Cid, error) {
 	return s.Internal.ReplaceMessage(p0, p1)
 }
@@ -177,8 +173,8 @@ func (s *IMessagerStruct) SaveNode(p0 context.Context, p1 *mtypes.Node) error {
 func (s *IMessagerStruct) Send(p0 context.Context, p1 mtypes.QuickSendParams) (string, error) {
 	return s.Internal.Send(p0, p1)
 }
-func (s *IMessagerStruct) SetFeeParams(p0 context.Context, p1 address.Address, p2, p3 float64, p4, p5 string) error {
-	return s.Internal.SetFeeParams(p0, p1, p2, p3, p4, p5)
+func (s *IMessagerStruct) SetFeeParams(p0 context.Context, p1 *mtypes.AddressSpec) error {
+	return s.Internal.SetFeeParams(p0, p1)
 }
 func (s *IMessagerStruct) SetLogLevel(p0 context.Context, p1 string) error {
 	return s.Internal.SetLogLevel(p0, p1)
