@@ -81,6 +81,7 @@ func main() {
 				market.RetrievalAsk{},
 				market.ProviderDealState{},
 				market.TimeStamp{},
+				market.SignedStorageAsk{},
 			},
 		},
 		{

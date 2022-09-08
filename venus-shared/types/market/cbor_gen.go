@@ -15,6 +15,7 @@ import (
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	crypto "github.com/filecoin-project/go-state-types/crypto"
 	cid "github.com/ipfs/go-cid"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -1791,6 +1792,110 @@ func (t *TimeStamp) UnmarshalCBOR(r io.Reader) (err error) {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
 		t.UpdatedAt = uint64(extra)
+
+	}
+	return nil
+}
+
+var lengthBufSignedStorageAsk = []byte{131}
+
+func (t *SignedStorageAsk) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write(lengthBufSignedStorageAsk); err != nil {
+		return err
+	}
+
+	// t.Ask (storagemarket.StorageAsk) (struct)
+	if err := t.Ask.MarshalCBOR(cw); err != nil {
+		return err
+	}
+
+	// t.Signature (crypto.Signature) (struct)
+	if err := t.Signature.MarshalCBOR(cw); err != nil {
+		return err
+	}
+
+	// t.TimeStamp (market.TimeStamp) (struct)
+	if err := t.TimeStamp.MarshalCBOR(cw); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *SignedStorageAsk) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = SignedStorageAsk{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 3 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.Ask (storagemarket.StorageAsk) (struct)
+
+	{
+
+		b, err := cr.ReadByte()
+		if err != nil {
+			return err
+		}
+		if b != cbg.CborNull[0] {
+			if err := cr.UnreadByte(); err != nil {
+				return err
+			}
+			t.Ask = new(storagemarket.StorageAsk)
+			if err := t.Ask.UnmarshalCBOR(cr); err != nil {
+				return xerrors.Errorf("unmarshaling t.Ask pointer: %w", err)
+			}
+		}
+
+	}
+	// t.Signature (crypto.Signature) (struct)
+
+	{
+
+		b, err := cr.ReadByte()
+		if err != nil {
+			return err
+		}
+		if b != cbg.CborNull[0] {
+			if err := cr.UnreadByte(); err != nil {
+				return err
+			}
+			t.Signature = new(crypto.Signature)
+			if err := t.Signature.UnmarshalCBOR(cr); err != nil {
+				return xerrors.Errorf("unmarshaling t.Signature pointer: %w", err)
+			}
+		}
+
+	}
+	// t.TimeStamp (market.TimeStamp) (struct)
+
+	{
+
+		if err := t.TimeStamp.UnmarshalCBOR(cr); err != nil {
+			return xerrors.Errorf("unmarshaling t.TimeStamp: %w", err)
+		}
 
 	}
 	return nil
