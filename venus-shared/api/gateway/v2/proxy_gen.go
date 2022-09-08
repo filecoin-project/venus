@@ -7,6 +7,7 @@ import (
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-storage/storage"
 	cid "github.com/ipfs/go-cid"
 
@@ -17,14 +18,14 @@ import (
 
 type IProofClientStruct struct {
 	Internal struct {
-		ComputeProof        func(ctx context.Context, miner address.Address, sectorInfos []builtin.SectorInfo, rand abi.PoStRandomness) ([]builtin.PoStProof, error) `perm:"admin"`
-		ListConnectedMiners func(ctx context.Context) ([]address.Address, error)                                                                                     `perm:"admin"`
-		ListMinerConnection func(ctx context.Context, addr address.Address) (*gtypes.MinerState, error)                                                              `perm:"admin"`
+		ComputeProof        func(ctx context.Context, miner address.Address, sectorInfos []builtin.ExtendedSectorInfo, rand abi.PoStRandomness, height abi.ChainEpoch, nwVersion network.Version) ([]builtin.PoStProof, error) `perm:"admin"`
+		ListConnectedMiners func(ctx context.Context) ([]address.Address, error)                                                                                                                                               `perm:"admin"`
+		ListMinerConnection func(ctx context.Context, addr address.Address) (*gtypes.MinerState, error)                                                                                                                        `perm:"admin"`
 	}
 }
 
-func (s *IProofClientStruct) ComputeProof(p0 context.Context, p1 address.Address, p2 []builtin.SectorInfo, p3 abi.PoStRandomness) ([]builtin.PoStProof, error) {
-	return s.Internal.ComputeProof(p0, p1, p2, p3)
+func (s *IProofClientStruct) ComputeProof(p0 context.Context, p1 address.Address, p2 []builtin.ExtendedSectorInfo, p3 abi.PoStRandomness, p4 abi.ChainEpoch, p5 network.Version) ([]builtin.PoStProof, error) {
+	return s.Internal.ComputeProof(p0, p1, p2, p3, p4, p5)
 }
 func (s *IProofClientStruct) ListConnectedMiners(p0 context.Context) ([]address.Address, error) {
 	return s.Internal.ListConnectedMiners(p0)
@@ -54,10 +55,10 @@ type IProofEventStruct struct {
 
 type IWalletClientStruct struct {
 	Internal struct {
-		ListWalletInfo         func(ctx context.Context) ([]*gtypes.WalletDetail, error)                                                                     `perm:"admin"`
-		ListWalletInfoByWallet func(ctx context.Context, wallet string) (*gtypes.WalletDetail, error)                                                        `perm:"admin"`
-		WalletHas              func(ctx context.Context, account string, addr address.Address) (bool, error)                                                 `perm:"admin"`
-		WalletSign             func(ctx context.Context, account string, addr address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error) `perm:"admin"`
+		ListWalletInfo         func(ctx context.Context) ([]*gtypes.WalletDetail, error)                                                     `perm:"admin"`
+		ListWalletInfoByWallet func(ctx context.Context, wallet string) (*gtypes.WalletDetail, error)                                        `perm:"admin"`
+		WalletHas              func(ctx context.Context, addr address.Address) (bool, error)                                                 `perm:"admin"`
+		WalletSign             func(ctx context.Context, addr address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error) `perm:"admin"`
 	}
 }
 
@@ -67,11 +68,11 @@ func (s *IWalletClientStruct) ListWalletInfo(p0 context.Context) ([]*gtypes.Wall
 func (s *IWalletClientStruct) ListWalletInfoByWallet(p0 context.Context, p1 string) (*gtypes.WalletDetail, error) {
 	return s.Internal.ListWalletInfoByWallet(p0, p1)
 }
-func (s *IWalletClientStruct) WalletHas(p0 context.Context, p1 string, p2 address.Address) (bool, error) {
-	return s.Internal.WalletHas(p0, p1, p2)
+func (s *IWalletClientStruct) WalletHas(p0 context.Context, p1 address.Address) (bool, error) {
+	return s.Internal.WalletHas(p0, p1)
 }
-func (s *IWalletClientStruct) WalletSign(p0 context.Context, p1 string, p2 address.Address, p3 []byte, p4 types.MsgMeta) (*crypto.Signature, error) {
-	return s.Internal.WalletSign(p0, p1, p2, p3, p4)
+func (s *IWalletClientStruct) WalletSign(p0 context.Context, p1 address.Address, p2 []byte, p3 types.MsgMeta) (*crypto.Signature, error) {
+	return s.Internal.WalletSign(p0, p1, p2, p3)
 }
 
 type IWalletServiceProviderStruct struct {
