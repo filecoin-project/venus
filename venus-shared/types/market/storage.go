@@ -152,7 +152,8 @@ func (sa *SignedStorageAsk) ToChainAsk() *storagemarket.SignedStorageAsk {
 	}
 }
 
-func (sa *SignedStorageAsk) FilWithAsk(s *storagemarket.SignedStorageAsk) {
+func (sa *SignedStorageAsk) FillWithAsk(s *storagemarket.SignedStorageAsk) *SignedStorageAsk {
 	sa.Ask = s.Ask
 	sa.Signature = s.Signature
+	return sa
 }
