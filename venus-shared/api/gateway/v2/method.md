@@ -42,7 +42,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131840
+  "APIVersion": 131584
 }
 ```
 
@@ -189,12 +189,15 @@ Inputs:
     {
       "SealProof": 8,
       "SectorNumber": 9,
+      "SectorKey": null,
       "SealedCID": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       }
     }
   ],
-  "Bw=="
+  "Bw==",
+  10101,
+  16
 ]
 ```
 
