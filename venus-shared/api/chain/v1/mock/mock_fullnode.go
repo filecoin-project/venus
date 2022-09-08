@@ -1431,6 +1431,21 @@ func (mr *MockFullNodeMockRecorder) NetProtectRemove(arg0, arg1 interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetProtectRemove", reflect.TypeOf((*MockFullNode)(nil).NetProtectRemove), arg0, arg1)
 }
 
+// NetPubsubScores mocks base method.
+func (m *MockFullNode) NetPubsubScores(arg0 context.Context) ([]types.PubsubScore, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetPubsubScores", arg0)
+	ret0, _ := ret[0].([]types.PubsubScore)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetPubsubScores indicates an expected call of NetPubsubScores.
+func (mr *MockFullNodeMockRecorder) NetPubsubScores(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetPubsubScores", reflect.TypeOf((*MockFullNode)(nil).NetPubsubScores), arg0)
+}
+
 // PaychAllocateLane mocks base method.
 func (m *MockFullNode) PaychAllocateLane(arg0 context.Context, arg1 address.Address) (uint64, error) {
 	m.ctrl.T.Helper()

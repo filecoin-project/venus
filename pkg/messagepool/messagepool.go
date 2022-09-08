@@ -34,7 +34,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/messagepool/journal"
-	"github.com/filecoin-project/venus/pkg/net/msgsub"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
@@ -592,7 +591,7 @@ func (mp *MessagePool) PublishMsgForWallet(ctx context.Context, addr address.Add
 			continue
 		}
 
-		err = mp.api.PubSubPublish(ctx, msgsub.Topic(mp.netName), msgb)
+		err = mp.api.PubSubPublish(ctx, types.MessageTopic(mp.netName), msgb)
 		if err != nil {
 			log.Errorf("could not publish: %s", err)
 			continue
@@ -608,7 +607,7 @@ func (mp *MessagePool) PublishMsg(ctx context.Context, smsg *types.SignedMessage
 		return fmt.Errorf("could not serialize: %s", err)
 	}
 
-	err = mp.api.PubSubPublish(ctx, msgsub.Topic(mp.netName), msgb)
+	err = mp.api.PubSubPublish(ctx, types.MessageTopic(mp.netName), msgb)
 	if err != nil {
 		return fmt.Errorf("could not publish: %s", err)
 	}
@@ -756,7 +755,7 @@ func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage) (cid.Ci
 			return cid.Undef, fmt.Errorf("error serializing message: %v", err)
 		}
 
-		err = mp.api.PubSubPublish(ctx, msgsub.Topic(mp.netName), buf.Bytes())
+		err = mp.api.PubSubPublish(ctx, types.MessageTopic(mp.netName), buf.Bytes())
 		if err != nil {
 			return cid.Undef, fmt.Errorf("error publishing message: %v", err)
 		}
@@ -1123,7 +1122,7 @@ func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage
 			return cid.Undef, fmt.Errorf("error serializing message: %v", err)
 		}
 
-		err = mp.api.PubSubPublish(ctx, msgsub.Topic(mp.netName), buf.Bytes())
+		err = mp.api.PubSubPublish(ctx, types.MessageTopic(mp.netName), buf.Bytes())
 		if err != nil {
 			return cid.Undef, fmt.Errorf("error publishing message: %v", err)
 		}

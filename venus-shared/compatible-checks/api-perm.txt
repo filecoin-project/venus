@@ -40,6 +40,7 @@ v0: github.com/filecoin-project/venus/venus-shared/api/chain/v0 <> github.com/fi
 	- INetwork.NetProtectAdd
 	- INetwork.NetProtectList
 	- INetwork.NetProtectRemove
+	- INetwork.NetPubsubScores
 	- ISyncer.ChainSyncHandleNewTipSet
 	- ISyncer.Concurrent
 	- ISyncer.SetConcurrent

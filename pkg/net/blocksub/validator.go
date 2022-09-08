@@ -48,7 +48,7 @@ func NewBlockTopicValidator(bv BlockHeaderValidator, opts ...pubsub.ValidatorOpt
 }
 
 func (btv *BlockTopicValidator) Topic(network string) string {
-	return Topic(network)
+	return types.BlockTopic(network)
 }
 
 func (btv *BlockTopicValidator) Validator() pubsub.ValidatorEx {

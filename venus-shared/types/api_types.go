@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 
@@ -94,6 +95,11 @@ const (
 
 	Integrationnet NetworkType = 0x30
 )
+
+type PubsubScore struct {
+	ID    peer.ID
+	Score *pubsub.PeerScoreSnapshot
+}
 
 type Partition struct {
 	AllSectors        bitfield.BitField

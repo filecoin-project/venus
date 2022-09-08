@@ -154,6 +154,7 @@
   * [NetProtectAdd](#NetProtectAdd)
   * [NetProtectList](#NetProtectList)
   * [NetProtectRemove](#NetProtectRemove)
+  * [NetPubsubScores](#NetPubsubScores)
 * [Paychan](#Paychan)
   * [PaychAllocateLane](#PaychAllocateLane)
   * [PaychAvailableFunds](#PaychAvailableFunds)
@@ -4866,6 +4867,36 @@ Inputs:
 ```
 
 Response: `{}`
+
+### NetPubsubScores
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  {
+    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Score": {
+      "Score": 12.3,
+      "Topics": {
+        "/blocks": {
+          "TimeInMesh": 60000000000,
+          "FirstMessageDeliveries": 122,
+          "MeshMessageDeliveries": 1234,
+          "InvalidMessageDeliveries": 3
+        }
+      },
+      "AppSpecificScore": 12.3,
+      "IPColocationFactor": 12.3,
+      "BehaviourPenalty": 12.3
+    }
+  }
+]
+```
 
 ## Paychan
 

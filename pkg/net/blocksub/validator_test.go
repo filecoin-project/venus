@@ -38,7 +38,7 @@ func TestBlockTopicValidator(t *testing.T) {
 	validator := tv.Validator()
 
 	network := "gfctest"
-	assert.Equal(t, blocksub.Topic(network), tv.Topic(network))
+	assert.Equal(t, types.BlockTopic(network), tv.Topic(network))
 	assert.True(t, validator(ctx, pid1, blkToPubSub(t, goodBlk)) == pubsub.ValidationAccept)
 	assert.False(t, validator(ctx, pid1, blkToPubSub(t, badBlk)) == pubsub.ValidationAccept)
 	assert.False(t, validator(ctx, pid1, nonBlkPubSubMsg()) == pubsub.ValidationAccept)

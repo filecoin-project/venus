@@ -73,7 +73,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	+ NetFindProvidersAsync
 	+ NetGetClosestPeers
 	- NetLimit
-	- NetPubsubScores
 	- NetSetLimit
 	- NetStat
 	+ ProtocolParameters
@@ -192,7 +191,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ NetFindProvidersAsync
 	+ NetGetClosestPeers
 	- NetLimit
-	- NetPubsubScores
 	- NetSetLimit
 	- NetStat
 	- NodeStatus

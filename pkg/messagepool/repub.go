@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/messagepool/gasguess"
-	"github.com/filecoin-project/venus/pkg/net/msgsub"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -140,7 +139,7 @@ LOOP:
 			return fmt.Errorf("cannot serialize message: %v", err)
 		}
 
-		err = mp.api.PubSubPublish(ctx, msgsub.Topic(mp.netName), buf.Bytes())
+		err = mp.api.PubSubPublish(ctx, types.MessageTopic(mp.netName), buf.Bytes())
 		if err != nil {
 			return fmt.Errorf("cannot publish: %v", err)
 		}

@@ -599,6 +599,7 @@ type INetworkStruct struct {
 		NetProtectAdd               func(ctx context.Context, acl []peer.ID) error                         `perm:"admin"`
 		NetProtectList              func(ctx context.Context) ([]peer.ID, error)                           `perm:"read"`
 		NetProtectRemove            func(ctx context.Context, acl []peer.ID) error                         `perm:"admin"`
+		NetPubsubScores             func(context.Context) ([]types.PubsubScore, error)                     `perm:"read"`
 	}
 }
 
@@ -656,6 +657,9 @@ func (s *INetworkStruct) NetProtectList(p0 context.Context) ([]peer.ID, error) {
 }
 func (s *INetworkStruct) NetProtectRemove(p0 context.Context, p1 []peer.ID) error {
 	return s.Internal.NetProtectRemove(p0, p1)
+}
+func (s *INetworkStruct) NetPubsubScores(p0 context.Context) ([]types.PubsubScore, error) {
+	return s.Internal.NetPubsubScores(p0)
 }
 
 type IPaychanStruct struct {

@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"runtime"
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/net/helloprotocol"
@@ -84,6 +83,8 @@ type NetworkSubmodule struct { //nolint
 	//data transfer
 	DataTransfer     datatransfer.Manager
 	DataTransferHost dtnet.DataTransferNetwork
+
+	ScoreKeeper *net.ScoreKeeper
 
 	cfg networkConfig
 }
@@ -166,25 +167,8 @@ func NewNetworkSubmodule(ctx context.Context, chainStore *chain.Store,
 		return nil, err
 	}
 
-	// Set up libp2p network
-	// The gossipsub heartbeat timeout needs to be set sufficiently low
-	// to enable publishing on first connection.  The default of one
-	// second is not acceptable for tests.
-	libp2pps.GossipSubHeartbeatInterval = 100 * time.Millisecond
-	options := []libp2pps.Option{
-		// Gossipsubv1.1 configuration
-		libp2pps.WithFloodPublish(true),
-
-		//  buffer, 32 -> 10K
-		libp2pps.WithValidateQueueSize(10 << 10),
-		//  worker, 1x cpu -> 2x cpu
-		libp2pps.WithValidateWorkers(runtime.NumCPU() * 2),
-		//  goroutine, 8K -> 16K
-		libp2pps.WithValidateThrottle(16 << 10),
-
-		libp2pps.WithMessageIdFn(HashMsgId),
-	}
-	gsub, err := libp2pps.NewGossipSub(ctx, peerHost, options...)
+	sk := net.NewScoreKeeper()
+	gsub, err := net.NewGossipSub(ctx, peerHost, sk, networkName, config.Repo().Config().NetworkParams.DrandSchedule, bootNodes)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set up network")
 	}
@@ -234,6 +218,7 @@ func NewNetworkSubmodule(ctx context.Context, chainStore *chain.Store,
 		PeerMgr:          peerMgr,
 		HelloHandler:     helloHandler,
 		cfg:              config,
+		ScoreKeeper:      sk,
 	}, nil
 }
 

@@ -53,7 +53,7 @@ func NewMessageTopicValidator(syntaxVal *consensus.DefaultMessageSyntaxValidator
 }
 
 func (mtv *MessageTopicValidator) Topic(network string) string {
-	return Topic(network)
+	return types.MessageTopic(network)
 }
 
 func (mtv *MessageTopicValidator) Validator() pubsub.Validator {
