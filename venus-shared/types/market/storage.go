@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	market8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
 	"github.com/ipfs/go-cid"
 
@@ -136,4 +137,21 @@ type StorageStatus struct {
 	Capacity  int64
 	Available int64
 	Reserved  int64
+}
+
+type SignedStorageAsk struct {
+	Ask       *storagemarket.StorageAsk
+	Signature *crypto.Signature
+	TimeStamp
+}
+
+func (sa *SignedStorageAsk) ToChainAsk() *storagemarket.SignedStorageAsk {
+	return &storagemarket.SignedStorageAsk{
+		Ask:       sa.Ask,
+		Signature: sa.Signature,
+	}
+}
+
+func FromChainAsk(s *storagemarket.SignedStorageAsk) *SignedStorageAsk {
+	return &SignedStorageAsk{Ask: s.Ask, Signature: s.Signature}
 }

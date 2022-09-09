@@ -13,7 +13,6 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	piecestore "github.com/filecoin-project/go-fil-markets/piecestore"
 	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
@@ -619,10 +618,10 @@ func (mr *MockIMarketMockRecorder) MarketDataTransferUpdates(arg0 interface{}) *
 }
 
 // MarketGetAsk mocks base method.
-func (m *MockIMarket) MarketGetAsk(arg0 context.Context, arg1 address.Address) (*storagemarket.SignedStorageAsk, error) {
+func (m *MockIMarket) MarketGetAsk(arg0 context.Context, arg1 address.Address) (*market.SignedStorageAsk, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MarketGetAsk", arg0, arg1)
-	ret0, _ := ret[0].(*storagemarket.SignedStorageAsk)
+	ret0, _ := ret[0].(*market.SignedStorageAsk)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -707,10 +706,10 @@ func (mr *MockIMarketMockRecorder) MarketImportPublishedDeal(arg0, arg1 interfac
 }
 
 // MarketListAsk mocks base method.
-func (m *MockIMarket) MarketListAsk(arg0 context.Context) ([]*storagemarket.SignedStorageAsk, error) {
+func (m *MockIMarket) MarketListAsk(arg0 context.Context) ([]*market.SignedStorageAsk, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MarketListAsk", arg0)
-	ret0, _ := ret[0].([]*storagemarket.SignedStorageAsk)
+	ret0, _ := ret[0].([]*market.SignedStorageAsk)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

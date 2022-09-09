@@ -918,7 +918,9 @@ Response:
   "Signature": {
     "Type": 2,
     "Data": "Ynl0ZSBhcnJheQ=="
-  }
+  },
+  "CreatedAt": 42,
+  "UpdatedAt": 42
 }
 ```
 
@@ -1141,7 +1143,9 @@ Response:
     "Signature": {
       "Type": 2,
       "Data": "Ynl0ZSBhcnJheQ=="
-    }
+    },
+    "CreatedAt": 42,
+    "UpdatedAt": 42
   }
 ]
 ```
