@@ -3,7 +3,6 @@ package node
 import (
 	"time"
 
-	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/journal"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
@@ -44,11 +43,6 @@ func (b builder) Repo() repo.Repo {
 // IsRelay get whether the p2p network support replay
 func (b builder) IsRelay() bool {
 	return b.isRelay
-}
-
-// ChainClock get chain clock
-func (b builder) ChainClock() clock.ChainEpochClock {
-	return b.chainClock
 }
 
 // Journal get journal to record event

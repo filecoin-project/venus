@@ -3,16 +3,12 @@ package journal
 import (
 	"sync"
 	"testing"
-	"time"
-
-	"github.com/filecoin-project/venus/pkg/clock"
 )
 
 // NewInMemoryJournal returns a journal backed by an in-memory map.
-func NewInMemoryJournal(t *testing.T, clk clock.Clock) Journal {
+func NewInMemoryJournal(t *testing.T) Journal {
 	return &MemoryJournal{
 		t:      t,
-		clock:  clk,
 		topics: make(map[string][]entry),
 	}
 }
@@ -20,7 +16,6 @@ func NewInMemoryJournal(t *testing.T, clk clock.Clock) Journal {
 // MemoryJournal represents a journal held in memory.
 type MemoryJournal struct {
 	t        *testing.T
-	clock    clock.Clock
 	topicsMu sync.Mutex
 	topics   map[string][]entry
 }
@@ -35,7 +30,6 @@ func (mj *MemoryJournal) Topic(topic string) Writer {
 }
 
 type entry struct {
-	time  time.Time
 	event string
 	kvs   []interface{}
 }
@@ -55,7 +49,6 @@ func (mw *MemoryWriter) Write(event string, kvs ...interface{}) {
 	mw.journal.topicsMu.Lock()
 	mw.journal.topics[mw.topic] = append(mw.journal.topics[mw.topic], entry{
 		event: event,
-		time:  mw.journal.clock.Now(),
 		kvs:   kvs,
 	})
 	mw.journal.topicsMu.Unlock()

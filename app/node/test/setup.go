@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
-	"time"
 
 	th "github.com/filecoin-project/venus/pkg/testhelpers"
 
@@ -13,19 +12,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/constants"
 	gengen "github.com/filecoin-project/venus/tools/gengen/util"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 )
 
-const blockTime = builtin.EpochDurationSeconds * time.Second
-
-func CreateBootstrapSetup(t *testing.T) (*ChainSeed, *gengen.GenesisCfg, clock.ChainEpochClock) {
-	// set up paths and fake clock.
-	genTime := int64(1000000000)
-	fakeClock := clock.NewFake(time.Unix(genTime, 0))
-
+func CreateBootstrapSetup(t *testing.T) (*ChainSeed, *gengen.GenesisCfg) {
 	// Load genesis config fixture.
 	genCfgPath := th.Root("fixtures/setup.json")
 	genCfg := loadGenesisConfig(t, genCfgPath)
@@ -34,17 +25,15 @@ func CreateBootstrapSetup(t *testing.T) (*ChainSeed, *gengen.GenesisCfg, clock.C
 		SealProofType: constants.DevSealProofType,
 	})
 	seed := MakeChainSeed(t, genCfg)
-	chainClock := clock.NewChainClockFromClock(uint64(genTime), blockTime, fakeClock)
 
-	return seed, genCfg, chainClock
+	return seed, genCfg
 }
 
-func CreateBootstrapMiner(ctx context.Context, t *testing.T, seed *ChainSeed, chainClock clock.ChainEpochClock, genCfg *gengen.GenesisCfg) *node.Node {
+func CreateBootstrapMiner(ctx context.Context, t *testing.T, seed *ChainSeed, genCfg *gengen.GenesisCfg) *node.Node {
 	// create bootstrap miner
 	bootstrapMiner := NewNodeBuilder(t).
 		WithGenesisInit(seed.GenesisInitFunc).
 		WithBuilderOpt(FakeProofVerifierBuilderOpts()...).
-		WithBuilderOpt(node.ChainClockConfigOption(chainClock)).
 		WithBuilderOpt(node.MonkeyPatchSetProofTypeOption(constants.DevRegisteredSealProof)).
 		Build(ctx)
 

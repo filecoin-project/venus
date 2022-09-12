@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
-	"github.com/filecoin-project/venus/pkg/clock"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	"github.com/filecoin-project/venus/pkg/fork"
@@ -324,7 +323,6 @@ func TestNoUncessesaryFetch(t *testing.T) {
 		builder.Mstore(),
 		builder.BlockStore(),
 		builder,
-		clock.NewFake(time.Unix(1234567890, 0)),
 		fork.NewMockFork())
 	require.NoError(t, err)
 
@@ -594,7 +592,6 @@ func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builde
 		builder.Mstore(),
 		builder.BlockStore(),
 		builder,
-		clock.NewFake(time.Unix(1234567890, 0)),
 		fork.NewMockFork())
 	require.NoError(t, err)
 

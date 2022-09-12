@@ -2,18 +2,16 @@ package journal
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/venus/pkg/clock"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
 func TestSimpleInMemoryJournal(t *testing.T) {
 	tf.UnitTest(t)
 
-	mj := NewInMemoryJournal(t, clock.NewFake(time.Unix(1234567890, 0)))
+	mj := NewInMemoryJournal(t)
 	topicJ := mj.Topic("testing")
 	topicJ.Write("event1", "foo", "bar")
 

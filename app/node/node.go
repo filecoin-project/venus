@@ -27,7 +27,6 @@ import (
 	syncer2 "github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"  // enable bls signatures
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp" // enable secp signatures
@@ -54,9 +53,6 @@ const APIPrefix = "/api"
 type Node struct {
 	// offlineMode, when true, disables libp2p.
 	offlineMode bool
-
-	// chainClock is a chainClock used by the node for chain epoch.
-	chainClock clock.ChainEpochClock
 
 	// repo is the repo this node was created with.
 	//
@@ -139,10 +135,6 @@ func (node *Node) ConfigModule() *configModule.ConfigModule {
 
 func (node *Node) Repo() repo.Repo {
 	return node.repo
-}
-
-func (node *Node) ChainClock() clock.ChainEpochClock {
-	return node.chainClock
 }
 
 func (node *Node) OfflineMode() bool {

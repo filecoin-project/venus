@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
-	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/fork"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
@@ -42,7 +41,7 @@ func TestLoadFork(t *testing.T) {
 	stmgr := statemanger.NewStateManger(builder.Store(), blockValidator, nil, nil, nil, nil)
 
 	s, err := syncer.NewSyncer(stmgr, blockValidator, sel, builder.Store(),
-		builder.Mstore(), builder.BlockStore(), builder, clock.NewFake(time.Unix(1234567890, 0)), nil)
+		builder.Mstore(), builder.BlockStore(), builder, nil)
 
 	require.NoError(t, err)
 
@@ -98,7 +97,6 @@ func TestLoadFork(t *testing.T) {
 		builder.Mstore(),
 		builder.BlockStore(),
 		builder,
-		clock.NewFake(time.Unix(1234567890, 0)),
 		fork.NewMockFork())
 	require.NoError(t, err)
 

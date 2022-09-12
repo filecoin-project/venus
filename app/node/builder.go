@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/venus/app/submodule/syncer"
 	"github.com/filecoin-project/venus/app/submodule/wallet"
 	chain2 "github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/journal"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -46,7 +45,6 @@ type Builder struct {
 	repo           repo.Repo
 	journal        journal.Journal
 	isRelay        bool
-	chainClock     clock.ChainEpochClock
 	genBlk         types.BlockHeader
 	walletPassword []byte
 	authURL        string
@@ -57,7 +55,6 @@ func New(ctx context.Context, opts ...BuilderOpt) (*Node, error) {
 	// initialize builder and set base values
 	n := &Builder{
 		offlineMode: false,
-		blockTime:   clock.DefaultEpochDuration,
 		verifier:    impl.ProofVerifier,
 	}
 	// apply builder options
@@ -90,16 +87,10 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
-	if b.chainClock == nil {
-		// get the genesis block time from the chainsubmodule
-		b.chainClock = clock.NewChainClock(b.genBlk.Timestamp, b.blockTime)
-	}
-
 	// create the node
 	nd := &Node{
 		offlineMode: b.offlineMode,
 		repo:        b.repo,
-		chainClock:  b.chainClock,
 	}
 
 	// modules

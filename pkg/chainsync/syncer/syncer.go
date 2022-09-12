@@ -18,7 +18,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/chain"
-	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/metrics"
@@ -130,7 +129,6 @@ type Syncer struct {
 	// Provides message collections given cids
 	messageProvider messageStore
 
-	clock    clock.Clock
 	headLock sync.Mutex
 
 	bsstore    blockstoreutil.Blockstore
@@ -150,7 +148,6 @@ func NewSyncer(stmgr *statemanger.Stmgr,
 	m messageStore,
 	bsstore blockstoreutil.Blockstore,
 	exchangeClient exchange.Client,
-	c clock.Clock,
 	fork fork.IFork,
 ) (*Syncer, error) {
 	if constants.InsecurePoStValidation {
@@ -167,7 +164,6 @@ func NewSyncer(stmgr *statemanger.Stmgr,
 		bsstore:         bsstore,
 		chainStore:      s,
 		messageProvider: m,
-		clock:           c,
 		fork:            fork,
 		stmgr:           stmgr,
 	}

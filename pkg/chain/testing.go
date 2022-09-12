@@ -28,7 +28,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/venus/fixtures/assets"
-	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
@@ -606,26 +605,6 @@ type ZeroTimestamper struct{}
 // Stamp returns a stamp for the current block
 func (zt *ZeroTimestamper) Stamp(height abi.ChainEpoch) uint64 {
 	return uint64(0)
-}
-
-// ClockTimestamper writes timestamps based on a blocktime and genesis time
-type ClockTimestamper struct {
-	c clock.ChainEpochClock
-}
-
-// NewClockTimestamper makes a new stamper for creating production valid timestamps
-func NewClockTimestamper(chainClock clock.ChainEpochClock) *ClockTimestamper {
-	return &ClockTimestamper{
-		c: chainClock,
-	}
-}
-
-// Stamp assigns a valid timestamp given genesis time and block time to
-// a block of the provided height.
-func (ct *ClockTimestamper) Stamp(height abi.ChainEpoch) uint64 {
-	startTime := ct.c.StartTimeOfEpoch(height)
-
-	return uint64(startTime.Unix())
 }
 
 // /// state evaluator /////

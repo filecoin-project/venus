@@ -34,8 +34,8 @@ func TestChainLs(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("chain ls returns the specified number of tipsets modified by the count", func(t *testing.T) {
-		seed, cfg, chainClk := test.CreateBootstrapSetup(t)
-		n := test.CreateBootstrapMiner(ctx, t, seed, chainClk, cfg)
+		seed, cfg := test.CreateBootstrapSetup(t)
+		n := test.CreateBootstrapMiner(ctx, t, seed, cfg)
 
 		cmdClient, apiDone := test.RunNodeAPI(ctx, n, t)
 		defer apiDone()

@@ -5,7 +5,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/journal"
@@ -81,14 +80,6 @@ func Libp2pOptions(opts ...libp2p.Option) BuilderOpt {
 func VerifierConfigOption(verifier ffiwrapper.Verifier) BuilderOpt {
 	return func(c *Builder) error {
 		c.verifier = verifier
-		return nil
-	}
-}
-
-// ChainClockConfigOption returns a function that sets the chainClock to use in the node.
-func ChainClockConfigOption(clk clock.ChainEpochClock) BuilderOpt {
-	return func(c *Builder) error {
-		c.chainClock = clk
 		return nil
 	}
 }

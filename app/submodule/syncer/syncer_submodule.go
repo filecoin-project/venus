@@ -8,7 +8,6 @@ import (
 	"time"
 
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
@@ -65,7 +64,6 @@ type SyncerSubmodule struct { //nolint
 type syncerConfig interface {
 	GenesisCid() cid.Cid
 	BlockTime() time.Duration
-	ChainClock() clock.ChainEpochClock
 	Repo() repo.Repo
 	Verifier() ffiwrapper.Verifier
 }
@@ -131,7 +129,7 @@ func NewSyncerSubmodule(ctx context.Context,
 	chn.Waiter.Stmgr = stmgr
 
 	chainSyncManager, err := chainsync.NewManager(stmgr, blkValid, chn, nodeChainSelector,
-		blockstore.Blockstore, network.ExchangeClient, config.ChainClock(), chn.Fork)
+		blockstore.Blockstore, network.ExchangeClient, chn.Fork)
 	if err != nil {
 		return nil, err
 	}

@@ -13,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chainsync/dispatcher"
 	"github.com/filecoin-project/venus/pkg/chainsync/syncer"
-	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/fork"
 )
 
@@ -42,12 +41,11 @@ func NewManager(
 	cs syncer.ChainSelector,
 	bsstore blockstoreutil.Blockstore,
 	exchangeClient exchange.Client,
-	c clock.Clock,
 	fork fork.IFork,
 ) (Manager, error) {
 	chainSyncer, err := syncer.NewSyncer(stmgr, hv, cs, submodule.ChainReader,
 		submodule.MessageStore, bsstore,
-		exchangeClient, c, fork)
+		exchangeClient, fork)
 	if err != nil {
 		return Manager{}, err
 	}
