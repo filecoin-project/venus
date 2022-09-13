@@ -189,7 +189,7 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 	header := bm.Header
 	span.AddAttributes(trace.StringAttribute("block", header.Cid().String()))
 
-	log.Infof("Received new block %s height %d from peer %s", header.Cid(), header.Height, sender)
+	log.Infof("received new block %s height %d from peer %s age %v", header.Cid(), header.Height, sender, time.Since(time.Unix(int64(header.Timestamp), 0)))
 
 	_, err = syncer.ChainModule.ChainReader.PutObject(ctx, bm.Header)
 	if err != nil {
@@ -197,15 +197,6 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 	}
 	go func() {
 		start := time.Now()
-
-		defer func() {
-			if cost := time.Since(start); cost > slowFetchMessageDuration {
-				log.Warnf("incoming new block(%d, %s), slow fetch messages, cost time = %.4f(seconds)",
-					bm.Header.Height, bm.Header.Cid().String(), cost.Seconds())
-			}
-			log.Infof("incoming new block(%d, %s), cost time = %.4f(seconds)",
-				bm.Header.Height, bm.Header.Cid().String(), time.Since(start).Seconds())
-		}()
 
 		if delay := time.Since(time.Unix(int64(bm.Header.Timestamp), 0)); delay > incomeBlockLargeDelayDuration {
 			log.Warnf("received block(%d, %s) with large delay : %s",
@@ -223,8 +214,13 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 			return
 		}
 
+		if cost := time.Since(start); cost > slowFetchMessageDuration {
+			log.Warnw("fetch message slow", "block", bm.Header.Cid().String(), "height", bm.Header.Height, "took", cost)
+		} else {
+			log.Debugw("fetch message", "block", bm.Header.Cid().String(), "height", bm.Header.Height, "took", cost)
+		}
+
 		syncer.NetworkModule.Host.ConnManager().TagPeer(sender, "new-block", 20)
-		log.Infof("fetch message success at %s", bm.Header.Cid())
 
 		ts, _ := types.NewTipSet([]*types.BlockHeader{header})
 		chainInfo := types.NewChainInfo(source, sender, ts)

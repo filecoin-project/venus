@@ -135,7 +135,7 @@ func (bv *BlockValidator) ValidateFullBlock(ctx context.Context, blk *types.Bloc
 	}
 	bv.validateBlockCache.Add(blk.Cid(), struct{}{})
 
-	logExpect.Infof("validate block %s(%d) spent %v 'ms'", blk.Cid(), blk.Height, time.Since(validationStart).Milliseconds())
+	logExpect.Infow("block validation", "took", time.Since(validationStart), "height", blk.Height, "block", blk.Cid(), "age", time.Since(time.Unix(int64(blk.Timestamp), 0)))
 
 	return nil
 }

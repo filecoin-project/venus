@@ -254,10 +254,8 @@ func (tq *TargetTracker) Add(t *Target) bool {
 
 	tq.pubNewTarget()
 
-	defer func(t *Target) {
-		log.Infof("add new block(height:%d, count:%d) cost time=%.4f\n",
-			t.Head.Height(), t.Head.Len(), time.Since(now).Seconds())
-	}(t)
+	log.Debugf("add new target height: %d, count: %d, took: %d 'ms'", t.Head.Height(), t.Head.Len(), time.Since(now).Milliseconds())
+
 	return true
 }
 

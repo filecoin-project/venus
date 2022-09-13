@@ -162,8 +162,7 @@ func NewExpected(cs cbor.IpldStore,
 func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
 	begin := time.Now()
 	defer func() {
-		logExpect.Infof("expected.runstatetransition(height:%d, blocks:%d), cost time = %.4f(s)",
-			ts.Height(), ts.Len(), time.Since(begin).Seconds())
+		logExpect.Infof("process ts height %d, blocks %d, took %.4f(s)", ts.Height(), ts.Len(), time.Since(begin).Seconds())
 	}()
 	ctx, span := trace.StartSpan(ctx, "Expected.innerRunStateTransition")
 	defer span.End()
