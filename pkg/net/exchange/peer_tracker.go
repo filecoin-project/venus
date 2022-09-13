@@ -35,14 +35,20 @@ func newPeerTracker(h host.Host, pmgr peermgr.IPeerMgr) *bsPeerTracker {
 		pmgr:  pmgr,
 	}
 
-	sub, err := h.EventBus().Subscribe(new(peermgr.NewFilPeer))
+	sub, err := h.EventBus().Subscribe(new(peermgr.FilPeerEvt))
 	if err != nil {
 		panic(err)
 	}
 
 	go func() {
-		for newPeer := range sub.Out() {
-			bsPt.addPeer(newPeer.(peermgr.NewFilPeer).Id)
+		for evt := range sub.Out() {
+			pEvt := evt.(peermgr.FilPeerEvt)
+			switch pEvt.Type {
+			case peermgr.AddFilPeerEvt:
+				bsPt.addPeer(pEvt.ID)
+			case peermgr.RemoveFilPeerEvt:
+				bsPt.removePeer(pEvt.ID)
+			}
 		}
 	}()
 	return bsPt
