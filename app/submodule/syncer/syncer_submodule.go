@@ -223,7 +223,7 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 			return
 		}
 
-		syncer.NetworkModule.Host.ConnManager().TagPeer(sender, "new-block", 20)
+		syncer.NetworkModule.Host.ConnManager().TagPeer(sender, "blkprop", 5)
 		log.Infof("fetch message success at %s", bm.Header.Cid())
 
 		ts, _ := types.NewTipSet([]*types.BlockHeader{header})

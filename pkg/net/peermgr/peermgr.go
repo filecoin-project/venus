@@ -140,7 +140,9 @@ func (pmgr *PeerMgr) Run(ctx context.Context) {
 		case <-tick.C:
 			pcount := pmgr.getPeerCount()
 			if pcount < pmgr.minFilPeers {
+				log.Infof("PeerMgr start expand peers, current peers %v, min peers %v", pcount, pmgr.minFilPeers)
 				pmgr.expandPeers()
+				log.Infof("PeerMgr end expand peers, current peers %v, min peers %v", pcount, pmgr.minFilPeers)
 			} else if pcount > pmgr.maxFilPeers {
 				log.Debugf("peer count about threshold: %d > %d", pcount, pmgr.maxFilPeers)
 			}

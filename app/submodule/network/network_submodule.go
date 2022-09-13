@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/net/helloprotocol"
 
-	"github.com/dchest/blake2b"
 	"github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
 	blocks "github.com/ipfs/go-block-format"
@@ -25,13 +24,13 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
+	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	"github.com/libp2p/go-libp2p-core/host"
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
-	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	yamux "github.com/libp2p/go-libp2p-yamux"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
@@ -137,15 +136,19 @@ func NewNetworkSubmodule(ctx context.Context, chainStore *chain.Store,
 		}
 	}
 
-	// peer manager
 	bootNodes, err := net.ParseAddresses(ctx, config.Repo().Config().Bootstrap.Addresses)
 	if err != nil {
 		return nil, err
 	}
 
-	// set up host
-	var peerMgr peermgr.IPeerMgr
+	// connection manager
+	cm, err := connectionManager(150, 180, time.Second*20, bootNodes)
+	if err != nil {
+		return nil, err
+	}
+	libP2pOpts = append(libP2pOpts, libp2p.ConnectionManager(cm))
 
+	// set up host
 	rawHost, err := buildHost(ctx, config, libP2pOpts, config.Repo().Config())
 	if err != nil {
 		return nil, err
@@ -162,7 +165,7 @@ func NewNetworkSubmodule(ctx context.Context, chainStore *chain.Store,
 		return nil, err
 	}
 
-	peerMgr, err = peermgr.NewPeerMgr(peerHost, router.(*dht.IpfsDHT), period, bootNodes)
+	peerMgr, err := peermgr.NewPeerMgr(peerHost, router.(*dht.IpfsDHT), period, bootNodes)
 	if err != nil {
 		return nil, err
 	}
@@ -402,7 +405,15 @@ func makeSmuxTransportOption() libp2p.Option {
 	return libp2p.Muxer(yamuxID, &ymxtpt)
 }
 
-func HashMsgId(m *pubsub_pb.Message) string {
-	hash := blake2b.Sum256(m.Data)
-	return string(hash[:])
+func connectionManager(low, high uint, grace time.Duration, bootNodes []peer.AddrInfo) (*connmgr.BasicConnMgr, error) {
+	cm, err := connmgr.NewConnManager(int(low), int(high), connmgr.WithGracePeriod(grace))
+	if err != nil {
+		return nil, err
+	}
+
+	for _, inf := range bootNodes {
+		cm.Protect(inf.ID, "bootstrap")
+	}
+
+	return cm, nil
 }

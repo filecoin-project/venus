@@ -10,6 +10,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/net/exchange"
 	"github.com/filecoin-project/venus/pkg/net/peermgr"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/libp2p/go-eventbus"
+	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -18,7 +20,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	net "github.com/libp2p/go-libp2p-core/network"
-	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/venus/pkg/metrics"
 )
@@ -102,8 +103,25 @@ func (h *HelloProtocolHandler) Register(peerDiscoveredCallback PeerDiscoveredCal
 	// register a handle for when a new connection against someone is created
 	h.host.SetStreamHandler(helloProtocolID, h.handleNewStream)
 
-	// register for connection notifications
-	h.host.Network().Notify((*helloProtocolNotifiee)(h))
+	sub, err := h.host.EventBus().Subscribe(new(event.EvtPeerIdentificationCompleted), eventbus.BufSize(1024))
+	if err != nil {
+		panic(fmt.Errorf("failed to subscribe to event bus: %w", err))
+	}
+	go func() {
+		for evt := range sub.Out() {
+			pic := evt.(event.EvtPeerIdentificationCompleted)
+			if err := h.sayHello(context.Background(), pic.Peer); err != nil {
+				protos, _ := h.host.Peerstore().GetProtocols(pic.Peer)
+				agent, _ := h.host.Peerstore().Get(pic.Peer, "AgentVersion")
+				if protosContains(protos, helloProtocolID) {
+					log.Warnw("failed to say hello", "error", err, "peer", pic.Peer, "supported", protos, "agent", agent)
+				} else {
+					log.Debugw("failed to say hello", "error", err, "peer", pic.Peer, "supported", protos, "agent", agent)
+				}
+				return
+			}
+		}
+	}()
 }
 
 func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
@@ -150,6 +168,9 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 		time.Sleep(time.Millisecond * 300)
 	}
 
+	// notify the local node of the new `block.ChainInfo`
+	h.peerMgr.AddFilecoinPeer(from)
+
 	fullTipSet, err := h.loadLocalFullTipset(ctx, hello.HeaviestTipSetCids)
 	if err != nil {
 		fullTipSet, err = h.exchange.GetFullTipSet(ctx, []peer.ID{from}, hello.HeaviestTipSetCids) //nolint
@@ -167,7 +188,7 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 				}
 			}
 		}
-		h.host.ConnManager().TagPeer(from, "new-block", 40)
+		h.host.ConnManager().TagPeer(from, "fcpeer", 10)
 	}
 	if err != nil {
 		log.Warnf("failed to get tipset message from peer %s", from)
@@ -178,8 +199,6 @@ func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 		return
 	}
 
-	// notify the local node of the new `block.ChainInfo`
-	h.peerMgr.AddFilecoinPeer(from)
 	ci := types.NewChainInfo(from, from, fullTipSet.TipSet())
 	h.peerDiscovered(ci)
 }
@@ -240,6 +259,36 @@ func (h *HelloProtocolHandler) receiveLatency(ctx context.Context, s net.Stream)
 	return &latency, nil
 }
 
+const helloTimeout = time.Second * 10
+
+func (h *HelloProtocolHandler) sayHello(ctx context.Context, p peer.ID) error {
+	// add timeout
+	ctx, cancel := context.WithTimeout(ctx, helloTimeout)
+	defer cancel()
+	s, err := h.host.NewStream(ctx, p, helloProtocolID)
+	if err != nil {
+		// If peer does not do hello keep connection open
+		return err
+	}
+	defer func() { _ = s.Close() }()
+	// send out the hello message
+	err = h.sendHello(s)
+	if err != nil {
+		log.Debugf("failed to send hello handshake to peer %s: %s", p, err)
+		// Don't close connection for failed hello protocol impl
+		return err
+	}
+
+	// now receive latency message
+	_, err = h.receiveLatency(ctx, s)
+	if err != nil {
+		log.Debugf("failed to receive hello latency msg from peer %s: %s", p, err)
+		return nil
+	}
+
+	return nil
+}
+
 // sendHello send a hello message on stream `s`.
 func (h *HelloProtocolHandler) sendHello(s net.Stream) error {
 	msg, err := h.getOurHelloMessage()
@@ -277,57 +326,11 @@ func sendLatency(msg *LatencyMessage, s net.Stream) error {
 	return nil
 }
 
-// Note: hide `net.Notifyee` impl using a new-type
-type helloProtocolNotifiee HelloProtocolHandler
-
-const helloTimeout = time.Second * 10
-
-func (hn *helloProtocolNotifiee) asHandler() *HelloProtocolHandler {
-	return (*HelloProtocolHandler)(hn)
+func protosContains(protos []string, search string) bool {
+	for _, p := range protos {
+		if p == search {
+			return true
+		}
+	}
+	return false
 }
-
-//
-// `net.Notifyee` impl for `helloNotify`
-//
-
-func (hn *helloProtocolNotifiee) Connected(n net.Network, c net.Conn) {
-	// Connected is invoked when a connection is made to a libp2p node.
-	//
-	// - open stream on connection
-	// - send HelloMessage` on stream
-	// - read LatencyMessage response on stream
-	//
-	// Terminate the connection if it has a different genesis block
-	go func() {
-		// add timeout
-		ctx, cancel := context.WithTimeout(context.Background(), helloTimeout)
-		defer cancel()
-		s, err := hn.asHandler().host.NewStream(ctx, c.RemotePeer(), helloProtocolID)
-		if err != nil {
-			// If peer does not do hello keep connection open
-			return
-		}
-		defer func() { _ = s.Close() }()
-		// send out the hello message
-		err = hn.asHandler().sendHello(s)
-		if err != nil {
-			log.Debugf("failed to send hello handshake to peer %s: %s", c.RemotePeer(), err)
-			// Don't close connection for failed hello protocol impl
-			return
-		}
-
-		// now receive latency message
-		_, err = hn.asHandler().receiveLatency(ctx, s)
-		if err != nil {
-			log.Debugf("failed to receive hello latency msg from peer %s: %s", c.RemotePeer(), err)
-			return
-		}
-
-	}()
-}
-
-func (hn *helloProtocolNotifiee) Listen(n net.Network, a ma.Multiaddr)      { /* empty */ }
-func (hn *helloProtocolNotifiee) ListenClose(n net.Network, a ma.Multiaddr) { /* empty */ }
-func (hn *helloProtocolNotifiee) Disconnected(n net.Network, c net.Conn)    { /* empty */ }
-func (hn *helloProtocolNotifiee) OpenedStream(n net.Network, s net.Stream)  { /* empty */ }
-func (hn *helloProtocolNotifiee) ClosedStream(n net.Network, s net.Stream)  { /* empty */ }
