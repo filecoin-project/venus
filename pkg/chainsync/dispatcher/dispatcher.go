@@ -144,8 +144,8 @@ func (d *Dispatcher) processIncoming(ctx context.Context) {
 		case target := <-d.incoming:
 			// Sort new targets by putting on work queue.
 			if d.workTracker.Add(target) {
-				log.Infof("received height %d Blocks: %d  %s current work len %d  incoming len: %d",
-					target.Head.Height(), target.Head.Len(), target.Head.Key(), d.workTracker.Len(), len(d.incoming))
+				log.Infow("received new tipset", "height", target.Head.Height(), "blocks", target.Head.Len(), "from",
+					target.ChainInfo.Sender, "current work len", d.workTracker.Len(), "incoming channel len", len(d.incoming))
 			}
 		}
 	}

@@ -257,11 +257,10 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Tar
 		}
 		tracing.AddErrorEndSpan(ctx, span, &err)
 		span.End()
-		logSyncer.Infof("handleNewTipset(height:%d, count:%d), cost time=%.4f(s)",
-			target.Head.Height(), target.Head.Len(), time.Since(now).Seconds())
+		logSyncer.Infof("handle tipset height %d, count %d, took %.4f(s)", target.Head.Height(), target.Head.Len(), time.Since(now).Seconds())
 	}()
 
-	logSyncer.Infof("Begin fetch and sync of chain with head %v from %s at height %v", target.Head.Key(), target.Sender.String(), target.Head.Height())
+	logSyncer.Debugf("begin fetch and sync of chain with head %v from %s at height %v", target.Head.Key(), target.Sender.String(), target.Head.Height())
 	head := syncer.chainStore.GetHead()
 	//If the store already has this tipset then the syncer is finished.
 	if target.Head.At(0).ParentWeight.LessThan(head.At(0).ParentWeight) {
@@ -276,7 +275,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Tar
 	if err != nil {
 		return errors.Wrapf(err, "failure fetching or validating headers")
 	}
-	logSyncer.Infof("fetch header success at %v %s ...", tipsets[0].Height(), tipsets[0].Key())
+	logSyncer.Debugf("fetch header success at %v %s ...", tipsets[0].Height(), tipsets[0].Key())
 
 	if err = syncer.syncSegement(ctx, target, tipsets); err == nil {
 		syncer.delayRunTx.update(tipsets[len(tipsets)-1])
@@ -299,12 +298,12 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 		// fetch messages
 		startTip := segTipset[0].Height()
 		emdTipset := segTipset[len(segTipset)-1].Height()
-		logSyncer.Infof("start to fetch message segement %d-%d", startTip, emdTipset)
+		logSyncer.Debugf("start to fetch message segement %d-%d", startTip, emdTipset)
 		_, err := syncer.fetchSegMessage(ctx, segTipset)
 		if err != nil {
 			return err
 		}
-		logSyncer.Infof("finish to fetch message segement %d-%d", startTip, emdTipset)
+		logSyncer.Debugf("finish to fetch message segement %d-%d", startTip, emdTipset)
 		err = <-errProcessChan
 		if err != nil {
 			return fmt.Errorf("process message failed %v", err)
@@ -312,8 +311,8 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			logSyncer.Infof("start to process message segement %d-%d", startTip, emdTipset)
-			defer logSyncer.Infof("finish to process message segement %d-%d", startTip, emdTipset)
+			logSyncer.Debugf("start to process message segement %d-%d", startTip, emdTipset)
+			defer logSyncer.Debugf("finish to process message segement %d-%d", startTip, emdTipset)
 			var processErr error
 			parent, processErr = syncer.processTipSetSegment(ctx, target, parent, segTipset)
 			if processErr != nil {
@@ -321,7 +320,7 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 				return
 			}
 			if !parent.Key().Equals(syncer.checkPoint) {
-				logSyncer.Infof("set chain head, height;%d, blocks:%d\n", parent.Height(), parent.Len())
+				logSyncer.Debugf("set chain head, height:%d, blocks:%d", parent.Height(), parent.Len())
 				if err := syncer.SetHead(ctx, parent); err != nil {
 					errProcessChan <- err
 					return

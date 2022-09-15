@@ -189,7 +189,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			return cid.Undef, nil, fmt.Errorf("reward application message failed exit: %d, reason: %v", ret.Receipt, ret.ActorErr)
 		}
 
-		processLog.Infof("process block %v time %v", index, time.Since(toProcessBlock).Milliseconds())
+		processLog.Debugf("process block %v time %v", index, time.Since(toProcessBlock).Milliseconds())
 	}
 
 	// cron tick
@@ -206,7 +206,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		}
 	}
 
-	processLog.Infof("process cron: %v", time.Since(toProcessCron).Milliseconds())
+	processLog.Debugf("process cron: %v", time.Since(toProcessCron).Milliseconds())
 
 	root, err := vm.Flush(ctx)
 	if err != nil {
