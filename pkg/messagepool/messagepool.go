@@ -247,7 +247,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 		}
 
 	case strict && m.Message.Nonce > nextNonce+maxNonceGap:
-		return false, fmt.Errorf("message nonce has too big a gap from expected nonce (Nonce: %d, nextNonce: %d): %v", m.Message.Nonce, nextNonce, ErrNonceGap)
+		return false, fmt.Errorf("message nonce has too big a gap from expected nonce (Nonce: %d, nextNonce: %d): %w", m.Message.Nonce, nextNonce, ErrNonceGap)
 
 	case m.Message.Nonce > nextNonce:
 		nonceGap = true
@@ -257,7 +257,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 	if has {
 		// refuse RBF if we have a gap
 		if strict && nonceGap {
-			return false, fmt.Errorf("rejecting replace by fee because of nonce gap (Nonce: %d, nextNonce: %d): %v", m.Message.Nonce, nextNonce, ErrNonceGap)
+			return false, fmt.Errorf("rejecting replace by fee because of nonce gap (Nonce: %d, nextNonce: %d): %w", m.Message.Nonce, nextNonce, ErrNonceGap)
 		}
 
 		mc := m.Cid()
@@ -274,12 +274,12 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 					m.Message.From, m.Message.Nonce, minPrice, m.Message.GasPremium,
 					ErrRBFTooLowPremium)
 				return false, fmt.Errorf("message from %s with nonce %d already in mpool,"+
-					" increase GasPremium to %s from %s to trigger replace by fee: %v",
+					" increase GasPremium to %s from %s to trigger replace by fee: %w",
 					m.Message.From, m.Message.Nonce, minPrice, m.Message.GasPremium,
 					ErrRBFTooLowPremium)
 			}
 		} else {
-			return false, fmt.Errorf("message from %s with nonce %d already in mpool: %v",
+			return false, fmt.Errorf("message from %s with nonce %d already in mpool: %w",
 				m.Message.From, m.Message.Nonce, ErrSoftValidationFailure)
 		}
 
@@ -720,7 +720,7 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTS *types.T
 				m.Message.GasFeeCap, baseFeeLowerBound)
 			publish = false
 		} else {
-			return false, fmt.Errorf("GasFeeCap doesn't meet base fee lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s): %v",
+			return false, fmt.Errorf("GasFeeCap doesn't meet base fee lower bound for inclusion in the next 20 blocks (GasFeeCap: %s, baseFeeLowerBound: %s): %w",
 				m.Message.GasFeeCap, baseFeeLowerBound, ErrSoftValidationFailure)
 		}
 	}
@@ -855,7 +855,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage, curTS *types.TipSet) error {
 	balance, err := mp.getStateBalance(ctx, m.Message.From, curTS)
 	if err != nil {
-		return fmt.Errorf("failed to check sender balance: %s: %v", err, ErrSoftValidationFailure)
+		return fmt.Errorf("failed to check sender balance: %s: %w", err, ErrSoftValidationFailure)
 	}
 
 	requiredFunds := m.Message.RequiredFunds()
@@ -879,7 +879,7 @@ func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage,
 	if big.Cmp(balance, requiredFunds) < 0 {
 		// Note: we fail here for ErrSoftValidationFailure to signal a soft failure because we might
 		// be out of sync.
-		return fmt.Errorf("not enough funds including pending messages (required: %s, balance: %s): %v", types.FIL(requiredFunds), types.FIL(balance), ErrSoftValidationFailure)
+		return fmt.Errorf("not enough funds including pending messages (required: %s, balance: %s): %w", types.FIL(requiredFunds), types.FIL(balance), ErrSoftValidationFailure)
 	}
 
 	return nil
@@ -888,7 +888,7 @@ func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage,
 func (mp *MessagePool) addTS(ctx context.Context, m *types.SignedMessage, curTS *types.TipSet, local, untrusted bool) (bool, error) {
 	snonce, err := mp.getStateNonce(ctx, m.Message.From, curTS)
 	if err != nil {
-		return false, fmt.Errorf("failed to look up actor state nonce: %s: %v", err, ErrSoftValidationFailure)
+		return false, fmt.Errorf("failed to look up actor state nonce: %s: %w", err, ErrSoftValidationFailure)
 	}
 
 	if snonce > m.Message.Nonce {
@@ -936,7 +936,7 @@ func (mp *MessagePool) addLoaded(ctx context.Context, m *types.SignedMessage) er
 
 	snonce, err := mp.getStateNonce(ctx, m.Message.From, curTS)
 	if err != nil {
-		return fmt.Errorf("failed to look up actor state nonce: %s: %v", err, ErrSoftValidationFailure)
+		return fmt.Errorf("failed to look up actor state nonce: %s: %w", err, ErrSoftValidationFailure)
 	}
 
 	if snonce > m.Message.Nonce {
