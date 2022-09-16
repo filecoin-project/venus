@@ -53,7 +53,6 @@ func NewServer(cr chainReader, mr messageStore, h host.Host) Server {
 }
 
 func (s *server) Register() {
-	s.h.SetStreamHandler(exchange.BlockSyncProtocolID, s.handleStream)     // old
 	s.h.SetStreamHandler(exchange.ChainExchangeProtocolID, s.handleStream) // new
 }
 

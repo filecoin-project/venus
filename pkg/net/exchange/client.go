@@ -388,15 +388,14 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *excha
 	}()
 	// -- TRACE --
 
-	supported, err := c.host.Peerstore().SupportsProtocols(peer, exchange.BlockSyncProtocolID, exchange.ChainExchangeProtocolID)
+	supported, err := c.host.Peerstore().SupportsProtocols(peer, exchange.ChainExchangeProtocolID)
 	if err != nil {
 		c.RemovePeer(peer)
 		return nil, fmt.Errorf("failed to get protocols for peer: %w", err)
 	}
-	if len(supported) == 0 || (supported[0] != exchange.BlockSyncProtocolID && supported[0] != exchange.ChainExchangeProtocolID) {
+	if len(supported) == 0 || supported[0] != exchange.ChainExchangeProtocolID {
 		c.RemovePeer(peer)
-		c.host.ConnManager().TagPeer(peer, "no match protocol", -2000)
-		return nil, fmt.Errorf("peer %s does not support protocols %s", peer, []string{exchange.BlockSyncProtocolID, exchange.ChainExchangeProtocolID})
+		return nil, fmt.Errorf("peer %s does not support protocols %s", peer, []string{exchange.ChainExchangeProtocolID})
 	}
 
 	connectionStart := time.Now()
@@ -405,7 +404,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *excha
 	stream, err := c.host.NewStream(
 		network.WithNoDial(ctx, "should already have connection"),
 		peer,
-		exchange.ChainExchangeProtocolID, exchange.BlockSyncProtocolID)
+		exchange.ChainExchangeProtocolID)
 	if err != nil {
 		c.RemovePeer(peer)
 		return nil, fmt.Errorf("failed to open stream to peer: %w", err)
