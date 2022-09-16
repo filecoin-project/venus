@@ -59,9 +59,17 @@ type PeerMgr struct {
 	done   chan struct{}
 }
 
-type NewFilPeer struct {
-	Id peer.ID //nolint
+type FilPeerEvt struct {
+	Type FilPeerEvtType
+	ID   peer.ID
 }
+
+type FilPeerEvtType int
+
+const (
+	AddFilPeerEvt FilPeerEvtType = iota
+	RemoveFilPeerEvt
+)
 
 func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, period time.Duration, bootstrap []peer.AddrInfo) (*PeerMgr, error) {
 	pm := &PeerMgr{
@@ -78,7 +86,7 @@ func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, period time.Duration, bootstrap [
 		done:   make(chan struct{}),
 		period: period,
 	}
-	emitter, err := h.EventBus().Emitter(new(NewFilPeer))
+	emitter, err := h.EventBus().Emitter(new(FilPeerEvt))
 	if err != nil {
 		return nil, fmt.Errorf("creating NewFilPeer emitter: %w", err)
 	}
@@ -96,7 +104,7 @@ func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, period time.Duration, bootstrap [
 }
 
 func (pmgr *PeerMgr) AddFilecoinPeer(p peer.ID) {
-	_ = pmgr.filPeerEmitter.Emit(NewFilPeer{Id: p}) //nolint:errcheck
+	_ = pmgr.filPeerEmitter.Emit(FilPeerEvt{Type: AddFilPeerEvt, ID: p}) //nolint:errcheck
 	pmgr.peersLk.Lock()
 	defer pmgr.peersLk.Unlock()
 	pmgr.peers[p] = time.Duration(0)
@@ -119,10 +127,19 @@ func (pmgr *PeerMgr) SetPeerLatency(p peer.ID, latency time.Duration) {
 }
 
 func (pmgr *PeerMgr) Disconnect(p peer.ID) {
+	disconnected := false
+
 	if pmgr.h.Network().Connectedness(p) == net.NotConnected {
 		pmgr.peersLk.Lock()
-		defer pmgr.peersLk.Unlock()
-		delete(pmgr.peers, p)
+		_, disconnected = pmgr.peers[p]
+		if disconnected {
+			delete(pmgr.peers, p)
+		}
+		pmgr.peersLk.Unlock()
+	}
+
+	if disconnected {
+		_ = pmgr.filPeerEmitter.Emit(FilPeerEvt{Type: RemoveFilPeerEvt, ID: p}) //nolint:errcheck
 	}
 }
 
