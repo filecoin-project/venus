@@ -16,6 +16,7 @@
   * [ChainExport](#ChainExport)
   * [ChainGetBlock](#ChainGetBlock)
   * [ChainGetBlockMessages](#ChainGetBlockMessages)
+  * [ChainGetGenesis](#ChainGetGenesis)
   * [ChainGetMessage](#ChainGetMessage)
   * [ChainGetMessagesInTipset](#ChainGetMessagesInTipset)
   * [ChainGetParentMessages](#ChainGetParentMessages)
@@ -524,6 +525,23 @@ Response:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     }
   ]
+}
+```
+
+### ChainGetGenesis
+ChainGetGenesis returns the genesis tipset.
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+{
+  "Cids": null,
+  "Blocks": null,
+  "Height": 0
 }
 ```
 

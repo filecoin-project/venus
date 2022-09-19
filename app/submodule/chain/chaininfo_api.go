@@ -688,3 +688,13 @@ func (cia *chainInfoAPI) StateActorCodeCIDs(ctx context.Context, nv network.Vers
 	}
 	return cids, nil
 }
+
+// ChainGetGenesis returns the genesis tipset.
+func (cia *chainInfoAPI) ChainGetGenesis(ctx context.Context) (*types.TipSet, error) {
+	genb, err := cia.chain.ChainReader.GetBlock(ctx, cia.chain.ChainReader.GenesisCid())
+	if err != nil {
+		return nil, err
+	}
+
+	return types.NewTipSet([]*types.BlockHeader{genb})
+}
