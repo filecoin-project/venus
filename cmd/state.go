@@ -611,26 +611,24 @@ var stateSysActorCIDsCmd = &cmds.Command{
 		Tagline: "Returns the built-in actor bundle manifest ID & system actor cids",
 	},
 	Options: []cmds.Option{
-		cmds.UintOption("network-version", "specify network version").WithDefault(uint(constants.NewestNetworkVersion)),
+		cmds.UintOption("network-version", "specify network version"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		ctx := req.Context
-		ts, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
-		if err != nil {
-			return err
-		}
 
-		nv, err := env.(*node.Env).ChainAPI.StateNetworkVersion(ctx, ts.Key())
-		if err != nil {
-			return err
-		}
-
+		var nv network.Version
+		var err error
 		targetNV, ok := req.Options["network-version"].(uint)
 		if ok {
 			nv = network.Version(targetNV)
+		} else {
+			nv, err = env.(*node.Env).ChainAPI.StateNetworkVersion(ctx, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
 		}
-		buf := new(bytes.Buffer)
 
+		buf := new(bytes.Buffer)
 		buf.WriteString(fmt.Sprintf("Network Version: %d\n", nv))
 
 		actorVersion, err := actors.VersionForNetwork(nv)
