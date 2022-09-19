@@ -41,6 +41,7 @@
   * [ProtocolParameters](#ProtocolParameters)
   * [ResolveToKeyAddr](#ResolveToKeyAddr)
   * [StateActorCodeCIDs](#StateActorCodeCIDs)
+  * [StateActorManifestCID](#StateActorManifestCID)
   * [StateGetNetworkParams](#StateGetNetworkParams)
   * [StateGetReceipt](#StateGetReceipt)
   * [StateNetworkName](#StateNetworkName)
@@ -1305,6 +1306,26 @@ Inputs:
 ```
 
 Response: `{}`
+
+### StateActorManifestCID
+StateActorManifestCID returns the CID of the builtin actors manifest for the given network version
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  16
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
 
 ### StateGetNetworkParams
 StateGetNetworkParams return current network params

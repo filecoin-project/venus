@@ -239,6 +239,7 @@ type IChainInfoStruct struct {
 		ProtocolParameters            func(ctx context.Context) (*types.ProtocolParams, error)                                                                                                     `perm:"read"`
 		ResolveToKeyAddr              func(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)                                                                   `perm:"read"`
 		StateActorCodeCIDs            func(context.Context, network.Version) (map[string]cid.Cid, error)                                                                                           `perm:"read"`
+		StateActorManifestCID         func(context.Context, network.Version) (cid.Cid, error)                                                                                                      `perm:"read"`
 		StateGetNetworkParams         func(ctx context.Context) (*types.NetworkParams, error)                                                                                                      `perm:"read"`
 		StateGetReceipt               func(ctx context.Context, msg cid.Cid, from types.TipSetKey) (*types.MessageReceipt, error)                                                                  `perm:"read"`
 		StateNetworkName              func(ctx context.Context) (types.NetworkName, error)                                                                                                         `perm:"read"`
@@ -333,6 +334,9 @@ func (s *IChainInfoStruct) ResolveToKeyAddr(p0 context.Context, p1 address.Addre
 }
 func (s *IChainInfoStruct) StateActorCodeCIDs(p0 context.Context, p1 network.Version) (map[string]cid.Cid, error) {
 	return s.Internal.StateActorCodeCIDs(p0, p1)
+}
+func (s *IChainInfoStruct) StateActorManifestCID(p0 context.Context, p1 network.Version) (cid.Cid, error) {
+	return s.Internal.StateActorManifestCID(p0, p1)
 }
 func (s *IChainInfoStruct) StateGetNetworkParams(p0 context.Context) (*types.NetworkParams, error) {
 	return s.Internal.StateGetNetworkParams(p0)

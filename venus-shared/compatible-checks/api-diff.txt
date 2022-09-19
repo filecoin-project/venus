@@ -2,7 +2,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	- AuthNew
 	- AuthVerify
 	+ BlockTime
-	- ChainGetGenesis
 	- ChainGetNode
 	+ ChainGetReceipts
 	+ ChainList
@@ -81,6 +80,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	+ SetConcurrent
 	+ SetPassword
 	- Shutdown
+	+ StateActorManifestCID
 	- StateAllMinerFaults
 	- StateChangedActors
 	- StateCompute
@@ -121,7 +121,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ BlockTime
 	- ChainBlockstoreInfo
 	- ChainCheckBlockstore
-	- ChainGetGenesis
 	- ChainGetNode
 	+ ChainGetReceipts
 	+ ChainList
@@ -200,6 +199,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ SetConcurrent
 	+ SetPassword
 	- Shutdown
+	+ StateActorManifestCID
 	- StateCompute
 	- StateComputeDataCID
 	> StateGetNetworkParams {[func(context.Context) (*types.NetworkParams, error) <> func(context.Context) (*api.NetworkParams, error)] base=func out type: #0 input; nested={[*types.NetworkParams <> *api.NetworkParams] base=pointed type; nested={[types.NetworkParams <> api.NetworkParams] base=struct field; nested={[types.NetworkParams <> api.NetworkParams] base=exported field type: #5 field named ForkUpgradeParams; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=struct field; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=exported field name: #8 field, BreezeGasTampingDuration != UpgradePriceListOopsHeight; nested=nil}}}}}}

@@ -1772,6 +1772,21 @@ func (mr *MockFullNodeMockRecorder) StateActorCodeCIDs(arg0, arg1 interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateActorCodeCIDs", reflect.TypeOf((*MockFullNode)(nil).StateActorCodeCIDs), arg0, arg1)
 }
 
+// StateActorManifestCID mocks base method.
+func (m *MockFullNode) StateActorManifestCID(arg0 context.Context, arg1 network.Version) (cid.Cid, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateActorManifestCID", arg0, arg1)
+	ret0, _ := ret[0].(cid.Cid)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateActorManifestCID indicates an expected call of StateActorManifestCID.
+func (mr *MockFullNodeMockRecorder) StateActorManifestCID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateActorManifestCID", reflect.TypeOf((*MockFullNode)(nil).StateActorManifestCID), arg0, arg1)
+}
+
 // StateCall mocks base method.
 func (m *MockFullNode) StateCall(arg0 context.Context, arg1 *internal.Message, arg2 types.TipSetKey) (*types.InvocResult, error) {
 	m.ctrl.T.Helper()

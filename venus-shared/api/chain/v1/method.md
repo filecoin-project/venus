@@ -38,6 +38,7 @@
   * [ProtocolParameters](#ProtocolParameters)
   * [ResolveToKeyAddr](#ResolveToKeyAddr)
   * [StateActorCodeCIDs](#StateActorCodeCIDs)
+  * [StateActorManifestCID](#StateActorManifestCID)
   * [StateGetBeaconEntry](#StateGetBeaconEntry)
   * [StateGetNetworkParams](#StateGetNetworkParams)
   * [StateGetRandomnessFromBeacon](#StateGetRandomnessFromBeacon)
@@ -1272,6 +1273,26 @@ Inputs:
 ```
 
 Response: `{}`
+
+### StateActorManifestCID
+StateActorManifestCID returns the CID of the builtin actors manifest for the given network version
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  16
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
 
 ### StateGetBeaconEntry
 StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If
