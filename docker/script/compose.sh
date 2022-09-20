@@ -21,4 +21,21 @@ fi
 
 
 echo "EXEC: ./venus daemon $Args \n\n"
-./venus daemon $Args
+./venus daemon $Args &
+
+echo "bootstrapping..."
+cat /env/bootstrap
+sleep 10
+
+# connect to bootstrap
+if [ -f /env/bootstrap ];then
+    while [ -z "$peerID" ];do
+        sleep 5
+        peerID=`/app/venus swarm id`
+    done
+    bootstrap=`cat /env/bootstrap`
+    /app/venus swarm connect $bootstrap
+    echo "EXEC: ./venus swarm connect $bootstrap \n"
+fi
+
+wait
