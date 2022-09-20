@@ -16,7 +16,7 @@ fi
 
 if [ $genesisfile ]
 then
-    Args="$Args --genesisfile=/genesis.gen"
+    Args="$Args --genesisfile=/root/genesis.car"
 fi
 
 
