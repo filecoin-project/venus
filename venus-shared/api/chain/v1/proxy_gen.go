@@ -235,6 +235,7 @@ type IChainInfoStruct struct {
 		ChainExport                   func(context.Context, abi.ChainEpoch, bool, types.TipSetKey) (<-chan []byte, error)                                                                          `perm:"read"`
 		ChainGetBlock                 func(ctx context.Context, id cid.Cid) (*types.BlockHeader, error)                                                                                            `perm:"read"`
 		ChainGetBlockMessages         func(ctx context.Context, bid cid.Cid) (*types.BlockMessages, error)                                                                                         `perm:"read"`
+		ChainGetGenesis               func(context.Context) (*types.TipSet, error)                                                                                                                 `perm:"read"`
 		ChainGetMessage               func(ctx context.Context, msgID cid.Cid) (*types.Message, error)                                                                                             `perm:"read"`
 		ChainGetMessagesInTipset      func(ctx context.Context, key types.TipSetKey) ([]types.MessageCID, error)                                                                                   `perm:"read"`
 		ChainGetParentMessages        func(ctx context.Context, bcid cid.Cid) ([]types.MessageCID, error)                                                                                          `perm:"read"`
@@ -256,6 +257,7 @@ type IChainInfoStruct struct {
 		ProtocolParameters            func(ctx context.Context) (*types.ProtocolParams, error)                                                                                                     `perm:"read"`
 		ResolveToKeyAddr              func(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)                                                                   `perm:"read"`
 		StateActorCodeCIDs            func(context.Context, network.Version) (map[string]cid.Cid, error)                                                                                           `perm:"read"`
+		StateActorManifestCID         func(context.Context, network.Version) (cid.Cid, error)                                                                                                      `perm:"read"`
 		StateGetBeaconEntry           func(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error)                                                                                  `perm:"read"`
 		StateGetNetworkParams         func(ctx context.Context) (*types.NetworkParams, error)                                                                                                      `perm:"read"`
 		StateGetRandomnessFromBeacon  func(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) `perm:"read"`
@@ -281,6 +283,9 @@ func (s *IChainInfoStruct) ChainGetBlock(p0 context.Context, p1 cid.Cid) (*types
 }
 func (s *IChainInfoStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*types.BlockMessages, error) {
 	return s.Internal.ChainGetBlockMessages(p0, p1)
+}
+func (s *IChainInfoStruct) ChainGetGenesis(p0 context.Context) (*types.TipSet, error) {
+	return s.Internal.ChainGetGenesis(p0)
 }
 func (s *IChainInfoStruct) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
 	return s.Internal.ChainGetMessage(p0, p1)
@@ -344,6 +349,9 @@ func (s *IChainInfoStruct) ResolveToKeyAddr(p0 context.Context, p1 address.Addre
 }
 func (s *IChainInfoStruct) StateActorCodeCIDs(p0 context.Context, p1 network.Version) (map[string]cid.Cid, error) {
 	return s.Internal.StateActorCodeCIDs(p0, p1)
+}
+func (s *IChainInfoStruct) StateActorManifestCID(p0 context.Context, p1 network.Version) (cid.Cid, error) {
+	return s.Internal.StateActorManifestCID(p0, p1)
 }
 func (s *IChainInfoStruct) StateGetBeaconEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
 	return s.Internal.StateGetBeaconEntry(p0, p1)

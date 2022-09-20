@@ -111,6 +111,10 @@ type IChainInfo interface {
 	StateGetNetworkParams(ctx context.Context) (*types.NetworkParams, error) //perm:read
 	// StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
 	StateActorCodeCIDs(context.Context, network.Version) (map[string]cid.Cid, error) //perm:read
+	// ChainGetGenesis returns the genesis tipset.
+	ChainGetGenesis(context.Context) (*types.TipSet, error) //perm:read
+	// StateActorManifestCID returns the CID of the builtin actors manifest for the given network version
+	StateActorManifestCID(context.Context, network.Version) (cid.Cid, error) //perm:read
 }
 
 type IMinerState interface {

@@ -29,12 +29,12 @@ type chainInfoAPI struct { //nolint
 
 var log = logging.Logger("chain")
 
-//NewChainInfoAPI new chain info api
+// NewChainInfoAPI new chain info api
 func NewChainInfoAPI(chain *ChainSubmodule) v1api.IChainInfo {
 	return &chainInfoAPI{chain: chain}
 }
 
-//todo think which module should this api belong
+// todo think which module should this api belong
 // BlockTime returns the block time used by the consensus protocol.
 // BlockTime returns the block time
 func (cia *chainInfoAPI) BlockTime(ctx context.Context) time.Duration {
@@ -311,7 +311,7 @@ func (cia *chainInfoAPI) ResolveToKeyAddr(ctx context.Context, addr address.Addr
 	return cia.chain.Stmgr.ResolveToKeyAddress(ctx, addr, ts)
 }
 
-//************Drand****************//
+// ************Drand****************//
 // ChainNotify subscribe to chain head change event
 func (cia *chainInfoAPI) ChainNotify(ctx context.Context) (<-chan []*types.HeadChange, error) {
 	return cia.chain.ChainReader.SubHeadChanges(ctx), nil
@@ -585,16 +585,22 @@ func (cia *chainInfoAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch,
 
 // ChainGetPath returns a set of revert/apply operations needed to get from
 // one tipset to another, for example:
-//```
-//        to
-//         ^
+// ```
+//
+//	to
+//	 ^
+//
 // from   tAA
-//   ^     ^
+//
+//	^     ^
+//
 // tBA    tAB
-//  ^---*--^
-//      ^
-//     tRR
-//```
+//
+//	^---*--^
+//	    ^
+//	   tRR
+//
+// ```
 // Would return `[revert(tBA), apply(tAB), apply(tAA)]`
 func (cia *chainInfoAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*types.HeadChange, error) {
 	fts, err := cia.chain.ChainReader.GetTipSet(ctx, from)
@@ -687,4 +693,29 @@ func (cia *chainInfoAPI) StateActorCodeCIDs(ctx context.Context, nv network.Vers
 		cids[name] = actorCID
 	}
 	return cids, nil
+}
+
+// ChainGetGenesis returns the genesis tipset.
+func (cia *chainInfoAPI) ChainGetGenesis(ctx context.Context) (*types.TipSet, error) {
+	genb, err := cia.chain.ChainReader.GetGenesisBlock(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return types.NewTipSet([]*types.BlockHeader{genb})
+}
+
+// StateActorManifestCID returns the CID of the builtin actors manifest for the given network version
+func (cia *chainInfoAPI) StateActorManifestCID(ctx context.Context, nv network.Version) (cid.Cid, error) {
+	actorVersion, err := actors.VersionForNetwork(nv)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("invalid network version")
+	}
+
+	c, ok := actors.GetManifest(actorVersion)
+	if !ok {
+		return cid.Undef, fmt.Errorf("could not find manifest cid for network version %d, actors version %d", nv, actorVersion)
+	}
+
+	return c, nil
 }

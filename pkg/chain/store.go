@@ -82,7 +82,7 @@ type reorg struct {
 // CheckPoint is the key which the check-point written in the datastore.
 var CheckPoint = datastore.NewKey("/chain/checkPoint")
 
-//TSState export this func is just for gen cbor tool to work
+// TSState export this func is just for gen cbor tool to work
 type TSState struct {
 	StateRoot cid.Cid
 	Receipts  cid.Cid
@@ -254,7 +254,7 @@ func (store *Store) loadHead(ctx context.Context) (*types.TipSet, error) {
 	return store.GetTipSet(ctx, tsk)
 }
 
-//LoadTipsetMetadata load tipset status (state root and reciepts)
+// LoadTipsetMetadata load tipset status (state root and reciepts)
 func (store *Store) LoadTipsetMetadata(ctx context.Context, ts *types.TipSet) (*TipSetMetadata, error) {
 	h := ts.Height()
 	key := datastore.NewKey(makeKey(ts.String(), h))
@@ -427,8 +427,8 @@ func (store *Store) HasTipSetAndState(ctx context.Context, ts *types.TipSet) boo
 	return store.tipIndex.Has(ctx, ts)
 }
 
-//GetLatestBeaconEntry get latest beacon from the height. there're no beacon values in the block, try to
-//get beacon in the parents tipset. the max find depth is 20.
+// GetLatestBeaconEntry get latest beacon from the height. there're no beacon values in the block, try to
+// get beacon in the parents tipset. the max find depth is 20.
 func (store *Store) GetLatestBeaconEntry(ctx context.Context, ts *types.TipSet) (*types.BeaconEntry, error) {
 	cur := ts
 	for i := 0; i < 20; i++ {
@@ -664,7 +664,7 @@ func (store *Store) SubHeadChanges(ctx context.Context) chan []*types.HeadChange
 	return out
 }
 
-//SubscribeHeadChanges subscribe head change event
+// SubscribeHeadChanges subscribe head change event
 func (store *Store) SubscribeHeadChanges(f ReorgNotifee) {
 	store.reorgNotifeeCh <- f
 }
@@ -918,7 +918,7 @@ func (store *Store) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRece
 	return nil
 }
 
-//Import import a car file into local db
+// Import import a car file into local db
 func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, error) {
 	header, err := car.LoadCar(ctx, store.bsstore, r)
 	if err != nil {
@@ -994,7 +994,7 @@ func (store *Store) GetFilVested(ctx context.Context, height abi.ChainEpoch) (ab
 	return store.circulatingSupplyCalculator.GetFilVested(ctx, height)
 }
 
-//StateCirculatingSupply get circulate supply at specify epoch
+// StateCirculatingSupply get circulate supply at specify epoch
 func (store *Store) StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error) {
 	ts, err := store.GetTipSet(ctx, tsk)
 	if err != nil {
@@ -1282,7 +1282,7 @@ func (store *Store) LookupID(ctx context.Context, ts *types.TipSet, addr address
 }
 
 // ResolveToKeyAddr get key address of specify address.
-//if ths addr is bls/secpk address, return directly, other get the pubkey and generate address
+// if ths addr is bls/secpk address, return directly, other get the pubkey and generate address
 func (store *Store) ResolveToKeyAddr(ctx context.Context, ts *types.TipSet, addr address.Address) (address.Address, error) {
 	st, err := store.StateView(ctx, ts)
 	if err != nil {

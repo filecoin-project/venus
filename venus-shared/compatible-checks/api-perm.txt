@@ -11,6 +11,7 @@ v0: github.com/filecoin-project/venus/venus-shared/api/chain/v0 <> github.com/fi
 	- IChainInfo.MessageWait
 	- IChainInfo.ProtocolParameters
 	- IChainInfo.ResolveToKeyAddr
+	- IChainInfo.StateActorManifestCID
 	- IChainInfo.VerifyEntry
 	- IMinerState.StateMinerSectorSize
 	- IMinerState.StateMinerWorkerAddress
@@ -65,6 +66,7 @@ v1: github.com/filecoin-project/venus/venus-shared/api/chain/v1 <> github.com/fi
 	- IChainInfo.MessageWait
 	- IChainInfo.ProtocolParameters
 	- IChainInfo.ResolveToKeyAddr
+	- IChainInfo.StateActorManifestCID
 	- IChainInfo.VerifyEntry
 	- IMinerState.StateMinerSectorSize
 	- IMinerState.StateMinerWorkerAddress
