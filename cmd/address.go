@@ -185,7 +185,6 @@ var defaultAddressCmd = &cmds.Command{
 }
 
 var setDefaultAddressCmd = &cmds.Command{
-	Extra: AdminExtra,
 	Arguments: []cmds.Argument{
 		cmds.StringArg("address", true, false, "address to set default for"),
 	},
@@ -232,7 +231,6 @@ type WalletSerializeResult struct {
 }
 
 var walletImportCmd = &cmds.Command{
-	Extra: AdminExtra,
 	Arguments: []cmds.Argument{
 		cmds.FileArg("walletFile", true, false, "File containing wallet data to import").EnableStdin(),
 	},
@@ -270,7 +268,6 @@ var walletImportCmd = &cmds.Command{
 
 var (
 	walletExportCmd = &cmds.Command{
-		Extra: AdminExtra,
 		Arguments: []cmds.Argument{
 			cmds.StringArg("addr", true, true, "address of key to export"),
 			cmds.StringArg("password", false, false, "Password to be locked"),

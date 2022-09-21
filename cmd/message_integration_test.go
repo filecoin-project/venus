@@ -85,7 +85,8 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 	builder := test.NewNodeBuilder(t)
 	defaultAddr := fortest.TestAddresses[0]
 
-	buildWithMiner(t, builder)
+	cs := test.FixtureChainSeed(t)
+	builder.WithGenesisInit(cs.GenesisInitFunc)
 	builder.WithConfig(test.DefaultAddressConfigOpt(defaultAddr))
 	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
