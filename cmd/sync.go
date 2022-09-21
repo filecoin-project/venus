@@ -62,11 +62,9 @@ var storeStatusCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		tracker := env.(*node.Env).SyncerAPI.SyncerTracker(req.Context)
 		targets := tracker.Buckets
-		w := bytes.NewBufferString("")
-		writer := NewSilentWriter(w)
+
 		var inSyncing []*types.Target
 		var waitTarget []*types.Target
-
 		for _, t := range targets {
 			if t.State == types.SyncStateStage(syncTypes.StateInSyncing) {
 				inSyncing = append(inSyncing, t)
@@ -74,37 +72,55 @@ var storeStatusCmd = &cmds.Command{
 				waitTarget = append(waitTarget, t)
 			}
 		}
-		count := 1
-		writer.Println("Syncing:")
-		for _, t := range inSyncing {
-			writer.Println("SyncTarget:", strconv.Itoa(count))
-			writer.Println("\tBase:", t.Base.Height(), t.Base.Key().String())
-			writer.Println("\tTarget:", t.Head.Height(), t.Head.Key().String())
-			writer.Println("\tCurrent:", t.Current.Height(), t.Current.Key().String())
 
-			HeightDiff := t.Head.Height() - t.Current.Height()
-			writer.Println("\tHeightDiff:", HeightDiff)
+		w := bytes.NewBufferString("")
+		writer := NewSilentWriter(w)
 
-			writer.Println("\tStatus:", t.State.String())
-			writer.Println("\tErr:", t.Err)
-			writer.Println()
-			count++
+		if len(inSyncing) == 0 && len(waitTarget) == 0 {
+			lenTH := len(tracker.History)
+			if lenTH > 0 {
+				writer.Println(tracker.History[lenTH-1].String())
+			}
+
+			writer.Println("Done!")
+			return re.Emit(w)
 		}
 
-		writer.Println("Waiting:")
-		for _, t := range waitTarget {
-			writer.Println("SyncTarget:", strconv.Itoa(count))
-			writer.Println("\tBase:", t.Base.Height(), t.Base.Key().String())
-			writer.Println("\tTarget:", t.Head.Height(), t.Head.Key().String())
-			writer.Println("\tCurrent:", t.Current.Height(), t.Current.Key().String())
+		count := 1
+		if len(inSyncing) > 0 {
+			writer.Println("Syncing:")
+			for _, t := range inSyncing {
+				writer.Println("SyncTarget:", strconv.Itoa(count))
+				writer.Println("\tBase:", t.Base.Height(), t.Base.Key().String())
+				writer.Println("\tTarget:", t.Head.Height(), t.Head.Key().String())
+				writer.Println("\tCurrent:", t.Current.Height(), t.Current.Key().String())
 
-			HeightDiff := t.Head.Height() - t.Current.Height()
-			writer.Println("\tHeightDiff:", HeightDiff)
+				HeightDiff := t.Head.Height() - t.Current.Height()
+				writer.Println("\tHeightDiff:", HeightDiff)
 
-			writer.Println("\tStatus:", t.State.String())
-			writer.Println("\tErr:", t.Err)
-			writer.Println()
-			count++
+				writer.Println("\tStatus:", t.State.String())
+				writer.Println("\tErr:", t.Err)
+				writer.Println()
+				count++
+			}
+		}
+
+		if len(waitTarget) > 0 {
+			writer.Println("Waiting:")
+			for _, t := range waitTarget {
+				writer.Println("SyncTarget:", strconv.Itoa(count))
+				writer.Println("\tBase:", t.Base.Height(), t.Base.Key().String())
+				writer.Println("\tTarget:", t.Head.Height(), t.Head.Key().String())
+				writer.Println("\tCurrent:", t.Current.Height(), t.Current.Key().String())
+
+				HeightDiff := t.Head.Height() - t.Current.Height()
+				writer.Println("\tHeightDiff:", HeightDiff)
+
+				writer.Println("\tStatus:", t.State.String())
+				writer.Println("\tErr:", t.Err)
+				writer.Println()
+				count++
+			}
 		}
 
 		return re.Emit(w)
