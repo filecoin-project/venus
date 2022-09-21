@@ -60,6 +60,8 @@ import (
 	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	verifreg8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
 
+	specsMiner8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/miner"
+
 	paych8 "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 )
 
@@ -95,6 +97,7 @@ func SetSupportedProofTypes(types ...abi.RegisteredSealProof) {
 	miner7.PreCommitSealProofTypesV8 = make(map[abi.RegisteredSealProof]struct{}, len(types))
 
 	miner8.PreCommitSealProofTypesV8 = make(map[abi.RegisteredSealProof]struct{}, len(types))
+	specsMiner8.PreCommitSealProofTypesV8 = make(map[abi.RegisteredSealProof]struct{}, len(types))
 
 	AddSupportedProofTypes(types...)
 }
@@ -153,6 +156,7 @@ func AddSupportedProofTypes(types ...abi.RegisteredSealProof) {
 		miner7.WindowPoStProofTypes[wpp] = struct{}{}
 
 		miner8.PreCommitSealProofTypesV8[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
+		specsMiner8.PreCommitSealProofTypesV8[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
 		wpp, err = t.RegisteredWindowPoStProof()
 		if err != nil {
 			// Fine to panic, this is a test-only method
@@ -160,7 +164,7 @@ func AddSupportedProofTypes(types ...abi.RegisteredSealProof) {
 		}
 
 		miner8.WindowPoStProofTypes[wpp] = struct{}{}
-
+		specsMiner8.WindowPoStProofTypes[wpp] = struct{}{}
 	}
 }
 
