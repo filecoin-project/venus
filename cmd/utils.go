@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -27,10 +26,11 @@ import (
 // No printing methods return an error (to avoid warnings about ignoring it), but they do return
 // a boolean indicating whether an error is waiting to be cleared.
 // Example usage:
-//   sw := NewSilentWriter(w)
-//   sw.Println("A line")
-//   sw.Println("Another line")
-//   return sw.Error()
+//
+//	sw := NewSilentWriter(w)
+//	sw.Println("A line")
+//	sw.Println("Another line")
+//	return sw.Error()
 type SilentWriter struct {
 	w   io.Writer
 	err error
@@ -116,20 +116,6 @@ func optionalAddr(o interface{}) (ret address.Address, err error) {
 		}
 	}
 	return
-}
-
-//nolint
-func optionalSectorSizeWithDefault(o interface{}, def abi.SectorSize) (abi.SectorSize, error) {
-	if o != nil {
-		n, err := strconv.ParseUint(o.(string), 10, 64)
-		if err != nil || n == 0 {
-			return abi.SectorSize(0), fmt.Errorf("invalid sector size: %s", o.(string))
-		}
-
-		return abi.SectorSize(n), nil
-	}
-
-	return def, nil
 }
 
 func fromAddrOrDefault(req *cmds.Request, env cmds.Environment) (address.Address, error) {

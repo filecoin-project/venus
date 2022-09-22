@@ -103,8 +103,6 @@ START RUNNING VENUS
 VIEW DATA STRUCTURES
   chain                  - Inspect the filecoin blockchain
   sync                   - Inspect the filecoin Sync
-  dag                    - Interact with IPLD DAG objects
-  show                   - Get human-readable representations of filecoin objects
 
 NETWORK COMMANDS
   swarm                  - Interact with the swarm
@@ -177,7 +175,6 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"log":     logCmd,
 	"send":    msgSendCmd,
 	"mpool":   mpoolCmd,
-	"show":    showCmd,
 	"swarm":   swarmCmd,
 	"wallet":  walletCmd,
 	"version": versionCmd,
@@ -245,7 +242,7 @@ func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
 		}
 	}
 	if apiInfo == nil && isDaemonRequired {
-		return nil, ErrMissingDaemon
+		return nil, fmt.Errorf("daemon must be started before using this command")
 	}
 	if apiInfo == nil {
 		apiInfo = &APIInfo{}
