@@ -18,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	pchTypes "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 // paychFundsRes is the response to a create channel or add funds request
@@ -165,7 +166,7 @@ func (m *mergedFundsReq) sum() (big.Int, big.Int) {
 }
 
 // completeAmount completes first non-reserving requests up to the available amount
-func (m *mergedFundsReq) completeAmount(avail types.BigInt, channelInfo *ChannelInfo) (*paychFundsRes, types.BigInt, types.BigInt) {
+func (m *mergedFundsReq) completeAmount(avail types.BigInt, channelInfo *pchTypes.ChannelInfo) (*paychFundsRes, types.BigInt, types.BigInt) {
 	used, failed := types.NewInt(0), types.NewInt(0)
 	next := 0
 
@@ -190,7 +191,7 @@ func (m *mergedFundsReq) completeAmount(avail types.BigInt, channelInfo *Channel
 					failed = types.BigAdd(failed, r.amt)
 					r.onComplete(&paychFundsRes{
 						channel: *channelInfo.Channel,
-						err:     fmt.Errorf("not enough funds available in the payment channel %s; add funds with 'lotus paych add-funds %s %s %s'", channelInfo.Channel, channelInfo.from(), channelInfo.to(), types.FIL(r.amt).Unitless()),
+						err:     fmt.Errorf("not enough funds available in the payment channel %s; add funds with 'lotus paych add-funds %s %s %s'", channelInfo.Channel, channelInfo.From(), channelInfo.To(), types.FIL(r.amt).Unitless()),
 					})
 				}
 				next = i + 1
@@ -410,8 +411,8 @@ func (ca *channelAccessor) currentAvailableFunds(ctx context.Context, channelID 
 
 	return &types.ChannelAvailableFunds{
 		Channel:             channelInfo.Channel,
-		From:                channelInfo.from(),
-		To:                  channelInfo.to(),
+		From:                channelInfo.From(),
+		To:                  channelInfo.To(),
 		ConfirmedAmt:        channelInfo.Amount,
 		PendingAmt:          channelInfo.PendingAmount,
 		NonReservedAmt:      channelInfo.AvailableAmount,
@@ -556,7 +557,7 @@ func (ca *channelAccessor) waitPaychCreateMsg(ctx context.Context, channelID str
 	defer ca.lk.Unlock()
 
 	// Store robust address of channel
-	ca.mutateChannelInfo(ctx, channelID, func(channelInfo *ChannelInfo) {
+	ca.mutateChannelInfo(ctx, channelID, func(channelInfo *pchTypes.ChannelInfo) {
 		channelInfo.Channel = &decodedReturn.RobustAddress
 		channelInfo.Amount = channelInfo.PendingAmount
 		channelInfo.AvailableAmount = channelInfo.PendingAvailableAmount
@@ -569,12 +570,12 @@ func (ca *channelAccessor) waitPaychCreateMsg(ctx context.Context, channelID str
 }
 
 // completeAvailable fills reserving fund requests using already available funds, without interacting with the chain
-func (ca *channelAccessor) completeAvailable(ctx context.Context, merged *mergedFundsReq, channelInfo *ChannelInfo, amt, av types.BigInt) (*paychFundsRes, types.BigInt) {
+func (ca *channelAccessor) completeAvailable(ctx context.Context, merged *mergedFundsReq, channelInfo *pchTypes.ChannelInfo, amt, av types.BigInt) (*paychFundsRes, types.BigInt) {
 	toReserve := types.BigSub(amt, av)
 	avail := types.NewInt(0)
 
 	// reserve at most what we need
-	ca.mutateChannelInfo(ctx, channelInfo.ChannelID, func(ci *ChannelInfo) {
+	ca.mutateChannelInfo(ctx, channelInfo.ChannelID, func(ci *pchTypes.ChannelInfo) {
 		avail = ci.AvailableAmount
 		if avail.GreaterThan(toReserve) {
 			avail = toReserve
@@ -585,7 +586,7 @@ func (ca *channelAccessor) completeAvailable(ctx context.Context, merged *merged
 	res, used, failed := merged.completeAmount(avail, channelInfo)
 
 	// return any unused reserved funds (e.g. from cancelled requests)
-	ca.mutateChannelInfo(ctx, channelInfo.ChannelID, func(ci *ChannelInfo) {
+	ca.mutateChannelInfo(ctx, channelInfo.ChannelID, func(ci *pchTypes.ChannelInfo) {
 		ci.AvailableAmount = types.BigAdd(ci.AvailableAmount, types.BigSub(avail, used))
 	})
 
@@ -593,7 +594,7 @@ func (ca *channelAccessor) completeAvailable(ctx context.Context, merged *merged
 }
 
 // addFunds sends a message to add funds to the channel and returns the message cid
-func (ca *channelAccessor) addFunds(ctx context.Context, channelInfo *ChannelInfo, amt, avail big.Int) (*cid.Cid, error) {
+func (ca *channelAccessor) addFunds(ctx context.Context, channelInfo *pchTypes.ChannelInfo, amt, avail big.Int) (*cid.Cid, error) {
 	msg := &types.Message{
 		To:     *channelInfo.Channel,
 		From:   channelInfo.Control,
@@ -607,7 +608,7 @@ func (ca *channelAccessor) addFunds(ctx context.Context, channelInfo *ChannelInf
 	}
 	mcid := smsg.Cid()
 	// Store the add funds message CID on the channel
-	ca.mutateChannelInfo(ctx, channelInfo.ChannelID, func(ci *ChannelInfo) {
+	ca.mutateChannelInfo(ctx, channelInfo.ChannelID, func(ci *pchTypes.ChannelInfo) {
 		ci.PendingAmount = amt
 		ci.PendingAvailableAmount = avail
 		ci.AddFundsMsg = &mcid
@@ -647,7 +648,7 @@ func (ca *channelAccessor) waitAddFundsMsg(ctx context.Context, channelID string
 		ca.lk.Lock()
 		defer ca.lk.Unlock()
 
-		ca.mutateChannelInfo(ctx, channelID, func(channelInfo *ChannelInfo) {
+		ca.mutateChannelInfo(ctx, channelID, func(channelInfo *pchTypes.ChannelInfo) {
 			channelInfo.PendingAmount = big.NewInt(0)
 			channelInfo.PendingAvailableAmount = big.NewInt(0)
 			channelInfo.AddFundsMsg = nil
@@ -660,7 +661,7 @@ func (ca *channelAccessor) waitAddFundsMsg(ctx context.Context, channelID string
 	defer ca.lk.Unlock()
 
 	// Store updated amount
-	ca.mutateChannelInfo(ctx, channelID, func(channelInfo *ChannelInfo) {
+	ca.mutateChannelInfo(ctx, channelID, func(channelInfo *pchTypes.ChannelInfo) {
 		channelInfo.Amount = big.Add(channelInfo.Amount, channelInfo.PendingAmount)
 		channelInfo.AvailableAmount = types.BigAdd(channelInfo.AvailableAmount, channelInfo.PendingAvailableAmount)
 		channelInfo.PendingAmount = big.NewInt(0)
@@ -672,7 +673,7 @@ func (ca *channelAccessor) waitAddFundsMsg(ctx context.Context, channelID string
 }
 
 // Change the state of the channel in the store
-func (ca *channelAccessor) mutateChannelInfo(ctx context.Context, channelID string, mutate func(*ChannelInfo)) {
+func (ca *channelAccessor) mutateChannelInfo(ctx context.Context, channelID string, mutate func(*pchTypes.ChannelInfo)) {
 	channelInfo, err := ca.store.ByChannelID(ctx, channelID)
 
 	// If there's an error reading or writing to the store just log an error.

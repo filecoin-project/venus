@@ -6,19 +6,20 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/filecoin-project/venus/pkg/repo"
-
 	"github.com/google/uuid"
 
-	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	dsq "github.com/ipfs/go-datastore/query"
 
 	"github.com/filecoin-project/go-address"
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+
+	"github.com/filecoin-project/venus/pkg/repo"
+	pchTypes "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 var ErrChannelNotTracked = errors.New("channel not tracked")
@@ -36,133 +37,13 @@ func NewStore(ds repo.Datastore) *Store {
 }
 
 const (
-	DirInbound  = 1
-	DirOutbound = 2
-)
-
-const (
 	dsKeyChannelInfo = "ChannelInfo"
 	dsKeyMsgCid      = "MsgCid"
 )
 
-type VoucherInfo struct {
-	Voucher   *paych.SignedVoucher
-	Proof     []byte // ignored
-	Submitted bool
-}
-
-// ChannelInfo keeps track of information about a channel
-type ChannelInfo struct {
-	// ChannelID is a uuid set at channel creation
-	ChannelID string
-	// Channel address - may be nil if the channel hasn't been created yet
-	Channel *address.Address
-	// Control is the address of the local node
-	Control address.Address
-	// Target is the address of the remote node (on the other end of the channel)
-	Target address.Address
-	// Direction indicates if the channel is inbound (Control is the "to" address)
-	// or outbound (Control is the "from" address)
-	Direction uint64
-	// Vouchers is a list of all vouchers sent on the channel
-	Vouchers []*VoucherInfo
-	// NextLane is the number of the next lane that should be used when the
-	// client requests a new lane (eg to create a voucher for a new deal)
-	NextLane uint64
-	// Amount added to the channel.
-	// Note: This amount is only used by GetPaych to keep track of how much
-	// has locally been added to the channel. It should reflect the channel's
-	// Balance on chain as long as all operations occur on the same datastore.
-	Amount fbig.Int
-	// AvailableAmount indicates how much afil is non-reserved
-	AvailableAmount fbig.Int
-	// PendingAvailableAmount is available amount that we're awaiting confirmation of
-	PendingAvailableAmount fbig.Int
-	// PendingAmount is the amount that we're awaiting confirmation of
-	PendingAmount fbig.Int
-	// CreateMsg is the CID of a pending create message (while waiting for confirmation)
-	CreateMsg *cid.Cid
-	// AddFundsMsg is the CID of a pending add funds message (while waiting for confirmation)
-	AddFundsMsg *cid.Cid
-	// Settling indicates whether the channel has entered into the settling state
-	Settling bool
-}
-
-func (ci *ChannelInfo) from() address.Address {
-	if ci.Direction == DirOutbound {
-		return ci.Control
-	}
-	return ci.Target
-}
-
-func (ci *ChannelInfo) to() address.Address {
-	if ci.Direction == DirOutbound {
-		return ci.Target
-	}
-	return ci.Control
-}
-
-// infoForVoucher gets the VoucherInfo for the given voucher.
-// returns nil if the channel doesn't have the voucher.
-func (ci *ChannelInfo) infoForVoucher(sv *paych.SignedVoucher) (*VoucherInfo, error) {
-	for _, v := range ci.Vouchers {
-		eq, err := cborutil.Equals(sv, v.Voucher)
-		if err != nil {
-			return nil, err
-		}
-		if eq {
-			return v, nil
-		}
-	}
-	return nil, nil
-}
-
-func (ci *ChannelInfo) hasVoucher(sv *paych.SignedVoucher) (bool, error) {
-	vi, err := ci.infoForVoucher(sv)
-	return vi != nil, err
-}
-
-// markVoucherSubmitted marks the voucher, and any vouchers of lower nonce
-// in the same lane, as being submitted.
-// Note: This method doesn't write anything to the store.
-func (ci *ChannelInfo) markVoucherSubmitted(sv *paych.SignedVoucher) error {
-	vi, err := ci.infoForVoucher(sv)
-	if err != nil {
-		return err
-	}
-	if vi == nil {
-		return fmt.Errorf("cannot submit voucher that has not been added to channel")
-	}
-
-	// Mark the voucher as submitted
-	vi.Submitted = true
-
-	// Mark lower-nonce vouchers in the same lane as submitted (lower-nonce
-	// vouchers are superseded by the submitted voucher)
-	for _, vi := range ci.Vouchers {
-		if vi.Voucher.Lane == sv.Lane && vi.Voucher.Nonce < sv.Nonce {
-			vi.Submitted = true
-		}
-	}
-
-	return nil
-}
-
-// wasVoucherSubmitted returns true if the voucher has been submitted
-func (ci *ChannelInfo) wasVoucherSubmitted(sv *paych.SignedVoucher) (bool, error) {
-	vi, err := ci.infoForVoucher(sv)
-	if err != nil {
-		return false, err
-	}
-	if vi == nil {
-		return false, fmt.Errorf("cannot submit voucher that has not been added to channel")
-	}
-	return vi.Submitted, nil
-}
-
 // TrackChannel stores a channel, returning an error if the channel was already
 // being tracked
-func (ps *Store) TrackChannel(ctx context.Context, ci *ChannelInfo) (*ChannelInfo, error) {
+func (ps *Store) TrackChannel(ctx context.Context, ci *pchTypes.ChannelInfo) (*pchTypes.ChannelInfo, error) {
 	_, err := ps.ByAddress(ctx, *ci.Channel)
 	switch err {
 	default:
@@ -181,7 +62,7 @@ func (ps *Store) TrackChannel(ctx context.Context, ci *ChannelInfo) (*ChannelInf
 
 // ListChannels returns the addresses of all channels that have been created
 func (ps *Store) ListChannels(ctx context.Context) ([]address.Address, error) {
-	cis, err := ps.findChans(ctx, func(ci *ChannelInfo) bool {
+	cis, err := ps.findChans(ctx, func(ci *pchTypes.ChannelInfo) bool {
 		return ci.Channel != nil
 	}, 0)
 	if err != nil {
@@ -198,7 +79,7 @@ func (ps *Store) ListChannels(ctx context.Context) ([]address.Address, error) {
 
 // findChan finds a single channel using the given filter.
 // If there isn't a channel that matches the filter, returns ErrChannelNotTracked
-func (ps *Store) findChan(ctx context.Context, filter func(ci *ChannelInfo) bool) (*ChannelInfo, error) {
+func (ps *Store) findChan(ctx context.Context, filter func(ci *pchTypes.ChannelInfo) bool) (*pchTypes.ChannelInfo, error) {
 	cis, err := ps.findChans(ctx, filter, 1)
 	if err != nil {
 		return nil, err
@@ -213,15 +94,15 @@ func (ps *Store) findChan(ctx context.Context, filter func(ci *ChannelInfo) bool
 
 // findChans loops over all channels, only including those that pass the filter.
 // max is the maximum number of channels to return. Set to zero to return unlimited channels.
-func (ps *Store) findChans(ctx context.Context, filter func(*ChannelInfo) bool, max int) ([]ChannelInfo, error) {
+func (ps *Store) findChans(ctx context.Context, filter func(*pchTypes.ChannelInfo) bool, max int) ([]pchTypes.ChannelInfo, error) {
 	res, err := ps.ds.Query(ctx, dsq.Query{Prefix: dsKeyChannelInfo})
 	if err != nil {
 		return nil, err
 	}
 	defer res.Close() //nolint:errcheck
 
-	var stored ChannelInfo
-	var matches []ChannelInfo
+	var stored pchTypes.ChannelInfo
+	var matches []pchTypes.ChannelInfo
 
 	for {
 		res, ok := res.NextSync()
@@ -269,7 +150,7 @@ func (ps *Store) AllocateLane(ctx context.Context, ch address.Address) (uint64, 
 }
 
 // VouchersForPaych gets the vouchers for the given channel
-func (ps *Store) VouchersForPaych(ctx context.Context, ch address.Address) ([]*VoucherInfo, error) {
+func (ps *Store) VouchersForPaych(ctx context.Context, ch address.Address) ([]*pchTypes.VoucherInfo, error) {
 	ci, err := ps.ByAddress(ctx, ch)
 	if err != nil {
 		return nil, err
@@ -278,8 +159,8 @@ func (ps *Store) VouchersForPaych(ctx context.Context, ch address.Address) ([]*V
 	return ci.Vouchers, nil
 }
 
-func (ps *Store) MarkVoucherSubmitted(ctx context.Context, ci *ChannelInfo, sv *paych.SignedVoucher) error {
-	err := ci.markVoucherSubmitted(sv)
+func (ps *Store) MarkVoucherSubmitted(ctx context.Context, ci *pchTypes.ChannelInfo, sv *paych.SignedVoucher) error {
+	err := ci.MarkVoucherSubmitted(sv)
 	if err != nil {
 		return err
 	}
@@ -287,23 +168,10 @@ func (ps *Store) MarkVoucherSubmitted(ctx context.Context, ci *ChannelInfo, sv *
 }
 
 // ByAddress gets the channel that matches the given address
-func (ps *Store) ByAddress(ctx context.Context, addr address.Address) (*ChannelInfo, error) {
-	return ps.findChan(ctx, func(ci *ChannelInfo) bool {
+func (ps *Store) ByAddress(ctx context.Context, addr address.Address) (*pchTypes.ChannelInfo, error) {
+	return ps.findChan(ctx, func(ci *pchTypes.ChannelInfo) bool {
 		return ci.Channel != nil && *ci.Channel == addr
 	})
-}
-
-// MsgInfo stores information about a create channel / add funds message
-// that has been sent
-type MsgInfo struct {
-	// ChannelID links the message to a channel
-	ChannelID string
-	// MsgCid is the CID of the message
-	MsgCid cid.Cid
-	// Received indicates whether a response has been received
-	Received bool
-	// Err is the error received in the response
-	Err string
 }
 
 // The datastore key used to identify the message
@@ -315,7 +183,7 @@ func dskeyForMsg(mcid cid.Cid) datastore.Key {
 func (ps *Store) SaveNewMessage(ctx context.Context, channelID string, mcid cid.Cid) error {
 	k := dskeyForMsg(mcid)
 
-	b, err := cborutil.Dump(&MsgInfo{ChannelID: channelID, MsgCid: mcid})
+	b, err := cborutil.Dump(&pchTypes.MsgInfo{ChannelID: channelID, MsgCid: mcid})
 	if err != nil {
 		return err
 	}
@@ -345,13 +213,13 @@ func (ps *Store) SaveMessageResult(ctx context.Context, mcid cid.Cid, msgErr err
 }
 
 // ByMessageCid gets the channel associated with a message
-func (ps *Store) ByMessageCid(ctx context.Context, mcid cid.Cid) (*ChannelInfo, error) {
+func (ps *Store) ByMessageCid(ctx context.Context, mcid cid.Cid) (*pchTypes.ChannelInfo, error) {
 	minfo, err := ps.GetMessage(ctx, mcid)
 	if err != nil {
 		return nil, err
 	}
 
-	ci, err := ps.findChan(ctx, func(ci *ChannelInfo) bool {
+	ci, err := ps.findChan(ctx, func(ci *pchTypes.ChannelInfo) bool {
 		return ci.ChannelID == minfo.ChannelID
 	})
 	if err != nil {
@@ -362,7 +230,7 @@ func (ps *Store) ByMessageCid(ctx context.Context, mcid cid.Cid) (*ChannelInfo, 
 }
 
 // GetMessage gets the message info for a given message CID
-func (ps *Store) GetMessage(ctx context.Context, mcid cid.Cid) (*MsgInfo, error) {
+func (ps *Store) GetMessage(ctx context.Context, mcid cid.Cid) (*pchTypes.MsgInfo, error) {
 	k := dskeyForMsg(mcid)
 
 	val, err := ps.ds.Get(ctx, k)
@@ -370,7 +238,7 @@ func (ps *Store) GetMessage(ctx context.Context, mcid cid.Cid) (*MsgInfo, error)
 		return nil, err
 	}
 
-	var minfo MsgInfo
+	var minfo pchTypes.MsgInfo
 	if err := minfo.UnmarshalCBOR(bytes.NewReader(val)); err != nil {
 		return nil, err
 	}
@@ -380,9 +248,9 @@ func (ps *Store) GetMessage(ctx context.Context, mcid cid.Cid) (*MsgInfo, error)
 
 // OutboundActiveByFromTo looks for outbound channels that have not been
 // settled, with the given from / to addresses
-func (ps *Store) OutboundActiveByFromTo(ctx context.Context, sma managerAPI, from address.Address, to address.Address) (*ChannelInfo, error) {
-	return ps.findChan(ctx, func(ci *ChannelInfo) bool {
-		if ci.Direction != DirOutbound {
+func (ps *Store) OutboundActiveByFromTo(ctx context.Context, sma managerAPI, from address.Address, to address.Address) (*pchTypes.ChannelInfo, error) {
+	return ps.findChan(ctx, func(ci *pchTypes.ChannelInfo) bool {
+		if ci.Direction != pchTypes.DirOutbound {
 			return false
 		}
 		if ci.Settling {
@@ -408,9 +276,9 @@ func (ps *Store) OutboundActiveByFromTo(ctx context.Context, sma managerAPI, fro
 // WithPendingAddFunds is used on startup to find channels for which a
 // create channel or add funds message has been sent, but lotus shut down
 // before the response was received.
-func (ps *Store) WithPendingAddFunds(ctx context.Context) ([]ChannelInfo, error) {
-	return ps.findChans(ctx, func(ci *ChannelInfo) bool {
-		if ci.Direction != DirOutbound {
+func (ps *Store) WithPendingAddFunds(ctx context.Context) ([]pchTypes.ChannelInfo, error) {
+	return ps.findChans(ctx, func(ci *pchTypes.ChannelInfo) bool {
+		if ci.Direction != pchTypes.DirOutbound {
 			return false
 		}
 		return ci.CreateMsg != nil || ci.AddFundsMsg != nil
@@ -418,8 +286,8 @@ func (ps *Store) WithPendingAddFunds(ctx context.Context) ([]ChannelInfo, error)
 }
 
 // ByChannelID gets channel info by channel ID
-func (ps *Store) ByChannelID(ctx context.Context, channelID string) (*ChannelInfo, error) {
-	var stored ChannelInfo
+func (ps *Store) ByChannelID(ctx context.Context, channelID string) (*pchTypes.ChannelInfo, error) {
+	var stored pchTypes.ChannelInfo
 
 	res, err := ps.ds.Get(ctx, dskeyForChannel(channelID))
 	if err != nil {
@@ -433,9 +301,9 @@ func (ps *Store) ByChannelID(ctx context.Context, channelID string) (*ChannelInf
 }
 
 // CreateChannel creates an outbound channel for the given from / to
-func (ps *Store) CreateChannel(ctx context.Context, from address.Address, to address.Address, createMsgCid cid.Cid, amt, avail fbig.Int) (*ChannelInfo, error) {
-	ci := &ChannelInfo{
-		Direction:              DirOutbound,
+func (ps *Store) CreateChannel(ctx context.Context, from address.Address, to address.Address, createMsgCid cid.Cid, amt, avail fbig.Int) (*pchTypes.ChannelInfo, error) {
+	ci := &pchTypes.ChannelInfo{
+		Direction:              pchTypes.DirOutbound,
 		NextLane:               0,
 		Control:                from,
 		Target:                 to,
@@ -470,7 +338,7 @@ func dskeyForChannel(channelID string) datastore.Key {
 }
 
 // putChannelInfo stores the channel info in the datastore
-func (ps *Store) putChannelInfo(ctx context.Context, ci *ChannelInfo) error {
+func (ps *Store) putChannelInfo(ctx context.Context, ci *pchTypes.ChannelInfo) error {
 	if len(ci.ChannelID) == 0 {
 		ci.ChannelID = uuid.New().String()
 	}
@@ -497,7 +365,7 @@ func init() {
 	emptyAddr = addr
 }
 
-func marshallChannelInfo(ci *ChannelInfo) ([]byte, error) {
+func marshallChannelInfo(ci *pchTypes.ChannelInfo) ([]byte, error) {
 	// See note above about CBOR marshalling address.Address
 	if ci.Channel == nil {
 		ci.Channel = &emptyAddr
@@ -505,7 +373,7 @@ func marshallChannelInfo(ci *ChannelInfo) ([]byte, error) {
 	return cborutil.Dump(ci)
 }
 
-func unmarshallChannelInfo(stored *ChannelInfo, value []byte) (*ChannelInfo, error) {
+func unmarshallChannelInfo(stored *pchTypes.ChannelInfo, value []byte) (*pchTypes.ChannelInfo, error) {
 	if err := stored.UnmarshalCBOR(bytes.NewReader(value)); err != nil {
 		return nil, err
 	}

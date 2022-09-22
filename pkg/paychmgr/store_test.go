@@ -4,14 +4,14 @@ import (
 	"context"
 	"testing"
 
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-
 	"github.com/filecoin-project/go-address"
-
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
 	"github.com/stretchr/testify/require"
+
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	pchTypes "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 func TestStore(t *testing.T) {
@@ -23,23 +23,23 @@ func TestStore(t *testing.T) {
 	require.Len(t, addrs, 0)
 
 	ch := tutils.NewIDAddr(t, 100)
-	ci := &ChannelInfo{
+	ci := &pchTypes.ChannelInfo{
 		Channel: &ch,
 		Control: tutils.NewIDAddr(t, 101),
 		Target:  tutils.NewIDAddr(t, 102),
 
-		Direction: DirOutbound,
-		Vouchers:  []*VoucherInfo{{Voucher: nil, Proof: []byte{}}},
+		Direction: pchTypes.DirOutbound,
+		Vouchers:  []*pchTypes.VoucherInfo{{Voucher: nil, Proof: []byte{}}},
 	}
 
 	ch2 := tutils.NewIDAddr(t, 200)
-	ci2 := &ChannelInfo{
+	ci2 := &pchTypes.ChannelInfo{
 		Channel: &ch2,
 		Control: tutils.NewIDAddr(t, 201),
 		Target:  tutils.NewIDAddr(t, 202),
 
-		Direction: DirOutbound,
-		Vouchers:  []*VoucherInfo{{Voucher: nil, Proof: []byte{}}},
+		Direction: pchTypes.DirOutbound,
+		Vouchers:  []*pchTypes.VoucherInfo{{Voucher: nil, Proof: []byte{}}},
 	}
 
 	// Track the channel

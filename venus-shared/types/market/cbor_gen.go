@@ -285,7 +285,7 @@ func (t *MsgInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	return nil
 }
 
-var lengthBufChannelInfo = []byte{141}
+var lengthBufChannelInfo = []byte{143}
 
 func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -357,6 +357,16 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.AvailableAmount (big.Int) (struct)
+	if err := t.AvailableAmount.MarshalCBOR(cw); err != nil {
+		return err
+	}
+
+	// t.PendingAvailableAmount (big.Int) (struct)
+	if err := t.PendingAvailableAmount.MarshalCBOR(cw); err != nil {
+		return err
+	}
+
 	// t.PendingAmount (big.Int) (struct)
 	if err := t.PendingAmount.MarshalCBOR(cw); err != nil {
 		return err
@@ -417,7 +427,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 13 {
+	if extra != 15 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -531,6 +541,24 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 
 		if err := t.Amount.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.Amount: %w", err)
+		}
+
+	}
+	// t.AvailableAmount (big.Int) (struct)
+
+	{
+
+		if err := t.AvailableAmount.UnmarshalCBOR(cr); err != nil {
+			return xerrors.Errorf("unmarshaling t.AvailableAmount: %w", err)
+		}
+
+	}
+	// t.PendingAvailableAmount (big.Int) (struct)
+
+	{
+
+		if err := t.PendingAvailableAmount.UnmarshalCBOR(cr); err != nil {
+			return xerrors.Errorf("unmarshaling t.PendingAvailableAmount: %w", err)
 		}
 
 	}

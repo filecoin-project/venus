@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/fvm"
 	market1 "github.com/filecoin-project/venus/pkg/market"
 	"github.com/filecoin-project/venus/pkg/net/helloprotocol"
-	"github.com/filecoin-project/venus/pkg/paychmgr"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/venus-devtool/util"
@@ -82,14 +81,6 @@ func main() {
 				market.ProviderDealState{},
 				market.TimeStamp{},
 				market.SignedStorageAsk{},
-			},
-		},
-		{
-			dir: "../pkg/paychmgr",
-			types: []interface{}{
-				paychmgr.VoucherInfo{},
-				paychmgr.ChannelInfo{},
-				paychmgr.MsgInfo{},
 			},
 		},
 		{

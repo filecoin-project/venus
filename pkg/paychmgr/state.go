@@ -3,12 +3,12 @@ package paychmgr
 import (
 	"context"
 
-	"github.com/filecoin-project/venus/pkg/statemanger"
-	"github.com/filecoin-project/venus/venus-shared/types"
-
 	"github.com/filecoin-project/go-address"
 
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	"github.com/filecoin-project/venus/venus-shared/types"
+	pchTypes "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 type stateAccessor struct {
@@ -19,7 +19,7 @@ func (ca *stateAccessor) loadPaychActorState(ctx context.Context, ch address.Add
 	return ca.sm.GetPaychState(ctx, ch, nil)
 }
 
-func (ca *stateAccessor) loadStateChannelInfo(ctx context.Context, ch address.Address, dir uint64) (*ChannelInfo, error) {
+func (ca *stateAccessor) loadStateChannelInfo(ctx context.Context, ch address.Address, dir uint64) (*pchTypes.ChannelInfo, error) {
 	_, st, err := ca.loadPaychActorState(ctx, ch)
 	if err != nil {
 		return nil, err
@@ -48,13 +48,13 @@ func (ca *stateAccessor) loadStateChannelInfo(ctx context.Context, ch address.Ad
 		return nil, err
 	}
 
-	ci := &ChannelInfo{
+	ci := &pchTypes.ChannelInfo{
 		Channel:   &ch,
 		Direction: dir,
 		NextLane:  nextLane,
 	}
 
-	if dir == DirOutbound {
+	if dir == pchTypes.DirOutbound {
 		ci.Control = from
 		ci.Target = to
 	} else {

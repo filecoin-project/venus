@@ -6,15 +6,17 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/pkg/statemanger"
-	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+
+	"github.com/filecoin-project/venus/pkg/statemanger"
+	"github.com/filecoin-project/venus/venus-shared/types"
+	pchTypes "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 var log = logging.Logger("paych")
@@ -186,7 +188,7 @@ func (pm *Manager) ListChannels(ctx context.Context) ([]address.Address, error) 
 	return pm.store.ListChannels(ctx)
 }
 
-func (pm *Manager) GetChannelInfo(ctx context.Context, addr address.Address) (*ChannelInfo, error) {
+func (pm *Manager) GetChannelInfo(ctx context.Context, addr address.Address) (*pchTypes.ChannelInfo, error) {
 	ca, err := pm.accessorByAddress(ctx, addr)
 	if err != nil {
 		return nil, err
@@ -274,7 +276,7 @@ func (pm *Manager) inboundChannelAccessor(ctx context.Context, ch address.Addres
 	return pm.accessorByFromTo(from, to)
 }
 
-func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) (*ChannelInfo, error) {
+func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) (*pchTypes.ChannelInfo, error) {
 	// Need to take an exclusive lock here so that channel operations can't run
 	// in parallel (see channelLock)
 	pm.lk.Lock()
@@ -293,7 +295,7 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 	}
 
 	// Channel is not in store, so get channel from state
-	stateCi, err := pm.sa.loadStateChannelInfo(ctx, ch, DirInbound)
+	stateCi, err := pm.sa.loadStateChannelInfo(ctx, ch, pchTypes.DirInbound)
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +339,7 @@ func (pm *Manager) AllocateLane(ctx context.Context, ch address.Address) (uint64
 	return ca.allocateLane(ctx, ch)
 }
 
-func (pm *Manager) ListVouchers(ctx context.Context, ch address.Address) ([]*VoucherInfo, error) {
+func (pm *Manager) ListVouchers(ctx context.Context, ch address.Address) ([]*pchTypes.VoucherInfo, error) {
 	ca, err := pm.accessorByAddress(ctx, ch)
 	if err != nil {
 		return nil, err
