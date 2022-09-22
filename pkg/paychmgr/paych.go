@@ -5,17 +5,17 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/big"
-
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	lpaych "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	"github.com/filecoin-project/venus/venus-shared/types"
+	pchTypes "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 // insufficientFundsErr indicates that there are not enough funds in the
@@ -95,14 +95,14 @@ func (ca *channelAccessor) messageBuilder(ctx context.Context, from address.Addr
 	return lpaych.Message(ver, from), nil
 }
 
-func (ca *channelAccessor) getChannelInfo(ctx context.Context, addr address.Address) (*ChannelInfo, error) {
+func (ca *channelAccessor) getChannelInfo(ctx context.Context, addr address.Address) (*pchTypes.ChannelInfo, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
 	return ca.store.ByAddress(ctx, addr)
 }
 
-func (ca *channelAccessor) outboundActiveByFromTo(ctx context.Context, from, to address.Address) (*ChannelInfo, error) {
+func (ca *channelAccessor) outboundActiveByFromTo(ctx context.Context, from, to address.Address) (*pchTypes.ChannelInfo, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
@@ -159,7 +159,7 @@ func (ca *channelAccessor) createVoucher(ctx context.Context, ch address.Address
 	return &types.VoucherCreateResult{Voucher: sv, Shortfall: big.NewInt(0)}, nil
 }
 
-func (ca *channelAccessor) nextNonceForLane(ci *ChannelInfo, lane uint64) uint64 {
+func (ca *channelAccessor) nextNonceForLane(ci *pchTypes.ChannelInfo, lane uint64) uint64 {
 	var maxnonce uint64
 	for _, v := range ci.Vouchers {
 		if v.Voucher.Lane == lane {
@@ -303,7 +303,7 @@ func (ca *channelAccessor) checkVoucherSpendable(ctx context.Context, ch address
 	}
 
 	// Check if voucher has already been submitted
-	submitted, err := ci.wasVoucherSubmitted(sv)
+	submitted, err := ci.WasVoucherSubmitted(sv)
 	if err != nil {
 		return false, err
 	}
@@ -391,7 +391,7 @@ func (ca *channelAccessor) addVoucherUnlocked(ctx context.Context, ch address.Ad
 		return delta, fmt.Errorf("addVoucher: supplied token amount too low; minD=%s, D=%s; laneAmt=%s; v.Amt=%s", minDelta, delta, redeemed, sv.Amount)
 	}
 
-	ci.Vouchers = append(ci.Vouchers, &VoucherInfo{
+	ci.Vouchers = append(ci.Vouchers, &pchTypes.VoucherInfo{
 		Voucher: sv,
 	})
 
@@ -411,7 +411,7 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 		return cid.Undef, err
 	}
 
-	has, err := ci.hasVoucher(sv)
+	has, err := ci.HasVoucher(sv)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -419,7 +419,7 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 	// If the channel has the voucher
 	if has {
 		// Check that the voucher hasn't already been submitted
-		submitted, err := ci.wasVoucherSubmitted(sv)
+		submitted, err := ci.WasVoucherSubmitted(sv)
 		if err != nil {
 			return cid.Undef, err
 		}
@@ -446,7 +446,7 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 	// If the channel didn't already have the voucher
 	if !has {
 		// Add the voucher to the channel
-		ci.Vouchers = append(ci.Vouchers, &VoucherInfo{
+		ci.Vouchers = append(ci.Vouchers, &pchTypes.VoucherInfo{
 			Voucher: sv,
 		})
 	}
@@ -466,7 +466,7 @@ func (ca *channelAccessor) allocateLane(ctx context.Context, ch address.Address)
 	return ca.store.AllocateLane(ctx, ch)
 }
 
-func (ca *channelAccessor) listVouchers(ctx context.Context, ch address.Address) ([]*VoucherInfo, error) {
+func (ca *channelAccessor) listVouchers(ctx context.Context, ch address.Address) ([]*pchTypes.VoucherInfo, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 

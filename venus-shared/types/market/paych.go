@@ -56,6 +56,10 @@ type ChannelInfo struct {
 	// has locally been added to the channel. It should reflect the channel's
 	// Balance on chain as long as all operations occur on the same datastore.
 	Amount big.Int
+	// AvailableAmount indicates how much afil is non-reserved
+	AvailableAmount big.Int
+	// PendingAvailableAmount is available amount that we're awaiting confirmation of
+	PendingAvailableAmount big.Int
 	// PendingAmount is the amount that we're awaiting confirmation of
 	PendingAmount big.Int
 	// CreateMsg is the CID of a pending create message (while waiting for confirmation)

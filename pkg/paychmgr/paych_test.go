@@ -5,11 +5,6 @@ import (
 	"context"
 	"testing"
 
-	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
-	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/venus/pkg/vm"
-	"github.com/filecoin-project/venus/venus-shared/types"
-
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
@@ -24,10 +19,16 @@ import (
 	tutils "github.com/filecoin-project/specs-actors/v6/support/testing"
 
 	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+
+	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	paychmock "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych/mock"
+	"github.com/filecoin-project/venus/venus-shared/types"
+	pchTypes "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 func TestCheckVoucherValid(t *testing.T) {
@@ -758,11 +759,11 @@ func testSetupMgrWithChannel(t *testing.T) *testScaffold {
 	require.NoError(t, err)
 
 	// Create the channel in the manager's store
-	ci := &ChannelInfo{
+	ci := &pchTypes.ChannelInfo{
 		Channel:   &ch,
 		Control:   fromAcct,
 		Target:    toAcct,
-		Direction: DirOutbound,
+		Direction: pchTypes.DirOutbound,
 	}
 	err = mgr.store.putChannelInfo(ctx, ci)
 	require.NoError(t, err)
