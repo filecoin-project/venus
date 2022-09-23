@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"sort"
 	"sync"
@@ -523,6 +524,7 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 	start := constants.Clock.Now()
 	defer atomic.AddUint64(&StatApplied, 1)
 	vmMsg := cmsg.VMMessage()
+	vmMsg.GasLimit = math.MaxInt64 / 2
 	msgBytes, err := vmMsg.Serialize()
 	if err != nil {
 		return nil, fmt.Errorf("serializing msg: %w", err)
