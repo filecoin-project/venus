@@ -719,3 +719,30 @@ func (cia *chainInfoAPI) StateActorManifestCID(ctx context.Context, nv network.V
 
 	return c, nil
 }
+
+// StateCall runs the given message and returns its result without any persisted changes.
+//
+// StateCall applies the message to the tipset's parent state. The
+// message is not applied on-top-of the messages in the passed-in
+// tipset.
+func (cia *chainInfoAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error) {
+	start := time.Now()
+	ts, err := cia.chain.ChainReader.GetTipSet(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("loading tipset %s: %v", tsk, err)
+	}
+	ret, err := cia.chain.Stmgr.Call(ctx, msg, ts)
+	if err != nil {
+		return nil, err
+	}
+	duration := time.Since(start)
+
+	mcid := msg.Cid()
+	return &types.InvocResult{
+		MsgCid:         mcid,
+		Msg:            msg,
+		MsgRct:         &ret.Receipt,
+		ExecutionTrace: types.ExecutionTrace{},
+		Duration:       duration,
+	}, nil
+}

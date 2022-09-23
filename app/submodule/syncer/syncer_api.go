@@ -155,39 +155,7 @@ func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) e
 	return nil
 }
 
-// MethodGroup: State
-// The State methods are used to query, inspect, and interact with chain state.
-// Most methods take a TipSetKey as a parameter. The state looked up is the parent state of the tipset.
-// A nil TipSetKey can be provided as a param, this will cause the heaviest tipset in the chain to be used.
-
-// StateCall runs the given message and returns its result without any persisted changes.
-//
-// StateCall applies the message to the tipset's parent state. The
-// message is not applied on-top-of the messages in the passed-in
-// tipset.
-func (sa *syncerAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error) {
-	start := time.Now()
-	ts, err := sa.syncer.ChainModule.ChainReader.GetTipSet(ctx, tsk)
-	if err != nil {
-		return nil, fmt.Errorf("loading tipset %s: %v", tsk, err)
-	}
-	ret, err := sa.syncer.Stmgr.Call(ctx, msg, ts)
-	if err != nil {
-		return nil, err
-	}
-	duration := time.Since(start)
-
-	mcid := msg.Cid()
-	return &types.InvocResult{
-		MsgCid:         mcid,
-		Msg:            msg,
-		MsgRct:         &ret.Receipt,
-		ExecutionTrace: types.ExecutionTrace{},
-		Duration:       duration,
-	}, nil
-}
-
-//SyncState just compatible code lotus
+// SyncState just compatible code lotus
 func (sa *syncerAPI) SyncState(ctx context.Context) (*types.SyncState, error) {
 	tracker := sa.syncer.ChainSyncManager.BlockProposer().SyncTracker()
 	tracker.History()
