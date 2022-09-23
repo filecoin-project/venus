@@ -37,9 +37,10 @@ type VmOption struct { //nolint
 	PRoot                cid.Cid
 	Bsstore              blockstoreutil.Blockstore
 	SysCallsImpl         SyscallsImpl
+	Tracing              bool
 }
 
-//ChainRandomness define randomness method in filecoin
+// ChainRandomness define randomness method in filecoin
 type ILookBack interface {
 	StateView(ctx context.Context, ts *types.TipSet) (*state.View, error)
 	GetLookbackTipSetForRound(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch, version network.Version) (*types.TipSet, cid.Cid, error)
@@ -56,7 +57,7 @@ func LookbackStateGetterForTipset(ctx context.Context, backer ILookBack, fork fo
 	}
 }
 
-//ChainRandomness define randomness method in filecoin
+// ChainRandomness define randomness method in filecoin
 type HeadChainRandomness interface {
 	ChainGetRandomnessFromBeacon(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainGetRandomnessFromTickets(ctx context.Context, personalization acrypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)

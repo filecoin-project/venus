@@ -43,10 +43,12 @@ func (t *GasTracker) Charge(gas GasCharge, msg string, args ...interface{}) {
 	}
 }
 
-// EnableDetailedTracing, if true, outputs gas tracing in execution traces.
+// EnableDetailedTracing has different behaviour in the LegacyVM and FVM.
+// In the LegacyVM, it enables detailed gas tracing, slowing down execution.
+// In the FVM, it enables execution traces, which are primarily used to observe subcalls.
 var EnableDetailedTracing = os.Getenv("VENUS_VM_ENABLE_TRACING") == "1"
 
-// TryCharge charges `amount` or `RemainingGas()``, whichever is smaller.
+// TryCharge charges `amount` or `RemainingGas()“, whichever is smaller.
 //
 // Returns `True` if the there was enough gas To pay for `amount`.
 func (t *GasTracker) TryCharge(gasCharge GasCharge) bool {
