@@ -2288,36 +2288,6 @@ func LiteMigration(ctx context.Context, bstore blockstoreutil.Blockstore, newAct
 	return newRoot, nil
 }
 
-func getManifest(ctx context.Context, st *vmstate.State) (*manifest.Manifest, error) {
-	wrapStore := gstStore.WrapStore(ctx, st.Store)
-
-	systemActor, found, err := st.GetActor(ctx, system.Address)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get system actor: %w", err)
-	}
-	if !found {
-		return nil, fmt.Errorf("not found actor")
-	}
-	systemActorState, err := system.Load(wrapStore, systemActor)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load system actor state: %w", err)
-	}
-	actorsManifestCid := systemActorState.GetBuiltinActors()
-
-	mf := manifest.Manifest{
-		Version: 1,
-		Data:    actorsManifestCid,
-	}
-	if err := mf.Load(ctx, wrapStore); err != nil {
-		return nil, fmt.Errorf("failed to load actor manifest: %w", err)
-	}
-	manifestData := manifest.ManifestData{}
-	if err := st.Store.Get(ctx, mf.Data, &manifestData); err != nil {
-		return nil, fmt.Errorf("failed to load manifest data: %w", err)
-	}
-	return &mf, nil
-}
-
 func getManifestData(ctx context.Context, st *vmstate.State) (*manifest.ManifestData, error) {
 	wrapStore := gstStore.WrapStore(ctx, st.Store)
 
