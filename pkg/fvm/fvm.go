@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
+	"sort"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -12,7 +15,6 @@ import (
 	ffi_cgo "github.com/filecoin-project/filecoin-ffi/cgo"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -32,6 +34,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 // stat counters
@@ -43,6 +46,7 @@ var fvmLog = logging.Logger("fvm")
 
 var _ vm.Interface = (*FVM)(nil)
 var _ ffi_cgo.Externs = (*FvmExtern)(nil)
+var debugBundleV8path = os.Getenv("VENUS_FVM_DEBUG_BUNDLE_V8")
 
 type FvmExtern struct { // nolint
 	Rand
@@ -288,20 +292,20 @@ type FVM struct {
 	fvm *ffi.FVM
 }
 
-func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
+func defaultFVMOpts(ctx context.Context, opts *vm.VmOption) (*ffi.FVMOpts, error) {
 	state, err := tree.LoadState(ctx, cbor.NewCborStore(opts.Bsstore), opts.PRoot)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("loading state tree: %w", err)
 	}
 
 	circToReport, err := opts.CircSupplyCalculator(ctx, opts.Epoch, state)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("calculating circ supply: %w", err)
 	}
-	fvmOpts := ffi.FVMOpts{
+	return &ffi.FVMOpts{
 		FVMVersion: 0,
 		Externs: &FvmExtern{
-			Rand:       newWrapperRand(opts.Rnd),
+			Rand:       NewWrapperRand(opts.Rnd),
 			Blockstore: opts.Bsstore,
 			epoch:      opts.Epoch,
 			lbState:    opts.LookbackStateGetter,
@@ -313,8 +317,14 @@ func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 		NetworkVersion: opts.NetworkVersion,
 		StateBase:      opts.PRoot,
 		Tracing:        gas.EnableDetailedTracing,
-	}
+	}, nil
+}
 
+func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
+	fvmOpts, err := defaultFVMOpts(ctx, opts)
+	if err != nil {
+		return nil, fmt.Errorf("creating fvm opts: %w", err)
+	}
 	if os.Getenv("VENUS_USE_FVM_CUSTOM_BUNDLE") == "1" {
 		av, err := actors.VersionForNetwork(opts.NetworkVersion)
 		if err != nil {
@@ -329,7 +339,111 @@ func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 		fvmOpts.Manifest = c
 	}
 
-	fvm, err := ffi.CreateFVM(&fvmOpts)
+	fvm, err := ffi.CreateFVM(fvmOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &FVM{
+		fvm: fvm,
+	}, nil
+}
+
+func NewDebugFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
+	baseBstore := opts.Bsstore
+	overlayBstore := blockstoreutil.NewTemporarySync()
+	cborStore := cbor.NewCborStore(overlayBstore)
+	vmBstore := blockstoreutil.NewTieredBstore(overlayBstore, baseBstore)
+
+	opts.Bsstore = vmBstore
+	fvmOpts, err := defaultFVMOpts(ctx, opts)
+	if err != nil {
+		return nil, fmt.Errorf("creating fvm opts: %w", err)
+	}
+
+	fvmOpts.Debug = true
+
+	putMapping := func(ar map[cid.Cid]cid.Cid) (cid.Cid, error) {
+		var mapping xMapping
+
+		mapping.redirects = make([]xRedirect, 0, len(ar))
+		for from, to := range ar {
+			mapping.redirects = append(mapping.redirects, xRedirect{from: from, to: to})
+		}
+		sort.Slice(mapping.redirects, func(i, j int) bool {
+			return bytes.Compare(mapping.redirects[i].from.Bytes(), mapping.redirects[j].from.Bytes()) < 0
+		})
+
+		// Passing this as a pointer of structs has proven to be an enormous PiTA; hence this code.
+		mappingCid, err := cborStore.Put(context.TODO(), &mapping)
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		return mappingCid, nil
+	}
+
+	createMapping := func(debugBundlePath string) error {
+		mfCid, err := actors.LoadBundleFromFile(ctx, overlayBstore, debugBundlePath)
+		if err != nil {
+			return fmt.Errorf("loading debug bundle: %w", err)
+		}
+
+		mf, err := actors.LoadManifest(ctx, mfCid, adt.WrapStore(ctx, cborStore))
+		if err != nil {
+			return fmt.Errorf("loading debug manifest: %w", err)
+		}
+
+		av, err := actors.VersionForNetwork(opts.NetworkVersion)
+		if err != nil {
+			return fmt.Errorf("getting actors version: %w", err)
+		}
+
+		// create actor redirect mapping
+		actorRedirect := make(map[cid.Cid]cid.Cid)
+		for _, key := range actors.GetBuiltinActorsKeys() {
+			from, ok := actors.GetActorCodeID(av, key)
+			if !ok {
+				fvmLog.Warnf("actor missing in the from manifest %s", key)
+				continue
+			}
+
+			to, ok := mf.Get(key)
+			if !ok {
+				fvmLog.Warnf("actor missing in the to manifest %s", key)
+				continue
+			}
+
+			actorRedirect[from] = to
+		}
+
+		if len(actorRedirect) > 0 {
+			mappingCid, err := putMapping(actorRedirect)
+			if err != nil {
+				return fmt.Errorf("error writing redirect mapping: %w", err)
+			}
+			fvmOpts.ActorRedirect = mappingCid
+		}
+
+		return nil
+	}
+
+	av, err := actors.VersionForNetwork(opts.NetworkVersion)
+	if err != nil {
+		return nil, fmt.Errorf("error determining actors version for network version %d: %w", opts.NetworkVersion, err)
+	}
+
+	switch av {
+	case actors.Version8:
+		if debugBundleV8path != "" {
+			if err := createMapping(debugBundleV8path); err != nil {
+				fvmLog.Errorf("failed to create v8 debug mapping")
+			}
+		}
+	}
+
+	fvm, err := ffi.CreateFVM(fvmOpts)
+
 	if err != nil {
 		return nil, err
 	}
@@ -472,39 +586,134 @@ func (fvm *FVM) Flush(ctx context.Context) (cid.Cid, error) {
 	return fvm.fvm.Flush()
 }
 
-type Rand interface {
-	GetChainRandomness(ctx context.Context, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
-	GetBeaconRandomness(ctx context.Context, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+type dualExecutionFVM struct {
+	main  *FVM
+	debug *FVM
 }
 
-var _ Rand = (*wrapperRand)(nil)
+var _ vm.Interface = (*dualExecutionFVM)(nil)
 
-type wrapperRand struct {
-	vm.ChainRandomness
+func NewDualExecutionFVM(ctx context.Context, opts *vm.VmOption) (vm.Interface, error) {
+	main, err := NewFVM(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	debug, err := NewDebugFVM(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dualExecutionFVM{
+		main:  main,
+		debug: debug,
+	}, nil
 }
 
-func newWrapperRand(r vm.ChainRandomness) Rand {
-	return wrapperRand{ChainRandomness: r}
+func (vm *dualExecutionFVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (ret *vmcontext.Ret, err error) {
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		ret, err = vm.main.ApplyMessage(ctx, cmsg)
+	}()
+
+	go func() {
+		defer wg.Done()
+		if _, err := vm.debug.ApplyMessage(ctx, cmsg); err != nil {
+			fvmLog.Errorf("debug execution failed: %w", err)
+		}
+	}()
+
+	wg.Wait()
+	return ret, err
 }
 
-func (r wrapperRand) GetChainRandomness(ctx context.Context, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return r.ChainGetRandomnessFromTickets(ctx, pers, round, entropy)
+func (vm *dualExecutionFVM) ApplyImplicitMessage(ctx context.Context, msg types.ChainMsg) (ret *vmcontext.Ret, err error) {
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		ret, err = vm.main.ApplyImplicitMessage(ctx, msg)
+	}()
+
+	go func() {
+		defer wg.Done()
+		if _, err := vm.debug.ApplyImplicitMessage(ctx, msg); err != nil {
+			fvmLog.Errorf("debug execution failed: %s", err)
+		}
+	}()
+
+	wg.Wait()
+	return ret, err
 }
 
-func (r wrapperRand) GetBeaconRandomness(ctx context.Context, pers acrypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return r.ChainGetRandomnessFromBeacon(ctx, pers, round, entropy)
+func (vm *dualExecutionFVM) Flush(ctx context.Context) (cid.Cid, error) {
+	return vm.main.Flush(ctx)
+}
+
+// Passing this as a pointer of structs has proven to be an enormous PiTA; hence this code.
+type xRedirect struct{ from, to cid.Cid }
+type xMapping struct{ redirects []xRedirect }
+
+func (m *xMapping) MarshalCBOR(w io.Writer) error {
+	scratch := make([]byte, 9)
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajArray, uint64(len(m.redirects))); err != nil {
+		return err
+	}
+
+	for _, v := range m.redirects {
+		if err := v.MarshalCBOR(w); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *xRedirect) MarshalCBOR(w io.Writer) error {
+	scratch := make([]byte, 9)
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajArray, uint64(2)); err != nil {
+		return err
+	}
+
+	if err := cbg.WriteCidBuf(scratch, w, r.from); err != nil {
+		return fmt.Errorf("failed to write cid field from: %w", err)
+	}
+
+	if err := cbg.WriteCidBuf(scratch, w, r.to); err != nil {
+		return fmt.Errorf("failed to write cid field from: %w", err)
+	}
+
+	return nil
 }
 
 var useFvmForMainnetV15 = os.Getenv("VENUS_USE_FVM_TO_SYNC_MAINNET_V15") == "1"
 
+// WARNING: You will not affect your node's execution by misusing this feature, but you will confuse yourself thoroughly!
+// An envvar that allows the user to specify debug actors bundles to be used by the FVM
+// alongside regular execution. This is basically only to be used to print out specific logging information.
+// Message failures, unexpected terminations,gas costs, etc. should all be ignored.
+var useFvmDebug = os.Getenv("VENUS_FVM_DEVELOPER_DEBUG") == "1"
+
 func NewVM(ctx context.Context, opts vm.VmOption) (vm.Interface, error) {
 	if opts.NetworkVersion >= network.Version16 {
+		if useFvmDebug {
+			return NewDebugFVM(ctx, &opts)
+		}
 		return NewFVM(ctx, &opts)
 	}
 
 	// Remove after v16 upgrade, this is only to support testing and validation of the FVM
 	if useFvmForMainnetV15 && opts.NetworkVersion >= network.Version15 {
-		fvmLog.Info("use fvm")
+		if useFvmDebug {
+			return NewDebugFVM(ctx, &opts)
+		}
 		return NewFVM(ctx, &opts)
 	}
 

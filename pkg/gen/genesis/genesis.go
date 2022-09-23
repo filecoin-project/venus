@@ -509,7 +509,7 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 
 	vm, err := fvm.NewVM(ctx, vmopt)
 	if err != nil {
-		return cid.Undef, fmt.Errorf("failed to create NewVenusVM: %w", err)
+		return cid.Undef, fmt.Errorf("failed to create vm: %w", err)
 	}
 
 	for mi, m := range template.Miners {
