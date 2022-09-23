@@ -77,12 +77,12 @@ type MigrationCache interface {
 
 // MigrationFunc is a migration function run at every upgrade.
 //
-// - The cache is a per-upgrade cache, pre-populated by pre-migrations.
-// - The oldState is the state produced by the upgrade epoch.
-// - The returned newState is the new state that will be used by the next epoch.
-// - The height is the upgrade epoch height (already executed).
-// - The tipset is the tipset for the last non-null block before the upgrade. Do
-//   not assume that ts.Height() is the upgrade height.
+//   - The cache is a per-upgrade cache, pre-populated by pre-migrations.
+//   - The oldState is the state produced by the upgrade epoch.
+//   - The returned newState is the new state that will be used by the next epoch.
+//   - The height is the upgrade epoch height (already executed).
+//   - The tipset is the tipset for the last non-null block before the upgrade. Do
+//     not assume that ts.Height() is the upgrade height.
 type MigrationFunc func(
 	ctx context.Context,
 	cache MigrationCache,
@@ -2189,20 +2189,17 @@ func LiteMigration(ctx context.Context, bstore blockstoreutil.Blockstore, newAct
 		return cid.Undef, fmt.Errorf("failed to load state tree: %w", err)
 	}
 
-	oldManifest, err := getManifest(ctx, st)
+	oldManifestData, err := getManifestData(ctx, st)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("error loading old actor manifest: %w", err)
 	}
-	oldManifestData := manifest.ManifestData{}
-	if err := store.Get(ctx, oldManifest.Data, &oldManifestData); err != nil {
-		return cid.Undef, fmt.Errorf("error loading old manifest data: %w", err)
-	}
 
 	// load new manifest
-	newManifest := manifest.Manifest{}
-	if err := store.Get(ctx, newActorsManifestCid, &newManifest); err != nil {
+	newManifest, err := actors.LoadManifest(ctx, newActorsManifestCid, store)
+	if err != nil {
 		return cid.Undef, fmt.Errorf("error loading new manifest: %w", err)
 	}
+
 	newManifestData := manifest.ManifestData{}
 	if err := store.Get(ctx, newManifest.Data, &newManifestData); err != nil {
 		return cid.Undef, fmt.Errorf("error loading new manifest data: %w", err)
@@ -2218,12 +2215,13 @@ func LiteMigration(ctx context.Context, bstore blockstoreutil.Blockstore, newAct
 	// Maps prior version code CIDs to migration functions.
 	migrations := make(map[cid.Cid]cid.Cid)
 
-	for _, entry := range newManifestData.Entries {
-		oldCodeCid, ok := oldManifest.Get(entry.Name)
+	for _, entry := range oldManifestData.Entries {
+		newCodeCid, ok := newManifest.Get(entry.Name)
 		if !ok {
-			return cid.Undef, fmt.Errorf("code cid for %s actor not found in old manifest", entry.Name)
+			return cid.Undef, fmt.Errorf("code cid for %s actor not found in new manifest", entry.Name)
 		}
-		migrations[oldCodeCid] = entry.Code
+
+		migrations[entry.Code] = newCodeCid
 	}
 
 	startTime := time.Now()
@@ -2318,4 +2316,29 @@ func getManifest(ctx context.Context, st *vmstate.State) (*manifest.Manifest, er
 		return nil, fmt.Errorf("failed to load manifest data: %w", err)
 	}
 	return &mf, nil
+}
+
+func getManifestData(ctx context.Context, st *vmstate.State) (*manifest.ManifestData, error) {
+	wrapStore := gstStore.WrapStore(ctx, st.Store)
+
+	systemActor, found, err := st.GetActor(ctx, system.Address)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get system actor: %w", err)
+	}
+	if !found {
+		return nil, fmt.Errorf("not found actor")
+	}
+	systemActorState, err := system.Load(wrapStore, systemActor)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load system actor state: %w", err)
+	}
+
+	actorsManifestDataCid := systemActorState.GetBuiltinActors()
+
+	var mfData manifest.ManifestData
+	if err := wrapStore.Get(ctx, actorsManifestDataCid, &mfData); err != nil {
+		return nil, fmt.Errorf("error fetching data: %w", err)
+	}
+
+	return &mfData, nil
 }

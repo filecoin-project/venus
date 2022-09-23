@@ -126,7 +126,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 
 	genesisVM, err := newVM(sroot)
 	if err != nil {
-		return cid.Undef, fmt.Errorf("failed to create NewVenusVM: %w", err)
+		return cid.Undef, fmt.Errorf("failed to create vm: %w", err)
 	}
 
 	if len(miners) == 0 {
