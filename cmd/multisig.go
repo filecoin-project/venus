@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/app/node"
+	"github.com/filecoin-project/venus/app/submodule/chain"
 	sbchain "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors"
@@ -603,6 +604,40 @@ var msigAddProposeCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
+
+		store := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
+
+		head, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		act, err := env.(*node.Env).ChainAPI.StateGetActor(ctx, msig, head.Key())
+		if err != nil {
+			return err
+		}
+
+		mstate, err := multisig.Load(store, act)
+		if err != nil {
+			return err
+		}
+
+		signers, err := mstate.Signers()
+		if err != nil {
+			return err
+		}
+
+		addrId, err := env.(*node.Env).ChainAPI.StateLookupID(ctx, addr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		for _, s := range signers {
+			if s == addrId {
+				return fmt.Errorf("%s is already a signer", addr.String())
+			}
+		}
+
 		msgCid, err := env.(*node.Env).MultiSigAPI.MsigAddPropose(ctx, msig, from, addr, reqBoolOption(req, "increase-threshold"))
 		if err != nil {
 			return err
