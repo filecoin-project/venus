@@ -82,7 +82,8 @@ type IChainInfo interface {
 	// ChainGetGenesis returns the genesis tipset.
 	ChainGetGenesis(context.Context) (*types.TipSet, error) //perm:read
 	// StateActorManifestCID returns the CID of the builtin actors manifest for the given network version
-	StateActorManifestCID(context.Context, network.Version) (cid.Cid, error) //perm:read
+	StateActorManifestCID(context.Context, network.Version) (cid.Cid, error)                            //perm:read
+	StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error) //perm:read
 }
 
 type IMinerState interface {
