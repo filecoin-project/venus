@@ -101,7 +101,7 @@ var disputerMsgCmd = &cmds.Command{
 			Params: dpp,
 		}
 
-		rslt, err := env.(*node.Env).SyncerAPI.StateCall(req.Context, dmsg, types.EmptyTSK)
+		rslt, err := env.(*node.Env).ChainAPI.StateCall(req.Context, dmsg, types.EmptyTSK)
 		if err != nil {
 			return fmt.Errorf("failed to simulate dispute: %w", err)
 		}
@@ -239,7 +239,7 @@ var disputerStartCmd = &cmds.Command{
 				disputableProofs := fullDeadlines[dl.index].DisputableProofCount
 				proofsChecked += disputableProofs
 
-				ms, err := makeDisputeWindowedPosts(ctx, env.(*node.Env).SyncerAPI, dl, disputableProofs, fromAddr)
+				ms, err := makeDisputeWindowedPosts(ctx, env.(*node.Env).ChainAPI, dl, disputableProofs, fromAddr)
 				if err != nil {
 					return fmt.Errorf("failed to check for disputes: %w", err)
 				}
@@ -349,7 +349,7 @@ var disputerStartCmd = &cmds.Command{
 
 // for a given miner, index, and maxPostIndex, tries to dispute posts from 0...postsSnapshotted-1
 // returns a list of DisputeWindowedPoSt msgs that are expected to succeed if sent
-func makeDisputeWindowedPosts(ctx context.Context, api v1api.ISyncer, dl minerDeadline, postsSnapshotted uint64, sender address.Address) ([]*types.Message, error) {
+func makeDisputeWindowedPosts(ctx context.Context, api v1api.IChain, dl minerDeadline, postsSnapshotted uint64, sender address.Address) ([]*types.Message, error) {
 	disputes := make([]*types.Message, 0)
 
 	for i := uint64(0); i < postsSnapshotted; i++ {

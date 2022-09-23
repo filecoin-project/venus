@@ -39,6 +39,7 @@
   * [ResolveToKeyAddr](#ResolveToKeyAddr)
   * [StateActorCodeCIDs](#StateActorCodeCIDs)
   * [StateActorManifestCID](#StateActorManifestCID)
+  * [StateCall](#StateCall)
   * [StateGetBeaconEntry](#StateGetBeaconEntry)
   * [StateGetNetworkParams](#StateGetNetworkParams)
   * [StateGetRandomnessFromBeacon](#StateGetRandomnessFromBeacon)
@@ -84,6 +85,7 @@
   * [StateAllMinerFaults](#StateAllMinerFaults)
   * [StateChangedActors](#StateChangedActors)
   * [StateCirculatingSupply](#StateCirculatingSupply)
+  * [StateComputeDataCID](#StateComputeDataCID)
   * [StateDealProviderCollateralBounds](#StateDealProviderCollateralBounds)
   * [StateDecodeParams](#StateDecodeParams)
   * [StateEncodeParams](#StateEncodeParams)
@@ -180,7 +182,6 @@
   * [ChainTipSetWeight](#ChainTipSetWeight)
   * [Concurrent](#Concurrent)
   * [SetConcurrent](#SetConcurrent)
-  * [StateCall](#StateCall)
   * [SyncState](#SyncState)
   * [SyncSubmitBlock](#SyncSubmitBlock)
   * [SyncerTracker](#SyncerTracker)
@@ -1294,6 +1295,174 @@ Response:
 }
 ```
 
+### StateCall
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    },
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ=="
+  },
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "MsgCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Msg": {
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    },
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ=="
+  },
+  "MsgRct": {
+    "ExitCode": 0,
+    "Return": "Ynl0ZSBhcnJheQ==",
+    "GasUsed": 9
+  },
+  "GasCost": {
+    "Message": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "GasUsed": "0",
+    "BaseFeeBurn": "0",
+    "OverEstimationBurn": "0",
+    "MinerPenalty": "0",
+    "MinerTip": "0",
+    "Refund": "0",
+    "TotalCost": "0"
+  },
+  "ExecutionTrace": {
+    "Msg": {
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      },
+      "Version": 42,
+      "To": "f01234",
+      "From": "f01234",
+      "Nonce": 42,
+      "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
+      "Method": 1,
+      "Params": "Ynl0ZSBhcnJheQ=="
+    },
+    "MsgRct": {
+      "ExitCode": 0,
+      "Return": "Ynl0ZSBhcnJheQ==",
+      "GasUsed": 9
+    },
+    "Error": "string value",
+    "Duration": 60000000000,
+    "GasCharges": [
+      {
+        "Name": "string value",
+        "loc": [
+          {
+            "File": "string value",
+            "Line": 123,
+            "Function": "string value"
+          }
+        ],
+        "tg": 9,
+        "cg": 9,
+        "sg": 9,
+        "vtg": 9,
+        "vcg": 9,
+        "vsg": 9,
+        "tt": 60000000000,
+        "ex": {}
+      }
+    ],
+    "Subcalls": [
+      {
+        "Msg": {
+          "CID": {
+            "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+          },
+          "Version": 42,
+          "To": "f01234",
+          "From": "f01234",
+          "Nonce": 42,
+          "Value": "0",
+          "GasLimit": 9,
+          "GasFeeCap": "0",
+          "GasPremium": "0",
+          "Method": 1,
+          "Params": "Ynl0ZSBhcnJheQ=="
+        },
+        "MsgRct": {
+          "ExitCode": 0,
+          "Return": "Ynl0ZSBhcnJheQ==",
+          "GasUsed": 9
+        },
+        "Error": "string value",
+        "Duration": 60000000000,
+        "GasCharges": [
+          {
+            "Name": "string value",
+            "loc": [
+              {
+                "File": "string value",
+                "Line": 123,
+                "Function": "string value"
+              }
+            ],
+            "tg": 9,
+            "cg": 9,
+            "sg": 9,
+            "vtg": 9,
+            "vcg": 9,
+            "vsg": 9,
+            "tt": 60000000000,
+            "ex": {}
+          }
+        ],
+        "Subcalls": null
+      }
+    ]
+  },
+  "Error": "string value",
+  "Duration": 60000000000
+}
+```
+
 ### StateGetBeaconEntry
 StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If
 the entry has not yet been produced, the call will block until the entry
@@ -1640,7 +1809,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131584
+  "APIVersion": 131840
 }
 ```
 
@@ -2743,6 +2912,38 @@ Inputs:
 
 Response: `"0"`
 
+### StateComputeDataCID
+StateComputeDataCID computes DataCID from a set of on-chain deals
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  8,
+  [
+    5432
+  ],
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
 ### StateDealProviderCollateralBounds
 
 
@@ -3741,6 +3942,12 @@ Response:
 ```
 
 ### StateSectorPreCommitInfo
+StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector.
+Returns nil and no error if the sector isn't precommitted.
+
+Note that the sector number may be allocated while PreCommitInfo is nil. This means that either allocated sector
+numbers were compacted, and the sector number was marked as allocated in order to reduce size of the allocated
+sectors bitfield, or that the sector was precommitted, but the precommit has expired.
 
 
 Perms: read
@@ -5591,174 +5798,6 @@ Inputs:
 ```
 
 Response: `{}`
-
-### StateCall
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ]
-]
-```
-
-Response:
-```json
-{
-  "MsgCid": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "Msg": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "MsgRct": {
-    "ExitCode": 0,
-    "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
-  },
-  "GasCost": {
-    "Message": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "GasUsed": "0",
-    "BaseFeeBurn": "0",
-    "OverEstimationBurn": "0",
-    "MinerPenalty": "0",
-    "MinerTip": "0",
-    "Refund": "0",
-    "TotalCost": "0"
-  },
-  "ExecutionTrace": {
-    "Msg": {
-      "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-      },
-      "Version": 42,
-      "To": "f01234",
-      "From": "f01234",
-      "Nonce": 42,
-      "Value": "0",
-      "GasLimit": 9,
-      "GasFeeCap": "0",
-      "GasPremium": "0",
-      "Method": 1,
-      "Params": "Ynl0ZSBhcnJheQ=="
-    },
-    "MsgRct": {
-      "ExitCode": 0,
-      "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
-    },
-    "Error": "string value",
-    "Duration": 60000000000,
-    "GasCharges": [
-      {
-        "Name": "string value",
-        "loc": [
-          {
-            "File": "string value",
-            "Line": 123,
-            "Function": "string value"
-          }
-        ],
-        "tg": 9,
-        "cg": 9,
-        "sg": 9,
-        "vtg": 9,
-        "vcg": 9,
-        "vsg": 9,
-        "tt": 60000000000,
-        "ex": {}
-      }
-    ],
-    "Subcalls": [
-      {
-        "Msg": {
-          "CID": {
-            "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-          },
-          "Version": 42,
-          "To": "f01234",
-          "From": "f01234",
-          "Nonce": 42,
-          "Value": "0",
-          "GasLimit": 9,
-          "GasFeeCap": "0",
-          "GasPremium": "0",
-          "Method": 1,
-          "Params": "Ynl0ZSBhcnJheQ=="
-        },
-        "MsgRct": {
-          "ExitCode": 0,
-          "Return": "Ynl0ZSBhcnJheQ==",
-          "GasUsed": 9
-        },
-        "Error": "string value",
-        "Duration": 60000000000,
-        "GasCharges": [
-          {
-            "Name": "string value",
-            "loc": [
-              {
-                "File": "string value",
-                "Line": 123,
-                "Function": "string value"
-              }
-            ],
-            "tg": 9,
-            "cg": 9,
-            "sg": 9,
-            "vtg": 9,
-            "vcg": 9,
-            "vsg": 9,
-            "tt": 60000000000,
-            "ex": {}
-          }
-        ],
-        "Subcalls": null
-      }
-    ]
-  },
-  "Error": "string value",
-  "Duration": 60000000000
-}
-```
 
 ### SyncState
 

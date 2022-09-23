@@ -14,14 +14,18 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/vm/register"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	_init "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
@@ -60,19 +64,13 @@ func (msa *minerStateAPI) StateMinerSectorAllocated(ctx context.Context, maddr a
 }
 
 // StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector
-func (msa *minerStateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
+func (msa *minerStateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
-		return miner.SectorPreCommitOnChainInfo{}, fmt.Errorf("loading tipset:%s parent state view: %v", tsk, err)
+		return nil, fmt.Errorf("loading tipset:%s parent state view: %v", tsk, err)
 	}
 
-	pci, err := view.SectorPreCommitInfo(ctx, maddr, n)
-	if err != nil {
-		return miner.SectorPreCommitOnChainInfo{}, err
-	} else if pci == nil {
-		return miner.SectorPreCommitOnChainInfo{}, fmt.Errorf("precommit info is not exists")
-	}
-	return *pci, nil
+	return view.SectorPreCommitInfo(ctx, maddr, n)
 }
 
 // StateSectorGetInfo returns the on-chain info for the specified miner's sector. Returns null in case the sector info isn't found
@@ -371,6 +369,70 @@ func (msa *minerStateAPI) StateMarketStorageDeal(ctx context.Context, dealID abi
 		Proposal: *proposal,
 		State:    *st,
 	}, nil
+}
+
+// StateComputeDataCID computes DataCID from a set of on-chain deals
+func (msa *minerStateAPI) StateComputeDataCID(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) {
+	nv, err := msa.API().StateNetworkVersion(ctx, tsk)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+
+	var ccparams []byte
+	if nv < network.Version13 {
+		ccparams, err = actors.SerializeParams(&market2.ComputeDataCommitmentParams{
+			DealIDs:    deals,
+			SectorType: sectorType,
+		})
+	} else {
+		ccparams, err = actors.SerializeParams(&market5.ComputeDataCommitmentParams{
+			Inputs: []*market5.SectorDataSpec{
+				{
+					DealIDs:    deals,
+					SectorType: sectorType,
+				},
+			},
+		})
+	}
+
+	if err != nil {
+		return cid.Undef, fmt.Errorf("computing params for ComputeDataCommitment: %w", err)
+	}
+
+	ccmt := &types.Message{
+		To:     market.Address,
+		From:   maddr,
+		Value:  types.NewInt(0),
+		Method: market.Methods.ComputeDataCommitment,
+		Params: ccparams,
+	}
+	r, err := msa.API().StateCall(ctx, ccmt, tsk)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("calling ComputeDataCommitment: %w", err)
+	}
+	if r.MsgRct.ExitCode != 0 {
+		return cid.Undef, fmt.Errorf("receipt for ComputeDataCommitment had exit code %d", r.MsgRct.ExitCode)
+	}
+
+	if nv < network.Version13 {
+		var c cbg.CborCid
+		if err := c.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
+			return cid.Undef, fmt.Errorf("failed to unmarshal CBOR to CborCid: %w", err)
+		}
+
+		return cid.Cid(c), nil
+	}
+
+	var cr market5.ComputeDataCommitmentReturn
+	if err := cr.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
+		return cid.Undef, fmt.Errorf("failed to unmarshal CBOR to CborCid: %w", err)
+	}
+
+	if len(cr.CommDs) != 1 {
+		return cid.Undef, fmt.Errorf("CommD output must have 1 entry")
+	}
+
+	return cid.Cid(cr.CommDs[0]), nil
 }
 
 var initialPledgeNum = big.NewInt(110)
