@@ -25,15 +25,15 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/host"
-	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
-	yamux "github.com/libp2p/go-libp2p-yamux"
+	"github.com/libp2p/go-libp2p/core/host"
+	p2pmetrics "github.com/libp2p/go-libp2p/core/metrics"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/routing"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+	yamux "github.com/libp2p/go-libp2p/p2p/muxer/yamux"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
@@ -89,7 +89,7 @@ type NetworkSubmodule struct { //nolint
 	cfg networkConfig
 }
 
-//API create a new network implement
+// API create a new network implement
 func (networkSubmodule *NetworkSubmodule) API() v1api.INetwork {
 	return &networkAPI{network: networkSubmodule}
 }

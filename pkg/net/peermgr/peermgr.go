@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/event"
-	host "github.com/libp2p/go-libp2p-core/host"
-	net "github.com/libp2p/go-libp2p-core/network"
-	peer "github.com/libp2p/go-libp2p-core/peer"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p/core/event"
+	host "github.com/libp2p/go-libp2p/core/host"
+	net "github.com/libp2p/go-libp2p/core/network"
+	peer "github.com/libp2p/go-libp2p/core/peer"
 
 	logging "github.com/ipfs/go-log/v2"
 )

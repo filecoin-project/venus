@@ -19,9 +19,9 @@ import (
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/host"
-	net "github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/host"
+	net "github.com/libp2p/go-libp2p/core/network"
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/venus/pkg/chain"

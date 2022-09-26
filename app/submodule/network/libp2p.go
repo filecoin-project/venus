@@ -6,15 +6,15 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/jbenet/goprocess"
-	"github.com/libp2p/go-eventbus"
-	"github.com/libp2p/go-libp2p-core/connmgr"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/event"
-	net "github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
-	"github.com/libp2p/go-libp2p-core/protocol"
-	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
+	"github.com/libp2p/go-libp2p/core/connmgr"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/event"
+	net "github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
+	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	"github.com/multiformats/go-multiaddr"
 )
 
@@ -22,7 +22,7 @@ type noopLibP2PHost struct {
 	peerId peer.ID //nolint
 }
 
-//nolint
+// nolint
 func NewNoopLibP2PHost() noopLibP2PHost {
 	pk, _, _ := crypto.GenerateEd25519Key(rand.Reader) //nolint
 	pid, _ := peer.IDFromPrivateKey(pk)

@@ -3,8 +3,8 @@ package pubsub
 import (
 	"context"
 
-	"github.com/libp2p/go-libp2p-core/peer"
 	libp2p "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 // Topic publishes and subscribes to a libp2p pubsub topic

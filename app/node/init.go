@@ -6,7 +6,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/repo/fskeystore"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
-	acrypto "github.com/libp2p/go-libp2p-core/crypto"
+	acrypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
