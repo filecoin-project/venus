@@ -239,7 +239,7 @@ func (hbs *HeartbeatService) Connect(ctx context.Context) error {
 	// Decapsulate the /p2p/<peerID> part from the target
 	// /ip4/<a.b.c.d>/p2p/<peer> becomes /ip4/<a.b.c.d>
 	targetPeerAddr, _ := ma.NewMultiaddr(
-		fmt.Sprintf("/p2p/%s", peer.Encode(peerid)))
+		fmt.Sprintf("/p2p/%s", peerid.String()))
 	targetAddr := targetMaddr.Decapsulate(targetPeerAddr)
 
 	hbs.Host.Peerstore().AddAddr(peerid, targetAddr, peerstore.PermanentAddrTTL)
