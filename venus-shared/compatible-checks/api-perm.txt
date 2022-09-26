@@ -68,6 +68,7 @@ v1: github.com/filecoin-project/venus/venus-shared/api/chain/v1 <> github.com/fi
 	- IChainInfo.ResolveToKeyAddr
 	- IChainInfo.StateActorManifestCID
 	- IChainInfo.VerifyEntry
+	- IMinerState.StateMinerAllocated
 	- IMinerState.StateMinerSectorSize
 	- IMinerState.StateMinerWorkerAddress
 	- IMessagePool.GasBatchEstimateMessageGas
