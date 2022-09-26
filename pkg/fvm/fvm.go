@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"sort"
 	"sync"
@@ -316,7 +317,7 @@ func defaultFVMOpts(ctx context.Context, opts *vm.VmOption) (*ffi.FVMOpts, error
 		BaseCircSupply: circToReport,
 		NetworkVersion: opts.NetworkVersion,
 		StateBase:      opts.PRoot,
-		Tracing:        gas.EnableDetailedTracing,
+		Tracing:        opts.Tracing || gas.EnableDetailedTracing,
 	}, nil
 }
 
@@ -523,6 +524,7 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 	start := constants.Clock.Now()
 	defer atomic.AddUint64(&StatApplied, 1)
 	vmMsg := cmsg.VMMessage()
+	vmMsg.GasLimit = math.MaxInt64 / 2
 	msgBytes, err := vmMsg.Serialize()
 	if err != nil {
 		return nil, fmt.Errorf("serializing msg: %w", err)
@@ -693,8 +695,6 @@ func (r *xRedirect) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-var useFvmForMainnetV15 = os.Getenv("VENUS_USE_FVM_TO_SYNC_MAINNET_V15") == "1"
-
 // WARNING: You will not affect your node's execution by misusing this feature, but you will confuse yourself thoroughly!
 // An envvar that allows the user to specify debug actors bundles to be used by the FVM
 // alongside regular execution. This is basically only to be used to print out specific logging information.
@@ -703,14 +703,6 @@ var useFvmDebug = os.Getenv("VENUS_FVM_DEVELOPER_DEBUG") == "1"
 
 func NewVM(ctx context.Context, opts vm.VmOption) (vm.Interface, error) {
 	if opts.NetworkVersion >= network.Version16 {
-		if useFvmDebug {
-			return NewDebugFVM(ctx, &opts)
-		}
-		return NewFVM(ctx, &opts)
-	}
-
-	// Remove after v16 upgrade, this is only to support testing and validation of the FVM
-	if useFvmForMainnetV15 && opts.NetworkVersion >= network.Version15 {
 		if useFvmDebug {
 			return NewDebugFVM(ctx, &opts)
 		}
