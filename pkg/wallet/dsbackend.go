@@ -188,6 +188,22 @@ func (backend *DSBackend) putKeyInfo(ctx context.Context, ki *crypto.KeyInfo) er
 	return nil
 }
 
+func (backend *DSBackend) DeleteAddress(ctx context.Context, addr address.Address) error {
+	backend.lk.RLock()
+	defer backend.lk.RUnlock()
+
+	if _, ok := backend.cache[addr]; ok {
+		err := backend.ds.Delete(ctx, ds.NewKey(addr.String()))
+		if err != nil {
+			return err
+		}
+		delete(backend.cache, addr)
+		return nil
+	}
+
+	return errors.New("backend does not contain address")
+}
+
 // SignBytes cryptographically signs `data` using the private key `priv`.
 func (backend *DSBackend) SignBytes(ctx context.Context, data []byte, addr address.Address) (*crypto.Signature, error) {
 	backend.lk.Lock()

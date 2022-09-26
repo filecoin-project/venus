@@ -47,6 +47,11 @@ func TestDSBackendSimple(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.True(t, fs2.HasAddress(ctx, addr))
+
+	t.Log("delete the address")
+	err = fs2.DeleteAddress(ctx, addr)
+	assert.NoError(t, err)
+	assert.False(t, fs2.HasAddress(ctx, addr))
 }
 
 func TestDSBackendKeyPairMatchAddress(t *testing.T) {

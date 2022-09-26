@@ -184,6 +184,7 @@
   * [WalletAddresses](#WalletAddresses)
   * [WalletBalance](#WalletBalance)
   * [WalletDefaultAddress](#WalletDefaultAddress)
+  * [WalletDelete](#WalletDelete)
   * [WalletExport](#WalletExport)
   * [WalletHas](#WalletHas)
   * [WalletImport](#WalletImport)
@@ -5494,6 +5495,20 @@ Perms: write
 Inputs: `[]`
 
 Response: `"f01234"`
+
+### WalletDelete
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `{}`
 
 ### WalletExport
 

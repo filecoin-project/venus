@@ -20,7 +20,7 @@ type remoteWallet struct {
 }
 
 func (w *remoteWallet) Addresses(ctx context.Context) []address.Address {
-	wallets, err := w.IWallet.WalletList(context.Background())
+	wallets, err := w.IWallet.WalletList(ctx)
 	if err != nil {
 		return make([]address.Address, 0)
 	}
@@ -51,22 +51,27 @@ func SetupRemoteWallet(info string) (wallet.WalletIntersection, error) {
 }
 
 func (w *remoteWallet) HasAddress(ctx context.Context, addr address.Address) bool {
-	exist, err := w.IWallet.WalletHas(context.Background(), addr)
+	exist, err := w.IWallet.WalletHas(ctx, addr)
 	if err != nil {
 		return false
 	}
 	return exist
 }
+
 func (w *remoteWallet) NewAddress(ctx context.Context, protocol address.Protocol) (address.Address, error) {
-	return w.IWallet.WalletNew(context.Background(), GetKeyType(protocol))
+	return w.IWallet.WalletNew(ctx, GetKeyType(protocol))
+}
+
+func (w *remoteWallet) DeleteAddress(ctx context.Context, addr address.Address) error {
+	return w.IWallet.WalletDelete(ctx, addr)
 }
 
 func (w *remoteWallet) Import(ctx context.Context, key *crypto.KeyInfo) (address.Address, error) {
-	return w.IWallet.WalletImport(context.Background(), ConvertRemoteKeyInfo(key))
+	return w.IWallet.WalletImport(ctx, ConvertRemoteKeyInfo(key))
 }
 
 func (w *remoteWallet) Export(ctx context.Context, addr address.Address, password string) (*crypto.KeyInfo, error) {
-	key, err := w.IWallet.WalletExport(context.Background(), addr)
+	key, err := w.IWallet.WalletExport(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -74,5 +79,5 @@ func (w *remoteWallet) Export(ctx context.Context, addr address.Address, passwor
 }
 
 func (w *remoteWallet) WalletSign(ctx context.Context, keyAddr address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error) {
-	return w.IWallet.WalletSign(context.Background(), keyAddr, msg, meta)
+	return w.IWallet.WalletSign(ctx, keyAddr, msg, meta)
 }

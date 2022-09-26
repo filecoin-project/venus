@@ -107,6 +107,11 @@ func (walletAPI *WalletAPI) WalletExport(ctx context.Context, addr address.Addre
 	return remotewallet.ConvertRemoteKeyInfo(ki), nil
 }
 
+// WalletDelete delete the given walletModule address
+func (walletAPI *WalletAPI) WalletDelete(ctx context.Context, addr address.Address) error {
+	return walletAPI.adapter.DeleteAddress(ctx, addr)
+}
+
 // WalletSign signs the given bytes using the given address.
 func (walletAPI *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error) {
 	keyAddr, err := walletAPI.walletModule.Chain.Stmgr.ResolveToKeyAddress(ctx, k, nil)

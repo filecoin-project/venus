@@ -14,6 +14,7 @@ type IWallet interface {
 	WalletSign(ctx context.Context, k address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error) //perm:sign
 	WalletExport(ctx context.Context, addr address.Address, password string) (*types.KeyInfo, error)              //perm:admin
 	WalletImport(ctx context.Context, key *types.KeyInfo) (address.Address, error)                                //perm:admin
+	WalletDelete(ctx context.Context, addr address.Address) error                                                 //perm:admin
 	WalletHas(ctx context.Context, addr address.Address) (bool, error)                                            //perm:write
 	WalletNewAddress(ctx context.Context, protocol address.Protocol) (address.Address, error)                     //perm:write
 	WalletBalance(ctx context.Context, addr address.Address) (abi.TokenAmount, error)                             //perm:read

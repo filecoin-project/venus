@@ -10,12 +10,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/howeyc/gopass"
+
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	files "github.com/ipfs/go-ipfs-files"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/cmd/tablewriter"
 	"github.com/filecoin-project/venus/pkg/crypto"
@@ -37,6 +39,7 @@ var walletCmd = &cmds.Command{
 		"ls":           addrsLsCmd,
 		"new":          addrsNewCmd,
 		"default":      defaultAddressCmd,
+		"delete":       addrsDeleteCmd,
 		"set-default":  setDefaultAddressCmd,
 		"lock":         lockedCmd,
 		"unlock":       unlockedCmd,
@@ -82,6 +85,39 @@ var addrsNewCmd = &cmds.Command{
 		}
 
 		return printOneString(re, addr.String())
+	},
+}
+
+var addrsDeleteCmd = &cmds.Command{
+	Arguments: []cmds.Argument{
+		cmds.StringArg("address", true, false, "wallet address"),
+	},
+	Options: []cmds.Option{
+		cmds.BoolOption("really-do-it", "Actually send transaction performing the action").WithDefault(false),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		if really := req.Options["really-do-it"].(bool); !really {
+			return fmt.Errorf("pass --really-do-it to actually execute this action")
+		}
+
+		addr, err := address.NewFromString(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		if !env.(*node.Env).WalletAPI.HasPassword(req.Context) {
+			return errMissPassword
+		}
+		if env.(*node.Env).WalletAPI.WalletState(req.Context) == wallet.Lock {
+			return errWalletLocked
+		}
+
+		err = env.(*node.Env).WalletAPI.WalletDelete(req.Context, addr)
+		if err != nil {
+			return err
+		}
+
+		return printOneString(re, "Delete successfully!")
 	},
 }
 

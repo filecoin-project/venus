@@ -17,6 +17,8 @@ type Backend interface {
 	// Contains returns true if this backend stores the passed in address.
 	HasAddress(context.Context, address.Address) bool
 
+	DeleteAddress(context.Context, address.Address) error
+
 	// Sign cryptographically signs data with the private key associated with an address.
 	SignBytes(context.Context, []byte, address.Address) (*crypto.Signature, error)
 

@@ -40,7 +40,7 @@ func TestWalletSimple(t *testing.T) {
 	w, fs := newWalletAndDSBackend(t)
 
 	t.Log("create a new address in the backend")
-	addr, err := fs.NewAddress(context.Background(), address.SECP256K1)
+	addr, err := fs.NewAddress(ctx, address.SECP256K1)
 	assert.NoError(t, err)
 
 	t.Log("test HasAddress")
@@ -62,7 +62,7 @@ func TestWalletSimple(t *testing.T) {
 	assert.Equal(t, list[0], addr)
 
 	t.Log("addresses are sorted")
-	addr2, err := fs.NewAddress(context.Background(), address.SECP256K1)
+	addr2, err := fs.NewAddress(ctx, address.SECP256K1)
 	assert.NoError(t, err)
 
 	if bytes.Compare(addr2.Bytes(), addr.Bytes()) < 0 {
@@ -74,6 +74,14 @@ func TestWalletSimple(t *testing.T) {
 		assert.Equal(t, list[0], addr)
 		assert.Equal(t, list[1], addr2)
 	}
+
+	t.Log("test DeleteAddress")
+	err = fs.DeleteAddress(ctx, addr)
+	assert.NoError(t, err)
+	err = fs.DeleteAddress(ctx, addr2)
+	assert.NoError(t, err)
+	assert.False(t, w.HasAddress(ctx, addr))
+	assert.False(t, w.HasAddress(ctx, addr2))
 }
 
 func TestWalletBLSKeys(t *testing.T) {
