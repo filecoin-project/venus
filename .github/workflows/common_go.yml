@@ -4,6 +4,11 @@ on:
 
   workflow_call:
     inputs:
+      test_timeout:
+        description: 'specifies the amount of minutes for test timeout'
+        required: false
+        default: 10
+        type: number
       has_ffi:
         type: boolean
 
@@ -51,7 +56,7 @@ jobs:
           test -z "$(git status --porcelain)"
 
       - name: Run coverage
-        run:  go test -coverpkg=./... -race -coverprofile=coverage.txt -covermode=atomic ./...
+        run:  go test -coverpkg=./... -race -coverprofile=coverage.txt -covermode=atomic ./... -v --timeout ${{ inputs.test_timeout }}m
 
       - name: Upload
         uses: codecov/codecov-action@v2

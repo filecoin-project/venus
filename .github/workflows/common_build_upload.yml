@@ -165,6 +165,7 @@ jobs:
       - name: upload ftp
         id: uploadftp
         if: ${{ steps.vars.outputs.ftp_exists == '1' }}
+        continue-on-error: true
         run: |
           ncftpput -m -R -v -u ${{secrets.FTP_USER}} -p ${{secrets.FTP_PWD}} ${{secrets.FTP_HOST}} ./${{steps.vars.outputs.repo_name}} ./${{steps.vars.outputs.artifact_name}}
           echo "upload file: ${{steps.vars.outputs.artifact_name}} successfully!"
