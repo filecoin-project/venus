@@ -25,9 +25,10 @@ var walletLog = logging.Logger("wallet")
 // WalletIntersection
 // nolint
 type WalletIntersection interface {
-	HasAddress(ctx context.Context, a address.Address) bool
+	HasAddress(ctx context.Context, addr address.Address) bool
 	Addresses(ctx context.Context) []address.Address
-	NewAddress(ctx context.Context, p address.Protocol) (address.Address, error)
+	NewAddress(ctx context.Context, protocol address.Protocol) (address.Address, error)
+	DeleteAddress(ctx context.Context, addr address.Address) error
 	Import(ctx context.Context, ki *crypto.KeyInfo) (address.Address, error)
 	Export(ctx context.Context, addr address.Address, password string) (*crypto.KeyInfo, error)
 	WalletSign(ctx context.Context, keyAddr address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error)
@@ -131,6 +132,25 @@ func (w *Wallet) NewAddress(ctx context.Context, p address.Protocol) (address.Ad
 		return address.Undef, err
 	}
 	return backend.NewAddress(ctx, p)
+}
+
+// DeleteAddress delete the given address from stored.
+func (w *Wallet) DeleteAddress(ctx context.Context, addr address.Address) error {
+	w.lk.Lock()
+	defer w.lk.Unlock()
+
+	for _, backends := range w.backends {
+		for _, backend := range backends {
+			if backend.HasAddress(ctx, addr) {
+				err := backend.DeleteAddress(ctx, addr)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // GetPubKeyForAddress returns the public key in the keystore associated with

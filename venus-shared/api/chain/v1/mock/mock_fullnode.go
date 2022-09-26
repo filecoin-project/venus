@@ -2698,6 +2698,20 @@ func (mr *MockFullNodeMockRecorder) WalletDefaultAddress(arg0 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WalletDefaultAddress", reflect.TypeOf((*MockFullNode)(nil).WalletDefaultAddress), arg0)
 }
 
+// WalletDelete mocks base method.
+func (m *MockFullNode) WalletDelete(arg0 context.Context, arg1 address.Address) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WalletDelete", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// WalletDelete indicates an expected call of WalletDelete.
+func (mr *MockFullNodeMockRecorder) WalletDelete(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WalletDelete", reflect.TypeOf((*MockFullNode)(nil).WalletDelete), arg0, arg1)
+}
+
 // WalletExport mocks base method.
 func (m *MockFullNode) WalletExport(arg0 context.Context, arg1 address.Address, arg2 string) (*types.KeyInfo, error) {
 	m.ctrl.T.Helper()

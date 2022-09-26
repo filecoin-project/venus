@@ -105,7 +105,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	+ VerifyEntry
 	> Version {[func(context.Context) (types.Version, error) <> func(context.Context) (api.APIVersion, error)] base=func out type: #0 input; nested={[types.Version <> api.APIVersion] base=struct field; nested={[types.Version <> api.APIVersion] base=exported fields count: 2 != 3; nested=nil}}}
 	+ WalletAddresses
-	- WalletDelete
 	> WalletExport {[func(context.Context, address.Address, string) (*types.KeyInfo, error) <> func(context.Context, address.Address) (*types.KeyInfo, error)] base=func in num: 3 != 2; nested=nil}
 	- WalletList
 	- WalletNew
@@ -219,7 +218,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ VerifyEntry
 	> Version {[func(context.Context) (types.Version, error) <> func(context.Context) (api.APIVersion, error)] base=func out type: #0 input; nested={[types.Version <> api.APIVersion] base=struct field; nested={[types.Version <> api.APIVersion] base=exported fields count: 2 != 3; nested=nil}}}
 	+ WalletAddresses
-	- WalletDelete
 	> WalletExport {[func(context.Context, address.Address, string) (*types.KeyInfo, error) <> func(context.Context, address.Address) (*types.KeyInfo, error)] base=func in num: 3 != 2; nested=nil}
 	- WalletList
 	- WalletNew

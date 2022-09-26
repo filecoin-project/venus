@@ -789,6 +789,7 @@ type IWalletStruct struct {
 		WalletAddresses      func(ctx context.Context) []address.Address                                                             `perm:"admin"`
 		WalletBalance        func(ctx context.Context, addr address.Address) (abi.TokenAmount, error)                                `perm:"read"`
 		WalletDefaultAddress func(ctx context.Context) (address.Address, error)                                                      `perm:"write"`
+		WalletDelete         func(ctx context.Context, addr address.Address) error                                                   `perm:"admin"`
 		WalletExport         func(ctx context.Context, addr address.Address, password string) (*types.KeyInfo, error)                `perm:"admin"`
 		WalletHas            func(ctx context.Context, addr address.Address) (bool, error)                                           `perm:"write"`
 		WalletImport         func(ctx context.Context, key *types.KeyInfo) (address.Address, error)                                  `perm:"admin"`
@@ -816,6 +817,9 @@ func (s *IWalletStruct) WalletBalance(p0 context.Context, p1 address.Address) (a
 }
 func (s *IWalletStruct) WalletDefaultAddress(p0 context.Context) (address.Address, error) {
 	return s.Internal.WalletDefaultAddress(p0)
+}
+func (s *IWalletStruct) WalletDelete(p0 context.Context, p1 address.Address) error {
+	return s.Internal.WalletDelete(p0, p1)
 }
 func (s *IWalletStruct) WalletExport(p0 context.Context, p1 address.Address, p2 string) (*types.KeyInfo, error) {
 	return s.Internal.WalletExport(p0, p1, p2)
