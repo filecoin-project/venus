@@ -100,6 +100,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 		Bsstore:             buffStore,
 		SysCallsImpl:        s.syscallsImpl,
 		Fork:                s.fork,
+		Tracing:             true,
 	}
 
 	vmi, err := fvm.NewVM(ctx, vmOption)
@@ -235,6 +236,7 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 		PRoot:               ts.At(0).ParentStateRoot,
 		Bsstore:             s.cs.Blockstore(),
 		SysCallsImpl:        s.syscallsImpl,
+		Tracing:             true,
 	}
 
 	v, err := fvm.NewVM(ctx, vmOption)

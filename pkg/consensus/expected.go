@@ -207,6 +207,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (ci
 		Bsstore:             c.bstore,
 		PRoot:               ts.At(0).ParentStateRoot,
 		SysCallsImpl:        c.syscallsImpl,
+		Tracing:             false,
 	}
 
 	var parentEpoch abi.ChainEpoch
