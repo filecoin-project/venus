@@ -9,7 +9,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p/core/crypto"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )

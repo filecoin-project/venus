@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
 	logging "github.com/ipfs/go-log"
@@ -246,7 +246,7 @@ func (mp *MessagePoolSubmodule) Stop(ctx context.Context) {
 	}
 }
 
-//API create a new mpool api implement
+// API create a new mpool api implement
 func (mp *MessagePoolSubmodule) API() v1api.IMessagePool {
 	pushLocks := messagepool.NewMpoolLocker()
 	return &MessagePoolAPI{mp: mp, pushLocks: pushLocks}

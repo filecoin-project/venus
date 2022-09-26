@@ -3,7 +3,7 @@ package types
 import (
 	"fmt"
 
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 // ChainInfo is used to track metadata about a peer and its chain.

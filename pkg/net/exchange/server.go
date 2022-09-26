@@ -12,8 +12,8 @@ import (
 	"go.opencensus.io/trace"
 
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/host"
-	inet "github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p/core/host"
+	inet "github.com/libp2p/go-libp2p/core/network"
 
 	"github.com/filecoin-project/venus/venus-shared/libp2p/exchange"
 	"github.com/filecoin-project/venus/venus-shared/types"

@@ -9,8 +9,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 
@@ -256,7 +256,7 @@ type SyncState struct {
 	VMApplied uint64
 }
 
-//just compatible code lotus
+// just compatible code lotus
 type SyncStateStage int
 
 const (

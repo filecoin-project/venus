@@ -15,7 +15,7 @@ import (
 	messager "github.com/filecoin-project/venus/venus-shared/types/messager"
 	gomock "github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	peer "github.com/libp2p/go-libp2p/core/peer"
 )
 
 // MockIMessager is a mock of IMessager interface.

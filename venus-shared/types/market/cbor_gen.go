@@ -17,7 +17,7 @@ import (
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	cid "github.com/ipfs/go-cid"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	peer "github.com/libp2p/go-libp2p/core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )

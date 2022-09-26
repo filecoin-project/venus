@@ -19,7 +19,7 @@ import (
 	client "github.com/filecoin-project/venus/venus-shared/types/market/client"
 	gomock "github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	peer "github.com/libp2p/go-libp2p/core/peer"
 )
 
 // MockIMarketClient is a mock of IMarketClient interface.

@@ -8,8 +8,8 @@ import (
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/host"
-	inet "github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p/core/host"
+	inet "github.com/libp2p/go-libp2p/core/network"
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/venus/venus-shared/chain"
