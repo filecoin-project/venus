@@ -1080,3 +1080,21 @@ func (msa *minerStateAPI) StateListMessages(ctx context.Context, match *types.Me
 
 	return out, nil
 }
+
+// StateMinerAllocated returns a bitfield containing all sector numbers marked as allocated in miner state
+func (msa *minerStateAPI) StateMinerAllocated(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*bitfield.BitField, error) {
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("loading tipset:%s parent state view: %v", tsk, err)
+	}
+
+	act, err := view.LoadActor(ctx, addr)
+	if err != nil {
+		return nil, err
+	}
+	mas, err := lminer.Load(msa.ChainReader.Store(ctx), act)
+	if err != nil {
+		return nil, err
+	}
+	return mas.GetAllocatedSectors()
+}

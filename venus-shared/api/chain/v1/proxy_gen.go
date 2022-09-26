@@ -93,6 +93,7 @@ type IMinerStateStruct struct {
 		StateMarketDeals                   func(ctx context.Context, tsk types.TipSetKey) (map[string]*types.MarketDeal, error)                                                           `perm:"read"`
 		StateMarketStorageDeal             func(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error)                                                   `perm:"read"`
 		StateMinerActiveSectors            func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)                                      `perm:"read"`
+		StateMinerAllocated                func(context.Context, address.Address, types.TipSetKey) (*bitfield.BitField, error)                                                            `perm:"read"`
 		StateMinerAvailableBalance         func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (big.Int, error)                                                         `perm:"read"`
 		StateMinerDeadlines                func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]types.Deadline, error)                                                `perm:"read"`
 		StateMinerFaults                   func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (bitfield.BitField, error)                                               `perm:"read"`
@@ -165,6 +166,9 @@ func (s *IMinerStateStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.De
 }
 func (s *IMinerStateStruct) StateMinerActiveSectors(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
 	return s.Internal.StateMinerActiveSectors(p0, p1, p2)
+}
+func (s *IMinerStateStruct) StateMinerAllocated(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*bitfield.BitField, error) {
+	return s.Internal.StateMinerAllocated(p0, p1, p2)
 }
 func (s *IMinerStateStruct) StateMinerAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (big.Int, error) {
 	return s.Internal.StateMinerAvailableBalance(p0, p1, p2)
