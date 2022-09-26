@@ -15,19 +15,19 @@ import (
 
 var _ v1api.IMessagePool = &MessagePoolAPI{}
 
-//MessagePoolAPI messsage pool api implement
+// MessagePoolAPI messsage pool api implement
 type MessagePoolAPI struct {
 	pushLocks *messagepool.MpoolLocker
 
 	mp *MessagePoolSubmodule
 }
 
-//MpoolDeleteByAdress delete msg in mpool of addr
+// MpoolDeleteByAdress delete msg in mpool of addr
 func (a *MessagePoolAPI) MpoolDeleteByAdress(ctx context.Context, addr address.Address) error {
 	return a.mp.MPool.DeleteByAdress(addr)
 }
 
-//MpoolPublish publish message of address
+// MpoolPublish publish message of address
 func (a *MessagePoolAPI) MpoolPublishByAddr(ctx context.Context, addr address.Address) error {
 	return a.mp.MPool.PublishMsgForWallet(ctx, addr)
 }
@@ -76,7 +76,7 @@ func (a *MessagePoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey, t
 	return a.mp.MPool.SelectMessages(ctx, ts, ticketQuality)
 }
 
-//MpoolSelects The batch selection message is used when multiple blocks need to select messages at the same time
+// MpoolSelects The batch selection message is used when multiple blocks need to select messages at the same time
 func (a *MessagePoolAPI) MpoolSelects(ctx context.Context, tsk types.TipSetKey, ticketQualitys []float64) ([][]*types.SignedMessage, error) {
 	ts, err := a.mp.chain.API().ChainGetTipSet(ctx, tsk)
 	if err != nil {
@@ -227,8 +227,9 @@ func (a *MessagePoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Messag
 		return nil, fmt.Errorf("mpool push: getting origin balance: %w", err)
 	}
 
-	if b.LessThan(msg.Value) {
-		return nil, fmt.Errorf("mpool push: not enough funds: %s < %s", b, msg.Value)
+	requiredFunds := big.Add(msg.Value, msg.RequiredFunds())
+	if b.LessThan(requiredFunds) {
+		return nil, fmt.Errorf("mpool push: not enough funds: %s < %s", b, requiredFunds)
 	}
 
 	// Sign and push the message
