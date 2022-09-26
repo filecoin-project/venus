@@ -5,13 +5,13 @@ import (
 	"errors"
 
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/routing"
 )
 
 // This struct wraps the filecoin nodes router.  This router is a
-// go-libp2p-core/routing.Routing interface that provides both PeerRouting,
+// go-libp2p/core/routing.Routing interface that provides both PeerRouting,
 // ContentRouting and a Bootstrap init process. Filecoin nodes in online mode
 // use a go-libp2p-kad-dht DHT to satisfy this interface. Nodes run the
 // Bootstrap function to join the DHT on start up. The PeerRouting functionality

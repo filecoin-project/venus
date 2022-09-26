@@ -3,7 +3,7 @@ package net
 import (
 	"fmt"
 
-	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p/core/protocol"
 )
 
 // FilecoinDHT is creates a protocol for the filecoin DHT.
