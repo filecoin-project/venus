@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
 	system5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/system"
+	"golang.org/x/xerrors"
 )
 
 var _ State = (*state5)(nil)
@@ -39,5 +40,11 @@ func (s *state5) GetState() interface{} {
 func (s *state5) GetBuiltinActors() cid.Cid {
 
 	return cid.Undef
+
+}
+
+func (s *state5) SetBuiltinActors(c cid.Cid) error {
+
+	return xerrors.New("cannot set manifest cid before v8")
 
 }

@@ -5,12 +5,11 @@ package market
 import (
 	"bytes"
 
-	"fmt"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-bitfield"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
@@ -19,6 +18,7 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 )
 
@@ -203,7 +203,7 @@ func (s *dealProposals8) Get(dealID abi.DealID) (*DealProposal, bool, error) {
 
 	proposal, err := fromV8DealProposal(proposal8)
 	if err != nil {
-		return nil, true, fmt.Errorf("decoding proposal: %w", err)
+		return nil, true, xerrors.Errorf("decoding proposal: %w", err)
 	}
 
 	return &proposal, true, nil
@@ -214,7 +214,7 @@ func (s *dealProposals8) ForEach(cb func(dealID abi.DealID, dp DealProposal) err
 	return s.Array.ForEach(&dp8, func(idx int64) error {
 		dp, err := fromV8DealProposal(dp8)
 		if err != nil {
-			return fmt.Errorf("decoding proposal: %w", err)
+			return xerrors.Errorf("decoding proposal: %w", err)
 		}
 
 		return cb(abi.DealID(idx), dp)
@@ -241,7 +241,11 @@ func (s *dealProposals8) array() adt.Array {
 
 func fromV8DealProposal(v8 market8.DealProposal) (DealProposal, error) {
 
-	label := v8.Label
+	label, err := fromV8Label(v8.Label)
+
+	if err != nil {
+		return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
+	}
 
 	return DealProposal{
 		PieceCID:     v8.PieceCID,
@@ -261,6 +265,22 @@ func fromV8DealProposal(v8 market8.DealProposal) (DealProposal, error) {
 	}, nil
 }
 
+func fromV8Label(v8 market8.DealLabel) (DealLabel, error) {
+	if v8.IsString() {
+		str, err := v8.ToString()
+		if err != nil {
+			return markettypes.EmptyDealLabel, xerrors.Errorf("failed to convert string label to string: %w", err)
+		}
+		return markettypes.NewLabelFromString(str)
+	}
+
+	bs, err := v8.ToBytes()
+	if err != nil {
+		return markettypes.EmptyDealLabel, xerrors.Errorf("failed to convert bytes label to bytes: %w", err)
+	}
+	return markettypes.NewLabelFromBytes(bs)
+}
+
 func (s *state8) GetState() interface{} {
 	return &s.State
 }
@@ -270,7 +290,7 @@ var _ PublishStorageDealsReturn = (*publishStorageDealsReturn8)(nil)
 func decodePublishStorageDealsReturn8(b []byte) (PublishStorageDealsReturn, error) {
 	var retval market8.PublishStorageDealsReturn
 	if err := retval.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal PublishStorageDealsReturn: %w", err)
+		return nil, xerrors.Errorf("failed to unmarshal PublishStorageDealsReturn: %w", err)
 	}
 
 	return &publishStorageDealsReturn8{retval}, nil

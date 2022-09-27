@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/ipfs/go-cid"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/venus-shared/actors"
 	lpaych "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	pchTypes "github.com/filecoin-project/venus/venus-shared/types/market"
@@ -88,7 +88,7 @@ func (ca *channelAccessor) messageBuilder(ctx context.Context, from address.Addr
 		return nil, err
 	}
 
-	ver, err := actors.VersionForNetwork(nwVersion)
+	ver, err := actorstypes.VersionForNetwork(nwVersion)
 	if err != nil {
 		return nil, err
 	}

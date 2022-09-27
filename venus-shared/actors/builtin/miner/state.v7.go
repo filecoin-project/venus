@@ -6,16 +6,15 @@ import (
 	"bytes"
 	"errors"
 
-	"fmt"
-
 	"github.com/filecoin-project/go-bitfield"
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
@@ -59,7 +58,7 @@ type partition7 struct {
 func (s *state7) AvailableBalance(bal abi.TokenAmount) (available abi.TokenAmount, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("failed to get available balance: %w", r)
+			err = xerrors.Errorf("failed to get available balance: %w", r)
 			available = abi.NewTokenAmount(0)
 		}
 	}()
@@ -193,7 +192,7 @@ func (s *state7) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, e
 		return nil, err
 	}
 	if out.Early == 0 && out.OnTime == 0 {
-		return nil, fmt.Errorf("failed to find sector %d", num)
+		return nil, xerrors.Errorf("failed to find sector %d", num)
 	}
 	return &out, nil
 }
@@ -547,11 +546,17 @@ func fromV7SectorOnChainInfo(v7 miner7.SectorOnChainInfo) SectorOnChainInfo {
 
 func fromV7SectorPreCommitOnChainInfo(v7 miner7.SectorPreCommitOnChainInfo) minertypes.SectorPreCommitOnChainInfo {
 	return minertypes.SectorPreCommitOnChainInfo{
-		Info:               (minertypes.SectorPreCommitInfo)(v7.Info),
-		PreCommitDeposit:   v7.PreCommitDeposit,
-		PreCommitEpoch:     v7.PreCommitEpoch,
-		DealWeight:         v7.DealWeight,
-		VerifiedDealWeight: v7.VerifiedDealWeight,
+		Info: minertypes.SectorPreCommitInfo{
+			SealProof:     v7.Info.SealProof,
+			SectorNumber:  v7.Info.SectorNumber,
+			SealedCID:     v7.Info.SealedCID,
+			SealRandEpoch: v7.Info.SealRandEpoch,
+			DealIDs:       v7.Info.DealIDs,
+			Expiration:    v7.Info.Expiration,
+			UnsealedCid:   nil,
+		},
+		PreCommitDeposit: v7.PreCommitDeposit,
+		PreCommitEpoch:   v7.PreCommitEpoch,
 	}
 }
 

@@ -3,21 +3,22 @@
 package account
 
 import (
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	"fmt"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/cbor"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
+
 {{range .versions}}
     {{if (le . 7)}}
 	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
-	{{else}}
-        builtin{{.}} "github.com/filecoin-project/go-state-types/builtin"
     {{end}}
 {{end}}
+    builtin{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin"
 )
 
 var Methods = builtin{{.latestVersion}}.MethodsAccount
@@ -25,13 +26,13 @@ var Methods = builtin{{.latestVersion}}.MethodsAccount
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
        if name != actors.AccountKey {
-          return nil, fmt.Errorf("actor code is not account: %s", name)
+          return nil, xerrors.Errorf("actor code is not account: %s", name)
        }
 
        switch av {
             {{range .versions}}
                 {{if (ge . 8)}}
-                case actors.Version{{.}}:
+                case actorstypes.Version{{.}}:
                      return load{{.}}(store, act.Head)
                  {{end}}
             {{end}}
@@ -47,17 +48,17 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 {{end}}
 	}
 
-	return nil, fmt.Errorf("unknown actor code %s", act.Code)
+	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av actors.Version, addr address.Address) (State, error) {
+func MakeState(store adt.Store, av actorstypes.Version, addr address.Address) (State, error) {
 	switch av {
 {{range .versions}}
-	case actors.Version{{.}}:
+	case actorstypes.Version{{.}}:
 		return make{{.}}(store, addr)
 {{end}}
 }
-	return nil, fmt.Errorf("unknown actor version %d", av)
+	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
 type State interface {

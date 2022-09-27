@@ -3,9 +3,9 @@
 package init
 
 import (
-	"fmt"
-
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -29,24 +29,27 @@ import (
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
-	builtin8 "github.com/filecoin-project/go-state-types/builtin"
+	builtin9 "github.com/filecoin-project/go-state-types/builtin"
 )
 
 var (
-	Address = builtin8.InitActorAddr
-	Methods = builtin8.MethodsInit
+	Address = builtin9.InitActorAddr
+	Methods = builtin9.MethodsInit
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
 		if name != actors.InitKey {
-			return nil, fmt.Errorf("actor code is not init: %s", name)
+			return nil, xerrors.Errorf("actor code is not init: %s", name)
 		}
 
 		switch av {
 
-		case actors.Version8:
+		case actorstypes.Version8:
 			return load8(store, act.Head)
+
+		case actorstypes.Version9:
+			return load9(store, act.Head)
 
 		}
 	}
@@ -76,38 +79,41 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	}
 
-	return nil, fmt.Errorf("unknown actor code %s", act.Code)
+	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av actors.Version, networkName string) (State, error) {
+func MakeState(store adt.Store, av actorstypes.Version, networkName string) (State, error) {
 	switch av {
 
-	case actors.Version0:
+	case actorstypes.Version0:
 		return make0(store, networkName)
 
-	case actors.Version2:
+	case actorstypes.Version2:
 		return make2(store, networkName)
 
-	case actors.Version3:
+	case actorstypes.Version3:
 		return make3(store, networkName)
 
-	case actors.Version4:
+	case actorstypes.Version4:
 		return make4(store, networkName)
 
-	case actors.Version5:
+	case actorstypes.Version5:
 		return make5(store, networkName)
 
-	case actors.Version6:
+	case actorstypes.Version6:
 		return make6(store, networkName)
 
-	case actors.Version7:
+	case actorstypes.Version7:
 		return make7(store, networkName)
 
-	case actors.Version8:
+	case actorstypes.Version8:
 		return make8(store, networkName)
 
+	case actorstypes.Version9:
+		return make9(store, networkName)
+
 	}
-	return nil, fmt.Errorf("unknown actor version %d", av)
+	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
 type State interface {

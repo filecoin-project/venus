@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
@@ -16,7 +17,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-func SetupStoragePowerActor(ctx context.Context, bs bstore.Blockstore, av actors.Version) (*types.Actor, error) {
+func SetupStoragePowerActor(ctx context.Context, bs bstore.Blockstore, av actorstypes.Version) (*types.Actor, error) {
 
 	cst := cbor.NewCborStore(bs)
 	pst, err := power.MakeState(adt.WrapStore(ctx, cbor.NewCborStore(bs)), av)

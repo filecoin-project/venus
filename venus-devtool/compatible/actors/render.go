@@ -91,8 +91,9 @@ func renderSeparated(t *template.Template, dir string) error {
 		buf.Reset()
 
 		err := t.Execute(&buf, map[string]interface{}{
-			"v":      v,
-			"import": importPath(v),
+			"v":             v,
+			"import":        importPath(v),
+			"latestVersion": actors.LatestVersion,
 		})
 
 		if err != nil {

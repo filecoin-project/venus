@@ -6,6 +6,10 @@ import (
 	"encoding/base64"
 	"fmt"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -38,13 +42,16 @@ import (
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
 		if name != actors.PaychKey {
-			return nil, fmt.Errorf("actor code is not paych: %s", name)
+			return nil, xerrors.Errorf("actor code is not paych: %s", name)
 		}
 
 		switch av {
 
-		case actors.Version8:
+		case actorstypes.Version8:
 			return load8(store, act.Head)
+
+		case actorstypes.Version9:
+			return load9(store, act.Head)
 
 		}
 	}
@@ -74,7 +81,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	}
 
-	return nil, fmt.Errorf("unknown actor code %s", act.Code)
+	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
 // State is an abstract version of payment channel state that works across
@@ -122,32 +129,35 @@ func DecodeSignedVoucher(s string) (*paychtypes.SignedVoucher, error) {
 	return &sv, nil
 }
 
-func Message(version actors.Version, from address.Address) MessageBuilder {
+func Message(version actorstypes.Version, from address.Address) MessageBuilder {
 	switch version {
 
-	case actors.Version0:
+	case actorstypes.Version0:
 		return message0{from}
 
-	case actors.Version2:
+	case actorstypes.Version2:
 		return message2{from}
 
-	case actors.Version3:
+	case actorstypes.Version3:
 		return message3{from}
 
-	case actors.Version4:
+	case actorstypes.Version4:
 		return message4{from}
 
-	case actors.Version5:
+	case actorstypes.Version5:
 		return message5{from}
 
-	case actors.Version6:
+	case actorstypes.Version6:
 		return message6{from}
 
-	case actors.Version7:
+	case actorstypes.Version7:
 		return message7{from}
 
-	case actors.Version8:
+	case actorstypes.Version8:
 		return message8{from}
+
+	case actorstypes.Version9:
+		return message9{from}
 
 	default:
 		panic(fmt.Sprintf("unsupported actors version: %d", version))

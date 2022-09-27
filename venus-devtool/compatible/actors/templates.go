@@ -43,8 +43,6 @@ var replacers = [][2]string{
 		"dtypes.NetworkName",
 		"string",
 	},
-	{"\"golang.org/x/xerrors\"", "\"fmt\""},
-	{"xerrors.Errorf", "fmt.Errorf"},
 }
 
 func findActorsPkgDir() (string, error) {

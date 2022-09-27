@@ -3,12 +3,11 @@
 package init
 
 import (
-	"fmt"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
@@ -91,12 +90,12 @@ func (s *state7) Remove(addrs ...address.Address) (err error) {
 	}
 	for _, addr := range addrs {
 		if err = m.Delete(abi.AddrKey(addr)); err != nil {
-			return fmt.Errorf("failed to delete entry for address: %s; err: %w", addr, err)
+			return xerrors.Errorf("failed to delete entry for address: %s; err: %w", addr, err)
 		}
 	}
 	amr, err := m.Root()
 	if err != nil {
-		return fmt.Errorf("failed to get address map root: %w", err)
+		return xerrors.Errorf("failed to get address map root: %w", err)
 	}
 	s.State.AddressMap = amr
 	return nil

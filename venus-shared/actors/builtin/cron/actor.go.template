@@ -3,30 +3,30 @@
 package cron
 
 import (
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
-	"fmt"
+	"golang.org/x/xerrors"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 
 {{range .versions}}
     {{if (le . 7)}}
 	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
-	{{else}}
-        builtin{{.}} "github.com/filecoin-project/go-state-types/builtin"
     {{end}}
 {{end}}
+    builtin{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin"
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
        if name != actors.CronKey {
-          return nil, fmt.Errorf("actor code is not cron: %s", name)
+          return nil, xerrors.Errorf("actor code is not cron: %s", name)
        }
 
        switch av {
             {{range .versions}}
                 {{if (ge . 8)}}
-                case actors.Version{{.}}:
+                case actorstypes.Version{{.}}:
                      return load{{.}}(store, act.Head)
                  {{end}}
             {{end}}
@@ -42,17 +42,17 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 {{end}}
 	}
 
-	return nil, fmt.Errorf("unknown actor code %s", act.Code)
+	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av actors.Version) (State, error) {
+func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 	switch av {
 {{range .versions}}
-	case actors.Version{{.}}:
+	case actorstypes.Version{{.}}:
 		return make{{.}}(store)
 {{end}}
 }
-	return nil, fmt.Errorf("unknown actor version %d", av)
+	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
 var (

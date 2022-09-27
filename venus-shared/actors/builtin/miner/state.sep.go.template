@@ -14,10 +14,10 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"fmt"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v{{.latestVersion}}/miner"
 
 {{if (le .v 7)}}
     {{if (ge .v 3)}}
@@ -67,7 +67,7 @@ type partition{{.v}} struct {
 func (s *state{{.v}}) AvailableBalance(bal abi.TokenAmount) (available abi.TokenAmount, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("failed to get available balance: %w", r)
+			err = xerrors.Errorf("failed to get available balance: %w", r)
 			available = abi.NewTokenAmount(0)
 		}
 	}()
@@ -212,7 +212,7 @@ func (s *state{{.v}}) GetSectorExpiration(num abi.SectorNumber) (*SectorExpirati
 		return nil, err
 	}
 	if out.Early == 0 && out.OnTime == 0 {
-		return nil, fmt.Errorf("failed to find sector %d", num)
+		return nil, xerrors.Errorf("failed to find sector %d", num)
 	}
 	return &out, nil
 }
@@ -583,11 +583,17 @@ func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorO
 
 func fromV{{.v}}SectorPreCommitOnChainInfo(v{{.v}} miner{{.v}}.SectorPreCommitOnChainInfo) minertypes.SectorPreCommitOnChainInfo {
 	return minertypes.SectorPreCommitOnChainInfo{
-		Info:               (minertypes.SectorPreCommitInfo)(v{{.v}}.Info),
+		Info:               minertypes.SectorPreCommitInfo{
+			SealProof:     v{{.v}}.Info.SealProof,
+			SectorNumber:  v{{.v}}.Info.SectorNumber,
+			SealedCID:     v{{.v}}.Info.SealedCID,
+			SealRandEpoch: v{{.v}}.Info.SealRandEpoch,
+			DealIDs:       v{{.v}}.Info.DealIDs,
+			Expiration:    v{{.v}}.Info.Expiration,
+			UnsealedCid:   nil,
+		},
 		PreCommitDeposit:   v{{.v}}.PreCommitDeposit,
 		PreCommitEpoch:     v{{.v}}.PreCommitEpoch,
-		DealWeight:         v{{.v}}.DealWeight,
-		VerifiedDealWeight: v{{.v}}.VerifiedDealWeight,
 	}
 }
 
