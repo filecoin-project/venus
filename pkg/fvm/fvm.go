@@ -59,7 +59,7 @@ type FvmExtern struct { // nolint
 	gasPriceSchedule *gas.PricesSchedule
 }
 
-type FvmGasCharge struct {
+type FvmGasCharge struct { // nolint
 	Name       string
 	TotalGas   int64
 	ComputeGas int64
