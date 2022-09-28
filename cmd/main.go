@@ -113,19 +113,7 @@ MESSAGE COMMANDS
   mpool                  - Manage the message pool
 
 State COMMANDS
-  wait-msg               - Wait for a message to appear on chain
-  search-msg             - Search to see whether a message has appeared on chain
-  power                  - Query network or miner power
-  sectors                - Query the sector set of a miner
-  active-sectors         - Query the active sector set of a miner
-  sector                 - Get miner sector info
-  get-actor              - Print actor information
-  lookup                 - Find corresponding ID address
-  sector-size            - Look up miners sector size
-  get-deal               - View on-chain deal info
-  miner-info             - Retrieve miner information
-  network-version        - MReturns the network version
-  list-actor             - list all actors
+  state               - query states of the filecoin network
 
 Paych COMMANDS 
   paych                  - Manage payment channels
