@@ -3,11 +3,12 @@
 package cron
 
 import (
+	"fmt"
+
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
-	"golang.org/x/xerrors"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -29,7 +30,7 @@ import (
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
 		if name != actors.CronKey {
-			return nil, xerrors.Errorf("actor code is not cron: %s", name)
+			return nil, fmt.Errorf("actor code is not cron: %s", name)
 		}
 
 		switch av {
@@ -68,7 +69,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	}
 
-	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+	return nil, fmt.Errorf("unknown actor code %s", act.Code)
 }
 
 func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
@@ -102,7 +103,7 @@ func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 		return make9(store)
 
 	}
-	return nil, xerrors.Errorf("unknown actor version %d", av)
+	return nil, fmt.Errorf("unknown actor version %d", av)
 }
 
 var (

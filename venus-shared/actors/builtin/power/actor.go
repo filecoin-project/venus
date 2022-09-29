@@ -3,12 +3,13 @@
 package power
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -42,7 +43,7 @@ var (
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
 		if name != actors.PowerKey {
-			return nil, xerrors.Errorf("actor code is not power: %s", name)
+			return nil, fmt.Errorf("actor code is not power: %s", name)
 		}
 
 		switch av {
@@ -81,7 +82,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	}
 
-	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+	return nil, fmt.Errorf("unknown actor code %s", act.Code)
 }
 
 func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
@@ -115,7 +116,7 @@ func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 		return make9(store)
 
 	}
-	return nil, xerrors.Errorf("unknown actor version %d", av)
+	return nil, fmt.Errorf("unknown actor version %d", av)
 }
 
 type State interface {

@@ -5,11 +5,12 @@ package market
 import (
 	"bytes"
 
+	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-bitfield"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
@@ -202,7 +203,7 @@ func (s *dealProposals7) Get(dealID abi.DealID) (*DealProposal, bool, error) {
 
 	proposal, err := fromV7DealProposal(proposal7)
 	if err != nil {
-		return nil, true, xerrors.Errorf("decoding proposal: %w", err)
+		return nil, true, fmt.Errorf("decoding proposal: %w", err)
 	}
 
 	return &proposal, true, nil
@@ -213,7 +214,7 @@ func (s *dealProposals7) ForEach(cb func(dealID abi.DealID, dp DealProposal) err
 	return s.Array.ForEach(&dp7, func(idx int64) error {
 		dp, err := fromV7DealProposal(dp7)
 		if err != nil {
-			return xerrors.Errorf("decoding proposal: %w", err)
+			return fmt.Errorf("decoding proposal: %w", err)
 		}
 
 		return cb(abi.DealID(idx), dp)
@@ -243,7 +244,7 @@ func fromV7DealProposal(v7 market7.DealProposal) (DealProposal, error) {
 	label, err := labelFromGoString(v7.Label)
 
 	if err != nil {
-		return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
+		return DealProposal{}, fmt.Errorf("error setting deal label: %w", err)
 	}
 
 	return DealProposal{
@@ -273,7 +274,7 @@ var _ PublishStorageDealsReturn = (*publishStorageDealsReturn7)(nil)
 func decodePublishStorageDealsReturn7(b []byte) (PublishStorageDealsReturn, error) {
 	var retval market7.PublishStorageDealsReturn
 	if err := retval.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
-		return nil, xerrors.Errorf("failed to unmarshal PublishStorageDealsReturn: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal PublishStorageDealsReturn: %w", err)
 	}
 
 	return &publishStorageDealsReturn7{retval}, nil

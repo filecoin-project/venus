@@ -3,7 +3,7 @@
 package multisig
 
 import (
-	"golang.org/x/xerrors"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -29,7 +29,7 @@ func (m message0) Create(
 	lenAddrs := uint64(len(signers))
 
 	if lenAddrs < threshold {
-		return nil, xerrors.Errorf("cannot require signing of more addresses than provided for multisig")
+		return nil, fmt.Errorf("cannot require signing of more addresses than provided for multisig")
 	}
 
 	if threshold == 0 {
@@ -37,11 +37,11 @@ func (m message0) Create(
 	}
 
 	if m.from == address.Undef {
-		return nil, xerrors.Errorf("must provide source address")
+		return nil, fmt.Errorf("must provide source address")
 	}
 
 	if unlockStart != 0 {
-		return nil, xerrors.Errorf("actors v0 does not support a non-zero vesting start time")
+		return nil, fmt.Errorf("actors v0 does not support a non-zero vesting start time")
 	}
 
 	// Set up constructor parameters for multisig
@@ -80,19 +80,19 @@ func (m message0) Propose(msig, to address.Address, amt abi.TokenAmount,
 	method abi.MethodNum, params []byte) (*types.Message, error) {
 
 	if msig == address.Undef {
-		return nil, xerrors.Errorf("must provide a multisig address for proposal")
+		return nil, fmt.Errorf("must provide a multisig address for proposal")
 	}
 
 	if to == address.Undef {
-		return nil, xerrors.Errorf("must provide a target address for proposal")
+		return nil, fmt.Errorf("must provide a target address for proposal")
 	}
 
 	if amt.Sign() == -1 {
-		return nil, xerrors.Errorf("must provide a non-negative amount for proposed send")
+		return nil, fmt.Errorf("must provide a non-negative amount for proposed send")
 	}
 
 	if m.from == address.Undef {
-		return nil, xerrors.Errorf("must provide source address")
+		return nil, fmt.Errorf("must provide source address")
 	}
 
 	enc, actErr := actors.SerializeParams(&multisig0.ProposeParams{
@@ -102,7 +102,7 @@ func (m message0) Propose(msig, to address.Address, amt abi.TokenAmount,
 		Params: params,
 	})
 	if actErr != nil {
-		return nil, xerrors.Errorf("failed to serialize parameters: %w", actErr)
+		return nil, fmt.Errorf("failed to serialize parameters: %w", actErr)
 	}
 
 	return &types.Message{

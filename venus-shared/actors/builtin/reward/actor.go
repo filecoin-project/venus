@@ -3,11 +3,12 @@
 package reward
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/cbor"
 
@@ -40,7 +41,7 @@ var (
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
 		if name != actors.RewardKey {
-			return nil, xerrors.Errorf("actor code is not reward: %s", name)
+			return nil, fmt.Errorf("actor code is not reward: %s", name)
 		}
 
 		switch av {
@@ -79,7 +80,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	}
 
-	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+	return nil, fmt.Errorf("unknown actor code %s", act.Code)
 }
 
 func MakeState(store adt.Store, av actorstypes.Version, currRealizedPower abi.StoragePower) (State, error) {
@@ -113,7 +114,7 @@ func MakeState(store adt.Store, av actorstypes.Version, currRealizedPower abi.St
 		return make9(store, currRealizedPower)
 
 	}
-	return nil, xerrors.Errorf("unknown actor version %d", av)
+	return nil, fmt.Errorf("unknown actor version %d", av)
 }
 
 type State interface {

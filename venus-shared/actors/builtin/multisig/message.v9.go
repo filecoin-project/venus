@@ -3,7 +3,7 @@
 package multisig
 
 import (
-	"golang.org/x/xerrors"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -29,7 +29,7 @@ func (m message9) Create(
 	lenAddrs := uint64(len(signers))
 
 	if lenAddrs < threshold {
-		return nil, xerrors.Errorf("cannot require signing of more addresses than provided for multisig")
+		return nil, fmt.Errorf("cannot require signing of more addresses than provided for multisig")
 	}
 
 	if threshold == 0 {
@@ -37,7 +37,7 @@ func (m message9) Create(
 	}
 
 	if m.from == address.Undef {
-		return nil, xerrors.Errorf("must provide source address")
+		return nil, fmt.Errorf("must provide source address")
 	}
 
 	// Set up constructor parameters for multisig
@@ -55,7 +55,7 @@ func (m message9) Create(
 
 	code, ok := actors.GetActorCodeID(actorstypes.Version9, actors.MultisigKey)
 	if !ok {
-		return nil, xerrors.Errorf("failed to get multisig code ID")
+		return nil, fmt.Errorf("failed to get multisig code ID")
 	}
 
 	// new actors are created by invoking 'exec' on the init actor with the constructor params

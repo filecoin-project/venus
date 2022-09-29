@@ -9,7 +9,7 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 	"github.com/ipfs/go-cid"
 
-	"golang.org/x/xerrors"
+	"fmt"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -35,7 +35,7 @@ var (
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
 		if name != actors.SystemKey {
-			return nil, xerrors.Errorf("actor code is not system: %s", name)
+			return nil, fmt.Errorf("actor code is not system: %s", name)
 		}
 
 		switch av {
@@ -74,7 +74,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	}
 
-	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+	return nil, fmt.Errorf("unknown actor code %s", act.Code)
 }
 
 func MakeState(store adt.Store, av actorstypes.Version, builtinActors cid.Cid) (State, error) {
@@ -108,7 +108,7 @@ func MakeState(store adt.Store, av actorstypes.Version, builtinActors cid.Cid) (
 		return make9(store, builtinActors)
 
 	}
-	return nil, xerrors.Errorf("unknown actor version %d", av)
+	return nil, fmt.Errorf("unknown actor version %d", av)
 }
 
 type State interface {
