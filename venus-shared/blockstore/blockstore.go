@@ -22,6 +22,8 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
+type BasicBlockstore = blockstore.Blockstore
+
 // NewTemporary returns a temporary blockstore.
 func NewTemporary() MemBlockstore {
 	return NewMemory()
@@ -116,4 +118,30 @@ func Adapt(bs blockstore.Blockstore) Blockstore {
 		return ret
 	}
 	return &adaptedBlockstore{bs}
+}
+
+// FromDatastore creates a new blockstore backed by the given datastore.
+func FromDatastore(dstore ds.Batching) Blockstore {
+	return WrapIDStore(blockstore.NewBlockstore(dstore))
+}
+
+// BlockstoreGC is a trait for blockstores that support online garbage collection
+// consider
+type BlockstoreGC interface {
+	CollectGarbage(options ...BlockstoreGCOption) error
+}
+
+// BlockstoreGCOption is a functional interface for controlling blockstore GC options
+type BlockstoreGCOption = func(*BlockstoreGCOptions) error
+
+// BlockstoreGCOptions is a struct with GC options
+type BlockstoreGCOptions struct {
+	FullGC bool
+}
+
+func WithFullGC(fullgc bool) BlockstoreGCOption {
+	return func(opts *BlockstoreGCOptions) error {
+		opts.FullGC = fullgc
+		return nil
+	}
 }
