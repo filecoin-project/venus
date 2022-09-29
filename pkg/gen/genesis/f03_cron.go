@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/cron"
 
-	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	bstore "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 

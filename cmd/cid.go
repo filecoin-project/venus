@@ -6,9 +6,9 @@ import (
 	"os"
 
 	"github.com/filecoin-project/venus/cmd/tablewriter"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/ipld/go-car"

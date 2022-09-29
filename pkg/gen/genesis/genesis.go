@@ -60,8 +60,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	sigs "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/repo"
-	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm"
+	bstore "github.com/filecoin-project/venus/venus-shared/blockstore"
 )
 
 const AccountStart = 100

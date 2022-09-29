@@ -13,7 +13,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/repo/fskeystore"
 
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 
 	badgerds "github.com/ipfs/go-ds-badger2"
