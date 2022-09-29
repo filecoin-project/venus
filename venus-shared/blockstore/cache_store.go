@@ -1,4 +1,4 @@
-package blockstoreutil
+package blockstore
 
 import (
 	"time"

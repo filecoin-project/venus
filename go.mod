@@ -110,6 +110,7 @@ require (
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
 	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
+	gopkg.in/src-d/go-log.v1 v1.0.1
 	gorm.io/driver/mysql v1.1.1
 	gorm.io/gorm v1.21.12
 	gotest.tools v2.2.0+incompatible
@@ -255,6 +256,7 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
+	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/miekg/dns v1.1.48 // indirect
 	github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b // indirect
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
@@ -298,6 +300,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.7.1 // indirect
+	github.com/src-d/envconfig v1.0.0 // indirect
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e // indirect
@@ -308,6 +311,7 @@ require (
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7 // indirect
 	github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee // indirect
+	github.com/x-cray/logrus-prefixed-formatter v0.5.2 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
 	go.opentelemetry.io/otel v1.3.0 // indirect

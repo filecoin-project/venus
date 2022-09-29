@@ -1,5 +1,5 @@
-// blockstoreutil contains all the basic blockstore constructors used by lotus. Any
-// blockstoreutil not ultimately constructed out of the building blocks in this
+// blockstore contains all the basic blockstore constructors used by lotus. Any
+// blockstore not ultimately constructed out of the building blocks in this
 // package may not work properly.
 //
 //  * This package correctly wraps blockstores with the IdBlockstore. This blockstore:
@@ -12,7 +12,7 @@
 // To make auditing for misuse of blockstores tractable, this package re-exports
 // parts of the go-ipfs-blockstore package such that no other package needs to
 // import it directly.
-package blockstoreutil
+package blockstore
 
 import (
 	"context"
