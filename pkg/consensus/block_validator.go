@@ -35,8 +35,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/fork"
 	appstate "github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"

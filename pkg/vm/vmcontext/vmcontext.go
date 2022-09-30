@@ -20,7 +20,6 @@ import (
 
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
@@ -28,6 +27,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	initActor "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
+	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 

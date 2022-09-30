@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"

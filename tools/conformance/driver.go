@@ -8,10 +8,10 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors"
 
 	"github.com/filecoin-project/venus/pkg/consensus"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
+	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/venus/app/node"

@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/pubsub"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"

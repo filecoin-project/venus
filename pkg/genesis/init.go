@@ -6,7 +6,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	cbor "github.com/ipfs/go-ipld-cbor"

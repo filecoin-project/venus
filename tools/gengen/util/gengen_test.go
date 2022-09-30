@@ -17,7 +17,7 @@ import (
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -7,7 +7,7 @@ import (
 	"io"
 	"os"
 
-	blockstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	blockstore "github.com/filecoin-project/venus/venus-shared/blockstore"
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipld/go-car"
 )

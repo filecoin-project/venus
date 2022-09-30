@@ -14,7 +14,7 @@ import (
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	bstore "github.com/filecoin-project/venus/venus-shared/blockstore"
 )
 
 func SetupRewardActor(ctx context.Context, bs bstore.Blockstore, qaPower big.Int, av actors.Version) (*types.Actor, error) {

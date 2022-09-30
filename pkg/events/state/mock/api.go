@@ -9,7 +9,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	blockstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	blockstore "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 

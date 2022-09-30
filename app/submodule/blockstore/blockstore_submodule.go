@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 )
 
 // BlockstoreSubmodule enhances the `Node` with local key/value storing capabilities.

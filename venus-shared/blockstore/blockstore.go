@@ -1,5 +1,5 @@
-// blockstoreutil contains all the basic blockstore constructors used by lotus. Any
-// blockstoreutil not ultimately constructed out of the building blocks in this
+// blockstore contains all the basic blockstore constructors used by lotus. Any
+// blockstore not ultimately constructed out of the building blocks in this
 // package may not work properly.
 //
 //  * This package correctly wraps blockstores with the IdBlockstore. This blockstore:
@@ -12,7 +12,7 @@
 // To make auditing for misuse of blockstores tractable, this package re-exports
 // parts of the go-ipfs-blockstore package such that no other package needs to
 // import it directly.
-package blockstoreutil
+package blockstore
 
 import (
 	"context"
@@ -21,6 +21,8 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
+
+type BasicBlockstore = blockstore.Blockstore
 
 // NewTemporary returns a temporary blockstore.
 func NewTemporary() MemBlockstore {
@@ -116,4 +118,30 @@ func Adapt(bs blockstore.Blockstore) Blockstore {
 		return ret
 	}
 	return &adaptedBlockstore{bs}
+}
+
+// FromDatastore creates a new blockstore backed by the given datastore.
+func FromDatastore(dstore ds.Batching) Blockstore {
+	return WrapIDStore(blockstore.NewBlockstore(dstore))
+}
+
+// BlockstoreGC is a trait for blockstores that support online garbage collection
+// consider
+type BlockstoreGC interface { // nolint
+	CollectGarbage(options ...BlockstoreGCOption) error
+}
+
+// BlockstoreGCOption is a functional interface for controlling blockstore GC options
+type BlockstoreGCOption = func(*BlockstoreGCOptions) error // nolint
+
+// BlockstoreGCOptions is a struct with GC options
+type BlockstoreGCOptions struct { // nolint
+	FullGC bool
+}
+
+func WithFullGC(fullgc bool) BlockstoreGCOption {
+	return func(opts *BlockstoreGCOptions) error {
+		opts.FullGC = fullgc
+		return nil
+	}
 }

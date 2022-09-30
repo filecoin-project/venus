@@ -12,7 +12,7 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 

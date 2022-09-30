@@ -6,9 +6,9 @@ import (
 
 	test "github.com/filecoin-project/venus/pkg/events/state/mock"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
-	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	bstore "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/ipfs/go-cid"

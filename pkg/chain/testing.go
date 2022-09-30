@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	aexchange "github.com/filecoin-project/venus/pkg/net/exchange"
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/libp2p/exchange"
 
 	"github.com/ipld/go-car"

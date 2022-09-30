@@ -12,7 +12,7 @@ import (
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
+	bstore "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
