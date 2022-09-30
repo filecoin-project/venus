@@ -127,15 +127,15 @@ func FromDatastore(dstore ds.Batching) Blockstore {
 
 // BlockstoreGC is a trait for blockstores that support online garbage collection
 // consider
-type BlockstoreGC interface {
+type BlockstoreGC interface { // nolint
 	CollectGarbage(options ...BlockstoreGCOption) error
 }
 
 // BlockstoreGCOption is a functional interface for controlling blockstore GC options
-type BlockstoreGCOption = func(*BlockstoreGCOptions) error
+type BlockstoreGCOption = func(*BlockstoreGCOptions) error // nolint
 
 // BlockstoreGCOptions is a struct with GC options
-type BlockstoreGCOptions struct {
+type BlockstoreGCOptions struct { // nolint
 	FullGC bool
 }
 
