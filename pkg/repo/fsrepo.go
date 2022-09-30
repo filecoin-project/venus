@@ -26,7 +26,7 @@ import (
 )
 
 // Version is the version of repo schema that this code understands.
-const LatestVersion uint = 8
+const LatestVersion uint = 9
 
 const (
 	// apiFile is the filename containing the filecoin node's api address.
@@ -247,9 +247,6 @@ func (r *FSRepo) loadFromDisk() error {
 		return errors.Wrap(err, "failed to open paych datastore")
 	}
 
-	/*if err := r.openMarketDataStore(); err != nil {
-		return errors.Wrap(err, "failed to open market datastore")
-	}*/
 	return nil
 }
 
@@ -474,14 +471,6 @@ func (r *FSRepo) openPaychDataStore() error {
 	return nil
 }
 
-/*func (r *FSRepo) openMarketDataStore() error {
-	var err error
-	r.marketDs, err = badgerds.NewDatastore(filepath.Join(r.path, marketDatastoreProfix), badgerOptions())
-	if err != nil {
-		return err
-	}
-	return nil
-}*/
 func (r *FSRepo) openWalletDatastore() error {
 	// TODO: read wallet datastore info from config, use that to open it up
 	ds, err := badgerds.NewDatastore(filepath.Join(r.path, walletDatastorePrefix), badgerOptions())

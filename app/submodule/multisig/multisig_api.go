@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 
@@ -39,7 +40,7 @@ func (a *multiSig) messageBuilder(ctx context.Context, from address.Address) (mu
 	if err != nil {
 		return nil, err
 	}
-	aver, err := actors.VersionForNetwork(nver)
+	aver, err := actorstypes.VersionForNetwork(nver)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +49,7 @@ func (a *multiSig) messageBuilder(ctx context.Context, from address.Address) (mu
 
 // MsigCreate creates a multisig wallet
 // It takes the following params: <required number of senders>, <approving addresses>, <unlock duration>
-//<initial balance>, <sender address of the create msg>, <gas price>
+// <initial balance>, <sender address of the create msg>, <gas price>
 func (a *multiSig) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (*types.MessagePrototype, error) {
 
 	mb, err := a.messageBuilder(ctx, src)

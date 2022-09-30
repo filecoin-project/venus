@@ -118,6 +118,7 @@ func main() {
 			dir: "../pkg/fvm",
 			types: []interface{}{
 				fvm.FvmExecutionTrace{},
+				fvm.FvmGasCharge{},
 			},
 		},
 	}

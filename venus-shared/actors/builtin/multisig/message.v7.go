@@ -12,6 +12,7 @@ import (
 	init7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/init"
 	multisig7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/multisig"
 
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
@@ -66,7 +67,7 @@ func (m message7) Create(
 	return &types.Message{
 		To:     init_.Address,
 		From:   m.from,
-		Method: builtin7.MethodsInit.Exec,
+		Method: builtintypes.MethodsInit.Exec,
 		Params: enc,
 		Value:  initialAmount,
 	}, nil

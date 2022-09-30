@@ -16,6 +16,7 @@ import (
 	"github.com/ipfs/go-cid"
 	ipfscbor "github.com/ipfs/go-ipld-cbor"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
@@ -323,7 +324,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 			// Don't implicitly create an account actor for an address without an associated key.
 			runtime.Abort(exitcode.SysErrInvalidReceiver)
 		}
-		ver, err := actors.VersionForNetwork(ctx.vm.NetworkVersion())
+		ver, err := actorstypes.VersionForNetwork(ctx.vm.NetworkVersion())
 		if err != nil {
 			panic(err)
 		}
@@ -400,9 +401,7 @@ func (ctx *invocationContext) resolveToKeyAddr(addr address.Address) (address.Ad
 	return aast.PubkeyAddress()
 }
 
-//
 // implement runtime.InvocationContext for invocationContext
-//
 var _ runtime.InvocationContext = (*invocationContext)(nil)
 
 // Runtime implements runtime.InvocationContext.
@@ -468,7 +467,7 @@ func (ctx *invocationContext) Send(toAddr address.Address, methodNum abi.MethodN
 	return code
 }
 
-/// Balance implements runtime.InvocationContext.
+// / Balance implements runtime.InvocationContext.
 func (ctx *invocationContext) Balance() abi.TokenAmount {
 	toActor, found, err := ctx.vm.State.GetActor(ctx.vm.context, ctx.originMsg.To)
 	if err != nil {
@@ -480,9 +479,7 @@ func (ctx *invocationContext) Balance() abi.TokenAmount {
 	return toActor.Balance
 }
 
-//
 // implement runtime.InvocationContext for invocationContext
-//
 var _ runtime.ExtendedInvocationContext = (*invocationContext)(nil)
 
 // NextActorAddress predicts the address of the next actor created by this address.

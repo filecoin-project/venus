@@ -24,6 +24,7 @@ import (
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
@@ -155,7 +156,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 		return nil, nil, fmt.Errorf("making new state tree: %w", err)
 	}
 
-	av, err := actors.VersionForNetwork(template.NetworkVersion)
+	av, err := actorstypes.VersionForNetwork(template.NetworkVersion)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get actor version: %w", err)
 	}
@@ -373,7 +374,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 	return state, keyIDs, nil
 }
 
-func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av actors.Version, addr address.Address, bal types.BigInt) (*types.Actor, error) {
+func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av actorstypes.Version, addr address.Address, bal types.BigInt) (*types.Actor, error) {
 	ast, err := account.MakeState(adt.WrapStore(ctx, cst), av, addr)
 	if err != nil {
 		return nil, err
@@ -398,7 +399,7 @@ func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av actors.Version
 	return act, nil
 }
 
-func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *tree.State, info Actor, keyIDs map[address.Address]address.Address, av actors.Version) error {
+func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *tree.State, info Actor, keyIDs map[address.Address]address.Address, av actorstypes.Version) error {
 	var ainfo AccountMeta
 	if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
 		return fmt.Errorf("unmarshaling account meta: %w", err)
@@ -421,7 +422,7 @@ func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *tree.Sta
 	return nil
 }
 
-func createMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *tree.State, ida address.Address, info Actor, keyIDs map[address.Address]address.Address, av actors.Version) error {
+func createMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *tree.State, ida address.Address, info Actor, keyIDs map[address.Address]address.Address, av actorstypes.Version) error {
 	if info.Type != TMultisig {
 		return fmt.Errorf("can only call createMultisigAccount with multisig Actor info")
 	}

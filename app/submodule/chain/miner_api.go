@@ -20,7 +20,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/state/tree"
@@ -458,16 +458,20 @@ func (msa *minerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context
 
 	store := msa.ChainReader.Store(ctx)
 	var sectorWeight abi.StoragePower
-	if act, found, err := sTree.GetActor(ctx, market.Address); err != nil || !found {
-		return big.Int{}, fmt.Errorf("loading market actor %s: %v", maddr, err)
-	} else if s, err := market.Load(store, act); err != nil {
-		return big.Int{}, fmt.Errorf("loading market actor state %s: %v", maddr, err)
-	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
-		return big.Int{}, fmt.Errorf("verifying deals for activation: %v", err)
+	if msa.Fork.GetNetworkVersion(ctx, ts.Height()) <= network.Version16 {
+		if act, found, err := sTree.GetActor(ctx, market.Address); err != nil || !found {
+			return big.Int{}, fmt.Errorf("loading market actor %s: %v", maddr, err)
+		} else if s, err := market.Load(store, act); err != nil {
+			return big.Int{}, fmt.Errorf("loading market actor state %s: %v", maddr, err)
+		} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
+			return big.Int{}, fmt.Errorf("verifying deals for activation: %v", err)
+		} else {
+			// NB: not exactly accurate, but should always lead us to *over* estimate, not under
+			duration := pci.Expiration - ts.Height()
+			sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
+		}
 	} else {
-		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
-		duration := pci.Expiration - ts.Height()
-		sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
+		sectorWeight = miner.QAPowerMax(ssize)
 	}
 
 	var powerSmoothed builtin.FilterEstimate

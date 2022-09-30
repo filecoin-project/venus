@@ -143,7 +143,7 @@ func VersionForNetwork(ver network.Version) (StateTreeVersion, error) {
 	case{{range .networkVersions}} {{if (ge . 13.)}} network.Version{{.}}{{if (lt . $lastNv)}},{{end}}{{end}}{{end}}:
 	/* inline-gen start */
 
-	case network.Version13, network.Version14, network.Version15, network.Version16:
+	case network.Version13, network.Version14, network.Version15, network.Version16, network.Version17:
 		/* inline-gen end */
 
 		return StateTreeVersion4, nil

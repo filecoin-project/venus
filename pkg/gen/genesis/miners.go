@@ -9,8 +9,6 @@ import (
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
 
-	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
-
 	reward2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/reward"
 
 	power4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/power"
@@ -18,18 +16,17 @@ import (
 
 	reward4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/reward"
 
-	market4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/market"
+	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	smoothing9 "github.com/filecoin-project/go-state-types/builtin/v9/util/smoothing"
 
-	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
-
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
@@ -95,7 +92,7 @@ func mkFakedSigSyscalls(sys vmcontext.SyscallsImpl) vmcontext.SyscallsImpl {
 // Note: Much of this is brittle, if the methodNum / param / return changes, it will break things
 func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, miners []Miner, nv network.Version, para *config.ForkUpgradeConfig) (cid.Cid, error) {
 	cst := cbor.NewCborStore(cs.Blockstore())
-	av, err := actors.VersionForNetwork(nv)
+	av, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("get actor version: %w", err)
 	}
@@ -138,10 +135,12 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 
 		presealExp abi.ChainEpoch
 
-		dealIDs []abi.DealID
+		dealIDs      []abi.DealID
+		sectorWeight []abi.StoragePower
 	}, len(miners))
 
 	maxPeriods := policy.GetMaxSectorExpirationExtension() / minertypes.WPoStProvingPeriod
+	rawPow, qaPow := big.NewInt(0), big.NewInt(0)
 	for i, m := range miners {
 		// Create miner through power actor
 		i := i
@@ -219,7 +218,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 			}
 		}
 
-		// Publish preseal deals
+		// Publish preseal deals, and calculate the QAPower
 
 		{
 			publish := func(params *markettypes.PublishStorageDealsParams) error {
@@ -255,7 +254,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 					ClientSignature: crypto.Signature{Type: crypto.SigTypeBLS},
 				}
 
-				if av >= actors.Version8 {
+				if av >= actorstypes.Version8 {
 					buf, err := cborutil.Dump(&preseal.Deal)
 					if err != nil {
 						return cid.Undef, fmt.Errorf("failed to marshal proposal: %w", err)
@@ -282,6 +281,11 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 
 					params = &markettypes.PublishStorageDealsParams{}
 				}
+
+				rawPow = big.Add(rawPow, big.NewInt(int64(m.SectorSize)))
+				sectorWeight := builtin.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, big.Zero(), markettypes.DealWeight(&preseal.Deal))
+				minerInfos[i].sectorWeight = append(minerInfos[i].sectorWeight, sectorWeight)
+				qaPow = big.Add(qaPow, sectorWeight)
 			}
 
 			if len(params.Deals) > 0 {
@@ -292,24 +296,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 		}
 	}
 
-	// adjust total network power for equal pledge per sector
-	rawPow, qaPow := big.NewInt(0), big.NewInt(0)
 	{
-		for i, m := range miners {
-			for pi := range m.Sectors {
-				rawPow = types.BigAdd(rawPow, types.NewInt(uint64(m.SectorSize)))
-
-				dweight, vdweight, err := dealWeight(ctx, genesisVM, minerInfos[i].maddr, []abi.DealID{minerInfos[i].dealIDs[pi]}, 0, minerInfos[i].presealExp, av)
-				if err != nil {
-					return cid.Undef, fmt.Errorf("getting deal weight: %w", err)
-				}
-
-				sectorWeight := builtin.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, dweight, vdweight)
-
-				qaPow = types.BigAdd(qaPow, sectorWeight)
-			}
-		}
-
 		nh, err := genesisVM.Flush(ctx)
 		if err != nil {
 			return cid.Undef, fmt.Errorf("flushing vm: %w", err)
@@ -364,7 +351,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 			return cid.Undef, fmt.Errorf("setting power state: %w", err)
 		}
 
-		ver, err := actors.VersionForNetwork(nv)
+		ver, err := actorstypes.VersionForNetwork(nv)
 		if err != nil {
 			return cid.Undef, fmt.Errorf("get actor version: %w", err)
 		}
@@ -402,12 +389,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 					Expiration:    minerInfos[i].presealExp, // TODO: Allow setting externally!
 				}
 
-				dweight, vdweight, err := dealWeight(ctx, genesisVM, minerInfos[i].maddr, params.DealIDs, 0, minerInfos[i].presealExp, av)
-				if err != nil {
-					return cid.Undef, fmt.Errorf("getting deal weight: %w", err)
-				}
-
-				sectorWeight := builtin.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, dweight, vdweight)
+				sectorWeight := minerInfos[i].sectorWeight[pi]
 
 				// we've added fake power for this sector above, remove it now
 
@@ -479,14 +461,13 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 					return cid.Undef, fmt.Errorf("getting current total power: %w", err)
 				}
 
-				pcd := miner0.PreCommitDepositForPower((*smoothing0.FilterEstimate)(&rewardSmoothed), tpow.QualityAdjPowerSmoothed, sectorWeight)
+				pcd := miner9.PreCommitDepositForPower(smoothing9.FilterEstimate(rewardSmoothed), smoothing9.FilterEstimate(*tpow.QualityAdjPowerSmoothed), miner9.QAPowerMax(m.SectorSize))
 
-				pledge := miner0.InitialPledgeForPower(
+				pledge := miner9.InitialPledgeForPower(
 					sectorWeight,
 					baselinePower,
-					tpow.PledgeCollateral,
-					(*smoothing0.FilterEstimate)(&rewardSmoothed),
-					tpow.QualityAdjPowerSmoothed,
+					smoothing9.FilterEstimate(rewardSmoothed),
+					smoothing9.FilterEstimate(*tpow.QualityAdjPowerSmoothed),
 					big.Zero(),
 				)
 
@@ -501,7 +482,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 				// Commit one-by-one, otherwise pledge math tends to explode
 				var paramBytes []byte
 
-				if av >= actors.Version6 {
+				if av >= actorstypes.Version6 {
 					// TODO: fixup
 					confirmParams := &builtin6.ConfirmSectorProofsParams{
 						Sectors: []abi.SectorNumber{preseal.SectorID},
@@ -521,7 +502,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 					return cid.Undef, fmt.Errorf("failed to confirm presealed sectors: %w", err)
 				}
 
-				if av > actors.Version2 {
+				if av > actorstypes.Version2 {
 					// post v2, we need to explicitly Claim this power since ConfirmSectorProofsValid doesn't do it anymore
 					claimParams := &power4.UpdateClaimedPowerParams{
 						RawByteDelta:         types.NewInt(uint64(m.SectorSize)),
@@ -660,56 +641,7 @@ func currentTotalPower(ctx context.Context, vmi vm.Interface, maddr address.Addr
 	return &pwr, nil
 }
 
-func dealWeight(ctx context.Context, vmi vm.Interface, maddr address.Address, dealIDs []abi.DealID, sectorStart, sectorExpiry abi.ChainEpoch, av actors.Version) (abi.DealWeight, abi.DealWeight, error) {
-	// TODO: This hack should move to market actor wrapper
-	if av <= actors.Version2 {
-		params := &market0.VerifyDealsForActivationParams{
-			DealIDs:      dealIDs,
-			SectorStart:  sectorStart,
-			SectorExpiry: sectorExpiry,
-		}
-
-		var dealWeights market0.VerifyDealsForActivationReturn
-		ret, err := doExecValue(ctx, vmi,
-			market.Address,
-			maddr,
-			abi.NewTokenAmount(0),
-			builtin0.MethodsMarket.VerifyDealsForActivation,
-			mustEnc(params),
-		)
-		if err != nil {
-			return big.Zero(), big.Zero(), err
-		}
-		if err := dealWeights.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
-			return big.Zero(), big.Zero(), err
-		}
-
-		return dealWeights.DealWeight, dealWeights.VerifiedDealWeight, nil
-	}
-	params := &market4.VerifyDealsForActivationParams{Sectors: []market4.SectorDeals{{
-		SectorExpiry: sectorExpiry,
-		DealIDs:      dealIDs,
-	}}}
-
-	var dealWeights market4.VerifyDealsForActivationReturn
-	ret, err := doExecValue(ctx, vmi,
-		market.Address,
-		maddr,
-		abi.NewTokenAmount(0),
-		market.Methods.VerifyDealsForActivation,
-		mustEnc(params),
-	)
-	if err != nil {
-		return big.Zero(), big.Zero(), err
-	}
-	if err := dealWeights.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
-		return big.Zero(), big.Zero(), err
-	}
-
-	return dealWeights.Sectors[0].DealWeight, dealWeights.Sectors[0].VerifiedDealWeight, nil
-}
-
-func currentEpochBlockReward(ctx context.Context, vm vm.Interface, maddr address.Address, av actors.Version) (abi.StoragePower, builtin.FilterEstimate, error) {
+func currentEpochBlockReward(ctx context.Context, vm vm.Interface, maddr address.Address, av actorstypes.Version) (abi.StoragePower, builtin.FilterEstimate, error) {
 	rwret, err := doExecValue(ctx, vm, reward.Address, maddr, big.Zero(), reward.Methods.ThisEpochReward, nil)
 	if err != nil {
 		return big.Zero(), builtin.FilterEstimate{}, err
@@ -717,7 +649,7 @@ func currentEpochBlockReward(ctx context.Context, vm vm.Interface, maddr address
 
 	// TODO: This hack should move to reward actor wrapper
 	switch av {
-	case actors.Version0:
+	case actorstypes.Version0:
 		var epochReward reward0.ThisEpochRewardReturn
 
 		if err := epochReward.UnmarshalCBOR(bytes.NewReader(rwret)); err != nil {
@@ -725,7 +657,7 @@ func currentEpochBlockReward(ctx context.Context, vm vm.Interface, maddr address
 		}
 
 		return epochReward.ThisEpochBaselinePower, builtin.FilterEstimate(*epochReward.ThisEpochRewardSmoothed), nil
-	case actors.Version2:
+	case actorstypes.Version2:
 		var epochReward reward2.ThisEpochRewardReturn
 
 		if err := epochReward.UnmarshalCBOR(bytes.NewReader(rwret)); err != nil {

@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	cbor "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/v8/actors/builtin"
+	"github.com/filecoin-project/specs-actors/v7/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/stretchr/testify/require"
 )

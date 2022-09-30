@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
@@ -30,6 +31,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 
+	nv17 "github.com/filecoin-project/go-state-types/builtin/v9/migration"
 	"github.com/filecoin-project/specs-actors/actors/migration/nv3"
 	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv4"
 	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv7"
@@ -291,6 +293,17 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			Migration: cf.UpgradeActorsV8,
 			PreMigrations: []PreMigration{{
 				PreMigration:    cf.PreUpgradeActorsV8,
+				StartWithin:     180,
+				DontStartWithin: 60,
+				StopWithin:      5,
+			}},
+			Expensive: true,
+		}, {
+			Height:    upgradeHeight.UpgradeV17Height,
+			Network:   network.Version17,
+			Migration: cf.UpgradeActorsV9,
+			PreMigrations: []PreMigration{{
+				PreMigration:    cf.PreUpgradeActorsV9,
 				StartWithin:     180,
 				DontStartWithin: 60,
 				StopWithin:      5,
@@ -2081,7 +2094,7 @@ func (c *ChainFork) upgradeActorsV8Common(
 	store := chain.ActorStore(ctx, buf)
 
 	// ensure that the manifest is loaded in the blockstore
-	if err := actors.LoadBundles(ctx, buf, actors.Version8); err != nil {
+	if err := actors.LoadBundles(ctx, buf, actorstypes.Version8); err != nil {
 		return cid.Undef, fmt.Errorf("failed to load manifest bundle: %w", err)
 	}
 
@@ -2098,7 +2111,7 @@ func (c *ChainFork) upgradeActorsV8Common(
 		)
 	}
 
-	manifest, ok := actors.GetManifest(actors.Version8)
+	manifest, ok := actors.GetManifest(actorstypes.Version8)
 	if !ok {
 		return cid.Undef, fmt.Errorf("no manifest CID for v8 upgrade")
 	}
@@ -2107,6 +2120,120 @@ func (c *ChainFork) upgradeActorsV8Common(
 	newHamtRoot, err := nv16.MigrateStateTree(ctx, store, manifest, stateRoot.Actors, epoch, config, migrationLogger{}, cache)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("upgrading to actors v8: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := store.Put(ctx, &vmstate.StateRoot{
+		Version: vmstate.StateTreeVersion4,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// Persist the new tree.
+
+	{
+		from := buf
+		to := buf.Read()
+
+		if err := Copy(ctx, from, to, newRoot); err != nil {
+			return cid.Undef, fmt.Errorf("copying migrated tree: %w", err)
+		}
+	}
+
+	return newRoot, nil
+}
+
+func (c *ChainFork) UpgradeActorsV9(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	// Use all the CPUs except 3.
+	workerCount := runtime.NumCPU() - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+
+	config := nv17.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: 10 * time.Second,
+	}
+
+	newRoot, err := c.upgradeActorsV9Common(ctx, cache, root, epoch, ts, config)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("migrating actors v8 state: %w", err)
+	}
+
+	fmt.Print(fvmLiftoffBanner)
+
+	return newRoot, nil
+}
+
+func (c *ChainFork) PreUpgradeActorsV9(ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
+	ts *types.TipSet,
+) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := runtime.NumCPU()
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+
+	ver := c.GetNetworkVersion(ctx, epoch)
+	lbts, lbRoot, err := c.cr.GetLookbackTipSetForRound(ctx, ts, epoch, ver)
+	if err != nil {
+		return fmt.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	config := nv17.Config{
+		MaxWorkers:        uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5,
+	}
+
+	_, err = c.upgradeActorsV9Common(ctx, cache, lbRoot, epoch, lbts, config)
+	return err
+}
+
+func (c *ChainFork) upgradeActorsV9Common(ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
+	ts *types.TipSet,
+	config nv17.Config,
+) (cid.Cid, error) {
+	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
+	store := chain.ActorStore(ctx, buf)
+
+	// ensure that the manifest is loaded in the blockstore
+	if err := actors.LoadBundles(ctx, buf, actorstypes.Version9); err != nil {
+		return cid.Undef, fmt.Errorf("failed to load manifest bundle: %w", err)
+	}
+
+	// Load the state root.
+	var stateRoot vmstate.StateRoot
+	if err := store.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, fmt.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != vmstate.StateTreeVersion4 {
+		return cid.Undef, fmt.Errorf("expected state root version 4 for actors v9 upgrade, got %d", stateRoot.Version)
+	}
+
+	manifest, ok := actors.GetManifest(actorstypes.Version9)
+	if !ok {
+		return cid.Undef, fmt.Errorf("no manifest CID for v9 upgrade")
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv17.MigrateStateTree(ctx, store, manifest, stateRoot.Actors, epoch, config,
+		migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("upgrading to actors v9: %w", err)
 	}
 
 	// Persist the result.
@@ -2165,7 +2292,7 @@ func (c *ChainFork) GetForkUpgrade() *config.ForkUpgradeConfig {
 // 	return LiteMigration(ctx, bstore, newActorsManifestCid, root, av, vmstate.StateTreeVersion4, newStateTreeVersion)
 // }
 
-func LiteMigration(ctx context.Context, bstore blockstoreutil.Blockstore, newActorsManifestCid cid.Cid, root cid.Cid, av actors.Version, oldStateTreeVersion vmstate.StateTreeVersion, newStateTreeVersion vmstate.StateTreeVersion) (cid.Cid, error) {
+func LiteMigration(ctx context.Context, bstore blockstoreutil.Blockstore, newActorsManifestCid cid.Cid, root cid.Cid, av actorstypes.Version, oldStateTreeVersion vmstate.StateTreeVersion, newStateTreeVersion vmstate.StateTreeVersion) (cid.Cid, error) {
 	buf := blockstoreutil.NewTieredBstore(bstore, blockstoreutil.NewTemporarySync())
 	store := chain.ActorStore(ctx, buf)
 	adtStore := gstStore.WrapStore(ctx, store)

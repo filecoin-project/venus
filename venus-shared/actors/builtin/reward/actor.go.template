@@ -3,6 +3,7 @@
 package reward
 
 import (
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/abi"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/venus/venus-shared/actors"
@@ -12,10 +13,9 @@ import (
 {{range .versions}}
     {{if (le . 7)}}
 	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
-	{{else}}
-        builtin{{.}} "github.com/filecoin-project/go-state-types/builtin"
     {{end}}
 {{end}}
+    builtin{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
@@ -36,7 +36,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
        switch av {
             {{range .versions}}
                 {{if (ge . 8)}}
-                case actors.Version{{.}}:
+                case actorstypes.Version{{.}}:
                      return load{{.}}(store, act.Head)
                  {{end}}
             {{end}}
@@ -55,10 +55,10 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, fmt.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av actors.Version, currRealizedPower abi.StoragePower) (State, error) {
+func MakeState(store adt.Store, av actorstypes.Version, currRealizedPower abi.StoragePower) (State, error) {
 	switch av {
 {{range .versions}}
-	case actors.Version{{.}}:
+	case actorstypes.Version{{.}}:
 		return make{{.}}(store, currRealizedPower)
 {{end}}
 }

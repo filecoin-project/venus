@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
-	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/params"
@@ -54,7 +53,7 @@ var newMinerCmd = &cmds.Command{
 		cmds.BoolOption("create-worker-key", "Create separate worker key"),
 		cmds.StringOption("from", "Select which address to send actor creation message from"),
 		cmds.StringOption("gas-premium", "Set gas premium for initialization messages in AttoFIL").WithDefault("0"),
-		cmds.StringOption("sector-size", "specify sector size to use").WithDefault(units.BytesSize(float64(policy.GetDefaultSectorSize()))),
+		cmds.StringOption("sector-size", "specify sector size to use"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		ctx := req.Context
@@ -64,10 +63,18 @@ var newMinerCmd = &cmds.Command{
 			return err
 		}
 
-		sectorSize, _ := req.Options["sector-size"].(string)
-		ssize, err := units.RAMInBytes(sectorSize)
+		ssize, err := abi.RegisteredSealProof_StackedDrg32GiBV1.SectorSize()
 		if err != nil {
-			return fmt.Errorf("failed to parse sector size: %v", err)
+			return fmt.Errorf("failed to calculate default sector size: %w", err)
+		}
+
+		sectorSize, ok := req.Options["sector-size"].(string)
+		if ok {
+			sectorSizeInt, err := units.RAMInBytes(sectorSize)
+			if err != nil {
+				return err
+			}
+			ssize = abi.SectorSize(sectorSizeInt)
 		}
 
 		gp, _ := req.Options["gas-premium"].(string)
@@ -128,7 +135,7 @@ var newMinerCmd = &cmds.Command{
 			return fmt.Errorf("getting network version: %v", err)
 		}
 
-		spt, err := miner.SealProofTypeFromSectorSize(abi.SectorSize(ssize), nv)
+		spt, err := miner.SealProofTypeFromSectorSize(ssize, nv)
 		if err != nil {
 			return fmt.Errorf("getting seal proof type: %v", err)
 		}

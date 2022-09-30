@@ -3,6 +3,7 @@ package dispatch
 import (
 	"fmt"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	rtt "github.com/filecoin-project/go-state-types/rt"
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
@@ -18,7 +19,7 @@ type CodeLoader struct {
 	actors map[cid.Cid]ActorInfo
 }
 
-//ActorInfo vm contract actor
+// ActorInfo vm contract actor
 type ActorInfo struct {
 	vmActor rtt.VMActor
 	// TODO: consider making this a network version range?
@@ -70,7 +71,7 @@ func NewBuilder() *CodeLoaderBuilder {
 }
 
 // Add lets you add an actor dispatch table for a given version.
-func (b *CodeLoaderBuilder) Add(av actors.Version, predict ActorPredicate, actor Actor) *CodeLoaderBuilder {
+func (b *CodeLoaderBuilder) Add(av actorstypes.Version, predict ActorPredicate, actor Actor) *CodeLoaderBuilder {
 	if predict == nil {
 		predict = func(vmr.Runtime, rtt.VMActor) error { return nil }
 	}
@@ -85,7 +86,7 @@ func (b *CodeLoaderBuilder) Add(av actors.Version, predict ActorPredicate, actor
 
 	// necessary to make stuff work
 	var realCode cid.Cid
-	if av >= actors.Version8 {
+	if av >= actorstypes.Version8 {
 		name := actors.CanonicalName(builtin.ActorNameByCode(ac))
 
 		var ok bool
@@ -99,7 +100,7 @@ func (b *CodeLoaderBuilder) Add(av actors.Version, predict ActorPredicate, actor
 }
 
 // Add lets you add an actor dispatch table for a given version.
-func (b *CodeLoaderBuilder) AddMany(av actors.Version, predict ActorPredicate, actors ...rt5.VMActor) *CodeLoaderBuilder {
+func (b *CodeLoaderBuilder) AddMany(av actorstypes.Version, predict ActorPredicate, actors ...rt5.VMActor) *CodeLoaderBuilder {
 	for _, actor := range actors {
 		b.Add(av, predict, actor)
 	}
@@ -114,10 +115,10 @@ func (b *CodeLoaderBuilder) Build() CodeLoader {
 // An ActorPredicate returns an error if the given actor is not valid for the given runtime environment (e.g., chain height, version, etc.).
 type ActorPredicate func(vmr.Runtime, rtt.VMActor) error
 
-//ActorsVersionPredicate  get actor predicate base on actor version and network version
-func ActorsVersionPredicate(ver actors.Version) ActorPredicate {
+// ActorsVersionPredicate  get actor predicate base on actor version and network version
+func ActorsVersionPredicate(ver actorstypes.Version) ActorPredicate {
 	return func(rt vmr.Runtime, v rtt.VMActor) error {
-		nver, err := actors.VersionForNetwork(rt.NetworkVersion())
+		nver, err := actorstypes.VersionForNetwork(rt.NetworkVersion())
 		if err != nil {
 			return fmt.Errorf("version for network %w", err)
 		}
