@@ -31,6 +31,7 @@ var versionMap = []versionInfo{
 	{version: 6, upgrade: Version6Upgrade},
 	{version: 7, upgrade: Version7Upgrade},
 	{version: 8, upgrade: Version8Upgrade},
+	{version: 9, upgrade: Version9Upgrade},
 }
 
 // TryToMigrate used to migrate data(db,config,file,etc) in local repo
@@ -121,7 +122,7 @@ func Version4Upgrade(repoPath string) (err error) {
 	return repo.WriteVersion(repoPath, 4)
 }
 
-//Version5Upgrade
+// Version5Upgrade
 func Version5Upgrade(repoPath string) (err error) {
 	var fsrRepo repo.Repo
 	if fsrRepo, err = repo.OpenFSRepo(repoPath, 4); err != nil {
@@ -159,7 +160,7 @@ func Version5Upgrade(repoPath string) (err error) {
 	return repo.WriteVersion(repoPath, 5)
 }
 
-//Version6Upgrade
+// Version6Upgrade
 func Version6Upgrade(repoPath string) (err error) {
 	var fsrRepo repo.Repo
 	if fsrRepo, err = repo.OpenFSRepo(repoPath, 5); err != nil {
@@ -197,7 +198,7 @@ func Version6Upgrade(repoPath string) (err error) {
 	return repo.WriteVersion(repoPath, 6)
 }
 
-//Version7Upgrade
+// Version7Upgrade
 func Version7Upgrade(repoPath string) (err error) {
 	var fsrRepo repo.Repo
 	if fsrRepo, err = repo.OpenFSRepo(repoPath, 6); err != nil {
@@ -259,7 +260,7 @@ func Version7Upgrade(repoPath string) (err error) {
 	return repo.WriteVersion(repoPath, 7)
 }
 
-//Version8Upgrade
+// Version8Upgrade
 func Version8Upgrade(repoPath string) (err error) {
 	var fsrRepo repo.Repo
 	if fsrRepo, err = repo.OpenFSRepo(repoPath, 7); err != nil {
@@ -281,10 +282,10 @@ func Version8Upgrade(repoPath string) (err error) {
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = -19
 	case types.NetworkInterop:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version15
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 100
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = -19
 	case types.NetworkButterfly:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version15
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 50
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = -19
 	default:
 		return fsrRepo.Close()
 	}
@@ -298,4 +299,45 @@ func Version8Upgrade(repoPath string) (err error) {
 	}
 
 	return repo.WriteVersion(repoPath, 8)
+}
+
+// Version9Upgrade
+func Version9Upgrade(repoPath string) (err error) {
+	var fsrRepo repo.Repo
+	if fsrRepo, err = repo.OpenFSRepo(repoPath, 8); err != nil {
+		return
+	}
+	cfg := fsrRepo.Config()
+	switch cfg.NetworkParams.NetworkType {
+	case types.NetworkMainnet:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeV17Height = 99999999999999
+	case types.Network2k:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version16
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeV17Height = 99999999999999
+	case types.NetworkCalibnet:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeV17Height = 99999999999999
+	case types.NetworkForce:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version16
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeV17Height = 99999999999999
+	case types.NetworkInterop:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version16
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeV17Height = 99999999999999
+	case types.NetworkButterfly:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version16
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeV17Height = 99999999999999
+	default:
+		return fsrRepo.Close()
+	}
+
+	if err = fsrRepo.ReplaceConfig(cfg); err != nil {
+		return
+	}
+
+	if err = fsrRepo.Close(); err != nil {
+		return
+	}
+
+	return repo.WriteVersion(repoPath, 9)
 }

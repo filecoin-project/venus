@@ -5,8 +5,6 @@ import (
 	gobig "math/big"
 	"os"
 
-	"github.com/filecoin-project/venus/venus-shared/actors"
-
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
@@ -28,6 +26,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
@@ -232,7 +231,7 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 	actorBuilder := register.DefaultActorBuilder
 	// register the chaos actor if required by the vector.
 	if chaosOn, ok := d.selector["chaos_actor"]; ok && chaosOn == "true" {
-		av, _ := actors.VersionForNetwork(params.NetworkVersion)
+		av, _ := actorstypes.VersionForNetwork(params.NetworkVersion)
 		chaosActor := chaos.Actor{}
 		actorBuilder.Add(av, nil, chaosActor)
 	}

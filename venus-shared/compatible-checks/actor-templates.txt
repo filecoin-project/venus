@@ -18,6 +18,7 @@ TEMPLATES IN chain/actors:
 	builtin/paych/state.go.template
 	builtin/power/actor.go.template
 	builtin/power/state.go.template
+	builtin/registry.go.template
 	builtin/reward/actor.go.template
 	builtin/reward/state.go.template
 	builtin/system/actor.go.template

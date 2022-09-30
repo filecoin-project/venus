@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -669,7 +670,7 @@ func (cia *chainInfoAPI) StateGetNetworkParams(ctx context.Context) (*types.Netw
 
 // StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
 func (cia *chainInfoAPI) StateActorCodeCIDs(ctx context.Context, nv network.Version) (map[string]cid.Cid, error) {
-	actorVersion, err := actors.VersionForNetwork(nv)
+	actorVersion, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
 		return nil, fmt.Errorf("invalid network version")
 	}
@@ -707,7 +708,7 @@ func (cia *chainInfoAPI) ChainGetGenesis(ctx context.Context) (*types.TipSet, er
 
 // StateActorManifestCID returns the CID of the builtin actors manifest for the given network version
 func (cia *chainInfoAPI) StateActorManifestCID(ctx context.Context, nv network.Version) (cid.Cid, error) {
-	actorVersion, err := actors.VersionForNetwork(nv)
+	actorVersion, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("invalid network version")
 	}

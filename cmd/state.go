@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
@@ -23,7 +24,6 @@ import (
 
 	"github.com/filecoin-project/venus/app/node"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -631,7 +631,7 @@ var stateSysActorCIDsCmd = &cmds.Command{
 		buf := new(bytes.Buffer)
 		buf.WriteString(fmt.Sprintf("Network Version: %d\n", nv))
 
-		actorVersion, err := actors.VersionForNetwork(nv)
+		actorVersion, err := actorstypes.VersionForNetwork(nv)
 		if err != nil {
 			return err
 		}

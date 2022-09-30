@@ -13,12 +13,6 @@ import (
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 	"github.com/ipfs/go-cid"
 
-	/* inline-gen template
-	{{range .actorVersions}}
-	rt{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/runtime"{{end}}
-
-	/* inline-gen start */
-
 	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
 	rt2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 	rt3 "github.com/filecoin-project/specs-actors/v3/actors/runtime"
@@ -26,9 +20,6 @@ import (
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	rt6 "github.com/filecoin-project/specs-actors/v6/actors/runtime"
 	rt7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
-	rt8 "github.com/filecoin-project/specs-actors/v8/actors/runtime"
-
-	/* inline-gen end */
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 	vmState "github.com/filecoin-project/venus/pkg/state/tree"
@@ -67,11 +58,6 @@ type syscalls struct {
 	stateView     SyscallsStateView
 }
 
-/* inline-gen template
-{{range .actorVersions}}
-var _ rt{{.}}.Syscalls = (*syscalls)(nil){{end}}
-/* inline-gen start */
-
 var _ rt0.Syscalls = (*syscalls)(nil)
 var _ rt2.Syscalls = (*syscalls)(nil)
 var _ rt3.Syscalls = (*syscalls)(nil)
@@ -79,9 +65,6 @@ var _ rt4.Syscalls = (*syscalls)(nil)
 var _ rt5.Syscalls = (*syscalls)(nil)
 var _ rt6.Syscalls = (*syscalls)(nil)
 var _ rt7.Syscalls = (*syscalls)(nil)
-var _ rt8.Syscalls = (*syscalls)(nil)
-
-/* inline-gen end */
 
 func (sys syscalls) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) error {
 	charge, err := sys.pricelist.OnVerifySignature(signature.Type, len(plaintext))

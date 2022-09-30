@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -21,7 +22,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, initialActors []Actor, rootVerifier Actor, remainder Actor, av actors.Version) (int64, *types.Actor, map[address.Address]address.Address, error) {
+func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, initialActors []Actor, rootVerifier Actor, remainder Actor, av actorstypes.Version) (int64, *types.Actor, map[address.Address]address.Address, error) {
 	if len(initialActors) > MaxAccounts {
 		return 0, nil, nil, errors.New("too many initial actors")
 	}

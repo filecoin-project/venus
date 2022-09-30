@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 
@@ -25,7 +26,7 @@ import (
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
-	builtin8 "github.com/filecoin-project/go-state-types/builtin"
+	builtin9 "github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
@@ -33,8 +34,8 @@ import (
 )
 
 var (
-	Address = builtin8.RewardActorAddr
-	Methods = builtin8.MethodsReward
+	Address = builtin9.RewardActorAddr
+	Methods = builtin9.MethodsReward
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -45,8 +46,11 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		switch av {
 
-		case actors.Version8:
+		case actorstypes.Version8:
 			return load8(store, act.Head)
+
+		case actorstypes.Version9:
+			return load9(store, act.Head)
 
 		}
 	}
@@ -79,32 +83,35 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, fmt.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av actors.Version, currRealizedPower abi.StoragePower) (State, error) {
+func MakeState(store adt.Store, av actorstypes.Version, currRealizedPower abi.StoragePower) (State, error) {
 	switch av {
 
-	case actors.Version0:
+	case actorstypes.Version0:
 		return make0(store, currRealizedPower)
 
-	case actors.Version2:
+	case actorstypes.Version2:
 		return make2(store, currRealizedPower)
 
-	case actors.Version3:
+	case actorstypes.Version3:
 		return make3(store, currRealizedPower)
 
-	case actors.Version4:
+	case actorstypes.Version4:
 		return make4(store, currRealizedPower)
 
-	case actors.Version5:
+	case actorstypes.Version5:
 		return make5(store, currRealizedPower)
 
-	case actors.Version6:
+	case actorstypes.Version6:
 		return make6(store, currRealizedPower)
 
-	case actors.Version7:
+	case actorstypes.Version7:
 		return make7(store, currRealizedPower)
 
-	case actors.Version8:
+	case actorstypes.Version8:
 		return make8(store, currRealizedPower)
+
+	case actorstypes.Version9:
+		return make9(store, currRealizedPower)
 
 	}
 	return nil, fmt.Errorf("unknown actor version %d", av)

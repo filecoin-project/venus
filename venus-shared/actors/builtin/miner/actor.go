@@ -5,6 +5,7 @@ package miner
 import (
 	"fmt"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/venus-shared/actors"
@@ -16,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/proof"
 
-	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 
@@ -43,8 +44,11 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		switch av {
 
-		case actors.Version8:
+		case actorstypes.Version8:
 			return load8(store, act.Head)
+
+		case actorstypes.Version9:
+			return load9(store, act.Head)
 
 		}
 	}
@@ -104,6 +108,9 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 	case actors.Version8:
 		return make8(store)
 
+	case actors.Version9:
+		return make9(store)
+
 	}
 	return nil, fmt.Errorf("unknown actor version %d", av)
 }
@@ -122,8 +129,8 @@ type State interface {
 	GetSector(abi.SectorNumber) (*SectorOnChainInfo, error)
 	FindSector(abi.SectorNumber) (*SectorLocation, error)
 	GetSectorExpiration(abi.SectorNumber) (*SectorExpiration, error)
-	GetPrecommittedSector(abi.SectorNumber) (*miner8.SectorPreCommitOnChainInfo, error)
-	ForEachPrecommittedSector(func(miner8.SectorPreCommitOnChainInfo) error) error
+	GetPrecommittedSector(abi.SectorNumber) (*miner9.SectorPreCommitOnChainInfo, error)
+	ForEachPrecommittedSector(func(miner9.SectorPreCommitOnChainInfo) error) error
 	LoadSectors(sectorNos *bitfield.BitField) ([]*SectorOnChainInfo, error)
 	NumLiveSectors() (uint64, error)
 	IsAllocated(abi.SectorNumber) (bool, error)
@@ -152,7 +159,7 @@ type State interface {
 	sectors() (adt.Array, error)
 	decodeSectorOnChainInfo(*cbg.Deferred) (SectorOnChainInfo, error)
 	precommits() (adt.Map, error)
-	decodeSectorPreCommitOnChainInfo(*cbg.Deferred) (miner8.SectorPreCommitOnChainInfo, error)
+	decodeSectorPreCommitOnChainInfo(*cbg.Deferred) (miner9.SectorPreCommitOnChainInfo, error)
 	GetState() interface{}
 }
 
@@ -190,7 +197,7 @@ type Partition interface {
 	UnprovenSectors() (bitfield.BitField, error)
 }
 
-type SectorOnChainInfo = miner8.SectorOnChainInfo
+type SectorOnChainInfo = miner9.SectorOnChainInfo
 
 func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.RegisteredPoStProof) (abi.RegisteredSealProof, error) {
 	// We added support for the new proofs in network version 7, and removed support for the old
@@ -245,8 +252,9 @@ func WinningPoStProofTypeFromWindowPoStProofType(nver network.Version, proof abi
 	}
 }
 
-type MinerInfo = miner8.MinerInfo
-type WorkerKeyChange = miner8.WorkerKeyChange
+type MinerInfo = miner9.MinerInfo
+type WorkerKeyChange = miner9.WorkerKeyChange
+type SectorPreCommitOnChainInfo = miner9.SectorPreCommitOnChainInfo
 type WindowPostVerifyInfo = proof.WindowPoStVerifyInfo
 
 type SectorExpiration struct {
@@ -274,8 +282,8 @@ type SectorExtensions struct {
 }
 
 type PreCommitChanges struct {
-	Added   []miner8.SectorPreCommitOnChainInfo
-	Removed []miner8.SectorPreCommitOnChainInfo
+	Added   []miner9.SectorPreCommitOnChainInfo
+	Removed []miner9.SectorPreCommitOnChainInfo
 }
 
 type LockedFunds struct {

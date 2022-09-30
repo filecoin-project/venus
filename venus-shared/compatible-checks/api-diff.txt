@@ -38,7 +38,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	- CreateBackup
 	- Discover
 	+ GasBatchEstimateMessageGas
-	> GasEstimateMessageGas {[func(context.Context, *internal.Message, *types.MessageSendSpec, types.TipSetKey) (*internal.Message, error) <> func(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 1; nested=nil}}}}
+	> GasEstimateMessageGas {[func(context.Context, *internal.Message, *types.MessageSendSpec, types.TipSetKey) (*internal.Message, error) <> func(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 2; nested=nil}}}}
 	+ GetActor
 	+ GetEntry
 	+ GetFullBlock
@@ -55,11 +55,11 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	- MarketReserveFunds
 	- MarketWithdraw
 	+ MessageWait
-	> MpoolBatchPushMessage {[func(context.Context, []*internal.Message, *types.MessageSendSpec) ([]*types.SignedMessage, error) <> func(context.Context, []*types.Message, *api.MessageSendSpec) ([]*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 1; nested=nil}}}}
+	> MpoolBatchPushMessage {[func(context.Context, []*internal.Message, *types.MessageSendSpec) ([]*types.SignedMessage, error) <> func(context.Context, []*types.Message, *api.MessageSendSpec) ([]*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 2; nested=nil}}}}
 	+ MpoolDeleteByAdress
 	+ MpoolPublishByAddr
 	+ MpoolPublishMessage
-	> MpoolPushMessage {[func(context.Context, *internal.Message, *types.MessageSendSpec) (*types.SignedMessage, error) <> func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 1; nested=nil}}}}
+	> MpoolPushMessage {[func(context.Context, *internal.Message, *types.MessageSendSpec) (*types.SignedMessage, error) <> func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 2; nested=nil}}}}
 	+ MpoolSelects
 	> MsigCancel {[func(context.Context, address.Address, uint64, address.Address) (cid.Cid, error) <> func(context.Context, address.Address, uint64, address.Address, big.Int, address.Address, uint64, []uint8) (cid.Cid, error)] base=func in num: 4 != 8; nested=nil}
 	+ MsigCancelTxnHash
@@ -80,7 +80,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	+ SetConcurrent
 	+ SetPassword
 	- Shutdown
-	+ StateActorManifestCID
 	- StateAllMinerFaults
 	- StateChangedActors
 	- StateCompute
@@ -89,6 +88,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	- StateGetRandomnessFromBeacon
 	- StateGetRandomnessFromTickets
 	- StateListMessages
+	> StateMinerInfo {[func(context.Context, address.Address, types.TipSetKey) (types.MinerInfo, error) <> func(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)] base=func out type: #0 input; nested={[types.MinerInfo <> api.MinerInfo] base=struct field; nested={[types.MinerInfo <> api.MinerInfo] base=exported fields count: 11 != 14; nested=nil}}}
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
 	- StateReadState
@@ -124,6 +124,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- ChainGetNode
 	+ ChainGetReceipts
 	+ ChainList
+	- ChainPrune
 	+ ChainSyncHandleNewTipSet
 	- ClientCalcCommP
 	- ClientCancelDataTransfer
@@ -158,7 +159,7 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- CreateBackup
 	- Discover
 	+ GasBatchEstimateMessageGas
-	> GasEstimateMessageGas {[func(context.Context, *internal.Message, *types.MessageSendSpec, types.TipSetKey) (*internal.Message, error) <> func(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 1; nested=nil}}}}
+	> GasEstimateMessageGas {[func(context.Context, *internal.Message, *types.MessageSendSpec, types.TipSetKey) (*internal.Message, error) <> func(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 2; nested=nil}}}}
 	+ GetActor
 	+ GetEntry
 	+ GetFullBlock
@@ -175,11 +176,11 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- MarketReserveFunds
 	- MarketWithdraw
 	+ MessageWait
-	> MpoolBatchPushMessage {[func(context.Context, []*internal.Message, *types.MessageSendSpec) ([]*types.SignedMessage, error) <> func(context.Context, []*types.Message, *api.MessageSendSpec) ([]*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 1; nested=nil}}}}
+	> MpoolBatchPushMessage {[func(context.Context, []*internal.Message, *types.MessageSendSpec) ([]*types.SignedMessage, error) <> func(context.Context, []*types.Message, *api.MessageSendSpec) ([]*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 2; nested=nil}}}}
 	+ MpoolDeleteByAdress
 	+ MpoolPublishByAddr
 	+ MpoolPublishMessage
-	> MpoolPushMessage {[func(context.Context, *internal.Message, *types.MessageSendSpec) (*types.SignedMessage, error) <> func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 1; nested=nil}}}}
+	> MpoolPushMessage {[func(context.Context, *internal.Message, *types.MessageSendSpec) (*types.SignedMessage, error) <> func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 2; nested=nil}}}}
 	+ MpoolSelects
 	- MsigGetAvailableBalance
 	- MsigGetPending
@@ -199,10 +200,9 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ SetConcurrent
 	+ SetPassword
 	- Shutdown
-	+ StateActorManifestCID
 	- StateCompute
 	> StateGetNetworkParams {[func(context.Context) (*types.NetworkParams, error) <> func(context.Context) (*api.NetworkParams, error)] base=func out type: #0 input; nested={[*types.NetworkParams <> *api.NetworkParams] base=pointed type; nested={[types.NetworkParams <> api.NetworkParams] base=struct field; nested={[types.NetworkParams <> api.NetworkParams] base=exported field type: #5 field named ForkUpgradeParams; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=struct field; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=exported field name: #8 field, BreezeGasTampingDuration != UpgradePriceListOopsHeight; nested=nil}}}}}}
-	+ StateMinerAllocated
+	> StateMinerInfo {[func(context.Context, address.Address, types.TipSetKey) (types.MinerInfo, error) <> func(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)] base=func out type: #0 input; nested={[types.MinerInfo <> api.MinerInfo] base=struct field; nested={[types.MinerInfo <> api.MinerInfo] base=exported fields count: 11 != 14; nested=nil}}}
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
 	- StateReplay

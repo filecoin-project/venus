@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	blockstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipld/go-car"
@@ -36,10 +37,10 @@ func LoadBundle(ctx context.Context, bs blockstore.Blockstore, r io.Reader) (cid
 
 // LoadBundles loads the bundles for the specified actor versions into the passed blockstore, if and
 // only if the bundle's manifest is not already present in the blockstore.
-func LoadBundles(ctx context.Context, bs blockstore.Blockstore, versions ...Version) error {
+func LoadBundles(ctx context.Context, bs blockstore.Blockstore, versions ...actorstypes.Version) error {
 	for _, av := range versions {
 		// No bundles before version 8.
-		if av < Version8 {
+		if av < actorstypes.Version8 {
 			continue
 		}
 

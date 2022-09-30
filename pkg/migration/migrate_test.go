@@ -22,6 +22,7 @@ func TestMigration(t *testing.T) {
 		types.NetworkButterfly: &networks.ButterflySnapNet().Network,
 		types.NetworkCalibnet:  &networks.Calibration().Network,
 		types.NetworkMainnet:   &networks.Mainnet().Network,
+		types.Integrationnet:   &networks.IntegrationNet().Network,
 	}
 
 	for nt, paramsCfg := range cfgs {
