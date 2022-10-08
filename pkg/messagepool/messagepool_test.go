@@ -331,7 +331,7 @@ func mustAdd(t *testing.T, mp *MessagePool, msg *types.SignedMessage) {
 func newWalletAndMpool(t *testing.T, tma *testMpoolAPI) (*wallet.Wallet, *MessagePool) {
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.NewDefaultConfig().NetworkParams, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -584,7 +584,7 @@ func TestLoadLocal(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.NewDefaultConfig().NetworkParams, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -620,7 +620,7 @@ func TestLoadLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mp, err = New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err = New(context.Background(), tma, nil, ds, config.NewDefaultConfig().NetworkParams, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -651,7 +651,7 @@ func TestClearAll(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.NewDefaultConfig().NetworkParams, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -699,7 +699,7 @@ func TestClearNonLocal(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.NewDefaultConfig().NetworkParams, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -754,7 +754,7 @@ func TestUpdates(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.NewDefaultConfig().NetworkParams, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
