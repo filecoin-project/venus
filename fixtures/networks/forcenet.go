@@ -56,8 +56,9 @@ func ForceNet() *NetworkConf {
 				UpgradeSkyrHeight:       -19,
 				UpgradeV17Height:        99999999999999,
 			},
-			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: config.DrandMainnet},
-			AddressNetwork: address.Testnet,
+			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: config.DrandMainnet},
+			AddressNetwork:       address.Testnet,
+			PropagationDelaySecs: 1,
 		},
 	}
 }

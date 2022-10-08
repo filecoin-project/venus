@@ -49,7 +49,18 @@ var rbfDenomBig = big.NewInt(RbfDenom)
 
 const RbfDenom = 256
 
-var RepublishInterval = time.Duration(10*constants.MainNetBlockDelaySecs+constants.PropagationDelaySecs) * time.Second
+var RepublishInterval time.Duration
+
+func setRepublishInterval(propagationDelaySecs uint64) {
+	republishInterval := time.Duration(10*constants.MainNetBlockDelaySecs+propagationDelaySecs) * time.Second
+
+	// if the republish interval is too short compared to the pubsub timecache, adjust it
+	minInterval := pubsub.TimeCacheDuration + time.Duration(propagationDelaySecs)*time.Second
+	if republishInterval < minInterval {
+		republishInterval = minInterval
+	}
+	RepublishInterval = republishInterval
+}
 
 var minimumBaseFee = big.NewInt(int64(constants.MinimumBaseFee))
 var baseFeeLowerBoundFactor = big.NewInt(10)
@@ -105,14 +116,6 @@ type MessagePoolEvtMessage struct { // nolint
 	types.Message
 
 	CID cid.Cid
-}
-
-func init() {
-	// if the republish interval is too short compared to the pubsub timecache, adjust it
-	minInterval := pubsub.TimeCacheDuration + time.Duration(constants.PropagationDelaySecs)
-	if RepublishInterval < minInterval {
-		RepublishInterval = minInterval
-	}
 }
 
 type MessagePool struct {
@@ -370,7 +373,7 @@ func New(ctx context.Context,
 	api Provider,
 	sm *statemanger.Stmgr,
 	ds repo.Datastore,
-	forkParams *config.ForkUpgradeConfig,
+	networkParams *config.NetworkParamsConfig,
 	mpoolCfg *config.MessagePoolConfig,
 	netName string,
 	j journal.Journal,
@@ -386,6 +389,8 @@ func New(ctx context.Context,
 	if j == nil {
 		j = journal.NilJournal()
 	}
+
+	setRepublishInterval(networkParams.PropagationDelaySecs)
 
 	mp := &MessagePool{
 		ds:            ds,
@@ -413,8 +418,8 @@ func New(ctx context.Context,
 			evtTypeMpoolRepub:  j.RegisterEventType("mpool", "repub"),
 		},
 		journal:          j,
-		forkParams:       forkParams,
-		gasPriceSchedule: gas.NewPricesSchedule(forkParams),
+		forkParams:       networkParams.ForkUpgradeParam,
+		gasPriceSchedule: gas.NewPricesSchedule(networkParams.ForkUpgradeParam),
 		GetMaxFee:        newDefaultMaxFeeFunc(mpoolCfg.MaxFee),
 		PriceCache:       NewGasPriceCache(),
 	}
@@ -1092,9 +1097,9 @@ func (mp *MessagePool) getStateBalance(ctx context.Context, addr address.Address
 
 // this method is provided for the gateway to push messages.
 // differences from Push:
-//  - strict checks are enabled
-//  - extra strict add checks are used when adding the messages to the msgSet
-//    that means: no nonce gaps, at most 10 pending messages for the actor
+//   - strict checks are enabled
+//   - extra strict add checks are used when adding the messages to the msgSet
+//     that means: no nonce gaps, at most 10 pending messages for the actor
 func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage) (cid.Cid, error) {
 	err := mp.checkMessage(m)
 	if err != nil {

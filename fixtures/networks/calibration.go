@@ -60,8 +60,9 @@ func Calibration() *NetworkConf {
 				UpgradeSkyrHeight:        1044660, // 2022-06-16T17:30:00Z
 				UpgradeV17Height:         99999999999999,
 			},
-			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 1},
-			AddressNetwork: address.Testnet,
+			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			AddressNetwork:       address.Testnet,
+			PropagationDelaySecs: 10,
 		},
 	}
 }
