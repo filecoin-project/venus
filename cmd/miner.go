@@ -382,6 +382,23 @@ var minerInfoCmd = &cmds.Command{
 		}
 		writer.Printf("Total Spendable:  %s\n", types.FIL(spendable).Short())
 
+		if mi.Beneficiary != address.Undef {
+			writer.Printf("Beneficiary:\t%s\n", mi.Beneficiary)
+			if mi.Beneficiary != mi.Owner {
+				writer.Printf("Beneficiary Quota:\t%s\n", mi.BeneficiaryTerm.Quota)
+				writer.Printf("Beneficiary Used Quota:\t%s\n", mi.BeneficiaryTerm.UsedQuota)
+				writer.Printf("Beneficiary Expiration:\t%s\n", mi.BeneficiaryTerm.Expiration)
+			}
+		}
+		if mi.PendingBeneficiaryTerm != nil {
+			writer.Printf("Pending Beneficiary Term:\n")
+			writer.Printf("New Beneficiary:\t%s\n", mi.PendingBeneficiaryTerm.NewBeneficiary)
+			writer.Printf("New Quota:\t%s\n", mi.PendingBeneficiaryTerm.NewQuota)
+			writer.Printf("New Expiration:\t%s\n", mi.PendingBeneficiaryTerm.NewExpiration)
+			writer.Printf("Approved By Beneficiary:\t%t\n", mi.PendingBeneficiaryTerm.ApprovedByBeneficiary)
+			writer.Printf("Approved By Nominee:\t%t\n", mi.PendingBeneficiaryTerm.ApprovedByNominee)
+		}
+
 		// TODO: grab actr state / info
 		//  * Sealed sectors (count / bytes)
 		//  * Power
