@@ -88,7 +88,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	- StateGetRandomnessFromBeacon
 	- StateGetRandomnessFromTickets
 	- StateListMessages
-	> StateMinerInfo {[func(context.Context, address.Address, types.TipSetKey) (types.MinerInfo, error) <> func(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)] base=func out type: #0 input; nested={[types.MinerInfo <> api.MinerInfo] base=struct field; nested={[types.MinerInfo <> api.MinerInfo] base=exported fields count: 11 != 14; nested=nil}}}
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
 	- StateReadState
@@ -202,7 +201,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- Shutdown
 	- StateCompute
 	> StateGetNetworkParams {[func(context.Context) (*types.NetworkParams, error) <> func(context.Context) (*api.NetworkParams, error)] base=func out type: #0 input; nested={[*types.NetworkParams <> *api.NetworkParams] base=pointed type; nested={[types.NetworkParams <> api.NetworkParams] base=struct field; nested={[types.NetworkParams <> api.NetworkParams] base=exported field type: #5 field named ForkUpgradeParams; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=struct field; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=exported field name: #8 field, BreezeGasTampingDuration != UpgradePriceListOopsHeight; nested=nil}}}}}}
-	> StateMinerInfo {[func(context.Context, address.Address, types.TipSetKey) (types.MinerInfo, error) <> func(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)] base=func out type: #0 input; nested={[types.MinerInfo <> api.MinerInfo] base=struct field; nested={[types.MinerInfo <> api.MinerInfo] base=exported fields count: 11 != 14; nested=nil}}}
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
 	- StateReplay

@@ -163,7 +163,7 @@ var actorSetPeeridCmd = &cmds.Command{
 
 var actorWithdrawCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
-		Tagline: "withdraw available balance.",
+		Tagline: "withdraw available balance to beneficiary.",
 	},
 	Arguments: []cmds.Argument{
 		cmds.StringArg("address", true, false, "Address of miner to show"),
@@ -171,6 +171,7 @@ var actorWithdrawCmd = &cmds.Command{
 	},
 	Options: []cmds.Option{
 		cmds.Uint64Option("confidence", "number of block confirmations to wait for").WithDefault(constants.MessageConfidence),
+		cmds.BoolOption("beneficiary", "send withdraw message from the beneficiary address"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		ctx := req.Context
@@ -208,9 +209,14 @@ var actorWithdrawCmd = &cmds.Command{
 			return err
 		}
 
+		sender := mi.Owner
+		if beneficiary, _ := req.Options["beneficiary"].(bool); beneficiary {
+			sender = mi.Beneficiary
+		}
+
 		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			To:     maddr,
-			From:   mi.Owner,
+			From:   sender,
 			Value:  big.NewInt(0),
 			Method: builtintypes.MethodsMiner.WithdrawBalance,
 			Params: params,
