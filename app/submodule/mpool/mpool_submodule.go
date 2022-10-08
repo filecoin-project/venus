@@ -82,8 +82,7 @@ func NewMpoolSubmodule(ctx context.Context, cfg messagepoolConfig,
 	if err != nil {
 		return nil, err
 	}
-	networkParams := cfg.Repo().Config().NetworkParams
-	mp, err := messagepool.New(ctx, mpp, chain.Stmgr, cfg.Repo().MetaDatastore(), networkParams.ForkUpgradeParam,
+	mp, err := messagepool.New(ctx, mpp, chain.Stmgr, cfg.Repo().MetaDatastore(), cfg.Repo().Config().NetworkParams,
 		cfg.Repo().Config().Mpool, network.NetworkName, j)
 	if err != nil {
 		return nil, fmt.Errorf("constructing mpool: %s", err)

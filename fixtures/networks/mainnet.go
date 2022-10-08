@@ -71,8 +71,9 @@ func Mainnet() *NetworkConf {
 				UpgradeSkyrHeight:       1960320, // 2022-07-06T14:00:00Z
 				UpgradeV17Height:        99999999999999,
 			},
-			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
-			AddressNetwork: address.Mainnet,
+			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
+			AddressNetwork:       address.Mainnet,
+			PropagationDelaySecs: 10,
 		},
 	}
 }

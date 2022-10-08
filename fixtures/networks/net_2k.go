@@ -49,8 +49,9 @@ func Net2k() *NetworkConf {
 				UpgradeSkyrHeight:        -19,
 				UpgradeV17Height:         99999999999999,
 			},
-			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 1},
-			AddressNetwork: address.Testnet,
+			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			AddressNetwork:       address.Testnet,
+			PropagationDelaySecs: 1,
 		},
 	}
 }
