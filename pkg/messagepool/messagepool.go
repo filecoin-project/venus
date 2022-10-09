@@ -690,11 +690,11 @@ func (mp *MessagePool) addLocal(ctx context.Context, m *types.SignedMessage) err
 // sufficiently.
 // For non local messages, if the message cannot be included in the next 20 blocks it returns
 // a (soft) validation error.
-func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTS *types.TipSet, local bool) (bool, error) {
+func (mp *MessagePool) verifyMsgBeforeAdd(ctx context.Context, m *types.SignedMessage, curTS *types.TipSet, local bool) (bool, error) {
 	epoch := curTS.Height() + 1
 	minGas := mp.gasPriceSchedule.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
 
-	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total(), constants.NewestNetworkVersion); err != nil {
+	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total(), mp.api.StateNetworkVersion(ctx, epoch)); err != nil {
 		return false, fmt.Errorf("message will not be included in a block: %v", err)
 	}
 
@@ -734,7 +734,7 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTS *types.T
 }
 
 func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage) (cid.Cid, error) {
-	err := mp.checkMessage(m)
+	err := mp.checkMessage(ctx, m)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -769,14 +769,14 @@ func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage) (cid.Ci
 	return m.Cid(), nil
 }
 
-func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
+func (mp *MessagePool) checkMessage(ctx context.Context, m *types.SignedMessage) error {
 	// big messages are bad, anti DOS
 	if m.ChainLength() > MaxMessageSize {
 		return fmt.Errorf("mpool message too large (%dB): %w", m.ChainLength(), ErrMessageTooBig)
 	}
 
 	// Perform syntactic validation, minGas=0 as we check the actual mingas before we add it
-	if err := m.Message.ValidForBlockInclusion(0, constants.NewestNetworkVersion); err != nil {
+	if err := m.Message.ValidForBlockInclusion(0, mp.api.StateNetworkVersion(ctx, mp.curTS.Height())); err != nil {
 		return fmt.Errorf("message not valid for block inclusion: %v", err)
 	}
 
@@ -801,7 +801,7 @@ func (mp *MessagePool) checkMessage(m *types.SignedMessage) error {
 }
 
 func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
-	err := mp.checkMessage(m)
+	err := mp.checkMessage(ctx, m)
 	if err != nil {
 		return err
 	}
@@ -903,7 +903,7 @@ func (mp *MessagePool) addTS(ctx context.Context, m *types.SignedMessage, curTS 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	publish, err := mp.verifyMsgBeforeAdd(m, curTS, local)
+	publish, err := mp.verifyMsgBeforeAdd(ctx, m, curTS, local)
 	if err != nil {
 		return false, err
 	}
@@ -928,7 +928,7 @@ func (mp *MessagePool) addTS(ctx context.Context, m *types.SignedMessage, curTS 
 }
 
 func (mp *MessagePool) addLoaded(ctx context.Context, m *types.SignedMessage) error {
-	err := mp.checkMessage(m)
+	err := mp.checkMessage(ctx, m)
 	if err != nil {
 		return err
 	}
@@ -948,7 +948,7 @@ func (mp *MessagePool) addLoaded(ctx context.Context, m *types.SignedMessage) er
 		return fmt.Errorf("minimum expected nonce is %d: %w", snonce, ErrNonceTooLow)
 	}
 
-	_, err = mp.verifyMsgBeforeAdd(m, curTS, true)
+	_, err = mp.verifyMsgBeforeAdd(ctx, m, curTS, true)
 	if err != nil {
 		return err
 	}
@@ -1101,7 +1101,7 @@ func (mp *MessagePool) getStateBalance(ctx context.Context, addr address.Address
 //   - extra strict add checks are used when adding the messages to the msgSet
 //     that means: no nonce gaps, at most 10 pending messages for the actor
 func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage) (cid.Cid, error) {
-	err := mp.checkMessage(m)
+	err := mp.checkMessage(ctx, m)
 	if err != nil {
 		return cid.Undef, err
 	}

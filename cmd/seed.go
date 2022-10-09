@@ -531,7 +531,7 @@ var genesisSetActorVersionCmd = &cmds.Command{
 			return fmt.Errorf("parsing network version: %w", err)
 		}
 
-		if nv > uint64(constants.NewestNetworkVersion) {
+		if nv > uint64(constants.TestNetworkVersion) {
 			return fmt.Errorf("invalid network version: %d", nv)
 		}
 
