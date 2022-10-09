@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	tbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/statemanger"
@@ -31,6 +33,7 @@ type Provider interface {
 	PubSubPublish(context.Context, string, []byte) error
 	GetActorAfter(context.Context, address.Address, *types.TipSet) (*types.Actor, error)
 	StateAccountKeyAtFinality(context.Context, address.Address, *types.TipSet) (address.Address, error)
+	StateNetworkVersion(context.Context, abi.ChainEpoch) network.Version
 	StateAccountKey(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	MessagesForBlock(context.Context, *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
 	MessagesForTipset(context.Context, *types.TipSet) ([]types.ChainMsg, error)
@@ -132,6 +135,10 @@ func (mpp *mpoolProvider) StateAccountKeyAtFinality(ctx context.Context, addr ad
 		}
 	}
 	return mpp.stmgr.ResolveToKeyAddress(ctx, addr, ts)
+}
+
+func (mpp *mpoolProvider) StateNetworkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
+	return mpp.stmgr.GetNetworkVersion(ctx, height)
 }
 
 func (mpp *mpoolProvider) StateAccountKey(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {

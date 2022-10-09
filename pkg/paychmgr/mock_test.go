@@ -252,5 +252,5 @@ func (pchapi *mockPaychAPI) addSigningKey(key []byte) {
 }
 
 func (pchapi *mockPaychAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
-	return constants.NewestNetworkVersion, nil
+	return constants.TestNetworkVersion, nil
 }
