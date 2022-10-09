@@ -86,7 +86,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	addExample(constants.NewestNetworkVersion)
+	addExample(constants.TestNetworkVersion)
 	textSelExample := textselector.Expression("Links/21/Hash/Links/42/Hash")
 	clientEvent := retrievalmarket.ClientEventDealAccepted
 	addExample(bitfield.NewFromSet([]uint64{5}))
