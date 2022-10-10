@@ -27,15 +27,15 @@ var defaultActors dispatch.CodeLoader
 
 func GetDefaultActros() *dispatch.CodeLoader {
 	loadOnce.Do(func() {
-		DefaultActorBuilder.AddMany(actorstypes.Version0, dispatch.ActorsVersionPredicate(actorstypes.Version0), exported0.BuiltinActors()...)
-		DefaultActorBuilder.AddMany(actorstypes.Version2, dispatch.ActorsVersionPredicate(actorstypes.Version2), exported2.BuiltinActors()...)
-		DefaultActorBuilder.AddMany(actorstypes.Version3, dispatch.ActorsVersionPredicate(actorstypes.Version3), exported3.BuiltinActors()...)
-		DefaultActorBuilder.AddMany(actorstypes.Version4, dispatch.ActorsVersionPredicate(actorstypes.Version4), exported4.BuiltinActors()...)
-		DefaultActorBuilder.AddMany(actorstypes.Version5, dispatch.ActorsVersionPredicate(actorstypes.Version5), exported5.BuiltinActors()...)
-		DefaultActorBuilder.AddMany(actorstypes.Version6, dispatch.ActorsVersionPredicate(actorstypes.Version6), exported6.BuiltinActors()...)
-		DefaultActorBuilder.AddMany(actorstypes.Version7, dispatch.ActorsVersionPredicate(actorstypes.Version7), exported7.BuiltinActors()...)
-		DefaultActorBuilder.AddMany(actorstypes.Version8, dispatch.ActorsVersionPredicate(actorstypes.Version8), builtin.MakeRegistry(actorstypes.Version8)...)
-		DefaultActorBuilder.AddMany(actorstypes.Version9, dispatch.ActorsVersionPredicate(actorstypes.Version9), builtin.MakeRegistry(actorstypes.Version9)...)
+		DefaultActorBuilder.AddMany(actorstypes.Version0, dispatch.ActorsVersionPredicate(actorstypes.Version0), builtin.MakeRegistryLegacy(exported0.BuiltinActors()))
+		DefaultActorBuilder.AddMany(actorstypes.Version2, dispatch.ActorsVersionPredicate(actorstypes.Version2), builtin.MakeRegistryLegacy(exported2.BuiltinActors()))
+		DefaultActorBuilder.AddMany(actorstypes.Version3, dispatch.ActorsVersionPredicate(actorstypes.Version3), builtin.MakeRegistryLegacy(exported3.BuiltinActors()))
+		DefaultActorBuilder.AddMany(actorstypes.Version4, dispatch.ActorsVersionPredicate(actorstypes.Version4), builtin.MakeRegistryLegacy(exported4.BuiltinActors()))
+		DefaultActorBuilder.AddMany(actorstypes.Version5, dispatch.ActorsVersionPredicate(actorstypes.Version5), builtin.MakeRegistryLegacy(exported5.BuiltinActors()))
+		DefaultActorBuilder.AddMany(actorstypes.Version6, dispatch.ActorsVersionPredicate(actorstypes.Version6), builtin.MakeRegistryLegacy(exported6.BuiltinActors()))
+		DefaultActorBuilder.AddMany(actorstypes.Version7, dispatch.ActorsVersionPredicate(actorstypes.Version7), builtin.MakeRegistryLegacy(exported7.BuiltinActors()))
+		DefaultActorBuilder.AddMany(actorstypes.Version8, dispatch.ActorsVersionPredicate(actorstypes.Version8), builtin.MakeRegistry(actorstypes.Version8))
+		DefaultActorBuilder.AddMany(actorstypes.Version9, dispatch.ActorsVersionPredicate(actorstypes.Version9), builtin.MakeRegistry(actorstypes.Version9))
 		defaultActors = DefaultActorBuilder.Build()
 	})
 

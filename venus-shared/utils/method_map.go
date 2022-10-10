@@ -6,7 +6,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	"github.com/filecoin-project/go-state-types/rt"
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
 	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
 	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
@@ -33,7 +32,7 @@ var MethodsMap = map[cid.Cid]map[abi.MethodNum]MethodMeta{}
 
 type actorsWithVersion struct {
 	av     actorstypes.Version
-	actors []rt.VMActor
+	actors []builtin.RegistryEntry
 }
 
 func init() {
@@ -49,13 +48,13 @@ func loadMethodsMap() {
 	// TODO: combine with the runtime actor registry.
 	var actors []actorsWithVersion
 
-	actors = append(actors, actorsWithVersion{av: actorstypes.Version0, actors: exported0.BuiltinActors()})
-	actors = append(actors, actorsWithVersion{av: actorstypes.Version2, actors: exported2.BuiltinActors()})
-	actors = append(actors, actorsWithVersion{av: actorstypes.Version3, actors: exported3.BuiltinActors()})
-	actors = append(actors, actorsWithVersion{av: actorstypes.Version4, actors: exported4.BuiltinActors()})
-	actors = append(actors, actorsWithVersion{av: actorstypes.Version5, actors: exported5.BuiltinActors()})
-	actors = append(actors, actorsWithVersion{av: actorstypes.Version6, actors: exported6.BuiltinActors()})
-	actors = append(actors, actorsWithVersion{av: actorstypes.Version7, actors: exported7.BuiltinActors()})
+	actors = append(actors, actorsWithVersion{av: actorstypes.Version0, actors: builtin.MakeRegistryLegacy(exported0.BuiltinActors())})
+	actors = append(actors, actorsWithVersion{av: actorstypes.Version2, actors: builtin.MakeRegistryLegacy(exported2.BuiltinActors())})
+	actors = append(actors, actorsWithVersion{av: actorstypes.Version3, actors: builtin.MakeRegistryLegacy(exported3.BuiltinActors())})
+	actors = append(actors, actorsWithVersion{av: actorstypes.Version4, actors: builtin.MakeRegistryLegacy(exported4.BuiltinActors())})
+	actors = append(actors, actorsWithVersion{av: actorstypes.Version5, actors: builtin.MakeRegistryLegacy(exported5.BuiltinActors())})
+	actors = append(actors, actorsWithVersion{av: actorstypes.Version6, actors: builtin.MakeRegistryLegacy(exported6.BuiltinActors())})
+	actors = append(actors, actorsWithVersion{av: actorstypes.Version7, actors: builtin.MakeRegistryLegacy(exported7.BuiltinActors())})
 	actors = append(actors, actorsWithVersion{av: actorstypes.Version8, actors: builtin.MakeRegistry(actorstypes.Version8)})
 	actors = append(actors, actorsWithVersion{av: actorstypes.Version9, actors: builtin.MakeRegistry(actorstypes.Version9)})
 
@@ -91,7 +90,7 @@ func loadMethodsMap() {
 				et := ev.Type()
 
 				methods[abi.MethodNum(number)] = MethodMeta{
-					Num:    strconv.Itoa(number),
+					Num:    strconv.Itoa(int(number)),
 					Params: et.In(1),
 					Ret:    et.Out(0),
 				}
