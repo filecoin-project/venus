@@ -21,7 +21,7 @@ func TestRegistration(t *testing.T) {
 	require.True(t, found)
 	require.True(t, manifestCid.Defined())
 
-	for _, key := range GetBuiltinActorsKeys() {
+	for _, key := range GetBuiltinActorsKeys(actorstypes.Version8) {
 		actorCid, found := GetActorCodeID(actorstypes.Version8, key)
 		require.True(t, found)
 		name, version, found := GetActorMetaByCode(actorCid)
