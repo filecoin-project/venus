@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 
@@ -184,7 +185,14 @@ func (s *dealStates6) array() adt.Array {
 }
 
 func fromV6DealState(v6 market6.DealState) DealState {
-	return (DealState)(v6)
+
+	return DealState{
+		SectorStartEpoch: v6.SectorStartEpoch,
+		LastUpdatedEpoch: v6.LastUpdatedEpoch,
+		SlashEpoch:       v6.SlashEpoch,
+		VerifiedClaim:    0,
+	}
+
 }
 
 type dealProposals6 struct {
@@ -309,4 +317,10 @@ func (r *publishStorageDealsReturn6) IsDealValid(index uint64) (bool, int, error
 
 func (r *publishStorageDealsReturn6) DealIDs() ([]abi.DealID, error) {
 	return r.IDs, nil
+}
+
+func (s *state6) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
+
+	return 0, fmt.Errorf("unsupported before actors v9")
+
 }

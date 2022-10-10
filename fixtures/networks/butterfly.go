@@ -12,8 +12,8 @@ func ButterflySnapNet() *NetworkConf {
 	return &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses: []string{
-				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWSUZhAY3eyoPUboJ1ZWe4dNPFWTr1EPoDjbTDSAN15uhY",
-				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWDfvNrSRVGWAGbn3sm9C8z98W2x25qCZjaXGHXmGiH24e",
+				"/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWF4Yn38Y131nRN9Zn5JD8yyAJoXUKFFKATb86cd6pKBh9",
+				"/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWG7UQKGwXY4LpKRT8Cshz1vUmU414bvJmAWSeJsw3m7GW",
 			},
 			MinPeerThreshold: 0,
 			Period:           "30s",
@@ -52,7 +52,7 @@ func ButterflySnapNet() *NetworkConf {
 				UpgradeChocolateHeight:   -17,
 				UpgradeOhSnapHeight:      -18,
 				UpgradeSkyrHeight:        -19,
-				UpgradeV17Height:         99999999999999,
+				UpgradeV17Height:         50,
 			},
 			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:       address.Testnet,

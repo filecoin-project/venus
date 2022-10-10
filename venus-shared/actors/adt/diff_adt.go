@@ -5,8 +5,9 @@ package adt
 import (
 	"bytes"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	typegen "github.com/whyrusleeping/cbor-gen"
+
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 // AdtArrayDiff generalizes adt.Array diffing by accepting a Deferred type that can unmarshalled to its corresponding struct
@@ -14,7 +15,7 @@ import (
 // Add should be called when a new k,v is added to the array
 // Modify should be called when a value is modified in the array
 // Remove should be called when a value is removed from the array
-type AdtArrayDiff interface { // nolint
+type AdtArrayDiff interface {
 	Add(key uint64, val *typegen.Deferred) error
 	Modify(key uint64, from, to *typegen.Deferred) error
 	Remove(key uint64, val *typegen.Deferred) error
@@ -27,7 +28,7 @@ type AdtArrayDiff interface { // nolint
 // - All values that exist in preArr and not in curArr are passed to AdtArrayDiff.Remove()
 // - All values that exist in curArr nnd not in prevArr are passed to adtArrayDiff.Add()
 // - All values that exist in preArr and in curArr are passed to AdtArrayDiff.Modify()
-//  - It is the responsibility of AdtArrayDiff.Modify() to determine if the values it was passed have been modified.
+//   - It is the responsibility of AdtArrayDiff.Modify() to determine if the values it was passed have been modified.
 func DiffAdtArray(preArr, curArr Array, out AdtArrayDiff) error {
 	notNew := make(map[int64]struct{}, curArr.Length())
 	prevVal := new(typegen.Deferred)
@@ -38,8 +39,12 @@ func DiffAdtArray(preArr, curArr Array, out AdtArrayDiff) error {
 			return err
 		}
 		if !found {
-			return out.Remove(uint64(i), prevVal)
+			if err := out.Remove(uint64(i), prevVal); err != nil {
+				return err
+			}
+			return nil
 		}
+
 		// no modification
 		if !bytes.Equal(prevVal.Raw, curVal.Raw) {
 			if err := out.Modify(uint64(i), prevVal, curVal); err != nil {
@@ -70,7 +75,7 @@ func DiffAdtArray(preArr, curArr Array, out AdtArrayDiff) error {
 // Add should be called when a new k,v is added to the map
 // Modify should be called when a value is modified in the map
 // Remove should be called when a value is removed from the map
-type AdtMapDiff interface { // nolint
+type AdtMapDiff interface {
 	AsKey(key string) (abi.Keyer, error)
 	Add(key string, val *typegen.Deferred) error
 	Modify(key string, from, to *typegen.Deferred) error
@@ -92,7 +97,10 @@ func DiffAdtMap(preMap, curMap Map, out AdtMapDiff) error {
 			return err
 		}
 		if !found {
-			return out.Remove(key, prevVal)
+			if err := out.Remove(key, prevVal); err != nil {
+				return err
+			}
+			return nil
 		}
 
 		// no modification

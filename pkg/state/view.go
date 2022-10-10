@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/datacap"
 	notinit "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	lminer "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
@@ -787,6 +788,15 @@ func (v *View) LoadMarketState(ctx context.Context) (market.State, error) {
 	}
 
 	return market.Load(adt.WrapStore(ctx, v.ipldStore), actr)
+}
+
+func (v *View) LoadDatacapState(ctx context.Context) (datacap.State, error) {
+	actr, err := v.loadActor(ctx, datacap.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	return datacap.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
 // nolint

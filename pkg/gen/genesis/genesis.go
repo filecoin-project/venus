@@ -23,6 +23,7 @@ import (
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/datacap"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
@@ -230,6 +231,17 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 	}
 	if err := state.SetActor(ctx, verifreg.Address, verifact); err != nil {
 		return nil, nil, fmt.Errorf("set verified registry actor: %w", err)
+	}
+
+	// Create datacap actor
+	if av >= 9 {
+		dcapact, err := SetupDatacapActor(ctx, bs, av)
+		if err != nil {
+			return nil, nil, fmt.Errorf("setup datacap actor: %w", err)
+		}
+		if err := state.SetActor(ctx, datacap.Address, dcapact); err != nil {
+			return nil, nil, fmt.Errorf("set datacap actor: %w", err)
+		}
 	}
 
 	bact, err := makeAccountActor(ctx, cst, av, builtin.BurntFundsActorAddr, big.Zero())

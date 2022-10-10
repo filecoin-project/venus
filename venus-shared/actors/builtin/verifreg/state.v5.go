@@ -7,6 +7,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
+	"fmt"
+
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
@@ -14,6 +16,8 @@ import (
 
 	verifreg5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/verifreg"
 	adt5 "github.com/filecoin-project/specs-actors/v5/actors/util/adt"
+
+	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 )
 
 var _ State = (*state5)(nil)
@@ -50,7 +54,9 @@ func (s *state5) RootKey() (address.Address, error) {
 }
 
 func (s *state5) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
+
 	return getDataCap(s.store, actors.Version5, s.verifiedClients, addr)
+
 }
 
 func (s *state5) VerifierDataCap(addr address.Address) (bool, abi.StoragePower, error) {
@@ -66,11 +72,15 @@ func (s *state5) ForEachVerifier(cb func(addr address.Address, dcap abi.StorageP
 }
 
 func (s *state5) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
+
 	return forEachCap(s.store, actors.Version5, s.verifiedClients, cb)
+
 }
 
 func (s *state5) verifiedClients() (adt.Map, error) {
+
 	return adt5.AsMap(s.store, s.VerifiedClients, builtin5.DefaultHamtBitwidth)
+
 }
 
 func (s *state5) verifiers() (adt.Map, error) {
@@ -84,4 +94,10 @@ func (s *state5) removeDataCapProposalIDs() (adt.Map, error) {
 
 func (s *state5) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state5) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*verifreg9.Allocation, bool, error) {
+
+	return nil, false, fmt.Errorf("unsupported in actors v5")
+
 }

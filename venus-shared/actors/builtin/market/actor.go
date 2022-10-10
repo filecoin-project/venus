@@ -17,7 +17,8 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -139,6 +140,7 @@ type State interface {
 	) (weight, verifiedWeight abi.DealWeight, err error)
 	NextID() (abi.DealID, error)
 	GetState() interface{}
+	GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error)
 }
 
 type BalanceTable interface {

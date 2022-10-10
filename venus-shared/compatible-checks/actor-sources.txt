@@ -30,6 +30,7 @@ SOURCES IN chain/actors:
 	builtin/cron/v8.go
 	builtin/cron/v9.go
 	builtin/datacap/datacap.go
+	builtin/datacap/util.go
 	builtin/datacap/v9.go
 	builtin/init/diff.go
 	builtin/init/init.go
