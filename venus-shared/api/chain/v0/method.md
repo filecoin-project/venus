@@ -84,6 +84,8 @@
 * [MinerState](#MinerState)
   * [StateCirculatingSupply](#StateCirculatingSupply)
   * [StateDealProviderCollateralBounds](#StateDealProviderCollateralBounds)
+  * [StateGetAllocation](#StateGetAllocation)
+  * [StateGetAllocationForPendingDeal](#StateGetAllocationForPendingDeal)
   * [StateListActors](#StateListActors)
   * [StateListMiners](#StateListMiners)
   * [StateLookupID](#StateLookupID)
@@ -2773,6 +2775,79 @@ Response:
 }
 ```
 
+### StateGetAllocation
+StateGetAllocation returns the allocation for a given address and allocation ID.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  0,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Client": 1000,
+  "Provider": 1000,
+  "Data": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Size": 1032,
+  "TermMin": 10101,
+  "TermMax": 10101,
+  "Expiration": 10101
+}
+```
+
+### StateGetAllocationForPendingDeal
+StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  5432,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Client": 1000,
+  "Provider": 1000,
+  "Data": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Size": 1032,
+  "TermMin": 10101,
+  "TermMax": 10101,
+  "Expiration": 10101
+}
+```
+
 ### StateListActors
 
 
@@ -2916,7 +2991,8 @@ Response:
     "State": {
       "SectorStartEpoch": 10101,
       "LastUpdatedEpoch": 10101,
-      "SlashEpoch": 10101
+      "SlashEpoch": 10101,
+      "VerifiedClaim": 0
     }
   }
 }
@@ -2963,7 +3039,8 @@ Response:
   "State": {
     "SectorStartEpoch": 10101,
     "LastUpdatedEpoch": 10101,
-    "SlashEpoch": 10101
+    "SlashEpoch": 10101,
+    "VerifiedClaim": 0
   }
 }
 ```
@@ -3009,7 +3086,8 @@ Response:
     "ExpectedStoragePledge": "0",
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
-    "SectorKeyCID": null
+    "SectorKeyCID": null,
+    "SimpleQAPower": true
   }
 ]
 ```
@@ -3489,7 +3567,8 @@ Response:
     "ExpectedStoragePledge": "0",
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
-    "SectorKeyCID": null
+    "SectorKeyCID": null,
+    "SimpleQAPower": true
   }
 ]
 ```
@@ -3586,7 +3665,8 @@ Response:
   "ExpectedStoragePledge": "0",
   "ReplacedSectorAge": 10101,
   "ReplacedDayReward": "0",
-  "SectorKeyCID": null
+  "SectorKeyCID": null,
+  "SimpleQAPower": true
 }
 ```
 

@@ -15,12 +15,15 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	market9 "github.com/filecoin-project/go-state-types/builtin/v9/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	adt9 "github.com/filecoin-project/go-state-types/builtin/v9/util/adt"
+
+	"github.com/filecoin-project/go-state-types/builtin"
 )
 
 var _ State = (*state9)(nil)
@@ -185,7 +188,9 @@ func (s *dealStates9) array() adt.Array {
 }
 
 func fromV9DealState(v9 market9.DealState) DealState {
+
 	return (DealState)(v9)
+
 }
 
 type dealProposals9 struct {
@@ -326,4 +331,23 @@ func (r *publishStorageDealsReturn9) IsDealValid(index uint64) (bool, int, error
 
 func (r *publishStorageDealsReturn9) DealIDs() ([]abi.DealID, error) {
 	return r.IDs, nil
+}
+
+func (s *state9) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
+
+	allocations, err := adt9.AsMap(s.store, s.PendingDealAllocationIds, builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return 0, fmt.Errorf("failed to load allocation id for %d: %w", dealId, err)
+	}
+
+	var allocationId cbg.CborInt
+	found, err := allocations.Get(abi.UIntKey(uint64(dealId)), &allocationId)
+	if err != nil {
+		return 0, fmt.Errorf("failed to load allocation id for %d: %w", dealId, err)
+	}
+	if !found {
+		return 0, fmt.Errorf("failed to find allocation id for %d", dealId)
+	}
+	return verifregtypes.AllocationId(allocationId), nil
+
 }

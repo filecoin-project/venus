@@ -20,7 +20,9 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/state/tree"
@@ -372,6 +374,59 @@ func (msa *minerStateAPI) StateMarketStorageDeal(ctx context.Context, dealID abi
 		Proposal: *proposal,
 		State:    *st,
 	}, nil
+}
+
+// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal.
+func (msa *minerStateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
+	}
+
+	st, err := view.LoadMarketState(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+	}
+
+	allocationId, err := st.GetAllocationIdForPendingDeal(dealId)
+	if err != nil {
+		return nil, err
+	}
+
+	dealState, err := msa.StateMarketStorageDeal(ctx, dealId, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	return msa.StateGetAllocation(ctx, dealState.Proposal.Client, allocationId, tsk)
+}
+
+// StateGetAllocation returns the allocation for a given address and allocation ID.
+func (msa *minerStateAPI) StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
+	idAddr, err := msa.ChainSubmodule.API().StateLookupID(ctx, clientAddr, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
+	}
+
+	st, err := view.LoadVerifregActor(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+	}
+
+	allocation, found, err := st.GetAllocation(idAddr, allocationId)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, nil
+	}
+
+	return allocation, nil
 }
 
 // StateComputeDataCID computes DataCID from a set of on-chain deals
@@ -901,20 +956,45 @@ func (msa *minerStateAPI) StateVerifiedClientStatus(ctx context.Context, addr ad
 		return nil, fmt.Errorf("loading state view %s: %v", tsk, err)
 	}
 
-	vrs, err := view.LoadVerifregActor(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load verified registry state: %v", err)
-	}
-
 	aid, err := view.LookupID(ctx, addr)
 	if err != nil {
 		return nil, fmt.Errorf("loook up id of %s : %v", addr, err)
 	}
 
-	verified, dcap, err := vrs.VerifiedClientDataCap(aid)
+	nv, err := msa.ChainSubmodule.API().StateNetworkVersion(ctx, tsk)
 	if err != nil {
-		return nil, fmt.Errorf("looking up verified client: %v", err)
+		return nil, err
 	}
+
+	av, err := actorstypes.VersionForNetwork(nv)
+	if err != nil {
+		return nil, err
+	}
+
+	var dcap abi.StoragePower
+	var verified bool
+	if av <= 8 {
+		vrs, err := view.LoadVerifregActor(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load verified registry state: %v", err)
+		}
+
+		verified, dcap, err = vrs.VerifiedClientDataCap(aid)
+		if err != nil {
+			return nil, fmt.Errorf("looking up verified client: %w", err)
+		}
+	} else {
+		dcs, err := view.LoadDatacapState(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load datacap actor state: %w", err)
+		}
+
+		verified, dcap, err = dcs.VerifiedClientDataCap(aid)
+		if err != nil {
+			return nil, fmt.Errorf("looking up verified client: %w", err)
+		}
+	}
+
 	if !verified {
 		return nil, nil
 	}
