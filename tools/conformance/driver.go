@@ -30,8 +30,10 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+	rtt "github.com/filecoin-project/go-state-types/rt"
 	"github.com/filecoin-project/test-vectors/schema"
 	"github.com/filecoin-project/venus/tools/conformance/chaos"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -232,8 +234,7 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 	// register the chaos actor if required by the vector.
 	if chaosOn, ok := d.selector["chaos_actor"]; ok && chaosOn == "true" {
 		av, _ := actorstypes.VersionForNetwork(params.NetworkVersion)
-		chaosActor := chaos.Actor{}
-		actorBuilder.Add(av, nil, chaosActor)
+		actorBuilder.AddMany(av, nil, builtin.MakeRegistryLegacy([]rtt.VMActor{chaos.Actor{}}))
 	}
 
 	register.GetDefaultActros()

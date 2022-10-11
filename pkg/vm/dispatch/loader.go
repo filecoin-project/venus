@@ -5,8 +5,6 @@ import (
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	rtt "github.com/filecoin-project/go-state-types/rt"
-	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/ipfs/go-cid"
 
@@ -21,7 +19,7 @@ type CodeLoader struct {
 
 // ActorInfo vm contract actor
 type ActorInfo struct {
-	vmActor rtt.VMActor
+	vmActor builtin.RegistryEntry
 	// TODO: consider making this a network version range?
 	predicate ActorPredicate
 }
@@ -33,7 +31,7 @@ func (cl CodeLoader) GetActorImpl(code cid.Cid, rt vmr.Runtime) (Dispatcher, *Ex
 	if !ok {
 		return nil, NewExcuteError(exitcode.SysErrorIllegalActor, "Actor code not found. code: %s", code)
 	}
-	if err := actor.predicate(rt, actor.vmActor); err != nil {
+	if err := actor.predicate(rt, code); err != nil {
 		return nil, NewExcuteError(exitcode.SysErrorIllegalActor, "unsupport actor. code: %s", code)
 	}
 
@@ -50,11 +48,11 @@ func (cl CodeLoader) GetUnsafeActorImpl(code cid.Cid) (Dispatcher, error) {
 	return &actorDispatcher{code: code, actor: actor.vmActor}, nil
 }
 
-func (cl CodeLoader) GetVMActor(code cid.Cid) (rtt.VMActor, error) {
+func (cl CodeLoader) GetVMActor(code cid.Cid) (builtin.RegistryEntry, error) {
 	//todo version check
 	actor, ok := cl.actors[code]
 	if !ok {
-		return nil, fmt.Errorf("unable to get actor for code %s", code)
+		return builtin.RegistryEntry{}, fmt.Errorf("unable to get actor for code %s", code)
 	}
 
 	return actor.vmActor, nil
@@ -71,9 +69,9 @@ func NewBuilder() *CodeLoaderBuilder {
 }
 
 // Add lets you add an actor dispatch table for a given version.
-func (b *CodeLoaderBuilder) Add(av actorstypes.Version, predict ActorPredicate, actor Actor) *CodeLoaderBuilder {
+func (b *CodeLoaderBuilder) Add(av actorstypes.Version, predict ActorPredicate, actor builtin.RegistryEntry) *CodeLoaderBuilder {
 	if predict == nil {
-		predict = func(vmr.Runtime, rtt.VMActor) error { return nil }
+		predict = func(vmr.Runtime, cid.Cid) error { return nil }
 	}
 
 	ai := ActorInfo{
@@ -100,7 +98,7 @@ func (b *CodeLoaderBuilder) Add(av actorstypes.Version, predict ActorPredicate, 
 }
 
 // Add lets you add an actor dispatch table for a given version.
-func (b *CodeLoaderBuilder) AddMany(av actorstypes.Version, predict ActorPredicate, actors ...rt5.VMActor) *CodeLoaderBuilder {
+func (b *CodeLoaderBuilder) AddMany(av actorstypes.Version, predict ActorPredicate, actors []builtin.RegistryEntry) *CodeLoaderBuilder {
 	for _, actor := range actors {
 		b.Add(av, predict, actor)
 	}
@@ -113,17 +111,18 @@ func (b *CodeLoaderBuilder) Build() CodeLoader {
 }
 
 // An ActorPredicate returns an error if the given actor is not valid for the given runtime environment (e.g., chain height, version, etc.).
-type ActorPredicate func(vmr.Runtime, rtt.VMActor) error
+type ActorPredicate func(vmr.Runtime, cid.Cid) error
 
 // ActorsVersionPredicate  get actor predicate base on actor version and network version
 func ActorsVersionPredicate(ver actorstypes.Version) ActorPredicate {
-	return func(rt vmr.Runtime, v rtt.VMActor) error {
+	return func(rt vmr.Runtime, codeCid cid.Cid) error {
 		nver, err := actorstypes.VersionForNetwork(rt.NetworkVersion())
 		if err != nil {
 			return fmt.Errorf("version for network %w", err)
 		}
 		if nver != ver {
-			return fmt.Errorf("actor %s is a version %d actor; chain only supports actor version %d at height %d", v.Code(), ver, nver, rt.CurrentEpoch())
+			return fmt.Errorf("actor %s is a version %d actor; chain only supports actor version %d at height %d and nver %d",
+				codeCid, ver, nver, rt.CurrentEpoch(), rt.NetworkVersion())
 		}
 		return nil
 	}
