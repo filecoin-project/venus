@@ -93,7 +93,7 @@ func (ms *MessageStore) LoadMetaMessages(ctx context.Context, metaCid cid.Cid) (
 	return secpMsgs, blsMsgs, nil
 }
 
-//ReadMsgMetaCids load messager from message meta cid
+// ReadMsgMetaCids load messager from message meta cid
 func (ms *MessageStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error) {
 	meta, err := ms.LoadTxMeta(ctx, mmc)
 	if err != nil {
@@ -111,8 +111,8 @@ func (ms *MessageStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid
 	return blsCids, secpCids, nil
 }
 
-//LoadMessage load message of specify message cid
-//First get the unsigned message. If it is not found, then get the signed message. If still not found, an error will be returned
+// LoadMessage load message of specify message cid
+// First get the unsigned message. If it is not found, then get the signed message. If still not found, an error will be returned
 func (ms *MessageStore) LoadMessage(ctx context.Context, mid cid.Cid) (types.ChainMsg, error) {
 	m, err := ms.LoadUnsignedMessage(ctx, mid)
 	if err == nil {
@@ -126,7 +126,7 @@ func (ms *MessageStore) LoadMessage(ctx context.Context, mid cid.Cid) (types.Cha
 	return ms.LoadSignedMessage(ctx, mid)
 }
 
-//LoadUnsignedMessage load unsigned messages in tipset
+// LoadUnsignedMessage load unsigned messages in tipset
 func (ms *MessageStore) LoadUnsignedMessage(ctx context.Context, mid cid.Cid) (*types.Message, error) {
 	messageBlock, err := ms.bs.Get(ctx, mid)
 	if err != nil {
@@ -139,7 +139,7 @@ func (ms *MessageStore) LoadUnsignedMessage(ctx context.Context, mid cid.Cid) (*
 	return message, nil
 }
 
-//LoadUnsignedMessagesFromCids load unsigned messages of cid array
+// LoadUnsignedMessagesFromCids load unsigned messages of cid array
 func (ms *MessageStore) LoadSignedMessage(ctx context.Context, mid cid.Cid) (*types.SignedMessage, error) {
 	messageBlock, err := ms.bs.Get(ctx, mid)
 	if err != nil {
@@ -154,7 +154,7 @@ func (ms *MessageStore) LoadSignedMessage(ctx context.Context, mid cid.Cid) (*ty
 	return message, nil
 }
 
-//LoadUnsignedMessagesFromCids load unsigned messages of cid array
+// LoadUnsignedMessagesFromCids load unsigned messages of cid array
 func (ms *MessageStore) LoadUnsignedMessagesFromCids(ctx context.Context, blsCids []cid.Cid) ([]*types.Message, error) {
 	blsMsgs := make([]*types.Message, len(blsCids))
 	for i, c := range blsCids {
@@ -167,7 +167,7 @@ func (ms *MessageStore) LoadUnsignedMessagesFromCids(ctx context.Context, blsCid
 	return blsMsgs, nil
 }
 
-//LoadSignedMessagesFromCids load signed messages of cid array
+// LoadSignedMessagesFromCids load signed messages of cid array
 func (ms *MessageStore) LoadSignedMessagesFromCids(ctx context.Context, secpCids []cid.Cid) ([]*types.SignedMessage, error) {
 	secpMsgs := make([]*types.SignedMessage, len(secpCids))
 	for i, c := range secpCids {
@@ -228,7 +228,7 @@ func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types
 	return ms.StoreTxMeta(ctx, ret)
 }
 
-//load message from tipset NOTICE skip message with the same nonce
+// load message from tipset NOTICE skip message with the same nonce
 func (ms *MessageStore) LoadTipSetMesssages(ctx context.Context, ts *types.TipSet) ([][]*types.SignedMessage, [][]*types.Message, error) {
 	var secpMessages [][]*types.SignedMessage
 	var blsMessages [][]*types.Message
@@ -387,7 +387,7 @@ func (ms *MessageStore) LoadTxMeta(ctx context.Context, c cid.Cid) (types.Messag
 	return meta, nil
 }
 
-//LoadTipSetMessage message from tipset NOTICE skip message with the same nonce
+// LoadTipSetMessage message from tipset NOTICE skip message with the same nonce
 func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet) ([]types.BlockMessagesInfo, error) {
 	//gather message
 	applied := make(map[address.Address]uint64)
@@ -462,7 +462,7 @@ func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet)
 	return blockMsg, nil
 }
 
-//MessagesForTipset return of message ( bls message + secp message) of tipset
+// MessagesForTipset return of message ( bls message + secp message) of tipset
 func (ms *MessageStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
 	bmsgs, err := ms.LoadTipSetMessage(context.TODO(), ts)
 	if err != nil {
@@ -478,7 +478,7 @@ func (ms *MessageStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, e
 	return out, nil
 }
 
-//StoreMessage put message(include signed message and unsigned message) to database
+// StoreMessage put message(include signed message and unsigned message) to database
 func (ms *MessageStore) StoreMessage(message types.ChainMsg) (cid.Cid, error) {
 	return cbor.NewCborStore(ms.bs).Put(context.TODO(), message)
 }
@@ -503,7 +503,7 @@ func MakeBlock(obj cbor2.Marshaler) (blocks.Block, error) {
 	return blocks.NewBlockWithCid(data, c)
 }
 
-//todo move to a more suitable position
+// todo move to a more suitable position
 func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks int, epoch abi.ChainEpoch, upgrade *config.ForkUpgradeConfig) abi.TokenAmount {
 	// deta := gasLimitUsed/noOfBlocks - constants.BlockGasTarget
 	// change := baseFee * deta / BlockGasTarget
@@ -538,7 +538,7 @@ func ComputeNextBaseFee(baseFee abi.TokenAmount, gasLimitUsed int64, noOfBlocks 
 	return nextBaseFee
 }
 
-//todo move to a more suitable position
+// todo move to a more suitable position
 func (ms *MessageStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet, upgrade *config.ForkUpgradeConfig) (abi.TokenAmount, error) {
 	zero := abi.NewTokenAmount(0)
 	baseHeight := ts.Height()

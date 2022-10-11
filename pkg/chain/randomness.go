@@ -268,7 +268,7 @@ func (c *ChainRandomnessSource) extractBeaconEntryForEpoch(ctx context.Context, 
 	return nil, fmt.Errorf("didn't find beacon for round %d (epoch %d)", round, filecoinEpoch)
 }
 
-//BlendEntropy get randomness with chain value. sha256(buf(tag, seed, epoch, entropy))
+// BlendEntropy get randomness with chain value. sha256(buf(tag, seed, epoch, entropy))
 func BlendEntropy(tag crypto.DomainSeparationTag, seed RandomSeed, epoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	buffer := bytes.Buffer{}
 	err := binary.Write(&buffer, binary.BigEndian, int64(tag))

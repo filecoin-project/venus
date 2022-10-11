@@ -12,18 +12,18 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-//ISlashFilter used to detect whether the miner mined a invalidated block , support local db and mysql storage
+// ISlashFilter used to detect whether the miner mined a invalidated block , support local db and mysql storage
 type ISlashFilter interface {
 	MinedBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error
 }
 
-//LocalSlashFilter use badger db to save mined block for detect slash consensus block
+// LocalSlashFilter use badger db to save mined block for detect slash consensus block
 type LocalSlashFilter struct {
 	byEpoch   ds.Datastore // double-fork mining faults, parent-grinding fault
 	byParents ds.Datastore // time-offset mining faults
 }
 
-//NewLocalSlashFilter create a slash filter base on badger db
+// NewLocalSlashFilter create a slash filter base on badger db
 func NewLocalSlashFilter(dstore ds.Batching) ISlashFilter {
 	return &LocalSlashFilter{
 		byEpoch:   namespace.Wrap(dstore, ds.NewKey("/slashfilter/epoch")),
@@ -31,7 +31,7 @@ func NewLocalSlashFilter(dstore ds.Batching) ISlashFilter {
 	}
 }
 
-//MinedBlock check whether the block mined is slash
+// MinedBlock check whether the block mined is slash
 func (f *LocalSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
 	epochKey := ds.NewKey(fmt.Sprintf("/%s/%d", bh.Miner, bh.Height))
 	{

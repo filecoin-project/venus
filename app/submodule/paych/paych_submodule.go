@@ -11,7 +11,7 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
-//PaychSubmodule support paych related functions, including paych construction, extraction, query and other functions
+// PaychSubmodule support paych related functions, including paych construction, extraction, query and other functions
 type PaychSubmodule struct { //nolint
 	pmgr *paychmgr.Manager
 }
@@ -30,7 +30,7 @@ func (ps *PaychSubmodule) Stop() {
 	ps.pmgr.Stop()
 }
 
-//API create a new paych implement
+// API create a new paych implement
 func (ps *PaychSubmodule) API() v1api.IPaychan {
 	return NewPaychAPI(ps.pmgr)
 }

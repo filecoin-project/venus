@@ -18,7 +18,7 @@ func NewMultiSigSubmodule(chainState v1api.IChain, msgPool v1api.IMessagePool, s
 	return &MultiSigSubmodule{state: chainState, mpool: msgPool, store: store}
 }
 
-//API create a new multisig implement
+// API create a new multisig implement
 func (sb *MultiSigSubmodule) API() v1api.IMultiSig {
 	return newMultiSig(sb)
 }

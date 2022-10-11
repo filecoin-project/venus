@@ -227,7 +227,7 @@ func (backend *DSBackend) GetKeyInfo(ctx context.Context, addr address.Address) 
 	return key.KeyInfo, nil
 }
 
-//GetKeyInfoPassphrase get private private key from wallet, get encrypt byte from db and decrypto it with password
+// GetKeyInfoPassphrase get private private key from wallet, get encrypt byte from db and decrypto it with password
 func (backend *DSBackend) GetKeyInfoPassphrase(ctx context.Context, addr address.Address, password []byte) (*crypto.KeyInfo, error) {
 	if !backend.HasAddress(ctx, addr) {
 		return nil, errors.New("backend does not contain address")
@@ -270,7 +270,7 @@ func (backend *DSBackend) LockWallet(ctx context.Context) error {
 	return nil
 }
 
-//UnLockWallet unlock wallet with password, decrypt local key in db and save to protected memory
+// UnLockWallet unlock wallet with password, decrypt local key in db and save to protected memory
 func (backend *DSBackend) UnLockWallet(ctx context.Context, password []byte) error {
 	defer func() {
 		for i := range password {
@@ -300,7 +300,7 @@ func (backend *DSBackend) UnLockWallet(ctx context.Context, password []byte) err
 	return nil
 }
 
-//SetPassword set password for wallet , and wallet used this password to encrypt private key
+// SetPassword set password for wallet , and wallet used this password to encrypt private key
 func (backend *DSBackend) SetPassword(ctx context.Context, password []byte) error {
 	if backend.password != nil {
 		return ErrRepeatPassword
@@ -324,12 +324,12 @@ func (backend *DSBackend) SetPassword(ctx context.Context, password []byte) erro
 	return nil
 }
 
-//HasPassword return whether the password has been set in the wallet
+// HasPassword return whether the password has been set in the wallet
 func (backend *DSBackend) HasPassword() bool {
 	return backend.password != nil
 }
 
-//WalletState return wallet state(lock/unlock)
+// WalletState return wallet state(lock/unlock)
 func (backend *DSBackend) WalletState(ctx context.Context) int {
 	return backend.state
 }

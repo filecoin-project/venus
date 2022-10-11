@@ -287,7 +287,7 @@ func (syncer *SyncerSubmodule) Stop(ctx context.Context) {
 	}
 }
 
-//API create a new sync api implement
+// API create a new sync api implement
 func (syncer *SyncerSubmodule) API() v1api.ISyncer {
 	return &syncerAPI{syncer: syncer}
 }

@@ -10,10 +10,10 @@ import (
 )
 
 // DataSelector specifies ipld selector string
-// - if the string starts with '{', it's interpreted as json selector string
-//   see https://ipld.io/specs/selectors/ and https://ipld.io/specs/selectors/fixtures/selector-fixtures-1/
-// - otherwise the string is interpreted as ipld-selector-text-lite (simple ipld path)
-//   see https://github.com/ipld/go-ipld-selector-text-lite
+//   - if the string starts with '{', it's interpreted as json selector string
+//     see https://ipld.io/specs/selectors/ and https://ipld.io/specs/selectors/fixtures/selector-fixtures-1/
+//   - otherwise the string is interpreted as ipld-selector-text-lite (simple ipld path)
+//     see https://github.com/ipld/go-ipld-selector-text-lite
 type DataSelector string
 
 type FileRef struct {

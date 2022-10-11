@@ -87,7 +87,7 @@ type Message struct {
 	UpdatedAt time.Time
 }
 
-//todo ignore use message MarshalJSON method
+// todo ignore use message MarshalJSON method
 func (m *Message) MarshalJSON() ([]byte, error) {
 	type msg struct {
 		Version    uint64

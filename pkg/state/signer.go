@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-//todo remove Account view a nd headsignerview
+// todo remove Account view a nd headsignerview
 type AccountView interface {
 	ResolveToKeyAddr(ctx context.Context, address address.Address) (address.Address, error)
 }

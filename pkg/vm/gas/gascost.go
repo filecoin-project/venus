@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 )
 
-//GasCharge amount of gas consumed at one time
+// GasCharge amount of gas consumed at one time
 type GasCharge struct { //nolint
 	Name  string
 	Extra interface{}
@@ -23,7 +23,7 @@ type GasCharge struct { //nolint
 	VirtualStorage int64
 }
 
-//Total return all gas in one time
+// Total return all gas in one time
 func (g GasCharge) Total() int64 {
 	return g.ComputeGas + g.StorageGas
 }
@@ -81,12 +81,12 @@ type Pricelist interface {
 	OnVerifyConsensusFault() GasCharge
 }
 
-//PricesSchedule schedule gas prices for different network version
+// PricesSchedule schedule gas prices for different network version
 type PricesSchedule struct {
 	prices map[abi.ChainEpoch]Pricelist
 }
 
-//NewPricesSchedule new gasprice schedule from forkParams parameters
+// NewPricesSchedule new gasprice schedule from forkParams parameters
 func NewPricesSchedule(forkParams *config.ForkUpgradeConfig) *PricesSchedule {
 	var prices = map[abi.ChainEpoch]Pricelist{
 		abi.ChainEpoch(0): &pricelistV0{
