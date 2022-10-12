@@ -423,7 +423,7 @@ func NewDebugFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 
 		// create actor redirect mapping
 		actorRedirect := make(map[cid.Cid]cid.Cid)
-		for _, key := range actors.GetBuiltinActorsKeys() {
+		for _, key := range actors.GetBuiltinActorsKeys(av) {
 			from, ok := actors.GetActorCodeID(av, key)
 			if !ok {
 				fvmLog.Warnf("actor missing in the from manifest %s", key)
