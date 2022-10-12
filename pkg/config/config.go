@@ -287,7 +287,7 @@ type ForkUpgradeConfig struct {
 	UpgradeChocolateHeight     abi.ChainEpoch `json:"upgradeChocolateHeight"`
 	UpgradeOhSnapHeight        abi.ChainEpoch `json:"upgradeOhSnapHeight"`
 	UpgradeSkyrHeight          abi.ChainEpoch `json:"upgradeSkyrHeight"`
-	UpgradeSharkHeight         abi.ChainEpoch `json:"UpgradeSharkHeight"`
+	UpgradeSharkHeight         abi.ChainEpoch `json:"upgradeSharkHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {

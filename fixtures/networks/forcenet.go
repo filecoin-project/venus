@@ -54,7 +54,7 @@ func ForceNet() *NetworkConf {
 				UpgradeChocolateHeight:  -17,
 				UpgradeOhSnapHeight:     -18,
 				UpgradeSkyrHeight:       -19,
-				UpgradeSharkHeight:      99999999999999,
+				UpgradeSharkHeight:      100,
 			},
 			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: config.DrandMainnet},
 			AddressNetwork:       address.Testnet,
