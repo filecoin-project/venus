@@ -7,9 +7,9 @@ require (
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-data-transfer v1.15.2
 	github.com/filecoin-project/go-fil-markets v1.24.0
-	github.com/filecoin-project/go-jsonrpc v0.1.7
-	github.com/filecoin-project/go-state-types v0.1.12-beta.0.20220920181425-d683559e386b
-	github.com/filecoin-project/lotus v1.17.2-0.20220921145658-94add978b01f
+	github.com/filecoin-project/go-jsonrpc v0.1.8
+	github.com/filecoin-project/go-state-types v0.1.12-beta.0.20220921193302-60676bda3cb5
+	github.com/filecoin-project/lotus v1.17.2-0.20221006132714-fc59d2b48bb5
 	github.com/filecoin-project/venus v0.0.0-00010101000000-000000000000
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-cid v0.2.0
@@ -212,8 +212,5 @@ require (
 
 replace (
 	github.com/filecoin-project/filecoin-ffi => .././extern/filecoin-ffi
-	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210731021807-68e5207079bc
 	github.com/filecoin-project/venus => ../
-	github.com/ipfs/go-ipfs-cmds => github.com/ipfs-force-community/go-ipfs-cmds v0.6.1-0.20210521090123-4587df7fa0ab
-	github.com/multiformats/go-multiaddr => github.com/multiformats/go-multiaddr v0.3.0
 )

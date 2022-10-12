@@ -684,7 +684,7 @@ func (cia *chainInfoAPI) StateActorCodeCIDs(ctx context.Context, nv network.Vers
 
 	cids["_manifest"] = manifestCid
 
-	var actorKeys = actors.GetBuiltinActorsKeys()
+	var actorKeys = actors.GetBuiltinActorsKeys(actorVersion)
 	for _, name := range actorKeys {
 		actorCID, ok := actors.GetActorCodeID(actorVersion, name)
 		if !ok {

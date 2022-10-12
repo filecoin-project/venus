@@ -20,7 +20,7 @@ func importPath(v int) string {
 	return fmt.Sprintf("/v%d/", v)
 }
 
-func render(tpath string) error {
+func render(tpath string, versions []int) error {
 	dir := filepath.Dir(tpath)
 	fname := filepath.Base(tpath)
 
@@ -49,9 +49,9 @@ func render(tpath string) error {
 	}
 
 	if separated {
-		err = renderSeparated(t, dir)
+		err = renderSeparated(t, dir, versions)
 	} else {
-		err = renderSingle(t, dir)
+		err = renderSingle(t, dir, versions)
 	}
 
 	if err != nil {
@@ -61,10 +61,10 @@ func render(tpath string) error {
 	return nil
 }
 
-func renderSingle(t *template.Template, dir string) error {
+func renderSingle(t *template.Template, dir string, versions []int) error {
 	var buf bytes.Buffer
 	err := t.Execute(&buf, map[string]interface{}{
-		"versions":      actors.Versions,
+		"versions":      versions,
 		"latestVersion": actors.LatestVersion,
 	})
 
@@ -85,9 +85,9 @@ func renderSingle(t *template.Template, dir string) error {
 	return nil
 }
 
-func renderSeparated(t *template.Template, dir string) error {
+func renderSeparated(t *template.Template, dir string, versions []int) error {
 	var buf bytes.Buffer
-	for _, v := range actors.Versions {
+	for _, v := range versions {
 		buf.Reset()
 
 		err := t.Execute(&buf, map[string]interface{}{

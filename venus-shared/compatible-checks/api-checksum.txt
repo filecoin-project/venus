@@ -1,6 +1,6 @@
 v0api.FullNode:
-	AuthNew:	In=2,	Out=2,	CheckSum=248fe5ed43f2e294ea5d71596b9272ac
-	AuthVerify:	In=2,	Out=2,	CheckSum=c156d52455ed5f2d227e08a518d5f8a1
+	AuthNew:	In=2,	Out=2,	CheckSum=faeef9dc68d6f2533bdf7d8f22ef902d
+	AuthVerify:	In=2,	Out=2,	CheckSum=3cb63db9d6f8869fd4e9da953cc9cdcb
 	BeaconGetEntry:	In=2,	Out=2,	CheckSum=c74f5c0f4039207ea45c11bfe3319c38
 	ChainDeleteObj:	In=2,	Out=1,	CheckSum=50d40a0afa31dabb8a61693aabea61b7
 	ChainExport:	In=4,	Out=2,	CheckSum=aaf98926e0ba36ec808a96de76a3cd98
@@ -218,8 +218,8 @@ v0api.FullNode:
 	WalletVerify:	In=4,	Out=2,	CheckSum=9b22231e95efdfb94d9d55038f500636
 
 api.FullNode:
-	AuthNew:	In=2,	Out=2,	CheckSum=248fe5ed43f2e294ea5d71596b9272ac
-	AuthVerify:	In=2,	Out=2,	CheckSum=c156d52455ed5f2d227e08a518d5f8a1
+	AuthNew:	In=2,	Out=2,	CheckSum=faeef9dc68d6f2533bdf7d8f22ef902d
+	AuthVerify:	In=2,	Out=2,	CheckSum=3cb63db9d6f8869fd4e9da953cc9cdcb
 	ChainBlockstoreInfo:	In=1,	Out=2,	CheckSum=09640e20c6d71c3e96c7a56c8698acc9
 	ChainCheckBlockstore:	In=1,	Out=1,	CheckSum=c39be30cc5a8826024fcf4d23e7017d6
 	ChainDeleteObj:	In=2,	Out=1,	CheckSum=50d40a0afa31dabb8a61693aabea61b7

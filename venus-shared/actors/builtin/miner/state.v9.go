@@ -385,6 +385,10 @@ func (s *state9) Info() (MinerInfo, error) {
 		SectorSize:                 info.SectorSize,
 		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
 		ConsensusFaultElapsed:      info.ConsensusFaultElapsed,
+
+		Beneficiary:            info.Beneficiary,
+		BeneficiaryTerm:        info.BeneficiaryTerm,
+		PendingBeneficiaryTerm: info.PendingBeneficiaryTerm,
 	}
 
 	return mi, nil

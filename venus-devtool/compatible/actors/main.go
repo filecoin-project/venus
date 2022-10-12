@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/urfave/cli/v2"
 )
 
@@ -96,7 +97,12 @@ var renderCmd = &cli.Command{
 
 		log.Print("rendering")
 		for _, tpath := range templates {
-			err = render(filepath.Join(abs, tpath))
+			versions := actors.Versions
+			// datacap actor available since version v9
+			if strings.Contains(tpath, "builtin/datacap") {
+				versions = actors.Versions[8:]
+			}
+			err = render(filepath.Join(abs, tpath), versions)
 			if err != nil {
 				return fmt.Errorf("for %s: %w", tpath, err)
 			}
