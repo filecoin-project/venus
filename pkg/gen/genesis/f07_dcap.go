@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var GovernorId address.Address
+var GovernorID address.Address
 
 func init() {
 	idk, err := address.NewFromString("t06")
@@ -26,12 +26,12 @@ func init() {
 		panic(err)
 	}
 
-	GovernorId = idk
+	GovernorID = idk
 }
 
 func SetupDatacapActor(ctx context.Context, bs bstore.Blockstore, av actorstypes.Version) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
-	dst, err := datacap.MakeState(adt.WrapStore(ctx, cbor.NewCborStore(bs)), av, GovernorId, builtin.DefaultTokenActorBitwidth)
+	dst, err := datacap.MakeState(adt.WrapStore(ctx, cbor.NewCborStore(bs)), av, GovernorID, builtin.DefaultTokenActorBitwidth)
 	if err != nil {
 		return nil, err
 	}

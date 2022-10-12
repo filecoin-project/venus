@@ -377,7 +377,7 @@ func (msa *minerStateAPI) StateMarketStorageDeal(ctx context.Context, dealID abi
 }
 
 // StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal.
-func (msa *minerStateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
+func (msa *minerStateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
@@ -388,21 +388,21 @@ func (msa *minerStateAPI) StateGetAllocationForPendingDeal(ctx context.Context, 
 		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
 	}
 
-	allocationId, err := st.GetAllocationIdForPendingDeal(dealId)
+	allocationID, err := st.GetAllocationIdForPendingDeal(dealID)
 	if err != nil {
 		return nil, err
 	}
 
-	dealState, err := msa.StateMarketStorageDeal(ctx, dealId, tsk)
+	dealState, err := msa.StateMarketStorageDeal(ctx, dealID, tsk)
 	if err != nil {
 		return nil, err
 	}
 
-	return msa.StateGetAllocation(ctx, dealState.Proposal.Client, allocationId, tsk)
+	return msa.StateGetAllocation(ctx, dealState.Proposal.Client, allocationID, tsk)
 }
 
 // StateGetAllocation returns the allocation for a given address and allocation ID.
-func (msa *minerStateAPI) StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
+func (msa *minerStateAPI) StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationID verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
 	idAddr, err := msa.ChainSubmodule.API().StateLookupID(ctx, clientAddr, tsk)
 	if err != nil {
 		return nil, err
@@ -418,7 +418,7 @@ func (msa *minerStateAPI) StateGetAllocation(ctx context.Context, clientAddr add
 		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
 	}
 
-	allocation, found, err := st.GetAllocation(idAddr, allocationId)
+	allocation, found, err := st.GetAllocation(idAddr, allocationID)
 	if err != nil {
 		return nil, err
 	}
