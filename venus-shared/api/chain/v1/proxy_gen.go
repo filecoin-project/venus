@@ -85,8 +85,8 @@ type IMinerStateStruct struct {
 		StateDealProviderCollateralBounds  func(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (types.DealCollateralBounds, error)                            `perm:"read"`
 		StateDecodeParams                  func(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error)                       `perm:"read"`
 		StateEncodeParams                  func(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error)                                             `perm:"read"`
-		StateGetAllocation                 func(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) `perm:"read"`
-		StateGetAllocationForPendingDeal   func(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error)                                                   `perm:"read"`
+		StateGetAllocation                 func(ctx context.Context, clientAddr address.Address, allocationID verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) `perm:"read"`
+		StateGetAllocationForPendingDeal   func(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error)                                                   `perm:"read"`
 		StateListActors                    func(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)                                                                              `perm:"read"`
 		StateListMessages                  func(ctx context.Context, match *types.MessageMatch, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)                                      `perm:"read"`
 		StateListMiners                    func(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)                                                                              `perm:"read"`
