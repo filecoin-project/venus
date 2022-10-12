@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	address "github.com/filecoin-project/go-address"
+	auth "github.com/filecoin-project/go-jsonrpc/auth"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	internal "github.com/filecoin-project/venus/venus-shared/internal"
 	types "github.com/filecoin-project/venus/venus-shared/types"
@@ -98,7 +99,7 @@ func (mr *MockIFullAPIMockRecorder) AddSupportAccount(arg0, arg1 interface{}) *g
 }
 
 // AuthNew mocks base method.
-func (m *MockIFullAPI) AuthNew(arg0 context.Context, arg1 []string) ([]byte, error) {
+func (m *MockIFullAPI) AuthNew(arg0 context.Context, arg1 []auth.Permission) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AuthNew", arg0, arg1)
 	ret0, _ := ret[0].([]byte)
@@ -113,10 +114,10 @@ func (mr *MockIFullAPIMockRecorder) AuthNew(arg0, arg1 interface{}) *gomock.Call
 }
 
 // AuthVerify mocks base method.
-func (m *MockIFullAPI) AuthVerify(arg0 context.Context, arg1 string) ([]string, error) {
+func (m *MockIFullAPI) AuthVerify(arg0 context.Context, arg1 string) ([]auth.Permission, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AuthVerify", arg0, arg1)
-	ret0, _ := ret[0].([]string)
+	ret0, _ := ret[0].([]auth.Permission)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
