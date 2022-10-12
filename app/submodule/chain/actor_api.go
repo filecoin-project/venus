@@ -14,7 +14,7 @@ type actorAPI struct {
 	chain *ChainSubmodule
 }
 
-//NewActorAPI new actor api
+// NewActorAPI new actor api
 func NewActorAPI(chain *ChainSubmodule) v1api.IActor {
 	return &actorAPI{chain: chain}
 }

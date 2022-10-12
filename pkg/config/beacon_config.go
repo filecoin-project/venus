@@ -16,7 +16,7 @@ type DrandConf struct {
 	ChainInfoJSON string
 }
 
-//DrandConfigs a set of drand config
+// DrandConfigs a set of drand config
 var DrandConfigs = map[DrandEnum]DrandConf{
 	DrandMainnet: {
 		Servers: []string{

@@ -205,7 +205,7 @@ func (w *Wallet) Export(ctx context.Context, addr address.Address, password stri
 	return ki, nil
 }
 
-//WalletSign used to sign message with private key
+// WalletSign used to sign message with private key
 func (w *Wallet) WalletSign(ctx context.Context, addr address.Address, msg []byte, meta types.MsgMeta) (*crypto.Signature, error) {
 	ki, err := w.Find(ctx, addr)
 	if err != nil {
@@ -218,8 +218,8 @@ func (w *Wallet) WalletSign(ctx context.Context, addr address.Address, msg []byt
 	return ki.SignBytes(ctx, msg, addr)
 }
 
-//DSBacked return the first wallet backend
-//todo support multi wallet backend
+// DSBacked return the first wallet backend
+// todo support multi wallet backend
 func (w *Wallet) DSBacked() (*DSBackend, error) {
 	backends := w.Backends(DSBackendType)
 	if len(backends) == 0 {
@@ -229,7 +229,7 @@ func (w *Wallet) DSBacked() (*DSBackend, error) {
 	return (backends[0]).(*DSBackend), nil
 }
 
-//LockWallet lock lock wallet
+// LockWallet lock lock wallet
 func (w *Wallet) LockWallet(ctx context.Context) error {
 	backend, err := w.DSBacked()
 	if err != nil {
@@ -249,7 +249,7 @@ func (w *Wallet) UnLockWallet(ctx context.Context, password []byte) error {
 	return backend.UnLockWallet(ctx, password)
 }
 
-//SetPassword
+// SetPassword
 func (w *Wallet) SetPassword(ctx context.Context, password []byte) error {
 	backend, err := w.DSBacked()
 	if err != nil {
@@ -258,7 +258,7 @@ func (w *Wallet) SetPassword(ctx context.Context, password []byte) error {
 	return backend.SetPassword(ctx, password)
 }
 
-//HasPassword return whether the password has been set in the wallet
+// HasPassword return whether the password has been set in the wallet
 func (w *Wallet) HasPassword(ctx context.Context) bool {
 	backend, err := w.DSBacked()
 	if err != nil {
@@ -268,7 +268,7 @@ func (w *Wallet) HasPassword(ctx context.Context) bool {
 	return backend.HasPassword()
 }
 
-//WalletState return wallet state(lock/unlock)
+// WalletState return wallet state(lock/unlock)
 func (w *Wallet) WalletState(ctx context.Context) int {
 	backend, err := w.DSBacked()
 	if err != nil {

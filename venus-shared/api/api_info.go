@@ -45,7 +45,7 @@ func ParseApiInfo(s string) APIInfo {
 	}
 }
 
-//DialArgs parser libp2p address to http/ws protocol, the version argument can be override by address in version
+// DialArgs parser libp2p address to http/ws protocol, the version argument can be override by address in version
 func (a APIInfo) DialArgs(version string) (string, error) {
 	return DialArgs(a.Addr, version)
 }

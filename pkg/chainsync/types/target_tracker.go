@@ -33,8 +33,8 @@ type Target struct {
 	types.ChainInfo
 }
 
-//IsNeighbor the target t is neighbor or not
-//the same height, the same weight, the same parent is neighbor target. the can merge
+// IsNeighbor the target t is neighbor or not
+// the same height, the same weight, the same parent is neighbor target. the can merge
 func (target *Target) IsNeighbor(t *Target) bool {
 	if target.Head.Height() != t.Head.Height() {
 		return false
@@ -52,13 +52,13 @@ func (target *Target) IsNeighbor(t *Target) bool {
 	return true
 }
 
-//HasChild is another is a child target of current.
-//if the t' blocks in a subset of current target ,the t is a child of current target
+// HasChild is another is a child target of current.
+// if the t' blocks in a subset of current target ,the t is a child of current target
 func (target *Target) HasChild(t *Target) bool {
 	return target.Head.Key().ContainsAll(t.Head.Key())
 }
 
-//Key return identity of target . key=weight+height+parent
+// Key return identity of target . key=weight+height+parent
 func (target *Target) Key() string {
 	weightIn := target.Head.ParentWeight()
 	return weightIn.String() +
@@ -259,7 +259,7 @@ func (tq *TargetTracker) Add(t *Target) bool {
 	return true
 }
 
-//sort by weight and than sort by block number in target buckets
+// sort by weight and than sort by block number in target buckets
 func sortTarget(target TargetBuckets) {
 	//use weight as group key
 	groups := make(map[string][]*Target)
@@ -375,8 +375,8 @@ func (tq *TargetTracker) Select() (*Target, bool) {
 	return toSyncTarget, true
 }
 
-//Remove remote a target after sync completed
-//First remove target from live queue, add the target to history.
+// Remove remote a target after sync completed
+// First remove target from live queue, add the target to history.
 func (tq *TargetTracker) Remove(t *Target) {
 	tq.lk.Lock()
 	defer tq.lk.Unlock()
@@ -395,7 +395,7 @@ func (tq *TargetTracker) Remove(t *Target) {
 	tq.history.PushBack(t)
 }
 
-//History return sync history
+// History return sync history
 func (tq *TargetTracker) History() []*Target {
 	tq.lk.Lock()
 	defer tq.lk.Unlock()

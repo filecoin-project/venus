@@ -729,7 +729,7 @@ func (vm *LegacyVM) clearSnapshot() {
 	vm.State.ClearSnapshot()
 }
 
-//nolint
+// nolint
 func (vm *LegacyVM) Flush(ctx context.Context) (tree.Root, error) {
 	// Flush all blocks out of the store
 	if root, err := vm.State.Flush(vm.context); err != nil {

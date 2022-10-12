@@ -151,7 +151,7 @@ func (d *Dispatcher) processIncoming(ctx context.Context) {
 	}
 }
 
-//SetConcurrent set the max goroutine to syncing target
+// SetConcurrent set the max goroutine to syncing target
 func (d *Dispatcher) SetConcurrent(number int64) {
 	d.lk.Lock()
 	defer d.lk.Unlock()
@@ -169,7 +169,7 @@ func (d *Dispatcher) SetConcurrent(number int64) {
 	}
 }
 
-//Concurrent get current max syncing goroutine
+// Concurrent get current max syncing goroutine
 func (d *Dispatcher) Concurrent() int64 {
 	d.lk.Lock()
 	defer d.lk.Unlock()

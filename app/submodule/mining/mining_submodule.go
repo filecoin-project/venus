@@ -30,7 +30,7 @@ type MiningModule struct { //nolint
 	Stmgr         *statemanger.Stmgr
 }
 
-//API create new miningAPi implement
+// API create new miningAPi implement
 func (miningModule *MiningModule) API() v1api.IMining {
 	return &MiningAPI{Ming: miningModule}
 }
@@ -39,7 +39,7 @@ func (miningModule *MiningModule) V0API() v0api.IMining {
 	return &MiningAPI{Ming: miningModule}
 }
 
-//NewMiningModule create new mining module
+// NewMiningModule create new mining module
 func NewMiningModule(
 	stmgr *statemanger.Stmgr,
 	conf miningConfig,

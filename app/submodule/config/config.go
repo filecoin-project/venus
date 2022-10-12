@@ -41,7 +41,7 @@ func (s *ConfigModule) Get(dottedKey string) (interface{}, error) {
 	return s.repo.Config().Get(dottedKey)
 }
 
-//API create a new config api implement
+// API create a new config api implement
 func (s *ConfigModule) API() IConfig {
 	return &configAPI{config: s}
 }

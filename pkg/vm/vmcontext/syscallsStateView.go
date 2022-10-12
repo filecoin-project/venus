@@ -14,9 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-//
 // implement syscalls stateView view
-//
 type syscallsStateView struct {
 	ctx *invocationContext
 	*LegacyVM
@@ -48,7 +46,7 @@ func (vm *syscallsStateView) ResolveToKeyAddr(ctx context.Context, accountAddr a
 	return accountState.PubkeyAddress()
 }
 
-//MinerInfo get miner info
+// MinerInfo get miner info
 func (vm *syscallsStateView) MinerInfo(ctx context.Context, maddr address.Address, nv network.Version) (*miner.MinerInfo, error) {
 	accountActor, found, err := vm.State.GetActor(vm.context, maddr)
 	if err != nil {
@@ -71,12 +69,12 @@ func (vm *syscallsStateView) MinerInfo(ctx context.Context, maddr address.Addres
 	return &minerInfo, nil
 }
 
-//GetNetworkVersion get network version
+// GetNetworkVersion get network version
 func (vm *syscallsStateView) GetNetworkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version {
 	return vm.vmOption.NetworkVersion
 }
 
-//GetNetworkVersion get network version
+// GetNetworkVersion get network version
 func (vm *syscallsStateView) TotalFilCircSupply(height abi.ChainEpoch, st tree.Tree) (abi.TokenAmount, error) {
 	return vm.GetCircSupply(context.TODO())
 }
