@@ -59,7 +59,7 @@ type partition4 struct {
 func (s *state4) AvailableBalance(bal abi.TokenAmount) (available abi.TokenAmount, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("failed to get available balance: %w", r)
+			err = fmt.Errorf("failed to get available balance: %v", r)
 			available = abi.NewTokenAmount(0)
 		}
 	}()

@@ -45,6 +45,8 @@ var replacers = [][2]string{
 	},
 	{"\"golang.org/x/xerrors\"", "\"fmt\""},
 	{"xerrors.Errorf", "fmt.Errorf"},
+	// fixed: actors/builtin/miner/state.v9.go:61:10: fmt.Errorf format %w has arg r of wrong type interface{}
+	{"failed to get available balance: %w", "failed to get available balance: %v"},
 }
 
 func findActorsPkgDir() (string, error) {

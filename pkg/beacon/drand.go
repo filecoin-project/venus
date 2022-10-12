@@ -50,7 +50,7 @@ type DrandHTTPClient interface {
 	SetUserAgent(string)
 }
 
-//NewDrandBeacon create new beacon client from config, genesis block time and block delay
+// NewDrandBeacon create new beacon client from config, genesis block time and block delay
 func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*DrandBeacon, error) {
 	drandChain, err := dchain.InfoFromJSON(bytes.NewReader([]byte(config.ChainInfoJSON)))
 	if err != nil {
@@ -103,7 +103,7 @@ func NewDrandBeacon(genTimeStamp, interval uint64, config cfg.DrandConf) (*Drand
 	return db, nil
 }
 
-//Entry get a beacon value of specify block height,
+// Entry get a beacon value of specify block height,
 func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan Response {
 	out := make(chan Response, 1)
 	if round != 0 {

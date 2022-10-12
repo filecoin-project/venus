@@ -2,7 +2,7 @@ package types
 
 import "fmt"
 
-//just compatible code lotus
+// just compatible code lotus
 type SyncStateStage int
 
 const (

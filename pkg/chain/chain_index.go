@@ -11,7 +11,7 @@ import (
 
 var DefaultChainIndexCacheSize = 32 << 10
 
-//ChainIndex tipset height index, used to getting tipset by height quickly
+// ChainIndex tipset height index, used to getting tipset by height quickly
 type ChainIndex struct { //nolint
 	skipCache *lru.ARCCache
 
@@ -20,7 +20,7 @@ type ChainIndex struct { //nolint
 	skipLength abi.ChainEpoch
 }
 
-//NewChainIndex return a new chain index with arc cache
+// NewChainIndex return a new chain index with arc cache
 func NewChainIndex(lts loadTipSetFunc) *ChainIndex {
 	sc, _ := lru.NewARC(DefaultChainIndexCacheSize)
 	return &ChainIndex{
@@ -74,7 +74,7 @@ func (ci *ChainIndex) GetTipSetByHeight(ctx context.Context, from *types.TipSet,
 	}
 }
 
-//GetTipsetByHeightWithoutCache get the tipset of specific height by reading the database directly
+// GetTipsetByHeightWithoutCache get the tipset of specific height by reading the database directly
 func (ci *ChainIndex) GetTipsetByHeightWithoutCache(ctx context.Context, from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
 	return ci.walkBack(ctx, from, to)
 }

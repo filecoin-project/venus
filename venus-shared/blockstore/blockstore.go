@@ -2,12 +2,12 @@
 // blockstore not ultimately constructed out of the building blocks in this
 // package may not work properly.
 //
-//  * This package correctly wraps blockstores with the IdBlockstore. This blockstore:
-//    * Filters out all puts for blocks with CIDs using the "identity" hash function.
-//    * Extracts inlined blocks from CIDs using the identity hash function and
-//      returns them on get/has, ignoring the contents of the blockstore.
-//  * In the future, this package may enforce additional restrictions on block
-//    sizes, CID validity, etc.
+//   - This package correctly wraps blockstores with the IdBlockstore. This blockstore:
+//   - Filters out all puts for blocks with CIDs using the "identity" hash function.
+//   - Extracts inlined blocks from CIDs using the identity hash function and
+//     returns them on get/has, ignoring the contents of the blockstore.
+//   - In the future, this package may enforce additional restrictions on block
+//     sizes, CID validity, etc.
 //
 // To make auditing for misuse of blockstores tractable, this package re-exports
 // parts of the go-ipfs-blockstore package such that no other package needs to
@@ -54,7 +54,7 @@ type Blockstore interface {
 }
 
 // Alias so other packages don't have to import go-ipfs-blockstore
-//type Blockstore = blockstore.Blockstore
+// type Blockstore = blockstore.Blockstore
 type Viewer = blockstore.Viewer
 type GCBlockstore = blockstore.GCBlockstore
 type CacheOpts = blockstore.CacheOpts

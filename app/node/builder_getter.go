@@ -30,7 +30,7 @@ func (b builder) GenesisRoot() cid.Cid {
 	return b.genBlk.ParentStateRoot
 }
 
-//todo remove block time
+// todo remove block time
 // BlockTime get chain block time
 func (b builder) BlockTime() time.Duration {
 	return b.blockTime

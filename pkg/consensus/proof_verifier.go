@@ -47,7 +47,7 @@ func VerifyVRF(ctx context.Context, worker address.Address, vrfBase, vrfproof []
 	return nil
 }
 
-//VerifyElectionPoStVRF verify election post value in block
+// VerifyElectionPoStVRF verify election post value in block
 func VerifyElectionPoStVRF(ctx context.Context, worker address.Address, rand []byte, evrf []byte) error {
 	if constants.InsecurePoStValidation {
 		return nil

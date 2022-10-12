@@ -32,7 +32,7 @@ type MiningAPI struct { //nolint
 	Ming *MiningModule
 }
 
-//MinerGetBaseInfo get current miner information
+// MinerGetBaseInfo get current miner information
 func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk types.TipSetKey) (*types.MiningBaseInfo, error) {
 	chainStore := miningAPI.Ming.ChainModule.ChainReader
 	ts, err := chainStore.GetTipSet(ctx, tsk)
@@ -146,7 +146,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	}, nil
 }
 
-//MinerCreateBlock create block base on template
+// MinerCreateBlock create block base on template
 func (miningAPI *MiningAPI) MinerCreateBlock(ctx context.Context, bt *types.BlockTemplate) (*types.BlockMsg, error) {
 	fblk, err := miningAPI.minerCreateBlock(ctx, bt)
 	if err != nil {

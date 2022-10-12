@@ -38,7 +38,7 @@ func (me *messageEvents) CheckMsg(smsg types.ChainMsg, hnd MsgHandler) CheckFunc
 	}
 }
 
-//MatchMsg check that a specific message is in a block message
+// MatchMsg check that a specific message is in a block message
 func (me *messageEvents) MatchMsg(inmsg *types.Message) MsgMatchFunc {
 	return func(msg *types.Message) (matched bool, err error) {
 		if msg.From == inmsg.From && msg.Nonce == inmsg.Nonce && !inmsg.Equals(msg) {
