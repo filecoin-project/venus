@@ -8,13 +8,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 )
 
 type VoucherInfo struct {
-	Voucher   *paych.SignedVoucher
+	Voucher   *types.SignedVoucher
 	Proof     []byte // ignored
 	Submitted bool
 }
@@ -88,7 +87,7 @@ func (ci *ChannelInfo) To() address.Address {
 
 // infoForVoucher gets the VoucherInfo for the given voucher.
 // returns nil if the channel doesn't have the voucher.
-func (ci *ChannelInfo) InfoForVoucher(sv *paych.SignedVoucher) (*VoucherInfo, error) {
+func (ci *ChannelInfo) InfoForVoucher(sv *types.SignedVoucher) (*VoucherInfo, error) {
 	for _, v := range ci.Vouchers {
 		eq, err := cborutil.Equals(sv, v.Voucher)
 		if err != nil {
@@ -101,7 +100,7 @@ func (ci *ChannelInfo) InfoForVoucher(sv *paych.SignedVoucher) (*VoucherInfo, er
 	return nil, nil
 }
 
-func (ci *ChannelInfo) HasVoucher(sv *paych.SignedVoucher) (bool, error) {
+func (ci *ChannelInfo) HasVoucher(sv *types.SignedVoucher) (bool, error) {
 	vi, err := ci.InfoForVoucher(sv)
 	return vi != nil, err
 }
@@ -109,7 +108,7 @@ func (ci *ChannelInfo) HasVoucher(sv *paych.SignedVoucher) (bool, error) {
 // markVoucherSubmitted marks the voucher, and any vouchers of lower nonce
 // in the same lane, as being submitted.
 // Note: This method doesn't write anything to the store.
-func (ci *ChannelInfo) MarkVoucherSubmitted(sv *paych.SignedVoucher) error {
+func (ci *ChannelInfo) MarkVoucherSubmitted(sv *types.SignedVoucher) error {
 	vi, err := ci.InfoForVoucher(sv)
 	if err != nil {
 		return err
@@ -133,7 +132,7 @@ func (ci *ChannelInfo) MarkVoucherSubmitted(sv *paych.SignedVoucher) error {
 }
 
 // wasVoucherSubmitted returns true if the voucher has been submitted
-func (ci *ChannelInfo) WasVoucherSubmitted(sv *paych.SignedVoucher) (bool, error) {
+func (ci *ChannelInfo) WasVoucherSubmitted(sv *types.SignedVoucher) (bool, error) {
 	vi, err := ci.InfoForVoucher(sv)
 	if err != nil {
 		return false, err

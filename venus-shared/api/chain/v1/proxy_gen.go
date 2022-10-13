@@ -10,8 +10,6 @@ import (
 	bitfield "github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
-	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
@@ -78,50 +76,50 @@ func (s *IActorStruct) StateGetActor(p0 context.Context, p1 address.Address, p2 
 
 type IMinerStateStruct struct {
 	Internal struct {
-		StateAllMinerFaults                func(ctx context.Context, lookback abi.ChainEpoch, ts types.TipSetKey) ([]*types.Fault, error)                                                         `perm:"read"`
-		StateChangedActors                 func(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)                                                                                `perm:"read"`
-		StateCirculatingSupply             func(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error)                                                                                `perm:"read"`
-		StateComputeDataCID                func(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error)         `perm:"read"`
-		StateDealProviderCollateralBounds  func(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (types.DealCollateralBounds, error)                            `perm:"read"`
-		StateDecodeParams                  func(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error)                       `perm:"read"`
-		StateEncodeParams                  func(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error)                                             `perm:"read"`
-		StateGetAllocation                 func(ctx context.Context, clientAddr address.Address, allocationID verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) `perm:"read"`
-		StateGetAllocationForPendingDeal   func(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error)                                                   `perm:"read"`
-		StateGetAllocations                func(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error)            `perm:"read"`
-		StateGetClaim                      func(ctx context.Context, providerAddr address.Address, claimID verifregtypes.ClaimId, tsk types.TipSetKey) (*verifregtypes.Claim, error)              `perm:"read"`
-		StateGetClaims                     func(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error)                    `perm:"read"`
-		StateListActors                    func(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)                                                                              `perm:"read"`
-		StateListMessages                  func(ctx context.Context, match *types.MessageMatch, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)                                      `perm:"read"`
-		StateListMiners                    func(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)                                                                              `perm:"read"`
-		StateLookupID                      func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)                                                          `perm:"read"`
-		StateLookupRobustAddress           func(context.Context, address.Address, types.TipSetKey) (address.Address, error)                                                                       `perm:"read"`
-		StateMarketBalance                 func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MarketBalance, error)                                                      `perm:"read"`
-		StateMarketDeals                   func(ctx context.Context, tsk types.TipSetKey) (map[string]*types.MarketDeal, error)                                                                   `perm:"read"`
-		StateMarketStorageDeal             func(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error)                                                           `perm:"read"`
-		StateMinerActiveSectors            func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)                                              `perm:"read"`
-		StateMinerAllocated                func(context.Context, address.Address, types.TipSetKey) (*bitfield.BitField, error)                                                                    `perm:"read"`
-		StateMinerAvailableBalance         func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (big.Int, error)                                                                 `perm:"read"`
-		StateMinerDeadlines                func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]types.Deadline, error)                                                        `perm:"read"`
-		StateMinerFaults                   func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (bitfield.BitField, error)                                                       `perm:"read"`
-		StateMinerInfo                     func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (types.MinerInfo, error)                                                         `perm:"read"`
-		StateMinerInitialPledgeCollateral  func(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error)                                  `perm:"read"`
-		StateMinerPartitions               func(ctx context.Context, maddr address.Address, dlIdx uint64, tsk types.TipSetKey) ([]types.Partition, error)                                         `perm:"read"`
-		StateMinerPower                    func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.MinerPower, error)                                                        `perm:"read"`
-		StateMinerPreCommitDepositForPower func(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error)                                  `perm:"read"`
-		StateMinerProvingDeadline          func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (*dline.Info, error)                                                             `perm:"read"`
-		StateMinerRecoveries               func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (bitfield.BitField, error)                                                       `perm:"read"`
-		StateMinerSectorAllocated          func(ctx context.Context, maddr address.Address, s abi.SectorNumber, tsk types.TipSetKey) (bool, error)                                                `perm:"read"`
-		StateMinerSectorCount              func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MinerSectors, error)                                                       `perm:"read"`
-		StateMinerSectorSize               func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (abi.SectorSize, error)                                                          `perm:"read"`
-		StateMinerSectors                  func(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)                `perm:"read"`
-		StateMinerWorkerAddress            func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (address.Address, error)                                                         `perm:"read"`
-		StateReadState                     func(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.ActorState, error)                                                       `perm:"read"`
-		StateSectorExpiration              func(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*lminer.SectorExpiration, error)                 `perm:"read"`
-		StateSectorGetInfo                 func(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error)                            `perm:"read"`
-		StateSectorPartition               func(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*lminer.SectorLocation, error)                   `perm:"read"`
-		StateSectorPreCommitInfo           func(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error)                   `perm:"read"`
-		StateVMCirculatingSupplyInternal   func(ctx context.Context, tsk types.TipSetKey) (types.CirculatingSupply, error)                                                                        `perm:"read"`
-		StateVerifiedClientStatus          func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)                                                        `perm:"read"`
+		StateAllMinerFaults                func(ctx context.Context, lookback abi.ChainEpoch, ts types.TipSetKey) ([]*types.Fault, error)                                                 `perm:"read"`
+		StateChangedActors                 func(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)                                                                        `perm:"read"`
+		StateCirculatingSupply             func(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error)                                                                        `perm:"read"`
+		StateComputeDataCID                func(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) `perm:"read"`
+		StateDealProviderCollateralBounds  func(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (types.DealCollateralBounds, error)                    `perm:"read"`
+		StateDecodeParams                  func(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error)               `perm:"read"`
+		StateEncodeParams                  func(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error)                                     `perm:"read"`
+		StateGetAllocation                 func(ctx context.Context, clientAddr address.Address, allocationID types.AllocationId, tsk types.TipSetKey) (*types.Allocation, error)         `perm:"read"`
+		StateGetAllocationForPendingDeal   func(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.Allocation, error)                                                   `perm:"read"`
+		StateGetAllocations                func(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[types.AllocationId]types.Allocation, error)                    `perm:"read"`
+		StateGetClaim                      func(ctx context.Context, providerAddr address.Address, claimID types.ClaimId, tsk types.TipSetKey) (*types.Claim, error)                      `perm:"read"`
+		StateGetClaims                     func(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[types.ClaimId]types.Claim, error)                            `perm:"read"`
+		StateListActors                    func(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)                                                                      `perm:"read"`
+		StateListMessages                  func(ctx context.Context, match *types.MessageMatch, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)                              `perm:"read"`
+		StateListMiners                    func(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)                                                                      `perm:"read"`
+		StateLookupID                      func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)                                                  `perm:"read"`
+		StateLookupRobustAddress           func(context.Context, address.Address, types.TipSetKey) (address.Address, error)                                                               `perm:"read"`
+		StateMarketBalance                 func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MarketBalance, error)                                              `perm:"read"`
+		StateMarketDeals                   func(ctx context.Context, tsk types.TipSetKey) (map[string]*types.MarketDeal, error)                                                           `perm:"read"`
+		StateMarketStorageDeal             func(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error)                                                   `perm:"read"`
+		StateMinerActiveSectors            func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*types.SectorOnChainInfo, error)                                      `perm:"read"`
+		StateMinerAllocated                func(context.Context, address.Address, types.TipSetKey) (*bitfield.BitField, error)                                                            `perm:"read"`
+		StateMinerAvailableBalance         func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (big.Int, error)                                                         `perm:"read"`
+		StateMinerDeadlines                func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]types.Deadline, error)                                                `perm:"read"`
+		StateMinerFaults                   func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (bitfield.BitField, error)                                               `perm:"read"`
+		StateMinerInfo                     func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (types.MinerInfo, error)                                                 `perm:"read"`
+		StateMinerInitialPledgeCollateral  func(ctx context.Context, maddr address.Address, pci types.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error)                          `perm:"read"`
+		StateMinerPartitions               func(ctx context.Context, maddr address.Address, dlIdx uint64, tsk types.TipSetKey) ([]types.Partition, error)                                 `perm:"read"`
+		StateMinerPower                    func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.MinerPower, error)                                                `perm:"read"`
+		StateMinerPreCommitDepositForPower func(ctx context.Context, maddr address.Address, pci types.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error)                          `perm:"read"`
+		StateMinerProvingDeadline          func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (*dline.Info, error)                                                     `perm:"read"`
+		StateMinerRecoveries               func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (bitfield.BitField, error)                                               `perm:"read"`
+		StateMinerSectorAllocated          func(ctx context.Context, maddr address.Address, s abi.SectorNumber, tsk types.TipSetKey) (bool, error)                                        `perm:"read"`
+		StateMinerSectorCount              func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MinerSectors, error)                                               `perm:"read"`
+		StateMinerSectorSize               func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (abi.SectorSize, error)                                                  `perm:"read"`
+		StateMinerSectors                  func(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*types.SectorOnChainInfo, error)        `perm:"read"`
+		StateMinerWorkerAddress            func(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (address.Address, error)                                                 `perm:"read"`
+		StateReadState                     func(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.ActorState, error)                                               `perm:"read"`
+		StateSectorExpiration              func(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*lminer.SectorExpiration, error)         `perm:"read"`
+		StateSectorGetInfo                 func(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*types.SectorOnChainInfo, error)                    `perm:"read"`
+		StateSectorPartition               func(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*lminer.SectorLocation, error)           `perm:"read"`
+		StateSectorPreCommitInfo           func(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*types.SectorPreCommitOnChainInfo, error)           `perm:"read"`
+		StateVMCirculatingSupplyInternal   func(ctx context.Context, tsk types.TipSetKey) (types.CirculatingSupply, error)                                                                `perm:"read"`
+		StateVerifiedClientStatus          func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)                                                `perm:"read"`
 	}
 }
 
@@ -146,19 +144,19 @@ func (s *IMinerStateStruct) StateDecodeParams(p0 context.Context, p1 address.Add
 func (s *IMinerStateStruct) StateEncodeParams(p0 context.Context, p1 cid.Cid, p2 abi.MethodNum, p3 json.RawMessage) ([]byte, error) {
 	return s.Internal.StateEncodeParams(p0, p1, p2, p3)
 }
-func (s *IMinerStateStruct) StateGetAllocation(p0 context.Context, p1 address.Address, p2 verifregtypes.AllocationId, p3 types.TipSetKey) (*verifregtypes.Allocation, error) {
+func (s *IMinerStateStruct) StateGetAllocation(p0 context.Context, p1 address.Address, p2 types.AllocationId, p3 types.TipSetKey) (*types.Allocation, error) {
 	return s.Internal.StateGetAllocation(p0, p1, p2, p3)
 }
-func (s *IMinerStateStruct) StateGetAllocationForPendingDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifregtypes.Allocation, error) {
+func (s *IMinerStateStruct) StateGetAllocationForPendingDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*types.Allocation, error) {
 	return s.Internal.StateGetAllocationForPendingDeal(p0, p1, p2)
 }
-func (s *IMinerStateStruct) StateGetAllocations(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) {
+func (s *IMinerStateStruct) StateGetAllocations(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[types.AllocationId]types.Allocation, error) {
 	return s.Internal.StateGetAllocations(p0, p1, p2)
 }
-func (s *IMinerStateStruct) StateGetClaim(p0 context.Context, p1 address.Address, p2 verifregtypes.ClaimId, p3 types.TipSetKey) (*verifregtypes.Claim, error) {
+func (s *IMinerStateStruct) StateGetClaim(p0 context.Context, p1 address.Address, p2 types.ClaimId, p3 types.TipSetKey) (*types.Claim, error) {
 	return s.Internal.StateGetClaim(p0, p1, p2, p3)
 }
-func (s *IMinerStateStruct) StateGetClaims(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) {
+func (s *IMinerStateStruct) StateGetClaims(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (map[types.ClaimId]types.Claim, error) {
 	return s.Internal.StateGetClaims(p0, p1, p2)
 }
 func (s *IMinerStateStruct) StateListActors(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {
@@ -185,7 +183,7 @@ func (s *IMinerStateStruct) StateMarketDeals(p0 context.Context, p1 types.TipSet
 func (s *IMinerStateStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*types.MarketDeal, error) {
 	return s.Internal.StateMarketStorageDeal(p0, p1, p2)
 }
-func (s *IMinerStateStruct) StateMinerActiveSectors(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
+func (s *IMinerStateStruct) StateMinerActiveSectors(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*types.SectorOnChainInfo, error) {
 	return s.Internal.StateMinerActiveSectors(p0, p1, p2)
 }
 func (s *IMinerStateStruct) StateMinerAllocated(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*bitfield.BitField, error) {
@@ -203,7 +201,7 @@ func (s *IMinerStateStruct) StateMinerFaults(p0 context.Context, p1 address.Addr
 func (s *IMinerStateStruct) StateMinerInfo(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.MinerInfo, error) {
 	return s.Internal.StateMinerInfo(p0, p1, p2)
 }
-func (s *IMinerStateStruct) StateMinerInitialPledgeCollateral(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (big.Int, error) {
+func (s *IMinerStateStruct) StateMinerInitialPledgeCollateral(p0 context.Context, p1 address.Address, p2 types.SectorPreCommitInfo, p3 types.TipSetKey) (big.Int, error) {
 	return s.Internal.StateMinerInitialPledgeCollateral(p0, p1, p2, p3)
 }
 func (s *IMinerStateStruct) StateMinerPartitions(p0 context.Context, p1 address.Address, p2 uint64, p3 types.TipSetKey) ([]types.Partition, error) {
@@ -212,7 +210,7 @@ func (s *IMinerStateStruct) StateMinerPartitions(p0 context.Context, p1 address.
 func (s *IMinerStateStruct) StateMinerPower(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.MinerPower, error) {
 	return s.Internal.StateMinerPower(p0, p1, p2)
 }
-func (s *IMinerStateStruct) StateMinerPreCommitDepositForPower(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (big.Int, error) {
+func (s *IMinerStateStruct) StateMinerPreCommitDepositForPower(p0 context.Context, p1 address.Address, p2 types.SectorPreCommitInfo, p3 types.TipSetKey) (big.Int, error) {
 	return s.Internal.StateMinerPreCommitDepositForPower(p0, p1, p2, p3)
 }
 func (s *IMinerStateStruct) StateMinerProvingDeadline(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) {
@@ -230,7 +228,7 @@ func (s *IMinerStateStruct) StateMinerSectorCount(p0 context.Context, p1 address
 func (s *IMinerStateStruct) StateMinerSectorSize(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (abi.SectorSize, error) {
 	return s.Internal.StateMinerSectorSize(p0, p1, p2)
 }
-func (s *IMinerStateStruct) StateMinerSectors(p0 context.Context, p1 address.Address, p2 *bitfield.BitField, p3 types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
+func (s *IMinerStateStruct) StateMinerSectors(p0 context.Context, p1 address.Address, p2 *bitfield.BitField, p3 types.TipSetKey) ([]*types.SectorOnChainInfo, error) {
 	return s.Internal.StateMinerSectors(p0, p1, p2, p3)
 }
 func (s *IMinerStateStruct) StateMinerWorkerAddress(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
@@ -242,13 +240,13 @@ func (s *IMinerStateStruct) StateReadState(p0 context.Context, p1 address.Addres
 func (s *IMinerStateStruct) StateSectorExpiration(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*lminer.SectorExpiration, error) {
 	return s.Internal.StateSectorExpiration(p0, p1, p2, p3)
 }
-func (s *IMinerStateStruct) StateSectorGetInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorOnChainInfo, error) {
+func (s *IMinerStateStruct) StateSectorGetInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*types.SectorOnChainInfo, error) {
 	return s.Internal.StateSectorGetInfo(p0, p1, p2, p3)
 }
 func (s *IMinerStateStruct) StateSectorPartition(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*lminer.SectorLocation, error) {
 	return s.Internal.StateSectorPartition(p0, p1, p2, p3)
 }
-func (s *IMinerStateStruct) StateSectorPreCommitInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) {
+func (s *IMinerStateStruct) StateSectorPreCommitInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*types.SectorPreCommitOnChainInfo, error) {
 	return s.Internal.StateSectorPreCommitInfo(p0, p1, p2, p3)
 }
 func (s *IMinerStateStruct) StateVMCirculatingSupplyInternal(p0 context.Context, p1 types.TipSetKey) (types.CirculatingSupply, error) {

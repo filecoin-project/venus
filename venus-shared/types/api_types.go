@@ -12,9 +12,6 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/peer"
 
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
-	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
-
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 )
@@ -140,8 +137,8 @@ type Deadline struct {
 var MarketBalanceNil = MarketBalance{}
 
 type MarketDeal struct {
-	Proposal market.DealProposal
-	State    market.DealState
+	Proposal DealProposal
+	State    DealState
 }
 
 type MinerPower struct {
@@ -351,8 +348,8 @@ type MinerInfo struct {
 	WindowPoStPartitionSectors uint64
 	ConsensusFaultElapsed      abi.ChainEpoch
 	Beneficiary                address.Address
-	BeneficiaryTerm            *miner.BeneficiaryTerm
-	PendingBeneficiaryTerm     *miner.PendingBeneficiaryChange
+	BeneficiaryTerm            *BeneficiaryTerm
+	PendingBeneficiaryTerm     *PendingBeneficiaryChange
 }
 
 type NetworkParams struct {
