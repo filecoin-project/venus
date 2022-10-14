@@ -311,26 +311,26 @@ func Version9Upgrade(repoPath string) (err error) {
 	switch cfg.NetworkParams.NetworkType {
 	case types.NetworkMainnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeV17Height = 99999999999999
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSharkHeight = 99999999999999
 		cfg.NetworkParams.PropagationDelaySecs = 10
 	case types.Network2k:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version16
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeV17Height = 100
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSharkHeight = 99999999999999
 		cfg.NetworkParams.PropagationDelaySecs = 1
 	case types.NetworkCalibnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeV17Height = 99999999999999
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSharkHeight = 1407374
 		cfg.NetworkParams.PropagationDelaySecs = 10
 	case types.NetworkForce:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version16
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeV17Height = 100
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSharkHeight = 99999999999999
 		cfg.NetworkParams.PropagationDelaySecs = 1
 	case types.NetworkInterop:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version16
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeV17Height = 99999999999999
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSharkHeight = 99999999999999
 	case types.NetworkButterfly:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version16
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeV17Height = 50
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSharkHeight = 99999999999999
 	default:
 		return fsrRepo.Close()
 	}
