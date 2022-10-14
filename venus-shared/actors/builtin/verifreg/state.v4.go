@@ -101,3 +101,21 @@ func (s *state4) GetAllocation(clientIdAddr address.Address, allocationId verifr
 	return nil, false, fmt.Errorf("unsupported in actors v4")
 
 }
+
+func (s *state4) GetAllocations(clientIdAddr address.Address) (map[verifreg9.AllocationId]verifreg9.Allocation, error) {
+
+	return nil, fmt.Errorf("unsupported in actors v4")
+
+}
+
+func (s *state4) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*verifreg9.Claim, bool, error) {
+
+	return nil, false, fmt.Errorf("unsupported in actors v4")
+
+}
+
+func (s *state4) GetClaims(providerIdAddr address.Address) (map[verifreg9.ClaimId]verifreg9.Claim, error) {
+
+	return nil, fmt.Errorf("unsupported in actors v4")
+
+}
