@@ -29,8 +29,8 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"

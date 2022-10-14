@@ -12,6 +12,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 
@@ -186,7 +187,14 @@ func (s *dealStates2) array() adt.Array {
 }
 
 func fromV2DealState(v2 market2.DealState) DealState {
-	return (DealState)(v2)
+
+	return DealState{
+		SectorStartEpoch: v2.SectorStartEpoch,
+		LastUpdatedEpoch: v2.LastUpdatedEpoch,
+		SlashEpoch:       v2.SlashEpoch,
+		VerifiedClaim:    0,
+	}
+
 }
 
 type dealProposals2 struct {
@@ -295,4 +303,10 @@ func (r *publishStorageDealsReturn2) IsDealValid(index uint64) (bool, int, error
 
 func (r *publishStorageDealsReturn2) DealIDs() ([]abi.DealID, error) {
 	return r.IDs, nil
+}
+
+func (s *state2) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
+
+	return verifregtypes.NoAllocationID, fmt.Errorf("unsupported before actors v9")
+
 }

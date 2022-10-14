@@ -7,11 +7,15 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
+	"fmt"
+
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+
+	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 )
 
 var _ State = (*state0)(nil)
@@ -48,7 +52,9 @@ func (s *state0) RootKey() (address.Address, error) {
 }
 
 func (s *state0) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
+
 	return getDataCap(s.store, actors.Version0, s.verifiedClients, addr)
+
 }
 
 func (s *state0) VerifierDataCap(addr address.Address) (bool, abi.StoragePower, error) {
@@ -64,11 +70,15 @@ func (s *state0) ForEachVerifier(cb func(addr address.Address, dcap abi.StorageP
 }
 
 func (s *state0) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
+
 	return forEachCap(s.store, actors.Version0, s.verifiedClients, cb)
+
 }
 
 func (s *state0) verifiedClients() (adt.Map, error) {
+
 	return adt0.AsMap(s.store, s.VerifiedClients)
+
 }
 
 func (s *state0) verifiers() (adt.Map, error) {
@@ -82,4 +92,28 @@ func (s *state0) removeDataCapProposalIDs() (adt.Map, error) {
 
 func (s *state0) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state0) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*verifreg9.Allocation, bool, error) {
+
+	return nil, false, fmt.Errorf("unsupported in actors v0")
+
+}
+
+func (s *state0) GetAllocations(clientIdAddr address.Address) (map[verifreg9.AllocationId]verifreg9.Allocation, error) {
+
+	return nil, fmt.Errorf("unsupported in actors v0")
+
+}
+
+func (s *state0) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*verifreg9.Claim, bool, error) {
+
+	return nil, false, fmt.Errorf("unsupported in actors v0")
+
+}
+
+func (s *state0) GetClaims(providerIdAddr address.Address) (map[verifreg9.ClaimId]verifreg9.Claim, error) {
+
+	return nil, fmt.Errorf("unsupported in actors v0")
+
 }

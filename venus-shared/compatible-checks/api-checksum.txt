@@ -151,6 +151,11 @@ v0api.FullNode:
 	StateDealProviderCollateralBounds:	In=4,	Out=2,	CheckSum=5231e44843c0b74a04371e1e7170d4b2
 	StateDecodeParams:	In=5,	Out=2,	CheckSum=8c6311be4dc064a657368516c33e1307
 	StateGetActor:	In=3,	Out=2,	CheckSum=adcd0bbd36e3ab94f777c7cb3df1fb34
+	StateGetAllocation:	In=4,	Out=2,	CheckSum=306a8d2eb65b1bd436f2230bb96666b5
+	StateGetAllocationForPendingDeal:	In=3,	Out=2,	CheckSum=3d2912f0c80606576bb697499140ae2f
+	StateGetAllocations:	In=3,	Out=2,	CheckSum=570266653b3643cf22e6b47609db7e55
+	StateGetClaim:	In=4,	Out=2,	CheckSum=79bc50cf65a4d6b102267fd020b97510
+	StateGetClaims:	In=3,	Out=2,	CheckSum=06f189feb545746b5e123702405416fb
 	StateGetNetworkParams:	In=1,	Out=2,	CheckSum=7bc6ff254ba803762ffb166c6d96a921
 	StateGetRandomnessFromBeacon:	In=5,	Out=2,	CheckSum=b98225c36bf011979dbcad0fb938e659
 	StateGetRandomnessFromTickets:	In=5,	Out=2,	CheckSum=b98225c36bf011979dbcad0fb938e659
@@ -380,7 +385,12 @@ api.FullNode:
 	StateDecodeParams:	In=5,	Out=2,	CheckSum=8c6311be4dc064a657368516c33e1307
 	StateEncodeParams:	In=4,	Out=2,	CheckSum=3e1a5390b92b1b69f9be038cd7400e38
 	StateGetActor:	In=3,	Out=2,	CheckSum=adcd0bbd36e3ab94f777c7cb3df1fb34
+	StateGetAllocation:	In=4,	Out=2,	CheckSum=306a8d2eb65b1bd436f2230bb96666b5
+	StateGetAllocationForPendingDeal:	In=3,	Out=2,	CheckSum=3d2912f0c80606576bb697499140ae2f
+	StateGetAllocations:	In=3,	Out=2,	CheckSum=570266653b3643cf22e6b47609db7e55
 	StateGetBeaconEntry:	In=2,	Out=2,	CheckSum=c74f5c0f4039207ea45c11bfe3319c38
+	StateGetClaim:	In=4,	Out=2,	CheckSum=79bc50cf65a4d6b102267fd020b97510
+	StateGetClaims:	In=3,	Out=2,	CheckSum=06f189feb545746b5e123702405416fb
 	StateGetNetworkParams:	In=1,	Out=2,	CheckSum=7bc6ff254ba803762ffb166c6d96a921
 	StateGetRandomnessFromBeacon:	In=5,	Out=2,	CheckSum=b98225c36bf011979dbcad0fb938e659
 	StateGetRandomnessFromTickets:	In=5,	Out=2,	CheckSum=b98225c36bf011979dbcad0fb938e659
