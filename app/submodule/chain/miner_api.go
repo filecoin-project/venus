@@ -420,13 +420,91 @@ func (msa *minerStateAPI) StateGetAllocation(ctx context.Context, clientAddr add
 
 	allocation, found, err := st.GetAllocation(idAddr, allocationID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getting allocation: %w", err)
 	}
 	if !found {
 		return nil, nil
 	}
 
 	return allocation, nil
+}
+
+// StateGetAllocations returns the all the allocations for a given client.
+func (msa *minerStateAPI) StateGetAllocations(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) {
+	idAddr, err := msa.ChainSubmodule.API().StateLookupID(ctx, clientAddr, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
+	}
+
+	st, err := view.LoadVerifregActor(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+	}
+
+	allocations, err := st.GetAllocations(idAddr)
+	if err != nil {
+		return nil, fmt.Errorf("getting allocations: %w", err)
+	}
+
+	return allocations, nil
+}
+
+// StateGetClaim returns the claim for a given address and claim ID.
+func (msa *minerStateAPI) StateGetClaim(ctx context.Context, providerAddr address.Address, claimID verifregtypes.ClaimId, tsk types.TipSetKey) (*verifregtypes.Claim, error) {
+	idAddr, err := msa.ChainSubmodule.API().StateLookupID(ctx, providerAddr, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
+	}
+
+	st, err := view.LoadVerifregActor(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+	}
+
+	claim, found, err := st.GetClaim(idAddr, claimID)
+	if err != nil {
+		return nil, fmt.Errorf("getting claim: %w", err)
+	}
+	if !found {
+		return nil, nil
+	}
+
+	return claim, nil
+}
+
+// StateGetClaims returns the all the claims for a given provider.
+func (msa *minerStateAPI) StateGetClaims(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) {
+	idAddr, err := msa.ChainSubmodule.API().StateLookupID(ctx, providerAddr, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
+	}
+
+	st, err := view.LoadVerifregActor(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+	}
+
+	claims, err := st.GetClaims(idAddr)
+	if err != nil {
+		return nil, fmt.Errorf("getting claims: %w", err)
+	}
+
+	return claims, nil
 }
 
 // StateComputeDataCID computes DataCID from a set of on-chain deals

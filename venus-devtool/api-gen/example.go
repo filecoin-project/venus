@@ -88,9 +88,14 @@ func init() {
 		panic(err)
 	}
 	addExample(constants.TestNetworkVersion)
-	allocationId := verifreg.AllocationId(0)
-	addExample(allocationId)
-	addExample(&allocationId)
+	allocationID := verifreg.AllocationId(0)
+	addExample(allocationID)
+	addExample(&allocationID)
+	addExample(map[verifreg.AllocationId]verifreg.Allocation{})
+	claimID := verifreg.ClaimId(0)
+	addExample(claimID)
+	addExample(&claimID)
+	addExample(map[verifreg.ClaimId]verifreg.Claim{})
 	textSelExample := textselector.Expression("Links/21/Hash/Links/42/Hash")
 	clientEvent := retrievalmarket.ClientEventDealAccepted
 	addExample(bitfield.NewFromSet([]uint64{5}))
