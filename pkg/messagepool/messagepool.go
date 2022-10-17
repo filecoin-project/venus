@@ -220,6 +220,7 @@ func CapGasFee(mff DefaultMaxFeeFunc, msg *types.Message, sendSepc *types.Messag
 	totalFee := types.BigMul(msg.GasFeeCap, gl)
 
 	if totalFee.LessThanEqual(maxFee) {
+		msg.GasPremium = big.Min(msg.GasFeeCap, msg.GasPremium)
 		return
 	}
 
@@ -1092,9 +1093,9 @@ func (mp *MessagePool) getStateBalance(ctx context.Context, addr address.Address
 
 // this method is provided for the gateway to push messages.
 // differences from Push:
-//  - strict checks are enabled
-//  - extra strict add checks are used when adding the messages to the msgSet
-//    that means: no nonce gaps, at most 10 pending messages for the actor
+//   - strict checks are enabled
+//   - extra strict add checks are used when adding the messages to the msgSet
+//     that means: no nonce gaps, at most 10 pending messages for the actor
 func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage) (cid.Cid, error) {
 	err := mp.checkMessage(m)
 	if err != nil {
