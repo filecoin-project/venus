@@ -52,7 +52,7 @@ func InteropNet() *NetworkConf {
 				UpgradeChocolateHeight:   -17,
 				UpgradeOhSnapHeight:      -18,
 				UpgradeSkyrHeight:        -19,
-				UpgradeV17Height:         99999999999999,
+				UpgradeSharkHeight:       99999999999999,
 			},
 			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:       address.Testnet,
