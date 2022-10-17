@@ -8,8 +8,8 @@ require (
 	github.com/filecoin-project/go-data-transfer v1.15.2
 	github.com/filecoin-project/go-fil-markets v1.24.1-rc1
 	github.com/filecoin-project/go-jsonrpc v0.1.8
-	github.com/filecoin-project/go-state-types v0.9.0-rc2.0.20221013150615-ab0a8ee5a490
-	github.com/filecoin-project/lotus v1.17.2-0.20221013181439-e549a3fb4a91
+	github.com/filecoin-project/go-state-types v0.9.0
+	github.com/filecoin-project/lotus v1.18.0-rc1
 	github.com/filecoin-project/venus v0.0.0-00010101000000-000000000000
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-cid v0.2.0
@@ -117,7 +117,7 @@ require (
 	github.com/ipfs/go-ipns v0.2.0 // indirect
 	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/ipfs/go-log/v2 v2.5.1 // indirect
-	github.com/ipfs/go-merkledag v0.6.0 // indirect
+	github.com/ipfs/go-merkledag v0.8.0 // indirect
 	github.com/ipfs/go-metrics-interface v0.0.1 // indirect
 	github.com/ipfs/go-path v0.3.0 // indirect
 	github.com/ipfs/go-unixfs v0.3.1 // indirect
