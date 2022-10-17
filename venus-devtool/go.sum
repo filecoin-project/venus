@@ -327,14 +327,14 @@ github.com/filecoin-project/go-state-types v0.1.4/go.mod h1:xCA/WfKlC2zcn3fUmDv4
 github.com/filecoin-project/go-state-types v0.1.6/go.mod h1:UwGVoMsULoCK+bWjEdd/xLCvLAQFBC7EDT477SKml+Q=
 github.com/filecoin-project/go-state-types v0.1.8/go.mod h1:UwGVoMsULoCK+bWjEdd/xLCvLAQFBC7EDT477SKml+Q=
 github.com/filecoin-project/go-state-types v0.1.10/go.mod h1:UwGVoMsULoCK+bWjEdd/xLCvLAQFBC7EDT477SKml+Q=
-github.com/filecoin-project/go-state-types v0.9.0-rc2.0.20221013150615-ab0a8ee5a490 h1:Hsy5YDJKs8EneT3rAuHk3jpCOr51V2itDiRH3o1aLcY=
-github.com/filecoin-project/go-state-types v0.9.0-rc2.0.20221013150615-ab0a8ee5a490/go.mod h1:+HCZifUV+e8TlQkgll22Ucuiq8OrVJkK+4Kh4u75iiw=
+github.com/filecoin-project/go-state-types v0.9.0 h1:UFPAWqBAzz5eBtEDO9J/CaYsQMIhXO8t141nQdeJBxY=
+github.com/filecoin-project/go-state-types v0.9.0/go.mod h1:+HCZifUV+e8TlQkgll22Ucuiq8OrVJkK+4Kh4u75iiw=
 github.com/filecoin-project/go-statemachine v1.0.2 h1:421SSWBk8GIoCoWYYTE/d+qCWccgmRH0uXotXRDjUbc=
 github.com/filecoin-project/go-statestore v0.2.0 h1:cRRO0aPLrxKQCZ2UOQbzFGn4WDNdofHZoGPjfNaAo5Q=
 github.com/filecoin-project/go-statestore v0.2.0/go.mod h1:8sjBYbS35HwPzct7iT4lIXjLlYyPor80aU7t7a/Kspo=
 github.com/filecoin-project/index-provider v0.8.1 h1:ggoBWvMSWR91HZQCWfv8SZjoTGNyJBwNMLuN9bJZrbU=
-github.com/filecoin-project/lotus v1.17.2-0.20221013181439-e549a3fb4a91 h1:i5cVZk2oyIYDinczqEDrcbKpek/p3Bz7tiLxj8Is83o=
-github.com/filecoin-project/lotus v1.17.2-0.20221013181439-e549a3fb4a91/go.mod h1:eZqBPG7iXBniEirESYXcU7aqeQVG16qAu45ElXu5MUg=
+github.com/filecoin-project/lotus v1.18.0-rc1 h1:tE92v/Q4GAdq/xc5bO9ihAk15YSsPMFOUrqVwc58c9Q=
+github.com/filecoin-project/lotus v1.18.0-rc1/go.mod h1:g3f940cMX+co2wsDMoaWgeRebiLbY8S1PZaNrLugp3E=
 github.com/filecoin-project/pubsub v1.0.0 h1:ZTmT27U07e54qV1mMiQo4HDr0buo8I1LDHBYLXlsNXM=
 github.com/filecoin-project/pubsub v1.0.0/go.mod h1:GkpB33CcUtUNrLPhJgfdy4FDx4OMNR9k+46DHx/Lqrg=
 github.com/filecoin-project/specs-actors v0.9.13/go.mod h1:TS1AW/7LbG+615j4NsjMK1qlpAwaFsG9w0V2tg2gSao=
@@ -615,7 +615,6 @@ github.com/ipfs/go-bitfield v1.0.0/go.mod h1:N/UiujQy+K+ceU1EF5EkVd1TNqevLrCQMIc
 github.com/ipfs/go-bitswap v0.1.0/go.mod h1:FFJEf18E9izuCqUtHxbWEvq+reg7o4CW5wSAE1wsxj0=
 github.com/ipfs/go-bitswap v0.1.2/go.mod h1:qxSWS4NXGs7jQ6zQvoPY3+NmOfHHG47mhkiLzBpJQIs=
 github.com/ipfs/go-bitswap v0.5.1/go.mod h1:P+ckC87ri1xFLvk74NlXdP0Kj9RmWAh4+H78sC6Qopo=
-github.com/ipfs/go-bitswap v0.6.0/go.mod h1:Hj3ZXdOC5wBJvENtdqsixmzzRukqd8EHLxZLZc3mzRA=
 github.com/ipfs/go-bitswap v0.10.2 h1:B81RIwkTnIvSYT1ZCzxjYTeF0Ek88xa9r1AMpTfk+9Q=
 github.com/ipfs/go-block-format v0.0.1/go.mod h1:DK/YYcsSUIVAFNwo/KZCdIIbpN0ROH/baNLgayt4pFc=
 github.com/ipfs/go-block-format v0.0.2/go.mod h1:AWR46JfpcObNfg3ok2JHDUfdiHRgWhJgCQF+KIgOPJY=
@@ -623,7 +622,6 @@ github.com/ipfs/go-block-format v0.0.3 h1:r8t66QstRp/pd/or4dpnbVfXT5Gt7lOqRvC+/d
 github.com/ipfs/go-block-format v0.0.3/go.mod h1:4LmD4ZUw0mhO+JSKdpWwrzATiEfM7WWgQ8H5l6P8MVk=
 github.com/ipfs/go-blockservice v0.1.0/go.mod h1:hzmMScl1kXHg3M2BjTymbVPjv627N7sYcvYaKbop39M=
 github.com/ipfs/go-blockservice v0.2.1/go.mod h1:k6SiwmgyYgs4M/qt+ww6amPeUH9EISLRBnvUurKJhi8=
-github.com/ipfs/go-blockservice v0.3.0/go.mod h1:P5ppi8IHDC7O+pA0AlGTF09jruB2h+oP3wVVaZl8sfk=
 github.com/ipfs/go-blockservice v0.4.0 h1:7MUijAW5SqdsqEW/EhnNFRJXVF8mGU5aGhZ3CQaCWbY=
 github.com/ipfs/go-blockservice v0.4.0/go.mod h1:kRjO3wlGW9mS1aKuiCeGhx9K1DagQ10ACpVO59qgAx4=
 github.com/ipfs/go-cid v0.0.1/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
@@ -697,7 +695,6 @@ github.com/ipfs/go-ipfs-exchange-interface v0.2.0 h1:8lMSJmKogZYNo2jjhUs0izT+dck
 github.com/ipfs/go-ipfs-exchange-interface v0.2.0/go.mod h1:z6+RhJuDQbqKguVyslSOuVDhqF9JtTrO3eptSAiW2/Y=
 github.com/ipfs/go-ipfs-exchange-offline v0.0.1/go.mod h1:WhHSFCVYX36H/anEKQboAzpUws3x7UeEGkzQc3iNkM0=
 github.com/ipfs/go-ipfs-exchange-offline v0.1.1/go.mod h1:vTiBRIbzSwDD0OWm+i3xeT0mO7jG2cbJYatp3HPk5XY=
-github.com/ipfs/go-ipfs-exchange-offline v0.2.0/go.mod h1:HjwBeW0dvZvfOMwDP0TSKXIHf2s+ksdP4E3MLDRtLKY=
 github.com/ipfs/go-ipfs-exchange-offline v0.3.0 h1:c/Dg8GDPzixGd0MC8Jh6mjOwU57uYokgWRFidfvEkuA=
 github.com/ipfs/go-ipfs-files v0.0.3/go.mod h1:INEFm0LL2LWXBhNJ2PMIIb2w45hpXgPjNoE7yA8Y1d4=
 github.com/ipfs/go-ipfs-files v0.0.4/go.mod h1:INEFm0LL2LWXBhNJ2PMIIb2w45hpXgPjNoE7yA8Y1d4=
@@ -757,8 +754,8 @@ github.com/ipfs/go-merkledag v0.2.3/go.mod h1:SQiXrtSts3KGNmgOzMICy5c0POOpUNQLvB
 github.com/ipfs/go-merkledag v0.2.4/go.mod h1:SQiXrtSts3KGNmgOzMICy5c0POOpUNQLvB3ClKnBAlk=
 github.com/ipfs/go-merkledag v0.3.2/go.mod h1:fvkZNNZixVW6cKSZ/JfLlON5OlgTXNdRLz0p6QG/I2M=
 github.com/ipfs/go-merkledag v0.5.1/go.mod h1:cLMZXx8J08idkp5+id62iVftUQV+HlYJ3PIhDfZsjA4=
-github.com/ipfs/go-merkledag v0.6.0 h1:oV5WT2321tS4YQVOPgIrWHvJ0lJobRTerU+i9nmUCuA=
-github.com/ipfs/go-merkledag v0.6.0/go.mod h1:9HSEwRd5sV+lbykiYP+2NC/3o6MZbKNaa4hfNcH5iH0=
+github.com/ipfs/go-merkledag v0.8.0 h1:ZUda+sh/MGZX4Z13DE/VQT4GmKWm4H95Nje4qcL/yPE=
+github.com/ipfs/go-merkledag v0.8.0/go.mod h1:/RmH1kOs7qDMNtGKPh4d/UErNMVuAMpPS/tP57a3aoY=
 github.com/ipfs/go-metrics-interface v0.0.1 h1:j+cpbjYvu4R8zbleSs36gvB7jR+wsL2fGD6n0jO4kdg=
 github.com/ipfs/go-metrics-interface v0.0.1/go.mod h1:6s6euYU4zowdslK0GKHmqaIZ3j/b/tL7HTWtJ4VPgWY=
 github.com/ipfs/go-path v0.3.0 h1:tkjga3MtpXyM5v+3EbRvOHEoo+frwi4oumw5K+KYWyA=

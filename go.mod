@@ -20,17 +20,17 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/color v1.13.0
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
-	github.com/filecoin-project/go-address v0.0.6
+	github.com/filecoin-project/go-address v1.0.0
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils v0.1.3
 	github.com/filecoin-project/go-crypto v0.0.1
 	github.com/filecoin-project/go-data-transfer v1.15.2
 	github.com/filecoin-project/go-fil-commcid v0.1.0
-	github.com/filecoin-project/go-fil-markets v1.24.1-rc1
+	github.com/filecoin-project/go-fil-markets v1.24.0-v17
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.9.0-rc2.0.20221013150615-ab0a8ee5a490
+	github.com/filecoin-project/go-state-types v0.9.0
 	github.com/filecoin-project/pubsub v1.0.0
 	github.com/filecoin-project/specs-actors v0.9.15
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
@@ -70,12 +70,12 @@ require (
 	github.com/ipfs/go-ipfs-ds-help v1.1.0
 	github.com/ipfs/go-ipfs-exchange-interface v0.2.0
 	github.com/ipfs/go-ipfs-exchange-offline v0.3.0
-	github.com/ipfs/go-ipfs-files v0.0.9
+	github.com/ipfs/go-ipfs-files v0.1.1
 	github.com/ipfs/go-ipld-cbor v0.0.6
 	github.com/ipfs/go-ipld-format v0.4.0
 	github.com/ipfs/go-log v1.0.5
 	github.com/ipfs/go-log/v2 v2.5.1
-	github.com/ipfs/go-merkledag v0.6.0
+	github.com/ipfs/go-merkledag v0.8.0
 	github.com/ipfs/go-unixfs v0.3.1
 	github.com/ipld/go-car v0.4.0
 	github.com/jbenet/goprocess v0.1.4
@@ -95,7 +95,7 @@ require (
 	github.com/raulk/clock v1.1.0
 	github.com/streadway/handy v0.0.0-20200128134331-0f66f006fb2e
 	github.com/stretchr/testify v1.8.0
-	github.com/whyrusleeping/cbor-gen v0.0.0-20220323183124-98fa8256a799
+	github.com/whyrusleeping/cbor-gen v0.0.0-20220514204315-f29c37e9c44c
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
 	go.opencensus.io v0.23.0
