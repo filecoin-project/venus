@@ -299,7 +299,7 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			}},
 			Expensive: true,
 		}, {
-			Height:    upgradeHeight.UpgradeV17Height,
+			Height:    upgradeHeight.UpgradeSharkHeight,
 			Network:   network.Version17,
 			Migration: cf.UpgradeActorsV9,
 			PreMigrations: []PreMigration{{
@@ -2164,8 +2164,6 @@ func (c *ChainFork) UpgradeActorsV9(ctx context.Context, cache MigrationCache, r
 	if err != nil {
 		return cid.Undef, fmt.Errorf("migrating actors v8 state: %w", err)
 	}
-
-	fmt.Print(fvmLiftoffBanner)
 
 	return newRoot, nil
 }
