@@ -220,6 +220,7 @@ func CapGasFee(mff DefaultMaxFeeFunc, msg *types.Message, sendSepc *types.Messag
 	totalFee := types.BigMul(msg.GasFeeCap, gl)
 
 	if totalFee.LessThanEqual(maxFee) {
+		msg.GasPremium = big.Min(msg.GasFeeCap, msg.GasPremium)
 		return
 	}
 
