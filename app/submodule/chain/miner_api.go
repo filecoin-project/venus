@@ -376,7 +376,8 @@ func (msa *minerStateAPI) StateMarketStorageDeal(ctx context.Context, dealID abi
 	}, nil
 }
 
-// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal.
+// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
+// pending allocation is not found.
 func (msa *minerStateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
@@ -391,6 +392,10 @@ func (msa *minerStateAPI) StateGetAllocationForPendingDeal(ctx context.Context, 
 	allocationID, err := st.GetAllocationIdForPendingDeal(dealID)
 	if err != nil {
 		return nil, err
+	}
+
+	if allocationID == verifregtypes.NoAllocationID {
+		return nil, nil
 	}
 
 	dealState, err := msa.StateMarketStorageDeal(ctx, dealID, tsk)

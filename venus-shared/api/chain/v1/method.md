@@ -3060,7 +3060,8 @@ Response:
 ```
 
 ### StateGetAllocationForPendingDeal
-StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal.
+StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
+pending allocation is not found.
 
 
 Perms: read
