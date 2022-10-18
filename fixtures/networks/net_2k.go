@@ -16,6 +16,7 @@ func Net2k() *NetworkConf {
 			Period:           "30s",
 		},
 		Network: config.NetworkParamsConfig{
+			DevNet:                true,
 			NetworkType:           types.Network2k,
 			GenesisNetworkVersion: network.Version16,
 			ReplaceProofTypes: []abi.RegisteredSealProof{
