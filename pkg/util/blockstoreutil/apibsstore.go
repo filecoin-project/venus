@@ -1,10 +1,9 @@
-package chain
+package blockstoreutil
 
 import (
 	"context"
 	"errors"
 
-	"github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -20,8 +19,8 @@ type apiBStore struct {
 }
 
 // NewAPIBlockstore create new blockstore api
-func NewAPIBlockstore(cio ChainIO) blockstoreutil.Blockstore {
-	return blockstoreutil.Adapt(&apiBStore{api: cio})
+func NewAPIBlockstore(cio ChainIO) Blockstore {
+	return Adapt(&apiBStore{api: cio})
 }
 
 // DeleteBlock implements Blockstore.DeleteBlock.
