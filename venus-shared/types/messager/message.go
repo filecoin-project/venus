@@ -83,6 +83,9 @@ type Message struct {
 
 	State MessageState
 
+	// Error is set if the message failed to fill
+	ErrorInfo string
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
