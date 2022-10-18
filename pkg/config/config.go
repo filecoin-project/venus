@@ -321,6 +321,7 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 	defaultParams := *DefaultForkUpgradeParam
 	return &NetworkParamsConfig{
+		DevNet:                 true,
 		ConsensusMinerMinPower: 0, // 0 means don't override the value
 		ReplaceProofTypes: []abi.RegisteredSealProof{
 			abi.RegisteredSealProof_StackedDrg2KiBV1,
