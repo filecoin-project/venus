@@ -2,7 +2,7 @@ package gengen_test
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -57,7 +57,7 @@ const defaultTime = 123456789
 func TestGenGenLoading(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	fi, err := ioutil.TempFile("", "gengentest")
+	fi, err := os.CreateTemp("", "gengentest")
 	assert.NoError(t, err)
 
 	_, err = genutil.GenGenesisCar(testConfig(t), fi)

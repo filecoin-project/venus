@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -71,7 +71,7 @@ func TestJsonrpc(t *testing.T) {
 	httpRes, err := http.Post("http://"+testServ.Listener.Addr().String()+"/rpc/v1", "", bytes.NewReader(reqBytes))
 	require.NoError(t, err)
 	assert.Equal(t, httpRes.Status, "200 OK")
-	result, err := ioutil.ReadAll(httpRes.Body)
+	result, err := io.ReadAll(httpRes.Body)
 	require.NoError(t, err)
 	res := struct {
 		Result string `json:"result"`

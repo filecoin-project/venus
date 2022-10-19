@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -52,7 +51,7 @@ func (dr *DrawRandomParams) MarshalCBOR(w io.Writer) error {
 }
 
 func (dr *DrawRandomParams) UnmarshalCBOR(r io.Reader) error {
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return err
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/blockstore"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -20,7 +21,6 @@ import (
 
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/cmd/tablewriter"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
@@ -299,7 +299,7 @@ var actorRepayDebtCmd = &cmds.Command{
 				return err
 			}
 
-			store := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
+			store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
 
 			mst, err := miner.Load(store, mact)
 			if err != nil {

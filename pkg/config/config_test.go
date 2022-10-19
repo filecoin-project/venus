@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -40,7 +39,7 @@ func TestWriteFile(t *testing.T) {
 	SanityCheck(t, expected)
 
 	assert.NoError(t, cfg.WriteFile(filepath.Join(dir, "config.json")))
-	content, err := ioutil.ReadFile(filepath.Join(dir, "config.json"))
+	content, err := os.ReadFile(filepath.Join(dir, "config.json"))
 	assert.NoError(t, err)
 
 	assert.Equal(t, expected, string(content))
@@ -257,7 +256,7 @@ path = "mushroom-mushroom"}`
 func createConfigFile(t *testing.T, content string) (string, error) {
 	cfgpath := filepath.Join(t.TempDir(), "config.json")
 
-	if err := ioutil.WriteFile(cfgpath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(cfgpath, []byte(content), 0644); err != nil {
 		return "", err
 	}
 

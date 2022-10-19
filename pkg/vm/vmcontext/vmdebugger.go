@@ -2,7 +2,7 @@ package vmcontext
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 )
 
@@ -32,5 +32,5 @@ func (debug *VMDebugMsg) WriteToTerminal() {
 
 // WriteToFile write debug message to file
 func (debug *VMDebugMsg) WriteToFile(fileName string) error {
-	return ioutil.WriteFile(fileName, []byte(debug.buf.String()), 0777)
+	return os.WriteFile(fileName, []byte(debug.buf.String()), 0777)
 }

@@ -12,9 +12,9 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	bstore "github.com/filecoin-project/venus/pkg/util/blockstoreutil"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/datacap"
+	bstore "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 

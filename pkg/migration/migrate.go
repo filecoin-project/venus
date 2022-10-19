@@ -3,8 +3,8 @@ package migration
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
+	"os"
 	"path/filepath"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -235,7 +235,7 @@ func Version7Upgrade(repoPath string) (err error) {
 	type tempCfg struct {
 		Mpool *MpoolCfg `json:"mpool"`
 	}
-	data, err := ioutil.ReadFile(filepath.Join(repoPath, "config.json"))
+	data, err := os.ReadFile(filepath.Join(repoPath, "config.json"))
 	if err != nil {
 		migrateLog.Errorf("open config file failed: %v", err)
 	} else {

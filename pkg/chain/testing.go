@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"sync"
 	"testing"
 
@@ -930,7 +930,7 @@ func (f *Builder) AddPeer(peer peer.ID) {}
 func (f *Builder) GeneratorGenesis() *types.TipSet {
 	b, err := assets.GetGenesis(types.NetworkCalibnet)
 	require.NoError(f.t, err)
-	source := ioutil.NopCloser(bytes.NewReader(b))
+	source := io.NopCloser(bytes.NewReader(b))
 
 	ch, err := car.LoadCar(context.Background(), f.bs, source)
 	require.NoError(f.t, err)

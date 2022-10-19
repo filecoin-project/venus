@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"text/template"
 
@@ -37,7 +36,7 @@ func main() {
 				return err
 			}
 
-			return ioutil.WriteFile(ctx.String("dst"), formatted, 0744)
+			return os.WriteFile(ctx.String("dst"), formatted, 0744)
 		},
 	}
 

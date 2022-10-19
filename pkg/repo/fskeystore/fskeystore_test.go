@@ -3,8 +3,8 @@ package fskeystore
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -15,7 +15,7 @@ import (
 )
 
 func assertDirContents(dir string, exp []string) error {
-	finfos, err := ioutil.ReadDir(dir)
+	finfos, err := os.ReadDir(dir)
 	if err != nil {
 		return err
 	}
@@ -172,12 +172,12 @@ func TestInvalidKeyFiles(t *testing.T) {
 
 	bytes := privKeyOrFatal(t)
 
-	err = ioutil.WriteFile(filepath.Join(ks.dir, "valid"), bytes, 0644)
+	err = os.WriteFile(filepath.Join(ks.dir, "valid"), bytes, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = ioutil.WriteFile(filepath.Join(ks.dir, ".invalid"), bytes, 0644)
+	err = os.WriteFile(filepath.Join(ks.dir, ".invalid"), bytes, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}

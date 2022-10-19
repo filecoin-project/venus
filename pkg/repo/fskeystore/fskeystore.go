@@ -2,7 +2,6 @@ package fskeystore
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -99,7 +98,7 @@ func (ks *FSKeystore) Get(name string) ([]byte, error) {
 
 	kp := filepath.Join(ks.dir, name)
 
-	data, err := ioutil.ReadFile(kp)
+	data, err := os.ReadFile(kp)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, ErrNoSuchKey

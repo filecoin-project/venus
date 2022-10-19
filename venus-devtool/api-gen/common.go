@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 
@@ -104,7 +104,7 @@ func outputSourceFile(location, fname string, buf *bytes.Buffer) error {
 	}
 
 	outputFile := filepath.Join(location, fname)
-	err = ioutil.WriteFile(outputFile, formatted, 0644)
+	err = os.WriteFile(outputFile, formatted, 0644)
 	if err != nil {
 		return fmt.Errorf("write to output %s: %w", outputFile, err)
 	}

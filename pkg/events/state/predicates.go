@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/venus/app/submodule/chain"
+	"github.com/filecoin-project/venus/venus-shared/blockstore"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	init_ "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
@@ -23,7 +23,7 @@ type UserData interface{}
 
 // ChainAPI abstracts out calls made by this class to external APIs
 type ChainAPI interface {
-	chain.ChainIO
+	blockstore.ChainIO
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 }
 
@@ -36,7 +36,7 @@ type StatePredicates struct { //nolint
 func NewStatePredicates(api ChainAPI) *StatePredicates {
 	return &StatePredicates{
 		api: api,
-		cst: cbor.NewCborStore(chain.NewAPIBlockstore(api)),
+		cst: cbor.NewCborStore(blockstore.NewAPIBlockstore(api)),
 	}
 }
 

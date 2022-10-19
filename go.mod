@@ -112,7 +112,7 @@ require (
 )
 
 require (
-	github.com/BurntSushi/toml v1.2.0 // indirect
+	github.com/BurntSushi/toml v1.1.0 // indirect
 	github.com/Kubuxu/go-os-helper v0.0.1 // indirect
 	github.com/Stebalien/go-bitfield v0.0.1 // indirect
 	github.com/alecthomas/units v0.0.0-20210927113745-59d0afb8317a // indirect

@@ -18,12 +18,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/app/node"
-	sbchain "github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/multisig"
+	"github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/utils"
 	"github.com/ipfs/go-cid"
@@ -158,7 +158,7 @@ var msigInspectCmd = &cmds.Command{
 			return fmt.Errorf("must specify address of multisig to inspect")
 		}
 		ctx := req.Context
-		store := adt.WrapStore(ctx, cbor.NewCborStore(sbchain.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
+		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
 		//store := env.(*node.Env).ChainAPI.ChainReader.Store(req.Context)
 		maddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
@@ -604,7 +604,7 @@ var msigAddProposeCmd = &cmds.Command{
 			return err
 		}
 
-		store := adt.WrapStore(ctx, cbor.NewCborStore(sbchain.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
+		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
 
 		head, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
 		if err != nil {

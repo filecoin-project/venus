@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 
@@ -199,7 +199,7 @@ func TestMessagePaser_ParseMessage(t *testing.T) {
 	tf.UnitTest(t)
 	var tests []testCase
 	file := "./test_cases_parsing_message.json"
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 	require.NoErrorf(t, err, "read file:%s failed:%v", file, err)
 	require.NoErrorf(t, json.Unmarshal(data, &tests), "unmarshal data to test cases failed")
 

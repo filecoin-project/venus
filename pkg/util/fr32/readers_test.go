@@ -3,7 +3,7 @@ package fr32_test
 import (
 	"bufio"
 	"bytes"
-	"io/ioutil"
+	"io"
 	"testing"
 
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
@@ -29,7 +29,7 @@ func TestUnpadReader(t *testing.T) {
 	}
 
 	// using bufio reader to make sure reads are big enough for the padreader - it can't handle small reads right now
-	readered, err := ioutil.ReadAll(bufio.NewReaderSize(r, 512))
+	readered, err := io.ReadAll(bufio.NewReaderSize(r, 512))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2,7 +2,6 @@ package testhelpers
 
 import (
 	"io"
-	"io/ioutil"
 	"strings"
 	"testing"
 
@@ -131,7 +130,7 @@ func (o *CmdOutput) requireNoError() {
 func readAllAsync(tb testing.TB, r io.Reader) chan []byte {
 	ch := make(chan []byte, 1)
 	go func() {
-		bytes, err := ioutil.ReadAll(r)
+		bytes, err := io.ReadAll(r)
 		require.NoError(tb, err)
 		if err == nil {
 			ch <- bytes

@@ -3,7 +3,6 @@ package repo
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -61,7 +60,7 @@ func TestInitRepoDirect(t *testing.T) {
 	t.Run("fails with error if directory not empty", func(t *testing.T) {
 		dir := t.TempDir()
 
-		err := ioutil.WriteFile(filepath.Join(dir, "hi"), []byte("hello"), 0644)
+		err := os.WriteFile(filepath.Join(dir, "hi"), []byte("hello"), 0644)
 		assert.NoError(t, err)
 
 		_, err = initAndOpenRepoDirect(dir, 42, cfg)
@@ -89,7 +88,7 @@ func TestFSRepoOpen(t *testing.T) {
 
 		assert.NoError(t, InitFSRepo(repoPath, 1, config.NewDefaultConfig()))
 		// set wrong version
-		assert.NoError(t, ioutil.WriteFile(filepath.Join(repoPath, versionFilename), []byte("v.8"), 0644))
+		assert.NoError(t, os.WriteFile(filepath.Join(repoPath, versionFilename), []byte("v.8"), 0644))
 
 		_, err := OpenFSRepo(repoPath, 1)
 		assert.EqualError(t, err, "failed to read version: strconv.ParseUint: parsing \"v.8\": invalid syntax")
@@ -131,7 +130,7 @@ func TestFSRepoReplaceAndSnapshotConfig(t *testing.T) {
 	cfg.API.APIAddress = "foo"
 	assert.NoError(t, InitFSRepo(repoPath, 42, cfg))
 
-	expSnpsht, err := ioutil.ReadFile(filepath.Join(repoPath, configFilename))
+	expSnpsht, err := os.ReadFile(filepath.Join(repoPath, configFilename))
 	require.NoError(t, err)
 
 	r1, err := OpenFSRepo(repoPath, 42)
@@ -154,7 +153,7 @@ func TestFSRepoReplaceAndSnapshotConfig(t *testing.T) {
 	snpFiles := getSnapshotFilenames(t, filepath.Join(repoPath, snapshotStorePrefix))
 	require.Equal(t, 1, len(snpFiles))
 
-	snpsht, err := ioutil.ReadFile(filepath.Join(repoPath, snapshotStorePrefix, snpFiles[0]))
+	snpsht, err := os.ReadFile(filepath.Join(repoPath, snapshotStorePrefix, snpFiles[0]))
 	require.NoError(t, err)
 	assert.Equal(t, string(expSnpsht), string(snpsht))
 }
@@ -189,7 +188,7 @@ func TestRepoLockFail(t *testing.T) {
 
 	// set invalid version, to make opening the repo fail
 	assert.NoError(t,
-		ioutil.WriteFile(filepath.Join(repoPath, versionFilename), []byte("hello"), 0644),
+		os.WriteFile(filepath.Join(repoPath, versionFilename), []byte("hello"), 0644),
 	)
 
 	_, err := OpenFSRepo(repoPath, 42)
@@ -267,7 +266,7 @@ func TestRepoAPIFile(t *testing.T) {
 	t.Run("SetAPI fails if unable to create API file", func(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
 			// create a file with permission bits that prevent us from truncating
-			err := ioutil.WriteFile(filepath.Join(r.path, apiFile), []byte("/ip4/127.0.0.1/tcp/9999"), 0000)
+			err := os.WriteFile(filepath.Join(r.path, apiFile), []byte("/ip4/127.0.0.1/tcp/9999"), 0000)
 			assert.NoError(t, err)
 
 			// try to os.Create to same path - will see a failure
@@ -278,7 +277,7 @@ func TestRepoAPIFile(t *testing.T) {
 }
 
 func checkNewRepoFiles(t *testing.T, path string, version uint) {
-	content, err := ioutil.ReadFile(filepath.Join(path, configFilename))
+	content, err := os.ReadFile(filepath.Join(path, configFilename))
 	assert.NoError(t, err)
 
 	t.Log("snapshot path was created during FSRepo Init")
@@ -290,13 +289,13 @@ func checkNewRepoFiles(t *testing.T, path string, version uint) {
 	t.Log("config file matches expected value")
 	config.SanityCheck(t, string(content))
 
-	actualVersion, err := ioutil.ReadFile(filepath.Join(path, versionFilename))
+	actualVersion, err := os.ReadFile(filepath.Join(path, versionFilename))
 	assert.NoError(t, err)
 	assert.Equal(t, strconv.FormatUint(uint64(version), 10), string(actualVersion))
 }
 
 func getSnapshotFilenames(t *testing.T, dir string) []string {
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	require.NoError(t, err)
 
 	var snpFiles []string

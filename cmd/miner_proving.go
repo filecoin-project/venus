@@ -11,9 +11,9 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -59,7 +59,7 @@ var provingInfoCmd = &cmds.Command{
 			return err
 		}
 
-		stor := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
+		stor := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
 
 		mas, err := miner.Load(stor, mact)
 		if err != nil {
@@ -315,7 +315,7 @@ var provingFaultsCmd = &cmds.Command{
 		ctx := req.Context
 		api := env.(*node.Env).ChainAPI
 		bstoreAPI := env.(*node.Env).BlockStoreAPI
-		stor := adt.WrapStore(ctx, cbor.NewCborStore(chain.NewAPIBlockstore(bstoreAPI)))
+		stor := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(bstoreAPI)))
 
 		mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
 		if err != nil {

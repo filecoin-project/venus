@@ -3,7 +3,6 @@ package fr32_test
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -18,7 +17,7 @@ import (
 
 func TestWriteTwoPcs(t *testing.T) {
 	tf.UnitTest(t)
-	tf, _ := ioutil.TempFile("/tmp/", "scrb-")
+	tf, _ := os.CreateTemp("/tmp/", "scrb-")
 
 	paddedSize := abi.PaddedPieceSize(16 << 20)
 	n := 2
@@ -44,7 +43,7 @@ func TestWriteTwoPcs(t *testing.T) {
 		panic(err)
 	}
 
-	ffiBytes, err := ioutil.ReadAll(tf)
+	ffiBytes, err := io.ReadAll(tf)
 	if err != nil {
 		panic(err)
 	}

@@ -3,7 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"reflect"
 	"regexp"
@@ -403,7 +403,7 @@ func ReadFile(file string) (*Config, error) {
 	}
 
 	cfg := NewDefaultConfig()
-	rawConfig, err := ioutil.ReadAll(f)
+	rawConfig, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}

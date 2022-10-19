@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"time"
 
@@ -432,7 +432,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *excha
 
 	//TODO Note: this will remove once we've completed the go-libp2p migration to
 	//		      go-libp2p-core 0.7.0
-	respBytes, err := ioutil.ReadAll(bufio.NewReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline)))
+	respBytes, err := io.ReadAll(bufio.NewReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline)))
 	if err != nil {
 		return nil, err
 	}

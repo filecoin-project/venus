@@ -15,7 +15,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/filecoin-project/venus/venus-shared/actors"
@@ -260,7 +259,7 @@ var minerInfoCmd = &cmds.Command{
 			return err
 		}
 
-		tbs := blockstoreutil.NewTieredBstore(chain.NewAPIBlockstore(blockstoreAPI), blockstoreutil.NewTemporary())
+		tbs := blockstoreutil.NewTieredBstore(blockstoreutil.NewAPIBlockstore(blockstoreAPI), blockstoreutil.NewTemporary())
 		mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
 		if err != nil {
 			return err

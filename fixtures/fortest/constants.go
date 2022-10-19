@@ -3,7 +3,7 @@ package fortest
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -63,7 +63,7 @@ func init() {
 			panic(err)
 		}
 	}()
-	genConfigBytes, err := ioutil.ReadAll(genConfigFile)
+	genConfigBytes, err := io.ReadAll(genConfigFile)
 	if err != nil {
 		panic(err)
 	}
@@ -86,7 +86,7 @@ func init() {
 			panic(err)
 		}
 	}()
-	detailsFileBytes, err := ioutil.ReadAll(detailsFile)
+	detailsFileBytes, err := io.ReadAll(detailsFile)
 	if err != nil {
 		panic(err)
 	}

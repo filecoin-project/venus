@@ -3,7 +3,6 @@ package repo
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -485,13 +484,13 @@ func (r *FSRepo) openWalletDatastore() error {
 
 // WriteVersion writes the given version to the repo version file.
 func WriteVersion(p string, version uint) error {
-	return ioutil.WriteFile(filepath.Join(p, versionFilename), []byte(strconv.Itoa(int(version))), 0644)
+	return os.WriteFile(filepath.Join(p, versionFilename), []byte(strconv.Itoa(int(version))), 0644)
 }
 
 // ReadVersion returns the unparsed (string) version
 // from the version file in the specified repo.
 func ReadVersion(repoPath string) (uint, error) {
-	file, err := ioutil.ReadFile(filepath.Join(repoPath, versionFilename))
+	file, err := os.ReadFile(filepath.Join(repoPath, versionFilename))
 	if err != nil {
 		return 0, err
 	}
@@ -568,7 +567,7 @@ func ensureWritableDirectory(path string) error {
 
 // Tests whether the directory at path is empty
 func isEmptyDir(path string) (bool, error) {
-	infos, err := ioutil.ReadDir(path)
+	infos, err := os.ReadDir(path)
 	if err != nil {
 		return false, err
 	}
@@ -647,7 +646,7 @@ func APITokenFromRepoPath(repoPath string) (string, error) {
 // and avoid interleaved read/writes
 func apiAddrFromFile(repoPath string) (string, error) {
 	jsonrpcFile := filepath.Join(repoPath, apiFile)
-	jsonrpcAPI, err := ioutil.ReadFile(jsonrpcFile)
+	jsonrpcAPI, err := os.ReadFile(jsonrpcFile)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to read API file")
 	}
@@ -658,7 +657,7 @@ func apiAddrFromFile(repoPath string) (string, error) {
 // apiTokenFromFile reads the token from the token file at the given path.
 func apiTokenFromFile(repoPath string) (string, error) {
 	tokenFile := filepath.Join(repoPath, apiToken)
-	token, err := ioutil.ReadFile(tokenFile)
+	token, err := os.ReadFile(tokenFile)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to read API file")
 	}
@@ -672,11 +671,11 @@ func (r *FSRepo) APIAddr() (string, error) {
 }
 
 func (r *FSRepo) SetAPIToken(token []byte) error {
-	return ioutil.WriteFile(filepath.Join(r.path, apiToken), token, 0600)
+	return os.WriteFile(filepath.Join(r.path, apiToken), token, 0600)
 }
 
 func (r *FSRepo) APIToken() (string, error) {
-	tkBuff, err := ioutil.ReadFile(filepath.Join(r.path, apiToken))
+	tkBuff, err := os.ReadFile(filepath.Join(r.path, apiToken))
 	if err != nil {
 		return "", err
 	}

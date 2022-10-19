@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -10,7 +9,7 @@ import (
 
 // RequireMakeTempDir ensures that a temporary directory is created
 func RequireMakeTempDir(t *testing.T, dirname string) string {
-	newdir, err := ioutil.TempDir("", dirname)
+	newdir, err := os.MkdirTemp("", dirname)
 	require.NoError(t, err)
 	return newdir
 }
@@ -18,7 +17,7 @@ func RequireMakeTempDir(t *testing.T, dirname string) string {
 // RequireOpenTempFile is a shortcut for opening a given temp file with a given
 // suffix, then returning both a filename and a file pointer.
 func RequireOpenTempFile(t *testing.T, suffix string) (*os.File, string) {
-	file, err := ioutil.TempFile("", suffix)
+	file, err := os.CreateTemp("", suffix)
 	require.NoError(t, err)
 	name := file.Name()
 	return file, name

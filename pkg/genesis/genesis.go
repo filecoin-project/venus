@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -67,7 +66,7 @@ func MakeGenesis(ctx context.Context, rep repo.Repo, outFile, genesisTemplate st
 			return nil, err
 		}
 
-		fdata, err := ioutil.ReadFile(genesisTemplate)
+		fdata, err := os.ReadFile(genesisTemplate)
 		if err != nil {
 			return nil, fmt.Errorf("reading preseals json: %w", err)
 		}
@@ -134,7 +133,7 @@ func LoadGenesis(ctx context.Context, rep repo.Repo, sourceName string, network 
 		if err != nil {
 			return nil, err
 		}
-		source = ioutil.NopCloser(bytes.NewReader(bs))
+		source = io.NopCloser(bytes.NewReader(bs))
 	} else {
 		source, err = openGenesisSource(sourceName)
 		if err != nil {
