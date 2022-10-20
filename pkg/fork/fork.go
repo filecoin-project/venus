@@ -2204,11 +2204,11 @@ func (c *ChainFork) upgradeActorsV9Common(ctx context.Context,
 	ts *types.TipSet,
 	config nv17.Config,
 ) (cid.Cid, error) {
-	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
-	store := chain.ActorStore(ctx, buf)
+	writeStore := blockstoreutil.NewAutobatch(ctx, c.bs, units.GiB/4)
+	store := chain.ActorStore(ctx, writeStore)
 
 	// ensure that the manifest is loaded in the blockstore
-	if err := actors.LoadBundles(ctx, buf, actorstypes.Version9); err != nil {
+	if err := actors.LoadBundles(ctx, c.bs, actorstypes.Version9); err != nil {
 		return cid.Undef, fmt.Errorf("failed to load manifest bundle: %w", err)
 	}
 
@@ -2244,15 +2244,13 @@ func (c *ChainFork) upgradeActorsV9Common(ctx context.Context,
 		return cid.Undef, fmt.Errorf("failed to persist new state root: %w", err)
 	}
 
-	// Persist the new tree.
+	// Persists the new tree and shuts down the flush worker
+	if err := writeStore.Flush(ctx); err != nil {
+		return cid.Undef, fmt.Errorf("writeStore flush failed: %w", err)
+	}
 
-	{
-		from := buf
-		to := buf.Read()
-
-		if err := Copy(ctx, from, to, newRoot); err != nil {
-			return cid.Undef, fmt.Errorf("copying migrated tree: %w", err)
-		}
+	if err := writeStore.Shutdown(ctx); err != nil {
+		return cid.Undef, fmt.Errorf("writeStore shutdown failed: %w", err)
 	}
 
 	return newRoot, nil
