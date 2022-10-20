@@ -2,9 +2,6 @@ package utils
 
 import (
 	"reflect"
-	"runtime"
-	"strconv"
-	"strings"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
@@ -21,7 +18,6 @@ import (
 )
 
 type MethodMeta struct {
-	Num  string
 	Name string
 
 	Params reflect.Type
@@ -77,7 +73,6 @@ func loadMethodsMap() {
 
 			// Explicitly add send, it's special.
 			methods[builtin.MethodSend] = MethodMeta{
-				Num:    "0",
 				Name:   "Send",
 				Params: reflect.TypeOf(new(abi.EmptyValue)),
 				Ret:    reflect.TypeOf(new(abi.EmptyValue)),
@@ -86,39 +81,26 @@ func loadMethodsMap() {
 			// Iterate over exported methods. Some of these _may_ be nil and
 			// must be skipped.
 			for number, export := range exports {
-				if export == nil {
+				if export.Method == nil {
 					continue
 				}
 
-				ev := reflect.ValueOf(export)
+				ev := reflect.ValueOf(export.Method)
 				et := ev.Type()
 
 				methodMeta := MethodMeta{
-					Num:    strconv.Itoa(int(number)),
-					Params: et.In(1),
-					Ret:    et.Out(0),
+					Name: export.Name,
+					Ret:  et.Out(0),
 				}
 
-				// if actor version grater than Version8, we could not get method name.
-				// venus-wallet need `fnName`
-				if awv.av < actorstypes.Version8 {
-					// Extract the method names using reflection. These
-					// method names always match the field names in the
-					// `builtin.Method*` structs (tested in the specs-actors
-					// tests).
-					fnName := runtime.FuncForPC(ev.Pointer()).Name()
-					fnName = strings.TrimSuffix(fnName[strings.LastIndexByte(fnName, '.')+1:], "-fm")
-
-					switch abi.MethodNum(number) {
-					case builtin.MethodSend:
-						panic("method 0 is reserved for Send")
-					case builtin.MethodConstructor:
-						if fnName != "Constructor" {
-							panic("method 1 is reserved for Constructor")
-						}
-					}
-					methodMeta.Name = fnName
+				if awv.av <= actorstypes.Version7 {
+					// methods exported from specs-actors have the runtime as the first param, so we want et.In(1)
+					methodMeta.Params = et.In(1)
+				} else {
+					// methods exported from go-state-types do not, so we want et.In(0)
+					methodMeta.Params = et.In(0)
 				}
+
 				methods[abi.MethodNum(number)] = methodMeta
 			}
 
