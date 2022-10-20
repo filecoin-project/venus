@@ -134,14 +134,13 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, nvk network.Version,
 func (d *actorDispatcher) signature(methodID abi.MethodNum) (*methodSignature, *ExcuteError) {
 	exports := d.actor.Exports()
 
-	// get method entry
-	entry := exports[(uint64)(methodID)]
-	if entry == nil {
+	// get method
+	method := exports[(uint64)(methodID)].Method
+	if method == nil {
 		return nil, NewExcuteError(exitcode.SysErrInvalidMethod, "Method undefined. method: %d, code: %s", methodID, d.code)
 	}
 
-	ventry := reflect.ValueOf(entry)
-	return &methodSignature{method: ventry}, nil
+	return &methodSignature{method: reflect.ValueOf(method)}, nil
 }
 
 // Signature implements `Dispatcher`.
