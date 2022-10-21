@@ -15,7 +15,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
@@ -59,7 +59,7 @@ type partition4 struct {
 func (s *state4) AvailableBalance(bal abi.TokenAmount) (available abi.TokenAmount, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("failed to get available balance: %w", r)
+			err = fmt.Errorf("failed to get available balance: %v", r)
 			available = abi.NewTokenAmount(0)
 		}
 	}()
@@ -546,11 +546,17 @@ func fromV4SectorOnChainInfo(v4 miner4.SectorOnChainInfo) SectorOnChainInfo {
 
 func fromV4SectorPreCommitOnChainInfo(v4 miner4.SectorPreCommitOnChainInfo) minertypes.SectorPreCommitOnChainInfo {
 	return minertypes.SectorPreCommitOnChainInfo{
-		Info:               (minertypes.SectorPreCommitInfo)(v4.Info),
-		PreCommitDeposit:   v4.PreCommitDeposit,
-		PreCommitEpoch:     v4.PreCommitEpoch,
-		DealWeight:         v4.DealWeight,
-		VerifiedDealWeight: v4.VerifiedDealWeight,
+		Info: minertypes.SectorPreCommitInfo{
+			SealProof:     v4.Info.SealProof,
+			SectorNumber:  v4.Info.SectorNumber,
+			SealedCID:     v4.Info.SealedCID,
+			SealRandEpoch: v4.Info.SealRandEpoch,
+			DealIDs:       v4.Info.DealIDs,
+			Expiration:    v4.Info.Expiration,
+			UnsealedCid:   nil,
+		},
+		PreCommitDeposit: v4.PreCommitDeposit,
+		PreCommitEpoch:   v4.PreCommitEpoch,
 	}
 }
 

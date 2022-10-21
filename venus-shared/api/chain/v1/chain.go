@@ -14,7 +14,8 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	lminer "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -114,36 +115,56 @@ type IChainInfo interface {
 	// ChainGetGenesis returns the genesis tipset.
 	ChainGetGenesis(context.Context) (*types.TipSet, error) //perm:read
 	// StateActorManifestCID returns the CID of the builtin actors manifest for the given network version
-	StateActorManifestCID(context.Context, network.Version) (cid.Cid, error) //perm:read
+	StateActorManifestCID(context.Context, network.Version) (cid.Cid, error)                            //perm:read
+	StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error) //perm:read
 }
 
 type IMinerState interface {
-	StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.ActorState, error)                                              //perm:read
-	StateListMessages(ctx context.Context, match *types.MessageMatch, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)                          //perm:read
-	StateDecodeParams(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error)           //perm:read
-	StateEncodeParams(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error)                                 //perm:read
-	StateMinerSectorAllocated(ctx context.Context, maddr address.Address, s abi.SectorNumber, tsk types.TipSetKey) (bool, error)                            //perm:read
-	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) //perm:read
-	StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error)               //perm:read
-	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*lminer.SectorLocation, error)    //perm:read
-	StateMinerSectorSize(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (abi.SectorSize, error)                                           //perm:read
-	StateMinerInfo(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (types.MinerInfo, error)                                                //perm:read
-	StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (address.Address, error)                                       //perm:read
-	StateMinerFaults(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (bitfield.BitField, error)                                            //perm:read
-	StateAllMinerFaults(ctx context.Context, lookback abi.ChainEpoch, ts types.TipSetKey) ([]*types.Fault, error)                                           //perm:read
-	StateMinerRecoveries(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (bitfield.BitField, error)                                        //perm:read
-	StateMinerProvingDeadline(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (*dline.Info, error)                                         //perm:read
-	StateMinerPartitions(ctx context.Context, maddr address.Address, dlIdx uint64, tsk types.TipSetKey) ([]types.Partition, error)                          //perm:read
-	StateMinerDeadlines(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]types.Deadline, error)                                          //perm:read
-	StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)    //perm:read
-	StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error)                                          //perm:read
-	StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error)     //perm:read
-	StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error)      //perm:read
-	StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (types.CirculatingSupply, error)                                             //perm:read
-	StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error)                                                               //perm:read
-	StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]*types.MarketDeal, error)                                                        //perm:read
-	StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)                            //perm:read
-	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)                                                  //perm:read
+	StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.ActorState, error)                                    //perm:read
+	StateListMessages(ctx context.Context, match *types.MessageMatch, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error)                //perm:read
+	StateDecodeParams(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error) //perm:read
+	StateEncodeParams(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error)                       //perm:read
+	StateMinerSectorAllocated(ctx context.Context, maddr address.Address, s abi.SectorNumber, tsk types.TipSetKey) (bool, error)                  //perm:read
+	// StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector.
+	// Returns nil and no error if the sector isn't precommitted.
+	//
+	// Note that the sector number may be allocated while PreCommitInfo is nil. This means that either allocated sector
+	// numbers were compacted, and the sector number was marked as allocated in order to reduce size of the allocated
+	// sectors bitfield, or that the sector was precommitted, but the precommit has expired.
+	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) //perm:read
+	StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error)                //perm:read
+	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*lminer.SectorLocation, error)     //perm:read
+	StateMinerSectorSize(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (abi.SectorSize, error)                                            //perm:read
+	StateMinerInfo(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (types.MinerInfo, error)                                                 //perm:read
+	StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (address.Address, error)                                        //perm:read
+	StateMinerFaults(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (bitfield.BitField, error)                                             //perm:read
+	StateAllMinerFaults(ctx context.Context, lookback abi.ChainEpoch, ts types.TipSetKey) ([]*types.Fault, error)                                            //perm:read
+	StateMinerRecoveries(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (bitfield.BitField, error)                                         //perm:read
+	StateMinerProvingDeadline(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (*dline.Info, error)                                          //perm:read
+	StateMinerPartitions(ctx context.Context, maddr address.Address, dlIdx uint64, tsk types.TipSetKey) ([]types.Partition, error)                           //perm:read
+	StateMinerDeadlines(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]types.Deadline, error)                                           //perm:read
+	StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)     //perm:read
+	StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error)                                           //perm:read
+	// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
+	// pending allocation is not found.
+	StateGetAllocationForPendingDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) //perm:read
+	// StateGetAllocation returns the allocation for a given address and allocation ID.
+	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationID verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) //perm:read
+	// StateGetAllocations returns the all the allocations for a given client.
+	StateGetAllocations(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) //perm:read
+	// StateGetClaim returns the claim for a given address and claim ID.
+	StateGetClaim(ctx context.Context, providerAddr address.Address, claimID verifregtypes.ClaimId, tsk types.TipSetKey) (*verifregtypes.Claim, error) //perm:read
+	// StateGetClaims returns the all the claims for a given provider.
+	StateGetClaims(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) //perm:read
+	// StateComputeDataCID computes DataCID from a set of on-chain deals
+	StateComputeDataCID(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) //perm:read
+	StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error)           //perm:read
+	StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error)            //perm:read
+	StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (types.CirculatingSupply, error)                                                   //perm:read
+	StateCirculatingSupply(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error)                                                                     //perm:read
+	StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]*types.MarketDeal, error)                                                              //perm:read
+	StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)                                  //perm:read
+	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)                                                        //perm:read
 	// StateLookupRobustAddress returns the public key address of the given ID address for non-account addresses (multisig, miners etc)
 	StateLookupRobustAddress(context.Context, address.Address, types.TipSetKey) (address.Address, error)                                                     //perm:read
 	StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)                                                                     //perm:read
@@ -156,4 +177,6 @@ type IMinerState interface {
 	StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MarketBalance, error)                                          //perm:read
 	StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (types.DealCollateralBounds, error) //perm:read
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)                                     //perm:read
+	// StateMinerAllocated returns a bitfield containing all sector numbers marked as allocated in miner state
+	StateMinerAllocated(context.Context, address.Address, types.TipSetKey) (*bitfield.BitField, error) //perm:read
 }

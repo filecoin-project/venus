@@ -5,6 +5,8 @@ package verifreg
 import (
 	"fmt"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -24,16 +26,17 @@ import (
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
-	builtin8 "github.com/filecoin-project/go-state-types/builtin"
+	builtin9 "github.com/filecoin-project/go-state-types/builtin"
 
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 )
 
 var (
-	Address = builtin8.VerifiedRegistryActorAddr
-	Methods = builtin8.MethodsVerifiedRegistry
+	Address = builtin9.VerifiedRegistryActorAddr
+	Methods = builtin9.MethodsVerifiedRegistry
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -44,8 +47,11 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		switch av {
 
-		case actors.Version8:
+		case actorstypes.Version8:
 			return load8(store, act.Head)
+
+		case actorstypes.Version9:
+			return load9(store, act.Head)
 
 		}
 	}
@@ -78,32 +84,35 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, fmt.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av actors.Version, rootKeyAddress address.Address) (State, error) {
+func MakeState(store adt.Store, av actorstypes.Version, rootKeyAddress address.Address) (State, error) {
 	switch av {
 
-	case actors.Version0:
+	case actorstypes.Version0:
 		return make0(store, rootKeyAddress)
 
-	case actors.Version2:
+	case actorstypes.Version2:
 		return make2(store, rootKeyAddress)
 
-	case actors.Version3:
+	case actorstypes.Version3:
 		return make3(store, rootKeyAddress)
 
-	case actors.Version4:
+	case actorstypes.Version4:
 		return make4(store, rootKeyAddress)
 
-	case actors.Version5:
+	case actorstypes.Version5:
 		return make5(store, rootKeyAddress)
 
-	case actors.Version6:
+	case actorstypes.Version6:
 		return make6(store, rootKeyAddress)
 
-	case actors.Version7:
+	case actorstypes.Version7:
 		return make7(store, rootKeyAddress)
 
-	case actors.Version8:
+	case actorstypes.Version8:
 		return make8(store, rootKeyAddress)
+
+	case actorstypes.Version9:
+		return make9(store, rootKeyAddress)
 
 	}
 	return nil, fmt.Errorf("unknown actor version %d", av)
@@ -118,5 +127,9 @@ type State interface {
 	RemoveDataCapProposalID(verifier address.Address, client address.Address) (bool, uint64, error)
 	ForEachVerifier(func(addr address.Address, dcap abi.StoragePower) error) error
 	ForEachClient(func(addr address.Address, dcap abi.StoragePower) error) error
+	GetAllocation(clientIdAddr address.Address, allocationId verifregtypes.AllocationId) (*verifregtypes.Allocation, bool, error)
+	GetAllocations(clientIdAddr address.Address) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error)
+	GetClaim(providerIdAddr address.Address, claimId verifregtypes.ClaimId) (*verifregtypes.Claim, bool, error)
+	GetClaims(providerIdAddr address.Address) (map[verifregtypes.ClaimId]verifregtypes.Claim, error)
 	GetState() interface{}
 }

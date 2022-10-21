@@ -6,16 +6,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"time"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	logging "github.com/ipfs/go-log"
 
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"go.opencensus.io/trace"
 
@@ -425,14 +425,14 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *excha
 		return nil, err
 	}
 	_ = stream.SetWriteDeadline(time.Time{}) // clear deadline // FIXME: Needs
-	//  its own API (https://github.com/libp2p/go-libp2p-core/issues/162).
+	//  its own API (https://github.com/libp2p/go-libp2p/core/issues/162).
 
 	// Read response.
 	_ = stream.SetReadDeadline(time.Time{})
 
 	//TODO Note: this will remove once we've completed the go-libp2p migration to
 	//		      go-libp2p-core 0.7.0
-	respBytes, err := ioutil.ReadAll(bufio.NewReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline)))
+	respBytes, err := io.ReadAll(bufio.NewReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline)))
 	if err != nil {
 		return nil, err
 	}

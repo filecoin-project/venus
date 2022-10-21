@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/big"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	systemtypes "github.com/filecoin-project/go-state-types/builtin/v8/system"
 
 	"github.com/filecoin-project/go-state-types/manifest"
@@ -21,7 +22,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-func SetupSystemActor(ctx context.Context, bs bstore.Blockstore, av actors.Version) (*types.Actor, error) {
+func SetupSystemActor(ctx context.Context, bs bstore.Blockstore, av actorstypes.Version) (*types.Actor, error) {
 	var st system.State
 
 	cst := cbor.NewCborStore(bs)
@@ -31,7 +32,7 @@ func SetupSystemActor(ctx context.Context, bs bstore.Blockstore, av actors.Versi
 		return nil, err
 	}
 
-	if av >= actors.Version8 {
+	if av >= actorstypes.Version8 {
 		mfCid, ok := actors.GetManifest(av)
 		if !ok {
 			return nil, fmt.Errorf("missing manifest for actors version %d", av)

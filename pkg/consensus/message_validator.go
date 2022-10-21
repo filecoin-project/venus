@@ -150,7 +150,8 @@ func NewMessageSignatureValidator(api signatureValidatorAPI) *MessageSignatureVa
 }
 
 // Validate validates the signed message signature. Errors probably mean the
-//  validation failed, but possibly indicate a failure to retrieve state.
+//
+//	validation failed, but possibly indicate a failure to retrieve state.
 func (v *MessageSignatureValidator) Validate(ctx context.Context, smsg *types.SignedMessage) error {
 	head := v.api.GetHead()
 	view, err := v.api.AccountView(head)

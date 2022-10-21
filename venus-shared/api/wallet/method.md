@@ -67,7 +67,7 @@ Inputs:
 ```json
 [
   [
-    "string value"
+    "write"
   ]
 ]
 ```
@@ -90,7 +90,7 @@ Inputs:
 Response:
 ```json
 [
-  "string value"
+  "write"
 ]
 ```
 
@@ -135,7 +135,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131584
+  "APIVersion": 131840
 }
 ```
 

@@ -2,7 +2,7 @@ package cmd_test
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os/exec"
 	"strings"
@@ -55,7 +55,7 @@ func TestVersionOverHttp(t *testing.T) {
 	commit := getCodeCommit(t)[0:7]
 
 	defer res.Body.Close() // nolint: errcheck
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
 	require.Contains(t, string(body), constants.BuildVersion+"+git."+commit)
 }

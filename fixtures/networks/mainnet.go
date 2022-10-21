@@ -28,7 +28,7 @@ func Mainnet() *NetworkConf {
 				"/dns4/node.glif.io/tcp/1235/p2p/12D3KooWBF8cpp65hp2u9LK5mh19x67ftAam84z9LsfaquTDSBpt",
 				"/dns4/bootstrap-0.ipfsmain.cn/tcp/34721/p2p/12D3KooWQnwEGNqcM2nAcPtRR9rAX8Hrg4k9kJLCHoTR5chJfz6d",
 				"/dns4/bootstrap-1.ipfsmain.cn/tcp/34723/p2p/12D3KooWMKxMkD5DMpSWsW7dBddKxKT7L2GgbNuckz9otxvkvByP",
-				"/dns4/bootstarp-0.1475.io/tcp/61256/p2p/12D3KooWQjaNmbz9b1XmheQB3RWsRjKSzuRLfjeiDZHyX7Y5RcBr",
+				"/dns4/bootstarp-0.1475.io/tcp/61256/p2p/12D3KooWRzCVDwHUkgdK7eRgnoXbjDAELhxPErjHzbRLguSV1aRt",
 			},
 			MinPeerThreshold: 1,
 			Period:           "30s",
@@ -46,13 +46,14 @@ func Mainnet() *NetworkConf {
 			MinVerifiedDealSize:     1 << 20,
 			PreCommitChallengeDelay: abi.ChainEpoch(150),
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
-				UpgradeBreezeHeight:   41280,
-				UpgradeSmokeHeight:    51000,
-				UpgradeIgnitionHeight: 94000,
-				UpgradeRefuelHeight:   130800,
-				UpgradeAssemblyHeight: 138720,
-				UpgradeTapeHeight:     140760,
-				UpgradeLiftoffHeight:  148888,
+				BreezeGasTampingDuration: 120,
+				UpgradeBreezeHeight:      41280,
+				UpgradeSmokeHeight:       51000,
+				UpgradeIgnitionHeight:    94000,
+				UpgradeRefuelHeight:      130800,
+				UpgradeAssemblyHeight:    138720,
+				UpgradeTapeHeight:        140760,
+				UpgradeLiftoffHeight:     148888,
 				// This signals our tentative epoch for mainnet launch. Can make it later, but not earlier.
 				// Miners, clients, developers, custodians all need time to prepare.
 				// We still have upgrades and state changes to do, but can happen after signaling timing here.
@@ -60,6 +61,7 @@ func Mainnet() *NetworkConf {
 				UpgradeCalicoHeight:     265200,
 				UpgradePersianHeight:    265200 + (builtin2.EpochsInHour * 60),
 				UpgradeOrangeHeight:     336458,
+				UpgradeClausHeight:      343200, // 2020-12-22T02:00:00Z
 				UpgradeTrustHeight:      550321, // 2021-03-04T00:00:30Z
 				UpgradeNorwegianHeight:  665280, // 2021-04-12T22:00:00Z
 				UpgradeTurboHeight:      712320, // 2021-04-29T06:00:00Z
@@ -67,12 +69,11 @@ func Mainnet() *NetworkConf {
 				UpgradeChocolateHeight:  1231620,
 				UpgradeOhSnapHeight:     1594680, // 2022-03-01T15:00:00Z
 				UpgradeSkyrHeight:       1960320, // 2022-07-06T14:00:00Z
-
-				BreezeGasTampingDuration: 120,
-				UpgradeClausHeight:       343200, // 2020-12-22T02:00:00Z
+				UpgradeSharkHeight:      99999999999999,
 			},
-			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
-			AddressNetwork: address.Mainnet,
+			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: 5, 51000: 1},
+			AddressNetwork:       address.Mainnet,
+			PropagationDelaySecs: 10,
 		},
 	}
 }

@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 
@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	cbor "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/v8/actors/builtin"
+	"github.com/filecoin-project/specs-actors/v7/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/stretchr/testify/require"
 )
@@ -199,7 +199,7 @@ func TestMessagePaser_ParseMessage(t *testing.T) {
 	tf.UnitTest(t)
 	var tests []testCase
 	file := "./test_cases_parsing_message.json"
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 	require.NoErrorf(t, err, "read file:%s failed:%v", file, err)
 	require.NoErrorf(t, json.Unmarshal(data, &tests), "unmarshal data to test cases failed")
 

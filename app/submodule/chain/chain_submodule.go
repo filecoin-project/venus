@@ -101,12 +101,12 @@ func (chain *ChainSubmodule) Start(ctx context.Context) error {
 	return chain.Fork.Start(ctx)
 }
 
-//Stop stop the chain head event
+// Stop stop the chain head event
 func (chain *ChainSubmodule) Stop(ctx context.Context) {
 	chain.ChainReader.Stop()
 }
 
-//API chain module api implement
+// API chain module api implement
 func (chain *ChainSubmodule) API() v1api.IChain {
 	return &chainAPI{
 		IAccount:    NewAccountAPI(chain),

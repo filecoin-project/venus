@@ -7,8 +7,8 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 
-	"github.com/filecoin-project/venus/venus-shared/api/chain/v0"
-	"github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	v0 "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
+	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
 var ChainAPIPairs = []struct {

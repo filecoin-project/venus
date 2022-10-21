@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -58,7 +57,7 @@ type VM interface {
 	Flush(ctx context.Context) (tree.Root, error)
 }
 
-//MakeGenesis return a func to construct a genesis block
+// MakeGenesis return a func to construct a genesis block
 func MakeGenesis(ctx context.Context, rep repo.Repo, outFile, genesisTemplate string, para *config.ForkUpgradeConfig) InitFunc {
 	return func(_ cbor.IpldStore, bs blockstoreutil.Blockstore) (*types.BlockHeader, error) {
 		glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
@@ -67,7 +66,7 @@ func MakeGenesis(ctx context.Context, rep repo.Repo, outFile, genesisTemplate st
 			return nil, err
 		}
 
-		fdata, err := ioutil.ReadFile(genesisTemplate)
+		fdata, err := os.ReadFile(genesisTemplate)
 		if err != nil {
 			return nil, fmt.Errorf("reading preseals json: %w", err)
 		}
@@ -134,7 +133,7 @@ func LoadGenesis(ctx context.Context, rep repo.Repo, sourceName string, network 
 		if err != nil {
 			return nil, err
 		}
-		source = ioutil.NopCloser(bytes.NewReader(bs))
+		source = io.NopCloser(bytes.NewReader(bs))
 	} else {
 		source, err = openGenesisSource(sourceName)
 		if err != nil {

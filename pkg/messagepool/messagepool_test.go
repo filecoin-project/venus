@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	tbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -259,6 +260,10 @@ func (tma *testMpoolAPI) StateAccountKeyAtFinality(ctx context.Context, addr add
 	return addr, nil
 }
 
+func (tma *testMpoolAPI) StateNetworkVersion(ctx context.Context, h abi.ChainEpoch) network.Version {
+	return constants.TestNetworkVersion
+}
+
 func (tma *testMpoolAPI) StateAccountKey(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	if addr.Protocol() != address.BLS && addr.Protocol() != address.SECP256K1 {
 		return address.Undef, fmt.Errorf("given address was not a key addr")
@@ -332,7 +337,7 @@ func mustAdd(t *testing.T, mp *MessagePool, msg *types.SignedMessage) {
 func newWalletAndMpool(t *testing.T, tma *testMpoolAPI) (*wallet.Wallet, *MessagePool) {
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.NewDefaultConfig().NetworkParams, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -585,7 +590,7 @@ func TestLoadLocal(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.NewDefaultConfig().NetworkParams, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -621,7 +626,7 @@ func TestLoadLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mp, err = New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err = New(context.Background(), tma, nil, ds, config.NewDefaultConfig().NetworkParams, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -652,7 +657,7 @@ func TestClearAll(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.NewDefaultConfig().NetworkParams, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -700,7 +705,7 @@ func TestClearNonLocal(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.NewDefaultConfig().NetworkParams, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -755,7 +760,7 @@ func TestUpdates(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.Background(), tma, nil, ds, config.DefaultForkUpgradeParam, config.DefaultMessagePoolParam, "mptest", nil)
+	mp, err := New(context.Background(), tma, nil, ds, config.NewDefaultConfig().NetworkParams, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

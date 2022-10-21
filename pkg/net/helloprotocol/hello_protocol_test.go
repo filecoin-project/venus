@@ -10,8 +10,8 @@ import (
 	"github.com/filecoin-project/venus/pkg/net/peermgr"
 
 	ds "github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p-core/host"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p/core/host"
 
 	"github.com/filecoin-project/go-address"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"

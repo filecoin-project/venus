@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/DataDog/zstd"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/ipld/go-car"
@@ -25,13 +26,13 @@ import (
 var embeddedBuiltinActorReleases embed.FS
 
 // NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
-var BundleOverrides map[Version]string
+var BundleOverrides map[actorstypes.Version]string
 
 var NetworkBundle = "mainnet"
 
 func init() {
 	if BundleOverrides == nil {
-		BundleOverrides = make(map[Version]string)
+		BundleOverrides = make(map[actorstypes.Version]string)
 	}
 
 	for _, av := range Versions {
@@ -39,7 +40,7 @@ func init() {
 		if path == "" {
 			continue
 		}
-		BundleOverrides[Version(av)] = path
+		BundleOverrides[actorstypes.Version(av)] = path
 	}
 	if err := loadManifests(NetworkBundle); err != nil {
 		panic(err)
@@ -88,7 +89,7 @@ func UseNetworkBundle(netw string) error {
 }
 
 func loadManifests(netw string) error {
-	overridden := make(map[Version]struct{})
+	overridden := make(map[actorstypes.Version]struct{})
 	var newMetadata []*BuiltinActorsMetadata
 	// First, prefer overrides.
 	for av, path := range BundleOverrides {
@@ -127,7 +128,7 @@ func loadManifests(netw string) error {
 
 type BuiltinActorsMetadata struct { // nolint
 	Network     string
-	Version     Version
+	Version     actorstypes.Version
 	ManifestCid cid.Cid
 	Actors      map[string]cid.Cid
 }
@@ -215,7 +216,7 @@ func readEmbeddedBuiltinActorsMetadata(bundle string) ([]*BuiltinActorsMetadata,
 		}
 		bundles = append(bundles, &BuiltinActorsMetadata{
 			Network:     name,
-			Version:     Version(version),
+			Version:     actorstypes.Version(version),
 			ManifestCid: root,
 			Actors:      actorCids,
 		})
@@ -262,7 +263,7 @@ func readBundleManifest(r io.Reader) (cid.Cid, map[string]cid.Cid, error) {
 }
 
 // GetEmbeddedBuiltinActorsBundle returns the builtin-actors bundle for the given actors version.
-func GetEmbeddedBuiltinActorsBundle(version Version) ([]byte, bool) {
+func GetEmbeddedBuiltinActorsBundle(version actorstypes.Version) ([]byte, bool) {
 	fi, err := embeddedBuiltinActorReleases.Open(fmt.Sprintf("builtin-actors-code/v%d.tar.zst", version))
 	if err != nil {
 		return nil, false

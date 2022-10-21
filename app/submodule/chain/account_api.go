@@ -16,7 +16,7 @@ type accountAPI struct {
 	chain *ChainSubmodule
 }
 
-//NewAccountAPI create a new account api
+// NewAccountAPI create a new account api
 func NewAccountAPI(chain *ChainSubmodule) v1api.IAccount {
 	return &accountAPI{chain: chain}
 }

@@ -222,8 +222,8 @@ func (mp *MessagePool) GasEstimateGasLimit(ctx context.Context, msgIn *types.Mes
 func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (int64, error) {
 	msg := *msgIn
 	msg.GasLimit = constants.BlockGasLimit
-	msg.GasFeeCap = big.NewInt(int64(constants.MinimumBaseFee) + 1)
-	msg.GasPremium = big.NewInt(1)
+	msg.GasFeeCap = big.Zero()
+	msg.GasPremium = big.Zero()
 
 	// Try calling until we find a height with no migration.
 	var res *vm.Ret

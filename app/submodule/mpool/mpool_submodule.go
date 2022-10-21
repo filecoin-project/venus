@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
 	logging "github.com/ipfs/go-log"
@@ -82,8 +82,7 @@ func NewMpoolSubmodule(ctx context.Context, cfg messagepoolConfig,
 	if err != nil {
 		return nil, err
 	}
-	networkParams := cfg.Repo().Config().NetworkParams
-	mp, err := messagepool.New(ctx, mpp, chain.Stmgr, cfg.Repo().MetaDatastore(), networkParams.ForkUpgradeParam,
+	mp, err := messagepool.New(ctx, mpp, chain.Stmgr, cfg.Repo().MetaDatastore(), cfg.Repo().Config().NetworkParams,
 		cfg.Repo().Config().Mpool, network.NetworkName, j)
 	if err != nil {
 		return nil, fmt.Errorf("constructing mpool: %s", err)
@@ -246,7 +245,7 @@ func (mp *MessagePoolSubmodule) Stop(ctx context.Context) {
 	}
 }
 
-//API create a new mpool api implement
+// API create a new mpool api implement
 func (mp *MessagePoolSubmodule) API() v1api.IMessagePool {
 	pushLocks := messagepool.NewMpoolLocker()
 	return &MessagePoolAPI{mp: mp, pushLocks: pushLocks}

@@ -12,6 +12,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 
@@ -186,7 +187,14 @@ func (s *dealStates0) array() adt.Array {
 }
 
 func fromV0DealState(v0 market0.DealState) DealState {
-	return (DealState)(v0)
+
+	return DealState{
+		SectorStartEpoch: v0.SectorStartEpoch,
+		LastUpdatedEpoch: v0.LastUpdatedEpoch,
+		SlashEpoch:       v0.SlashEpoch,
+		VerifiedClaim:    0,
+	}
+
 }
 
 type dealProposals0 struct {
@@ -244,6 +252,7 @@ func (s *dealProposals0) array() adt.Array {
 func fromV0DealProposal(v0 market0.DealProposal) (DealProposal, error) {
 
 	label, err := labelFromGoString(v0.Label)
+
 	if err != nil {
 		return DealProposal{}, fmt.Errorf("error setting deal label: %w", err)
 	}
@@ -294,4 +303,10 @@ func (r *publishStorageDealsReturn0) IsDealValid(index uint64) (bool, int, error
 
 func (r *publishStorageDealsReturn0) DealIDs() ([]abi.DealID, error) {
 	return r.IDs, nil
+}
+
+func (s *state0) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
+
+	return verifregtypes.NoAllocationID, fmt.Errorf("unsupported before actors v9")
+
 }

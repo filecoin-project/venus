@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
@@ -30,6 +31,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 
+	nv17 "github.com/filecoin-project/go-state-types/builtin/v9/migration"
 	"github.com/filecoin-project/specs-actors/actors/migration/nv3"
 	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv4"
 	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv7"
@@ -77,12 +79,12 @@ type MigrationCache interface {
 
 // MigrationFunc is a migration function run at every upgrade.
 //
-// - The cache is a per-upgrade cache, pre-populated by pre-migrations.
-// - The oldState is the state produced by the upgrade epoch.
-// - The returned newState is the new state that will be used by the next epoch.
-// - The height is the upgrade epoch height (already executed).
-// - The tipset is the tipset for the last non-null block before the upgrade. Do
-//   not assume that ts.Height() is the upgrade height.
+//   - The cache is a per-upgrade cache, pre-populated by pre-migrations.
+//   - The oldState is the state produced by the upgrade epoch.
+//   - The returned newState is the new state that will be used by the next epoch.
+//   - The height is the upgrade epoch height (already executed).
+//   - The tipset is the tipset for the last non-null block before the upgrade. Do
+//     not assume that ts.Height() is the upgrade height.
 type MigrationFunc func(
 	ctx context.Context,
 	cache MigrationCache,
@@ -293,6 +295,22 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 				PreMigration:    cf.PreUpgradeActorsV8,
 				StartWithin:     180,
 				DontStartWithin: 60,
+				StopWithin:      5,
+			}},
+			Expensive: true,
+		}, {
+			Height:    upgradeHeight.UpgradeSharkHeight,
+			Network:   network.Version17,
+			Migration: cf.UpgradeActorsV9,
+			PreMigrations: []PreMigration{{
+				PreMigration:    cf.PreUpgradeActorsV9,
+				StartWithin:     240,
+				DontStartWithin: 60,
+				StopWithin:      20,
+			}, {
+				PreMigration:    cf.PreUpgradeActorsV9,
+				StartWithin:     15,
+				DontStartWithin: 10,
 				StopWithin:      5,
 			}},
 			Expensive: true,
@@ -2081,7 +2099,7 @@ func (c *ChainFork) upgradeActorsV8Common(
 	store := chain.ActorStore(ctx, buf)
 
 	// ensure that the manifest is loaded in the blockstore
-	if err := actors.LoadBundles(ctx, buf, actors.Version8); err != nil {
+	if err := actors.LoadBundles(ctx, buf, actorstypes.Version8); err != nil {
 		return cid.Undef, fmt.Errorf("failed to load manifest bundle: %w", err)
 	}
 
@@ -2098,7 +2116,7 @@ func (c *ChainFork) upgradeActorsV8Common(
 		)
 	}
 
-	manifest, ok := actors.GetManifest(actors.Version8)
+	manifest, ok := actors.GetManifest(actorstypes.Version8)
 	if !ok {
 		return cid.Undef, fmt.Errorf("no manifest CID for v8 upgrade")
 	}
@@ -2128,6 +2146,116 @@ func (c *ChainFork) upgradeActorsV8Common(
 		if err := Copy(ctx, from, to, newRoot); err != nil {
 			return cid.Undef, fmt.Errorf("copying migrated tree: %w", err)
 		}
+	}
+
+	return newRoot, nil
+}
+
+func (c *ChainFork) UpgradeActorsV9(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	// Use all the CPUs except 3.
+	workerCount := runtime.NumCPU() - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+
+	config := nv17.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: 10 * time.Second,
+	}
+
+	newRoot, err := c.upgradeActorsV9Common(ctx, cache, root, epoch, ts, config)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("migrating actors v8 state: %w", err)
+	}
+
+	return newRoot, nil
+}
+
+func (c *ChainFork) PreUpgradeActorsV9(ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
+	ts *types.TipSet,
+) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := runtime.NumCPU()
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+
+	ver := c.GetNetworkVersion(ctx, epoch)
+	lbts, lbRoot, err := c.cr.GetLookbackTipSetForRound(ctx, ts, epoch, ver)
+	if err != nil {
+		return fmt.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	config := nv17.Config{
+		MaxWorkers:        uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5,
+	}
+
+	_, err = c.upgradeActorsV9Common(ctx, cache, lbRoot, epoch, lbts, config)
+	return err
+}
+
+func (c *ChainFork) upgradeActorsV9Common(ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
+	ts *types.TipSet,
+	config nv17.Config,
+) (cid.Cid, error) {
+	writeStore := blockstoreutil.NewAutobatch(ctx, c.bs, units.GiB/4)
+	store := chain.ActorStore(ctx, writeStore)
+
+	// ensure that the manifest is loaded in the blockstore
+	if err := actors.LoadBundles(ctx, c.bs, actorstypes.Version9); err != nil {
+		return cid.Undef, fmt.Errorf("failed to load manifest bundle: %w", err)
+	}
+
+	// Load the state root.
+	var stateRoot vmstate.StateRoot
+	if err := store.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, fmt.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != vmstate.StateTreeVersion4 {
+		return cid.Undef, fmt.Errorf("expected state root version 4 for actors v9 upgrade, got %d", stateRoot.Version)
+	}
+
+	manifest, ok := actors.GetManifest(actorstypes.Version9)
+	if !ok {
+		return cid.Undef, fmt.Errorf("no manifest CID for v9 upgrade")
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv17.MigrateStateTree(ctx, store, manifest, stateRoot.Actors, epoch, config,
+		migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("upgrading to actors v9: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := store.Put(ctx, &vmstate.StateRoot{
+		Version: vmstate.StateTreeVersion4,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// Persists the new tree and shuts down the flush worker
+	if err := writeStore.Flush(ctx); err != nil {
+		return cid.Undef, fmt.Errorf("writeStore flush failed: %w", err)
+	}
+
+	if err := writeStore.Shutdown(ctx); err != nil {
+		return cid.Undef, fmt.Errorf("writeStore shutdown failed: %w", err)
 	}
 
 	return newRoot, nil
@@ -2165,7 +2293,7 @@ func (c *ChainFork) GetForkUpgrade() *config.ForkUpgradeConfig {
 // 	return LiteMigration(ctx, bstore, newActorsManifestCid, root, av, vmstate.StateTreeVersion4, newStateTreeVersion)
 // }
 
-func LiteMigration(ctx context.Context, bstore blockstoreutil.Blockstore, newActorsManifestCid cid.Cid, root cid.Cid, av actors.Version, oldStateTreeVersion vmstate.StateTreeVersion, newStateTreeVersion vmstate.StateTreeVersion) (cid.Cid, error) {
+func LiteMigration(ctx context.Context, bstore blockstoreutil.Blockstore, newActorsManifestCid cid.Cid, root cid.Cid, oldAv actorstypes.Version, newAv actorstypes.Version, oldStateTreeVersion vmstate.StateTreeVersion, newStateTreeVersion vmstate.StateTreeVersion) (cid.Cid, error) {
 	buf := blockstoreutil.NewTieredBstore(bstore, blockstoreutil.NewTemporarySync())
 	store := chain.ActorStore(ctx, buf)
 	adtStore := gstStore.WrapStore(ctx, store)
@@ -2189,41 +2317,39 @@ func LiteMigration(ctx context.Context, bstore blockstoreutil.Blockstore, newAct
 		return cid.Undef, fmt.Errorf("failed to load state tree: %w", err)
 	}
 
-	oldManifest, err := getManifest(ctx, st)
+	oldManifestData, err := getManifestData(ctx, st)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("error loading old actor manifest: %w", err)
 	}
-	oldManifestData := manifest.ManifestData{}
-	if err := store.Get(ctx, oldManifest.Data, &oldManifestData); err != nil {
-		return cid.Undef, fmt.Errorf("error loading old manifest data: %w", err)
-	}
 
 	// load new manifest
-	newManifest := manifest.Manifest{}
-	if err := store.Get(ctx, newActorsManifestCid, &newManifest); err != nil {
+	newManifest, err := actors.LoadManifest(ctx, newActorsManifestCid, store)
+	if err != nil {
 		return cid.Undef, fmt.Errorf("error loading new manifest: %w", err)
 	}
+
 	newManifestData := manifest.ManifestData{}
 	if err := store.Get(ctx, newManifest.Data, &newManifestData); err != nil {
 		return cid.Undef, fmt.Errorf("error loading new manifest data: %w", err)
 	}
 
-	if len(oldManifestData.Entries) != len(actors.GetBuiltinActorsKeys()) {
+	if len(oldManifestData.Entries) != len(actors.GetBuiltinActorsKeys(oldAv)) {
 		return cid.Undef, fmt.Errorf("incomplete old manifest with %d code CIDs", len(oldManifestData.Entries))
 	}
-	if len(newManifestData.Entries) != len(actors.GetBuiltinActorsKeys()) {
+	if len(newManifestData.Entries) != len(actors.GetBuiltinActorsKeys(newAv)) {
 		return cid.Undef, fmt.Errorf("incomplete new manifest with %d code CIDs", len(newManifestData.Entries))
 	}
 
 	// Maps prior version code CIDs to migration functions.
 	migrations := make(map[cid.Cid]cid.Cid)
 
-	for _, entry := range newManifestData.Entries {
-		oldCodeCid, ok := oldManifest.Get(entry.Name)
+	for _, entry := range oldManifestData.Entries {
+		newCodeCid, ok := newManifest.Get(entry.Name)
 		if !ok {
-			return cid.Undef, fmt.Errorf("code cid for %s actor not found in old manifest", entry.Name)
+			return cid.Undef, fmt.Errorf("code cid for %s actor not found in new manifest", entry.Name)
 		}
-		migrations[oldCodeCid] = entry.Code
+
+		migrations[entry.Code] = newCodeCid
 	}
 
 	startTime := time.Now()
@@ -2242,7 +2368,7 @@ func LiteMigration(ctx context.Context, bstore blockstoreutil.Blockstore, newAct
 		}
 		var head cid.Cid
 		if addr == system.Address {
-			newSystemState, err := system.MakeState(store, av, newManifest.Data)
+			newSystemState, err := system.MakeState(store, newAv, newManifest.Data)
 			if err != nil {
 				return fmt.Errorf("could not make system actor state: %w", err)
 			}
@@ -2290,7 +2416,7 @@ func LiteMigration(ctx context.Context, bstore blockstoreutil.Blockstore, newAct
 	return newRoot, nil
 }
 
-func getManifest(ctx context.Context, st *vmstate.State) (*manifest.Manifest, error) {
+func getManifestData(ctx context.Context, st *vmstate.State) (*manifest.ManifestData, error) {
 	wrapStore := gstStore.WrapStore(ctx, st.Store)
 
 	systemActor, found, err := st.GetActor(ctx, system.Address)
@@ -2304,18 +2430,13 @@ func getManifest(ctx context.Context, st *vmstate.State) (*manifest.Manifest, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to load system actor state: %w", err)
 	}
-	actorsManifestCid := systemActorState.GetBuiltinActors()
 
-	mf := manifest.Manifest{
-		Version: 1,
-		Data:    actorsManifestCid,
+	actorsManifestDataCid := systemActorState.GetBuiltinActors()
+
+	var mfData manifest.ManifestData
+	if err := wrapStore.Get(ctx, actorsManifestDataCid, &mfData); err != nil {
+		return nil, fmt.Errorf("error fetching data: %w", err)
 	}
-	if err := mf.Load(ctx, wrapStore); err != nil {
-		return nil, fmt.Errorf("failed to load actor manifest: %w", err)
-	}
-	manifestData := manifest.ManifestData{}
-	if err := st.Store.Get(ctx, mf.Data, &manifestData); err != nil {
-		return nil, fmt.Errorf("failed to load manifest data: %w", err)
-	}
-	return &mf, nil
+
+	return &mfData, nil
 }

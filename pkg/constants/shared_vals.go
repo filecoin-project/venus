@@ -17,11 +17,11 @@ const AllowableClockDriftSecs = uint64(1)
 
 /* inline-gen template
 
-const NewestNetworkVersion = network.Version{{.latestNetworkVersion}}
+const TestNetworkVersion = network.Version{{.latestNetworkVersion}}
 
 /* inline-gen start */
 
-const NewestNetworkVersion = network.Version16
+const TestNetworkVersion = network.Version17
 
 /* inline-gen end */
 

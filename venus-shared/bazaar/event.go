@@ -1,6 +1,6 @@
 package bazaar
 
-import "github.com/libp2p/go-libp2p-core/peer"
+import "github.com/libp2p/go-libp2p/core/peer"
 
 // developers can define the types except Ping
 const EventPing EventType = 0

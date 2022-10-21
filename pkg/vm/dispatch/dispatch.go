@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -44,7 +45,7 @@ type Dispatcher interface {
 
 type actorDispatcher struct {
 	code  cid.Cid
-	actor Actor
+	actor builtin.RegistryEntry
 }
 
 type method interface {
@@ -133,18 +134,13 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, nvk network.Version,
 func (d *actorDispatcher) signature(methodID abi.MethodNum) (*methodSignature, *ExcuteError) {
 	exports := d.actor.Exports()
 
-	// get method entry
-	methodIdx := (uint64)(methodID)
-	if len(exports) <= (int)(methodIdx) {
-		return nil, NewExcuteError(exitcode.SysErrInvalidMethod, "Method undefined. method: %d, code: %s", methodID, d.code)
-	}
-	entry := exports[methodIdx]
-	if entry == nil {
+	// get method
+	method := exports[(uint64)(methodID)].Method
+	if method == nil {
 		return nil, NewExcuteError(exitcode.SysErrInvalidMethod, "Method undefined. method: %d, code: %s", methodID, d.code)
 	}
 
-	ventry := reflect.ValueOf(entry)
-	return &methodSignature{method: ventry}, nil
+	return &methodSignature{method: reflect.ValueOf(method)}, nil
 }
 
 // Signature implements `Dispatcher`.
@@ -152,7 +148,7 @@ func (d *actorDispatcher) Signature(methodNum abi.MethodNum) (MethodSignature, *
 	return d.signature(methodNum)
 }
 
-//ExcuteError error in vm excute
+// ExcuteError error in vm excute
 type ExcuteError struct {
 	code exitcode.ExitCode
 	msg  string

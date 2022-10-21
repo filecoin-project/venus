@@ -42,7 +42,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131584
+  "APIVersion": 131840
 }
 ```
 
@@ -197,7 +197,7 @@ Inputs:
   ],
   "Bw==",
   10101,
-  16
+  17
 ]
 ```
 

@@ -49,5 +49,9 @@ run:
   skip-dirs:
     - pkg/constants$
     - pkg/util/test$
+    - venus-shared/actors/adt$
+    - venus-shared/actors/aerrors$
+    - venus-shared/actors/builtin$
+    - venus-shared/actors/policy$
   skip-files:
     - ".*_gen\\.go$" # skip auto generated go files

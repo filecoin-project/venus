@@ -74,7 +74,7 @@ func (s *Syscalls) HashBlake2b(data []byte) [32]byte {
 	return blake2b.Sum256(data)
 }
 
-//ComputeUnsealedSectorCID Computes an unsealed sector CID (CommD) from its constituent piece CIDs (CommPs) and sizes.
+// ComputeUnsealedSectorCID Computes an unsealed sector CID (CommD) from its constituent piece CIDs (CommPs) and sizes.
 func (s *Syscalls) ComputeUnsealedSectorCID(_ context.Context, proof abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	return impl.GenerateUnsealedCID(proof, pieces)
 }
@@ -93,7 +93,7 @@ func (s *Syscalls) VerifySeal(_ context.Context, info proof7.SealVerifyInfo) err
 
 var BatchSealVerifyParallelism = 2 * goruntime.NumCPU()
 
-//BatchVerifySeals batch verify windows post
+// BatchVerifySeals batch verify windows post
 func (s *Syscalls) BatchVerifySeals(ctx context.Context, vis map[address.Address][]proof7.SealVerifyInfo) (map[address.Address][]bool, error) {
 	out := make(map[address.Address][]bool)
 
@@ -138,7 +138,7 @@ func (s *Syscalls) VerifyAggregateSeals(aggregate proof7.AggregateSealVerifyProo
 	return nil
 }
 
-//VerifyPoSt verify windows post
+// VerifyPoSt verify windows post
 func (s *Syscalls) VerifyPoSt(ctx context.Context, info proof7.WindowPoStVerifyInfo) error {
 	ok, err := s.verifier.VerifyWindowPoSt(ctx, info)
 	if err != nil {

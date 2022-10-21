@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
@@ -23,11 +24,11 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
-	"github.com/libp2p/go-libp2p-core/metrics"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/metrics"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -86,7 +87,15 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	addExample(constants.NewestNetworkVersion)
+	addExample(constants.TestNetworkVersion)
+	allocationID := verifreg.AllocationId(0)
+	addExample(allocationID)
+	addExample(&allocationID)
+	addExample(map[verifreg.AllocationId]verifreg.Allocation{})
+	claimID := verifreg.ClaimId(0)
+	addExample(claimID)
+	addExample(&claimID)
+	addExample(map[verifreg.ClaimId]verifreg.Claim{})
 	textSelExample := textselector.Expression("Links/21/Hash/Links/42/Hash")
 	clientEvent := retrievalmarket.ClientEventDealAccepted
 	addExample(bitfield.NewFromSet([]uint64{5}))

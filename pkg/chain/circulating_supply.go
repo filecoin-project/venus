@@ -30,7 +30,7 @@ type ICirculatingSupplyCalcualtor interface {
 	GetFilVested(ctx context.Context, height abi.ChainEpoch) (abi.TokenAmount, error)
 }
 
-//CirculatingSupplyCalculator used to calculate the funds at a specific block height
+// CirculatingSupplyCalculator used to calculate the funds at a specific block height
 type CirculatingSupplyCalculator struct {
 	bstore      blockstoreutil.Blockstore
 	genesisRoot cid.Cid
@@ -47,12 +47,12 @@ type CirculatingSupplyCalculator struct {
 	upgradeConfig *config.ForkUpgradeConfig
 }
 
-//NewCirculatingSupplyCalculator create new  circulating supply calculator
+// NewCirculatingSupplyCalculator create new  circulating supply calculator
 func NewCirculatingSupplyCalculator(bstore blockstoreutil.Blockstore, genesisRoot cid.Cid, upgradeConfig *config.ForkUpgradeConfig) *CirculatingSupplyCalculator {
 	return &CirculatingSupplyCalculator{bstore: bstore, genesisRoot: genesisRoot, upgradeConfig: upgradeConfig}
 }
 
-//GetCirculatingSupplyDetailed query contract and calculate circulation status at specific height and tree state
+// GetCirculatingSupplyDetailed query contract and calculate circulation status at specific height and tree state
 func (caculator *CirculatingSupplyCalculator) GetCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st tree.Tree) (types.CirculatingSupply, error) {
 	filVested, err := caculator.GetFilVested(ctx, height)
 	if err != nil {
@@ -356,7 +356,7 @@ func (caculator *CirculatingSupplyCalculator) GetFilReserveDisbursed(ctx context
 	return big.Sub(big.NewFromGo(constants.InitialFilReserved), ract.Balance), nil
 }
 
-//GetFilMined query reward contract to get amount of mined fil
+// GetFilMined query reward contract to get amount of mined fil
 func GetFilMined(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	ractor, found, err := st.GetActor(ctx, reward.Address)
 	if !found || err != nil {
@@ -371,7 +371,7 @@ func GetFilMined(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	return rst.TotalStoragePowerReward()
 }
 
-//GetFilBurnt query burnt contract to get amount of burnt fil
+// GetFilBurnt query burnt contract to get amount of burnt fil
 func GetFilBurnt(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	burnt, found, err := st.GetActor(ctx, builtin.BurntFundsActorAddr)
 	if !found || err != nil {
@@ -381,7 +381,7 @@ func GetFilBurnt(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 	return burnt.Balance, nil
 }
 
-//GetFilLocked query the market contract and power contract to get the amount of locked fils
+// GetFilLocked query the market contract and power contract to get the amount of locked fils
 func (caculator *CirculatingSupplyCalculator) GetFilLocked(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 
 	filMarketLocked, err := getFilMarketLocked(ctx, st)

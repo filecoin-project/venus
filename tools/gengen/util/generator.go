@@ -31,7 +31,7 @@ import (
 	"github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	mh "github.com/multiformats/go-multihash"
 	xerrors "github.com/pkg/errors"
 

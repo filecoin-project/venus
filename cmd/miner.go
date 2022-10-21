@@ -15,14 +15,12 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/venus/app/node"
-	"github.com/filecoin-project/venus/app/submodule/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
-	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/params"
@@ -54,7 +52,7 @@ var newMinerCmd = &cmds.Command{
 		cmds.BoolOption("create-worker-key", "Create separate worker key"),
 		cmds.StringOption("from", "Select which address to send actor creation message from"),
 		cmds.StringOption("gas-premium", "Set gas premium for initialization messages in AttoFIL").WithDefault("0"),
-		cmds.StringOption("sector-size", "specify sector size to use").WithDefault(units.BytesSize(float64(policy.GetDefaultSectorSize()))),
+		cmds.StringOption("sector-size", "specify sector size to use"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		ctx := req.Context
@@ -64,10 +62,18 @@ var newMinerCmd = &cmds.Command{
 			return err
 		}
 
-		sectorSize, _ := req.Options["sector-size"].(string)
-		ssize, err := units.RAMInBytes(sectorSize)
+		ssize, err := abi.RegisteredSealProof_StackedDrg32GiBV1.SectorSize()
 		if err != nil {
-			return fmt.Errorf("failed to parse sector size: %v", err)
+			return fmt.Errorf("failed to calculate default sector size: %w", err)
+		}
+
+		sectorSize, ok := req.Options["sector-size"].(string)
+		if ok {
+			sectorSizeInt, err := units.RAMInBytes(sectorSize)
+			if err != nil {
+				return err
+			}
+			ssize = abi.SectorSize(sectorSizeInt)
 		}
 
 		gp, _ := req.Options["gas-premium"].(string)
@@ -128,7 +134,7 @@ var newMinerCmd = &cmds.Command{
 			return fmt.Errorf("getting network version: %v", err)
 		}
 
-		spt, err := miner.SealProofTypeFromSectorSize(abi.SectorSize(ssize), nv)
+		spt, err := miner.SealProofTypeFromSectorSize(ssize, nv)
 		if err != nil {
 			return fmt.Errorf("getting seal proof type: %v", err)
 		}
@@ -253,7 +259,7 @@ var minerInfoCmd = &cmds.Command{
 			return err
 		}
 
-		tbs := blockstoreutil.NewTieredBstore(chain.NewAPIBlockstore(blockstoreAPI), blockstoreutil.NewTemporary())
+		tbs := blockstoreutil.NewTieredBstore(blockstoreutil.NewAPIBlockstore(blockstoreAPI), blockstoreutil.NewTemporary())
 		mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
 		if err != nil {
 			return err
@@ -374,6 +380,23 @@ var minerInfoCmd = &cmds.Command{
 			writer.Printf("       Control:   %s\n", types.FIL(cbsum).Short())
 		}
 		writer.Printf("Total Spendable:  %s\n", types.FIL(spendable).Short())
+
+		if mi.Beneficiary != address.Undef {
+			writer.Printf("Beneficiary:\t%s\n", mi.Beneficiary)
+			if mi.Beneficiary != mi.Owner {
+				writer.Printf("Beneficiary Quota:\t%s\n", mi.BeneficiaryTerm.Quota)
+				writer.Printf("Beneficiary Used Quota:\t%s\n", mi.BeneficiaryTerm.UsedQuota)
+				writer.Printf("Beneficiary Expiration:\t%s\n", mi.BeneficiaryTerm.Expiration)
+			}
+		}
+		if mi.PendingBeneficiaryTerm != nil {
+			writer.Printf("Pending Beneficiary Term:\n")
+			writer.Printf("New Beneficiary:\t%s\n", mi.PendingBeneficiaryTerm.NewBeneficiary)
+			writer.Printf("New Quota:\t%s\n", mi.PendingBeneficiaryTerm.NewQuota)
+			writer.Printf("New Expiration:\t%s\n", mi.PendingBeneficiaryTerm.NewExpiration)
+			writer.Printf("Approved By Beneficiary:\t%t\n", mi.PendingBeneficiaryTerm.ApprovedByBeneficiary)
+			writer.Printf("Approved By Nominee:\t%t\n", mi.PendingBeneficiaryTerm.ApprovedByNominee)
+		}
 
 		// TODO: grab actr state / info
 		//  * Sealed sectors (count / bytes)

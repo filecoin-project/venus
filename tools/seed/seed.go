@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -21,13 +20,13 @@ import (
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log/v2"
-	ic "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
+	ic "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/venus/pkg/crypto"
@@ -144,7 +143,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 			return nil, nil, fmt.Errorf("marshaling storage config: %w", err)
 		}
 
-		if err := ioutil.WriteFile(filepath.Join(sbroot, "sectorstore.json"), b, 0644); err != nil {
+		if err := os.WriteFile(filepath.Join(sbroot, "sectorstore.json"), b, 0644); err != nil {
 			return nil, nil, fmt.Errorf("persisting storage metadata (%s): %w", filepath.Join(sbroot, "storage.json"), err)
 		}
 	}
@@ -237,7 +236,7 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, 
 
 	log.Infof("Writing preseal manifest to %s", filepath.Join(sbroot, "pre-seal-"+maddr.String()+".json"))
 
-	if err := ioutil.WriteFile(filepath.Join(sbroot, "pre-seal-"+maddr.String()+".json"), out, 0664); err != nil {
+	if err := os.WriteFile(filepath.Join(sbroot, "pre-seal-"+maddr.String()+".json"), out, 0664); err != nil {
 		return err
 	}
 
@@ -248,7 +247,7 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, 
 		}
 
 		// TODO: allow providing key
-		if err := ioutil.WriteFile(filepath.Join(sbroot, "pre-seal-"+maddr.String()+".key"), []byte(hex.EncodeToString(b)), 0664); err != nil {
+		if err := os.WriteFile(filepath.Join(sbroot, "pre-seal-"+maddr.String()+".key"), []byte(hex.EncodeToString(b)), 0664); err != nil {
 			return err
 		}
 	}
@@ -262,12 +261,12 @@ func createDeals(m *genesis.Miner, ki *crypto.KeyInfo, maddr address.Address, ss
 		return err
 	}
 	for i, sector := range m.Sectors {
-		label, err := market8.NewLabelFromString(fmt.Sprintf("%d", i))
+		label, err := markettypes.NewLabelFromString(fmt.Sprintf("%d", i))
 		if err != nil {
 			return err
 		}
 
-		proposal := &market8.DealProposal{
+		proposal := &markettypes.DealProposal{
 			PieceCID:             sector.CommD,
 			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               addr,

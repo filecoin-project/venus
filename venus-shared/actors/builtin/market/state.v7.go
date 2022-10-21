@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 
@@ -184,7 +185,14 @@ func (s *dealStates7) array() adt.Array {
 }
 
 func fromV7DealState(v7 market7.DealState) DealState {
-	return (DealState)(v7)
+
+	return DealState{
+		SectorStartEpoch: v7.SectorStartEpoch,
+		LastUpdatedEpoch: v7.LastUpdatedEpoch,
+		SlashEpoch:       v7.SlashEpoch,
+		VerifiedClaim:    0,
+	}
+
 }
 
 type dealProposals7 struct {
@@ -242,6 +250,7 @@ func (s *dealProposals7) array() adt.Array {
 func fromV7DealProposal(v7 market7.DealProposal) (DealProposal, error) {
 
 	label, err := labelFromGoString(v7.Label)
+
 	if err != nil {
 		return DealProposal{}, fmt.Errorf("error setting deal label: %w", err)
 	}
@@ -308,4 +317,10 @@ func (r *publishStorageDealsReturn7) IsDealValid(index uint64) (bool, int, error
 
 func (r *publishStorageDealsReturn7) DealIDs() ([]abi.DealID, error) {
 	return r.IDs, nil
+}
+
+func (s *state7) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
+
+	return verifregtypes.NoAllocationID, fmt.Errorf("unsupported before actors v9")
+
 }

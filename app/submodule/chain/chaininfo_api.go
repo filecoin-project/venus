@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -661,6 +662,7 @@ func (cia *chainInfoAPI) StateGetNetworkParams(ctx context.Context) (*types.Netw
 			UpgradeChocolateHeight:   cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight,
 			UpgradeOhSnapHeight:      cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight,
 			UpgradeSkyrHeight:        cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight,
+			UpgradeSharkHeight:       cfg.NetworkParams.ForkUpgradeParam.UpgradeSharkHeight,
 		},
 	}
 
@@ -669,7 +671,7 @@ func (cia *chainInfoAPI) StateGetNetworkParams(ctx context.Context) (*types.Netw
 
 // StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
 func (cia *chainInfoAPI) StateActorCodeCIDs(ctx context.Context, nv network.Version) (map[string]cid.Cid, error) {
-	actorVersion, err := actors.VersionForNetwork(nv)
+	actorVersion, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
 		return nil, fmt.Errorf("invalid network version")
 	}
@@ -683,7 +685,7 @@ func (cia *chainInfoAPI) StateActorCodeCIDs(ctx context.Context, nv network.Vers
 
 	cids["_manifest"] = manifestCid
 
-	var actorKeys = actors.GetBuiltinActorsKeys()
+	var actorKeys = actors.GetBuiltinActorsKeys(actorVersion)
 	for _, name := range actorKeys {
 		actorCID, ok := actors.GetActorCodeID(actorVersion, name)
 		if !ok {
@@ -707,7 +709,7 @@ func (cia *chainInfoAPI) ChainGetGenesis(ctx context.Context) (*types.TipSet, er
 
 // StateActorManifestCID returns the CID of the builtin actors manifest for the given network version
 func (cia *chainInfoAPI) StateActorManifestCID(ctx context.Context, nv network.Version) (cid.Cid, error) {
-	actorVersion, err := actors.VersionForNetwork(nv)
+	actorVersion, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("invalid network version")
 	}
@@ -718,4 +720,31 @@ func (cia *chainInfoAPI) StateActorManifestCID(ctx context.Context, nv network.V
 	}
 
 	return c, nil
+}
+
+// StateCall runs the given message and returns its result without any persisted changes.
+//
+// StateCall applies the message to the tipset's parent state. The
+// message is not applied on-top-of the messages in the passed-in
+// tipset.
+func (cia *chainInfoAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error) {
+	start := time.Now()
+	ts, err := cia.chain.ChainReader.GetTipSet(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("loading tipset %s: %v", tsk, err)
+	}
+	ret, err := cia.chain.Stmgr.Call(ctx, msg, ts)
+	if err != nil {
+		return nil, err
+	}
+	duration := time.Since(start)
+
+	mcid := msg.Cid()
+	return &types.InvocResult{
+		MsgCid:         mcid,
+		Msg:            msg,
+		MsgRct:         &ret.Receipt,
+		ExecutionTrace: types.ExecutionTrace{},
+		Duration:       duration,
+	}, nil
 }

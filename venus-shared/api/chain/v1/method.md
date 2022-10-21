@@ -39,6 +39,7 @@
   * [ResolveToKeyAddr](#ResolveToKeyAddr)
   * [StateActorCodeCIDs](#StateActorCodeCIDs)
   * [StateActorManifestCID](#StateActorManifestCID)
+  * [StateCall](#StateCall)
   * [StateGetBeaconEntry](#StateGetBeaconEntry)
   * [StateGetNetworkParams](#StateGetNetworkParams)
   * [StateGetRandomnessFromBeacon](#StateGetRandomnessFromBeacon)
@@ -84,9 +85,15 @@
   * [StateAllMinerFaults](#StateAllMinerFaults)
   * [StateChangedActors](#StateChangedActors)
   * [StateCirculatingSupply](#StateCirculatingSupply)
+  * [StateComputeDataCID](#StateComputeDataCID)
   * [StateDealProviderCollateralBounds](#StateDealProviderCollateralBounds)
   * [StateDecodeParams](#StateDecodeParams)
   * [StateEncodeParams](#StateEncodeParams)
+  * [StateGetAllocation](#StateGetAllocation)
+  * [StateGetAllocationForPendingDeal](#StateGetAllocationForPendingDeal)
+  * [StateGetAllocations](#StateGetAllocations)
+  * [StateGetClaim](#StateGetClaim)
+  * [StateGetClaims](#StateGetClaims)
   * [StateListActors](#StateListActors)
   * [StateListMessages](#StateListMessages)
   * [StateListMiners](#StateListMiners)
@@ -96,6 +103,7 @@
   * [StateMarketDeals](#StateMarketDeals)
   * [StateMarketStorageDeal](#StateMarketStorageDeal)
   * [StateMinerActiveSectors](#StateMinerActiveSectors)
+  * [StateMinerAllocated](#StateMinerAllocated)
   * [StateMinerAvailableBalance](#StateMinerAvailableBalance)
   * [StateMinerDeadlines](#StateMinerDeadlines)
   * [StateMinerFaults](#StateMinerFaults)
@@ -180,7 +188,6 @@
   * [ChainTipSetWeight](#ChainTipSetWeight)
   * [Concurrent](#Concurrent)
   * [SetConcurrent](#SetConcurrent)
-  * [StateCall](#StateCall)
   * [SyncState](#SyncState)
   * [SyncSubmitBlock](#SyncSubmitBlock)
   * [SyncerTracker](#SyncerTracker)
@@ -1269,7 +1276,7 @@ Perms: read
 Inputs:
 ```json
 [
-  16
+  17
 ]
 ```
 
@@ -1284,7 +1291,7 @@ Perms: read
 Inputs:
 ```json
 [
-  16
+  17
 ]
 ```
 
@@ -1292,6 +1299,174 @@ Response:
 ```json
 {
   "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+### StateCall
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    },
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ=="
+  },
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "MsgCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Msg": {
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    },
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ=="
+  },
+  "MsgRct": {
+    "ExitCode": 0,
+    "Return": "Ynl0ZSBhcnJheQ==",
+    "GasUsed": 9
+  },
+  "GasCost": {
+    "Message": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "GasUsed": "0",
+    "BaseFeeBurn": "0",
+    "OverEstimationBurn": "0",
+    "MinerPenalty": "0",
+    "MinerTip": "0",
+    "Refund": "0",
+    "TotalCost": "0"
+  },
+  "ExecutionTrace": {
+    "Msg": {
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      },
+      "Version": 42,
+      "To": "f01234",
+      "From": "f01234",
+      "Nonce": 42,
+      "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
+      "Method": 1,
+      "Params": "Ynl0ZSBhcnJheQ=="
+    },
+    "MsgRct": {
+      "ExitCode": 0,
+      "Return": "Ynl0ZSBhcnJheQ==",
+      "GasUsed": 9
+    },
+    "Error": "string value",
+    "Duration": 60000000000,
+    "GasCharges": [
+      {
+        "Name": "string value",
+        "loc": [
+          {
+            "File": "string value",
+            "Line": 123,
+            "Function": "string value"
+          }
+        ],
+        "tg": 9,
+        "cg": 9,
+        "sg": 9,
+        "vtg": 9,
+        "vcg": 9,
+        "vsg": 9,
+        "tt": 60000000000,
+        "ex": {}
+      }
+    ],
+    "Subcalls": [
+      {
+        "Msg": {
+          "CID": {
+            "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+          },
+          "Version": 42,
+          "To": "f01234",
+          "From": "f01234",
+          "Nonce": 42,
+          "Value": "0",
+          "GasLimit": 9,
+          "GasFeeCap": "0",
+          "GasPremium": "0",
+          "Method": 1,
+          "Params": "Ynl0ZSBhcnJheQ=="
+        },
+        "MsgRct": {
+          "ExitCode": 0,
+          "Return": "Ynl0ZSBhcnJheQ==",
+          "GasUsed": 9
+        },
+        "Error": "string value",
+        "Duration": 60000000000,
+        "GasCharges": [
+          {
+            "Name": "string value",
+            "loc": [
+              {
+                "File": "string value",
+                "Line": 123,
+                "Function": "string value"
+              }
+            ],
+            "tg": 9,
+            "cg": 9,
+            "sg": 9,
+            "vtg": 9,
+            "vcg": 9,
+            "vsg": 9,
+            "tt": 60000000000,
+            "ex": {}
+          }
+        ],
+        "Subcalls": null
+      }
+    ]
+  },
+  "Error": "string value",
+  "Duration": 60000000000
 }
 ```
 
@@ -1356,7 +1531,8 @@ Response:
     "UpgradeHyperdriveHeight": 10101,
     "UpgradeChocolateHeight": 10101,
     "UpgradeOhSnapHeight": 10101,
-    "UpgradeSkyrHeight": 10101
+    "UpgradeSkyrHeight": 10101,
+    "UpgradeSharkHeight": 10101
   }
 }
 ```
@@ -1437,7 +1613,7 @@ Inputs:
 ]
 ```
 
-Response: `16`
+Response: `17`
 
 ### StateSearchMsg
 StateSearchMsg looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
@@ -1641,7 +1817,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131584
+  "APIVersion": 131840
 }
 ```
 
@@ -2744,6 +2920,38 @@ Inputs:
 
 Response: `"0"`
 
+### StateComputeDataCID
+StateComputeDataCID computes DataCID from a set of on-chain deals
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  8,
+  [
+    5432
+  ],
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
 ### StateDealProviderCollateralBounds
 
 
@@ -2814,6 +3022,164 @@ Inputs:
 ```
 
 Response: `"Ynl0ZSBhcnJheQ=="`
+
+### StateGetAllocation
+StateGetAllocation returns the allocation for a given address and allocation ID.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  0,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Client": 1000,
+  "Provider": 1000,
+  "Data": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Size": 1032,
+  "TermMin": 10101,
+  "TermMax": 10101,
+  "Expiration": 10101
+}
+```
+
+### StateGetAllocationForPendingDeal
+StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
+pending allocation is not found.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  5432,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Client": 1000,
+  "Provider": 1000,
+  "Data": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Size": 1032,
+  "TermMin": 10101,
+  "TermMax": 10101,
+  "Expiration": 10101
+}
+```
+
+### StateGetAllocations
+StateGetAllocations returns the all the allocations for a given client.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
+
+### StateGetClaim
+StateGetClaim returns the claim for a given address and claim ID.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  0,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Provider": 1000,
+  "Client": 1000,
+  "Data": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Size": 1032,
+  "TermMin": 10101,
+  "TermMax": 10101,
+  "TermStart": 10101,
+  "Sector": 9
+}
+```
+
+### StateGetClaims
+StateGetClaims returns the all the claims for a given provider.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
 
 ### StateListActors
 
@@ -3014,7 +3380,8 @@ Response:
     "State": {
       "SectorStartEpoch": 10101,
       "LastUpdatedEpoch": 10101,
-      "SlashEpoch": 10101
+      "SlashEpoch": 10101,
+      "VerifiedClaim": 0
     }
   }
 }
@@ -3061,7 +3428,8 @@ Response:
   "State": {
     "SectorStartEpoch": 10101,
     "LastUpdatedEpoch": 10101,
-    "SlashEpoch": 10101
+    "SlashEpoch": 10101,
+    "VerifiedClaim": 0
   }
 }
 ```
@@ -3107,8 +3475,37 @@ Response:
     "ExpectedStoragePledge": "0",
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
-    "SectorKeyCID": null
+    "SectorKeyCID": null,
+    "SimpleQAPower": true
   }
+]
+```
+
+### StateMinerAllocated
+StateMinerAllocated returns a bitfield containing all sector numbers marked as allocated in miner state
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+[
+  0
 ]
 ```
 
@@ -3232,7 +3629,20 @@ Response:
   "WindowPoStProofType": 8,
   "SectorSize": 34359738368,
   "WindowPoStPartitionSectors": 42,
-  "ConsensusFaultElapsed": 10101
+  "ConsensusFaultElapsed": 10101,
+  "Beneficiary": "f01234",
+  "BeneficiaryTerm": {
+    "Quota": "0",
+    "UsedQuota": "0",
+    "Expiration": 10101
+  },
+  "PendingBeneficiaryTerm": {
+    "NewBeneficiary": "f01234",
+    "NewQuota": "0",
+    "NewExpiration": 10101,
+    "ApprovedByBeneficiary": true,
+    "ApprovedByNominee": true
+  }
 }
 ```
 
@@ -3256,10 +3666,7 @@ Inputs:
       5432
     ],
     "Expiration": 10101,
-    "ReplaceCapacity": true,
-    "ReplaceSectorDeadline": 42,
-    "ReplaceSectorPartition": 42,
-    "ReplaceSectorNumber": 9
+    "UnsealedCid": null
   },
   [
     {
@@ -3378,10 +3785,7 @@ Inputs:
       5432
     ],
     "Expiration": 10101,
-    "ReplaceCapacity": true,
-    "ReplaceSectorDeadline": 42,
-    "ReplaceSectorPartition": 42,
-    "ReplaceSectorNumber": 9
+    "UnsealedCid": null
   },
   [
     {
@@ -3580,7 +3984,8 @@ Response:
     "ExpectedStoragePledge": "0",
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
-    "SectorKeyCID": null
+    "SectorKeyCID": null,
+    "SimpleQAPower": true
   }
 ]
 ```
@@ -3708,7 +4113,8 @@ Response:
   "ExpectedStoragePledge": "0",
   "ReplacedSectorAge": 10101,
   "ReplacedDayReward": "0",
-  "SectorKeyCID": null
+  "SectorKeyCID": null,
+  "SimpleQAPower": true
 }
 ```
 
@@ -3742,6 +4148,12 @@ Response:
 ```
 
 ### StateSectorPreCommitInfo
+StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector.
+Returns nil and no error if the sector isn't precommitted.
+
+Note that the sector number may be allocated while PreCommitInfo is nil. This means that either allocated sector
+numbers were compacted, and the sector number was marked as allocated in order to reduce size of the allocated
+sectors bitfield, or that the sector was precommitted, but the precommit has expired.
 
 
 Perms: read
@@ -3776,15 +4188,10 @@ Response:
       5432
     ],
     "Expiration": 10101,
-    "ReplaceCapacity": true,
-    "ReplaceSectorDeadline": 42,
-    "ReplaceSectorPartition": 42,
-    "ReplaceSectorNumber": 9
+    "UnsealedCid": null
   },
   "PreCommitDeposit": "0",
-  "PreCommitEpoch": 10101,
-  "DealWeight": "0",
-  "VerifiedDealWeight": "0"
+  "PreCommitEpoch": 10101
 }
 ```
 
@@ -5592,174 +5999,6 @@ Inputs:
 ```
 
 Response: `{}`
-
-### StateCall
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ]
-]
-```
-
-Response:
-```json
-{
-  "MsgCid": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "Msg": {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  "MsgRct": {
-    "ExitCode": 0,
-    "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
-  },
-  "GasCost": {
-    "Message": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "GasUsed": "0",
-    "BaseFeeBurn": "0",
-    "OverEstimationBurn": "0",
-    "MinerPenalty": "0",
-    "MinerTip": "0",
-    "Refund": "0",
-    "TotalCost": "0"
-  },
-  "ExecutionTrace": {
-    "Msg": {
-      "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-      },
-      "Version": 42,
-      "To": "f01234",
-      "From": "f01234",
-      "Nonce": 42,
-      "Value": "0",
-      "GasLimit": 9,
-      "GasFeeCap": "0",
-      "GasPremium": "0",
-      "Method": 1,
-      "Params": "Ynl0ZSBhcnJheQ=="
-    },
-    "MsgRct": {
-      "ExitCode": 0,
-      "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
-    },
-    "Error": "string value",
-    "Duration": 60000000000,
-    "GasCharges": [
-      {
-        "Name": "string value",
-        "loc": [
-          {
-            "File": "string value",
-            "Line": 123,
-            "Function": "string value"
-          }
-        ],
-        "tg": 9,
-        "cg": 9,
-        "sg": 9,
-        "vtg": 9,
-        "vcg": 9,
-        "vsg": 9,
-        "tt": 60000000000,
-        "ex": {}
-      }
-    ],
-    "Subcalls": [
-      {
-        "Msg": {
-          "CID": {
-            "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-          },
-          "Version": 42,
-          "To": "f01234",
-          "From": "f01234",
-          "Nonce": 42,
-          "Value": "0",
-          "GasLimit": 9,
-          "GasFeeCap": "0",
-          "GasPremium": "0",
-          "Method": 1,
-          "Params": "Ynl0ZSBhcnJheQ=="
-        },
-        "MsgRct": {
-          "ExitCode": 0,
-          "Return": "Ynl0ZSBhcnJheQ==",
-          "GasUsed": 9
-        },
-        "Error": "string value",
-        "Duration": 60000000000,
-        "GasCharges": [
-          {
-            "Name": "string value",
-            "loc": [
-              {
-                "File": "string value",
-                "Line": 123,
-                "Function": "string value"
-              }
-            ],
-            "tg": 9,
-            "cg": 9,
-            "sg": 9,
-            "vtg": 9,
-            "vcg": 9,
-            "vsg": 9,
-            "tt": 60000000000,
-            "ex": {}
-          }
-        ],
-        "Subcalls": null
-      }
-    ]
-  },
-  "Error": "string value",
-  "Duration": 60000000000
-}
-```
 
 ### SyncState
 

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -95,7 +94,7 @@ var genesisNewCmd = &cmds.Command{
 			return err
 		}
 
-		return ioutil.WriteFile(genf, genb, 0644)
+		return os.WriteFile(genf, genb, 0644)
 	},
 }
 
@@ -118,7 +117,7 @@ var genesisAddMinerCmd = &cmds.Command{
 		}
 
 		var template genesis.Template
-		genb, err := ioutil.ReadFile(genf)
+		genb, err := os.ReadFile(genf)
 		if err != nil {
 			return fmt.Errorf("read genesis template: %w", err)
 		}
@@ -132,7 +131,7 @@ var genesisAddMinerCmd = &cmds.Command{
 			return fmt.Errorf("expand preseal file path: %w", err)
 		}
 		miners := map[string]genesis.Miner{}
-		minb, err := ioutil.ReadFile(minf)
+		minb, err := os.ReadFile(minf)
 		if err != nil {
 			return fmt.Errorf("read preseal file: %w", err)
 		}
@@ -171,7 +170,7 @@ var genesisAddMinerCmd = &cmds.Command{
 			return err
 		}
 
-		return ioutil.WriteFile(genf, genb, 0644)
+		return os.WriteFile(genf, genb, 0644)
 	},
 }
 
@@ -199,7 +198,7 @@ var genesisAddMsigsCmd = &cmds.Command{
 		}
 
 		var template genesis.Template
-		b, err := ioutil.ReadFile(genf)
+		b, err := os.ReadFile(genf)
 		if err != nil {
 			return fmt.Errorf("read genesis template: %w", err)
 		}
@@ -237,7 +236,7 @@ var genesisAddMsigsCmd = &cmds.Command{
 			return err
 		}
 
-		return ioutil.WriteFile(genf, b, 0644)
+		return os.WriteFile(genf, b, 0644)
 	},
 }
 
@@ -334,7 +333,7 @@ var genesisSetVRKCmd = &cmds.Command{
 		}
 
 		var template genesis.Template
-		b, err := ioutil.ReadFile(genf)
+		b, err := os.ReadFile(genf)
 		if err != nil {
 			return fmt.Errorf("read genesis template: %w", err)
 		}
@@ -401,7 +400,7 @@ var genesisSetVRKCmd = &cmds.Command{
 			return err
 		}
 
-		return ioutil.WriteFile(genf, b, 0644)
+		return os.WriteFile(genf, b, 0644)
 	},
 }
 
@@ -427,7 +426,7 @@ var genesisSetRemainderCmd = &cmds.Command{
 		}
 
 		var template genesis.Template
-		b, err := ioutil.ReadFile(genf)
+		b, err := os.ReadFile(genf)
 		if err != nil {
 			return fmt.Errorf("read genesis template: %w", err)
 		}
@@ -494,7 +493,7 @@ var genesisSetRemainderCmd = &cmds.Command{
 			return err
 		}
 
-		return ioutil.WriteFile(genf, b, 0644)
+		return os.WriteFile(genf, b, 0644)
 	},
 }
 
@@ -517,7 +516,7 @@ var genesisSetActorVersionCmd = &cmds.Command{
 		}
 
 		var template genesis.Template
-		b, err := ioutil.ReadFile(genf)
+		b, err := os.ReadFile(genf)
 		if err != nil {
 			return fmt.Errorf("read genesis template: %w", err)
 		}
@@ -531,7 +530,7 @@ var genesisSetActorVersionCmd = &cmds.Command{
 			return fmt.Errorf("parsing network version: %w", err)
 		}
 
-		if nv > uint64(constants.NewestNetworkVersion) {
+		if nv > uint64(constants.TestNetworkVersion) {
 			return fmt.Errorf("invalid network version: %d", nv)
 		}
 
@@ -542,7 +541,7 @@ var genesisSetActorVersionCmd = &cmds.Command{
 			return err
 		}
 
-		return ioutil.WriteFile(genf, b, 0644)
+		return os.WriteFile(genf, b, 0644)
 	},
 }
 
@@ -574,7 +573,7 @@ var preSealCmd = &cmds.Command{
 		var ki *crypto.KeyInfo
 		if key, _ := req.Options["key"].(string); key != "" {
 			ki = new(crypto.KeyInfo)
-			kh, err := ioutil.ReadFile(key)
+			kh, err := os.ReadFile(key)
 			if err != nil {
 				return err
 			}

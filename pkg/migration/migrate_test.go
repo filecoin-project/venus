@@ -1,6 +1,7 @@
 package migration
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -22,6 +23,7 @@ func TestMigration(t *testing.T) {
 		types.NetworkButterfly: &networks.ButterflySnapNet().Network,
 		types.NetworkCalibnet:  &networks.Calibration().Network,
 		types.NetworkMainnet:   &networks.Mainnet().Network,
+		types.Integrationnet:   &networks.IntegrationNet().Network,
 	}
 
 	for nt, paramsCfg := range cfgs {
@@ -37,7 +39,6 @@ func TestMigration(t *testing.T) {
 		assert.Nil(t, err)
 		newCfg := fsRepo.Config()
 		assert.Equal(t, paramsCfg.GenesisNetworkVersion, newCfg.NetworkParams.GenesisNetworkVersion)
-		assert.EqualValues(t, paramsCfg.ForkUpgradeParam, newCfg.NetworkParams.ForkUpgradeParam)
-
+		assert.EqualValuesf(t, paramsCfg.ForkUpgradeParam, newCfg.NetworkParams.ForkUpgradeParam, fmt.Sprintf("current network type %d", paramsCfg.NetworkType))
 	}
 }

@@ -5,8 +5,6 @@ import (
 	gobig "math/big"
 	"os"
 
-	"github.com/filecoin-project/venus/venus-shared/actors"
-
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
@@ -28,11 +26,14 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+	rtt "github.com/filecoin-project/go-state-types/rt"
 	"github.com/filecoin-project/test-vectors/schema"
 	"github.com/filecoin-project/venus/tools/conformance/chaos"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -133,6 +134,7 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 			PRoot:               preroot,
 			Bsstore:             bs,
 			SysCallsImpl:        syscalls,
+			Tracing:             true,
 		}
 	)
 
@@ -231,9 +233,8 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 	actorBuilder := register.DefaultActorBuilder
 	// register the chaos actor if required by the vector.
 	if chaosOn, ok := d.selector["chaos_actor"]; ok && chaosOn == "true" {
-		av, _ := actors.VersionForNetwork(params.NetworkVersion)
-		chaosActor := chaos.Actor{}
-		actorBuilder.Add(av, nil, chaosActor)
+		av, _ := actorstypes.VersionForNetwork(params.NetworkVersion)
+		actorBuilder.AddMany(av, nil, builtin.MakeRegistryLegacy([]rtt.VMActor{chaos.Actor{}}))
 	}
 
 	register.GetDefaultActros()
@@ -308,7 +309,8 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 // messages that originate from secp256k senders, leaving all
 // others untouched.
 // TODO: generate a signature in the DSL so that it's encoded in
-//  the test vector.
+//
+//	the test vector.
 func toChainMsg(msg *types.Message) (ret types.ChainMsg) {
 	ret = msg
 	if msg.From.Protocol() == address.SECP256K1 {

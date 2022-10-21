@@ -4,6 +4,7 @@ package system
 
 import (
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
@@ -39,5 +40,11 @@ func (s *state7) GetState() interface{} {
 func (s *state7) GetBuiltinActors() cid.Cid {
 
 	return cid.Undef
+
+}
+
+func (s *state7) SetBuiltinActors(c cid.Cid) error {
+
+	return xerrors.New("cannot set manifest cid before v8")
 
 }

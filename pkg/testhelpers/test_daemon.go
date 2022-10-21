@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -21,7 +20,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/pkg/errors"
@@ -86,7 +85,7 @@ func (td *TestDaemon) RepoDir() string {
 
 // CmdAddr returns the command address of the test daemon (if it is running).
 func (td *TestDaemon) CmdAddr() (ma.Multiaddr, error) {
-	str, err := ioutil.ReadFile(filepath.Join(td.RepoDir(), "api"))
+	str, err := os.ReadFile(filepath.Join(td.RepoDir(), "api"))
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +95,7 @@ func (td *TestDaemon) CmdAddr() (ma.Multiaddr, error) {
 
 // CmdToken returns the command token of the test daemon (if it is running).
 func (td *TestDaemon) CmdToken() (string, error) {
-	str, err := ioutil.ReadFile(filepath.Join(td.RepoDir(), "token"))
+	str, err := os.ReadFile(filepath.Join(td.RepoDir(), "token"))
 	if err != nil {
 		return "", err
 	}
@@ -283,7 +282,7 @@ Outer:
 func (td *TestDaemon) ReadStdout() string {
 	td.lk.Lock()
 	defer td.lk.Unlock()
-	out, err := ioutil.ReadAll(td.Stdout)
+	out, err := io.ReadAll(td.Stdout)
 	if err != nil {
 		panic(err)
 	}
@@ -294,7 +293,7 @@ func (td *TestDaemon) ReadStdout() string {
 func (td *TestDaemon) ReadStderr() string {
 	td.lk.Lock()
 	defer td.lk.Unlock()
-	out, err := ioutil.ReadAll(td.Stderr)
+	out, err := io.ReadAll(td.Stderr)
 	if err != nil {
 		panic(err)
 	}
@@ -405,7 +404,8 @@ func (td *TestDaemon) WaitForAPI() error {
 // CreateStorageMinerAddr issues a new message to the network, mines the message
 // and returns the address of the new miner
 // equivalent to:
-//     `venus miner create --from $TEST_ACCOUNT 20`
+//
+//	`venus miner create --from $TEST_ACCOUNT 20`
 func (td *TestDaemon) CreateStorageMinerAddr(peer *TestDaemon, fromAddr address.Address) address.Address {
 	var wg sync.WaitGroup
 	var minerAddr address.Address
@@ -474,7 +474,8 @@ func (td *TestDaemon) WaitForMessageRequireSuccess(msgCid cid.Cid) *types.Messag
 // CreateAddress adds a new address to the daemons wallet and
 // returns it.
 // equivalent to:
-//     `venus address new`
+//
+//	`venus address new`
 func (td *TestDaemon) CreateAddress() string {
 	td.test.Helper()
 	outNew := td.RunSuccess("wallet", "new")
@@ -701,7 +702,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 
 	// Allocate directory for repo and sectors. If set already it is assumed to exist.
 	if td.containerDir == "" {
-		newDir, err := ioutil.TempDir("", "daemon-test")
+		newDir, err := os.MkdirTemp("", "daemon-test")
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 
 	tutils "github.com/filecoin-project/specs-actors/v6/support/testing"

@@ -22,16 +22,14 @@ import (
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
-	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
 
-	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	smoothingtypes "github.com/filecoin-project/go-state-types/builtin/v8/util/smoothing"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 )
 
 var SystemActorAddr = builtin.SystemActorAddr
@@ -64,7 +62,7 @@ type PoStProof = proof.PoStProof
 type FilterEstimate = smoothingtypes.FilterEstimate
 
 func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, verifiedWeight abi.DealWeight) abi.StoragePower {
-	return miner8.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
+	return minertypes.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
 }
 
 func ActorNameByCode(c cid.Cid) string {
@@ -94,9 +92,6 @@ func ActorNameByCode(c cid.Cid) string {
 
 	case builtin7.IsBuiltinActor(c):
 		return builtin7.ActorNameByCode(c)
-
-	case builtin8.IsBuiltinActor(c):
-		return builtin8.ActorNameByCode(c)
 
 	default:
 		return "<unknown>"

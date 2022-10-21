@@ -17,12 +17,13 @@ import (
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/datacap"
 	notinit "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	lminer "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
@@ -141,7 +142,7 @@ func (v *View) MinerSectorInfo(ctx context.Context, maddr addr.Address, sectorNu
 	return info, nil
 }
 
-//GetSectorsForWinningPoSt return sector of winning post challenge result
+// GetSectorsForWinningPoSt return sector of winning post challenge result
 func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, maddr addr.Address, rand abi.PoStRandomness) ([]builtin.ExtendedSectorInfo, error) {
 	mas, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
@@ -487,7 +488,7 @@ func (v *View) MinerClaimedPower(ctx context.Context, miner addr.Address) (raw, 
 	return p.RawBytePower, p.QualityAdjPower, nil
 }
 
-//MinerNominalPowerMeetsConsensusMinimum return whether miner meet consensus minmum power
+// MinerNominalPowerMeetsConsensusMinimum return whether miner meet consensus minmum power
 func (v *View) MinerNominalPowerMeetsConsensusMinimum(ctx context.Context, addr addr.Address) (bool, error) {
 	st, err := v.LoadPowerActor(ctx)
 	if err != nil {
@@ -669,7 +670,7 @@ func (v *View) StateMinerActiveSectors(ctx context.Context, maddr addr.Address, 
 	return mas.LoadSectors(&activeSectors)
 }
 
-//GetFilLocked return all locked fil amount
+// GetFilLocked return all locked fil amount
 func (v *View) GetFilLocked(ctx context.Context, st vmstate.Tree) (abi.TokenAmount, error) {
 	filMarketLocked, err := getFilMarketLocked(ctx, v.ipldStore, st)
 	if err != nil {
@@ -689,7 +690,7 @@ func (v *View) GetFilLocked(ctx context.Context, st vmstate.Tree) (abi.TokenAmou
 	return big.Add(filMarketLocked, filPowerLocked), nil
 }
 
-//LoadActor load actor from tree
+// LoadActor load actor from tree
 func (v *View) LoadActor(ctx context.Context, address addr.Address) (*types.Actor, error) {
 	return v.loadActor(ctx, address)
 }
@@ -723,12 +724,12 @@ func (v *View) LoadInitState(ctx context.Context) (notinit.State, error) {
 	return notinit.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
-//LoadPaychState get pay channel state for actor
+// LoadPaychState get pay channel state for actor
 func (v *View) LoadPaychState(ctx context.Context, actor *types.Actor) (paychActor.State, error) {
 	return paychActor.Load(adt.WrapStore(context.TODO(), v.ipldStore), actor)
 }
 
-//LoadMinerState return miner state
+// LoadMinerState return miner state
 func (v *View) LoadMinerState(ctx context.Context, maddr addr.Address) (lminer.State, error) {
 	resolvedAddr, err := v.InitResolveAddress(ctx, maddr)
 	if err != nil {
@@ -789,6 +790,15 @@ func (v *View) LoadMarketState(ctx context.Context) (market.State, error) {
 	return market.Load(adt.WrapStore(ctx, v.ipldStore), actr)
 }
 
+func (v *View) LoadDatacapState(ctx context.Context) (datacap.State, error) {
+	actr, err := v.loadActor(ctx, datacap.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	return datacap.Load(adt.WrapStore(ctx, v.ipldStore), actr)
+}
+
 // nolint
 func (v *View) LoadAccountState(ctx context.Context, a addr.Address) (account.State, error) {
 	resolvedAddr, err := v.InitResolveAddress(ctx, a)
@@ -803,7 +813,7 @@ func (v *View) LoadAccountState(ctx context.Context, a addr.Address) (account.St
 	return account.Load(adt.WrapStore(context.TODO(), v.ipldStore), actr)
 }
 
-//loadActor load actor of address in db
+// loadActor load actor of address in db
 func (v *View) loadActor(ctx context.Context, address addr.Address) (*types.Actor, error) {
 	tree, err := vmstate.LoadState(ctx, v.ipldStore, v.root)
 	if err != nil {

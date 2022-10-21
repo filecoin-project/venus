@@ -10,14 +10,14 @@ import (
 	"github.com/filecoin-project/venus/pkg/net/exchange"
 	"github.com/filecoin-project/venus/pkg/net/peermgr"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/host"
-	net "github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p/core/host"
+	net "github.com/libp2p/go-libp2p/core/network"
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/venus/pkg/metrics"

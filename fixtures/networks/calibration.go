@@ -38,30 +38,31 @@ func Calibration() *NetworkConf {
 			MinVerifiedDealSize:     1 << 20,
 			PreCommitChallengeDelay: abi.ChainEpoch(150),
 			ForkUpgradeParam: &config.ForkUpgradeConfig{
-				UpgradeBreezeHeight:     -1,
-				UpgradeSmokeHeight:      -2,
-				UpgradeIgnitionHeight:   -3,
-				UpgradeRefuelHeight:     -4,
-				UpgradeAssemblyHeight:   30,
-				UpgradeTapeHeight:       60,
-				UpgradeLiftoffHeight:    -5,
-				UpgradeKumquatHeight:    90,
-				UpgradeCalicoHeight:     120,
-				UpgradePersianHeight:    100 + (120 * 1),
-				UpgradeOrangeHeight:     300,
-				UpgradeTrustHeight:      330,
-				UpgradeNorwegianHeight:  360,
-				UpgradeTurboHeight:      390,
-				UpgradeHyperdriveHeight: 420,
-				UpgradeSkyrHeight:       1044660, // 2022-06-16T17:30:00Z
-
 				BreezeGasTampingDuration: 120,
+				UpgradeBreezeHeight:      -1,
+				UpgradeSmokeHeight:       -2,
+				UpgradeIgnitionHeight:    -3,
+				UpgradeRefuelHeight:      -4,
+				UpgradeAssemblyHeight:    30,
+				UpgradeTapeHeight:        60,
+				UpgradeLiftoffHeight:     -5,
+				UpgradeKumquatHeight:     90,
+				UpgradeCalicoHeight:      120,
+				UpgradePersianHeight:     100 + (120 * 1),
 				UpgradeClausHeight:       270,
+				UpgradeOrangeHeight:      300,
+				UpgradeTrustHeight:       330,
+				UpgradeNorwegianHeight:   360,
+				UpgradeTurboHeight:       390,
+				UpgradeHyperdriveHeight:  420,
 				UpgradeChocolateHeight:   312746,
-				UpgradeOhSnapHeight:      682006, // 2022-02-10T19:23:00Z
+				UpgradeOhSnapHeight:      682006,  // 2022-02-10T19:23:00Z
+				UpgradeSkyrHeight:        1044660, // 2022-06-16T17:30:00Z
+				UpgradeSharkHeight:       1407374, // 2022-10-20T16:00:07Z
 			},
-			DrandSchedule:  map[abi.ChainEpoch]config.DrandEnum{0: 1},
-			AddressNetwork: address.Testnet,
+			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: 1},
+			AddressNetwork:       address.Testnet,
+			PropagationDelaySecs: 10,
 		},
 	}
 }

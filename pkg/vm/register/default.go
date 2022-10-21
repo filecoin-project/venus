@@ -5,11 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	/* inline-gen template
-	{{range .actorVersions}}
-	exported{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin/exported"{{end}}
-	/* inline-gen start */
-
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
 	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
 	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
@@ -17,12 +13,7 @@ import (
 	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
 	exported6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/exported"
 	exported7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/exported"
-	exported8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/exported"
-
-	/* inline-gen end */
-
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
-	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -36,21 +27,15 @@ var defaultActors dispatch.CodeLoader
 
 func GetDefaultActros() *dispatch.CodeLoader {
 	loadOnce.Do(func() {
-		/* inline-gen template
-		{{range .actorVersions}}
-		DefaultActorBuilder.AddMany(actors.Version{{.}}, dispatch.ActorsVersionPredicate(actors.Version{{.}}), exported{{.}}.BuiltinActors()...){{end}}
-		/* inline-gen start */
-
-		DefaultActorBuilder.AddMany(actors.Version0, dispatch.ActorsVersionPredicate(actors.Version0), exported0.BuiltinActors()...)
-		DefaultActorBuilder.AddMany(actors.Version2, dispatch.ActorsVersionPredicate(actors.Version2), exported2.BuiltinActors()...)
-		DefaultActorBuilder.AddMany(actors.Version3, dispatch.ActorsVersionPredicate(actors.Version3), exported3.BuiltinActors()...)
-		DefaultActorBuilder.AddMany(actors.Version4, dispatch.ActorsVersionPredicate(actors.Version4), exported4.BuiltinActors()...)
-		DefaultActorBuilder.AddMany(actors.Version5, dispatch.ActorsVersionPredicate(actors.Version5), exported5.BuiltinActors()...)
-		DefaultActorBuilder.AddMany(actors.Version6, dispatch.ActorsVersionPredicate(actors.Version6), exported6.BuiltinActors()...)
-		DefaultActorBuilder.AddMany(actors.Version7, dispatch.ActorsVersionPredicate(actors.Version7), exported7.BuiltinActors()...)
-		DefaultActorBuilder.AddMany(actors.Version8, dispatch.ActorsVersionPredicate(actors.Version8), exported8.BuiltinActors()...)
-		/* inline-gen end */
-
+		DefaultActorBuilder.AddMany(actorstypes.Version0, dispatch.ActorsVersionPredicate(actorstypes.Version0), builtin.MakeRegistryLegacy(exported0.BuiltinActors()))
+		DefaultActorBuilder.AddMany(actorstypes.Version2, dispatch.ActorsVersionPredicate(actorstypes.Version2), builtin.MakeRegistryLegacy(exported2.BuiltinActors()))
+		DefaultActorBuilder.AddMany(actorstypes.Version3, dispatch.ActorsVersionPredicate(actorstypes.Version3), builtin.MakeRegistryLegacy(exported3.BuiltinActors()))
+		DefaultActorBuilder.AddMany(actorstypes.Version4, dispatch.ActorsVersionPredicate(actorstypes.Version4), builtin.MakeRegistryLegacy(exported4.BuiltinActors()))
+		DefaultActorBuilder.AddMany(actorstypes.Version5, dispatch.ActorsVersionPredicate(actorstypes.Version5), builtin.MakeRegistryLegacy(exported5.BuiltinActors()))
+		DefaultActorBuilder.AddMany(actorstypes.Version6, dispatch.ActorsVersionPredicate(actorstypes.Version6), builtin.MakeRegistryLegacy(exported6.BuiltinActors()))
+		DefaultActorBuilder.AddMany(actorstypes.Version7, dispatch.ActorsVersionPredicate(actorstypes.Version7), builtin.MakeRegistryLegacy(exported7.BuiltinActors()))
+		DefaultActorBuilder.AddMany(actorstypes.Version8, dispatch.ActorsVersionPredicate(actorstypes.Version8), builtin.MakeRegistry(actorstypes.Version8))
+		DefaultActorBuilder.AddMany(actorstypes.Version9, dispatch.ActorsVersionPredicate(actorstypes.Version9), builtin.MakeRegistry(actorstypes.Version9))
 		defaultActors = DefaultActorBuilder.Build()
 	})
 

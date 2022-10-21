@@ -14,14 +14,20 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/vm/register"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	_init "github.com/filecoin-project/venus/venus-shared/actors/builtin/init"
@@ -60,19 +66,13 @@ func (msa *minerStateAPI) StateMinerSectorAllocated(ctx context.Context, maddr a
 }
 
 // StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector
-func (msa *minerStateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
+func (msa *minerStateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
-		return miner.SectorPreCommitOnChainInfo{}, fmt.Errorf("loading tipset:%s parent state view: %v", tsk, err)
+		return nil, fmt.Errorf("loading tipset:%s parent state view: %v", tsk, err)
 	}
 
-	pci, err := view.SectorPreCommitInfo(ctx, maddr, n)
-	if err != nil {
-		return miner.SectorPreCommitOnChainInfo{}, err
-	} else if pci == nil {
-		return miner.SectorPreCommitOnChainInfo{}, fmt.Errorf("precommit info is not exists")
-	}
-	return *pci, nil
+	return view.SectorPreCommitInfo(ctx, maddr, n)
 }
 
 // StateSectorGetInfo returns the on-chain info for the specified miner's sector. Returns null in case the sector info isn't found
@@ -137,6 +137,9 @@ func (msa *minerStateAPI) StateMinerInfo(ctx context.Context, maddr address.Addr
 		SectorSize:                 minfo.SectorSize,
 		WindowPoStPartitionSectors: minfo.WindowPoStPartitionSectors,
 		ConsensusFaultElapsed:      minfo.ConsensusFaultElapsed,
+		Beneficiary:                minfo.Beneficiary,
+		BeneficiaryTerm:            &minfo.BeneficiaryTerm,
+		PendingBeneficiaryTerm:     minfo.PendingBeneficiaryTerm,
 	}
 
 	if minfo.PendingWorkerKey != nil {
@@ -373,6 +376,206 @@ func (msa *minerStateAPI) StateMarketStorageDeal(ctx context.Context, dealID abi
 	}, nil
 }
 
+// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
+// pending allocation is not found.
+func (msa *minerStateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
+	}
+
+	st, err := view.LoadMarketState(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+	}
+
+	allocationID, err := st.GetAllocationIdForPendingDeal(dealID)
+	if err != nil {
+		return nil, err
+	}
+
+	if allocationID == verifregtypes.NoAllocationID {
+		return nil, nil
+	}
+
+	dealState, err := msa.StateMarketStorageDeal(ctx, dealID, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	return msa.StateGetAllocation(ctx, dealState.Proposal.Client, allocationID, tsk)
+}
+
+// StateGetAllocation returns the allocation for a given address and allocation ID.
+func (msa *minerStateAPI) StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationID verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
+	idAddr, err := msa.ChainSubmodule.API().StateLookupID(ctx, clientAddr, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
+	}
+
+	st, err := view.LoadVerifregActor(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+	}
+
+	allocation, found, err := st.GetAllocation(idAddr, allocationID)
+	if err != nil {
+		return nil, fmt.Errorf("getting allocation: %w", err)
+	}
+	if !found {
+		return nil, nil
+	}
+
+	return allocation, nil
+}
+
+// StateGetAllocations returns the all the allocations for a given client.
+func (msa *minerStateAPI) StateGetAllocations(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) {
+	idAddr, err := msa.ChainSubmodule.API().StateLookupID(ctx, clientAddr, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
+	}
+
+	st, err := view.LoadVerifregActor(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+	}
+
+	allocations, err := st.GetAllocations(idAddr)
+	if err != nil {
+		return nil, fmt.Errorf("getting allocations: %w", err)
+	}
+
+	return allocations, nil
+}
+
+// StateGetClaim returns the claim for a given address and claim ID.
+func (msa *minerStateAPI) StateGetClaim(ctx context.Context, providerAddr address.Address, claimID verifregtypes.ClaimId, tsk types.TipSetKey) (*verifregtypes.Claim, error) {
+	idAddr, err := msa.ChainSubmodule.API().StateLookupID(ctx, providerAddr, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
+	}
+
+	st, err := view.LoadVerifregActor(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+	}
+
+	claim, found, err := st.GetClaim(idAddr, claimID)
+	if err != nil {
+		return nil, fmt.Errorf("getting claim: %w", err)
+	}
+	if !found {
+		return nil, nil
+	}
+
+	return claim, nil
+}
+
+// StateGetClaims returns the all the claims for a given provider.
+func (msa *minerStateAPI) StateGetClaims(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) {
+	idAddr, err := msa.ChainSubmodule.API().StateLookupID(ctx, providerAddr, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
+	}
+
+	st, err := view.LoadVerifregActor(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load miner actor state: %v", err)
+	}
+
+	claims, err := st.GetClaims(idAddr)
+	if err != nil {
+		return nil, fmt.Errorf("getting claims: %w", err)
+	}
+
+	return claims, nil
+}
+
+// StateComputeDataCID computes DataCID from a set of on-chain deals
+func (msa *minerStateAPI) StateComputeDataCID(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) {
+	nv, err := msa.API().StateNetworkVersion(ctx, tsk)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+
+	var ccparams []byte
+	if nv < network.Version13 {
+		ccparams, err = actors.SerializeParams(&market2.ComputeDataCommitmentParams{
+			DealIDs:    deals,
+			SectorType: sectorType,
+		})
+	} else {
+		ccparams, err = actors.SerializeParams(&market5.ComputeDataCommitmentParams{
+			Inputs: []*market5.SectorDataSpec{
+				{
+					DealIDs:    deals,
+					SectorType: sectorType,
+				},
+			},
+		})
+	}
+
+	if err != nil {
+		return cid.Undef, fmt.Errorf("computing params for ComputeDataCommitment: %w", err)
+	}
+
+	ccmt := &types.Message{
+		To:     market.Address,
+		From:   maddr,
+		Value:  types.NewInt(0),
+		Method: market.Methods.ComputeDataCommitment,
+		Params: ccparams,
+	}
+	r, err := msa.API().StateCall(ctx, ccmt, tsk)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("calling ComputeDataCommitment: %w", err)
+	}
+	if r.MsgRct.ExitCode != 0 {
+		return cid.Undef, fmt.Errorf("receipt for ComputeDataCommitment had exit code %d", r.MsgRct.ExitCode)
+	}
+
+	if nv < network.Version13 {
+		var c cbg.CborCid
+		if err := c.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
+			return cid.Undef, fmt.Errorf("failed to unmarshal CBOR to CborCid: %w", err)
+		}
+
+		return cid.Cid(c), nil
+	}
+
+	var cr market5.ComputeDataCommitmentReturn
+	if err := cr.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
+		return cid.Undef, fmt.Errorf("failed to unmarshal CBOR to CborCid: %w", err)
+	}
+
+	if len(cr.CommDs) != 1 {
+		return cid.Undef, fmt.Errorf("CommD output must have 1 entry")
+	}
+
+	return cid.Cid(cr.CommDs[0]), nil
+}
+
 var initialPledgeNum = big.NewInt(110)
 var initialPledgeDen = big.NewInt(100)
 
@@ -396,16 +599,20 @@ func (msa *minerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context
 
 	store := msa.ChainReader.Store(ctx)
 	var sectorWeight abi.StoragePower
-	if act, found, err := sTree.GetActor(ctx, market.Address); err != nil || !found {
-		return big.Int{}, fmt.Errorf("loading market actor %s: %v", maddr, err)
-	} else if s, err := market.Load(store, act); err != nil {
-		return big.Int{}, fmt.Errorf("loading market actor state %s: %v", maddr, err)
-	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
-		return big.Int{}, fmt.Errorf("verifying deals for activation: %v", err)
+	if msa.Fork.GetNetworkVersion(ctx, ts.Height()) <= network.Version16 {
+		if act, found, err := sTree.GetActor(ctx, market.Address); err != nil || !found {
+			return big.Int{}, fmt.Errorf("loading market actor %s: %v", maddr, err)
+		} else if s, err := market.Load(store, act); err != nil {
+			return big.Int{}, fmt.Errorf("loading market actor state %s: %v", maddr, err)
+		} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
+			return big.Int{}, fmt.Errorf("verifying deals for activation: %v", err)
+		} else {
+			// NB: not exactly accurate, but should always lead us to *over* estimate, not under
+			duration := pci.Expiration - ts.Height()
+			sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
+		}
 	} else {
-		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
-		duration := pci.Expiration - ts.Height()
-		sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
+		sectorWeight = miner.QAPowerMax(ssize)
 	}
 
 	var powerSmoothed builtin.FilterEstimate
@@ -832,20 +1039,45 @@ func (msa *minerStateAPI) StateVerifiedClientStatus(ctx context.Context, addr ad
 		return nil, fmt.Errorf("loading state view %s: %v", tsk, err)
 	}
 
-	vrs, err := view.LoadVerifregActor(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load verified registry state: %v", err)
-	}
-
 	aid, err := view.LookupID(ctx, addr)
 	if err != nil {
 		return nil, fmt.Errorf("loook up id of %s : %v", addr, err)
 	}
 
-	verified, dcap, err := vrs.VerifiedClientDataCap(aid)
+	nv, err := msa.ChainSubmodule.API().StateNetworkVersion(ctx, tsk)
 	if err != nil {
-		return nil, fmt.Errorf("looking up verified client: %v", err)
+		return nil, err
 	}
+
+	av, err := actorstypes.VersionForNetwork(nv)
+	if err != nil {
+		return nil, err
+	}
+
+	var dcap abi.StoragePower
+	var verified bool
+	if av <= 8 {
+		vrs, err := view.LoadVerifregActor(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load verified registry state: %v", err)
+		}
+
+		verified, dcap, err = vrs.VerifiedClientDataCap(aid)
+		if err != nil {
+			return nil, fmt.Errorf("looking up verified client: %w", err)
+		}
+	} else {
+		dcs, err := view.LoadDatacapState(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load datacap actor state: %w", err)
+		}
+
+		verified, dcap, err = dcs.VerifiedClientDataCap(aid)
+		if err != nil {
+			return nil, fmt.Errorf("looking up verified client: %w", err)
+		}
+	}
+
 	if !verified {
 		return nil, nil
 	}
@@ -1017,4 +1249,22 @@ func (msa *minerStateAPI) StateListMessages(ctx context.Context, match *types.Me
 	}
 
 	return out, nil
+}
+
+// StateMinerAllocated returns a bitfield containing all sector numbers marked as allocated in miner state
+func (msa *minerStateAPI) StateMinerAllocated(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*bitfield.BitField, error) {
+	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
+	if err != nil {
+		return nil, fmt.Errorf("loading tipset:%s parent state view: %v", tsk, err)
+	}
+
+	act, err := view.LoadActor(ctx, addr)
+	if err != nil {
+		return nil, err
+	}
+	mas, err := lminer.Load(msa.ChainReader.Store(ctx), act)
+	if err != nil {
+		return nil, err
+	}
+	return mas.GetAllocatedSectors()
 }

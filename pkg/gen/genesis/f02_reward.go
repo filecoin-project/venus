@@ -10,14 +10,14 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	bstore "github.com/filecoin-project/venus/venus-shared/blockstore"
 )
 
-func SetupRewardActor(ctx context.Context, bs bstore.Blockstore, qaPower big.Int, av actors.Version) (*types.Actor, error) {
+func SetupRewardActor(ctx context.Context, bs bstore.Blockstore, qaPower big.Int, av actorstypes.Version) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
 	rst, err := reward.MakeState(adt.WrapStore(ctx, cst), av, qaPower)
 	if err != nil {

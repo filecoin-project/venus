@@ -3,7 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"reflect"
 	"regexp"
@@ -261,6 +261,7 @@ type NetworkParamsConfig struct {
 	ForkUpgradeParam        *ForkUpgradeConfig           `json:"forkUpgradeParam"`
 	AddressNetwork          address.Network              `json:"addressNetwork"`
 	PreCommitChallengeDelay abi.ChainEpoch               `json:"preCommitChallengeDelay"`
+	PropagationDelaySecs    uint64                       `json:"propagationDelaySecs"`
 }
 
 // ForkUpgradeConfig record upgrade parameters
@@ -286,6 +287,7 @@ type ForkUpgradeConfig struct {
 	UpgradeChocolateHeight     abi.ChainEpoch `json:"upgradeChocolateHeight"`
 	UpgradeOhSnapHeight        abi.ChainEpoch `json:"upgradeOhSnapHeight"`
 	UpgradeSkyrHeight          abi.ChainEpoch `json:"upgradeSkyrHeight"`
+	UpgradeSharkHeight         abi.ChainEpoch `json:"upgradeSharkHeight"`
 }
 
 func IsNearUpgrade(epoch, upgradeEpoch abi.ChainEpoch) bool {
@@ -313,11 +315,13 @@ var DefaultForkUpgradeParam = &ForkUpgradeConfig{
 	UpgradeChocolateHeight:   1231620,
 	UpgradeOhSnapHeight:      1594680,
 	UpgradeSkyrHeight:        1960320,
+	UpgradeSharkHeight:       99999999999999,
 }
 
 func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 	defaultParams := *DefaultForkUpgradeParam
 	return &NetworkParamsConfig{
+		DevNet:                 true,
 		ConsensusMinerMinPower: 0, // 0 means don't override the value
 		ReplaceProofTypes: []abi.RegisteredSealProof{
 			abi.RegisteredSealProof_StackedDrg2KiBV1,
@@ -325,8 +329,9 @@ func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 			abi.RegisteredSealProof_StackedDrg32GiBV1,
 			abi.RegisteredSealProof_StackedDrg64GiBV1,
 		},
-		DrandSchedule:    map[abi.ChainEpoch]DrandEnum{0: 5, -1: 1},
-		ForkUpgradeParam: &defaultParams,
+		DrandSchedule:        map[abi.ChainEpoch]DrandEnum{0: 5, -1: 1},
+		ForkUpgradeParam:     &defaultParams,
+		PropagationDelaySecs: 10,
 	}
 }
 
@@ -398,7 +403,7 @@ func ReadFile(file string) (*Config, error) {
 	}
 
 	cfg := NewDefaultConfig()
-	rawConfig, err := ioutil.ReadAll(f)
+	rawConfig, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}

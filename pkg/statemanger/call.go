@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/ipfs/go-cid"
@@ -34,6 +35,10 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 		stateRoot cid.Cid
 		view      *state.View
 	)
+
+	// Copy the message as we'll be modifying the nonce.
+	msgCopy := *msg
+	msg = &msgCopy
 
 	if ts == nil {
 		ts = s.cs.GetHead()
@@ -95,6 +100,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 		Bsstore:             buffStore,
 		SysCallsImpl:        s.syscallsImpl,
 		Fork:                s.fork,
+		Tracing:             true,
 	}
 
 	vmi, err := fvm.NewVM(ctx, vmOption)
@@ -148,6 +154,19 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 			},
 		}
 	}
+
+	// If the fee cap is set to zero, make gas free.
+	if msg.GasFeeCap.NilOrZero() {
+		// Now estimate with a new VM with no base fee.
+		vmOption.BaseFee = big.Zero()
+		vmOption.PRoot = stateRoot
+
+		vmi, err = fvm.NewVM(ctx, vmOption)
+		if err != nil {
+			return nil, fmt.Errorf("failed to set up estimation vm: %w", err)
+		}
+	}
+
 	return vmi.ApplyMessage(ctx, msgApply)
 }
 
@@ -217,6 +236,7 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 		PRoot:               ts.At(0).ParentStateRoot,
 		Bsstore:             s.cs.Blockstore(),
 		SysCallsImpl:        s.syscallsImpl,
+		Tracing:             true,
 	}
 
 	v, err := fvm.NewVM(ctx, vmOption)

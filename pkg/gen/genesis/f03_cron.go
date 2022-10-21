@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -15,7 +16,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-func SetupCronActor(ctx context.Context, bs bstore.Blockstore, av actors.Version) (*types.Actor, error) {
+func SetupCronActor(ctx context.Context, bs bstore.Blockstore, av actorstypes.Version) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
 	st, err := cron.MakeState(adt.WrapStore(ctx, cbor.NewCborStore(bs)), av)
 	if err != nil {

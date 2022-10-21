@@ -4,6 +4,8 @@ TEMPLATES IN chain/actors:
 	builtin/builtin.go.template
 	builtin/cron/actor.go.template
 	builtin/cron/state.go.template
+	builtin/datacap/actor.go.template
+	builtin/datacap/state.go.template
 	builtin/init/actor.go.template
 	builtin/init/state.go.template
 	builtin/market/actor.go.template
@@ -18,6 +20,7 @@ TEMPLATES IN chain/actors:
 	builtin/paych/state.go.template
 	builtin/power/actor.go.template
 	builtin/power/state.go.template
+	builtin/registry.go.template
 	builtin/reward/actor.go.template
 	builtin/reward/state.go.template
 	builtin/system/actor.go.template

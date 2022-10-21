@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,7 +20,7 @@ const (
 )
 
 func main() {
-	db, err := ioutil.ReadFile(os.Args[2])
+	db, err := os.ReadFile(os.Args[2])
 	if err != nil {
 		panic(err)
 	}
@@ -40,7 +39,7 @@ func main() {
 		if filepath.Ext(path) != ".go" {
 			return nil
 		}
-		fb, err := ioutil.ReadFile(path)
+		fb, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
@@ -116,7 +115,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			if err := ioutil.WriteFile(path, formatted, 0664); err != nil {
+			if err := os.WriteFile(path, formatted, 0664); err != nil {
 				return err
 			}
 		}
