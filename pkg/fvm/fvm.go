@@ -725,7 +725,7 @@ var useFvmDebug = os.Getenv("VENUS_FVM_DEVELOPER_DEBUG") == "1"
 func NewVM(ctx context.Context, opts vm.VmOption) (vm.Interface, error) {
 	if opts.NetworkVersion >= network.Version16 {
 		if useFvmDebug {
-			return NewDebugFVM(ctx, &opts)
+			return NewDualExecutionFVM(ctx, &opts)
 		}
 		return NewFVM(ctx, &opts)
 	}
