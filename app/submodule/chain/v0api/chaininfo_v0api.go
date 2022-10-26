@@ -9,7 +9,6 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/ipfs/go-cid"
 
@@ -64,13 +63,13 @@ func (a *WrapperV1IChain) ChainGetRandomnessFromTickets(ctx context.Context, key
 	return a.StateGetRandomnessFromTickets(ctx, personalization, randEpoch, entropy, key)
 }
 
-func (a *WrapperV1IChain) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
+func (a *WrapperV1IChain) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (types.SectorPreCommitOnChainInfo, error) {
 	pi, err := a.IChain.StateSectorPreCommitInfo(ctx, maddr, n, tsk)
 	if err != nil {
-		return miner.SectorPreCommitOnChainInfo{}, err
+		return types.SectorPreCommitOnChainInfo{}, err
 	}
 	if pi == nil {
-		return miner.SectorPreCommitOnChainInfo{}, fmt.Errorf("precommit info does not exist")
+		return types.SectorPreCommitOnChainInfo{}, fmt.Errorf("precommit info does not exist")
 	}
 
 	return *pi, nil

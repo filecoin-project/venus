@@ -16,7 +16,6 @@ import (
 
 	reward4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/reward"
 
-	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	smoothing9 "github.com/filecoin-project/go-state-types/builtin/v9/util/smoothing"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
@@ -30,7 +29,6 @@ import (
 
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/reward"
@@ -221,7 +219,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 		// Publish preseal deals, and calculate the QAPower
 
 		{
-			publish := func(params *markettypes.PublishStorageDealsParams) error {
+			publish := func(params *types.PublishStorageDealsParams) error {
 				fmt.Printf("publishing %d storage deals on miner %s with worker %s\n", len(params.Deals), params.Deals[0].Proposal.Provider, m.Worker)
 
 				ret, err := doExecValue(ctx, genesisVM, market.Address, m.Worker, big.Zero(), builtin0.MethodsMarket.PublishStorageDeals, mustEnc(params))
@@ -245,11 +243,11 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 				return nil
 			}
 
-			params := &markettypes.PublishStorageDealsParams{}
+			params := &types.PublishStorageDealsParams{}
 			for _, preseal := range m.Sectors {
 				preseal.Deal.VerifiedDeal = true
 				preseal.Deal.EndEpoch = minerInfos[i].presealExp
-				p := markettypes.ClientDealProposal{
+				p := types.ClientDealProposal{
 					Proposal:        preseal.Deal,
 					ClientSignature: crypto.Signature{Type: crypto.SigTypeBLS},
 				}
@@ -279,11 +277,11 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 						return cid.Undef, err
 					}
 
-					params = &markettypes.PublishStorageDealsParams{}
+					params = &types.PublishStorageDealsParams{}
 				}
 
 				rawPow = big.Add(rawPow, big.NewInt(int64(m.SectorSize)))
-				sectorWeight := builtin.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, big.Zero(), markettypes.DealWeight(&preseal.Deal))
+				sectorWeight := builtin.QAPowerForWeight(m.SectorSize, minerInfos[i].presealExp, big.Zero(), types.DealWeight(&preseal.Deal))
 				minerInfos[i].sectorWeight = append(minerInfos[i].sectorWeight, sectorWeight)
 				qaPow = big.Add(qaPow, sectorWeight)
 			}
@@ -380,7 +378,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 		// Commit sectors
 		{
 			for pi, preseal := range m.Sectors {
-				params := &minertypes.SectorPreCommitInfo{
+				params := &types.SectorPreCommitInfo{
 					SealProof:     preseal.ProofType,
 					SectorNumber:  preseal.SectorID,
 					SealedCID:     preseal.CommR,
@@ -461,9 +459,9 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 					return cid.Undef, fmt.Errorf("getting current total power: %w", err)
 				}
 
-				pcd := miner9.PreCommitDepositForPower(smoothing9.FilterEstimate(rewardSmoothed), smoothing9.FilterEstimate(*tpow.QualityAdjPowerSmoothed), miner9.QAPowerMax(m.SectorSize))
+				pcd := types.PreCommitDepositForPower(smoothing9.FilterEstimate(rewardSmoothed), smoothing9.FilterEstimate(*tpow.QualityAdjPowerSmoothed), types.QAPowerMax(m.SectorSize))
 
-				pledge := miner9.InitialPledgeForPower(
+				pledge := types.InitialPledgeForPower(
 					sectorWeight,
 					baselinePower,
 					smoothing9.FilterEstimate(rewardSmoothed),

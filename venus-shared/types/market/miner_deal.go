@@ -5,15 +5,14 @@ import (
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
-
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 )
 
 type MinerDeal struct {
-	market.ClientDealProposal
+	types.ClientDealProposal
 	ProposalCid           cid.Cid
 	AddFundsCid           *cid.Cid
 	PublishCid            *cid.Cid

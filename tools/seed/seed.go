@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/google/uuid"
@@ -261,12 +260,12 @@ func createDeals(m *genesis.Miner, ki *crypto.KeyInfo, maddr address.Address, ss
 		return err
 	}
 	for i, sector := range m.Sectors {
-		label, err := markettypes.NewLabelFromString(fmt.Sprintf("%d", i))
+		label, err := types.NewLabelFromString(fmt.Sprintf("%d", i))
 		if err != nil {
 			return err
 		}
 
-		proposal := &markettypes.DealProposal{
+		proposal := &types.DealProposal{
 			PieceCID:             sector.CommD,
 			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               addr,
