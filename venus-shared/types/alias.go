@@ -17,6 +17,7 @@ type (
 	PublishStorageDealsParams   = markettypes.PublishStorageDealsParams
 	ClientDealProposal          = markettypes.ClientDealProposal
 	DealState                   = markettypes.DealState
+	DealLabel                   = markettypes.DealLabel
 
 	ChangeWorkerAddressParams    = minertypes.ChangeWorkerAddressParams
 	CompactSectorNumbersParams   = minertypes.CompactSectorNumbersParams
@@ -34,9 +35,10 @@ type (
 	CreateMinerParams = powertypes.CreateMinerParams
 	CreateMinerReturn = powertypes.CreateMinerReturn
 
-	SignedVoucher   = paychtypes.SignedVoucher
-	ModVerifyParams = paychtypes.ModVerifyParams
-	LaneState       = paychtypes.LaneState
+	SignedVoucher            = paychtypes.SignedVoucher
+	ModVerifyParams          = paychtypes.ModVerifyParams
+	LaneState                = paychtypes.LaneState
+	UpdateChannelStateParams = paychtypes.UpdateChannelStateParams
 
 	ClaimId      = verifregtypes.ClaimId // nolint
 	Claim        = verifregtypes.Claim
@@ -46,6 +48,7 @@ type (
 
 var (
 	NewLabelFromString = markettypes.NewLabelFromString
+	NewLabelFromBytes  = markettypes.NewLabelFromBytes
 	DealWeight         = markettypes.DealWeight
 
 	QAPowerMax               = minertypes.QAPowerMax
