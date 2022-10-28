@@ -13,9 +13,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types/params"
 )
 
-var (
-	blocksPerEpochBig = big.NewInt(0).SetUint64(params.BlocksPerEpoch)
-)
+var blocksPerEpochBig = big.NewInt(0).SetUint64(params.BlocksPerEpoch)
 
 var TotalFilecoinInt = internal.TotalFilecoinInt
 

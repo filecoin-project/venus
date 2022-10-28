@@ -156,7 +156,6 @@ func (r *valueProviderRegistry) provide(t *testing.T, rval reflect.Value) {
 		r.RLock()
 		provider, ok = r.providers[typeInt]
 		r.RUnlock()
-
 	}
 
 	if ok {
@@ -221,5 +220,4 @@ func (r *valueProviderRegistry) provide(t *testing.T, rval reflect.Value) {
 
 		return
 	}
-
 }

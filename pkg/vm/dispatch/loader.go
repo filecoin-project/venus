@@ -26,7 +26,7 @@ type ActorInfo struct {
 
 // GetActorImpl returns executable code for an actor by code cid at a specific network version
 func (cl CodeLoader) GetActorImpl(code cid.Cid, rt vmr.Runtime) (Dispatcher, *ExcuteError) {
-	//todo version check
+	// todo version check
 	actor, ok := cl.actors[code]
 	if !ok {
 		return nil, NewExcuteError(exitcode.SysErrorIllegalActor, "Actor code not found. code: %s", code)
@@ -40,7 +40,7 @@ func (cl CodeLoader) GetActorImpl(code cid.Cid, rt vmr.Runtime) (Dispatcher, *Ex
 
 // GetActorImpl returns executable code for an actor by code cid at a specific protocol version
 func (cl CodeLoader) GetUnsafeActorImpl(code cid.Cid) (Dispatcher, error) {
-	//todo version check
+	// todo version check
 	actor, ok := cl.actors[code]
 	if !ok {
 		return nil, fmt.Errorf("unable to get actor for code %s", code)
@@ -49,7 +49,7 @@ func (cl CodeLoader) GetUnsafeActorImpl(code cid.Cid) (Dispatcher, error) {
 }
 
 func (cl CodeLoader) GetVMActor(code cid.Cid) (builtin.RegistryEntry, error) {
-	//todo version check
+	// todo version check
 	actor, ok := cl.actors[code]
 	if !ok {
 		return builtin.RegistryEntry{}, fmt.Errorf("unable to get actor for code %s", code)

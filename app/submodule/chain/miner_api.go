@@ -574,8 +574,10 @@ func (msa *minerStateAPI) StateComputeDataCID(ctx context.Context, maddr address
 	return cid.Cid(cr.CommDs[0]), nil
 }
 
-var initialPledgeNum = big.NewInt(110)
-var initialPledgeDen = big.NewInt(100)
+var (
+	initialPledgeNum = big.NewInt(110)
+	initialPledgeDen = big.NewInt(100)
+)
 
 // StateMinerInitialPledgeCollateral returns the precommit deposit for the specified miner's sector
 func (msa *minerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci types.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error) {
@@ -973,11 +975,12 @@ func (msa *minerStateAPI) StateMarketBalance(ctx context.Context, addr address.A
 	}
 
 	return out, nil
-
 }
 
-var dealProviderCollateralNum = types.NewInt(110)
-var dealProviderCollateralDen = types.NewInt(100)
+var (
+	dealProviderCollateralNum = types.NewInt(110)
+	dealProviderCollateralDen = types.NewInt(100)
+)
 
 // StateDealProviderCollateralBounds returns the min and max collateral a storage provider
 // can issue. It takes the deal size and verified status as parameters.

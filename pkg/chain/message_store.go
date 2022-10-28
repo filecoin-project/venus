@@ -389,7 +389,7 @@ func (ms *MessageStore) LoadTxMeta(ctx context.Context, c cid.Cid) (types.Messag
 
 // LoadTipSetMessage message from tipset NOTICE skip message with the same nonce
 func (ms *MessageStore) LoadTipSetMessage(ctx context.Context, ts *types.TipSet) ([]types.BlockMessagesInfo, error) {
-	//gather message
+	// gather message
 	applied := make(map[address.Address]uint64)
 
 	vms := cbor.NewCborStore(ms.bs)

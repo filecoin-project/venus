@@ -20,7 +20,6 @@ func main() {
 			&cli.StringFlag{Name: "dst"},
 		},
 		Action: func(ctx *cli.Context) error {
-
 			metadata, err := actors.ReadEmbeddedBuiltinActorsMetadata()
 			if err != nil {
 				return err
@@ -36,7 +35,7 @@ func main() {
 				return err
 			}
 
-			return os.WriteFile(ctx.String("dst"), formatted, 0744)
+			return os.WriteFile(ctx.String("dst"), formatted, 0o744)
 		},
 	}
 

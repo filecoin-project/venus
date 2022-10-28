@@ -59,7 +59,7 @@ func findActorsPkgDir() (string, error) {
 }
 
 func fetch(src, dst string, paths []string) error {
-	err := os.MkdirAll(dst, 0755)
+	err := os.MkdirAll(dst, 0o755)
 	if err != nil {
 		return fmt.Errorf("mkdir-all for %s: %w", dst, err)
 	}
@@ -125,12 +125,12 @@ func fetchOne(srcDir, dstDir string, rel string, replacers [][2]string) error {
 	defer fsrc.Close() // nolint: errcheck
 
 	dstPath := filepath.Join(dstDir, dstRel)
-	err = os.MkdirAll(filepath.Dir(dstPath), 0755)
+	err = os.MkdirAll(filepath.Dir(dstPath), 0o755)
 	if err != nil {
 		return fmt.Errorf("mkdir for %s: %w", dstPath, err)
 	}
 
-	fdst, err := os.OpenFile(dstPath, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0644)
+	fdst, err := os.OpenFile(dstPath, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return fmt.Errorf("open dst file: %w", err)
 	}

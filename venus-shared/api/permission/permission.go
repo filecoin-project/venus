@@ -22,8 +22,10 @@ const (
 
 )
 
-var AllPermissions = []auth.Permission{PermRead, PermWrite, PermSign, PermAdmin}
-var DefaultPerms = []auth.Permission{PermRead}
+var (
+	AllPermissions = []auth.Permission{PermRead, PermWrite, PermSign, PermAdmin}
+	DefaultPerms   = []auth.Permission{PermRead}
+)
 
 // PermissionProxy the scheduler between API and internal business
 // nolint
@@ -79,5 +81,4 @@ func PermissionProxy(in interface{}, out interface{}) {
 			}))
 		}
 	}
-
 }

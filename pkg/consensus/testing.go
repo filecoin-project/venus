@@ -58,7 +58,8 @@ func (ftm *FakeTicketMachine) MakeTicket(ctx context.Context, base types.TipSetK
 
 // IsValidTicket always returns true
 func (ftm *FakeTicketMachine) IsValidTicket(ctx context.Context, base types.TipSetKey, entry *types.BeaconEntry, newPeriod bool,
-	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket types.Ticket) error {
+	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket types.Ticket,
+) error {
 	return nil
 }
 
@@ -67,7 +68,8 @@ type FailingTicketValidator struct{}
 
 // IsValidTicket always returns false
 func (ftv *FailingTicketValidator) IsValidTicket(ctx context.Context, base types.TipSetKey, entry *types.BeaconEntry, newPeriod bool,
-	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket types.Ticket) error {
+	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket types.Ticket,
+) error {
 	return fmt.Errorf("invalid ticket")
 }
 

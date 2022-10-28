@@ -6,9 +6,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types/params"
 )
 
-var (
-	bigZero = big.Zero()
-)
+var bigZero = big.Zero()
 
 var TotalFilecoinInt = FromFil(params.FilBase)
 

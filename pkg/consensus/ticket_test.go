@@ -53,7 +53,8 @@ func TestGenValidTicketChain(t *testing.T) {
 }
 
 func requireValidTicket(ctx context.Context, t *testing.T, tm *consensus.TicketMachine, head types.TipSetKey, epoch abi.ChainEpoch,
-	miner, worker address.Address, signer types.Signer) {
+	miner, worker address.Address, signer types.Signer,
+) {
 	electionEntry := &types.BeaconEntry{}
 	newPeriod := false
 	ticket, err := tm.MakeTicket(ctx, head, epoch, miner, electionEntry, newPeriod, worker, signer)

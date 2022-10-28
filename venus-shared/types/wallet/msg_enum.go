@@ -8,9 +8,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var (
-	ErrCodeOverflow = errors.New("code over flow")
-)
+var ErrCodeOverflow = errors.New("code over flow")
 
 type MsgEnum = uint32
 
@@ -54,10 +52,11 @@ func CheckMsgEnum(me MsgEnum) error {
 	}
 	return nil
 }
+
 func FindCode(enum MsgEnum) []int {
 	var codes []int
 	for power := 0; enum > 0; power++ {
-		var digit = enum % 2
+		digit := enum % 2
 		if digit == 1 {
 			codes = append(codes, power)
 		}
@@ -93,6 +92,7 @@ func MsgEnumCode(me MsgEnum) int {
 	code := math.Log2(float64(me))
 	return int(code)
 }
+
 func ContainMsgType(multiME MsgEnum, mt types.MsgType) bool {
 	me := convertToMsgEnum(mt)
 	return multiME&me == me

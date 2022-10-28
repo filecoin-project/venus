@@ -21,9 +21,11 @@ import (
 // defaultActors is list of all actors that ship with Filecoin.
 // They are indexed by their CID.
 // Dragons: add the rest of the actors
-var DefaultActorBuilder = dispatch.NewBuilder()
-var loadOnce sync.Once
-var defaultActors dispatch.CodeLoader
+var (
+	DefaultActorBuilder = dispatch.NewBuilder()
+	loadOnce            sync.Once
+	defaultActors       dispatch.CodeLoader
+)
 
 func GetDefaultActros() *dispatch.CodeLoader {
 	loadOnce.Do(func() {

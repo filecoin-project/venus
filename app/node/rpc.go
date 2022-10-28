@@ -11,8 +11,7 @@ import (
 	"github.com/ipfs-force-community/metrics/ratelimit"
 )
 
-type RPCService interface {
-}
+type RPCService interface{}
 
 type RPCBuilder struct {
 	namespace   []string
@@ -28,6 +27,7 @@ func (builder *RPCBuilder) NameSpace(nameSpaece string) *RPCBuilder {
 	builder.namespace = append(builder.namespace, nameSpaece)
 	return builder
 }
+
 func (builder *RPCBuilder) AddServices(services ...RPCService) error {
 	for _, service := range services {
 		err := builder.AddService(service)
@@ -37,6 +37,7 @@ func (builder *RPCBuilder) AddServices(services ...RPCService) error {
 	}
 	return nil
 }
+
 func (builder *RPCBuilder) AddService(service RPCService) error {
 	methodName := "V0API"
 

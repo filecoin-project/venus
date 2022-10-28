@@ -94,7 +94,7 @@ func (sa *syncerAPI) ChainSyncHandleNewTipSet(ctx context.Context, ci *types.Cha
 // SyncSubmitBlock can be used to submit a newly created block to the.
 // network through this node
 func (sa *syncerAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
-	//todo many dot. how to get directly
+	// todo many dot. how to get directly
 	chainModule := sa.syncer.ChainModule
 	parent, err := chainModule.ChainReader.GetBlock(ctx, blk.Header.Parents[0])
 	if err != nil {
@@ -189,13 +189,13 @@ func (sa *syncerAPI) SyncState(ctx context.Context) (*types.SyncState, error) {
 		}
 		return activeSync
 	}
-	//current
+	// current
 	for _, t := range tracker.Buckets() {
 		if t.State != syncTypes.StageSyncErrored {
 			syncState.ActiveSyncs = append(syncState.ActiveSyncs, toActiveSync(t))
 		}
 	}
-	//history
+	// history
 	for _, t := range tracker.History() {
 		if t.State != syncTypes.StageSyncErrored {
 			syncState.ActiveSyncs = append(syncState.ActiveSyncs, toActiveSync(t))

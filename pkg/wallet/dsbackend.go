@@ -27,8 +27,10 @@ const (
 	Unlock
 )
 
-var ErrInvalidPassword = errors.New("password matching failed")
-var ErrRepeatPassword = errors.New("set password more than once")
+var (
+	ErrInvalidPassword = errors.New("password matching failed")
+	ErrRepeatPassword  = errors.New("set password more than once")
+)
 
 // DSBackendType is the reflect type of the DSBackend.
 var DSBackendType = reflect.TypeOf(&DSBackend{})

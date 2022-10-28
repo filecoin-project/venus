@@ -189,5 +189,5 @@ func writeAPIInfo(astMeta *util.ASTMeta, groups []MethodGroup) error {
 		}
 	}
 
-	return os.WriteFile(filepath.Join(astMeta.Location, "method.md"), buf.Bytes(), 0644)
+	return os.WriteFile(filepath.Join(astMeta.Location, "method.md"), buf.Bytes(), 0o644)
 }

@@ -198,7 +198,7 @@ func (d *Dispatcher) syncWorker(ctx context.Context) {
 
 	const chKey = "sync-worker"
 	ch := d.workTracker.SubNewTarget(chKey, 20)
-	var unsolvedNotify = int64(0)
+	unsolvedNotify := int64(0)
 	var lastTarget *types.Target
 	for {
 		select {

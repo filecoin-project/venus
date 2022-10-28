@@ -83,7 +83,6 @@ func (f *MysqlSlashFilter) checkSameHeightFault(bh *types.BlockHeader) error {
 	}
 
 	return fmt.Errorf("produced block would trigger double-fork mining faults consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
-
 }
 
 // checkSameParentFault check whether the miner mined block on the same parent
@@ -104,7 +103,6 @@ func (f *MysqlSlashFilter) checkSameParentFault(bh *types.BlockHeader) error {
 	}
 
 	return fmt.Errorf("produced block would trigger time-offset mining faults consensus fault; miner: %s; bh: %s, other: %s", bh.Miner, bh.Cid(), other)
-
 }
 
 // MinedBlock check whether the block mined is slash
@@ -124,7 +122,7 @@ func (f *MysqlSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader
 		var bk MinedBlock
 		err := f._db.Model(&MinedBlock{}).Take(&bk, "miner=? and parent_epoch=?", bh.Miner.String(), parentEpoch).Error
 		if err == nil {
-			//if exit
+			// if exit
 			parent, err := cid.Decode(bk.Cid)
 			if err != nil {
 				return err
@@ -141,10 +139,10 @@ func (f *MysqlSlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader
 				return fmt.Errorf("produced block would trigger 'parent-grinding fault' consensus fault; miner: %s; bh: %s, expected parent: %s", bh.Miner, bh.Cid(), parent)
 			}
 		} else if err != gorm.ErrRecordNotFound {
-			//other error except not found
+			// other error except not found
 			return err
 		}
-		//if not exit good block
+		// if not exit good block
 	}
 
 	return f._db.Save(&MinedBlock{

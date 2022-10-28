@@ -11,8 +11,7 @@ import (
 )
 
 // FakeVerifier is a simple mock Verifier for testing.
-type FakeVerifier struct {
-}
+type FakeVerifier struct{}
 
 var _ ffiwrapper.Verifier = (*FakeVerifier)(nil)
 

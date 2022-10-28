@@ -122,7 +122,6 @@ func (iv *ifaceMetaVisitor) Visit(node ast.Node) ast.Visitor {
 func genFileMeta(name string, file *ast.File, resolveImports bool) (FileMeta, error) {
 	imports := map[string]ImportMeta{}
 	if resolveImports {
-
 		for _, imp := range file.Imports {
 			importPath := imp.Path.Value[1 : len(imp.Path.Value)-1]
 			found := FindPackage(importPath)
@@ -222,8 +221,10 @@ func ParseInterfaceMetas(opt InterfaceParseOption) ([]*InterfaceMeta, *ASTMeta, 
 	}, nil
 }
 
-var extraInterfaceMethodMeta = make(map[string]InterfaceMethodMeta)
-var extraImports = make(map[string]map[string]ImportMeta)
+var (
+	extraInterfaceMethodMeta = make(map[string]InterfaceMethodMeta)
+	extraImports             = make(map[string]map[string]ImportMeta)
+)
 
 func LoadExtraInterfaceMeta() error {
 	opt := InterfaceParseOption{

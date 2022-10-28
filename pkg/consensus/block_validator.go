@@ -45,9 +45,11 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var ErrTemporal = errors.New("temporal error")
-var ErrSoftFailure = errors.New("soft validation failure")
-var ErrInsufficientPower = errors.New("incoming block's miner does not have minimum power")
+var (
+	ErrTemporal          = errors.New("temporal error")
+	ErrSoftFailure       = errors.New("soft validation failure")
+	ErrInsufficientPower = errors.New("incoming block's miner does not have minimum power")
+)
 
 // BlockValidator used to validate a block is ok or not
 type BlockValidator struct {
@@ -92,7 +94,8 @@ func NewBlockValidator(tv TicketValidator,
 	chainSelector *ChainSelector,
 	fork fork.IFork,
 	config *config.NetworkParamsConfig,
-	gasPirceSchedule *gas.PricesSchedule) *BlockValidator {
+	gasPirceSchedule *gas.PricesSchedule,
+) *BlockValidator {
 	validateBlockCache, _ := lru.NewARC(2048)
 	return &BlockValidator{
 		tv:                 tv,
@@ -412,7 +415,6 @@ func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockM
 		BlsRoot:   bmroot,
 		SecpkRoot: smroot,
 	})
-
 	if err != nil {
 		return err
 	}
@@ -514,7 +516,8 @@ func (bv *BlockValidator) beaconBaseEntry(ctx context.Context, blk *types.BlockH
 }
 
 func (bv *BlockValidator) ValidateBlockWinner(ctx context.Context, waddr address.Address, lbTS *types.TipSet, lbRoot cid.Cid, baseTS *types.TipSet, baseRoot cid.Cid,
-	blk *types.BlockHeader, prevEntry *types.BeaconEntry) error {
+	blk *types.BlockHeader, prevEntry *types.BeaconEntry,
+) error {
 	if blk.ElectionProof.WinCount < 1 {
 		return fmt.Errorf("block is not claiming to be a winner")
 	}

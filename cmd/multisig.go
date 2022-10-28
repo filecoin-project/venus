@@ -159,7 +159,7 @@ var msigInspectCmd = &cmds.Command{
 		}
 		ctx := req.Context
 		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(env.(*node.Env).BlockStoreAPI)))
-		//store := env.(*node.Env).ChainAPI.ChainReader.Store(req.Context)
+		// store := env.(*node.Env).ChainAPI.ChainReader.Store(req.Context)
 		maddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			return err
@@ -745,7 +745,6 @@ var msigAddCancelCmd = &cmds.Command{
 		cmds.StringArg("increaseThreshold", true, false, "whether the number of required signers should be increased"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-
 		if len(req.Arguments) != 4 {
 			return fmt.Errorf("must pass multisig address, transaction id, new signer address, whether to increase threshold")
 		}
@@ -809,7 +808,7 @@ var msigCancelCmd = &cmds.Command{
 		cmds.StringArg("methodParams", false, false, "params to include in the proposed message"),
 	},
 	Run: func(req *cmds.Request, emitter cmds.ResponseEmitter, env cmds.Environment) error {
-		var argLen = len(req.Arguments)
+		argLen := len(req.Arguments)
 		if argLen < 2 {
 			return fmt.Errorf("must pass at least multisig address and message ID")
 		}

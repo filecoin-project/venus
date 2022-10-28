@@ -50,7 +50,7 @@ func (blockstoreAPI *blockstoreAPI) ChainStatObj(ctx context.Context, obj cid.Ci
 
 	var statslk sync.Mutex
 	var stats types.ObjStat
-	var collect = true
+	collect := true
 
 	walker := func(ctx context.Context, c cid.Cid) ([]*ipld.Link, error) {
 		if c.Prefix().Codec == cid.FilCommitmentSealed || c.Prefix().Codec == cid.FilCommitmentUnsealed {

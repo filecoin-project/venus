@@ -18,11 +18,9 @@ import (
 	"go.uber.org/zap"
 )
 
-var (
-	// ErrBlockstoreClosed is returned from blockstore operations after
-	// the blockstore has been closed.
-	ErrBlockstoreClosed = fmt.Errorf("badger blockstore closed")
-)
+// ErrBlockstoreClosed is returned from blockstore operations after
+// the blockstore has been closed.
+var ErrBlockstoreClosed = fmt.Errorf("badger blockstore closed")
 
 // aliases to mask badger dependencies.
 const (
@@ -53,7 +51,6 @@ func DefaultOptions(path string) Options {
 // BadgerBlockstoreOptions returns the badger options to apply for the provided
 // domain.
 func BadgerBlockstoreOptions(path string, readonly bool) (Options, error) {
-
 	opts := DefaultOptions(path)
 
 	// Due to legacy usage of blockstore.blockstore, over a datastore, all
@@ -131,9 +128,11 @@ type BadgerBlockstore struct {
 	cache IBlockCache
 }
 
-var _ blockstore.Blockstore = (*BadgerBlockstore)(nil)
-var _ blockstore.Viewer = (*BadgerBlockstore)(nil)
-var _ io.Closer = (*BadgerBlockstore)(nil)
+var (
+	_ blockstore.Blockstore = (*BadgerBlockstore)(nil)
+	_ blockstore.Viewer     = (*BadgerBlockstore)(nil)
+	_ io.Closer             = (*BadgerBlockstore)(nil)
+)
 
 // Open creates a new badger-backed blockstore, with the supplied options.
 func Open(opts Options) (*BadgerBlockstore, error) {
@@ -242,8 +241,8 @@ func (b *BadgerBlockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, 
 		}
 	}
 
-	//migrate
-	//todo just for test
+	// migrate
+	// todo just for test
 	var val []byte
 	err := b.DB.View(func(txn *badger.Txn) error {
 		switch item, err := txn.Get(key.Bytes()); err {
@@ -350,7 +349,7 @@ func (b *BadgerBlockstore) PutMany(ctx context.Context, blks []blocks.Block) err
 	if err != nil {
 		err = fmt.Errorf("failed to put blocks in badger blockstore: %w", err)
 	}
-	//flush to cache
+	// flush to cache
 	for k, v := range flushToCache {
 		b.cache.Add(k, v)
 	}

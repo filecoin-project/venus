@@ -30,20 +30,20 @@ type AddressScope struct {
 	Addresses []Address // when root==false, should fill a scope of wallet addresses
 }
 
-type Address = address.Address
-type Signature = crypto.Signature
-type TokenAmount = abi.TokenAmount
-type MethodNum = abi.MethodNum
-type Cid = cid.Cid
+type (
+	Address     = address.Address
+	Signature   = crypto.Signature
+	TokenAmount = abi.TokenAmount
+	MethodNum   = abi.MethodNum
+	Cid         = cid.Cid
+)
 
 type KeyInfo struct {
 	Type       KeyType
 	PrivateKey []byte
 }
 
-var (
-	NilAddress = Address{}
-)
+var NilAddress = Address{}
 
 type MsgType string
 

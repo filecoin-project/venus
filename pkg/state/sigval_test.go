@@ -35,7 +35,6 @@ func (f *fakeStateView) ResolveToKeyAddr(_ context.Context, a address.Address) (
 		return address.Undef, fmt.Errorf("not found")
 	}
 	return resolved, nil
-
 }
 
 func TestSignMessageOk(t *testing.T) {

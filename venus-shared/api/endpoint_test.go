@@ -7,7 +7,6 @@ import (
 )
 
 func TestParseHost(t *testing.T) {
-
 	cases := []struct {
 		raw      string
 		ver      uint32

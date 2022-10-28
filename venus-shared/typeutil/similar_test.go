@@ -25,43 +25,47 @@ func TestCodecList(t *testing.T) {
 	}
 }
 
-type ABool bool
-type AInt int
-type AInt8 int8
-type AInt16 int16
-type AInt32 int32
-type AInt64 int64
-type AUInt uint
-type AUInt8 uint8
-type AUInt16 uint16
-type AUInt32 uint32
-type AUInt64 uint64
-type AFloat32 float32
-type AFloat64 float64
-type AComplet64 complex64
-type AComplet128 complex128
-type AString string
-type AUintptr uintptr
-type AUnsafePointer unsafe.Pointer
+type (
+	ABool          bool
+	AInt           int
+	AInt8          int8
+	AInt16         int16
+	AInt32         int32
+	AInt64         int64
+	AUInt          uint
+	AUInt8         uint8
+	AUInt16        uint16
+	AUInt32        uint32
+	AUInt64        uint64
+	AFloat32       float32
+	AFloat64       float64
+	AComplet64     complex64
+	AComplet128    complex128
+	AString        string
+	AUintptr       uintptr
+	AUnsafePointer unsafe.Pointer
+)
 
-type BBool bool
-type BInt int
-type BInt8 int8
-type BInt16 int16
-type BInt32 int32
-type BInt64 int64
-type BUInt uint
-type BUInt8 uint8
-type BUInt16 uint16
-type BUInt32 uint32
-type BUInt64 uint64
-type BFloat32 float32
-type BFloat64 float64
-type BComplet64 complex64
-type BComplet128 complex128
-type BString string
-type BUintptr uintptr
-type BUnsafePointer unsafe.Pointer
+type (
+	BBool          bool
+	BInt           int
+	BInt8          int8
+	BInt16         int16
+	BInt32         int32
+	BInt64         int64
+	BUInt          uint
+	BUInt8         uint8
+	BUInt16        uint16
+	BUInt32        uint32
+	BUInt64        uint64
+	BFloat32       float32
+	BFloat64       float64
+	BComplet64     complex64
+	BComplet128    complex128
+	BString        string
+	BUintptr       uintptr
+	BUnsafePointer unsafe.Pointer
+)
 
 func TestSimilarSimple(t *testing.T) {
 	tf.UnitTest(t)

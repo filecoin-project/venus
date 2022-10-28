@@ -51,7 +51,6 @@ func TipsetProvider() func(*testing.T) *TipSet {
 		}
 
 		tipset, err := NewTipSet(blocks)
-
 		if err != nil {
 			t.Fatalf("create new tipset failed: %s", err.Error())
 		}

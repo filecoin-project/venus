@@ -31,10 +31,10 @@ const (
 	OptionLegacyRepoDir = "repodir"
 
 	// OptionSectorDir is the name of the option for specifying the directory into which staged and sealed sectors will be written.
-	//OptionSectorDir = "sectordir"
+	// OptionSectorDir = "sectordir"
 
 	// OptionPresealedSectorDir is the name of the option for specifying the directory from which presealed sectors should be pulled when initializing.
-	//OptionPresealedSectorDir = "presealed-sectordir"
+	// OptionPresealedSectorDir = "presealed-sectordir"
 
 	// OptionDrandConfigAddr is the init option for configuring drand to a given network address at init time
 	OptionDrandConfigAddr = "drand-config-addr"
@@ -48,7 +48,7 @@ const (
 	ULimit = "manage-fdlimit"
 
 	// AutoSealIntervalSeconds configures the daemon to check for and seal any staged sectors on an interval.
-	//AutoSealIntervalSeconds = "auto-seal-interval-seconds"
+	// AutoSealIntervalSeconds = "auto-seal-interval-seconds"
 
 	// SwarmAddress is the multiaddr for this Filecoin node
 	SwarmAddress = "swarmlisten"
@@ -185,7 +185,6 @@ func init() {
 
 // Run processes the arguments and stdin
 func Run(ctx context.Context, args []string, stdin, stdout, stderr *os.File) (int, error) {
-
 	err := cli.Run(ctx, RootCmd, args, stdin, stdout, stderr, buildEnv, makeExecutor)
 	if err == nil {
 		return 0, nil
@@ -270,7 +269,7 @@ func getAPIInfo(req *cmds.Request) (*APIInfo, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "can't find API endpoint address in environment, command-line, or local repo (is the daemon running?)")
 		}
-		rawAddr = rpcAPI //NOTICE command only use api
+		rawAddr = rpcAPI // NOTICE command only use api
 	}
 
 	rawAddr = strings.Trim(rawAddr, " \n\t")

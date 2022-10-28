@@ -21,6 +21,7 @@ var inspectCmd = &cmds.Command{
 		"protocol":    protocolInspectCmd,
 	},
 }
+
 var allInspectCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline:          "Print all diagnostic information.",

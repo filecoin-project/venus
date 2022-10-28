@@ -31,7 +31,6 @@ func TestDefaultBytes(t *testing.T) {
 		local.Read(expected[:])
 		require.Equal(t, expected, b)
 	}
-
 }
 
 func TestDefaultString(t *testing.T) {

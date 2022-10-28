@@ -140,5 +140,4 @@ func TestHeadChangeCoalescer(t *testing.T) {
 	if change.apply[0] != tABCDE {
 		t.Fatalf("expected to revert tABC")
 	}
-
 }

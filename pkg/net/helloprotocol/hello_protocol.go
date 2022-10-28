@@ -28,8 +28,10 @@ var log = logging.Logger("/fil/hello")
 // helloProtocolID is the libp2p protocol identifier for the hello protocol.
 const helloProtocolID = "/fil/hello/1.0.0"
 
-var genesisErrCt = metrics.NewInt64Counter("hello_genesis_error", "Number of errors encountered in hello protocol due to incorrect genesis block")
-var helloMsgErrCt = metrics.NewInt64Counter("hello_message_error", "Number of errors encountered in hello protocol due to malformed message")
+var (
+	genesisErrCt  = metrics.NewInt64Counter("hello_genesis_error", "Number of errors encountered in hello protocol due to incorrect genesis block")
+	helloMsgErrCt = metrics.NewInt64Counter("hello_message_error", "Number of errors encountered in hello protocol due to malformed message")
+)
 
 // HelloMessage is the data structure of a single message in the hello protocol.
 type HelloMessage struct {
@@ -60,7 +62,7 @@ type HelloProtocolHandler struct { //nolint
 	// peerDiscovered is called when new peers tell us about their chain
 	peerDiscovered PeerDiscoveredCallback
 
-	//helloTimeOut is block delay
+	// helloTimeOut is block delay
 	helloTimeOut time.Duration
 
 	peerMgr      peermgr.IPeerMgr
@@ -228,7 +230,6 @@ func (h *HelloProtocolHandler) receiveHello(ctx context.Context, s net.Stream) (
 	var hello HelloMessage
 	err := hello.UnmarshalCBOR(s)
 	return &hello, err
-
 }
 
 func (h *HelloProtocolHandler) receiveLatency(ctx context.Context, s net.Stream) (*LatencyMessage, error) {
@@ -322,7 +323,6 @@ func (hn *helloProtocolNotifiee) Connected(n net.Network, c net.Conn) {
 			log.Debugf("failed to receive hello latency msg from peer %s: %s", c.RemotePeer(), err)
 			return
 		}
-
 	}()
 }
 

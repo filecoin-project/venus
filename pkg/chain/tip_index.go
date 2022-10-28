@@ -11,10 +11,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
-	// ErrNotFound is returned when the key for a "Get" lookup is not in the index.
-	ErrNotFound = errors.New("Key not found in tipindex")
-)
+// ErrNotFound is returned when the key for a "Get" lookup is not in the index.
+var ErrNotFound = errors.New("Key not found in tipindex")
 
 // TipSetMetadata is the type stored at the leaves of the TipStateCache.  It contains
 // a tipset pointing to blocks, the root cid of the chain's state after

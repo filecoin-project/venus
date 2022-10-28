@@ -24,8 +24,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var _ host.Host = &FakeHost{}
-var _ connmgr.ConnManager = &FakeCMgr{}
+var (
+	_ host.Host           = &FakeHost{}
+	_ connmgr.ConnManager = &FakeCMgr{}
+)
 
 // FakeHost is a test host.Host
 type FakeHost struct {
@@ -61,8 +63,7 @@ func (fh *FakeHost) SetStreamHandlerMatch(protocol.ID, func(string) bool, inet.S
 	panic("not implemented")
 }
 
-type FakeCMgr struct {
-}
+type FakeCMgr struct{}
 
 func (f FakeCMgr) TagPeer(id peer.ID, s string, i int) {}
 

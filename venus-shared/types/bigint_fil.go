@@ -8,11 +8,15 @@ var ZeroFIL = internal.ZeroFIL
 
 type FIL = internal.FIL
 
-var AttoFil = internal.AttoFil
-var FemtoFil = internal.FemtoFil
-var PicoFil = internal.PicoFil
-var NanoFil = internal.NanoFil
+var (
+	AttoFil  = internal.AttoFil
+	FemtoFil = internal.FemtoFil
+	PicoFil  = internal.PicoFil
+	NanoFil  = internal.NanoFil
+)
 
-var ParseFIL = internal.ParseFIL
-var MustParseFIL = internal.MustParseFIL
-var FromFil = internal.FromFil
+var (
+	ParseFIL     = internal.ParseFIL
+	MustParseFIL = internal.MustParseFIL
+	FromFil      = internal.FromFil
+)

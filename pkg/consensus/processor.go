@@ -68,8 +68,8 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 	pstate cid.Cid,
 	parentEpoch, epoch abi.ChainEpoch,
 	vmOpts vm.VmOption,
-	cb vm.ExecCallBack) (cid.Cid, []types.MessageReceipt, error) {
-
+	cb vm.ExecCallBack,
+) (cid.Cid, []types.MessageReceipt, error) {
 	toProcessTipset := time.Now()
 	var receipts []types.MessageReceipt
 	var err error
@@ -214,7 +214,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		return cid.Undef, nil, err
 	}
 
-	//copy to db
+	// copy to db
 	return root, receipts, nil
 }
 
@@ -235,7 +235,8 @@ func makeBlockRewardMessage(blockMiner address.Address,
 	penalty abi.TokenAmount,
 	gasReward abi.TokenAmount,
 	winCount int64,
-	epoch abi.ChainEpoch) *types.Message {
+	epoch abi.ChainEpoch,
+) *types.Message {
 	params := &reward.AwardBlockRewardParams{
 		Miner:     blockMiner,
 		Penalty:   penalty,

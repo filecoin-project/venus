@@ -24,6 +24,7 @@ func TestIsReorgFork(t *testing.T) {
 	old, new, common := getForkOldNewCommon(ctx, t, builder, 2, 3, 1)
 	assert.True(t, chain.IsReorg(old, new, common))
 }
+
 func TestIsReorgPrefix(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()

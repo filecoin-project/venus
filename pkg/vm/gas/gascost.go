@@ -88,7 +88,7 @@ type PricesSchedule struct {
 
 // NewPricesSchedule new gasprice schedule from forkParams parameters
 func NewPricesSchedule(forkParams *config.ForkUpgradeConfig) *PricesSchedule {
-	var prices = map[abi.ChainEpoch]Pricelist{
+	prices := map[abi.ChainEpoch]Pricelist{
 		abi.ChainEpoch(0): &pricelistV0{
 			computeGasMulti: 1,
 			storageGasMulti: 1000,
@@ -221,7 +221,6 @@ func NewPricesSchedule(forkParams *config.ForkUpgradeConfig) *PricesSchedule {
 
 // PricelistByEpoch finds the latest prices for the given epoch
 func (schedule *PricesSchedule) PricelistByEpoch(epoch abi.ChainEpoch) Pricelist {
-
 	// since we are storing the prices as map or epoch to price
 	// we need to get the price with the highest epoch that is lower or equal to the `epoch` arg
 	bestEpoch := abi.ChainEpoch(0)

@@ -52,7 +52,8 @@ func (tm TicketMachine) MakeTicket(ctx context.Context, base types.TipSetKey, ep
 
 // IsValidTicket verifies that the ticket's proof of randomness is valid with respect to its parent.
 func (tm TicketMachine) IsValidTicket(ctx context.Context, base types.TipSetKey, entry *types.BeaconEntry, bSmokeHeight bool,
-	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket types.Ticket) error {
+	epoch abi.ChainEpoch, miner address.Address, workerSigner address.Address, ticket types.Ticket,
+) error {
 	randomness, err := tm.ticketVRFRandomness(ctx, base, entry, bSmokeHeight, miner, epoch)
 	if err != nil {
 		return errors.Wrap(err, "failed to generate ticket randomness")

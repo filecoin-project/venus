@@ -56,7 +56,7 @@ func NewChainSubmodule(ctx context.Context,
 	repo := config.Repo()
 	// initialize chain store
 	chainStore := chain.NewStore(repo.ChainDatastore(), repo.Datastore(), config.GenesisCid(), circulatiingSupplyCalculator)
-	//drand
+	// drand
 	genBlk, err := chainStore.GetGenesisBlock(context.TODO())
 	if err != nil {
 		return nil, err

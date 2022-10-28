@@ -554,7 +554,6 @@ Get pending messages.
 		}
 
 		msgs, err := env.(*node.Env).MessagePoolAPI.MpoolPending(req.Context, types.TipSetKey{})
-
 		if err != nil {
 			return err
 		}
@@ -707,7 +706,6 @@ Check gas performance of messages in mempool
 		}
 
 		ts, err := env.(*node.Env).ChainAPI.ChainHead(ctx)
-
 		if err != nil {
 			return fmt.Errorf("failed to get chain head: %w", err)
 		}

@@ -52,8 +52,10 @@ func NewTieredBstore(r Blockstore, w Blockstore) *BufferedBS {
 	}
 }
 
-var _ Blockstore = (*BufferedBS)(nil)
-var _ Viewer = (*BufferedBS)(nil)
+var (
+	_ Blockstore = (*BufferedBS)(nil)
+	_ Viewer     = (*BufferedBS)(nil)
+)
 
 func (bs *BufferedBS) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	a, err := bs.read.AllKeysChan(ctx)

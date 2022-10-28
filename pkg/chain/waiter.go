@@ -174,7 +174,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan []*types.HeadChan
 	if !ok {
 		return nil, false, fmt.Errorf("SubHeadChanges stream was invalid")
 	}
-	//todo message wait
+	// todo message wait
 	if len(current) != 1 {
 		return nil, false, fmt.Errorf("SubHeadChanges first entry should have been one item")
 	}
@@ -326,7 +326,7 @@ func (w *Waiter) receiptByIndex(ctx context.Context, ts *types.TipSet, targetCid
 
 	receiptIndex := 0
 	for _, blkInfo := range blockMsgs {
-		//todo aggrate bls and secp msg to one msg
+		// todo aggrate bls and secp msg to one msg
 		for _, msg := range append(blkInfo.BlsMessages, blkInfo.SecpkMessages...) {
 			if msg.Cid().Equals(targetCid) {
 				if receiptIndex >= len(receipts) {

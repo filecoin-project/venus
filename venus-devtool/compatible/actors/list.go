@@ -37,7 +37,6 @@ func listFilesInDir(dir string, filter func(string, fs.DirEntry) bool) ([]string
 		paths = append(paths, path)
 		return nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("walk through the chain/actors subdir: %w", err)
 	}

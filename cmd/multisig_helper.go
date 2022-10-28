@@ -39,6 +39,7 @@ func reqBoolOption(req *cmds.Request, cmd string) bool {
 	}
 	return false
 }
+
 func reqUint64Option(req *cmds.Request, cmd string) uint64 {
 	tmp, ok := req.Options[cmd]
 	if ok {
@@ -46,6 +47,7 @@ func reqUint64Option(req *cmds.Request, cmd string) uint64 {
 	}
 	return 0
 }
+
 func reqStringOption(req *cmds.Request, cmd string) string {
 	tmp, ok := req.Options[cmd]
 	if ok {
@@ -53,6 +55,7 @@ func reqStringOption(req *cmds.Request, cmd string) string {
 	}
 	return constants.StringEmpty
 }
+
 func reqChainEpochOption(req *cmds.Request, cmd string) abi.ChainEpoch {
 	v, ok := req.Options[cmd]
 	if ok {

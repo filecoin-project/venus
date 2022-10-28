@@ -15,22 +15,26 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var invReceiverUndefCt *metrics.Int64Counter
-var invSenderUndefCt *metrics.Int64Counter
-var invValueAboveMaxCt *metrics.Int64Counter
-var invParamsNilCt *metrics.Int64Counter // nolint
-var invGasPriceNegativeCt *metrics.Int64Counter
-var invGasBelowMinimumCt *metrics.Int64Counter
-var invNegativeValueCt *metrics.Int64Counter
-var invGasAboveBlockLimitCt *metrics.Int64Counter
+var (
+	invReceiverUndefCt      *metrics.Int64Counter
+	invSenderUndefCt        *metrics.Int64Counter
+	invValueAboveMaxCt      *metrics.Int64Counter
+	invParamsNilCt          *metrics.Int64Counter // nolint
+	invGasPriceNegativeCt   *metrics.Int64Counter
+	invGasBelowMinimumCt    *metrics.Int64Counter
+	invNegativeValueCt      *metrics.Int64Counter
+	invGasAboveBlockLimitCt *metrics.Int64Counter
+)
 
 // The maximum allowed message value.
 var msgMaxValue = types.FromFil(2e9)
 
 // These gas cost values must match those in vm/gas.
 // TODO: Look up gas costs from the same place the LegacyVM gets them, keyed by epoch. https://github.com/filecoin-project/venus/issues/3955
-const onChainMessageBase = int64(0)
-const onChainMessagePerByte = int64(2)
+const (
+	onChainMessageBase    = int64(0)
+	onChainMessagePerByte = int64(2)
+)
 
 func init() {
 	invReceiverUndefCt = metrics.NewInt64Counter("consensus/msg_undef_receiver", "Count of")

@@ -27,17 +27,25 @@ const TestNetworkVersion = network.Version17
 
 // constants for Weight calculation
 // The ratio of weight contributed by short-term vs long-term factors in a given round
-const WRatioNum = int64(1)
-const WRatioDen = uint64(2)
+const (
+	WRatioNum = int64(1)
+	WRatioDen = uint64(2)
+)
 
-const FilBase = uint64(2_000_000_000)
-const FilAllocStorageMining = uint64(1_100_000_000)
+const (
+	FilBase               = uint64(2_000_000_000)
+	FilAllocStorageMining = uint64(1_100_000_000)
+)
 
-const FilecoinPrecision = uint64(1_000_000_000_000_000_000)
-const FilReserved = uint64(300_000_000)
+const (
+	FilecoinPrecision = uint64(1_000_000_000_000_000_000)
+	FilReserved       = uint64(300_000_000)
+)
 
-var InitialRewardBalance *big.Int
-var InitialFilReserved *big.Int
+var (
+	InitialRewardBalance *big.Int
+	InitialFilReserved   *big.Int
+)
 
 func SetAddressNetwork(n address.Network) {
 	address.CurrentNetwork = n
@@ -60,8 +68,10 @@ const ForkLengthThreshold = Finality
 
 // Size of signature verification cache
 // 32k keeps the cache around 10MB in size, max
-const VerifSigCacheSize = 32000
-const Finality = policy.ChainFinality
+const (
+	VerifSigCacheSize = 32000
+	Finality          = policy.ChainFinality
+)
 
 // Epochs
 const MessageConfidence = uint64(5)

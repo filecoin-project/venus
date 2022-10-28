@@ -156,7 +156,7 @@ func NewStore(chainDs repo.Datastore,
 		reorgNotifeeCh: make(chan ReorgNotifee),
 		tsCache:        tsCache,
 	}
-	//todo cycle reference , may think a better idea
+	// todo cycle reference , may think a better idea
 	store.tipIndex = NewTipStateCache(store)
 	store.chainIndex = NewChainIndex(store.GetTipSet)
 	store.circulatingSupplyCalculator = circulatiingSupplyCalculator
@@ -418,7 +418,8 @@ func (store *Store) GetTipsetMetadata(ctx context.Context, ts *types.TipSet) (*T
 	return &TipSetMetadata{
 		TipSetStateRoot: tsStat.StateRoot,
 		TipSet:          ts,
-		TipSetReceipts:  tsStat.Receipts}, nil
+		TipSetReceipts:  tsStat.Receipts,
+	}, nil
 }
 
 // HasTipSetAndState returns true iff the default store's tipindex is indexing
@@ -498,7 +499,7 @@ func (store *Store) SetHead(ctx context.Context, newTS *types.TipSet) error {
 		return nil
 	}
 
-	//reorg tipset
+	// reorg tipset
 	dropped, added, update, err := func() ([]*types.TipSet, []*types.TipSet, bool, error) {
 		var dropped []*types.TipSet
 		var added []*types.TipSet
@@ -510,7 +511,7 @@ func (store *Store) SetHead(ctx context.Context, newTS *types.TipSet) error {
 			if store.head.Equals(newTS) {
 				return nil, nil, false, nil
 			}
-			//reorg
+			// reorg
 			oldHead := store.head
 			dropped, added, err = CollectTipsToCommonAncestor(ctx, store, oldHead, newTS)
 			if err != nil {
@@ -527,7 +528,6 @@ func (store *Store) SetHead(ctx context.Context, newTS *types.TipSet) error {
 		store.head = newTS
 		return dropped, added, true, nil
 	}()
-
 	if err != nil {
 		return err
 	}
@@ -536,10 +536,10 @@ func (store *Store) SetHead(ctx context.Context, newTS *types.TipSet) error {
 		return nil
 	}
 
-	//todo wrap by go function
+	// todo wrap by go function
 	Reverse(added)
 
-	//do reorg
+	// do reorg
 	store.reorgCh <- reorg{
 		old: dropped,
 		new: added,
@@ -955,7 +955,7 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, err
 			break
 		}
 
-		//save fake root
+		// save fake root
 		err = store.PutTipSetMetadata(context.Background(), &TipSetMetadata{
 			TipSetStateRoot: curTipset.At(0).ParentStateRoot,
 			TipSet:          curParentTipset,
@@ -1090,7 +1090,6 @@ func (store *Store) getCirculatingSupply(ctx context.Context, height abi.ChainEp
 
 		return nil
 	})
-
 	if err != nil {
 		return abi.TokenAmount{}, err
 	}
@@ -1155,7 +1154,6 @@ func ReorgOps(lts func(context.Context, types.TipSetKey) (*types.TipSet, error),
 	}
 
 	return leftChain, rightChain, nil
-
 }
 
 // PutMessage put message in local db
@@ -1229,7 +1227,7 @@ func (store *Store) GetLookbackTipSetForRound(ctx context.Context, ts *types.Tip
 	return lbts, nextTS.Blocks()[0].ParentStateRoot, nil
 }
 
-//Actor
+// Actor
 
 // LsActors returns a channel with actors from the latest state on the chain
 func (store *Store) LsActors(ctx context.Context) (map[address.Address]*types.Actor, error) {
