@@ -36,7 +36,7 @@ func OpenFSJournal(lr repo.Repo, disabled DisabledEvents) (Journal, error) {
 		return nil, err
 	}
 	dir := filepath.Join(path, "journal")
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to mk directory %s for file journal: %w", dir, err)
 	}
 

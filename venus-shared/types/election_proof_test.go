@@ -62,7 +62,6 @@ func TestElectionProofBasic(t *testing.T) {
 
 				require.True(t, t1.Compare(&t2) == 0, "ticket equal")
 				require.Equal(t, t1.Quality(), t2.Quality())
-
 			},
 		}
 

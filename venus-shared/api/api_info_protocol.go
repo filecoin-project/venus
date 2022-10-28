@@ -43,7 +43,6 @@ func init() {
 			return vStr, nil
 		}, nil),
 	})
-
 	if err != nil {
 		panic(fmt.Errorf("add `version` protocol into multiaddr: %w", err))
 	}

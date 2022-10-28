@@ -20,10 +20,12 @@ func (f FIL) String() string {
 	return f.Unitless() + " FIL"
 }
 
-var AttoFil = NewInt(1)
-var FemtoFil = BigMul(AttoFil, NewInt(1000))
-var PicoFil = BigMul(FemtoFil, NewInt(1000))
-var NanoFil = BigMul(PicoFil, NewInt(1000))
+var (
+	AttoFil  = NewInt(1)
+	FemtoFil = BigMul(AttoFil, NewInt(1000))
+	PicoFil  = BigMul(FemtoFil, NewInt(1000))
+	NanoFil  = BigMul(PicoFil, NewInt(1000))
+)
 
 func (f FIL) Unitless() string {
 	r := new(big.Rat).SetFrac(f.Int, big.NewInt(int64(params.FilecoinPrecision)))
@@ -162,8 +164,12 @@ func FromFil(i uint64) BigInt {
 	return BigMul(NewInt(i), NewInt(params.FilecoinPrecision))
 }
 
-var _ encoding.TextMarshaler = (*FIL)(nil)
-var _ encoding.TextUnmarshaler = (*FIL)(nil)
+var (
+	_ encoding.TextMarshaler   = (*FIL)(nil)
+	_ encoding.TextUnmarshaler = (*FIL)(nil)
+)
 
-var _ json.Marshaler = (*FIL)(nil)
-var _ json.Unmarshaler = (*FIL)(nil)
+var (
+	_ json.Marshaler   = (*FIL)(nil)
+	_ json.Unmarshaler = (*FIL)(nil)
+)

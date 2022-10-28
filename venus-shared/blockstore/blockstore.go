@@ -55,17 +55,21 @@ type Blockstore interface {
 
 // Alias so other packages don't have to import go-ipfs-blockstore
 // type Blockstore = blockstore.Blockstore
-type Viewer = blockstore.Viewer
-type GCBlockstore = blockstore.GCBlockstore
-type CacheOpts = blockstore.CacheOpts
-type GCLocker = blockstore.GCLocker
+type (
+	Viewer       = blockstore.Viewer
+	GCBlockstore = blockstore.GCBlockstore
+	CacheOpts    = blockstore.CacheOpts
+	GCLocker     = blockstore.GCLocker
+)
 
 type BatchDeleter interface {
 	DeleteMany(ctx context.Context, cids []cid.Cid) error
 }
 
-var NewGCLocker = blockstore.NewGCLocker
-var NewGCBlockstore = blockstore.NewGCBlockstore
+var (
+	NewGCLocker     = blockstore.NewGCLocker
+	NewGCBlockstore = blockstore.NewGCBlockstore
+)
 
 func DefaultCacheOpts() CacheOpts {
 	return CacheOpts{

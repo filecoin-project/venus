@@ -138,6 +138,7 @@ var settleCmd = &cmds.Command{
 		return re.Emit(fmt.Sprintf("Settled channel %s", chanAddr))
 	},
 }
+
 var statusCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Show the status of an outbound payment channel",
@@ -155,12 +156,13 @@ var statusCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		//re.Emit(av)
+		// re.Emit(av)
 		w := bytes.NewBuffer(nil)
 		paychStatus(w, av)
 		return re.Emit(w)
 	},
 }
+
 var sbftCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Show the status of an active outbound payment channel by from/to addresses",
@@ -187,6 +189,7 @@ var sbftCmd = &cmds.Command{
 		return re.Emit(w)
 	},
 }
+
 var collectCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Create a signed payment channel voucher",
@@ -364,6 +367,7 @@ var voucherBestSpendableCmd = &cmds.Command{
 		return re.Emit(buff)
 	},
 }
+
 var voucherSubmitCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Submit voucher to chain to update payment channel state",
@@ -403,6 +407,7 @@ func encodedString(sv *paych.SignedVoucher) (string, error) {
 	}
 	return base64.RawURLEncoding.EncodeToString(buf.Bytes()), nil
 }
+
 func sortVouchers(vouchers []*paych.SignedVoucher) []*paych.SignedVoucher {
 	sort.Slice(vouchers, func(i, j int) bool {
 		if vouchers[i].Lane == vouchers[j].Lane {
@@ -412,6 +417,7 @@ func sortVouchers(vouchers []*paych.SignedVoucher) []*paych.SignedVoucher {
 	})
 	return vouchers
 }
+
 func paychStatus(writer io.Writer, avail *types.ChannelAvailableFunds) {
 	if avail.Channel == nil {
 		if avail.PendingWaitSentinel != nil {

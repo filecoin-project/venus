@@ -977,7 +977,6 @@ func (mc *msgChain) setEffPerf() {
 		effPerf = effPerfWithParent
 	}
 	mc.effPerf = effPerf
-
 }
 
 func (mc *msgChain) SetNullEffectivePerf() {

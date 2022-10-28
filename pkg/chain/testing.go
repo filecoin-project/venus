@@ -170,9 +170,11 @@ func (f *Builder) Store() *Store {
 
 func (f *Builder) RemovePeer(peer peer.ID) {}
 
-var _ BlockProvider = (*Builder)(nil)
-var _ TipSetProvider = (*Builder)(nil)
-var _ MessageProvider = (*Builder)(nil)
+var (
+	_ BlockProvider   = (*Builder)(nil)
+	_ TipSetProvider  = (*Builder)(nil)
+	_ MessageProvider = (*Builder)(nil)
+)
 
 type fakeStmgr struct {
 	cs  *Store
@@ -545,8 +547,7 @@ type StateBuilder interface {
 }
 
 // FakeStateBuilder computes a fake state CID by hashing the CIDs of a block's parents and messages.
-type FakeStateBuilder struct {
-}
+type FakeStateBuilder struct{}
 
 // ComputeState computes a fake state from a previous state root CID and the messages contained
 // in list-of-lists of messages in blocks. Note that if there are no messages, the resulting state

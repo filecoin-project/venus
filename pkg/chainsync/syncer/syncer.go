@@ -151,8 +151,8 @@ func NewSyncer(stmgr *statemanger.Stmgr,
 	bsstore blockstoreutil.Blockstore,
 	exchangeClient exchange.Client,
 	c clock.Clock,
-	fork fork.IFork) (*Syncer, error) {
-
+	fork fork.IFork,
+) (*Syncer, error) {
 	if constants.InsecurePoStValidation {
 		logSyncer.Warn("*********************************************************************************************")
 		logSyncer.Warn(" [INSECURE-POST-VALIDATION] Insecure test validation is enabled. If you see this outside of a test, it is a severe bug! ")
@@ -262,7 +262,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, target *syncTypes.Tar
 
 	logSyncer.Debugf("begin fetch and sync of chain with head %v from %s at height %v", target.Head.Key(), target.Sender.String(), target.Head.Height())
 	head := syncer.chainStore.GetHead()
-	//If the store already has this tipset then the syncer is finished.
+	// If the store already has this tipset then the syncer is finished.
 	if target.Head.At(0).ParentWeight.LessThan(head.At(0).ParentWeight) {
 		return errors.New("do not sync to a target with less weight")
 	}
@@ -291,9 +291,9 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 	}
 
 	errProcessChan := make(chan error, 1)
-	errProcessChan <- nil //init
+	errProcessChan <- nil // init
 	var wg sync.WaitGroup
-	//todo  write a pipline segment processor function
+	// todo  write a pipline segment processor function
 	if err = rangeProcess(tipsets, func(segTipset []*types.TipSet) error {
 		// fetch messages
 		startTip := segTipset[0].Height()
@@ -349,7 +349,7 @@ func (syncer *Syncer) syncSegement(ctx context.Context, target *syncTypes.Target
 // local(···->A->B) + incoming(C->D->E)  => ···->A->B->C->D->E
 func (syncer *Syncer) fetchChainBlocks(ctx context.Context, knownTip *types.TipSet, targetTip *types.TipSet) ([]*types.TipSet, error) {
 	chainTipsets := []*types.TipSet{targetTip}
-	var flushDB = func(saveTips []*types.TipSet) error {
+	flushDB := func(saveTips []*types.TipSet) error {
 		bs := blockstoreutil.NewTemporary()
 		cborStore := cbor.NewCborStore(bs)
 		for _, tips := range saveTips {
@@ -503,7 +503,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, incoming *types.TipSet, know
 
 // fetchSegMessage get message in tipset
 func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*types.TipSet) ([]*types.FullTipSet, error) {
-	//get message from local bsstore
+	// get message from local bsstore
 	if len(segTipset) == 0 {
 		return []*types.FullTipSet{}, nil
 	}
@@ -545,7 +545,7 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*types.Ti
 		}
 		leftFullChain[index] = fts
 
-		//save message
+		// save message
 		for _, m := range messages[index].Bls {
 			if _, err := cborStore.Put(ctx, m); err != nil {
 				return nil, fmt.Errorf("BLS message processing failed: %w", err)

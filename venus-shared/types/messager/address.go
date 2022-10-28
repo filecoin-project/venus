@@ -42,7 +42,7 @@ func AddressStateToString(state AddressState) string {
 type Address struct {
 	ID   types.UUID      `json:"id"`
 	Addr address.Address `json:"addr"`
-	//max for current, use nonce and +1
+	// max for current, use nonce and +1
 	Nonce  uint64 `json:"nonce"`
 	Weight int64  `json:"weight"`
 	// number of address selection messages

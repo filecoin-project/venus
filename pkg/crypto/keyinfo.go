@@ -43,7 +43,7 @@ func (ki *KeyInfo) UnmarshalJSON(data []byte) error {
 
 	switch k.SigType.(type) {
 	case string:
-		//compatible with lotus
+		// compatible with lotus
 		st := k.SigType.(string)
 		if st == stBLS {
 			ki.SigType = crypto.SigTypeBLS

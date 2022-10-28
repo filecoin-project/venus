@@ -275,7 +275,7 @@ func (mp *MessagePool) evalMessageGasLimit(ctx context.Context, msgIn *types.Mes
 					transitionalMulti = 4.095
 				case 7:
 					// skip, stay at 2.0
-					//transitionalMulti = 1.289
+					// transitionalMulti = 1.289
 				case 11:
 					transitionalMulti = 17.8758
 				case 16:

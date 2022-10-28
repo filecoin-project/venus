@@ -33,14 +33,17 @@ var onChainReserve = GetOpts{
 	Reserve:  true,
 	OffChain: false,
 }
+
 var onChainNoReserve = GetOpts{
 	Reserve:  false,
 	OffChain: false,
 }
+
 var offChainReserve = GetOpts{
 	Reserve:  true,
 	OffChain: true,
 }
+
 var offChainNoReserve = GetOpts{
 	Reserve:  false,
 	OffChain: true,
@@ -1404,7 +1407,7 @@ func TestPaychGetMergePrefundAndReserveOneOffchainOneFail(t *testing.T) {
 // request is cancelled, its amount is removed from the total merged add funds
 func TestPaychGetMergeAddFundsCtxCancelOne(t *testing.T) {
 	tf.UnitTest(t)
-	//stm: @TOKEN_PAYCH_WAIT_READY_001
+	// stm: @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 

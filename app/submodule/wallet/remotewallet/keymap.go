@@ -25,6 +25,7 @@ func ConvertRemoteKeyInfo(key *crypto.KeyInfo) *types.KeyInfo {
 		Type:       types.SignType2Key(key.SigType),
 	}
 }
+
 func ConvertLocalKeyInfo(key *types.KeyInfo) *crypto.KeyInfo {
 	ki := &crypto.KeyInfo{
 		SigType: types.KeyType2Sign(key.Type),

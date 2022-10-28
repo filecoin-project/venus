@@ -61,7 +61,7 @@ type FSRepo struct {
 	walletDs Datastore
 	chainDs  Datastore
 	metaDs   Datastore
-	//marketDs Datastore
+	// marketDs Datastore
 	paychDs Datastore
 	// lockfile is the file system lock to prevent others from opening the same repo.
 	lockfile io.Closer
@@ -461,6 +461,7 @@ func (r *FSRepo) openMetaDatastore() error {
 
 	return nil
 }
+
 func (r *FSRepo) openPaychDataStore() error {
 	var err error
 	r.paychDs, err = badgerds.NewDatastore(filepath.Join(r.path, paychDatastorePrefix), badgerOptions())
@@ -484,7 +485,7 @@ func (r *FSRepo) openWalletDatastore() error {
 
 // WriteVersion writes the given version to the repo version file.
 func WriteVersion(p string, version uint) error {
-	return os.WriteFile(filepath.Join(p, versionFilename), []byte(strconv.Itoa(int(version))), 0644)
+	return os.WriteFile(filepath.Join(p, versionFilename), []byte(strconv.Itoa(int(version))), 0o644)
 }
 
 // ReadVersion returns the unparsed (string) version
@@ -532,8 +533,8 @@ func initDataTransfer(p string) error {
 	if !os.IsNotExist(err) {
 		return err
 	}
-	//create data-transfer state
-	return os.MkdirAll(dataTransferDir, 0777)
+	// create data-transfer state
+	return os.MkdirAll(dataTransferDir, 0o777)
 }
 
 func genSnapshotFileName() string {
@@ -543,7 +544,7 @@ func genSnapshotFileName() string {
 // Ensures that path points to a read/writable directory, creating it if necessary.
 func ensureWritableDirectory(path string) error {
 	// Attempt to create the requested directory, accepting that something might already be there.
-	err := os.Mkdir(path, 0775)
+	err := os.Mkdir(path, 0o775)
 
 	if err == nil {
 		return nil // Skip the checks below, we just created it.
@@ -559,8 +560,8 @@ func ensureWritableDirectory(path string) error {
 	if !stat.IsDir() {
 		return errors.Errorf("%s is not a directory", path)
 	}
-	if (stat.Mode() & 0600) != 0600 {
-		return errors.Errorf("insufficient permissions for path %s, got %04o need %04o", path, stat.Mode(), 0600)
+	if (stat.Mode() & 0o600) != 0o600 {
+		return errors.Errorf("insufficient permissions for path %s, got %04o need %04o", path, stat.Mode(), 0o600)
 	}
 	return nil
 }
@@ -671,7 +672,7 @@ func (r *FSRepo) APIAddr() (string, error) {
 }
 
 func (r *FSRepo) SetAPIToken(token []byte) error {
-	return os.WriteFile(filepath.Join(r.path, apiToken), token, 0600)
+	return os.WriteFile(filepath.Join(r.path, apiToken), token, 0o600)
 }
 
 func (r *FSRepo) APIToken() (string, error) {

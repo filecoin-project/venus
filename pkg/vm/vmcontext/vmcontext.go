@@ -85,7 +85,7 @@ func NewLegacyVM(ctx context.Context, actorImpls ActorImplLookup, vmOption VmOpt
 	var st tree.Tree
 	var err error
 	if vmOption.PRoot == cid.Undef {
-		//just for chain gen
+		// just for chain gen
 		st, err = tree.NewState(cst, tree.StateTreeVersion1)
 		if err != nil {
 			panic(fmt.Errorf("create state error, should never come here"))
@@ -271,7 +271,7 @@ func (vm *LegacyVM) applyMessage(msg *types.Message, onChainMsgSize int) (*Ret, 
 	// 7. snapshot stateView
 
 	// 1. charge for bytes used in chain
-	msgGasCost := vm.pricelist.OnChainMessage(onChainMsgSize) //todo get price list by height
+	msgGasCost := vm.pricelist.OnChainMessage(onChainMsgSize) // todo get price list by height
 	ok := gasTank.TryCharge(msgGasCost)
 	if !ok {
 		gasOutputs := gas.ZeroGasOutputs()
@@ -287,7 +287,7 @@ func (vm *LegacyVM) applyMessage(msg *types.Message, onChainMsgSize int) (*Ret, 
 
 	minerPenaltyAmount := big.Mul(vm.vmOption.BaseFee, big.NewInt(msg.GasLimit))
 
-	//2. load sender actor and check send whether to be an account
+	// 2. load sender actor and check send whether to be an account
 	fromActor, found, err := vm.State.GetActor(vm.context, msg.From)
 	if err != nil {
 		return nil, err
@@ -390,7 +390,7 @@ func (vm *LegacyVM) applyMessage(msg *types.Message, onChainMsgSize int) (*Ret, 
 	cst := cbor.NewCborStore(gasBsstore)
 	//	cst.Atlas = vm.store.Atlas // associate the atlas. //todo
 
-	//Note replace from and to address here
+	// Note replace from and to address here
 	ctx := newInvocationContext(vm, cst, &topLevel, imsg, gasTank, vm.vmOption.Rnd, nil)
 
 	// 3. invoke

@@ -136,7 +136,6 @@ func (dc *dagCollector) collectState(ctx context.Context, stateRoot cid.Cid) ([]
 		}
 	}
 	return dc.state, nil
-
 }
 
 func (dc *dagCollector) getLinks(ctx context.Context, c cid.Cid) ([]*ipld.Link, error) {
@@ -146,7 +145,6 @@ func (dc *dagCollector) getLinks(ctx context.Context, c cid.Cid) ([]*ipld.Link, 
 	}
 	dc.addState(nd)
 	return nd.Links(), nil
-
 }
 
 func (dc *dagCollector) addState(nd ipld.Node) {

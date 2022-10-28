@@ -430,7 +430,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *excha
 	// Read response.
 	_ = stream.SetReadDeadline(time.Time{})
 
-	//TODO Note: this will remove once we've completed the go-libp2p migration to
+	// TODO Note: this will remove once we've completed the go-libp2p migration to
 	//		      go-libp2p-core 0.7.0
 	respBytes, err := io.ReadAll(bufio.NewReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline)))
 	if err != nil {
@@ -440,7 +440,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *excha
 	var res exchange.Response
 	err = cborutil.ReadCborRPC(
 		bytes.NewReader(respBytes),
-		//bufio.NewReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline)),
+		// bufio.NewReader(NewInct(stream, ReadResMinSpeed, ReadResDeadline)),
 		&res)
 	if err != nil {
 		c.peerTracker.logFailure(peer, time.Since(connectionStart), req.Length)

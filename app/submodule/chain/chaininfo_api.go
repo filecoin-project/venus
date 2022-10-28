@@ -332,7 +332,6 @@ func (cia *chainInfoAPI) GetEntry(ctx context.Context, height abi.ChainEpoch, ro
 	case <-ctx.Done():
 		return nil, fmt.Errorf("context timed out waiting on beacon entry to come back for round %d: %s", round, ctx.Err())
 	}
-
 }
 
 // VerifyEntry verifies that child is a valid entry if its parent is.
@@ -492,7 +491,7 @@ func (cia *chainInfoAPI) StateSearchMsg(ctx context.Context, from types.TipSetKe
 	if err != nil {
 		return nil, err
 	}
-	//todo add a api for head tipset directly
+	// todo add a api for head tipset directly
 	head, err := cia.chain.ChainReader.GetTipSet(ctx, from)
 	if err != nil {
 		return nil, err
@@ -685,7 +684,7 @@ func (cia *chainInfoAPI) StateActorCodeCIDs(ctx context.Context, nv network.Vers
 
 	cids["_manifest"] = manifestCid
 
-	var actorKeys = actors.GetBuiltinActorsKeys(actorVersion)
+	actorKeys := actors.GetBuiltinActorsKeys(actorVersion)
 	for _, name := range actorKeys {
 		actorCID, ok := actors.GetActorCodeID(actorVersion, name)
 		if !ok {

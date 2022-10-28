@@ -81,8 +81,7 @@ func TestJsonrpc(t *testing.T) {
 	assert.Equal(t, res.Result, "test")
 }
 
-type tmodule1 struct {
-}
+type tmodule1 struct{}
 
 func (m *tmodule1) V0API() MockAPI1 { //nolint
 	return &mockAPI1{}
@@ -92,8 +91,7 @@ func (m *tmodule1) API() MockAPI1 { //nolint
 	return &mockAPI1{}
 }
 
-type tmodule2 struct {
-}
+type tmodule2 struct{}
 
 func (m *tmodule2) V0API() MockAPI2 { //nolint
 	return &mockAPI2{}
@@ -112,8 +110,7 @@ type MockAPI1 interface {
 type MockAPI2 interface {
 	Test2(ctx context.Context) error
 }
-type mockAPI1 struct {
-}
+type mockAPI1 struct{}
 
 func (m *mockAPI1) Test1(ctx context.Context) (string, error) {
 	return "test", nil
@@ -121,8 +118,7 @@ func (m *mockAPI1) Test1(ctx context.Context) (string, error) {
 
 var _ MockAPI2 = &mockAPI2{}
 
-type mockAPI2 struct {
-}
+type mockAPI2 struct{}
 
 func (m *mockAPI2) Test2(ctx context.Context) error {
 	return nil

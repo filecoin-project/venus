@@ -45,13 +45,13 @@ func TestWeight(t *testing.T) {
 	})
 
 	sel := consensus.NewChainSelector(cst, &viewer)
-	//sel := consensus.NewChainSelector(cst, &viewer, types.CidFromString(t, "genesisCid"))
+	// sel := consensus.NewChainSelector(cst, &viewer, types.CidFromString(t, "genesisCid"))
 
 	t.Run("basic happy path", func(t *testing.T) {
 		// 0 + (4*256 + (4*1*1*256/5*2))
 		// 1024 + 102 = 1126
 		w, err := sel.Weight(ctx, toWeigh)
-		//w, err := sel.Weight(ctx, toWeigh, fakeRoot)
+		// w, err := sel.Weight(ctx, toWeigh, fakeRoot)
 		assert.NoError(t, err)
 		assert.Equal(t, fbig.NewInt(1126), w)
 	})

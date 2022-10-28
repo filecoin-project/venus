@@ -28,10 +28,10 @@ func TestSimpleInMemoryJournal(t *testing.T) {
 	obj := struct {
 		Name string
 		Arg  int
-	}{"bob",
+	}{
+		"bob",
 		42,
 	}
 	topicJ.Write("event3", "object", obj, "name", "bob", "age", 42)
 	assert.Equal(t, 3, len(memoryWriter.journal.topics["testing"]))
-
 }

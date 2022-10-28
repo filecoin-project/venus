@@ -18,7 +18,7 @@ func TestNoDaemonNoHang(t *testing.T) {
 	// Start the daemon to initialize a new repo
 	d := testhelpers.NewDaemon(t).Start()
 
-	//todo should readline for stdout for confirming rpc status
+	// todo should readline for stdout for confirming rpc status
 	time.Sleep(time.Second * 5)
 	// rename the lock files to a safe place
 	repoDir := d.RepoDir()

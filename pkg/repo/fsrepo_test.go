@@ -49,7 +49,7 @@ func TestInitRepoDirect(t *testing.T) {
 	t.Run("fails with error if directory is not writeable", func(t *testing.T) {
 		// make read only dir
 		dir := filepath.Join(t.TempDir(), "readonly")
-		err := os.Mkdir(dir, 0444)
+		err := os.Mkdir(dir, 0o444)
 		assert.NoError(t, err)
 		assert.False(t, ConfigExists(dir))
 
@@ -60,7 +60,7 @@ func TestInitRepoDirect(t *testing.T) {
 	t.Run("fails with error if directory not empty", func(t *testing.T) {
 		dir := t.TempDir()
 
-		err := os.WriteFile(filepath.Join(dir, "hi"), []byte("hello"), 0644)
+		err := os.WriteFile(filepath.Join(dir, "hi"), []byte("hello"), 0o644)
 		assert.NoError(t, err)
 
 		_, err = initAndOpenRepoDirect(dir, 42, cfg)
@@ -88,7 +88,7 @@ func TestFSRepoOpen(t *testing.T) {
 
 		assert.NoError(t, InitFSRepo(repoPath, 1, config.NewDefaultConfig()))
 		// set wrong version
-		assert.NoError(t, os.WriteFile(filepath.Join(repoPath, versionFilename), []byte("v.8"), 0644))
+		assert.NoError(t, os.WriteFile(filepath.Join(repoPath, versionFilename), []byte("v.8"), 0o644))
 
 		_, err := OpenFSRepo(repoPath, 1)
 		assert.EqualError(t, err, "failed to read version: strconv.ParseUint: parsing \"v.8\": invalid syntax")
@@ -188,7 +188,7 @@ func TestRepoLockFail(t *testing.T) {
 
 	// set invalid version, to make opening the repo fail
 	assert.NoError(t,
-		os.WriteFile(filepath.Join(repoPath, versionFilename), []byte("hello"), 0644),
+		os.WriteFile(filepath.Join(repoPath, versionFilename), []byte("hello"), 0o644),
 	)
 
 	_, err := OpenFSRepo(repoPath, 42)
@@ -266,7 +266,7 @@ func TestRepoAPIFile(t *testing.T) {
 	t.Run("SetAPI fails if unable to create API file", func(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
 			// create a file with permission bits that prevent us from truncating
-			err := os.WriteFile(filepath.Join(r.path, apiFile), []byte("/ip4/127.0.0.1/tcp/9999"), 0000)
+			err := os.WriteFile(filepath.Join(r.path, apiFile), []byte("/ip4/127.0.0.1/tcp/9999"), 0o000)
 			assert.NoError(t, err)
 
 			// try to os.Create to same path - will see a failure

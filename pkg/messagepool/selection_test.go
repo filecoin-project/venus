@@ -303,7 +303,6 @@ func TestMessageChains(t *testing.T) {
 			t.Fatalf("expected nonce %d but got %d", i, m.Message.Nonce)
 		}
 	}
-
 }
 
 func TestMessageChainSkipping(t *testing.T) {
@@ -369,7 +368,6 @@ func TestMessageChainSkipping(t *testing.T) {
 			nextNonce++
 		}
 	}
-
 }
 
 func TestBasicMessageSelection(t *testing.T) {
@@ -568,7 +566,6 @@ func TestMessageSelectionTrimmingGas(t *testing.T) {
 	if mGasLimit > constants.BlockGasLimit {
 		t.Fatal("selected messages gas limit exceeds block gas limit!")
 	}
-
 }
 
 func TestMessageSelectionTrimmingMsgsBasic(t *testing.T) {
@@ -610,7 +607,6 @@ func TestMessageSelectionTrimmingMsgsBasic(t *testing.T) {
 	if mGasLimit > constants.BlockGasLimit {
 		t.Fatal("selected messages gas limit exceeds block gas limit!")
 	}
-
 }
 
 func TestMessageSelectionTrimmingMsgsTwoSendersBasic(t *testing.T) {
@@ -965,7 +961,6 @@ func TestPriorityMessageSelection3(t *testing.T) {
 		}
 		nextNonce++
 	}
-
 }
 
 func TestOptimalMessageSelection1(t *testing.T) {
@@ -1608,5 +1603,4 @@ readLoop:
 	if gasLimit < minGasLimit {
 		t.Fatalf("failed to pack with tq=0.01; packed %d, minimum packing: %d", gasLimit, minGasLimit)
 	}
-
 }

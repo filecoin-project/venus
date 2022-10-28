@@ -52,7 +52,6 @@ const APIPrefix = "/api"
 
 // Node represents a full Filecoin node.
 type Node struct {
-
 	// offlineMode, when true, disables libp2p.
 	offlineMode bool
 
@@ -64,7 +63,7 @@ type Node struct {
 	// It contains all persistent artifacts of the filecoin node.
 	repo repo.Repo
 
-	//moduls
+	// moduls
 	circulatiingSupplyCalculator chain.ICirculatingSupplyCalcualtor
 	//
 	// Core services

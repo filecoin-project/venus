@@ -9,7 +9,6 @@ import (
 )
 
 func IntegrationNet() *NetworkConf {
-
 	return &NetworkConf{
 		Bootstrap: config.BootstrapConfig{
 			Addresses:        []string{},

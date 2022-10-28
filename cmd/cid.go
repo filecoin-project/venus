@@ -33,7 +33,7 @@ var inspectBundleCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		ctx := req.Context
 
-		f, err := os.OpenFile(req.Arguments[0], os.O_RDONLY, 0664)
+		f, err := os.OpenFile(req.Arguments[0], os.O_RDONLY, 0o664)
 		if err != nil {
 			return fmt.Errorf("opening the car file: %w", err)
 		}

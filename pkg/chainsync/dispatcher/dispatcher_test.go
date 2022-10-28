@@ -121,7 +121,6 @@ func TestQueueDuplicates(t *testing.T) {
 	first := requirePop(t, testQ)
 	assert.Equal(t, abi.ChainEpoch(0), first.ChainInfo.Head.Height())
 	testQ.Remove(first)
-
 }
 
 func TestQueueEmptyPopErrors(t *testing.T) {

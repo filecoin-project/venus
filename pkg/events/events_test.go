@@ -3,10 +3,9 @@ package events
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"sync"
 	"testing"
+	"time"
 
 	"gotest.tools/assert"
 
@@ -176,6 +175,7 @@ func (fcs *fakeCS) ChainGetTipSetByHeight(ctx context.Context, height abi.ChainE
 
 	return fcs.tsc.ChainGetTipSetByHeight(ctx, height, tsk)
 }
+
 func (fcs *fakeCS) ChainGetTipSetAfterHeight(ctx context.Context, height abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	fcs.mu.Lock()
 	fcs.callNumber["ChainGetTipSetAfterHeight"] = fcs.callNumber["ChainGetTipSetAfterHeight"] + 1
@@ -187,7 +187,7 @@ func (fcs *fakeCS) ChainGetTipSetAfterHeight(ctx context.Context, height abi.Cha
 func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msgcid cid.Cid) *types.TipSet {
 	a, _ := address.NewFromString("t00")
 	b, _ := address.NewFromString("t02")
-	var ts, err = types.NewTipSet([]*types.BlockHeader{
+	ts, err := types.NewTipSet([]*types.BlockHeader{
 		{
 			Height: h,
 			Miner:  a,
@@ -488,7 +488,6 @@ func TestAt(t *testing.T) {
 		require.Equal(t, true, applied)
 		require.Equal(t, false, reverted)
 	}
-
 }
 
 func TestAtNullTrigger(t *testing.T) {

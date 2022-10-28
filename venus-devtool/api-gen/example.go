@@ -170,9 +170,11 @@ func init() {
 		"t026363": ExampleValue("init", reflect.TypeOf(types.MarketBalance{}), nil).(types.MarketBalance),
 	})
 	addExample([]*types.EstimateMessage{
-		{Msg: ExampleValue("init", reflect.TypeOf(&types.Message{}), nil).(*types.Message),
+		{
+			Msg:  ExampleValue("init", reflect.TypeOf(&types.Message{}), nil).(*types.Message),
 			Spec: ExampleValue("init", reflect.TypeOf(&types.MessageSendSpec{}), nil).(*types.MessageSendSpec),
-		}})
+		},
+	})
 	addExample(map[string]*pubsub.TopicScoreSnapshot{
 		"/blocks": {
 			TimeInMesh:               time.Minute,

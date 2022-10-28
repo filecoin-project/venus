@@ -12,8 +12,10 @@ import (
 // address-based signature validation
 //
 
-type Signature = crypto.Signature
-type SigType = crypto.SigType
+type (
+	Signature = crypto.Signature
+	SigType   = crypto.SigType
+)
 
 const (
 	SigTypeSecp256k1 = crypto.SigTypeSecp256k1

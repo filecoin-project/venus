@@ -58,13 +58,15 @@ type syscalls struct {
 	stateView     SyscallsStateView
 }
 
-var _ rt0.Syscalls = (*syscalls)(nil)
-var _ rt2.Syscalls = (*syscalls)(nil)
-var _ rt3.Syscalls = (*syscalls)(nil)
-var _ rt4.Syscalls = (*syscalls)(nil)
-var _ rt5.Syscalls = (*syscalls)(nil)
-var _ rt6.Syscalls = (*syscalls)(nil)
-var _ rt7.Syscalls = (*syscalls)(nil)
+var (
+	_ rt0.Syscalls = (*syscalls)(nil)
+	_ rt2.Syscalls = (*syscalls)(nil)
+	_ rt3.Syscalls = (*syscalls)(nil)
+	_ rt4.Syscalls = (*syscalls)(nil)
+	_ rt5.Syscalls = (*syscalls)(nil)
+	_ rt6.Syscalls = (*syscalls)(nil)
+	_ rt7.Syscalls = (*syscalls)(nil)
+)
 
 func (sys syscalls) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) error {
 	charge, err := sys.pricelist.OnVerifySignature(signature.Type, len(plaintext))

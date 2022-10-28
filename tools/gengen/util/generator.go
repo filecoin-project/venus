@@ -50,9 +50,7 @@ import (
 
 const InitialBaseFee = 100e6
 
-var (
-	rewardActorInitialBalance = types.FromFil(1.4e9)
-)
+var rewardActorInitialBalance = types.FromFil(1.4e9)
 
 type GenesisGenerator struct {
 	// actor state
@@ -74,9 +72,9 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 	cst := cbor.NewCborStore(bs)
 	syscallImpl := vmsupport.NewSyscalls(&vmsupport.NilFaultChecker{}, &impl.FakeVerifier{})
 	chainRand := chain.NewGenesisRandomnessSource(genesis.Ticket.VRFProof)
-	chainDs := ds.NewMapDatastore() //just mock one
-	//chainstore
-	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator()) //load genesis from car
+	chainDs := ds.NewMapDatastore() // just mock one
+	// chainstore
+	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator()) // load genesis from car
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, cst, bs, config.NewDefaultConfig().NetworkParams)
 	if err != nil {
 		panic(xerrors.Errorf("create chain fork error %v", err))
@@ -408,7 +406,7 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		minerRawPower := big.Zero()
 		for i, comm := range m.CommittedSectors {
 			// Adjust sector expiration up to the epoch before the subsequent proving period starts.
-			//todo pick a better sector exp
+			// todo pick a better sector exp
 			maxPeriods := miner0.MaxSectorExpirationExtension / miner0.WPoStProvingPeriod
 			sectorExpiration := (maxPeriods-1)*miner0.WPoStProvingPeriod - 1
 			// Acquire deal weight value

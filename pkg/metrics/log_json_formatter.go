@@ -12,8 +12,7 @@ import (
 )
 
 // JSONFormatter implements go-logging Formatter for JSON encoded logs
-type JSONFormatter struct {
-}
+type JSONFormatter struct{}
 
 type logRecord struct {
 	Timestamp time.Time `json:"timestamp"`

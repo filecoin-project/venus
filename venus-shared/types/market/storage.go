@@ -13,7 +13,7 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-//todo  move to sealer
+// todo  move to sealer
 
 // PendingDealInfo has info about pending deals and when they are due to be
 // published

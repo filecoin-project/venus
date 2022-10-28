@@ -27,10 +27,12 @@ func (tc *tsCacheAPIFailOnStorageCall) ChainGetTipSetByHeight(ctx context.Contex
 	tc.t.Fatal("storage call")
 	return &types.TipSet{}, nil
 }
+
 func (tc *tsCacheAPIFailOnStorageCall) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	tc.t.Fatal("storage call")
 	return &types.TipSet{}, nil
 }
+
 func (tc *tsCacheAPIFailOnStorageCall) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
 	tc.t.Fatal("storage call")
 	return &types.TipSet{}, nil
@@ -171,14 +173,17 @@ func (tc *tsCacheAPIStorageCallCounter) ChainGetTipSetByHeight(ctx context.Conte
 	tc.chainGetTipSetByHeight++
 	return &types.TipSet{}, nil
 }
+
 func (tc *tsCacheAPIStorageCallCounter) ChainGetTipSetAfterHeight(ctx context.Context, epoch abi.ChainEpoch, key types.TipSetKey) (*types.TipSet, error) {
 	tc.chainGetTipSetAfterHeight++
 	return &types.TipSet{}, nil
 }
+
 func (tc *tsCacheAPIStorageCallCounter) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	tc.chainHead++
 	return &types.TipSet{}, nil
 }
+
 func (tc *tsCacheAPIStorageCallCounter) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
 	tc.chainGetTipSet++
 	return &types.TipSet{}, nil

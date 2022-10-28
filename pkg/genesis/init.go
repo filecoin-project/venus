@@ -28,7 +28,7 @@ func Init(ctx context.Context, r repo.Repo, bs blockstoreutil.Blockstore, cst cb
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate genesis block")
 	}
-	//todo give fork params
+	// todo give fork params
 
 	chainStore := chain.NewStore(r.ChainDatastore(), bs, genesis.Cid(), chain.NewCirculatingSupplyCalculator(bs, genesis.Cid(), config.DefaultForkUpgradeParam))
 

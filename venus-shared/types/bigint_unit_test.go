@@ -59,5 +59,4 @@ func TestSizeStrBig(t *testing.T) {
 	ZiB = ZiB.Lsh(ZiB, 70)
 
 	require.Equal(t, "5e+04 ZiB", SizeStr(BigInt{Int: ZiB}), "inout %+v, produced wrong result", ZiB)
-
 }

@@ -25,6 +25,7 @@ type HeadChangeType string
 
 // HeadChangeTopic is the topic used to publish new heads.
 const HeadChangeTopic = "headchange"
+
 const (
 	HCRevert  HeadChangeType = "revert"
 	HCApply   HeadChangeType = "apply"

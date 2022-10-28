@@ -157,40 +157,48 @@ func (ml migrationLogger) Log(level rt.LogLevel, msg string, args ...interface{}
 func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConfig) UpgradeSchedule {
 	var us UpgradeSchedule
 
-	updates := []Upgrade{{
-		Height:    upgradeHeight.UpgradeBreezeHeight,
-		Network:   network.Version1,
-		Migration: cf.UpgradeFaucetBurnRecovery,
-	}, {
-		Height:    upgradeHeight.UpgradeSmokeHeight,
-		Network:   network.Version2,
-		Migration: nil,
-	}, {
-		Height:    upgradeHeight.UpgradeIgnitionHeight,
-		Network:   network.Version3,
-		Migration: cf.UpgradeIgnition,
-	}, {
-		Height:    upgradeHeight.UpgradeRefuelHeight,
-		Network:   network.Version3,
-		Migration: cf.UpgradeRefuel,
-	}, {
-		Height:    upgradeHeight.UpgradeAssemblyHeight,
-		Network:   network.Version4,
-		Expensive: true,
-		Migration: cf.UpgradeActorsV2,
-	}, {
-		Height:    upgradeHeight.UpgradeTapeHeight,
-		Network:   network.Version5,
-		Migration: nil,
-	}, {
-		Height:    upgradeHeight.UpgradeLiftoffHeight,
-		Network:   network.Version5,
-		Migration: cf.UpgradeLiftoff,
-	}, {
-		Height:    upgradeHeight.UpgradeKumquatHeight,
-		Network:   network.Version6,
-		Migration: nil,
-	},
+	updates := []Upgrade{
+		{
+			Height:    upgradeHeight.UpgradeBreezeHeight,
+			Network:   network.Version1,
+			Migration: cf.UpgradeFaucetBurnRecovery,
+		},
+		{
+			Height:    upgradeHeight.UpgradeSmokeHeight,
+			Network:   network.Version2,
+			Migration: nil,
+		},
+		{
+			Height:    upgradeHeight.UpgradeIgnitionHeight,
+			Network:   network.Version3,
+			Migration: cf.UpgradeIgnition,
+		},
+		{
+			Height:    upgradeHeight.UpgradeRefuelHeight,
+			Network:   network.Version3,
+			Migration: cf.UpgradeRefuel,
+		},
+		{
+			Height:    upgradeHeight.UpgradeAssemblyHeight,
+			Network:   network.Version4,
+			Expensive: true,
+			Migration: cf.UpgradeActorsV2,
+		},
+		{
+			Height:    upgradeHeight.UpgradeTapeHeight,
+			Network:   network.Version5,
+			Migration: nil,
+		},
+		{
+			Height:    upgradeHeight.UpgradeLiftoffHeight,
+			Network:   network.Version5,
+			Migration: cf.UpgradeLiftoff,
+		},
+		{
+			Height:    upgradeHeight.UpgradeKumquatHeight,
+			Network:   network.Version6,
+			Migration: nil,
+		},
 		//{
 		//		Height:    upgradeHeight.UpgradePriceListOopsHeight,
 		//		Network:   network.Version6AndAHalf,
@@ -200,15 +208,18 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 			Height:    upgradeHeight.UpgradeCalicoHeight,
 			Network:   network.Version7,
 			Migration: cf.UpgradeCalico,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradePersianHeight,
 			Network:   network.Version8,
 			Migration: nil,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradeOrangeHeight,
 			Network:   network.Version9,
 			Migration: nil,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradeTrustHeight,
 			Network:   network.Version10,
 			Migration: cf.UpgradeActorsV3,
@@ -224,11 +235,13 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 				StopWithin:      5,
 			}},
 			Expensive: true,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradeNorwegianHeight,
 			Network:   network.Version11,
 			Migration: nil,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradeTurboHeight,
 			Network:   network.Version12,
 			Migration: cf.UpgradeActorsV4,
@@ -244,7 +257,8 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 				StopWithin:      5,
 			}},
 			Expensive: true,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradeHyperdriveHeight,
 			Network:   network.Version13,
 			Migration: cf.UpgradeActorsV5,
@@ -260,7 +274,8 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 				StopWithin:      5,
 			}},
 			Expensive: true,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradeChocolateHeight,
 			Network:   network.Version14,
 			Migration: cf.UpgradeActorsV6,
@@ -276,7 +291,8 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 				StopWithin:      5,
 			}},
 			Expensive: true,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradeOhSnapHeight,
 			Network:   network.Version15,
 			Migration: cf.UpgradeActorsV7,
@@ -287,7 +303,8 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 				StopWithin:      5,
 			}},
 			Expensive: true,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradeSkyrHeight,
 			Network:   network.Version16,
 			Migration: cf.UpgradeActorsV8,
@@ -298,7 +315,8 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 				StopWithin:      5,
 			}},
 			Expensive: true,
-		}, {
+		},
+		{
 			Height:    upgradeHeight.UpgradeSharkHeight,
 			Network:   network.Version17,
 			Migration: cf.UpgradeActorsV9,
@@ -437,7 +455,6 @@ type ChainFork struct {
 }
 
 func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore, bs blockstoreutil.Blockstore, networkParams *config.NetworkParamsConfig) (*ChainFork, error) {
-
 	fork := &ChainFork{
 		cr:          cr,
 		bs:          bs,
@@ -806,7 +823,7 @@ func (c *ChainFork) UpgradeFaucetBurnRecovery(ctx context.Context, cache Migrati
 	}
 
 	// Execute transfers from previous step
-	//fmt.Printf("num:%v, transfers:%v\n", len(transfers), transfers)
+	// fmt.Printf("num:%v, transfers:%v\n", len(transfers), transfers)
 	for _, t := range transfers {
 		if err := doTransfer(tree, t.From, t.To, t.Amt); err != nil {
 			return cid.Undef, fmt.Errorf("transfer %s %s->%s failed: %v", t.Amt, t.From, t.To, err)
@@ -1394,7 +1411,7 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 		close(freeBufs)
 	}()
 
-	var batch = <-freeBufs
+	batch := <-freeBufs
 	batchCp := func(blk ipfsblock.Block) error {
 		numBlocks++
 		totalCopySize += len(blk.RawData())
@@ -1984,8 +2001,10 @@ func (c *ChainFork) PreUpgradeActorsV7(ctx context.Context, cache MigrationCache
 		return fmt.Errorf("error getting lookback ts for premigration: %w", err)
 	}
 
-	config := nv15.Config{MaxWorkers: uint(workerCount),
-		ProgressLogPeriod: time.Minute * 5}
+	config := nv15.Config{
+		MaxWorkers:        uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5,
+	}
 
 	_, err = c.upgradeActorsV7Common(ctx, cache, lbRoot, epoch, lbts, config)
 	return err
@@ -2000,7 +2019,7 @@ func (c *ChainFork) upgradeActorsV7Common(
 ) (cid.Cid, error) {
 	writeStore := blockstoreutil.NewAutobatch(ctx, c.bs, units.GiB/4)
 	// TODO: pretty sure we'd achieve nothing by doing this, confirm in review
-	//buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), writeStore)
+	// buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), writeStore)
 	store := chain.ActorStore(ctx, writeStore)
 	// Load the state root.
 	var stateRoot vmstate.StateRoot
@@ -2081,8 +2100,10 @@ func (c *ChainFork) PreUpgradeActorsV8(ctx context.Context, cache MigrationCache
 		return fmt.Errorf("error getting lookback ts for premigration: %w", err)
 	}
 
-	config := nv16.Config{MaxWorkers: uint(workerCount),
-		ProgressLogPeriod: time.Minute * 5}
+	config := nv16.Config{
+		MaxWorkers:        uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5,
+	}
 
 	_, err = c.upgradeActorsV8Common(ctx, cache, lbRoot, epoch, lbts, config)
 	return err

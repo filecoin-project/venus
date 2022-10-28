@@ -43,8 +43,8 @@ func NewManager(
 	bsstore blockstoreutil.Blockstore,
 	exchangeClient exchange.Client,
 	c clock.Clock,
-	fork fork.IFork) (Manager, error) {
-
+	fork fork.IFork,
+) (Manager, error) {
 	chainSyncer, err := syncer.NewSyncer(stmgr, hv, cs, submodule.ChainReader,
 		submodule.MessageStore, bsstore,
 		exchangeClient, c, fork)

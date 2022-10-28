@@ -136,9 +136,7 @@ func NewSyncerSubmodule(ctx context.Context,
 		return nil, err
 	}
 
-	var (
-		slashFilter slashfilter.ISlashFilter
-	)
+	var slashFilter slashfilter.ISlashFilter
 	if config.Repo().Config().SlashFilterDs.Type == "local" {
 		slashFilter = slashfilter.NewLocalSlashFilter(config.Repo().ChainDatastore())
 	} else {
@@ -228,7 +226,6 @@ func (syncer *SyncerSubmodule) handleIncomingBlocks(ctx context.Context, msg pub
 		if err = syncer.ChainSyncManager.BlockProposer().SendGossipBlock(chainInfo); err != nil {
 			log.Errorf("failed to notify syncer of new block, block: %s", err)
 		}
-
 	}()
 	return nil
 }
@@ -247,7 +244,7 @@ func (syncer *SyncerSubmodule) Start(ctx context.Context) error {
 		return errors.Wrapf(err, "failed to subscribe block topic")
 	}
 
-	//process incoming blocks
+	// process incoming blocks
 	go func() {
 		for {
 			received, err := syncer.BlockSub.Next(ctx)

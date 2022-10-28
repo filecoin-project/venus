@@ -55,6 +55,5 @@ func (mockFork *MockFork) GetForkUpgrade() *config.ForkUpgradeConfig {
 }
 
 func (mockFork *MockFork) Start(ctx context.Context) error {
-
 	return nil
 }

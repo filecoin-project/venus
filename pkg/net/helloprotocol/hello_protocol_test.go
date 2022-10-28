@@ -60,7 +60,7 @@ func TestHelloHandshake(t *testing.T) {
 	_ = store.SetHead(ctx, heavy2)
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 
-	//peer manager
+	// peer manager
 	aPeerMgr, err := mockPeerMgr(ctx, t, a)
 	require.NoError(t, err)
 
@@ -126,7 +126,7 @@ func TestHelloBadGenesis(t *testing.T) {
 	fmt.Println(genesisB, genesisA)
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 
-	//peer manager
+	// peer manager
 	peerMgr, err := mockPeerMgr(ctx, t, a)
 	require.NoError(t, err)
 
@@ -172,7 +172,7 @@ func TestHelloMultiBlock(t *testing.T) {
 	_ = store.SetHead(ctx, heavy2)
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 
-	//peer manager
+	// peer manager
 	peerMgr, err := mockPeerMgr(ctx, t, a)
 	require.NoError(t, err)
 

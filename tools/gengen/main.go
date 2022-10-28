@@ -28,8 +28,8 @@ func writeKey(ki *crypto.KeyInfo, name string, jsonout bool) error {
 	}
 	defer fi.Close() // nolint: errcheck
 
-	//var wir cmd.WalletSerializeResult
-	//wir.KeyInfo = append(wir.KeyInfo, ki)
+	// var wir cmd.WalletSerializeResult
+	// wir.KeyInfo = append(wir.KeyInfo, ki)
 
 	return json.NewEncoder(hex.NewEncoder(fi)).Encode(ki)
 }
@@ -63,9 +63,7 @@ set the initial genesis block:
 $ venus daemon --genesisfile=genesis.car
 */
 
-var (
-	flag = flg.NewFlagSet(os.Args[0], flg.ExitOnError)
-)
+var flag = flg.NewFlagSet(os.Args[0], flg.ExitOnError)
 
 func main() {
 	jsonout := flag.Bool("json", false, "sets output to be json")

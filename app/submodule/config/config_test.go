@@ -114,5 +114,4 @@ func TestConfigSet(t *testing.T) {
 		err = cfgAPI.Set("walletModule.defaultAddress", jsonBlobBadAddr)
 		assert.EqualError(t, err, address.ErrUnknownProtocol.Error())
 	})
-
 }

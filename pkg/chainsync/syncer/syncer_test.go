@@ -582,7 +582,8 @@ func setup(ctx context.Context, t *testing.T) (*chain.Builder, *syncer.Syncer) {
 }
 
 func setupWithValidator(ctx context.Context, t *testing.T, builder *chain.Builder,
-	stmgr *statemanger.Stmgr, headerVal syncer.BlockValidator) (*chain.Builder, *syncer.Syncer) {
+	stmgr *statemanger.Stmgr, headerVal syncer.BlockValidator,
+) (*chain.Builder, *syncer.Syncer) {
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the bsstore, to which the syncer must ensure to put blocks.
 	sel := &chain.FakeChainSelector{}

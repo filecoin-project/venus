@@ -15,8 +15,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/crypto"
 )
 
-type FakeSyscalls struct {
-}
+type FakeSyscalls struct{}
 
 func (f FakeSyscalls) VerifySignature(ctx context.Context, view SyscallsStateView, signature crypto.Signature, signer address.Address, plaintext []byte) error {
 	// The signer is assumed To be already resolved To a pubkey address.

@@ -74,7 +74,7 @@ type IMarket interface {
 	// SectorSetExpectedSealDuration sets the expected time for a sector to seal
 	SectorSetExpectedSealDuration(context.Context, time.Duration) error //perm:write
 
-	//messager
+	// messager
 	MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*types.MsgLookup, error)                            //perm:read
 	MessagerPushMessage(ctx context.Context, msg *types.Message, meta *types.MessageSendSpec) (cid.Cid, error) //perm:write
 	MessagerGetMessage(ctx context.Context, mid cid.Cid) (*types.Message, error)                               //perm:read
@@ -127,7 +127,7 @@ type IMarket interface {
 	// It returns a stream of events to report progress.
 	DagstoreInitializeAll(ctx context.Context, params market.DagstoreInitializeAllParams) (<-chan market.DagstoreInitializeAllEvent, error) //perm:admin
 
-	//DagstoreInitializeStorage initializes all pieces in specify storage
+	// DagstoreInitializeStorage initializes all pieces in specify storage
 	DagstoreInitializeStorage(context.Context, string, market.DagstoreInitializeAllParams) (<-chan market.DagstoreInitializeAllEvent, error) //perm:admin
 
 	// DagstoreGC runs garbage collection on the DAG store.
@@ -140,7 +140,7 @@ type IMarket interface {
 	AssignUnPackedDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error) //perm:write
 	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                     //perm:read
 	UpdateStorageDealStatus(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus, pieceState market.PieceStatus) error //perm:write
-	//market event
+	// market event
 	ResponseMarketEvent(ctx context.Context, resp *gateway.ResponseEvent) error                                        //perm:read
 	ListenMarketEvent(ctx context.Context, policy *gateway.MarketRegisterPolicy) (<-chan *gateway.RequestEvent, error) //perm:read
 

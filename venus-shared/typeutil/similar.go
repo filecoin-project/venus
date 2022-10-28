@@ -30,34 +30,32 @@ const (
 	AvoidRecursive
 )
 
-var (
-	codecs = []struct {
-		flag        CodecFlag
-		marshaler   reflect.Type
-		unmarshaler reflect.Type
-	}{
-		{
-			flag:        CodecBinary,
-			marshaler:   reflect.TypeOf((*encoding.BinaryMarshaler)(nil)).Elem(),
-			unmarshaler: reflect.TypeOf((*encoding.BinaryUnmarshaler)(nil)).Elem(),
-		},
-		{
-			flag:        CodecText,
-			marshaler:   reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem(),
-			unmarshaler: reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem(),
-		},
-		{
-			flag:        CodecJSON,
-			marshaler:   reflect.TypeOf((*json.Marshaler)(nil)).Elem(),
-			unmarshaler: reflect.TypeOf((*json.Unmarshaler)(nil)).Elem(),
-		},
-		{
-			flag:        CodecCbor,
-			marshaler:   reflect.TypeOf((*cbor.Marshaler)(nil)).Elem(),
-			unmarshaler: reflect.TypeOf((*cbor.Unmarshaler)(nil)).Elem(),
-		},
-	}
-)
+var codecs = []struct {
+	flag        CodecFlag
+	marshaler   reflect.Type
+	unmarshaler reflect.Type
+}{
+	{
+		flag:        CodecBinary,
+		marshaler:   reflect.TypeOf((*encoding.BinaryMarshaler)(nil)).Elem(),
+		unmarshaler: reflect.TypeOf((*encoding.BinaryUnmarshaler)(nil)).Elem(),
+	},
+	{
+		flag:        CodecText,
+		marshaler:   reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem(),
+		unmarshaler: reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem(),
+	},
+	{
+		flag:        CodecJSON,
+		marshaler:   reflect.TypeOf((*json.Marshaler)(nil)).Elem(),
+		unmarshaler: reflect.TypeOf((*json.Unmarshaler)(nil)).Elem(),
+	},
+	{
+		flag:        CodecCbor,
+		marshaler:   reflect.TypeOf((*cbor.Marshaler)(nil)).Elem(),
+		unmarshaler: reflect.TypeOf((*cbor.Unmarshaler)(nil)).Elem(),
+	},
+}
 
 type similarResult struct {
 	similar bool

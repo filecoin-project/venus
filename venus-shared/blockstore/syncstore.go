@@ -26,16 +26,19 @@ func (m *SyncStore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
 	defer m.mu.Unlock()
 	return m.bs.DeleteMany(ctx, cids)
 }
+
 func (m *SyncStore) DeleteBlock(ctx context.Context, k cid.Cid) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.bs.DeleteBlock(ctx, k)
 }
+
 func (m *SyncStore) Has(ctx context.Context, k cid.Cid) (bool, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.bs.Has(ctx, k)
 }
+
 func (m *SyncStore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

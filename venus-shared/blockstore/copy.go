@@ -80,7 +80,7 @@ func CopyParticial(ctx context.Context, from, to Blockstore, root cid.Cid) error
 		close(freeBufs)
 	}()
 
-	var batch = <-freeBufs
+	batch := <-freeBufs
 	batchCp := func(blk blocks.Block) error {
 		numBlocks++
 		totalCopySize += len(blk.RawData())

@@ -93,7 +93,7 @@ func MakeGenesis(ctx context.Context, rep repo.Repo, outFile, genesisTemplate st
 
 		fmt.Printf("GENESIS MINER ADDRESS: t0%d\n", genesis2.MinerStart)
 
-		f, err := os.OpenFile(outFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		f, err := os.OpenFile(outFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 		if err != nil {
 			return nil, err
 		}
@@ -113,7 +113,6 @@ func MakeGenesis(ctx context.Context, rep repo.Repo, outFile, genesisTemplate st
 		}
 
 		return b.Genesis, nil
-
 	}
 }
 

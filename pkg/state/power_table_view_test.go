@@ -25,7 +25,7 @@ import (
 )
 
 func TestTotal(t *testing.T) {
-	//todo think a way to mock power directly
+	// todo think a way to mock power directly
 	t.Skipf("skip it due to cant mock power directly ")
 	tf.UnitTest(t)
 
@@ -47,7 +47,7 @@ func TestTotal(t *testing.T) {
 }
 
 func TestMiner(t *testing.T) {
-	//todo think a way to mock power directly
+	// todo think a way to mock power directly
 	t.Skipf("skip it due to cant mock power directly ")
 	tf.UnitTest(t)
 
@@ -68,7 +68,7 @@ func TestMiner(t *testing.T) {
 }
 
 func TestNoPowerAfterSlash(t *testing.T) {
-	//todo think a way to mock power directly
+	// todo think a way to mock power directly
 	t.Skipf("skip it due to cant mock power directly ")
 	tf.UnitTest(t)
 	// setup lookback state with 3 miners
@@ -87,7 +87,7 @@ func TestNoPowerAfterSlash(t *testing.T) {
 }
 
 func TestTotalPowerUnaffectedBySlash(t *testing.T) {
-	//todo think a way to mock power directly
+	// todo think a way to mock power directly
 	t.Skipf("skip it due to cant mock power directly ")
 	tf.UnitTest(t)
 	ctx := context.Background()
@@ -108,7 +108,7 @@ func TestTotalPowerUnaffectedBySlash(t *testing.T) {
 
 // nolint
 func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64, ownerKeys []crypto.KeyInfo) (cbor.IpldStore, []address.Address, cid.Cid) {
-	//todo think a way to mock power directly
+	// todo think a way to mock power directly
 	t.Skipf("skip it due to cant mock power directly ")
 	r := repo.NewInMemoryRepo()
 	bs := r.Datastore()

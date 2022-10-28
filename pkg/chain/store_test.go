@@ -26,7 +26,6 @@ func (cbor *CborBlockStore) PutBlocks(ctx context.Context, blocks []*types.Block
 	for _, blk := range blocks {
 		_, _ = cbor.cborStore.Put(ctx, blk)
 	}
-
 }
 
 // Default Chain diagram below.  Note that blocks in the same tipset are in parentheses.
@@ -168,7 +167,7 @@ func TestRevertChange(t *testing.T) {
 	headChanges := <-ch
 
 	if len(headChanges) == 1 {
-		//maybe link3, if link3 fetch next
+		// maybe link3, if link3 fetch next
 		headChanges = <-ch
 	}
 	test.Equal(t, headChanges[0].Type, types.HCRevert)
@@ -272,9 +271,11 @@ func TestHeadEvents(t *testing.T) {
 
 	headSets := []*types.TipSet{genTS, link1, link2, link3, link4, link3, link2, link1, genTS}
 	heads := []*types.TipSet{genTS, link1, link2, link3, link4, link4, link3, link2, link1}
-	types := []types.HeadChangeType{types.HCApply, types.HCApply, types.HCApply, types.HCApply, types.HCApply, types.HCRevert,
-		types.HCRevert, types.HCRevert, types.HCRevert}
-	var waitAndCheck = func(index int) {
+	types := []types.HeadChangeType{
+		types.HCApply, types.HCApply, types.HCApply, types.HCApply, types.HCApply, types.HCRevert,
+		types.HCRevert, types.HCRevert, types.HCRevert,
+	}
+	waitAndCheck := func(index int) {
 		headA := <-chA
 		headB := <-chB
 		assert.Equal(t, headA[0].Type, types[index])

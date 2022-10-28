@@ -11,9 +11,7 @@ import (
 	manet "github.com/multiformats/go-multiaddr/net"
 )
 
-var (
-	infoWithToken = regexp.MustCompile("^[a-zA-Z0-9\\-_]+?\\.[a-zA-Z0-9\\-_]+?\\.([a-zA-Z0-9\\-_]+)?:.+$") // nolint:gosimple
-)
+var infoWithToken = regexp.MustCompile("^[a-zA-Z0-9\\-_]+?\\.[a-zA-Z0-9\\-_]+?\\.([a-zA-Z0-9\\-_]+)?:.+$") // nolint:gosimple
 
 func VerString(ver uint32) string {
 	return fmt.Sprintf("v%d", ver)
@@ -92,7 +90,7 @@ func DialArgs(addr, version string) (string, error) {
 			return "", fmt.Errorf("parser libp2p url fail %w", err)
 		}
 
-		//override version
+		// override version
 		val, err := ma.ValueForProtocol(ProtoVersion)
 		if err == nil {
 			version = val

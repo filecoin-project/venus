@@ -42,7 +42,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 		return nil, nil, err
 	}
 
-	if err := os.MkdirAll(sbroot, 0775); err != nil { //nolint:gosec
+	if err := os.MkdirAll(sbroot, 0o775); err != nil { //nolint:gosec
 		return nil, nil, err
 	}
 
@@ -142,7 +142,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 			return nil, nil, fmt.Errorf("marshaling storage config: %w", err)
 		}
 
-		if err := os.WriteFile(filepath.Join(sbroot, "sectorstore.json"), b, 0644); err != nil {
+		if err := os.WriteFile(filepath.Join(sbroot, "sectorstore.json"), b, 0o644); err != nil {
 			return nil, nil, fmt.Errorf("persisting storage metadata (%s): %w", filepath.Join(sbroot, "storage.json"), err)
 		}
 	}
@@ -196,7 +196,7 @@ func presealSectorFake(sbfs *basicfs.Provider, sid storage.SectorRef, ssize abi.
 	}
 	defer done()
 
-	if err := os.Mkdir(paths.Cache, 0755); err != nil {
+	if err := os.Mkdir(paths.Cache, 0o755); err != nil {
 		return nil, fmt.Errorf("mkdir cache: %w", err)
 	}
 
@@ -235,7 +235,7 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, 
 
 	log.Infof("Writing preseal manifest to %s", filepath.Join(sbroot, "pre-seal-"+maddr.String()+".json"))
 
-	if err := os.WriteFile(filepath.Join(sbroot, "pre-seal-"+maddr.String()+".json"), out, 0664); err != nil {
+	if err := os.WriteFile(filepath.Join(sbroot, "pre-seal-"+maddr.String()+".json"), out, 0o664); err != nil {
 		return err
 	}
 
@@ -246,7 +246,7 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, 
 		}
 
 		// TODO: allow providing key
-		if err := os.WriteFile(filepath.Join(sbroot, "pre-seal-"+maddr.String()+".key"), []byte(hex.EncodeToString(b)), 0664); err != nil {
+		if err := os.WriteFile(filepath.Join(sbroot, "pre-seal-"+maddr.String()+".key"), []byte(hex.EncodeToString(b)), 0o664); err != nil {
 			return err
 		}
 	}

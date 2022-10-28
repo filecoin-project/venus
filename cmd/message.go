@@ -23,9 +23,11 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/utils"
 )
 
-var feecapOption = cmds.StringOption("gas-feecap", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
-var premiumOption = cmds.StringOption("gas-premium", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
-var limitOption = cmds.Int64Option("gas-limit", "Maximum GasUnits this message is allowed to consume")
+var (
+	feecapOption  = cmds.StringOption("gas-feecap", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
+	premiumOption = cmds.StringOption("gas-premium", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
+	limitOption   = cmds.Int64Option("gas-limit", "Maximum GasUnits this message is allowed to consume")
+)
 
 func parseGasOptions(req *cmds.Request) (fbig.Int, fbig.Int, int64, error) {
 	var (
