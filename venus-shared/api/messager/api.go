@@ -58,8 +58,6 @@ type IMessager interface {
 	ListNode(ctx context.Context) ([]*mtypes.Node, error)           //perm:admin
 	DeleteNode(ctx context.Context, name string) error              //perm:admin
 
-	SetLogLevel(ctx context.Context, level string) error //perm:admin
-
 	Send(ctx context.Context, params mtypes.QuickSendParams) (string, error) //perm:admin
 
 	NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, error) //perm:read

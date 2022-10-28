@@ -38,7 +38,6 @@
   * [SaveNode](#SaveNode)
   * [Send](#Send)
   * [SetFeeParams](#SetFeeParams)
-  * [SetLogLevel](#SetLogLevel)
   * [SetSelectMsgNum](#SetSelectMsgNum)
   * [SetSharedParams](#SetSharedParams)
   * [UpdateAllFilledMessage](#UpdateAllFilledMessage)
@@ -1234,20 +1233,6 @@ Inputs:
     "gasFeeCapStr": "string value",
     "baseFeeStr": "string value"
   }
-]
-```
-
-Response: `{}`
-
-### SetLogLevel
-
-
-Perms: admin
-
-Inputs:
-```json
-[
-  "string value"
 ]
 ```
 

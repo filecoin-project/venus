@@ -52,7 +52,6 @@ type IMessagerStruct struct {
 		SaveNode                 func(ctx context.Context, node *mtypes.Node) error                                                                                         `perm:"admin"`
 		Send                     func(ctx context.Context, params mtypes.QuickSendParams) (string, error)                                                                   `perm:"admin"`
 		SetFeeParams             func(ctx context.Context, params *mtypes.AddressSpec) error                                                                                `perm:"admin"`
-		SetLogLevel              func(ctx context.Context, level string) error                                                                                              `perm:"admin"`
 		SetSelectMsgNum          func(ctx context.Context, addr address.Address, num uint64) error                                                                          `perm:"admin"`
 		SetSharedParams          func(ctx context.Context, params *mtypes.SharedSpec) error                                                                                 `perm:"admin"`
 		UpdateAllFilledMessage   func(ctx context.Context) (int, error)                                                                                                     `perm:"admin"`
@@ -175,9 +174,6 @@ func (s *IMessagerStruct) Send(p0 context.Context, p1 mtypes.QuickSendParams) (s
 }
 func (s *IMessagerStruct) SetFeeParams(p0 context.Context, p1 *mtypes.AddressSpec) error {
 	return s.Internal.SetFeeParams(p0, p1)
-}
-func (s *IMessagerStruct) SetLogLevel(p0 context.Context, p1 string) error {
-	return s.Internal.SetLogLevel(p0, p1)
 }
 func (s *IMessagerStruct) SetSelectMsgNum(p0 context.Context, p1 address.Address, p2 uint64) error {
 	return s.Internal.SetSelectMsgNum(p0, p1, p2)
