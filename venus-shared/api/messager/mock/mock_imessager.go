@@ -367,6 +367,21 @@ func (mr *MockIMessagerMockRecorder) ListNode(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListNode", reflect.TypeOf((*MockIMessager)(nil).ListNode), arg0)
 }
 
+// LogList mocks base method.
+func (m *MockIMessager) LogList(arg0 context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LogList", arg0)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LogList indicates an expected call of LogList.
+func (mr *MockIMessagerMockRecorder) LogList(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LogList", reflect.TypeOf((*MockIMessager)(nil).LogList), arg0)
+}
+
 // MarkBadMessage mocks base method.
 func (m *MockIMessager) MarkBadMessage(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
@@ -558,17 +573,17 @@ func (mr *MockIMessagerMockRecorder) SetFeeParams(arg0, arg1 interface{}) *gomoc
 }
 
 // SetLogLevel mocks base method.
-func (m *MockIMessager) SetLogLevel(arg0 context.Context, arg1 string) error {
+func (m *MockIMessager) SetLogLevel(arg0 context.Context, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetLogLevel", arg0, arg1)
+	ret := m.ctrl.Call(m, "SetLogLevel", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SetLogLevel indicates an expected call of SetLogLevel.
-func (mr *MockIMessagerMockRecorder) SetLogLevel(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockIMessagerMockRecorder) SetLogLevel(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLogLevel", reflect.TypeOf((*MockIMessager)(nil).SetLogLevel), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLogLevel", reflect.TypeOf((*MockIMessager)(nil).SetLogLevel), arg0, arg1, arg2)
 }
 
 // SetSelectMsgNum mocks base method.

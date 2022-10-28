@@ -23,6 +23,7 @@
   * [ListMessageByAddress](#ListMessageByAddress)
   * [ListMessageByFromState](#ListMessageByFromState)
   * [ListNode](#ListNode)
+  * [LogList](#LogList)
   * [MarkBadMessage](#MarkBadMessage)
   * [NetAddrsListen](#NetAddrsListen)
   * [NetConnect](#NetConnect)
@@ -871,6 +872,20 @@ Response:
 ]
 ```
 
+### LogList
+
+
+Perms: write
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  "string value"
+]
+```
+
 ### MarkBadMessage
 
 
@@ -1225,6 +1240,7 @@ Perms: admin
 Inputs:
 ```json
 [
+  "string value",
   "string value"
 ]
 ```
