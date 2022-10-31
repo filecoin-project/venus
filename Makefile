@@ -42,7 +42,7 @@ build-dep/.update-modules: build-dep;
 	git submodule update --init --recursive
 	touch $@
 
-gen-all: cborgen gogen inline-gen api-gen bundle-gen
+gen-all: cborgen gogen inline-gen api-gen bundle-gen state-type-gen
 
 ### devtool ###
 cborgen:
@@ -59,6 +59,9 @@ test-venus-shared:
 
 bundle-gen:
 	cd venus-devtool && go run ./bundle-gen/*.go  --dst ./../venus-shared/actors/builtin_actors_gen.go
+
+state-type-gen:
+	cd venus-devtool && go run ./state-type-gen/*.go --dst ./../venus-shared/types/alias_types_gen.go
 
 api-gen:
 	find ./venus-shared/api/ -name 'client_gen.go' -delete
