@@ -89,5 +89,4 @@ func TestBLSSigning(t *testing.T) {
 	// invalid digest fails
 	err = crypto.Verify(signature, addr, data[3:])
 	require.Error(t, err)
-
 }

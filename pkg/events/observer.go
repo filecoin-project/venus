@@ -37,7 +37,7 @@ func newObserver(api *cache, gcConfidence abi.ChainEpoch) *observer {
 		ready:     make(chan struct{}),
 		observers: []TipSetObserver{},
 	}
-	//obs.Observe(api.observer()) todo has ignore cache
+	// obs.Observe(api.observer()) todo has ignore cache
 	return obs
 }
 

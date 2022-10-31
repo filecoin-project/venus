@@ -58,5 +58,7 @@ func (dr *DrawRandomParams) UnmarshalCBOR(r io.Reader) error {
 	return fcbor.Unmarshal(data, dr)
 }
 
-var _ = cbor.Unmarshaler((*DrawRandomParams)(nil))
-var _ = cbor.Marshaler((*DrawRandomParams)(nil))
+var (
+	_ = cbor.Unmarshaler((*DrawRandomParams)(nil))
+	_ = cbor.Marshaler((*DrawRandomParams)(nil))
+)

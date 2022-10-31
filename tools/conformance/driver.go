@@ -96,8 +96,8 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 	ipldStore := cbor.NewCborStore(bs)
 	mainNetParams := networks.Mainnet()
 	node.SetNetParams(&mainNetParams.Network)
-	//chainstore
-	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator()) //load genesis from car
+	// chainstore
+	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator()) // load genesis from car
 
 	//drand
 	/*genBlk, err := chainStore.GetGenesisBlock(context.TODO())
@@ -110,7 +110,7 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 		return nil, err
 	}*/
 
-	//chain fork
+	// chain fork
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network)
 	faultChecker := consensusfault.NewFaultChecker(chainStore, chainFork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, impl.ProofVerifier)
@@ -174,7 +174,7 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 						Data: make([]byte, 65),
 					},
 				})*/
-				sb.BlsMessages = append(sb.BlsMessages, msg) //todo  use interface for message
+				sb.BlsMessages = append(sb.BlsMessages, msg) // todo  use interface for message
 				sb.BlsMessages = append(sb.BlsMessages, msg)
 			}
 		}
@@ -194,7 +194,6 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 		results = append(results, ret)
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -246,11 +245,11 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 	mainNetParams := networks.Mainnet()
 	node.SetNetParams(&mainNetParams.Network)
 	ipldStore := cbor.NewCborStore(bs)
-	chainDs := ds.NewMapDatastore() //just mock one
-	//chainstore
-	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator()) //load genesis from car
+	chainDs := ds.NewMapDatastore() // just mock one
+	// chainstore
+	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator()) // load genesis from car
 
-	//chain fork
+	// chain fork
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network)
 	faultChecker := consensusfault.NewFaultChecker(chainStore, chainFork)
 	syscalls := vmsupport.NewSyscalls(faultChecker, impl.ProofVerifier)

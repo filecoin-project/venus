@@ -80,7 +80,7 @@ type NetworkSubmodule struct { //nolint
 
 	PeerMgr        peermgr.IPeerMgr
 	ExchangeClient filexchange.Client
-	//data transfer
+	// data transfer
 	DataTransfer     datatransfer.Manager
 	DataTransferHost dtnet.DataTransferNetwork
 
@@ -122,7 +122,8 @@ type networkConfig interface {
 
 // NewNetworkSubmodule creates a new network submodule.
 func NewNetworkSubmodule(ctx context.Context, chainStore *chain.Store,
-	messageStore *chain.MessageStore, config networkConfig) (*NetworkSubmodule, error) {
+	messageStore *chain.MessageStore, config networkConfig,
+) (*NetworkSubmodule, error) {
 	bandwidthTracker := p2pmetrics.NewBandwidthCounter()
 	libP2pOpts := append(config.Libp2pOpts(), libp2p.BandwidthReporter(bandwidthTracker), makeSmuxTransportOption())
 	var networkName string
@@ -183,8 +184,8 @@ func NewNetworkSubmodule(ctx context.Context, chainStore *chain.Store,
 	lsys := storeutil.LinkSystemForBlockstore(config.Repo().Datastore())
 	gsync := graphsyncimpl.New(ctx, graphsyncNetwork, lsys, graphsyncimpl.RejectAllRequestsByDefault())
 
-	//dataTransger
-	//sc := storedcounter.New(repo.ChainDatastore(), datastore.NewKey("/datatransfer/api/counter"))
+	// dataTransger
+	// sc := storedcounter.New(repo.ChainDatastore(), datastore.NewKey("/datatransfer/api/counter"))
 	// go-data-transfer protocol retries:
 	// 1s, 5s, 25s, 2m5s, 5m x 11 ~= 1 hour
 	dtRetryParams := dtnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
@@ -268,7 +269,8 @@ func (networkSubmodule *NetworkSubmodule) fetchCids(
 	ctx context.Context,
 	srv bserv.BlockService,
 	cids []cid.Cid,
-	onfetchOneBlock func(int, blocks.Block) error) error {
+	onfetchOneBlock func(int, blocks.Block) error,
+) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -367,14 +369,16 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 
 func makeDHT(ctx context.Context, h types.RawHost, config networkConfig, networkName string, bootNodes []peer.AddrInfo) (routing.Routing, error) {
 	mode := dht.ModeAuto
-	opts := []dht.Option{dht.Mode(mode),
+	opts := []dht.Option{
+		dht.Mode(mode),
 		dht.Datastore(config.Repo().ChainDatastore()),
 		dht.ProtocolPrefix(net.FilecoinDHT(networkName)),
 		dht.QueryFilter(dht.PublicQueryFilter),
 		dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
 		dht.DisableProviders(),
 		dht.BootstrapPeers(bootNodes...),
-		dht.DisableValues()}
+		dht.DisableValues(),
+	}
 	r, err := dht.New(
 		ctx, h, opts...,
 	)

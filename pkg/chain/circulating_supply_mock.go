@@ -10,8 +10,7 @@ import (
 
 var _ ICirculatingSupplyCalcualtor = (*MockCirculatingSupplyCalculator)(nil)
 
-type MockCirculatingSupplyCalculator struct {
-}
+type MockCirculatingSupplyCalculator struct{}
 
 func NewMockCirculatingSupplyCalculator() ICirculatingSupplyCalcualtor {
 	return &MockCirculatingSupplyCalculator{}

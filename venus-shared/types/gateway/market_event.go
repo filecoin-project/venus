@@ -19,8 +19,7 @@ type IsUnsealRequest struct {
 	Size     abi.PaddedPieceSize
 }
 
-type IsUnsealResponse struct {
-}
+type IsUnsealResponse struct{}
 
 type UnsealRequest struct {
 	PieceCid cid.Cid
@@ -30,8 +29,7 @@ type UnsealRequest struct {
 	Dest     string
 }
 
-type UnsealResponse struct {
-}
+type UnsealResponse struct{}
 
 type MarketConnectionState struct {
 	Addr address.Address

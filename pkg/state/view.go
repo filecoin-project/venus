@@ -17,7 +17,6 @@ import (
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
@@ -128,7 +127,7 @@ func (v *View) MinerInfo(ctx context.Context, maddr addr.Address, nv network.Ver
 }
 
 // Loads sector info from miner state.
-func (v *View) MinerSectorInfo(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*miner.SectorOnChainInfo, error) {
+func (v *View) MinerSectorInfo(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*types.SectorOnChainInfo, error) {
 	minerState, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, err
@@ -238,7 +237,7 @@ func (v *View) GetSectorsForWinningPoSt(ctx context.Context, nv network.Version,
 }
 
 // StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector
-func (v *View) SectorPreCommitInfo(ctx context.Context, maddr addr.Address, sid abi.SectorNumber) (*miner.SectorPreCommitOnChainInfo, error) {
+func (v *View) SectorPreCommitInfo(ctx context.Context, maddr addr.Address, sid abi.SectorNumber) (*types.SectorPreCommitOnChainInfo, error) {
 	mas, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, fmt.Errorf("(get sset) failed to load miner actor: %v", err)
@@ -286,7 +285,7 @@ func (v *View) MinerExists(ctx context.Context, maddr addr.Address) (bool, error
 
 // MinerGetPrecommittedSector Looks up info for a miners precommitted sector.
 // NOTE: exposes on-chain structures directly for storage FSM API.
-func (v *View) MinerGetPrecommittedSector(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*miner.SectorPreCommitOnChainInfo, bool, error) {
+func (v *View) MinerGetPrecommittedSector(ctx context.Context, maddr addr.Address, sectorNum abi.SectorNumber) (*types.SectorPreCommitOnChainInfo, bool, error) {
 	minerState, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, false, err
@@ -658,7 +657,7 @@ func (v *View) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[s
 }
 
 // StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
-func (v *View) StateMinerActiveSectors(ctx context.Context, maddr addr.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
+func (v *View) StateMinerActiveSectors(ctx context.Context, maddr addr.Address, tsk types.TipSetKey) ([]*types.SectorOnChainInfo, error) {
 	mas, err := v.LoadMinerState(ctx, maddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load miner actor state: %v", err)

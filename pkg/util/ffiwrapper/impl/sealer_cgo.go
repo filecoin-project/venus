@@ -247,7 +247,7 @@ func (sb *Sealer) SealPreCommit1(ctx context.Context, sector storage.SectorRef, 
 	}
 	defer done()
 
-	e, err := os.OpenFile(paths.Sealed, os.O_RDWR|os.O_CREATE, 0644) // nolint:gosec
+	e, err := os.OpenFile(paths.Sealed, os.O_RDWR|os.O_CREATE, 0o644) // nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("ensuring sealed file exists: %w", err)
 	}
@@ -255,7 +255,7 @@ func (sb *Sealer) SealPreCommit1(ctx context.Context, sector storage.SectorRef, 
 		return nil, err
 	}
 
-	if err := os.Mkdir(paths.Cache, 0755); err != nil { // nolint
+	if err := os.Mkdir(paths.Cache, 0o755); err != nil { // nolint
 		if os.IsExist(err) {
 			log.Warnf("existing cache in %s; removing", paths.Cache)
 
@@ -263,7 +263,7 @@ func (sb *Sealer) SealPreCommit1(ctx context.Context, sector storage.SectorRef, 
 				return nil, fmt.Errorf("remove existing sector cache from %s (sector %d): %w", paths.Cache, sector, err)
 			}
 
-			if err := os.Mkdir(paths.Cache, 0755); err != nil { // nolint:gosec
+			if err := os.Mkdir(paths.Cache, 0o755); err != nil { // nolint:gosec
 				return nil, fmt.Errorf("mkdir cache path after cleanup: %w", err)
 			}
 		} else {
@@ -447,7 +447,6 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 }
 
 func GetRequiredPadding(oldLength abi.PaddedPieceSize, newPieceLength abi.PaddedPieceSize) ([]abi.PaddedPieceSize, abi.PaddedPieceSize) {
-
 	padPieces := make([]abi.PaddedPieceSize, 0)
 
 	toFill := uint64(-oldLength % newPieceLength)

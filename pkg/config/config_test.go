@@ -235,8 +235,8 @@ path = "mushroom-mushroom"}`
 		assert.Error(t, err)
 
 		// Corrupt address won't pass checksum
-		//err = cfg.Set("mining.defaultAddress", "fcqv3gmsd9gd7dqfe60d28euf4tx9v7929corrupt")
-		//assert.Contains(err.Error(), "invalid")
+		// err = cfg.Set("mining.defaultAddress", "fcqv3gmsd9gd7dqfe60d28euf4tx9v7929corrupt")
+		// assert.Contains(err.Error(), "invalid")
 
 		err = cfg.Set("walletModule.defaultAddress", "corruptandtooshort")
 		assert.Contains(t, err.Error(), address.ErrUnknownNetwork.Error())
@@ -256,7 +256,7 @@ path = "mushroom-mushroom"}`
 func createConfigFile(t *testing.T, content string) (string, error) {
 	cfgpath := filepath.Join(t.TempDir(), "config.json")
 
-	if err := os.WriteFile(cfgpath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(cfgpath, []byte(content), 0o644); err != nil {
 		return "", err
 	}
 

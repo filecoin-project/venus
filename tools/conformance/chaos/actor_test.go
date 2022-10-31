@@ -190,7 +190,6 @@ func TestMutateStateAfterTransaction(t *testing.T) {
 		Value:  val,
 		Branch: MutateAfterTransaction,
 	})
-
 }
 
 func TestMutateStateReadonly(t *testing.T) {

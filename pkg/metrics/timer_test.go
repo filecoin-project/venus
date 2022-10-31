@@ -25,7 +25,6 @@ func TestTimerSimple(t *testing.T) {
 	sw := testTimer.Start(ctx)
 	sw.Stop(ctx)
 	assert.NotEqual(t, 0, sw.start)
-
 }
 
 func TestDuplicateTimersPanics(t *testing.T) {
@@ -48,7 +47,6 @@ func TestDuplicateTimersPanics(t *testing.T) {
 	sw := testTimer.Start(ctx)
 	sw.Stop(ctx)
 	assert.NotEqual(t, 0, sw.start)
-
 }
 
 func TestMultipleTimers(t *testing.T) {
@@ -67,5 +65,4 @@ func TestMultipleTimers(t *testing.T) {
 	assert.NotEqual(t, 0, sw1.start)
 	sw2.Stop(ctx2)
 	assert.NotEqual(t, 0, sw2.start)
-
 }

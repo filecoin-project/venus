@@ -45,5 +45,4 @@ func TestWinnerProba(t *testing.T) {
 	if avg := float64(sum) / N; math.Abs(avg-5) > 0.01 {
 		t.Fatalf("avg too far off: %f", avg)
 	}
-
 }

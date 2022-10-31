@@ -53,10 +53,10 @@ var EnableDetailedTracing = os.Getenv("VENUS_VM_ENABLE_TRACING") == "1"
 // Returns `True` if the there was enough gas To pay for `amount`.
 func (t *GasTracker) TryCharge(gasCharge GasCharge) bool {
 	toUse := gasCharge.Total()
-	//code for https://github.com/filecoin-project/venus/issues/4610
+	// code for https://github.com/filecoin-project/venus/issues/4610
 	if EnableDetailedTracing {
 		var callers [10]uintptr
-		cout := 0 //gruntime.Callers(2+skip, callers[:])
+		cout := 0 // gruntime.Callers(2+skip, callers[:])
 
 		now := time.Now()
 		if t.LastGasCharge != nil {
@@ -71,7 +71,7 @@ func (t *GasTracker) TryCharge(gasCharge GasCharge) bool {
 			ComputeGas: gasCharge.ComputeGas,
 			StorageGas: gasCharge.StorageGas,
 
-			//TotalVirtualGas:   gasCharge.VirtualCompute*GasComputeMulti + gasCharge.VirtualStorage*GasStorageMulti,
+			// TotalVirtualGas:   gasCharge.VirtualCompute*GasComputeMulti + gasCharge.VirtualStorage*GasStorageMulti,
 			TotalVirtualGas:   gasCharge.VirtualCompute + gasCharge.VirtualStorage,
 			VirtualComputeGas: gasCharge.VirtualCompute,
 			VirtualStorageGas: gasCharge.VirtualStorage,
@@ -94,7 +94,7 @@ func (t *GasTracker) TryCharge(gasCharge GasCharge) bool {
 	// overflow safe
 	if t.GasUsed > t.GasAvailable-toUse {
 		t.GasUsed = t.GasAvailable
-		//return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gasCharge: used=%d, available=%d", t.GasUsed, t.GasAvailable)
+		// return aerrors.Newf(exitcode.SysErrOutOfGas, "not enough gasCharge: used=%d, available=%d", t.GasUsed, t.GasAvailable)
 		return false
 	}
 	t.GasUsed += toUse

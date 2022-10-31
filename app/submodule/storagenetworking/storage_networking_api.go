@@ -1,7 +1,6 @@
 package storagenetworking
 
-type IStorageNetworking interface {
-}
+type IStorageNetworking interface{}
 
 var _ IStorageNetworking = &storageNetworkingAPI{}
 

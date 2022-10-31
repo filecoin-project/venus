@@ -14,9 +14,7 @@ import (
 
 const idmask = uint64(1<<63) - 1
 
-var (
-	bigZero = big.Zero()
-)
+var bigZero = big.Zero()
 
 func init() {
 	MustRegisterDefaultValueProvier(CidProvider(defaultBytesFixedSize))

@@ -42,7 +42,7 @@ type topLevelContext struct {
 type invocationContext struct {
 	vm                *LegacyVM
 	topLevel          *topLevelContext
-	originMsg         VmMessage //msg not trasfer from and to address
+	originMsg         VmMessage // msg not trasfer from and to address
 	msg               VmMessage // The message being processed
 	gasTank           *gas.GasTracker
 	randSource        HeadChainRandomness
@@ -58,7 +58,8 @@ type internalActorStateHandle interface {
 }
 
 func newInvocationContext(rt *LegacyVM, gasIpld ipfscbor.IpldStore, topLevel *topLevelContext, msg VmMessage,
-	gasTank *gas.GasTracker, randSource HeadChainRandomness, parent *invocationContext) invocationContext {
+	gasTank *gas.GasTracker, randSource HeadChainRandomness, parent *invocationContext,
+) invocationContext {
 	orginMsg := msg
 	ctx := invocationContext{
 		vm:                rt,
@@ -78,10 +79,10 @@ func newInvocationContext(rt *LegacyVM, gasIpld ipfscbor.IpldStore, topLevel *to
 		if !parent.allowSideEffects && rt.NetworkVersion() >= network.Version7 {
 			runtime.Abortf(exitcode.SysErrForbidden, "internal calls currently disabled")
 		}
-		//ctx.gasUsed = parent.gasUsed
-		//ctx.origin = parent.origin
-		//ctx.originNonce = parent.originNonce
-		//ctx.numActorsCreated = parent.numActorsCreated
+		// ctx.gasUsed = parent.gasUsed
+		// ctx.origin = parent.origin
+		// ctx.originNonce = parent.originNonce
+		// ctx.numActorsCreated = parent.numActorsCreated
 		ctx.depth = parent.depth + 1
 	}
 
@@ -89,7 +90,7 @@ func newInvocationContext(rt *LegacyVM, gasIpld ipfscbor.IpldStore, topLevel *to
 		runtime.Abortf(exitcode.SysErrForbidden, "message execution exceeds call depth")
 	}
 
-	//Note: the toActor and stateHandle are loaded during the `invoke()`
+	// Note: the toActor and stateHandle are loaded during the `invoke()`
 	resF, ok := rt.normalizeAddress(msg.From)
 	if !ok {
 		runtime.Abortf(exitcode.SysErrInvalidReceiver, "resolve msg.From [%s] address failed", msg.From)
@@ -176,7 +177,6 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 	// Checkpoint stateView, for restoration on revert
 	// Note that changes prior To invocation (sequence number bump and gas prepayment) persist even if invocation fails.
 	err := ctx.vm.snapshot()
-
 	if err != nil {
 		panic(err)
 	}
@@ -209,7 +209,7 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 				ret = []byte{}
 				// do not trap unknown panics
 				vmlog.Errorf("spec actors failure: %s", r)
-				//debug.PrintStack()
+				// debug.PrintStack()
 			}
 		}
 	}()
@@ -252,7 +252,7 @@ func (ctx *invocationContext) invoke() (ret []byte, errcode exitcode.ExitCode) {
 	ctx.stateHandle = &stateHandle
 
 	// dispatch
-	adapter := newRuntimeAdapter(ctx) //runtimeAdapter{ctx: ctx}
+	adapter := newRuntimeAdapter(ctx) // runtimeAdapter{ctx: ctx}
 	var extErr *dispatch.ExcuteError
 	ret, extErr = actorImpl.Dispatch(ctx.originMsg.Method, ctx.vm.NetworkVersion(), adapter, ctx.originMsg.Params)
 	if extErr != nil {
@@ -359,7 +359,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 		}
 		return targetActor, targetIDAddr
 	} else {
-		//load id address
+		// load id address
 		targetIDAddr, found, err := state.ResolveAddress(target)
 		if err != nil {
 			panic(err)

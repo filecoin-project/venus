@@ -12,8 +12,10 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var blockTopicLogger = log.Logger("net/block_validator")
-var mDecodeBlkFail = metrics.NewInt64Counter("net/pubsub_block_decode_failure", "Number of blocks that fail to decode seen on block pubsub channel")
+var (
+	blockTopicLogger = log.Logger("net/block_validator")
+	mDecodeBlkFail   = metrics.NewInt64Counter("net/pubsub_block_decode_failure", "Number of blocks that fail to decode seen on block pubsub channel")
+)
 
 // BlockTopicValidator may be registered on go-libp2p-pubsub to validate blocksub messages.
 type BlockTopicValidator struct {

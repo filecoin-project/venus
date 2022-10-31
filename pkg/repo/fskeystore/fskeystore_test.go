@@ -172,12 +172,12 @@ func TestInvalidKeyFiles(t *testing.T) {
 
 	bytes := privKeyOrFatal(t)
 
-	err = os.WriteFile(filepath.Join(ks.dir, "valid"), bytes, 0644)
+	err = os.WriteFile(filepath.Join(ks.dir, "valid"), bytes, 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = os.WriteFile(filepath.Join(ks.dir, ".invalid"), bytes, 0644)
+	err = os.WriteFile(filepath.Join(ks.dir, ".invalid"), bytes, 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}

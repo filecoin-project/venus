@@ -196,7 +196,6 @@ func (caculator *CirculatingSupplyCalculator) setupGenesisVestingSchedule(ctx co
 
 // sets up information about the vesting schedule post the ignition upgrade
 func (caculator *CirculatingSupplyCalculator) setupPostIgnitionVesting(ctx context.Context) error {
-
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 
 	// 6 months
@@ -239,7 +238,6 @@ func (caculator *CirculatingSupplyCalculator) setupPostIgnitionVesting(ctx conte
 
 // sets up information about the vesting schedule post the calico upgrade
 func (caculator *CirculatingSupplyCalculator) setupPostCalicoVesting(ctx context.Context) error {
-
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 
 	// 0 days
@@ -383,7 +381,6 @@ func GetFilBurnt(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
 
 // GetFilLocked query the market contract and power contract to get the amount of locked fils
 func (caculator *CirculatingSupplyCalculator) GetFilLocked(ctx context.Context, st tree.Tree) (abi.TokenAmount, error) {
-
 	filMarketLocked, err := getFilMarketLocked(ctx, st)
 	if err != nil {
 		return big.Zero(), fmt.Errorf("failed to get filMarketLocked: %v", err)

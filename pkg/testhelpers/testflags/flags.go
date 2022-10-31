@@ -7,11 +7,13 @@ import (
 
 // Test enablement flags
 // Only run unit and integration tests by default, all others require their flags to be set.
-var integrationTest = flag.Bool("integration", true, "Run the integration go tests")
-var unitTest = flag.Bool("unit", true, "Run the unit go tests")
-var functionalTest = flag.Bool("functional", false, "Run the functional go tests")
-var deploymentTest = flag.String("deployment", "", "Run the deployment tests against a network")
-var binaryPath = flag.String("binary-path", "", "Run forked processes tests using provided binary")
+var (
+	integrationTest = flag.Bool("integration", true, "Run the integration go tests")
+	unitTest        = flag.Bool("unit", true, "Run the unit go tests")
+	functionalTest  = flag.Bool("functional", false, "Run the functional go tests")
+	deploymentTest  = flag.String("deployment", "", "Run the deployment tests against a network")
+	binaryPath      = flag.String("binary-path", "", "Run forked processes tests using provided binary")
+)
 
 // BinaryPath will return the path to the user provided binary. The call is expected to check if
 // the return path points to an actual file. If the user did not provide a value an empty string
@@ -54,7 +56,7 @@ func IntegrationTest(t *testing.T) {
 	if !*integrationTest {
 		t.SkipNow()
 	}
-	//t.Parallel()
+	// t.Parallel()
 }
 
 // UnitTest will run the test its called from iff the `-unit` or `-short` flag

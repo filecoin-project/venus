@@ -61,5 +61,5 @@ func NewHeadSignView(tipSignerView tipSignerView) *HeadSignView {
 
 func (headSignView *HeadSignView) ResolveToKeyAddr(ctx context.Context, addr address.Address) (address.Address, error) {
 	head := headSignView.GetHead()
-	return headSignView.tipSignerView.ResolveToKeyAddr(ctx, head, addr) //nil will use latest
+	return headSignView.tipSignerView.ResolveToKeyAddr(ctx, head, addr) // nil will use latest
 }

@@ -42,7 +42,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts *types.TipSet) (fbig.Int,
 	if !pStateID.Defined() {
 		return fbig.Zero(), errors.New("undefined state passed to Chain selector new weight")
 	}
-	//todo change view version
+	// todo change view version
 	powerTableView := state.NewPowerTableView(c.state.PowerStateView(pStateID), c.state.FaultStateView(pStateID))
 	networkPower, err := powerTableView.NetworkTotalPower(ctx)
 	if err != nil {
@@ -58,7 +58,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts *types.TipSet) (fbig.Int,
 	}
 
 	weight := ts.ParentWeight()
-	var out = new(big.Int).Set(weight.Int)
+	out := new(big.Int).Set(weight.Int)
 	out.Add(out, big.NewInt(log2P<<8))
 
 	// (wFunction(totalPowerAtTipset(ts)) * sum(ts.blocks[].ElectionProof.WinCount) * wRatio_num * 2^8) / (e * wRatio_den)

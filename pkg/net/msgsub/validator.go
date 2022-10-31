@@ -13,9 +13,11 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var messageTopicLogger = logging.Logger("net/message_validator")
-var mDecodeMsgFail = metrics.NewInt64Counter("net/pubsub_message_decode_failure", "Number of messages that fail to decode seen on message pubsub channel")
-var mInvalidMsg = metrics.NewInt64Counter("net/pubsub_invalid_message", "Number of messages that fail syntax validation seen on message pubsub channel")
+var (
+	messageTopicLogger = logging.Logger("net/message_validator")
+	mDecodeMsgFail     = metrics.NewInt64Counter("net/pubsub_message_decode_failure", "Number of messages that fail to decode seen on message pubsub channel")
+	mInvalidMsg        = metrics.NewInt64Counter("net/pubsub_invalid_message", "Number of messages that fail syntax validation seen on message pubsub channel")
+)
 
 // MessageTopicValidator may be registered on go-libp3p-pubsub to validate msgsub payloads.
 type MessageTopicValidator struct {

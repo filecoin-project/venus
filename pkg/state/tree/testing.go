@@ -24,11 +24,11 @@ func NewFromString(t *testing.T, s string, store cbor.IpldStore) *State {
 	tree, err := NewStateWithBuiltinActor(t, store, StateTreeVersion0)
 	require.NoError(t, err)
 
-	//create account
+	// create account
 	strAddr, err := address.NewSecp256k1Address([]byte(s))
 	require.NoError(t, err)
 
-	//add a account for t3
+	// add a account for t3
 	AddAccount(t, tree, store, strAddr)
 	require.NoError(t, err)
 	return tree
@@ -40,7 +40,7 @@ func NewStateWithBuiltinActor(t *testing.T, store cbor.IpldStore, ver StateTreeV
 	require.NoError(t, err)
 	adtStore := &AdtStore{store}
 
-	//create builtin init account
+	// create builtin init account
 	emptyMap := adt.MakeEmptyMap(adtStore)
 	emptyMapRoot, err := emptyMap.Root()
 	require.NoError(t, err)
@@ -72,7 +72,7 @@ func AddAccount(t *testing.T, tree *State, store cbor.IpldStore, addr address.Ad
 	initState := &init0.State{}
 	err = adtStore.Get(ctx, initActor.Head, initState)
 	require.NoError(t, err)
-	//add a account for t3
+	// add a account for t3
 	idAddr, err := initState.MapAddressToNewID(adtStore, addr)
 	require.NoError(t, err)
 	newInitStateId, err := store.Put(ctx, initState) //nolint
@@ -94,7 +94,7 @@ func AddAccount(t *testing.T, tree *State, store cbor.IpldStore, addr address.Ad
 	err = tree.SetActor(ctx, idAddr, accountActor)
 	require.NoError(t, err)
 
-	//save t3 address
+	// save t3 address
 	accountState := &account.State{Address: addr}
 	accountRoot, err := store.Put(context.TODO(), accountState)
 	if err != nil {

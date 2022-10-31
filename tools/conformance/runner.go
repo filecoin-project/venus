@@ -106,7 +106,7 @@ func ExecuteTipsetVector(r Reporter, v string, vector *schema.TestVector, varian
 
 	// Apply every tipset.
 	var receiptsIdx int
-	var prevEpoch = baseEpoch
+	prevEpoch := baseEpoch
 	for i, ts := range vector.ApplyTipsets {
 		ts := ts // capture
 		execEpoch := baseEpoch + abi.ChainEpoch(ts.EpochOffset)

@@ -66,9 +66,11 @@ import (
 	bstore "github.com/filecoin-project/venus/venus-shared/blockstore"
 )
 
-const AccountStart = 100
-const MinerStart = 1000
-const MaxAccounts = MinerStart - AccountStart
+const (
+	AccountStart = 100
+	MinerStart   = 1000
+	MaxAccounts  = MinerStart - AccountStart
+)
 
 var log = logging.Logger("genesis")
 
@@ -254,7 +256,6 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 
 	// Create accounts
 	for _, info := range template.Accounts {
-
 		switch info.Type {
 		case TAccount:
 			if err := createAccountActor(ctx, cst, state, info, keyIDs, av); err != nil {
@@ -275,7 +276,6 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template Te
 		default:
 			return nil, nil, errors.New("unsupported account type")
 		}
-
 	}
 
 	switch template.VerifregRootKey.Type {
@@ -549,7 +549,6 @@ func VerifyPreSealedData(ctx context.Context, cs *chain.Store, stateroot cid.Cid
 
 	// Note: This is brittle, if the methodNum / param changes, it could break things
 	_, err = doExecValue(ctx, vm, verifreg.Address, verifregRoot, types.NewInt(0), builtin0.MethodsVerifiedRegistry.AddVerifier, mustEnc(&verifreg0.AddVerifierParams{
-
 		Address:   verifier,
 		Allowance: abi.NewStoragePower(int64(sum)), // eh, close enough
 

@@ -122,7 +122,6 @@ func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
 	_, err = fs2.GetKeyInfo(ctx, addr)
 	assert.Error(t, err)
 	assert.Contains(t, "backend does not contain address", err.Error())
-
 }
 
 func TestDSBackendParallel(t *testing.T) {

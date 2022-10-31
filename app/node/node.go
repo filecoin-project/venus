@@ -52,7 +52,6 @@ const APIPrefix = "/api"
 
 // Node represents a full Filecoin node.
 type Node struct {
-
 	// offlineMode, when true, disables libp2p.
 	offlineMode bool
 
@@ -64,7 +63,7 @@ type Node struct {
 	// It contains all persistent artifacts of the filecoin node.
 	repo repo.Repo
 
-	//moduls
+	// moduls
 	circulatiingSupplyCalculator chain.ICirculatingSupplyCalcualtor
 	//
 	// Core services
@@ -213,12 +212,9 @@ func (node *Node) Stop(ctx context.Context) {
 	log.Infof("shutting down pay channel...")
 	node.paychan.Stop()
 
-	// Stop market submodule
-	// node.market.Stop()
-
 	log.Infof("closing repository...")
 	if err := node.repo.Close(); err != nil {
-		fmt.Printf("error closing repo: %s\n", err)
+		log.Warnf("error closing repo: %s", err)
 	}
 
 	log.Infof("flushing system logs...")
@@ -303,10 +299,13 @@ func (node *Node) RunRPCAndWait(ctx context.Context, rootCmdDaemon *cmds.Command
 	// todo: design an genterfull
 	memguard.CatchSignal(func(signal os.Signal) {
 		log.Infof("received signal(%s), venus will shutdown...", signal.String())
+		log.Infof("shutting down server...")
+		if err := apiserv.Shutdown(ctx); err != nil {
+			log.Warnf("failed to shutdown server: %v", err)
+		}
 		node.Stop(ctx)
-		log.Infof("venus shutdown gracefully ...")
-		_ = log.Sync()
 		memguard.Purge()
+		log.Infof("venus shutdown gracefully ...")
 		terminate <- nil
 	}, syscall.SIGTERM, os.Interrupt)
 

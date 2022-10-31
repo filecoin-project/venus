@@ -91,7 +91,6 @@ func TestFilShort(t *testing.T) {
 		fil    string
 		expect string
 	}{
-
 		{fil: "1", expect: "1 FIL"},
 		{fil: "1.1", expect: "1.1 FIL"},
 		{fil: "12", expect: "12 FIL"},
@@ -198,7 +197,7 @@ func TestMarshal(t *testing.T) {
 	type A struct {
 		Fil FIL
 	}
-	var a = A{
+	a := A{
 		Fil: FIL{Int: big.NewInt(1000000)},
 	}
 

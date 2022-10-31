@@ -102,10 +102,10 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		chainClock:  b.chainClock,
 	}
 
-	//modules
+	// modules
 	nd.circulatiingSupplyCalculator = chain2.NewCirculatingSupplyCalculator(b.repo.Datastore(), b.genBlk.ParentStateRoot, b.repo.Config().NetworkParams.ForkUpgradeParam)
 
-	//services
+	// services
 	nd.configModule = config2.NewConfigModule(b.repo)
 
 	nd.blockstore, err = blockstore.NewBlockstoreSubmodule(ctx, (*builder)(b))
@@ -215,6 +215,7 @@ type ValueFromCtx struct{}
 func (vfc *ValueFromCtx) AccFromCtx(ctx context.Context) (string, bool) {
 	return jwtclient.CtxGetName(ctx)
 }
+
 func (vfc *ValueFromCtx) HostFromCtx(ctx context.Context) (string, bool) {
 	return jwtclient.CtxGetTokenLocation(ctx)
 }

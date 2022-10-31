@@ -44,6 +44,7 @@ func (mp *mockMpool) GetNonce(_ context.Context, addr address.Address, _ types.T
 
 	return mp.nonces[addr], nil
 }
+
 func (mp *mockMpool) GetActor(_ context.Context, addr address.Address, _ types.TipSetKey) (*types.Actor, error) {
 	panic("don't use it")
 }

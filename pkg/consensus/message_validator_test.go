@@ -25,8 +25,10 @@ import (
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
-var keys = testhelpers.MustGenerateKeyInfo(2, 42)
-var addresses = make([]address.Address, len(keys))
+var (
+	keys      = testhelpers.MustGenerateKeyInfo(2, 42)
+	addresses = make([]address.Address, len(keys))
+)
 
 var methodID = abi.MethodNum(21231)
 
@@ -49,7 +51,7 @@ func TestBLSSignatureValidationConfiguration(t *testing.T) {
 	msg := testhelpers.NewMeteredMessage(from, addresses[1], 0, types.ZeroFIL, methodID, []byte("params"), types.NewGasFeeCap(1), types.NewGasPremium(1), 300)
 	mmsgCid := msg.Cid()
 
-	var signer = testhelpers.NewMockSigner(keys)
+	signer := testhelpers.NewMockSigner(keys)
 	signer.AddrKeyInfo[msg.From] = keys[0]
 	sig, err := signer.SignBytes(ctx, mmsgCid.Bytes(), msg.From)
 	require.NoError(t, err)
@@ -72,7 +74,7 @@ func TestBLSSignatureValidationConfiguration(t *testing.T) {
 
 func TestMessageSyntaxValidator(t *testing.T) {
 	tf.UnitTest(t)
-	var signer = testhelpers.NewMockSigner(keys)
+	signer := testhelpers.NewMockSigner(keys)
 	alice := addresses[0]
 	bob := addresses[1]
 
@@ -102,7 +104,6 @@ func TestMessageSyntaxValidator(t *testing.T) {
 		require.NoError(t, err)
 		assert.Errorf(t, validator.ValidateSignedMessageSyntax(ctx, msg), "block limit")
 	})
-
 }
 
 func newActor(t *testing.T, balanceAF int, nonce uint64) *types.Actor {
@@ -112,7 +113,8 @@ func newActor(t *testing.T, balanceAF int, nonce uint64) *types.Actor {
 }
 
 func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF int,
-	gasPrice int64, gasLimit int64) *types.Message {
+	gasPrice int64, gasLimit int64,
+) *types.Message {
 	val, err := types.ParseFIL(fmt.Sprintf("%d", valueAF))
 	require.Nil(t, err, "invalid attofil")
 	return testhelpers.NewMeteredMessage(

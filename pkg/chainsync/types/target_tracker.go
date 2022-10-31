@@ -64,7 +64,6 @@ func (target *Target) Key() string {
 	return weightIn.String() +
 		strconv.FormatInt(int64(target.Head.Height()), 10) +
 		target.Head.Parents().String()
-
 }
 
 // TargetTracker orders dispatcher syncRequests by the underlying `TargetBuckets`'s
@@ -193,7 +192,7 @@ func (tq *TargetTracker) Add(t *Target) bool {
 	tq.lk.Lock()
 	defer tq.lk.Unlock()
 
-	//do not sync less weight
+	// do not sync less weight
 	if t.Head.At(0).ParentWeight.LessThan(tq.lowWeight) {
 		return false
 	}
@@ -223,7 +222,7 @@ func (tq *TargetTracker) Add(t *Target) bool {
 	}
 
 	if replaceTarget == nil {
-		//replace a least weight idle
+		// replace a least weight idle
 		for i := len(tq.q) - 1; i > -1; i-- {
 			if tq.q[i].State == StageIdle {
 				replaceTarget = tq.q[i]
@@ -236,10 +235,10 @@ func (tq *TargetTracker) Add(t *Target) bool {
 
 	if replaceTarget == nil {
 		if len(tq.q) < tq.bucketSize {
-			//append to last slot
+			// append to last slot
 			tq.q = append(tq.q, t)
 		} else {
-			//return if target queue is full
+			// return if target queue is full
 			return false
 		}
 	} else {
@@ -249,7 +248,7 @@ func (tq *TargetTracker) Add(t *Target) bool {
 
 	tq.targetSet[t.ChainInfo.Head.String()] = t
 	sortTarget(tq.q)
-	//update lowweight
+	// update lowweight
 	tq.lowWeight = tq.q[len(tq.q)-1].Head.At(0).ParentWeight
 
 	tq.pubNewTarget()
@@ -261,7 +260,7 @@ func (tq *TargetTracker) Add(t *Target) bool {
 
 // sort by weight and than sort by block number in target buckets
 func sortTarget(target TargetBuckets) {
-	//use weight as group key
+	// use weight as group key
 	groups := make(map[string][]*Target)
 	var keys []fbig.Int
 	for _, t := range target {
@@ -274,12 +273,12 @@ func sortTarget(target TargetBuckets) {
 		}
 	}
 
-	//sort group by weight
+	// sort group by weight
 	sort.Slice(keys, func(i, j int) bool {
 		return keys[i].GreaterThan(keys[j])
 	})
 
-	//sort target in group by block number
+	// sort target in group by block number
 	for _, key := range keys {
 		inGroup := groups[key.String()]
 		sort.Slice(inGroup, func(i, j int) bool {
@@ -287,7 +286,7 @@ func sortTarget(target TargetBuckets) {
 		})
 	}
 
-	//update target buckets
+	// update target buckets
 	count := 0
 	for _, key := range keys {
 		for _, t := range groups[key.String()] {
@@ -314,7 +313,7 @@ func (tq *TargetTracker) widen(t *Target) (*Target, bool) {
 
 	miners := make(map[address.Address]interface{})
 
-	//collect neighbor block in queue include history to get block with same weight and height
+	// collect neighbor block in queue include history to get block with same weight and height
 	sameWeightBlks := make(map[cid.Cid]*types.BlockHeader)
 	for _, val := range tq.targetSet {
 		if val.IsNeighbor(t) {
@@ -339,7 +338,7 @@ func (tq *TargetTracker) widen(t *Target) (*Target, bool) {
 		return t, true
 	}
 
-	//apply block that t don't have
+	// apply block that t don't have
 	blks := t.Head.Blocks()
 	for _, blk := range sameWeightBlks {
 		blks = append(blks, blk)
@@ -388,7 +387,7 @@ func (tq *TargetTracker) Remove(t *Target) {
 	}
 	t.End = time.Now()
 	if tq.history.Len() > tq.historySize {
-		tq.history.Remove(tq.history.Front()) //remove olddest
+		tq.history.Remove(tq.history.Front()) // remove olddest
 		popKey := tq.history.Front().Value.(*Target).ChainInfo.Head.String()
 		delete(tq.targetSet, popKey)
 	}

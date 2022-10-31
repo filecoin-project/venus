@@ -35,11 +35,13 @@ var DefaultVerifregRootkeyActor = genesis.Actor{
 	Meta:    rootkeyMultisig.ActorMeta(),
 }
 
-var remAccTestKey, _ = address.NewFromString("t1ceb34gnsc6qk5dt6n7xg6ycwzasjhbxm3iylkiy")
-var remAccMeta = genesis.MultisigMeta{
-	Signers:   []address.Address{remAccTestKey},
-	Threshold: 1,
-}
+var (
+	remAccTestKey, _ = address.NewFromString("t1ceb34gnsc6qk5dt6n7xg6ycwzasjhbxm3iylkiy")
+	remAccMeta       = genesis.MultisigMeta{
+		Signers:   []address.Address{remAccTestKey},
+		Threshold: 1,
+	}
+)
 
 var DefaultRemainderAccountActor = genesis.Actor{
 	Type:    genesis.TMultisig,

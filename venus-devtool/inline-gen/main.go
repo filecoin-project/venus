@@ -72,7 +72,7 @@ func main() {
 				}
 				templateLines = append(templateLines, line)
 			case stateGen:
-				if strings.TrimSpace(line) != `/* inline-gen end */` { //empty line for goimports check
+				if strings.TrimSpace(line) != `/* inline-gen end */` { // empty line for goimports check
 					continue
 				}
 				fmt.Printf("generated section end %s:%d\n", path, ln)
@@ -115,7 +115,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			if err := os.WriteFile(path, formatted, 0664); err != nil {
+			if err := os.WriteFile(path, formatted, 0o664); err != nil {
 				return err
 			}
 		}

@@ -25,13 +25,13 @@ type Provider struct {
 }
 
 func (b *Provider) AcquireSector(ctx context.Context, id storage.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, ptype storiface.PathType) (storiface.SectorPaths, func(), error) {
-	if err := os.Mkdir(filepath.Join(b.Root, storiface.FTUnsealed.String()), 0755); err != nil && !os.IsExist(err) { // nolint
+	if err := os.Mkdir(filepath.Join(b.Root, storiface.FTUnsealed.String()), 0o755); err != nil && !os.IsExist(err) { // nolint
 		return storiface.SectorPaths{}, nil, err
 	}
-	if err := os.Mkdir(filepath.Join(b.Root, storiface.FTSealed.String()), 0755); err != nil && !os.IsExist(err) { // nolint
+	if err := os.Mkdir(filepath.Join(b.Root, storiface.FTSealed.String()), 0o755); err != nil && !os.IsExist(err) { // nolint
 		return storiface.SectorPaths{}, nil, err
 	}
-	if err := os.Mkdir(filepath.Join(b.Root, storiface.FTCache.String()), 0755); err != nil && !os.IsExist(err) { // nolint
+	if err := os.Mkdir(filepath.Join(b.Root, storiface.FTCache.String()), 0o755); err != nil && !os.IsExist(err) { // nolint
 		return storiface.SectorPaths{}, nil, err
 	}
 

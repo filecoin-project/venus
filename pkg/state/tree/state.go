@@ -516,7 +516,6 @@ func (st *State) ForEach(f func(ActorKey, *types.Actor) error) error {
 				return err
 			}
 		}
-
 	}
 
 	// Now walk through the saved actors.
@@ -556,6 +555,7 @@ func (st *State) At(root Root) error {
 	*st = *newState
 	return nil
 }
+
 func Diff(oldTree, newTree *State) (map[string]types.Actor, error) {
 	out := map[string]types.Actor{}
 

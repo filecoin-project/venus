@@ -43,13 +43,15 @@ func init() {
 
 var actorLog = logging.Logger("vm.actors")
 
-var _ rt0.Runtime = (*runtimeAdapter)(nil)
-var _ rt2.Runtime = (*runtimeAdapter)(nil)
-var _ rt3.Runtime = (*runtimeAdapter)(nil)
-var _ rt4.Runtime = (*runtimeAdapter)(nil)
-var _ rt5.Runtime = (*runtimeAdapter)(nil)
-var _ rt6.Runtime = (*runtimeAdapter)(nil)
-var _ rt7.Runtime = (*runtimeAdapter)(nil)
+var (
+	_ rt0.Runtime = (*runtimeAdapter)(nil)
+	_ rt2.Runtime = (*runtimeAdapter)(nil)
+	_ rt3.Runtime = (*runtimeAdapter)(nil)
+	_ rt4.Runtime = (*runtimeAdapter)(nil)
+	_ rt5.Runtime = (*runtimeAdapter)(nil)
+	_ rt6.Runtime = (*runtimeAdapter)(nil)
+	_ rt7.Runtime = (*runtimeAdapter)(nil)
+)
 
 type runtimeAdapter struct {
 	ctx *invocationContext
@@ -96,7 +98,6 @@ func (a *runtimeAdapter) StateCreate(obj cbor.Marshaler) {
 }
 
 func (a *runtimeAdapter) stateCommit(oldh, newh cid.Cid) error {
-
 	// TODO: we can make this more efficient in the future...
 	act, found, err := a.ctx.vm.State.GetActor(a.Context(), a.Receiver())
 	if !found || err != nil {

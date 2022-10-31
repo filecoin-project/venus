@@ -94,7 +94,6 @@ func TestConformance(t *testing.T) {
 		vectors = append(vectors, rel)
 		return nil
 	})
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +129,7 @@ func TestConformance(t *testing.T) {
 			invokee, ok := invokees[vector.Class]
 			if !ok {
 				return
-				//t.Fatalf("unsupported test vector class: %s", vector.Class)
+				// t.Fatalf("unsupported test vector class: %s", vector.Class)
 			}
 
 			for _, variant := range vector.Pre.Variants {

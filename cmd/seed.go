@@ -94,7 +94,7 @@ var genesisNewCmd = &cmds.Command{
 			return err
 		}
 
-		return os.WriteFile(genf, genb, 0644)
+		return os.WriteFile(genf, genb, 0o644)
 	},
 }
 
@@ -170,7 +170,7 @@ var genesisAddMinerCmd = &cmds.Command{
 			return err
 		}
 
-		return os.WriteFile(genf, genb, 0644)
+		return os.WriteFile(genf, genb, 0o644)
 	},
 }
 
@@ -236,7 +236,7 @@ var genesisAddMsigsCmd = &cmds.Command{
 			return err
 		}
 
-		return os.WriteFile(genf, b, 0644)
+		return os.WriteFile(genf, b, 0o644)
 	},
 }
 
@@ -400,7 +400,7 @@ var genesisSetVRKCmd = &cmds.Command{
 			return err
 		}
 
-		return os.WriteFile(genf, b, 0644)
+		return os.WriteFile(genf, b, 0o644)
 	},
 }
 
@@ -493,7 +493,7 @@ var genesisSetRemainderCmd = &cmds.Command{
 			return err
 		}
 
-		return os.WriteFile(genf, b, 0644)
+		return os.WriteFile(genf, b, 0o644)
 	},
 }
 
@@ -541,7 +541,7 @@ var genesisSetActorVersionCmd = &cmds.Command{
 			return err
 		}
 
-		return os.WriteFile(genf, b, 0644)
+		return os.WriteFile(genf, b, 0o644)
 	},
 }
 

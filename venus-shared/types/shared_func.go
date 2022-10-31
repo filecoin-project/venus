@@ -57,7 +57,7 @@ func IndexerIngestTopic(networkName string) string {
 }
 
 func DrandTopic(chainInfoJSON string) (string, error) {
-	var drandInfo = struct {
+	drandInfo := struct {
 		Hash string `json:"hash"`
 	}{}
 	err := json.Unmarshal([]byte(chainInfoJSON), &drandInfo)

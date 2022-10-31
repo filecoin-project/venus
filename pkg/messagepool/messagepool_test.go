@@ -387,7 +387,6 @@ func TestMessagePool(t *testing.T) {
 }
 
 func TestCheckMessageBig(t *testing.T) {
-
 	tma := newTestMpoolAPI()
 
 	w, mp := newWalletAndMpool(t, tma)
@@ -533,7 +532,6 @@ func TestRevertMessages(t *testing.T) {
 	if len(p) != 3 {
 		t.Fatal("expected three messages in mempool")
 	}
-
 }
 
 func TestPruningSimple(t *testing.T) {
@@ -598,7 +596,6 @@ func TestLoadLocal(t *testing.T) {
 	// the actors
 	w1 := newWallet(t)
 	a1, err := w1.NewAddress(context.Background(), address.SECP256K1)
-
 	if err != nil {
 		t.Fatal(err)
 	}

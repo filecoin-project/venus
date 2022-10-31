@@ -32,7 +32,7 @@ func NewFSKeystore(dir string) (*FSKeystore, error) {
 		if !os.IsNotExist(err) {
 			return nil, err
 		}
-		if err := os.Mkdir(dir, 0700); err != nil {
+		if err := os.Mkdir(dir, 0o700); err != nil {
 			return nil, err
 		}
 	}

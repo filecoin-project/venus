@@ -46,9 +46,11 @@ var (
 
 var fvmLog = logging.Logger("fvm")
 
-var _ vm.Interface = (*FVM)(nil)
-var _ ffi_cgo.Externs = (*FvmExtern)(nil)
-var debugBundleV8path = os.Getenv("VENUS_FVM_DEBUG_BUNDLE_V8")
+var (
+	_                 vm.Interface    = (*FVM)(nil)
+	_                 ffi_cgo.Externs = (*FvmExtern)(nil)
+	debugBundleV8path                 = os.Getenv("VENUS_FVM_DEBUG_BUNDLE_V8")
+)
 
 type FvmExtern struct { // nolint
 	Rand
@@ -465,7 +467,6 @@ func NewDebugFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 	}
 
 	fvm, err := ffi.CreateFVM(fvmOpts)
-
 	if err != nil {
 		return nil, err
 	}
@@ -680,8 +681,10 @@ func (vm *dualExecutionFVM) Flush(ctx context.Context) (cid.Cid, error) {
 }
 
 // Passing this as a pointer of structs has proven to be an enormous PiTA; hence this code.
-type xRedirect struct{ from, to cid.Cid }
-type xMapping struct{ redirects []xRedirect }
+type (
+	xRedirect struct{ from, to cid.Cid }
+	xMapping  struct{ redirects []xRedirect }
+)
 
 func (m *xMapping) MarshalCBOR(w io.Writer) error {
 	scratch := make([]byte, 9)

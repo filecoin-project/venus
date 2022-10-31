@@ -68,7 +68,7 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, nvk network.Version,
 		// the ctx will be automatically coerced
 		reflect.ValueOf(ctx),
 	}
-	//err code
+	// err code
 	ec := exitcode.ErrSerialization
 	if nvk < network.Version7 {
 		ec = 1
@@ -116,7 +116,7 @@ func (d *actorDispatcher) Dispatch(methodNum abi.MethodNum, nvk network.Version,
 	switch ret := out[0].Interface().(type) {
 	case []byte:
 		return ret, nil
-	case *abi.EmptyValue: //todo remove this code abi.EmptyValue is cbor.Marshaler
+	case *abi.EmptyValue: // todo remove this code abi.EmptyValue is cbor.Marshaler
 		return []byte{}, nil
 	case cbor.Marshaler:
 		buf := new(bytes.Buffer)
@@ -164,5 +164,4 @@ func (err *ExcuteError) ExitCode() exitcode.ExitCode {
 
 func (err *ExcuteError) Error() string {
 	return err.msg
-
 }

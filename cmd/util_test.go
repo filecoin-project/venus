@@ -15,7 +15,6 @@ func TestOptionalAddr(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("when option is specified", func(t *testing.T) {
-
 		opts := make(cmdkit.OptMap)
 
 		specifiedAddr, err := address.NewSecp256k1Address([]byte("a new test address"))
@@ -28,7 +27,6 @@ func TestOptionalAddr(t *testing.T) {
 	})
 
 	t.Run("when no option specified return empty", func(t *testing.T) {
-
 		opts := make(cmdkit.OptMap)
 
 		addr, err := optionalAddr(opts["from"])

@@ -4,23 +4,21 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	market8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 )
 
-//todo  move to sealer
+// todo  move to sealer
 
 // PendingDealInfo has info about pending deals and when they are due to be
 // published
 type PendingDealInfo struct {
-	Deals              []market.ClientDealProposal
+	Deals              []types.ClientDealProposal
 	PublishPeriodStart time.Time
 	PublishPeriod      time.Duration
 }
@@ -34,7 +32,7 @@ type SectorOffset struct {
 type PieceDealInfo struct {
 	PublishCid   *cid.Cid
 	DealID       abi.DealID
-	DealProposal *market8.DealProposal
+	DealProposal *types.DealProposal
 	DealSchedule DealSchedule
 	KeepUnsealed bool
 }

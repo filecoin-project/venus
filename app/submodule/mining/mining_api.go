@@ -72,7 +72,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	view := state.NewView(chainStore.Store(ctx), lbst)
 	act, err := view.LoadActor(ctx, maddr)
 	if errors.Is(err, types.ErrActorNotFound) {
-		//todo why
+		// todo why
 		view = state.NewView(chainStore.Store(ctx), ts.At(0).ParentStateRoot)
 		_, err := view.LoadActor(ctx, maddr)
 		if err != nil {

@@ -43,9 +43,11 @@ func (o *settler) PaychStatus(ctx context.Context, pch address.Address) (*types.
 		Direction:   types.PCHDir(ci.Direction),
 	}, nil
 }
+
 func (o *settler) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
 	return o.mgr.CheckVoucherSpendable(ctx, ch, sv, secret, proof)
 }
+
 func (o *settler) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) {
 	vi, err := o.mgr.ListVouchers(ctx, pch)
 	if err != nil {
@@ -58,9 +60,11 @@ func (o *settler) PaychVoucherList(ctx context.Context, pch address.Address) ([]
 	}
 	return out, nil
 }
+
 func (o *settler) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
 	return o.mgr.SubmitVoucher(ctx, ch, sv, secret, proof)
 }
+
 func (o *settler) StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	return o.ciAPI.StateWaitMsg(ctx, cid, confidence, lookbackLimit, allowReplaced)
 }

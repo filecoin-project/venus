@@ -19,7 +19,7 @@ func (IsAccountActor) IsMatch(ctx runtime.PatternContext) bool {
 
 // IsAInitActor pattern checks if the caller is the init actor.
 // Dragons: delete after switching to new actors
-//type IsAInitActor struct{}
+// type IsAInitActor struct{}
 
 // IsMatch returns "True" if the patterns matches
 //func (IsAInitActor) IsMatch(ctx runtime.PatternContext) bool {

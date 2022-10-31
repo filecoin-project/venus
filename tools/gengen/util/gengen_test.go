@@ -51,8 +51,10 @@ func testConfig(t *testing.T) *genutil.GenesisCfg {
 	}
 }
 
-const defaultSeed = 4
-const defaultTime = 123456789
+const (
+	defaultSeed = 4
+	defaultTime = 123456789
+)
 
 func TestGenGenLoading(t *testing.T) {
 	tf.IntegrationTest(t)

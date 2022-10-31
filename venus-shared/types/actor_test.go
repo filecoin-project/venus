@@ -30,7 +30,6 @@ func TestActorBasic(t *testing.T) {
 
 			Finished: func() {
 				require.Equal(t, src, dst, "from src to dst through cbor")
-
 			},
 		}
 

@@ -54,7 +54,6 @@ func (t *Float64Timer) Start(ctx context.Context) *Stopwatch {
 		start:    time.Now(),
 		recorder: t.measureMs.M,
 	}
-
 }
 
 // Stopwatch contains a start time and a recorder, when stopped it record the

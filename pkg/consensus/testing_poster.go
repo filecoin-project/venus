@@ -19,7 +19,8 @@ type TestElectionPoster struct{}
 func (ep *TestElectionPoster) GenerateWinningPoSt(ctx context.Context,
 	minerID abi.ActorID,
 	sectorInfo []builtin.SectorInfo,
-	randomness abi.PoStRandomness) ([]builtin.PoStProof, error) {
+	randomness abi.PoStRandomness,
+) ([]builtin.PoStProof, error) {
 	return []builtin.PoStProof{{
 		PoStProof:  constants.DevRegisteredWinningPoStProof,
 		ProofBytes: []byte{0xe},

@@ -42,5 +42,4 @@ func (ms *methodSignature) ArgInterface(argBytes []byte) (interface{}, error) {
 		return val, nil
 	}
 	return nil, fmt.Errorf("type %T does not implement UnmarshalCBOR", obj)
-
 }

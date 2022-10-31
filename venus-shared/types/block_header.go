@@ -78,7 +78,7 @@ type BlockHeader struct {
 	// ForkSignaling is extra data used by miners to communicate
 	ForkSignaling uint64
 
-	//identical for all blocks in same tipset: the base fee after executing parent tipset
+	// identical for all blocks in same tipset: the base fee after executing parent tipset
 	ParentBaseFee abi.TokenAmount
 
 	validated bool // internal, true if the signature has been validated

@@ -5,7 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-state-types/abi"
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type PieceStatus string
@@ -19,7 +19,7 @@ const (
 
 type DealInfo struct {
 	piecestore.DealInfo
-	markettypes.ClientDealProposal
+	types.ClientDealProposal
 
 	TransferType  string
 	Root          cid.Cid
@@ -54,7 +54,7 @@ type GetDealSpec struct {
 }
 
 type DealInfoIncludePath struct {
-	markettypes.DealProposal
+	types.DealProposal
 	Offset          abi.PaddedPieceSize
 	Length          abi.PaddedPieceSize
 	PayloadSize     uint64

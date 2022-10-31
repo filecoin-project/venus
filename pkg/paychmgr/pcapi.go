@@ -50,18 +50,23 @@ func newPaychDependencyAPI(mpAPI IMessagePush, c IChainInfo, w IWalletAPI) paych
 func (o *pcAPI) StateAccountKey(ctx context.Context, address address.Address, tsk types.TipSetKey) (address.Address, error) {
 	return o.chainInfoAPI.StateAccountKey(ctx, address, tsk)
 }
+
 func (o *pcAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*types.MsgLookup, error) {
 	return o.chainInfoAPI.StateWaitMsg(ctx, msg, confidence, constants.LookbackNoLimit, true)
 }
+
 func (o *pcAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, maxFee *types.MessageSendSpec) (*types.SignedMessage, error) {
 	return o.mpAPI.MpoolPushMessage(ctx, msg, maxFee)
 }
+
 func (o *pcAPI) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
 	return o.walletAPI.WalletHas(ctx, addr)
 }
+
 func (o *pcAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
 	return o.walletAPI.WalletSign(ctx, k, msg, types.MsgMeta{Type: types.MTSignedVoucher})
 }
+
 func (o *pcAPI) StateNetworkVersion(ctx context.Context, ts types.TipSetKey) (network.Version, error) {
 	return o.chainInfoAPI.StateNetworkVersion(ctx, ts)
 }

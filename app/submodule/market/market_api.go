@@ -42,7 +42,6 @@ func (m *marketAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSe
 	}
 
 	err = escrow.ForEach(func(a address.Address, es abi.TokenAmount) error {
-
 		lk, err := locked.Get(a)
 		if err != nil {
 			return err

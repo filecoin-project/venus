@@ -64,7 +64,7 @@ type notFoundErr interface {
 }
 
 func (s *ActorStorage) StoreGet(cid cid.Cid, obj cbor.Unmarshaler) bool {
-	//gas charge must check first
+	// gas charge must check first
 	if err := s.inner.Get(s.context, cid, obj); err != nil {
 		msg := fmt.Sprintf("failed To get object %s %s From store: %s", reflect.TypeOf(obj), cid, err)
 		var nfe notFoundErr

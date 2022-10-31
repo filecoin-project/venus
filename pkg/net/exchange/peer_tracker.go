@@ -63,7 +63,6 @@ func (bpt *bsPeerTracker) addPeer(p peer.ID) {
 	bpt.peers[p] = &peerStats{
 		firstSeen: time.Now(),
 	}
-
 }
 
 const (
@@ -139,7 +138,6 @@ func logTime(pi *peerStats, dur time.Duration) {
 	}
 	delta := (dur - pi.averageTime) / localInvAlpha
 	pi.averageTime += delta
-
 }
 
 func (bpt *bsPeerTracker) logSuccess(p peer.ID, dur time.Duration, reqSize uint64) {

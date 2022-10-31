@@ -73,7 +73,7 @@ type IMarketClient interface {
 	ClientCancelRetrievalDeal(ctx context.Context, dealid retrievalmarket.DealID) error //perm:write
 
 	// ClientUnimport removes references to the specified file from filestore
-	//ClientUnimport(path string)
+	// ClientUnimport(path string)
 
 	// ClientListImports lists imported files and their root CIDs
 	ClientListImports(ctx context.Context) ([]client.Import, error) //perm:write

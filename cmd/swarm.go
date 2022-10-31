@@ -245,7 +245,6 @@ var queryDhtCmd = &cmds.Command{
 		cmds.BoolOption(dhtVerboseOptionName, "v", "Print extra information."),
 	},
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
-
 		id, err := peer.Decode(req.Arguments[0])
 		if err != nil {
 			return cmds.ClientError("invalid peer ID")

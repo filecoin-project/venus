@@ -21,8 +21,6 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
-	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/state/tree"
@@ -66,7 +64,7 @@ func (msa *minerStateAPI) StateMinerSectorAllocated(ctx context.Context, maddr a
 }
 
 // StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector
-func (msa *minerStateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) {
+func (msa *minerStateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*types.SectorPreCommitOnChainInfo, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("loading tipset:%s parent state view: %v", tsk, err)
@@ -78,7 +76,7 @@ func (msa *minerStateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr ad
 // StateSectorGetInfo returns the on-chain info for the specified miner's sector. Returns null in case the sector info isn't found
 // NOTE: returned info.Expiration may not be accurate in some cases, use StateSectorExpiration to get accurate
 // expiration epoch
-func (msa *minerStateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error) {
+func (msa *minerStateAPI) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*types.SectorOnChainInfo, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("loading tipset %s: %v", tsk, err)
@@ -317,7 +315,7 @@ func (msa *minerStateAPI) StateMinerDeadlines(ctx context.Context, maddr address
 }
 
 // StateMinerSectors returns info about the given miner's sectors. If the filter bitfield is nil, all sectors are included.
-func (msa *minerStateAPI) StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
+func (msa *minerStateAPI) StateMinerSectors(ctx context.Context, maddr address.Address, sectorNos *bitfield.BitField, tsk types.TipSetKey) ([]*types.SectorOnChainInfo, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
@@ -378,7 +376,7 @@ func (msa *minerStateAPI) StateMarketStorageDeal(ctx context.Context, dealID abi
 
 // StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
 // pending allocation is not found.
-func (msa *minerStateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
+func (msa *minerStateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.Allocation, error) {
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
@@ -394,7 +392,7 @@ func (msa *minerStateAPI) StateGetAllocationForPendingDeal(ctx context.Context, 
 		return nil, err
 	}
 
-	if allocationID == verifregtypes.NoAllocationID {
+	if allocationID == types.NoAllocationID {
 		return nil, nil
 	}
 
@@ -407,7 +405,7 @@ func (msa *minerStateAPI) StateGetAllocationForPendingDeal(ctx context.Context, 
 }
 
 // StateGetAllocation returns the allocation for a given address and allocation ID.
-func (msa *minerStateAPI) StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationID verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
+func (msa *minerStateAPI) StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationID types.AllocationId, tsk types.TipSetKey) (*types.Allocation, error) {
 	idAddr, err := msa.ChainSubmodule.API().StateLookupID(ctx, clientAddr, tsk)
 	if err != nil {
 		return nil, err
@@ -435,7 +433,7 @@ func (msa *minerStateAPI) StateGetAllocation(ctx context.Context, clientAddr add
 }
 
 // StateGetAllocations returns the all the allocations for a given client.
-func (msa *minerStateAPI) StateGetAllocations(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) {
+func (msa *minerStateAPI) StateGetAllocations(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[types.AllocationId]types.Allocation, error) {
 	idAddr, err := msa.ChainSubmodule.API().StateLookupID(ctx, clientAddr, tsk)
 	if err != nil {
 		return nil, err
@@ -460,7 +458,7 @@ func (msa *minerStateAPI) StateGetAllocations(ctx context.Context, clientAddr ad
 }
 
 // StateGetClaim returns the claim for a given address and claim ID.
-func (msa *minerStateAPI) StateGetClaim(ctx context.Context, providerAddr address.Address, claimID verifregtypes.ClaimId, tsk types.TipSetKey) (*verifregtypes.Claim, error) {
+func (msa *minerStateAPI) StateGetClaim(ctx context.Context, providerAddr address.Address, claimID types.ClaimId, tsk types.TipSetKey) (*types.Claim, error) {
 	idAddr, err := msa.ChainSubmodule.API().StateLookupID(ctx, providerAddr, tsk)
 	if err != nil {
 		return nil, err
@@ -488,7 +486,7 @@ func (msa *minerStateAPI) StateGetClaim(ctx context.Context, providerAddr addres
 }
 
 // StateGetClaims returns the all the claims for a given provider.
-func (msa *minerStateAPI) StateGetClaims(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) {
+func (msa *minerStateAPI) StateGetClaims(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[types.ClaimId]types.Claim, error) {
 	idAddr, err := msa.ChainSubmodule.API().StateLookupID(ctx, providerAddr, tsk)
 	if err != nil {
 		return nil, err
@@ -576,11 +574,13 @@ func (msa *minerStateAPI) StateComputeDataCID(ctx context.Context, maddr address
 	return cid.Cid(cr.CommDs[0]), nil
 }
 
-var initialPledgeNum = big.NewInt(110)
-var initialPledgeDen = big.NewInt(100)
+var (
+	initialPledgeNum = big.NewInt(110)
+	initialPledgeDen = big.NewInt(100)
+)
 
 // StateMinerInitialPledgeCollateral returns the precommit deposit for the specified miner's sector
-func (msa *minerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error) {
+func (msa *minerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci types.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error) {
 	ts, err := msa.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return big.Int{}, err
@@ -612,7 +612,7 @@ func (msa *minerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context
 			sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
 		}
 	} else {
-		sectorWeight = miner.QAPowerMax(ssize)
+		sectorWeight = types.QAPowerMax(ssize)
 	}
 
 	var powerSmoothed builtin.FilterEstimate
@@ -645,7 +645,7 @@ func (msa *minerStateAPI) StateMinerPreCommitDepositForPower(ctx context.Context
 }
 
 // StateMinerInitialPledgeCollateral returns the initial pledge collateral for the specified miner's sector
-func (msa *minerStateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error) {
+func (msa *minerStateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci types.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error) {
 	ts, err := msa.ChainReader.GetTipSet(ctx, tsk)
 	if err != nil {
 		return big.Int{}, fmt.Errorf("loading tipset %s: %v", tsk, err)
@@ -759,7 +759,7 @@ func (msa *minerStateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSet
 }
 
 // StateMinerActiveSectors returns info about sectors that a given miner is actively proving.
-func (msa *minerStateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error) { // TODO: only used in cli
+func (msa *minerStateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*types.SectorOnChainInfo, error) { // TODO: only used in cli
 	_, view, err := msa.Stmgr.ParentStateViewTsk(ctx, tsk)
 	if err != nil {
 		return nil, fmt.Errorf("Stmgr.ParentStateViewTsk failed:%v", err)
@@ -975,11 +975,12 @@ func (msa *minerStateAPI) StateMarketBalance(ctx context.Context, addr address.A
 	}
 
 	return out, nil
-
 }
 
-var dealProviderCollateralNum = types.NewInt(110)
-var dealProviderCollateralDen = types.NewInt(100)
+var (
+	dealProviderCollateralNum = types.NewInt(110)
+	dealProviderCollateralDen = types.NewInt(100)
+)
 
 // StateDealProviderCollateralBounds returns the min and max collateral a storage provider
 // can issue. It takes the deal size and verified status as parameters.

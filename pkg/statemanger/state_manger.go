@@ -62,14 +62,16 @@ type Stmgr struct {
 
 func NewStateManger(cs *chain.Store, cp consensus.StateTransformer,
 	rnd consensus.ChainRandomness, fork fork.IFork, gasSchedule *gas.PricesSchedule,
-	syscallsImpl vm.SyscallsImpl) *Stmgr {
+	syscallsImpl vm.SyscallsImpl,
+) *Stmgr {
 	logName := "statemanager"
 
 	defer func() {
 		_ = logging.SetLogLevel(logName, "info")
 	}()
 
-	return &Stmgr{cs: cs, fork: fork, cp: cp, rnd: rnd,
+	return &Stmgr{
+		cs: cs, fork: fork, cp: cp, rnd: rnd,
 		gasSchedule:  gasSchedule,
 		syscallsImpl: syscallsImpl,
 		log:          logging.Logger(logName),
@@ -247,7 +249,8 @@ func (s *Stmgr) RunStateTransition(ctx context.Context, ts *types.TipSet) (root 
 		}
 		if err == nil {
 			err = s.cs.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
-				TipSetStateRoot: root, TipSet: ts, TipSetReceipts: receipts})
+				TipSetStateRoot: root, TipSet: ts, TipSetReceipts: receipts,
+			})
 		}
 		s.stLk.Unlock()
 		close(workingCh)

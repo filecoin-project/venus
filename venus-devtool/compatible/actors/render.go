@@ -67,7 +67,6 @@ func renderSingle(t *template.Template, dir string, versions []int) error {
 		"versions":      versions,
 		"latestVersion": actors.LatestVersion,
 	})
-
 	if err != nil {
 		return fmt.Errorf("render single template: %w", err)
 	}
@@ -77,7 +76,7 @@ func renderSingle(t *template.Template, dir string, versions []int) error {
 		return fmt.Errorf("format go source file : %w", err)
 	}
 
-	err = os.WriteFile(filepath.Join(dir, t.Name()+".go"), formatted, 0644)
+	err = os.WriteFile(filepath.Join(dir, t.Name()+".go"), formatted, 0o644)
 	if err != nil {
 		return fmt.Errorf("write to file: %w", err)
 	}
@@ -95,7 +94,6 @@ func renderSeparated(t *template.Template, dir string, versions []int) error {
 			"import":        importPath(v),
 			"latestVersion": actors.LatestVersion,
 		})
-
 		if err != nil {
 			return fmt.Errorf("render separated template for ver %d: %w", v, err)
 		}
@@ -105,7 +103,7 @@ func renderSeparated(t *template.Template, dir string, versions []int) error {
 			return fmt.Errorf("format go source file for ver %d: %w", v, err)
 		}
 
-		err = os.WriteFile(filepath.Join(dir, fmt.Sprintf("%s.v%d.go", t.Name(), v)), formatted, 0644)
+		err = os.WriteFile(filepath.Join(dir, fmt.Sprintf("%s.v%d.go", t.Name(), v)), formatted, 0o644)
 		if err != nil {
 			return fmt.Errorf("write to file for ver %d: %w", v, err)
 		}

@@ -10,7 +10,7 @@ import (
 
 func TestTipsetProvider(t *testing.T) {
 	tf.UnitTest(t)
-	var tipset = &TipSet{}
+	tipset := &TipSet{}
 	testutil.Provide(t, &tipset)
 	require.Greater(t, len(tipset.blocks), 0, "blocks in a tipset must greater than 0")
 }

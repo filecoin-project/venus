@@ -28,6 +28,7 @@ func NewNoopLibP2PHost() noopLibP2PHost {
 	pid, _ := peer.IDFromPrivateKey(pk)
 	return noopLibP2PHost{pid}
 }
+
 func (h noopLibP2PHost) ID() peer.ID {
 	return h.peerId
 }
@@ -57,11 +58,9 @@ func (noopLibP2PHost) Connect(ctx context.Context, pi peer.AddrInfo) error {
 }
 
 func (noopLibP2PHost) SetStreamHandler(pid protocol.ID, handler net.StreamHandler) {
-
 }
 
 func (noopLibP2PHost) SetStreamHandlerMatch(protocol.ID, func(string) bool, net.StreamHandler) {
-
 }
 
 func (noopLibP2PHost) RemoveStreamHandler(pid protocol.ID) {
@@ -119,7 +118,6 @@ func (noopLibP2PNetwork) ConnsToPeer(p peer.ID) []net.Conn {
 }
 
 func (noopLibP2PNetwork) Notify(net.Notifiee) {
-
 }
 
 func (noopLibP2PNetwork) StopNotify(net.Notifiee) {

@@ -19,8 +19,10 @@ import (
 
 var TestPassword = []byte("test-password")
 
-var ErrKeyInfoNotFound = fmt.Errorf("key info not found")
-var walletLog = logging.Logger("wallet")
+var (
+	ErrKeyInfoNotFound = fmt.Errorf("key info not found")
+	walletLog          = logging.Logger("wallet")
+)
 
 // WalletIntersection
 // nolint
@@ -259,7 +261,7 @@ func (w *Wallet) LockWallet(ctx context.Context) error {
 	return backend.LockWallet(ctx)
 }
 
-//UnLockWallet unlock local wallet with password
+// UnLockWallet unlock local wallet with password
 
 func (w *Wallet) UnLockWallet(ctx context.Context, password []byte) error {
 	backend, err := w.DSBacked()

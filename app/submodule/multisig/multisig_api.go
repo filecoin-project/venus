@@ -51,7 +51,6 @@ func (a *multiSig) messageBuilder(ctx context.Context, from address.Address) (mu
 // It takes the following params: <required number of senders>, <approving addresses>, <unlock duration>
 // <initial balance>, <sender address of the create msg>, <gas price>
 func (a *multiSig) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (*types.MessagePrototype, error) {
-
 	mb, err := a.messageBuilder(ctx, src)
 	if err != nil {
 		return nil, err
@@ -69,7 +68,6 @@ func (a *multiSig) MsigCreate(ctx context.Context, req uint64, addrs []address.A
 }
 
 func (a *multiSig) MsigPropose(ctx context.Context, msig address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*types.MessagePrototype, error) {
-
 	mb, err := a.messageBuilder(ctx, src)
 	if err != nil {
 		return nil, err
@@ -210,7 +208,7 @@ func (a *multiSig) MsigGetVested(ctx context.Context, addr address.Address, star
 		return big.Zero(), nil
 	}
 
-	//LoadActor(ctx, addr, endTs)
+	// LoadActor(ctx, addr, endTs)
 	act, err := a.state.GetParentStateRootActor(ctx, endTS, addr)
 	if err != nil {
 		return types.EmptyInt, fmt.Errorf("failed to load multisig actor at end epoch: %w", err)

@@ -75,8 +75,7 @@ func tryGet(s *vmcontext.ActorStorage, c cid.Cid, v cbor2.Unmarshaler) (thrown i
 	return
 }
 
-type cannotCBOR struct {
-}
+type cannotCBOR struct{}
 
 func (c cannotCBOR) MarshalCBOR(w io.Writer) error {
 	return fmt.Errorf("no")

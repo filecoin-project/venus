@@ -112,7 +112,7 @@ func (td *TestDaemon) Config() *config.Config {
 // GetMinerAddress returns the miner address for this daemon.
 func (td *TestDaemon) GetMinerAddress() address.Address {
 	return td.Config().Wallet.DefaultAddress
-	//return td.Config().Mining.MinerAddress
+	// return td.Config().Mining.MinerAddress
 }
 
 // Run executes the given command against the test daemon.
@@ -759,7 +759,7 @@ func (td *TestDaemon) createNewProcess() {
 		td.test.Fatal(err)
 	}
 	// uncomment this and comment out the following 4 lines to output daemon stderr to os stderr
-	//td.process.Stderr = os.Stderr
+	// td.process.Stderr = os.Stderr
 	td.Stderr, err = td.process.StderrPipe()
 	if err != nil {
 		td.test.Fatal(err)
