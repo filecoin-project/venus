@@ -1,3 +1,4 @@
+// stm: #unit
 package chain
 
 import (
@@ -40,20 +41,33 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 
 	var err error
 	var chainMessage *types.ChainMessage
-	doneCh := make(chan struct{})
+	doneCh := make(chan error)
 	go func() {
 		defer close(doneCh)
+		// stm: @CHAIN_WAITER_FIND_001
+		_, _, err = waiter.Find(ctx, newSignedMessage(0), 100, nil, true)
+		doneCh <- err
+
+		// stm: @CHAIN_WAITER_WAIT_001
 		chainMessage, err = waiter.Wait(ctx, newSignedMessage(0), constants.DefaultConfidence, constants.DefaultMessageWaitLookback, true)
+		doneCh <- err
 	}()
 
 	cancel()
 
-	select {
-	case <-doneCh:
-		fmt.Println(err)
-		// assert.Error(t, err)
-	case <-time.After(2 * time.Second):
-		assert.Fail(t, "Wait should have returned when context was canceled")
+LabelFor:
+	for {
+		select {
+		case err := <-doneCh:
+			if err == nil {
+				break LabelFor
+			}
+			fmt.Println(err)
+		case <-time.After(2 * time.Second):
+			assert.Fail(t, "Wait should have returned when context was canceled")
+		}
 	}
+
 	assert.Nil(t, chainMessage)
+
 }
