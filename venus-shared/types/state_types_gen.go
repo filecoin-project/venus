@@ -8,14 +8,6 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 )
 
-////////// paych //////////
-type ConstructorParams = paych.ConstructorParams
-type LaneState = paych.LaneState
-type Merge = paych.Merge
-type ModVerifyParams = paych.ModVerifyParams
-type SignedVoucher = paych.SignedVoucher
-type UpdateChannelStateParams = paych.UpdateChannelStateParams
-
 ////////// market //////////
 type ActivateDealsParams = market.ActivateDealsParams
 type ActivateDealsResult = market.ActivateDealsResult
@@ -132,6 +124,14 @@ var QAPowerMax = miner.QAPowerMax
 var QualityForWeight = miner.QualityForWeight
 var QuantSpecForDeadline = miner.QuantSpecForDeadline
 var SectorKey = miner.SectorKey
+
+////////// paych //////////
+type ConstructorParams = paych.ConstructorParams
+type LaneState = paych.LaneState
+type Merge = paych.Merge
+type ModVerifyParams = paych.ModVerifyParams
+type SignedVoucher = paych.SignedVoucher
+type UpdateChannelStateParams = paych.UpdateChannelStateParams
 
 ////////// verifreg //////////
 type AddVerifiedClientParams = verifreg.AddVerifiedClientParams

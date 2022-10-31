@@ -91,7 +91,7 @@ var (
 
 func run(cctx *cli.Context) error {
 	metas := make([]*metaVisitor, 0, len(pendingPkgs))
-	for _, pkg := range pendingPkgs {
+	for _, pkg := range toList(pendingPkgs) {
 		location, err := util.FindPackageLocation(pkg.path)
 		if err != nil {
 			return err
@@ -122,6 +122,18 @@ func run(cctx *cli.Context) error {
 	}
 
 	return writeFile(cctx.String("dst"), metas)
+}
+
+func toList(pkgs map[string]*pendingPkg) []*pendingPkg {
+	list := make([]*pendingPkg, 0, len(pkgs))
+	for _, pkg := range pkgs {
+		list = append(list, pkg)
+	}
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].name < list[j].name
+	})
+
+	return list
 }
 
 func filter(fi fs.FileInfo) bool {
