@@ -1,3 +1,4 @@
+// stm: #integration
 package syncer_test
 
 import (
@@ -67,6 +68,7 @@ func TestLoadFork(t *testing.T) {
 		ChainInfo: *types2.NewChainInfo("", "", right),
 	}
 	// Sync the two branches, which stores all blocks in the underlying stores.
+	// stm: @CHAINSYNC_SYNCER_HANDLE_NEW_TIP_SET_001, @CHAINSYNC_SYNCER_SET_HEAD_001
 	assert.NoError(t, s.HandleNewTipSet(ctx, leftTarget))
 	assert.Error(t, s.HandleNewTipSet(ctx, rightTarget))
 	verifyHead(t, builder.Store(), left)

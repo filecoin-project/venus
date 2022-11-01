@@ -168,20 +168,20 @@ func TestMessageStoreReceiptsHappy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, receipts, rtReceipts)
 
-	var badReceiptId cid.Cid
+	var badReceiptID cid.Cid
 	// stm: CHAIN_MESSAGE_LOAD_RECEIPTS_002
-	_, err = ms.LoadReceipts(ctx, badReceiptId)
+	_, err = ms.LoadReceipts(ctx, badReceiptID)
 	assert.Error(t, err)
 
 	rectArr := adt.MakeEmptyArray(adt.WrapStore(ctx, cbor.NewCborStore(bs)))
 	assert.NoError(t, rectArr.Set(0, cborString("invalid receipt data")))
 
-	badReceiptId, err = rectArr.Root()
+	badReceiptID, err = rectArr.Root()
 	assert.NoError(t, err)
 
 	// expect unmarshal to receipt failed
 	// stm: @CHAIN_MESSAGE_LOAD_RECEIPTS_003
-	_, err = ms.LoadReceipts(ctx, badReceiptId)
+	_, err = ms.LoadReceipts(ctx, badReceiptID)
 	assert.Error(t, err)
 }
 

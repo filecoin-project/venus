@@ -460,11 +460,11 @@ func TestLoadTipsetMeta(t *testing.T) {
 		assert.Error(t, err)
 	}
 	{ // Chain store get tipset by height
-		targetTs := links[abi.ChainEpoch(count/2)]
+		targetTS := links[abi.ChainEpoch(count/2)]
 		// stm: @CHAIN_STORE_GET_TIPSET_BY_HEIGHT_001
-		ts, err := cs.GetTipSetByHeight(ctx, head, targetTs.Height(), true)
+		ts, err := cs.GetTipSetByHeight(ctx, head, targetTS.Height(), true)
 		assert.NoError(t, err)
-		assert.Equal(t, ts.Key(), targetTs.Key())
+		assert.Equal(t, ts.Key(), targetTS.Key())
 
 		// The epoch is greater than the tipset's height
 		// stm: @CHAIN_STORE_GET_TIPSET_BY_HEIGHT_002
@@ -472,14 +472,14 @@ func TestLoadTipsetMeta(t *testing.T) {
 		assert.Error(t, err)
 
 		// targetTs.Height - 1 would make sure tipset was not cached
-		targetTs = links[targetTs.Height()-1]
-		blockCid := targetTs.Cids()[0]
+		targetTS = links[targetTS.Height()-1]
+		blockCid := targetTS.Cids()[0]
 		block, err := bs.Get(ctx, blockCid)
 		assert.NoError(t, err)
-		assert.NoError(t, bs.DeleteBlock(ctx, targetTs.Cids()[0]))
+		assert.NoError(t, bs.DeleteBlock(ctx, targetTS.Cids()[0]))
 		// error occurs retrieving the tipset from the chain index
 		// stm: @CHAIN_STORE_GET_TIPSET_BY_HEIGHT_004
-		_, err = cs.GetTipSetByHeight(ctx, head, targetTs.Height(), true)
+		_, err = cs.GetTipSetByHeight(ctx, head, targetTS.Height(), true)
 		assert.Error(t, err)
 
 		// restore deleted block.
