@@ -47,6 +47,17 @@ func init() {
 		util.APIMeta{
 			Type: reflect.TypeOf((*gatewayv1.IGateway)(nil)).Elem(),
 			ParseOpt: util.InterfaceParseOption{
+				ImportPath: "github.com/filecoin-project/venus/venus-shared/api/gateway/v2",
+				IncludeAll: true,
+			},
+			RPCMeta: util.RPCMeta{
+				Version:         2,
+				MethodNamespace: "Gateway",
+			},
+		},
+		util.APIMeta{
+			Type: reflect.TypeOf((*gatewayv1.IGateway)(nil)).Elem(),
+			ParseOpt: util.InterfaceParseOption{
 				ImportPath: "github.com/filecoin-project/venus/venus-shared/api/gateway/v1",
 				IncludeAll: true,
 			},

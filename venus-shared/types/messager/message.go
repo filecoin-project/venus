@@ -78,8 +78,6 @@ type Message struct {
 	Receipt    *shared.MessageReceipt
 	TipSetKey  shared.TipSetKey
 	Meta       *SendSpec
-	WalletName string
-	FromUser   string
 
 	State MessageState
 
@@ -114,8 +112,6 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 		Receipt    *shared.MessageReceipt
 		TipSetKey  shared.TipSetKey
 		Meta       *SendSpec
-		WalletName string
-		FromUser   string
 
 		State MessageState
 
@@ -144,8 +140,6 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 		Receipt:    m.Receipt,
 		TipSetKey:  m.TipSetKey,
 		Meta:       m.Meta,
-		WalletName: m.WalletName,
-		FromUser:   m.FromUser,
 		State:      m.State,
 		CreatedAt:  m.CreatedAt,
 		UpdatedAt:  m.UpdatedAt,

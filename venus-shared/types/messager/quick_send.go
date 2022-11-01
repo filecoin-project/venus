@@ -13,10 +13,9 @@ const (
 )
 
 type QuickSendParams struct {
-	To      address.Address
-	From    address.Address
-	Val     abi.TokenAmount
-	Account string
+	To   address.Address
+	From address.Address
+	Val  abi.TokenAmount
 
 	GasPremium *abi.TokenAmount
 	GasFeeCap  *abi.TokenAmount
