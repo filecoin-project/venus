@@ -141,7 +141,7 @@ var swarmPingCmd = &cmds.Command{
 		cmds.IntOption("internal", "minimum time between pings").WithDefault(1),
 	},
 	Arguments: []cmds.Argument{
-		cmds.StringArg("peers", true, true, "peers id"),
+		cmds.StringArg("peerMultiaddr", true, true, "peer multiaddr"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if len(req.Arguments) < 1 {
