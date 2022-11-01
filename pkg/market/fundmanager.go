@@ -685,7 +685,7 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 	addr address.Address,
 	amt abi.TokenAmount,
 ) (cid.Cid, error) {
-	params, err := actors.SerializeParams(&types.WithdrawBalanceParams{
+	params, err := actors.SerializeParams(&types.MarketWithdrawBalanceParams{
 		ProviderOrClientAddress: addr,
 		Amount:                  amt,
 	})

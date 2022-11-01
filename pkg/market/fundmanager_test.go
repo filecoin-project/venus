@@ -672,7 +672,7 @@ func checkWithdrawMessageFields(t *testing.T, msg *types.Message, from address.A
 	require.Equal(t, market.Address, msg.To)
 	require.Equal(t, abi.NewTokenAmount(0), msg.Value)
 
-	var params types.WithdrawBalanceParams
+	var params types.MarketWithdrawBalanceParams
 	err := params.UnmarshalCBOR(bytes.NewReader(msg.Params))
 	require.NoError(t, err)
 	require.Equal(t, addr, params.ProviderOrClientAddress)
@@ -753,7 +753,7 @@ func (mapi *mockFundManagerAPI) completeMsg(msgCid cid.Cid) {
 			mapi.escrow[escrowAcct] = escrow
 			log.Debugf("%s:   escrow %d -> %d", escrowAcct, before, escrow)
 		} else {
-			var params types.WithdrawBalanceParams
+			var params types.MarketWithdrawBalanceParams
 			err := params.UnmarshalCBOR(bytes.NewReader(pmsg.msg.Message.Params))
 			if err != nil {
 				panic(err)
