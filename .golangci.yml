@@ -9,14 +9,10 @@ linters:
     - errcheck
     - unconvert
     - staticcheck
-    - varcheck
-    - structcheck
-    - deadcode
     - unused
     - stylecheck
     - gosimple
     - goimports
-
 issues:
   exclude:
     - "func name will be used as test\\.Test.* by other packages, and that stutters; consider calling this"
