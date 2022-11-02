@@ -51,14 +51,14 @@ jobs:
           ./gengen --keypath ./fixtures/live --out-car ./fixtures/live/genesis.car --out-json  ./fixtures/live/gen.json --config ./fixtures/setup.json
           ./gengen --keypath ./fixtures/test --out-car ./fixtures/test/genesis.car --out-json  ./fixtures/test/gen.json --config ./fixtures/setup.json
 
-      - name: Integration Test
-        run: go test -coverpkg=./... -coverprofile=coverage_venus_shared.txt -covermode=atomic -timeout=30m -parallel=4  -v ./venus-shared/...
+      - name: Venus Shared Test
+        run: go test -coverpkg=./venus-shared/... -coverprofile=coverage_venus_shared.txt -covermode=atomic -timeout=30m -parallel=4  -v ./venus-shared/...
 
       - name: Unit Test
-        run: go test -coverpkg=./... -coverprofile=coverage_unit.txt -covermode=atomic -timeout=30m -parallel=4 -v ./... -integration=false -unit=true
+        run: go test -coverpkg=$(go list ./... | grep -v /venus-shared/) -coverprofile=coverage_unit.txt -covermode=atomic -timeout=30m -parallel=4 -v -integration=false -unit=true $(go list ./... | grep -v /venus-shared/)
 
       - name: Integration Test
-        run: go test -coverpkg=./... -coverprofile=coverage_integration.txt -covermode=atomic -timeout=30m -parallel=4  -v ./... -integration=true -unit=false
+        run: go test -coverpkg=$(go list ./... | grep -v /venus-shared/) -coverprofile=coverage_integration.txt -covermode=atomic -timeout=30m -parallel=4  -v -integration=true -unit=false $(go list ./... | grep -v /venus-shared/)
 
       - name: Upload
         uses: codecov/codecov-action@v2
