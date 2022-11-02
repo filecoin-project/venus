@@ -138,7 +138,7 @@ func Version5Upgrade(repoPath string) (err error) {
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -17
 	case types.NetworkCalibnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 312746
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 450
 	case types.NetworkForce:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = math.MaxInt32
@@ -176,7 +176,7 @@ func Version6Upgrade(repoPath string) (err error) {
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -17
 	case types.NetworkCalibnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 312746
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = 450
 	case types.NetworkForce:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeChocolateHeight = -17
@@ -214,7 +214,7 @@ func Version7Upgrade(repoPath string) (err error) {
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = -18
 	case types.NetworkCalibnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = 682006
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = 480
 	case types.NetworkButterfly:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version14
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight = -18
@@ -276,7 +276,7 @@ func Version8Upgrade(repoPath string) (err error) {
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = -19
 	case types.NetworkCalibnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 1044660
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = 510
 	case types.NetworkForce:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version16
 		cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight = -19
@@ -319,7 +319,7 @@ func Version9Upgrade(repoPath string) (err error) {
 		cfg.NetworkParams.PropagationDelaySecs = 1
 	case types.NetworkCalibnet:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version0
-		cfg.NetworkParams.ForkUpgradeParam.UpgradeSharkHeight = 1407374
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeSharkHeight = 16800
 		cfg.NetworkParams.PropagationDelaySecs = 10
 	case types.NetworkForce:
 		cfg.NetworkParams.GenesisNetworkVersion = network.Version16
