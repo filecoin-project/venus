@@ -51,21 +51,20 @@ jobs:
           ./gengen --keypath ./fixtures/live --out-car ./fixtures/live/genesis.car --out-json  ./fixtures/live/gen.json --config ./fixtures/setup.json
           ./gengen --keypath ./fixtures/test --out-car ./fixtures/test/genesis.car --out-json  ./fixtures/test/gen.json --config ./fixtures/setup.json
 
-      - name: Integration Test
+      - name: Venus Shared Test
         run: go test -coverpkg=./... -coverprofile=coverage_venus_shared.txt -covermode=atomic -timeout=30m -parallel=4  -v ./venus-shared/...
 
       - name: Unit Test
-        run: go test -coverpkg=./... -coverprofile=coverage_unit.txt -covermode=atomic -timeout=30m -parallel=4 -v ./... -integration=false -unit=true
+        run: go test -coverpkg=./... -coverprofile=coverage_unit.txt -covermode=atomic -timeout=30m -parallel=4 -v $(go list ./... | grep -v /venus-shared/)  -integration=false -unit=true
 
       - name: Integration Test
-        run: go test -coverpkg=./... -coverprofile=coverage_integration.txt -covermode=atomic -timeout=30m -parallel=4  -v ./... -integration=true -unit=false
+        run: go test -coverpkg=./... -coverprofile=coverage_integration.txt -covermode=atomic -timeout=30m -parallel=4   -v $(go list ./... | grep -v /venus-shared/) -integration=true -unit=false
 
       - name: Upload
         uses: codecov/codecov-action@v2
         with:
           token:
           files: ./coverage_unit.txt,./coverage_integration.txt,./coverage_venus_shared.txt
-          flags: unittests,integration
           name: venus
           fail_ci_if_error: true
           verbose: true

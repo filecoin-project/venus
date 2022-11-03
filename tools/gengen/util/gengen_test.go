@@ -5,8 +5,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/filecoin-project/go-state-types/builtin"
+
 	"github.com/filecoin-project/go-state-types/abi"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
@@ -72,9 +73,10 @@ func TestGenGenLoading(t *testing.T) {
 	o := td.Run("state", "list-actor").AssertSuccess()
 
 	stdout := o.ReadStdout()
-	assert.Contains(t, stdout, builtin2.StoragePowerActorCodeID.String())
-	assert.Contains(t, stdout, builtin2.StorageMarketActorCodeID.String())
-	assert.Contains(t, stdout, builtin2.InitActorCodeID.String())
+	//address won't change
+	assert.Contains(t, stdout, builtin.StoragePowerActorAddr.String())
+	assert.Contains(t, stdout, builtin.StorageMarketActorAddr.String())
+	assert.Contains(t, stdout, builtin.InitActorAddr.String())
 }
 
 func TestGenGenDeterministic(t *testing.T) {
