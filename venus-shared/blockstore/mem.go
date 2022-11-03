@@ -14,27 +14,27 @@ func NewMemory() MemBlockstore {
 }
 
 // MemBlockstore is a terminal blockstore that keeps blocks in memory.
-type MemBlockstore map[cid.Cid]blocks.Block
+type MemBlockstore map[string]blocks.Block
 
-func (m MemBlockstore) DeleteBlock(ctx context.Context, k cid.Cid) error {
-	delete(m, k)
+func (m MemBlockstore) DeleteBlock(ctx context.Context, c cid.Cid) error {
+	delete(m, genKey(c))
 	return nil
 }
 
 func (m MemBlockstore) DeleteMany(ctx context.Context, ks []cid.Cid) error {
 	for _, k := range ks {
-		delete(m, k)
+		delete(m, genKey(k))
 	}
 	return nil
 }
 
 func (m MemBlockstore) Has(ctx context.Context, k cid.Cid) (bool, error) {
-	_, ok := m[k]
+	_, ok := m[genKey(k)]
 	return ok, nil
 }
 
 func (m MemBlockstore) View(ctx context.Context, k cid.Cid, callback func([]byte) error) error {
-	b, ok := m[k]
+	b, ok := m[genKey(k)]
 	if !ok {
 		return ipld.ErrNotFound{Cid: k}
 	}
@@ -42,16 +42,19 @@ func (m MemBlockstore) View(ctx context.Context, k cid.Cid, callback func([]byte
 }
 
 func (m MemBlockstore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
-	b, ok := m[k]
+	b, ok := m[genKey(k)]
 	if !ok {
 		return nil, ipld.ErrNotFound{Cid: k}
+	}
+	if b.Cid().Prefix().Codec != k.Prefix().Codec {
+		return blocks.NewBlockWithCid(b.RawData(), k)
 	}
 	return b, nil
 }
 
 // GetSize returns the CIDs mapped BlockSize
 func (m MemBlockstore) GetSize(ctx context.Context, k cid.Cid) (int, error) {
-	b, ok := m[k]
+	b, ok := m[genKey(k)]
 	if !ok {
 		return 0, ipld.ErrNotFound{Cid: k}
 	}
@@ -65,13 +68,13 @@ func (m MemBlockstore) Put(ctx context.Context, b blocks.Block) error {
 	k := b.Cid()
 	if _, ok := b.(*blocks.BasicBlock); !ok {
 		// If we already have the block, abort.
-		if _, ok := m[k]; ok {
+		if _, ok := m[genKey(k)]; ok {
 			return nil
 		}
 		// the error is only for debugging.
 		b, _ = blocks.NewBlockWithCid(b.RawData(), b.Cid())
 	}
-	m[b.Cid()] = b
+	m[genKey(b.Cid())] = b
 	return nil
 }
 
@@ -89,8 +92,8 @@ func (m MemBlockstore) PutMany(ctx context.Context, bs []blocks.Block) error {
 // the given context, closing the channel if it becomes Done.
 func (m MemBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	ch := make(chan cid.Cid, len(m))
-	for k := range m {
-		ch <- k
+	for _, b := range m {
+		ch <- b.Cid()
 	}
 	close(ch)
 	return ch, nil
@@ -100,4 +103,8 @@ func (m MemBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) 
 // rehashed to make sure it matches its CID.
 func (m MemBlockstore) HashOnRead(enabled bool) {
 	// no-op
+}
+
+func genKey(cid cid.Cid) string {
+	return string(cid.Hash())
 }
