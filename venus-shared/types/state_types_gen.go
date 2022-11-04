@@ -44,6 +44,11 @@ var NewLabelFromString = market.NewLabelFromString
 var StoreEmptySetMultimap = market.StoreEmptySetMultimap
 var ValidateDealsForActivation = market.ValidateDealsForActivation
 
+const DealMaxLabelSize = market.DealMaxLabelSize
+const EpochUndefined = market.EpochUndefined
+const ProposalsAmtBitwidth = market.ProposalsAmtBitwidth
+const StatesAmtBitwidth = market.StatesAmtBitwidth
+
 ////////// miner //////////
 type ActiveBeneficiary = miner.ActiveBeneficiary
 type ApplyRewardParams = miner.ApplyRewardParams
@@ -125,6 +130,33 @@ var QualityForWeight = miner.QualityForWeight
 var QuantSpecForDeadline = miner.QuantSpecForDeadline
 var SectorKey = miner.SectorKey
 
+const AddressedPartitionsMax = miner.AddressedPartitionsMax
+const AddressedSectorsMax = miner.AddressedSectorsMax
+const ChainFinality = miner.ChainFinality
+const CronEventProcessEarlyTerminations = miner.CronEventProcessEarlyTerminations
+const CronEventProvingDeadline = miner.CronEventProvingDeadline
+const CronEventWorkerKeyChange = miner.CronEventWorkerKeyChange
+const DeadlineExpirationAmtBitwidth = miner.DeadlineExpirationAmtBitwidth
+const DeadlineOptimisticPoStSubmissionsAmtBitwidth = miner.DeadlineOptimisticPoStSubmissionsAmtBitwidth
+const DeadlinePartitionsAmtBitwidth = miner.DeadlinePartitionsAmtBitwidth
+const DeclarationsMax = miner.DeclarationsMax
+const FaultDeclarationCutoff = miner.FaultDeclarationCutoff
+const MaxAggregateProofSize = miner.MaxAggregateProofSize
+const MaxAggregatedSectors = miner.MaxAggregatedSectors
+const MaxPartitionsPerDeadline = miner.MaxPartitionsPerDeadline
+const MaxSectorExpirationExtension = miner.MaxSectorExpirationExtension
+const MinAggregatedSectors = miner.MinAggregatedSectors
+const MinSectorExpiration = miner.MinSectorExpiration
+const PartitionEarlyTerminationArrayAmtBitwidth = miner.PartitionEarlyTerminationArrayAmtBitwidth
+const PartitionExpirationAmtBitwidth = miner.PartitionExpirationAmtBitwidth
+const PreCommitSectorBatchMaxSize = miner.PreCommitSectorBatchMaxSize
+const PrecommitCleanUpAmtBitwidth = miner.PrecommitCleanUpAmtBitwidth
+const ProveReplicaUpdatesMaxSize = miner.ProveReplicaUpdatesMaxSize
+const SectorsAmtBitwidth = miner.SectorsAmtBitwidth
+const WPoStChallengeLookback = miner.WPoStChallengeLookback
+const WPoStPeriodDeadlines = miner.WPoStPeriodDeadlines
+const WorkerKeyChangeDelay = miner.WorkerKeyChangeDelay
+
 ////////// paych //////////
 type ConstructorParams = paych.ConstructorParams
 type LaneState = paych.LaneState
@@ -132,6 +164,9 @@ type Merge = paych.Merge
 type ModVerifyParams = paych.ModVerifyParams
 type SignedVoucher = paych.SignedVoucher
 type UpdateChannelStateParams = paych.UpdateChannelStateParams
+
+const LaneStatesAmtBitwidth = paych.LaneStatesAmtBitwidth
+const SettleDelay = paych.SettleDelay
 
 ////////// verifreg //////////
 type AddVerifiedClientParams = verifreg.AddVerifiedClientParams
@@ -168,4 +203,10 @@ type SectorAllocationClaim = verifreg.SectorAllocationClaim
 type UniversalReceiverParams = verifreg.UniversalReceiverParams
 type UseBytesParams = verifreg.UseBytesParams
 
+const EndOfLifeClaimDropPeriod = verifreg.EndOfLifeClaimDropPeriod
+const MaximumVerifiedAllocationExpiration = verifreg.MaximumVerifiedAllocationExpiration
+const MaximumVerifiedAllocationTerm = verifreg.MaximumVerifiedAllocationTerm
+const MinimumVerifiedAllocationSize = verifreg.MinimumVerifiedAllocationSize
+const MinimumVerifiedAllocationTerm = verifreg.MinimumVerifiedAllocationTerm
 const NoAllocationID = verifreg.NoAllocationID
+const SignatureDomainSeparation_RemoveDataCap = verifreg.SignatureDomainSeparation_RemoveDataCap

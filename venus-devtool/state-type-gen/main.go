@@ -64,8 +64,7 @@ var pendingPkgs = func() map[string]*pendingPkg {
 }()
 
 var (
-	rootDir = fmt.Sprintf("github.com/filecoin-project/go-state-types/builtin/v%v/", actors.LatestVersion)
-	skips   = map[string]struct{}{
+	skips = map[string]struct{}{
 		"State":          {},
 		"MinerInfo":      {},
 		"ConstructState": {},
@@ -83,9 +82,6 @@ var (
 			{pkgName: "market", newName: "MarketWithdrawBalanceParams"},
 			{pkgName: "miner", newName: "MinerWithdrawBalanceParams"},
 		},
-	}
-	expectVals = map[string]struct{}{
-		"NoAllocationID": {},
 	}
 )
 
@@ -117,6 +113,9 @@ func run(cctx *cli.Context) error {
 		})
 		sort.Slice(visitor.t, func(i, j int) bool {
 			return visitor.t[i] < visitor.t[j]
+		})
+		sort.Slice(visitor.con, func(i, j int) bool {
+			return visitor.con[i] < visitor.con[j]
 		})
 		metas = append(metas, visitor)
 	}
@@ -156,7 +155,7 @@ type metaVisitor struct {
 	pkgName string
 	f       []string // function
 	t       []string // type
-	v       []string // value | const
+	con     []string // const
 }
 
 func (v *metaVisitor) Visit(node ast.Node) (w ast.Visitor) {
@@ -184,9 +183,8 @@ func (v *metaVisitor) Visit(node ast.Node) (w ast.Visitor) {
 		if !vt.Names[0].IsExported() || len(vt.Names) == 0 {
 			return v
 		}
-
-		if _, ok := expectVals[vt.Names[0].Name]; ok {
-			v.v = append(v.v, vt.Names[0].Name)
+		if vt.Names[0].Obj != nil && vt.Names[0].Obj.Kind == ast.Con {
+			v.con = append(v.con, vt.Names[0].Name)
 		}
 	}
 
@@ -222,7 +220,7 @@ func writeFile(dst string, metas []*metaVisitor) error {
 			fmt.Fprintf(&fileBuffer, "var %s = %s.%s\n", f, meta.pkgName, f)
 		}
 
-		for _, v := range meta.v {
+		for _, v := range meta.con {
 			fmt.Fprintf(&fileBuffer, "const %s = %s.%s\n", v, meta.pkgName, v)
 		}
 		fmt.Fprintln(&fileBuffer, "\n")
