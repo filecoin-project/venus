@@ -566,7 +566,7 @@ func (mp *MessagePool) DeleteByAdress(address address.Address) error {
 	defer mp.lk.Unlock()
 
 	if mp.pending != nil {
-		mp.pending[address] = nil
+		delete(mp.pending, address)
 	}
 	return nil
 }
