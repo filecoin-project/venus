@@ -1,3 +1,4 @@
+// stm: #unit
 package consensus_test
 
 import (
@@ -48,6 +49,7 @@ func TestGenValidTicketChain(t *testing.T) {
 
 	// Grow the specified ticket Chain without error
 	for i := 0; i < len(schedule.Addrs); i++ {
+		// stm: @CONSENSUS_TICKET_MAKE_001, @CONSENSUS_TICKET_IS_VALID_001
 		requireValidTicket(ctx, t, tm, head.Key(), abi.ChainEpoch(i), miner, schedule.Addrs[i], signer)
 	}
 }

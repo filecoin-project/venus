@@ -1,3 +1,4 @@
+// stm: #unit
 package paychmgr
 
 import (
@@ -780,8 +781,10 @@ func testSetupMgrWithChannel(t *testing.T) *testScaffold {
 }
 
 func testGenerateKeyPair(t *testing.T) ([]byte, []byte) {
+	// stm: @CRYPTO_SIG_GENERATE_001
 	priv, err := crypto2.Generate(crypto.SigTypeSecp256k1)
 	require.NoError(t, err)
+	// stm: @CRYPTO_SIG_TO_PUBLIC_001
 	pub, err := crypto2.ToPublic(crypto.SigTypeSecp256k1, priv)
 	require.NoError(t, err)
 	return priv, pub

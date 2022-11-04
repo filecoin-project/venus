@@ -338,14 +338,13 @@ func TestFakeSleep(t *testing.T) {
 	var afterSleep = make(chan struct{})
 
 	go func() {
+		go func() {
+			<-time.After(time.Second)
+			fc.Advance(1)
+		}()
 		// stm: @CLOCK_TESTING_SLEEP_001
 		fc.Sleep(1)
 		afterSleep <- struct{}{}
-	}()
-
-	go func() {
-		time.After(time.Second)
-		fc.Advance(1)
 	}()
 
 	select {

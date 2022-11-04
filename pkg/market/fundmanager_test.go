@@ -1,3 +1,4 @@
+// stm: #unit
 package market
 
 import (
@@ -38,8 +39,13 @@ func TestFundManagerBasic(t *testing.T) {
 	// balance:  0 -> 10
 	// reserved: 0 -> 10
 	amt := abi.NewTokenAmount(10)
+	// stm: @MARKET_FUND_MANAGER_RESERVE_001
 	sentinel, err := s.fm.Reserve(s.ctx, s.walletAddr, s.acctAddr, amt)
 	require.NoError(t, err)
+
+	// stm: @MARKET_FUND_MANAGER_GET_RESERVED_001
+	amount := s.fm.GetReserved(s.acctAddr)
+	require.Equal(t, amount, amt)
 
 	msg := s.mockAPI.getSentMessage(sentinel)
 	checkAddMessageFields(t, msg, s.walletAddr, s.acctAddr, amt)
@@ -62,6 +68,7 @@ func TestFundManagerBasic(t *testing.T) {
 	// balance:  17
 	// reserved: 17 -> 12
 	amt = abi.NewTokenAmount(5)
+	// stm: @MARKET_FUND_MANAGER_RELEASE_001
 	err = s.fm.Release(s.acctAddr, amt)
 	require.NoError(t, err)
 
@@ -69,6 +76,7 @@ func TestFundManagerBasic(t *testing.T) {
 	// balance:  17 -> 15
 	// reserved: 12
 	amt = abi.NewTokenAmount(2)
+	// stm: @MARKET_FUND_MANAGER_WITHDRAW_001
 	sentinel, err = s.fm.Withdraw(s.ctx, s.walletAddr, s.acctAddr, amt)
 	require.NoError(t, err)
 
@@ -111,6 +119,7 @@ func TestFundManagerBasic(t *testing.T) {
 	amt = abi.NewTokenAmount(1)
 	_, err = s.fm.Withdraw(s.ctx, s.walletAddr, s.acctAddr, amt)
 	require.Error(t, err)
+
 }
 
 // TestFundManagerParallel verifies that operations can be run in parallel
@@ -541,6 +550,7 @@ func TestFundManagerRestart(t *testing.T) {
 	// Restart
 	mockAPIAfter := s.mockAPI
 	fmAfter := newFundManager(mockAPIAfter, s.ds)
+	// stm: @MARKET_FUND_MANAGER_START_001
 	err = fmAfter.Start(ctx)
 	require.NoError(t, err)
 

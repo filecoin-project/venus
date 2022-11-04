@@ -1,3 +1,4 @@
+// stm: #unit
 package helloprotocol_test
 
 import (
@@ -64,6 +65,7 @@ func TestHelloHandshake(t *testing.T) {
 	aPeerMgr, err := mockPeerMgr(ctx, t, a)
 	require.NoError(t, err)
 
+	// stm: @DISCOVERY_HELLO_REGISTER_001
 	helloprotocol.NewHelloProtocolHandler(a, aPeerMgr, nil, oldStore, mstore, genesisA.Blocks()[0].Cid(), time.Second*30).Register(msc1.HelloCallback)
 	helloprotocol.NewHelloProtocolHandler(b, aPeerMgr, nil, store, mstore, genesisA.Blocks()[0].Cid(), time.Second*30).Register(msc2.HelloCallback)
 
