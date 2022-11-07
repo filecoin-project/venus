@@ -204,25 +204,9 @@ func writeFile(dst string, metas []*metaVisitor) error {
 
 	for _, meta := range metas {
 		fmt.Fprintf(&fileBuffer, "////////// %s //////////\n", meta.pkgName)
-		for _, typ := range meta.t {
-			if vals, ok := alias[typ]; ok {
-				for _, val := range vals {
-					if val.pkgName == meta.pkgName {
-						fmt.Fprintf(&fileBuffer, "type %s = %s.%s\n", val.newName, meta.pkgName, typ)
-					}
-				}
-			} else {
-				fmt.Fprintf(&fileBuffer, "type %s = %s.%s\n", typ, meta.pkgName, typ)
-			}
-		}
-
-		for _, f := range meta.f {
-			fmt.Fprintf(&fileBuffer, "var %s = %s.%s\n", f, meta.pkgName, f)
-		}
-
-		for _, v := range meta.con {
-			fmt.Fprintf(&fileBuffer, "const %s = %s.%s\n", v, meta.pkgName, v)
-		}
+		genDetail(&fileBuffer, meta.con, "const", meta.pkgName)
+		genDetail(&fileBuffer, meta.t, "type", meta.pkgName)
+		genDetail(&fileBuffer, meta.f, "var", meta.pkgName)
 		fmt.Fprintln(&fileBuffer, "\n")
 	}
 
@@ -232,4 +216,23 @@ func writeFile(dst string, metas []*metaVisitor) error {
 	}
 
 	return os.WriteFile(dst, formatedBuf, 0o755)
+}
+
+func genDetail(buf *bytes.Buffer, list []string, typ string, pkgName string) {
+	if len(list) == 0 {
+		return
+	}
+	fmt.Fprintf(buf, "%s (\n", typ)
+	for _, one := range list {
+		if vals, ok := alias[one]; ok {
+			for _, val := range vals {
+				if val.pkgName == pkgName {
+					fmt.Fprintf(buf, "\t%s = %s.%s\n", val.newName, pkgName, one)
+				}
+			}
+		} else {
+			fmt.Fprintf(buf, "\t%s = %s.%s\n", one, pkgName, one)
+		}
+	}
+	fmt.Fprintln(buf, ")")
 }
