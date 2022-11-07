@@ -64,8 +64,7 @@ var pendingPkgs = func() map[string]*pendingPkg {
 }()
 
 var (
-	rootDir = fmt.Sprintf("github.com/filecoin-project/go-state-types/builtin/v%v/", actors.LatestVersion)
-	skips   = map[string]struct{}{
+	skips = map[string]struct{}{
 		"State":          {},
 		"MinerInfo":      {},
 		"ConstructState": {},
@@ -83,9 +82,6 @@ var (
 			{pkgName: "market", newName: "MarketWithdrawBalanceParams"},
 			{pkgName: "miner", newName: "MinerWithdrawBalanceParams"},
 		},
-	}
-	expectVals = map[string]struct{}{
-		"NoAllocationID": {},
 	}
 )
 
@@ -117,6 +113,9 @@ func run(cctx *cli.Context) error {
 		})
 		sort.Slice(visitor.t, func(i, j int) bool {
 			return visitor.t[i] < visitor.t[j]
+		})
+		sort.Slice(visitor.con, func(i, j int) bool {
+			return visitor.con[i] < visitor.con[j]
 		})
 		metas = append(metas, visitor)
 	}
@@ -156,7 +155,7 @@ type metaVisitor struct {
 	pkgName string
 	f       []string // function
 	t       []string // type
-	v       []string // value | const
+	con     []string // const
 }
 
 func (v *metaVisitor) Visit(node ast.Node) (w ast.Visitor) {
@@ -184,9 +183,8 @@ func (v *metaVisitor) Visit(node ast.Node) (w ast.Visitor) {
 		if !vt.Names[0].IsExported() || len(vt.Names) == 0 {
 			return v
 		}
-
-		if _, ok := expectVals[vt.Names[0].Name]; ok {
-			v.v = append(v.v, vt.Names[0].Name)
+		if vt.Names[0].Obj != nil && vt.Names[0].Obj.Kind == ast.Con {
+			v.con = append(v.con, vt.Names[0].Name)
 		}
 	}
 
@@ -206,25 +204,9 @@ func writeFile(dst string, metas []*metaVisitor) error {
 
 	for _, meta := range metas {
 		fmt.Fprintf(&fileBuffer, "////////// %s //////////\n", meta.pkgName)
-		for _, typ := range meta.t {
-			if vals, ok := alias[typ]; ok {
-				for _, val := range vals {
-					if val.pkgName == meta.pkgName {
-						fmt.Fprintf(&fileBuffer, "type %s = %s.%s\n", val.newName, meta.pkgName, typ)
-					}
-				}
-			} else {
-				fmt.Fprintf(&fileBuffer, "type %s = %s.%s\n", typ, meta.pkgName, typ)
-			}
-		}
-
-		for _, f := range meta.f {
-			fmt.Fprintf(&fileBuffer, "var %s = %s.%s\n", f, meta.pkgName, f)
-		}
-
-		for _, v := range meta.v {
-			fmt.Fprintf(&fileBuffer, "const %s = %s.%s\n", v, meta.pkgName, v)
-		}
+		genDetail(&fileBuffer, meta.con, "const", meta.pkgName)
+		genDetail(&fileBuffer, meta.t, "type", meta.pkgName)
+		genDetail(&fileBuffer, meta.f, "var", meta.pkgName)
 		fmt.Fprintln(&fileBuffer, "\n")
 	}
 
@@ -234,4 +216,23 @@ func writeFile(dst string, metas []*metaVisitor) error {
 	}
 
 	return os.WriteFile(dst, formatedBuf, 0o755)
+}
+
+func genDetail(buf *bytes.Buffer, list []string, typ string, pkgName string) {
+	if len(list) == 0 {
+		return
+	}
+	fmt.Fprintf(buf, "%s (\n", typ)
+	for _, one := range list {
+		if vals, ok := alias[one]; ok {
+			for _, val := range vals {
+				if val.pkgName == pkgName {
+					fmt.Fprintf(buf, "\t%s = %s.%s\n", val.newName, pkgName, one)
+				}
+			}
+		} else {
+			fmt.Fprintf(buf, "\t%s = %s.%s\n", one, pkgName, one)
+		}
+	}
+	fmt.Fprintln(buf, ")")
 }
