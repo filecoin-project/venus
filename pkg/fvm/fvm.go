@@ -47,9 +47,8 @@ var (
 var fvmLog = logging.Logger("fvm")
 
 var (
-	_                 vm.Interface    = (*FVM)(nil)
-	_                 ffi_cgo.Externs = (*FvmExtern)(nil)
-	debugBundleV8path                 = os.Getenv("VENUS_FVM_DEBUG_BUNDLE_V8")
+	_ vm.Interface    = (*FVM)(nil)
+	_ ffi_cgo.Externs = (*FvmExtern)(nil)
 )
 
 type FvmExtern struct { // nolint
@@ -457,12 +456,10 @@ func NewDebugFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 		return nil, fmt.Errorf("error determining actors version for network version %d: %w", opts.NetworkVersion, err)
 	}
 
-	switch av {
-	case actorstypes.Version8:
-		if debugBundleV8path != "" {
-			if err := createMapping(debugBundleV8path); err != nil {
-				fvmLog.Errorf("failed to create v8 debug mapping")
-			}
+	debugBundlePath := os.Getenv(fmt.Sprintf("VENUS_FVM_DEBUG_BUNDLE_V%d", av))
+	if debugBundlePath != "" {
+		if err := createMapping(debugBundlePath); err != nil {
+			fvmLog.Errorf("failed to create v%d debug mapping", av)
 		}
 	}
 
