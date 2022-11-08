@@ -4,12 +4,14 @@ package types
 import (
 	"testing"
 
+	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBadTipsetCache(t *testing.T) {
+	tf.UnitTest(t)
 	badTSCache := NewBadTipSetCache()
 
 	var ts types.TipSet
