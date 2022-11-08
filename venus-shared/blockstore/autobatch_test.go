@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	blocks "github.com/ipfs/go-block-format"
-
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
+	blocks "github.com/ipfs/go-block-format"
+	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,6 +14,7 @@ var (
 	b0 = blocks.NewBlock([]byte("abc"))
 	b1 = blocks.NewBlock([]byte("foo"))
 	b2 = blocks.NewBlock([]byte("bar"))
+	b3 = blocks.NewBlock([]byte("baz"))
 )
 
 func TestAutobatchBlockstore(t *testing.T) {
@@ -28,9 +29,6 @@ func TestAutobatchBlockstore(t *testing.T) {
 	require.NoError(t, ab.Put(ctx, b1))
 	require.NoError(t, ab.Put(ctx, b2))
 
-	err := ab.Flush(ctx)
-	require.NoError(t, err)
-
 	v0, err := ab.Get(ctx, b0.Cid())
 	require.NoError(t, err)
 	require.Equal(t, b0.RawData(), v0.RawData())
@@ -42,4 +40,11 @@ func TestAutobatchBlockstore(t *testing.T) {
 	v2, err := ab.Get(ctx, b2.Cid())
 	require.NoError(t, err)
 	require.Equal(t, b2.RawData(), v2.RawData())
+
+	// Regression test for a deadlock.
+	_, err = ab.Get(ctx, b3.Cid())
+	require.True(t, ipld.IsNotFound(err))
+
+	require.NoError(t, ab.Flush(ctx))
+	require.NoError(t, ab.Shutdown(ctx))
 }
