@@ -178,7 +178,7 @@ func TestRepoLock(t *testing.T) {
 	assert.FileExists(t, filepath.Join(repoPath, lockFile))
 
 	// stm: @REPO_FSREPO_EXISTS_001
-	exist, err := Exists(filepath.Join(repoPath, lockFile))
+	exist, err := Exists(repoPath)
 	assert.NoError(t, err)
 	assert.True(t, exist)
 
