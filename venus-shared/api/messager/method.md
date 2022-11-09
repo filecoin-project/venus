@@ -1180,6 +1180,7 @@ Perms: admin
 Inputs:
 ```json
 [
+  "string value",
   "string value"
 ]
 ```
@@ -1240,7 +1241,6 @@ Perms: admin
 Inputs:
 ```json
 [
-  "string value",
   "string value"
 ]
 ```
