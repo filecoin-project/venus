@@ -79,7 +79,6 @@ type Message struct {
 	TipSetKey  shared.TipSetKey
 	Meta       *SendSpec
 	WalletName string
-	FromUser   string
 
 	State MessageState
 
@@ -115,7 +114,6 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 		TipSetKey  shared.TipSetKey
 		Meta       *SendSpec
 		WalletName string
-		FromUser   string
 
 		State MessageState
 
@@ -145,7 +143,6 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 		TipSetKey:  m.TipSetKey,
 		Meta:       m.Meta,
 		WalletName: m.WalletName,
-		FromUser:   m.FromUser,
 		State:      m.State,
 		CreatedAt:  m.CreatedAt,
 		UpdatedAt:  m.UpdatedAt,
