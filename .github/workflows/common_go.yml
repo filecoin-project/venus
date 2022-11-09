@@ -34,9 +34,12 @@ jobs:
         run: |
           echo vars.repo_name = ${{steps.vars.outputs.repo_name}}
 
+      - name: install default deps
+        run: sudo apt-get -o Acquire::Retries=3 update && sudo apt-get -o Acquire::Retries=3 install make ftp git bzr curl wget -y && sudo apt upgrade -y
+
       - name: install deps
         if: ${{ inputs.has_ffi }}
-        run: sudo apt-get -o Acquire::Retries=3 update && sudo apt-get -o Acquire::Retries=3 install make ftp git bzr curl hwloc libhwloc-dev mesa-opencl-icd ocl-icd-opencl-dev wget -y && sudo apt upgrade -y
+        run: sudo apt-get -o Acquire::Retries=3 update && sudo apt-get -o Acquire::Retries=3 install hwloc libhwloc-dev mesa-opencl-icd ocl-icd-opencl-dev -y
 
       - name: Build
         env:
