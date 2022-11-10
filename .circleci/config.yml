@@ -1,0 +1,140 @@
+version: 2.1 # use CircleCI 2.0
+
+commands:
+  setup_environment:
+    steps:
+      - checkout
+      - run: |
+            git submodule sync
+            git submodule update --init --recursive
+            go mod tidy
+            sudo apt-get update
+            sudo apt install python-is-python3 ocl-icd-opencl-dev libhwloc-dev
+            echo '-->>>' branch:$(git symbolic-ref --short HEAD), commit:$(git describe --always --match=NeVeRmAtCh --dirty) '\<<<--'
+            make deps
+  test:
+    description: |
+      Run tests with gotestsum.
+    parameters:
+      target:
+        type: string
+        description: Import paths of packages to be tested.
+      coverage:
+        type: string
+        default: -coverprofile=coverage.txt -coverpkg=./...
+        description: Coverage flag. Set to the empty string to disable.
+      go-test-flags:
+        type: string
+        default: "-timeout 30m"
+        description: Flags passed to go test.
+      suite:
+        type: string
+        default: unit
+        description: Test suite name to report to CircleCI.
+      gotestsum-format:
+        type: string
+        default: standard-verbose
+        description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
+      codecov-upload:
+        type: boolean
+        default: true
+        description: |
+          Upload coverage report to https://codecov.io/. Requires the codecov API token to be
+          set as an environment variable for private projects.
+      display-name:
+        type: string
+        default: unit test
+    steps:
+      - run:
+          name: << parameters.display-name >>
+          command: |
+            mkdir -p /tmp/test-reports/<< parameters.suite >>
+            mkdir -p /tmp/test-artifacts
+            gotestsum \
+              --format << parameters.gotestsum-format >> \
+              --junitfile /tmp/test-reports/<< parameters.suite >>/junit.xml \
+              --jsonfile /tmp/test-artifacts/<< parameters.suite >>.json \
+              -- \
+              << parameters.coverage >> \
+              << parameters.go-test-flags >> \
+              << parameters.target >>
+          no_output_timeout: 30m
+      - store_artifacts:
+          path: /tmp/test-artifacts/<< parameters.suite >>.json
+      - when:
+          condition: << parameters.codecov-upload >>
+          steps:
+            - run:
+                shell: /bin/bash -eo pipefail
+                command: |
+                  bash <(curl -s https://codecov.io/bash)
+
+executors:
+  golang:
+    docker:
+      - image: cimg/go:1.18.1
+
+jobs:
+  test_all:
+    executor: golang
+    steps:
+      - setup_environment
+      - test: 
+          display-name: unit_test_chain
+          suite: "unit_test_chain"
+          target: "./pkg/chain/..."
+      - test: 
+          display-name: unit_test_beacon
+          suite: "unit_test_beacon"
+          target: "./pkg/beacon/..."
+      - test: 
+          display-name: unit_test_chainsync
+          suite: "unit_test_chainsync"
+          target: "./pkg/chainsync/..."
+      - test: 
+          display-name: unit_test_clock
+          suite: "unit_test_clock"
+          target: "./pkg/clock/..."
+      - test: 
+          display-name: unit_test_consensus
+          suite: "unit_test_consensus"
+          target: "./pkg/consensus/..."
+      - test: 
+          display-name: unit_test_crypto
+          suite: "unit_test_crypto"
+          target: "./pkg/crypto/..."
+      - test: 
+          display-name: unit_test_market
+          suite: "unit_test_market"
+          target: "./pkg/market/..."
+      - test: 
+          display-name: unit_test_messagepool
+          suite: "unit_test_messagepool"
+          target: "./pkg/messagepool/..."
+      - test: 
+          display-name: unit_test_net
+          suite: "unit_test_net"
+          target: "./pkg/net/..."
+      - test: 
+          display-name: unit_test_paychmgr
+          suite: "unit_test_paychmgr"
+          target: "./pkg/paychmgr/..."
+      - test: 
+          display-name: unit_test_repo
+          suite: "unit_test_repo"
+          target: "./pkg/repo/..."
+      - test: 
+          display-name: unit_test_state
+          suite: "unit_test_state"
+          target: "./pkg/state/..."
+      - test: 
+          display-name: unit_test_wallet
+          suite: "unit_test_wallet"
+          target: "./pkg/wallet/..."
+      - store_test_results:
+          path: /tmp/test-reports
+
+workflows:
+  ci:
+    jobs:
+      - test_all
