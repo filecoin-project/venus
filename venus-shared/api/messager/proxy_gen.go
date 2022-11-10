@@ -37,6 +37,7 @@ type IMessagerStruct struct {
 		ListMessageByAddress     func(ctx context.Context, addr address.Address) ([]*mtypes.Message, error)                                                                 `perm:"admin"`
 		ListMessageByFromState   func(ctx context.Context, from address.Address, state mtypes.MessageState, isAsc bool, pageIndex, pageSize int) ([]*mtypes.Message, error) `perm:"admin"`
 		ListNode                 func(ctx context.Context) ([]*mtypes.Node, error)                                                                                          `perm:"admin"`
+		LogList                  func(context.Context) ([]string, error)                                                                                                    `perm:"write"`
 		MarkBadMessage           func(ctx context.Context, id string) error                                                                                                 `perm:"admin"`
 		NetAddrsListen           func(ctx context.Context) (peer.AddrInfo, error)                                                                                           `perm:"read"`
 		NetConnect               func(ctx context.Context, pi peer.AddrInfo) error                                                                                          `perm:"admin"`
@@ -50,7 +51,7 @@ type IMessagerStruct struct {
 		SaveNode                 func(ctx context.Context, node *mtypes.Node) error                                                                                         `perm:"admin"`
 		Send                     func(ctx context.Context, params mtypes.QuickSendParams) (string, error)                                                                   `perm:"admin"`
 		SetFeeParams             func(ctx context.Context, params *mtypes.AddressSpec) error                                                                                `perm:"admin"`
-		SetLogLevel              func(ctx context.Context, level string) error                                                                                              `perm:"admin"`
+		SetLogLevel              func(ctx context.Context, subsystem, level string) error                                                                                   `perm:"admin"`
 		SetSelectMsgNum          func(ctx context.Context, addr address.Address, num uint64) error                                                                          `perm:"admin"`
 		SetSharedParams          func(ctx context.Context, params *mtypes.SharedSpec) error                                                                                 `perm:"admin"`
 		UpdateAllFilledMessage   func(ctx context.Context) (int, error)                                                                                                     `perm:"admin"`
@@ -129,6 +130,9 @@ func (s *IMessagerStruct) ListMessageByFromState(p0 context.Context, p1 address.
 func (s *IMessagerStruct) ListNode(p0 context.Context) ([]*mtypes.Node, error) {
 	return s.Internal.ListNode(p0)
 }
+func (s *IMessagerStruct) LogList(p0 context.Context) ([]string, error) {
+	return s.Internal.LogList(p0)
+}
 func (s *IMessagerStruct) MarkBadMessage(p0 context.Context, p1 string) error {
 	return s.Internal.MarkBadMessage(p0, p1)
 }
@@ -168,8 +172,8 @@ func (s *IMessagerStruct) Send(p0 context.Context, p1 mtypes.QuickSendParams) (s
 func (s *IMessagerStruct) SetFeeParams(p0 context.Context, p1 *mtypes.AddressSpec) error {
 	return s.Internal.SetFeeParams(p0, p1)
 }
-func (s *IMessagerStruct) SetLogLevel(p0 context.Context, p1 string) error {
-	return s.Internal.SetLogLevel(p0, p1)
+func (s *IMessagerStruct) SetLogLevel(p0 context.Context, p1, p2 string) error {
+	return s.Internal.SetLogLevel(p0, p1, p2)
 }
 func (s *IMessagerStruct) SetSelectMsgNum(p0 context.Context, p1 address.Address, p2 uint64) error {
 	return s.Internal.SetSelectMsgNum(p0, p1, p2)
