@@ -44,15 +44,6 @@ func (cs *cborString) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-//func TestCborString(t *testing.T) {
-//	rawString := "hello world"
-//	cborString := cborString(rawString)
-//	buf := bytes.NewBuffer(nil)
-//	assert.NoError(t, cborString.MarshalCBOR(buf))
-//	assert.NoError(t, cborString.UnmarshalCBOR(buf))
-//	assert.Equal(t, string(cborString), rawString)
-//}
-
 func TestMessageStoreMessagesHappy(t *testing.T) {
 	testflags.UnitTest(t)
 	ctx := context.Background()
