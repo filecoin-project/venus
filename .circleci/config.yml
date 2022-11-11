@@ -37,7 +37,7 @@ commands:
         description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
       codecov-upload:
         type: boolean
-        default: true
+        default: false
         description: |
           Upload coverage report to https://codecov.io/. Requires the codecov API token to be
           set as an environment variable for private projects.
