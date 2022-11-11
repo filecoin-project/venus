@@ -1,3 +1,4 @@
+// stm: #unit
 package dispatcher_test
 
 import (
@@ -52,13 +53,21 @@ func TestDispatchStartHappy(t *testing.T) {
 		chainInfoWithHeightAndWeight(t, 2, 4),
 		chainInfoWithHeightAndWeight(t, 1, 5),
 	}
+	// stm: @CHAINSYNC_DISPATCHER_SET_CONCURRENT_001
+	testDispatch.SetConcurrent(2)
 
+	// stm: @CHAINSYNC_DISPATCHER_CONCURRENT_001
+	assert.Equal(t, testDispatch.Concurrent(), int64(2))
+
+	// stm: @CHAINSYNC_DISPATCHER_START_001
 	testDispatch.Start(context.Background())
+
 	t.Logf("waiting for 'syncWorker' input channel standby for 100(ms)")
 	time.Sleep(time.Millisecond * 100)
 
 	// set up a blocking channel and register to unblock after 5 synced
 	waitCh := make(chan struct{})
+	// stm: @CHAINSYNC_DISPATCHER_REGISTER_CALLBACK_001
 	testDispatch.RegisterCallback(func(target *syncTypes.Target, _ error) {
 		if target.Head.Key().Equals(cis[4].Head.Key()) {
 			waitCh <- struct{}{}

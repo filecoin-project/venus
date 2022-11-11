@@ -1,3 +1,4 @@
+// stm: #unit
 package consensus_test
 
 import (
@@ -66,6 +67,7 @@ func TestBLSSignatureValidationConfiguration(t *testing.T) {
 
 		validator := consensus.NewMessageSignatureValidator(api)
 
+		// stm: @CONSENSUS_VALIDATOR_VALIDATE_001
 		err := validator.Validate(ctx, unsigned)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid signature")
@@ -84,7 +86,10 @@ func TestMessageSyntaxValidator(t *testing.T) {
 	t.Run("Actor not found is not an error", func(t *testing.T) {
 		msg, err := testhelpers.NewSignedMessage(ctx, *newMessage(t, bob, alice, 0, 0, 1, 5000), signer)
 		require.NoError(t, err)
+		// stm: @CONSENSUS_VALIDATOR_VALIDATE_SIGNED_SYNTAX_001
 		assert.NoError(t, validator.ValidateSignedMessageSyntax(ctx, msg))
+		// stm: @CONSENSUS_VALIDATOR_VALIDATE_UNSIGNED_SYNTAX_001
+		assert.NoError(t, validator.ValidateUnsignedMessageSyntax(ctx, &msg.Message))
 	})
 
 	t.Run("self send passes", func(t *testing.T) {

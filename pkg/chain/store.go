@@ -74,6 +74,8 @@ type loadTipSetFunc func(context.Context, types.TipSetKey) (*types.TipSet, error
 // ReorgNotifee represents a callback that gets called upon reorgs.
 type ReorgNotifee func(rev, app []*types.TipSet) error
 
+var DefaultTipsetLruCacheSize = 10000
+
 type reorg struct {
 	old []*types.TipSet
 	new []*types.TipSet
@@ -144,7 +146,7 @@ func NewStore(chainDs repo.Datastore,
 	genesisCid cid.Cid,
 	circulatiingSupplyCalculator ICirculatingSupplyCalcualtor,
 ) *Store {
-	tsCache, _ := lru.NewARC(10000)
+	tsCache, _ := lru.NewARC(DefaultTipsetLruCacheSize)
 	store := &Store{
 		stateAndBlockSource: cbor.NewCborStore(bsstore),
 		ds:                  chainDs,
@@ -330,7 +332,7 @@ func (store *Store) GetTipSet(ctx context.Context, key types.TipSetKey) (*types.
 	cids := key.Cids()
 	blks := make([]*types.BlockHeader, len(cids))
 	for idx, c := range cids {
-		blk, err := store.GetBlock(context.TODO(), c)
+		blk, err := store.GetBlock(ctx, c)
 		if err != nil {
 			return nil, err
 		}

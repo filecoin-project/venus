@@ -1,3 +1,4 @@
+// stm: #unit
 package messagepool
 
 import (
@@ -189,6 +190,7 @@ func TestMessageSignerSignMessage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mpool := newMockMpool()
 			ds := ds_sync.MutexWrap(datastore.NewMapDatastore())
+			// stm: @MESSAGEPOOL_SIGNER_NEW_SIGNER_001
 			ms := NewMessageSigner(w, mpool, ds)
 
 			for _, m := range tt.msgs {
@@ -196,6 +198,7 @@ func TestMessageSignerSignMessage(t *testing.T) {
 					mpool.setNonce(m.msg.From, m.mpoolNonce[0])
 				}
 				merr := m.cbErr
+				// stm: @MESSAGEPOOL_SIGNER_SIGN_MESSAGE_001
 				smsg, err := ms.SignMessage(ctx, m.msg, func(message *types.SignedMessage) error {
 					return merr
 				})

@@ -1,3 +1,4 @@
+// stm: #unit
 package consensus_test
 
 import (
@@ -50,6 +51,7 @@ func TestWeight(t *testing.T) {
 	t.Run("basic happy path", func(t *testing.T) {
 		// 0 + (4*256 + (4*1*1*256/5*2))
 		// 1024 + 102 = 1126
+		// stm: @CONSENSUS_CHAIN_SELECTOR_WEIGHT_001
 		w, err := sel.Weight(ctx, toWeigh)
 		// w, err := sel.Weight(ctx, toWeigh, fakeRoot)
 		assert.NoError(t, err)
@@ -143,6 +145,12 @@ func TestWeight(t *testing.T) {
 		w, err := sel.Weight(ctx, toWeighThreeBlock)
 		assert.NoError(t, err)
 		assert.Equal(t, fbig.NewInt(1331), w)
+
+		// stm: @CONSENSUS_CHAIN_SELECTOR_WEIGHT_001
+		toWeighTwoBlock := testhelpers.RequireNewTipSet(t, toWeighThreeBlock.At(0), toWeighThreeBlock.At(1))
+		isHeavier, err := sel.IsHeavier(ctx, toWeighThreeBlock, toWeighTwoBlock)
+		assert.NoError(t, err)
+		assert.True(t, isHeavier)
 	})
 }
 

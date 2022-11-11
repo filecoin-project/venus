@@ -1,3 +1,4 @@
+// stm: #unit
 package wallet
 
 import (
@@ -44,9 +45,11 @@ func TestWalletSimple(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Log("test HasAddress")
+	// stm: @WALLET_WALLET_HAS_ADDRESS_001
 	assert.True(t, w.HasAddress(ctx, addr))
 
 	t.Log("find backend")
+	// stm: @WALLET_WALLET_FIND_001
 	backend, err := w.Find(ctx, addr)
 	assert.NoError(t, err)
 	assert.Equal(t, fs, backend)
@@ -57,6 +60,7 @@ func TestWalletSimple(t *testing.T) {
 	assert.False(t, w.HasAddress(ctx, randomAddr))
 
 	t.Log("list all addresses")
+	// stm: @WALLET_WALLET_ADDRESSES_001
 	list := w.Addresses(ctx)
 	assert.Len(t, list, 1)
 	assert.Equal(t, list[0], addr)
@@ -94,6 +98,7 @@ func TestWalletBLSKeys(t *testing.T) {
 	require.NoError(t, err)
 
 	data := []byte("data to be signed")
+	// stm: @WALLET_WALLET_SIGN_BYTES_001
 	sig, err := w.SignBytes(ctx, data, addr)
 	require.NoError(t, err)
 
@@ -134,6 +139,7 @@ func TestSimpleSignAndVerify(t *testing.T) {
 	w, fs := newWalletAndDSBackend(t)
 
 	t.Log("create a new address in the backend")
+	// stm: @WALLET_WALLET_NEW_ADDRESS_001
 	addr, err := fs.NewAddress(context.Background(), address.SECP256K1)
 	assert.NoError(t, err)
 
@@ -194,4 +200,50 @@ func TestSignErrorCases(t *testing.T) {
 	_, err = w1.SignBytes(ctx, dataA, addr2)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "could not find address:")
+}
+
+func TestImportExport(t *testing.T) {
+	tf.UnitTest(t)
+	ctx := context.Background()
+	password := "test password"
+	TestPassword = []byte(password)
+	w1, _ := newWalletAndDSBackend(t)
+	TestPassword = []byte(password)
+	w2, _ := newWalletAndDSBackend(t)
+	// stm: @WALLET_WALLET_NEW_ADDRESS_001
+	addr1, err := w1.NewAddress(ctx, address.BLS)
+	assert.NoError(t, err)
+	// stm: @WALLET_WALLET_GET_ADDRESS_PUBKEY_001
+	pubKey, err := w1.GetPubKeyForAddress(ctx, addr1)
+	assert.NoError(t, err)
+	addr2, err := address.NewBLSAddress(pubKey)
+	assert.NoError(t, err)
+	assert.Equal(t, addr1, addr2)
+	// stm: @WALLET_WALLET_EXPORT_001
+	keyInfo, err := w1.Export(ctx, addr1, password)
+	assert.NoError(t, err)
+	// stm: @WALLET_WALLET_IMPORT_001
+	addr2, err = w2.Import(ctx, keyInfo)
+	assert.NoError(t, err)
+	assert.Equal(t, addr1, addr2)
+	// stm: @WALLET_WALLET_NEW_KEY_INFO_001
+	keyInfo, err = w2.NewKeyInfo(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, keyInfo)
+	// stm: @WALLET_WALLET_HAS_ADDRESS_001
+	assert.True(t, w2.HasAddress(ctx, addr1))
+	addr2, err = keyInfo.Address()
+	assert.NoError(t, err)
+	assert.True(t, w2.HasAddress(ctx, addr2))
+	// stm: @WALLET_WALLET_HAS_PASSWORD_001
+	assert.True(t, w2.HasPassword(ctx))
+	// stm: @WALLET_WALLET_LOCK_001
+	assert.NoError(t, w2.LockWallet(ctx))
+	// stm: @WALLET_WALLET_GET_STATE_001
+	assert.Equal(t, w2.WalletState(ctx), Lock)
+	// stm: @WALLET_WALLET_UNLOCK_001
+	assert.Error(t, w2.UnLockWallet(ctx, []byte("wrong password")))
+	assert.NoError(t, w2.UnLockWallet(ctx, []byte(password)))
+	// stm: @WALLET_WALLET_GET_STATE_001
+	assert.Equal(t, w2.WalletState(ctx), Unlock)
 }

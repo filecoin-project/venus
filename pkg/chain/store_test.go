@@ -1,10 +1,14 @@
+// stm: #unit
 package chain_test
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/filecoin-project/venus/pkg/testhelpers"
@@ -12,6 +16,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/util/test"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -336,6 +341,7 @@ func TestLoadAndReboot(t *testing.T) {
 		Store: rebootChain,
 	}
 
+	// stm: @CHAIN_STORE_LOAD_001
 	err := rebootChain.Load(ctx)
 	assert.NoError(t, err)
 
@@ -346,6 +352,184 @@ func TestLoadAndReboot(t *testing.T) {
 
 	// Check the head
 	test.Equal(t, link4, rebootChain.GetHead())
+
+	{
+		assert.NoError(t, rebootChain.Blockstore().DeleteBlock(ctx, link3.Blocks()[0].Cid()))
+		newStore := chain.NewStore(ds, bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator())
+		// error occurs while getting tipset identified by parent's cid block,
+		//  because block[0] has been deleted.
+		// stm: @CHAIN_STORE_LOAD_003
+		assert.Error(t, newStore.Load(ctx))
+	}
+
+	{
+		assert.NoError(t, ds.Put(ctx, chain.HeadKey, []byte("bad chain head data")))
+		newStore := chain.NewStore(ds, bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator())
+		// error occurs while getting tipset identified by parent's cid block
+		// stm: @CHAIN_STORE_LOAD_002
+		assert.Error(t, newStore.Load(ctx))
+	}
+}
+
+func TestLoadTipsetMeta(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx := context.Background()
+	builder := chain.NewBuilder(t, address.Undef)
+	genTS := builder.Genesis()
+	rPriv := repo.NewInMemoryRepo()
+	bs := rPriv.Datastore()
+	ds := rPriv.ChainDatastore()
+	cst := cbor.NewCborStore(bs)
+
+	count := 30
+	links := make([]*types.TipSet, count)
+	links[0] = genTS
+
+	for i := 1; i < count-1; i++ {
+		links[i] = builder.AppendOn(ctx, links[i-1], rand.Intn(2)+1)
+	}
+	head := builder.BuildOn(ctx, links[count-2], 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
+	links[count-1] = head
+
+	// Add blocks to blockstore
+	for _, ts := range links {
+		requirePutBlocksToCborStore(t, cst, ts.ToSlice()...)
+	}
+
+	chain.DefaultChainIndexCacheSize = 2
+	chain.DefaultTipsetLruCacheSize = 2
+
+	cs := chain.NewStore(ds, bs, genTS.At(0).Cid(), chain.NewMockCirculatingSupplyCalculator())
+	cborStore := &CborBlockStore{Store: cs, cborStore: cst}
+
+	requirePutTestChain(ctx, t, cborStore, head.Key(), builder, 5)
+	assertSetHead(t, cborStore, head)
+
+	// stm: @CHAIN_STORE_LOAD_METADATA_001
+	meta, err := cs.LoadTipsetMetadata(ctx, head)
+	assert.NoError(t, err)
+	assert.NotNil(t, meta)
+
+	flyingTipset := builder.BuildOrphaTipset(head, 2, nil)
+	{ // Chain store load tipset meta
+		// should not be found.
+		// stm: @CHAIN_STORE_LOAD_METADATA_002
+		_, err = cs.LoadTipsetMetadata(ctx, flyingTipset)
+		assert.Error(t, err)
+		// put invalid data for newTs.
+		key := datastore.NewKey(fmt.Sprintf("p-%s h-%d", flyingTipset.String(), flyingTipset.Height()))
+		assert.NoError(t, ds.Put(ctx, key, []byte("invalid tipset data")))
+		// error getting object from store providing key,
+		// stm: @CHAIN_STORE_LOAD_METADATA_002
+		_, err = cs.LoadTipsetMetadata(ctx, flyingTipset)
+		assert.Error(t, err)
+		assert.NoError(t, ds.Delete(ctx, key))
+	}
+	{ // Chain store get blocks
+		// stm: @CHAIN_STORE_GET_BLOCK_001
+		block, err := cs.GetBlock(ctx, head.Key().Cids()[0])
+		assert.NoError(t, err)
+		assert.Equal(t, block.Cid(), head.Blocks()[0].Cid())
+		// error getting block from ilpd storage
+		// stm: @CHAIN_STORE_LOAD_002
+		_, err = cs.GetBlock(ctx, flyingTipset.Cids()[0])
+		assert.Error(t, err)
+	}
+	{ // Chain store get tipset
+		// stm: @CHAIN_STORE_GET_TIPSET_001
+		ts, err := cs.GetTipSet(ctx, head.Key())
+		assert.NoError(t, err)
+		assert.Equal(t, ts.Key(), head.Key())
+
+		// If the key is empty, return current head tipset cids.
+		// stm: @CHAIN_STORE_GET_TIPSET_002
+		ts, err = cs.GetTipSet(ctx, types.EmptyTSK)
+		assert.NoError(t, err)
+		assert.Equal(t, ts.Key(), head.Key())
+
+		// The head is cached now.
+		// stm: @CHAIN_STORE_GET_TIPSET_003
+		ts, err = cs.GetTipSet(ctx, head.Key())
+		assert.NoError(t, err)
+		assert.Equal(t, ts.Key(), head.Key())
+
+		// error getting blocks
+		// stm: @CHAIN_STORE_GET_TIPSET_004
+		_, err = cs.GetTipSet(ctx, flyingTipset.Key())
+		assert.Error(t, err)
+	}
+	{ // Chain store get tipset by height
+		targetTS := links[abi.ChainEpoch(count/2)]
+		// stm: @CHAIN_STORE_GET_TIPSET_BY_HEIGHT_001
+		ts, err := cs.GetTipSetByHeight(ctx, head, targetTS.Height(), true)
+		assert.NoError(t, err)
+		assert.Equal(t, ts.Key(), targetTS.Key())
+
+		// The epoch is greater than the tipset's height
+		// stm: @CHAIN_STORE_GET_TIPSET_BY_HEIGHT_002
+		_, err = cs.GetTipSetByHeight(ctx, head, head.Height()+1, true)
+		assert.Error(t, err)
+
+		// targetTs.Height - 1 would make sure tipset was not cached
+		targetTS = links[targetTS.Height()-1]
+		blockCid := targetTS.Cids()[0]
+		block, err := bs.Get(ctx, blockCid)
+		assert.NoError(t, err)
+		assert.NoError(t, bs.DeleteBlock(ctx, targetTS.Cids()[0]))
+		// error occurs retrieving the tipset from the chain index
+		// stm: @CHAIN_STORE_GET_TIPSET_BY_HEIGHT_004
+		_, err = cs.GetTipSetByHeight(ctx, head, targetTS.Height(), true)
+		assert.Error(t, err)
+
+		// restore deleted block.
+		assert.NoError(t, bs.Put(ctx, block))
+	}
+	{ // Get tipset state
+		parentHead := links[len(links)-2]
+		// stm: @CHAIN_STORE_GET_TIPSET_STATE_ROOT_001
+		stateRoot, err := cs.GetTipSetStateRoot(ctx, parentHead)
+		assert.NoError(t, err)
+		assert.Equal(t, head.ParentState(), stateRoot)
+
+		// stm: @CHAIN_STORE_GET_TIPSET_STATE_ROOT_001
+		_, err = cs.GetTipSetStateRoot(ctx, flyingTipset)
+		assert.Error(t, err)
+
+		// error occurs while trying to return tipsetStateRoot from tipIndex. not exist
+		// stm: @CHAIN_STORE_GET_TIPSET_STATE_002
+		_, err = cs.GetTipSetState(ctx, flyingTipset)
+		assert.Error(t, err)
+	}
+	{ // Get genesis block
+		genesisBlock, err := cs.GetGenesisBlock(ctx)
+		assert.NoError(t, err)
+		assert.Equal(t, genesisBlock.Cid(), genTS.Blocks()[0].Cid())
+	}
+	{ // Beacon entry
+		ts := links[6]
+		// stm: @CHAIN_STORE_GET_LATEST_BEACON_ENTRY_001
+		entry, err := cs.GetLatestBeaconEntry(ctx, ts)
+		assert.NoError(t, err)
+		assert.Greater(t, len(entry.Data), 0)
+
+		// no beacon entries is found in the 20 block prior to given tipset
+		// stm: @CHAIN_STORE_GET_LATEST_BEACON_ENTRY_004
+		_, err = cs.GetLatestBeaconEntry(ctx, head)
+		assert.Error(t, err)
+
+		deletedCid := ts.Parents().Cids()[0]
+		block, err := bs.Get(ctx, deletedCid)
+		assert.NoError(t, err)
+		assert.NoError(t, bs.DeleteBlock(ctx, deletedCid))
+		// loading parents failed.
+		// stm: @CHAIN_STORE_GET_LATEST_BEACON_ENTRY_003
+		_, err = cs.GetLatestBeaconEntry(ctx, ts)
+		assert.Error(t, err)
+
+		// recover deleted block
+		assert.NoError(t, bs.Put(ctx, block))
+	}
 }
 
 func requireGetTipSet(ctx context.Context, t *testing.T, chainStore *CborBlockStore, key types.TipSetKey) *types.TipSet {

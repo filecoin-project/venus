@@ -1,3 +1,4 @@
+// stm: #unit
 package repo
 
 import (
@@ -24,6 +25,7 @@ func TestInitRepoDirect(t *testing.T) {
 
 	// Inits a repo and opens it (ensuring it is openable)
 	initAndOpenRepoDirect := func(repoPath string, version uint, cfg *config.Config) (*FSRepo, error) {
+		// stm: @REPO_FSREPO_INIT_DIRECT_001
 		if err := InitFSRepoDirect(repoPath, version, cfg); err != nil {
 			return nil, err
 		}
@@ -74,8 +76,10 @@ func TestFSRepoOpen(t *testing.T) {
 	t.Run("[fail] repo version newer than binary", func(t *testing.T) {
 		repoPath := path.Join(t.TempDir(), "repo")
 
+		// stm: @REPO_FSREPO_INIT_001
 		assert.NoError(t, InitFSRepo(repoPath, 1, config.NewDefaultConfig()))
 		// set wrong version
+		// stm：@REPO_FSREPO_READ_VERSION_001
 		assert.NoError(t, WriteVersion(repoPath, 99))
 
 		_, err := OpenFSRepo(repoPath, 1)
@@ -139,8 +143,10 @@ func TestFSRepoReplaceAndSnapshotConfig(t *testing.T) {
 	newCfg := config.NewDefaultConfig()
 	newCfg.API.APIAddress = "bar"
 
+	// stm: @REPO_FSREPO_REPLACE_CONFIG_001, @REPO_FSREPO_SNAPSHOT_CONFIG_001
 	assert.NoError(t, r1.ReplaceConfig(newCfg))
 	assert.Equal(t, "bar", r1.Config().API.APIAddress)
+	// stm: REPO_FSREPO_CLOSE_001
 	assert.NoError(t, r1.Close())
 
 	r2, err := OpenFSRepo(repoPath, 42)
@@ -166,9 +172,16 @@ func TestRepoLock(t *testing.T) {
 	cfg := config.NewDefaultConfig()
 	assert.NoError(t, InitFSRepo(repoPath, 42, cfg))
 
+	// stm: @REPO_FSREPO_OPEN_REPO_001
 	r, err := OpenFSRepo(repoPath, 42)
 	assert.NoError(t, err)
 	assert.FileExists(t, filepath.Join(repoPath, lockFile))
+
+	// stm: @REPO_FSREPO_EXISTS_001
+	exist, err := Exists(repoPath)
+	assert.NoError(t, err)
+	assert.True(t, exist)
+
 	_, err = OpenFSRepo(repoPath, 42)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to take repo lock")
@@ -203,6 +216,7 @@ func TestRepoAPIFile(t *testing.T) {
 
 	t.Run("APIAddr returns last value written to API file", func(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
+			// stm: @REPO_FSREPO_SET_API_ADDRESS
 			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
 
 			rpcAPI := mustGetAPIAddr(t, r)

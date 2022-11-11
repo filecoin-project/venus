@@ -1,3 +1,4 @@
+// stm: #unit
 package clock_test
 
 import (
@@ -22,6 +23,7 @@ func TestFakeAfter(t *testing.T) {
 	default:
 		t.Errorf("zero did not return!")
 	}
+	// stm: @CLOCK_TESTING_AFTER_001
 	one := fc.After(1)
 	two := fc.After(2)
 	six := fc.After(6)
@@ -85,6 +87,7 @@ func TestNewFakeAt(t *testing.T) {
 	tf.UnitTest(t)
 	t1 := time.Date(1999, time.February, 3, 4, 5, 6, 7, time.UTC)
 	fc := clock.NewFake(t1)
+	// stm: @CLOCK_TESTING_NOW_001
 	now := fc.Now()
 	assert.Equalf(t, now, t1, "Fake.Now() returned unexpected non-initialised value: want=%#v, got %#v", t1, now)
 }
@@ -95,6 +98,7 @@ func TestFakeSince(t *testing.T) {
 	now := fc.Now()
 	elapsedTime := time.Second
 	fc.Advance(elapsedTime)
+	// stm: @CLOCK_TESTING_SINCE_001
 	assert.Truef(t, fc.Since(now) == elapsedTime, "Fake.Since() returned unexpected duration, got: %d, want: %d", fc.Since(now), elapsedTime)
 }
 
@@ -102,6 +106,7 @@ func TestFakeTimers(t *testing.T) {
 	tf.UnitTest(t)
 	fc := clock.NewFake(startTime)
 
+	// stm: @CLOCK_TESTING_NEW_TIMER_001
 	zero := fc.NewTimer(0)
 
 	assert.False(t, zero.Stop(), "zero timer could be stopped")
@@ -121,6 +126,7 @@ func TestFakeTimers(t *testing.T) {
 
 	assert.True(t, one.Stop(), "non-zero timer couldn't be stopped")
 
+	// stm: @CLOCK_TESTING_ADVANCE_001
 	fc.Advance(5)
 
 	select {
@@ -166,13 +172,17 @@ func inSync(t *testing.T, func1 syncFunc, func2 syncFunc) {
 	stepChan1 := make(chan struct{}, 16)
 	stepChan2 := make(chan struct{}, 16)
 	go func() {
-		func1(func() { stepChan1 <- struct{}{} }, func(point string) {
-			select {
-			case <-stepChan2:
-			case <-time.After(time.Second):
-				t.Errorf("Did not advance, should have %s", point)
-			}
-		},
+		func1(
+			func() {
+				stepChan1 <- struct{}{}
+			},
+			func(point string) {
+				select {
+				case <-stepChan2:
+				case <-time.After(time.Second):
+					t.Errorf("Did not advance, should have %s", point)
+				}
+			},
 			func(point string) {
 				select {
 				case <-stepChan2:
@@ -203,6 +213,7 @@ func TestBlockingOnTimers(t *testing.T) {
 	fc := clock.NewFake(startTime)
 
 	inSync(t, func(didAdvance func(), shouldAdvance func(string), _ func(string)) {
+		// stm: @CLOCK_TESTING_BLOCK_UNTIL_001
 		fc.BlockUntil(0)
 		didAdvance()
 		fc.BlockUntil(1)
@@ -256,6 +267,7 @@ func TestAdvancePastAfter(t *testing.T) {
 	fc := clock.NewFake(startTime)
 
 	start := fc.Now()
+	// stm: @CLOCK_TESTING_AFTER_FUNC_001
 	one := fc.After(1)
 	two := fc.After(2)
 	six := fc.After(6)
@@ -318,4 +330,27 @@ func TestFakeTickerTick(t *testing.T) {
 		t.Errorf("expected tick!")
 	}
 	ft.Stop()
+}
+
+func TestFakeSleep(t *testing.T) {
+	tf.UnitTest(t)
+	fc := clock.NewFake(startTime)
+	var afterSleep = make(chan struct{})
+
+	go func() {
+		go func() {
+			<-time.After(time.Second)
+			fc.Advance(1)
+		}()
+		// stm: @CLOCK_TESTING_SLEEP_001
+		fc.Sleep(1)
+		afterSleep <- struct{}{}
+	}()
+
+	select {
+	case <-time.After(time.Second * 5):
+		t.Fatalf("wakeup sleep timeout.")
+	case <-afterSleep:
+		return
+	}
 }

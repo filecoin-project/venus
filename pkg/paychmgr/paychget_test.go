@@ -1,3 +1,4 @@
+// stm: #unit
 package paychmgr
 
 import (
@@ -80,6 +81,7 @@ func TestPaychGetCreateChannelMsg(t *testing.T) {
 	require.NoError(t, err)
 
 	amt := big.NewInt(10)
+	// stm: @PAYCHMGR_MANAGER_GET_PAYCH_001
 	ch, mcid, err := mgr.GetPaych(ctx, from, to, amt, onChainReserve)
 	require.NoError(t, err)
 	require.Equal(t, address.Undef, ch)
@@ -159,6 +161,7 @@ func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should have no channels yet (message sent but channel not created)
+	// stm: @PAYCHMGR_MANAGER_LIST_CHANNELS_001
 	cis, err := mgr.ListChannels(ctx)
 	require.NoError(t, err)
 	require.Len(t, cis, 0)
@@ -193,6 +196,7 @@ func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
 		// channel).
 		// PendingAmount should be amount sent in second GetPaych
 		// (second GetPaych triggered add funds, which has not yet been confirmed)
+		// stm: @PAYCHMGR_MANAGER_GET_CHANNEL_INFO_001
 		ci, err := mgr.GetChannelInfo(ctx, ch)
 		require.NoError(t, err)
 		require.EqualValues(t, 10, ci.Amount.Int64())
@@ -1595,6 +1599,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// No channel created yet so available funds should be all zeroes
+	// stm: @PAYCHMGR_MANAGER_AVAILABLE_FUNDS_BY_FROM_TO_001
 	av, err := mgr.AvailableFundsByFromTo(ctx, from, to)
 	require.NoError(t, err)
 	require.Nil(t, av.Channel)
@@ -1674,6 +1679,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 
 	// Available funds should now include the channel and also a wait sentinel
 	// for the add funds message
+	// stm: @PAYCHMGR_MANAGER_AVAILABLE_FUNDS_001
 	av, err = mgr.AvailableFunds(ctx, ch)
 	require.NoError(t, err)
 	require.NotNil(t, av.Channel)

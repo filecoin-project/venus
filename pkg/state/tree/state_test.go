@@ -1,3 +1,4 @@
+// stm: #unit
 package tree
 
 import (
@@ -46,6 +47,7 @@ func TestStatePutGet(t *testing.T) {
 		act2.IncrementSeqNum()
 	})
 
+	// stm: @STATE_VIEW_GET_ACTOR_001
 	act1out, found, err := tree.GetActor(ctx, addr1)
 	assert.NoError(t, err)
 	assert.True(t, found)
@@ -70,6 +72,12 @@ func TestStatePutGet(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, found)
 	assert.Equal(t, uint64(2), act2out2.Nonce)
+
+	// stm: @STATE_VIEW_DELETE_ACTOR_001
+	assert.NoError(t, tree2.DeleteActor(ctx, addr2))
+	_, found, err = tree2.GetActor(ctx, addr2)
+	assert.NoError(t, err)
+	assert.False(t, found)
 }
 
 func TestStateErrors(t *testing.T) {
@@ -87,6 +95,7 @@ func TestStateErrors(t *testing.T) {
 	c, err := constants.DefaultCidBuilder.Sum([]byte("cats"))
 	assert.NoError(t, err)
 
+	// stm: @STATE_TREE_LOAD_STATE_001
 	tr2, err := LoadState(ctx, cst, c)
 	assert.Error(t, err)
 	assert.Nil(t, tr2)
@@ -106,9 +115,11 @@ func TestGetAllActors(t *testing.T) {
 
 	newActor := types.Actor{Code: builtin2.AccountActorCodeID, Nonce: 1234, Balance: abi.NewTokenAmount(123)}
 	AddAccount(t, tree, cst, addr)
+	// stm: @STATE_VIEW_FLUSH_001
 	_, err = tree.Flush(ctx)
 	require.NoError(t, err)
 
+	// stm: @STATE_VIEW_FOR_EACH_001
 	err = tree.ForEach(func(key ActorKey, result *types.Actor) error {
 		if addr != key {
 			return nil
@@ -124,12 +135,65 @@ func TestGetAllActors(t *testing.T) {
 	}
 }
 
+func TestSnapshot(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx := context.Background()
+	bs := repo.NewInMemoryRepo().Datastore()
+	cst := cbor.NewCborStore(bs)
+	tree, err := NewState(cst, StateTreeVersion1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// stm: @STATE_VIEW_SNAPSHOT_001
+	assert.NoError(t, tree.Snapshot(ctx))
+	assert.Equal(t, len(tree.snaps.layers), 2)
+
+	randomCid, err := cid.Decode("bafy2bzacecu7n7wbtogznrtuuvf73dsz7wasgyneqasksdblxupnyovmtwxxu")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	addr, err := address.NewIDAddress(uint64(1007))
+	assert.NoError(t, err)
+
+	actor := &types.Actor{
+		Code:    randomCid,
+		Head:    randomCid,
+		Balance: abi.NewTokenAmount(int64(10000)),
+		Nonce:   100,
+	}
+
+	if err := tree.SetActor(ctx, addr, actor); err != nil {
+		t.Fatal(err)
+	}
+
+	resActor, find, err := tree.GetActor(ctx, addr)
+	assert.NoError(t, err)
+	assert.True(t, find)
+	assert.Equal(t, actor, resActor)
+
+	// stm: @STATE_VIEW_REVERT_001
+	assert.NoError(t, tree.Revert())
+
+	resActor, find, err = tree.GetActor(ctx, addr)
+	assert.NoError(t, err)
+	assert.Nil(t, resActor)
+	assert.False(t, find)
+
+	// stm: @STATE_VIEW_CLEAR_SNAPSHOT_001
+	tree.ClearSnapshot()
+	assert.Equal(t, len(tree.snaps.layers), 1)
+}
+
 func TestStateTreeConsistency(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
 	bs := repo.NewInMemoryRepo().Datastore()
 	cst := cbor.NewCborStore(bs)
+	// stm: @STATE_TREE_NEW_STATE_001
 	tree, err := NewState(cst, StateTreeVersion1)
 	if err != nil {
 		t.Fatal(err)
@@ -151,6 +215,7 @@ func TestStateTreeConsistency(t *testing.T) {
 	}
 
 	for i, a := range addrs {
+		// stm: @STATE_VIEW_SET_ACTOR_001, @STATE_VIEW_LOOKUP_ID_001
 		if err := tree.SetActor(ctx, a, &types.Actor{
 			Code:    randomCid,
 			Head:    randomCid,

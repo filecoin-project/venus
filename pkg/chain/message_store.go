@@ -188,7 +188,7 @@ func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types
 
 	// store secp messages
 	as := cbor.NewCborStore(ms.bs)
-	secpMsgArr := adt.MakeEmptyArray(adt.WrapStore(context.TODO(), as))
+	secpMsgArr := adt.MakeEmptyArray(adt.WrapStore(ctx, as))
 	for i, msg := range secpMessages {
 		secpCid, err := ms.StoreMessage(msg)
 		if err != nil {
@@ -207,7 +207,7 @@ func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types
 	ret.SecpkRoot = secpRaw
 
 	// store bls messages
-	blsMsgArr := adt.MakeEmptyArray(adt.WrapStore(context.TODO(), as))
+	blsMsgArr := adt.MakeEmptyArray(adt.WrapStore(ctx, as))
 	for i, msg := range blsMessages {
 		blsCid, err := ms.StoreMessage(msg)
 		if err != nil {

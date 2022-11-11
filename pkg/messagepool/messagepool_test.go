@@ -1,3 +1,4 @@
+// stm: #unit
 package messagepool
 
 import (
@@ -5,6 +6,10 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+
+	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/fork"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 
@@ -337,7 +342,11 @@ func mustAdd(t *testing.T, mp *MessagePool, msg *types.SignedMessage) {
 func newWalletAndMpool(t *testing.T, tma *testMpoolAPI) (*wallet.Wallet, *MessagePool) {
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(context.Background(), tma, nil, ds, config.NewDefaultConfig().NetworkParams, config.DefaultMessagePoolParam, "mptest", nil)
+	builder := chain.NewBuilder(t, address.Undef)
+	eval := builder.FakeStateEvaluator()
+	stmgr := statemanger.NewStateManger(builder.Store(), eval, nil, fork.NewMockFork(), nil, nil)
+
+	mp, err := New(context.Background(), tma, stmgr, ds, config.NewDefaultConfig().NetworkParams, config.DefaultMessagePoolParam, "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -356,9 +365,12 @@ func newWallet(t *testing.T) *wallet.Wallet {
 func TestMessagePool(t *testing.T) {
 	tf.UnitTest(t)
 
+	ctx := context.Background()
 	tma := newTestMpoolAPI()
 
 	w, mp := newWalletAndMpool(t, tma)
+	// stm: @MESSAGEPOOL_POOL_CLOSE_001
+	defer mp.Close() // nolint
 
 	a := tma.nextBlock()
 
@@ -375,15 +387,86 @@ func TestMessagePool(t *testing.T) {
 
 	tma.setStateNonce(sender, 0)
 	assertNonce(t, mp, sender, 0)
+	// stm: @MESSAGEPOOL_POOL_ADD_001
 	mustAdd(t, mp, msgs[0])
 	assertNonce(t, mp, sender, 1)
 	mustAdd(t, mp, msgs[1])
 	assertNonce(t, mp, sender, 2)
 
 	tma.setBlockMessages(a, msgs[0], msgs[1])
+
+	// stm: @MESSAGEPOOL_POOL_GET_MESSAGES_FOR_BLOCKS_001
+	blockMsgs, err := mp.MessagesForBlocks(ctx, []*types.BlockHeader{a})
+	assert.NoError(t, err)
+	assert.Equal(t, len(blockMsgs), 2)
 	tma.applyBlock(t, a)
 
 	assertNonce(t, mp, sender, 2)
+	{ // test verify message signature
+		// stm: @MESSAGEPOOL_POOL_VERIFY_MSG_SIG_001
+		assert.NoError(t, mp.VerifyMsgSig(msgs[2]))
+	}
+	{ // test publish message
+		mustAdd(t, mp, msgs[2])
+		assertNonce(t, mp, sender, msgs[2].Message.Nonce+1)
+		pendingMsgs, _ := mp.PendingFor(ctx, sender)
+		assert.Equal(t, len(pendingMsgs), 1)
+		// stm: @MESSAGEPOOL_POOL_PUBLISH_FOR_WALLET
+		assert.NoError(t, mp.PublishMsgForWallet(ctx, sender))
+		//// stm: @MESSAGEPOOL_POOL_PUBLISH_001
+		assert.NoError(t, mp.PublishMsg(ctx, msgs[2]))
+		assertNonce(t, mp, sender, msgs[2].Message.Nonce+1)
+	}
+	{ // test delete by address
+		// delete pending message with sender is message.From
+		// stm: @MESSAGEPOOL_POOL_DELETE_BY_ADDRESS_001
+		assert.NoError(t, mp.DeleteByAdress(sender))
+		// since message.From is deleted, the pending messages should be 0
+		pendingMsgs, _ := mp.PendingFor(ctx, sender)
+		assert.Equal(t, len(pendingMsgs), 0)
+	}
+	{ // test remove message
+		mustAdd(t, mp, msgs[2])
+		pendingMsgs, _ := mp.PendingFor(ctx, sender)
+		assert.Equal(t, len(pendingMsgs), 1)
+		// stm: @MESSAGEPOOL_POOL_REMOVE_001
+		mp.Remove(ctx, sender, msgs[2].Message.Nonce, false)
+		pendingMsgs, _ = mp.PendingFor(ctx, sender)
+		assert.Equal(t, len(pendingMsgs), 0)
+	}
+
+	{ // test push untrusted.
+		// stm: @MESSAGEPOOL_POOL_PUSH_UNTRUSTED
+		msgCID, err := mp.PushUntrusted(ctx, msgs[2])
+		assert.NoError(t, err)
+		assert.Equal(t, msgCID, msgs[2].Cid())
+
+		assertNonce(t, mp, sender, msgs[2].Message.Nonce+1)
+
+		// stm: @MESSAGEPOOL_POOL_GET_PENDING_001
+		pendingMsgs01, _ := mp.Pending(ctx)
+		assert.Equal(t, len(pendingMsgs01), 1)
+
+		// stm: @MESSAGEPOOL_POOL_GET_PENDING_FOR_ADDRESS_001
+		pendingMsgs02, _ := mp.PendingFor(ctx, sender)
+		assert.Equal(t, len(pendingMsgs02), 1)
+
+		assert.Equal(t, pendingMsgs01, pendingMsgs02)
+	}
+	{ // test check messages
+		mustAdd(t, mp, msgs[3])
+		// stm: @MESSAGEPOOL_POOL_CHECK_PENDING_MESSAGES_001
+		_, err := mp.CheckPendingMessages(ctx, sender)
+		assert.NoError(t, err)
+		// stm: @MESSAGEPOOL_POOL_CHECK_MESSAGES_001
+		_, err = mp.CheckMessages(ctx, []*types.MessagePrototype{
+			{ValidNonce: true, Message: msgs[3].Message},
+		})
+		assert.NoError(t, err)
+		// stm:@MESSAGEPOOL_POOL_RECOVER_SIG_001
+		assert.Nil(t, mp.RecoverSig(&msgs[4].Message))
+	}
+
 }
 
 func TestCheckMessageBig(t *testing.T) {
@@ -475,6 +558,7 @@ func TestMessagePoolMessagesInEachBlock(t *testing.T) {
 
 	_, _ = mp.Pending(context.TODO())
 
+	// stm: @MESSAGEPOOL_POOL_SELECT_MESSAGES_001
 	selm, _ := mp.SelectMessages(context.Background(), tsa, 1)
 	if len(selm) == 0 {
 		t.Fatal("should have returned the rest of the messages")
@@ -574,6 +658,7 @@ func TestPruningSimple(t *testing.T) {
 	mp.cfg.SizeLimitHigh = 40
 	mp.cfg.SizeLimitLow = 10
 
+	// stm: @MESSAGEPOOL_POOL_PRUNE_001
 	mp.Prune()
 
 	msgs, _ := mp.Pending(context.TODO())
@@ -612,6 +697,7 @@ func TestLoadLocal(t *testing.T) {
 	msgs := make(map[cid.Cid]struct{})
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		// stm: @MESSAGEPOOL_POOL_PUSH_001
 		c, err := mp.Push(context.TODO(), m)
 		if err != nil {
 			t.Fatal(err)
@@ -688,6 +774,7 @@ func TestClearAll(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
+	// stm: @MESSAGEPOOL_POOL_CLEAR_001
 	mp.Clear(context.Background(), true)
 
 	pending, _ := mp.Pending(context.TODO())

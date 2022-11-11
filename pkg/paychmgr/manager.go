@@ -72,11 +72,14 @@ func NewManager(ctx context.Context, ds datastore.Batching, params *ManagerParam
 
 // newManager is used by the tests to supply mocks
 func newManager(ctx context.Context, pchStore *Store, pchapi managerAPI) (*Manager, error) {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
 	pm := &Manager{
 		store:    pchStore,
 		sa:       &stateAccessor{sm: pchapi},
 		channels: make(map[string]*channelAccessor),
 		pchapi:   pchapi,
+		shutdown: cancel,
 	}
 	return pm, pm.Start(ctx)
 }

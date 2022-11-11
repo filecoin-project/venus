@@ -109,7 +109,6 @@ func TestTotalPowerUnaffectedBySlash(t *testing.T) {
 // nolint
 func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64, ownerKeys []crypto.KeyInfo) (cbor.IpldStore, []address.Address, cid.Cid) {
 	// todo think a way to mock power directly
-	t.Skipf("skip it due to cant mock power directly ")
 	r := repo.NewInMemoryRepo()
 	bs := r.Datastore()
 	cst := cbor.NewCborStore(bs)

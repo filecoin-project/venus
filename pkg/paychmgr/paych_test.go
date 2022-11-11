@@ -1,3 +1,4 @@
+// stm: #unit
 package paychmgr
 
 import (
@@ -224,6 +225,7 @@ func TestCheckVoucherValid(t *testing.T) {
 			sv := createTestVoucher(t, ch, tcase.voucherLane, tcase.voucherNonce, tcase.voucherAmount, tcase.key)
 
 			// Check the voucher's validity
+			// stm: @PAYCHMGR_MANAGER_CHECK_VOUCHER_VALD_001
 			err = mgr.CheckVoucherValid(ctx, ch, sv)
 			if tcase.expectError {
 				require.Error(t, err)
@@ -247,6 +249,7 @@ func TestCreateVoucher(t *testing.T) {
 		Lane:   1,
 		Amount: voucherLane1Amt,
 	}
+	// stm: @PAYCHMGR_MANAGER_CREATE_VOUCHER_001
 	res, err := s.mgr.CreateVoucher(ctx, s.ch, voucher)
 	require.NoError(t, err)
 	require.NotNil(t, res.Voucher)
@@ -314,6 +317,7 @@ func TestAddVoucherDelta(t *testing.T) {
 	nonce := uint64(1)
 	voucherAmount := big.NewInt(1)
 	sv := createTestVoucher(t, s.ch, voucherLane, nonce, voucherAmount, s.fromKeyPrivate)
+	// stm: @PAYCHMGR_MANAGER_ADD_VOUCHER_OUTBOUND_001
 	_, err := s.mgr.AddVoucherOutbound(ctx, s.ch, sv, nil, minDelta)
 	require.Error(t, err)
 
@@ -443,8 +447,11 @@ func TestAllocateLaneWithExistingLaneState(t *testing.T) {
 
 	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
+	// stm: @PAYCHMGR_MANAGER_START_001
 	mgr, err := newManager(ctx, store, mock)
 	require.NoError(t, err)
+	// stm: @PAYCHMGR_MANAGER_STOP_001
+	defer mgr.Stop()
 
 	// Create a voucher on lane 2
 	// (also reads the channel from state and puts it in the store)
@@ -453,6 +460,7 @@ func TestAllocateLaneWithExistingLaneState(t *testing.T) {
 	nonce := uint64(2)
 	voucherAmount := big.NewInt(5)
 	sv := createTestVoucher(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
+	// stm: @PAYCHMGR_MANAGER_ADD_VOUCHER_INBOUND_001
 	_, err = mgr.AddVoucherInbound(ctx, ch, sv, nil, minDelta)
 	require.NoError(t, err)
 
@@ -576,6 +584,7 @@ func TestBestSpendable(t *testing.T) {
 	require.EqualValues(t, 2, vchr.Amount.Int64())
 
 	// Submit voucher from lane 2
+	// stm: @PAYCHMGR_MANAGER_SUBMIT_VOUCHER_001
 	_, err = s.mgr.SubmitVoucher(ctx, s.ch, svL2V1, nil, nil)
 	require.NoError(t, err)
 
@@ -628,6 +637,7 @@ func TestCheckSpendable(t *testing.T) {
 
 	// Check that spendable is true
 	secret := []byte("secret")
+	// stm: @PAYCHMGR_MANAGER_CHECK_VOUCHER_SPENDABLE_001
 	spendable, err := s.mgr.CheckVoucherSpendable(ctx, s.ch, voucher, secret, nil)
 	require.NoError(t, err)
 	require.True(t, spendable)
@@ -706,6 +716,7 @@ func TestSubmitVoucher(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify that vouchers are marked as submitted
+	// stm: @PAYCHMGR_MANAGER_LIST_VOUCHERS_001
 	vis, err := s.mgr.ListVouchers(ctx, s.ch)
 	require.NoError(t, err)
 	require.Len(t, vis, 2)
@@ -780,8 +791,10 @@ func testSetupMgrWithChannel(t *testing.T) *testScaffold {
 }
 
 func testGenerateKeyPair(t *testing.T) ([]byte, []byte) {
+	// stm: @CRYPTO_SIG_GENERATE_001
 	priv, err := crypto2.Generate(crypto.SigTypeSecp256k1)
 	require.NoError(t, err)
+	// stm: @CRYPTO_SIG_TO_PUBLIC_001
 	pub, err := crypto2.ToPublic(crypto.SigTypeSecp256k1, priv)
 	require.NoError(t, err)
 	return priv, pub
