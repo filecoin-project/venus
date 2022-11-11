@@ -212,6 +212,7 @@ Response:
   },
   "WalletName": "test",
   "State": 1,
+  "ErrorMsg": "",
   "CreatedAt": "0001-01-01T00:00:00Z",
   "UpdatedAt": "0001-01-01T00:00:00Z"
 }
@@ -278,6 +279,7 @@ Response:
   },
   "WalletName": "test",
   "State": 1,
+  "ErrorMsg": "",
   "CreatedAt": "0001-01-01T00:00:00Z",
   "UpdatedAt": "0001-01-01T00:00:00Z"
 }
@@ -342,6 +344,7 @@ Response:
   },
   "WalletName": "test",
   "State": 1,
+  "ErrorMsg": "",
   "CreatedAt": "0001-01-01T00:00:00Z",
   "UpdatedAt": "0001-01-01T00:00:00Z"
 }
@@ -408,6 +411,7 @@ Response:
   },
   "WalletName": "test",
   "State": 1,
+  "ErrorMsg": "",
   "CreatedAt": "0001-01-01T00:00:00Z",
   "UpdatedAt": "0001-01-01T00:00:00Z"
 }
@@ -588,6 +592,7 @@ Response:
     },
     "WalletName": "test",
     "State": 1,
+    "ErrorMsg": "",
     "CreatedAt": "0001-01-01T00:00:00Z",
     "UpdatedAt": "0001-01-01T00:00:00Z"
   }
@@ -649,6 +654,7 @@ Response:
     },
     "WalletName": "test",
     "State": 1,
+    "ErrorMsg": "",
     "CreatedAt": "0001-01-01T00:00:00Z",
     "UpdatedAt": "0001-01-01T00:00:00Z"
   }
@@ -710,6 +716,7 @@ Response:
     },
     "WalletName": "test",
     "State": 1,
+    "ErrorMsg": "",
     "CreatedAt": "0001-01-01T00:00:00Z",
     "UpdatedAt": "0001-01-01T00:00:00Z"
   }
@@ -776,6 +783,7 @@ Response:
     },
     "WalletName": "test",
     "State": 1,
+    "ErrorMsg": "",
     "CreatedAt": "0001-01-01T00:00:00Z",
     "UpdatedAt": "0001-01-01T00:00:00Z"
   }
@@ -846,6 +854,7 @@ Response:
     },
     "WalletName": "test",
     "State": 1,
+    "ErrorMsg": "",
     "CreatedAt": "0001-01-01T00:00:00Z",
     "UpdatedAt": "0001-01-01T00:00:00Z"
   }
@@ -1353,6 +1362,7 @@ Response:
   },
   "WalletName": "test",
   "State": 1,
+  "ErrorMsg": "",
   "CreatedAt": "0001-01-01T00:00:00Z",
   "UpdatedAt": "0001-01-01T00:00:00Z"
 }

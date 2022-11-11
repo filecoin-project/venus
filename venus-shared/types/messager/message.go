@@ -82,6 +82,9 @@ type Message struct {
 
 	State MessageState
 
+	// Error is set if the message failed to fill
+	ErrorMsg string
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -115,8 +118,8 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 		Meta       *SendSpec
 		WalletName string
 
-		State MessageState
-
+		State     MessageState
+		ErrorMsg  string
 		CreatedAt time.Time
 		UpdatedAt time.Time
 	}
@@ -144,6 +147,7 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 		Meta:       m.Meta,
 		WalletName: m.WalletName,
 		State:      m.State,
+		ErrorMsg:   m.ErrorMsg,
 		CreatedAt:  m.CreatedAt,
 		UpdatedAt:  m.UpdatedAt,
 	})
