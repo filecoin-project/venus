@@ -143,7 +143,7 @@ func getComment(comments []*ast.CommentGroup) string {
 	for _, c := range comments[0].List {
 		cmt += strings.TrimSpace(strings.Replace(c.Text, "//", "", 1)) + "\n"
 	}
-
+	cmt = strings.Replace(cmt, "<", "\\<", -1)
 	return cmt
 }
 

@@ -4212,8 +4212,8 @@ Response:
 
 ### MsigCancelTxnHash
 MsigCancel cancels a previously-proposed multisig message
-It takes the following params: <multisig address>, <proposed transaction ID>, <recipient address>, <value to transfer>,
-<sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
+It takes the following params: \<multisig address>, \<proposed transaction ID>, \<recipient address>, \<value to transfer>,
+\<sender address of the cancel msg>, \<method to call in the proposed message>, \<params to include in the proposed message>
 
 
 Perms: sign
@@ -4240,8 +4240,8 @@ Response:
 
 ### MsigCreate
 MsigCreate creates a multisig wallet
-It takes the following params: <required number of senders>, <approving addresses>, <unlock duration>
-<initial balance>, <sender address of the create msg>, <gas price>
+It takes the following params: \<required number of senders>, \<approving addresses>, \<unlock duration>
+\<initial balance>, \<sender address of the create msg>, \<gas price>
 
 
 Perms: sign
