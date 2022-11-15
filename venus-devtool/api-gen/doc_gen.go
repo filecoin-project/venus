@@ -159,9 +159,9 @@ func writeAPIInfo(astMeta *util.ASTMeta, groups []MethodGroup) error {
 			return g.Methods[i].Name < g.Methods[j].Name
 		})
 
-		fmt.Fprintf(buf, "* [%s](#%s)\n", g.GroupName, g.GroupName)
+		fmt.Fprintf(buf, "* [%s](#%s)\n", g.GroupName, strings.ToLower(g.GroupName))
 		for _, method := range g.Methods {
-			fmt.Fprintf(buf, "  * [%s](#%s)\n", method.Name, method.Name)
+			fmt.Fprintf(buf, "  * [%s](#%s)\n", method.Name, strings.ToLower(method.Name))
 		}
 	}
 
