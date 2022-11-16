@@ -143,6 +143,25 @@ jobs:
           path: ./release
           type: tar
 
+      - name: Rename bin file
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cp ./${{steps.vars.outputs.artifact_name}} ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_linux_amd64.tar.gz
+
+      - name: shasum
+        if: startsWith(github.ref, 'refs/tags/')
+        run: shasum -a 256 ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_linux_amd64.tar.gz > ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_linux_amd64_linux_amd64.sha256
+        shell: bash
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        continue-on-error: true
+        with:
+          files: |
+            ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_linux_amd64.tar.gz
+            ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_linux_amd64_linux_amd64.sha256
+
       - name: upload artifacts
         uses: actions/upload-artifact@v2
         if: ${{ steps.vars.outputs.pub_method == 'pushRelease' }}
@@ -150,17 +169,6 @@ jobs:
           name: ${{steps.vars.outputs.artifact_name}}
           path: ./${{steps.vars.outputs.artifact_name}}
           if-no-files-found: error
-
-      - name: release
-        id: release
-        uses: ncipollo/release-action@v1
-        if: ${{ steps.vars.outputs.pub_method=='pushRelease' }}
-        continue-on-error: true
-        with:
-          artifacts: ${{steps.vars.outputs.artifact_name}}
-          tag: ${{ steps.vars.outputs.github_tag }}
-          commit: ${{ steps.vars.outputs.commit }}
-          token: ${{ secrets.token }}
 
       - name: upload ftp
         id: uploadftp
