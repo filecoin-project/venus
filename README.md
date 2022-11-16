@@ -9,12 +9,13 @@
 <h1 align="center">Project Venus - 启明星</h1>
 
 <p align="center">
-  <a href="https://circleci.com/gh/filecoin-project/venus"><img src="https://circleci.com/gh/filecoin-project/venus.svg?style=svg"></a>
-  <a href="https://github.com/filecoin-project/venus/releases/latest"><img src="https://img.shields.io/endpoint.svg?color=brightgreen&style=flat&logo=GitHub&url=https://raw.githubusercontent.com/filecoin-project/go-filecoin-badges/master/user-devnet.json"></a>
-  <a href="https://github.com/filecoin-project/venus/releases"><img src="https://img.shields.io/endpoint.svg?color=blue&style=flat&logo=GitHub&url=https://raw.githubusercontent.com/filecoin-project/go-filecoin-badges/master/nightly-devnet.json" /></a>  
-  <a href="https://github.com/filecoin-project/venus/releases"><img src="https://img.shields.io/endpoint.svg?color=brightgreen&style=flat&logo=GitHub&url=https://raw.githubusercontent.com/filecoin-project/go-filecoin-badges/master/staging-devnet.json" /></a>
+ <a href="https://github.com/filecoin-project/venus/actions"><img src="https://github.com/filecoin-project/venus/actions/workflows/build_upload.yml/badge.svg"/></a>
+ <a href="https://codecov.io/gh/filecoin-project/venus"><img src="https://codecov.io/gh/filecoin-project/venus/branch/master/graph/badge.svg?token=J5QWYWkgHT"/></a>
+ <a href="https://goreportcard.com/report/github.com/filecoin-project/venus"><img src="https://goreportcard.com/badge/github.com/filecoin-project/venus"/></a>
+ <a href="https://github.com/filecoin-project/venus/tags"><img src="https://img.shields.io/github/v/tag/filecoin-project/venus"/></a>
   <br>
 </p>
+
 
 Venus is an implementation of the Filecoin Distributed Storage Network. For more details about Filecoin, check out the [Filecoin Spec](https://spec.filecoin.io).
 
