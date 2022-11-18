@@ -392,9 +392,6 @@ var setWalletPassword = &cmds.Command{
 }
 
 var lockedCmd = &cmds.Command{
-	Arguments: []cmds.Argument{
-		cmds.StringArg("password", false, false, "Password to be locked"),
-	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		err := env.(*node.Env).WalletAPI.LockWallet(req.Context)
 		if err != nil {
