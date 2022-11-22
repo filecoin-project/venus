@@ -957,7 +957,8 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, err
 			break
 		}
 
-		store.StateView(ctx, curParentTipset)
+		log.Info("import height: ", curParentTipset.Height(), " root: ", curTipset.At(0).ParentStateRoot, "ts:", curParentTipset.Cids())
+
 		// save fake root
 		err = store.PutTipSetMetadata(context.Background(), &TipSetMetadata{
 			TipSetStateRoot: curTipset.At(0).ParentStateRoot,
