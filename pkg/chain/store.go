@@ -938,7 +938,7 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, err
 
 	// Todo What to do if it is less than 900
 	var (
-		loopBack  = 900
+		loopBack  = 1800
 		curTipset = root
 	)
 
