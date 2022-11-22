@@ -936,14 +936,13 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, err
 	// but in venus the head tipset is computed, so here we will fallback a pre tipset
 	// and the chain store must has a metadata for each tipset, below code is to build the tipset metadata
 
-	// Todo What to do if it is less than 900
 	var (
-		loopBack  = 900
-		curTipset = root
+		startHeight = root.Height()
+		curTipset   = root
 	)
 
 	log.Info("import height: ", root.Height(), " root: ", root.String(), " parents: ", root.At(0).Parents)
-	for i := 0; i < loopBack; i++ {
+	for {
 		if curTipset.Height() <= 0 {
 			break
 		}
@@ -954,6 +953,11 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, err
 		}
 
 		if curParentTipset.Height() == 0 {
+			break
+		}
+
+		if _, err := tree.LoadState(ctx, store.stateAndBlockSource, curTipset.At(0).ParentStateRoot); err != nil {
+			log.Infof("last ts height: %d, cids: %s, total import: %d", curTipset.Height(), curTipset.Key(), startHeight-curTipset.Height())
 			break
 		}
 
