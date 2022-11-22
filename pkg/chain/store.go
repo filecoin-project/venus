@@ -957,6 +957,7 @@ func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, err
 			break
 		}
 
+		store.StateView(ctx, curParentTipset)
 		// save fake root
 		err = store.PutTipSetMetadata(context.Background(), &TipSetMetadata{
 			TipSetStateRoot: curTipset.At(0).ParentStateRoot,
@@ -1225,6 +1226,7 @@ func (store *Store) GetLookbackTipSetForRound(ctx context.Context, ts *types.Tip
 	if err != nil {
 		return nil, cid.Undef, fmt.Errorf("failed to resolve lookback tipset: %v", err)
 	}
+	fmt.Printf("ts %s %v, round %d, lbr %d, lbts %s %d \n", ts.Key(), ts.Height(), round, lbr, lbts.Key(), lbts.Height())
 
 	return lbts, nextTS.Blocks()[0].ParentStateRoot, nil
 }

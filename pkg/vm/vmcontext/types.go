@@ -2,6 +2,7 @@ package vmcontext
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
@@ -51,11 +52,12 @@ type ILookBack interface {
 func LookbackStateGetterForTipset(ctx context.Context, backer ILookBack, fork fork.IFork, ts *types.TipSet) LookbackStateGetter {
 	return func(ctx context.Context, round abi.ChainEpoch) (*state.View, error) {
 		ver := fork.GetNetworkVersion(ctx, round)
-		ts, _, err := backer.GetLookbackTipSetForRound(ctx, ts, round, ver)
+		newTS, _, err := backer.GetLookbackTipSetForRound(ctx, ts, round, ver)
 		if err != nil {
 			return nil, err
 		}
-		return backer.StateView(ctx, ts)
+		fmt.Printf("LookbackStateGetterForTipset currts %s %d, epoch %d, newTS %s %d", ts.Key(), ts.Height(), round, newTS.Key(), newTS.Height())
+		return backer.StateView(ctx, newTS)
 	}
 }
 

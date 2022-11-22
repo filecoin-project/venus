@@ -213,7 +213,8 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 	gasA, sigErr := x.VerifyBlockSig(ctx, &blockA)
 	totalGas += gasA
 	if sigErr != nil {
-		fvmLog.Infof("invalid consensus fault: cannot verify first block sig: %w", sigErr)
+		fvmLog.Infof("invalid consensus fault: cannot verify first block sig: %+#v %w", blockA, sigErr)
+		fvmLog.Infof("invalid consensus fault: cannot verify first block sig: %s, %v", blockA.Cid(), sigErr)
 		return ret, totalGas
 	}
 
@@ -233,6 +234,7 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 func (x *FvmExtern) VerifyBlockSig(ctx context.Context, blk *types.BlockHeader) (int64, error) {
 	waddr, gasUsed, err := x.workerKeyAtLookback(ctx, blk.Miner, blk.Height)
 	if err != nil {
+		fvmLog.Infof("invalid consensus fault: cannot verify first block sig %v, workerKeyAtLookback %v", blk.Cid(), err)
 		return gasUsed, err
 	}
 
@@ -242,10 +244,15 @@ func (x *FvmExtern) VerifyBlockSig(ctx context.Context, blk *types.BlockHeader) 
 
 	sd, err := blk.SignatureData()
 	if err != nil {
+		fvmLog.Infof("invalid consensus fault: cannot verify first block sig %v, SignatureData %v", blk.Cid(), err)
 		return 0, err
 	}
+	err = crypto.Verify(blk.BlockSig, waddr, sd)
+	if err != nil {
+		fvmLog.Infof("invalid consensus fault: cannot verify first block sig %v, Verify addr %s %v", blk.Cid(), waddr, err)
+	}
 
-	return gasUsed, crypto.Verify(blk.BlockSig, waddr, sd)
+	return gasUsed, err
 }
 
 func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerID address.Address, height abi.ChainEpoch) (address.Address, int64, error) {
