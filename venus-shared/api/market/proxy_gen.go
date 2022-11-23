@@ -68,7 +68,6 @@ type IMarketStruct struct {
 		MarkDealsAsPacking                      func(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                                                                                          `perm:"write"`
 		MarketAddBalance                        func(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error)                                                                                                          `perm:"sign"`
 		MarketCancelDataTransfer                func(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error                                                                                            `perm:"write"`
-		MarketDataSetTransferPath               func(context.Context, address.Address, string) error                                                                                                                                                `perm:"admin"`
 		MarketDataTransferPath                  func(context.Context, address.Address) (string, error)                                                                                                                                              `perm:"admin"`
 		MarketDataTransferUpdates               func(ctx context.Context) (<-chan market.DataTransferChannel, error)                                                                                                                                `perm:"write"`
 		MarketGetAsk                            func(ctx context.Context, mAddr address.Address) (*market.SignedStorageAsk, error)                                                                                                                  `perm:"read"`
@@ -91,6 +90,7 @@ type IMarketStruct struct {
 		MarketReserveFunds                      func(ctx context.Context, wallet address.Address, addr address.Address, amt types.BigInt) (cid.Cid, error)                                                                                          `perm:"sign"`
 		MarketRestartDataTransfer               func(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error                                                                                            `perm:"write"`
 		MarketSetAsk                            func(ctx context.Context, mAddr address.Address, price types.BigInt, verifiedPrice types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error `perm:"admin"`
+		MarketSetDataTransferPath               func(context.Context, address.Address, string) error                                                                                                                                                `perm:"admin"`
 		MarketSetMaxBalanceAddFee               func(context.Context, address.Address, types.FIL) error                                                                                                                                             `perm:"write"`
 		MarketSetMaxDealsPerPublishMsg          func(context.Context, address.Address, uint64) error                                                                                                                                                `perm:"write"`
 		MarketSetRetrievalAsk                   func(ctx context.Context, mAddr address.Address, rask *retrievalmarket.Ask) error                                                                                                                   `perm:"admin"`
@@ -252,9 +252,6 @@ func (s *IMarketStruct) MarketAddBalance(p0 context.Context, p1, p2 address.Addr
 func (s *IMarketStruct) MarketCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
 	return s.Internal.MarketCancelDataTransfer(p0, p1, p2, p3)
 }
-func (s *IMarketStruct) MarketDataSetTransferPath(p0 context.Context, p1 address.Address, p2 string) error {
-	return s.Internal.MarketDataSetTransferPath(p0, p1, p2)
-}
 func (s *IMarketStruct) MarketDataTransferPath(p0 context.Context, p1 address.Address) (string, error) {
 	return s.Internal.MarketDataTransferPath(p0, p1)
 }
@@ -320,6 +317,9 @@ func (s *IMarketStruct) MarketRestartDataTransfer(p0 context.Context, p1 datatra
 }
 func (s *IMarketStruct) MarketSetAsk(p0 context.Context, p1 address.Address, p2 types.BigInt, p3 types.BigInt, p4 abi.ChainEpoch, p5 abi.PaddedPieceSize, p6 abi.PaddedPieceSize) error {
 	return s.Internal.MarketSetAsk(p0, p1, p2, p3, p4, p5, p6)
+}
+func (s *IMarketStruct) MarketSetDataTransferPath(p0 context.Context, p1 address.Address, p2 string) error {
+	return s.Internal.MarketSetDataTransferPath(p0, p1, p2)
 }
 func (s *IMarketStruct) MarketSetMaxBalanceAddFee(p0 context.Context, p1 address.Address, p2 types.FIL) error {
 	return s.Internal.MarketSetMaxBalanceAddFee(p0, p1, p2)

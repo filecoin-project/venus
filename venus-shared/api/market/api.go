@@ -77,7 +77,7 @@ type IMarket interface {
 	DealsMaxStartDelay(context.Context, address.Address) (time.Duration, error)             //perm:read
 	DealsSetMaxStartDelay(context.Context, address.Address, time.Duration) error            //perm:write
 	MarketDataTransferPath(context.Context, address.Address) (string, error)                //perm:admin
-	MarketDataSetTransferPath(context.Context, address.Address, string) error               //perm:admin
+	MarketSetDataTransferPath(context.Context, address.Address, string) error               //perm:admin
 	DealsPublishMsgPeriod(context.Context, address.Address) (time.Duration, error)          //perm:read
 	DealsSetPublishMsgPeriod(context.Context, address.Address, time.Duration) error         //perm:write
 	MarketMaxDealsPerPublishMsg(context.Context, address.Address) (uint64, error)           //perm:read

@@ -47,7 +47,6 @@
   * [MarkDealsAsPacking](#markdealsaspacking)
   * [MarketAddBalance](#marketaddbalance)
   * [MarketCancelDataTransfer](#marketcanceldatatransfer)
-  * [MarketDataSetTransferPath](#marketdatasettransferpath)
   * [MarketDataTransferPath](#marketdatatransferpath)
   * [MarketDataTransferUpdates](#marketdatatransferupdates)
   * [MarketGetAsk](#marketgetask)
@@ -70,6 +69,7 @@
   * [MarketReserveFunds](#marketreservefunds)
   * [MarketRestartDataTransfer](#marketrestartdatatransfer)
   * [MarketSetAsk](#marketsetask)
+  * [MarketSetDataTransferPath](#marketsetdatatransferpath)
   * [MarketSetMaxBalanceAddFee](#marketsetmaxbalanceaddfee)
   * [MarketSetMaxDealsPerPublishMsg](#marketsetmaxdealsperpublishmsg)
   * [MarketSetRetrievalAsk](#marketsetretrievalask)
@@ -1022,21 +1022,6 @@ Inputs:
 
 Response: `{}`
 
-### MarketDataSetTransferPath
-
-
-Perms: admin
-
-Inputs:
-```json
-[
-  "f01234",
-  "string value"
-]
-```
-
-Response: `{}`
-
 ### MarketDataTransferPath
 
 
@@ -1724,6 +1709,21 @@ Inputs:
   10101,
   1032,
   1032
+]
+```
+
+Response: `{}`
+
+### MarketSetDataTransferPath
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "f01234",
+  "string value"
 ]
 ```
 

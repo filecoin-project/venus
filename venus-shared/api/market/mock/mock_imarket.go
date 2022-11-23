@@ -718,20 +718,6 @@ func (mr *MockIMarketMockRecorder) MarketCancelDataTransfer(arg0, arg1, arg2, ar
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketCancelDataTransfer", reflect.TypeOf((*MockIMarket)(nil).MarketCancelDataTransfer), arg0, arg1, arg2, arg3)
 }
 
-// MarketDataSetTransferPath mocks base method.
-func (m *MockIMarket) MarketDataSetTransferPath(arg0 context.Context, arg1 address.Address, arg2 string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MarketDataSetTransferPath", arg0, arg1, arg2)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// MarketDataSetTransferPath indicates an expected call of MarketDataSetTransferPath.
-func (mr *MockIMarketMockRecorder) MarketDataSetTransferPath(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketDataSetTransferPath", reflect.TypeOf((*MockIMarket)(nil).MarketDataSetTransferPath), arg0, arg1, arg2)
-}
-
 // MarketDataTransferPath mocks base method.
 func (m *MockIMarket) MarketDataTransferPath(arg0 context.Context, arg1 address.Address) (string, error) {
 	m.ctrl.T.Helper()
@@ -1054,6 +1040,20 @@ func (m *MockIMarket) MarketSetAsk(arg0 context.Context, arg1 address.Address, a
 func (mr *MockIMarketMockRecorder) MarketSetAsk(arg0, arg1, arg2, arg3, arg4, arg5, arg6 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketSetAsk", reflect.TypeOf((*MockIMarket)(nil).MarketSetAsk), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+}
+
+// MarketSetDataTransferPath mocks base method.
+func (m *MockIMarket) MarketSetDataTransferPath(arg0 context.Context, arg1 address.Address, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarketSetDataTransferPath", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MarketSetDataTransferPath indicates an expected call of MarketSetDataTransferPath.
+func (mr *MockIMarketMockRecorder) MarketSetDataTransferPath(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketSetDataTransferPath", reflect.TypeOf((*MockIMarket)(nil).MarketSetDataTransferPath), arg0, arg1, arg2)
 }
 
 // MarketSetMaxBalanceAddFee mocks base method.
