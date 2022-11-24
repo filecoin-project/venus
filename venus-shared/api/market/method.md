@@ -20,14 +20,22 @@
   * [DealsConsiderUnverifiedStorageDeals](#dealsconsiderunverifiedstoragedeals)
   * [DealsConsiderVerifiedStorageDeals](#dealsconsiderverifiedstoragedeals)
   * [DealsImportData](#dealsimportdata)
+  * [DealsMaxProviderCollateralMultiplier](#dealsmaxprovidercollateralmultiplier)
+  * [DealsMaxPublishFee](#dealsmaxpublishfee)
+  * [DealsMaxStartDelay](#dealsmaxstartdelay)
   * [DealsPieceCidBlocklist](#dealspiececidblocklist)
+  * [DealsPublishMsgPeriod](#dealspublishmsgperiod)
   * [DealsSetConsiderOfflineRetrievalDeals](#dealssetconsiderofflineretrievaldeals)
   * [DealsSetConsiderOfflineStorageDeals](#dealssetconsiderofflinestoragedeals)
   * [DealsSetConsiderOnlineRetrievalDeals](#dealssetconsideronlineretrievaldeals)
   * [DealsSetConsiderOnlineStorageDeals](#dealssetconsideronlinestoragedeals)
   * [DealsSetConsiderUnverifiedStorageDeals](#dealssetconsiderunverifiedstoragedeals)
   * [DealsSetConsiderVerifiedStorageDeals](#dealssetconsiderverifiedstoragedeals)
+  * [DealsSetMaxProviderCollateralMultiplier](#dealssetmaxprovidercollateralmultiplier)
+  * [DealsSetMaxPublishFee](#dealssetmaxpublishfee)
+  * [DealsSetMaxStartDelay](#dealssetmaxstartdelay)
   * [DealsSetPieceCidBlocklist](#dealssetpiececidblocklist)
+  * [DealsSetPublishMsgPeriod](#dealssetpublishmsgperiod)
   * [GetDeals](#getdeals)
   * [GetRetrievalDealStatistic](#getretrievaldealstatistic)
   * [GetStorageDealStatistic](#getstoragedealstatistic)
@@ -39,6 +47,7 @@
   * [MarkDealsAsPacking](#markdealsaspacking)
   * [MarketAddBalance](#marketaddbalance)
   * [MarketCancelDataTransfer](#marketcanceldatatransfer)
+  * [MarketDataTransferPath](#marketdatatransferpath)
   * [MarketDataTransferUpdates](#marketdatatransferupdates)
   * [MarketGetAsk](#marketgetask)
   * [MarketGetDealUpdates](#marketgetdealupdates)
@@ -52,12 +61,17 @@
   * [MarketListIncompleteDeals](#marketlistincompletedeals)
   * [MarketListRetrievalAsk](#marketlistretrievalask)
   * [MarketListRetrievalDeals](#marketlistretrievaldeals)
+  * [MarketMaxBalanceAddFee](#marketmaxbalanceaddfee)
+  * [MarketMaxDealsPerPublishMsg](#marketmaxdealsperpublishmsg)
   * [MarketPendingDeals](#marketpendingdeals)
   * [MarketPublishPendingDeals](#marketpublishpendingdeals)
   * [MarketReleaseFunds](#marketreleasefunds)
   * [MarketReserveFunds](#marketreservefunds)
   * [MarketRestartDataTransfer](#marketrestartdatatransfer)
   * [MarketSetAsk](#marketsetask)
+  * [MarketSetDataTransferPath](#marketsetdatatransferpath)
+  * [MarketSetMaxBalanceAddFee](#marketsetmaxbalanceaddfee)
+  * [MarketSetMaxDealsPerPublishMsg](#marketsetmaxdealsperpublishmsg)
   * [MarketSetRetrievalAsk](#marketsetretrievalask)
   * [MarketWithdraw](#marketwithdraw)
   * [MessagerGetMessage](#messagergetmessage)
@@ -72,7 +86,7 @@
   * [PiecesListPieces](#pieceslistpieces)
   * [RemovePieceStorage](#removepiecestorage)
   * [ResponseMarketEvent](#responsemarketevent)
-  * [SectorGetSealDelay](#sectorgetsealdelay)
+  * [SectorGetExpectedSealDuration](#sectorgetexpectedsealduration)
   * [SectorSetExpectedSealDuration](#sectorsetexpectedsealduration)
   * [UpdateDealOnPacking](#updatedealonpacking)
   * [UpdateDealStatus](#updatedealstatus)
@@ -373,54 +387,84 @@ Response: `{}`
 ### DealsConsiderOfflineRetrievalDeals
 
 
-Perms: admin
+Perms: read
 
-Inputs: `[]`
+Inputs:
+```json
+[
+  "f01234"
+]
+```
 
 Response: `true`
 
 ### DealsConsiderOfflineStorageDeals
 
 
-Perms: admin
+Perms: read
 
-Inputs: `[]`
+Inputs:
+```json
+[
+  "f01234"
+]
+```
 
 Response: `true`
 
 ### DealsConsiderOnlineRetrievalDeals
 
 
-Perms: admin
+Perms: read
 
-Inputs: `[]`
+Inputs:
+```json
+[
+  "f01234"
+]
+```
 
 Response: `true`
 
 ### DealsConsiderOnlineStorageDeals
 
 
-Perms: admin
+Perms: read
 
-Inputs: `[]`
+Inputs:
+```json
+[
+  "f01234"
+]
+```
 
 Response: `true`
 
 ### DealsConsiderUnverifiedStorageDeals
 
 
-Perms: admin
+Perms: read
 
-Inputs: `[]`
+Inputs:
+```json
+[
+  "f01234"
+]
+```
 
 Response: `true`
 
 ### DealsConsiderVerifiedStorageDeals
 
 
-Perms: admin
+Perms: read
 
-Inputs: `[]`
+Inputs:
+```json
+[
+  "f01234"
+]
+```
 
 Response: `true`
 
@@ -441,12 +485,59 @@ Inputs:
 
 Response: `{}`
 
+### DealsMaxProviderCollateralMultiplier
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `42`
+
+### DealsMaxPublishFee
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `"0 FIL"`
+
+### DealsMaxStartDelay
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `60000000000`
+
 ### DealsPieceCidBlocklist
 
 
-Perms: admin
+Perms: read
 
-Inputs: `[]`
+Inputs:
+```json
+[
+  "f01234"
+]
+```
 
 Response:
 ```json
@@ -457,14 +548,29 @@ Response:
 ]
 ```
 
-### DealsSetConsiderOfflineRetrievalDeals
+### DealsPublishMsgPeriod
 
 
-Perms: admin
+Perms: read
 
 Inputs:
 ```json
 [
+  "f01234"
+]
+```
+
+Response: `60000000000`
+
+### DealsSetConsiderOfflineRetrievalDeals
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "f01234",
   true
 ]
 ```
@@ -474,11 +580,12 @@ Response: `{}`
 ### DealsSetConsiderOfflineStorageDeals
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
 [
+  "f01234",
   true
 ]
 ```
@@ -488,11 +595,12 @@ Response: `{}`
 ### DealsSetConsiderOnlineRetrievalDeals
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
 [
+  "f01234",
   true
 ]
 ```
@@ -502,11 +610,12 @@ Response: `{}`
 ### DealsSetConsiderOnlineStorageDeals
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
 [
+  "f01234",
   true
 ]
 ```
@@ -516,11 +625,12 @@ Response: `{}`
 ### DealsSetConsiderUnverifiedStorageDeals
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
 [
+  "f01234",
   true
 ]
 ```
@@ -530,12 +640,58 @@ Response: `{}`
 ### DealsSetConsiderVerifiedStorageDeals
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
 [
+  "f01234",
   true
+]
+```
+
+Response: `{}`
+
+### DealsSetMaxProviderCollateralMultiplier
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "f01234",
+  42
+]
+```
+
+Response: `{}`
+
+### DealsSetMaxPublishFee
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "f01234",
+  "0 FIL"
+]
+```
+
+Response: `{}`
+
+### DealsSetMaxStartDelay
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "f01234",
+  60000000000
 ]
 ```
 
@@ -544,16 +700,32 @@ Response: `{}`
 ### DealsSetPieceCidBlocklist
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
 [
+  "f01234",
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     }
   ]
+]
+```
+
+Response: `{}`
+
+### DealsSetPublishMsgPeriod
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "f01234",
+  60000000000
 ]
 ```
 
@@ -849,6 +1021,20 @@ Inputs:
 ```
 
 Response: `{}`
+
+### MarketDataTransferPath
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `"string value"`
 
 ### MarketDataTransferUpdates
 
@@ -1339,12 +1525,7 @@ Response:
 
 Perms: read
 
-Inputs:
-```json
-[
-  "f01234"
-]
-```
+Inputs: `[]`
 
 Response:
 ```json
@@ -1383,6 +1564,34 @@ Response:
   }
 ]
 ```
+
+### MarketMaxBalanceAddFee
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `"0 FIL"`
+
+### MarketMaxDealsPerPublishMsg
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `42`
 
 ### MarketPendingDeals
 
@@ -1500,6 +1709,51 @@ Inputs:
   10101,
   1032,
   1032
+]
+```
+
+Response: `{}`
+
+### MarketSetDataTransferPath
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "f01234",
+  "string value"
+]
+```
+
+Response: `{}`
+
+### MarketSetMaxBalanceAddFee
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "f01234",
+  "0 FIL"
+]
+```
+
+Response: `{}`
+
+### MarketSetMaxDealsPerPublishMsg
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "f01234",
+  42
 ]
 ```
 
@@ -1917,14 +2171,19 @@ Inputs:
 
 Response: `{}`
 
-### SectorGetSealDelay
-SectorGetSealDelay gets the time that a newly-created sector
+### SectorGetExpectedSealDuration
+SectorGetExpectedSealDuration gets the time that a newly-created sector
 waits for more deals before it starts sealing
 
 
 Perms: read
 
-Inputs: `[]`
+Inputs:
+```json
+[
+  "f01234"
+]
+```
 
 Response: `60000000000`
 
@@ -1937,6 +2196,7 @@ Perms: write
 Inputs:
 ```json
 [
+  "f01234",
   60000000000
 ]
 ```
