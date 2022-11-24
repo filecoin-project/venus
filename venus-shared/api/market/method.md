@@ -43,7 +43,6 @@
   * [ID](#id)
   * [ImportV1Data](#importv1data)
   * [ListPieceStorageInfos](#listpiecestorageinfos)
-  * [ListenMarketEvent](#listenmarketevent)
   * [MarkDealsAsPacking](#markdealsaspacking)
   * [MarketAddBalance](#marketaddbalance)
   * [MarketCancelDataTransfer](#marketcanceldatatransfer)
@@ -85,7 +84,6 @@
   * [PiecesListCidInfos](#pieceslistcidinfos)
   * [PiecesListPieces](#pieceslistpieces)
   * [RemovePieceStorage](#removepiecestorage)
-  * [ResponseMarketEvent](#responsemarketevent)
   * [SectorGetExpectedSealDuration](#sectorgetexpectedsealduration)
   * [SectorSetExpectedSealDuration](#sectorsetexpectedsealduration)
   * [UpdateDealOnPacking](#updatedealonpacking)
@@ -941,29 +939,6 @@ Response:
       }
     }
   ]
-}
-```
-
-### ListenMarketEvent
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  {
-    "Miner": "f01234"
-  }
-]
-```
-
-Response:
-```json
-{
-  "Id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
-  "Method": "string value",
-  "Payload": "Ynl0ZSBhcnJheQ=="
 }
 ```
 
@@ -2147,25 +2122,6 @@ Inputs:
 ```json
 [
   "string value"
-]
-```
-
-Response: `{}`
-
-### ResponseMarketEvent
-market event
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  {
-    "Id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
-    "Payload": "Ynl0ZSBhcnJheQ==",
-    "Error": "string value"
-  }
 ]
 ```
 

@@ -17,7 +17,6 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/api"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/filecoin-project/venus/venus-shared/types/gateway"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
@@ -155,9 +154,6 @@ type IMarket interface {
 	AssignUnPackedDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error) //perm:write
 	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *market.GetDealSpec) ([]*market.DealInfoIncludePath, error)                     //perm:read
 	UpdateStorageDealStatus(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus, pieceState market.PieceStatus) error //perm:write
-	// market event
-	ResponseMarketEvent(ctx context.Context, resp *gateway.ResponseEvent) error                                        //perm:read
-	ListenMarketEvent(ctx context.Context, policy *gateway.MarketRegisterPolicy) (<-chan *gateway.RequestEvent, error) //perm:read
 
 	// Paych
 	PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) //perm:read

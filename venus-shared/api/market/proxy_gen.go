@@ -16,7 +16,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/filecoin-project/venus/venus-shared/types/gateway"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
@@ -64,7 +63,6 @@ type IMarketStruct struct {
 		ID                                      func(context.Context) (peer.ID, error)                                                                                                                                                              `perm:"read"`
 		ImportV1Data                            func(ctx context.Context, src string) error                                                                                                                                                         `perm:"write"`
 		ListPieceStorageInfos                   func(ctx context.Context) market.PieceStorageInfos                                                                                                                                                  `perm:"read"`
-		ListenMarketEvent                       func(ctx context.Context, policy *gateway.MarketRegisterPolicy) (<-chan *gateway.RequestEvent, error)                                                                                               `perm:"read"`
 		MarkDealsAsPacking                      func(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                                                                                          `perm:"write"`
 		MarketAddBalance                        func(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error)                                                                                                          `perm:"sign"`
 		MarketCancelDataTransfer                func(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error                                                                                            `perm:"write"`
@@ -106,7 +104,6 @@ type IMarketStruct struct {
 		PiecesListCidInfos                      func(ctx context.Context) ([]cid.Cid, error)                                                                                                                                                        `perm:"read"`
 		PiecesListPieces                        func(ctx context.Context) ([]cid.Cid, error)                                                                                                                                                        `perm:"read"`
 		RemovePieceStorage                      func(ctx context.Context, name string) error                                                                                                                                                        `perm:"admin"`
-		ResponseMarketEvent                     func(ctx context.Context, resp *gateway.ResponseEvent) error                                                                                                                                        `perm:"read"`
 		SectorGetExpectedSealDuration           func(context.Context, address.Address) (time.Duration, error)                                                                                                                                       `perm:"read"`
 		SectorSetExpectedSealDuration           func(context.Context, address.Address, time.Duration) error                                                                                                                                         `perm:"write"`
 		UpdateDealOnPacking                     func(ctx context.Context, miner address.Address, dealID abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error                                                                    `perm:"write"`
@@ -240,9 +237,6 @@ func (s *IMarketStruct) ImportV1Data(p0 context.Context, p1 string) error {
 func (s *IMarketStruct) ListPieceStorageInfos(p0 context.Context) market.PieceStorageInfos {
 	return s.Internal.ListPieceStorageInfos(p0)
 }
-func (s *IMarketStruct) ListenMarketEvent(p0 context.Context, p1 *gateway.MarketRegisterPolicy) (<-chan *gateway.RequestEvent, error) {
-	return s.Internal.ListenMarketEvent(p0, p1)
-}
 func (s *IMarketStruct) MarkDealsAsPacking(p0 context.Context, p1 address.Address, p2 []abi.DealID) error {
 	return s.Internal.MarkDealsAsPacking(p0, p1, p2)
 }
@@ -365,9 +359,6 @@ func (s *IMarketStruct) PiecesListPieces(p0 context.Context) ([]cid.Cid, error) 
 }
 func (s *IMarketStruct) RemovePieceStorage(p0 context.Context, p1 string) error {
 	return s.Internal.RemovePieceStorage(p0, p1)
-}
-func (s *IMarketStruct) ResponseMarketEvent(p0 context.Context, p1 *gateway.ResponseEvent) error {
-	return s.Internal.ResponseMarketEvent(p0, p1)
 }
 func (s *IMarketStruct) SectorGetExpectedSealDuration(p0 context.Context, p1 address.Address) (time.Duration, error) {
 	return s.Internal.SectorGetExpectedSealDuration(p0, p1)

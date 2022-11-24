@@ -18,7 +18,6 @@ import (
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	internal "github.com/filecoin-project/venus/venus-shared/internal"
 	types "github.com/filecoin-project/venus/venus-shared/types"
-	gateway "github.com/filecoin-project/venus/venus-shared/types/gateway"
 	market "github.com/filecoin-project/venus/venus-shared/types/market"
 	gomock "github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"
@@ -660,21 +659,6 @@ func (mr *MockIMarketMockRecorder) ListPieceStorageInfos(arg0 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPieceStorageInfos", reflect.TypeOf((*MockIMarket)(nil).ListPieceStorageInfos), arg0)
 }
 
-// ListenMarketEvent mocks base method.
-func (m *MockIMarket) ListenMarketEvent(arg0 context.Context, arg1 *gateway.MarketRegisterPolicy) (<-chan *gateway.RequestEvent, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListenMarketEvent", arg0, arg1)
-	ret0, _ := ret[0].(<-chan *gateway.RequestEvent)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListenMarketEvent indicates an expected call of ListenMarketEvent.
-func (mr *MockIMarketMockRecorder) ListenMarketEvent(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListenMarketEvent", reflect.TypeOf((*MockIMarket)(nil).ListenMarketEvent), arg0, arg1)
-}
-
 // MarkDealsAsPacking mocks base method.
 func (m *MockIMarket) MarkDealsAsPacking(arg0 context.Context, arg1 address.Address, arg2 []abi.DealID) error {
 	m.ctrl.T.Helper()
@@ -1274,20 +1258,6 @@ func (m *MockIMarket) RemovePieceStorage(arg0 context.Context, arg1 string) erro
 func (mr *MockIMarketMockRecorder) RemovePieceStorage(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemovePieceStorage", reflect.TypeOf((*MockIMarket)(nil).RemovePieceStorage), arg0, arg1)
-}
-
-// ResponseMarketEvent mocks base method.
-func (m *MockIMarket) ResponseMarketEvent(arg0 context.Context, arg1 *gateway.ResponseEvent) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ResponseMarketEvent", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// ResponseMarketEvent indicates an expected call of ResponseMarketEvent.
-func (mr *MockIMarketMockRecorder) ResponseMarketEvent(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResponseMarketEvent", reflect.TypeOf((*MockIMarket)(nil).ResponseMarketEvent), arg0, arg1)
 }
 
 // SectorGetExpectedSealDuration mocks base method.
