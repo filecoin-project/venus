@@ -1,53 +1,52 @@
 # Groups
 
-* [Messager](#Messager)
-  * [ActiveAddress](#ActiveAddress)
-  * [ClearUnFillMessage](#ClearUnFillMessage)
-  * [DeleteAddress](#DeleteAddress)
-  * [DeleteNode](#DeleteNode)
-  * [ForbiddenAddress](#ForbiddenAddress)
-  * [ForcePushMessage](#ForcePushMessage)
-  * [ForcePushMessageWithId](#ForcePushMessageWithId)
-  * [GetAddress](#GetAddress)
-  * [GetMessageByFromAndNonce](#GetMessageByFromAndNonce)
-  * [GetMessageBySignedCid](#GetMessageBySignedCid)
-  * [GetMessageByUid](#GetMessageByUid)
-  * [GetMessageByUnsignedCid](#GetMessageByUnsignedCid)
-  * [GetNode](#GetNode)
-  * [GetSharedParams](#GetSharedParams)
-  * [HasAddress](#HasAddress)
-  * [HasMessageByUid](#HasMessageByUid)
-  * [HasNode](#HasNode)
-  * [ListAddress](#ListAddress)
-  * [ListBlockedMessage](#ListBlockedMessage)
-  * [ListFailedMessage](#ListFailedMessage)
-  * [ListMessage](#ListMessage)
-  * [ListMessageByAddress](#ListMessageByAddress)
-  * [ListMessageByFromState](#ListMessageByFromState)
-  * [ListNode](#ListNode)
-  * [MarkBadMessage](#MarkBadMessage)
-  * [NetAddrsListen](#NetAddrsListen)
-  * [NetConnect](#NetConnect)
-  * [NetFindPeer](#NetFindPeer)
-  * [NetPeers](#NetPeers)
-  * [PushMessage](#PushMessage)
-  * [PushMessageWithId](#PushMessageWithId)
-  * [RecoverFailedMsg](#RecoverFailedMsg)
-  * [ReplaceMessage](#ReplaceMessage)
-  * [RepublishMessage](#RepublishMessage)
-  * [SaveNode](#SaveNode)
-  * [Send](#Send)
-  * [SetFeeParams](#SetFeeParams)
-  * [SetLogLevel](#SetLogLevel)
-  * [SetSelectMsgNum](#SetSelectMsgNum)
-  * [SetSharedParams](#SetSharedParams)
-  * [UpdateAllFilledMessage](#UpdateAllFilledMessage)
-  * [UpdateFilledMessageByID](#UpdateFilledMessageByID)
-  * [UpdateMessageStateByID](#UpdateMessageStateByID)
-  * [UpdateNonce](#UpdateNonce)
-  * [Version](#Version)
-  * [WaitMessage](#WaitMessage)
-  * [WalletHas](#WalletHas)
+* [Messager](#messager)
+  * [ActiveAddress](#activeaddress)
+  * [ClearUnFillMessage](#clearunfillmessage)
+  * [DeleteAddress](#deleteaddress)
+  * [DeleteNode](#deletenode)
+  * [ForbiddenAddress](#forbiddenaddress)
+  * [GetAddress](#getaddress)
+  * [GetMessageByFromAndNonce](#getmessagebyfromandnonce)
+  * [GetMessageBySignedCid](#getmessagebysignedcid)
+  * [GetMessageByUid](#getmessagebyuid)
+  * [GetMessageByUnsignedCid](#getmessagebyunsignedcid)
+  * [GetNode](#getnode)
+  * [GetSharedParams](#getsharedparams)
+  * [HasAddress](#hasaddress)
+  * [HasMessageByUid](#hasmessagebyuid)
+  * [HasNode](#hasnode)
+  * [ListAddress](#listaddress)
+  * [ListBlockedMessage](#listblockedmessage)
+  * [ListFailedMessage](#listfailedmessage)
+  * [ListMessage](#listmessage)
+  * [ListMessageByAddress](#listmessagebyaddress)
+  * [ListMessageByFromState](#listmessagebyfromstate)
+  * [ListNode](#listnode)
+  * [LogList](#loglist)
+  * [MarkBadMessage](#markbadmessage)
+  * [NetAddrsListen](#netaddrslisten)
+  * [NetConnect](#netconnect)
+  * [NetFindPeer](#netfindpeer)
+  * [NetPeers](#netpeers)
+  * [PushMessage](#pushmessage)
+  * [PushMessageWithId](#pushmessagewithid)
+  * [RecoverFailedMsg](#recoverfailedmsg)
+  * [ReplaceMessage](#replacemessage)
+  * [RepublishMessage](#republishmessage)
+  * [SaveNode](#savenode)
+  * [Send](#send)
+  * [SetFeeParams](#setfeeparams)
+  * [SetLogLevel](#setloglevel)
+  * [SetSelectMsgNum](#setselectmsgnum)
+  * [SetSharedParams](#setsharedparams)
+  * [UpdateAllFilledMessage](#updateallfilledmessage)
+  * [UpdateFilledMessageByID](#updatefilledmessagebyid)
+  * [UpdateMessageStateByID](#updatemessagestatebyid)
+  * [UpdateNonce](#updatenonce)
+  * [Version](#version)
+  * [WaitMessage](#waitmessage)
+  * [WalletHas](#wallethas)
 
 ## Messager
 
@@ -120,77 +119,6 @@ Inputs:
 ```
 
 Response: `{}`
-
-### ForcePushMessage
-
-
-Perms: admin
-
-Inputs:
-```json
-[
-  "string value",
-  {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  {
-    "expireEpoch": 10101,
-    "gasOverEstimation": 12.3,
-    "maxFee": "0",
-    "gasOverPremium": 12.3
-  }
-]
-```
-
-Response: `"string value"`
-
-### ForcePushMessageWithId
-
-
-Perms: write
-
-Inputs:
-```json
-[
-  "string value",
-  "string value",
-  {
-    "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-    },
-    "Version": 42,
-    "To": "f01234",
-    "From": "f01234",
-    "Nonce": 42,
-    "Value": "0",
-    "GasLimit": 9,
-    "GasFeeCap": "0",
-    "GasPremium": "0",
-    "Method": 1,
-    "Params": "Ynl0ZSBhcnJheQ=="
-  },
-  {
-    "expireEpoch": 10101,
-    "gasOverEstimation": 12.3,
-    "maxFee": "0",
-    "gasOverPremium": 12.3
-  }
-]
-```
-
-Response: `"string value"`
 
 ### GetAddress
 
@@ -283,8 +211,8 @@ Response:
     "gasOverPremium": 12.3
   },
   "WalletName": "test",
-  "FromUser": "test",
   "State": 1,
+  "ErrorMsg": "",
   "CreatedAt": "0001-01-01T00:00:00Z",
   "UpdatedAt": "0001-01-01T00:00:00Z"
 }
@@ -350,8 +278,8 @@ Response:
     "gasOverPremium": 12.3
   },
   "WalletName": "test",
-  "FromUser": "test",
   "State": 1,
+  "ErrorMsg": "",
   "CreatedAt": "0001-01-01T00:00:00Z",
   "UpdatedAt": "0001-01-01T00:00:00Z"
 }
@@ -415,8 +343,8 @@ Response:
     "gasOverPremium": 12.3
   },
   "WalletName": "test",
-  "FromUser": "test",
   "State": 1,
+  "ErrorMsg": "",
   "CreatedAt": "0001-01-01T00:00:00Z",
   "UpdatedAt": "0001-01-01T00:00:00Z"
 }
@@ -482,8 +410,8 @@ Response:
     "gasOverPremium": 12.3
   },
   "WalletName": "test",
-  "FromUser": "test",
   "State": 1,
+  "ErrorMsg": "",
   "CreatedAt": "0001-01-01T00:00:00Z",
   "UpdatedAt": "0001-01-01T00:00:00Z"
 }
@@ -663,8 +591,8 @@ Response:
       "gasOverPremium": 12.3
     },
     "WalletName": "test",
-    "FromUser": "test",
     "State": 1,
+    "ErrorMsg": "",
     "CreatedAt": "0001-01-01T00:00:00Z",
     "UpdatedAt": "0001-01-01T00:00:00Z"
   }
@@ -725,8 +653,8 @@ Response:
       "gasOverPremium": 12.3
     },
     "WalletName": "test",
-    "FromUser": "test",
     "State": 1,
+    "ErrorMsg": "",
     "CreatedAt": "0001-01-01T00:00:00Z",
     "UpdatedAt": "0001-01-01T00:00:00Z"
   }
@@ -787,8 +715,8 @@ Response:
       "gasOverPremium": 12.3
     },
     "WalletName": "test",
-    "FromUser": "test",
     "State": 1,
+    "ErrorMsg": "",
     "CreatedAt": "0001-01-01T00:00:00Z",
     "UpdatedAt": "0001-01-01T00:00:00Z"
   }
@@ -854,8 +782,8 @@ Response:
       "gasOverPremium": 12.3
     },
     "WalletName": "test",
-    "FromUser": "test",
     "State": 1,
+    "ErrorMsg": "",
     "CreatedAt": "0001-01-01T00:00:00Z",
     "UpdatedAt": "0001-01-01T00:00:00Z"
   }
@@ -925,8 +853,8 @@ Response:
       "gasOverPremium": 12.3
     },
     "WalletName": "test",
-    "FromUser": "test",
     "State": 1,
+    "ErrorMsg": "",
     "CreatedAt": "0001-01-01T00:00:00Z",
     "UpdatedAt": "0001-01-01T00:00:00Z"
   }
@@ -950,6 +878,20 @@ Response:
     "Token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIiwid3JpdGUiLCJzaWduIiwiYWRtaW4iXX0._eHBJJAiBzQmfcbD_vVmtTrkgyJQ-LOgGOiHfb8rU1I",
     "Type": 2
   }
+]
+```
+
+### LogList
+
+
+Perms: write
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  "string value"
 ]
 ```
 
@@ -1247,6 +1189,7 @@ Perms: admin
 Inputs:
 ```json
 [
+  "string value",
   "string value"
 ]
 ```
@@ -1418,8 +1361,8 @@ Response:
     "gasOverPremium": 12.3
   },
   "WalletName": "test",
-  "FromUser": "test",
   "State": 1,
+  "ErrorMsg": "",
   "CreatedAt": "0001-01-01T00:00:00Z",
   "UpdatedAt": "0001-01-01T00:00:00Z"
 }

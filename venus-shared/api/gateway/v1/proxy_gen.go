@@ -57,7 +57,7 @@ type IWalletClientStruct struct {
 	Internal struct {
 		ListWalletInfo         func(ctx context.Context) ([]*gtypes.WalletDetail, error)                                                                     `perm:"admin"`
 		ListWalletInfoByWallet func(ctx context.Context, wallet string) (*gtypes.WalletDetail, error)                                                        `perm:"admin"`
-		WalletHas              func(ctx context.Context, supportAccount string, addr address.Address) (bool, error)                                          `perm:"admin"`
+		WalletHas              func(ctx context.Context, account string, addr address.Address) (bool, error)                                                 `perm:"admin"`
 		WalletSign             func(ctx context.Context, account string, addr address.Address, toSign []byte, meta types.MsgMeta) (*crypto.Signature, error) `perm:"admin"`
 	}
 }

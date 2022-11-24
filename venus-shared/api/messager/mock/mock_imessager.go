@@ -112,36 +112,6 @@ func (mr *MockIMessagerMockRecorder) ForbiddenAddress(arg0, arg1 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForbiddenAddress", reflect.TypeOf((*MockIMessager)(nil).ForbiddenAddress), arg0, arg1)
 }
 
-// ForcePushMessage mocks base method.
-func (m *MockIMessager) ForcePushMessage(arg0 context.Context, arg1 string, arg2 *internal.Message, arg3 *messager.SendSpec) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ForcePushMessage", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ForcePushMessage indicates an expected call of ForcePushMessage.
-func (mr *MockIMessagerMockRecorder) ForcePushMessage(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForcePushMessage", reflect.TypeOf((*MockIMessager)(nil).ForcePushMessage), arg0, arg1, arg2, arg3)
-}
-
-// ForcePushMessageWithId mocks base method.
-func (m *MockIMessager) ForcePushMessageWithId(arg0 context.Context, arg1, arg2 string, arg3 *internal.Message, arg4 *messager.SendSpec) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ForcePushMessageWithId", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ForcePushMessageWithId indicates an expected call of ForcePushMessageWithId.
-func (mr *MockIMessagerMockRecorder) ForcePushMessageWithId(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForcePushMessageWithId", reflect.TypeOf((*MockIMessager)(nil).ForcePushMessageWithId), arg0, arg1, arg2, arg3, arg4)
-}
-
 // GetAddress mocks base method.
 func (m *MockIMessager) GetAddress(arg0 context.Context, arg1 address.Address) (*messager.Address, error) {
 	m.ctrl.T.Helper()
@@ -397,6 +367,21 @@ func (mr *MockIMessagerMockRecorder) ListNode(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListNode", reflect.TypeOf((*MockIMessager)(nil).ListNode), arg0)
 }
 
+// LogList mocks base method.
+func (m *MockIMessager) LogList(arg0 context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LogList", arg0)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LogList indicates an expected call of LogList.
+func (mr *MockIMessagerMockRecorder) LogList(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LogList", reflect.TypeOf((*MockIMessager)(nil).LogList), arg0)
+}
+
 // MarkBadMessage mocks base method.
 func (m *MockIMessager) MarkBadMessage(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
@@ -588,17 +573,17 @@ func (mr *MockIMessagerMockRecorder) SetFeeParams(arg0, arg1 interface{}) *gomoc
 }
 
 // SetLogLevel mocks base method.
-func (m *MockIMessager) SetLogLevel(arg0 context.Context, arg1 string) error {
+func (m *MockIMessager) SetLogLevel(arg0 context.Context, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetLogLevel", arg0, arg1)
+	ret := m.ctrl.Call(m, "SetLogLevel", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SetLogLevel indicates an expected call of SetLogLevel.
-func (mr *MockIMessagerMockRecorder) SetLogLevel(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockIMessagerMockRecorder) SetLogLevel(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLogLevel", reflect.TypeOf((*MockIMessager)(nil).SetLogLevel), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLogLevel", reflect.TypeOf((*MockIMessager)(nil).SetLogLevel), arg0, arg1, arg2)
 }
 
 // SetSelectMsgNum mocks base method.

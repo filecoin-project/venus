@@ -225,93 +225,93 @@ func (mr *MockIMarketMockRecorder) DagstoreRecoverShard(arg0, arg1 interface{}) 
 }
 
 // DealsConsiderOfflineRetrievalDeals mocks base method.
-func (m *MockIMarket) DealsConsiderOfflineRetrievalDeals(arg0 context.Context) (bool, error) {
+func (m *MockIMarket) DealsConsiderOfflineRetrievalDeals(arg0 context.Context, arg1 address.Address) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DealsConsiderOfflineRetrievalDeals", arg0)
+	ret := m.ctrl.Call(m, "DealsConsiderOfflineRetrievalDeals", arg0, arg1)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DealsConsiderOfflineRetrievalDeals indicates an expected call of DealsConsiderOfflineRetrievalDeals.
-func (mr *MockIMarketMockRecorder) DealsConsiderOfflineRetrievalDeals(arg0 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) DealsConsiderOfflineRetrievalDeals(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsConsiderOfflineRetrievalDeals", reflect.TypeOf((*MockIMarket)(nil).DealsConsiderOfflineRetrievalDeals), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsConsiderOfflineRetrievalDeals", reflect.TypeOf((*MockIMarket)(nil).DealsConsiderOfflineRetrievalDeals), arg0, arg1)
 }
 
 // DealsConsiderOfflineStorageDeals mocks base method.
-func (m *MockIMarket) DealsConsiderOfflineStorageDeals(arg0 context.Context) (bool, error) {
+func (m *MockIMarket) DealsConsiderOfflineStorageDeals(arg0 context.Context, arg1 address.Address) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DealsConsiderOfflineStorageDeals", arg0)
+	ret := m.ctrl.Call(m, "DealsConsiderOfflineStorageDeals", arg0, arg1)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DealsConsiderOfflineStorageDeals indicates an expected call of DealsConsiderOfflineStorageDeals.
-func (mr *MockIMarketMockRecorder) DealsConsiderOfflineStorageDeals(arg0 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) DealsConsiderOfflineStorageDeals(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsConsiderOfflineStorageDeals", reflect.TypeOf((*MockIMarket)(nil).DealsConsiderOfflineStorageDeals), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsConsiderOfflineStorageDeals", reflect.TypeOf((*MockIMarket)(nil).DealsConsiderOfflineStorageDeals), arg0, arg1)
 }
 
 // DealsConsiderOnlineRetrievalDeals mocks base method.
-func (m *MockIMarket) DealsConsiderOnlineRetrievalDeals(arg0 context.Context) (bool, error) {
+func (m *MockIMarket) DealsConsiderOnlineRetrievalDeals(arg0 context.Context, arg1 address.Address) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DealsConsiderOnlineRetrievalDeals", arg0)
+	ret := m.ctrl.Call(m, "DealsConsiderOnlineRetrievalDeals", arg0, arg1)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DealsConsiderOnlineRetrievalDeals indicates an expected call of DealsConsiderOnlineRetrievalDeals.
-func (mr *MockIMarketMockRecorder) DealsConsiderOnlineRetrievalDeals(arg0 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) DealsConsiderOnlineRetrievalDeals(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsConsiderOnlineRetrievalDeals", reflect.TypeOf((*MockIMarket)(nil).DealsConsiderOnlineRetrievalDeals), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsConsiderOnlineRetrievalDeals", reflect.TypeOf((*MockIMarket)(nil).DealsConsiderOnlineRetrievalDeals), arg0, arg1)
 }
 
 // DealsConsiderOnlineStorageDeals mocks base method.
-func (m *MockIMarket) DealsConsiderOnlineStorageDeals(arg0 context.Context) (bool, error) {
+func (m *MockIMarket) DealsConsiderOnlineStorageDeals(arg0 context.Context, arg1 address.Address) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DealsConsiderOnlineStorageDeals", arg0)
+	ret := m.ctrl.Call(m, "DealsConsiderOnlineStorageDeals", arg0, arg1)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DealsConsiderOnlineStorageDeals indicates an expected call of DealsConsiderOnlineStorageDeals.
-func (mr *MockIMarketMockRecorder) DealsConsiderOnlineStorageDeals(arg0 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) DealsConsiderOnlineStorageDeals(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsConsiderOnlineStorageDeals", reflect.TypeOf((*MockIMarket)(nil).DealsConsiderOnlineStorageDeals), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsConsiderOnlineStorageDeals", reflect.TypeOf((*MockIMarket)(nil).DealsConsiderOnlineStorageDeals), arg0, arg1)
 }
 
 // DealsConsiderUnverifiedStorageDeals mocks base method.
-func (m *MockIMarket) DealsConsiderUnverifiedStorageDeals(arg0 context.Context) (bool, error) {
+func (m *MockIMarket) DealsConsiderUnverifiedStorageDeals(arg0 context.Context, arg1 address.Address) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DealsConsiderUnverifiedStorageDeals", arg0)
+	ret := m.ctrl.Call(m, "DealsConsiderUnverifiedStorageDeals", arg0, arg1)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DealsConsiderUnverifiedStorageDeals indicates an expected call of DealsConsiderUnverifiedStorageDeals.
-func (mr *MockIMarketMockRecorder) DealsConsiderUnverifiedStorageDeals(arg0 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) DealsConsiderUnverifiedStorageDeals(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsConsiderUnverifiedStorageDeals", reflect.TypeOf((*MockIMarket)(nil).DealsConsiderUnverifiedStorageDeals), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsConsiderUnverifiedStorageDeals", reflect.TypeOf((*MockIMarket)(nil).DealsConsiderUnverifiedStorageDeals), arg0, arg1)
 }
 
 // DealsConsiderVerifiedStorageDeals mocks base method.
-func (m *MockIMarket) DealsConsiderVerifiedStorageDeals(arg0 context.Context) (bool, error) {
+func (m *MockIMarket) DealsConsiderVerifiedStorageDeals(arg0 context.Context, arg1 address.Address) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DealsConsiderVerifiedStorageDeals", arg0)
+	ret := m.ctrl.Call(m, "DealsConsiderVerifiedStorageDeals", arg0, arg1)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DealsConsiderVerifiedStorageDeals indicates an expected call of DealsConsiderVerifiedStorageDeals.
-func (mr *MockIMarketMockRecorder) DealsConsiderVerifiedStorageDeals(arg0 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) DealsConsiderVerifiedStorageDeals(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsConsiderVerifiedStorageDeals", reflect.TypeOf((*MockIMarket)(nil).DealsConsiderVerifiedStorageDeals), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsConsiderVerifiedStorageDeals", reflect.TypeOf((*MockIMarket)(nil).DealsConsiderVerifiedStorageDeals), arg0, arg1)
 }
 
 // DealsImportData mocks base method.
@@ -328,117 +328,233 @@ func (mr *MockIMarketMockRecorder) DealsImportData(arg0, arg1, arg2 interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsImportData", reflect.TypeOf((*MockIMarket)(nil).DealsImportData), arg0, arg1, arg2)
 }
 
-// DealsPieceCidBlocklist mocks base method.
-func (m *MockIMarket) DealsPieceCidBlocklist(arg0 context.Context) ([]cid.Cid, error) {
+// DealsMaxProviderCollateralMultiplier mocks base method.
+func (m *MockIMarket) DealsMaxProviderCollateralMultiplier(arg0 context.Context, arg1 address.Address) (uint64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DealsPieceCidBlocklist", arg0)
+	ret := m.ctrl.Call(m, "DealsMaxProviderCollateralMultiplier", arg0, arg1)
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DealsMaxProviderCollateralMultiplier indicates an expected call of DealsMaxProviderCollateralMultiplier.
+func (mr *MockIMarketMockRecorder) DealsMaxProviderCollateralMultiplier(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsMaxProviderCollateralMultiplier", reflect.TypeOf((*MockIMarket)(nil).DealsMaxProviderCollateralMultiplier), arg0, arg1)
+}
+
+// DealsMaxPublishFee mocks base method.
+func (m *MockIMarket) DealsMaxPublishFee(arg0 context.Context, arg1 address.Address) (internal.FIL, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DealsMaxPublishFee", arg0, arg1)
+	ret0, _ := ret[0].(internal.FIL)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DealsMaxPublishFee indicates an expected call of DealsMaxPublishFee.
+func (mr *MockIMarketMockRecorder) DealsMaxPublishFee(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsMaxPublishFee", reflect.TypeOf((*MockIMarket)(nil).DealsMaxPublishFee), arg0, arg1)
+}
+
+// DealsMaxStartDelay mocks base method.
+func (m *MockIMarket) DealsMaxStartDelay(arg0 context.Context, arg1 address.Address) (time.Duration, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DealsMaxStartDelay", arg0, arg1)
+	ret0, _ := ret[0].(time.Duration)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DealsMaxStartDelay indicates an expected call of DealsMaxStartDelay.
+func (mr *MockIMarketMockRecorder) DealsMaxStartDelay(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsMaxStartDelay", reflect.TypeOf((*MockIMarket)(nil).DealsMaxStartDelay), arg0, arg1)
+}
+
+// DealsPieceCidBlocklist mocks base method.
+func (m *MockIMarket) DealsPieceCidBlocklist(arg0 context.Context, arg1 address.Address) ([]cid.Cid, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DealsPieceCidBlocklist", arg0, arg1)
 	ret0, _ := ret[0].([]cid.Cid)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DealsPieceCidBlocklist indicates an expected call of DealsPieceCidBlocklist.
-func (mr *MockIMarketMockRecorder) DealsPieceCidBlocklist(arg0 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) DealsPieceCidBlocklist(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsPieceCidBlocklist", reflect.TypeOf((*MockIMarket)(nil).DealsPieceCidBlocklist), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsPieceCidBlocklist", reflect.TypeOf((*MockIMarket)(nil).DealsPieceCidBlocklist), arg0, arg1)
+}
+
+// DealsPublishMsgPeriod mocks base method.
+func (m *MockIMarket) DealsPublishMsgPeriod(arg0 context.Context, arg1 address.Address) (time.Duration, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DealsPublishMsgPeriod", arg0, arg1)
+	ret0, _ := ret[0].(time.Duration)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DealsPublishMsgPeriod indicates an expected call of DealsPublishMsgPeriod.
+func (mr *MockIMarketMockRecorder) DealsPublishMsgPeriod(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsPublishMsgPeriod", reflect.TypeOf((*MockIMarket)(nil).DealsPublishMsgPeriod), arg0, arg1)
 }
 
 // DealsSetConsiderOfflineRetrievalDeals mocks base method.
-func (m *MockIMarket) DealsSetConsiderOfflineRetrievalDeals(arg0 context.Context, arg1 bool) error {
+func (m *MockIMarket) DealsSetConsiderOfflineRetrievalDeals(arg0 context.Context, arg1 address.Address, arg2 bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DealsSetConsiderOfflineRetrievalDeals", arg0, arg1)
+	ret := m.ctrl.Call(m, "DealsSetConsiderOfflineRetrievalDeals", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DealsSetConsiderOfflineRetrievalDeals indicates an expected call of DealsSetConsiderOfflineRetrievalDeals.
-func (mr *MockIMarketMockRecorder) DealsSetConsiderOfflineRetrievalDeals(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) DealsSetConsiderOfflineRetrievalDeals(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetConsiderOfflineRetrievalDeals", reflect.TypeOf((*MockIMarket)(nil).DealsSetConsiderOfflineRetrievalDeals), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetConsiderOfflineRetrievalDeals", reflect.TypeOf((*MockIMarket)(nil).DealsSetConsiderOfflineRetrievalDeals), arg0, arg1, arg2)
 }
 
 // DealsSetConsiderOfflineStorageDeals mocks base method.
-func (m *MockIMarket) DealsSetConsiderOfflineStorageDeals(arg0 context.Context, arg1 bool) error {
+func (m *MockIMarket) DealsSetConsiderOfflineStorageDeals(arg0 context.Context, arg1 address.Address, arg2 bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DealsSetConsiderOfflineStorageDeals", arg0, arg1)
+	ret := m.ctrl.Call(m, "DealsSetConsiderOfflineStorageDeals", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DealsSetConsiderOfflineStorageDeals indicates an expected call of DealsSetConsiderOfflineStorageDeals.
-func (mr *MockIMarketMockRecorder) DealsSetConsiderOfflineStorageDeals(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) DealsSetConsiderOfflineStorageDeals(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetConsiderOfflineStorageDeals", reflect.TypeOf((*MockIMarket)(nil).DealsSetConsiderOfflineStorageDeals), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetConsiderOfflineStorageDeals", reflect.TypeOf((*MockIMarket)(nil).DealsSetConsiderOfflineStorageDeals), arg0, arg1, arg2)
 }
 
 // DealsSetConsiderOnlineRetrievalDeals mocks base method.
-func (m *MockIMarket) DealsSetConsiderOnlineRetrievalDeals(arg0 context.Context, arg1 bool) error {
+func (m *MockIMarket) DealsSetConsiderOnlineRetrievalDeals(arg0 context.Context, arg1 address.Address, arg2 bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DealsSetConsiderOnlineRetrievalDeals", arg0, arg1)
+	ret := m.ctrl.Call(m, "DealsSetConsiderOnlineRetrievalDeals", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DealsSetConsiderOnlineRetrievalDeals indicates an expected call of DealsSetConsiderOnlineRetrievalDeals.
-func (mr *MockIMarketMockRecorder) DealsSetConsiderOnlineRetrievalDeals(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) DealsSetConsiderOnlineRetrievalDeals(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetConsiderOnlineRetrievalDeals", reflect.TypeOf((*MockIMarket)(nil).DealsSetConsiderOnlineRetrievalDeals), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetConsiderOnlineRetrievalDeals", reflect.TypeOf((*MockIMarket)(nil).DealsSetConsiderOnlineRetrievalDeals), arg0, arg1, arg2)
 }
 
 // DealsSetConsiderOnlineStorageDeals mocks base method.
-func (m *MockIMarket) DealsSetConsiderOnlineStorageDeals(arg0 context.Context, arg1 bool) error {
+func (m *MockIMarket) DealsSetConsiderOnlineStorageDeals(arg0 context.Context, arg1 address.Address, arg2 bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DealsSetConsiderOnlineStorageDeals", arg0, arg1)
+	ret := m.ctrl.Call(m, "DealsSetConsiderOnlineStorageDeals", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DealsSetConsiderOnlineStorageDeals indicates an expected call of DealsSetConsiderOnlineStorageDeals.
-func (mr *MockIMarketMockRecorder) DealsSetConsiderOnlineStorageDeals(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) DealsSetConsiderOnlineStorageDeals(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetConsiderOnlineStorageDeals", reflect.TypeOf((*MockIMarket)(nil).DealsSetConsiderOnlineStorageDeals), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetConsiderOnlineStorageDeals", reflect.TypeOf((*MockIMarket)(nil).DealsSetConsiderOnlineStorageDeals), arg0, arg1, arg2)
 }
 
 // DealsSetConsiderUnverifiedStorageDeals mocks base method.
-func (m *MockIMarket) DealsSetConsiderUnverifiedStorageDeals(arg0 context.Context, arg1 bool) error {
+func (m *MockIMarket) DealsSetConsiderUnverifiedStorageDeals(arg0 context.Context, arg1 address.Address, arg2 bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DealsSetConsiderUnverifiedStorageDeals", arg0, arg1)
+	ret := m.ctrl.Call(m, "DealsSetConsiderUnverifiedStorageDeals", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DealsSetConsiderUnverifiedStorageDeals indicates an expected call of DealsSetConsiderUnverifiedStorageDeals.
-func (mr *MockIMarketMockRecorder) DealsSetConsiderUnverifiedStorageDeals(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) DealsSetConsiderUnverifiedStorageDeals(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetConsiderUnverifiedStorageDeals", reflect.TypeOf((*MockIMarket)(nil).DealsSetConsiderUnverifiedStorageDeals), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetConsiderUnverifiedStorageDeals", reflect.TypeOf((*MockIMarket)(nil).DealsSetConsiderUnverifiedStorageDeals), arg0, arg1, arg2)
 }
 
 // DealsSetConsiderVerifiedStorageDeals mocks base method.
-func (m *MockIMarket) DealsSetConsiderVerifiedStorageDeals(arg0 context.Context, arg1 bool) error {
+func (m *MockIMarket) DealsSetConsiderVerifiedStorageDeals(arg0 context.Context, arg1 address.Address, arg2 bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DealsSetConsiderVerifiedStorageDeals", arg0, arg1)
+	ret := m.ctrl.Call(m, "DealsSetConsiderVerifiedStorageDeals", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DealsSetConsiderVerifiedStorageDeals indicates an expected call of DealsSetConsiderVerifiedStorageDeals.
-func (mr *MockIMarketMockRecorder) DealsSetConsiderVerifiedStorageDeals(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) DealsSetConsiderVerifiedStorageDeals(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetConsiderVerifiedStorageDeals", reflect.TypeOf((*MockIMarket)(nil).DealsSetConsiderVerifiedStorageDeals), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetConsiderVerifiedStorageDeals", reflect.TypeOf((*MockIMarket)(nil).DealsSetConsiderVerifiedStorageDeals), arg0, arg1, arg2)
+}
+
+// DealsSetMaxProviderCollateralMultiplier mocks base method.
+func (m *MockIMarket) DealsSetMaxProviderCollateralMultiplier(arg0 context.Context, arg1 address.Address, arg2 uint64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DealsSetMaxProviderCollateralMultiplier", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DealsSetMaxProviderCollateralMultiplier indicates an expected call of DealsSetMaxProviderCollateralMultiplier.
+func (mr *MockIMarketMockRecorder) DealsSetMaxProviderCollateralMultiplier(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetMaxProviderCollateralMultiplier", reflect.TypeOf((*MockIMarket)(nil).DealsSetMaxProviderCollateralMultiplier), arg0, arg1, arg2)
+}
+
+// DealsSetMaxPublishFee mocks base method.
+func (m *MockIMarket) DealsSetMaxPublishFee(arg0 context.Context, arg1 address.Address, arg2 internal.FIL) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DealsSetMaxPublishFee", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DealsSetMaxPublishFee indicates an expected call of DealsSetMaxPublishFee.
+func (mr *MockIMarketMockRecorder) DealsSetMaxPublishFee(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetMaxPublishFee", reflect.TypeOf((*MockIMarket)(nil).DealsSetMaxPublishFee), arg0, arg1, arg2)
+}
+
+// DealsSetMaxStartDelay mocks base method.
+func (m *MockIMarket) DealsSetMaxStartDelay(arg0 context.Context, arg1 address.Address, arg2 time.Duration) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DealsSetMaxStartDelay", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DealsSetMaxStartDelay indicates an expected call of DealsSetMaxStartDelay.
+func (mr *MockIMarketMockRecorder) DealsSetMaxStartDelay(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetMaxStartDelay", reflect.TypeOf((*MockIMarket)(nil).DealsSetMaxStartDelay), arg0, arg1, arg2)
 }
 
 // DealsSetPieceCidBlocklist mocks base method.
-func (m *MockIMarket) DealsSetPieceCidBlocklist(arg0 context.Context, arg1 []cid.Cid) error {
+func (m *MockIMarket) DealsSetPieceCidBlocklist(arg0 context.Context, arg1 address.Address, arg2 []cid.Cid) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DealsSetPieceCidBlocklist", arg0, arg1)
+	ret := m.ctrl.Call(m, "DealsSetPieceCidBlocklist", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DealsSetPieceCidBlocklist indicates an expected call of DealsSetPieceCidBlocklist.
-func (mr *MockIMarketMockRecorder) DealsSetPieceCidBlocklist(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) DealsSetPieceCidBlocklist(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetPieceCidBlocklist", reflect.TypeOf((*MockIMarket)(nil).DealsSetPieceCidBlocklist), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetPieceCidBlocklist", reflect.TypeOf((*MockIMarket)(nil).DealsSetPieceCidBlocklist), arg0, arg1, arg2)
+}
+
+// DealsSetPublishMsgPeriod mocks base method.
+func (m *MockIMarket) DealsSetPublishMsgPeriod(arg0 context.Context, arg1 address.Address, arg2 time.Duration) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DealsSetPublishMsgPeriod", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DealsSetPublishMsgPeriod indicates an expected call of DealsSetPublishMsgPeriod.
+func (mr *MockIMarketMockRecorder) DealsSetPublishMsgPeriod(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DealsSetPublishMsgPeriod", reflect.TypeOf((*MockIMarket)(nil).DealsSetPublishMsgPeriod), arg0, arg1, arg2)
 }
 
 // GetDeals mocks base method.
@@ -600,6 +716,21 @@ func (m *MockIMarket) MarketCancelDataTransfer(arg0 context.Context, arg1 datatr
 func (mr *MockIMarketMockRecorder) MarketCancelDataTransfer(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketCancelDataTransfer", reflect.TypeOf((*MockIMarket)(nil).MarketCancelDataTransfer), arg0, arg1, arg2, arg3)
+}
+
+// MarketDataTransferPath mocks base method.
+func (m *MockIMarket) MarketDataTransferPath(arg0 context.Context, arg1 address.Address) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarketDataTransferPath", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MarketDataTransferPath indicates an expected call of MarketDataTransferPath.
+func (mr *MockIMarketMockRecorder) MarketDataTransferPath(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketDataTransferPath", reflect.TypeOf((*MockIMarket)(nil).MarketDataTransferPath), arg0, arg1)
 }
 
 // MarketDataTransferUpdates mocks base method.
@@ -781,18 +912,48 @@ func (mr *MockIMarketMockRecorder) MarketListRetrievalAsk(arg0 interface{}) *gom
 }
 
 // MarketListRetrievalDeals mocks base method.
-func (m *MockIMarket) MarketListRetrievalDeals(arg0 context.Context, arg1 address.Address) ([]market.ProviderDealState, error) {
+func (m *MockIMarket) MarketListRetrievalDeals(arg0 context.Context) ([]market.ProviderDealState, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MarketListRetrievalDeals", arg0, arg1)
+	ret := m.ctrl.Call(m, "MarketListRetrievalDeals", arg0)
 	ret0, _ := ret[0].([]market.ProviderDealState)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // MarketListRetrievalDeals indicates an expected call of MarketListRetrievalDeals.
-func (mr *MockIMarketMockRecorder) MarketListRetrievalDeals(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) MarketListRetrievalDeals(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketListRetrievalDeals", reflect.TypeOf((*MockIMarket)(nil).MarketListRetrievalDeals), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketListRetrievalDeals", reflect.TypeOf((*MockIMarket)(nil).MarketListRetrievalDeals), arg0)
+}
+
+// MarketMaxBalanceAddFee mocks base method.
+func (m *MockIMarket) MarketMaxBalanceAddFee(arg0 context.Context, arg1 address.Address) (internal.FIL, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarketMaxBalanceAddFee", arg0, arg1)
+	ret0, _ := ret[0].(internal.FIL)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MarketMaxBalanceAddFee indicates an expected call of MarketMaxBalanceAddFee.
+func (mr *MockIMarketMockRecorder) MarketMaxBalanceAddFee(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketMaxBalanceAddFee", reflect.TypeOf((*MockIMarket)(nil).MarketMaxBalanceAddFee), arg0, arg1)
+}
+
+// MarketMaxDealsPerPublishMsg mocks base method.
+func (m *MockIMarket) MarketMaxDealsPerPublishMsg(arg0 context.Context, arg1 address.Address) (uint64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarketMaxDealsPerPublishMsg", arg0, arg1)
+	ret0, _ := ret[0].(uint64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MarketMaxDealsPerPublishMsg indicates an expected call of MarketMaxDealsPerPublishMsg.
+func (mr *MockIMarketMockRecorder) MarketMaxDealsPerPublishMsg(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketMaxDealsPerPublishMsg", reflect.TypeOf((*MockIMarket)(nil).MarketMaxDealsPerPublishMsg), arg0, arg1)
 }
 
 // MarketPendingDeals mocks base method.
@@ -879,6 +1040,48 @@ func (m *MockIMarket) MarketSetAsk(arg0 context.Context, arg1 address.Address, a
 func (mr *MockIMarketMockRecorder) MarketSetAsk(arg0, arg1, arg2, arg3, arg4, arg5, arg6 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketSetAsk", reflect.TypeOf((*MockIMarket)(nil).MarketSetAsk), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+}
+
+// MarketSetDataTransferPath mocks base method.
+func (m *MockIMarket) MarketSetDataTransferPath(arg0 context.Context, arg1 address.Address, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarketSetDataTransferPath", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MarketSetDataTransferPath indicates an expected call of MarketSetDataTransferPath.
+func (mr *MockIMarketMockRecorder) MarketSetDataTransferPath(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketSetDataTransferPath", reflect.TypeOf((*MockIMarket)(nil).MarketSetDataTransferPath), arg0, arg1, arg2)
+}
+
+// MarketSetMaxBalanceAddFee mocks base method.
+func (m *MockIMarket) MarketSetMaxBalanceAddFee(arg0 context.Context, arg1 address.Address, arg2 internal.FIL) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarketSetMaxBalanceAddFee", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MarketSetMaxBalanceAddFee indicates an expected call of MarketSetMaxBalanceAddFee.
+func (mr *MockIMarketMockRecorder) MarketSetMaxBalanceAddFee(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketSetMaxBalanceAddFee", reflect.TypeOf((*MockIMarket)(nil).MarketSetMaxBalanceAddFee), arg0, arg1, arg2)
+}
+
+// MarketSetMaxDealsPerPublishMsg mocks base method.
+func (m *MockIMarket) MarketSetMaxDealsPerPublishMsg(arg0 context.Context, arg1 address.Address, arg2 uint64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarketSetMaxDealsPerPublishMsg", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MarketSetMaxDealsPerPublishMsg indicates an expected call of MarketSetMaxDealsPerPublishMsg.
+func (mr *MockIMarketMockRecorder) MarketSetMaxDealsPerPublishMsg(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarketSetMaxDealsPerPublishMsg", reflect.TypeOf((*MockIMarket)(nil).MarketSetMaxDealsPerPublishMsg), arg0, arg1, arg2)
 }
 
 // MarketSetRetrievalAsk mocks base method.
@@ -1087,33 +1290,33 @@ func (mr *MockIMarketMockRecorder) ResponseMarketEvent(arg0, arg1 interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResponseMarketEvent", reflect.TypeOf((*MockIMarket)(nil).ResponseMarketEvent), arg0, arg1)
 }
 
-// SectorGetSealDelay mocks base method.
-func (m *MockIMarket) SectorGetSealDelay(arg0 context.Context) (time.Duration, error) {
+// SectorGetExpectedSealDuration mocks base method.
+func (m *MockIMarket) SectorGetExpectedSealDuration(arg0 context.Context, arg1 address.Address) (time.Duration, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SectorGetSealDelay", arg0)
+	ret := m.ctrl.Call(m, "SectorGetExpectedSealDuration", arg0, arg1)
 	ret0, _ := ret[0].(time.Duration)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// SectorGetSealDelay indicates an expected call of SectorGetSealDelay.
-func (mr *MockIMarketMockRecorder) SectorGetSealDelay(arg0 interface{}) *gomock.Call {
+// SectorGetExpectedSealDuration indicates an expected call of SectorGetExpectedSealDuration.
+func (mr *MockIMarketMockRecorder) SectorGetExpectedSealDuration(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SectorGetSealDelay", reflect.TypeOf((*MockIMarket)(nil).SectorGetSealDelay), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SectorGetExpectedSealDuration", reflect.TypeOf((*MockIMarket)(nil).SectorGetExpectedSealDuration), arg0, arg1)
 }
 
 // SectorSetExpectedSealDuration mocks base method.
-func (m *MockIMarket) SectorSetExpectedSealDuration(arg0 context.Context, arg1 time.Duration) error {
+func (m *MockIMarket) SectorSetExpectedSealDuration(arg0 context.Context, arg1 address.Address, arg2 time.Duration) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SectorSetExpectedSealDuration", arg0, arg1)
+	ret := m.ctrl.Call(m, "SectorSetExpectedSealDuration", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SectorSetExpectedSealDuration indicates an expected call of SectorSetExpectedSealDuration.
-func (mr *MockIMarketMockRecorder) SectorSetExpectedSealDuration(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockIMarketMockRecorder) SectorSetExpectedSealDuration(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SectorSetExpectedSealDuration", reflect.TypeOf((*MockIMarket)(nil).SectorSetExpectedSealDuration), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SectorSetExpectedSealDuration", reflect.TypeOf((*MockIMarket)(nil).SectorSetExpectedSealDuration), arg0, arg1, arg2)
 }
 
 // UpdateDealOnPacking mocks base method.

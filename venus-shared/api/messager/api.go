@@ -6,18 +6,16 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/venus/venus-shared/api"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	mtypes "github.com/filecoin-project/venus/venus-shared/types/messager"
-	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 type IMessager interface {
 	HasMessageByUid(ctx context.Context, id string) (bool, error)                                                                                                //perm:read
 	WaitMessage(ctx context.Context, id string, confidence uint64) (*mtypes.Message, error)                                                                      //perm:read
-	ForcePushMessage(ctx context.Context, account string, msg *types.Message, meta *mtypes.SendSpec) (string, error)                                             //perm:admin
-	ForcePushMessageWithId(ctx context.Context, id string, account string, msg *types.Message, meta *mtypes.SendSpec) (string, error)                            //perm:write
 	PushMessage(ctx context.Context, msg *types.Message, meta *mtypes.SendSpec) (string, error)                                                                  //perm:write
 	PushMessageWithId(ctx context.Context, id string, msg *types.Message, meta *mtypes.SendSpec) (string, error)                                                 //perm:write
 	GetMessageByUid(ctx context.Context, id string) (*mtypes.Message, error)                                                                                     //perm:read
@@ -58,7 +56,8 @@ type IMessager interface {
 	ListNode(ctx context.Context) ([]*mtypes.Node, error)           //perm:admin
 	DeleteNode(ctx context.Context, name string) error              //perm:admin
 
-	SetLogLevel(ctx context.Context, level string) error //perm:admin
+	SetLogLevel(ctx context.Context, subsystem, level string) error //perm:admin
+	LogList(context.Context) ([]string, error)                      //perm:write
 
 	Send(ctx context.Context, params mtypes.QuickSendParams) (string, error) //perm:admin
 

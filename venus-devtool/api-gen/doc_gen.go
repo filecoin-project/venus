@@ -143,7 +143,7 @@ func getComment(comments []*ast.CommentGroup) string {
 	for _, c := range comments[0].List {
 		cmt += strings.TrimSpace(strings.Replace(c.Text, "//", "", 1)) + "\n"
 	}
-
+	cmt = strings.Replace(cmt, "<", "\\<", -1)
 	return cmt
 }
 
@@ -159,9 +159,9 @@ func writeAPIInfo(astMeta *util.ASTMeta, groups []MethodGroup) error {
 			return g.Methods[i].Name < g.Methods[j].Name
 		})
 
-		fmt.Fprintf(buf, "* [%s](#%s)\n", g.GroupName, g.GroupName)
+		fmt.Fprintf(buf, "* [%s](#%s)\n", g.GroupName, strings.ToLower(g.GroupName))
 		for _, method := range g.Methods {
-			fmt.Fprintf(buf, "  * [%s](#%s)\n", method.Name, method.Name)
+			fmt.Fprintf(buf, "  * [%s](#%s)\n", method.Name, strings.ToLower(method.Name))
 		}
 	}
 

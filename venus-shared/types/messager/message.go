@@ -79,9 +79,11 @@ type Message struct {
 	TipSetKey  shared.TipSetKey
 	Meta       *SendSpec
 	WalletName string
-	FromUser   string
 
 	State MessageState
+
+	// Error is set if the message failed to fill
+	ErrorMsg string
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -115,10 +117,9 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 		TipSetKey  shared.TipSetKey
 		Meta       *SendSpec
 		WalletName string
-		FromUser   string
 
-		State MessageState
-
+		State     MessageState
+		ErrorMsg  string
 		CreatedAt time.Time
 		UpdatedAt time.Time
 	}
@@ -145,8 +146,8 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 		TipSetKey:  m.TipSetKey,
 		Meta:       m.Meta,
 		WalletName: m.WalletName,
-		FromUser:   m.FromUser,
 		State:      m.State,
+		ErrorMsg:   m.ErrorMsg,
 		CreatedAt:  m.CreatedAt,
 		UpdatedAt:  m.UpdatedAt,
 	})

@@ -29,7 +29,7 @@ type IMarket interface {
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                                               //perm:write
 	MarketImportPublishedDeal(ctx context.Context, deal market.MinerDeal) error                                                                                                                                 //perm:write
 	MarketListDeals(ctx context.Context, addrs []address.Address) ([]*types.MarketDeal, error)                                                                                                                  //perm:read
-	MarketListRetrievalDeals(ctx context.Context, mAddr address.Address) ([]market.ProviderDealState, error)                                                                                                    //perm:read
+	MarketListRetrievalDeals(ctx context.Context) ([]market.ProviderDealState, error)                                                                                                                           //perm:read
 	MarketGetDealUpdates(ctx context.Context) (<-chan market.MinerDeal, error)                                                                                                                                  //perm:read
 	MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]market.MinerDeal, error)                                                                                                           //perm:read
 	MarketSetAsk(ctx context.Context, mAddr address.Address, price types.BigInt, verifiedPrice types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error //perm:admin
@@ -54,25 +54,40 @@ type IMarket interface {
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error //perm:admin
 	OfflineDealImport(ctx context.Context, deal market.MinerDeal) error          //perm:admin
-	DealsConsiderOnlineStorageDeals(context.Context) (bool, error)               //perm:admin
-	DealsSetConsiderOnlineStorageDeals(context.Context, bool) error              //perm:admin
-	DealsConsiderOnlineRetrievalDeals(context.Context) (bool, error)             //perm:admin
-	DealsSetConsiderOnlineRetrievalDeals(context.Context, bool) error            //perm:admin
-	DealsPieceCidBlocklist(context.Context) ([]cid.Cid, error)                   //perm:admin
-	DealsSetPieceCidBlocklist(context.Context, []cid.Cid) error                  //perm:admin
-	DealsConsiderOfflineStorageDeals(context.Context) (bool, error)              //perm:admin
-	DealsSetConsiderOfflineStorageDeals(context.Context, bool) error             //perm:admin
-	DealsConsiderOfflineRetrievalDeals(context.Context) (bool, error)            //perm:admin
-	DealsSetConsiderOfflineRetrievalDeals(context.Context, bool) error           //perm:admin
-	DealsConsiderVerifiedStorageDeals(context.Context) (bool, error)             //perm:admin
-	DealsSetConsiderVerifiedStorageDeals(context.Context, bool) error            //perm:admin
-	DealsConsiderUnverifiedStorageDeals(context.Context) (bool, error)           //perm:admin
-	DealsSetConsiderUnverifiedStorageDeals(context.Context, bool) error          //perm:admin
-	// SectorGetSealDelay gets the time that a newly-created sector
+
+	DealsConsiderOnlineStorageDeals(context.Context, address.Address) (bool, error)      //perm:read
+	DealsSetConsiderOnlineStorageDeals(context.Context, address.Address, bool) error     //perm:write
+	DealsConsiderOnlineRetrievalDeals(context.Context, address.Address) (bool, error)    //perm:read
+	DealsSetConsiderOnlineRetrievalDeals(context.Context, address.Address, bool) error   //perm:write
+	DealsPieceCidBlocklist(context.Context, address.Address) ([]cid.Cid, error)          //perm:read
+	DealsSetPieceCidBlocklist(context.Context, address.Address, []cid.Cid) error         //perm:write
+	DealsConsiderOfflineStorageDeals(context.Context, address.Address) (bool, error)     //perm:read
+	DealsSetConsiderOfflineStorageDeals(context.Context, address.Address, bool) error    //perm:write
+	DealsConsiderOfflineRetrievalDeals(context.Context, address.Address) (bool, error)   //perm:read
+	DealsSetConsiderOfflineRetrievalDeals(context.Context, address.Address, bool) error  //perm:write
+	DealsConsiderVerifiedStorageDeals(context.Context, address.Address) (bool, error)    //perm:read
+	DealsSetConsiderVerifiedStorageDeals(context.Context, address.Address, bool) error   //perm:write
+	DealsConsiderUnverifiedStorageDeals(context.Context, address.Address) (bool, error)  //perm:read
+	DealsSetConsiderUnverifiedStorageDeals(context.Context, address.Address, bool) error //perm:write
+	// SectorGetExpectedSealDuration gets the time that a newly-created sector
 	// waits for more deals before it starts sealing
-	SectorGetSealDelay(context.Context) (time.Duration, error) //perm:read
+	SectorGetExpectedSealDuration(context.Context, address.Address) (time.Duration, error) //perm:read
 	// SectorSetExpectedSealDuration sets the expected time for a sector to seal
-	SectorSetExpectedSealDuration(context.Context, time.Duration) error //perm:write
+	SectorSetExpectedSealDuration(context.Context, address.Address, time.Duration) error    //perm:write
+	DealsMaxStartDelay(context.Context, address.Address) (time.Duration, error)             //perm:read
+	DealsSetMaxStartDelay(context.Context, address.Address, time.Duration) error            //perm:write
+	MarketDataTransferPath(context.Context, address.Address) (string, error)                //perm:admin
+	MarketSetDataTransferPath(context.Context, address.Address, string) error               //perm:admin
+	DealsPublishMsgPeriod(context.Context, address.Address) (time.Duration, error)          //perm:read
+	DealsSetPublishMsgPeriod(context.Context, address.Address, time.Duration) error         //perm:write
+	MarketMaxDealsPerPublishMsg(context.Context, address.Address) (uint64, error)           //perm:read
+	MarketSetMaxDealsPerPublishMsg(context.Context, address.Address, uint64) error          //perm:write
+	DealsMaxProviderCollateralMultiplier(context.Context, address.Address) (uint64, error)  //perm:read
+	DealsSetMaxProviderCollateralMultiplier(context.Context, address.Address, uint64) error //perm:write
+	DealsMaxPublishFee(context.Context, address.Address) (types.FIL, error)                 //perm:read
+	DealsSetMaxPublishFee(context.Context, address.Address, types.FIL) error                //perm:write
+	MarketMaxBalanceAddFee(context.Context, address.Address) (types.FIL, error)             //perm:read
+	MarketSetMaxBalanceAddFee(context.Context, address.Address, types.FIL) error            //perm:write
 
 	// messager
 	MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*types.MsgLookup, error)                            //perm:read
