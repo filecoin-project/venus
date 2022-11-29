@@ -666,7 +666,18 @@ Response:
 
 Perms: admin
 
-Inputs: `[]`
+Inputs:
+```json
+[
+  {
+    "State": 3,
+    "From": "f01234",
+    "WalletName": "string value",
+    "PageIndex": 123,
+    "PageSize": 123
+  }
+]
+```
 
 Response:
 ```json
