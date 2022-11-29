@@ -26,6 +26,7 @@ type Env struct {
 	MultiSigAPI v0api.IMultiSig
 	MarketAPI   v1api.IMarket
 	PaychAPI    v1api.IPaychan
+	CommonAPI   v1api.ICommon
 }
 
 var _ cmds.Environment = (*Env)(nil)
