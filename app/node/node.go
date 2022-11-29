@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/venus-auth/jwtclient"
 	"github.com/filecoin-project/venus/app/submodule/blockstore"
 	chain2 "github.com/filecoin-project/venus/app/submodule/chain"
+	"github.com/filecoin-project/venus/app/submodule/common"
 	configModule "github.com/filecoin-project/venus/app/submodule/config"
 	"github.com/filecoin-project/venus/app/submodule/dagservice"
 	"github.com/filecoin-project/venus/app/submodule/market"
@@ -91,6 +92,8 @@ type Node struct {
 	// paychannel and market
 	market  *market.MarketSubmodule
 	paychan *paych.PaychSubmodule
+
+	common *common.CommonModule
 
 	//
 	// Jsonrpc
@@ -354,6 +357,7 @@ func (node *Node) createServerEnv(ctx context.Context) *Env {
 		PaychAPI:             node.paychan.API(),
 		MarketAPI:            node.market.API(),
 		MultiSigAPI:          &apiwrapper.WrapperV1IMultiSig{IMultiSig: node.multiSig.API(), IMessagePool: node.mpool.API()},
+		CommonAPI:            node.common,
 	}
 
 	return &env

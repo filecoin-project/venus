@@ -52,6 +52,7 @@
   * [StateWaitMsg](#statewaitmsg)
   * [VerifyEntry](#verifyentry)
 * [Common](#common)
+  * [NodeStatus](#nodestatus)
   * [Version](#version)
 * [Market](#market)
   * [StateMarketParticipants](#statemarketparticipants)
@@ -1804,6 +1805,36 @@ Inputs:
 Response: `true`
 
 ## Common
+
+### NodeStatus
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  true
+]
+```
+
+Response:
+```json
+{
+  "SyncStatus": {
+    "Epoch": 42,
+    "Behind": 42
+  },
+  "PeerStatus": {
+    "PeersToPublishMsgs": 123,
+    "PeersToPublishBlocks": 123
+  },
+  "ChainStatus": {
+    "BlocksPerTipsetLast100": 12.3,
+    "BlocksPerTipsetLastFinality": 12.3
+  }
+}
+```
 
 ### Version
 Version provides information about API provider

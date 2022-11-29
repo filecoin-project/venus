@@ -99,6 +99,7 @@ START RUNNING VENUS
   daemon                 - Start a venus daemon process
   wallet                 - Manage wallet
   msig                   - Interact with a multisig wallet
+  info                   - Print node info
 
 VIEW DATA STRUCTURES
   chain                  - Inspect the filecoin blockchain
@@ -112,8 +113,11 @@ MESSAGE COMMANDS
   send                   - Send message
   mpool                  - Manage the message pool
 
+MINER COMMANDS
+  miner                  - Interact with actors
+
 State COMMANDS
-  state               - query states of the filecoin network
+  state                  - query states of the filecoin network
 
 Paych COMMANDS 
   paych                  - Manage payment channels
@@ -170,6 +174,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"miner":   minerCmd,
 	"paych":   paychCmd,
 	"msig":    multisigCmd,
+	"info":    infoCmd,
 }
 
 func init() {

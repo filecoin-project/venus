@@ -873,10 +873,14 @@ func (s *IWalletStruct) WalletState(p0 context.Context) int { return s.Internal.
 
 type ICommonStruct struct {
 	Internal struct {
-		Version func(ctx context.Context) (types.Version, error) `perm:"read"`
+		NodeStatus func(ctx context.Context, inclChainStatus bool) (types.NodeStatus, error) `perm:"read"`
+		Version    func(ctx context.Context) (types.Version, error)                          `perm:"read"`
 	}
 }
 
+func (s *ICommonStruct) NodeStatus(p0 context.Context, p1 bool) (types.NodeStatus, error) {
+	return s.Internal.NodeStatus(p0, p1)
+}
 func (s *ICommonStruct) Version(p0 context.Context) (types.Version, error) {
 	return s.Internal.Version(p0)
 }

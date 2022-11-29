@@ -162,7 +162,8 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	}
 	nd.market = market.NewMarketModule(nd.chain.API(), nd.syncer.Stmgr)
 
-	commonModule := common.NewCommonModule()
+	blockDelay := b.repo.Config().NetworkParams.BlockDelay
+	nd.common = common.NewCommonModule(nd.chain, nd.network, blockDelay)
 
 	apiBuilder := NewBuilder()
 	apiBuilder.NameSpace("Filecoin")
@@ -179,7 +180,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.mpool,
 		nd.paychan,
 		nd.market,
-		commonModule,
+		nd.common,
 	)
 
 	if err != nil {
