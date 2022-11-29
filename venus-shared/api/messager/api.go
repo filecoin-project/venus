@@ -22,7 +22,7 @@ type IMessager interface {
 	GetMessageBySignedCid(ctx context.Context, cid cid.Cid) (*mtypes.Message, error)                                                                             //perm:read
 	GetMessageByUnsignedCid(ctx context.Context, cid cid.Cid) (*mtypes.Message, error)                                                                           //perm:read
 	GetMessageByFromAndNonce(ctx context.Context, from address.Address, nonce uint64) (*mtypes.Message, error)                                                   //perm:read
-	ListMessage(ctx context.Context) ([]*mtypes.Message, error)                                                                                                  //perm:admin
+	ListMessage(ctx context.Context, p *mtypes.MsgQueryParams) ([]*mtypes.Message, error)                                                                        //perm:admin
 	ListMessageByFromState(ctx context.Context, from address.Address, state mtypes.MessageState, isAsc bool, pageIndex, pageSize int) ([]*mtypes.Message, error) //perm:admin
 	ListMessageByAddress(ctx context.Context, addr address.Address) ([]*mtypes.Message, error)                                                                   //perm:admin
 	ListFailedMessage(ctx context.Context) ([]*mtypes.Message, error)                                                                                            //perm:admin

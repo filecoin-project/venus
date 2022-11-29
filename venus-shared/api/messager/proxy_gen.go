@@ -33,7 +33,7 @@ type IMessagerStruct struct {
 		ListAddress              func(ctx context.Context) ([]*mtypes.Address, error)                                                                                       `perm:"admin"`
 		ListBlockedMessage       func(ctx context.Context, addr address.Address, d time.Duration) ([]*mtypes.Message, error)                                                `perm:"admin"`
 		ListFailedMessage        func(ctx context.Context) ([]*mtypes.Message, error)                                                                                       `perm:"admin"`
-		ListMessage              func(ctx context.Context) ([]*mtypes.Message, error)                                                                                       `perm:"admin"`
+		ListMessage              func(ctx context.Context, p *mtypes.MsgQueryParams) ([]*mtypes.Message, error)                                                             `perm:"admin"`
 		ListMessageByAddress     func(ctx context.Context, addr address.Address) ([]*mtypes.Message, error)                                                                 `perm:"admin"`
 		ListMessageByFromState   func(ctx context.Context, from address.Address, state mtypes.MessageState, isAsc bool, pageIndex, pageSize int) ([]*mtypes.Message, error) `perm:"admin"`
 		ListNode                 func(ctx context.Context) ([]*mtypes.Node, error)                                                                                          `perm:"admin"`
@@ -118,8 +118,8 @@ func (s *IMessagerStruct) ListBlockedMessage(p0 context.Context, p1 address.Addr
 func (s *IMessagerStruct) ListFailedMessage(p0 context.Context) ([]*mtypes.Message, error) {
 	return s.Internal.ListFailedMessage(p0)
 }
-func (s *IMessagerStruct) ListMessage(p0 context.Context) ([]*mtypes.Message, error) {
-	return s.Internal.ListMessage(p0)
+func (s *IMessagerStruct) ListMessage(p0 context.Context, p1 *mtypes.MsgQueryParams) ([]*mtypes.Message, error) {
+	return s.Internal.ListMessage(p0, p1)
 }
 func (s *IMessagerStruct) ListMessageByAddress(p0 context.Context, p1 address.Address) ([]*mtypes.Message, error) {
 	return s.Internal.ListMessageByAddress(p0, p1)
