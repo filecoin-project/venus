@@ -162,3 +162,41 @@ type ReplacMessageParams struct {
 	GasFeecap      abi.TokenAmount
 	GasOverPremium float64
 }
+
+type MsgQueryParams struct {
+	// Message State
+	State MessageState
+	// Message From
+	From address.Address
+	// Message WalletName
+	WalletName string
+
+	PageIndex int
+	PageSize  int
+}
+
+func (qp *MsgQueryParams) ToMap() map[string]interface{} {
+	ret := make(map[string]interface{})
+	if qp.State != UnKnown {
+		ret["state"] = qp.State
+	}
+	if qp.From != address.Undef {
+		ret["from_addr"] = qp.From.String()
+	}
+	if qp.WalletName != "" {
+		ret["wallet_name"] = qp.WalletName
+	}
+	return ret
+}
+
+func (qp *MsgQueryParams) Offset() int {
+	return (qp.PageIndex - 1) * qp.PageSize
+}
+
+func (qp *MsgQueryParams) Limit() int {
+	return qp.PageSize
+}
+
+func (qp *MsgQueryParams) IsPaged() bool {
+	return qp.PageIndex > 0 && qp.PageSize > 0
+}
