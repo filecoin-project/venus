@@ -141,7 +141,7 @@ func (g *GenesisGenerator) createSingletonActor(ctx context.Context, addr addres
 	}
 	state, err := stateFn()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create state")
+		return nil, fmt.Errorf("failed to create state: %v", err)
 	}
 	headCid, err := g.cst.Put(context.Background(), state)
 	if err != nil {
@@ -167,12 +167,12 @@ func (g *GenesisGenerator) updateSingletonActor(ctx context.Context, addr addres
 	}
 	oldActor, found, err := g.stateTree.GetActor(ctx, addr)
 	if !found || err != nil {
-		return nil, fmt.Errorf("failed to create state")
+		return nil, fmt.Errorf("failed to create state: %v", err)
 	}
 
 	state, err := stateFn(oldActor)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create state")
+		return nil, fmt.Errorf("failed to create state: %v", err)
 	}
 	headCid, err := g.cst.Put(context.Background(), state)
 	if err != nil {
@@ -618,9 +618,11 @@ func (g *GenesisGenerator) createMiner(ctx context.Context, m *CreateStorageMine
 	if err != nil {
 		return address.Undef, address.Undef, err
 	}
-
 	if out.Receipt.ExitCode != 0 {
-		return address.Undef, address.Undef, xerrors.Errorf("execute genesis msg error")
+		return address.Undef, address.Undef, fmt.Errorf("execute genesis msg error")
+	}
+	if _, err := g.vm.Flush(ctx); err != nil {
+		return address.Undef, address.Undef, err
 	}
 	// get miner ID address
 	createMinerReturn := power.CreateMinerReturn{}
@@ -771,6 +773,9 @@ func (g *GenesisGenerator) doExecValue(ctx context.Context, to, from address.Add
 	}
 	if ret.Receipt.ExitCode != 0 {
 		return nil, xerrors.Errorf("execute genesis msg error")
+	}
+	if _, err := g.vm.Flush(ctx); err != nil {
+		return nil, err
 	}
 	return ret.Receipt.Return, nil
 }
