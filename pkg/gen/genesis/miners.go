@@ -378,7 +378,7 @@ func SetupStorageMiners(ctx context.Context, cs *chain.Store, sroot cid.Cid, min
 		// Commit sectors
 		{
 			for pi, preseal := range m.Sectors {
-				params := &types.SectorPreCommitInfo{
+				params := &minertypes.SectorPreCommitInfo{
 					SealProof:     preseal.ProofType,
 					SectorNumber:  preseal.SectorID,
 					SealedCID:     preseal.CommR,
