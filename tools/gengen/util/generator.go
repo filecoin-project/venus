@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	ds "github.com/ipfs/go-datastore"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -44,6 +45,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vmsupport"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	blockstore "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -57,7 +59,7 @@ type GenesisGenerator struct {
 	stateTree tree.Tree
 	store     blockstore.Blockstore
 	cst       cbor.IpldStore
-	vm        genesis.VM
+	vm        vm.Interpreter
 	vmOption  vm.VmOption
 	keys      []*crypto.KeyInfo // Keys for pre-alloc accounts
 	vrkey     *crypto.KeyInfo   // Key for verified registry root
@@ -139,7 +141,7 @@ func (g *GenesisGenerator) createSingletonActor(ctx context.Context, addr addres
 	}
 	state, err := stateFn()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create state")
+		return nil, fmt.Errorf("failed to create state: %v", err)
 	}
 	headCid, err := g.cst.Put(context.Background(), state)
 	if err != nil {
@@ -165,12 +167,12 @@ func (g *GenesisGenerator) updateSingletonActor(ctx context.Context, addr addres
 	}
 	oldActor, found, err := g.stateTree.GetActor(ctx, addr)
 	if !found || err != nil {
-		return nil, fmt.Errorf("failed to create state")
+		return nil, fmt.Errorf("failed to create state: %v", err)
 	}
 
 	state, err := stateFn(oldActor)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create state")
+		return nil, fmt.Errorf("failed to create state: %v", err)
 	}
 	headCid, err := g.cst.Put(context.Background(), state)
 	if err != nil {
@@ -288,7 +290,7 @@ func (g *GenesisGenerator) setupBuiltInActors(ctx context.Context) error {
 	return nil
 }
 
-func (g *GenesisGenerator) setupPrealloc() error {
+func (g *GenesisGenerator) setupPrealloc(ctx context.Context) error {
 	if len(g.keys) < len(g.cfg.PreallocatedFunds) {
 		return fmt.Errorf("keys do not match prealloc")
 	}
@@ -305,7 +307,14 @@ func (g *GenesisGenerator) setupPrealloc() error {
 			return fmt.Errorf("failed to parse FIL value '%s'", v)
 		}
 
-		_, err = g.vm.ApplyGenesisMessage(builtin.RewardActorAddr, addr, builtin.MethodSend, abi.TokenAmount{Int: value.Int}, nil)
+		msg := types.Message{
+			From:   builtin.RewardActorAddr,
+			To:     addr,
+			Method: builtin.MethodSend,
+			Value:  abi.TokenAmount{Int: value.Int},
+			Params: nil,
+		}
+		_, err = g.vm.ApplyImplicitMessage(ctx, &msg)
 		if err != nil {
 			return err
 		}
@@ -396,7 +405,7 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 		dealIDs := []abi.DealID{}
 		if len(m.CommittedSectors) > 0 {
 			ownerKey := g.keys[m.Owner]
-			dealIDs, err = g.publishDeals(actorAddr, ownerAddr, ownerKey, m.CommittedSectors, m.MarketBalance)
+			dealIDs, err = g.publishDeals(ctx, actorAddr, ownerAddr, ownerKey, m.CommittedSectors, m.MarketBalance)
 			if err != nil {
 				return nil, err
 			}
@@ -411,7 +420,7 @@ func (g *GenesisGenerator) setupMiners(ctx context.Context) ([]*RenderedMinerInf
 			sectorExpiration := (maxPeriods-1)*miner0.WPoStProvingPeriod - 1
 			// Acquire deal weight value
 			// call deal verify market actor to do calculation
-			dealWeight, verifiedWeight, err := g.getDealWeight(dealIDs[i], sectorExpiration, actorAddr)
+			dealWeight, verifiedWeight, err := g.getDealWeight(ctx, dealIDs[i], sectorExpiration, actorAddr)
 			if err != nil {
 				return nil, err
 			}
@@ -591,18 +600,29 @@ func (g *GenesisGenerator) createMiner(ctx context.Context, m *CreateStorageMine
 		pid = peer.ID(h)
 	}
 
-	out, err := g.vm.ApplyGenesisMessage(ownerAddr, builtin.StoragePowerActorAddr, builtin.MethodsPower.CreateMiner, big.Zero(), &power.CreateMinerParams{
+	params := mustEnc(&power.CreateMinerParams{
 		Owner:         ownerAddr,
 		Worker:        ownerAddr,
 		Peer:          abi.PeerID(pid),
 		SealProofType: m.SealProofType,
 	})
+	msg := &types.Message{
+		From:   ownerAddr,
+		To:     builtin.StoragePowerActorAddr,
+		Method: builtin.MethodsPower.CreateMiner,
+		Value:  big.Zero(),
+		Params: params,
+	}
+
+	out, err := g.vm.ApplyImplicitMessage(ctx, msg)
 	if err != nil {
 		return address.Undef, address.Undef, err
 	}
-
 	if out.Receipt.ExitCode != 0 {
-		return address.Undef, address.Undef, xerrors.Errorf("execute genesis msg error")
+		return address.Undef, address.Undef, fmt.Errorf("execute genesis msg error")
+	}
+	if _, err := g.vm.Flush(ctx); err != nil {
+		return address.Undef, address.Undef, err
 	}
 	// get miner ID address
 	createMinerReturn := power.CreateMinerReturn{}
@@ -613,15 +633,31 @@ func (g *GenesisGenerator) createMiner(ctx context.Context, m *CreateStorageMine
 	return ownerAddr, createMinerReturn.IDAddress, nil
 }
 
-func (g *GenesisGenerator) publishDeals(actorAddr, clientAddr address.Address, clientkey *crypto.KeyInfo, comms []*CommitConfig, marketBalance abi.TokenAmount) ([]abi.DealID, error) {
+func (g *GenesisGenerator) publishDeals(ctx context.Context, actorAddr, clientAddr address.Address, clientkey *crypto.KeyInfo, comms []*CommitConfig, marketBalance abi.TokenAmount) ([]abi.DealID, error) {
 	// Add 0 balance to escrow and locked table
 	if marketBalance.GreaterThan(big.Zero()) {
-		_, err := g.vm.ApplyGenesisMessage(clientAddr, builtin.StorageMarketActorAddr, builtin.MethodsMarket.AddBalance, marketBalance, &clientAddr)
+		params := mustEnc(&clientAddr)
+		msg := &types.Message{
+			From:   clientAddr,
+			To:     builtin.StorageMarketActorAddr,
+			Method: builtin.MethodsMarket.AddBalance,
+			Value:  marketBalance,
+			Params: params,
+		}
+		_, err := g.vm.ApplyImplicitMessage(ctx, msg)
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = g.vm.ApplyGenesisMessage(clientAddr, builtin.StorageMarketActorAddr, builtin.MethodsMarket.AddBalance, marketBalance, &actorAddr)
+		params = mustEnc(&actorAddr)
+		msg = &types.Message{
+			From:   clientAddr,
+			To:     builtin.StorageMarketActorAddr,
+			Method: builtin.MethodsMarket.AddBalance,
+			Value:  marketBalance,
+			Params: params,
+		}
+		_, err = g.vm.ApplyImplicitMessage(ctx, msg)
 		if err != nil {
 			return nil, err
 		}
@@ -662,8 +698,17 @@ func (g *GenesisGenerator) publishDeals(actorAddr, clientAddr address.Address, c
 		})
 	}
 
+	paramsBytes := mustEnc(params)
+	msg := &types.Message{
+		From:   clientAddr,
+		To:     builtin.StorageMarketActorAddr,
+		Method: builtin.MethodsMarket.PublishStorageDeals,
+		Value:  big.Zero(),
+		Params: paramsBytes,
+	}
+
 	// apply deal builtin.MethodsMarket.PublishStorageDeals
-	out, err := g.vm.ApplyGenesisMessage(clientAddr, builtin.StorageMarketActorAddr, builtin.MethodsMarket.PublishStorageDeals, big.Zero(), params)
+	out, err := g.vm.ApplyImplicitMessage(ctx, msg)
 	if err != nil {
 		return nil, err
 	}
@@ -678,13 +723,22 @@ func (g *GenesisGenerator) publishDeals(actorAddr, clientAddr address.Address, c
 	return publishStoreageDealsReturn.IDs, nil
 }
 
-func (g *GenesisGenerator) getDealWeight(dealID abi.DealID, sectorExpiry abi.ChainEpoch, minerIDAddr address.Address) (dealWeight, verifiedWeight abi.DealWeight, err error) {
+func (g *GenesisGenerator) getDealWeight(ctx context.Context, dealID abi.DealID, sectorExpiry abi.ChainEpoch, minerIDAddr address.Address) (dealWeight, verifiedWeight abi.DealWeight, err error) {
 	weightParams := &market.VerifyDealsForActivationParams{
 		DealIDs:      []abi.DealID{dealID},
 		SectorExpiry: sectorExpiry,
 	}
 
-	weightOut, err := g.vm.ApplyGenesisMessage(minerIDAddr, builtin.StorageMarketActorAddr, builtin.MethodsMarket.VerifyDealsForActivation, big.Zero(), weightParams)
+	params := mustEnc(weightParams)
+	msg := &types.Message{
+		From:   minerIDAddr,
+		To:     builtin.StorageMarketActorAddr,
+		Method: builtin.MethodsMarket.VerifyDealsForActivation,
+		Value:  big.Zero(),
+		Params: params,
+	}
+
+	weightOut, err := g.vm.ApplyImplicitMessage(ctx, msg)
 	if err != nil {
 		return big.Zero(), big.Zero(), err
 	}
@@ -705,12 +759,23 @@ func (g *GenesisGenerator) doExecValue(ctx context.Context, to, from address.Add
 		return nil, xerrors.Errorf("doExec failed to get from actor (%s): %v", from, err)
 	}
 
-	ret, err := g.vm.ApplyGenesisMessage(from, to, method, value, params)
+	msg := &types.Message{
+		From:   from,
+		To:     to,
+		Method: method,
+		Value:  value,
+		Params: params,
+	}
+
+	ret, err := g.vm.ApplyImplicitMessage(ctx, msg)
 	if err != nil {
 		return nil, xerrors.Errorf("doExec apply message failed: %v", err)
 	}
 	if ret.Receipt.ExitCode != 0 {
 		return nil, xerrors.Errorf("execute genesis msg error")
+	}
+	if _, err := g.vm.Flush(ctx); err != nil {
+		return nil, err
 	}
 	return ret.Receipt.Return, nil
 }
@@ -781,4 +846,12 @@ func computeSectorPower(size abi.SectorSize, duration abi.ChainEpoch, dealWeight
 	spower := big.NewIntUnsigned(uint64(size))
 	qapower := miner.QAPowerForWeight(size, duration, dealWeight, verifiedDealWeight)
 	return spower, qapower
+}
+
+func mustEnc(i cbg.CBORMarshaler) []byte {
+	enc, err := actors.SerializeParams(i)
+	if err != nil {
+		panic(err) // ok
+	}
+	return enc
 }

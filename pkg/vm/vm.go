@@ -2,7 +2,9 @@ package vm
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/register"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
@@ -33,6 +35,9 @@ type Interface = vmcontext.Interface // nolint
 
 // NewLegacyVM creates a new LegacyVM interpreter.
 func NewLegacyVM(ctx context.Context, option VmOption) (Interpreter, error) {
+	if option.NetworkVersion >= network.Version16 {
+		return nil, fmt.Errorf("the legacy VM does not support network versions 16+")
+	}
 	if option.ActorCodeLoader == nil {
 		option.ActorCodeLoader = GetDefaultActors()
 	}

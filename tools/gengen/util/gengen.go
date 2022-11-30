@@ -234,7 +234,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, bs blockstoreutil.Blockstore) 
 	if err != nil {
 		return nil, err
 	}
-	err = generator.setupPrealloc()
+	err = generator.setupPrealloc(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/filecoin-project/venus/pkg/consensus"
+	"github.com/filecoin-project/venus/pkg/fvm"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
@@ -230,12 +231,6 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 		_ = os.Setenv("LOTUS_DISABLE_VM_BUF", "iknowitsabadidea")
 	}
 	actorBuilder := register.DefaultActorBuilder
-	// register the chaos actor if required by the vector.
-	if chaosOn, ok := d.selector["chaos_actor"]; ok && chaosOn == "true" {
-		av, _ := actorstypes.VersionForNetwork(params.NetworkVersion)
-		actorBuilder.AddMany(av, nil, builtin.MakeRegistryLegacy([]rtt.VMActor{chaos.Actor{}}))
-	}
-
 	register.GetDefaultActros()
 	coderLoader := actorBuilder.Build()
 
@@ -276,12 +271,32 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 		}
 	)
 
-	lvm, err := vm.NewLegacyVM(ctx, vmOption)
-	if err != nil {
-		return nil, cid.Undef, err
+	var vmi vm.Interface
+	// register the chaos actor if required by the vector.
+	if chaosOn, ok := d.selector["chaos_actor"]; ok && chaosOn == "true" {
+		av, _ := actorstypes.VersionForNetwork(params.NetworkVersion)
+		actorBuilder.AddMany(av, nil, builtin.MakeRegistryLegacy([]rtt.VMActor{chaos.Actor{}}))
+		coderLoader = actorBuilder.Build()
+		vmOption.ActorCodeLoader = &coderLoader
+		vmi, err = vm.NewLegacyVM(ctx, vmOption)
+		if err != nil {
+			return nil, cid.Undef, err
+		}
+	} else {
+		if params.NetworkVersion >= network.Version16 {
+			vmi, err = fvm.NewFVM(ctx, &vmOption)
+			if err != nil {
+				return nil, cid.Undef, err
+			}
+		} else {
+			vmi, err = vm.NewLegacyVM(ctx, vmOption)
+			if err != nil {
+				return nil, cid.Undef, err
+			}
+		}
 	}
 
-	ret, err := lvm.ApplyMessage(ctx, toChainMsg(params.Message))
+	ret, err := vmi.ApplyMessage(ctx, toChainMsg(params.Message))
 	if err != nil {
 		return nil, cid.Undef, err
 	}
@@ -290,12 +305,12 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 	if d.vmFlush {
 		// flush the LegacyVM, committing the state tree changes and forcing a
 		// recursive copy from the temporary blcokstore to the real blockstore.
-		root, err = lvm.Flush(ctx)
+		root, err = vmi.Flush(ctx)
 		if err != nil {
 			return nil, cid.Undef, err
 		}
 	} else {
-		root, err = lvm.StateTree().Flush(d.ctx)
+		root, err = vmi.(vm.Interpreter).StateTree().Flush(d.ctx)
 		if err != nil {
 			return nil, cid.Undef, err
 		}

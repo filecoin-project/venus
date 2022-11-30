@@ -19,16 +19,11 @@ import (
 	"github.com/ipld/go-car"
 	"github.com/mitchellh/go-homedir"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/gen"
 	genesis2 "github.com/filecoin-project/venus/pkg/gen/genesis"
 	"github.com/filecoin-project/venus/pkg/repo"
-	"github.com/filecoin-project/venus/pkg/state/tree"
-	"github.com/filecoin-project/venus/pkg/vm"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
@@ -49,12 +44,6 @@ var Ticket = types.Ticket{
 		0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec,
 		0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec, 0xec,
 	},
-}
-
-// VM is the view into the LegacyVM used during genesis block creation.
-type VM interface {
-	ApplyGenesisMessage(from address.Address, to address.Address, method abi.MethodNum, value abi.TokenAmount, params interface{}) (*vm.Ret, error)
-	Flush(ctx context.Context) (tree.Root, error)
 }
 
 // MakeGenesis return a func to construct a genesis block
