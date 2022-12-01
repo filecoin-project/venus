@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/pubsub"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	lru "github.com/hashicorp/golang-lru"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -19,6 +20,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipld/go-car"
 	carutil "github.com/ipld/go-car/util"
+	carv2 "github.com/ipld/go-car/v2"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -922,12 +924,55 @@ func (store *Store) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRece
 
 // Import import a car file into local db
 func (store *Store) Import(ctx context.Context, r io.Reader) (*types.TipSet, error) {
-	header, err := car.LoadCar(ctx, store.bsstore, r)
+	br, err := carv2.NewBlockReader(r)
 	if err != nil {
 		return nil, fmt.Errorf("loadcar failed: %w", err)
 	}
 
-	root, err := store.GetTipSet(ctx, types.NewTipSetKey(header.Roots...))
+	parallelPuts := 5
+	putThrottle := make(chan error, parallelPuts)
+	for i := 0; i < parallelPuts; i++ {
+		putThrottle <- nil
+	}
+
+	var buf []blocks.Block
+	for {
+		blk, err := br.Next()
+		if err != nil {
+			if err == io.EOF {
+				if len(buf) > 0 {
+					if err := store.bsstore.PutMany(ctx, buf); err != nil {
+						return nil, err
+					}
+				}
+
+				break
+			}
+			return nil, err
+		}
+
+		buf = append(buf, blk)
+
+		if len(buf) > 1000 {
+			if lastErr := <-putThrottle; lastErr != nil { // consume one error to have the right to add one
+				return nil, lastErr
+			}
+
+			go func(buf []blocks.Block) {
+				putThrottle <- store.bsstore.PutMany(ctx, buf)
+			}(buf)
+			buf = nil
+		}
+	}
+
+	// check errors
+	for i := 0; i < parallelPuts; i++ {
+		if lastErr := <-putThrottle; lastErr != nil {
+			return nil, lastErr
+		}
+	}
+
+	root, err := store.GetTipSet(ctx, types.NewTipSetKey(br.Roots...))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load root tipset from chainfile: %w", err)
 	}

@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/DataDog/zstd"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/repo"
 	"github.com/ipfs/go-cid"
@@ -68,6 +69,11 @@ func importChain(ctx context.Context, r repo.Repo, fname string) error {
 
 	bufr := bufio.NewReaderSize(rd, 1<<20)
 
+	header, err := bufr.Peek(4)
+	if err != nil {
+		return fmt.Errorf("peek header: %w", err)
+	}
+
 	bar := pb.New64(l)
 	br := bar.NewProxyReader(bufr)
 	bar.ShowTimeLeft = true
@@ -75,8 +81,19 @@ func importChain(ctx context.Context, r repo.Repo, fname string) error {
 	bar.ShowSpeed = true
 	bar.Units = pb.U_BYTES
 
+	var ir io.Reader = br
+	if string(header[1:]) == "\xB5\x2F\xFD" { // zstd
+		zr := zstd.NewReader(br)
+		defer func() {
+			if err := zr.Close(); err != nil {
+				log.Errorw("closing zstd reader", "error", err)
+			}
+		}()
+		ir = zr
+	}
+
 	bar.Start()
-	tip, err := chainStore.Import(ctx, br)
+	tip, err := chainStore.Import(ctx, ir)
 	if err != nil {
 		return fmt.Errorf("importing chain failed: %s", err)
 	}
