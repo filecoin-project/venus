@@ -265,8 +265,7 @@ func LoadState(ctx context.Context, cst cbor.IpldStore, c cid.Cid) (*State, erro
 		return nil, fmt.Errorf("unsupported state tree version: %d", root.Version)
 	}
 	if err != nil {
-		stateLog.Errorf("failed to load state tree: %v %v", c, err)
-		return nil, fmt.Errorf("failed to load state tree: %v", err)
+		return nil, fmt.Errorf("failed to load state tree: %v %v", c, err)
 	}
 
 	s := &State{
