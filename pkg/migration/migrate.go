@@ -32,6 +32,7 @@ var versionMap = []versionInfo{
 	{version: 7, upgrade: Version7Upgrade},
 	{version: 8, upgrade: Version8Upgrade},
 	{version: 9, upgrade: Version9Upgrade},
+	{version: 10, upgrade: Version10Upgrade},
 }
 
 // TryToMigrate used to migrate data(db,config,file,etc) in local repo
@@ -344,4 +345,23 @@ func Version9Upgrade(repoPath string) (err error) {
 	}
 
 	return repo.WriteVersion(repoPath, 9)
+}
+
+// Version10Upgrade will ignore some fields in the parameters structure of the config.json file
+func Version10Upgrade(repoPath string) (err error) {
+	var fsrRepo repo.Repo
+	if fsrRepo, err = repo.OpenFSRepo(repoPath, 9); err != nil {
+		return
+	}
+	cfg := fsrRepo.Config()
+
+	if err = fsrRepo.ReplaceConfig(cfg); err != nil {
+		return
+	}
+
+	if err = fsrRepo.Close(); err != nil {
+		return
+	}
+
+	return repo.WriteVersion(repoPath, 10)
 }

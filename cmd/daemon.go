@@ -121,8 +121,7 @@ func initRun(req *cmds.Request) error {
 	cfg := rep.Config()
 	network, _ := req.Options[Network].(string)
 	if err := networks.SetConfigFromOptions(cfg, network); err != nil {
-		log.Errorf("Error setting config %s", err)
-		return err
+		return fmt.Errorf("setting config %v", err)
 	}
 	// genesis node
 	if mkGen, ok := req.Options[makeGenFlag].(string); ok {
@@ -170,6 +169,11 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	}
 
 	config := rep.Config()
+	if err := networks.SetConfigFromNetworkType(config, config.NetworkParams.NetworkType); err != nil {
+		return fmt.Errorf("set config failed %v %v", config.NetworkParams.NetworkType, err)
+	}
+	log.Infof("network params: %+v", config.NetworkParams)
+	log.Infof("upgrade params: %+v", config.NetworkParams.ForkUpgradeParam)
 
 	if err := actors.SetNetworkBundle(int(config.NetworkParams.NetworkType)); err != nil {
 		return err
