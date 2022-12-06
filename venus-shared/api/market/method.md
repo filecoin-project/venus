@@ -994,7 +994,7 @@ Response:
 MarketCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json
@@ -1024,7 +1024,7 @@ Response: `"string value"`
 ### MarketDataTransferUpdates
 
 
-Perms: write
+Perms: admin
 
 Inputs: `[]`
 
@@ -1293,7 +1293,7 @@ Response: `{}`
 ### MarketListDataTransfers
 
 
-Perms: write
+Perms: admin
 
 Inputs: `[]`
 
@@ -1667,7 +1667,7 @@ Response:
 MarketRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json
