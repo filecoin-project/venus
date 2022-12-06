@@ -3,6 +3,7 @@ package migration
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/filecoin-project/venus/fixtures/networks"
@@ -38,7 +39,12 @@ func TestMigration(t *testing.T) {
 		fsRepo, err := repo.OpenFSRepo(repoPath, repo.LatestVersion)
 		assert.Nil(t, err)
 		newCfg := fsRepo.Config()
-		assert.Equal(t, paramsCfg.GenesisNetworkVersion, newCfg.NetworkParams.GenesisNetworkVersion)
-		assert.EqualValuesf(t, paramsCfg.ForkUpgradeParam, newCfg.NetworkParams.ForkUpgradeParam, fmt.Sprintf("current network type %d", paramsCfg.NetworkType))
+		assert.Equal(t, paramsCfg.NetworkType, newCfg.NetworkParams.NetworkType)
+		assert.EqualValuesf(t, config.NewDefaultConfig().NetworkParams.ForkUpgradeParam, newCfg.NetworkParams.ForkUpgradeParam, fmt.Sprintf("current network type %d", paramsCfg.NetworkType))
+
+		cfgTmp, err := config.ReadFile(filepath.Join(repoPath, "config.json"))
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(0), cfgTmp.NetworkParams.BlockDelay)
+		assert.Equal(t, paramsCfg.NetworkType, cfgTmp.NetworkParams.NetworkType)
 	}
 }
