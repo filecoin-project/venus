@@ -41,7 +41,6 @@
   * [GetStorageDealStatistic](#getstoragedealstatistic)
   * [GetUnPackedDeals](#getunpackeddeals)
   * [ID](#id)
-  * [ImportV1Data](#importv1data)
   * [ListPieceStorageInfos](#listpiecestorageinfos)
   * [ListenMarketEvent](#listenmarketevent)
   * [MarkDealsAsPacking](#markdealsaspacking)
@@ -891,20 +890,6 @@ Inputs: `[]`
 
 Response: `"12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"`
 
-### ImportV1Data
-
-
-Perms: write
-
-Inputs:
-```json
-[
-  "string value"
-]
-```
-
-Response: `{}`
-
 ### ListPieceStorageInfos
 
 
@@ -1009,7 +994,7 @@ Response:
 MarketCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json
@@ -1039,7 +1024,7 @@ Response: `"string value"`
 ### MarketDataTransferUpdates
 
 
-Perms: write
+Perms: admin
 
 Inputs: `[]`
 
@@ -1339,7 +1324,7 @@ Response:
 ### MarketListDataTransfers
 
 
-Perms: write
+Perms: admin
 
 Inputs: `[]`
 
@@ -1682,7 +1667,7 @@ Response:
 MarketRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json

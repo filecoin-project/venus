@@ -632,20 +632,6 @@ func (mr *MockIMarketMockRecorder) ID(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockIMarket)(nil).ID), arg0)
 }
 
-// ImportV1Data mocks base method.
-func (m *MockIMarket) ImportV1Data(arg0 context.Context, arg1 string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ImportV1Data", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// ImportV1Data indicates an expected call of ImportV1Data.
-func (mr *MockIMarketMockRecorder) ImportV1Data(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImportV1Data", reflect.TypeOf((*MockIMarket)(nil).ImportV1Data), arg0, arg1)
-}
-
 // ListPieceStorageInfos mocks base method.
 func (m *MockIMarket) ListPieceStorageInfos(arg0 context.Context) market.PieceStorageInfos {
 	m.ctrl.T.Helper()
