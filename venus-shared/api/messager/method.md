@@ -1127,7 +1127,7 @@ Response:
 ### RepublishMessage
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json

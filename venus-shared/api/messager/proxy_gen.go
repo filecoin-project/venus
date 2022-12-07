@@ -47,7 +47,7 @@ type IMessagerStruct struct {
 		PushMessageWithId        func(ctx context.Context, id string, msg *types.Message, meta *mtypes.SendSpec) (string, error)                                            `perm:"write"`
 		RecoverFailedMsg         func(ctx context.Context, addr address.Address) ([]string, error)                                                                          `perm:"write"`
 		ReplaceMessage           func(ctx context.Context, params *mtypes.ReplacMessageParams) (cid.Cid, error)                                                             `perm:"write"`
-		RepublishMessage         func(ctx context.Context, id string) error                                                                                                 `perm:"write"`
+		RepublishMessage         func(ctx context.Context, id string) error                                                                                                 `perm:"admin"`
 		SaveNode                 func(ctx context.Context, node *mtypes.Node) error                                                                                         `perm:"admin"`
 		Send                     func(ctx context.Context, params mtypes.QuickSendParams) (string, error)                                                                   `perm:"sign"`
 		SetFeeParams             func(ctx context.Context, params *mtypes.AddressSpec) error                                                                                `perm:"write"`

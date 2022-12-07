@@ -31,7 +31,7 @@ type IMessager interface {
 	UpdateAllFilledMessage(ctx context.Context) (int, error)                                                                                                     //perm:admin
 	UpdateFilledMessageByID(ctx context.Context, id string) (string, error)                                                                                      //perm:write
 	ReplaceMessage(ctx context.Context, params *mtypes.ReplacMessageParams) (cid.Cid, error)                                                                     //perm:write
-	RepublishMessage(ctx context.Context, id string) error                                                                                                       //perm:write
+	RepublishMessage(ctx context.Context, id string) error                                                                                                       //perm:admin
 	MarkBadMessage(ctx context.Context, id string) error                                                                                                         //perm:write
 	RecoverFailedMsg(ctx context.Context, addr address.Address) ([]string, error)                                                                                //perm:write
 
