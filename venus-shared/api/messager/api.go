@@ -43,7 +43,7 @@ type IMessager interface {
 	DeleteAddress(ctx context.Context, addr address.Address) error                 //perm:write
 	ForbiddenAddress(ctx context.Context, addr address.Address) error              //perm:write
 	ActiveAddress(ctx context.Context, addr address.Address) error                 //perm:write
-	SetSelectMsgNum(ctx context.Context, addr address.Address, num uint64) error   //perm:admin
+	SetSelectMsgNum(ctx context.Context, addr address.Address, num uint64) error   //perm:write
 	SetFeeParams(ctx context.Context, params *mtypes.AddressSpec) error            //perm:write
 	ClearUnFillMessage(ctx context.Context, addr address.Address) (int, error)     //perm:write
 

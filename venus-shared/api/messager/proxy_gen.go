@@ -52,7 +52,7 @@ type IMessagerStruct struct {
 		Send                     func(ctx context.Context, params mtypes.QuickSendParams) (string, error)                                                                   `perm:"sign"`
 		SetFeeParams             func(ctx context.Context, params *mtypes.AddressSpec) error                                                                                `perm:"write"`
 		SetLogLevel              func(ctx context.Context, subsystem, level string) error                                                                                   `perm:"admin"`
-		SetSelectMsgNum          func(ctx context.Context, addr address.Address, num uint64) error                                                                          `perm:"admin"`
+		SetSelectMsgNum          func(ctx context.Context, addr address.Address, num uint64) error                                                                          `perm:"write"`
 		SetSharedParams          func(ctx context.Context, params *mtypes.SharedSpec) error                                                                                 `perm:"admin"`
 		UpdateAllFilledMessage   func(ctx context.Context) (int, error)                                                                                                     `perm:"admin"`
 		UpdateFilledMessageByID  func(ctx context.Context, id string) (string, error)                                                                                       `perm:"write"`

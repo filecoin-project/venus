@@ -1213,7 +1213,7 @@ Response: `{}`
 ### SetSelectMsgNum
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
