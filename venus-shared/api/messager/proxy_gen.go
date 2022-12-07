@@ -15,12 +15,12 @@ import (
 
 type IMessagerStruct struct {
 	Internal struct {
-		ActiveAddress            func(ctx context.Context, addr address.Address) error                                                                                      `perm:"admin"`
-		ClearUnFillMessage       func(ctx context.Context, addr address.Address) (int, error)                                                                               `perm:"admin"`
-		DeleteAddress            func(ctx context.Context, addr address.Address) error                                                                                      `perm:"admin"`
+		ActiveAddress            func(ctx context.Context, addr address.Address) error                                                                                      `perm:"write"`
+		ClearUnFillMessage       func(ctx context.Context, addr address.Address) (int, error)                                                                               `perm:"write"`
+		DeleteAddress            func(ctx context.Context, addr address.Address) error                                                                                      `perm:"write"`
 		DeleteNode               func(ctx context.Context, name string) error                                                                                               `perm:"admin"`
-		ForbiddenAddress         func(ctx context.Context, addr address.Address) error                                                                                      `perm:"admin"`
-		GetAddress               func(ctx context.Context, addr address.Address) (*mtypes.Address, error)                                                                   `perm:"admin"`
+		ForbiddenAddress         func(ctx context.Context, addr address.Address) error                                                                                      `perm:"write"`
+		GetAddress               func(ctx context.Context, addr address.Address) (*mtypes.Address, error)                                                                   `perm:"read"`
 		GetMessageByFromAndNonce func(ctx context.Context, from address.Address, nonce uint64) (*mtypes.Message, error)                                                     `perm:"read"`
 		GetMessageBySignedCid    func(ctx context.Context, cid cid.Cid) (*mtypes.Message, error)                                                                            `perm:"read"`
 		GetMessageByUid          func(ctx context.Context, id string) (*mtypes.Message, error)                                                                              `perm:"read"`
@@ -30,34 +30,34 @@ type IMessagerStruct struct {
 		HasAddress               func(ctx context.Context, addr address.Address) (bool, error)                                                                              `perm:"read"`
 		HasMessageByUid          func(ctx context.Context, id string) (bool, error)                                                                                         `perm:"read"`
 		HasNode                  func(ctx context.Context, name string) (bool, error)                                                                                       `perm:"admin"`
-		ListAddress              func(ctx context.Context) ([]*mtypes.Address, error)                                                                                       `perm:"admin"`
-		ListBlockedMessage       func(ctx context.Context, addr address.Address, d time.Duration) ([]*mtypes.Message, error)                                                `perm:"admin"`
-		ListFailedMessage        func(ctx context.Context) ([]*mtypes.Message, error)                                                                                       `perm:"admin"`
-		ListMessage              func(ctx context.Context, p *mtypes.MsgQueryParams) ([]*mtypes.Message, error)                                                             `perm:"admin"`
+		ListAddress              func(ctx context.Context) ([]*mtypes.Address, error)                                                                                       `perm:"read"`
+		ListBlockedMessage       func(ctx context.Context, addr address.Address, d time.Duration) ([]*mtypes.Message, error)                                                `perm:"read"`
+		ListFailedMessage        func(ctx context.Context) ([]*mtypes.Message, error)                                                                                       `perm:"read"`
+		ListMessage              func(ctx context.Context, p *mtypes.MsgQueryParams) ([]*mtypes.Message, error)                                                             `perm:"read"`
 		ListMessageByAddress     func(ctx context.Context, addr address.Address) ([]*mtypes.Message, error)                                                                 `perm:"admin"`
 		ListMessageByFromState   func(ctx context.Context, from address.Address, state mtypes.MessageState, isAsc bool, pageIndex, pageSize int) ([]*mtypes.Message, error) `perm:"admin"`
 		ListNode                 func(ctx context.Context) ([]*mtypes.Node, error)                                                                                          `perm:"admin"`
-		LogList                  func(context.Context) ([]string, error)                                                                                                    `perm:"write"`
-		MarkBadMessage           func(ctx context.Context, id string) error                                                                                                 `perm:"admin"`
+		LogList                  func(context.Context) ([]string, error)                                                                                                    `perm:"admin"`
+		MarkBadMessage           func(ctx context.Context, id string) error                                                                                                 `perm:"write"`
 		NetAddrsListen           func(ctx context.Context) (peer.AddrInfo, error)                                                                                           `perm:"read"`
 		NetConnect               func(ctx context.Context, pi peer.AddrInfo) error                                                                                          `perm:"admin"`
 		NetFindPeer              func(ctx context.Context, p peer.ID) (peer.AddrInfo, error)                                                                                `perm:"read"`
 		NetPeers                 func(ctx context.Context) ([]peer.AddrInfo, error)                                                                                         `perm:"read"`
 		PushMessage              func(ctx context.Context, msg *types.Message, meta *mtypes.SendSpec) (string, error)                                                       `perm:"write"`
 		PushMessageWithId        func(ctx context.Context, id string, msg *types.Message, meta *mtypes.SendSpec) (string, error)                                            `perm:"write"`
-		RecoverFailedMsg         func(ctx context.Context, addr address.Address) ([]string, error)                                                                          `perm:"admin"`
-		ReplaceMessage           func(ctx context.Context, params *mtypes.ReplacMessageParams) (cid.Cid, error)                                                             `perm:"admin"`
-		RepublishMessage         func(ctx context.Context, id string) error                                                                                                 `perm:"admin"`
+		RecoverFailedMsg         func(ctx context.Context, addr address.Address) ([]string, error)                                                                          `perm:"write"`
+		ReplaceMessage           func(ctx context.Context, params *mtypes.ReplacMessageParams) (cid.Cid, error)                                                             `perm:"write"`
+		RepublishMessage         func(ctx context.Context, id string) error                                                                                                 `perm:"write"`
 		SaveNode                 func(ctx context.Context, node *mtypes.Node) error                                                                                         `perm:"admin"`
-		Send                     func(ctx context.Context, params mtypes.QuickSendParams) (string, error)                                                                   `perm:"admin"`
-		SetFeeParams             func(ctx context.Context, params *mtypes.AddressSpec) error                                                                                `perm:"admin"`
+		Send                     func(ctx context.Context, params mtypes.QuickSendParams) (string, error)                                                                   `perm:"sign"`
+		SetFeeParams             func(ctx context.Context, params *mtypes.AddressSpec) error                                                                                `perm:"write"`
 		SetLogLevel              func(ctx context.Context, subsystem, level string) error                                                                                   `perm:"admin"`
 		SetSelectMsgNum          func(ctx context.Context, addr address.Address, num uint64) error                                                                          `perm:"admin"`
 		SetSharedParams          func(ctx context.Context, params *mtypes.SharedSpec) error                                                                                 `perm:"admin"`
 		UpdateAllFilledMessage   func(ctx context.Context) (int, error)                                                                                                     `perm:"admin"`
-		UpdateFilledMessageByID  func(ctx context.Context, id string) (string, error)                                                                                       `perm:"admin"`
-		UpdateMessageStateByID   func(ctx context.Context, id string, state mtypes.MessageState) error                                                                      `perm:"admin"`
-		UpdateNonce              func(ctx context.Context, addr address.Address, nonce uint64) error                                                                        `perm:"admin"`
+		UpdateFilledMessageByID  func(ctx context.Context, id string) (string, error)                                                                                       `perm:"write"`
+		UpdateMessageStateByID   func(ctx context.Context, id string, state mtypes.MessageState) error                                                                      `perm:"write"`
+		UpdateNonce              func(ctx context.Context, addr address.Address, nonce uint64) error                                                                        `perm:"write"`
 		Version                  func(ctx context.Context) (types.Version, error)                                                                                           `perm:"read"`
 		WaitMessage              func(ctx context.Context, id string, confidence uint64) (*mtypes.Message, error)                                                           `perm:"read"`
 		WalletHas                func(ctx context.Context, addr address.Address) (bool, error)                                                                              `perm:"read"`
