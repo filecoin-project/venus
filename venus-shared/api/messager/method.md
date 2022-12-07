@@ -53,7 +53,7 @@
 ### ActiveAddress
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -67,7 +67,7 @@ Response: `{}`
 ### ClearUnFillMessage
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -81,7 +81,7 @@ Response: `123`
 ### DeleteAddress
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -109,7 +109,7 @@ Response: `{}`
 ### ForbiddenAddress
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -123,7 +123,7 @@ Response: `{}`
 ### GetAddress
 
 
-Perms: admin
+Perms: read
 
 Inputs:
 ```json
@@ -505,7 +505,7 @@ Response: `true`
 ### ListAddress
 
 
-Perms: admin
+Perms: read
 
 Inputs: `[]`
 
@@ -534,7 +534,7 @@ Response:
 ### ListBlockedMessage
 
 
-Perms: admin
+Perms: read
 
 Inputs:
 ```json
@@ -602,7 +602,7 @@ Response:
 ### ListFailedMessage
 
 
-Perms: admin
+Perms: read
 
 Inputs: `[]`
 
@@ -664,15 +664,18 @@ Response:
 ### ListMessage
 
 
-Perms: admin
+Perms: read
 
 Inputs:
 ```json
 [
   {
-    "State": 3,
-    "From": "f01234",
-    "WalletName": "string value",
+    "State": [
+      3
+    ],
+    "From": [
+      "f01234"
+    ],
     "PageIndex": 123,
     "PageSize": 123
   }
@@ -895,7 +898,7 @@ Response:
 ### LogList
 
 
-Perms: write
+Perms: admin
 
 Inputs: `[]`
 
@@ -909,7 +912,7 @@ Response:
 ### MarkBadMessage
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -1069,7 +1072,7 @@ Response: `"string value"`
 ### RecoverFailedMsg
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -1088,7 +1091,7 @@ Response:
 ### ReplaceMessage
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -1115,7 +1118,7 @@ Response:
 ### RepublishMessage
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -1149,7 +1152,7 @@ Response: `{}`
 ### Send
 
 
-Perms: admin
+Perms: sign
 
 Inputs:
 ```json
@@ -1174,7 +1177,7 @@ Response: `"string value"`
 ### SetFeeParams
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -1256,7 +1259,7 @@ Response: `123`
 ### UpdateFilledMessageByID
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -1270,7 +1273,7 @@ Response: `"string value"`
 ### UpdateMessageStateByID
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json
@@ -1285,7 +1288,7 @@ Response: `{}`
 ### UpdateNonce
 
 
-Perms: admin
+Perms: write
 
 Inputs:
 ```json

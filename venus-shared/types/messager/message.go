@@ -165,11 +165,9 @@ type ReplacMessageParams struct {
 
 type MsgQueryParams struct {
 	// Message State
-	State MessageState
+	State []MessageState
 	// Message From
-	From address.Address
-	// Message WalletName
-	WalletName string
+	From []address.Address
 
 	PageIndex int
 	PageSize  int
@@ -177,14 +175,15 @@ type MsgQueryParams struct {
 
 func (qp *MsgQueryParams) ToMap() map[string]interface{} {
 	ret := make(map[string]interface{})
-	if qp.State != UnKnown {
+	if len(qp.State) > 0 {
 		ret["state"] = qp.State
 	}
-	if qp.From != address.Undef {
-		ret["from_addr"] = qp.From.String()
-	}
-	if qp.WalletName != "" {
-		ret["wallet_name"] = qp.WalletName
+	if len(qp.From) > 0 {
+		temp := make([]string, 0, len(qp.From))
+		for _, addr := range qp.From {
+			temp = append(temp, addr.String())
+		}
+		ret["from_addr"] = temp
 	}
 	return ret
 }
