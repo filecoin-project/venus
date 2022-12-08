@@ -1098,7 +1098,7 @@ Response:
 ### MarketGetDealUpdates
 
 
-Perms: read
+Perms: admin
 
 Inputs: `[]`
 
@@ -1204,7 +1204,7 @@ Response:
 ### MarketImportDealData
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json
