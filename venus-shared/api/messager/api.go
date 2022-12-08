@@ -39,7 +39,7 @@ type IMessager interface {
 	HasAddress(ctx context.Context, addr address.Address) (bool, error)            //perm:read
 	WalletHas(ctx context.Context, addr address.Address) (bool, error)             //perm:read
 	ListAddress(ctx context.Context) ([]*mtypes.Address, error)                    //perm:read
-	UpdateNonce(ctx context.Context, addr address.Address, nonce uint64) error     //perm:write
+	UpdateNonce(ctx context.Context, addr address.Address, nonce uint64) error     //perm:admin
 	DeleteAddress(ctx context.Context, addr address.Address) error                 //perm:write
 	ForbiddenAddress(ctx context.Context, addr address.Address) error              //perm:write
 	ActiveAddress(ctx context.Context, addr address.Address) error                 //perm:write
@@ -61,10 +61,10 @@ type IMessager interface {
 
 	Send(ctx context.Context, params mtypes.QuickSendParams) (string, error) //perm:sign
 
-	NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, error) //perm:read
-	NetPeers(ctx context.Context) ([]peer.AddrInfo, error)             //perm:read
+	NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, error) //perm:admin
+	NetPeers(ctx context.Context) ([]peer.AddrInfo, error)             //perm:admin
 	NetConnect(ctx context.Context, pi peer.AddrInfo) error            //perm:admin
-	NetAddrsListen(ctx context.Context) (peer.AddrInfo, error)         //perm:read
+	NetAddrsListen(ctx context.Context) (peer.AddrInfo, error)         //perm:admin
 
 	api.Version
 }

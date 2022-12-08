@@ -39,10 +39,10 @@ type IMessagerStruct struct {
 		ListNode                 func(ctx context.Context) ([]*mtypes.Node, error)                                                                                          `perm:"admin"`
 		LogList                  func(context.Context) ([]string, error)                                                                                                    `perm:"admin"`
 		MarkBadMessage           func(ctx context.Context, id string) error                                                                                                 `perm:"write"`
-		NetAddrsListen           func(ctx context.Context) (peer.AddrInfo, error)                                                                                           `perm:"read"`
+		NetAddrsListen           func(ctx context.Context) (peer.AddrInfo, error)                                                                                           `perm:"admin"`
 		NetConnect               func(ctx context.Context, pi peer.AddrInfo) error                                                                                          `perm:"admin"`
-		NetFindPeer              func(ctx context.Context, p peer.ID) (peer.AddrInfo, error)                                                                                `perm:"read"`
-		NetPeers                 func(ctx context.Context) ([]peer.AddrInfo, error)                                                                                         `perm:"read"`
+		NetFindPeer              func(ctx context.Context, p peer.ID) (peer.AddrInfo, error)                                                                                `perm:"admin"`
+		NetPeers                 func(ctx context.Context) ([]peer.AddrInfo, error)                                                                                         `perm:"admin"`
 		PushMessage              func(ctx context.Context, msg *types.Message, meta *mtypes.SendSpec) (string, error)                                                       `perm:"write"`
 		PushMessageWithId        func(ctx context.Context, id string, msg *types.Message, meta *mtypes.SendSpec) (string, error)                                            `perm:"write"`
 		RecoverFailedMsg         func(ctx context.Context, addr address.Address) ([]string, error)                                                                          `perm:"write"`
@@ -57,7 +57,7 @@ type IMessagerStruct struct {
 		UpdateAllFilledMessage   func(ctx context.Context) (int, error)                                                                                                     `perm:"admin"`
 		UpdateFilledMessageByID  func(ctx context.Context, id string) (string, error)                                                                                       `perm:"write"`
 		UpdateMessageStateByID   func(ctx context.Context, id string, state mtypes.MessageState) error                                                                      `perm:"write"`
-		UpdateNonce              func(ctx context.Context, addr address.Address, nonce uint64) error                                                                        `perm:"write"`
+		UpdateNonce              func(ctx context.Context, addr address.Address, nonce uint64) error                                                                        `perm:"admin"`
 		Version                  func(ctx context.Context) (types.Version, error)                                                                                           `perm:"read"`
 		WaitMessage              func(ctx context.Context, id string, confidence uint64) (*mtypes.Message, error)                                                           `perm:"read"`
 		WalletHas                func(ctx context.Context, addr address.Address) (bool, error)                                                                              `perm:"read"`

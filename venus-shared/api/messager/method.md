@@ -935,7 +935,7 @@ Response: `{}`
 ### NetAddrsListen
 
 
-Perms: read
+Perms: admin
 
 Inputs: `[]`
 
@@ -971,7 +971,7 @@ Response: `{}`
 ### NetFindPeer
 
 
-Perms: read
+Perms: admin
 
 Inputs:
 ```json
@@ -993,7 +993,7 @@ Response:
 ### NetPeers
 
 
-Perms: read
+Perms: admin
 
 Inputs: `[]`
 
@@ -1297,7 +1297,7 @@ Response: `{}`
 ### UpdateNonce
 
 
-Perms: write
+Perms: admin
 
 Inputs:
 ```json
