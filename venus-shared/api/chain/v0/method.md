@@ -55,6 +55,7 @@
   * [StateWaitMsgLimited](#statewaitmsglimited)
   * [VerifyEntry](#verifyentry)
 * [Common](#common)
+  * [StartTime](#starttime)
   * [Version](#version)
 * [Market](#market)
   * [StateMarketParticipants](#statemarketparticipants)
@@ -1828,6 +1829,16 @@ Inputs:
 Response: `true`
 
 ## Common
+
+### StartTime
+StartTime returns node start time
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `"0001-01-01T00:00:00Z"`
 
 ### Version
 Version provides information about API provider

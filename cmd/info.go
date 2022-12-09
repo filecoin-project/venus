@@ -22,20 +22,27 @@ var infoCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		ctx := req.Context
-		chainapi := env.(*node.Env).ChainAPI
+		chainAPI := env.(*node.Env).ChainAPI
+		commonAPI := env.(*node.Env).CommonAPI
 		buf := new(bytes.Buffer)
 		writer := NewSilentWriter(buf)
 
-		netParams, err := chainapi.StateGetNetworkParams(ctx)
+		netParams, err := chainAPI.StateGetNetworkParams(ctx)
 		if err != nil {
 			return err
 		}
 		writer.Printf("Network: %s\n", netParams.NetworkName)
 
-		if err := SyncBasefeeCheck(ctx, chainapi, int64(netParams.BlockDelaySecs), writer); err != nil {
+		start, err := commonAPI.StartTime(ctx)
+		if err != nil {
 			return err
 		}
-		status, err := env.(*node.Env).CommonAPI.NodeStatus(ctx, true)
+		writer.Printf("StartTime: %s (started at %s)\n", time.Since(start).Truncate(time.Second), start.Truncate(time.Second))
+
+		if err := SyncBasefeeCheck(ctx, chainAPI, int64(netParams.BlockDelaySecs), writer); err != nil {
+			return err
+		}
+		status, err := commonAPI.NodeStatus(ctx, true)
 		if err != nil {
 			return err
 		}
@@ -117,8 +124,8 @@ var infoCmd = &cmds.Command{
 	},
 }
 
-func SyncBasefeeCheck(ctx context.Context, chainapi v1.IChain, blockDelaySecs int64, writer *SilentWriter) error {
-	head, err := chainapi.ChainHead(ctx)
+func SyncBasefeeCheck(ctx context.Context, chainAPI v1.IChain, blockDelaySecs int64, writer *SilentWriter) error {
+	head, err := chainAPI.ChainHead(ctx)
 	if err != nil {
 		return err
 	}

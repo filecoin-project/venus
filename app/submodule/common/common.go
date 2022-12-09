@@ -23,6 +23,7 @@ type CommonModule struct { // nolint
 	chainModule    *chain2.ChainSubmodule
 	netModule      *network.NetworkSubmodule
 	blockDelaySecs uint64
+	start          time.Time
 }
 
 func NewCommonModule(chainModule *chain2.ChainSubmodule, netModule *network.NetworkSubmodule, blockDelaySecs uint64) *CommonModule {
@@ -30,6 +31,7 @@ func NewCommonModule(chainModule *chain2.ChainSubmodule, netModule *network.Netw
 		chainModule:    chainModule,
 		netModule:      netModule,
 		blockDelaySecs: blockDelaySecs,
+		start:          time.Now(),
 	}
 }
 
@@ -111,6 +113,10 @@ func (cm *CommonModule) NodeStatus(ctx context.Context, inclChainStatus bool) (s
 	}
 
 	return status, nil
+}
+
+func (cm *CommonModule) StartTime(ctx context.Context) (time.Time, error) {
+	return cm.start, nil
 }
 
 func (cm *CommonModule) API() v1api.ICommon {
