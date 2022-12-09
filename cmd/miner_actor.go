@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"strings"
 
@@ -573,6 +574,7 @@ var actorControlSet = &cmds.Command{
 	Options: []cmds.Option{
 		cmds.BoolOption("really-do-it", "Actually send transaction performing the action").WithDefault(false),
 		cmds.StringsOption("addrs", "Control addresses"),
+		cmds.BoolOption("dump-bytes", "Dumps the bytes of the message that would propose this change").WithDefault(false),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		maddr, err := address.NewFromString(req.Arguments[0])
@@ -635,10 +637,6 @@ var actorControlSet = &cmds.Command{
 			}
 		}
 
-		if !req.Options["really-do-it"].(bool) {
-			return re.Emit("Pass --really-do-it to actually execute this action")
-		}
-
 		cwp := &miner2.ChangeWorkerAddressParams{
 			NewWorker:       mi.Worker,
 			NewControlAddrs: toSet,
@@ -649,14 +647,35 @@ var actorControlSet = &cmds.Command{
 			return fmt.Errorf("serializing params: %w", err)
 		}
 
-		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
+		msg := &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
 			Method: builtintypes.MethodsMiner.ChangeWorkerAddress,
 
 			Value:  big.Zero(),
 			Params: sp,
-		}, nil)
+		}
+
+		if ok, _ := req.Options["dump-bytes"].(bool); ok {
+			msg, err = env.(*node.Env).MessagePoolAPI.GasEstimateMessageGas(ctx, msg, nil, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			msgBytes, err := msg.Serialize()
+			if err != nil {
+				return err
+			}
+
+			writer.Println("dump message bytes: ", hex.EncodeToString(msgBytes))
+			return nil
+		}
+
+		if !req.Options["really-do-it"].(bool) {
+			return re.Emit("Pass --really-do-it to actually execute this action")
+		}
+
+		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, msg, nil)
 		if err != nil {
 			return fmt.Errorf("mpool push: %w", err)
 		}
