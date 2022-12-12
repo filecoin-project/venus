@@ -264,7 +264,7 @@ func init() {
 
 	addExample(client.ImportID(1234))
 
-	uuidTmp := auuid.New()
+	uuidTmp := auuid.MustParse("102334ec-35a3-4b36-be9f-02883844503a")
 	addExample(&uuidTmp)
 }
 
