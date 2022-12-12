@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
+	auuid "github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
@@ -262,6 +263,9 @@ func init() {
 	addExample(&clientDataSelector)
 
 	addExample(client.ImportID(1234))
+
+	uuidTmp := auuid.MustParse("102334ec-35a3-4b36-be9f-02883844503a")
+	addExample(&uuidTmp)
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {
