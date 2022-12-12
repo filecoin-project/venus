@@ -93,6 +93,7 @@ func NewGenesisGenerator(bs blockstore.Blockstore) *GenesisGenerator {
 		Bsstore:              bs,
 		PRoot:                cid.Undef,
 		SysCallsImpl:         syscallImpl,
+		TipSetGetter:         vmcontext.TipSetGetterForTipset(chainStore.GetTipSetByHeight, nil),
 		Fork:                 chainFork,
 	}
 	vm, err := vm.NewLegacyVM(context.Background(), vmOption)

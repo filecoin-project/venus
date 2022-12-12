@@ -100,6 +100,7 @@ func (s *Stmgr) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs [
 		Bsstore:             buffStore,
 		SysCallsImpl:        s.syscallsImpl,
 		Fork:                s.fork,
+		TipSetGetter:        vmcontext.TipSetGetterForTipset(s.cs.GetTipSetByHeight, ts),
 		Tracing:             true,
 	}
 
@@ -236,6 +237,7 @@ func (s *Stmgr) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) 
 		PRoot:               ts.At(0).ParentStateRoot,
 		Bsstore:             s.cs.Blockstore(),
 		SysCallsImpl:        s.syscallsImpl,
+		TipSetGetter:        vmcontext.TipSetGetterForTipset(s.cs.GetTipSetByHeight, ts),
 		Tracing:             true,
 	}
 
