@@ -148,12 +148,20 @@ func (m *Message) ValidForBlockInclusion(minGas int64, version network.Version) 
 		return fmt.Errorf("'To' address cannot be empty")
 	}
 
+	if !abi.AddressValidForNetworkVersion(m.To, version) {
+		return fmt.Errorf("'To' address protocol unsupported for network version")
+	}
+
 	if m.To == ZeroAddress && version >= network.Version7 {
 		return fmt.Errorf("invalid 'To' address")
 	}
 
 	if m.From == address.Undef {
 		return fmt.Errorf("'From' address cannot be empty")
+	}
+
+	if !abi.AddressValidForNetworkVersion(m.From, version) {
+		return fmt.Errorf("'From' address protocol unsupported for network version")
 	}
 
 	if m.Value.Int == nil {
