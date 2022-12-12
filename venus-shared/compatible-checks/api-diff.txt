@@ -80,11 +80,11 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	+ SetConcurrent
 	+ SetPassword
 	- Shutdown
-	+ StartTime
 	- StateAllMinerFaults
 	- StateChangedActors
 	- StateCompute
 	- StateDecodeParams
+	> StateGetActor {[func(context.Context, address.Address, types.TipSetKey) (*internal.Actor, error) <> func(context.Context, address.Address, types.TipSetKey) (*types.ActorV5, error)] base=func out type: #0 input; nested={[*internal.Actor <> *types.ActorV5] base=pointed type; nested={[internal.Actor <> types.ActorV5] base=struct field; nested={[internal.Actor <> types.ActorV5] base=exported fields count: 4 != 5; nested=nil}}}}
 	> StateGetNetworkParams {[func(context.Context) (*types.NetworkParams, error) <> func(context.Context) (*api.NetworkParams, error)] base=func out type: #0 input; nested={[*types.NetworkParams <> *api.NetworkParams] base=pointed type; nested={[types.NetworkParams <> api.NetworkParams] base=struct field; nested={[types.NetworkParams <> api.NetworkParams] base=exported field type: #5 field named ForkUpgradeParams; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=struct field; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=exported fields count: 21 != 22; nested=nil}}}}}}
 	- StateGetRandomnessFromBeacon
 	- StateGetRandomnessFromTickets
@@ -193,13 +193,16 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- NetSetLimit
 	- NetStat
 	+ ProtocolParameters
+	- RaftLeader
+	- RaftState
 	+ ResolveToKeyAddr
 	- Session
 	+ SetConcurrent
 	+ SetPassword
 	- Shutdown
-	+ StartTime
+	> StateChangedActors {[func(context.Context, cid.Cid, cid.Cid) (map[string]internal.Actor, error) <> func(context.Context, cid.Cid, cid.Cid) (map[string]types.ActorV5, error)] base=func out type: #0 input; nested={[map[string]internal.Actor <> map[string]types.ActorV5] base=map value; nested={[internal.Actor <> types.ActorV5] base=struct field; nested={[internal.Actor <> types.ActorV5] base=exported fields count: 4 != 5; nested=nil}}}}
 	- StateCompute
+	> StateGetActor {[func(context.Context, address.Address, types.TipSetKey) (*internal.Actor, error) <> func(context.Context, address.Address, types.TipSetKey) (*types.ActorV5, error)] base=func out type: #0 input; nested={[*internal.Actor <> *types.ActorV5] base=pointed type; nested={[internal.Actor <> types.ActorV5] base=struct field; nested={[internal.Actor <> types.ActorV5] base=exported fields count: 4 != 5; nested=nil}}}}
 	> StateGetNetworkParams {[func(context.Context) (*types.NetworkParams, error) <> func(context.Context) (*api.NetworkParams, error)] base=func out type: #0 input; nested={[*types.NetworkParams <> *api.NetworkParams] base=pointed type; nested={[types.NetworkParams <> api.NetworkParams] base=struct field; nested={[types.NetworkParams <> api.NetworkParams] base=exported field type: #5 field named ForkUpgradeParams; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=struct field; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=exported fields count: 21 != 22; nested=nil}}}}}}
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress

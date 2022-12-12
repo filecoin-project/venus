@@ -4,7 +4,6 @@ package market
 
 import (
 	"bytes"
-
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
@@ -15,7 +14,9 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 
@@ -185,14 +186,14 @@ func (s *dealStates6) array() adt.Array {
 }
 
 func fromV6DealState(v6 market6.DealState) DealState {
-
-	return DealState{
+	ret := DealState{
 		SectorStartEpoch: v6.SectorStartEpoch,
 		LastUpdatedEpoch: v6.LastUpdatedEpoch,
 		SlashEpoch:       v6.SlashEpoch,
 		VerifiedClaim:    0,
 	}
 
+	return ret
 }
 
 type dealProposals6 struct {
@@ -323,4 +324,21 @@ func (s *state6) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes
 
 	return verifregtypes.NoAllocationID, fmt.Errorf("unsupported before actors v9")
 
+}
+
+func (s *state6) ActorKey() string {
+	return actors.MarketKey
+}
+
+func (s *state6) ActorVersion() actorstypes.Version {
+	return actorstypes.Version6
+}
+
+func (s *state6) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

@@ -3,11 +3,11 @@
 package system
 
 import (
+	"github.com/ipfs/go-cid"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
-	"github.com/ipfs/go-cid"
 
 	"fmt"
 
@@ -62,7 +62,18 @@ func MakeState(store adt.Store, av actorstypes.Version, builtinActors cid.Cid) (
 }
 
 type State interface {
+    Code() cid.Cid
+    ActorKey() string
+    ActorVersion() actorstypes.Version
+
 	GetState() interface{}
 	GetBuiltinActors() cid.Cid
 	SetBuiltinActors(cid.Cid) error
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
 }
