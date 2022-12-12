@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/venus-devtool/util"
+	"github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/libp2p/exchange"
 	"github.com/filecoin-project/venus/venus-shared/libp2p/hello"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -119,6 +120,14 @@ func main() {
 			types: []interface{}{
 				fvm.FvmExecutionTrace{},
 				fvm.FvmGasCharge{},
+			},
+		},
+		{
+			dir: "../venus-shared/blockstore",
+			types: []interface{}{
+				blockstore.NetRPCReq{},
+				blockstore.NetRPCResp{},
+				blockstore.NetRPCErr{},
 			},
 		},
 	}
