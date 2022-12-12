@@ -77,6 +77,7 @@ const (
 	NetworkNameButterfly   NetworkName = "butterflynet"
 	NetworkNameInterop     NetworkName = "interopnet"
 	NetworkNameIntegration NetworkName = "integrationnet"
+	NetworkNameForce       NetworkName = "forcenet"
 )
 
 type NetworkType int

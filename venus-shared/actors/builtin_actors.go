@@ -57,9 +57,12 @@ func init() {
 func SetNetworkBundle(networkType int) error {
 	networkBundle := ""
 	switch networkType {
-	// case types.Network2k, types.NetworkForce:
-	case 0x2, 0x7:
+	// case types.Network2k:
+	case 0x2:
 		networkBundle = "devnet"
+	// types.NetworkForce
+	case 0x7:
+		networkBundle = "testing"
 	// case types.NetworkButterfly:
 	case 0x8:
 		networkBundle = "butterflynet"

@@ -14,6 +14,7 @@ var NetworkNameWithNetworkType = map[types.NetworkName]types.NetworkType{
 	types.NetworkNameButterfly:   types.NetworkButterfly,
 	types.NetworkNameInterop:     types.NetworkInterop,
 	types.NetworkNameIntegration: types.Integrationnet,
+	types.NetworkNameForce:       types.NetworkForce,
 }
 
 var NetworkTypeWithNetworkName = func() map[types.NetworkType]types.NetworkName {
@@ -33,7 +34,7 @@ func NetworkNameToNetworkType(networkName types.NetworkName) (types.NetworkType,
 	if ok {
 		return nt, nil
 	}
-	// 2k and force networks do not have exact network names
+	// 2k network do not have exact network names
 	return types.Network2k, nil
 }
 
@@ -43,7 +44,7 @@ func NetworkTypeToNetworkName(networkType types.NetworkType) types.NetworkName {
 		return nn
 	}
 
-	// 2k and force networks do not have exact network names
+	// 2k network do not have exact network names
 	return ""
 }
 
