@@ -88,6 +88,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			PRoot:                base,
 			Bsstore:              vmOpts.Bsstore,
 			SysCallsImpl:         vmOpts.SysCallsImpl,
+			TipSetGetter:         vmOpts.TipSetGetter,
 			Tracing:              vmOpts.Tracing,
 		}
 
