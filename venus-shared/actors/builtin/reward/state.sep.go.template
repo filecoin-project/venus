@@ -3,9 +3,12 @@
 package reward
 
 import (
+    "fmt"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 
@@ -118,4 +121,21 @@ func (s *state{{.v}}) PreCommitDepositForPower(networkQAPower builtin.FilterEsti
 
 func (s *state{{.v}}) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state{{.v}}) ActorKey() string {
+    return actors.RewardKey
+}
+
+func (s *state{{.v}}) ActorVersion() actorstypes.Version {
+    return actorstypes.Version{{.v}}
+}
+
+func (s *state{{.v}}) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

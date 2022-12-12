@@ -3,13 +3,16 @@
 package system
 
 import (
+    "fmt"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 
 {{if (le .v 7)}}
 	system{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/system"
-	"fmt"
 {{else}}
 	system{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}system"
 {{end}}
@@ -58,4 +61,21 @@ func (s *state{{.v}}) SetBuiltinActors(c cid.Cid) error {
 	s.State.BuiltinActors = c
 	return nil
 {{end}}
+}
+
+func (s *state{{.v}}) ActorKey() string {
+    return actors.SystemKey
+}
+
+func (s *state{{.v}}) ActorVersion() actorstypes.Version {
+    return actorstypes.Version{{.v}}
+}
+
+func (s *state{{.v}}) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

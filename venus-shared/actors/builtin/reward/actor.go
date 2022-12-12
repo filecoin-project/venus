@@ -9,6 +9,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/cbor"
 
@@ -26,7 +27,7 @@ import (
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
-	builtin9 "github.com/filecoin-project/go-state-types/builtin"
+	builtin10 "github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
@@ -34,8 +35,8 @@ import (
 )
 
 var (
-	Address = builtin9.RewardActorAddr
-	Methods = builtin9.MethodsReward
+	Address = builtin10.RewardActorAddr
+	Methods = builtin10.MethodsReward
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -51,6 +52,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version9:
 			return load9(store, act.Head)
+
+		case actorstypes.Version10:
+			return load10(store, act.Head)
 
 		}
 	}
@@ -113,12 +117,19 @@ func MakeState(store adt.Store, av actorstypes.Version, currRealizedPower abi.St
 	case actorstypes.Version9:
 		return make9(store, currRealizedPower)
 
+	case actorstypes.Version10:
+		return make10(store, currRealizedPower)
+
 	}
 	return nil, fmt.Errorf("unknown actor version %d", av)
 }
 
 type State interface {
 	cbor.Marshaler
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actorstypes.Version
 
 	ThisEpochBaselinePower() (abi.StoragePower, error)
 	ThisEpochReward() (abi.StoragePower, error)
@@ -138,3 +149,18 @@ type State interface {
 }
 
 type AwardBlockRewardParams = reward0.AwardBlockRewardParams
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+		(&state9{}).Code(),
+		(&state10{}).Code(),
+	}
+}

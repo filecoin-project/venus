@@ -4,12 +4,16 @@ package power
 
 import (
 	"bytes"
+	"fmt"
+
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 
@@ -186,4 +190,21 @@ func fromV4Claim(v4 power4.Claim) Claim {
 		RawBytePower:    v4.RawBytePower,
 		QualityAdjPower: v4.QualityAdjPower,
 	}
+}
+
+func (s *state4) ActorKey() string {
+	return actors.PowerKey
+}
+
+func (s *state4) ActorVersion() actorstypes.Version {
+	return actorstypes.Version4
+}
+
+func (s *state4) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

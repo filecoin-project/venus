@@ -30,12 +30,12 @@ import (
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
-	builtin9 "github.com/filecoin-project/go-state-types/builtin"
+	builtin10 "github.com/filecoin-project/go-state-types/builtin"
 )
 
 var (
-	Address = builtin9.InitActorAddr
-	Methods = builtin9.MethodsInit
+	Address = builtin10.InitActorAddr
+	Methods = builtin10.MethodsInit
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -51,6 +51,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version9:
 			return load9(store, act.Head)
+
+		case actorstypes.Version10:
+			return load10(store, act.Head)
 
 		}
 	}
@@ -113,12 +116,19 @@ func MakeState(store adt.Store, av actorstypes.Version, networkName string) (Sta
 	case actorstypes.Version9:
 		return make9(store, networkName)
 
+	case actorstypes.Version10:
+		return make10(store, networkName)
+
 	}
 	return nil, fmt.Errorf("unknown actor version %d", av)
 }
 
 type State interface {
 	cbor.Marshaler
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actorstypes.Version
 
 	ResolveAddress(address address.Address) (address.Address, bool, error)
 	MapAddressToNewID(address address.Address) (address.Address, error)
@@ -140,6 +150,24 @@ type State interface {
 	// Sets the address map for the init actor. This should only be used for testing.
 	SetAddressMap(mcid cid.Cid) error
 
-	AddressMap() (adt.Map, error)
 	GetState() interface{}
+
+	AddressMap() (adt.Map, error)
+	AddressMapBitWidth() int
+	AddressMapHashFunction() func(input []byte) []byte
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+		(&state9{}).Code(),
+		(&state10{}).Code(),
+	}
 }

@@ -3,11 +3,12 @@
 package verifreg
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/ipfs/go-cid"
-
-	"fmt"
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
@@ -96,26 +97,43 @@ func (s *state3) GetState() interface{} {
 	return &s.State
 }
 
-func (s *state3) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*verifreg9.Allocation, bool, error) {
+func (s *state3) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*Allocation, bool, error) {
 
 	return nil, false, fmt.Errorf("unsupported in actors v3")
 
 }
 
-func (s *state3) GetAllocations(clientIdAddr address.Address) (map[verifreg9.AllocationId]verifreg9.Allocation, error) {
+func (s *state3) GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error) {
 
 	return nil, fmt.Errorf("unsupported in actors v3")
 
 }
 
-func (s *state3) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*verifreg9.Claim, bool, error) {
+func (s *state3) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
 
 	return nil, false, fmt.Errorf("unsupported in actors v3")
 
 }
 
-func (s *state3) GetClaims(providerIdAddr address.Address) (map[verifreg9.ClaimId]verifreg9.Claim, error) {
+func (s *state3) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error) {
 
 	return nil, fmt.Errorf("unsupported in actors v3")
 
+}
+
+func (s *state3) ActorKey() string {
+	return actors.VerifregKey
+}
+
+func (s *state3) ActorVersion() actorstypes.Version {
+	return actorstypes.Version3
+}
+
+func (s *state3) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

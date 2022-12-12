@@ -140,17 +140,18 @@ v0api.FullNode:
 	PaychVoucherSubmit:	In=5,	Out=2,	CheckSum=03f7a7f3a90849ea5da8eedd01643a1c
 	Session:	In=1,	Out=2,	CheckSum=cdb04ef6a97114c8f24f456a2e70f1cd
 	Shutdown:	In=1,	Out=1,	CheckSum=c39be30cc5a8826024fcf4d23e7017d6
+	StartTime:	In=1,	Out=2,	CheckSum=7eaff8e9437521f47c2a8bf1be7a77c8
 	StateAccountKey:	In=3,	Out=2,	CheckSum=9b6f9fdaea5bb22c60772266c418d98f
 	StateActorCodeCIDs:	In=2,	Out=2,	CheckSum=d52881195cc100121739e6c85c45dd9f
 	StateActorManifestCID:	In=2,	Out=2,	CheckSum=e04ec685bb3d32a892d45c5215586589
 	StateAllMinerFaults:	In=3,	Out=2,	CheckSum=a17e05b21e1ecc8da867e2f76df6c46c
 	StateCall:	In=3,	Out=2,	CheckSum=b33ab6c7df31d805c256c8ab6691b085
-	StateChangedActors:	In=3,	Out=2,	CheckSum=cbc0cd36e495552a6672caab9f839468
+	StateChangedActors:	In=3,	Out=2,	CheckSum=ff54048645d1a682d994e995d0736f8d
 	StateCirculatingSupply:	In=2,	Out=2,	CheckSum=22ac180fa0c583b4036666bfc155fd63
 	StateCompute:	In=4,	Out=2,	CheckSum=1d429c389354255c7f865f00a59e3888
 	StateDealProviderCollateralBounds:	In=4,	Out=2,	CheckSum=5231e44843c0b74a04371e1e7170d4b2
 	StateDecodeParams:	In=5,	Out=2,	CheckSum=8c6311be4dc064a657368516c33e1307
-	StateGetActor:	In=3,	Out=2,	CheckSum=adcd0bbd36e3ab94f777c7cb3df1fb34
+	StateGetActor:	In=3,	Out=2,	CheckSum=5ca2405c99c6a03afc0ca0dedefd263b
 	StateGetAllocation:	In=4,	Out=2,	CheckSum=306a8d2eb65b1bd436f2230bb96666b5
 	StateGetAllocationForPendingDeal:	In=3,	Out=2,	CheckSum=3d2912f0c80606576bb697499140ae2f
 	StateGetAllocations:	In=3,	Out=2,	CheckSum=570266653b3643cf22e6b47609db7e55
@@ -370,21 +371,24 @@ api.FullNode:
 	PaychVoucherCreate:	In=4,	Out=2,	CheckSum=e5113a58d351abf5cadd77b46f690c2d
 	PaychVoucherList:	In=2,	Out=2,	CheckSum=c4a81e1915ceee53e3ecde9f1ae30b4c
 	PaychVoucherSubmit:	In=5,	Out=2,	CheckSum=03f7a7f3a90849ea5da8eedd01643a1c
+	RaftLeader:	In=1,	Out=2,	CheckSum=1635810444d2b13b381cbefece853ba7
+	RaftState:	In=1,	Out=2,	CheckSum=f5cfaa01ba547fa4fe060c9f5bc3e518
 	Session:	In=1,	Out=2,	CheckSum=cdb04ef6a97114c8f24f456a2e70f1cd
 	Shutdown:	In=1,	Out=1,	CheckSum=c39be30cc5a8826024fcf4d23e7017d6
+	StartTime:	In=1,	Out=2,	CheckSum=7eaff8e9437521f47c2a8bf1be7a77c8
 	StateAccountKey:	In=3,	Out=2,	CheckSum=9b6f9fdaea5bb22c60772266c418d98f
 	StateActorCodeCIDs:	In=2,	Out=2,	CheckSum=d52881195cc100121739e6c85c45dd9f
 	StateActorManifestCID:	In=2,	Out=2,	CheckSum=e04ec685bb3d32a892d45c5215586589
 	StateAllMinerFaults:	In=3,	Out=2,	CheckSum=a17e05b21e1ecc8da867e2f76df6c46c
 	StateCall:	In=3,	Out=2,	CheckSum=b33ab6c7df31d805c256c8ab6691b085
-	StateChangedActors:	In=3,	Out=2,	CheckSum=cbc0cd36e495552a6672caab9f839468
+	StateChangedActors:	In=3,	Out=2,	CheckSum=ff54048645d1a682d994e995d0736f8d
 	StateCirculatingSupply:	In=2,	Out=2,	CheckSum=22ac180fa0c583b4036666bfc155fd63
 	StateCompute:	In=4,	Out=2,	CheckSum=1d429c389354255c7f865f00a59e3888
 	StateComputeDataCID:	In=5,	Out=2,	CheckSum=83d963e02e49a6747b0f83daf1d249be
 	StateDealProviderCollateralBounds:	In=4,	Out=2,	CheckSum=5231e44843c0b74a04371e1e7170d4b2
 	StateDecodeParams:	In=5,	Out=2,	CheckSum=8c6311be4dc064a657368516c33e1307
 	StateEncodeParams:	In=4,	Out=2,	CheckSum=3e1a5390b92b1b69f9be038cd7400e38
-	StateGetActor:	In=3,	Out=2,	CheckSum=adcd0bbd36e3ab94f777c7cb3df1fb34
+	StateGetActor:	In=3,	Out=2,	CheckSum=5ca2405c99c6a03afc0ca0dedefd263b
 	StateGetAllocation:	In=4,	Out=2,	CheckSum=306a8d2eb65b1bd436f2230bb96666b5
 	StateGetAllocationForPendingDeal:	In=3,	Out=2,	CheckSum=3d2912f0c80606576bb697499140ae2f
 	StateGetAllocations:	In=3,	Out=2,	CheckSum=570266653b3643cf22e6b47609db7e55

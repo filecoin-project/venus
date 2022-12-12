@@ -3,6 +3,7 @@ package internal
 import (
 	"errors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 )
@@ -25,7 +26,7 @@ var ErrActorNotFound = errors.New("actor not found")
 // inside the code.
 //
 // Not safe for concurrent access.
-type Actor struct {
+type ActorV4 struct {
 	// Code is a CID of the VM code for this actor's implementation (or a constant for actors implemented in Go code).
 	// Code may be nil for an uninitialized actor (which exists because it has received a balance).
 	Code cid.Cid
@@ -38,15 +39,18 @@ type Actor struct {
 	Balance abi.TokenAmount
 }
 
-// NewActor constructs a new actor.
-func NewActor(code cid.Cid, balance abi.TokenAmount, head cid.Cid) *Actor {
-	return &Actor{
-		Code:    code,
-		Nonce:   0,
-		Balance: balance,
-		Head:    head,
-	}
+// Actor State for state tree version 5
+type ActorV5 struct {
+	// Identifies the type of actor (string coded as a CID), see `chain/actors/actors.go`.
+	Code    cid.Cid
+	Head    cid.Cid
+	Nonce   uint64
+	Balance BigInt
+	// Predictable Address
+	Address *address.Address
 }
+
+type Actor = ActorV5
 
 // Empty tests whether the actor's code is defined.
 func (t *Actor) Empty() bool {
@@ -56,4 +60,22 @@ func (t *Actor) Empty() bool {
 // IncrementSeqNum increments the seq number.
 func (t *Actor) IncrementSeqNum() {
 	t.Nonce = t.Nonce + 1
+}
+
+func AsActorV4(a *ActorV5) *ActorV4 {
+	return &ActorV4{
+		Code:    a.Code,
+		Head:    a.Head,
+		Nonce:   a.Nonce,
+		Balance: a.Balance,
+	}
+}
+
+func AsActorV5(a *ActorV4) *ActorV5 {
+	return &ActorV5{
+		Code:    a.Code,
+		Head:    a.Head,
+		Nonce:   a.Nonce,
+		Balance: a.Balance,
+	}
 }

@@ -3,12 +3,16 @@
 package paych
 
 import (
+	"fmt"
+
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
 	paych6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/paych"
@@ -113,4 +117,21 @@ func (ls *laneState6) Redeemed() (big.Int, error) {
 
 func (ls *laneState6) Nonce() (uint64, error) {
 	return ls.LaneState.Nonce, nil
+}
+
+func (s *state6) ActorKey() string {
+	return actors.PaychKey
+}
+
+func (s *state6) ActorVersion() actorstypes.Version {
+	return actorstypes.Version6
+}
+
+func (s *state6) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

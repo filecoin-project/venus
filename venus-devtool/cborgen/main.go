@@ -66,6 +66,7 @@ func main() {
 		{
 			dir: "../venus-shared/internal/",
 			types: []interface{}{
+				types.ActorV4{},
 				types.Actor{},
 				types.Message{},
 			},
