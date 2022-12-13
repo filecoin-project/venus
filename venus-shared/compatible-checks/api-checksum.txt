@@ -282,6 +282,28 @@ api.FullNode:
 	Closing:	In=1,	Out=2,	CheckSum=3e0dae65a2378c12be14cee8a60a3bfe
 	CreateBackup:	In=2,	Out=1,	CheckSum=7b0679c2c73ab9606a7da21c5251ad19
 	Discover:	In=1,	Out=2,	CheckSum=09640e20c6d71c3e96c7a56c8698acc9
+	EthAccounts:	In=1,	Out=2,	CheckSum=d2d1b2a1ffc7dc9b28e8c64c79147670
+	EthBlockNumber:	In=1,	Out=2,	CheckSum=9d956cbd87477053e4d7f45336802b8c
+	EthCall:	In=3,	Out=2,	CheckSum=6f14f42f172603fd92a8d1741dc3ea10
+	EthChainId:	In=1,	Out=2,	CheckSum=9d956cbd87477053e4d7f45336802b8c
+	EthEstimateGas:	In=2,	Out=2,	CheckSum=d31a8703c9a6db3e7a672d0a6cf89cca
+	EthFeeHistory:	In=4,	Out=2,	CheckSum=7af549e71ca9ec59626730371b0f451e
+	EthGasPrice:	In=1,	Out=2,	CheckSum=1c773c174dd375557f4fdae92c4fccf5
+	EthGetBalance:	In=3,	Out=2,	CheckSum=63fa8ab72ea298d2ad24629d162813da
+	EthGetBlockByHash:	In=3,	Out=2,	CheckSum=31c8c4944050144e016d48077a9a6d26
+	EthGetBlockByNumber:	In=3,	Out=2,	CheckSum=6b8efeaa08bb5521fa6b0d94c18e6431
+	EthGetBlockTransactionCountByHash:	In=2,	Out=2,	CheckSum=d3ca8b2902d29502cb4934e2cce8ac1d
+	EthGetBlockTransactionCountByNumber:	In=2,	Out=2,	CheckSum=95778b81736e575caf6e39102cbd24c3
+	EthGetCode:	In=3,	Out=2,	CheckSum=cdfa3798431df16537bf990bfee6dbe1
+	EthGetStorageAt:	In=4,	Out=2,	CheckSum=e505cd577c7257ac17fe6f48e5ebbd42
+	EthGetTransactionByBlockHashAndIndex:	In=3,	Out=2,	CheckSum=0ea3f77789316c378286b4a6dc6b9fee
+	EthGetTransactionByBlockNumberAndIndex:	In=3,	Out=2,	CheckSum=f5381a549893d99e731a8cc1d9ea8757
+	EthGetTransactionByHash:	In=2,	Out=2,	CheckSum=01e0576fbc94c6b15ebe6c342c00e099
+	EthGetTransactionCount:	In=3,	Out=2,	CheckSum=876e1a2c95e98246e9574e65377a1781
+	EthGetTransactionReceipt:	In=2,	Out=2,	CheckSum=af6d9dda90fdb0f9427498580b9481a6
+	EthMaxPriorityFeePerGas:	In=1,	Out=2,	CheckSum=1c773c174dd375557f4fdae92c4fccf5
+	EthProtocolVersion:	In=1,	Out=2,	CheckSum=9d956cbd87477053e4d7f45336802b8c
+	EthSendRawTransaction:	In=2,	Out=2,	CheckSum=f63e0b205164d628bc8022b6d5a496f5
 	GasEstimateFeeCap:	In=4,	Out=2,	CheckSum=0fcac02de1d21c9ac6e10696a6499eba
 	GasEstimateGasLimit:	In=3,	Out=2,	CheckSum=4d1bd57eef0ee90d4c2e89f097d0604d
 	GasEstimateGasPremium:	In=5,	Out=2,	CheckSum=550724ed37e2fdaa64e55147e82214b1
@@ -344,6 +366,7 @@ api.FullNode:
 	NetDisconnect:	In=2,	Out=1,	CheckSum=5ac3aa2dccdc990c45ca8ef35b1bdb9f
 	NetFindPeer:	In=2,	Out=2,	CheckSum=9f9de93a69acd82e4195b253d17a9e8b
 	NetLimit:	In=2,	Out=2,	CheckSum=9a35d6e94508e633a1cc5c5dc3f983eb
+	NetListening:	In=1,	Out=2,	CheckSum=de305c848673f2b095e6cfdecdaf85c3
 	NetPeerInfo:	In=2,	Out=2,	CheckSum=2f530e3029ddebf897c3d3029ad763bf
 	NetPeers:	In=1,	Out=2,	CheckSum=165dfc6f0c55818a2e2be3fcacea8045
 	NetPing:	In=2,	Out=2,	CheckSum=31c80ab2bc55adad54a85e38b45430b7
@@ -353,6 +376,7 @@ api.FullNode:
 	NetPubsubScores:	In=1,	Out=2,	CheckSum=66c7a1061de3d6e11d39ce90692aa885
 	NetSetLimit:	In=3,	Out=1,	CheckSum=f591c226feead6f0c1d9442a2320cd1e
 	NetStat:	In=2,	Out=2,	CheckSum=82ea34376644e023a4314cde3fb1e4fc
+	NetVersion:	In=1,	Out=2,	CheckSum=be418036949143c75c2d83aed9a66229
 	NodeStatus:	In=2,	Out=2,	CheckSum=b46530b68171c85301db86c1b7c19824
 	PaychAllocateLane:	In=2,	Out=2,	CheckSum=2f0992ed1f0be8ff9bee0c3f0a39e1e1
 	PaychAvailableFunds:	In=2,	Out=2,	CheckSum=f40942f65ce181601e7bc49e6378a89c
