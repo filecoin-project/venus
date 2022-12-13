@@ -158,13 +158,12 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	- CreateBackup
 	- Discover
 	> EthBlockNumber {[func(context.Context) (types.EthInt, error) <> func(context.Context) (api.EthUint64, error)] base=func out type: #0 input; nested={[types.EthInt <> api.EthUint64] base=type kinds: int64 != uint64; nested=nil}}
-	- EthCall
+	> EthCall {[func(context.Context, types.EthCall, string) (string, error) <> func(context.Context, api.EthCall, string) (api.EthBytes, error)] base=func in type: #1 input; nested={[types.EthCall <> api.EthCall] base=struct field; nested={[types.EthCall <> api.EthCall] base=exported field type: #0 field named From; nested={[types.EthAddress <> *api.EthAddress] base=type kinds: array != ptr; nested=nil}}}}
 	> EthChainId {[func(context.Context) (types.EthInt, error) <> func(context.Context) (api.EthUint64, error)] base=func out type: #0 input; nested={[types.EthInt <> api.EthUint64] base=type kinds: int64 != uint64; nested=nil}}
-	- EthEstimateGas
+	> EthEstimateGas {[func(context.Context, types.EthCall, string) (types.EthInt, error) <> func(context.Context, api.EthCall) (api.EthUint64, error)] base=func in num: 3 != 2; nested=nil}
 	- EthFeeHistory
 	> EthGasPrice {[func(context.Context) (types.EthInt, error) <> func(context.Context) (api.EthBigInt, error)] base=func out type: #0 input; nested={[types.EthInt <> api.EthBigInt] base=type kinds: int64 != struct; nested=nil}}
-	> EthGetBalance {[func(context.Context, types.EthAddress, string) (types.EthBigInt, error) <> func(context.Context, api.EthAddress, string) (api.EthBigInt, error)] base=func out type: #0 input; nested={[types.EthBigInt <> api.EthBigInt] base=codec unmarshaler implementations for codec JSON: true; false; nested=nil}}
-	> EthGetBlockByHash {[func(context.Context, types.EthHash, bool) (types.EthBlock, error) <> func(context.Context, api.EthHash, bool) (api.EthBlock, error)] base=func out type: #0 input; nested={[types.EthBlock <> api.EthBlock] base=struct field; nested={[types.EthBlock <> api.EthBlock] base=exported fields count: 16 != 21; nested=nil}}}
+	> EthGetBlockByHash {[func(context.Context, types.EthHash, bool) (types.EthBlock, error) <> func(context.Context, api.EthHash, bool) (api.EthBlock, error)] base=func out type: #0 input; nested={[types.EthBlock <> api.EthBlock] base=struct field; nested={[types.EthBlock <> api.EthBlock] base=exported fields count: 18 != 21; nested=nil}}}
 	> EthGetBlockByNumber {[func(context.Context, types.EthInt, bool) (types.EthBlock, error) <> func(context.Context, string, bool) (api.EthBlock, error)] base=func in type: #1 input; nested={[types.EthInt <> string] base=type kinds: int64 != string; nested=nil}}
 	> EthGetBlockTransactionCountByHash {[func(context.Context, types.EthHash) (types.EthInt, error) <> func(context.Context, api.EthHash) (api.EthUint64, error)] base=func out type: #0 input; nested={[types.EthInt <> api.EthUint64] base=type kinds: int64 != uint64; nested=nil}}
 	> EthGetBlockTransactionCountByNumber {[func(context.Context, types.EthInt) (types.EthInt, error) <> func(context.Context, api.EthUint64) (api.EthUint64, error)] base=func in type: #1 input; nested={[types.EthInt <> api.EthUint64] base=type kinds: int64 != uint64; nested=nil}}

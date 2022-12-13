@@ -166,7 +166,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	blockDelay := b.repo.Config().NetworkParams.BlockDelay
 	nd.common = common.NewCommonModule(nd.chain, nd.network, blockDelay)
 
-	if nd.eth, err = eth.NewEthSubModule(nd.chain); err != nil {
+	if nd.eth, err = eth.NewEthSubModule(nd.chain, nd.repo.Config().NetworkParams); err != nil {
 		return nil, err
 	}
 

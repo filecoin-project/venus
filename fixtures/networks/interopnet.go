@@ -57,6 +57,7 @@ func InteropNet() *NetworkConf {
 			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:       address.Testnet,
 			PropagationDelaySecs: 6,
+			Eip155ChainID:        3141592,
 		},
 	}
 }
