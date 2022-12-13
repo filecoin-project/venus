@@ -387,6 +387,24 @@ func (store *Store) GetTipSetByHeight(ctx context.Context, ts *types.TipSet, h a
 	return store.GetTipSet(ctx, lbts.Parents())
 }
 
+func (store *Store) GetTipSetByCid(ctx context.Context, c cid.Cid) (*types.TipSet, error) {
+	blk, err := store.bsstore.Get(ctx, c)
+	if err != nil {
+		return nil, fmt.Errorf("cannot find tipset with cid %s: %w", c, err)
+	}
+
+	tsk := new(types.TipSetKey)
+	if err := tsk.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
+		return nil, fmt.Errorf("cannot unmarshal block into tipset key: %w", err)
+	}
+
+	ts, err := store.GetTipSet(ctx, *tsk)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get tipset from key: %w", err)
+	}
+	return ts, nil
+}
+
 // GetTipSetState returns the aggregate state of the tipset identified by `key`.
 func (store *Store) GetTipSetState(ctx context.Context, ts *types.TipSet) (tree.Tree, error) {
 	if ts == nil {
@@ -548,6 +566,13 @@ func (store *Store) SetHead(ctx context.Context, newTS *types.TipSet) error {
 		old: dropped,
 		new: added,
 	}
+
+	tskBlk, err := newTS.Key().ToStorageBlock()
+	if err != nil {
+		log.Errorf("failed to create a block from tsk: %s", newTS.Key())
+	}
+	_ = store.bsstore.Put(ctx, tskBlk)
+
 	return nil
 }
 

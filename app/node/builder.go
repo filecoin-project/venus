@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/venus-auth/jwtclient"
 	"github.com/filecoin-project/venus/app/submodule/dagservice"
+	"github.com/filecoin-project/venus/app/submodule/eth"
 	"github.com/filecoin-project/venus/app/submodule/network"
 
 	logging "github.com/ipfs/go-log"
@@ -165,6 +166,10 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	blockDelay := b.repo.Config().NetworkParams.BlockDelay
 	nd.common = common.NewCommonModule(nd.chain, nd.network, blockDelay)
 
+	if nd.eth, err = eth.NewEthSubModule(nd.chain); err != nil {
+		return nil, err
+	}
+
 	apiBuilder := NewBuilder()
 	apiBuilder.NameSpace("Filecoin")
 
@@ -181,6 +186,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		nd.paychan,
 		nd.market,
 		nd.common,
+		nd.eth,
 	)
 
 	if err != nil {
