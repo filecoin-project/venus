@@ -150,10 +150,10 @@ func TipSetKeyFromBytes(encoded []byte) (TipSetKey, error) {
 	return TipSetKey{string(encoded)}, nil
 }
 
-func (k TipSetKey) ToStorageBlock() (block.Block, error) {
+func (tsk TipSetKey) ToStorageBlock() (block.Block, error) {
 	buf := new(bytes.Buffer)
-	if err := k.MarshalCBOR(buf); err != nil {
-		log.Errorf("failed to marshal ts key as CBOR: %s", k)
+	if err := tsk.MarshalCBOR(buf); err != nil {
+		log.Errorf("failed to marshal ts key as CBOR: %s %v", tsk, err)
 	}
 
 	cid, err := abi.CidBuilder.Sum(buf.Bytes())
