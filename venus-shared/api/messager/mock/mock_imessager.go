@@ -308,18 +308,18 @@ func (mr *MockIMessagerMockRecorder) ListFailedMessage(arg0 interface{}) *gomock
 }
 
 // ListMessage mocks base method.
-func (m *MockIMessager) ListMessage(arg0 context.Context) ([]*messager.Message, error) {
+func (m *MockIMessager) ListMessage(arg0 context.Context, arg1 *messager.MsgQueryParams) ([]*messager.Message, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListMessage", arg0)
+	ret := m.ctrl.Call(m, "ListMessage", arg0, arg1)
 	ret0, _ := ret[0].([]*messager.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListMessage indicates an expected call of ListMessage.
-func (mr *MockIMessagerMockRecorder) ListMessage(arg0 interface{}) *gomock.Call {
+func (mr *MockIMessagerMockRecorder) ListMessage(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMessage", reflect.TypeOf((*MockIMessager)(nil).ListMessage), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMessage", reflect.TypeOf((*MockIMessager)(nil).ListMessage), arg0, arg1)
 }
 
 // ListMessageByAddress mocks base method.
