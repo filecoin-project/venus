@@ -33,6 +33,8 @@ type IETH interface {
 	NetVersion(ctx context.Context) (string, error)                                                                        //perm:read
 	NetListening(ctx context.Context) (bool, error)                                                                        //perm:read
 	EthProtocolVersion(ctx context.Context) (types.EthInt, error)                                                          //perm:read
-	EthMaxPriorityFeePerGas(ctx context.Context) (types.EthInt, error)                                                     //perm:read
 	EthGasPrice(ctx context.Context) (types.EthInt, error)                                                                 //perm:read
+	EthMaxPriorityFeePerGas(ctx context.Context) (types.EthInt, error)                                                     //perm:read
+	EthEstimateGas(ctx context.Context, tx types.EthCall, blkParam string) (types.EthInt, error)                           //perm:read
+	EthCall(ctx context.Context, tx types.EthCall, blkParam string) (string, error)                                        //perm:read
 }

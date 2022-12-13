@@ -162,4 +162,7 @@ func aliasETHAPI(rpcServer *jsonrpc.RPCServer) {
 
 	rpcServer.AliasMethod("net_version", "Filecoin.NetVersion")
 	rpcServer.AliasMethod("net_listening", "Filecoin.NetListening")
+
+	rpcServer.AliasMethod("eth_estimateGas", "Filecoin.EthEstimateGas")
+	rpcServer.AliasMethod("eth_call", "Filecoin.EthCall")
 }

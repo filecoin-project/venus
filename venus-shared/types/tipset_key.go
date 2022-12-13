@@ -150,6 +150,14 @@ func TipSetKeyFromBytes(encoded []byte) (TipSetKey, error) {
 	return TipSetKey{string(encoded)}, nil
 }
 
+func (tsk TipSetKey) Cid() (cid.Cid, error) {
+	blk, err := tsk.ToStorageBlock()
+	if err != nil {
+		return cid.Cid{}, err
+	}
+	return blk.Cid(), nil
+}
+
 func (tsk TipSetKey) ToStorageBlock() (block.Block, error) {
 	buf := new(bytes.Buffer)
 	if err := tsk.MarshalCBOR(buf); err != nil {

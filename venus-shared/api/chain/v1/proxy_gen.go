@@ -893,7 +893,9 @@ type IETHStruct struct {
 	Internal struct {
 		EthAccounts                            func(ctx context.Context) ([]types.EthAddress, error)                                                       `perm:"read"`
 		EthBlockNumber                         func(ctx context.Context) (types.EthInt, error)                                                             `perm:"read"`
+		EthCall                                func(ctx context.Context, tx types.EthCall, blkParam string) (string, error)                                `perm:"read"`
 		EthChainId                             func(ctx context.Context) (types.EthInt, error)                                                             `perm:"read"`
+		EthEstimateGas                         func(ctx context.Context, tx types.EthCall, blkParam string) (types.EthInt, error)                          `perm:"read"`
 		EthGasPrice                            func(ctx context.Context) (types.EthInt, error)                                                             `perm:"read"`
 		EthGetBalance                          func(ctx context.Context, address types.EthAddress, blkParam string) (types.EthBigInt, error)               `perm:"read"`
 		EthGetBlockByHash                      func(ctx context.Context, blkHash types.EthHash, fullTxInfo bool) (types.EthBlock, error)                   `perm:"read"`
@@ -920,8 +922,14 @@ func (s *IETHStruct) EthAccounts(p0 context.Context) ([]types.EthAddress, error)
 func (s *IETHStruct) EthBlockNumber(p0 context.Context) (types.EthInt, error) {
 	return s.Internal.EthBlockNumber(p0)
 }
+func (s *IETHStruct) EthCall(p0 context.Context, p1 types.EthCall, p2 string) (string, error) {
+	return s.Internal.EthCall(p0, p1, p2)
+}
 func (s *IETHStruct) EthChainId(p0 context.Context) (types.EthInt, error) {
 	return s.Internal.EthChainId(p0)
+}
+func (s *IETHStruct) EthEstimateGas(p0 context.Context, p1 types.EthCall, p2 string) (types.EthInt, error) {
+	return s.Internal.EthEstimateGas(p0, p1, p2)
 }
 func (s *IETHStruct) EthGasPrice(p0 context.Context) (types.EthInt, error) {
 	return s.Internal.EthGasPrice(p0)

@@ -53,6 +53,7 @@ func Net2k() *NetworkConf {
 			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:       address.Testnet,
 			PropagationDelaySecs: 1,
+			Eip155ChainID:        31415926,
 		},
 	}
 }
