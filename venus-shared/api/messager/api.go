@@ -47,7 +47,7 @@ type IMessager interface {
 	SetFeeParams(ctx context.Context, params *mtypes.AddressSpec) error            //perm:write
 	ClearUnFillMessage(ctx context.Context, addr address.Address) (int, error)     //perm:write
 
-	GetSharedParams(ctx context.Context) (*mtypes.SharedSpec, error)      //perm:admin
+	GetSharedParams(ctx context.Context) (*mtypes.SharedSpec, error)      //perm:read
 	SetSharedParams(ctx context.Context, params *mtypes.SharedSpec) error //perm:admin
 
 	SaveNode(ctx context.Context, node *mtypes.Node) error          //perm:admin

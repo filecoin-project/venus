@@ -447,7 +447,7 @@ Response:
 ### GetSharedParams
 
 
-Perms: admin
+Perms: read
 
 Inputs: `[]`
 

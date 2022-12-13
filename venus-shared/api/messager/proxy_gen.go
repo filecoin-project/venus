@@ -26,7 +26,7 @@ type IMessagerStruct struct {
 		GetMessageByUid          func(ctx context.Context, id string) (*mtypes.Message, error)                                                                              `perm:"read"`
 		GetMessageByUnsignedCid  func(ctx context.Context, cid cid.Cid) (*mtypes.Message, error)                                                                            `perm:"read"`
 		GetNode                  func(ctx context.Context, name string) (*mtypes.Node, error)                                                                               `perm:"admin"`
-		GetSharedParams          func(ctx context.Context) (*mtypes.SharedSpec, error)                                                                                      `perm:"admin"`
+		GetSharedParams          func(ctx context.Context) (*mtypes.SharedSpec, error)                                                                                      `perm:"read"`
 		HasAddress               func(ctx context.Context, addr address.Address) (bool, error)                                                                              `perm:"read"`
 		HasMessageByUid          func(ctx context.Context, id string) (bool, error)                                                                                         `perm:"read"`
 		HasNode                  func(ctx context.Context, name string) (bool, error)                                                                                       `perm:"admin"`
