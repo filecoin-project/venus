@@ -8,9 +8,13 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
+
+var log = logging.Logger("types")
 
 // TipSetKey is an immutable set of CIDs forming a unique key for a TipSet.
 // Equal keys will have equivalent iteration order. CIDs are maintained in
@@ -144,6 +148,28 @@ func TipSetKeyFromBytes(encoded []byte) (TipSetKey, error) {
 		return TipSetKey{}, err
 	}
 	return TipSetKey{string(encoded)}, nil
+}
+
+func (tsk TipSetKey) Cid() (cid.Cid, error) {
+	blk, err := tsk.ToStorageBlock()
+	if err != nil {
+		return cid.Cid{}, err
+	}
+	return blk.Cid(), nil
+}
+
+func (tsk TipSetKey) ToStorageBlock() (block.Block, error) {
+	buf := new(bytes.Buffer)
+	if err := tsk.MarshalCBOR(buf); err != nil {
+		log.Errorf("failed to marshal ts key as CBOR: %s", tsk)
+	}
+
+	cid, err := abi.CidBuilder.Sum(buf.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
+	return block.NewBlockWithCid(buf.Bytes(), cid)
 }
 
 func (tsk *TipSetKey) UnmarshalCBOR(r io.Reader) error {
