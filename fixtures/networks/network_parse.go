@@ -22,22 +22,39 @@ func GetNetworkFromName(name string) (types.NetworkType, error) {
 	return nt, nil
 }
 
-func SetConfigFromOptions(cfg *config.Config, network string) error {
-	netcfg, err := GetNetworkConfig(network)
+func SetConfigFromOptions(cfg *config.Config, networkName string) error {
+	netcfg, err := GetNetworkConfig(networkName)
 	if err != nil {
 		return err
 	}
-	if netcfg != nil {
-		cfg.Bootstrap = &netcfg.Bootstrap
-		cfg.NetworkParams = &netcfg.Network
-	}
+	cfg.Bootstrap = &netcfg.Bootstrap
+	cfg.NetworkParams = &netcfg.Network
 	return nil
 }
 
-func GetNetworkConfig(network string) (*NetworkConf, error) {
-	networkType, err := GetNetworkFromName(network)
+func SetConfigFromNetworkType(cfg *config.Config, networkType types.NetworkType) error {
+	netcfg, err := GetNetworkConfig(networkType)
 	if err != nil {
-		return nil, err
+		return err
+	}
+	cfg.NetworkParams = &netcfg.Network
+	return nil
+}
+
+func GetNetworkConfig(network interface{}) (*NetworkConf, error) {
+	var networkType types.NetworkType
+	var err error
+
+	switch val := network.(type) {
+	case types.NetworkType:
+		networkType = val
+	case string:
+		networkType, err = GetNetworkFromName(val)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("not expect type %T %v", network, network)
 	}
 
 	switch networkType {

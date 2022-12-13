@@ -23,10 +23,7 @@
 -->
 
   - [ ] 确保当前`master`功能与其他组件不冲突，不破坏兼容性
-  - [ ] 从`master`拉出发布分支（3选1）
-    - [ ] 正式版`release/vX.Y.Z`
-    - [ ] `rc`版`release/vX.Y.Z-rc[x]`
-    - [ ] `pre-rc`版`release/vX.Y.Z-pre-rc[x]`
+  - [ ] 从`master`拉出发布`release/vX.Y.Z`分支
   - [ ] 依照[发版规则](https://github.com/ipfs-force-community/dev-guidances/blob/master/%E9%A1%B9%E7%9B%AE%E7%AE%A1%E7%90%86/Venus/%E7%89%88%E6%9C%AC%E5%8F%91%E5%B8%83%E7%AE%A1%E7%90%86.md)递进`master`上的版本号，并更新发布分支中`version.go`的版本号
   - [ ] 发布分支中功能冻结；如有重大`bug`修复需要从`master`中并入分支，可以通过[backport](https://github.com/filecoin-project/lotus/pull/8847)的方式合并至`release/vX.Y.Z`分支
 

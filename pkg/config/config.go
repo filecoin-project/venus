@@ -250,18 +250,18 @@ func newDefaultMessagePoolConfig() *MessagePoolConfig {
 
 // NetworkParamsConfig record netork parameters
 type NetworkParamsConfig struct {
-	DevNet                  bool                         `json:"devNet"`
+	DevNet                  bool                         `json:"-"`
 	NetworkType             types.NetworkType            `json:"networkType"`
-	GenesisNetworkVersion   network.Version              `json:"genesisNetworkVersion"`
-	ConsensusMinerMinPower  uint64                       `json:"consensusMinerMinPower"` // uint64 goes up to 18 EiB
-	MinVerifiedDealSize     int64                        `json:"minVerifiedDealSize"`
-	ReplaceProofTypes       []abi.RegisteredSealProof    `json:"replaceProofTypes"`
-	BlockDelay              uint64                       `json:"blockDelay"`
-	DrandSchedule           map[abi.ChainEpoch]DrandEnum `json:"drandSchedule"`
-	ForkUpgradeParam        *ForkUpgradeConfig           `json:"forkUpgradeParam"`
-	AddressNetwork          address.Network              `json:"addressNetwork"`
-	PreCommitChallengeDelay abi.ChainEpoch               `json:"preCommitChallengeDelay"`
-	PropagationDelaySecs    uint64                       `json:"propagationDelaySecs"`
+	AddressNetwork          address.Network              `json:"-"`
+	GenesisNetworkVersion   network.Version              `json:"-"`
+	ConsensusMinerMinPower  uint64                       `json:"-"` // uint64 goes up to 18 EiB
+	MinVerifiedDealSize     int64                        `json:"-"`
+	ReplaceProofTypes       []abi.RegisteredSealProof    `json:"-"`
+	BlockDelay              uint64                       `json:"-"`
+	DrandSchedule           map[abi.ChainEpoch]DrandEnum `json:"-"`
+	ForkUpgradeParam        *ForkUpgradeConfig           `json:"-"`
+	PreCommitChallengeDelay abi.ChainEpoch               `json:"-"`
+	PropagationDelaySecs    uint64                       `json:"-"`
 }
 
 // ForkUpgradeConfig record upgrade parameters
