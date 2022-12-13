@@ -9,6 +9,7 @@ import (
 )
 
 ////////// market //////////
+
 const (
 	DealMaxLabelSize     = market.DealMaxLabelSize
 	EpochUndefined       = market.EpochUndefined
@@ -56,6 +57,7 @@ var (
 )
 
 ////////// miner //////////
+
 const (
 	AddressedPartitionsMax                       = miner.AddressedPartitionsMax
 	AddressedSectorsMax                          = miner.AddressedSectorsMax
@@ -170,6 +172,7 @@ var (
 )
 
 ////////// paych //////////
+
 const (
 	LaneStatesAmtBitwidth = paych.LaneStatesAmtBitwidth
 	SettleDelay           = paych.SettleDelay
@@ -185,6 +188,7 @@ type (
 )
 
 ////////// verifreg //////////
+
 const (
 	EndOfLifeClaimDropPeriod                = verifreg.EndOfLifeClaimDropPeriod
 	MaximumVerifiedAllocationExpiration     = verifreg.MaximumVerifiedAllocationExpiration

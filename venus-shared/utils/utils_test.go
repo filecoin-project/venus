@@ -55,7 +55,11 @@ func TestLoadBuiltinActors(t *testing.T) {
 					assert.Equal(t, actor, res)
 
 					_, ok2 := MethodsMap[actor]
-					assert.True(t, ok2)
+					if skipEvmActor(name) {
+						assert.False(t, ok2)
+					} else {
+						assert.True(t, ok2)
+					}
 				}
 			}
 		}

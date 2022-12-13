@@ -12,18 +12,22 @@ import (
 func TestMethodMap(t *testing.T) {
 	tf.UnitTest(t)
 
-	t.Run("Default to load mainnet v8 actors", func(t *testing.T) {
+	t.Run("Default to load mainnet actors", func(t *testing.T) {
 		for _, actorsMetadata := range actors.EmbeddedBuiltinActorsMetadata {
 			if actorsMetadata.Network == string(types.NetworkNameMain) {
-				for _, actor := range actorsMetadata.Actors {
+				for name, actor := range actorsMetadata.Actors {
 					_, ok := MethodsMap[actor]
-					assert.True(t, ok)
+					if skipEvmActor(name) {
+						assert.False(t, ok)
+					} else {
+						assert.True(t, ok)
+					}
 				}
 			}
 		}
 	})
 
-	t.Run("ReLoad butterflynet v8 actors", func(t *testing.T) {
+	t.Run("ReLoad butterflynet actors", func(t *testing.T) {
 		for _, actorsMetadata := range actors.EmbeddedBuiltinActorsMetadata {
 			if actorsMetadata.Network == string(types.NetworkNameButterfly) {
 				for _, actor := range actorsMetadata.Actors {
@@ -37,11 +41,23 @@ func TestMethodMap(t *testing.T) {
 		ReloadMethodsMap()
 		for _, actorsMetadata := range actors.EmbeddedBuiltinActorsMetadata {
 			if actorsMetadata.Network == string(types.NetworkNameButterfly) {
-				for _, actor := range actorsMetadata.Actors {
+				for name, actor := range actorsMetadata.Actors {
 					_, ok := MethodsMap[actor]
-					assert.True(t, ok)
+					if skipEvmActor(name) {
+						assert.False(t, ok)
+					} else {
+						assert.True(t, ok)
+					}
 				}
 			}
 		}
 	})
+}
+
+// 没有把 v10 actor注入，等注入后移除
+func skipEvmActor(name string) bool {
+	if name == actors.EamKey || name == actors.EvmKey || name == actors.EmbryoKey {
+		return true
+	}
+	return false
 }
