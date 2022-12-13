@@ -7,7 +7,6 @@ import (
 
 	"github.com/filecoin-project/venus/app/submodule/storagenetworking"
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
-	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
@@ -28,7 +27,7 @@ type Env struct {
 	MarketAPI   v1api.IMarket
 	PaychAPI    v1api.IPaychan
 	CommonAPI   v1api.ICommon
-	EthAPI      v1.IETH
+	EthAPI      v1api.IETH
 }
 
 var _ cmds.Environment = (*Env)(nil)

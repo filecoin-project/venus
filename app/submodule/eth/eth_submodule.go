@@ -11,7 +11,7 @@ func NewEthSubModule(chainModule *chain.ChainSubmodule) (*EthSubModule, error) {
 	}, nil
 }
 
-type EthSubModule struct {
+type EthSubModule struct { // nolint
 	chainModule *chain.ChainSubmodule
 }
 

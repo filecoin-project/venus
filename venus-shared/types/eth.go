@@ -102,8 +102,8 @@ type EthTxReceipt struct {
 }
 
 const (
-	ETH_ADDRESS_LENGTH = 20
-	ETH_HASH_LENGTH    = 32
+	ETH_ADDRESS_LENGTH = 20 // nolint
+	ETH_HASH_LENGTH    = 32 // nolint
 )
 
 type EthNonce [8]byte
