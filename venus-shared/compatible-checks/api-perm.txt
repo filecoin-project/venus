@@ -90,6 +90,7 @@ v1: github.com/filecoin-project/venus/venus-shared/api/chain/v1 <> github.com/fi
 	- IETH.EthGetTransactionReceipt
 	- IETH.EthMaxPriorityFeePerGas
 	- IETH.EthProtocolVersion
+	- IETH.EthSendRawTransaction
 	- IETH.NetListening
 	- IETH.NetVersion
 	- IMessagePool.GasBatchEstimateMessageGas
