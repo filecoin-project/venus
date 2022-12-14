@@ -1,6 +1,7 @@
 package eth
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strconv"
@@ -12,15 +13,17 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
 	init10 "github.com/filecoin-project/go-state-types/builtin/v10/init"
-	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
+	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	builtinactors "github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 type ethAPI struct {
@@ -29,12 +32,12 @@ type ethAPI struct {
 	mpool v1.IMessagePool
 }
 
-func (a *ethAPI) EthBlockNumber(ctx context.Context) (types.EthInt, error) {
+func (a *ethAPI) EthBlockNumber(ctx context.Context) (types.EthUint64, error) {
 	head, err := a.chain.ChainHead(ctx)
 	if err != nil {
-		return types.EthInt(0), err
+		return types.EthUint64(0), err
 	}
-	return types.EthInt(head.Height()), nil
+	return types.EthUint64(head.Height()), nil
 }
 
 func (a *ethAPI) EthAccounts(context.Context) ([]types.EthAddress, error) {
@@ -51,23 +54,23 @@ func (a *ethAPI) countTipsetMsgs(ctx context.Context, ts *types.TipSet) (int, er
 	return len(msgs), nil
 }
 
-func (a *ethAPI) EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum types.EthInt) (types.EthInt, error) {
+func (a *ethAPI) EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum types.EthUint64) (types.EthUint64, error) {
 	ts, err := a.em.chainModule.ChainReader.GetTipSetByHeight(ctx, nil, abi.ChainEpoch(blkNum), false)
 	if err != nil {
-		return types.EthInt(0), fmt.Errorf("error loading tipset %s: %w", ts, err)
+		return types.EthUint64(0), fmt.Errorf("error loading tipset %s: %w", ts, err)
 	}
 
 	count, err := a.countTipsetMsgs(ctx, ts)
-	return types.EthInt(count), err
+	return types.EthUint64(count), err
 }
 
-func (a *ethAPI) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash types.EthHash) (types.EthInt, error) {
+func (a *ethAPI) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash types.EthHash) (types.EthUint64, error) {
 	ts, err := a.em.chainModule.ChainReader.GetTipSetByCid(ctx, blkHash.ToCid())
 	if err != nil {
-		return types.EthInt(0), fmt.Errorf("error loading tipset %s: %w", ts, err)
+		return types.EthUint64(0), fmt.Errorf("error loading tipset %s: %w", ts, err)
 	}
 	count, err := a.countTipsetMsgs(ctx, ts)
-	return types.EthInt(count), err
+	return types.EthUint64(count), err
 }
 
 func (a *ethAPI) EthGetBlockByHash(ctx context.Context, blkHash types.EthHash, fullTxInfo bool) (types.EthBlock, error) {
@@ -79,14 +82,14 @@ func (a *ethAPI) EthGetBlockByHash(ctx context.Context, blkHash types.EthHash, f
 }
 
 func (a *ethAPI) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (types.EthBlock, error) {
-	var num types.EthInt
+	var num types.EthUint64
 	err := num.UnmarshalJSON([]byte(`"` + blkNum + `"`))
 	if err != nil {
 		head, err := a.chain.ChainHead(ctx)
 		if err != nil {
 			return types.EthBlock{}, fmt.Errorf("failed to got head %v", err)
 		}
-		num = types.EthInt(head.Height())
+		num = types.EthUint64(head.Height())
 	}
 	ts, err := a.em.chainModule.ChainReader.GetTipSetByHeight(ctx, nil, abi.ChainEpoch(num), false)
 	if err != nil {
@@ -115,16 +118,16 @@ func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash *types.EthH
 	return &tx, nil
 }
 
-func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAddress, blkParam string) (types.EthInt, error) {
+func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAddress, blkParam string) (types.EthUint64, error) {
 	addr, err := sender.ToFilecoinAddress()
 	if err != nil {
-		return types.EthInt(0), err
+		return types.EthUint64(0), err
 	}
 	nonce, err := a.mpool.MpoolGetNonce(ctx, addr)
 	if err != nil {
-		return types.EthInt(0), err
+		return types.EthUint64(0), err
 	}
-	return types.EthInt(nonce), nil
+	return types.EthUint64(nonce), nil
 }
 
 // todo: 实现 StateReplay 接口
@@ -154,21 +157,147 @@ func (a *ethAPI) EthGetTransactionReceipt(ctx context.Context, txHash types.EthH
 	return &types.EthTxReceipt{}, nil
 }
 
-func (a *ethAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash types.EthHash, txIndex types.EthInt) (types.EthTx, error) {
+func (a *ethAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error) {
 	return types.EthTx{}, nil
 }
 
-func (a *ethAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum types.EthInt, txIndex types.EthInt) (types.EthTx, error) {
+func (a *ethAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum types.EthUint64, txIndex types.EthUint64) (types.EthTx, error) {
 	return types.EthTx{}, nil
 }
 
 // EthGetCode returns string value of the compiled bytecode
-func (a *ethAPI) EthGetCode(ctx context.Context, address types.EthAddress) (string, error) {
-	return "", nil
+func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress) (types.EthBytes, error) {
+	to, err := ethAddr.ToFilecoinAddress()
+	if err != nil {
+		return nil, fmt.Errorf("cannot get Filecoin address: %w", err)
+	}
+
+	// use the system actor as the caller
+	from, err := address.NewIDAddress(0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct system sender address: %w", err)
+	}
+	msg := &types.Message{
+		From:       from,
+		To:         to,
+		Value:      big.Zero(),
+		Method:     abi.MethodNum(3), // GetBytecode
+		Params:     nil,
+		GasLimit:   constants.BlockGasLimit,
+		GasFeeCap:  big.Zero(),
+		GasPremium: big.Zero(),
+	}
+
+	ts, err := a.chain.ChainHead(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to got head %v", err)
+	}
+
+	// Try calling until we find a height with no migration.
+	var res *vm.Ret
+	for {
+		res, err = a.em.chainModule.Stmgr.Call(ctx, msg, ts)
+		if err != fork.ErrExpensiveFork {
+			break
+		}
+		ts, err = a.chain.ChainGetTipSet(ctx, ts.Parents())
+		if err != nil {
+			return nil, fmt.Errorf("getting parent tipset: %w", err)
+		}
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("call failed: %w", err)
+	}
+
+	if res.Receipt.ExitCode.IsError() {
+		return nil, fmt.Errorf("message execution failed: exit %s, reason: %s", &res.Receipt.ExitCode, res.ActorErr)
+	}
+
+	var bytecodeCid cbg.CborCid
+	if err := bytecodeCid.UnmarshalCBOR(bytes.NewReader(res.Receipt.Return)); err != nil {
+		return nil, fmt.Errorf("failed to decode EVM bytecode CID: %w", err)
+	}
+
+	blk, err := a.em.chainModule.ChainReader.Blockstore().Get(ctx, cid.Cid(bytecodeCid))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get EVM bytecode: %w", err)
+	}
+
+	return blk.RawData(), nil
 }
 
-func (a *ethAPI) EthGetStorageAt(ctx context.Context, address types.EthAddress, position types.EthInt, blkParam string) (string, error) {
-	return "", nil
+func (a *ethAPI) EthGetStorageAt(ctx context.Context, ethAddr types.EthAddress, position types.EthBytes, blkParam string) (types.EthBytes, error) {
+	l := len(position)
+	if l > 32 {
+		return nil, fmt.Errorf("supplied storage key is too long")
+	}
+
+	// pad with zero bytes if smaller than 32 bytes
+	position = append(make([]byte, 32-l), position...)
+
+	to, err := ethAddr.ToFilecoinAddress()
+	if err != nil {
+		return nil, fmt.Errorf("cannot get Filecoin address: %w", err)
+	}
+
+	// use the system actor as the caller
+	from, err := address.NewIDAddress(0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct system sender address: %w", err)
+	}
+
+	// TODO super duper hack (raulk). The EVM runtime actor uses the U256 parameter type in
+	//  GetStorageAtParams, which serializes as a hex-encoded string. It should serialize
+	//  as bytes. We didn't get to fix in time for Iron, so for now we just pass
+	//  through the hex-encoded value passed through the Eth JSON-RPC API, by remarshalling it.
+	//  We don't fix this at origin (builtin-actors) because we are not updating the bundle
+	//  for Iron.
+	tmp, err := position.MarshalJSON()
+	if err != nil {
+		panic(err)
+	}
+	params, err := actors.SerializeParams(&evm.GetStorageAtParams{
+		StorageKey: tmp[1 : len(tmp)-1], // TODO strip the JSON-encoding quotes -- yuck
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize parameters: %w", err)
+	}
+
+	msg := &types.Message{
+		From:       from,
+		To:         to,
+		Value:      big.Zero(),
+		Method:     abi.MethodNum(4), // GetStorageAt
+		Params:     params,
+		GasLimit:   constants.BlockGasLimit,
+		GasFeeCap:  big.Zero(),
+		GasPremium: big.Zero(),
+	}
+
+	ts, err := a.chain.ChainHead(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to got head %v", err)
+	}
+
+	// Try calling until we find a height with no migration.
+	var res *vm.Ret
+	for {
+		res, err = a.em.chainModule.Stmgr.Call(ctx, msg, ts)
+		if err != fork.ErrExpensiveFork {
+			break
+		}
+		ts, err = a.chain.ChainGetTipSet(ctx, ts.Parents())
+		if err != nil {
+			return nil, fmt.Errorf("getting parent tipset: %w", err)
+		}
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("call failed: %w", err)
+	}
+
+	return res.Receipt.Return, nil
 }
 
 func (a *ethAPI) EthGetBalance(ctx context.Context, address types.EthAddress, blkParam string) (types.EthBigInt, error) {
@@ -185,8 +314,8 @@ func (a *ethAPI) EthGetBalance(ctx context.Context, address types.EthAddress, bl
 	return types.EthBigInt{Int: actor.Balance.Int}, nil
 }
 
-func (a *ethAPI) EthChainId(ctx context.Context) (types.EthInt, error) {
-	return types.EthInt(a.em.networkCfg.Eip155ChainID), nil
+func (a *ethAPI) EthChainId(ctx context.Context) (types.EthUint64, error) {
+	return types.EthUint64(types.Eip155ChainID), nil
 }
 
 func (a *ethAPI) NetVersion(ctx context.Context) (string, error) {
@@ -202,13 +331,13 @@ func (a *ethAPI) NetListening(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (a *ethAPI) EthProtocolVersion(ctx context.Context) (types.EthInt, error) {
+func (a *ethAPI) EthProtocolVersion(ctx context.Context) (types.EthUint64, error) {
 	head, err := a.chain.ChainHead(ctx)
 	if err != nil {
-		return types.EthInt(0), err
+		return types.EthUint64(0), err
 	}
 
-	return types.EthInt(a.em.chainModule.Fork.GetNetworkVersion(ctx, head.Height())), nil
+	return types.EthUint64(a.em.chainModule.Fork.GetNetworkVersion(ctx, head.Height())), nil
 }
 
 func (a *ethAPI) EthMaxPriorityFeePerGas(ctx context.Context) (types.EthBigInt, error) {
@@ -349,7 +478,7 @@ func (a *ethAPI) applyEvmMsg(ctx context.Context, tx types.EthCall) (*types.Invo
 	if err != nil {
 		return nil, fmt.Errorf("CallWithGas failed: %w", err)
 	}
-	if res.Receipt.ExitCode != exitcode.Ok {
+	if res.Receipt.ExitCode.IsError() {
 		return nil, fmt.Errorf("message execution failed: exit %s, reason: %s", res.Receipt.ExitCode, res.ActorErr)
 	}
 	var errStr string
@@ -366,13 +495,13 @@ func (a *ethAPI) applyEvmMsg(ctx context.Context, tx types.EthCall) (*types.Invo
 	}, nil
 }
 
-func (a *ethAPI) EthEstimateGas(ctx context.Context, tx types.EthCall) (types.EthInt, error) {
+func (a *ethAPI) EthEstimateGas(ctx context.Context, tx types.EthCall) (types.EthUint64, error) {
 	invokeResult, err := a.applyEvmMsg(ctx, tx)
 	if err != nil {
-		return types.EthInt(0), err
+		return types.EthUint64(0), err
 	}
 	ret := invokeResult.MsgRct.GasUsed
-	return types.EthInt(ret), nil
+	return types.EthUint64(ret), nil
 }
 
 func (a *ethAPI) EthCall(ctx context.Context, tx types.EthCall, blkParam string) (types.EthBytes, error) {
@@ -435,11 +564,11 @@ func (a *ethAPI) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSe
 		}
 	}
 
-	block.Number = types.EthInt(ts.Height())
+	block.Number = types.EthUint64(ts.Height())
 	block.ParentHash = parentBlkHash
-	block.Timestamp = types.EthInt(ts.Blocks()[0].Timestamp)
+	block.Timestamp = types.EthUint64(ts.Blocks()[0].Timestamp)
 	block.BaseFeePerGas = types.EthBigInt{Int: ts.Blocks()[0].ParentBaseFee.Int}
-	block.GasUsed = types.EthInt(gasUsed)
+	block.GasUsed = types.EthUint64(gasUsed)
 	return block, nil
 }
 
@@ -495,15 +624,15 @@ func (a *ethAPI) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *
 	}
 
 	tx := types.EthTx{
-		ChainID:              types.EthInt(a.em.networkCfg.Eip155ChainID),
+		ChainID:              types.EthUint64(types.Eip155ChainID),
 		Hash:                 txHash,
 		BlockHash:            blkHash,
-		BlockNumber:          types.EthInt(msgLookup.Height),
+		BlockNumber:          types.EthUint64(msgLookup.Height),
 		From:                 fromEthAddr,
 		To:                   toAddr,
 		Value:                types.EthBigInt(msg.Value),
-		Type:                 types.EthInt(2),
-		Gas:                  types.EthInt(msg.GasLimit),
+		Type:                 types.EthUint64(2),
+		Gas:                  types.EthUint64(msg.GasLimit),
 		MaxFeePerGas:         types.EthBigInt(msg.GasFeeCap),
 		MaxPriorityFeePerGas: types.EthBigInt(msg.GasPremium),
 		V:                    types.EthBytes{},
