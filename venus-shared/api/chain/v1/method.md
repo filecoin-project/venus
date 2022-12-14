@@ -55,6 +55,27 @@
   * [NodeStatus](#nodestatus)
   * [StartTime](#starttime)
   * [Version](#version)
+* [ETH](#eth)
+  * [EthAccounts](#ethaccounts)
+  * [EthBlockNumber](#ethblocknumber)
+  * [EthChainId](#ethchainid)
+  * [EthGasPrice](#ethgasprice)
+  * [EthGetBalance](#ethgetbalance)
+  * [EthGetBlockByHash](#ethgetblockbyhash)
+  * [EthGetBlockByNumber](#ethgetblockbynumber)
+  * [EthGetBlockTransactionCountByHash](#ethgetblocktransactioncountbyhash)
+  * [EthGetBlockTransactionCountByNumber](#ethgetblocktransactioncountbynumber)
+  * [EthGetCode](#ethgetcode)
+  * [EthGetStorageAt](#ethgetstorageat)
+  * [EthGetTransactionByBlockHashAndIndex](#ethgettransactionbyblockhashandindex)
+  * [EthGetTransactionByBlockNumberAndIndex](#ethgettransactionbyblocknumberandindex)
+  * [EthGetTransactionByHash](#ethgettransactionbyhash)
+  * [EthGetTransactionCount](#ethgettransactioncount)
+  * [EthGetTransactionReceipt](#ethgettransactionreceipt)
+  * [EthMaxPriorityFeePerGas](#ethmaxpriorityfeepergas)
+  * [EthProtocolVersion](#ethprotocolversion)
+  * [NetListening](#netlistening)
+  * [NetVersion](#netversion)
 * [Market](#market)
   * [StateMarketParticipants](#statemarketparticipants)
 * [MessagePool](#messagepool)
@@ -1862,6 +1883,422 @@ Response:
   "APIVersion": 131840
 }
 ```
+
+## ETH
+
+### EthAccounts
+These methods are used for Ethereum-compatible JSON-RPC calls
+
+EthAccounts will always return [] since we don't expect Lotus to manage private keys
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  "0x0707070707070707070707070707070707070707"
+]
+```
+
+### EthBlockNumber
+EthBlockNumber returns the height of the latest (heaviest) TipSet
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `"0x5"`
+
+### EthChainId
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `"0x5"`
+
+### EthGasPrice
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `"0x5"`
+
+### EthGetBalance
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707",
+  "string value"
+]
+```
+
+Response: `"0x0"`
+
+### EthGetBlockByHash
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707070707070707070707070707",
+  true
+]
+```
+
+Response:
+```json
+{
+  "parentHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "sha3Uncles": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "miner": "0x0707070707070707070707070707070707070707",
+  "stateRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "transactionsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "receiptsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "difficulty": "0x5",
+  "number": "0x5",
+  "gasLimit": "0x5",
+  "gasUsed": "0x5",
+  "timestamp": "0x5",
+  "extraData": "Ynl0ZSBhcnJheQ==",
+  "mixHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "nonce": "0x0707070707070707",
+  "baseFeePerGas": "0x5",
+  "transactions": {
+    "chainId": "0x5",
+    "nonce": 42,
+    "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "blockNumber": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "transacionIndex": "0x5",
+    "from": "0x0707070707070707070707070707070707070707",
+    "to": "0x0707070707070707070707070707070707070707",
+    "value": "0x0",
+    "type": "0x5",
+    "input": "Ynl0ZSBhcnJheQ==",
+    "gas": "0x5",
+    "maxFeePerGas": "0x0",
+    "maxPriorityFeePerGas": "0x0",
+    "v": "0x0",
+    "r": "0x0",
+    "s": "0x0"
+  }
+}
+```
+
+### EthGetBlockByNumber
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x5",
+  true
+]
+```
+
+Response:
+```json
+{
+  "parentHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "sha3Uncles": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "miner": "0x0707070707070707070707070707070707070707",
+  "stateRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "transactionsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "receiptsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "difficulty": "0x5",
+  "number": "0x5",
+  "gasLimit": "0x5",
+  "gasUsed": "0x5",
+  "timestamp": "0x5",
+  "extraData": "Ynl0ZSBhcnJheQ==",
+  "mixHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "nonce": "0x0707070707070707",
+  "baseFeePerGas": "0x5",
+  "transactions": {
+    "chainId": "0x5",
+    "nonce": 42,
+    "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "blockNumber": "0x0707070707070707070707070707070707070707070707070707070707070707",
+    "transacionIndex": "0x5",
+    "from": "0x0707070707070707070707070707070707070707",
+    "to": "0x0707070707070707070707070707070707070707",
+    "value": "0x0",
+    "type": "0x5",
+    "input": "Ynl0ZSBhcnJheQ==",
+    "gas": "0x5",
+    "maxFeePerGas": "0x0",
+    "maxPriorityFeePerGas": "0x0",
+    "v": "0x0",
+    "r": "0x0",
+    "s": "0x0"
+  }
+}
+```
+
+### EthGetBlockTransactionCountByHash
+EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707070707070707070707070707"
+]
+```
+
+Response: `"0x5"`
+
+### EthGetBlockTransactionCountByNumber
+EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x5"
+]
+```
+
+Response: `"0x5"`
+
+### EthGetCode
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707"
+]
+```
+
+Response: `"string value"`
+
+### EthGetStorageAt
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707",
+  "0x5",
+  "string value"
+]
+```
+
+Response: `"string value"`
+
+### EthGetTransactionByBlockHashAndIndex
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "0x5"
+]
+```
+
+Response:
+```json
+{
+  "chainId": "0x5",
+  "nonce": 42,
+  "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "blockNumber": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "transacionIndex": "0x5",
+  "from": "0x0707070707070707070707070707070707070707",
+  "to": "0x0707070707070707070707070707070707070707",
+  "value": "0x0",
+  "type": "0x5",
+  "input": "Ynl0ZSBhcnJheQ==",
+  "gas": "0x5",
+  "maxFeePerGas": "0x0",
+  "maxPriorityFeePerGas": "0x0",
+  "v": "0x0",
+  "r": "0x0",
+  "s": "0x0"
+}
+```
+
+### EthGetTransactionByBlockNumberAndIndex
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x5",
+  "0x5"
+]
+```
+
+Response:
+```json
+{
+  "chainId": "0x5",
+  "nonce": 42,
+  "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "blockNumber": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "transacionIndex": "0x5",
+  "from": "0x0707070707070707070707070707070707070707",
+  "to": "0x0707070707070707070707070707070707070707",
+  "value": "0x0",
+  "type": "0x5",
+  "input": "Ynl0ZSBhcnJheQ==",
+  "gas": "0x5",
+  "maxFeePerGas": "0x0",
+  "maxPriorityFeePerGas": "0x0",
+  "v": "0x0",
+  "r": "0x0",
+  "s": "0x0"
+}
+```
+
+### EthGetTransactionByHash
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707070707070707070707070707"
+]
+```
+
+Response:
+```json
+{
+  "chainId": "0x5",
+  "nonce": 42,
+  "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "blockNumber": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "transacionIndex": "0x5",
+  "from": "0x0707070707070707070707070707070707070707",
+  "to": "0x0707070707070707070707070707070707070707",
+  "value": "0x0",
+  "type": "0x5",
+  "input": "Ynl0ZSBhcnJheQ==",
+  "gas": "0x5",
+  "maxFeePerGas": "0x0",
+  "maxPriorityFeePerGas": "0x0",
+  "v": "0x0",
+  "r": "0x0",
+  "s": "0x0"
+}
+```
+
+### EthGetTransactionCount
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707",
+  "string value"
+]
+```
+
+Response: `"0x5"`
+
+### EthGetTransactionReceipt
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x0707070707070707070707070707070707070707070707070707070707070707"
+]
+```
+
+Response:
+```json
+{
+  "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "transacionIndex": "0x5",
+  "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "blockNumber": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "from": "0x0707070707070707070707070707070707070707",
+  "to": "0x0707070707070707070707070707070707070707",
+  "root": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "status": "0x5",
+  "contractAddress": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+  "cumulativeGasUsed": "0x0",
+  "gasUsed": "0x0",
+  "effectiveGasPrice": "0x0"
+}
+```
+
+### EthMaxPriorityFeePerGas
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `"0x5"`
+
+### EthProtocolVersion
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `"0x5"`
+
+### NetListening
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `true`
+
+### NetVersion
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response: `"string value"`
 
 ## Market
 

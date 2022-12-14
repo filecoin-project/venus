@@ -27,6 +27,7 @@ type Env struct {
 	MarketAPI   v1api.IMarket
 	PaychAPI    v1api.IPaychan
 	CommonAPI   v1api.ICommon
+	EthAPI      v1api.IETH
 }
 
 var _ cmds.Environment = (*Env)(nil)
