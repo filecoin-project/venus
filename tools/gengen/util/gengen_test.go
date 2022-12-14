@@ -17,6 +17,7 @@ import (
 	genutil "github.com/filecoin-project/venus/tools/gengen/util"
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
+	_ "github.com/filecoin-project/venus/pkg/crypto/delegated" // enable delegated signatures
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/stretchr/testify/assert"

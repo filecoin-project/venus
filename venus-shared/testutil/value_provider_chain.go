@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
@@ -76,6 +77,19 @@ func SecpAddressProvider(size int) func(*testing.T) address.Address {
 	}
 }
 
+func DelegatedAddressProvider(size int) func(*testing.T) address.Address {
+	bytesProvider := BytesFixedProvider(size)
+	return func(t *testing.T) address.Address {
+		data := bytesProvider(t)
+		addr, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, data)
+		if err != nil {
+			t.Fatalf("generate secp address for %x: %s", data, err)
+		}
+
+		return addr
+	}
+}
+
 func BlsAddressProvider() func(*testing.T) address.Address {
 	bytesProvider := BytesFixedProvider(address.BlsPublicKeyBytes)
 	return func(t *testing.T) address.Address {
@@ -95,6 +109,7 @@ func AddressProvider() func(*testing.T) address.Address {
 		ActorAddressProvider(defaultBytesFixedSize),
 		SecpAddressProvider(defaultBytesFixedSize),
 		BlsAddressProvider(),
+		DelegatedAddressProvider(defaultBytesFixedSize),
 	}
 
 	return func(t *testing.T) address.Address {
@@ -157,6 +172,7 @@ func CryptoSigTypeProvider() func(*testing.T) crypto.SigType {
 	opts := []crypto.SigType{
 		crypto.SigTypeSecp256k1,
 		crypto.SigTypeBLS,
+		crypto.SigTypeDelegated,
 	}
 	return func(t *testing.T) crypto.SigType {
 		return opts[rand.Intn(len(opts))]

@@ -273,6 +273,8 @@ func init() {
 	addExample(&ethint)
 	ethaddr, _ := types.EthAddressFromHex("0x5CbEeCF99d3fDB3f25E309Cc264f240bb0664031")
 	addExample(&ethaddr)
+	ethhash, _ := types.EthHashFromCid(c)
+	addExample(&ethhash)
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {
