@@ -5,13 +5,20 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
+	init10 "github.com/filecoin-project/go-state-types/builtin/v10/init"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	builtinactors "github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -71,27 +78,41 @@ func (a *ethAPI) EthGetBlockByHash(ctx context.Context, blkHash types.EthHash, f
 	return a.ethBlockFromFilecoinTipSet(ctx, ts, fullTxInfo)
 }
 
-func (a *ethAPI) EthGetBlockByNumber(ctx context.Context, blkNum types.EthInt, fullTxInfo bool) (types.EthBlock, error) {
-	ts, err := a.em.chainModule.ChainReader.GetTipSetByHeight(ctx, nil, abi.ChainEpoch(blkNum), false)
+func (a *ethAPI) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (types.EthBlock, error) {
+	var num types.EthInt
+	err := num.UnmarshalJSON([]byte(`"` + blkNum + `"`))
+	if err != nil {
+		head, err := a.chain.ChainHead(ctx)
+		if err != nil {
+			return types.EthBlock{}, fmt.Errorf("failed to got head %v", err)
+		}
+		num = types.EthInt(head.Height())
+	}
+	ts, err := a.em.chainModule.ChainReader.GetTipSetByHeight(ctx, nil, abi.ChainEpoch(num), false)
 	if err != nil {
 		return types.EthBlock{}, fmt.Errorf("error loading tipset %s: %w", ts, err)
 	}
 	return a.ethBlockFromFilecoinTipSet(ctx, ts, fullTxInfo)
 }
 
-func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash types.EthHash) (types.EthTx, error) {
+func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error) {
+	// Ethereum's behavior is to return null when the txHash is invalid, so we use nil to check if txHash is valid
+	if txHash == nil {
+		return nil, nil
+	}
+
 	cid := txHash.ToCid()
 
 	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, cid, constants.LookbackNoLimit, true)
 	if err != nil {
-		return types.EthTx{}, nil
+		return nil, nil
 	}
 
 	tx, err := a.ethTxFromFilecoinMessageLookup(ctx, msgLookup)
 	if err != nil {
-		return types.EthTx{}, err
+		return nil, err
 	}
-	return tx, nil
+	return &tx, nil
 }
 
 func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAddress, blkParam string) (types.EthInt, error) {
@@ -107,7 +128,7 @@ func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAdd
 }
 
 // todo: 实现 StateReplay 接口
-func (a *ethAPI) EthGetTransactionReceipt(ctx context.Context, txHash types.EthHash) (types.EthTxReceipt, error) {
+func (a *ethAPI) EthGetTransactionReceipt(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error) {
 	// cid := txHash.ToCid()
 
 	// msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, cid, constants.LookbackNoLimit, true)
@@ -130,7 +151,7 @@ func (a *ethAPI) EthGetTransactionReceipt(ctx context.Context, txHash types.EthH
 	// 	return types.EthTxReceipt{}, err
 	// }
 	// return receipt, nil
-	return types.EthTxReceipt{}, nil
+	return &types.EthTxReceipt{}, nil
 }
 
 func (a *ethAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash types.EthHash, txIndex types.EthInt) (types.EthTx, error) {
@@ -218,24 +239,92 @@ func (a *ethAPI) EthGasPrice(ctx context.Context) (types.EthBigInt, error) {
 }
 
 func (a *ethAPI) EthSendRawTransaction(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error) {
-	return types.EthHash{}, nil
+	txArgs, err := types.ParseEthTxArgs(rawTx)
+	if err != nil {
+		return types.EmptyEthHash, err
+	}
+
+	smsg, err := txArgs.ToSignedMessage()
+	if err != nil {
+		return types.EmptyEthHash, err
+	}
+	cid, err := a.mpool.MpoolPush(ctx, smsg)
+	if err != nil {
+		return types.EmptyEthHash, err
+	}
+	return types.EthHashFromCid(cid)
 }
 
 func (a *ethAPI) applyEvmMsg(ctx context.Context, tx types.EthCall) (*types.InvocResult, error) {
-	from, err := tx.From.ToFilecoinAddress()
-	if err != nil {
-		return nil, err
+	// FIXME: this is a workaround, remove this when f4 address is ready
+	var from address.Address
+	var err error
+	if tx.From[0] == 0xff && tx.From[1] == 0 && tx.From[2] == 0 {
+		addr, err := tx.From.ToFilecoinAddress()
+		if err != nil {
+			return nil, err
+		}
+		from = addr
+	} else {
+		id := uint64(100)
+		for ; id < 300; id++ {
+			idAddr, err := address.NewIDAddress(id)
+			if err != nil {
+				return nil, err
+			}
+			from = idAddr
+			act, err := a.chain.StateGetActor(ctx, idAddr, types.EmptyTSK)
+			if err != nil {
+				return nil, err
+			}
+			if builtinactors.IsAccountActor(act.Code) {
+				break
+			}
+		}
+		if id == 300 {
+			return nil, fmt.Errorf("cannot find a dummy account")
+		}
 	}
-	to, err := tx.To.ToFilecoinAddress()
-	if err != nil {
-		return nil, fmt.Errorf("cannot get Filecoin address: %w", err)
+
+	var params []byte
+	var to address.Address
+	if tx.To == nil {
+		to = builtintypes.InitActorAddr
+		constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
+			Creator:  tx.Data,
+			Initcode: []byte{},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize constructor params: %w", err)
+		}
+
+		evmActorCid, ok := actors.GetActorCodeID(actorstypes.Version8, "evm")
+		if !ok {
+			return nil, fmt.Errorf("failed to lookup evm actor code CID")
+		}
+
+		params, err = actors.SerializeParams(&init10.ExecParams{
+			CodeCID:           evmActorCid,
+			ConstructorParams: constructorParams,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize init actor exec params: %w", err)
+		}
+	} else {
+		addr, err := tx.To.ToFilecoinAddress()
+		if err != nil {
+			return nil, fmt.Errorf("cannot get Filecoin address: %w", err)
+		}
+		to = addr
+		params = tx.Data
 	}
+
 	msg := &types.Message{
 		From:       from,
 		To:         to,
 		Value:      big.Int(tx.Value),
 		Method:     abi.MethodNum(2),
-		Params:     tx.Data,
+		Params:     params,
 		GasLimit:   constants.BlockGasLimit,
 		GasFeeCap:  big.Zero(),
 		GasPremium: big.Zero(),
@@ -277,7 +366,7 @@ func (a *ethAPI) applyEvmMsg(ctx context.Context, tx types.EthCall) (*types.Invo
 	}, nil
 }
 
-func (a *ethAPI) EthEstimateGas(ctx context.Context, tx types.EthCall, blkParam string) (types.EthInt, error) {
+func (a *ethAPI) EthEstimateGas(ctx context.Context, tx types.EthCall) (types.EthInt, error) {
 	invokeResult, err := a.applyEvmMsg(ctx, tx)
 	if err != nil {
 		return types.EthInt(0), err
@@ -355,6 +444,9 @@ func (a *ethAPI) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSe
 }
 
 func (a *ethAPI) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *types.MsgLookup) (types.EthTx, error) {
+	if msgLookup == nil {
+		return types.EthTx{}, fmt.Errorf("msg does not exist")
+	}
 	cid := msgLookup.Message
 	txHash, err := types.EthHashFromCid(cid)
 	if err != nil {
@@ -414,9 +506,9 @@ func (a *ethAPI) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *
 		Gas:                  types.EthInt(msg.GasLimit),
 		MaxFeePerGas:         types.EthBigInt(msg.GasFeeCap),
 		MaxPriorityFeePerGas: types.EthBigInt(msg.GasPremium),
-		V:                    types.EthBigIntZero,
-		R:                    types.EthBigIntZero,
-		S:                    types.EthBigIntZero,
+		V:                    types.EthBytes{},
+		R:                    types.EthBytes{},
+		S:                    types.EthBytes{},
 		Input:                msg.Params,
 	}
 	return tx, nil

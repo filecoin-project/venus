@@ -9,6 +9,7 @@ import (
 var keyMapper = map[address.Protocol]types.KeyType{
 	address.SECP256K1: types.KTSecp256k1,
 	address.BLS:       types.KTBLS,
+	address.Delegated: types.KTDelegated,
 }
 
 func GetKeyType(p address.Protocol) types.KeyType {

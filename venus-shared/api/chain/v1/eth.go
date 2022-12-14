@@ -19,10 +19,10 @@ type IETH interface {
 	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash types.EthHash) (types.EthInt, error) //perm:read
 
 	EthGetBlockByHash(ctx context.Context, blkHash types.EthHash, fullTxInfo bool) (types.EthBlock, error)                      //perm:read
-	EthGetBlockByNumber(ctx context.Context, blkNum types.EthInt, fullTxInfo bool) (types.EthBlock, error)                      //perm:read
-	EthGetTransactionByHash(ctx context.Context, txHash types.EthHash) (types.EthTx, error)                                     //perm:read
+	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (types.EthBlock, error)                            //perm:read
+	EthGetTransactionByHash(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error)                                   //perm:read
 	EthGetTransactionCount(ctx context.Context, sender types.EthAddress, blkOpt string) (types.EthInt, error)                   //perm:read
-	EthGetTransactionReceipt(ctx context.Context, txHash types.EthHash) (types.EthTxReceipt, error)                             //perm:read
+	EthGetTransactionReceipt(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error)                            //perm:read
 	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash types.EthHash, txIndex types.EthInt) (types.EthTx, error) //perm:read
 	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum types.EthInt, txIndex types.EthInt) (types.EthTx, error) //perm:read
 
@@ -34,9 +34,10 @@ type IETH interface {
 	NetListening(ctx context.Context) (bool, error)                                                                        //perm:read
 	EthProtocolVersion(ctx context.Context) (types.EthInt, error)                                                          //perm:read
 	EthGasPrice(ctx context.Context) (types.EthBigInt, error)                                                              //perm:read
-	EthMaxPriorityFeePerGas(ctx context.Context) (types.EthBigInt, error)                                                  //perm:read
-	EthEstimateGas(ctx context.Context, tx types.EthCall, blkParam string) (types.EthInt, error)                           //perm:read
-	EthCall(ctx context.Context, tx types.EthCall, blkParam string) (types.EthBytes, error)                                //perm:read
+
+	EthMaxPriorityFeePerGas(ctx context.Context) (types.EthBigInt, error)                   //perm:read
+	EthEstimateGas(ctx context.Context, tx types.EthCall) (types.EthInt, error)             //perm:read
+	EthCall(ctx context.Context, tx types.EthCall, blkParam string) (types.EthBytes, error) //perm:read
 
 	EthSendRawTransaction(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error) //perm:read
 }

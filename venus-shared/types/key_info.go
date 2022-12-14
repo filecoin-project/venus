@@ -40,6 +40,8 @@ func (kt *KeyType) UnmarshalJSON(bb []byte) error {
 			*kt = KTBLS
 		case crypto.SigTypeSecp256k1:
 			*kt = KTSecp256k1
+		case crypto.SigTypeDelegated:
+			*kt = KTDelegated
 		default:
 			return fmt.Errorf("unknown sigtype: %d", bst)
 		}
@@ -54,6 +56,7 @@ const (
 
 	SigTypeSecp256k1 = SigType(iota)
 	SigTypeBLS
+	SigTypeDelegated
 )
 
 const (
@@ -61,6 +64,7 @@ const (
 	KTBLS             KeyType = "bls"
 	KTSecp256k1       KeyType = "secp256k1"
 	KTSecp256k1Ledger KeyType = "secp256k1-ledger"
+	KTDelegated       KeyType = "delegated"
 )
 
 func KeyType2Sign(kt KeyType) SigType {
@@ -69,6 +73,8 @@ func KeyType2Sign(kt KeyType) SigType {
 		return SigTypeSecp256k1
 	case KTBLS:
 		return SigTypeBLS
+	case KTDelegated:
+		return SigTypeDelegated
 	default:
 		return SigTypeUnknown
 	}
@@ -80,6 +86,8 @@ func SignType2Key(kt SigType) KeyType {
 		return KTSecp256k1
 	case SigTypeBLS:
 		return KTBLS
+	case SigTypeDelegated:
+		return KTDelegated
 	default:
 		return KTUnknown
 	}

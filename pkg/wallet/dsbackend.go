@@ -129,7 +129,7 @@ func (backend *DSBackend) NewAddress(ctx context.Context, protocol address.Proto
 	switch protocol {
 	case address.BLS:
 		return backend.newBLSAddress(ctx)
-	case address.SECP256K1:
+	case address.SECP256K1, address.Delegated:
 		return backend.newSecpAddress(ctx)
 	default:
 		return address.Undef, errors.Errorf("Unknown address protocol %d", protocol)

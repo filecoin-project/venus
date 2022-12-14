@@ -264,7 +264,7 @@ type NetworkParamsConfig struct {
 	PropagationDelaySecs    uint64                       `json:"-"`
 	// ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
 	// As per https://github.com/ethereum-lists/chains
-	Eip155ChainID uint64 `json:"-"`
+	Eip155ChainID int `json:"-"`
 }
 
 // ForkUpgradeConfig record upgrade parameters

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/consensus"
+	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/hashicorp/go-multierror"
 
@@ -553,6 +554,9 @@ func (syncer *Syncer) fetchSegMessage(ctx context.Context, segTipset []*types.Ti
 		}
 
 		for _, m := range messages[index].Secpk {
+			if m.Signature.Type != crypto.SigTypeSecp256k1 && m.Signature.Type != crypto.SigTypeDelegated {
+				return nil, fmt.Errorf("unknown signature type on message %s: %q", m.Cid(), m.Signature.Type)
+			}
 			if _, err := cborStore.Put(ctx, m); err != nil {
 				return nil, fmt.Errorf("SECP message processing failed: %w", err)
 			}

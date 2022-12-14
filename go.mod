@@ -98,7 +98,7 @@ require (
 	github.com/raulk/clock v1.1.0
 	github.com/streadway/handy v0.0.0-20200128134331-0f66f006fb2e
 	github.com/stretchr/testify v1.8.0
-	github.com/whyrusleeping/cbor-gen v0.0.0-20220514204315-f29c37e9c44c
+	github.com/whyrusleeping/cbor-gen v0.0.0-20221021053955-c138aae13722
 	github.com/whyrusleeping/go-logging v0.0.1
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
 	go.opencensus.io v0.23.0

@@ -31,8 +31,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/clock"
 	"github.com/filecoin-project/venus/pkg/config"
-	_ "github.com/filecoin-project/venus/pkg/crypto/bls"  // enable bls signatures
-	_ "github.com/filecoin-project/venus/pkg/crypto/secp" // enable secp signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"       // enable bls signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/delegated" // enable delegated signatures
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp"      // enable secp signatures
 	"github.com/filecoin-project/venus/pkg/metrics"
 	"github.com/filecoin-project/venus/pkg/repo"
 	cmds "github.com/ipfs/go-ipfs-cmds"

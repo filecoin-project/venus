@@ -895,20 +895,20 @@ type IETHStruct struct {
 		EthBlockNumber                         func(ctx context.Context) (types.EthInt, error)                                                             `perm:"read"`
 		EthCall                                func(ctx context.Context, tx types.EthCall, blkParam string) (types.EthBytes, error)                        `perm:"read"`
 		EthChainId                             func(ctx context.Context) (types.EthInt, error)                                                             `perm:"read"`
-		EthEstimateGas                         func(ctx context.Context, tx types.EthCall, blkParam string) (types.EthInt, error)                          `perm:"read"`
+		EthEstimateGas                         func(ctx context.Context, tx types.EthCall) (types.EthInt, error)                                           `perm:"read"`
 		EthGasPrice                            func(ctx context.Context) (types.EthBigInt, error)                                                          `perm:"read"`
 		EthGetBalance                          func(ctx context.Context, address types.EthAddress, blkParam string) (types.EthBigInt, error)               `perm:"read"`
 		EthGetBlockByHash                      func(ctx context.Context, blkHash types.EthHash, fullTxInfo bool) (types.EthBlock, error)                   `perm:"read"`
-		EthGetBlockByNumber                    func(ctx context.Context, blkNum types.EthInt, fullTxInfo bool) (types.EthBlock, error)                     `perm:"read"`
+		EthGetBlockByNumber                    func(ctx context.Context, blkNum string, fullTxInfo bool) (types.EthBlock, error)                           `perm:"read"`
 		EthGetBlockTransactionCountByHash      func(ctx context.Context, blkHash types.EthHash) (types.EthInt, error)                                      `perm:"read"`
 		EthGetBlockTransactionCountByNumber    func(ctx context.Context, blkNum types.EthInt) (types.EthInt, error)                                        `perm:"read"`
 		EthGetCode                             func(ctx context.Context, address types.EthAddress) (string, error)                                         `perm:"read"`
 		EthGetStorageAt                        func(ctx context.Context, address types.EthAddress, position types.EthInt, blkParam string) (string, error) `perm:"read"`
 		EthGetTransactionByBlockHashAndIndex   func(ctx context.Context, blkHash types.EthHash, txIndex types.EthInt) (types.EthTx, error)                 `perm:"read"`
 		EthGetTransactionByBlockNumberAndIndex func(ctx context.Context, blkNum types.EthInt, txIndex types.EthInt) (types.EthTx, error)                   `perm:"read"`
-		EthGetTransactionByHash                func(ctx context.Context, txHash types.EthHash) (types.EthTx, error)                                        `perm:"read"`
+		EthGetTransactionByHash                func(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error)                                      `perm:"read"`
 		EthGetTransactionCount                 func(ctx context.Context, sender types.EthAddress, blkOpt string) (types.EthInt, error)                     `perm:"read"`
-		EthGetTransactionReceipt               func(ctx context.Context, txHash types.EthHash) (types.EthTxReceipt, error)                                 `perm:"read"`
+		EthGetTransactionReceipt               func(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error)                                `perm:"read"`
 		EthMaxPriorityFeePerGas                func(ctx context.Context) (types.EthBigInt, error)                                                          `perm:"read"`
 		EthProtocolVersion                     func(ctx context.Context) (types.EthInt, error)                                                             `perm:"read"`
 		EthSendRawTransaction                  func(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error)                                      `perm:"read"`
@@ -929,8 +929,8 @@ func (s *IETHStruct) EthCall(p0 context.Context, p1 types.EthCall, p2 string) (t
 func (s *IETHStruct) EthChainId(p0 context.Context) (types.EthInt, error) {
 	return s.Internal.EthChainId(p0)
 }
-func (s *IETHStruct) EthEstimateGas(p0 context.Context, p1 types.EthCall, p2 string) (types.EthInt, error) {
-	return s.Internal.EthEstimateGas(p0, p1, p2)
+func (s *IETHStruct) EthEstimateGas(p0 context.Context, p1 types.EthCall) (types.EthInt, error) {
+	return s.Internal.EthEstimateGas(p0, p1)
 }
 func (s *IETHStruct) EthGasPrice(p0 context.Context) (types.EthBigInt, error) {
 	return s.Internal.EthGasPrice(p0)
@@ -941,7 +941,7 @@ func (s *IETHStruct) EthGetBalance(p0 context.Context, p1 types.EthAddress, p2 s
 func (s *IETHStruct) EthGetBlockByHash(p0 context.Context, p1 types.EthHash, p2 bool) (types.EthBlock, error) {
 	return s.Internal.EthGetBlockByHash(p0, p1, p2)
 }
-func (s *IETHStruct) EthGetBlockByNumber(p0 context.Context, p1 types.EthInt, p2 bool) (types.EthBlock, error) {
+func (s *IETHStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (types.EthBlock, error) {
 	return s.Internal.EthGetBlockByNumber(p0, p1, p2)
 }
 func (s *IETHStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 types.EthHash) (types.EthInt, error) {
@@ -962,13 +962,13 @@ func (s *IETHStruct) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1
 func (s *IETHStruct) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 types.EthInt, p2 types.EthInt) (types.EthTx, error) {
 	return s.Internal.EthGetTransactionByBlockNumberAndIndex(p0, p1, p2)
 }
-func (s *IETHStruct) EthGetTransactionByHash(p0 context.Context, p1 types.EthHash) (types.EthTx, error) {
+func (s *IETHStruct) EthGetTransactionByHash(p0 context.Context, p1 *types.EthHash) (*types.EthTx, error) {
 	return s.Internal.EthGetTransactionByHash(p0, p1)
 }
 func (s *IETHStruct) EthGetTransactionCount(p0 context.Context, p1 types.EthAddress, p2 string) (types.EthInt, error) {
 	return s.Internal.EthGetTransactionCount(p0, p1, p2)
 }
-func (s *IETHStruct) EthGetTransactionReceipt(p0 context.Context, p1 types.EthHash) (types.EthTxReceipt, error) {
+func (s *IETHStruct) EthGetTransactionReceipt(p0 context.Context, p1 types.EthHash) (*types.EthTxReceipt, error) {
 	return s.Internal.EthGetTransactionReceipt(p0, p1)
 }
 func (s *IETHStruct) EthMaxPriorityFeePerGas(p0 context.Context) (types.EthBigInt, error) {
