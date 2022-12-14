@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/venus/app/submodule/eth"
 	v0api "github.com/filecoin-project/venus/venus-shared/api/chain/v0"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
@@ -38,17 +39,29 @@ func (builder *RPCBuilder) AddServices(services ...RPCService) error {
 	return nil
 }
 
-func (builder *RPCBuilder) AddService(service RPCService) error {
-	methodName := "V0API"
+var ethSubModuleTyp = reflect.TypeOf(&eth.EthSubModule{}).Elem()
 
+func skipV0API(in interface{}) bool {
+	inT := reflect.TypeOf(in)
+	if inT.Kind() == reflect.Pointer {
+		inT = inT.Elem()
+	}
+
+	return inT.AssignableTo(ethSubModuleTyp)
+}
+
+func (builder *RPCBuilder) AddV0API(service RPCService) error {
+	methodName := "V0API"
 	serviceV := reflect.ValueOf(service)
 	apiMethod := serviceV.MethodByName(methodName)
 	if !apiMethod.IsValid() {
-		return errors.New("expect API function")
+		if skipV0API(service) {
+			return nil
+		}
+		return errors.New("expect V0API function")
 	}
 
 	apiImpls := apiMethod.Call([]reflect.Value{})
-
 	for _, apiImpl := range apiImpls {
 		rt := reflect.TypeOf(apiImpl)
 		rv := reflect.ValueOf(apiImpl)
@@ -65,15 +78,18 @@ func (builder *RPCBuilder) AddService(service RPCService) error {
 		}
 	}
 
-	methodName = "API"
-	serviceV = reflect.ValueOf(service)
-	apiMethod = serviceV.MethodByName(methodName)
+	return nil
+}
+
+func (builder *RPCBuilder) AddAPI(service RPCService) error {
+	methodName := "API"
+	serviceV := reflect.ValueOf(service)
+	apiMethod := serviceV.MethodByName(methodName)
 	if !apiMethod.IsValid() {
 		return errors.New("expect API function")
 	}
 
-	apiImpls = apiMethod.Call([]reflect.Value{})
-
+	apiImpls := apiMethod.Call([]reflect.Value{})
 	for _, apiImpl := range apiImpls {
 		rt := reflect.TypeOf(apiImpl)
 		rv := reflect.ValueOf(apiImpl)
@@ -90,6 +106,15 @@ func (builder *RPCBuilder) AddService(service RPCService) error {
 		}
 	}
 	return nil
+}
+
+func (builder *RPCBuilder) AddService(service RPCService) error {
+	err := builder.AddV0API(service)
+	if err != nil {
+		return err
+	}
+
+	return builder.AddAPI(service)
 }
 
 func (builder *RPCBuilder) Build(version string, limiter *ratelimit.RateLimiter) *jsonrpc.RPCServer {
