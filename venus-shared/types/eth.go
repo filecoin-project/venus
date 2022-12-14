@@ -289,6 +289,11 @@ func (a *EthAddress) UnmarshalJSON(b []byte) error {
 }
 
 func (a EthAddress) ToFilecoinAddress() (address.Address, error) {
+	expectedPrefix := [12]byte{0xff}
+	if !bytes.Equal(a[:12], expectedPrefix[:]) {
+		// TODO: handle f4 once we've added support to go-address.
+		return address.Address{}, fmt.Errorf("not a valid id-in-eth address: %s", a)
+	}
 	id := binary.BigEndian.Uint64(a[12:])
 	return address.NewIDAddress(id)
 }
@@ -298,12 +303,10 @@ func EthAddressFromFilecoinIDAddress(addr address.Address) (EthAddress, error) {
 	if err != nil {
 		return EthAddress{}, err
 	}
-	buf := make([]byte, ETH_ADDRESS_LENGTH)
-	buf[0] = 0xff
-	binary.BigEndian.PutUint64(buf[12:], id)
 
 	var ethaddr EthAddress
-	copy(ethaddr[:], buf)
+	ethaddr[0] = 0xff
+	binary.BigEndian.PutUint64(ethaddr[12:], id)
 	return ethaddr, nil
 }
 
