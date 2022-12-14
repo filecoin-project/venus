@@ -80,11 +80,11 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v0.FullNode <> github.c
 	+ SetConcurrent
 	+ SetPassword
 	- Shutdown
+	+ StartTime
 	- StateAllMinerFaults
 	- StateChangedActors
 	- StateCompute
 	- StateDecodeParams
-	> StateGetActor {[func(context.Context, address.Address, types.TipSetKey) (*internal.Actor, error) <> func(context.Context, address.Address, types.TipSetKey) (*types.ActorV5, error)] base=func out type: #0 input; nested={[*internal.Actor <> *types.ActorV5] base=pointed type; nested={[internal.Actor <> types.ActorV5] base=struct field; nested={[internal.Actor <> types.ActorV5] base=exported fields count: 4 != 5; nested=nil}}}}
 	> StateGetNetworkParams {[func(context.Context) (*types.NetworkParams, error) <> func(context.Context) (*api.NetworkParams, error)] base=func out type: #0 input; nested={[*types.NetworkParams <> *api.NetworkParams] base=pointed type; nested={[types.NetworkParams <> api.NetworkParams] base=struct field; nested={[types.NetworkParams <> api.NetworkParams] base=exported field type: #5 field named ForkUpgradeParams; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=struct field; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=exported fields count: 21 != 22; nested=nil}}}}}}
 	- StateGetRandomnessFromBeacon
 	- StateGetRandomnessFromTickets
@@ -157,26 +157,26 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ Concurrent
 	- CreateBackup
 	- Discover
-	> EthBlockNumber {[func(context.Context) (types.EthInt, error) <> func(context.Context) (api.EthUint64, error)] base=func out type: #0 input; nested={[types.EthInt <> api.EthUint64] base=type kinds: int64 != uint64; nested=nil}}
-	> EthCall {[func(context.Context, types.EthCall, string) (string, error) <> func(context.Context, api.EthCall, string) (api.EthBytes, error)] base=func in type: #1 input; nested={[types.EthCall <> api.EthCall] base=struct field; nested={[types.EthCall <> api.EthCall] base=exported field type: #0 field named From; nested={[types.EthAddress <> *api.EthAddress] base=type kinds: array != ptr; nested=nil}}}}
-	> EthChainId {[func(context.Context) (types.EthInt, error) <> func(context.Context) (api.EthUint64, error)] base=func out type: #0 input; nested={[types.EthInt <> api.EthUint64] base=type kinds: int64 != uint64; nested=nil}}
-	> EthEstimateGas {[func(context.Context, types.EthCall, string) (types.EthInt, error) <> func(context.Context, api.EthCall) (api.EthUint64, error)] base=func in num: 3 != 2; nested=nil}
-	- EthFeeHistory
-	> EthGasPrice {[func(context.Context) (types.EthInt, error) <> func(context.Context) (api.EthBigInt, error)] base=func out type: #0 input; nested={[types.EthInt <> api.EthBigInt] base=type kinds: int64 != struct; nested=nil}}
-	> EthGetBlockByHash {[func(context.Context, types.EthHash, bool) (types.EthBlock, error) <> func(context.Context, api.EthHash, bool) (api.EthBlock, error)] base=func out type: #0 input; nested={[types.EthBlock <> api.EthBlock] base=struct field; nested={[types.EthBlock <> api.EthBlock] base=exported fields count: 18 != 21; nested=nil}}}
-	> EthGetBlockByNumber {[func(context.Context, types.EthInt, bool) (types.EthBlock, error) <> func(context.Context, string, bool) (api.EthBlock, error)] base=func in type: #1 input; nested={[types.EthInt <> string] base=type kinds: int64 != string; nested=nil}}
-	> EthGetBlockTransactionCountByHash {[func(context.Context, types.EthHash) (types.EthInt, error) <> func(context.Context, api.EthHash) (api.EthUint64, error)] base=func out type: #0 input; nested={[types.EthInt <> api.EthUint64] base=type kinds: int64 != uint64; nested=nil}}
-	> EthGetBlockTransactionCountByNumber {[func(context.Context, types.EthInt) (types.EthInt, error) <> func(context.Context, api.EthUint64) (api.EthUint64, error)] base=func in type: #1 input; nested={[types.EthInt <> api.EthUint64] base=type kinds: int64 != uint64; nested=nil}}
-	> EthGetCode {[func(context.Context, types.EthAddress) (string, error) <> func(context.Context, api.EthAddress, string) (api.EthBytes, error)] base=func in num: 2 != 3; nested=nil}
-	> EthGetStorageAt {[func(context.Context, types.EthAddress, types.EthInt, string) (string, error) <> func(context.Context, api.EthAddress, api.EthBytes, string) (api.EthBytes, error)] base=func in type: #2 input; nested={[types.EthInt <> api.EthBytes] base=type kinds: int64 != slice; nested=nil}}
-	> EthGetTransactionByBlockHashAndIndex {[func(context.Context, types.EthHash, types.EthInt) (types.EthTx, error) <> func(context.Context, api.EthHash, api.EthUint64) (api.EthTx, error)] base=func in type: #2 input; nested={[types.EthInt <> api.EthUint64] base=type kinds: int64 != uint64; nested=nil}}
-	> EthGetTransactionByBlockNumberAndIndex {[func(context.Context, types.EthInt, types.EthInt) (types.EthTx, error) <> func(context.Context, api.EthUint64, api.EthUint64) (api.EthTx, error)] base=func in type: #1 input; nested={[types.EthInt <> api.EthUint64] base=type kinds: int64 != uint64; nested=nil}}
-	> EthGetTransactionByHash {[func(context.Context, types.EthHash) (types.EthTx, error) <> func(context.Context, *api.EthHash) (*api.EthTx, error)] base=func in type: #1 input; nested={[types.EthHash <> *api.EthHash] base=type kinds: array != ptr; nested=nil}}
-	> EthGetTransactionCount {[func(context.Context, types.EthAddress, string) (types.EthInt, error) <> func(context.Context, api.EthAddress, string) (api.EthUint64, error)] base=func out type: #0 input; nested={[types.EthInt <> api.EthUint64] base=type kinds: int64 != uint64; nested=nil}}
-	> EthGetTransactionReceipt {[func(context.Context, types.EthHash) (types.EthTxReceipt, error) <> func(context.Context, api.EthHash) (*api.EthTxReceipt, error)] base=func out type: #0 input; nested={[types.EthTxReceipt <> *api.EthTxReceipt] base=type kinds: struct != ptr; nested=nil}}
-	> EthMaxPriorityFeePerGas {[func(context.Context) (types.EthInt, error) <> func(context.Context) (api.EthBigInt, error)] base=func out type: #0 input; nested={[types.EthInt <> api.EthBigInt] base=type kinds: int64 != struct; nested=nil}}
-	> EthProtocolVersion {[func(context.Context) (types.EthInt, error) <> func(context.Context) (api.EthUint64, error)] base=func out type: #0 input; nested={[types.EthInt <> api.EthUint64] base=type kinds: int64 != uint64; nested=nil}}
-	- EthSendRawTransaction
+	+ EthAccounts
+	+ EthBlockNumber
+	+ EthCall
+	+ EthChainId
+	+ EthEstimateGas
+	+ EthGasPrice
+	+ EthGetBalance
+	+ EthGetBlockByHash
+	+ EthGetBlockByNumber
+	+ EthGetBlockTransactionCountByHash
+	+ EthGetBlockTransactionCountByNumber
+	+ EthGetCode
+	+ EthGetStorageAt
+	+ EthGetTransactionByBlockHashAndIndex
+	+ EthGetTransactionByBlockNumberAndIndex
+	+ EthGetTransactionByHash
+	+ EthGetTransactionCount
+	+ EthGetTransactionReceipt
+	+ EthMaxPriorityFeePerGas
+	+ EthProtocolVersion
 	+ GasBatchEstimateMessageGas
 	> GasEstimateMessageGas {[func(context.Context, *internal.Message, *types.MessageSendSpec, types.TipSetKey) (*internal.Message, error) <> func(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)] base=func in type: #2 input; nested={[*types.MessageSendSpec <> *api.MessageSendSpec] base=pointed type; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=struct field; nested={[types.MessageSendSpec <> api.MessageSendSpec] base=exported fields count: 3 != 2; nested=nil}}}}
 	+ GetActor
@@ -210,19 +210,18 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ NetFindProvidersAsync
 	+ NetGetClosestPeers
 	- NetLimit
+	+ NetListening
 	- NetSetLimit
 	- NetStat
+	+ NetVersion
 	+ ProtocolParameters
-	- RaftLeader
-	- RaftState
 	+ ResolveToKeyAddr
 	- Session
 	+ SetConcurrent
 	+ SetPassword
 	- Shutdown
-	> StateChangedActors {[func(context.Context, cid.Cid, cid.Cid) (map[string]internal.Actor, error) <> func(context.Context, cid.Cid, cid.Cid) (map[string]types.ActorV5, error)] base=func out type: #0 input; nested={[map[string]internal.Actor <> map[string]types.ActorV5] base=map value; nested={[internal.Actor <> types.ActorV5] base=struct field; nested={[internal.Actor <> types.ActorV5] base=exported fields count: 4 != 5; nested=nil}}}}
+	+ StartTime
 	- StateCompute
-	> StateGetActor {[func(context.Context, address.Address, types.TipSetKey) (*internal.Actor, error) <> func(context.Context, address.Address, types.TipSetKey) (*types.ActorV5, error)] base=func out type: #0 input; nested={[*internal.Actor <> *types.ActorV5] base=pointed type; nested={[internal.Actor <> types.ActorV5] base=struct field; nested={[internal.Actor <> types.ActorV5] base=exported fields count: 4 != 5; nested=nil}}}}
 	> StateGetNetworkParams {[func(context.Context) (*types.NetworkParams, error) <> func(context.Context) (*api.NetworkParams, error)] base=func out type: #0 input; nested={[*types.NetworkParams <> *api.NetworkParams] base=pointed type; nested={[types.NetworkParams <> api.NetworkParams] base=struct field; nested={[types.NetworkParams <> api.NetworkParams] base=exported field type: #5 field named ForkUpgradeParams; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=struct field; nested={[types.ForkUpgradeParams <> api.ForkUpgradeParams] base=exported fields count: 21 != 22; nested=nil}}}}}}
 	+ StateMinerSectorSize
 	+ StateMinerWorkerAddress
