@@ -268,7 +268,7 @@ func init() {
 	addExample(&uuidTmp)
 
 	// eth types
-	ethint := types.EthInt(5)
+	ethint := types.EthUint64(5)
 	addExample(ethint)
 	addExample(&ethint)
 	ethaddr, _ := types.EthAddressFromHex("0x5CbEeCF99d3fDB3f25E309Cc264f240bb0664031")

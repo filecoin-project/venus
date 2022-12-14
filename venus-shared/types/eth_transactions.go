@@ -20,19 +20,19 @@ import (
 )
 
 type EthTx struct {
-	ChainID              EthInt      `json:"chainId"`
-	Nonce                EthInt      `json:"nonce"`
+	ChainID              EthUint64   `json:"chainId"`
+	Nonce                EthUint64   `json:"nonce"`
 	Hash                 EthHash     `json:"hash"`
 	BlockHash            EthHash     `json:"blockHash"`
-	BlockNumber          EthInt      `json:"blockNumber"`
-	TransactionIndex     EthInt      `json:"transacionIndex"`
+	BlockNumber          EthUint64   `json:"blockNumber"`
+	TransactionIndex     EthUint64   `json:"transacionIndex"`
 	From                 EthAddress  `json:"from"`
 	To                   *EthAddress `json:"to"`
 	Value                EthBigInt   `json:"value"`
-	Type                 EthInt      `json:"type"`
+	Type                 EthUint64   `json:"type"`
 	Input                EthBytes    `json:"input"`
-	Gas                  EthInt      `json:"gas"`
-	GasLimit             *EthInt     `json:"gasLimit,omitempty"`
+	Gas                  EthUint64   `json:"gas"`
+	GasLimit             *EthUint64  `json:"gasLimit,omitempty"`
 	MaxFeePerGas         EthBigInt   `json:"maxFeePerGas"`
 	MaxPriorityFeePerGas EthBigInt   `json:"maxPriorityFeePerGas"`
 	V                    EthBytes    `json:"v"`
