@@ -59,6 +59,7 @@ func ForceNet() *NetworkConf {
 			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: config.DrandMainnet},
 			AddressNetwork:       address.Testnet,
 			PropagationDelaySecs: 1,
+			Eip155ChainID:        31415926,
 		},
 	}
 }

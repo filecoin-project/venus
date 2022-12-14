@@ -69,6 +69,29 @@ v1: github.com/filecoin-project/venus/venus-shared/api/chain/v1 <> github.com/fi
 	- IChainInfo.VerifyEntry
 	- IMinerState.StateMinerSectorSize
 	- IMinerState.StateMinerWorkerAddress
+	- ICommon.StartTime
+	- IETH.EthAccounts
+	- IETH.EthBlockNumber
+	- IETH.EthCall
+	- IETH.EthChainId
+	- IETH.EthEstimateGas
+	- IETH.EthGasPrice
+	- IETH.EthGetBalance
+	- IETH.EthGetBlockByHash
+	- IETH.EthGetBlockByNumber
+	- IETH.EthGetBlockTransactionCountByHash
+	- IETH.EthGetBlockTransactionCountByNumber
+	- IETH.EthGetCode
+	- IETH.EthGetStorageAt
+	- IETH.EthGetTransactionByBlockHashAndIndex
+	- IETH.EthGetTransactionByBlockNumberAndIndex
+	- IETH.EthGetTransactionByHash
+	- IETH.EthGetTransactionCount
+	- IETH.EthGetTransactionReceipt
+	- IETH.EthMaxPriorityFeePerGas
+	- IETH.EthProtocolVersion
+	- IETH.NetListening
+	- IETH.NetVersion
 	- IMessagePool.GasBatchEstimateMessageGas
 	- IMessagePool.MpoolDeleteByAdress
 	- IMessagePool.MpoolPublishByAddr
