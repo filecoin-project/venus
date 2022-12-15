@@ -287,10 +287,10 @@ func (a EthAddress) ToFilecoinAddress() (address.Address, error) {
 	return address.NewIDAddress(id)
 }
 
-func TryEthAddressFromFilecoinAddress(addr address.Address, allowId bool) (EthAddress, bool, error) {
+func TryEthAddressFromFilecoinAddress(addr address.Address, allowID bool) (EthAddress, bool, error) {
 	switch addr.Protocol() {
 	case address.ID:
-		if !allowId {
+		if !allowID {
 			return EthAddress{}, false, nil
 		}
 		id, err := address.IDFromAddress(addr)
