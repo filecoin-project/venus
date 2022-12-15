@@ -79,24 +79,30 @@ func (a *ethAPI) EthGetBlockByHash(ctx context.Context, blkHash types.EthHash, f
 	if err != nil {
 		return types.EthBlock{}, fmt.Errorf("error loading tipset %s: %w", ts, err)
 	}
-	return a.ethBlockFromFilecoinTipSet(ctx, ts, fullTxInfo)
+	return a.newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo)
 }
 
 func (a *ethAPI) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (types.EthBlock, error) {
-	var num types.EthUint64
-	err := num.UnmarshalJSON([]byte(`"` + blkNum + `"`))
+	typ, num, err := types.ParseBlkNumOption(blkNum)
 	if err != nil {
-		head, err := a.chain.ChainHead(ctx)
-		if err != nil {
-			return types.EthBlock{}, fmt.Errorf("failed to got head %v", err)
-		}
+		return types.EthBlock{}, fmt.Errorf("cannot parse block number: %v", err)
+	}
+	head, err := a.chain.ChainHead(ctx)
+	if err != nil {
+		return types.EthBlock{}, fmt.Errorf("failed to got head %v", err)
+	}
+	switch typ {
+	case types.BlkNumLatest:
+		num = types.EthUint64(head.Height()) - 1
+	case types.BlkNumPending:
 		num = types.EthUint64(head.Height())
 	}
+
 	ts, err := a.em.chainModule.ChainReader.GetTipSetByHeight(ctx, nil, abi.ChainEpoch(num), false)
 	if err != nil {
 		return types.EthBlock{}, fmt.Errorf("error loading tipset %s: %w", ts, err)
 	}
-	return a.ethBlockFromFilecoinTipSet(ctx, ts, fullTxInfo)
+	return a.newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo)
 }
 
 func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error) {
@@ -378,11 +384,19 @@ func (a *ethAPI) EthSendRawTransaction(ctx context.Context, rawTx types.EthBytes
 	if err != nil {
 		return types.EmptyEthHash, err
 	}
+
+	_, err = a.chain.StateGetActor(ctx, smsg.Message.To, types.EmptyTSK)
+	if err != nil {
+		// if actor does not exist on chain yet, set the method to 0 because
+		// embryos only implement method 0
+		smsg.Message.Method = builtin.MethodSend
+	}
+
 	cid, err := a.mpool.MpoolPush(ctx, smsg)
 	if err != nil {
 		return types.EmptyEthHash, err
 	}
-	return types.EthHashFromCid(cid)
+	return types.NewEthHashFromCid(cid)
 }
 
 func (a *ethAPI) applyEvmMsg(ctx context.Context, tx types.EthCall) (*types.InvocResult, error) {
@@ -519,7 +533,7 @@ func (a *ethAPI) EthCall(ctx context.Context, tx types.EthCall, blkParam string)
 	return types.EthBytes{}, nil
 }
 
-func (a *ethAPI) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool) (types.EthBlock, error) {
+func (a *ethAPI) newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool) (types.EthBlock, error) {
 	parent, err := a.chain.ChainGetTipSet(ctx, ts.Parents())
 	if err != nil {
 		return types.EthBlock{}, err
@@ -528,15 +542,17 @@ func (a *ethAPI) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSe
 	if err != nil {
 		return types.EthBlock{}, err
 	}
-	parentBlkHash, err := types.EthHashFromCid(parentKeyCid)
+	parentBlkHash, err := types.NewEthHashFromCid(parentKeyCid)
 	if err != nil {
 		return types.EthBlock{}, err
 	}
 
-	// blkMsgs, err := a.Chain.BlockMsgsForTipset(ctx, ts)
-	// if err != nil {
-	// 	return types.EthBlock{}, fmt.Errorf("error loading messages for tipset: %v: %w", ts, err)
-	// }
+	blkCid, err := ts.Key().Cid()
+	if err != nil {
+		return types.EthBlock{}, err
+	}
+	blkHash, err := types.NewEthHashFromCid(blkCid)
+
 	msgs, err := a.em.chainModule.MessageStore.MessagesForTipset(ts)
 	if err != nil {
 		return types.EthBlock{}, fmt.Errorf("error loading messages for tipset: %v: %w", ts, err)
@@ -560,7 +576,7 @@ func (a *ethAPI) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSe
 			}
 			block.Transactions = append(block.Transactions, tx)
 		} else {
-			hash, err := types.EthHashFromCid(msg.Cid())
+			hash, err := types.NewEthHashFromCid(msg.Cid())
 			if err != nil {
 				return types.EthBlock{}, err
 			}
@@ -568,6 +584,7 @@ func (a *ethAPI) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSe
 		}
 	}
 
+	block.Hash = blkHash
 	block.Number = types.EthUint64(ts.Height())
 	block.ParentHash = parentBlkHash
 	block.Timestamp = types.EthUint64(ts.Blocks()[0].Timestamp)
@@ -625,7 +642,7 @@ func (a *ethAPI) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *
 		return types.EthTx{}, fmt.Errorf("msg does not exist")
 	}
 	cid := msgLookup.Message
-	txHash, err := types.EthHashFromCid(cid)
+	txHash, err := types.NewEthHashFromCid(cid)
 	if err != nil {
 		return types.EthTx{}, err
 	}
@@ -635,7 +652,7 @@ func (a *ethAPI) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *
 		return types.EthTx{}, err
 	}
 
-	blkHash, err := types.EthHashFromCid(tsCid)
+	blkHash, err := types.NewEthHashFromCid(tsCid)
 	if err != nil {
 		return types.EthTx{}, err
 	}
@@ -704,7 +721,7 @@ func (a *ethAPI) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *
 	return tx, nil
 }
 
-func (a *ethAPI) EthFeeHistory(ctx context.Context, blkCount uint64, newestBlkNum string) (types.EthFeeHistory, error) {
+func (a *ethAPI) EthFeeHistory(ctx context.Context, blkCount types.EthUint64, newestBlkNum string, rewardPercentiles []float64) (types.EthFeeHistory, error) {
 	if blkCount > 1024 {
 		return types.EthFeeHistory{}, fmt.Errorf("block count should be smaller than 1024")
 	}
@@ -725,8 +742,8 @@ func (a *ethAPI) EthFeeHistory(ctx context.Context, blkCount uint64, newestBlkNu
 	// Deal with the case that the chain is shorter than the number of
 	// requested blocks.
 	oldestBlkHeight := uint64(1)
-	if blkCount <= newestBlkHeight {
-		oldestBlkHeight = newestBlkHeight - blkCount + 1
+	if uint64(blkCount) <= newestBlkHeight {
+		oldestBlkHeight = newestBlkHeight - uint64(blkCount) + 1
 	}
 
 	ts, err := a.em.chainModule.ChainReader.GetTipSetByHeight(ctx, nil, abi.ChainEpoch(newestBlkHeight), false)
@@ -743,7 +760,7 @@ func (a *ethAPI) EthFeeHistory(ctx context.Context, blkCount uint64, newestBlkNu
 	for ts.Height() >= abi.ChainEpoch(oldestBlkHeight) {
 		// Unfortunately we need to rebuild the full message view so we can
 		// totalize gas used in the tipset.
-		block, err := a.ethBlockFromFilecoinTipSet(ctx, ts, false)
+		block, err := a.newEthBlockFromFilecoinTipSet(ctx, ts, false)
 		if err != nil {
 			return types.EthFeeHistory{}, fmt.Errorf("cannot create eth block: %v", err)
 		}

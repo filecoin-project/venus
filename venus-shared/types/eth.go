@@ -116,6 +116,7 @@ func (e *EthBytes) UnmarshalJSON(b []byte) error {
 }
 
 type EthBlock struct {
+	Hash             EthHash    `json:"hash"`
 	ParentHash       EthHash    `json:"parentHash"`
 	Sha3Uncles       EthHash    `json:"sha3Uncles"`
 	Miner            EthAddress `json:"miner"`
@@ -123,16 +124,17 @@ type EthBlock struct {
 	TransactionsRoot EthHash    `json:"transactionsRoot"`
 	ReceiptsRoot     EthHash    `json:"receiptsRoot"`
 	// TODO: include LogsBloom
-	Difficulty    EthUint64 `json:"difficulty"`
-	Number        EthUint64 `json:"number"`
-	GasLimit      EthUint64 `json:"gasLimit"`
-	GasUsed       EthUint64 `json:"gasUsed"`
-	Timestamp     EthUint64 `json:"timestamp"`
-	Extradata     []byte    `json:"extraData"`
-	MixHash       EthHash   `json:"mixHash"`
-	Nonce         EthNonce  `json:"nonce"`
-	BaseFeePerGas EthBigInt `json:"baseFeePerGas"`
-	Size          EthUint64 `json:"size"`
+	Difficulty      EthUint64 `json:"difficulty"`
+	TotalDifficulty EthUint64 `json:"totalDifficulty"`
+	Number          EthUint64 `json:"number"`
+	GasLimit        EthUint64 `json:"gasLimit"`
+	GasUsed         EthUint64 `json:"gasUsed"`
+	Timestamp       EthUint64 `json:"timestamp"`
+	Extradata       []byte    `json:"extraData"`
+	MixHash         EthHash   `json:"mixHash"`
+	Nonce           EthNonce  `json:"nonce"`
+	BaseFeePerGas   EthBigInt `json:"baseFeePerGas"`
+	Size            EthUint64 `json:"size"`
 	// can be []EthTx or []string depending on query params
 	Transactions []interface{} `json:"transactions"`
 	Uncles       []EthHash     `json:"uncles"`
@@ -386,7 +388,7 @@ func decodeHexString(s string, length int) ([]byte, error) {
 	return b, nil
 }
 
-func EthHashFromCid(c cid.Cid) (EthHash, error) {
+func NewEthHashFromCid(c cid.Cid) (EthHash, error) {
 	return EthHashFromHex(c.Hash().HexString()[8:])
 }
 
@@ -417,4 +419,28 @@ type EthFeeHistory struct {
 	BaseFeePerGas []EthBigInt    `json:"baseFeePerGas"`
 	GasUsedRatio  []float64      `json:"gasUsedRatio"`
 	Reward        *[][]EthBigInt `json:"reward,omitempty"`
+}
+
+type BlkNumType int64
+
+const (
+	BlkNumLatest BlkNumType = iota
+	BlkNumPending
+	BlkNumVal
+)
+
+func ParseBlkNumOption(str string) (typ BlkNumType, blkNum EthUint64, err error) {
+	switch str {
+	case "pending":
+		return BlkNumPending, 0, nil
+	case "latest":
+		return BlkNumLatest, 0, nil
+	default:
+		var num EthUint64
+		err := num.UnmarshalJSON([]byte(`"` + str + `"`))
+		if err != nil {
+			return BlkNumVal, 0, err
+		}
+		return BlkNumVal, num, nil
+	}
 }
