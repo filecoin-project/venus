@@ -40,6 +40,7 @@ type Tree interface {
 	SetActor(ctx context.Context, addr ActorKey, act *types.Actor) error
 	DeleteActor(ctx context.Context, addr ActorKey) error
 	LookupID(addr ActorKey) (address.Address, error)
+	Version() StateTreeVersion
 
 	Flush(ctx context.Context) (cid.Cid, error)
 	Snapshot(ctx context.Context) error

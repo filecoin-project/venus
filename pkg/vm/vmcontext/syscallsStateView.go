@@ -27,7 +27,7 @@ func newSyscallsStateView(ctx *invocationContext, VM *LegacyVM) *syscallsStateVi
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
 func (vm *syscallsStateView) ResolveToKeyAddr(ctx context.Context, accountAddr address.Address) (address.Address, error) {
 	// Short-circuit when given a pubkey address.
-	if accountAddr.Protocol() == address.SECP256K1 || accountAddr.Protocol() == address.BLS {
+	if accountAddr.Protocol() == address.SECP256K1 || accountAddr.Protocol() == address.BLS || accountAddr.Protocol() == address.Delegated {
 		return accountAddr, nil
 	}
 	accountActor, found, err := vm.State.GetActor(vm.context, accountAddr)
@@ -36,6 +36,12 @@ func (vm *syscallsStateView) ResolveToKeyAddr(ctx context.Context, accountAddr a
 	}
 	if !found {
 		return address.Undef, fmt.Errorf("signer resolution found no such actor %s", accountAddr)
+	}
+	if vm.State.Version() >= tree.StateTreeVersion5 {
+		if accountActor.Address == nil {
+			return address.Undef, fmt.Errorf("actor at %s doesn't have a predictable address", accountAddr)
+		}
+		return *accountActor.Address, nil
 	}
 	accountState, err := account.Load(adt.WrapStore(vm.context, vm.ctx.gasIpld), accountActor)
 	if err != nil {

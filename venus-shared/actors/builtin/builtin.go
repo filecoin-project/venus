@@ -98,6 +98,15 @@ func ActorNameByCode(c cid.Cid) string {
 	}
 }
 
+func IsEmbryo(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == "embryo"
+	}
+
+	return false
+}
+
 func IsBuiltinActor(c cid.Cid) bool {
 	_, _, ok := actors.GetActorMetaByCode(c)
 	if ok {
