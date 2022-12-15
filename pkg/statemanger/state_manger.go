@@ -82,7 +82,7 @@ func NewStateManger(cs *chain.Store, cp consensus.StateTransformer,
 
 func (s *Stmgr) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	switch addr.Protocol() {
-	case address.BLS, address.SECP256K1:
+	case address.BLS, address.SECP256K1, address.Delegated:
 		return addr, nil
 	case address.Actor:
 		return address.Undef, errors.New("cannot resolve actor address to key address")

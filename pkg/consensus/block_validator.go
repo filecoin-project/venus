@@ -21,8 +21,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/multiformats/go-varint"
 
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
@@ -746,6 +748,19 @@ func (bv *BlockValidator) VerifyWinningPoStProof(ctx context.Context, nv network
 	return nil
 }
 
+func isValidForSending(act *types.Actor) bool {
+	if builtin.IsAccountActor(act.Code) {
+		return true
+	}
+
+	// HACK: Allow Eth embryos to send messages
+	if !builtin.IsEmbryo(act.Code) || act.Address == nil || act.Address.Protocol() != address.Delegated {
+		return false
+	}
+	id, _, err := varint.FromUvarint(act.Address.Payload())
+	return err == nil && id == builtintypes.EthereumAddressManagerActorID
+}
+
 // TODO: We should extract this somewhere else and make the message pool and miner use the same logic
 func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *appstate.SignatureValidator, blk *types.BlockHeader, baseTS *types.TipSet) (err error) {
 	blksecpMsgs, blkblsMsgs, err := bv.messageStore.LoadMetaMessages(ctx, blk.Messages)
@@ -815,7 +830,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 				return fmt.Errorf("actor %s not found", sender)
 			}
 
-			if !builtin.IsAccountActor(act.Code) {
+			if isValidForSending(act) {
 				return errors.New("sender must be an account actor")
 			}
 			nonces[sender] = act.Nonce

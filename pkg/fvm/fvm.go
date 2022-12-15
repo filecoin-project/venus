@@ -300,7 +300,7 @@ func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerID address.Add
 }
 
 func resolveToKeyAddr(state tree.Tree, addr address.Address, cst cbor.IpldStore) (address.Address, error) {
-	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
+	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 || addr.Protocol() == address.Delegated {
 		return addr, nil
 	}
 
@@ -310,6 +310,13 @@ func resolveToKeyAddr(state tree.Tree, addr address.Address, cst cbor.IpldStore)
 	}
 	if !found {
 		return address.Undef, fmt.Errorf("signer resolution found no such actor %s", addr)
+	}
+
+	if state.Version() >= tree.StateTreeVersion5 {
+		if act.Address == nil {
+			return address.Undef, fmt.Errorf("actor at %s doesn't have a predictable address", addr)
+		}
+		return *act.Address, nil
 	}
 
 	aast, err := account.Load(adt.WrapStore(context.TODO(), cst), act)
