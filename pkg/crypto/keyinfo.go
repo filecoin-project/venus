@@ -15,6 +15,7 @@ import (
 const (
 	stBLS       = "bls"
 	stSecp256k1 = "secp256k1"
+	stDelegated = "delegated"
 )
 
 var log = logging.Logger("keyinfo")
@@ -49,6 +50,8 @@ func (ki *KeyInfo) UnmarshalJSON(data []byte) error {
 			ki.SigType = crypto.SigTypeBLS
 		} else if st == stSecp256k1 {
 			ki.SigType = crypto.SigTypeSecp256k1
+		} else if st == stDelegated {
+			ki.SigType = crypto.SigTypeDelegated
 		} else {
 			return fmt.Errorf("unknown sig type value: %s", st)
 		}
@@ -78,8 +81,10 @@ func (ki KeyInfo) MarshalJSON() ([]byte, error) {
 			k.SigType = stBLS
 		} else if ki.SigType == crypto.SigTypeSecp256k1 {
 			k.SigType = stSecp256k1
+		} else if ki.SigType == crypto.SigTypeDelegated {
+			k.SigType = stDelegated
 		} else {
-			return fmt.Errorf("unsupport keystore types  %T", k.SigType)
+			return fmt.Errorf("unsupport keystore types %T", k.SigType)
 		}
 		b, err = json.Marshal(k)
 		return err
@@ -145,7 +150,7 @@ func (ki *KeyInfo) Address() (address.Address, error) {
 	if ki.SigType == SigTypeBLS {
 		return address.NewBLSAddress(pubKey)
 	}
-	if ki.SigType == SigTypeSecp256k1 {
+	if ki.SigType == SigTypeSecp256k1 || ki.SigType == SigTypeDelegated {
 		return address.NewSecp256k1Address(pubKey)
 	}
 	return address.Undef, errors.Errorf("can not generate address for unknown crypto system: %d", ki.SigType)

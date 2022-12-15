@@ -20,6 +20,7 @@ type (
 const (
 	SigTypeSecp256k1 = crypto.SigTypeSecp256k1
 	SigTypeBLS       = crypto.SigTypeBLS
+	SigTypeDelegated = crypto.SigTypeDelegated
 )
 
 const (

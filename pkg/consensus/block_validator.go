@@ -842,7 +842,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 	secpMsgs := make([]types.ChainMsg, len(blksecpMsgs))
 	for i, m := range blksecpMsgs {
 		if bv.fork.GetNetworkVersion(ctx, blk.Height) >= network.Version14 {
-			if m.Signature.Type != crypto.SigTypeSecp256k1 {
+			if m.Signature.Type != crypto.SigTypeSecp256k1 && m.Signature.Type != crypto.SigTypeDelegated {
 				return fmt.Errorf("block had invalid secpk message at index %d: %w", i, err)
 			}
 		}
