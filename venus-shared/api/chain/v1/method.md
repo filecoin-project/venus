@@ -61,6 +61,7 @@
   * [EthCall](#ethcall)
   * [EthChainId](#ethchainid)
   * [EthEstimateGas](#ethestimategas)
+  * [EthFeeHistory](#ethfeehistory)
   * [EthGasPrice](#ethgasprice)
   * [EthGetBalance](#ethgetbalance)
   * [EthGetBlockByHash](#ethgetblockbyhash)
@@ -1928,7 +1929,7 @@ Inputs:
 ```json
 [
   {
-    "from": "0x0707070707070707070707070707070707070707",
+    "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
     "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
     "gas": "0x5",
     "gasPrice": "0x0",
@@ -1959,7 +1960,7 @@ Inputs:
 ```json
 [
   {
-    "from": "0x0707070707070707070707070707070707070707",
+    "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
     "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
     "gas": "0x5",
     "gasPrice": "0x0",
@@ -1970,6 +1971,36 @@ Inputs:
 ```
 
 Response: `"0x5"`
+
+### EthFeeHistory
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x5",
+  "string value",
+  [
+    12.3
+  ]
+]
+```
+
+Response:
+```json
+{
+  "oldestBlock": 42,
+  "baseFeePerGas": [
+    "0x0"
+  ],
+  "gasUsedRatio": [
+    12.3
+  ],
+  "reward": []
+}
+```
 
 ### EthGasPrice
 
@@ -2011,13 +2042,16 @@ Inputs:
 Response:
 ```json
 {
+  "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "parentHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "sha3Uncles": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "miner": "0x0707070707070707070707070707070707070707",
   "stateRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "transactionsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "receiptsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "logsBloom": "0x07",
   "difficulty": "0x5",
+  "totalDifficulty": "0x5",
   "number": "0x5",
   "gasLimit": "0x5",
   "gasUsed": "0x5",
@@ -2052,13 +2086,16 @@ Inputs:
 Response:
 ```json
 {
+  "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "parentHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "sha3Uncles": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "miner": "0x0707070707070707070707070707070707070707",
   "stateRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "transactionsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "receiptsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "logsBloom": "0x07",
   "difficulty": "0x5",
+  "totalDifficulty": "0x5",
   "number": "0x5",
   "gasLimit": "0x5",
   "gasUsed": "0x5",
@@ -2115,7 +2152,8 @@ Perms: read
 Inputs:
 ```json
 [
-  "0x0707070707070707070707070707070707070707"
+  "0x0707070707070707070707070707070707070707",
+  "string value"
 ]
 ```
 
@@ -2158,14 +2196,13 @@ Response:
   "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockNumber": "0x5",
-  "transacionIndex": "0x5",
+  "transactionIndex": "0x5",
   "from": "0x0707070707070707070707070707070707070707",
   "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
   "value": "0x0",
   "type": "0x5",
   "input": "0x07",
   "gas": "0x5",
-  "gasLimit": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
   "v": "0x07",
@@ -2195,14 +2232,13 @@ Response:
   "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockNumber": "0x5",
-  "transacionIndex": "0x5",
+  "transactionIndex": "0x5",
   "from": "0x0707070707070707070707070707070707070707",
   "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
   "value": "0x0",
   "type": "0x5",
   "input": "0x07",
   "gas": "0x5",
-  "gasLimit": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
   "v": "0x07",
@@ -2231,14 +2267,13 @@ Response:
   "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockNumber": "0x5",
-  "transacionIndex": "0x5",
+  "transactionIndex": "0x5",
   "from": "0x0707070707070707070707070707070707070707",
   "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
   "value": "0x0",
   "type": "0x5",
   "input": "0x07",
   "gas": "0x5",
-  "gasLimit": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
   "v": "0x07",

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -11,9 +12,14 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
+	init10 "github.com/filecoin-project/go-state-types/builtin/v10/init"
 	crypto1 "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus/pkg/crypto"
 	_ "github.com/filecoin-project/venus/pkg/crypto/delegated"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 )
 
 type TxTestcase struct {
@@ -33,21 +39,21 @@ func TestTxArgs(t *testing.T) {
 
 		// parse txargs
 		txArgs, err := ParseEthTxArgs(tc.Input)
-		require.Nil(t, err, comment)
+		require.NoError(t, err)
 
 		msgRecovered, err := txArgs.OriginalRlpMsg()
-		require.Nil(t, err, comment)
+		require.NoError(t, err)
 		require.Equal(t, tc.NosigTx, "0x"+hex.EncodeToString(msgRecovered), comment)
 
 		// verify signatures
 		from, err := txArgs.Sender()
-		require.Nil(t, err, comment)
+		require.NoError(t, err)
 
 		smsg, err := txArgs.ToSignedMessage()
-		require.Nil(t, err, comment)
+		require.NoError(t, err)
 
 		err = crypto.Verify(&smsg.Signature, from, msgRecovered)
-		require.Nil(t, err, comment)
+		require.NoError(t, err)
 
 		// verify data
 		require.Equal(t, tc.Output.ChainID, txArgs.ChainID)
@@ -56,34 +62,33 @@ func TestTxArgs(t *testing.T) {
 	}
 }
 
-// todo: 集成v10 builtin actor 后修复
-// func TestTransformParams(t *testing.T) {
-// 	constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
-// 		Initcode: mustDecodeHex("0x1122334455"),
-// 	})
-// 	require.Nil(t, err)
+func TestTransformParams(t *testing.T) {
+	constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
+		Initcode: mustDecodeHex("0x1122334455"),
+	})
+	require.Nil(t, err)
 
-// 	evmActorCid, ok := actors.GetActorCodeID(actorstypes.Version10, "reward")
-// 	require.True(t, ok)
+	evmActorCid, ok := actors.GetActorCodeID(actorstypes.Version10, "reward")
+	require.True(t, ok)
 
-// 	params, err := actors.SerializeParams(&init10.ExecParams{
-// 		CodeCID:           evmActorCid,
-// 		ConstructorParams: constructorParams,
-// 	})
-// 	require.Nil(t, err)
+	params, err := actors.SerializeParams(&init10.ExecParams{
+		CodeCID:           evmActorCid,
+		ConstructorParams: constructorParams,
+	})
+	require.Nil(t, err)
 
-// 	var exec init10.ExecParams
-// 	reader := bytes.NewReader(params)
-// 	err1 := exec.UnmarshalCBOR(reader)
-// 	require.Nil(t, err1)
+	var exec init10.ExecParams
+	reader := bytes.NewReader(params)
+	err1 := exec.UnmarshalCBOR(reader)
+	require.Nil(t, err1)
 
-// 	var evmParams evm.ConstructorParams
-// 	reader1 := bytes.NewReader(exec.ConstructorParams)
-// 	err1 = evmParams.UnmarshalCBOR(reader1)
-// 	require.Nil(t, err1)
+	var evmParams evm.ConstructorParams
+	reader1 := bytes.NewReader(exec.ConstructorParams)
+	err1 = evmParams.UnmarshalCBOR(reader1)
+	require.Nil(t, err1)
 
-//		require.Equal(t, mustDecodeHex("0x1122334455"), evmParams.Initcode)
-//	}
+	require.Equal(t, mustDecodeHex("0x1122334455"), evmParams.Initcode)
+}
 func TestEcRecover(t *testing.T) {
 	rHex := "0x479ff7fa64cf8bf641eb81635d1e8a698530d2f219951d234539e6d074819529"
 	sHex := "0x4b6146d27be50cdbb2853ba9a42f207af8d730272f1ebe9c9a78aeef1d6aa924"
@@ -128,11 +133,21 @@ func TestDelegatedSigner(t *testing.T) {
 	pubKeyHex := "0x04cfecc0520d906cbfea387759246e89d85e2998843e56ad1c41de247ce10b3e4c453aa73c8de13c178d94461b6fa3f8b6f74406ce43d2fbab6992d0b283394242"
 
 	msg := mustDecodeHex(msgHex)
-	pubKey := mustDecodeHex(pubKeyHex)
+	pubk := mustDecodeHex(pubKeyHex)
 	r := mustDecodeHex(rHex)
 	s := mustDecodeHex(sHex)
-	from, err := address.NewSecp256k1Address(pubKey)
-	require.Nil(t, err)
+
+	if pubk[0] == 0x04 {
+		pubk = pubk[1:]
+	}
+
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Reset()
+	hasher.Write(pubk)
+	addrHash := hasher.Sum(nil)
+
+	from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, addrHash[12:])
+	require.NoError(t, err)
 
 	sig := append(r, s...)
 	sig = append(sig, v)
@@ -144,7 +159,7 @@ func TestDelegatedSigner(t *testing.T) {
 	}
 
 	err = crypto.Verify(signature, from, msg)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func prepareTxTestcases() ([]TxTestcase, error) {

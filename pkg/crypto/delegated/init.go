@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
+	"github.com/filecoin-project/go-state-types/builtin"
 	crypto1 "github.com/filecoin-project/go-state-types/crypto"
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 )
@@ -44,7 +45,17 @@ func (delegatedSigner) Verify(sig []byte, a address.Address, msg []byte) error {
 		return err
 	}
 
-	maybeaddr, err := address.NewSecp256k1Address(pubk)
+	// if we get an uncompressed public key (that's what we get from the library,
+	// but putting this check here for defensiveness), strip the prefix
+	if pubk[0] == 0x04 {
+		pubk = pubk[1:]
+	}
+
+	hasher.Reset()
+	hasher.Write(pubk)
+	addrHash := hasher.Sum(nil)
+
+	maybeaddr, err := address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, addrHash[12:])
 	if err != nil {
 		return err
 	}
