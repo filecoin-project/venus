@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-
-	"golang.org/x/xerrors"
 )
+
+// set a limit to make sure it doesn't loop infinitely
+const maxListElements = 500
 
 func EncodeRLP(val interface{}) ([]byte, error) {
 	return encodeRLP(val)
@@ -48,7 +49,8 @@ func encodeLength(length int) (lenInBytes []byte, err error) {
 }
 
 func encodeRLP(val interface{}) ([]byte, error) {
-	if data, ok := val.([]byte); ok {
+	switch data := val.(type) {
+	case []byte:
 		if len(data) == 1 && data[0] <= 0x7f {
 			return data, nil
 		} else if len(data) <= 55 {
@@ -65,7 +67,7 @@ func encodeRLP(val interface{}) ([]byte, error) {
 				append(lenInBytes, data...)...,
 			), nil
 		}
-	} else if data, ok := val.([]interface{}); ok {
+	case []interface{}:
 		encodedList, err := encodeRLPListItems(data)
 		if err != nil {
 			return nil, err
@@ -86,8 +88,9 @@ func encodeRLP(val interface{}) ([]byte, error) {
 			[]byte{prefix},
 			append(lenInBytes, encodedList...)...,
 		), nil
+	default:
+		return nil, fmt.Errorf("input data should either be a list or a byte array")
 	}
-	return nil, fmt.Errorf("input data should either be a list or a byte array")
 }
 
 func DecodeRLP(data []byte) (interface{}, error) {
@@ -96,14 +99,14 @@ func DecodeRLP(data []byte) (interface{}, error) {
 		return nil, err
 	}
 	if consumed != len(data) {
-		return nil, xerrors.Errorf("invalid rlp data: length %d, consumed %d", len(data), consumed)
+		return nil, fmt.Errorf("invalid rlp data: length %d, consumed %d", len(data), consumed)
 	}
 	return res, nil
 }
 
 func decodeRLP(data []byte) (res interface{}, consumed int, err error) {
 	if len(data) == 0 {
-		return data, 0, xerrors.Errorf("invalid rlp data: data cannot be empty")
+		return data, 0, fmt.Errorf("invalid rlp data: data cannot be empty")
 	}
 	if data[0] >= 0xf8 {
 		listLenInBytes := int(data[0]) - 0xf7
@@ -112,7 +115,7 @@ func decodeRLP(data []byte) (res interface{}, consumed int, err error) {
 			return nil, 0, err
 		}
 		if 1+listLenInBytes+listLen > len(data) {
-			return nil, 0, xerrors.Errorf("invalid rlp data: out of bound while parsing list")
+			return nil, 0, fmt.Errorf("invalid rlp data: out of bound while parsing list")
 		}
 		result, err := decodeListElems(data[1+listLenInBytes:], listLen)
 		return result, 1 + listLenInBytes + listLen, err
@@ -128,13 +131,13 @@ func decodeRLP(data []byte) (res interface{}, consumed int, err error) {
 		}
 		totalLen := 1 + strLenInBytes + strLen
 		if totalLen > len(data) {
-			return nil, 0, xerrors.Errorf("invalid rlp data: out of bound while parsing string")
+			return nil, 0, fmt.Errorf("invalid rlp data: out of bound while parsing string")
 		}
 		return data[1+strLenInBytes : totalLen], totalLen, nil
 	} else if data[0] >= 0x80 {
 		length := int(data[0]) - 0x80
 		if 1+length > len(data) {
-			return nil, 0, xerrors.Errorf("invalid rlp data: out of bound while parsing string")
+			return nil, 0, fmt.Errorf("invalid rlp data: out of bound while parsing string")
 		}
 		return data[1 : 1+length], 1 + length, nil
 	}
@@ -143,15 +146,15 @@ func decodeRLP(data []byte) (res interface{}, consumed int, err error) {
 
 func decodeLength(data []byte, lenInBytes int) (length int, err error) {
 	if lenInBytes > len(data) || lenInBytes > 8 {
-		return 0, xerrors.Errorf("invalid rlp data: out of bound while parsing list length")
+		return 0, fmt.Errorf("invalid rlp data: out of bound while parsing list length")
 	}
 	var decodedLength int64
 	r := bytes.NewReader(append(make([]byte, 8-lenInBytes), data[:lenInBytes]...))
 	if err := binary.Read(r, binary.BigEndian, &decodedLength); err != nil {
-		return 0, xerrors.Errorf("invalid rlp data: cannot parse string length: %w", err)
+		return 0, fmt.Errorf("invalid rlp data: cannot parse string length: %w", err)
 	}
 	if lenInBytes+int(decodedLength) > len(data) {
-		return 0, xerrors.Errorf("invalid rlp data: out of bound while parsing list")
+		return 0, fmt.Errorf("invalid rlp data: out of bound while parsing list")
 	}
 	return int(decodedLength), nil
 }
@@ -160,17 +163,16 @@ func decodeListElems(data []byte, length int) (res []interface{}, err error) {
 	totalConsumed := 0
 	result := []interface{}{}
 
-	// set a limit to make sure it doesn't loop infinitely
-	for i := 0; totalConsumed < length && i < 5000; i++ {
+	for i := 0; totalConsumed < length && i < maxListElements; i++ {
 		elem, consumed, err := decodeRLP(data[totalConsumed:])
 		if err != nil {
-			return nil, xerrors.Errorf("invalid rlp data: cannot decode list element: %w", err)
+			return nil, fmt.Errorf("invalid rlp data: cannot decode list element: %w", err)
 		}
 		totalConsumed += consumed
 		result = append(result, elem)
 	}
 	if totalConsumed != length {
-		return nil, xerrors.Errorf("invalid rlp data: incorrect list length")
+		return nil, fmt.Errorf("invalid rlp data: incorrect list length")
 	}
 	return result, nil
 }

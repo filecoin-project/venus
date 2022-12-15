@@ -74,6 +74,7 @@ v1: github.com/filecoin-project/venus/venus-shared/api/chain/v1 <> github.com/fi
 	- IETH.EthCall
 	- IETH.EthChainId
 	- IETH.EthEstimateGas
+	- IETH.EthFeeHistory
 	- IETH.EthGasPrice
 	- IETH.EthGetBalance
 	- IETH.EthGetBlockByHash

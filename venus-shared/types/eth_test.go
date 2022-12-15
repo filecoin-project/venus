@@ -1,4 +1,3 @@
-// stm: #unit
 package types
 
 import (
@@ -30,7 +29,6 @@ func TestEthIntMarshalJSON(t *testing.T) {
 		require.Equal(t, j, tc.Output)
 	}
 }
-
 func TestEthIntUnmarshalJSON(t *testing.T) {
 	testcases := []TestCase{
 		{[]byte("\"0x0\""), EthUint64(0)},
@@ -85,6 +83,7 @@ func TestEthHash(t *testing.T) {
 	for _, hash := range testcases {
 		var h EthHash
 		err := h.UnmarshalJSON([]byte(hash))
+
 		require.Nil(t, err)
 		require.Equal(t, h.String(), strings.Replace(hash, `"`, "", -1))
 
@@ -105,6 +104,7 @@ func TestEthAddr(t *testing.T) {
 	for _, addr := range testcases {
 		var a EthAddress
 		err := a.UnmarshalJSON([]byte(addr))
+
 		require.Nil(t, err)
 		require.Equal(t, a.String(), strings.Replace(addr, `"`, "", -1))
 	}
