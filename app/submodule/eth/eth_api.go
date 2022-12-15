@@ -592,19 +592,18 @@ func (a *ethAPI) lookupEthAddress(ctx context.Context, addr address.Address) (ty
 		return ethAddr, nil
 	}
 
-	// todo: 合入 v10 actor后
 	// Lookup on the target actor.
-	// actor, err := a.chain.StateGetActor(ctx, addr, types.EmptyTSK)
-	// if err != nil {
-	// 	return types.EthAddress{}, err
-	// }
-	// if actor.Address != nil {
-	// 	if ethAddr, ok, err := types.TryEthAddressFromFilecoinAddress(*actor.Address, false); err != nil {
-	// 		return types.EthAddress{}, err
-	// 	} else if ok {
-	// 		return ethAddr, nil
-	// 	}
-	// }
+	actor, err := a.chain.StateGetActor(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		return types.EthAddress{}, err
+	}
+	if actor.Address != nil {
+		if ethAddr, ok, err := types.TryEthAddressFromFilecoinAddress(*actor.Address, false); err != nil {
+			return types.EthAddress{}, err
+		} else if ok {
+			return ethAddr, nil
+		}
+	}
 
 	// Check if we already have an ID addr, and use it if possible.
 	if ethAddr, ok, err := types.TryEthAddressFromFilecoinAddress(addr, true); err != nil {
@@ -703,6 +702,77 @@ func (a *ethAPI) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *
 		Input:                input,
 	}
 	return tx, nil
+}
+
+func (a *ethAPI) EthFeeHistory(ctx context.Context, blkCount uint64, newestBlkNum string) (types.EthFeeHistory, error) {
+	if blkCount > 1024 {
+		return types.EthFeeHistory{}, fmt.Errorf("block count should be smaller than 1024")
+	}
+
+	head, err := a.chain.ChainHead(ctx)
+	if err != nil {
+		return types.EthFeeHistory{}, fmt.Errorf("failed to got head %v", err)
+	}
+	newestBlkHeight := uint64(head.Height())
+
+	// TODO https://github.com/filecoin-project/ref-fvm/issues/1016
+	var blkNum types.EthUint64
+	err = blkNum.UnmarshalJSON([]byte(`"` + newestBlkNum + `"`))
+	if err == nil && uint64(blkNum) < newestBlkHeight {
+		newestBlkHeight = uint64(blkNum)
+	}
+
+	// Deal with the case that the chain is shorter than the number of
+	// requested blocks.
+	oldestBlkHeight := uint64(1)
+	if blkCount <= newestBlkHeight {
+		oldestBlkHeight = newestBlkHeight - blkCount + 1
+	}
+
+	ts, err := a.em.chainModule.ChainReader.GetTipSetByHeight(ctx, nil, abi.ChainEpoch(newestBlkHeight), false)
+	if err != nil {
+		return types.EthFeeHistory{}, fmt.Errorf("cannot load find block height: %v", newestBlkHeight)
+	}
+
+	// FIXME: baseFeePerGas should include the next block after the newest of the returned range, because this
+	// can be inferred from the newest block. we use the newest block's baseFeePerGas for now but need to fix it
+	// In other words, due to deferred execution, we might not be returning the most useful value here for the client.
+	baseFeeArray := []types.EthBigInt{types.EthBigInt(ts.Blocks()[0].ParentBaseFee)}
+	gasUsedRatioArray := []float64{}
+
+	for ts.Height() >= abi.ChainEpoch(oldestBlkHeight) {
+		// Unfortunately we need to rebuild the full message view so we can
+		// totalize gas used in the tipset.
+		block, err := a.ethBlockFromFilecoinTipSet(ctx, ts, false)
+		if err != nil {
+			return types.EthFeeHistory{}, fmt.Errorf("cannot create eth block: %v", err)
+		}
+
+		// both arrays should be reversed at the end
+		baseFeeArray = append(baseFeeArray, types.EthBigInt(ts.Blocks()[0].ParentBaseFee))
+		gasUsedRatioArray = append(gasUsedRatioArray, float64(block.GasUsed)/float64(constants.BlockGasLimit))
+
+		parentTsKey := ts.Parents()
+		ts, err = a.chain.ChainGetTipSet(ctx, parentTsKey)
+		if err != nil {
+			return types.EthFeeHistory{}, fmt.Errorf("cannot load tipset key: %v", parentTsKey)
+		}
+	}
+
+	// Reverse the arrays; we collected them newest to oldest; the client expects oldest to newest.
+
+	for i, j := 0, len(baseFeeArray)-1; i < j; i, j = i+1, j-1 {
+		baseFeeArray[i], baseFeeArray[j] = baseFeeArray[j], baseFeeArray[i]
+	}
+	for i, j := 0, len(gasUsedRatioArray)-1; i < j; i, j = i+1, j-1 {
+		gasUsedRatioArray[i], gasUsedRatioArray[j] = gasUsedRatioArray[j], gasUsedRatioArray[i]
+	}
+
+	return types.EthFeeHistory{
+		OldestBlock:   oldestBlkHeight,
+		BaseFeePerGas: baseFeeArray,
+		GasUsedRatio:  gasUsedRatioArray,
+	}, nil
 }
 
 var _ v1.IETH = (*ethAPI)(nil)
