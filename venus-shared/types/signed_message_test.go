@@ -58,6 +58,10 @@ func TestSignedMessageBasic(t *testing.T) {
 					require.NotEqual(t, c, src.Message.Cid())
 					require.Greater(t, src.ChainLength(), src.Message.ChainLength())
 
+				case crypto.SigTypeDelegated:
+					require.NotEqual(t, c, src.Message.Cid())
+					require.Greater(t, src.ChainLength(), src.Message.ChainLength())
+
 				default:
 					t.Fatalf("unexpected sig type %d", src.Signature.Type)
 				}

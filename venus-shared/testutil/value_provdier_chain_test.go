@@ -37,7 +37,7 @@ func TestDefaultAddresses(t *testing.T) {
 		protos[addrs[i].Protocol()] = struct{}{}
 	}
 
-	require.True(t, len(protos) == 4)
+	require.True(t, len(protos) == 5)
 }
 
 func TestDefaultIDAddresses(t *testing.T) {
@@ -99,7 +99,7 @@ func TestDefaultSigTypes(t *testing.T) {
 		typs[sigtyps[i]] = struct{}{}
 	}
 
-	require.True(t, len(typs) == 2)
+	require.True(t, len(typs) == 3)
 }
 
 func TestDefaultPaddedSize(t *testing.T) {
