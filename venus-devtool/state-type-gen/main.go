@@ -55,8 +55,8 @@ var pendingPkgs = func() map[string]*pendingPkg {
 	for _, pkgName := range list {
 		pkgs[pkgName] = &pendingPkg{
 			name: pkgName,
-			ver:  actors.Version(actors.LatestVersion),
-			path: fmt.Sprintf("%s/v%v/%s", prePath, actors.LatestVersion, pkgName),
+			ver:  actors.Version(actors.Version9),
+			path: fmt.Sprintf("%s/v%v/%s", prePath, actors.Version9, pkgName),
 		}
 	}
 
@@ -203,7 +203,7 @@ func writeFile(dst string, metas []*metaVisitor) error {
 	fmt.Fprintln(&fileBuffer, ")\n")
 
 	for _, meta := range metas {
-		fmt.Fprintf(&fileBuffer, "////////// %s //////////\n", meta.pkgName)
+		fmt.Fprintf(&fileBuffer, "////////// %s //////////\n\n", meta.pkgName)
 		genDetail(&fileBuffer, meta.con, "const", meta.pkgName)
 		genDetail(&fileBuffer, meta.t, "type", meta.pkgName)
 		genDetail(&fileBuffer, meta.f, "var", meta.pkgName)

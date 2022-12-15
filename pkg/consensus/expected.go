@@ -207,6 +207,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (ci
 		Bsstore:             c.bstore,
 		PRoot:               ts.At(0).ParentStateRoot,
 		SysCallsImpl:        c.syscallsImpl,
+		TipSetGetter:        vmcontext.TipSetGetterForTipset(c.chainState.GetTipSetByHeight, ts),
 		Tracing:             false,
 	}
 

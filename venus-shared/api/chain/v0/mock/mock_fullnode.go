@@ -544,10 +544,10 @@ func (mr *MockFullNodeMockRecorder) GasEstimateMessageGas(arg0, arg1, arg2, arg3
 }
 
 // GetActor mocks base method.
-func (m *MockFullNode) GetActor(arg0 context.Context, arg1 address.Address) (*internal.Actor, error) {
+func (m *MockFullNode) GetActor(arg0 context.Context, arg1 address.Address) (*internal.ActorV5, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetActor", arg0, arg1)
-	ret0, _ := ret[0].(*internal.Actor)
+	ret0, _ := ret[0].(*internal.ActorV5)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -589,10 +589,10 @@ func (mr *MockFullNodeMockRecorder) GetFullBlock(arg0, arg1 interface{}) *gomock
 }
 
 // GetParentStateRootActor mocks base method.
-func (m *MockFullNode) GetParentStateRootActor(arg0 context.Context, arg1 *types.TipSet, arg2 address.Address) (*internal.Actor, error) {
+func (m *MockFullNode) GetParentStateRootActor(arg0 context.Context, arg1 *types.TipSet, arg2 address.Address) (*internal.ActorV5, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetParentStateRootActor", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*internal.Actor)
+	ret0, _ := ret[0].(*internal.ActorV5)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -633,10 +633,10 @@ func (mr *MockFullNodeMockRecorder) ID(arg0 interface{}) *gomock.Call {
 }
 
 // ListActor mocks base method.
-func (m *MockFullNode) ListActor(arg0 context.Context) (map[address.Address]*internal.Actor, error) {
+func (m *MockFullNode) ListActor(arg0 context.Context) (map[address.Address]*internal.ActorV5, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListActor", arg0)
-	ret0, _ := ret[0].(map[address.Address]*internal.Actor)
+	ret0, _ := ret[0].(map[address.Address]*internal.ActorV5)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1849,10 +1849,10 @@ func (mr *MockFullNodeMockRecorder) StateDealProviderCollateralBounds(arg0, arg1
 }
 
 // StateGetActor mocks base method.
-func (m *MockFullNode) StateGetActor(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (*internal.Actor, error) {
+func (m *MockFullNode) StateGetActor(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (*internal.ActorV5, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateGetActor", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*internal.Actor)
+	ret0, _ := ret[0].(*internal.ActorV5)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

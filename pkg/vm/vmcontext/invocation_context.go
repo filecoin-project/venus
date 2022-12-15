@@ -538,6 +538,7 @@ func (ctx *invocationContext) CreateActor(codeID cid.Cid, addr address.Address) 
 		Balance: abi.NewTokenAmount(0),
 		Head:    EmptyObjectCid,
 		Nonce:   0,
+		Address: &addr,
 	}
 	if err := ctx.vm.State.SetActor(ctx.vm.context, addr, newActor); err != nil {
 		panic(err)

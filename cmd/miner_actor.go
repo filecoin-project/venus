@@ -551,6 +551,7 @@ var actorControlList = &cmds.Command{
 
 		printKey("owner", mi.Owner)
 		printKey("worker", mi.Worker)
+		printKey("beneficiary", mi.Beneficiary)
 		for i, ca := range mi.ControlAddresses {
 			printKey(fmt.Sprintf("control-%d", i), ca)
 		}

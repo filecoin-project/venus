@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -51,6 +52,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 		case actorstypes.Version9:
 			return load9(store, act.Head)
 
+		case actorstypes.Version10:
+			return load10(store, act.Head)
+
 		}
 	}
 
@@ -86,6 +90,11 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 // versions
 type State interface {
 	cbor.Marshaler
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actorstypes.Version
+
 	// Channel owner, who has funded the actor
 	From() (address.Address, error)
 	// Recipient of payouts from channel
@@ -157,6 +166,9 @@ func Message(version actorstypes.Version, from address.Address) MessageBuilder {
 	case actorstypes.Version9:
 		return message9{from}
 
+	case actorstypes.Version10:
+		return message10{from}
+
 	default:
 		panic(fmt.Sprintf("unsupported actors version: %d", version))
 	}
@@ -182,5 +194,20 @@ func toV0SignedVoucher(sv paychtypes.SignedVoucher) paych0.SignedVoucher {
 		MinSettleHeight: sv.MinSettleHeight,
 		Merges:          nil,
 		Signature:       sv.Signature,
+	}
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+		(&state9{}).Code(),
+		(&state10{}).Code(),
 	}
 }

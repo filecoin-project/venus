@@ -102,6 +102,10 @@ var renderCmd = &cli.Command{
 			if strings.Contains(tpath, "builtin/datacap") {
 				versions = actors.Versions[8:]
 			}
+			// evm actor available since version v10
+			if strings.Contains(tpath, "builtin/evm") {
+				versions = actors.Versions[9:]
+			}
 			err = render(filepath.Join(abs, tpath), versions)
 			if err != nil {
 				return fmt.Errorf("for %s: %w", tpath, err)
