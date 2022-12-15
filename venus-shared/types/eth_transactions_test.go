@@ -13,6 +13,7 @@ import (
 	gocrypto "github.com/filecoin-project/go-crypto"
 	crypto1 "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus/pkg/crypto"
+	_ "github.com/filecoin-project/venus/pkg/crypto/delegated"
 )
 
 type TxTestcase struct {
