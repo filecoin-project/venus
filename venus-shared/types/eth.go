@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
+	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 	"github.com/multiformats/go-varint"
@@ -28,25 +28,25 @@ func SetEip155ChainId(val int) {
 	Eip155ChainID = val
 }
 
-type EthInt int64
+type EthUint64 uint64
 
-func (e EthInt) MarshalJSON() ([]byte, error) {
+func (e EthUint64) MarshalJSON() ([]byte, error) {
 	if e == 0 {
 		return json.Marshal("0x0")
 	}
 	return json.Marshal(fmt.Sprintf("0x%x", e))
 }
 
-func (e *EthInt) UnmarshalJSON(b []byte) error {
+func (e *EthUint64) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
-	parsedInt, err := strconv.ParseInt(strings.Replace(s, "0x", "", -1), 16, 64)
+	parsedInt, err := strconv.ParseUint(strings.Replace(s, "0x", "", -1), 16, 64)
 	if err != nil {
 		return err
 	}
-	eint := EthInt(parsedInt)
+	eint := EthUint64(parsedInt)
 	*e = eint
 	return nil
 }
@@ -123,16 +123,16 @@ type EthBlock struct {
 	TransactionsRoot EthHash    `json:"transactionsRoot"`
 	ReceiptsRoot     EthHash    `json:"receiptsRoot"`
 	// TODO: include LogsBloom
-	Difficulty    EthInt    `json:"difficulty"`
-	Number        EthInt    `json:"number"`
-	GasLimit      EthInt    `json:"gasLimit"`
-	GasUsed       EthInt    `json:"gasUsed"`
-	Timestamp     EthInt    `json:"timestamp"`
+	Difficulty    EthUint64 `json:"difficulty"`
+	Number        EthUint64 `json:"number"`
+	GasLimit      EthUint64 `json:"gasLimit"`
+	GasUsed       EthUint64 `json:"gasUsed"`
+	Timestamp     EthUint64 `json:"timestamp"`
 	Extradata     []byte    `json:"extraData"`
 	MixHash       EthHash   `json:"mixHash"`
 	Nonce         EthNonce  `json:"nonce"`
 	BaseFeePerGas EthBigInt `json:"baseFeePerGas"`
-	Size          EthInt    `json:"size"`
+	Size          EthUint64 `json:"size"`
 	// can be []EthTx or []string depending on query params
 	Transactions []interface{} `json:"transactions"`
 	Uncles       []EthHash     `json:"uncles"`
@@ -140,7 +140,7 @@ type EthBlock struct {
 
 var (
 	EmptyEthHash  = EthHash{}
-	EmptyEthInt   = EthInt(0)
+	EmptyEthInt   = EthUint64(0)
 	EmptyEthNonce = [8]byte{0, 0, 0, 0, 0, 0, 0, 0}
 )
 
@@ -154,7 +154,7 @@ func NewEthBlock() EthBlock {
 		Extradata:        []byte{},
 		MixHash:          EmptyEthHash,
 		Nonce:            EmptyEthNonce,
-		GasLimit:         EthInt(constants.BlockGasLimit), // TODO we map Ethereum blocks to Filecoin tipsets; this is inconsistent.
+		GasLimit:         EthUint64(constants.BlockGasLimit), // TODO we map Ethereum blocks to Filecoin tipsets; this is inconsistent.
 		Uncles:           []EthHash{},
 		Transactions:     []interface{}{},
 	}
@@ -163,7 +163,7 @@ func NewEthBlock() EthBlock {
 type EthCall struct {
 	From     EthAddress  `json:"from"`
 	To       *EthAddress `json:"to"`
-	Gas      EthInt      `json:"gas"`
+	Gas      EthUint64   `json:"gas"`
 	GasPrice EthBigInt   `json:"gasPrice"`
 	Value    EthBigInt   `json:"value"`
 	Data     EthBytes    `json:"data"`
@@ -182,18 +182,18 @@ func (c *EthCall) UnmarshalJSON(b []byte) error {
 
 type EthTxReceipt struct {
 	TransactionHash  EthHash     `json:"transactionHash"`
-	TransactionIndex EthInt      `json:"transactionIndex"`
+	TransactionIndex EthUint64   `json:"transactionIndex"`
 	BlockHash        EthHash     `json:"blockHash"`
-	BlockNumber      EthInt      `json:"blockNumber"`
+	BlockNumber      EthUint64   `json:"blockNumber"`
 	From             EthAddress  `json:"from"`
 	To               *EthAddress `json:"to"`
 	// Logs
 	// LogsBloom
 	StateRoot         EthHash     `json:"root"`
-	Status            EthInt      `json:"status"`
+	Status            EthUint64   `json:"status"`
 	ContractAddress   *EthAddress `json:"contractAddress"`
-	CumulativeGasUsed EthInt      `json:"cumulativeGasUsed"`
-	GasUsed           EthInt      `json:"gasUsed"`
+	CumulativeGasUsed EthUint64   `json:"cumulativeGasUsed"`
+	GasUsed           EthUint64   `json:"gasUsed"`
 	EffectiveGasPrice EthBigInt   `json:"effectiveGasPrice"`
 	LogsBloom         EthBytes    `json:"logsBloom"`
 	Logs              []string    `json:"logs"`
@@ -212,10 +212,14 @@ func NewEthTxReceipt(tx EthTx, lookup *MsgLookup, replay *InvocResult) (EthTxRec
 		Logs:             []string{},
 	}
 
-	contractAddr, err := CheckContractCreation(lookup)
-	if err == nil {
-		receipt.To = nil
-		receipt.ContractAddress = contractAddr
+	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
+		// Create and Create2 return the same things.
+		var ret eam.CreateReturn
+		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
+			return EthTxReceipt{}, fmt.Errorf("failed to parse contract creation result: %w", err)
+		}
+		addr := EthAddress(ret.EthAddress)
+		receipt.ContractAddress = &addr
 	}
 
 	if lookup.Receipt.ExitCode.IsSuccess() {
@@ -225,7 +229,7 @@ func NewEthTxReceipt(tx EthTx, lookup *MsgLookup, replay *InvocResult) (EthTxRec
 		receipt.Status = 0
 	}
 
-	receipt.GasUsed = EthInt(lookup.Receipt.GasUsed)
+	receipt.GasUsed = EthUint64(lookup.Receipt.GasUsed)
 
 	// TODO: handle CumulativeGasUsed
 	receipt.CumulativeGasUsed = EmptyEthInt
@@ -233,21 +237,6 @@ func NewEthTxReceipt(tx EthTx, lookup *MsgLookup, replay *InvocResult) (EthTxRec
 	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
 	receipt.EffectiveGasPrice = EthBigInt(effectiveGasPrice)
 	return receipt, nil
-}
-
-func CheckContractCreation(lookup *MsgLookup) (*EthAddress, error) {
-	if lookup.Receipt.ExitCode.IsError() {
-		return nil, fmt.Errorf("message execution was not successful")
-	}
-	var result init8.ExecReturn
-	ret := bytes.NewReader(lookup.Receipt.Return)
-	if err := result.UnmarshalCBOR(ret); err == nil {
-		contractAddr, err := EthAddressFromFilecoinIDAddress(result.IDAddress)
-		if err == nil {
-			return &contractAddr, nil
-		}
-	}
-	return nil, fmt.Errorf("not a contract creation tx")
 }
 
 const (
@@ -289,28 +278,19 @@ func (a *EthAddress) UnmarshalJSON(b []byte) error {
 }
 
 func (a EthAddress) ToFilecoinAddress() (address.Address, error) {
+	expectedPrefix := [12]byte{0xff}
+	if !bytes.Equal(a[:12], expectedPrefix[:]) {
+		// TODO: handle f4 once we've added support to go-address.
+		return address.Address{}, fmt.Errorf("not a valid id-in-eth address: %s", a)
+	}
 	id := binary.BigEndian.Uint64(a[12:])
 	return address.NewIDAddress(id)
 }
 
-func EthAddressFromFilecoinIDAddress(addr address.Address) (EthAddress, error) {
-	id, err := address.IDFromAddress(addr)
-	if err != nil {
-		return EthAddress{}, err
-	}
-	buf := make([]byte, ETH_ADDRESS_LENGTH)
-	buf[0] = 0xff
-	binary.BigEndian.PutUint64(buf[12:], id)
-
-	var ethaddr EthAddress
-	copy(ethaddr[:], buf)
-	return ethaddr, nil
-}
-
-func TryEthAddressFromFilecoinAddress(addr address.Address, allowID bool) (EthAddress, bool, error) {
+func TryEthAddressFromFilecoinAddress(addr address.Address, allowId bool) (EthAddress, bool, error) {
 	switch addr.Protocol() {
 	case address.ID:
-		if !allowID {
+		if !allowId {
 			return EthAddress{}, false, nil
 		}
 		id, err := address.IDFromAddress(addr)
