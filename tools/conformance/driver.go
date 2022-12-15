@@ -101,17 +101,6 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 	// chainstore
 	chainStore := chain.NewStore(chainDs, bs, cid.Undef, chain.NewMockCirculatingSupplyCalculator()) // load genesis from car
 
-	//drand
-	/*genBlk, err := chainStore.GetGenesisBlock(context.TODO())
-	if err != nil {
-		return nil, err
-	}
-
-	drand, err := beacon.DrandConfigSchedule(genBlk.Timestamp, mainNetParams.Network.BlockDelay, mainNetParams.Network.DrandSchedule)
-	if err != nil {
-		return nil, err
-	}*/
-
 	// chain fork
 	chainFork, err := fork.NewChainFork(context.TODO(), chainStore, ipldStore, bs, &mainNetParams.Network)
 	faultChecker := consensusfault.NewFaultChecker(chainStore, chainFork)
@@ -170,14 +159,7 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 			default:
 				// sneak in messages originating from other addresses as both kinds.
 				// these should fail, as they are actually invalid senders.
-				/*sb.SECPMessages = append(sb.SECPMessages, &types.SignedMessage{
-					Message: *msg,
-					Signature: crypto.Signature{
-						Type: crypto.SigTypeSecp256k1,
-						Data: make([]byte, 65),
-					},
-				})*/
-				sb.BlsMessages = append(sb.BlsMessages, msg) // todo  use interface for message
+				sb.SecpkMessages = append(sb.SecpkMessages, msg) // todo  use interface for message
 				sb.BlsMessages = append(sb.BlsMessages, msg)
 			}
 		}
