@@ -275,6 +275,8 @@ func init() {
 	addExample(&ethaddr)
 	ethhash, _ := types.EthHashFromCid(c)
 	addExample(&ethhash)
+	ethFeeHistoryReward := [][]types.EthBigInt{}
+	addExample(&ethFeeHistoryReward)
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {
