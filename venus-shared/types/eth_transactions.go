@@ -19,13 +19,15 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors"
 )
 
+const Eip1559TxType = 2
+
 type EthTx struct {
 	ChainID              EthUint64   `json:"chainId"`
 	Nonce                EthUint64   `json:"nonce"`
 	Hash                 EthHash     `json:"hash"`
 	BlockHash            EthHash     `json:"blockHash"`
 	BlockNumber          EthUint64   `json:"blockNumber"`
-	TransactionIndex     EthUint64   `json:"transacionIndex"`
+	TransactionIndex     EthUint64   `json:"transactionIndex"`
 	From                 EthAddress  `json:"from"`
 	To                   *EthAddress `json:"to"`
 	Value                EthBigInt   `json:"value"`
@@ -45,7 +47,7 @@ type EthTxArgs struct {
 	To                   *EthAddress `json:"to"`
 	Value                big.Int     `json:"value"`
 	MaxFeePerGas         big.Int     `json:"maxFeePerGas"`
-	MaxPriorityFeePerGas big.Int     `json:"maxPrioritiyFeePerGas"`
+	MaxPriorityFeePerGas big.Int     `json:"maxPriorityFeePerGas"`
 	GasLimit             int         `json:"gasLimit"`
 	Input                []byte      `json:"input"`
 	V                    []byte      `json:"v"`
@@ -174,8 +176,8 @@ func (tx *EthTxArgs) ToSignedMessage() (*SignedMessage, error) {
 		Message:   *msg,
 		Signature: *sig,
 	}
-
 	return &signedMsg, nil
+
 }
 
 func (tx *EthTxArgs) HashedOriginalRlpMsg() ([]byte, error) {
@@ -241,9 +243,6 @@ func (tx *EthTxArgs) OriginalRlpMsg() ([]byte, error) {
 }
 
 func (tx *EthTxArgs) Signature() (*typescrypto.Signature, error) {
-	if tx.V == nil || tx.R == nil || tx.S == nil {
-		return nil, fmt.Errorf("one of V, R, or S is nil")
-	}
 	sig := append([]byte{}, tx.R...)
 	sig = append(sig, tx.S...)
 	sig = append(sig, tx.V...)
@@ -276,7 +275,18 @@ func (tx *EthTxArgs) Sender() (address.Address, error) {
 		return address.Undef, err
 	}
 
-	return address.NewSecp256k1Address(pubk)
+	// if we get an uncompressed public key (that's what we get from the library,
+	// but putting this check here for defensiveness), strip the prefix
+	if pubk[0] == 0x04 {
+		pubk = pubk[1:]
+	}
+
+	// Calculate the f4 address based on the keccak hash of the pubkey.
+	hasher.Reset()
+	hasher.Write(pubk)
+	ethAddr := hasher.Sum(nil)[12:]
+
+	return address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, ethAddr)
 }
 
 func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
@@ -378,16 +388,25 @@ func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 }
 
 func ParseEthTxArgs(data []byte) (*EthTxArgs, error) {
+	if len(data) == 0 {
+		return nil, fmt.Errorf("empty data")
+	}
+
 	if data[0] > 0x7f {
 		// legacy transaction
 		return nil, fmt.Errorf("legacy transaction is not supported")
-	} else if data[0] == 1 {
+	}
+
+	if data[0] == 1 {
 		// EIP-2930
 		return nil, fmt.Errorf("EIP-2930 transaction is not supported")
-	} else if data[0] == 2 {
+	}
+
+	if data[0] == Eip1559TxType {
 		// EIP-1559
 		return parseEip1559Tx(data)
 	}
+
 	return nil, fmt.Errorf("unsupported transaction type")
 }
 
@@ -448,7 +467,7 @@ func parseInt(v interface{}) (int, error) {
 	var value int64
 	r := bytes.NewReader(append(make([]byte, 8-len(data)), data...))
 	if err := binary.Read(r, binary.BigEndian, &value); err != nil {
-		return 0, fmt.Errorf("cannot parse interface to EthInt: %w", err)
+		return 0, fmt.Errorf("cannot parse interface to EthUint64: %w", err)
 	}
 	return int(value), nil
 }

@@ -6,8 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-address"
 )
 
 func TestEncode(t *testing.T) {
