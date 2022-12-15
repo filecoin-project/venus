@@ -287,22 +287,10 @@ func (a EthAddress) ToFilecoinAddress() (address.Address, error) {
 	return address.NewIDAddress(id)
 }
 
-func EthAddressFromFilecoinIDAddress(addr address.Address) (EthAddress, error) {
-	id, err := address.IDFromAddress(addr)
-	if err != nil {
-		return EthAddress{}, err
-	}
-
-	var ethaddr EthAddress
-	ethaddr[0] = 0xff
-	binary.BigEndian.PutUint64(ethaddr[12:], id)
-	return ethaddr, nil
-}
-
-func TryEthAddressFromFilecoinAddress(addr address.Address, allowID bool) (EthAddress, bool, error) {
+func TryEthAddressFromFilecoinAddress(addr address.Address, allowId bool) (EthAddress, bool, error) {
 	switch addr.Protocol() {
 	case address.ID:
-		if !allowID {
+		if !allowId {
 			return EthAddress{}, false, nil
 		}
 		id, err := address.IDFromAddress(addr)

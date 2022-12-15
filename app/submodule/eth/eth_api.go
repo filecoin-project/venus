@@ -576,6 +576,51 @@ func (a *ethAPI) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSe
 	return block, nil
 }
 
+// lookupEthAddress makes its best effort at finding the Ethereum address for a
+// Filecoin address. It does the following:
+//
+//  1. If the supplied address is an f410 address, we return its payload as the EthAddress.
+//  2. Otherwise (f0, f1, f2, f3), we look up the actor on the state tree. If it has a predictable address, we return it if it's f410 address.
+//  3. Otherwise, we fall back to returning a masked ID Ethereum address. If the supplied address is an f0 address, we
+//     use that ID to form the masked ID address.
+//  4. Otherwise, we fetch the actor's ID from the state tree and form the masked ID with it.
+func (a *ethAPI) lookupEthAddress(ctx context.Context, addr address.Address) (types.EthAddress, error) {
+	// Attempt to convert directly.
+	if ethAddr, ok, err := types.TryEthAddressFromFilecoinAddress(addr, false); err != nil {
+		return types.EthAddress{}, err
+	} else if ok {
+		return ethAddr, nil
+	}
+
+	// todo: 合入 v10 actor后
+	// Lookup on the target actor.
+	// actor, err := a.chain.StateGetActor(ctx, addr, types.EmptyTSK)
+	// if err != nil {
+	// 	return types.EthAddress{}, err
+	// }
+	// if actor.Address != nil {
+	// 	if ethAddr, ok, err := types.TryEthAddressFromFilecoinAddress(*actor.Address, false); err != nil {
+	// 		return types.EthAddress{}, err
+	// 	} else if ok {
+	// 		return ethAddr, nil
+	// 	}
+	// }
+
+	// Check if we already have an ID addr, and use it if possible.
+	if ethAddr, ok, err := types.TryEthAddressFromFilecoinAddress(addr, true); err != nil {
+		return types.EthAddress{}, err
+	} else if ok {
+		return ethAddr, nil
+	}
+
+	// Otherwise, resolve the ID addr.
+	idAddr, err := a.chain.StateLookupID(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		return types.EthAddress{}, err
+	}
+	return types.EthAddressFromFilecoinAddress(idAddr)
+}
+
 func (a *ethAPI) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *types.MsgLookup) (types.EthTx, error) {
 	if msgLookup == nil {
 		return types.EthTx{}, fmt.Errorf("msg does not exist")
@@ -601,22 +646,12 @@ func (a *ethAPI) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *
 		return types.EthTx{}, err
 	}
 
-	fromFilIDAddr, err := a.chain.StateLookupID(ctx, msg.To, types.EmptyTSK)
+	fromEthAddr, err := a.lookupEthAddress(ctx, msg.From)
 	if err != nil {
 		return types.EthTx{}, err
 	}
 
-	fromEthAddr, err := types.EthAddressFromFilecoinIDAddress(fromFilIDAddr)
-	if err != nil {
-		return types.EthTx{}, err
-	}
-
-	toFilAddr, err := a.chain.StateLookupID(ctx, msg.From, types.EmptyTSK)
-	if err != nil {
-		return types.EthTx{}, err
-	}
-
-	toEthAddr, err := types.EthAddressFromFilecoinIDAddress(toFilAddr)
+	toEthAddr, err := a.lookupEthAddress(ctx, msg.To)
 	if err != nil {
 		return types.EthTx{}, err
 	}
@@ -624,7 +659,8 @@ func (a *ethAPI) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *
 	toAddr := &toEthAddr
 	input := msg.Params
 	// Check to see if we need to decode as contract deployment.
-	if toFilAddr == builtintypes.EthereumAddressManagerActorAddr {
+	// We don't need to resolve the to address, because there's only one form (an ID).
+	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
 		switch msg.Method {
 		case builtintypes.MethodsEAM.Create:
 			toAddr = nil
