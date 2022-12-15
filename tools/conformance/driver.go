@@ -136,6 +136,7 @@ func (d *Driver) ExecuteTipset(bs blockstoreutil.Blockstore, chainDs ds.Batching
 			PRoot:               preroot,
 			Bsstore:             bs,
 			SysCallsImpl:        syscalls,
+			TipSetGetter:        vmcontext.TipSetGetterForTipset(chainStore.GetTipSetByHeight, nil),
 			Tracing:             true,
 		}
 	)
@@ -268,6 +269,7 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 			GasPriceSchedule:    gas.NewPricesSchedule(mainNetParams.Network.ForkUpgradeParam),
 			PRoot:               params.Preroot,
 			Bsstore:             bs,
+			TipSetGetter:        vmcontext.TipSetGetterForTipset(chainStore.GetTipSetByHeight, nil),
 			SysCallsImpl:        syscalls,
 		}
 	)

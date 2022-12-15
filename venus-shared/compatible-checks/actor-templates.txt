@@ -6,6 +6,8 @@ TEMPLATES IN chain/actors:
 	builtin/cron/state.go.template
 	builtin/datacap/actor.go.template
 	builtin/datacap/state.go.template
+	builtin/evm/actor.go.template
+	builtin/evm/state.go.template
 	builtin/init/actor.go.template
 	builtin/init/state.go.template
 	builtin/market/actor.go.template

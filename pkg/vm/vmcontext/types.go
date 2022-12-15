@@ -24,6 +24,7 @@ type (
 	ExecCallBack         func(cid.Cid, *types.Message, *Ret) error
 	CircSupplyCalculator func(context.Context, abi.ChainEpoch, tree.Tree) (abi.TokenAmount, error)
 	LookbackStateGetter  func(context.Context, abi.ChainEpoch) (*state.View, error)
+	TipSetGetter         func(context.Context, abi.ChainEpoch) (types.TipSetKey, error)
 )
 
 type VmOption struct { //nolint
@@ -39,10 +40,10 @@ type VmOption struct { //nolint
 	PRoot                cid.Cid
 	Bsstore              blockstoreutil.Blockstore
 	SysCallsImpl         SyscallsImpl
+	TipSetGetter         TipSetGetter
 	Tracing              bool
 }
 
-// ChainRandomness define randomness method in filecoin
 type ILookBack interface {
 	StateView(ctx context.Context, ts *types.TipSet) (*state.View, error)
 	GetLookbackTipSetForRound(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch, version network.Version) (*types.TipSet, cid.Cid, error)
@@ -56,6 +57,18 @@ func LookbackStateGetterForTipset(ctx context.Context, backer ILookBack, fork fo
 			return nil, err
 		}
 		return backer.StateView(ctx, ts)
+	}
+}
+
+func TipSetGetterForTipset(tsGet func(context.Context, *types.TipSet, abi.ChainEpoch, bool) (*types.TipSet, error),
+	ts *types.TipSet,
+) TipSetGetter {
+	return func(ctx context.Context, round abi.ChainEpoch) (types.TipSetKey, error) {
+		ts, err := tsGet(ctx, ts, round, true)
+		if err != nil {
+			return types.EmptyTSK, err
+		}
+		return ts.Key(), nil
 	}
 }
 

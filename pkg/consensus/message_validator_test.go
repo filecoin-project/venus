@@ -58,12 +58,10 @@ func TestBLSSignatureValidationConfiguration(t *testing.T) {
 	require.NoError(t, err)
 	unsigned := &types.SignedMessage{Message: *msg, Signature: *sig}
 
-	actor := newActor(t, 1000, 0)
-
 	t.Run("syntax validator does not ignore missing signature", func(t *testing.T) {
 		api := NewMockIngestionValidatorAPI()
 		api.ActorAddr = from
-		api.Actor = actor
+		api.Actor = newActor(t, 1000, 0, from)
 
 		validator := consensus.NewMessageSignatureValidator(api)
 
@@ -111,8 +109,8 @@ func TestMessageSyntaxValidator(t *testing.T) {
 	})
 }
 
-func newActor(t *testing.T, balanceAF int, nonce uint64) *types.Actor {
-	actor := types.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(int64(balanceAF)), cid.Undef)
+func newActor(t *testing.T, balanceAF int, nonce uint64, addr address.Address) *types.Actor {
+	actor := types.NewActor(builtin.AccountActorCodeID, abi.NewTokenAmount(int64(balanceAF)), cid.Undef, addr)
 	actor.Nonce = nonce
 	return actor
 }

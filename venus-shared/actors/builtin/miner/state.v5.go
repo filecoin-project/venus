@@ -5,7 +5,6 @@ package miner
 import (
 	"bytes"
 	"errors"
-
 	"fmt"
 
 	"github.com/filecoin-project/go-bitfield"
@@ -15,7 +14,8 @@ import (
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
@@ -199,7 +199,7 @@ func (s *state5) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, e
 	return &out, nil
 }
 
-func (s *state5) GetPrecommittedSector(num abi.SectorNumber) (*minertypes.SectorPreCommitOnChainInfo, error) {
+func (s *state5) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOnChainInfo, error) {
 	info, ok, err := s.State.GetPrecommittedSector(s.store, num)
 	if !ok || err != nil {
 		return nil, err
@@ -210,7 +210,7 @@ func (s *state5) GetPrecommittedSector(num abi.SectorNumber) (*minertypes.Sector
 	return &ret, nil
 }
 
-func (s *state5) ForEachPrecommittedSector(cb func(minertypes.SectorPreCommitOnChainInfo) error) error {
+func (s *state5) ForEachPrecommittedSector(cb func(SectorPreCommitOnChainInfo) error) error {
 	precommitted, err := adt5.AsMap(s.store, s.State.PreCommittedSectors, builtin5.DefaultHamtBitwidth)
 	if err != nil {
 		return err
@@ -418,11 +418,11 @@ func (s *state5) precommits() (adt.Map, error) {
 	return adt5.AsMap(s.store, s.PreCommittedSectors, builtin5.DefaultHamtBitwidth)
 }
 
-func (s *state5) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (minertypes.SectorPreCommitOnChainInfo, error) {
+func (s *state5) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (SectorPreCommitOnChainInfo, error) {
 	var sp miner5.SectorPreCommitOnChainInfo
 	err := sp.UnmarshalCBOR(bytes.NewReader(val.Raw))
 	if err != nil {
-		return minertypes.SectorPreCommitOnChainInfo{}, err
+		return SectorPreCommitOnChainInfo{}, err
 	}
 
 	return fromV5SectorPreCommitOnChainInfo(sp), nil
@@ -544,9 +544,9 @@ func fromV5SectorOnChainInfo(v5 miner5.SectorOnChainInfo) SectorOnChainInfo {
 	return info
 }
 
-func fromV5SectorPreCommitOnChainInfo(v5 miner5.SectorPreCommitOnChainInfo) minertypes.SectorPreCommitOnChainInfo {
-	return minertypes.SectorPreCommitOnChainInfo{
-		Info: minertypes.SectorPreCommitInfo{
+func fromV5SectorPreCommitOnChainInfo(v5 miner5.SectorPreCommitOnChainInfo) SectorPreCommitOnChainInfo {
+	ret := SectorPreCommitOnChainInfo{
+		Info: SectorPreCommitInfo{
 			SealProof:     v5.Info.SealProof,
 			SectorNumber:  v5.Info.SectorNumber,
 			SealedCID:     v5.Info.SealedCID,
@@ -558,8 +558,27 @@ func fromV5SectorPreCommitOnChainInfo(v5 miner5.SectorPreCommitOnChainInfo) mine
 		PreCommitDeposit: v5.PreCommitDeposit,
 		PreCommitEpoch:   v5.PreCommitEpoch,
 	}
+
+	return ret
 }
 
 func (s *state5) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state5) ActorKey() string {
+	return actors.MinerKey
+}
+
+func (s *state5) ActorVersion() actorstypes.Version {
+	return actorstypes.Version5
+}
+
+func (s *state5) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

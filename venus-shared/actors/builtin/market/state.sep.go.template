@@ -3,20 +3,22 @@
 package market
 
 import (
+    "fmt"
 	"bytes"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"fmt"
 	{{if (ge .v 6)}}
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-bitfield"
 	{{end}}
 
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 
@@ -207,16 +209,17 @@ func (s *dealStates{{.v}}) array() adt.Array {
 }
 
 func fromV{{.v}}DealState(v{{.v}} market{{.v}}.DealState) DealState {
-    {{if (le .v 8)}}
-    return DealState{
+    ret := DealState{
         SectorStartEpoch: v{{.v}}.SectorStartEpoch,
         LastUpdatedEpoch: v{{.v}}.LastUpdatedEpoch,
         SlashEpoch: v{{.v}}.SlashEpoch,
         VerifiedClaim: 0,
     }
-    {{else}}
-    return (DealState)(v{{.v}})
+    {{if (ge .v 9)}}
+        ret.VerifiedClaim = verifregtypes.AllocationId(v{{.v}}.VerifiedClaim)
     {{end}}
+
+    return ret
 }
 
 type dealProposals{{.v}} struct {
@@ -372,7 +375,7 @@ func (s *state{{.v}}) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifreg
 {{if (le .v 8)}}
     	return verifregtypes.NoAllocationID, fmt.Errorf("unsupported before actors v9")
 {{else}}
-	allocations, err := adt9.AsMap(s.store, s.PendingDealAllocationIds, builtin.DefaultHamtBitwidth)
+	allocations, err := adt{{.v}}.AsMap(s.store, s.PendingDealAllocationIds, builtin.DefaultHamtBitwidth)
     if err != nil {
         return verifregtypes.NoAllocationID, fmt.Errorf("failed to load allocation id for %d: %w", dealId, err)
     }
@@ -388,4 +391,22 @@ func (s *state{{.v}}) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifreg
 
 	return verifregtypes.AllocationId(allocationId), nil
 {{end}}
+}
+
+
+func (s *state{{.v}}) ActorKey() string {
+    return actors.MarketKey
+}
+
+func (s *state{{.v}}) ActorVersion() actorstypes.Version {
+    return actorstypes.Version{{.v}}
+}
+
+func (s *state{{.v}}) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

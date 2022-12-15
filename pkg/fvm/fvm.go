@@ -56,6 +56,7 @@ type FvmExtern struct { // nolint
 	blockstoreutil.Blockstore
 	epoch            abi.ChainEpoch
 	lbState          vm.LookbackStateGetter
+	tsGet            vm.TipSetGetter
 	base             cid.Cid
 	gasPriceSchedule *gas.PricesSchedule
 }
@@ -112,6 +113,14 @@ func (t *FvmExecutionTrace) ToExecutionTrace() types.ExecutionTrace {
 	}
 
 	return ret
+}
+
+func (x *FvmExtern) TipsetCid(ctx context.Context, epoch abi.ChainEpoch) (cid.Cid, error) {
+	tsk, err := x.tsGet(ctx, epoch)
+	if err != nil {
+		return cid.Undef, err
+	}
+	return tsk.Cid()
 }
 
 // VerifyConsensusFault is similar to the one in syscalls.go used by the LegacyVM, except it never errors
@@ -332,6 +341,7 @@ func defaultFVMOpts(ctx context.Context, opts *vm.VmOption) (*ffi.FVMOpts, error
 			Blockstore: opts.Bsstore,
 			epoch:      opts.Epoch,
 			lbState:    opts.LookbackStateGetter,
+			tsGet:      opts.TipSetGetter,
 			base:       opts.PRoot, gasPriceSchedule: opts.GasPriceSchedule,
 		},
 		Epoch:          opts.Epoch,
