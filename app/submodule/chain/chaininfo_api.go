@@ -2,9 +2,12 @@ package chain
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -15,11 +18,13 @@ import (
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/utils"
 )
 
 var _ v1api.IChainInfo = &chainInfoAPI{}
@@ -512,6 +517,27 @@ func (cia *chainInfoAPI) StateSearchMsg(ctx context.Context, from types.TipSetKe
 	return nil, nil
 }
 
+var ErrMetadataNotFound = errors.New("actor metadata not found")
+
+func (cia *chainInfoAPI) getReturnType(ctx context.Context, to address.Address, method abi.MethodNum) (cbg.CBORUnmarshaler, error) {
+	ts, err := cia.ChainHead(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to got head %v", err)
+	}
+	act, err := cia.chain.Stmgr.GetActorAt(ctx, to, ts)
+	if err != nil {
+		return nil, fmt.Errorf("(get sset) failed to load actor: %w", err)
+	}
+
+	m, found := utils.MethodsMap[act.Code][method]
+
+	if !found {
+		return nil, fmt.Errorf("unknown method %d for actor %s: %w", method, act.Code, ErrMetadataNotFound)
+	}
+
+	return reflect.New(m.Ret.Elem()).Interface().(cbg.CBORUnmarshaler), nil
+}
+
 // StateWaitMsg looks back in the chain for a message. If not found, it blocks until the
 // message arrives on chain, and gets to the indicated confidence depth.
 func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
@@ -524,11 +550,36 @@ func (cia *chainInfoAPI) StateWaitMsg(ctx context.Context, mCid cid.Cid, confide
 		return nil, err
 	}
 	if msgResult != nil {
+		var returndec interface{}
+		recpt := msgResult.Receipt
+		if recpt.ExitCode == 0 && len(recpt.Return) > 0 {
+			vmsg := chainMsg.VMMessage()
+			t, err := cia.getReturnType(ctx, vmsg.To, vmsg.Method)
+			if err != nil {
+				if errors.Is(err, ErrMetadataNotFound) {
+					// This is not nececessary an error -- EVM methods (and in the future native actors) may
+					//  return just bytes, and in the not so distant future we'll have native wasm actors
+					//  that are by definition not in the registry.
+					// So in this case, log a debug message and retun the raw bytes.
+					log.Debugf("failed to get return type: %s", err)
+					returndec = recpt.Return
+				} else {
+					return nil, fmt.Errorf("failed to get return type: %w", err)
+				}
+			} else {
+				if err := t.UnmarshalCBOR(bytes.NewReader(recpt.Return)); err != nil {
+					return nil, err
+				}
+				returndec = t
+			}
+		}
+
 		return &types.MsgLookup{
-			Message: mCid,
-			Receipt: *msgResult.Receipt,
-			TipSet:  msgResult.TS.Key(),
-			Height:  msgResult.TS.Height(),
+			Message:   mCid,
+			Receipt:   *msgResult.Receipt,
+			ReturnDec: returndec,
+			TipSet:    msgResult.TS.Key(),
+			Height:    msgResult.TS.Height(),
 		}, nil
 	}
 	return nil, nil
