@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
-
-	"github.com/filecoin-project/go-address"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
@@ -42,7 +42,7 @@ func SetupVerifiedRegistryActor(ctx context.Context, bs bstore.Blockstore, av ac
 		return nil, err
 	}
 
-	actcid, found := actors.GetActorCodeID(av, actors.VerifregKey)
+	actcid, found := actors.GetActorCodeID(av, manifest.VerifregKey)
 	if !found {
 		return nil, fmt.Errorf("failed to get verifreg actor code ID for actors version %d", av)
 	}

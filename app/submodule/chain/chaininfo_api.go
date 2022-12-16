@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
@@ -735,7 +736,7 @@ func (cia *chainInfoAPI) StateActorCodeCIDs(ctx context.Context, nv network.Vers
 
 	cids["_manifest"] = manifestCid
 
-	actorKeys := actors.GetBuiltinActorsKeys(actorVersion)
+	actorKeys := manifest.GetBuiltinActorsKeys(actorVersion)
 	for _, name := range actorKeys {
 		actorCID, ok := actors.GetActorCodeID(actorVersion, name)
 		if !ok {

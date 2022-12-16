@@ -13,6 +13,7 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	evm10 "github.com/filecoin-project/go-state-types/builtin/v10/evm"
 	init10 "github.com/filecoin-project/go-state-types/builtin/v10/init"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
@@ -69,7 +70,7 @@ func SetupFEVM(ctx context.Context, cs *chain.Store, sroot cid.Cid, nv network.V
 	}
 
 	// The ETH0 address is occupied by an empty contract EVM actor
-	evmCodeCid, ok := actors.GetActorCodeID(av, actors.EvmKey)
+	evmCodeCid, ok := actors.GetActorCodeID(av, manifest.EvmKey)
 	if !ok {
 		return cid.Undef, fmt.Errorf("failed to get CodeCID for EVM during genesis")
 	}

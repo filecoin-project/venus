@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/ipfs/go-cid"
@@ -329,7 +330,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 		if err != nil {
 			panic(err)
 		}
-		actorCode, found := actors.GetActorCodeID(ver, actors.AccountKey)
+		actorCode, found := actors.GetActorCodeID(ver, manifest.AccountKey)
 		if !found {
 			panic(fmt.Errorf("failed to get account actor code ID for actors version %d", ver))
 		}

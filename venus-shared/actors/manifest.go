@@ -17,47 +17,6 @@ var manifestCids map[actorstypes.Version]cid.Cid = make(map[actorstypes.Version]
 var manifests map[actorstypes.Version]map[string]cid.Cid = make(map[actorstypes.Version]map[string]cid.Cid)
 var actorMeta map[cid.Cid]actorEntry = make(map[cid.Cid]actorEntry)
 
-const (
-	AccountKey  = "account"
-	CronKey     = "cron"
-	InitKey     = "init"
-	MarketKey   = "storagemarket"
-	MinerKey    = "storageminer"
-	MultisigKey = "multisig"
-	PaychKey    = "paymentchannel"
-	PowerKey    = "storagepower"
-	RewardKey   = "reward"
-	SystemKey   = "system"
-	VerifregKey = "verifiedregistry"
-	DatacapKey  = "datacap"
-	EvmKey      = "evm"
-	EamKey      = "eam"
-	EmbryoKey   = "embryo"
-)
-
-func GetBuiltinActorsKeys(av actorstypes.Version) []string {
-	keys := []string{
-		AccountKey,
-		CronKey,
-		InitKey,
-		MarketKey,
-		MinerKey,
-		MultisigKey,
-		PaychKey,
-		PowerKey,
-		RewardKey,
-		SystemKey,
-		VerifregKey,
-	}
-	if av >= 9 {
-		keys = append(keys, DatacapKey)
-	}
-	if av >= 10 {
-		keys = append(keys, EvmKey, EamKey, EmbryoKey)
-	}
-	return keys
-}
-
 var (
 	manifestMx sync.RWMutex
 )

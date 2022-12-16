@@ -3,13 +3,14 @@ package mock
 import (
 	"io"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/ipfs/go-cid"
+	"github.com/filecoin-project/go-state-types/manifest"
 
-	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 )
 
@@ -26,7 +27,7 @@ func (ms *mockState) Code() cid.Cid {
 }
 
 func (ms *mockState) ActorKey() string {
-	return actors.PaychKey
+	return manifest.PaychKey
 }
 
 func (ms *mockState) ActorVersion() actorstypes.Version {
