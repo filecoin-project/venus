@@ -24,6 +24,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
@@ -184,7 +185,7 @@ func IsAccountActor(c cid.Cid) bool {
 func IsStorageMinerActor(c cid.Cid) bool {
 	name, _, ok := actors.GetActorMetaByCode(c)
 	if ok {
-		return name == actors.MinerKey
+		return name == manifest.MinerKey
 	}
 
 	if c == builtin0.StorageMinerActorCodeID {
@@ -221,7 +222,7 @@ func IsStorageMinerActor(c cid.Cid) bool {
 func IsMultisigActor(c cid.Cid) bool {
 	name, _, ok := actors.GetActorMetaByCode(c)
 	if ok {
-		return name == actors.MultisigKey
+		return name == manifest.MultisigKey
 	}
 
 	if c == builtin0.MultisigActorCodeID {

@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	builtin{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin"
 )
@@ -20,7 +21,7 @@ var Methods = builtin{{.latestVersion}}.MethodsEVM
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != actors.EvmKey {
+       if name != manifest.EvmKey {
           return nil, fmt.Errorf("actor code is not evm: %s", name)
        }
 

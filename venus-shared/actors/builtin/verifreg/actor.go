@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
@@ -42,7 +43,7 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != actors.VerifregKey {
+		if name != manifest.VerifregKey {
 			return nil, fmt.Errorf("actor code is not verifreg: %s", name)
 		}
 

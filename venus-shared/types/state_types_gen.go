@@ -193,7 +193,7 @@ const (
 	EndOfLifeClaimDropPeriod                = verifreg.EndOfLifeClaimDropPeriod
 	MaximumVerifiedAllocationExpiration     = verifreg.MaximumVerifiedAllocationExpiration
 	MaximumVerifiedAllocationTerm           = verifreg.MaximumVerifiedAllocationTerm
-	MinimumVerifiedAllocationSize           = verifreg.MinimumVerifiedAllocationSize
+	// MinimumVerifiedAllocationSize           = verifreg.MinimumVerifiedAllocationSize
 	MinimumVerifiedAllocationTerm           = verifreg.MinimumVerifiedAllocationTerm
 	NoAllocationID                          = verifreg.NoAllocationID
 	SignatureDomainSeparation_RemoveDataCap = verifreg.SignatureDomainSeparation_RemoveDataCap

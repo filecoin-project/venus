@@ -35,6 +35,7 @@ SOURCES IN chain/actors:
 	builtin/datacap/util.go
 	builtin/datacap/v10.go
 	builtin/datacap/v9.go
+	builtin/embryo.go
 	builtin/evm/evm.go
 	builtin/evm/v10.go
 	builtin/init/diff.go

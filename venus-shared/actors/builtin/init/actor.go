@@ -16,6 +16,8 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
 
+	"github.com/filecoin-project/go-state-types/manifest"
+
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -40,7 +42,7 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != actors.InitKey {
+		if name != manifest.InitKey {
 			return nil, fmt.Errorf("actor code is not init: %s", name)
 		}
 

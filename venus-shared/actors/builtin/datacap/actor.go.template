@@ -16,6 +16,7 @@ import (
     "github.com/filecoin-project/venus/venus-shared/actors"
     "github.com/filecoin-project/venus/venus-shared/actors/adt"
     types "github.com/filecoin-project/venus/venus-shared/internal"
+	"github.com/filecoin-project/go-state-types/manifest"
 )
 
 var (
@@ -25,7 +26,7 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != actors.DatacapKey {
+       if name != manifest.DatacapKey {
           return nil, fmt.Errorf("actor code is not datacap: %s", name)
        }
 

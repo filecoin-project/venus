@@ -32,6 +32,7 @@ import (
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
@@ -40,7 +41,7 @@ import (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != actors.MultisigKey {
+		if name != manifest.MultisigKey {
 			return nil, fmt.Errorf("actor code is not multisig: %s", name)
 		}
 
