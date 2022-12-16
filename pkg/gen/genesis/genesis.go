@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
+	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/state/tree"
@@ -26,6 +27,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/datacap"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
@@ -583,6 +585,11 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 		return nil, fmt.Errorf("make initial state tree failed: %w", err)
 	}
 
+	// Set up the Ethereum Address Manager
+	if err = SetupEAM(ctx, st, template.NetworkVersion); err != nil {
+		return nil, fmt.Errorf("failed to setup EAM: %w", err)
+	}
+
 	stateroot, err := st.Flush(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("flush state tree failed: %w", err)
@@ -600,6 +607,12 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 	stateroot, err = SetupStorageMiners(ctx, cs, stateroot, template.Miners, template.NetworkVersion, para)
 	if err != nil {
 		return nil, fmt.Errorf("setup miners failed: %w", err)
+	}
+
+	// setup FEVM
+	stateroot, err = SetupFEVM(ctx, cs, stateroot, template.NetworkVersion, para)
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup FEVM functionality: %w", err)
 	}
 
 	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
@@ -684,4 +697,29 @@ func MakeGenesisBlock(ctx context.Context, rep repo.Repo, bs bstore.Blockstore, 
 	return &GenesisBootstrap{
 		Genesis: b,
 	}, nil
+}
+
+func SetupEAM(ctx context.Context, nst tree.Tree, nv network.Version) error {
+	av, err := actorstypes.VersionForNetwork(nv)
+	if err != nil {
+		return fmt.Errorf("failed to get actors version for network version %d: %w", nv, err)
+	}
+
+	if av < actorstypes.Version10 {
+		// Not defined before version 10; migration has to create.
+		return nil
+	}
+
+	codecid, ok := actors.GetActorCodeID(av, actors.EamKey)
+	if !ok {
+		return fmt.Errorf("failed to get CodeCID for EAM during genesis")
+	}
+
+	header := &types.Actor{
+		Code:    codecid,
+		Head:    vmcontext.EmptyObjectCid,
+		Balance: big.Zero(),
+		Address: &builtintypes.EthereumAddressManagerActorAddr, // so that it can create ETH0
+	}
+	return nst.SetActor(ctx, builtintypes.EthereumAddressManagerActorAddr, header)
 }
