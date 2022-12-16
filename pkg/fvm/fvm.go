@@ -353,6 +353,7 @@ func defaultFVMOpts(ctx context.Context, opts *vm.VmOption) (*ffi.FVMOpts, error
 			base:       opts.PRoot, gasPriceSchedule: opts.GasPriceSchedule,
 		},
 		Epoch:          opts.Epoch,
+		ChainID:        uint64(types.Eip155ChainID),
 		BaseFee:        opts.BaseFee,
 		BaseCircSupply: circToReport,
 		NetworkVersion: opts.NetworkVersion,
