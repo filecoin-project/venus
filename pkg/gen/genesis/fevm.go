@@ -64,7 +64,7 @@ func SetupFEVM(ctx context.Context, cs *chain.Store, sroot cid.Cid, nv network.V
 		return fvm.NewVM(ctx, vmopt)
 	}
 
-	genesisVm, err := newVM(sroot)
+	genesisVM, err := newVM(sroot)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("creating vm: %w", err)
 	}
@@ -111,11 +111,11 @@ func SetupFEVM(ctx context.Context, cs *chain.Store, sroot cid.Cid, nv network.V
 
 	// TODO method 3 is Exec4; we have to name the methods in go-state-types and avoid using the number
 	//      directly.
-	if _, err := doExecValue(ctx, genesisVm, builtintypes.InitActorAddr, builtintypes.EthereumAddressManagerActorAddr, big.Zero(), 3, mustEnc(params)); err != nil {
+	if _, err := doExecValue(ctx, genesisVM, builtintypes.InitActorAddr, builtintypes.EthereumAddressManagerActorAddr, big.Zero(), 3, mustEnc(params)); err != nil {
 		return cid.Undef, fmt.Errorf("creating ETH0 actor: %w", err)
 	}
 
-	newroot, err := genesisVm.Flush(ctx)
+	newroot, err := genesisVM.Flush(ctx)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("flushing vm: %w", err)
 	}

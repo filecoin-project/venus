@@ -32,7 +32,15 @@ func (delegatedSigner) ToPublic(pk []byte) ([]byte, error) {
 }
 
 func (delegatedSigner) Sign(pk []byte, msg []byte) ([]byte, error) {
-	return nil, fmt.Errorf("not implemented")
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Write(msg)
+	hashSum := hasher.Sum(nil)
+	sig, err := gocrypto.Sign(pk, hashSum)
+	if err != nil {
+		return nil, err
+	}
+
+	return sig, nil
 }
 
 func (delegatedSigner) Verify(sig []byte, a address.Address, msg []byte) error {

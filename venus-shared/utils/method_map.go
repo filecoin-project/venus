@@ -102,7 +102,7 @@ func loadMethodsMap() {
 					methodMeta.Params = et.In(0)
 				}
 
-				methods[abi.MethodNum(number)] = methodMeta
+				methods[number] = methodMeta
 			}
 
 			MethodsMap[actor.Code()] = methods

@@ -36,3 +36,16 @@ func NewBLSKeyFromSeed(seed io.Reader) (KeyInfo, error) {
 	copy(k, make([]byte, len(k))) // wipe with zero bytes
 	return *ki, nil
 }
+
+func NewDelegatedKeyFromSeed(seed io.Reader) (KeyInfo, error) {
+	k, err := sigs[crypto.SigTypeDelegated].GenPrivateFromSeed(seed)
+	if err != nil {
+		return KeyInfo{}, err
+	}
+	ki := &KeyInfo{
+		SigType: SigTypeDelegated,
+	}
+	ki.SetPrivateKey(k)
+	copy(k, make([]byte, len(k))) // wipe with zero bytes
+	return *ki, nil
+}
