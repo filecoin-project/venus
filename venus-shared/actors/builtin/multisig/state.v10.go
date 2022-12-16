@@ -14,6 +14,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
@@ -122,7 +123,7 @@ func (s *state10) GetState() interface{} {
 }
 
 func (s *state10) ActorKey() string {
-	return actors.MultisigKey
+	return manifest.MultisigKey
 }
 
 func (s *state10) ActorVersion() actorstypes.Version {

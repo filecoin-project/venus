@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/manifest"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 
 	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
@@ -40,7 +41,7 @@ import (
 // Load returns an abstract copy of payment channel state, irregardless of actor version
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != actors.PaychKey {
+		if name != manifest.PaychKey {
 			return nil, fmt.Errorf("actor code is not paych: %s", name)
 		}
 

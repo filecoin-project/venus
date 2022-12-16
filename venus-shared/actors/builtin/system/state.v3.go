@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
@@ -55,7 +56,7 @@ func (s *state3) SetBuiltinActors(c cid.Cid) error {
 }
 
 func (s *state3) ActorKey() string {
-	return actors.SystemKey
+	return manifest.SystemKey
 }
 
 func (s *state3) ActorVersion() actorstypes.Version {

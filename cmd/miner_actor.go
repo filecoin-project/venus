@@ -848,7 +848,7 @@ var actorConfirmChangeWorker = &cmds.Command{
 		smsg, err := env.(*node.Env).MessagePoolAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: builtintypes.MethodsMiner.ConfirmUpdateWorkerKey,
+			Method: builtintypes.MethodsMiner.ConfirmChangeWorkerAddress,
 			Value:  big.Zero(),
 		}, nil)
 		if err != nil {
