@@ -291,8 +291,12 @@ func TryEthAddressFromFilecoinAddress(addr address.Address, allowID bool) (EthAd
 
 func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
 	ethAddr, ok, err := TryEthAddressFromFilecoinAddress(addr, true)
-	if !ok && err == nil {
-		err = xerrors.Errorf("failed to convert filecoin address %s to an equivalent eth address", addr)
+	if err != nil {
+		return EthAddress{}, fmt.Errorf("failed to try converting filecoin to eth addr: %w", err)
+	}
+
+	if !ok {
+		return EthAddress{}, fmt.Errorf("failed to convert filecoin address %s to an equivalent eth address", addr)
 	}
 	return ethAddr, err
 }

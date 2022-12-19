@@ -46,7 +46,7 @@ func GetDefaultActros() *dispatch.CodeLoader {
 }
 
 func DumpActorState(codeLoader *dispatch.CodeLoader, act *types.Actor, b []byte) (interface{}, error) {
-	if builtin.IsAccountActor(act.Code) || builtin.IsEmbryo(act.Code) { // Account code special case
+	if builtin.IsAccountActor(act.Code) || builtin.IsEmbryoActor(act.Code) { // Account code special case
 		return nil, nil
 	}
 

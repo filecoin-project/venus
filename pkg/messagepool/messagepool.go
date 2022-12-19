@@ -32,6 +32,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
+	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/constants"
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/messagepool/journal"
@@ -841,7 +842,7 @@ func sigCacheKey(m *types.SignedMessage) (string, error) {
 	case crypto.SigTypeDelegated:
 		txArgs, err := types.NewEthTxArgsFromMessage(&m.Message)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to convert to eth tx args: %w", err)
 		}
 		msg, err := txArgs.HashedOriginalRlpMsg()
 		if err != nil {
@@ -921,18 +922,28 @@ func (mp *MessagePool) addTS(ctx context.Context, m *types.SignedMessage, curTS 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
+	senderAct, err := mp.api.GetActorAfter(ctx, m.Message.From, curTS)
+	if err != nil {
+		return false, fmt.Errorf("failed to get sender actor: %w", err)
+	}
+
+	// TODO: I'm not thrilled about depending on filcns here, but I prefer this to duplicating logic
+	if !consensus.IsValidForSending(senderAct) {
+		return false, fmt.Errorf("sender actor %s is not a valid top-level sender", m.Message.From)
+	}
+
 	publish, err := mp.verifyMsgBeforeAdd(ctx, m, curTS, local)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("verify msg failed: %w", err)
 	}
 
 	if err := mp.checkBalance(ctx, m, curTS); err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to check balance: %w", err)
 	}
 
 	err = mp.addLocked(ctx, m, !local, untrusted)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to add locked: %w", err)
 	}
 
 	if local {
