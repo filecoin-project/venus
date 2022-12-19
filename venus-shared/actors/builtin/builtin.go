@@ -99,15 +99,6 @@ func ActorNameByCode(c cid.Cid) string {
 	}
 }
 
-func IsEmbryo(c cid.Cid) bool {
-	name, _, ok := actors.GetActorMetaByCode(c)
-	if ok {
-		return name == "embryo"
-	}
-
-	return false
-}
-
 func IsBuiltinActor(c cid.Cid) bool {
 	_, _, ok := actors.GetActorMetaByCode(c)
 	if ok {
@@ -288,6 +279,24 @@ func IsPaymentChannelActor(c cid.Cid) bool {
 
 	if c == builtin7.PaymentChannelActorCodeID {
 		return true
+	}
+
+	return false
+}
+
+func IsEmbryoActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == "embryo"
+	}
+
+	return false
+}
+
+func IsEthAccountActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == "ethaccount"
 	}
 
 	return false
