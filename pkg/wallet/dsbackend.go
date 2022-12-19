@@ -129,11 +129,25 @@ func (backend *DSBackend) NewAddress(ctx context.Context, protocol address.Proto
 	switch protocol {
 	case address.BLS:
 		return backend.newBLSAddress(ctx)
-	case address.SECP256K1, address.Delegated:
+	case address.SECP256K1:
 		return backend.newSecpAddress(ctx)
+	case address.Delegated:
+		return backend.newDelegatedAddress(ctx)
 	default:
 		return address.Undef, errors.Errorf("Unknown address protocol %d", protocol)
 	}
+}
+
+func (backend *DSBackend) newDelegatedAddress(ctx context.Context) (address.Address, error) {
+	ki, err := crypto.NewDelegatedKeyFromSeed(rand.Reader)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	if err := backend.putKeyInfo(ctx, &ki); err != nil {
+		return address.Undef, err
+	}
+	return ki.Address()
 }
 
 func (backend *DSBackend) newSecpAddress(ctx context.Context) (address.Address, error) {

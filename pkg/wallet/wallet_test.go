@@ -16,6 +16,7 @@ import (
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/crypto"
+	_ "github.com/filecoin-project/venus/pkg/crypto/delegated" // enable delegated signatures
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
 
@@ -124,6 +125,50 @@ func TestWalletBLSKeys(t *testing.T) {
 
 		notTheSig := &crypto.Signature{
 			Type: crypto.SigTypeBLS,
+			Data: make([]byte, bls.SignatureBytes),
+		}
+		copy(notTheSig.Data[:], "not the sig")
+		err = crypto.Verify(notTheSig, addr, data)
+		assert.Error(t, err)
+	})
+}
+
+func TestWalletDelegatedKeys(t *testing.T) {
+	tf.UnitTest(t)
+
+	w, wb := newWalletAndDSBackend(t)
+
+	ctx := context.Background()
+	addr, err := w.NewAddress(ctx, address.Delegated)
+	require.NoError(t, err)
+
+	data := []byte("data to be signed")
+	// stm: @WALLET_WALLET_SIGN_BYTES_001
+	sig, err := w.SignBytes(ctx, data, addr)
+	require.NoError(t, err)
+
+	t.Run("address is delegated protocol", func(t *testing.T) {
+		assert.Equal(t, address.Delegated, addr.Protocol())
+	})
+
+	t.Run("key uses delegated cryptography", func(t *testing.T) {
+		ki, err := wb.GetKeyInfo(context.Background(), addr)
+		require.NoError(t, err)
+		assert.Equal(t, crypto.SigTypeDelegated, ki.SigType)
+	})
+
+	t.Run("valid signatures verify", func(t *testing.T) {
+		err := crypto.Verify(sig, addr, data)
+		assert.NoError(t, err)
+	})
+
+	t.Run("invalid signatures do not verify", func(t *testing.T) {
+		notTheData := []byte("not the data")
+		err := crypto.Verify(sig, addr, notTheData)
+		assert.Error(t, err)
+
+		notTheSig := &crypto.Signature{
+			Type: crypto.SigTypeDelegated,
 			Data: make([]byte, bls.SignatureBytes),
 		}
 		copy(notTheSig.Data[:], "not the sig")

@@ -7,9 +7,11 @@ import (
 
 	"github.com/awnumar/memguard"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -150,9 +152,23 @@ func (ki *KeyInfo) Address() (address.Address, error) {
 	if ki.SigType == SigTypeBLS {
 		return address.NewBLSAddress(pubKey)
 	}
-	if ki.SigType == SigTypeSecp256k1 || ki.SigType == SigTypeDelegated {
+	if ki.SigType == SigTypeSecp256k1 {
 		return address.NewSecp256k1Address(pubKey)
 	}
+	if ki.SigType == SigTypeDelegated {
+		// Assume eth for now
+		hasher := sha3.NewLegacyKeccak256()
+		// if we get an uncompressed public key (that's what we get from the library,
+		// but putting this check here for defensiveness), strip the prefix
+		if pubKey[0] == 0x04 {
+			pubKey = pubKey[1:]
+		}
+
+		hasher.Write(pubKey)
+
+		return address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, hasher.Sum(nil)[12:])
+	}
+
 	return address.Undef, errors.Errorf("can not generate address for unknown crypto system: %d", ki.SigType)
 }
 

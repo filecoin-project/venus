@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
+	_ "github.com/filecoin-project/venus/pkg/crypto/delegated"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 )
@@ -101,6 +102,37 @@ func TestBLSSigning(t *testing.T) {
 
 	// invalid signature fails
 	err = crypto.Verify(&crypto.Signature{Type: crypto.SigTypeBLS, Data: signature.Data[3:]}, addr, data)
+	require.Error(t, err)
+
+	// invalid digest fails
+	err = crypto.Verify(signature, addr, data[3:])
+	require.Error(t, err)
+}
+
+func TestDelegatedSigning(t *testing.T) {
+	token := bytes.Repeat([]byte{42}, 512)
+	ki, err := crypto.NewDelegatedKeyFromSeed(bytes.NewReader(token))
+	assert.NoError(t, err)
+
+	data := []byte("data to be signed")
+	privateKey := ki.Key()
+	publicKey, err := ki.PublicKey()
+	assert.NoError(t, err)
+	t.Logf("%x", privateKey)
+	t.Logf("%x", publicKey)
+
+	signature, err := crypto.Sign(data, privateKey[:], crypto.SigTypeDelegated)
+	require.NoError(t, err)
+
+	addr, err := ki.Address()
+	require.NoError(t, err)
+	t.Logf("%v", addr.String())
+
+	err = crypto.Verify(signature, addr, data)
+	require.NoError(t, err)
+
+	// invalid signature fails
+	err = crypto.Verify(&crypto.Signature{Type: crypto.SigTypeDelegated, Data: signature.Data[3:]}, addr, data)
 	require.Error(t, err)
 
 	// invalid digest fails
