@@ -61,6 +61,8 @@ func main() {
 				types.BlockMsg{},
 				types.ExpTipSet{},
 				types.PaymentInfo{},
+				types.Event{},
+				types.EventEntry{},
 			},
 		},
 		{
