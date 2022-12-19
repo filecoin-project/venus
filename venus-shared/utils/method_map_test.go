@@ -57,7 +57,7 @@ func TestMethodMap(t *testing.T) {
 
 // 没有把 v10 actor注入，等注入后移除
 func skipEvmActor(name string) bool {
-	if name == manifest.EamKey || name == manifest.EvmKey || name == manifest.EmbryoKey {
+	if name == manifest.EamKey || name == manifest.EvmKey || name == manifest.EmbryoKey || name == manifest.EthAccountKey {
 		return true
 	}
 	return false

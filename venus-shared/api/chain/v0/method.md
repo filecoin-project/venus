@@ -706,7 +706,8 @@ Response:
   {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   }
 ]
 ```
@@ -820,7 +821,8 @@ Response:
   {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   }
 ]
 ```
@@ -1257,7 +1259,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   }
 }
 ```
@@ -1395,7 +1398,8 @@ Response:
   "MsgRct": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "GasCost": {
     "Message": {
@@ -1428,7 +1432,8 @@ Response:
     "MsgRct": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 9,
+      "EventsRoot": null
     },
     "Error": "string value",
     "Duration": 60000000000,
@@ -1472,7 +1477,8 @@ Response:
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
-          "GasUsed": 9
+          "GasUsed": 9,
+          "EventsRoot": null
         },
         "Error": "string value",
         "Duration": 60000000000,
@@ -1576,7 +1582,8 @@ Response:
 {
   "ExitCode": 0,
   "Return": "Ynl0ZSBhcnJheQ==",
-  "GasUsed": 9
+  "GasUsed": 9,
+  "EventsRoot": null
 }
 ```
 
@@ -1633,7 +1640,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "ReturnDec": {},
   "TipSet": [
@@ -1672,7 +1680,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "ReturnDec": {},
   "TipSet": [
@@ -1754,7 +1763,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "ReturnDec": {},
   "TipSet": [
@@ -1794,7 +1804,8 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": null
   },
   "ReturnDec": {},
   "TipSet": [
