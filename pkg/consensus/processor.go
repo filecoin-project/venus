@@ -188,7 +188,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		}
 
 		if ret.Receipt.ExitCode != 0 {
-			return cid.Undef, nil, fmt.Errorf("reward application message failed exit: %d, reason: %v", ret.Receipt, ret.ActorErr)
+			return cid.Undef, nil, fmt.Errorf("reward application message failed exit: %d, reason: %v", ret.Receipt.ExitCode, ret.ActorErr)
 		}
 
 		processLog.Debugf("process block %v time %v", index, time.Since(toProcessBlock).Milliseconds())
