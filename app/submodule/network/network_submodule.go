@@ -145,8 +145,6 @@ func NewNetworkSubmodule(ctx context.Context, chainStore *chain.Store,
 	}
 
 	// set up host
-	var peerMgr peermgr.IPeerMgr
-
 	rawHost, err := buildHost(ctx, config, libP2pOpts, config.Repo().Config())
 	if err != nil {
 		return nil, err
@@ -163,7 +161,7 @@ func NewNetworkSubmodule(ctx context.Context, chainStore *chain.Store,
 		return nil, err
 	}
 
-	peerMgr, err = peermgr.NewPeerMgr(peerHost, router.(*dht.IpfsDHT), period, bootNodes)
+	peerMgr, err := peermgr.NewPeerMgr(peerHost, router.(*dht.IpfsDHT), period, bootNodes)
 	if err != nil {
 		return nil, err
 	}
@@ -344,7 +342,7 @@ func buildHost(ctx context.Context, config networkConfig, libP2pOpts []libp2p.Op
 		}
 
 		relayHost, err := libp2p.New(
-			libp2p.EnableRelay(), // TODO ?
+			libp2p.EnableRelay(),
 			libp2p.EnableAutoRelay(),
 			publicAddrFactory,
 			libp2p.ChainOptions(libP2pOpts...),
@@ -375,8 +373,7 @@ func makeDHT(ctx context.Context, h types.RawHost, config networkConfig, network
 		dht.ProtocolPrefix(net.FilecoinDHT(networkName)),
 		dht.QueryFilter(dht.PublicQueryFilter),
 		dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
-		dht.DisableProviders(),
-		dht.BootstrapPeers(bootNodes...),
+		dht.DisableProviders(), //do not add dht bootstrap.make the peer-mgr unable to work
 		dht.DisableValues(),
 	}
 	r, err := dht.New(

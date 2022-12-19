@@ -153,15 +153,19 @@ func (pmgr *PeerMgr) Stop(ctx context.Context) error {
 
 func (pmgr *PeerMgr) Run(ctx context.Context) {
 	tick := time.NewTicker(pmgr.period)
+	defer tick.Stop()
+
 	for {
+		pCount := pmgr.getPeerCount()
+		if pCount < pmgr.minFilPeers {
+			pmgr.expandPeers()
+		} else if pCount > pmgr.maxFilPeers {
+			log.Debugf("peer count about threshold: %d > %d", pCount, pmgr.maxFilPeers)
+		}
+
 		select {
 		case <-tick.C:
-			pcount := pmgr.getPeerCount()
-			if pcount < pmgr.minFilPeers {
-				pmgr.expandPeers()
-			} else if pcount > pmgr.maxFilPeers {
-				log.Debugf("peer count about threshold: %d > %d", pcount, pmgr.maxFilPeers)
-			}
+			continue
 		case <-pmgr.done:
 			log.Warn("exiting peermgr run")
 			return
