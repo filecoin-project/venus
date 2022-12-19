@@ -748,13 +748,13 @@ func (bv *BlockValidator) VerifyWinningPoStProof(ctx context.Context, nv network
 	return nil
 }
 
-func isValidForSending(act *types.Actor) bool {
-	if builtin.IsAccountActor(act.Code) {
+func IsValidForSending(act *types.Actor) bool {
+	if builtin.IsAccountActor(act.Code) || builtin.IsEthAccountActor(act.Code) {
 		return true
 	}
 
 	// HACK: Allow Eth embryos to send messages
-	if !builtin.IsEmbryo(act.Code) || act.Address == nil || act.Address.Protocol() != address.Delegated {
+	if !builtin.IsEmbryoActor(act.Code) || act.Address == nil || act.Address.Protocol() != address.Delegated {
 		return false
 	}
 	id, _, err := varint.FromUvarint(act.Address.Payload())
@@ -830,7 +830,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 				return fmt.Errorf("actor %s not found", sender)
 			}
 
-			if isValidForSending(act) {
+			if IsValidForSending(act) {
 				return errors.New("sender must be an account actor")
 			}
 			nonces[sender] = act.Nonce
