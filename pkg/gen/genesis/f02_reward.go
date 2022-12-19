@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
@@ -29,7 +30,7 @@ func SetupRewardActor(ctx context.Context, bs bstore.Blockstore, qaPower big.Int
 		return nil, err
 	}
 
-	actcid, found := actors.GetActorCodeID(av, actors.RewardKey)
+	actcid, found := actors.GetActorCodeID(av, manifest.RewardKey)
 	if !found {
 		return nil, fmt.Errorf("failed to get reward actor code ID for actors version %d", av)
 	}

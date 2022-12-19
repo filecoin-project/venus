@@ -16,6 +16,7 @@ import (
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
@@ -327,7 +328,7 @@ func (s *state7) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes
 }
 
 func (s *state7) ActorKey() string {
-	return actors.MarketKey
+	return manifest.MarketKey
 }
 
 func (s *state7) ActorVersion() actorstypes.Version {

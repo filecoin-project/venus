@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
@@ -120,7 +121,7 @@ func (ls *laneState7) Nonce() (uint64, error) {
 }
 
 func (s *state7) ActorKey() string {
-	return actors.PaychKey
+	return manifest.PaychKey
 }
 
 func (s *state7) ActorVersion() actorstypes.Version {

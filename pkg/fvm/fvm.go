@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/crypto"
@@ -352,6 +353,7 @@ func defaultFVMOpts(ctx context.Context, opts *vm.VmOption) (*ffi.FVMOpts, error
 			base:       opts.PRoot, gasPriceSchedule: opts.GasPriceSchedule,
 		},
 		Epoch:          opts.Epoch,
+		ChainID:        uint64(types.Eip155ChainID),
 		BaseFee:        opts.BaseFee,
 		BaseCircSupply: circToReport,
 		NetworkVersion: opts.NetworkVersion,
@@ -441,7 +443,7 @@ func NewDebugFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 
 		// create actor redirect mapping
 		actorRedirect := make(map[cid.Cid]cid.Cid)
-		for _, key := range actors.GetBuiltinActorsKeys(av) {
+		for _, key := range manifest.GetBuiltinActorsKeys(av) {
 			from, ok := actors.GetActorCodeID(av, key)
 			if !ok {
 				fvmLog.Warnf("actor missing in the from manifest %s", key)

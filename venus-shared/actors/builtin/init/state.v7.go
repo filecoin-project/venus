@@ -15,6 +15,8 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
+	"github.com/filecoin-project/go-state-types/manifest"
+
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
 	init7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/init"
@@ -130,7 +132,7 @@ func (s *state7) AddressMapHashFunction() func(input []byte) []byte {
 }
 
 func (s *state7) ActorKey() string {
-	return actors.InitKey
+	return manifest.InitKey
 }
 
 func (s *state7) ActorVersion() actorstypes.Version {

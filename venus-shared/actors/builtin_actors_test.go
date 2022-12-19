@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,7 +22,7 @@ func TestRegistration(t *testing.T) {
 	require.True(t, found)
 	require.True(t, manifestCid.Defined())
 
-	for _, key := range GetBuiltinActorsKeys(actorstypes.Version8) {
+	for _, key := range manifest.GetBuiltinActorsKeys(actorstypes.Version8) {
 		actorCid, found := GetActorCodeID(actorstypes.Version8, key)
 		require.True(t, found)
 		name, version, found := GetActorMetaByCode(actorCid)

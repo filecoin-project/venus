@@ -3,6 +3,7 @@ package utils
 import (
 	"testing"
 
+	"github.com/filecoin-project/go-state-types/manifest"
 	tf "github.com/filecoin-project/venus/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -56,7 +57,7 @@ func TestMethodMap(t *testing.T) {
 
 // 没有把 v10 actor注入，等注入后移除
 func skipEvmActor(name string) bool {
-	if name == actors.EamKey || name == actors.EvmKey || name == actors.EmbryoKey {
+	if name == manifest.EamKey || name == manifest.EvmKey || name == manifest.EmbryoKey {
 		return true
 	}
 	return false

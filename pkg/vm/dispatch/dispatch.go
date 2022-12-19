@@ -135,7 +135,7 @@ func (d *actorDispatcher) signature(methodID abi.MethodNum) (*methodSignature, *
 	exports := d.actor.Exports()
 
 	// get method
-	method := exports[(uint64)(methodID)].Method
+	method := exports[methodID].Method
 	if method == nil {
 		return nil, NewExcuteError(exitcode.SysErrInvalidMethod, "Method undefined. method: %d, code: %s", methodID, d.code)
 	}

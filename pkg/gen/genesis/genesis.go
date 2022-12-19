@@ -49,6 +49,7 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/system"
 
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 
 	"github.com/ipfs/go-cid"
@@ -399,7 +400,7 @@ func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av actorstypes.Ve
 		return nil, err
 	}
 
-	actcid, found := actors.GetActorCodeID(av, actors.AccountKey)
+	actcid, found := actors.GetActorCodeID(av, manifest.AccountKey)
 	if !found {
 		return nil, fmt.Errorf("failed to get account actor code ID for actors version %d", av)
 	}
@@ -482,7 +483,7 @@ func createMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *tree.
 		return err
 	}
 
-	actcid, found := actors.GetActorCodeID(av, actors.MultisigKey)
+	actcid, found := actors.GetActorCodeID(av, manifest.MultisigKey)
 	if !found {
 		return fmt.Errorf("failed to get multisig actor code ID for actors version %d", av)
 	}
@@ -710,7 +711,7 @@ func SetupEAM(ctx context.Context, nst tree.Tree, nv network.Version) error {
 		return nil
 	}
 
-	codecid, ok := actors.GetActorCodeID(av, actors.EamKey)
+	codecid, ok := actors.GetActorCodeID(av, manifest.EamKey)
 	if !ok {
 		return fmt.Errorf("failed to get CodeCID for EAM during genesis")
 	}

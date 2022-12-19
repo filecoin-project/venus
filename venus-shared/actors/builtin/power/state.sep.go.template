@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 {{if (le .v 7)}}
     {{if (ge .v 3)}}
@@ -212,7 +213,7 @@ func fromV{{.v}}Claim(v{{.v}} power{{.v}}.Claim) Claim {
 }
 
 func (s *state{{.v}}) ActorKey() string {
-    return actors.PowerKey
+    return manifest.PowerKey
 }
 
 func (s *state{{.v}}) ActorVersion() actorstypes.Version {

@@ -14,6 +14,7 @@ import (
 
 	datacap{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}datacap"
 	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
+	"github.com/filecoin-project/go-state-types/manifest"
 )
 
 var _ State = (*state{{.v}})(nil)
@@ -65,7 +66,7 @@ func (s *state{{.v}}) VerifiedClientDataCap(addr address.Address) (bool, abi.Sto
 }
 
 func (s *state{{.v}}) ActorKey() string {
-    return actors.DatacapKey
+    return manifest.DatacapKey
 }
 
 func (s *state{{.v}}) ActorVersion() actorstypes.Version {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	types "github.com/filecoin-project/venus/venus-shared/internal"
@@ -30,7 +31,7 @@ import (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != actors.CronKey {
+		if name != manifest.CronKey {
 			return nil, fmt.Errorf("actor code is not cron: %s", name)
 		}
 

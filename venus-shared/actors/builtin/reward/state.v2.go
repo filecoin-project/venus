@@ -9,6 +9,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
@@ -104,7 +105,7 @@ func (s *state2) GetState() interface{} {
 }
 
 func (s *state2) ActorKey() string {
-	return actors.RewardKey
+	return manifest.RewardKey
 }
 
 func (s *state2) ActorVersion() actorstypes.Version {
