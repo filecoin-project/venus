@@ -14,16 +14,29 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/fork"
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/api"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
+
+var log = logging.Logger("eth_api")
+
+func newEthAPI(em *EthSubModule) *ethAPI {
+	return &ethAPI{
+		em:    em,
+		chain: em.ethEventAPI.ChainAPI,
+		mpool: em.mpoolModule.API(),
+	}
+}
 
 type ethAPI struct {
 	em    *EthSubModule
@@ -81,30 +94,47 @@ func (a *ethAPI) EthGetBlockByHash(ctx context.Context, blkHash types.EthHash, f
 	if err != nil {
 		return types.EthBlock{}, fmt.Errorf("error loading tipset %s: %w", ts, err)
 	}
-	return a.newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo)
+	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.em.chainModule.MessageStore, a.chain)
 }
 
-func (a *ethAPI) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (types.EthBlock, error) {
-	typ, num, err := types.ParseBlkNumOption(blkNum)
-	if err != nil {
-		return types.EthBlock{}, fmt.Errorf("cannot parse block number: %v", err)
-	}
-	head, err := a.chain.ChainHead(ctx)
-	if err != nil {
-		return types.EthBlock{}, fmt.Errorf("failed to got head %v", err)
-	}
-	switch typ {
-	case types.BlkNumLatest:
-		num = types.EthUint64(head.Height()) - 1
-	case types.BlkNumPending:
-		num = types.EthUint64(head.Height())
+func (a *ethAPI) parseBlkParam(ctx context.Context, blkParam string) (tipset *types.TipSet, err error) {
+	if blkParam == "earliest" {
+		return nil, fmt.Errorf("block param \"earliest\" is not supported")
 	}
 
-	ts, err := a.em.chainModule.ChainReader.GetTipSetByHeight(ctx, nil, abi.ChainEpoch(num), false)
+	head, err := a.chain.ChainHead(ctx)
 	if err != nil {
-		return types.EthBlock{}, fmt.Errorf("error loading tipset %s: %w", ts, err)
+		return nil, fmt.Errorf("failed to got head %v", err)
 	}
-	return a.newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo)
+	switch blkParam {
+	case "pending":
+		return head, nil
+	case "latest":
+		parent, err := a.chain.ChainGetTipSet(ctx, head.Parents())
+		if err != nil {
+			return nil, fmt.Errorf("cannot get parent tipset")
+		}
+		return parent, nil
+	default:
+		var num types.EthUint64
+		err := num.UnmarshalJSON([]byte(`"` + blkParam + `"`))
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse block number: %v", err)
+		}
+		ts, err := a.em.chainModule.ChainReader.GetTipSetByHeight(ctx, nil, abi.ChainEpoch(num), false)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get tipset at height: %v", num)
+		}
+		return ts, nil
+	}
+}
+
+func (a *ethAPI) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (types.EthBlock, error) {
+	ts, err := a.parseBlkParam(ctx, blkParam)
+	if err != nil {
+		return types.EthBlock{}, err
+	}
+	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.em.chainModule.MessageStore, a.chain)
 }
 
 func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash *types.EthHash) (*types.EthTx, error) {
@@ -115,16 +145,31 @@ func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash *types.EthH
 
 	cid := txHash.ToCid()
 
+	// first, try to get the cid from mined transactions
 	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, cid, constants.LookbackNoLimit, true)
-	if err != nil {
-		return nil, nil
+	if err == nil {
+		tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, -1, a.em.chainModule.MessageStore, a.chain)
+		if err == nil {
+			return &tx, nil
+		}
 	}
 
-	tx, err := a.newEthTxFromFilecoinMessageLookup(ctx, msgLookup)
+	// if not found, try to get it from the mempool
+	pending, err := a.mpool.MpoolPending(ctx, types.EmptyTSK)
 	if err != nil {
-		return nil, nil
+		return nil, fmt.Errorf("cannot get pending txs from mpool: %v", err)
 	}
-	return &tx, nil
+
+	for _, p := range pending {
+		if p.Cid() == cid {
+			tx, err := newEthTxFromFilecoinMessage(ctx, p, a.chain)
+			if err != nil {
+				return nil, fmt.Errorf("cannot get parse message into tx: %v", err)
+			}
+			return &tx, nil
+		}
+	}
+	return nil, fmt.Errorf("cannot find cid %v from the mpool", cid)
 }
 
 func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAddress, blkParam string) (types.EthUint64, error) {
@@ -163,7 +208,7 @@ func (a *ethAPI) EthGetTransactionReceipt(ctx context.Context, txHash types.EthH
 	// 	return types.EthTxReceipt{}, err
 	// }
 	// return receipt, nil
-	return &types.EthTxReceipt{}, nil
+	return nil, api.ErrNotSupported
 }
 
 func (a *ethAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error) {
@@ -369,7 +414,7 @@ func (a *ethAPI) EthFeeHistory(ctx context.Context, blkCount types.EthUint64, ne
 	for ts.Height() >= abi.ChainEpoch(oldestBlkHeight) {
 		// Unfortunately we need to rebuild the full message view so we can
 		// totalize gas used in the tipset.
-		block, err := a.newEthBlockFromFilecoinTipSet(ctx, ts, false)
+		block, err := newEthBlockFromFilecoinTipSet(ctx, ts, false, a.em.chainModule.MessageStore, a.chain)
 		if err != nil {
 			return types.EthFeeHistory{}, fmt.Errorf("cannot create eth block: %v", err)
 		}
@@ -613,8 +658,8 @@ func (a *ethAPI) EthCall(ctx context.Context, tx types.EthCall, blkParam string)
 	return types.EthBytes{}, nil
 }
 
-func (a *ethAPI) newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool) (types.EthBlock, error) {
-	parent, err := a.chain.ChainGetTipSet(ctx, ts.Parents())
+func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool, ms *chain.MessageStore, ca v1.IChain) (types.EthBlock, error) {
+	parent, err := ca.ChainGetTipSet(ctx, ts.Parents())
 	if err != nil {
 		return types.EthBlock{}, err
 	}
@@ -636,7 +681,7 @@ func (a *ethAPI) newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.Ti
 		return types.EthBlock{}, err
 	}
 
-	msgs, err := a.em.chainModule.MessageStore.MessagesForTipset(ts)
+	msgs, err := ms.MessagesForTipset(ts)
 	if err != nil {
 		return types.EthBlock{}, fmt.Errorf("error loading messages for tipset: %v: %w", ts, err)
 	}
@@ -645,15 +690,15 @@ func (a *ethAPI) newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.Ti
 
 	// this seems to be a very expensive way to get gasUsed of the block. may need to find an efficient way to do it
 	gasUsed := int64(0)
-	for _, msg := range msgs {
-		msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, msg.Cid(), constants.LookbackNoLimit, true)
+	for txIdx, msg := range msgs {
+		msgLookup, err := ca.StateSearchMsg(ctx, types.EmptyTSK, msg.Cid(), constants.LookbackNoLimit, false)
 		if err != nil || msgLookup == nil {
 			return types.EthBlock{}, nil
 		}
 		gasUsed += msgLookup.Receipt.GasUsed
 
 		if fullTxInfo {
-			tx, err := a.newEthTxFromFilecoinMessageLookup(ctx, msgLookup)
+			tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, txIdx, ms, ca)
 			if err != nil {
 				return types.EthBlock{}, nil
 			}
@@ -684,7 +729,7 @@ func (a *ethAPI) newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.Ti
 //  3. Otherwise, we fall back to returning a masked ID Ethereum address. If the supplied address is an f0 address, we
 //     use that ID to form the masked ID address.
 //  4. Otherwise, we fetch the actor's ID from the state tree and form the masked ID with it.
-func (a *ethAPI) lookupEthAddress(ctx context.Context, addr address.Address) (types.EthAddress, error) {
+func lookupEthAddress(ctx context.Context, addr address.Address, ca v1.IChain) (types.EthAddress, error) {
 	// Attempt to convert directly.
 	if ethAddr, ok, err := types.TryEthAddressFromFilecoinAddress(addr, false); err != nil {
 		return types.EthAddress{}, err
@@ -693,7 +738,7 @@ func (a *ethAPI) lookupEthAddress(ctx context.Context, addr address.Address) (ty
 	}
 
 	// Lookup on the target actor.
-	actor, err := a.chain.StateGetActor(ctx, addr, types.EmptyTSK)
+	actor, err := ca.StateGetActor(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return types.EthAddress{}, err
 	}
@@ -713,14 +758,81 @@ func (a *ethAPI) lookupEthAddress(ctx context.Context, addr address.Address) (ty
 	}
 
 	// Otherwise, resolve the ID addr.
-	idAddr, err := a.chain.StateLookupID(ctx, addr, types.EmptyTSK)
+	idAddr, err := ca.StateLookupID(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return types.EthAddress{}, err
 	}
 	return types.EthAddressFromFilecoinAddress(idAddr)
 }
 
-func (a *ethAPI) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *types.MsgLookup) (types.EthTx, error) {
+func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage, ca v1.IChain) (types.EthTx, error) {
+	fromEthAddr, err := lookupEthAddress(ctx, smsg.Message.From, ca)
+	if err != nil {
+		return types.EthTx{}, err
+	}
+
+	toEthAddr, err := lookupEthAddress(ctx, smsg.Message.To, ca)
+	if err != nil {
+		return types.EthTx{}, err
+	}
+
+	toAddr := &toEthAddr
+	input := smsg.Message.Params
+	// Check to see if we need to decode as contract deployment.
+	// We don't need to resolve the to address, because there's only one form (an ID).
+	if smsg.Message.To == builtintypes.EthereumAddressManagerActorAddr {
+		switch smsg.Message.Method {
+		case builtintypes.MethodsEAM.Create:
+			toAddr = nil
+			var params eam.CreateParams
+			err = params.UnmarshalCBOR(bytes.NewReader(smsg.Message.Params))
+			input = params.Initcode
+		case builtintypes.MethodsEAM.Create2:
+			toAddr = nil
+			var params eam.Create2Params
+			err = params.UnmarshalCBOR(bytes.NewReader(smsg.Message.Params))
+			input = params.Initcode
+		}
+		if err != nil {
+			return types.EthTx{}, err
+		}
+	}
+	// Otherwise, try to decode as a cbor byte array.
+	// TODO: Actually check if this is an ethereum call. This code will work for demo purposes, but is not correct.
+	if toAddr != nil {
+		if decodedParams, err := cbg.ReadByteArray(bytes.NewReader(smsg.Message.Params), uint64(len(smsg.Message.Params))); err == nil {
+			input = decodedParams
+		}
+	}
+
+	r, s, v, err := types.RecoverSignature(smsg.Signature)
+	if err != nil {
+		// we don't want to return error if the message is not an Eth tx
+		r, s, v = types.EthBigIntZero, types.EthBigIntZero, types.EthBigIntZero
+	}
+
+	tx := types.EthTx{
+		ChainID:              types.EthUint64(types.Eip155ChainID),
+		From:                 fromEthAddr,
+		To:                   toAddr,
+		Value:                types.EthBigInt(smsg.Message.Value),
+		Type:                 types.EthUint64(2),
+		Gas:                  types.EthUint64(smsg.Message.GasLimit),
+		MaxFeePerGas:         types.EthBigInt(smsg.Message.GasFeeCap),
+		MaxPriorityFeePerGas: types.EthBigInt(smsg.Message.GasPremium),
+		V:                    v,
+		R:                    r,
+		S:                    s,
+		Input:                input,
+	}
+
+	return tx, nil
+}
+
+// newEthTxFromFilecoinMessageLookup creates an ethereum transaction from filecoin message lookup. If a negative txIdx is passed
+// into the function, it looksup the transaction index of the message in the tipset, otherwise it uses the txIdx passed into the
+// function
+func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *types.MsgLookup, txIdx int, ms *chain.MessageStore, ca v1.IChain) (types.EthTx, error) {
 	if msgLookup == nil {
 		return types.EthTx{}, fmt.Errorf("msg does not exist")
 	}
@@ -730,13 +842,13 @@ func (a *ethAPI) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 		return types.EthTx{}, err
 	}
 
-	ts, err := a.chain.ChainGetTipSet(ctx, msgLookup.TipSet)
+	ts, err := ca.ChainGetTipSet(ctx, msgLookup.TipSet)
 	if err != nil {
 		return types.EthTx{}, err
 	}
 
 	// This tx is located in the parent tipset
-	parentTS, err := a.chain.ChainGetTipSet(ctx, ts.Parents())
+	parentTS, err := ca.ChainGetTipSet(ctx, ts.Parents())
 	if err != nil {
 		return types.EthTx{}, err
 	}
@@ -747,18 +859,19 @@ func (a *ethAPI) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 	}
 
 	// lookup the transactionIndex
-	txIdx := -1
-	msgs, err := a.em.chainModule.MessageStore.MessagesForTipset(parentTS)
-	if err != nil {
-		return types.EthTx{}, err
-	}
-	for i, msg := range msgs {
-		if msg.Cid() == msgLookup.Message {
-			txIdx = i
+	if txIdx < 0 {
+		msgs, err := ms.MessagesForTipset(parentTS)
+		if err != nil {
+			return types.EthTx{}, err
 		}
-	}
-	if txIdx == -1 {
-		return types.EthTx{}, fmt.Errorf("cannot find the msg in the tipset")
+		for i, msg := range msgs {
+			if msg.Cid() == msgLookup.Message {
+				txIdx = i
+			}
+		}
+		if txIdx < 0 {
+			return types.EthTx{}, fmt.Errorf("cannot find the msg in the tipset")
+		}
 	}
 
 	blkHash, err := types.NewEthHashFromCid(parentTSCid)
@@ -766,69 +879,102 @@ func (a *ethAPI) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 		return types.EthTx{}, err
 	}
 
-	msg, err := a.chain.ChainGetMessage(ctx, msgLookup.Message)
+	smsg, err := ms.LoadSignedMessage(ctx, msgLookup.Message)
 	if err != nil {
 		return types.EthTx{}, err
 	}
 
-	fromEthAddr, err := a.lookupEthAddress(ctx, msg.From)
+	tx, err := newEthTxFromFilecoinMessage(ctx, smsg, ca)
 	if err != nil {
 		return types.EthTx{}, err
 	}
 
-	toEthAddr, err := a.lookupEthAddress(ctx, msg.To)
-	if err != nil {
-		return types.EthTx{}, err
-	}
-
-	toAddr := &toEthAddr
-	input := msg.Params
-	// Check to see if we need to decode as contract deployment.
-	// We don't need to resolve the to address, because there's only one form (an ID).
-	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
-		switch msg.Method {
-		case builtintypes.MethodsEAM.Create:
-			toAddr = nil
-			var params eam.CreateParams
-			err = params.UnmarshalCBOR(bytes.NewReader(msg.Params))
-			input = params.Initcode
-		case builtintypes.MethodsEAM.Create2:
-			toAddr = nil
-			var params eam.Create2Params
-			err = params.UnmarshalCBOR(bytes.NewReader(msg.Params))
-			input = params.Initcode
-		}
-		if err != nil {
-			return types.EthTx{}, err
-		}
-	}
-	// Otherwise, try to decode as a cbor byte array.
-	// TODO: Actually check if this is an ethereum call. This code will work for demo purposes, but is not correct.
-	if toAddr != nil {
-		if decodedParams, err := cbg.ReadByteArray(bytes.NewReader(msg.Params), uint64(len(msg.Params))); err == nil {
-			input = decodedParams
-		}
-	}
-
-	tx := types.EthTx{
-		ChainID:              types.EthUint64(types.Eip155ChainID),
-		Hash:                 txHash,
-		BlockHash:            blkHash,
-		BlockNumber:          types.EthUint64(parentTS.Height()),
-		From:                 fromEthAddr,
-		To:                   toAddr,
-		Value:                types.EthBigInt(msg.Value),
-		Type:                 types.EthUint64(2),
-		TransactionIndex:     types.EthUint64(txIdx),
-		Gas:                  types.EthUint64(msg.GasLimit),
-		MaxFeePerGas:         types.EthBigInt(msg.GasFeeCap),
-		MaxPriorityFeePerGas: types.EthBigInt(msg.GasPremium),
-		V:                    types.EthBytes{},
-		R:                    types.EthBytes{},
-		S:                    types.EthBytes{},
-		Input:                input,
-	}
+	tx.ChainID = types.EthUint64(types.Eip155ChainID)
+	tx.Hash = txHash
+	tx.BlockHash = blkHash
+	tx.BlockNumber = types.EthUint64(parentTS.Height())
+	tx.TransactionIndex = types.EthUint64(txIdx)
 	return tx, nil
 }
 
-var _ v1.IETH = (*ethAPI)(nil)
+// nolint
+func newEthTxReceipt(ctx context.Context, tx types.EthTx, lookup *types.MsgLookup, replay *types.InvocResult, events []types.Event, ca v1.IChain) (types.EthTxReceipt, error) {
+	receipt := types.EthTxReceipt{
+		TransactionHash:  tx.Hash,
+		TransactionIndex: tx.TransactionIndex,
+		BlockHash:        tx.BlockHash,
+		BlockNumber:      tx.BlockNumber,
+		From:             tx.From,
+		To:               tx.To,
+		Type:             types.EthUint64(2),
+		LogsBloom:        []byte{0},
+	}
+
+	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
+		// Create and Create2 return the same things.
+		var ret eam.CreateReturn
+		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
+			return types.EthTxReceipt{}, fmt.Errorf("failed to parse contract creation result: %w", err)
+		}
+		addr := types.EthAddress(ret.EthAddress)
+		receipt.ContractAddress = &addr
+	}
+
+	if lookup.Receipt.ExitCode.IsSuccess() {
+		receipt.Status = 1
+	}
+	if lookup.Receipt.ExitCode.IsError() {
+		receipt.Status = 0
+	}
+
+	if len(events) > 0 {
+		// TODO return a dummy non-zero bloom to signal that there are logs
+		//  need to figure out how worth it is to populate with a real bloom
+		//  should be feasible here since we are iterating over the logs anyway
+		receipt.LogsBloom = make([]byte, 256)
+		receipt.LogsBloom[255] = 0x01
+
+		receipt.Logs = make([]types.EthLog, 0, len(events))
+		for i, evt := range events {
+			l := types.EthLog{
+				Removed:          false,
+				LogIndex:         types.EthUint64(i),
+				TransactionIndex: tx.TransactionIndex,
+				TransactionHash:  tx.Hash,
+				BlockHash:        tx.BlockHash,
+				BlockNumber:      tx.BlockNumber,
+			}
+
+			for _, entry := range evt.Entries {
+				value := types.EthBytes(leftpad32(decodeLogBytes(entry.Value)))
+				if entry.Key == types.EthTopic1 || entry.Key == types.EthTopic2 || entry.Key == types.EthTopic3 || entry.Key == types.EthTopic4 {
+					l.Topics = append(l.Topics, value)
+				} else {
+					l.Data = value
+				}
+			}
+
+			addr, err := address.NewIDAddress(uint64(evt.Emitter))
+			if err != nil {
+				return types.EthTxReceipt{}, fmt.Errorf("failed to create ID address: %w", err)
+			}
+
+			l.Address, err = lookupEthAddress(ctx, addr, ca)
+			if err != nil {
+				return types.EthTxReceipt{}, fmt.Errorf("failed to resolve Ethereum address: %w", err)
+			}
+
+			receipt.Logs = append(receipt.Logs, l)
+		}
+	}
+
+	receipt.GasUsed = types.EthUint64(lookup.Receipt.GasUsed)
+
+	// TODO: handle CumulativeGasUsed
+	receipt.CumulativeGasUsed = types.EmptyEthInt
+
+	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
+	receipt.EffectiveGasPrice = types.EthBigInt(effectiveGasPrice)
+
+	return receipt, nil
+}

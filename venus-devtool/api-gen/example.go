@@ -277,6 +277,18 @@ func init() {
 	addExample(&ethhash)
 	ethFeeHistoryReward := [][]types.EthBigInt{}
 	addExample(&ethFeeHistoryReward)
+
+	filterid, _ := types.EthHashFromHex("0x5CbEeC012345673f25E309Cc264f240bb0664031")
+	addExample(types.EthFilterID(filterid))
+
+	subid, _ := types.EthHashFromHex("0x5CbEeCF99d3fDB301234567c264f240bb0664031")
+	addExample(types.EthSubscriptionID(subid))
+
+	pstring := func(s string) *string { return &s }
+	addExample(&types.EthFilterSpec{
+		FromBlock: pstring("2301220"),
+		Address:   []types.EthAddress{ethaddr},
+	})
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {

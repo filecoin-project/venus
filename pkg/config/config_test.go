@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/stretchr/testify/assert"
@@ -261,4 +262,18 @@ func createConfigFile(t *testing.T, content string) (string, error) {
 	}
 
 	return cfgpath, nil
+}
+
+func TestDuration(t *testing.T) {
+	d, err := time.ParseDuration("1h5m")
+	require.NoError(t, err)
+
+	dd := Duration(d)
+	data, err := json.Marshal(dd)
+	require.NoError(t, err)
+	require.Equal(t, "\"1h5m0s\"", string(data))
+
+	var res Duration
+	require.NoError(t, json.Unmarshal(data, &res))
+	require.Equal(t, dd, res)
 }

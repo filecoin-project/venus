@@ -139,11 +139,11 @@ func (ms *MessageStore) LoadUnsignedMessage(ctx context.Context, mid cid.Cid) (*
 	return message, nil
 }
 
-// LoadUnsignedMessagesFromCids load unsigned messages of cid array
+// LoadSignedMessage load signed message of cid
 func (ms *MessageStore) LoadSignedMessage(ctx context.Context, mid cid.Cid) (*types.SignedMessage, error) {
 	messageBlock, err := ms.bs.Get(ctx, mid)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get bls message %s", mid)
+		return nil, errors.Wrapf(err, "failed to get secp message %s", mid)
 	}
 
 	message := &types.SignedMessage{}
