@@ -1,3 +1,9 @@
+# Sample code of curl
+
+```bash
+# <Inputs> corresponding to the value of Inputs Tag of each API
+curl http://<ip>:<port>/rpc/v0 -X POST -H "Content-Type: application/json"  -H "Authorization: Bearer <token>"  -d '{"method": "VENUS_MARKET.<method>", "params": <Inputs>, "id": 0}'
+```
 # Groups
 
 * [Market](#market)
