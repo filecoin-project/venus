@@ -41,4 +41,43 @@ type IETH interface {
 	EthCall(ctx context.Context, tx types.EthCall, blkParam string) (types.EthBytes, error) //perm:read
 
 	EthSendRawTransaction(ctx context.Context, rawTx types.EthBytes) (types.EthHash, error) //perm:read
+
+	IETHEvent
+}
+
+type IETHEvent interface {
+	// Returns event logs matching given filter spec.
+	EthGetLogs(ctx context.Context, filter *types.EthFilterSpec) (*types.EthFilterResult, error) //perm:read
+
+	// Polling method for a filter, returns event logs which occurred since last poll.
+	// (requires write perm since timestamp of last filter execution will be written)
+	EthGetFilterChanges(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error) //perm:write
+
+	// Returns event logs matching filter with given id.
+	// (requires write perm since timestamp of last filter execution will be written)
+	EthGetFilterLogs(ctx context.Context, id types.EthFilterID) (*types.EthFilterResult, error) //perm:write
+
+	// Installs a persistent filter based on given filter spec.
+	EthNewFilter(ctx context.Context, filter *types.EthFilterSpec) (types.EthFilterID, error) //perm:write
+
+	// Installs a persistent filter to notify when a new block arrives.
+	EthNewBlockFilter(ctx context.Context) (types.EthFilterID, error) //perm:write
+
+	// Installs a persistent filter to notify when new messages arrive in the message pool.
+	EthNewPendingTransactionFilter(ctx context.Context) (types.EthFilterID, error) //perm:write
+
+	// Uninstalls a filter with given id.
+	EthUninstallFilter(ctx context.Context, id types.EthFilterID) (bool, error) //perm:write
+
+	// Subscribe to different event types using websockets
+	// eventTypes is one or more of:
+	//  - newHeads: notify when new blocks arrive.
+	//  - pendingTransactions: notify when new messages arrive in the message pool.
+	//  - logs: notify new event logs that match a criteria
+	// params contains additional parameters used with the log event type
+	// The client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.
+	EthSubscribe(ctx context.Context, eventType string, params *types.EthSubscriptionParams) (<-chan types.EthSubscriptionResponse, error) //perm:write
+
+	// Unsubscribe from a websocket subscription
+	EthUnsubscribe(ctx context.Context, id types.EthSubscriptionID) (bool, error) //perm:write
 }

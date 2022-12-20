@@ -194,6 +194,10 @@ func (node *Node) Start(ctx context.Context) error {
 		return err
 	}
 
+	if err := node.eth.Start(ctx); err != nil {
+		return fmt.Errorf("failed to start eth module %v", err)
+	}
+
 	return nil
 }
 
@@ -232,6 +236,11 @@ func (node *Node) Stop(ctx context.Context) {
 
 	if node.jaegerExporter != nil {
 		node.jaegerExporter.Flush()
+	}
+
+	log.Infof("closing eth event index db")
+	if err := node.eth.Close(ctx); err != nil {
+		log.Warnf("error closing eht event index db: %s", err)
 	}
 }
 

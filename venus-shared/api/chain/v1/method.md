@@ -80,6 +80,16 @@
   * [EthSendRawTransaction](#ethsendrawtransaction)
   * [NetListening](#netlistening)
   * [NetVersion](#netversion)
+* [ETHEvent](#ethevent)
+  * [EthGetFilterChanges](#ethgetfilterchanges)
+  * [EthGetFilterLogs](#ethgetfilterlogs)
+  * [EthGetLogs](#ethgetlogs)
+  * [EthNewBlockFilter](#ethnewblockfilter)
+  * [EthNewFilter](#ethnewfilter)
+  * [EthNewPendingTransactionFilter](#ethnewpendingtransactionfilter)
+  * [EthSubscribe](#ethsubscribe)
+  * [EthUninstallFilter](#ethuninstallfilter)
+  * [EthUnsubscribe](#ethunsubscribe)
 * [Market](#market)
   * [StateMarketParticipants](#statemarketparticipants)
 * [MessagePool](#messagepool)
@@ -2213,9 +2223,9 @@ Response:
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x07",
-  "r": "0x07",
-  "s": "0x07"
+  "v": "0x0",
+  "r": "0x0",
+  "s": "0x0"
 }
 ```
 
@@ -2249,9 +2259,9 @@ Response:
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x07",
-  "r": "0x07",
-  "s": "0x07"
+  "v": "0x0",
+  "r": "0x0",
+  "s": "0x0"
 }
 ```
 
@@ -2284,9 +2294,9 @@ Response:
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x07",
-  "r": "0x07",
-  "s": "0x07"
+  "v": "0x0",
+  "r": "0x0",
+  "s": "0x0"
 }
 ```
 
@@ -2334,8 +2344,21 @@ Response:
   "effectiveGasPrice": "0x0",
   "logsBloom": "0x07",
   "logs": [
-    "string value"
-  ]
+    {
+      "address": "0x0707070707070707070707070707070707070707",
+      "data": "0x07",
+      "topics": [
+        "0x07"
+      ],
+      "removed": true,
+      "logIndex": "0x5",
+      "transactionIndex": "0x5",
+      "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+      "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+      "blockNumber": "0x5"
+    }
+  ],
+  "type": "0x5"
 }
 ```
 
@@ -2388,6 +2411,454 @@ Perms: read
 Inputs: `[]`
 
 Response: `"string value"`
+
+## ETHEvent
+
+### EthGetFilterChanges
+Polling method for a filter, returns event logs which occurred since last poll.
+(requires write perm since timestamp of last filter execution will be written)
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    92,
+    190,
+    236,
+    1,
+    35,
+    69,
+    103,
+    63,
+    37,
+    227,
+    9,
+    204,
+    38,
+    79,
+    36,
+    11,
+    176,
+    102,
+    64,
+    49
+  ]
+]
+```
+
+Response:
+```json
+[
+  {}
+]
+```
+
+### EthGetFilterLogs
+Returns event logs matching filter with given id.
+(requires write perm since timestamp of last filter execution will be written)
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    92,
+    190,
+    236,
+    1,
+    35,
+    69,
+    103,
+    63,
+    37,
+    227,
+    9,
+    204,
+    38,
+    79,
+    36,
+    11,
+    176,
+    102,
+    64,
+    49
+  ]
+]
+```
+
+Response:
+```json
+[
+  {}
+]
+```
+
+### EthGetLogs
+Returns event logs matching given filter spec.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "fromBlock": "2301220",
+    "address": [
+      "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+    ],
+    "topics": null
+  }
+]
+```
+
+Response:
+```json
+[
+  {}
+]
+```
+
+### EthNewBlockFilter
+Installs a persistent filter to notify when a new block arrives.
+
+
+Perms: write
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  92,
+  190,
+  236,
+  1,
+  35,
+  69,
+  103,
+  63,
+  37,
+  227,
+  9,
+  204,
+  38,
+  79,
+  36,
+  11,
+  176,
+  102,
+  64,
+  49
+]
+```
+
+### EthNewFilter
+Installs a persistent filter based on given filter spec.
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  {
+    "fromBlock": "2301220",
+    "address": [
+      "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+    ],
+    "topics": null
+  }
+]
+```
+
+Response:
+```json
+[
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  92,
+  190,
+  236,
+  1,
+  35,
+  69,
+  103,
+  63,
+  37,
+  227,
+  9,
+  204,
+  38,
+  79,
+  36,
+  11,
+  176,
+  102,
+  64,
+  49
+]
+```
+
+### EthNewPendingTransactionFilter
+Installs a persistent filter to notify when new messages arrive in the message pool.
+
+
+Perms: write
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  92,
+  190,
+  236,
+  1,
+  35,
+  69,
+  103,
+  63,
+  37,
+  227,
+  9,
+  204,
+  38,
+  79,
+  36,
+  11,
+  176,
+  102,
+  64,
+  49
+]
+```
+
+### EthSubscribe
+Subscribe to different event types using websockets
+eventTypes is one or more of:
+- newHeads: notify when new blocks arrive.
+- pendingTransactions: notify when new messages arrive in the message pool.
+- logs: notify new event logs that match a criteria
+params contains additional parameters used with the log event type
+The client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "string value",
+  {
+    "topics": [
+      [
+        "0x0707070707070707070707070707070707070707070707070707070707070707"
+      ]
+    ]
+  }
+]
+```
+
+Response:
+```json
+{
+  "subscription": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    92,
+    190,
+    236,
+    249,
+    157,
+    63,
+    219,
+    48,
+    18,
+    52,
+    86,
+    124,
+    38,
+    79,
+    36,
+    11,
+    176,
+    102,
+    64,
+    49
+  ],
+  "result": {}
+}
+```
+
+### EthUninstallFilter
+Uninstalls a filter with given id.
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    92,
+    190,
+    236,
+    1,
+    35,
+    69,
+    103,
+    63,
+    37,
+    227,
+    9,
+    204,
+    38,
+    79,
+    36,
+    11,
+    176,
+    102,
+    64,
+    49
+  ]
+]
+```
+
+Response: `true`
+
+### EthUnsubscribe
+Unsubscribe from a websocket subscription
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    92,
+    190,
+    236,
+    249,
+    157,
+    63,
+    219,
+    48,
+    18,
+    52,
+    86,
+    124,
+    38,
+    79,
+    36,
+    11,
+    176,
+    102,
+    64,
+    49
+  ]
+]
+```
+
+Response: `true`
 
 ## Market
 
