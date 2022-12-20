@@ -252,7 +252,7 @@ func (tma *testMpoolAPI) GetActorAfter(ctx context.Context, addr address.Address
 	}
 
 	return &types.Actor{
-		Code:    builtin2.StorageMarketActorCodeID,
+		Code:    builtin2.AccountActorCodeID,
 		Nonce:   nonce,
 		Balance: balance,
 	}, nil
