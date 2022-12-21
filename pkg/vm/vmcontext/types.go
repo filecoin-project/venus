@@ -36,6 +36,7 @@ type VmOption struct { //nolint
 	Fork                 fork.IFork
 	ActorCodeLoader      *dispatch.CodeLoader
 	Epoch                abi.ChainEpoch
+	Timestamp            uint64
 	GasPriceSchedule     *gas.PricesSchedule
 	PRoot                cid.Cid
 	Bsstore              blockstoreutil.Blockstore
