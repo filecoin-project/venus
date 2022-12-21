@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/pkg/errors"
 )
@@ -26,30 +25,7 @@ func newSyscallsStateView(ctx *invocationContext, VM *LegacyVM) *syscallsStateVi
 
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
 func (vm *syscallsStateView) ResolveToKeyAddr(ctx context.Context, accountAddr address.Address) (address.Address, error) {
-	// Short-circuit when given a pubkey address.
-	if accountAddr.Protocol() == address.SECP256K1 || accountAddr.Protocol() == address.BLS || accountAddr.Protocol() == address.Delegated {
-		return accountAddr, nil
-	}
-	accountActor, found, err := vm.State.GetActor(vm.context, accountAddr)
-	if err != nil {
-		return address.Undef, errors.Wrapf(err, "signer resolution failed To find actor %s", accountAddr)
-	}
-	if !found {
-		return address.Undef, fmt.Errorf("signer resolution found no such actor %s", accountAddr)
-	}
-	if vm.State.Version() >= tree.StateTreeVersion5 {
-		if accountActor.Address != nil {
-			// If there _is_ an f4 address, return it as "key" address
-			return *accountActor.Address, nil
-		}
-	}
-	accountState, err := account.Load(adt.WrapStore(vm.context, vm.ctx.gasIpld), accountActor)
-	if err != nil {
-		// This error is internal, shouldn't propagate as on-chain failure
-		panic(fmt.Errorf("signer resolution failed To lost stateView for %s ", accountAddr))
-	}
-
-	return accountState.PubkeyAddress()
+	return ResolveToKeyAddr(ctx, vm.State, accountAddr, vm.ctx.gasIpld)
 }
 
 // MinerInfo get miner info

@@ -59,3 +59,5 @@ type (
 	LookbackStateGetter = vmcontext.LookbackStateGetter
 	TipSetGetter        = vmcontext.TipSetGetter
 )
+
+var ResolveToKeyAddr = vmcontext.ResolveToKeyAddr

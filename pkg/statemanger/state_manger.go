@@ -88,9 +88,7 @@ func (s *Stmgr) ResolveToKeyAddress(ctx context.Context, addr address.Address, t
 		return address.Undef, errors.New("cannot resolve actor address to key address")
 	default:
 	}
-	if ts == nil {
-		ts = s.cs.GetHead()
-	}
+
 	_, view, err := s.ParentStateView(ctx, ts)
 	if err != nil {
 		return address.Undef, err
