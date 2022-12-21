@@ -714,10 +714,10 @@ func (v *View) ResolveToKeyAddr(ctx context.Context, address addr.Address) (addr
 	}
 
 	if tree.Version() >= vmstate.StateTreeVersion5 {
-		if act.Address == nil {
-			return addr.Undef, fmt.Errorf("actor at %s doesn't have a predictable address", address)
+		if act.Address != nil {
+			// If there _is_ an f4 address, return it as "key" address
+			return *act.Address, nil
 		}
-		return *act.Address, nil
 	}
 
 	aast, err := account.Load(adt.WrapStore(context.TODO(), v.ipldStore), act)

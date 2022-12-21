@@ -59,5 +59,3 @@ type (
 	LookbackStateGetter = vmcontext.LookbackStateGetter
 	TipSetGetter        = vmcontext.TipSetGetter
 )
-
-// type LookbackStateGetterForTipset = vmcontext.LookbackStateGetterForTipset

@@ -396,10 +396,10 @@ func (ctx *invocationContext) resolveToKeyAddr(addr address.Address) (address.Ad
 	}
 
 	if ctx.vm.State.Version() >= tree.StateTreeVersion5 {
-		if act.Address == nil {
-			return address.Undef, fmt.Errorf("actor at %s doesn't have a predictable address", addr)
+		if act.Address != nil {
+			// If there _is_ an f4 address, return it as "key" address
+			return *act.Address, nil
 		}
-		return *act.Address, nil
 	}
 
 	aast, err := account.Load(adt.WrapStore(ctx.vm.context, ctx.vm.store), act)
