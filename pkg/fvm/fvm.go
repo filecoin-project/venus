@@ -361,6 +361,7 @@ func defaultFVMOpts(ctx context.Context, opts *vm.VmOption) (*ffi.FVMOpts, error
 		NetworkVersion: opts.NetworkVersion,
 		StateBase:      opts.PRoot,
 		Tracing:        opts.Tracing || gas.EnableDetailedTracing,
+		Debug:          useActorDebugging,
 	}, nil
 }
 
@@ -748,6 +749,8 @@ func (r *xRedirect) MarshalCBOR(w io.Writer) error {
 // alongside regular execution. This is basically only to be used to print out specific logging information.
 // Message failures, unexpected terminations,gas costs, etc. should all be ignored.
 var useFvmDebug = os.Getenv("VENUS_FVM_DEVELOPER_DEBUG") == "1"
+
+var useActorDebugging = os.Getenv("VENUS_FVM_ACTOR_DEBUG") == "1"
 
 func NewVM(ctx context.Context, opts vm.VmOption) (vm.Interface, error) {
 	if opts.NetworkVersion >= network.Version16 {
