@@ -314,10 +314,10 @@ func resolveToKeyAddr(state tree.Tree, addr address.Address, cst cbor.IpldStore)
 	}
 
 	if state.Version() >= tree.StateTreeVersion5 {
-		if act.Address == nil {
-			return address.Undef, fmt.Errorf("actor at %s doesn't have a predictable address", addr)
+		if act.Address != nil {
+			// If there _is_ an f4 address, return it as "key" address
+			return *act.Address, nil
 		}
-		return *act.Address, nil
 	}
 
 	aast, err := account.Load(adt.WrapStore(context.TODO(), cst), act)
@@ -369,19 +369,6 @@ func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 	fvmOpts, err := defaultFVMOpts(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("creating fvm opts: %w", err)
-	}
-	if os.Getenv("VENUS_USE_FVM_CUSTOM_BUNDLE") == "1" {
-		av, err := actorstypes.VersionForNetwork(opts.NetworkVersion)
-		if err != nil {
-			return nil, fmt.Errorf("mapping network version to actors version: %w", err)
-		}
-
-		c, ok := actors.GetManifest(av)
-		if !ok {
-			return nil, fmt.Errorf("no manifest for custom bundle (actors version %d)", av)
-		}
-
-		fvmOpts.Manifest = c
 	}
 
 	fvm, err := ffi.CreateFVM(fvmOpts)

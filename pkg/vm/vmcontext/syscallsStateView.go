@@ -38,10 +38,10 @@ func (vm *syscallsStateView) ResolveToKeyAddr(ctx context.Context, accountAddr a
 		return address.Undef, fmt.Errorf("signer resolution found no such actor %s", accountAddr)
 	}
 	if vm.State.Version() >= tree.StateTreeVersion5 {
-		if accountActor.Address == nil {
-			return address.Undef, fmt.Errorf("actor at %s doesn't have a predictable address", accountAddr)
+		if accountActor.Address != nil {
+			// If there _is_ an f4 address, return it as "key" address
+			return *accountActor.Address, nil
 		}
-		return *accountActor.Address, nil
 	}
 	accountState, err := account.Load(adt.WrapStore(vm.context, vm.ctx.gasIpld), accountActor)
 	if err != nil {

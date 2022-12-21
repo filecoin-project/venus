@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-
 	"github.com/filecoin-project/venus/pkg/constants"
 	cbor "github.com/ipfs/go-ipld-cbor"
 

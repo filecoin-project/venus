@@ -9,7 +9,7 @@ require (
 	github.com/filecoin-project/go-fil-markets v1.25.2
 	github.com/filecoin-project/go-jsonrpc v0.1.9
 	github.com/filecoin-project/go-state-types v0.10.0-alpha-5
-	github.com/filecoin-project/lotus v1.18.2-0.20221216222459-5f4ccfd79084
+	github.com/filecoin-project/lotus v1.18.2-0.20221220224953-d9c13f19b091
 	github.com/filecoin-project/venus v0.0.0-00010101000000-000000000000
 	github.com/google/uuid v1.3.0
 	github.com/ipfs/go-block-format v0.0.3
