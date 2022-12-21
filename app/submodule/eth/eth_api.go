@@ -53,7 +53,16 @@ func (a *ethAPI) EthBlockNumber(ctx context.Context) (types.EthUint64, error) {
 	if err != nil {
 		return types.EthUint64(0), err
 	}
-	return types.EthUint64(head.Height()), nil
+	height := head.Height() - 1
+	if height < 0 {
+		height = 0 // genesis is the first ever committed tipset.
+	}
+	// eth_blockNumber needs to return the height of the latest committed tipset.
+	// Ethereum clients expect all transactions included in this block to have execution outputs.
+	// This is the parent of the head tipset. The head tipset is speculative, has not been
+	// recognized by the network, and its messages are only included, not executed.
+	// See https://github.com/filecoin-project/ref-fvm/issues/1135.
+	return types.EthUint64(height), nil
 }
 
 func (a *ethAPI) EthAccounts(context.Context) ([]types.EthAddress, error) {
@@ -180,7 +189,11 @@ func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAdd
 	if err != nil {
 		return types.EthUint64(0), err
 	}
-	nonce, err := a.mpool.MpoolGetNonce(ctx, addr)
+	ts, err := a.parseBlkParam(ctx, blkParam)
+	if err != nil {
+		return types.EthUint64(0), fmt.Errorf("cannot parse block param: %s", blkParam)
+	}
+	nonce, err := a.em.mpoolModule.MPool.GetNonce(ctx, addr, ts.Key())
 	if err != nil {
 		return types.EthUint64(0), err
 	}
@@ -223,7 +236,7 @@ func (a *ethAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blk
 }
 
 // EthGetCode returns string value of the compiled bytecode
-func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkOpt string) (types.EthBytes, error) {
+func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkParam string) (types.EthBytes, error) {
 	to, err := ethAddr.ToFilecoinAddress()
 	if err != nil {
 		return nil, fmt.Errorf("cannot get Filecoin address: %w", err)
@@ -245,9 +258,9 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkOp
 		GasPremium: big.Zero(),
 	}
 
-	ts, err := a.chain.ChainHead(ctx)
+	ts, err := a.parseBlkParam(ctx, blkParam)
 	if err != nil {
-		return nil, fmt.Errorf("failed to got head %v", err)
+		return nil, fmt.Errorf("cannot parse block param: %s", blkParam)
 	}
 
 	// Try calling until we find a height with no migration.
@@ -363,7 +376,12 @@ func (a *ethAPI) EthGetBalance(ctx context.Context, address types.EthAddress, bl
 		return types.EthBigInt{}, err
 	}
 
-	actor, err := a.chain.StateGetActor(ctx, filAddr, types.EmptyTSK)
+	ts, err := a.parseBlkParam(ctx, blkParam)
+	if err != nil {
+		return types.EthBigInt{}, fmt.Errorf("cannot parse block param: %s", blkParam)
+	}
+
+	actor, err := a.chain.StateGetActor(ctx, filAddr, ts.Key())
 	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return types.EthBigIntZero, nil
@@ -595,10 +613,10 @@ func (a *ethAPI) ethCallToFilecoinMessage(ctx context.Context, tx types.EthCall)
 	}, nil
 }
 
-func (a *ethAPI) applyMessage(ctx context.Context, msg *types.Message) (*types.InvocResult, error) {
-	ts, err := a.chain.ChainHead(ctx)
+func (a *ethAPI) applyMessage(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error) {
+	ts, err := a.chain.ChainGetTipSet(ctx, tsk)
 	if err != nil {
-		return nil, fmt.Errorf("failed to got head %v", err)
+		return nil, fmt.Errorf("cannot get tipset: %w", err)
 	}
 
 	// Try calling until we find a height with no migration.
@@ -650,8 +668,12 @@ func (a *ethAPI) EthCall(ctx context.Context, tx types.EthCall, blkParam string)
 	if err != nil {
 		return nil, err
 	}
+	ts, err := a.parseBlkParam(ctx, blkParam)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse block param: %s", blkParam)
+	}
 
-	invokeResult, err := a.applyMessage(ctx, msg)
+	invokeResult, err := a.applyMessage(ctx, msg, ts.Key())
 	if err != nil {
 		return nil, err
 	}
