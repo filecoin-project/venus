@@ -52,19 +52,19 @@ func NewMessageReceiptV1(exitcode exitcode.ExitCode, ret []byte, gasUsed int64, 
 	}
 }
 
-func (r *MessageReceipt) Version() MessageReceiptVersion {
-	return r.version
+func (mr *MessageReceipt) Version() MessageReceiptVersion {
+	return mr.version
 }
 
-func (r *MessageReceipt) Equals(o *MessageReceipt) bool {
-	return r.version == o.version && r.ExitCode == o.ExitCode && bytes.Equal(r.Return, o.Return) && r.GasUsed == o.GasUsed &&
-		(r.EventsRoot == o.EventsRoot || (r.EventsRoot != nil && o.EventsRoot != nil && *r.EventsRoot == *o.EventsRoot))
+func (mr *MessageReceipt) Equals(o *MessageReceipt) bool {
+	return mr.version == o.version && mr.ExitCode == o.ExitCode && bytes.Equal(mr.Return, o.Return) && mr.GasUsed == o.GasUsed &&
+		(mr.EventsRoot == o.EventsRoot || (mr.EventsRoot != nil && o.EventsRoot != nil && *mr.EventsRoot == *o.EventsRoot))
 }
 
-func (r *MessageReceipt) String() string {
+func (mr *MessageReceipt) String() string {
 	errStr := "(error encoding MessageReceipt)"
 
-	js, err := json.MarshalIndent(r, "", "  ")
+	js, err := json.MarshalIndent(mr, "", "  ")
 	if err != nil {
 		return errStr
 	}

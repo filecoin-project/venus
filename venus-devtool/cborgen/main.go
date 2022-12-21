@@ -57,7 +57,6 @@ func main() {
 				types.BeaconEntry{},
 				types.SignedMessage{},
 				types.MessageRoot{},
-				types.MessageReceipt{},
 				types.BlockMsg{},
 				types.ExpTipSet{},
 				types.PaymentInfo{},

@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/consensus"
 	"github.com/filecoin-project/venus/pkg/fvm"
+	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/pkg/util/ffiwrapper/impl"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
@@ -205,6 +206,12 @@ type ExecuteMessageParams struct {
 	NetworkVersion network.Version
 
 	Rand vmcontext.HeadChainRandomness
+
+	// Lookback is the LookbackStateGetter; returns the state tree at a given epoch.
+	Lookback vm.LookbackStateGetter
+
+	// TipSetGetter returns the tipset key at any given epoch.
+	TipSetGetter vm.TipSetGetter
 }
 
 // ExecuteMessage executes a conformance test vector message in a temporary LegacyVM.
@@ -221,6 +228,27 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 	if params.Rand == nil {
 		params.Rand = NewFixedRand()
 	}
+	if params.TipSetGetter == nil {
+		// TODO: If/when we start writing conformance tests against the EVM, we'll need to
+		// actually implement this and (unfortunately) capture any tipsets looked up by
+		// messages.
+		params.TipSetGetter = func(context.Context, abi.ChainEpoch) (types.TipSetKey, error) {
+			return types.EmptyTSK, nil
+		}
+	}
+	if params.Lookback == nil {
+		// TODO: This lookback state returns the supplied precondition state tree, unconditionally.
+		//  This is obviously not correct, but the lookback state tree is only used to validate the
+		//  worker key when verifying a consensus fault. If the worker key hasn't changed in the
+		//  current finality window, this workaround is enough.
+		//  The correct solutions are documented in https://github.com/filecoin-project/ref-fvm/issues/381,
+		//  but they're much harder to implement, and the tradeoffs aren't clear.
+		params.Lookback = func(ctx context.Context, epoch abi.ChainEpoch) (*state.View, error) {
+			cst := cbor.NewCborStore(bs)
+			return state.NewView(cst, params.Preroot), nil
+		}
+	}
+
 	mainNetParams := networks.Mainnet()
 	node.SetNetParams(&mainNetParams.Network)
 	ipldStore := cbor.NewCborStore(bs)
@@ -241,7 +269,7 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 			CircSupplyCalculator: func(ctx context.Context, epoch abi.ChainEpoch, tree tree.Tree) (abi.TokenAmount, error) {
 				return params.CircSupply, nil
 			},
-			LookbackStateGetter: vmcontext.LookbackStateGetterForTipset(ctx, chainStore, chainFork, nil),
+			LookbackStateGetter: params.Lookback,
 			NetworkVersion:      params.NetworkVersion,
 			Rnd:                 params.Rand,
 			BaseFee:             params.BaseFee,
@@ -251,7 +279,7 @@ func (d *Driver) ExecuteMessage(bs blockstoreutil.Blockstore, params ExecuteMess
 			GasPriceSchedule:    gas.NewPricesSchedule(mainNetParams.Network.ForkUpgradeParam),
 			PRoot:               params.Preroot,
 			Bsstore:             bs,
-			TipSetGetter:        vmcontext.TipSetGetterForTipset(chainStore.GetTipSetByHeight, nil),
+			TipSetGetter:        params.TipSetGetter,
 			SysCallsImpl:        syscalls,
 		}
 	)

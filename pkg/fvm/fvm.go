@@ -330,6 +330,7 @@ func resolveToKeyAddr(state tree.Tree, addr address.Address, cst cbor.IpldStore)
 
 type FVM struct {
 	fvm *ffi.FVM
+	nv  network.Version
 }
 
 func defaultFVMOpts(ctx context.Context, opts *vm.VmOption) (*ffi.FVMOpts, error) {
@@ -388,6 +389,7 @@ func NewFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 
 	return &FVM{
 		fvm: fvm,
+		nv:  opts.NetworkVersion,
 	}, nil
 }
 
@@ -489,6 +491,7 @@ func NewDebugFVM(ctx context.Context, opts *vm.VmOption) (*FVM, error) {
 
 	return &FVM{
 		fvm: fvm,
+		nv:  opts.NetworkVersion,
 	}, nil
 }
 
@@ -507,10 +510,12 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 	}
 
 	duration := time.Since(start)
-	receipt := types.MessageReceipt{
-		Return:   ret.Return,
-		ExitCode: exitcode.ExitCode(ret.ExitCode),
-		GasUsed:  ret.GasUsed,
+
+	var receipt types.MessageReceipt
+	if fvm.nv >= network.Version18 {
+		receipt = types.NewMessageReceiptV1(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed, ret.EventsRoot)
+	} else {
+		receipt = types.NewMessageReceiptV0(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed)
 	}
 
 	var aerr aerrors.ActorError
@@ -574,10 +579,12 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 	}
 
 	duration := time.Since(start)
-	receipt := types.MessageReceipt{
-		Return:   ret.Return,
-		ExitCode: exitcode.ExitCode(ret.ExitCode),
-		GasUsed:  ret.GasUsed,
+
+	var receipt types.MessageReceipt
+	if fvm.nv >= network.Version18 {
+		receipt = types.NewMessageReceiptV1(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed, ret.EventsRoot)
+	} else {
+		receipt = types.NewMessageReceiptV0(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed)
 	}
 
 	var aerr aerrors.ActorError
