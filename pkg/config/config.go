@@ -39,6 +39,7 @@ type Config struct {
 	Wallet        *WalletConfig        `json:"walletModule"`
 	SlashFilterDs *SlashFilterDsConfig `json:"slashFilter"`
 	RateLimitCfg  *RateLimitCfg        `json:"rateLimit"`
+	ActorEventCfg *ActorEventConfig    `json:"actorEvent"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -56,6 +57,39 @@ type RateLimitCfg struct {
 	User     string `json:"user"`
 	Pwd      string `json:"pwd"`
 	Enable   bool   `json:"enable"`
+}
+
+type ActorEventConfig struct {
+	// EnableRealTimeFilterAPI enables APIs that can create and query filters for actor events as they are emitted.
+	EnableRealTimeFilterAPI bool
+
+	// EnableHistoricFilterAPI enables APIs that can create and query filters for actor events that occurred in the past.
+	// A queryable index of events will be maintained.
+	EnableHistoricFilterAPI bool
+
+	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
+	// this time become eligible for automatic deletion.
+	FilterTTL Duration
+
+	// MaxFilters specifies the maximum number of filters that may exist at any one time.
+	MaxFilters int
+
+	// MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.
+	MaxFilterResults int
+
+	// MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
+	// the entire chain)
+	MaxFilterHeightRange uint64
+
+	// EventHistoryDatabasePath is the full path to a sqlite database that will be used to index actor events to
+	// support the historic filter APIs. If the database does not exist it will be created. The directory containing
+	// the database must already exist and be writeable.
+	ActorEventDatabasePath string
+
+	// Others, not implemented yet:
+	// Set a limit on the number of active websocket subscriptions (may be zero)
+	// Set a timeout for subscription clients
+	// Set upper bound on index size
 }
 
 func newDefaultAPIConfig() *APIConfig {
@@ -365,6 +399,17 @@ func newRateLimitConfig() *RateLimitCfg {
 	}
 }
 
+func newActorEventConfig() *ActorEventConfig {
+	return &ActorEventConfig{
+		EnableRealTimeFilterAPI: false,
+		EnableHistoricFilterAPI: false,
+		FilterTTL:               Duration(time.Hour * 24),
+		MaxFilters:              100,
+		MaxFilterResults:        10000,
+		MaxFilterHeightRange:    2880, // conservative limit of one day
+	}
+}
+
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
@@ -379,6 +424,7 @@ func NewDefaultConfig() *Config {
 		Wallet:        newDefaultWalletConfig(),
 		SlashFilterDs: newDefaultSlashFilterDsConfig(),
 		RateLimitCfg:  newRateLimitConfig(),
+		ActorEventCfg: newActorEventConfig(),
 	}
 }
 
@@ -510,4 +556,28 @@ func validateLettersOnly(key string, value string) error {
 		return errors.Errorf(`"%s" must only contain letters`, key)
 	}
 	return nil
+}
+
+var (
+	_ json.Marshaler   = (*Duration)(nil)
+	_ json.Unmarshaler = (*Duration)(nil)
+)
+
+// Duration is a wrapper type for time.Duration
+// for decoding and encoding from/to JSON
+type Duration time.Duration
+
+// UnmarshalJSON implements interface for json decoding
+func (dur *Duration) UnmarshalJSON(data []byte) error {
+	d, err := time.ParseDuration(strings.Trim(string(data), "\""))
+	if err != nil {
+		return err
+	}
+	*dur = Duration(d)
+	return err
+}
+
+func (dur Duration) MarshalJSON() ([]byte, error) {
+	d := time.Duration(dur)
+	return []byte(fmt.Sprintf("\"%s\"", d.String())), nil
 }

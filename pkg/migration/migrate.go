@@ -33,6 +33,7 @@ var versionMap = []versionInfo{
 	{version: 8, upgrade: Version8Upgrade},
 	{version: 9, upgrade: Version9Upgrade},
 	{version: 10, upgrade: Version10Upgrade},
+	{version: 11, upgrade: Version11Upgrade},
 }
 
 // TryToMigrate used to migrate data(db,config,file,etc) in local repo
@@ -364,4 +365,26 @@ func Version10Upgrade(repoPath string) (err error) {
 	}
 
 	return repo.WriteVersion(repoPath, 10)
+}
+
+// Version11Upgrade will add actor event config
+func Version11Upgrade(repoPath string) (err error) {
+	var fsrRepo repo.Repo
+	if fsrRepo, err = repo.OpenFSRepo(repoPath, 10); err != nil {
+		return
+	}
+	cfg := fsrRepo.Config()
+
+	// add default actor event config
+	cfg.ActorEventCfg = config.NewDefaultConfig().ActorEventCfg
+
+	if err = fsrRepo.ReplaceConfig(cfg); err != nil {
+		return
+	}
+
+	if err = fsrRepo.Close(); err != nil {
+		return
+	}
+
+	return repo.WriteVersion(repoPath, 11)
 }
