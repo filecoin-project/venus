@@ -67,6 +67,7 @@ func EthUint64FromHex(s string) (EthUint64, error) {
 	return EthUint64(parsedInt), nil
 }
 
+// EthBigInt represents a large integer whose zero value serializes to "0x0".
 type EthBigInt big.Int
 
 var (
@@ -74,7 +75,7 @@ var (
 )
 
 func (e EthBigInt) MarshalJSON() ([]byte, error) {
-	if e.Int == nil {
+	if e.Int == nil || e.Int.BitLen() == 0 {
 		return json.Marshal("0x0")
 	}
 	return json.Marshal(fmt.Sprintf("0x%x", e.Int))
@@ -98,6 +99,7 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// EthBytes represent arbitrary bytes. A nil or empty slice serializes to "0x".
 type EthBytes []byte
 
 func (e EthBytes) MarshalJSON() ([]byte, error) {
@@ -105,9 +107,7 @@ func (e EthBytes) MarshalJSON() ([]byte, error) {
 		return json.Marshal("0x")
 	}
 	s := hex.EncodeToString(e)
-	if len(s)%2 == 1 {
-		s = "0" + s
-	}
+
 	return json.Marshal("0x" + s)
 }
 
