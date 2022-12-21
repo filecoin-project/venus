@@ -2,13 +2,19 @@ package vmcontext
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/venus/pkg/state"
+	"github.com/filecoin-project/venus/venus-shared/actors/adt"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
@@ -100,4 +106,32 @@ type Interface interface {
 	ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*Ret, error)
 	ApplyImplicitMessage(ctx context.Context, msg types.ChainMsg) (*Ret, error)
 	Flush(ctx context.Context) (cid.Cid, error)
+}
+
+func ResolveToKeyAddr(ctx context.Context, state tree.Tree, addr address.Address, cst cbor.IpldStore) (address.Address, error) {
+	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 || addr.Protocol() == address.Delegated {
+		return addr, nil
+	}
+
+	act, found, err := state.GetActor(ctx, addr)
+	if err != nil {
+		return address.Undef, errors.Wrapf(err, "failed to find actor: %s", addr)
+	}
+	if !found {
+		return address.Undef, fmt.Errorf("actor not found %s", addr)
+	}
+
+	if state.Version() >= tree.StateTreeVersion5 {
+		if act.Address != nil {
+			// If there _is_ an f4 address, return it as "key" address
+			return *act.Address, nil
+		}
+	}
+
+	aast, err := account.Load(adt.WrapStore(ctx, cst), act)
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to get account actor state for %s: %w", addr, err)
+	}
+
+	return aast.PubkeyAddress()
 }

@@ -29,7 +29,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/aerrors"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 	blockstoreutil "github.com/filecoin-project/venus/venus-shared/blockstore"
@@ -292,40 +291,12 @@ func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerID address.Add
 	if err != nil {
 		return address.Undef, 0, err
 	}
-	raddr, err := resolveToKeyAddr(st, info.Worker, cstWithGas)
+	raddr, err := vm.ResolveToKeyAddr(ctx, st, info.Worker, cstWithGas)
 	if err != nil {
 		return address.Undef, 0, err
 	}
 
 	return raddr, gasTank.GasUsed, nil
-}
-
-func resolveToKeyAddr(state tree.Tree, addr address.Address, cst cbor.IpldStore) (address.Address, error) {
-	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 || addr.Protocol() == address.Delegated {
-		return addr, nil
-	}
-
-	act, found, err := state.GetActor(context.TODO(), addr)
-	if err != nil {
-		return address.Undef, fmt.Errorf("failed to find actor: %s", addr)
-	}
-	if !found {
-		return address.Undef, fmt.Errorf("signer resolution found no such actor %s", addr)
-	}
-
-	if state.Version() >= tree.StateTreeVersion5 {
-		if act.Address != nil {
-			// If there _is_ an f4 address, return it as "key" address
-			return *act.Address, nil
-		}
-	}
-
-	aast, err := account.Load(adt.WrapStore(context.TODO(), cst), act)
-	if err != nil {
-		return address.Undef, fmt.Errorf("failed to get account actor state for %s: %w", addr, err)
-	}
-
-	return aast.PubkeyAddress()
 }
 
 type FVM struct {
