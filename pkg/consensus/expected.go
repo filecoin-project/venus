@@ -203,6 +203,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (ci
 		BaseFee:             ts.At(0).ParentBaseFee,
 		Fork:                c.fork,
 		Epoch:               ts.At(0).Height,
+		Timestamp:           ts.MinTimestamp(),
 		GasPriceSchedule:    c.gasPirceSchedule,
 		Bsstore:             c.bstore,
 		PRoot:               ts.At(0).ParentStateRoot,
