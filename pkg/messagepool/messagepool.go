@@ -855,8 +855,19 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 		return nil
 	}
 
-	c := m.Message.Cid()
-	if err := crypto2.Verify(&m.Signature, m.Message.From, c.Bytes()); err != nil {
+	if m.Signature.Type == crypto.SigTypeDelegated {
+		txArgs, err := types.NewEthTxArgsFromMessage(&m.Message)
+		if err != nil {
+			return fmt.Errorf("failed to convert to eth tx args: %w", err)
+		}
+		msg, err := txArgs.ToRlpUnsignedMsg()
+		if err != nil {
+			return err
+		}
+		if err := crypto2.Verify(&m.Signature, m.Message.From, msg); err != nil {
+			return err
+		}
+	} else if err := crypto2.Verify(&m.Signature, m.Message.From, m.Message.Cid().Bytes()); err != nil {
 		return err
 	}
 
