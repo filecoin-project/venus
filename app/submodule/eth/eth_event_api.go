@@ -32,6 +32,7 @@ func newEthEventAPI(em *EthSubModule) (*ethEventAPI, error) {
 	bsstore := em.chainModule.ChainReader.Blockstore()
 	cfg := em.actorEventCfg
 	ee := &ethEventAPI{
+		em:                   em,
 		ChainAPI:             chainAPI,
 		MaxFilterHeightRange: abi.ChainEpoch(cfg.MaxFilterHeightRange),
 	}

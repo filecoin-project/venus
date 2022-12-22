@@ -614,7 +614,7 @@ func (a *ethAPI) applyMessage(ctx context.Context, msg *types.Message) (*types.I
 		return nil, fmt.Errorf("CallWithGas failed: %w", err)
 	}
 	if res.Receipt.ExitCode.IsError() {
-		return nil, fmt.Errorf("message execution failed: exit %s, reason: %v", &res.Receipt.ExitCode, res.ActorErr)
+		return nil, fmt.Errorf("message execution failed: exit %s, msg receipt return: %s, reason: %v", res.Receipt.ExitCode, res.Receipt.Return, res.ActorErr)
 	}
 	return &types.InvocResult{
 		MsgCid:         msg.Cid(),
