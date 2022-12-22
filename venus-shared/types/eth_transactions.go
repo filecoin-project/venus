@@ -224,7 +224,7 @@ func (tx *EthTxArgs) ToRlpSignedMsg() ([]byte, error) {
 }
 
 func (tx *EthTxArgs) packTxFields() ([]interface{}, error) {
-	chainId, err := formatInt(tx.ChainID)
+	chainID, err := formatInt(tx.ChainID)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +255,7 @@ func (tx *EthTxArgs) packTxFields() ([]interface{}, error) {
 	}
 
 	res := []interface{}{
-		chainId,
+		chainID,
 		nonce,
 		maxPriorityFeePerGas,
 		maxFeePerGas,

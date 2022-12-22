@@ -20,7 +20,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/crypto/delegated"
-	_ "github.com/filecoin-project/venus/pkg/crypto/delegated"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 )
 

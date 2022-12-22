@@ -830,7 +830,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 				return fmt.Errorf("actor %s not found", sender)
 			}
 
-			if IsValidForSending(act) {
+			if !IsValidForSending(act) {
 				return errors.New("sender must be an account actor")
 			}
 			nonces[sender] = act.Nonce
