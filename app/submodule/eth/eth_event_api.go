@@ -109,6 +109,10 @@ type ethEventAPI struct {
 }
 
 func (e *ethEventAPI) Start(ctx context.Context) error {
+	if !e.em.actorEventCfg.EnableRealTimeFilterAPI {
+		return nil
+	}
+
 	// Start garbage collection for filters
 	go e.GC(ctx, time.Duration(e.em.actorEventCfg.FilterTTL))
 
@@ -130,7 +134,11 @@ func (e *ethEventAPI) Start(ctx context.Context) error {
 }
 
 func (e *ethEventAPI) Close(ctx context.Context) error {
-	return e.EventFilterManager.EventIndex.Close()
+	if e.EventFilterManager != nil && e.EventFilterManager.EventIndex != nil {
+		return e.EventFilterManager.EventIndex.Close()
+	}
+
+	return nil
 }
 
 func (e *ethEventAPI) EthGetLogs(ctx context.Context, filterSpec *types.EthFilterSpec) (*types.EthFilterResult, error) {
