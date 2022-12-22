@@ -23,6 +23,8 @@ func GetGenesis(networkType types.NetworkType) ([]byte, error) {
 		fileName = "butterflynet.car"
 	case types.NetworkCalibnet:
 		fileName = "calibnet.car"
+	case types.NetworkWallaby:
+		fileName = "wallabynet.car"
 	default:
 		fileName = "mainnet.car"
 	}

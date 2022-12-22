@@ -25,6 +25,7 @@ func TestMigration(t *testing.T) {
 		types.NetworkCalibnet:  &networks.Calibration().Network,
 		types.NetworkMainnet:   &networks.Mainnet().Network,
 		types.Integrationnet:   &networks.IntegrationNet().Network,
+		types.NetworkWallaby:   &networks.WallabyNet().Network,
 	}
 
 	for nt, paramsCfg := range cfgs {
