@@ -78,6 +78,7 @@ const (
 	NetworkNameInterop     NetworkName = "interopnet"
 	NetworkNameIntegration NetworkName = "integrationnet"
 	NetworkNameForce       NetworkName = "forcenet"
+	NetworkNameWallaby     NetworkName = "wallabynet"
 )
 
 type NetworkType int
@@ -92,6 +93,7 @@ const (
 	NetworkInterop   NetworkType = 0x6
 	NetworkForce     NetworkType = 0x7
 	NetworkButterfly NetworkType = 0x8
+	NetworkWallaby   NetworkType = 0x9
 
 	Integrationnet NetworkType = 0x30
 )

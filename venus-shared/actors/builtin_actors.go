@@ -53,6 +53,7 @@ func init() {
 // NetworkInterop   NetworkType = 0x6
 // NetworkForce     NetworkType = 0x7
 // NetworkButterfly NetworkType = 0x8
+// NetworkWallaby   NetworkType = 0x9
 // Avoid import cycle, we use concrete values
 func SetNetworkBundle(networkType int) error {
 	networkBundle := ""
@@ -69,6 +70,9 @@ func SetNetworkBundle(networkType int) error {
 	// case types.NetworkInterop:
 	case 0x6:
 		networkBundle = "caterpillarnet"
+	// case types.NetworkWallaby:
+	case 0x9:
+		networkBundle = "wallaby"
 	// case types.NetworkCalibnet:
 	case 0x4:
 		networkBundle = "calibrationnet"

@@ -72,6 +72,8 @@ func GetNetworkConfig(network interface{}) (*NetworkConf, error) {
 		return InteropNet(), nil
 	case types.NetworkButterfly:
 		return ButterflySnapNet(), nil
+	case types.NetworkWallaby:
+		return WallabyNet(), nil
 	}
-	return nil, fmt.Errorf("unknown network name %s", network)
+	return nil, fmt.Errorf("unknown network type %d", networkType)
 }
