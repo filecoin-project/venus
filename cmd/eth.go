@@ -21,8 +21,9 @@ var ethCmd = &cmds.Command{
 		Tagline: "Query eth contract state",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"stat": ethGetInfoCmd,
-		"call": ethCallSimulateCmd,
+		"stat":             ethGetInfoCmd,
+		"call":             ethCallSimulateCmd,
+		"contract-address": ethGetContractAddressCmd,
 	},
 }
 
@@ -83,6 +84,51 @@ var ethGetInfoCmd = &cmds.Command{
 }
 
 var ethCallSimulateCmd = &cmds.Command{
+	Helptext: cmds.HelpText{
+		Tagline: "Simulate an eth contract call",
+	},
+	Arguments: []cmds.Argument{
+		cmds.StringArg("from", true, false, ""),
+		cmds.StringArg("to", true, false, ""),
+		cmds.StringArg("params", true, false, ""),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		if len(req.Arguments) != 3 {
+			return fmt.Errorf("incorrect number of arguments, got %d", len(req.Arguments))
+		}
+
+		fromEthAddr, err := types.EthAddressFromHex(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		toEthAddr, err := types.EthAddressFromHex(req.Arguments[1])
+		if err != nil {
+			return err
+		}
+
+		params, err := hex.DecodeString(req.Arguments[2])
+		if err != nil {
+			return err
+		}
+
+		ctx := req.Context
+
+		res, err := env.(*node.Env).EthAPI.EthCall(ctx, types.EthCall{
+			From: &fromEthAddr,
+			To:   &toEthAddr,
+			Data: params,
+		}, "")
+		if err != nil {
+			_ = re.Emit(fmt.Sprintln("Eth call fails, return val: ", res))
+			return err
+		}
+
+		return re.Emit(fmt.Sprintln("Result: ", res))
+	},
+}
+
+var ethGetContractAddressCmd = &cmds.Command{
 	Helptext: cmds.HelpText{
 		Tagline: "Generate contract address from smart contract code",
 	},

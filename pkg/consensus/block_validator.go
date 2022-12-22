@@ -754,7 +754,7 @@ func IsValidForSending(act *types.Actor) bool {
 	}
 
 	// HACK: Allow Eth embryos to send messages
-	if !builtin.IsEmbryoActor(act.Code) || act.Address == nil || act.Address.Protocol() != address.Delegated {
+	if !builtin.IsEmbryoActor(act.Code) || act.Nonce != 0 || act.Address == nil || act.Address.Protocol() != address.Delegated {
 		return false
 	}
 	id, _, err := varint.FromUvarint(act.Address.Payload())
@@ -830,7 +830,7 @@ func (bv *BlockValidator) checkBlockMessages(ctx context.Context, sigValidator *
 				return fmt.Errorf("actor %s not found", sender)
 			}
 
-			if IsValidForSending(act) {
+			if !IsValidForSending(act) {
 				return errors.New("sender must be an account actor")
 			}
 			nonces[sender] = act.Nonce
