@@ -60,4 +60,4 @@ type (
 	TipSetGetter        = vmcontext.TipSetGetter
 )
 
-// type LookbackStateGetterForTipset = vmcontext.LookbackStateGetterForTipset
+var ResolveToKeyAddr = vmcontext.ResolveToKeyAddr

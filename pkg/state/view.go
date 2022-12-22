@@ -696,6 +696,7 @@ func (v *View) LoadActor(ctx context.Context, address addr.Address) (*types.Acto
 
 // ResolveToKeyAddress is similar to `vm.ResolveToKeyAddr` but does not allow `Actor` type of addresses.
 // Uses the `TipSet` `ts` to generate the VM state.
+// todo: use pkg/vm/vm.go.ResolveToKeyAddr, avoid repetitive implementations
 func (v *View) ResolveToKeyAddr(ctx context.Context, address addr.Address) (addr.Address, error) {
 	if address.Protocol() == addr.BLS || address.Protocol() == addr.SECP256K1 || address.Protocol() == addr.Delegated {
 		return address, nil
@@ -714,10 +715,10 @@ func (v *View) ResolveToKeyAddr(ctx context.Context, address addr.Address) (addr
 	}
 
 	if tree.Version() >= vmstate.StateTreeVersion5 {
-		if act.Address == nil {
-			return addr.Undef, fmt.Errorf("actor at %s doesn't have a predictable address", address)
+		if act.Address != nil {
+			// If there _is_ an f4 address, return it as "key" address
+			return *act.Address, nil
 		}
-		return *act.Address, nil
 	}
 
 	aast, err := account.Load(adt.WrapStore(context.TODO(), v.ipldStore), act)

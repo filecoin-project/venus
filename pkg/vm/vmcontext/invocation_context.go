@@ -18,12 +18,10 @@ import (
 	ipfscbor "github.com/ipfs/go-ipld-cbor"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	"github.com/filecoin-project/venus/pkg/state/tree"
 	"github.com/filecoin-project/venus/pkg/vm/dispatch"
 	"github.com/filecoin-project/venus/pkg/vm/gas"
 	"github.com/filecoin-project/venus/pkg/vm/runtime"
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 	"github.com/filecoin-project/venus/venus-shared/actors/aerrors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/account"
@@ -386,28 +384,7 @@ func (ctx *invocationContext) resolveTarget(target address.Address) (*types.Acto
 }
 
 func (ctx *invocationContext) resolveToKeyAddr(addr address.Address) (address.Address, error) {
-	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 || addr.Protocol() == address.Delegated {
-		return addr, nil
-	}
-
-	act, found, err := ctx.vm.State.GetActor(ctx.vm.context, addr)
-	if !found || err != nil {
-		return address.Undef, fmt.Errorf("failed to find actor: %s", addr)
-	}
-
-	if ctx.vm.State.Version() >= tree.StateTreeVersion5 {
-		if act.Address == nil {
-			return address.Undef, fmt.Errorf("actor at %s doesn't have a predictable address", addr)
-		}
-		return *act.Address, nil
-	}
-
-	aast, err := account.Load(adt.WrapStore(ctx.vm.context, ctx.vm.store), act)
-	if err != nil {
-		return address.Undef, fmt.Errorf("failed to get account actor State for %s: %v", addr, err)
-	}
-
-	return aast.PubkeyAddress()
+	return ResolveToKeyAddr(ctx.vm.context, ctx.vm.State, addr, ctx.vm.store)
 }
 
 // implement runtime.InvocationContext for invocationContext

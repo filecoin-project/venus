@@ -179,18 +179,6 @@ func (tx *EthTxArgs) ToSignedMessage() (*SignedMessage, error) {
 	return &signedMsg, nil
 }
 
-func (tx *EthTxArgs) HashedOriginalRlpMsg() ([]byte, error) {
-	msg, err := tx.OriginalRlpMsg()
-	if err != nil {
-		return nil, err
-	}
-
-	hasher := sha3.NewLegacyKeccak256()
-	hasher.Write(msg)
-	hash := hasher.Sum(nil)
-	return hash, nil
-}
-
 func (tx *EthTxArgs) OriginalRlpMsg() ([]byte, error) {
 	chainID, err := formatInt(tx.ChainID)
 	if err != nil {
