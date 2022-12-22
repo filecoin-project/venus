@@ -16,6 +16,7 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/venus/pkg/crypto/delegated"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 )
 
@@ -179,8 +180,51 @@ func (tx *EthTxArgs) ToSignedMessage() (*SignedMessage, error) {
 	return &signedMsg, nil
 }
 
-func (tx *EthTxArgs) OriginalRlpMsg() ([]byte, error) {
-	chainID, err := formatInt(tx.ChainID)
+func (tx *EthTxArgs) HashedOriginalRlpMsg() ([]byte, error) {
+	msg, err := tx.ToRlpUnsignedMsg()
+	if err != nil {
+		return nil, err
+	}
+
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Write(msg)
+	hash := hasher.Sum(nil)
+	return hash, nil
+}
+
+func (tx *EthTxArgs) ToRlpUnsignedMsg() ([]byte, error) {
+	packed, err := tx.packTxFields()
+	if err != nil {
+		return nil, err
+	}
+
+	encoded, err := EncodeRLP(packed)
+	if err != nil {
+		return nil, err
+	}
+	return append([]byte{0x02}, encoded...), nil
+}
+
+func (tx *EthTxArgs) ToRlpSignedMsg() ([]byte, error) {
+	packed1, err := tx.packTxFields()
+	if err != nil {
+		return nil, err
+	}
+
+	packed2, err := tx.packSigFields()
+	if err != nil {
+		return nil, err
+	}
+
+	encoded, err := EncodeRLP(append(packed1, packed2...))
+	if err != nil {
+		return nil, err
+	}
+	return append([]byte{0x02}, encoded...), nil
+}
+
+func (tx *EthTxArgs) packTxFields() ([]interface{}, error) {
+	chainId, err := formatInt(tx.ChainID)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +255,7 @@ func (tx *EthTxArgs) OriginalRlpMsg() ([]byte, error) {
 	}
 
 	res := []interface{}{
-		chainID,
+		chainId,
 		nonce,
 		maxPriorityFeePerGas,
 		maxFeePerGas,
@@ -221,12 +265,27 @@ func (tx *EthTxArgs) OriginalRlpMsg() ([]byte, error) {
 		tx.Input,
 		[]interface{}{}, // access list
 	}
+	return res, nil
+}
 
-	encoded, err := EncodeRLP(res)
+func (tx *EthTxArgs) packSigFields() ([]interface{}, error) {
+	r, err := formatBigInt(tx.R)
 	if err != nil {
 		return nil, err
 	}
-	return append([]byte{0x02}, encoded...), nil
+
+	s, err := formatBigInt(tx.S)
+	if err != nil {
+		return nil, err
+	}
+
+	v, err := formatBigInt(tx.V)
+	if err != nil {
+		return nil, err
+	}
+
+	res := []interface{}{v, r, s}
+	return res, nil
 }
 
 func (tx *EthTxArgs) Signature() (*typescrypto.Signature, error) {
@@ -251,7 +310,7 @@ func (tx *EthTxArgs) Signature() (*typescrypto.Signature, error) {
 }
 
 func (tx *EthTxArgs) Sender() (address.Address, error) {
-	msg, err := tx.OriginalRlpMsg()
+	msg, err := tx.ToRlpUnsignedMsg()
 	if err != nil {
 		return address.Undef, err
 	}
@@ -270,16 +329,10 @@ func (tx *EthTxArgs) Sender() (address.Address, error) {
 		return address.Undef, err
 	}
 
-	// if we get an uncompressed public key (that's what we get from the library,
-	// but putting this check here for defensiveness), strip the prefix
-	if pubk[0] == 0x04 {
-		pubk = pubk[1:]
+	ethAddr, err := delegated.EthAddressFromPubKey(pubk)
+	if err != nil {
+		return address.Undef, err
 	}
-
-	// Calculate the f4 address based on the keccak hash of the pubkey.
-	hasher.Reset()
-	hasher.Write(pubk)
-	ethAddr := hasher.Sum(nil)[12:]
 
 	return address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, ethAddr)
 }

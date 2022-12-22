@@ -36,7 +36,7 @@ func (v *SignatureValidator) ValidateMessageSignature(ctx context.Context, msg *
 		if err != nil {
 			return err
 		}
-		msg, err := txArgs.OriginalRlpMsg()
+		msg, err := txArgs.ToRlpUnsignedMsg()
 		if err != nil {
 			return err
 		}
