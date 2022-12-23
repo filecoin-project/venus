@@ -287,7 +287,16 @@ func IsPaymentChannelActor(c cid.Cid) bool {
 func IsEmbryoActor(c cid.Cid) bool {
 	name, _, ok := actors.GetActorMetaByCode(c)
 	if ok {
-		return name == "embryo"
+		return name == manifest.EmbryoKey
+	}
+
+	return false
+}
+
+func IsEvmActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == manifest.EvmKey
 	}
 
 	return false
@@ -296,7 +305,7 @@ func IsEmbryoActor(c cid.Cid) bool {
 func IsEthAccountActor(c cid.Cid) bool {
 	name, _, ok := actors.GetActorMetaByCode(c)
 	if ok {
-		return name == "ethaccount"
+		return name == manifest.EthAccountKey
 	}
 
 	return false
