@@ -714,6 +714,7 @@ func (cia *chainInfoAPI) StateGetNetworkParams(ctx context.Context) (*types.Netw
 			UpgradeOhSnapHeight:      cfg.NetworkParams.ForkUpgradeParam.UpgradeOhSnapHeight,
 			UpgradeSkyrHeight:        cfg.NetworkParams.ForkUpgradeParam.UpgradeSkyrHeight,
 			UpgradeSharkHeight:       cfg.NetworkParams.ForkUpgradeParam.UpgradeSharkHeight,
+			UpgradeHyggeHeight:       cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight,
 		},
 	}
 
