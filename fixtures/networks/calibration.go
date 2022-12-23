@@ -59,6 +59,7 @@ func Calibration() *NetworkConf {
 				UpgradeOhSnapHeight:      480,
 				UpgradeSkyrHeight:        510,
 				UpgradeSharkHeight:       16800,
+				UpgradeHyggeHeight:       99999999999999,
 			},
 			DrandSchedule:        map[abi.ChainEpoch]config.DrandEnum{0: 1},
 			AddressNetwork:       address.Testnet,
