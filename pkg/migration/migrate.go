@@ -378,6 +378,25 @@ func Version11Upgrade(repoPath string) (err error) {
 	// add default actor event config
 	cfg.ActorEventCfg = config.NewDefaultConfig().ActorEventCfg
 
+	switch cfg.NetworkParams.NetworkType {
+	case types.NetworkMainnet:
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = 99999999999999
+	case types.Network2k:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version18
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = -21
+	case types.NetworkCalibnet:
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = 99999999999999
+	case types.NetworkForce:
+		cfg.NetworkParams.GenesisNetworkVersion = network.Version18
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = -21
+	case types.NetworkInterop:
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = 99999999999999
+	case types.NetworkButterfly:
+		cfg.NetworkParams.ForkUpgradeParam.UpgradeHyggeHeight = 600
+	default:
+		return fsrRepo.Close()
+	}
+
 	if err = fsrRepo.ReplaceConfig(cfg); err != nil {
 		return
 	}

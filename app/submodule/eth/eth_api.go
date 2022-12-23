@@ -157,19 +157,22 @@ func (a *ethAPI) EthGetTransactionByHash(ctx context.Context, txHash *types.EthH
 	// if not found, try to get it from the mempool
 	pending, err := a.mpool.MpoolPending(ctx, types.EmptyTSK)
 	if err != nil {
-		return nil, fmt.Errorf("cannot get pending txs from mpool: %v", err)
+		// inability to fetch mpool pending transactions is an internal node error
+		// that needs to be reported as-is
+		return nil, fmt.Errorf("cannot get pending txs from mpool: %s", err)
 	}
 
 	for _, p := range pending {
 		if p.Cid() == cid {
 			tx, err := newEthTxFromFilecoinMessage(ctx, p, a.chain)
 			if err != nil {
-				return nil, fmt.Errorf("cannot get parse message into tx: %v", err)
+				return nil, fmt.Errorf("could not convert Filecoin message into tx: %v", err)
 			}
 			return &tx, nil
 		}
 	}
-	return nil, fmt.Errorf("cannot find cid %v from the mpool", cid)
+	// Ethereum clients expect an empty response when the message was not found
+	return nil, nil
 }
 
 func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAddress, blkParam string) (types.EthUint64, error) {
