@@ -262,6 +262,7 @@ type NetworkParamsConfig struct {
 	ForkUpgradeParam        *ForkUpgradeConfig           `json:"-"`
 	PreCommitChallengeDelay abi.ChainEpoch               `json:"-"`
 	PropagationDelaySecs    uint64                       `json:"-"`
+	AllowableClockDriftSecs uint64                       `json:"allowableClockDriftSecs"`
 }
 
 // ForkUpgradeConfig record upgrade parameters
@@ -329,9 +330,10 @@ func newDefaultNetworkParamsConfig() *NetworkParamsConfig {
 			abi.RegisteredSealProof_StackedDrg32GiBV1,
 			abi.RegisteredSealProof_StackedDrg64GiBV1,
 		},
-		DrandSchedule:        map[abi.ChainEpoch]DrandEnum{0: 5, -1: 1},
-		ForkUpgradeParam:     &defaultParams,
-		PropagationDelaySecs: 10,
+		DrandSchedule:           map[abi.ChainEpoch]DrandEnum{0: 5, -1: 1},
+		ForkUpgradeParam:        &defaultParams,
+		PropagationDelaySecs:    10,
+		AllowableClockDriftSecs: 1,
 	}
 }
 

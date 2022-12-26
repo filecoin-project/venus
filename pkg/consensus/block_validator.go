@@ -164,7 +164,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	}
 
 	now := uint64(time.Now().Unix())
-	if blk.Timestamp > now+AllowableClockDriftSecs {
+	if blk.Timestamp > now+bv.config.AllowableClockDriftSecs {
 		return fmt.Errorf("block was from the future (now=%d, blk=%d): %v", now, blk.Timestamp, ErrTemporal)
 	}
 	if blk.Timestamp > now {
