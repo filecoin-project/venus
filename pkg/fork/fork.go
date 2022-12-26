@@ -31,7 +31,9 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 
+	nv18 "github.com/filecoin-project/go-state-types/builtin/v10/migration"
 	nv17 "github.com/filecoin-project/go-state-types/builtin/v9/migration"
+	"github.com/filecoin-project/go-state-types/migration"
 	"github.com/filecoin-project/specs-actors/actors/migration/nv3"
 	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv4"
 	"github.com/filecoin-project/specs-actors/v2/actors/migration/nv7"
@@ -332,6 +334,17 @@ func DefaultUpgradeSchedule(cf *ChainFork, upgradeHeight *config.ForkUpgradeConf
 				StopWithin:      5,
 			}},
 			Expensive: true,
+		}, {
+			Height:    upgradeHeight.UpgradeHyggeHeight,
+			Network:   network.Version18,
+			Migration: cf.UpgradeActorsV10,
+			PreMigrations: []PreMigration{{
+				PreMigration:    cf.PreUpgradeActorsV10,
+				StartWithin:     180,
+				DontStartWithin: 60,
+				StopWithin:      5,
+			}},
+			Expensive: true,
 		},
 	}
 
@@ -427,7 +440,7 @@ type versionSpec struct {
 	atOrBelow      abi.ChainEpoch
 }
 
-type migration struct {
+type Migration struct {
 	upgrade       MigrationFunc
 	preMigrations []PreMigration
 	cache         *nv16.MemMigrationCache
@@ -443,7 +456,7 @@ type ChainFork struct {
 	latestVersion   network.Version
 
 	// Maps chain epochs to upgrade functions.
-	stateMigrations map[abi.ChainEpoch]*migration
+	stateMigrations map[abi.ChainEpoch]*Migration
 	// A set of potentially expensive/time consuming upgrades. Explicit
 	// calls for, e.g., gas estimation fail against this epoch with
 	// ErrExpensiveFork.
@@ -469,7 +482,7 @@ func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore,
 		return nil, err
 	}
 
-	stateMigrations := make(map[abi.ChainEpoch]*migration, len(us))
+	stateMigrations := make(map[abi.ChainEpoch]*Migration, len(us))
 	expensiveUpgrades := make(map[abi.ChainEpoch]struct{}, len(us))
 	var networkVersions []versionSpec
 	lastVersion := networkParams.GenesisNetworkVersion
@@ -477,7 +490,7 @@ func NewChainFork(ctx context.Context, cr chainReader, ipldstore cbor.IpldStore,
 		// If we have any upgrades, process them and create a version schedule.
 		for _, upgrade := range us {
 			if upgrade.Migration != nil || upgrade.PreMigrations != nil {
-				migration := &migration{
+				migration := &Migration{
 					upgrade:       upgrade.Migration,
 					preMigrations: upgrade.PreMigrations,
 					cache:         nv16.NewMemMigrationCache(),
@@ -2277,6 +2290,127 @@ func (c *ChainFork) upgradeActorsV9Common(ctx context.Context,
 
 	if err := writeStore.Shutdown(ctx); err != nil {
 		return cid.Undef, fmt.Errorf("writeStore shutdown failed: %w", err)
+	}
+
+	return newRoot, nil
+}
+
+func (c *ChainFork) UpgradeActorsV10(ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
+	ts *types.TipSet,
+) (cid.Cid, error) {
+	// Use all the CPUs except 3.
+	workerCount := runtime.NumCPU() - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: 10 * time.Second,
+	}
+
+	newRoot, err := c.upgradeActorsV10Common(ctx, cache, root, epoch, ts, config)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("migrating actors v10 state: %w", err)
+	}
+
+	return newRoot, nil
+}
+
+func (c *ChainFork) PreUpgradeActorsV10(ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
+	ts *types.TipSet,
+) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := runtime.NumCPU()
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+
+	nv := c.GetNetworkVersion(ctx, epoch)
+	lbts, lbRoot, err := c.cr.GetLookbackTipSetForRound(ctx, ts, epoch, nv)
+	if err != nil {
+		return fmt.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5,
+	}
+
+	_, err = c.upgradeActorsV10Common(ctx, cache, lbRoot, epoch, lbts, config)
+	return err
+}
+
+func (c *ChainFork) upgradeActorsV10Common(
+	ctx context.Context,
+	cache MigrationCache,
+	root cid.Cid,
+	epoch abi.ChainEpoch,
+	ts *types.TipSet,
+	config migration.Config,
+) (cid.Cid, error) {
+	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
+	store := chain.ActorStore(ctx, buf)
+
+	// ensure that the manifest is loaded in the blockstore
+	if err := actors.LoadBundles(ctx, c.bs, actorstypes.Version10); err != nil {
+		return cid.Undef, fmt.Errorf("failed to load manifest bundle: %w", err)
+	}
+
+	// Load the state root.
+	var stateRoot vmstate.StateRoot
+	if err := store.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, fmt.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != vmstate.StateTreeVersion4 {
+		return cid.Undef, fmt.Errorf(
+			"expected state root version 4 for actors v9 upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	manifest, ok := actors.GetManifest(actorstypes.Version10)
+	if !ok {
+		return cid.Undef, fmt.Errorf("no manifest CID for v9 upgrade")
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv18.MigrateStateTree(ctx, store, manifest, stateRoot.Actors, epoch, config,
+		migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("upgrading to actors v10: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := store.Put(ctx, &vmstate.StateRoot{
+		Version: vmstate.StateTreeVersion5,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// Persist the new tree.
+
+	{
+		from := buf
+		to := buf.Read()
+
+		if err := Copy(ctx, from, to, newRoot); err != nil {
+			return cid.Undef, fmt.Errorf("copying migrated tree: %w", err)
+		}
 	}
 
 	return newRoot, nil
