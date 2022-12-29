@@ -73,7 +73,7 @@ func TestLoadFork(t *testing.T) {
 	assert.Error(t, s.HandleNewTipSet(ctx, rightTarget))
 	verifyHead(t, builder.Store(), left)
 
-	_, _, err = blockValidator.RunStateTransition(ctx, blockValidator.ChainStore.GetHead())
+	_, _, err = blockValidator.RunStateTransition(ctx, blockValidator.ChainStore.GetHead(), nil)
 	require.NoError(t, err)
 
 	// The syncer/bsstore assume that the fetcher populates the underlying block bsstore such that

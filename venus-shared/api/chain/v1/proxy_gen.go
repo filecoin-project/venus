@@ -292,6 +292,7 @@ type IChainInfoStruct struct {
 		StateGetRandomnessFromTickets func(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) `perm:"read"`
 		StateNetworkName              func(ctx context.Context) (types.NetworkName, error)                                                                                                         `perm:"read"`
 		StateNetworkVersion           func(ctx context.Context, tsk types.TipSetKey) (network.Version, error)                                                                                      `perm:"read"`
+		StateReplay                   func(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error)                                                                                  `perm:"read"`
 		StateSearchMsg                func(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)                             `perm:"read"`
 		StateVerifiedRegistryRootKey  func(ctx context.Context, tsk types.TipSetKey) (address.Address, error)                                                                                      `perm:"read"`
 		StateVerifierStatus           func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)                                                              `perm:"read"`
@@ -401,6 +402,9 @@ func (s *IChainInfoStruct) StateNetworkName(p0 context.Context) (types.NetworkNa
 }
 func (s *IChainInfoStruct) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey) (network.Version, error) {
 	return s.Internal.StateNetworkVersion(p0, p1)
+}
+func (s *IChainInfoStruct) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*types.InvocResult, error) {
+	return s.Internal.StateReplay(p0, p1, p2)
 }
 func (s *IChainInfoStruct) StateSearchMsg(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*types.MsgLookup, error) {
 	return s.Internal.StateSearchMsg(p0, p1, p2, p3, p4)
