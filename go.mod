@@ -42,13 +42,14 @@ require (
 	github.com/filecoin-project/specs-actors/v8 v8.0.1
 	github.com/filecoin-project/specs-storage v0.4.1
 	github.com/filecoin-project/test-vectors/schema v0.0.5
-	github.com/filecoin-project/venus-auth v1.8.1-0.20221124050656-73734ff50be5
+	github.com/filecoin-project/venus-auth v1.9.0
 	github.com/fxamacker/cbor/v2 v2.4.0
 	github.com/go-errors/errors v1.0.1
 	github.com/go-kit/kit v0.12.0
 	github.com/golang/mock v1.6.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/uuid v1.3.0
+	github.com/gorilla/websocket v1.5.0
 	github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/hashicorp/go-multierror v1.1.1
@@ -83,6 +84,7 @@ require (
 	github.com/libp2p/go-libp2p v0.22.0
 	github.com/libp2p/go-libp2p-kad-dht v0.18.0
 	github.com/libp2p/go-libp2p-pubsub v0.8.0
+	github.com/libp2p/go-msgio v0.2.0
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.6.0
@@ -178,7 +180,6 @@ require (
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
-	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/hannahhoward/cbor-gen-for v0.0.0-20200817222906-ea96cece81f1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -220,7 +221,6 @@ require (
 	github.com/libp2p/go-libp2p-core v0.20.0 // indirect
 	github.com/libp2p/go-libp2p-kbucket v0.4.7 // indirect
 	github.com/libp2p/go-libp2p-record v0.2.0 // indirect
-	github.com/libp2p/go-msgio v0.2.0 // indirect
 	github.com/libp2p/go-nat v0.1.0 // indirect
 	github.com/libp2p/go-netroute v0.2.0 // indirect
 	github.com/libp2p/go-openssl v0.1.0 // indirect
