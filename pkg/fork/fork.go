@@ -52,7 +52,6 @@ import (
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/venus/pkg/chain"
 	"github.com/filecoin-project/venus/pkg/config"
 	"github.com/filecoin-project/venus/pkg/constants"
 	vmstate "github.com/filecoin-project/venus/pkg/state/tree"
@@ -1490,7 +1489,7 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 
 func (c *ChainFork) UpgradeActorsV2(ctx context.Context, cache MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
-	store := chain.ActorStore(ctx, buf)
+	store := adt.WrapStore(ctx, cbor.NewCborStore(buf))
 
 	info, err := store.Put(ctx, new(vmstate.StateInfo0))
 	if err != nil {
@@ -1553,7 +1552,7 @@ func (c *ChainFork) UpgradeCalico(ctx context.Context, cache MigrationCache, roo
 		return root, nil
 	}
 
-	store := chain.ActorStore(ctx, c.bs)
+	store := adt.WrapStore(ctx, cbor.NewCborStore(c.bs))
 	var stateRoot vmstate.StateRoot
 	if err := store.Get(ctx, root, &stateRoot); err != nil {
 		return cid.Undef, fmt.Errorf("failed to decode state root: %v", err)
@@ -1697,7 +1696,7 @@ func (c *ChainFork) upgradeActorsV3Common(
 	config nv10.Config,
 ) (cid.Cid, error) {
 	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
-	store := chain.ActorStore(ctx, buf)
+	store := adt.WrapStore(ctx, cbor.NewCborStore(buf))
 
 	// Load the state root.
 	var stateRoot vmstate.StateRoot
@@ -1783,7 +1782,7 @@ func (c *ChainFork) upgradeActorsV4Common(
 	config nv12.Config,
 ) (cid.Cid, error) {
 	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
-	store := chain.ActorStore(ctx, buf)
+	store := adt.WrapStore(ctx, cbor.NewCborStore(buf))
 
 	// Load the state root.
 	var stateRoot vmstate.StateRoot
@@ -1869,7 +1868,7 @@ func (c *ChainFork) upgradeActorsV5Common(
 	config nv13.Config,
 ) (cid.Cid, error) {
 	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
-	store := chain.ActorStore(ctx, buf)
+	store := adt.WrapStore(ctx, cbor.NewCborStore(buf))
 
 	// Load the state root.
 	var stateRoot vmstate.StateRoot
@@ -1957,7 +1956,7 @@ func (c *ChainFork) upgradeActorsV6Common(
 	config nv14.Config,
 ) (cid.Cid, error) {
 	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
-	store := chain.ActorStore(ctx, buf)
+	store := adt.WrapStore(ctx, cbor.NewCborStore(buf))
 
 	// Load the state root.
 	var stateRoot vmstate.StateRoot
@@ -2058,7 +2057,7 @@ func (c *ChainFork) upgradeActorsV7Common(
 	writeStore := blockstoreutil.NewAutobatch(ctx, c.bs, units.GiB/4)
 	// TODO: pretty sure we'd achieve nothing by doing this, confirm in review
 	// buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), writeStore)
-	store := chain.ActorStore(ctx, writeStore)
+	store := adt.WrapStore(ctx, cbor.NewCborStore(writeStore))
 	// Load the state root.
 	var stateRoot vmstate.StateRoot
 	if err := store.Get(ctx, root, &stateRoot); err != nil {
@@ -2155,7 +2154,7 @@ func (c *ChainFork) upgradeActorsV8Common(
 	config nv16.Config,
 ) (cid.Cid, error) {
 	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
-	store := chain.ActorStore(ctx, buf)
+	store := adt.WrapStore(ctx, cbor.NewCborStore(buf))
 
 	// ensure that the manifest is loaded in the blockstore
 	if err := actors.LoadBundles(ctx, buf, actorstypes.Version8); err != nil {
@@ -2269,7 +2268,7 @@ func (c *ChainFork) upgradeActorsV9Common(ctx context.Context,
 	config nv17.Config,
 ) (cid.Cid, error) {
 	writeStore := blockstoreutil.NewAutobatch(ctx, c.bs, units.GiB/4)
-	store := chain.ActorStore(ctx, writeStore)
+	store := adt.WrapStore(ctx, cbor.NewCborStore(writeStore))
 
 	// ensure that the manifest is loaded in the blockstore
 	if err := actors.LoadBundles(ctx, c.bs, actorstypes.Version9); err != nil {
@@ -2385,7 +2384,7 @@ func (c *ChainFork) upgradeActorsV10Common(
 	config migration.Config,
 ) (cid.Cid, error) {
 	buf := blockstoreutil.NewTieredBstore(c.bs, blockstoreutil.NewTemporarySync())
-	store := chain.ActorStore(ctx, buf)
+	store := adt.WrapStore(ctx, cbor.NewCborStore(buf))
 
 	// ensure that the manifest is loaded in the blockstore
 	if err := actors.LoadBundles(ctx, c.bs, actorstypes.Version10); err != nil {
@@ -2475,7 +2474,7 @@ func (c *ChainFork) GetForkUpgrade() *config.ForkUpgradeConfig {
 
 func LiteMigration(ctx context.Context, bstore blockstoreutil.Blockstore, newActorsManifestCid cid.Cid, root cid.Cid, oldAv actorstypes.Version, newAv actorstypes.Version, oldStateTreeVersion vmstate.StateTreeVersion, newStateTreeVersion vmstate.StateTreeVersion) (cid.Cid, error) {
 	buf := blockstoreutil.NewTieredBstore(bstore, blockstoreutil.NewTemporarySync())
-	store := chain.ActorStore(ctx, buf)
+	store := adt.WrapStore(ctx, cbor.NewCborStore(buf))
 	adtStore := gstStore.WrapStore(ctx, store)
 
 	// Load the state root.

@@ -823,7 +823,7 @@ func (d *delayRunTsTransition) listenUpdate() {
 				if atomic.LoadInt64(&d.runningCount) < maxProcessLen {
 					atomic.AddInt64(&d.runningCount, 1)
 					go func(ts *types.TipSet) {
-						_, _, err := d.syncer.stmgr.RunStateTransition(context.TODO(), ts)
+						_, _, err := d.syncer.stmgr.RunStateTransition(context.TODO(), ts, nil)
 						if err != nil {
 							logSyncer.Errorf("stmgr.runStateTransaction failed:%s", err.Error())
 						}

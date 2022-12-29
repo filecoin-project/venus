@@ -159,7 +159,7 @@ func NewExpected(cs cbor.IpldStore,
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.ExecCallBack) (cid.Cid, cid.Cid, error) {
 	begin := time.Now()
 	defer func() {
 		logExpect.Infof("process ts height %d, blocks %d, took %.4f(s)", ts.Height(), ts.Len(), time.Since(begin).Seconds())
@@ -217,7 +217,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts *types.TipSet) (ci
 		parentEpoch = pts.Height()
 	}
 
-	root, receipts, err := c.processor.ApplyBlocks(ctx, blockMessageInfo, ts, ts.ParentState(), parentEpoch, ts.Height(), vmOption, nil)
+	root, receipts, err := c.processor.ApplyBlocks(ctx, blockMessageInfo, ts, ts.ParentState(), parentEpoch, ts.Height(), vmOption, cb)
 	if err != nil {
 		return cid.Undef, cid.Undef, errors.Wrap(err, "error validating tipset")
 	}

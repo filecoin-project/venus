@@ -197,7 +197,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	}
 
 	minerCheck := async.Err(func() error {
-		stateRoot, _, err := bv.Stmgr.RunStateTransition(ctx, parent)
+		stateRoot, _, err := bv.Stmgr.RunStateTransition(ctx, parent, nil)
 		if err != nil {
 			return err
 		}
@@ -264,7 +264,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	})
 
 	msgsCheck := async.Err(func() error {
-		stateRoot, _, err := bv.Stmgr.RunStateTransition(ctx, parent)
+		stateRoot, _, err := bv.Stmgr.RunStateTransition(ctx, parent, nil)
 		if err != nil {
 			return err
 		}
@@ -277,7 +277,7 @@ func (bv *BlockValidator) validateBlock(ctx context.Context, blk *types.BlockHea
 	})
 
 	stateRootCheck := async.Err(func() error {
-		stateRoot, receipt, err := bv.Stmgr.RunStateTransition(ctx, parent)
+		stateRoot, receipt, err := bv.Stmgr.RunStateTransition(ctx, parent, nil)
 		if err != nil {
 			return fmt.Errorf("get tipsetstate(%d, %s) failed: %w", blk.Height, blk.Parents, err)
 		}

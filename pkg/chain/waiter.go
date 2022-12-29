@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -34,7 +35,7 @@ type waiterChainReader interface {
 
 type IStmgr interface {
 	GetActorAt(context.Context, address.Address, *types.TipSet) (*types.Actor, error)
-	RunStateTransition(context.Context, *types.TipSet) (root cid.Cid, receipts cid.Cid, err error)
+	RunStateTransition(context.Context, *types.TipSet, vm.ExecCallBack) (root cid.Cid, receipts cid.Cid, err error)
 }
 
 // Waiter waits for a message to appear on chain.
@@ -315,7 +316,7 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts *types.TipSet, msg typ
 func (w *Waiter) receiptByIndex(ctx context.Context, ts *types.TipSet, targetCid cid.Cid, blockMsgs []types.BlockMessagesInfo) (*types.MessageReceipt, error) {
 	var receiptCid cid.Cid
 	var err error
-	if _, receiptCid, err = w.Stmgr.RunStateTransition(ctx, ts); err != nil {
+	if _, receiptCid, err = w.Stmgr.RunStateTransition(ctx, ts, nil); err != nil {
 		return nil, fmt.Errorf("RunStateTransition failed:%w", err)
 	}
 
