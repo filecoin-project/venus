@@ -72,8 +72,8 @@ var ethGetInfoCmd = &cmds.Command{
 			return err
 		}
 
-		buf := bytes.Buffer{}
-		writer := NewSilentWriter(&buf)
+		buf := new(bytes.Buffer)
+		writer := NewSilentWriter(buf)
 
 		writer.Println("Filecoin address: ", faddr)
 		writer.Println("Eth address: ", eaddr)
