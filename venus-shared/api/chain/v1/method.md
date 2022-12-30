@@ -16,6 +16,7 @@
   * [ChainExport](#chainexport)
   * [ChainGetBlock](#chaingetblock)
   * [ChainGetBlockMessages](#chaingetblockmessages)
+  * [ChainGetEvents](#chaingetevents)
   * [ChainGetGenesis](#chaingetgenesis)
   * [ChainGetMessage](#chaingetmessage)
   * [ChainGetMessagesInTipset](#chaingetmessagesintipset)
@@ -574,6 +575,37 @@ Response:
     }
   ]
 }
+```
+
+### ChainGetEvents
+ChainGetEvents returns the events under an event AMT root CID.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "Emitter": 1000,
+    "Entries": [
+      {
+        "Flags": 7,
+        "Key": "string value",
+        "Value": "Ynl0ZSBhcnJheQ=="
+      }
+    ]
+  }
+]
 ```
 
 ### ChainGetGenesis
