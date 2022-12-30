@@ -83,6 +83,7 @@ type IChainInfo interface {
 	// StateActorManifestCID returns the CID of the builtin actors manifest for the given network version
 	StateActorManifestCID(context.Context, network.Version) (cid.Cid, error)                            //perm:read
 	StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error) //perm:read
+	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error)                  //perm:read
 }
 
 type IMinerState interface {

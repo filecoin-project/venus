@@ -22,6 +22,8 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/venus/pkg/chain"
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/statemanger"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -798,5 +800,74 @@ func (cia *chainInfoAPI) StateCall(ctx context.Context, msg *types.Message, tsk 
 		MsgRct:         &ret.Receipt,
 		ExecutionTrace: types.ExecutionTrace{},
 		Duration:       duration,
+	}, nil
+}
+
+// StateReplay replays a given message, assuming it was included in a block in the specified tipset.
+//
+// If a tipset key is provided, and a replacing message is not found on chain,
+// the method will return an error saying that the message wasn't found
+//
+// If no tipset key is provided, the appropriate tipset is looked up, and if
+// the message was gas-repriced, the on-chain message will be replayed - in
+// that case the returned InvocResult.MsgCid will not match the Cid param
+//
+// If the caller wants to ensure that exactly the requested message was executed,
+// they MUST check that InvocResult.MsgCid is equal to the provided Cid.
+// Without this check both the requested and original message may appear as
+// successfully executed on-chain, which may look like a double-spend.
+//
+// A replacing message is a message with a different CID, any of Gas values, and
+// different signature, but with all other parameters matching (source/destination,
+// nonce, params, etc.)
+func (cia *chainInfoAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*types.InvocResult, error) {
+	msgToReplay := mc
+	var ts *types.TipSet
+	var err error
+	if tsk == types.EmptyTSK {
+		mlkp, err := cia.StateSearchMsg(ctx, types.EmptyTSK, mc, constants.LookbackNoLimit, true)
+		if err != nil {
+			return nil, fmt.Errorf("searching for msg %s: %w", mc, err)
+		}
+		if mlkp == nil {
+			return nil, fmt.Errorf("didn't find msg %s", mc)
+		}
+
+		msgToReplay = mlkp.Message
+
+		executionTS, err := cia.ChainGetTipSet(ctx, mlkp.TipSet)
+		if err != nil {
+			return nil, fmt.Errorf("loading tipset %s: %w", mlkp.TipSet, err)
+		}
+
+		ts, err = cia.ChainGetTipSet(ctx, executionTS.Parents())
+		if err != nil {
+			return nil, fmt.Errorf("loading parent tipset %s: %w", mlkp.TipSet, err)
+		}
+	} else {
+		ts, err = cia.ChainGetTipSet(ctx, tsk)
+		if err != nil {
+			return nil, fmt.Errorf("loading specified tipset %s: %w", tsk, err)
+		}
+	}
+
+	m, r, err := cia.chain.Stmgr.Replay(ctx, ts, msgToReplay)
+	if err != nil {
+		return nil, err
+	}
+
+	var errstr string
+	if r.ActorErr != nil {
+		errstr = r.ActorErr.Error()
+	}
+
+	return &types.InvocResult{
+		MsgCid:         msgToReplay,
+		Msg:            m,
+		MsgRct:         &r.Receipt,
+		GasCost:        statemanger.MakeMsgGasCost(m, r),
+		ExecutionTrace: r.GasTracker.ExecutionTrace,
+		Error:          errstr,
+		Duration:       r.Duration,
 	}, nil
 }

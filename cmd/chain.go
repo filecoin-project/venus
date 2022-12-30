@@ -533,8 +533,8 @@ var ChainExecEVMCmd = &cmds.Command{
 			Params: params,
 		}
 
-		buf := bytes.Buffer{}
-		afmt := NewSilentWriter(&buf)
+		buf := &bytes.Buffer{}
+		afmt := NewSilentWriter(buf)
 
 		// TODO: this is very racy. It may assign a _different_ nonce than the expected one.
 		afmt.Println("sending message...")
@@ -668,8 +668,8 @@ var ChainInvokeEVMCmd = &cmds.Command{
 			Params: params,
 		}
 
-		buf := bytes.Buffer{}
-		afmt := NewSilentWriter(&buf)
+		buf := &bytes.Buffer{}
+		afmt := NewSilentWriter(buf)
 		afmt.Println("sending message...")
 		smsg, err := env.(node.Env).MessagePoolAPI.MpoolPushMessage(ctx, msg, nil)
 		if err != nil {

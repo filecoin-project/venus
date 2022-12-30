@@ -39,7 +39,7 @@ func (miningAPI *MiningAPI) MinerGetBaseInfo(ctx context.Context, maddr address.
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tipset for mining base: %v", err)
 	}
-	pt, _, err := miningAPI.Ming.Stmgr.RunStateTransition(ctx, ts)
+	pt, _, err := miningAPI.Ming.Stmgr.RunStateTransition(ctx, ts, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tipset root for mining base: %v", err)
 	}
@@ -174,7 +174,7 @@ func (miningAPI *MiningAPI) minerCreateBlock(ctx context.Context, bt *types.Bloc
 		return nil, fmt.Errorf("failed to load parent tipset: %v", err)
 	}
 
-	st, receiptCid, err := miningAPI.Ming.Stmgr.RunStateTransition(ctx, pts)
+	st, receiptCid, err := miningAPI.Ming.Stmgr.RunStateTransition(ctx, pts, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load tipset state: %v", err)
 	}

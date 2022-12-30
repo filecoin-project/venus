@@ -114,7 +114,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 				return cid.Undef, nil, fmt.Errorf("can not Flush vm State To db %vs", err)
 			}
 			if cb != nil {
-				if err := cb(cid.Undef, cronMessage, ret); err != nil {
+				if err := cb(cronMessage.Cid(), cronMessage, ret); err != nil {
 					return cid.Undef, nil, fmt.Errorf("callback failed on cron message: %w", err)
 				}
 			}
@@ -183,7 +183,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 			return cid.Undef, nil, err
 		}
 		if cb != nil {
-			if err := cb(cid.Undef, rewardMessage, ret); err != nil {
+			if err := cb(rewardMessage.Cid(), rewardMessage, ret); err != nil {
 				return cid.Undef, nil, fmt.Errorf("callback failed on reward message: %w", err)
 			}
 		}
@@ -204,7 +204,7 @@ func (p *DefaultProcessor) ApplyBlocks(ctx context.Context,
 		return cid.Undef, nil, err
 	}
 	if cb != nil {
-		if err := cb(cid.Undef, cronMessage, ret); err != nil {
+		if err := cb(cronMessage.Cid(), cronMessage, ret); err != nil {
 			return cid.Undef, nil, fmt.Errorf("callback failed on cron message: %w", err)
 		}
 	}

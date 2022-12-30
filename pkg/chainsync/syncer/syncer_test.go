@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/venus/pkg/testhelpers"
+	"github.com/filecoin-project/venus/pkg/vm"
 
 	"github.com/filecoin-project/venus/pkg/statemanger"
 
@@ -460,7 +461,11 @@ type poisonValidator struct {
 	fullFailureTS   uint64
 }
 
-func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+func newPoisonValidator(t *testing.T, headerFailure, fullFailure uint64) *poisonValidator {
+	return &poisonValidator{headerFailureTS: headerFailure, fullFailureTS: fullFailure}
+}
+
+func (pv *poisonValidator) RunStateTransition(ctx context.Context, ts *types.TipSet, cb vm.ExecCallBack) (cid.Cid, cid.Cid, error) {
 	stamp := ts.At(0).Timestamp
 	if pv.fullFailureTS == stamp {
 		return testhelpers.EmptyTxMetaCID, testhelpers.EmptyTxMetaCID, errors.New("run state transition fails on poison timestamp")
@@ -473,10 +478,6 @@ func (pv *poisonValidator) ValidateFullBlock(ctx context.Context, blk *types.Blo
 		return errors.New("val semantic fails on poison timestamp")
 	}
 	return nil
-}
-
-func newPoisonValidator(t *testing.T, headerFailure, fullFailure uint64) *poisonValidator {
-	return &poisonValidator{headerFailureTS: headerFailure, fullFailureTS: fullFailure}
 }
 
 func (pv *poisonValidator) ValidateHeaderSemantic(_ context.Context, header *types.BlockHeader, _ *types.TipSet) error {

@@ -264,6 +264,7 @@ type IChainInfoStruct struct {
 		StateGetReceipt               func(ctx context.Context, msg cid.Cid, from types.TipSetKey) (*types.MessageReceipt, error)                                                                  `perm:"read"`
 		StateNetworkName              func(ctx context.Context) (types.NetworkName, error)                                                                                                         `perm:"read"`
 		StateNetworkVersion           func(ctx context.Context, tsk types.TipSetKey) (network.Version, error)                                                                                      `perm:"read"`
+		StateReplay                   func(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error)                                                                                  `perm:"read"`
 		StateSearchMsg                func(ctx context.Context, msg cid.Cid) (*types.MsgLookup, error)                                                                                             `perm:"read"`
 		StateSearchMsgLimited         func(ctx context.Context, cid cid.Cid, limit abi.ChainEpoch) (*types.MsgLookup, error)                                                                       `perm:"read"`
 		StateVerifiedRegistryRootKey  func(ctx context.Context, tsk types.TipSetKey) (address.Address, error)                                                                                      `perm:"read"`
@@ -372,6 +373,9 @@ func (s *IChainInfoStruct) StateNetworkName(p0 context.Context) (types.NetworkNa
 }
 func (s *IChainInfoStruct) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey) (network.Version, error) {
 	return s.Internal.StateNetworkVersion(p0, p1)
+}
+func (s *IChainInfoStruct) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*types.InvocResult, error) {
+	return s.Internal.StateReplay(p0, p1, p2)
 }
 func (s *IChainInfoStruct) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*types.MsgLookup, error) {
 	return s.Internal.StateSearchMsg(p0, p1)
