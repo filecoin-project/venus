@@ -262,6 +262,7 @@ type IChainInfoStruct struct {
 		ChainExport                   func(context.Context, abi.ChainEpoch, bool, types.TipSetKey) (<-chan []byte, error)                                                                          `perm:"read"`
 		ChainGetBlock                 func(ctx context.Context, id cid.Cid) (*types.BlockHeader, error)                                                                                            `perm:"read"`
 		ChainGetBlockMessages         func(ctx context.Context, bid cid.Cid) (*types.BlockMessages, error)                                                                                         `perm:"read"`
+		ChainGetEvents                func(context.Context, cid.Cid) ([]types.Event, error)                                                                                                        `perm:"read"`
 		ChainGetGenesis               func(context.Context) (*types.TipSet, error)                                                                                                                 `perm:"read"`
 		ChainGetMessage               func(ctx context.Context, msgID cid.Cid) (*types.Message, error)                                                                                             `perm:"read"`
 		ChainGetMessagesInTipset      func(ctx context.Context, key types.TipSetKey) ([]types.MessageCID, error)                                                                                   `perm:"read"`
@@ -312,6 +313,9 @@ func (s *IChainInfoStruct) ChainGetBlock(p0 context.Context, p1 cid.Cid) (*types
 }
 func (s *IChainInfoStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*types.BlockMessages, error) {
 	return s.Internal.ChainGetBlockMessages(p0, p1)
+}
+func (s *IChainInfoStruct) ChainGetEvents(p0 context.Context, p1 cid.Cid) ([]types.Event, error) {
+	return s.Internal.ChainGetEvents(p0, p1)
 }
 func (s *IChainInfoStruct) ChainGetGenesis(p0 context.Context) (*types.TipSet, error) {
 	return s.Internal.ChainGetGenesis(p0)

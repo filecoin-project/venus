@@ -7,10 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"reflect"
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
@@ -18,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
@@ -870,4 +873,29 @@ func (cia *chainInfoAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, m
 		Error:          errstr,
 		Duration:       r.Duration,
 	}, nil
+}
+
+// ChainGetEvents returns the events under an event AMT root CID.
+func (cia *chainInfoAPI) ChainGetEvents(ctx context.Context, root cid.Cid) ([]types.Event, error) {
+	store := cbor.NewCborStore(cia.chain.ChainReader.Blockstore())
+	evtArr, err := amt4.LoadAMT(ctx, store, root, amt4.UseTreeBitWidth(5))
+	if err != nil {
+		return nil, fmt.Errorf("load events amt: %w", err)
+	}
+
+	ret := make([]types.Event, 0, evtArr.Len())
+	var evt types.Event
+	err = evtArr.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
+		if u > math.MaxInt {
+			return fmt.Errorf("too many events")
+		}
+		if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
+			return err
+		}
+
+		ret = append(ret, evt)
+		return nil
+	})
+
+	return ret, err
 }

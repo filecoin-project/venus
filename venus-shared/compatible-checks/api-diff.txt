@@ -119,7 +119,6 @@ github.com/filecoin-project/venus/venus-shared/api/chain/v1.FullNode <> github.c
 	+ BlockTime
 	- ChainBlockstoreInfo
 	- ChainCheckBlockstore
-	- ChainGetEvents
 	- ChainGetNode
 	+ ChainGetReceipts
 	+ ChainList
