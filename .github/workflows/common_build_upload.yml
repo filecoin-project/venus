@@ -26,7 +26,7 @@ on:
 
 jobs:
 
-  build:
+  build-ubuntu:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -146,11 +146,11 @@ jobs:
       - name: Rename bin file
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          cp ./${{steps.vars.outputs.artifact_name}} ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_linux_amd64.tar.gz
+          cp ./${{steps.vars.outputs.artifact_name}} ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_ubuntu.tar.gz
 
       - name: shasum
         if: startsWith(github.ref, 'refs/tags/')
-        run: shasum -a 256 ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_linux_amd64.tar.gz > ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_linux_amd64_linux_amd64.sha256
+        run: shasum -a 256 ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_ubuntu.tar.gz > ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_ubuntu.sha256
         shell: bash
 
       - name: Release
@@ -159,8 +159,8 @@ jobs:
         continue-on-error: true
         with:
           files: |
-            ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_linux_amd64.tar.gz
-            ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_linux_amd64_linux_amd64.sha256
+            ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_ubuntu.tar.gz
+            ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_ubuntu.sha256
 
       - name: upload artifacts
         uses: actions/upload-artifact@v2
@@ -216,3 +216,79 @@ jobs:
                   --data-urlencode "description=message:${{steps.vars.outputs.git_message}}, branch:${{steps.vars.outputs.branch}}, commit:${{steps.vars.outputs.short}}, tag:${{steps.vars.outputs.github_tag}}" \
                   --data-urlencode "version=${{steps.vars.outputs.short}}"
           set -e
+
+  build-macos:
+    runs-on: macos-11
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'true'
+          fetch-depth: '0'
+
+      - name: vars
+        id: vars
+        run: |
+          export tag=${{github.ref_name}}
+          export repo_name=${GITHUB_REPOSITORY##*/}
+          export artifact_name=${repo_name}_$(git rev-parse --short HEAD).tar.gz
+
+          echo "::set-output name=repo_name::$repo_name"
+          echo "::set-output name=tag::$tag"
+          echo "::set-output name=artifact_name::$artifact_name"
+
+      - name: show environment
+        run: |
+          echo bin_name = ${{inputs.bin_name}}
+          echo has_ffi = ${{inputs.has_ffi}}
+          echo vars.repo_name = ${{steps.vars.outputs.repo_name}}
+          echo vars.tag = ${{steps.vars.outputs.tag}}
+          echo vars.artifact_name = ${{steps.vars.outputs.artifact_name}}
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+
+      - name: install more deps
+        if: ${{ inputs.has_ffi }}
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          brew install jq pkg-config hwloc
+          cargo install cargo-lipo
+
+      - name: Build
+        run: |
+          go clean --modcache && make
+          mkdir ./release
+          if [[ "${{steps.vars.outputs.repo_name}}" == "venus-market" ]]; then
+            mv ./market-client ./venus-market ./release
+          fi
+          if [[ "${{steps.vars.outputs.repo_name}}" != "venus-market" ]]; then
+            mv ./${{inputs.bin_name}} ./release
+          fi
+
+      - name: Zip Release
+        uses: TheDoctor0/zip-release@0.6.0
+        with:
+          filename: ${{steps.vars.outputs.artifact_name}}
+          path: ./release
+          type: tar
+
+      - name: Rename bin file
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cp ./${{steps.vars.outputs.artifact_name}} ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_macos.tar.gz
+
+      - name: shasum
+        if: startsWith(github.ref, 'refs/tags/')
+        run: shasum -a 256 ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_macos.tar.gz > ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_macos.sha256
+        shell: bash
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        continue-on-error: true
+        with:
+          files: |
+            ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_macos.tar.gz
+            ./${{steps.vars.outputs.repo_name}}_${{steps.vars.outputs.tag}}_macos.sha256
