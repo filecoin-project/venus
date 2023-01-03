@@ -56,9 +56,20 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 	if innerErr != nil {
 		return nil, errors.Wrapf(innerErr, "failed to decode h1")
 	}
+	networkVersion := s.fork.GetNetworkVersion(ctx, curEpoch)
+
+	// A _valid_ block must use an ID address, but that's not what we're checking here. We're
+	// just making sure that adding additional address protocols won't lead to consensus issues.
+	if !abi.AddressValidForNetworkVersion(b1.Miner, networkVersion) {
+		return nil, fmt.Errorf("address protocol unsupported in current network version: %d", b1.Miner.Protocol())
+	}
+
 	innerErr = b2.UnmarshalCBOR(bytes.NewReader(h2))
 	if innerErr != nil {
 		return nil, errors.Wrapf(innerErr, "failed to decode h2")
+	}
+	if !abi.AddressValidForNetworkVersion(b2.Miner, networkVersion) {
+		return nil, fmt.Errorf("address protocol unsupported in current network version: %d", b2.Miner.Protocol())
 	}
 
 	// workaround chain halt
@@ -114,6 +125,9 @@ func (s *ConsensusFaultChecker) VerifyConsensusFault(ctx context.Context, h1, h2
 		innerErr = b3.UnmarshalCBOR(bytes.NewReader(extra))
 		if innerErr != nil {
 			return nil, errors.Wrapf(innerErr, "failed to decode extra")
+		}
+		if !abi.AddressValidForNetworkVersion(b3.Miner, networkVersion) {
+			return nil, fmt.Errorf("address protocol unsupported in current network version: %d", b3.Miner.Protocol())
 		}
 		b3PKey := types.NewTipSetKey(b3.Parents...)
 		if b1.Height == b3.Height && b3PKey.Equals(b1PKey) && !b2PKey.Has(b1.Cid()) && b2PKey.Has(b3.Cid()) {
