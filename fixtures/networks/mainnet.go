@@ -76,6 +76,7 @@ func Mainnet() *NetworkConf {
 			AddressNetwork:       address.Mainnet,
 			PropagationDelaySecs: 10,
 			Eip155ChainID:        314,
+			ActorDebugging:       false,
 		},
 	}
 }

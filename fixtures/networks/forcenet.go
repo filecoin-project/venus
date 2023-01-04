@@ -61,6 +61,7 @@ func ForceNet() *NetworkConf {
 			AddressNetwork:       address.Testnet,
 			PropagationDelaySecs: 1,
 			Eip155ChainID:        31415926,
+			ActorDebugging:       true,
 		},
 	}
 }

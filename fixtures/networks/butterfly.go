@@ -59,6 +59,7 @@ func ButterflySnapNet() *NetworkConf {
 			AddressNetwork:       address.Testnet,
 			PropagationDelaySecs: 6,
 			Eip155ChainID:        3141592,
+			ActorDebugging:       false,
 		},
 	}
 }

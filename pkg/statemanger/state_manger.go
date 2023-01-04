@@ -50,6 +50,8 @@ type Stmgr struct {
 	gasSchedule  *gas.PricesSchedule
 	syscallsImpl vm.SyscallsImpl
 
+	actorDebugging bool
+
 	// Compute StateRoot parallel safe
 	stCache      map[types.TipSetKey]stateComputeResult
 	chsWorkingOn map[types.TipSetKey]chan struct{}
@@ -67,6 +69,7 @@ func NewStateManger(cs *chain.Store,
 	fork fork.IFork,
 	gasSchedule *gas.PricesSchedule,
 	syscallsImpl vm.SyscallsImpl,
+	actorDebugging bool,
 ) *Stmgr {
 	logName := "statemanager"
 
@@ -76,11 +79,12 @@ func NewStateManger(cs *chain.Store,
 
 	return &Stmgr{
 		cs: cs, fork: fork, cp: cp, rnd: rnd,
-		gasSchedule:  gasSchedule,
-		syscallsImpl: syscallsImpl,
-		log:          logging.Logger(logName),
-		stCache:      make(map[types.TipSetKey]stateComputeResult),
-		chsWorkingOn: make(map[types.TipSetKey]chan struct{}, 1),
+		gasSchedule:    gasSchedule,
+		syscallsImpl:   syscallsImpl,
+		log:            logging.Logger(logName),
+		stCache:        make(map[types.TipSetKey]stateComputeResult),
+		chsWorkingOn:   make(map[types.TipSetKey]chan struct{}, 1),
+		actorDebugging: actorDebugging,
 	}
 }
 

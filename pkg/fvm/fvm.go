@@ -317,12 +317,13 @@ func defaultFVMOpts(ctx context.Context, opts *vm.VmOption) (*ffi.FVMOpts, error
 	return &ffi.FVMOpts{
 		FVMVersion: 0,
 		Externs: &FvmExtern{
-			Rand:       NewWrapperRand(opts.Rnd),
-			Blockstore: opts.Bsstore,
-			epoch:      opts.Epoch,
-			lbState:    opts.LookbackStateGetter,
-			tsGet:      opts.TipSetGetter,
-			base:       opts.PRoot, gasPriceSchedule: opts.GasPriceSchedule,
+			Rand:             NewWrapperRand(opts.Rnd),
+			Blockstore:       opts.Bsstore,
+			epoch:            opts.Epoch,
+			lbState:          opts.LookbackStateGetter,
+			tsGet:            opts.TipSetGetter,
+			base:             opts.PRoot,
+			gasPriceSchedule: opts.GasPriceSchedule,
 		},
 		Epoch:          opts.Epoch,
 		Timestamp:      opts.Timestamp,
@@ -332,7 +333,7 @@ func defaultFVMOpts(ctx context.Context, opts *vm.VmOption) (*ffi.FVMOpts, error
 		NetworkVersion: opts.NetworkVersion,
 		StateBase:      opts.PRoot,
 		Tracing:        opts.Tracing || gas.EnableDetailedTracing,
-		Debug:          useActorDebugging,
+		Debug:          opts.ActorDebugging,
 	}, nil
 }
 
@@ -519,7 +520,7 @@ func (fvm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*vm.Ret,
 		GasTracker: &gas.GasTracker{
 			ExecutionTrace: et,
 		},
-		Duration: time.Since(start),
+		Duration: duration,
 	}, nil
 }
 
@@ -579,7 +580,7 @@ func (fvm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg types.ChainMsg) (
 		GasTracker: &gas.GasTracker{
 			ExecutionTrace: et,
 		},
-		Duration: time.Since(start),
+		Duration: duration,
 	}
 
 	if ret.ExitCode != 0 {
@@ -707,8 +708,6 @@ func (r *xRedirect) MarshalCBOR(w io.Writer) error {
 // alongside regular execution. This is basically only to be used to print out specific logging information.
 // Message failures, unexpected terminations,gas costs, etc. should all be ignored.
 var useFvmDebug = os.Getenv("VENUS_FVM_DEVELOPER_DEBUG") == "1"
-
-var useActorDebugging = os.Getenv("VENUS_FVM_ACTOR_DEBUG") == "1"
 
 func NewVM(ctx context.Context, opts vm.VmOption) (vm.Interface, error) {
 	if opts.NetworkVersion >= network.Version16 {

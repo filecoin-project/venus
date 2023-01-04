@@ -55,6 +55,7 @@ func Net2k() *NetworkConf {
 			AddressNetwork:       address.Testnet,
 			PropagationDelaySecs: 1,
 			Eip155ChainID:        31415926,
+			ActorDebugging:       true,
 		},
 	}
 }
