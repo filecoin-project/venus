@@ -14,6 +14,7 @@ import (
 	"text/template"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/venus-devtool/api-gen/common"
 	"github.com/filecoin-project/venus/venus-devtool/util"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/urfave/cli/v2"
@@ -27,7 +28,7 @@ var docGenCmd = &cli.Command{
 		if err := util.LoadExtraInterfaceMeta(); err != nil {
 			return err
 		}
-		for _, t := range apiTargets {
+		for _, t := range common.ApiTargets {
 			if err := genDocForAPI(t); err != nil {
 				return err
 			}
