@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/vm"
 	"github.com/filecoin-project/venus/pkg/vm/vmcontext"
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	"github.com/filecoin-project/venus/venus-shared/api"
+	builtinactors "github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
@@ -49,11 +49,26 @@ func (a *ethAPI) StateNetworkName(ctx context.Context) (types.NetworkName, error
 }
 
 func (a *ethAPI) EthBlockNumber(ctx context.Context) (types.EthUint64, error) {
+	// eth_blockNumber needs to return the height of the latest committed tipset.
+	// Ethereum clients expect all transactions included in this block to have execution outputs.
+	// This is the parent of the head tipset. The head tipset is speculative, has not been
+	// recognized by the network, and its messages are only included, not executed.
+	// See https://github.com/filecoin-project/ref-fvm/issues/1135.
 	head, err := a.chain.ChainHead(ctx)
 	if err != nil {
 		return types.EthUint64(0), err
 	}
-	return types.EthUint64(head.Height()), nil
+	if height := head.Height(); height == 0 {
+		// we're at genesis.
+		return types.EthUint64(height), nil
+	}
+	// First non-null parent.
+	effectiveParent := head.Parents()
+	parent, err := a.chain.ChainGetTipSet(ctx, effectiveParent)
+	if err != nil {
+		return 0, err
+	}
+	return types.EthUint64(parent.Height()), nil
 }
 
 func (a *ethAPI) EthAccounts(context.Context) ([]types.EthAddress, error) {
@@ -180,38 +195,49 @@ func (a *ethAPI) EthGetTransactionCount(ctx context.Context, sender types.EthAdd
 	if err != nil {
 		return types.EthUint64(0), err
 	}
-	nonce, err := a.mpool.MpoolGetNonce(ctx, addr)
+	ts, err := a.parseBlkParam(ctx, blkParam)
+	if err != nil {
+		return types.EthUint64(0), fmt.Errorf("cannot parse block param: %s", blkParam)
+	}
+	nonce, err := a.em.mpoolModule.MPool.GetNonce(ctx, addr, ts.Key())
 	if err != nil {
 		return types.EthUint64(0), err
 	}
 	return types.EthUint64(nonce), nil
 }
 
-// todo: 实现 StateReplay 接口
 func (a *ethAPI) EthGetTransactionReceipt(ctx context.Context, txHash types.EthHash) (*types.EthTxReceipt, error) {
-	// cid := txHash.ToCid()
+	cid := txHash.ToCid()
 
-	// msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, cid, constants.LookbackNoLimit, true)
-	// if err != nil {
-	// 	return types.EthTxReceipt{}, err
-	// }
+	msgLookup, err := a.chain.StateSearchMsg(ctx, types.EmptyTSK, cid, constants.LookbackNoLimit, true)
+	if err != nil {
+		return nil, nil
+	}
 
-	// tx, err := a.ethTxFromFilecoinMessageLookup(ctx, msgLookup)
-	// if err != nil {
-	// 	return types.EthTxReceipt{}, err
-	// }
+	tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, -1, a.em.chainModule.MessageStore, a.chain)
+	if err != nil {
+		return nil, nil
+	}
 
-	// replay, err := a.chain.StateReplay(ctx, types.EmptyTSK, cid)
-	// if err != nil {
-	// 	return types.EthTxReceipt{}, err
-	// }
+	replay, err := a.chain.StateReplay(ctx, types.EmptyTSK, cid)
+	if err != nil {
+		return nil, nil
+	}
 
-	// receipt, err := types.NewEthTxReceipt(tx, msgLookup, replay)
-	// if err != nil {
-	// 	return types.EthTxReceipt{}, err
-	// }
-	// return receipt, nil
-	return nil, api.ErrNotSupported
+	var events []types.Event
+	if rct := replay.MsgRct; rct != nil && rct.EventsRoot != nil {
+		events, err = a.chain.ChainGetEvents(ctx, *rct.EventsRoot)
+		if err != nil {
+			return nil, nil
+		}
+	}
+
+	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, replay, events, a.chain)
+	if err != nil {
+		return nil, nil
+	}
+
+	return &receipt, nil
 }
 
 func (a *ethAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash types.EthHash, txIndex types.EthUint64) (types.EthTx, error) {
@@ -223,7 +249,7 @@ func (a *ethAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blk
 }
 
 // EthGetCode returns string value of the compiled bytecode
-func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkOpt string) (types.EthBytes, error) {
+func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkParam string) (types.EthBytes, error) {
 	to, err := ethAddr.ToFilecoinAddress()
 	if err != nil {
 		return nil, fmt.Errorf("cannot get Filecoin address: %w", err)
@@ -245,9 +271,9 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkOp
 		GasPremium: big.Zero(),
 	}
 
-	ts, err := a.chain.ChainHead(ctx)
+	ts, err := a.parseBlkParam(ctx, blkParam)
 	if err != nil {
-		return nil, fmt.Errorf("failed to got head %v", err)
+		return nil, fmt.Errorf("cannot parse block param: %s", blkParam)
 	}
 
 	// Try calling until we find a height with no migration.
@@ -264,7 +290,9 @@ func (a *ethAPI) EthGetCode(ctx context.Context, ethAddr types.EthAddress, blkOp
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("call failed: %w", err)
+		// if the call resulted in error, this is not an EVM smart contract;
+		// return no bytecode.
+		return nil, nil
 	}
 
 	if res.Receipt.ExitCode.IsError() {
@@ -363,7 +391,12 @@ func (a *ethAPI) EthGetBalance(ctx context.Context, address types.EthAddress, bl
 		return types.EthBigInt{}, err
 	}
 
-	actor, err := a.chain.StateGetActor(ctx, filAddr, types.EmptyTSK)
+	ts, err := a.parseBlkParam(ctx, blkParam)
+	if err != nil {
+		return types.EthBigInt{}, fmt.Errorf("cannot parse block param: %s", blkParam)
+	}
+
+	actor, err := a.chain.StateGetActor(ctx, filAddr, ts.Key())
 	if err != nil {
 		if errors.Is(err, types.ErrActorNotFound) {
 			return types.EthBigIntZero, nil
@@ -524,16 +557,22 @@ func (a *ethAPI) EthSendRawTransaction(ctx context.Context, rawTx types.EthBytes
 }
 
 func (a *ethAPI) ethCallToFilecoinMessage(ctx context.Context, tx types.EthCall) (*types.Message, error) {
-	var err error
 	var from address.Address
-	if tx.From == nil {
+	if tx.From == nil || *tx.From == (types.EthAddress{}) {
+		// TODO: We're sending from the "burnt funds" account for now, because we need to
+		// send from an actual account till we deploy an EVM _account_ to this address, not
+		// an empty EVM contract.
+		//
+		// See https://github.com/filecoin-project/ref-fvm/issues/1173
+		from = builtinactors.BurntFundsActorAddr
 		// Send from the filecoin "system" address.
-		from, err = (types.EthAddress{}).ToFilecoinAddress()
-		if err != nil {
-			return nil, fmt.Errorf("failed to construct the ethereum system address: %w", err)
-		}
+		// from, err = (api.EthAddress{}).ToFilecoinAddress()
+		// if err != nil {
+		//	return nil, fmt.Errorf("failed to construct the ethereum system address: %w", err)
+		// }
 	} else {
 		// The from address must be translatable to an f4 address.
+		var err error
 		from, err = tx.From.ToFilecoinAddress()
 		if err != nil {
 			return nil, fmt.Errorf("failed to translate sender address (%s): %w", tx.From.String(), err)
@@ -595,10 +634,10 @@ func (a *ethAPI) ethCallToFilecoinMessage(ctx context.Context, tx types.EthCall)
 	}, nil
 }
 
-func (a *ethAPI) applyMessage(ctx context.Context, msg *types.Message) (*types.InvocResult, error) {
-	ts, err := a.chain.ChainHead(ctx)
+func (a *ethAPI) applyMessage(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error) {
+	ts, err := a.chain.ChainGetTipSet(ctx, tsk)
 	if err != nil {
-		return nil, fmt.Errorf("failed to got head %v", err)
+		return nil, fmt.Errorf("failed to got tipset %v", err)
 	}
 
 	// Try calling until we find a height with no migration.
@@ -650,8 +689,12 @@ func (a *ethAPI) EthCall(ctx context.Context, tx types.EthCall, blkParam string)
 	if err != nil {
 		return nil, err
 	}
+	ts, err := a.parseBlkParam(ctx, blkParam)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse block param: %s", blkParam)
+	}
 
-	invokeResult, err := a.applyMessage(ctx, msg)
+	invokeResult, err := a.applyMessage(ctx, msg, ts.Key())
 	if err != nil {
 		return nil, err
 	}
@@ -814,7 +857,13 @@ func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage,
 		r, s, v = types.EthBigIntZero, types.EthBigIntZero, types.EthBigIntZero
 	}
 
+	hash, err := types.NewEthHashFromCid(smsg.Cid())
+	if err != nil {
+		return types.EthTx{}, err
+	}
+
 	tx := types.EthTx{
+		Hash:                 hash,
 		ChainID:              types.EthUint64(types.Eip155ChainID),
 		From:                 fromEthAddr,
 		To:                   toAddr,
@@ -893,25 +942,46 @@ func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *types.Msg
 		return types.EthTx{}, err
 	}
 
+	var (
+		bn = types.EthUint64(parentTS.Height())
+		ti = types.EthUint64(txIdx)
+	)
+
 	tx.ChainID = types.EthUint64(types.Eip155ChainID)
 	tx.Hash = txHash
-	tx.BlockHash = blkHash
-	tx.BlockNumber = types.EthUint64(parentTS.Height())
-	tx.TransactionIndex = types.EthUint64(txIdx)
+	tx.BlockHash = &blkHash
+	tx.BlockNumber = &bn
+	tx.TransactionIndex = &ti
 	return tx, nil
 }
 
-// nolint
 func newEthTxReceipt(ctx context.Context, tx types.EthTx, lookup *types.MsgLookup, replay *types.InvocResult, events []types.Event, ca v1.IChain) (types.EthTxReceipt, error) {
+	var (
+		transactionIndex types.EthUint64
+		blockHash        types.EthHash
+		blockNumber      types.EthUint64
+	)
+
+	if tx.TransactionIndex != nil {
+		transactionIndex = *tx.TransactionIndex
+	}
+	if tx.BlockHash != nil {
+		blockHash = *tx.BlockHash
+	}
+	if tx.BlockNumber != nil {
+		blockNumber = *tx.BlockNumber
+	}
+
 	receipt := types.EthTxReceipt{
 		TransactionHash:  tx.Hash,
-		TransactionIndex: tx.TransactionIndex,
-		BlockHash:        tx.BlockHash,
-		BlockNumber:      tx.BlockNumber,
 		From:             tx.From,
 		To:               tx.To,
+		TransactionIndex: transactionIndex,
+		BlockHash:        blockHash,
+		BlockNumber:      blockNumber,
 		Type:             types.EthUint64(2),
-		LogsBloom:        []byte{0},
+		Logs:             []types.EthLog{}, // empty log array is compulsory when no logs, or libraries like ethers.js break
+		LogsBloom:        types.EmptyEthBloom[:],
 	}
 
 	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
@@ -935,7 +1005,6 @@ func newEthTxReceipt(ctx context.Context, tx types.EthTx, lookup *types.MsgLooku
 		// TODO return a dummy non-zero bloom to signal that there are logs
 		//  need to figure out how worth it is to populate with a real bloom
 		//  should be feasible here since we are iterating over the logs anyway
-		receipt.LogsBloom = make([]byte, 256)
 		receipt.LogsBloom[255] = 0x01
 
 		receipt.Logs = make([]types.EthLog, 0, len(events))
@@ -943,10 +1012,10 @@ func newEthTxReceipt(ctx context.Context, tx types.EthTx, lookup *types.MsgLooku
 			l := types.EthLog{
 				Removed:          false,
 				LogIndex:         types.EthUint64(i),
-				TransactionIndex: tx.TransactionIndex,
 				TransactionHash:  tx.Hash,
-				BlockHash:        tx.BlockHash,
-				BlockNumber:      tx.BlockNumber,
+				TransactionIndex: transactionIndex,
+				BlockHash:        blockHash,
+				BlockNumber:      blockNumber,
 			}
 
 			for _, entry := range evt.Entries {

@@ -266,13 +266,11 @@ func (e *ethEventAPI) installEthFilterSpec(ctx context.Context, filterSpec *type
 			if ts.Height()-minHeight > e.MaxFilterHeightRange {
 				return nil, fmt.Errorf("invalid epoch range")
 			}
-
 		} else if minHeight >= 0 && maxHeight >= 0 {
 			if minHeight > maxHeight || maxHeight-minHeight > e.MaxFilterHeightRange {
 				return nil, fmt.Errorf("invalid epoch range")
 			}
 		}
-
 	}
 
 	// Convert all addresses to filecoin f4 addresses
