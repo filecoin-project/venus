@@ -65,6 +65,7 @@ func Calibration() *NetworkConf {
 			AddressNetwork:       address.Testnet,
 			PropagationDelaySecs: 10,
 			Eip155ChainID:        314159,
+			ActorDebugging:       false,
 		},
 	}
 }

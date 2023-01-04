@@ -54,6 +54,7 @@ func IntegrationNet() *NetworkConf {
 			AddressNetwork:       address.Testnet,
 			PropagationDelaySecs: 10,
 			Eip155ChainID:        314,
+			ActorDebugging:       false,
 		},
 	}
 }

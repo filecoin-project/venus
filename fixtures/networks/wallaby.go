@@ -61,6 +61,7 @@ func WallabyNet() *NetworkConf {
 			AddressNetwork:       address.Testnet,
 			PropagationDelaySecs: 6,
 			Eip155ChainID:        31415,
+			ActorDebugging:       true,
 		},
 	}
 }
