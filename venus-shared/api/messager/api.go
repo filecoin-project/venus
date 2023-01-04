@@ -35,6 +35,11 @@ type IMessager interface {
 	MarkBadMessage(ctx context.Context, id string) error                                                                                                         //perm:admin
 	RecoverFailedMsg(ctx context.Context, addr address.Address) ([]string, error)                                                                                //perm:admin
 
+	SaveActorCfg(ctx context.Context, actorCfg *mtypes.ActorCfg) error                                     //perm:admin
+	UpdateActorCfg(ctx context.Context, id types.UUID, changeSpecParams *mtypes.ChangeGasSpecParams) error //perm:admin
+	ListActorCfg(ctx context.Context) ([]*mtypes.ActorCfg, error)                                          //perm:read
+	GetActorCfgByID(ctx context.Context, id types.UUID) (*mtypes.ActorCfg, error)                          //perm:read
+
 	GetAddress(ctx context.Context, addr address.Address) (*mtypes.Address, error) //perm:admin
 	HasAddress(ctx context.Context, addr address.Address) (bool, error)            //perm:read
 	WalletHas(ctx context.Context, addr address.Address) (bool, error)             //perm:read
