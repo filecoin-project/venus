@@ -283,7 +283,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 		return ExampleValue(method, t.Elem(), nil)
 	case reflect.Struct:
 		es := exampleStruct(method, t, parent)
-		v := reflect.ValueOf(es).Elem().Interface()
+		v := reflect.ValueOf(es).Interface()
 		ExampleValues[t] = v
 		return v
 	case reflect.Array:
@@ -297,12 +297,9 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 		out.SetMapIndex(reflect.ValueOf(ExampleValue(method, t.Key(), parent)), reflect.ValueOf(ExampleValue(method, t.Elem(), parent)))
 		return out.Interface()
 	case reflect.Ptr:
-		if t.Elem().Kind() == reflect.Struct {
-			es := exampleStruct(method, t.Elem(), t)
-			// ExampleValues[t] = es
-			return es
-		}
-
+		out := reflect.New(t.Elem())
+		out.Elem().Set(reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
+		return out.Interface()
 	case reflect.Interface:
 		if t.Implements(reflect.TypeOf((*error)(nil)).Elem()) {
 			return fmt.Errorf("empty error")
@@ -315,7 +312,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 }
 
 func exampleStruct(method string, t, parent reflect.Type) interface{} {
-	ns := reflect.New(t)
+	ns := reflect.New(t).Elem()
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
 		if shouldIgnoreField(f, parent) {
@@ -323,7 +320,7 @@ func exampleStruct(method string, t, parent reflect.Type) interface{} {
 		}
 
 		if strings.Title(f.Name) == f.Name {
-			ns.Elem().Field(i).Set(reflect.ValueOf(ExampleValue(method, f.Type, t)))
+			ns.Field(i).Set(reflect.ValueOf(ExampleValue(method, f.Type, t)))
 		}
 	}
 

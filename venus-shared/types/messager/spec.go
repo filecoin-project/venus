@@ -14,15 +14,10 @@ type SendSpec struct {
 }
 
 type SharedSpec struct {
-	ID uint `json:"id"`
-
-	GasOverEstimation float64 `json:"gasOverEstimation"`
-	MaxFee            big.Int `json:"maxFee,omitempty"`
-	GasFeeCap         big.Int `json:"gasFeeCap"`
-	GasOverPremium    float64 `json:"gasOverPremium"`
-	BaseFee           big.Int `json:"baseFee"`
-
+	ID        uint   `json:"id"`
 	SelMsgNum uint64 `json:"selMsgNum"`
+
+	FeeSpec
 }
 
 type AddressSpec struct {

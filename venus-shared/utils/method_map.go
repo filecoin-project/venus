@@ -18,7 +18,8 @@ import (
 )
 
 type MethodMeta struct {
-	Name string
+	Name    string
+	Version actorstypes.Version
 
 	Params reflect.Type
 	Ret    reflect.Type
@@ -89,8 +90,9 @@ func loadMethodsMap() {
 				et := ev.Type()
 
 				methodMeta := MethodMeta{
-					Name: export.Name,
-					Ret:  et.Out(0),
+					Version: awv.av,
+					Name:    export.Name,
+					Ret:     et.Out(0),
 				}
 
 				if awv.av <= actorstypes.Version7 {
