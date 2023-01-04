@@ -6,6 +6,7 @@ import (
 	"log"
 	"text/template"
 
+	"github.com/filecoin-project/venus/venus-devtool/api-gen/common"
 	"github.com/filecoin-project/venus/venus-devtool/util"
 	"github.com/urfave/cli/v2"
 )
@@ -14,7 +15,7 @@ var clientCmd = &cli.Command{
 	Name:  "client",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		for _, target := range apiTargets {
+		for _, target := range common.ApiTargets {
 			err := genClientForAPI(target)
 			if err != nil {
 				log.Fatalf("got error while generating client codes for %s: %s", target.Type, err)
@@ -176,7 +177,7 @@ func genClientForAPI(t util.APIMeta) error {
 	err = tmpl.Execute(&buf, map[string]interface{}{
 		"PkgName":      apiIface.Pkg.Name,
 		"APIName":      apiName,
-		"APIStruct":    structName(apiName),
+		"APIStruct":    common.StructName(apiName),
 		"APINs":        ns,
 		"MethNs":       methNs,
 		"MajorVersion": t.RPCMeta.Version,
@@ -186,5 +187,5 @@ func genClientForAPI(t util.APIMeta) error {
 		return fmt.Errorf("exec template: %w", err)
 	}
 
-	return outputSourceFile(astMeta.Location, "client_gen.go", &buf)
+	return common.OutputSourceFile(astMeta.Location, "client_gen.go", &buf)
 }

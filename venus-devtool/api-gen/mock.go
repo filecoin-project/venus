@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/filecoin-project/venus/venus-devtool/api-gen/common"
 	"github.com/filecoin-project/venus/venus-devtool/util"
 	"github.com/urfave/cli/v2"
 )
@@ -12,7 +13,7 @@ import (
 var mockCmd = &cli.Command{
 	Name: "mock",
 	Action: func(cctx *cli.Context) error {
-		for _, t := range apiTargets {
+		for _, t := range common.ApiTargets {
 			if err := mockAPI(t); err != nil {
 				return err
 			}

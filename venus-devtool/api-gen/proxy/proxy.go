@@ -1,4 +1,4 @@
-package main
+package proxy
 
 import (
 	"bytes"
@@ -6,33 +6,14 @@ import (
 	"go/ast"
 	"go/printer"
 	"io"
-	"log"
 	"path/filepath"
 	"strings"
 
-	"github.com/urfave/cli/v2"
-
+	"github.com/filecoin-project/venus/venus-devtool/api-gen/common"
 	"github.com/filecoin-project/venus/venus-devtool/util"
 )
 
-var proxyCmd = &cli.Command{
-	Name:  "proxy",
-	Flags: []cli.Flag{},
-	Action: func(cctx *cli.Context) error {
-		if err := util.LoadExtraInterfaceMeta(); err != nil {
-			return err
-		}
-		for _, target := range apiTargets {
-			err := genProxyForAPI(target)
-			if err != nil {
-				log.Fatalf("got error while generating proxy codes for %s: %s", target.Type, err)
-			}
-		}
-		return nil
-	},
-}
-
-func genProxyForAPI(t util.APIMeta) error {
+func GenProxyForAPI(t util.APIMeta) error {
 	opt := t.ParseOpt
 	opt.ResolveImports = true
 	ifaceMetas, astMeta, err := util.ParseInterfaceMetas(opt)
@@ -76,7 +57,7 @@ func genProxyForAPI(t util.APIMeta) error {
 		return fmt.Errorf("copy contents into output: %w", err)
 	}
 
-	return outputSourceFile(astMeta.Location, "proxy_gen.go", &fileBuffer)
+	return common.OutputSourceFile(astMeta.Location, "proxy_gen.go", &fileBuffer)
 }
 
 func writeImports(deps map[string]util.ImportMeta, dst *bytes.Buffer) error {
@@ -166,10 +147,10 @@ type %s struct {
 )
 
 func writeStruct(dst *bytes.Buffer, ifaceMeta *util.InterfaceMeta, astMeta *util.ASTMeta) error {
-	fmt.Fprintf(dst, structHeadFormat, structName(ifaceMeta.Name))
+	fmt.Fprintf(dst, structHeadFormat, common.StructName(ifaceMeta.Name))
 
 	for _, nested := range ifaceMeta.Nested {
-		fmt.Fprintf(dst, "\t%s\n", structName(nested))
+		fmt.Fprintf(dst, "\t%s\n", common.StructName(nested))
 	}
 
 	tmpBuf := &bytes.Buffer{}
@@ -343,7 +324,7 @@ func writeMethodBody(dst *bytes.Buffer, typBuf *bytes.Buffer, ifaceMeta *util.In
 		}
 	}
 
-	sname := structName(ifaceMeta.Name)
+	sname := common.StructName(ifaceMeta.Name)
 	fmt.Fprintf(dst, "func(s *%s) %s(%s) (%s) { return s.Internal.%s(%s) }\n", sname, methMeta.Name, strings.Join(params, ", "), strings.Join(results, ", "), methMeta.Name, strings.Join(callNames, ", "))
 	return nil
 }
