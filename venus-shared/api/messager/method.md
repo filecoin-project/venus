@@ -140,8 +140,8 @@ Response:
 ```json
 {
   "id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
-  "addr": 17,
-  "codeCid": {
+  "version": 6,
+  "code": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   "method": 1,
@@ -551,8 +551,8 @@ Response:
 [
   {
     "id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
-    "addr": 17,
-    "codeCid": {
+    "version": 6,
+    "code": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "method": 1,
@@ -1192,8 +1192,8 @@ Inputs:
 [
   {
     "id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
-    "addr": 17,
-    "codeCid": {
+    "version": 6,
+    "code": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "method": 1,

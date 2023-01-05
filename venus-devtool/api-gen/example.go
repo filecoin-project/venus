@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/actors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -89,6 +91,7 @@ func init() {
 		panic(err)
 	}
 	addExample(constants.TestNetworkVersion)
+	addExample(actors.Version6)
 	allocationID := verifreg.AllocationId(0)
 	addExample(allocationID)
 	addExample(&allocationID)
@@ -320,6 +323,7 @@ func exampleStruct(method string, t, parent reflect.Type) interface{} {
 		}
 
 		if strings.Title(f.Name) == f.Name {
+			fmt.Println(f.Name)
 			ns.Field(i).Set(reflect.ValueOf(ExampleValue(method, f.Type, t)))
 		}
 	}
