@@ -168,7 +168,7 @@ func writeStruct(dst *bytes.Buffer, ifaceMeta *util.InterfaceMeta, astMeta *util
 			dst.WriteString(strings.ReplaceAll(tmpBuf.String(), "\n\t", ""))
 			tmpBuf.Reset()
 
-			fmt.Fprintf(dst, " `perm:\"%s\"`\n", util.GetAPIMethodPerm(meth))
+			fmt.Fprint(dst, util.GetMethodComment(meth))
 		}
 
 		fmt.Fprint(dst, structInternalTail)
