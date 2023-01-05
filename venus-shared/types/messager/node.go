@@ -1,8 +1,9 @@
 package messager
 
 import (
-	"github.com/filecoin-project/venus/venus-shared/types"
 	"time"
+
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type NodeType int
