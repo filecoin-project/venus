@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/big"
-
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -43,16 +41,12 @@ type Address struct {
 	ID   types.UUID      `json:"id"`
 	Addr address.Address `json:"addr"`
 	// max for current, use nonce and +1
-	Nonce  uint64 `json:"nonce"`
-	Weight int64  `json:"weight"`
+	Nonce     uint64       `json:"nonce"`
+	Weight    int64        `json:"weight"`
+	State     AddressState `json:"state"`
+	SelMsgNum uint64       `json:"selMsgNum"`
 	// number of address selection messages
-	SelMsgNum         uint64       `json:"selMsgNum"`
-	State             AddressState `json:"state"`
-	GasOverEstimation float64      `json:"gasOverEstimation"`
-	MaxFee            big.Int      `json:"maxFee,omitempty"`
-	GasFeeCap         big.Int      `json:"gasFeeCap"`
-	GasOverPremium    float64      `json:"gasOverPremium"`
-	BaseFee           big.Int      `json:"baseFee"`
+	FeeSpec
 
 	IsDeleted int       `json:"isDeleted"` // 是否删除 1:是  -1:否
 	CreatedAt time.Time `json:"createAt"`  // 创建时间

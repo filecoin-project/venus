@@ -3186,7 +3186,9 @@ Response:
     "ExpectedStoragePledge": "0",
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
-    "SectorKeyCID": null,
+    "SectorKeyCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "SimpleQAPower": true
   }
 ]
@@ -3349,7 +3351,9 @@ Inputs:
       5432
     ],
     "Expiration": 10101,
-    "UnsealedCid": null
+    "UnsealedCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   [
     {
@@ -3468,7 +3472,9 @@ Inputs:
       5432
     ],
     "Expiration": 10101,
-    "UnsealedCid": null
+    "UnsealedCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   [
     {
@@ -3633,7 +3639,8 @@ Inputs:
 [
   "f01234",
   [
-    0
+    5,
+    1
   ],
   [
     {
@@ -3667,7 +3674,9 @@ Response:
     "ExpectedStoragePledge": "0",
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
-    "SectorKeyCID": null,
+    "SectorKeyCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "SimpleQAPower": true
   }
 ]
@@ -3765,7 +3774,9 @@ Response:
   "ExpectedStoragePledge": "0",
   "ReplacedSectorAge": 10101,
   "ReplacedDayReward": "0",
-  "SectorKeyCID": null,
+  "SectorKeyCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "SimpleQAPower": true
 }
 ```
@@ -3834,7 +3845,9 @@ Response:
       5432
     ],
     "Expiration": 10101,
-    "UnsealedCid": null
+    "UnsealedCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "PreCommitDeposit": "0",
   "PreCommitEpoch": 10101
@@ -4060,7 +4073,9 @@ Response:
     {
       "SealProof": 8,
       "SectorNumber": 9,
-      "SectorKey": null,
+      "SectorKey": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
       "SealedCID": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       }
@@ -4834,14 +4849,16 @@ Inputs:
 Response:
 ```json
 {
-  "Channel": "\u003cempty\u003e",
+  "Channel": "f01234",
   "From": "f01234",
   "To": "f01234",
   "ConfirmedAmt": "0",
   "PendingAmt": "0",
   "NonReservedAmt": "0",
   "PendingAvailableAmt": "0",
-  "PendingWaitSentinel": null,
+  "PendingWaitSentinel": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "QueuedAmt": "0",
   "VoucherReedeemedAmt": "0"
 }
@@ -4866,14 +4883,16 @@ Inputs:
 Response:
 ```json
 {
-  "Channel": "\u003cempty\u003e",
+  "Channel": "f01234",
   "From": "f01234",
   "To": "f01234",
   "ConfirmedAmt": "0",
   "PendingAmt": "0",
   "NonReservedAmt": "0",
   "PendingAvailableAmt": "0",
-  "PendingWaitSentinel": null,
+  "PendingWaitSentinel": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "QueuedAmt": "0",
   "VoucherReedeemedAmt": "0"
 }

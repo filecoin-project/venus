@@ -6,6 +6,7 @@
   * [DeleteAddress](#deleteaddress)
   * [DeleteNode](#deletenode)
   * [ForbiddenAddress](#forbiddenaddress)
+  * [GetActorCfgByID](#getactorcfgbyid)
   * [GetAddress](#getaddress)
   * [GetMessageByFromAndNonce](#getmessagebyfromandnonce)
   * [GetMessageBySignedCid](#getmessagebysignedcid)
@@ -16,6 +17,7 @@
   * [HasAddress](#hasaddress)
   * [HasMessageByUid](#hasmessagebyuid)
   * [HasNode](#hasnode)
+  * [ListActorCfg](#listactorcfg)
   * [ListAddress](#listaddress)
   * [ListBlockedMessage](#listblockedmessage)
   * [ListFailedMessage](#listfailedmessage)
@@ -34,12 +36,14 @@
   * [RecoverFailedMsg](#recoverfailedmsg)
   * [ReplaceMessage](#replacemessage)
   * [RepublishMessage](#republishmessage)
+  * [SaveActorCfg](#saveactorcfg)
   * [SaveNode](#savenode)
   * [Send](#send)
   * [SetFeeParams](#setfeeparams)
   * [SetLogLevel](#setloglevel)
   * [SetSelectMsgNum](#setselectmsgnum)
   * [SetSharedParams](#setsharedparams)
+  * [UpdateActorCfg](#updateactorcfg)
   * [UpdateAllFilledMessage](#updateallfilledmessage)
   * [UpdateFilledMessageByID](#updatefilledmessagebyid)
   * [UpdateMessageStateByID](#updatemessagestatebyid)
@@ -120,6 +124,37 @@ Inputs:
 
 Response: `{}`
 
+### GetActorCfgByID
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "e26f1e5c-47f7-4561-a11d-18fab6e748af"
+]
+```
+
+Response:
+```json
+{
+  "id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
+  "version": 6,
+  "code": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "method": 1,
+  "gasOverEstimation": 12.3,
+  "maxFee": "0",
+  "gasFeeCap": "0",
+  "gasOverPremium": 12.3,
+  "baseFee": "0",
+  "createAt": "0001-01-01T00:00:00Z",
+  "updateAt": "0001-01-01T00:00:00Z"
+}
+```
+
 ### GetAddress
 
 
@@ -139,8 +174,8 @@ Response:
   "addr": "f01234",
   "nonce": 42,
   "weight": 9,
-  "selMsgNum": 42,
   "state": 1,
+  "selMsgNum": 42,
   "gasOverEstimation": 12.3,
   "maxFee": "0",
   "gasFeeCap": "0",
@@ -436,7 +471,9 @@ Response:
   "Name": "venus",
   "URL": "/ip4/127.0.0.1/tcp/3453",
   "Token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIiwid3JpdGUiLCJzaWduIiwiYWRtaW4iXX0._eHBJJAiBzQmfcbD_vVmtTrkgyJQ-LOgGOiHfb8rU1I",
-  "Type": 2
+  "Type": 2,
+  "CreatedAt": "0001-01-01T00:00:00Z",
+  "UpdatedAt": "0001-01-01T00:00:00Z"
 }
 ```
 
@@ -451,12 +488,12 @@ Response:
 ```json
 {
   "id": 42,
+  "selMsgNum": 42,
   "gasOverEstimation": 12.3,
   "maxFee": "0",
   "gasFeeCap": "0",
   "gasOverPremium": 12.3,
-  "baseFee": "0",
-  "selMsgNum": 42
+  "baseFee": "0"
 }
 ```
 
@@ -502,6 +539,34 @@ Inputs:
 
 Response: `true`
 
+### ListActorCfg
+
+
+Perms: read
+
+Inputs: `[]`
+
+Response:
+```json
+[
+  {
+    "id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
+    "version": 6,
+    "code": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "method": 1,
+    "gasOverEstimation": 12.3,
+    "maxFee": "0",
+    "gasFeeCap": "0",
+    "gasOverPremium": 12.3,
+    "baseFee": "0",
+    "createAt": "0001-01-01T00:00:00Z",
+    "updateAt": "0001-01-01T00:00:00Z"
+  }
+]
+```
+
 ### ListAddress
 
 
@@ -517,8 +582,8 @@ Response:
     "addr": "f01234",
     "nonce": 42,
     "weight": 9,
-    "selMsgNum": 42,
     "state": 1,
+    "selMsgNum": 42,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
     "gasFeeCap": "0",
@@ -876,7 +941,9 @@ Response:
     "Name": "venus",
     "URL": "/ip4/127.0.0.1/tcp/3453",
     "Token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIiwid3JpdGUiLCJzaWduIiwiYWRtaW4iXX0._eHBJJAiBzQmfcbD_vVmtTrkgyJQ-LOgGOiHfb8rU1I",
-    "Type": 2
+    "Type": 2,
+    "CreatedAt": "0001-01-01T00:00:00Z",
+    "UpdatedAt": "0001-01-01T00:00:00Z"
   }
 ]
 ```
@@ -1115,6 +1182,34 @@ Inputs:
 
 Response: `{}`
 
+### SaveActorCfg
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "id": "e26f1e5c-47f7-4561-a11d-18fab6e748af",
+    "version": 6,
+    "code": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "method": 1,
+    "gasOverEstimation": 12.3,
+    "maxFee": "0",
+    "gasFeeCap": "0",
+    "gasOverPremium": 12.3,
+    "baseFee": "0",
+    "createAt": "0001-01-01T00:00:00Z",
+    "updateAt": "0001-01-01T00:00:00Z"
+  }
+]
+```
+
+Response: `{}`
+
 ### SaveNode
 
 
@@ -1128,7 +1223,9 @@ Inputs:
     "Name": "venus",
     "URL": "/ip4/127.0.0.1/tcp/3453",
     "Token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIiwid3JpdGUiLCJzaWduIiwiYWRtaW4iXX0._eHBJJAiBzQmfcbD_vVmtTrkgyJQ-LOgGOiHfb8rU1I",
-    "Type": 2
+    "Type": 2,
+    "CreatedAt": "0001-01-01T00:00:00Z",
+    "UpdatedAt": "0001-01-01T00:00:00Z"
   }
 ]
 ```
@@ -1221,12 +1318,33 @@ Inputs:
 [
   {
     "id": 42,
+    "selMsgNum": 42,
     "gasOverEstimation": 12.3,
     "maxFee": "0",
     "gasFeeCap": "0",
     "gasOverPremium": 12.3,
-    "baseFee": "0",
-    "selMsgNum": 42
+    "baseFee": "0"
+  }
+]
+```
+
+Response: `{}`
+
+### UpdateActorCfg
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "e26f1e5c-47f7-4561-a11d-18fab6e748af",
+  {
+    "gasOverEstimation": 12.3,
+    "maxFee": "0",
+    "gasFeeCap": "0",
+    "gasOverPremium": 12.3,
+    "baseFee": "0"
   }
 ]
 ```
