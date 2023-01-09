@@ -52,6 +52,11 @@ import (
 
 	datacap10 "github.com/filecoin-project/go-state-types/builtin/v10/datacap"
 
+	eam10 "github.com/filecoin-project/go-state-types/builtin/v10/eam"
+	embryo10 "github.com/filecoin-project/go-state-types/builtin/v10/embryo"
+	ethaccount10 "github.com/filecoin-project/go-state-types/builtin/v10/ethaccount"
+	evm10 "github.com/filecoin-project/go-state-types/builtin/v10/evm"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/manifest"
@@ -272,6 +277,7 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 					methods: datacap9.Methods,
 					state:   new(datacap9.State),
 				})
+
 			}
 		}
 
@@ -350,6 +356,32 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 					methods: datacap10.Methods,
 					state:   new(datacap10.State),
 				})
+
+			case manifest.EvmKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: evm10.Methods,
+					state:   new(evm10.State),
+				})
+			case manifest.EamKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: eam10.Methods,
+					state:   nil,
+				})
+			case manifest.EmbryoKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: embryo10.Methods,
+					state:   nil,
+				})
+			case manifest.EthAccountKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: ethaccount10.Methods,
+					state:   nil,
+				})
+
 			}
 		}
 
