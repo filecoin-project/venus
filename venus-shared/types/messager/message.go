@@ -15,8 +15,8 @@ import (
 //						---> FailedMsg <------
 //					    |					 |
 // 				UnFillMsg ---------------> FillMsg --------> OnChainMsg
-//						|					 |
-//		 NoWalletMsg <---				     ---->ReplacedMsg
+//						 					 |
+//		 								     |-------------->NonceConflictMsg
 //
 
 type MessageState int
@@ -27,8 +27,7 @@ const (
 	FillMsg
 	OnChainMsg
 	FailedMsg
-	ReplacedMsg
-	NoWalletMsg
+	NonceConflictMsg
 )
 
 func (mst MessageState) String() string {
@@ -41,10 +40,8 @@ func (mst MessageState) String() string {
 		return "OnChainMsg"
 	case FailedMsg:
 		return "Failed"
-	case ReplacedMsg:
-		return "ReplacedMsg"
-	case NoWalletMsg:
-		return "NoWalletMsg"
+	case NonceConflictMsg:
+		return "NonceConflictMsg"
 	default:
 		return "UnKnown"
 	}
