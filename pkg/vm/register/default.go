@@ -46,16 +46,16 @@ func GetDefaultActros() *dispatch.CodeLoader {
 }
 
 func DumpActorState(codeLoader *dispatch.CodeLoader, act *types.Actor, b []byte) (interface{}, error) {
-	if builtin.IsAccountActor(act.Code) || builtin.IsEmbryoActor(act.Code) { // Account code special case
-		return nil, nil
-	}
-
 	vmActor, err := codeLoader.GetVMActor(act.Code)
 	if err != nil {
 		return nil, fmt.Errorf("state type for actor %s not found", act.Code)
 	}
 
 	um := vmActor.State()
+	if um == nil {
+		// TODO: I would like to assert that we have the empty object here
+		return nil, nil
+	}
 	if err := um.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
 		return nil, fmt.Errorf("unmarshaling actor state: %w", err)
 	}

@@ -278,10 +278,10 @@ func init() {
 	ethFeeHistoryReward := [][]types.EthBigInt{}
 	addExample(&ethFeeHistoryReward)
 
-	filterid, _ := types.EthHashFromHex("0x5CbEeC012345673f25E309Cc264f240bb0664031")
+	filterid, _ := types.NewEthHashFromHex("0x5CbEeC012345673f25E309Cc264f240bb0664031")
 	addExample(types.EthFilterID(filterid))
 
-	subid, _ := types.EthHashFromHex("0x5CbEeCF99d3fDB301234567c264f240bb0664031")
+	subid, _ := types.NewEthHashFromHex("0x5CbEeCF99d3fDB301234567c264f240bb0664031")
 	addExample(types.EthSubscriptionID(subid))
 
 	pstring := func(s string) *string { return &s }
